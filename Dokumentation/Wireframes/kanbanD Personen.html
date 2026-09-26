@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="design_doc_mode" content="canvas">
+<title>kanbanD — Personen & Berichte</title>
+<link rel="stylesheet" href="kd-tokens.css">
+<link rel="stylesheet" href="kd-base.css">
+<style>
+.kz-nav a .dd{font-size:9px;margin-left:5px}
+.kz-nav a.auf{background:var(--kd-head-line);color:var(--kd-head-text)}
+.body{flex:1;min-height:0;overflow:auto;background:var(--kd-surface)}
+.pt{width:100%;border-collapse:collapse}
+.pt th{position:sticky;top:0;z-index:2;background:var(--kd-sunken);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);padding:0 var(--kd-s3);height:26px;border-bottom:1px solid var(--kd-line-strong);white-space:nowrap}
+.pt th.r,.pt td.r{text-align:right}
+.pt td{height:40px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);vertical-align:middle;white-space:nowrap}
+.pt tbody tr:hover td{background:var(--kd-accent-weak)}
+.pt tr.grp td{height:26px;background:var(--kd-bg);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
+.pt tr.grp td span{font-weight:400;letter-spacing:0}
+.pt tr.ruhe td{color:var(--kd-muted)}
+.pt tr.ruhe .pk{opacity:.55}
+.wer{display:flex;align-items:center;gap:8px}
+.wer .pk{width:22px;height:22px;font-size:10px}
+.wer b{font-weight:500}
+.wer small{display:block;font-size:11px;color:var(--kd-muted)}
+.akt{display:flex;flex-direction:column;gap:2px;padding:4px 0}
+.akt .z{display:flex;align-items:center;gap:6px}
+.akt .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.akt .t{max-width:300px;overflow:hidden;text-overflow:ellipsis}
+.pt tr.mehr td{height:auto;padding-block:5px}
+.num{font-family:var(--kd-mono);font-size:12.5px}
+.stop{width:26px;height:24px;padding:0;justify-content:center}
+.tagl{position:relative;width:380px;height:16px;background:var(--kd-bg);border:1px solid var(--kd-line)}
+.tagl i{position:absolute;top:2px;bottom:2px;background:var(--kd-mensch)}
+.tagl i.a{background:var(--kd-agent)}
+.tagl i.l{background:var(--kd-accent);background-image:repeating-linear-gradient(90deg,transparent 0 4px,oklch(1 0 0 / .35) 4px 6px)}
+.tagl .jetzt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--kd-warn)}
+.skala{position:relative;width:380px;height:14px;font-family:var(--kd-mono);font-size:10px;color:var(--kd-faint)}
+.skala span{position:absolute;transform:translateX(-50%)}
+.ch{display:inline-flex;gap:3px}
+.fuss{flex:none;height:28px;display:flex;align-items:center;gap:var(--kd-s5);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted)}
+.menue{position:absolute;top:var(--kd-head-h);z-index:30;width:320px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow)}
+.menue .e{display:grid;grid-template-columns:18px 1fr;gap:2px 10px;padding:8px var(--kd-s4);border-bottom:1px solid var(--kd-line);cursor:pointer}
+.menue .e:hover{background:var(--kd-accent-weak)}
+.menue .e b{font-weight:500}
+.menue .e small{grid-column:2;font-size:11px;color:var(--kd-muted);line-height:1.35}
+.menue .e svg{margin-top:2px;color:var(--kd-muted)}
+.menue .k{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-faint);padding:6px var(--kd-s4) 2px;background:var(--kd-bg);border-bottom:1px solid var(--kd-line)}
+.dim{position:absolute;left:0;right:0;top:var(--kd-head-h);bottom:0;background:oklch(0.24 0.02 255 / .12);z-index:25}
+</style>
+</head>
+<body>
+<div class="cap" style="left:0;top:0">Personen · wer arbeitet gerade woran<small>Neuer Navigationspunkt für die laufende Arbeit. Je Person: was jetzt läuft (auch mehrere Timer), Tagesleiste 07–19 Uhr, Stunden heute und Woche, zugewiesene offene Karten. Gruppiert nach „läuft jetzt" · „heute aktiv" · „heute ruhig". Klick auf eine Person filtert das Board auf @kürzel; fremde Timer stoppbar.</small></div>
+<div class="frame" style="left:0;top:110px" id="fp" data-screen-label="Personen"></div>
+<div class="cap" style="left:1540px;top:0">Menü „Berichte"<small>Alles, was zurückblickt oder ausleitet, sitzt hinter einem Menü statt in der Navigation: Stundenzettel, Zeiten nach Karte × Person, Export. Jeder Bericht öffnet als eigene Ansicht; die Navigation bleibt bei zwei festen Punkten.</small></div>
+<div class="frame" style="left:1540px;top:110px" id="fb" data-screen-label="Berichte-Menü"></div>
+<script>
+const P={st:['ST','m','Stefan'],sv:['SV','m','Sven'],ei:['EI','m','Eike'],ml:['ML','m','Maria'],cl:['KI','a','Claude'],cx:['CX','a','Codex'],jr:['JR','m','Jan']};
+const pk=a=>`<span class="pk pk-${P[a][1]}" title="${P[a][2]}">${P[a][0]}</span>`;
+const ic={uhr:'<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>'};
+const kz=(an,auf)=>`<header class="kz"><div class="kz-z1">kanband <span class="mono">~/boards/</span></div><nav class="kz-nav"><a class="${an==='b'?'an':''}" href="#">Board</a><a class="${an==='p'?'an':''}" href="#">Personen</a><a class="${auf?'auf':''}" href="#">Berichte<span class="dd">▾</span></a></nav><div class="kz-z3"><button class="kz-btn"><svg class="i" viewBox="0 0 24 24">${ic.uhr}</svg>4 laufen</button><button class="kz-btn"><span class="pk pk-m">ST</span>Stefan ▾</button></div></header>`;
+const x=h=>((h-7)/12*100).toFixed(2)+'%';
+const bl=(bs)=>`<div class="tagl">${bs.map(([a,b,c])=>`<i class="${c||''}" style="left:${x(a)};width:calc(${x(b)} - ${x(a)})"></i>`).join('')}<span class="jetzt" style="left:${x(13.7)}"></span></div>`;
+const R=[
+ {g:'LÄUFT JETZT',s:'· 4 Timer'},
+ {w:'st',sub:'ich',akt:[['21','Timer: laufender Eintrag mit … im Codeblock','0:24',1]],tl:[[8.3,10.1],[10.6,12.2],[13.08,13.7,'l']],h:'4:02',wo:'18:40',off:[3,1]},
+ {w:'cl',sub:'Agent',akt:[['12','Kopfzeile auf 40 px verdichten','1:18']],tl:[[7.2,8.9,'a'],[9.2,13.7,'l']],h:'6:11',wo:'31:05',off:[4,2]},
+ {w:'sv',sub:'',akt:[['12','Kopfzeile auf 40 px verdichten','0:51']],tl:[[9.5,11.4],[12.85,13.7,'l']],h:'2:44',wo:'14:10',off:[2,1]},
+ {w:'ei',sub:'',akt:[['21','Timer: laufender Eintrag mit … im Codeblock','0:07']],tl:[[13.37,13.7,'l']],h:'0:07',wo:'9:52',off:[1,1]},
+ {g:'HEUTE AKTIV',s:'· kein Timer offen'},
+ {w:'cx',sub:'Agent · zuletzt 11:48',tl:[[7.5,9.1,'a'],[10,11.8,'a']],h:'3:24',wo:'22:18',off:[2,1],letzt:'#28 → Bereit'},
+ {g:'HEUTE RUHIG',s:''},
+ {w:'ml',sub:'zuletzt gestern 16:20',ruhe:1,tl:[],h:'0:00',wo:'11:30',off:[1,0],letzt:'#35 angelegt'}
+];
+function Pn(){
+ const rows=R.map(r=>{
+  if(r.g)return `<tr class="grp"><td colspan="7">${r.g} <span>${r.s}</span></td></tr>`;
+  const akt=r.akt?`<div class="akt">${r.akt.map(([i,t,d,e])=>`<div class="z"><span class="lauf${e?' eigen':''}">${d}</span><span class="id">#${i}</span><span class="t">${t}</span></div>`).join('')}</div>`:`<span class="muted">${r.letzt||'—'}</span>`;
+  return `<tr class="${r.ruhe?'ruhe':''}"><td><div class="wer">${pk(r.w)}<span><b>${P[r.w][2]}</b><small>${r.sub||'&nbsp;'}</small></span></div></td><td>${akt}</td><td>${bl(r.tl)}</td><td class="r num">${r.h}</td><td class="r num muted">${r.wo}</td><td class="r"><span class="num">${r.off[0]}</span> <span class="muted" style="font-size:11px">· ${r.off[1]} in Arbeit</span></td><td class="r">${r.akt?`<button class="btn stop${r.akt[0][3]?' btn-haupt':''}" title="${r.akt[0][3]?'meinen Timer':P[r.w][2]+'s Timer'} stoppen">■</button>`:''}</td></tr>`;
+ }).join('');
+ return kz('p')+`<div class="leiste"><span class="seg"><span class="an">Menschen + Agenten</span><span>nur Menschen</span><span>nur Agenten</span></span><span class="muted" style="font-size:12px">Stillgelegte ausgeblendet · <a href="#">einblenden (1)</a></span><div class="rechts"><span class="seg"><span class="an">heute</span><span>gestern</span></span></div></div>
+<div class="body"><table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${[7,9,11,13,15,17,19].map(h=>`<span style="left:${x(h)}">${h}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th><th style="width:44px"></th></tr></thead><tbody>${rows}</tbody></table></div>
+<div class="fuss"><span>6 aktive Personen · 4 laufende Timer · heute zusammen 16:28</span><span style="margin-left:auto">Klick auf Person → Board gefiltert auf <span class="mono">@kürzel</span></span></div>`;
+}
+function Bm(){
+ const e=(svg,t,s)=>`<div class="e"><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></div>`;
+ const menue=`<div class="menue" style="left:316px">
+<div class="k">ZEITEN</div>
+${e('<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>','Stundenzettel','Eine Person, Woche für Woche: Tage × Karten, Summen je Tag. Druckbar.')}
+${e('<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>','Zeiten nach Karte und Person','Kreuztabelle über den Zeitraum, Summen in beide Richtungen.')}
+<div class="k">AUSLEITEN</div>
+${e('<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>','Export als CSV','Eine Zeile je Zeiteintrag: Karte, Person, Art, Beginn, Ende, Dauer, Origins.')}
+</div>`;
+ const hint=`<div style="position:absolute;left:720px;top:200px;width:560px;color:var(--kd-muted);font-size:12px;line-height:1.5;z-index:26;background:var(--kd-surface);border:1px dashed var(--kd-line-strong);padding:var(--kd-s4)">Hinter dem Menü: das Board bzw. die Personen-Ansicht wie gewohnt. Berichte lesen nur – sie werten die Codeblöcke <span class="mono">kanbanD-time</span> aller Kartendateien aus und schreiben nichts zurück.</div>`;
+ return kz('b',1)+`<div class="body" style="background:var(--kd-sunken)"></div><div class="dim"></div>`+menue+hint;
+}
+fp.innerHTML=Pn();fb.innerHTML=Bm();
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+/* kanbanD — gemeinsame Grundformen der Entwürfe. Werte nur aus kd-tokens.css. */
+*{box-sizing:border-box;border-radius:0}
+body{margin:0;font-family:var(--kd-font);color:var(--kd-text)}
+a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent);text-decoration:underline}
+.cap{position:absolute;width:1440px;font:600 22px/1.2 var(--kd-font);color:var(--kd-text)}
+.cap small{display:block;font:400 14px/1.4 var(--kd-font);color:var(--kd-muted);margin-top:4px;max-width:1100px}
+.frame{position:absolute;width:1440px;height:900px;background:var(--kd-bg);font-size:13px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px var(--kd-line-strong)}
+.kz{height:var(--kd-head-h);flex:none;display:flex;align-items:stretch;background:var(--kd-head);color:var(--kd-head-text)}
+.kz-z1{display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s5);font-weight:600;font-size:14px;border-right:1px solid var(--kd-head-line)}
+.kz-z1 .mono{font-weight:400;color:var(--kd-head-muted)}
+.kz-nav{display:flex}
+.kz-nav a{display:flex;align-items:center;padding:0 var(--kd-s5);color:var(--kd-head-muted);border-bottom:2px solid transparent}
+.kz-nav a:hover{color:var(--kd-head-text);text-decoration:none;background:var(--kd-head-line)}
+.kz-nav a.an{color:var(--kd-head-text);border-bottom-color:var(--kd-accent-weak)}
+.kz-z3{margin-left:auto;display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s4)}
+.kz-btn{display:flex;align-items:center;gap:6px;height:26px;padding:0 var(--kd-s3);background:none;border:1px solid var(--kd-head-line);color:var(--kd-head-text);font:inherit;font-size:12px;cursor:pointer}
+.kz-btn:hover{background:var(--kd-head-line)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:var(--kd-row);padding:0 var(--kd-s4);font:inherit;font-weight:500;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--kd-sunken)}
+.btn-haupt{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
+.btn-haupt:hover{background:var(--kd-accent-hover)}
+.btn-sym{width:var(--kd-row);padding:0;justify-content:center;border-color:transparent;background:none;color:var(--kd-muted)}
+.btn-sym:hover{background:var(--kd-sunken);color:var(--kd-text);border-color:var(--kd-line)}
+.inp{height:var(--kd-row);border:1px solid var(--kd-line-strong);background:var(--kd-surface);font:inherit;padding:0 var(--kd-s3);color:var(--kd-text)}
+.inp:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
+.seg{display:inline-flex;border:1px solid var(--kd-line-strong)}
+.seg span{height:26px;display:flex;align-items:center;padding:0 var(--kd-s3);cursor:pointer;background:var(--kd-surface)}
+.seg span+span{border-left:1px solid var(--kd-line-strong)}
+.seg span.an{background:var(--kd-text);color:var(--kd-surface)}
+.mono{font-family:var(--kd-mono);font-size:12px}
+.muted{color:var(--kd-muted)}
+.pk{display:inline-grid;place-items:center;width:18px;height:18px;font-size:9px;font-weight:600;color:#fff;flex:none}
+.pk-m{background:var(--kd-mensch)}.pk-a{background:var(--kd-agent)}.pk-0{background:none;box-shadow:inset 0 0 0 1px var(--kd-line-strong);color:var(--kd-faint)}
+.lauf{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 5px;font-family:var(--kd-mono);font-size:11px;background:var(--kd-agent-weak);color:var(--kd-agent-ink);white-space:nowrap}
+.lauf::before{content:"";width:6px;height:6px;background:var(--kd-agent)}
+.lauf.eigen{background:var(--kd-accent);color:#fff}.lauf.eigen::before{background:#fff}
+.lbl{display:inline-flex;align-items:center;height:16px;padding:0 5px;font-size:10.5px;background:var(--kd-sunken);color:var(--kd-muted);border:1px solid var(--kd-line)}
+svg.i{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:square;flex:none}
+.leiste{flex:none;display:flex;align-items:center;gap:var(--kd-s3);padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
+.leiste .rechts{margin-left:auto;display:flex;gap:var(--kd-s3);align-items:center}

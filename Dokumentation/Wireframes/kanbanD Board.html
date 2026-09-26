@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="design_doc_mode" content="canvas">
+<title>kanbanD — Board, Varianten</title>
+<link rel="stylesheet" href="kd-tokens.css">
+<link rel="stylesheet" href="kd-base.css">
+<style>
+.leg{flex:none;display:flex;align-items:center;gap:2px;height:28px;padding:0 var(--kd-s3);border-top:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:12px}
+.leg .t{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);margin-right:var(--kd-s3)}
+.leg button{display:flex;align-items:center;gap:6px;height:22px;padding:0 var(--kd-s3);border:1px solid transparent;background:none;font:inherit;color:var(--kd-text);cursor:pointer}
+.leg button:hover{border-color:var(--kd-line-strong)}
+.leg button.an{border-color:var(--kd-text);background:var(--kd-sunken)}
+.leg .sw{width:14px;height:12px;background:var(--c);border:1px solid var(--cl)}
+.leg .sw.leer{background:var(--kd-surface);border-color:var(--kd-line)}
+.leg .n{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.leg .rechts{margin-left:auto;display:flex;gap:var(--kd-s3);align-items:center;color:var(--kd-faint);font-size:11px}
+.leg .x{width:22px;justify-content:center;padding:0;color:var(--kd-muted)}
+.body{flex:1;display:flex;min-height:0}
+.kz-z1{flex-direction:row-reverse;justify-content:flex-end}
+.kz-z1 .mono{font-size:11px}
+.kz-werk{display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s4);border-left:1px solid var(--kd-head-line)}
+.kz .inp{width:300px;height:26px;background:var(--kd-head-line);border-color:transparent;color:var(--kd-head-text);font-size:12px}
+.kz .inp::placeholder{color:var(--kd-head-muted)}
+.kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-accent-weak)}
+.kz .seg{border-color:var(--kd-head-line)}
+.kz .seg span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
+.kz .seg span+span{border-left-color:var(--kd-head-line)}
+.kz .seg span:hover{color:var(--kd-head-text)}
+.kz .seg span.an{background:var(--kd-head-text);color:var(--kd-head)}
+.kz-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--kd-head-muted);cursor:pointer}
+.kz-chk i{width:13px;height:13px;display:grid;place-items:center;font-style:normal;font-size:10px;background:var(--kd-head-text);color:var(--kd-head)}
+.bahnen{flex:1;display:flex;min-width:0;overflow-x:auto;background:var(--kd-surface)}
+.bahn{flex:0 0 var(--bw,264px);display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0}
+.bahn-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);height:30px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);font-weight:600;font-size:12px}
+.bahn-kopf .n{margin-left:auto;font-family:var(--kd-mono);font-weight:400;color:var(--kd-muted)}
+.bahn-kopf .ok{color:var(--kd-mensch)}
+.bahn-kopf .v{font-weight:400;font-size:11px;color:var(--kd-faint)}
+.flaeche{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+#fa .flaeche{padding:2px;gap:2px;background:var(--kd-sunken)}
+.bahn-fuss{flex:none;border-top:1px solid var(--kd-line)}
+.bahn-fuss button{width:100%;height:28px;border:0;background:none;text-align:left;padding:0 var(--kd-s3);font:inherit;color:var(--kd-muted);cursor:pointer}
+.bahn-fuss button:hover{background:var(--kd-accent-weak);color:var(--kd-accent-ink)}
+.dgrp{padding:6px var(--kd-s3) 2px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-faint)}
+.nach{padding:6px var(--kd-s3);font-size:11.5px;color:var(--kd-muted)}
+/* A — Karte */
+.ka{margin:0;min-height:64px;flex:none;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:grab;position:relative}
+.ka:hover{border-color:var(--kd-accent)}
+.ka[data-c]{background:var(--c);border-color:var(--cl)}
+.ka[data-c]:hover{border-color:var(--kd-accent)}
+[data-c=bug]{--c:var(--kd-c-yellow);--cl:var(--kd-c-yellow-line)}
+[data-c=critical]{--c:var(--kd-c-red);--cl:var(--kd-c-red-line)}
+[data-c=feature]{--c:var(--kd-c-green);--cl:var(--kd-c-green-line)}
+[data-c=docs]{--c:var(--kd-c-blue);--cl:var(--kd-c-blue-line)}
+.cls{font-size:10.5px;font-weight:600;color:var(--kd-text)}
+.cls::before{content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:var(--cl);vertical-align:0}
+/* Modus Board einrichten */
+.kz.modus{background:var(--kd-accent-ink)}
+.kz.modus .kz-z1,.kz.modus .kz-werk{border-color:oklch(1 0 0 / .2)}
+.kz-modus{display:flex;align-items:center;gap:var(--kd-s4);padding:0 var(--kd-s4);flex:1;border-left:1px solid oklch(1 0 0 / .2)}
+.kz-modus b{font-weight:600}
+.kz-modus .muted{color:var(--kd-head-muted)}
+.kz-modus .rechts{margin-left:auto;display:flex;gap:var(--kd-s3)}
+.kz-modus .kz-btn{border-color:oklch(1 0 0 / .3)}
+.kz-modus .kz-btn.haupt{background:var(--kd-surface);color:var(--kd-accent-ink);border-color:var(--kd-surface);font-weight:600}
+.bk-ed{flex:none;display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--kd-accent-weak);border-bottom:1px solid var(--kd-accent);border-top:2px solid var(--kd-accent)}
+.bk-ed .r{display:flex;gap:2px;align-items:center}
+.bk-ed .r .inp{flex:1;min-width:0;height:26px;font-weight:600}
+.bk-ed .r .btn-sym{height:26px;width:24px;color:var(--kd-accent-ink)}
+.bk-ed .r .btn-sym:disabled{opacity:.35;cursor:not-allowed}
+.bk-ed .r2{display:flex;gap:var(--kd-s3);align-items:center;font-size:11.5px;color:var(--kd-muted)}
+.bk-ed .r2 .inp{height:22px;width:44px;font-size:11.5px;padding:0 4px}
+.chk-s{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--kd-text)}
+.chk-s i{width:12px;height:12px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);display:grid;place-items:center;font-style:normal;font-size:9px}
+.chk-s i.an{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
+.ruhig{opacity:.5;pointer-events:none}
+.bahn-neu{flex:0 0 200px;display:flex;flex-direction:column;border-right:1px dashed var(--kd-line-strong);background:var(--kd-bg)}
+.bahn-neu .bk-ed{background:none;border-top-color:transparent;border-bottom:1px dashed var(--kd-line-strong)}
+.einr{flex:0 0 380px;border-left:1px solid var(--kd-line-strong);background:var(--kd-surface);display:flex;flex-direction:column;min-height:0;overflow:auto}
+.einr h3{margin:0;height:30px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong)}
+.einr h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
+.klz{display:grid;grid-template-columns:30px 76px 1fr 28px 24px;align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);height:32px}
+.klz .inp{height:24px;min-width:0;font-size:12px}
+.klz .n{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);text-align:right}
+.farbe{width:26px;height:22px;border:1px solid var(--cl);background:var(--c);position:relative;cursor:pointer}
+.farbe::after{content:"▾";position:absolute;right:-1px;bottom:-3px;font-size:8px;color:var(--kd-muted)}
+.pal{display:flex;flex-direction:column;gap:6px;padding:8px var(--kd-s4) 10px 50px;border-bottom:1px solid var(--kd-line);background:var(--kd-bg)}
+.pal .g{display:grid;grid-template-columns:repeat(8,26px);gap:3px}
+.pal .g span{width:26px;height:20px;border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
+.pal .g span:hover{outline:1px solid var(--kd-text)}
+.pal .g span.an{outline:2px solid var(--kd-text);outline-offset:1px}
+.pal .g span::after{content:"";position:absolute;left:3px;right:3px;bottom:3px;height:3px;background:var(--cl)}
+.pal .eig{display:flex;flex-wrap:wrap;white-space:nowrap;align-items:center;gap:6px;font-size:11.5px;color:var(--kd-muted)}
+.pal .eig .inp{height:22px;width:84px;font-size:11.5px;padding:0 6px}
+.pal .eig .vs{width:26px;height:20px;border:1px solid #b04a8c;background:color-mix(in srgb,#b04a8c 14%,#fff)}
+.pal .eig .pick{width:22px;height:22px;border:1px solid var(--kd-line-strong);background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);cursor:pointer}
+.pal .nm{font-family:var(--kd-mono);font-size:10.5px;color:var(--kd-faint)}
+.yaml{margin:0;overflow-x:auto;white-space:pre-wrap;padding:var(--kd-s3) var(--kd-s4);font:11px/1.55 var(--kd-mono);color:var(--kd-text);background:var(--kd-bg);white-space:pre;flex:1}
+.yaml .neu{background:var(--kd-c-green);display:inline-block;width:100%}
+.yaml .alt{color:var(--kd-faint)}
+.hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
+/* Karten-Modal */
+.mod-bg{position:absolute;left:0;right:0;top:var(--kd-head-h);bottom:0;background:oklch(0.24 0.02 255 / .45);display:flex;align-items:center;justify-content:center;z-index:20}
+.mod{width:1060px;height:740px;background:var(--kd-surface);box-shadow:0 12px 40px oklch(0.24 0.02 255 / .35);display:flex;flex-direction:column;border-top:4px solid var(--cl,var(--kd-line-strong))}
+.mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);height:36px;padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
+.mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
+.mod-kopf .pfad{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted)}
+.mod-kopf .rechts{margin-left:auto;display:flex;gap:2px;align-items:center}
+.mod-kopf .nav{font-size:11.5px;color:var(--kd-muted);margin-right:var(--kd-s3)}
+.mod-body{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
+.mod-main{overflow:auto;padding:var(--kd-s5) var(--kd-s6);display:flex;flex-direction:column;gap:var(--kd-s5)}
+.mod-main h2{margin:0;font-size:20px;font-weight:600;line-height:1.25;padding:2px 4px;margin-left:-4px;border:1px solid transparent}
+.mod-main h2:hover{border-color:var(--kd-line-strong);cursor:text}
+.mod-side{border-left:1px solid var(--kd-line);background:var(--kd-bg);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4)}
+.mod-side .felder{background:var(--kd-surface);grid-template-columns:84px 1fr}
+.mod .besch{border:1px solid var(--kd-line);padding:var(--kd-s3);line-height:1.55;min-height:88px}
+.mod .besch:hover{border-color:var(--kd-line-strong);cursor:text}
+.mod .besch code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
+.mod-fuss{flex:none;height:28px;display:flex;align-items:center;gap:var(--kd-s4);padding:0 var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted)}
+.mod-fuss kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;color:var(--kd-text)}
+.tl{display:flex;flex-direction:column;border:1px solid var(--kd-line);background:var(--kd-surface)}
+.tz{display:grid;grid-template-columns:18px 1fr auto 28px;align-items:center;gap:8px;padding:4px 4px 4px 8px;border-bottom:1px solid var(--kd-line);font-size:12px}
+.tz:last-child{border-bottom:0}
+.tz b{font-family:var(--kd-mono);font-weight:500;font-size:13px}
+.tz .btn{width:28px;padding:0;justify-content:center}
+.tz.eigen{background:var(--kd-accent-weak)}
+.klz.pz{grid-template-columns:30px 64px 1fr auto 24px}
+.klz.pz .pk{justify-self:center}
+.klz.pz.still{background:var(--kd-bg)}
+.klz.pz.still .inp{color:var(--kd-muted);background:var(--kd-bg)}
+.klz.pz.still .pk{opacity:.5}
+.tag-still{font-size:11px;color:var(--kd-muted);border:1px dashed var(--kd-line-strong);padding:1px 6px;justify-self:start}
+.seg.art span{height:22px;font-size:11px;padding:0 6px}
+.pop{position:absolute;top:calc(var(--kd-head-h) + 2px);z-index:30;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12.5px}
+.pop h4{margin:0;height:28px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line)}
+.pop h4 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
+.pz2{display:grid;grid-template-columns:18px 44px 1fr auto 28px;align-items:center;gap:8px;height:34px;padding:0 4px 0 var(--kd-s4);border-bottom:1px solid var(--kd-line)}
+.pz2 .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.pz2 .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pz2 .t small{display:block;color:var(--kd-muted);font-size:11px}
+.pz2 b{font-family:var(--kd-mono);font-weight:500}
+.pz2 .btn{width:28px;padding:0;justify-content:center;height:24px}
+.pz2.eigen{background:var(--kd-accent-weak)}
+.pz2:hover{background:var(--kd-sunken)}
+.pop .fuss{padding:6px var(--kd-s4);font-size:11px;color:var(--kd-muted)}
+.iz{display:flex;align-items:center;gap:8px;height:30px;padding:0 var(--kd-s4);cursor:pointer;border-bottom:1px solid var(--kd-line)}
+.iz:hover{background:var(--kd-accent-weak)}
+.iz.an{background:var(--kd-accent-weak);box-shadow:inset 3px 0 0 var(--kd-accent);font-weight:500}
+.iz .muted{margin-left:auto;font-size:11px}
+.iz.aus{color:var(--kd-faint);cursor:default}
+.iz.aus:hover{background:none}
+.iz.aus .pk{opacity:.6}
+.kz-btn.auf{background:var(--kd-head-line);border-color:var(--kd-head-muted)}
+.ka.offen{outline:2px solid var(--kd-accent);outline-offset:-1px}
+.ka .r1{display:flex;align-items:center;gap:6px}
+.ka .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.ka .r1 .lauf{margin-left:auto}
+.ka .t{font-size:13px;line-height:1.35;text-wrap:pretty}
+.ka .r3{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--kd-muted)}
+.ka .r3 .due{margin-left:auto;font-family:var(--kd-mono)}
+.ka .r3{flex-wrap:nowrap;min-width:0}
+.ka .r3>*{white-space:nowrap;flex:none}
+.ka .r3 .cls{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ka .r3>span:first-child .pk+.pk{margin-left:-3px;box-shadow:0 0 0 1px var(--kd-surface)}
+.ka .r3 .due.warn{color:var(--kd-warn)}
+.ka.fremd{box-shadow:inset 3px 0 0 var(--kd-agent)}
+.ka .ein{font-size:11px;color:var(--kd-agent-ink);border-top:1px solid var(--kd-line);padding-top:3px}
+.ka.zieht{opacity:.4}
+.org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);border:1px solid transparent;white-space:nowrap}
+a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
+.org.leer{background:none;border:1px dashed var(--kd-line-strong);color:var(--kd-faint)}
+.orgs{display:flex;gap:3px;flex-wrap:wrap}
+.linie{height:2px;background:var(--kd-accent);margin:-2px 0;flex:none}
+#fa .dgrp{padding:4px 6px 0}
+.ka.fertig .t{color:var(--kd-muted)}
+/* B — Zeilen */
+.zb{display:grid;grid-template-columns:34px 1fr auto auto;align-items:center;gap:6px;height:26px;padding:0 var(--kd-s3) 0 6px;border-bottom:1px solid var(--kd-line);cursor:grab;font-size:12.5px}
+.zb:hover{background:var(--kd-accent-weak)}
+.zb .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);text-align:right}
+.zb .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zb.sel{background:var(--kd-accent-weak);box-shadow:inset 3px 0 0 var(--kd-accent)}
+.zb.fertig .t{color:var(--kd-muted)}
+.zb .ic{display:flex;gap:4px;align-items:center}
+.zb .mini{font-family:var(--kd-mono);font-size:10.5px;color:var(--kd-faint)}
+#fc .zb{height:auto;min-height:26px;padding-block:4px;align-items:start}
+#fc .zb .t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
+#fc .det{flex-basis:420px}
+/* C — Detail */
+.det{flex:0 0 468px;border-left:1px solid var(--kd-line-strong);background:var(--kd-surface);display:flex;flex-direction:column;min-height:0}
+.det-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);height:32px;padding:0 var(--kd-s2) 0 var(--kd-s4);border-bottom:1px solid var(--kd-line);background:var(--kd-sunken)}
+.det-kopf .mono{color:var(--kd-muted)}
+.det-kopf .rechts{margin-left:auto;display:flex}
+.det-body{flex:1;overflow:auto;padding:var(--kd-s4) var(--kd-s5);display:flex;flex-direction:column;gap:var(--kd-s4)}
+.det h2{margin:0;font-size:18px;font-weight:600;line-height:1.25}
+.felder{display:grid;grid-template-columns:96px 1fr;border-top:1px solid var(--kd-line)}
+.felder>*{height:28px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--kd-line);padding:0 var(--kd-s2)}
+.felder .k{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);background:var(--kd-bg)}
+.felder .w:hover{background:var(--kd-accent-weak);cursor:text}
+.abs h3{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);display:flex;gap:6px}
+.abs h3 .mono{font-weight:400;letter-spacing:0;margin-left:auto}
+.abs p{margin:0;line-height:1.5}
+.chk{display:flex;gap:6px;align-items:center;height:24px}
+.chk i{width:12px;height:12px;border:1px solid var(--kd-line-strong);flex:none;display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1}
+.chk.ok{color:var(--kd-muted);text-decoration:line-through}
+.chk.ok i{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
+.zt{width:100%;border-collapse:collapse;font-size:12px}
+.zt td{height:24px;border-bottom:1px solid var(--kd-line);padding:0 4px}
+.zt td.r{text-align:right;font-family:var(--kd-mono)}
+.km{display:flex;gap:var(--kd-s3);padding:6px 0;border-bottom:1px solid var(--kd-line)}
+.km p{margin:0}
+.km .mono{color:var(--kd-faint);font-size:11px}
+.timer{display:flex;align-items:center;gap:var(--kd-s3);padding:6px var(--kd-s3);background:var(--kd-bg);border:1px solid var(--kd-line)}
+.timer b{font-family:var(--kd-mono);font-size:16px;font-weight:500}
+.det-fuss{flex:none;height:26px;display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted)}
+</style>
+</head>
+<body>
+<div class="cap" style="left:0;top:0">A · Bahnen mit kompakten Karten — gewählt<small>Karten: Mindesthöhe 64 px, 2 px Abstand zum Bahnrand und zueinander, 1 px Rand. Nah am Bestand, aber flacher: Karten sind Abschnitte der Bahn, getrennt nur durch Linien, kein Abstand, kein Schatten. Drei Zeilen je Karte: Nummer + Herkunft (origins) + Timer · Titel · Verantwortlich, Teilaufgaben, Fälligkeit. Fremde Bewegung = Kante links + Fußzeile. Ziehen zeigt die Einfügelinie.</small></div>
+<div class="frame" style="left:0;top:110px" id="fa" data-screen-label="A Bahnen"></div>
+<div class="cap" style="left:0;top:1060px">A · Modus „Board einrichten“<small>Eigener Modus über „Spalten“ in der Kopfzeile; der Kopf wechselt die Farbe, damit klar ist, dass man umbaut. Bahnköpfe werden editierbar (Name, Reihenfolge, Abschluss + Grenze, Entfernen nur leer), Karten ruhen. Rechts die Farbklassen und live die board.yaml, die geschrieben wird.</small></div>
+<div class="frame" style="left:0;top:1170px" id="fm" data-screen-label="A Modus Board einrichten"></div>
+<div class="cap" style="left:0;top:2150px">A · Karte geöffnet (Modal)<small>Klick auf eine Karte öffnet sie über dem Board; das Board bleibt dahinter sichtbar, die geöffnete Karte ist markiert. Links Inhalt (Titel, Beschreibung, Teilaufgaben, Kommentare), rechts Timer, Frontmatter-Felder und Zeiten. Kopf in Klassenfarbe mit Dateipfad; ↑↓ blättert durch die Karten, E öffnet die Datei in VS Code.</small></div>
+<div class="frame" style="left:0;top:2260px" id="fk" data-screen-label="A Karte Modal"></div>
+<div class="cap" style="left:0;top:3240px">A · Kopfzeile: „4 laufen" geöffnet<small>Alle laufenden Timer des Boards, je Zeile Person, Karte, Dauer und Stopp. Der eigene ist hervorgehoben, fremde lassen sich ebenso stoppen. Klick auf die Zeile öffnet die Karte im Modal.</small></div>
+<div class="frame" style="left:0;top:3350px" id="fh" data-screen-label="A Läuft gerade"></div>
+<div class="cap" style="left:1540px;top:3240px">A · Kopfzeile: „Ich bin …" geöffnet<small>Wählbar sind die Menschen aus board.yaml → people:. Agenten stehen in der Liste, sind aber nicht wählbar – sie schreiben ihre Zeilen selbst in die Dateien.</small></div>
+<div class="frame" style="left:1540px;top:3350px" id="fi" data-screen-label="A Ich bin"></div>
+<div class="cap" style="left:1540px;top:0">B · Bahnen als Zeilenlisten<small>Maximal dicht: eine Zeile je Karte (26 px), Nummer rechtsbündig, Titel abgeschnitten, rechts nur Symbole. Bahnen schmaler, damit mehr Spalten ohne Scrollen passen. Volle Information im Tooltip oder in der Detailansicht.</small></div>
+<div class="frame" style="left:1540px;top:110px" id="fb" data-screen-label="B Zeilen"></div>
+<div class="cap" style="left:3080px;top:0">C · Bahnen + Kartendatei daneben<small>Die gewählte Karte öffnet rechts als Bereich, das Board bleibt sichtbar. Der Bereich zeigt die Datei, wie sie ist: Frontmatter als Feldtabelle mit englischen Schlüsseln, Beschreibung, Checkboxen, Zeiten und Kommentare aus ihren Codeblöcken. Pfad der Datei im Kopf.</small></div>
+<div class="frame" style="left:3080px;top:110px" id="fc" data-screen-label="C Detail daneben"></div>
+<script>
+const P={st:['ST','m','Stefan'],ml:['ML','m','Maria'],cl:['KI','a','Claude'],cx:['CX','a','Codex'],sv:['SV','m','Sven'],ei:['EI','m','Eike'],jr:['JR','m','Jan']};
+const S=[
+{id:'todo',n:'Zu erledigen',k:[
+ {i:31,t:'Board-Datei board.yaml einlesen und Spaltenreihenfolge übernehmen',a:null,l:['daten'],d:'2026-10-02',c:[0,3]},
+ {i:32,t:'Export der Zeiten als CSV',a:null,l:[],c:[0,0]},
+ {i:34,t:'Kartendatei beim Umbenennen des Titels nicht umbenennen',a:null,l:['daten'],c:[0,2]},
+ {i:35,t:'Leeres Board: Ordner ohne board.yaml anlegen',a:'ml',l:[],d:'2026-10-06',c:[0,0]},
+ {i:36,t:'Tastaturkürzel für Spaltenwechsel',a:null,l:['ui'],c:[0,0]}]},
+{id:'ready',n:'Bereit',k:[
+ {i:28,t:'Frontmatter-Parser mit Fehlerzeile statt Absturz',a:'cx',l:['daten'],d:'2026-09-29',c:[1,4]},
+ {i:29,t:'Kommentare als Codeblock schreiben',a:null,l:[],c:[0,0]}]},
+{id:'doing',n:'In Arbeit',k:[
+ {i:12,t:'Kopfzeile auf 40 px verdichten',a:'cl',as:['cl','sv'],ls:[['cl','1:18'],['sv','0:51']],l:['ui'],c:[2,3],lauf:'1:18',fremd:'extern · cards/0012-kopfzeile.md · vor 4 Sek'},
+ {i:21,t:'Timer: laufender Eintrag mit … im Codeblock',a:'st',as:['st','sv','ei'],ls:[['st','0:24',1],['ei','0:07']],l:['zeit'],d:'2026-09-27',c:[1,2],lauf:'0:24',eigen:1},
+ {i:25,t:'Dateiwächter: Änderungen von außen übernehmen',a:'cx',l:['daten'],c:[0,3]}]},
+{id:'review',n:'Prüfung',k:[
+ {i:11,t:'Token-Sheet kd-tokens.css',a:'st',l:['ui'],c:[4,4]}]},
+{id:'done',n:'Erledigt',fertig:1,grenze:20,gr:[['HEUTE',[{i:9,t:'Ordnerwahl beim Start',a:'st'},{i:7,t:'Karte = eine .md-Datei',a:'cl'}]],['GESTERN',[{i:6,t:'Fortlaufende Nummer aus board.yaml',a:'cl'},{i:4,t:'Spalten aus Frontmatter column:',a:'st'}]],['24.09.',[{i:2,t:'Grundgerüst',a:'st'}]]]}
+];
+const CL={31:'feature',34:'bug',35:'critical',36:'feature',28:'bug',12:'feature',21:'feature',25:'critical',32:'docs',6:'feature',2:'feature',9:'bug'};
+const CN={bug:'Bug',critical:'Kritisch',feature:'Weiterentwicklung',docs:'Doku'};
+const O={31:['I0003'],32:['I0036'],34:['thin air'],35:['R00014'],36:['thin air'],28:['I0015','R00014'],29:['I0017'],12:['I0027'],21:['I0023','I0024'],25:['I0028','R00016'],11:['R00005'],9:['I0001'],7:['I0010'],6:['I0021'],4:['I0003'],2:['thin air']};
+const src=x=>x[0]==='I'?`vscode://file/~/projekte/kanband/docs/wbs.md:${40+parseInt(x.slice(1))*7}`:`vscode://file/~/projekte/kanband/docs/anforderungen/${x}.md`;
+const org=(k,n)=>{const o=O[k.i]||[];const s=n?o.slice(0,n):o;return `<span class="orgs">${s.map(x=>x==='thin air'?`<span class="org leer" title="ohne Herkunft">${x}</span>`:`<a class="org" href="${src(x)}" title="In VS Code öffnen · ${src(x).replace('vscode://file','')}">${x}</a>`).join('')}${n&&o.length>n?`<span class="org leer">+${o.length-n}</span>`:''}</span>`;};
+const lz=k=>{if(!k.ls)return k.lauf?`<span class="lauf${k.eigen?' eigen':''}">${k.lauf}</span>`:'';const own=k.ls.some(x=>x[2]);return `<span class="lauf${own?' eigen':''}" title="läuft: ${k.ls.map(x=>P[x[0]][2]+' '+x[1]).join(', ')}">${k.ls.length>1?k.ls.length+'× ':''}${k.ls[0][1]}</span>`;};
+const pk=a=>a?`<span class="pk pk-${P[a][1]}" title="${P[a][2]}">${P[a][0]}</span>`:'<span class="pk pk-0">–</span>';
+const kz=`<header class="kz"><div class="kz-z1" title="~/boards/kanband">kanband <span class="mono">~/boards/</span></div><nav class="kz-nav"><a class="an" href="#">Board</a><a href="#">Personen</a><a href="#">Berichte<span style="font-size:9px;margin-left:5px">▾</span></a></nav><div class="kz-werk"><input class="inp" placeholder="Filtern: Titel, #Nr, origin:I0023, label:, @wer"><span class="seg"><span class="an">alle</span><span>meine</span><span>Agenten</span></span><label class="kz-chk"><i>✓</i>Kartenzahl</label><label class="kz-chk" title="Legende der Farbklassen ein/aus"><i>✓</i>Legende</label><button class="kz-btn">Spalten</button></div><div class="kz-z3"><button class="kz-btn" title="Läuft gerade"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>4 laufen</button><button class="kz-btn"><span class="pk pk-m">ST</span>Stefan ▾</button></div></header>`;
+const leiste=()=>'';
+const bk=s=>`<div class="bahn-kopf">${s.n}${s.fertig?' <span class="ok">✓</span> <span class="v">Grenze '+s.grenze+'</span>':''}<span class="n">${s.fertig?5:s.k.length}</span></div>`;
+const fuss='<div class="bahn-fuss"><button>+ Karte</button></div>';
+function A(){
+ const karte=(k,s)=>`<div class="ka${k.fremd?' fremd':''}${s.fertig?' fertig':''}"${CL[k.i]?` data-c="${CL[k.i]}" title="class: ${CL[k.i]}"`:''}><div class="r1"><span class="id">#${k.i}</span>${org(k)}${k.l&&k.l.map(x=>`<span class="lbl">${x}</span>`).join('')||''}${lz(k)}</div><div class="t">${k.t}</div>${s.fertig?'':`<div class="r3"><span style="display:flex;gap:1px">${(k.as||[k.a]).map(pk).join('')}</span>${CL[k.i]?`<span class="cls" data-c="${CL[k.i]}">${CN[CL[k.i]]}</span>`:''}${k.c[1]?`<span>☑ ${k.c[0]}/${k.c[1]}</span>`:''}${k.d?`<span class="due${k.d<'2026-09-28'?' warn':''}">${k.d}</span>`:''}</div>`}${k.fremd?`<div class="ein">${k.fremd}</div>`:''}</div>`;
+ return kz+leiste()+'<div class="body"><div class="bahnen">'+S.map(s=>{
+  let f='';
+  if(s.fertig)f=s.gr.map(([g,ks])=>`<div class="dgrp">${g}</div>`+ks.map(k=>`<div class="ka fertig"${CL[k.i]?` data-c="${CL[k.i]}"`:''}><div class="r1"><span class="id">#${k.i}</span>${org(k)}</div><div class="t">${k.t}</div></div>`).join('')).join('')+'<div class="nach">15 ältere · <a href="#">nachladen</a></div>';
+  else f=s.k.map((k,j)=>(s.id==='ready'&&j===1?'<div class="linie"></div>':'')+karte(k,s)).join('');
+  return `<section class="bahn">${bk(s)}<div class="flaeche">${f}</div>${fuss}</section>`;}).join('')+'</div></div>'+`<div class="leg"><span class="t">LEGENDE</span>${[['bug','Bug',3],['critical','Kritisch',2],['feature','Weiterentwicklung',7],['docs','Doku',1]].map(([k,l,n])=>`<button data-c="${k}" title="filtern: class:${k}"><span class="sw"></span>${l}<span class="n">${n}</span></button>`).join('')}<button title="filtern: class:none"><span class="sw leer"></span>ohne Klasse<span class="n">8</span></button><span class="rechts">Klick filtert · <span class="mono">class:</span><button class="x" title="Legende ausblenden">✕</button></span></div>`;
+}
+function B(){
+ const z=(k,s,sel)=>`<div class="zb${sel?' sel':''}${s.fertig?' fertig':''}" title="${k.t}"><span class="id">#${k.i}</span><span class="t">${k.t}</span><span class="ic">${org(k,1)}${k.lauf?`<span class="lauf${k.eigen?' eigen':''}">${k.lauf}</span>`:''}${k.c&&k.c[1]?`<span class="mini">${k.c[0]}/${k.c[1]}</span>`:''}${k.d?`<span class="mini" style="${k.d<'2026-09-28'?'color:var(--kd-warn)':''}">${k.d.slice(5)}</span>`:''}</span>${pk(k.a)}</div>`;
+ return kz+leiste('<span class="seg"><span>Karten</span><span class="an">Zeilen</span></span>')+'<div class="body"><div class="bahnen" style="--bw:280px">'+S.map(s=>{
+  let f=s.fertig?s.gr.map(([g,ks])=>`<div class="dgrp">${g}</div>`+ks.map(k=>z(k,s)).join('')).join('')+'<div class="nach">15 ältere · <a href="#">nachladen</a></div>':s.k.map(k=>z(k,s,k.i===21)).join('');
+  return `<section class="bahn">${bk(s)}<div class="flaeche">${f}</div>${fuss}</section>`;}).join('')+'</div></div>';
+}
+function C(){
+ const z=(k,s,sel)=>`<div class="zb${sel?' sel':''}${s.fertig?' fertig':''}" style="grid-template-columns:30px 1fr auto"><span class="id">#${k.i}</span><span class="t">${k.t}</span><span class="ic">${k.lauf?`<span class="lauf${k.eigen?' eigen':''}">${k.lauf}</span>`:''}${pk(k.a)}</span></div>`;
+ const bahnen=S.map(s=>{let f=s.fertig?s.gr.map(([g,ks])=>`<div class="dgrp">${g}</div>`+ks.map(k=>z(k,s)).join('')).join(''):s.k.map(k=>z(k,s,k.i===21)).join('');return `<section class="bahn">${bk(s)}<div class="flaeche">${f}</div>${fuss}</section>`;}).join('');
+ const det=`<aside class="det"><div class="det-kopf"><span class="mono">cards/0021-timer-laufender-eintrag.md</span><div class="rechts"><button class="btn btn-sym" title="Im Editor öffnen">↗</button><button class="btn btn-sym" title="Archivieren">▭</button><button class="btn btn-sym" title="Schließen">✕</button></div></div>
+ <div class="det-body">
+ <h2>Timer: laufender Eintrag mit … im Codeblock</h2>
+ <div class="timer"><button class="btn btn-haupt">■ Stopp</button><b>0:24:11</b><span class="muted">läuft für Stefan seit 13:05</span></div>
+ <div class="felder"><span class="k">id</span><span class="w mono">21</span><span class="k">origins</span><span class="w">${org({i:21})} <span class="muted">+</span></span><span class="k">column</span><span class="w">In Arbeit ▾</span><span class="k">assignee</span><span class="w">${pk('st')} stefan</span><span class="k">labels</span><span class="w"><span class="lbl">zeit</span> <span class="muted">+</span></span><span class="k">due</span><span class="w mono" style="color:var(--kd-warn)">2026-09-27</span></div>
+ <div class="abs"><h3>BESCHREIBUNG</h3><p>Ein gestarteter Timer schreibt sofort eine Zeile mit <span class="mono">...</span> als Ende in den Block <span class="mono">kanbanD-time</span>. So sieht jeder, der die Datei liest – Mensch, Agent, Git-Diff –, dass gerade gemessen wird.</p></div>
+ <div class="abs"><h3>TEILAUFGABEN <span class="mono">1/2</span></h3><div class="chk ok"><i>✓</i>Zeile beim Start schreiben</div><div class="chk"><i></i>Beim Stopp Ende eintragen</div><div class="chk muted"><i></i>+ Teilaufgabe</div></div>
+ <div class="abs"><h3>ZEITEN <span class="mono">kanbanD-time · 1:40</span></h3><table class="zt"><tr><td class="mono">2026-09-26</td><td class="mono">13:05 – …</td><td>${pk('st')} stefan</td><td class="r"><span class="lauf eigen">0:24</span></td></tr><tr><td class="mono">2026-09-25</td><td class="mono">15:10 – 16:26</td><td>${pk('st')} stefan</td><td class="r">1:16</td></tr><tr><td colspan="4" class="muted">+ Zeit nachtragen</td></tr></table></div>
+ <div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · 2</span></h3><div class="km">${pk('cl')}<div><p>Die Zeile mit … wird beim Einlesen als laufend erkannt – auch wenn sie von Hand geschrieben wurde.</p><span class="mono">claude · 2026-09-26 12:40</span></div></div><div class="km">${pk('st')}<div><p>Gut, dann braucht es kein eigenes Feld.</p><span class="mono">stefan · 2026-09-26 12:52</span></div></div><input class="inp" placeholder="Kommentar schreiben" style="width:100%;margin-top:6px"></div>
+ </div><div class="det-fuss"><span>zuletzt geschrieben 13:05:02</span><span style="margin-left:auto">Esc schließt · ↑↓ nächste Karte</span></div></aside>`;
+ return kz+leiste()+`<div class="body"><div class="bahnen" style="--bw:194px">${bahnen}</div>${det}</div>`;
+}
+function M(){
+ const kzm=`<header class="kz modus"><div class="kz-z1">kanband <span class="mono">~/boards/</span></div><div class="kz-modus"><b>Board einrichten</b><span class="muted">Spalten, Klassen und Personen · Änderungen gehen nach <span class="mono">board.yaml</span>, Karten bleiben unberührt</span><div class="rechts"><button class="kz-btn">Verwerfen</button><button class="kz-btn haupt">Fertig</button></div></div></header>`;
+ const keys={todo:'todo',ready:'ready',doing:'doing',review:'review',done:'done'};
+ const kopf=(s,i)=>{const n=s.fertig?5:s.k.length;return `<div class="bk-ed"><div class="r"><input class="inp" value="${s.n}"><button class="btn btn-sym" title="nach links" ${i===0?'disabled':''}>←</button><button class="btn btn-sym" title="nach rechts" ${i===S.length-1?'disabled':''}>→</button><button class="btn btn-sym" title="${n?'enthält '+n+' Karten – erst leeren':'entfernen'}" ${n?'disabled':''}>✕</button></div><div class="r2"><span class="mono">${keys[s.id]}</span><span>${n} Karten</span><label class="chk-s" style="margin-left:auto"><i class="${s.fertig?'an':''}">${s.fertig?'✓':''}</i>Abschluss</label>${s.fertig?'Grenze <input class="inp" value="20">':''}</div></div>`;};
+ const bahnen=S.map((s,i)=>{let f=s.fertig?s.gr.flatMap(g=>g[1]).slice(0,3).map(k=>`<div class="ka fertig"${CL[k.i]?` data-c="${CL[k.i]}"`:''}><div class="r1"><span class="id">#${k.i}</span></div><div class="t">${k.t}</div></div>`).join(''):s.k.slice(0,4).map(k=>`<div class="ka"${CL[k.i]?` data-c="${CL[k.i]}"`:''}><div class="r1"><span class="id">#${k.i}</span></div><div class="t">${k.t}</div></div>`).join('');return `<section class="bahn">${kopf(s,i)}<div class="flaeche ruhig">${f}</div></section>`;}).join('')+`<section class="bahn-neu"><div class="bk-ed"><div class="r"><input class="inp" placeholder="neue Spalte"><button class="btn btn-sym" title="anlegen">+</button></div><div class="r2">wird vor der Abschlussspalte eingefügt</div></div></section>`;
+ const kl=[['bug','Bug',3],['critical','Kritisch',2],['feature','Weiterentwicklung',6],['docs','Doku',1]];
+ const einr=`<aside class="einr"><h3>KLASSEN <span class="mono">class:</span></h3><div class="hin">Eine Karte trägt höchstens eine Klasse. Die Klasse färbt die Karte und ist filterbar mit <span class="mono">class:bug</span>.</div>${kl.map(([k,l,n],j)=>`<div class="klz"><span class="farbe" data-c="${k}"></span><input class="inp mono" value="${k}"><input class="inp" value="${l}"><span class="n" title="Karten mit dieser Klasse">${n}</span><button class="btn btn-sym" title="entfernen – ${n} Karten verlieren ihre Farbe" style="width:24px;height:24px">✕</button></div>${j===0?`<div class="pal"><span class="nm">gewählt: yellow</span><div class="g">${['yellow','amber','orange','red','rose','pink','magenta','violet','indigo','blue','sky','cyan','teal','green','lime','grey'].map(c=>`<span style="--c:var(--kd-c-${c});--cl:var(--kd-c-${c}-line)" title="${c}" class="${c==='yellow'?'an':''}"></span>`).join('')}</div><div class="eig">Eigene Farbe <span class="pick" title="Farbwähler öffnen"></span><input class="inp mono" value="#b04a8c"><span class="vs" title="so sieht die Karte aus"></span></div></div>`:''}`).join('')}<div class="klz"><span class="farbe" style="--c:color-mix(in srgb,#b04a8c 14%,#fff);--cl:#b04a8c" title="eigene Farbe #b04a8c"></span><input class="inp mono" value="infra"><input class="inp" value="Infrastruktur"><span class="n">0</span><button class="btn btn-sym" title="entfernen" style="width:24px;height:24px">✕</button></div><div class="klz"><span class="farbe" style="--c:var(--kd-c-teal);--cl:var(--kd-c-teal-line)"></span><input class="inp mono" placeholder="schlüssel"><input class="inp" placeholder="Bezeichnung"><span></span><button class="btn btn-sym" title="anlegen" style="width:24px;height:24px">+</button></div>
+<h3>PERSONEN <span class="mono">people:</span></h3><div class="hin">Wer hier steht, ist unter „Ich bin …" wählbar und als <span class="mono">assignees</span> zuweisbar. Der Schlüssel steht in den Karten und in <span class="mono">kanbanD-time</span>.</div><div class="klz pz">${pk('st')}<input class="inp mono" value="st"><input class="inp" value="Stefan"><span class="seg art"><span class="an">Mensch</span><span class="">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz">${pk('sv')}<input class="inp mono" value="sv"><input class="inp" value="Sven"><span class="seg art"><span class="an">Mensch</span><span class="">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz">${pk('ei')}<input class="inp mono" value="ei"><input class="inp" value="Eike"><span class="seg art"><span class="an">Mensch</span><span class="">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz">${pk('ml')}<input class="inp mono" value="ml"><input class="inp" value="Maria"><span class="seg art"><span class="an">Mensch</span><span class="">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz">${pk('cl')}<input class="inp mono" value="cl"><input class="inp" value="Claude"><span class="seg art"><span class="">Mensch</span><span class="an">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz">${pk('cx')}<input class="inp mono" value="cx"><input class="inp" value="Codex"><span class="seg art"><span class="">Mensch</span><span class="an">Agent</span></span><button class="btn btn-sym" title="stilllegen – nicht mehr wählbar, Name bleibt lesbar" style="width:24px;height:24px">⏸</button></div><div class="klz pz still">${pk('jr')}<input class="inp mono" value="jr"><input class="inp" value="Jan"><span class="tag-still">stillgelegt</span><button class="btn btn-sym" title="zurückholen" style="width:24px;height:24px">↺</button></div><div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" placeholder="kürzel"><input class="inp" placeholder="Name"><span class="seg art"><span class="an">Mensch</span><span>Agent</span></span><button class="btn btn-sym" title="anlegen" style="width:24px;height:24px">+</button></div>
+<h3>BOARD.YAML <span class="mono">Vorschau</span></h3><pre class="yaml">columns:
+  - {key: todo, name: Zu erledigen}
+  - {key: ready, name: Bereit}
+  - {key: doing, name: In Arbeit}
+  - {key: review, name: Prüfung}
+  - {key: done, name: Erledigt, final: true, limit: 20}
+classes:
+  bug:      {label: Bug, color: yellow}
+  critical: {label: Kritisch, color: red}
+  feature:  {label: Weiterentwicklung, color: green}
+<span class="neu">  docs:     {label: Doku, color: blue}</span>
+<span class="neu">  infra:    {label: Infrastruktur, color: "#b04a8c"}</span>
+<span class="neu">people:</span>
+<span class="neu">  st: {name: Stefan, kind: human}</span>
+<span class="neu">  sv: {name: Sven,   kind: human}</span>
+<span class="neu">  ei: {name: Eike,   kind: human}</span>
+<span class="neu">  ml: {name: Maria,  kind: human}</span>
+<span class="neu">  cl: {name: Claude, kind: agent}</span>
+<span class="neu">  cx: {name: Codex,  kind: agent}</span>
+  jr: {name: Jan, kind: human, active: false}
+next_id: 37
+origins:
+  I: docs/wbs.md
+  R: docs/anforderungen/</pre></aside>`;
+ return kzm+`<div class="body"><div class="bahnen" style="--bw:218px">${bahnen}</div>${einr}</div>`;
+}
+fm.innerHTML=M();
+function K(){
+ const mod=`<div class="mod-bg"><div class="mod" data-c="feature" style="--c:var(--kd-c-green);--cl:var(--kd-c-green-line)">
+<div class="mod-kopf"><span class="id">#21</span><span class="cls" data-c="feature">Weiterentwicklung</span><span class="pfad">cards/0021-timer-laufender-eintrag.md</span><div class="rechts"><span class="nav">3 / 16</span><button class="btn btn-sym" title="vorige Karte (↑)">↑</button><button class="btn btn-sym" title="nächste Karte (↓)">↓</button><button class="btn btn-sym" title="In VS Code öffnen">↗</button><button class="btn btn-sym" title="Archivieren">▭</button><button class="btn btn-sym" title="Schließen (Esc)">✕</button></div></div>
+<div class="mod-body"><div class="mod-main">
+<h2>Timer: laufender Eintrag mit … im Codeblock</h2>
+<div class="abs"><h3>BESCHREIBUNG</h3><div class="besch">Ein gestarteter Timer schreibt sofort eine Zeile mit <code>...</code> als Ende in den Block <code>kanbanD-time</code>. So sieht jeder, der die Datei liest – Mensch, Agent, Git-Diff –, dass gerade gemessen wird.<br><br>Beim Stopp wird genau diese Zeile ersetzt, nicht angehängt.</div></div>
+<div class="abs"><h3>TEILAUFGABEN <span class="mono">1/3</span></h3><div class="chk ok"><i>✓</i>Zeile beim Start schreiben</div><div class="chk"><i></i>Beim Stopp Ende eintragen</div><div class="chk"><i></i>Hand-geschriebene Zeile mit … als laufend erkennen</div><div class="chk muted"><i></i>+ Teilaufgabe</div></div>
+<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · 2</span></h3><div class="km">${pk('cl')}<div><p>Die Zeile mit … wird beim Einlesen als laufend erkannt – auch wenn sie von Hand geschrieben wurde.</p><span class="mono">claude · 2026-09-26 12:40</span></div></div><div class="km">${pk('st')}<div><p>Gut, dann braucht es kein eigenes Feld.</p><span class="mono">stefan · 2026-09-26 12:52</span></div></div><div style="display:flex;gap:6px;margin-top:8px"><input class="inp" placeholder="Kommentar schreiben" style="flex:1"><button class="btn">Senden</button></div></div>
+</div>
+<aside class="mod-side">
+<div class="abs"><h3>LÄUFT GERADE <span class="mono">2 Timer</span></h3><div class="tl"><div class="tz eigen">${pk('st')}<span>Stefan <span class="muted">· ich · seit 13:05</span></span><b>0:24:11</b><button class="btn btn-haupt" title="meinen Timer stoppen">■</button></div><div class="tz">${pk('ei')}<span>Eike <span class="muted">· seit 13:22</span></span><b>0:07:40</b><button class="btn" title="Eikes Timer stoppen">■</button></div></div></div>
+<div class="felder"><span class="k">column</span><span class="w">In Arbeit ▾</span><span class="k">class</span><span class="w"><span class="cls" data-c="feature">Weiterentwicklung</span> ▾</span><span class="k">origins</span><span class="w">${org({i:21})} <span class="muted">+</span></span><span class="k">assignees</span><span class="w">${pk('st')}${pk('sv')}${pk('ei')}<span class="muted">+</span></span><span class="k">labels</span><span class="w"><span class="lbl">zeit</span> <span class="muted">+</span></span><span class="k">due</span><span class="w mono" style="color:var(--kd-warn)">2026-09-27</span></div>
+<div class="abs"><h3>ZEITEN <span class="mono">kanbanD-time · 2:42</span></h3><table class="zt" style="background:var(--kd-surface)"><tr><td class="mono">09-26</td><td class="mono">13:22–…</td><td>${pk('ei')}</td><td class="r"><span class="lauf">0:07</span></td></tr><tr><td class="mono">09-26</td><td class="mono">13:05–…</td><td>${pk('st')}</td><td class="r"><span class="lauf eigen">0:24</span></td></tr><tr><td class="mono">09-26</td><td class="mono">10:40–11:35</td><td>${pk('sv')}</td><td class="r">0:55</td></tr><tr><td class="mono">09-25</td><td class="mono">15:10–16:26</td><td>${pk('st')}</td><td class="r">1:16</td></tr><tr><td colspan="4" class="muted">+ Zeit nachtragen</td></tr></table></div>
+</aside></div>
+<div class="mod-fuss"><span>gespeichert 13:05:02 · jede Änderung geht sofort in die Datei</span><span style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln · <kbd>E</kbd> in VS Code</span></div>
+</div></div>`;
+ return A().replace('<div class="ka" data-c="feature" title="class: feature"><div class="r1"><span class="id">#21','<div class="ka offen" data-c="feature" title="class: feature"><div class="r1"><span class="id">#21')+mod;
+}
+fk.innerHTML=K();
+const T=[['12','cl','Kopfzeile auf 40 px verdichten','seit 09:12','1:18:04'],['12','sv','Kopfzeile auf 40 px verdichten','seit 09:39','0:51:30'],['21','st','Timer: laufender Eintrag mit … im Codeblock','seit 13:05','0:24:11',1],['21','ei','Timer: laufender Eintrag mit … im Codeblock','seit 13:22','0:07:40']];
+const popL=`<div class="pop" style="right:108px;width:430px"><h4>LÄUFT GERADE <span class="mono">4 Timer · 2 Karten</span></h4>${T.map(([i,w,t,s,d,e])=>`<div class="pz2${e?' eigen':''}">${pk(w)}<span class="id">#${i}</span><span class="t">${t}<small>${P[w][2]}${e?' · ich':''} · ${s}</small></span><b>${d}</b><button class="btn${e?' btn-haupt':''}" title="${e?'meinen Timer':P[w][2]+'s Timer'} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Karte · fremde Timer lassen sich stoppen</div></div>`;
+fh.innerHTML=A().replace('<button class="kz-btn" title="Läuft gerade">','<button class="kz-btn auf" title="Läuft gerade">')+popL;
+const popI=`<div class="pop" style="right:12px;width:260px"><h4>ICH BIN … <span class="mono">people:</span></h4>${[['st','Stefan','gewählt',1],['sv','Sven'],['ei','Eike'],['ml','Maria']].map(([k,n,m,a])=>`<div class="iz${a?' an':''}">${pk(k)}${n}<span class="muted">${m||''}</span></div>`).join('')}${[['cl','Claude'],['cx','Codex']].map(([k,n])=>`<div class="iz aus">${pk(k)}${n}<span class="muted">Agent · schreibt selbst</span></div>`).join('')}<div class="iz aus">${pk('jr')}Jan<span class="muted">stillgelegt</span></div><div class="fuss">Die Wahl merkt sich dieser Rechner. Ohne Wahl startet kein Timer.</div></div>`;
+fi.innerHTML=A().replace('<button class="kz-btn"><span class="pk pk-m">ST</span>','<button class="kz-btn auf"><span class="pk pk-m">ST</span>')+popI;
+fa.innerHTML=A();fb.innerHTML=B();fc.innerHTML=C();
+</script>
+</body>
+</html>
