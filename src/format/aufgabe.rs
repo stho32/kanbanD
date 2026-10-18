@@ -1,13 +1,17 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aufgabe, Kommentar, Teilaufgabe, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Kommentar, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use serde_yaml::Value;
 use chrono::NaiveDateTime;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
-const BEKANNT: [&str; 8] = ["id", "title", "class", "assignees", "labels", "due", "origins", "archived"];
+const BEKANNT: [&str; 9] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, "archived"];
+pub const WIRKUNGEN: &str = "wbs-effects";
+/// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
+const WIRKUNG_BEKANNT: [&str; 7] = ["application", "action", "node", "parent", "level", "name", "done-criterion"];
 const TRENNER: &str = " · ";
 pub const ZEITFORMAT: &str = "%Y-%m-%d %H:%M";
 
@@ -44,6 +48,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     a.faellig = yaml::text(&m, "due").filter(|d| !d.is_empty());
     a.herkunft = yaml::textliste(&m, "origins");
     a.archiviert = yaml::text(&m, "archived").filter(|d| !d.is_empty());
+    if let Some(w) = m.get(WIRKUNGEN) {
+        a.wirkungen = wirkungen_lesen(w)?;
+    }
     for (k, v) in &m {
         if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k)) {
             a.weitere.push((k.to_string(), v.clone()));
@@ -51,6 +58,45 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     koerper_lesen(&mut a, koerper)?;
     Ok(a)
+}
+
+fn wirkungen_lesen(v: &Value) -> Result<Vec<Wirkung>, Formatfehler> {
+    match v {
+        Value::Null => Ok(vec![]),
+        Value::Sequence(s) => s.iter().enumerate().map(|(i, w)| wirkung_lesen(i, w)).collect(),
+        _ => Err(Formatfehler(format!("{WIRKUNGEN} ist keine Liste"))),
+    }
+}
+
+fn wirkung_lesen(i: usize, v: &Value) -> Result<Wirkung, Formatfehler> {
+    let falsch = |was: &str| Formatfehler(format!("{WIRKUNGEN}[{i}]: {was}"));
+    let Value::Mapping(m) = v else { return Err(falsch("keine Zuordnung — erwartet {application, action, node?, …}")) };
+    let text = |k: &str| yaml::text(m, k).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let anwendung = text("application").ok_or_else(|| falsch("application fehlt"))?;
+    let aktion = text("action").as_deref().and_then(Aktion::aus).ok_or_else(|| falsch("action — erwartet create, rework oder remove"))?;
+    let weitere = m.iter().filter_map(|(k, w)| k.as_str().filter(|k| !WIRKUNG_BEKANNT.contains(k)).map(|k| (k.to_string(), w.clone()))).collect();
+    Ok(Wirkung { anwendung, aktion, knoten: text("node"), eltern: text("parent"), ebene: text("level"), name: text("name"), fertig_kriterium: text("done-criterion"), weitere })
+}
+
+/// Ein Wert in einer Flow-Zuordnung: Texte wie sonst im Frontmatter, alles andere als JSON (gültiges YAML).
+fn flusswert(v: &Value) -> String {
+    match v {
+        Value::String(s) => yaml::skalar(s),
+        Value::Number(_) | Value::Bool(_) => yaml::wert_als_text(v).unwrap_or_default(),
+        _ => serde_json::to_string(v).unwrap_or_else(|_| "null".into()),
+    }
+}
+
+/// `  - {application: kd, action: create, node: I0048, …}` — eine Zeile je Wirkung.
+fn wirkung_schreiben(w: &Wirkung) -> String {
+    let mut teile = vec![format!("application: {}", yaml::skalar(&w.anwendung)), format!("action: {}", w.aktion.schluessel())];
+    for (k, wert) in [("node", &w.knoten), ("parent", &w.eltern), ("level", &w.ebene), ("name", &w.name), ("done-criterion", &w.fertig_kriterium)] {
+        if let Some(wert) = wert {
+            teile.push(format!("{k}: {}", yaml::skalar(wert)));
+        }
+    }
+    teile.extend(w.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), flusswert(v))));
+    format!("  - {{{}}}\n", teile.join(", "))
 }
 
 fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
@@ -167,6 +213,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     if !a.herkunft.is_empty() {
         s.push_str(&format!("origins: {}\n", yaml::liste(&a.herkunft)));
     }
+    if !a.wirkungen.is_empty() {
+        s.push_str(&format!("{WIRKUNGEN}:\n{}", a.wirkungen.iter().map(wirkung_schreiben).collect::<String>()));
+    }
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
     }
@@ -270,6 +319,48 @@ mod tests {
         assert!(lesen("0001-x.md", "```kanbanD-time\n").unwrap_err().0.contains("nicht geschlossen"));
         let a = lesen("0001-x.md", "```js\nlet a;\n").unwrap();
         assert_eq!(a.beschreibung, "```js\nlet a;");
+    }
+
+    fn wirkung(aktion: Aktion, knoten: &str) -> Wirkung {
+        Wirkung { anwendung: "kd".into(), aktion, knoten: Some(knoten.into()), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] }
+    }
+
+    #[test]
+    fn wirkungen_im_eigenen_namensraum_rundlauf_zeichengleich() {
+        let mut a = Aufgabe::neu(7, "0007-export.md".into(), "Export".into());
+        a.herkunft = vec!["kd:I0047".into()];
+        a.wirkungen = vec![
+            Wirkung { eltern: Some("D0002".into()), ebene: Some("Interaction".into()), name: Some("„Export“, schnell".into()), fertig_kriterium: Some("US-1".into()), ..wirkung(Aktion::Anlegen, "I0048") },
+            wirkung(Aktion::Ueberarbeiten, "D0002"),
+            wirkung(Aktion::Verwerfen, "I0014"),
+        ];
+        let t = schreiben(&a);
+        assert!(t.contains("origins: [kd:I0047]\nwbs-effects:\n  - {application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: \"„Export“, schnell\", done-criterion: US-1}\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n---\n"), "{t}");
+        let wieder = lesen("0007-export.md", &t).unwrap();
+        assert_eq!(wieder, a);
+        assert_eq!(schreiben(&wieder), t);
+        assert_eq!(wieder.wirkungen[0].schluessel().as_deref(), Some("kd:I0048"));
+        assert!(wieder.weitere.is_empty(), "wbs-effects ist kein unbekannter Schlüssel");
+    }
+
+    #[test]
+    fn unbekannte_schluessel_einer_wirkung_bleiben_erhalten() {
+        let t = "---\nid: 7\ntitle: X\nwbs-effects:\n  - application: kd\n    action: rework\n    node: D0002\n    reason: Kopf neu\n    weight: 2\n    tags: [a, b]\n---\n";
+        let a = lesen("0007-x.md", t).unwrap();
+        assert_eq!(a.wirkungen[0].weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["reason", "weight", "tags"]);
+        let neu = schreiben(&a);
+        assert!(neu.contains("  - {application: kd, action: rework, node: D0002, reason: Kopf neu, weight: 2, tags: [\"a\",\"b\"]}\n"), "{neu}");
+        assert_eq!(lesen("0007-x.md", &neu).unwrap(), a, "der Rundlauf verliert nichts");
+    }
+
+    #[test]
+    fn falsche_wirkungen_sind_formatfehler() {
+        let mit = |w: &str| lesen("0007-x.md", &format!("---\nid: 7\ntitle: X\nwbs-effects: {w}\n---\n"));
+        assert!(mit("kd:I0001").unwrap_err().0.contains("keine Liste"));
+        assert!(mit("[x]").unwrap_err().0.contains("wbs-effects[0]: keine Zuordnung"));
+        assert!(mit("[{action: rework, node: D0002}]").unwrap_err().0.contains("application fehlt"));
+        assert!(mit("[{application: kd, action: grow}]").unwrap_err().0.contains("create, rework oder remove"));
+        assert!(mit("").unwrap().wirkungen.is_empty(), "leer ist keine Wirkung");
     }
 
     #[test]

@@ -218,3 +218,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0154 Verwerfen im Kontextmenü der Zeile | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | Lauf R00056 | Nacharbeit | — | — | 0,01h | autonom |
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | Lauf R00056 | Konsolidierung | — | — | 0,02h | autonom |
+| 2026-10-18 | R00057 Wirkungen von Aufgaben auf die WBS | B0155 Wirkungen im Frontmatter lesen und schreiben | Standard | 0,5-1h | 0,02h | 0,03h | autonom |

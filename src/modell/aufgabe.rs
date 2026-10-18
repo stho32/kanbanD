@@ -23,6 +23,62 @@ pub struct Kommentar {
     pub text: String,
 }
 
+/// Was eine Aufgabe an einem WBS-Knoten bewirkt (R00057); in der Datei englisch wie der Namensraum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Aktion {
+    #[serde(rename = "create")]
+    Anlegen,
+    #[serde(rename = "rework")]
+    Ueberarbeiten,
+    #[serde(rename = "remove")]
+    Verwerfen,
+}
+
+impl Aktion {
+    pub const ALLE: [Aktion; 3] = [Aktion::Anlegen, Aktion::Ueberarbeiten, Aktion::Verwerfen];
+
+    pub fn schluessel(self) -> &'static str {
+        match self {
+            Aktion::Anlegen => "create",
+            Aktion::Ueberarbeiten => "rework",
+            Aktion::Verwerfen => "remove",
+        }
+    }
+
+    pub fn aus(schluessel: &str) -> Option<Aktion> {
+        Aktion::ALLE.into_iter().find(|a| a.schluessel() == schluessel)
+    }
+}
+
+/// Eine Zeile in `wbs-effects`: Anwendung (Kürzel aus dem Register), Aktion, Knoten und — bei `create` — die Angaben zum neuen Knoten.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Wirkung {
+    #[serde(rename = "application")]
+    pub anwendung: String,
+    #[serde(rename = "action")]
+    pub aktion: Aktion,
+    #[serde(rename = "node", skip_serializing_if = "Option::is_none")]
+    pub knoten: Option<String>,
+    #[serde(rename = "parent", skip_serializing_if = "Option::is_none")]
+    pub eltern: Option<String>,
+    #[serde(rename = "level", skip_serializing_if = "Option::is_none")]
+    pub ebene: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(rename = "done_criterion", skip_serializing_if = "Option::is_none")]
+    pub fertig_kriterium: Option<String>,
+    /// Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
+    #[serde(skip)]
+    pub weitere: Vec<(String, serde_yaml::Value)>,
+}
+
+impl Wirkung {
+    /// `kd:I0048` — der Knoten, auf den die Wirkung wirkt; ein `create` vor der Ausführung hat noch keinen.
+    pub fn schluessel(&self) -> Option<String> {
+        self.knoten.as_deref().map(|k| Herkunftsschluessel::qualifiziert(&self.anwendung, k))
+    }
+}
+
 /// Eine Aufgabe: unabhängige Datei, weiß nichts von Boards.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Aufgabe {
@@ -40,6 +96,8 @@ pub struct Aufgabe {
     pub teilaufgaben: Vec<Teilaufgabe>,
     pub zeiten: Vec<Zeiteintrag>,
     pub kommentare: Vec<Kommentar>,
+    /// `wbs-effects`: wie die Aufgabe auf Knoten einer Anwendung gewirkt hat (R00057)
+    pub wirkungen: Vec<Wirkung>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -61,6 +119,7 @@ impl Aufgabe {
             teilaufgaben: vec![],
             zeiten: vec![],
             kommentare: vec![],
+            wirkungen: vec![],
             weitere: vec![],
         }
     }

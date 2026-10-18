@@ -6,7 +6,7 @@ mod board;
 mod einstellungen;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
-pub use aufgabe::{Aufgabe, Aufgabenaenderung, Kommentar, OHNE_HERKUNFT, Teilaufgabe, Zeiteintrag, herkunft_gueltig};
+pub use aufgabe::{Aktion, Aufgabe, Aufgabenaenderung, Kommentar, OHNE_HERKUNFT, Teilaufgabe, Wirkung, Zeiteintrag, herkunft_gueltig};
 pub use board::{Bewegfehler, Board, Linie, Spalte, SpaltenAenderung, Spaltenfehler, Staerke, Termin};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
