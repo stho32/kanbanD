@@ -1,6 +1,6 @@
 ---
 id: R00053
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -30,17 +30,17 @@ Board und Anwendung bleiben in getrennten Repositories, ohne dass Kopien auseina
 ## Akzeptanzkriterien
 
 ### Register
-- [ ] `sources.applications.kd: {name: kanbanD, wbs: /tmp/x/plan.md, requirements: /tmp/x/req}` → `GET /api/anwendungen` liefert `kd` mit `erreichbar: true` für beide Pfade; nach Löschen von `/tmp/x/plan.md` liefert es `wbs: false`, und `kanbanD.md` ist nicht defekt
-- [ ] Kürzel `KD!` → 400; ein Rundlauf mit zwei Anwendungen schreibt das Frontmatter stabil sortiert
-- [ ] Ein Ordner mit nur `sources.wbs: plan/kanbanD.md` verhält sich wie vor R00053 (Tests aus R00018 bleiben grün)
+- [x] `sources.applications.kd: {name: kanbanD, wbs: /tmp/x/plan.md, requirements: /tmp/x/req}` → `GET /api/anwendungen` liefert `kd` mit `erreichbar: true` für beide Pfade; nach Löschen von `/tmp/x/plan.md` liefert es `wbs: false`, und `kanbanD.md` ist nicht defekt
+- [x] Kürzel `KD!` → 400; ein Rundlauf mit zwei Anwendungen schreibt das Frontmatter stabil sortiert
+- [x] Ein Ordner mit nur `sources.wbs: plan/kanbanD.md` verhält sich wie vor R00053 (Tests aus R00018 bleiben grün)
 
 ### Herkunft
-- [ ] `PATCH {herkunft: ["kd:I0007"]}` schreibt `origins: [kd:I0007]`; `["xx:I0007"]` mit unbekanntem `xx` → 400
-- [ ] Zwei Anwendungen `kd` und `kc`, beide mit `I0007` → `/api/herkunft` liefert für `kd:I0007` den Pfad der WBS von `kd` und für `kc:I0007` den von `kc`
-- [ ] Zwei Anwendungen, Aufgabe mit `origins: [I0007]` → die Karte zeigt „mehrdeutig“; mit einer Anwendung zeigt sie den Knoten
+- [x] `PATCH {herkunft: ["kd:I0007"]}` schreibt `origins: [kd:I0007]`; `["xx:I0007"]` mit unbekanntem `xx` → 400
+- [x] Zwei Anwendungen `kd` und `kc`, beide mit `I0007` → `/api/herkunft` liefert für `kd:I0007` den Pfad der WBS von `kd` und für `kc:I0007` den von `kc`
+- [x] Zwei Anwendungen, Aufgabe mit `origins: [I0007]` → die Karte zeigt „mehrdeutig“; mit einer Anwendung zeigt sie den Knoten
 
 ### Board-Bindung
-- [ ] `boards/entwicklung.md` mit `applications: [kd]` → `GET /api/boards/entwicklung` liefert `anwendungen: ["kd"]`; ein Bewegen erhält den Schlüssel
+- [x] `boards/entwicklung.md` mit `applications: [kd]` → `GET /api/boards/entwicklung` liefert `anwendungen: ["kd"]`; ein Bewegen erhält den Schlüssel
 
 ## Betroffene Verzeichnisstruktur
 
