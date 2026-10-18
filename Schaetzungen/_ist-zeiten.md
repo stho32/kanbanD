@@ -103,3 +103,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00025 Defekte Dateien zeigen | B0068 Defektes Board und defekte Einstellungen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00025 Defekte Dateien zeigen | Lauf R00025 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00026 Tastaturbedienung | B0069 Tastaturziele rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00026 Tastaturbedienung | B0070 Tastaturkürzel auf dem Board | Standard | 1-2h | 0,0h | 0,0h | autonom |

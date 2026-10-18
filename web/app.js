@@ -145,10 +145,11 @@ function render() {
   S.ui.nachZug = false;
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
-  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis();
+  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '');
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
+  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe) { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
 }
 
 function popPlatzieren() {
@@ -203,6 +204,7 @@ async function act(a, arg, wert) {
       }
       case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
+      case 'schliessen-hilfe': u.hilfe = false; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
       case 'tab': u.tab = arg; break;
       case 'blaettern': {
@@ -464,6 +466,8 @@ document.addEventListener('keydown', e => {
     if (S.ui.filter) { filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
     return;
   }
+  if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
+  if (brettTaste(e, t)) return;
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
     e.preventDefault();
     $('#flt').focus();
@@ -481,6 +485,34 @@ document.addEventListener('keydown', e => {
     act('blaettern', e.key === 'ArrowDown' ? '1' : '-1');
   }
 });
+
+/* Tastatur auf dem Board: Pfeile wählen, Umschalt+Pfeile verschieben, Enter öffnet, n legt an, ? hilft. */
+const RICHTUNG = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'hoch', ArrowDown: 'runter' };
+function brettTaste(e, t) {
+  const u = S.ui;
+  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const karte = t.closest && t.closest('.ka[data-id]');
+  const nr = karte ? +karte.dataset.id : null;
+  if (e.key === '?') { u.hilfe = true; render(); return true; }
+  if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
+  if (e.key === 'n') {
+    const spalte = karte ? karte.closest('.bahn').dataset.col : S.board.spalten[0] && S.board.spalten[0].name;
+    if (spalte) { e.preventDefault(); act('add', spalte); }
+    return true;
+  }
+  const r = RICHTUNG[e.key];
+  if (!r) return false;
+  e.preventDefault();
+  if (e.shiftKey) {
+    if (nr == null) return true;
+    const z = verschiebeziel(sichtbareSpalten(), nr, r);
+    if (z) { u.fokusKarte = nr; act('bewegen', JSON.stringify({ nummer: nr, ...z })); }
+    return true;
+  }
+  const n = nachbar(sichtbareSpalten(), nr, r);
+  if (n != null) { u.fokusKarte = n; const k = $(`.ka[data-id="${n}"]`); if (k) k.focus(); }
+  return true;
+}
 
 /* Ziehen: obere Hälfte = davor, untere = dahinter, freie Fläche = ans Ende. */
 let zug = null, ziel = null;

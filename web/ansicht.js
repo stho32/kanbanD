@@ -200,6 +200,16 @@ function vDefektFenster() {
   if (!d) return '';
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div><div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
+const KUERZEL = [['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Umschalt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Enter', 'Karte öffnen'], ['n', 'neue Karte in dieser Spalte'], ['/', 'Filter'], ['↑ ↓ im Fenster', 'vorige / nächste Karte'], ['Esc', 'schließen, Filter leeren'], ['?', 'diese Übersicht']];
+function vHilfe() {
+  return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" role="dialog" aria-label="Tastaturkürzel"><h3>TASTATURKÜRZEL</h3><table>${KUERZEL.map(([k, t]) => `<tr><td>${k.split(' ').map(x => x === '+' ? ' + ' : `<kbd>${esc(x)}</kbd>`).join('')}</td><td>${esc(t)}</td></tr>`).join('')}</table></div></div>`;
+}
+/** Sichtbare Karten je Spalte des Boards — Grundlage der Tastaturziele. */
+function sichtbareSpalten() {
+  if (!S.board) return [];
+  return [...document.querySelectorAll('.bahn[data-col]')].map(b => ({ name: b.dataset.col, karten: [...b.querySelectorAll('.ka[data-id]')].map(k => +k.dataset.id) }));
+}
+
 function vDefektePop() {
   const ds = S.zustand.defekte || [];
   return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="menu"><h4>DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;

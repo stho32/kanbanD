@@ -373,3 +373,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .defektflaeche p{margin:0 0 var(--kd-s2)}
 .dz{display:flex;flex-direction:column;gap:2px;padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);font-size:12px}
 .stat .lnk.warn{color:var(--kd-warn);font-weight:600}
+.ka:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
+.hilfe-bg{align-items:flex-start;padding-top:80px}
+.hilfe{background:var(--kd-surface);box-shadow:var(--kd-shadow);padding:var(--kd-s4) var(--kd-s5);min-width:380px}
+.hilfe h3{margin:0 0 var(--kd-s3);font-size:11px;letter-spacing:.05em;color:var(--kd-muted)}
+.hilfe td{padding:4px 12px 4px 0;font-size:12.5px}
