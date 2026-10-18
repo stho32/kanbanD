@@ -23,6 +23,7 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
 - **Tastatur auf dem Board:** Pfeile wählen, Umschalt+Pfeile verschieben, `1`–`9` in Spalte n, Enter öffnet, `n` neue Aufgabe, `t`/Leertaste Timer, `m` mir zuweisen, `p` Zuständige (alle Personen), F2 umbenennen, `a`/Entf archivieren, `c` Verweis kopieren, `/` Filter, Strg+Z macht die letzte Bewegung oder Anlage rückgängig.
 - **Rechtsklick-Menüs:** auf Karten (alles, was man mit einer Karte tun kann, mit Kürzel daneben), auf Spaltenköpfen (Karte hinzufügen, alle archivieren, Spalte verschieben) und auf Zeilen der Aufgabenliste; per Tastatur mit Menütaste oder Umschalt+F10.
 - **Überall:** `g b` / `g a` / `g p` / `g s` / `g z` / `g v` / `g e` wechseln die Seite, `b` Board wechseln, `i` Ich bin …; im Aufgabenfenster `t m a e b s k d`; in der Aufgabenliste Pfeile, `a`, `c`. `?` zeigt die Kürzel des Orts.
+- **WBS** (Menüpunkt je gebundener Anwendung, `g k`): die WBS der Anwendung als eingerückte Tabelle wie in `/planung karte` — Zeile in der Ampelfarbe, Status als Plakette (gerechnete umrandet, ein Widerspruch zur Datei steht daneben), Dialog und Interaction klappbar. Der Kopf zeigt den Stand über die Slices (% funktional · in Bearbeitung · offen), den aktiven Pfad, was läuft und „nicht committet“, solange die WBS-Datei im Arbeits-Repository Änderungen hat. Die Sicht liest nur und folgt der Datei live, auch wenn sie außerhalb des kanbanD-Ordners liegt.
 - **Filter:** Text, `#12`, `@kürzel`, `class:bug`, `origin:I0023`, `label:ui`, `is:archived`.
 - **Berichte** (Menü „Berichte“): Stundenzettel, Zeiten nach Aufgabe und Person, Burndown, Durchlaufzeit (Lead und Cycle Time zwischen wählbaren Spalten) und **Wie lange noch** — eine Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, die live mitrechnet, wenn Aufgaben bewegt, angelegt oder archiviert werden. Eine gemeinsame Filterleiste wie bei Kanbanflow: Zeitraum (heute bis dieses Jahr oder eigener), Farben und Spalten ausschließen, nur Personen, nur Labels; sie bleibt im Browser gemerkt. Kürzel `g v`, `g d`, `g w`. In „Wie lange noch“ lassen sich feste **Termine** eintragen (Name, Datum, Farbe, Linie durchgehend/gestrichelt/gepunktet, Stärke fein/normal/fett); sie stehen als `milestones:` im Frontmatter der Board-Datei, erscheinen als Linie im Diagramm, und je Spalte steht die Wahrscheinlichkeit, den Termin zu halten.
 
@@ -39,7 +40,7 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
   aufgaben/0012-titel/       Anhänge
 ```
 
-Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendung einmal mit vollen Pfaden ins Register ein (Einrichten → Anwendungen); Aufgaben nennen ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
+Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendung einmal mit vollen Pfaden ins Register ein (Einrichten → Anwendungen); Aufgaben nennen ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Ein Board ohne `applications:` gilt bei genau einer registrierten Anwendung als an sie gebunden. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
 
 Eine Aufgabe zu bewegen ändert nur die Board-Datei. Dieselbe Aufgabe kann auf mehreren Boards liegen. Wer an kanbanD vorbei Dateien ändert, sieht sie live in allen Browsern; committet wird das nicht von kanbanD.
 
@@ -52,7 +53,7 @@ curl -X POST http://localhost:7420/api/aufgaben -H 'X-KanbanD-Wer: cl' \
      -H 'Content-Type: application/json' -d '{"titel":"Dateiwächter","board":"entwicklung"}'
 ```
 
-`GET /api/ereignisse` meldet jede Änderung im Ordner als Server-Sent Event. `GET /api/berichte/bewegungen?board=<slug>` liefert je Aufgabe die Spaltenwechsel aus Git — die Grundlage der Board-Berichte.
+`GET /api/ereignisse` meldet jede Änderung im Ordner als Server-Sent Event, dazu Änderungen und Commits an den WBS-Dateien der registrierten Anwendungen (`wbs: [kürzel]`). `GET /api/wbs/<kürzel>` liefert die WBS mit gerechnetem Status, erreichter Ebene, Stand und `nicht_committet`. `GET /api/berichte/bewegungen?board=<slug>` liefert je Aufgabe die Spaltenwechsel aus Git — die Grundlage der Board-Berichte.
 
 ## Tests
 
