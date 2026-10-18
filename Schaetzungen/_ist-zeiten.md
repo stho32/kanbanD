@@ -139,3 +139,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00035 Tastenkürzel überall | Lauf R00035 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00036 Neue Aufgabe im Dialog | B0094 Beschreibung und Teilaufgaben beim Anlegen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00036 Neue Aufgabe im Dialog | B0095 Dialog Neue Aufgabe | Standard | 2-3h | 0,1h | 0,1h | autonom |
+| 2026-10-18 | R00036 Neue Aufgabe im Dialog | B0096 Einstiege statt + Karte | Standard | 1-2h | 0,0h | 0,0h | autonom |

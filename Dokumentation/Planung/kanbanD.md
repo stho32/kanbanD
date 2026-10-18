@@ -149,10 +149,10 @@ zuletzt: 2026-10-18
 | B0091 | Bubble | I0035 | g-Folgen und globale Kürzel | gruen | Test gruen | g b/a/p/s/z/v/e wechseln die Seite, b Board-Umschalter, i Ich bin, ? überall | 1-2 |  |  |  |  |
 | B0092 | Bubble | I0035 | Kürzel im Aufgabenfenster | gruen | Test gruen | t, m, a, e, b, s, k, d im Fenster; Strg+Enter speichert die Beschreibung | 1-2 |  |  |  |  |
 | B0093 | Bubble | I0035 | Kürzel in der Aufgabenliste und Hilfe je Ort | gruen | Test gruen | ↑↓ in der Liste, a, c; Hilfe zeigt die Kürzel des Orts und die überall gültigen | 0,5-1 |  |  |  |  |
-| I0036 | Interaction | D0003 | Neue Aufgabe im Dialog | gelb | US-1..US-3 |  |  |  | I0011 | R00036 | UX-Überarbeitung 3: ersetzt „+ Karte“: Dialog mit allen Feldern, n öffnet ihn, + im Spaltenkopf |
+| I0036 | Interaction | D0003 | Neue Aufgabe im Dialog | gruen | US-1..US-3 |  |  |  | I0011 | R00036 | UX-Überarbeitung 3: ersetzt „+ Karte“: Dialog mit allen Feldern, n öffnet ihn, + im Spaltenkopf |
 | B0094 | Bubble | I0036 | Beschreibung und Teilaufgaben beim Anlegen | gruen | Test gruen | Angaben mit Beschreibung und Teilaufgaben → vollständige Aufgabe, ein Commit | 0,5-1 |  |  |  |  |
 | B0095 | Bubble | I0036 | Dialog Neue Aufgabe | gruen | Test gruen | Titel, Beschreibung, Teilaufgaben, Board/Spalte, Klasse, Zuständige, Labels, Fälligkeit, Herkunft → Anlegen, Anlegen und weitere | 2-3 |  |  |  |  |
-| B0096 | Bubble | I0036 | Einstiege statt + Karte | rot | Test gruen | n, + im Spaltenkopf, Kopfzeile, Kartenmenü, Aufgabenliste öffnen den Dialog; + Karte entfällt | 1-2 |  |  |  |  |
+| B0096 | Bubble | I0036 | Einstiege statt + Karte | gruen | Test gruen | n, + im Spaltenkopf, Kopfzeile, Kartenmenü, Aufgabenliste öffnen den Dialog; + Karte entfällt | 1-2 |  |  |  |  |
 | I0037 | Interaction | D0003 | Teilaufgaben schnell hintereinander | rot | US der Anforderung |  |  |  | I0012 |  | UX-Überarbeitung 3: Enter fügt sofort an, ohne auf den Server zu warten; Feld bleibt offen |
 | I0038 | Interaction | D0002 | Erste offene Teilaufgabe auf der Karte | rot | US der Anforderung |  |  |  | I0012 |  | UX-Überarbeitung 3: Karte zeigt die nächste offene Teilaufgabe |
 | I0039 | Interaction | D0003 | Zuständige frei setzen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung 3: alle Personen hinzufügen und entfernen, auch im Kartenmenü |
