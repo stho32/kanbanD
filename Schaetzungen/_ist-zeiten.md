@@ -107,3 +107,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00026 Tastaturbedienung | Lauf R00026 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00027 Mehrere Aufgaben auf einmal anlegen | B0071 Zeilen aus eingefügtem Text | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00027 Mehrere Aufgaben auf einmal anlegen | B0072 Mehrere anlegen über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00027 Mehrere Aufgaben auf einmal anlegen | B0073 Einfügen in Bahn, Liste und Teilaufgaben | Standard | 1-2h | 0,0h | 0,0h | autonom |

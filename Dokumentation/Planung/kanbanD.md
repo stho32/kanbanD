@@ -117,10 +117,10 @@ zuletzt: 2026-10-18
 | I0026 | Interaction | D0002 | Tastaturbedienung | gruen | US-1..US-3 |  |  |  | I0006 | R00026 |  |
 | B0069 | Bubble | I0026 | Tastaturziele rechnen | gruen | Test gruen | sichtbare Spalten, Karte, Richtung → Nachbarkarte bzw. Ziel zum Verschieben | 0,5-1 |  |  |  |  |
 | B0070 | Bubble | I0026 | Tastaturkürzel auf dem Board | gruen | Test gruen | Pfeile, Umschalt+Pfeile, Enter, n, ? → Fokus, Bewegen, Öffnen, neue Karte, Hilfe | 1-2 |  |  |  |  |
-| I0027 | Interaction | D0002 | Mehrere Aufgaben auf einmal anlegen | gelb | US-1..US-3 |  |  |  | I0005 | R00027 | UX-Überarbeitung: Mehrzeilig einfügen → je Zeile eine Aufgabe, ein Commit; auch Teilaufgaben und Aufgabenliste |
+| I0027 | Interaction | D0002 | Mehrere Aufgaben auf einmal anlegen | gruen | US-1..US-3 |  |  |  | I0005 | R00027 | UX-Überarbeitung: Mehrzeilig einfügen → je Zeile eine Aufgabe, ein Commit; auch Teilaufgaben und Aufgabenliste |
 | B0071 | Bubble | I0027 | Zeilen aus eingefügtem Text | gruen | Test gruen | eingefügter Text → Titel je Zeile ohne Listenzeichen | 0,5-1 |  |  |  |  |
 | B0072 | Bubble | I0027 | Mehrere anlegen über die API | gruen | Test gruen | Titelliste → Aufgaben bzw. Teilaufgaben, ein Commit | 1-2 |  |  |  |  |
-| B0073 | Bubble | I0027 | Einfügen in Bahn, Liste und Teilaufgaben | rot | Test gruen | Einfügen mehrzeiligen Texts → Rückfrage-freies Anlegen aller Zeilen | 1-2 |  |  |  |  |
+| B0073 | Bubble | I0027 | Einfügen in Bahn, Liste und Teilaufgaben | gruen | Test gruen | Einfügen mehrzeiligen Texts → Rückfrage-freies Anlegen aller Zeilen | 1-2 |  |  |  |  |
 | I0028 | Interaction | D0002 | Schnelleingabe mit Kürzeln | rot | US der Anforderung |  |  |  | I0027 |  | UX-Überarbeitung: @kürzel, class:, label:, due:, I0001/R00001 im Titel setzen die Felder beim Anlegen |
 | I0029 | Interaction | D0002 | Karte direkt bedienen | rot | US der Anforderung |  |  |  | I0014 |  | UX-Überarbeitung: Timer, mir zuweisen, umbenennen direkt an der Karte; Fälligkeit per Knopf |
 | I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |

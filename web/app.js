@@ -525,6 +525,29 @@ document.addEventListener('dragstart', e => {
   try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
   setTimeout(() => k.classList.add('zieht'));
 });
+/* Mehrzeiliges Einfügen: je Zeile eine Aufgabe bzw. Teilaufgabe, in einem Commit. */
+document.addEventListener('paste', async e => {
+  const art = e.target.dataset && e.target.dataset.mehrfach;
+  if (!art) return;
+  const zeilen = zeilenAusText(e.clipboardData && e.clipboardData.getData('text'));
+  if (zeilen.length < 2) return;
+  e.preventDefault();
+  if (ichNoetig()) { render(); return; }
+  const u = S.ui;
+  if (art === 'teil') {
+    u.fokus = '#teil-neu';
+    await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben/mehrere`, { texte: zeilen });
+    u.hinweis = { text: `${zeilen.length} Teilaufgaben ergänzt`, at: Date.now() };
+  } else {
+    u.fokus = art === 'board' ? '#add-inp' : '#liste-neu';
+    const daten = art === 'board' ? { titel: zeilen, board: u.slug, spalte: e.target.dataset.arg } : { titel: zeilen };
+    await schreiben('POST', '/api/aufgaben/mehrere', daten);
+    u.hinweis = { text: `${zeilen.length} Aufgaben angelegt`, at: Date.now() };
+  }
+  u.fokus = art === 'teil' ? '#teil-neu' : art === 'board' ? '#add-inp' : '#liste-neu';
+  render();
+});
+
 /* Tooltip des Burndowns: Fadenkreuz und Werte des Tages unter dem Zeiger */
 document.addEventListener('mouseover', e => {
   const r = e.target.closest && e.target.closest('rect.treffer');
