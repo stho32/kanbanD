@@ -104,7 +104,10 @@ zuletzt: 2026-10-18
 | B0059 | Bubble | I0022 | Zeiten als CSV | gruen | Test gruen | Aufgaben + Personen → CSV je Zeiteintrag; GET /api/berichte/zeiten.csv | 0,5-1 |  |  |  |  |
 | B0060 | Bubble | I0022 | Stundenzettel und Kreuztabelle rechnen | gruen | Test gruen | Aufgaben, Person, Woche → Aufgabe × Tag; Zeitraum → Aufgabe × Person | 1-2 |  |  |  |  |
 | B0061 | Bubble | I0022 | Menü Berichte | gruen | Test gruen | Berichte ▾ → Stundenzettel, Zeiten nach Aufgabe und Person, CSV | 1-2 |  |  |  |  |
-| I0023 | Interaction | D0006 | Burndown und Durchlaufzeit | rot | US der Anforderung |  |  |  | I0006 |  | aus der Git-Geschichte |
+| I0023 | Interaction | D0006 | Burndown und Durchlaufzeit | rot | US-1..US-2 |  |  |  | I0006 | R00023 | aus der Git-Geschichte |
+| B0062 | Bubble | I0023 | Verlauf rechnen | rot | Test gruen | Stände der Board-Datei mit Zeitpunkt → offen je Tag, Umfang, Durchlaufzeit je Aufgabe | 1-2 |  |  |  |  |
+| B0063 | Bubble | I0023 | Stände aus Git lesen | rot | Test gruen | git log + git cat-file --batch → Stände der Board-Datei; GET /api/berichte/verlauf | 1-2 |  |  |  |  |
+| B0064 | Bubble | I0023 | Burndown und Durchlaufzeit zeigen | rot | Test gruen | Linie offen je Tag mit Umfang, Hover, Tabelle der Durchlaufzeiten | 1-2 |  |  |  |  |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | rot | US der Anforderung |  |  |  | I0005 |  | Beschreibung unter /api, Identität je Aufruf |
 | I0025 | Interaction | D0002 | Defekte Dateien zeigen | rot | US der Anforderung |  |  |  | I0004 |  |  |
 | I0026 | Interaction | D0002 | Tastaturbedienung | rot | US der Anforderung |  |  |  | I0006 |  |  |
