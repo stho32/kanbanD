@@ -224,7 +224,7 @@ zuletzt: 2026-10-18
 | B0149 | Bubble | I0051 | Zeile nach dem letzten Nachfahren einfügen | gruen | Test gruen | WBS-Text, NeuerKnoten, ID, heute → neue Zeile rot nach dem letzten Nachfahren der Eltern, Vorfahren gerechnet, zuletzt | 1-2 |  |  |  |  |
 | B0150 | Bubble | I0051 | Knoten mit Nachfahren verwerfen | gruen | Test gruen | WBS-Text, ID, Grund, heute → verworfen an Knoten und zählenden Nachfahren, Grund in der Notiz, Vorfahren gerechnet; A0001 und schon verworfen 409 | 0,5-1 |  |  |  |  |
 | B0151 | Bubble | I0051 | Knoten über die API anlegen | gruen | Test gruen | POST /api/wbs/{kürzel}/knoten → {id} unter der Sperre der WBS-Datei, ohne Commit | 0,5-1 |  |  |  |  |
-| B0152 | Bubble | I0051 | Knoten über die API verwerfen | rot | Test gruen | POST /api/wbs/{kürzel}/knoten/{id}/verwerfen {grund?} → geänderte Knoten, ohne Commit | 0,5-1 |  |  |  |  |
+| B0152 | Bubble | I0051 | Knoten über die API verwerfen | gruen | Test gruen | POST /api/wbs/{kürzel}/knoten/{id}/verwerfen {grund?} → geänderte Knoten, ohne Commit | 0,5-1 |  |  |  |  |
 | B0153 | Bubble | I0051 | Knoten in der Sicht anlegen | rot | Test gruen | + Knoten in der Zeile des Eltern-Knotens → Formular Ebene, Name, Fertig-Kriterium (Bubble: Eingabe → Ausgabe, Aufwand) → neue rote Zeile | 1-2 |  |  |  |  |
 | B0154 | Bubble | I0051 | Verwerfen im Kontextmenü der Zeile | rot | Test gruen | Rechtsklick auf eine Zeile → verwerfen … → Rückfrage mit Grund → Zeilen verworfen, durchgestrichen | 0,5-1 |  |  |  |  |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |

@@ -4,7 +4,7 @@ use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
 use crate::wbs::{Stand, WbsKnoten, stand};
-use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen};
+use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, verwerfen};
 use crate::modell::Anwendung;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -128,6 +128,17 @@ impl Kanban {
             staende.push(text.to_string());
             let id = naechste_id(praefix, &staende);
             Ok((knoten_anlegen(text, neu, &id, heute)?, WbsNeu { id }))
+        })
+    }
+}
+
+impl Kanban {
+    /// Verwirft einen Knoten der WBS von `kuerzel` samt zählender Nachfahren (R00056); nichts wird gelöscht.
+    pub fn wbs_verwerfen(&self, kuerzel: &str, id: &str, grund: &str) -> Result<WbsGeaendert, Fehler> {
+        self.wbs_aendern(kuerzel, |text, _, heute| {
+            let g = verwerfen(text, id, grund, heute)?;
+            let geaendert = g.geaendert.clone();
+            Ok((g, WbsGeaendert { geaendert }))
         })
     }
 }

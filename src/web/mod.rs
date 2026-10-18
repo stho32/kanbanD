@@ -75,6 +75,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/wbs/{kuerzel}", get(wbs))
         .route("/api/wbs/{kuerzel}/knoten", post(wbs_knoten_anlegen))
         .route("/api/wbs/{kuerzel}/knoten/{id}", axum::routing::patch(wbs_status))
+        .route("/api/wbs/{kuerzel}/knoten/{id}/verwerfen", post(wbs_verwerfen))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/berichte/bewegungen", get(bewegungen))
@@ -426,6 +427,18 @@ async fn wbs_knoten_anlegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel)
     })
     .await?;
     Ok((StatusCode::CREATED, Json(r)).into_response())
+}
+
+#[derive(serde::Deserialize, Default)]
+struct Grund {
+    #[serde(default)]
+    grund: String,
+}
+
+/// Der Körper ist freiwillig: leer, `null` oder `{"grund": "…"}`.
+async fn wbs_verwerfen(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, koerper: axum::body::Bytes) -> Result<Response, Fehler> {
+    let grund = serde_json::from_slice::<Option<Grund>>(&koerper).ok().flatten().unwrap_or_default().grund;
+    als_person(&app, wer, move |k, _| k.wbs_verwerfen(&kuerzel, &id, &grund)).await
 }
 
 #[derive(serde::Deserialize)]

@@ -192,3 +192,32 @@ async fn anlegen_ohne_fertig_kriterium_oder_mit_falscher_eltern_ebene_ist_400_un
     assert_eq!(ohne.status().as_u16(), 400, "Identität Pflicht");
     assert_eq!(plan(&arbeit), grosse_wbs(1..=2));
 }
+
+#[tokio::test]
+async fn verwerfen_markiert_interaction_und_bubbles_ohne_zeile_zu_entfernen_stand_zaehlt_sie_nicht_kein_commit() {
+    let vorher = wbs(&[("A0001", "Application", "—", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0006", "Interaction", "D0001", "gruen"), ("I0007", "Interaction", "D0001", "rot"), ("B0001", "Bubble", "I0007", "rot"), ("B0002", "Bubble", "I0007", "rot")]);
+    let (_a, arbeit) = arbeits_repository(&vorher);
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let log_vorher = git(&arbeit, &["log", "--format=%H"]);
+    let (s, r) = verwirf(&lauf.adresse, "I0007", serde_json::json!({"grund": "anders geschnitten"})).await;
+    assert_eq!((s, r.clone()), (200, serde_json::json!({"geaendert": ["I0007", "B0001", "B0002", "D0001", "A0001"]})));
+    let text = plan(&arbeit);
+    assert_eq!(text.lines().count(), vorher.lines().count(), "keine Zeile entfernt");
+    assert_eq!(text.matches("| verworfen |").count(), 3);
+    assert!(text.contains("| verworfen: anders geschnitten | Abnahme |"));
+    let (_, w) = gemeinsam::senden(reqwest::Method::GET, &lauf.adresse, "api/wbs/kc", "st", serde_json::Value::Null).await;
+    assert_eq!((w["stand"]["slices"].as_u64(), w["stand"]["gruen"].as_u64(), w["knoten"].as_array().unwrap().len()), (Some(1), Some(1), 6), "nur I0006 zählt noch, alle Zeilen stehen");
+    assert_eq!(verwirf(&lauf.adresse, "I0007", serde_json::Value::Null).await.0, 409, "schon verworfen");
+    assert_eq!(verwirf(&lauf.adresse, "A0001", serde_json::Value::Null).await.0, 409, "die Application nicht");
+    assert_eq!(verwirf(&lauf.adresse, "B0099", serde_json::Value::Null).await.0, 404);
+    let ohne_koerper = reqwest::Client::new().post(format!("{}api/wbs/kc/knoten/I0006/verwerfen", lauf.adresse)).header("X-KanbanD-Wer", "st").send().await.unwrap();
+    assert_eq!(ohne_koerper.status().as_u16(), 200, "der Grund ist freiwillig, der Körper auch");
+    assert_eq!(git(&arbeit, &["log", "--format=%H"]), log_vorher, "git log im Arbeits-Repository unverändert");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "");
+}
+
+async fn verwirf(adresse: &str, id: &str, daten: serde_json::Value) -> (u16, serde_json::Value) {
+    gemeinsam::senden(reqwest::Method::POST, adresse, &format!("api/wbs/kc/knoten/{id}/verwerfen"), "st", daten).await
+}
