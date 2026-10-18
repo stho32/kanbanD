@@ -43,6 +43,8 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe ändern {erledigt?, text?}"),
     e("DELETE", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe entfernen"),
     e("POST", "/api/aufgaben/{nr}/kommentare", true, "Aufgaben", "kommentieren {text}"),
+    e("PATCH", "/api/aufgaben/{nr}/wbs-effects", true, "Aufgaben", "Wirkung auf die WBS anhängen und sofort ausführen {application, action: create|rework|remove, node?, parent?, level?, name?, done_criterion?} → Aufgabe; erst die WBS (ohne Commit), dann ein Commit im Board-Repository; create vergibt die ID, rework setzt den Teilbaum rot, remove verwirft; 400 ohne registriertes Kürzel, 409 wenn die WBS scheitert (Aufgabe unverändert)"),
+    e("DELETE", "/api/aufgaben/{nr}/wbs-effects/{i}", true, "Aufgaben", "Wirkung aus der Aufgabe entfernen — die WBS bleibt, wie sie ist"),
     e("POST", "/api/aufgaben/{nr}/archivieren", true, "Aufgaben", "archivieren (stoppt laufende Timer)"),
     e("POST", "/api/aufgaben/{nr}/zurueckholen", true, "Aufgaben", "aus dem Archiv zurückholen"),
     e("GET", "/api/aufgaben/{nr}/anhaenge", false, "Aufgaben", "Anhänge auflisten"),

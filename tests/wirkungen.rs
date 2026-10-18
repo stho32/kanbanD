@@ -113,3 +113,26 @@ fn falsche_eingaben_sind_400_und_aendern_weder_wbs_noch_aufgabe() {
     assert!(matches!(l.kanban.wirkung_setzen(&wer, 99, &serde_json::from_value(serde_json::json!({"application": "kc", "action": "rework", "node": "D0002"})).unwrap()), Err(Fehler::NichtGefunden(_))), "unbekannte Aufgabe vor der WBS");
     assert_eq!((l.plan(), l.aufgabe()), vorher);
 }
+
+#[tokio::test]
+async fn ueber_die_api_setzen_und_entfernen_die_wbs_bleibt() {
+    let l = lage();
+    let lauf = gemeinsam::starten(l.board.path(), &["--port", "0"]);
+    let pfad = "api/aufgaben/7/wbs-effects";
+    let (s, a) = gemeinsam::senden(reqwest::Method::PATCH, &lauf.adresse, pfad, "st", serde_json::json!({"application": "kc", "action": "create", "parent": "D0002", "level": "Interaction", "name": "Export", "done_criterion": "US-1"})).await;
+    assert_eq!((s, a["wirkungen"].clone()), (200, serde_json::json!([{"application": "kc", "action": "create", "node": "I0048", "parent": "D0002", "level": "Interaction", "name": "Export", "done_criterion": "US-1"}])));
+    let (s, r) = gemeinsam::senden(reqwest::Method::PATCH, &lauf.adresse, pfad, "st", serde_json::json!({"application": "kc", "action": "rework", "node": "D0099"})).await;
+    assert_eq!((s, r["fehler"].as_str()), (409, Some("Knoten „D0099“ steht nicht in der WBS")));
+    let (s, r) = gemeinsam::senden(reqwest::Method::PATCH, &lauf.adresse, pfad, "st", serde_json::json!({"action": "rework", "node": "D0002"})).await;
+    assert_eq!(s, 400, "{r}");
+    let ohne = reqwest::Client::new().patch(format!("{}{pfad}", lauf.adresse)).json(&serde_json::json!({"application": "kc", "action": "rework", "node": "D0002"})).send().await.unwrap();
+    assert_eq!(ohne.status().as_u16(), 400, "Identität Pflicht");
+    let plan_vorher = l.plan();
+    let (s, a) = gemeinsam::senden(reqwest::Method::DELETE, &lauf.adresse, "api/aufgaben/7/wbs-effects/0", "st", serde_json::Value::Null).await;
+    assert_eq!((s, a["wirkungen"].clone()), (200, serde_json::json!([])));
+    assert_eq!(l.plan(), plan_vorher, "I0048 bleibt in der WBS");
+    assert!(!l.aufgabe().contains("wbs-effects"));
+    assert_eq!(git(l.board.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#7 Wirkung auf kc:I0048 (create) entfernt");
+    let (s, _) = gemeinsam::senden(reqwest::Method::DELETE, &lauf.adresse, "api/aufgaben/7/wbs-effects/0", "st", serde_json::Value::Null).await;
+    assert_eq!(s, 404);
+}

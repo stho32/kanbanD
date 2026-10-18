@@ -86,6 +86,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/teilaufgaben/mehrere", post(teilaufgaben_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
+        .route("/api/aufgaben/{nr}/wbs-effects", axum::routing::patch(wirkung_setzen))
+        .route("/api/aufgaben/{nr}/wbs-effects/{i}", axum::routing::delete(wirkung_entfernen))
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
@@ -294,6 +296,14 @@ async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, 
 
 async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kommentieren(p, nr, &t.text)).await
+}
+
+async fn wirkung_setzen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(w): Json<crate::dienst::WirkungEingabe>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.wirkung_setzen(p, nr, &w)).await
+}
+
+async fn wirkung_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.wirkung_entfernen(p, nr, i)).await
 }
 
 async fn timer_starten(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {

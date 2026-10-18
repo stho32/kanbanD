@@ -87,6 +87,17 @@ impl Kanban {
         Ok(a)
     }
 
+    /// Nimmt die Wirkung an Position `i` aus der Aufgabe; in der WBS wird nichts rückgängig gemacht.
+    pub fn wirkung_entfernen(&self, wer: &Person, nr: u32, i: usize) -> Result<Aufgabe, Fehler> {
+        self.aufgabe_schreiben(wer, nr, |a| {
+            if i >= a.wirkungen.len() {
+                return Err(Fehler::NichtGefunden(format!("#{nr} hat keine Wirkung an Position {i}")));
+            }
+            let w = a.wirkungen.remove(i);
+            Ok(Some(format!("#{nr} Wirkung auf {} ({}) entfernt", w.schluessel().unwrap_or_else(|| w.anwendung.clone()), w.aktion.schluessel())))
+        })
+    }
+
     /// Die Wirkung in der WBS; bei `create` mit der vergebenen ID.
     fn in_der_wbs_ausfuehren(&self, a: &Aufgabe, w: Wirkung) -> Result<Wirkung, Fehler> {
         let knoten = w.knoten.clone().unwrap_or_default();
