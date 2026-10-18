@@ -51,7 +51,7 @@ fn ohne_erreichbare_wbs_oder_ohne_bindung_keine_phasen() {
     std::fs::remove_file(l.arbeit.join("Dokumentation/Planung/kasse.md")).unwrap();
     assert_eq!(l.kanban.phasenstand(&l.board()), None);
     let mut fremd = l.board();
-    fremd.anwendungen = vec!["xx".into()];
+    fremd.anwendungen = Some(vec!["xx".into()]);
     assert_eq!(l.kanban.phasenstand(&fremd), None, "genannt, aber nicht registriert");
 }
 
@@ -64,7 +64,7 @@ fn zwei_gebundene_anwendungen_mit_verschiedenen_folgen_die_erste_gilt_mit_hinwei
     std::fs::write(l.board.path().join("kanbanD.md"), kanban).unwrap();
     git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "zwei"]);
     let mut b = l.board();
-    b.anwendungen = vec!["kc".into(), "kl".into()];
+    b.anwendungen = Some(vec!["kc".into(), "kl".into()]);
     let s = l.kanban.phasenstand(&b).unwrap();
     assert_eq!(s.anwendung, "kc");
     assert_eq!(s.hinweise, ["„Lager“ hat die Phasenfolge Entwicklung → Review → Abnahme — es gilt die von „Kasse“: Entwicklung → Entwicklertest → Abnahme"]);

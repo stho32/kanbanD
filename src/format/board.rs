@@ -14,7 +14,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let phasen = yaml::zuordnung(&m, "column-phases");
     let pruefungen = yaml::zuordnung(&m, "column-checks");
     let termine = termine_lesen(m.get("milestones"))?;
-    let anwendungen = yaml::textliste(&m, "applications");
+    let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
     for zeile in koerper.lines() {
@@ -96,10 +96,10 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
     let phasen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.phase.as_deref().map(|p| (sp.name.as_str(), p))).collect();
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() {
         s.push_str("---\n");
-        if !b.anwendungen.is_empty() {
-            s.push_str(&format!("applications: {}\n", yaml::liste(&b.anwendungen)));
+        if let Some(anwendungen) = &b.anwendungen {
+            s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
         }
         if !grenzen.is_empty() {
             s.push_str("limits:\n");
@@ -157,7 +157,7 @@ mod tests {
                 Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
-            anwendungen: vec![],
+            anwendungen: None,
         }
     }
 
@@ -210,13 +210,26 @@ mod tests {
     #[test]
     fn gebundene_anwendungen_rundlauf() {
         let mut b = beispiel();
-        b.anwendungen = vec!["kd".into(), "kc".into()];
+        b.anwendungen = Some(vec!["kd".into(), "kc".into()]);
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\napplications: [kd, kc]\nlimits:\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
-        assert!(lesen("b", "---\napplications: []\n---\n## A\n").unwrap().anwendungen.is_empty());
         assert!(!schreiben(&beispiel(), datei).contains("applications"));
+    }
+
+    #[test]
+    fn fehlende_und_leere_anwendungsliste_sind_verschieden() {
+        assert_eq!(lesen("b", "## A\n").unwrap().anwendungen, None, "fehlender Schlüssel = Standard");
+        assert_eq!(lesen("b", "---\nlimits: {A: 2}\n---\n## A\n").unwrap().anwendungen, None);
+        assert_eq!(lesen("b", "---\napplications: []\n---\n## A\n").unwrap().anwendungen, Some(vec![]), "[] = ausdrücklich keine");
+        let mut b = beispiel();
+        b.anwendungen = Some(vec![]);
+        let t = schreiben(&b, datei);
+        assert!(t.starts_with("---\napplications: []\nlimits:\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        b.spalten[1].grenze = None;
+        assert!(schreiben(&b, datei).starts_with("---\napplications: []\n---\n"), "auch ohne andere Schlüssel");
     }
 
     #[test]

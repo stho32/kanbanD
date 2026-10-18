@@ -68,9 +68,10 @@ pub struct Board {
     pub spalten: Vec<Spalte>,
     #[serde(default)]
     pub termine: Vec<Termin>,
-    /// Kürzel registrierter Anwendungen (`applications:`); leer heißt reines Kanban.
+    /// Kürzel registrierter Anwendungen (`applications:`): `None` = Schlüssel fehlt (Standardbindung),
+    /// `Some([])` = ausdrücklich keine, das Board ist reines Kanban (R00062).
     #[serde(default)]
-    pub anwendungen: Vec<String>,
+    pub anwendungen: Option<Vec<String>>,
 }
 
 impl Board {
@@ -205,7 +206,7 @@ mod tests {
                 Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
-            anwendungen: vec![],
+            anwendungen: None,
         }
     }
 
@@ -292,7 +293,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: vec![] };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

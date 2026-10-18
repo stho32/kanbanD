@@ -260,3 +260,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0188 Schalter im Aufgabenfenster | Standard | 0,5-1h | 0,02h | 0,03h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | Lauf R00060 | Nacharbeit | — | — | 0,01h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | Lauf R00060 | Konsolidierung | — | — | 0,00h | autonom |
+| 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0189 applications fehlend oder leer im Board-Format | Standard | 0,5-1h | 0,03h | 0,03h | autonom |

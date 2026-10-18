@@ -128,10 +128,11 @@ impl Phasenfolge {
 /// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; nennt es keine, gilt bei genau einer
 /// registrierten Anwendung diese (R00054, wie `gebundeneAnwendungen` in `web/wbs.js`).
 pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
-    if board.anwendungen.is_empty() {
+    let genannt = board.anwendungen.as_deref().unwrap_or_default();
+    if genannt.is_empty() {
         return if let [einzige] = register { vec![einzige] } else { vec![] };
     }
-    board.anwendungen.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
+    genannt.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
 }
 
 #[cfg(test)]
@@ -140,7 +141,7 @@ mod tests {
 
     fn board(spalten: &[(&str, Option<&str>)]) -> Board {
         let spalten = spalten.iter().map(|(n, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: p.map(String::from), pruefungen: vec![] }).collect();
-        Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: vec!["kd".into()] }
+        Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: Some(vec!["kd".into()]) }
     }
 
     fn spalten(b: &Board) -> Vec<(String, Option<String>)> {
@@ -235,9 +236,9 @@ mod tests {
         let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: String::new(), anforderungen: String::new() };
         let register = [a("kc"), a("kd")];
         let mut b = board(&[]);
-        b.anwendungen = vec!["kd".into(), "xx".into()];
+        b.anwendungen = Some(vec!["kd".into(), "xx".into()]);
         assert_eq!(gebundene_anwendungen(&b, &register).iter().map(|a| a.kuerzel.as_str()).collect::<Vec<_>>(), ["kd"]);
-        b.anwendungen = vec![];
+        b.anwendungen = None;
         assert!(gebundene_anwendungen(&b, &register).is_empty(), "zwei registriert, keine genannt");
         assert_eq!(gebundene_anwendungen(&b, &register[..1])[0].kuerzel, "kc");
     }
