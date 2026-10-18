@@ -3,6 +3,7 @@
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::wbs::{WbsKnoten, WbsTabelle};
+use serde::Deserialize;
 use std::ops::Range;
 
 /// Byte-Bereiche der Zellen einer Tabellenzeile, ohne die Striche; `\|` ist ein Strich im Text, kein Trenner.
@@ -179,6 +180,77 @@ pub fn naechste_id(praefix: char, staende: &[String]) -> String {
     format!("{praefix}{:04}", hoechste + 1)
 }
 
+/// `POST /api/wbs/{kürzel}/knoten` — fehlende Felder sind leer, damit die Prüfung sie mit 400 und klarer Meldung ablehnt.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct NeuerKnoten {
+    pub ebene: String,
+    pub eltern: String,
+    pub name: String,
+    pub fertig_kriterium: String,
+    pub eingabe_ausgabe: String,
+    pub aufwand: String,
+    pub ausbaustufe: String,
+    pub braucht: Vec<String>,
+    pub requirement: String,
+    pub notiz: String,
+}
+
+/// Untergrenze je Bubble in Stunden (Skill `work-breakdown-structure`, „Schätzen durch Zählen“).
+const UNTERGRENZE_H: f64 = 0.4;
+
+/// Präfix der ID und die Ebenen, unter denen eine Ebene hängen darf (Feature darf übersprungen werden).
+fn ebene_regel(ebene: &str) -> Option<(char, &'static [&'static str])> {
+    match ebene {
+        "Dialog" => Some(('D', &["Application"])),
+        "Interaction" => Some(('I', &["Dialog"])),
+        "Feature" => Some(('F', &["Interaction"])),
+        "Bubble" => Some(('B', &["Feature", "Interaction"])),
+        _ => None,
+    }
+}
+
+/// `0,5-1`, `1`, `0.5–1h` → die Stunden der Spanne; unlesbar: `None`.
+fn aufwand_lesen(aufwand: &str) -> Option<Vec<f64>> {
+    let a = aufwand.trim().trim_end_matches('h');
+    a.split(['-', '–']).map(|w| w.trim().replace(',', ".").parse::<f64>().ok()).collect()
+}
+
+/// Prüft einen neuen Knoten gegen die Regeln von `/planung` und liefert das Präfix seiner ID.
+pub fn neuen_knoten_pruefen(t: &WbsTabelle, neu: &NeuerKnoten) -> Result<char, Fehler> {
+    let ungueltig = |m: String| Err(Fehler::Ungueltig(m));
+    if neu.ebene == "Application" {
+        return ungueltig("Eine Application legt man nicht an — die WBS-Datei ist die Application".into());
+    }
+    let Some((praefix, eltern_ebenen)) = ebene_regel(&neu.ebene) else { return ungueltig(format!("Unbekannte Ebene „{}“ — erlaubt sind Dialog, Interaction, Feature, Bubble", neu.ebene)) };
+    if neu.name.trim().is_empty() {
+        return ungueltig("Der Knoten braucht einen Namen".into());
+    }
+    if neu.fertig_kriterium.trim().is_empty() {
+        return ungueltig("Fertig-Kriterium fehlt — ein Knoten, ein Fertig-Kriterium".into());
+    }
+    let Some(eltern) = t.knoten(neu.eltern.trim()) else { return ungueltig(format!("Eltern „{}“ steht nicht in der WBS", neu.eltern)) };
+    if !eltern_ebenen.contains(&eltern.ebene.as_str()) {
+        return ungueltig(format!("Eine {} hängt an {}, nicht an {} ({})", neu.ebene, eltern_ebenen.join(" oder "), eltern.ebene, eltern.id));
+    }
+    if eltern.status == "verworfen" {
+        return Err(Fehler::Konflikt(format!("{} ist verworfen — darunter entsteht kein Knoten", eltern.id)));
+    }
+    if !neu.aufwand.trim().is_empty() {
+        if neu.ebene != "Bubble" {
+            return ungueltig("Aufwand gibt es nur bei Bubbles".into());
+        }
+        let Some(stunden) = aufwand_lesen(&neu.aufwand) else { return ungueltig(format!("Aufwand „{}“ ist nicht lesbar — etwa 0,5-1", neu.aufwand)) };
+        if stunden.iter().any(|h| *h < UNTERGRENZE_H) {
+            return ungueltig(format!("Aufwand „{}“ liegt unter der Untergrenze von 0,4h je Bubble", neu.aufwand));
+        }
+    }
+    if let Some(b) = neu.braucht.iter().find(|b| !crate::modell::id_gueltig(b.trim())) {
+        return ungueltig(format!("Braucht „{b}“ ist keine Knoten-ID"));
+    }
+    Ok(praefix)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,5 +364,48 @@ mod tests {
         assert_eq!(naechste_id('I', &[datei]), "I0001", "Präfix ohne Knoten beginnt bei 1");
         assert_eq!(naechste_id('F', &[]), "F0001");
         assert_eq!(naechste_id('B', &[wbs(&[("B0003", "Bubble", "", "rot"), ("B0001", "Bubble", "", "rot")])]), "B0004", "Lücken werden nicht gefüllt");
+    }
+
+    fn knoten(ebene: &str, eltern: &str) -> NeuerKnoten {
+        NeuerKnoten { ebene: ebene.into(), eltern: eltern.into(), name: "X".into(), fertig_kriterium: "US-1".into(), ..Default::default() }
+    }
+
+    fn fehler(r: Result<char, Fehler>) -> String {
+        match r {
+            Err(Fehler::Ungueltig(m)) => m,
+            anders => panic!("400 erwartet: {anders:?}"),
+        }
+    }
+
+    #[test]
+    fn neuer_knoten_nach_den_regeln_von_planung() {
+        let t = wbs_tabelle(&wbs(&[("A0001", "Application", "—", "gelb"), ("D0002", "Dialog", "A0001", "gruen"), ("I0007", "Interaction", "D0002", "gruen"), ("F0001", "Feature", "I0007", "gruen"), ("I0009", "Interaction", "D0002", "verworfen")]));
+        assert_eq!(neuen_knoten_pruefen(&t, &knoten("Interaction", "D0002")), Ok('I'));
+        assert_eq!(neuen_knoten_pruefen(&t, &knoten("Dialog", "A0001")), Ok('D'));
+        assert_eq!(neuen_knoten_pruefen(&t, &knoten("Bubble", "F0001")), Ok('B'));
+        assert_eq!(neuen_knoten_pruefen(&t, &knoten("Bubble", "I0007")), Ok('B'), "Feature übersprungen");
+        assert_eq!(neuen_knoten_pruefen(&t, &knoten("Feature", "I0007")), Ok('F'));
+        assert!(fehler(neuen_knoten_pruefen(&t, &NeuerKnoten { fertig_kriterium: " ".into(), ..knoten("Interaction", "D0002") })).starts_with("Fertig-Kriterium fehlt"));
+        assert!(fehler(neuen_knoten_pruefen(&t, &NeuerKnoten { name: String::new(), ..knoten("Interaction", "D0002") })).contains("Namen"));
+        assert_eq!(fehler(neuen_knoten_pruefen(&t, &knoten("Bubble", "D0002"))), "Eine Bubble hängt an Feature oder Interaction, nicht an Dialog (D0002)");
+        assert!(fehler(neuen_knoten_pruefen(&t, &knoten("Interaction", "A0001"))).contains("nicht an Application"));
+        assert!(fehler(neuen_knoten_pruefen(&t, &knoten("Application", ""))).contains("Application"));
+        assert!(fehler(neuen_knoten_pruefen(&t, &knoten("Slice", "D0002"))).starts_with("Unbekannte Ebene"));
+        assert!(fehler(neuen_knoten_pruefen(&t, &knoten("Interaction", "D0099"))).contains("D0099"));
+        assert!(matches!(neuen_knoten_pruefen(&t, &knoten("Feature", "I0009")), Err(Fehler::Konflikt(_))), "unter einem verworfenen Knoten");
+    }
+
+    #[test]
+    fn aufwand_nur_bei_bubbles_und_nie_unter_der_untergrenze() {
+        let t = wbs_tabelle(&wbs(&[("D0001", "Dialog", "—", "rot"), ("I0001", "Interaction", "D0001", "rot")]));
+        let mit = |ebene: &str, a: &str| neuen_knoten_pruefen(&t, &NeuerKnoten { aufwand: a.into(), ..knoten(ebene, if ebene == "Bubble" { "I0001" } else { "D0001" }) });
+        for gut in ["0,5-1", "1", "0.4-2h", "1–2", " 2 "] {
+            assert_eq!(mit("Bubble", gut), Ok('B'), "{gut}");
+        }
+        assert!(fehler(mit("Bubble", "0,25-1")).contains("Untergrenze"));
+        assert!(fehler(mit("Bubble", "0,3")).contains("Untergrenze"));
+        assert!(fehler(mit("Bubble", "viel")).contains("nicht lesbar"));
+        assert!(fehler(mit("Interaction", "1-2")).contains("nur bei Bubbles"));
+        assert!(fehler(neuen_knoten_pruefen(&t, &NeuerKnoten { braucht: vec!["I0001".into(), "x".into()], ..knoten("Interaction", "D0001") })).contains("„x“"));
     }
 }
