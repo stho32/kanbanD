@@ -114,8 +114,8 @@ zuletzt: 2026-10-18
 | I0025 | Interaction | D0002 | Defekte Dateien zeigen | gruen | US-1..US-3 |  |  |  | I0004 | R00025 |  |
 | B0067 | Bubble | I0025 | Defekte Aufgaben auf dem Board | gruen | Test gruen | defekte Aufgabendatei → Karte mit Fehlerzeile, Fenster nur lesbar mit Dateitext | 1-2 |  |  |  |  |
 | B0068 | Bubble | I0025 | Defektes Board und defekte Einstellungen | gruen | Test gruen | Board-Datei oder kanbanD.md defekt → Hinweisfläche mit Fehler und Editor-Link; Liste aller defekten Dateien | 1-2 |  |  |  |  |
-| I0026 | Interaction | D0002 | Tastaturbedienung | rot | US-1..US-3 |  |  |  | I0006 | R00026 |  |
-| B0069 | Bubble | I0026 | Tastaturziele rechnen | rot | Test gruen | sichtbare Spalten, Karte, Richtung → Nachbarkarte bzw. Ziel zum Verschieben | 0,5-1 |  |  |  |  |
+| I0026 | Interaction | D0002 | Tastaturbedienung | gelb | US-1..US-3 |  |  |  | I0006 | R00026 |  |
+| B0069 | Bubble | I0026 | Tastaturziele rechnen | gruen | Test gruen | sichtbare Spalten, Karte, Richtung → Nachbarkarte bzw. Ziel zum Verschieben | 0,5-1 |  |  |  |  |
 | B0070 | Bubble | I0026 | Tastaturkürzel auf dem Board | rot | Test gruen | Pfeile, Umschalt+Pfeile, Enter, n, ? → Fokus, Bewegen, Öffnen, neue Karte, Hilfe | 1-2 |  |  |  |  |
 
 ## Offene Fragen

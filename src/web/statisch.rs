@@ -20,6 +20,7 @@ dateien! {
     "ansicht.js" => "text/javascript; charset=utf-8",
     "filter.js" => "text/javascript; charset=utf-8",
     "zeiten.js" => "text/javascript; charset=utf-8",
+    "tastatur.js" => "text/javascript; charset=utf-8",
     "kd-tokens.css" => "text/css; charset=utf-8",
     "kd-base.css" => "text/css; charset=utf-8",
     "kd-app.css" => "text/css; charset=utf-8",
