@@ -1,6 +1,6 @@
 ---
 id: R00034
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,10 +25,10 @@ Aufräumen der Abschlussspalte ist ein Klick; die Aufgabenliste wird ohne Zielen
 
 ## Akzeptanzkriterien
 
-- [ ] API: drei Nummern archivieren → ein Commit, alle drei `archived`; mit einer unbekannten → 404 und keine Änderung
-- [ ] Rechtsklick auf „Erledigt“ → „Alle 2 Karten archivieren“ → Spalte leer, ein Commit; „rückgängig“ → beide zurück, ein Commit
-- [ ] „Spalte nach rechts“ auf „Zu erledigen“ → Reihenfolge „In Arbeit · Zu erledigen · Erledigt“
-- [ ] Aufgabenliste: Rechtsklick auf eine Zeile → „Auf Board legen ▸ Test · Bereit“ legt sie dort ab
+- [x] API: drei Nummern archivieren → ein Commit, alle drei `archived`; mit einer unbekannten → 404 und keine Änderung
+- [x] Rechtsklick auf „Erledigt“ → „Alle 2 Karten archivieren“ → Spalte leer, ein Commit; „rückgängig“ → beide zurück, ein Commit
+- [x] „Spalte nach rechts“ auf „Zu erledigen“ → Reihenfolge „In Arbeit · Zu erledigen · Erledigt“
+- [x] Aufgabenliste: Rechtsklick auf eine Zeile → „Auf Board legen ▸ Test · Bereit“ legt sie dort ab
 
 ## Betroffene Verzeichnisstruktur
 
