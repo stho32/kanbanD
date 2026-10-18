@@ -54,7 +54,7 @@ impl Termin {
     }
 }
 
-/// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, und feste Termine.
+/// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, feste Termine und gebundene Anwendungen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Board {
     pub slug: String,
@@ -62,6 +62,9 @@ pub struct Board {
     pub spalten: Vec<Spalte>,
     #[serde(default)]
     pub termine: Vec<Termin>,
+    /// Kürzel registrierter Anwendungen (`applications:`); leer heißt reines Kanban.
+    #[serde(default)]
+    pub anwendungen: Vec<String>,
 }
 
 impl Board {
@@ -194,6 +197,7 @@ mod tests {
                 Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3] },
             ],
             termine: vec![],
+            anwendungen: vec![],
         }
     }
 
@@ -255,7 +259,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![] };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: vec![] };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

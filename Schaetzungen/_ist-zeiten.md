@@ -177,3 +177,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00053 Anwendungen registrieren | B0119 Qualifizierte Herkunft prüfen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | B0120 Herkunft je Anwendung auflösen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | B0121 Erreichbarkeit der Anwendungen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00053 Anwendungen registrieren | B0122 Board bindet Anwendungen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

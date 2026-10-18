@@ -140,3 +140,21 @@ async fn register_mit_erreichbarkeit_ein_fehlender_pfad_macht_nichts_defekt() {
     assert_eq!(z["defekte"], json!([]), "kanbanD.md ist nicht defekt");
     assert_eq!(z["einstellungen"]["quellen"]["anwendungen"][0]["kuerzel"], "kd");
 }
+
+#[tokio::test]
+async fn board_nennt_seine_anwendungen_und_bewegen_erhaelt_sie() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let board = lies(tmp.path(), "boards/entwicklung.md");
+    std::fs::write(tmp.path().join("boards/entwicklung.md"), format!("---\napplications: [kd]\n---\n\n{board}")).unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
+    assert_eq!(b["anwendungen"], json!(["kd"]));
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/boards/entwicklung/bewegen", "st", json!({"nummer": 1, "spalte": "In Arbeit"})).await;
+    assert_eq!(s, 200);
+    let nachher = lies(tmp.path(), "boards/entwicklung.md");
+    assert!(nachher.starts_with("---\napplications: [kd]\n---\n"), "{nachher}");
+    assert!(nachher.contains("## In Arbeit\n\n- [#1]"));
+    let (_, ohne) = senden(Method::GET, &lauf.adresse, "api/boards", "st", json!(null)).await;
+    assert_eq!(ohne[0]["anwendungen"], json!(["kd"]));
+}

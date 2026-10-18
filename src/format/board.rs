@@ -12,6 +12,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let m = yaml::lesen(y)?;
     let grenzen = yaml::zuordnung(&m, "limits");
     let termine = termine_lesen(m.get("milestones"))?;
+    let anwendungen = yaml::textliste(&m, "applications");
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
     for zeile in koerper.lines() {
@@ -32,7 +33,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen })
 }
 
 const LINIEN: [(&str, Linie); 3] = [("solid", Linie::Durchgehend), ("dashed", Linie::Gestrichelt), ("dotted", Linie::Gepunktet)];
@@ -80,8 +81,11 @@ fn aufgabennummer(zeile: &str) -> Option<u32> {
 pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let mut s = String::new();
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
-    if !grenzen.is_empty() || !b.termine.is_empty() {
+    if !grenzen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
         s.push_str("---\n");
+        if !b.anwendungen.is_empty() {
+            s.push_str(&format!("applications: {}\n", yaml::liste(&b.anwendungen)));
+        }
         if !grenzen.is_empty() {
             s.push_str("limits:\n");
             for sp in grenzen {
@@ -126,6 +130,7 @@ mod tests {
                 Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![] },
             ],
             termine: vec![],
+            anwendungen: vec![],
         }
     }
 
@@ -173,6 +178,18 @@ mod tests {
         let ohne_grenzen = "---\nmilestones:\n  - {name: X, date: 2026-12-01}\n---\n\n# B\n\n## A\n";
         let g = lesen("b", ohne_grenzen).unwrap();
         assert_eq!((g.termine[0].farbe.as_str(), g.termine[0].linie, g.termine[0].staerke), ("red", Linie::Durchgehend, Staerke::Normal));
+    }
+
+    #[test]
+    fn gebundene_anwendungen_rundlauf() {
+        let mut b = beispiel();
+        b.anwendungen = vec!["kd".into(), "kc".into()];
+        let t = schreiben(&b, datei);
+        assert!(t.starts_with("---\napplications: [kd, kc]\nlimits:\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        assert!(lesen("b", "---\napplications: []\n---\n## A\n").unwrap().anwendungen.is_empty());
+        assert!(!schreiben(&beispiel(), datei).contains("applications"));
     }
 
     #[test]
