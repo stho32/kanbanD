@@ -41,12 +41,20 @@ async function laden() {
   render();
 }
 
+/** Schreibende Aktionen brauchen eine Identität; fehlt sie, öffnet sich „Ich bin …“ mit Hinweis. */
+function ichNoetig() {
+  if (S.ich && personen().some(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv)) return false;
+  S.ui.pop = 'ich'; S.ui.ichNoetig = true;
+  return true;
+}
+
 function render() {
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = S.ui.first ? vFirst() : vBoard();
   $('#over').innerHTML = vPop();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
+  if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
 }
 
 function popPlatzieren() {
@@ -59,12 +67,21 @@ function popPlatzieren() {
   p.style.left = (p.dataset.al === 'r' ? Math.max(4, r.right - p.offsetWidth) : r.left) + 'px';
 }
 
-async function act(a, arg) {
+async function act(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
       case 'pop': u.pop = u.pop === arg ? null : arg; if (arg !== 'ich') u.ichNoetig = false; break;
       case 'ich': ichSetzen(arg); u.pop = null; u.ichNoetig = false; break;
+      case 'add': if (ichNoetig()) break; u.adding = arg; u.fokus = '#add-inp'; break;
+      case 'add-ok': {
+        const titel = (wert || '').trim();
+        if (!titel) { u.adding = null; break; }
+        if (ichNoetig()) break;
+        await api('POST', '/api/aufgaben', { titel, board: u.slug, spalte: arg });
+        u.fokus = '#add-inp';
+        return laden();
+      }
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {
         const f = u.first, e = ersteEinstellungen(f);
@@ -107,7 +124,16 @@ document.addEventListener('input', e => {
 window.addEventListener('hashchange', laden);
 window.addEventListener('resize', popPlatzieren);
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); }
+  const t = e.target;
+  if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
+    e.preventDefault();
+    act(t.dataset.enter, t.dataset.arg, t.value);
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
+    if (S.ui.adding) { S.ui.adding = null; render(); return; }
+  }
 });
 
 laden().catch(f => { S.ui.fehler = f.message; render(); });

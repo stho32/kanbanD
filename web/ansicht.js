@@ -80,7 +80,10 @@ function vFehlt(nr) {
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
   const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (a.archiviert ? '' : vKarte(a, letzte)) : vFehlt(nr); }).filter(Boolean);
-  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v">Grenze ${sp.grenze}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div></section>`;
+  const neu = S.ui.adding === sp.name
+    ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Esc bricht ab" data-enter="add-ok" data-arg="${esc(sp.name)}" aria-label="Titel der neuen Karte"></div>`
+    : `<button data-act="add" data-arg="${esc(sp.name)}">+ Karte</button>`;
+  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v">Grenze ${sp.grenze}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div><div class="bahn-fuss">${neu}</div></section>`;
 }
 function vBoard() {
   const b = S.board;

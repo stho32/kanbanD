@@ -39,10 +39,10 @@ zuletzt: 2026-10-18
 | B0012 | Bubble | I0004 | Aufgabendatei lesen und schreiben | gruen | Test gruen | aufgaben/0012-x.md ⇄ Aufgabe (Frontmatter, Beschreibung, Teilaufgaben, kanbanD-time, kanbanD-comments) | 1-2 |  |  |  |  |
 | B0013 | Bubble | I0004 | Aufgaben des Ordners lesen | gruen | Test gruen | aufgaben/*.md → Aufgaben + defekte Dateien (doppelte Nummern); GET /api/aufgaben | 0,5-1 |  |  |  |  |
 | B0014 | Bubble | I0004 | Board mit Karten zeigen | gruen | Test gruen | Board + Aufgaben → Bahnen mit Karten, fehlende Aufgaben als Platzhalter | 1-2 |  |  |  |  |
-| I0005 | Interaction | D0002 | Aufgabe anlegen | gelb | US-1..US-3 |  |  |  | I0003, I0004 | R00005 | + Karte in einer Spalte |
+| I0005 | Interaction | D0002 | Aufgabe anlegen | gruen | US-1..US-3 |  |  |  | I0003, I0004 | R00005 | + Karte in einer Spalte |
 | B0015 | Bubble | I0005 | Nächste Nummer vergeben | gruen | Test gruen | Dateinamen unter aufgaben/ → nächste freie Nummer | 0,5-1 |  |  |  |  |
 | B0016 | Bubble | I0005 | Aufgabe anlegen | gruen | Test gruen | Titel, Board, Spalte, Person → Aufgabendatei + Board-Zeile, ein Commit; POST /api/aufgaben | 1-2 |  |  |  |  |
-| B0017 | Bubble | I0005 | Karte in der Bahn anlegen | rot | Test gruen | + Karte, Titel, Enter → neue Karte unten in der Bahn; ohne Identität Ich-bin-Hinweis | 0,5-1 |  |  |  |  |
+| B0017 | Bubble | I0005 | Karte in der Bahn anlegen | gruen | Test gruen | + Karte, Titel, Enter → neue Karte unten in der Bahn; ohne Identität Ich-bin-Hinweis | 0,5-1 |  |  |  |  |
 | I0006 | Interaction | D0002 | Aufgabe bewegen | rot | US der Anforderung |  |  |  | I0005 |  | Ziehen und Tastatur; ändert nur die Board-Datei |
 | I0007 | Interaction | D0002 | Live-Aktualisierung | rot | US der Anforderung |  |  |  | I0004 |  | Dateiwächter und Ereignisstrom, Marke extern |
 | I0008 | Interaction | D0002 | Boards wechseln und anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  |  |
