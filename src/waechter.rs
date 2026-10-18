@@ -27,10 +27,11 @@ pub struct Ereignis {
 pub struct Eigene(Arc<Mutex<HashMap<String, Instant>>>);
 
 impl Eigene {
-    pub fn merken(&self, rel: &str) {
+    /// `pfad` relativ zum Ordner, bei fremden WBS-Dateien voll.
+    pub fn merken(&self, pfad: &str) {
         let mut m = self.0.lock().unwrap_or_else(|e| e.into_inner());
         m.retain(|_, t| t.elapsed() < EIGEN_GILT);
-        m.insert(rel.to_string(), Instant::now());
+        m.insert(pfad.to_string(), Instant::now());
     }
 
     pub fn alle_eigen(&self, pfade: &[String]) -> bool {
@@ -123,8 +124,8 @@ pub struct FremderWaechter {
     beobachtet: Mutex<BTreeSet<PathBuf>>,
 }
 
-/// Startet die Beobachtung ohne Ziele; `setzen` legt sie fest.
-pub fn fremde_starten(senden: impl Fn(Ereignis) + Send + 'static) -> notify::Result<FremderWaechter> {
+/// Startet die Beobachtung ohne Ziele; `setzen` legt sie fest. Was kanbanD selbst geschrieben hat (`eigene`, voller Pfad), ist nicht extern.
+pub fn fremde_starten(eigene: Eigene, senden: impl Fn(Ereignis) + Send + 'static) -> notify::Result<FremderWaechter> {
     let ziele: Arc<Mutex<Vec<FremdeWbs>>> = Arc::default();
     let (tx, rx) = mpsc::channel::<(String, String)>();
     let im_callback = ziele.clone();
@@ -144,8 +145,9 @@ pub fn fremde_starten(senden: impl Fn(Ereignis) + Send + 'static) -> notify::Res
                 treffer.insert(t);
             }
             let wbs: BTreeSet<String> = treffer.iter().map(|(k, _)| k.clone()).collect();
-            let pfade: BTreeSet<String> = treffer.into_iter().map(|(_, d)| d).collect();
-            senden(Ereignis { pfade: pfade.into_iter().collect(), von_aussen: true, wbs: wbs.into_iter().collect() });
+            let pfade: Vec<String> = treffer.into_iter().map(|(_, d)| d).collect::<BTreeSet<_>>().into_iter().collect();
+            let von_aussen = !eigene.alle_eigen(&pfade);
+            senden(Ereignis { pfade, von_aussen, wbs: wbs.into_iter().collect() });
         }
     });
     Ok(FremderWaechter { watcher: Mutex::new(watcher), ziele, beobachtet: Mutex::default() })

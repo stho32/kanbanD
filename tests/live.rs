@@ -106,7 +106,7 @@ fn fremde_wbs_datei_und_commit_melden_ihr_kuerzel() {
     std::fs::write(wurzel.join("plan/wbs.md"), "a").unwrap();
     gemeinsam::git(&wurzel, &["init", "-q"]);
     let (tx, rx) = mpsc::channel();
-    let w = kanband::waechter::fremde_starten(move |e| {
+    let w = kanband::waechter::fremde_starten(kanband::waechter::Eigene::default(), move |e| {
         let _ = tx.send(e);
     })
     .unwrap();
@@ -125,4 +125,27 @@ fn fremde_wbs_datei_und_commit_melden_ihr_kuerzel() {
     w.setzen(vec![]);
     std::fs::write(&datei, "c").unwrap();
     assert!(rx.recv_timeout(Duration::from_millis(600)).is_err(), "nach dem Entfernen still");
+}
+
+#[test]
+fn eigener_schreibzugriff_auf_fremde_wbs_ist_nicht_extern() {
+    let arbeit = tempfile::tempdir().unwrap();
+    let wurzel = arbeit.path().canonicalize().unwrap();
+    let datei = wurzel.join("wbs.md");
+    std::fs::write(&datei, "a").unwrap();
+    let eigene = kanband::waechter::Eigene::default();
+    let (tx, rx) = mpsc::channel();
+    let w = kanband::waechter::fremde_starten(eigene.clone(), move |e| {
+        let _ = tx.send(e);
+    })
+    .unwrap();
+    w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: None }]);
+    std::thread::sleep(Duration::from_millis(100));
+    std::fs::write(&datei, "b").unwrap();
+    assert!(rx.recv_timeout(Duration::from_secs(2)).unwrap().von_aussen, "ein Editor schreibt");
+    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
+    eigene.merken(&datei.to_string_lossy());
+    std::fs::write(&datei, "c").unwrap();
+    let e = rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    assert_eq!((e.wbs.clone(), e.von_aussen), (vec!["kd".to_string()], false), "kanbanD schreibt selbst");
 }

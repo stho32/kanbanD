@@ -103,6 +103,7 @@ impl Kanban {
         let text = Self::wbs_text(kuerzel, &a, &datei)?;
         let (g, ergebnis) = aendern(&text, &crate::uhr::heute())?;
         if g.text != text {
+            self.als_eigen_merken(&datei);
             datei_ersetzen(&datei, &g.text)?;
         }
         Ok(ergebnis)
@@ -115,6 +116,26 @@ impl Kanban {
             let geaendert = g.geaendert.clone();
             Ok((g, WbsGeaendert { geaendert }))
         })
+    }
+}
+
+impl Kanban {
+    /// Der eigene Schreibzugriff gilt dem Wächter nicht als extern — dem fremden mit vollem Pfad, dem des Ordners relativ.
+    fn als_eigen_merken(&self, datei: &Path) {
+        let voll = kanonisch(datei);
+        self.eigene_merken(&voll.to_string_lossy());
+        if let Some(rel) = crate::waechter::relativ(&kanonisch(self.ordner().wurzel()), &voll) {
+            self.eigene_merken(&rel);
+        }
+    }
+}
+
+/// Voller Pfad mit aufgelöstem Ordner — so, wie der fremde Wächter die Datei nennt (die Datei selbst darf fehlen).
+fn kanonisch(datei: &Path) -> PathBuf {
+    let ordner = datei.parent().and_then(|o| o.canonicalize().ok());
+    match (ordner, datei.file_name()) {
+        (Some(o), Some(n)) => o.join(n),
+        _ => datei.to_path_buf(),
     }
 }
 
@@ -141,7 +162,7 @@ impl Kanban {
             .filter_map(|a| {
                 let roh = absolut(wurzel, &a.wbs);
                 let ordner = roh.parent()?.canonicalize().ok()?;
-                let datei = ordner.join(roh.file_name()?);
+                let datei = kanonisch(&roh);
                 Some(FremdeWbs { kuerzel: a.kuerzel.clone(), git: crate::git::git_verzeichnis(&ordner), datei }).filter(|f| !f.datei.starts_with(&innen))
             })
             .collect()

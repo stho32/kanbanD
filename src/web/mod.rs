@@ -98,7 +98,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
 
 /// Beobachtet die WBS-Dateien des Registers außerhalb des Ordners; die Rückgabe setzt sie neu aus `kanbanD.md`.
 fn fremde_beobachten(kanban: &Arc<Kanban>, ereignisse: broadcast::Sender<Ereignis>) -> impl Fn() + Send + 'static {
-    let fremd = match waechter::fremde_starten(move |e| {
+    let fremd = match waechter::fremde_starten(kanban.eigene(), move |e| {
         let _ = ereignisse.send(e);
     }) {
         Ok(w) => Some(Arc::new(w)),
