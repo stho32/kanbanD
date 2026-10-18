@@ -248,7 +248,7 @@ zuletzt: 2026-10-18
 | B0171 | Bubble | I0053 | Prognose je Phase | gruen | Test gruen | prognose(bew, f, zu, jetzt, phasen) → je Phase Nenner ohne entfällt, offen nach aktuellem Stand, Durchsatz aus dem ersten Durchlaufen, Untergrenze der Vorphase; ohne Phasen je Spalte wie bisher | 0,5-1 |  |  |  |  |
 | B0172 | Bubble | I0053 | Phasenblöcke in Wie lange noch | gruen | Test gruen | Prognose mit Phasen → Blöcke, Kopfzeile, Legende und Tabelle „<Phase> durchlaufen“, Methodik nach Phasen | 0,5-1 |  |  |  |  |
 | B0173 | Bubble | I0053 | Hinweis am Board | gruen | Test gruen | Board mit Phasen → Hinweisleiste, wenn eine Spalte einer späteren Phase links einer früheren steht oder gebundene Anwendungen verschiedene Folgen haben; Phase im Spaltenkopf | 0,5-1 |  |  |  |  |
-| B0174 | Bubble | I0053 | Entfällt im Aufgabenfenster schalten | rot | Test gruen | Aufgabenfenster auf gebundenem Board → Feld phases mit einem Schalter je Phase nach der Entwicklung → phases.skipped gesetzt oder entfernt | 0,5-1 |  |  |  |  |
+| B0174 | Bubble | I0053 | Entfällt im Aufgabenfenster schalten | gruen | Test gruen | Aufgabenfenster auf gebundenem Board → Feld phases mit einem Schalter je Phase nach der Entwicklung → phases.skipped gesetzt oder entfernt | 0,5-1 |  |  |  |  |
 | I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | rot | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
 | I0055 | Interaction | D0003 | Zählen in Berichten | rot | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
 

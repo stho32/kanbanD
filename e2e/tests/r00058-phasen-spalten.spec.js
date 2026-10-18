@@ -62,3 +62,27 @@ test.describe('R00058 Hinweis', () => {
     expect(k.git('log', '--format=%s')).not.toContain('Phasen-Spalten'); // nichts fehlt, nichts wird umgeordnet
   });
 });
+
+test.describe('R00058 entfällt', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('Schalter im Aufgabenfenster setzt und entfernt phases.skipped', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(mitRegister(arbeit, {
+      ...aufgaben(1),
+      'boards/entwicklung.md': '# Entwicklung\n\n## Entwicklung\n\n- #1\n\n## Erledigt\n',
+    }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .t').click();
+    const feld = page.locator('#phasen-entfallen');
+    await expect(feld.getByRole('button')).toHaveText(['Entwicklertest entfällt', 'Abnahme entfällt']);
+    await feld.getByRole('button', { name: 'Abnahme entfällt' }).click();
+    await expect(feld.getByRole('button', { name: 'Abnahme entfällt' })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => k.lies('aufgaben/0001-a1.md')).toContain('phases:\n  skipped: [Abnahme]\n');
+    expect(k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Phasen');
+    await feld.getByRole('button', { name: 'Abnahme entfällt' }).click();
+    await expect.poll(() => k.lies('aufgaben/0001-a1.md')).not.toContain('phases');
+  });
+});

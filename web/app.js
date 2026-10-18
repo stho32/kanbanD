@@ -644,6 +644,10 @@ async function act(a, arg, wert) {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
       }
+      case 'phase-entfaellt': {
+        const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
+        return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
+      }
       case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length })) }; break;
       case 'setup-weg': u.setup = null; break;
       case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
