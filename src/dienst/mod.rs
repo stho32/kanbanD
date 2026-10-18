@@ -4,6 +4,7 @@ mod aufgabe_anlegen;
 mod bewegen;
 mod board_anlegen;
 mod einrichten;
+mod spalten;
 
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;

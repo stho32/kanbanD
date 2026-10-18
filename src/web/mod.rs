@@ -4,6 +4,7 @@ mod statisch;
 
 use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard};
 use crate::fehler::Fehler;
+use crate::modell::SpaltenAenderung;
 use crate::waechter::{self, Ereignis};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
@@ -55,6 +56,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards", post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
         .route("/api/boards/{slug}/bewegen", post(bewegen))
+        .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
         .route("/api/wer", get(wer))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .merge(statisch::router())
@@ -155,4 +157,13 @@ async fn board_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Ne
     })
     .await?;
     Ok((StatusCode::CREATED, Json(json!({ "board": slug }))).into_response())
+}
+
+async fn spalten_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(neu): Json<Vec<SpaltenAenderung>>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.spalten_setzen(&p, &slug, &neu)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
 }
