@@ -185,8 +185,9 @@ async function act(a, arg, wert) {
         const titel = (wert || '').trim();
         if (!titel) { u.adding = null; break; }
         if (ichNoetig()) break;
-        await api('POST', '/api/aufgaben', { ...eintragAus(titel), board: u.slug, spalte: arg });
+        const neu = await api('POST', '/api/aufgaben', { ...eintragAus(titel), board: u.slug, spalte: arg });
         u.fokus = '#add-inp';
+        u.hinweis = { text: `#${neu.nummer} angelegt`, undo: { art: 'archivieren', nummern: [neu.nummer] }, at: Date.now() };
         return laden();
       }
       case 'bewegen': {
@@ -194,12 +195,15 @@ async function act(a, arg, wert) {
         const bw = JSON.parse(arg);
         // gleich sichtbar machen, dann vom Server bestätigen lassen
         const quelle = S.board.spalten.find(sp => sp.aufgaben.includes(bw.nummer));
+        const vorher = quelle && { spalte: quelle.name, index: quelle.aufgaben.indexOf(bw.nummer) };
         if (quelle) {
           quelle.aufgaben = quelle.aufgaben.filter(n => n !== bw.nummer);
           S.board.spalten.find(sp => sp.name === bw.spalte).aufgaben.splice(bw.index, 0, bw.nummer);
           render();
         }
-        await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+        const r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+        if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
+        if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
         return laden();
       }
       case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
@@ -249,7 +253,17 @@ async function act(a, arg, wert) {
       case 'archivieren': {
         if (ichNoetig()) break;
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
-        if (!u.fensterFehler) { if (!imArchiv()) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, rueckgaengig: +arg, at: Date.now() }; }
+        if (!u.fensterFehler) { if (!imArchiv()) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
+        break;
+      }
+      case 'rueckgaengig': {
+        const h = u.hinweis;
+        if (!h || !h.undo || ichNoetig()) break;
+        u.hinweis = null;
+        const z = h.undo;
+        if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
+        for (const n of z.nummern) await schreiben('POST', `/api/aufgaben/${n}/${z.art}`);
+        u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
       }
       case 'zurueckholen': {
@@ -282,8 +296,11 @@ async function act(a, arg, wert) {
       case 'liste-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.fokus = '#liste-neu';
-        await schreiben('POST', '/api/aufgaben', eintragAus(wert));
-        return;
+        try {
+          const neu = await api('POST', '/api/aufgaben', eintragAus(wert));
+          u.hinweis = { text: `#${neu.nummer} angelegt`, undo: { art: 'archivieren', nummern: [neu.nummer] }, at: Date.now() };
+        } catch (f) { u.fehler = f.message; }
+        return laden();
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'herkunft-neu': {
@@ -510,6 +527,11 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && S.ui.hinweis && S.ui.hinweis.undo) {
+    e.preventDefault();
+    act('rueckgaengig');
+    return;
+  }
   if (brettTaste(e, t)) return;
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
     e.preventDefault();
@@ -597,8 +619,10 @@ document.addEventListener('paste', async e => {
     u.fokus = art === 'board' ? '#add-inp' : '#liste-neu';
     const eintraege = zeilen.map(eintragAus);
     const daten = art === 'board' ? { titel: eintraege, board: u.slug, spalte: e.target.dataset.arg } : { titel: eintraege };
-    await schreiben('POST', '/api/aufgaben/mehrere', daten);
-    u.hinweis = { text: `${zeilen.length} Aufgaben angelegt`, at: Date.now() };
+    let neu = [];
+    try { neu = await api('POST', '/api/aufgaben/mehrere', daten); } catch (f) { u.fehler = f.message; }
+    await laden();
+    if (neu.length) u.hinweis = { text: `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
   }
   u.fokus = art === 'teil' ? '#teil-neu' : art === 'board' ? '#add-inp' : '#liste-neu';
   render();
