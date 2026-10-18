@@ -170,6 +170,7 @@ function vPop() {
   if (u.pop === 'defekt') return vDefektePop();
   if (u.pop === 'wbs-status') return vWbsStatusPop();
   if (u.pop === 'wbs-neu') return vWbsNeuPop();
+  if (u.pop === 'wbs-verwerfen') return vWbsVerwerfenPop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -659,6 +660,14 @@ function vWbsNeuPop() {
   if (!k) return '';
   const ebenen = kindEbenen(k), feld = (n, titel, ph) => `<span class="k">${titel}</span><span class="w"><input class="mini-inp full" id="wbs-neu-${n}" data-wn="${n}" value="${esc(f[n])}" placeholder="${esc(ph)}" data-enter="wbs-neu-anlegen" aria-label="${esc(titel)}"></span>`;
   return `<div class="pop wbs-neu" id="pop" data-for="wbs-neu-${esc(k.id)}" data-al="l" style="width:420px" role="dialog" aria-label="Knoten unter ${esc(k.id)} anlegen"><h4>NEUER KNOTEN <span class="mono">unter ${esc(k.id)} ${esc(k.name)}</span></h4><div class="felder"><span class="k">Ebene</span><span class="w"><select id="wbs-neu-ebene" data-wn="ebene" aria-label="Ebene">${ebenen.map(e => `<option${e === f.ebene ? ' selected' : ''}>${e}</option>`).join('')}</select></span>${feld('name', 'Name', 'was entsteht')}${feld('fertig_kriterium', 'Fertig', f.ebene === 'Bubble' ? 'Test gruen' : 'US-1')}${f.ebene === 'Bubble' ? feld('eingabe_ausgabe', 'Eingabe → Ausgabe', 'Eingabe → Ausgabe') + feld('aufwand', 'Aufwand', '0,5-1') : ''}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span>rot mit der nächsten freien ID · ohne Commit</span><button class="btn btn-haupt" data-act="wbs-neu-anlegen">anlegen</button></div></div>`;
+}
+
+/** Rückfrage vor dem Verwerfen: was mitgeht, Grund für die Notiz. */
+function vWbsVerwerfenPop() {
+  const id = S.ui.wbsVerwerfen, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
+  if (!k) return '';
+  const mit = nachfahren(S.wbs.knoten, id).filter(zaehlt).length;
+  return `<div class="pop wbs-verwerfen" id="pop" data-for="wbs-${esc(id)}" data-al="l" style="width:420px" role="dialog" aria-label="${esc(id)} verwerfen"><h4>VERWERFEN <span class="mono">${esc(id)} ${esc(k.name)}</span></h4><p class="hin">${mit ? `Mit ${esc(id)} werden ${mit} Knoten darunter verworfen.` : `${esc(id)} wird verworfen.`} Keine Zeile wird gelöscht; die Zeilen bleiben durchgestrichen stehen und zählen nicht mehr im Stand.</p><div class="felder"><span class="k">Grund</span><span class="w"><input class="mini-inp full" id="wbs-verwerfen-grund" placeholder="kommt in die Notiz" data-enter="wbs-verwerfen" data-arg="${esc(id)}" aria-label="Grund"></span></div><div class="fuss"><button class="btn" data-act="wbs-verwerfen-zu">abbrechen</button><button class="btn btn-haupt" data-act="wbs-verwerfen" data-arg="${esc(id)}">verwerfen</button></div></div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */

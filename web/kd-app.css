@@ -532,6 +532,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .wbs-z:hover .wbs-plus,.wbs-plus:focus-visible{opacity:1}
 .pop.wbs-neu .felder{grid-template-columns:120px minmax(0,1fr)}
 .pop.wbs-neu .fuss{display:flex;align-items:center;justify-content:space-between;gap:var(--kd-s3)}
+.pop.wbs-verwerfen .fuss{display:flex;justify-content:flex-end;gap:var(--kd-s2)}
 .ampel.setzbar{cursor:pointer;font-family:inherit}
 .ampel.setzbar:hover,.ampel.setzbar.auf{outline:2px solid var(--kd-accent);outline-offset:1px}
 .pop .iz .ampel{margin-right:var(--kd-s3)}

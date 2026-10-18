@@ -21,7 +21,7 @@ zuletzt: 2026-10-18
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
-| D0008 | Dialog | A0001 | WBS-Sicht | gelb | alle Interactions gruen |  |  |  |  | R00054 | WBS einer registrierten Anwendung als eingerückte Tabelle mit Stand; schreibt Status und Knoten ins Arbeits-Repository ohne Commit |
+| D0008 | Dialog | A0001 | WBS-Sicht | gruen | alle Interactions gruen |  |  |  |  | R00054 | WBS einer registrierten Anwendung als eingerückte Tabelle mit Stand; schreibt Status und Knoten ins Arbeits-Repository ohne Commit |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
 | B0002 | Bubble | I0001 | Ordner vorbereiten | gruen | Test gruen | Startauftrag → Ordner vorhanden, Git-Repository vorhanden | 0,5-1 |  |  |  |  |
@@ -217,7 +217,7 @@ zuletzt: 2026-10-18
 | B0143 | Bubble | I0050 | Eigene WBS-Schreibzugriffe nicht extern | gruen | Test gruen | geschriebener voller Pfad → Ereignis des fremden Wächters mit extern: false | 0,5-1 |  |  |  |  |
 | B0144 | Bubble | I0050 | Status über die API setzen | gruen | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
 | B0145 | Bubble | I0050 | Status per Klick wählen | gruen | Test gruen | Klick auf die Plakette eines Blatts → Wahl rot · gelb · gruen → Zeile in der neuen Farbe, Kopf nicht committet; ohne Identität Ich bin … | 1-2 |  |  |  |  |
-| I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | gelb | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
+| I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | gruen | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
 | B0146 | Bubble | I0051 | Nächste freie ID aus allen Ständen | gruen | Test gruen | Präfix, Texte der WBS (Datei und Historie) → höchste ID des Präfixes + 1, vierstellig | 0,5-1 |  |  |  |  |
 | B0147 | Bubble | I0051 | Stände der WBS aus dem Arbeits-Repository | gruen | Test gruen | volle WBS-Datei → alle committeten Stände aus dem fremden Repository, ohne Repository keine | 0,5-1 |  |  |  |  |
 | B0148 | Bubble | I0051 | Neuen Knoten prüfen | gruen | Test gruen | NeuerKnoten, WBS → Pflichtfelder, Eltern-Ebene (Feature überspringbar), Aufwand nur bei Bubbles ab 0,4h; sonst 400 | 0,5-1 |  |  |  |  |
@@ -226,7 +226,7 @@ zuletzt: 2026-10-18
 | B0151 | Bubble | I0051 | Knoten über die API anlegen | gruen | Test gruen | POST /api/wbs/{kürzel}/knoten → {id} unter der Sperre der WBS-Datei, ohne Commit | 0,5-1 |  |  |  |  |
 | B0152 | Bubble | I0051 | Knoten über die API verwerfen | gruen | Test gruen | POST /api/wbs/{kürzel}/knoten/{id}/verwerfen {grund?} → geänderte Knoten, ohne Commit | 0,5-1 |  |  |  |  |
 | B0153 | Bubble | I0051 | Knoten in der Sicht anlegen | gruen | Test gruen | + Knoten in der Zeile des Eltern-Knotens → Formular Ebene, Name, Fertig-Kriterium (Bubble: Eingabe → Ausgabe, Aufwand) → neue rote Zeile | 1-2 |  |  |  |  |
-| B0154 | Bubble | I0051 | Verwerfen im Kontextmenü der Zeile | rot | Test gruen | Rechtsklick auf eine Zeile → verwerfen … → Rückfrage mit Grund → Zeilen verworfen, durchgestrichen | 0,5-1 |  |  |  |  |
+| B0154 | Bubble | I0051 | Verwerfen im Kontextmenü der Zeile | gruen | Test gruen | Rechtsklick auf eine Zeile → verwerfen … → Rückfrage mit Grund → Zeilen verworfen, durchgestrichen | 0,5-1 |  |  |  |  |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |
 | I0053 | Interaction | D0002 | Phasen als Spalten | rot | US-1..US-3 |  |  |  | I0048, I0046 | R00058 | WBS 1: column-phases N:1, fehlende Phasen-Spalten, Prognose je Phase |
 | I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | rot | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |

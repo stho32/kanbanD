@@ -476,6 +476,18 @@ async function act(a, arg, wert) {
           return act('wbs-gehe', r.id);
         } catch (fehler) { f.fehler = fehler.message; u.fokus = '#wbs-neu-name'; break; }
       }
+      case 'wbs-verwerfen-frage': if (ichNoetig()) break; u.wbsVerwerfen = arg; u.pop = 'wbs-verwerfen'; u.fokus = '#wbs-verwerfen-grund'; break;
+      case 'wbs-verwerfen-zu': u.pop = null; u.wbsVerwerfen = null; break;
+      case 'wbs-verwerfen': {
+        if (ichNoetig()) break;
+        const feld = $('#wbs-verwerfen-grund'), grund = wert != null ? wert : (feld ? feld.value : '');
+        u.pop = null; u.wbsVerwerfen = null;
+        try {
+          await api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund });
+          u.hinweis = { text: `${arg} verworfen · WBS-Datei nicht committet`, at: Date.now() };
+        } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
+        return laden();
+      }
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
         const gesehen = new Set();
@@ -931,6 +943,12 @@ function menueTaste(ev) {
 }
 document.addEventListener('contextmenu', e => {
   if (!e.target.closest) return;
+  const wbsZeile = S.ui.view === 'wbs' && S.wbs && e.target.closest('tr.wbs-z[data-id]');
+  if (wbsZeile) {
+    const k = S.wbs.knoten.find(x => x.id === wbsZeile.dataset.id), eintraege = k ? wbsZeilenMenue(k) : [];
+    if (eintraege.length) { e.preventDefault(); menueOeffnen(`${k.id} ${k.name}`, eintraege, e.clientX, e.clientY); }
+    return;
+  }
   const karte = e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)'), kopf = e.target.closest('.bahn-kopf[data-kopf]'), zeile = e.target.closest('tr[data-zeile]');
   if (karte && S.ui.view === 'board') { e.preventDefault(); menueFuerKarte(+karte.dataset.id, e.clientX, e.clientY); }
   else if (kopf && S.ui.view === 'board' && !S.ui.setup) { e.preventDefault(); menueFuerSpalte(+kopf.dataset.kopf, e.clientX, e.clientY); }

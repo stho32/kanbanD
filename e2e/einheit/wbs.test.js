@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -65,4 +65,14 @@ test('Kind-Ebenen: Feature überspringbar, unter Bubbles und Verworfenem nichts'
   assert.deepStrictEqual(kindEbenen({ ebene: 'Feature', status: 'option' }), ['Bubble'], 'unter einer Option darf weitergeplant werden');
   assert.deepStrictEqual(kindEbenen({ ebene: 'Bubble', status: 'rot' }), []);
   assert.deepStrictEqual(kindEbenen({ ebene: 'Dialog', status: 'verworfen' }), []);
+});
+
+test('Nachfahren und Menü einer Zeile', () => {
+  const baum = [k('A0001', '', 'gelb', { ebene: 'Application' }), k('D0001', 'A0001', 'rot', { ebene: 'Dialog' }), k('I0001', 'D0001', 'rot', { ebene: 'Interaction' }), k('B0001', 'I0001', 'rot', { ebene: 'Bubble' }), k('D0002', 'A0001', 'verworfen', { ebene: 'Dialog' })];
+  assert.deepStrictEqual(nachfahren(baum, 'D0001').map(x => x.id), ['I0001', 'B0001']);
+  assert.deepStrictEqual(nachfahren([k('I0001', 'I0002'), k('I0002', 'I0001')], 'I0003'), [], 'Zyklus bricht ab');
+  assert.deepStrictEqual(wbsZeilenMenue(baum[0]).map(e => e.act), ['wbs-neu-pop'], 'die Application wird nicht verworfen');
+  assert.deepStrictEqual(wbsZeilenMenue(baum[3]).map(e => e.act), ['wbs-verwerfen-frage'], 'unter einer Bubble nichts');
+  assert.deepStrictEqual(wbsZeilenMenue(baum[4]), [], 'verworfen: weder anlegen noch verwerfen');
+  assert.deepStrictEqual(wbsZeilenMenue(baum[1]).map(e => e.arg), ['D0001', 'D0001']);
 });

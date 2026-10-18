@@ -86,5 +86,23 @@
   const KIND_EBENEN = { Application: ['Dialog'], Dialog: ['Interaction'], Interaction: ['Feature', 'Bubble'], Feature: ['Bubble'], Bubble: [] };
   const kindEbenen = k => k.status === 'verworfen' ? [] : (KIND_EBENEN[k.ebene] || []);
 
-  Object.assign(ziel, { kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Alle Knoten unter `id` in Tabellenreihenfolge; ein Zyklus bricht ab. */
+  function nachfahren(knoten, id) {
+    const nach = new Map(knoten.map(k => [k.id, k]));
+    return knoten.filter(k => {
+      const gesehen = new Set([k.id]);
+      for (let e = nach.get(k.eltern); e && !gesehen.has(e.id); e = nach.get(e.eltern)) { if (e.id === id) return true; gesehen.add(e.id); }
+      return false;
+    });
+  }
+
+  /** Menü einer WBS-Zeile: darunter anlegen, verwerfen — die Application und Verworfenes werden nicht verworfen. */
+  function wbsZeilenMenue(k) {
+    return [
+      ...(kindEbenen(k).length ? [{ text: 'Knoten darunter anlegen', act: 'wbs-neu-pop', arg: k.id }] : []),
+      ...(k.ebene !== 'Application' && k.status !== 'verworfen' ? [{ text: 'Verwerfen …', act: 'wbs-verwerfen-frage', arg: k.id }] : []),
+    ];
+  }
+
+  Object.assign(ziel, { nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

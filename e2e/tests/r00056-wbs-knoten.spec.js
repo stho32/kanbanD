@@ -75,4 +75,33 @@ test.describe('R00056', () => {
     expect(await z(page, 'B0004').evaluate(tr => tr.nextElementSibling.dataset.id)).toBe('I0008');
     await expect(z(page, 'B0003').getByRole('button', { name: /Knoten unter/ })).toHaveCount(0);
   });
+
+  test('US-2: Interaction mit Grund verwerfen — sie und ihre Bubbles verworfen, stehen weiter da, zählen nicht im Stand', async ({ page }) => {
+    await page.goto(k.adresse + '#/wbs/kd');
+    await liveBereit(page);
+    const commits = arbeit.git('rev-list', '--count', 'HEAD');
+    await expect(page.locator('.wbs-stand span')).toHaveText('1 von 3 Slices funktional · 0 in Bearbeitung · 2 offen');
+    await z(page, 'I0007').locator('td.wbs-name .n').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Verwerfen …' }).click();
+    const frage = page.getByRole('dialog', { name: 'I0007 verwerfen' });
+    await expect(frage).toContainText('Mit I0007 werden 2 Knoten darunter verworfen.');
+    await frage.getByRole('button', { name: 'abbrechen' }).click();
+    await expect(frage).toHaveCount(0);
+    expect(arbeit.lies()).toBe(WBS);
+    await z(page, 'I0007').locator('td.wbs-name .n').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Verwerfen …' }).click();
+    await frage.getByLabel('Grund').fill('kommt mit R00044');
+    await frage.getByRole('button', { name: 'verwerfen' }).click();
+    for (const id of ['I0007', 'B0002', 'B0003']) {
+      await expect(z(page, id)).toHaveClass(/\bverworfen\b/);
+      await expect(z(page, id).locator('.n')).toHaveCSS('text-decoration-line', 'line-through');
+    }
+    await expect(z(page, 'I0007').locator('td.wbs-text').last()).toHaveText('verworfen: kommt mit R00044');
+    await expect(page.locator('tr.wbs-z')).toHaveCount(9);
+    await expect(page.locator('.wbs-stand span')).toHaveText('1 von 2 Slices funktional · 0 in Bearbeitung · 1 offen');
+    await z(page, 'I0007').locator('td.wbs-name .n').click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'Verwerfen …' })).toHaveCount(0);
+    expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(commits);
+    expect(k.git('status', '--porcelain')).toBe('');
+  });
 });
