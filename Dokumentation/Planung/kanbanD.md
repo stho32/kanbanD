@@ -43,7 +43,10 @@ zuletzt: 2026-10-18
 | B0015 | Bubble | I0005 | Nächste Nummer vergeben | gruen | Test gruen | Dateinamen unter aufgaben/ → nächste freie Nummer | 0,5-1 |  |  |  |  |
 | B0016 | Bubble | I0005 | Aufgabe anlegen | gruen | Test gruen | Titel, Board, Spalte, Person → Aufgabendatei + Board-Zeile, ein Commit; POST /api/aufgaben | 1-2 |  |  |  |  |
 | B0017 | Bubble | I0005 | Karte in der Bahn anlegen | gruen | Test gruen | + Karte, Titel, Enter → neue Karte unten in der Bahn; ohne Identität Ich-bin-Hinweis | 0,5-1 |  |  |  |  |
-| I0006 | Interaction | D0002 | Aufgabe bewegen | rot | US der Anforderung |  |  |  | I0005 |  | Ziehen und Tastatur; ändert nur die Board-Datei |
+| I0006 | Interaction | D0002 | Aufgabe bewegen | rot | US-1..US-3 |  |  |  | I0005 | R00006 | Ziehen und Tastatur; ändert nur die Board-Datei |
+| B0018 | Bubble | I0006 | Position im Board ändern | rot | Test gruen | Board, Nummer, Zielspalte, Index → Board | 0,5-1 |  |  |  |  |
+| B0019 | Bubble | I0006 | Bewegen über die API | rot | Test gruen | POST /api/boards/<slug>/bewegen → nur Board-Datei, ein Commit | 0,5-1 |  |  |  |  |
+| B0020 | Bubble | I0006 | Karten ziehen | rot | Test gruen | Ziehen mit Einfügelinie → Bewegen | 1-2 |  |  |  |  |
 | I0007 | Interaction | D0002 | Live-Aktualisierung | rot | US der Anforderung |  |  |  | I0004 |  | Dateiwächter und Ereignisstrom, Marke extern |
 | I0008 | Interaction | D0002 | Boards wechseln und anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  |  |
 | I0009 | Interaction | D0002 | Spalten einrichten | rot | US der Anforderung |  |  |  | I0008 |  | anlegen, umbenennen, umsortieren, leere entfernen, Grenze |
