@@ -249,3 +249,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0179 Unbekannte Prüfung als Hinweis am Board | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0180 Warnung in der Oberfläche | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0181 Ausrufezeichen an der Karte | Standard | 1-2h | 0,02h | 0,03h | autonom |
+| 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0182 Prüfungen je Spalte konfigurieren | Standard | 0,5-1h | 0,02h | 0,02h | autonom |

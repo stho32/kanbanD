@@ -131,6 +131,9 @@ pub struct SpaltenAenderung {
     pub name: String,
     pub alt: Option<String>,
     pub grenze: Option<u32>,
+    /// `column-checks` der Spalte; fehlt das Feld, behält sie die der alten Spalte.
+    #[serde(default)]
+    pub pruefungen: Option<Vec<String>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -173,7 +176,7 @@ impl Board {
             .iter()
             .map(|n| {
                 let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: alt.map(|s| s.pruefungen.clone()).unwrap_or_default() }
+                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()) }
             })
             .collect();
         let geaendert = spalten != self.spalten;
@@ -227,7 +230,7 @@ mod tests {
     }
 
     fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze }
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None }
     }
 
     #[test]
@@ -260,6 +263,11 @@ mod tests {
         b.spalten[1].aufgaben.clear();
         assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None)]), Ok(true));
         assert_eq!(b.spalten.iter().map(|s| s.pruefungen.len()).collect::<Vec<_>>(), [1, 0]);
+        let setzen = |p: &[&str]| SpaltenAenderung { pruefungen: Some(p.iter().map(|x| x.to_string()).collect()), ..aend("Neu", Some("Neu"), None) };
+        assert_eq!(b.spalten_setzen(&[aend("Bau", Some("Bau"), None), setzen(&["wbs-effects-green", " "])]), Ok(true));
+        assert_eq!(b.spalten[1].pruefungen, ["wbs-effects-green"], "gesetzt, leere fallen weg");
+        assert_eq!(b.spalten_setzen(&[aend("Bau", Some("Bau"), None), setzen(&[])]), Ok(true));
+        assert!(b.spalten[1].pruefungen.is_empty(), "leere Liste entfernt");
     }
 
     #[test]

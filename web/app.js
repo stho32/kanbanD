@@ -654,7 +654,8 @@ async function act(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length })) }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])] })) }; break;
+      case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'setup-weg': u.setup = null; break;
       case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
       case 'p-still': { const p = u.einr.personen[+arg]; p.aktiv = !p.aktiv; break; }
@@ -707,14 +708,14 @@ async function act(a, arg, wert) {
         const name = (wert || '').trim();
         if (!name) break;
         const d = u.setup.spalten;
-        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0 });
+        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [] });
         u.fokus = '#col-new';
         break;
       }
       case 'setup-ok': {
         if (ichNoetig()) break;
         try {
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null })));
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen })));
           u.setup = null;
           return laden();
         } catch (f) { u.setup.fehler = f.message; break; }
