@@ -94,3 +94,23 @@ fn ausserhalb_eines_repositories_unveraendert() {
     assert!(!kanband::git::geaendert(&t.path().join("wbs.md")));
     assert!(!kanband::git::geaendert(std::path::Path::new("/")));
 }
+
+#[test]
+fn staende_einer_datei_im_unterordner_eines_fremden_repositorys_auch_geloeschte_zeilen() {
+    let t = repo();
+    let plan = t.path().join("Dokumentation/Planung");
+    std::fs::create_dir_all(&plan).unwrap();
+    let datei = plan.join("kasse.md");
+    let c = |m: &str| git(t.path(), &["-c", "user.name=KI", "-c", "user.email=k@k", "commit", "-q", "-am", m]);
+    std::fs::write(&datei, "| ID |\n| B0117 |\n").unwrap();
+    git(t.path(), &["add", "-A"]);
+    c("mit B0117");
+    std::fs::write(&datei, "| ID |\n").unwrap();
+    c("B0117 gelöscht");
+    std::fs::write(&datei, "| ID |\n| B0118 |\n").unwrap();
+    assert_eq!(kanband::git::staende_der_datei(&datei), ["| ID |\n| B0117 |\n", "| ID |\n"], "nur committete Stände, älteste zuerst");
+    let ohne = tempfile::tempdir().unwrap();
+    std::fs::write(ohne.path().join("w.md"), "x").unwrap();
+    assert!(kanband::git::staende_der_datei(&ohne.path().join("w.md")).is_empty(), "ohne Repository keine Stände");
+    assert!(kanband::git::staende_der_datei(std::path::Path::new("/gibt/es/nicht.md")).is_empty());
+}

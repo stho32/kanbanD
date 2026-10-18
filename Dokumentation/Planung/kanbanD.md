@@ -219,7 +219,7 @@ zuletzt: 2026-10-18
 | B0145 | Bubble | I0050 | Status per Klick wählen | gruen | Test gruen | Klick auf die Plakette eines Blatts → Wahl rot · gelb · gruen → Zeile in der neuen Farbe, Kopf nicht committet; ohne Identität Ich bin … | 1-2 |  |  |  |  |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | gelb | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
 | B0146 | Bubble | I0051 | Nächste freie ID aus allen Ständen | gruen | Test gruen | Präfix, Texte der WBS (Datei und Historie) → höchste ID des Präfixes + 1, vierstellig | 0,5-1 |  |  |  |  |
-| B0147 | Bubble | I0051 | Stände der WBS aus dem Arbeits-Repository | rot | Test gruen | volle WBS-Datei → alle committeten Stände aus dem fremden Repository, ohne Repository keine | 0,5-1 |  |  |  |  |
+| B0147 | Bubble | I0051 | Stände der WBS aus dem Arbeits-Repository | gruen | Test gruen | volle WBS-Datei → alle committeten Stände aus dem fremden Repository, ohne Repository keine | 0,5-1 |  |  |  |  |
 | B0148 | Bubble | I0051 | Neuen Knoten prüfen | rot | Test gruen | NeuerKnoten, WBS → Pflichtfelder, Eltern-Ebene (Feature überspringbar), Aufwand nur bei Bubbles ab 0,4h; sonst 400 | 0,5-1 |  |  |  |  |
 | B0149 | Bubble | I0051 | Zeile nach dem letzten Nachfahren einfügen | rot | Test gruen | WBS-Text, NeuerKnoten, ID, heute → neue Zeile rot nach dem letzten Nachfahren der Eltern, Vorfahren gerechnet, zuletzt | 1-2 |  |  |  |  |
 | B0150 | Bubble | I0051 | Knoten mit Nachfahren verwerfen | rot | Test gruen | WBS-Text, ID, Grund, heute → verworfen an Knoten und zählenden Nachfahren, Grund in der Notiz, Vorfahren gerechnet; A0001 und schon verworfen 409 | 0,5-1 |  |  |  |  |

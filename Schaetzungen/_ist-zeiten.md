@@ -208,3 +208,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00055 WBS-Status setzen | Lauf R00055 | Nacharbeit | — | — | 0,01h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | Lauf R00055 | Konsolidierung | — | — | 0,03h | autonom |
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0146 Nächste freie ID aus allen Ständen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
+| 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0147 Stände der WBS aus dem Arbeits-Repository | Standard | 0,5-1h | 0,02h | 0,02h | autonom |

@@ -101,6 +101,16 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<(chrono::NaiveDateTime, S
     Ok(staende)
 }
 
+/// Alle committeten Stände einer Datei mit vollem Pfad, auch in einem fremden Repository (dem Arbeits-Repository einer Anwendung);
+/// liegt sie in keinem Repository, gibt es keine.
+pub fn staende_der_datei(datei: &Path) -> Vec<String> {
+    let (Some(ordner), Some(name)) = (datei.parent(), datei.file_name()) else { return vec![] };
+    if git_verzeichnis(ordner).is_none() {
+        return vec![];
+    }
+    staende(ordner, &name.to_string_lossy()).map(|s| s.into_iter().map(|(_, text)| text).collect()).unwrap_or_default()
+}
+
 /// Hat die Datei Änderungen, die nicht committet sind (ungestagt, gestagt oder unversioniert)?
 /// Liegt sie in keinem Repository oder fehlt Git, gilt sie als unverändert. Liest nur: der Index wird
 /// nicht nebenbei aufgefrischt (`GIT_OPTIONAL_LOCKS=0`), sonst löste jede Abfrage beim Dateiwächter
