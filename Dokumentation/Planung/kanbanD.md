@@ -20,7 +20,7 @@ zuletzt: 2026-10-18
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
-| D0007 | Dialog | A0001 | Agenten-Schnittstelle | rot | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
+| D0007 | Dialog | A0001 | Agenten-Schnittstelle | gelb | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
 | B0002 | Bubble | I0001 | Ordner vorbereiten | gruen | Test gruen | Startauftrag → Ordner vorhanden, Git-Repository vorhanden | 0,5-1 |  |  |  |  |
@@ -108,8 +108,8 @@ zuletzt: 2026-10-18
 | B0062 | Bubble | I0023 | Verlauf rechnen | gruen | Test gruen | Stände der Board-Datei mit Zeitpunkt → offen je Tag, Umfang, Durchlaufzeit je Aufgabe | 1-2 |  |  |  |  |
 | B0063 | Bubble | I0023 | Stände aus Git lesen | gruen | Test gruen | git log + git cat-file --batch → Stände der Board-Datei; GET /api/berichte/verlauf | 1-2 |  |  |  |  |
 | B0064 | Bubble | I0023 | Burndown und Durchlaufzeit zeigen | gruen | Test gruen | Linie offen je Tag mit Umfang, Hover, Tabelle der Durchlaufzeiten | 1-2 |  |  |  |  |
-| I0024 | Interaction | D0007 | Agent arbeitet über die API | rot | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
-| B0065 | Bubble | I0024 | Endpunkte beschreiben | rot | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
+| I0024 | Interaction | D0007 | Agent arbeitet über die API | gelb | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
+| B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
 | B0066 | Bubble | I0024 | Agentenlauf Ende-zu-Ende | rot | Test gruen | Agent legt an, bewegt, kommentiert, misst Zeit nur über die API → Commits unter seinem Namen | 1-2 |  |  |  |  |
 | I0025 | Interaction | D0002 | Defekte Dateien zeigen | rot | US der Anforderung |  |  |  | I0004 |  |  |
 | I0026 | Interaction | D0002 | Tastaturbedienung | rot | US der Anforderung |  |  |  | I0006 |  |  |

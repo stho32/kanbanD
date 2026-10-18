@@ -1,5 +1,6 @@
 //! HTTP: Oberfläche und API in einem Router.
 
+pub mod endpunkte;
 mod statisch;
 
 use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
@@ -52,6 +53,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
     Router::new()
         .route("/api/ereignisse", get(ereignisstrom))
         .route("/api/zustand", get(zustand))
+        .route("/api", get(api_seite))
+        .route("/api/endpunkte", get(|| async { Json(endpunkte::ENDPUNKTE) }))
         .route("/api/einrichten", post(einrichten))
         .route("/api/boards", get(boards).post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
@@ -400,4 +403,14 @@ struct BoardWahl {
 async fn verlauf(State(app): State<App>, axum::extract::Query(w): axum::extract::Query<BoardWahl>) -> Result<Response, Fehler> {
     let v = blockierend(&app, move |k| k.verlauf(&w.board)).await?;
     Ok(Json(v).into_response())
+}
+
+/// Die Beschreibung der API; das Beispiel nennt die Adresse, unter der sie gerade abgerufen wird.
+async fn api_seite(headers: axum::http::HeaderMap) -> Response {
+    let host = headers.get(axum::http::header::HOST).and_then(|h| h.to_str().ok()).unwrap_or("localhost");
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        endpunkte::api_seite(&format!("http://{host}/")),
+    )
+        .into_response()
 }
