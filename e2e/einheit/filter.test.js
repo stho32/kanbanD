@@ -47,3 +47,9 @@ test('Legende schaltet class: um', () => {
   assert.strictEqual(klasseUmschalten('kopf class:bug', 'bug'), 'kopf');
   assert.strictEqual(klasseUmschalten('class:bug kopf', 'feature'), 'kopf class:feature');
 });
+
+test('qualifizierte Herkunft (R00053): origin:kd:I0007 trifft genau diese Schreibweise', () => {
+  const kd = { nummer: 20, titel: 'x', zustaendige: [], labels: [], herkunft: ['kd:I0007'] };
+  assert.ok(passt(kd, 'origin:kd:I0007') && passt(kd, 'origin:KD:i0007'));
+  assert.ok(!passt(kd, 'origin:kc:I0007') && !passt(kd, 'origin:I0007'));
+});
