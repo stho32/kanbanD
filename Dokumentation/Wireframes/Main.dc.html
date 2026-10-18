@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+<title>Screen-Flow — kanbanD</title>
+<helmet>
+<style>
+:root{--bg:oklch(0.965 0.005 250);--sf:oklch(0.995 0.002 250);--ln:oklch(0.76 0.014 250);--tx:oklch(0.24 0.02 255);--mu:oklch(0.48 0.018 255);--hd:oklch(0.29 0.028 255);--ac:oklch(0.5 0.13 255)}
+*{box-sizing:border-box;border-radius:0}
+body{margin:0;background:var(--bg);font:13px/1.4 "IBM Plex Sans",system-ui,sans-serif;color:var(--tx);padding:24px}
+h1{font-size:18px;margin:0 0 16px}
+.flow{display:grid;grid-template-columns:repeat(4,220px);gap:32px 48px}
+.k{background:var(--sf);border:1px solid var(--ln);padding:0}
+.k b{display:block;background:var(--hd);color:#fff;padding:6px 10px;font-size:12px}
+.k p{margin:0;padding:8px 10px;color:var(--mu)}
+.k code{font:11px "IBM Plex Mono",monospace;color:var(--ac)}
+.pf{color:var(--mu);font-size:12px;margin-top:20px;line-height:1.8}
+</style>
+</helmet>
+</head>
+<body>
+<h1>kanbanD — Screen-Flow über alle Dialogs</h1>
+<div class="flow">
+ <div class="k"><b>D0001 Start und Einrichtung</b><p><code>kanbanD &lt;ordner&gt;</code> → erster Start (ich, Agenten, Spalten) → Personen und Klassen</p></div>
+ <div class="k"><b>D0002 Board</b><p>Spalten aus <code>boards/&lt;slug&gt;.md</code>, Karten aus <code>aufgaben/</code>; Umschalter zwischen Boards, Filter, Spalten einrichten</p></div>
+ <div class="k"><b>D0003 Aufgabe</b><p>Modal über dem Board: Inhalt, Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge, Herkunft, Archiv</p></div>
+ <div class="k"><b>D0004 Aufgabenliste</b><p>alle Aufgaben · ohne Board · Archiv; auf Board legen / abnehmen</p></div>
+ <div class="k"><b>D0005 Personen</b><p>läuft jetzt, Tagesleiste, heute/Woche, offene Zuweisungen</p></div>
+ <div class="k"><b>D0006 Berichte</b><p>Stundenzettel · Karte × Person · CSV · Burndown · Durchlaufzeit</p></div>
+ <div class="k"><b>D0007 Agenten-Schnittstelle</b><p><code>/api</code> — Beschreibung aller Aufrufe, Identität je Aufruf</p></div>
+</div>
+<div class="pf">
+Übergänge: D0001 → D0002 (nach dem Einrichten) · D0002 ⇄ D0003 (Karte öffnen / Esc) · Kopfzeile: Board · Aufgaben · Personen · Berichte ▾ → D0002, D0004, D0005, D0006 · D0005/D0006 → D0003 (Zeile öffnet die Aufgabe) · D0007 ohne Navigation, über <code>/api</code>
+</div>
+</body>
+</html>

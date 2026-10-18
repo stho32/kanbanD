@@ -37,7 +37,7 @@ ein nachgerüsteter Live-Kanal, ein starres Schema und eine Gestaltung, die kein
 Mensch je gesehen hat.
 
 Und die Nutzung war umständlich: zwei Anwendungen, zwei Starts. kanbanD ist eine
-Anwendung mit Blazor-Oberfläche und WebApi. `kanbanD ./kanban-ordner` startet sie
+Anwendung — ein Programm, das Weboberfläche und WebApi zugleich ausliefert. `kanbanD ./kanban-ordner` startet sie
 und öffnet das erste Browserfenster.
 
 kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis.
@@ -67,14 +67,28 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
 
 - **Mensch und Agent arbeiten gleichberechtigt.** Der Mensch nutzt den Browser, der
   Agent die API oder die Dateien direkt. An jeder Änderung ist ablesbar, wer
-  gehandelt hat.
+  gehandelt hat: kanbanD committet unter dem Namen der handelnden Person. Ändert
+  jemand die Dateien an kanbanD vorbei, committet er selbst; kanbanD zeigt die
+  Änderung live, schreibt aber keinen fremden Commit.
+
+- **Mehrere Boards über einem Aufgabenbestand.** Eine Instanz zeigt alle Boards des
+  Boardverzeichnisses und wechselt zwischen ihnen. Dieselbe Aufgabe darf auf mehreren
+  Boards liegen; eine Aufgabe auf keinem Board bleibt in der Aufgabenliste sichtbar.
+  Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm.
 
 - **Live überall, egal woher die Änderung kommt.** Ob der Browser, die API, ein
   Editor oder ein `git pull` eine Datei ändert: alle offenen Sichten zeigen es
   sofort, ohne Reload.
 
 - **Zeiterfassung, die zum Arbeiten passt.** Ein Timer, der sich ohne Umstand
-  starten und stoppen lässt, mit mitlaufender Dauer.
+  starten und stoppen lässt, mit mitlaufender Dauer. Er steht als Zeile in der
+  Aufgabe: Start und Stopp sind je eine Aktion mit Commit, ein laufender Timer
+  übersteht also einen Absturz. Mehrere Timer dürfen gleichzeitig laufen.
+
+- **Defekte Dateien bleiben sichtbar.** Eine Datei mit Merge-Konfliktmarkern oder
+  unlesbarem Frontmatter wird mit Fehlerzeile angezeigt statt verschluckt und ist
+  bis zur Reparatur nur lesbar. Gleichzeitige Schreibzugriffe über Oberfläche und
+  API werden nacheinander ausgeführt.
 
 - **Die WBS als Nachbar statt als Importquelle.** Liegt die WBS im selben
   Repository, zeigt eine Karte auf ihren Knoten. `Braucht`-Beziehungen werden zu
@@ -107,9 +121,17 @@ startet mit einem Befehl.
 
 ## Leitplanken
 
-- **C# / .NET 10, eine Anwendung.** Blazor Server und die WebApi laufen im selben
-  Prozess und im selben Projekt. Hausstil und Werkzeuge bleiben: `csharp-stil`,
-  NUnit und Playwright.
+- **Rust, eine Anwendung.** Ein einziges Programm liefert Weboberfläche und WebApi
+  im selben Prozess aus; die Oberfläche ist in das Programm eingebettet. Getestet
+  wird mit `cargo test` (Unit und Integration) und Playwright (E2E gegen das echte
+  Programm).
+- **Ordneraufbau.** `<ordner>/kanbanD.md` trägt die Einstellungen (Personen, Klassen,
+  Quellpfade), `<ordner>/aufgaben/` die Aufgaben (`0012-titel.md`, Anhänge unter
+  `0012-titel/`), `<ordner>/boards/` die Boards (`<slug>.md`). Eine Board-Datei hat
+  je Spalte eine Überschrift und je Aufgabe darunter eine Zeile mit ihrer Nummer;
+  die letzte Spalte ist die Abschlussspalte.
+- **Git ist Voraussetzung.** Ist der Ordner in keinem Git-Repository, legt kanbanD
+  beim Start eines an. Der Git-Autor eines Commits ist die handelnde Person.
 - **Start mit einem Befehl.** `kanbanD <ordner>` startet die Anwendung und öffnet
   das erste Browserfenster.
 - **Weboberfläche, im LAN erreichbar.** Kein Desktop-Programm und kein Betrieb im
@@ -120,7 +142,9 @@ startet mit einem Befehl.
   sich aber jederzeit aus den Dateien neu aufbauen lassen und wird nicht versioniert.
 - **Git-freundliche Form.** Die Dateien sind stabil sortiert, haben stabile IDs,
   sind zeilenorientiert und ändern sich nur dort, wo sich etwas ändert. Eine
-  Bewegung ergibt einen kleinen Diff in der Board-Datei und keinen in der Aufgabe.
+  Bewegung ergibt einen kleinen Diff in der Board-Datei und keinen in der Aufgabe:
+  eine Zeile je Aufgabe, damit Bewegungen verschiedener Aufgaben ohne Konflikt
+  mergen.
 - **Ein Commit je Aktion.** Jede schreibende Aktion über Oberfläche oder API wird
   von kanbanD sofort und einzeln committet.
 - **Full-Trust.** Keine Anmeldung und keine Rechteprüfung. Die Identität wird je
@@ -146,34 +170,16 @@ startet mit einem Befehl.
 - **Kein Projektmanagement-Werkzeug.** Kein Gantt, keine Kapazitäts- und
   Terminplanung. Auswertungen rechnen aus dem, was geschehen ist.
 - **Kein Ersatz für Vision, Anforderungen und WBS.** Diese Dokumente bleiben
-  eigenständig; das Board zeigt auf sie, statt sie zu kopieren.
+  eigenständig; das Board zeigt auf sie, statt sie zu kopieren. Es fließt nichts
+  in die WBS zurück; eine erledigte Aufgabe setzt keinen Knoten grün.
+- **Kein Import aus kanbanC.** kanbanD beginnt neu.
+- **Keine weiteren Aufgabenquellen.** E-Mail und Formulare sind kein Vorhaben.
 
 ## Offene Richtungsfragen
 
-- **Wo steht das „Wer“?** Im Git-Autor des Commits, im Frontmatter oder in beidem.
-- **Wie viele Boards, und wie stehen sie zu den Aufgaben?** Zeigt eine Instanz
-  mehrere Boards des Boardverzeichnisses und wechselt zwischen ihnen? Darf dieselbe
-  Aufgabe auf mehreren Boards liegen, und was ist eine Aufgabe auf keinem Board?
-- **Bleibt ein eigener Timer?** Die Commits liefern Zeitpunkte jeder Aktion. Offen
-  ist, ob daneben ein Timer mit Start und Stopp in der Aufgabe steht und ob ein
-  laufender Timer sofort als Datei geschrieben wird (ein Commit beim Start) oder bis
-  zum Stopp flüchtig bleibt (verloren bei einem Absturz).
-- **Wie bleibt die Board-Datei mergebar?** Jede Bewegung ändert sie. Bewegen zwei
-  Menschen auf zwei Branches Aufgaben auf demselben Board, darf das nicht
-  regelmäßig in Konflikten enden.
-- **Was geschieht mit Änderungen von außen?** Ändert ein Editor oder ein Agent die
-  Dateien direkt: committet kanbanD sie beim Erkennen, oder bleibt das Commit dem,
-  der geändert hat?
-- **Wie sieht ein Konflikt aus?** Das betrifft gleichzeitiges Schreiben von UI, API
-  und Editor sowie Merge-Konfliktmarker in einer Aufgaben- oder Board-Datei. Offen
-  ist, was kanbanD dann zeigt und tut.
-- **Fließt etwas zur WBS zurück?** Zum Beispiel könnte eine erledigte Karte ihren
-  Knoten grün setzen.
-- **Wo werden Kontributoren definiert?** Im Ordner, damit sie mitreisen, oder
-  außerhalb, damit sie über Boards hinweg gelten.
-- **Was geschieht mit kanbanC-Beständen?** Import, Migration oder ein Neuanfang.
-- **Welche weiteren Aufgabenquellen?** E-Mail und Formulare bleiben Möglichkeiten,
-  keine Vorhaben.
+- **Gleichzeitige Nummernvergabe auf zwei Branches.** Legen zwei Menschen auf zwei
+  Branches je eine Aufgabe an, bekommen beide dieselbe nächste Nummer. kanbanD
+  meldet doppelte Nummern; wie sie aufgelöst werden, ist offen.
 
 ## Ergänzungshistorie
 
@@ -182,3 +188,5 @@ startet mit einem Befehl.
 | 2026-09-26 | Vision angelegt (Nachfolger von kanbanC: Board als Markdown-Ordner, Git als Gedächtnis, eine Anwendung mit einem Startbefehl, Live auch bei Dateiänderungen, WBS als Nachbar) |
 | 2026-10-18 | Richtungsfrage Commit entschieden: jede Aktion in kanbanD ergibt sofort einen eigenen Commit, die Git-Geschichte ist das volle Archiv inkl. Zeiten (Leitplanke, Zielbild, „Kein Git-Client“ geschärft) |
 | 2026-10-18 | Datenmodell fortgeschrieben: Aufgabenverzeichnis (je Aufgabe eine Datei, ggf. Anhang-Ordner) und Boardverzeichnis (je Board eine Markdown-Datei mit Struktur und Aufgabenverweisen); Bewegen ändert nur die Board-Datei. Ersetzt „Ein Board, das ein Ordner ist“ und „Keine Board-Verwaltung“ (jetzt „Kein Wechsel zwischen Ordnern“), Anhänge aus dem Nicht-Ziel gestrichen — Grund: Aufgaben sind unabhängig von Boards. Neue Richtungsfragen: Boards und Aufgaben, Timer, Mergebarkeit der Board-Datei, Änderungen von außen |
+| 2026-10-18 | Leitplanke „C# / .NET 10“ ersetzt durch „Rust, eine Anwendung“ — Grund: Auftrag, die Anwendung in Rust zu bauen; Ordneraufbau und „Git ist Voraussetzung“ als Leitplanken ergänzt |
+| 2026-10-18 | Richtungsfragen ohne Menschen nach bestem Wissen entschieden (Anmerkungen 1–8 in `kanbanD-anmerkungen.md`): Wer = Git-Autor; mehrere Boards je Instanz, Aufgabe auf mehreren oder keinem Board; Timer als Zeile in der Aufgabe, Commit bei Start und Stopp; Board-Datei mit einer Zeile je Aufgabe; Änderungen von außen werden gezeigt, nicht committet; defekte Dateien sichtbar und nur lesbar; kein Rückfluss zur WBS; Kontributoren im Ordner; kein kanbanC-Import; keine weiteren Aufgabenquellen. Neue Frage: doppelte Nummern aus zwei Branches |
