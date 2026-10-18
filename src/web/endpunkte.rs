@@ -55,6 +55,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("DELETE", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag löschen"),
     e("GET", "/api/berichte/zeiten.csv", false, "Berichte", "alle Zeiteinträge als CSV"),
     e("GET", "/api/berichte/verlauf?board={slug}", false, "Berichte", "offene Aufgaben je Tag und Durchlaufzeiten aus Git"),
+    e("GET", "/api/berichte/bewegungen?board={slug}", false, "Berichte", "je Aufgabe die Spaltenwechsel aus Git (Grundlage der Board-Berichte)"),
 ];
 
 fn esc(s: &str) -> String {

@@ -28,6 +28,51 @@ pub struct Verlauf {
     pub median: Option<f64>,
 }
 
+/// Ein Spaltenwechsel; `spalte: None` heißt vom Board genommen.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Wechsel {
+    pub zeitpunkt: String,
+    pub spalte: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Bewegung {
+    pub nummer: u32,
+    pub wechsel: Vec<Wechsel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Bewegungen {
+    pub spalten: Vec<String>,
+    pub jetzt: String,
+    pub aufgaben: Vec<Bewegung>,
+}
+
+/// Je Aufgabe die Wechsel zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge.
+pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetzt: NaiveDateTime) -> Bewegungen {
+    let fmt = |z: &NaiveDateTime| z.format(crate::format::aufgabe::ZEITFORMAT).to_string();
+    let mut vorher: BTreeMap<u32, String> = BTreeMap::new();
+    let mut je: BTreeMap<u32, Vec<Wechsel>> = BTreeMap::new();
+    for (zp, b) in staende {
+        let mut jetzt_da: BTreeMap<u32, String> = BTreeMap::new();
+        for s in &b.spalten {
+            for n in &s.aufgaben {
+                jetzt_da.entry(*n).or_insert_with(|| s.name.clone());
+            }
+        }
+        for (n, sp) in &jetzt_da {
+            if vorher.get(n) != Some(sp) {
+                je.entry(*n).or_default().push(Wechsel { zeitpunkt: fmt(zp), spalte: Some(sp.clone()) });
+            }
+        }
+        for n in vorher.keys().filter(|n| !jetzt_da.contains_key(n)) {
+            je.entry(*n).or_default().push(Wechsel { zeitpunkt: fmt(zp), spalte: None });
+        }
+        vorher = jetzt_da;
+    }
+    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben: je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel }).collect() }
+}
+
 fn zaehlen(b: &Board) -> (usize, usize) {
     let umfang: usize = b.spalten.iter().map(|s| s.aufgaben.len()).sum();
     let fertig = b.abschlussspalte().map(|s| s.aufgaben.len()).unwrap_or(0);
@@ -123,6 +168,17 @@ mod tests {
         assert_eq!(v.durchlauf[0].tage, 1.0);
         assert_eq!(v.tage.iter().map(|t| t.offen).collect::<Vec<_>>(), vec![1, 0, 0, 0, 0]);
         assert_eq!((v.mittel, v.median), (Some(1.0), Some(1.0)));
+    }
+
+    #[test]
+    fn wechsel_je_aufgabe_mit_abnehmen() {
+        let staende = vec![(zp("2026-10-01 09:00"), b(&[1, 2], &[])), (zp("2026-10-01 10:00"), b(&[1, 2], &[])), (zp("2026-10-02 09:00"), b(&[2], &[1])), (zp("2026-10-04 09:00"), b(&[], &[2]))];
+        let w = bewegungen(&staende, vec!["A".into(), "Z".into()], zp("2026-10-05 08:00"));
+        let kurz = |i: usize| w.aufgaben[i].wechsel.iter().map(|x| (x.zeitpunkt.as_str(), x.spalte.as_deref())).collect::<Vec<_>>();
+        assert_eq!(w.aufgaben[0].nummer, 1);
+        assert_eq!(kurz(0), vec![("2026-10-01 09:00", Some("A")), ("2026-10-02 09:00", Some("Z")), ("2026-10-04 09:00", None)]);
+        assert_eq!(kurz(1), vec![("2026-10-01 09:00", Some("A")), ("2026-10-04 09:00", Some("Z"))]);
+        assert_eq!((w.spalten.len(), w.jetzt.as_str()), (2, "2026-10-05 08:00"));
     }
 
     #[test]

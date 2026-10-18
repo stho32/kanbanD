@@ -68,6 +68,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/herkunft", get(herkunft))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
+        .route("/api/berichte/bewegungen", get(bewegungen))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/mehrere", post(aufgaben_anlegen))
         .route("/api/aufgaben/archivieren", post(mehrere_archivieren))
@@ -406,6 +407,11 @@ struct BoardWahl {
 
 async fn verlauf(State(app): State<App>, axum::extract::Query(w): axum::extract::Query<BoardWahl>) -> Result<Response, Fehler> {
     let v = blockierend(&app, move |k| k.verlauf(&w.board)).await?;
+    Ok(Json(v).into_response())
+}
+
+async fn bewegungen(State(app): State<App>, axum::extract::Query(w): axum::extract::Query<BoardWahl>) -> Result<Response, Fehler> {
+    let v = blockierend(&app, move |k| k.bewegungen(&w.board)).await?;
     Ok(Json(v).into_response())
 }
 

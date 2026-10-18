@@ -73,3 +73,24 @@ async fn staende_werden_nach_zeitpunkt_geordnet() {
     assert_eq!(v["tage"][0]["datum"], "2026-10-03");
     assert_eq!(v["tage"][2]["offen"], 0, "am 05.10. erledigt, obwohl der Commit davor liegt");
 }
+
+#[tokio::test]
+async fn bewegungen_aus_echten_commits() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(tmp.path());
+    let kopf = "# Entwicklung\n\n## Zu erledigen\n\n";
+    commit_am(tmp.path(), "2026-10-01T09:00:00", &format!("{kopf}- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n"));
+    commit_am(tmp.path(), "2026-10-02T09:00:00", &format!("{kopf}- #2\n\n## In Arbeit\n\n## Erledigt\n\n- #1\n"));
+    commit_am(tmp.path(), "2026-10-04T09:00:00", &format!("{kopf}## In Arbeit\n\n## Erledigt\n\n- #2\n"));
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, v) = senden(Method::GET, &lauf.adresse, "api/berichte/bewegungen?board=entwicklung", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    assert_eq!(v["spalten"], json!(["Zu erledigen", "In Arbeit", "Erledigt"]));
+    assert_eq!(v["aufgaben"][0]["nummer"], 1);
+    assert_eq!(
+        v["aufgaben"][0]["wechsel"],
+        json!([{"zeitpunkt": "2026-10-01 09:00", "spalte": "Zu erledigen"}, {"zeitpunkt": "2026-10-02 09:00", "spalte": "Erledigt"}, {"zeitpunkt": "2026-10-04 09:00", "spalte": null}])
+    );
+    assert_eq!(v["aufgaben"][1]["wechsel"][1]["spalte"], "Erledigt");
+    assert_eq!(senden(Method::GET, &lauf.adresse, "api/berichte/bewegungen?board=gibtsnicht", "st", json!(null)).await.0, 404);
+}
