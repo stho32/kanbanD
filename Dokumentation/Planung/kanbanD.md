@@ -73,7 +73,7 @@ zuletzt: 2026-10-18
 | B0037 | Bubble | I0013 | Kommentare im Fenster | gruen | Test gruen | Liste mit Person und Zeit, + Kommentar · Enter | 0,5-1 |  |  |  |  |
 | I0014 | Interaction | D0003 | Timer starten und stoppen | gelb | US-1..US-3 |  |  |  | I0011 | R00014 | mehrere gleichzeitig, fremde stoppbar, Kopfzeile N laufen |
 | B0038 | Bubble | I0014 | Timer über die API | gruen | Test gruen | start/stop → laufende Zeile mit ... bzw. Ende, ein Commit je Aktion | 1-2 |  |  |  |  |
-| B0039 | Bubble | I0014 | Timer im Fenster und auf der Karte | rot | Test gruen | Läuft gerade, Start-Knopf, Plakette mit mitlaufender Dauer | 1-2 |  |  |  |  |
+| B0039 | Bubble | I0014 | Timer im Fenster und auf der Karte | gruen | Test gruen | Läuft gerade, Start-Knopf, Plakette mit mitlaufender Dauer | 1-2 |  |  |  |  |
 | B0040 | Bubble | I0014 | Laufende Timer in der Kopfzeile | rot | Test gruen | N laufen → Liste aller laufenden Timer, fremde stoppbar | 0,5-1 |  |  |  |  |
 | I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0016 | Interaction | D0003 | Anhänge verwalten | rot | US der Anforderung |  |  |  | I0011 |  |  |

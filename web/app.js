@@ -68,7 +68,7 @@ async function schreiben(methode, pfad, daten) {
   try {
     await api(methode, pfad, daten);
     S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
-  } catch (f) { S.ui.fensterFehler = f.message; }
+  } catch (f) { S.ui.fensterFehler = f.message; S.ui.fehler = f.message; }
   await laden();
 }
 
@@ -169,6 +169,13 @@ async function act(a, arg, wert) {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.fokus = '#km-inp';
         await schreiben('POST', `/api/aufgaben/${u.offen}/kommentare`, { text: wert });
+        return;
+      }
+      case 'start': if (ichNoetig()) break; await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
+      case 'stop': {
+        if (ichNoetig()) break;
+        const [nr, wer] = arg.split('|');
+        await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
       }
       case 'zustaendig': {
@@ -399,6 +406,7 @@ setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
+  document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
   if (neu && zug == null && !S.ui.adding) render();
 }, 1000);

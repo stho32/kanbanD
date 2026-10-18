@@ -60,3 +60,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00013 Kommentieren | B0037 Kommentare im Fenster | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00013 Kommentieren | Lauf R00013 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00014 Timer starten und stoppen | B0038 Timer über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00014 Timer starten und stoppen | B0039 Timer im Fenster und auf der Karte | Standard | 1-2h | 0,0h | 0,0h | autonom |
