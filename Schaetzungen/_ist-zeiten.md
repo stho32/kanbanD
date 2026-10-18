@@ -19,3 +19,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00002 Erster Start einrichten | B0007 Aktion committen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00002 Erster Start einrichten | B0008 Einrichten | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00002 Erster Start einrichten | B0009 Einrichtungsseite | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00002 Erster Start einrichten | Lauf R00002 | Nacharbeit | — | — | 0,0h | autonom |

@@ -1,6 +1,6 @@
 ---
 id: R00002
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -33,18 +33,18 @@ Der erste Start erzeugt eine lesbare, versionierte Grundlage, ohne dass jemand e
 ## Akzeptanzkriterien
 
 ### Dateiformat
-- [ ] `Einstellungen` → Text → `Einstellungen` ergibt das Ausgangsobjekt; Text → `Einstellungen` → Text ergibt denselben Text
-- [ ] Ein Board mit Spalten „Zu erledigen“, „In Arbeit“, „Erledigt“ und Aufgabe 3 in „In Arbeit“ wird zu einer Datei mit genau einer Aufgabenzeile `- [#3](../aufgaben/0003-x.md)` unter `## In Arbeit`
-- [ ] Eine Board-Zeile `- #7 irgendein Text` wird als Aufgabe 7 gelesen
+- [x] `Einstellungen` → Text → `Einstellungen` ergibt das Ausgangsobjekt; Text → `Einstellungen` → Text ergibt denselben Text
+- [x] Ein Board mit Spalten „Zu erledigen“, „In Arbeit“, „Erledigt“ und Aufgabe 3 in „In Arbeit“ wird zu einer Datei mit genau einer Aufgabenzeile `- [#3](../aufgaben/0003-x.md)` unter `## In Arbeit`
+- [x] Eine Board-Zeile `- #7 irgendein Text` wird als Aufgabe 7 gelesen
 
 ### Einrichten
-- [ ] Nach `POST /api/einrichten` mit ich `st`/„Stefan“, Agent `cl`/„Claude“, Board „Entwicklung“ und drei Spalten existieren `kanbanD.md` und `boards/entwicklung.md`, und `git log -1 --format=%an` liefert „Stefan“
-- [ ] Der Commit enthält genau diese zwei Dateien
-- [ ] Ein zweites `POST /api/einrichten` antwortet 409 und ändert nichts
-- [ ] Kürzel `St!`, leerer Name, keine Spalte oder doppelte Spalte antworten 400 mit Meldung
+- [x] Nach `POST /api/einrichten` mit ich `st`/„Stefan“, Agent `cl`/„Claude“, Board „Entwicklung“ und drei Spalten existieren `kanbanD.md` und `boards/entwicklung.md`, und `git log -1 --format=%an` liefert „Stefan“
+- [x] Der Commit enthält genau diese zwei Dateien
+- [x] Ein zweites `POST /api/einrichten` antwortet 409 und ändert nichts
+- [x] Kürzel `St!`, leerer Name, keine Spalte oder doppelte Spalte antworten 400 mit Meldung
 
 ### Oberfläche
-- [ ] Ein nicht eingerichteter Ordner zeigt die Einrichtungsseite; nach dem Absenden zeigt die Seite das Board „Entwicklung“ mit drei Spalten
+- [x] Ein nicht eingerichteter Ordner zeigt die Einrichtungsseite; nach dem Absenden zeigt die Seite das Board „Entwicklung“ mit drei Spalten
 
 ## Betroffene Verzeichnisstruktur
 
