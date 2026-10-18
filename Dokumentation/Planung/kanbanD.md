@@ -75,8 +75,8 @@ zuletzt: 2026-10-18
 | B0038 | Bubble | I0014 | Timer über die API | gruen | Test gruen | start/stop → laufende Zeile mit ... bzw. Ende, ein Commit je Aktion | 1-2 |  |  |  |  |
 | B0039 | Bubble | I0014 | Timer im Fenster und auf der Karte | gruen | Test gruen | Läuft gerade, Start-Knopf, Plakette mit mitlaufender Dauer | 1-2 |  |  |  |  |
 | B0040 | Bubble | I0014 | Laufende Timer in der Kopfzeile | gruen | Test gruen | N laufen → Liste aller laufenden Timer, fremde stoppbar | 0,5-1 |  |  |  |  |
-| I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | rot | US-1..US-3 |  |  |  | I0014 | R00015 |  |
-| B0041 | Bubble | I0015 | Dauer lesen | rot | Test gruen | „0:45“, „1,5“, „90 min“ → Minuten | 0,5-1 |  |  |  |  |
+| I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | gelb | US-1..US-3 |  |  |  | I0014 | R00015 |  |
+| B0041 | Bubble | I0015 | Dauer lesen | gruen | Test gruen | „0:45“, „1,5“, „90 min“ → Minuten | 0,5-1 |  |  |  |  |
 | B0042 | Bubble | I0015 | Zeiten über die API | rot | Test gruen | nachtragen, korrigieren, löschen → Zeile im Block kanbanD-time, ein Commit | 1-2 |  |  |  |  |
 | B0043 | Bubble | I0015 | Zeiten im Fenster | rot | Test gruen | Tabelle der Zeiten mit Summe, ✎ korrigieren, ✕ löschen, + Zeit nachtragen | 1-2 |  |  |  |  |
 | I0016 | Interaction | D0003 | Anhänge verwalten | rot | US der Anforderung |  |  |  | I0011 |  |  |
