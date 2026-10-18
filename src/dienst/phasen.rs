@@ -4,6 +4,7 @@ use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Art, Board, Person};
 use crate::phasen::{Phasenfolge, gebundene_anwendungen};
+use crate::pruefungen::unbekannte;
 use serde::Serialize;
 
 /// Die Phasen eines Boards: die Folge der ersten gebundenen Anwendung mit erreichbarer WBS und was am Board nicht stimmt.
@@ -21,6 +22,8 @@ pub struct BoardMitPhasen {
     #[serde(flatten)]
     pub board: Board,
     pub phasen: Option<Phasenstand>,
+    /// was am Board nicht stimmt, ohne es unlesbar zu machen (unbekannte Prüfungen in `column-checks`)
+    pub hinweise: Vec<String>,
 }
 
 /// Wer committet, was kanbanD von sich aus tut (kein Mensch hat gehandelt, nur gelesen).
@@ -34,14 +37,15 @@ impl Kanban {
     pub fn board_mit_phasen(&self, slug: &str) -> Result<BoardMitPhasen, Fehler> {
         let _sperre = self.gesperrt();
         let mut board = self.ordner().board(slug)?;
-        let Some(stand) = self.phasenstand(&board) else { return Ok(BoardMitPhasen { board, phasen: None }) };
+        let hinweise = unbekannte(&board);
+        let Some(stand) = self.phasenstand(&board) else { return Ok(BoardMitPhasen { board, phasen: None, hinweise }) };
         let ergaenzt = stand.folge.nachtragen(&mut board);
         if ergaenzt.is_empty() {
-            return Ok(BoardMitPhasen { board, phasen: Some(stand) });
+            return Ok(BoardMitPhasen { board, phasen: Some(stand), hinweise });
         }
         self.aktion(&kanband_selbst(), &format!("Phasen-Spalten von „{}“ ergänzt: {}", board.titel, ergaenzt.join(", ")), &[(board_pfad(&board.slug), self.board_text(&board, None)?)])?;
         let phasen = self.phasenstand(&board);
-        Ok(BoardMitPhasen { board, phasen })
+        Ok(BoardMitPhasen { board, phasen, hinweise })
     }
 
     /// `None`, wenn das Board an keine Anwendung mit erreichbarer WBS gebunden ist — dann ist es reines Kanban.

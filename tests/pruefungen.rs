@@ -80,3 +80,14 @@ async fn unerreichbare_wbs_und_fehlender_knoten_warnen_mit_eigenem_text() {
     let r = ziehen(&lauf.adresse, 8, "Erledigt").await;
     assert_eq!((r["bewegt"].clone(), r["warnungen"][0]["details"].clone()), (json!(true), json!(["kc:I0012 WBS nicht erreichbar"])), "ohne WBS ist das Board reines Kanban, gezählt nach Spaltenindex");
 }
+
+#[tokio::test]
+async fn unbekannte_pruefung_ist_ein_hinweis_das_board_bleibt_lesbar_und_schreibbar() {
+    let l = lage("rot", &BOARD.replace("[wbs-effects-green]", "[wbs-effects-green, xyz]"));
+    let lauf = gemeinsam::starten(l.board.path(), &["--port", "0"]);
+    let (s, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "cl", json!(null)).await;
+    assert_eq!((s, b["hinweise"].clone()), (200, json!(["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"])));
+    assert_eq!(b["spalten"][1]["pruefungen"], json!(["wbs-effects-green", "xyz"]));
+    assert_eq!(ziehen(&lauf.adresse, 7, "Entwicklertest").await["warnungen"][0]["knoten"], json!(["kc:I0048"]), "die bekannte Prüfung wirkt weiter");
+    assert!(lies(l.board.path(), "boards/entwicklung.md").contains("Entwicklung: [wbs-effects-green, xyz]"));
+}
