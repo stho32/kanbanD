@@ -167,7 +167,10 @@
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
     const idx = s => bew.spalten.indexOf(s);
     const passt = a => aufgabePasst(f, aufgabeZu(a.nummer));
-    const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => x.s != null && spalten.includes(x.s));
+    // archiviert außerhalb der Abschlussspalte heißt verworfen: ab dem Archivtag kein Umfang mehr
+    const letzte = bew.spalten[bew.spalten.length - 1];
+    const zaehlt = (a, s, t) => { const x = aufgabeZu(a.nummer); return s != null && spalten.includes(s) && !(x && x.archiviert && s !== letzte && t >= isoTag(x.archiviert)); };
+    const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => zaehlt(x.a, x.s, jetzt));
     const umfang = jetztDa.length;
     let vorige = null;
     const phasen = spalten.slice(1).map(spalte => {
@@ -200,10 +203,11 @@
     const tage = [];
     if (erste !== Infinity) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
-      const da = bew.aufgaben.filter(passt).map(a => spalteAm(a.wechsel, ende)).filter(s => s != null && spalten.includes(s));
+      const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende)).map(x => x.s);
       tage.push({ t, umfang: da.length, offen: Object.fromEntries(phasen.map(ph => [ph.spalte, da.filter(s => idx(s) < idx(ph.spalte)).length])) });
     }
-    return { umfang, heute, phasen, tage, gezaehlt: jetztDa.map(x => x.a.nummer) };
+    const verworfen = bew.aufgaben.filter(a => { const s = spalteAm(a.wechsel, jetzt), x = aufgabeZu(a.nummer); return passt(a) && s != null && spalten.includes(s) && !zaehlt(a, s, jetzt) && x; }).length;
+    return { umfang, heute, phasen, tage, verworfen, gezaehlt: jetztDa.map(x => x.a.nummer) };
   }
 
   Object.assign(ziel, { prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });

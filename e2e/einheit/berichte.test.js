@@ -161,3 +161,16 @@ test('Prognose: Spalte rechts nie früher als die links davon', () => {
   assert.strictEqual(z.zeilen[0].untergrenze7, b.zeilen[0].datum7);
   assert.strictEqual(z.zeilen[0].untergrenze5, b.zeilen[0].datum5);
 });
+
+test('Prognose: archiviert außerhalb der Abschlussspalte ist verworfen', () => {
+  const bew = { spalten: ['A', 'Z'], aufgaben: [
+    { nummer: 1, wechsel: [{ zeitpunkt: '2026-10-19 09:00', spalte: 'A' }] },
+    { nummer: 2, wechsel: [{ zeitpunkt: '2026-10-19 09:00', spalte: 'A' }, { zeitpunkt: '2026-10-20 09:00', spalte: 'Z' }] },
+    { nummer: 3, wechsel: [{ zeitpunkt: '2026-10-19 09:00', spalte: 'A' }] },
+  ] };
+  const zu = n => ({ 1: { archiviert: '2026-10-20' }, 2: { archiviert: '2026-10-21' }, 3: {} })[n];
+  const voll = n => ({ klasse: null, zustaendige: [], labels: [], ...zu(n) });
+  const p = prognose(bew, f({}), voll, jetzt);
+  assert.deepStrictEqual([p.umfang, p.phasen[0].erreicht, p.phasen[0].offen, p.verworfen], [2, 1, 1, 1]);
+  assert.deepStrictEqual(p.tage.map(x => x.umfang), [3, 2, 2]);
+});

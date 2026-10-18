@@ -235,7 +235,7 @@ const KUERZEL_BOARD = [['p', 'Zuständige setzen'], ['Rechtsklick · Menütaste 
 const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
 const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['n', 'Neue Aufgabe ohne Board'], ['a · Entf', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['Ziehen', 'Zeile auf eine Spalte oder ins Archiv'], ['/', 'Filter']];
 const KUERZEL_NEU = [['Enter (im Titel) · Strg + Enter', 'anlegen'], ['Umschalt + Strg + Enter', 'anlegen und weitere'], ['Enter (Teilaufgabe)', 'Teilaufgabe anfügen'], ['Esc', 'abbrechen']];
-const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
+const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g w', 'Wie lange noch'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
 function hilfeOrt() {
   if (S.ui.offen) return ['Aufgabenfenster', KUERZEL_FENSTER];
   if (S.ui.view === 'board') return ['Board', KUERZEL_BOARD];
@@ -389,7 +389,7 @@ const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
 function vBerichtsfilter(teile) {
@@ -401,7 +401,7 @@ function vBerichtsfilter(teile) {
     const g = zeitraumGrenzen(f, jetzt);
     const von = f.zeitraum === 'eigen' ? f.von : g.von ? isoD(g.von) : '';
     const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(g.bis - 864e5) : '';
-    zr = `<span class="bf-gruppe"><span class="bf-k">Zeitraum</span><select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis"></span>`;
+    zr = `<span class="bf-gruppe"><span class="bf-k">${teile.zeitraumTitel || 'Zeitraum'}</span><select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis"></span>`;
   }
   const klassen = S.zustand.einstellungen.klassen;
   const farben = klassen.map(k => chip('bf-farbe', k.schluessel, !f.ohneFarben.includes(k.schluessel), `<i class="bf-farbe" style="${cv(k.farbe)}"></i>${esc(k.bezeichnung)}`, f.ohneFarben.includes(k.schluessel) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('')
@@ -492,6 +492,76 @@ ${l.map(x => { const a = aufgabe(x.nummer); return `<circle class="punkt klick" 
   const tabelle = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>in „${esc(von)}“</th><th>in „${esc(bis)}“</th><th class="r">Tage</th></tr></thead><tbody>${l.map(x => { const a = aufgabe(x.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${x.nummer}"><td class="tt"><span class="mono muted">#${x.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${fmt(x.eintritt)}</td><td class="mono">${fmt(x.ankunft)}</td><td class="r num">${zahl1(x.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`;
   const legende = '<div class="dlegende"><span><i class="k-punkt"></i>eine Aufgabe</span><span><i class="k-median"></i>Median</span><span><i class="k-p85"></i>85 %</span></div>';
   return `${kopf}<div class="body bericht">${kennzahlen}<h3 class="dtitel">Tage je Aufgabe nach Ankunft in „${esc(bis)}“</h3>${legende}<div class="dflaeche">${svg}</div><h3 class="dtitel">Aufgaben</h3>${tabelle}</div>`;
+}
+
+/* Wie lange noch (R00046): je Spalte noch nicht erreicht, Monte-Carlo-Fächer, Blöcke mit Perzentilen.
+   Serienfarben: Slots 1–3 der validierten dataviz-Palette, feste Reihenfolge von links nach rechts. */
+const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const deDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${WOCHENTAG[d.getDay()]} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
+const kurzDatum = ms => { const d = new Date(ms); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`; };
+function vPrognose() {
+  if (!S.bew) return '<div class="leer">lädt …</div>';
+  const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt), u = S.ui;
+  const stand = new Date(jetzt).toTimeString().slice(0, 8);
+  const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${deDatum(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter({ zeitraum: true, zeitraumTitel: 'Messbasis', spalten: true, personen: 'zustaendig' })}`;
+  if (!p.phasen.length) return `${kopf}<div class="body bericht"><div class="leer">Es braucht mindestens zwei gezählte Spalten.</div></div>`;
+  const fertig = p.phasen[p.phasen.length - 1];
+  const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${p.umfang} fertig</strong>${p.phasen.slice(0, -1).map(ph => ` · „${esc(ph.spalte)}“ ${ph.erreicht} von ${p.umfang} erreicht`).join('')}</p>`;
+  // Diagramm: höchstens drei Serien, die rechten Spalten (nahe „fertig“)
+  const serien = p.phasen.slice(-3).map((ph, i) => ({ ph, k: 'wl-s' + (i + 1) }));
+  const W = 960, H = 400, L = 48, R = 24, O = 24, U = 40, pw = W - L - R, ph_ = H - O - U;
+  const t0 = p.tage.length ? p.tage[0].t : p.heute;
+  const enden = serien.flatMap(s => s.ph.zeilen ? [s.ph.zeilen[3].datum7] : []);
+  const t1 = Math.min(Math.max(p.heute + 864e5, ...enden) + 864e5, p.heute + 400 * 864e5);
+  const ymax = Math.max(1, ...p.tage.map(x => x.umfang), p.umfang);
+  const x = t => L + pw * (t - t0) / Math.max(t1 - t0, 1), y = v => O + ph_ * (1 - v / ymax);
+  const schritt = Math.max(1, Math.ceil(ymax / 5)), yt = [];
+  for (let v = 0; v <= ymax; v += schritt) yt.push(v);
+  const xn = 8, xt = [...Array(xn + 1)].map((_, i) => t0 + (t1 - t0) * i / xn);
+  const pfad = werte => werte.map(([t, v], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  let faecher = '', linien = '', marken = '';
+  serien.forEach((s, si) => {
+    const pts = p.tage.map(d => [d.t, d.offen[s.ph.spalte]]);
+    linien += `<path class="wl-offen ${s.k}" d="${pfad(pts)}"></path>`;
+    marken += `<circle class="wl-mk ${s.k}" cx="${x(p.heute).toFixed(1)}" cy="${y(s.ph.offen).toFixed(1)}" r="4"></circle>`;
+    if (!s.ph.zeilen) return;
+    const z = Object.fromEntries(s.ph.zeilen.map(r => [r.p, r]));
+    const x0 = x(p.heute), y0 = y(s.ph.offen), y1 = y(0);
+    faecher += `<polygon class="wl-band ${s.k}" points="${x0.toFixed(1)},${y0.toFixed(1)} ${x(z[50].datum7).toFixed(1)},${y1} ${x(z[95].datum7).toFixed(1)},${y1}"></polygon>`;
+    [[50, 'wl-p50'], [85, 'wl-p85'], [95, 'wl-p95']].forEach(([q, cls], stufe) => {
+      const xe = x(z[q].datum7);
+      faecher += `<line class="${cls} ${s.k}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${y1}"></line><text class="wl-lbl" x="${xe.toFixed(1)}" y="${(y1 - 8 - 13 * stufe - 42 * si).toFixed(1)}" text-anchor="middle">${esc(s.ph.spalte.slice(0, 10))} P${q} ${kurzDatum(z[q].datum7)}</text>`;
+    });
+  });
+  const tip = d => [kurzDatum(d.t) + (d.t === p.heute ? ' (heute)' : ''), 'Umfang ' + d.umfang, ...p.phasen.map(ph => `noch nicht in „${ph.spalte}“: ${d.offen[ph.spalte]}`)].map(esc).join('|');
+  const breite = pw * 864e5 / Math.max(t1 - t0, 1);
+  const svg = `<svg class="diagramm wl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch nicht erreichte Aufgaben je Spalte mit Prognose">
+${yt.map(v => `<line class="gitter" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"></line><text class="achse" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+${xt.map(t => `<text class="achse" x="${x(t).toFixed(1)}" y="${H - U + 18}" text-anchor="middle">${kurzDatum(t)}</text>`).join('')}
+<path class="umfang" d="${pfad(p.tage.map(d => [d.t, d.umfang]))}"></path>
+${faecher}${linien}${marken}
+<line class="wl-heute" x1="${x(p.heute)}" x2="${x(p.heute)}" y1="${O}" y2="${H - U}"></line><text class="wl-lbl" x="${x(p.heute) + 4}" y="${O + 10}">heute</text>
+<line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
+${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed(1)}" y="${O}" width="${breite.toFixed(1)}" height="${ph_}" data-tag="${i}" data-tip="${tip(d)}"></rect>`).join('')}
+</svg>`;
+  const legende = `<div class="dlegende wl-legende"><span><i class="k-umfang"></i>Umfang</span>${serien.map(s => `<span><i class="wl-k ${s.k}"></i>noch nicht in „${esc(s.ph.spalte)}“ — Prognose P50 · P85 gestrichelt · P95 gepunktet</span>`).join('')}</div>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.phasen.map(ph => `<th class="r">noch nicht in „${esc(ph.spalte)}“</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${isoD(d.t)}</td><td class="r num">${d.umfang}</td>${p.phasen.map(ph => `<td class="r num">${d.offen[ph.spalte]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
+  const bloecke = p.phasen.map(ph => {
+    const anteil = p.umfang ? ph.erreicht / p.umfang : 1, hue = Math.round(120 * anteil);
+    const kopfzeile = `<div class="wl-phase-kopf"><h3>Spalte „${esc(ph.spalte)}“ <span class="wl-badge">${ph.erreicht} VON ${p.umfang} ERREICHT</span></h3><div class="wl-fortschritt" role="img" aria-label="${Math.round(100 * anteil)} Prozent erreicht"><i style="width:${Math.round(100 * anteil)}%"></i></div></div>`;
+    const reihe = ph.reihe7.length > 60 ? '… ' + ph.reihe7.slice(-60).join(' ') : ph.reihe7.join(' ');
+    const messung = ph.laeufe ? `<p class="sek">Durchsatz Ø ${zahl1(ph.durchsatz)} je Kalendertag aus ${ph.laeufe} ${ph.laeufe === 1 ? 'Lauf' : 'Läufen'} · Tagesreihe: <span class="mono">${reihe}</span></p>` : '';
+    let inhalt;
+    if (!ph.offen) inhalt = `<p>Alle ${p.umfang} Aufgaben haben „${esc(ph.spalte)}“ erreicht.</p>`;
+    else if (!ph.zeilen) inhalt = `<p>${ph.offen} offen — keine Prognose unter ${MIN_LAEUFE} Läufen in der Messbasis (gemessen: ${ph.laeufe}).</p>`;
+    else inhalt = `<div class="wl-scroll"><table class="pt dicht wl-tab"><thead><tr><th>Mit X % Wkt.</th><th>Fertig zum, 7-Tage-Woche</th><th>Fertig zum, 5-Tage-Woche</th><th>Restliche Dauer</th><th>Nicht vor (Spalte links)</th></tr></thead><tbody>${ph.zeilen.map(z => `<tr><td>${z.p} %</td><td>${deDatum(z.datum7)}</td><td>${deDatum(z.datum5)}</td><td>${z.kalendertage} Kalendertage · ${z.arbeitstage} Arbeitstage</td><td>${z.untergrenze7 ? deDatum(z.untergrenze7) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<section class="wl-phase" style="--h:${hue}" data-spalte="${esc(ph.spalte)}">${kopfzeile}${inhalt}${messung}</section>`;
+  }).join('');
+  const ohneBoard = S.aufgaben.filter(a => !a.archiviert && !(S.boards || []).some(b => b.spalten.some(sp => sp.aufgaben.includes(a.nummer)))).length;
+  const aufBoard = S.board ? S.board.spalten.reduce((s, sp) => s + sp.aufgaben.length, 0) : 0;
+  const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste"><li>Aufgaben ohne Board: ${ohneBoard}.</li><li>Auf diesem Board, aber ausgeschlossen (Spalte, Farbe, Person, Label): ${Math.max(0, aufBoard - p.umfang - p.verworfen)}.</li><li>Archiviert außerhalb der Abschlussspalte (gelten als verworfen): ${p.verworfen}.</li></ul>`;
+  const methodik = `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Quelle: die Git-Geschichte von <span class="mono">boards/${esc(u.slug || '')}.md</span>; jede Bewegung ist ein Commit. Der Bericht rechnet neu, sobald sich das Board ändert.</li><li>Eine Aufgabe hat eine Spalte erreicht, sobald sie dort oder rechts davon liegt; es zählt das erste Erreichen. Je Spalte (außer der ersten) eine Kurve „noch nicht erreicht“.</li><li>Prognose: ${(10000).toLocaleString('de-DE')} Ziehungen mit Zurücklegen aus der Tagesreihe der Spalte (erreichte Aufgaben je Kalendertag ab dem ersten Lauf oder ab Beginn der Messbasis, Nulltage eingeschlossen), bis die offenen Aufgaben erreicht sind; Perzentile über die gezogenen Tage. Kein Puffer, kein Zuschlag. Eine Spalte wird nie früher prognostiziert als die Spalte links davon — deren Datum steht als Untergrenze dabei, nicht verrechnet.</li><li>5-Tage-Woche: Tagesreihe nur über Werktage (Ankünfte am Wochenende zählen zum nächsten Werktag), gezählt ab heute nur Mo bis Fr.</li><li>Unter ${MIN_LAEUFE} Läufen in der Messbasis gibt es keine Perzentile. Das Diagramm zeigt höchstens die drei rechten Spalten farbig; die Tabellenansicht und die Blöcke führen jede Spalte.</li></ul>`;
+  return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}<div class="dflaeche wl-flaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>${bloecke}${nicht}${methodik}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

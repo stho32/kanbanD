@@ -71,3 +71,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 60 | I0043 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00043 | offen |
 | 61 | I0044 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00044 | offen |
 | 62 | I0045 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00045 | offen |
+- [ ] **Archiviert außerhalb der Abschlussspalte gilt in „Wie lange noch“ als verworfen.** Archivieren lässt die Board-Zeile stehen (R00018); ohne diese Regel bliebe eine abgebrochene Aufgabe für immer „offen“. Ab dem Archivtag zählt sie nicht mehr zum Umfang, der Bericht nennt die Anzahl unter „Nicht enthalten“. Das Burndown (R00044) zählt sie weiter wie bisher. Empfehlung gewählt

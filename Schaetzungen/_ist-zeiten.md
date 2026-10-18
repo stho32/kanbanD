@@ -164,3 +164,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00045 Durchlaufzeit als eigener Bericht | B0109 Bericht Durchlaufzeit | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00045 Durchlaufzeit als eigener Bericht | Lauf R00045 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00046 Wie lange noch | B0110 Prognose je Spalte rechnen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00046 Wie lange noch | B0111 Bericht Wie lange noch | Standard | 2-3h | 0,0h | 0,0h | autonom |

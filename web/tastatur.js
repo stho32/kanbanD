@@ -34,7 +34,7 @@
     return { spalte: spalten[s].name, index: Math.min(o.i, spalten[s].karten.length) };
   }
 
-  const G_ZIELE = { b: '#/board/', a: '#/aufgaben', p: '#/personen', s: '#/berichte/stundenzettel', z: '#/berichte/kreuz', v: '#/berichte/verlauf', d: '#/berichte/durchlauf', e: '#/einrichten' };
+  const G_ZIELE = { b: '#/board/', a: '#/aufgaben', p: '#/personen', s: '#/berichte/stundenzettel', z: '#/berichte/kreuz', v: '#/berichte/verlauf', d: '#/berichte/durchlauf', w: '#/berichte/prognose', e: '#/einrichten' };
 
   /** g-Folgen: vorher = vorige Taste (oder null), taste = jetzige. Liefert {ziel, warte}. */
   function gFolge(vorher, taste) {

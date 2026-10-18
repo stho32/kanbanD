@@ -50,6 +50,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/kreuz') return vKreuz();
   if (S.ui.view === 'berichte/verlauf') return vVerlauf();
   if (S.ui.view === 'berichte/durchlauf') return vDurchlauf();
+  if (S.ui.view === 'berichte/prognose') return vPrognose();
   return vBoard();
 }
 
@@ -1015,15 +1016,21 @@ document.addEventListener('paste', async e => {
   render();
 });
 
-/* Tooltip des Burndowns: Fadenkreuz und Werte des Tages unter dem Zeiger */
+/* Tooltip der Verlaufsdiagramme: Fadenkreuz und Werte des Tages unter dem Zeiger (data-tip: Zeilen mit | getrennt) */
 document.addEventListener('mouseover', e => {
   const r = e.target.closest && e.target.closest('rect.treffer');
   const tip = $('#tooltip'), kreuz = $('#fadenkreuz');
   if (!tip || !kreuz) return;
   if (!r) { tip.hidden = true; kreuz.setAttribute('x1', -10); kreuz.setAttribute('x2', -10); return; }
-  const x = S.bdTage[+r.dataset.tag], mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
+  const mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
   kreuz.setAttribute('x1', mitte); kreuz.setAttribute('x2', mitte);
-  tip.innerHTML = `<b>${x.datum}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>`;
+  if (r.dataset.tip) {
+    const [kopf, ...zeilen] = r.dataset.tip.split('|');
+    tip.innerHTML = `<b>${esc(kopf)}</b>${zeilen.map(z => `<span>${esc(z)}</span>`).join('')}`;
+  } else {
+    const x = S.bdTage[+r.dataset.tag];
+    tip.innerHTML = `<b>${x.datum}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>`;
+  }
   tip.hidden = false;
   const flaeche = r.closest('.dflaeche').getBoundingClientRect(), rb = r.getBoundingClientRect();
   tip.style.left = Math.min(flaeche.width - 150, Math.max(0, rb.left - flaeche.left + rb.width / 2 + 8)) + 'px';
