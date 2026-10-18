@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-09-26
+zuletzt-ergaenzt: 2026-10-18
 ---
 
 # R00000: Vision — kanbanD
@@ -13,13 +13,15 @@ Wird fortgeschrieben, nie abgehakt.
 
 ## Kurzfassung
 
-kanbanD ist ein Kanban-Board, das ein Ordner ist. Mit `kanbanD <ordner>` gestartet,
-zeigt es genau das eine Board, dessen Spalten und Karten als Markdown-Dateien mit
-Frontmatter in diesem Ordner liegen — meist in einem Git-Repository, neben der
-Arbeit, um die es geht. Menschen arbeiten im Browser, KI-Agenten über die API oder
-direkt an den Dateien; jede Änderung erscheint sofort in allen offenen Sichten.
-Git ist das Gedächtnis des Boards: seine Geschichte lässt sich diffen, mergen und
-branchen wie Code.
+kanbanD ist ein Kanban, das ein Ordner ist. Mit `kanbanD <ordner>` gestartet,
+arbeitet es auf zwei Verzeichnissen darin: einem mit Aufgaben, je Aufgabe eine
+Markdown-Datei mit Frontmatter und bei Bedarf ein Ordner für Anhänge, und einem mit
+Boards, je Board eine Markdown-Datei, die ihre eigene Struktur trägt und darin auf
+Aufgaben verweist. Der Ordner liegt meist in einem Git-Repository, neben der Arbeit,
+um die es geht. Menschen arbeiten im Browser, KI-Agenten über die API oder direkt an
+den Dateien; jede Änderung erscheint sofort in allen offenen Sichten. Jede Aktion in
+kanbanD wird sofort committet, so ist Git das vollständige Gedächtnis: wer wann was
+getan hat, lässt sich diffen, mergen und branchen wie Code.
 
 ## Anlass
 
@@ -42,14 +44,26 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
 
 ## Zielbild
 
-- **Ein Board, das ein Ordner ist.** Spalten und Karten liegen als Markdown-Dateien
-  mit Frontmatter vor. Sie sind ohne kanbanD lesbar und mit jedem Editor änderbar.
+- **Ein Kanban, das ein Ordner ist.** Aufgaben und Boards liegen als
+  Markdown-Dateien vor. Sie sind ohne kanbanD lesbar und mit jedem Editor änderbar.
   kanbanD ist die bequemste Art, sie zu bearbeiten, aber nicht die einzige.
 
-- **Git ist das Gedächtnis.** Jede Karte hat eine Geschichte: wer sie wann wohin
-  bewegt hat. Das Board lässt sich diffen, mergen und branchen wie Code, ein Pull
-  bringt die Arbeit anderer mit. Die Dateistruktur ist so geschnitten, dass typische
-  Merges nicht in Konflikten enden.
+- **Aufgaben sind unabhängige Daten.** Eine Aufgabe ist eine Markdown-Datei mit
+  Frontmatter im Aufgabenverzeichnis, bei Bedarf mit einem eigenen Ordner für
+  Anhänge. Sie weiß nicht, auf welchem Board und in welcher Spalte sie liegt.
+
+- **Das Board besitzt seine Struktur.** Ein Board ist eine Markdown-Datei im
+  Boardverzeichnis. Sie enthält Spalten und Reihenfolge und verweist auf Aufgaben —
+  samt der Stelle, an der jede in dieser Struktur liegt. Eine Aufgabe zu bewegen
+  ändert nur die Board-Datei, nie die Aufgabe. Auf der Oberfläche erscheint eine
+  Aufgabe als Karte.
+
+- **Git ist das Gedächtnis.** Jede Aktion in kanbanD ergibt einen eigenen Commit.
+  Die Git-Geschichte ist damit das vollständige Archiv, auch der Zeiten: wann eine
+  Aufgabe angelegt, geändert und wohin sie bewegt wurde, steht in den Commits. Das
+  Board lässt sich diffen, mergen und branchen wie Code, ein Pull bringt die Arbeit
+  anderer mit. Die Dateistruktur ist so geschnitten, dass typische Merges nicht in
+  Konflikten enden.
 
 - **Mensch und Agent arbeiten gleichberechtigt.** Der Mensch nutzt den Browser, der
   Agent die API oder die Dateien direkt. An jeder Änderung ist ablesbar, wer
@@ -66,8 +80,8 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
   Repository, zeigt eine Karte auf ihren Knoten. `Braucht`-Beziehungen werden zu
   echten Abhängigkeiten zwischen Karten und nicht zu Fließtext.
 
-- **Auswertungen aus der Geschichte.** Soll-Ist, Burndown und Zeiten je Karte und
-  Kontributor werden aus den Dateien und ihrer Git-Geschichte gerechnet.
+- **Auswertungen aus der Geschichte.** Soll-Ist, Burndown, Durchlaufzeiten und Zeiten
+  je Aufgabe und Kontributor werden aus den Dateien und ihrer Git-Geschichte gerechnet.
 
 - **Ein eigenes Design, früh vom Menschen gesehen.** Es ist per Tastatur bedienbar
   und folgt gewohnten Konventionen. Keine Gestaltung geht in den Bau, die niemand
@@ -101,11 +115,14 @@ startet mit einem Befehl.
 - **Weboberfläche, im LAN erreichbar.** Kein Desktop-Programm und kein Betrieb im
   Internet.
 - **Die Dateien sind der einzige Speicher.** Das sind Markdown-Dateien mit
-  Frontmatter, ohne Datenbank daneben. Ein Index oder Cache darf existieren, muss
+  Frontmatter, ohne Datenbank daneben. Aufgaben und Boards liegen in getrennten
+  Verzeichnissen. Ein Index oder Cache darf existieren, muss
   sich aber jederzeit aus den Dateien neu aufbauen lassen und wird nicht versioniert.
 - **Git-freundliche Form.** Die Dateien sind stabil sortiert, haben stabile IDs,
   sind zeilenorientiert und ändern sich nur dort, wo sich etwas ändert. Eine
-  Bewegung ergibt einen kleinen Diff.
+  Bewegung ergibt einen kleinen Diff in der Board-Datei und keinen in der Aufgabe.
+- **Ein Commit je Aktion.** Jede schreibende Aktion über Oberfläche oder API wird
+  von kanbanD sofort und einzeln committet.
 - **Full-Trust.** Keine Anmeldung und keine Rechteprüfung. Die Identität wird je
   Tab gewählt (`sessionStorage`), und ein Agent nennt sie bei jedem schreibenden
   Aufruf.
@@ -117,16 +134,15 @@ startet mit einem Befehl.
 
 - **Kein Cloud-Dienst.** Keine Accounts, keine Registrierung, kein Betrieb im
   Internet.
-- **Keine Board-Verwaltung.** kanbanD führt keine Liste von Boards und wechselt
-  nicht zwischen ihnen. Ein zweites Board ist ein zweiter Ordner mit einer zweiten
-  Instanz.
+- **Kein Wechsel zwischen Ordnern.** Eine Instanz arbeitet auf genau einem Ordner.
+  Ein zweiter Ordner ist eine zweite Instanz.
 - **Keine Datenbank als Wahrheit.** Was nicht in den Dateien steht, gibt es nicht.
-- **Kein Git-Client.** Pull, Push, Branch und Merge macht der Mensch mit seinen
-  gewohnten Werkzeugen. kanbanD kommt mit dem zurecht, was dabei herauskommt.
+- **Kein Git-Client.** kanbanD committet seine eigenen Aktionen, mehr nicht. Pull,
+  Push, Branch und Merge macht der Mensch mit seinen gewohnten Werkzeugen. kanbanD kommt mit dem zurecht, was dabei herauskommt.
 - **Kein Funktionsgleichstand mit Kanbanflow oder kanbanC.** Keine Mobile-Apps,
   keine Fremd-Integrationen, keine Benachrichtigungen und keine @-Mentions; aus
   kanbanC nicht übernommen sind Linien- und Projektboards, Klassen mit eigener
-  Nummerierung, Critical Chain mit Puffer und Anhänge.
+  Nummerierung und Critical Chain mit Puffer.
 - **Kein Projektmanagement-Werkzeug.** Kein Gantt, keine Kapazitäts- und
   Terminplanung. Auswertungen rechnen aus dem, was geschehen ist.
 - **Kein Ersatz für Vision, Anforderungen und WBS.** Diese Dokumente bleiben
@@ -134,20 +150,26 @@ startet mit einem Befehl.
 
 ## Offene Richtungsfragen
 
-- **Committet kanbanD selbst?** Möglich wäre ein Commit je Änderung, gebündelte
-  Commits oder gar keiner, sodass der Mensch committet. Daran hängt, ob die
-  Git-Geschichte wirklich die Geschichte jeder Kartenbewegung ist.
-- **Wo steht das „Wer“?** Im Git-Autor, im Frontmatter oder in beidem. Das hängt
-  an der ersten Frage.
-- **Wie wird ein laufender Timer gespeichert?** Er kann als Datei geschrieben
-  werden, was häufige Änderungen erzeugt, oder bis zum Stopp flüchtig bleiben, was
-  bei einem Absturz verloren geht.
+- **Wo steht das „Wer“?** Im Git-Autor des Commits, im Frontmatter oder in beidem.
+- **Wie viele Boards, und wie stehen sie zu den Aufgaben?** Zeigt eine Instanz
+  mehrere Boards des Boardverzeichnisses und wechselt zwischen ihnen? Darf dieselbe
+  Aufgabe auf mehreren Boards liegen, und was ist eine Aufgabe auf keinem Board?
+- **Bleibt ein eigener Timer?** Die Commits liefern Zeitpunkte jeder Aktion. Offen
+  ist, ob daneben ein Timer mit Start und Stopp in der Aufgabe steht und ob ein
+  laufender Timer sofort als Datei geschrieben wird (ein Commit beim Start) oder bis
+  zum Stopp flüchtig bleibt (verloren bei einem Absturz).
+- **Wie bleibt die Board-Datei mergebar?** Jede Bewegung ändert sie. Bewegen zwei
+  Menschen auf zwei Branches Aufgaben auf demselben Board, darf das nicht
+  regelmäßig in Konflikten enden.
+- **Was geschieht mit Änderungen von außen?** Ändert ein Editor oder ein Agent die
+  Dateien direkt: committet kanbanD sie beim Erkennen, oder bleibt das Commit dem,
+  der geändert hat?
 - **Wie sieht ein Konflikt aus?** Das betrifft gleichzeitiges Schreiben von UI, API
-  und Editor sowie Merge-Konfliktmarker in einer Kartendatei. Offen ist, was
-  kanbanD dann zeigt und tut.
+  und Editor sowie Merge-Konfliktmarker in einer Aufgaben- oder Board-Datei. Offen
+  ist, was kanbanD dann zeigt und tut.
 - **Fließt etwas zur WBS zurück?** Zum Beispiel könnte eine erledigte Karte ihren
   Knoten grün setzen.
-- **Wo werden Kontributoren definiert?** Im Board-Ordner, damit sie mitreisen, oder
+- **Wo werden Kontributoren definiert?** Im Ordner, damit sie mitreisen, oder
   außerhalb, damit sie über Boards hinweg gelten.
 - **Was geschieht mit kanbanC-Beständen?** Import, Migration oder ein Neuanfang.
 - **Welche weiteren Aufgabenquellen?** E-Mail und Formulare bleiben Möglichkeiten,
@@ -158,3 +180,5 @@ startet mit einem Befehl.
 | Datum | Ergänzung |
 |---|---|
 | 2026-09-26 | Vision angelegt (Nachfolger von kanbanC: Board als Markdown-Ordner, Git als Gedächtnis, eine Anwendung mit einem Startbefehl, Live auch bei Dateiänderungen, WBS als Nachbar) |
+| 2026-10-18 | Richtungsfrage Commit entschieden: jede Aktion in kanbanD ergibt sofort einen eigenen Commit, die Git-Geschichte ist das volle Archiv inkl. Zeiten (Leitplanke, Zielbild, „Kein Git-Client“ geschärft) |
+| 2026-10-18 | Datenmodell fortgeschrieben: Aufgabenverzeichnis (je Aufgabe eine Datei, ggf. Anhang-Ordner) und Boardverzeichnis (je Board eine Markdown-Datei mit Struktur und Aufgabenverweisen); Bewegen ändert nur die Board-Datei. Ersetzt „Ein Board, das ein Ordner ist“ und „Keine Board-Verwaltung“ (jetzt „Kein Wechsel zwischen Ordnern“), Anhänge aus dem Nicht-Ziel gestrichen — Grund: Aufgaben sind unabhängig von Boards. Neue Richtungsfragen: Boards und Aufgaben, Timer, Mergebarkeit der Board-Datei, Änderungen von außen |
