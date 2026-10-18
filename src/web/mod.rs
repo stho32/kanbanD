@@ -63,6 +63,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
+        .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
+        .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
@@ -233,4 +235,19 @@ async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, 
 
 async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kommentieren(p, nr, &t.text)).await
+}
+
+async fn timer_starten(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.timer_starten(p, nr)).await
+}
+
+#[derive(serde::Deserialize, Default)]
+struct Stopp {
+    wer: Option<String>,
+}
+
+/// Der Körper ist freiwillig: leer, `null` oder `{"wer": "<kürzel>"}`.
+async fn timer_stoppen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, koerper: axum::body::Bytes) -> Result<Response, Fehler> {
+    let fuer = serde_json::from_slice::<Option<Stopp>>(&koerper).ok().flatten().unwrap_or_default().wer;
+    als_person(&app, wer, move |k, p| k.timer_stoppen(p, nr, fuer.as_deref())).await
 }

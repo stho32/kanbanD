@@ -9,6 +9,7 @@ mod einstellungen;
 mod kommentare;
 mod spalten;
 mod teilaufgaben;
+mod timer;
 
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;
