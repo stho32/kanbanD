@@ -1,6 +1,6 @@
 ---
 id: R00031
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,10 +26,10 @@ Fehlgriffe beim Ziehen oder Anlegen sind mit einem Tastendruck behoben.
 
 ## Akzeptanzkriterien
 
-- [ ] Ziehen von #1 aus „Zu erledigen“ (Position 0) nach „Erledigt“, „rückgängig“ → #1 wieder an Position 0 in „Zu erledigen“; zwei Commits
-- [ ] Umschalt+→ auf #2, Strg+Z → #2 zurück
-- [ ] Zwei Zeilen einfügen, „rückgängig“ → beide archiviert, vom Board verschwunden
-- [ ] Strg+Z in einem Eingabefeld löst nichts aus
+- [x] Ziehen von #1 aus „Zu erledigen“ (Position 0) nach „Erledigt“, „rückgängig“ → #1 wieder an Position 0 in „Zu erledigen“; zwei Commits
+- [x] Umschalt+→ auf #2, Strg+Z → #2 zurück
+- [x] Zwei Zeilen einfügen, „rückgängig“ → beide archiviert, vom Board verschwunden
+- [x] Strg+Z in einem Eingabefeld löst nichts aus
 
 ## Betroffene Verzeichnisstruktur
 
