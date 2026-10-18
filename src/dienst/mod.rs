@@ -11,6 +11,7 @@ pub use einrichten::{Einrichtung, NeuePerson};
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;
 use crate::git;
+use crate::waechter::Eigene;
 use crate::format::board;
 use crate::modell::{Aufgabe, Board, Einstellungen, Person};
 use serde::Serialize;
@@ -20,6 +21,7 @@ use std::sync::Mutex;
 pub struct Kanban {
     ordner: Ordner,
     sperre: Mutex<()>,
+    eigene: Eigene,
 }
 
 #[derive(Debug, Serialize)]
@@ -39,11 +41,16 @@ pub struct Zustand {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()) }
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default() }
     }
 
     pub fn ordner(&self) -> &Ordner {
         &self.ordner
+    }
+
+    /// Was kanbanD selbst geschrieben hat — der Wächter unterscheidet so eigene von externen Änderungen.
+    pub fn eigene(&self) -> Eigene {
+        self.eigene.clone()
     }
 
     pub fn zustand(&self) -> Result<Zustand, Fehler> {
@@ -83,6 +90,7 @@ impl Kanban {
     /// geschriebene Stand stehen und der Fehler wird gemeldet.
     fn aktion(&self, autor: &Person, nachricht: &str, dateien: &[(String, String)]) -> Result<(), Fehler> {
         for (rel, text) in dateien {
+            self.eigene.merken(rel);
             self.ordner.schreib(rel, text)?;
         }
         let pfade: Vec<String> = dateien.iter().map(|(p, _)| p.clone()).collect();
