@@ -518,9 +518,11 @@ ${xTicks.map(({ x, i }) => `<text class="achse" x="${sx(i)}" y="${H - 8}" text-a
 ${t.map((x, i) => `<rect class="treffer" x="${sx(i) - (B - L - R) / Math.max(1, t.length - 1) / 2}" y="${O}" width="${(B - L - R) / Math.max(1, t.length - 1)}" height="${H - O - U}" data-tag="${i}"></rect>`).join('')}
 </svg>` : `<div class="leer">${S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.'}</div>`;
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
+  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
+  const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter({ zeitraum: true, spalten: true, personen: 'zustaendig' })}
-<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>`;
+<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}${nicht}</div>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */

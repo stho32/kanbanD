@@ -268,3 +268,26 @@ test('Durchlaufen nach Phasen: freie Spalte zwischen Phasen ist in keiner Phase,
   assert.ok(!e.durch(x, 'Blockiert'), 'heute offen');
   assert.strictEqual(tagIso(ersterDurchlauf(x, e)), '02.10.', 'im Durchsatz zählt der Zug nach „Test“');
 });
+
+/* ── Zählen in Berichten je Aufgabe (R00060) ── */
+const { zaehltImBericht, ausgenommen } = require('../../web/berichte.js');
+const mitZaehlung = (nr, reporting) => ({ ...BEW, aufgaben: BEW.aufgaben.map(a => a.nummer === nr ? { ...a, reporting } : a) });
+
+test('Zählen: Standard zählt, false nimmt aus, true und fehlender Schlüssel zählen', () => {
+  assert.strictEqual(zaehltImBericht({}, 'burndown'), true);
+  assert.strictEqual(zaehltImBericht({ reporting: {} }, 'forecast'), true);
+  assert.strictEqual(zaehltImBericht({ reporting: { forecast: false } }, 'forecast'), false);
+  assert.strictEqual(zaehltImBericht({ reporting: { forecast: false } }, 'burndown'), true, 'je Bericht ein eigener Schlüssel');
+  assert.strictEqual(zaehltImBericht({ reporting: { burndown: true } }, 'burndown'), true);
+});
+
+test('Burndown ohne Aufgaben mit reporting.burndown false; der Filter wirkt zusätzlich; „ausgenommen“ zählt sie', () => {
+  const kurz = t => t.map(x => [x.datum.slice(8), x.offen, x.umfang]);
+  const bew = mitZaehlung(2, { burndown: false });
+  assert.deepStrictEqual(kurz(burndown(bew, f({}), zu, jetzt)), [['18', 1, 1], ['19', 1, 2], ['20', 0, 1], ['21', 0, 1]]);
+  assert.deepStrictEqual(kurz(burndown(mitZaehlung(2, { forecast: false }), f({}), zu, jetzt)), [['18', 2, 2], ['19', 2, 3], ['20', 1, 2], ['21', 0, 2]], 'forecast betrifft den Burndown nicht');
+  assert.deepStrictEqual(kurz(burndown(bew, f({ ohneFarben: ['bug'] }), zu, jetzt)), [['18', 0, 0], ['19', 0, 0], ['20', 0, 0], ['21', 0, 0]], 'Filter zusätzlich');
+  assert.strictEqual(ausgenommen(bew, 'burndown', f({}), zu, jetzt), 1);
+  assert.strictEqual(ausgenommen(bew, 'burndown', f({ ohneFarben: ['ux'] }), zu, jetzt), 0, 'vom Filter schon ausgeschlossen');
+  assert.strictEqual(ausgenommen(mitZaehlung(3, { burndown: false }), 'burndown', f({}), zu, jetzt), 0, 'nicht mehr auf dem Board');
+});

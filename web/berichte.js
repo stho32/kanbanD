@@ -70,6 +70,15 @@
   /** Zählt eine Aufgabe in dieser Spalte? Filter nach Spalte, Farbe, Person, Label. */
   const zaehltMit = (f, aufgabeZu) => (nr, spalte) => spalte != null && !f.ohneSpalten.includes(spalte) && aufgabePasst(f, aufgabeZu(nr));
 
+  /* ── Zählen in Berichten je Aufgabe (R00060) ── */
+  /** Zählt die Aufgabe (Eintrag aus bew.aufgaben) im Bericht `burndown` oder `forecast`? Nur `false` nimmt sie aus. */
+  const zaehltImBericht = (a, bericht) => !(a.reporting && a.reporting[bericht] === false);
+  /** Aufgaben, die jetzt in einer gezählten Spalte liegen und zum Filter passen, aber per `reporting` ausgenommen sind. */
+  function ausgenommen(bew, bericht, f, aufgabeZu, jetzt) {
+    const zaehlt = zaehltMit(f, aufgabeZu);
+    return bew.aufgaben.filter(a => !zaehltImBericht(a, bericht) && zaehlt(a.nummer, spalteAm(a.wechsel, jetzt))).length;
+  }
+
   /* ── Burndown (R00044) ── */
   /** Je Tag im Zeitraum: offen (nicht in der Abschlussspalte) und Umfang, Stand am Tagesende, heute jetzt. */
   function burndown(bew, f, aufgabeZu, jetzt) {
@@ -82,6 +91,7 @@
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       let offen = 0, umfang = 0;
       for (const a of bew.aufgaben) {
+        if (!zaehltImBericht(a, 'burndown')) continue;
         const s = spalteAm(a.wechsel, ende);
         if (!zaehlt(a.nummer, s)) continue;
         umfang++;
@@ -280,5 +290,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);
