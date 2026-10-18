@@ -69,3 +69,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 - [ ] **„Wie lange noch“ auf dem Kanban statt der WBS.** Phasen der Vorlage `/anwendung wie-lange-noch --karte` = Spalten des Boards: eine Aufgabe hat Spalte k erreicht, wenn sie in k oder rechts davon liegt. 5-Tage-Woche aus dem Durchsatz der Werktage statt aus gemessenen Stunden (kanbanD kennt keine Ist-Zeiten-Datei). Empfehlung gewählt
 | 59 | I0042 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00042 | offen |
 | 60 | I0043 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00043 | offen |
+| 61 | I0044 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00044 | offen |
