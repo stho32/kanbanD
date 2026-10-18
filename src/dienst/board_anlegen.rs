@@ -24,6 +24,7 @@ impl Kanban {
             slug: slug(&neu.titel),
             titel: neu.titel.trim().into(),
             spalten: spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![] }).collect(),
+            termine: vec![],
         };
         if self.ordner().existiert(&board_pfad(&b.slug)) {
             return Err(Fehler::Konflikt(format!("Es gibt schon ein Board unter boards/{}.md", b.slug)));

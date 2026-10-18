@@ -1,7 +1,8 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Board, Spalte};
+use crate::modell::{Board, Linie, Spalte, Staerke, Termin};
+use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
 
@@ -10,6 +11,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let (y, koerper) = frontmatter::trennen(text)?;
     let m = yaml::lesen(y)?;
     let grenzen = yaml::zuordnung(&m, "limits");
+    let termine = termine_lesen(m.get("milestones"))?;
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
     for zeile in koerper.lines() {
@@ -30,7 +32,40 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine })
+}
+
+const LINIEN: [(&str, Linie); 3] = [("solid", Linie::Durchgehend), ("dashed", Linie::Gestrichelt), ("dotted", Linie::Gepunktet)];
+const STAERKEN: [(&str, Staerke); 3] = [("thin", Staerke::Fein), ("normal", Staerke::Normal), ("bold", Staerke::Fett)];
+
+/// `milestones:` — Liste von `{name, date, color, line, width}`; ein unlesbarer Termin ist ein Fehler, kein stiller Verlust.
+fn termine_lesen(v: Option<&Value>) -> Result<Vec<Termin>, Formatfehler> {
+    let Some(v) = v else { return Ok(vec![]) };
+    let Value::Sequence(liste) = v else { return Err(Formatfehler("milestones ist keine Liste".into())) };
+    liste
+        .iter()
+        .map(|e| {
+            let m = e.as_mapping().ok_or_else(|| Formatfehler("Ein Eintrag unter milestones ist keine Zuordnung".into()))?;
+            let wahl = |schluessel: &str| yaml::text(m, schluessel);
+            let linie = match wahl("line") {
+                None => Linie::default(),
+                Some(l) => LINIEN.iter().find(|(k, _)| *k == l).map(|(_, x)| *x).ok_or_else(|| Formatfehler(format!("milestones: line „{l}“ ist nicht solid, dashed oder dotted")))?,
+            };
+            let staerke = match wahl("width") {
+                None => Staerke::default(),
+                Some(w) => STAERKEN.iter().find(|(k, _)| *k == w).map(|(_, x)| *x).ok_or_else(|| Formatfehler(format!("milestones: width „{w}“ ist nicht thin, normal oder bold")))?,
+            };
+            let t = Termin { name: wahl("name").unwrap_or_default(), datum: wahl("date").unwrap_or_default(), farbe: wahl("color").unwrap_or_else(|| "red".into()), linie, staerke };
+            t.pruefen().map_err(|f| Formatfehler(format!("milestones: {f}")))?;
+            Ok(t)
+        })
+        .collect()
+}
+
+fn termin_zeile(t: &Termin) -> String {
+    let linie = LINIEN.iter().find(|(_, x)| *x == t.linie).map(|(k, _)| *k).unwrap_or("solid");
+    let staerke = STAERKEN.iter().find(|(_, x)| *x == t.staerke).map(|(k, _)| *k).unwrap_or("normal");
+    format!("  - {{name: {}, date: {}, color: {}, line: {linie}, width: {staerke}}}\n", yaml::skalar(&t.name), t.datum, yaml::skalar(&t.farbe))
 }
 
 /// `- [#12](…)`, `- #12 Text`, `* #12` → 12
@@ -45,10 +80,19 @@ fn aufgabennummer(zeile: &str) -> Option<u32> {
 pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let mut s = String::new();
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
-    if !grenzen.is_empty() {
-        s.push_str("---\nlimits:\n");
-        for sp in grenzen {
-            s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), sp.grenze.unwrap_or_default()));
+    if !grenzen.is_empty() || !b.termine.is_empty() {
+        s.push_str("---\n");
+        if !grenzen.is_empty() {
+            s.push_str("limits:\n");
+            for sp in grenzen {
+                s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), sp.grenze.unwrap_or_default()));
+            }
+        }
+        if !b.termine.is_empty() {
+            s.push_str("milestones:\n");
+            for t in &b.termine {
+                s.push_str(&termin_zeile(t));
+            }
         }
         s.push_str("---\n\n");
     }
@@ -81,6 +125,7 @@ mod tests {
                 Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3] },
                 Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![] },
             ],
+            termine: vec![],
         }
     }
 
@@ -112,6 +157,34 @@ mod tests {
         assert_eq!(b.spalten[0].aufgaben, vec![7, 8]);
         assert_eq!(b.titel, "X");
         assert_eq!(lesen("ohne-titel", "## A\n").unwrap().titel, "ohne-titel");
+    }
+
+    #[test]
+    fn termine_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
+        b.termine = vec![
+            Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett },
+            Termin { name: "Review: Kunde".into(), datum: "2026-11-15".into(), farbe: "#2a78d6".into(), linie: Linie::Gestrichelt, staerke: Staerke::Fein },
+        ];
+        let t = schreiben(&b, datei);
+        assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\nmilestones:\n  - {name: Deadline, date: 2027-10-31, color: red, line: solid, width: bold}\n  - {name: \"Review: Kunde\", date: 2026-11-15, color: \"#2a78d6\", line: dashed, width: thin}\n---\n\n# Entwicklung\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        let ohne_grenzen = "---\nmilestones:\n  - {name: X, date: 2026-12-01}\n---\n\n# B\n\n## A\n";
+        let g = lesen("b", ohne_grenzen).unwrap();
+        assert_eq!((g.termine[0].farbe.as_str(), g.termine[0].linie, g.termine[0].staerke), ("red", Linie::Durchgehend, Staerke::Normal));
+    }
+
+    #[test]
+    fn unlesbare_termine_sind_fehler() {
+        let mit = |zeile: &str| lesen("b", &format!("---\nmilestones:\n  - {zeile}\n---\n## A\n"));
+        assert!(mit("{name: X, date: 31.10.2027}").unwrap_err().0.contains("JJJJ-MM-TT"));
+        assert!(mit("{name: X, date: 2027-10-31, line: wavy}").unwrap_err().0.contains("wavy"));
+        assert!(mit("{name: X, date: 2027-10-31, width: fat}").unwrap_err().0.contains("fat"));
+        assert!(mit("{date: 2027-10-31}").unwrap_err().0.contains("Namen"));
+        assert!(mit("{name: X, date: 2027-10-31, color: \"#xyz\"}").unwrap_err().0.contains("Farbe"));
+        assert!(mit("nur Text").unwrap_err().0.contains("keine Zuordnung"));
+        assert!(lesen("b", "---\nmilestones: 3\n---\n## A\n").unwrap_err().0.contains("keine Liste"));
     }
 
     #[test]

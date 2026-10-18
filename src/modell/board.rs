@@ -7,12 +7,61 @@ pub struct Spalte {
     pub aufgaben: Vec<u32>,
 }
 
-/// Inhalt einer Board-Datei: die Struktur und wo jede Aufgabe darin liegt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Linie {
+    #[default]
+    Durchgehend,
+    Gestrichelt,
+    Gepunktet,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Staerke {
+    Fein,
+    #[default]
+    Normal,
+    Fett,
+}
+
+/// Ein fester Termin des Boards, gezeichnet in „Wie lange noch“.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Termin {
+    pub name: String,
+    pub datum: String,
+    pub farbe: String,
+    #[serde(default)]
+    pub linie: Linie,
+    #[serde(default)]
+    pub staerke: Staerke,
+}
+
+impl Termin {
+    /// Name nicht leer, Datum JJJJ-MM-TT, Farbe ein Palettenname oder #Hex.
+    pub fn pruefen(&self) -> Result<(), String> {
+        if self.name.trim().is_empty() {
+            return Err("Ein Termin braucht einen Namen".into());
+        }
+        if self.datum.len() != 10 || chrono::NaiveDate::parse_from_str(&self.datum, "%Y-%m-%d").is_err() {
+            return Err(format!("Termin „{}“: Datum „{}“ ist nicht JJJJ-MM-TT", self.name, self.datum));
+        }
+        let farbe_ok = !self.farbe.is_empty() && (self.farbe.chars().all(|c| c.is_ascii_lowercase()) || (self.farbe.len() == 7 && self.farbe.starts_with('#') && self.farbe[1..].chars().all(|c| c.is_ascii_hexdigit())));
+        if !farbe_ok {
+            return Err(format!("Termin „{}“: Farbe „{}“ ist kein Palettenname und kein #rrggbb", self.name, self.farbe));
+        }
+        Ok(())
+    }
+}
+
+/// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, und feste Termine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Board {
     pub slug: String,
     pub titel: String,
     pub spalten: Vec<Spalte>,
+    #[serde(default)]
+    pub termine: Vec<Termin>,
 }
 
 impl Board {
@@ -144,6 +193,7 @@ mod tests {
                 Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2] },
                 Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3] },
             ],
+            termine: vec![],
         }
     }
 
@@ -205,7 +255,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![] };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![] };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

@@ -60,6 +60,7 @@ impl Einrichtung {
             slug: slug(&self.board),
             titel: self.board.trim().into(),
             spalten: self.spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![] }).collect(),
+            termine: vec![],
         }
     }
 }
