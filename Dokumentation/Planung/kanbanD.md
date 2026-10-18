@@ -13,13 +13,13 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
-| D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
+| D0006 | Dialog | A0001 | Berichte | gelb | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
@@ -123,6 +123,11 @@ zuletzt: 2026-10-18
 | B0110 | Bubble | I0046 | Prognose je Spalte rechnen | gruen | Test gruen | Bewegungen + Filter → je Spalte erreicht/offen, Tagesreihe, Monte Carlo P50–P95 in 7- und 5-Tage-Woche, Untergrenze der Vorspalte | 1-2 |  |  |  |  |
 | B0111 | Bubble | I0046 | Bericht Wie lange noch | gruen | Test gruen | Prognose → Kopfzahlen, Burndown je Spalte mit Fächer, Blöcke je Spalte, Lesehinweise; Filterleiste; Menü und g w | 2-3 |  |  |  |  |
 | B0112 | Bubble | I0046 | Live beobachten | gruen | Test gruen | Bewegen, Anlegen, Archivieren, Abnehmen → Bericht rechnet ohne Neuladen neu, Stand-Zeit sichtbar | 0,5-1 |  |  |  |  |
+| I0047 | Interaction | D0006 | Termine in Wie lange noch | rot | US-1..US-3 |  |  |  | I0046 | R00047 | Berichte 3: dauerhafte Termine je Board (Name, Farbe, Linie, Stärke, Datum) als Linien im Diagramm, Chance je Spalte |
+| B0113 | Bubble | I0047 | Termine in der Board-Datei | rot | Test gruen | Frontmatter milestones ⇄ Termine (Name, Datum, Farbe, Linie, Stärke); Rundlauf stabil; Fehler bei unlesbarem Termin | 1-2 |  |  |  |  |
+| B0114 | Bubble | I0047 | Termine setzen | rot | Test gruen | PUT /api/boards/{slug}/termine → geprüft, nach Datum sortiert, ein Commit mit sprechender Nachricht | 0,5-1 |  |  |  |  |
+| B0115 | Bubble | I0047 | Termine im Diagramm und Chance | rot | Test gruen | Termine + Ziehungen → Linien in Farbe, Art, Stärke; je Spalte Wahrscheinlichkeit bis zum Termin | 1-2 |  |  |  |  |
+| B0116 | Bubble | I0047 | Termine im Bericht pflegen | rot | Test gruen | Formular → anlegen, ändern, entfernen; Vorschau der Linie | 1-2 |  |  |  |  |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
 | B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
 | B0066 | Bubble | I0024 | Agentenlauf Ende-zu-Ende | gruen | Test gruen | Agent legt an, bewegt, kommentiert, misst Zeit nur über die API → Commits unter seinem Namen | 1-2 |  |  |  |  |
