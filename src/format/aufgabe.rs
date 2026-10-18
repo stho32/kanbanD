@@ -1,16 +1,19 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Berichtszaehlung, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 use chrono::NaiveDateTime;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
-const BEKANNT: [&str; 10] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, PHASEN, "archived"];
+const BEKANNT: [&str; 11] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, PHASEN, BERICHTE, "archived"];
 pub const WIRKUNGEN: &str = "wbs-effects";
 pub const PHASEN: &str = "phases";
+pub const BERICHTE: &str = "reporting";
+/// Die Berichte, für die `reporting` einen Schlüssel kennt.
+const BERICHTSSCHLUESSEL: [&str; 2] = ["burndown", "forecast"];
 /// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
 const WIRKUNG_BEKANNT: [&str; 7] = ["application", "action", "node", "parent", "level", "name", "done-criterion"];
 const TRENNER: &str = " · ";
@@ -55,6 +58,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     if let Some(p) = m.get(PHASEN) {
         a.phasen = phasen_lesen(p)?;
     }
+    if let Some(r) = m.get(BERICHTE) {
+        a.zaehlung = zaehlung_lesen(r)?;
+    }
     for (k, v) in &m {
         if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k)) {
             a.weitere.push((k.to_string(), v.clone()));
@@ -83,6 +89,36 @@ fn phasen_schreiben(p: &Phasenangaben) -> String {
     }
     s.extend(p.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
     if s.is_empty() { s } else { format!("{PHASEN}:\n{s}") }
+}
+
+/// `reporting: {burndown: false, forecast: false, …}` — je Bericht true/false; andere Schlüssel bleiben erhalten.
+fn zaehlung_lesen(v: &Value) -> Result<Berichtszaehlung, Formatfehler> {
+    let m = match v {
+        Value::Null => return Ok(Berichtszaehlung::default()),
+        Value::Mapping(m) => m,
+        _ => return Err(Formatfehler(format!("{BERICHTE} ist keine Zuordnung — erwartet {{burndown: false, forecast: false}}"))),
+    };
+    let wahr = |k: &str| match m.get(k) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Bool(b)) => Ok(Some(*b)),
+        Some(_) => Err(Formatfehler(format!("{BERICHTE}.{k} ist nicht true oder false"))),
+    };
+    Ok(Berichtszaehlung {
+        burndown: wahr("burndown")?,
+        forecast: wahr("forecast")?,
+        weitere: m.iter().filter_map(|(k, w)| k.as_str().filter(|k| !BERICHTSSCHLUESSEL.contains(k)).map(|k| (k.to_string(), w.clone()))).collect(),
+    })
+}
+
+fn zaehlung_schreiben(z: &Berichtszaehlung) -> String {
+    let mut s = String::new();
+    for (k, wert) in [("burndown", z.burndown), ("forecast", z.forecast)] {
+        if let Some(b) = wert {
+            s.push_str(&format!("  {k}: {b}\n"));
+        }
+    }
+    s.extend(z.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
+    if s.is_empty() { s } else { format!("{BERICHTE}:\n{s}") }
 }
 
 fn wirkungen_lesen(v: &Value) -> Result<Vec<Wirkung>, Formatfehler> {
@@ -242,6 +278,7 @@ pub fn schreiben(a: &Aufgabe) -> String {
         s.push_str(&format!("{WIRKUNGEN}:\n{}", a.wirkungen.iter().map(wirkung_schreiben).collect::<String>()));
     }
     s.push_str(&phasen_schreiben(&a.phasen));
+    s.push_str(&zaehlung_schreiben(&a.zaehlung));
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
     }
@@ -407,6 +444,24 @@ mod tests {
         assert!(schreiben(&nur_fremd).contains("phases:\n  reason: kein Kunde\n"), "ohne skipped bleibt der Namensraum mit seinem Rest");
         assert!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases: [Abnahme]\n---\n").unwrap_err().0.contains("phases ist keine Zuordnung"));
         assert_eq!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases:\n---\n").unwrap(), Aufgabe::neu(3, "0003-x.md".into(), "X".into()));
+    }
+
+    #[test]
+    fn zaehlen_in_berichten_im_namensraum_reporting_unbekanntes_bleibt() {
+        let mut a = Aufgabe::neu(2, "0002-x.md".into(), "X".into());
+        a.zaehlung.forecast = Some(false);
+        let t = schreiben(&a);
+        assert_eq!(t, "---\nid: 2\ntitle: X\nreporting:\n  forecast: false\n---\n");
+        assert_eq!(lesen("0002-x.md", &t).unwrap(), a);
+        let hand = "---\nid: 2\ntitle: X\nreporting: {forecast: false, cycle-time: true, burndown: true}\n---\n";
+        let h = lesen("0002-x.md", hand).unwrap();
+        assert_eq!((h.zaehlung.burndown, h.zaehlung.forecast, h.weitere.len()), (Some(true), Some(false), 0));
+        let neu = schreiben(&h);
+        assert!(neu.contains("reporting:\n  burndown: true\n  forecast: false\n  cycle-time: true\n"), "{neu}");
+        assert_eq!(lesen("0002-x.md", &neu).unwrap(), h, "der Rundlauf verliert nichts");
+        assert_eq!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting:\n---\n").unwrap(), Aufgabe::neu(2, "0002-x.md".into(), "X".into()), "ohne Schlüssel gilt der Standard");
+        assert!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting: [x]\n---\n").unwrap_err().0.contains("reporting ist keine Zuordnung"));
+        assert!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting: {forecast: nein}\n---\n").unwrap_err().0.contains("reporting.forecast ist nicht true oder false"));
     }
 
     #[test]

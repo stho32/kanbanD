@@ -89,6 +89,20 @@ pub struct Phasenangaben {
     pub weitere: Vec<(String, serde_yaml::Value)>,
 }
 
+/// `reporting`: ob die Aufgabe in Berichten zählt (R00060); fehlt ein Schlüssel, gilt der Standard — sie zählt.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Berichtszaehlung {
+    /// `burndown: false` nimmt die Aufgabe aus dem Burndown
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub burndown: Option<bool>,
+    /// `forecast: false` nimmt die Aufgabe aus Wie lange noch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub forecast: Option<bool>,
+    /// Schlüssel im Namensraum, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
+    #[serde(skip)]
+    pub weitere: Vec<(String, serde_yaml::Value)>,
+}
+
 /// Eine Aufgabe: unabhängige Datei, weiß nichts von Boards.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Aufgabe {
@@ -109,6 +123,8 @@ pub struct Aufgabe {
     /// `wbs-effects`: wie die Aufgabe auf Knoten einer Anwendung gewirkt hat (R00057)
     pub wirkungen: Vec<Wirkung>,
     pub phasen: Phasenangaben,
+    #[serde(rename = "reporting")]
+    pub zaehlung: Berichtszaehlung,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -132,6 +148,7 @@ impl Aufgabe {
             kommentare: vec![],
             wirkungen: vec![],
             phasen: Phasenangaben::default(),
+            zaehlung: Berichtszaehlung::default(),
             weitere: vec![],
         }
     }
