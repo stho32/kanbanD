@@ -21,7 +21,7 @@ pub struct Quelle {
 }
 
 /// Absolut bleibt absolut; relativ gilt zum kanbanD-Ordner.
-fn absolut(wurzel: &Path, pfad: &str) -> PathBuf {
+pub(super) fn absolut(wurzel: &Path, pfad: &str) -> PathBuf {
     let p = wurzel.join(pfad);
     p.canonicalize().unwrap_or(p)
 }

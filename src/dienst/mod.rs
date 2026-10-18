@@ -1,6 +1,7 @@
 //! Die Anwendungsfälle: prüfen, Dateien schreiben, committen — unter einer Schreibsperre.
 
 mod anhaenge;
+mod anwendungen;
 mod archiv;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
@@ -19,6 +20,7 @@ mod zeiten;
 mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
+pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;

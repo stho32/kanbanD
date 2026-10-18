@@ -117,3 +117,26 @@ async fn bei_einer_anwendung_loest_auch_unqualifiziert_auf() {
     let (_, q) = senden(Method::GET, &lauf.adresse, "api/herkunft", "st", json!(null)).await;
     assert_eq!((&q["I0007"]["name"], &q["I0007"]["schluessel"], &q["I0007"]["anwendung"]), (&json!("Bewegen"), &json!("kd:I0007"), &json!("kd")));
 }
+
+#[tokio::test]
+async fn register_mit_erreichbarkeit_ein_fehlender_pfad_macht_nichts_defekt() {
+    let x = tempfile::tempdir().unwrap();
+    std::fs::write(x.path().join("plan.md"), WBS).unwrap();
+    std::fs::create_dir_all(x.path().join("req")).unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(tmp.path());
+    let kanban = format!("---\npeople:\n  st: {{name: Stefan, kind: human}}\nclasses: {{}}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kd: {{name: kanbanD, wbs: \"{0}/plan.md\", requirements: \"{0}/req\"}}\n    rel: {{name: Relativ, wbs: kanbanD.md, requirements: \"\"}}\n---\n", x.path().display());
+    std::fs::write(tmp.path().join("kanbanD.md"), kanban).unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    assert_eq!(r["kd"]["name"], "kanbanD");
+    assert_eq!(r["kd"]["erreichbar"], json!({"wbs": true, "anforderungen": true}));
+    assert_eq!(r["rel"]["erreichbar"], json!({"wbs": true, "anforderungen": false}), "relativ zum kanbanD-Ordner, leer ist nicht erreichbar");
+    std::fs::remove_file(x.path().join("plan.md")).unwrap();
+    let (_, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
+    assert_eq!(r["kd"]["erreichbar"], json!({"wbs": false, "anforderungen": true}));
+    let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", json!(null)).await;
+    assert_eq!(z["defekte"], json!([]), "kanbanD.md ist nicht defekt");
+    assert_eq!(z["einstellungen"]["quellen"]["anwendungen"][0]["kuerzel"], "kd");
+}

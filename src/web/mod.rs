@@ -67,6 +67,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/herkunft", get(herkunft))
+        .route("/api/anwendungen", get(anwendungen))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/berichte/bewegungen", get(bewegungen))
@@ -368,6 +369,11 @@ async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>
 async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
     let q = blockierend(&app, |k| k.herkunft()).await?;
     Ok(Json(q).into_response())
+}
+
+async fn anwendungen(State(app): State<App>) -> Result<Response, Fehler> {
+    let r = blockierend(&app, |k| k.anwendungen()).await?;
+    Ok(Json(r).into_response())
 }
 
 #[derive(serde::Deserialize)]
