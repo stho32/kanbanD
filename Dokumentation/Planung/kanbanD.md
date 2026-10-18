@@ -209,6 +209,14 @@ zuletzt: 2026-10-18
 | B0135 | Bubble | I0049 | Kopf mit Stand | gruen | Test gruen | Stand → % funktional · in Bearbeitung · offen, Balken, aktiver Pfad, laufende Bubbles, nicht committet | 0,5-1 |  |  |  |  |
 | B0136 | Bubble | I0049 | Sicht lebt mit dem Arbeits-Repository | gruen | Test gruen | Editor-Änderung oder Commit im Arbeits-Repository → Sicht lädt ohne Neuladen nach | 0,5-1 |  |  |  |  |
 | I0050 | Interaction | D0008 | WBS-Status setzen | rot | US-1..US-3 |  |  |  | I0049 | R00055 | WBS 1: Blätter rot/gelb/gruen, Vorfahren gerechnet, kein Commit im Arbeits-Repository |
+| B0138 | Bubble | I0050 | Zelle byte-treu ersetzen | rot | Test gruen | Tabellenzeile, Spalte, Wert → Zeile, in der nur diese Zelle anders ist; \| bleibt Text, ein Strich im Wert wird maskiert | 0,5-1 |  |  |  |  |
+| B0139 | Bubble | I0050 | zuletzt im Frontmatter setzen | rot | Test gruen | WBS-Text, heute → Text mit zuletzt: heute, sonst byteweise gleich | 0,5-1 |  |  |  |  |
+| B0140 | Bubble | I0050 | Defekte WBS-Datei erkennen | rot | Test gruen | WBS-Text → Konfliktmarker oder keine Knotentabelle: 409, nichts geschrieben | 0,5-1 |  |  |  |  |
+| B0141 | Bubble | I0050 | Status eines Blatts setzen | rot | Test gruen | WBS-Text, ID, Status, heute → Blatt, gerechnete Vorfahren und zuletzt geschrieben; Knoten mit Kindern 409, option/ausbau/verworfen/bestehend 400 | 1-2 |  |  |  |  |
+| B0142 | Bubble | I0050 | WBS-Datei unter eigener Sperre schreiben | rot | Test gruen | Kürzel, ID, Status → WBS-Datei im Arbeits-Repository geschrieben, ohne Commit; gleichzeitige Anfragen je Datei nacheinander | 0,5-1 |  |  |  |  |
+| B0143 | Bubble | I0050 | Eigene WBS-Schreibzugriffe nicht extern | rot | Test gruen | geschriebener voller Pfad → Ereignis des fremden Wächters mit extern: false | 0,5-1 |  |  |  |  |
+| B0144 | Bubble | I0050 | Status über die API setzen | rot | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
+| B0145 | Bubble | I0050 | Status per Klick wählen | rot | Test gruen | Klick auf die Plakette eines Blatts → Wahl rot · gelb · gruen → Zeile in der neuen Farbe, Kopf nicht committet; ohne Identität Ich bin … | 1-2 |  |  |  |  |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |
 | I0053 | Interaction | D0002 | Phasen als Spalten | rot | US-1..US-3 |  |  |  | I0048, I0046 | R00058 | WBS 1: column-phases N:1, fehlende Phasen-Spalten, Prognose je Phase |
