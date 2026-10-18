@@ -111,11 +111,7 @@ impl Kanban {
     /// Setzt den Status eines Blatts der WBS von `kuerzel` (R00055); Vorfahren und `zuletzt` werden mitgeschrieben.
     /// Wer handelt, prüft der Aufrufer — im Arbeits-Repository entsteht kein Commit, also auch kein Autor.
     pub fn wbs_status_setzen(&self, kuerzel: &str, id: &str, status: &str) -> Result<WbsGeaendert, Fehler> {
-        self.wbs_aendern(kuerzel, |text, _, heute| {
-            let g = status_setzen(text, id, status, heute)?;
-            let geaendert = g.geaendert.clone();
-            Ok((g, WbsGeaendert { geaendert }))
-        })
+        self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(status_setzen(text, id, status, heute)?))
     }
 
     /// Legt einen Knoten in der WBS von `kuerzel` an (R00056): nächste freie ID aus der Datei und allen ihren Ständen
@@ -135,11 +131,7 @@ impl Kanban {
 impl Kanban {
     /// Verwirft einen Knoten der WBS von `kuerzel` samt zählender Nachfahren (R00056); nichts wird gelöscht.
     pub fn wbs_verwerfen(&self, kuerzel: &str, id: &str, grund: &str) -> Result<WbsGeaendert, Fehler> {
-        self.wbs_aendern(kuerzel, |text, _, heute| {
-            let g = verwerfen(text, id, grund, heute)?;
-            let geaendert = g.geaendert.clone();
-            Ok((g, WbsGeaendert { geaendert }))
-        })
+        self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(verwerfen(text, id, grund, heute)?))
     }
 }
 
@@ -167,6 +159,12 @@ fn kanonisch(datei: &Path) -> PathBuf {
         (Some(o), Some(n)) => o.join(n),
         _ => datei.to_path_buf(),
     }
+}
+
+/// Was geschrieben wird und, als Antwort, welche Knoten sich dabei geändert haben.
+fn mit_geaenderten(g: Geschrieben) -> Result<(Geschrieben, WbsGeaendert), Fehler> {
+    let geaendert = g.geaendert.clone();
+    Ok((g, WbsGeaendert { geaendert }))
 }
 
 /// Schreibt über eine Zwischendatei im selben Ordner — wer liest, sieht den alten oder den neuen Stand, nie einen halben.
