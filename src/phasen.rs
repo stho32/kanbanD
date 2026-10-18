@@ -103,18 +103,7 @@ impl Phasenfolge {
         }
         ergaenzt
     }
-}
 
-/// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; nennt es keine, gilt bei genau einer
-/// registrierten Anwendung diese (R00054, wie `gebundeneAnwendungen` in `web/wbs.js`).
-pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
-    if board.anwendungen.is_empty() {
-        return if let [einzige] = register { vec![einzige] } else { vec![] };
-    }
-    board.anwendungen.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
-}
-
-impl Phasenfolge {
     fn stelle(&self, phase: &str) -> Option<usize> {
         self.0.iter().position(|p| p.name == phase)
     }
@@ -134,6 +123,15 @@ impl Phasenfolge {
         }
         hinweise
     }
+}
+
+/// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; nennt es keine, gilt bei genau einer
+/// registrierten Anwendung diese (R00054, wie `gebundeneAnwendungen` in `web/wbs.js`).
+pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
+    if board.anwendungen.is_empty() {
+        return if let [einzige] = register { vec![einzige] } else { vec![] };
+    }
+    board.anwendungen.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
 }
 
 #[cfg(test)]
