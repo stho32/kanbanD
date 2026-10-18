@@ -66,3 +66,15 @@ async fn applications_leer_bleibt_beim_bewegen_spalten_und_termine_setzen() {
     assert_eq!(s, 200);
     assert!(lies(board.path(), "boards/entwicklung.md").starts_with("---\napplications: []\n"), "{}", lies(board.path(), "boards/entwicklung.md"));
 }
+
+#[test]
+fn kuerzel_werden_getrimmt_und_einmal_genommen() {
+    let (_arbeit_tmp, arbeit) = arbeits_repository(WBS);
+    let board = tempfile::tempdir().unwrap();
+    mit_register(board.path(), &arbeit);
+    let kanban = kanband::dienst::Kanban::neu(board.path().to_path_buf());
+    let st = kanban.handelnder(Some("st")).unwrap();
+    assert!(kanban.bindung_setzen(&st, "entwicklung", &[" kc ".into(), "kc".into()]).unwrap());
+    assert!(lies(board.path(), "boards/entwicklung.md").starts_with("---\napplications: [kc]\n"));
+    assert!(!kanban.bindung_setzen(&st, "entwicklung", &["kc".into()]).unwrap(), "dieselbe Bindung: kein Commit");
+}
