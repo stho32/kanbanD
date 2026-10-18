@@ -457,6 +457,25 @@ async function act(a, arg, wert) {
         u.fokus = `#wbs-st-${id}`;
         return laden();
       }
+      case 'wbs-neu-pop': {
+        if (ichNoetig()) break;
+        const k = S.wbs.knoten.find(x => x.id === arg);
+        u.wbsNeu = { eltern: arg, ebene: kindEbenen(k)[0], name: '', fertig_kriterium: '', eingabe_ausgabe: '', aufwand: '', fehler: null };
+        u.pop = 'wbs-neu'; u.fokus = '#wbs-neu-name';
+        break;
+      }
+      case 'wbs-neu-anlegen': {
+        const f = u.wbsNeu;
+        if (!f || ichNoetig()) break;
+        const bubble = f.ebene === 'Bubble';
+        try {
+          const r = await api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten`, { ebene: f.ebene, eltern: f.eltern, name: f.name, fertig_kriterium: f.fertig_kriterium, eingabe_ausgabe: bubble ? f.eingabe_ausgabe : '', aufwand: bubble ? f.aufwand : '' });
+          u.pop = null; u.wbsNeu = null;
+          u.hinweis = { text: `${r.id} angelegt · WBS-Datei nicht committet`, at: Date.now() };
+          await laden();
+          return act('wbs-gehe', r.id);
+        } catch (fehler) { f.fehler = fehler.message; u.fokus = '#wbs-neu-name'; break; }
+      }
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
         const gesehen = new Set();
@@ -692,6 +711,7 @@ document.addEventListener('change', e => {
     if (vorschau) vorschau.setAttribute('style', terminStil(S.ui.tf));
     return;
   }
+  if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
   if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {
@@ -750,6 +770,8 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  const wn = e.target.dataset && e.target.dataset.wn;
+  if (wn && S.ui.wbsNeu && wn !== 'ebene') { S.ui.wbsNeu[wn] = e.target.value; return; }
   if (e.target.dataset && (e.target.dataset.tf === 'name' || e.target.dataset.tf === 'datum')) { S.ui.tf[e.target.dataset.tf] = e.target.value; return; }
   const nf = e.target.dataset && e.target.dataset.nf;
   if (nf && S.ui.neu) {

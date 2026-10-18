@@ -169,6 +169,7 @@ function vPop() {
   if (u.pop === 'ber') return vBerichtePop();
   if (u.pop === 'defekt') return vDefektePop();
   if (u.pop === 'wbs-status') return vWbsStatusPop();
+  if (u.pop === 'wbs-neu') return vWbsNeuPop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -640,7 +641,7 @@ function vWbsTabelle(w) {
   const zeilen = w.knoten.map(k => {
     const klapp = klappbar(k, eltern) ? `<button class="klapp" data-act="wbs-klapp" data-arg="${esc(k.id)}" aria-label="${esc(k.id)} ${zu.has(k.id) ? 'aufklappen' : 'zuklappen'}" aria-expanded="${!zu.has(k.id)}">${zu.has(k.id) ? '+' : '−'}</button>` : '<span class="klapp-platz"></span>';
     const was = k.ebene === 'Bubble' && k.eingabe_ausgabe ? k.eingabe_ausgabe : k.fertig_kriterium;
-    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"${weg.has(k.id) ? ' hidden' : ''}><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span></td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id), statusSetzbar(k, gerechnet))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
+    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"${weg.has(k.id) ? ' hidden' : ''}><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span>${kindEbenen(k).length ? `<button class="lnk wbs-plus" id="wbs-neu-${esc(k.id)}" data-act="wbs-neu-pop" data-arg="${esc(k.id)}" aria-label="Knoten unter ${esc(k.id)} anlegen" title="Knoten unter ${esc(k.id)} anlegen">+ Knoten</button>` : ''}</td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id), statusSetzbar(k, gerechnet))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
   }).join('');
   return `<div class="wbs-tabelle"><table class="pt dicht"><thead><tr><th>ID</th><th>Ebene</th><th>Knoten</th><th>Fertig-Kriterium / Eingabe → Ausgabe</th><th>Aufwand</th><th>Status</th><th>Requirement</th><th>Notiz</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
 }
@@ -650,6 +651,14 @@ function vWbsStatusPop() {
   const id = S.ui.wbsKnoten, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
   if (!k) return '';
   return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><h4>STATUS <span class="mono">${esc(id)}</span></h4>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
+}
+
+/** Neuer Knoten unter einem Eltern-Knoten: Ebene, Name, Fertig-Kriterium; Bubbles dazu Eingabe → Ausgabe und Aufwand. */
+function vWbsNeuPop() {
+  const f = S.ui.wbsNeu, k = f && S.wbs && S.wbs.knoten.find(x => x.id === f.eltern);
+  if (!k) return '';
+  const ebenen = kindEbenen(k), feld = (n, titel, ph) => `<span class="k">${titel}</span><span class="w"><input class="mini-inp full" id="wbs-neu-${n}" data-wn="${n}" value="${esc(f[n])}" placeholder="${esc(ph)}" data-enter="wbs-neu-anlegen" aria-label="${esc(titel)}"></span>`;
+  return `<div class="pop wbs-neu" id="pop" data-for="wbs-neu-${esc(k.id)}" data-al="l" style="width:420px" role="dialog" aria-label="Knoten unter ${esc(k.id)} anlegen"><h4>NEUER KNOTEN <span class="mono">unter ${esc(k.id)} ${esc(k.name)}</span></h4><div class="felder"><span class="k">Ebene</span><span class="w"><select id="wbs-neu-ebene" data-wn="ebene" aria-label="Ebene">${ebenen.map(e => `<option${e === f.ebene ? ' selected' : ''}>${e}</option>`).join('')}</select></span>${feld('name', 'Name', 'was entsteht')}${feld('fertig_kriterium', 'Fertig', f.ebene === 'Bubble' ? 'Test gruen' : 'US-1')}${f.ebene === 'Bubble' ? feld('eingabe_ausgabe', 'Eingabe → Ausgabe', 'Eingabe → Ausgabe') + feld('aufwand', 'Aufwand', '0,5-1') : ''}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span>rot mit der nächsten freien ID · ohne Commit</span><button class="btn btn-haupt" data-act="wbs-neu-anlegen">anlegen</button></div></div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */

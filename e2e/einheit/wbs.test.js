@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -57,4 +57,12 @@ test('Status setzbar nur an Blättern mit rot, gelb oder gruen', () => {
   const baum = [k('I0001', ''), k('B0001', 'I0001', 'gruen'), k('I0002', ''), k('F0001', 'I0002', 'option'), k('B0002', 'I0001', 'verworfen'), k('B0003', 'I0001', 'bestehend')];
   const kinder = mitKindern(baum, true);
   assert.deepStrictEqual(baum.filter(x => statusSetzbar(x, kinder)).map(x => x.id), ['B0001', 'I0002'], 'I0001 gerechnet, I0002 hat nur eine Option als Kind');
+});
+
+test('Kind-Ebenen: Feature überspringbar, unter Bubbles und Verworfenem nichts', () => {
+  assert.deepStrictEqual(kindEbenen({ ebene: 'Application', status: 'gelb' }), ['Dialog']);
+  assert.deepStrictEqual(kindEbenen({ ebene: 'Interaction', status: 'rot' }), ['Feature', 'Bubble']);
+  assert.deepStrictEqual(kindEbenen({ ebene: 'Feature', status: 'option' }), ['Bubble'], 'unter einer Option darf weitergeplant werden');
+  assert.deepStrictEqual(kindEbenen({ ebene: 'Bubble', status: 'rot' }), []);
+  assert.deepStrictEqual(kindEbenen({ ebene: 'Dialog', status: 'verworfen' }), []);
 });

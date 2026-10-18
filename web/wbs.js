@@ -82,5 +82,9 @@
   /** Setzbar ist der Status eines Blatts ohne zählende Kinder, das rot, gelb oder gruen ist — der Rest wird gerechnet oder geplant. */
   const statusSetzbar = (k, mitZaehlendenKindern) => !mitZaehlendenKindern.has(k.id) && STATUS_WAHL.includes(k.status);
 
-  Object.assign(ziel, { STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Unter welchen Ebenen was hängen darf (Feature darf übersprungen werden) — wie der Server prüft (R00056). */
+  const KIND_EBENEN = { Application: ['Dialog'], Dialog: ['Interaction'], Interaction: ['Feature', 'Bubble'], Feature: ['Bubble'], Bubble: [] };
+  const kindEbenen = k => k.status === 'verworfen' ? [] : (KIND_EBENEN[k.ebene] || []);
+
+  Object.assign(ziel, { kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);
