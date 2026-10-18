@@ -28,7 +28,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/boards/{slug}", false, "Boards", "ein Board {slug, titel, spalten: [{name, grenze, aufgaben, phase}], termine, anwendungen, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“)"),
     e("PUT", "/api/boards/{slug}/spalten", true, "Boards", "Spalten setzen [{name, alt?, grenze?}]"),
     e("PUT", "/api/boards/{slug}/termine", true, "Boards", "Termine setzen [{name, datum, farbe, linie?: durchgehend|gestrichelt|gepunktet, staerke?: fein|normal|fett}]"),
-    e("POST", "/api/boards/{slug}/bewegen", true, "Boards", "Aufgabe bewegen {nummer, spalte, index?} — ändert nur die Board-Datei"),
+    e("POST", "/api/boards/{slug}/bewegen", true, "Boards", "Aufgabe bewegen {nummer, spalte, index?} — ändert nur die Board-Datei; Antwort {bewegt, warnungen: [{pruefung, text, knoten: [kd:I0048], details: [kd:I0048 rot | Knoten fehlt | WBS nicht erreichbar]}]} — Prüfungen (column-checks) der verlassenen Spalte bei einem Zug nach rechts (Rang der Phase, ohne Phasen Spaltenindex); der Zug wird immer ausgeführt und committet"),
     e("POST", "/api/boards/{slug}/aufgaben", true, "Boards", "Aufgabe auf das Board legen {nummer, spalte?}"),
     e("DELETE", "/api/boards/{slug}/aufgaben/{nr}", true, "Boards", "Aufgabe vom Board nehmen"),
     e("GET", "/api/aufgaben", false, "Aufgaben", "alle Aufgaben und defekte Dateien"),

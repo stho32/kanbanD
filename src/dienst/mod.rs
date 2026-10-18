@@ -25,7 +25,7 @@ mod zuordnung;
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
 pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
-pub use bewegen::Bewegung;
+pub use bewegen::{Bewegt, Bewegung};
 pub use phasen::{BoardMitPhasen, Phasenstand};
 pub use teilaufgaben::Teilaufgabenaenderung;
 pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};

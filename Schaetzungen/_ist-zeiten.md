@@ -245,3 +245,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0175 column-checks im Board-Frontmatter | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0176 Katalog der Prüfungen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0177 Zug nach rechts erkennen | Standard | 0,5-1h | 0,00h | 0,01h | autonom |
+| 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0178 Warnungen beim Bewegen | Standard | 0,5-1h | 0,02h | 0,02h | autonom |

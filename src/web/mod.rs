@@ -192,7 +192,7 @@ async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>
         k.bewegen(&p, &slug, &bw)
     })
     .await?;
-    Ok(Json(json!({ "bewegt": bewegt })).into_response())
+    Ok(Json(bewegt).into_response())
 }
 
 /// Server-Sent Events: je Änderung im Ordner ein `data: {"pfade": […], "extern": …}`.
