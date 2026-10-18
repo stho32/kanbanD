@@ -59,8 +59,9 @@ function vIchKnopf() {
 const uhr = t => new Date(t).toTimeString().slice(0, 8);
 /** Nummern der sichtbaren Karten in Board-Reihenfolge — zum Blättern. */
 function sichtbareReihe() {
-  if (!S.board) return S.aufgaben.filter(a => !a.archiviert).map(a => a.nummer);
-  return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; }));
+  const passt = a => a && !!a.archiviert === !!S.ui.archiv;
+  if (!S.board) return S.aufgaben.filter(passt).map(a => a.nummer);
+  return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => passt(aufgabe(n))));
 }
 
 function vFenster() {
@@ -69,10 +70,11 @@ function vFenster() {
   const u = S.ui, cl = klasse(a.klasse), reihe = sichtbareReihe(), i = reihe.indexOf(a.nummer);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
   const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
-  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts"><span class="seg">${[['inhalt', 'Inhalt'], ['datei', 'Datei']].map(([k, t]) => `<span class="${u.tab === k ? 'an' : ''}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${u.tab === k}">${t}</span>`).join('')}</span><span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts"><span class="seg">${[['inhalt', 'Inhalt'], ['datei', 'Datei']].map(([k, t]) => `<span class="${u.tab === k ? 'an' : ''}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${u.tab === k}">${t}</span>`).join('')}</span><span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(a.archiviert)} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}<div class="mod-body voll"><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
+  if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll"><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
   const haupt = `<div class="mod-main"><input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel"><div class="abs"><h3>BESCHREIBUNG</h3><textarea class="besch" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea></div>${vFensterAbschnitte(a)}</div>`;
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
@@ -80,7 +82,7 @@ function vFenster() {
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
 <span class="k">due</span><span class="w"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"></span></div></aside>`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}<div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
 function vFensterAbschnitte(a) {
@@ -170,17 +172,25 @@ function vFehlt(nr) {
 /* ── Board ── */
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
-  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (a.archiviert ? '' : vKarte(a, letzte)) : vFehlt(nr); }).filter(Boolean);
+  const archiv = S.ui.archiv;
+  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === !!archiv ? vKarte(a, letzte) : '') : archiv ? '' : vFehlt(nr); }).filter(Boolean);
+  const imArchiv = letzte && !archiv ? archivierteDesBoards().length : 0;
   const neu = S.ui.adding === sp.name
     ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Esc bricht ab" data-enter="add-ok" data-arg="${esc(sp.name)}" aria-label="Titel der neuen Karte"></div>`
     : `<button data-act="add" data-arg="${esc(sp.name)}">+ Karte</button>`;
   const ueber = sp.grenze && karten.length > sp.grenze;
-  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div><div class="bahn-fuss">${neu}</div></section>`;
+  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}${imArchiv ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${imArchiv})</a></div>` : ''}</div>${archiv ? '' : `<div class="bahn-fuss">${neu}</div>`}</section>`;
 }
+const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {
   const b = S.board;
   if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
-  return `<div class="bahnen">${b.spalten.map(vLane).join('')}</div>`;
+  const leiste = S.ui.archiv ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
+  return `${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>`;
+}
+function vHinweis() {
+  const t = S.ui.hinweis;
+  return t ? `<div class="toast" role="status">${esc(t.text)}${t.rueckgaengig ? `<button class="lnk" data-act="zurueckholen" data-arg="${t.rueckgaengig}">rückgängig</button>` : ''}</div>` : '';
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

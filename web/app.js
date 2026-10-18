@@ -98,7 +98,7 @@ async function aufgabeAendern(nummer, aenderung) {
 function render() {
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : S.ui.view === 'einrichten' && S.ui.einr ? vEinrichten() : vBoard();
-  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop();
+  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop() + vHinweis();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
@@ -191,6 +191,20 @@ async function act(a, arg, wert) {
         const [nr, wer] = arg.split('|');
         await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
+      }
+      case 'archiv-an': u.archiv = true; u.offen = null; break;
+      case 'archiv-aus': u.archiv = false; u.offen = null; break;
+      case 'archivieren': {
+        if (ichNoetig()) break;
+        await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
+        if (!u.fensterFehler) { if (!u.archiv) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, rueckgaengig: +arg, at: Date.now() }; }
+        break;
+      }
+      case 'zurueckholen': {
+        if (ichNoetig()) break;
+        await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
+        if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
+        break;
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'zeit-neu': {
@@ -449,6 +463,7 @@ setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
+  if (S.ui.hinweis && jetzt - S.ui.hinweis.at > 8000) { S.ui.hinweis = null; neu = true; }
   document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
   if (neu && zug == null && !S.ui.adding) render();
