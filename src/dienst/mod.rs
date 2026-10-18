@@ -1,5 +1,6 @@
 //! Die Anwendungsfälle: prüfen, Dateien schreiben, committen — unter einer Schreibsperre.
 
+mod aufgabe_aendern;
 mod aufgabe_anlegen;
 mod bewegen;
 mod board_anlegen;

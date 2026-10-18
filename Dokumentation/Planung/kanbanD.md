@@ -63,7 +63,7 @@ zuletzt: 2026-10-18
 | B0030 | Bubble | I0010 | Seite Einrichten | gruen | Test gruen | Personen anlegen/umbenennen/stilllegen, Klassen mit Farbe → Speichern | 1-2 |  |  |  |  |
 | I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | gelb | US-1..US-4 |  |  |  | I0005 | R00011 | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
 | B0031 | Bubble | I0011 | Aufgabe ändern | gruen | Test gruen | Aufgabe + Änderung (Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
-| B0032 | Bubble | I0011 | Aufgabe lesen und ändern über die API | rot | Test gruen | GET/PATCH /api/aufgaben/<nr> → Datei, ein Commit; defekt = nur lesbar | 1-2 |  |  |  |  |
+| B0032 | Bubble | I0011 | Aufgabe lesen und ändern über die API | gruen | Test gruen | GET/PATCH /api/aufgaben/<nr> → Datei, ein Commit; defekt = nur lesbar | 1-2 |  |  |  |  |
 | B0033 | Bubble | I0011 | Aufgabenfenster | rot | Test gruen | Klick auf Karte → Fenster mit Inhalt/Datei, Feldern, Blättern, Esc | 2-3 |  |  |  |  |
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0013 | Interaction | D0003 | Kommentieren | rot | US der Anforderung |  |  |  | I0011 |  |  |

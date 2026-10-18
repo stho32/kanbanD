@@ -4,7 +4,7 @@ mod statisch;
 
 use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard};
 use crate::fehler::Fehler;
-use crate::modell::{Einstellungen, SpaltenAenderung};
+use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
@@ -60,6 +60,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/wer", get(wer))
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
+        .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .merge(statisch::router())
         .with_state(app)
 }
@@ -176,4 +177,26 @@ async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): 
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+/// Aufgabe mit Pfad und Dateitext; eine defekte Datei kommt mit Fehler und Status 423.
+async fn aufgabe_lesen(State(app): State<App>, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    blockierend(&app, move |k| {
+        let pfad = k.ordner().aufgabenpfad(nr)?;
+        let text = k.ordner().lies(&pfad)?.unwrap_or_default();
+        Ok(match k.ordner().aufgabe(nr) {
+            Ok(a) => Json(json!({ "aufgabe": a, "pfad": pfad, "text": text })).into_response(),
+            Err(f) => (StatusCode::LOCKED, Json(json!({ "fehler": f.meldung(), "pfad": pfad, "text": text }))).into_response(),
+        })
+    })
+    .await
+}
+
+async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(aenderung): Json<Aufgabenaenderung>) -> Result<Response, Fehler> {
+    let a = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.aufgabe_aendern(&p, nr, &aenderung)
+    })
+    .await?;
+    Ok(Json(a).into_response())
 }

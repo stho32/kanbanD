@@ -88,6 +88,27 @@ impl Ordner {
         Ok((gut, defekt))
     }
 
+    /// Pfad der Aufgabendatei zur Nummer (erste Datei mit dieser Nummer im Namen oder als `id`).
+    pub fn aufgabenpfad(&self, nummer: u32) -> Result<String, Fehler> {
+        let (gut, defekt) = self.aufgaben()?;
+        if let Some(a) = gut.iter().find(|a| a.nummer == nummer) {
+            return Ok(format!("{}/{}", aufgabe::ORDNER, a.datei));
+        }
+        defekt
+            .iter()
+            .find(|d| d.pfad.rsplit('/').next().and_then(aufgabe::nummer_aus_dateiname) == Some(nummer))
+            .map(|d| d.pfad.clone())
+            .ok_or_else(|| Fehler::NichtGefunden(format!("Aufgabe #{nummer} gibt es nicht")))
+    }
+
+    /// Die Aufgabe zur Nummer; eine defekte Datei ist nur lesbar.
+    pub fn aufgabe(&self, nummer: u32) -> Result<Aufgabe, Fehler> {
+        let pfad = self.aufgabenpfad(nummer)?;
+        let text = self.lies(&pfad)?.unwrap_or_default();
+        let datei = pfad.rsplit('/').next().unwrap_or_default().to_string();
+        aufgabe::lesen(&datei, &text).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
+    }
+
     /// Höchste Nummer unter allen Dateinamen in `aufgaben/` plus 1 — auch defekte Dateien zählen.
     pub fn naechste_nummer(&self) -> Result<u32, Fehler> {
         let hoechste = self.markdown_dateien(aufgabe::ORDNER)?.iter().filter_map(|(stamm, _)| aufgabe::nummer_aus_dateiname(stamm)).max().unwrap_or(0);
