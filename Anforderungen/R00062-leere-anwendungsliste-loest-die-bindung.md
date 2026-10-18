@@ -1,6 +1,6 @@
 ---
 id: R00062
-status: Neu
+status: In Arbeit
 datum: 2026-10-18
 ursprung: Bug-Report
 ---
