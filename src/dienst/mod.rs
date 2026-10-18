@@ -17,6 +17,7 @@ mod termine;
 mod timer;
 mod verlauf;
 mod wbs;
+mod wirkungen;
 mod zeiten;
 mod zuordnung;
 
@@ -26,6 +27,7 @@ pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;
 pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
+pub use wirkungen::WirkungEingabe;
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
