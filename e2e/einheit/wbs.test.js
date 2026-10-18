@@ -5,13 +5,17 @@ const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigena
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
-test('Board bindet die genannten registrierten Anwendungen, ohne Nennung die einzige', () => {
+test('Board bindet die genannten registrierten Anwendungen, ohne Schlüssel die einzige', () => {
   assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: ['kc', 'kd'] }, [kd, kc]), [kc, kd], 'Reihenfolge des Boards');
   assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: ['kd', 'xx'] }, [kd, kc]), [kd], 'nicht registriert fällt weg');
-  assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: [] }, [kd]), [kd], 'genau eine registrierte gilt als gebunden');
-  assert.deepStrictEqual(gebundeneAnwendungen({}, [kd]), [kd], 'auch ohne Schlüssel');
-  assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: [] }, [kd, kc]), [], 'bei mehreren ein reines Kanban');
+  assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: null }, [kd]), [kd], 'Schlüssel fehlt: genau eine registrierte gilt als gebunden');
+  assert.deepStrictEqual(gebundeneAnwendungen({}, [kd]), [kd], 'auch ohne Feld');
+  assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: null }, [kd, kc]), [], 'bei mehreren ein reines Kanban');
   assert.deepStrictEqual(gebundeneAnwendungen(null, []), []);
+});
+
+test('applications: [] löst die Bindung auch bei genau einer registrierten Anwendung (R00062)', () => {
+  assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: [] }, [kd]), []);
 });
 
 const k = (id, eltern, status = 'rot', rest = {}) => ({ id, eltern, status, name: 'N' + id, ausbaustufe: '', ...rest });

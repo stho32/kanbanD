@@ -269,7 +269,7 @@ zuletzt: 2026-10-18
 | I0056 | Interaction | D0002 | Board von Anwendungen lösen | gelb | US-1..US-2 |  |  |  | I0053 | R00062 | Bug aus der Anbindung von kanbanD-test: applications: [] heißt 0 |
 | B0189 | Bubble | I0056 | applications fehlend oder leer im Board-Format | gruen | Test gruen | Board-Text ↔ Board.anwendungen: fehlender Schlüssel = None (Standard), `applications: []` = Some([]) und wird stabil zurückgeschrieben | 0,5-1 |  |  |  |  |
 | B0190 | Bubble | I0056 | Bindungsregel im Server | gruen | Test gruen | gebundene_anwendungen(board, register): None + genau eine registriert → diese, Some([]) → keine; GET /api/boards/{slug} liefert phasen: null, trägt keine Spalten nach, kein Commit | 0,5-1 |  |  |  |  |
-| B0191 | Bubble | I0056 | Bindungsregel in der Oberfläche | rot | Test gruen | gebundeneAnwendungen(board, register) in web/wbs.js: fehlend/null → Standard, [] → keine; Menü ohne „WBS“ | 0,5-1 |  |  |  |  |
+| B0191 | Bubble | I0056 | Bindungsregel in der Oberfläche | gruen | Test gruen | gebundeneAnwendungen(board, register) in web/wbs.js: fehlend/null → Standard, [] → keine; Menü ohne „WBS“ | 0,5-1 |  |  |  |  |
 | B0192 | Bubble | I0056 | Bindung über die API setzen | rot | Test gruen | PUT /api/boards/{slug}/anwendungen [kürzel…] → applications gesetzt ([] löst), Commit „Anwendungen von „<Board>“: …“, unbekanntes Kürzel 400, ohne Änderung kein Commit | 0,5-1 |  |  |  |  |
 | B0193 | Bubble | I0056 | Bindung im Spalten-Dialog | rot | Test gruen | Spalten-Dialog (R00009) → Abschnitt „Gebunden an“ mit Schalter je registrierter Anwendung und „keine“ → PUT …/anwendungen | 0,5-1 |  |  |  |  |
 
