@@ -1,6 +1,6 @@
 ---
 id: R00029
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,11 +26,11 @@ Die häufigsten Handgriffe brauchen einen Klick statt drei.
 
 ## Akzeptanzkriterien
 
-- [ ] Zeigen auf #1, ▶ → Timer läuft, Karte bleibt geschlossen; ■ → gestoppt
-- [ ] „+ mich“ → `assignees` enthält st; erneut → entfernt
-- [ ] Doppelklick auf den Titel, neuer Text, Enter → Datei und Karte geändert; Esc → nichts geändert
-- [ ] Fokus auf Karte, `t` startet, `m` weist zu, F2 öffnet das Feld
-- [ ] Fenster „morgen“ → `due` ist morgen; „✕“ entfernt `due`
+- [x] Zeigen auf #1, ▶ → Timer läuft, Karte bleibt geschlossen; ■ → gestoppt
+- [x] „+ mich“ → `assignees` enthält st; erneut → entfernt
+- [x] Doppelklick auf den Titel, neuer Text, Enter → Datei und Karte geändert; Esc → nichts geändert
+- [x] Fokus auf Karte, `t` startet, `m` weist zu, F2 öffnet das Feld
+- [x] Fenster „morgen“ → `due` ist morgen; „✕“ entfernt `due`
 
 ## Betroffene Verzeichnisstruktur
 
