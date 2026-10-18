@@ -33,3 +33,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00005 Aufgabe anlegen | Lauf R00005 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00006 Aufgabe bewegen | B0018 Position im Board ändern | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00006 Aufgabe bewegen | B0019 Bewegen über die API | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00006 Aufgabe bewegen | B0020 Karten ziehen | Standard | 1-2h | 0,0h | 0,0h | autonom |

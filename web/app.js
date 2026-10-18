@@ -82,6 +82,19 @@ async function act(a, arg, wert) {
         u.fokus = '#add-inp';
         return laden();
       }
+      case 'bewegen': {
+        if (ichNoetig()) break;
+        const bw = JSON.parse(arg);
+        // gleich sichtbar machen, dann vom Server bestätigen lassen
+        const quelle = S.board.spalten.find(sp => sp.aufgaben.includes(bw.nummer));
+        if (quelle) {
+          quelle.aufgaben = quelle.aufgaben.filter(n => n !== bw.nummer);
+          S.board.spalten.find(sp => sp.name === bw.spalte).aufgaben.splice(bw.index, 0, bw.nummer);
+          render();
+        }
+        await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+        return laden();
+      }
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {
         const f = u.first, e = ersteEinstellungen(f);
@@ -98,6 +111,7 @@ async function act(a, arg, wert) {
     }
   } catch (fehler) {
     if (u.first) u.first.fehler = fehler.message; else u.fehler = fehler.message;
+    if (!u.first) await laden().catch(() => { });
   }
   render();
 }
@@ -134,6 +148,47 @@ document.addEventListener('keydown', e => {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.adding) { S.ui.adding = null; render(); return; }
   }
+});
+
+/* Ziehen: obere Hälfte = davor, untere = dahinter, freie Fläche = ans Ende. */
+let zug = null, ziel = null;
+const einfuegeMarkenWeg = () => document.querySelectorAll('.ins-b,.ins-a,.ins-end').forEach(x => x.classList.remove('ins-b', 'ins-a', 'ins-end'));
+document.addEventListener('dragstart', e => {
+  const k = e.target.closest && e.target.closest('.ka[draggable]');
+  if (!k) return;
+  zug = +k.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
+  setTimeout(() => k.classList.add('zieht'));
+});
+document.addEventListener('dragover', e => {
+  if (zug == null) return;
+  const bahn = e.target.closest('.bahn[data-col]');
+  if (!bahn) return;
+  e.preventDefault();
+  einfuegeMarkenWeg();
+  const k = e.target.closest('.ka[data-id]'), spalte = bahn.dataset.col;
+  const andere = [...bahn.querySelectorAll('.ka[data-id]')].filter(x => +x.dataset.id !== zug);
+  if (k && +k.dataset.id !== zug) {
+    const r = k.getBoundingClientRect(), davor = e.clientY < r.top + r.height / 2;
+    k.classList.add(davor ? 'ins-b' : 'ins-a');
+    ziel = { spalte, index: andere.indexOf(k) + (davor ? 0 : 1) };
+  } else if (!k) {
+    if (andere.length) andere[andere.length - 1].classList.add('ins-a'); else bahn.classList.add('ins-end');
+    ziel = { spalte, index: andere.length };
+  }
+});
+document.addEventListener('drop', e => {
+  if (zug == null) return;
+  e.preventDefault();
+  const nummer = zug, z = ziel;
+  zug = null; ziel = null;
+  einfuegeMarkenWeg();
+  if (z) act('bewegen', JSON.stringify({ nummer, ...z }));
+});
+document.addEventListener('dragend', () => {
+  zug = null; ziel = null; einfuegeMarkenWeg();
+  document.querySelectorAll('.zieht').forEach(x => x.classList.remove('zieht'));
 });
 
 laden().catch(f => { S.ui.fehler = f.message; render(); });
