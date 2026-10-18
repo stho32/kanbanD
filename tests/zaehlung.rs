@@ -38,3 +38,16 @@ async fn bewegungen_nennen_je_aufgabe_reporting() {
     let je: Vec<(u64, serde_json::Value)> = v["aufgaben"].as_array().unwrap().iter().map(|a| (a["nummer"].as_u64().unwrap(), a["reporting"].clone())).collect();
     assert_eq!(je, [(1, json!({})), (2, json!({"forecast": false})), (3, json!({}))]);
 }
+
+#[tokio::test]
+async fn ungueltiger_wert_wird_abgelehnt_die_datei_bleibt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = starten(&tmp);
+    let vorher = lies(tmp.path(), "aufgaben/0002-zwei.md");
+    let (s, _) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/2", "st", json!({"reporting": {"forecast": "nein"}})).await;
+    assert!((400..500).contains(&s), "{s}");
+    assert_eq!(lies(tmp.path(), "aufgaben/0002-zwei.md"), vorher);
+    let (s, a) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/1", "st", json!({"reporting": {"burndown": null}})).await;
+    assert_eq!((s, a["reporting"].clone()), (200, json!({})), "entfernen, was fehlt, ändert nichts");
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#2 ausgenommen");
+}

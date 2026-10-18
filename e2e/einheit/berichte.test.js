@@ -313,3 +313,10 @@ test('Wie lange noch ohne Aufgaben mit reporting.forecast false — Umfang, Nenn
   assert.strictEqual(prognose(bew, f({ ohneFarben: ['doku'] }), zuX, jetzt).ausgenommen, 0, 'der Filter wirkt zusätzlich; schon ausgeschlossen zählt nicht doppelt');
   assert.strictEqual(prognose({ spalten: sp, aufgaben: [eins, { ...zwei, reporting: { burndown: false } }] }, f({}), () => undefined, jetzt).umfang, 2, 'burndown betrifft Wie lange noch nicht');
 });
+
+test('Wie lange noch: eine ausgenommene archivierte Aufgabe zählt weder als verworfen noch als ausgenommen doppelt', () => {
+  const sp = ['A', 'Z'];
+  const x = { ...zug(1, ['2026-10-12 09:00', 'A']), reporting: { forecast: false } };
+  const p = prognose({ spalten: sp, aufgaben: [x, zug(2, ['2026-10-12 09:00', 'A'])] }, f({}), n => n === 1 ? { archiviert: '2026-10-13', zustaendige: [], labels: [] } : undefined, jetzt);
+  assert.deepStrictEqual([p.umfang, p.verworfen, p.ausgenommen], [1, 0, 0]);
+});
