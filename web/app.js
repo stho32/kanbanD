@@ -223,6 +223,7 @@ async function act(a, arg, wert) {
       case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
+      case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
       case 'tab': u.tab = arg; break;
       case 'blaettern': {

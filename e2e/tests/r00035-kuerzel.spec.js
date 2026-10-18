@@ -67,3 +67,13 @@ test.describe('R00035', () => {
     await expect(page.getByRole('dialog')).toContainText('eins');
   });
 });
+
+test('Hilfe auch per Klick in der Statuszeile', async ({ page }) => {
+  const { kanbanStarten: start, einrichten: ein } = require('./hilfen');
+  const k = await start(ein());
+  try {
+    await page.goto(k.adresse);
+    await page.getByRole('button', { name: /Tastenkürzel/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Tastaturkürzel' })).toContainText('HIER: BOARD');
+  } finally { await k.stoppen(); }
+});

@@ -473,5 +473,5 @@ function vStatus() {
   const z = S.zustand;
   if (!z) return '';
   const nd = (z.defekte || []).length;
-  return `<span class="mono">${esc(z.ordner)}</span>${nd ? `<button class="lnk warn" id="t-defekt" data-act="pop" data-arg="defekt">${nd} ${nd === 1 ? 'defekte Datei' : 'defekte Dateien'}</button>` : ''}${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}<span class="rechts"><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
+  return `<span class="mono">${esc(z.ordner)}</span>${nd ? `<button class="lnk warn" id="t-defekt" data-act="pop" data-arg="defekt">${nd} ${nd === 1 ? 'defekte Datei' : 'defekte Dateien'}</button>` : ''}${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}<span class="rechts"><button class="lnk" data-act="hilfe" title="Tastenkürzel (?)">Tastenkürzel <kbd>?</kbd></button><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
 }
