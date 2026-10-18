@@ -106,7 +106,10 @@ test.describe('R00054', () => {
     await expect(page.locator('.wbs-laufend')).toHaveText('Tastatur F0002');
     await expect(page.locator('.wbs-nc')).toHaveCount(0);
     await expect(page).toHaveTitle('25 % · WBS · kanbanD — kanbanD');
-    await page.locator('tr.wbs-z[data-id="D0001"]').getByRole('button', { name: 'D0001 zuklappen' }).click();
+    const i2 = page.locator('tr.wbs-z[data-id="I0002"]');
+    await i2.getByRole('button', { name: 'I0002 zuklappen' }).click();
+    await i2.getByRole('button', { name: 'I0002 aufklappen' }).click(); // I0002 ausdrücklich offen gemerkt …
+    await page.locator('tr.wbs-z[data-id="D0001"]').getByRole('button', { name: 'D0001 zuklappen' }).click(); // … darüber D0001 zu
     await page.locator('.wbs-laufend').getByRole('button', { name: /Tastatur/ }).click();
     await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toBeVisible();
     await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toHaveClass(/ziel/);

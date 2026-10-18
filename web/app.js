@@ -445,7 +445,8 @@ async function act(a, arg, wert) {
       }
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
-        for (let e = nach.get((nach.get(arg) || {}).eltern); e && !(e.id in kl && kl[e.id]); e = nach.get(e.eltern)) kl[e.id] = true;
+        const gesehen = new Set();
+        for (let e = nach.get((nach.get(arg) || {}).eltern); e && !gesehen.has(e.id); e = nach.get(e.eltern)) { gesehen.add(e.id); kl[e.id] = true; }
         wbsKlappMerken();
         render();
         const z = document.getElementById('wbs-' + arg);
