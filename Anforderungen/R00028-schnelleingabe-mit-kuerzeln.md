@@ -1,6 +1,6 @@
 ---
 id: R00028
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,10 +26,10 @@ Eine Aufgabe ist in einem Zug vollständig, ohne das Fenster zu öffnen.
 
 ## Akzeptanzkriterien
 
-- [ ] Auswertung am 2026-10-18: `Login reparieren @mi @zz class:bug class:gibts label:ui due:morgen I0007` → Titel `Login reparieren @zz class:gibts`, zuständig `[mi]`, Klasse `bug`, Labels `[ui]`, Fälligkeit `2026-10-19`, Herkunft `[I0007]`
-- [ ] `due:+7` → 2026-10-25; `due:24.12.` → 2026-12-24; `due:31.02.` bleibt im Titel
-- [ ] API mit `klasse: "gibtsnicht"` → 400; mit gültigen Feldern → Datei enthält sie, ein Commit
-- [ ] Oberfläche: Eingabe zeigt die Vorschau; Enter legt die Karte mit Klassenfarbe und Zuständiger an
+- [x] Auswertung am 2026-10-18: `Login reparieren @mi @zz class:bug class:gibts label:ui due:morgen I0007` → Titel `Login reparieren @zz class:gibts`, zuständig `[mi]`, Klasse `bug`, Labels `[ui]`, Fälligkeit `2026-10-19`, Herkunft `[I0007]`
+- [x] `due:+7` → 2026-10-25; `due:24.12.` → 2026-12-24; `due:31.02.` bleibt im Titel
+- [x] API mit `klasse: "gibtsnicht"` → 400; mit gültigen Feldern → Datei enthält sie, ein Commit
+- [x] Oberfläche: Eingabe zeigt die Vorschau; Enter legt die Karte mit Klassenfarbe und Zuständiger an
 
 ## Betroffene Verzeichnisstruktur
 

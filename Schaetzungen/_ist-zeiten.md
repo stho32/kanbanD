@@ -112,3 +112,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | B0074 Schnelleingabe auswerten | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | B0075 Felder beim Anlegen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | B0076 Vorschau beim Tippen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | Lauf R00028 | Nacharbeit | — | — | 0,0h | autonom |
