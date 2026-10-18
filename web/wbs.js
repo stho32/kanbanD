@@ -59,5 +59,22 @@
     return weg;
   }
 
-  Object.assign(ziel, { gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Anteile in ganzen Prozent nach größtem Rest — die drei ergeben zusammen 100 (ohne Slices 0). */
+  function prozente(stand) {
+    const teile = ['gruen', 'gelb', 'rot'];
+    if (!stand.slices) return { gruen: 0, gelb: 0, rot: 0 };
+    const roh = teile.map(t => stand[t] * 100 / stand.slices);
+    const ganz = roh.map(Math.floor);
+    const fehlt = 100 - ganz.reduce((a, b) => a + b, 0);
+    teile.map((_, i) => i).sort((a, b) => (roh[b] - ganz[b]) - (roh[a] - ganz[a])).slice(0, fehlt).forEach(i => { ganz[i]++; });
+    return Object.fromEntries(teile.map((t, i) => [t, ganz[i]]));
+  }
+
+  /** Die Zeile des Kopfs: `50 % funktional · 25 % in Bearbeitung · 25 % offen`. */
+  function standText(stand) {
+    const p = prozente(stand);
+    return `${p.gruen} % funktional · ${p.gelb} % in Bearbeitung · ${p.rot} % offen`;
+  }
+
+  Object.assign(ziel, { prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

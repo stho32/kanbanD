@@ -97,4 +97,18 @@ test.describe('R00054', () => {
     await z('I0001').getByRole('button', { name: 'I0001 aufklappen' }).click();
     await expect(z('B0001')).toBeVisible();
   });
+
+  test('US-1: Kopf zeigt Stand über die Slices, aktiven Pfad und was läuft', async ({ page }) => {
+    await page.goto(k.adresse + '#/wbs/kd');
+    await expect(page.locator('#wbs-stand')).toHaveText('25 % funktional · 50 % in Bearbeitung · 25 % offen');
+    await expect(page.locator('.wbs-stand span')).toHaveText('1 von 4 Slices funktional · 2 in Bearbeitung · 1 offen');
+    await expect(page.locator('.wbs-pfad')).toHaveText('kanbanD A0001›Board D0001›Bewegen I0002›Tastatur F0002');
+    await expect(page.locator('.wbs-laufend')).toHaveText('Tastatur F0002');
+    await expect(page.locator('.wbs-nc')).toHaveCount(0);
+    await expect(page).toHaveTitle('25 % · WBS · kanbanD — kanbanD');
+    await page.locator('tr.wbs-z[data-id="D0001"]').getByRole('button', { name: 'D0001 zuklappen' }).click();
+    await page.locator('.wbs-laufend').getByRole('button', { name: /Tastatur/ }).click();
+    await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toBeVisible();
+    await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toHaveClass(/ziel/);
+  });
 });

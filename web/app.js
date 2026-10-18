@@ -256,6 +256,7 @@ function render() {
 
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
+  if (S.ui.view === 'wbs' && S.wbs) return `${prozente(S.wbs.stand).gruen} % · WBS · ${S.wbs.name} — kanbanD`;
   const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch' };
   const n = alleLaufenden().length;
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
@@ -435,6 +436,15 @@ async function act(a, arg, wert) {
         try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(kl)); } catch (_) { }
         u.fokus = `[data-act="wbs-klapp"][data-arg="${arg}"]`;
         break;
+      }
+      case 'wbs-gehe': {
+        const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
+        for (let e = nach.get((nach.get(arg) || {}).eltern); e && !(e.id in kl && kl[e.id]); e = nach.get(e.eltern)) kl[e.id] = true;
+        try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(kl)); } catch (_) { }
+        render();
+        const z = document.getElementById('wbs-' + arg);
+        if (z) { z.scrollIntoView({ block: 'center' }); z.classList.add('ziel'); }
+        return;
       }
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
       case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;

@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -44,4 +44,11 @@ test('Klappen: ohne Wahl nur der aktive Ast offen; zu blendet die Nachfahren aus
   const zu = zugeklappt(baum, { D0001: false, D0002: true }, pfad);
   assert.deepStrictEqual([...zu], ['D0001']);
   assert.deepStrictEqual([...ausgeblendet(baum, zu)], ['I0001', 'B0001'], 'D0001 selbst bleibt sichtbar');
+});
+
+test('Stand in Prozent: 2 grün, 1 gelb, 1 rot von 4 Slices', () => {
+  assert.strictEqual(standText({ gruen: 2, gelb: 1, rot: 1, slices: 4 }), '50 % funktional · 25 % in Bearbeitung · 25 % offen');
+  assert.deepStrictEqual(prozente({ gruen: 1, gelb: 1, rot: 1, slices: 3 }), { gruen: 34, gelb: 33, rot: 33 }, 'zusammen 100');
+  assert.deepStrictEqual(prozente({ gruen: 0, gelb: 0, rot: 0, slices: 0 }), { gruen: 0, gelb: 0, rot: 0 });
+  assert.deepStrictEqual(prozente({ gruen: 1, gelb: 0, rot: 6, slices: 7 }), { gruen: 14, gelb: 0, rot: 86 });
 });

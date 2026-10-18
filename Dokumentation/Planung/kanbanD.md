@@ -206,7 +206,7 @@ zuletzt: 2026-10-18
 | B0132 | Bubble | I0049 | Menüpunkt WBS je gebundener Anwendung | gruen | Test gruen | Board + Register → gebundene Anwendungen (eine registrierte gilt als gebunden) → Menü WBS, Route #/wbs/<kürzel>, g k | 0,5-1 |  |  |  |  |
 | B0133 | Bubble | I0049 | WBS-Tabelle zeigen | gruen | Test gruen | WBS → Tabelle ID · Ebene · Knoten · Fertig/Eingabe → Ausgabe · Aufwand · Status · Requirement · Notiz; Einrückung, Ampel, Plakette, Widerspruch | 1-2 |  |  |  |  |
 | B0134 | Bubble | I0049 | Dialog und Interaction klappen | gruen | Test gruen | Klick auf Schalter → Nachfahren ausgeblendet, Zustand je Anwendung gemerkt; ohne Wahl nur der aktive Ast offen | 0,5-1 |  |  |  |  |
-| B0135 | Bubble | I0049 | Kopf mit Stand | rot | Test gruen | Stand → % funktional · in Bearbeitung · offen, Balken, aktiver Pfad, laufende Bubbles, nicht committet | 0,5-1 |  |  |  |  |
+| B0135 | Bubble | I0049 | Kopf mit Stand | gruen | Test gruen | Stand → % funktional · in Bearbeitung · offen, Balken, aktiver Pfad, laufende Bubbles, nicht committet | 0,5-1 |  |  |  |  |
 | B0136 | Bubble | I0049 | Sicht lebt mit dem Arbeits-Repository | rot | Test gruen | Editor-Änderung oder Commit im Arbeits-Repository → Sicht lädt ohne Neuladen nach | 0,5-1 |  |  |  |  |
 | I0050 | Interaction | D0008 | WBS-Status setzen | rot | US-1..US-3 |  |  |  | I0049 | R00055 | WBS 1: Blätter rot/gelb/gruen, Vorfahren gerechnet, kein Commit im Arbeits-Repository |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |

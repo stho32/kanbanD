@@ -614,7 +614,16 @@ function vWbs() {
   if (!wbsKuerzel()) return `<div class="body bericht"><p class="muted">Dieses Board ist an keine Anwendung gebunden. Anwendungen registrierst du unter <a href="#/einrichten">Einrichten</a>; ein Board bindet sie mit <span class="mono">applications: [kd]</span>.</p></div>`;
   if (S.wbsFehler) return `<div class="body bericht"><div class="warnh" role="alert">${esc(S.wbsFehler)}</div></div>`;
   if (!S.wbs) return '';
-  return `<div class="body bericht wbs-seite"><h2 class="wbs-titel">WBS · ${esc(S.wbs.name)} <span class="mono">${esc(S.wbs.datei)}</span></h2>${vWbsTabelle(S.wbs)}</div>`;
+  return `<div class="body bericht wbs-seite">${vWbsKopf(S.wbs)}${vWbsTabelle(S.wbs)}</div>`;
+}
+/** Der Kopf zeigt nur den Stand: Slice-Fortschritt, aktiver Pfad, was läuft, ob die Datei committet ist. */
+function vWbsKopf(w) {
+  const s = w.stand, p = prozente(s), nach = new Map(w.knoten.map(k => [k.id, k]));
+  const knopf = id => `<button class="lnk" data-act="wbs-gehe" data-arg="${esc(id)}" title="zur Zeile ${esc(id)}">${esc(nach.get(id).name)} <span class="mono">${esc(id)}</span></button>`;
+  const pfad = s.pfad.length ? s.pfad.map(knopf).join('<span class="trenner">›</span>') : '<span class="muted">nichts offen</span>';
+  const laufend = s.laufend.length ? s.laufend.map(knopf).join(', ') : s.aktiv ? `nichts in Arbeit — nächster Knoten: ${knopf(s.aktiv)}` : 'nichts in Arbeit, nichts offen';
+  const nc = w.nicht_committet ? `<span class="wbs-nc" title="Die WBS-Datei hat Änderungen, die im Arbeits-Repository nicht committet sind — kanbanD committet dort nie">nicht committet</span>` : '';
+  return `<div class="wbs-kopf"><h2 class="wbs-titel">WBS · ${esc(w.name)} <span class="mono">${esc(w.datei)}</span>${nc}</h2><div class="wbs-stand"><span>${s.gruen} von ${s.slices} Slices funktional · ${s.gelb} in Bearbeitung · ${s.rot} offen</span><b id="wbs-stand">${esc(standText(s))}</b></div><div class="wbs-balken" role="img" aria-label="${esc(standText(s))}"><i class="gruen" style="width:${p.gruen}%"></i><i class="gelb" style="width:${p.gelb}%"></i><i class="rot" style="width:${p.rot}%"></i></div><div class="wbs-zeile"><span class="k">aktiv</span><span class="wbs-pfad">${pfad}</span></div><div class="wbs-zeile"><span class="k">in Arbeit</span><span class="wbs-laufend">${laufend}</span></div></div>`;
 }
 /** Die Plakette: gesetzt gefüllt, gerechnet umrandet; widerspricht die Datei, steht ihr Wert daneben. */
 function vWbsStatus(k, gerechnet) {
