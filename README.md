@@ -15,10 +15,12 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
 
 ## Bedienen in Kürze
 
-- **Mehrere auf einmal:** eine Liste (aus Notiz, Mail, Protokoll) in „+ Karte“, „+ Aufgabe ohne Board“ oder „+ Teilaufgabe“ einfügen — je Zeile eine, ein Commit.
+- **Neue Aufgabe:** `n` (überall), „+“ im Spaltenkopf oder „+ Neue Aufgabe“ öffnet einen Dialog mit allen Feldern — Titel, Beschreibung, Teilaufgaben, Board und Spalte, Klasse, Zuständige, Labels, Fälligkeit, Herkunft. Strg+Enter legt an, Umschalt+Strg+Enter legt an und lässt den Dialog für die nächste offen.
+- **Mehrere auf einmal:** eine Liste (aus Notiz, Mail, Protokoll) in den Titel des Dialogs oder in „+ Teilaufgabe“ einfügen — je Zeile eine, ein Commit. Teilaufgaben lassen sich ohne Wartezeit hintereinander tippen.
 - **Schnelleingabe:** `Login reparieren @mi class:bug label:ui due:morgen I0007` setzt Zuständige, Klasse, Label, Fälligkeit und Herkunft gleich beim Anlegen; die Vorschau zeigt, was erkannt wurde.
-- **An der Karte:** ▶/■ Timer, „+ mich“, Doppelklick auf den Titel benennt um.
-- **Tastatur auf dem Board:** Pfeile wählen, Umschalt+Pfeile verschieben, `1`–`9` in Spalte n, Enter öffnet, `n` neue Karte, `t` Timer, `m` mir zuweisen, F2 umbenennen, `a` archivieren, `c` Verweis kopieren, `/` Filter, Strg+Z macht die letzte Bewegung oder Anlage rückgängig.
+- **An der Karte:** die erste offene Teilaufgabe mit Kästchen zum Abhaken, ▶/■ Timer, „+ mich“, Doppelklick auf den Titel benennt um.
+- **Aufgabenliste:** Zeilen auf eine Spalte eines Boards oder ins Archiv ziehen.
+- **Tastatur auf dem Board:** Pfeile wählen, Umschalt+Pfeile verschieben, `1`–`9` in Spalte n, Enter öffnet, `n` neue Aufgabe, `t`/Leertaste Timer, `m` mir zuweisen, `p` Zuständige (alle Personen), F2 umbenennen, `a`/Entf archivieren, `c` Verweis kopieren, `/` Filter, Strg+Z macht die letzte Bewegung oder Anlage rückgängig.
 - **Rechtsklick-Menüs:** auf Karten (alles, was man mit einer Karte tun kann, mit Kürzel daneben), auf Spaltenköpfen (Karte hinzufügen, alle archivieren, Spalte verschieben) und auf Zeilen der Aufgabenliste; per Tastatur mit Menütaste oder Umschalt+F10.
 - **Überall:** `g b` / `g a` / `g p` / `g s` / `g z` / `g v` / `g e` wechseln die Seite, `b` Board wechseln, `i` Ich bin …; im Aufgabenfenster `t m a e b s k d`; in der Aufgabenliste Pfeile, `a`, `c`. `?` zeigt die Kürzel des Orts.
 - **Filter:** Text, `#12`, `@kürzel`, `class:bug`, `origin:I0023`, `label:ui`, `is:archived`.
