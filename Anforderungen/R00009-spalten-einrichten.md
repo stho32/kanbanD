@@ -1,6 +1,6 @@
 ---
 id: R00009
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,11 +27,11 @@ Der Ablauf eines Boards passt sich der Arbeit an, ohne dass eine Aufgabe ihre Sp
 
 ## Akzeptanzkriterien
 
-- [ ] `A(1,2) · B() · C(3)` mit `[{name: "Offen", alt: "A"}, {name: "Neu"}, {name: "C", alt: "C", grenze: 2}]` ergibt `Offen(1,2) · Neu() · C(3)` und `limits: C: 2`
-- [ ] Fehlt `A` (mit Aufgaben) → 409; fehlt `B` (leer) → erlaubt
-- [ ] Gleiche Liste wie vorher → kein Commit
-- [ ] Oberfläche: „In Arbeit“ in „Doing“ umbenennen, „Review“ anlegen, Fertig → Board zeigt „Zu erledigen · Doing · Review · Erledigt“, ein Commit
-- [ ] Grenze 1 für „In Arbeit“ mit zwei Karten → Spaltenkopf trägt die Markierung „überschritten“
+- [x] `A(1,2) · B() · C(3)` mit `[{name: "Offen", alt: "A"}, {name: "Neu"}, {name: "C", alt: "C", grenze: 2}]` ergibt `Offen(1,2) · Neu() · C(3)` und `limits: C: 2`
+- [x] Fehlt `A` (mit Aufgaben) → 409; fehlt `B` (leer) → erlaubt
+- [x] Gleiche Liste wie vorher → kein Commit
+- [x] Oberfläche: „In Arbeit“ in „Doing“ umbenennen, „Review“ anlegen, Fertig → Board zeigt „Zu erledigen · Doing · Review · Erledigt“, ein Commit
+- [x] Grenze 1 für „In Arbeit“ mit zwei Karten → Spaltenkopf trägt die Markierung „überschritten“
 
 ## Betroffene Verzeichnisstruktur
 
