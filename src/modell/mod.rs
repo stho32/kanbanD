@@ -4,7 +4,7 @@ mod board;
 mod einstellungen;
 
 pub use board::{Board, Spalte};
-pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen};
+pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
 /// Dateiname aus einem Titel: Kleinbuchstaben, Umlaute als ae/oe/ue/ss, sonst Bindestriche; höchstens 40 Zeichen.
 pub fn slug(titel: &str) -> String {

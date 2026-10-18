@@ -1,6 +1,7 @@
 //! Lesen und Schreiben der Markdown-Dateien. Rein: Text hinein, Daten heraus und umgekehrt.
 
 
+pub mod board;
 pub mod einstellungen;
 pub mod frontmatter;
 pub mod yaml;
