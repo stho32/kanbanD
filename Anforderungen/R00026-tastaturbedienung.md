@@ -1,6 +1,6 @@
 ---
 id: R00026
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,10 +25,10 @@ Wer viel am Board arbeitet, ist mit der Tastatur schneller; zugleich ist das Boa
 
 ## Akzeptanzkriterien
 
-- [ ] Rechnung: Spalten `A: 1,2,3 · B: — · C: 4` — von 2 nach rechts → 4 (leere Spalte übersprungen, Position 1 gibt es in C nicht: letzte); von 4 nach links → 1 (gleiche Position); von 1 nach unten → 2; von 3 nach unten → keine
-- [ ] Rechnung: Umschalt+→ von 2 → `{spalte: B, index: 0}` (Nachbarspalte, auch wenn leer); Umschalt+↑ von 2 → `{spalte: A, index: 0}`; Umschalt+← von 1 → keins
-- [ ] Oberfläche: Tab auf eine Karte, → , Umschalt+→, Enter → richtige Karte in neuer Spalte geöffnet; Board-Datei geändert
-- [ ] Oberfläche: `n` öffnet das Eingabefeld; `?` zeigt die Kürzel
+- [x] Rechnung: Spalten `A: 1,2,3 · B: — · C: 4` — von 2 nach rechts → 4 (leere Spalte übersprungen, Position 1 gibt es in C nicht: letzte); von 4 nach links → 1 (gleiche Position); von 1 nach unten → 2; von 3 nach unten → keine
+- [x] Rechnung: Umschalt+→ von 2 → `{spalte: B, index: 0}` (Nachbarspalte, auch wenn leer); Umschalt+↑ von 2 → `{spalte: A, index: 0}`; Umschalt+← von 1 → keins
+- [x] Oberfläche: Tab auf eine Karte, → , Umschalt+→, Enter → richtige Karte in neuer Spalte geöffnet; Board-Datei geändert
+- [x] Oberfläche: `n` öffnet das Eingabefeld; `?` zeigt die Kürzel
 
 ## Betroffene Verzeichnisstruktur
 
