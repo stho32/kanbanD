@@ -158,7 +158,8 @@ zuletzt: 2026-10-18
 | B0098 | Bubble | I0037 | Teilaufgaben ohne Warten anfügen | gruen | Test gruen | Enter → Teilaufgabe sofort sichtbar, Anfragen geordnet nacheinander | 1-2 |  |  |  |  |
 | I0038 | Interaction | D0002 | Erste offene Teilaufgabe auf der Karte | gruen | US-1..US-2 |  |  |  | I0012 | R00038 | UX-Überarbeitung 3: Karte zeigt die nächste offene Teilaufgabe |
 | B0099 | Bubble | I0038 | Nächste Teilaufgabe zeigen und abhaken | gruen | Test gruen | Aufgabe → erste offene Teilaufgabe unter dem Titel, Klick hakt ab, die nächste rückt nach | 0,5-1 |  |  |  |  |
-| I0039 | Interaction | D0003 | Zuständige frei setzen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung 3: alle Personen hinzufügen und entfernen, auch im Kartenmenü |
+| I0039 | Interaction | D0003 | Zuständige frei setzen | rot | US-1..US-2 |  |  |  | I0011 | R00039 | UX-Überarbeitung 3: alle Personen hinzufügen und entfernen, auch im Kartenmenü |
+| B0100 | Bubble | I0039 | Zuständige im Menü und per p | rot | Test gruen | Aufgabe + Personen → Untermenü mit Haken je Person; Klick setzt oder entfernt; p öffnet es an der Karte | 1-2 |  |  |  |  |
 | I0040 | Interaction | D0004 | Ziehen in der Aufgabenliste | rot | US der Anforderung |  |  |  | I0020 |  | UX-Überarbeitung 3: Zeilen auf Boardspalten oder ins Archiv ziehen |
 | I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | rot | US der Anforderung |  |  |  | I0035 |  | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
 
