@@ -63,6 +63,15 @@ async function dateiLaden() {
   catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; }
 }
 
+/** Schreibender Aufruf aus dem Aufgabenfenster: Fehler erscheinen im Fuß, danach wird neu geladen. */
+async function schreiben(methode, pfad, daten) {
+  try {
+    await api(methode, pfad, daten);
+    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
+  } catch (f) { S.ui.fensterFehler = f.message; }
+  await laden();
+}
+
 async function aufgabeAendern(nummer, aenderung) {
   if (ichNoetig()) { render(); return; }
   try {
@@ -142,6 +151,19 @@ async function act(a, arg, wert) {
         u.gespeichert = null; u.fensterFehler = null;
         await dateiLaden();
         break;
+      }
+      case 'teil': {
+        if (ichNoetig()) break;
+        const t = aufgabe(u.offen).teilaufgaben[+arg];
+        await schreiben('PATCH', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`, { erledigt: !t.erledigt });
+        return;
+      }
+      case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
+      case 'teil-neu': {
+        if (!(wert || '').trim() || ichNoetig()) break;
+        u.fokus = '#teil-neu';
+        await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben`, { text: wert });
+        return;
       }
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];

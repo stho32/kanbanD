@@ -65,9 +65,9 @@ zuletzt: 2026-10-18
 | B0031 | Bubble | I0011 | Aufgabe ändern | gruen | Test gruen | Aufgabe + Änderung (Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
 | B0032 | Bubble | I0011 | Aufgabe lesen und ändern über die API | gruen | Test gruen | GET/PATCH /api/aufgaben/<nr> → Datei, ein Commit; defekt = nur lesbar | 1-2 |  |  |  |  |
 | B0033 | Bubble | I0011 | Aufgabenfenster | gruen | Test gruen | Klick auf Karte → Fenster mit Inhalt/Datei, Feldern, Blättern, Esc | 2-3 |  |  |  |  |
-| I0012 | Interaction | D0003 | Teilaufgaben abhaken | gelb | US-1..US-2 |  |  |  | I0011 | R00012 |  |
+| I0012 | Interaction | D0003 | Teilaufgaben abhaken | gruen | US-1..US-2 |  |  |  | I0011 | R00012 |  |
 | B0034 | Bubble | I0012 | Teilaufgaben über die API | gruen | Test gruen | POST/PATCH/DELETE /api/aufgaben/<nr>/teilaufgaben[/<i>] → Checkbox-Zeilen, ein Commit | 0,5-1 |  |  |  |  |
-| B0035 | Bubble | I0012 | Teilaufgaben im Fenster | rot | Test gruen | Klick hakt ab, + Teilaufgabe · Enter, ✕ entfernt | 0,5-1 |  |  |  |  |
+| B0035 | Bubble | I0012 | Teilaufgaben im Fenster | gruen | Test gruen | Klick hakt ab, + Teilaufgabe · Enter, ✕ entfernt | 0,5-1 |  |  |  |  |
 | I0013 | Interaction | D0003 | Kommentieren | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0014 | Interaction | D0003 | Timer starten und stoppen | rot | US der Anforderung |  |  |  | I0011 |  | mehrere gleichzeitig, fremde stoppbar, Kopfzeile N laufen |
 | I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | rot | US der Anforderung |  |  |  | I0014 |  |  |

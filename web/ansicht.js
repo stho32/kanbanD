@@ -72,7 +72,13 @@ function vFenster() {
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}<div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
-function vFensterAbschnitte() { return ''; }
+function vFensterAbschnitte(a) {
+  return vTeilaufgaben(a);
+}
+function vTeilaufgaben(a) {
+  const ok = a.teilaufgaben.filter(t => t.erledigt).length;
+  return `<div class="abs"><h3>TEILAUFGABEN <span class="mono">${ok}/${a.teilaufgaben.length}</span></h3>${a.teilaufgaben.map((t, j) => `<div class="chk${t.erledigt ? ' ok' : ''}"><i data-act="teil" data-arg="${j}" role="checkbox" aria-checked="${t.erledigt}" aria-label="${esc(t.text)}">${t.erledigt ? '✓' : ''}</i><span data-act="teil" data-arg="${j}">${esc(t.text)}</span><button class="btn btn-sym x" data-act="teil-weg" data-arg="${j}" title="entfernen" aria-label="Teilaufgabe ${esc(t.text)} entfernen">✕</button></div>`).join('')}<input class="inp add" placeholder="+ Teilaufgabe · Enter" data-enter="teil-neu" id="teil-neu" aria-label="Neue Teilaufgabe"></div>`;
+}
 function vFensterSeite() { return ''; }
 
 /* ── Popover ── */
