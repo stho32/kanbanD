@@ -65,3 +65,55 @@ async fn qualifizierte_herkunft_schreiben_unbekanntes_kuerzel_ist_400() {
     let (_, a) = senden(Method::GET, &lauf.adresse, "api/aufgaben/2", "st", json!(null)).await;
     assert_eq!(a["aufgabe"]["herkunft"], json!(["kd:I0007"]), "Rundlauf über die Datei");
 }
+
+const WBS: &str = "# WBS\n\n| ID | Ebene | Eltern | Name | Status | Braucht |\n|---|---|---|---|---|---|\n| I0005 | Interaction | D0001 | Anlegen | gruen | |\n| I0007 | Interaction | D0001 | {name} | rot | I0005 |\n";
+
+/// Ein Arbeits-Repository mit WBS und einer Anforderung, getrennt vom kanbanD-Ordner.
+fn arbeits_repository(name: &str) -> tempfile::TempDir {
+    let r = tempfile::tempdir().unwrap();
+    std::fs::write(r.path().join("plan.md"), WBS.replace("{name}", name)).unwrap();
+    std::fs::create_dir_all(r.path().join("anf")).unwrap();
+    std::fs::write(r.path().join(format!("anf/R00014-{name}.md")), format!("# R00014: {name}\n")).unwrap();
+    r
+}
+
+fn register(kd: &std::path::Path, kc: Option<&std::path::Path>) -> String {
+    let eintrag = |k: &str, p: &std::path::Path| format!("    {k}: {{name: {k}, wbs: \"{}\", requirements: \"{}\"}}\n", p.join("plan.md").display(), p.join("anf").display());
+    format!("---\npeople:\n  st: {{name: Stefan, kind: human}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n{}{}---\n", kc.map(|p| eintrag("kc", p)).unwrap_or_default(), eintrag("kd", kd))
+}
+
+fn aufgabe(ordner: &std::path::Path, nr: u32, herkunft: &str) {
+    std::fs::write(ordner.join(format!("aufgaben/000{nr}-a.md")), format!("---\nid: {nr}\ntitle: a{nr}\norigins: [{herkunft}]\n---\n")).unwrap();
+}
+
+#[tokio::test]
+async fn gleiche_id_in_zwei_anwendungen_loest_je_kuerzel_auf() {
+    let (kd, kc) = (arbeits_repository("Bewegen"), arbeits_repository("Kassieren"));
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    std::fs::write(tmp.path().join("kanbanD.md"), register(kd.path(), Some(kc.path()))).unwrap();
+    aufgabe(tmp.path(), 1, "kd:I0007, kc:R00014");
+    aufgabe(tmp.path(), 2, "kc:I0007");
+    aufgabe(tmp.path(), 3, "I0007");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, q) = senden(Method::GET, &lauf.adresse, "api/herkunft", "st", json!(null)).await;
+    let wbs = |r: &tempfile::TempDir| r.path().canonicalize().unwrap().join("plan.md").to_string_lossy().to_string();
+    assert_eq!((q["kd:I0007"]["datei"].as_str().unwrap(), q["kd:I0007"]["name"].as_str().unwrap(), q["kd:I0007"]["zeile"].as_u64()), (wbs(&kd).as_str(), "Bewegen", Some(6)));
+    assert_eq!((q["kc:I0007"]["datei"].as_str().unwrap(), q["kc:I0007"]["name"].as_str().unwrap()), (wbs(&kc).as_str(), "Kassieren"));
+    assert_eq!((&q["kd:I0007"]["anwendung"], &q["kd:I0007"]["schluessel"], &q["kd:I0007"]["braucht"]), (&json!("kd"), &json!("kd:I0007"), &json!(["kd:I0005"])));
+    assert_eq!(q["kd:I0005"]["status"], "gruen", "über Braucht erreichte Knoten qualifiziert");
+    assert_eq!(q["kc:R00014"]["name"], "Kassieren");
+    assert!(q.get("I0007").is_none(), "unqualifiziert bei zwei Anwendungen ist mehrdeutig: {q}");
+}
+
+#[tokio::test]
+async fn bei_einer_anwendung_loest_auch_unqualifiziert_auf() {
+    let kd = arbeits_repository("Bewegen");
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    std::fs::write(tmp.path().join("kanbanD.md"), register(kd.path(), None)).unwrap();
+    aufgabe(tmp.path(), 1, "I0007");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, q) = senden(Method::GET, &lauf.adresse, "api/herkunft", "st", json!(null)).await;
+    assert_eq!((&q["I0007"]["name"], &q["I0007"]["schluessel"], &q["I0007"]["anwendung"]), (&json!("Bewegen"), &json!("kd:I0007"), &json!("kd")));
+}

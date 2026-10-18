@@ -54,6 +54,25 @@ impl Anwendungen {
     pub fn alle(&self) -> &[Anwendung] {
         &self.0
     }
+
+    /// Zu welcher Anwendung eine Herkunft gehört. Ohne Kürzel nur, wenn es genau eine Anwendung gibt.
+    pub fn aufloesen(&self, herkunft: &str) -> Aufloesung<'_> {
+        let Some(s) = Herkunftsschluessel::lesen(herkunft) else { return Aufloesung::Unbekannt };
+        match (s.kuerzel, self.0.as_slice()) {
+            (Some(k), _) => self.0.iter().find(|a| a.kuerzel == k).map_or(Aufloesung::Unbekannt, |a| Aufloesung::Eindeutig(a, s.id)),
+            (None, [einzige]) => Aufloesung::Eindeutig(einzige, s.id),
+            (None, []) => Aufloesung::Unbekannt,
+            (None, _) => Aufloesung::Mehrdeutig,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Aufloesung<'a> {
+    /// Anwendung und ID ohne Kürzel
+    Eindeutig(&'a Anwendung, String),
+    Mehrdeutig,
+    Unbekannt,
 }
 
 #[cfg(test)]
@@ -74,6 +93,22 @@ mod tests {
         }
         assert_eq!(Herkunftsschluessel::qualifiziert("kd", "I0007"), "kd:I0007");
         assert_eq!(Herkunftsschluessel::qualifiziert("", "I0007"), "I0007");
+    }
+
+    #[test]
+    fn aufloesen_eindeutig_mehrdeutig_unbekannt() {
+        let zwei = Anwendungen::aus(&quellen("", &["kc", "kd"]));
+        let kd = &zwei.alle()[1];
+        assert_eq!(zwei.aufloesen("kd:I0007"), Aufloesung::Eindeutig(kd, "I0007".into()));
+        assert_eq!(zwei.aufloesen("I0007"), Aufloesung::Mehrdeutig);
+        assert_eq!(zwei.aufloesen("xx:I0007"), Aufloesung::Unbekannt);
+        assert_eq!(zwei.aufloesen("thin air"), Aufloesung::Unbekannt);
+        let eine = Anwendungen::aus(&quellen("", &["kd"]));
+        assert_eq!(eine.aufloesen("R00014"), Aufloesung::Eindeutig(&eine.alle()[0], "R00014".into()));
+        let standard = Anwendungen::aus(&quellen("plan.md", &[]));
+        assert_eq!(standard.aufloesen("I0007"), Aufloesung::Eindeutig(&standard.alle()[0], "I0007".into()));
+        assert_eq!(Anwendungen::aus(&quellen("plan.md", &["kd"])).aufloesen("I0007"), Aufloesung::Mehrdeutig, "Standard und Register zusammen sind zwei");
+        assert_eq!(Anwendungen::aus(&quellen("", &[])).aufloesen("I0007"), Aufloesung::Unbekannt);
     }
 
     #[test]

@@ -189,7 +189,7 @@ zuletzt: 2026-10-18
 | B0117 | Bubble | I0048 | Register in kanbanD.md lesen und schreiben | gruen | Test gruen | kanbanD.md sources.applications ⇄ Anwendungen (Kürzel, Name, WBS, Anforderungen); Rundlauf stabil nach Kürzel sortiert | 1-2 |  |  |  |  |
 | B0118 | Bubble | I0048 | Register prüfen | gruen | Test gruen | PUT /api/einstellungen mit Anwendungen → Kürzel gültig und eindeutig, Name nötig, sonst 400; ein Commit | 0,5-1 |  |  |  |  |
 | B0119 | Bubble | I0048 | Qualifizierte Herkunft prüfen | gruen | Test gruen | Herkunft kd:I0007 + Register → gültig und normalisiert; unbekanntes Kürzel → 400 | 0,5-1 |  |  |  |  |
-| B0120 | Bubble | I0048 | Herkunft je Anwendung auflösen | rot | Test gruen | Herkunft der Aufgaben + Register → Quelle je Schreibweise mit anwendung; mehrdeutig nicht geliefert; braucht qualifiziert | 1-2 |  |  |  |  |
+| B0120 | Bubble | I0048 | Herkunft je Anwendung auflösen | gruen | Test gruen | Herkunft der Aufgaben + Register → Quelle je Schreibweise mit anwendung; mehrdeutig nicht geliefert; braucht qualifiziert | 1-2 |  |  |  |  |
 | B0121 | Bubble | I0048 | Erreichbarkeit der Anwendungen | rot | Test gruen | GET /api/anwendungen → Register mit erreichbar je Pfad; fehlender Pfad macht nichts defekt | 0,5-1 |  |  |  |  |
 | B0122 | Bubble | I0048 | Board bindet Anwendungen | rot | Test gruen | boards/<slug>.md applications ⇄ Board.anwendungen; Bewegen erhält den Schlüssel | 0,5-1 |  |  |  |  |
 | B0123 | Bubble | I0048 | Register in den Einstellungen pflegen | rot | Test gruen | Einstellungsseite: Anwendung anlegen, ändern, entfernen; erreichbar je Pfad; Vorschau; ein Commit | 1-2 |  |  |  |  |
