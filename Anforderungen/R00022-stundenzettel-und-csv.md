@@ -1,6 +1,6 @@
 ---
 id: R00022
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,10 +25,10 @@ Zeiten lassen sich abrechnen und auswerten, ohne die Dateien zu lesen.
 
 ## Akzeptanzkriterien
 
-- [ ] CSV: Aufgabe 1 „a; b“ mit Eintrag 09:00–10:30 von st → Zeile `1;"a; b";st;human;2026-10-17 09:00;2026-10-17 10:30;90;thin air`
-- [ ] Stundenzettel: Eintrag Mo 23:00–Di 01:00 → Mo 1:00, Di 1:00, Summe 2:00
-- [ ] Kreuztabelle „alles“: #1 st 1:30, cl 0:30 → Zeilensumme 2:00, Spaltensummen passen
-- [ ] Oberfläche: Berichte ▾ → Stundenzettel zeigt für Stefan die Aufgabe mit Zeit; CSV-Link liefert die Datei
+- [x] CSV: Aufgabe 1 „a; b“ mit Eintrag 09:00–10:30 von st → Zeile `1;"a; b";st;human;2026-10-17 09:00;2026-10-17 10:30;90;thin air`
+- [x] Stundenzettel: Eintrag Mo 23:00–Di 01:00 → Mo 1:00, Di 1:00, Summe 2:00
+- [x] Kreuztabelle „alles“: #1 st 1:30, cl 0:30 → Zeilensumme 2:00, Spaltensummen passen
+- [x] Oberfläche: Berichte ▾ → Stundenzettel zeigt für Stefan die Aufgabe mit Zeit; CSV-Link liefert die Datei
 
 ## Betroffene Verzeichnisstruktur
 
