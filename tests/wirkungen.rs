@@ -136,3 +136,37 @@ async fn ueber_die_api_setzen_und_entfernen_die_wbs_bleibt() {
     let (s, _) = gemeinsam::senden(reqwest::Method::DELETE, &lauf.adresse, "api/aufgaben/7/wbs-effects/0", "st", serde_json::Value::Null).await;
     assert_eq!(s, 404);
 }
+
+#[test]
+fn gleichzeitige_wirkungen_gehen_nacheinander_ohne_verklemmung_mit_direkten_wbs_schreibzugriffen() {
+    let l = std::sync::Arc::new(lage());
+    let faeden: Vec<_> = (0..6)
+        .map(|n| {
+            let l = l.clone();
+            std::thread::spawn(move || {
+                if n % 2 == 0 {
+                    l.setzen(serde_json::json!({"application": "kc", "action": "create", "parent": "D0001", "level": "Interaction", "name": format!("N{n}"), "done_criterion": "US-1"})).map(|_| ()).unwrap();
+                } else {
+                    l.kanban.wbs_status_setzen("kc", "B0002", if n == 1 { "gelb" } else { "gruen" }).map(|_| ()).unwrap();
+                }
+            })
+        })
+        .collect();
+    for f in faeden {
+        f.join().unwrap();
+    }
+    let a = kanband::format::aufgabe::lesen("0007-dialog-export-bauen.md", &l.aufgabe()).unwrap();
+    let mut ids: Vec<String> = a.wirkungen.iter().filter_map(|w| w.knoten.clone()).collect();
+    ids.sort();
+    assert_eq!(ids, ["I0048", "I0049", "I0050"], "jede Wirkung mit eigener ID, keine verloren");
+    assert_eq!(ids.iter().filter(|id| l.status(id) == "rot").count(), 3);
+}
+
+#[test]
+fn defekte_aufgabe_ist_423_und_die_wbs_bleibt_unberuehrt() {
+    let l = lage();
+    std::fs::write(l.board.path().join("aufgaben/0007-dialog-export-bauen.md"), "---\nid: 7\ntitle: X\nwbs-effects: [{action: grow}]\n---\n").unwrap();
+    let vorher = l.plan();
+    assert!(matches!(l.setzen(serde_json::json!({"application": "kc", "action": "rework", "node": "D0002"})), Err(Fehler::Defekt(m)) if m.contains("wbs-effects[0]")));
+    assert_eq!(l.plan(), vorher);
+}
