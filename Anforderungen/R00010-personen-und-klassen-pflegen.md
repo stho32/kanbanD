@@ -1,6 +1,6 @@
 ---
 id: R00010
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,11 +27,11 @@ Neue Mitarbeitende und Agenten kommen ohne Dateibearbeitung dazu; die Geschichte
 
 ## Akzeptanzkriterien
 
-- [ ] Person `mi`/„Mia“ als Mensch hinzufügen, Klasse `doku`/„Doku“/`teal` hinzufügen → `kanbanD.md` enthält beide, ein Commit
-- [ ] Liste ohne bisherige Person `cl` → 409; neue Person mit Kürzel `M!` → 400; Farbe `lila` → 400; doppelter Klassenschlüssel → 400
-- [ ] Gleicher Inhalt → kein Commit
-- [ ] Oberfläche: „Claude“ stilllegen und speichern → `active: false` in der Datei; „Ich bin …“ zeigt Claude als stillgelegt
-- [ ] Oberfläche: Klasse „Fehler“ auf Farbe `orange` stellen → Karten dieser Klasse tragen nach dem Speichern die neue Farbe
+- [x] Person `mi`/„Mia“ als Mensch hinzufügen, Klasse `doku`/„Doku“/`teal` hinzufügen → `kanbanD.md` enthält beide, ein Commit
+- [x] Liste ohne bisherige Person `cl` → 409; neue Person mit Kürzel `M!` → 400; Farbe `lila` → 400; doppelter Klassenschlüssel → 400
+- [x] Gleicher Inhalt → kein Commit
+- [x] Oberfläche: „Claude“ stilllegen und speichern → `active: false` in der Datei; „Ich bin …“ zeigt Claude als stillgelegt
+- [x] Oberfläche: Klasse „Fehler“ auf Farbe `orange` stellen → Karten dieser Klasse tragen nach dem Speichern die neue Farbe
 
 ## Betroffene Verzeichnisstruktur
 
