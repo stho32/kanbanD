@@ -294,6 +294,15 @@ async function act(a, arg, wert) {
         await dateiLaden();
         break;
       }
+      case 'teil-karte': {
+        if (ichNoetig()) break;
+        const [nr, i] = arg.split('|').map(Number);
+        aufgabe(nr).teilaufgaben[i].erledigt = true;
+        u.fokusKarte = nr;
+        render();
+        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
+        return;
+      }
       case 'teil': {
         if (ichNoetig()) break;
         const t = aufgabe(u.offen).teilaufgaben[+arg];

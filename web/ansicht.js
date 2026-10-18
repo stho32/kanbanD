@@ -216,7 +216,7 @@ function vKarte(a, fertig) {
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => zeitMs(z.beginn)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}">${hm(Date.now() - erster)}</span></span>` : '';
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}</div>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vKartenleiste(a)}<div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div>${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}</div>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${fertig ? '' : vNaechsteTeilaufgabe(a)}${vKartenleiste(a)}<div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div>${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -270,6 +270,13 @@ function vMenue() {
 function vDefektePop() {
   const ds = S.zustand.defekte || [];
   return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="menu"><h4>DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
+}
+
+/** Erste offene Teilaufgabe als nächster Schritt; das Kästchen hakt sie ab. */
+function vNaechsteTeilaufgabe(a) {
+  const i = a.teilaufgaben.findIndex(t => !t.erledigt);
+  if (i < 0) return '';
+  return `<div class="naechste" data-leiste="1"><button class="naechste-box" data-act="teil-karte" data-arg="${a.nummer}|${i}" role="checkbox" aria-checked="false" aria-label="${esc(a.teilaufgaben[i].text)} abhaken"></button><span>${esc(a.teilaufgaben[i].text)}</span></div>`;
 }
 
 /** Leiste beim Zeigen: eigener Timer, eigene Zuständigkeit. Klicks darin öffnen die Karte nicht. */

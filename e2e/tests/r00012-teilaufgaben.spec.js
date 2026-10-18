@@ -17,11 +17,11 @@ test.describe('R00012', () => {
     await page.locator('.ka[data-id="1"]').click();
     await page.getByLabel('Neue Teilaufgabe').fill('Spalten lesen');
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('checkbox', { name: 'Spalten lesen' })).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('checkbox', { name: 'Spalten lesen', exact: true })).toBeVisible();
     await page.keyboard.type('Klassen lesen');
     await page.keyboard.press('Enter');
-    await page.getByRole('checkbox', { name: 'Spalten lesen' }).click();
-    await expect(page.getByRole('checkbox', { name: 'Spalten lesen' })).toHaveAttribute('aria-checked', 'true');
+    await page.getByRole('dialog').getByRole('checkbox', { name: 'Spalten lesen', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('checkbox', { name: 'Spalten lesen', exact: true })).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('.ka[data-id="1"] .tk')).toHaveText('☑ 1/2');
     expect(k.lies('aufgaben/0001-eins.md')).toContain('- [x] Spalten lesen\n- [ ] Klassen lesen');
   });
@@ -30,9 +30,9 @@ test.describe('R00012', () => {
     k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins\n---\n- [ ] Klassen lesen\n');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
-    await page.locator('.chk').hover();
+    await page.getByRole('dialog').locator('.chk').hover();
     await page.getByLabel('Teilaufgabe Klassen lesen entfernen').click();
-    await expect(page.locator('.chk')).toHaveCount(0);
+    await expect(page.getByRole('dialog').locator('.chk')).toHaveCount(0);
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).not.toContain('Klassen lesen');
   });
 });
