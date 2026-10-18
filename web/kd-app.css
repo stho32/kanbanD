@@ -319,3 +319,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr .felder{grid-template-columns:110px minmax(0,1fr)}
 .einrichten .klz.pz{grid-template-columns:30px 70px minmax(0,1fr) auto 24px}
 .km-inp{resize:vertical;min-height:26px;padding:4px var(--kd-s3);font:inherit;font-size:12px}
+.zt tr.edit td{padding:2px 0;display:flex;gap:4px;align-items:center}
+.zt tr.edit .mini-inp{width:130px;border-color:var(--kd-line-strong)}
+.zt td.x{width:52px;white-space:nowrap}
+/* Zeilenknöpfe: unsichtbar bis Zeigen oder Fokus, aber per Tastatur erreichbar */
+.zt .btn-sym,.chk .x{visibility:visible;opacity:0}
+.zt tr:hover .btn-sym,.zt .btn-sym:focus,.chk:hover .x,.chk .x:focus{opacity:1}
