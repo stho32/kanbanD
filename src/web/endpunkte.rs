@@ -37,7 +37,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("POST", "/api/aufgaben/archivieren", true, "Aufgaben", "mehrere archivieren {nummern} — ein Commit"),
     e("POST", "/api/aufgaben/zurueckholen", true, "Aufgaben", "mehrere zurückholen {nummern} — ein Commit"),
     e("GET", "/api/aufgaben/{nr}", false, "Aufgaben", "Aufgabe mit Pfad und Dateitext (423 bei defekter Datei)"),
-    e("PATCH", "/api/aufgaben/{nr}", true, "Aufgaben", "ändern {titel?, beschreibung?, klasse?, zustaendige?, labels?, faellig?, herkunft?, phasen?: {uebersprungen: [Phase]}} — phasen.uebersprungen (auch skipped) ersetzt phases.skipped: diese Phasen entfallen für die Aufgabe"),
+    e("PATCH", "/api/aufgaben/{nr}", true, "Aufgaben", "ändern {titel?, beschreibung?, klasse?, zustaendige?, labels?, faellig?, herkunft?, phasen?: {uebersprungen: [Phase]}, reporting?: {burndown?: bool | null, forecast?: bool | null}} — phasen.uebersprungen (auch skipped) ersetzt phases.skipped: diese Phasen entfallen für die Aufgabe; reporting setzt, ob die Aufgabe im Burndown bzw. in Wie lange noch zählt (false nimmt sie aus, null entfernt den Schlüssel: Standard, sie zählt), Commit „#n geändert: Zählen in Berichten“"),
     e("POST", "/api/aufgaben/{nr}/teilaufgaben", true, "Aufgaben", "Teilaufgabe anlegen {text}"),
     e("POST", "/api/aufgaben/{nr}/teilaufgaben/mehrere", true, "Aufgaben", "mehrere Teilaufgaben anlegen {texte: [...]} — ein Commit"),
     e("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe ändern {erledigt?, text?}"),

@@ -172,6 +172,16 @@ pub struct Aufgabenaenderung {
     pub faellig: Option<Option<String>>,
     pub herkunft: Option<Vec<String>>,
     pub phasen: Option<Phasenaenderung>,
+    pub reporting: Option<Zaehlungsaenderung>,
+}
+
+/// `{"burndown": false, "forecast": null}` — ein Wert setzt, `null` entfernt den Schlüssel (der Standard gilt wieder), fehlt er, bleibt er.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Zaehlungsaenderung {
+    #[serde(default, deserialize_with = "entfernbar")]
+    pub burndown: Option<Option<bool>>,
+    #[serde(default, deserialize_with = "entfernbar")]
+    pub forecast: Option<Option<bool>>,
 }
 
 /// `{"uebersprungen": [...]}` (auch `skipped` wie in der Datei) ersetzt die entfallenden Phasen.
@@ -210,7 +220,7 @@ fn herkunft_normalisieren(x: &str) -> String {
     }
 }
 
-fn entfernbar<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
+fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Option<Option<T>>, D::Error> {
     Ok(Some(Option::deserialize(d)?))
 }
 
@@ -271,6 +281,14 @@ impl Aufgabe {
         if let Some(u) = a.phasen.as_ref().and_then(|p| p.uebersprungen.as_ref()) {
             neu.phasen.uebersprungen = eindeutig(u.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect());
         }
+        if let Some(z) = &a.reporting {
+            if let Some(b) = z.burndown {
+                neu.zaehlung.burndown = b;
+            }
+            if let Some(f) = z.forecast {
+                neu.zaehlung.forecast = f;
+            }
+        }
         let mut felder = vec![];
         for (name, geaendert) in [
             ("Titel", neu.titel != self.titel),
@@ -281,6 +299,7 @@ impl Aufgabe {
             ("Fälligkeit", neu.faellig != self.faellig),
             ("Herkunft", neu.herkunft != self.herkunft),
             ("Phasen", neu.phasen != self.phasen),
+            ("Zählen in Berichten", neu.zaehlung != self.zaehlung),
         ] {
             if geaendert {
                 felder.push(name);
