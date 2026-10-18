@@ -153,3 +153,28 @@ fn bewegungen_eines_reinen_kanbans_ohne_phasen() {
     let v = serde_json::to_value(Kanban::neu(board.path().to_path_buf()).bewegungen("entwicklung").unwrap()).unwrap();
     assert_eq!(v["phasen"], serde_json::Value::Null);
 }
+
+#[test]
+fn gleichzeitiges_lesen_traegt_nur_einmal_nach() {
+    let l = lage();
+    let vorher: u32 = git(l.board.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+    let kanban = std::sync::Arc::new(Kanban::neu(l.board.path().to_path_buf()));
+    let faeden: Vec<_> = (0..4).map(|_| { let k = kanban.clone(); std::thread::spawn(move || k.board_mit_phasen("entwicklung").unwrap().board.spalten.len()) }).collect();
+    assert!(faeden.into_iter().all(|f| f.join().unwrap() == 6), "jeder Leser sieht die ergänzten Spalten");
+    assert_eq!(git(l.board.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher + 1);
+}
+
+#[test]
+fn spalten_setzen_behaelt_die_phase_einer_umbenannten_spalte() {
+    let l = lage();
+    l.kanban.board_mit_phasen("entwicklung").unwrap();
+    let wer = l.kanban.handelnder(Some("st")).unwrap();
+    let neu: Vec<kanband::modell::SpaltenAenderung> = serde_json::from_value(serde_json::json!([
+        {"name": "Zu erledigen", "alt": "Zu erledigen"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Bau", "alt": "Entwicklung"},
+        {"name": "Entwicklertest", "alt": "Entwicklertest"}, {"name": "Abnahme", "alt": "Abnahme"}, {"name": "Erledigt", "alt": "Erledigt"}
+    ])).unwrap();
+    assert!(l.kanban.spalten_setzen(&wer, "entwicklung", &neu).unwrap());
+    let b = l.kanban.board_mit_phasen("entwicklung").unwrap();
+    assert_eq!(b.board.spalten[2].phase.as_deref(), Some("Entwicklung"), "die umbenannte Spalte stellt weiter die Entwicklung dar");
+    assert_eq!(b.board.spalten.len(), 6, "nichts nachgetragen");
+}

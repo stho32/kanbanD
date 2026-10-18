@@ -261,3 +261,10 @@ test('Prognose je Phase: entfällt nimmt aus Nenner und Durchsatz, ohne Markieru
   assert.strictEqual(p.umfang, 3);
   assert.deepStrictEqual(p.tage.map(x => x.offen.Entwicklertest).slice(-2), [1, 1]);
 });
+
+test('Durchlaufen nach Phasen: freie Spalte zwischen Phasen ist in keiner Phase, das erste Durchlaufen bleibt', () => {
+  const [e] = phasenStufen({ anwendung: 'kd', folge: STANDARD, spaltenphasen: { Bau: 'Entwicklung', Test: 'Entwicklertest' } }, ['Bau', 'Blockiert', 'Test', 'Erledigt']);
+  const x = zug(1, ['2026-10-01 09:00', 'Bau'], ['2026-10-02 09:00', 'Test'], ['2026-10-03 09:00', 'Blockiert']);
+  assert.ok(!e.durch(x, 'Blockiert'), 'heute offen');
+  assert.strictEqual(tagIso(ersterDurchlauf(x, e)), '02.10.', 'im Durchsatz zählt der Zug nach „Test“');
+});
