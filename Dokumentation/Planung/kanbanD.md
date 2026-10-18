@@ -200,7 +200,7 @@ zuletzt: 2026-10-18
 | B0127 | Bubble | I0049 | Erreichte Ebene rechnen | gruen | Test gruen | WbsTabelle → erreichte Ebene je Knoten (Minimum der Kinder, kein Feature noetig) | 0,5-1 |  |  |  |  |
 | B0128 | Bubble | I0049 | Stand über die Slices | gruen | Test gruen | WbsTabelle → Stand: gruen/gelb/rot über zählende Slices, aktiver Knoten mit Pfad, laufende Blätter | 0,5-1 |  |  |  |  |
 | B0129 | Bubble | I0049 | Geänderte WBS-Datei erkennen | gruen | Test gruen | Pfad im Arbeits-Repository → nicht committet ja/nein (git status ohne Index-Schreiben) | 0,5-1 |  |  |  |  |
-| B0130 | Bubble | I0049 | WBS einer Anwendung ausliefern | rot | Test gruen | GET /api/wbs/{kürzel} → knoten, stand, nicht_committet, anforderungen; unbekannt 404, nicht erreichbar 409 | 1-2 |  |  |  |  |
+| B0130 | Bubble | I0049 | WBS einer Anwendung ausliefern | gruen | Test gruen | GET /api/wbs/{kürzel} → knoten, stand, nicht_committet, anforderungen; unbekannt 404, nicht erreichbar 409 | 1-2 |  |  |  |  |
 | B0131 | Bubble | I0049 | Fremde WBS-Dateien beobachten | rot | Test gruen | Register → Wächter auf WBS-Datei und Git-Verzeichnis außerhalb des Ordners → Ereignis {pfade, extern, wbs} | 1-2 |  |  |  |  |
 | B0132 | Bubble | I0049 | Menüpunkt WBS je gebundener Anwendung | rot | Test gruen | Board + Register → gebundene Anwendungen (eine registrierte gilt als gebunden) → Menü WBS, Route #/wbs/<kürzel>, g k | 0,5-1 |  |  |  |  |
 | B0133 | Bubble | I0049 | WBS-Tabelle zeigen | rot | Test gruen | WBS → Tabelle ID · Ebene · Knoten · Fertig/Eingabe → Ausgabe · Aufwand · Status · Requirement · Notiz; Einrückung, Ampel, Plakette, Widerspruch | 1-2 |  |  |  |  |

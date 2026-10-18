@@ -16,6 +16,7 @@ mod teilaufgaben;
 mod termine;
 mod timer;
 mod verlauf;
+mod wbs;
 mod zeiten;
 mod zuordnung;
 
@@ -24,6 +25,7 @@ pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;
+pub use wbs::{WbsSicht, WbsZeile};
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};

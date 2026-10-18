@@ -68,6 +68,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/herkunft", get(herkunft))
         .route("/api/anwendungen", get(anwendungen))
+        .route("/api/wbs/{kuerzel}", get(wbs))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/berichte/bewegungen", get(bewegungen))
@@ -374,6 +375,11 @@ async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
 async fn anwendungen(State(app): State<App>) -> Result<Response, Fehler> {
     let r = blockierend(&app, |k| k.anwendungen()).await?;
     Ok(Json(r).into_response())
+}
+
+async fn wbs(State(app): State<App>, Path(kuerzel): Path<String>) -> Result<Response, Fehler> {
+    let w = blockierend(&app, move |k| k.wbs(&kuerzel)).await?;
+    Ok(Json(w).into_response())
 }
 
 #[derive(serde::Deserialize)]
