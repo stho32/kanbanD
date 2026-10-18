@@ -64,6 +64,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/herkunft", get(herkunft))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
+        .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
@@ -389,4 +390,14 @@ async fn zeiten_csv(State(app): State<App>) -> Result<Response, Fehler> {
     })
     .await?;
     Ok(([(axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"), (axum::http::header::CONTENT_DISPOSITION, "attachment; filename=\"kanbanD-zeiten.csv\"")], csv).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct BoardWahl {
+    board: String,
+}
+
+async fn verlauf(State(app): State<App>, axum::extract::Query(w): axum::extract::Query<BoardWahl>) -> Result<Response, Fehler> {
+    let v = blockierend(&app, move |k| k.verlauf(&w.board)).await?;
+    Ok(Json(v).into_response())
 }

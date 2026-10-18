@@ -13,6 +13,7 @@ mod kommentare;
 mod spalten;
 mod teilaufgaben;
 mod timer;
+mod verlauf;
 mod zeiten;
 mod zuordnung;
 
