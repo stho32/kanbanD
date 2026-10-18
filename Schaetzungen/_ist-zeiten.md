@@ -142,3 +142,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00036 Neue Aufgabe im Dialog | B0096 Einstiege statt + Karte | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00036 Neue Aufgabe im Dialog | Lauf R00036 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00037 Teilaufgaben schnell hintereinander | B0097 Eingaben überstehen Neuzeichnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00037 Teilaufgaben schnell hintereinander | B0098 Teilaufgaben ohne Warten anfügen | Standard | 1-2h | 0,0h | 0,0h | autonom |
