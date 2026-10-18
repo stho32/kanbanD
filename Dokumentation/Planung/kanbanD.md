@@ -127,7 +127,7 @@ zuletzt: 2026-10-18
 | B0076 | Bubble | I0028 | Vorschau beim Tippen | gruen | Test gruen | Eingabe → Vorschau der erkannten Felder unter dem Feld, Anlegen mit Feldern | 1-2 |  |  |  |  |
 | I0029 | Interaction | D0002 | Karte direkt bedienen | gelb | US-1..US-3 |  |  |  | I0014 | R00029 | UX-Überarbeitung: Timer, mir zuweisen, umbenennen direkt an der Karte; Fälligkeit per Knopf |
 | B0077 | Bubble | I0029 | Aktionen an der Karte | gruen | Test gruen | Zeigen/Fokus → Leiste mit Timer und mir zuweisen; Tasten t und m | 1-2 |  |  |  |  |
-| B0078 | Bubble | I0029 | Umbenennen an der Karte | rot | Test gruen | Doppelklick oder F2 → Titel im Feld, Enter speichert, Esc verwirft | 0,5-1 |  |  |  |  |
+| B0078 | Bubble | I0029 | Umbenennen an der Karte | gruen | Test gruen | Doppelklick oder F2 → Titel im Feld, Enter speichert, Esc verwirft | 0,5-1 |  |  |  |  |
 | B0079 | Bubble | I0029 | Fälligkeit per Knopf | rot | Test gruen | heute, morgen, +1 Woche, entfernen im Fenster | 0,5-1 |  |  |  |  |
 | I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |
 | I0031 | Interaction | D0002 | Rückgängig | rot | US der Anforderung |  |  |  | I0006 |  | UX-Überarbeitung: Hinweis mit rückgängig nach Bewegen, Anlegen, Entfernen |
