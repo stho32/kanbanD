@@ -53,10 +53,34 @@ function vPop() {
   return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px" role="menu"><h4>ICH BIN … <span class="mono">people:</span></h4>${u.ichNoetig ? '<div class="warnh">Für diese Aktion zuerst wählen, wer du bist.</div>' : ''}${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitem">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}<div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
+/* ── Karten ── */
+const PAL = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal', 'green', 'lime', 'grey'];
+const cv = farbe => !farbe ? '' : PAL.includes(farbe) ? `--c:var(--kd-c-${farbe});--cl:var(--kd-c-${farbe}-line)` : `--c:color-mix(in srgb,${farbe} 14%,#fff);--cl:${farbe}`;
+const klasse = k => k && S.zustand.einstellungen && S.zustand.einstellungen.klassen.find(c => c.schluessel === k);
+const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
+const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+function vHerkunft(a) {
+  const o = a.herkunft.length ? a.herkunft : ['thin air'];
+  return `<span class="orgs">${o.map(x => `<span class="org${x === 'thin air' ? ' leer' : ''}">${esc(x)}</span>`).join('')}</span>`;
+}
+
+function vKarte(a, fertig) {
+  const cl = klasse(a.klasse);
+  const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
+  const due = a.faellig ? `<span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}">${esc(a.faellig)}</span>` : '';
+  return `<div class="ka${fertig ? ' fertig' : ''}" data-id="${a.nummer}"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}</div><div class="t">${esc(a.titel)}</div><div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div></div>`;
+}
+
+function vFehlt(nr) {
+  return `<div class="ka fehlt" data-id="${nr}"><div class="r1"><span class="id">#${nr}</span></div><div class="t">#${nr} — Aufgabe fehlt</div><div class="r3">keine Datei unter aufgaben/</div></div>`;
+}
+
 /* ── Board ── */
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
-  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v">Grenze ${sp.grenze}</span>` : ''}<span class="n">${sp.aufgaben.length}</span></div><div class="flaeche"><div class="leer">leer</div></div></section>`;
+  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (a.archiviert ? '' : vKarte(a, letzte)) : vFehlt(nr); }).filter(Boolean);
+  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v">Grenze ${sp.grenze}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div></section>`;
 }
 function vBoard() {
   const b = S.board;

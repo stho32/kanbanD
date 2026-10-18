@@ -302,3 +302,5 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .first-r h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .fehl{color:var(--kd-warn);font-size:12px}
 .first .felder{grid-template-columns:110px minmax(0,1fr)}
+.ka.fehlt{border-style:dashed;background:var(--kd-bg);cursor:default}
+.ka.fehlt .t{color:var(--kd-warn)}

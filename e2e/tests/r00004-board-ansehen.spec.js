@@ -1,0 +1,44 @@
+// R00004 Board ansehen
+const { test, expect } = require('@playwright/test');
+const { kanbanStarten, einrichten } = require('./hilfen');
+
+const DATEIEN = {
+  'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-erste.md)\n- [#2](../aufgaben/0002-zweite.md)\n- #9\n\n## In Arbeit\n\n- [#3](../aufgaben/0003-dritte.md)\n\n## Erledigt\n',
+  'aufgaben/0001-erste.md': '---\nid: 1\ntitle: Erste Aufgabe\n---\n- [x] a\n- [ ] b\n- [ ] c\n',
+  'aufgaben/0002-zweite.md': '---\nid: 2\ntitle: Zweite Aufgabe\nclass: bug\nassignees: [st]\ndue: 2030-01-31\norigins: [I0004]\n---\n',
+  'aufgaben/0003-dritte.md': '---\nid: 3\ntitle: Dritte Aufgabe\nlabels: [ui]\n---\n',
+  'aufgaben/0004-archiv.md': '---\nid: 4\ntitle: Archiviert\narchived: 2026-10-01\n---\n',
+};
+
+test.describe('R00004', () => {
+  let k;
+  test.beforeEach(async () => { k = await kanbanStarten(einrichten(DATEIEN)); });
+  test.afterEach(() => k.stoppen());
+
+  test('US-1: Karten in ihren Spalten und in Zeilenreihenfolge', async ({ page }) => {
+    await page.goto(k.adresse);
+    const zu = page.locator('.bahn').nth(0), arbeit = page.locator('.bahn').nth(1);
+    await expect(zu.locator('.ka:not(.fehlt) .id')).toHaveText(['#1', '#2']);
+    await expect(arbeit.locator('.ka .id')).toHaveText(['#3']);
+    await expect(zu.locator('.bahn-kopf .n')).toHaveText('3');
+    await expect(page.locator('.bahn').nth(2).locator('.leer')).toBeVisible();
+    await expect(page.locator('.ka', { hasText: 'Archiviert' })).toHaveCount(0);
+  });
+
+  test('US-2: Klasse, Zuständige, Fälligkeit und Teilaufgaben auf der Karte', async ({ page }) => {
+    await page.goto(k.adresse);
+    const zwei = page.locator('.ka[data-id="2"]');
+    await expect(zwei).toHaveAttribute('data-c', '1');
+    await expect(zwei.locator('.cls')).toHaveText('Fehler');
+    await expect(zwei.locator('.pk')).toHaveText('ST');
+    await expect(zwei.locator('.due')).toHaveText('2030-01-31');
+    await expect(zwei.locator('.org')).toHaveText('I0004');
+    await expect(page.locator('.ka[data-id="1"] .tk')).toHaveText('☑ 1/3');
+    await expect(page.locator('.ka[data-id="3"] .lbl')).toHaveText('ui');
+  });
+
+  test('US-3: fehlende Aufgabe als Platzhalter', async ({ page }) => {
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka.fehlt')).toHaveText(/#9 — Aufgabe fehlt/);
+  });
+});

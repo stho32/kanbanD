@@ -25,3 +25,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00003 Identität wählen | Lauf R00003 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00004 Board ansehen | B0012 Aufgabendatei lesen und schreiben | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00004 Board ansehen | B0013 Aufgaben des Ordners lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00004 Board ansehen | B0014 Board mit Karten zeigen | Standard | 1-2h | 0,0h | 0,0h | autonom |

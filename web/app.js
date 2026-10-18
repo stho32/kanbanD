@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, ich: null, ui: { slug: null, first: null, fehler: null, pop: null } };
+const S = { zustand: null, board: null, aufgaben: [], ich: null, ui: { slug: null, first: null, fehler: null, pop: null } };
 try { S.ich = sessionStorage.getItem('kanbanD.ich'); } catch (_) { }
 
 function ichSetzen(k) {
@@ -31,7 +31,12 @@ async function laden() {
   } else {
     S.ui.first = null;
     S.ui.slug = gewaehltesBoard();
-    S.board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null;
+    const [board, aufgaben] = await Promise.all([
+      S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null,
+      api('GET', '/api/aufgaben'),
+    ]);
+    S.board = board;
+    S.aufgaben = aufgaben.aufgaben;
   }
   render();
 }
