@@ -14,7 +14,7 @@ test.describe('R00012', () => {
 
   test('US-1: anlegen und abhaken', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.locator('.ka[data-id="1"]').click();
+    await page.locator('.ka[data-id="1"]').click({ position: { x: 5, y: 5 } });
     await page.getByLabel('Neue Teilaufgabe').fill('Spalten lesen');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog').getByRole('checkbox', { name: 'Spalten lesen', exact: true })).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('R00012', () => {
   test('US-2: entfernen', async ({ page }) => {
     k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins\n---\n- [ ] Klassen lesen\n');
     await page.goto(k.adresse);
-    await page.locator('.ka[data-id="1"]').click();
+    await page.locator('.ka[data-id="1"]').click({ position: { x: 5, y: 5 } });
     await page.getByRole('dialog').locator('.chk').hover();
     await page.getByLabel('Teilaufgabe Klassen lesen entfernen').click();
     await expect(page.getByRole('dialog').locator('.chk')).toHaveCount(0);
