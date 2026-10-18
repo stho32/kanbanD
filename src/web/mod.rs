@@ -7,7 +7,7 @@ use crate::fehler::Fehler;
 use crate::waechter::{self, Ereignis};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 use axum::extract::{FromRequestParts, Path, State};
@@ -24,10 +24,17 @@ use std::sync::Arc;
 pub struct App {
     pub kanban: Arc<Kanban>,
     pub ereignisse: broadcast::Sender<Ereignis>,
+    ende: watch::Receiver<bool>,
     _waechter: Option<Arc<notify::RecommendedWatcher>>,
 }
 
+/// Router ohne Ende-Signal (Ereignisströme laufen, bis der Client geht).
 pub fn router(ordner: PathBuf) -> Router {
+    router_mit_ende(ordner, watch::channel(false).1)
+}
+
+/// Wird `ende` wahr, schließen sich die Ereignisströme — sonst wartet ein geordnetes Beenden ewig auf sie.
+pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
     let kanban = Arc::new(Kanban::neu(ordner.clone()));
     let (ereignisse, _) = broadcast::channel(256);
     let tx = ereignisse.clone();
@@ -40,7 +47,7 @@ pub fn router(ordner: PathBuf) -> Router {
             None
         }
     };
-    let app = App { kanban, ereignisse, _waechter: waechter };
+    let app = App { kanban, ereignisse, ende, _waechter: waechter };
     Router::new()
         .route("/api/ereignisse", get(ereignisstrom))
         .route("/api/zustand", get(zustand))
@@ -128,7 +135,11 @@ async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>
 
 /// Server-Sent Events: je Änderung im Ordner ein `data: {"pfade": […], "extern": …}`.
 async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
-    let strom = BroadcastStream::new(app.ereignisse.subscribe()).map(|e| {
+    let mut ende = app.ende.clone();
+    let geschlossen = async move {
+        let _ = ende.wait_for(|e| *e).await;
+    };
+    let strom = futures_util::StreamExt::take_until(BroadcastStream::new(app.ereignisse.subscribe()), geschlossen).map(|e| {
         // Wer zu langsam liest, bekommt ein leeres Ereignis und lädt einfach alles neu.
         let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true });
         Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))

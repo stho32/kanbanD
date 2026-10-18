@@ -101,3 +101,23 @@ async fn ereignisstrom_meldet_eigenes_anlegen_nicht_als_extern() {
     .await;
     assert_eq!(e["extern"], false);
 }
+
+#[tokio::test]
+async fn offener_ereignisstrom_haelt_das_beenden_nicht_auf() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let antwort = reqwest::get(format!("{}api/ereignisse", lauf.adresse)).await.unwrap();
+    assert_eq!(antwort.status(), 200);
+    let start = std::time::Instant::now();
+    std::process::Command::new("kill").args(["-TERM", &lauf.kind.id().to_string()]).status().unwrap();
+    let mut beendet = None;
+    for _ in 0..50 {
+        if let Ok(Some(s)) = lauf.kind.try_wait() {
+            beendet = Some(s);
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(beendet.is_some_and(|s| s.success()), "nach {:?} noch nicht beendet", start.elapsed());
+    drop(antwort);
+}

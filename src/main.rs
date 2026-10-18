@@ -34,8 +34,13 @@ async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf) -> ExitCode 
     if auftrag.browser_oeffnen {
         browser::oeffnen(&adresse);
     }
-    let router = kanband::web::router(ordner);
-    if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(beenden_verlangt()).await {
+    let (ende, ende_rx) = tokio::sync::watch::channel(false);
+    let router = kanband::web::router_mit_ende(ordner, ende_rx);
+    let signal = async move {
+        beenden_verlangt().await;
+        let _ = ende.send(true);
+    };
+    if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(signal).await {
         eprintln!("Server beendet mit Fehler: {e}");
         return ExitCode::FAILURE;
     }

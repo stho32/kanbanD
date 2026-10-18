@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], ich: null, ui: { slug: null, first: null, fehler: null, pop: null } };
+const S = { zustand: null, board: null, aufgaben: [], ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null } };
 try { S.ich = sessionStorage.getItem('kanbanD.ich'); } catch (_) { }
 
 function ichSetzen(k) {
@@ -111,7 +111,45 @@ async function act(a, arg, wert) {
     }
   } catch (fehler) {
     if (u.first) u.first.fehler = fehler.message; else u.fehler = fehler.message;
-    if (!u.first) await laden().catch(() => { });
+    if (!u.first) await /* Live: jede Änderung im Ordner lädt neu; Änderungen von außen markieren die betroffenen Karten 10 s. */
+function spaltenJeAufgabe() {
+  const m = {};
+  if (S.board) S.board.spalten.forEach(sp => sp.aufgaben.forEach(n => { m[n] = sp.name; }));
+  return m;
+}
+
+async function ereignis(e) {
+  const vorher = spaltenJeAufgabe();
+  await laden();
+  if (!e.extern) return;
+  const jetzt = Date.now();
+  for (const a of S.aufgaben) if (e.pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
+  const boardDatei = S.ui.slug && 'boards/' + S.ui.slug + '.md';
+  if (boardDatei && e.pfade.includes(boardDatei)) {
+    const nachher = spaltenJeAufgabe();
+    for (const n of Object.keys(nachher)) if (vorher[n] !== nachher[n]) S.extern[n] = { at: jetzt, datei: boardDatei };
+  }
+  render();
+}
+
+function liveVerbinden() {
+  if (typeof EventSource === 'undefined') return;
+  const q = new EventSource('/api/ereignisse');
+  q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
+  q.onerror = () => { if (S.live) { S.live = false; render(); } };
+  q.onopen = () => { if (!S.live) { S.live = true; laden().catch(() => { }); } };
+}
+
+setInterval(() => {
+  const jetzt = Date.now();
+  let neu = false;
+  for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
+  document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
+  if (neu && zug == null && !S.ui.adding) render();
+}, 1000);
+
+liveVerbinden();
+laden().catch(() => { });
   }
   render();
 }
@@ -191,4 +229,42 @@ document.addEventListener('dragend', () => {
   document.querySelectorAll('.zieht').forEach(x => x.classList.remove('zieht'));
 });
 
+/* Live: jede Änderung im Ordner lädt neu; Änderungen von außen markieren die betroffenen Karten 10 s. */
+function spaltenJeAufgabe() {
+  const m = {};
+  if (S.board) S.board.spalten.forEach(sp => sp.aufgaben.forEach(n => { m[n] = sp.name; }));
+  return m;
+}
+
+async function ereignis(e) {
+  const vorher = spaltenJeAufgabe();
+  await laden();
+  if (!e.extern) return;
+  const jetzt = Date.now();
+  for (const a of S.aufgaben) if (e.pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
+  const boardDatei = S.ui.slug && 'boards/' + S.ui.slug + '.md';
+  if (boardDatei && e.pfade.includes(boardDatei)) {
+    const nachher = spaltenJeAufgabe();
+    for (const n of Object.keys(nachher)) if (vorher[n] !== nachher[n]) S.extern[n] = { at: jetzt, datei: boardDatei };
+  }
+  render();
+}
+
+function liveVerbinden() {
+  if (typeof EventSource === 'undefined') return;
+  const q = new EventSource('/api/ereignisse');
+  q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
+  q.onerror = () => { if (S.live) { S.live = false; render(); } };
+  q.onopen = () => { if (!S.live) { S.live = true; laden().catch(() => { }); } };
+}
+
+setInterval(() => {
+  const jetzt = Date.now();
+  let neu = false;
+  for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
+  document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
+  if (neu && zug == null && !S.ui.adding) render();
+}, 1000);
+
+liveVerbinden();
 laden().catch(f => { S.ui.fehler = f.message; render(); });
