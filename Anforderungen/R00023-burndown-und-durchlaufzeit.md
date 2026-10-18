@@ -1,6 +1,6 @@
 ---
 id: R00023
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,10 +27,10 @@ Fortschritt und Tempo sind messbar, ohne dass jemand etwas zusätzlich erfasst.
 
 ## Akzeptanzkriterien
 
-- [ ] Stände: Tag 1 `A: 1,2`; Tag 2 `A: 2 · Z: 1`; Tag 4 `Z: 1,2` → offen 2, 1, 1, 0; Umfang 2, 2, 2, 2; Durchlauf #1 = 1,0 Tage, #2 = 3,0 Tage; Mittel 2,0; Median 2,0
-- [ ] Rückkehr von #1 aus Z an Tag 3 ändert seine Durchlaufzeit nicht
-- [ ] API gegen ein echtes Repository mit drei Bewegungs-Commits liefert dieselben Zahlen wie die reine Rechnung
-- [ ] Oberfläche: Bericht zeigt die Linie mit Endwert und die Durchlauftabelle
+- [x] Stände: Tag 1 `A: 1,2`; Tag 2 `A: 2 · Z: 1`; Tag 4 `Z: 1,2` → offen 2, 1, 1, 0; Umfang 2, 2, 2, 2; Durchlauf #1 = 1,0 Tage, #2 = 3,0 Tage; Mittel 2,0; Median 2,0
+- [x] Rückkehr von #1 aus Z an Tag 3 ändert seine Durchlaufzeit nicht
+- [x] API gegen ein echtes Repository mit drei Bewegungs-Commits liefert dieselben Zahlen wie die reine Rechnung
+- [x] Oberfläche: Bericht zeigt die Linie mit Endwert und die Durchlauftabelle
 
 ## Betroffene Verzeichnisstruktur
 
