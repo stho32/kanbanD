@@ -91,3 +91,17 @@ async fn unbekannte_pruefung_ist_ein_hinweis_das_board_bleibt_lesbar_und_schreib
     assert_eq!(ziehen(&lauf.adresse, 7, "Entwicklertest").await["warnungen"][0]["knoten"], json!(["kc:I0048"]), "die bekannte Prüfung wirkt weiter");
     assert!(lies(l.board.path(), "boards/entwicklung.md").contains("Entwicklung: [wbs-effects-green, xyz]"));
 }
+
+#[tokio::test]
+async fn zug_aus_einer_spalte_ohne_pruefung_warnt_nicht_eine_defekte_aufgabe_wird_trotzdem_bewegt() {
+    let l = lage("rot", BOARD);
+    let lauf = gemeinsam::starten(l.board.path(), &["--port", "0"]);
+    ziehen(&lauf.adresse, 7, "Entwicklertest").await;
+    assert_eq!(ziehen(&lauf.adresse, 7, "Abnahme").await["warnungen"], json!([]), "Entwicklertest prüft nicht — das Ausrufezeichen bleibt, gewarnt wird nur beim Verlassen");
+    std::fs::write(l.board.path().join("aufgaben/0008-import.md"), "---\nid: 8\ntitle: Import\nwbs-effects: kaputt\n---\n").unwrap();
+    git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "kaputt"]);
+    let r = ziehen(&lauf.adresse, 8, "Entwicklertest").await;
+    assert_eq!((r["bewegt"].clone(), r["warnungen"].clone()), (json!(true), json!([])));
+    let b = lies(l.board.path(), "boards/entwicklung.md");
+    assert!(b.split("## Entwicklertest").nth(1).is_some_and(|rest| rest.split("## Abnahme").next().unwrap_or("").contains("#8")), "{b}");
+}
