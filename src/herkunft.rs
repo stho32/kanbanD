@@ -1,11 +1,7 @@
 //! Liest WBS und Anforderungen, auf die Aufgaben zeigen — rein, ohne Dateizugriff.
 
 use crate::wbs::{WbsKnoten, WbsTabelle};
-
-/// Zellen einer Tabellenzeile; `\\|` ist ein Strich im Text, kein Spaltentrenner (Grenzen wie beim Schreiben).
-fn zellen(zeile: &str) -> Vec<String> {
-    crate::wbs_datei::zellgrenzen(zeile).into_iter().map(|r| zeile[r].trim().replace("\\|", "|")).collect()
-}
+use crate::wbs_datei::inhalte as zellen;
 
 /// Die bekannten Spalten der Knotentabelle (`/planung`); andere bleiben als `weitere` erhalten.
 const SPALTEN: [&str; 12] = ["ID", "Ebene", "Eltern", "Name", "Status", "Fertig-Kriterium", "Eingabe → Ausgabe", "Aufwand", "Ausbaustufe", "Braucht", "Requirement", "Notiz"];

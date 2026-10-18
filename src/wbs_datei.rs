@@ -1,5 +1,6 @@
 //! Die WBS-Datei als Text ändern — byte-treu: was nicht geändert werden soll, bleibt Byte für Byte stehen. Rein, ohne Dateizugriff.
 
+use crate::fehler::Fehler;
 use std::ops::Range;
 
 /// Byte-Bereiche der Zellen einer Tabellenzeile, ohne die Striche; `\|` ist ein Strich im Text, kein Trenner.
@@ -69,6 +70,27 @@ pub fn zuletzt_setzen(text: &str, heute: &str) -> String {
     neu.concat()
 }
 
+/// Zellinhalte einer Zeile, getrimmt und mit `\\|` als Strich.
+pub(crate) fn inhalte(zeile: &str) -> Vec<String> {
+    zellgrenzen(zeile).into_iter().map(|r| zeile[r].trim().replace("\\|", "|")).collect()
+}
+
+/// Ist das die Kopfzeile einer Knotentabelle (erste Zelle `ID`)?
+fn ist_kopf(zeile: &str) -> bool {
+    zeile.trim_start().starts_with('|') && inhalte(zeile).first().is_some_and(|z| z == "ID")
+}
+
+/// Darf kanbanD in diese WBS-Datei schreiben? Nicht bei Konfliktmarkern und nicht ohne Knotentabelle mit Spalte `Status` — 409.
+pub fn schreibbar(text: &str) -> Result<(), Fehler> {
+    if let Some(n) = text.lines().position(|z| z.starts_with("<<<<<<<") || z.starts_with(">>>>>>>")) {
+        return Err(Fehler::Konflikt(format!("WBS-Datei defekt: Konfliktmarker in Zeile {}", n + 1)));
+    }
+    if !text.lines().any(|z| ist_kopf(z) && inhalte(z).iter().any(|h| h == "Status")) {
+        return Err(Fehler::Konflikt("WBS-Datei defekt: keine Knotentabelle mit Spalte Status".into()));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,5 +117,16 @@ mod tests {
         assert_eq!(zuletzt_setzen("---\r\napplication: k\r\n---\r\nzuletzt: alt\r\n", "2026-10-18"), "---\r\napplication: k\r\nzuletzt: 2026-10-18\r\n---\r\nzuletzt: alt\r\n", "ergänzt im Frontmatter, nicht im Text darunter");
         assert_eq!(zuletzt_setzen("# WBS\nzuletzt: alt\n", "2026-10-18"), "# WBS\nzuletzt: alt\n", "ohne Frontmatter unverändert");
         assert_eq!(zuletzt_setzen("---\nx: 1\n", "2026-10-18"), "---\nx: 1\n", "ohne schließenden Strich unverändert");
+    }
+
+    #[test]
+    fn defekt_bei_konfliktmarker_oder_ohne_knotentabelle() {
+        let gut = "---\nx: 1\n---\n\n| ID | Ebene | Status |\n|---|---|---|\n| B0001 | Bubble | rot |\n";
+        assert_eq!(schreibbar(gut), Ok(()));
+        let konflikt = gut.replace("| B0001 | Bubble | rot |\n", "<<<<<<< HEAD\n| B0001 | Bubble | rot |\n=======\n| B0001 | Bubble | gruen |\n>>>>>>> x\n");
+        assert_eq!(schreibbar(&konflikt), Err(Fehler::Konflikt("WBS-Datei defekt: Konfliktmarker in Zeile 7".into())));
+        assert!(matches!(schreibbar("# WBS\n\nnoch keine Tabelle\n"), Err(Fehler::Konflikt(m)) if m.contains("keine Knotentabelle")));
+        assert!(schreibbar("| ID | Name |\n|---|---|\n| B0001 | x |\n").is_err(), "ohne Spalte Status");
+        assert_eq!(schreibbar("Titel\n=======\n\n| ID | Status |\n"), Ok(()), "Unterstreichung einer Überschrift ist kein Konfliktmarker");
     }
 }
