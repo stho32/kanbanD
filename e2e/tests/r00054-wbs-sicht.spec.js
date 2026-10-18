@@ -134,4 +134,33 @@ test.describe('R00054', () => {
     expect(geladen).toBe(0);
     expect(k.git('status', '--porcelain')).toBe('');
   });
+
+  test('WBS verschoben: Hinweis statt Tabelle, zurückgelegt erscheint sie ohne Neuladen; unbekanntes Kürzel', async ({ page }) => {
+    await page.goto(k.adresse + '#/wbs/kd');
+    await liveBereit(page);
+    await expect(page.locator('tr.wbs-z')).toHaveCount(12);
+    fs.renameSync(arbeit.wbs, arbeit.wbs + '.weg');
+    await expect(page.locator('.warnh')).toContainText('WBS von „kd“ nicht erreichbar');
+    fs.renameSync(arbeit.wbs + '.weg', arbeit.wbs);
+    await expect(page.locator('tr.wbs-z')).toHaveCount(12);
+    await page.goto(k.adresse + '#/wbs/xx');
+    await expect(page.locator('.warnh')).toHaveText('Anwendung „xx“ steht nicht im Register');
+  });
+
+  test('Board ohne Bindung bei zwei Anwendungen: kein Menüpunkt, g k erklärt die Bindung', async ({ page }) => {
+    const zweite = arbeitsRepository();
+    try {
+      const text = k.lies('kanbanD.md').replace('---\n', '').replace(/\n---\n$/, `\n    kc: {name: Kasse, wbs: "${zweite.wbs}", requirements: ""}\n---\n`);
+      k.schreib('kanbanD.md', '---\n' + text);
+      await page.goto(k.adresse);
+      await page.locator('.bahn').first().waitFor();
+      await expect(page.locator('.kz-nav a', { hasText: 'WBS' })).toHaveCount(0);
+      await page.keyboard.press('g');
+      await page.keyboard.press('k');
+      await expect(page.locator('.body.bericht')).toContainText('Dieses Board ist an keine Anwendung gebunden');
+      k.schreib('boards/entwicklung.md', '---\napplications: [kc, kd]\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n');
+      await expect(page.locator('.kz-nav a', { hasText: 'WBS · kc' })).toHaveAttribute('href', '#/wbs/kc');
+      await expect(page.locator('.kz-nav a', { hasText: 'WBS · kd' })).toBeVisible();
+    } finally { fs.rmSync(zweite.wurzel, { recursive: true, force: true }); }
+  });
 });

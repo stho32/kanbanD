@@ -116,3 +116,19 @@ fn beobachtet_wird_nur_was_ausserhalb_des_ordners_liegt() {
     assert_eq!(f.len(), 1, "innen liegt im Ordner, weg hat keinen Ordner: {f:?}");
     assert_eq!((f[0].kuerzel.as_str(), f[0].datei.clone(), f[0].git.clone()), ("kc", arbeit.join("Dokumentation/Planung/kasse.md"), Some(arbeit.join(".git"))));
 }
+
+#[tokio::test]
+async fn datei_ohne_knotentabelle_ist_leer_leerer_pfad_nicht_erreichbar() {
+    let (_a, arbeit) = arbeits_repository();
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let text = gemeinsam::lies(tmp.path(), "kanbanD.md").replace("wbs: /gibt/es/nicht.md", "wbs: \"\"");
+    std::fs::write(tmp.path().join("kanbanD.md"), text).unwrap();
+    std::fs::write(arbeit.join("Dokumentation/Planung/kasse.md"), "# WBS\n\nnoch keine Tabelle\n").unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, w) = wbs(&lauf.adresse, "kc").await;
+    assert_eq!((s, w["knoten"].clone(), w["stand"]["slices"].clone(), w["stand"]["aktiv"].clone()), (200, json!([]), json!(0), Value::Null));
+    assert_eq!(w["nicht_committet"], true);
+    let (s, r) = wbs(&lauf.adresse, "weg").await;
+    assert_eq!(s, 409, "ohne WBS-Pfad nicht erreichbar: {r}");
+}
