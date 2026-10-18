@@ -1,13 +1,9 @@
 // R00054 WBS-Sicht — das Arbeits-Repository ist ein eigenes Git-Repository neben dem kanbanD-Ordner.
 const { test, expect } = require('@playwright/test');
-const { execFileSync } = require('child_process');
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { KOPF, zeile, arbeitsRepository: repository, mitRegister } = require('./wbs-hilfen');
 
-const KOPF = '| ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz | Phase |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|\n';
-const zeile = (id, ebene, eltern, name, status, rest = {}) => `| ${id} | ${ebene} | ${eltern} | ${name} | ${status} | ${rest.fertig || ''} | ${rest.ea || ''} | ${rest.aufwand || ''} | ${rest.stufe || ''} | ${rest.braucht || ''} | ${rest.req || ''} | ${rest.notiz || ''} | ${rest.phase || ''} |\n`;
 const WBS = '---\napplication: kanbanD\n---\n\n# WBS\n\n' + KOPF
   + zeile('A0001', 'Application', '—', 'kanbanD', 'gelb', { fertig: 'alle Dialogs gruen' })
   + zeile('D0001', 'Dialog', 'A0001', 'Board', 'gelb', { req: 'R00001' })
@@ -21,22 +17,7 @@ const WBS = '---\napplication: kanbanD\n---\n\n# WBS\n\n' + KOPF
   + zeile('F0004', 'Feature', 'I0002', 'Option B: Gesten', 'option')
   + zeile('D0002', 'Dialog', 'A0001', 'Berichte', 'rot')
   + zeile('I0003', 'Interaction', 'D0002', 'Burndown', 'rot');
-
-/** Ein Arbeits-Repository: WBS committet, Anforderung R00001 im Anforderungsordner. */
-function arbeitsRepository() {
-  const r = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-arbeit-')));
-  fs.mkdirSync(path.join(r, 'Dokumentation/Planung'), { recursive: true });
-  fs.mkdirSync(path.join(r, 'Anforderungen'));
-  fs.writeFileSync(path.join(r, 'Dokumentation/Planung/kanbanD.md'), WBS);
-  fs.writeFileSync(path.join(r, 'Anforderungen/R00001-board.md'), '# R00001: Board\n');
-  const git = (...a) => execFileSync('git', ['-C', r, ...a], { encoding: 'utf8' });
-  git('init', '-q'); git('add', '-A'); git('-c', 'user.name=KI', '-c', 'user.email=k@k', 'commit', '-q', '-m', 'WBS');
-  return { wurzel: r, wbs: path.join(r, 'Dokumentation/Planung/kanbanD.md'), git };
-}
-
-const mitRegister = arbeit => einrichten({
-  'kanbanD.md': `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses: {}\nsources:\n  wbs: ""\n  requirements: ""\n  applications:\n    kd: {name: kanbanD, wbs: "${arbeit.wbs}", requirements: "${arbeit.wurzel}/Anforderungen"}\n---\n`,
-});
+const arbeitsRepository = () => repository(WBS);
 
 test.describe('R00054', () => {
   let k, arbeit;
