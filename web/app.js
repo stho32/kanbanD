@@ -275,7 +275,7 @@ async function act(a, arg, wert) {
         u.hinweis = null;
         const z = h.undo;
         if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
-        for (const n of z.nummern) await schreiben('POST', `/api/aufgaben/${n}/${z.art}`);
+        await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
         u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
       }
@@ -343,6 +343,23 @@ async function act(a, arg, wert) {
         return;
       }
       case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${arg}`); return;
+      case 'spalte-archivieren': {
+        if (ichNoetig()) break;
+        const nummern = S.board.spalten.find(sp => sp.name === arg).aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; });
+        try {
+          const geaendert = await api('POST', '/api/aufgaben/archivieren', { nummern });
+          u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} aus „${arg}“ archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
+        } catch (f) { u.fehler = f.message; }
+        return laden();
+      }
+      case 'spalte-schieben': {
+        if (ichNoetig()) break;
+        const [i, d] = arg.split('|').map(Number);
+        const neu = S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || null }));
+        [neu[i], neu[i + d]] = [neu[i + d], neu[i]];
+        try { await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, neu); } catch (f) { u.fehler = f.message; }
+        return laden();
+      }
       case 'verschieben': { const [nr, spalte] = arg.split('|'); u.fokusKarte = +nr; return act('bewegen', JSON.stringify({ nummer: +nr, spalte, index: 9999 })); }
       case 'klasse-setzen': { const [nr, k] = arg.split('|'); if (ichNoetig()) break; return aufgabeAendern(+nr, { klasse: k || null }); }
       case 'faellig-karte': {
@@ -569,6 +586,7 @@ document.addEventListener('keydown', e => {
     act('rueckgaengig');
     return;
   }
+  if (!S.ui.offen && !S.ui.pop && menueTasteAufZiel(e, t)) return;
   if (brettTaste(e, t)) return;
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
     e.preventDefault();
@@ -600,6 +618,22 @@ function menueFuerKarte(nr, x, y) {
   S.ui.pop = null;
   S.ui.menue = { titel: `#${nr} ${a.titel}`, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
   render();
+}
+function menueOeffnen(titel, eintraege, x, y) {
+  S.ui.pop = null;
+  S.ui.menue = { titel, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
+  render();
+}
+function menueFuerSpalte(i, x, y) {
+  const sp = S.board.spalten[i];
+  const offen = sp.aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; }).length;
+  menueOeffnen(`Spalte „${sp.name}“`, spaltenMenue(sp.name, i, S.board.spalten.length, offen), x, y);
+}
+function menueFuerZeile(nr, x, y) {
+  const a = aufgabe(nr);
+  const liegtAufBoards = (S.boards || []).flatMap(b => b.spalten.filter(sp => sp.aufgaben.includes(nr)).map(sp => ({ slug: b.slug, titel: b.titel, spalte: sp.name })));
+  const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr))).map(b => ({ slug: b.slug, titel: b.titel, spalten: b.spalten.map(sp => sp.name) }));
+  menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei }), x, y);
 }
 function menueEinpassen() {
   const el = $('#kmenue');
@@ -638,11 +672,23 @@ function menueTaste(ev) {
   render();
 }
 document.addEventListener('contextmenu', e => {
-  const karte = e.target.closest && e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)');
-  if (!karte || S.ui.view !== 'board') return;
-  e.preventDefault();
-  menueFuerKarte(+karte.dataset.id, e.clientX, e.clientY);
+  if (!e.target.closest) return;
+  const karte = e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)'), kopf = e.target.closest('.bahn-kopf[data-kopf]'), zeile = e.target.closest('tr[data-zeile]');
+  if (karte && S.ui.view === 'board') { e.preventDefault(); menueFuerKarte(+karte.dataset.id, e.clientX, e.clientY); }
+  else if (kopf && S.ui.view === 'board' && !S.ui.setup) { e.preventDefault(); menueFuerSpalte(+kopf.dataset.kopf, e.clientX, e.clientY); }
+  else if (zeile) { e.preventDefault(); menueFuerZeile(+zeile.dataset.zeile, e.clientX, e.clientY); }
 });
+/** Menütaste oder Umschalt+F10 auf Spaltenkopf oder Listenzeile; Enter auf einer Zeile öffnet die Aufgabe. */
+function menueTasteAufZiel(e, t) {
+  const menuetaste = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
+  const kopf = t.closest && t.closest('.bahn-kopf[data-kopf]'), zeile = t.closest && t.closest('tr[data-zeile]');
+  if (!kopf && !zeile) return false;
+  const r = t.getBoundingClientRect();
+  if (menuetaste) { e.preventDefault(); if (kopf) menueFuerSpalte(+kopf.dataset.kopf, r.left + 16, r.bottom); else menueFuerZeile(+zeile.dataset.zeile, r.left + 40, r.bottom); return true; }
+  if (zeile && e.key === 'Enter') { e.preventDefault(); act('oeffnen', zeile.dataset.zeile); return true; }
+  if (kopf && e.key === 'n') { e.preventDefault(); act('add', S.board.spalten[+kopf.dataset.kopf].name); return true; }
+  return false;
+}
 document.addEventListener('mouseover', e => {
   const m = S.ui.menue;
   const z = m && e.target.closest && e.target.closest('.km-e[data-mp]');

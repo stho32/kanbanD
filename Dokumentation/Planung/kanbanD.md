@@ -142,9 +142,9 @@ zuletzt: 2026-10-18
 | B0086 | Bubble | I0033 | Menü der Karte zusammenstellen | gruen | Test gruen | Aufgabe + Board + Person → Menüeinträge mit Kürzeln und Untermenüs; Tastennavigation im Menü | 1-2 |  |  |  |  |
 | B0087 | Bubble | I0033 | Kontextmenü zeigen und bedienen | gruen | Test gruen | Rechtsklick, Menütaste oder Umschalt+F10 → Menü an der Karte, Maus und Tastatur, Untermenüs | 2-3 |  |  |  |  |
 | B0088 | Bubble | I0033 | Neue Kartenkürzel | gruen | Test gruen | a archivieren, 1–9 in Spalte n, c Verweis kopieren | 0,5-1 |  |  |  |  |
-| I0034 | Interaction | D0002 | Kontextmenüs für Spalten und Listen | gelb | US-1..US-3 |  |  |  | I0033 | R00034 | UX-Überarbeitung 2: Spaltenkopf: Karte hinzufügen, alle archivieren, Spalten einrichten; Zeilen der Aufgabenliste |
+| I0034 | Interaction | D0002 | Kontextmenüs für Spalten und Listen | gruen | US-1..US-3 |  |  |  | I0033 | R00034 | UX-Überarbeitung 2: Spaltenkopf: Karte hinzufügen, alle archivieren, Spalten einrichten; Zeilen der Aufgabenliste |
 | B0089 | Bubble | I0034 | Mehrere archivieren und zurückholen | gruen | Test gruen | Nummernliste → archived setzen bzw. entfernen, laufende Timer stoppen, ein Commit | 0,5-1 |  |  |  |  |
-| B0090 | Bubble | I0034 | Menüs für Spaltenkopf und Aufgabenliste | rot | Test gruen | Rechtsklick/Menütaste auf Spaltenkopf und Listenzeile → passende Menüs | 1-2 |  |  |  |  |
+| B0090 | Bubble | I0034 | Menüs für Spaltenkopf und Aufgabenliste | gruen | Test gruen | Rechtsklick/Menütaste auf Spaltenkopf und Listenzeile → passende Menüs | 1-2 |  |  |  |  |
 | I0035 | Interaction | D0002 | Tastenkürzel überall | rot | US der Anforderung |  |  |  | I0026 |  | UX-Überarbeitung 2: g-Folgen für Seiten, Kürzel im Fenster und in der Aufgabenliste, Hilfe je Ort |
 
 ## Offene Fragen

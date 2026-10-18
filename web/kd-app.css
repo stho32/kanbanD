@@ -412,3 +412,4 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .km-e.an .kmenue.unter .km-e:not(.an){background:none;color:var(--kd-text)}
 .km-e.an .kmenue.unter .km-e.km-aktuell{color:var(--kd-muted)}
 .km-e.an .kmenue.unter .km-k{color:var(--kd-faint)}
+.bahn-kopf:focus,tr[data-zeile]:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}

@@ -32,3 +32,22 @@ test('Menüschritt überspringt Trenner und Aktuelles, mit Umlauf', () => {
   assert.strictEqual(menueSchritt(m[6].unter, -1, 1), 1, 'aktuelle Spalte ist nicht wählbar');
   assert.strictEqual(menueSchritt([{ trenner: true }], 0, 1), -1);
 });
+
+const { spaltenMenue, listenMenue } = require('../../web/menue.js');
+
+test('Menü des Spaltenkopfs', () => {
+  const t = m => m.map(e => e.trenner ? '—' : e.text);
+  assert.deepStrictEqual(t(spaltenMenue('Erledigt', 2, 3, 2)), ['Karte hinzufügen', 'Alle 2 Karten archivieren', '—', 'Spalte nach links', 'Spalten einrichten …']);
+  assert.deepStrictEqual(t(spaltenMenue('Zu erledigen', 0, 3, 0)), ['Karte hinzufügen', '—', 'Spalte nach rechts', 'Spalten einrichten …']);
+  assert.strictEqual(spaltenMenue('A', 1, 3, 1)[1].text, 'Alle 1 Karte archivieren');
+  assert.strictEqual(spaltenMenue('A', 1, 3, 0)[3].arg, '1|1');
+});
+
+test('Menü der Listenzeile', () => {
+  const a = { nummer: 4, titel: 'vier', archiviert: null };
+  const m = listenMenue(a, { liegtAuf: [{ slug: 'e', titel: 'Entwicklung', spalte: 'Zu erledigen' }], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit', 'Geprüft'] }] });
+  assert.deepStrictEqual(m.find(e => e.text === 'Auf Board legen').unter.map(e => e.arg), ['t|4|Bereit', 't|4|Geprüft']);
+  assert.strictEqual(m.find(e => e.text === 'Von Board nehmen').unter[0].arg, 'e|4');
+  const arch = listenMenue({ ...a, archiviert: '2026-10-01' }, { liegtAuf: [], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit'] }] });
+  assert.ok(arch.some(e => e.text === 'Zurückholen') && !arch.some(e => e.text === 'Auf Board legen'));
+});

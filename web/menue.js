@@ -23,6 +23,32 @@
     ];
   }
 
+  /** Menü eines Spaltenkopfs: i = Position, anzahl = Spaltenzahl, offen = nicht archivierte Karten der Spalte. */
+  function spaltenMenue(name, i, anzahl, offen) {
+    return [
+      { text: 'Karte hinzufügen', kuerzel: 'n', act: 'add', arg: name },
+      ...(offen ? [{ text: `Alle ${offen} ${offen === 1 ? 'Karte' : 'Karten'} archivieren`, act: 'spalte-archivieren', arg: name }] : []),
+      T,
+      ...(i > 0 ? [{ text: 'Spalte nach links', act: 'spalte-schieben', arg: `${i}|-1` }] : []),
+      ...(i < anzahl - 1 ? [{ text: 'Spalte nach rechts', act: 'spalte-schieben', arg: `${i}|1` }] : []),
+      { text: 'Spalten einrichten …', act: 'setup', arg: '' },
+    ];
+  }
+
+  /** Menü einer Zeile der Aufgabenliste. u = {liegtAuf: [{slug, titel, spalte}], frei: [{slug, titel, spalten: [Namen]}]} */
+  function listenMenue(a, u) {
+    const nr = a.nummer;
+    return [
+      { text: 'Öffnen', kuerzel: 'Enter', act: 'oeffnen', arg: String(nr) },
+      T,
+      ...(!a.archiviert && u.frei.length ? [{ text: 'Auf Board legen', unter: u.frei.flatMap(b => b.spalten.map(s => ({ text: `${b.titel} · ${s}`, act: 'legen', arg: `${b.slug}|${nr}|${s}` }))) }] : []),
+      ...(u.liegtAuf.length ? [{ text: 'Von Board nehmen', unter: u.liegtAuf.map(b => ({ text: `${b.titel} · ${b.spalte}`, act: 'abnehmen', arg: `${b.slug}|${nr}` })) }] : []),
+      T,
+      { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
+      a.archiviert ? { text: 'Zurückholen', act: 'zurueckholen', arg: String(nr) } : { text: 'Archivieren', kuerzel: 'a', act: 'archivieren', arg: String(nr) },
+    ];
+  }
+
   const waehlbar = e => e && !e.trenner && !e.aktuell;
 
   /** Nächster wählbarer Index in Richtung +1/−1 mit Umlauf; Home/End als 'anfang'/'ende'. */
@@ -36,5 +62,5 @@
     return i;
   }
 
-  Object.assign(ziel, { kartenMenue, menueSchritt });
+  Object.assign(ziel, { kartenMenue, spaltenMenue, listenMenue, menueSchritt });
 })(typeof module !== 'undefined' ? module.exports : window);
