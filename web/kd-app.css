@@ -488,3 +488,15 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .wl-liste{font-size:13px;color:var(--kd-text);margin:0 0 var(--kd-s3);padding-left:18px;max-width:1000px}
 .live-punkt{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--kd-c-green-line,#2e7d32);margin-right:4px;vertical-align:middle}
 .dl-wahl select{min-width:140px}
+/* Termine (R00047) */
+.diagramm .wl-tlbl{font-size:11px;fill:var(--kd-text);font-family:var(--kd-font);font-weight:600;paint-order:stroke;stroke:var(--kd-surface);stroke-width:3px}
+.wl-termine{margin-top:var(--kd-s4);max-width:1000px}
+.wl-termine .dtitel .muted{font-weight:400}
+.tm-vorschau{width:44px;height:10px;vertical-align:middle;overflow:visible}
+.tm-form{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:var(--kd-s2)}
+.tm-form .mini-inp{height:26px}
+.tm-hex{width:84px}
+.wl-tchance{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.wl-tchance li{display:flex;align-items:center;gap:8px;margin-top:2px}
+.wl-tchance b{font-weight:600}
+.tm-form [data-tf="name"]{width:200px}

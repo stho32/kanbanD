@@ -499,6 +499,29 @@ ${l.map(x => { const a = aufgabe(x.nummer); return `<circle class="punkt klick" 
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const deDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${WOCHENTAG[d.getDay()]} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
 const kurzDatum = ms => { const d = new Date(ms); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`; };
+/* Termine (R00047): Darstellung einer Linie aus Farbe, Art und Stärke */
+const TERMIN_STAERKE = { fein: 1.25, normal: 2, fett: 4 };
+const TERMIN_ART = { durchgehend: '', gestrichelt: '9 6', gepunktet: '1.5 5' };
+const terminFarbe = f => PAL.includes(f) ? `var(--kd-c-${f}-line)` : f;
+const terminStil = t => `stroke:${terminFarbe(t.farbe)};stroke-width:${TERMIN_STAERKE[t.staerke] || 2};stroke-dasharray:${TERMIN_ART[t.linie] || ''}`;
+const prozent = x => Math.round(x * 100) + ' %';
+function chanceText(c) {
+  if (c.art === 'vorbei') return 'vorbei';
+  if (c.art === 'erreicht') return 'erreicht';
+  if (c.art === 'ungemessen') return 'keine Aussage';
+  return `${prozent(c.p7)} · ${prozent(c.p5)} in der 5-Tage-Woche`;
+}
+function vTermine(p) {
+  const u = S.ui, termine = (S.board && S.board.termine) || [], f = u.tf;
+  const fertig = p.phasen[p.phasen.length - 1];
+  const zeilen = termine.map((t, i) => `<tr data-termin="${esc(t.name)}"><td><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg></td><td>${esc(t.name)}</td><td class="mono">${deDatum(isoTag(t.datum))}</td><td>${fertig ? esc(chanceText(terminChance(fertig, t.datum, Date.now()))) : '—'}</td><td class="r"><button class="btn btn-sym" data-act="tf-bearbeiten" data-arg="${i}" aria-label="Termin ${esc(t.name)} ändern" title="ändern">✎</button><button class="btn btn-sym" data-act="tf-entfernen" data-arg="${i}" aria-label="Termin ${esc(t.name)} entfernen" title="entfernen">✕</button></td></tr>`).join('');
+  const wahl = (feld, werte, titel) => `<select class="mini-inp" data-tf="${feld}" aria-label="${titel}">${werte.map(([k, t]) => `<option value="${k}"${f[feld] === k ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+  const FARBNAMEN = { yellow: 'gelb', amber: 'bernstein', orange: 'orange', red: 'rot', rose: 'rosé', pink: 'pink', magenta: 'magenta', violet: 'violett', indigo: 'indigo', blue: 'blau', sky: 'himmelblau', cyan: 'cyan', teal: 'petrol', green: 'grün', lime: 'limette', grey: 'grau' };
+  const farben = PAL.map(x => [x, FARBNAMEN[x] || x]);
+  if (f.farbe.startsWith('#')) farben.push([f.farbe, f.farbe]);
+  const formular = `<div class="tm-form" role="group" aria-label="${f.i == null ? 'Neuer Termin' : 'Termin ändern'}"><input class="mini-inp" data-tf="name" value="${esc(f.name)}" placeholder="Name, z. B. Deadline" aria-label="Name des Termins"><input type="date" class="mini-inp" data-tf="datum" value="${esc(f.datum)}" aria-label="Datum des Termins">${wahl('farbe', farben, 'Farbe des Termins')}<input class="mini-inp tm-hex" data-tf="hex" value="${f.farbe.startsWith('#') ? esc(f.farbe) : ''}" placeholder="#rrggbb" aria-label="Eigene Farbe des Termins">${wahl('linie', [['durchgehend', 'durchgehend'], ['gestrichelt', 'gestrichelt'], ['gepunktet', 'gepunktet']], 'Linie des Termins')}${wahl('staerke', [['fein', 'fein'], ['normal', 'normal'], ['fett', 'fett']], 'Stärke des Termins')}<svg class="tm-vorschau" viewBox="0 0 44 10" aria-label="Vorschau"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(f)}"></line></svg><button class="btn btn-haupt" data-act="tf-speichern">${f.i == null ? 'Termin anlegen' : 'Übernehmen'}</button>${f.i == null ? '' : '<button class="btn" data-act="tf-abbrechen">Abbrechen</button>'}${u.tfFehler ? `<span class="fehl" role="alert">${esc(u.tfFehler)}</span>` : ''}</div>`;
+  return `<section class="wl-termine"><h3 class="dtitel">Termine <span class="muted">· stehen in boards/${esc(u.slug || '')}.md, für alle sichtbar</span></h3>${termine.length ? `<table class="pt dicht" id="termine"><thead><tr><th>Linie</th><th>Name</th><th>Datum</th><th>Chance „${esc(fertig ? fertig.spalte : '')}“</th><th></th></tr></thead><tbody>${zeilen}</tbody></table>` : '<p class="muted">Noch keine Termine — etwa eine Deadline als fette rote Linie.</p>'}${formular}</section>`;
+}
 function vPrognose() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt), u = S.ui;
@@ -512,7 +535,9 @@ function vPrognose() {
   const W = 960, H = 400, L = 48, R = 24, O = 24, U = 40, pw = W - L - R, ph_ = H - O - U;
   const t0 = p.tage.length ? p.tage[0].t : p.heute;
   const enden = serien.flatMap(s => s.ph.zeilen ? [s.ph.zeilen[3].datum7] : []);
-  const t1 = Math.min(Math.max(p.heute + 864e5, ...enden) + 864e5, p.heute + 400 * 864e5);
+  const termine = (S.board && S.board.termine) || [];
+  const terminTage = termine.map(t => isoTag(t.datum)).filter(t => t >= t0);
+  const t1 = Math.min(Math.max(p.heute + 864e5, ...enden, ...terminTage) + 864e5, p.heute + 3 * 366 * 864e5);
   const ymax = Math.max(1, ...p.tage.map(x => x.umfang), p.umfang);
   const x = t => L + pw * (t - t0) / Math.max(t1 - t0, 1), y = v => O + ph_ * (1 - v / ymax);
   const schritt = Math.max(1, Math.ceil(ymax / 5)), yt = [];
@@ -541,6 +566,7 @@ ${xt.map(t => `<text class="achse" x="${x(t).toFixed(1)}" y="${H - U + 18}" text
 <path class="umfang" d="${pfad(p.tage.map(d => [d.t, d.umfang]))}"></path>
 ${faecher}${linien}${marken}
 <line class="wl-heute" x1="${x(p.heute)}" x2="${x(p.heute)}" y1="${O}" y2="${H - U}"></line><text class="wl-lbl" x="${x(p.heute) + 4}" y="${O + 10}">heute</text>
+${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i) => { const xt = x(isoTag(t.datum)), rechts = xt > W - R - 140; return `<g class="wl-termin" data-termin="${esc(t.name)}"><line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${O}" y2="${H - U}" style="${terminStil(t)}"></line><text class="wl-tlbl" x="${(xt + (rechts ? -5 : 5)).toFixed(1)}" y="${O + 26 + 14 * (i % 4)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(t.name)} ${kurzDatum(isoTag(t.datum))}</text></g>`; }).join('')}
 <line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
 ${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed(1)}" y="${O}" width="${breite.toFixed(1)}" height="${ph_}" data-tag="${i}" data-tip="${tip(d)}"></rect>`).join('')}
 </svg>`;
@@ -555,13 +581,14 @@ ${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed
     if (!ph.offen) inhalt = `<p>Alle ${p.umfang} Aufgaben haben „${esc(ph.spalte)}“ erreicht.</p>`;
     else if (!ph.zeilen) inhalt = `<p>${ph.offen} offen — keine Prognose unter ${MIN_LAEUFE} Läufen in der Messbasis (gemessen: ${ph.laeufe}).</p>`;
     else inhalt = `<div class="wl-scroll"><table class="pt dicht wl-tab"><thead><tr><th>Mit X % Wkt.</th><th>Fertig zum, 7-Tage-Woche</th><th>Fertig zum, 5-Tage-Woche</th><th>Restliche Dauer</th><th>Nicht vor (Spalte links)</th></tr></thead><tbody>${ph.zeilen.map(z => `<tr><td>${z.p} %</td><td>${deDatum(z.datum7)}</td><td>${deDatum(z.datum5)}</td><td>${z.kalendertage} Kalendertage · ${z.arbeitstage} Arbeitstage</td><td>${z.untergrenze7 ? deDatum(z.untergrenze7) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
-    return `<section class="wl-phase" style="--h:${hue}" data-spalte="${esc(ph.spalte)}">${kopfzeile}${inhalt}${messung}</section>`;
+    const termin = termine.length ? `<ul class="wl-tchance">${termine.map(t => `<li><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg>${esc(t.name)} · bis ${deDatum(isoTag(t.datum))}: <b>${esc(chanceText(terminChance(ph, t.datum, jetzt)))}</b></li>`).join('')}</ul>` : '';
+    return `<section class="wl-phase" style="--h:${hue}" data-spalte="${esc(ph.spalte)}">${kopfzeile}${inhalt}${termin}${messung}</section>`;
   }).join('');
   const ohneBoard = S.aufgaben.filter(a => !a.archiviert && !(S.boards || []).some(b => b.spalten.some(sp => sp.aufgaben.includes(a.nummer)))).length;
   const aufBoard = S.board ? S.board.spalten.reduce((s, sp) => s + sp.aufgaben.length, 0) : 0;
   const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste"><li>Aufgaben ohne Board: ${ohneBoard}.</li><li>Auf diesem Board, aber ausgeschlossen (Spalte, Farbe, Person, Label): ${Math.max(0, aufBoard - p.umfang - p.verworfen)}.</li><li>Archiviert außerhalb der Abschlussspalte (gelten als verworfen): ${p.verworfen}.</li></ul>`;
-  const methodik = `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Quelle: die Git-Geschichte von <span class="mono">boards/${esc(u.slug || '')}.md</span>; jede Bewegung ist ein Commit. Der Bericht rechnet neu, sobald sich das Board ändert.</li><li>Eine Aufgabe hat eine Spalte erreicht, sobald sie dort oder rechts davon liegt; es zählt das erste Erreichen. Je Spalte (außer der ersten) eine Kurve „noch nicht erreicht“.</li><li>Prognose: ${(10000).toLocaleString('de-DE')} Ziehungen mit Zurücklegen aus der Tagesreihe der Spalte (erreichte Aufgaben je Kalendertag ab dem ersten Lauf oder ab Beginn der Messbasis, Nulltage eingeschlossen), bis die offenen Aufgaben erreicht sind; Perzentile über die gezogenen Tage. Kein Puffer, kein Zuschlag. Eine Spalte wird nie früher prognostiziert als die Spalte links davon — deren Datum steht als Untergrenze dabei, nicht verrechnet.</li><li>5-Tage-Woche: Tagesreihe nur über Werktage (Ankünfte am Wochenende zählen zum nächsten Werktag), gezählt ab heute nur Mo bis Fr.</li><li>Unter ${MIN_LAEUFE} Läufen in der Messbasis gibt es keine Perzentile. Das Diagramm zeigt höchstens die drei rechten Spalten farbig; die Tabellenansicht und die Blöcke führen jede Spalte.</li></ul>`;
-  return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}<div class="dflaeche wl-flaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>${bloecke}${nicht}${methodik}</div>`;
+  const methodik = `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Quelle: die Git-Geschichte von <span class="mono">boards/${esc(u.slug || '')}.md</span>; jede Bewegung ist ein Commit. Der Bericht rechnet neu, sobald sich das Board ändert.</li><li>Eine Aufgabe hat eine Spalte erreicht, sobald sie dort oder rechts davon liegt; es zählt das erste Erreichen. Je Spalte (außer der ersten) eine Kurve „noch nicht erreicht“.</li><li>Prognose: ${(10000).toLocaleString('de-DE')} Ziehungen mit Zurücklegen aus der Tagesreihe der Spalte (erreichte Aufgaben je Kalendertag ab dem ersten Lauf oder ab Beginn der Messbasis, Nulltage eingeschlossen), bis die offenen Aufgaben erreicht sind; Perzentile über die gezogenen Tage. Kein Puffer, kein Zuschlag. Eine Spalte wird nie früher prognostiziert als die Spalte links davon — deren Datum steht als Untergrenze dabei, nicht verrechnet.</li><li>5-Tage-Woche: Tagesreihe nur über Werktage (Ankünfte am Wochenende zählen zum nächsten Werktag), gezählt ab heute nur Mo bis Fr.</li><li>Termine: Anteil der Ziehungen, die bis zum Termin fertig sind — in der 7-Tage-Woche nach Kalendertagen, in der 5-Tage-Woche nach Werktagen bis einschließlich Termin.</li><li>Unter ${MIN_LAEUFE} Läufen in der Messbasis gibt es keine Perzentile. Das Diagramm zeigt höchstens die drei rechten Spalten farbig; die Tabellenansicht und die Blöcke führen jede Spalte.</li></ul>`;
+  return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}<div class="dflaeche wl-flaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>${vTermine(p)}${bloecke}${nicht}${methodik}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

@@ -174,3 +174,19 @@ test('Prognose: archiviert außerhalb der Abschlussspalte ist verworfen', () => 
   assert.deepStrictEqual([p.umfang, p.phasen[0].erreicht, p.phasen[0].offen, p.verworfen], [2, 1, 1, 1]);
   assert.deepStrictEqual(p.tage.map(x => x.umfang), [3, 2, 2]);
 });
+
+const { terminChance, anteilBis, werktageBis } = require('../../web/berichte.js');
+
+test('Termine: Anteil der Ziehungen, Werktage, Chance je Spalte', () => {
+  assert.strictEqual(anteilBis([1, 2, 2, 3, 5], 2), 0.6);
+  assert.strictEqual(anteilBis([1, 2, 2, 3, 5], 0), 0);
+  assert.strictEqual(anteilBis([1, 2, 2, 3, 5], 9), 1);
+  assert.strictEqual(werktageBis(d(2026, 10, 16), d(2026, 10, 19)), 1, 'Fr → Mo: ein Werktag');
+  assert.strictEqual(werktageBis(d(2026, 10, 21), d(2026, 10, 21)), 0);
+  const ph = { offen: 2, erg7: [1, 2, 3, 4], erg5: [1, 1, 2, 2] };
+  assert.deepStrictEqual(terminChance(ph, '2026-10-23', jetzt), { art: 'chance', p7: 0.5, p5: 1 }, 'Mi → Fr: 2 Kalendertage, 2 Werktage');
+  assert.deepStrictEqual(terminChance(ph, '2026-10-20', jetzt), { art: 'vorbei' });
+  assert.deepStrictEqual(terminChance({ ...ph, offen: 0 }, '2026-12-01', jetzt), { art: 'erreicht' });
+  assert.deepStrictEqual(terminChance({ offen: 2 }, '2026-12-01', jetzt), { art: 'ungemessen' });
+  assert.deepStrictEqual(terminChance(ph, '2026-10-21', jetzt), { art: 'chance', p7: 0, p5: 0 }, 'heute: noch nichts gezogen');
+});

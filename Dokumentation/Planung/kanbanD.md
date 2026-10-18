@@ -126,7 +126,7 @@ zuletzt: 2026-10-18
 | I0047 | Interaction | D0006 | Termine in Wie lange noch | gelb | US-1..US-3 |  |  |  | I0046 | R00047 | Berichte 3: dauerhafte Termine je Board (Name, Farbe, Linie, Stärke, Datum) als Linien im Diagramm, Chance je Spalte |
 | B0113 | Bubble | I0047 | Termine in der Board-Datei | gruen | Test gruen | Frontmatter milestones ⇄ Termine (Name, Datum, Farbe, Linie, Stärke); Rundlauf stabil; Fehler bei unlesbarem Termin | 1-2 |  |  |  |  |
 | B0114 | Bubble | I0047 | Termine setzen | gruen | Test gruen | PUT /api/boards/{slug}/termine → geprüft, nach Datum sortiert, ein Commit mit sprechender Nachricht | 0,5-1 |  |  |  |  |
-| B0115 | Bubble | I0047 | Termine im Diagramm und Chance | rot | Test gruen | Termine + Ziehungen → Linien in Farbe, Art, Stärke; je Spalte Wahrscheinlichkeit bis zum Termin | 1-2 |  |  |  |  |
+| B0115 | Bubble | I0047 | Termine im Diagramm und Chance | gruen | Test gruen | Termine + Ziehungen → Linien in Farbe, Art, Stärke; je Spalte Wahrscheinlichkeit bis zum Termin | 1-2 |  |  |  |  |
 | B0116 | Bubble | I0047 | Termine im Bericht pflegen | rot | Test gruen | Formular → anlegen, ändern, entfernen; Vorschau der Linie | 1-2 |  |  |  |  |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
 | B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |

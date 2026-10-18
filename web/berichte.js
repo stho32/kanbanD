@@ -129,8 +129,8 @@
     return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
 
-  /** Tage bis `rest` erreicht ist, je Ziehung mit Zurücklegen aus der Tagesreihe; Perzentile über die Ziehungen. */
-  function simuliere(reihe, rest, ziehungen = ZIEHUNGEN) {
+  /** Tage bis `rest` erreicht ist, je Ziehung mit Zurücklegen aus der Tagesreihe; aufsteigend sortiert. */
+  function ziehen(reihe, rest, ziehungen = ZIEHUNGEN) {
     if (!reihe.some(x => x > 0)) return null;
     const z = zufall(20260906), erg = [];
     for (let i = 0; i < ziehungen; i++) {
@@ -138,11 +138,28 @@
       while (fertig < rest && tage < MAX_TAGE) { fertig += reihe[Math.floor(z() * reihe.length)]; tage++; }
       erg.push(tage);
     }
-    erg.sort((x, y) => x - y);
-    return Object.fromEntries(PERZENTILE.map(p => [p, erg[Math.ceil(p / 100 * ziehungen) - 1]]));
+    return erg.sort((x, y) => x - y);
+  }
+  const perzentileAus = erg => Object.fromEntries(PERZENTILE.map(p => [p, erg[Math.ceil(p / 100 * erg.length) - 1]]));
+  /** Perzentile über die Ziehungen. */
+  function simuliere(reihe, rest, ziehungen = ZIEHUNGEN) {
+    const erg = ziehen(reihe, rest, ziehungen);
+    return erg && perzentileAus(erg);
+  }
+  /** Anteil der Ziehungen, die nach höchstens `tage` fertig sind (Ziehungen sortiert). */
+  function anteilBis(erg, tage) {
+    let lo = 0, hi = erg.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (erg[m] <= tage) lo = m + 1; else hi = m; }
+    return lo / erg.length;
   }
 
   const werktag = ms => { const w = new Date(ms).getDay(); return w !== 0 && w !== 6; };
+  /** Werktage nach `start` bis einschließlich `ziel`. */
+  function werktageBis(start, ziel) {
+    let n = 0;
+    for (let d = tag(start, 1); d <= tag(ziel); d = tag(d, 1)) if (werktag(d)) n++;
+    return n;
+  }
   /** Datum n Werktage nach `start` (n = 0 → start). */
   function werktagDatum(start, n) {
     let d = tag(start), k = 0;
@@ -184,8 +201,12 @@
         ph.durchsatz = ph.reihe7.length ? daten.length / ph.reihe7.length : null;
       }
       if (ph.laeufe >= MIN_LAEUFE && offen > 0) {
-        const p7 = simuliere(ph.reihe7, offen), p5 = simuliere(ph.reihe5, offen);
-        if (p7 && p5) ph.zeilen = PERZENTILE.map(p => ({ p, kalendertage: p7[p], datum7: tag(heute, p7[p]), arbeitstage: p5[p], datum5: werktagDatum(heute, p5[p]) }));
+        const e7 = ziehen(ph.reihe7, offen), e5 = ziehen(ph.reihe5, offen);
+        if (e7 && e5) {
+          const p7 = perzentileAus(e7), p5 = perzentileAus(e5);
+          ph.zeilen = PERZENTILE.map(p => ({ p, kalendertage: p7[p], datum7: tag(heute, p7[p]), arbeitstage: p5[p], datum5: werktagDatum(heute, p5[p]) }));
+          Object.assign(ph, { erg7: e7, erg5: e5 });
+        }
       }
       // nie früher als die Spalte links davon: deren Datum als Untergrenze nennen, nicht verrechnen
       if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
@@ -210,5 +231,15 @@
     return { umfang, heute, phasen, tage, verworfen, gezaehlt: jetztDa.map(x => x.a.nummer) };
   }
 
-  Object.assign(ziel, { prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  /* ── Termine (R00047) ── */
+  /** Chance einer Spalte, einen Termin (JJJJ-MM-TT) zu halten: vorbei, erreicht, ungemessen oder p7/p5 in [0, 1]. */
+  function terminChance(ph, datum, heute) {
+    const ziel = isoTag(datum);
+    if (ziel < tag(heute)) return { art: 'vorbei' };
+    if (!ph.offen) return { art: 'erreicht' };
+    if (!ph.erg7) return { art: 'ungemessen' };
+    return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
+  }
+
+  Object.assign(ziel, { terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

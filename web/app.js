@@ -6,6 +6,8 @@ S.ui.filter = gemerkt('kanbanD.filter') || '';
 S.ui.bereich = gemerkt('kanbanD.bereich') || 'alle';
 S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
 S.ui.pBereich = 'alle';
+const TERMIN_LEER = { i: null, name: '', datum: '', farbe: 'red', linie: 'durchgehend', staerke: 'normal' };
+S.ui.tf = { ...TERMIN_LEER };
 S.ui.bf = (() => { try { return filterAus(localStorage.getItem('kanbanD.berichtsfilter')); } catch (_) { return filterAus(''); } })();
 function berichtsfilterSetzen(aenderung) {
   S.ui.bf = { ...S.ui.bf, ...aenderung };
@@ -132,6 +134,17 @@ async function anhaengeHochladen(dateien) {
     S.ui.gespeichert = Date.now();
   }
   await laden();
+}
+
+/** Termine des Boards ersetzen; bei Erfolg das Formular leeren (R00047). */
+async function termineSchreiben(liste, formularLeeren) {
+  const u = S.ui;
+  try {
+    await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/termine`, liste);
+    u.tfFehler = null;
+    if (formularLeeren) u.tf = { ...TERMIN_LEER };
+  } catch (f) { u.tfFehler = f.message; }
+  return laden();
 }
 
 /** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. */
@@ -378,6 +391,21 @@ async function act(a, arg, wert) {
       case 'bf-spalte': berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
       case 'bf-person': berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) }); break;
       case 'bf-label': berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) }); break;
+      case 'tf-bearbeiten': { const t = S.board.termine[+arg]; u.tf = { i: +arg, ...t }; u.tfFehler = null; u.fokus = '[data-tf="name"]'; break; }
+      case 'tf-abbrechen': u.tf = { ...TERMIN_LEER }; u.tfFehler = null; break;
+      case 'tf-entfernen': {
+        if (ichNoetig()) break;
+        return termineSchreiben(S.board.termine.filter((_, i) => i !== +arg));
+      }
+      case 'tf-speichern': {
+        if (ichNoetig()) break;
+        const f = u.tf, neu = { name: f.name.trim(), datum: f.datum, farbe: f.farbe, linie: f.linie, staerke: f.staerke };
+        if (!neu.name) { u.tfFehler = 'Der Termin braucht einen Namen'; break; }
+        if (!neu.datum) { u.tfFehler = 'Der Termin braucht ein Datum'; break; }
+        const liste = S.board.termine.slice();
+        if (f.i == null) liste.push(neu); else liste[f.i] = neu;
+        return termineSchreiben(liste, true);
+      }
       case 'bf-leeren': berichtsfilterSetzen({ ...FILTER_LEER }); break;
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
@@ -589,6 +617,15 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  const tf = e.target.dataset && e.target.dataset.tf;
+  if (tf) {
+    // nicht neu zeichnen: das Formular behält Fokus und Eingaben, nur die Vorschau folgt
+    if (tf === 'hex') { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value.trim())) S.ui.tf.farbe = e.target.value.trim().toLowerCase(); }
+    else S.ui.tf[tf] = e.target.value;
+    const vorschau = $('.tm-form .tm-vorschau line');
+    if (vorschau) vorschau.setAttribute('style', terminStil(S.ui.tf));
+    return;
+  }
   if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {
@@ -647,6 +684,7 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  if (e.target.dataset && (e.target.dataset.tf === 'name' || e.target.dataset.tf === 'datum')) { S.ui.tf[e.target.dataset.tf] = e.target.value; return; }
   const nf = e.target.dataset && e.target.dataset.nf;
   if (nf && S.ui.neu) {
     S.ui.neu[nf] = e.target.value;
