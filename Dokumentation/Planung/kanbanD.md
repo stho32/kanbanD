@@ -218,6 +218,15 @@ zuletzt: 2026-10-18
 | B0144 | Bubble | I0050 | Status über die API setzen | gruen | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
 | B0145 | Bubble | I0050 | Status per Klick wählen | gruen | Test gruen | Klick auf die Plakette eines Blatts → Wahl rot · gelb · gruen → Zeile in der neuen Farbe, Kopf nicht committet; ohne Identität Ich bin … | 1-2 |  |  |  |  |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
+| B0146 | Bubble | I0051 | Nächste freie ID aus allen Ständen | rot | Test gruen | Präfix, Texte der WBS (Datei und Historie) → höchste ID des Präfixes + 1, vierstellig | 0,5-1 |  |  |  |  |
+| B0147 | Bubble | I0051 | Stände der WBS aus dem Arbeits-Repository | rot | Test gruen | volle WBS-Datei → alle committeten Stände aus dem fremden Repository, ohne Repository keine | 0,5-1 |  |  |  |  |
+| B0148 | Bubble | I0051 | Neuen Knoten prüfen | rot | Test gruen | NeuerKnoten, WBS → Pflichtfelder, Eltern-Ebene (Feature überspringbar), Aufwand nur bei Bubbles ab 0,4h; sonst 400 | 0,5-1 |  |  |  |  |
+| B0149 | Bubble | I0051 | Zeile nach dem letzten Nachfahren einfügen | rot | Test gruen | WBS-Text, NeuerKnoten, ID, heute → neue Zeile rot nach dem letzten Nachfahren der Eltern, Vorfahren gerechnet, zuletzt | 1-2 |  |  |  |  |
+| B0150 | Bubble | I0051 | Knoten mit Nachfahren verwerfen | rot | Test gruen | WBS-Text, ID, Grund, heute → verworfen an Knoten und zählenden Nachfahren, Grund in der Notiz, Vorfahren gerechnet; A0001 und schon verworfen 409 | 0,5-1 |  |  |  |  |
+| B0151 | Bubble | I0051 | Knoten über die API anlegen | rot | Test gruen | POST /api/wbs/{kürzel}/knoten → {id} unter der Sperre der WBS-Datei, ohne Commit | 0,5-1 |  |  |  |  |
+| B0152 | Bubble | I0051 | Knoten über die API verwerfen | rot | Test gruen | POST /api/wbs/{kürzel}/knoten/{id}/verwerfen {grund?} → geänderte Knoten, ohne Commit | 0,5-1 |  |  |  |  |
+| B0153 | Bubble | I0051 | Knoten in der Sicht anlegen | rot | Test gruen | + Knoten in der Zeile des Eltern-Knotens → Formular Ebene, Name, Fertig-Kriterium (Bubble: Eingabe → Ausgabe, Aufwand) → neue rote Zeile | 1-2 |  |  |  |  |
+| B0154 | Bubble | I0051 | Verwerfen im Kontextmenü der Zeile | rot | Test gruen | Rechtsklick auf eine Zeile → verwerfen … → Rückfrage mit Grund → Zeilen verworfen, durchgestrichen | 0,5-1 |  |  |  |  |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |
 | I0053 | Interaction | D0002 | Phasen als Spalten | rot | US-1..US-3 |  |  |  | I0048, I0046 | R00058 | WBS 1: column-phases N:1, fehlende Phasen-Spalten, Prognose je Phase |
 | I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | rot | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
