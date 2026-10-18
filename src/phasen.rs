@@ -125,13 +125,12 @@ impl Phasenfolge {
     }
 }
 
-/// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; nennt es keine, gilt bei genau einer
-/// registrierten Anwendung diese (R00054, wie `gebundeneAnwendungen` in `web/wbs.js`).
+/// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; fehlt `applications`, gilt bei genau
+/// einer registrierten Anwendung diese; `applications: []` bindet keine (R00062, wie `gebundeneAnwendungen` in `web/wbs.js`).
 pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
-    let genannt = board.anwendungen.as_deref().unwrap_or_default();
-    if genannt.is_empty() {
+    let Some(genannt) = &board.anwendungen else {
         return if let [einzige] = register { vec![einzige] } else { vec![] };
-    }
+    };
     genannt.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
 }
 
@@ -241,6 +240,17 @@ mod tests {
         b.anwendungen = None;
         assert!(gebundene_anwendungen(&b, &register).is_empty(), "zwei registriert, keine genannt");
         assert_eq!(gebundene_anwendungen(&b, &register[..1])[0].kuerzel, "kc");
+    }
+
+    #[test]
+    fn ausdruecklich_leere_liste_bindet_auch_die_einzige_nicht() {
+        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: String::new(), anforderungen: String::new() };
+        let register = [a("kd")];
+        let mut b = board(&[]);
+        b.anwendungen = None;
+        assert_eq!(gebundene_anwendungen(&b, &register).len(), 1, "fehlender Schlüssel = Standard");
+        b.anwendungen = Some(vec![]);
+        assert!(gebundene_anwendungen(&b, &register).is_empty(), "[] = reines Kanban");
     }
 
     #[test]

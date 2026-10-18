@@ -56,6 +56,18 @@ fn ohne_erreichbare_wbs_oder_ohne_bindung_keine_phasen() {
 }
 
 #[test]
+fn ausdruecklich_leere_anwendungsliste_liest_ohne_phasen_und_ohne_commit() {
+    let l = lage();
+    std::fs::write(l.board.path().join("boards/entwicklung.md"), "---\napplications: []\n---\n\n# Entwicklung\n\n## Backlog\n\n## Erledigt\n").unwrap();
+    git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "gelöst"]);
+    let vorher = git(l.board.path(), &["rev-list", "--count", "HEAD"]);
+    let b = l.kanban.board_mit_phasen("entwicklung").unwrap();
+    assert_eq!(b.phasen, None);
+    assert_eq!(b.board.spalten.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["Backlog", "Erledigt"]);
+    assert_eq!(git(l.board.path(), &["rev-list", "--count", "HEAD"]), vorher, "kein Commit beim Lesen");
+}
+
+#[test]
 fn zwei_gebundene_anwendungen_mit_verschiedenen_folgen_die_erste_gilt_mit_hinweis() {
     let l = lage();
     let (_zweite_tmp, zweite) = arbeits_repository(WBS);
