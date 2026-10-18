@@ -1,8 +1,8 @@
 //! Der Ordner auf der Platte: Dateien lesen und schreiben, sonst nichts.
 
 use crate::fehler::Fehler;
-use crate::format::{self, board, einstellungen};
-use crate::modell::{Board, Einstellungen};
+use crate::format::{self, aufgabe, board, einstellungen};
+use crate::modell::{Aufgabe, Board, Einstellungen};
 use serde::Serialize;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -65,6 +65,23 @@ impl Ordner {
             let text = self.lies(&rel)?.unwrap_or_default();
             match board::lesen(&slug, &text) {
                 Ok(b) => gut.push(b),
+                Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string() }),
+            }
+        }
+        Ok((gut, defekt))
+    }
+
+    /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare und doppelt nummerierte kommen als defekt zurück.
+    pub fn aufgaben(&self) -> Result<(Vec<Aufgabe>, Vec<DefekteDatei>), Fehler> {
+        let mut gut: Vec<Aufgabe> = vec![];
+        let mut defekt = vec![];
+        for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
+            let text = self.lies(&rel)?.unwrap_or_default();
+            match aufgabe::lesen(&format!("{stamm}.md"), &text) {
+                Ok(a) => match gut.iter().find(|g| g.nummer == a.nummer) {
+                    Some(erste) => defekt.push(DefekteDatei { pfad: rel, fehler: format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, erste.datei) }),
+                    None => gut.push(a),
+                },
                 Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string() }),
             }
         }

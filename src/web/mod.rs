@@ -26,6 +26,7 @@ pub fn router(ordner: PathBuf) -> Router {
         .route("/api/einrichten", post(einrichten))
         .route("/api/boards/{slug}", get(board))
         .route("/api/wer", get(wer))
+        .route("/api/aufgaben", get(aufgaben))
         .merge(statisch::router())
         .with_state(app)
 }
@@ -78,4 +79,9 @@ async fn board(State(app): State<App>, Path(slug): Path<String>) -> Result<Respo
 async fn wer(State(app): State<App>, Wer(wer): Wer) -> Result<Response, Fehler> {
     let p = blockierend(&app, move |k| k.handelnder(wer.as_deref())).await?;
     Ok(Json(p).into_response())
+}
+
+async fn aufgaben(State(app): State<App>) -> Result<Response, Fehler> {
+    let (aufgaben, defekte) = blockierend(&app, |k| k.ordner().aufgaben()).await?;
+    Ok(Json(json!({ "aufgaben": aufgaben, "defekte": defekte })).into_response())
 }

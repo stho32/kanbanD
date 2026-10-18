@@ -53,6 +53,7 @@ impl Kanban {
         };
         let (boards, defekte_boards) = self.ordner.boards()?;
         defekte.extend(defekte_boards);
+        defekte.extend(self.ordner.aufgaben()?.1);
         Ok(Zustand {
             ordner: self.ordner.wurzel().to_string_lossy().into(),
             eingerichtet: self.ordner.existiert(crate::format::einstellungen::DATEI),

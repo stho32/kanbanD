@@ -37,7 +37,7 @@ zuletzt: 2026-10-18
 | B0011 | Bubble | I0003 | Ich-bin-Auswahl | gruen | Test gruen | Klick in der Kopfzeile → Mensch gewählt, je Tab in sessionStorage | 0,5-1 |  |  |  |  |
 | I0004 | Interaction | D0002 | Board ansehen | gelb | US-1..US-3 |  |  |  | I0002 | R00004 | Spalten aus der Board-Datei, Karten aus den Aufgaben |
 | B0012 | Bubble | I0004 | Aufgabendatei lesen und schreiben | gruen | Test gruen | aufgaben/0012-x.md ⇄ Aufgabe (Frontmatter, Beschreibung, Teilaufgaben, kanbanD-time, kanbanD-comments) | 1-2 |  |  |  |  |
-| B0013 | Bubble | I0004 | Aufgaben des Ordners lesen | rot | Test gruen | aufgaben/*.md → Aufgaben + defekte Dateien (doppelte Nummern); GET /api/aufgaben | 0,5-1 |  |  |  |  |
+| B0013 | Bubble | I0004 | Aufgaben des Ordners lesen | gruen | Test gruen | aufgaben/*.md → Aufgaben + defekte Dateien (doppelte Nummern); GET /api/aufgaben | 0,5-1 |  |  |  |  |
 | B0014 | Bubble | I0004 | Board mit Karten zeigen | rot | Test gruen | Board + Aufgaben → Bahnen mit Karten, fehlende Aufgaben als Platzhalter | 1-2 |  |  |  |  |
 | I0005 | Interaction | D0002 | Aufgabe anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  | + Karte in einer Spalte |
 | I0006 | Interaction | D0002 | Aufgabe bewegen | rot | US der Anforderung |  |  |  | I0005 |  | Ziehen und Tastatur; ändert nur die Board-Datei |
