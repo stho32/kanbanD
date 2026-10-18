@@ -58,8 +58,12 @@ jobs:
         run: node --test e2e/einheit/
 
       # bauen.js baut das Programm vor dem Lauf selbst; ohne diesen Schritt fehlt der Browser.
+      # Server und Browser in derselben Zeitzone: Zeitstempel stehen ohne Zone in den Dateien,
+      # playwright.config.js setzt Europe/Berlin für den Browser.
       - name: E2E-Tests
         working-directory: e2e
+        env:
+          TZ: Europe/Berlin
         run: |
           npm ci
           npx playwright install --with-deps chromium
