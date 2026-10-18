@@ -1,6 +1,6 @@
 ---
 id: R00016
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,11 +26,11 @@ Bildschirmfotos, Protokolle und Entwürfe liegen bei der Aufgabe und reisen mit 
 
 ## Akzeptanzkriterien
 
-- [ ] `bereinigen("../../etc/passwd")` → `passwd`; `bereinigen(".env")` → `env`; `bereinigen("")` → `anhang`; zweites `bild.png` → `bild-2.png`
-- [ ] Hochladen von `bild.png` als `st` → Datei unter `aufgaben/0001-eins/bild.png`, Commit von Stefan nur mit dieser Datei
-- [ ] `GET …/anhaenge/bild.png` liefert genau die Bytes; Entfernen löscht Datei und leeren Ordner, Commit
-- [ ] Unbekannter Anhang → 404
-- [ ] Oberfläche: Datei wählen → erscheint in der Liste mit Link; ✕ → verschwindet
+- [x] `bereinigen("../../etc/passwd")` → `passwd`; `bereinigen(".env")` → `env`; `bereinigen("")` → `anhang`; zweites `bild.png` → `bild-2.png`
+- [x] Hochladen von `bild.png` als `st` → Datei unter `aufgaben/0001-eins/bild.png`, Commit von Stefan nur mit dieser Datei
+- [x] `GET …/anhaenge/bild.png` liefert genau die Bytes; Entfernen löscht Datei und leeren Ordner, Commit
+- [x] Unbekannter Anhang → 404
+- [x] Oberfläche: Datei wählen → erscheint in der Liste mit Link; ✕ → verschwindet
 
 ## Betroffene Verzeichnisstruktur
 
