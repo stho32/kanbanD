@@ -41,3 +41,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00007 Live-Aktualisierung | Lauf R00007 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00008 Boards wechseln und anlegen | B0024 Board anlegen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00008 Boards wechseln und anlegen | B0025 Board-Umschalter | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00008 Boards wechseln und anlegen | Lauf R00008 | Nacharbeit | — | — | 0,0h | autonom |

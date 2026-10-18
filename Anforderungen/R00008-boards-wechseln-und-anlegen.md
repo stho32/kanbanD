@@ -1,6 +1,6 @@
 ---
 id: R00008
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,11 +26,11 @@ Verschiedene Sichten auf dieselben Aufgaben (z. B. Entwicklung und Test) ohne zw
 
 ## Akzeptanzkriterien
 
-- [ ] `POST /api/boards {titel: "Test & Abnahme"}` erzeugt `boards/test-abnahme.md` mit drei Standardspalten und einen Commit mit nur dieser Datei
-- [ ] Zweites Anlegen mit demselben Titel → 409; leerer Titel → 400
-- [ ] Popover zeigt „Entwicklung“ und „Test“; Klick auf „Test“ zeigt dessen Spalten, die Adresse endet auf `#/board/test`
-- [ ] Neues Board über das Popover: Name, Enter → das neue Board ist offen
-- [ ] Neuladen auf `#/board/test` zeigt „Test“
+- [x] `POST /api/boards {titel: "Test & Abnahme"}` erzeugt `boards/test-abnahme.md` mit drei Standardspalten und einen Commit mit nur dieser Datei
+- [x] Zweites Anlegen mit demselben Titel → 409; leerer Titel → 400
+- [x] Popover zeigt „Entwicklung“ und „Test“; Klick auf „Test“ zeigt dessen Spalten, die Adresse endet auf `#/board/test`
+- [x] Neues Board über das Popover: Name, Enter → das neue Board ist offen
+- [x] Neuladen auf `#/board/test` zeigt „Test“
 
 ## Betroffene Verzeichnisstruktur
 
