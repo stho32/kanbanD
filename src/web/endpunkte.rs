@@ -32,6 +32,8 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/aufgaben", false, "Aufgaben", "alle Aufgaben und defekte Dateien"),
     e("POST", "/api/aufgaben", true, "Aufgaben", "anlegen {titel, board?, spalte?}"),
     e("POST", "/api/aufgaben/mehrere", true, "Aufgaben", "mehrere anlegen {titel: [...], board?, spalte?} — ein Commit"),
+    e("POST", "/api/aufgaben/archivieren", true, "Aufgaben", "mehrere archivieren {nummern} — ein Commit"),
+    e("POST", "/api/aufgaben/zurueckholen", true, "Aufgaben", "mehrere zurückholen {nummern} — ein Commit"),
     e("GET", "/api/aufgaben/{nr}", false, "Aufgaben", "Aufgabe mit Pfad und Dateitext (423 bei defekter Datei)"),
     e("PATCH", "/api/aufgaben/{nr}", true, "Aufgaben", "ändern {titel?, beschreibung?, klasse?, zustaendige?, labels?, faellig?, herkunft?}"),
     e("POST", "/api/aufgaben/{nr}/teilaufgaben", true, "Aufgaben", "Teilaufgabe anlegen {text}"),

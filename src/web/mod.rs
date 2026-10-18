@@ -70,6 +70,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/mehrere", post(aufgaben_anlegen))
+        .route("/api/aufgaben/archivieren", post(mehrere_archivieren))
+        .route("/api/aufgaben/zurueckholen", post(mehrere_zurueckholen))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/teilaufgaben/mehrere", post(teilaufgaben_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
@@ -433,4 +435,17 @@ struct Texte {
 
 async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Texte>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.teilaufgaben_anlegen(p, nr, &t.texte)).await
+}
+
+#[derive(serde::Deserialize)]
+struct Nummern {
+    nummern: Vec<u32>,
+}
+
+async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, true)).await
+}
+
+async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, false)).await
 }
