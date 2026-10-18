@@ -1,6 +1,6 @@
 ---
 id: R00047
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,10 +29,10 @@ Der Abgleich „schaffen wir den Termin?“ steht neben der Prognose, mit Wahrsc
 
 ## Akzeptanzkriterien
 
-- [ ] Format: Rundlauf mit zwei Terminen stabil; Board ohne Termine unverändert; falsches Datum und unbekannte Linie sind Formatfehler
-- [ ] API: zwei Termine setzen → Frontmatter, sortiert, Commit „Termine von „Entwicklung“ geändert“; einen entfernen → „Termin „Review“ (15.11.2026) entfernt“; leerer Name → 400; Bewegen erhält die Termine
-- [ ] Unit: Chance bis zu einem Tag aus den Ziehungen; Werktage bis zum Termin
-- [ ] E2E: Termin „Deadline“ rot, durchgehend, fett anlegen → Linie im Diagramm mit Farbe, Stärke und Name; Block zeigt die Chance; ändern und entfernen
+- [x] Format: Rundlauf mit zwei Terminen stabil; Board ohne Termine unverändert; falsches Datum und unbekannte Linie sind Formatfehler
+- [x] API: zwei Termine setzen → Frontmatter, sortiert, Commit „Termine von „Entwicklung“ geändert“; einen entfernen → „Termin „Review“ (15.11.2026) entfernt“; leerer Name → 400; Bewegen erhält die Termine
+- [x] Unit: Chance bis zu einem Tag aus den Ziehungen; Werktage bis zum Termin
+- [x] E2E: Termin „Deadline“ rot, durchgehend, fett anlegen → Linie im Diagramm mit Farbe, Stärke und Name; Block zeigt die Chance; ändern und entfernen
 
 ## Betroffene Verzeichnisstruktur
 
