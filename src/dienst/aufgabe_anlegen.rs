@@ -13,6 +13,8 @@ pub struct Angaben {
     pub labels: Option<Vec<String>>,
     pub faellig: Option<String>,
     pub herkunft: Option<Vec<String>>,
+    pub beschreibung: Option<String>,
+    pub teilaufgaben: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -83,9 +85,12 @@ impl Kanban {
                     labels: g.labels.clone(),
                     faellig: g.faellig.clone().map(Some),
                     herkunft: g.herkunft.clone(),
+                    beschreibung: g.beschreibung.clone(),
                     ..Default::default()
                 };
                 a.aendern(&aenderung, &e).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
+                let teile = g.teilaufgaben.iter().flatten().map(|x| x.trim().replace('\n', " ")).filter(|x| !x.is_empty());
+                a.teilaufgaben.extend(teile.map(|text| crate::modell::Teilaufgabe { text, erledigt: false }));
             }
             aufgaben.push(a);
         }

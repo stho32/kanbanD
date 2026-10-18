@@ -50,3 +50,13 @@ async fn angaben_beim_anlegen_werden_geprueft_und_gesetzt() {
     assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher);
     assert!(!tmp.path().join("aufgaben/0004-gut.md").exists());
 }
+
+#[tokio::test]
+async fn beschreibung_und_teilaufgaben_beim_anlegen() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "Voll", "board": "entwicklung", "beschreibung": "Text **fett**", "teilaufgaben": ["a", " ", "b"]})).await;
+    assert_eq!(s, 201);
+    assert_eq!(lies(tmp.path(), "aufgaben/0001-voll.md"), "---\nid: 1\ntitle: Voll\nassignees: [st]\n---\n\nText **fett**\n\n- [ ] a\n- [ ] b\n");
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#1 „Voll“ angelegt in „Zu erledigen“ (Entwicklung)");
+}
