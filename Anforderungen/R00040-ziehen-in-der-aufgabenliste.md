@@ -1,6 +1,6 @@
 ---
 id: R00040
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,9 +25,9 @@ Aufgaben ohne Board und Ideen aus der Liste lassen sich mit einer Geste einplane
 
 ## Akzeptanzkriterien
 
-- [ ] #2 (ohne Board) auf „Entwicklung · In Arbeit“ ziehen → Board-Datei listet #2 unter „In Arbeit“, Aufgabendatei unverändert
-- [ ] #1 (auf Entwicklung, Zu erledigen) auf „Entwicklung · Erledigt“ ziehen → nur die Board-Datei ändert sich
-- [ ] #1 auf „Archiv“ ziehen → `archived:` in der Datei
+- [x] #2 (ohne Board) auf „Entwicklung · In Arbeit“ ziehen → Board-Datei listet #2 unter „In Arbeit“, Aufgabendatei unverändert
+- [x] #1 (auf Entwicklung, Zu erledigen) auf „Entwicklung · Erledigt“ ziehen → nur die Board-Datei ändert sich
+- [x] #1 auf „Archiv“ ziehen → `archived:` in der Datei
 
 ## Betroffene Verzeichnisstruktur
 
