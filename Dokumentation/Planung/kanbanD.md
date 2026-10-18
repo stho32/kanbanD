@@ -13,9 +13,9 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -135,9 +135,9 @@ zuletzt: 2026-10-18
 | I0031 | Interaction | D0002 | Rückgängig | gruen | US-1..US-3 |  |  |  | I0006 | R00031 | UX-Überarbeitung: Hinweis mit rückgängig nach Bewegen, Anlegen, Entfernen |
 | B0082 | Bubble | I0031 | Rückgängig für Bewegen | gruen | Test gruen | Bewegung (Ziehen, Tastatur, Spaltenwahl) → Hinweis; rückgängig bewegt an die alte Stelle zurück | 1-2 |  |  |  |  |
 | B0083 | Bubble | I0031 | Rückgängig für Anlegen und Strg+Z | gruen | Test gruen | Anlegen → Hinweis; rückgängig archiviert die neuen Aufgaben; Strg+Z löst den letzten Hinweis aus | 1-2 |  |  |  |  |
-| I0032 | Interaction | D0002 | Sitzung und Verbindung | gelb | US-1..US-3 |  |  |  | I0007 | R00032 | UX-Überarbeitung: letztes Board merken, Wieder verbunden, Hinweise auf leeren Flächen |
+| I0032 | Interaction | D0002 | Sitzung und Verbindung | gruen | US-1..US-3 |  |  |  | I0007 | R00032 | UX-Überarbeitung: letztes Board merken, Wieder verbunden, Hinweise auf leeren Flächen |
 | B0084 | Bubble | I0032 | Letztes Board und Fenstertitel | gruen | Test gruen | Boardwahl → im Browser gemerkt; Titel zeigt Board und laufende Timer | 0,5-1 |  |  |  |  |
-| B0085 | Bubble | I0032 | Wieder verbunden und leere Flächen | rot | Test gruen | Verbindung zurück → Hinweis; leeres Board → Hilfetext zu + Karte, n und Einfügen | 0,5-1 |  |  |  |  |
+| B0085 | Bubble | I0032 | Wieder verbunden und leere Flächen | gruen | Test gruen | Verbindung zurück → Hinweis; leeres Board → Hilfetext zu + Karte, n und Einfügen | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 
