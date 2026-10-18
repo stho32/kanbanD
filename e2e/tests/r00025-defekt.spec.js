@@ -1,6 +1,6 @@
 // R00025 Defekte Dateien zeigen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 
 const BOARD = '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n';
 const KONFLIKT = '---\nid: 2\n<<<<<<< HEAD\ntitle: zwei\n=======\ntitle: zwei anders\n>>>>>>> zweig\n---\n';
@@ -21,6 +21,7 @@ test.describe('R00025', () => {
     await expect(page.locator('#defekttext')).toContainText('<<<<<<< HEAD');
     await expect(page.getByRole('dialog').locator('input, textarea')).toHaveCount(0);
     await page.keyboard.press('Escape');
+    await liveBereit(page);
     k.schreib('aufgaben/0002-zwei.md', '---\nid: 2\ntitle: zwei repariert\n---\n');
     await expect(page.locator('.ka[data-id="2"] .t')).toHaveText('zwei repariert');
     await expect(page.locator('.ka.defekt')).toHaveCount(0);
@@ -38,6 +39,7 @@ test.describe('R00025', () => {
     await page.locator('#t-board').click();
     await page.getByRole('menuitem', { name: /Test/ }).click();
     await expect(page.locator('.bahn')).toHaveCount(1);
+    await liveBereit(page);
     k.schreib('kanbanD.md', '---\npeople: [\n---\n');
     await expect(page.locator('.warnbar')).toContainText('kanbanD.md ist defekt');
     await expect(page.locator('.bahn')).toHaveCount(1);

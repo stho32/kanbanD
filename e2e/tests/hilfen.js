@@ -63,4 +63,9 @@ async function alsPerson(page, kuerzel) {
   await page.addInitScript(k => sessionStorage.setItem('kanbanD.ich', k), kuerzel);
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson };
+/** Wartet, bis die Seite live verbunden ist — erst dann kommt eine Änderung von außen sicher an (R00050). */
+async function liveBereit(page) {
+  await page.locator('html[data-live="verbunden"]').waitFor({ state: 'attached' });
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit };

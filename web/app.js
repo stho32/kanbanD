@@ -1143,8 +1143,9 @@ function liveVerbinden() {
   if (typeof EventSource === 'undefined') return;
   const q = new EventSource('/api/ereignisse');
   q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
-  q.onerror = () => { if (S.live) { S.live = false; render(); } };
+  q.onerror = () => { delete document.documentElement.dataset.live; if (S.live) { S.live = false; render(); } };
   q.onopen = () => {
+    document.documentElement.dataset.live = 'verbunden'; // Prüfpunkt: ab jetzt kommt jede Änderung an
     if (!S.live) {
       S.live = true;
       laden().then(() => { S.ui.hinweis = { text: 'Wieder verbunden · Stand nachgeladen', at: Date.now() }; render(); }).catch(() => { });

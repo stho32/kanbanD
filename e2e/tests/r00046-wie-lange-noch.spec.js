@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 
 const vorTagen = n => { const d = new Date(); d.setDate(d.getDate() - n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T10:00:00`; };
 function commitAm(ordner, datum, board) {
@@ -51,6 +51,7 @@ test.describe('R00046', () => {
   test('US-3: live — bewegen, anlegen, archivieren ohne Neuladen', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/prognose');
     await expect(page.locator('#wl-kopf')).toContainText('3 von 6 fertig');
+    await liveBereit(page);
     const als = { headers: { 'X-KanbanD-Wer': 'cl' } };
     await page.request.post(k.adresse + 'api/boards/entwicklung/bewegen', { ...als, data: { nummer: 4, spalte: 'Erledigt', index: 3 } });
     await expect(page.locator('#wl-kopf')).toContainText('4 von 6 fertig');
