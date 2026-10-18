@@ -14,14 +14,18 @@ async function kanbanStarten(vorbereiten) {
   const adresse = await new Promise((ok, fehler) => {
     let puffer = '';
     kind.stdout.on('data', d => { puffer += d; const m = /(http:\/\/\S+)/.exec(puffer); if (m) ok(m[1]); });
-    kind.on('exit', c => fehler(new Error('kanbanD beendet mit ' + c)));
+    kind.once('exit', c => fehler(new Error('kanbanD beendet mit ' + c)));
   });
   return {
     ordner, adresse,
     git: (...args) => execFileSync('git', ['-C', ordner, ...args], { encoding: 'utf8' }).trim(),
     lies: rel => fs.readFileSync(path.join(ordner, rel), 'utf8'),
     schreib: (rel, inhalt) => { fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true }); fs.writeFileSync(path.join(ordner, rel), inhalt); },
-    stoppen: () => { kind.kill(); fs.rmSync(wurzel, { recursive: true, force: true }); },
+    // Erst auf das Ende des Programms warten — ein laufender Commit schreibt sonst noch in .git.
+    stoppen: async () => {
+      if (kind.exitCode === null) await new Promise(ok => { kind.once('exit', ok); kind.kill(); });
+      fs.rmSync(wurzel, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    },
   };
 }
 

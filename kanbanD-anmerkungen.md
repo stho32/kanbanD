@@ -30,3 +30,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 24 | I0012 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00012 | offen |
 | 25 | I0013 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00013 | offen |
 | 26 | I0014 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00014 | offen |
+| 27 | I0014 | S8 | Abschluss R00014 lief trotz „E2E rot“ (Gate-Ausgabe durch grep verschluckt, Exit-Code verloren); Ursache war ein Aufräum-Wettlauf in e2e/tests/hilfen.js, kein Fehler der Anwendung — behoben, Kette mit pipefail gesichert | 381fa74 | offen |
