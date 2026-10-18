@@ -2,6 +2,7 @@ use super::Kanban;
 use super::herkunft::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
+use crate::waechter::FremdeWbs;
 use crate::wbs::{Stand, WbsKnoten, stand};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -62,6 +63,27 @@ impl Kanban {
         let anforderungen = if a.anforderungen.is_empty() { BTreeMap::new() } else { anforderungsdateien(&absolut(self.ordner().wurzel(), &a.anforderungen), &ids) };
         let knoten = tabelle.alle().iter().map(|k| WbsZeile { knoten: k.clone(), gerechnet: tabelle.gerechneter_status(&k.id), erreicht: tabelle.erreichte_ebene(&k.id) }).collect();
         Ok(WbsSicht { kuerzel: kuerzel.into(), name: a.name.clone(), nicht_committet: crate::git::geaendert(&datei), datei: datei.to_string_lossy().into(), stand: stand(&tabelle), knoten, anforderungen })
+    }
+}
+
+impl Kanban {
+    /// Die WBS-Dateien der registrierten Anwendungen außerhalb des Ordners, für den Dateiwächter —
+    /// was im Ordner liegt, sieht er ohnehin.
+    pub fn fremde_wbs(&self) -> Vec<FremdeWbs> {
+        let e = self.ordner().einstellungen().ok().flatten().unwrap_or_default();
+        let wurzel = self.ordner().wurzel();
+        let innen = wurzel.canonicalize().unwrap_or_else(|_| wurzel.to_path_buf());
+        e.quellen
+            .anwendungen
+            .iter()
+            .filter(|a| !a.wbs.is_empty())
+            .filter_map(|a| {
+                let roh = absolut(wurzel, &a.wbs);
+                let ordner = roh.parent()?.canonicalize().ok()?;
+                let datei = ordner.join(roh.file_name()?);
+                Some(FremdeWbs { kuerzel: a.kuerzel.clone(), git: crate::git::git_verzeichnis(&ordner), datei }).filter(|f| !f.datei.starts_with(&innen))
+            })
+            .collect()
     }
 }
 

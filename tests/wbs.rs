@@ -84,3 +84,35 @@ async fn nicht_committet_bis_zum_commit_im_arbeits_repository() {
     assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "im kanbanD-Ordner ändert sich nichts");
     assert_ne!(git(&arbeit, &["rev-list", "--count", "HEAD"]), log_vorher);
 }
+
+#[tokio::test]
+async fn wbs_im_arbeits_repository_aendert_sich_ereignis_mit_kuerzel_auch_nach_neuem_register() {
+    let (_a, arbeit) = arbeits_repository();
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let plan = arbeit.join("Dokumentation/Planung/kasse.md");
+    let e = gemeinsam::ereignis_abwarten(&lauf.adresse, || std::fs::write(&plan, WBS.replace("| Summe rechnen | rot |", "| Summe rechnen | gruen |")).unwrap(), |v| v["wbs"] == json!(["kc"])).await;
+    assert_eq!((e["pfade"].clone(), e["extern"].clone()), (json!([plan.to_string_lossy()]), json!(true)));
+    let commit = || git(&arbeit, &["-c", "user.name=KI", "-c", "user.email=k@k", "commit", "-q", "-am", "B0001 gruen"]);
+    gemeinsam::ereignis_abwarten(&lauf.adresse, || drop(commit()), |v| v["wbs"] == json!(["kc"])).await;
+    let (_b, zweite) = arbeits_repository();
+    let kanban = gemeinsam::lies(tmp.path(), "kanbanD.md").replace("    weg: {name: Weg, wbs: /gibt/es/nicht.md", &format!("    weg: {{name: Weg, wbs: {}/Dokumentation/Planung/kasse.md", zweite.display()));
+    std::fs::write(tmp.path().join("kanbanD.md"), kanban).unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let neu = zweite.join("Dokumentation/Planung/kasse.md");
+    gemeinsam::ereignis_abwarten(&lauf.adresse, || std::fs::write(&neu, "x").unwrap(), |v| v["wbs"] == json!(["weg"])).await;
+}
+
+#[test]
+fn beobachtet_wird_nur_was_ausserhalb_des_ordners_liegt() {
+    let (_a, arbeit) = arbeits_repository();
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let text = gemeinsam::lies(tmp.path(), "kanbanD.md").replace("  applications:\n", "  applications:\n    in: {name: Innen, wbs: plan/wbs.md, requirements: \"\"}\n");
+    std::fs::create_dir_all(tmp.path().join("plan")).unwrap();
+    std::fs::write(tmp.path().join("kanbanD.md"), text).unwrap();
+    let f = kanband::dienst::Kanban::neu(tmp.path().to_path_buf()).fremde_wbs();
+    assert_eq!(f.len(), 1, "innen liegt im Ordner, weg hat keinen Ordner: {f:?}");
+    assert_eq!((f[0].kuerzel.as_str(), f[0].datei.clone(), f[0].git.clone()), ("kc", arbeit.join("Dokumentation/Planung/kasse.md"), Some(arbeit.join(".git"))));
+}

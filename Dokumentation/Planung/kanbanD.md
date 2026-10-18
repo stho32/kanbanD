@@ -202,7 +202,7 @@ zuletzt: 2026-10-18
 | B0129 | Bubble | I0049 | Geänderte WBS-Datei erkennen | gruen | Test gruen | Pfad im Arbeits-Repository → nicht committet ja/nein (git status ohne Index-Schreiben) | 0,5-1 |  |  |  |  |
 | B0130 | Bubble | I0049 | WBS einer Anwendung ausliefern | gruen | Test gruen | GET /api/wbs/{kürzel} → knoten, stand, nicht_committet, anforderungen; unbekannt 404, nicht erreichbar 409 | 1-2 |  |  |  |  |
 | B0131 | Bubble | I0049 | Fremde WBS-Dateien beobachten | gruen | Test gruen | Liste (Kürzel, WBS-Datei, Git-Verzeichnis) → Wächter auf deren Ordner → gebündeltes Ereignis {pfade, extern, wbs} | 0,5-1 |  |  |  |  |
-| B0137 | Bubble | I0049 | Beobachtung folgt dem Register | rot | Test gruen | kanbanD.md beim Start und bei jeder Änderung → Liste der fremden WBS-Dateien mit Git-Verzeichnis → Wächter neu gesetzt | 0,5-1 |  |  |  |  |
+| B0137 | Bubble | I0049 | Beobachtung folgt dem Register | gruen | Test gruen | kanbanD.md beim Start und bei jeder Änderung → Liste der fremden WBS-Dateien mit Git-Verzeichnis → Wächter neu gesetzt | 0,5-1 |  |  |  |  |
 | B0132 | Bubble | I0049 | Menüpunkt WBS je gebundener Anwendung | rot | Test gruen | Board + Register → gebundene Anwendungen (eine registrierte gilt als gebunden) → Menü WBS, Route #/wbs/<kürzel>, g k | 0,5-1 |  |  |  |  |
 | B0133 | Bubble | I0049 | WBS-Tabelle zeigen | rot | Test gruen | WBS → Tabelle ID · Ebene · Knoten · Fertig/Eingabe → Ausgabe · Aufwand · Status · Requirement · Notiz; Einrückung, Ampel, Plakette, Widerspruch | 1-2 |  |  |  |  |
 | B0134 | Bubble | I0049 | Dialog und Interaction klappen | rot | Test gruen | Klick auf Schalter → Nachfahren ausgeblendet, Zustand je Anwendung gemerkt; ohne Wahl nur der aktive Ast offen | 0,5-1 |  |  |  |  |

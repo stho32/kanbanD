@@ -89,3 +89,27 @@ pub fn mit_drei_aufgaben(pfad: &Path) {
     git(pfad, &["add", "-A"]);
     git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "drei Aufgaben"]);
 }
+
+/// Liest SSE-Zeilen `data: …` vom Ereignisstrom, bis `bedingung` erfüllt ist (höchstens 3 s).
+pub async fn ereignis_abwarten(adresse: &str, ausloesen: impl FnOnce(), bedingung: impl Fn(&serde_json::Value) -> bool) -> serde_json::Value {
+    use futures_util::StreamExt;
+    let antwort = reqwest::get(format!("{adresse}api/ereignisse")).await.unwrap();
+    assert_eq!(antwort.headers()["content-type"], "text/event-stream");
+    let mut strom = antwort.bytes_stream();
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    ausloesen();
+    let mut puffer = String::new();
+    let ende = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    while let Ok(Some(Ok(teil))) = tokio::time::timeout_at(ende, strom.next()).await {
+        puffer.push_str(&String::from_utf8_lossy(&teil));
+        for zeile in puffer.lines() {
+            if let Some(json) = zeile.strip_prefix("data: ") {
+                let v: serde_json::Value = serde_json::from_str(json).unwrap();
+                if bedingung(&v) {
+                    return v;
+                }
+            }
+        }
+    }
+    panic!("kein passendes Ereignis in: {puffer}");
+}

@@ -39,8 +39,12 @@ pub fn router(ordner: PathBuf) -> Router {
 pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
     let kanban = Arc::new(Kanban::neu(ordner.clone()));
     let (ereignisse, _) = broadcast::channel(256);
+    let fremde = fremde_beobachten(&kanban, ereignisse.clone());
     let tx = ereignisse.clone();
     let waechter = match waechter::starten(ordner, kanban.eigene(), move |e| {
+        if e.pfade.iter().any(|p| p == crate::format::einstellungen::DATEI) {
+            fremde();
+        }
         let _ = tx.send(e);
     }) {
         Ok(w) => Some(Arc::new(w)),
@@ -90,6 +94,27 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
+}
+
+/// Beobachtet die WBS-Dateien des Registers außerhalb des Ordners; die Rückgabe setzt sie neu aus `kanbanD.md`.
+fn fremde_beobachten(kanban: &Arc<Kanban>, ereignisse: broadcast::Sender<Ereignis>) -> impl Fn() + Send + 'static {
+    let fremd = match waechter::fremde_starten(move |e| {
+        let _ = ereignisse.send(e);
+    }) {
+        Ok(w) => Some(Arc::new(w)),
+        Err(e) => {
+            eprintln!("WBS-Dateien der Anwendungen werden nicht beobachtet ({e}) — ihre Änderungen erscheinen erst nach Neuladen.");
+            None
+        }
+    };
+    let k = kanban.clone();
+    let neu_setzen = move || {
+        if let Some(w) = &fremd {
+            w.setzen(k.fremde_wbs());
+        }
+    };
+    neu_setzen();
+    neu_setzen
 }
 
 impl IntoResponse for Fehler {

@@ -110,3 +110,10 @@ pub fn geaendert(datei: &Path) -> bool {
     let Ok(a) = Command::new("git").arg("-C").arg(ordner).env("GIT_OPTIONAL_LOCKS", "0").args(["status", "--porcelain", "--"]).arg(name).output() else { return false };
     a.status.success() && !a.stdout.is_empty()
 }
+
+/// Das Git-Verzeichnis des Repositorys, in dem `ordner` liegt — absolut; ohne Repository keines.
+pub fn git_verzeichnis(ordner: &Path) -> Option<std::path::PathBuf> {
+    let a = Command::new("git").arg("-C").arg(ordner).args(["rev-parse", "--absolute-git-dir"]).output().ok().filter(|a| a.status.success())?;
+    let pfad = std::path::PathBuf::from(String::from_utf8_lossy(&a.stdout).trim());
+    Some(pfad.canonicalize().unwrap_or(pfad))
+}
