@@ -29,5 +29,30 @@
     });
   }
 
-  Object.assign(ziel, { zeitMs, tagesbeginn, wochenbeginn, anteil, personenZeilen });
+  /** Stundenzettel einer Person: Zeilen je Aufgabe mit Zeit in der Woche, je Tag (Mo–So) in ms. */
+  function stundenzettel(aufgaben, wer, w0, jetzt) {
+    const tage = [...Array(7)].map((_, i) => { const d = new Date(w0); d.setDate(d.getDate() + i); return d.getTime(); });
+    const ende = (() => { const d = new Date(w0); d.setDate(d.getDate() + 7); return d.getTime(); })();
+    const grenzen = [...tage, ende];
+    const zeilen = aufgaben.map(a => {
+      const proTag = tage.map((t, i) => a.zeiten.filter(z => z.wer === wer).reduce((s, z) => s + anteil(z, t, grenzen[i + 1], jetzt), 0));
+      return { aufgabe: a, proTag, summe: proTag.reduce((s, x) => s + x, 0) };
+    }).filter(z => z.summe > 0);
+    const jeTag = tage.map((_, i) => zeilen.reduce((s, z) => s + z.proTag[i], 0));
+    return { tage, zeilen, jeTag, summe: jeTag.reduce((s, x) => s + x, 0) };
+  }
+
+  /** Kreuztabelle ab `von`: Zeilen je Aufgabe, Spalten je Person mit Zeit, Summen in beide Richtungen. */
+  function kreuztabelle(aufgaben, von, jetzt) {
+    const bis = Infinity;
+    const wer = [...new Set(aufgaben.flatMap(a => a.zeiten.filter(z => anteil(z, von, bis, jetzt) > 0).map(z => z.wer)))];
+    const zeilen = aufgaben.map(a => {
+      const jePerson = wer.map(k => a.zeiten.filter(z => z.wer === k).reduce((s, z) => s + anteil(z, von, bis, jetzt), 0));
+      return { aufgabe: a, jePerson, summe: jePerson.reduce((s, x) => s + x, 0) };
+    }).filter(z => z.summe > 0).sort((x, y) => y.aufgabe.nummer - x.aufgabe.nummer);
+    const jeSpalte = wer.map((_, i) => zeilen.reduce((s, z) => s + z.jePerson[i], 0));
+    return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
+  }
+
+  Object.assign(ziel, { zeitMs, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);

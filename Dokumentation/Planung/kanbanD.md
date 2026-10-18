@@ -102,7 +102,7 @@ zuletzt: 2026-10-18
 | B0058 | Bubble | I0021 | Seite Personen | gruen | Test gruen | #/personen nach D0005: Gruppen, Tagesleiste, Stopp, Klick filtert das Board | 1-2 |  |  |  |  |
 | I0022 | Interaction | D0006 | Stundenzettel und CSV | gelb | US-1..US-3 |  |  |  | I0014 | R00022 |  |
 | B0059 | Bubble | I0022 | Zeiten als CSV | gruen | Test gruen | Aufgaben + Personen → CSV je Zeiteintrag; GET /api/berichte/zeiten.csv | 0,5-1 |  |  |  |  |
-| B0060 | Bubble | I0022 | Stundenzettel und Kreuztabelle rechnen | rot | Test gruen | Aufgaben, Person, Woche → Aufgabe × Tag; Zeitraum → Aufgabe × Person | 1-2 |  |  |  |  |
+| B0060 | Bubble | I0022 | Stundenzettel und Kreuztabelle rechnen | gruen | Test gruen | Aufgaben, Person, Woche → Aufgabe × Tag; Zeitraum → Aufgabe × Person | 1-2 |  |  |  |  |
 | B0061 | Bubble | I0022 | Menü Berichte | rot | Test gruen | Berichte ▾ → Stundenzettel, Zeiten nach Aufgabe und Person, CSV | 1-2 |  |  |  |  |
 | I0023 | Interaction | D0006 | Burndown und Durchlaufzeit | rot | US der Anforderung |  |  |  | I0006 |  | aus der Git-Geschichte |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | rot | US der Anforderung |  |  |  | I0005 |  | Beschreibung unter /api, Identität je Aufruf |

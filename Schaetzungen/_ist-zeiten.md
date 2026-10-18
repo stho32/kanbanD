@@ -89,3 +89,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00021 Personenübersicht | B0058 Seite Personen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00021 Personenübersicht | Lauf R00021 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00022 Stundenzettel und CSV | B0059 Zeiten als CSV | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00022 Stundenzettel und CSV | B0060 Stundenzettel und Kreuztabelle rechnen | Standard | 1-2h | 0,0h | 0,0h | autonom |

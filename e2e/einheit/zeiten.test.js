@@ -34,3 +34,35 @@ test('Gruppen, Summen, offen und begonnen', () => {
   assert.strictEqual(cl.abschnitte[0].nummer, 2);
   assert.ok(st.abschnitte[0].laeuft);
 });
+
+const { stundenzettel, kreuztabelle } = require('../../web/zeiten.js');
+
+test('Stundenzettel verteilt über Mitternacht und summiert', () => {
+  const w0 = wochenbeginn(jetzt);
+  const aufgaben = [
+    { nummer: 1, zeiten: [{ wer: 'st', beginn: '2026-10-19 23:00', ende: '2026-10-20 01:00' }, { wer: 'cl', beginn: '2026-10-19 08:00', ende: '2026-10-19 09:00' }] },
+    { nummer: 2, zeiten: [{ wer: 'cl', beginn: '2026-10-20 08:00', ende: '2026-10-20 09:00' }] },
+    { nummer: 3, zeiten: [{ wer: 'st', beginn: '2026-10-12 08:00', ende: '2026-10-12 09:00' }] },
+  ];
+  const s = stundenzettel(aufgaben, 'st', w0, jetzt);
+  assert.strictEqual(s.zeilen.length, 1, 'nur #1 hat Zeit von st in dieser Woche');
+  assert.deepStrictEqual(s.zeilen[0].proTag.slice(0, 3), [H, H, 0]);
+  assert.strictEqual(s.summe, 2 * H);
+  assert.strictEqual(s.jeTag[1], H);
+});
+
+test('Kreuztabelle mit Summen in beide Richtungen', () => {
+  const aufgaben = [
+    { nummer: 1, zeiten: [{ wer: 'st', beginn: '2026-10-20 08:00', ende: '2026-10-20 09:30' }, { wer: 'cl', beginn: '2026-10-20 10:00', ende: '2026-10-20 10:30' }] },
+    { nummer: 2, zeiten: [{ wer: 'cl', beginn: '2026-10-01 10:00', ende: '2026-10-01 11:00' }] },
+  ];
+  const alles = kreuztabelle(aufgaben, 0, jetzt);
+  assert.deepStrictEqual(alles.personen, ['st', 'cl']);
+  assert.deepStrictEqual(alles.zeilen.map(z => z.aufgabe.nummer), [2, 1]);
+  assert.deepStrictEqual(alles.zeilen[1].jePerson, [1.5 * H, 0.5 * H]);
+  assert.strictEqual(alles.zeilen[1].summe, 2 * H);
+  assert.deepStrictEqual(alles.jeSpalte, [1.5 * H, 1.5 * H]);
+  const woche = kreuztabelle(aufgaben, wochenbeginn(jetzt), jetzt);
+  assert.deepStrictEqual(woche.zeilen.map(z => z.aufgabe.nummer), [1]);
+  assert.strictEqual(woche.summe, 2 * H);
+});
