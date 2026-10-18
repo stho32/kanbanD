@@ -26,6 +26,11 @@ pub(super) fn absolut(wurzel: &Path, pfad: &str) -> PathBuf {
     p.canonicalize().unwrap_or(p)
 }
 
+/// Das Kürzel, bei der Standardanwendung keines.
+fn kuerzel_der(anwendung: &Anwendung) -> Option<String> {
+    Some(anwendung.kuerzel.clone()).filter(|k| !k.is_empty())
+}
+
 /// Je ID der Anwendung die Schreibweisen, unter denen Aufgaben sie nennen.
 type Gesucht = BTreeMap<String, Vec<String>>;
 
@@ -56,7 +61,7 @@ fn wbs_quellen(wurzel: &Path, anwendung: &Anwendung, gesucht: &mut Gesucht, quel
     }
     for k in knoten {
         let Some(schreibweisen) = gesucht.get(&k.id) else { continue };
-        let quelle = Quelle { datei: wbs.to_string_lossy().into(), zeile: k.zeile, name: k.name, status: Some(k.status), braucht: k.braucht.iter().map(|b| q(b)).collect(), anwendung: Some(anwendung.kuerzel.clone()).filter(|k| !k.is_empty()), schluessel: q(&k.id) };
+        let quelle = Quelle { datei: wbs.to_string_lossy().into(), zeile: k.zeile, name: k.name, status: Some(k.status), braucht: k.braucht.iter().map(|b| q(b)).collect(), anwendung: kuerzel_der(anwendung), schluessel: q(&k.id) };
         for s in schreibweisen {
             quellen.insert(s.clone(), quelle.clone());
         }
@@ -73,7 +78,7 @@ fn anforderungs_quellen(wurzel: &Path, anwendung: &Anwendung, gesucht: &Gesucht,
         let Some(id) = name.split(['-', '.']).next().filter(|id| id.starts_with('R')) else { continue };
         let Some(schreibweisen) = gesucht.get(id) else { continue };
         let text = std::fs::read_to_string(d.path()).unwrap_or_default();
-        let quelle = Quelle { datei: d.path().to_string_lossy().into(), zeile: 1, name: anforderungsname(&text), status: None, braucht: vec![], anwendung: Some(anwendung.kuerzel.clone()).filter(|k| !k.is_empty()), schluessel: Herkunftsschluessel::qualifiziert(&anwendung.kuerzel, id) };
+        let quelle = Quelle { datei: d.path().to_string_lossy().into(), zeile: 1, name: anforderungsname(&text), status: None, braucht: vec![], anwendung: kuerzel_der(anwendung), schluessel: Herkunftsschluessel::qualifiziert(&anwendung.kuerzel, id) };
         for s in schreibweisen {
             quellen.insert(s.clone(), quelle.clone());
         }
