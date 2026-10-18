@@ -388,5 +388,5 @@ ${f.fehler ? `<div class="fehl" role="alert">${esc(f.fehler)}</div>` : ''}
 function vStatus() {
   const z = S.zustand;
   if (!z) return '';
-  return `<span class="mono">${esc(z.ordner)}</span>${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}`;
+  return `<span class="mono">${esc(z.ordner)}</span>${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}<span class="rechts"><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
 }

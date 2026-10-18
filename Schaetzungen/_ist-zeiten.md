@@ -97,3 +97,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00023 Burndown und Durchlaufzeit | B0064 Burndown und Durchlaufzeit zeigen | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-10-18 | R00023 Burndown und Durchlaufzeit | Lauf R00023 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00024 Agent arbeitet über die API | B0065 Endpunkte beschreiben | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00024 Agent arbeitet über die API | B0066 Agentenlauf Ende-zu-Ende | Standard | 1-2h | 0,0h | 0,0h | autonom |
