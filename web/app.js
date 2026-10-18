@@ -125,6 +125,16 @@ async function anhaengeHochladen(dateien) {
   await laden();
 }
 
+/** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. */
+let schlange = Promise.resolve(), schlangeOffen = 0;
+function warteschlange(anfrage) {
+  schlangeOffen++;
+  schlange = schlange.then(anfrage).then(() => { S.ui.gespeichert = Date.now(); }).catch(f => { S.ui.fensterFehler = f.message; }).then(() => {
+    if (--schlangeOffen === 0) return laden();
+  });
+  return schlange;
+}
+
 /** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
 function neuEintrag(titel, f) {
   const s = schnelleingabe(titel, schnellUmfeld(), new Date());
@@ -181,6 +191,9 @@ function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
   S.ui.nachZug = false;
+  // Das aktive Eingabefeld übersteht das Neuzeichnen: Wert, Cursor, Fokus
+  const aktiv = document.activeElement;
+  const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
   document.title = fenstertitel();
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
@@ -188,7 +201,13 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
-  if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
+  let gehalten = false;
+  if (halten) {
+    const el = document.getElementById(halten.id);
+    if (el) { el.value = halten.wert; el.focus(); gehalten = true; try { el.setSelectionRange(halten.von, halten.bis); } catch (_) { } }
+  }
+  if (gehalten) { /* das Feld behält den Fokus */ }
+  else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
   else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
 }
@@ -283,9 +302,16 @@ async function act(a, arg, wert) {
       }
       case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
       case 'teil-neu': {
-        if (!(wert || '').trim() || ichNoetig()) break;
+        const text = (wert || '').trim();
+        if (!text || ichNoetig()) break;
+        // sofort zeigen, Feld leeren; senden geordnet im Hintergrund
+        const nr = u.offen, a = aufgabe(nr);
+        a.teilaufgaben.push({ text, erledigt: false });
+        const feld = $('#teil-neu');
+        if (feld) feld.value = '';
         u.fokus = '#teil-neu';
-        await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben`, { text: wert });
+        render();
+        warteschlange(() => api('POST', `/api/aufgaben/${nr}/teilaufgaben`, { text }));
         return;
       }
       case 'kommentar': {
@@ -626,7 +652,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && t.id === 'beschreibung') { e.preventDefault(); t.blur(); return; }
   if (e.key === 'Escape' && t.id === 'flt') {
-    if (S.ui.filter) { filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
+    if (S.ui.filter) { t.value = ''; filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
     return;
   }
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
@@ -958,6 +984,7 @@ function spaltenJeAufgabe() {
 }
 
 async function ereignis(e) {
+  if (schlangeOffen > 0) return; // eigene Anfragen laufen noch; danach wird ohnehin neu geladen
   const vorher = spaltenJeAufgabe();
   await laden();
   if (!e.extern) return;

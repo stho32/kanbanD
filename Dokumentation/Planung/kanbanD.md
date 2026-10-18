@@ -153,8 +153,8 @@ zuletzt: 2026-10-18
 | B0094 | Bubble | I0036 | Beschreibung und Teilaufgaben beim Anlegen | gruen | Test gruen | Angaben mit Beschreibung und Teilaufgaben → vollständige Aufgabe, ein Commit | 0,5-1 |  |  |  |  |
 | B0095 | Bubble | I0036 | Dialog Neue Aufgabe | gruen | Test gruen | Titel, Beschreibung, Teilaufgaben, Board/Spalte, Klasse, Zuständige, Labels, Fälligkeit, Herkunft → Anlegen, Anlegen und weitere | 2-3 |  |  |  |  |
 | B0096 | Bubble | I0036 | Einstiege statt + Karte | gruen | Test gruen | n, + im Spaltenkopf, Kopfzeile, Kartenmenü, Aufgabenliste öffnen den Dialog; + Karte entfällt | 1-2 |  |  |  |  |
-| I0037 | Interaction | D0003 | Teilaufgaben schnell hintereinander | rot | US-1..US-2 |  |  |  | I0012 | R00037 | UX-Überarbeitung 3: Enter fügt sofort an, ohne auf den Server zu warten; Feld bleibt offen |
-| B0097 | Bubble | I0037 | Eingaben überstehen Neuzeichnen | rot | Test gruen | Neuzeichnen (Live, Laden) → Fokus, Text und Cursor des aktiven Felds bleiben | 0,5-1 |  |  |  |  |
+| I0037 | Interaction | D0003 | Teilaufgaben schnell hintereinander | gelb | US-1..US-2 |  |  |  | I0012 | R00037 | UX-Überarbeitung 3: Enter fügt sofort an, ohne auf den Server zu warten; Feld bleibt offen |
+| B0097 | Bubble | I0037 | Eingaben überstehen Neuzeichnen | gruen | Test gruen | Neuzeichnen (Live, Laden) → Fokus, Text und Cursor des aktiven Felds bleiben | 0,5-1 |  |  |  |  |
 | B0098 | Bubble | I0037 | Teilaufgaben ohne Warten anfügen | rot | Test gruen | Enter → Teilaufgabe sofort sichtbar, Anfragen geordnet nacheinander | 1-2 |  |  |  |  |
 | I0038 | Interaction | D0002 | Erste offene Teilaufgabe auf der Karte | rot | US der Anforderung |  |  |  | I0012 |  | UX-Überarbeitung 3: Karte zeigt die nächste offene Teilaufgabe |
 | I0039 | Interaction | D0003 | Zuständige frei setzen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung 3: alle Personen hinzufügen und entfernen, auch im Kartenmenü |
