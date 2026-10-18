@@ -3,10 +3,14 @@ use super::herkunft::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
+use crate::modell::Person;
 use crate::wbs::{Stand, WbsKnoten, stand};
+use crate::wbs_datei::{Geschrieben, status_setzen};
+use crate::modell::Anwendung;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 /// Ein Knoten, wie die WBS-Sicht ihn zeigt: die Zeile der Datei und was aus den Kindern folgt.
 #[derive(Debug, Serialize)]
@@ -52,18 +56,75 @@ fn anforderungsdateien(ordner: &Path, gesucht: &[&str]) -> BTreeMap<String, Stri
 }
 
 impl Kanban {
+    /// Name und voller Pfad der WBS-Datei einer registrierten Anwendung.
+    fn wbs_datei(&self, kuerzel: &str) -> Result<(Anwendung, PathBuf), Fehler> {
+        let e = self.ordner().einstellungen().ok().flatten().unwrap_or_default();
+        let a = e.quellen.anwendungen.iter().find(|a| a.kuerzel == kuerzel).cloned().ok_or_else(|| Fehler::NichtGefunden(format!("Anwendung „{kuerzel}“ steht nicht im Register")))?;
+        let datei = absolut(self.ordner().wurzel(), &a.wbs);
+        Ok((a, datei))
+    }
+
+    /// Text der WBS-Datei; ohne Pfad oder unlesbar ist die Anwendung nicht erreichbar (409).
+    fn wbs_text(kuerzel: &str, a: &Anwendung, datei: &Path) -> Result<String, Fehler> {
+        Some(&a.wbs).filter(|p| !p.is_empty()).and_then(|_| std::fs::read_to_string(datei).ok()).ok_or_else(|| Fehler::Konflikt(format!("WBS von „{kuerzel}“ nicht erreichbar: {}", datei.display())))
+    }
+
     /// Die WBS einer registrierten Anwendung mit gerechnetem Status, erreichter Ebene und Stand.
     pub fn wbs(&self, kuerzel: &str) -> Result<WbsSicht, Fehler> {
-        let e = self.ordner().einstellungen().ok().flatten().unwrap_or_default();
-        let a = e.quellen.anwendungen.iter().find(|a| a.kuerzel == kuerzel).ok_or_else(|| Fehler::NichtGefunden(format!("Anwendung „{kuerzel}“ steht nicht im Register")))?;
-        let datei = absolut(self.ordner().wurzel(), &a.wbs);
-        let text = Some(&a.wbs).filter(|p| !p.is_empty()).and_then(|_| std::fs::read_to_string(&datei).ok()).ok_or_else(|| Fehler::Konflikt(format!("WBS von „{kuerzel}“ nicht erreichbar: {}", datei.display())))?;
+        let (a, datei) = self.wbs_datei(kuerzel)?;
+        let text = Self::wbs_text(kuerzel, &a, &datei)?;
         let tabelle = wbs_tabelle(&text);
         let ids: Vec<&str> = tabelle.alle().iter().flat_map(|k| anforderungs_ids(&k.requirement)).collect();
         let anforderungen = if a.anforderungen.is_empty() { BTreeMap::new() } else { anforderungsdateien(&absolut(self.ordner().wurzel(), &a.anforderungen), &ids) };
         let knoten = tabelle.alle().iter().map(|k| WbsZeile { knoten: k.clone(), gerechnet: tabelle.gerechneter_status(&k.id), erreicht: tabelle.erreichte_ebene(&k.id) }).collect();
         Ok(WbsSicht { kuerzel: kuerzel.into(), name: a.name.clone(), nicht_committet: crate::git::geaendert(&datei), datei: datei.to_string_lossy().into(), stand: stand(&tabelle), knoten, anforderungen })
     }
+}
+
+/// `PATCH /api/wbs/{kürzel}/knoten/{id}`: die Knoten, deren Status sich in der Datei geändert hat.
+#[derive(Debug, Serialize)]
+pub struct WbsGeaendert {
+    pub geaendert: Vec<String>,
+}
+
+impl Kanban {
+    /// Die Sperre der WBS-Datei — Schreibzugriffe auf dieselbe Datei gehen nacheinander, andere Dateien und der Ordner warten nicht.
+    fn wbs_sperre(&self, datei: &Path) -> Arc<Mutex<()>> {
+        let schluessel = datei.canonicalize().unwrap_or_else(|_| datei.to_path_buf());
+        self.wbs_sperren.lock().unwrap_or_else(|e| e.into_inner()).entry(schluessel).or_default().clone()
+    }
+
+    /// Liest die WBS-Datei unter ihrer Sperre, ändert sie mit `aendern` und schreibt sie zurück, wenn sich etwas geändert hat.
+    /// Im Arbeits-Repository wird nie committet.
+    fn wbs_aendern<T>(&self, kuerzel: &str, aendern: impl FnOnce(&str, &str) -> Result<(Geschrieben, T), Fehler>) -> Result<T, Fehler> {
+        let (a, datei) = self.wbs_datei(kuerzel)?;
+        let sperre = self.wbs_sperre(&datei);
+        let _gesperrt = sperre.lock().unwrap_or_else(|e| e.into_inner());
+        let text = Self::wbs_text(kuerzel, &a, &datei)?;
+        let (g, ergebnis) = aendern(&text, &crate::uhr::heute())?;
+        if g.text != text {
+            datei_ersetzen(&datei, &g.text)?;
+        }
+        Ok(ergebnis)
+    }
+
+    /// Setzt den Status eines Blatts der WBS von `kuerzel` (R00055); Vorfahren und `zuletzt` werden mitgeschrieben.
+    pub fn wbs_status_setzen(&self, _wer: &Person, kuerzel: &str, id: &str, status: &str) -> Result<WbsGeaendert, Fehler> {
+        self.wbs_aendern(kuerzel, |text, heute| {
+            let g = status_setzen(text, id, status, heute)?;
+            let geaendert = g.geaendert.clone();
+            Ok((g, WbsGeaendert { geaendert }))
+        })
+    }
+}
+
+/// Schreibt über eine Zwischendatei im selben Ordner — wer liest, sieht den alten oder den neuen Stand, nie einen halben.
+fn datei_ersetzen(datei: &Path, text: &str) -> Result<(), Fehler> {
+    let mut tmp = datei.as_os_str().to_owned();
+    tmp.push(".kanbanD-tmp");
+    std::fs::write(&tmp, text)?;
+    std::fs::rename(&tmp, datei)?;
+    Ok(())
 }
 
 impl Kanban {

@@ -201,3 +201,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00055 WBS-Status setzen | B0139 zuletzt im Frontmatter setzen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | B0140 Defekte WBS-Datei erkennen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | B0141 Status eines Blatts setzen | Standard | 1-2h | 0,02h | 0,02h | autonom |
+| 2026-10-18 | R00055 WBS-Status setzen | B0142 WBS-Datei unter eigener Sperre schreiben | Standard | 0,5-1h | 0,02h | 0,02h | autonom |

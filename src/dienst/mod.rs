@@ -25,7 +25,7 @@ pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;
-pub use wbs::{WbsSicht, WbsZeile};
+pub use wbs::{WbsGeaendert, WbsSicht, WbsZeile};
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
@@ -39,12 +39,15 @@ use crate::waechter::Eigene;
 use crate::format::board;
 use crate::modell::{Aufgabe, Board, Einstellungen, Person};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 pub struct Kanban {
     ordner: Ordner,
     sperre: Mutex<()>,
+    /// je WBS-Datei im Arbeits-Repository eine eigene Sperre — getrennt von der des Ordners
+    wbs_sperren: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     eigene: Eigene,
 }
 
@@ -65,7 +68,7 @@ pub struct Zustand {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default() }
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default() }
     }
 
     pub fn ordner(&self) -> &Ordner {
