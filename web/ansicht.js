@@ -361,10 +361,10 @@ function vBoard() {
   if (S.boardDefekt) return `<div class="defektflaeche" role="alert"><h2>boards/${esc(S.boardDefekt.slug)}.md ist defekt</h2><p>${esc(S.boardDefekt.fehler)}</p><p><a href="vscode://file${esc(S.zustand.ordner)}/boards/${esc(S.boardDefekt.slug)}.md">Im Editor reparieren</a> · andere Boards über den Boardnamen oben links.</p></div>`;
   if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
   const leiste = imArchiv() ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
-  return `${S.einstellungenDefekt ? `<div class="archbar warnbar" role="alert">kanbanD.md ist defekt — Personen und Klassen fehlen, bis die Datei repariert ist</div>` : ''}${vPhasenHinweise(b)}${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
+  return `${S.einstellungenDefekt ? `<div class="archbar warnbar" role="alert">kanbanD.md ist defekt — Personen und Klassen fehlen, bis die Datei repariert ist</div>` : ''}${vBoardHinweise(b)}${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
 }
 /** Was an den Phasen-Spalten (R00058) und den Prüfungen (R00059) nicht stimmt: Reihenfolge gegen die Phasenfolge, abweichende Folgen gebundener Anwendungen, unbekannte Prüfungen. */
-function vPhasenHinweise(b) {
+function vBoardHinweise(b) {
   const h = (b.phasen && b.phasen.hinweise) || [];
   const p = b.hinweise || [];
   return (h.length ? `<div class="archbar phasenbar" role="status" id="phasen-hinweis"><b>Phasen</b>${h.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '') + (p.length ? `<div class="archbar phasenbar" role="status" id="pruefungen-hinweis"><b>Prüfungen</b>${p.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '');

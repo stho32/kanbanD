@@ -54,7 +54,7 @@ impl Kanban {
     }
 
     /// Gerechneter Status je Knoten; jede Anwendung wird einmal gelesen.
-    pub fn knotenstaende(&self, knoten: &[(String, String, String)]) -> Knotenstaende {
+    fn knotenstaende(&self, knoten: &[(String, String, String)]) -> Knotenstaende {
         let mut sichten = BTreeMap::new();
         knoten
             .iter()
