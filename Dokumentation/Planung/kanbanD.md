@@ -13,16 +13,16 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | rot | alle Dialogs gruen |  |  |  |  |  |  |
-| D0001 | Dialog | A0001 | Start und Einrichtung | rot | alle Interactions gruen |  |  |  |  | R00001 |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| D0001 | Dialog | A0001 | Start und Einrichtung | gelb | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0003 | Dialog | A0001 | Aufgabe | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0005 | Dialog | A0001 | Personen | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0006 | Dialog | A0001 | Berichte | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | rot | alle Interactions gruen |  |  |  |  |  | ohne eigenen Bildschirm ausser der API-Beschreibung |
-| I0001 | Interaction | D0001 | Ordner öffnen | rot | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
-| B0001 | Bubble | I0001 | Startargumente lesen | rot | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
+| I0001 | Interaction | D0001 | Ordner öffnen | gelb | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
+| B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
 | B0002 | Bubble | I0001 | Ordner vorbereiten | rot | Test gruen | Startauftrag → Ordner vorhanden, Git-Repository vorhanden | 0,5-1 |  |  |  |  |
 | B0003 | Bubble | I0001 | Server starten | rot | Test gruen | Startauftrag → lauschender Server auf freiem Port, URL | 0,5-1 |  |  |  |  |
 | B0004 | Bubble | I0001 | Oberfläche ausliefern und Browser öffnen | rot | Test gruen | URL → Seite und /api/zustand, Browserfenster | 0,5-1 |  |  |  |  |
