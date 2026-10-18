@@ -26,3 +26,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 20 | I0010 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00010 | offen |
 | 21 | I0004 | S3 | Station S3 (Artboard D0002) in Runde I0004 übersprungen; nachgereicht vor I0011 aus dem Prototyp | Dokumentation/Wireframes/D0002.dc.html | offen |
 | 22 | I0009 | S6 | Bubble-Commit B0026 enthielt einen roten Unit-Test (Commit 0f7aaa2), im Folgecommit c2eb1d8 korrigiert; Commit-Helfer prüft seither Tests und Clippy vor jedem Bubble-Commit | 0f7aaa2 | offen |
+| 23 | I0011 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00011 | offen |
