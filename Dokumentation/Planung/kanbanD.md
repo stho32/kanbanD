@@ -58,8 +58,8 @@ zuletzt: 2026-10-18
 | B0026 | Bubble | I0009 | Spalten neu ordnen | gruen | Test gruen | Board + Spaltenliste (Name, alter Name, Grenze) → Board oder Fehler | 0,5-1 |  |  |  |  |
 | B0027 | Bubble | I0009 | Spalten speichern | gruen | Test gruen | PUT /api/boards/<slug>/spalten → Board-Datei, ein Commit | 0,5-1 |  |  |  |  |
 | B0028 | Bubble | I0009 | Einrichtemodus Spalten | gruen | Test gruen | Spalten bearbeiten, Vorschau, Fertig/Verwerfen; Grenze überschritten sichtbar | 1-2 |  |  |  |  |
-| I0010 | Interaction | D0001 | Personen und Klassen pflegen | rot | US-1..US-3 |  |  |  | I0003 | R00010 | stilllegen statt entfernen |
-| B0029 | Bubble | I0010 | Einstellungen prüfen und speichern | rot | Test gruen | Personen, Klassen, Quellen → kanbanD.md, ein Commit; PUT /api/einstellungen | 1-2 |  |  |  |  |
+| I0010 | Interaction | D0001 | Personen und Klassen pflegen | gelb | US-1..US-3 |  |  |  | I0003 | R00010 | stilllegen statt entfernen |
+| B0029 | Bubble | I0010 | Einstellungen prüfen und speichern | gruen | Test gruen | Personen, Klassen, Quellen → kanbanD.md, ein Commit; PUT /api/einstellungen | 1-2 |  |  |  |  |
 | B0030 | Bubble | I0010 | Seite Einrichten | rot | Test gruen | Personen anlegen/umbenennen/stilllegen, Klassen mit Farbe → Speichern | 1-2 |  |  |  |  |
 | I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | rot | US der Anforderung |  |  |  | I0005 |  | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | rot | US der Anforderung |  |  |  | I0011 |  |  |

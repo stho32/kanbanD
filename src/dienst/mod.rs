@@ -4,12 +4,14 @@ mod aufgabe_anlegen;
 mod bewegen;
 mod board_anlegen;
 mod einrichten;
+mod einstellungen;
 mod spalten;
 
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
+pub use einstellungen::{PALETTE, farbe_gueltig};
 
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;

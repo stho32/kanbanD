@@ -4,7 +4,7 @@ mod statisch;
 
 use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard};
 use crate::fehler::Fehler;
-use crate::modell::SpaltenAenderung;
+use crate::modell::{Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
@@ -58,6 +58,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards/{slug}/bewegen", post(bewegen))
         .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
         .route("/api/wer", get(wer))
+        .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .merge(statisch::router())
         .with_state(app)
@@ -163,6 +164,15 @@ async fn spalten_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.spalten_setzen(&p, &slug, &neu)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Einstellungen>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.einstellungen_setzen(&p, neu)
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
