@@ -100,3 +100,13 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<(chrono::NaiveDateTime, S
     }
     Ok(staende)
 }
+
+/// Hat die Datei Änderungen, die nicht committet sind (ungestagt, gestagt oder unversioniert)?
+/// Liegt sie in keinem Repository oder fehlt Git, gilt sie als unverändert. Liest nur: der Index wird
+/// nicht nebenbei aufgefrischt (`GIT_OPTIONAL_LOCKS=0`), sonst löste jede Abfrage beim Dateiwächter
+/// eine neue Änderung im Repository aus.
+pub fn geaendert(datei: &Path) -> bool {
+    let (Some(ordner), Some(name)) = (datei.parent(), datei.file_name()) else { return false };
+    let Ok(a) = Command::new("git").arg("-C").arg(ordner).env("GIT_OPTIONAL_LOCKS", "0").args(["status", "--porcelain", "--"]).arg(name).output() else { return false };
+    a.status.success() && !a.stdout.is_empty()
+}

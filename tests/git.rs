@@ -65,3 +65,32 @@ fn ohne_repository_ist_es_ein_interner_fehler() {
     let f = committen(t.path(), &["a.md".into()], &stefan(), "a").unwrap_err();
     assert!(f.meldung().starts_with("git ls-files"), "{f}");
 }
+
+#[test]
+fn geaendert_bis_zum_commit_auch_gestagt_und_neu() {
+    use kanband::git::geaendert;
+    let t = repo();
+    let datei = t.path().join("plan").join("wbs.md");
+    std::fs::create_dir_all(datei.parent().unwrap()).unwrap();
+    std::fs::write(&datei, "a").unwrap();
+    assert!(geaendert(&datei), "unversioniert");
+    git(t.path(), &["add", "-A"]);
+    assert!(geaendert(&datei), "gestagt");
+    git(t.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-m", "a"]);
+    assert!(!geaendert(&datei), "committet");
+    let index_vorher = std::fs::metadata(t.path().join(".git/index")).unwrap().modified().unwrap();
+    std::fs::write(&datei, "b").unwrap();
+    assert!(geaendert(&datei), "ungestagt");
+    assert_eq!(std::fs::metadata(t.path().join(".git/index")).unwrap().modified().unwrap(), index_vorher, "der Index bleibt unberührt");
+    std::fs::write(t.path().join("plan/anderes.md"), "x").unwrap();
+    git(t.path(), &["checkout", "--", "plan/wbs.md"]);
+    assert!(!geaendert(&datei), "andere Dateien zählen nicht");
+}
+
+#[test]
+fn ausserhalb_eines_repositories_unveraendert() {
+    let t = tempfile::tempdir().unwrap();
+    std::fs::write(t.path().join("wbs.md"), "a").unwrap();
+    assert!(!kanband::git::geaendert(&t.path().join("wbs.md")));
+    assert!(!kanband::git::geaendert(std::path::Path::new("/")));
+}
