@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -89,4 +89,11 @@ test('Knoten aus der Adresse der WBS-Sicht', () => {
   assert.strictEqual(wbsZiel('#/wbs/kd'), '');
   assert.strictEqual(wbsZiel('#/board/x/I0048'), '');
   assert.strictEqual(wbsZiel(undefined), '');
+});
+
+test('Formular einer Wirkung: create schickt den neuen Knoten, rework und remove nur den Knoten', () => {
+  const f = { application: 'kd', action: 'create', node: 'D0009', parent: ' D0002 ', level: 'Interaction', name: ' Export ', done_criterion: 'US-1' };
+  assert.deepStrictEqual(wirkungEingabe(f), { application: 'kd', action: 'create', parent: 'D0002', level: 'Interaction', name: 'Export', done_criterion: 'US-1' });
+  assert.deepStrictEqual(wirkungEingabe({ ...f, action: 'rework', node: ' D0002 ' }), { application: 'kd', action: 'rework', node: 'D0002' });
+  assert.deepStrictEqual(wirkungEingabe({ application: 'kd', action: 'remove' }), { application: 'kd', action: 'remove', node: '' });
 });

@@ -114,7 +114,7 @@ function vFenster() {
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w"><select data-af="klasse" aria-label="Klasse"><option value="">— keine —</option>${(S.zustand.einstellungen.klassen).map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === a.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}${a.klasse && !cl ? `<option selected>${esc(a.klasse)}</option>` : ''}</select></span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
-${(a.wirkungen || []).length ? `<span class="k">wbs-effects</span><span class="w wrap" id="wirkungen">${a.wirkungen.map(vWirkungChip).join('')}</span>` : ''}
+${vWirkungenFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
@@ -214,6 +214,23 @@ function vHerkunftChip(x) {
 function vWirkungChip(w) {
   const c = wirkungChip(w);
   return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel)}">${esc(c.text)}</a>`;
+}
+/** Feld `wbs-effects` im Aufgabenfenster: Chips mit ×, darunter das Formular einer neuen Wirkung. */
+function vWirkungenFeld(a) {
+  const register = (S.zustand.einstellungen.quellen.anwendungen || []), w = a.wirkungen || [];
+  if (!register.length && !w.length) return '';
+  const chips = w.map((x, j) => `<span class="ochip">${vWirkungChip(x)}<button data-act="wirkung-weg" data-arg="${j}" title="aus der Aufgabe entfernen — die WBS bleibt" aria-label="Wirkung ${esc(wirkungChip(x).text)} entfernen">×</button></span>`).join('');
+  const knopf = register.length && !S.ui.wirkungNeu ? `<button class="lnk" data-act="wirkung-neu" title="Wirkung auf die WBS: anlegen, überarbeiten, verwerfen — sofort">+ Wirkung</button>` : '';
+  return `<span class="k">wbs-effects</span><span class="w wrap" id="wirkungen">${chips}${knopf}</span>${S.ui.wirkungNeu ? vWirkungForm(register) : ''}`;
+}
+/** Formular einer neuen Wirkung — die Wirkung tritt mit „wirken“ sofort ein. */
+function vWirkungForm(register) {
+  const f = S.ui.wirkungNeu, wahl = (n, titel, werte) => `<span class="k">${titel}</span><span class="w"><select data-wf="${n}" id="wirkung-${n}" aria-label="${titel}">${werte.map(([v, t]) => `<option value="${esc(v)}"${v === f[n] ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></span>`;
+  const feld = (n, titel, ph) => `<span class="k">${titel}</span><span class="w"><input class="mini-inp full" id="wirkung-${n}" data-wf="${n}" value="${esc(f[n])}" placeholder="${esc(ph)}" data-enter="wirkung-setzen" aria-label="${titel}"></span>`;
+  const anlegen = f.action === 'create';
+  const felder = wahl('action', 'Aktion', [['create', '+ anlegen'], ['rework', '↻ überarbeiten'], ['remove', '− verwerfen']]) + wahl('application', 'Anwendung', register.map(x => [x.kuerzel, `${x.kuerzel} · ${x.name}`]))
+    + (anlegen ? feld('parent', 'Eltern', 'D0002') + wahl('level', 'Ebene', ['Dialog', 'Interaction', 'Feature', 'Bubble'].map(e => [e, e])) + feld('name', 'Name', 'was entsteht') + feld('done_criterion', 'Fertig', 'US-1') : feld('node', 'Knoten', 'D0002'));
+  return `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${felder}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span class="muted">${anlegen ? 'neuer Knoten rot mit der nächsten freien ID' : f.action === 'rework' ? 'Knoten und zählende Nachfahren rot' : 'Knoten und Nachfahren verworfen'} · sofort, ohne Commit im Arbeits-Repository</span><button class="btn" data-act="wirkung-zu">abbrechen</button><button class="btn btn-haupt" data-act="wirkung-setzen">wirken</button></div></div>`;
 }
 const vWirkungen = a => (a.wirkungen || []).length ? `<span class="wchips">${a.wirkungen.map(vWirkungChip).join('')}</span>` : '';
 function vHerkunft(a) {

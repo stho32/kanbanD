@@ -332,7 +332,7 @@ async function act(a, arg, wert) {
         if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
@@ -490,6 +490,28 @@ async function act(a, arg, wert) {
           await api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund });
           u.hinweis = { text: `${arg} verworfen · WBS-Datei nicht committet`, at: Date.now() };
         } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
+        return laden();
+      }
+      case 'wirkung-neu': {
+        if (ichNoetig()) break;
+        const register = S.zustand.einstellungen.quellen.anwendungen || [];
+        u.wirkungNeu = { action: 'create', application: (gebunden()[0] || register[0] || {}).kuerzel || '', node: '', parent: '', level: 'Interaction', name: '', done_criterion: '', fehler: null };
+        u.fokus = '#wirkung-parent';
+        break;
+      }
+      case 'wirkung-zu': u.wirkungNeu = null; break;
+      case 'wirkung-setzen': {
+        const f = u.wirkungNeu;
+        if (!f || ichNoetig()) break;
+        try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
+        catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; break; }
+        u.wirkungNeu = null; u.gespeichert = Date.now(); u.fensterFehler = null;
+        return laden();
+      }
+      case 'wirkung-weg': {
+        if (ichNoetig()) break;
+        try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); u.fensterFehler = null; }
+        catch (fehler) { u.fensterFehler = fehler.message; }
         return laden();
       }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
@@ -719,6 +741,8 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  // Aktion und Ebene einer Wirkung ändern, welche Felder das Formular zeigt
+  if (e.target.dataset && e.target.dataset.wf && e.target.tagName === 'SELECT' && S.ui.wirkungNeu) { S.ui.wirkungNeu[e.target.dataset.wf] = e.target.value; S.ui.wirkungNeu.fehler = null; render(); return; }
   const tf = e.target.dataset && e.target.dataset.tf;
   if (tf) {
     // nicht neu zeichnen: das Formular behält Fokus und Eingaben, nur die Vorschau folgt
@@ -787,6 +811,8 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  const wf = e.target.dataset && e.target.dataset.wf;
+  if (wf && S.ui.wirkungNeu) { S.ui.wirkungNeu[wf] = e.target.value; return; }
   const wn = e.target.dataset && e.target.dataset.wn;
   if (wn && S.ui.wbsNeu && wn !== 'ebene') { S.ui.wbsNeu[wn] = e.target.value; return; }
   if (e.target.dataset && (e.target.dataset.tf === 'name' || e.target.dataset.tf === 'datum')) { S.ui.tf[e.target.dataset.tf] = e.target.value; return; }

@@ -117,5 +117,13 @@
   /** Der Knoten in `#/wbs/<kürzel>/<id>`, sonst leer. */
   const wbsZiel = hash => decodeURIComponent((/^#\/wbs\/[^/]*\/([^/?#]+)/.exec(hash || '') || [])[1] || '');
 
-  Object.assign(ziel, { WIRKUNG, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Was das Formular einer Wirkung an den Server schickt: bei create die Angaben zum neuen Knoten, sonst den Knoten. */
+  function wirkungEingabe(f) {
+    const t = s => (s || '').trim();
+    return f.action === 'create'
+      ? { application: f.application, action: 'create', parent: t(f.parent), level: f.level, name: t(f.name), done_criterion: t(f.done_criterion) }
+      : { application: f.application, action: f.action, node: t(f.node) };
+  }
+
+  Object.assign(ziel, { WIRKUNG, wirkungEingabe, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);
