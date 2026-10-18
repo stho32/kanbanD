@@ -66,6 +66,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
+        .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
+        .route("/api/aufgaben/{nr}/anhaenge/{name}", get(anhang_lesen).delete(anhang_entfernen))
         .route("/api/aufgaben/{nr}/zeiten/{i}", axum::routing::patch(zeit_korrigieren).delete(zeit_loeschen))
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
@@ -269,4 +271,63 @@ async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): 
 
 async fn zeit_loeschen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zeit_loeschen(p, nr, i)).await
+}
+
+async fn anhaenge(State(app): State<App>, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    let liste = blockierend(&app, move |k| k.anhaenge(nr)).await?;
+    Ok(Json(liste).into_response())
+}
+
+async fn anhang_ablegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, mut teile: axum::extract::Multipart) -> Result<Response, Fehler> {
+    let mut datei = None;
+    while let Some(feld) = teile.next_field().await.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {e}")))? {
+        if feld.name() == Some("datei") {
+            let name = feld.file_name().unwrap_or("anhang").to_string();
+            let bytes = feld.bytes().await.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {e}")))?;
+            datei = Some((name, bytes));
+        }
+    }
+    let (name, bytes) = datei.ok_or_else(|| Fehler::Ungueltig("Feld „datei“ fehlt".into()))?;
+    let a = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.anhang_ablegen(&p, nr, &name, &bytes)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(a)).into_response())
+}
+
+fn inhaltstyp(name: &str) -> &'static str {
+    match name.rsplit('.').next().map(str::to_lowercase).as_deref() {
+        Some("png") => "image/png",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        Some("webp") => "image/webp",
+        Some("pdf") => "application/pdf",
+        Some("txt" | "log" | "md" | "csv") => "text/plain; charset=utf-8",
+        Some("json") => "application/json",
+        _ => "application/octet-stream",
+    }
+}
+
+async fn anhang_lesen(State(app): State<App>, Path((nr, name)): Path<(u32, String)>) -> Result<Response, Fehler> {
+    let (inhalt, name) = blockierend(&app, move |k| {
+        let rel = k.anhangpfad(nr, &name)?;
+        Ok((std::fs::read(k.ordner().wurzel().join(rel))?, name))
+    })
+    .await?;
+    let typ = inhaltstyp(&name);
+    // SVG und Unbekanntes nicht im Kontext der Seite ausführen lassen.
+    let art = if typ.starts_with("image/svg") || typ == "application/octet-stream" { "attachment" } else { "inline" };
+    let kopf = format!("{art}; filename*=UTF-8''{}", name.bytes().map(|b| if b.is_ascii_alphanumeric() || b".-_".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect::<String>());
+    Ok(([(axum::http::header::CONTENT_TYPE, typ.to_string()), (axum::http::header::CONTENT_DISPOSITION, kopf), (axum::http::header::X_CONTENT_TYPE_OPTIONS, "nosniff".into())], inhalt).into_response())
+}
+
+async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)): Path<(u32, String)>) -> Result<Response, Fehler> {
+    blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.anhang_entfernen(&p, nr, &name)
+    })
+    .await?;
+    Ok(Json(json!({ "entfernt": true })).into_response())
 }

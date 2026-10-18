@@ -81,7 +81,7 @@ zuletzt: 2026-10-18
 | B0043 | Bubble | I0015 | Zeiten im Fenster | gruen | Test gruen | Tabelle der Zeiten mit Summe, ✎ korrigieren, ✕ löschen, + Zeit nachtragen | 1-2 |  |  |  |  |
 | I0016 | Interaction | D0003 | Anhänge verwalten | gelb | US-1..US-2 |  |  |  | I0011 | R00016 |  |
 | B0044 | Bubble | I0016 | Anhangname bereinigen | gruen | Test gruen | Dateiname vom Browser → sicherer, freier Name im Anhangordner | 0,5-1 |  |  |  |  |
-| B0045 | Bubble | I0016 | Anhänge über die API | rot | Test gruen | hochladen, auflisten, ausliefern, entfernen → aufgaben/<stamm>/, ein Commit | 1-2 |  |  |  |  |
+| B0045 | Bubble | I0016 | Anhänge über die API | gruen | Test gruen | hochladen, auflisten, ausliefern, entfernen → aufgaben/<stamm>/, ein Commit | 1-2 |  |  |  |  |
 | B0046 | Bubble | I0016 | Anhänge im Fenster | rot | Test gruen | Liste mit Link und Größe, Datei wählen oder hineinziehen, ✕ entfernt | 1-2 |  |  |  |  |
 | I0017 | Interaction | D0003 | Archivieren und zurückholen | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0018 | Interaction | D0003 | Herkunft und Abhängigkeiten | rot | US der Anforderung |  |  |  | I0011 |  | origins mit Editor-Link, WBS-Braucht als wartet auf |
