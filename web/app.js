@@ -558,7 +558,7 @@ async function act(a, arg, wert) {
           await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben`, { nummer: +nr, spalte });
         }
         if (!u.fensterFehler) u.hinweis = { text: `#${nr} nach ${b ? b.titel : slug} · ${spalte}`, at: Date.now() };
-        return;
+        break; // der Hinweis entsteht nach dem Laden — selbst zeichnen, nicht auf das Echo des Commits warten (R00061)
       }
       case 'legen': {
         if (ichNoetig()) break;
