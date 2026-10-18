@@ -761,14 +761,23 @@ function setupText(d) {
   const pruefend = d.spalten.filter(s => (s.pruefungen || []).length);
   const kopf = (grenzen.length ? 'limits:\n' + grenzen.map(s => `  ${yamlSkalar(s.name)}: ${+s.grenze}`).join('\n') + '\n' : '')
     + (pruefend.length ? 'column-checks:\n' + pruefend.map(s => `  ${yamlSkalar(s.name)}: [${s.pruefungen.map(yamlSkalar).join(', ')}]`).join('\n') + '\n' : '');
-  return (kopf ? '---\n' + kopf + '---\n\n' : '')
+  const bindung = Array.isArray(d.anwendungen) ? `applications: [${d.anwendungen.map(yamlSkalar).join(', ')}]\n` : '';
+  return (bindung || kopf ? '---\n' + bindung + kopf + '---\n\n' : '')
     + `# ${S.board.titel}\n` + d.spalten.map(s => `\n## ${s.name}\n` + (s.n ? `\n… ${s.n} Aufgabenzeilen\n` : '')).join('');
+}
+/** Bindung des Boards an registrierte Anwendungen (R00062): ein Schalter je Anwendung und „keine“; ohne Register nichts. */
+function vBindungFeld(d) {
+  const register = S.zustand.einstellungen.quellen.anwendungen || [];
+  if (!register.length) return '';
+  const an = gebundeneAnwendungen({ anwendungen: d.anwendungen }, register).map(a => a.kuerzel), standard = d.anwendungen == null;
+  const schalter = (k, text, ein, titel) => `<button class="as${ein ? ' an' : ''}" data-act="bind" data-arg="${esc(k)}" aria-pressed="${ein}" aria-label="Bindung ${esc(text)}" title="${esc(titel)}">${esc(text)}</button>`;
+  return `<h3>GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h3><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `WBS-Sicht, Phasen-Spalten und Prüfungen aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen, keine WBS-Sicht; vorhandene Spalten bleiben')}</div>`;
 }
 function vSetup() {
   const d = S.ui.setup;
   const bahnen = d.spalten.map((sp, i) => `<section class="bahn" style="--bw:236px"><div class="bk-ed"><div class="r"><input class="inp" data-sf="name" data-i="${i}" value="${esc(sp.name)}" aria-label="Spaltenname ${i + 1}"><button class="btn btn-sym" data-act="col-l" data-arg="${i}"${i === 0 ? ' disabled' : ''} title="nach links">←</button><button class="btn btn-sym" data-act="col-r" data-arg="${i}"${i === d.spalten.length - 1 ? ' disabled' : ''} title="nach rechts">→</button><button class="btn btn-sym" data-act="col-del" data-arg="${i}"${sp.n ? ` disabled title="enthält ${sp.n} Karten – erst leeren"` : ' title="entfernen"'} aria-label="Spalte ${esc(sp.name)} entfernen">✕</button></div><div class="r2"><span>${sp.n} Karten</span>${sp.alt && sp.alt !== sp.name ? `<span class="mono">war: ${esc(sp.alt)}</span>` : ''}${!sp.alt ? '<span class="mono">neu</span>' : ''}<span style="margin-left:auto">Grenze <input class="inp" data-sf="grenze" data-i="${i}" value="${sp.grenze || ''}" aria-label="Grenze ${esc(sp.name)}" inputmode="numeric"></span></div><div class="r2">${(an => `<button class="as${an ? ' an' : ''}" data-act="col-pruef" data-arg="${i}" aria-pressed="${an}" aria-label="Prüfung wbs-effects-green ${esc(sp.name)}" title="Beim Weiterziehen nach rechts warnen, wenn nicht alle Knoten der Wirkungen grün sind — sperrt nicht">prüft: WBS grün</button>`)((sp.pruefungen || []).includes('wbs-effects-green'))}${(sp.pruefungen || []).filter(n => n !== 'wbs-effects-green').map(n => `<span class="mono" title="unbekannte Prüfung — bleibt erhalten">${esc(n)}</span>`).join('')}</div></div><div class="flaeche ruhig"></div></section>`).join('');
   const neu = `<section class="bahn-neu"><div class="bk-ed"><div class="r"><input class="inp" id="col-new" placeholder="neue Spalte · Enter" data-enter="col-add" aria-label="Neue Spalte"></div><div class="r2">wird vor der Abschlussspalte eingefügt</div></div></section>`;
-  return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr"><h3>BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h3><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
+  return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr">${vBindungFeld(d)}<h3>BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h3><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
 }
 
 /* ── Erster Start ── */

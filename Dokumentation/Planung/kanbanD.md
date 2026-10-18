@@ -271,7 +271,7 @@ zuletzt: 2026-10-18
 | B0190 | Bubble | I0056 | Bindungsregel im Server | gruen | Test gruen | gebundene_anwendungen(board, register): None + genau eine registriert → diese, Some([]) → keine; GET /api/boards/{slug} liefert phasen: null, trägt keine Spalten nach, kein Commit | 0,5-1 |  |  |  |  |
 | B0191 | Bubble | I0056 | Bindungsregel in der Oberfläche | gruen | Test gruen | gebundeneAnwendungen(board, register) in web/wbs.js: fehlend/null → Standard, [] → keine; Menü ohne „WBS“ | 0,5-1 |  |  |  |  |
 | B0192 | Bubble | I0056 | Bindung über die API setzen | gruen | Test gruen | PUT /api/boards/{slug}/anwendungen [kürzel…] → applications gesetzt ([] löst), Commit „Anwendungen von „<Board>“: …“, unbekanntes Kürzel 400, ohne Änderung kein Commit | 0,5-1 |  |  |  |  |
-| B0193 | Bubble | I0056 | Bindung im Spalten-Dialog | rot | Test gruen | Spalten-Dialog (R00009) → Abschnitt „Gebunden an“ mit Schalter je registrierter Anwendung und „keine“ → PUT …/anwendungen | 0,5-1 |  |  |  |  |
+| B0193 | Bubble | I0056 | Bindung im Spalten-Dialog | gruen | Test gruen | Spalten-Dialog (R00009) → Abschnitt „Gebunden an“ mit Schalter je registrierter Anwendung und „keine“ → PUT …/anwendungen | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 

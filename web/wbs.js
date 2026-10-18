@@ -9,6 +9,14 @@
     return genannt.map(k => register.find(a => a.kuerzel === k)).filter(Boolean);
   }
 
+  /** Bindung im Spalten-Dialog: schaltet `kuerzel` im gerechneten Stand um (fehlt `applications`, der Standard);
+      leeres Kürzel = „keine“. Ergebnis ist immer eine ausdrückliche Liste für PUT …/anwendungen (R00062). */
+  function bindungUmschalten(anwendungen, kuerzel, register) {
+    if (!kuerzel) return [];
+    const jetzt = Array.isArray(anwendungen) ? anwendungen : gebundeneAnwendungen({ anwendungen }, register).map(a => a.kuerzel);
+    return jetzt.includes(kuerzel) ? jetzt.filter(k => k !== kuerzel) : [...jetzt, kuerzel];
+  }
+
   /** option, ausbau und verworfen zählen weder in Status noch Stand (Skill work-breakdown-structure). */
   const zaehlt = k => !['option', 'ausbau', 'verworfen'].includes(k.status);
 
@@ -189,5 +197,5 @@
     return [...new Set(k)];
   }
 
-  Object.assign(ziel, { kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  Object.assign(ziel, { kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, bindungUmschalten, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

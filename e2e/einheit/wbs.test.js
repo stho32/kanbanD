@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe, wirkungenJeKnoten } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, bindungUmschalten, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe, wirkungenJeKnoten } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -12,6 +12,16 @@ test('Board bindet die genannten registrierten Anwendungen, ohne Schlüssel die 
   assert.deepStrictEqual(gebundeneAnwendungen({}, [kd]), [kd], 'auch ohne Feld');
   assert.deepStrictEqual(gebundeneAnwendungen({ anwendungen: null }, [kd, kc]), [], 'bei mehreren ein reines Kanban');
   assert.deepStrictEqual(gebundeneAnwendungen(null, []), []);
+});
+
+test('Bindung im Spalten-Dialog umschalten: vom gerechneten Stand aus, „keine“ = []', () => {
+  assert.deepStrictEqual(bindungUmschalten(null, 'kd', [kd]), [], 'Standard gebunden → ausschalten löst');
+  assert.deepStrictEqual(bindungUmschalten([], 'kd', [kd]), ['kd']);
+  assert.deepStrictEqual(bindungUmschalten(null, 'kc', [kd, kc]), ['kc'], 'Standard bei zweien ist keine');
+  assert.deepStrictEqual(bindungUmschalten(['kd'], 'kc', [kd, kc]), ['kd', 'kc'], 'angehängt');
+  assert.deepStrictEqual(bindungUmschalten(['kc', 'kd'], 'kc', [kd, kc]), ['kd']);
+  assert.deepStrictEqual(bindungUmschalten(['kd', 'xx'], 'kd', [kd]), ['xx'], 'nicht registrierte bleiben erhalten');
+  assert.deepStrictEqual(bindungUmschalten(['kd'], '', [kd]), [], 'leeres Kürzel = keine');
 });
 
 test('applications: [] löst die Bindung auch bei genau einer registrierten Anwendung (R00062)', () => {

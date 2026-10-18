@@ -264,3 +264,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0190 Bindungsregel im Server | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0191 Bindungsregel in der Oberfläche | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0192 Bindung über die API setzen | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
+| 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0193 Bindung im Spalten-Dialog | Standard | 0,5-1h | 0,05h | 0,05h | autonom |

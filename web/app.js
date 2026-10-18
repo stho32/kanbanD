@@ -659,7 +659,8 @@ async function act(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])] })) }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])] })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
+      case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
       case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'setup-weg': u.setup = null; break;
       case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
@@ -721,6 +722,7 @@ async function act(a, arg, wert) {
         if (ichNoetig()) break;
         try {
           await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen })));
+          if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
           u.setup = null;
           return laden();
         } catch (f) { u.setup.fehler = f.message; break; }
