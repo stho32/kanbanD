@@ -26,6 +26,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("POST", "/api/boards", true, "Boards", "Board anlegen {titel, spalten?}"),
     e("GET", "/api/boards/{slug}", false, "Boards", "ein Board"),
     e("PUT", "/api/boards/{slug}/spalten", true, "Boards", "Spalten setzen [{name, alt?, grenze?}]"),
+    e("PUT", "/api/boards/{slug}/termine", true, "Boards", "Termine setzen [{name, datum, farbe, linie?: durchgehend|gestrichelt|gepunktet, staerke?: fein|normal|fett}]"),
     e("POST", "/api/boards/{slug}/bewegen", true, "Boards", "Aufgabe bewegen {nummer, spalte, index?} — ändert nur die Board-Datei"),
     e("POST", "/api/boards/{slug}/aufgaben", true, "Boards", "Aufgabe auf das Board legen {nummer, spalte?}"),
     e("DELETE", "/api/boards/{slug}/aufgaben/{nr}", true, "Boards", "Aufgabe vom Board nehmen"),

@@ -12,6 +12,7 @@ mod herkunft;
 mod kommentare;
 mod spalten;
 mod teilaufgaben;
+mod termine;
 mod timer;
 mod verlauf;
 mod zeiten;
