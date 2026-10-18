@@ -4,7 +4,7 @@ mod statisch;
 
 use crate::dienst::{Einrichtung, Kanban};
 use crate::fehler::Fehler;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -23,6 +23,7 @@ pub fn router(ordner: PathBuf) -> Router {
     Router::new()
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
+        .route("/api/boards/{slug}", get(board))
         .merge(statisch::router())
         .with_state(app)
 }
@@ -54,4 +55,9 @@ async fn zustand(State(app): State<App>) -> Result<Response, Fehler> {
 async fn einrichten(State(app): State<App>, Json(e): Json<Einrichtung>) -> Result<Response, Fehler> {
     let slug = blockierend(&app, move |k| k.einrichten(&e)).await?;
     Ok((StatusCode::CREATED, Json(json!({ "board": slug }))).into_response())
+}
+
+async fn board(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
+    let b = blockierend(&app, move |k| k.ordner().board(&slug)).await?;
+    Ok(Json(b).into_response())
 }

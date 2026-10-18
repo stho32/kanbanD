@@ -26,12 +26,12 @@ zuletzt: 2026-10-18
 | B0002 | Bubble | I0001 | Ordner vorbereiten | gruen | Test gruen | Startauftrag → Ordner vorhanden, Git-Repository vorhanden | 0,5-1 |  |  |  |  |
 | B0003 | Bubble | I0001 | Server starten | gruen | Test gruen | Startauftrag → lauschender Server auf freiem Port, URL | 0,5-1 |  |  |  |  |
 | B0004 | Bubble | I0001 | Oberfläche ausliefern und Browser öffnen | gruen | Test gruen | URL → Seite und /api/zustand, Browserfenster | 0,5-1 |  |  |  |  |
-| I0002 | Interaction | D0001 | Erster Start einrichten | gelb | US-1..US-3 |  |  |  | I0001 | R00002 | Ordner ohne kanbanD.md: ich, Agenten, Spalten des ersten Boards |
+| I0002 | Interaction | D0001 | Erster Start einrichten | gruen | US-1..US-3 |  |  |  | I0001 | R00002 | Ordner ohne kanbanD.md: ich, Agenten, Spalten des ersten Boards |
 | B0005 | Bubble | I0002 | Einstellungen lesen und schreiben | gruen | Test gruen | kanbanD.md ⇄ Einstellungen (Personen, Klassen, Quellen) | 0,5-1 |  |  |  |  |
 | B0006 | Bubble | I0002 | Board-Datei lesen und schreiben | gruen | Test gruen | boards/<slug>.md ⇄ Board (Titel, Spalten, Aufgabenzeilen, Grenzen) | 0,5-1 |  |  |  |  |
 | B0007 | Bubble | I0002 | Aktion committen | gruen | Test gruen | Pfade + Person + Nachricht → Commit mit Person als Autor | 0,5-1 |  |  |  |  |
 | B0008 | Bubble | I0002 | Einrichten | gruen | Test gruen | Einrichtung → kanbanD.md, boards/<slug>.md, ein Commit | 0,5-1 |  |  |  |  |
-| B0009 | Bubble | I0002 | Einrichtungsseite | rot | Test gruen | Formular mit Vorschau → POST /api/einrichten → Board | 0,5-1 |  |  |  |  |
+| B0009 | Bubble | I0002 | Einrichtungsseite | gruen | Test gruen | Formular mit Vorschau → POST /api/einrichten → Board | 0,5-1 |  |  |  |  |
 | I0003 | Interaction | D0001 | Identität wählen | rot | US der Anforderung |  |  |  | I0002 |  | „Ich bin …“ je Tab; schreibende Aktionen verlangen eine Identität |
 | I0004 | Interaction | D0002 | Board ansehen | rot | US der Anforderung |  |  |  | I0002 |  | Spalten aus der Board-Datei, Karten aus den Aufgaben |
 | I0005 | Interaction | D0002 | Aufgabe anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  | + Karte in einer Spalte |

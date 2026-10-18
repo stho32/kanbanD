@@ -73,3 +73,17 @@ async fn defekte_einstellungen_und_boards_werden_im_zustand_gemeldet() {
     assert_eq!(z["eingerichtet"], true);
     assert!(z["einstellungen"].is_null());
 }
+
+#[tokio::test]
+async fn board_wird_als_struktur_geliefert_und_unbekanntes_ist_404() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let c = reqwest::Client::new();
+    c.post(format!("{}api/einrichten", lauf.adresse)).json(&einrichtung()).send().await.unwrap();
+    let b: Value = c.get(format!("{}api/boards/entwicklung", lauf.adresse)).send().await.unwrap().json().await.unwrap();
+    assert_eq!(b["titel"], "Entwicklung");
+    assert_eq!(b["spalten"].as_array().unwrap().len(), 3);
+    assert_eq!(b["spalten"][2]["name"], "Erledigt");
+    let r = c.get(format!("{}api/boards/gibtsnicht", lauf.adresse)).send().await.unwrap();
+    assert_eq!(r.status(), 404);
+}

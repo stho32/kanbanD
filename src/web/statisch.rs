@@ -16,6 +16,16 @@ macro_rules! dateien {
 
 dateien! {
     "index.html" => "text/html; charset=utf-8",
+    "app.js" => "text/javascript; charset=utf-8",
+    "ansicht.js" => "text/javascript; charset=utf-8",
+    "kd-tokens.css" => "text/css; charset=utf-8",
+    "kd-base.css" => "text/css; charset=utf-8",
+    "kd-app.css" => "text/css; charset=utf-8",
+    "fonts/ibm-plex-sans-latin-400-normal.woff2" => "font/woff2",
+    "fonts/ibm-plex-sans-latin-500-normal.woff2" => "font/woff2",
+    "fonts/ibm-plex-sans-latin-600-normal.woff2" => "font/woff2",
+    "fonts/ibm-plex-mono-latin-400-normal.woff2" => "font/woff2",
+    "fonts/ibm-plex-mono-latin-500-normal.woff2" => "font/woff2",
 }
 
 fn liefern(name: &str) -> Response {

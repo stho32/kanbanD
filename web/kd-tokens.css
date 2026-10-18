@@ -1,0 +1,37 @@
+/* kanbanD — Token-Sheet. Blaugrau, eckig, dicht. Einziger Ort der Gestaltungswerte. Schriften lokal (OFL). */
+@font-face{font-family:"IBM Plex Sans";font-weight:400;font-display:swap;src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:600;font-display:swap;src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;font-display:swap;src:url(fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+:root{
+--kd-bg:oklch(0.965 0.005 250);--kd-surface:oklch(0.995 0.002 250);--kd-sunken:oklch(0.94 0.007 250);
+--kd-line:oklch(0.87 0.01 250);--kd-line-strong:oklch(0.76 0.014 250);
+--kd-text:oklch(0.24 0.02 255);--kd-muted:oklch(0.48 0.018 255);--kd-faint:oklch(0.62 0.014 255);
+--kd-head:oklch(0.29 0.028 255);--kd-head-text:oklch(0.93 0.01 250);--kd-head-muted:oklch(0.72 0.02 250);--kd-head-line:oklch(0.38 0.03 255);
+--kd-accent:oklch(0.5 0.13 255);--kd-accent-hover:oklch(0.44 0.13 255);--kd-accent-weak:oklch(0.93 0.035 255);--kd-accent-ink:oklch(0.38 0.12 255);
+--kd-mensch:oklch(0.52 0.07 215);--kd-mensch-weak:oklch(0.93 0.025 215);
+--kd-agent:oklch(0.6 0.13 65);--kd-agent-weak:oklch(0.94 0.045 75);--kd-agent-ink:oklch(0.42 0.1 60);
+--kd-warn:oklch(0.55 0.16 30);
+/* 16 Klassenfarben: Grund (hell) + Linie. Gleiche Helligkeit, Farbton im Abstand ~22°. Eigene Farben: Linie = gewählter Wert, Grund = color-mix(Linie 14%, weiß). */
+--kd-c-yellow:oklch(0.97 0.06 98);--kd-c-yellow-line:oklch(0.8 0.14 95);
+--kd-c-amber:oklch(0.955 0.05 80);--kd-c-amber-line:oklch(0.72 0.14 70);
+--kd-c-orange:oklch(0.95 0.045 55);--kd-c-orange-line:oklch(0.66 0.16 50);
+--kd-c-red:oklch(0.95 0.04 25);--kd-c-red-line:oklch(0.58 0.19 27);
+--kd-c-rose:oklch(0.95 0.035 5);--kd-c-rose-line:oklch(0.6 0.17 5);
+--kd-c-pink:oklch(0.95 0.035 345);--kd-c-pink-line:oklch(0.64 0.18 345);
+--kd-c-magenta:oklch(0.95 0.035 325);--kd-c-magenta-line:oklch(0.56 0.18 325);
+--kd-c-violet:oklch(0.95 0.03 300);--kd-c-violet-line:oklch(0.54 0.15 300);
+--kd-c-indigo:oklch(0.95 0.03 275);--kd-c-indigo-line:oklch(0.5 0.15 275);
+--kd-c-blue:oklch(0.95 0.03 250);--kd-c-blue-line:oklch(0.56 0.14 250);
+--kd-c-sky:oklch(0.955 0.03 230);--kd-c-sky-line:oklch(0.66 0.12 230);
+--kd-c-cyan:oklch(0.955 0.03 205);--kd-c-cyan-line:oklch(0.66 0.11 205);
+--kd-c-teal:oklch(0.955 0.03 180);--kd-c-teal-line:oklch(0.6 0.1 180);
+--kd-c-green:oklch(0.955 0.04 150);--kd-c-green-line:oklch(0.6 0.13 150);
+--kd-c-lime:oklch(0.96 0.05 125);--kd-c-lime-line:oklch(0.7 0.16 125);
+--kd-c-grey:oklch(0.935 0.006 250);--kd-c-grey-line:oklch(0.58 0.012 250);
+--kd-font:"IBM Plex Sans",system-ui,sans-serif;--kd-mono:"IBM Plex Mono",ui-monospace,monospace;
+--kd-s1:2px;--kd-s2:4px;--kd-s3:8px;--kd-s4:12px;--kd-s5:16px;--kd-s6:24px;
+--kd-row:28px;--kd-head-h:40px;
+--kd-shadow:0 2px 8px oklch(0.24 0.02 255 / .14);
+}
