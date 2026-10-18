@@ -70,7 +70,7 @@ function gewaehltesBoard() {
 async function laden() {
   S.zustand = await api('GET', '/api/zustand');
   S.einstellungenDefekt = S.zustand.eingerichtet && !S.zustand.einstellungen;
-  if (S.einstellungenDefekt) S.zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '' } };
+  if (S.einstellungenDefekt) S.zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
   if (!S.zustand.eingerichtet) {
     S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   } else {
@@ -91,6 +91,8 @@ async function laden() {
     // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
     S.bew = /^berichte\/(verlauf|durchlauf|prognose)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
     S.herkunft = herkunft;
+    // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
+    if (S.ui.view === 'einrichten') S.anwendungen = await api('GET', '/api/anwendungen');
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
     if (S.ui.offen) await dateiLaden();
@@ -540,6 +542,14 @@ async function act(a, arg, wert) {
         u.fokus = '#npk';
         break;
       }
+      case 'a-add': {
+        const kuerzel = ($('#nak').value || '').trim().toLowerCase(), name = (wert || '').trim();
+        if (!kuerzel || !name) { u.einr.fehler = 'Kürzel und Name nötig'; break; }
+        u.einr.quellen.anwendungen = [...(u.einr.quellen.anwendungen || []), { kuerzel, name, wbs: '', anforderungen: '' }];
+        u.fokus = `[data-ef="awbs"][data-i="${u.einr.quellen.anwendungen.length - 1}"]`;
+        break;
+      }
+      case 'a-del': u.einr.quellen.anwendungen.splice(+arg, 1); break;
       case 'k-pal': u.palFuer = u.palFuer === +arg ? null : +arg; break;
       case 'k-farbe': { const [i, f] = arg.split('|'); u.einr.klassen[+i].farbe = f; break; }
       case 'k-del': u.einr.klassen.splice(+arg, 1); u.palFuer = null; break;
@@ -713,6 +723,9 @@ document.addEventListener('input', e => {
     if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.klassen[i].farbe = v.trim().toLowerCase();
     if (ef === 'wbs') d.quellen.wbs = v;
     if (ef === 'anf') d.quellen.anforderungen = v;
+    if (ef === 'aname') d.quellen.anwendungen[i].name = v;
+    if (ef === 'awbs') d.quellen.anwendungen[i].wbs = v;
+    if (ef === 'aanf') d.quellen.anwendungen[i].anforderungen = v;
     d.fehler = null; d.gespeichert = false;
     $('#einr-vorschau').textContent = einstellungenText(d);
     return;

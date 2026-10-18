@@ -18,7 +18,10 @@ function einstellungenText(e) {
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
   s += '\nclasses:' + (e.klassen.length ? '' : ' {}');
   for (const k of e.klassen) s += `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`;
-  return s + `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}\n---`;
+  s += `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}`;
+  const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
+  if (register.length) s += '\n  applications:' + register.map(a => `\n    ${yamlSkalar(a.kuerzel)}: {name: ${yamlSkalar(a.name)}, wbs: ${yamlSkalar(a.wbs)}, requirements: ${yamlSkalar(a.anforderungen)}}`).join('');
+  return s + '\n---';
 }
 function boardText(titel, spalten) {
   return `# ${titel}\n` + spalten.map(s => `\n## ${s}\n`).join('');
@@ -591,7 +594,19 @@ ${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed
   return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}<div class="dflaeche wl-flaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>${vTermine(p)}${bloecke}${nicht}${methodik}</div>`;
 }
 
-/* ── Einrichten: Personen, Klassen, Quellen ── */
+/* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */
+/** Erreichbarkeit eines Pfads, wie der Server sie zuletzt gemeldet hat — nur solange der Pfad gespeichert ist. */
+function vErreichbar(a, feld) {
+  const g = (S.anwendungen || {})[a.kuerzel];
+  if (!g || g[feld] !== a[feld]) return `<span class="erreich" title="wird beim Speichern geprüft">—</span>`;
+  return g.erreichbar[feld] ? `<span class="erreich ja" title="Pfad gefunden">erreichbar</span>` : `<span class="erreich nein" title="Pfad nicht gefunden — die Anwendung ist nicht erreichbar, alle Boards bleiben benutzbar">nicht erreichbar</span>`;
+}
+function vRegister(d) {
+  const register = d.quellen.anwendungen || [];
+  const zeilen = register.map((a, i) => `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder"><span class="k">wbs</span><span class="w"><input class="mini-inp full" data-ef="awbs" data-i="${i}" value="${esc(a.wbs)}" placeholder="/voller/pfad/Dokumentation/Planung/app.md" aria-label="WBS-Pfad ${esc(a.kuerzel)}">${vErreichbar(a, 'wbs')}</span><span class="k">requirements</span><span class="w"><input class="mini-inp full" data-ef="aanf" data-i="${i}" value="${esc(a.anforderungen)}" placeholder="/voller/pfad/Anforderungen" aria-label="Anforderungspfad ${esc(a.kuerzel)}">${vErreichbar(a, 'anforderungen')}</span></div></div>`).join('');
+  return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
+}
+
 function vEinrichten() {
   const d = S.ui.einr, u = S.ui;
   const personen = d.personen.map((p, i) => `<div class="klz pz${p.aktiv ? '' : ' still'}" data-person="${esc(p.kuerzel)}"><span class="pk ${p.art === 'agent' ? 'pk-a' : 'pk-m'}${p.aktiv ? '' : ' pk-still'}">${esc(p.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(p.kuerzel)}</span><input class="inp" data-ef="pname" data-i="${i}" value="${esc(p.name)}" aria-label="Name ${esc(p.kuerzel)}"><span class="seg art"><span class="${p.art === 'human' ? 'an' : ''}" data-act="p-art" data-arg="${i}|human">Mensch</span><span class="${p.art === 'agent' ? 'an' : ''}" data-act="p-art" data-arg="${i}|agent">Agent</span></span><button class="btn btn-sym" data-act="p-still" data-arg="${i}" title="${p.aktiv ? 'stilllegen – nicht mehr wählbar, Name bleibt lesbar' : 'zurückholen'}" aria-label="${p.aktiv ? 'stilllegen' : 'zurückholen'} ${esc(p.kuerzel)}">${p.aktiv ? '⏸' : '↺'}</button></div>`).join('');
@@ -599,6 +614,7 @@ function vEinrichten() {
   return `<div class="einrichten"><div class="einr breit"><h3>PERSONEN <span class="mono">people:</span></h3><div class="hin">Menschen sind unter „Ich bin …“ wählbar; Agenten nennen sich an der API selbst. Stilllegen statt entfernen – der Name bleibt an Karten und Zeiten lesbar.</div>${personen}<div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" id="npk" placeholder="kürzel" aria-label="Neues Kürzel"><input class="inp" id="npn" placeholder="Name · Enter" data-enter="p-add" aria-label="Neuer Name"><span class="seg art"><span class="${u.nart !== 'agent' ? 'an' : ''}" data-act="n-art" data-arg="human">Mensch</span><span class="${u.nart === 'agent' ? 'an' : ''}" data-act="n-art" data-arg="agent">Agent</span></span><span></span></div>
 <h3>KLASSEN <span class="mono">classes:</span></h3><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nck" placeholder="schlüssel" aria-label="Neuer Klassenschlüssel"><input class="inp" id="ncl" placeholder="Bezeichnung · Enter" data-enter="k-add" aria-label="Neue Bezeichnung"><span></span><span></span></div>
 <h3>QUELLEN <span class="mono">sources:</span></h3><div class="felder"><span class="k">wbs</span><span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span><span class="k">requirements</span><span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>
+<h3>ANWENDUNGEN <span class="mono">sources.applications:</span></h3><div class="hin">Je Anwendung ein Kürzel und die vollen Pfade zu WBS und Anforderungen im Arbeits-Repository. Aufgaben nennen ihre Herkunft dann als <span class="mono">kd:I0007</span>; Boards binden Anwendungen mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
 ${d.fehler ? `<div class="warnh" role="alert">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted">gespeichert</span>' : ''}</div></div>
 <aside class="einr"><h3>KANBAND.MD <span class="mono">Vorschau</span></h3><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d))}</pre></aside></div>`;
 }

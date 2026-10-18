@@ -192,7 +192,7 @@ zuletzt: 2026-10-18
 | B0120 | Bubble | I0048 | Herkunft je Anwendung auflösen | gruen | Test gruen | Herkunft der Aufgaben + Register → Quelle je Schreibweise mit anwendung; mehrdeutig nicht geliefert; braucht qualifiziert | 1-2 |  |  |  |  |
 | B0121 | Bubble | I0048 | Erreichbarkeit der Anwendungen | gruen | Test gruen | GET /api/anwendungen → Register mit erreichbar je Pfad; fehlender Pfad macht nichts defekt | 0,5-1 |  |  |  |  |
 | B0122 | Bubble | I0048 | Board bindet Anwendungen | gruen | Test gruen | boards/<slug>.md applications ⇄ Board.anwendungen; Bewegen erhält den Schlüssel | 0,5-1 |  |  |  |  |
-| B0123 | Bubble | I0048 | Register in den Einstellungen pflegen | rot | Test gruen | Einstellungsseite: Anwendung anlegen, ändern, entfernen; erreichbar je Pfad; Vorschau; ein Commit | 1-2 |  |  |  |  |
+| B0123 | Bubble | I0048 | Register in den Einstellungen pflegen | gruen | Test gruen | Einstellungsseite: Anwendung anlegen, ändern, entfernen; erreichbar je Pfad; Vorschau; ein Commit | 1-2 |  |  |  |  |
 | B0124 | Bubble | I0048 | Qualifizierte Herkunft an der Karte | rot | Test gruen | Herkunft-Chip mit Link in die WBS der Anwendung, „mehrdeutig“ bei unqualifizierter Herkunft; wartet auf qualifiziert | 0,5-1 |  |  |  |  |
 | I0049 | Interaction | D0008 | WBS-Sicht ansehen | rot | US-1..US-3 |  |  |  | I0048 | R00054 | WBS 1: Tabelle nach /planung karte, Stand, live, nicht committet |
 | I0050 | Interaction | D0008 | WBS-Status setzen | rot | US-1..US-3 |  |  |  | I0049 | R00055 | WBS 1: Blätter rot/gelb/gruen, Vorfahren gerechnet, kein Commit im Arbeits-Repository |
