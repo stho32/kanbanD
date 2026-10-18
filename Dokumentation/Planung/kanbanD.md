@@ -121,7 +121,10 @@ zuletzt: 2026-10-18
 | B0071 | Bubble | I0027 | Zeilen aus eingefügtem Text | gruen | Test gruen | eingefügter Text → Titel je Zeile ohne Listenzeichen | 0,5-1 |  |  |  |  |
 | B0072 | Bubble | I0027 | Mehrere anlegen über die API | gruen | Test gruen | Titelliste → Aufgaben bzw. Teilaufgaben, ein Commit | 1-2 |  |  |  |  |
 | B0073 | Bubble | I0027 | Einfügen in Bahn, Liste und Teilaufgaben | gruen | Test gruen | Einfügen mehrzeiligen Texts → Rückfrage-freies Anlegen aller Zeilen | 1-2 |  |  |  |  |
-| I0028 | Interaction | D0002 | Schnelleingabe mit Kürzeln | rot | US der Anforderung |  |  |  | I0027 |  | UX-Überarbeitung: @kürzel, class:, label:, due:, I0001/R00001 im Titel setzen die Felder beim Anlegen |
+| I0028 | Interaction | D0002 | Schnelleingabe mit Kürzeln | rot | US-1..US-2 |  |  |  | I0027 | R00028 | UX-Überarbeitung: @kürzel, class:, label:, due:, I0001/R00001 im Titel setzen die Felder beim Anlegen |
+| B0074 | Bubble | I0028 | Schnelleingabe auswerten | rot | Test gruen | Titeltext + Personen/Klassen + heute → Titel und Felder | 1-2 |  |  |  |  |
+| B0075 | Bubble | I0028 | Felder beim Anlegen | rot | Test gruen | Titel + Felder → Aufgabe mit Klasse, Zuständigen, Labels, Fälligkeit, Herkunft; geprüft wie beim Ändern | 0,5-1 |  |  |  |  |
+| B0076 | Bubble | I0028 | Vorschau beim Tippen | rot | Test gruen | Eingabe → Vorschau der erkannten Felder unter dem Feld, Anlegen mit Feldern | 1-2 |  |  |  |  |
 | I0029 | Interaction | D0002 | Karte direkt bedienen | rot | US der Anforderung |  |  |  | I0014 |  | UX-Überarbeitung: Timer, mir zuweisen, umbenennen direkt an der Karte; Fälligkeit per Knopf |
 | I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |
 | I0031 | Interaction | D0002 | Rückgängig | rot | US der Anforderung |  |  |  | I0006 |  | UX-Überarbeitung: Hinweis mit rückgängig nach Bewegen, Anlegen, Entfernen |
