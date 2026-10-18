@@ -238,3 +238,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00058 Phasen als Spalten | B0170 Durchlaufen nach Phasen | Standard | 1-2h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0171 Prognose je Phase | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0172 Phasenblöcke in Wie lange noch | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
+| 2026-10-18 | R00058 Phasen als Spalten | B0173 Hinweis am Board | Standard | 0,5-1h | 0,01h | 0,01h | autonom |

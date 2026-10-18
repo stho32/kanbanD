@@ -308,6 +308,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Archiv, Hinweis, erster Start */
 .archbar{flex:none;display:flex;align-items:center;gap:var(--kd-s4);min-height:28px;padding:0 var(--kd-s4);background:var(--kd-c-grey);border-bottom:1px solid var(--kd-c-grey-line);font-size:12px}
 .archbar .lnk{margin-left:auto}
+.phasenbar{background:var(--kd-c-amber);border-bottom-color:var(--kd-c-amber-line);flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;gap:14px;align-items:center;box-shadow:var(--kd-shadow);font-size:12.5px}
 .toast .lnk{color:var(--kd-accent-weak)}
 .first{flex:1;display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);min-height:0;background:var(--kd-surface)}

@@ -44,3 +44,21 @@ test.describe('R00058', () => {
     await expect(page.locator('.wl-legende')).toContainText('„Abnahme“ noch nicht durchlaufen');
   });
 });
+
+test.describe('R00058 Hinweis', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('Spalte einer späteren Phase links einer früheren: Hinweis am Board, Phase im Spaltenkopf', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(mitRegister(arbeit, {
+      'boards/entwicklung.md': '---\ncolumn-phases:\n  Abnahme Mia: Abnahme\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n---\n\n# Entwicklung\n\n## Abnahme Mia\n\n## Entwicklung\n\n## Entwicklertest\n\n## Erledigt\n',
+    }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('#phasen-hinweis')).toContainText('„Abnahme Mia“ (Abnahme) steht links von „Entwicklung“ — die Phasenfolge ist Entwicklung → Entwicklertest → Abnahme');
+    await expect(page.locator('.bahn[data-col="Abnahme Mia"] .bahn-kopf .ph')).toHaveText('Abnahme');
+    await expect(page.locator('.bahn[data-col="Entwicklung"] .bahn-kopf .ph')).toHaveCount(0);
+    expect(k.git('log', '--format=%s')).not.toContain('Phasen-Spalten'); // nichts fehlt, nichts wird umgeordnet
+  });
+});
