@@ -73,7 +73,14 @@ function vFenster() {
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
 function vFensterAbschnitte(a) {
-  return vTeilaufgaben(a);
+  return vTeilaufgaben(a) + vKommentare(a);
+}
+function ichPerson() {
+  return S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
+}
+function vKommentare(a) {
+  const me = ichPerson();
+  return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><p>${esc(k.text).replace(/\n/g, '<br>')}</p><span class="mono">${esc(per(k.wer).name)} · ${esc(k.zeitpunkt)}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
 }
 function vTeilaufgaben(a) {
   const ok = a.teilaufgaben.filter(t => t.erledigt).length;

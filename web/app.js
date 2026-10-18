@@ -165,6 +165,12 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben`, { text: wert });
         return;
       }
+      case 'kommentar': {
+        if (!(wert || '').trim() || ichNoetig()) break;
+        u.fokus = '#km-inp';
+        await schreiben('POST', `/api/aufgaben/${u.offen}/kommentare`, { text: wert });
+        return;
+      }
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });

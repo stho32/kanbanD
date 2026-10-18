@@ -57,3 +57,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00012 Teilaufgaben abhaken | B0035 Teilaufgaben im Fenster | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00012 Teilaufgaben abhaken | Lauf R00012 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00013 Kommentieren | B0036 Kommentar über die API | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00013 Kommentieren | B0037 Kommentare im Fenster | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
