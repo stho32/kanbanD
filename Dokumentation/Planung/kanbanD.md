@@ -108,7 +108,8 @@ zuletzt: 2026-10-18
 | B0062 | Bubble | I0023 | Verlauf rechnen | gruen | Test gruen | Stände der Board-Datei mit Zeitpunkt → offen je Tag, Umfang, Durchlaufzeit je Aufgabe | 1-2 |  |  |  |  |
 | B0063 | Bubble | I0023 | Stände aus Git lesen | gruen | Test gruen | git log + git cat-file --batch → Stände der Board-Datei; GET /api/berichte/verlauf | 1-2 |  |  |  |  |
 | B0064 | Bubble | I0023 | Burndown und Durchlaufzeit zeigen | gruen | Test gruen | Linie offen je Tag mit Umfang, Hover, Tabelle der Durchlaufzeiten | 1-2 |  |  |  |  |
-| I0042 | Interaction | D0006 | Bewegungen eines Boards | rot | US-1 |  |  |  | I0023 |  | Berichte 2: je Aufgabe die Spaltenwechsel aus der Git-Geschichte des Boards, Grundlage aller Board-Berichte |
+| I0042 | Interaction | D0006 | Bewegungen eines Boards | rot | US-1 |  |  |  | I0023 | R00042 | Berichte 2: je Aufgabe die Spaltenwechsel aus der Git-Geschichte des Boards, Grundlage aller Board-Berichte |
+| B0103 | Bubble | I0042 | Spaltenwechsel aus den Ständen | rot | Test gruen | Stände des Boards → je Aufgabe Zeitpunkte und Spalte (oder vom Board), Endpunkt bewegungen | 1-2 |  |  |  |  |
 | I0043 | Interaction | D0006 | Berichtsfilter wie Kanbanflow | rot | US-1..US-3 |  |  |  | I0042 |  | Berichte 2: Zeitraum mit Vorgaben, Farben und Spalten ausschließen, nur Personen, nur Labels — für alle Berichte gleich |
 | I0044 | Interaction | D0006 | Burndown nach Zeitraum | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
 | I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
