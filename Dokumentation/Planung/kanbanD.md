@@ -249,7 +249,15 @@ zuletzt: 2026-10-18
 | B0172 | Bubble | I0053 | Phasenblöcke in Wie lange noch | gruen | Test gruen | Prognose mit Phasen → Blöcke, Kopfzeile, Legende und Tabelle „<Phase> durchlaufen“, Methodik nach Phasen | 0,5-1 |  |  |  |  |
 | B0173 | Bubble | I0053 | Hinweis am Board | gruen | Test gruen | Board mit Phasen → Hinweisleiste, wenn eine Spalte einer späteren Phase links einer früheren steht oder gebundene Anwendungen verschiedene Folgen haben; Phase im Spaltenkopf | 0,5-1 |  |  |  |  |
 | B0174 | Bubble | I0053 | Entfällt im Aufgabenfenster schalten | gruen | Test gruen | Aufgabenfenster auf gebundenem Board → Feld phases mit einem Schalter je Phase nach der Entwicklung → phases.skipped gesetzt oder entfernt | 0,5-1 |  |  |  |  |
-| I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | rot | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
+| I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | gelb | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
+| B0175 | Bubble | I0054 | column-checks im Board-Frontmatter | rot | Test gruen | Board-Text ↔ Spalte mit Prüfungen (`column-checks` wie `limits`/`column-phases`); Umbenennen nimmt sie mit, Entfernen nimmt sie weg | 0,5-1 |  |  |  |  |
+| B0176 | Bubble | I0054 | Katalog der Prüfungen | rot | Test gruen | Prüfungsname → Prüfung oder Hinweis „unbekannte Prüfung“; wbs-effects-green: Wirkungen create/rework, Knotenstände → erfüllt oder nicht grüne Knoten (rot/gelb, Knoten fehlt, WBS nicht erreichbar) | 0,5-1 |  |  |  |  |
+| B0177 | Bubble | I0054 | Zug nach rechts erkennen | rot | Test gruen | Board, Phasen, Spalte davor, Spalte danach → nach rechts? (Rang der Phase wie phasenRang, ohne Phasen Spaltenindex); Prüfungen, die ein Zug auslöst | 0,5-1 |  |  |  |  |
+| B0178 | Bubble | I0054 | Warnungen beim Bewegen | rot | Test gruen | POST …/bewegen → Zug immer ausgeführt und committet, Antwort mit warnungen [{pruefung, text, knoten}] aus den WBS der Anwendungen | 0,5-1 |  |  |  |  |
+| B0179 | Bubble | I0054 | Unbekannte Prüfung als Hinweis am Board | rot | Test gruen | GET /api/boards/{slug} → hinweise je unbekanntem Prüfungsnamen; Board bleibt lesbar und schreibbar, Hinweisleiste | 0,5-1 |  |  |  |  |
+| B0180 | Bubble | I0054 | Warnung in der Oberfläche | rot | Test gruen | Antwort mit warnungen → Hinweis „Achtung! …“ mit den nicht grünen Knoten als Links in die WBS-Sicht | 0,5-1 |  |  |  |  |
+| B0181 | Bubble | I0054 | Ausrufezeichen an der Karte | rot | Test gruen | Board, Aufgaben, WBS der gebundenen Anwendungen → rotes Ausrufezeichen mit Tooltip an Karten rechts einer Spalte mit nicht erfüllter Prüfung; live nach jeder WBS-Änderung | 1-2 |  |  |  |  |
+| B0182 | Bubble | I0054 | Prüfungen je Spalte konfigurieren | rot | Test gruen | Spalten-Dialog (R00009) → je Spalte Schalter wbs-effects-green → column-checks gesetzt oder entfernt | 0,5-1 |  |  |  |  |
 | I0055 | Interaction | D0003 | Zählen in Berichten | rot | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
 
 ## Offene Fragen
