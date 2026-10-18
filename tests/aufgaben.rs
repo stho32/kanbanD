@@ -36,3 +36,16 @@ async fn ordner_ohne_aufgaben_liefert_leere_liste() {
     let r: Value = reqwest::get(format!("{}api/aufgaben", lauf.adresse)).await.unwrap().json().await.unwrap();
     assert_eq!(r["aufgaben"].as_array().unwrap().len(), 0);
 }
+
+#[test]
+fn naechste_nummer_zaehlt_alle_dateinamen_auch_defekte() {
+    let tmp = tempfile::tempdir().unwrap();
+    let o = kanband::ablage::Ordner::neu(tmp.path().to_path_buf());
+    assert_eq!(o.naechste_nummer().unwrap(), 1);
+    let a = tmp.path().join("aufgaben");
+    std::fs::create_dir_all(&a).unwrap();
+    std::fs::write(a.join("0001-a.md"), "---\nid: 1\ntitle: a\n---\n").unwrap();
+    std::fs::write(a.join("0007-b.md"), "kaputt ---\n```kanbanD-time\n").unwrap();
+    std::fs::write(a.join("liesmich.md"), "").unwrap();
+    assert_eq!(o.naechste_nummer().unwrap(), 8);
+}

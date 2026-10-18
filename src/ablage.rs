@@ -88,6 +88,12 @@ impl Ordner {
         Ok((gut, defekt))
     }
 
+    /// Höchste Nummer unter allen Dateinamen in `aufgaben/` plus 1 — auch defekte Dateien zählen.
+    pub fn naechste_nummer(&self) -> Result<u32, Fehler> {
+        let hoechste = self.markdown_dateien(aufgabe::ORDNER)?.iter().filter_map(|(stamm, _)| aufgabe::nummer_aus_dateiname(stamm)).max().unwrap_or(0);
+        Ok(hoechste + 1)
+    }
+
     pub fn board(&self, slug: &str) -> Result<Board, Fehler> {
         let rel = board_pfad(slug);
         let text = self.lies(&rel)?.ok_or_else(|| Fehler::NichtGefunden(format!("Board „{slug}“ gibt es nicht")))?;
