@@ -63,6 +63,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/herkunft", get(herkunft))
+        .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
@@ -378,4 +379,14 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)
 async fn boards(State(app): State<App>) -> Result<Response, Fehler> {
     let (boards, _) = blockierend(&app, |k| k.ordner().boards()).await?;
     Ok(Json(boards).into_response())
+}
+
+async fn zeiten_csv(State(app): State<App>) -> Result<Response, Fehler> {
+    let csv = blockierend(&app, |k| {
+        let (aufgaben, _) = k.ordner().aufgaben()?;
+        let e = k.ordner().einstellungen()?.unwrap_or_default();
+        Ok(crate::berichte::zeiten_csv(&aufgaben, &e, &crate::uhr::jetzt()))
+    })
+    .await?;
+    Ok(([(axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"), (axum::http::header::CONTENT_DISPOSITION, "attachment; filename=\"kanbanD-zeiten.csv\"")], csv).into_response())
 }

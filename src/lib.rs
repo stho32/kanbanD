@@ -1,6 +1,7 @@
 //! kanbanD — ein Kanban, das ein Ordner ist.
 
 pub mod ablage;
+pub mod berichte;
 pub mod dienst;
 pub mod fehler;
 pub mod format;
