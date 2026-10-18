@@ -5,6 +5,7 @@ const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } }
 S.ui.filter = gemerkt('kanbanD.filter') || '';
 S.ui.bereich = gemerkt('kanbanD.bereich') || 'alle';
 S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
+S.ui.pBereich = 'alle';
 
 function filterSetzen(text) {
   S.ui.filter = text;
@@ -29,7 +30,8 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
-  return /^#\/einrichten/.test(location.hash) ? 'einrichten' : /^#\/aufgaben/.test(location.hash) ? 'aufgaben' : 'board';
+  const m = /^#\/(einrichten|aufgaben|personen)/.exec(location.hash);
+  return m ? m[1] : 'board';
 }
 
 function vHaupt() {
@@ -37,6 +39,7 @@ function vHaupt() {
   if (S.ui.setup) return vSetup();
   if (S.ui.view === 'einrichten' && S.ui.einr) return vEinrichten();
   if (S.ui.view === 'aufgaben') return vAufgaben();
+  if (S.ui.view === 'personen') return vPersonen();
   return vBoard();
 }
 
@@ -230,6 +233,9 @@ async function act(a, arg, wert) {
         if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
         break;
       }
+      case 'p-bereich': u.pBereich = arg; break;
+      case 'still-auch': u.stillAuch = !u.stillAuch; break;
+      case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
       case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;
       case 'legen': {

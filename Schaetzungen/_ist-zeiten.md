@@ -86,3 +86,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00020 Aufgabenliste und Board-Zuordnung | B0056 Aufgabenliste | Standard | 2-3h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00020 Aufgabenliste und Board-Zuordnung | Lauf R00020 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00021 Personenübersicht | B0057 Personenzahlen rechnen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00021 Personenübersicht | B0058 Seite Personen | Standard | 1-2h | 0,0h | 0,0h | autonom |

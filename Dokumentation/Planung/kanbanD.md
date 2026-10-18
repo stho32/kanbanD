@@ -18,7 +18,7 @@ zuletzt: 2026-10-18
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
-| D0005 | Dialog | A0001 | Personen | gelb | alle Interactions gruen |  |  |  |  | R00021 |  |
+| D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | rot | alle Interactions gruen |  |  |  |  |  | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
@@ -97,9 +97,9 @@ zuletzt: 2026-10-18
 | B0054 | Bubble | I0020 | Auf Board legen und abnehmen | gruen | Test gruen | Board + Nummer (+ Spalte) → Zeile anhängen bzw. entfernen, ein Commit | 1-2 |  |  |  |  |
 | B0055 | Bubble | I0020 | Alle Boards liefern | gruen | Test gruen | boards/*.md → GET /api/boards mit Struktur | 0,5-1 |  |  |  |  |
 | B0056 | Bubble | I0020 | Aufgabenliste | gruen | Test gruen | #/aufgaben: alle/ohne Board/archiviert, Liegt auf, auf Board legen, abnehmen, anlegen ohne Board | 2-3 |  |  |  |  |
-| I0021 | Interaction | D0005 | Personenübersicht | gelb | US-1..US-2 |  |  |  | I0014 | R00021 |  |
+| I0021 | Interaction | D0005 | Personenübersicht | gruen | US-1..US-2 |  |  |  | I0014 | R00021 |  |
 | B0057 | Bubble | I0021 | Personenzahlen rechnen | gruen | Test gruen | Aufgaben, Personen, Jetzt, Board → je Person läuft, heute, Woche, Tagesleiste, offen, begonnen, Gruppe | 1-2 |  |  |  |  |
-| B0058 | Bubble | I0021 | Seite Personen | rot | Test gruen | #/personen nach D0005: Gruppen, Tagesleiste, Stopp, Klick filtert das Board | 1-2 |  |  |  |  |
+| B0058 | Bubble | I0021 | Seite Personen | gruen | Test gruen | #/personen nach D0005: Gruppen, Tagesleiste, Stopp, Klick filtert das Board | 1-2 |  |  |  |  |
 | I0022 | Interaction | D0006 | Stundenzettel und CSV | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0023 | Interaction | D0006 | Burndown und Durchlaufzeit | rot | US der Anforderung |  |  |  | I0006 |  | aus der Git-Geschichte |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | rot | US der Anforderung |  |  |  | I0005 |  | Beschreibung unter /api, Identität je Aufruf |
