@@ -1,6 +1,6 @@
 ---
 id: R00019
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -28,10 +28,10 @@ Auch auf vollen Boards findet man das Gesuchte in Sekunden.
 
 ## Akzeptanzkriterien
 
-- [ ] `passt`: „kopf class:feature“ trifft #12 „Kopfzeile verdichten“ (feature), nicht #13 „Kopfzeile“ (bug); „#12“ trifft nur 12; „@cl“ nur Aufgaben mit cl; `origin:"thin air"` nur Aufgaben ohne Herkunft; `class:none` nur ohne Klasse; `label:UI` trifft `ui`
-- [ ] Oberfläche: „class:bug“ zeigt nur Fehler-Karten, Spaltenzahlen passen; Klick auf „Fehler“ in der Legende entfernt den Filter wieder
-- [ ] Oberfläche: „meine“ zeigt nur Karten, für die ich zuständig bin
-- [ ] Oberfläche: `/` fokussiert das Filterfeld, Esc leert es
+- [x] `passt`: „kopf class:feature“ trifft #12 „Kopfzeile verdichten“ (feature), nicht #13 „Kopfzeile“ (bug); „#12“ trifft nur 12; „@cl“ nur Aufgaben mit cl; `origin:"thin air"` nur Aufgaben ohne Herkunft; `class:none` nur ohne Klasse; `label:UI` trifft `ui`
+- [x] Oberfläche: „class:bug“ zeigt nur Fehler-Karten, Spaltenzahlen passen; Klick auf „Fehler“ in der Legende entfernt den Filter wieder
+- [x] Oberfläche: „meine“ zeigt nur Karten, für die ich zuständig bin
+- [x] Oberfläche: `/` fokussiert das Filterfeld, Esc leert es
 
 ## Betroffene Verzeichnisstruktur
 
