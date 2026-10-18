@@ -12,6 +12,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let m = yaml::lesen(y)?;
     let grenzen = yaml::zuordnung(&m, "limits");
     let phasen = yaml::zuordnung(&m, "column-phases");
+    let pruefungen = yaml::zuordnung(&m, "column-checks");
     let termine = termine_lesen(m.get("milestones"))?;
     let anwendungen = yaml::textliste(&m, "applications");
     let mut titel = None;
@@ -27,7 +28,8 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             }
             let grenze = grenzen.and_then(|g| g.get(name.as_str())).and_then(|v| v.as_u64()).map(|v| v as u32);
             let phase = phasen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).filter(|p| !p.trim().is_empty());
-            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase });
+            let pruefungen = pruefungen.and_then(|p| p.get(name.as_str())).map(pruefungsnamen).unwrap_or_default();
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -36,6 +38,15 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
         }
     }
     Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen })
+}
+
+/// `[wbs-effects-green]` oder ein einzelner Name → Namen ohne leere.
+fn pruefungsnamen(v: &Value) -> Vec<String> {
+    let namen: Vec<String> = match v {
+        Value::Sequence(l) => l.iter().filter_map(yaml::wert_als_text).collect(),
+        v => yaml::wert_als_text(v).into_iter().collect(),
+    };
+    namen.into_iter().map(|n| n.trim().to_string()).filter(|n| !n.is_empty()).collect()
 }
 
 const LINIEN: [(&str, Linie); 3] = [("solid", Linie::Durchgehend), ("dashed", Linie::Gestrichelt), ("dotted", Linie::Gepunktet)];
@@ -84,7 +95,8 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let mut s = String::new();
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
     let phasen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.phase.as_deref().map(|p| (sp.name.as_str(), p))).collect();
-    if !grenzen.is_empty() || !phasen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
+    let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
         s.push_str("---\n");
         if !b.anwendungen.is_empty() {
             s.push_str(&format!("applications: {}\n", yaml::liste(&b.anwendungen)));
@@ -99,6 +111,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
             s.push_str("column-phases:\n");
             for (spalte, phase) in phasen {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(phase)));
+            }
+        }
+        if !pruefungen.is_empty() {
+            s.push_str("column-checks:\n");
+            for sp in pruefungen {
+                s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), yaml::liste(&sp.pruefungen)));
             }
         }
         if !b.termine.is_empty() {
@@ -134,9 +152,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None },
-                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None },
-                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None },
+                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
+                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
             anwendungen: vec![],
@@ -217,13 +235,26 @@ mod tests {
     fn spaltenphasen_im_frontmatter_rundlauf() {
         let mut b = beispiel();
         b.spalten[1].phase = Some("Entwicklung".into());
-        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()) });
+        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
         let g = lesen("b", "---\ncolumn-phases: {A: Entwicklung, Fehlt: Abnahme}\n---\n## A\n## B\n").unwrap();
         assert_eq!(g.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None], "Eintrag ohne Spalte fällt weg");
+    }
+
+    #[test]
+    fn spaltenpruefungen_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
+        b.spalten[1].phase = Some("Entwicklung".into());
+        b.spalten[1].pruefungen = vec!["wbs-effects-green".into(), "xyz".into()];
+        let t = schreiben(&b, datei);
+        assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\ncolumn-checks:\n  In Arbeit: [wbs-effects-green, xyz]\n---\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        let g = lesen("b", "---\ncolumn-checks: {A: wbs-effects-green, B: [], Fehlt: [x]}\n---\n## A\n## B\n").unwrap();
+        assert_eq!(g.spalten.iter().map(|s| s.pruefungen.clone()).collect::<Vec<_>>(), [vec!["wbs-effects-green".to_string()], vec![]], "einzelner Name gilt, leere Liste und Eintrag ohne Spalte fallen weg");
     }
 
     #[test]

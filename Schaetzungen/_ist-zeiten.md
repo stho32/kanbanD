@@ -242,3 +242,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00058 Phasen als Spalten | B0174 Entfällt im Aufgabenfenster schalten | Standard | 0,5-1h | 0,02h | 0,03h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | Lauf R00058 | Nacharbeit | — | — | 0,05h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | Lauf R00058 | Konsolidierung | — | — | 0,03h | autonom |
+| 2026-10-18 | R00059 Plausibilitätsprüfung je Spalte | B0175 column-checks im Board-Frontmatter | Standard | 0,5-1h | 0,01h | 0,02h | autonom |

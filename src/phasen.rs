@@ -98,7 +98,7 @@ impl Phasenfolge {
             let frueher = |s: &Spalte| s.phase.as_deref().is_some_and(|ph| self.0[..k].iter().any(|q| q.name == ph));
             let vor_abschluss = board.spalten.iter().position(|s| Some(&s.name) == abschluss.as_ref()).unwrap_or(board.spalten.len());
             let stelle = board.spalten.iter().rposition(frueher).map_or(vor_abschluss, |i| (i + 1).min(vor_abschluss));
-            board.spalten.insert(stelle, Spalte { name: p.name.clone(), grenze: None, aufgaben: vec![], phase: Some(p.name.clone()) });
+            board.spalten.insert(stelle, Spalte { name: p.name.clone(), grenze: None, aufgaben: vec![], phase: Some(p.name.clone()), pruefungen: vec![] });
             ergaenzt.push(p.name.clone());
         }
         ergaenzt
@@ -139,7 +139,7 @@ mod tests {
     use super::*;
 
     fn board(spalten: &[(&str, Option<&str>)]) -> Board {
-        let spalten = spalten.iter().map(|(n, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: p.map(String::from) }).collect();
+        let spalten = spalten.iter().map(|(n, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: p.map(String::from), pruefungen: vec![] }).collect();
         Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: vec!["kd".into()] }
     }
 
