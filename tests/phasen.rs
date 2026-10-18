@@ -69,3 +69,45 @@ fn zwei_gebundene_anwendungen_mit_verschiedenen_folgen_die_erste_gilt_mit_hinwei
     assert_eq!(s.anwendung, "kc");
     assert_eq!(s.hinweise, ["„Lager“ hat die Phasenfolge Entwicklung → Review → Abnahme — es gilt die von „Kasse“: Entwicklung → Entwicklertest → Abnahme"]);
 }
+
+#[test]
+fn lesen_traegt_fehlende_phasen_spalten_in_einem_commit_nach_danach_nichts() {
+    let l = lage();
+    std::fs::write(l.board.path().join("boards/entwicklung.md"), "# Entwicklung\n\n## Backlog\n\n## Nächste Aufgaben\n\n## Entwicklung\n\n## Erledigt\n").unwrap();
+    git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "Board"]);
+    let vorher = git(l.board.path(), &["rev-list", "--count", "HEAD"]);
+    let b = l.kanban.board_mit_phasen("entwicklung").unwrap();
+    assert_eq!(b.board.spalten.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["Backlog", "Nächste Aufgaben", "Entwicklung", "Entwicklertest", "Abnahme", "Erledigt"]);
+    assert_eq!(b.phasen.as_ref().unwrap().folge.namen().len(), 3);
+    let text = gemeinsam::lies(l.board.path(), "boards/entwicklung.md");
+    assert!(text.starts_with("---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n---\n"), "{text}");
+    assert_eq!(git(l.board.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher.parse::<u32>().unwrap() + 1);
+    assert_eq!(git(l.board.path(), &["log", "-1", "--format=%an|%s"]), "kanbanD|Phasen-Spalten von „Entwicklung“ ergänzt: Entwicklung (zugeordnet), Entwicklertest, Abnahme");
+    l.kanban.board_mit_phasen("entwicklung").unwrap();
+    assert_eq!(git(l.board.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher.parse::<u32>().unwrap() + 1, "kein zweiter Commit");
+}
+
+#[test]
+fn ein_reines_kanban_bleibt_unberuehrt() {
+    let board = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(board.path());
+    let kanban = Kanban::neu(board.path().to_path_buf());
+    let b = kanban.board_mit_phasen("entwicklung").unwrap();
+    assert!(b.phasen.is_none());
+    assert_eq!(b.board.spalten.len(), 3);
+    assert_eq!(git(board.path(), &["rev-list", "--count", "HEAD"]), "1");
+}
+
+#[tokio::test]
+async fn get_board_liefert_spalten_mit_phase_und_die_phasen() {
+    let l = lage();
+    let lauf = gemeinsam::starten(l.board.path(), &["--port", "0"]);
+    let b: serde_json::Value = reqwest::get(format!("{}api/boards/entwicklung", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let spalten: Vec<(String, serde_json::Value)> = b["spalten"].as_array().unwrap().iter().map(|s| (s["name"].as_str().unwrap().to_string(), s["phase"].clone())).collect();
+    assert_eq!(spalten.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(), ["Zu erledigen", "In Arbeit", "Entwicklung", "Entwicklertest", "Abnahme", "Erledigt"]);
+    assert_eq!(spalten[2].1, "Entwicklung");
+    assert_eq!(spalten[0].1, serde_json::Value::Null);
+    assert_eq!(b["phasen"]["anwendung"], "kc");
+    assert_eq!(b["phasen"]["folge"][1]["name"], "Entwicklertest");
+    assert_eq!(b["phasen"]["hinweise"], serde_json::json!([]));
+}

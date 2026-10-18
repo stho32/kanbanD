@@ -25,7 +25,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/ereignisse", false, "Ordner", "Server-Sent Events {pfade, extern} je Änderung im Ordner"),
     e("GET", "/api/boards", false, "Boards", "alle Boards mit Spalten und Aufgabennummern"),
     e("POST", "/api/boards", true, "Boards", "Board anlegen {titel, spalten?}"),
-    e("GET", "/api/boards/{slug}", false, "Boards", "ein Board"),
+    e("GET", "/api/boards/{slug}", false, "Boards", "ein Board {slug, titel, spalten: [{name, grenze, aufgaben, phase}], termine, anwendungen, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“)"),
     e("PUT", "/api/boards/{slug}/spalten", true, "Boards", "Spalten setzen [{name, alt?, grenze?}]"),
     e("PUT", "/api/boards/{slug}/termine", true, "Boards", "Termine setzen [{name, datum, farbe, linie?: durchgehend|gestrichelt|gepunktet, staerke?: fein|normal|fett}]"),
     e("POST", "/api/boards/{slug}/bewegen", true, "Boards", "Aufgabe bewegen {nummer, spalte, index?} — ändert nur die Board-Datei"),

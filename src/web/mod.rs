@@ -163,7 +163,7 @@ async fn einrichten(State(app): State<App>, Json(e): Json<Einrichtung>) -> Resul
 }
 
 async fn board(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
-    let b = blockierend(&app, move |k| k.ordner().board(&slug)).await?;
+    let b = blockierend(&app, move |k| k.board_mit_phasen(&slug)).await?;
     Ok(Json(b).into_response())
 }
 
