@@ -185,3 +185,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00054 WBS-Sicht | B0125 WBS-Tabelle mit allen Spalten lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0126 Status oberer Knoten rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0127 Erreichte Ebene rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | B0128 Stand über die Slices | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

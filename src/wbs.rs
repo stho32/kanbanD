@@ -86,6 +86,67 @@ impl WbsTabelle {
     }
 }
 
+/// Der Stand des Ganzen über die Slice-Liste, dazu woran gerade gearbeitet wird.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Stand {
+    /// zählende Slices je gerechnetem Status; `gelb` zählt voll in den Rest
+    pub gruen: usize,
+    pub gelb: usize,
+    pub rot: usize,
+    /// alle zählenden Slices (ohne `option`, `ausbau`, `verworfen`, `bestehend`)
+    pub slices: usize,
+    /// oberstes gelbes Blatt in Tabellenreihenfolge, sonst das erste rote
+    pub aktiv: Option<String>,
+    /// von der Application bis zum aktiven Knoten
+    pub pfad: Vec<String>,
+    /// die gelben Blätter in Tabellenreihenfolge
+    pub laufend: Vec<String>,
+}
+
+impl WbsTabelle {
+    /// Ein Slice ist ein Blatt der Steuerungsebene: Feature, oder Interaction ohne zählende Features.
+    pub fn ist_slice(&self, k: &WbsKnoten) -> bool {
+        k.zaehlt() && (k.ebene == "Feature" || (k.ebene == "Interaction" && !self.kinder(&k.id).iter().any(|c| c.ebene == "Feature")))
+    }
+
+    /// Die zählenden Slices in Tabellenreihenfolge.
+    pub fn slices(&self) -> Vec<&WbsKnoten> {
+        self.0.iter().filter(|k| self.ist_slice(k) && k.status != "bestehend").collect()
+    }
+
+    fn blaetter_mit(&self, status: &str) -> Vec<&WbsKnoten> {
+        self.0.iter().filter(|k| k.zaehlt() && k.status == status && self.kinder(&k.id).is_empty()).collect()
+    }
+
+    /// Von der Application bis `id`; ein Zyklus in `Eltern` bricht ab.
+    pub fn pfad(&self, id: &str) -> Vec<String> {
+        let mut pfad = vec![];
+        let mut jetzt = self.knoten(id);
+        while let Some(k) = jetzt.filter(|k| !pfad.contains(&k.id)) {
+            pfad.push(k.id.clone());
+            jetzt = self.knoten(&k.eltern);
+        }
+        pfad.reverse();
+        pfad
+    }
+}
+
+pub fn stand(t: &WbsTabelle) -> Stand {
+    let stati: Vec<String> = t.slices().iter().map(|s| t.gerechneter_status(&s.id)).collect();
+    let anzahl = |s: &str| stati.iter().filter(|x| *x == s).count();
+    let laufend: Vec<String> = t.blaetter_mit("gelb").iter().map(|k| k.id.clone()).collect();
+    let aktiv = laufend.first().cloned().or_else(|| t.blaetter_mit("rot").first().map(|k| k.id.clone()));
+    Stand {
+        gruen: anzahl("gruen"),
+        gelb: anzahl("gelb"),
+        rot: stati.len() - anzahl("gruen") - anzahl("gelb"),
+        slices: stati.len(),
+        pfad: aktiv.as_deref().map(|a| t.pfad(a)).unwrap_or_default(),
+        aktiv,
+        laufend,
+    }
+}
+
 /// Die Ebenen in Planungsreihenfolge.
 const EBENEN: [&str; 5] = ["Application", "Dialog", "Interaction", "Feature", "Bubble"];
 
@@ -210,6 +271,48 @@ pub(crate) mod tests {
         let mut t = baum(&[("I0001", "Interaction", "", "rot"), ("I0002", "Interaction", "", "rot")]);
         t.0[0].notiz = "kein Feature nötig".into();
         assert_eq!((t.erreichte_ebene("I0001").as_str(), t.erreichte_ebene("I0002").as_str()), ("Feature", "Interaction"));
+    }
+
+    #[test]
+    fn stand_ueber_vier_zaehlende_slices_ohne_option() {
+        let t = baum(&[
+            ("A0001", "Application", "", "gelb"),
+            ("D0001", "Dialog", "A0001", "gelb"),
+            ("I0001", "Interaction", "D0001", "gelb"),
+            ("F0001", "Feature", "I0001", "gruen"),
+            ("F0002", "Feature", "I0001", "gelb"),
+            ("F0003", "Feature", "I0001", "option"),
+            ("I0002", "Interaction", "D0001", "gruen"),
+            ("B0001", "Bubble", "I0002", "gruen"),
+            ("I0003", "Interaction", "D0001", "rot"),
+            ("I0004", "Interaction", "D0001", "verworfen"),
+            ("I0005", "Interaction", "D0001", "bestehend"),
+            ("I0006", "Interaction", "D0001", "rot"),
+            ("F0004", "Feature", "I0006", "ausbau"),
+        ]);
+        let s = stand(&t);
+        assert_eq!(t.slices().iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["F0001", "F0002", "I0002", "I0003", "I0006"]);
+        assert_eq!((s.gruen, s.gelb, s.rot, s.slices), (2, 1, 2, 5));
+        let ohne_i0006 = WbsTabelle::aus(t.alle().iter().filter(|k| k.id != "I0006" && k.id != "F0004").cloned().collect());
+        let s = stand(&ohne_i0006);
+        assert_eq!((s.gruen, s.gelb, s.rot, s.slices), (2, 1, 1, 4), "50 % · 25 % · 25 %");
+    }
+
+    #[test]
+    fn slice_status_ist_gerechnet() {
+        let t = baum(&[("I0001", "Interaction", "", "gruen"), ("B0001", "Bubble", "I0001", "gruen"), ("B0002", "Bubble", "I0001", "rot")]);
+        assert_eq!((stand(&t).gruen, stand(&t).gelb), (0, 1));
+    }
+
+    #[test]
+    fn aktiver_knoten_oberstes_gelbes_blatt_sonst_erstes_rotes() {
+        let t = baum(&[("A0001", "Application", "", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0001", "Interaction", "D0001", "gelb"), ("B0001", "Bubble", "I0001", "rot"), ("B0002", "Bubble", "I0001", "gelb"), ("B0003", "Bubble", "I0001", "gelb"), ("I0002", "Interaction", "D0001", "rot")]);
+        let s = stand(&t);
+        assert_eq!((s.aktiv.as_deref(), s.pfad.clone(), s.laufend.clone()), (Some("B0002"), vec!["A0001".to_string(), "D0001".into(), "I0001".into(), "B0002".into()], vec!["B0002".to_string(), "B0003".into()]));
+        let nichts_gelb = baum(&[("D0001", "Dialog", "", "rot"), ("I0001", "Interaction", "D0001", "option"), ("I0002", "Interaction", "D0001", "rot")]);
+        assert_eq!(stand(&nichts_gelb).aktiv.as_deref(), Some("I0002"), "option ist kein Blatt, das zählt");
+        assert_eq!(stand(&baum(&[("I0001", "Interaction", "", "gruen")])).aktiv, None);
+        assert!(stand(&WbsTabelle::default()).pfad.is_empty());
     }
 
     #[test]
