@@ -1,6 +1,6 @@
 ---
 id: R00006
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,14 +27,14 @@ Jede Bewegung ist ein kleiner, mergebarer Diff mit Autor und Zeitpunkt — die G
 ## Akzeptanzkriterien
 
 ### Bewegen
-- [ ] Board `A: 1,2,3 · B: —`: `#2` nach B → `A: 1,3 · B: 2`; nur `boards/<slug>.md` im Commit
-- [ ] `#3` in A an Index 0 → `A: 3,1,2`; Nachricht „umsortiert“
-- [ ] Gleiche Position → kein Commit, `bewegt: false`
-- [ ] Aufgabe nicht auf dem Board → 404; unbekannte Spalte → 400; ohne Identität → 400
+- [x] Board `A: 1,2,3 · B: —`: `#2` nach B → `A: 1,3 · B: 2`; nur `boards/<slug>.md` im Commit
+- [x] `#3` in A an Index 0 → `A: 3,1,2`; Nachricht „umsortiert“
+- [x] Gleiche Position → kein Commit, `bewegt: false`
+- [x] Aufgabe nicht auf dem Board → 404; unbekannte Spalte → 400; ohne Identität → 400
 
 ### Oberfläche
-- [ ] Karte #1 aus „Zu erledigen“ auf die freie Fläche von „In Arbeit“ ziehen: #1 steht in „In Arbeit“, die Aufgabendatei ist unverändert
-- [ ] Karte #3 auf die obere Hälfte von #1 ziehen: #3 steht vor #1
+- [x] Karte #1 aus „Zu erledigen“ auf die freie Fläche von „In Arbeit“ ziehen: #1 steht in „In Arbeit“, die Aufgabendatei ist unverändert
+- [x] Karte #3 auf die obere Hälfte von #1 ziehen: #3 steht vor #1
 
 ## Betroffene Verzeichnisstruktur
 
