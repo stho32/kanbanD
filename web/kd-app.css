@@ -242,6 +242,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .anw .felder{border-top:0;grid-template-columns:110px minmax(0,1fr)}
 .erreich{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
 .erreich.nein{color:var(--kd-warn)}
+.org.mehrdeutig{color:var(--kd-warn)}
 .klz.pz .pk{justify-self:center}
 .klz.pz.still{background:var(--kd-bg)}
 .klz.pz.still .inp{color:var(--kd-muted);background:var(--kd-bg)}

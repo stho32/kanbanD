@@ -113,7 +113,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w"><select data-af="klasse" aria-label="Klasse"><option value="">— keine —</option>${(S.zustand.einstellungen.klassen).map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === a.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}${a.klasse && !cl ? `<option selected>${esc(a.klasse)}</option>` : ''}</select></span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014 oder thin air · Enter" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
@@ -193,9 +193,17 @@ function quelleLink(x) {
   const q = S.herkunft[x];
   return q ? `vscode://file${q.datei}:${q.zeile}` : null;
 }
+/** Standardanwendung (sources.wbs/requirements) und Register zusammen — wie der Server zählt. */
+function anwendungenZahl() {
+  const q = (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen) || {};
+  return (q.wbs || q.anforderungen ? 1 : 0) + (q.anwendungen || []).length;
+}
+/** Ohne Kürzel bei mehreren Anwendungen: der Server liefert sie bewusst nicht (R00053). */
+const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenZahl() > 1;
 function vHerkunftChip(x) {
   const q = S.herkunft[x], h = quelleLink(x);
   if (x === 'thin air') return `<span class="org leer" title="ohne Herkunft">thin air</span>`;
+  if (mehrdeutig(x)) return `<span class="org mehrdeutig" title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
   return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
 function vHerkunft(a) {
@@ -208,7 +216,9 @@ function wartetAuf(a) {
   const letzte = S.board.spalten[S.board.spalten.length - 1];
   const braucht = a.herkunft.flatMap(x => (S.herkunft[x] && S.herkunft[x].braucht) || []);
   if (!braucht.length) return [];
-  return S.aufgaben.filter(t => t.nummer !== a.nummer && !t.archiviert && t.herkunft.some(h => braucht.includes(h))
+  // qualifiziert vergleichen: I0005 und kd:I0005 sind derselbe Knoten, wenn kd die einzige Anwendung ist
+  const kanon = h => (S.herkunft[h] && S.herkunft[h].schluessel) || h;
+  return S.aufgaben.filter(t => t.nummer !== a.nummer && !t.archiviert && t.herkunft.some(h => braucht.includes(kanon(h)))
     && S.board.spalten.some(sp => sp !== letzte && sp.aufgaben.includes(t.nummer))).map(t => t.nummer);
 }
 

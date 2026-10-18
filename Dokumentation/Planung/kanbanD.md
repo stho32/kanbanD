@@ -14,7 +14,7 @@ zuletzt: 2026-10-18
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
-| D0001 | Dialog | A0001 | Start und Einrichtung | gelb | alle Interactions gruen |  |  |  |  | R00001 |  |
+| D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
@@ -185,7 +185,7 @@ zuletzt: 2026-10-18
 | B0101 | Bubble | I0040 | Zeilen auf Spalten und Archiv ziehen | gruen | Test gruen | Zeile + Ziel (Board · Spalte | Archiv) → legen, bewegen oder archivieren, ein Commit | 1-2 |  |  |  |
 | I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | gruen | US-1..US-2 |  |  |  | I0035 | R00041 | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
 | B0102 | Bubble | I0041 | Kürzel nach Kanbanflow-Konvention | gruen | Test gruen | n überall, Leertaste Timer, Entf archivieren, Hilfe zeigt Herkunft | 0,5-1 |  |  |  |  |
-| I0048 | Interaction | D0001 | Anwendungen registrieren | gelb | US-1..US-3 |  |  |  | I0010, I0018 | R00053 | WBS 1: Register mit Kürzel und vollen Pfaden, Board bindet 0..N, Herkunft kd:I0007 |
+| I0048 | Interaction | D0001 | Anwendungen registrieren | gruen | US-1..US-3 |  |  |  | I0010, I0018 | R00053 | WBS 1: Register mit Kürzel und vollen Pfaden, Board bindet 0..N, Herkunft kd:I0007 |
 | B0117 | Bubble | I0048 | Register in kanbanD.md lesen und schreiben | gruen | Test gruen | kanbanD.md sources.applications ⇄ Anwendungen (Kürzel, Name, WBS, Anforderungen); Rundlauf stabil nach Kürzel sortiert | 1-2 |  |  |  |  |
 | B0118 | Bubble | I0048 | Register prüfen | gruen | Test gruen | PUT /api/einstellungen mit Anwendungen → Kürzel gültig und eindeutig, Name nötig, sonst 400; ein Commit | 0,5-1 |  |  |  |  |
 | B0119 | Bubble | I0048 | Qualifizierte Herkunft prüfen | gruen | Test gruen | Herkunft kd:I0007 + Register → gültig und normalisiert; unbekanntes Kürzel → 400 | 0,5-1 |  |  |  |  |
@@ -193,7 +193,7 @@ zuletzt: 2026-10-18
 | B0121 | Bubble | I0048 | Erreichbarkeit der Anwendungen | gruen | Test gruen | GET /api/anwendungen → Register mit erreichbar je Pfad; fehlender Pfad macht nichts defekt | 0,5-1 |  |  |  |  |
 | B0122 | Bubble | I0048 | Board bindet Anwendungen | gruen | Test gruen | boards/<slug>.md applications ⇄ Board.anwendungen; Bewegen erhält den Schlüssel | 0,5-1 |  |  |  |  |
 | B0123 | Bubble | I0048 | Register in den Einstellungen pflegen | gruen | Test gruen | Einstellungsseite: Anwendung anlegen, ändern, entfernen; erreichbar je Pfad; Vorschau; ein Commit | 1-2 |  |  |  |  |
-| B0124 | Bubble | I0048 | Qualifizierte Herkunft an der Karte | rot | Test gruen | Herkunft-Chip mit Link in die WBS der Anwendung, „mehrdeutig“ bei unqualifizierter Herkunft; wartet auf qualifiziert | 0,5-1 |  |  |  |  |
+| B0124 | Bubble | I0048 | Qualifizierte Herkunft an der Karte | gruen | Test gruen | Herkunft-Chip mit Link in die WBS der Anwendung, „mehrdeutig“ bei unqualifizierter Herkunft; wartet auf qualifiziert | 0,5-1 |  |  |  |  |
 | I0049 | Interaction | D0008 | WBS-Sicht ansehen | rot | US-1..US-3 |  |  |  | I0048 | R00054 | WBS 1: Tabelle nach /planung karte, Stand, live, nicht committet |
 | I0050 | Interaction | D0008 | WBS-Status setzen | rot | US-1..US-3 |  |  |  | I0049 | R00055 | WBS 1: Blätter rot/gelb/gruen, Vorfahren gerechnet, kein Commit im Arbeits-Repository |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
