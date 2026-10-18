@@ -1,6 +1,6 @@
 ---
 id: R00042
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -24,8 +24,8 @@ Jede Auswertung des Flusses beruht auf denselben belegten Zeitpunkten.
 
 ## Akzeptanzkriterien
 
-- [ ] Drei Commits (01.10. #1 #2 in „Zu erledigen“, 02.10. #1 erledigt, 04.10. #2 erledigt, #1 vom Board) → #1: Zu erledigen, Erledigt, null; #2: Zu erledigen, Erledigt
-- [ ] Endpunkt steht in `GET /api/endpunkte`
+- [x] Drei Commits (01.10. #1 #2 in „Zu erledigen“, 02.10. #1 erledigt, 04.10. #2 erledigt, #1 vom Board) → #1: Zu erledigen, Erledigt, null; #2: Zu erledigen, Erledigt
+- [x] Endpunkt steht in `GET /api/endpunkte`
 
 ## Betroffene Verzeichnisstruktur
 
