@@ -219,9 +219,20 @@ function vDefektFenster() {
   if (!d) return '';
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div><div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
-const KUERZEL = [['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · m · F2', 'Timer · mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Bewegung / Anlage rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Umschalt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Enter', 'Karte öffnen'], ['n', 'neue Karte in dieser Spalte'], ['/', 'Filter'], ['↑ ↓ im Fenster', 'vorige / nächste Karte'], ['Esc', 'schließen, Filter leeren'], ['?', 'diese Übersicht']];
+const KUERZEL_BOARD = [['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · m · F2', 'Timer · mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Bewegung / Anlage rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Umschalt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Enter', 'Karte öffnen'], ['n', 'neue Karte in dieser Spalte'], ['Esc', 'Filter leeren'], ['/', 'Filter']];
+const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
+const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['a', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['/', 'Filter']];
+const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g e', 'Einrichten'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
+function hilfeOrt() {
+  if (S.ui.offen) return ['Aufgabenfenster', KUERZEL_FENSTER];
+  if (S.ui.view === 'board') return ['Board', KUERZEL_BOARD];
+  if (S.ui.view === 'aufgaben') return ['Aufgabenliste', KUERZEL_LISTE];
+  return null;
+}
 function vHilfe() {
-  return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" role="dialog" aria-label="Tastaturkürzel"><h3>TASTATURKÜRZEL</h3><table>${KUERZEL.map(([k, t]) => `<tr><td>${k.split(' ').map(x => x === '+' ? ' + ' : `<kbd>${esc(x)}</kbd>`).join('')}</td><td>${esc(t)}</td></tr>`).join('')}</table></div></div>`;
+  const zeilen = liste => liste.map(([k, t]) => `<tr><td>${k.split(' ').map(x => x === '+' ? ' + ' : `<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${esc(t)}</td></tr>`).join('');
+  const ort = hilfeOrt();
+  return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" role="dialog" aria-label="Tastaturkürzel">${ort ? `<h3>HIER: ${esc(ort[0].toUpperCase())}</h3><table>${zeilen(ort[1])}</table>` : ''}<h3>ÜBERALL</h3><table>${zeilen(KUERZEL_UEBERALL)}</table></div></div>`;
 }
 /** Sichtbare Karten je Spalte des Boards — Grundlage der Tastaturziele. */
 function sichtbareSpalten() {

@@ -145,8 +145,8 @@ zuletzt: 2026-10-18
 | I0034 | Interaction | D0002 | Kontextmenüs für Spalten und Listen | gruen | US-1..US-3 |  |  |  | I0033 | R00034 | UX-Überarbeitung 2: Spaltenkopf: Karte hinzufügen, alle archivieren, Spalten einrichten; Zeilen der Aufgabenliste |
 | B0089 | Bubble | I0034 | Mehrere archivieren und zurückholen | gruen | Test gruen | Nummernliste → archived setzen bzw. entfernen, laufende Timer stoppen, ein Commit | 0,5-1 |  |  |  |  |
 | B0090 | Bubble | I0034 | Menüs für Spaltenkopf und Aufgabenliste | gruen | Test gruen | Rechtsklick/Menütaste auf Spaltenkopf und Listenzeile → passende Menüs | 1-2 |  |  |  |  |
-| I0035 | Interaction | D0002 | Tastenkürzel überall | rot | US-1..US-3 |  |  |  | I0026 | R00035 | UX-Überarbeitung 2: g-Folgen für Seiten, Kürzel im Fenster und in der Aufgabenliste, Hilfe je Ort |
-| B0091 | Bubble | I0035 | g-Folgen und globale Kürzel | rot | Test gruen | g b/a/p/s/z/v/e wechseln die Seite, b Board-Umschalter, i Ich bin, ? überall | 1-2 |  |  |  |  |
+| I0035 | Interaction | D0002 | Tastenkürzel überall | gelb | US-1..US-3 |  |  |  | I0026 | R00035 | UX-Überarbeitung 2: g-Folgen für Seiten, Kürzel im Fenster und in der Aufgabenliste, Hilfe je Ort |
+| B0091 | Bubble | I0035 | g-Folgen und globale Kürzel | gruen | Test gruen | g b/a/p/s/z/v/e wechseln die Seite, b Board-Umschalter, i Ich bin, ? überall | 1-2 |  |  |  |  |
 | B0092 | Bubble | I0035 | Kürzel im Aufgabenfenster | rot | Test gruen | t, m, a, e, b, s, k, d im Fenster; Strg+Enter speichert die Beschreibung | 1-2 |  |  |  |  |
 | B0093 | Bubble | I0035 | Kürzel in der Aufgabenliste und Hilfe je Ort | rot | Test gruen | ↑↓ in der Liste, a, c; Hilfe zeigt die Kürzel des Orts und die überall gültigen | 0,5-1 |  |  |  |  |
 

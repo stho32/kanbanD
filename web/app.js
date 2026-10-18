@@ -155,7 +155,8 @@ function render() {
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
-  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe) { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
+  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
+  else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
 }
 
 function fenstertitel() {
@@ -576,6 +577,7 @@ document.addEventListener('keydown', e => {
     act(t.dataset.enter, t.dataset.arg, t.value);
     return;
   }
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && t.id === 'beschreibung') { e.preventDefault(); t.blur(); return; }
   if (e.key === 'Escape' && t.id === 'flt') {
     if (S.ui.filter) { filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
     return;
@@ -586,6 +588,7 @@ document.addEventListener('keydown', e => {
     act('rueckgaengig');
     return;
   }
+  if (ueberallTaste(e, t)) return;
   if (!S.ui.offen && !S.ui.pop && menueTasteAufZiel(e, t)) return;
   if (brettTaste(e, t)) return;
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
@@ -704,6 +707,61 @@ document.addEventListener('mouseover', e => {
   render();
 });
 
+/* Kürzel überall, im Aufgabenfenster und in der Aufgabenliste */
+function ueberallTaste(e, t) {
+  const u = S.ui;
+  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || e.ctrlKey || e.metaKey || e.altKey || u.menue || u.first || u.setup) return false;
+  if (e.key === '?') { u.hilfe = true; render(); return true; }
+  if (u.hilfe) return false;
+  if (u.offen) return fensterTaste(e);
+  if (u.pop || u.offenDefekt) return false;
+  const g = gFolge(S.gVorher, e.key);
+  clearTimeout(S.gUhr);
+  S.gVorher = g.warte ? 'g' : null;
+  if (g.warte) { S.gUhr = setTimeout(() => { S.gVorher = null; }, 1500); e.preventDefault(); return true; }
+  if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel; return true; }
+  if (e.key === 'b' || e.key === 'i') { e.preventDefault(); act('pop', e.key === 'b' ? 'board' : 'ich'); return true; }
+  if (u.view === 'aufgaben') return listenTaste(e, t);
+  return false;
+}
+function fensterTaste(e) {
+  const nr = S.ui.offen, a = aufgabe(nr);
+  if (!a) return false;
+  const fokus = sel => { const el = $(sel); if (el) { e.preventDefault(); el.focus(); } return true; };
+  switch (e.key) {
+    case 't': e.preventDefault(); laufende(a).some(z => z.wer === S.ich) ? act('stop', `${nr}|${S.ich}`) : act('start', String(nr)); return true;
+    case 'm': e.preventDefault(); act('mich', String(nr)); return true;
+    case 'a': e.preventDefault(); act(a.archiviert ? 'zurueckholen' : 'archivieren', String(nr)); return true;
+    case 'e': return fokus('[data-af="titel"]');
+    case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
+    case 's': return fokus('#teil-neu');
+    case 'k': return fokus('#km-inp');
+    case 'd': e.preventDefault(); act('tab', S.ui.tab === 'datei' ? 'inhalt' : 'datei'); return true;
+    default: return false;
+  }
+}
+function listenTaste(e, t) {
+  const zeilen = [...document.querySelectorAll('tr[data-zeile]')];
+  const jetzt = t.closest && t.closest('tr[data-zeile]');
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!zeilen.length) return false;
+    e.preventDefault();
+    const i = zeilen.indexOf(jetzt);
+    const n = i < 0 ? 0 : Math.max(0, Math.min(zeilen.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    zeilen[n].focus();
+    S.ui.fokusZeile = +zeilen[n].dataset.zeile;
+    return true;
+  }
+  if (jetzt && (e.key === 'a' || e.key === 'c')) {
+    e.preventDefault();
+    const a = aufgabe(+jetzt.dataset.zeile);
+    S.ui.fokusZeile = a.nummer;
+    act(e.key === 'c' ? 'kopieren' : a.archiviert ? 'zurueckholen' : 'archivieren', String(a.nummer));
+    return true;
+  }
+  return false;
+}
+
 /* Tastatur auf dem Board: Pfeile wählen, Umschalt+Pfeile verschieben, Enter öffnet, n legt an, ? hilft. */
 const RICHTUNG = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'hoch', ArrowDown: 'runter' };
 function brettTaste(e, t) {
@@ -711,7 +769,6 @@ function brettTaste(e, t) {
   if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || e.altKey) return false;
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
-  if (e.key === '?') { u.hilfe = true; render(); return true; }
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
   if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
     e.preventDefault();

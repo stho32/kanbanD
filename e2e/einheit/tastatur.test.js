@@ -29,3 +29,14 @@ test('Verschiebeziele', () => {
   assert.strictEqual(verschiebeziel(sp, 3, 'runter'), null);
   assert.strictEqual(verschiebeziel(sp, 9, 'links'), null);
 });
+
+const { gFolge } = require('../../web/tastatur.js');
+
+test('g-Folgen', () => {
+  assert.deepStrictEqual(gFolge(null, 'g'), { ziel: null, warte: true });
+  assert.deepStrictEqual(gFolge('g', 'a'), { ziel: '#/aufgaben', warte: false });
+  assert.deepStrictEqual(gFolge('g', 'v'), { ziel: '#/berichte/verlauf', warte: false });
+  assert.deepStrictEqual(gFolge('g', 'x'), { ziel: null, warte: false });
+  assert.deepStrictEqual(gFolge(null, 'a'), { ziel: null, warte: false });
+  assert.deepStrictEqual(gFolge('g', 'g'), { ziel: null, warte: false });
+});

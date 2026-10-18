@@ -34,5 +34,13 @@
     return { spalte: spalten[s].name, index: Math.min(o.i, spalten[s].karten.length) };
   }
 
-  Object.assign(ziel, { nachbar, verschiebeziel });
+  const G_ZIELE = { b: '#/board/', a: '#/aufgaben', p: '#/personen', s: '#/berichte/stundenzettel', z: '#/berichte/kreuz', v: '#/berichte/verlauf', e: '#/einrichten' };
+
+  /** g-Folgen: vorher = vorige Taste (oder null), taste = jetzige. Liefert {ziel, warte}. */
+  function gFolge(vorher, taste) {
+    if (vorher === 'g' && G_ZIELE[taste]) return { ziel: G_ZIELE[taste], warte: false };
+    return { ziel: null, warte: taste === 'g' && vorher !== 'g' };
+  }
+
+  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE });
 })(typeof module !== 'undefined' ? module.exports : window);
