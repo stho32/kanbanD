@@ -49,6 +49,26 @@ pub fn zelle_ersetzen(zeile: &str, spalte: usize, wert: &str) -> Option<String> 
     Some(format!("{}{innen}{}", &zeile[..r.start], &zeile[r.end..]))
 }
 
+/// `zuletzt: <heute>` im Frontmatter — ersetzt oder vor dem schließenden `---` ergänzt; ohne Frontmatter bleibt der Text, wie er ist.
+pub fn zuletzt_setzen(text: &str, heute: &str) -> String {
+    let zeilen: Vec<&str> = text.split_inclusive('\n').collect();
+    let strich = |z: &str| z.trim_end_matches(['\n', '\r']) == "---";
+    if !zeilen.first().is_some_and(|z| strich(z)) {
+        return text.to_string();
+    }
+    let Some(ende) = zeilen.iter().skip(1).position(|z| strich(z)).map(|p| p + 1) else { return text.to_string() };
+    let umbruch = if zeilen[0].ends_with("\r\n") { "\r\n" } else { "\n" };
+    let mut neu: Vec<String> = zeilen.iter().map(|z| z.to_string()).collect();
+    match (1..ende).find(|&i| zeilen[i].starts_with("zuletzt:")) {
+        Some(i) => {
+            let eigener = &zeilen[i][zeilen[i].trim_end_matches(['\n', '\r']).len()..];
+            neu[i] = format!("zuletzt: {heute}{eigener}");
+        }
+        None => neu.insert(ende, format!("zuletzt: {heute}{umbruch}")),
+    }
+    neu.concat()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,5 +87,13 @@ mod tests {
         assert_eq!(zelle_ersetzen(z, 2, "gelb").unwrap(), "| B0001 | Spalte \\| Archiv → x | gelb | n |\r\n");
         assert_eq!(zelle_ersetzen(z, 3, "a | b\nc").unwrap(), "| B0001 | Spalte \\| Archiv → x | rot | a \\| b c |\r\n", "Strich im Wert maskiert, Umbruch als Leerzeichen");
         assert_eq!(zellgrenzen("| a \\| b | c \\|").len(), 2, "Text nach dem letzten Strich ist eine Zelle");
+    }
+
+    #[test]
+    fn zuletzt_ersetzt_oder_ergaenzt() {
+        assert_eq!(zuletzt_setzen("---\napplication: k\nzuletzt: 2026-01-01\n---\n\n| x |\n", "2026-10-18"), "---\napplication: k\nzuletzt: 2026-10-18\n---\n\n| x |\n");
+        assert_eq!(zuletzt_setzen("---\r\napplication: k\r\n---\r\nzuletzt: alt\r\n", "2026-10-18"), "---\r\napplication: k\r\nzuletzt: 2026-10-18\r\n---\r\nzuletzt: alt\r\n", "ergänzt im Frontmatter, nicht im Text darunter");
+        assert_eq!(zuletzt_setzen("# WBS\nzuletzt: alt\n", "2026-10-18"), "# WBS\nzuletzt: alt\n", "ohne Frontmatter unverändert");
+        assert_eq!(zuletzt_setzen("---\nx: 1\n", "2026-10-18"), "---\nx: 1\n", "ohne schließenden Strich unverändert");
     }
 }

@@ -198,3 +198,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00054 WBS-Sicht | Lauf R00054 | Nacharbeit | — | — | 0,03h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | Lauf R00054 | Konsolidierung | — | — | 0,02h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | B0138 Zelle byte-treu ersetzen | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
+| 2026-10-18 | R00055 WBS-Status setzen | B0139 zuletzt im Frontmatter setzen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
