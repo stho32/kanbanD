@@ -3,6 +3,14 @@ name: Release
 on:
   push:
     branches: [main]
+    # Doku, Planung und Lizenz ändern das Programm nicht — kein neues Release dafür.
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "Anforderungen/**"
+      - "Dokumentation/**"
+      - "Schaetzungen/**"
   workflow_dispatch:
     inputs:
       bump:

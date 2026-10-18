@@ -90,9 +90,13 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
   bis zur Reparatur nur lesbar. Gleichzeitige Schreibzugriffe über Oberfläche und
   API werden nacheinander ausgeführt.
 
-- **Die WBS als Nachbar statt als Importquelle.** Liegt die WBS im selben
-  Repository, zeigt eine Karte auf ihren Knoten. `Braucht`-Beziehungen werden zu
-  echten Abhängigkeiten zwischen Karten und nicht zu Fließtext.
+- **Die WBS als Stand, die Aufgaben als Fortschritt.** Ein Board bindet keine bis
+  mehrere Anwendungen; deren WBS bleibt im Repository der Anwendung. kanbanD zeigt
+  sie als eigene Sicht — wie viel ist funktional, was ist in Arbeit, was fehlt — und
+  schreibt Status und Knoten dorthin. Aufgaben wirken auf Knoten: sie legen an,
+  setzen zur Überarbeitung zurück oder verwerfen. Die Phasen nach dem Bau sind
+  Spalten, durch die Aufgaben wandern; ein Zug ist ein Durchlauf. `Braucht`-
+  Beziehungen bleiben echte Abhängigkeiten zwischen Karten.
 
 - **Auswertungen aus der Geschichte.** Soll-Ist, Burndown, Durchlaufzeiten und Zeiten
   je Aufgabe und Kontributor werden aus den Dateien und ihrer Git-Geschichte gerechnet.
@@ -119,6 +123,9 @@ Der Nutzen: Ein Board, das mit dem Repository reist und seine Geschichte in Git
 trägt. Ein Agent kann es mit den Werkzeugen führen, die er ohnehin benutzt. Und es
 startet mit einem Befehl.
 
+Ein Agent führt Arbeitspakete, Phasen und Warteschlange auf dem Board statt in
+eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
+
 ## Leitplanken
 
 - **Rust, eine Anwendung.** Ein einziges Programm liefert Weboberfläche und WebApi
@@ -130,6 +137,10 @@ startet mit einem Befehl.
   `0012-titel/`), `<ordner>/boards/` die Boards (`<slug>.md`). Eine Board-Datei hat
   je Spalte eine Überschrift und je Aufgabe darunter eine Zeile mit ihrer Nummer;
   die letzte Spalte ist die Abschlussspalte.
+- **Board-Repository und Arbeits-Repository sind getrennt.** Die vielen Commits von
+  kanbanD liegen nicht in der Geschichte der Anwendung. `kanbanD.md` führt die
+  Anwendungen mit Kürzel und vollen Pfaden zu WBS und Anforderungen; Boards nennen
+  Kürzel, Herkunft wird als `kd:I0007` qualifiziert.
 - **Git ist Voraussetzung.** Ist der Ordner in keinem Git-Repository, legt kanbanD
   beim Start eines an. Der Git-Autor eines Commits ist die handelnde Person.
 - **Start mit einem Befehl.** `kanbanD <ordner>` startet die Anwendung und öffnet
@@ -161,7 +172,9 @@ startet mit einem Befehl.
 - **Kein Wechsel zwischen Ordnern.** Eine Instanz arbeitet auf genau einem Ordner.
   Ein zweiter Ordner ist eine zweite Instanz.
 - **Keine Datenbank als Wahrheit.** Was nicht in den Dateien steht, gibt es nicht.
-- **Kein Git-Client.** kanbanD committet seine eigenen Aktionen, mehr nicht. Pull,
+- **Kein Git-Client.** kanbanD committet seine eigenen Aktionen im Board-Repository,
+  mehr nicht; im Repository einer Anwendung ändert es Dateien, committet dort aber
+  nie. Pull,
   Push, Branch und Merge macht der Mensch mit seinen gewohnten Werkzeugen. kanbanD kommt mit dem zurecht, was dabei herauskommt.
 - **Kein Funktionsgleichstand mit Kanbanflow oder kanbanC.** Keine Mobile-Apps,
   keine Fremd-Integrationen, keine Benachrichtigungen und keine @-Mentions; aus
@@ -169,9 +182,10 @@ startet mit einem Befehl.
   Nummerierung und Critical Chain mit Puffer.
 - **Kein Projektmanagement-Werkzeug.** Kein Gantt, keine Kapazitäts- und
   Terminplanung. Auswertungen rechnen aus dem, was geschehen ist.
-- **Kein Ersatz für Vision, Anforderungen und WBS.** Diese Dokumente bleiben
-  eigenständig; das Board zeigt auf sie, statt sie zu kopieren. Es fließt nichts
-  in die WBS zurück; eine erledigte Aufgabe setzt keinen Knoten grün.
+- **Kein Ersatz für Vision und Anforderungen, keine zweite WBS.** Die Dokumente
+  bleiben Dateien im Repository der Anwendung; das Board zeigt auf sie, statt sie zu
+  kopieren. kanbanD schreibt in die WBS, aber `gruen` entsteht nie aus einer
+  Bewegung — grün setzt, wer geprüft hat.
 - **Kein Import aus kanbanC.** kanbanD beginnt neu.
 - **Keine weiteren Aufgabenquellen.** E-Mail und Formulare sind kein Vorhaben.
 
@@ -190,3 +204,6 @@ startet mit einem Befehl.
 | 2026-10-18 | Datenmodell fortgeschrieben: Aufgabenverzeichnis (je Aufgabe eine Datei, ggf. Anhang-Ordner) und Boardverzeichnis (je Board eine Markdown-Datei mit Struktur und Aufgabenverweisen); Bewegen ändert nur die Board-Datei. Ersetzt „Ein Board, das ein Ordner ist“ und „Keine Board-Verwaltung“ (jetzt „Kein Wechsel zwischen Ordnern“), Anhänge aus dem Nicht-Ziel gestrichen — Grund: Aufgaben sind unabhängig von Boards. Neue Richtungsfragen: Boards und Aufgaben, Timer, Mergebarkeit der Board-Datei, Änderungen von außen |
 | 2026-10-18 | Leitplanke „C# / .NET 10“ ersetzt durch „Rust, eine Anwendung“ — Grund: Auftrag, die Anwendung in Rust zu bauen; Ordneraufbau und „Git ist Voraussetzung“ als Leitplanken ergänzt |
 | 2026-10-18 | Richtungsfragen ohne Menschen nach bestem Wissen entschieden (Anmerkungen 1–8 in `kanbanD-anmerkungen.md`): Wer = Git-Autor; mehrere Boards je Instanz, Aufgabe auf mehreren oder keinem Board; Timer als Zeile in der Aufgabe, Commit bei Start und Stopp; Board-Datei mit einer Zeile je Aufgabe; Änderungen von außen werden gezeigt, nicht committet; defekte Dateien sichtbar und nur lesbar; kein Rückfluss zur WBS; Kontributoren im Ordner; kein kanbanC-Import; keine weiteren Aufgabenquellen. Neue Frage: doppelte Nummern aus zwei Branches |
+| 2026-10-18 | Zielbild „Die WBS als Nachbar statt als Importquelle“ ersetzt durch „Die WBS als Stand, die Aufgaben als Fortschritt“ (eigene WBS-Sicht, Wirkungen von Aufgaben auf Knoten, Phasen als Spalten); Nutzen um den Agenten ohne Verwaltungsdateien ergänzt — Grund: kanbanD soll WBS und Arbeit gemeinsam führen und Verwaltungs-Commands in `~/.claude` ersetzen (Durchgang im Pair) |
+| 2026-10-18 | Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ mit Register der Anwendungen (Kürzel, volle Pfade) und qualifizierter Herkunft ergänzt |
+| 2026-10-18 | Nicht-Ziele „Kein Ersatz für Vision, Anforderungen und WBS“ und „Kein Git-Client“ geschärft — Grund: kanbanD schreibt die WBS im Arbeits-Repository ohne dortigen Commit, `gruen` nie aus einer Bewegung; ersetzt „Es fließt nichts in die WBS zurück“ |
