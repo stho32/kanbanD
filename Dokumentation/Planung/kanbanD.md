@@ -258,7 +258,13 @@ zuletzt: 2026-10-18
 | B0180 | Bubble | I0054 | Warnung in der Oberfläche | gruen | Test gruen | Antwort mit warnungen → Hinweis „Achtung! …“ mit den nicht grünen Knoten als Links in die WBS-Sicht | 0,5-1 |  |  |  |  |
 | B0181 | Bubble | I0054 | Ausrufezeichen an der Karte | gruen | Test gruen | Board, Aufgaben, WBS der gebundenen Anwendungen → rotes Ausrufezeichen mit Tooltip an Karten rechts einer Spalte mit nicht erfüllter Prüfung; live nach jeder WBS-Änderung | 1-2 |  |  |  |  |
 | B0182 | Bubble | I0054 | Prüfungen je Spalte konfigurieren | gruen | Test gruen | Spalten-Dialog (R00009) → je Spalte Schalter wbs-effects-green → column-checks gesetzt oder entfernt | 0,5-1 |  |  |  |  |
-| I0055 | Interaction | D0003 | Zählen in Berichten | rot | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
+| I0055 | Interaction | D0003 | Zählen in Berichten | gelb | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
+| B0183 | Bubble | I0055 | reporting im Aufgaben-Frontmatter | rot | Test gruen | Frontmatter `reporting: {burndown, forecast}` ↔ Aufgabe (Berichtszaehlung, fehlender Schlüssel = Standard, unbekannte Schlüssel erhalten) | 0,5-1 |  |  |  |  |
+| B0184 | Bubble | I0055 | Zählen in Berichten über die API ändern | rot | Test gruen | PATCH /api/aufgaben/{nr} {reporting: {burndown?, forecast?}} → gesetzt, null entfernt den Schlüssel, Commit „#n geändert: Zählen in Berichten“ | 0,5-1 |  |  |  |  |
+| B0185 | Bubble | I0055 | Bewegungen mit reporting | rot | Test gruen | GET /api/berichte/bewegungen → je Aufgabe zusätzlich reporting {burndown, forecast} aus ihrer Datei; Format in /api/endpunkte | 0,5-1 |  |  |  |  |
+| B0186 | Bubble | I0055 | Burndown zählt nach reporting.burndown | rot | Test gruen | burndown(bew, …) → Aufgaben mit burndown: false nicht im Umfang, „Nicht enthalten: ausgenommen n“ im Burndown | 0,5-1 |  |  |  |  |
+| B0187 | Bubble | I0055 | Wie lange noch zählt nach reporting.forecast | rot | Test gruen | prognose(bew, …) → Aufgaben mit forecast: false nicht in Umfang, Nenner und Durchsatz, je Spalte und je Phase; „Nicht enthalten: ausgenommen n“ | 0,5-1 |  |  |  |  |
+| B0188 | Bubble | I0055 | Schalter im Aufgabenfenster | rot | Test gruen | Aufgabenfenster → Abschnitt „Zählt in Berichten“ mit je einem Schalter Burndown und Wie lange noch, „(Standard)“ solange der Schlüssel fehlt → PATCH reporting | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 
