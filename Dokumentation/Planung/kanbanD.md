@@ -68,7 +68,9 @@ zuletzt: 2026-10-18
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | gruen | US-1..US-2 |  |  |  | I0011 | R00012 |  |
 | B0034 | Bubble | I0012 | Teilaufgaben über die API | gruen | Test gruen | POST/PATCH/DELETE /api/aufgaben/<nr>/teilaufgaben[/<i>] → Checkbox-Zeilen, ein Commit | 0,5-1 |  |  |  |  |
 | B0035 | Bubble | I0012 | Teilaufgaben im Fenster | gruen | Test gruen | Klick hakt ab, + Teilaufgabe · Enter, ✕ entfernt | 0,5-1 |  |  |  |  |
-| I0013 | Interaction | D0003 | Kommentieren | rot | US der Anforderung |  |  |  | I0011 |  |  |
+| I0013 | Interaction | D0003 | Kommentieren | rot | US-1..US-2 |  |  |  | I0011 | R00013 |  |
+| B0036 | Bubble | I0013 | Kommentar über die API | rot | Test gruen | Text + Person + Uhrzeit → Zeile im Block kanbanD-comments, ein Commit | 0,5-1 |  |  |  |  |
+| B0037 | Bubble | I0013 | Kommentare im Fenster | rot | Test gruen | Liste mit Person und Zeit, + Kommentar · Enter | 0,5-1 |  |  |  |  |
 | I0014 | Interaction | D0003 | Timer starten und stoppen | rot | US der Anforderung |  |  |  | I0011 |  | mehrere gleichzeitig, fremde stoppbar, Kopfzeile N laufen |
 | I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0016 | Interaction | D0003 | Anhänge verwalten | rot | US der Anforderung |  |  |  | I0011 |  |  |
