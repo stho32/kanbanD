@@ -197,7 +197,7 @@ zuletzt: 2026-10-18
 | I0049 | Interaction | D0008 | WBS-Sicht ansehen | gelb | US-1..US-3 |  |  |  | I0048 | R00054 | WBS 1: Tabelle nach /planung karte, Stand, live, nicht committet |
 | B0125 | Bubble | I0049 | WBS-Tabelle mit allen Spalten lesen | gruen | Test gruen | WBS-Text → WbsTabelle: Spalten über die Kopfzeile, unbekannte Spalten erhalten, \| in Zellen | 0,5-1 |  |  |  |  |
 | B0126 | Bubble | I0049 | Status oberer Knoten rechnen | gruen | Test gruen | WbsTabelle → gerechneter Status je Knoten nach Skill; option/ausbau/verworfen zählen nicht, bestehend wie gruen | 0,5-1 |  |  |  |  |
-| B0127 | Bubble | I0049 | Erreichte Ebene rechnen | rot | Test gruen | WbsTabelle → erreichte Ebene je Knoten (Minimum der Kinder, kein Feature noetig) | 0,5-1 |  |  |  |  |
+| B0127 | Bubble | I0049 | Erreichte Ebene rechnen | gruen | Test gruen | WbsTabelle → erreichte Ebene je Knoten (Minimum der Kinder, kein Feature noetig) | 0,5-1 |  |  |  |  |
 | B0128 | Bubble | I0049 | Stand über die Slices | rot | Test gruen | WbsTabelle → Stand: gruen/gelb/rot über zählende Slices, aktiver Knoten mit Pfad, laufende Blätter | 0,5-1 |  |  |  |  |
 | B0129 | Bubble | I0049 | Geänderte WBS-Datei erkennen | rot | Test gruen | Pfad im Arbeits-Repository → nicht committet ja/nein (git status ohne Index-Schreiben) | 0,5-1 |  |  |  |  |
 | B0130 | Bubble | I0049 | WBS einer Anwendung ausliefern | rot | Test gruen | GET /api/wbs/{kürzel} → knoten, stand, nicht_committet, anforderungen; unbekannt 404, nicht erreichbar 409 | 1-2 |  |  |  |  |

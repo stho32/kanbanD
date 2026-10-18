@@ -65,6 +65,32 @@ impl WbsTabelle {
         pfad.pop();
         ampel(&stati).to_string()
     }
+
+    /// Wie tief ein Ast geplant ist: ohne zählende Kinder die eigene Ebene (Interaction mit Notiz
+    /// `kein Feature noetig`: Feature), sonst das Minimum über die erreichten Ebenen der Kinder.
+    pub fn erreichte_ebene(&self, id: &str) -> String {
+        EBENEN[self.rang_auf_pfad(id, &mut vec![])].to_string()
+    }
+
+    fn rang_auf_pfad<'a>(&'a self, id: &'a str, pfad: &mut Vec<&'a str>) -> usize {
+        let Some(k) = self.knoten(id) else { return 0 };
+        let kinder = self.kinder(id);
+        if kinder.is_empty() || pfad.contains(&id) {
+            let ohne_feature = k.ebene == "Interaction" && (k.notiz.contains("kein Feature noetig") || k.notiz.contains("kein Feature nötig"));
+            return if ohne_feature { rang("Feature") } else { rang(&k.ebene) };
+        }
+        pfad.push(id);
+        let tiefste = kinder.iter().map(|c| self.rang_auf_pfad(&c.id, pfad)).min().unwrap_or(0);
+        pfad.pop();
+        tiefste
+    }
+}
+
+/// Die Ebenen in Planungsreihenfolge.
+const EBENEN: [&str; 5] = ["Application", "Dialog", "Interaction", "Feature", "Bubble"];
+
+fn rang(ebene: &str) -> usize {
+    EBENEN.iter().position(|e| *e == ebene).unwrap_or(0)
 }
 
 impl WbsKnoten {
@@ -142,6 +168,48 @@ pub(crate) mod tests {
         assert_eq!(mit(&["rot", "bestehend"]), "rot");
         assert_eq!(mit(&["gruen", "verworfen", "option"]), "gruen", "option und verworfen zählen nicht");
         assert_eq!(mit(&["option", "ausbau"]), "rot", "ohne zählende Kinder gilt der eigene Status");
+    }
+
+    /// Mini-Baum aus `references/erreichte-ebene-beispiel.md` („Vorher“).
+    fn c64_clock() -> Vec<(&'static str, &'static str, &'static str, &'static str)> {
+        vec![
+            ("A0001", "Application", "", "gelb"),
+            ("D0001", "Dialog", "A0001", "gelb"),
+            ("I0001", "Interaction", "D0001", "gelb"),
+            ("B0001", "Bubble", "I0001", "gruen"),
+            ("B0002", "Bubble", "I0001", "bestehend"),
+            ("I0002", "Interaction", "D0001", "rot"),
+            ("D0002", "Dialog", "A0001", "rot"),
+            ("I0003", "Interaction", "D0002", "rot"),
+            ("I0004", "Interaction", "D0002", "option"),
+        ]
+    }
+
+    fn erreicht(t: &WbsTabelle) -> Vec<String> {
+        ["B0001", "B0002", "I0001", "I0002", "D0001", "I0003", "D0002", "A0001"].iter().map(|id| format!("{id} {}", t.erreichte_ebene(id))).collect()
+    }
+
+    #[test]
+    fn erreichte_ebene_wie_im_rechenbeispiel_vorher() {
+        let mut t = baum(&c64_clock());
+        t.0[2].notiz = "kein Feature noetig".into(); // mit Kindern gilt die Notiz nicht
+        assert_eq!(erreicht(&t), ["B0001 Bubble", "B0002 Bubble", "I0001 Bubble", "I0002 Interaction", "D0001 Interaction", "I0003 Interaction", "D0002 Interaction", "A0001 Interaction"]);
+    }
+
+    #[test]
+    fn erreichte_ebene_wie_im_rechenbeispiel_nachher() {
+        let mut z = c64_clock();
+        z.extend([("F0001", "Feature", "I0002", "rot"), ("B0003", "Bubble", "F0001", "rot"), ("B0004", "Bubble", "F0001", "rot"), ("F0002", "Feature", "I0002", "rot"), ("B0005", "Bubble", "F0002", "rot")]);
+        let t = baum(&z);
+        assert_eq!(erreicht(&t), ["B0001 Bubble", "B0002 Bubble", "I0001 Bubble", "I0002 Bubble", "D0001 Bubble", "I0003 Interaction", "D0002 Interaction", "A0001 Interaction"]);
+        assert_eq!(t.erreichte_ebene("F0001"), "Bubble");
+    }
+
+    #[test]
+    fn interaction_ohne_kinder_mit_notiz_erreicht_feature() {
+        let mut t = baum(&[("I0001", "Interaction", "", "rot"), ("I0002", "Interaction", "", "rot")]);
+        t.0[0].notiz = "kein Feature nötig".into();
+        assert_eq!((t.erreichte_ebene("I0001").as_str(), t.erreichte_ebene("I0002").as_str()), ("Feature", "Interaction"));
     }
 
     #[test]
