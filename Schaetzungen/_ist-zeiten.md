@@ -73,3 +73,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00016 Anhänge verwalten | Lauf R00016 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00017 Archivieren und zurückholen | B0047 Archivieren über die API | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00017 Archivieren und zurückholen | B0048 Archiv im Fenster und auf dem Board | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00017 Archivieren und zurückholen | Lauf R00017 | Nacharbeit | — | — | 0,0h | autonom |

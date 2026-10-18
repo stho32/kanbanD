@@ -1,6 +1,6 @@
 ---
 id: R00017
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,10 +27,10 @@ Das Board bleibt übersichtlich, die Geschichte vollständig.
 
 ## Akzeptanzkriterien
 
-- [ ] Archivieren mit einem laufenden Timer → `archived: <heute>`, Timer hat ein Ende, Nachricht `#1 archiviert, 1 Timer gestoppt`
-- [ ] Zweites Archivieren → 409; Zurückholen → kein `archived` mehr; zweites Zurückholen → 409
-- [ ] Oberfläche: archivieren im Fenster → Karte weg, „Archiv (1)“; „rückgängig“ → Karte wieder da
-- [ ] Oberfläche: Archivansicht zeigt die Karte; Zurückholen im Fenster bringt sie aufs Board
+- [x] Archivieren mit einem laufenden Timer → `archived: <heute>`, Timer hat ein Ende, Nachricht `#1 archiviert, 1 Timer gestoppt`
+- [x] Zweites Archivieren → 409; Zurückholen → kein `archived` mehr; zweites Zurückholen → 409
+- [x] Oberfläche: archivieren im Fenster → Karte weg, „Archiv (1)“; „rückgängig“ → Karte wieder da
+- [x] Oberfläche: Archivansicht zeigt die Karte; Zurückholen im Fenster bringt sie aufs Board
 
 ## Betroffene Verzeichnisstruktur
 
