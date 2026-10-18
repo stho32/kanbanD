@@ -82,6 +82,28 @@ pub struct Aufgabenaenderung {
     pub labels: Option<Vec<String>>,
     #[serde(default, deserialize_with = "entfernbar")]
     pub faellig: Option<Option<String>>,
+    pub herkunft: Option<Vec<String>>,
+}
+
+pub const OHNE_HERKUNFT: &str = "thin air";
+
+/// Doppelte entfernen, Reihenfolge des ersten Auftretens behalten.
+fn eindeutig(liste: Vec<String>) -> Vec<String> {
+    let mut aus: Vec<String> = vec![];
+    for x in liste {
+        if !aus.contains(&x) {
+            aus.push(x);
+        }
+    }
+    aus
+}
+
+/// WBS-Knoten (`I0007`, auch A/D/F/B), Anforderung (`R00014`) oder `thin air`.
+pub fn herkunft_gueltig(h: &str) -> bool {
+    let b = h.as_bytes();
+    h == OHNE_HERKUNFT
+        || (b.len() == 5 && b"ADIFB".contains(&b[0]) && b[1..].iter().all(u8::is_ascii_digit))
+        || (b.len() == 6 && b[0] == b'R' && b[1..].iter().all(u8::is_ascii_digit))
 }
 
 fn entfernbar<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
@@ -114,8 +136,7 @@ impl Aufgabe {
             if let Some(f) = z.iter().find(|k| e.person(k).is_none()) {
                 return Err(format!("Person „{f}“ steht nicht in kanbanD.md"));
             }
-            neu.zustaendige = z.clone();
-            neu.zustaendige.dedup();
+            neu.zustaendige = eindeutig(z.clone());
         }
         if let Some(l) = &a.labels {
             neu.labels = l.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect();
@@ -129,6 +150,16 @@ impl Aufgabe {
             }
             neu.faellig = f.map(Into::into);
         }
+        if let Some(h) = &a.herkunft {
+            let h: Vec<String> = h.iter().map(|x| x.trim()).filter(|x| !x.is_empty()).map(|x| if x.eq_ignore_ascii_case(OHNE_HERKUNFT) { OHNE_HERKUNFT.into() } else { x.to_uppercase() }).collect();
+            if let Some(f) = h.iter().find(|x| !herkunft_gueltig(x)) {
+                return Err(format!("„{f}“ ist keine Herkunft — erwartet I0001, R00014 oder thin air"));
+            }
+            if h.len() > 1 && h.iter().any(|x| x == OHNE_HERKUNFT) {
+                return Err("„thin air“ steht nur allein".into());
+            }
+            neu.herkunft = eindeutig(h);
+        }
         let mut felder = vec![];
         for (name, geaendert) in [
             ("Titel", neu.titel != self.titel),
@@ -137,6 +168,7 @@ impl Aufgabe {
             ("Zuständige", neu.zustaendige != self.zustaendige),
             ("Labels", neu.labels != self.labels),
             ("Fälligkeit", neu.faellig != self.faellig),
+            ("Herkunft", neu.herkunft != self.herkunft),
         ] {
             if geaendert {
                 felder.push(name);
@@ -174,6 +206,19 @@ mod tests {
         assert_eq!(a.aendern(&aend(r#"{"klasse":null,"faellig":null,"beschreibung":"b"}"#), &e()).unwrap(), vec!["Beschreibung", "Klasse", "Fälligkeit"]);
         assert!(a.klasse.is_none() && a.faellig.is_none());
         assert_eq!(a.datei, "0001-x.md");
+    }
+
+    #[test]
+    fn herkunft_pruefen_und_setzen() {
+        assert!(herkunft_gueltig("I0007") && herkunft_gueltig("D0001") && herkunft_gueltig("R00014") && herkunft_gueltig("thin air"));
+        assert!(!herkunft_gueltig("X1") && !herkunft_gueltig("I007") && !herkunft_gueltig("R0001") && !herkunft_gueltig("i0007"));
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        assert_eq!(a.aendern(&aend(r#"{"herkunft":["i0007"," R00014 ","I0007"]}"#), &e()).unwrap(), vec!["Herkunft"]);
+        assert_eq!(a.herkunft, vec!["I0007", "R00014"]);
+        assert!(a.aendern(&aend(r#"{"herkunft":["X1"]}"#), &e()).unwrap_err().contains("X1"));
+        assert!(a.aendern(&aend(r#"{"herkunft":["Thin Air","I0001"]}"#), &e()).is_err());
+        a.aendern(&aend(r#"{"herkunft":["THIN AIR"]}"#), &e()).unwrap();
+        assert_eq!(a.herkunft, vec!["thin air"]);
     }
 
     #[test]

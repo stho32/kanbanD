@@ -86,8 +86,8 @@ zuletzt: 2026-10-18
 | I0017 | Interaction | D0003 | Archivieren und zurückholen | gruen | US-1..US-3 |  |  |  | I0011 | R00017 |  |
 | B0047 | Bubble | I0017 | Archivieren über die API | gruen | Test gruen | archivieren (Datum, laufende Timer stoppen) / zurückholen → Aufgabendatei, ein Commit | 0,5-1 |  |  |  |  |
 | B0048 | Bubble | I0017 | Archiv im Fenster und auf dem Board | gruen | Test gruen | ▭ im Fenster, Hinweis mit rückgängig, Archiv (N) in der Abschlussspalte, Archivansicht | 1-2 |  |  |  |  |
-| I0018 | Interaction | D0003 | Herkunft und Abhängigkeiten | rot | US-1..US-3 |  |  |  | I0011 | R00018 | origins mit Editor-Link, WBS-Braucht als wartet auf |
-| B0049 | Bubble | I0018 | Herkunft ändern | rot | Test gruen | Aufgabe + Herkunftsliste (I0001, R00014, thin air) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
+| I0018 | Interaction | D0003 | Herkunft und Abhängigkeiten | gelb | US-1..US-3 |  |  |  | I0011 | R00018 | origins mit Editor-Link, WBS-Braucht als wartet auf |
+| B0049 | Bubble | I0018 | Herkunft ändern | gruen | Test gruen | Aufgabe + Herkunftsliste (I0001, R00014, thin air) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
 | B0050 | Bubble | I0018 | WBS und Anforderungen auflösen | rot | Test gruen | Quellpfade + Herkunft → Datei, Zeile, Name, Status, Braucht; GET /api/herkunft | 1-2 |  |  |  |  |
 | B0051 | Bubble | I0018 | Herkunft und Wartet-auf zeigen | rot | Test gruen | Chips mit Editor-Link, hinzufügen/entfernen, wartet auf #n an Karte und Fenster | 1-2 |  |  |  |  |
 | I0019 | Interaction | D0002 | Filtern | rot | US der Anforderung |  |  |  | I0005, I0010 |  | Text, class:, origin:, @person, is:archived |
