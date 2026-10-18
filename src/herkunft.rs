@@ -2,20 +2,9 @@
 
 use crate::wbs::{WbsKnoten, WbsTabelle};
 
-/// Zellen einer Tabellenzeile; `\\|` ist ein Strich im Text, kein Spaltentrenner.
+/// Zellen einer Tabellenzeile; `\\|` ist ein Strich im Text, kein Spaltentrenner (Grenzen wie beim Schreiben).
 fn zellen(zeile: &str) -> Vec<String> {
-    let innen = zeile.trim().strip_prefix('|').unwrap_or(zeile.trim());
-    let innen = innen.strip_suffix('|').filter(|r| !r.ends_with('\\')).unwrap_or(innen);
-    let mut alle = vec![String::new()];
-    let mut zeichen = innen.chars().peekable();
-    while let Some(c) = zeichen.next() {
-        match c {
-            '\\' if zeichen.peek() == Some(&'|') => alle.last_mut().expect("eine Zelle").push(zeichen.next().expect("Strich")),
-            '|' => alle.push(String::new()),
-            c => alle.last_mut().expect("eine Zelle").push(c),
-        }
-    }
-    alle.into_iter().map(|z| z.trim().to_string()).collect()
+    crate::wbs_datei::zellgrenzen(zeile).into_iter().map(|r| zeile[r].trim().replace("\\|", "|")).collect()
 }
 
 /// Die bekannten Spalten der Knotentabelle (`/planung`); andere bleiben als `weitere` erhalten.

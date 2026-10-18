@@ -13,4 +13,5 @@ pub mod uhr;
 pub mod verlauf;
 pub mod waechter;
 pub mod wbs;
+pub mod wbs_datei;
 pub mod web;
