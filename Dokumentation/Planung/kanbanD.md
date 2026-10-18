@@ -21,11 +21,11 @@ zuletzt: 2026-10-18
 | D0005 | Dialog | A0001 | Personen | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0006 | Dialog | A0001 | Berichte | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | rot | alle Interactions gruen |  |  |  |  |  | ohne eigenen Bildschirm ausser der API-Beschreibung |
-| I0001 | Interaction | D0001 | Ordner öffnen | gelb | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
+| I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
 | B0002 | Bubble | I0001 | Ordner vorbereiten | gruen | Test gruen | Startauftrag → Ordner vorhanden, Git-Repository vorhanden | 0,5-1 |  |  |  |  |
 | B0003 | Bubble | I0001 | Server starten | gruen | Test gruen | Startauftrag → lauschender Server auf freiem Port, URL | 0,5-1 |  |  |  |  |
-| B0004 | Bubble | I0001 | Oberfläche ausliefern und Browser öffnen | rot | Test gruen | URL → Seite und /api/zustand, Browserfenster | 0,5-1 |  |  |  |  |
+| B0004 | Bubble | I0001 | Oberfläche ausliefern und Browser öffnen | gruen | Test gruen | URL → Seite und /api/zustand, Browserfenster | 0,5-1 |  |  |  |  |
 | I0002 | Interaction | D0001 | Erster Start einrichten | rot | US der Anforderung |  |  |  | I0001 |  | Ordner ohne kanbanD.md: ich, Agenten, Spalten des ersten Boards |
 | I0003 | Interaction | D0001 | Identität wählen | rot | US der Anforderung |  |  |  | I0002 |  | „Ich bin …“ je Tab; schreibende Aktionen verlangen eine Identität |
 | I0004 | Interaction | D0002 | Board ansehen | rot | US der Anforderung |  |  |  | I0002 |  | Spalten aus der Board-Datei, Karten aus den Aufgaben |

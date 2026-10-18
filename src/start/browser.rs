@@ -1,8 +1,12 @@
 use std::process::{Command, Stdio};
 
 /// Öffnet die Adresse im Standardbrowser; ein Fehlschlag wird nur gemeldet.
+/// `KANBAND_BROWSER` ersetzt den Standardbrowser durch ein eigenes Programm.
 pub fn oeffnen(adresse: &str) {
-    let (programm, args): (&str, Vec<&str>) = if cfg!(target_os = "macos") {
+    let eigenes = std::env::var("KANBAND_BROWSER").ok();
+    let (programm, args): (&str, Vec<&str>) = if let Some(p) = eigenes.as_deref() {
+        (p, vec![adresse])
+    } else if cfg!(target_os = "macos") {
         ("open", vec![adresse])
     } else if cfg!(windows) {
         ("cmd", vec!["/C", "start", "", adresse])

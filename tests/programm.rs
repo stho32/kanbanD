@@ -38,3 +38,32 @@ fn hilfe_endet_mit_null() {
     assert_eq!(a.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&a.stderr).starts_with("Aufruf: kanbanD"));
 }
+
+#[test]
+fn ohne_kein_browser_wird_der_browser_mit_der_adresse_geoeffnet() {
+    let tmp = tempfile::tempdir().unwrap();
+    let protokoll = tmp.path().join("geoeffnet.txt");
+    let skript = tmp.path().join("browser.sh");
+    std::fs::write(&skript, format!("#!/bin/sh\necho \"$1\" > {}\n", protokoll.display())).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&skript, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let mut kind = Command::new(env!("CARGO_BIN_EXE_kanbanD"))
+        .arg(tmp.path().join("k"))
+        .args(["--host", "127.0.0.1", "--port", "0"])
+        .env("KANBAND_BROWSER", &skript)
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut zeile = String::new();
+    std::io::BufRead::read_line(&mut std::io::BufReader::new(kind.stdout.take().unwrap()), &mut zeile).unwrap();
+    let adresse = zeile.split_whitespace().last().unwrap().to_string();
+    let mut gelesen = String::new();
+    for _ in 0..50 {
+        gelesen = std::fs::read_to_string(&protokoll).unwrap_or_default();
+        if !gelesen.is_empty() { break; }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    kind.kill().unwrap();
+    let _ = kind.wait();
+    assert_eq!(gelesen.trim(), adresse);
+}
