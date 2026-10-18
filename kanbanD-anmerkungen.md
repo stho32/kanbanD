@@ -53,3 +53,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 47 | — | A2 | Zweite UX-Runde auf Auftrag (Rechtsklick-Menüs, Tastenkürzel) ohne Interview geschnitten: I0033 Kontextmenü der Karte, I0034 Spalten und Listen, I0035 Tastenkürzel überall | Dokumentation/Planung/kanbanD.md | offen |
 | 48 | I0033 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00033 | offen |
 | 49 | I0034 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00034 | offen |
+| 50 | I0035 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00035 | offen |
