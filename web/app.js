@@ -51,6 +51,9 @@ const kopie = x => JSON.parse(JSON.stringify(x));
 function gewaehltesBoard() {
   const m = /^#\/board\/([^/]+)/.exec(location.hash);
   const slugs = [...S.zustand.boards.map(b => b.slug), ...defekteBoards()];
+  let zuletzt = null;
+  try { zuletzt = localStorage.getItem('kanbanD.board'); } catch (_) { }
+  if (!m && zuletzt && slugs.includes(zuletzt)) return zuletzt;
   return m && slugs.includes(m[1]) ? m[1] : slugs[0] || null;
 }
 
@@ -66,6 +69,7 @@ async function laden() {
     if (S.ui.view !== 'einrichten') S.ui.einr = null;
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
+    try { if (S.ui.slug) localStorage.setItem('kanbanD.board', S.ui.slug); } catch (_) { }
     S.boardDefekt = null;
     const [board, aufgaben, herkunft, boards] = await Promise.all([
       S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; S.boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null,
@@ -143,6 +147,7 @@ function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
   S.ui.nachZug = false;
+  document.title = fenstertitel();
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
   $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '');
@@ -150,6 +155,13 @@ function render() {
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe) { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
+}
+
+function fenstertitel() {
+  if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
+  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown' };
+  const n = alleLaufenden().length;
+  return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
 
 function popPlatzieren() {
@@ -711,7 +723,13 @@ function liveVerbinden() {
   const q = new EventSource('/api/ereignisse');
   q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
   q.onerror = () => { if (S.live) { S.live = false; render(); } };
-  q.onopen = () => { if (!S.live) { S.live = true; laden().catch(() => { }); } };
+  q.onopen = () => {
+    if (!S.live) {
+      S.live = true;
+      laden().then(() => { S.ui.hinweis = { text: 'Wieder verbunden · Stand nachgeladen', at: Date.now() }; render(); }).catch(() => { });
+    }
+  };
+  S.ereignisquelle = q;
 }
 
 setInterval(() => {
