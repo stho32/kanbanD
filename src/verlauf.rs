@@ -35,13 +35,16 @@ pub struct Wechsel {
     pub spalte: Option<String>,
 }
 
-/// Je Aufgabe die Wechsel; dazu, was die Rechnung je Phase braucht: Labels (`im-pair` für „Eingebettet in“) und `phases.skipped`.
+/// Je Aufgabe die Wechsel; dazu, was die Rechnung je Phase braucht: Labels (`im-pair` für „Eingebettet in“) und `phases.skipped`,
+/// und ob sie in den Berichten zählt.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Bewegung {
     pub nummer: u32,
     pub wechsel: Vec<Wechsel>,
     pub labels: Vec<String>,
     pub uebersprungen: Vec<String>,
+    /// `reporting` der Aufgabe (R00060): `burndown`/`forecast` false nimmt sie aus dem Bericht, fehlt der Schlüssel, zählt sie
+    pub reporting: crate::modell::Berichtszaehlung,
 }
 
 /// Welche Phasen ein gebundenes Board hat und welche Spalte welche darstellt (`column-phases`, N:1).
@@ -83,7 +86,7 @@ pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetz
         }
         vorher = jetzt_da;
     }
-    let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![] }).collect();
+    let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![], reporting: Default::default() }).collect();
     Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben, phasen: None }
 }
 

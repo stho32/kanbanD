@@ -29,3 +29,12 @@ async fn patch_setzt_und_entfernt_je_aenderung_ein_commit_unbekanntes_bleibt() {
     senden(Method::PATCH, &lauf.adresse, "api/aufgaben/2", "st", json!({"reporting": {"burndown": false}})).await;
     assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), gleich, "ohne Änderung kein Commit");
 }
+
+#[tokio::test]
+async fn bewegungen_nennen_je_aufgabe_reporting() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = starten(&tmp);
+    let v: serde_json::Value = reqwest::get(format!("{}api/berichte/bewegungen?board=entwicklung", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let je: Vec<(u64, serde_json::Value)> = v["aufgaben"].as_array().unwrap().iter().map(|a| (a["nummer"].as_u64().unwrap(), a["reporting"].clone())).collect();
+    assert_eq!(je, [(1, json!({})), (2, json!({"forecast": false})), (3, json!({}))]);
+}

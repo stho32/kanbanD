@@ -14,7 +14,7 @@ impl Kanban {
     }
 
     /// Spaltenwechsel je Aufgabe aus denselben Ständen; Spalten in heutiger Reihenfolge. Bei einem gebundenen Board dazu
-    /// Phasenfolge und Spaltenphasen von heute und je Aufgabe Labels und entfallende Phasen aus ihrer Datei.
+    /// Phasenfolge und Spaltenphasen von heute; je Aufgabe Labels, entfallende Phasen und `reporting` aus ihrer Datei.
     pub fn bewegungen(&self, slug: &str) -> Result<Bewegungen, Fehler> {
         let (staende, jetzt) = self.staende(slug)?;
         let spalten = staende.last().map(|(_, b)| b.spalten.iter().map(|s| s.name.clone()).collect()).unwrap_or_default();
@@ -24,6 +24,7 @@ impl Kanban {
             if let Some(a) = aufgaben.iter().find(|a| a.nummer == b.nummer) {
                 b.labels = a.labels.clone();
                 b.uebersprungen = a.phasen.uebersprungen.clone();
+                b.reporting = a.zaehlung.clone();
             }
         }
         if let Some((_, heute)) = staende.last() {
