@@ -13,6 +13,14 @@ cargo build --release
 
 Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet; der Browser öffnet sich mit der Adresse. Beim ersten Start fragt die Seite nach „ich“, Agenten, Board und Spalten.
 
+## Bedienen in Kürze
+
+- **Mehrere auf einmal:** eine Liste (aus Notiz, Mail, Protokoll) in „+ Karte“, „+ Aufgabe ohne Board“ oder „+ Teilaufgabe“ einfügen — je Zeile eine, ein Commit.
+- **Schnelleingabe:** `Login reparieren @mi class:bug label:ui due:morgen I0007` setzt Zuständige, Klasse, Label, Fälligkeit und Herkunft gleich beim Anlegen; die Vorschau zeigt, was erkannt wurde.
+- **An der Karte:** ▶/■ Timer, „+ mich“, Doppelklick auf den Titel benennt um.
+- **Tastatur:** Pfeile wählen, Umschalt+Pfeile verschieben, Enter öffnet, `n` neue Karte, `t` Timer, `m` mir zuweisen, F2 umbenennen, `/` Filter, `?` alle Kürzel, Strg+Z macht die letzte Bewegung oder Anlage rückgängig.
+- **Filter:** Text, `#12`, `@kürzel`, `class:bug`, `origin:I0023`, `label:ui`, `is:archived`.
+
 ## Der Ordner
 
 ```
