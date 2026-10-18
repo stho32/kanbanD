@@ -1,6 +1,6 @@
 ---
 id: R00035
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,11 +25,11 @@ Die ganze Anwendung ist ohne Maus bedienbar; wer viel damit arbeitet, wird deutl
 
 ## Akzeptanzkriterien
 
-- [ ] `gFolge`: `g` dann `a` → Ziel `#/aufgaben`; `g` dann `x` → kein Ziel; `a` allein → kein Ziel
-- [ ] Oberfläche: `g` `p` zeigt „Personen“; `g` `b` wieder das Board; `b` öffnet den Board-Umschalter; `i` „Ich bin …“
-- [ ] Fenster: `t` startet den Timer, `m` weist mich zu, `k` setzt den Fokus ins Kommentarfeld, `d` zeigt die Datei
-- [ ] Liste: ↓ ↓ Enter öffnet die zweite Zeile; `a` archiviert die gewählte Zeile
-- [ ] `?` im Fenster zeigt „Hier: Aufgabenfenster“ und „Überall“
+- [x] `gFolge`: `g` dann `a` → Ziel `#/aufgaben`; `g` dann `x` → kein Ziel; `a` allein → kein Ziel
+- [x] Oberfläche: `g` `p` zeigt „Personen“; `g` `b` wieder das Board; `b` öffnet den Board-Umschalter; `i` „Ich bin …“
+- [x] Fenster: `t` startet den Timer, `m` weist mich zu, `k` setzt den Fokus ins Kommentarfeld, `d` zeigt die Datei
+- [x] Liste: ↓ ↓ Enter öffnet die zweite Zeile; `a` archiviert die gewählte Zeile
+- [x] `?` im Fenster zeigt „Hier: Aufgabenfenster“ und „Überall“
 
 ## Betroffene Verzeichnisstruktur
 
