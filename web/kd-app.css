@@ -507,3 +507,29 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .wl-tchance li{display:flex;align-items:center;gap:8px;margin-top:2px}
 .wl-tchance b{font-weight:600}
 .tm-form [data-tf="name"]{width:200px}
+
+/* ── WBS-Sicht (R00054): Tabelle nach /planung karte — Zeile in der Ampelfarbe, Status als Plakette, gerechnet umrandet ── */
+.wbs-titel{margin:0 0 var(--kd-s4);font-size:15px;font-weight:600}
+.wbs-titel .mono{font-size:11px;font-weight:400;color:var(--kd-muted);margin-left:var(--kd-s3)}
+.wbs-tabelle{overflow-x:auto}
+.wbs-tabelle td.wbs-text{white-space:normal;min-width:14em;padding-top:var(--kd-s2);padding-bottom:var(--kd-s2)}
+.wbs-tabelle td.wbs-ebene{color:var(--kd-muted);font-size:11px}
+.wbs-tabelle td.mono a{color:inherit}
+.wbs-z.rot td{background:color-mix(in srgb,var(--kd-wbs-error-bg) 70%,transparent)}
+.wbs-z.gelb td{background:color-mix(in srgb,var(--kd-wbs-warn-bg) 80%,transparent)}
+.wbs-z.gruen td{background:color-mix(in srgb,var(--kd-wbs-ok-bg) 70%,transparent)}
+.wbs-z.bestehend td,.wbs-z.option td,.wbs-z.ausbau td,.wbs-z.verworfen td{background:color-mix(in srgb,var(--kd-wbs-neutral-bg) 60%,transparent)}
+.wbs-z.option .n{font-style:italic}
+.wbs-z.verworfen .n{text-decoration:line-through}
+.wbs-z.verworfen td{color:var(--kd-muted)}
+.ampel{display:inline-block;padding:0 7px;line-height:18px;border:1px solid;font-size:11px;font-weight:600;white-space:nowrap}
+.ampel.gruen{background:var(--kd-wbs-ok-bg);border-color:var(--kd-wbs-ok);color:var(--kd-wbs-ok-ink)}
+.ampel.gelb{background:var(--kd-wbs-warn-bg);border-color:var(--kd-wbs-warn);color:var(--kd-wbs-warn-ink)}
+.ampel.rot{background:var(--kd-wbs-error-bg);border-color:var(--kd-wbs-error);color:var(--kd-wbs-error-ink)}
+.ampel.bestehend,.ampel.option,.ampel.ausbau,.ampel.verworfen{background:var(--kd-wbs-neutral-bg);border-color:var(--kd-wbs-neutral);color:var(--kd-wbs-neutral-ink)}
+.ampel.option,.ampel.ausbau{border-style:dashed}
+.ampel.gerechnet{background:var(--kd-surface);border-width:2px}
+.wbs-widerspruch{margin-left:var(--kd-s2);font-size:11px;color:var(--kd-warn);border-bottom:1px dotted var(--kd-warn);cursor:help}
+.klapp{font:inherit;line-height:1;width:18px;height:18px;margin-right:var(--kd-s2);padding:0;cursor:pointer;background:var(--kd-surface);color:var(--kd-muted);border:1px solid var(--kd-line-strong)}
+.klapp:hover{border-color:var(--kd-accent);color:var(--kd-accent)}
+.klapp-platz{display:inline-block;width:22px}

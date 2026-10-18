@@ -57,4 +57,25 @@ test.describe('R00054', () => {
     await expect(page.locator('.wbs-titel')).toContainText('WBS · kanbanD');
     await expect(page.locator('.kz-nav a.an')).toHaveText('WBS');
   });
+
+  test('Tabelle: Einrückung, Ampel, Widerspruch, Ausbaustufe, Braucht, Anforderung', async ({ page }) => {
+    await page.goto(k.adresse + '#/wbs/kd');
+    const z = id => page.locator(`tr.wbs-z[data-id="${id}"]`);
+    await expect(page.locator('tr.wbs-z')).toHaveCount(12);
+    const einzug = async id => parseFloat(await z(id).locator('td.wbs-name').evaluate(td => getComputedStyle(td).paddingLeft));
+    const [a, d, i, b] = [await einzug('A0001'), await einzug('D0001'), await einzug('I0001'), await einzug('B0001')];
+    expect(d - a).toBeCloseTo(18, 0); expect(i - d).toBeCloseTo(18, 0); expect(b - i).toBeCloseTo(18, 0);
+    await expect(z('I0001')).toHaveClass(/\bgelb\b/);
+    await expect(z('I0001').locator('.ampel.gerechnet')).toHaveText('gelb');
+    await expect(z('I0001').locator('.wbs-widerspruch')).toHaveText('Datei: gruen');
+    await expect(z('B0002').locator('.ampel')).not.toHaveClass(/gerechnet/);
+    await expect(z('B0001')).toHaveClass(/\brot\b/);
+    await expect(z('B0001').locator('td').nth(3)).toHaveText('Datei → Board');
+    await expect(z('B0001').locator('td').nth(4)).toHaveText('0,5-1h');
+    await expect(z('F0003').locator('.n')).toHaveText('2 · Blockziffern');
+    await expect(z('I0002').locator('td.wbs-name')).toHaveAttribute('title', 'braucht: I0001');
+    await expect(z('I0001').locator('a', { hasText: 'R00001' })).toHaveAttribute('href', `vscode://file${arbeit.wurzel}/Anforderungen/R00001-board.md`);
+    await expect(z('I0001').locator('td').first().locator('a')).toHaveAttribute('href', `vscode://file${arbeit.wbs}:11`);
+    await expect(z('I0001').locator('td').nth(2)).toHaveText(/Ansehen/);
+  });
 });

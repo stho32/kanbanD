@@ -30,6 +30,11 @@
 --kd-c-green:oklch(0.955 0.04 150);--kd-c-green-line:oklch(0.6 0.13 150);
 --kd-c-lime:oklch(0.96 0.05 125);--kd-c-lime-line:oklch(0.7 0.16 125);
 --kd-c-grey:oklch(0.935 0.006 250);--kd-c-grey-line:oklch(0.58 0.012 250);
+/* WBS-Ampel (R00054): Linie, Grund, Plakettentext je Status — aus der Klassenpalette, Text hält 4,5:1 auf dem Grund. */
+--kd-wbs-ok:var(--kd-c-green-line);--kd-wbs-ok-bg:var(--kd-c-green);--kd-wbs-ok-ink:oklch(0.38 0.1 150);
+--kd-wbs-warn:var(--kd-c-amber-line);--kd-wbs-warn-bg:var(--kd-c-amber);--kd-wbs-warn-ink:oklch(0.42 0.11 65);
+--kd-wbs-error:var(--kd-c-red-line);--kd-wbs-error-bg:var(--kd-c-red);--kd-wbs-error-ink:oklch(0.43 0.16 27);
+--kd-wbs-neutral:var(--kd-c-grey-line);--kd-wbs-neutral-bg:var(--kd-c-grey);--kd-wbs-neutral-ink:oklch(0.4 0.012 250);
 --kd-font:"IBM Plex Sans",system-ui,sans-serif;--kd-mono:"IBM Plex Mono",ui-monospace,monospace;
 --kd-s1:2px;--kd-s2:4px;--kd-s3:8px;--kd-s4:12px;--kd-s5:16px;--kd-s6:24px;
 --kd-row:28px;--kd-head-h:40px;

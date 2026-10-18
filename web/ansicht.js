@@ -614,7 +614,22 @@ function vWbs() {
   if (!wbsKuerzel()) return `<div class="body bericht"><p class="muted">Dieses Board ist an keine Anwendung gebunden. Anwendungen registrierst du unter <a href="#/einrichten">Einrichten</a>; ein Board bindet sie mit <span class="mono">applications: [kd]</span>.</p></div>`;
   if (S.wbsFehler) return `<div class="body bericht"><div class="warnh" role="alert">${esc(S.wbsFehler)}</div></div>`;
   if (!S.wbs) return '';
-  return `<div class="body bericht wbs-seite"><h2 class="wbs-titel">WBS · ${esc(S.wbs.name)} <span class="mono">${esc(S.wbs.datei)}</span></h2></div>`;
+  return `<div class="body bericht wbs-seite"><h2 class="wbs-titel">WBS · ${esc(S.wbs.name)} <span class="mono">${esc(S.wbs.datei)}</span></h2>${vWbsTabelle(S.wbs)}</div>`;
+}
+/** Die Plakette: gesetzt gefüllt, gerechnet umrandet; widerspricht die Datei, steht ihr Wert daneben. */
+function vWbsStatus(k, gerechnet) {
+  const p = `<span class="ampel ${esc(k.gerechnet)}${gerechnet ? ' gerechnet' : ''}"${gerechnet ? ' title="gerechnet aus den Kindern"' : ''}>${esc(k.gerechnet)}</span>`;
+  return gerechnet && k.gerechnet !== k.status ? p + `<span class="wbs-widerspruch" title="In der Datei steht „${esc(k.status)}“, gerechnet aus den Kindern: ${esc(k.gerechnet)}">Datei: ${esc(k.status)}</span>` : p;
+}
+function vWbsTabelle(w) {
+  const tiefe = tiefen(w.knoten), eltern = mitKindern(w.knoten, false), gerechnet = mitKindern(w.knoten, true);
+  const req = zelle => esc(zelle).replace(/\bR\d{5}\b/g, id => w.anforderungen[id] ? `<a href="vscode://file${esc(w.anforderungen[id])}" title="Anforderung ${id} im Editor öffnen">${id}</a>` : id);
+  const zeilen = w.knoten.map(k => {
+    const klapp = eltern.has(k.id) && (k.ebene === 'Dialog' || k.ebene === 'Interaction') ? `<button class="klapp" data-act="wbs-klapp" data-arg="${esc(k.id)}" aria-label="${esc(k.id)} zuklappen" aria-expanded="true">−</button>` : '<span class="klapp-platz"></span>';
+    const was = k.ebene === 'Bubble' && k.eingabe_ausgabe ? k.eingabe_ausgabe : k.fertig_kriterium;
+    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span></td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
+  }).join('');
+  return `<div class="wbs-tabelle"><table class="pt dicht"><thead><tr><th>ID</th><th>Ebene</th><th>Knoten</th><th>Fertig-Kriterium / Eingabe → Ausgabe</th><th>Aufwand</th><th>Status</th><th>Requirement</th><th>Notiz</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */
