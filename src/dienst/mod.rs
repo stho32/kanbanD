@@ -1,5 +1,6 @@
 //! Die Anwendungsfälle: prüfen, Dateien schreiben, committen — unter einer Schreibsperre.
 
+mod anhaenge;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
 mod bewegen;
@@ -12,6 +13,7 @@ mod teilaufgaben;
 mod timer;
 mod zeiten;
 
+pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;
@@ -96,6 +98,15 @@ impl Kanban {
             return Err(Fehler::Ungueltig(format!("Person „{kuerzel}“ ist stillgelegt")));
         }
         Ok(p.clone())
+    }
+
+    pub(crate) fn eigene_merken(&self, rel: &str) {
+        self.eigene.merken(rel);
+    }
+
+    pub(crate) fn committen(&self, wer: &Person, nachricht: &str, pfade: &[String]) -> Result<(), Fehler> {
+        git::committen(self.ordner.wurzel(), pfade, wer, nachricht)?;
+        Ok(())
     }
 
     /// Schreibt Dateien und committet sie als eine Aktion. Scheitert der Commit, bleibt der
