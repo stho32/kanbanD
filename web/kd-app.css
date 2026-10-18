@@ -311,3 +311,10 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bahn-kopf.ueber{background:var(--kd-c-red);box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
 .bahn-kopf.ueber .v{color:var(--kd-warn);font-weight:600}
 .fehl-kopf{color:var(--kd-c-amber);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.einrichten{flex:1;display:grid;grid-template-columns:minmax(0,680px) minmax(0,1fr);min-height:0}
+.einr.breit{flex:none;border-left:0;border-right:1px solid var(--kd-line-strong)}
+.einr .felder{border-top:0}
+.einr .felder .k{min-width:0}
+.zeile-knoepfe{display:flex;gap:var(--kd-s3);align-items:center;padding:var(--kd-s4)}
+.einr .felder{grid-template-columns:110px minmax(0,1fr)}
+.einrichten .klz.pz{grid-template-columns:30px 70px minmax(0,1fr) auto 24px}

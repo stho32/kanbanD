@@ -18,6 +18,12 @@ async function api(methode, pfad, daten) {
   return json;
 }
 
+function ansichtAusAdresse() {
+  return /^#\/einrichten/.test(location.hash) ? 'einrichten' : 'board';
+}
+
+const kopie = x => JSON.parse(JSON.stringify(x));
+
 function gewaehltesBoard() {
   const m = /^#\/board\/([^/]+)/.exec(location.hash);
   const slugs = S.zustand.boards.map(b => b.slug);
@@ -30,6 +36,9 @@ async function laden() {
     S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   } else {
     S.ui.first = null;
+    S.ui.view = ansichtAusAdresse();
+    if (S.ui.view !== 'einrichten') S.ui.einr = null;
+    else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
     const [board, aufgaben] = await Promise.all([
       S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null,
@@ -50,7 +59,7 @@ function ichNoetig() {
 
 function render() {
   $('#kopf').innerHTML = vKopf();
-  $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : vBoard();
+  $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : S.ui.view === 'einrichten' && S.ui.einr ? vEinrichten() : vBoard();
   $('#over').innerHTML = vPop();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -109,6 +118,39 @@ async function act(a, arg, wert) {
       }
       case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length })) }; break;
       case 'setup-weg': u.setup = null; break;
+      case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
+      case 'p-still': { const p = u.einr.personen[+arg]; p.aktiv = !p.aktiv; break; }
+      case 'n-art': u.nart = arg; break;
+      case 'p-add': {
+        const kuerzel = ($('#npk').value || '').trim().toLowerCase(), name = (wert || '').trim();
+        if (!kuerzel || !name) { u.einr.fehler = 'Kürzel und Name nötig'; break; }
+        u.einr.personen.push({ kuerzel, name, art: u.nart === 'agent' ? 'agent' : 'human', aktiv: true });
+        u.fokus = '#npk';
+        break;
+      }
+      case 'k-pal': u.palFuer = u.palFuer === +arg ? null : +arg; break;
+      case 'k-farbe': { const [i, f] = arg.split('|'); u.einr.klassen[+i].farbe = f; break; }
+      case 'k-del': u.einr.klassen.splice(+arg, 1); u.palFuer = null; break;
+      case 'k-add': {
+        const schluessel = ($('#nck').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
+        if (!schluessel || !bezeichnung) { u.einr.fehler = 'Schlüssel und Bezeichnung nötig'; break; }
+        const belegt = u.einr.klassen.map(k => k.farbe);
+        u.einr.klassen.push({ schluessel, bezeichnung, farbe: PAL.find(f => !belegt.includes(f)) || 'grey' });
+        u.fokus = '#nck';
+        break;
+      }
+      case 'einr-weg': u.einr = kopie(S.zustand.einstellungen); u.palFuer = null; break;
+      case 'einr-ok': {
+        if (ichNoetig()) break;
+        const { fehler, gespeichert, ...daten } = u.einr;
+        try {
+          await api('PUT', '/api/einstellungen', daten);
+          u.einr = null; u.palFuer = null;
+          await laden();
+          u.einr.gespeichert = true;
+          break;
+        } catch (f) { u.einr.fehler = f.message; break; }
+      }
       case 'col-l': case 'col-r': {
         const d = u.setup.spalten, i = +arg, j = a === 'col-l' ? i - 1 : i + 1;
         if (j >= 0 && j < d.length) [d[i], d[j]] = [d[j], d[i]];
@@ -169,6 +211,18 @@ document.addEventListener('input', e => {
     sp[sf] = sf === 'grenze' ? e.target.value.replace(/\D/g, '') : e.target.value;
     S.ui.setup.fehler = null;
     $('#setup-vorschau').textContent = setupText(S.ui.setup);
+    return;
+  }
+  const ef = e.target.dataset && e.target.dataset.ef;
+  if (ef && S.ui.einr) {
+    const d = S.ui.einr, i = +e.target.dataset.i, v = e.target.value;
+    if (ef === 'pname') d.personen[i].name = v;
+    if (ef === 'klabel') d.klassen[i].bezeichnung = v;
+    if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.klassen[i].farbe = v.trim().toLowerCase();
+    if (ef === 'wbs') d.quellen.wbs = v;
+    if (ef === 'anf') d.quellen.anforderungen = v;
+    d.fehler = null; d.gespeichert = false;
+    $('#einr-vorschau').textContent = einstellungenText(d);
     return;
   }
   const fr = e.target.dataset && e.target.dataset.fr;
