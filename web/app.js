@@ -86,7 +86,15 @@ function gewaehltesBoard() {
   return m && slugs.includes(m[1]) ? m[1] : slugs[0] || null;
 }
 
-async function laden() {
+/** Was der Server zuletzt geliefert hat, und wohin die Adresse zeigt. Ein Ereignis, nach dem das gleich bleibt — das Echo
+    eines eigenen Schreibzugriffs, auch der Phasen-Spalten, die das erste Lesen nachträgt —, zeichnet nicht neu: sonst ersetzt
+    es die Seite, während jemand klickt oder liest (R00061). */
+let geladenerStand = null;
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+
+/** Lädt den Stand vom Server und zeichnet; `nurBeiAenderung` (Live-Ereignis) zeichnet nur, wenn sich etwas geändert hat.
+    Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange` übergibt sein Ereignis). */
+async function laden({ nurBeiAenderung = false } = {}) {
   S.zustand = await api('GET', '/api/zustand');
   S.einstellungenDefekt = S.zustand.eingerichtet && !S.zustand.einstellungen;
   if (S.einstellungenDefekt) S.zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
@@ -99,30 +107,33 @@ async function laden() {
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
     try { if (S.ui.slug) localStorage.setItem('kanbanD.board', S.ui.slug); } catch (_) { }
-    S.boardDefekt = null;
-    const [board, aufgaben, herkunft, boards] = await Promise.all([
-      S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; S.boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null,
+    // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
+    // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
+    let boardDefekt = null;
+    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null;
+    const [aufgaben, herkunft, boards] = await Promise.all([
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
       api('GET', '/api/boards'),
     ]);
-    S.boards = boards;
     // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
-    S.bew = /^berichte\/(verlauf|durchlauf|prognose)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
-    S.herkunft = herkunft;
+    const bew = /^berichte\/(verlauf|durchlauf|prognose)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
     // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
-    if (S.ui.view === 'einrichten') S.anwendungen = await api('GET', '/api/anwendungen');
-    S.wbs = null; S.wbsFehler = null;
-    if (S.ui.view === 'wbs' && wbsKuerzel()) S.wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { S.wbsFehler = f.message; return null; });
+    const anwendungen = S.ui.view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
+    let wbs = null, wbsFehler = null;
+    if (S.ui.view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
     // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
     const pruefWbs = {};
     if (S.ui.view === 'board') await Promise.all(pruefWbsAnwendungen(board, aufgaben.aufgaben).map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-    S.pruefWbs = pruefWbs;
-    S.board = board;
-    S.aufgaben = aufgaben.aufgaben;
+    // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
+    // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
+    Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, anwendungen, wbs, wbsFehler, pruefWbs });
     if (S.ui.offen) await dateiLaden();
     if (S.ui.offenDefekt) await defektLaden();
   }
+  const stand = serverStand();
+  if (nurBeiAenderung && stand === geladenerStand) return false;
+  geladenerStand = stand;
   render();
   // `#/wbs/<kürzel>/<id>` zeigt die Zeile einmal — spätere Ereignisse laden neu, ohne erneut zu springen
   const ziel = S.ui.view === 'wbs' && S.wbs && wbsZiel(location.hash);
@@ -1285,8 +1296,8 @@ function spaltenJeAufgabe() {
 async function ereignis(e) {
   if (schlangeOffen > 0) return; // eigene Anfragen laufen noch; danach wird ohnehin neu geladen
   const vorher = spaltenJeAufgabe();
-  await laden();
-  if (!e.extern) return;
+  const neu = await laden({ nurBeiAenderung: true });
+  if (!e.extern || neu === false) return;
   const jetzt = Date.now();
   for (const a of S.aufgaben) if (e.pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
   const boardDatei = S.ui.slug && 'boards/' + S.ui.slug + '.md';
