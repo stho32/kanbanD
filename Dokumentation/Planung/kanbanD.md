@@ -15,7 +15,7 @@ zuletzt: 2026-10-18
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -249,7 +249,7 @@ zuletzt: 2026-10-18
 | B0172 | Bubble | I0053 | Phasenblöcke in Wie lange noch | gruen | Test gruen | Prognose mit Phasen → Blöcke, Kopfzeile, Legende und Tabelle „<Phase> durchlaufen“, Methodik nach Phasen | 0,5-1 |  |  |  |  |
 | B0173 | Bubble | I0053 | Hinweis am Board | gruen | Test gruen | Board mit Phasen → Hinweisleiste, wenn eine Spalte einer späteren Phase links einer früheren steht oder gebundene Anwendungen verschiedene Folgen haben; Phase im Spaltenkopf | 0,5-1 |  |  |  |  |
 | B0174 | Bubble | I0053 | Entfällt im Aufgabenfenster schalten | gruen | Test gruen | Aufgabenfenster auf gebundenem Board → Feld phases mit einem Schalter je Phase nach der Entwicklung → phases.skipped gesetzt oder entfernt | 0,5-1 |  |  |  |  |
-| I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | gelb | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
+| I0054 | Interaction | D0002 | Plausibilitätsprüfung je Spalte | gruen | US-1..US-3 |  |  |  | I0050, I0052, I0053 | R00059 | WBS 1: column-checks wbs-effects-green, Warnung und Ausrufezeichen |
 | B0175 | Bubble | I0054 | column-checks im Board-Frontmatter | gruen | Test gruen | Board-Text ↔ Spalte mit Prüfungen (`column-checks` wie `limits`/`column-phases`); Umbenennen nimmt sie mit, Entfernen nimmt sie weg | 0,5-1 |  |  |  |  |
 | B0176 | Bubble | I0054 | Katalog der Prüfungen | gruen | Test gruen | Prüfungsname → Prüfung oder Hinweis „unbekannte Prüfung“; wbs-effects-green: Wirkungen create/rework, Knotenstände → erfüllt oder nicht grüne Knoten (rot/gelb, Knoten fehlt, WBS nicht erreichbar) | 0,5-1 |  |  |  |  |
 | B0177 | Bubble | I0054 | Zug nach rechts erkennen | gruen | Test gruen | Board, Phasen, Spalte davor, Spalte danach → nach rechts? (Rang der Phase wie phasenRang, ohne Phasen Spaltenindex); Prüfungen, die ein Zug auslöst | 0,5-1 |  |  |  |  |

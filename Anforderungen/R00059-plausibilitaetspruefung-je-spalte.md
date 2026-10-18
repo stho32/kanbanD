@@ -1,6 +1,6 @@
 ---
 id: R00059
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -28,12 +28,12 @@ Fortschritt (Karte weitergezogen) und Stand (Knoten grün) laufen nicht unbemerk
 ## Akzeptanzkriterien
 
 ### Warnung
-- [ ] `column-checks: {Entwicklung: [wbs-effects-green]}`, #7 wirkt `create kd:I0048` (`rot`); Zug Entwicklung → Entwicklertest → Zug ausgeführt, ein Commit, Antwort `warnungen[0].knoten = ["kd:I0048"]`, Karte mit rotem Ausrufezeichen
-- [ ] `I0048` wird `gruen` (R00055) → Ausrufezeichen verschwindet ohne Neuladen
-- [ ] Zug Entwicklertest → Entwicklung → keine Warnung; Board ohne `column-checks` → nie eine Warnung
+- [x] `column-checks: {Entwicklung: [wbs-effects-green]}`, #7 wirkt `create kd:I0048` (`rot`); Zug Entwicklung → Entwicklertest → Zug ausgeführt, ein Commit, Antwort `warnungen[0].knoten = ["kd:I0048"]`, Karte mit rotem Ausrufezeichen
+- [x] `I0048` wird `gruen` (R00055) → Ausrufezeichen verschwindet ohne Neuladen
+- [x] Zug Entwicklertest → Entwicklung → keine Warnung; Board ohne `column-checks` → nie eine Warnung
 
 ### Konfiguration
-- [ ] Rundlauf `column-checks` stabil; Bewegen erhält den Schlüssel; Prüfungsname `xyz` → Hinweis „unbekannte Prüfung“, Board bleibt lesbar und schreibbar
+- [x] Rundlauf `column-checks` stabil; Bewegen erhält den Schlüssel; Prüfungsname `xyz` → Hinweis „unbekannte Prüfung“, Board bleibt lesbar und schreibbar
 
 ## Betroffene Verzeichnisstruktur
 
