@@ -361,3 +361,4 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .tabellenansicht{margin:var(--kd-s3) 0;font-size:12px;max-width:420px}
 .tabellenansicht summary{cursor:pointer;color:var(--kd-accent-ink)}
 #durchlauf{max-width:900px}
+.tooltip[hidden]{display:none}

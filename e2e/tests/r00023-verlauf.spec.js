@@ -26,6 +26,7 @@ test('US-1 und US-2: Burndown und Durchlaufzeit aus der Geschichte', async ({ pa
     await expect(page.locator('#durchlauf tr.klick')).toHaveCount(1);
     await expect(page.locator('#durchlauf tr.klick td').last()).toHaveText('1,0');
     await expect(page.locator('#durchlauf-kennzahl')).toHaveText('1,0 · 1,0');
+    await expect(page.locator('#tooltip')).toBeHidden();
     await page.locator('rect.treffer').first().hover();
     await expect(page.locator('#tooltip')).toContainText('2026-10-01');
     await expect(page.locator('#tooltip')).toContainText('offen 2');
