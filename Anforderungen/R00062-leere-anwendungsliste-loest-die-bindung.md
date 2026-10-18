@@ -1,6 +1,6 @@
 ---
 id: R00062
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ursprung: Bug-Report
 ---
@@ -27,10 +27,10 @@ R00053 schrieb „Fehlt der Schlüssel oder ist er leer, ist das Board ein reine
 
 ## Akzeptanzkriterien
 
-- [ ] Register mit genau `kd`; Board ohne `applications` → gebunden, Phasen-Spalten werden nachgetragen; Board mit `applications: []` → `GET /api/boards/{slug}` liefert `phasen: null`, kein Commit beim Lesen
-- [ ] Rundlauf: `applications: []` bleibt nach Bewegen, Spalten setzen und Termine setzen in der Datei
-- [ ] `PUT …/anwendungen []` an einem gebundenen Board → ein Commit, danach `phasen: null`, Menü ohne „WBS“ für dieses Board; `["xx"]` → 400
-- [ ] Bestehende Tests aus R00053, R00054, R00058 bleiben grün
+- [x] Register mit genau `kd`; Board ohne `applications` → gebunden, Phasen-Spalten werden nachgetragen; Board mit `applications: []` → `GET /api/boards/{slug}` liefert `phasen: null`, kein Commit beim Lesen
+- [x] Rundlauf: `applications: []` bleibt nach Bewegen, Spalten setzen und Termine setzen in der Datei
+- [x] `PUT …/anwendungen []` an einem gebundenen Board → ein Commit, danach `phasen: null`, Menü ohne „WBS“ für dieses Board; `["xx"]` → 400
+- [x] Bestehende Tests aus R00053, R00054, R00058 bleiben grün
 
 ## Tests
 - Unit: Lesen und Schreiben von fehlendem und leerem `applications`; Bindungsregel in `web/wbs.js`

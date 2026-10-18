@@ -14,9 +14,9 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -266,7 +266,7 @@ zuletzt: 2026-10-18
 | B0186 | Bubble | I0055 | Burndown zählt nach reporting.burndown | gruen | Test gruen | burndown(bew, …) → Aufgaben mit burndown: false nicht im Umfang, „Nicht enthalten: ausgenommen n“ im Burndown | 0,5-1 |  |  |  |  |
 | B0187 | Bubble | I0055 | Wie lange noch zählt nach reporting.forecast | gruen | Test gruen | prognose(bew, …) → Aufgaben mit forecast: false nicht in Umfang, Nenner und Durchsatz, je Spalte und je Phase; „Nicht enthalten: ausgenommen n“ | 0,5-1 |  |  |  |  |
 | B0188 | Bubble | I0055 | Schalter im Aufgabenfenster | gruen | Test gruen | Aufgabenfenster → Abschnitt „Zählt in Berichten“ mit je einem Schalter Burndown und Wie lange noch, „(Standard)“ solange der Schlüssel fehlt → PATCH reporting | 0,5-1 |  |  |  |  |
-| I0056 | Interaction | D0002 | Board von Anwendungen lösen | gelb | US-1..US-2 |  |  |  | I0053 | R00062 | Bug aus der Anbindung von kanbanD-test: applications: [] heißt 0 |
+| I0056 | Interaction | D0002 | Board von Anwendungen lösen | gruen | US-1..US-2 |  |  |  | I0053 | R00062 | Bug aus der Anbindung von kanbanD-test: applications: [] heißt 0 |
 | B0189 | Bubble | I0056 | applications fehlend oder leer im Board-Format | gruen | Test gruen | Board-Text ↔ Board.anwendungen: fehlender Schlüssel = None (Standard), `applications: []` = Some([]) und wird stabil zurückgeschrieben | 0,5-1 |  |  |  |  |
 | B0190 | Bubble | I0056 | Bindungsregel im Server | gruen | Test gruen | gebundene_anwendungen(board, register): None + genau eine registriert → diese, Some([]) → keine; GET /api/boards/{slug} liefert phasen: null, trägt keine Spalten nach, kein Commit | 0,5-1 |  |  |  |  |
 | B0191 | Bubble | I0056 | Bindungsregel in der Oberfläche | gruen | Test gruen | gebundeneAnwendungen(board, register) in web/wbs.js: fehlend/null → Standard, [] → keine; Menü ohne „WBS“ | 0,5-1 |  |  |  |  |

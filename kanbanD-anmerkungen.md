@@ -181,3 +181,13 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 129 | I0055 | S9 | Push nach origin nicht möglich: GitNAS (`/home/shoff/GitNAS/Kanban-Boards/kanbanD`) bis morgen früh aus; laut Nutzer nicht wiederholt und nicht auf github ausgewichen — die Commits ab b8df541 liegen nur lokal auf main | git rev-list origin/main..main | offen |
 | 130 | I0055 | S6 | Dashboard `.claude/planung/kanbanD.html` nicht neu gerendert (Generat, im Repository nicht vorhanden) | Dokumentation/Planung/kanbanD.md I0055 | offen |
 | 131 | I0055 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00060 | offen |
+
+## 2026-10-18 · Bug R00062 (I0056 Board von Anwendungen lösen)
+
+| # | Slice | Station | Anmerkung | Beleg | Status |
+|---|---|---|---|---|---|
+| 132 | I0056 | S6 | Kein neues Artboard: Abschnitt „Gebunden an“ oben in der Vorschau-Spalte des Spalten-Dialogs, ein Schalter je registrierter Anwendung und „keine“ im Muster der Prüfungs-Schalter, „(Standard)“ leise, solange `applications` fehlt; ohne registrierte Anwendung kein Abschnitt. Empfehlung gewählt: ein Klick schaltet vom gerechneten Stand aus und schreibt immer eine ausdrückliche Liste — zurück zum Standard (Schlüssel fehlt) nur von Hand | web/ansicht.js `vBindungFeld`, web/wbs.js `bindungUmschalten` | offen |
+| 133 | I0056 | S6 | Festgelegt (Vorgabe): `Board.anwendungen` ist `Option<Vec<String>>` (JSON `null` = Schlüssel fehlt, `[]` = ausdrücklich keine); `applications:` ohne Wert (YAML null) gilt wie fehlend. Empfehlung gewählt: `PUT …/anwendungen` trimmt und nimmt doppelte Kürzel einmal, Commit „Anwendungen von „<Board>“: keine“ bzw. die Kürzel; gleiche Bindung ohne Commit | src/format/board.rs `lesen`, src/dienst/bindung.rs | offen |
+| 134 | I0056 | S6 | Bubble B0189 fasst mehr als drei Dateien an: mechanische Folge der Typänderung (Konstruktoren in Diensten und Tests), keine eigene Logik — nicht feiner geschnitten | git show 0d50ec2 --stat | offen |
+| 135 | I0056 | S9 | Push nach origin nicht möglich (GitNAS aus); Commits liegen nur lokal auf main | git rev-list origin/main..main | offen |
+| 136 | I0056 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht); manuelle Nachbereitung (Board „Abnahme“ in kanbanD-test lösen) übernimmt der Hauptlauf | R00062 | offen |
