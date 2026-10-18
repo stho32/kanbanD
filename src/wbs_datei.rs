@@ -251,6 +251,60 @@ pub fn neuen_knoten_pruefen(t: &WbsTabelle, neu: &NeuerKnoten) -> Result<char, F
     Ok(praefix)
 }
 
+/// Der Wert einer Spalte der Knotentabelle für einen neuen Knoten; unbekannte Spalten bleiben leer.
+fn neuer_wert(spalte: &str, id: &str, neu: &NeuerKnoten) -> String {
+    match spalte {
+        "ID" => id.into(),
+        "Ebene" => neu.ebene.clone(),
+        "Eltern" => neu.eltern.trim().into(),
+        "Name" => neu.name.clone(),
+        "Status" => "rot".into(),
+        "Fertig-Kriterium" => neu.fertig_kriterium.clone(),
+        "Eingabe → Ausgabe" => neu.eingabe_ausgabe.clone(),
+        "Aufwand" => neu.aufwand.trim().trim_end_matches('h').into(),
+        "Ausbaustufe" => neu.ausbaustufe.clone(),
+        "Braucht" => neu.braucht.iter().map(|b| b.trim()).collect::<Vec<_>>().join(", "),
+        "Requirement" => neu.requirement.clone(),
+        "Notiz" => neu.notiz.clone(),
+        _ => String::new(),
+    }
+}
+
+/// Die Kopfzeile, die über Zeile `nr` (1-basiert) gilt.
+fn kopf_ueber(zeilen: &[&str], nr: usize) -> Vec<String> {
+    zeilen[..nr].iter().rev().find(|z| ist_kopf(z)).map(|z| inhalte(z)).unwrap_or_default()
+}
+
+/// Legt einen Knoten mit `id` an: neue Zeile `rot` direkt nach dem letzten Nachfahren seiner Eltern,
+/// Vorfahren neu gerechnet, `zuletzt` gesetzt — alle anderen Bytes bleiben.
+pub fn knoten_anlegen(text: &str, neu: &NeuerKnoten, id: &str, heute: &str) -> Result<Geschrieben, Fehler> {
+    schreibbar(text)?;
+    let t = wbs_tabelle(text);
+    neuen_knoten_pruefen(&t, neu)?;
+    if t.knoten(id).is_some() {
+        return Err(Fehler::Konflikt(format!("{id} steht schon in der WBS")));
+    }
+    let eltern = neu.eltern.trim();
+    let nach = t.alle().iter().filter(|k| t.pfad(&k.id).iter().any(|p| p == eltern)).map(|k| k.zeile).max().expect("die Eltern selbst");
+    let zeilen: Vec<&str> = text.split_inclusive('\n').collect();
+    let umbruch = if zeilen[nach - 1].ends_with("\r\n") { "\r\n" } else { "\n" };
+    let zellen: Vec<String> = kopf_ueber(&zeilen, nach).iter().map(|h| maskiert(&neuer_wert(h, id, neu))).collect();
+    let zeile = format!("| {} |{umbruch}", zellen.join(" | "));
+    let mut mit_neuem = t.alle().to_vec();
+    mit_neuem.push(WbsKnoten { id: id.into(), ebene: neu.ebene.clone(), eltern: eltern.into(), status: "rot".into(), ..t.alle()[0].clone() });
+    let vorfahren = vorfahren_neu(&WbsTabelle::aus(mit_neuem), id);
+    let aenderungen: Vec<(usize, &str, String)> = vorfahren.iter().filter_map(|(v, s)| Some((t.knoten(v)?.zeile, "Status", s.clone()))).collect();
+    let geschrieben = zellen_schreiben(text, &aenderungen);
+    let mut teile: Vec<String> = geschrieben.split_inclusive('\n').map(String::from).collect();
+    if !teile[nach - 1].ends_with('\n') {
+        teile[nach - 1].push_str(umbruch);
+    }
+    teile.insert(nach, zeile);
+    let mut geaendert = vec![id.to_string()];
+    geaendert.extend(vorfahren.into_iter().map(|(v, _)| v));
+    Ok(Geschrieben { text: zuletzt_setzen(&teile.concat(), heute), geaendert })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,5 +461,40 @@ mod tests {
         assert!(fehler(mit("Bubble", "viel")).contains("nicht lesbar"));
         assert!(fehler(mit("Interaction", "1-2")).contains("nur bei Bubbles"));
         assert!(fehler(neuen_knoten_pruefen(&t, &NeuerKnoten { braucht: vec!["I0001".into(), "x".into()], ..knoten("Interaction", "D0001") })).contains("„x“"));
+    }
+
+    /// D0002 gruen mit I0007 (zwei Bubbles) und I0008, danach D0003.
+    fn mit_d0002() -> String {
+        wbs(&[("A0001", "Application", "—", "gelb"), ("D0002", "Dialog", "A0001", "gruen"), ("I0007", "Interaction", "D0002", "gruen"), ("B0001", "Bubble", "I0007", "gruen"), ("I0008", "Interaction", "D0002", "gruen"), ("B0002", "Bubble", "I0008", "gruen"), ("D0003", "Dialog", "A0001", "rot"), ("I0009", "Interaction", "D0003", "rot")])
+    }
+
+    #[test]
+    fn neue_interaction_steht_nach_dem_letzten_nachfahren_ihres_dialogs_und_der_dialog_ist_nicht_mehr_gruen() {
+        let vorher = mit_d0002();
+        let g = knoten_anlegen(&vorher, &NeuerKnoten { name: "X | Y".into(), ..knoten("Interaction", "D0002") }, "I0048", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["I0048", "D0002"], "A0001 bleibt gelb (D0003 rot)");
+        let zeilen: Vec<&str> = g.text.lines().collect();
+        let neu = zeilen.iter().position(|z| z.starts_with("| I0048 |")).unwrap();
+        assert!(zeilen[neu - 1].starts_with("| B0002 |") && zeilen[neu + 1].starts_with("| D0003 |"), "nach dem letzten Nachfahren von D0002");
+        assert_eq!(zeilen[neu], "| I0048 | Interaction | D0002 | X \\| Y | rot |  |  |  |", "Spalten der Kopfzeile, Strich maskiert, unbekannte Spalte Phase leer");
+        assert!(g.text.contains("| D0002 | Dialog | A0001 | Name D0002 | gelb |"));
+        assert_eq!(g.text.lines().count(), vorher.lines().count() + 1);
+        let wieder = wbs_tabelle(&g.text);
+        assert_eq!(wieder.knoten("I0048").map(|k| (k.name.as_str(), k.status.as_str(), k.eltern.as_str())), Some(("X | Y", "rot", "D0002")));
+        assert_eq!(knoten_anlegen(&vorher, &knoten("Interaction", "D0002"), "I0007", "h").unwrap_err(), Fehler::Konflikt("I0007 steht schon in der WBS".into()));
+    }
+
+    #[test]
+    fn bubble_mit_allen_feldern_auch_am_dateiende_ohne_umbruch() {
+        let vorher = mit_d0002().trim_end().to_string();
+        let neu = NeuerKnoten { eingabe_ausgabe: "a → b".into(), aufwand: "0,5-1h".into(), braucht: vec!["B0001".into(), " I0007".into()], requirement: "R00056".into(), notiz: "n".into(), ..knoten("Bubble", "I0009") };
+        let g = knoten_anlegen(&vorher, &neu, "B0003", "h").unwrap();
+        assert!(g.text.ends_with("| I0009 | Interaction | D0003 | Name I0009 | rot | a \\| b → c |  | Abnahme |\n| B0003 | Bubble | I0009 | X | rot | a → b | n |  |\n"), "{}", g.text);
+        assert_eq!(g.geaendert, ["B0003"], "I0009 rot bleibt rot");
+        let k = wbs_tabelle(&g.text).knoten("B0003").cloned().unwrap();
+        assert_eq!(k.notiz, "n");
+        let voll = "| ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n| I0001 | Interaction | — | I | rot |  |  |  |  |  |  |  |\n";
+        let g = knoten_anlegen(voll, &NeuerKnoten { ausbaustufe: "2".into(), eltern: "I0001".into(), ..neu }, "B0001", "h").unwrap();
+        assert!(g.text.ends_with("| B0001 | Bubble | I0001 | X | rot | US-1 | a → b | 0,5-1 | 2 | B0001, I0007 | R00056 | n |\n"), "alle Spalten von /planung: {}", g.text);
     }
 }

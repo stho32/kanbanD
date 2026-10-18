@@ -221,7 +221,7 @@ zuletzt: 2026-10-18
 | B0146 | Bubble | I0051 | Nächste freie ID aus allen Ständen | gruen | Test gruen | Präfix, Texte der WBS (Datei und Historie) → höchste ID des Präfixes + 1, vierstellig | 0,5-1 |  |  |  |  |
 | B0147 | Bubble | I0051 | Stände der WBS aus dem Arbeits-Repository | gruen | Test gruen | volle WBS-Datei → alle committeten Stände aus dem fremden Repository, ohne Repository keine | 0,5-1 |  |  |  |  |
 | B0148 | Bubble | I0051 | Neuen Knoten prüfen | gruen | Test gruen | NeuerKnoten, WBS → Pflichtfelder, Eltern-Ebene (Feature überspringbar), Aufwand nur bei Bubbles ab 0,4h; sonst 400 | 0,5-1 |  |  |  |  |
-| B0149 | Bubble | I0051 | Zeile nach dem letzten Nachfahren einfügen | rot | Test gruen | WBS-Text, NeuerKnoten, ID, heute → neue Zeile rot nach dem letzten Nachfahren der Eltern, Vorfahren gerechnet, zuletzt | 1-2 |  |  |  |  |
+| B0149 | Bubble | I0051 | Zeile nach dem letzten Nachfahren einfügen | gruen | Test gruen | WBS-Text, NeuerKnoten, ID, heute → neue Zeile rot nach dem letzten Nachfahren der Eltern, Vorfahren gerechnet, zuletzt | 1-2 |  |  |  |  |
 | B0150 | Bubble | I0051 | Knoten mit Nachfahren verwerfen | rot | Test gruen | WBS-Text, ID, Grund, heute → verworfen an Knoten und zählenden Nachfahren, Grund in der Notiz, Vorfahren gerechnet; A0001 und schon verworfen 409 | 0,5-1 |  |  |  |  |
 | B0151 | Bubble | I0051 | Knoten über die API anlegen | rot | Test gruen | POST /api/wbs/{kürzel}/knoten → {id} unter der Sperre der WBS-Datei, ohne Commit | 0,5-1 |  |  |  |  |
 | B0152 | Bubble | I0051 | Knoten über die API verwerfen | rot | Test gruen | POST /api/wbs/{kürzel}/knoten/{id}/verwerfen {grund?} → geänderte Knoten, ohne Commit | 0,5-1 |  |  |  |  |
