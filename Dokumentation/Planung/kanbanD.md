@@ -13,13 +13,13 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
-| D0006 | Dialog | A0001 | Berichte | gelb | alle Interactions gruen |  |  |  |  | R00022 |  |
+| D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
@@ -119,10 +119,10 @@ zuletzt: 2026-10-18
 | I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | gruen | US-1..US-2 |  |  |  | I0043 | R00045 | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
 | B0108 | Bubble | I0045 | Durchlaufzeit zwischen Spalten rechnen | gruen | Test gruen | Bewegungen + von/bis-Spalte + Filter → je Aufgabe Eintritt, Ankunft, Tage; Mittel, Median, 85 % | 0,5-1 |  |  |  |  |
 | B0109 | Bubble | I0045 | Bericht Durchlaufzeit | gruen | Test gruen | Durchläufe → Streudiagramm mit Median und 85 %, Tabelle, Spaltenwahl, Filterleiste, Menü und g d | 1-2 |  |  |  |  |
-| I0046 | Interaction | D0006 | Wie lange noch | gelb | US-1..US-3 |  |  |  | I0043, I0042 | R00046 | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |
+| I0046 | Interaction | D0006 | Wie lange noch | gruen | US-1..US-3 |  |  |  | I0043, I0042 | R00046 | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |
 | B0110 | Bubble | I0046 | Prognose je Spalte rechnen | gruen | Test gruen | Bewegungen + Filter → je Spalte erreicht/offen, Tagesreihe, Monte Carlo P50–P95 in 7- und 5-Tage-Woche, Untergrenze der Vorspalte | 1-2 |  |  |  |  |
 | B0111 | Bubble | I0046 | Bericht Wie lange noch | gruen | Test gruen | Prognose → Kopfzahlen, Burndown je Spalte mit Fächer, Blöcke je Spalte, Lesehinweise; Filterleiste; Menü und g w | 2-3 |  |  |  |  |
-| B0112 | Bubble | I0046 | Live beobachten | rot | Test gruen | Bewegen, Anlegen, Archivieren, Abnehmen → Bericht rechnet ohne Neuladen neu, Stand-Zeit sichtbar | 0,5-1 |  |  |  |  |
+| B0112 | Bubble | I0046 | Live beobachten | gruen | Test gruen | Bewegen, Anlegen, Archivieren, Abnehmen → Bericht rechnet ohne Neuladen neu, Stand-Zeit sichtbar | 0,5-1 |  |  |  |  |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
 | B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
 | B0066 | Bubble | I0024 | Agentenlauf Ende-zu-Ende | gruen | Test gruen | Agent legt an, bewegt, kommentiert, misst Zeit nur über die API → Commits unter seinem Namen | 1-2 |  |  |  |  |
