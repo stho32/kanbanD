@@ -113,8 +113,8 @@ zuletzt: 2026-10-18
 | I0043 | Interaction | D0006 | Berichtsfilter wie Kanbanflow | gruen | US-1..US-3 |  |  |  | I0042 | R00043 | Berichte 2: Zeitraum mit Vorgaben, Farben und Spalten ausschließen, nur Personen, nur Labels — für alle Berichte gleich |
 | B0104 | Bubble | I0043 | Zeitraum und Filter rechnen | gruen | Test gruen | Vorgabe + jetzt → von/bis; Filter + Aufgabe → zählt oder nicht | 0,5-1 |  |  |  |  |
 | B0105 | Bubble | I0043 | Filterleiste in allen Berichten | gruen | Test gruen | Filterzustand → Leiste mit Zeitraum, Farben, Spalten, Personen, Labels; gemerkt im Browser; Zeiten-Berichte gefiltert | 1-2 |  |  |  |  |
-| I0044 | Interaction | D0006 | Burndown nach Zeitraum | rot | US-1..US-2 |  |  |  | I0043 | R00044 | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
-| B0106 | Bubble | I0044 | Burndown aus Bewegungen rechnen | rot | Test gruen | Bewegungen + Zeitraum + Filter → offen und Umfang je Tag | 0,5-1 |  |  |  |  |
+| I0044 | Interaction | D0006 | Burndown nach Zeitraum | gelb | US-1..US-2 |  |  |  | I0043 | R00044 | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
+| B0106 | Bubble | I0044 | Burndown aus Bewegungen rechnen | gruen | Test gruen | Bewegungen + Zeitraum + Filter → offen und Umfang je Tag | 0,5-1 |  |  |  |  |
 | B0107 | Bubble | I0044 | Burndown-Bericht mit Filterleiste | rot | Test gruen | Tage → Diagramm, Tabellenansicht, ohne Durchlaufzeit; Filterleiste mit Zeitraum, Farben, Spalten, Personen, Labels | 1-2 |  |  |  |  |
 | I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
 | I0046 | Interaction | D0006 | Wie lange noch | rot | US-1..US-3 |  |  |  | I0043, I0042 |  | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |

@@ -57,5 +57,41 @@
     return f;
   }
 
-  Object.assign(ziel, { ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  /* ── Bewegungen (R00042) ── */
+  const zeitMs = z => { const [d, t] = z.split(' '); const [j, m, tg] = d.split('-').map(Number); const [h, mi] = t.split(':').map(Number); return new Date(j, m - 1, tg, h, mi).getTime(); };
+
+  /** Spalte einer Aufgabe zum Zeitpunkt t (null = nicht auf dem Board). */
+  function spalteAm(wechsel, t) {
+    let s = null;
+    for (const w of wechsel) { if (zeitMs(w.zeitpunkt) > t) break; s = w.spalte; }
+    return s;
+  }
+
+  /** Zählt eine Aufgabe in dieser Spalte? Filter nach Spalte, Farbe, Person, Label. */
+  const zaehltMit = (f, aufgabeZu) => (nr, spalte) => spalte != null && !f.ohneSpalten.includes(spalte) && aufgabePasst(f, aufgabeZu(nr));
+
+  /* ── Burndown (R00044) ── */
+  /** Je Tag im Zeitraum: offen (nicht in der Abschlussspalte) und Umfang, Stand am Tagesende, heute jetzt. */
+  function burndown(bew, f, aufgabeZu, jetzt) {
+    const g = zeitraumGrenzen(f, jetzt), zaehlt = zaehltMit(f, aufgabeZu);
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    if (erste === Infinity) return [];
+    const abschluss = bew.spalten[bew.spalten.length - 1];
+    const tage = [];
+    for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
+      const ende = Math.min(tag(t, 1) - 1, jetzt);
+      let offen = 0, umfang = 0;
+      for (const a of bew.aufgaben) {
+        const s = spalteAm(a.wechsel, ende);
+        if (!zaehlt(a.nummer, s)) continue;
+        umfang++;
+        if (s !== abschluss) offen++;
+      }
+      const d = new Date(t), p = n => String(n).padStart(2, '0');
+      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, offen, umfang });
+    }
+    return tage;
+  }
+
+  Object.assign(ziel, { spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

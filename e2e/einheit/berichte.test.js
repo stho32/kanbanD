@@ -43,3 +43,32 @@ test('Zeiten nach Person, Anzahl, Lesen', () => {
   assert.deepStrictEqual(filterAus('{"zeitraum":"gibts","personen":"mi","labels":["x"],"fremd":1}'), f({ labels: ['x'] }));
   assert.deepStrictEqual(filterAus('kaputt'), FILTER_LEER);
 });
+
+const { burndown, spalteAm } = require('../../web/berichte.js');
+
+const BEW = {
+  spalten: ['A', 'B', 'Z'], jetzt: '2026-10-21 12:00',
+  aufgaben: [
+    { nummer: 1, wechsel: [{ zeitpunkt: '2026-10-18 09:00', spalte: 'A' }, { zeitpunkt: '2026-10-19 10:00', spalte: 'Z' }] },
+    { nummer: 2, wechsel: [{ zeitpunkt: '2026-10-18 09:00', spalte: 'A' }, { zeitpunkt: '2026-10-20 10:00', spalte: 'B' }, { zeitpunkt: '2026-10-21 11:00', spalte: 'Z' }] },
+    { nummer: 3, wechsel: [{ zeitpunkt: '2026-10-19 09:00', spalte: 'A' }, { zeitpunkt: '2026-10-20 09:00', spalte: null }] },
+  ],
+};
+const ZU = { 1: { klasse: 'bug', zustaendige: [], labels: [] }, 2: { klasse: 'ux', zustaendige: [], labels: [] }, 3: { klasse: 'bug', zustaendige: [], labels: [] } };
+const zu = nr => ZU[nr];
+
+test('Spalte zu einem Zeitpunkt', () => {
+  const w = BEW.aufgaben[1].wechsel;
+  assert.strictEqual(spalteAm(w, new Date(2026, 9, 17).getTime()), null);
+  assert.strictEqual(spalteAm(w, new Date(2026, 9, 20, 10, 0).getTime()), 'B');
+  assert.strictEqual(spalteAm(BEW.aufgaben[2].wechsel, jetzt), null);
+});
+
+test('Burndown je Tag, Zeitraum, Ausschlüsse', () => {
+  const kurz = t => t.map(x => [x.datum.slice(8), x.offen, x.umfang]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({}), zu, jetzt)), [['18', 2, 2], ['19', 2, 3], ['20', 1, 2], ['21', 0, 2]]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({ zeitraum: 'eigen', von: '2026-10-19', bis: '2026-10-20' }), zu, jetzt)), [['19', 2, 3], ['20', 1, 2]]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({ ohneSpalten: ['A'] }), zu, jetzt)), [['18', 0, 0], ['19', 0, 1], ['20', 1, 2], ['21', 0, 2]]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({ ohneFarben: ['ux'] }), zu, jetzt)), [['18', 1, 1], ['19', 1, 2], ['20', 0, 1], ['21', 0, 1]]);
+  assert.deepStrictEqual(burndown({ spalten: [], aufgaben: [] }, f({}), zu, jetzt), []);
+});
