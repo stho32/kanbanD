@@ -119,3 +119,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00029 Karte direkt bedienen | Lauf R00029 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00030 Beschreibung als Markdown lesen | B0080 Markdown darstellen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00030 Beschreibung als Markdown lesen | B0081 Lesen und Bearbeiten wechseln | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00030 Beschreibung als Markdown lesen | Lauf R00030 | Nacharbeit | — | — | 0,0h | autonom |

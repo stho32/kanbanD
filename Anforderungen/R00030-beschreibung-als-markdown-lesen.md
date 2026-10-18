@@ -1,6 +1,6 @@
 ---
 id: R00030
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -24,9 +24,9 @@ Längere Beschreibungen sind lesbar statt Rohtext.
 
 ## Akzeptanzkriterien
 
-- [ ] `# T\n\n**a** *b* `c`\n- x\n- y` → `<h3>T</h3><p><strong>a</strong> <em>b</em> <code>c</code></p><ul><li>x</li><li>y</li></ul>` (Überschriften im Fenster eine Stufe kleiner)
-- [ ] `<script>alert(1)</script>` erscheint als Text; `[x](javascript:alert(1))` ergibt keinen Link
-- [ ] Oberfläche: Beschreibung mit Liste erscheint formatiert; Klick → Textfeld mit dem Markdown; Verlassen → gespeichert und wieder formatiert
+- [x] `# T\n\n**a** *b* `c`\n- x\n- y` → `<h3>T</h3><p><strong>a</strong> <em>b</em> <code>c</code></p><ul><li>x</li><li>y</li></ul>` (Überschriften im Fenster eine Stufe kleiner)
+- [x] `<script>alert(1)</script>` erscheint als Text; `[x](javascript:alert(1))` ergibt keinen Link
+- [x] Oberfläche: Beschreibung mit Liste erscheint formatiert; Klick → Textfeld mit dem Markdown; Verlassen → gespeichert und wieder formatiert
 
 ## Betroffene Verzeichnisstruktur
 
