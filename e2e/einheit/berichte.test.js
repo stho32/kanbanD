@@ -190,3 +190,38 @@ test('Termine: Anteil der Ziehungen, Werktage, Chance je Spalte', () => {
   assert.deepStrictEqual(terminChance({ offen: 2 }, '2026-12-01', jetzt), { art: 'ungemessen' });
   assert.deepStrictEqual(terminChance(ph, '2026-10-21', jetzt), { art: 'chance', p7: 0, p5: 0 }, 'heute: noch nichts gezogen');
 });
+
+/* ── R00058 Phasen als Spalten ── */
+const { phasenStufen, ersterDurchlauf } = require('../../web/berichte.js');
+
+const STANDARD = [{ nr: 1, name: 'Entwicklung', eingebettet: '', gleich: '' }, { nr: 2, name: 'Entwicklertest', eingebettet: '', gleich: '' }, { nr: 3, name: 'Abnahme', eingebettet: '', gleich: '' }];
+const PHASEN = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', 'Abnahme Stefan': 'Abnahme', 'Abnahme Mia': 'Abnahme' } };
+const PSPALTEN = ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme Stefan', 'Abnahme Mia', 'Erledigt'];
+const zug = (n, ...st) => ({ nummer: n, labels: [], uebersprungen: [], wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
+const tagIso = ms => { const x = new Date(ms); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.`; };
+
+test('Durchlaufen nach Phasen: spätere Phase oder Abschlussspalte, zwei Queues derselben Phase gleich weit', () => {
+  const [e, t, a] = phasenStufen(PHASEN, PSPALTEN);
+  const eins = zug(1, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-03 09:00', 'Abnahme Stefan']);
+  const zwei = zug(2, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-04 09:00', 'Abnahme Mia'], ['2026-10-05 09:00', 'Entwicklertest']);
+  assert.deepStrictEqual([eins, zwei].map(x => tagIso(ersterDurchlauf(x, t))), ['03.10.', '04.10.'], 'Entwicklertest durchlaufen beim Sprung in die Abnahme');
+  assert.deepStrictEqual([e, t, a].map(s => s.phase), ['Entwicklung', 'Entwicklertest', 'Abnahme']);
+  assert.ok(!t.durch(zwei, 'Entwicklertest'), '#2 ist ab 05.10. in Entwicklertest wieder offen');
+  assert.ok(!a.durch(zwei, 'Abnahme Mia') && !a.durch(zwei, 'Abnahme Stefan'), '„Abnahme Mia“ rechts von „Abnahme Stefan“ zählt nicht als weiter');
+  assert.ok(a.durch(zwei, 'Erledigt') && e.durch(zwei, 'Entwicklertest'));
+  assert.ok(!e.durch(zwei, 'Backlog') && !e.durch(zwei, null), 'ungebunden und vom Board genommen ist in keiner Phase');
+  assert.strictEqual(ersterDurchlauf(zug(3, ['2026-10-01 09:00', 'Backlog']), e), null);
+});
+
+test('Durchlaufen nach Phasen: entfällt, eingebettet in im-pair, gleich wie', () => {
+  const [, t, a] = phasenStufen(PHASEN, PSPALTEN);
+  const drei = { ...zug(3, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Abnahme Stefan']), uebersprungen: ['Entwicklertest'] };
+  assert.ok(t.entfaellt(drei) && !a.entfaellt(drei));
+  const folge = [STANDARD[0], { ...STANDARD[1], eingebettet: 'im-pair' }, { ...STANDARD[2], gleich: 'Entwicklertest' }];
+  const [e2, t2, a2] = phasenStufen({ ...PHASEN, folge, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest' } }, ['Entwicklung', 'Entwicklertest', 'Erledigt']);
+  const pair = { ...zug(4, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Entwicklertest']), labels: ['im-pair'] };
+  assert.strictEqual(tagIso(ersterDurchlauf(pair, t2)), '02.10.', 'im-pair: mit der Vorphase durchlaufen');
+  assert.strictEqual(tagIso(ersterDurchlauf(pair, a2)), '02.10.', 'gleich wie Entwicklertest');
+  const ohne = zug(5, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Entwicklertest'], ['2026-10-06 09:00', 'Erledigt']);
+  assert.deepStrictEqual([e2, t2, a2].map(s => tagIso(ersterDurchlauf(ohne, s))), ['02.10.', '06.10.', '06.10.']);
+});

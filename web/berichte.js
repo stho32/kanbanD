@@ -120,6 +120,35 @@
     return { liste, anzahl: w.length, gueltig: true, mittel: runden1(w.reduce((s, x) => s + x, 0) / w.length), median: runden1(w.length % 2 ? w[Math.floor(m)] : (w[m - 1] + w[m]) / 2), p85: perzentil(w, 85) };
   }
 
+  /* ── Phasen als Spalten (R00058) ── */
+  /** Rang einer Spalte in der Phasenfolge: Stelle ihrer Phase, die Abschlussspalte hinter allen, ungebundene −1. */
+  function phasenRang(phasen, spalten) {
+    const letzte = spalten[spalten.length - 1], stelle = Object.fromEntries(phasen.folge.map((p, k) => [p.name, k]));
+    return s => s === letzte ? phasen.folge.length : (stelle[phasen.spaltenphasen[s]] ?? -1);
+  }
+  /** Phase k ist durchlaufen ab einem Rang über dieser Schwelle; „gleich wie“ nimmt die der genannten Phase,
+      „eingebettet in“ bei passendem Label die der Vorphase. */
+  function phasenSchwelle(folge, k, labels) {
+    const p = folge[k], j = p.gleich ? folge.findIndex(q => q.name === p.gleich) : -1;
+    if (j >= 0 && j < k) return phasenSchwelle(folge, j, labels);
+    if (k > 0 && p.eingebettet && labels.includes(p.eingebettet)) return phasenSchwelle(folge, k - 1, labels);
+    return k;
+  }
+  /** Je Phase: durch(aufgabe, spalte) und entfaellt(aufgabe); `aufgabe` ist ein Eintrag aus bew.aufgaben. */
+  function phasenStufen(phasen, spalten) {
+    const rang = phasenRang(phasen, spalten);
+    return phasen.folge.map((p, k) => ({
+      phase: p.name,
+      durch: (a, s) => s != null && rang(s) > phasenSchwelle(phasen.folge, k, a.labels || []),
+      entfaellt: a => (a.uebersprungen || []).includes(p.name),
+    }));
+  }
+  /** Erstes Durchlaufen einer Stufe in ms; null = nie. */
+  function ersterDurchlauf(a, stufe) {
+    const w = a.wechsel.find(x => stufe.durch(a, x.spalte));
+    return w ? zeitMs(w.zeitpunkt) : null;
+  }
+
   /* ── Wie lange noch (R00046): Monte Carlo über den Durchsatz je Spalte ── */
   const PERZENTILE = [50, 70, 85, 95], ZIEHUNGEN = 10000, MIN_LAEUFE = 3, MAX_TAGE = 3650;
 
@@ -241,5 +270,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);
