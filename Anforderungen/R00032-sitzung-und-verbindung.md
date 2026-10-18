@@ -1,6 +1,6 @@
 ---
 id: R00032
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,10 +25,10 @@ Weniger Orientierung, weniger Suchen nach dem richtigen Board, Vertrauen in den 
 
 ## Akzeptanzkriterien
 
-- [ ] Board „Test“ wählen, Seite ohne `#…` neu öffnen → „Test“ ist offen
-- [ ] Mit einem laufenden Timer lautet der Titel `(1 ▶) Entwicklung — kanbanD`
-- [ ] Leeres Board zeigt den Hilfetext
-- [ ] Nach einem Verbindungsabbruch und Wiederverbindung erscheint der Hinweis
+- [x] Board „Test“ wählen, Seite ohne `#…` neu öffnen → „Test“ ist offen
+- [x] Mit einem laufenden Timer lautet der Titel `(1 ▶) Entwicklung — kanbanD`
+- [x] Leeres Board zeigt den Hilfetext
+- [x] Nach einem Verbindungsabbruch und Wiederverbindung erscheint der Hinweis
 
 ## Betroffene Verzeichnisstruktur
 
