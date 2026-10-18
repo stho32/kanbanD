@@ -1,6 +1,6 @@
 ---
 id: R00055
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,12 +29,12 @@ Die KI und der Mensch setzen den Stand an einem Ort, der für alle sofort sichtb
 ## Akzeptanzkriterien
 
 ### Schreiben
-- [ ] `I0002` mit Bubbles `B0001 gruen`, `B0002 rot`; `PATCH B0002 {status: gruen}` → Datei: `B0002 | … | gruen`, `I0002` und ihr Dialog `gruen`, wenn alle übrigen Geschwister grün sind; `zuletzt: <heute>`
-- [ ] `git diff` im Arbeits-Repository zeigt nur die Status-Zellen und `zuletzt`; `git log` im Arbeits-Repository ist unverändert
-- [ ] `PATCH I0002 {status: rot}` bei vorhandenen Bubbles → 409; `PATCH B0002 {status: option}` → 400
+- [x] `I0002` mit Bubbles `B0001 gruen`, `B0002 rot`; `PATCH B0002 {status: gruen}` → Datei: `B0002 | … | gruen`, `I0002` und ihr Dialog `gruen`, wenn alle übrigen Geschwister grün sind; `zuletzt: <heute>`
+- [x] `git diff` im Arbeits-Repository zeigt nur die Status-Zellen und `zuletzt`; `git log` im Arbeits-Repository ist unverändert
+- [x] `PATCH I0002 {status: rot}` bei vorhandenen Bubbles → 409; `PATCH B0002 {status: option}` → 400
 
 ### Sicht
-- [ ] Bubble per Klick auf `gelb` → Zeile gelb, Kopf „nicht committet“
+- [x] Bubble per Klick auf `gelb` → Zeile gelb, Kopf „nicht committet“
 
 ## Betroffene Verzeichnisstruktur
 
