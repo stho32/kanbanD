@@ -2,6 +2,7 @@
 const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests',
+  globalSetup: require.resolve('./bauen.js'),
   timeout: 30000,
   workers: 4,
   reporter: [['list']],

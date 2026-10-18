@@ -1,8 +1,17 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, ui: { slug: null, first: null, fehler: null } };
+const S = { zustand: null, board: null, ich: null, ui: { slug: null, first: null, fehler: null, pop: null } };
+try { S.ich = sessionStorage.getItem('kanbanD.ich'); } catch (_) { }
+
+function ichSetzen(k) {
+  S.ich = k;
+  try { sessionStorage.setItem('kanbanD.ich', k); } catch (_) { }
+}
 
 async function api(methode, pfad, daten) {
-  const r = await fetch(pfad, { method: methode, headers: daten ? { 'Content-Type': 'application/json' } : {}, body: daten ? JSON.stringify(daten) : undefined });
+  const headers = {};
+  if (daten) headers['Content-Type'] = 'application/json';
+  if (S.ich) headers['X-KanbanD-Wer'] = S.ich;
+  const r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined });
   const text = await r.text();
   const json = text ? JSON.parse(text) : null;
   if (!r.ok) throw Object.assign(new Error(json && json.fehler || r.statusText), { status: r.status });
@@ -30,13 +39,27 @@ async function laden() {
 function render() {
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = S.ui.first ? vFirst() : vBoard();
+  $('#over').innerHTML = vPop();
   $('#stat').innerHTML = vStatus();
+  popPlatzieren();
+}
+
+function popPlatzieren() {
+  const p = $('#pop');
+  if (!p) return;
+  const t = document.getElementById(p.dataset.for);
+  if (!t) { S.ui.pop = null; p.remove(); return; }
+  const r = t.getBoundingClientRect();
+  p.style.top = (r.bottom + 2) + 'px';
+  p.style.left = (p.dataset.al === 'r' ? Math.max(4, r.right - p.offsetWidth) : r.left) + 'px';
 }
 
 async function act(a, arg) {
   const u = S.ui;
   try {
     switch (a) {
+      case 'pop': u.pop = u.pop === arg ? null : arg; if (arg !== 'ich') u.ichNoetig = false; break;
+      case 'ich': ichSetzen(arg); u.pop = null; u.ichNoetig = false; break;
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {
         const f = u.first, e = ersteEinstellungen(f);
@@ -45,7 +68,7 @@ async function act(a, arg) {
           agenten: e.personen.slice(1).map(p => ({ kuerzel: p.kuerzel, name: p.name })),
           board: f.board.trim(), spalten: spaltenListe(f), quellen: e.quellen,
         });
-        try { sessionStorage.setItem('kanbanD.ich', e.personen[0].kuerzel); } catch (_) { }
+        ichSetzen(e.personen[0].kuerzel);
         location.hash = '#/board/' + antwort.board;
         return laden();
       }
@@ -59,6 +82,10 @@ async function act(a, arg) {
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
+  if (S.ui.pop && !e.target.closest('.pop') && !(el && el.dataset.act === 'pop')) {
+    S.ui.pop = null; S.ui.ichNoetig = false;
+    if (!el) { render(); return; }
+  }
   if (!el || el.disabled) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg);
@@ -73,5 +100,9 @@ document.addEventListener('input', e => {
   }
 });
 window.addEventListener('hashchange', laden);
+window.addEventListener('resize', popPlatzieren);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); }
+});
 
 laden().catch(f => { S.ui.fehler = f.message; render(); });

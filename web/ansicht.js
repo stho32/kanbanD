@@ -24,6 +24,10 @@ function boardText(titel, spalten) {
   return `# ${titel}\n` + spalten.map(s => `\n## ${s}\n`).join('');
 }
 
+const personen = () => (S.zustand && S.zustand.einstellungen ? S.zustand.einstellungen.personen : []);
+const per = k => personen().find(p => p.kuerzel === k) || { kuerzel: k, name: k, art: 'human', aktiv: true };
+const pk = k => { const p = per(k); return `<span class="pk ${p.art === 'agent' ? 'pk-a' : 'pk-m'}${p.aktiv === false ? ' pk-still' : ''}" title="${esc(p.name)}${p.aktiv === false ? ' (stillgelegt)' : ''}">${esc(k.slice(0, 2).toUpperCase())}</span>`; };
+
 /* ── Kopfzeile ── */
 function vKopf() {
   const u = S.ui, z = S.zustand;
@@ -31,7 +35,22 @@ function vKopf() {
   const ordnerName = z.ordner.split('/').filter(Boolean).pop();
   if (!z.eingerichtet || u.first) return `<header class="kz"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></header>`;
   const b = S.board;
-  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}">${esc(b ? b.titel : ordnerName)} <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="an">Board</a></nav><div class="kz-z3"></div></header>`;
+  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}">${esc(b ? b.titel : ordnerName)} <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="an">Board</a></nav><div class="kz-z3">${vIchKnopf()}</div></header>`;
+}
+
+function vIchKnopf() {
+  const me = S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
+  return `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="true">${me ? pk(me.kuerzel) + esc(me.name) : 'nicht gewählt'} ▾</button>`;
+}
+
+/* ── Popover ── */
+function vPop() {
+  const u = S.ui;
+  if (u.pop !== 'ich') return '';
+  const ps = personen();
+  const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
+  const nicht = ps.filter(p => p.art === 'agent' || !p.aktiv);
+  return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px" role="menu"><h4>ICH BIN … <span class="mono">people:</span></h4>${u.ichNoetig ? '<div class="warnh">Für diese Aktion zuerst wählen, wer du bist.</div>' : ''}${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitem">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}<div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
 /* ── Board ── */

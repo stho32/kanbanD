@@ -25,4 +25,38 @@ async function kanbanStarten(vorbereiten) {
   };
 }
 
-module.exports = { kanbanStarten };
+const EINSTELLUNGEN = `---
+people:
+  st: {name: Stefan, kind: human}
+  mi: {name: Mia, kind: human}
+  cl: {name: Claude, kind: agent}
+  ab: {name: Anna, kind: human, active: false}
+classes:
+  bug: {label: Fehler, color: red}
+  feature: {label: Funktion, color: green}
+sources:
+  wbs: plan/wbs.md
+  requirements: anf/
+---
+`;
+
+/** Ein eingerichteter Ordner: Stefan, Mia (Menschen), Claude (Agent), Anna (stillgelegt), Board „Entwicklung“. */
+function einrichten(dateien = {}) {
+  return ordner => {
+    const alle = { 'kanbanD.md': EINSTELLUNGEN, 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n', ...dateien };
+    for (const [rel, inhalt] of Object.entries(alle)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+/** Wählt im Tab die Identität, bevor die Seite lädt. */
+async function alsPerson(page, kuerzel) {
+  await page.addInitScript(k => sessionStorage.setItem('kanbanD.ich', k), kuerzel);
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson };
