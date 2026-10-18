@@ -15,3 +15,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 9 | — | A6 | Stack Rust statt C#/.NET 10 laut Auftrag; Oberfläche als eingebettetes HTML/JS (Weiterentwicklung des gesehenen Prototyps) statt Blazor | Anforderungen/R00000-vision.md, Leitplanke „Rust“ | offen |
 | 10 | — | A1 | Ist der Ordner kein Git-Repository, legt kanbanD beim Start eines an (Commit je Aktion braucht eines) | Anforderungen/R00000-vision.md, Leitplanke „Git ist Voraussetzung“ | offen |
 | 11 | I0001 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00001 | offen |
+| 12 | I0002 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00002 | offen |
