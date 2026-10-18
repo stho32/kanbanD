@@ -6,6 +6,7 @@ mod archiv;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
 mod bewegen;
+mod bindung;
 mod board_anlegen;
 mod einrichten;
 mod einstellungen;

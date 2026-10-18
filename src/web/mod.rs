@@ -67,6 +67,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards/{slug}/aufgaben/{nr}", axum::routing::delete(von_board_nehmen))
         .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
         .route("/api/boards/{slug}/termine", axum::routing::put(termine_setzen))
+        .route("/api/boards/{slug}/anwendungen", axum::routing::put(bindung_setzen))
         .route("/api/wer", get(wer))
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
@@ -231,6 +232,15 @@ async fn termine_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.termine_setzen(&p, &slug, neu)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(kuerzel): Json<Vec<String>>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.bindung_setzen(&p, &slug, &kuerzel)
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
