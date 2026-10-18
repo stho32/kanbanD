@@ -23,9 +23,7 @@ test('US-1 und US-2: Burndown und Durchlaufzeit aus der Geschichte', async ({ pa
     await page.getByRole('menuitem', { name: /Burndown/ }).click();
     await expect(page.getByRole('img', { name: 'Offene Aufgaben je Tag' })).toBeVisible();
     await expect(page.locator('.endwert').first()).toHaveText('offen 1');
-    await expect(page.locator('#durchlauf tr.klick')).toHaveCount(1);
-    await expect(page.locator('#durchlauf tr.klick td').last()).toHaveText('1,0');
-    await expect(page.locator('#durchlauf-kennzahl')).toHaveText('1,0 · 1,0');
+    await expect(page.locator('#durchlauf')).toHaveCount(0, { timeout: 1 }); // Durchlaufzeit ist ein eigener Bericht (R00044)
     await page.mouse.move(1, 1);
     await expect(page.locator('#tooltip')).toBeHidden();
     await page.locator('rect.treffer').first().hover();

@@ -389,7 +389,7 @@ const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown und Durchlaufzeit', 'Offene Aufgaben je Tag und Durchlaufzeit je Aufgabe – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
 function vBerichtsfilter(teile) {
@@ -435,9 +435,10 @@ function vKreuz() {
 /* Burndown: eine Serie (offen) in der Akzentfarbe, Umfang als neutrale Bezugslinie. */
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
 function vVerlauf() {
-  const v = S.verlauf;
-  if (!v) return '<div class="leer">lädt …</div>';
-  const t = v.tage, B = 800, H = 260, L = 36, R = 96, O = 16, U = 28;
+  if (!S.bew) return '<div class="leer">lädt …</div>';
+  const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now()), B = 800;
+  S.bdTage = t;
+  const H = 260, L = 36, R = 96, O = 16, U = 28;
   const max = Math.max(1, ...t.map(x => x.umfang));
   const sx = i => L + (t.length < 2 ? (B - L - R) / 2 : i * (B - L - R) / (t.length - 1));
   const sy = y => O + (H - O - U) * (1 - y / max);
@@ -455,12 +456,11 @@ ${xTicks.map(({ x, i }) => `<text class="achse" x="${sx(i)}" y="${H - 8}" text-a
 <text class="endwert leise" x="${sx(t.length - 1) + 10}" y="${sy(letzte.umfang) + (letzte.umfang === letzte.offen ? 18 : 4)}">Umfang ${letzte.umfang}</text>
 <line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
 ${t.map((x, i) => `<rect class="treffer" x="${sx(i) - (B - L - R) / Math.max(1, t.length - 1) / 2}" y="${O}" width="${(B - L - R) / Math.max(1, t.length - 1)}" height="${H - O - U}" data-tag="${i}"></rect>`).join('')}
-</svg>` : '<div class="leer">Noch kein Stand dieses Boards.</div>';
-  const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (alle Aufgaben auf dem Board)</span></div>`;
+</svg>` : `<div class="leer">${S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.'}</div>`;
+  const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
-  const durchlauf = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>auf dem Board seit</th><th>in der Abschlussspalte</th><th class="r">Tage</th></tr></thead><tbody>${v.durchlauf.map(d => { const a = aufgabe(d.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${d.nummer}"><td class="tt"><span class="mono muted">#${d.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${esc(d.eintritt)}</td><td class="mono">${esc(d.abschluss)}</td><td class="r num">${zahl1(d.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">Noch keine Aufgabe in der Abschlussspalte.</td></tr>'}<tr class="grp"><td colspan="3">MITTEL · MEDIAN</td><td class="r" id="durchlauf-kennzahl">${zahl1(v.mittel)} · ${zahl1(v.median)}</td></tr></tbody></table>`;
-  return `<div class="leiste"><b>Burndown und Durchlaufzeit</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md</span></div>
-<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}<h3 class="dtitel">Durchlaufzeit je Aufgabe</h3>${durchlauf}</div>`;
+  return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter({ zeitraum: true, spalten: true, personen: 'zustaendig' })}
+<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

@@ -84,7 +84,8 @@ async function laden() {
       api('GET', '/api/boards'),
     ]);
     S.boards = boards;
-    S.verlauf = S.ui.view === 'berichte/verlauf' && S.ui.slug ? await api('GET', '/api/berichte/verlauf?board=' + encodeURIComponent(S.ui.slug)) : null;
+    // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
+    S.bew = /^berichte\/(verlauf|durchlauf|prognose)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
     S.herkunft = herkunft;
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
@@ -1018,7 +1019,7 @@ document.addEventListener('mouseover', e => {
   const tip = $('#tooltip'), kreuz = $('#fadenkreuz');
   if (!tip || !kreuz) return;
   if (!r) { tip.hidden = true; kreuz.setAttribute('x1', -10); kreuz.setAttribute('x2', -10); return; }
-  const x = S.verlauf.tage[+r.dataset.tag], mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
+  const x = S.bdTage[+r.dataset.tag], mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
   kreuz.setAttribute('x1', mitte); kreuz.setAttribute('x2', mitte);
   tip.innerHTML = `<b>${x.datum}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>`;
   tip.hidden = false;
