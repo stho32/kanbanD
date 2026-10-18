@@ -3,19 +3,19 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { kartenMenue, menueSchritt } = require('../../web/menue.js');
 
-const a = { nummer: 3, titel: 'drei', klasse: 'bug', faellig: null };
+const a = { nummer: 3, titel: 'drei', klasse: 'bug', faellig: null, zustaendige: [] };
 const u = { spalten: ['Zu erledigen', 'In Arbeit', 'Erledigt'], spalte: 'Zu erledigen', klassen: [{ schluessel: 'bug', bezeichnung: 'Fehler' }, { schluessel: 'ux', bezeichnung: 'UX' }], boards: [{ slug: 'test', titel: 'Test', spalte: 'Bereit' }], ich: 'st', meinerLaeuft: true, meine: false };
 
 test('Menü der Karte', () => {
   const m = kartenMenue(a, u);
   const texte = m.map(e => e.trenner ? '—' : e.text);
-  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren']);
+  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren']);
   assert.strictEqual(m[2].arg, '3|st');
-  const spalten = m[6].unter;
+  const spalten = m[7].unter;
   assert.deepStrictEqual(spalten.map(s => [s.text, s.kuerzel, !!s.aktuell]), [['Zu erledigen', '1', true], ['In Arbeit', '2', false], ['Erledigt', '3', false]]);
-  assert.ok(m[7].unter.find(k => k.text === 'Fehler').aktuell);
-  assert.deepStrictEqual(m[8].unter.map(f => f.text), ['heute', 'morgen', '+1 Woche'], 'ohne Fälligkeit kein „entfernen“');
-  assert.strictEqual(m[9].unter[0].arg, 'test|3|Bereit');
+  assert.ok(m[8].unter.find(k => k.text === 'Fehler').aktuell);
+  assert.deepStrictEqual(m[9].unter.map(f => f.text), ['heute', 'morgen', '+1 Woche'], 'ohne Fälligkeit kein „entfernen“');
+  assert.strictEqual(m[10].unter[0].arg, 'test|3|Bereit');
   const ohne = kartenMenue({ ...a, faellig: '2026-10-20' }, { ...u, boards: [], meinerLaeuft: false, meine: true });
   assert.ok(!ohne.some(e => e.text === 'Auf Board legen'));
   assert.ok(ohne.some(e => e.text === 'Timer starten') && ohne.some(e => e.text === 'Mich abnehmen'));
@@ -29,7 +29,7 @@ test('Menüschritt überspringt Trenner und Aktuelles, mit Umlauf', () => {
   assert.strictEqual(menueSchritt(m, m.length - 1, 1), 0);
   assert.strictEqual(menueSchritt(m, 5, 'anfang'), 0);
   assert.strictEqual(menueSchritt(m, 0, 'ende'), m.length - 1);
-  assert.strictEqual(menueSchritt(m[6].unter, -1, 1), 1, 'aktuelle Spalte ist nicht wählbar');
+  assert.strictEqual(menueSchritt(m[7].unter, -1, 1), 1, 'aktuelle Spalte ist nicht wählbar');
   assert.strictEqual(menueSchritt([{ trenner: true }], 0, 1), -1);
 });
 
@@ -50,4 +50,15 @@ test('Menü der Listenzeile', () => {
   assert.strictEqual(m.find(e => e.text === 'Von Board nehmen').unter[0].arg, 'e|4');
   const arch = listenMenue({ ...a, archiviert: '2026-10-01' }, { liegtAuf: [], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit'] }] });
   assert.ok(arch.some(e => e.text === 'Zurückholen') && !arch.some(e => e.text === 'Auf Board legen'));
+});
+
+const { zustaendigeUnter } = require('../../web/menue.js');
+
+test('Untermenü Zuständige', () => {
+  const personen = [{ kuerzel: 'st', name: 'Stefan', aktiv: true }, { kuerzel: 'mi', name: 'Mia', aktiv: true }, { kuerzel: 'cl', name: 'Claude', aktiv: true }, { kuerzel: 'ab', name: 'Anna', aktiv: false }];
+  const u = zustaendigeUnter({ nummer: 1, zustaendige: ['mi'] }, personen);
+  assert.deepStrictEqual(u.map(e => [e.text, e.haken, e.arg]), [['Stefan', false, '1|st'], ['Mia', true, '1|mi'], ['Claude', false, '1|cl']]);
+  assert.ok(zustaendigeUnter({ nummer: 1, zustaendige: ['ab'] }, personen).some(e => e.text === 'Anna' && e.haken));
+  const m = kartenMenue(a, { ...u, spalten: [], personen });
+  assert.ok(m.some(e => e.text === 'Zuständige' && e.unter.length === 3));
 });

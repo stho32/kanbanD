@@ -422,3 +422,4 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
 .naechste-box{flex:none;width:13px;height:13px;margin-top:1px;padding:0;border:1px solid var(--kd-line-strong);background:var(--kd-surface);cursor:pointer}
 .naechste-box:hover,.naechste-box:focus{border-color:var(--kd-accent);background:var(--kd-accent-weak)}
+.km-ohne{display:inline-block;width:1.1em}

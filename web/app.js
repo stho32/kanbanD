@@ -442,6 +442,13 @@ async function act(a, arg, wert) {
         catch (_) { u.hinweis = { text: `Kopieren nicht erlaubt — ${text}`, at: Date.now() }; }
         break;
       }
+      case 'zustaendig-karte': {
+        if (ichNoetig()) break;
+        const [nr, k] = arg.split('|'), a = aufgabe(+nr);
+        const z = a.zustaendige.includes(k) ? a.zustaendige.filter(x => x !== k) : [...a.zustaendige, k];
+        if (u.view === 'board') u.fokusKarte = +nr; else u.fokusZeile = +nr;
+        return aufgabeAendern(+nr, { zustaendige: z });
+      }
       case 'mich': {
         if (ichNoetig()) break;
         const a = aufgabe(+arg), z = a.zustaendige.includes(S.ich) ? a.zustaendige.filter(k => k !== S.ich) : [...a.zustaendige, S.ich];
@@ -697,7 +704,7 @@ function menueFuerKarte(nr, x, y) {
   if (!a || !S.board) return;
   const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
   const boards = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
-  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
+  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich), personen: personen() });
   S.ui.fokusKarte = nr;
   S.ui.pop = null;
   S.ui.menue = { titel: `#${nr} ${a.titel}`, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
@@ -717,7 +724,7 @@ function menueFuerZeile(nr, x, y) {
   const a = aufgabe(nr);
   const liegtAufBoards = (S.boards || []).flatMap(b => b.spalten.filter(sp => sp.aufgaben.includes(nr)).map(sp => ({ slug: b.slug, titel: b.titel, spalte: sp.name })));
   const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr))).map(b => ({ slug: b.slug, titel: b.titel, spalten: b.spalten.map(sp => sp.name) }));
-  menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei }), x, y);
+  menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei, personen: personen() }), x, y);
 }
 function menueEinpassen() {
   const el = $('#kmenue');
@@ -851,6 +858,16 @@ function brettTaste(e, t) {
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
+  if (karte && e.key === 'p' && aufgabe(nr)) {
+    e.preventDefault();
+    const r = karte.getBoundingClientRect();
+    menueFuerKarte(nr, r.left + 24, r.top + 24);
+    const m = S.ui.menue, i = m.eintraege.findIndex(x => x.text === 'Zuständige');
+    m.index = i;
+    m.unter = { von: i, eintraege: m.eintraege[i].unter, index: menueSchritt(m.eintraege[i].unter, -1, 1) };
+    render();
+    return true;
+  }
   if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
     e.preventDefault();
     const r = karte.getBoundingClientRect();
