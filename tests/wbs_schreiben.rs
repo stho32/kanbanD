@@ -221,3 +221,22 @@ async fn verwerfen_markiert_interaction_und_bubbles_ohne_zeile_zu_entfernen_stan
 async fn verwirf(adresse: &str, id: &str, daten: serde_json::Value) -> (u16, serde_json::Value) {
     gemeinsam::senden(reqwest::Method::POST, adresse, &format!("api/wbs/kc/knoten/{id}/verwerfen"), "st", daten).await
 }
+
+#[test]
+fn gleichzeitig_angelegte_knoten_bekommen_verschiedene_ids() {
+    let (_a, arbeit) = arbeits_repository(&grosse_wbs(1..=2));
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let kanban = std::sync::Arc::new(Kanban::neu(tmp.path().to_path_buf()));
+    let faeden: Vec<_> = (0..8)
+        .map(|n| {
+            let k = kanban.clone();
+            let neu = kanband::wbs_datei::NeuerKnoten { ebene: "Bubble".into(), eltern: "I0047".into(), name: format!("N{n}"), fertig_kriterium: "Test gruen".into(), ..Default::default() };
+            std::thread::spawn(move || k.wbs_knoten_anlegen("kc", &neu).unwrap().id)
+        })
+        .collect();
+    let mut ids: Vec<String> = faeden.into_iter().map(|f| f.join().unwrap()).collect();
+    ids.sort();
+    assert_eq!(ids, (3..=10).map(|i| format!("B{i:04}")).collect::<Vec<_>>());
+    assert_eq!(kanband::herkunft::wbs_tabelle(&plan(&arbeit)).alle().iter().filter(|k| k.eltern == "I0047").count(), 10);
+}
