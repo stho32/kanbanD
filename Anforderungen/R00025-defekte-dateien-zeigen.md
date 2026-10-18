@@ -1,6 +1,6 @@
 ---
 id: R00025
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -26,11 +26,11 @@ Nach einem Merge mit Konflikt sieht man sofort, welche Datei zu reparieren ist �
 
 ## Akzeptanzkriterien
 
-- [ ] Aufgabe #2 mit Konfliktmarkern → Karte „#2 — Datei defekt“ mit „Konfliktmarker“; Fenster zeigt den Text und keine Eingabefelder
-- [ ] `PATCH /api/aufgaben/2` → 423 (bestehend, R00011)
-- [ ] Board-Datei mit Aufgabenzeile vor der ersten Spalte → Hinweisfläche mit „vor der ersten Spalte“
-- [ ] `kanbanD.md` unlesbar → Hinweisleiste, Board bleibt sichtbar
-- [ ] Datei repariert (Editor) → Karte normal, Hinweis weg
+- [x] Aufgabe #2 mit Konfliktmarkern → Karte „#2 — Datei defekt“ mit „Konfliktmarker“; Fenster zeigt den Text und keine Eingabefelder
+- [x] `PATCH /api/aufgaben/2` → 423 (bestehend, R00011)
+- [x] Board-Datei mit Aufgabenzeile vor der ersten Spalte → Hinweisfläche mit „vor der ersten Spalte“
+- [x] `kanbanD.md` unlesbar → Hinweisleiste, Board bleibt sichtbar
+- [x] Datei repariert (Editor) → Karte normal, Hinweis weg
 
 ## Betroffene Verzeichnisstruktur
 
