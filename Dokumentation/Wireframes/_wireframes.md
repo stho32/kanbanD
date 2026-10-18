@@ -31,6 +31,7 @@ Design-System im Repository.
 | 2026-10-18 | Board-Datei statt `board.yaml` | Board ist Markdown im Boardverzeichnis, Einstellungen in `kanbanD.md`; die Ansichten bleiben | Vision-Fortschreibung 2026-10-18 |
 | 2026-10-18 | Artboards D0002, D0003, D0005, D0006 | aus dem gesehenen Prototyp festgehalten (DOM-Abzug mit Token-CSS inline) | Richtung steht; kein Neuentwurf nötig. D0002 nachgereicht — S3 war in Runde I0004 übersprungen |
 | 2026-10-18 | Artboard D0004 Aufgabenliste | Neuentwurf in der Richtung: Tabelle mit „Liegt auf“, Bereiche alle/ohne Board/archiviert | Dialog fehlte im Prototyp |
+| 2026-10-18 | Artboard D0007 Agenten-Schnittstelle | Seite /api: Satz zur Identität, Beispiel, Tabelle Methode · Pfad · Wer · Zweck nach Themen | Dialog ohne Vorbild im Prototyp |
 | 2026-10-18 | „Kein Git in der Oberfläche“ | bleibt für Pull/Push/Merge; kanbanD committet jede eigene Aktion, ohne Git-Bedienung in der Oberfläche | Vision-Fortschreibung 2026-10-18 |
 
 ## Offene Fragen
