@@ -1,6 +1,6 @@
 ---
 id: R00054
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -31,16 +31,16 @@ Der Stand der Anwendung ist jederzeit sichtbar, ohne dass die KI ein HTML-Dashbo
 ## Akzeptanzkriterien
 
 ### Stand
-- [ ] WBS mit 4 zählenden Slices (2 `gruen`, 1 `gelb`, 1 `rot`) und einem `option`-Feature → Kopf „50 % funktional · 25 % in Bearbeitung · 25 % offen“
-- [ ] Interaction mit Features F1 `gruen`, F2 `rot` → gerechnet `gelb`; steht in der Datei `gruen`, zeigt die Zeile den Widerspruch
+- [x] WBS mit 4 zählenden Slices (2 `gruen`, 1 `gelb`, 1 `rot`) und einem `option`-Feature → Kopf „50 % funktional · 25 % in Bearbeitung · 25 % offen“
+- [x] Interaction mit Features F1 `gruen`, F2 `rot` → gerechnet `gelb`; steht in der Datei `gruen`, zeigt die Zeile den Widerspruch
 
 ### Tabelle
-- [ ] Baum A → D → I → B wird mit drei Einrückungsstufen gezeigt; Klappen von D blendet I und B aus
-- [ ] Eine zusätzliche Spalte `Phase` in der WBS-Datei stört nicht und bleibt beim Lesen erhalten
+- [x] Baum A → D → I → B wird mit drei Einrückungsstufen gezeigt; Klappen von D blendet I und B aus
+- [x] Eine zusätzliche Spalte `Phase` in der WBS-Datei stört nicht und bleibt beim Lesen erhalten
 
 ### Live und Git
-- [ ] Sicht offen, die WBS-Datei im Arbeits-Repository wird mit einem Editor geändert (B0001 `rot` → `gruen`) → die Zeile wird ohne Neuladen grün
-- [ ] Ungestagte Änderung in der WBS-Datei → Kopf zeigt „nicht committet“; nach Commit im Arbeits-Repository verschwindet der Hinweis
+- [x] Sicht offen, die WBS-Datei im Arbeits-Repository wird mit einem Editor geändert (B0001 `rot` → `gruen`) → die Zeile wird ohne Neuladen grün
+- [x] Ungestagte Änderung in der WBS-Datei → Kopf zeigt „nicht committet“; nach Commit im Arbeits-Repository verschwindet der Hinweis
 
 ## Betroffene Verzeichnisstruktur
 

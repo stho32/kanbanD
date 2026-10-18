@@ -195,3 +195,5 @@ Nie vom User erfragen.
 | 2026-10-18 | R00054 WBS-Sicht | B0134 Dialog und Interaction klappen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0135 Kopf mit Stand | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0136 Sicht lebt mit dem Arbeits-Repository | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | Lauf R00054 | Nacharbeit | — | — | 0,03h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | Lauf R00054 | Konsolidierung | — | — | 0,02h | autonom |
