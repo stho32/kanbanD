@@ -30,12 +30,16 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
 
 ```
 <ordner>/
-  kanbanD.md                 Personen (people), Klassen (classes), Quellpfade (sources)
-  boards/<slug>.md           # Titel, je Spalte „## Name“, je Aufgabe „- [#12](../aufgaben/0012-….md)“
+  kanbanD.md                 Personen (people), Klassen (classes), Quellpfade (sources),
+                             Register der Anwendungen (sources.applications: je Kürzel name, wbs, requirements)
+  boards/<slug>.md           # Titel, je Spalte „## Name“, je Aufgabe „- [#12](../aufgaben/0012-….md)“;
+                             im Frontmatter optional applications: [kd] — die gebundenen Anwendungen
   aufgaben/0012-titel.md     Frontmatter (id, title, class, assignees, labels, due, origins, archived),
                              Beschreibung, „- [ ]“-Teilaufgaben, Codeblöcke kanbanD-time und kanbanD-comments
   aufgaben/0012-titel/       Anhänge
 ```
+
+Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendung einmal mit vollen Pfaden ins Register ein (Einrichten → Anwendungen); Aufgaben nennen ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
 
 Eine Aufgabe zu bewegen ändert nur die Board-Datei. Dieselbe Aufgabe kann auf mehreren Boards liegen. Wer an kanbanD vorbei Dateien ändert, sieht sie live in allen Browsern; committet wird das nicht von kanbanD.
 
