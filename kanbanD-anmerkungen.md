@@ -58,3 +58,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 52 | I0036 | A2 | „+ Karte“ entfällt auf Auftrag; das ändert das Verhalten aus R00005/R00027/R00028 (Anlegen in der Bahn) — die alten Anforderungen bleiben unverändert, R00036 nennt die Ablösung | Anforderungen/R00036-neue-aufgabe-im-dialog.md | offen |
 | 53 | I0036 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00036 | offen |
 | 54 | I0037 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00037 | offen |
+| 55 | I0038 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00038 | offen |
