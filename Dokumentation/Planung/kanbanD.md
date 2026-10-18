@@ -195,6 +195,18 @@ zuletzt: 2026-10-18
 | B0123 | Bubble | I0048 | Register in den Einstellungen pflegen | gruen | Test gruen | Einstellungsseite: Anwendung anlegen, ändern, entfernen; erreichbar je Pfad; Vorschau; ein Commit | 1-2 |  |  |  |  |
 | B0124 | Bubble | I0048 | Qualifizierte Herkunft an der Karte | gruen | Test gruen | Herkunft-Chip mit Link in die WBS der Anwendung, „mehrdeutig“ bei unqualifizierter Herkunft; wartet auf qualifiziert | 0,5-1 |  |  |  |  |
 | I0049 | Interaction | D0008 | WBS-Sicht ansehen | rot | US-1..US-3 |  |  |  | I0048 | R00054 | WBS 1: Tabelle nach /planung karte, Stand, live, nicht committet |
+| B0125 | Bubble | I0049 | WBS-Tabelle mit allen Spalten lesen | rot | Test gruen | WBS-Text → WbsTabelle: Spalten über die Kopfzeile, unbekannte Spalten erhalten, \| in Zellen | 0,5-1 |  |  |  |  |
+| B0126 | Bubble | I0049 | Status oberer Knoten rechnen | rot | Test gruen | WbsTabelle → gerechneter Status je Knoten nach Skill; option/ausbau/verworfen zählen nicht, bestehend wie gruen | 0,5-1 |  |  |  |  |
+| B0127 | Bubble | I0049 | Erreichte Ebene rechnen | rot | Test gruen | WbsTabelle → erreichte Ebene je Knoten (Minimum der Kinder, kein Feature noetig) | 0,5-1 |  |  |  |  |
+| B0128 | Bubble | I0049 | Stand über die Slices | rot | Test gruen | WbsTabelle → Stand: gruen/gelb/rot über zählende Slices, aktiver Knoten mit Pfad, laufende Blätter | 0,5-1 |  |  |  |  |
+| B0129 | Bubble | I0049 | Geänderte WBS-Datei erkennen | rot | Test gruen | Pfad im Arbeits-Repository → nicht committet ja/nein (git status ohne Index-Schreiben) | 0,5-1 |  |  |  |  |
+| B0130 | Bubble | I0049 | WBS einer Anwendung ausliefern | rot | Test gruen | GET /api/wbs/{kürzel} → knoten, stand, nicht_committet, anforderungen; unbekannt 404, nicht erreichbar 409 | 1-2 |  |  |  |  |
+| B0131 | Bubble | I0049 | Fremde WBS-Dateien beobachten | rot | Test gruen | Register → Wächter auf WBS-Datei und Git-Verzeichnis außerhalb des Ordners → Ereignis {pfade, extern, wbs} | 1-2 |  |  |  |  |
+| B0132 | Bubble | I0049 | Menüpunkt WBS je gebundener Anwendung | rot | Test gruen | Board + Register → gebundene Anwendungen (eine registrierte gilt als gebunden) → Menü WBS, Route #/wbs/<kürzel>, g k | 0,5-1 |  |  |  |  |
+| B0133 | Bubble | I0049 | WBS-Tabelle zeigen | rot | Test gruen | WBS → Tabelle ID · Ebene · Knoten · Fertig/Eingabe → Ausgabe · Aufwand · Status · Requirement · Notiz; Einrückung, Ampel, Plakette, Widerspruch | 1-2 |  |  |  |  |
+| B0134 | Bubble | I0049 | Dialog und Interaction klappen | rot | Test gruen | Klick auf Schalter → Nachfahren ausgeblendet, Zustand je Anwendung gemerkt; ohne Wahl nur der aktive Ast offen | 0,5-1 |  |  |  |  |
+| B0135 | Bubble | I0049 | Kopf mit Stand | rot | Test gruen | Stand → % funktional · in Bearbeitung · offen, Balken, aktiver Pfad, laufende Bubbles, nicht committet | 0,5-1 |  |  |  |  |
+| B0136 | Bubble | I0049 | Sicht lebt mit dem Arbeits-Repository | rot | Test gruen | Editor-Änderung oder Commit im Arbeits-Repository → Sicht lädt ohne Neuladen nach | 0,5-1 |  |  |  |  |
 | I0050 | Interaction | D0008 | WBS-Status setzen | rot | US-1..US-3 |  |  |  | I0049 | R00055 | WBS 1: Blätter rot/gelb/gruen, Vorfahren gerechnet, kein Commit im Arbeits-Repository |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |
