@@ -111,9 +111,9 @@ zuletzt: 2026-10-18
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
 | B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
 | B0066 | Bubble | I0024 | Agentenlauf Ende-zu-Ende | gruen | Test gruen | Agent legt an, bewegt, kommentiert, misst Zeit nur über die API → Commits unter seinem Namen | 1-2 |  |  |  |  |
-| I0025 | Interaction | D0002 | Defekte Dateien zeigen | gelb | US-1..US-3 |  |  |  | I0004 | R00025 |  |
+| I0025 | Interaction | D0002 | Defekte Dateien zeigen | gruen | US-1..US-3 |  |  |  | I0004 | R00025 |  |
 | B0067 | Bubble | I0025 | Defekte Aufgaben auf dem Board | gruen | Test gruen | defekte Aufgabendatei → Karte mit Fehlerzeile, Fenster nur lesbar mit Dateitext | 1-2 |  |  |  |  |
-| B0068 | Bubble | I0025 | Defektes Board und defekte Einstellungen | rot | Test gruen | Board-Datei oder kanbanD.md defekt → Hinweisfläche mit Fehler und Editor-Link; Liste aller defekten Dateien | 1-2 |  |  |  |  |
+| B0068 | Bubble | I0025 | Defektes Board und defekte Einstellungen | gruen | Test gruen | Board-Datei oder kanbanD.md defekt → Hinweisfläche mit Fehler und Editor-Link; Liste aller defekten Dateien | 1-2 |  |  |  |  |
 | I0026 | Interaction | D0002 | Tastaturbedienung | rot | US der Anforderung |  |  |  | I0006 |  |  |
 
 ## Offene Fragen
