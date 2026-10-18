@@ -162,7 +162,8 @@ zuletzt: 2026-10-18
 | B0100 | Bubble | I0039 | Zuständige im Menü und per p | gruen | Test gruen | Aufgabe + Personen → Untermenü mit Haken je Person; Klick setzt oder entfernt; p öffnet es an der Karte | 1-2 |  |  |  |  |
 | I0040 | Interaction | D0004 | Ziehen in der Aufgabenliste | gruen | US-1..US-2 |  |  |  | I0020 | R00040 | UX-Überarbeitung 3: Zeilen auf Boardspalten oder ins Archiv ziehen |
 | B0101 | Bubble | I0040 | Zeilen auf Spalten und Archiv ziehen | gruen | Test gruen | Zeile + Ziel (Board · Spalte | Archiv) → legen, bewegen oder archivieren, ein Commit | 1-2 |  |  |  |
-| I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | rot | US der Anforderung |  |  |  | I0035 |  | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
+| I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | rot | US-1..US-2 |  |  |  | I0035 | R00041 | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
+| B0102 | Bubble | I0041 | Kürzel nach Kanbanflow-Konvention | rot | Test gruen | n überall, Leertaste Timer, Entf archivieren, Hilfe zeigt Herkunft | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 
