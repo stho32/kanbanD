@@ -173,7 +173,7 @@ async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<
     };
     let strom = futures_util::StreamExt::take_until(BroadcastStream::new(app.ereignisse.subscribe()), geschlossen).map(|e| {
         // Wer zu langsam liest, bekommt ein leeres Ereignis und lädt einfach alles neu.
-        let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true });
+        let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true, wbs: vec![] });
         Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))
     });
     Sse::new(strom).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))

@@ -188,3 +188,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00054 WBS-Sicht | B0128 Stand über die Slices | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0129 Geänderte WBS-Datei erkennen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0130 WBS einer Anwendung ausliefern | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | B0131 Fremde WBS-Dateien beobachten | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

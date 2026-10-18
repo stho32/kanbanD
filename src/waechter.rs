@@ -13,9 +13,13 @@ const EIGEN_GILT: Duration = Duration::from_secs(3);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Ereignis {
+    /// relativ zum Ordner; bei fremden WBS-Dateien der volle Pfad
     pub pfade: Vec<String>,
     #[serde(rename = "extern")]
     pub von_aussen: bool,
+    /// Kürzel der Anwendungen, deren WBS sich geändert hat (Datei oder Commit im Arbeits-Repository)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub wbs: Vec<String>,
 }
 
 /// Pfade, die kanbanD gerade selbst geschrieben hat — deren Änderung ist nicht „extern“.
@@ -85,10 +89,85 @@ pub fn starten(wurzel: PathBuf, eigene: Eigene, senden: impl Fn(Ereignis) + Send
             }
             let pfade: Vec<String> = pfade.into_iter().collect();
             let von_aussen = !eigene.alle_eigen(&pfade);
-            senden(Ereignis { pfade, von_aussen });
+            senden(Ereignis { pfade, von_aussen, wbs: vec![] });
         }
     });
     Ok(w)
+}
+
+/// Eine WBS-Datei außerhalb des Ordners, dazu das Git-Verzeichnis ihres Arbeits-Repositorys.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FremdeWbs {
+    pub kuerzel: String,
+    pub datei: PathBuf,
+    /// ein Commit dort ändert `index` und `HEAD` — dann stimmt „nicht committet“ nicht mehr
+    pub git: Option<PathBuf>,
+}
+
+impl FremdeWbs {
+    /// Betrifft eine Änderung an `pfad` diese WBS?
+    fn betrifft(&self, pfad: &Path) -> bool {
+        pfad == self.datei || (self.git.as_deref().is_some_and(|g| pfad.parent() == Some(g)) && pfad.file_name().is_some_and(|n| n == "index" || n == "HEAD"))
+    }
+
+    fn ordner(&self) -> impl Iterator<Item = &Path> {
+        self.datei.parent().into_iter().chain(self.git.as_deref())
+    }
+}
+
+/// Beobachtet WBS-Dateien außerhalb des Ordners — je Datei ihren Ordner, nicht die Datei selbst:
+/// Editoren ersetzen eine Datei beim Speichern oft durch eine neue.
+pub struct FremderWaechter {
+    watcher: Mutex<RecommendedWatcher>,
+    ziele: Arc<Mutex<Vec<FremdeWbs>>>,
+    beobachtet: Mutex<BTreeSet<PathBuf>>,
+}
+
+/// Startet die Beobachtung ohne Ziele; `setzen` legt sie fest.
+pub fn fremde_starten(senden: impl Fn(Ereignis) + Send + 'static) -> notify::Result<FremderWaechter> {
+    let ziele: Arc<Mutex<Vec<FremdeWbs>>> = Arc::default();
+    let (tx, rx) = mpsc::channel::<(String, String)>();
+    let im_callback = ziele.clone();
+    let watcher = notify::recommended_watcher(move |ergebnis: notify::Result<notify::Event>| {
+        let Some(ev) = ergebnis.ok().filter(|ev| !matches!(ev.kind, notify::EventKind::Access(_))) else { return };
+        let ziele = im_callback.lock().unwrap_or_else(|e| e.into_inner());
+        for p in &ev.paths {
+            for z in ziele.iter().filter(|z| z.betrifft(p)) {
+                let _ = tx.send((z.kuerzel.clone(), z.datei.to_string_lossy().into_owned()));
+            }
+        }
+    })?;
+    std::thread::spawn(move || {
+        while let Ok(erster) = rx.recv() {
+            let mut treffer = BTreeSet::from([erster]);
+            while let Ok(t) = rx.recv_timeout(BUENDELN) {
+                treffer.insert(t);
+            }
+            let wbs: BTreeSet<String> = treffer.iter().map(|(k, _)| k.clone()).collect();
+            let pfade: BTreeSet<String> = treffer.into_iter().map(|(_, d)| d).collect();
+            senden(Ereignis { pfade: pfade.into_iter().collect(), von_aussen: true, wbs: wbs.into_iter().collect() });
+        }
+    });
+    Ok(FremderWaechter { watcher: Mutex::new(watcher), ziele, beobachtet: Mutex::default() })
+}
+
+impl FremderWaechter {
+    /// Ersetzt die beobachteten WBS-Dateien; ein fehlender Ordner wird übergangen.
+    pub fn setzen(&self, neu: Vec<FremdeWbs>) {
+        let gebraucht: BTreeSet<PathBuf> = neu.iter().flat_map(|z| z.ordner().map(Path::to_path_buf)).collect();
+        let mut w = self.watcher.lock().unwrap_or_else(|e| e.into_inner());
+        let mut beobachtet = self.beobachtet.lock().unwrap_or_else(|e| e.into_inner());
+        for weg in beobachtet.difference(&gebraucht) {
+            let _ = w.unwatch(weg);
+        }
+        beobachtet.retain(|o| gebraucht.contains(o));
+        for o in gebraucht {
+            if !beobachtet.contains(&o) && w.watch(&o, RecursiveMode::NonRecursive).is_ok() {
+                beobachtet.insert(o);
+            }
+        }
+        *self.ziele.lock().unwrap_or_else(|e| e.into_inner()) = neu;
+    }
 }
 
 #[cfg(test)]
@@ -105,6 +184,17 @@ mod tests {
         assert!(!relevant(""));
         assert_eq!(relativ(Path::new("/a/b"), Path::new("/a/b/boards/x.md")), Some("boards/x.md".into()));
         assert_eq!(relativ(Path::new("/a/b"), Path::new("/c/x.md")), None);
+    }
+
+    #[test]
+    fn fremde_wbs_betrifft_datei_und_commit_im_arbeits_repository() {
+        let z = FremdeWbs { kuerzel: "kd".into(), datei: "/r/plan/wbs.md".into(), git: Some("/r/.git".into()) };
+        assert!(z.betrifft(Path::new("/r/plan/wbs.md")));
+        assert!(z.betrifft(Path::new("/r/.git/index")) && z.betrifft(Path::new("/r/.git/HEAD")));
+        assert!(!z.betrifft(Path::new("/r/.git/index.lock")));
+        assert!(!z.betrifft(Path::new("/r/plan/anderes.md")));
+        assert!(!z.betrifft(Path::new("/r/.git/refs/heads/HEAD")));
+        assert_eq!(z.ordner().collect::<Vec<_>>(), [Path::new("/r/plan"), Path::new("/r/.git")]);
     }
 
     #[test]

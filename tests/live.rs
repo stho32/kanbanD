@@ -121,3 +121,32 @@ async fn offener_ereignisstrom_haelt_das_beenden_nicht_auf() {
     assert!(beendet.is_some_and(|s| s.success()), "nach {:?} noch nicht beendet", start.elapsed());
     drop(antwort);
 }
+
+#[test]
+fn fremde_wbs_datei_und_commit_melden_ihr_kuerzel() {
+    let arbeit = tempfile::tempdir().unwrap();
+    let wurzel = arbeit.path().canonicalize().unwrap();
+    std::fs::create_dir_all(wurzel.join("plan")).unwrap();
+    std::fs::write(wurzel.join("plan/wbs.md"), "a").unwrap();
+    gemeinsam::git(&wurzel, &["init", "-q"]);
+    let (tx, rx) = mpsc::channel();
+    let w = kanband::waechter::fremde_starten(move |e| {
+        let _ = tx.send(e);
+    })
+    .unwrap();
+    let datei = wurzel.join("plan/wbs.md");
+    w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: Some(wurzel.join(".git")) }]);
+    std::thread::sleep(Duration::from_millis(100));
+    std::fs::write(wurzel.join("plan/anderes.md"), "x").unwrap();
+    std::fs::write(&datei, "b").unwrap();
+    let e = rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    assert_eq!((e.pfade.clone(), e.wbs.clone(), e.von_aussen), (vec![datei.to_string_lossy().into_owned()], vec!["kd".to_string()], true));
+    gemeinsam::git(&wurzel, &["add", "-A"]);
+    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
+    gemeinsam::git(&wurzel, &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-m", "c"]);
+    assert_eq!(rx.recv_timeout(Duration::from_secs(2)).unwrap().wbs, ["kd"], "Commit im Arbeits-Repository");
+    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
+    w.setzen(vec![]);
+    std::fs::write(&datei, "c").unwrap();
+    assert!(rx.recv_timeout(Duration::from_millis(600)).is_err(), "nach dem Entfernen still");
+}
