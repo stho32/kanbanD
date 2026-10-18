@@ -2,7 +2,7 @@
 
 mod statisch;
 
-use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard};
+use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard, Teilaufgabenaenderung};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -61,6 +61,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
+        .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
+        .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
 }
@@ -199,4 +201,31 @@ async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u
     })
     .await?;
     Ok(Json(a).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Text {
+    text: String,
+}
+
+/// Schreibender Aufruf als handelnde Person, Antwort ist die geänderte Aufgabe.
+async fn als_person<T: serde::Serialize + Send + 'static>(app: &App, wer: Option<String>, f: impl FnOnce(&Kanban, &crate::modell::Person) -> Result<T, Fehler> + Send + 'static) -> Result<Response, Fehler> {
+    let t = blockierend(app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        f(k, &p)
+    })
+    .await?;
+    Ok(Json(t).into_response())
+}
+
+async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.teilaufgabe_anlegen(p, nr, &t.text)).await
+}
+
+async fn teilaufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(a): Json<Teilaufgabenaenderung>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.teilaufgabe_aendern(p, nr, i, &a)).await
+}
+
+async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.teilaufgabe_entfernen(p, nr, i)).await
 }

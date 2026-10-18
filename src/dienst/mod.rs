@@ -7,9 +7,11 @@ mod board_anlegen;
 mod einrichten;
 mod einstellungen;
 mod spalten;
+mod teilaufgaben;
 
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;
+pub use teilaufgaben::Teilaufgabenaenderung;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
 pub use einstellungen::{PALETTE, farbe_gueltig};
