@@ -1,6 +1,6 @@
 ---
 id: R00057
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -36,14 +36,14 @@ Eine Aufgabe trägt selbst, was sie am Programm ändert. Die KI muss Board und W
 ## Akzeptanzkriterien
 
 ### Wirkung tritt ein
-- [ ] Wirkung `create` unter `D0002` an #7 → WBS hat `I0048 rot` unter `D0002`, #7 trägt `node: I0048`, ein Commit im Board-Repository, keiner im Arbeits-Repository
-- [ ] `rework D0002` (alle Kinder `gruen`) → `D0002` und seine zählenden Nachfahren `rot`
-- [ ] `remove I0014` → `I0014` und Nachfahren `verworfen`
-- [ ] `rework` auf unbekannten Knoten → 409, Aufgabendatei unverändert
+- [x] Wirkung `create` unter `D0002` an #7 → WBS hat `I0048 rot` unter `D0002`, #7 trägt `node: I0048`, ein Commit im Board-Repository, keiner im Arbeits-Repository
+- [x] `rework D0002` (alle Kinder `gruen`) → `D0002` und seine zählenden Nachfahren `rot`
+- [x] `remove I0014` → `I0014` und Nachfahren `verworfen`
+- [x] `rework` auf unbekannten Knoten → 409, Aufgabendatei unverändert
 
 ### Anzeige
-- [ ] Karte #7 zeigt `+ kd:I0048`; WBS-Sicht zeigt an `I0048` „#7“
-- [ ] Wirkung aus #7 entfernen → `I0048` bleibt in der WBS
+- [x] Karte #7 zeigt `+ kd:I0048`; WBS-Sicht zeigt an `I0048` „#7“
+- [x] Wirkung aus #7 entfernen → `I0048` bleibt in der WBS
 
 ## Betroffene Verzeichnisstruktur
 
