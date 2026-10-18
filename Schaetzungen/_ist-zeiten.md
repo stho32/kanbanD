@@ -38,3 +38,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00007 Live-Aktualisierung | B0021 Ordner beobachten | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00007 Live-Aktualisierung | B0022 Ereignisstrom | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00007 Live-Aktualisierung | B0023 Sichten nachziehen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00007 Live-Aktualisierung | Lauf R00007 | Nacharbeit | — | — | 0,0h | autonom |

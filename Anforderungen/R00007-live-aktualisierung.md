@@ -1,6 +1,6 @@
 ---
 id: R00007
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,12 +27,12 @@ Mensch und Agent sehen dieselbe Wahrheit, auch wenn der Agent direkt an den Date
 
 ## Akzeptanzkriterien
 
-- [ ] Schreibt ein Editor `aufgaben/0001-x.md`, kommt innerhalb von 2 s ein Ereignis mit `pfade: ["aufgaben/0001-x.md"], extern: true`
-- [ ] Legt kanbanD selbst eine Aufgabe an, ist das Ereignis `extern: false`
-- [ ] Ein Ereignis für `.git/` oder eine Zwischendatei entsteht nicht
-- [ ] Ändert ein Editor den Titel von #1, zeigt ein offener Browser ohne Neuladen den neuen Titel und an der Karte „extern · aufgaben/0001-…md“
-- [ ] Verschiebt ein Editor #1 in der Board-Datei nach „Erledigt“, steht die Karte im offenen Browser dort mit Marke „extern“
-- [ ] Legt ein zweiter Browser eine Karte an, erscheint sie im ersten ohne Marke
+- [x] Schreibt ein Editor `aufgaben/0001-x.md`, kommt innerhalb von 2 s ein Ereignis mit `pfade: ["aufgaben/0001-x.md"], extern: true`
+- [x] Legt kanbanD selbst eine Aufgabe an, ist das Ereignis `extern: false`
+- [x] Ein Ereignis für `.git/` oder eine Zwischendatei entsteht nicht
+- [x] Ändert ein Editor den Titel von #1, zeigt ein offener Browser ohne Neuladen den neuen Titel und an der Karte „extern · aufgaben/0001-…md“
+- [x] Verschiebt ein Editor #1 in der Board-Datei nach „Erledigt“, steht die Karte im offenen Browser dort mit Marke „extern“
+- [x] Legt ein zweiter Browser eine Karte an, erscheint sie im ersten ohne Marke
 
 ## Betroffene Verzeichnisstruktur
 
