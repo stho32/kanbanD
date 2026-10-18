@@ -30,7 +30,7 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 
@@ -42,6 +42,7 @@ function vHaupt() {
   if (S.ui.view === 'personen') return vPersonen();
   if (S.ui.view === 'berichte/stundenzettel') return vStundenzettel();
   if (S.ui.view === 'berichte/kreuz') return vKreuz();
+  if (S.ui.view === 'berichte/verlauf') return vVerlauf();
   return vBoard();
 }
 
@@ -70,6 +71,7 @@ async function laden() {
       S.ui.view === 'aufgaben' ? api('GET', '/api/boards') : null,
     ]);
     S.boards = boards;
+    S.verlauf = S.ui.view === 'berichte/verlauf' && S.ui.slug ? await api('GET', '/api/berichte/verlauf?board=' + encodeURIComponent(S.ui.slug)) : null;
     S.herkunft = herkunft;
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
@@ -123,6 +125,9 @@ async function aufgabeAendern(nummer, aenderung) {
 }
 
 function render() {
+  // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
+  if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
+  S.ui.nachZug = false;
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
   $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop() + vHinweis();
@@ -471,6 +476,20 @@ document.addEventListener('dragstart', e => {
   try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
   setTimeout(() => k.classList.add('zieht'));
 });
+/* Tooltip des Burndowns: Fadenkreuz und Werte des Tages unter dem Zeiger */
+document.addEventListener('mouseover', e => {
+  const r = e.target.closest && e.target.closest('rect.treffer');
+  const tip = $('#tooltip'), kreuz = $('#fadenkreuz');
+  if (!tip || !kreuz) return;
+  if (!r) { tip.hidden = true; kreuz.setAttribute('x1', -10); kreuz.setAttribute('x2', -10); return; }
+  const x = S.verlauf.tage[+r.dataset.tag], mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
+  kreuz.setAttribute('x1', mitte); kreuz.setAttribute('x2', mitte);
+  tip.innerHTML = `<b>${x.datum}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>`;
+  tip.hidden = false;
+  const flaeche = r.closest('.dflaeche').getBoundingClientRect(), rb = r.getBoundingClientRect();
+  tip.style.left = Math.min(flaeche.width - 150, Math.max(0, rb.left - flaeche.left + rb.width / 2 + 8)) + 'px';
+});
+
 /* Dateien aus dem Rechner auf „Anhänge“ ziehen */
 document.addEventListener('dragover', e => {
   if (zug == null && e.target.closest && e.target.closest('#anhaenge') && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
@@ -504,12 +523,14 @@ document.addEventListener('drop', e => {
   e.preventDefault();
   const nummer = zug, z = ziel;
   zug = null; ziel = null;
+  if (S.ui.nachZug) render();
   einfuegeMarkenWeg();
   if (z) act('bewegen', JSON.stringify({ nummer, ...z }));
 });
 document.addEventListener('dragend', () => {
   zug = null; ziel = null; einfuegeMarkenWeg();
   document.querySelectorAll('.zieht').forEach(x => x.classList.remove('zieht'));
+  if (S.ui.nachZug) render();
 });
 
 /* Live: jede Änderung im Ordner lädt neu; Änderungen von außen markieren die betroffenen Karten 10 s. */

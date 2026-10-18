@@ -94,3 +94,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00022 Stundenzettel und CSV | Lauf R00022 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00023 Burndown und Durchlaufzeit | B0062 Verlauf rechnen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00023 Burndown und Durchlaufzeit | B0063 Stände aus Git lesen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00023 Burndown und Durchlaufzeit | B0064 Burndown und Durchlaufzeit zeigen | Standard | 1-2h | 0,1h | 0,1h | autonom |

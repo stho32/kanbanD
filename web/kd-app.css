@@ -339,3 +339,25 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .lbl.ort .lnk{font-size:10px;color:var(--kd-muted)}
 .cls{--cl:var(--kd-line-strong)}
 .menue a.e{color:inherit;text-decoration:none}
+/* Burndown */
+.bericht{padding:var(--kd-s4) var(--kd-s6)}
+.dtitel{font-size:13px;font-weight:600;margin:var(--kd-s4) 0 var(--kd-s2)}
+.dlegende{display:flex;gap:var(--kd-s5);font-size:12px;color:var(--kd-muted);margin-bottom:var(--kd-s2)}
+.dlegende span,.tooltip span{display:inline-flex;align-items:center;gap:6px}
+.k-offen{display:inline-block;width:14px;height:2px;background:var(--kd-accent)}
+.k-umfang{display:inline-block;width:14px;height:0;border-top:2px dashed var(--kd-line-strong)}
+.dflaeche{position:relative;max-width:900px}
+.diagramm{width:100%;height:auto;display:block;font-family:var(--kd-mono)}
+.diagramm .gitter{stroke:var(--kd-line);stroke-width:1}
+.diagramm .achse{font-size:11px;fill:var(--kd-muted)}
+.diagramm .offen{fill:none;stroke:var(--kd-accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.diagramm .umfang{fill:none;stroke:var(--kd-line-strong);stroke-width:2;stroke-dasharray:5 4}
+.diagramm .punkt{fill:var(--kd-accent);stroke:var(--kd-surface);stroke-width:2}
+.diagramm .endwert{font-size:12px;fill:var(--kd-text);font-family:var(--kd-font)}
+.diagramm .endwert.leise{fill:var(--kd-muted)}
+.diagramm .fadenkreuz{stroke:var(--kd-faint);stroke-width:1}
+.diagramm .treffer{fill:transparent}
+.tooltip{position:absolute;top:8px;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12px;pointer-events:none;min-width:130px}
+.tabellenansicht{margin:var(--kd-s3) 0;font-size:12px;max-width:420px}
+.tabellenansicht summary{cursor:pointer;color:var(--kd-accent-ink)}
+#durchlauf{max-width:900px}

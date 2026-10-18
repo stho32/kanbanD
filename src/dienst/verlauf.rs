@@ -11,6 +11,8 @@ impl Kanban {
         let aktuell = self.ordner().board(slug)?;
         let rel = board_pfad(slug);
         let mut staende: Vec<_> = git::staende(self.ordner().wurzel(), &rel)?.into_iter().filter_map(|(zp, text)| board::lesen(slug, &text).ok().map(|b| (zp, b))).collect();
+        // Nach Zeitpunkt ordnen: die Commit-Folge muss nicht der Datumsfolge entsprechen (Rebase, gesetzte Daten).
+        staende.sort_by_key(|(zp, _)| *zp);
         let jetzt = chrono::Local::now().naive_local();
         if staende.last().map(|(_, b)| b != &aktuell).unwrap_or(true) {
             staende.push((jetzt, aktuell));

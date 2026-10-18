@@ -25,6 +25,9 @@ test.describe('R00018', () => {
     const chip = page.locator('.ka[data-id="2"] a.org', { hasText: 'I0007' });
     await expect(chip).toHaveAttribute('href', `vscode://file${require('fs').realpathSync(k.ordner)}/plan/wbs.md:6`);
     await expect(page.locator('.ka[data-id="2"] .wartet')).toHaveText('wartet auf #1');
+    // erst ziehen, wenn Speichern und Live-Abgleich durch sind — sonst wird die Karte unter dem Zeiger ersetzt
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#2 geändert: Herkunft');
+    await page.waitForTimeout(400);
     await page.locator('.ka[data-id="1"]').dragTo(page.locator('.bahn[data-col="Erledigt"] .flaeche'));
     await expect(page.locator('.bahn[data-col="Erledigt"] .ka[data-id="1"]')).toBeVisible();
     await expect(page.locator('.ka[data-id="2"] .wartet')).toHaveCount(0);

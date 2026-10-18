@@ -1,0 +1,35 @@
+// R00023 Burndown und Durchlaufzeit
+const { test, expect } = require('@playwright/test');
+const { execFileSync } = require('child_process');
+const fs = require('fs');
+const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+
+function commitAm(ordner, datum, board) {
+  fs.writeFileSync(ordner + '/boards/entwicklung.md', board);
+  execFileSync('git', ['-C', ordner, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'stand'], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum } });
+}
+
+test('US-1 und US-2: Burndown und Durchlaufzeit aus der Geschichte', async ({ page }) => {
+  const k = await kanbanStarten(async ordner => {
+    einrichten({ 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n', 'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n' })(ordner);
+    const kopf = '# Entwicklung\n\n## Zu erledigen\n\n';
+    commitAm(ordner, '2026-10-01T09:00:00', `${kopf}- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n`);
+    commitAm(ordner, '2026-10-02T09:00:00', `${kopf}- #2\n\n## In Arbeit\n\n## Erledigt\n\n- #1\n`);
+  });
+  try {
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.locator('#t-ber').click();
+    await page.getByRole('menuitem', { name: /Burndown/ }).click();
+    await expect(page.getByRole('img', { name: 'Offene Aufgaben je Tag' })).toBeVisible();
+    await expect(page.locator('.endwert').first()).toHaveText('offen 1');
+    await expect(page.locator('#durchlauf tr.klick')).toHaveCount(1);
+    await expect(page.locator('#durchlauf tr.klick td').last()).toHaveText('1,0');
+    await expect(page.locator('#durchlauf-kennzahl')).toHaveText('1,0 · 1,0');
+    await page.locator('rect.treffer').first().hover();
+    await expect(page.locator('#tooltip')).toContainText('2026-10-01');
+    await expect(page.locator('#tooltip')).toContainText('offen 2');
+    await page.getByText('Tabellenansicht').click();
+    await expect(page.locator('.tabellenansicht tbody tr').first()).toContainText('2026-10-01');
+  } finally { await k.stoppen(); }
+});

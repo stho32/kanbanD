@@ -55,3 +55,21 @@ async fn unterordner_und_nicht_committetes_board() {
     let (_, v) = senden(Method::GET, &lauf.adresse, "api/berichte/verlauf?board=neu", "st", json!(null)).await;
     assert_eq!(v["tage"][0]["umfang"], 1, "Stand aus dem Unterordner des Repositories gelesen");
 }
+
+#[tokio::test]
+async fn staende_werden_nach_zeitpunkt_geordnet() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::git(tmp.path(), &["init", "-q"]);
+    std::fs::create_dir_all(tmp.path().join("boards")).unwrap();
+    std::fs::write(tmp.path().join("kanbanD.md"), gemeinsam::EINSTELLUNGEN).unwrap();
+    gemeinsam::git(tmp.path(), &["add", "-A"]);
+    let kopf = "# Entwicklung\n\n## Zu erledigen\n\n";
+    std::fs::write(tmp.path().join("boards/entwicklung.md"), format!("{kopf}- #1\n\n## Erledigt\n")).unwrap();
+    gemeinsam::git(tmp.path(), &["add", "-A"]);
+    commit_am(tmp.path(), "2026-10-05T09:00:00", &format!("{kopf}## Erledigt\n\n- #1\n"));
+    commit_am(tmp.path(), "2026-10-03T09:00:00", &format!("{kopf}- #1\n\n## Erledigt\n"));
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, v) = senden(Method::GET, &lauf.adresse, "api/berichte/verlauf?board=entwicklung", "st", json!(null)).await;
+    assert_eq!(v["tage"][0]["datum"], "2026-10-03");
+    assert_eq!(v["tage"][2]["offen"], 0, "am 05.10. erledigt, obwohl der Commit davor liegt");
+}

@@ -283,7 +283,7 @@ const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown und Durchlaufzeit', 'Offene Aufgaben je Tag und Durchlaufzeit je Aufgabe – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
@@ -302,6 +302,37 @@ function vKreuz() {
   const zelle = ms => ms ? hm(ms) : '<span class="muted">—</span>';
   return `<div class="leiste"><b>Zeiten nach Aufgabe und Person</b><span class="seg" role="radiogroup" aria-label="Zeitraum">${[['woche', 'diese Woche'], ['30', '30 Tage'], ['alles', 'alles']].map(([z, t]) => `<span class="${zeitraum === z ? 'an' : ''}" data-act="zeitraum" data-arg="${z}" role="radio" aria-checked="${zeitraum === z}">${t}</span>`).join('')}</span><span class="muted" style="font-size:12px">liest nur · korrigiert wird an der Aufgabe</span><div class="rechts">${csvKnopf}</div></div>
 <div class="body"><table class="pt dicht" id="kreuz"><thead><tr><th>Aufgabe</th>${k.personen.map(p => `<th class="r">${pk(p)} ${esc(per(p).name)}</th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${k.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.jePerson.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || '<tr><td class="muted">Keine Zeiten im Zeitraum.</td></tr>'}<tr class="grp"><td>SUMME</td>${k.jeSpalte.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r">${hm(k.summe)}</td></tr></tbody></table></div>`;
+}
+
+/* Burndown: eine Serie (offen) in der Akzentfarbe, Umfang als neutrale Bezugslinie. */
+const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
+function vVerlauf() {
+  const v = S.verlauf;
+  if (!v) return '<div class="leer">lädt …</div>';
+  const t = v.tage, B = 800, H = 260, L = 36, R = 96, O = 16, U = 28;
+  const max = Math.max(1, ...t.map(x => x.umfang));
+  const sx = i => L + (t.length < 2 ? (B - L - R) / 2 : i * (B - L - R) / (t.length - 1));
+  const sy = y => O + (H - O - U) * (1 - y / max);
+  const linie = k => t.map((x, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(x[k]).toFixed(1)}`).join('');
+  const schritt = Math.max(1, Math.ceil(max / 4));
+  const ticks = []; for (let y = 0; y <= max; y += schritt) ticks.push(y);
+  const xTicks = t.map((x, i) => ({ x, i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
+  const letzte = t[t.length - 1];
+  const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag">
+${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
+${xTicks.map(({ x, i }) => `<text class="achse" x="${sx(i)}" y="${H - 8}" text-anchor="middle">${x.datum.slice(8)}.${x.datum.slice(5, 7)}.</text>`).join('')}
+<path class="umfang" d="${linie('umfang')}"></path><path class="offen" d="${linie('offen')}"></path>
+<circle class="punkt" cx="${sx(t.length - 1)}" cy="${sy(letzte.offen)}" r="4"></circle>
+<text class="endwert" x="${sx(t.length - 1) + 10}" y="${sy(letzte.offen) + 4}">offen ${letzte.offen}</text>
+<text class="endwert leise" x="${sx(t.length - 1) + 10}" y="${sy(letzte.umfang) + (letzte.umfang === letzte.offen ? 18 : 4)}">Umfang ${letzte.umfang}</text>
+<line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
+${t.map((x, i) => `<rect class="treffer" x="${sx(i) - (B - L - R) / Math.max(1, t.length - 1) / 2}" y="${O}" width="${(B - L - R) / Math.max(1, t.length - 1)}" height="${H - O - U}" data-tag="${i}"></rect>`).join('')}
+</svg>` : '<div class="leer">Noch kein Stand dieses Boards.</div>';
+  const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (alle Aufgaben auf dem Board)</span></div>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
+  const durchlauf = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>auf dem Board seit</th><th>in der Abschlussspalte</th><th class="r">Tage</th></tr></thead><tbody>${v.durchlauf.map(d => { const a = aufgabe(d.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${d.nummer}"><td class="tt"><span class="mono muted">#${d.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${esc(d.eintritt)}</td><td class="mono">${esc(d.abschluss)}</td><td class="r num">${zahl1(d.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">Noch keine Aufgabe in der Abschlussspalte.</td></tr>'}<tr class="grp"><td colspan="3">MITTEL · MEDIAN</td><td class="r" id="durchlauf-kennzahl">${zahl1(v.mittel)} · ${zahl1(v.median)}</td></tr></tbody></table>`;
+  return `<div class="leiste"><b>Burndown und Durchlaufzeit</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md</span></div>
+<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}<h3 class="dtitel">Durchlaufzeit je Aufgabe</h3>${durchlauf}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */
