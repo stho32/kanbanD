@@ -330,3 +330,5 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .anh-z .x{opacity:0}.anh-z:hover .x,.anh-z .x:focus{opacity:1}
 .anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
 .anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}
+.ka .wartet{font-size:11px;color:var(--kd-warn);font-weight:500}
+.ka .wartet::before{content:"⧗ "}

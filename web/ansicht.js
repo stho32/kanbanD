@@ -79,6 +79,8 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w"><select data-af="klasse" aria-label="Klasse"><option value="">— keine —</option>${(S.zustand.einstellungen.klassen).map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === a.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}${a.klasse && !cl ? `<option selected>${esc(a.klasse)}</option>` : ''}</select></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014 oder thin air · Enter" aria-label="Neue Herkunft"></span>
+${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
 <span class="k">due</span><span class="w"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"></span></div></aside>`;
@@ -150,9 +152,27 @@ const klasse = k => k && S.zustand.einstellungen && S.zustand.einstellungen.klas
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
+function quelleLink(x) {
+  const q = S.herkunft[x];
+  return q ? `vscode://file${q.datei}:${q.zeile}` : null;
+}
+function vHerkunftChip(x) {
+  const q = S.herkunft[x], h = quelleLink(x);
+  if (x === 'thin air') return `<span class="org leer" title="ohne Herkunft">thin air</span>`;
+  return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
+}
 function vHerkunft(a) {
   const o = a.herkunft.length ? a.herkunft : ['thin air'];
-  return `<span class="orgs">${o.map(x => `<span class="org${x === 'thin air' ? ' leer' : ''}">${esc(x)}</span>`).join('')}</span>`;
+  return `<span class="orgs">${o.map(vHerkunftChip).join('')}</span>`;
+}
+/** Aufgaben auf diesem Board, auf die `a` laut WBS (Braucht) wartet: nicht archiviert, nicht in der Abschlussspalte. */
+function wartetAuf(a) {
+  if (!S.board) return [];
+  const letzte = S.board.spalten[S.board.spalten.length - 1];
+  const braucht = a.herkunft.flatMap(x => (S.herkunft[x] && S.herkunft[x].braucht) || []);
+  if (!braucht.length) return [];
+  return S.aufgaben.filter(t => t.nummer !== a.nummer && !t.archiviert && t.herkunft.some(h => braucht.includes(h))
+    && S.board.spalten.some(sp => sp !== letzte && sp.aufgaben.includes(t.nummer))).map(t => t.nummer);
 }
 
 function vKarte(a, fertig) {
@@ -162,7 +182,7 @@ function vKarte(a, fertig) {
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => zeitMs(z.beginn)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}">${hm(Date.now() - erster)}</span></span>` : '';
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}</div><div class="t">${esc(a.titel)}</div><div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}</div><div class="t">${esc(a.titel)}</div><div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div>${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 function vFehlt(nr) {

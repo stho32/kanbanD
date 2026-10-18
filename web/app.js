@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null } };
 try { S.ich = sessionStorage.getItem('kanbanD.ich'); } catch (_) { }
 
 function ichSetzen(k) {
@@ -40,10 +40,12 @@ async function laden() {
     if (S.ui.view !== 'einrichten') S.ui.einr = null;
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
-    const [board, aufgaben] = await Promise.all([
+    const [board, aufgaben, herkunft] = await Promise.all([
       S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null,
       api('GET', '/api/aufgaben'),
+      api('GET', '/api/herkunft'),
     ]);
+    S.herkunft = herkunft;
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
     if (S.ui.offen) await dateiLaden();
@@ -207,6 +209,17 @@ async function act(a, arg, wert) {
         break;
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
+      case 'herkunft-neu': {
+        if (!(wert || '').trim() || ichNoetig()) break;
+        const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
+        u.fokus = '#herkunft-neu';
+        return aufgabeAendern(u.offen, { herkunft: wert.trim().toLowerCase() === 'thin air' ? ['thin air'] : [...alt, wert.trim()] });
+      }
+      case 'herkunft-weg': {
+        if (ichNoetig()) break;
+        const a = aufgabe(u.offen);
+        return aufgabeAendern(u.offen, { herkunft: a.herkunft.filter((_, j) => j !== +arg) });
+      }
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.fokus = '#zeit-neu';
