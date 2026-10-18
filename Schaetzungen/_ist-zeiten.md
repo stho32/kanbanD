@@ -11,3 +11,4 @@ Nie vom User erfragen.
 |---|---|---|---|---|---|---|---|
 | 2026-10-18 | R00001 Ordner öffnen | B0001 Startargumente lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00001 Ordner öffnen | B0002 Ordner vorbereiten | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00001 Ordner öffnen | B0003 Server starten | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
