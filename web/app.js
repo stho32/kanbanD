@@ -38,9 +38,14 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
+  if (/^#\/wbs\//.test(location.hash)) return 'wbs';
   const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
+/** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
+const wbsKuerzel = () => decodeURIComponent((/^#\/wbs\/([^/]*)/.exec(location.hash) || [])[1] || '');
+/** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
+const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
 function vHaupt() {
   if (S.ui.first) return vFirst();
@@ -53,6 +58,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/verlauf') return vVerlauf();
   if (S.ui.view === 'berichte/durchlauf') return vDurchlauf();
   if (S.ui.view === 'berichte/prognose') return vPrognose();
+  if (S.ui.view === 'wbs') return vWbs();
   return vBoard();
 }
 
@@ -93,6 +99,8 @@ async function laden() {
     S.herkunft = herkunft;
     // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
     if (S.ui.view === 'einrichten') S.anwendungen = await api('GET', '/api/anwendungen');
+    S.wbs = null; S.wbsFehler = null;
+    if (S.ui.view === 'wbs' && wbsKuerzel()) S.wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { S.wbsFehler = f.message; return null; });
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
     if (S.ui.offen) await dateiLaden();
@@ -896,7 +904,7 @@ function ueberallTaste(e, t) {
   clearTimeout(S.gUhr);
   S.gVorher = g.warte ? 'g' : null;
   if (g.warte) { S.gUhr = setTimeout(() => { S.gVorher = null; }, 1500); e.preventDefault(); return true; }
-  if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel; return true; }
+  if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel === '#/wbs/' ? '#/wbs/' + encodeURIComponent((gebunden()[0] || {}).kuerzel || '') : g.ziel; return true; }
   if (e.key === 'b' || e.key === 'i') { e.preventDefault(); act('pop', e.key === 'b' ? 'board' : 'ich'); return true; }
   if (u.view === 'aufgaben') return listenTaste(e, t);
   if (e.key === 'n' && u.view !== 'board') { e.preventDefault(); act('add', '-'); return true; }
