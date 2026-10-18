@@ -1,6 +1,6 @@
 ---
 id: R00060
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -32,10 +32,10 @@ Auf einem Board liegen Arbeitspakete und Zusatzaufgaben zusammen, und die Progno
 
 ## Akzeptanzkriterien
 
-- [ ] #1 ohne `reporting`, #2 `reporting.forecast: false`, beide offen → Wie lange noch: Umfang 1, „Nicht enthalten: ausgenommen 1“; Burndown: Umfang 2
-- [ ] `PATCH {reporting: {forecast: null}}` an #2 → Schlüssel entfernt, Wie lange noch Umfang 2; ein Commit je Änderung
-- [ ] Rundlauf mit `reporting: {forecast: false, cycle-time: true}` erhält `cycle-time`
-- [ ] Oberfläche: Schalter „Wie lange noch“ ausschalten → Bericht offen passt sich ohne Neuladen an
+- [x] #1 ohne `reporting`, #2 `reporting.forecast: false`, beide offen → Wie lange noch: Umfang 1, „Nicht enthalten: ausgenommen 1“; Burndown: Umfang 2
+- [x] `PATCH {reporting: {forecast: null}}` an #2 → Schlüssel entfernt, Wie lange noch Umfang 2; ein Commit je Änderung
+- [x] Rundlauf mit `reporting: {forecast: false, cycle-time: true}` erhält `cycle-time`
+- [x] Oberfläche: Schalter „Wie lange noch“ ausschalten → Bericht offen passt sich ohne Neuladen an
 
 ## Betroffene Verzeichnisstruktur
 

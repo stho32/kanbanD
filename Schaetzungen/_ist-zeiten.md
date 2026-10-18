@@ -258,3 +258,5 @@ Nie vom User erfragen.
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0186 Burndown zählt nach reporting.burndown | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0187 Wie lange noch zählt nach reporting.forecast | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0188 Schalter im Aufgabenfenster | Standard | 0,5-1h | 0,02h | 0,03h | autonom |
+| 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | Lauf R00060 | Nacharbeit | — | — | 0,01h | autonom |
+| 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | Lauf R00060 | Konsolidierung | — | — | 0,00h | autonom |

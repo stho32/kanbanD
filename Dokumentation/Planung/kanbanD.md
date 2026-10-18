@@ -13,10 +13,10 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
-| D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
+| D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
@@ -258,7 +258,7 @@ zuletzt: 2026-10-18
 | B0180 | Bubble | I0054 | Warnung in der Oberfläche | gruen | Test gruen | Antwort mit warnungen → Hinweis „Achtung! …“ mit den nicht grünen Knoten als Links in die WBS-Sicht | 0,5-1 |  |  |  |  |
 | B0181 | Bubble | I0054 | Ausrufezeichen an der Karte | gruen | Test gruen | Board, Aufgaben, WBS der gebundenen Anwendungen → rotes Ausrufezeichen mit Tooltip an Karten rechts einer Spalte mit nicht erfüllter Prüfung; live nach jeder WBS-Änderung | 1-2 |  |  |  |  |
 | B0182 | Bubble | I0054 | Prüfungen je Spalte konfigurieren | gruen | Test gruen | Spalten-Dialog (R00009) → je Spalte Schalter wbs-effects-green → column-checks gesetzt oder entfernt | 0,5-1 |  |  |  |  |
-| I0055 | Interaction | D0003 | Zählen in Berichten | gelb | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
+| I0055 | Interaction | D0003 | Zählen in Berichten | gruen | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |
 | B0183 | Bubble | I0055 | reporting im Aufgaben-Frontmatter | gruen | Test gruen | Frontmatter `reporting: {burndown, forecast}` ↔ Aufgabe (Berichtszaehlung, fehlender Schlüssel = Standard, unbekannte Schlüssel erhalten) | 0,5-1 |  |  |  |  |
 | B0184 | Bubble | I0055 | Zählen in Berichten über die API ändern | gruen | Test gruen | PATCH /api/aufgaben/{nr} {reporting: {burndown?, forecast?}} → gesetzt, null entfernt den Schlüssel, Commit „#n geändert: Zählen in Berichten“ | 0,5-1 |  |  |  |  |
 | B0185 | Bubble | I0055 | Bewegungen mit reporting | gruen | Test gruen | GET /api/berichte/bewegungen → je Aufgabe zusätzlich reporting {burndown, forecast} aus ihrer Datei; Format in /api/endpunkte | 0,5-1 |  |  |  |  |
