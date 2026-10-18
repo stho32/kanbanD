@@ -4,7 +4,7 @@ mod aufgabe;
 mod board;
 mod einstellungen;
 
-pub use aufgabe::{Aufgabe, Kommentar, Teilaufgabe, Zeiteintrag};
+pub use aufgabe::{Aufgabe, Aufgabenaenderung, Kommentar, Teilaufgabe, Zeiteintrag};
 pub use board::{Bewegfehler, Board, Spalte, SpaltenAenderung, Spaltenfehler};
 pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 

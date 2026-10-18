@@ -16,7 +16,7 @@ zuletzt: 2026-10-18
 | A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
-| D0003 | Dialog | A0001 | Aufgabe | rot | alle Interactions gruen |  |  |  |  | R00011 |  |
+| D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0005 | Dialog | A0001 | Personen | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0006 | Dialog | A0001 | Berichte | rot | alle Interactions gruen |  |  |  |  |  |  |
@@ -61,8 +61,8 @@ zuletzt: 2026-10-18
 | I0010 | Interaction | D0001 | Personen und Klassen pflegen | gruen | US-1..US-3 |  |  |  | I0003 | R00010 | stilllegen statt entfernen |
 | B0029 | Bubble | I0010 | Einstellungen prüfen und speichern | gruen | Test gruen | Personen, Klassen, Quellen → kanbanD.md, ein Commit; PUT /api/einstellungen | 1-2 |  |  |  |  |
 | B0030 | Bubble | I0010 | Seite Einrichten | gruen | Test gruen | Personen anlegen/umbenennen/stilllegen, Klassen mit Farbe → Speichern | 1-2 |  |  |  |  |
-| I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | rot | US-1..US-4 |  |  |  | I0005 | R00011 | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
-| B0031 | Bubble | I0011 | Aufgabe ändern | rot | Test gruen | Aufgabe + Änderung (Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
+| I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | gelb | US-1..US-4 |  |  |  | I0005 | R00011 | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
+| B0031 | Bubble | I0011 | Aufgabe ändern | gruen | Test gruen | Aufgabe + Änderung (Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
 | B0032 | Bubble | I0011 | Aufgabe lesen und ändern über die API | rot | Test gruen | GET/PATCH /api/aufgaben/<nr> → Datei, ein Commit; defekt = nur lesbar | 1-2 |  |  |  |  |
 | B0033 | Bubble | I0011 | Aufgabenfenster | rot | Test gruen | Klick auf Karte → Fenster mit Inhalt/Datei, Feldern, Blättern, Esc | 2-3 |  |  |  |  |
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | rot | US der Anforderung |  |  |  | I0011 |  |  |
