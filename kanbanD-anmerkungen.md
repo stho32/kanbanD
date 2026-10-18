@@ -62,3 +62,8 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 56 | I0039 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00039 | offen |
 | 57 | I0040 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00040 | offen |
 | 58 | I0041 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00041 | offen |
+
+## 2026-10-18 · Berichte 2 (I0042–I0046)
+
+- [ ] **Kanbanflow-Berichtsfilter nicht im Detail öffentlich.** Kanbanflows Seite „Analytics & reporting“ nennt die Berichtsarten (Cumulative Flow, Cycle & Lead time, Burndown, Throughput, Monte Carlo forecasting …), Filter aber nur für Kalender (Person, Farbe, Labels, Swimlane) und Historie. Gewählt: eine Filterleiste für alle Berichte mit Zeitraum-Vorgaben, Farben und Spalten zum Ausschließen, Personen und Labels als „nur“. Beleg: https://kanbanflow.com/analytics-reporting · Empfehlung gewählt: gemeinsame Filterleiste
+- [ ] **„Wie lange noch“ auf dem Kanban statt der WBS.** Phasen der Vorlage `/anwendung wie-lange-noch --karte` = Spalten des Boards: eine Aufgabe hat Spalte k erreicht, wenn sie in k oder rechts davon liegt. 5-Tage-Woche aus dem Durchsatz der Werktage statt aus gemessenen Stunden (kanbanD kennt keine Ist-Zeiten-Datei). Empfehlung gewählt

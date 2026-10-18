@@ -13,13 +13,13 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
-| D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
+| D0006 | Dialog | A0001 | Berichte | gelb | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
@@ -108,6 +108,11 @@ zuletzt: 2026-10-18
 | B0062 | Bubble | I0023 | Verlauf rechnen | gruen | Test gruen | Stände der Board-Datei mit Zeitpunkt → offen je Tag, Umfang, Durchlaufzeit je Aufgabe | 1-2 |  |  |  |  |
 | B0063 | Bubble | I0023 | Stände aus Git lesen | gruen | Test gruen | git log + git cat-file --batch → Stände der Board-Datei; GET /api/berichte/verlauf | 1-2 |  |  |  |  |
 | B0064 | Bubble | I0023 | Burndown und Durchlaufzeit zeigen | gruen | Test gruen | Linie offen je Tag mit Umfang, Hover, Tabelle der Durchlaufzeiten | 1-2 |  |  |  |  |
+| I0042 | Interaction | D0006 | Bewegungen eines Boards | rot | US-1 |  |  |  | I0023 |  | Berichte 2: je Aufgabe die Spaltenwechsel aus der Git-Geschichte des Boards, Grundlage aller Board-Berichte |
+| I0043 | Interaction | D0006 | Berichtsfilter wie Kanbanflow | rot | US-1..US-3 |  |  |  | I0042 |  | Berichte 2: Zeitraum mit Vorgaben, Farben und Spalten ausschließen, nur Personen, nur Labels — für alle Berichte gleich |
+| I0044 | Interaction | D0006 | Burndown nach Zeitraum | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
+| I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
+| I0046 | Interaction | D0006 | Wie lange noch | rot | US-1..US-3 |  |  |  | I0043, I0042 |  | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |
 | B0065 | Bubble | I0024 | Endpunkte beschreiben | gruen | Test gruen | Endpunkttabelle → GET /api (HTML) und GET /api/endpunkte (JSON) | 1-2 |  |  |  |  |
 | B0066 | Bubble | I0024 | Agentenlauf Ende-zu-Ende | gruen | Test gruen | Agent legt an, bewegt, kommentiert, misst Zeit nur über die API → Commits unter seinem Namen | 1-2 |  |  |  |  |
