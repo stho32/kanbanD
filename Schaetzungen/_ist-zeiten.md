@@ -234,3 +234,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00058 Phasen als Spalten | B0166 Phasenfolge der gebundenen Anwendung | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0167 Phasen-Spalten beim Lesen nachtragen | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0168 Entfällt je Aufgabe | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
+| 2026-10-18 | R00058 Phasen als Spalten | B0169 Bewegungen mit Phasen | Standard | 0,5-1h | 0,02h | 0,02h | autonom |

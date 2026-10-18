@@ -35,10 +35,21 @@ pub struct Wechsel {
     pub spalte: Option<String>,
 }
 
+/// Je Aufgabe die Wechsel; dazu, was die Rechnung je Phase braucht: Labels (`im-pair` für „Eingebettet in“) und `phases.skipped`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Bewegung {
     pub nummer: u32,
     pub wechsel: Vec<Wechsel>,
+    pub labels: Vec<String>,
+    pub uebersprungen: Vec<String>,
+}
+
+/// Welche Phasen ein gebundenes Board hat und welche Spalte welche darstellt (`column-phases`, N:1).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Phasenkarte {
+    pub anwendung: String,
+    pub folge: crate::phasen::Phasenfolge,
+    pub spaltenphasen: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -46,6 +57,8 @@ pub struct Bewegungen {
     pub spalten: Vec<String>,
     pub jetzt: String,
     pub aufgaben: Vec<Bewegung>,
+    /// `None` bei einem reinen Kanban — dann rechnen die Berichte je Spalte
+    pub phasen: Option<Phasenkarte>,
 }
 
 /// Je Aufgabe die Wechsel zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge.
@@ -70,7 +83,8 @@ pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetz
         }
         vorher = jetzt_da;
     }
-    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben: je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel }).collect() }
+    let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![] }).collect();
+    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben, phasen: None }
 }
 
 fn zaehlen(b: &Board) -> (usize, usize) {

@@ -126,3 +126,30 @@ fn entfallende_phasen_ueber_die_aenderung_der_aufgabe_ein_commit() {
     assert_eq!(gemeinsam::lies(l.board.path(), "aufgaben/0003-drei.md"), "---\nid: 3\ntitle: drei\nphases:\n  skipped: [Entwicklertest]\n  note: x\n---\n");
     assert_eq!(git(l.board.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#3 geändert: Phasen");
 }
+
+#[test]
+fn bewegungen_nennen_phasenfolge_spaltenphasen_und_je_aufgabe_labels_und_entfallende_phasen() {
+    let l = lage();
+    std::fs::create_dir_all(l.board.path().join("aufgaben")).unwrap();
+    std::fs::write(l.board.path().join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\nlabels: [im-pair]\nphases:\n  skipped: [Abnahme]\n---\n").unwrap();
+    std::fs::write(l.board.path().join("boards/entwicklung.md"), "# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## Erledigt\n").unwrap();
+    git(l.board.path(), &["add", "-A"]);
+    git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-m", "Board"]);
+    l.kanban.board_mit_phasen("entwicklung").unwrap();
+    let v = serde_json::to_value(l.kanban.bewegungen("entwicklung").unwrap()).unwrap();
+    assert_eq!(v["spalten"], serde_json::json!(["Zu erledigen", "Entwicklung", "Entwicklertest", "Abnahme", "Erledigt"]));
+    assert_eq!(v["phasen"]["anwendung"], "kc");
+    assert_eq!(v["phasen"]["folge"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect::<Vec<_>>(), ["Entwicklung", "Entwicklertest", "Abnahme"]);
+    assert_eq!(v["phasen"]["folge"][0], serde_json::json!({"nr": 1, "name": "Entwicklung", "eingebettet": "", "gleich": ""}));
+    assert_eq!(v["phasen"]["spaltenphasen"], serde_json::json!({"Entwicklung": "Entwicklung", "Entwicklertest": "Entwicklertest", "Abnahme": "Abnahme"}));
+    assert_eq!((v["aufgaben"][0]["labels"].clone(), v["aufgaben"][0]["uebersprungen"].clone()), (serde_json::json!(["im-pair"]), serde_json::json!(["Abnahme"])));
+    assert_eq!((v["aufgaben"][1]["labels"].clone(), v["aufgaben"][1]["uebersprungen"].clone()), (serde_json::json!([]), serde_json::json!([])), "ohne Aufgabendatei leer");
+}
+
+#[test]
+fn bewegungen_eines_reinen_kanbans_ohne_phasen() {
+    let board = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(board.path());
+    let v = serde_json::to_value(Kanban::neu(board.path().to_path_buf()).bewegungen("entwicklung").unwrap()).unwrap();
+    assert_eq!(v["phasen"], serde_json::Value::Null);
+}
