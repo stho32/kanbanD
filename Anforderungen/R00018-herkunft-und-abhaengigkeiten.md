@@ -1,6 +1,6 @@
 ---
 id: R00018
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -28,11 +28,11 @@ Das Board zeigt auf Planung und Anforderungen statt sie zu kopieren, und Reihenf
 
 ## Akzeptanzkriterien
 
-- [ ] `PATCH {herkunft: ["I0007", "R00014"]}` schreibt `origins: [I0007, R00014]`; `["X1"]` → 400; `["thin air", "I0001"]` → 400
-- [ ] WBS mit `| I0007 | Interaction | D0001 | Bewegen | rot | … | I0005 | …` in Zeile 12 → `/api/herkunft` liefert für I0007 `zeile: 12`, `name: Bewegen`, `braucht: ["I0005"]`
-- [ ] `R00014` mit Datei `R00014-timer.md` → Pfad dieser Datei, `name` aus `# R00014: Timer`
-- [ ] Aufgabe #2 (I0007) und #1 (I0005, in „In Arbeit“) → Karte #2 zeigt „wartet auf #1“; #1 in „Erledigt“ → keine Anzeige
-- [ ] Link der Herkunft auf der Karte ist `vscode://file<absoluter Pfad>:<zeile>`
+- [x] `PATCH {herkunft: ["I0007", "R00014"]}` schreibt `origins: [I0007, R00014]`; `["X1"]` → 400; `["thin air", "I0001"]` → 400
+- [x] WBS mit `| I0007 | Interaction | D0001 | Bewegen | rot | … | I0005 | …` in Zeile 12 → `/api/herkunft` liefert für I0007 `zeile: 12`, `name: Bewegen`, `braucht: ["I0005"]`
+- [x] `R00014` mit Datei `R00014-timer.md` → Pfad dieser Datei, `name` aus `# R00014: Timer`
+- [x] Aufgabe #2 (I0007) und #1 (I0005, in „In Arbeit“) → Karte #2 zeigt „wartet auf #1“; #1 in „Erledigt“ → keine Anzeige
+- [x] Link der Herkunft auf der Karte ist `vscode://file<absoluter Pfad>:<zeile>`
 
 ## Betroffene Verzeichnisstruktur
 

@@ -77,3 +77,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00018 Herkunft und Abhängigkeiten | B0049 Herkunft ändern | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00018 Herkunft und Abhängigkeiten | B0050 WBS und Anforderungen auflösen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00018 Herkunft und Abhängigkeiten | B0051 Herkunft und Wartet-auf zeigen | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00018 Herkunft und Abhängigkeiten | Lauf R00018 | Nacharbeit | — | — | 0,0h | autonom |
