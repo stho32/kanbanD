@@ -156,7 +156,8 @@ mod tests {
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
         assert_eq!(namen, vec![("Offen", vec![1, 2], None), ("Neu", vec![], None), ("Z", vec![3], Some(2))]);
-        assert_eq!(b.spalten_setzen(&neu), Ok(false));
+        let gleich = [aend("Offen", Some("Offen"), None), aend("Neu", Some("Neu"), None), aend("Z", Some("Z"), Some(2))];
+        assert_eq!(b.spalten_setzen(&gleich), Ok(false));
     }
 
     #[test]
