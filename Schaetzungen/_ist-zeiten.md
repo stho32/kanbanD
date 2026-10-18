@@ -166,3 +166,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00046 Wie lange noch | B0110 Prognose je Spalte rechnen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00046 Wie lange noch | B0111 Bericht Wie lange noch | Standard | 2-3h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00046 Wie lange noch | B0112 Live beobachten | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00046 Wie lange noch | Lauf R00046 | Nacharbeit | — | — | 0,0h | autonom |

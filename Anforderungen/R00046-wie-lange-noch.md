@@ -1,6 +1,6 @@
 ---
 id: R00046
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -31,9 +31,9 @@ Die Frage „wann sind wir durch?“ hat eine belegte Antwort mit Wahrscheinlich
 
 ## Akzeptanzkriterien
 
-- [ ] Unit: erreicht/offen je Spalte; Tagesreihe mit Nulltagen; Perzentile monoton und reproduzierbar; unter drei Läufen ungemessen; Untergrenze der Vorspalte; 5-Tage-Reihe und Werktagsdatum; Spalte und Farbe ausgeschlossen
-- [ ] E2E: Bericht zeigt Kopfzahlen, Block „Erledigt“ mit P50…P95, ungemessene Spalte; Spalte ausschließen entfernt ihren Block
-- [ ] E2E live: Bericht offen, eine Aufgabe wird per API nach „Erledigt“ bewegt → Kopfzahl steigt ohne Neuladen; neue Aufgabe → Umfang steigt
+- [x] Unit: erreicht/offen je Spalte; Tagesreihe mit Nulltagen; Perzentile monoton und reproduzierbar; unter drei Läufen ungemessen; Untergrenze der Vorspalte; 5-Tage-Reihe und Werktagsdatum; Spalte und Farbe ausgeschlossen
+- [x] E2E: Bericht zeigt Kopfzahlen, Block „Erledigt“ mit P50…P95, ungemessene Spalte; Spalte ausschließen entfernt ihren Block
+- [x] E2E live: Bericht offen, eine Aufgabe wird per API nach „Erledigt“ bewegt → Kopfzahl steigt ohne Neuladen; neue Aufgabe → Umfang steigt
 
 ## Betroffene Verzeichnisstruktur
 
