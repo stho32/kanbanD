@@ -34,3 +34,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 28 | I0015 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00015 | offen |
 | 29 | I0016 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00016 | offen |
 | 30 | I0017 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00017 | offen |
+| 31 | I0018 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00018 | offen |
