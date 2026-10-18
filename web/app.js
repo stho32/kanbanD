@@ -30,7 +30,7 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
-  const m = /^#\/(einrichten|aufgaben|personen)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 
@@ -40,6 +40,8 @@ function vHaupt() {
   if (S.ui.view === 'einrichten' && S.ui.einr) return vEinrichten();
   if (S.ui.view === 'aufgaben') return vAufgaben();
   if (S.ui.view === 'personen') return vPersonen();
+  if (S.ui.view === 'berichte/stundenzettel') return vStundenzettel();
+  if (S.ui.view === 'berichte/kreuz') return vKreuz();
   return vBoard();
 }
 
@@ -234,6 +236,9 @@ async function act(a, arg, wert) {
         break;
       }
       case 'p-bereich': u.pBereich = arg; break;
+      case 'sp': u.sp = arg; break;
+      case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
+      case 'zeitraum': u.zeitraum = arg; break;
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
@@ -380,6 +385,7 @@ document.addEventListener('change', e => {
 
 document.addEventListener('click', e => {
   if (e.target.closest('a[href^="vscode:"]')) return;
+  if (e.target.closest('.menue a[href^="#"]')) { S.ui.pop = null; return; }
   const el = e.target.closest('[data-act]');
   if (S.ui.pop && !e.target.closest('.pop') && !(el && el.dataset.act === 'pop')) {
     S.ui.pop = null; S.ui.ichNoetig = false;

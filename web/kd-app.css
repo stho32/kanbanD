@@ -338,3 +338,4 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .lbl.ort{gap:4px;height:18px}
 .lbl.ort .lnk{font-size:10px;color:var(--kd-muted)}
 .cls{--cl:var(--kd-line-strong)}
+.menue a.e{color:inherit;text-decoration:none}
