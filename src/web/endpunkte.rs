@@ -50,7 +50,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/aufgaben/{nr}/anhaenge/{name}", false, "Aufgaben", "Anhang laden"),
     e("DELETE", "/api/aufgaben/{nr}/anhaenge/{name}", true, "Aufgaben", "Anhang entfernen"),
     e("GET", "/api/herkunft", false, "Aufgaben", "WBS-Knoten und Anforderungen der verwendeten Herkunft, je Schreibweise mit anwendung und schluessel"),
-    e("GET", "/api/wbs/{kürzel}", false, "WBS", "WBS einer registrierten Anwendung {knoten: [{id, ebene, eltern, name, status, gerechnet, erreicht, …, zeile}], stand: {gruen, gelb, rot, slices, aktiv, pfad, laufend}, nicht_committet, anforderungen}; 404 unbekannt, 409 nicht erreichbar"),
+    e("GET", "/api/wbs/{kuerzel}", false, "WBS", "WBS einer registrierten Anwendung {knoten: [{id, ebene, eltern, name, status, gerechnet, erreicht, …, zeile}], stand: {gruen, gelb, rot, slices, aktiv, pfad, laufend}, nicht_committet, anforderungen}; 404 unbekannt, 409 nicht erreichbar"),
     e("POST", "/api/aufgaben/{nr}/timer/start", true, "Zeiten", "eigenen Timer starten"),
     e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde"),
     e("POST", "/api/aufgaben/{nr}/zeiten", true, "Zeiten", "Zeit nachtragen {dauer}"),
