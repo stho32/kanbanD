@@ -2,7 +2,7 @@
 
 mod statisch;
 
-use crate::dienst::{Einrichtung, Kanban, NeueAufgabe};
+use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe};
 use crate::fehler::Fehler;
 use axum::extract::{FromRequestParts, Path, State};
 use axum::http::request::Parts;
@@ -25,6 +25,7 @@ pub fn router(ordner: PathBuf) -> Router {
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
         .route("/api/boards/{slug}", get(board))
+        .route("/api/boards/{slug}/bewegen", post(bewegen))
         .route("/api/wer", get(wer))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .merge(statisch::router())
@@ -93,4 +94,13 @@ async fn aufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<
     })
     .await?;
     Ok((StatusCode::CREATED, Json(a)).into_response())
+}
+
+async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(bw): Json<Bewegung>) -> Result<Response, Fehler> {
+    let bewegt = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.bewegen(&p, &slug, &bw)
+    })
+    .await?;
+    Ok(Json(json!({ "bewegt": bewegt })).into_response())
 }

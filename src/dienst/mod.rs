@@ -1,9 +1,11 @@
 //! Die Anwendungsfälle: prüfen, Dateien schreiben, committen — unter einer Schreibsperre.
 
 mod aufgabe_anlegen;
+mod bewegen;
 mod einrichten;
 
 pub use aufgabe_anlegen::NeueAufgabe;
+pub use bewegen::Bewegung;
 pub use einrichten::{Einrichtung, NeuePerson};
 
 use crate::ablage::{DefekteDatei, Ordner};

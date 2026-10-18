@@ -77,3 +77,15 @@ pub async fn senden(methode: reqwest::Method, adresse: &str, pfad: &str, wer: &s
 pub fn lies(pfad: &Path, rel: &str) -> String {
     std::fs::read_to_string(pfad.join(rel)).unwrap_or_default()
 }
+
+/// Wie `eingerichtet`, dazu Aufgaben 1, 2, 3 in „Zu erledigen“.
+pub fn mit_drei_aufgaben(pfad: &Path) {
+    eingerichtet(pfad);
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    for (n, t) in [(1, "eins"), (2, "zwei"), (3, "drei")] {
+        std::fs::write(pfad.join(format!("aufgaben/000{n}-{t}.md")), format!("---\nid: {n}\ntitle: {t}\n---\n")).unwrap();
+    }
+    std::fs::write(pfad.join("boards/entwicklung.md"), "# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n## Erledigt\n").unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "drei Aufgaben"]);
+}
