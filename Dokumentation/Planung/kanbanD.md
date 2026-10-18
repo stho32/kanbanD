@@ -79,7 +79,10 @@ zuletzt: 2026-10-18
 | B0041 | Bubble | I0015 | Dauer lesen | gruen | Test gruen | „0:45“, „1,5“, „90 min“ → Minuten | 0,5-1 |  |  |  |  |
 | B0042 | Bubble | I0015 | Zeiten über die API | gruen | Test gruen | nachtragen, korrigieren, löschen → Zeile im Block kanbanD-time, ein Commit | 1-2 |  |  |  |  |
 | B0043 | Bubble | I0015 | Zeiten im Fenster | gruen | Test gruen | Tabelle der Zeiten mit Summe, ✎ korrigieren, ✕ löschen, + Zeit nachtragen | 1-2 |  |  |  |  |
-| I0016 | Interaction | D0003 | Anhänge verwalten | rot | US der Anforderung |  |  |  | I0011 |  |  |
+| I0016 | Interaction | D0003 | Anhänge verwalten | rot | US-1..US-2 |  |  |  | I0011 | R00016 |  |
+| B0044 | Bubble | I0016 | Anhangname bereinigen | rot | Test gruen | Dateiname vom Browser → sicherer, freier Name im Anhangordner | 0,5-1 |  |  |  |  |
+| B0045 | Bubble | I0016 | Anhänge über die API | rot | Test gruen | hochladen, auflisten, ausliefern, entfernen → aufgaben/<stamm>/, ein Commit | 1-2 |  |  |  |  |
+| B0046 | Bubble | I0016 | Anhänge im Fenster | rot | Test gruen | Liste mit Link und Größe, Datei wählen oder hineinziehen, ✕ entfernt | 1-2 |  |  |  |  |
 | I0017 | Interaction | D0003 | Archivieren und zurückholen | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0018 | Interaction | D0003 | Herkunft und Abhängigkeiten | rot | US der Anforderung |  |  |  | I0011 |  | origins mit Editor-Link, WBS-Braucht als wartet auf |
 | I0019 | Interaction | D0002 | Filtern | rot | US der Anforderung |  |  |  | I0005, I0010 |  | Text, class:, origin:, @person, is:archived |
