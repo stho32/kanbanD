@@ -149,5 +149,45 @@
     });
   }
 
-  Object.assign(ziel, { warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Rang je Spaltenname wie der Server (`rang` in src/pruefungen.rs): mit Phasen `phasenRang`, sonst der Spaltenindex. */
+  function spaltenRang(board) {
+    const namen = board.spalten.map(s => s.name);
+    if (!board.phasen) return s => namen.indexOf(s);
+    const spaltenphasen = Object.fromEntries(board.spalten.filter(s => s.phase).map(s => [s.name, s.phase]));
+    const { phasenRang } = typeof module !== 'undefined' ? require('./berichte.js') : window;
+    return phasenRang({ folge: board.phasen.folge, spaltenphasen }, namen);
+  }
+
+  /** Der Katalog wie in src/pruefungen.rs; `wbsJe` = {kürzel: WBS-Sicht | null}, fehlt eine, ist sie nicht erreichbar. */
+  const PRUEFUNGEN = {
+    'wbs-effects-green': (a, wbsJe) => {
+      const offen = [];
+      for (const w of a.wirkungen || []) {
+        if (!['create', 'rework'].includes(w.action) || !w.node) continue;
+        const s = `${w.application}:${w.node}`, sicht = wbsJe[w.application], k = sicht && sicht.knoten.find(x => x.id === w.node);
+        if (offen.some(o => o.s === s) || (k && k.gerechnet === 'gruen')) continue;
+        offen.push({ s, d: !sicht ? `${s} WBS nicht erreichbar` : !k ? `${s} Knoten fehlt` : `${s} ${k.gerechnet}` });
+      }
+      return offen.length ? { pruefung: 'wbs-effects-green', text: 'Achtung! Es sind nicht alle abhängigen WBS-Einträge grün.', knoten: offen.map(o => o.s), details: offen.map(o => o.d) } : null;
+    },
+  };
+
+  /** Nicht erfüllte Prüfungen der Spalten links der Karte — sie tragen das rote Ausrufezeichen (gerechnet, nicht gespeichert). */
+  function kartenPruefungen(board, a, wbsJe) {
+    const hier = board.spalten.find(s => s.aufgaben.includes(a.nummer));
+    if (!hier) return [];
+    const rang = spaltenRang(board), r = rang(hier.name);
+    const namen = [...new Set(board.spalten.filter(s => rang(s.name) < r).flatMap(s => s.pruefungen || []))].filter(n => PRUEFUNGEN[n]);
+    return namen.map(n => PRUEFUNGEN[n](a, wbsJe)).filter(Boolean);
+  }
+
+  /** Anwendungen, deren WBS das Board für die Prüfungen braucht: Ziele von create/rework der Karten darauf, nur wenn eine Spalte prüft. */
+  function pruefWbsAnwendungen(board, aufgaben) {
+    if (!board || !board.spalten.some(s => (s.pruefungen || []).length)) return [];
+    const nummern = new Set(board.spalten.flatMap(s => s.aufgaben));
+    const k = aufgaben.filter(a => nummern.has(a.nummer)).flatMap(a => (a.wirkungen || []).filter(w => ['create', 'rework'].includes(w.action)).map(w => w.application));
+    return [...new Set(k)];
+  }
+
+  Object.assign(ziel, { kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

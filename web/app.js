@@ -114,6 +114,10 @@ async function laden() {
     if (S.ui.view === 'einrichten') S.anwendungen = await api('GET', '/api/anwendungen');
     S.wbs = null; S.wbsFehler = null;
     if (S.ui.view === 'wbs' && wbsKuerzel()) S.wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { S.wbsFehler = f.message; return null; });
+    // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
+    const pruefWbs = {};
+    if (S.ui.view === 'board') await Promise.all(pruefWbsAnwendungen(board, aufgaben.aufgaben).map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
+    S.pruefWbs = pruefWbs;
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
     if (S.ui.offen) await dateiLaden();
