@@ -1,6 +1,6 @@
 ---
 id: R00038
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -23,8 +23,8 @@ Der nächste Schritt jeder Aufgabe ist auf dem Board sichtbar, ohne die Karte zu
 
 ## Akzeptanzkriterien
 
-- [ ] #1 mit `[x] a`, `[ ] b`, `[ ] c` zeigt „b“; Klick → Datei `[x] b`, Karte zeigt „c“; Klick → keine Zeile, „☑ 3/3“
-- [ ] Karte ohne Teilaufgaben und Karte in der Abschlussspalte zeigen keine Zeile
+- [x] #1 mit `[x] a`, `[ ] b`, `[ ] c` zeigt „b“; Klick → Datei `[x] b`, Karte zeigt „c“; Klick → keine Zeile, „☑ 3/3“
+- [x] Karte ohne Teilaufgaben und Karte in der Abschlussspalte zeigen keine Zeile
 
 ## Betroffene Verzeichnisstruktur
 

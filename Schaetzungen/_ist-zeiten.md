@@ -145,3 +145,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00037 Teilaufgaben schnell hintereinander | B0098 Teilaufgaben ohne Warten anfügen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00037 Teilaufgaben schnell hintereinander | Lauf R00037 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00038 Erste offene Teilaufgabe auf der Karte | B0099 Nächste Teilaufgabe zeigen und abhaken | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00038 Erste offene Teilaufgabe auf der Karte | Lauf R00038 | Nacharbeit | — | — | 0,0h | autonom |
