@@ -151,3 +151,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00040 Ziehen in der Aufgabenliste | B0101 Zeilen auf Spalten und Archiv ziehen | Standard | Archiv) → legen, bewegen oder archivieren, ein Commith | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00040 Ziehen in der Aufgabenliste | Lauf R00040 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00041 Kürzel nach Kanbanflow-Konvention | B0102 Kürzel nach Kanbanflow-Konvention | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00041 Kürzel nach Kanbanflow-Konvention | Lauf R00041 | Nacharbeit | — | — | 0,0h | autonom |

@@ -1,6 +1,6 @@
 ---
 id: R00041
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,10 +27,10 @@ Wer von Kanbanflow kommt, findet die Hand-Bewegungen wieder.
 
 ## Akzeptanzkriterien
 
-- [ ] Fokus auf #1, Leertaste → Timer von st läuft; Leertaste → gestoppt
-- [ ] Fokus auf #1, Entf → `archived:` in der Datei
-- [ ] Aufgabenliste: `n` öffnet „Neue Aufgabe“ ohne Board; Personen-Seite: `n` ebenso
-- [ ] Zeile #2 in der Liste, Entf → archiviert
+- [x] Fokus auf #1, Leertaste → Timer von st läuft; Leertaste → gestoppt
+- [x] Fokus auf #1, Entf → `archived:` in der Datei
+- [x] Aufgabenliste: `n` öffnet „Neue Aufgabe“ ohne Board; Personen-Seite: `n` ebenso
+- [x] Zeile #2 in der Liste, Entf → archiviert
 
 ## Betroffene Verzeichnisstruktur
 
