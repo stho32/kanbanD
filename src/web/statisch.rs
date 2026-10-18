@@ -18,6 +18,7 @@ dateien! {
     "index.html" => "text/html; charset=utf-8",
     "app.js" => "text/javascript; charset=utf-8",
     "ansicht.js" => "text/javascript; charset=utf-8",
+    "filter.js" => "text/javascript; charset=utf-8",
     "kd-tokens.css" => "text/css; charset=utf-8",
     "kd-base.css" => "text/css; charset=utf-8",
     "kd-app.css" => "text/css; charset=utf-8",
