@@ -66,3 +66,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | B0041 Dauer lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | B0042 Zeiten über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | B0043 Zeiten im Fenster | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | Lauf R00015 | Nacharbeit | — | — | 0,0h | autonom |

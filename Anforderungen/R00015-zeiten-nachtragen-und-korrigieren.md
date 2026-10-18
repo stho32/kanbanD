@@ -1,6 +1,6 @@
 ---
 id: R00015
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,11 +27,11 @@ Vergessene Timer und Fehlklicks lassen sich beheben, ohne die Datei von Hand zu 
 
 ## Akzeptanzkriterien
 
-- [ ] `dauer_lesen`: „0:45“ → 45, „1,5“ → 90, „90 min“ → 90, „20m“ → 20, „x“ → keine, „0“ → keine
-- [ ] Nachtragen „1:30“ um 12:00 ergibt `10:30 · 12:00 · st` (Prüfung relativ zu jetzt)
-- [ ] Korrektur eines Eintrags auf `09:00`–`10:00`; Ende vor Beginn → 400; laufender Eintrag mit Ende → 400
-- [ ] Löschen eines laufenden Eintrags → 409; eines beendeten → Zeile weg
-- [ ] Oberfläche: „0:45“ nachtragen → Summe zeigt 0:45; Eintrag löschen → Summe 0:00
+- [x] `dauer_lesen`: „0:45“ → 45, „1,5“ → 90, „90 min“ → 90, „20m“ → 20, „x“ → keine, „0“ → keine
+- [x] Nachtragen „1:30“ um 12:00 ergibt `10:30 · 12:00 · st` (Prüfung relativ zu jetzt)
+- [x] Korrektur eines Eintrags auf `09:00`–`10:00`; Ende vor Beginn → 400; laufender Eintrag mit Ende → 400
+- [x] Löschen eines laufenden Eintrags → 409; eines beendeten → Zeile weg
+- [x] Oberfläche: „0:45“ nachtragen → Summe zeigt 0:45; Eintrag löschen → Summe 0:00
 
 ## Betroffene Verzeichnisstruktur
 
