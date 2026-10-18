@@ -235,7 +235,7 @@ const KUERZEL_BOARD = [['p', 'Zuständige setzen'], ['Rechtsklick · Menütaste 
 const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
 const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['n', 'Neue Aufgabe ohne Board'], ['a · Entf', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['Ziehen', 'Zeile auf eine Spalte oder ins Archiv'], ['/', 'Filter']];
 const KUERZEL_NEU = [['Enter (im Titel) · Strg + Enter', 'anlegen'], ['Umschalt + Strg + Enter', 'anlegen und weitere'], ['Enter (Teilaufgabe)', 'Teilaufgabe anfügen'], ['Esc', 'abbrechen']];
-const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
+const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
 function hilfeOrt() {
   if (S.ui.offen) return ['Aufgabenfenster', KUERZEL_FENSTER];
   if (S.ui.view === 'board') return ['Board', KUERZEL_BOARD];
@@ -389,7 +389,7 @@ const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
 function vBerichtsfilter(teile) {
@@ -461,6 +461,37 @@ ${t.map((x, i) => `<rect class="treffer" x="${sx(i) - (B - L - R) / Math.max(1, 
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter({ zeitraum: true, spalten: true, personen: 'zustaendig' })}
 <div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>`;
+}
+
+/* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
+function vDurchlauf() {
+  if (!S.bew) return '<div class="leer">lädt …</div>';
+  const sp = S.bew.spalten, u = S.ui;
+  const von = sp.includes(u.dlVon) ? u.dlVon : sp[0], bis = sp.includes(u.dlBis) ? u.dlBis : sp[sp.length - 1];
+  const d = durchlaufzeiten(S.bew, u.bf, aufgabe, Date.now(), von, bis);
+  const wahl = (k, wert, titel) => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte">${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
+  const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter({ zeitraum: true, personen: 'zustaendig' })}`;
+  if (!d.gueltig) return `${kopf}<div class="body bericht"><div class="leer">„von“ muss links von „bis“ liegen.</div></div>`;
+  const B = 800, H = 280, L = 40, R = 110, O = 16, U = 28, l = d.liste;
+  const t0 = Math.min(...l.map(x => x.ankunft)), t1 = Math.max(...l.map(x => x.ankunft));
+  const ymax = Math.max(1, ...l.map(x => x.tage)) * 1.1;
+  const sx = t => L + (t1 === t0 ? (B - L - R) / 2 : (t - t0) / (t1 - t0) * (B - L - R)), sy = y => O + (H - O - U) * (1 - y / ymax);
+  const schritt = Math.max(1, Math.ceil(ymax / 4)), ticks = [];
+  for (let y = 0; y <= ymax; y += schritt) ticks.push(y);
+  const datum = ms => { const x = new Date(ms); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.`; };
+  const xt = t1 === t0 ? [t0] : [0, 1, 2, 3, 4].map(i => t0 + (t1 - t0) * i / 4);
+  const bezug = (wert, cls, text) => `<line class="${cls}" x1="${L}" x2="${B - R}" y1="${sy(wert)}" y2="${sy(wert)}"></line><text class="endwert leise" x="${B - R + 8}" y="${sy(wert) + 4}">${text} ${zahl1(wert)} T</text>`;
+  const svg = l.length ? `<svg class="diagramm streu" viewBox="0 0 ${B} ${H}" role="img" aria-label="Durchlaufzeit je Aufgabe nach Ankunftstag">
+${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
+${xt.map(t => `<text class="achse" x="${sx(t)}" y="${H - 8}" text-anchor="middle">${datum(t)}</text>`).join('')}
+${bezug(d.p85, 'p85', '85 %')}${bezug(d.median, 'median', 'Median')}
+${l.map(x => { const a = aufgabe(x.nummer); return `<circle class="punkt klick" cx="${sx(x.ankunft).toFixed(1)}" cy="${sy(x.tage).toFixed(1)}" r="5" data-act="oeffnen" data-arg="${x.nummer}"><title>#${x.nummer} ${esc(a ? a.titel : '')} · ${zahl1(x.tage)} Tage · angekommen ${datum(x.ankunft)}</title></circle>`; }).join('')}
+</svg>` : '<div class="leer">Keine Aufgabe hat im Zeitraum „bis“ erreicht.</div>';
+  const fmt = ms => { const x = new Date(ms), p = n => String(n).padStart(2, '0'); return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}`; };
+  const kennzahlen = `<div class="kennzahlen" id="durchlauf-kennzahl"><span><b>${d.anzahl}</b> Aufgaben</span><span>Mittel <b>${zahl1(d.mittel)}</b> T</span><span>Median <b>${zahl1(d.median)}</b> T</span><span>85 % in <b>${zahl1(d.p85)}</b> T oder weniger</span></div>`;
+  const tabelle = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>in „${esc(von)}“</th><th>in „${esc(bis)}“</th><th class="r">Tage</th></tr></thead><tbody>${l.map(x => { const a = aufgabe(x.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${x.nummer}"><td class="tt"><span class="mono muted">#${x.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${fmt(x.eintritt)}</td><td class="mono">${fmt(x.ankunft)}</td><td class="r num">${zahl1(x.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`;
+  const legende = '<div class="dlegende"><span><i class="k-punkt"></i>eine Aufgabe</span><span><i class="k-median"></i>Median</span><span><i class="k-p85"></i>85 %</span></div>';
+  return `${kopf}<div class="body bericht">${kennzahlen}<h3 class="dtitel">Tage je Aufgabe nach Ankunft in „${esc(bis)}“</h3>${legende}<div class="dflaeche">${svg}</div><h3 class="dtitel">Aufgaben</h3>${tabelle}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

@@ -36,7 +36,7 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 
@@ -49,6 +49,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/stundenzettel') return vStundenzettel();
   if (S.ui.view === 'berichte/kreuz') return vKreuz();
   if (S.ui.view === 'berichte/verlauf') return vVerlauf();
+  if (S.ui.view === 'berichte/durchlauf') return vDurchlauf();
   return vBoard();
 }
 
@@ -221,7 +222,7 @@ function render() {
 
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
-  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown' };
+  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch' };
   const n = alleLaufenden().length;
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
@@ -587,6 +588,7 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {
     const aenderung = { [bf]: e.target.value };

@@ -161,3 +161,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00044 Burndown nach Zeitraum | B0107 Burndown-Bericht mit Filterleiste | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | Lauf R00044 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00045 Durchlaufzeit als eigener Bericht | B0108 Durchlaufzeit zwischen Spalten rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00045 Durchlaufzeit als eigener Bericht | B0109 Bericht Durchlaufzeit | Standard | 1-2h | 0,0h | 0,0h | autonom |

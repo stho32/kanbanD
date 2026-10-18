@@ -447,3 +447,14 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bf-chip .pk{width:16px;height:16px;font-size:8px}
 .bf-farbe{width:10px;height:10px;border:1px solid var(--cl,var(--kd-line-strong));background:var(--c,var(--kd-surface))}
 .bf-leeren{margin-left:auto;height:24px}
+/* Durchlaufzeit (R00045) */
+.dl-wahl{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--kd-muted)}
+.kennzahlen{display:flex;flex-wrap:wrap;gap:var(--kd-s5);font-size:13px;color:var(--kd-muted);margin:var(--kd-s2) 0}
+.kennzahlen b{color:var(--kd-text);font-weight:600;font-family:var(--kd-mono)}
+.diagramm .median{stroke:var(--kd-muted);stroke-width:1.5}
+.diagramm .p85{stroke:var(--kd-muted);stroke-width:1.5;stroke-dasharray:5 4}
+.diagramm .punkt.klick{cursor:pointer}
+.diagramm .punkt.klick:hover{r:7}
+.k-punkt{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--kd-accent)}
+.k-median{display:inline-block;width:14px;height:0;border-top:1.5px solid var(--kd-muted)}
+.k-p85{display:inline-block;width:14px;height:0;border-top:1.5px dashed var(--kd-muted)}
