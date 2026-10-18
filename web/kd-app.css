@@ -308,3 +308,6 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .iz.neu{cursor:default;padding:4px var(--kd-s3)}
 .iz.neu .inp{width:100%;height:26px}
 .iz.neu:hover{background:none}
+.bahn-kopf.ueber{background:var(--kd-c-red);box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
+.bahn-kopf.ueber .v{color:var(--kd-warn);font-weight:600}
+.fehl-kopf{color:var(--kd-c-amber);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

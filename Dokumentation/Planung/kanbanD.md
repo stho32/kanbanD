@@ -54,10 +54,10 @@ zuletzt: 2026-10-18
 | I0008 | Interaction | D0002 | Boards wechseln und anlegen | gruen | US-1..US-3 |  |  |  | I0003, I0004 | R00008 |  |
 | B0024 | Bubble | I0008 | Board anlegen | gruen | Test gruen | Titel, Spalten, Person → boards/<slug>.md, ein Commit; POST /api/boards | 0,5-1 |  |  |  |  |
 | B0025 | Bubble | I0008 | Board-Umschalter | gruen | Test gruen | Klick auf den Boardnamen → Liste der Boards, Wechsel, neues Board | 1-2 |  |  |  |  |
-| I0009 | Interaction | D0002 | Spalten einrichten | gelb | US-1..US-3 |  |  |  | I0008 | R00009 | anlegen, umbenennen, umsortieren, leere entfernen, Grenze |
+| I0009 | Interaction | D0002 | Spalten einrichten | gruen | US-1..US-3 |  |  |  | I0008 | R00009 | anlegen, umbenennen, umsortieren, leere entfernen, Grenze |
 | B0026 | Bubble | I0009 | Spalten neu ordnen | gruen | Test gruen | Board + Spaltenliste (Name, alter Name, Grenze) → Board oder Fehler | 0,5-1 |  |  |  |  |
 | B0027 | Bubble | I0009 | Spalten speichern | gruen | Test gruen | PUT /api/boards/<slug>/spalten → Board-Datei, ein Commit | 0,5-1 |  |  |  |  |
-| B0028 | Bubble | I0009 | Einrichtemodus Spalten | rot | Test gruen | Spalten bearbeiten, Vorschau, Fertig/Verwerfen; Grenze überschritten sichtbar | 1-2 |  |  |  |  |
+| B0028 | Bubble | I0009 | Einrichtemodus Spalten | gruen | Test gruen | Spalten bearbeiten, Vorschau, Fertig/Verwerfen; Grenze überschritten sichtbar | 1-2 |  |  |  |  |
 | I0010 | Interaction | D0001 | Personen und Klassen pflegen | rot | US der Anforderung |  |  |  | I0003 |  | stilllegen statt entfernen |
 | I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | rot | US der Anforderung |  |  |  | I0005 |  | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | rot | US der Anforderung |  |  |  | I0011 |  |  |

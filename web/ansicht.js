@@ -33,9 +33,10 @@ function vKopf() {
   const u = S.ui, z = S.zustand;
   if (!z) return '<header class="kz"><div class="kz-z1">kanbanD</div></header>';
   const ordnerName = z.ordner.split('/').filter(Boolean).pop();
+  if (u.setup) return `<header class="kz modus"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button></div></div></header>`;
   if (!z.eingerichtet || u.first) return `<header class="kz"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></header>`;
   const b = S.board;
-  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="an">Board</a></nav><div class="kz-z3">${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
+  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="an">Board</a></nav>${b ? `<div class="kz-werk"><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button></div>` : ''}<div class="kz-z3">${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
 }
 
 function vIchKnopf() {
@@ -90,12 +91,26 @@ function vLane(sp, i, alle) {
   const neu = S.ui.adding === sp.name
     ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Esc bricht ab" data-enter="add-ok" data-arg="${esc(sp.name)}" aria-label="Titel der neuen Karte"></div>`
     : `<button data-act="add" data-arg="${esc(sp.name)}">+ Karte</button>`;
-  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v">Grenze ${sp.grenze}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div><div class="bahn-fuss">${neu}</div></section>`;
+  const ueber = sp.grenze && karten.length > sp.grenze;
+  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}</div><div class="bahn-fuss">${neu}</div></section>`;
 }
 function vBoard() {
   const b = S.board;
   if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
   return `<div class="bahnen">${b.spalten.map(vLane).join('')}</div>`;
+}
+
+/* ── Spalten einrichten ── */
+function setupText(d) {
+  const grenzen = d.spalten.filter(s => +s.grenze > 0);
+  return (grenzen.length ? '---\nlimits:\n' + grenzen.map(s => `  ${yamlSkalar(s.name)}: ${+s.grenze}`).join('\n') + '\n---\n\n' : '')
+    + `# ${S.board.titel}\n` + d.spalten.map(s => `\n## ${s.name}\n` + (s.n ? `\n… ${s.n} Aufgabenzeilen\n` : '')).join('');
+}
+function vSetup() {
+  const d = S.ui.setup;
+  const bahnen = d.spalten.map((sp, i) => `<section class="bahn" style="--bw:236px"><div class="bk-ed"><div class="r"><input class="inp" data-sf="name" data-i="${i}" value="${esc(sp.name)}" aria-label="Spaltenname ${i + 1}"><button class="btn btn-sym" data-act="col-l" data-arg="${i}"${i === 0 ? ' disabled' : ''} title="nach links">←</button><button class="btn btn-sym" data-act="col-r" data-arg="${i}"${i === d.spalten.length - 1 ? ' disabled' : ''} title="nach rechts">→</button><button class="btn btn-sym" data-act="col-del" data-arg="${i}"${sp.n ? ` disabled title="enthält ${sp.n} Karten – erst leeren"` : ' title="entfernen"'} aria-label="Spalte ${esc(sp.name)} entfernen">✕</button></div><div class="r2"><span>${sp.n} Karten</span>${sp.alt && sp.alt !== sp.name ? `<span class="mono">war: ${esc(sp.alt)}</span>` : ''}${!sp.alt ? '<span class="mono">neu</span>' : ''}<span style="margin-left:auto">Grenze <input class="inp" data-sf="grenze" data-i="${i}" value="${sp.grenze || ''}" aria-label="Grenze ${esc(sp.name)}" inputmode="numeric"></span></div></div><div class="flaeche ruhig"></div></section>`).join('');
+  const neu = `<section class="bahn-neu"><div class="bk-ed"><div class="r"><input class="inp" id="col-new" placeholder="neue Spalte · Enter" data-enter="col-add" aria-label="Neue Spalte"></div><div class="r2">wird vor der Abschlussspalte eingefügt</div></div></section>`;
+  return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr"><h3>BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h3><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
 }
 
 /* ── Erster Start ── */

@@ -44,3 +44,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00008 Boards wechseln und anlegen | Lauf R00008 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00009 Spalten einrichten | B0026 Spalten neu ordnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00009 Spalten einrichten | B0027 Spalten speichern | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00009 Spalten einrichten | B0028 Einrichtemodus Spalten | Standard | 1-2h | 0,0h | 0,0h | autonom |

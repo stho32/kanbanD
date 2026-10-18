@@ -50,7 +50,7 @@ function ichNoetig() {
 
 function render() {
   $('#kopf').innerHTML = vKopf();
-  $('#main').innerHTML = S.ui.first ? vFirst() : vBoard();
+  $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : vBoard();
   $('#over').innerHTML = vPop();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -107,6 +107,30 @@ async function act(a, arg, wert) {
         await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
         return laden();
       }
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length })) }; break;
+      case 'setup-weg': u.setup = null; break;
+      case 'col-l': case 'col-r': {
+        const d = u.setup.spalten, i = +arg, j = a === 'col-l' ? i - 1 : i + 1;
+        if (j >= 0 && j < d.length) [d[i], d[j]] = [d[j], d[i]];
+        break;
+      }
+      case 'col-del': u.setup.spalten.splice(+arg, 1); break;
+      case 'col-add': {
+        const name = (wert || '').trim();
+        if (!name) break;
+        const d = u.setup.spalten;
+        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0 });
+        u.fokus = '#col-new';
+        break;
+      }
+      case 'setup-ok': {
+        if (ichNoetig()) break;
+        try {
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null })));
+          u.setup = null;
+          return laden();
+        } catch (f) { u.setup.fehler = f.message; break; }
+      }
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {
         const f = u.first, e = ersteEinstellungen(f);
@@ -123,45 +147,7 @@ async function act(a, arg, wert) {
     }
   } catch (fehler) {
     if (u.first) u.first.fehler = fehler.message; else u.fehler = fehler.message;
-    if (!u.first) await /* Live: jede Änderung im Ordner lädt neu; Änderungen von außen markieren die betroffenen Karten 10 s. */
-function spaltenJeAufgabe() {
-  const m = {};
-  if (S.board) S.board.spalten.forEach(sp => sp.aufgaben.forEach(n => { m[n] = sp.name; }));
-  return m;
-}
-
-async function ereignis(e) {
-  const vorher = spaltenJeAufgabe();
-  await laden();
-  if (!e.extern) return;
-  const jetzt = Date.now();
-  for (const a of S.aufgaben) if (e.pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
-  const boardDatei = S.ui.slug && 'boards/' + S.ui.slug + '.md';
-  if (boardDatei && e.pfade.includes(boardDatei)) {
-    const nachher = spaltenJeAufgabe();
-    for (const n of Object.keys(nachher)) if (vorher[n] !== nachher[n]) S.extern[n] = { at: jetzt, datei: boardDatei };
-  }
-  render();
-}
-
-function liveVerbinden() {
-  if (typeof EventSource === 'undefined') return;
-  const q = new EventSource('/api/ereignisse');
-  q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
-  q.onerror = () => { if (S.live) { S.live = false; render(); } };
-  q.onopen = () => { if (!S.live) { S.live = true; laden().catch(() => { }); } };
-}
-
-setInterval(() => {
-  const jetzt = Date.now();
-  let neu = false;
-  for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
-  document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
-  if (neu && zug == null && !S.ui.adding) render();
-}, 1000);
-
-liveVerbinden();
-laden().catch(() => { });
+    if (!u.first) await laden().catch(() => { });
   }
   render();
 }
@@ -177,6 +163,14 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  const sf = e.target.dataset && e.target.dataset.sf;
+  if (sf && S.ui.setup) {
+    const sp = S.ui.setup.spalten[+e.target.dataset.i];
+    sp[sf] = sf === 'grenze' ? e.target.value.replace(/\D/g, '') : e.target.value;
+    S.ui.setup.fehler = null;
+    $('#setup-vorschau').textContent = setupText(S.ui.setup);
+    return;
+  }
   const fr = e.target.dataset && e.target.dataset.fr;
   if (fr && S.ui.first) {
     S.ui.first[fr] = e.target.value;
@@ -197,6 +191,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.adding) { S.ui.adding = null; render(); return; }
+    if (S.ui.setup) { S.ui.setup = null; render(); return; }
   }
 });
 
