@@ -1,6 +1,6 @@
 //! Phasen einer Anwendung (Phasen-Datei neben ihrer WBS) und ihre Spalten auf einem Board — rein, ohne Dateizugriff.
 
-use crate::modell::{Board, Spalte};
+use crate::modell::{Anwendung, Board, Spalte};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -105,6 +105,37 @@ impl Phasenfolge {
     }
 }
 
+/// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; nennt es keine, gilt bei genau einer
+/// registrierten Anwendung diese (R00054, wie `gebundeneAnwendungen` in `web/wbs.js`).
+pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
+    if board.anwendungen.is_empty() {
+        return if let [einzige] = register { vec![einzige] } else { vec![] };
+    }
+    board.anwendungen.iter().filter_map(|k| register.iter().find(|a| &a.kuerzel == k)).collect()
+}
+
+impl Phasenfolge {
+    fn stelle(&self, phase: &str) -> Option<usize> {
+        self.0.iter().position(|p| p.name == phase)
+    }
+
+    /// Je Spalte einer späteren Phase, die links einer Spalte einer früheren steht, ein Hinweis; Spalten unbekannter Phasen dazu.
+    pub fn reihenfolge_hinweise(&self, board: &Board) -> Vec<String> {
+        let mut hinweise = vec![];
+        let gebunden: Vec<(&str, Option<usize>)> = board.spalten.iter().filter_map(|s| s.phase.as_deref().map(|p| (s.name.as_str(), self.stelle(p)))).collect();
+        for (i, (spalte, stelle)) in gebunden.iter().enumerate() {
+            let Some(stelle) = stelle else {
+                hinweise.push(format!("Spalte „{spalte}“ nennt eine Phase, die es in der Phasenfolge nicht gibt"));
+                continue;
+            };
+            if let Some((frueher, _)) = gebunden[i + 1..].iter().find(|(_, s)| s.is_some_and(|s| s < *stelle)) {
+                hinweise.push(format!("„{spalte}“ ({}) steht links von „{frueher}“ — die Phasenfolge ist {}", self.0[*stelle].name, self.namen().join(" → ")));
+            }
+        }
+        hinweise
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,6 +221,27 @@ mod tests {
         assert_eq!(Phasenfolge::lesen(""), Phasenfolge::standard());
         assert_eq!(Phasenfolge::lesen("## Durchläufe\n| 1 | Entwicklung |\n"), Phasenfolge::standard(), "Tabelle in einem anderen Abschnitt");
         assert_eq!(Phasenfolge::standard().namen(), ["Entwicklung", "Entwicklertest", "Abnahme"]);
+    }
+
+    #[test]
+    fn spalte_einer_spaeteren_phase_links_einer_frueheren_gibt_einen_hinweis() {
+        let f = Phasenfolge::standard();
+        assert!(f.reihenfolge_hinweise(&board(&[("E", Some("Entwicklung")), ("T", Some("Entwicklertest")), ("A1", Some("Abnahme")), ("A2", Some("Abnahme")), ("Frei", None)])).is_empty());
+        let falsch = f.reihenfolge_hinweise(&board(&[("Abnahme", Some("Abnahme")), ("E", Some("Entwicklung")), ("T", Some("Entwicklertest"))]));
+        assert_eq!(falsch, ["„Abnahme“ (Abnahme) steht links von „E“ — die Phasenfolge ist Entwicklung → Entwicklertest → Abnahme"]);
+        assert_eq!(f.reihenfolge_hinweise(&board(&[("X", Some("Beta"))])), ["Spalte „X“ nennt eine Phase, die es in der Phasenfolge nicht gibt"]);
+    }
+
+    #[test]
+    fn gebunden_sind_die_genannten_registrierten_oder_die_einzige() {
+        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: String::new(), anforderungen: String::new() };
+        let register = [a("kc"), a("kd")];
+        let mut b = board(&[]);
+        b.anwendungen = vec!["kd".into(), "xx".into()];
+        assert_eq!(gebundene_anwendungen(&b, &register).iter().map(|a| a.kuerzel.as_str()).collect::<Vec<_>>(), ["kd"]);
+        b.anwendungen = vec![];
+        assert!(gebundene_anwendungen(&b, &register).is_empty(), "zwei registriert, keine genannt");
+        assert_eq!(gebundene_anwendungen(&b, &register[..1])[0].kuerzel, "kc");
     }
 
     #[test]

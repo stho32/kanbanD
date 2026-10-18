@@ -231,3 +231,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00058 Phasen als Spalten | B0163 Phasen-Datei lesen | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0164 column-phases im Board-Frontmatter | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0165 Fehlende Phasen-Spalten bestimmen | Standard | 1-2h | 0,01h | 0,02h | autonom |
+| 2026-10-18 | R00058 Phasen als Spalten | B0166 Phasenfolge der gebundenen Anwendung | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
