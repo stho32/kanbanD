@@ -237,8 +237,11 @@ function render() {
   const aktiv = document.activeElement;
   const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
   document.title = fenstertitel();
+  // Die WBS-Sicht lädt bei jeder Änderung im Arbeits-Repository neu — die Leseposition bleibt.
+  const wbsRolle = ($('.wbs-seite') || {}).scrollTop || 0;
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
+  if (wbsRolle && $('.wbs-seite')) $('.wbs-seite').scrollTop = wbsRolle;
   $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
   menueEinpassen();
   $('#stat').innerHTML = vStatus();

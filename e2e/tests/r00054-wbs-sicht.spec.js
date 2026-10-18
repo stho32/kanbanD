@@ -111,4 +111,27 @@ test.describe('R00054', () => {
     await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toBeVisible();
     await expect(page.locator('tr.wbs-z[data-id="F0002"]')).toHaveClass(/ziel/);
   });
+
+  test('US-3: Editor im Arbeits-Repository setzt B0001 auf gruen — Zeile wird ohne Neuladen grün, nicht committet bis zum Commit', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 420 });
+    await page.goto(k.adresse + '#/wbs/kd');
+    await liveBereit(page);
+    const z = id => page.locator(`tr.wbs-z[data-id="${id}"]`);
+    await z('I0001').getByRole('button', { name: 'I0001 aufklappen' }).click();
+    await expect(z('B0001')).toHaveClass(/\brot\b/);
+    await page.locator('.wbs-seite').evaluate(el => { el.scrollTop = 120; });
+    let geladen = 0;
+    page.on('framenavigated', () => { geladen++; });
+    fs.writeFileSync(arbeit.wbs, WBS.replace('| B0001 | Bubble | I0001 | Board lesen | rot |', '| B0001 | Bubble | I0001 | Board lesen | gruen |'));
+    await expect(z('B0001')).toHaveClass(/\bgruen\b/);
+    await expect(z('I0001').locator('.ampel')).toHaveText('gruen');
+    await expect(z('I0001').locator('.wbs-widerspruch')).toHaveCount(0);
+    await expect(page.locator('#wbs-stand')).toHaveText('50 % funktional · 25 % in Bearbeitung · 25 % offen');
+    await expect(page.locator('.wbs-nc')).toHaveText('nicht committet');
+    expect(await page.locator('.wbs-seite').evaluate(el => el.scrollTop)).toBe(120);
+    arbeit.git('-c', 'user.name=KI', '-c', 'user.email=k@k', 'commit', '-q', '-am', 'B0001 gruen');
+    await expect(page.locator('.wbs-nc')).toHaveCount(0);
+    expect(geladen).toBe(0);
+    expect(k.git('status', '--porcelain')).toBe('');
+  });
 });

@@ -194,3 +194,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00054 WBS-Sicht | B0133 WBS-Tabelle zeigen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0134 Dialog und Interaction klappen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00054 WBS-Sicht | B0135 Kopf mit Stand | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | B0136 Sicht lebt mit dem Arbeits-Repository | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
