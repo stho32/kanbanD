@@ -110,3 +110,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00027 Mehrere Aufgaben auf einmal anlegen | B0073 Einfügen in Bahn, Liste und Teilaufgaben | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00027 Mehrere Aufgaben auf einmal anlegen | Lauf R00027 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | B0074 Schnelleingabe auswerten | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00028 Schnelleingabe mit Kürzeln | B0075 Felder beim Anlegen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

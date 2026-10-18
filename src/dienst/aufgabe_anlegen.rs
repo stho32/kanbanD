@@ -2,50 +2,93 @@ use super::Kanban;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Art, Aufgabe, Person};
+use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Person};
 use serde::Deserialize;
+
+/// Felder, die schon beim Anlegen gesetzt werden (Schnelleingabe).
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Angaben {
+    pub klasse: Option<String>,
+    pub zustaendige: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
+    pub faellig: Option<String>,
+    pub herkunft: Option<Vec<String>>,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct NeueAufgabe {
     pub titel: String,
     pub board: Option<String>,
     pub spalte: Option<String>,
+    #[serde(flatten)]
+    pub angaben: Angaben,
+}
+
+/// Eine neue Aufgabe in einer Liste: nur der Titel oder Titel mit Angaben.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum Eintrag {
+    Titel(String),
+    MitAngaben {
+        titel: String,
+        #[serde(flatten)]
+        angaben: Angaben,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct NeueAufgaben {
-    pub titel: Vec<String>,
+    pub titel: Vec<Eintrag>,
     pub board: Option<String>,
     pub spalte: Option<String>,
+}
+
+impl Eintrag {
+    fn teile(&self) -> (&str, Option<&Angaben>) {
+        match self {
+            Eintrag::Titel(t) => (t.trim(), None),
+            Eintrag::MitAngaben { titel, angaben } => (titel.trim(), Some(angaben)),
+        }
+    }
 }
 
 impl Kanban {
     /// Legt die Aufgabendatei an und hängt sie, wenn verlangt, unten an eine Spalte — ein Commit.
     pub fn aufgabe_anlegen(&self, wer: &Person, neu: &NeueAufgabe) -> Result<Aufgabe, Fehler> {
-        let mehrere = NeueAufgaben { titel: vec![neu.titel.clone()], board: neu.board.clone(), spalte: neu.spalte.clone() };
+        let eintrag = Eintrag::MitAngaben { titel: neu.titel.clone(), angaben: neu.angaben.clone() };
+        let mehrere = NeueAufgaben { titel: vec![eintrag], board: neu.board.clone(), spalte: neu.spalte.clone() };
         Ok(self.aufgaben_anlegen(wer, &mehrere)?.remove(0))
     }
 
     /// Mehrere Aufgaben mit fortlaufenden Nummern in der Reihenfolge der Liste — ein Commit für alle.
     pub fn aufgaben_anlegen(&self, wer: &Person, neu: &NeueAufgaben) -> Result<Vec<Aufgabe>, Fehler> {
-        let titel: Vec<&str> = neu.titel.iter().map(|t| t.trim()).collect();
-        if titel.is_empty() || titel.iter().any(|t| t.is_empty()) {
+        let eintraege: Vec<(&str, Option<&Angaben>)> = neu.titel.iter().map(Eintrag::teile).collect();
+        if eintraege.is_empty() || eintraege.iter().any(|(t, _)| t.is_empty()) {
             return Err(Fehler::Ungueltig("Jede Aufgabe braucht einen Titel".into()));
         }
+        let e = self.ordner().einstellungen()?.unwrap_or_default();
         let _sperre = self.gesperrt();
         let erste = self.ordner().naechste_nummer()?;
-        let aufgaben: Vec<Aufgabe> = titel
-            .iter()
-            .enumerate()
-            .map(|(i, t)| {
-                let nummer = erste + i as u32;
-                let mut a = Aufgabe::neu(nummer, aufgabe::dateiname(nummer, t), t.to_string());
-                if wer.art == Art::Mensch {
-                    a.zustaendige.push(wer.kuerzel.clone());
-                }
-                a
-            })
-            .collect();
+        let mut aufgaben = vec![];
+        for (i, (t, angaben)) in eintraege.iter().enumerate() {
+            let nummer = erste + i as u32;
+            let mut a = Aufgabe::neu(nummer, aufgabe::dateiname(nummer, t), t.to_string());
+            if wer.art == Art::Mensch {
+                a.zustaendige.push(wer.kuerzel.clone());
+            }
+            if let Some(g) = angaben {
+                let aenderung = Aufgabenaenderung {
+                    klasse: g.klasse.clone().map(Some),
+                    zustaendige: g.zustaendige.clone(),
+                    labels: g.labels.clone(),
+                    faellig: g.faellig.clone().map(Some),
+                    herkunft: g.herkunft.clone(),
+                    ..Default::default()
+                };
+                a.aendern(&aenderung, &e).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
+            }
+            aufgaben.push(a);
+        }
         let mut dateien: Vec<(String, String)> = aufgaben.iter().map(|a| (format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
         let mut nachricht = match aufgaben.as_slice() {
             [a] => format!("#{} „{}“ angelegt", a.nummer, a.titel),
