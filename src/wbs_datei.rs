@@ -1,6 +1,8 @@
 //! Die WBS-Datei als Text ändern — byte-treu: was nicht geändert werden soll, bleibt Byte für Byte stehen. Rein, ohne Dateizugriff.
 
 use crate::fehler::Fehler;
+use crate::herkunft::wbs_tabelle;
+use crate::wbs::{WbsKnoten, WbsTabelle};
 use std::ops::Range;
 
 /// Byte-Bereiche der Zellen einer Tabellenzeile, ohne die Striche; `\|` ist ein Strich im Text, kein Trenner.
@@ -91,6 +93,85 @@ pub fn schreibbar(text: &str) -> Result<(), Fehler> {
     Ok(())
 }
 
+/// Setzt Zellen nach Zeilennummer (1-basiert) und Spaltenname der Kopfzeile, die über der Zeile steht; alle anderen Bytes bleiben.
+pub fn zellen_schreiben(text: &str, aenderungen: &[(usize, &str, String)]) -> String {
+    let mut kopf: Vec<String> = vec![];
+    let mut aus = String::with_capacity(text.len() + 64);
+    for (i, zeile) in text.split_inclusive('\n').enumerate() {
+        if ist_kopf(zeile) {
+            kopf = inhalte(zeile);
+        }
+        let mut z = zeile.to_string();
+        for (_, spalte, wert) in aenderungen.iter().filter(|(nr, _, _)| *nr == i + 1) {
+            if let Some(neu) = kopf.iter().position(|h| h == spalte).and_then(|p| zelle_ersetzen(&z, p, wert)) {
+                z = neu;
+            }
+        }
+        aus.push_str(&z);
+    }
+    aus
+}
+
+/// Status, die ein Mensch oder die KI an einem Blatt setzt; alles andere ist Planung.
+const SETZBAR: [&str; 3] = ["rot", "gelb", "gruen"];
+
+fn setzbarer_status(status: &str) -> Result<(), Fehler> {
+    match status {
+        s if SETZBAR.contains(&s) => Ok(()),
+        "option" | "ausbau" | "verworfen" | "bestehend" => Err(Fehler::Ungueltig(format!("Status „{status}“ ist hier nicht setzbar — nur rot, gelb, gruen"))),
+        _ => Err(Fehler::Ungueltig(format!("Unbekannter Status „{status}“ — erlaubt sind rot, gelb, gruen"))),
+    }
+}
+
+/// Die Vorfahren von `id` mit dem Status, den sie in `t` aus ihren Kindern bekommen, soweit er von der Datei abweicht.
+/// Vorfahren mit `option`, `ausbau`, `verworfen` oder `bestehend` behalten ihren Status — er ist Planung, nicht Rechnung.
+pub fn vorfahren_neu(t: &WbsTabelle, id: &str) -> Vec<(String, String)> {
+    let mut pfad = t.pfad(id);
+    pfad.pop();
+    pfad.iter()
+        .rev()
+        .filter_map(|v| t.knoten(v))
+        .filter(|v| SETZBAR.contains(&v.status.as_str()))
+        .map(|v| (v.id.clone(), t.gerechneter_status(&v.id)))
+        .filter(|(v, neu)| t.knoten(v).is_some_and(|k| &k.status != neu))
+        .collect()
+}
+
+/// Ergebnis einer Änderung an der WBS-Datei: neuer Text und die Knoten, deren Status sich geändert hat.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Geschrieben {
+    pub text: String,
+    pub geaendert: Vec<String>,
+}
+
+/// Setzt den Status eines Blatts, rechnet die Vorfahren neu und setzt `zuletzt` — nur diese Zellen ändern sich.
+/// Gleicher Status: Text unverändert, nichts geändert.
+pub fn status_setzen(text: &str, id: &str, status: &str, heute: &str) -> Result<Geschrieben, Fehler> {
+    schreibbar(text)?;
+    setzbarer_status(status)?;
+    let t = wbs_tabelle(text);
+    let k = t.knoten(id).ok_or_else(|| Fehler::NichtGefunden(format!("Knoten „{id}“ steht nicht in der WBS")))?;
+    if !t.kinder(id).is_empty() {
+        return Err(Fehler::Konflikt(format!("Status wird gerechnet — {id} hat Kinder, gesetzt werden nur Blätter")));
+    }
+    if !SETZBAR.contains(&k.status.as_str()) {
+        return Err(Fehler::Konflikt(format!("{id} ist „{}“ — der Status wird hier nicht geändert", k.status)));
+    }
+    if k.status == status {
+        return Ok(Geschrieben { text: text.to_string(), geaendert: vec![] });
+    }
+    let neu = WbsTabelle::aus(t.alle().iter().map(|x| if x.id == id { WbsKnoten { status: status.into(), ..x.clone() } } else { x.clone() }).collect());
+    let mut status_neu = vec![(id.to_string(), status.to_string())];
+    status_neu.extend(vorfahren_neu(&neu, id));
+    Ok(statuszellen_schreiben(text, &t, &status_neu, heute))
+}
+
+/// Schreibt neue Status nach ID in die Zellen `Status` und setzt `zuletzt`.
+fn statuszellen_schreiben(text: &str, t: &WbsTabelle, status_neu: &[(String, String)], heute: &str) -> Geschrieben {
+    let aenderungen: Vec<(usize, &str, String)> = status_neu.iter().filter_map(|(id, s)| Some((t.knoten(id)?.zeile, "Status", s.clone()))).collect();
+    Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert: status_neu.iter().map(|(id, _)| id.clone()).collect() }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,5 +209,60 @@ mod tests {
         assert!(matches!(schreibbar("# WBS\n\nnoch keine Tabelle\n"), Err(Fehler::Konflikt(m)) if m.contains("keine Knotentabelle")));
         assert!(schreibbar("| ID | Name |\n|---|---|\n| B0001 | x |\n").is_err(), "ohne Spalte Status");
         assert_eq!(schreibbar("Titel\n=======\n\n| ID | Status |\n"), Ok(()), "Unterstreichung einer Überschrift ist kein Konfliktmarker");
+    }
+
+    const KOPF: &str = "---\napplication: Kasse\nzuletzt: 2026-01-01\n---\n\n| ID | Ebene | Eltern | Name | Status | Eingabe → Ausgabe | Notiz | Phase |\n|---|---|---|---|---|---|---|---|\n";
+
+    fn wbs(zeilen: &[(&str, &str, &str, &str)]) -> String {
+        KOPF.to_string() + &zeilen.iter().map(|(id, ebene, eltern, status)| format!("| {id} | {ebene} | {eltern} | Name {id} | {status} | a \\| b → c |  | Abnahme |\n")).collect::<String>()
+    }
+
+    /// Die Zeilen, in denen sich zwei Texte unterscheiden (gleiche Zeilenzahl vorausgesetzt).
+    fn andere_zeilen(a: &str, b: &str) -> Vec<(String, String)> {
+        assert_eq!(a.lines().count(), b.lines().count());
+        a.lines().zip(b.lines()).filter(|(x, y)| x != y).map(|(x, y)| (x.to_string(), y.to_string())).collect()
+    }
+
+    fn drei_ebenen(b0002: &str, i0001: &str) -> String {
+        wbs(&[("A0001", "Application", "—", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0001", "Interaction", "D0001", i0001), ("I0002", "Interaction", "D0001", "gelb"), ("B0001", "Bubble", "I0002", "gruen"), ("B0002", "Bubble", "I0002", b0002), ("B0003", "Bubble", "I0002", "verworfen")])
+    }
+
+    #[test]
+    fn letzte_bubble_gruen_macht_vorfahren_ueber_drei_ebenen_gruen_und_sonst_nichts() {
+        let vorher = drei_ebenen("rot", "gruen");
+        let g = status_setzen(&vorher, "B0002", "gruen", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["B0002", "I0002", "D0001", "A0001"]);
+        assert_eq!(g.text, drei_ebenen("gruen", "gruen").replace("| gelb |", "| gruen |").replace("zuletzt: 2026-01-01", "zuletzt: 2026-10-18"));
+        let diff = andere_zeilen(&vorher, &g.text);
+        assert_eq!(diff.len(), 5, "vier Status-Zellen und zuletzt: {diff:?}");
+        assert!(diff.iter().all(|(a, b)| a.replace("rot", "gruen").replace("gelb", "gruen").replace("2026-01-01", "2026-10-18") == *b));
+    }
+
+    #[test]
+    fn gemischte_geschwister_lassen_vorfahren_gelb() {
+        let g = status_setzen(&drei_ebenen("rot", "rot"), "B0002", "gruen", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["B0002", "I0002"], "D0001 bleibt gelb (I0001 rot, I0002 gruen), A0001 ebenso");
+        let g = status_setzen(&drei_ebenen("gruen", "gruen"), "B0002", "rot", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["B0002"], "I0002 gerechnet gelb wie in der Datei, D0001 und A0001 ebenso");
+    }
+
+    #[test]
+    fn ablehnungen() {
+        let t = drei_ebenen("rot", "gruen");
+        assert!(matches!(status_setzen(&t, "I0002", "rot", "h"), Err(Fehler::Konflikt(m)) if m.starts_with("Status wird gerechnet")));
+        assert!(matches!(status_setzen(&t, "B0002", "option", "h"), Err(Fehler::Ungueltig(m)) if m.contains("nicht setzbar")));
+        for s in ["ausbau", "verworfen", "bestehend", "blau", ""] {
+            assert!(matches!(status_setzen(&t, "B0002", s, "h"), Err(Fehler::Ungueltig(_))), "{s}");
+        }
+        assert!(matches!(status_setzen(&t, "B0099", "rot", "h"), Err(Fehler::NichtGefunden(_))));
+        assert!(matches!(status_setzen(&t, "B0003", "rot", "h"), Err(Fehler::Konflikt(m)) if m.contains("verworfen")));
+        assert!(matches!(status_setzen("# ohne Tabelle\n", "B0002", "rot", "h"), Err(Fehler::Konflikt(_))));
+        assert_eq!(status_setzen(&t, "B0002", "rot", "h").unwrap(), Geschrieben { text: t.clone(), geaendert: vec![] }, "gleicher Status ändert nichts, auch nicht zuletzt");
+    }
+
+    #[test]
+    fn vorfahr_mit_planungsstatus_bleibt() {
+        let t = wbs(&[("I0001", "Interaction", "—", "option"), ("B0001", "Bubble", "I0001", "rot")]);
+        assert_eq!(status_setzen(&t, "B0001", "gruen", "h").unwrap().geaendert, ["B0001"]);
     }
 }

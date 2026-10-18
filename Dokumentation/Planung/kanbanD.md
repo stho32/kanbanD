@@ -212,7 +212,7 @@ zuletzt: 2026-10-18
 | B0138 | Bubble | I0050 | Zelle byte-treu ersetzen | gruen | Test gruen | Tabellenzeile, Spalte, Wert → Zeile, in der nur diese Zelle anders ist; \| bleibt Text, ein Strich im Wert wird maskiert | 0,5-1 |  |  |  |  |
 | B0139 | Bubble | I0050 | zuletzt im Frontmatter setzen | gruen | Test gruen | WBS-Text, heute → Text mit zuletzt: heute, sonst byteweise gleich | 0,5-1 |  |  |  |  |
 | B0140 | Bubble | I0050 | Defekte WBS-Datei erkennen | gruen | Test gruen | WBS-Text → Konfliktmarker oder keine Knotentabelle: 409, nichts geschrieben | 0,5-1 |  |  |  |  |
-| B0141 | Bubble | I0050 | Status eines Blatts setzen | rot | Test gruen | WBS-Text, ID, Status, heute → Blatt, gerechnete Vorfahren und zuletzt geschrieben; Knoten mit Kindern 409, option/ausbau/verworfen/bestehend 400 | 1-2 |  |  |  |  |
+| B0141 | Bubble | I0050 | Status eines Blatts setzen | gruen | Test gruen | WBS-Text, ID, Status, heute → Blatt, gerechnete Vorfahren und zuletzt geschrieben; Knoten mit Kindern 409, option/ausbau/verworfen/bestehend 400 | 1-2 |  |  |  |  |
 | B0142 | Bubble | I0050 | WBS-Datei unter eigener Sperre schreiben | rot | Test gruen | Kürzel, ID, Status → WBS-Datei im Arbeits-Repository geschrieben, ohne Commit; gleichzeitige Anfragen je Datei nacheinander | 0,5-1 |  |  |  |  |
 | B0143 | Bubble | I0050 | Eigene WBS-Schreibzugriffe nicht extern | rot | Test gruen | geschriebener voller Pfad → Ereignis des fremden Wächters mit extern: false | 0,5-1 |  |  |  |  |
 | B0144 | Bubble | I0050 | Status über die API setzen | rot | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
