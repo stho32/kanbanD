@@ -1,6 +1,6 @@
 ---
 id: R00005
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,15 +29,15 @@ Neue Arbeit landet mit einem Tastendruck im Board und ist sofort versioniert.
 ## Akzeptanzkriterien
 
 ### Anlegen
-- [ ] In einem Ordner mit den Dateien `0001-a.md` und `0007-b.md` bekommt die neue Aufgabe die Nummer 8 und die Datei `0008-<slug>.md`
-- [ ] Der Commit enthält genau die Aufgabendatei und die Board-Datei; Autor ist die handelnde Person
-- [ ] Die Board-Datei hat danach unter der Spalte als letzte Zeile `- [#8](../aufgaben/0008-<slug>.md)`
-- [ ] Ohne Board entsteht nur die Aufgabendatei
-- [ ] Leerer Titel → 400, unbekanntes Board → 404, unbekannte Spalte → 400; kein Commit
+- [x] In einem Ordner mit den Dateien `0001-a.md` und `0007-b.md` bekommt die neue Aufgabe die Nummer 8 und die Datei `0008-<slug>.md`
+- [x] Der Commit enthält genau die Aufgabendatei und die Board-Datei; Autor ist die handelnde Person
+- [x] Die Board-Datei hat danach unter der Spalte als letzte Zeile `- [#8](../aufgaben/0008-<slug>.md)`
+- [x] Ohne Board entsteht nur die Aufgabendatei
+- [x] Leerer Titel → 400, unbekanntes Board → 404, unbekannte Spalte → 400; kein Commit
 
 ### Oberfläche
-- [ ] „+ Karte“ in „In Arbeit“, Titel, Enter: die Karte erscheint unten in „In Arbeit“, das Feld bleibt offen
-- [ ] Ohne Identität öffnet „+ Karte“ das Popover „Ich bin …“ mit Hinweis, und es entsteht keine Datei
+- [x] „+ Karte“ in „In Arbeit“, Titel, Enter: die Karte erscheint unten in „In Arbeit“, das Feld bleibt offen
+- [x] Ohne Identität öffnet „+ Karte“ das Popover „Ich bin …“ mit Hinweis, und es entsteht keine Datei
 
 ## Betroffene Verzeichnisstruktur
 

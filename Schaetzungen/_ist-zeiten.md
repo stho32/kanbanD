@@ -30,3 +30,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00005 Aufgabe anlegen | B0015 Nächste Nummer vergeben | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00005 Aufgabe anlegen | B0016 Aufgabe anlegen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00005 Aufgabe anlegen | B0017 Karte in der Bahn anlegen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00005 Aufgabe anlegen | Lauf R00005 | Nacharbeit | — | — | 0,0h | autonom |
