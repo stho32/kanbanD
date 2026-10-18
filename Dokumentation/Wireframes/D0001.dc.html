@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+<title>D0001 Start und Einrichtung — kanbanD</title>
+<helmet>
+<style>
+:root{--bg:oklch(0.965 0.005 250);--sf:oklch(0.995 0.002 250);--sk:oklch(0.94 0.007 250);--ln:oklch(0.87 0.01 250);--ls:oklch(0.76 0.014 250);--tx:oklch(0.24 0.02 255);--mu:oklch(0.48 0.018 255);--hd:oklch(0.29 0.028 255);--ht:oklch(0.93 0.01 250);--hm:oklch(0.72 0.02 250);--ac:oklch(0.5 0.13 255);--ag:oklch(0.6 0.13 65);--me:oklch(0.52 0.07 215)}
+*{box-sizing:border-box;border-radius:0}
+body{margin:0;background:var(--bg);font:13px/1.4 "IBM Plex Sans",system-ui,sans-serif;color:var(--tx)}
+.kz{height:40px;display:flex;align-items:center;background:var(--hd);color:var(--ht);padding:0 16px;gap:16px}
+.kz .m{color:var(--hm);font:12px "IBM Plex Mono",monospace}
+.wrap{display:grid;grid-template-columns:1fr 420px;gap:0;min-height:600px}
+.l{padding:24px 32px}.r{background:var(--sf);border-left:1px solid var(--ln);padding:16px}
+h2{font-size:18px;margin:0 0 8px}
+.f{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;align-items:center;margin:16px 0}
+.f span.k{font:12px "IBM Plex Mono",monospace;color:var(--mu)}
+.inp{height:28px;border:1px solid var(--ls);background:var(--sf);padding:0 8px;width:100%}
+.pk{display:inline-grid;place-items:center;width:18px;height:18px;font-size:9px;font-weight:600;color:#fff;background:var(--ag);margin-right:4px}
+.btn{height:28px;padding:0 12px;border:1px solid var(--ls);background:var(--sf)}
+.bh{background:var(--ac);border-color:var(--ac);color:#fff}
+pre{font:12px/1.5 "IBM Plex Mono",monospace;background:var(--sk);border:1px solid var(--ln);padding:8px;margin:0 0 12px}
+h3{font-size:11px;letter-spacing:.06em;color:var(--mu);margin:0 0 6px}
+</style>
+</helmet>
+</head>
+<body>
+<div class="kz"><b>neues-projekt</b><span class="m">~/projekte/neues-projekt</span><span style="margin-left:auto">Erster Start · Ordner ohne kanbanD.md</span></div>
+<div class="wrap">
+ <div class="l">
+  <h2>Kanban in <span class="m" style="color:var(--mu)">~/projekte/neues-projekt</span> einrichten</h2>
+  <p style="color:var(--mu)">kanbanD legt <code>kanbanD.md</code>, <code>aufgaben/</code> und das erste Board unter <code>boards/</code> an und committet das als eine Aktion. Alles lässt sich danach ändern.</p>
+  <div class="f">
+   <span class="k">ich</span><span><input class="inp" style="width:70px" value="st"> <input class="inp" style="width:calc(100% - 80px)" value="Stefan Hoffmann"></span>
+   <span class="k">agents</span><span><button class="btn"><span class="pk">CL</span>Claude</button> <button class="btn"><span class="pk">CX</span>Codex</button></span>
+   <span class="k">board</span><span><input class="inp" value="Entwicklung"></span>
+   <span class="k">spalten</span><span><input class="inp" value="Zu erledigen, In Arbeit, Erledigt"></span>
+   <span class="k">wbs</span><span><input class="inp" placeholder="Dokumentation/Planung/kanbanD.md"></span>
+   <span class="k">anforderungen</span><span><input class="inp" placeholder="Anforderungen/"></span>
+  </div>
+  <button class="btn bh">Einrichten und committen</button>
+ </div>
+ <div class="r">
+  <h3>KANBAND.MD · wird angelegt</h3>
+<pre>---
+people:
+  st: {name: Stefan Hoffmann, kind: human}
+  cl: {name: Claude, kind: agent}
+classes: {}
+sources:
+  wbs: ""
+  requirements: ""
+---</pre>
+  <h3>BOARDS/ENTWICKLUNG.MD</h3>
+<pre># Entwicklung
+
+## Zu erledigen
+
+## In Arbeit
+
+## Erledigt</pre>
+  <h3>PERSONEN UND KLASSEN · später unter „Einrichten“</h3>
+  <p style="color:var(--mu)">Personen werden stillgelegt statt entfernt; Klassen tragen Bezeichnung und eine der 16 Farben.</p>
+ </div>
+</div>
+</body>
+</html>
