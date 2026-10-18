@@ -1,6 +1,6 @@
 ---
 id: R00024
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,10 +25,10 @@ Agenten führen das Board mit den Werkzeugen, die sie ohnehin benutzen, und jede
 
 ## Akzeptanzkriterien
 
-- [ ] `/api/endpunkte` enthält mindestens die Endpunkte zum Anlegen, Bewegen, Kommentieren, Timer starten/stoppen, Ereignisstrom
-- [ ] Jeder Eintrag antwortet auf seine Methode nicht mit 404/405 (Pfadparameter mit Beispielwerten)
-- [ ] `/api` ist HTML mit Titel „kanbanD · API“ und enthält jeden Pfad der Tabelle
-- [ ] Agentenlauf: `cl` legt #1 auf dem Board an, startet den Timer, bewegt #1 nach „Erledigt“, kommentiert, stoppt den Timer — fünf Commits, alle mit Autor „Claude“
+- [x] `/api/endpunkte` enthält mindestens die Endpunkte zum Anlegen, Bewegen, Kommentieren, Timer starten/stoppen, Ereignisstrom
+- [x] Jeder Eintrag antwortet auf seine Methode nicht mit 404/405 (Pfadparameter mit Beispielwerten)
+- [x] `/api` ist HTML mit Titel „kanbanD · API“ und enthält jeden Pfad der Tabelle
+- [x] Agentenlauf: `cl` legt #1 auf dem Board an, startet den Timer, bewegt #1 nach „Erledigt“, kommentiert, stoppt den Timer — fünf Commits, alle mit Autor „Claude“
 
 ## Betroffene Verzeichnisstruktur
 
