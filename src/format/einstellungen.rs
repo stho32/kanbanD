@@ -1,7 +1,7 @@
 //! `kanbanD.md` — Personen, Klassen und Quellpfade des Ordners.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Art, Einstellungen, Klasse, Person, Quellen};
+use crate::modell::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen};
 
 pub const DATEI: &str = "kanbanD.md";
 
@@ -34,9 +34,38 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
         }
     }
     if let Some(s) = yaml::zuordnung(&m, "sources") {
-        e.quellen = Quellen { wbs: yaml::text(s, "wbs").unwrap_or_default(), anforderungen: yaml::text(s, "requirements").unwrap_or_default() };
+        e.quellen = Quellen { wbs: yaml::text(s, "wbs").unwrap_or_default(), anforderungen: yaml::text(s, "requirements").unwrap_or_default(), anwendungen: anwendungen_lesen(s)? };
     }
     Ok(e)
+}
+
+/// `sources.applications` — je Kürzel `{name, wbs, requirements}`, nach Kürzel sortiert. Pfade werden nicht geprüft:
+/// ein fehlender Pfad macht die Anwendung unerreichbar, nicht die Datei defekt.
+fn anwendungen_lesen(quellen: &serde_yaml::Mapping) -> Result<Vec<Anwendung>, Formatfehler> {
+    let Some(register) = yaml::zuordnung(quellen, "applications") else { return Ok(vec![]) };
+    let mut anwendungen = register
+        .iter()
+        .map(|(k, v)| {
+            let kuerzel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Kürzel unter sources.applications ist kein Text".into()))?;
+            let a = v.as_mapping().ok_or_else(|| Formatfehler(format!("sources.applications.{kuerzel} ist keine Zuordnung")))?;
+            Ok(Anwendung { name: yaml::text(a, "name").unwrap_or_else(|| kuerzel.clone()), wbs: yaml::text(a, "wbs").unwrap_or_default(), anforderungen: yaml::text(a, "requirements").unwrap_or_default(), kuerzel })
+        })
+        .collect::<Result<Vec<_>, Formatfehler>>()?;
+    anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+    Ok(anwendungen)
+}
+
+fn anwendungen_schreiben(anwendungen: &[Anwendung]) -> String {
+    if anwendungen.is_empty() {
+        return String::new();
+    }
+    let mut sortiert: Vec<&Anwendung> = anwendungen.iter().collect();
+    sortiert.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+    let mut s = String::from("\n  applications:");
+    for a in sortiert {
+        s.push_str(&format!("\n    {}: {{name: {}, wbs: {}, requirements: {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), yaml::skalar(&a.wbs), yaml::skalar(&a.anforderungen)));
+    }
+    s
 }
 
 pub fn schreiben(e: &Einstellungen) -> String {
@@ -57,9 +86,10 @@ pub fn schreiben(e: &Einstellungen) -> String {
         s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&k.schluessel), yaml::skalar(&k.bezeichnung), yaml::skalar(&k.farbe)));
     }
     s.push_str(&format!(
-        "\nsources:\n  wbs: {}\n  requirements: {}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
+        "\nsources:\n  wbs: {}\n  requirements: {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
         yaml::skalar(&e.quellen.wbs),
-        yaml::skalar(&e.quellen.anforderungen)
+        yaml::skalar(&e.quellen.anforderungen),
+        anwendungen_schreiben(&e.quellen.anwendungen)
     ));
     s
 }
@@ -76,7 +106,7 @@ mod tests {
                 Person { kuerzel: "ab".into(), name: "Anna: Gast".into(), art: Art::Mensch, aktiv: false },
             ],
             klassen: vec![Klasse { schluessel: "bug".into(), bezeichnung: "Fehler".into(), farbe: "#b04a8c".into() }],
-            quellen: Quellen { wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into() },
+            quellen: Quellen { wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
         }
     }
 
@@ -92,6 +122,26 @@ mod tests {
         assert_eq!(schreiben(&lesen(&t).unwrap()), t);
         assert!(t.contains("  st: {name: Stefan Hoffmann, kind: human}\n  cl: {name: Claude, kind: agent}\n"));
         assert!(t.contains("ab: {name: \"Anna: Gast\", kind: human, active: false}"));
+    }
+
+    fn anwendung(k: &str, wbs: &str) -> Anwendung {
+        Anwendung { kuerzel: k.into(), name: format!("App {k}"), wbs: wbs.into(), anforderungen: format!("/r/{k}") }
+    }
+
+    #[test]
+    fn register_der_anwendungen_rundlauf_stabil_sortiert() {
+        let mut e = beispiel();
+        e.quellen.anwendungen = vec![anwendung("kd", "/home/x/kanbanD/plan.md"), anwendung("kc", "C:/y: z.md")];
+        let t = schreiben(&e);
+        assert!(t.contains("\n  applications:\n    kc: {name: App kc, wbs: \"C:/y: z.md\", requirements: /r/kc}\n    kd: {name: App kd, wbs: /home/x/kanbanD/plan.md, requirements: /r/kd}\n---"), "{t}");
+        let gelesen = lesen(&t).unwrap();
+        assert_eq!(gelesen.quellen.anwendungen.iter().map(|a| a.kuerzel.as_str()).collect::<Vec<_>>(), vec!["kc", "kd"]);
+        assert_eq!(gelesen.quellen.wbs, "Dokumentation/Planung/kanbanD.md", "Standardanwendung bleibt, wie sie war");
+        assert_eq!(schreiben(&gelesen), t);
+        let knapp = lesen("---\nsources:\n  applications:\n    kd: {}\n---\n").unwrap();
+        assert_eq!(knapp.quellen.anwendungen, vec![Anwendung { kuerzel: "kd".into(), name: "kd".into(), wbs: "".into(), anforderungen: "".into() }]);
+        assert!(lesen("---\nsources:\n  applications:\n    kd: 5\n---\n").is_err());
+        assert!(!schreiben(&beispiel()).contains("applications"), "ohne Register keine leere Zeile");
     }
 
     #[test]

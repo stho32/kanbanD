@@ -172,3 +172,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00047 Termine in Wie lange noch | B0115 Termine im Diagramm und Chance | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-10-18 | R00047 Termine in Wie lange noch | B0116 Termine im Bericht pflegen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00047 Termine in Wie lange noch | Lauf R00047 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-18 | R00053 Anwendungen registrieren | B0117 Register in kanbanD.md lesen und schreiben | Standard | 1-2h | 0,0h | 0,0h | autonom |

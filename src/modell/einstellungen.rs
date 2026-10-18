@@ -24,10 +24,22 @@ pub struct Klasse {
     pub farbe: String,
 }
 
+/// Eine registrierte Anwendung: ihr Arbeits-Repository mit WBS und Anforderungen, angesprochen über das Kürzel.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Anwendung {
+    pub kuerzel: String,
+    pub name: String,
+    pub wbs: String,
+    pub anforderungen: String,
+}
+
+/// `sources`: `wbs`/`requirements` sind die Standardanwendung ohne Kürzel, `applications` das Register.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Quellen {
     pub wbs: String,
     pub anforderungen: String,
+    #[serde(default)]
+    pub anwendungen: Vec<Anwendung>,
 }
 
 /// Inhalt von `kanbanD.md`: gilt für den ganzen Ordner.

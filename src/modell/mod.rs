@@ -6,7 +6,7 @@ mod einstellungen;
 
 pub use aufgabe::{Aufgabe, Aufgabenaenderung, Kommentar, OHNE_HERKUNFT, Teilaufgabe, Zeiteintrag, herkunft_gueltig};
 pub use board::{Bewegfehler, Board, Linie, Spalte, SpaltenAenderung, Spaltenfehler, Staerke, Termin};
-pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
+pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
 /// Dateiname aus einem Titel: Kleinbuchstaben, Umlaute als ae/oe/ue/ss, sonst Bindestriche; höchstens 40 Zeichen.
 pub fn slug(titel: &str) -> String {

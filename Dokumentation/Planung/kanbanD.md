@@ -186,7 +186,7 @@ zuletzt: 2026-10-18
 | I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | gruen | US-1..US-2 |  |  |  | I0035 | R00041 | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
 | B0102 | Bubble | I0041 | Kürzel nach Kanbanflow-Konvention | gruen | Test gruen | n überall, Leertaste Timer, Entf archivieren, Hilfe zeigt Herkunft | 0,5-1 |  |  |  |  |
 | I0048 | Interaction | D0001 | Anwendungen registrieren | gelb | US-1..US-3 |  |  |  | I0010, I0018 | R00053 | WBS 1: Register mit Kürzel und vollen Pfaden, Board bindet 0..N, Herkunft kd:I0007 |
-| B0117 | Bubble | I0048 | Register in kanbanD.md lesen und schreiben | rot | Test gruen | kanbanD.md sources.applications ⇄ Anwendungen (Kürzel, Name, WBS, Anforderungen); Rundlauf stabil nach Kürzel sortiert | 1-2 |  |  |  |  |
+| B0117 | Bubble | I0048 | Register in kanbanD.md lesen und schreiben | gruen | Test gruen | kanbanD.md sources.applications ⇄ Anwendungen (Kürzel, Name, WBS, Anforderungen); Rundlauf stabil nach Kürzel sortiert | 1-2 |  |  |  |  |
 | B0118 | Bubble | I0048 | Register prüfen | rot | Test gruen | PUT /api/einstellungen mit Anwendungen → Kürzel gültig und eindeutig, Name nötig, sonst 400; ein Commit | 0,5-1 |  |  |  |  |
 | B0119 | Bubble | I0048 | Qualifizierte Herkunft prüfen | rot | Test gruen | Herkunft kd:I0007 + Register → gültig und normalisiert; unbekanntes Kürzel → 400 | 0,5-1 |  |  |  |  |
 | B0120 | Bubble | I0048 | Herkunft je Anwendung auflösen | rot | Test gruen | Herkunft der Aufgaben + Register → Quelle je Schreibweise mit anwendung; mehrdeutig nicht geliefert; braucht qualifiziert | 1-2 |  |  |  |  |
