@@ -4,7 +4,7 @@ use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
 use crate::wbs::{Stand, WbsKnoten, stand};
-use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, verwerfen};
+use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, teilbaum_auf_rot, verwerfen};
 use crate::modell::Anwendung;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -132,6 +132,12 @@ impl Kanban {
     /// Verwirft einen Knoten der WBS von `kuerzel` samt zählender Nachfahren (R00056); nichts wird gelöscht.
     pub fn wbs_verwerfen(&self, kuerzel: &str, id: &str, grund: &str) -> Result<WbsGeaendert, Fehler> {
         self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(verwerfen(text, id, grund, heute)?))
+    }
+
+    /// Setzt einen Knoten der WBS von `kuerzel` zur Überarbeitung auf rot — ein Blatt selbst, sonst alle zählenden Blätter
+    /// darunter (R00057); Vorfahren gerechnet, kein Commit.
+    pub fn wbs_ueberarbeiten(&self, kuerzel: &str, id: &str) -> Result<WbsGeaendert, Fehler> {
+        self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(teilbaum_auf_rot(text, id, heute)?))
     }
 }
 

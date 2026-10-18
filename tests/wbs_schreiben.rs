@@ -240,3 +240,19 @@ fn gleichzeitig_angelegte_knoten_bekommen_verschiedene_ids() {
     assert_eq!(ids, (3..=10).map(|i| format!("B{i:04}")).collect::<Vec<_>>());
     assert_eq!(kanband::herkunft::wbs_tabelle(&plan(&arbeit)).alle().iter().filter(|k| k.eltern == "I0047").count(), 10);
 }
+
+#[test]
+fn ueberarbeiten_schreibt_den_teilbaum_rot_ins_arbeits_repository_ohne_commit() {
+    let vorher = wbs(&[("A0001", "Application", "—", "gruen"), ("D0002", "Dialog", "A0001", "gruen"), ("I0007", "Interaction", "D0002", "gruen"), ("B0001", "Bubble", "I0007", "gruen"), ("I0008", "Interaction", "D0002", "gruen")]);
+    let (_a, arbeit) = arbeits_repository(&vorher);
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let kanban = Kanban::neu(tmp.path().to_path_buf());
+    let log_vorher = git(&arbeit, &["log", "--format=%H"]);
+    let g = kanban.wbs_ueberarbeiten("kc", "D0002").unwrap();
+    assert_eq!(g.geaendert, ["D0002", "I0007", "B0001", "I0008", "A0001"]);
+    assert_eq!(plan(&arbeit).matches("| rot |").count(), 5);
+    assert_eq!(git(&arbeit, &["log", "--format=%H"]), log_vorher, "kein Commit im Arbeits-Repository");
+    assert_eq!(git(&arbeit, &["status", "--porcelain"]), "M Dokumentation/Planung/kasse.md");
+    assert!(matches!(kanban.wbs_ueberarbeiten("kc", "D0099"), Err(kanband::fehler::Fehler::NichtGefunden(_))));
+}

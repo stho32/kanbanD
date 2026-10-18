@@ -332,6 +332,32 @@ pub fn verwerfen(text: &str, id: &str, grund: &str, heute: &str) -> Result<Gesch
     Ok(Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert })
 }
 
+/// Setzt einen Knoten zur Überarbeitung zurück: alle zählenden Blätter seines Teilbaums (ein Blatt: er selbst) auf `rot`,
+/// die oberen Knoten des Teilbaums und die Vorfahren neu gerechnet, `zuletzt` gesetzt — in einem Schreibvorgang (R00057).
+/// Blätter mit `bestehend` bleiben; ein Knoten mit `option`, `ausbau`, `verworfen` oder `bestehend` selbst: 409. Schon rot: nichts geändert.
+pub fn teilbaum_auf_rot(text: &str, id: &str, heute: &str) -> Result<Geschrieben, Fehler> {
+    schreibbar(text)?;
+    let t = wbs_tabelle(text);
+    let k = t.knoten(id).ok_or_else(|| Fehler::NichtGefunden(format!("Knoten „{id}“ steht nicht in der WBS")))?;
+    if !SETZBAR.contains(&k.status.as_str()) {
+        return Err(Fehler::Konflikt(format!("{id} ist „{}“ — er wird nicht überarbeitet", k.status)));
+    }
+    let teilbaum: Vec<&WbsKnoten> = t.alle().iter().filter(|x| x.id == id || (x.zaehlt() && t.pfad(&x.id).iter().any(|p| p == id))).filter(|x| SETZBAR.contains(&x.status.as_str())).collect();
+    let blatt = |x: &WbsKnoten| t.kinder(&x.id).is_empty();
+    let mit_roten = WbsTabelle::aus(t.alle().iter().map(|x| if teilbaum.iter().any(|b| b.id == x.id && blatt(b)) { WbsKnoten { status: "rot".into(), ..x.clone() } } else { x.clone() }).collect());
+    let teilbaum_neu: Vec<(String, String)> = teilbaum.iter().map(|x| (x.id.clone(), if blatt(x) { "rot".to_string() } else { mit_roten.gerechneter_status(&x.id) })).collect();
+    let gerechnet = WbsTabelle::aus(t.alle().iter().map(|x| match teilbaum_neu.iter().find(|(i, _)| *i == x.id) {
+        Some((_, s)) => WbsKnoten { status: s.clone(), ..x.clone() },
+        None => x.clone(),
+    }).collect());
+    let mut status_neu: Vec<(String, String)> = teilbaum_neu.into_iter().filter(|(i, s)| t.knoten(i).is_some_and(|x| &x.status != s)).collect();
+    status_neu.extend(vorfahren_neu(&gerechnet, id));
+    if status_neu.is_empty() {
+        return Ok(Geschrieben { text: text.to_string(), geaendert: vec![] });
+    }
+    Ok(statuszellen_schreiben(text, &t, &status_neu, heute))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -523,6 +549,29 @@ mod tests {
         let voll = "| ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n| I0001 | Interaction | — | I | rot |  |  |  |  |  |  |  |\n";
         let g = knoten_anlegen(voll, &NeuerKnoten { ausbaustufe: "2".into(), eltern: "I0001".into(), ..neu }, "B0001", "h").unwrap();
         assert!(g.text.ends_with("| B0001 | Bubble | I0001 | X | rot | US-1 | a → b | 0,5-1 | 2 | B0001, I0007 | R00056 | n |\n"), "alle Spalten von /planung: {}", g.text);
+    }
+
+    #[test]
+    fn ueberarbeiten_setzt_den_gruenen_dialog_samt_zaehlender_nachfahren_rot_in_einem_schreibvorgang() {
+        let vorher = wbs(&[("A0001", "Application", "—", "gruen"), ("D0001", "Dialog", "A0001", "gruen"), ("I0001", "Interaction", "D0001", "gruen"), ("D0002", "Dialog", "A0001", "gruen"), ("I0007", "Interaction", "D0002", "gruen"), ("B0001", "Bubble", "I0007", "gruen"), ("B0002", "Bubble", "I0007", "gruen"), ("F0001", "Feature", "I0007", "option"), ("B0003", "Bubble", "F0001", "gruen"), ("I0008", "Interaction", "D0002", "gruen"), ("B0004", "Bubble", "I0008", "bestehend"), ("B0005", "Bubble", "I0008", "gruen"), ("I0009", "Interaction", "D0002", "verworfen")]);
+        let g = teilbaum_auf_rot(&vorher, "D0002", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["D0002", "I0007", "B0001", "B0002", "B0003", "I0008", "B0005", "A0001"], "Teilbaum in Dateireihenfolge, dann die Vorfahren");
+        let t = wbs_tabelle(&g.text);
+        let status = |id: &str| t.knoten(id).unwrap().status.clone();
+        assert_eq!(["D0002", "I0007", "B0001", "B0002", "F0001", "B0003", "I0008", "B0004", "B0005", "I0009", "D0001", "I0001", "A0001"].map(status), ["rot", "rot", "rot", "rot", "option", "rot", "rot", "bestehend", "rot", "verworfen", "gruen", "gruen", "gelb"]);
+        assert_eq!(andere_zeilen(&vorher, &g.text).len(), 9, "acht Status-Zellen und zuletzt");
+        assert!(g.text.contains("zuletzt: 2026-10-18"));
+        assert_eq!(teilbaum_auf_rot(&g.text, "D0002", "h").unwrap(), Geschrieben { text: g.text.clone(), geaendert: vec![] }, "schon rot ändert nichts, auch nicht zuletzt");
+    }
+
+    #[test]
+    fn ueberarbeiten_eines_blatts_setzt_es_rot_und_rechnet_die_vorfahren() {
+        let g = teilbaum_auf_rot(&drei_ebenen("gruen", "gruen"), "B0002", "h").unwrap();
+        assert_eq!(g.geaendert, ["B0002"], "I0002 gemischt gelb wie in der Datei, darüber ebenso");
+        assert_eq!(g.text, status_setzen(&drei_ebenen("gruen", "gruen"), "B0002", "rot", "h").unwrap().text, "wie das Setzen des Blatts");
+        assert!(matches!(teilbaum_auf_rot(&g.text, "B0003", "h"), Err(Fehler::Konflikt(m)) if m.contains("verworfen")));
+        assert!(matches!(teilbaum_auf_rot(&g.text, "B0099", "h"), Err(Fehler::NichtGefunden(_))));
+        assert!(matches!(teilbaum_auf_rot("# ohne Tabelle\n", "B0002", "h"), Err(Fehler::Konflikt(_))));
     }
 
     #[test]
