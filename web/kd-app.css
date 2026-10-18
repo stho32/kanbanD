@@ -487,3 +487,4 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .wl-tab{background:var(--kd-surface)}
 .wl-liste{font-size:13px;color:var(--kd-text);margin:0 0 var(--kd-s3);padding-left:18px;max-width:1000px}
 .live-punkt{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--kd-c-green-line,#2e7d32);margin-right:4px;vertical-align:middle}
+.dl-wahl select{min-width:140px}
