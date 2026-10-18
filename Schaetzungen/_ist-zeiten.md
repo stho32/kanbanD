@@ -229,3 +229,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00057 Wirkungen von Aufgaben auf die WBS | Lauf R00057 | Nacharbeit | — | — | 0,03h | autonom |
 | 2026-10-18 | R00057 Wirkungen von Aufgaben auf die WBS | Lauf R00057 | Konsolidierung | — | — | 0,04h | autonom |
 | 2026-10-18 | R00058 Phasen als Spalten | B0163 Phasen-Datei lesen | Standard | 0,5-1h | 0,01h | 0,02h | autonom |
+| 2026-10-18 | R00058 Phasen als Spalten | B0164 column-phases im Board-Frontmatter | Standard | 0,5-1h | 0,01h | 0,01h | autonom |

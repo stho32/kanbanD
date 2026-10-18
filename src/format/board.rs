@@ -11,6 +11,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let (y, koerper) = frontmatter::trennen(text)?;
     let m = yaml::lesen(y)?;
     let grenzen = yaml::zuordnung(&m, "limits");
+    let phasen = yaml::zuordnung(&m, "column-phases");
     let termine = termine_lesen(m.get("milestones"))?;
     let anwendungen = yaml::textliste(&m, "applications");
     let mut titel = None;
@@ -25,7 +26,8 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
                 return Err(Formatfehler(format!("Spalte „{name}“ steht doppelt in der Board-Datei")));
             }
             let grenze = grenzen.and_then(|g| g.get(name.as_str())).and_then(|v| v.as_u64()).map(|v| v as u32);
-            spalten.push(Spalte { name, grenze, aufgaben: vec![] });
+            let phase = phasen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).filter(|p| !p.trim().is_empty());
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -81,7 +83,8 @@ fn aufgabennummer(zeile: &str) -> Option<u32> {
 pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let mut s = String::new();
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
-    if !grenzen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
+    let phasen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.phase.as_deref().map(|p| (sp.name.as_str(), p))).collect();
+    if !grenzen.is_empty() || !phasen.is_empty() || !b.termine.is_empty() || !b.anwendungen.is_empty() {
         s.push_str("---\n");
         if !b.anwendungen.is_empty() {
             s.push_str(&format!("applications: {}\n", yaml::liste(&b.anwendungen)));
@@ -90,6 +93,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
             s.push_str("limits:\n");
             for sp in grenzen {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), sp.grenze.unwrap_or_default()));
+            }
+        }
+        if !phasen.is_empty() {
+            s.push_str("column-phases:\n");
+            for (spalte, phase) in phasen {
+                s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(phase)));
             }
         }
         if !b.termine.is_empty() {
@@ -125,9 +134,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2] },
-                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3] },
-                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![] },
+                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None },
+                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None },
+                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None },
             ],
             termine: vec![],
             anwendungen: vec![],
@@ -202,6 +211,19 @@ mod tests {
         assert!(mit("{name: X, date: 2027-10-31, color: \"#xyz\"}").unwrap_err().0.contains("Farbe"));
         assert!(mit("nur Text").unwrap_err().0.contains("keine Zuordnung"));
         assert!(lesen("b", "---\nmilestones: 3\n---\n## A\n").unwrap_err().0.contains("keine Liste"));
+    }
+
+    #[test]
+    fn spaltenphasen_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
+        b.spalten[1].phase = Some("Entwicklung".into());
+        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()) });
+        let t = schreiben(&b, datei);
+        assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        let g = lesen("b", "---\ncolumn-phases: {A: Entwicklung, Fehlt: Abnahme}\n---\n## A\n## B\n").unwrap();
+        assert_eq!(g.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None], "Eintrag ohne Spalte fällt weg");
     }
 
     #[test]

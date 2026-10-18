@@ -5,6 +5,9 @@ pub struct Spalte {
     pub name: String,
     pub grenze: Option<u32>,
     pub aufgaben: Vec<u32>,
+    /// Phase der Anwendung, die diese Spalte darstellt (`column-phases`); keine heißt an keine Phase gebunden.
+    #[serde(default)]
+    pub phase: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -165,10 +168,9 @@ impl Board {
         }
         let spalten: Vec<Spalte> = neu
             .iter()
-            .map(|n| Spalte {
-                name: n.name.trim().into(),
-                grenze: n.grenze.filter(|g| *g > 0),
-                aufgaben: n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a)).map(|s| s.aufgaben.clone()).unwrap_or_default(),
+            .map(|n| {
+                let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
+                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()) }
             })
             .collect();
         let geaendert = spalten != self.spalten;
@@ -193,8 +195,8 @@ mod tests {
             slug: "b".into(),
             titel: "B".into(),
             spalten: vec![
-                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2] },
-                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3] },
+                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None },
+                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None },
             ],
             termine: vec![],
             anwendungen: vec![],
@@ -228,13 +230,22 @@ mod tests {
     #[test]
     fn spalten_umbenennen_ergaenzen_begrenzen() {
         let mut b = b();
-        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![] });
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: None });
         let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
         assert_eq!(namen, vec![("Offen", vec![1, 2], None), ("Neu", vec![], None), ("Z", vec![3], Some(2))]);
         let gleich = [aend("Offen", Some("Offen"), None), aend("Neu", Some("Neu"), None), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&gleich), Ok(false));
+    }
+
+    #[test]
+    fn umbenennen_nimmt_die_phase_mit_entfernen_nimmt_sie_weg() {
+        let mut b = b();
+        b.spalten[0].phase = Some("Entwicklung".into());
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()) });
+        assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None), aend("Z", Some("Z"), None)]), Ok(true));
+        assert_eq!(b.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None, None]);
     }
 
     #[test]
