@@ -42,9 +42,8 @@
     return { tage, zeilen, jeTag, summe: jeTag.reduce((s, x) => s + x, 0) };
   }
 
-  /** Kreuztabelle ab `von`: Zeilen je Aufgabe, Spalten je Person mit Zeit, Summen in beide Richtungen. */
-  function kreuztabelle(aufgaben, von, jetzt) {
-    const bis = Infinity;
+  /** Kreuztabelle im Zeitraum [von, bis): Zeilen je Aufgabe, Spalten je Person mit Zeit, Summen in beide Richtungen. */
+  function kreuztabelle(aufgaben, von, jetzt, bis = Infinity) {
     const wer = [...new Set(aufgaben.flatMap(a => a.zeiten.filter(z => anteil(z, von, bis, jetzt) > 0).map(z => z.wer)))];
     const zeilen = aufgaben.map(a => {
       const jePerson = wer.map(k => a.zeiten.filter(z => z.wer === k).reduce((s, z) => s + anteil(z, von, bis, jetzt), 0));

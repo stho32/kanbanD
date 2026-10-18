@@ -6,6 +6,12 @@ S.ui.filter = gemerkt('kanbanD.filter') || '';
 S.ui.bereich = gemerkt('kanbanD.bereich') || 'alle';
 S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
 S.ui.pBereich = 'alle';
+S.ui.bf = (() => { try { return filterAus(localStorage.getItem('kanbanD.berichtsfilter')); } catch (_) { return filterAus(''); } })();
+function berichtsfilterSetzen(aenderung) {
+  S.ui.bf = { ...S.ui.bf, ...aenderung };
+  try { localStorage.setItem('kanbanD.berichtsfilter', JSON.stringify(S.ui.bf)); } catch (_) { }
+}
+const umschalten = (liste, x) => liste.includes(x) ? liste.filter(y => y !== x) : [...liste, x];
 
 function filterSetzen(text) {
   S.ui.filter = text;
@@ -365,7 +371,11 @@ async function act(a, arg, wert) {
       case 'p-bereich': u.pBereich = arg; break;
       case 'sp': u.sp = arg; break;
       case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
-      case 'zeitraum': u.zeitraum = arg; break;
+      case 'bf-farbe': berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) }); break;
+      case 'bf-spalte': berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
+      case 'bf-person': berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) }); break;
+      case 'bf-label': berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) }); break;
+      case 'bf-leeren': berichtsfilterSetzen({ ...FILTER_LEER }); break;
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
@@ -576,6 +586,14 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  const bf = e.target.dataset && e.target.dataset.bf;
+  if (bf) {
+    const aenderung = { [bf]: e.target.value };
+    if (bf !== 'zeitraum') aenderung.zeitraum = 'eigen';
+    berichtsfilterSetzen(aenderung);
+    render();
+    return;
+  }
   const nf = e.target.dataset && e.target.dataset.nf;
   if (nf && S.ui.neu && (nf === 'board' || nf === 'spalte' || nf === 'klasse')) {
     S.ui.neu[nf] = e.target.value;

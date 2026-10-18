@@ -110,9 +110,9 @@ zuletzt: 2026-10-18
 | B0064 | Bubble | I0023 | Burndown und Durchlaufzeit zeigen | gruen | Test gruen | Linie offen je Tag mit Umfang, Hover, Tabelle der Durchlaufzeiten | 1-2 |  |  |  |  |
 | I0042 | Interaction | D0006 | Bewegungen eines Boards | gruen | US-1 |  |  |  | I0023 | R00042 | Berichte 2: je Aufgabe die Spaltenwechsel aus der Git-Geschichte des Boards, Grundlage aller Board-Berichte |
 | B0103 | Bubble | I0042 | Spaltenwechsel aus den Ständen | gruen | Test gruen | Stände des Boards → je Aufgabe Zeitpunkte und Spalte (oder vom Board), Endpunkt bewegungen | 1-2 |  |  |  |  |
-| I0043 | Interaction | D0006 | Berichtsfilter wie Kanbanflow | gelb | US-1..US-3 |  |  |  | I0042 | R00043 | Berichte 2: Zeitraum mit Vorgaben, Farben und Spalten ausschließen, nur Personen, nur Labels — für alle Berichte gleich |
+| I0043 | Interaction | D0006 | Berichtsfilter wie Kanbanflow | gruen | US-1..US-3 |  |  |  | I0042 | R00043 | Berichte 2: Zeitraum mit Vorgaben, Farben und Spalten ausschließen, nur Personen, nur Labels — für alle Berichte gleich |
 | B0104 | Bubble | I0043 | Zeitraum und Filter rechnen | gruen | Test gruen | Vorgabe + jetzt → von/bis; Filter + Aufgabe → zählt oder nicht | 0,5-1 |  |  |  |  |
-| B0105 | Bubble | I0043 | Filterleiste in allen Berichten | rot | Test gruen | Filterzustand → Leiste mit Zeitraum, Farben, Spalten, Personen, Labels; gemerkt im Browser; Zeiten-Berichte gefiltert | 1-2 |  |  |  |  |
+| B0105 | Bubble | I0043 | Filterleiste in allen Berichten | gruen | Test gruen | Filterzustand → Leiste mit Zeitraum, Farben, Spalten, Personen, Labels; gemerkt im Browser; Zeiten-Berichte gefiltert | 1-2 |  |  |  |  |
 | I0044 | Interaction | D0006 | Burndown nach Zeitraum | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
 | I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | rot | US-1..US-2 |  |  |  | I0043 |  | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
 | I0046 | Interaction | D0006 | Wie lange noch | rot | US-1..US-3 |  |  |  | I0043, I0042 |  | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |

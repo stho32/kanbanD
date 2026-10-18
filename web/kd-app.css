@@ -435,3 +435,15 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .ziel-archiv{color:var(--kd-muted)}
 tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .hilfe-quelle{font-size:11px;margin:10px 0 0}
+/* Berichtsfilter (R00043) */
+.bfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:8px var(--kd-s6);border-bottom:1px solid var(--kd-line);background:var(--kd-surface);font-size:12px}
+.bf-gruppe{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}
+.bf-k{font:600 10px/1 var(--kd-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--kd-muted);margin-right:2px}
+.bf-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid var(--kd-line-strong);background:var(--kd-bg);color:var(--kd-muted);font:inherit;cursor:pointer;text-decoration:line-through;text-decoration-color:var(--kd-faint)}
+.bf-chip.an{background:var(--kd-surface);color:var(--kd-text);text-decoration:none;border-color:var(--kd-line-strong)}
+.bf-gruppe .bf-chip[data-act="bf-person"],.bf-gruppe .bf-chip[data-act="bf-label"]{text-decoration:none}
+.bf-chip[data-act="bf-person"].an,.bf-chip[data-act="bf-label"].an{background:var(--kd-accent-weak);border-color:var(--kd-accent);color:var(--kd-accent-ink)}
+.bf-chip:focus-visible{outline:2px solid var(--kd-accent);outline-offset:1px}
+.bf-chip .pk{width:16px;height:16px;font-size:8px}
+.bf-farbe{width:10px;height:10px;border:1px solid var(--cl,var(--kd-line-strong));background:var(--c,var(--kd-surface))}
+.bf-leeren{margin-left:auto;height:24px}

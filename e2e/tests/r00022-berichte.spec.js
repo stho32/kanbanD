@@ -32,7 +32,7 @@ test.describe('R00022', () => {
 
   test('US-2 und US-3: Kreuztabelle und CSV', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/kreuz');
-    await page.getByRole('radio', { name: 'alles' }).click();
+    await page.getByLabel('Zeitraum', { exact: true }).selectOption('alles');
     await expect(page.locator('#kreuz tr.klick td')).toHaveText([/#1/, '1:30', '0:30', '2:00']);
     const download = page.waitForEvent('download');
     await page.getByRole('link', { name: 'CSV' }).click();

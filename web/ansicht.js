@@ -391,22 +391,44 @@ function vBerichtePop() {
   const v = S.ui.view;
   return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown und Durchlaufzeit', 'Offene Aufgaben je Tag und Durchlaufzeit je Aufgabe – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
+/** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
+function vBerichtsfilter(teile) {
+  const f = S.ui.bf, jetzt = Date.now();
+  const chip = (act, arg, an, inhalt, titel) => `<button class="bf-chip${an ? ' an' : ''}" data-act="${act}" data-arg="${esc(arg)}" aria-pressed="${an}" title="${esc(titel)}">${inhalt}</button>`;
+  const gruppe = (k, chips) => chips ? `<span class="bf-gruppe"><span class="bf-k">${k}</span>${chips}</span>` : '';
+  let zr = '';
+  if (teile.zeitraum) {
+    const g = zeitraumGrenzen(f, jetzt);
+    const von = f.zeitraum === 'eigen' ? f.von : g.von ? isoD(g.von) : '';
+    const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(g.bis - 864e5) : '';
+    zr = `<span class="bf-gruppe"><span class="bf-k">Zeitraum</span><select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis"></span>`;
+  }
+  const klassen = S.zustand.einstellungen.klassen;
+  const farben = klassen.map(k => chip('bf-farbe', k.schluessel, !f.ohneFarben.includes(k.schluessel), `<i class="bf-farbe" style="${cv(k.farbe)}"></i>${esc(k.bezeichnung)}`, f.ohneFarben.includes(k.schluessel) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('')
+    + chip('bf-farbe', '', !f.ohneFarben.includes(''), '<i class="bf-farbe"></i>ohne Klasse', 'Aufgaben ohne Klasse');
+  const spalten = teile.spalten && S.board ? S.board.spalten.map(sp => chip('bf-spalte', sp.name, !f.ohneSpalten.includes(sp.name), esc(sp.name), f.ohneSpalten.includes(sp.name) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('') : '';
+  const personenListe = personen().filter(p => p.aktiv || f.personen.includes(p.kuerzel));
+  const leute = teile.personen ? personenListe.map(p => chip('bf-person', p.kuerzel, f.personen.includes(p.kuerzel), `${pk(p.kuerzel)}${esc(p.name)}`, teile.personen === 'zeit' ? 'nur Zeiten dieser Person' : 'nur Aufgaben, für die die Person zuständig ist')).join('') : '';
+  const alleLabels = [...new Set(S.aufgaben.flatMap(a => a.labels))].sort();
+  const labels = alleLabels.map(l => chip('bf-label', l, f.labels.includes(l), esc(l), 'nur Aufgaben mit diesem Label')).join('');
+  const n = filterAnzahl(teile.zeitraum ? f : { ...f, zeitraum: 'alles' });
+  return `<div class="bfilter" role="group" aria-label="Berichtsfilter">${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}${n ? `<button class="btn bf-leeren" data-act="bf-leeren" title="alle Berichtsfilter aufheben">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div>`;
+}
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
   const u = S.ui, jetzt = Date.now();
   const w0 = (() => { const d = new Date(wochenbeginn(jetzt)); d.setDate(d.getDate() + 7 * (u.wochenVersatz || 0)); return d.getTime(); })();
   const wer = u.sp || S.ich || (personen().find(p => p.aktiv) || {}).kuerzel;
-  const s = stundenzettel(S.aufgaben, wer, w0, jetzt), namen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], heute = tagesbeginn(jetzt);
+  const s = stundenzettel(S.aufgaben.filter(a => aufgabePasst({ ...u.bf, personen: [] }, a)), wer, w0, jetzt), namen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], heute = tagesbeginn(jetzt);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">·</span>';
-  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${isoD(s.tage[0])} – ${isoD(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>
+  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${isoD(s.tage[0])} – ${isoD(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter({})}
 <div class="body"><table class="pt dicht" id="stundenzettel"><thead><tr><th>Aufgabe</th>${s.tage.map((t, i) => `<th class="r"${t === heute ? ' style="color:var(--kd-accent-ink)"' : ''}>${namen[i]} <span class="mono">${isoD(t).slice(8)}</span></th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${s.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.proTag.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || `<tr><td class="muted" colspan="9">${esc(per(wer || '').name)} hat in dieser Woche keine Zeiten.</td></tr>`}<tr class="grp"><td>SUMME</td>${s.jeTag.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r" id="zettelsumme">${hm(s.summe)}</td></tr></tbody></table></div>`;
 }
 function vKreuz() {
-  const u = S.ui, jetzt = Date.now(), zeitraum = u.zeitraum || 'woche';
-  const von = zeitraum === 'woche' ? wochenbeginn(jetzt) : zeitraum === '30' ? jetzt - 30 * 864e5 : 0;
-  const k = kreuztabelle(S.aufgaben, von, jetzt);
+  const jetzt = Date.now(), g = zeitraumGrenzen(S.ui.bf, jetzt);
+  const k = kreuztabelle(zeitenGefiltert(S.aufgaben, S.ui.bf), g.von, jetzt, g.bis);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">—</span>';
-  return `<div class="leiste"><b>Zeiten nach Aufgabe und Person</b><span class="seg" role="radiogroup" aria-label="Zeitraum">${[['woche', 'diese Woche'], ['30', '30 Tage'], ['alles', 'alles']].map(([z, t]) => `<span class="${zeitraum === z ? 'an' : ''}" data-act="zeitraum" data-arg="${z}" role="radio" aria-checked="${zeitraum === z}">${t}</span>`).join('')}</span><span class="muted" style="font-size:12px">liest nur · korrigiert wird an der Aufgabe</span><div class="rechts">${csvKnopf}</div></div>
+  return `<div class="leiste"><b>Zeiten nach Aufgabe und Person</b><span class="muted" style="font-size:12px">liest nur · korrigiert wird an der Aufgabe</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter({ zeitraum: true, personen: 'zeit' })}
 <div class="body"><table class="pt dicht" id="kreuz"><thead><tr><th>Aufgabe</th>${k.personen.map(p => `<th class="r">${pk(p)} ${esc(per(p).name)}</th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${k.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.jePerson.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || '<tr><td class="muted">Keine Zeiten im Zeitraum.</td></tr>'}<tr class="grp"><td>SUMME</td>${k.jeSpalte.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r">${hm(k.summe)}</td></tr></tbody></table></div>`;
 }
 
