@@ -304,3 +304,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .first .felder{grid-template-columns:110px minmax(0,1fr)}
 .ka.fehlt{border-style:dashed;background:var(--kd-bg);cursor:default}
 .ka.fehlt .t{color:var(--kd-warn)}
+.kz-board{border-color:transparent;font-weight:600;font-size:14px;padding:0 6px}
+.iz.neu{cursor:default;padding:4px var(--kd-s3)}
+.iz.neu .inp{width:100%;height:26px}
+.iz.neu:hover{background:none}

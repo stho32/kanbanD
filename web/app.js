@@ -71,7 +71,19 @@ async function act(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
-      case 'pop': u.pop = u.pop === arg ? null : arg; if (arg !== 'ich') u.ichNoetig = false; break;
+      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; break;
+      case 'board-wahl': u.pop = null; location.hash = '#/board/' + arg; return;
+      case 'board-neu': {
+        const titel = (wert || '').trim();
+        if (!titel) break;
+        if (ichNoetig()) break;
+        try {
+          const r = await api('POST', '/api/boards', { titel });
+          u.pop = null;
+          location.hash = '#/board/' + r.board;
+          return;
+        } catch (f) { u.popFehler = f.message; u.fokus = '#board-neu'; break; }
+      }
       case 'ich': ichSetzen(arg); u.pop = null; u.ichNoetig = false; break;
       case 'add': if (ichNoetig()) break; u.adding = arg; u.fokus = '#add-inp'; break;
       case 'add-ok': {
