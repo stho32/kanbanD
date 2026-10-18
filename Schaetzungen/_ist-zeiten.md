@@ -134,3 +134,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00034 Kontextmenüs für Spalten und Listen | B0090 Menüs für Spaltenkopf und Aufgabenliste | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00034 Kontextmenüs für Spalten und Listen | Lauf R00034 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00035 Tastenkürzel überall | B0091 g-Folgen und globale Kürzel | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00035 Tastenkürzel überall | B0092 Kürzel im Aufgabenfenster | Standard | 1-2h | 0,0h | 0,0h | autonom |
