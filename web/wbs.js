@@ -76,5 +76,11 @@
     return `${p.gruen} % funktional · ${p.gelb} % in Bearbeitung · ${p.rot} % offen`;
   }
 
-  Object.assign(ziel, { prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Status, die ein Blatt in der Sicht annehmen kann (R00055); alles andere ist Planung. */
+  const STATUS_WAHL = ['rot', 'gelb', 'gruen'];
+
+  /** Setzbar ist der Status eines Blatts ohne zählende Kinder, das rot, gelb oder gruen ist — der Rest wird gerechnet oder geplant. */
+  const statusSetzbar = (k, mitZaehlendenKindern) => !mitZaehlendenKindern.has(k.id) && STATUS_WAHL.includes(k.status);
+
+  Object.assign(ziel, { STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

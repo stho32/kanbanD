@@ -443,6 +443,20 @@ async function act(a, arg, wert) {
         u.fokus = `[data-act="wbs-klapp"][data-arg="${arg}"]`;
         break;
       }
+      case 'wbs-status-pop': {
+        if (ichNoetig()) break;
+        u.wbsKnoten = arg; u.pop = u.pop === 'wbs-status' ? null : 'wbs-status';
+        break;
+      }
+      case 'wbs-status': {
+        if (ichNoetig()) break;
+        const [id, status] = arg.split('|');
+        u.pop = null;
+        try { await api('PATCH', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(id)}`, { status }); }
+        catch (f) { u.hinweis = { text: `${id} nicht gesetzt: ${f.message}`, at: Date.now() }; }
+        u.fokus = `#wbs-st-${id}`;
+        return laden();
+      }
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
         const gesehen = new Set();

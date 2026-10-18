@@ -168,6 +168,7 @@ function vPop() {
   if (u.pop === 'legen') return vLegenPop();
   if (u.pop === 'ber') return vBerichtePop();
   if (u.pop === 'defekt') return vDefektePop();
+  if (u.pop === 'wbs-status') return vWbsStatusPop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -626,8 +627,10 @@ function vWbsKopf(w) {
   return `<div class="wbs-kopf"><h2 class="wbs-titel">WBS · ${esc(w.name)} <span class="mono">${esc(w.datei)}</span>${nc}</h2><div class="wbs-stand"><span>${s.gruen} von ${s.slices} Slices funktional · ${s.gelb} in Bearbeitung · ${s.rot} offen</span><b id="wbs-stand">${esc(standText(s))}</b></div><div class="wbs-balken" role="img" aria-label="${esc(standText(s))}"><i class="gruen" style="width:${p.gruen}%"></i><i class="gelb" style="width:${p.gelb}%"></i><i class="rot" style="width:${p.rot}%"></i></div><div class="wbs-zeile"><span class="k">aktiv</span><span class="wbs-pfad">${pfad}</span></div><div class="wbs-zeile"><span class="k">in Arbeit</span><span class="wbs-laufend">${laufend}</span></div></div>`;
 }
 /** Die Plakette: gesetzt gefüllt, gerechnet umrandet; widerspricht die Datei, steht ihr Wert daneben. */
-function vWbsStatus(k, gerechnet) {
-  const p = `<span class="ampel ${esc(k.gerechnet)}${gerechnet ? ' gerechnet' : ''}"${gerechnet ? ' title="gerechnet aus den Kindern"' : ''}>${esc(k.gerechnet)}</span>`;
+function vWbsStatus(k, gerechnet, setzbar) {
+  const p = setzbar
+    ? `<button class="ampel ${esc(k.gerechnet)} setzbar${S.ui.pop === 'wbs-status' && S.ui.wbsKnoten === k.id ? ' auf' : ''}" id="wbs-st-${esc(k.id)}" data-act="wbs-status-pop" data-arg="${esc(k.id)}" aria-haspopup="true" title="Status von ${esc(k.id)} setzen" aria-label="Status von ${esc(k.id)}: ${esc(k.gerechnet)} — setzen">${esc(k.gerechnet)}</button>`
+    : `<span class="ampel ${esc(k.gerechnet)}${gerechnet ? ' gerechnet' : ''}"${gerechnet ? ' title="gerechnet aus den Kindern"' : ''}>${esc(k.gerechnet)}</span>`;
   return gerechnet && k.gerechnet !== k.status ? p + `<span class="wbs-widerspruch" title="In der Datei steht „${esc(k.status)}“, gerechnet aus den Kindern: ${esc(k.gerechnet)}">Datei: ${esc(k.status)}</span>` : p;
 }
 function vWbsTabelle(w) {
@@ -637,9 +640,16 @@ function vWbsTabelle(w) {
   const zeilen = w.knoten.map(k => {
     const klapp = klappbar(k, eltern) ? `<button class="klapp" data-act="wbs-klapp" data-arg="${esc(k.id)}" aria-label="${esc(k.id)} ${zu.has(k.id) ? 'aufklappen' : 'zuklappen'}" aria-expanded="${!zu.has(k.id)}">${zu.has(k.id) ? '+' : '−'}</button>` : '<span class="klapp-platz"></span>';
     const was = k.ebene === 'Bubble' && k.eingabe_ausgabe ? k.eingabe_ausgabe : k.fertig_kriterium;
-    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"${weg.has(k.id) ? ' hidden' : ''}><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span></td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
+    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"${weg.has(k.id) ? ' hidden' : ''}><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span></td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id), statusSetzbar(k, gerechnet))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
   }).join('');
   return `<div class="wbs-tabelle"><table class="pt dicht"><thead><tr><th>ID</th><th>Ebene</th><th>Knoten</th><th>Fertig-Kriterium / Eingabe → Ausgabe</th><th>Aufwand</th><th>Status</th><th>Requirement</th><th>Notiz</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
+}
+
+/** Wahl des Status an einem Blatt: rot · gelb · gruen; kanbanD schreibt die WBS-Datei und committet dort nicht. */
+function vWbsStatusPop() {
+  const id = S.ui.wbsKnoten, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
+  if (!k) return '';
+  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><h4>STATUS <span class="mono">${esc(id)}</span></h4>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */

@@ -204,3 +204,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00055 WBS-Status setzen | B0142 WBS-Datei unter eigener Sperre schreiben | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | B0143 Eigene WBS-Schreibzugriffe nicht extern | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
 | 2026-10-18 | R00055 WBS-Status setzen | B0144 Status über die API setzen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
+| 2026-10-18 | R00055 WBS-Status setzen | B0145 Status per Klick wählen | Standard | 1-2h | 0,03h | 0,03h | autonom |

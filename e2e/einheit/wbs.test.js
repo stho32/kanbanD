@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -51,4 +51,10 @@ test('Stand in Prozent: 2 grün, 1 gelb, 1 rot von 4 Slices', () => {
   assert.deepStrictEqual(prozente({ gruen: 1, gelb: 1, rot: 1, slices: 3 }), { gruen: 34, gelb: 33, rot: 33 }, 'zusammen 100');
   assert.deepStrictEqual(prozente({ gruen: 0, gelb: 0, rot: 0, slices: 0 }), { gruen: 0, gelb: 0, rot: 0 });
   assert.deepStrictEqual(prozente({ gruen: 1, gelb: 0, rot: 6, slices: 7 }), { gruen: 14, gelb: 0, rot: 86 });
+});
+
+test('Status setzbar nur an Blättern mit rot, gelb oder gruen', () => {
+  const baum = [k('I0001', ''), k('B0001', 'I0001', 'gruen'), k('I0002', ''), k('F0001', 'I0002', 'option'), k('B0002', 'I0001', 'verworfen'), k('B0003', 'I0001', 'bestehend')];
+  const kinder = mitKindern(baum, true);
+  assert.deepStrictEqual(baum.filter(x => statusSetzbar(x, kinder)).map(x => x.id), ['B0001', 'I0002'], 'I0001 gerechnet, I0002 hat nur eine Option als Kind');
 });
