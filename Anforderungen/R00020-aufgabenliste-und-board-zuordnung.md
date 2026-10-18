@@ -1,6 +1,6 @@
 ---
 id: R00020
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,10 +27,10 @@ Nichts geht verloren, was auf keinem Board liegt, und dieselbe Aufgabe kann in m
 
 ## Akzeptanzkriterien
 
-- [ ] #3 auf „Test“ legen → Zeile unter der ersten Spalte von `boards/test.md`, Aufgabendatei unverändert, ein Commit; noch einmal → 409
-- [ ] #3 von „Entwicklung“ nehmen → Zeile weg, Aufgabe bleibt; noch einmal → 404
-- [ ] Oberfläche: „ohne Board“ zeigt nur Aufgaben auf keinem Board; nach „auf Board legen“ verschwindet die Aufgabe dort und „Liegt auf“ nennt das Board
-- [ ] Oberfläche: neue Aufgabe ohne Board erscheint unter „ohne Board“
+- [x] #3 auf „Test“ legen → Zeile unter der ersten Spalte von `boards/test.md`, Aufgabendatei unverändert, ein Commit; noch einmal → 409
+- [x] #3 von „Entwicklung“ nehmen → Zeile weg, Aufgabe bleibt; noch einmal → 404
+- [x] Oberfläche: „ohne Board“ zeigt nur Aufgaben auf keinem Board; nach „auf Board legen“ verschwindet die Aufgabe dort und „Liegt auf“ nennt das Board
+- [x] Oberfläche: neue Aufgabe ohne Board erscheint unter „ohne Board“
 
 ## Betroffene Verzeichnisstruktur
 
