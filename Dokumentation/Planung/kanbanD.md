@@ -77,7 +77,7 @@ zuletzt: 2026-10-18
 | B0040 | Bubble | I0014 | Laufende Timer in der Kopfzeile | gruen | Test gruen | N laufen → Liste aller laufenden Timer, fremde stoppbar | 0,5-1 |  |  |  |  |
 | I0015 | Interaction | D0003 | Zeiten nachtragen und korrigieren | gelb | US-1..US-3 |  |  |  | I0014 | R00015 |  |
 | B0041 | Bubble | I0015 | Dauer lesen | gruen | Test gruen | „0:45“, „1,5“, „90 min“ → Minuten | 0,5-1 |  |  |  |  |
-| B0042 | Bubble | I0015 | Zeiten über die API | rot | Test gruen | nachtragen, korrigieren, löschen → Zeile im Block kanbanD-time, ein Commit | 1-2 |  |  |  |  |
+| B0042 | Bubble | I0015 | Zeiten über die API | gruen | Test gruen | nachtragen, korrigieren, löschen → Zeile im Block kanbanD-time, ein Commit | 1-2 |  |  |  |  |
 | B0043 | Bubble | I0015 | Zeiten im Fenster | rot | Test gruen | Tabelle der Zeiten mit Summe, ✎ korrigieren, ✕ löschen, + Zeit nachtragen | 1-2 |  |  |  |  |
 | I0016 | Interaction | D0003 | Anhänge verwalten | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0017 | Interaction | D0003 | Archivieren und zurückholen | rot | US der Anforderung |  |  |  | I0011 |  |  |

@@ -64,3 +64,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00014 Timer starten und stoppen | B0040 Laufende Timer in der Kopfzeile | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00014 Timer starten und stoppen | Lauf R00014 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | B0041 Dauer lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | B0042 Zeiten über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |

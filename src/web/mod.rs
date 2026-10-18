@@ -2,7 +2,7 @@
 
 mod statisch;
 
-use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard, Teilaufgabenaenderung};
+use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -65,6 +65,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
+        .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
+        .route("/api/aufgaben/{nr}/zeiten/{i}", axum::routing::patch(zeit_korrigieren).delete(zeit_loeschen))
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
@@ -250,4 +252,21 @@ struct Stopp {
 async fn timer_stoppen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, koerper: axum::body::Bytes) -> Result<Response, Fehler> {
     let fuer = serde_json::from_slice::<Option<Stopp>>(&koerper).ok().flatten().unwrap_or_default().wer;
     als_person(&app, wer, move |k, p| k.timer_stoppen(p, nr, fuer.as_deref())).await
+}
+
+#[derive(serde::Deserialize)]
+struct Dauer {
+    dauer: String,
+}
+
+async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(d): Json<Dauer>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_nachtragen(p, nr, &d.dauer)).await
+}
+
+async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(z): Json<Zeitkorrektur>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_korrigieren(p, nr, i, &z)).await
+}
+
+async fn zeit_loeschen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_loeschen(p, nr, i)).await
 }
