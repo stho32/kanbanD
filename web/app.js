@@ -826,6 +826,7 @@ function ueberallTaste(e, t) {
   if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel; return true; }
   if (e.key === 'b' || e.key === 'i') { e.preventDefault(); act('pop', e.key === 'b' ? 'board' : 'ich'); return true; }
   if (u.view === 'aufgaben') return listenTaste(e, t);
+  if (e.key === 'n' && u.view !== 'board') { e.preventDefault(); act('add', '-'); return true; }
   return false;
 }
 function fensterTaste(e) {
@@ -856,7 +857,8 @@ function listenTaste(e, t) {
     S.ui.fokusZeile = +zeilen[n].dataset.zeile;
     return true;
   }
-  if (jetzt && (e.key === 'a' || e.key === 'c')) {
+  if (e.key === 'n') { e.preventDefault(); act('add', '-'); return true; }
+  if (jetzt && (e.key === 'a' || e.key === 'Delete' || e.key === 'c')) {
     e.preventDefault();
     const a = aufgabe(+jetzt.dataset.zeile);
     S.ui.fokusZeile = a.nummer;
@@ -890,9 +892,9 @@ function brettTaste(e, t) {
     menueFuerKarte(nr, r.left + 24, r.top + 24);
     return true;
   }
-  if (karte && aufgabe(nr) && (e.key === 'a' || e.key === 'c' || /^[1-9]$/.test(e.key))) {
+  if (karte && aufgabe(nr) && (e.key === 'a' || e.key === 'Delete' || e.key === 'c' || /^[1-9]$/.test(e.key))) {
     e.preventDefault();
-    if (e.key === 'a') act('archivieren', String(nr));
+    if (e.key === 'a' || e.key === 'Delete') act('archivieren', String(nr));
     else if (e.key === 'c') act('kopieren', String(nr));
     else {
       const sp = S.board.spalten[+e.key - 1];
@@ -900,7 +902,7 @@ function brettTaste(e, t) {
     }
     return true;
   }
-  if (karte && (e.key === 't' || e.key === 'm' || e.key === 'F2')) {
+  if (karte && (e.key === 't' || e.key === ' ' || e.key === 'm' || e.key === 'F2')) {
     e.preventDefault();
     const a = aufgabe(nr);
     if (!a) return true;

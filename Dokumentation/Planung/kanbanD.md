@@ -13,9 +13,9 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -162,8 +162,8 @@ zuletzt: 2026-10-18
 | B0100 | Bubble | I0039 | Zuständige im Menü und per p | gruen | Test gruen | Aufgabe + Personen → Untermenü mit Haken je Person; Klick setzt oder entfernt; p öffnet es an der Karte | 1-2 |  |  |  |  |
 | I0040 | Interaction | D0004 | Ziehen in der Aufgabenliste | gruen | US-1..US-2 |  |  |  | I0020 | R00040 | UX-Überarbeitung 3: Zeilen auf Boardspalten oder ins Archiv ziehen |
 | B0101 | Bubble | I0040 | Zeilen auf Spalten und Archiv ziehen | gruen | Test gruen | Zeile + Ziel (Board · Spalte | Archiv) → legen, bewegen oder archivieren, ein Commit | 1-2 |  |  |  |
-| I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | rot | US-1..US-2 |  |  |  | I0035 | R00041 | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
-| B0102 | Bubble | I0041 | Kürzel nach Kanbanflow-Konvention | rot | Test gruen | n überall, Leertaste Timer, Entf archivieren, Hilfe zeigt Herkunft | 0,5-1 |  |  |  |  |
+| I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | gruen | US-1..US-2 |  |  |  | I0035 | R00041 | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
+| B0102 | Bubble | I0041 | Kürzel nach Kanbanflow-Konvention | gruen | Test gruen | n überall, Leertaste Timer, Entf archivieren, Hilfe zeigt Herkunft | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 

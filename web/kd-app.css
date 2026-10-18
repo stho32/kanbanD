@@ -434,3 +434,4 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .ziel.ueber{border-style:solid;border-color:var(--kd-accent);background:var(--kd-accent-weak)}
 .ziel-archiv{color:var(--kd-muted)}
 tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
+.hilfe-quelle{font-size:11px;margin:10px 0 0}
