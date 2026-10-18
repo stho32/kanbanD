@@ -1,6 +1,6 @@
 ---
 id: R00033
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,11 +25,11 @@ Alle Handgriffe an einer Karte sind an einem Ort auffindbar; wer die Kürzel ler
 
 ## Akzeptanzkriterien
 
-- [ ] Menümodell für #3 in „Zu erledigen“ mit laufendem eigenem Timer: Eintrag „Timer stoppen“, Spalte „Zu erledigen“ markiert, „Auf Board legen“ nennt nur Boards ohne #3
-- [ ] Menüschritt: von Eintrag 0 mit ↑ zum letzten Eintrag, Trenner werden übersprungen
-- [ ] Rechtsklick auf #1 → Menü; „Verschieben nach ▸ Erledigt“ → #1 in „Erledigt“
-- [ ] Tastatur: Fokus auf #1, Umschalt+F10, ↓↓, Enter → der gewählte Eintrag wirkt; Esc schließt
-- [ ] `a` auf #1 → archiviert, Hinweis „rückgängig“; `3` auf #2 → #2 in der dritten Spalte; `c` → Zwischenablage enthält „#2 zwei“
+- [x] Menümodell für #3 in „Zu erledigen“ mit laufendem eigenem Timer: Eintrag „Timer stoppen“, Spalte „Zu erledigen“ markiert, „Auf Board legen“ nennt nur Boards ohne #3
+- [x] Menüschritt: von Eintrag 0 mit ↑ zum letzten Eintrag, Trenner werden übersprungen
+- [x] Rechtsklick auf #1 → Menü; „Verschieben nach ▸ Erledigt“ → #1 in „Erledigt“
+- [x] Tastatur: Fokus auf #1, Umschalt+F10, ↓↓, Enter → der gewählte Eintrag wirkt; Esc schließt
+- [x] `a` auf #1 → archiviert, Hinweis „rückgängig“; `3` auf #2 → #2 in der dritten Spalte; `c` → Zwischenablage enthält „#2 zwei“
 
 ## Betroffene Verzeichnisstruktur
 

@@ -129,3 +129,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0086 Menü der Karte zusammenstellen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0087 Kontextmenü zeigen und bedienen | Standard | 2-3h | 0,1h | 0,1h | autonom |
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0088 Neue Kartenkürzel | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00033 Kontextmenü der Karte | Lauf R00033 | Nacharbeit | — | — | 0,0h | autonom |
