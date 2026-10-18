@@ -265,4 +265,12 @@ mod tests {
         let t = wbs(&[("I0001", "Interaction", "—", "option"), ("B0001", "Bubble", "I0001", "rot")]);
         assert_eq!(status_setzen(&t, "B0001", "gruen", "h").unwrap().geaendert, ["B0001"]);
     }
+
+    #[test]
+    fn interaction_ohne_zaehlende_kinder_ist_ein_blatt() {
+        let t = wbs(&[("D0001", "Dialog", "—", "rot"), ("I0001", "Interaction", "D0001", "rot"), ("F0001", "Feature", "I0001", "option"), ("I0002", "Interaction", "D0001", "rot")]);
+        let g = status_setzen(&t, "I0001", "gruen", "h").unwrap();
+        assert_eq!(g.geaendert, ["I0001", "D0001"], "nur eine Option darunter — I0001 trägt den Status selbst, D0001 gemischt gelb");
+        assert!(g.text.contains("| D0001 | Dialog | — | Name D0001 | gelb |"));
+    }
 }
