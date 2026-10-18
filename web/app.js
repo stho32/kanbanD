@@ -202,7 +202,7 @@ async function act(a, arg, wert) {
         await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
@@ -330,6 +330,7 @@ async function act(a, arg, wert) {
         const d = new Date(); d.setDate(d.getDate() + (+arg || 0));
         return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
       }
+      case 'beschreibung-bearbeiten': u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
@@ -417,6 +418,8 @@ document.addEventListener('dblclick', e => {
   if (t) { e.preventDefault(); clearTimeout(S.titelKlick); act(t.dataset.dbl, t.dataset.arg); }
 });
 document.addEventListener('focusout', e => {
+  // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
+  if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
   if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
 });
 
@@ -426,6 +429,7 @@ document.addEventListener('change', e => {
   if (!af || !S.ui.offen) return;
   const v = e.target.value;
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
+  if (af === 'beschreibung') S.ui.beschreibungBearbeiten = false;
   const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
     : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
   aufgabeAendern(S.ui.offen, aenderung);
@@ -495,6 +499,7 @@ window.addEventListener('hashchange', laden);
 window.addEventListener('resize', popPlatzieren);
 document.addEventListener('keydown', e => {
   const t = e.target;
+  if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     act(t.dataset.enter, t.dataset.arg, t.value);

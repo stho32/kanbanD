@@ -388,3 +388,12 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
 .inp.umbenennen{width:100%;height:24px}
 .due-knoepfe{display:inline-flex;gap:2px}
+.besch-lesen{min-height:60px;padding:var(--kd-s2) var(--kd-s3);border:1px solid transparent;line-height:1.55;cursor:text}
+.besch-lesen:hover,.besch-lesen:focus{border-color:var(--kd-line-strong);outline:none}
+.besch-lesen h3,.besch-lesen h4,.besch-lesen h5{margin:.6em 0 .3em;font-size:14px;color:var(--kd-text);letter-spacing:0}
+.besch-lesen p{margin:0 0 .6em}
+.besch-lesen ul,.besch-lesen ol{margin:0 0 .6em;padding-left:20px}
+.besch-lesen code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
+.besch-lesen pre{background:var(--kd-sunken);padding:var(--kd-s3);overflow:auto}
+.besch-lesen pre code{background:none;padding:0}
+.besch-lesen blockquote{margin:0 0 .6em;padding-left:var(--kd-s3);border-left:3px solid var(--kd-line-strong);color:var(--kd-muted)}

@@ -16,7 +16,7 @@ zuletzt: 2026-10-18
 | A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
-| D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
+| D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
@@ -129,9 +129,9 @@ zuletzt: 2026-10-18
 | B0077 | Bubble | I0029 | Aktionen an der Karte | gruen | Test gruen | Zeigen/Fokus → Leiste mit Timer und mir zuweisen; Tasten t und m | 1-2 |  |  |  |  |
 | B0078 | Bubble | I0029 | Umbenennen an der Karte | gruen | Test gruen | Doppelklick oder F2 → Titel im Feld, Enter speichert, Esc verwirft | 0,5-1 |  |  |  |  |
 | B0079 | Bubble | I0029 | Fälligkeit per Knopf | gruen | Test gruen | heute, morgen, +1 Woche, entfernen im Fenster | 0,5-1 |  |  |  |  |
-| I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | gelb | US-1..US-2 |  |  |  | I0011 | R00030 | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |
+| I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | gruen | US-1..US-2 |  |  |  | I0011 | R00030 | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |
 | B0080 | Bubble | I0030 | Markdown darstellen | gruen | Test gruen | Markdown-Text → sicheres HTML (Überschriften, Listen, Hervorhebung, Code, Links, Zitat) | 1-2 |  |  |  |  |
-| B0081 | Bubble | I0030 | Lesen und Bearbeiten wechseln | rot | Test gruen | Klick auf die gelesene Beschreibung → Textfeld, Verlassen speichert und zeigt wieder gelesen | 0,5-1 |  |  |  |  |
+| B0081 | Bubble | I0030 | Lesen und Bearbeiten wechseln | gruen | Test gruen | Klick auf die gelesene Beschreibung → Textfeld, Verlassen speichert und zeigt wieder gelesen | 0,5-1 |  |  |  |  |
 | I0031 | Interaction | D0002 | Rückgängig | rot | US der Anforderung |  |  |  | I0006 |  | UX-Überarbeitung: Hinweis mit rückgängig nach Bewegen, Anlegen, Entfernen |
 | I0032 | Interaction | D0002 | Sitzung und Verbindung | rot | US der Anforderung |  |  |  | I0007 |  | UX-Überarbeitung: letztes Board merken, Wieder verbunden, Hinweise auf leeren Flächen |
 
