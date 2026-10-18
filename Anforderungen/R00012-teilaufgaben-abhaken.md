@@ -1,6 +1,6 @@
 ---
 id: R00012
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,9 +25,9 @@ Kleine Schritte einer Aufgabe sind sichtbar, ohne eigene Karten.
 
 ## Akzeptanzkriterien
 
-- [ ] Anlegen „a“, „b“, dann `PATCH 0 {erledigt: true}` → Datei enthält `- [x] a` und `- [ ] b`; drei Commits
-- [ ] `DELETE 1` entfernt „b“; `PATCH 5` → 404; `POST {text: " "}` → 400
-- [ ] Oberfläche: zwei Teilaufgaben anlegen, die erste abhaken → Karte zeigt „☑ 1/2“
+- [x] Anlegen „a“, „b“, dann `PATCH 0 {erledigt: true}` → Datei enthält `- [x] a` und `- [ ] b`; drei Commits
+- [x] `DELETE 1` entfernt „b“; `PATCH 5` → 404; `POST {text: " "}` → 400
+- [x] Oberfläche: zwei Teilaufgaben anlegen, die erste abhaken → Karte zeigt „☑ 1/2“
 
 ## Betroffene Verzeichnisstruktur
 
