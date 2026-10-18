@@ -1,6 +1,6 @@
 ---
 id: R00044
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,8 +25,8 @@ Der Verlauf eines Sprints oder Monats ist für sich lesbar, ohne Ideen-Spalte od
 
 ## Akzeptanzkriterien
 
-- [ ] Unit: offen und Umfang je Tag; Zeitraum schneidet; ausgeschlossene Spalte und Farbe zählen nicht
-- [ ] E2E: Burndown zeigt „offen 1“; eigener Zeitraum 01.10.–01.10. zeigt einen Tag mit „offen 2“; Spalte „Zu erledigen“ ausgeschlossen → „offen 0“; keine Durchlaufzeit-Tabelle
+- [x] Unit: offen und Umfang je Tag; Zeitraum schneidet; ausgeschlossene Spalte und Farbe zählen nicht
+- [x] E2E: Burndown zeigt „offen 1“; eigener Zeitraum 01.10.–01.10. zeigt einen Tag mit „offen 2“; Spalte „Zu erledigen“ ausgeschlossen → „offen 0“; keine Durchlaufzeit-Tabelle
 
 ## Betroffene Verzeichnisstruktur
 

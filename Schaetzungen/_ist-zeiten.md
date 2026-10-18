@@ -159,3 +159,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | Lauf R00043 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | B0106 Burndown aus Bewegungen rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | B0107 Burndown-Bericht mit Filterleiste | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00044 Burndown nach Zeitraum | Lauf R00044 | Nacharbeit | — | — | 0,0h | autonom |
