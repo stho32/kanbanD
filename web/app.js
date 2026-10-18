@@ -140,7 +140,7 @@ async function act(a, arg, wert) {
         await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; break;
       case 'tab': u.tab = arg; break;
       case 'blaettern': {
