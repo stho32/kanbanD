@@ -12,7 +12,12 @@ pub fn skalar(s: &str) -> String {
         && !s.ends_with(' ')
         && !matches!(s.to_lowercase().as_str(), "true" | "false" | "yes" | "no" | "on" | "off" | "null" | "~")
         && s.parse::<f64>().is_err();
-    if schlicht { s.to_string() } else { serde_json::to_string(s).expect("String ist JSON") }
+    if schlicht || ist_qualifizierte_herkunft(s) { s.to_string() } else { serde_json::to_string(s).expect("String ist JSON") }
+}
+
+/// `kd:I0007` liest YAML auch in einer Liste als einen Text — ein Doppelpunkt ohne folgendes Leerzeichen trennt nichts.
+fn ist_qualifizierte_herkunft(s: &str) -> bool {
+    s.split_once(':').is_some_and(|(k, id)| !k.is_empty() && id.starts_with(|c: char| c.is_ascii_alphabetic()) && format!("{k}{id}").chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
 pub fn liste(werte: &[String]) -> String {
@@ -73,6 +78,16 @@ mod tests {
             let y = format!("k: {}\n", skalar(s));
             let m = lesen(&y).unwrap();
             assert_eq!(text(&m, "k").unwrap_or_default(), s, "{y}");
+        }
+    }
+
+    #[test]
+    fn qualifizierte_herkunft_bleibt_schlicht_auch_in_der_liste() {
+        assert_eq!(skalar("kd:I0007"), "kd:I0007");
+        assert_eq!(liste(&["kd:I0007".into(), "R00014".into()]), "[kd:I0007, R00014]");
+        assert_eq!(textliste(&lesen("o: [kd:I0007, R00014]\n").unwrap(), "o"), vec!["kd:I0007", "R00014"]);
+        for s in ["a:", ":a", "a: b", "a:b c", "12:30"] {
+            assert_ne!(skalar(s), s, "{s}");
         }
     }
 

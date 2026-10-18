@@ -174,3 +174,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00047 Termine in Wie lange noch | Lauf R00047 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | B0117 Register in kanbanD.md lesen und schreiben | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | B0118 Register prüfen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00053 Anwendungen registrieren | B0119 Qualifizierte Herkunft prüfen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

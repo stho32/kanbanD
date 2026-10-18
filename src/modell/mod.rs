@@ -1,9 +1,11 @@
 //! Die Begriffe von kanbanD als Daten — ohne Dateien, ohne HTTP.
 
+mod anwendungen;
 mod aufgabe;
 mod board;
 mod einstellungen;
 
+pub use anwendungen::{Anwendungen, Herkunftsschluessel, id_gueltig};
 pub use aufgabe::{Aufgabe, Aufgabenaenderung, Kommentar, OHNE_HERKUNFT, Teilaufgabe, Zeiteintrag, herkunft_gueltig};
 pub use board::{Bewegfehler, Board, Linie, Spalte, SpaltenAenderung, Spaltenfehler, Staerke, Termin};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};

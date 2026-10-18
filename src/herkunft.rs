@@ -31,7 +31,7 @@ pub fn wbs_knoten(text: &str) -> Vec<WbsKnoten> {
         }
         let Some(k) = &kopf else { continue };
         let id = z.first().cloned().unwrap_or_default();
-        if !crate::modell::herkunft_gueltig(&id) || id.starts_with('R') {
+        if !crate::modell::id_gueltig(&id) || id.starts_with('R') {
             continue;
         }
         let feld = |name: &str| k.iter().position(|h| h == name).and_then(|p| z.get(p)).cloned().unwrap_or_default();

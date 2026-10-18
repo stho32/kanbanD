@@ -1,4 +1,4 @@
-use super::Einstellungen;
+use super::{Anwendungen, Einstellungen, Herkunftsschluessel};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -98,12 +98,20 @@ fn eindeutig(liste: Vec<String>) -> Vec<String> {
     aus
 }
 
-/// WBS-Knoten (`I0007`, auch A/D/F/B), Anforderung (`R00014`) oder `thin air`.
-pub fn herkunft_gueltig(h: &str) -> bool {
-    let b = h.as_bytes();
-    h == OHNE_HERKUNFT
-        || (b.len() == 5 && b"ADIFB".contains(&b[0]) && b[1..].iter().all(u8::is_ascii_digit))
-        || (b.len() == 6 && b[0] == b'R' && b[1..].iter().all(u8::is_ascii_digit))
+/// `thin air`, eine ID (`I0007`, `R00014`) oder eine ID mit dem Kürzel einer registrierten Anwendung (`kd:I0007`).
+pub fn herkunft_gueltig(h: &str, anwendungen: &Anwendungen) -> bool {
+    h == OHNE_HERKUNFT || Herkunftsschluessel::lesen(h).is_some_and(|s| s.kuerzel.is_none_or(|k| anwendungen.registriert(&k)))
+}
+
+/// Eingabe in Schreibweise der Datei: `thin air` klein, Kürzel klein, ID groß (`KD:i0007` → `kd:I0007`).
+fn herkunft_normalisieren(x: &str) -> String {
+    if x.eq_ignore_ascii_case(OHNE_HERKUNFT) {
+        return OHNE_HERKUNFT.into();
+    }
+    match x.split_once(':') {
+        Some((k, id)) => format!("{}:{}", k.trim().to_lowercase(), id.trim().to_uppercase()),
+        None => x.to_uppercase(),
+    }
 }
 
 fn entfernbar<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
@@ -151,9 +159,13 @@ impl Aufgabe {
             neu.faellig = f.map(Into::into);
         }
         if let Some(h) = &a.herkunft {
-            let h: Vec<String> = h.iter().map(|x| x.trim()).filter(|x| !x.is_empty()).map(|x| if x.eq_ignore_ascii_case(OHNE_HERKUNFT) { OHNE_HERKUNFT.into() } else { x.to_uppercase() }).collect();
-            if let Some(f) = h.iter().find(|x| !herkunft_gueltig(x)) {
-                return Err(format!("„{f}“ ist keine Herkunft — erwartet I0001, R00014 oder thin air"));
+            let h: Vec<String> = h.iter().map(|x| x.trim()).filter(|x| !x.is_empty()).map(herkunft_normalisieren).collect();
+            let anwendungen = Anwendungen::aus(&e.quellen);
+            if let Some(f) = h.iter().find(|x| !herkunft_gueltig(x, &anwendungen)) {
+                return match Herkunftsschluessel::lesen(f).and_then(|s| s.kuerzel) {
+                    Some(k) => Err(format!("„{f}“: Anwendung „{k}“ steht nicht in kanbanD.md")),
+                    None => Err(format!("„{f}“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air")),
+                };
             }
             if h.len() > 1 && h.iter().any(|x| x == OHNE_HERKUNFT) {
                 return Err("„thin air“ steht nur allein".into());
@@ -210,8 +222,10 @@ mod tests {
 
     #[test]
     fn herkunft_pruefen_und_setzen() {
-        assert!(herkunft_gueltig("I0007") && herkunft_gueltig("D0001") && herkunft_gueltig("R00014") && herkunft_gueltig("thin air"));
-        assert!(!herkunft_gueltig("X1") && !herkunft_gueltig("I007") && !herkunft_gueltig("R0001") && !herkunft_gueltig("i0007"));
+        let ohne = Anwendungen::aus(&Default::default());
+        let g = |h: &str| herkunft_gueltig(h, &ohne);
+        assert!(g("I0007") && g("D0001") && g("R00014") && g("thin air"));
+        assert!(!g("X1") && !g("I007") && !g("R0001") && !g("i0007") && !g("kd:I0007"));
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
         assert_eq!(a.aendern(&aend(r#"{"herkunft":["i0007"," R00014 ","I0007"]}"#), &e()).unwrap(), vec!["Herkunft"]);
         assert_eq!(a.herkunft, vec!["I0007", "R00014"]);
@@ -219,6 +233,19 @@ mod tests {
         assert!(a.aendern(&aend(r#"{"herkunft":["Thin Air","I0001"]}"#), &e()).is_err());
         a.aendern(&aend(r#"{"herkunft":["THIN AIR"]}"#), &e()).unwrap();
         assert_eq!(a.herkunft, vec!["thin air"]);
+    }
+
+    #[test]
+    fn qualifizierte_herkunft_braucht_ein_registriertes_kuerzel() {
+        let mut mit = e();
+        mit.quellen.anwendungen = vec![crate::modell::Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), wbs: "/x/plan.md".into(), anforderungen: "".into() }];
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        assert_eq!(a.aendern(&aend(r#"{"herkunft":["KD:i0007","R00014"]}"#), &mit).unwrap(), vec!["Herkunft"]);
+        assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
+        let f = a.aendern(&aend(r#"{"herkunft":["xx:I0007"]}"#), &mit).unwrap_err();
+        assert!(f.contains("Anwendung „xx“"), "{f}");
+        assert!(a.aendern(&aend(r#"{"herkunft":["KD!:I0007"]}"#), &mit).unwrap_err().contains("keine Herkunft"));
+        assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
     }
 
     #[test]

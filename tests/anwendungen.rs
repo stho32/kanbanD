@@ -47,3 +47,21 @@ async fn falsches_kuerzel_doppelt_oder_ohne_name_ist_400() {
     }
     assert!(!lies(tmp.path(), "kanbanD.md").contains("applications"));
 }
+
+const MIT_KD: &str = "---\npeople:\n  st: {name: Stefan, kind: human}\nclasses: {}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {name: kanbanD, wbs: /gibt/es/nicht.md, requirements: \"\"}\n---\n";
+
+#[tokio::test]
+async fn qualifizierte_herkunft_schreiben_unbekanntes_kuerzel_ist_400() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    std::fs::write(tmp.path().join("kanbanD.md"), MIT_KD).unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, _) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/2", "st", json!({"herkunft": ["kd:I0007"]})).await;
+    assert_eq!(s, 200);
+    assert!(lies(tmp.path(), "aufgaben/0002-zwei.md").contains("origins: [kd:I0007]\n"));
+    let (s, f) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/2", "st", json!({"herkunft": ["xx:I0007"]})).await;
+    assert_eq!(s, 400);
+    assert!(f["fehler"].as_str().unwrap().contains("„xx“"));
+    let (_, a) = senden(Method::GET, &lauf.adresse, "api/aufgaben/2", "st", json!(null)).await;
+    assert_eq!(a["aufgabe"]["herkunft"], json!(["kd:I0007"]), "Rundlauf über die Datei");
+}
