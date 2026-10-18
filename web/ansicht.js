@@ -115,7 +115,7 @@ function vFenster() {
 <span class="k">class</span><span class="w"><select data-af="klasse" aria-label="Klasse"><option value="">— keine —</option>${(S.zustand.einstellungen.klassen).map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === a.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}${a.klasse && !cl ? `<option selected>${esc(a.klasse)}</option>` : ''}</select></span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
-${vPhasenFeld(a)}
+${vPhasenFeld(a)}${vZaehlungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
@@ -230,6 +230,15 @@ function vPhasenFeld(a) {
   const namen = [...folge.slice(1).map(p => p.name), ...weg.filter(n => !folge.some(p => p.name === n))];
   if (!namen.length) return '';
   return `<span class="k">phases</span><span class="w wrap" id="phasen-entfallen">${namen.map(n => `<button class="as${weg.includes(n) ? ' an' : ''}" data-act="phase-entfaellt" data-arg="${esc(n)}" aria-pressed="${weg.includes(n)}" title="${weg.includes(n) ? 'entfällt — zählt in dieser Phase nicht; Klick nimmt sie wieder auf' : 'Klick: Phase entfällt für diese Aufgabe'}">${esc(n)} entfällt</button>`).join('')}</span>`;
+}
+/** Feld „Zählt in Berichten“ (R00060): je Bericht ein Schalter; „(Standard)“, solange der Schlüssel fehlt. Klick nimmt aus bzw. setzt zurück. */
+function vZaehlungFeld(a) {
+  const r = a.reporting || {};
+  const schalter = (bericht, name) => {
+    const zaehlt = r[bericht] !== false, standard = !(bericht in r);
+    return `<button class="as${zaehlt ? ' an' : ''}" data-act="zaehlung" data-arg="${bericht}" aria-pressed="${zaehlt}" aria-label="zählt in ${name}" title="${zaehlt ? `zählt in ${name} — Klick nimmt die Aufgabe aus (reporting.${bericht}: false)` : `zählt nicht in ${name} — Klick setzt auf den Standard zurück`}">${name}${standard ? ' <span class="muted">(Standard)</span>' : ''}</button>`;
+  };
+  return `<span class="k">Zählt in Berichten</span><span class="w wrap" id="zaehlung">${schalter('burndown', 'Burndown')}${schalter('forecast', 'Wie lange noch')}</span>`;
 }
 /** Formular einer neuen Wirkung — die Wirkung tritt mit „wirken“ sofort ein. */
 function vWirkungForm(register) {

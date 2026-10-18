@@ -650,6 +650,11 @@ async function act(a, arg, wert) {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
       }
+      case 'zaehlung': {
+        // zählt (Standard oder true) → false; false → Schlüssel entfernen, der Standard gilt wieder
+        const r = aufgabe(u.offen).reporting || {};
+        return aufgabeAendern(u.offen, { reporting: { [arg]: r[arg] === false ? null : false } });
+      }
       case 'phase-entfaellt': {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });

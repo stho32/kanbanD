@@ -264,7 +264,7 @@ zuletzt: 2026-10-18
 | B0185 | Bubble | I0055 | Bewegungen mit reporting | gruen | Test gruen | GET /api/berichte/bewegungen → je Aufgabe zusätzlich reporting {burndown, forecast} aus ihrer Datei; Format in /api/endpunkte | 0,5-1 |  |  |  |  |
 | B0186 | Bubble | I0055 | Burndown zählt nach reporting.burndown | gruen | Test gruen | burndown(bew, …) → Aufgaben mit burndown: false nicht im Umfang, „Nicht enthalten: ausgenommen n“ im Burndown | 0,5-1 |  |  |  |  |
 | B0187 | Bubble | I0055 | Wie lange noch zählt nach reporting.forecast | gruen | Test gruen | prognose(bew, …) → Aufgaben mit forecast: false nicht in Umfang, Nenner und Durchsatz, je Spalte und je Phase; „Nicht enthalten: ausgenommen n“ | 0,5-1 |  |  |  |  |
-| B0188 | Bubble | I0055 | Schalter im Aufgabenfenster | rot | Test gruen | Aufgabenfenster → Abschnitt „Zählt in Berichten“ mit je einem Schalter Burndown und Wie lange noch, „(Standard)“ solange der Schlüssel fehlt → PATCH reporting | 0,5-1 |  |  |  |  |
+| B0188 | Bubble | I0055 | Schalter im Aufgabenfenster | gruen | Test gruen | Aufgabenfenster → Abschnitt „Zählt in Berichten“ mit je einem Schalter Burndown und Wie lange noch, „(Standard)“ solange der Schlüssel fehlt → PATCH reporting | 0,5-1 |  |  |  |  |
 
 ## Offene Fragen
 
