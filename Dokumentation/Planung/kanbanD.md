@@ -49,7 +49,7 @@ zuletzt: 2026-10-18
 | B0020 | Bubble | I0006 | Karten ziehen | gruen | Test gruen | Ziehen mit Einfügelinie → Bewegen | 1-2 |  |  |  |  |
 | I0007 | Interaction | D0002 | Live-Aktualisierung | gelb | US-1..US-3 |  |  |  | I0004 | R00007 | Dateiwächter und Ereignisstrom, Marke extern |
 | B0021 | Bubble | I0007 | Ordner beobachten | gruen | Test gruen | Dateiänderungen → gebündeltes Ereignis mit Pfaden, eigene oder extern | 1-2 |  |  |  |  |
-| B0022 | Bubble | I0007 | Ereignisstrom | rot | Test gruen | Ereignisse → GET /api/ereignisse (Server-Sent Events) | 0,5-1 |  |  |  |  |
+| B0022 | Bubble | I0007 | Ereignisstrom | gruen | Test gruen | Ereignisse → GET /api/ereignisse (Server-Sent Events) | 0,5-1 |  |  |  |  |
 | B0023 | Bubble | I0007 | Sichten nachziehen | rot | Test gruen | Ereignis → neu laden, Marke extern 10 s, Verbindungsmarke | 1-2 |  |  |  |  |
 | I0008 | Interaction | D0002 | Boards wechseln und anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  |  |
 | I0009 | Interaction | D0002 | Spalten einrichten | rot | US der Anforderung |  |  |  | I0008 |  | anlegen, umbenennen, umsortieren, leere entfernen, Grenze |

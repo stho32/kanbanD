@@ -4,6 +4,12 @@ mod statisch;
 
 use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe};
 use crate::fehler::Fehler;
+use crate::waechter::{self, Ereignis};
+use axum::response::sse::{Event, KeepAlive, Sse};
+use futures_util::stream::Stream;
+use tokio::sync::broadcast;
+use tokio_stream::StreamExt;
+use tokio_stream::wrappers::BroadcastStream;
 use axum::extract::{FromRequestParts, Path, State};
 use axum::http::request::Parts;
 use axum::http::StatusCode;
@@ -17,11 +23,26 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct App {
     pub kanban: Arc<Kanban>,
+    pub ereignisse: broadcast::Sender<Ereignis>,
+    _waechter: Option<Arc<notify::RecommendedWatcher>>,
 }
 
 pub fn router(ordner: PathBuf) -> Router {
-    let app = App { kanban: Arc::new(Kanban::neu(ordner)) };
+    let kanban = Arc::new(Kanban::neu(ordner.clone()));
+    let (ereignisse, _) = broadcast::channel(256);
+    let tx = ereignisse.clone();
+    let waechter = match waechter::starten(ordner, kanban.eigene(), move |e| {
+        let _ = tx.send(e);
+    }) {
+        Ok(w) => Some(Arc::new(w)),
+        Err(e) => {
+            eprintln!("Ordner wird nicht beobachtet ({e}) — Änderungen von außen erscheinen erst nach Neuladen.");
+            None
+        }
+    };
+    let app = App { kanban, ereignisse, _waechter: waechter };
     Router::new()
+        .route("/api/ereignisse", get(ereignisstrom))
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
         .route("/api/boards/{slug}", get(board))
@@ -103,4 +124,14 @@ async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>
     })
     .await?;
     Ok(Json(json!({ "bewegt": bewegt })).into_response())
+}
+
+/// Server-Sent Events: je Änderung im Ordner ein `data: {"pfade": […], "extern": …}`.
+async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
+    let strom = BroadcastStream::new(app.ereignisse.subscribe()).map(|e| {
+        // Wer zu langsam liest, bekommt ein leeres Ereignis und lädt einfach alles neu.
+        let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true });
+        Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))
+    });
+    Sse::new(strom).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
 }

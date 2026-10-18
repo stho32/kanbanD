@@ -36,3 +36,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00006 Aufgabe bewegen | B0020 Karten ziehen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00006 Aufgabe bewegen | Lauf R00006 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00007 Live-Aktualisierung | B0021 Ordner beobachten | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00007 Live-Aktualisierung | B0022 Ereignisstrom | Standard | 0,5-1h | 0,0h | 0,0h | autonom |

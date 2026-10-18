@@ -52,3 +52,52 @@ fn git_und_zwischendateien_erzeugen_kein_ereignis() {
     std::fs::write(tmp.path().join("a.kanbanD-tmp"), "x").unwrap();
     assert!(rx.recv_timeout(Duration::from_millis(600)).is_err());
 }
+
+/// Liest SSE-Zeilen `data: …` vom Ereignisstrom, bis `bedingung` erfüllt ist (höchstens 3 s).
+async fn ereignis_abwarten(adresse: &str, ausloesen: impl FnOnce(), bedingung: impl Fn(&serde_json::Value) -> bool) -> serde_json::Value {
+    use futures_util::StreamExt;
+    let antwort = reqwest::get(format!("{adresse}api/ereignisse")).await.unwrap();
+    assert_eq!(antwort.headers()["content-type"], "text/event-stream");
+    let mut strom = antwort.bytes_stream();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    ausloesen();
+    let mut puffer = String::new();
+    let ende = tokio::time::Instant::now() + Duration::from_secs(3);
+    while let Ok(Some(Ok(teil))) = tokio::time::timeout_at(ende, strom.next()).await {
+        puffer.push_str(&String::from_utf8_lossy(&teil));
+        for zeile in puffer.lines() {
+            if let Some(json) = zeile.strip_prefix("data: ") {
+                let v: serde_json::Value = serde_json::from_str(json).unwrap();
+                if bedingung(&v) {
+                    return v;
+                }
+            }
+        }
+    }
+    panic!("kein passendes Ereignis in: {puffer}");
+}
+
+#[tokio::test]
+async fn ereignisstrom_meldet_editor_aenderung_als_extern() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let pfad = tmp.path().join("boards/entwicklung.md");
+    let e = ereignis_abwarten(&lauf.adresse, || std::fs::write(&pfad, "# Entwicklung\n\n## A\n").unwrap(), |v| v["pfade"][0] == "boards/entwicklung.md").await;
+    assert_eq!(e["extern"], true);
+}
+
+#[tokio::test]
+async fn ereignisstrom_meldet_eigenes_anlegen_nicht_als_extern() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let adresse = lauf.adresse.clone();
+    let e = ereignis_abwarten(
+        &lauf.adresse,
+        move || {
+            tokio::spawn(async move { gemeinsam::senden(reqwest::Method::POST, &adresse, "api/aufgaben", "st", serde_json::json!({"titel": "x", "board": "entwicklung"})).await });
+        },
+        |v| v["pfade"].as_array().unwrap().iter().any(|p| p == "aufgaben/0001-x.md"),
+    )
+    .await;
+    assert_eq!(e["extern"], false);
+}
