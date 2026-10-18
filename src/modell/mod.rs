@@ -1,8 +1,10 @@
 //! Die Begriffe von kanbanD als Daten — ohne Dateien, ohne HTTP.
 
+mod aufgabe;
 mod board;
 mod einstellungen;
 
+pub use aufgabe::{Aufgabe, Kommentar, Teilaufgabe, Zeiteintrag};
 pub use board::{Board, Spalte};
 pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
