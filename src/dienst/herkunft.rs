@@ -1,6 +1,6 @@
 use super::Kanban;
 use crate::fehler::Fehler;
-use crate::herkunft::{anforderungsname, wbs_knoten};
+use crate::herkunft::{anforderungsname, wbs_tabelle};
 use crate::modell::{Anwendung, Anwendungen, Aufloesung, Herkunftsschluessel};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -53,7 +53,8 @@ fn wbs_quellen(wurzel: &Path, anwendung: &Anwendung, gesucht: &mut Gesucht, quel
     let wbs = absolut(wurzel, &anwendung.wbs);
     let Ok(text) = std::fs::read_to_string(&wbs) else { return };
     let q = |id: &str| Herkunftsschluessel::qualifiziert(&anwendung.kuerzel, id);
-    let knoten = wbs_knoten(&text);
+    let tabelle = wbs_tabelle(&text);
+    let knoten = tabelle.alle();
     // Auch Knoten, die nur über „Braucht“ erreicht werden, für die Anzeige auflösen.
     let ueber_braucht: Vec<String> = knoten.iter().filter(|k| gesucht.contains_key(&k.id)).flat_map(|k| k.braucht.clone()).collect();
     for b in ueber_braucht {
@@ -61,7 +62,7 @@ fn wbs_quellen(wurzel: &Path, anwendung: &Anwendung, gesucht: &mut Gesucht, quel
     }
     for k in knoten {
         let Some(schreibweisen) = gesucht.get(&k.id) else { continue };
-        let quelle = Quelle { datei: wbs.to_string_lossy().into(), zeile: k.zeile, name: k.name, status: Some(k.status), braucht: k.braucht.iter().map(|b| q(b)).collect(), anwendung: kuerzel_der(anwendung), schluessel: q(&k.id) };
+        let quelle = Quelle { datei: wbs.to_string_lossy().into(), zeile: k.zeile, name: k.name.clone(), status: Some(k.status.clone()), braucht: k.braucht.iter().map(|b| q(b)).collect(), anwendung: kuerzel_der(anwendung), schluessel: q(&k.id) };
         for s in schreibweisen {
             quellen.insert(s.clone(), quelle.clone());
         }

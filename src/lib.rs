@@ -12,4 +12,5 @@ pub mod start;
 pub mod uhr;
 pub mod verlauf;
 pub mod waechter;
+pub mod wbs;
 pub mod web;

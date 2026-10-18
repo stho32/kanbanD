@@ -182,3 +182,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00053 Anwendungen registrieren | B0124 Qualifizierte Herkunft an der Karte | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | Lauf R00053 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00053 Anwendungen registrieren | Lauf R00053 | Konsolidierung | — | — | 0,0h | autonom |
+| 2026-10-18 | R00054 WBS-Sicht | B0125 WBS-Tabelle mit allen Spalten lesen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
