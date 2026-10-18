@@ -1,6 +1,6 @@
 ---
 id: R00014
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,10 +27,10 @@ Zeiten entstehen beim Arbeiten statt im Nachhinein, und jeder sieht, woran gerad
 
 ## Akzeptanzkriterien
 
-- [ ] Start durch `st` → Zeile `<jetzt> · ... · st`; zweiter Start durch `st` → 409; Start durch `cl` → zweite laufende Zeile
-- [ ] Stopp durch `st` mit `{wer: "cl"}` → Claudes Zeile hat ein Ende, Commit-Autor ist Stefan; Stefans Timer läuft weiter
-- [ ] Stopp ohne laufenden Timer → 409
-- [ ] Oberfläche: Timer starten → Karte zeigt die Plakette, Kopfzeile „1 läuft“; im Popover stoppen → Plakette weg
+- [x] Start durch `st` → Zeile `<jetzt> · ... · st`; zweiter Start durch `st` → 409; Start durch `cl` → zweite laufende Zeile
+- [x] Stopp durch `st` mit `{wer: "cl"}` → Claudes Zeile hat ein Ende, Commit-Autor ist Stefan; Stefans Timer läuft weiter
+- [x] Stopp ohne laufenden Timer → 409
+- [x] Oberfläche: Timer starten → Karte zeigt die Plakette, Kopfzeile „1 läuft“; im Popover stoppen → Plakette weg
 
 ## Betroffene Verzeichnisstruktur
 
