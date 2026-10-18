@@ -66,6 +66,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
+        .route("/api/aufgaben/{nr}/archivieren", post(archivieren))
+        .route("/api/aufgaben/{nr}/zurueckholen", post(zurueckholen))
         .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/api/aufgaben/{nr}/anhaenge/{name}", get(anhang_lesen).delete(anhang_entfernen))
         .route("/api/aufgaben/{nr}/zeiten/{i}", axum::routing::patch(zeit_korrigieren).delete(zeit_loeschen))
@@ -330,4 +332,12 @@ async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)
     })
     .await?;
     Ok(Json(json!({ "entfernt": true })).into_response())
+}
+
+async fn archivieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.archivieren(p, nr)).await
+}
+
+async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zurueckholen(p, nr)).await
 }

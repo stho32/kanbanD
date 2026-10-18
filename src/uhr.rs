@@ -7,6 +7,11 @@ pub fn jetzt() -> String {
     chrono::Local::now().naive_local().format(ZEITFORMAT).to_string()
 }
 
+/// Heute in Ortszeit als `JJJJ-MM-TT`.
+pub fn heute() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
 /// Minuten zwischen zwei Zeitpunkten der Form `JJJJ-MM-TT HH:MM` (nie negativ).
 pub fn minuten(beginn: &str, ende: &str) -> Option<i64> {
     let b = chrono::NaiveDateTime::parse_from_str(beginn, ZEITFORMAT).ok()?;
