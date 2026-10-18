@@ -19,7 +19,7 @@ test.describe('R00031', () => {
     await expect(page.getByRole('status')).toContainText('#1 nach „Erledigt“');
     await page.getByRole('status').getByRole('button', { name: 'rückgängig' }).click();
     await expect(page.locator('.bahn[data-col="Zu erledigen"] .ka .id')).toHaveText(['#1', '#2']);
-    expect(k.git('log', '-2', '--format=%s').split('\n')).toEqual(['#1 nach „Zu erledigen“ (Entwicklung)', '#1 nach „Erledigt“ (Entwicklung)']);
+    await expect.poll(() => k.git('log', '-2', '--format=%s').split('\n')).toEqual(['#1 nach „Zu erledigen“ (Entwicklung)', '#1 nach „Erledigt“ (Entwicklung)']);
   });
 
   test('US-2: Strg+Z nach Umschalt+Pfeil, nicht im Eingabefeld', async ({ page }) => {
@@ -27,6 +27,7 @@ test.describe('R00031', () => {
     await page.locator('.ka[data-id="2"]').focus();
     await page.keyboard.press('Shift+ArrowRight');
     await expect(page.locator('.bahn[data-col="In Arbeit"] .ka[data-id="2"]')).toBeVisible();
+    await expect(page.getByRole('status')).toContainText('#2 nach „In Arbeit“');
     await page.getByLabel('Filter').focus();
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(300);
