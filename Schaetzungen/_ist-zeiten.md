@@ -52,3 +52,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00011 Aufgabe ansehen und bearbeiten | B0031 Aufgabe ändern | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00011 Aufgabe ansehen und bearbeiten | B0032 Aufgabe lesen und ändern über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00011 Aufgabe ansehen und bearbeiten | B0033 Aufgabenfenster | Standard | 2-3h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00011 Aufgabe ansehen und bearbeiten | Lauf R00011 | Nacharbeit | — | — | 0,0h | autonom |

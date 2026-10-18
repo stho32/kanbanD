@@ -1,6 +1,6 @@
 ---
 id: R00011
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,12 +27,12 @@ Alles Wesentliche einer Aufgabe an einem Ort, ohne dass jemand das Dateiformat k
 
 ## Akzeptanzkriterien
 
-- [ ] `PATCH {titel: "Neu", klasse: "bug", labels: ["ui", "daten"], faellig: "2026-12-24"}` schreibt diese Felder; `git log -1` lautet `#1 geändert: Titel, Klasse, Labels, Fälligkeit`
-- [ ] `PATCH {klasse: null}` entfernt `class:`; `PATCH {klasse: "gibtsnicht"}` → 400; `PATCH {faellig: "24.12."}` → 400; `PATCH {titel: ""}` → 400
-- [ ] Gleiche Werte → kein Commit
-- [ ] Defekte Datei: `GET` → 423 mit Text; `PATCH` → 423
-- [ ] Oberfläche: Karte öffnen, Titel ändern, Tab verlassen → Karte zeigt neuen Titel, Datei geändert
-- [ ] Oberfläche: Reiter „Datei“ zeigt den Dateitext; ↓ wechselt zur nächsten Karte; Esc schließt
+- [x] `PATCH {titel: "Neu", klasse: "bug", labels: ["ui", "daten"], faellig: "2026-12-24"}` schreibt diese Felder; `git log -1` lautet `#1 geändert: Titel, Klasse, Labels, Fälligkeit`
+- [x] `PATCH {klasse: null}` entfernt `class:`; `PATCH {klasse: "gibtsnicht"}` → 400; `PATCH {faellig: "24.12."}` → 400; `PATCH {titel: ""}` → 400
+- [x] Gleiche Werte → kein Commit
+- [x] Defekte Datei: `GET` → 423 mit Text; `PATCH` → 423
+- [x] Oberfläche: Karte öffnen, Titel ändern, Tab verlassen → Karte zeigt neuen Titel, Datei geändert
+- [x] Oberfläche: Reiter „Datei“ zeigt den Dateitext; ↓ wechselt zur nächsten Karte; Esc schließt
 
 ## Betroffene Verzeichnisstruktur
 
