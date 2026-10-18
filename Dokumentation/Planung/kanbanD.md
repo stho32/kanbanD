@@ -140,7 +140,7 @@ zuletzt: 2026-10-18
 | B0085 | Bubble | I0032 | Wieder verbunden und leere Flächen | gruen | Test gruen | Verbindung zurück → Hinweis; leeres Board → Hilfetext zu + Karte, n und Einfügen | 0,5-1 |  |  |  |  |
 | I0033 | Interaction | D0002 | Kontextmenü der Karte | gelb | US-1..US-3 |  |  |  | I0029 | R00033 | UX-Überarbeitung 2: Rechtsklick oder Menütaste: öffnen, Timer, mich, umbenennen, verschieben, Klasse, Fälligkeit, Board, archivieren |
 | B0086 | Bubble | I0033 | Menü der Karte zusammenstellen | gruen | Test gruen | Aufgabe + Board + Person → Menüeinträge mit Kürzeln und Untermenüs; Tastennavigation im Menü | 1-2 |  |  |  |  |
-| B0087 | Bubble | I0033 | Kontextmenü zeigen und bedienen | rot | Test gruen | Rechtsklick, Menütaste oder Umschalt+F10 → Menü an der Karte, Maus und Tastatur, Untermenüs | 2-3 |  |  |  |  |
+| B0087 | Bubble | I0033 | Kontextmenü zeigen und bedienen | gruen | Test gruen | Rechtsklick, Menütaste oder Umschalt+F10 → Menü an der Karte, Maus und Tastatur, Untermenüs | 2-3 |  |  |  |  |
 | B0088 | Bubble | I0033 | Neue Kartenkürzel | rot | Test gruen | a archivieren, 1–9 in Spalte n, c Verweis kopieren | 0,5-1 |  |  |  |  |
 | I0034 | Interaction | D0002 | Kontextmenüs für Spalten und Listen | rot | US der Anforderung |  |  |  | I0033 |  | UX-Überarbeitung 2: Spaltenkopf: Karte hinzufügen, alle archivieren, Spalten einrichten; Zeilen der Aufgabenliste |
 | I0035 | Interaction | D0002 | Tastenkürzel überall | rot | US der Anforderung |  |  |  | I0026 |  | UX-Überarbeitung 2: g-Folgen für Seiten, Kürzel im Fenster und in der Aufgabenliste, Hilfe je Ort |

@@ -75,7 +75,7 @@ async function laden() {
       S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; S.boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null,
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
-      S.ui.view === 'aufgaben' ? api('GET', '/api/boards') : null,
+      api('GET', '/api/boards'),
     ]);
     S.boards = boards;
     S.verlauf = S.ui.view === 'berichte/verlauf' && S.ui.slug ? await api('GET', '/api/berichte/verlauf?board=' + encodeURIComponent(S.ui.slug)) : null;
@@ -150,7 +150,8 @@ function render() {
   document.title = fenstertitel();
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
-  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '');
+  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
+  menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
@@ -342,6 +343,20 @@ async function act(a, arg, wert) {
         return;
       }
       case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${arg}`); return;
+      case 'verschieben': { const [nr, spalte] = arg.split('|'); u.fokusKarte = +nr; return act('bewegen', JSON.stringify({ nummer: +nr, spalte, index: 9999 })); }
+      case 'klasse-setzen': { const [nr, k] = arg.split('|'); if (ichNoetig()) break; return aufgabeAendern(+nr, { klasse: k || null }); }
+      case 'faellig-karte': {
+        const [nr, n] = arg.split('|');
+        if (ichNoetig()) break;
+        const d = new Date(); d.setDate(d.getDate() + (+n || 0));
+        return aufgabeAendern(+nr, { faellig: n === '' ? null : isoD(d) });
+      }
+      case 'kopieren': {
+        const a = aufgabe(+arg), text = `#${a.nummer} ${a.titel}`;
+        try { await navigator.clipboard.writeText(text); u.hinweis = { text: `„${text}“ kopiert`, at: Date.now() }; }
+        catch (_) { u.hinweis = { text: `Kopieren nicht erlaubt — ${text}`, at: Date.now() }; }
+        break;
+      }
       case 'mich': {
         if (ichNoetig()) break;
         const a = aufgabe(+arg), z = a.zustaendige.includes(S.ich) ? a.zustaendige.filter(k => k !== S.ich) : [...a.zustaendige, S.ich];
@@ -465,6 +480,15 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('click', e => {
+  if (S.ui.menue) {
+    const z = e.target.closest('.km-e[data-mp]');
+    if (!z) { if (!e.target.closest('#kmenue')) menueZu(); return; }
+    const pfad = z.dataset.mp.split('.').map(Number);
+    const eintrag = pfad.length === 1 ? S.ui.menue.eintraege[pfad[0]] : S.ui.menue.eintraege[pfad[0]].unter[pfad[1]];
+    if (eintrag.unter) { S.ui.menue.index = pfad[0]; S.ui.menue.unter = { von: pfad[0], eintraege: eintrag.unter, index: menueSchritt(eintrag.unter, -1, 1) }; render(); return; }
+    menueAusfuehren(eintrag);
+    return;
+  }
   if (e.target.closest('a[href^="vscode:"]')) return;
   if (e.target.closest('.menue a[href^="#"]')) { S.ui.pop = null; return; }
   const el = e.target.closest('[data-act]');
@@ -528,6 +552,7 @@ window.addEventListener('hashchange', laden);
 window.addEventListener('resize', popPlatzieren);
 document.addEventListener('keydown', e => {
   const t = e.target;
+  if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
@@ -564,6 +589,75 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* Kontextmenü: Modell aus menue.js, Zustand in S.ui.menue = {titel, x, y, eintraege, index, unter: {von, eintraege, index}} */
+function menueFuerKarte(nr, x, y) {
+  const a = aufgabe(nr);
+  if (!a || !S.board) return;
+  const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
+  const boards = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
+  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
+  S.ui.fokusKarte = nr;
+  S.ui.pop = null;
+  S.ui.menue = { titel: `#${nr} ${a.titel}`, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
+  render();
+}
+function menueEinpassen() {
+  const el = $('#kmenue');
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (r.right > innerWidth - 4) el.style.left = Math.max(4, innerWidth - r.width - 4) + 'px';
+  if (r.bottom > innerHeight - 4) el.style.top = Math.max(4, innerHeight - r.height - 4) + 'px';
+  el.querySelectorAll('.kmenue.unter').forEach(u => { const ur = u.getBoundingClientRect(); if (ur.right > innerWidth - 4) u.classList.add('links'); });
+}
+function menueZu() { S.ui.menue = null; render(); }
+function menueAusfuehren(e) {
+  if (!e || e.trenner || e.aktuell) return;
+  if (e.unter) return;
+  S.ui.menue = null;
+  act(e.act, e.arg);
+  render();
+}
+function menueTaste(ev) {
+  const m = S.ui.menue;
+  const ebene = m.unter || m;
+  const k = ev.key;
+  ev.preventDefault();
+  if (k === 'Escape' || k === 'Tab') { menueZu(); return; }
+  if (k === 'ArrowDown' || k === 'ArrowUp') ebene.index = menueSchritt(ebene.eintraege, ebene.index, k === 'ArrowDown' ? 1 : -1);
+  else if (k === 'Home' || k === 'End') ebene.index = menueSchritt(ebene.eintraege, ebene.index, k === 'Home' ? 'anfang' : 'ende');
+  else if (k === 'ArrowLeft' && m.unter) m.unter = null;
+  else if ((k === 'ArrowRight' || k === 'Enter' || k === ' ') && !m.unter && m.eintraege[m.index] && m.eintraege[m.index].unter) {
+    const u = m.eintraege[m.index].unter;
+    m.unter = { von: m.index, eintraege: u, index: menueSchritt(u, -1, 1) };
+  } else if (k === 'Enter' || k === ' ') { menueAusfuehren(ebene.eintraege[ebene.index]); return; }
+  else {
+    // Kürzel im Menü: wie auf dem Board
+    const treffer = ebene.eintraege.find(e => e.kuerzel && e.kuerzel.toLowerCase() === k.toLowerCase() && !e.aktuell);
+    if (treffer) { menueAusfuehren(treffer); return; }
+  }
+  render();
+}
+document.addEventListener('contextmenu', e => {
+  const karte = e.target.closest && e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)');
+  if (!karte || S.ui.view !== 'board') return;
+  e.preventDefault();
+  menueFuerKarte(+karte.dataset.id, e.clientX, e.clientY);
+});
+document.addEventListener('mouseover', e => {
+  const m = S.ui.menue;
+  const z = m && e.target.closest && e.target.closest('.km-e[data-mp]');
+  if (!z) return;
+  const pfad = z.dataset.mp.split('.').map(Number);
+  if (pfad.length === 1) {
+    if (m.index === pfad[0] && (!m.unter || m.unter.von === pfad[0])) return;
+    m.index = pfad[0];
+    const eintrag = m.eintraege[pfad[0]];
+    m.unter = eintrag.unter ? { von: pfad[0], eintraege: eintrag.unter, index: -1 } : null;
+  } else if (m.unter && m.unter.index !== pfad[1]) m.unter.index = pfad[1];
+  else return;
+  render();
+});
+
 /* Tastatur auf dem Board: Pfeile wählen, Umschalt+Pfeile verschieben, Enter öffnet, n legt an, ? hilft. */
 const RICHTUNG = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'hoch', ArrowDown: 'runter' };
 function brettTaste(e, t) {
@@ -573,6 +667,22 @@ function brettTaste(e, t) {
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === '?') { u.hilfe = true; render(); return true; }
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
+  if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+    e.preventDefault();
+    const r = karte.getBoundingClientRect();
+    menueFuerKarte(nr, r.left + 24, r.top + 24);
+    return true;
+  }
+  if (karte && aufgabe(nr) && (e.key === 'a' || e.key === 'c' || /^[1-9]$/.test(e.key))) {
+    e.preventDefault();
+    if (e.key === 'a') act('archivieren', String(nr));
+    else if (e.key === 'c') act('kopieren', String(nr));
+    else {
+      const sp = S.board.spalten[+e.key - 1];
+      if (sp && !sp.aufgaben.includes(nr)) act('verschieben', `${nr}|${sp.name}`);
+    }
+    return true;
+  }
   if (karte && (e.key === 't' || e.key === 'm' || e.key === 'F2')) {
     e.preventDefault();
     const a = aufgabe(nr);

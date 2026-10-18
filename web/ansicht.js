@@ -219,7 +219,7 @@ function vDefektFenster() {
   if (!d) return '';
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div><div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
-const KUERZEL = [['Strg + Z', 'letzte Bewegung / Anlage rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Umschalt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Enter', 'Karte öffnen'], ['n', 'neue Karte in dieser Spalte'], ['/', 'Filter'], ['↑ ↓ im Fenster', 'vorige / nächste Karte'], ['Esc', 'schließen, Filter leeren'], ['?', 'diese Übersicht']];
+const KUERZEL = [['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · m · F2', 'Timer · mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Bewegung / Anlage rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Umschalt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Enter', 'Karte öffnen'], ['n', 'neue Karte in dieser Spalte'], ['/', 'Filter'], ['↑ ↓ im Fenster', 'vorige / nächste Karte'], ['Esc', 'schließen, Filter leeren'], ['?', 'diese Übersicht']];
 function vHilfe() {
   return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" role="dialog" aria-label="Tastaturkürzel"><h3>TASTATURKÜRZEL</h3><table>${KUERZEL.map(([k, t]) => `<tr><td>${k.split(' ').map(x => x === '+' ? ' + ' : `<kbd>${esc(x)}</kbd>`).join('')}</td><td>${esc(t)}</td></tr>`).join('')}</table></div></div>`;
 }
@@ -227,6 +227,21 @@ function vHilfe() {
 function sichtbareSpalten() {
   if (!S.board) return [];
   return [...document.querySelectorAll('.bahn[data-col]')].map(b => ({ name: b.dataset.col, karten: [...b.querySelectorAll('.ka[data-id]')].map(k => +k.dataset.id) }));
+}
+
+/* ── Kontextmenü ── */
+function vMenueEintraege(eintraege, ebene, aktiv, pfad) {
+  return eintraege.map((e, i) => {
+    if (e.trenner) return '<div class="km-tr" role="separator"></div>';
+    const p = pfad === '' ? String(i) : `${pfad}.${i}`;
+    const unterOffen = ebene.unter && ebene.unter.von === i;
+    return `<div class="km-e${i === ebene.index ? ' an' : ''}${e.aktuell ? ' km-aktuell' : ''}" role="menuitem" data-mp="${p}"${e.unter ? ' aria-haspopup="true"' : ''}${e.aktuell ? ' aria-disabled="true"' : ''}>${e.aktuell ? '✓ ' : ''}${esc(e.text)}<span class="km-k">${e.unter ? '▸' : esc(e.kuerzel || '')}</span>${unterOffen ? `<div class="kmenue unter" role="menu">${vMenueEintraege(e.unter, ebene.unter, aktiv, p)}</div>` : ''}</div>`;
+  }).join('');
+}
+function vMenue() {
+  const m = S.ui.menue;
+  if (!m) return '';
+  return `<div class="kmenue" id="kmenue" role="menu" aria-label="${esc(m.titel)}" style="left:${m.x}px;top:${m.y}px"><div class="km-titel">${esc(m.titel)}</div>${vMenueEintraege(m.eintraege, m, true, '')}</div>`;
 }
 
 function vDefektePop() {
