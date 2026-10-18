@@ -2,7 +2,7 @@
 
 mod statisch;
 
-use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe};
+use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard};
 use crate::fehler::Fehler;
 use crate::waechter::{self, Ereignis};
 use axum::response::sse::{Event, KeepAlive, Sse};
@@ -52,6 +52,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/ereignisse", get(ereignisstrom))
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
+        .route("/api/boards", post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
         .route("/api/boards/{slug}/bewegen", post(bewegen))
         .route("/api/wer", get(wer))
@@ -145,4 +146,13 @@ async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<
         Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))
     });
     Sse::new(strom).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+}
+
+async fn board_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<NeuesBoard>) -> Result<Response, Fehler> {
+    let slug = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.board_anlegen(&p, &neu)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(json!({ "board": slug }))).into_response())
 }

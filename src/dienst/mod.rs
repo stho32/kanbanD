@@ -2,10 +2,12 @@
 
 mod aufgabe_anlegen;
 mod bewegen;
+mod board_anlegen;
 mod einrichten;
 
 pub use aufgabe_anlegen::NeueAufgabe;
 pub use bewegen::Bewegung;
+pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
 
 use crate::ablage::{DefekteDatei, Ordner};

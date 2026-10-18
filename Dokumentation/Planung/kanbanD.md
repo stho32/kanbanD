@@ -51,8 +51,8 @@ zuletzt: 2026-10-18
 | B0021 | Bubble | I0007 | Ordner beobachten | gruen | Test gruen | Dateiänderungen → gebündeltes Ereignis mit Pfaden, eigene oder extern | 1-2 |  |  |  |  |
 | B0022 | Bubble | I0007 | Ereignisstrom | gruen | Test gruen | Ereignisse → GET /api/ereignisse (Server-Sent Events) | 0,5-1 |  |  |  |  |
 | B0023 | Bubble | I0007 | Sichten nachziehen | gruen | Test gruen | Ereignis → neu laden, Marke extern 10 s, Verbindungsmarke | 1-2 |  |  |  |  |
-| I0008 | Interaction | D0002 | Boards wechseln und anlegen | rot | US-1..US-3 |  |  |  | I0003, I0004 | R00008 |  |
-| B0024 | Bubble | I0008 | Board anlegen | rot | Test gruen | Titel, Spalten, Person → boards/<slug>.md, ein Commit; POST /api/boards | 0,5-1 |  |  |  |  |
+| I0008 | Interaction | D0002 | Boards wechseln und anlegen | gelb | US-1..US-3 |  |  |  | I0003, I0004 | R00008 |  |
+| B0024 | Bubble | I0008 | Board anlegen | gruen | Test gruen | Titel, Spalten, Person → boards/<slug>.md, ein Commit; POST /api/boards | 0,5-1 |  |  |  |  |
 | B0025 | Bubble | I0008 | Board-Umschalter | rot | Test gruen | Klick auf den Boardnamen → Liste der Boards, Wechsel, neues Board | 1-2 |  |  |  |  |
 | I0009 | Interaction | D0002 | Spalten einrichten | rot | US der Anforderung |  |  |  | I0008 |  | anlegen, umbenennen, umsortieren, leere entfernen, Grenze |
 | I0010 | Interaction | D0001 | Personen und Klassen pflegen | rot | US der Anforderung |  |  |  | I0003 |  | stilllegen statt entfernen |

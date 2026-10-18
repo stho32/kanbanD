@@ -38,17 +38,8 @@ impl Einrichtung {
             }
             kuerzel.push(p.kuerzel.clone());
         }
-        if self.board.trim().is_empty() || slug(&self.board).is_empty() {
-            return Err(Fehler::Ungueltig("Das Board braucht einen Namen aus Buchstaben oder Ziffern".into()));
-        }
-        let spalten: Vec<&str> = self.spalten.iter().map(|s| s.trim()).collect();
-        if spalten.is_empty() || spalten.iter().any(|s| s.is_empty()) {
-            return Err(Fehler::Ungueltig("Mindestens eine Spalte, keine ohne Namen".into()));
-        }
-        if let Some(d) = spalten.iter().enumerate().find(|(i, s)| spalten[..*i].contains(s)) {
-            return Err(Fehler::Ungueltig(format!("Spalte „{}“ ist doppelt", d.1)));
-        }
-        Ok(())
+        boardname_pruefen(&self.board)?;
+        spalten_pruefen(&self.spalten)
     }
 
     fn ich(&self) -> Person {
@@ -71,6 +62,24 @@ impl Einrichtung {
             spalten: self.spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![] }).collect(),
         }
     }
+}
+
+pub(crate) fn boardname_pruefen(titel: &str) -> Result<(), Fehler> {
+    if slug(titel).is_empty() {
+        return Err(Fehler::Ungueltig("Das Board braucht einen Namen aus Buchstaben oder Ziffern".into()));
+    }
+    Ok(())
+}
+
+pub(crate) fn spalten_pruefen(spalten: &[String]) -> Result<(), Fehler> {
+    let spalten: Vec<&str> = spalten.iter().map(|s| s.trim()).collect();
+    if spalten.is_empty() || spalten.iter().any(|s| s.is_empty()) {
+        return Err(Fehler::Ungueltig("Mindestens eine Spalte, keine ohne Namen".into()));
+    }
+    if let Some(d) = spalten.iter().enumerate().find(|(i, s)| spalten[..*i].contains(s)) {
+        return Err(Fehler::Ungueltig(format!("Spalte „{}“ ist doppelt", d.1)));
+    }
+    Ok(())
 }
 
 impl Kanban {
