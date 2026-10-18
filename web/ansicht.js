@@ -36,7 +36,7 @@ function vKopf() {
   if (u.setup) return `<header class="kz modus"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button></div></div></header>`;
   if (!z.eingerichtet || u.first) return `<header class="kz"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></header>`;
   const b = S.board;
-  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>${b && u.view === 'board' ? `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button></div>` : ''}<div class="kz-z3">${vLaufKnopf()}${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
+  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}">Aufgaben</a><a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>${u.view === 'aufgaben' ? vListenWerk() : ''}${b && u.view === 'board' ? `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button></div>` : ''}<div class="kz-z3">${vLaufKnopf()}${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
 }
 
 const UHR = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
@@ -130,6 +130,7 @@ function vPop() {
   const u = S.ui;
   if (u.pop === 'board') return vBoardPop();
   if (u.pop === 'lauf') return alleLaufenden().length ? vLaufPop() : '';
+  if (u.pop === 'legen') return vLegenPop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -222,6 +223,33 @@ function vLegende() {
 function vHinweis() {
   const t = S.ui.hinweis;
   return t ? `<div class="toast" role="status">${esc(t.text)}${t.rueckgaengig ? `<button class="lnk" data-act="zurueckholen" data-arg="${t.rueckgaengig}">rückgängig</button>` : ''}</div>` : '';
+}
+
+/* ── Aufgabenliste (Artboard D0004) ── */
+const liegtAuf = a => (S.boards || []).flatMap(b => b.spalten.filter(sp => sp.aufgaben.includes(a.nummer)).map(sp => ({ b, sp })));
+function listenBereich(a, bereich) {
+  if (bereich === 'archiv') return !!a.archiviert;
+  if (bereich === 'ohne') return !a.archiviert && !liegtAuf(a).length;
+  return true;
+}
+function vListenWerk() {
+  const u = S.ui, zahl = b => S.aufgaben.filter(a => listenBereich(a, b)).length;
+  return `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Aufgabenbereich">${[['alle', 'alle'], ['ohne', 'ohne Board'], ['archiv', 'archiviert']].map(([k, t]) => `<span class="${u.listBereich === k ? 'an' : ''}" data-act="list-bereich" data-arg="${k}" role="radio" aria-checked="${u.listBereich === k}">${t} <span class="mono">${zahl(k)}</span></span>`).join('')}</span></div>`;
+}
+function vAufgaben() {
+  const u = S.ui, me = ichPerson();
+  const zeilen = S.aufgaben.filter(a => listenBereich(a, u.listBereich) && passt(a, u.filter, { ich: S.ich, bereich: 'alle', personen: personen() })).map(a => {
+    const cl = klasse(a.klasse), orte = liegtAuf(a);
+    return `<tr class="${a.archiviert ? 'ruhe' : ''}" data-zeile="${a.nummer}"><td class="mono">#${a.nummer}</td><td class="tt"><a href="#" data-act="oeffnen" data-arg="${a.nummer}">${esc(a.titel)}</a>${a.archiviert ? ` <span class="lbl">archiviert ${esc(a.archiviert)}</span>` : ''}</td><td>${cl ? `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>` : a.klasse ? esc(a.klasse) : ''}</td><td><span class="avs">${a.zustaendige.map(pk).join('')}</span></td><td class="orte">${orte.length ? orte.map(({ b, sp }) => `<span class="lbl ort">${esc(b.titel)} · ${esc(sp.name)}<button class="lnk" data-act="abnehmen" data-arg="${esc(b.slug)}|${a.nummer}" title="von ${esc(b.titel)} nehmen" aria-label="#${a.nummer} von ${esc(b.titel)} nehmen">✕</button></span>`).join(' ') : '<span class="muted">auf keinem Board</span>'}</td><td>${a.archiviert ? `<button class="btn" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button>` : `<button class="btn" id="leg-${a.nummer}" data-act="legen-pop" data-arg="${a.nummer}" aria-haspopup="true">auf Board legen ▾</button>`}</td></tr>`;
+  }).join('');
+  return `<div class="leiste"><b>Aufgaben</b><span class="muted">alle Dateien unter aufgaben/ · eine Aufgabe kann auf mehreren Boards liegen</span><div class="rechts"><input class="inp" id="liste-neu" placeholder="${me ? '+ Aufgabe ohne Board · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="liste-neu" style="width:280px" aria-label="Neue Aufgabe ohne Board"${me ? '' : ' disabled'}></div></div>
+<div class="body"><table class="pt dicht liste"><thead><tr><th>#</th><th>Titel</th><th>Klasse</th><th>Zuständig</th><th>Liegt auf</th><th></th></tr></thead><tbody>${zeilen || '<tr><td colspan="6" class="muted">keine Aufgaben in diesem Bereich</td></tr>'}</tbody></table></div>`;
+}
+function vLegenPop() {
+  const nr = S.ui.legenNr, a = aufgabe(nr);
+  if (!a) return '';
+  const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)));
+  return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu"><h4>#${nr} AUF BOARD LEGEN</h4>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen ── */

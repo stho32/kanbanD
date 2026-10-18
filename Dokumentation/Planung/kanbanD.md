@@ -17,7 +17,7 @@ zuletzt: 2026-10-18
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
-| D0004 | Dialog | A0001 | Aufgabenliste | gelb | alle Interactions gruen |  |  |  |  | R00020 |  |
+| D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0006 | Dialog | A0001 | Berichte | rot | alle Interactions gruen |  |  |  |  |  |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | rot | alle Interactions gruen |  |  |  |  |  | ohne eigenen Bildschirm ausser der API-Beschreibung |
@@ -93,10 +93,10 @@ zuletzt: 2026-10-18
 | I0019 | Interaction | D0002 | Filtern | gruen | US-1..US-3 |  |  |  | I0005, I0010 | R00019 | Text, class:, origin:, @person, is:archived |
 | B0052 | Bubble | I0019 | Filter auswerten | gruen | Test gruen | Filtertext + Aufgabe → passt/passt nicht (Text, #nr, @kürzel, class:, origin:, label:, is:archived) | 1-2 |  |  |  |  |
 | B0053 | Bubble | I0019 | Filterleiste und Legende | gruen | Test gruen | Eingabe in der Kopfzeile, alle/meine/Agenten, Legende der Klassen mit Zahl, / setzt den Fokus | 1-2 |  |  |  |  |
-| I0020 | Interaction | D0004 | Aufgabenliste und Board-Zuordnung | gelb | US-1..US-3 |  |  |  | I0008, I0017 | R00020 | alle Aufgaben, ohne Board, Archiv; auf Board legen und abnehmen |
+| I0020 | Interaction | D0004 | Aufgabenliste und Board-Zuordnung | gruen | US-1..US-3 |  |  |  | I0008, I0017 | R00020 | alle Aufgaben, ohne Board, Archiv; auf Board legen und abnehmen |
 | B0054 | Bubble | I0020 | Auf Board legen und abnehmen | gruen | Test gruen | Board + Nummer (+ Spalte) → Zeile anhängen bzw. entfernen, ein Commit | 1-2 |  |  |  |  |
 | B0055 | Bubble | I0020 | Alle Boards liefern | gruen | Test gruen | boards/*.md → GET /api/boards mit Struktur | 0,5-1 |  |  |  |  |
-| B0056 | Bubble | I0020 | Aufgabenliste | rot | Test gruen | #/aufgaben: alle/ohne Board/archiviert, Liegt auf, auf Board legen, abnehmen, anlegen ohne Board | 2-3 |  |  |  |  |
+| B0056 | Bubble | I0020 | Aufgabenliste | gruen | Test gruen | #/aufgaben: alle/ohne Board/archiviert, Liegt auf, auf Board legen, abnehmen, anlegen ohne Board | 2-3 |  |  |  |  |
 | I0021 | Interaction | D0005 | Personenübersicht | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0022 | Interaction | D0006 | Stundenzettel und CSV | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0023 | Interaction | D0006 | Burndown und Durchlaufzeit | rot | US der Anforderung |  |  |  | I0006 |  | aus der Git-Geschichte |

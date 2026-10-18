@@ -4,6 +4,7 @@ const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { ret
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
 S.ui.bereich = gemerkt('kanbanD.bereich') || 'alle';
+S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
 
 function filterSetzen(text) {
   S.ui.filter = text;
@@ -28,7 +29,15 @@ async function api(methode, pfad, daten) {
 }
 
 function ansichtAusAdresse() {
-  return /^#\/einrichten/.test(location.hash) ? 'einrichten' : 'board';
+  return /^#\/einrichten/.test(location.hash) ? 'einrichten' : /^#\/aufgaben/.test(location.hash) ? 'aufgaben' : 'board';
+}
+
+function vHaupt() {
+  if (S.ui.first) return vFirst();
+  if (S.ui.setup) return vSetup();
+  if (S.ui.view === 'einrichten' && S.ui.einr) return vEinrichten();
+  if (S.ui.view === 'aufgaben') return vAufgaben();
+  return vBoard();
 }
 
 const kopie = x => JSON.parse(JSON.stringify(x));
@@ -49,11 +58,13 @@ async function laden() {
     if (S.ui.view !== 'einrichten') S.ui.einr = null;
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
-    const [board, aufgaben, herkunft] = await Promise.all([
+    const [board, aufgaben, herkunft, boards] = await Promise.all([
       S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null,
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
+      S.ui.view === 'aufgaben' ? api('GET', '/api/boards') : null,
     ]);
+    S.boards = boards;
     S.herkunft = herkunft;
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
@@ -108,7 +119,7 @@ async function aufgabeAendern(nummer, aenderung) {
 
 function render() {
   $('#kopf').innerHTML = vKopf();
-  $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : S.ui.view === 'einrichten' && S.ui.einr ? vEinrichten() : vBoard();
+  $('#main').innerHTML = vHaupt();
   $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop() + vHinweis();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -218,6 +229,27 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
         if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
         break;
+      }
+      case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
+      case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;
+      case 'legen': {
+        if (ichNoetig()) break;
+        const [slug, nr, spalte] = arg.split('|');
+        u.pop = null;
+        await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben`, { nummer: +nr, spalte });
+        return;
+      }
+      case 'abnehmen': {
+        if (ichNoetig()) break;
+        const [slug, nr] = arg.split('|');
+        await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
+        return;
+      }
+      case 'liste-neu': {
+        if (!(wert || '').trim() || ichNoetig()) break;
+        u.fokus = '#liste-neu';
+        await schreiben('POST', '/api/aufgaben', { titel: wert.trim() });
+        return;
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'herkunft-neu': {
@@ -355,7 +387,7 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
-    $('#main').innerHTML = S.ui.setup ? vSetup() : vBoard();
+    $('#main').innerHTML = vHaupt();
     return;
   }
   const sf = e.target.dataset && e.target.dataset.sf;
