@@ -46,6 +46,7 @@ async function laden() {
     ]);
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
+    if (S.ui.offen) await dateiLaden();
   }
   render();
 }
@@ -57,10 +58,24 @@ function ichNoetig() {
   return true;
 }
 
+async function dateiLaden() {
+  try { S.ui.datei = await api('GET', '/api/aufgaben/' + S.ui.offen); }
+  catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; }
+}
+
+async function aufgabeAendern(nummer, aenderung) {
+  if (ichNoetig()) { render(); return; }
+  try {
+    await api('PATCH', '/api/aufgaben/' + nummer, aenderung);
+    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
+  } catch (f) { S.ui.fensterFehler = f.message; }
+  await laden();
+}
+
 function render() {
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = S.ui.first ? vFirst() : S.ui.setup ? vSetup() : S.ui.view === 'einrichten' && S.ui.einr ? vEinrichten() : vBoard();
-  $('#over').innerHTML = vPop();
+  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
@@ -115,6 +130,22 @@ async function act(a, arg, wert) {
         }
         await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
         return laden();
+      }
+      case 'oeffnen': if (zug != null) break; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; break;
+      case 'tab': u.tab = arg; break;
+      case 'blaettern': {
+        const reihe = sichtbareReihe();
+        if (!reihe.length) break;
+        const i = reihe.indexOf(u.offen);
+        u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
+        u.gespeichert = null; u.fensterFehler = null;
+        await dateiLaden();
+        break;
+      }
+      case 'zustaendig': {
+        const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
+        return aufgabeAendern(u.offen, { zustaendige: z });
       }
       case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length })) }; break;
       case 'setup-weg': u.setup = null; break;
@@ -194,13 +225,25 @@ async function act(a, arg, wert) {
   render();
 }
 
+document.addEventListener('change', e => {
+  const af = e.target.dataset && e.target.dataset.af;
+  if (!af || !S.ui.offen) return;
+  const v = e.target.value;
+  if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
+  const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
+    : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
+  aufgabeAendern(S.ui.offen, aenderung);
+});
+
 document.addEventListener('click', e => {
+  if (e.target.closest('a[href^="vscode:"]')) return;
   const el = e.target.closest('[data-act]');
   if (S.ui.pop && !e.target.closest('.pop') && !(el && el.dataset.act === 'pop')) {
     S.ui.pop = null; S.ui.ichNoetig = false;
     if (!el) { render(); return; }
   }
   if (!el || el.disabled) return;
+  if (el.dataset.act === 'schliessen-bg' && e.target !== el) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg);
 });
@@ -246,6 +289,11 @@ document.addEventListener('keydown', e => {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.adding) { S.ui.adding = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
+    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
+  }
+  if (S.ui.offen && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    act('blaettern', e.key === 'ArrowDown' ? '1' : '-1');
   }
 });
 

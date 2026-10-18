@@ -61,10 +61,10 @@ zuletzt: 2026-10-18
 | I0010 | Interaction | D0001 | Personen und Klassen pflegen | gruen | US-1..US-3 |  |  |  | I0003 | R00010 | stilllegen statt entfernen |
 | B0029 | Bubble | I0010 | Einstellungen prüfen und speichern | gruen | Test gruen | Personen, Klassen, Quellen → kanbanD.md, ein Commit; PUT /api/einstellungen | 1-2 |  |  |  |  |
 | B0030 | Bubble | I0010 | Seite Einrichten | gruen | Test gruen | Personen anlegen/umbenennen/stilllegen, Klassen mit Farbe → Speichern | 1-2 |  |  |  |  |
-| I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | gelb | US-1..US-4 |  |  |  | I0005 | R00011 | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
+| I0011 | Interaction | D0003 | Aufgabe ansehen und bearbeiten | gruen | US-1..US-4 |  |  |  | I0005 | R00011 | Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit |
 | B0031 | Bubble | I0011 | Aufgabe ändern | gruen | Test gruen | Aufgabe + Änderung (Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
 | B0032 | Bubble | I0011 | Aufgabe lesen und ändern über die API | gruen | Test gruen | GET/PATCH /api/aufgaben/<nr> → Datei, ein Commit; defekt = nur lesbar | 1-2 |  |  |  |  |
-| B0033 | Bubble | I0011 | Aufgabenfenster | rot | Test gruen | Klick auf Karte → Fenster mit Inhalt/Datei, Feldern, Blättern, Esc | 2-3 |  |  |  |  |
+| B0033 | Bubble | I0011 | Aufgabenfenster | gruen | Test gruen | Klick auf Karte → Fenster mit Inhalt/Datei, Feldern, Blättern, Esc | 2-3 |  |  |  |  |
 | I0012 | Interaction | D0003 | Teilaufgaben abhaken | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0013 | Interaction | D0003 | Kommentieren | rot | US der Anforderung |  |  |  | I0011 |  |  |
 | I0014 | Interaction | D0003 | Timer starten und stoppen | rot | US der Anforderung |  |  |  | I0011 |  | mehrere gleichzeitig, fremde stoppbar, Kopfzeile N laufen |
