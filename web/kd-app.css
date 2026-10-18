@@ -362,3 +362,14 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .tabellenansicht summary{cursor:pointer;color:var(--kd-accent-ink)}
 #durchlauf{max-width:900px}
 .tooltip[hidden]{display:none}
+/* Defekte Dateien */
+.ka.defekt{border:1px dashed var(--kd-warn);background:var(--kd-c-red);cursor:pointer}
+.ka.defekt .t{color:var(--kd-warn);font-weight:500}
+.ka .fehlertext{white-space:normal;font-size:11px;color:var(--kd-text)}
+.lbl.warn,.warn{color:var(--kd-warn)}
+.warnbar{background:var(--kd-c-red);border-bottom-color:var(--kd-c-red-line);color:var(--kd-text)}
+.defektflaeche{margin:var(--kd-s6);padding:var(--kd-s5);border:1px dashed var(--kd-warn);background:var(--kd-c-red);max-width:760px}
+.defektflaeche h2{margin:0 0 var(--kd-s3);font-size:16px}
+.defektflaeche p{margin:0 0 var(--kd-s2)}
+.dz{display:flex;flex-direction:column;gap:2px;padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);font-size:12px}
+.stat .lnk.warn{color:var(--kd-warn);font-weight:600}

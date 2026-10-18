@@ -121,9 +121,10 @@ function vZeiten(a) {
 }
 
 /* ── Popover ── */
+const defekteBoards = () => (S.zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
 function vBoardPop() {
   const u = S.ui;
-  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="menu"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<div class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}" role="menuitem">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></div>`).join('')}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="menu"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<div class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}" role="menuitem">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></div>`).join('')}${defekteBoards().map(s => `<div class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}" role="menuitem">${esc(s)}<span class="muted mono warn">defekt</span></div>`).join('')}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
 }
 
 function vPop() {
@@ -132,6 +133,7 @@ function vPop() {
   if (u.pop === 'lauf') return alleLaufenden().length ? vLaufPop() : '';
   if (u.pop === 'legen') return vLegenPop();
   if (u.pop === 'ber') return vBerichtePop();
+  if (u.pop === 'defekt') return vDefektePop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -186,6 +188,23 @@ function vKarte(a, fertig) {
   return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r1"><span class="id">#${a.nummer}</span>${vHerkunft(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}</div><div class="t">${esc(a.titel)}</div><div class="r3"><span class="avs">${a.zustaendige.map(pk).join('')}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}</div>${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
+/** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
+function defektZuNummer(nr) {
+  return (S.zustand.defekte || []).find(d => d.pfad.startsWith('aufgaben/') && parseInt(d.pfad.slice(9), 10) === nr);
+}
+function vDefekt(nr, d) {
+  return `<div class="ka defekt" data-id="${nr}" data-act="defekt-oeffnen" data-arg="${nr}" tabindex="0"><div class="r1"><span class="id">#${nr}</span><span class="lbl warn">nur lesbar</span></div><div class="t">#${nr} — Datei defekt</div><div class="r3 fehlertext">${esc(d.fehler)}</div></div>`;
+}
+function vDefektFenster() {
+  const d = S.ui.defektDatei;
+  if (!d) return '';
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div><div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
+}
+function vDefektePop() {
+  const ds = S.zustand.defekte || [];
+  return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="menu"><h4>DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
+}
+
 function vFehlt(nr) {
   return `<div class="ka fehlt" draggable="true" data-id="${nr}"><div class="r1"><span class="id">#${nr}</span></div><div class="t">#${nr} — Aufgabe fehlt</div><div class="r3">keine Datei unter aufgaben/</div></div>`;
 }
@@ -194,7 +213,7 @@ function vFehlt(nr) {
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
   const archiv = imArchiv(), gefiltert = S.ui.filter.trim() !== '' && !(archiv && S.ui.filter.trim() === 'is:archived') || S.ui.bereich !== 'alle';
-  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : vFehlt(nr); }).filter(Boolean);
+  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
   const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const neu = S.ui.adding === sp.name
     ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Esc bricht ab" data-enter="add-ok" data-arg="${esc(sp.name)}" aria-label="Titel der neuen Karte"></div>`
@@ -205,9 +224,10 @@ function vLane(sp, i, alle) {
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {
   const b = S.board;
+  if (S.boardDefekt) return `<div class="defektflaeche" role="alert"><h2>boards/${esc(S.boardDefekt.slug)}.md ist defekt</h2><p>${esc(S.boardDefekt.fehler)}</p><p><a href="vscode://file${esc(S.zustand.ordner)}/boards/${esc(S.boardDefekt.slug)}.md">Im Editor reparieren</a> · andere Boards über den Boardnamen oben links.</p></div>`;
   if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
   const leiste = imArchiv() ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
-  return `${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
+  return `${S.einstellungenDefekt ? `<div class="archbar warnbar" role="alert">kanbanD.md ist defekt — Personen und Klassen fehlen, bis die Datei repariert ist</div>` : ''}${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
 }
 const imArchiv = () => archivGefiltert(S.ui.filter);
 const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen() });
@@ -388,5 +408,6 @@ ${f.fehler ? `<div class="fehl" role="alert">${esc(f.fehler)}</div>` : ''}
 function vStatus() {
   const z = S.zustand;
   if (!z) return '';
-  return `<span class="mono">${esc(z.ordner)}</span>${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}<span class="rechts"><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
+  const nd = (z.defekte || []).length;
+  return `<span class="mono">${esc(z.ordner)}</span>${nd ? `<button class="lnk warn" id="t-defekt" data-act="pop" data-arg="defekt">${nd} ${nd === 1 ? 'defekte Datei' : 'defekte Dateien'}</button>` : ''}${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}<span class="rechts"><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
 }

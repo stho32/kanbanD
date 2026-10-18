@@ -22,7 +22,8 @@ fn absolut(wurzel: &Path, rel: &str) -> PathBuf {
 impl Kanban {
     /// Für jede in Aufgaben verwendete Herkunft die Quelle — soweit WBS und Anforderungen auffindbar sind.
     pub fn herkunft(&self) -> Result<BTreeMap<String, Quelle>, Fehler> {
-        let e = self.ordner().einstellungen()?.unwrap_or_default();
+        // Lesend: eine defekte kanbanD.md heißt nur „keine Quellpfade“.
+        let e = self.ordner().einstellungen().ok().flatten().unwrap_or_default();
         let (aufgaben, _) = self.ordner().aufgaben()?;
         let mut gesucht: Vec<String> = aufgaben.iter().flat_map(|a| a.herkunft.iter().cloned()).collect();
         let wurzel = self.ordner().wurzel();

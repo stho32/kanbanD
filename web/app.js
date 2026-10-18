@@ -25,7 +25,7 @@ async function api(methode, pfad, daten) {
   const r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined });
   const text = await r.text();
   const json = text ? JSON.parse(text) : null;
-  if (!r.ok) throw Object.assign(new Error(json && json.fehler || r.statusText), { status: r.status });
+  if (!r.ok) throw Object.assign(new Error(json && json.fehler || r.statusText), { status: r.status, daten: json });
   return json;
 }
 
@@ -50,12 +50,14 @@ const kopie = x => JSON.parse(JSON.stringify(x));
 
 function gewaehltesBoard() {
   const m = /^#\/board\/([^/]+)/.exec(location.hash);
-  const slugs = S.zustand.boards.map(b => b.slug);
+  const slugs = [...S.zustand.boards.map(b => b.slug), ...defekteBoards()];
   return m && slugs.includes(m[1]) ? m[1] : slugs[0] || null;
 }
 
 async function laden() {
   S.zustand = await api('GET', '/api/zustand');
+  S.einstellungenDefekt = S.zustand.eingerichtet && !S.zustand.einstellungen;
+  if (S.einstellungenDefekt) S.zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '' } };
   if (!S.zustand.eingerichtet) {
     S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   } else {
@@ -64,8 +66,9 @@ async function laden() {
     if (S.ui.view !== 'einrichten') S.ui.einr = null;
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
+    S.boardDefekt = null;
     const [board, aufgaben, herkunft, boards] = await Promise.all([
-      S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)) : null,
+      S.ui.slug ? api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; S.boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null,
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
       S.ui.view === 'aufgaben' ? api('GET', '/api/boards') : null,
@@ -76,6 +79,7 @@ async function laden() {
     S.board = board;
     S.aufgaben = aufgaben.aufgaben;
     if (S.ui.offen) await dateiLaden();
+    if (S.ui.offenDefekt) await defektLaden();
   }
   render();
 }
@@ -85,6 +89,17 @@ function ichNoetig() {
   if (S.ich && personen().some(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv)) return false;
   S.ui.pop = 'ich'; S.ui.ichNoetig = true;
   return true;
+}
+
+async function defektLaden() {
+  try {
+    await api('GET', '/api/aufgaben/' + S.ui.offenDefekt);
+    S.ui.offen = S.ui.offenDefekt; S.ui.offenDefekt = null; S.ui.defektDatei = null; // repariert
+    await dateiLaden();
+  } catch (f) {
+    if (f.status === 423) S.ui.defektDatei = { pfad: f.daten.pfad, text: f.daten.text, fehler: f.message };
+    else { S.ui.offenDefekt = null; S.ui.defektDatei = null; }
+  }
 }
 
 async function dateiLaden() {
@@ -130,7 +145,7 @@ function render() {
   S.ui.nachZug = false;
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
-  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + vPop() + vHinweis();
+  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
@@ -187,7 +202,8 @@ async function act(a, arg, wert) {
         return laden();
       }
       case 'oeffnen': if (zug != null) break; u.pop = null; u.zeitEdit = null; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
-      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
+      case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
       case 'tab': u.tab = arg; break;
       case 'blaettern': {
         const reihe = sichtbareReihe();
@@ -458,6 +474,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.adding) { S.ui.adding = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
+    if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
   }
   if (S.ui.offen && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
     e.preventDefault();

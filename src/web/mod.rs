@@ -388,7 +388,7 @@ async fn boards(State(app): State<App>) -> Result<Response, Fehler> {
 async fn zeiten_csv(State(app): State<App>) -> Result<Response, Fehler> {
     let csv = blockierend(&app, |k| {
         let (aufgaben, _) = k.ordner().aufgaben()?;
-        let e = k.ordner().einstellungen()?.unwrap_or_default();
+        let e = k.ordner().einstellungen().ok().flatten().unwrap_or_default();
         Ok(crate::berichte::zeiten_csv(&aufgaben, &e, &crate::uhr::jetzt()))
     })
     .await?;
