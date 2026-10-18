@@ -9,6 +9,7 @@ pub mod git;
 pub mod herkunft;
 pub mod modell;
 pub mod phasen;
+pub mod pruefungen;
 pub mod start;
 pub mod uhr;
 pub mod verlauf;
