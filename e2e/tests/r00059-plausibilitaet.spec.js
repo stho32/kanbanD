@@ -33,7 +33,8 @@ test.describe('R00059', () => {
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#7 nach „Entwicklertest“ (Entwicklung)');
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(commits + 1);
     await warnung.getByRole('link', { name: 'kd:I0048' }).click();
-    await expect(page.locator('tr.wbs-z[data-id="I0048"]')).toHaveClass(/\bziel\b/);
+    await expect(page).toHaveURL(/#\/wbs\/kd\/I0048$/);
+    await expect(page.locator('tr.wbs-z[data-id="I0048"]')).toBeVisible();
   });
 
   test('US-2: Ausrufezeichen verschwindet ohne Neuladen, sobald der Knoten grün wird; nach links keine Warnung', async ({ page }) => {
