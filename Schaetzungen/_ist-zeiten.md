@@ -211,3 +211,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0147 Stände der WBS aus dem Arbeits-Repository | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0148 Neuen Knoten prüfen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0149 Zeile nach dem letzten Nachfahren einfügen | Standard | 1-2h | 0,01h | 0,01h | autonom |
+| 2026-10-18 | R00056 WBS-Knoten anlegen und verwerfen | B0150 Knoten mit Nachfahren verwerfen | Standard | 0,5-1h | 0,01h | 0,01h | autonom |

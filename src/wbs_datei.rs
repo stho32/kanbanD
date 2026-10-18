@@ -305,6 +305,33 @@ pub fn knoten_anlegen(text: &str, neu: &NeuerKnoten, id: &str, heute: &str) -> R
     Ok(Geschrieben { text: zuletzt_setzen(&teile.concat(), heute), geaendert })
 }
 
+/// Verwirft einen Knoten und alle zählenden Nachfahren (`verworfen`, keine Zeile entfernt); der Grund kommt in die Notiz
+/// des Knotens, die Vorfahren werden neu gerechnet. Die Application und schon Verworfenes: 409.
+pub fn verwerfen(text: &str, id: &str, grund: &str, heute: &str) -> Result<Geschrieben, Fehler> {
+    schreibbar(text)?;
+    let t = wbs_tabelle(text);
+    let k = t.knoten(id).ok_or_else(|| Fehler::NichtGefunden(format!("Knoten „{id}“ steht nicht in der WBS")))?;
+    if k.ebene == "Application" || id.starts_with('A') {
+        return Err(Fehler::Konflikt(format!("{id} ist die Application — sie wird nicht verworfen")));
+    }
+    if k.status == "verworfen" {
+        return Err(Fehler::Konflikt(format!("{id} ist schon verworfen")));
+    }
+    let weg: Vec<&WbsKnoten> = t.alle().iter().filter(|x| x.id == id || (x.zaehlt() && t.pfad(&x.id).iter().any(|p| p == id))).collect();
+    let neu = WbsTabelle::aus(t.alle().iter().map(|x| if weg.iter().any(|w| w.id == x.id) { WbsKnoten { status: "verworfen".into(), ..x.clone() } } else { x.clone() }).collect());
+    let vorfahren = vorfahren_neu(&neu, id);
+    let mut aenderungen: Vec<(usize, &str, String)> = weg.iter().map(|w| (w.zeile, "Status", "verworfen".to_string())).collect();
+    aenderungen.extend(vorfahren.iter().filter_map(|(v, s)| Some((t.knoten(v)?.zeile, "Status", s.clone()))));
+    let grund = grund.trim();
+    if !grund.is_empty() {
+        let notiz = if k.notiz.is_empty() { format!("verworfen: {grund}") } else { format!("{}; verworfen: {grund}", k.notiz) };
+        aenderungen.push((k.zeile, "Notiz", notiz));
+    }
+    let mut geaendert: Vec<String> = weg.iter().map(|w| w.id.clone()).collect();
+    geaendert.extend(vorfahren.into_iter().map(|(v, _)| v));
+    Ok(Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -496,5 +523,25 @@ mod tests {
         let voll = "| ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n| I0001 | Interaction | — | I | rot |  |  |  |  |  |  |  |\n";
         let g = knoten_anlegen(voll, &NeuerKnoten { ausbaustufe: "2".into(), eltern: "I0001".into(), ..neu }, "B0001", "h").unwrap();
         assert!(g.text.ends_with("| B0001 | Bubble | I0001 | X | rot | US-1 | a → b | 0,5-1 | 2 | B0001, I0007 | R00056 | n |\n"), "alle Spalten von /planung: {}", g.text);
+    }
+
+    #[test]
+    fn verwerfen_markiert_knoten_und_zaehlende_nachfahren_und_loescht_nichts() {
+        let vorher = wbs(&[("A0001", "Application", "—", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0006", "Interaction", "D0001", "gruen"), ("I0007", "Interaction", "D0001", "rot"), ("B0001", "Bubble", "I0007", "gruen"), ("B0002", "Bubble", "I0007", "rot"), ("F0001", "Feature", "I0007", "option"), ("B0003", "Bubble", "F0001", "rot")]);
+        let g = verwerfen(&vorher, "I0007", "doch | anders", "2026-10-18").unwrap();
+        assert_eq!(g.geaendert, ["I0007", "B0001", "B0002", "B0003", "D0001", "A0001"], "die Option bleibt Option, ihre Bubble zählt und wird verworfen; D0001 und A0001 nur noch I0006 → gruen");
+        assert_eq!(g.text.lines().count(), vorher.lines().count(), "keine Zeile entfernt");
+        let t = wbs_tabelle(&g.text);
+        let status = |id: &str| t.knoten(id).unwrap().status.clone();
+        assert_eq!(["I0007", "B0001", "B0002", "F0001", "B0003", "D0001", "I0006"].map(status), ["verworfen", "verworfen", "verworfen", "option", "verworfen", "gruen", "gruen"]);
+        assert_eq!(t.knoten("I0007").unwrap().notiz, "verworfen: doch | anders");
+        assert!(g.text.contains("| verworfen | a \\| b → c | verworfen: doch \\| anders | Abnahme |"));
+        assert_eq!(crate::wbs::stand(&t).slices, 1, "der Slice-Stand zählt sie nicht mehr");
+        assert_eq!(verwerfen(&g.text, "I0007", "", "h").unwrap_err(), Fehler::Konflikt("I0007 ist schon verworfen".into()));
+        assert!(matches!(verwerfen(&vorher, "A0001", "", "h"), Err(Fehler::Konflikt(m)) if m.contains("Application")));
+        assert!(matches!(verwerfen(&vorher, "B0099", "", "h"), Err(Fehler::NichtGefunden(_))));
+        let ohne_grund = verwerfen(&vorher, "B0002", "", "h").unwrap();
+        assert_eq!(wbs_tabelle(&ohne_grund.text).knoten("B0002").unwrap().notiz, "", "ohne Grund bleibt die Notiz");
+        assert_eq!(ohne_grund.geaendert, ["B0002", "I0007", "D0001", "A0001"], "I0007 zählt nur noch B0001 (gruen), B0003 hängt an der Option — damit wird alles darüber gruen");
     }
 }
