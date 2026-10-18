@@ -337,7 +337,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .liste .tt a:hover{color:var(--kd-accent-ink)}
 .lbl.ort{gap:4px;height:18px}
 .lbl.ort .lnk{font-size:10px;color:var(--kd-muted)}
-.cls{--cl:var(--kd-line-strong)}
+.cls::before{background:var(--cl,var(--kd-line-strong))}
 .menue a.e{color:inherit;text-decoration:none}
 /* Burndown */
 .bericht{padding:var(--kd-s4) var(--kd-s6)}

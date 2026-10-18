@@ -30,6 +30,9 @@ test.describe('R00004', () => {
     const zwei = page.locator('.ka[data-id="2"]');
     await expect(zwei).toHaveAttribute('data-c', '1');
     await expect(zwei.locator('.cls')).toHaveText('Fehler');
+    // das Quadrat vor der Klasse trägt die Klassenfarbe der Karte, nicht das neutrale Grau
+    const farben = await zwei.evaluate(k => [getComputedStyle(k).borderTopColor, getComputedStyle(k.querySelector('.cls'), '::before').backgroundColor]);
+    expect(farben[1]).toBe(farben[0]);
     await expect(zwei.locator('.pk')).toHaveText('ST');
     await expect(zwei.locator('.due')).toHaveText('2030-01-31');
     await expect(zwei.locator('.org')).toHaveText('I0004');
