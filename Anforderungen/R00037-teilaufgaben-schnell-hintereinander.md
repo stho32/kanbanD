@@ -1,6 +1,6 @@
 ---
 id: R00037
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -24,8 +24,8 @@ Eine Liste von Schritten ist in Sekunden erfasst; nichts geht verloren, weil gle
 
 ## Akzeptanzkriterien
 
-- [ ] Fünf Teilaufgaben ohne Pause hintereinander getippt (je Text + Enter) → alle fünf in dieser Reihenfolge in der Datei, fünf Commits
-- [ ] Während des Tippens in „+ Teilaufgabe“ ändert ein Editor die Aufgabendatei → der getippte Text bleibt im Feld, der Fokus auch
+- [x] Fünf Teilaufgaben ohne Pause hintereinander getippt (je Text + Enter) → alle fünf in dieser Reihenfolge in der Datei, fünf Commits
+- [x] Während des Tippens in „+ Teilaufgabe“ ändert ein Editor die Aufgabendatei → der getippte Text bleibt im Feld, der Fokus auch
 
 ## Betroffene Verzeichnisstruktur
 
