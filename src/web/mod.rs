@@ -415,7 +415,7 @@ struct StatusWahl {
 }
 
 async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, Json(w): Json<StatusWahl>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.wbs_status_setzen(p, &kuerzel, &id, &w.status)).await
+    als_person(&app, wer, move |k, _| k.wbs_status_setzen(&kuerzel, &id, &w.status)).await
 }
 
 #[derive(serde::Deserialize)]

@@ -3,7 +3,6 @@ use super::herkunft::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
-use crate::modell::Person;
 use crate::wbs::{Stand, WbsKnoten, stand};
 use crate::wbs_datei::{Geschrieben, status_setzen};
 use crate::modell::Anwendung;
@@ -110,7 +109,8 @@ impl Kanban {
     }
 
     /// Setzt den Status eines Blatts der WBS von `kuerzel` (R00055); Vorfahren und `zuletzt` werden mitgeschrieben.
-    pub fn wbs_status_setzen(&self, _wer: &Person, kuerzel: &str, id: &str, status: &str) -> Result<WbsGeaendert, Fehler> {
+    /// Wer handelt, prüft der Aufrufer — im Arbeits-Repository entsteht kein Commit, also auch kein Autor.
+    pub fn wbs_status_setzen(&self, kuerzel: &str, id: &str, status: &str) -> Result<WbsGeaendert, Fehler> {
         self.wbs_aendern(kuerzel, |text, heute| {
             let g = status_setzen(text, id, status, heute)?;
             let geaendert = g.geaendert.clone();

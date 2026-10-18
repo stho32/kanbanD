@@ -54,10 +54,7 @@ fn gleichzeitige_schreibzugriffe_auf_dieselbe_wbs_gehen_nacheinander_und_nichts_
     let faeden: Vec<_> = (1..=8)
         .map(|n| {
             let k = kanban.clone();
-            std::thread::spawn(move || {
-                let st = k.handelnder(Some("st")).unwrap();
-                k.wbs_status_setzen(&st, "kc", &format!("B000{n}"), "gruen").unwrap()
-            })
+            std::thread::spawn(move || k.wbs_status_setzen("kc", &format!("B000{n}"), "gruen").unwrap())
         })
         .collect();
     for f in faeden {
