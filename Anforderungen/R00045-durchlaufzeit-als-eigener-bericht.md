@@ -1,6 +1,6 @@
 ---
 id: R00045
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -28,9 +28,9 @@ Wer fragt „wie lange dauert so etwas bei uns?“, bekommt eine belegte Antwort
 
 ## Akzeptanzkriterien
 
-- [ ] Unit: Lead Time und Cycle Time; Rückkehr zählt das erste Erreichen; Zeitraum nach Ankunft; Kennzahlen inkl. 85 %
-- [ ] E2E: Bericht zeigt #1 mit 1,0 Tagen und Kennzahlen; „von In Arbeit“ blendet Aufgaben aus, die „In Arbeit“ übersprungen haben, nicht; Farbe ausgeschlossen blendet aus
-- [ ] Burndown enthält keine Durchlaufzeit mehr
+- [x] Unit: Lead Time und Cycle Time; Rückkehr zählt das erste Erreichen; Zeitraum nach Ankunft; Kennzahlen inkl. 85 %
+- [x] E2E: Bericht zeigt #1 mit 1,0 Tagen und Kennzahlen; „von In Arbeit“ blendet Aufgaben aus, die „In Arbeit“ übersprungen haben, nicht; Farbe ausgeschlossen blendet aus
+- [x] Burndown enthält keine Durchlaufzeit mehr
 
 ## Betroffene Verzeichnisstruktur
 
