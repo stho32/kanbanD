@@ -1,6 +1,6 @@
 ---
 id: R00056
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,13 +29,13 @@ Umfang entsteht und verschwindet dort, wo die Arbeit beschlossen wird, und die R
 ## Akzeptanzkriterien
 
 ### Anlegen
-- [ ] Datei mit `B0001…B0116`, Historie mit einer gelöschten Zeile `B0117` → neue Bubble bekommt `B0118`
-- [ ] `POST {ebene: Interaction, eltern: D0002, name: X, fertig_kriterium: US-1}` → Zeile `I0048 | Interaction | D0002 | X | rot | US-1 |…` nach dem letzten Nachfahren von D0002; `D0002` gerechnet nicht mehr `gruen`
-- [ ] Fehlendes Fertig-Kriterium → 400; `ebene: Bubble, eltern: D0002` → 400
+- [x] Datei mit `B0001…B0116`, Historie mit einer gelöschten Zeile `B0117` → neue Bubble bekommt `B0118`
+- [x] `POST {ebene: Interaction, eltern: D0002, name: X, fertig_kriterium: US-1}` → Zeile `I0048 | Interaction | D0002 | X | rot | US-1 |…` nach dem letzten Nachfahren von D0002; `D0002` gerechnet nicht mehr `gruen`
+- [x] Fehlendes Fertig-Kriterium → 400; `ebene: Bubble, eltern: D0002` → 400
 
 ### Verwerfen
-- [ ] `verwerfen I0007` mit zwei Bubbles → drei Zeilen `verworfen`, keine Zeile entfernt; der Slice-Stand in R00054 zählt sie nicht mehr
-- [ ] `git log` im Arbeits-Repository unverändert nach beiden Operationen
+- [x] `verwerfen I0007` mit zwei Bubbles → drei Zeilen `verworfen`, keine Zeile entfernt; der Slice-Stand in R00054 zählt sie nicht mehr
+- [x] `git log` im Arbeits-Repository unverändert nach beiden Operationen
 
 ## Betroffene Verzeichnisstruktur
 
