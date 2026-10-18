@@ -255,7 +255,7 @@ zuletzt: 2026-10-18
 | B0177 | Bubble | I0054 | Zug nach rechts erkennen | gruen | Test gruen | Board, Phasen, Spalte davor, Spalte danach → nach rechts? (Rang der Phase wie phasenRang, ohne Phasen Spaltenindex); Prüfungen, die ein Zug auslöst | 0,5-1 |  |  |  |  |
 | B0178 | Bubble | I0054 | Warnungen beim Bewegen | gruen | Test gruen | POST …/bewegen → Zug immer ausgeführt und committet, Antwort mit warnungen [{pruefung, text, knoten}] aus den WBS der Anwendungen | 0,5-1 |  |  |  |  |
 | B0179 | Bubble | I0054 | Unbekannte Prüfung als Hinweis am Board | gruen | Test gruen | GET /api/boards/{slug} → hinweise je unbekanntem Prüfungsnamen; Board bleibt lesbar und schreibbar, Hinweisleiste | 0,5-1 |  |  |  |  |
-| B0180 | Bubble | I0054 | Warnung in der Oberfläche | rot | Test gruen | Antwort mit warnungen → Hinweis „Achtung! …“ mit den nicht grünen Knoten als Links in die WBS-Sicht | 0,5-1 |  |  |  |  |
+| B0180 | Bubble | I0054 | Warnung in der Oberfläche | gruen | Test gruen | Antwort mit warnungen → Hinweis „Achtung! …“ mit den nicht grünen Knoten als Links in die WBS-Sicht | 0,5-1 |  |  |  |  |
 | B0181 | Bubble | I0054 | Ausrufezeichen an der Karte | rot | Test gruen | Board, Aufgaben, WBS der gebundenen Anwendungen → rotes Ausrufezeichen mit Tooltip an Karten rechts einer Spalte mit nicht erfüllter Prüfung; live nach jeder WBS-Änderung | 1-2 |  |  |  |  |
 | B0182 | Bubble | I0054 | Prüfungen je Spalte konfigurieren | rot | Test gruen | Spalten-Dialog (R00009) → je Spalte Schalter wbs-effects-green → column-checks gesetzt oder entfernt | 0,5-1 |  |  |  |  |
 | I0055 | Interaction | D0003 | Zählen in Berichten | rot | US-1..US-3 |  |  |  | I0044, I0046 | R00060 | WBS 1: reporting.burndown und reporting.forecast |

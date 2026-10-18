@@ -330,6 +330,8 @@ async function act(a, arg, wert) {
         const r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
         if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
         if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
+        // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
+        if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
       case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
@@ -1302,7 +1304,7 @@ setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
-  if (S.ui.hinweis && jetzt - S.ui.hinweis.at > 8000) { S.ui.hinweis = null; neu = true; }
+  if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
   document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
   if (neu && zug == null && !S.ui.neu) render();

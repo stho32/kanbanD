@@ -377,6 +377,7 @@ function vLegende() {
 }
 function vHinweis() {
   const t = S.ui.hinweis;
+  if (t && t.warnungen) return `<div class="toast warn" role="alert" id="pruef-warnung"><span class="ausruf" aria-hidden="true">!</span><span>${esc(t.text)}</span>${t.warnungen.map(w => `<span>${esc(w.text)} ${warnungsKnoten(w).map(k => `<a class="lnk" href="${esc(k.ziel)}" data-act="wbs-zu" data-arg="${esc(k.ziel)}" title="${esc(k.titel)}">${esc(k.text)}</a>`).join(' ')}</span>`).join('')}</div>`;
   return t ? `<div class="toast" role="status">${esc(t.text)}${t.undo ? `<button class="lnk" data-act="rueckgaengig" title="Strg+Z">rückgängig</button>` : ''}</div>` : '';
 }
 

@@ -311,6 +311,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .phasenbar{background:var(--kd-c-amber);border-bottom-color:var(--kd-c-amber-line);flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;gap:14px;align-items:center;box-shadow:var(--kd-shadow);font-size:12.5px}
 .toast .lnk{color:var(--kd-accent-weak)}
+.toast.warn{border-left:4px solid var(--kd-wbs-error);flex-wrap:wrap;max-width:min(720px,calc(100vw - 32px))}
+.ausruf{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--kd-wbs-error);color:#fff;font-weight:600;font-size:11px;line-height:1;flex:none}
 .first{flex:1;display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);min-height:0;background:var(--kd-surface)}
 .first-l{padding:var(--kd-s6);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);border-right:1px solid var(--kd-line-strong)}
 .first-l h2{margin:0;font-size:18px;font-weight:600}

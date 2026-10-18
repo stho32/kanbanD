@@ -137,5 +137,17 @@
     return je;
   }
 
-  Object.assign(ziel, { WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /* ── Plausibilitätsprüfungen (R00059) ── */
+  /** `kd:I0048` → Kürzel und ID; ohne Kürzel die Standardanwendung. */
+  const knotenTeile = s => { const i = s.indexOf(':'); return i < 0 ? ['', s] : [s.slice(0, i), s.slice(i + 1)]; };
+
+  /** Die Knoten einer Warnung als Links in die WBS-Sicht, mit dem Grund im Titel. */
+  function warnungsKnoten(w) {
+    return (w.knoten || []).map((s, i) => {
+      const [k, id] = knotenTeile(s), grund = (w.details || [])[i] || s;
+      return { text: s, ziel: `#/wbs/${encodeURIComponent(k)}/${encodeURIComponent(id)}`, titel: `${grund} — in der WBS-Sicht zeigen` };
+    });
+  }
+
+  Object.assign(ziel, { warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);
