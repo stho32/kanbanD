@@ -325,3 +325,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Zeilenknöpfe: unsichtbar bis Zeigen oder Fokus, aber per Tastatur erreichbar */
 .zt .btn-sym,.chk .x{visibility:visible;opacity:0}
 .zt tr:hover .btn-sym,.zt .btn-sym:focus,.chk:hover .x,.chk .x:focus{opacity:1}
+.anh-z{display:flex;align-items:center;gap:var(--kd-s3);min-height:26px;border-bottom:1px solid var(--kd-line)}
+.anh-z a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anh-z .x{opacity:0}.anh-z:hover .x,.anh-z .x:focus{opacity:1}
+.anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
+.anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}

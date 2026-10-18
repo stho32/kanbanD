@@ -59,8 +59,22 @@ function ichNoetig() {
 }
 
 async function dateiLaden() {
-  try { S.ui.datei = await api('GET', '/api/aufgaben/' + S.ui.offen); }
-  catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; }
+  try {
+    S.ui.datei = await api('GET', '/api/aufgaben/' + S.ui.offen);
+    S.ui.anhaenge = await api('GET', `/api/aufgaben/${S.ui.offen}/anhaenge`);
+  } catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; S.ui.anhaenge = []; }
+}
+
+async function anhaengeHochladen(dateien) {
+  if (ichNoetig()) { render(); return; }
+  for (const d of dateien) {
+    const form = new FormData();
+    form.append('datei', d, d.name);
+    const r = await fetch(`/api/aufgaben/${S.ui.offen}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
+    if (!r.ok) { S.ui.fensterFehler = (await r.json().catch(() => ({}))).fehler || r.statusText; break; }
+    S.ui.gespeichert = Date.now();
+  }
+  await laden();
 }
 
 /** Schreibender Aufruf aus dem Aufgabenfenster: Fehler erscheinen im Fuß, danach wird neu geladen. */
@@ -178,6 +192,7 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
       }
+      case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.fokus = '#zeit-neu';
@@ -277,6 +292,7 @@ async function act(a, arg, wert) {
 }
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'anhang-datei') { anhaengeHochladen([...e.target.files]); return; }
   const af = e.target.dataset && e.target.dataset.af;
   if (!af || !S.ui.offen) return;
   const v = e.target.value;
@@ -358,6 +374,17 @@ document.addEventListener('dragstart', e => {
   e.dataTransfer.effectAllowed = 'move';
   try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
   setTimeout(() => k.classList.add('zieht'));
+});
+/* Dateien aus dem Rechner auf „Anhänge“ ziehen */
+document.addEventListener('dragover', e => {
+  if (zug == null && e.target.closest && e.target.closest('#anhaenge') && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
+    e.preventDefault();
+    e.target.closest('#anhaenge').classList.add('ziel');
+  }
+});
+document.addEventListener('drop', e => {
+  const ziel = zug == null && e.target.closest && e.target.closest('#anhaenge');
+  if (ziel && e.dataTransfer.files.length) { e.preventDefault(); anhaengeHochladen([...e.dataTransfer.files]); }
 });
 document.addEventListener('dragover', e => {
   if (zug == null) return;

@@ -69,3 +69,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00015 Zeiten nachtragen und korrigieren | Lauf R00015 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00016 Anhänge verwalten | B0044 Anhangname bereinigen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00016 Anhänge verwalten | B0045 Anhänge über die API | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00016 Anhänge verwalten | B0046 Anhänge im Fenster | Standard | 1-2h | 0,0h | 0,0h | autonom |

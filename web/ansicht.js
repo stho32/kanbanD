@@ -84,7 +84,12 @@ function vFenster() {
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
 function vFensterAbschnitte(a) {
-  return vTeilaufgaben(a) + vKommentare(a);
+  return vTeilaufgaben(a) + vAnhaenge(a) + vKommentare(a);
+}
+const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
+function vAnhaenge(a) {
+  const liste = S.ui.anhaenge || [];
+  return `<div class="abs anh" id="anhaenge"><h3>ANHÄNGE <span class="mono">${esc(a.datei.replace(/\.md$/, ''))}/ · ${liste.length}</span></h3>${liste.map(x => `<div class="anh-z"><a href="/api/aufgaben/${a.nummer}/anhaenge/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${esc(x.name)}</a><span class="mono muted">${groesse(x.groesse)}</span><button class="btn btn-sym x" data-act="anhang-weg" data-arg="${esc(x.name)}" aria-label="Anhang ${esc(x.name)} entfernen">✕</button></div>`).join('')}<label class="inp add anh-wahl">+ Datei wählen oder hierher ziehen<input type="file" id="anhang-datei" multiple hidden aria-label="Anhang hinzufügen"></label></div>`;
 }
 function ichPerson() {
   return S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
