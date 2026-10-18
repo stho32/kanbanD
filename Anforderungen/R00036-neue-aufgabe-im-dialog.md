@@ -1,6 +1,6 @@
 ---
 id: R00036
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,12 +29,12 @@ Eine Aufgabe ist in einem Schritt vollständig erfasst, statt erst angelegt und 
 
 ## Akzeptanzkriterien
 
-- [ ] API: Anlegen mit Beschreibung und zwei Teilaufgaben → Datei enthält beide, ein Commit
-- [ ] `n` öffnet den Dialog mit der Spalte der fokussierten Karte; Titel, Klasse, Mia, zwei Teilaufgaben, Strg+Enter → Karte mit allem, Dialog zu
-- [ ] „Anlegen und weitere“ → Dialog bleibt offen, Titel leer, Spalte und Klasse bleiben
-- [ ] „+“ im Spaltenkopf von „In Arbeit“ → Spalte vorbelegt; Esc → nichts angelegt
-- [ ] Kein „+ Karte“-Knopf mehr am Spaltenfuß
-- [ ] Liste in den Titel einfügen → je Zeile eine Aufgabe mit den Feldern des Dialogs
+- [x] API: Anlegen mit Beschreibung und zwei Teilaufgaben → Datei enthält beide, ein Commit
+- [x] `n` öffnet den Dialog mit der Spalte der fokussierten Karte; Titel, Klasse, Mia, zwei Teilaufgaben, Strg+Enter → Karte mit allem, Dialog zu
+- [x] „Anlegen und weitere“ → Dialog bleibt offen, Titel leer, Spalte und Klasse bleiben
+- [x] „+“ im Spaltenkopf von „In Arbeit“ → Spalte vorbelegt; Esc → nichts angelegt
+- [x] Kein „+ Karte“-Knopf mehr am Spaltenfuß
+- [x] Liste in den Titel einfügen → je Zeile eine Aufgabe mit den Feldern des Dialogs
 
 ## Betroffene Verzeichnisstruktur
 
