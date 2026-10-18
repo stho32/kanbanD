@@ -1,15 +1,16 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Kommentar, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 use chrono::NaiveDateTime;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
-const BEKANNT: [&str; 9] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, "archived"];
+const BEKANNT: [&str; 10] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, PHASEN, "archived"];
 pub const WIRKUNGEN: &str = "wbs-effects";
+pub const PHASEN: &str = "phases";
 /// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
 const WIRKUNG_BEKANNT: [&str; 7] = ["application", "action", "node", "parent", "level", "name", "done-criterion"];
 const TRENNER: &str = " · ";
@@ -51,6 +52,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     if let Some(w) = m.get(WIRKUNGEN) {
         a.wirkungen = wirkungen_lesen(w)?;
     }
+    if let Some(p) = m.get(PHASEN) {
+        a.phasen = phasen_lesen(p)?;
+    }
     for (k, v) in &m {
         if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k)) {
             a.weitere.push((k.to_string(), v.clone()));
@@ -58,6 +62,27 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     koerper_lesen(&mut a, koerper)?;
     Ok(a)
+}
+
+/// `phases: {skipped: [Abnahme], …}` — `skipped` als Liste oder einzelner Text; andere Schlüssel bleiben erhalten.
+fn phasen_lesen(v: &Value) -> Result<Phasenangaben, Formatfehler> {
+    match v {
+        Value::Null => Ok(Phasenangaben::default()),
+        Value::Mapping(m) => Ok(Phasenangaben {
+            uebersprungen: yaml::textliste(m, "skipped"),
+            weitere: m.iter().filter_map(|(k, w)| k.as_str().filter(|k| *k != "skipped").map(|k| (k.to_string(), w.clone()))).collect(),
+        }),
+        _ => Err(Formatfehler(format!("{PHASEN} ist keine Zuordnung — erwartet {{skipped: [...]}}"))),
+    }
+}
+
+fn phasen_schreiben(p: &Phasenangaben) -> String {
+    let mut s = String::new();
+    if !p.uebersprungen.is_empty() {
+        s.push_str(&format!("  skipped: {}\n", yaml::liste(&p.uebersprungen)));
+    }
+    s.extend(p.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
+    if s.is_empty() { s } else { format!("{PHASEN}:\n{s}") }
 }
 
 fn wirkungen_lesen(v: &Value) -> Result<Vec<Wirkung>, Formatfehler> {
@@ -216,6 +241,7 @@ pub fn schreiben(a: &Aufgabe) -> String {
     if !a.wirkungen.is_empty() {
         s.push_str(&format!("{WIRKUNGEN}:\n{}", a.wirkungen.iter().map(wirkung_schreiben).collect::<String>()));
     }
+    s.push_str(&phasen_schreiben(&a.phasen));
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
     }
@@ -361,6 +387,26 @@ mod tests {
         assert!(mit("[{action: rework, node: D0002}]").unwrap_err().0.contains("application fehlt"));
         assert!(mit("[{application: kd, action: grow}]").unwrap_err().0.contains("create, rework oder remove"));
         assert!(mit("").unwrap().wirkungen.is_empty(), "leer ist keine Wirkung");
+    }
+
+    #[test]
+    fn entfallende_phasen_im_namensraum_phases_unbekanntes_bleibt() {
+        let mut a = Aufgabe::neu(3, "0003-x.md".into(), "X".into());
+        a.phasen.uebersprungen = vec!["Entwicklertest".into(), "Abnahme".into()];
+        let t = schreiben(&a);
+        assert_eq!(t, "---\nid: 3\ntitle: X\nphases:\n  skipped: [Entwicklertest, Abnahme]\n---\n");
+        assert_eq!(lesen("0003-x.md", &t).unwrap(), a);
+        let hand = "---\nid: 3\ntitle: X\nphases:\n  skipped: Abnahme\n  reason: kein Kunde\n  owners: [mi]\n---\n";
+        let h = lesen("0003-x.md", hand).unwrap();
+        assert_eq!((h.phasen.uebersprungen.clone(), h.weitere.len()), (vec!["Abnahme".to_string()], 0));
+        let neu = schreiben(&h);
+        assert!(neu.contains("phases:\n  skipped: [Abnahme]\n  reason: kein Kunde\n  owners: [\"mi\"]\n"), "{neu}");
+        assert_eq!(lesen("0003-x.md", &neu).unwrap(), h, "der Rundlauf verliert nichts");
+        let mut nur_fremd = h.clone();
+        nur_fremd.phasen.uebersprungen.clear();
+        assert!(schreiben(&nur_fremd).contains("phases:\n  reason: kein Kunde\n"), "ohne skipped bleibt der Namensraum mit seinem Rest");
+        assert!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases: [Abnahme]\n---\n").unwrap_err().0.contains("phases ist keine Zuordnung"));
+        assert_eq!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases:\n---\n").unwrap(), Aufgabe::neu(3, "0003-x.md".into(), "X".into()));
     }
 
     #[test]

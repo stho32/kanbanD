@@ -111,3 +111,18 @@ async fn get_board_liefert_spalten_mit_phase_und_die_phasen() {
     assert_eq!(b["phasen"]["folge"][1]["name"], "Entwicklertest");
     assert_eq!(b["phasen"]["hinweise"], serde_json::json!([]));
 }
+
+#[test]
+fn entfallende_phasen_ueber_die_aenderung_der_aufgabe_ein_commit() {
+    let l = lage();
+    std::fs::create_dir_all(l.board.path().join("aufgaben")).unwrap();
+    std::fs::write(l.board.path().join("aufgaben/0003-drei.md"), "---\nid: 3\ntitle: drei\nphases: {note: x}\n---\n").unwrap();
+    git(l.board.path(), &["add", "-A"]);
+    git(l.board.path(), &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-m", "#3"]);
+    let wer = l.kanban.handelnder(Some("st")).unwrap();
+    let aenderung = serde_json::from_value(serde_json::json!({"phasen": {"skipped": ["Entwicklertest"]}})).unwrap();
+    let a = l.kanban.aufgabe_aendern(&wer, 3, &aenderung).unwrap();
+    assert_eq!(a.phasen.uebersprungen, ["Entwicklertest"]);
+    assert_eq!(gemeinsam::lies(l.board.path(), "aufgaben/0003-drei.md"), "---\nid: 3\ntitle: drei\nphases:\n  skipped: [Entwicklertest]\n  note: x\n---\n");
+    assert_eq!(git(l.board.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#3 geändert: Phasen");
+}

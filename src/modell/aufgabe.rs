@@ -79,6 +79,16 @@ impl Wirkung {
     }
 }
 
+/// `phases`: wie die Aufgabe die Phasen ihrer Anwendung durchläuft (R00058); in der Datei englisch wie der Namensraum.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Phasenangaben {
+    /// `skipped`: Phasen, die für diese Aufgabe entfallen — sie zählt dort weder in Zähler und Nenner noch im Durchsatz
+    pub uebersprungen: Vec<String>,
+    /// Schlüssel im Namensraum, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
+    #[serde(skip)]
+    pub weitere: Vec<(String, serde_yaml::Value)>,
+}
+
 /// Eine Aufgabe: unabhängige Datei, weiß nichts von Boards.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Aufgabe {
@@ -98,6 +108,7 @@ pub struct Aufgabe {
     pub kommentare: Vec<Kommentar>,
     /// `wbs-effects`: wie die Aufgabe auf Knoten einer Anwendung gewirkt hat (R00057)
     pub wirkungen: Vec<Wirkung>,
+    pub phasen: Phasenangaben,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -120,6 +131,7 @@ impl Aufgabe {
             zeiten: vec![],
             kommentare: vec![],
             wirkungen: vec![],
+            phasen: Phasenangaben::default(),
             weitere: vec![],
         }
     }
@@ -142,6 +154,14 @@ pub struct Aufgabenaenderung {
     #[serde(default, deserialize_with = "entfernbar")]
     pub faellig: Option<Option<String>>,
     pub herkunft: Option<Vec<String>>,
+    pub phasen: Option<Phasenaenderung>,
+}
+
+/// `{"uebersprungen": [...]}` (auch `skipped` wie in der Datei) ersetzt die entfallenden Phasen.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Phasenaenderung {
+    #[serde(alias = "skipped")]
+    pub uebersprungen: Option<Vec<String>>,
 }
 
 pub const OHNE_HERKUNFT: &str = "thin air";
@@ -231,6 +251,9 @@ impl Aufgabe {
             }
             neu.herkunft = eindeutig(h);
         }
+        if let Some(u) = a.phasen.as_ref().and_then(|p| p.uebersprungen.as_ref()) {
+            neu.phasen.uebersprungen = eindeutig(u.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect());
+        }
         let mut felder = vec![];
         for (name, geaendert) in [
             ("Titel", neu.titel != self.titel),
@@ -240,6 +263,7 @@ impl Aufgabe {
             ("Labels", neu.labels != self.labels),
             ("Fälligkeit", neu.faellig != self.faellig),
             ("Herkunft", neu.herkunft != self.herkunft),
+            ("Phasen", neu.phasen != self.phasen),
         ] {
             if geaendert {
                 felder.push(name);
@@ -305,6 +329,17 @@ mod tests {
         assert!(f.contains("Anwendung „xx“"), "{f}");
         assert!(a.aendern(&aend(r#"{"herkunft":["KD!:I0007"]}"#), &mit).unwrap_err().contains("keine Herkunft"));
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
+    }
+
+    #[test]
+    fn entfallende_phasen_setzen() {
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[" Abnahme ","","Abnahme","Entwicklertest"]}}"#), &e()).unwrap(), vec!["Phasen"]);
+        assert_eq!(a.phasen.uebersprungen, vec!["Abnahme", "Entwicklertest"]);
+        assert!(a.aendern(&aend(r#"{"phasen":{"skipped":["Abnahme","Entwicklertest"]}}"#), &e()).unwrap().is_empty(), "skipped wie in der Datei, gleich ist keine Änderung");
+        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[]}}"#), &e()).unwrap(), vec!["Phasen"]);
+        assert!(a.phasen.uebersprungen.is_empty());
+        assert!(a.aendern(&aend(r#"{"phasen":{}}"#), &e()).unwrap().is_empty(), "ohne Liste bleibt alles");
     }
 
     #[test]
