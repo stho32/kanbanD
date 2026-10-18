@@ -113,3 +113,23 @@ pub async fn ereignis_abwarten(adresse: &str, ausloesen: impl FnOnce(), bedingun
     }
     panic!("kein passendes Ereignis in: {puffer}");
 }
+
+/// Ein Arbeits-Repository getrennt vom kanbanD-Ordner, `text` als `Dokumentation/Planung/kasse.md` committet.
+pub fn arbeits_repository(text: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    let t = tempfile::tempdir().unwrap();
+    let wurzel = t.path().canonicalize().unwrap();
+    std::fs::create_dir_all(wurzel.join("Dokumentation/Planung")).unwrap();
+    std::fs::write(wurzel.join("Dokumentation/Planung/kasse.md"), text).unwrap();
+    git(&wurzel, &["init", "-q"]);
+    git(&wurzel, &["add", "-A"]);
+    git(&wurzel, &["-c", "user.name=KI", "-c", "user.email=k@k", "commit", "-q", "-m", "WBS"]);
+    (t, wurzel)
+}
+
+/// Eingerichteter kanbanD-Ordner mit Stefan, Claude und der Anwendung `kc`, deren WBS im Arbeits-Repository `arbeit` liegt.
+pub fn mit_register(ordner: &Path, arbeit: &Path) {
+    eingerichtet(ordner);
+    let kanban = format!("---\npeople:\n  st: {{name: Stefan, kind: human}}\n  cl: {{name: Claude, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kc: {{name: Kasse, wbs: {}/Dokumentation/Planung/kasse.md, requirements: \"\"}}\n---\n", arbeit.display());
+    std::fs::write(ordner.join("kanbanD.md"), kanban).unwrap();
+    git(ordner, &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "Register"]);
+}

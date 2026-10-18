@@ -1,7 +1,9 @@
 //! Wirkungen von Aufgaben auf die WBS (R00057): prüfen, in der WBS ausführen, an der Aufgabe festhalten.
 
+use super::Kanban;
 use crate::fehler::Fehler;
-use crate::modell::{Aktion, Anwendungen, Wirkung, id_gueltig};
+use crate::format::aufgabe;
+use crate::modell::{Aktion, Anwendungen, Aufgabe, Person, Wirkung, id_gueltig};
 use crate::wbs_datei::NeuerKnoten;
 use serde::Deserialize;
 
@@ -55,6 +57,48 @@ pub fn wirkung_pruefen(e: &WirkungEingabe, anwendungen: &Anwendungen) -> Result<
 pub fn neuer_knoten(w: &Wirkung) -> NeuerKnoten {
     let text = |s: &Option<String>| s.clone().unwrap_or_default();
     NeuerKnoten { ebene: text(&w.ebene), eltern: text(&w.eltern), name: text(&w.name), fertig_kriterium: text(&w.fertig_kriterium), ..Default::default() }
+}
+
+/// Scheitert die WBS am Zustand (Knoten unbekannt, Datei defekt, Anwendung nicht erreichbar), ist das ein Konflikt (409);
+/// falsche Angaben zum neuen Knoten bleiben 400.
+fn als_konflikt(f: Fehler) -> Fehler {
+    match f {
+        Fehler::NichtGefunden(m) => Fehler::Konflikt(m),
+        f => f,
+    }
+}
+
+impl Kanban {
+    /// Hängt eine Wirkung an die Aufgabe `nr` und führt sie sofort aus: erst die WBS im Arbeits-Repository (ohne Commit),
+    /// dann die Aufgabe mit einem Commit im Board-Repository. Scheitert die WBS, bleibt die Aufgabe unverändert.
+    /// Die Sperre des Ordners hält die Aufgabe fest, die WBS-Operation nimmt die Sperre ihrer Datei selbst.
+    pub fn wirkung_setzen(&self, wer: &Person, nr: u32, eingabe: &WirkungEingabe) -> Result<Aufgabe, Fehler> {
+        let e = self.ordner().einstellungen()?.unwrap_or_default();
+        let wirkung = wirkung_pruefen(eingabe, &Anwendungen::aus(&e.quellen))?;
+        let _sperre = self.gesperrt();
+        let mut a = self.ordner().aufgabe(nr)?;
+        let wirkung = self.in_der_wbs_ausfuehren(&a, wirkung).map_err(als_konflikt)?;
+        let schon_da = a.wirkungen.iter().any(|w| w.aktion == wirkung.aktion && w.schluessel() == wirkung.schluessel());
+        if !schon_da {
+            let nachricht = format!("#{nr} wirkt auf {} ({})", wirkung.schluessel().unwrap_or_default(), wirkung.aktion.schluessel());
+            a.wirkungen.push(wirkung);
+            self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
+        }
+        Ok(a)
+    }
+
+    /// Die Wirkung in der WBS; bei `create` mit der vergebenen ID.
+    fn in_der_wbs_ausfuehren(&self, a: &Aufgabe, w: Wirkung) -> Result<Wirkung, Fehler> {
+        let knoten = w.knoten.clone().unwrap_or_default();
+        match w.aktion {
+            Aktion::Anlegen => {
+                let neu = self.wbs_knoten_anlegen(&w.anwendung, &neuer_knoten(&w))?;
+                Ok(Wirkung { knoten: Some(neu.id), ..w })
+            }
+            Aktion::Ueberarbeiten => self.wbs_ueberarbeiten(&w.anwendung, &knoten).map(|_| w),
+            Aktion::Verwerfen => self.wbs_verwerfen(&w.anwendung, &knoten, &format!("#{} {}", a.nummer, a.titel)).map(|_| w),
+        }
+    }
 }
 
 #[cfg(test)]
