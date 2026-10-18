@@ -1,6 +1,6 @@
 ---
 id: R00027
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,11 +25,11 @@ Zehn Aufgaben aus einem Besprechungsprotokoll sind ein Einfügen statt zehnmal T
 
 ## Akzeptanzkriterien
 
-- [ ] `zeilenAusText("- a\n\n* b\n1. c\n- [ ] d\n  e  ")` → `["a","b","c","d","e"]`
-- [ ] API mit drei Titeln auf leerem Board → Nummern 1, 2, 3 in dieser Reihenfolge unten in der Spalte, genau ein Commit mit vier Dateien
-- [ ] Teilaufgaben mehrere → ein Commit
-- [ ] Oberfläche: drei Zeilen in „+ Karte“ einfügen → drei Karten, Hinweis „3 Aufgaben angelegt“
-- [ ] Oberfläche: Zeilen in „+ Teilaufgabe“ einfügen → alle als Teilaufgaben
+- [x] `zeilenAusText("- a\n\n* b\n1. c\n- [ ] d\n  e  ")` → `["a","b","c","d","e"]`
+- [x] API mit drei Titeln auf leerem Board → Nummern 1, 2, 3 in dieser Reihenfolge unten in der Spalte, genau ein Commit mit vier Dateien
+- [x] Teilaufgaben mehrere → ein Commit
+- [x] Oberfläche: drei Zeilen in „+ Karte“ einfügen → drei Karten, Hinweis „3 Aufgaben angelegt“
+- [x] Oberfläche: Zeilen in „+ Teilaufgabe“ einfügen → alle als Teilaufgaben
 
 ## Betroffene Verzeichnisstruktur
 
