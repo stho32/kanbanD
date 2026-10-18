@@ -1,6 +1,6 @@
 ---
 id: R00013
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -25,9 +25,9 @@ Absprachen zu einer Aufgabe stehen bei der Aufgabe und reisen mit dem Repository
 
 ## Akzeptanzkriterien
 
-- [ ] `POST {text: "Zwei\nZeilen"}` als `cl` → Zeile `<heute HH:MM> · cl · Zwei\nZeilen` in der Datei, Commit von „Claude“
-- [ ] `POST {text: ""}` → 400
-- [ ] Oberfläche: Kommentar „Gut so.“ als Stefan → erscheint mit „Stefan“ im Fenster
+- [x] `POST {text: "Zwei\nZeilen"}` als `cl` → Zeile `<heute HH:MM> · cl · Zwei\nZeilen` in der Datei, Commit von „Claude“
+- [x] `POST {text: ""}` → 400
+- [x] Oberfläche: Kommentar „Gut so.“ als Stefan → erscheint mit „Stefan“ im Fenster
 
 ## Betroffene Verzeichnisstruktur
 
