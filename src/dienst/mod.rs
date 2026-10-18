@@ -1,13 +1,16 @@
 //! Die Anwendungsfälle: prüfen, Dateien schreiben, committen — unter einer Schreibsperre.
 
+mod aufgabe_anlegen;
 mod einrichten;
 
+pub use aufgabe_anlegen::NeueAufgabe;
 pub use einrichten::{Einrichtung, NeuePerson};
 
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;
 use crate::git;
-use crate::modell::{Einstellungen, Person};
+use crate::format::board;
+use crate::modell::{Aufgabe, Board, Einstellungen, Person};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -83,6 +86,14 @@ impl Kanban {
         let pfade: Vec<String> = dateien.iter().map(|(p, _)| p.clone()).collect();
         git::committen(self.ordner.wurzel(), &pfade, autor, nachricht)?;
         Ok(())
+    }
+
+    /// Text der Board-Datei; die Links zeigen auf die Dateinamen der Aufgaben (`neu` ist noch nicht auf der Platte).
+    fn board_text(&self, b: &Board, neu: Option<&Aufgabe>) -> Result<String, Fehler> {
+        let (aufgaben, _) = self.ordner.aufgaben()?;
+        Ok(board::schreiben(b, |nr| {
+            neu.filter(|a| a.nummer == nr).or_else(|| aufgaben.iter().find(|a| a.nummer == nr)).map(|a| a.datei.clone())
+        }))
     }
 
     fn gesperrt(&self) -> std::sync::MutexGuard<'_, ()> {

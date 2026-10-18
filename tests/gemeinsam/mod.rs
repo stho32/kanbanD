@@ -65,3 +65,15 @@ pub fn eingerichtet_starten(pfad: &Path) -> Laufendes {
     eingerichtet(pfad);
     starten(pfad, &["--port", "0"])
 }
+
+/// Schreibender Aufruf als Person.
+pub async fn senden(methode: reqwest::Method, adresse: &str, pfad: &str, wer: &str, daten: serde_json::Value) -> (u16, serde_json::Value) {
+    let r = reqwest::Client::new().request(methode, format!("{adresse}{pfad}")).header("X-KanbanD-Wer", wer).json(&daten).send().await.unwrap();
+    let status = r.status().as_u16();
+    let text = r.text().await.unwrap();
+    (status, serde_json::from_str(&text).unwrap_or(serde_json::Value::Null))
+}
+
+pub fn lies(pfad: &Path, rel: &str) -> String {
+    std::fs::read_to_string(pfad.join(rel)).unwrap_or_default()
+}
