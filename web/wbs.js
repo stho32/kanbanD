@@ -125,5 +125,17 @@
       : { application: f.application, action: f.action, node: t(f.node) };
   }
 
-  Object.assign(ziel, { WIRKUNG, wirkungEingabe, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Je Knoten der Anwendung `kuerzel` die Aufgaben, die auf ihn wirken: [{nummer, titel, aktion, archiviert}], nach Nummer. */
+  function wirkungenJeKnoten(aufgaben, kuerzel) {
+    const je = {};
+    for (const a of [...aufgaben].sort((x, y) => x.nummer - y.nummer)) {
+      for (const w of a.wirkungen || []) {
+        if (w.application !== kuerzel || !w.node) continue;
+        (je[w.node] = je[w.node] || []).push({ nummer: a.nummer, titel: a.titel, aktion: w.action, archiviert: !!a.archiviert });
+      }
+    }
+    return je;
+  }
+
+  Object.assign(ziel, { WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

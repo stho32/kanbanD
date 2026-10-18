@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe, wirkungenJeKnoten } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -96,4 +96,17 @@ test('Formular einer Wirkung: create schickt den neuen Knoten, rework und remove
   assert.deepStrictEqual(wirkungEingabe(f), { application: 'kd', action: 'create', parent: 'D0002', level: 'Interaction', name: 'Export', done_criterion: 'US-1' });
   assert.deepStrictEqual(wirkungEingabe({ ...f, action: 'rework', node: ' D0002 ' }), { application: 'kd', action: 'rework', node: 'D0002' });
   assert.deepStrictEqual(wirkungEingabe({ application: 'kd', action: 'remove' }), { application: 'kd', action: 'remove', node: '' });
+});
+
+test('Gegenanzeige: je Knoten der Anwendung die Aufgaben, die auf ihn wirken', () => {
+  const aufgaben = [
+    { nummer: 9, titel: 'Neun', archiviert: '2026-10-01', wirkungen: [{ application: 'kd', action: 'remove', node: 'I0014' }] },
+    { nummer: 7, titel: 'Sieben', wirkungen: [{ application: 'kd', action: 'create', node: 'I0048' }, { application: 'kd', action: 'rework', node: 'I0014' }, { application: 'kc', action: 'rework', node: 'I0048' }, { application: 'kd', action: 'create' }] },
+    { nummer: 8, titel: 'Acht' },
+  ];
+  assert.deepStrictEqual(wirkungenJeKnoten(aufgaben, 'kd'), {
+    I0048: [{ nummer: 7, titel: 'Sieben', aktion: 'create', archiviert: false }],
+    I0014: [{ nummer: 7, titel: 'Sieben', aktion: 'rework', archiviert: false }, { nummer: 9, titel: 'Neun', aktion: 'remove', archiviert: true }],
+  }, 'andere Anwendung und create ohne Knoten fallen weg, nach Nummer');
+  assert.deepStrictEqual(wirkungenJeKnoten([], 'kd'), {});
 });

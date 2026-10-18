@@ -37,6 +37,7 @@ test.describe('R00057', () => {
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #7' });
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0047', '↻ kd:D0002', '− kd:I0014']);
     await fenster.getByRole('link', { name: '↻ kd:D0002' }).click();
+    await expect(z(page, 'D0002').locator('.wbs-aufgabe')).toHaveText(['#7']);
     await expect(page).toHaveURL(/#\/wbs\/kd\/D0002$/);
     await expect(fenster).toHaveCount(0);
     await expect(z(page, 'D0002')).toHaveClass(/\bziel\b/);
@@ -72,6 +73,14 @@ test.describe('R00057', () => {
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 1);
     expect(k.git('log', '-1', '--format=%s')).toBe('#7 wirkt auf kd:I0048 (create)');
     expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
+    // Gegenanzeige: die WBS-Sicht zeigt an I0048 die Aufgabe, Klick öffnet sie
+    await karte(page, 7).getByRole('link', { name: '+ kd:I0048' }).click();
+    await expect(z(page, 'I0048')).toHaveClass(/\brot\b/);
+    await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveText(['#7']);
+    await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveAttribute('title', '#7 Dialog Export bauen — legt an');
+    await expect(z(page, 'I0047').locator('.wbs-aufgabe')).toHaveCount(0);
+    await z(page, 'I0048').locator('.wbs-aufgabe').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #7' })).toBeVisible();
   });
 
   test('US-2: „überarbeiten“ setzt den grünen Dialog samt Nachfahren rot; unbekannter Knoten lässt die Aufgabe unverändert', async ({ page }) => {

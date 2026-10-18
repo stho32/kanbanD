@@ -91,6 +91,12 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
 .wchip:hover{text-decoration:none;border-color:var(--kd-accent);color:var(--kd-accent-ink)}
 .wchip.remove{color:var(--kd-muted)}
+.wbs-aufgaben{display:inline-flex;gap:3px;margin-left:var(--kd-s2)}
+.wbs-aufgabe{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;line-height:15px}
+.wbs-aufgabe[data-aktion="create"]::before{content:"+ "}
+.wbs-aufgabe[data-aktion="rework"]::before{content:"↻ "}
+.wbs-aufgabe[data-aktion="remove"]::before{content:"− "}
+.wbs-aufgabe.arch{color:var(--kd-faint);border-style:dashed}
 .wirkung-form{grid-column:1/-1;border:1px solid var(--kd-line);background:var(--kd-sunken);padding:var(--kd-s2) var(--kd-s3);margin:0 0 var(--kd-s2)}
 .wirkung-form .fuss{display:flex;gap:var(--kd-s2);align-items:center;flex-wrap:wrap;margin-top:var(--kd-s2)}
 .wirkung-form .fuss .muted{margin-right:auto;font-size:11px}
