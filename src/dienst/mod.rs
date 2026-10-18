@@ -6,6 +6,7 @@ mod bewegen;
 mod board_anlegen;
 mod einrichten;
 mod einstellungen;
+mod kommentare;
 mod spalten;
 mod teilaufgaben;
 

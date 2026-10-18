@@ -62,6 +62,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
+        .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
@@ -228,4 +229,8 @@ async fn teilaufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path((nr, i)
 
 async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.teilaufgabe_entfernen(p, nr, i)).await
+}
+
+async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.kommentieren(p, nr, &t.text)).await
 }
