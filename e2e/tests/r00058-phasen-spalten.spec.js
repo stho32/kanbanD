@@ -86,3 +86,43 @@ test.describe('R00058 entfällt', () => {
     await expect.poll(() => k.lies('aufgaben/0001-a1.md')).not.toContain('phases');
   });
 });
+
+test.describe('R00058 Bindung und Queues', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('US-1: an eine Anwendung gebunden — Entwicklertest und Abnahme vor Erledigt, ein Commit', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    const ohne = '# Entwicklung\n\n## Backlog\n\n## Nächste Aufgaben\n\n## Entwicklung\n\n## Erledigt\n';
+    // `xx` ist nicht registriert: genannt, aber an nichts gebunden — reines Kanban
+    k = await kanbanStarten(mitRegister(arbeit, { 'boards/entwicklung.md': '---\napplications: [xx]\n---\n\n' + ohne }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/entwicklung');
+    await expect(page.locator('.bahn')).toHaveCount(4);
+    k.schreib('boards/entwicklung.md', '---\napplications: [kd]\n---\n\n' + ohne);
+    k.git('commit', '-q', '-am', 'binden');
+    const vorher = +k.git('rev-list', '--count', 'HEAD');
+    await page.reload();
+    await expect(page.locator('.bahn')).toHaveText([/^Backlog/, /^Nächste Aufgaben/, /^Entwicklung/, /^Entwicklertest/, /^Abnahme/, /^Erledigt/]);
+    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
+    expect(k.git('log', '-1', '--format=%an|%s')).toBe('kanbanD|Phasen-Spalten von „Entwicklung“ ergänzt: Entwicklung (zugeordnet), Entwicklertest, Abnahme');
+    expect(k.lies('boards/entwicklung.md')).toContain('column-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n');
+  });
+
+  test('US-2: zwei Abnahme-Queues — nach „Abnahme Mia“ gezogen ist Entwicklertest durchlaufen', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(mitRegister(arbeit, {
+      ...aufgaben(1),
+      'boards/entwicklung.md': '---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme Stefan: Abnahme\n  Abnahme Mia: Abnahme\n---\n\n# Entwicklung\n\n## Entwicklung\n\n## Entwicklertest\n\n- #1\n\n## Abnahme Stefan\n\n## Abnahme Mia\n\n## Erledigt\n',
+    }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('.bahn')).toHaveCount(5);
+    await page.locator('.ka[data-id="1"]').dragTo(page.locator('.bahn[data-col="Abnahme Mia"] .flaeche'));
+    await expect(page.locator('.bahn[data-col="Abnahme Mia"] .ka[data-id="1"]')).toBeVisible();
+    await expect(page.locator('.bahn[data-col="Abnahme Mia"] .bahn-kopf .ph')).toHaveText('Abnahme');
+    await page.goto(k.adresse + '#/berichte/prognose');
+    await expect(page.locator('#wl-kopf')).toHaveText('0 von 1 fertig · Entwicklung durchlaufen 1 von 1 · Entwicklertest durchlaufen 1 von 1');
+    expect(k.git('log', '--format=%s')).not.toContain('Phasen-Spalten');
+  });
+});
