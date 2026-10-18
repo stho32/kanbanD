@@ -93,5 +93,32 @@
     return tage;
   }
 
-  Object.assign(ziel, { spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  /* ── Durchlaufzeit (R00045) ── */
+  /** Erstes Erreichen der Spalte mit Index ≥ i (dort oder rechts davon), in ms; null = nie. */
+  function erreicht(wechsel, spalten, i) {
+    const w = wechsel.find(x => x.spalte != null && spalten.indexOf(x.spalte) >= i);
+    return w ? zeitMs(w.zeitpunkt) : null;
+  }
+  const runden1 = x => Math.round(x * 10) / 10;
+  /** Perzentil nach Nearest-Rank über sortierte Werte. */
+  const perzentil = (sortiert, p) => sortiert.length ? sortiert[Math.max(0, Math.ceil(p / 100 * sortiert.length) - 1)] : null;
+
+  /** Je Aufgabe Eintritt in „von“, Ankunft in „bis“ (im Zeitraum) und Tage; dazu Kennzahlen. */
+  function durchlaufzeiten(bew, f, aufgabeZu, jetzt, von, bis) {
+    const iv = Math.max(0, bew.spalten.indexOf(von)), ib = bew.spalten.indexOf(bis) < 0 ? bew.spalten.length - 1 : bew.spalten.indexOf(bis);
+    const leer = { liste: [], anzahl: 0, mittel: null, median: null, p85: null, gueltig: iv < ib };
+    if (iv >= ib) return leer;
+    const g = zeitraumGrenzen(f, jetzt);
+    const liste = bew.aufgaben.map(a => {
+      const e = erreicht(a.wechsel, bew.spalten, iv), z = erreicht(a.wechsel, bew.spalten, ib);
+      return e != null && z != null && z >= e ? { nummer: a.nummer, eintritt: e, ankunft: z, tage: runden1((z - e) / TAG) } : null;
+    }).filter(x => x && x.ankunft >= g.von && x.ankunft < g.bis && aufgabePasst(f, aufgabeZu(x.nummer)))
+      .sort((x, y) => y.ankunft - x.ankunft || x.nummer - y.nummer);
+    const w = liste.map(x => x.tage).sort((x, y) => x - y);
+    if (!w.length) return leer;
+    const m = w.length / 2;
+    return { liste, anzahl: w.length, gueltig: true, mittel: runden1(w.reduce((s, x) => s + x, 0) / w.length), median: runden1(w.length % 2 ? w[Math.floor(m)] : (w[m - 1] + w[m]) / 2), p85: perzentil(w, 85) };
+  }
+
+  Object.assign(ziel, { durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

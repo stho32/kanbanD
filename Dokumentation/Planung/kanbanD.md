@@ -116,8 +116,8 @@ zuletzt: 2026-10-18
 | I0044 | Interaction | D0006 | Burndown nach Zeitraum | gruen | US-1..US-2 |  |  |  | I0043 | R00044 | Berichte 2: Burndown ohne Durchlaufzeit, gefiltert nach Zeitraum und Filterleiste |
 | B0106 | Bubble | I0044 | Burndown aus Bewegungen rechnen | gruen | Test gruen | Bewegungen + Zeitraum + Filter → offen und Umfang je Tag | 0,5-1 |  |  |  |  |
 | B0107 | Bubble | I0044 | Burndown-Bericht mit Filterleiste | gruen | Test gruen | Tage → Diagramm, Tabellenansicht, ohne Durchlaufzeit; Filterleiste mit Zeitraum, Farben, Spalten, Personen, Labels | 1-2 |  |  |  |  |
-| I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | rot | US-1..US-2 |  |  |  | I0043 | R00045 | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
-| B0108 | Bubble | I0045 | Durchlaufzeit zwischen Spalten rechnen | rot | Test gruen | Bewegungen + von/bis-Spalte + Filter → je Aufgabe Eintritt, Ankunft, Tage; Mittel, Median, 85 % | 0,5-1 |  |  |  |  |
+| I0045 | Interaction | D0006 | Durchlaufzeit als eigener Bericht | gelb | US-1..US-2 |  |  |  | I0043 | R00045 | Berichte 2: Cycle & Lead Time zwischen wählbaren Spalten, Kennzahlen, Verteilung |
+| B0108 | Bubble | I0045 | Durchlaufzeit zwischen Spalten rechnen | gruen | Test gruen | Bewegungen + von/bis-Spalte + Filter → je Aufgabe Eintritt, Ankunft, Tage; Mittel, Median, 85 % | 0,5-1 |  |  |  |  |
 | B0109 | Bubble | I0045 | Bericht Durchlaufzeit | rot | Test gruen | Durchläufe → Streudiagramm mit Median und 85 %, Tabelle, Spaltenwahl, Filterleiste, Menü und g d | 1-2 |  |  |  |  |
 | I0046 | Interaction | D0006 | Wie lange noch | rot | US-1..US-3 |  |  |  | I0043, I0042 |  | Berichte 2: Monte-Carlo-Prognose je Spalte aus dem Durchsatz des Boards, live |
 | I0024 | Interaction | D0007 | Agent arbeitet über die API | gruen | US-1..US-2 |  |  |  | I0005 | R00024 | Beschreibung unter /api, Identität je Aufruf |

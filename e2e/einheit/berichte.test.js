@@ -72,3 +72,19 @@ test('Burndown je Tag, Zeitraum, Ausschlüsse', () => {
   assert.deepStrictEqual(kurz(burndown(BEW, f({ ohneFarben: ['ux'] }), zu, jetzt)), [['18', 1, 1], ['19', 1, 2], ['20', 0, 1], ['21', 0, 1]]);
   assert.deepStrictEqual(burndown({ spalten: [], aufgaben: [] }, f({}), zu, jetzt), []);
 });
+
+const { durchlaufzeiten, perzentil } = require('../../web/berichte.js');
+
+test('Durchlaufzeit: Lead und Cycle Time, Zeitraum, Kennzahlen', () => {
+  const lead = durchlaufzeiten(BEW, f({}), zu, jetzt, 'A', 'Z');
+  assert.deepStrictEqual(lead.liste.map(x => [x.nummer, x.tage]), [[2, 3.1], [1, 1]]);
+  assert.deepStrictEqual([lead.anzahl, lead.mittel, lead.median, lead.p85], [2, 2.1, 2.1, 3.1]);
+  const cycle = durchlaufzeiten(BEW, f({}), zu, jetzt, 'B', 'Z');
+  assert.deepStrictEqual(cycle.liste.map(x => [x.nummer, x.tage]), [[2, 1], [1, 0]], '#1 erreicht B mit dem Sprung nach Z');
+  assert.deepStrictEqual(durchlaufzeiten(BEW, f({ zeitraum: 'eigen', von: '2026-10-21', bis: '2026-10-21' }), zu, jetzt, 'A', 'Z').liste.map(x => x.nummer), [2]);
+  assert.deepStrictEqual(durchlaufzeiten(BEW, f({ ohneFarben: ['ux'] }), zu, jetzt, 'A', 'Z').liste.map(x => x.nummer), [1]);
+  assert.strictEqual(durchlaufzeiten(BEW, f({}), zu, jetzt, 'Z', 'A').gueltig, false);
+  const rueck = { spalten: ['A', 'Z'], aufgaben: [{ nummer: 9, wechsel: [{ zeitpunkt: '2026-10-01 00:00', spalte: 'A' }, { zeitpunkt: '2026-10-02 00:00', spalte: 'Z' }, { zeitpunkt: '2026-10-03 00:00', spalte: 'A' }, { zeitpunkt: '2026-10-05 00:00', spalte: 'Z' }] }] };
+  assert.strictEqual(durchlaufzeiten(rueck, f({}), () => undefined, jetzt, 'A', 'Z').liste[0].tage, 1, 'erstes Erreichen zählt');
+  assert.deepStrictEqual([perzentil([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 85), perzentil([], 85)], [9, null]);
+});
