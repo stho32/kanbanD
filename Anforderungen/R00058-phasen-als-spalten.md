@@ -1,6 +1,6 @@
 ---
 id: R00058
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -32,14 +32,14 @@ Ein Durchlauf ist ein Zug mit Name und Zeitpunkt im Commit. Die Tabelle `## Durc
 ## Akzeptanzkriterien
 
 ### Spalten
-- [ ] Board mit `## Backlog`, `## Nächste Aufgaben`, `## Entwicklung`, `## Erledigt`, Phasen-Datei mit `Entwicklung, Entwicklertest, Abnahme` → nach Bindung zusätzlich `## Entwicklertest` und `## Abnahme` vor `## Erledigt`, `column-phases` mit drei Einträgen, ein Commit
-- [ ] Abnahme `gleich wie: Entwicklertest` → keine Spalte `Abnahme`
-- [ ] `column-phases: {Abnahme Stefan: Abnahme, Abnahme Mia: Abnahme}` → kanbanD legt keine weitere Spalte `Abnahme` an
+- [x] Board mit `## Backlog`, `## Nächste Aufgaben`, `## Entwicklung`, `## Erledigt`, Phasen-Datei mit `Entwicklung, Entwicklertest, Abnahme` → nach Bindung zusätzlich `## Entwicklertest` und `## Abnahme` vor `## Erledigt`, `column-phases` mit drei Einträgen, ein Commit
+- [x] Abnahme `gleich wie: Entwicklertest` → keine Spalte `Abnahme`
+- [x] `column-phases: {Abnahme Stefan: Abnahme, Abnahme Mia: Abnahme}` → kanbanD legt keine weitere Spalte `Abnahme` an
 
 ### Rechnung
-- [ ] #1 Entwicklung (01.10.) → Abnahme Stefan (03.10.); #2 Entwicklung (01.10.) → Abnahme Mia (04.10.) → Entwicklertest (05.10.) → Durchlauf Entwicklertest am 03.10. bzw. 04.10.; #2 ist ab 05.10. in Abnahme wieder offen; „Abnahme Mia“ rechts von „Abnahme Stefan“ zählt nicht als weiter
-- [ ] #3 mit `phases.skipped: [Entwicklertest]` springt von Entwicklung nach Abnahme → Entwicklertest-Nenner ohne #3, Durchsatz Entwicklertest ohne #3
-- [ ] Wie lange noch auf dem gebundenen Board zeigt Blöcke „Entwicklung durchlaufen“, „Entwicklertest durchlaufen“, „Abnahme durchlaufen“ mit denselben Perzentilen wie dieselben Daten in der Rechnung von R00046 je Phase
+- [x] #1 Entwicklung (01.10.) → Abnahme Stefan (03.10.); #2 Entwicklung (01.10.) → Abnahme Mia (04.10.) → Entwicklertest (05.10.) → Durchlauf Entwicklertest am 03.10. bzw. 04.10.; #2 ist ab 05.10. in Abnahme wieder offen; „Abnahme Mia“ rechts von „Abnahme Stefan“ zählt nicht als weiter
+- [x] #3 mit `phases.skipped: [Entwicklertest]` springt von Entwicklung nach Abnahme → Entwicklertest-Nenner ohne #3, Durchsatz Entwicklertest ohne #3
+- [x] Wie lange noch auf dem gebundenen Board zeigt Blöcke „Entwicklung durchlaufen“, „Entwicklertest durchlaufen“, „Abnahme durchlaufen“ mit denselben Perzentilen wie dieselben Daten in der Rechnung von R00046 je Phase
 
 ## Betroffene Verzeichnisstruktur
 
