@@ -23,7 +23,7 @@ test.describe('R00053', () => {
     const kd = arbeitsRepository('Bewegen'); repos.push(kd);
     k = await kanbanStarten(einrichten());
     await alsPerson(page, 'st');
-    const vorher = +k.git('rev-list', '--count', 'HEAD');
+    const vorher = +k.git('rev-list', '--count', 'HEAD', '--', 'kanbanD.md');
     await page.goto(k.adresse + '#/einrichten');
     await page.getByLabel('Neues Anwendungskürzel').fill('kd');
     await page.getByLabel('Neuer Anwendungsname').fill('kanbanD');
@@ -37,8 +37,9 @@ test.describe('R00053', () => {
     const zeile = page.locator('.anw[data-anwendung="kd"]');
     await expect(zeile.locator('.erreich.ja')).toHaveCount(2);
     expect(k.lies('kanbanD.md')).toContain(`    kd: {name: kanbanD, wbs: ${path.join(kd, 'plan.md')}, requirements: ${path.join(kd, 'anf')}}\n`);
-    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
-    expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|Einstellungen geändert');
+    // das Board ist jetzt gebunden: seine Phasen-Spalten trägt kanbanD als eigene Aktion nach (R00058)
+    expect(+k.git('rev-list', '--count', 'HEAD', '--', 'kanbanD.md')).toBe(vorher + 1);
+    expect(k.git('log', '-1', '--format=%an|%s', '--', 'kanbanD.md')).toBe('Stefan|Einstellungen geändert');
   });
 
   test('US-3: verschobene WBS — nicht erreichbar, Boards bleiben benutzbar', async ({ page }) => {
