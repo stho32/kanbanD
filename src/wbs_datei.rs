@@ -172,6 +172,13 @@ fn statuszellen_schreiben(text: &str, t: &WbsTabelle, status_neu: &[(String, Str
     Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert: status_neu.iter().map(|(id, _)| id.clone()).collect() }
 }
 
+/// Nächste ID eines Präfixes: die höchste aus allen Ständen der Datei plus 1 — eine ID wird nie wiederverwendet, auch keine gelöschte.
+pub fn naechste_id(praefix: char, staende: &[String]) -> String {
+    let nummer = |id: &str| id.strip_prefix(praefix)?.parse::<u32>().ok();
+    let hoechste = staende.iter().flat_map(|s| wbs_tabelle(s).alle().iter().filter_map(|k| nummer(&k.id)).max()).max().unwrap_or(0);
+    format!("{praefix}{:04}", hoechste + 1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,5 +279,18 @@ mod tests {
         let g = status_setzen(&t, "I0001", "gruen", "h").unwrap();
         assert_eq!(g.geaendert, ["I0001", "D0001"], "nur eine Option darunter — I0001 trägt den Status selbst, D0001 gemischt gelb");
         assert!(g.text.contains("| D0001 | Dialog | — | Name D0001 | gelb |"));
+    }
+
+    #[test]
+    fn naechste_id_auch_ueber_geloeschte_zeilen_der_historie() {
+        let ids = |n: std::ops::RangeInclusive<u32>| n.map(|i| (format!("B{i:04}"), "Bubble", "I0001", "rot")).collect::<Vec<_>>();
+        let als = |v: &[(String, &str, &str, &str)]| wbs(&v.iter().map(|(a, b, c, d)| (a.as_str(), *b, *c, *d)).collect::<Vec<_>>());
+        let datei = als(&ids(1..=116));
+        let mit_b0117 = als(&ids(1..=117));
+        assert_eq!(naechste_id('B', &[datei.clone(), mit_b0117]), "B0118", "B0117 gab es in einem früheren Stand");
+        assert_eq!(naechste_id('B', std::slice::from_ref(&datei)), "B0117");
+        assert_eq!(naechste_id('I', &[datei]), "I0001", "Präfix ohne Knoten beginnt bei 1");
+        assert_eq!(naechste_id('F', &[]), "F0001");
+        assert_eq!(naechste_id('B', &[wbs(&[("B0003", "Bubble", "", "rot"), ("B0001", "Bubble", "", "rot")])]), "B0004", "Lücken werden nicht gefüllt");
     }
 }
