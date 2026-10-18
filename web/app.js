@@ -370,6 +370,22 @@ async function act(a, arg, wert) {
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
       case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;
+      case 'liste-ablegen': {
+        if (ichNoetig()) break;
+        const [nr, slug, spalte] = arg.split('|');
+        u.fokusZeile = +nr;
+        if (slug === 'archiv') return act('archivieren', nr);
+        const b = (S.boards || []).find(x => x.slug === slug);
+        const liegt = b && b.spalten.some(sp => sp.aufgaben.includes(+nr));
+        if (liegt) {
+          const index = b.spalten.find(sp => sp.name === spalte).aufgaben.filter(n => n !== +nr).length;
+          await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/bewegen`, { nummer: +nr, spalte, index });
+        } else {
+          await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben`, { nummer: +nr, spalte });
+        }
+        if (!u.fensterFehler) u.hinweis = { text: `#${nr} nach ${b ? b.titel : slug} · ${spalte}`, at: Date.now() };
+        return;
+      }
       case 'legen': {
         if (ichNoetig()) break;
         const [slug, nr, spalte] = arg.split('|');
@@ -917,6 +933,37 @@ function brettTaste(e, t) {
 /* Ziehen: obere Hälfte = davor, untere = dahinter, freie Fläche = ans Ende. */
 let zug = null, ziel = null;
 const einfuegeMarkenWeg = () => document.querySelectorAll('.ins-b,.ins-a,.ins-end').forEach(x => x.classList.remove('ins-b', 'ins-a', 'ins-end'));
+/* Ziehen aus der Aufgabenliste auf die Ziele daneben */
+let zugZeile = null;
+document.addEventListener('dragstart', e => {
+  const z = e.target.closest && e.target.closest('tr[data-zeile][draggable]');
+  if (!z) return;
+  zugZeile = +z.dataset.zeile;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', '#' + zugZeile); } catch (_) { }
+  setTimeout(() => z.classList.add('zieht'));
+});
+document.addEventListener('dragover', e => {
+  if (zugZeile == null) return;
+  document.querySelectorAll('.ziel.ueber').forEach(x => x.classList.remove('ueber'));
+  const z = e.target.closest && e.target.closest('[data-ziel]');
+  if (!z) return;
+  e.preventDefault();
+  z.classList.add('ueber');
+});
+document.addEventListener('drop', e => {
+  if (zugZeile == null) return;
+  const z = e.target.closest && e.target.closest('[data-ziel]');
+  const nr = zugZeile;
+  zugZeile = null;
+  if (!z) return;
+  e.preventDefault();
+  act('liste-ablegen', `${nr}|${z.dataset.ziel}`);
+});
+document.addEventListener('dragend', () => {
+  zugZeile = null;
+  document.querySelectorAll('.ziel.ueber,tr.zieht').forEach(x => x.classList.remove('ueber', 'zieht'));
+});
 document.addEventListener('dragstart', e => {
   const k = e.target.closest && e.target.closest('.ka[draggable]');
   if (!k) return;

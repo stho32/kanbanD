@@ -17,7 +17,7 @@ zuletzt: 2026-10-18
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
 | D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
-| D0004 | Dialog | A0001 | Aufgabenliste | gelb | alle Interactions gruen |  |  |  |  | R00020 |  |
+| D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
@@ -160,8 +160,8 @@ zuletzt: 2026-10-18
 | B0099 | Bubble | I0038 | Nächste Teilaufgabe zeigen und abhaken | gruen | Test gruen | Aufgabe → erste offene Teilaufgabe unter dem Titel, Klick hakt ab, die nächste rückt nach | 0,5-1 |  |  |  |  |
 | I0039 | Interaction | D0003 | Zuständige frei setzen | gruen | US-1..US-2 |  |  |  | I0011 | R00039 | UX-Überarbeitung 3: alle Personen hinzufügen und entfernen, auch im Kartenmenü |
 | B0100 | Bubble | I0039 | Zuständige im Menü und per p | gruen | Test gruen | Aufgabe + Personen → Untermenü mit Haken je Person; Klick setzt oder entfernt; p öffnet es an der Karte | 1-2 |  |  |  |  |
-| I0040 | Interaction | D0004 | Ziehen in der Aufgabenliste | rot | US-1..US-2 |  |  |  | I0020 | R00040 | UX-Überarbeitung 3: Zeilen auf Boardspalten oder ins Archiv ziehen |
-| B0101 | Bubble | I0040 | Zeilen auf Spalten und Archiv ziehen | rot | Test gruen | Zeile + Ziel (Board · Spalte | Archiv) → legen, bewegen oder archivieren, ein Commit | 1-2 |  |  |  |
+| I0040 | Interaction | D0004 | Ziehen in der Aufgabenliste | gruen | US-1..US-2 |  |  |  | I0020 | R00040 | UX-Überarbeitung 3: Zeilen auf Boardspalten oder ins Archiv ziehen |
+| B0101 | Bubble | I0040 | Zeilen auf Spalten und Archiv ziehen | gruen | Test gruen | Zeile + Ziel (Board · Spalte | Archiv) → legen, bewegen oder archivieren, ein Commit | 1-2 |  |  |  |
 | I0041 | Interaction | D0002 | Kürzel nach Kanbanflow-Konvention | rot | US der Anforderung |  |  |  | I0035 |  | UX-Überarbeitung 3: n, Strg+Enter, Esc, Leertaste Timer, Entf archivieren |
 
 ## Offene Fragen

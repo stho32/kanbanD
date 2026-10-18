@@ -148,3 +148,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00038 Erste offene Teilaufgabe auf der Karte | Lauf R00038 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00039 Zuständige frei setzen | B0100 Zuständige im Menü und per p | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00039 Zuständige frei setzen | Lauf R00039 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-18 | R00040 Ziehen in der Aufgabenliste | B0101 Zeilen auf Spalten und Archiv ziehen | Standard | Archiv) → legen, bewegen oder archivieren, ein Commith | 0,0h | 0,0h | autonom |

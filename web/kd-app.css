@@ -423,3 +423,14 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .naechste-box{flex:none;width:13px;height:13px;margin-top:1px;padding:0;border:1px solid var(--kd-line-strong);background:var(--kd-surface);cursor:pointer}
 .naechste-box:hover,.naechste-box:focus{border-color:var(--kd-accent);background:var(--kd-accent-weak)}
 .km-ohne{display:inline-block;width:1.1em}
+/* Ziehen aus der Liste */
+.liste-mit-zielen{display:flex;gap:16px;align-items:flex-start}
+.liste-mit-zielen>table{flex:1}
+.ziele{flex:none;width:210px;position:sticky;top:0;border:1px solid var(--kd-line);background:var(--kd-surface);padding:8px}
+.ziele h4{margin:0 0 6px;font:600 10px/1.4 var(--kd-mono);letter-spacing:.06em;color:var(--kd-muted)}
+.ziel-board{margin-bottom:8px}.ziel-board b{display:block;font-size:12px;margin-bottom:3px}
+.ziel{display:flex;justify-content:space-between;padding:5px 8px;margin-bottom:3px;border:1px dashed var(--kd-line-strong);font-size:12px;color:var(--kd-text)}
+.ziel .mono{color:var(--kd-muted)}
+.ziel.ueber{border-style:solid;border-color:var(--kd-accent);background:var(--kd-accent-weak)}
+.ziel-archiv{color:var(--kd-muted)}
+tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
