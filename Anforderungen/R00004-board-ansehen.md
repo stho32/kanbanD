@@ -1,6 +1,6 @@
 ---
 id: R00004
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -29,15 +29,15 @@ Der Stand der Arbeit ist auf einen Blick sichtbar, und jede Karte ist eine lesba
 ## Akzeptanzkriterien
 
 ### Format
-- [ ] Rundlauf Text → Aufgabe → Text ist für eine vollständige Aufgabe zeichengleich
-- [ ] `2026-10-18 09:00 · ... · st` wird als laufender Zeiteintrag von st gelesen
-- [ ] Ein Kommentar mit Zeilenumbruch wird als eine Zeile mit `\n` geschrieben und zurückgelesen
-- [ ] Ein unbekannter Schlüssel `estimate: 3` bleibt beim Schreiben erhalten
+- [x] Rundlauf Text → Aufgabe → Text ist für eine vollständige Aufgabe zeichengleich
+- [x] `2026-10-18 09:00 · ... · st` wird als laufender Zeiteintrag von st gelesen
+- [x] Ein Kommentar mit Zeilenumbruch wird als eine Zeile mit `\n` geschrieben und zurückgelesen
+- [x] Ein unbekannter Schlüssel `estimate: 3` bleibt beim Schreiben erhalten
 
 ### Board
-- [ ] Board mit Aufgaben 1 und 2 in „Zu erledigen“ und 3 in „In Arbeit“ zeigt 2 + 1 Karten in dieser Reihenfolge
-- [ ] Aufgabe 2 mit `class: bug` trägt die Klassenfarbe; Aufgabe 1 mit 1 von 3 erledigten Teilaufgaben zeigt „☑ 1/3“
-- [ ] Ein Verweis auf #9 ohne Datei erscheint als „#9 — Aufgabe fehlt“
+- [x] Board mit Aufgaben 1 und 2 in „Zu erledigen“ und 3 in „In Arbeit“ zeigt 2 + 1 Karten in dieser Reihenfolge
+- [x] Aufgabe 2 mit `class: bug` trägt die Klassenfarbe; Aufgabe 1 mit 1 von 3 erledigten Teilaufgaben zeigt „☑ 1/3“
+- [x] Ein Verweis auf #9 ohne Datei erscheint als „#9 — Aufgabe fehlt“
 
 ## Betroffene Verzeichnisstruktur
 
