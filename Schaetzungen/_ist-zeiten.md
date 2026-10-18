@@ -22,3 +22,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00002 Erster Start einrichten | Lauf R00002 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00003 Identität wählen | B0010 Handelnden bestimmen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00003 Identität wählen | B0011 Ich-bin-Auswahl | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-10-18 | R00003 Identität wählen | Lauf R00003 | Nacharbeit | — | — | 0,0h | autonom |

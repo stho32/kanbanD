@@ -1,6 +1,6 @@
 ---
 id: R00003
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,13 +27,13 @@ An jeder Änderung ist ablesbar, wer gehandelt hat, ohne Anmeldung.
 ## Akzeptanzkriterien
 
 ### API
-- [ ] `GET /api/wer` mit `X-KanbanD-Wer: cl` liefert `{"kuerzel":"cl","art":"agent",…}`
-- [ ] Ohne Header 400 mit „X-KanbanD-Wer fehlt“; mit `zz` 400 mit „zz“; mit stillgelegtem Kürzel 400 mit „stillgelegt“
+- [x] `GET /api/wer` mit `X-KanbanD-Wer: cl` liefert `{"kuerzel":"cl","art":"agent",…}`
+- [x] Ohne Header 400 mit „X-KanbanD-Wer fehlt“; mit `zz` 400 mit „zz“; mit stillgelegtem Kürzel 400 mit „stillgelegt“
 
 ### Oberfläche
-- [ ] Ein frischer Tab zeigt „nicht gewählt“; nach Wahl von „Stefan“ zeigt die Kopfzeile „Stefan“, auch nach Neuladen
-- [ ] Ein zweiter Tab (eigene Sitzung) zeigt wieder „nicht gewählt“
-- [ ] Agenten erscheinen im Popover, sind aber nicht wählbar
+- [x] Ein frischer Tab zeigt „nicht gewählt“; nach Wahl von „Stefan“ zeigt die Kopfzeile „Stefan“, auch nach Neuladen
+- [x] Ein zweiter Tab (eigene Sitzung) zeigt wieder „nicht gewählt“
+- [x] Agenten erscheinen im Popover, sind aber nicht wählbar
 
 ## Betroffene Verzeichnisstruktur
 
