@@ -54,6 +54,9 @@ function wbsKlapp() {
   }
   return S.ui.wbsKlapp.kl;
 }
+function wbsKlappMerken() {
+  try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(wbsKlapp())); } catch (_) { }
+}
 /** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
 const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
@@ -436,14 +439,14 @@ async function act(a, arg, wert) {
       case 'wbs-klapp': {
         const kl = wbsKlapp(), zu = zugeklappt(S.wbs.knoten, kl, S.wbs.stand.pfad);
         kl[arg] = zu.has(arg);
-        try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(kl)); } catch (_) { }
+        wbsKlappMerken();
         u.fokus = `[data-act="wbs-klapp"][data-arg="${arg}"]`;
         break;
       }
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
         for (let e = nach.get((nach.get(arg) || {}).eltern); e && !(e.id in kl && kl[e.id]); e = nach.get(e.eltern)) kl[e.id] = true;
-        try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(kl)); } catch (_) { }
+        wbsKlappMerken();
         render();
         const z = document.getElementById('wbs-' + arg);
         if (z) { z.scrollIntoView({ block: 'center' }); z.classList.add('ziel'); }
