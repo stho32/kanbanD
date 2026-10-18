@@ -36,5 +36,28 @@
   /** `R00053, R00054` → beide IDs. */
   const anforderungsIds = zelle => (zelle || '').match(/\bR\d{5}\b/g) || [];
 
-  Object.assign(ziel, { gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds });
+  /** Dialog und Interaction mit Kindern sind klappbar. */
+  const klappbar = (k, eltern) => eltern.has(k.id) && (k.ebene === 'Dialog' || k.ebene === 'Interaction');
+
+  /** Zugeklappte Knoten: gewählt in `klapp` ({id: offen?}), sonst ist nur der aktive Ast offen (`pfad`). */
+  function zugeklappt(knoten, klapp, pfad) {
+    const eltern = mitKindern(knoten, false);
+    return new Set(knoten.filter(k => klappbar(k, eltern) && !(k.id in klapp ? klapp[k.id] : pfad.includes(k.id))).map(k => k.id));
+  }
+
+  /** Knoten, über denen ein zugeklappter liegt — sie werden ausgeblendet; der zugeklappte selbst bleibt sichtbar. */
+  function ausgeblendet(knoten, zu) {
+    const nach = new Map(knoten.map(k => [k.id, k]));
+    const weg = new Set();
+    for (const k of knoten) {
+      const gesehen = new Set([k.id]);
+      for (let e = nach.get(k.eltern); e && !gesehen.has(e.id); e = nach.get(e.eltern)) {
+        gesehen.add(e.id);
+        if (zu.has(e.id)) { weg.add(k.id); break; }
+      }
+    }
+    return weg;
+  }
+
+  Object.assign(ziel, { gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

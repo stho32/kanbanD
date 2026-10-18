@@ -78,4 +78,23 @@ test.describe('R00054', () => {
     await expect(z('I0001').locator('td').first().locator('a')).toHaveAttribute('href', `vscode://file${arbeit.wbs}:11`);
     await expect(z('I0001').locator('td').nth(2)).toHaveText(/Ansehen/);
   });
+
+  test('US-2: Dialog zuklappen blendet Interactions und Bubbles aus, der Status bleibt', async ({ page }) => {
+    await page.goto(k.adresse + '#/wbs/kd');
+    const z = id => page.locator(`tr.wbs-z[data-id="${id}"]`);
+    await expect(z('I0002')).toBeVisible();
+    await expect(z('I0003')).toBeHidden();
+    await expect(z('B0001')).toBeHidden();
+    await expect(z('D0002').getByRole('button', { name: 'D0002 aufklappen' })).toBeVisible();
+    await z('D0001').getByRole('button', { name: 'D0001 zuklappen' }).click();
+    for (const id of ['I0001', 'B0001', 'B0002', 'I0002', 'F0001', 'F0002']) await expect(z(id)).toBeHidden();
+    await expect(z('D0001')).toBeVisible();
+    await expect(z('D0001').locator('.ampel.gerechnet')).toHaveText('gelb');
+    await page.reload();
+    await expect(z('D0001')).toBeVisible();
+    await expect(z('I0001')).toBeHidden();
+    await z('D0001').getByRole('button', { name: 'D0001 aufklappen' }).click();
+    await z('I0001').getByRole('button', { name: 'I0001 aufklappen' }).click();
+    await expect(z('B0001')).toBeVisible();
+  });
 });

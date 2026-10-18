@@ -44,6 +44,16 @@ function ansichtAusAdresse() {
 }
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
 const wbsKuerzel = () => decodeURIComponent((/^#\/wbs\/([^/]*)/.exec(location.hash) || [])[1] || '');
+/** Gewählter Klappzustand der WBS-Sicht je Anwendung ({id: offen?}); überdauert das Neuladen. */
+function wbsKlapp() {
+  const k = wbsKuerzel();
+  if (!S.ui.wbsKlapp || S.ui.wbsKlapp.k !== k) {
+    let kl = {};
+    try { kl = JSON.parse(localStorage.getItem('kanbanD.wbs-klapp.' + k) || '{}'); } catch (_) { }
+    S.ui.wbsKlapp = { k, kl };
+  }
+  return S.ui.wbsKlapp.kl;
+}
 /** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
 const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
@@ -419,6 +429,13 @@ async function act(a, arg, wert) {
       case 'bf-leeren': berichtsfilterSetzen({ ...FILTER_LEER }); break;
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
+      case 'wbs-klapp': {
+        const kl = wbsKlapp(), zu = zugeklappt(S.wbs.knoten, kl, S.wbs.stand.pfad);
+        kl[arg] = zu.has(arg);
+        try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(kl)); } catch (_) { }
+        u.fokus = `[data-act="wbs-klapp"][data-arg="${arg}"]`;
+        break;
+      }
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
       case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;
       case 'liste-ablegen': {

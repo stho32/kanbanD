@@ -533,3 +533,4 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .klapp{font:inherit;line-height:1;width:18px;height:18px;margin-right:var(--kd-s2);padding:0;cursor:pointer;background:var(--kd-surface);color:var(--kd-muted);border:1px solid var(--kd-line-strong)}
 .klapp:hover{border-color:var(--kd-accent);color:var(--kd-accent)}
 .klapp-platz{display:inline-block;width:22px}
+.wbs-z[hidden]{display:none}
