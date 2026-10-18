@@ -71,3 +71,74 @@ fn gleichzeitige_schreibzugriffe_auf_dieselbe_wbs_gehen_nacheinander_und_nichts_
     assert_eq!(git(&arbeit, &["status", "--porcelain"]), "M Dokumentation/Planung/kasse.md");
     assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "");
 }
+
+/// Wie in AK „Schreiben“: I0002 mit B0001 gruen und B0002 rot, Geschwister I0001 gruen.
+fn ak_schreiben() -> String {
+    wbs(&[("A0001", "Application", "—", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0001", "Interaction", "D0001", "gruen"), ("I0002", "Interaction", "D0001", "gelb"), ("B0001", "Bubble", "I0002", "gruen"), ("B0002", "Bubble", "I0002", "rot")])
+}
+
+async fn status(adresse: &str, wer: &str, id: &str, status: &str) -> (u16, serde_json::Value) {
+    gemeinsam::senden(reqwest::Method::PATCH, adresse, &format!("api/wbs/kc/knoten/{id}"), wer, serde_json::json!({ "status": status })).await
+}
+
+#[tokio::test]
+async fn patch_setzt_bubble_gruen_vorfahren_gerechnet_nur_statuszellen_und_zuletzt_kein_commit() {
+    let (_a, arbeit) = arbeits_repository(&ak_schreiben());
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let log_vorher = git(&arbeit, &["log", "--format=%H"]);
+    let (s, r) = status(&lauf.adresse, "cl", "B0002", "gruen").await;
+    assert_eq!((s, r.clone()), (200, serde_json::json!({ "geaendert": ["B0002", "I0002", "D0001", "A0001"] })), "auch ein Agent setzt Status");
+    let heute = kanband::uhr::heute();
+    assert_eq!(plan(&arbeit), ak_schreiben().replace("| rot |", "| gruen |").replace("| gelb |", "| gruen |").replace("zuletzt: 2026-01-01", &format!("zuletzt: {heute}")));
+    let diff = git(&arbeit, &["diff", "-U0", "--no-color"]);
+    let geaendert: Vec<&str> = diff.lines().filter(|z| z.starts_with('+') && !z.starts_with("+++")).collect();
+    assert_eq!(geaendert.len(), 5, "vier Zeilen mit neuer Status-Zelle und zuletzt: {diff}");
+    assert!(geaendert.iter().all(|z| z.starts_with("+zuletzt:") || z.contains("| gruen | Test gruen | a \\| b → c | 0,5-1 |  |  |  |  | Abnahme |")), "{diff}");
+    assert_eq!(git(&arbeit, &["log", "--format=%H"]), log_vorher, "git log im Arbeits-Repository unverändert");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "im Board-Repository ändert sich nichts");
+    let (_, w) = gemeinsam::senden(reqwest::Method::GET, &lauf.adresse, "api/wbs/kc", "st", serde_json::Value::Null).await;
+    assert_eq!((w["nicht_committet"].as_bool(), w["stand"]["gruen"].as_u64()), (Some(true), Some(2)));
+}
+
+#[tokio::test]
+async fn patch_lehnt_gerechnete_planungsstatus_ohne_identitaet_und_defekte_datei_ab() {
+    let (_a, arbeit) = arbeits_repository(&ak_schreiben());
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = status(&lauf.adresse, "st", "I0002", "rot").await;
+    assert_eq!(s, 409, "{r}");
+    assert!(r["fehler"].as_str().unwrap().starts_with("Status wird gerechnet"));
+    assert_eq!(status(&lauf.adresse, "st", "B0002", "option").await.0, 400);
+    assert_eq!(status(&lauf.adresse, "st", "B0099", "gruen").await.0, 404);
+    let ohne = reqwest::Client::new().patch(format!("{}api/wbs/kc/knoten/B0002", lauf.adresse)).json(&serde_json::json!({"status": "gruen"})).send().await.unwrap();
+    assert_eq!(ohne.status().as_u16(), 400, "Identität Pflicht");
+    let (s, _) = gemeinsam::senden(reqwest::Method::PATCH, &lauf.adresse, "api/wbs/xx/knoten/B0002", "st", serde_json::json!({"status": "gruen"})).await;
+    assert_eq!(s, 404, "unbekannte Anwendung");
+    assert_eq!(plan(&arbeit), ak_schreiben(), "nichts geschrieben");
+    let konflikt = ak_schreiben().replace("| B0002 |", "<<<<<<< HEAD\n| B0002 |") + "=======\n>>>>>>> x\n";
+    std::fs::write(arbeit.join("Dokumentation/Planung/kasse.md"), &konflikt).unwrap();
+    let (s, r) = status(&lauf.adresse, "st", "B0001", "rot").await;
+    assert_eq!(s, 409, "{r}");
+    assert_eq!(plan(&arbeit), konflikt, "defekte Datei bleibt, wie sie ist");
+}
+
+#[tokio::test]
+async fn eigener_schreibzugriff_meldet_ereignis_mit_kuerzel_nicht_extern() {
+    let (_a, arbeit) = arbeits_repository(&ak_schreiben());
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let adresse = lauf.adresse.clone();
+    let e = gemeinsam::ereignis_abwarten(
+        &lauf.adresse,
+        move || {
+            std::thread::spawn(move || tokio::runtime::Runtime::new().unwrap().block_on(status(&adresse, "st", "B0002", "gelb")));
+        },
+        |v| v["wbs"] == serde_json::json!(["kc"]),
+    )
+    .await;
+    assert_eq!(e["extern"], false, "{e}");
+}

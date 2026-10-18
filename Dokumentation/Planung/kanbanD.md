@@ -215,7 +215,7 @@ zuletzt: 2026-10-18
 | B0141 | Bubble | I0050 | Status eines Blatts setzen | gruen | Test gruen | WBS-Text, ID, Status, heute → Blatt, gerechnete Vorfahren und zuletzt geschrieben; Knoten mit Kindern 409, option/ausbau/verworfen/bestehend 400 | 1-2 |  |  |  |  |
 | B0142 | Bubble | I0050 | WBS-Datei unter eigener Sperre schreiben | gruen | Test gruen | Kürzel, ID, Status → WBS-Datei im Arbeits-Repository geschrieben, ohne Commit; gleichzeitige Anfragen je Datei nacheinander | 0,5-1 |  |  |  |  |
 | B0143 | Bubble | I0050 | Eigene WBS-Schreibzugriffe nicht extern | gruen | Test gruen | geschriebener voller Pfad → Ereignis des fremden Wächters mit extern: false | 0,5-1 |  |  |  |  |
-| B0144 | Bubble | I0050 | Status über die API setzen | rot | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
+| B0144 | Bubble | I0050 | Status über die API setzen | gruen | Test gruen | PATCH /api/wbs/{kürzel}/knoten/{id} {status} mit X-KanbanD-Wer → geänderte Knoten; 400/404/409 | 0,5-1 |  |  |  |  |
 | B0145 | Bubble | I0050 | Status per Klick wählen | rot | Test gruen | Klick auf die Plakette eines Blatts → Wahl rot · gelb · gruen → Zeile in der neuen Farbe, Kopf nicht committet; ohne Identität Ich bin … | 1-2 |  |  |  |  |
 | I0051 | Interaction | D0008 | WBS-Knoten anlegen und verwerfen | rot | US-1..US-3 |  |  |  | I0049 | R00056 | WBS 1: nächste ID auch aus der Historie, Verwerfen mit Nachfahren |
 | I0052 | Interaction | D0003 | Wirkungen auf die WBS | rot | US-1..US-3 |  |  |  | I0048, I0051 | R00057 | WBS 1: wbs-effects create/rework/remove, sofort wirksam |

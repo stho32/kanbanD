@@ -73,6 +73,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/herkunft", get(herkunft))
         .route("/api/anwendungen", get(anwendungen))
         .route("/api/wbs/{kuerzel}", get(wbs))
+        .route("/api/wbs/{kuerzel}/knoten/{id}", axum::routing::patch(wbs_status))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/berichte/bewegungen", get(bewegungen))
@@ -405,6 +406,16 @@ async fn anwendungen(State(app): State<App>) -> Result<Response, Fehler> {
 async fn wbs(State(app): State<App>, Path(kuerzel): Path<String>) -> Result<Response, Fehler> {
     let w = blockierend(&app, move |k| k.wbs(&kuerzel)).await?;
     Ok(Json(w).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct StatusWahl {
+    #[serde(default)]
+    status: String,
+}
+
+async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, Json(w): Json<StatusWahl>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.wbs_status_setzen(p, &kuerzel, &id, &w.status)).await
 }
 
 #[derive(serde::Deserialize)]
