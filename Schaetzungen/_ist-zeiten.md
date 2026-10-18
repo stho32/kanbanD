@@ -126,3 +126,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00032 Sitzung und Verbindung | B0084 Letztes Board und Fenstertitel | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00032 Sitzung und Verbindung | B0085 Wieder verbunden und leere Flächen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00032 Sitzung und Verbindung | Lauf R00032 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-18 | R00033 Kontextmenü der Karte | B0086 Menü der Karte zusammenstellen | Standard | 1-2h | 0,0h | 0,0h | autonom |
