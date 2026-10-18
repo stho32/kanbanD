@@ -38,6 +38,7 @@ test.describe('R00026', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.locator('.ka[data-id="2"]').focus();
     await page.keyboard.press('n');
-    await expect(page.locator('.bahn[data-col="Zu erledigen"]').getByLabel('Titel der neuen Karte')).toBeFocused();
+    await expect(page.getByLabel('Titel der neuen Aufgabe')).toBeFocused();
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toContainText('Entwicklung · Zu erledigen');
   });
 });

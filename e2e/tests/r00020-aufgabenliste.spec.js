@@ -33,7 +33,9 @@ test.describe('R00020', () => {
 
   test('US-3: neue Aufgabe ohne Board, archivierte zurückholen', async ({ page }) => {
     await page.goto(k.adresse + '#/aufgaben');
-    await page.getByLabel('Neue Aufgabe ohne Board').fill('Idee für später');
+    await page.getByRole('button', { name: '+ Neue Aufgabe' }).click();
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toContainText('ohne Board');
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Idee für später');
     await page.keyboard.press('Enter');
     await page.getByRole('radio', { name: /ohne Board/ }).click();
     await expect(page.locator('tr[data-zeile] .tt')).toContainText(['vier ohne Board', 'Idee für später']);

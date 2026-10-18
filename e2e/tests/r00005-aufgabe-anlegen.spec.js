@@ -11,8 +11,8 @@ test.describe('R00005', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     const bahn = page.locator('.bahn[data-col="In Arbeit"]');
-    await bahn.getByRole('button', { name: '+ Karte' }).click();
-    await page.getByLabel('Titel der neuen Karte').fill('Dateiwächter');
+    await page.getByRole('button', { name: 'Neue Aufgabe in In Arbeit' }).click();
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Dateiwächter');
     await page.keyboard.press('Enter');
     await expect(bahn.locator('.ka .t')).toHaveText(['Dateiwächter']);
     expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
@@ -23,20 +23,21 @@ test.describe('R00005', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     const bahn = page.locator('.bahn[data-col="Zu erledigen"]');
-    await bahn.getByRole('button', { name: '+ Karte' }).click();
-    await page.getByLabel('Titel der neuen Karte').fill('Erste');
-    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Erste');
+    await page.keyboard.press('Shift+Enter');
     await expect(bahn.locator('.ka')).toHaveCount(1);
+    await expect(page.getByLabel('Titel der neuen Aufgabe')).toBeFocused();
     await page.keyboard.type('Zweite');
-    await page.keyboard.press('Enter');
+    await page.keyboard.press('Shift+Enter');
     await expect(bahn.locator('.ka .id')).toHaveText(['#1', '#2']);
     await page.keyboard.press('Escape');
-    await expect(page.getByLabel('Titel der neuen Karte')).toHaveCount(0);
+    await expect(page.getByLabel('Titel der neuen Aufgabe')).toHaveCount(0);
   });
 
   test('US-3: ohne Identität öffnet sich „Ich bin …“ und nichts entsteht', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.locator('.bahn').first().getByRole('button', { name: '+ Karte' }).click();
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
     await expect(page.locator('.warnh')).toContainText('zuerst wählen');
     expect(require('fs').existsSync(k.ordner + '/aufgaben')).toBe(false);
   });

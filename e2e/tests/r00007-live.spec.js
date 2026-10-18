@@ -36,8 +36,8 @@ test.describe('R00007', () => {
     const zweiter = await browser.newPage();
     await alsPerson(zweiter, 'mi');
     await zweiter.goto(k.adresse);
-    await zweiter.locator('.bahn[data-col="In Arbeit"]').getByRole('button', { name: '+ Karte' }).click();
-    await zweiter.getByLabel('Titel der neuen Karte').fill('von Mia');
+    await zweiter.getByRole('button', { name: 'Neue Aufgabe in In Arbeit' }).click();
+    await zweiter.getByLabel('Titel der neuen Aufgabe').fill('von Mia');
     await zweiter.keyboard.press('Enter');
     await expect(page.locator('.bahn[data-col="In Arbeit"] .ka .t')).toHaveText(['von Mia']);
     await expect(page.locator('.ka.fremd')).toHaveCount(0);

@@ -39,8 +39,8 @@ test.describe('R00031', () => {
 
   test('US-3: Anlegen zurück archiviert die neuen Aufgaben', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.locator('.bahn[data-col="In Arbeit"]').getByRole('button', { name: '+ Karte' }).click();
-    await page.locator('#add-inp').evaluate(el => {
+    await page.getByRole('button', { name: 'Neue Aufgabe in In Arbeit' }).click();
+    await page.locator('#neu-titel').evaluate(el => {
       const dt = new DataTransfer();
       dt.setData('text/plain', 'falsch eins\nfalsch zwei');
       el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));

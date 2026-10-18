@@ -413,3 +413,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .km-e.an .kmenue.unter .km-e.km-aktuell{color:var(--kd-muted)}
 .km-e.an .kmenue.unter .km-k{color:var(--kd-faint)}
 .bahn-kopf:focus,tr[data-zeile]:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}
+/* Neue Aufgabe */
+.kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
+.kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
+.kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent)}
+.mod.neu .titel::placeholder{color:var(--kd-faint);font-weight:400}
+.neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}

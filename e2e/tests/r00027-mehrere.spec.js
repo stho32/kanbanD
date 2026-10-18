@@ -21,12 +21,12 @@ test.describe('R00027', () => {
 
   test('US-1: Liste in eine Spalte einfügen', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.locator('.bahn[data-col="In Arbeit"]').getByRole('button', { name: '+ Karte' }).click();
-    await einfuegen(page, '#add-inp', '- Login\n- Logout\n- Passwort vergessen');
+    await page.getByRole('button', { name: 'Neue Aufgabe in In Arbeit' }).click();
+    await einfuegen(page, '#neu-titel', '- Login\n- Logout\n- Passwort vergessen');
     await expect(page.locator('.bahn[data-col="In Arbeit"] .ka .t')).toHaveText(['Login', 'Logout', 'Passwort vergessen']);
     await expect(page.getByRole('status')).toContainText('3 Aufgaben angelegt');
     expect(k.git('log', '-1', '--format=%s')).toBe('#2–#4 angelegt (3 Aufgaben) in „In Arbeit“ (Entwicklung)');
-    await expect(page.locator('#add-inp')).toBeFocused();
+    await expect(page.locator('#neu-titel')).toBeFocused();
   });
 
   test('US-2: Teilaufgaben einfügen', async ({ page }) => {
@@ -39,7 +39,9 @@ test.describe('R00027', () => {
 
   test('US-3: Aufgaben ohne Board einfügen', async ({ page }) => {
     await page.goto(k.adresse + '#/aufgaben');
-    await einfuegen(page, '#liste-neu', 'x\ny');
+    await page.getByRole('button', { name: '+ Neue Aufgabe' }).click();
+    await einfuegen(page, '#neu-titel', 'x\ny');
+    await page.keyboard.press('Escape');
     await page.getByRole('radio', { name: /ohne Board/ }).click();
     await expect(page.locator('tr[data-zeile] .tt')).toHaveText(['x', 'y']);
   });

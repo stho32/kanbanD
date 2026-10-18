@@ -125,6 +125,40 @@ async function anhaengeHochladen(dateien) {
   await laden();
 }
 
+/** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
+function neuEintrag(titel, f) {
+  const s = schnelleingabe(titel, schnellUmfeld(), new Date());
+  const vereint = (a, b) => [...new Set([...a, ...b])];
+  const labels = f.labels.split(',').map(x => x.trim()).filter(Boolean);
+  const herkunft = f.herkunft.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+  // @kürzel ersetzt die Vorbelegung (mich), solange niemand die Zuständigen von Hand gewählt hat (R00028)
+  const zust = s.zustaendige.length ? (f.zustGewaehlt ? vereint(f.zust, s.zustaendige) : s.zustaendige) : f.zust;
+  const e = { titel: s.titel || titel.trim(), zustaendige: zust, labels: vereint(labels, s.labels), herkunft: vereint(herkunft, s.herkunft) };
+  if (s.klasse || f.klasse) e.klasse = s.klasse || f.klasse;
+  if (s.faellig || f.faellig) e.faellig = s.faellig || f.faellig;
+  return e;
+}
+async function neueAufgabeAnlegen(weitere, zeilen) {
+  const u = S.ui, f = u.neu;
+  if (!f || ichNoetig()) { render(); return; }
+  const titel = $('#neu-titel') ? $('#neu-titel').value : f.titel;
+  const liste = zeilen || [titel];
+  if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; u.fokus = '#neu-titel'; render(); return; }
+  const ziel = f.board ? { board: f.board, spalte: f.spalte } : {};
+  try {
+    let neu;
+    if (liste.length === 1) {
+      neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
+    } else {
+      neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map(t => neuEintrag(t, f)), ...ziel });
+    }
+    u.hinweis = { text: neu.length === 1 ? `#${neu[0].nummer} angelegt` : `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
+    if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null }); u.fokus = '#neu-titel'; }
+    else u.neu = null;
+  } catch (x) { f.fehler = x.message; }
+  return laden();
+}
+
 /** Schreibender Aufruf aus dem Aufgabenfenster: Fehler erscheinen im Fuß, danach wird neu geladen. */
 async function schreiben(methode, pfad, daten) {
   try {
@@ -150,7 +184,7 @@ function render() {
   document.title = fenstertitel();
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
-  $('#over').innerHTML = (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
+  $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -194,16 +228,22 @@ async function act(a, arg, wert) {
         } catch (f) { u.popFehler = f.message; u.fokus = '#board-neu'; break; }
       }
       case 'ich': ichSetzen(arg); u.pop = null; u.ichNoetig = false; break;
-      case 'add': if (ichNoetig()) break; u.adding = arg; u.fokus = '#add-inp'; break;
-      case 'add-ok': {
-        const titel = (wert || '').trim();
-        if (!titel) { u.adding = null; break; }
+      case 'add': {
+        // arg: Spaltenname des aktuellen Boards, '' = erste Spalte, '-' = ohne Board
         if (ichNoetig()) break;
-        const neu = await api('POST', '/api/aufgaben', { ...eintragAus(titel), board: u.slug, spalte: arg });
-        u.fokus = '#add-inp';
-        u.hinweis = { text: `#${neu.nummer} angelegt`, undo: { art: 'archivieren', nummern: [neu.nummer] }, at: Date.now() };
-        return laden();
+        const ohne = arg === '-' || !S.board || u.view !== 'board';
+        const spalte = ohne ? '' : (arg || (S.board.spalten[0] || {}).name || '');
+        u.offen = null; u.pop = null; u.menue = null;
+        u.neu = { board: ohne ? '' : u.slug, spalte, titel: '', beschreibung: '', teil: [], klasse: '', zust: S.ich && per(S.ich).art === 'human' ? [S.ich] : [], labels: '', faellig: '', herkunft: '', fehler: null };
+        u.fokus = '#neu-titel';
+        break;
       }
+      case 'nf-zu': case 'nf-zu-bg': u.neu = null; break;
+      case 'nf-teil': { const t = (wert || '').trim(); if (t) u.neu.teil.push(t); u.fokus = '#neu-teil'; break; }
+      case 'nf-teil-weg': u.neu.teil.splice(+arg, 1); u.fokus = '#neu-teil'; break;
+      case 'nf-zust': { const z = u.neu.zust; u.neu.zust = z.includes(arg) ? z.filter(k => k !== arg) : [...z, arg]; u.neu.zustGewaehlt = true; break; }
+      case 'nf-faellig': { const d = new Date(); d.setDate(d.getDate() + +arg); u.neu.faellig = isoD(d); break; }
+      case 'nf-anlegen': return neueAufgabeAnlegen(arg === 'weitere');
       case 'bewegen': {
         if (ichNoetig()) break;
         const bw = JSON.parse(arg);
@@ -307,15 +347,6 @@ async function act(a, arg, wert) {
         const [slug, nr] = arg.split('|');
         await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
         return;
-      }
-      case 'liste-neu': {
-        if (!(wert || '').trim() || ichNoetig()) break;
-        u.fokus = '#liste-neu';
-        try {
-          const neu = await api('POST', '/api/aufgaben', eintragAus(wert));
-          u.hinweis = { text: `#${neu.nummer} angelegt`, undo: { art: 'archivieren', nummern: [neu.nummer] }, at: Date.now() };
-        } catch (f) { u.fehler = f.message; }
-        return laden();
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'herkunft-neu': {
@@ -487,6 +518,13 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  const nf = e.target.dataset && e.target.dataset.nf;
+  if (nf && S.ui.neu && (nf === 'board' || nf === 'spalte' || nf === 'klasse')) {
+    S.ui.neu[nf] = e.target.value;
+    if (nf === 'board') { const b = (S.boards || []).find(x => x.slug === e.target.value); S.ui.neu.spalte = b && b.spalten[0] ? b.spalten[0].name : ''; }
+    render();
+    return;
+  }
   if (e.target.id === 'anhang-datei') { anhaengeHochladen([...e.target.files]); return; }
   const af = e.target.dataset && e.target.dataset.af;
   if (!af || !S.ui.offen) return;
@@ -516,7 +554,7 @@ document.addEventListener('click', e => {
     if (!el) { render(); return; }
   }
   if (!el || el.disabled) return;
-  if (el.dataset.act === 'schliessen-bg' && e.target !== el) return;
+  if ((el.dataset.act === 'schliessen-bg' || el.dataset.act === 'nf-zu-bg') && e.target !== el) return;
   if (el.dataset.act === 'oeffnen' && (e.target.closest('[data-leiste]') || e.target.closest('#umbenennen'))) return;
   // Klick auf den Titel öffnet erst, wenn kein Doppelklick (Umbenennen) folgt.
   if (el.dataset.act === 'oeffnen' && e.target.closest('[data-dbl]')) {
@@ -529,9 +567,11 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
-  if (e.target.dataset && e.target.dataset.schnell) {
-    const v = $('#add-vorschau');
-    if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : '';
+  const nf = e.target.dataset && e.target.dataset.nf;
+  if (nf && S.ui.neu) {
+    S.ui.neu[nf] = e.target.value;
+    S.ui.neu.fehler = null;
+    if (nf === 'titel') { const v = $('#neu-vorschau'); if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : ''; }
     return;
   }
   if (e.target.id === 'flt') {
@@ -578,6 +618,12 @@ document.addEventListener('keydown', e => {
     act(t.dataset.enter, t.dataset.arg, t.value);
     return;
   }
+  if (S.ui.neu) {
+    if (e.key === 'Escape') { e.preventDefault(); S.ui.neu = null; render(); return; }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); neueAufgabeAnlegen(e.shiftKey); return; }
+    if (e.key === 'Enter' && t.id === 'neu-titel') { e.preventDefault(); neueAufgabeAnlegen(e.shiftKey); return; }
+    if (!(e.key === 'Enter' && t.dataset && t.dataset.enter)) return;
+  }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && t.id === 'beschreibung') { e.preventDefault(); t.blur(); return; }
   if (e.key === 'Escape' && t.id === 'flt') {
     if (S.ui.filter) { filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
@@ -599,7 +645,6 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
-    if (S.ui.adding) { S.ui.adding = null; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
@@ -711,7 +756,7 @@ document.addEventListener('mouseover', e => {
 /* Kürzel überall, im Aufgabenfenster und in der Aufgabenliste */
 function ueberallTaste(e, t) {
   const u = S.ui;
-  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || e.ctrlKey || e.metaKey || e.altKey || u.menue || u.first || u.setup) return false;
+  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || e.ctrlKey || e.metaKey || e.altKey || u.menue || u.first || u.setup || u.neu) return false;
   if (e.key === '?') { u.hilfe = true; render(); return true; }
   if (u.hilfe) return false;
   if (u.offen) return fensterTaste(e);
@@ -767,7 +812,7 @@ function listenTaste(e, t) {
 const RICHTUNG = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'hoch', ArrowDown: 'runter' };
 function brettTaste(e, t) {
   const u = S.ui;
-  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.neu || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || e.altKey) return false;
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
@@ -837,20 +882,14 @@ document.addEventListener('paste', async e => {
   e.preventDefault();
   if (ichNoetig()) { render(); return; }
   const u = S.ui;
+  if (art === 'neu') { await neueAufgabeAnlegen(true, zeilen); return; }
+  if (art === 'neu-teil') { u.neu.teil.push(...zeilen); u.fokus = '#neu-teil'; render(); return; }
   if (art === 'teil') {
     u.fokus = '#teil-neu';
     await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben/mehrere`, { texte: zeilen });
     u.hinweis = { text: `${zeilen.length} Teilaufgaben ergänzt`, at: Date.now() };
-  } else {
-    u.fokus = art === 'board' ? '#add-inp' : '#liste-neu';
-    const eintraege = zeilen.map(eintragAus);
-    const daten = art === 'board' ? { titel: eintraege, board: u.slug, spalte: e.target.dataset.arg } : { titel: eintraege };
-    let neu = [];
-    try { neu = await api('POST', '/api/aufgaben/mehrere', daten); } catch (f) { u.fehler = f.message; }
-    await laden();
-    if (neu.length) u.hinweis = { text: `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
   }
-  u.fokus = art === 'teil' ? '#teil-neu' : art === 'board' ? '#add-inp' : '#liste-neu';
+  u.fokus = '#teil-neu';
   render();
 });
 
@@ -953,7 +992,7 @@ setInterval(() => {
   if (S.ui.hinweis && jetzt - S.ui.hinweis.at > 8000) { S.ui.hinweis = null; neu = true; }
   document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
-  if (neu && zug == null && !S.ui.adding) render();
+  if (neu && zug == null && !S.ui.neu) render();
 }, 1000);
 
 liveVerbinden();
