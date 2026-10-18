@@ -1,6 +1,6 @@
 ---
 id: R00021
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -27,11 +27,11 @@ Auf einen Blick sehen, wer woran arbeitet — Menschen wie Agenten.
 
 ## Akzeptanzkriterien
 
-- [ ] Rechnung: Eintrag gestern 23:00–heute 01:00 zählt heute 1:00; laufender Eintrag seit 30 Minuten zählt 0:30; Eintrag am Montag dieser Woche zählt zur Woche
-- [ ] Rechnung: Person mit laufendem Timer → Gruppe 0; nur heute gearbeitet → 1; sonst → 2
-- [ ] Rechnung: Aufgabe in „In Arbeit“ für st → offen 1, begonnen 1; in „Erledigt“ → nicht offen
-- [ ] Oberfläche: Stefan mit laufendem Timer steht unter „läuft jetzt“, Stopp beendet ihn
-- [ ] Oberfläche: Klick auf „Mia“ zeigt das Board mit Filter `@mi`
+- [x] Rechnung: Eintrag gestern 23:00–heute 01:00 zählt heute 1:00; laufender Eintrag seit 30 Minuten zählt 0:30; Eintrag am Montag dieser Woche zählt zur Woche
+- [x] Rechnung: Person mit laufendem Timer → Gruppe 0; nur heute gearbeitet → 1; sonst → 2
+- [x] Rechnung: Aufgabe in „In Arbeit“ für st → offen 1, begonnen 1; in „Erledigt“ → nicht offen
+- [x] Oberfläche: Stefan mit laufendem Timer steht unter „läuft jetzt“, Stopp beendet ihn
+- [x] Oberfläche: Klick auf „Mia“ zeigt das Board mit Filter `@mi`
 
 ## Betroffene Verzeichnisstruktur
 
