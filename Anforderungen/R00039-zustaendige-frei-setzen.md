@@ -1,6 +1,6 @@
 ---
 id: R00039
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -23,9 +23,9 @@ Arbeit lässt sich vom Board aus verteilen, auch an Agenten.
 
 ## Akzeptanzkriterien
 
-- [ ] Menümodell: #1 mit `[mi]` → Einträge Stefan, Mia ✓, Claude; stillgelegte Anna erscheint nur, wenn zuständig
-- [ ] Rechtsklick auf #1 → „Zuständige ▸ Claude“ → `assignees: [mi, cl]`; „Mia“ → `assignees: [cl]`
-- [ ] Fokus auf #1, `p`, ↓, Enter → die zweite Person ist umgeschaltet
+- [x] Menümodell: #1 mit `[mi]` → Einträge Stefan, Mia ✓, Claude; stillgelegte Anna erscheint nur, wenn zuständig
+- [x] Rechtsklick auf #1 → „Zuständige ▸ Claude“ → `assignees: [mi, cl]`; „Mia“ → `assignees: [cl]`
+- [x] Fokus auf #1, `p`, ↓, Enter → die zweite Person ist umgeschaltet
 
 ## Betroffene Verzeichnisstruktur
 
