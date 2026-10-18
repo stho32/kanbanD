@@ -5,6 +5,7 @@ pub mod dienst;
 pub mod fehler;
 pub mod format;
 pub mod git;
+pub mod herkunft;
 pub mod modell;
 pub mod start;
 pub mod uhr;

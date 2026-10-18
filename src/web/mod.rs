@@ -60,6 +60,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/wer", get(wer))
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
+        .route("/api/herkunft", get(herkunft))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
@@ -340,4 +341,9 @@ async fn archivieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>)
 
 async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zurueckholen(p, nr)).await
+}
+
+async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
+    let q = blockierend(&app, |k| k.herkunft()).await?;
+    Ok(Json(q).into_response())
 }

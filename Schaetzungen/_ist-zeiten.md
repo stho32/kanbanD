@@ -75,3 +75,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00017 Archivieren und zurückholen | B0048 Archiv im Fenster und auf dem Board | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00017 Archivieren und zurückholen | Lauf R00017 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00018 Herkunft und Abhängigkeiten | B0049 Herkunft ändern | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00018 Herkunft und Abhängigkeiten | B0050 WBS und Anforderungen auflösen | Standard | 1-2h | 0,0h | 0,0h | autonom |

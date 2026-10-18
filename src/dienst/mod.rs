@@ -8,6 +8,7 @@ mod bewegen;
 mod board_anlegen;
 mod einrichten;
 mod einstellungen;
+mod herkunft;
 mod kommentare;
 mod spalten;
 mod teilaufgaben;
@@ -21,6 +22,7 @@ pub use teilaufgaben::Teilaufgabenaenderung;
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
+pub use herkunft::Quelle;
 pub use einstellungen::{PALETTE, farbe_gueltig};
 
 use crate::ablage::{DefekteDatei, Ordner};
