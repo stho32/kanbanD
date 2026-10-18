@@ -5,7 +5,7 @@ mod board;
 mod einstellungen;
 
 pub use aufgabe::{Aufgabe, Kommentar, Teilaufgabe, Zeiteintrag};
-pub use board::{Board, Spalte};
+pub use board::{Bewegfehler, Board, Spalte};
 pub use einstellungen::{Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
 /// Dateiname aus einem Titel: Kleinbuchstaben, Umlaute als ae/oe/ue/ss, sonst Bindestriche; höchstens 40 Zeichen.
