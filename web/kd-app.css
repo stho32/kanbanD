@@ -97,7 +97,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .wbs-aufgabe[data-aktion="rework"]::before{content:"↻ "}
 .wbs-aufgabe[data-aktion="remove"]::before{content:"− "}
 .wbs-aufgabe.arch{color:var(--kd-faint);border-style:dashed}
-.wirkung-form{grid-column:1/-1;border:1px solid var(--kd-line);background:var(--kd-sunken);padding:var(--kd-s2) var(--kd-s3);margin:0 0 var(--kd-s2)}
+.felder>.wirkung-form{display:block;min-height:0;grid-column:1/-1;border:1px solid var(--kd-line);background:var(--kd-sunken);padding:var(--kd-s2) var(--kd-s3);margin:0 0 var(--kd-s2)}
 .wirkung-form .fuss{display:flex;gap:var(--kd-s2);align-items:center;flex-wrap:wrap;margin-top:var(--kd-s2)}
 .wirkung-form .fuss .muted{margin-right:auto;font-size:11px}
 .org.leer{background:none;border:1px dashed var(--kd-line-strong);color:var(--kd-faint)}
