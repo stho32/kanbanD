@@ -313,6 +313,23 @@ async function act(a, arg, wert) {
         return;
       }
       case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${arg}`); return;
+      case 'mich': {
+        if (ichNoetig()) break;
+        const a = aufgabe(+arg), z = a.zustaendige.includes(S.ich) ? a.zustaendige.filter(k => k !== S.ich) : [...a.zustaendige, S.ich];
+        u.fokusKarte = +arg;
+        return aufgabeAendern(+arg, { zustaendige: z });
+      }
+      case 'umbenennen': if (ichNoetig()) break; u.umbenennen = +arg; u.fokus = '#umbenennen'; break;
+      case 'umbenennen-ok': {
+        const a = aufgabe(+arg), titel = (wert || '').trim();
+        u.umbenennen = null; u.fokusKarte = +arg;
+        if (!titel || titel === a.titel) break;
+        return aufgabeAendern(+arg, { titel });
+      }
+      case 'faellig': {
+        const d = new Date(); d.setDate(d.getDate() + (+arg || 0));
+        return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
+      }
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
@@ -395,6 +412,14 @@ async function act(a, arg, wert) {
   render();
 }
 
+document.addEventListener('dblclick', e => {
+  const t = e.target.closest && e.target.closest('[data-dbl]');
+  if (t) { e.preventDefault(); clearTimeout(S.titelKlick); act(t.dataset.dbl, t.dataset.arg); }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
+});
+
 document.addEventListener('change', e => {
   if (e.target.id === 'anhang-datei') { anhaengeHochladen([...e.target.files]); return; }
   const af = e.target.dataset && e.target.dataset.af;
@@ -416,6 +441,14 @@ document.addEventListener('click', e => {
   }
   if (!el || el.disabled) return;
   if (el.dataset.act === 'schliessen-bg' && e.target !== el) return;
+  if (el.dataset.act === 'oeffnen' && (e.target.closest('[data-leiste]') || e.target.closest('#umbenennen'))) return;
+  // Klick auf den Titel öffnet erst, wenn kein Doppelklick (Umbenennen) folgt.
+  if (el.dataset.act === 'oeffnen' && e.target.closest('[data-dbl]')) {
+    clearTimeout(S.titelKlick);
+    if (e.detail > 1) return;
+    S.titelKlick = setTimeout(() => act('oeffnen', el.dataset.arg), 250);
+    return;
+  }
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg);
 });
@@ -481,6 +514,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.adding) { S.ui.adding = null; render(); return; }
+    if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
@@ -500,6 +534,17 @@ function brettTaste(e, t) {
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === '?') { u.hilfe = true; render(); return true; }
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
+  if (karte && (e.key === 't' || e.key === 'm' || e.key === 'F2')) {
+    e.preventDefault();
+    const a = aufgabe(nr);
+    if (!a) return true;
+    u.fokusKarte = nr;
+    if (e.key === 'F2') act('umbenennen', String(nr));
+    else if (e.key === 'm') act('mich', String(nr));
+    else if (laufende(a).some(z => z.wer === S.ich)) act('stop', `${nr}|${S.ich}`);
+    else act('start', String(nr));
+    return true;
+  }
   if (e.key === 'n') {
     const spalte = karte ? karte.closest('.bahn').dataset.col : S.board.spalten[0] && S.board.spalten[0].name;
     if (spalte) { e.preventDefault(); act('add', spalte); }
