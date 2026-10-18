@@ -1,6 +1,6 @@
 ---
 id: R00043
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -31,10 +31,10 @@ Fragen wie „wie viel Zeit ging letzte Woche in Fehler?“ oder „wie lange br
 
 ## Akzeptanzkriterien
 
-- [ ] Unit: Vorgaben heute, gestern, diese Woche, letzte Woche, dieser Monat, letzter Monat, eigener Zeitraum ergeben die richtigen Grenzen
-- [ ] Unit: Farbe ausgeschlossen, „ohne Klasse“ ausgeschlossen, nur Person, nur Label
-- [ ] Kreuztabelle: Zeitraum „gestern“ zeigt nur Zeiten von gestern; Farbe „Fehler“ ausgeschlossen blendet Fehler-Aufgaben aus; Person „Mia“ zeigt nur Mias Spalte
-- [ ] Filter bleibt nach Neuladen, „Zurücksetzen“ leert ihn
+- [x] Unit: Vorgaben heute, gestern, diese Woche, letzte Woche, dieser Monat, letzter Monat, eigener Zeitraum ergeben die richtigen Grenzen
+- [x] Unit: Farbe ausgeschlossen, „ohne Klasse“ ausgeschlossen, nur Person, nur Label
+- [x] Kreuztabelle: Zeitraum „gestern“ zeigt nur Zeiten von gestern; Farbe „Fehler“ ausgeschlossen blendet Fehler-Aufgaben aus; Person „Mia“ zeigt nur Mias Spalte
+- [x] Filter bleibt nach Neuladen, „Zurücksetzen“ leert ihn
 
 ## Betroffene Verzeichnisstruktur
 

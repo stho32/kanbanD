@@ -156,3 +156,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00042 Bewegungen eines Boards | Lauf R00042 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | B0104 Zeitraum und Filter rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | B0105 Filterleiste in allen Berichten | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | Lauf R00043 | Nacharbeit | — | — | 0,0h | autonom |
