@@ -1,5 +1,6 @@
 //! Phasen einer Anwendung (Phasen-Datei neben ihrer WBS) und ihre Spalten auf einem Board — rein, ohne Dateizugriff.
 
+use crate::modell::{Board, Spalte};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -72,11 +73,91 @@ impl Phasenfolge {
     pub fn namen(&self) -> Vec<&str> {
         self.0.iter().map(|p| p.name.as_str()).collect()
     }
+
+    /// Die Phasen, die eine eigene Spalte brauchen: alle außer „Gleich wie“ einer früheren Phase.
+    fn mit_spalte(&self) -> impl Iterator<Item = (usize, &Phase)> {
+        self.0.iter().enumerate().filter(|(k, p)| p.gleich.is_empty() || !self.0[..*k].iter().any(|q| q.name == p.gleich))
+    }
+
+    /// Gibt jeder Phase ohne Spalte eine: eine freie Spalte gleichen Namens wird ihr zugeordnet, sonst entsteht eine neue
+    /// nach der rechtesten Spalte einer früheren Phase (ohne solche vor der Abschlussspalte). Liefert, was ergänzt wurde.
+    pub fn nachtragen(&self, board: &mut Board) -> Vec<String> {
+        let mut ergaenzt = vec![];
+        let abschluss = board.abschlussspalte().map(|s| s.name.clone());
+        for (k, p) in self.mit_spalte() {
+            if board.spalten.iter().any(|s| s.phase.as_deref() == Some(p.name.as_str())) {
+                continue;
+            }
+            if let Some(frei) = board.spalten.iter_mut().find(|s| s.name == p.name) {
+                if frei.phase.is_none() {
+                    frei.phase = Some(p.name.clone());
+                    ergaenzt.push(format!("{} (zugeordnet)", p.name));
+                }
+                continue;
+            }
+            let frueher = |s: &Spalte| s.phase.as_deref().is_some_and(|ph| self.0[..k].iter().any(|q| q.name == ph));
+            let vor_abschluss = board.spalten.iter().position(|s| Some(&s.name) == abschluss.as_ref()).unwrap_or(board.spalten.len());
+            let stelle = board.spalten.iter().rposition(frueher).map_or(vor_abschluss, |i| (i + 1).min(vor_abschluss));
+            board.spalten.insert(stelle, Spalte { name: p.name.clone(), grenze: None, aufgaben: vec![], phase: Some(p.name.clone()) });
+            ergaenzt.push(p.name.clone());
+        }
+        ergaenzt
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn board(spalten: &[(&str, Option<&str>)]) -> Board {
+        let spalten = spalten.iter().map(|(n, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: p.map(String::from) }).collect();
+        Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: vec!["kd".into()] }
+    }
+
+    fn spalten(b: &Board) -> Vec<(String, Option<String>)> {
+        b.spalten.iter().map(|s| (s.name.clone(), s.phase.clone())).collect()
+    }
+
+    fn sp(n: &str, p: Option<&str>) -> (String, Option<String>) {
+        (n.into(), p.map(String::from))
+    }
+
+    #[test]
+    fn fehlende_phasen_nach_der_vorphase_vor_der_abschlussspalte() {
+        let mut b = board(&[("Backlog", None), ("Nächste Aufgaben", None), ("Entwicklung", None), ("Erledigt", None)]);
+        let ergaenzt = Phasenfolge::standard().nachtragen(&mut b);
+        assert_eq!(ergaenzt, ["Entwicklung (zugeordnet)", "Entwicklertest", "Abnahme"]);
+        assert_eq!(spalten(&b), [sp("Backlog", None), sp("Nächste Aufgaben", None), sp("Entwicklung", Some("Entwicklung")), sp("Entwicklertest", Some("Entwicklertest")), sp("Abnahme", Some("Abnahme")), sp("Erledigt", None)]);
+        assert!(Phasenfolge::standard().nachtragen(&mut b).is_empty(), "ein zweites Mal ändert nichts");
+    }
+
+    #[test]
+    fn gleich_wie_bekommt_keine_spalte() {
+        let mut b = board(&[("Entwicklung", Some("Entwicklung")), ("Erledigt", None)]);
+        let f = Phasenfolge::lesen("## Phasen\n| Nr | Phase | Gleich wie |\n|---|---|---|\n| 1 | Entwicklung | |\n| 2 | Entwicklertest | |\n| 3 | Abnahme | Entwicklertest |\n");
+        assert_eq!(f.nachtragen(&mut b), ["Entwicklertest"]);
+        assert!(!b.spalten.iter().any(|s| s.name == "Abnahme"));
+    }
+
+    #[test]
+    fn zwei_spalten_derselben_phase_genuegen_und_rechts_davon_kommt_die_naechste() {
+        let mut b = board(&[("Entwicklung", None), ("Abnahme Stefan", Some("Abnahme")), ("Abnahme Mia", Some("Abnahme")), ("Erledigt", None)]);
+        let f = Phasenfolge::lesen("## Phasen\n| Nr | Phase |\n|---|---|\n| 1 | Entwicklung |\n| 2 | Abnahme |\n| 3 | Beta |\n");
+        assert_eq!(f.nachtragen(&mut b), ["Entwicklung (zugeordnet)", "Beta"]);
+        assert_eq!(b.spalten.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["Entwicklung", "Abnahme Stefan", "Abnahme Mia", "Beta", "Erledigt"]);
+    }
+
+    #[test]
+    fn ohne_spalte_einer_vorphase_vor_der_abschlussspalte_und_belegte_namen_bleiben_frei() {
+        let mut b = board(&[("Zu erledigen", None), ("In Arbeit", None), ("Erledigt", None)]);
+        Phasenfolge::standard().nachtragen(&mut b);
+        assert_eq!(b.spalten.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["Zu erledigen", "In Arbeit", "Entwicklung", "Entwicklertest", "Abnahme", "Erledigt"]);
+        let mut leer = board(&[]);
+        Phasenfolge::standard().nachtragen(&mut leer);
+        assert_eq!(leer.spalten.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["Entwicklung", "Entwicklertest", "Abnahme"], "ohne Spalten keine Abschlussspalte");
+        let mut belegt = board(&[("Abnahme", Some("Entwicklung")), ("Erledigt", None)]);
+        assert_eq!(Phasenfolge::standard().nachtragen(&mut belegt), ["Entwicklertest"], "der Name Abnahme ist schon eine Spalte einer anderen Phase");
+    }
 
     const DATEI: &str = "---\napplication: X\n---\n\n# Phasen — X\n\n## Phasen\n\n| Nr | Phase | Abschließt | Nachweis | Eingebettet in | Gleich wie | Spur | Braucht | Status |\n|---|---|---|---|---|---|---|---|---|\n| 1 | Entwicklung | Subagent | — | | | | | |\n| 3 | Abnahme | Auftraggeber | akzeptanzkriterien | | Entwicklertest | | | |\n| 2 | Entwicklertest | Entwickler | user-story | im-pair | | | | |\n| 4 | Beta | Kunde | frei | | | | | verworfen |\n| 5 | Code-Review | Entwickler | review-im-pair | | | technik | | |\n\n## Durchläufe\n\n| Arbeitspaket | Phase | Datum | Ergebnis | Wer | Beleg |\n|---|---|---|---|---|---|\n| 3 | Abnahme | 2026-01-01 | bestanden | S | x |\n";
 
