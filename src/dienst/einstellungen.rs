@@ -1,7 +1,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
-use crate::modell::{Einstellungen, Person, kuerzel_gueltig};
+use crate::modell::{Anwendung, Einstellungen, Person, kuerzel_gueltig};
 
 pub const PALETTE: [&str; 16] = ["yellow", "amber", "orange", "red", "rose", "pink", "magenta", "violet", "indigo", "blue", "sky", "cyan", "teal", "green", "lime", "grey"];
 
@@ -48,6 +48,24 @@ pub fn einstellungen_pruefen(alt: &Einstellungen, neu: &Einstellungen) -> Result
         }
         klassen.push(&k.schluessel);
     }
+    register_pruefen(&neu.quellen.anwendungen)
+}
+
+/// Kürzel nach den Regeln der Personenkürzel, eindeutig; jede Anwendung hat einen Namen.
+fn register_pruefen(anwendungen: &[Anwendung]) -> Result<(), Fehler> {
+    let mut gesehen: Vec<&str> = vec![];
+    for a in anwendungen {
+        if !kuerzel_gueltig(&a.kuerzel) {
+            return Err(Fehler::Ungueltig(format!("Anwendungskürzel „{}“: 1–8 Kleinbuchstaben oder Ziffern", a.kuerzel)));
+        }
+        if a.name.trim().is_empty() {
+            return Err(Fehler::Ungueltig(format!("Für die Anwendung „{}“ fehlt der Name", a.kuerzel)));
+        }
+        if gesehen.contains(&a.kuerzel.as_str()) {
+            return Err(Fehler::Ungueltig(format!("Anwendungskürzel „{}“ ist doppelt", a.kuerzel)));
+        }
+        gesehen.push(&a.kuerzel);
+    }
     Ok(())
 }
 
@@ -63,6 +81,12 @@ impl Kanban {
         }
         neu.quellen.wbs = neu.quellen.wbs.trim().into();
         neu.quellen.anforderungen = neu.quellen.anforderungen.trim().into();
+        for a in &mut neu.quellen.anwendungen {
+            a.name = a.name.trim().into();
+            a.wbs = a.wbs.trim().into();
+            a.anforderungen = a.anforderungen.trim().into();
+        }
+        neu.quellen.anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
         einstellungen_pruefen(&alt, &neu)?;
         if neu == alt {
             return Ok(false);
@@ -75,7 +99,7 @@ impl Kanban {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modell::{Art, Klasse};
+    use crate::modell::{Anwendung, Art, Klasse};
 
     fn p(k: &str) -> Person {
         Person { kuerzel: k.into(), name: k.to_uppercase(), art: Art::Mensch, aktiv: true }
@@ -88,6 +112,26 @@ mod tests {
         assert!(!farbe_gueltig("lila"));
         assert!(!farbe_gueltig("#12345"));
         assert!(!farbe_gueltig("#12345g"));
+    }
+
+    fn anwendung(k: &str, name: &str) -> Anwendung {
+        Anwendung { kuerzel: k.into(), name: name.into(), wbs: "/a/plan.md".into(), anforderungen: "".into() }
+    }
+
+    #[test]
+    fn regeln_fuer_das_register() {
+        let alt = Einstellungen::default();
+        let mut e = Einstellungen::default();
+        e.quellen.anwendungen = vec![anwendung("kd", "kanbanD"), anwendung("k2", "Kasse")];
+        assert!(einstellungen_pruefen(&alt, &e).is_ok());
+        for (k, name) in [("KD!", "x"), ("", "x"), ("neunzeich", "x"), ("kd", " ")] {
+            let mut f = e.clone();
+            f.quellen.anwendungen[0] = anwendung(k, name);
+            assert!(matches!(einstellungen_pruefen(&alt, &f), Err(Fehler::Ungueltig(_))), "{k}/{name}");
+        }
+        let mut f = e;
+        f.quellen.anwendungen[1].kuerzel = "kd".into();
+        assert!(einstellungen_pruefen(&alt, &f).unwrap_err().meldung().contains("doppelt"));
     }
 
     #[test]
