@@ -191,3 +191,12 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 134 | I0056 | S6 | Bubble B0189 fasst mehr als drei Dateien an: mechanische Folge der Typänderung (Konstruktoren in Diensten und Tests), keine eigene Logik — nicht feiner geschnitten | git show 0d50ec2 --stat | offen |
 | 135 | I0056 | S9 | Push nach origin nicht möglich (GitNAS aus); Commits liegen nur lokal auf main | git rev-list origin/main..main | offen |
 | 136 | I0056 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht); manuelle Nachbereitung (Board „Abnahme“ in kanbanD-test lösen) übernimmt der Hauptlauf | R00062 | offen |
+
+## 2026-10-18 · Bug R00061 (unzuverlässige E2E der WBS-Sicht, kein WBS-Knoten)
+
+| # | Slice | Station | Anmerkung | Beleg | Status |
+|---|---|---|---|---|---|
+| 137 | R00061 | S6 | Offene Frage der Anforderung beantwortet: die Ursache lag im Programm, nicht im Test — (1) das Echo des Commits „Phasen-Spalten ergänzt“, den das erste Lesen eines gebundenen Boards auslöst, lud neu und ersetzte die Tabelle (GET /api/boards lief parallel zum Board und lieferte mal den Stand davor); (2) `laden` setzte `S.wbs` während der Anfrage auf null, ein Klick auf Zuklappen in diesem Fenster warf in `act`. Belegt über eine Sonde (Ersetzungen von `#main`, Render-Stacks) unter 4 Workern; die Specs r00054/r00056 sind unverändert | web/app.js `laden`, `serverStand`, `ereignis`; e2e/tests/r00061-ruhezustand.spec.js | offen |
+| 138 | R00061 | S6 | Abweichung von der Test-Strategie der Anforderung: keine reine Funktion für Klapp- und Sprungzustand in web/wbs.js — beide Zustände blieben erhalten, die Ursache war das Neuzeichnen und der halbe Stand in `laden`. Der Reproduktionstest ist E2E (drei von vier Tests rot ohne Fix), weil `laden` DOM und Server braucht | e2e/tests/r00061-ruhezustand.spec.js | offen |
+| 139 | R00061 | S6 | Nebenwirkung behoben: Aktionen, die nach `await laden()` noch Zustand setzten, waren nur durch das Echo-Neuzeichnen sichtbar — gefunden: Hinweis nach dem Ziehen aus der Aufgabenliste (r00040 rot), jetzt `break`; `hashchange` übergab sein Ereignis als erste Option (r00010 sporadisch rot), `laden` nimmt Optionen jetzt als Objekt. Weitere solche Stellen nicht gefunden (Suche nach `await schreiben` … `return`; ganze Suite --repeat-each 3 grün) | web/app.js `liste-ziehen`, `laden({ nurBeiAenderung })` | offen |
+| 140 | R00061 | S9 | Push nach origin nicht möglich (GitNAS aus); Commits liegen nur lokal auf main | git rev-list origin/main..main | offen |

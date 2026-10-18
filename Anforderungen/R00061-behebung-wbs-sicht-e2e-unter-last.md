@@ -1,6 +1,6 @@
 ---
 id: R00061
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ursprung: Bug-Report
 ursprungslauf: R00054
@@ -53,9 +53,9 @@ Den Klapp- und Sprungzustand aus `laden` in eine reine Funktion in `web/wbs.js` 
 `--repeat-each 10` über die WBS-Specs mit 4 Workern ohne rote Läufe.
 
 ## Akzeptanzkriterien
-- [ ] Der Reproduktionstest ist ohne Fix rot und mit Fix grün
-- [ ] `npx playwright test tests/r00054-wbs-sicht.spec.js tests/r00056-wbs-knoten.spec.js --repeat-each 10` ist ohne roten Lauf
-- [ ] Keine neuen Fehler: alle Tests aller Ebenen grün
+- [x] Der Reproduktionstest ist ohne Fix rot und mit Fix grün
+- [x] `npx playwright test tests/r00054-wbs-sicht.spec.js tests/r00056-wbs-knoten.spec.js --repeat-each 10` ist ohne roten Lauf
+- [x] Keine neuen Fehler: alle Tests aller Ebenen grün
 
 ## Implementierungshinweise
 Gefunden im Lauf R00059 (Phase 8, vorbestehende Failures); Beleg in `kanbanD-anmerkungen.md` Nr. 122.
