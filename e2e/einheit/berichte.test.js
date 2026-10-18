@@ -88,3 +88,76 @@ test('Durchlaufzeit: Lead und Cycle Time, Zeitraum, Kennzahlen', () => {
   assert.strictEqual(durchlaufzeiten(rueck, f({}), () => undefined, jetzt, 'A', 'Z').liste[0].tage, 1, 'erstes Erreichen zählt');
   assert.deepStrictEqual([perzentil([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 85), perzentil([], 85)], [9, null]);
 });
+
+const { prognose, simuliere, tagesreihen, werktagDatum } = require('../../web/berichte.js');
+
+test('Simulation: reproduzierbar, monoton, ohne Durchsatz keine', () => {
+  const a = simuliere([1, 0, 2, 0, 1], 6), b = simuliere([1, 0, 2, 0, 1], 6);
+  assert.deepStrictEqual(a, b);
+  assert.ok(a[50] <= a[70] && a[70] <= a[85] && a[85] <= a[95]);
+  assert.ok(a[50] >= 3 && a[95] <= 30, JSON.stringify(a));
+  assert.deepStrictEqual(simuliere([2], 4), { 50: 2, 70: 2, 85: 2, 95: 2 });
+  assert.strictEqual(simuliere([0, 0], 3), null);
+});
+
+test('Tagesreihen und Werktage', () => {
+  const fr = d(2026, 10, 16), so = d(2026, 10, 18), mo = d(2026, 10, 19);
+  assert.deepStrictEqual(tagesreihen([fr + 1, so + 5, so + 6, mo + 2], fr, d(2026, 10, 20)), { reihe7: [1, 0, 2, 1], reihe5: [1, 3] });
+  assert.strictEqual(werktagDatum(fr, 1), mo);
+  assert.strictEqual(werktagDatum(fr, 0), fr);
+  assert.strictEqual(werktagDatum(mo, 5), d(2026, 10, 26));
+});
+
+test('Prognose je Spalte, Untergrenze, Ausschlüsse', () => {
+  // A → B → Z; fünf erledigt an verschiedenen Tagen, zwei offen (eine in B)
+  const w = (n, ...st) => ({ nummer: n, wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
+  const bew = { spalten: ['A', 'B', 'Z'], aufgaben: [
+    w(1, ['2026-10-12 09:00', 'A'], ['2026-10-13 09:00', 'Z']),
+    w(2, ['2026-10-12 09:00', 'A'], ['2026-10-14 09:00', 'B'], ['2026-10-15 09:00', 'Z']),
+    w(3, ['2026-10-12 09:00', 'A'], ['2026-10-16 09:00', 'Z']),
+    w(4, ['2026-10-12 09:00', 'A'], ['2026-10-19 09:00', 'Z']),
+    w(5, ['2026-10-12 09:00', 'A'], ['2026-10-20 09:00', 'B']),
+    w(6, ['2026-10-12 09:00', 'A']),
+    w(7, ['2026-10-12 09:00', 'A'], ['2026-10-13 09:00', null]),
+  ] };
+  const zu7 = n => ({ klasse: n === 6 ? 'doku' : null, zustaendige: [], labels: [] });
+  const p = prognose(bew, f({}), zu7, jetzt);
+  assert.strictEqual(p.umfang, 6, '#7 ist vom Board genommen');
+  assert.deepStrictEqual(p.phasen.map(x => [x.spalte, x.erreicht, x.offen, x.laeufe]), [['B', 5, 1, 5], ['Z', 4, 2, 4]]);
+  const z = p.phasen[1];
+  assert.deepStrictEqual(z.reihe7, [1, 0, 1, 1, 0, 0, 1, 0, 0], 'vom ersten Lauf 13.10. bis heute 21.10., Nulltage eingeschlossen');
+  assert.deepStrictEqual(z.reihe5, [1, 0, 1, 1, 1, 0, 0], 'Sa und So fallen weg');
+  assert.deepStrictEqual(z.zeilen.map(x => x.p), [50, 70, 85, 95]);
+  assert.ok(z.zeilen.every(x => x.datum7 >= d(2026, 10, 22) && werktag5(x.datum5)));
+  assert.ok(p.phasen[0].zeilen, 'B gemessen');
+  assert.ok(z.zeilen.every(x => !x.untergrenze7 || x.untergrenze7 > x.datum7));
+  assert.deepStrictEqual(p.tage.map(x => x.offen.Z), [7, 5, 5, 4, 3, 3, 3, 2, 2, 2]);
+  assert.deepStrictEqual(p.tage.map(x => x.umfang), [7, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
+  const ohneB = prognose(bew, f({ ohneSpalten: ['B'] }), zu7, jetzt);
+  assert.deepStrictEqual(ohneB.phasen.map(x => [x.spalte, x.erreicht, x.offen]), [['Z', 4, 1]], '#5 liegt in B und zählt nicht');
+  const ohneDoku = prognose(bew, f({ ohneFarben: ['doku'] }), zu7, jetzt);
+  assert.deepStrictEqual(ohneDoku.phasen.map(x => x.offen), [0, 1]);
+  assert.strictEqual(ohneDoku.phasen[0].zeilen, null, 'nichts offen → keine Perzentile');
+  const kurz = prognose(bew, f({ zeitraum: 'eigen', von: '2026-10-19', bis: '2026-10-21' }), zu7, jetzt);
+  assert.deepStrictEqual([kurz.phasen[1].laeufe, kurz.phasen[1].zeilen], [1, null], 'unter drei Läufen ungemessen');
+  assert.strictEqual(kurz.tage.length, 3);
+});
+
+function werktag5(ms) { const w = new Date(ms).getDay(); return w !== 0 && w !== 6; }
+
+test('Prognose: Spalte rechts nie früher als die links davon', () => {
+  const w = (n, ...st) => ({ nummer: n, wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
+  // B früh dreimal erreicht, danach nichts mehr; Z erreicht die drei in den letzten Tagen schnell
+  const bew = { spalten: ['A', 'B', 'Z'], aufgaben: [
+    w(1, ['2026-09-22 09:00', 'B'], ['2026-10-19 09:00', 'Z']),
+    w(2, ['2026-09-22 09:00', 'B'], ['2026-10-20 09:00', 'Z']),
+    w(3, ['2026-09-22 09:00', 'B'], ['2026-10-21 09:00', 'Z']),
+    w(4, ['2026-09-22 09:00', 'A']), w(5, ['2026-09-22 09:00', 'A']), w(6, ['2026-09-22 09:00', 'A']),
+  ] };
+  const p = prognose(bew, f({}), () => undefined, jetzt);
+  const [b, z] = p.phasen;
+  assert.ok(b.zeilen[0].datum7 > z.zeilen[0].datum7, 'Durchsatz von B langsamer');
+  assert.ok(z.zeilen.every((x, k) => x.untergrenze7 === Math.max(b.zeilen[k].datum7, b.zeilen[k].untergrenze7 || 0) || x.datum7 >= b.zeilen[k].datum7));
+  assert.strictEqual(z.zeilen[0].untergrenze7, b.zeilen[0].datum7);
+  assert.strictEqual(z.zeilen[0].untergrenze5, b.zeilen[0].datum5);
+});

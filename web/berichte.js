@@ -120,5 +120,91 @@
     return { liste, anzahl: w.length, gueltig: true, mittel: runden1(w.reduce((s, x) => s + x, 0) / w.length), median: runden1(w.length % 2 ? w[Math.floor(m)] : (w[m - 1] + w[m]) / 2), p85: perzentil(w, 85) };
   }
 
-  Object.assign(ziel, { durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  /* ── Wie lange noch (R00046): Monte Carlo über den Durchsatz je Spalte ── */
+  const PERZENTILE = [50, 70, 85, 95], ZIEHUNGEN = 10000, MIN_LAEUFE = 3, MAX_TAGE = 3650;
+
+  /** Reproduzierbarer Zufall (mulberry32). */
+  function zufall(saat) {
+    let a = saat >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+
+  /** Tage bis `rest` erreicht ist, je Ziehung mit Zurücklegen aus der Tagesreihe; Perzentile über die Ziehungen. */
+  function simuliere(reihe, rest, ziehungen = ZIEHUNGEN) {
+    if (!reihe.some(x => x > 0)) return null;
+    const z = zufall(20260906), erg = [];
+    for (let i = 0; i < ziehungen; i++) {
+      let tage = 0, fertig = 0;
+      while (fertig < rest && tage < MAX_TAGE) { fertig += reihe[Math.floor(z() * reihe.length)]; tage++; }
+      erg.push(tage);
+    }
+    erg.sort((x, y) => x - y);
+    return Object.fromEntries(PERZENTILE.map(p => [p, erg[Math.ceil(p / 100 * ziehungen) - 1]]));
+  }
+
+  const werktag = ms => { const w = new Date(ms).getDay(); return w !== 0 && w !== 6; };
+  /** Datum n Werktage nach `start` (n = 0 → start). */
+  function werktagDatum(start, n) {
+    let d = tag(start), k = 0;
+    while (k < n) { d = tag(d, 1); if (werktag(d)) k++; }
+    return d;
+  }
+
+  /** Ankünfte je Kalendertag [von, bis) und je Werktag (Wochenende zählt zum nächsten Werktag). */
+  function tagesreihen(daten, von, bis) {
+    const reihe7 = [];
+    for (let t = von; t < bis; t = tag(t, 1)) reihe7.push(daten.filter(d => d >= t && d < tag(t, 1)).length);
+    const reihe5 = [];
+    let uebertrag = 0;
+    reihe7.forEach((n, i) => { if (werktag(tag(von, i))) { reihe5.push(n + uebertrag); uebertrag = 0; } else uebertrag += n; });
+    if (uebertrag) { if (reihe5.length) reihe5[reihe5.length - 1] += uebertrag; else reihe5.push(uebertrag); }
+    return { reihe7, reihe5 };
+  }
+
+  /** Je Spalte (außer der ersten gezählten): erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. */
+  function prognose(bew, f, aufgabeZu, jetzt) {
+    const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
+    const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
+    const idx = s => bew.spalten.indexOf(s);
+    const passt = a => aufgabePasst(f, aufgabeZu(a.nummer));
+    const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => x.s != null && spalten.includes(x.s));
+    const umfang = jetztDa.length;
+    let vorige = null;
+    const phasen = spalten.slice(1).map(spalte => {
+      const i = idx(spalte);
+      const offen = jetztDa.filter(x => idx(x.s) < i).length;
+      const daten = jetztDa.map(x => erreicht(x.a.wechsel, bew.spalten, i)).filter(d => d != null && d >= g.von && d < Math.min(g.bis, morgen));
+      const ph = { spalte, erreicht: umfang - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null };
+      if (daten.length) {
+        const von = g.von > 0 ? tag(g.von) : tag(Math.min(...daten));
+        Object.assign(ph, tagesreihen(daten, von, Math.min(tag(g.bis === Infinity ? morgen : g.bis), morgen)));
+        ph.durchsatz = ph.reihe7.length ? daten.length / ph.reihe7.length : null;
+      }
+      if (ph.laeufe >= MIN_LAEUFE && offen > 0) {
+        const p7 = simuliere(ph.reihe7, offen), p5 = simuliere(ph.reihe5, offen);
+        if (p7 && p5) ph.zeilen = PERZENTILE.map(p => ({ p, kalendertage: p7[p], datum7: tag(heute, p7[p]), arbeitstage: p5[p], datum5: werktagDatum(heute, p5[p]) }));
+      }
+      // nie früher als die Spalte links davon: deren Datum als Untergrenze nennen, nicht verrechnen
+      if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
+        const v = vorige.zeilen[k];
+        for (const n of ['7', '5']) {
+          const schranke = Math.max(v['datum' + n], v['untergrenze' + n] || 0);
+          if (schranke > z['datum' + n]) z['untergrenze' + n] = schranke;
+        }
+      });
+      vorige = ph;
+      return ph;
+    });
+    // Verlauf je Tag im Zeitraum: Umfang und noch nicht erreicht je Spalte, Stand am Tagesende
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    const tage = [];
+    if (erste !== Infinity) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
+      const ende = Math.min(tag(t, 1) - 1, jetzt);
+      const da = bew.aufgaben.filter(passt).map(a => spalteAm(a.wechsel, ende)).filter(s => s != null && spalten.includes(s));
+      tage.push({ t, umfang: da.length, offen: Object.fromEntries(phasen.map(ph => [ph.spalte, da.filter(s => idx(s) < idx(ph.spalte)).length])) });
+    }
+    return { umfang, heute, phasen, tage, gezaehlt: jetztDa.map(x => x.a.nummer) };
+  }
+
+  Object.assign(ziel, { prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);
