@@ -26,7 +26,7 @@ test.describe('R00015', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
     await page.getByLabel('Zeit 1 korrigieren').click();
-    await page.getByLabel('Ende').fill('2026-10-17 10:00');
+    await page.getByLabel('Ende', { exact: true }).fill('2026-10-17 10:00');
     await page.keyboard.press('Enter');
     await expect(page.locator('#zeitsumme')).toContainText('1:00');
     expect(k.lies('aufgaben/0001-eins.md')).toContain('2026-10-17 09:00 · 2026-10-17 10:00 · st');

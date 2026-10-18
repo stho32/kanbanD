@@ -1,5 +1,14 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle' } };
+const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
+const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
+S.ui.filter = gemerkt('kanbanD.filter') || '';
+S.ui.bereich = gemerkt('kanbanD.bereich') || 'alle';
+
+function filterSetzen(text) {
+  S.ui.filter = text;
+  merken('kanbanD.filter', text);
+}
 try { S.ich = sessionStorage.getItem('kanbanD.ich'); } catch (_) { }
 
 function ichSetzen(k) {
@@ -194,12 +203,14 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
       }
-      case 'archiv-an': u.archiv = true; u.offen = null; break;
-      case 'archiv-aus': u.archiv = false; u.offen = null; break;
+      case 'archiv-an': filterSetzen((u.filter.replace(/is:\S+\s*/g, '') + ' is:archived').trim()); u.offen = null; break;
+      case 'archiv-aus': filterSetzen(u.filter.replace(/is:\S+\s*/g, '').trim()); u.offen = null; break;
+      case 'bereich': u.bereich = arg; merken('kanbanD.bereich', arg); break;
+      case 'legende': filterSetzen(klasseUmschalten(u.filter, arg)); break;
       case 'archivieren': {
         if (ichNoetig()) break;
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
-        if (!u.fensterFehler) { if (!u.archiv) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, rueckgaengig: +arg, at: Date.now() }; }
+        if (!u.fensterFehler) { if (!imArchiv()) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, rueckgaengig: +arg, at: Date.now() }; }
         break;
       }
       case 'zurueckholen': {
@@ -342,6 +353,11 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  if (e.target.id === 'flt') {
+    filterSetzen(e.target.value);
+    $('#main').innerHTML = S.ui.setup ? vSetup() : vBoard();
+    return;
+  }
   const sf = e.target.dataset && e.target.dataset.sf;
   if (sf && S.ui.setup) {
     const sp = S.ui.setup.spalten[+e.target.dataset.i];
@@ -377,6 +393,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     act(t.dataset.enter, t.dataset.arg, t.value);
+    return;
+  }
+  if (e.key === 'Escape' && t.id === 'flt') {
+    if (S.ui.filter) { filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
+    return;
+  }
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
+    e.preventDefault();
+    $('#flt').focus();
     return;
   }
   if (e.key === 'Escape') {

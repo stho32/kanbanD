@@ -90,9 +90,9 @@ zuletzt: 2026-10-18
 | B0049 | Bubble | I0018 | Herkunft ändern | gruen | Test gruen | Aufgabe + Herkunftsliste (I0001, R00014, thin air) → Aufgabe oder Fehler | 0,5-1 |  |  |  |  |
 | B0050 | Bubble | I0018 | WBS und Anforderungen auflösen | gruen | Test gruen | Quellpfade + Herkunft → Datei, Zeile, Name, Status, Braucht; GET /api/herkunft | 1-2 |  |  |  |  |
 | B0051 | Bubble | I0018 | Herkunft und Wartet-auf zeigen | gruen | Test gruen | Chips mit Editor-Link, hinzufügen/entfernen, wartet auf #n an Karte und Fenster | 1-2 |  |  |  |  |
-| I0019 | Interaction | D0002 | Filtern | gelb | US-1..US-3 |  |  |  | I0005, I0010 | R00019 | Text, class:, origin:, @person, is:archived |
+| I0019 | Interaction | D0002 | Filtern | gruen | US-1..US-3 |  |  |  | I0005, I0010 | R00019 | Text, class:, origin:, @person, is:archived |
 | B0052 | Bubble | I0019 | Filter auswerten | gruen | Test gruen | Filtertext + Aufgabe → passt/passt nicht (Text, #nr, @kürzel, class:, origin:, label:, is:archived) | 1-2 |  |  |  |  |
-| B0053 | Bubble | I0019 | Filterleiste und Legende | rot | Test gruen | Eingabe in der Kopfzeile, alle/meine/Agenten, Legende der Klassen mit Zahl, / setzt den Fokus | 1-2 |  |  |  |  |
+| B0053 | Bubble | I0019 | Filterleiste und Legende | gruen | Test gruen | Eingabe in der Kopfzeile, alle/meine/Agenten, Legende der Klassen mit Zahl, / setzt den Fokus | 1-2 |  |  |  |  |
 | I0020 | Interaction | D0004 | Aufgabenliste und Board-Zuordnung | rot | US der Anforderung |  |  |  | I0008, I0017 |  | alle Aufgaben, ohne Board, Archiv; auf Board legen und abnehmen |
 | I0021 | Interaction | D0005 | Personenübersicht | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0022 | Interaction | D0006 | Stundenzettel und CSV | rot | US der Anforderung |  |  |  | I0014 |  |  |

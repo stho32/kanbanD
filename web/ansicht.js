@@ -36,7 +36,7 @@ function vKopf() {
   if (u.setup) return `<header class="kz modus"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button></div></div></header>`;
   if (!z.eingerichtet || u.first) return `<header class="kz"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></header>`;
   const b = S.board;
-  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>${b && u.view === 'board' ? `<div class="kz-werk"><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button></div>` : ''}<div class="kz-z3">${vLaufKnopf()}${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
+  return `<header class="kz"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>${b && u.view === 'board' ? `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button></div>` : ''}<div class="kz-z3">${vLaufKnopf()}${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vIchKnopf()}</div></header>`;
 }
 
 const UHR = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
@@ -59,9 +59,9 @@ function vIchKnopf() {
 const uhr = t => new Date(t).toTimeString().slice(0, 8);
 /** Nummern der sichtbaren Karten in Board-Reihenfolge — zum Blättern. */
 function sichtbareReihe() {
-  const passt = a => a && !!a.archiviert === !!S.ui.archiv;
-  if (!S.board) return S.aufgaben.filter(passt).map(a => a.nummer);
-  return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => passt(aufgabe(n))));
+  const sichtbar = a => a && !!a.archiviert === imArchiv() && passt(a, S.ui.filter, umfeld());
+  if (!S.board) return S.aufgaben.filter(sichtbar).map(a => a.nummer);
+  return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => sichtbar(aufgabe(n))));
 }
 
 function vFenster() {
@@ -192,21 +192,32 @@ function vFehlt(nr) {
 /* ── Board ── */
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
-  const archiv = S.ui.archiv;
-  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === !!archiv ? vKarte(a, letzte) : '') : archiv ? '' : vFehlt(nr); }).filter(Boolean);
-  const imArchiv = letzte && !archiv ? archivierteDesBoards().length : 0;
+  const archiv = imArchiv(), gefiltert = S.ui.filter.trim() !== '' && !(archiv && S.ui.filter.trim() === 'is:archived') || S.ui.bereich !== 'alle';
+  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : vFehlt(nr); }).filter(Boolean);
+  const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const neu = S.ui.adding === sp.name
     ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Esc bricht ab" data-enter="add-ok" data-arg="${esc(sp.name)}" aria-label="Titel der neuen Karte"></div>`
     : `<button data-act="add" data-arg="${esc(sp.name)}">+ Karte</button>`;
   const ueber = sp.grenze && karten.length > sp.grenze;
-  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || '<div class="leer">leer</div>'}${imArchiv ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${imArchiv})</a></div>` : ''}</div>${archiv ? '' : `<div class="bahn-fuss">${neu}</div>`}</section>`;
+  return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div>${archiv ? '' : `<div class="bahn-fuss">${neu}</div>`}</section>`;
 }
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {
   const b = S.board;
   if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
-  const leiste = S.ui.archiv ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
-  return `${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>`;
+  const leiste = imArchiv() ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
+  return `${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
+}
+const imArchiv = () => archivGefiltert(S.ui.filter);
+const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen() });
+function vLegende() {
+  const klassen = S.zustand.einstellungen.klassen;
+  if (!klassen.length || !S.board) return '';
+  const nummern = S.board.spalten.flatMap(sp => sp.aufgaben);
+  const sichtbar = nummern.map(aufgabe).filter(a => a && !!a.archiviert === imArchiv() && passt(a, S.ui.filter, umfeld()));
+  const jetzt = (filterWoerter(S.ui.filter).find(([k]) => k === 'class') || [])[1];
+  const knopf = (k, text, n, stil) => `<button class="${jetzt === k ? 'an' : ''}" data-act="legende" data-arg="${esc(k)}" title="filtern: class:${esc(k)}"${stil}><span class="sw${k === 'none' ? ' leer' : ''}"></span>${esc(text)}<span class="n">${n}</span></button>`;
+  return `<div class="leg" aria-label="Legende"><span class="tt">LEGENDE</span>${klassen.map(k => knopf(k.schluessel, k.bezeichnung, sichtbar.filter(a => a.klasse === k.schluessel).length, ` style="${cv(k.farbe)}"`)).join('')}${knopf('none', 'ohne Klasse', sichtbar.filter(a => !a.klasse).length, '')}<span class="rechts">Klick filtert · <span class="mono">class:</span></span></div>`;
 }
 function vHinweis() {
   const t = S.ui.hinweis;
