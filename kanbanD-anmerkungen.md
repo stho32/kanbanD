@@ -43,3 +43,4 @@ Gesammelt im Lauf `/anwendung` (Automatik auf Auftrag vom 2026-10-18: Mensch-Sta
 | 37 | I0024 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00024 | offen |
 | 38 | I0025 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00025 | offen |
 | 39 | I0026 | S7 | Entwicklertest steht aus (Mensch-Station, in der Automatik nicht verbucht) | R00026 | offen |
+| 40 | — | A2 | UX-Überarbeitung auf Auftrag vom 2026-10-18: Umfang ohne Interview selbst geschnitten — I0027 Mehrfach-Anlegen, I0028 Schnelleingabe, I0029 Karte direkt bedienen, I0030 Markdown-Beschreibung, I0031 Rückgängig, I0032 Sitzung und Verbindung | Dokumentation/Planung/kanbanD.md | offen |

@@ -13,10 +13,10 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
-| D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
+| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
@@ -117,6 +117,15 @@ zuletzt: 2026-10-18
 | I0026 | Interaction | D0002 | Tastaturbedienung | gruen | US-1..US-3 |  |  |  | I0006 | R00026 |  |
 | B0069 | Bubble | I0026 | Tastaturziele rechnen | gruen | Test gruen | sichtbare Spalten, Karte, Richtung → Nachbarkarte bzw. Ziel zum Verschieben | 0,5-1 |  |  |  |  |
 | B0070 | Bubble | I0026 | Tastaturkürzel auf dem Board | gruen | Test gruen | Pfeile, Umschalt+Pfeile, Enter, n, ? → Fokus, Bewegen, Öffnen, neue Karte, Hilfe | 1-2 |  |  |  |  |
+| I0027 | Interaction | D0002 | Mehrere Aufgaben auf einmal anlegen | rot | US-1..US-3 |  |  |  | I0005 | R00027 | UX-Überarbeitung: Mehrzeilig einfügen → je Zeile eine Aufgabe, ein Commit; auch Teilaufgaben und Aufgabenliste |
+| B0071 | Bubble | I0027 | Zeilen aus eingefügtem Text | rot | Test gruen | eingefügter Text → Titel je Zeile ohne Listenzeichen | 0,5-1 |  |  |  |  |
+| B0072 | Bubble | I0027 | Mehrere anlegen über die API | rot | Test gruen | Titelliste → Aufgaben bzw. Teilaufgaben, ein Commit | 1-2 |  |  |  |  |
+| B0073 | Bubble | I0027 | Einfügen in Bahn, Liste und Teilaufgaben | rot | Test gruen | Einfügen mehrzeiligen Texts → Rückfrage-freies Anlegen aller Zeilen | 1-2 |  |  |  |  |
+| I0028 | Interaction | D0002 | Schnelleingabe mit Kürzeln | rot | US der Anforderung |  |  |  | I0027 |  | UX-Überarbeitung: @kürzel, class:, label:, due:, I0001/R00001 im Titel setzen die Felder beim Anlegen |
+| I0029 | Interaction | D0002 | Karte direkt bedienen | rot | US der Anforderung |  |  |  | I0014 |  | UX-Überarbeitung: Timer, mir zuweisen, umbenennen direkt an der Karte; Fälligkeit per Knopf |
+| I0030 | Interaction | D0003 | Beschreibung als Markdown lesen | rot | US der Anforderung |  |  |  | I0011 |  | UX-Überarbeitung: gerendert lesen, Klick bearbeitet |
+| I0031 | Interaction | D0002 | Rückgängig | rot | US der Anforderung |  |  |  | I0006 |  | UX-Überarbeitung: Hinweis mit rückgängig nach Bewegen, Anlegen, Entfernen |
+| I0032 | Interaction | D0002 | Sitzung und Verbindung | rot | US der Anforderung |  |  |  | I0007 |  | UX-Überarbeitung: letztes Board merken, Wieder verbunden, Hinweise auf leeren Flächen |
 
 ## Offene Fragen
 
