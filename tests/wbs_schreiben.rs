@@ -139,3 +139,56 @@ async fn eigener_schreibzugriff_meldet_ereignis_mit_kuerzel_nicht_extern() {
     .await;
     assert_eq!(e["extern"], false, "{e}");
 }
+
+/// D0002 gruen mit I0001…I0047 (gruen), unter I0047 die Bubbles `bubbles` (gruen); danach D0003 rot.
+fn grosse_wbs(bubbles: std::ops::RangeInclusive<u32>) -> String {
+    let ids: Vec<(String, &str, &str)> = (1..=47).map(|i| (format!("I{i:04}"), "Interaction", "D0002")).chain(bubbles.map(|i| (format!("B{i:04}"), "Bubble", "I0047"))).collect();
+    let mut z = vec![("A0001", "Application", "—", "gelb"), ("D0002", "Dialog", "A0001", "gruen")];
+    z.extend(ids.iter().map(|(id, e, p)| (id.as_str(), *e, *p, "gruen")));
+    z.extend([("D0003", "Dialog", "A0001", "rot")]);
+    wbs(&z)
+}
+
+async fn anlegen(adresse: &str, daten: serde_json::Value) -> (u16, serde_json::Value) {
+    gemeinsam::senden(reqwest::Method::POST, adresse, "api/wbs/kc/knoten", "st", daten).await
+}
+
+#[tokio::test]
+async fn neue_bubble_bekommt_die_naechste_id_auch_ueber_eine_geloeschte_der_historie_neue_interaction_steht_unter_ihrem_dialog() {
+    let (_a, arbeit) = arbeits_repository(&grosse_wbs(1..=117));
+    std::fs::write(arbeit.join("Dokumentation/Planung/kasse.md"), grosse_wbs(1..=116)).unwrap();
+    git(&arbeit, &["-c", "user.name=KI", "-c", "user.email=k@k", "commit", "-q", "-am", "B0117 gelöscht"]);
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let log_vorher = git(&arbeit, &["log", "--format=%H"]);
+    let (s, r) = anlegen(&lauf.adresse, serde_json::json!({"ebene": "Bubble", "eltern": "I0047", "name": "Summe", "fertig_kriterium": "Test gruen", "aufwand": "0,5-1"})).await;
+    assert_eq!((s, r.clone()), (201, serde_json::json!({"id": "B0118"})), "B0117 gab es schon einmal");
+    let (s, r) = anlegen(&lauf.adresse, serde_json::json!({"ebene": "Interaction", "eltern": "D0002", "name": "X", "fertig_kriterium": "US-1"})).await;
+    assert_eq!((s, r.clone()), (201, serde_json::json!({"id": "I0048"})));
+    let text = plan(&arbeit);
+    let zeilen: Vec<&str> = text.lines().collect();
+    let i = zeilen.iter().position(|z| z.starts_with("| I0048 |")).unwrap();
+    assert_eq!(zeilen[i], "| I0048 | Interaction | D0002 | X | rot | US-1 |  |  |  |  |  |  |  |");
+    assert_eq!((zeilen[i - 1].get(..9), zeilen[i + 1].get(..9)), (Some("| B0118 |"), Some("| D0003 |")), "nach dem letzten Nachfahren von D0002");
+    assert!(text.contains("| D0002 | Dialog | A0001 | Name D0002 | gelb |"), "D0002 gerechnet nicht mehr gruen");
+    let (_, w) = gemeinsam::senden(reqwest::Method::GET, &lauf.adresse, "api/wbs/kc", "st", serde_json::Value::Null).await;
+    assert_eq!(w["knoten"].as_array().unwrap().iter().find(|k| k["id"] == "D0002").unwrap()["gerechnet"], "gelb");
+    assert_eq!(git(&arbeit, &["log", "--format=%H"]), log_vorher, "git log im Arbeits-Repository unverändert");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "");
+}
+
+#[tokio::test]
+async fn anlegen_ohne_fertig_kriterium_oder_mit_falscher_eltern_ebene_ist_400_und_schreibt_nichts() {
+    let (_a, arbeit) = arbeits_repository(&grosse_wbs(1..=2));
+    let tmp = tempfile::tempdir().unwrap();
+    mit_register(tmp.path(), &arbeit);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = anlegen(&lauf.adresse, serde_json::json!({"ebene": "Interaction", "eltern": "D0002", "name": "X"})).await;
+    assert_eq!((s, r["fehler"].as_str()), (400, Some("Fertig-Kriterium fehlt — ein Knoten, ein Fertig-Kriterium")));
+    let (s, r) = anlegen(&lauf.adresse, serde_json::json!({"ebene": "Bubble", "eltern": "D0002", "name": "X", "fertig_kriterium": "Test gruen"})).await;
+    assert_eq!(s, 400, "{r}");
+    let ohne = reqwest::Client::new().post(format!("{}api/wbs/kc/knoten", lauf.adresse)).json(&serde_json::json!({"ebene": "Interaction", "eltern": "D0002", "name": "X", "fertig_kriterium": "US-1"})).send().await.unwrap();
+    assert_eq!(ohne.status().as_u16(), 400, "Identität Pflicht");
+    assert_eq!(plan(&arbeit), grosse_wbs(1..=2));
+}

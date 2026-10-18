@@ -51,6 +51,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("DELETE", "/api/aufgaben/{nr}/anhaenge/{name}", true, "Aufgaben", "Anhang entfernen"),
     e("GET", "/api/herkunft", false, "Aufgaben", "WBS-Knoten und Anforderungen der verwendeten Herkunft, je Schreibweise mit anwendung und schluessel"),
     e("GET", "/api/wbs/{kuerzel}", false, "WBS", "WBS einer registrierten Anwendung {knoten: [{id, ebene, eltern, name, status, gerechnet, erreicht, …, zeile}], stand: {gruen, gelb, rot, slices, aktiv, pfad, laufend}, nicht_committet, anforderungen}; 404 unbekannt, 409 nicht erreichbar"),
+    e("POST", "/api/wbs/{kuerzel}/knoten", true, "WBS", "Knoten anlegen {ebene, eltern, name, fertig_kriterium, eingabe_ausgabe?, aufwand?, ausbaustufe?, braucht?, requirement?, notiz?} → 201 {id}; nächste freie ID auch aus der Git-Historie der WBS, Zeile rot nach dem letzten Nachfahren der Eltern, kein Commit; 400 bei fehlendem Pflichtfeld, falscher Eltern-Ebene oder Aufwand unter 0,4h"),
     e("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", true, "WBS", "Status eines Blatts setzen {status: rot|gelb|gruen} → {geaendert: [ids]}; Vorfahren gerechnet, zuletzt gesetzt, kein Commit im Arbeits-Repository; 409 bei Kindern oder defekter Datei, 400 bei option/ausbau/verworfen/bestehend"),
     e("POST", "/api/aufgaben/{nr}/timer/start", true, "Zeiten", "eigenen Timer starten"),
     e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde"),

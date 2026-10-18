@@ -4,7 +4,7 @@ use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
 use crate::wbs::{Stand, WbsKnoten, stand};
-use crate::wbs_datei::{Geschrieben, status_setzen};
+use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen};
 use crate::modell::Anwendung;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -95,12 +95,12 @@ impl Kanban {
 
     /// Liest die WBS-Datei unter ihrer Sperre, ändert sie mit `aendern` und schreibt sie zurück, wenn sich etwas geändert hat.
     /// Im Arbeits-Repository wird nie committet.
-    fn wbs_aendern<T>(&self, kuerzel: &str, aendern: impl FnOnce(&str, &str) -> Result<(Geschrieben, T), Fehler>) -> Result<T, Fehler> {
+    fn wbs_aendern<T>(&self, kuerzel: &str, aendern: impl FnOnce(&str, &Path, &str) -> Result<(Geschrieben, T), Fehler>) -> Result<T, Fehler> {
         let (a, datei) = self.wbs_datei(kuerzel)?;
         let sperre = self.wbs_sperre(&datei);
         let _gesperrt = sperre.lock().unwrap_or_else(|e| e.into_inner());
         let text = Self::wbs_text(kuerzel, &a, &datei)?;
-        let (g, ergebnis) = aendern(&text, &crate::uhr::heute())?;
+        let (g, ergebnis) = aendern(&text, &datei, &crate::uhr::heute())?;
         if g.text != text {
             self.als_eigen_merken(&datei);
             datei_ersetzen(&datei, &g.text)?;
@@ -111,12 +111,31 @@ impl Kanban {
     /// Setzt den Status eines Blatts der WBS von `kuerzel` (R00055); Vorfahren und `zuletzt` werden mitgeschrieben.
     /// Wer handelt, prüft der Aufrufer — im Arbeits-Repository entsteht kein Commit, also auch kein Autor.
     pub fn wbs_status_setzen(&self, kuerzel: &str, id: &str, status: &str) -> Result<WbsGeaendert, Fehler> {
-        self.wbs_aendern(kuerzel, |text, heute| {
+        self.wbs_aendern(kuerzel, |text, _, heute| {
             let g = status_setzen(text, id, status, heute)?;
             let geaendert = g.geaendert.clone();
             Ok((g, WbsGeaendert { geaendert }))
         })
     }
+
+    /// Legt einen Knoten in der WBS von `kuerzel` an (R00056): nächste freie ID aus der Datei und allen ihren Ständen
+    /// im Arbeits-Repository, Zeile `rot` nach dem letzten Nachfahren der Eltern.
+    pub fn wbs_knoten_anlegen(&self, kuerzel: &str, neu: &NeuerKnoten) -> Result<WbsNeu, Fehler> {
+        self.wbs_aendern(kuerzel, |text, datei, heute| {
+            schreibbar(text)?;
+            let praefix = neuen_knoten_pruefen(&wbs_tabelle(text), neu)?;
+            let mut staende = crate::git::staende_der_datei(datei);
+            staende.push(text.to_string());
+            let id = naechste_id(praefix, &staende);
+            Ok((knoten_anlegen(text, neu, &id, heute)?, WbsNeu { id }))
+        })
+    }
+}
+
+/// `POST /api/wbs/{kürzel}/knoten`: die ID des neuen Knotens.
+#[derive(Debug, Serialize)]
+pub struct WbsNeu {
+    pub id: String,
 }
 
 impl Kanban {

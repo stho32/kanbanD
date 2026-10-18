@@ -73,6 +73,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/herkunft", get(herkunft))
         .route("/api/anwendungen", get(anwendungen))
         .route("/api/wbs/{kuerzel}", get(wbs))
+        .route("/api/wbs/{kuerzel}/knoten", post(wbs_knoten_anlegen))
         .route("/api/wbs/{kuerzel}/knoten/{id}", axum::routing::patch(wbs_status))
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
@@ -416,6 +417,15 @@ struct StatusWahl {
 
 async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, Json(w): Json<StatusWahl>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, _| k.wbs_status_setzen(&kuerzel, &id, &w.status)).await
+}
+
+async fn wbs_knoten_anlegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, Json(neu): Json<crate::wbs_datei::NeuerKnoten>) -> Result<Response, Fehler> {
+    let r = blockierend(&app, move |k| {
+        k.handelnder(wer.as_deref())?;
+        k.wbs_knoten_anlegen(&kuerzel, &neu)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(r)).into_response())
 }
 
 #[derive(serde::Deserialize)]

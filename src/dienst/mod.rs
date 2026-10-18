@@ -25,7 +25,7 @@ pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::Bewegung;
 pub use teilaufgaben::Teilaufgabenaenderung;
-pub use wbs::{WbsGeaendert, WbsSicht, WbsZeile};
+pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
