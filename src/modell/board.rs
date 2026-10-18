@@ -45,6 +45,64 @@ impl Board {
     }
 }
 
+/// Eine Spalte in der neuen Reihenfolge; `alt` ist der bisherige Name, dessen Aufgaben sie übernimmt.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpaltenAenderung {
+    pub name: String,
+    pub alt: Option<String>,
+    pub grenze: Option<u32>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Spaltenfehler {
+    NameLeer,
+    NameDoppelt(String),
+    AltUnbekannt(String),
+    AltDoppelt(String),
+    EnthaeltAufgaben(String, usize),
+}
+
+impl Board {
+    /// Setzt die Spalten neu. Bisherige Spalten mit Aufgaben müssen als `alt` vorkommen.
+    pub fn spalten_setzen(&mut self, neu: &[SpaltenAenderung]) -> Result<bool, Spaltenfehler> {
+        let mut namen: Vec<&str> = vec![];
+        let mut alte: Vec<&str> = vec![];
+        for n in neu {
+            let name = n.name.trim();
+            if name.is_empty() {
+                return Err(Spaltenfehler::NameLeer);
+            }
+            if namen.contains(&name) {
+                return Err(Spaltenfehler::NameDoppelt(name.into()));
+            }
+            namen.push(name);
+            if let Some(alt) = n.alt.as_deref() {
+                if !self.spalten.iter().any(|s| s.name == alt) {
+                    return Err(Spaltenfehler::AltUnbekannt(alt.into()));
+                }
+                if alte.contains(&alt) {
+                    return Err(Spaltenfehler::AltDoppelt(alt.into()));
+                }
+                alte.push(alt);
+            }
+        }
+        if let Some(voll) = self.spalten.iter().find(|s| !s.aufgaben.is_empty() && !alte.contains(&s.name.as_str())) {
+            return Err(Spaltenfehler::EnthaeltAufgaben(voll.name.clone(), voll.aufgaben.len()));
+        }
+        let spalten: Vec<Spalte> = neu
+            .iter()
+            .map(|n| Spalte {
+                name: n.name.trim().into(),
+                grenze: n.grenze.filter(|g| *g > 0),
+                aufgaben: n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a)).map(|s| s.aufgaben.clone()).unwrap_or_default(),
+            })
+            .collect();
+        let geaendert = spalten != self.spalten;
+        self.spalten = spalten;
+        Ok(geaendert)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Bewegfehler {
     NichtAufDemBoard,
@@ -84,6 +142,32 @@ mod tests {
         assert_eq!(b.bewegen(9, "A", None), Err(Bewegfehler::NichtAufDemBoard));
         assert_eq!(b.bewegen(1, "X", None), Err(Bewegfehler::SpalteUnbekannt));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
+    }
+
+    fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze }
+    }
+
+    #[test]
+    fn spalten_umbenennen_ergaenzen_begrenzen() {
+        let mut b = b();
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![] });
+        let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
+        assert_eq!(b.spalten_setzen(&neu), Ok(true));
+        let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
+        assert_eq!(namen, vec![("Offen", vec![1, 2], None), ("Neu", vec![], None), ("Z", vec![3], Some(2))]);
+        assert_eq!(b.spalten_setzen(&neu), Ok(false));
+    }
+
+    #[test]
+    fn spalten_regeln() {
+        let mut b = b();
+        assert_eq!(b.spalten_setzen(&[aend("Z", Some("Z"), None)]), Err(Spaltenfehler::EnthaeltAufgaben("A".into(), 2)));
+        assert_eq!(b.spalten_setzen(&[aend(" ", Some("A"), None)]), Err(Spaltenfehler::NameLeer));
+        assert_eq!(b.spalten_setzen(&[aend("X", Some("A"), None), aend("X", Some("Z"), None)]), Err(Spaltenfehler::NameDoppelt("X".into())));
+        assert_eq!(b.spalten_setzen(&[aend("X", Some("Q"), None)]), Err(Spaltenfehler::AltUnbekannt("Q".into())));
+        assert_eq!(b.spalten_setzen(&[aend("X", Some("A"), None), aend("Y", Some("A"), None)]), Err(Spaltenfehler::AltDoppelt("A".into())));
+        assert_eq!(b.spalten.len(), 2);
     }
 
     #[test]
