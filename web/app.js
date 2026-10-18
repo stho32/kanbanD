@@ -185,7 +185,7 @@ async function act(a, arg, wert) {
         const titel = (wert || '').trim();
         if (!titel) { u.adding = null; break; }
         if (ichNoetig()) break;
-        await api('POST', '/api/aufgaben', { titel, board: u.slug, spalte: arg });
+        await api('POST', '/api/aufgaben', { ...eintragAus(titel), board: u.slug, spalte: arg });
         u.fokus = '#add-inp';
         return laden();
       }
@@ -282,7 +282,7 @@ async function act(a, arg, wert) {
       case 'liste-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.fokus = '#liste-neu';
-        await schreiben('POST', '/api/aufgaben', { titel: wert.trim() });
+        await schreiben('POST', '/api/aufgaben', eintragAus(wert));
         return;
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
@@ -420,6 +420,11 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg);
 });
 document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.schnell) {
+    const v = $('#add-vorschau');
+    if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : '';
+    return;
+  }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
     $('#main').innerHTML = vHaupt();
@@ -540,7 +545,8 @@ document.addEventListener('paste', async e => {
     u.hinweis = { text: `${zeilen.length} Teilaufgaben ergänzt`, at: Date.now() };
   } else {
     u.fokus = art === 'board' ? '#add-inp' : '#liste-neu';
-    const daten = art === 'board' ? { titel: zeilen, board: u.slug, spalte: e.target.dataset.arg } : { titel: zeilen };
+    const eintraege = zeilen.map(eintragAus);
+    const daten = art === 'board' ? { titel: eintraege, board: u.slug, spalte: e.target.dataset.arg } : { titel: eintraege };
     await schreiben('POST', '/api/aufgaben/mehrere', daten);
     u.hinweis = { text: `${zeilen.length} Aufgaben angelegt`, at: Date.now() };
   }

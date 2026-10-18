@@ -55,6 +55,25 @@ function vIchKnopf() {
   return `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="true">${me ? pk(me.kuerzel) + esc(me.name) : 'nicht gewählt'} ▾</button>`;
 }
 
+/* ── Schnelleingabe: Vorschau der erkannten Felder ── */
+function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: S.zustand.einstellungen.klassen }; }
+function vSchnellVorschau(text) {
+  const s = schnelleingabe(text, schnellUmfeld(), new Date());
+  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(s.faellig)}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
+  return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
+}
+/** Eingabe → Eintrag für die API (Titel mit Angaben, wenn Kürzel erkannt). */
+function eintragAus(text) {
+  const s = schnelleingabe(text, schnellUmfeld(), new Date());
+  const e = { titel: s.titel || text.trim() };
+  if (s.zustaendige.length) e.zustaendige = s.zustaendige;
+  if (s.klasse) e.klasse = s.klasse;
+  if (s.labels.length) e.labels = s.labels;
+  if (s.faellig) e.faellig = s.faellig;
+  if (s.herkunft.length) e.herkunft = s.herkunft;
+  return e;
+}
+
 /* ── Aufgabenfenster (Artboard D0003) ── */
 const uhr = t => new Date(t).toTimeString().slice(0, 8);
 /** Nummern der sichtbaren Karten in Board-Reihenfolge — zum Blättern. */
@@ -226,7 +245,7 @@ function vLane(sp, i, alle) {
   const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
   const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const neu = S.ui.adding === sp.name
-    ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Liste einfügen legt alle an · Esc" data-enter="add-ok" data-arg="${esc(sp.name)}" data-mehrfach="board" aria-label="Titel der neuen Karte"></div>`
+    ? `<div class="bahn-add"><input class="inp" id="add-inp" placeholder="Titel · Enter legt an · Liste einfügen legt alle an · Esc" data-enter="add-ok" data-arg="${esc(sp.name)}" data-mehrfach="board" data-schnell="1" aria-label="Titel der neuen Karte"><div class="schnell" id="add-vorschau" aria-live="polite"></div></div>`
     : `<button data-act="add" data-arg="${esc(sp.name)}">+ Karte</button>`;
   const ueber = sp.grenze && karten.length > sp.grenze;
   return `<section class="bahn" data-col="${esc(sp.name)}"><div class="bahn-kopf${ueber ? ' ueber' : ''}">${esc(sp.name)}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span></div><div class="flaeche">${karten.join('') || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div>${archiv ? '' : `<div class="bahn-fuss">${neu}</div>`}</section>`;
@@ -272,7 +291,7 @@ function vAufgaben() {
     const cl = klasse(a.klasse), orte = liegtAuf(a);
     return `<tr class="${a.archiviert ? 'ruhe' : ''}" data-zeile="${a.nummer}"><td class="mono">#${a.nummer}</td><td class="tt"><a href="#" data-act="oeffnen" data-arg="${a.nummer}">${esc(a.titel)}</a>${a.archiviert ? ` <span class="lbl">archiviert ${esc(a.archiviert)}</span>` : ''}</td><td>${cl ? `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>` : a.klasse ? esc(a.klasse) : ''}</td><td><span class="avs">${a.zustaendige.map(pk).join('')}</span></td><td class="orte">${orte.length ? orte.map(({ b, sp }) => `<span class="lbl ort">${esc(b.titel)} · ${esc(sp.name)}<button class="lnk" data-act="abnehmen" data-arg="${esc(b.slug)}|${a.nummer}" title="von ${esc(b.titel)} nehmen" aria-label="#${a.nummer} von ${esc(b.titel)} nehmen">✕</button></span>`).join(' ') : '<span class="muted">auf keinem Board</span>'}</td><td>${a.archiviert ? `<button class="btn" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button>` : `<button class="btn" id="leg-${a.nummer}" data-act="legen-pop" data-arg="${a.nummer}" aria-haspopup="true">auf Board legen ▾</button>`}</td></tr>`;
   }).join('');
-  return `<div class="leiste"><b>Aufgaben</b><span class="muted">alle Dateien unter aufgaben/ · eine Aufgabe kann auf mehreren Boards liegen</span><div class="rechts"><input class="inp" id="liste-neu" placeholder="${me ? '+ Aufgabe ohne Board · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="liste-neu" data-mehrfach="liste" style="width:280px" aria-label="Neue Aufgabe ohne Board"${me ? '' : ' disabled'}></div></div>
+  return `<div class="leiste"><b>Aufgaben</b><span class="muted">alle Dateien unter aufgaben/ · eine Aufgabe kann auf mehreren Boards liegen</span><div class="rechts"><input class="inp" id="liste-neu" placeholder="${me ? '+ Aufgabe ohne Board · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="liste-neu" data-mehrfach="liste" style="width:320px" title="Kürzel: @kürzel class: label: due: I0001" aria-label="Neue Aufgabe ohne Board"${me ? '' : ' disabled'}></div></div>
 <div class="body"><table class="pt dicht liste"><thead><tr><th>#</th><th>Titel</th><th>Klasse</th><th>Zuständig</th><th>Liegt auf</th><th></th></tr></thead><tbody>${zeilen || '<tr><td colspan="6" class="muted">keine Aufgaben in diesem Bereich</td></tr>'}</tbody></table></div>`;
 }
 function vLegenPop() {
