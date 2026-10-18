@@ -207,11 +207,19 @@
     return { reihe7, reihe5 };
   }
 
-  /** Je Spalte (außer der ersten gezählten): erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. */
-  function prognose(bew, f, aufgabeZu, jetzt) {
+  /** Was die Prognose je Block zählt: ohne Phasen je Spalte (außer der ersten gezählten) „erreicht = dort oder rechts davon“,
+      mit Phasen je Phase „durchlaufen“ (R00058). */
+  function prognoseStufen(bew, spalten, phasen) {
+    if (phasen) return phasenStufen(phasen, bew.spalten).map(s => ({ ...s, schluessel: s.phase, titel: s.phase + ' durchlaufen' }));
+    const idx = s => bew.spalten.indexOf(s);
+    return spalten.slice(1).map(spalte => ({ spalte, schluessel: spalte, titel: `Spalte „${spalte}“`, durch: (a, s) => s != null && idx(s) >= idx(spalte), entfaellt: () => false }));
+  }
+
+  /** Je Block: Nenner, erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. Offen zählt nach dem aktuellen Stand,
+      der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046. */
+  function prognose(bew, f, aufgabeZu, jetzt, phasen) {
     const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
-    const idx = s => bew.spalten.indexOf(s);
     const passt = a => aufgabePasst(f, aufgabeZu(a.nummer));
     // archiviert außerhalb der Abschlussspalte heißt verworfen: ab dem Archivtag kein Umfang mehr
     const letzte = bew.spalten[bew.spalten.length - 1];
@@ -219,11 +227,13 @@
     const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => zaehlt(x.a, x.s, jetzt));
     const umfang = jetztDa.length;
     let vorige = null;
-    const phasen = spalten.slice(1).map(spalte => {
-      const i = idx(spalte);
-      const offen = jetztDa.filter(x => idx(x.s) < i).length;
-      const daten = jetztDa.map(x => erreicht(x.a.wechsel, bew.spalten, i)).filter(d => d != null && d >= g.von && d < Math.min(g.bis, morgen));
-      const ph = { spalte, erreicht: umfang - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null };
+    const stufen = prognoseStufen(bew, spalten, phasen);
+    const bloecke = stufen.map(st => {
+      const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
+      const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
+      const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= g.von && d < Math.min(g.bis, morgen));
+      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null };
+      if (st.spalte) ph.spalte = st.spalte; else ph.phase = st.phase;
       if (daten.length) {
         const von = g.von > 0 ? tag(g.von) : tag(Math.min(...daten));
         Object.assign(ph, tagesreihen(daten, von, Math.min(tag(g.bis === Infinity ? morgen : g.bis), morgen)));
@@ -237,7 +247,7 @@
           Object.assign(ph, { erg7: e7, erg5: e5 });
         }
       }
-      // nie früher als die Spalte links davon: deren Datum als Untergrenze nennen, nicht verrechnen
+      // nie früher als der Block davor (Spalte links, Vorphase): dessen Datum als Untergrenze nennen, nicht verrechnen
       if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
         const v = vorige.zeilen[k];
         for (const n of ['7', '5']) {
@@ -248,16 +258,16 @@
       vorige = ph;
       return ph;
     });
-    // Verlauf je Tag im Zeitraum: Umfang und noch nicht erreicht je Spalte, Stand am Tagesende
+    // Verlauf je Tag im Zeitraum: Umfang und noch nicht erreicht je Block, Stand am Tagesende
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     const tage = [];
     if (erste !== Infinity) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
-      const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende)).map(x => x.s);
-      tage.push({ t, umfang: da.length, offen: Object.fromEntries(phasen.map(ph => [ph.spalte, da.filter(s => idx(s) < idx(ph.spalte)).length])) });
+      const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende));
+      tage.push({ t, umfang: da.length, offen: Object.fromEntries(stufen.map(st => [st.schluessel, da.filter(x => !st.entfaellt(x.a) && !st.durch(x.a, x.s)).length])) });
     }
     const verworfen = bew.aufgaben.filter(a => { const s = spalteAm(a.wechsel, jetzt), x = aufgabeZu(a.nummer); return passt(a) && s != null && spalten.includes(s) && !zaehlt(a, s, jetzt) && x; }).length;
-    return { umfang, heute, phasen, tage, verworfen, gezaehlt: jetztDa.map(x => x.a.nummer) };
+    return { umfang, heute, phasen: bloecke, tage, verworfen, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 
   /* ── Termine (R00047) ── */

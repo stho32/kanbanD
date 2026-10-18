@@ -225,3 +225,39 @@ test('Durchlaufen nach Phasen: entfällt, eingebettet in im-pair, gleich wie', (
   const ohne = zug(5, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Entwicklertest'], ['2026-10-06 09:00', 'Erledigt']);
   assert.deepStrictEqual([e2, t2, a2].map(s => tagIso(ersterDurchlauf(ohne, s))), ['02.10.', '06.10.', '06.10.']);
 });
+
+test('Prognose je Phase: dieselben Perzentile wie je Spalte, wenn jede Phase eine Spalte hat', () => {
+  const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
+  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
+  const aufgaben = [];
+  for (let n = 1; n <= 8; n++) {
+    const st = [[`2026-10-0${1 + (n % 3)} 09:00`, 'Entwicklung']];
+    if (n <= 6) st.push([`2026-10-${String(5 + n).padStart(2, '0')} 09:00`, 'Entwicklertest']);
+    if (n <= 5) st.push([`2026-10-${String(8 + n).padStart(2, '0')} 10:00`, 'Abnahme']);
+    if (n <= 4) st.push([`2026-10-${String(12 + n).padStart(2, '0')} 11:00`, 'Erledigt']);
+    aufgaben.push(zug(n, ...st));
+  }
+  const bew = { spalten: sp, aufgaben };
+  const je = prognose(bew, f({}), () => undefined, jetzt), nach = prognose(bew, f({}), () => undefined, jetzt, phasen);
+  assert.deepStrictEqual(nach.phasen.map(x => x.phase), ['Entwicklung', 'Entwicklertest', 'Abnahme']);
+  assert.deepStrictEqual(nach.phasen.map(x => x.titel), ['Entwicklung durchlaufen', 'Entwicklertest durchlaufen', 'Abnahme durchlaufen']);
+  assert.deepStrictEqual(je.phasen.map(x => x.titel), ['Spalte „Entwicklertest“', 'Spalte „Abnahme“', 'Spalte „Erledigt“']);
+  const kern = p => p.phasen.map(x => [x.erreicht, x.offen, x.nenner, x.laeufe, x.reihe7, x.zeilen]);
+  assert.deepStrictEqual(kern(nach), kern(je));
+  assert.ok(nach.phasen.every(x => x.zeilen), 'alle drei gemessen');
+  assert.deepStrictEqual(nach.tage.map(x => x.offen.Abnahme), je.tage.map(x => x.offen.Erledigt));
+});
+
+test('Prognose je Phase: entfällt nimmt aus Nenner und Durchsatz, ohne Markierung zählt der Sprung', () => {
+  const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
+  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
+  const drei = { ...zug(3, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-14 09:00', 'Abnahme']), uebersprungen: ['Entwicklertest'] };
+  const vier = zug(4, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-15 09:00', 'Abnahme']);
+  const fuenf = zug(5, ['2026-10-12 09:00', 'Entwicklung']);
+  const p = prognose({ spalten: sp, aufgaben: [drei, vier, fuenf] }, f({}), () => undefined, jetzt, phasen);
+  const t = p.phasen[1];
+  assert.deepStrictEqual([t.nenner, t.erreicht, t.offen, t.laeufe], [2, 1, 1, 1], '#3 fehlt im Entwicklertest, #4 hat ihn am Tag des Sprungs durchlaufen');
+  assert.deepStrictEqual([p.phasen[0].nenner, p.phasen[0].erreicht], [3, 2]);
+  assert.strictEqual(p.umfang, 3);
+  assert.deepStrictEqual(p.tage.map(x => x.offen.Entwicklertest).slice(-2), [1, 1]);
+});
