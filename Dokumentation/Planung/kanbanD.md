@@ -13,9 +13,9 @@ zuletzt: 2026-10-18
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -138,6 +138,12 @@ zuletzt: 2026-10-18
 | I0032 | Interaction | D0002 | Sitzung und Verbindung | gruen | US-1..US-3 |  |  |  | I0007 | R00032 | UX-Überarbeitung: letztes Board merken, Wieder verbunden, Hinweise auf leeren Flächen |
 | B0084 | Bubble | I0032 | Letztes Board und Fenstertitel | gruen | Test gruen | Boardwahl → im Browser gemerkt; Titel zeigt Board und laufende Timer | 0,5-1 |  |  |  |  |
 | B0085 | Bubble | I0032 | Wieder verbunden und leere Flächen | gruen | Test gruen | Verbindung zurück → Hinweis; leeres Board → Hilfetext zu + Karte, n und Einfügen | 0,5-1 |  |  |  |  |
+| I0033 | Interaction | D0002 | Kontextmenü der Karte | rot | US-1..US-3 |  |  |  | I0029 | R00033 | UX-Überarbeitung 2: Rechtsklick oder Menütaste: öffnen, Timer, mich, umbenennen, verschieben, Klasse, Fälligkeit, Board, archivieren |
+| B0086 | Bubble | I0033 | Menü der Karte zusammenstellen | rot | Test gruen | Aufgabe + Board + Person → Menüeinträge mit Kürzeln und Untermenüs; Tastennavigation im Menü | 1-2 |  |  |  |  |
+| B0087 | Bubble | I0033 | Kontextmenü zeigen und bedienen | rot | Test gruen | Rechtsklick, Menütaste oder Umschalt+F10 → Menü an der Karte, Maus und Tastatur, Untermenüs | 2-3 |  |  |  |  |
+| B0088 | Bubble | I0033 | Neue Kartenkürzel | rot | Test gruen | a archivieren, 1–9 in Spalte n, c Verweis kopieren | 0,5-1 |  |  |  |  |
+| I0034 | Interaction | D0002 | Kontextmenüs für Spalten und Listen | rot | US der Anforderung |  |  |  | I0033 |  | UX-Überarbeitung 2: Spaltenkopf: Karte hinzufügen, alle archivieren, Spalten einrichten; Zeilen der Aufgabenliste |
+| I0035 | Interaction | D0002 | Tastenkürzel überall | rot | US der Anforderung |  |  |  | I0026 |  | UX-Überarbeitung 2: g-Folgen für Seiten, Kürzel im Fenster und in der Aufgabenliste, Hilfe je Ort |
 
 ## Offene Fragen
 
