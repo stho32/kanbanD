@@ -87,6 +87,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .orgs{display:inline-flex;gap:3px;flex-wrap:wrap}
 .org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);white-space:nowrap}
 a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
+.wchips{display:inline-flex;gap:3px;flex-wrap:wrap}
+.wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
+.wchip:hover{text-decoration:none;border-color:var(--kd-accent);color:var(--kd-accent-ink)}
+.wchip.remove{color:var(--kd-muted)}
 .org.leer{background:none;border:1px dashed var(--kd-line-strong);color:var(--kd-faint)}
 .cls{font-size:10.5px;font-weight:600;color:var(--kd-text)}
 .cls::before{content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:var(--cl);vertical-align:0}

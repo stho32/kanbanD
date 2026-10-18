@@ -233,7 +233,7 @@ zuletzt: 2026-10-18
 | B0157 | Bubble | I0052 | Wirkung prüfen | gruen | Test gruen | Eingabe {application, action, node?, …}, Register → Wirkung; Kürzel registriert, Aktion bekannt, node bei rework/remove Pflicht, bei create nicht; sonst 400 | 0,5-1 |  |  |  |  |
 | B0158 | Bubble | I0052 | Wirkung ausführen, dann Aufgabe committen | gruen | Test gruen | Kürzel, Nummer, Wirkung → erst WBS geschrieben (create mit vergebener ID), dann Aufgabe und ein Commit im Board-Repository; scheitert die WBS 409, Aufgabe unverändert | 1-2 |  |  |  |  |
 | B0159 | Bubble | I0052 | Wirkungen über die API setzen und entfernen | gruen | Test gruen | PATCH /api/aufgaben/{nr}/wbs-effects, DELETE /api/aufgaben/{nr}/wbs-effects/{i} → Aufgabe; Entfernen ändert nur die Aufgabe | 0,5-1 |  |  |  |  |
-| B0160 | Bubble | I0052 | Chips an Karte und Aufgabenfenster | rot | Test gruen | Wirkungen einer Aufgabe → Chips + / ↻ / − kd:ID mit Link in die WBS-Sicht zur Zeile | 0,5-1 |  |  |  |  |
+| B0160 | Bubble | I0052 | Chips an Karte und Aufgabenfenster | gruen | Test gruen | Wirkungen einer Aufgabe → Chips + / ↻ / − kd:ID mit Link in die WBS-Sicht zur Zeile | 0,5-1 |  |  |  |  |
 | B0161 | Bubble | I0052 | Wirkung im Aufgabenfenster setzen | rot | Test gruen | + Wirkung → Aktion, Anwendung, Knoten (create: Eltern, Ebene, Name, Fertig) → Chip an der Aufgabe, WBS geschrieben | 1-2 |  |  |  |  |
 | B0162 | Bubble | I0052 | Gegenanzeige je Knoten in der WBS-Sicht | rot | Test gruen | Aufgaben mit Wirkungen auf die Anwendung → je Knoten #nr mit Aktion, Klick öffnet die Aufgabe | 0,5-1 |  |  |  |  |
 | I0053 | Interaction | D0002 | Phasen als Spalten | rot | US-1..US-3 |  |  |  | I0048, I0046 | R00058 | WBS 1: column-phases N:1, fehlende Phasen-Spalten, Prognose je Phase |

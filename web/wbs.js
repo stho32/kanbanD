@@ -104,5 +104,18 @@
     ];
   }
 
-  Object.assign(ziel, { nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  /** Zeichen und Wort je Aktion einer Wirkung (R00057). */
+  const WIRKUNG = { create: { zeichen: '+', wort: 'legt an' }, rework: { zeichen: '↻', wort: 'setzt zur Überarbeitung auf rot' }, remove: { zeichen: '−', wort: 'verwirft' } };
+
+  /** Ein Chip je Wirkung: `+ kd:I0048` mit Ziel in der WBS-Sicht (`#/wbs/kd/I0048`). */
+  function wirkungChip(w) {
+    const a = WIRKUNG[w.action] || { zeichen: '?', wort: w.action };
+    const schluessel = w.node ? `${w.application}:${w.node}` : w.application;
+    return { text: `${a.zeichen} ${schluessel}`, ziel: `#/wbs/${encodeURIComponent(w.application)}${w.node ? '/' + encodeURIComponent(w.node) : ''}`, titel: `${a.wort}: ${schluessel} — in der WBS-Sicht zeigen`, aktion: w.action };
+  }
+
+  /** Der Knoten in `#/wbs/<kürzel>/<id>`, sonst leer. */
+  const wbsZiel = hash => decodeURIComponent((/^#\/wbs\/[^/]*\/([^/?#]+)/.exec(hash || '') || [])[1] || '');
+
+  Object.assign(ziel, { WIRKUNG, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

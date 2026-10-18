@@ -22,8 +22,9 @@ function arbeitsRepository(text) {
   return { wurzel: r, wbs, git, lies: () => fs.readFileSync(wbs, 'utf8'), aufraeumen: () => fs.rmSync(r, { recursive: true, force: true }) };
 }
 
-/** kanbanD-Ordner mit Stefan (Mensch) und der Anwendung `kd` im Register. */
-const mitRegister = arbeit => einrichten({
+/** kanbanD-Ordner mit Stefan (Mensch) und der Anwendung `kd` im Register; `dateien` kommen dazu (Aufgaben, Boards). */
+const mitRegister = (arbeit, dateien = {}) => einrichten({
+  ...dateien,
   'kanbanD.md': `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses: {}\nsources:\n  wbs: ""\n  requirements: ""\n  applications:\n    kd: {name: kanbanD, wbs: "${arbeit.wbs}", requirements: "${arbeit.wurzel}/Anforderungen"}\n---\n`,
 });
 

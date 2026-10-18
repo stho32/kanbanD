@@ -120,6 +120,10 @@ async function laden() {
     if (S.ui.offenDefekt) await defektLaden();
   }
   render();
+  // `#/wbs/<kürzel>/<id>` zeigt die Zeile einmal — spätere Ereignisse laden neu, ohne erneut zu springen
+  const ziel = S.ui.view === 'wbs' && S.wbs && wbsZiel(location.hash);
+  if (ziel && S.ui.wbsGesprungen !== location.hash) { S.ui.wbsGesprungen = location.hash; await act('wbs-gehe', ziel); }
+  else if (!ziel) S.ui.wbsGesprungen = null;
 }
 
 /** Schreibende Aktionen brauchen eine Identität; fehlt sie, öffnet sich „Ich bin …“ mit Hinweis. */
@@ -488,6 +492,7 @@ async function act(a, arg, wert) {
         } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
         return laden();
       }
+      case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
         const gesehen = new Set();

@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -75,4 +75,18 @@ test('Nachfahren und Menü einer Zeile', () => {
   assert.deepStrictEqual(wbsZeilenMenue(baum[3]).map(e => e.act), ['wbs-verwerfen-frage'], 'unter einer Bubble nichts');
   assert.deepStrictEqual(wbsZeilenMenue(baum[4]), [], 'verworfen: weder anlegen noch verwerfen');
   assert.deepStrictEqual(wbsZeilenMenue(baum[1]).map(e => e.arg), ['D0001', 'D0001']);
+});
+
+test('Chip je Wirkung mit Zeichen der Aktion und Ziel in der WBS-Sicht (R00057)', () => {
+  assert.deepStrictEqual(wirkungChip({ application: 'kd', action: 'create', node: 'I0048', parent: 'D0002' }), { text: '+ kd:I0048', ziel: '#/wbs/kd/I0048', titel: 'legt an: kd:I0048 — in der WBS-Sicht zeigen', aktion: 'create' });
+  assert.strictEqual(wirkungChip({ application: 'kd', action: 'rework', node: 'D0002' }).text, '↻ kd:D0002');
+  assert.strictEqual(wirkungChip({ application: 'kd', action: 'remove', node: 'I0014' }).text, '− kd:I0014');
+  assert.deepStrictEqual([wirkungChip({ application: 'kd', action: 'create' }).text, wirkungChip({ application: 'kd', action: 'create' }).ziel], ['+ kd', '#/wbs/kd'], 'ohne Knoten die Anwendung');
+});
+
+test('Knoten aus der Adresse der WBS-Sicht', () => {
+  assert.strictEqual(wbsZiel('#/wbs/kd/I0048'), 'I0048');
+  assert.strictEqual(wbsZiel('#/wbs/kd'), '');
+  assert.strictEqual(wbsZiel('#/board/x/I0048'), '');
+  assert.strictEqual(wbsZiel(undefined), '');
 });
