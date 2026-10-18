@@ -16,6 +16,26 @@ async fn start_in_neuem_ordner_liefert_zustand_und_oberflaeche() {
 }
 
 #[tokio::test]
+async fn unbekannter_pfad_der_oberflaeche_ist_404_und_bekannter_liefert_den_typ() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let r = reqwest::get(format!("{}web/gibtsnicht.js", lauf.adresse)).await.unwrap();
+    assert_eq!(r.status(), 404);
+    let r = reqwest::get(format!("{}web/index.html", lauf.adresse)).await.unwrap();
+    assert_eq!(r.headers()["content-type"], "text/html; charset=utf-8");
+}
+
+#[test]
+fn ordner_der_sich_nicht_anlegen_laesst_endet_mit_fehler() {
+    let tmp = tempfile::tempdir().unwrap();
+    let datei = tmp.path().join("datei");
+    std::fs::write(&datei, "x").unwrap();
+    let a = Command::new(env!("CARGO_BIN_EXE_kanbanD")).arg(datei.join("unter")).arg("--kein-browser").output().unwrap();
+    assert_eq!(a.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&a.stderr).contains("lässt sich nicht vorbereiten"));
+}
+
+#[tokio::test]
 async fn belegter_port_fuehrt_zum_naechsten_freien_und_wird_genannt() {
     let tmp = tempfile::tempdir().unwrap();
     let belegt = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -63,7 +83,6 @@ fn ohne_kein_browser_wird_der_browser_mit_der_adresse_geoeffnet() {
         if !gelesen.is_empty() { break; }
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
-    kind.kill().unwrap();
-    let _ = kind.wait();
+    gemeinsam::geordnet_beenden(&mut kind);
     assert_eq!(gelesen.trim(), adresse);
 }

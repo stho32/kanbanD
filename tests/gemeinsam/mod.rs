@@ -12,9 +12,21 @@ pub struct Laufendes {
 
 impl Drop for Laufendes {
     fn drop(&mut self) {
-        let _ = self.kind.kill();
-        let _ = self.kind.wait();
+        geordnet_beenden(&mut self.kind);
     }
+}
+
+/// SIGTERM, damit das Programm geordnet endet (und seine Coverage schreibt); notfalls hart.
+pub fn geordnet_beenden(kind: &mut Child) {
+    let _ = Command::new("kill").args(["-TERM", &kind.id().to_string()]).status();
+    for _ in 0..100 {
+        if let Ok(Some(_)) = kind.try_wait() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let _ = kind.kill();
+    let _ = kind.wait();
 }
 
 pub fn starten(ordner: &Path, zusatz: &[&str]) -> Laufendes {

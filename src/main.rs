@@ -35,9 +35,23 @@ async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf) -> ExitCode 
         browser::oeffnen(&adresse);
     }
     let router = kanband::web::router(ordner);
-    if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await {
+    if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(beenden_verlangt()).await {
         eprintln!("Server beendet mit Fehler: {e}");
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+/// Strg+C oder SIGTERM beenden den Server geordnet.
+async fn beenden_verlangt() {
+    #[cfg(unix)]
+    {
+        let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).expect("SIGTERM-Handler");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            _ = term.recv() => {}
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = tokio::signal::ctrl_c().await;
 }

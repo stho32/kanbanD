@@ -1,6 +1,6 @@
 ---
 id: R00001
-status: Neu
+status: Erledigt
 datum: 2026-10-18
 ---
 
@@ -34,16 +34,16 @@ Ein Befehl statt zwei Anwendungen und zwei Starts; das Board ist sofort dort, wo
 ## Akzeptanzkriterien
 
 ### Start
-- [ ] `kanbanD /tmp/x --kein-browser --port 0` legt `/tmp/x` an, initialisiert Git und antwortet auf `GET /api/zustand` mit `{"ordner":"/tmp/x","eingerichtet":false}`
-- [ ] Ein bereits bestehendes Repository wird nicht neu initialisiert (vorhandene Commits bleiben)
-- [ ] Ist Port 7420 belegt, startet kanbanD auf 7421 und nennt diese Adresse
+- [x] `kanbanD /tmp/x --kein-browser --port 0` legt `/tmp/x` an, initialisiert Git und antwortet auf `GET /api/zustand` mit `{"ordner":"/tmp/x","eingerichtet":false}`
+- [x] Ein bereits bestehendes Repository wird nicht neu initialisiert (vorhandene Commits bleiben)
+- [x] Ist Port 7420 belegt, startet kanbanD auf 7421 und nennt diese Adresse
 
 ### Argumente
-- [ ] `kanbanD --gibtsnicht` endet mit Exit-Code 2 und einer Zeile, die mit `Aufruf: kanbanD` beginnt
-- [ ] `kanbanD --hilfe` zeigt die Aufrufzeile und endet mit 0
+- [x] `kanbanD --gibtsnicht` endet mit Exit-Code 2 und einer Zeile, die mit `Aufruf: kanbanD` beginnt
+- [x] `kanbanD --hilfe` zeigt die Aufrufzeile und endet mit 0
 
 ### Oberfläche
-- [ ] `GET /` liefert eine HTML-Seite mit Titel `kanbanD`
+- [x] `GET /` liefert eine HTML-Seite mit Titel `kanbanD`
 
 ## Betroffene Verzeichnisstruktur
 
