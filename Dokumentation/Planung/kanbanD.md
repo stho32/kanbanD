@@ -95,7 +95,7 @@ zuletzt: 2026-10-18
 | B0053 | Bubble | I0019 | Filterleiste und Legende | gruen | Test gruen | Eingabe in der Kopfzeile, alle/meine/Agenten, Legende der Klassen mit Zahl, / setzt den Fokus | 1-2 |  |  |  |  |
 | I0020 | Interaction | D0004 | Aufgabenliste und Board-Zuordnung | gelb | US-1..US-3 |  |  |  | I0008, I0017 | R00020 | alle Aufgaben, ohne Board, Archiv; auf Board legen und abnehmen |
 | B0054 | Bubble | I0020 | Auf Board legen und abnehmen | gruen | Test gruen | Board + Nummer (+ Spalte) → Zeile anhängen bzw. entfernen, ein Commit | 1-2 |  |  |  |  |
-| B0055 | Bubble | I0020 | Alle Boards liefern | rot | Test gruen | boards/*.md → GET /api/boards mit Struktur | 0,5-1 |  |  |  |  |
+| B0055 | Bubble | I0020 | Alle Boards liefern | gruen | Test gruen | boards/*.md → GET /api/boards mit Struktur | 0,5-1 |  |  |  |  |
 | B0056 | Bubble | I0020 | Aufgabenliste | rot | Test gruen | #/aufgaben: alle/ohne Board/archiviert, Liegt auf, auf Board legen, abnehmen, anlegen ohne Board | 2-3 |  |  |  |  |
 | I0021 | Interaction | D0005 | Personenübersicht | rot | US der Anforderung |  |  |  | I0014 |  |  |
 | I0022 | Interaction | D0006 | Stundenzettel und CSV | rot | US der Anforderung |  |  |  | I0014 |  |  |

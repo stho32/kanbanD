@@ -53,7 +53,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/ereignisse", get(ereignisstrom))
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
-        .route("/api/boards", post(board_anlegen))
+        .route("/api/boards", get(boards).post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
         .route("/api/boards/{slug}/bewegen", post(bewegen))
         .route("/api/boards/{slug}/aufgaben", post(auf_board_legen))
@@ -372,4 +372,10 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)
     })
     .await?;
     Ok(Json(json!({ "genommen": true })).into_response())
+}
+
+/// Alle lesbaren Boards mit Struktur, nach Dateiname sortiert.
+async fn boards(State(app): State<App>) -> Result<Response, Fehler> {
+    let (boards, _) = blockierend(&app, |k| k.ordner().boards()).await?;
+    Ok(Json(boards).into_response())
 }

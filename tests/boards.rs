@@ -34,3 +34,16 @@ async fn eigene_spalten_konflikt_und_fehler() {
     }
     assert!(!tmp.path().join("boards/x.md").exists());
 }
+
+#[tokio::test]
+async fn alle_boards_mit_struktur() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    std::fs::write(tmp.path().join("boards/test.md"), "# Test\n\n## Bereit\n\n- #2\n").unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, b) = senden(Method::GET, &lauf.adresse, "api/boards", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    assert_eq!(b[0]["slug"], "entwicklung");
+    assert_eq!(b[0]["spalten"][0]["aufgaben"], json!([1, 2, 3]));
+    assert_eq!(b[1]["spalten"][0]["aufgaben"], json!([2]));
+}
