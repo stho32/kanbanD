@@ -4,7 +4,8 @@ mod statisch;
 
 use crate::dienst::{Einrichtung, Kanban};
 use crate::fehler::Fehler;
-use axum::extract::{Path, State};
+use axum::extract::{FromRequestParts, Path, State};
+use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -24,6 +25,7 @@ pub fn router(ordner: PathBuf) -> Router {
         .route("/api/zustand", get(zustand))
         .route("/api/einrichten", post(einrichten))
         .route("/api/boards/{slug}", get(board))
+        .route("/api/wer", get(wer))
         .merge(statisch::router())
         .with_state(app)
 }
@@ -38,6 +40,17 @@ impl IntoResponse for Fehler {
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
         (status, Json(json!({ "fehler": self.meldung() }))).into_response()
+    }
+}
+
+/// Das Kürzel aus dem Header `X-KanbanD-Wer`, falls genannt.
+pub struct Wer(pub Option<String>);
+
+impl<S: Send + Sync> FromRequestParts<S> for Wer {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(teile: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(Wer(teile.headers.get("x-kanband-wer").and_then(|w| w.to_str().ok()).map(str::to_string)))
     }
 }
 
@@ -60,4 +73,9 @@ async fn einrichten(State(app): State<App>, Json(e): Json<Einrichtung>) -> Resul
 async fn board(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
     let b = blockierend(&app, move |k| k.ordner().board(&slug)).await?;
     Ok(Json(b).into_response())
+}
+
+async fn wer(State(app): State<App>, Wer(wer): Wer) -> Result<Response, Fehler> {
+    let p = blockierend(&app, move |k| k.handelnder(wer.as_deref())).await?;
+    Ok(Json(p).into_response())
 }

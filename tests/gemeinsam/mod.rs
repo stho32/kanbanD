@@ -48,3 +48,20 @@ pub fn git(pfad: &Path, args: &[&str]) -> String {
     let a = Command::new("git").arg("-C").arg(pfad).args(args).output().unwrap();
     String::from_utf8_lossy(&a.stdout).trim().to_string()
 }
+
+pub const EINSTELLUNGEN: &str = "---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\n  ab: {name: Anna, kind: human, active: false}\nclasses:\n  bug: {label: Fehler, color: red}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n---\n";
+
+/// Ein eingerichteter Ordner: Stefan (Mensch), Claude (Agent), Anna (stillgelegt), Board „Entwicklung“.
+pub fn eingerichtet(pfad: &Path) {
+    std::fs::create_dir_all(pfad.join("boards")).unwrap();
+    std::fs::write(pfad.join("kanbanD.md"), EINSTELLUNGEN).unwrap();
+    std::fs::write(pfad.join("boards/entwicklung.md"), "# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n").unwrap();
+    git(pfad, &["init", "-q"]);
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+}
+
+pub fn eingerichtet_starten(pfad: &Path) -> Laufendes {
+    eingerichtet(pfad);
+    starten(pfad, &["--port", "0"])
+}

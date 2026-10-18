@@ -32,8 +32,8 @@ zuletzt: 2026-10-18
 | B0007 | Bubble | I0002 | Aktion committen | gruen | Test gruen | Pfade + Person + Nachricht → Commit mit Person als Autor | 0,5-1 |  |  |  |  |
 | B0008 | Bubble | I0002 | Einrichten | gruen | Test gruen | Einrichtung → kanbanD.md, boards/<slug>.md, ein Commit | 0,5-1 |  |  |  |  |
 | B0009 | Bubble | I0002 | Einrichtungsseite | gruen | Test gruen | Formular mit Vorschau → POST /api/einrichten → Board | 0,5-1 |  |  |  |  |
-| I0003 | Interaction | D0001 | Identität wählen | rot | US-1..US-3 |  |  |  | I0002 | R00003 | „Ich bin …“ je Tab; schreibende Aktionen verlangen eine Identität |
-| B0010 | Bubble | I0003 | Handelnden bestimmen | rot | Test gruen | Header X-KanbanD-Wer + Einstellungen → aktive Person oder Fehler; GET /api/wer | 0,5-1 |  |  |  |  |
+| I0003 | Interaction | D0001 | Identität wählen | gelb | US-1..US-3 |  |  |  | I0002 | R00003 | „Ich bin …“ je Tab; schreibende Aktionen verlangen eine Identität |
+| B0010 | Bubble | I0003 | Handelnden bestimmen | gruen | Test gruen | Header X-KanbanD-Wer + Einstellungen → aktive Person oder Fehler; GET /api/wer | 0,5-1 |  |  |  |  |
 | B0011 | Bubble | I0003 | Ich-bin-Auswahl | rot | Test gruen | Klick in der Kopfzeile → Mensch gewählt, je Tab in sessionStorage | 0,5-1 |  |  |  |  |
 | I0004 | Interaction | D0002 | Board ansehen | rot | US der Anforderung |  |  |  | I0002 |  | Spalten aus der Board-Datei, Karten aus den Aufgaben |
 | I0005 | Interaction | D0002 | Aufgabe anlegen | rot | US der Anforderung |  |  |  | I0003, I0004 |  | + Karte in einer Spalte |

@@ -62,6 +62,17 @@ impl Kanban {
         })
     }
 
+    /// Die handelnde Person zum Kürzel aus `X-KanbanD-Wer`: eingetragen und aktiv.
+    pub fn handelnder(&self, kuerzel: Option<&str>) -> Result<Person, Fehler> {
+        let kuerzel = kuerzel.map(str::trim).filter(|k| !k.is_empty()).ok_or_else(|| Fehler::Ungueltig("Wer handelt? Header X-KanbanD-Wer fehlt".into()))?;
+        let e = self.ordner.einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
+        let p = e.person(kuerzel).ok_or_else(|| Fehler::Ungueltig(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
+        if !p.aktiv {
+            return Err(Fehler::Ungueltig(format!("Person „{kuerzel}“ ist stillgelegt")));
+        }
+        Ok(p.clone())
+    }
+
     /// Schreibt Dateien und committet sie als eine Aktion. Scheitert der Commit, bleibt der
     /// geschriebene Stand stehen und der Fehler wird gemeldet.
     fn aktion(&self, autor: &Person, nachricht: &str, dateien: &[(String, String)]) -> Result<(), Fehler> {
