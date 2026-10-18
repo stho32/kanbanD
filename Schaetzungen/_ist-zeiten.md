@@ -256,3 +256,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0184 Zählen in Berichten über die API ändern | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0185 Bewegungen mit reporting | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
 | 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0186 Burndown zählt nach reporting.burndown | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
+| 2026-10-18 | R00060 Zählen in Berichten je Aufgabe | B0187 Wie lange noch zählt nach reporting.forecast | Standard | 0,5-1h | 0,01h | 0,01h | autonom |

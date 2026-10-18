@@ -291,3 +291,25 @@ test('Burndown ohne Aufgaben mit reporting.burndown false; der Filter wirkt zus�
   assert.strictEqual(ausgenommen(bew, 'burndown', f({ ohneFarben: ['ux'] }), zu, jetzt), 0, 'vom Filter schon ausgeschlossen');
   assert.strictEqual(ausgenommen(mitZaehlung(3, { burndown: false }), 'burndown', f({}), zu, jetzt), 0, 'nicht mehr auf dem Board');
 });
+
+test('Wie lange noch ohne Aufgaben mit reporting.forecast false — Umfang, Nenner, Durchsatz, je Spalte und je Phase', () => {
+  const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
+  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
+  const eins = zug(1, ['2026-10-12 09:00', 'Entwicklung']);
+  const zwei = { ...zug(2, ['2026-10-12 09:00', 'Entwicklung']), reporting: { forecast: false } };
+  const bew = { spalten: sp, aufgaben: [eins, zwei] };
+  for (const ph of [undefined, phasen]) {
+    const p = prognose(bew, f({}), () => undefined, jetzt, ph);
+    assert.strictEqual(p.umfang, 1, 'nur #1');
+    assert.strictEqual(p.ausgenommen, 1);
+    assert.deepStrictEqual(p.phasen.map(x => x.nenner), [1, 1, 1]);
+    assert.deepStrictEqual(p.gezaehlt, [1]);
+    assert.ok(p.tage.every(x => x.umfang === 1));
+  }
+  const weg = { ...zug(3, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-13 09:00', 'Entwicklertest']), reporting: { forecast: false } };
+  const p = prognose({ spalten: sp, aufgaben: [eins, weg] }, f({}), () => undefined, jetzt, phasen);
+  assert.strictEqual(p.phasen[0].laeufe, 0, 'auch nicht im Durchsatz');
+  const zuX = n => ({ klasse: n === 2 ? 'doku' : null, zustaendige: [], labels: [] });
+  assert.strictEqual(prognose(bew, f({ ohneFarben: ['doku'] }), zuX, jetzt).ausgenommen, 0, 'der Filter wirkt zusätzlich; schon ausgeschlossen zählt nicht doppelt');
+  assert.strictEqual(prognose({ spalten: sp, aufgaben: [eins, { ...zwei, reporting: { burndown: false } }] }, f({}), () => undefined, jetzt).umfang, 2, 'burndown betrifft Wie lange noch nicht');
+});

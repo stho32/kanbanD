@@ -230,7 +230,9 @@
   function prognose(bew, f, aufgabeZu, jetzt, phasen) {
     const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
-    const passt = a => aufgabePasst(f, aufgabeZu(a.nummer));
+    const imFilter = a => aufgabePasst(f, aufgabeZu(a.nummer));
+    // reporting.forecast: false (R00060) nimmt die Aufgabe ganz aus der Prognose, zusätzlich zum Filter
+    const passt = a => imFilter(a) && zaehltImBericht(a, 'forecast');
     // archiviert außerhalb der Abschlussspalte heißt verworfen: ab dem Archivtag kein Umfang mehr
     const letzte = bew.spalten[bew.spalten.length - 1];
     const zaehlt = (a, s, t) => { const x = aufgabeZu(a.nummer); return s != null && spalten.includes(s) && !(x && x.archiviert && s !== letzte && t >= isoTag(x.archiviert)); };
@@ -277,7 +279,8 @@
       tage.push({ t, umfang: da.length, offen: Object.fromEntries(stufen.map(st => [st.schluessel, da.filter(x => !st.entfaellt(x.a) && !st.durch(x.a, x.s)).length])) });
     }
     const verworfen = bew.aufgaben.filter(a => { const s = spalteAm(a.wechsel, jetzt), x = aufgabeZu(a.nummer); return passt(a) && s != null && spalten.includes(s) && !zaehlt(a, s, jetzt) && x; }).length;
-    return { umfang, heute, phasen: bloecke, tage, verworfen, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
+    const weg = bew.aufgaben.filter(a => imFilter(a) && !zaehltImBericht(a, 'forecast') && zaehlt(a, spalteAm(a.wechsel, jetzt), jetzt)).length;
+    return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 
   /* ── Termine (R00047) ── */
