@@ -33,6 +33,20 @@ impl Kanban {
         })
     }
 
+    pub fn teilaufgaben_anlegen(&self, wer: &Person, nr: u32, texte: &[String]) -> Result<Aufgabe, Fehler> {
+        let texte: Vec<String> = texte.iter().map(|t| text_pruefen(t)).collect::<Result<_, _>>()?;
+        if texte.is_empty() {
+            return Err(Fehler::Ungueltig("Keine Teilaufgabe angegeben".into()));
+        }
+        self.aufgabe_schreiben(wer, nr, |a| {
+            a.teilaufgaben.extend(texte.iter().map(|t| Teilaufgabe { text: t.clone(), erledigt: false }));
+            Ok(Some(match texte.as_slice() {
+                [t] => format!("#{nr} Teilaufgabe „{t}“ ergänzt"),
+                alle => format!("#{nr} {} Teilaufgaben ergänzt", alle.len()),
+            }))
+        })
+    }
+
     pub fn teilaufgabe_aendern(&self, wer: &Person, nr: u32, i: usize, aend: &Teilaufgabenaenderung) -> Result<Aufgabe, Fehler> {
         let neuer_text = aend.text.as_deref().map(text_pruefen).transpose()?;
         self.aufgabe_schreiben(wer, nr, |a| {

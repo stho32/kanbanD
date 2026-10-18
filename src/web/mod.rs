@@ -3,7 +3,7 @@
 pub mod endpunkte;
 mod statisch;
 
-use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
+use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -69,7 +69,9 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/berichte/zeiten.csv", get(zeiten_csv))
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
+        .route("/api/aufgaben/mehrere", post(aufgaben_anlegen))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
+        .route("/api/aufgaben/{nr}/teilaufgaben/mehrere", post(teilaufgaben_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
@@ -413,4 +415,22 @@ async fn api_seite(headers: axum::http::HeaderMap) -> Response {
         endpunkte::api_seite(&format!("http://{host}/")),
     )
         .into_response()
+}
+
+async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<NeueAufgaben>) -> Result<Response, Fehler> {
+    let a = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.aufgaben_anlegen(&p, &neu)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(a)).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Texte {
+    texte: Vec<String>,
+}
+
+async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Texte>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.teilaufgaben_anlegen(p, nr, &t.texte)).await
 }

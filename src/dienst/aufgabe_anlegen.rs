@@ -12,21 +12,45 @@ pub struct NeueAufgabe {
     pub spalte: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct NeueAufgaben {
+    pub titel: Vec<String>,
+    pub board: Option<String>,
+    pub spalte: Option<String>,
+}
+
 impl Kanban {
     /// Legt die Aufgabendatei an und hängt sie, wenn verlangt, unten an eine Spalte — ein Commit.
     pub fn aufgabe_anlegen(&self, wer: &Person, neu: &NeueAufgabe) -> Result<Aufgabe, Fehler> {
-        let titel = neu.titel.trim();
-        if titel.is_empty() {
-            return Err(Fehler::Ungueltig("Die Aufgabe braucht einen Titel".into()));
+        let mehrere = NeueAufgaben { titel: vec![neu.titel.clone()], board: neu.board.clone(), spalte: neu.spalte.clone() };
+        Ok(self.aufgaben_anlegen(wer, &mehrere)?.remove(0))
+    }
+
+    /// Mehrere Aufgaben mit fortlaufenden Nummern in der Reihenfolge der Liste — ein Commit für alle.
+    pub fn aufgaben_anlegen(&self, wer: &Person, neu: &NeueAufgaben) -> Result<Vec<Aufgabe>, Fehler> {
+        let titel: Vec<&str> = neu.titel.iter().map(|t| t.trim()).collect();
+        if titel.is_empty() || titel.iter().any(|t| t.is_empty()) {
+            return Err(Fehler::Ungueltig("Jede Aufgabe braucht einen Titel".into()));
         }
         let _sperre = self.gesperrt();
-        let nummer = self.ordner().naechste_nummer()?;
-        let mut a = Aufgabe::neu(nummer, aufgabe::dateiname(nummer, titel), titel.to_string());
-        if wer.art == Art::Mensch {
-            a.zustaendige.push(wer.kuerzel.clone());
-        }
-        let mut dateien = vec![(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))];
-        let mut nachricht = format!("#{nummer} „{titel}“ angelegt");
+        let erste = self.ordner().naechste_nummer()?;
+        let aufgaben: Vec<Aufgabe> = titel
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                let nummer = erste + i as u32;
+                let mut a = Aufgabe::neu(nummer, aufgabe::dateiname(nummer, t), t.to_string());
+                if wer.art == Art::Mensch {
+                    a.zustaendige.push(wer.kuerzel.clone());
+                }
+                a
+            })
+            .collect();
+        let mut dateien: Vec<(String, String)> = aufgaben.iter().map(|a| (format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
+        let mut nachricht = match aufgaben.as_slice() {
+            [a] => format!("#{} „{}“ angelegt", a.nummer, a.titel),
+            alle => format!("#{}–#{} angelegt ({} Aufgaben)", erste, erste + alle.len() as u32 - 1, alle.len()),
+        };
         if let Some(slug) = &neu.board {
             let mut b = self.ordner().board(slug)?;
             let spaltenname = match &neu.spalte {
@@ -34,11 +58,13 @@ impl Kanban {
                 None => b.spalten.first().map(|s| s.name.clone()).ok_or_else(|| Fehler::Ungueltig(format!("Board „{}“ hat keine Spalte", b.titel)))?,
             };
             let spalte = b.spalte_mut(&spaltenname).ok_or_else(|| Fehler::Ungueltig(format!("Spalte „{spaltenname}“ gibt es auf „{slug}“ nicht")))?;
-            spalte.aufgaben.push(nummer);
+            spalte.aufgaben.extend(aufgaben.iter().map(|a| a.nummer));
             nachricht.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
-            dateien.push((board_pfad(&b.slug), self.board_text(&b, Some(&a))?));
+            let (vorhanden, _) = self.ordner().aufgaben()?;
+            let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden.iter()).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
+            dateien.push((board_pfad(&b.slug), text));
         }
         self.aktion(wer, &nachricht, &dateien)?;
-        Ok(a)
+        Ok(aufgaben)
     }
 }
