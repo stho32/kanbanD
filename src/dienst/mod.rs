@@ -14,6 +14,7 @@ mod spalten;
 mod teilaufgaben;
 mod timer;
 mod zeiten;
+mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
 pub use aufgabe_anlegen::NeueAufgabe;

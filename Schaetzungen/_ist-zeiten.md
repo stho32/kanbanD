@@ -81,3 +81,4 @@ Nie vom User erfragen.
 | 2026-10-18 | R00019 Filtern | B0052 Filter auswerten | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00019 Filtern | B0053 Filterleiste und Legende | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00019 Filtern | Lauf R00019 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-18 | R00020 Aufgabenliste und Board-Zuordnung | B0054 Auf Board legen und abnehmen | Standard | 1-2h | 0,0h | 0,0h | autonom |

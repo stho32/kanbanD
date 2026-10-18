@@ -56,6 +56,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards", post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
         .route("/api/boards/{slug}/bewegen", post(bewegen))
+        .route("/api/boards/{slug}/aufgaben", post(auf_board_legen))
+        .route("/api/boards/{slug}/aufgaben/{nr}", axum::routing::delete(von_board_nehmen))
         .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
         .route("/api/wer", get(wer))
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
@@ -346,4 +348,28 @@ async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>
 async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
     let q = blockierend(&app, |k| k.herkunft()).await?;
     Ok(Json(q).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Ablage {
+    nummer: u32,
+    spalte: Option<String>,
+}
+
+async fn auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(a): Json<Ablage>) -> Result<Response, Fehler> {
+    let spalte = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.auf_board_legen(&p, &slug, a.nummer, a.spalte.as_deref())
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(json!({ "spalte": spalte }))).into_response())
+}
+
+async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)): Path<(String, u32)>) -> Result<Response, Fehler> {
+    blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.von_board_nehmen(&p, &slug, nr)
+    })
+    .await?;
+    Ok(Json(json!({ "genommen": true })).into_response())
 }

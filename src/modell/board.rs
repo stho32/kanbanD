@@ -29,6 +29,28 @@ impl Board {
         self.spalten.last()
     }
 
+    /// Hängt die Aufgabe unten an die Spalte (ohne Angabe: die erste). Liefert den Spaltennamen.
+    pub fn aufnehmen(&mut self, nummer: u32, spalte: Option<&str>) -> Result<String, Bewegfehler> {
+        if self.spalte_von(nummer).is_some() {
+            return Err(Bewegfehler::SchonAufDemBoard);
+        }
+        let ziel = match spalte {
+            Some(s) => self.spalte_mut(s).ok_or(Bewegfehler::SpalteUnbekannt)?,
+            None => self.spalten.first_mut().ok_or(Bewegfehler::SpalteUnbekannt)?,
+        };
+        ziel.aufgaben.push(nummer);
+        Ok(ziel.name.clone())
+    }
+
+    /// Nimmt die Aufgabe vom Board; liefert, ob sie dort lag.
+    pub fn abnehmen(&mut self, nummer: u32) -> bool {
+        let vorher: usize = self.spalten.iter().map(|s| s.aufgaben.len()).sum();
+        for s in &mut self.spalten {
+            s.aufgaben.retain(|n| *n != nummer);
+        }
+        self.spalten.iter().map(|s| s.aufgaben.len()).sum::<usize>() < vorher
+    }
+
     /// Nimmt die Aufgabe aus ihrer Spalte und setzt sie an `index` der Zielspalte (ohne Index oder
     /// zu groß: ans Ende). Liefert, ob sich etwas geändert hat.
     pub fn bewegen(&mut self, nummer: u32, ziel: &str, index: Option<usize>) -> Result<bool, Bewegfehler> {
@@ -106,6 +128,7 @@ impl Board {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Bewegfehler {
     NichtAufDemBoard,
+    SchonAufDemBoard,
     SpalteUnbekannt,
 }
 
@@ -169,6 +192,21 @@ mod tests {
         assert_eq!(b.spalten_setzen(&[aend("X", Some("Q"), None)]), Err(Spaltenfehler::AltUnbekannt("Q".into())));
         assert_eq!(b.spalten_setzen(&[aend("X", Some("A"), None), aend("Y", Some("A"), None)]), Err(Spaltenfehler::AltDoppelt("A".into())));
         assert_eq!(b.spalten.len(), 2);
+    }
+
+    #[test]
+    fn aufnehmen_und_abnehmen() {
+        let mut b = b();
+        assert_eq!(b.aufnehmen(7, None), Ok("A".into()));
+        assert_eq!(b.aufnehmen(8, Some("Z")), Ok("Z".into()));
+        assert_eq!(b.spalten[1].aufgaben, vec![3, 8]);
+        assert_eq!(b.aufnehmen(7, Some("Z")), Err(Bewegfehler::SchonAufDemBoard));
+        assert_eq!(b.aufnehmen(9, Some("X")), Err(Bewegfehler::SpalteUnbekannt));
+        assert!(b.abnehmen(7));
+        assert!(!b.abnehmen(7));
+        assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![] };
+        assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 
     #[test]
