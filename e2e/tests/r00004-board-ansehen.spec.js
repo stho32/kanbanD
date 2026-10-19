@@ -40,6 +40,31 @@ test.describe('R00004', () => {
     await expect(page.locator('.ka[data-id="3"] .lbl')).toHaveText('ui');
   });
 
+  test('Kopfzeile: oben links erst die Nummer, dann der Titel; alles andere darunter', async ({ page }) => {
+    await page.goto(k.adresse);
+    const zwei = page.locator('.ka[data-id="2"]');
+    const [karte, id, titel, herkunft, klasse] = await Promise.all([zwei, zwei.locator('.id'), zwei.locator('.t'), zwei.locator('.org'), zwei.locator('.cls')].map(l => l.boundingBox()));
+    expect(id.x - karte.x).toBeLessThan(16);
+    expect(id.y - karte.y).toBeLessThan(16);
+    expect(Math.abs(id.y - titel.y)).toBeLessThan(6);
+    expect(titel.x).toBeGreaterThan(id.x + id.width - 1);
+    for (const darunter of [herkunft, klasse]) expect(darunter.y).toBeGreaterThanOrEqual(titel.y + titel.height - 1);
+  });
+
+  test('Unterste Zeile: Herkunft, Timer und Zuständige rechtsbündig nebeneinander', async ({ page }) => {
+    await page.goto(k.adresse);
+    const zwei = page.locator('.ka[data-id="2"]');
+    await zwei.hover();
+    const [karte, herkunft, timer, person] = await Promise.all([zwei, zwei.locator('.org'), zwei.getByRole('button', { name: 'Timer an #2 starten' }), zwei.locator('.avs .pk')].map(l => l.boundingBox()));
+    const mitte = b => b.y + b.height / 2;
+    expect(Math.abs(mitte(herkunft) - mitte(person))).toBeLessThan(4);
+    expect(Math.abs(mitte(timer) - mitte(person))).toBeLessThan(4);
+    expect(herkunft.x + herkunft.width).toBeLessThanOrEqual(timer.x);
+    expect(timer.x + timer.width).toBeLessThanOrEqual(person.x);
+    expect(karte.x + karte.width - (person.x + person.width)).toBeLessThan(16);
+    expect(karte.y + karte.height - (person.y + person.height)).toBeLessThan(16);
+  });
+
   test('US-3: fehlende Aufgabe als Platzhalter', async ({ page }) => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka.fehlt')).toHaveText(/#9 — Aufgabe fehlt/);

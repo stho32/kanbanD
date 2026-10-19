@@ -71,18 +71,21 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.ins-b::before{top:-3px}
 .ka.ins-a::after{bottom:-3px}
 .ka.fremd{box-shadow:inset 3px 0 0 var(--kd-agent)}
+/* oben links Nummer und Titel, alles andere darunter */
+.ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ka .r0 .t,.ka .r0 .umbenennen{flex:1;min-width:0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.ka .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
+.ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 .ka .r1 .lauf{margin-left:auto}
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
 .ka.fertig .t{color:var(--kd-muted)}
-.ka .r3{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
+.ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
 .ka .r3 .cls{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.ka .r3 .due{margin-left:auto;font-family:var(--kd-mono)}
-/* rechts stehen Fälligkeit, Timerleiste und Zuständige — das erste davon schiebt (R00064) */
-.ka .r3 .kleiste,.ka .r3 .avs{margin-left:auto}
-.ka .r3 .due~.kleiste,.ka .r3 .due~.avs,.ka .r3 .kleiste~.avs{margin-left:0}
+.ka .r3 .due{font-family:var(--kd-mono)}
+/* rechts in der untersten Zeile: Fälligkeit, Herkunft, Timer, Zuständige; reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile */
+.ka .r3 .rechts{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;white-space:normal}
+.ka .r3 .orgs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px}
 .due.warn{color:var(--kd-warn)}
 .avs{display:flex}
 .avs .pk+.pk{margin-left:-3px;box-shadow:0 0 0 1px var(--kd-surface)}
