@@ -465,6 +465,18 @@ async function act(a, arg, wert) {
         await schreiben('PATCH', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`, { erledigt: !t.erledigt });
         return;
       }
+      case 'teil-bearbeiten': if (ichNoetig()) break; u.teilEdit = { nr: u.offen, i: +arg }; u.fokus = '#teil-edit'; break;
+      case 'teil-text': {
+        const e = u.teilEdit, text = (wert || '').trim();
+        u.teilEdit = null;
+        const t = e && aufgabe(e.nr) && aufgabe(e.nr).teilaufgaben[e.i];
+        if (!t || !text || text === t.text) break;
+        // sofort zeigen, geordnet im Hintergrund senden (R00037)
+        t.text = text;
+        render();
+        warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
+        return;
+      }
       case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
       case 'teil-neu': {
         const text = (wert || '').trim();
@@ -899,6 +911,8 @@ document.addEventListener('dblclick', e => {
 document.addEventListener('focusout', e => {
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
   if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
+  // Verlassen des Teilaufgaben-Feldes speichert (R00066); nach Enter oder Esc ist teilEdit schon leer
+  if (e.target.id === 'teil-edit' && S.ui.teilEdit) { const wert = e.target.value; setTimeout(() => { if (S.ui.teilEdit && document.activeElement !== $('#teil-edit')) act('teil-text', '', wert); }, 0); }
   if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
 });
 
@@ -1070,6 +1084,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
+    if (S.ui.teilEdit) { S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }

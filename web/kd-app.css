@@ -172,7 +172,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .besch:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .chk{display:flex;gap:6px;align-items:center;min-height:26px}
 .chk i{width:13px;height:13px;border:1px solid var(--kd-line-strong);flex:none;display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1;cursor:pointer;background:var(--kd-surface)}
-.chk span{cursor:pointer;flex:1}
+.chk span{cursor:text;flex:1}
+.chk .teil-edit{flex:1;height:24px}
 .chk.ok span{color:var(--kd-muted);text-decoration:line-through}
 .chk.ok i{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
 .chk .x{height:22px;width:22px;visibility:hidden}
