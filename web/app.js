@@ -259,11 +259,13 @@ function render() {
   const aktiv = document.activeElement;
   const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
   document.title = fenstertitel();
-  // Die WBS-Sicht lädt bei jeder Änderung im Arbeits-Repository neu — die Leseposition bleibt.
-  const wbsRolle = ($('.wbs-seite') || {}).scrollTop || 0;
+  // Neuzeichnen in derselben Sicht hält die Leseposition — sonst springt das Board unter dem Kontextmenü weg.
+  const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
+  const rollen = $('#main').dataset.sicht === sicht ? rollpositionen() : [];
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
-  if (wbsRolle && $('.wbs-seite')) $('.wbs-seite').scrollTop = wbsRolle;
+  $('#main').dataset.sicht = sicht;
+  rollpositionenSetzen(rollen);
   $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
@@ -277,6 +279,20 @@ function render() {
   else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
   else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
+}
+
+/** Gescrollte Flächen der Hauptsicht, je mit dem Selektor, der sie nach dem Neuzeichnen wiederfindet. */
+function rollpositionen() {
+  const spalten = [...document.querySelectorAll('.bahn[data-col] > .flaeche')].map(f => [`.bahn[data-col="${CSS.escape(f.parentElement.dataset.col)}"] > .flaeche`, f]);
+  return [['.body', $('.body')], ['.wbs-tabelle', $('.wbs-tabelle')], ['.bahnen', $('.bahnen')], ...spalten]
+    .filter(([, el]) => el && (el.scrollLeft || el.scrollTop))
+    .map(([sel, el]) => ({ sel, links: el.scrollLeft, oben: el.scrollTop }));
+}
+function rollpositionenSetzen(rollen) {
+  for (const r of rollen) {
+    const el = $(r.sel);
+    if (el) { el.scrollLeft = r.links; el.scrollTop = r.oben; }
+  }
 }
 
 function fenstertitel() {

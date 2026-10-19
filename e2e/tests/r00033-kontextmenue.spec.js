@@ -80,3 +80,47 @@ test.describe('R00033', () => {
     await expect(page.getByRole('status').getByRole('button', { name: 'rückgängig' })).toBeVisible();
   });
 });
+
+// Bug: das Neuzeichnen beim Öffnen des Menüs setzte das gescrollte Board zurück — nach links oder nur so weit, dass die Karte gerade sichtbar war
+test.describe('R00033 breites Board', () => {
+  const SPALTEN = Array.from({ length: 12 }, (_, i) => `Spalte ${i + 1}`);
+  const KARTEN = Array.from({ length: 30 }, (_, i) => i + 1);
+  const BREIT = {
+    'boards/entwicklung.md': '# Entwicklung\n\n' + SPALTEN.map(s => `## ${s}\n\n${s === 'Spalte 6' ? KARTEN.map(n => `- #${n}\n`).join('') : ''}`).join('\n'),
+    ...Object.fromEntries(KARTEN.map(n => [`aufgaben/${String(n).padStart(4, '0')}-k${n}.md`, `---\nid: ${n}\ntitle: k${n}\n---\n`])),
+  };
+  const rollen = page => page.evaluate(() => ({ links: document.querySelector('.bahnen').scrollLeft, oben: document.querySelector('.bahn[data-col="Spalte 6"] .flaeche').scrollTop }));
+  let k;
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten(BREIT));
+    await alsPerson(page, 'st');
+    await page.setViewportSize({ width: 800, height: 600 });
+    await page.goto(k.adresse);
+    // Spalte 6 steht am linken Rand, Karte 15 oben in ihrer Spalte
+    await page.locator('.bahnen').evaluate(b => { b.scrollLeft = b.querySelector('.bahn[data-col="Spalte 6"]').offsetLeft - b.offsetLeft; });
+    await page.locator('.bahn[data-col="Spalte 6"] .flaeche').evaluate(f => { f.scrollTop = f.querySelector('.ka[data-id="15"]').offsetTop - f.offsetTop; });
+  });
+  test.afterEach(() => k.stoppen());
+
+  test('Rechtsklick auf eine Karte lässt die Scrollposition stehen, Karte und Menü liegen beieinander', async ({ page }) => {
+    const vorher = await rollen(page);
+    expect(vorher.links).toBeGreaterThan(0);
+    expect(vorher.oben).toBeGreaterThan(0);
+    const karte = page.locator('.ka[data-id="15"]');
+    const kasten = await karte.boundingBox();
+    await karte.click({ button: 'right', position: { x: 10, y: 10 } });
+    await expect(page.getByRole('menu', { name: '#15 k15' })).toBeVisible();
+    expect(await rollen(page)).toEqual(vorher);
+    expect(await karte.boundingBox()).toEqual(kasten);
+    // Überfahren eines Eintrags zeichnet ebenfalls neu
+    await page.getByRole('menuitem', { name: /Verschieben nach/ }).hover();
+    expect(await rollen(page)).toEqual(vorher);
+  });
+
+  test('Rechtsklick auf einen Spaltenkopf lässt die Scrollposition stehen', async ({ page }) => {
+    const vorher = await rollen(page);
+    await page.locator('.bahn[data-col="Spalte 7"] .bahn-kopf').click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Spalte „Spalte 7“' })).toBeVisible();
+    expect(await rollen(page)).toEqual(vorher);
+  });
+});
