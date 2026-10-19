@@ -11,7 +11,7 @@
       T,
       u.meinerLaeuft ? { text: 'Timer stoppen', kuerzel: 't', act: 'stop', arg: `${nr}|${u.ich}` } : { text: 'Timer starten', kuerzel: 't', act: 'start', arg: String(nr) },
       { text: u.meine ? 'Mich abnehmen' : 'Mir zuweisen', kuerzel: 'm', act: 'mich', arg: String(nr) },
-      { text: 'Zuständige', kuerzel: 'p', unter: zustaendigeUnter(a, u.personen || []) },
+      { text: 'Zuständige zuweisen …', kuerzel: 'p', act: 'zuweisen', arg: String(nr) },
       { text: 'Umbenennen', kuerzel: 'F2', act: 'umbenennen', arg: String(nr) },
       T,
       { text: 'Verschieben nach', unter: (u.spalten || []).map((s, i) => ({ text: s, kuerzel: i < 9 ? String(i + 1) : undefined, act: 'verschieben', arg: `${nr}|${s}`, aktuell: s === u.spalte })) },
@@ -24,10 +24,9 @@
     ];
   }
 
-  /** Untermenü „Zuständige“: aktive Personen, dazu stillgelegte, die zuständig sind; Haken markiert. */
-  function zustaendigeUnter(a, personen) {
-    return personen.filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel))
-      .map(p => ({ text: p.name, haken: a.zustaendige.includes(p.kuerzel), act: 'zustaendig-karte', arg: `${a.nummer}|${p.kuerzel}` }));
+  /** Personen im Dialog „Zuständige zuweisen“: aktive, dazu stillgelegte, die zuständig sind. */
+  function zuweisbarePersonen(a, personen) {
+    return personen.filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   }
 
   /** Menü eines Spaltenkopfs: i = Position, anzahl = Spaltenzahl, offen = nicht archivierte Karten der Spalte. */
@@ -49,7 +48,7 @@
       { text: 'Öffnen', kuerzel: 'Enter', act: 'oeffnen', arg: String(nr) },
       T,
       ...(!a.archiviert && u.frei.length ? [{ text: 'Auf Board legen', unter: u.frei.flatMap(b => b.spalten.map(s => ({ text: `${b.titel} · ${s}`, act: 'legen', arg: `${b.slug}|${nr}|${s}` }))) }] : []),
-      { text: 'Zuständige', unter: zustaendigeUnter(a, u.personen || []) },
+      { text: 'Zuständige zuweisen …', act: 'zuweisen', arg: String(nr) },
       ...(u.liegtAuf.length ? [{ text: 'Von Board nehmen', unter: u.liegtAuf.map(b => ({ text: `${b.titel} · ${b.spalte}`, act: 'abnehmen', arg: `${b.slug}|${nr}` })) }] : []),
       T,
       { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
@@ -70,5 +69,5 @@
     return i;
   }
 
-  Object.assign(ziel, { kartenMenue, spaltenMenue, listenMenue, menueSchritt, zustaendigeUnter });
+  Object.assign(ziel, { kartenMenue, spaltenMenue, listenMenue, menueSchritt, zuweisbarePersonen });
 })(typeof module !== 'undefined' ? module.exports : window);

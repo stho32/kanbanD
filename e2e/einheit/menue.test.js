@@ -9,8 +9,9 @@ const u = { spalten: ['Zu erledigen', 'In Arbeit', 'Erledigt'], spalte: 'Zu erle
 test('Menü der Karte', () => {
   const m = kartenMenue(a, u);
   const texte = m.map(e => e.trenner ? '—' : e.text);
-  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren']);
+  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren']);
   assert.strictEqual(m[2].arg, '3|st');
+  assert.deepStrictEqual([m[4].act, m[4].arg, m[4].kuerzel, m[4].unter], ['zuweisen', '3', 'p', undefined], 'Dialog statt Untermenü (R00064)');
   const spalten = m[7].unter;
   assert.deepStrictEqual(spalten.map(s => [s.text, s.kuerzel, !!s.aktuell]), [['Zu erledigen', '1', true], ['In Arbeit', '2', false], ['Erledigt', '3', false]]);
   assert.ok(m[8].unter.find(k => k.text === 'Fehler').aktuell);
@@ -48,17 +49,16 @@ test('Menü der Listenzeile', () => {
   const m = listenMenue(a, { liegtAuf: [{ slug: 'e', titel: 'Entwicklung', spalte: 'Zu erledigen' }], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit', 'Geprüft'] }] });
   assert.deepStrictEqual(m.find(e => e.text === 'Auf Board legen').unter.map(e => e.arg), ['t|4|Bereit', 't|4|Geprüft']);
   assert.strictEqual(m.find(e => e.text === 'Von Board nehmen').unter[0].arg, 'e|4');
+  assert.deepStrictEqual(['zuweisen', '4'], (e => [e.act, e.arg])(m.find(e => e.text === 'Zuständige zuweisen …')));
+  assert.ok(!m.some(e => e.text === 'Zuständige'));
   const arch = listenMenue({ ...a, archiviert: '2026-10-01' }, { liegtAuf: [], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit'] }] });
   assert.ok(arch.some(e => e.text === 'Zurückholen') && !arch.some(e => e.text === 'Auf Board legen'));
 });
 
-const { zustaendigeUnter } = require('../../web/menue.js');
+const { zuweisbarePersonen } = require('../../web/menue.js');
 
-test('Untermenü Zuständige', () => {
+test('Personen des Dialogs „Zuständige zuweisen“', () => {
   const personen = [{ kuerzel: 'st', name: 'Stefan', aktiv: true }, { kuerzel: 'mi', name: 'Mia', aktiv: true }, { kuerzel: 'cl', name: 'Claude', aktiv: true }, { kuerzel: 'ab', name: 'Anna', aktiv: false }];
-  const u = zustaendigeUnter({ nummer: 1, zustaendige: ['mi'] }, personen);
-  assert.deepStrictEqual(u.map(e => [e.text, e.haken, e.arg]), [['Stefan', false, '1|st'], ['Mia', true, '1|mi'], ['Claude', false, '1|cl']]);
-  assert.ok(zustaendigeUnter({ nummer: 1, zustaendige: ['ab'] }, personen).some(e => e.text === 'Anna' && e.haken));
-  const m = kartenMenue(a, { ...u, spalten: [], personen });
-  assert.ok(m.some(e => e.text === 'Zuständige' && e.unter.length === 3));
+  assert.deepStrictEqual(zuweisbarePersonen({ zustaendige: ['mi'] }, personen).map(p => p.kuerzel), ['st', 'mi', 'cl']);
+  assert.deepStrictEqual(zuweisbarePersonen({ zustaendige: ['ab'] }, personen).map(p => p.kuerzel), ['st', 'mi', 'cl', 'ab'], 'stillgelegt nur, wenn zuständig');
 });

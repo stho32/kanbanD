@@ -251,6 +251,19 @@ async function aufgabeAendern(nummer, aenderung) {
   await laden();
 }
 
+/** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
+function zuweisenSchliessen() {
+  const z = S.ui.zuweisen;
+  S.ui.zuweisen = null;
+  if (S.ui.view === 'board') S.ui.fokusKarte = z.nr; else S.ui.fokusZeile = z.nr;
+  return z;
+}
+/** Im Dialog gelten nur Esc und Enter; die Leertaste schaltet das Kästchen selbst um. */
+function zuweisenTaste(e, t) {
+  if (e.key === 'Escape') { e.preventDefault(); act('zuweisen-ab'); }
+  else if (e.key === 'Enter' && t.tagName !== 'BUTTON') { e.preventDefault(); act('zuweisen-ok'); }
+}
+
 function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
@@ -266,7 +279,7 @@ function render() {
   $('#main').innerHTML = vHaupt();
   $('#main').dataset.sicht = sicht;
   rollpositionenSetzen(rollen);
-  $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + vMenue();
+  $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -277,8 +290,8 @@ function render() {
   }
   if (gehalten) { /* das Feld behält den Fokus */ }
   else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
-  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
-  else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
+  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
+  else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
 }
 
 /** Gescrollte Flächen der Hauptsicht, je mit dem Selektor, der sie nach dem Neuzeichnen wiederfindet. */
@@ -648,12 +661,25 @@ async function act(a, arg, wert) {
         catch (_) { u.hinweis = { text: `Kopieren nicht erlaubt — ${text}`, at: Date.now() }; }
         break;
       }
-      case 'zustaendig-karte': {
+      case 'zuweisen': {
         if (ichNoetig()) break;
-        const [nr, k] = arg.split('|'), a = aufgabe(+nr);
-        const z = a.zustaendige.includes(k) ? a.zustaendige.filter(x => x !== k) : [...a.zustaendige, k];
-        if (u.view === 'board') u.fokusKarte = +nr; else u.fokusZeile = +nr;
-        return aufgabeAendern(+nr, { zustaendige: z });
+        u.zuweisen = { nr: +arg, wahl: [...aufgabe(+arg).zustaendige] };
+        u.fokus = '#zuweisen [data-act="zuweisen-wahl"]';
+        break;
+      }
+      case 'zuweisen-wahl': {
+        const w = u.zuweisen.wahl;
+        u.zuweisen.wahl = w.includes(arg) ? w.filter(k => k !== arg) : [...w, arg];
+        u.fokus = `#zuweisen [data-arg="${CSS.escape(arg)}"]`;
+        break;
+      }
+      case 'zuweisen-ab': case 'zuweisen-bg': zuweisenSchliessen(); break;
+      case 'zuweisen-ok': {
+        const { nr, wahl } = zuweisenSchliessen(), a = aufgabe(nr);
+        // Reihenfolge der bisher Zuständigen bleibt, neu Gewählte kommen in Personenfolge dahinter
+        const z = [...a.zustaendige.filter(k => wahl.includes(k)), ...personen().map(p => p.kuerzel).filter(k => wahl.includes(k) && !a.zustaendige.includes(k))];
+        if (z.join() === a.zustaendige.join()) break;
+        return aufgabeAendern(nr, { zustaendige: z });
       }
       case 'mich': {
         if (ichNoetig()) break;
@@ -843,7 +869,7 @@ document.addEventListener('click', e => {
     if (!el) { render(); return; }
   }
   if (!el || el.disabled) return;
-  if ((el.dataset.act === 'schliessen-bg' || el.dataset.act === 'nf-zu-bg') && e.target !== el) return;
+  if (['schliessen-bg', 'nf-zu-bg', 'zuweisen-bg'].includes(el.dataset.act) && e.target !== el) return;
   if (el.dataset.act === 'oeffnen' && (e.target.closest('[data-leiste]') || e.target.closest('#umbenennen'))) return;
   // Klick auf den Titel öffnet erst, wenn kein Doppelklick (Umbenennen) folgt.
   if (el.dataset.act === 'oeffnen' && e.target.closest('[data-dbl]')) {
@@ -927,6 +953,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
+  if (S.ui.zuweisen) { zuweisenTaste(e, t); return; }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && S.ui.hinweis && S.ui.hinweis.undo) {
     e.preventDefault();
     act('rueckgaengig');
@@ -959,7 +986,7 @@ function menueFuerKarte(nr, x, y) {
   if (!a || !S.board) return;
   const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
   const boards = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
-  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich), personen: personen() });
+  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
   S.ui.fokusKarte = nr;
   S.ui.pop = null;
   S.ui.menue = { titel: `#${nr} ${a.titel}`, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
@@ -979,7 +1006,7 @@ function menueFuerZeile(nr, x, y) {
   const a = aufgabe(nr);
   const liegtAufBoards = (S.boards || []).flatMap(b => b.spalten.filter(sp => sp.aufgaben.includes(nr)).map(sp => ({ slug: b.slug, titel: b.titel, spalte: sp.name })));
   const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr))).map(b => ({ slug: b.slug, titel: b.titel, spalten: b.spalten.map(sp => sp.name) }));
-  menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei, personen: personen() }), x, y);
+  menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei }), x, y);
 }
 function menueEinpassen() {
   const el = $('#kmenue');
@@ -1121,16 +1148,7 @@ function brettTaste(e, t) {
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
-  if (karte && e.key === 'p' && aufgabe(nr)) {
-    e.preventDefault();
-    const r = karte.getBoundingClientRect();
-    menueFuerKarte(nr, r.left + 24, r.top + 24);
-    const m = S.ui.menue, i = m.eintraege.findIndex(x => x.text === 'Zuständige');
-    m.index = i;
-    m.unter = { von: i, eintraege: m.eintraege[i].unter, index: menueSchritt(m.eintraege[i].unter, -1, 1) };
-    render();
-    return true;
-  }
+  if (karte && e.key === 'p' && aufgabe(nr)) { e.preventDefault(); act('zuweisen', String(nr)); return true; }
   if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
     e.preventDefault();
     const r = karte.getBoundingClientRect();

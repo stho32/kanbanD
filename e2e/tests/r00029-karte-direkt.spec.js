@@ -10,17 +10,16 @@ test.describe('R00029', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test('US-1: Timer und mir zuweisen an der Karte', async ({ page }) => {
+  test('US-1: Timer an der Karte', async ({ page }) => {
     await page.goto(k.adresse);
     const karte = page.locator('.ka[data-id="1"]');
     await karte.hover();
     await page.getByRole('button', { name: 'Timer an #1 starten' }).click();
     await expect(karte.locator('.lauf.eigen')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    // „+ mich“ an der Karte abgelöst durch R00064 — zuweisen über Menü, m oder den Dialog
     await karte.hover();
-    await page.getByRole('button', { name: 'mich zu #1' }).click();
-    await expect(karte.locator('.avs .pk')).toHaveText('ST');
-    expect(k.lies('aufgaben/0001-eins.md')).toContain('assignees: [st]');
+    await expect(page.getByRole('button', { name: 'mich zu #1' })).toHaveCount(0);
     await karte.hover();
     await page.getByRole('button', { name: 'Timer an #1 stoppen' }).click();
     await expect(karte.locator('.lauf')).toHaveCount(0);
