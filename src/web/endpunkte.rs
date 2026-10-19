@@ -44,7 +44,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("PATCH", "/api/aufgaben/{nr}", true, "Aufgaben", "ändern {titel?, beschreibung?, klasse?, zustaendige?, labels?, faellig?, herkunft?, phasen?: {uebersprungen: [Phase]}, reporting?: {burndown?: bool | null, forecast?: bool | null}} — phasen.uebersprungen (auch skipped) ersetzt phases.skipped: diese Phasen entfallen für die Aufgabe; reporting setzt, ob die Aufgabe im Burndown bzw. in Wie lange noch zählt (false nimmt sie aus, null entfernt den Schlüssel: Standard, sie zählt), Commit „#n geändert: Zählen in Berichten“"),
     e("POST", "/api/aufgaben/{nr}/teilaufgaben", true, "Aufgaben", "Teilaufgabe anlegen {text}"),
     e("POST", "/api/aufgaben/{nr}/teilaufgaben/mehrere", true, "Aufgaben", "mehrere Teilaufgaben anlegen {texte: [...]} — ein Commit"),
-    e("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe ändern {erledigt?, text?}"),
+    e("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe ändern {erledigt?, text?, position?} — position verschiebt an diese Stelle (0-basiert, außerhalb = ans Ende)"),
     e("DELETE", "/api/aufgaben/{nr}/teilaufgaben/{i}", true, "Aufgaben", "Teilaufgabe entfernen"),
     e("POST", "/api/aufgaben/{nr}/kommentare", true, "Aufgaben", "kommentieren {text}"),
     e("PATCH", "/api/aufgaben/{nr}/wbs-effects", true, "Aufgaben", "Wirkung auf die WBS anhängen und sofort ausführen {application, action: create|rework|remove, node?, parent?, level?, name?, done_criterion?} → Aufgabe; erst die WBS (ohne Commit), dann ein Commit im Board-Repository; create vergibt die ID, rework setzt den Teilbaum rot, remove verwirft; 400 ohne registriertes Kürzel, 409 wenn die WBS scheitert (Aufgabe unverändert)"),

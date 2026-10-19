@@ -477,6 +477,17 @@ async function act(a, arg, wert) {
         warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
         return;
       }
+      case 'teil-ordnen': {
+        if (ichNoetig()) break;
+        // nach = Einfügestelle in der alten Liste; nach dem Herausnehmen rückt alles dahinter eins vor
+        const [von, nach] = arg.split('|').map(Number), position = nach > von ? nach - 1 : nach, nr = u.offen;
+        if (position === von) break;
+        const liste = aufgabe(nr).teilaufgaben;
+        liste.splice(position, 0, liste.splice(von, 1)[0]);
+        render();
+        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
+        return;
+      }
       case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
       case 'teil-neu': {
         const text = (wert || '').trim();
@@ -1369,6 +1380,36 @@ document.addEventListener('dragstart', e => {
   try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
   setTimeout(() => (zugMenge || [zug]).forEach(n => { const x = $(`.ka[data-id="${n}"]`); if (x) x.classList.add('zieht'); }));
 });
+/* Teilaufgaben im Aufgabenfenster umordnen (R00067): obere Hälfte = davor, untere = dahinter */
+let zugTeil = null, zielTeil = null;
+const teilMarkenWeg = () => document.querySelectorAll('.chk.ins-b,.chk.ins-a,.chk.zieht').forEach(x => x.classList.remove('ins-b', 'ins-a', 'zieht'));
+document.addEventListener('dragstart', e => {
+  const c = e.target.closest && e.target.closest('.chk[data-teil][draggable="true"]');
+  if (!c) return;
+  zugTeil = +c.dataset.teil; zielTeil = null;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', c.textContent); } catch (_) { }
+  setTimeout(() => c.classList.add('zieht'));
+});
+document.addEventListener('dragover', e => {
+  if (zugTeil == null) return;
+  const c = e.target.closest && e.target.closest('.chk[data-teil]');
+  if (!c) return;
+  e.preventDefault();
+  document.querySelectorAll('.chk.ins-b,.chk.ins-a').forEach(x => x.classList.remove('ins-b', 'ins-a'));
+  const r = c.getBoundingClientRect(), davor = e.clientY < r.top + r.height / 2;
+  c.classList.add(davor ? 'ins-b' : 'ins-a');
+  zielTeil = +c.dataset.teil + (davor ? 0 : 1);
+});
+document.addEventListener('drop', e => {
+  if (zugTeil == null) return;
+  e.preventDefault();
+  const von = zugTeil, nach = zielTeil;
+  zugTeil = null; zielTeil = null;
+  teilMarkenWeg();
+  if (nach != null) act('teil-ordnen', `${von}|${nach}`);
+});
+document.addEventListener('dragend', () => { zugTeil = null; zielTeil = null; teilMarkenWeg(); });
 /* Mehrzeiliges Einfügen: je Zeile eine Aufgabe bzw. Teilaufgabe, in einem Commit. */
 document.addEventListener('paste', async e => {
   const art = e.target.dataset && e.target.dataset.mehrfach;

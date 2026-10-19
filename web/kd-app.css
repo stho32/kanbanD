@@ -170,7 +170,12 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .besch{display:block;width:100%;min-height:120px;resize:vertical;border:1px solid var(--kd-line);padding:var(--kd-s3);line-height:1.55;background:var(--kd-surface)}
 .besch:hover{border-color:var(--kd-line-strong)}
 .besch:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
-.chk{display:flex;gap:6px;align-items:center;min-height:26px}
+.chk{position:relative;display:flex;gap:6px;align-items:center;min-height:26px}
+.chk[draggable="true"]{cursor:grab}
+.chk.zieht{opacity:.45}
+.chk.ins-b::before,.chk.ins-a::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--kd-accent);pointer-events:none}
+.chk.ins-b::before{top:-1px}
+.chk.ins-a::after{bottom:-1px}
 .chk i{width:13px;height:13px;border:1px solid var(--kd-line-strong);flex:none;display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1;cursor:pointer;background:var(--kd-surface)}
 .chk span{cursor:text;flex:1}
 .chk .teil-edit{flex:1;height:24px}

@@ -7,6 +7,8 @@ use serde::Deserialize;
 pub struct Teilaufgabenaenderung {
     pub erledigt: Option<bool>,
     pub text: Option<String>,
+    /// Neue Stelle in der Liste (0-basiert); außerhalb der Liste heißt „ans Ende“ (R00067).
+    pub position: Option<usize>,
 }
 
 fn text_pruefen(t: &str) -> Result<String, Fehler> {
@@ -59,11 +61,18 @@ impl Kanban {
             if let Some(n) = &neuer_text {
                 t.text = n.clone();
             }
-            Ok(match (vorher.erledigt != t.erledigt, vorher.text != t.text) {
-                (_, true) => Some(format!("#{nr} Teilaufgabe „{}“ geändert", t.text)),
-                (true, false) if t.erledigt => Some(format!("#{nr} Teilaufgabe „{}“ erledigt", t.text)),
-                (true, false) => Some(format!("#{nr} Teilaufgabe „{}“ wieder offen", t.text)),
-                (false, false) => None,
+            let t = t.clone();
+            let ziel = aend.position.map(|p| p.min(a.teilaufgaben.len() - 1)).filter(|z| *z != i);
+            if let Some(z) = ziel {
+                let weg = a.teilaufgaben.remove(i);
+                a.teilaufgaben.insert(z, weg);
+            }
+            Ok(match (vorher.erledigt != t.erledigt, vorher.text != t.text, ziel) {
+                (_, true, _) => Some(format!("#{nr} Teilaufgabe „{}“ geändert", t.text)),
+                (_, false, Some(z)) => Some(format!("#{nr} Teilaufgabe „{}“ an Position {} verschoben", t.text, z + 1)),
+                (true, false, None) if t.erledigt => Some(format!("#{nr} Teilaufgabe „{}“ erledigt", t.text)),
+                (true, false, None) => Some(format!("#{nr} Teilaufgabe „{}“ wieder offen", t.text)),
+                (false, false, None) => None,
             })
         })
     }
