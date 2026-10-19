@@ -129,7 +129,7 @@ Nie vom User erfragen.
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0086 Menü der Karte zusammenstellen | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0087 Kontextmenü zeigen und bedienen | Standard | 2-3h | 0,1h | 0,1h | autonom |
 | 2026-10-18 | R00033 Kontextmenü der Karte | B0088 Neue Kartenkürzel | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
-| 2026-10-18 | R00033 Kontextmenü der Karte | Lauf R00033 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-19 | R00033 Kontextmenü der Karte | Lauf R00033 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00034 Kontextmenüs für Spalten und Listen | B0089 Mehrere archivieren und zurückholen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00034 Kontextmenüs für Spalten und Listen | B0090 Menüs für Spaltenkopf und Aufgabenliste | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00034 Kontextmenüs für Spalten und Listen | Lauf R00034 | Nacharbeit | — | — | 0,0h | autonom |
@@ -156,7 +156,7 @@ Nie vom User erfragen.
 | 2026-10-18 | R00042 Bewegungen eines Boards | Lauf R00042 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | B0104 Zeitraum und Filter rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | B0105 Filterleiste in allen Berichten | Standard | 1-2h | 0,0h | 0,0h | autonom |
-| 2026-10-18 | R00043 Berichtsfilter wie Kanbanflow | Lauf R00043 | Nacharbeit | — | — | 0,0h | autonom |
+| 2026-10-19 | R00043 Berichtsfilter wie Kanbanflow | Lauf R00043 | Nacharbeit | — | — | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | B0106 Burndown aus Bewegungen rechnen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | B0107 Burndown-Bericht mit Filterleiste | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-10-18 | R00044 Burndown nach Zeitraum | Lauf R00044 | Nacharbeit | — | — | 0,0h | autonom |
