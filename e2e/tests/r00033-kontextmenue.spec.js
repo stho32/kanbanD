@@ -20,6 +20,8 @@ test.describe('R00033', () => {
 
   test('US-1: Rechtsklick, Untermenü, verschieben, Klasse', async ({ page }) => {
     await page.goto(k.adresse);
+    // im Ruhezustand zeigt die Karte die Zeigefinger-Hand, nicht die Greifhand
+    expect(await page.locator('.ka[data-id="1"]').evaluate(e => getComputedStyle(e).cursor)).toBe('pointer');
     await page.locator('.ka[data-id="1"]').click({ button: 'right' });
     const menue = page.getByRole('menu', { name: '#1 eins' });
     await expect(menue).toBeVisible();

@@ -62,7 +62,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bahn-add{padding:2px}
 .bahn-add .inp{width:100%}
 /* Karte */
-.ka{position:relative;flex:none;min-height:64px;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:grab}
+.ka{position:relative;flex:none;min-height:64px;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:pointer}
 .ka[data-c]{background:var(--c);border-color:var(--cl)}
 .ka:hover{border-color:var(--kd-accent)}
 .ka.offen{outline:2px solid var(--kd-accent);outline-offset:-1px}
