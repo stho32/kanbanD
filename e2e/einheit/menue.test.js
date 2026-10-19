@@ -55,10 +55,14 @@ test('Menü der Listenzeile', () => {
   assert.ok(arch.some(e => e.text === 'Zurückholen') && !arch.some(e => e.text === 'Auf Board legen'));
 });
 
-const { zuweisbarePersonen } = require('../../web/menue.js');
+const { massenMenue } = require('../../web/menue.js');
 
-test('Personen des Dialogs „Zuständige zuweisen“', () => {
-  const personen = [{ kuerzel: 'st', name: 'Stefan', aktiv: true }, { kuerzel: 'mi', name: 'Mia', aktiv: true }, { kuerzel: 'cl', name: 'Claude', aktiv: true }, { kuerzel: 'ab', name: 'Anna', aktiv: false }];
-  assert.deepStrictEqual(zuweisbarePersonen({ zustaendige: ['mi'] }, personen).map(p => p.kuerzel), ['st', 'mi', 'cl']);
-  assert.deepStrictEqual(zuweisbarePersonen({ zustaendige: ['ab'] }, personen).map(p => p.kuerzel), ['st', 'mi', 'cl', 'ab'], 'stillgelegt nur, wenn zuständig');
+test('Menü für mehrere Karten (R00065)', () => {
+  const m = massenMenue([3, 5], { spalten: ['A', 'B'], klassen: [{ schluessel: 'bug', bezeichnung: 'Fehler' }], boards: [{ slug: 'test', titel: 'Test', spalte: 'Bereit' }] });
+  assert.deepStrictEqual(m.map(e => e.trenner ? '—' : e.text), ['Verschieben nach', 'Klasse', 'Fälligkeit', '—', 'Zuständige zuweisen …', 'Mir zuweisen', 'Auf Board legen', '—', 'Archivieren']);
+  assert.deepStrictEqual(m[0].unter.map(e => [e.act, e.arg]), [['m-verschieben', '3,5|A'], ['m-verschieben', '3,5|B']]);
+  assert.deepStrictEqual(m[1].unter.filter(e => !e.trenner).map(e => e.arg), ['3,5|bug', '3,5|']);
+  assert.deepStrictEqual(m[2].unter.filter(e => !e.trenner).map(e => e.arg), ['3,5|0', '3,5|1', '3,5|7', '3,5|']);
+  assert.deepStrictEqual([m[4].act, m[4].arg, m[5].act, m[6].unter[0].arg, m[8].act], ['zuweisen', '3,5', 'm-mich', 'test|Bereit|3,5', 'm-archivieren']);
+  assert.ok(!massenMenue([3, 5], { spalten: [], klassen: [], boards: [] }).some(e => e.text === 'Auf Board legen'));
 });

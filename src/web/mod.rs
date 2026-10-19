@@ -63,6 +63,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards", get(boards).post(board_anlegen))
         .route("/api/boards/{slug}", get(board))
         .route("/api/boards/{slug}/bewegen", post(bewegen))
+        .route("/api/boards/{slug}/bewegen-mehrere", post(mehrere_bewegen))
+        .route("/api/boards/{slug}/aufgaben/mehrere", post(mehrere_auf_board_legen))
         .route("/api/boards/{slug}/aufgaben", post(auf_board_legen))
         .route("/api/boards/{slug}/aufgaben/{nr}", axum::routing::delete(von_board_nehmen))
         .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
@@ -81,7 +83,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/berichte/verlauf", get(verlauf))
         .route("/api/berichte/bewegungen", get(bewegungen))
         .route("/api/aufgaben/{nr}", get(aufgabe_lesen).patch(aufgabe_aendern))
-        .route("/api/aufgaben/mehrere", post(aufgaben_anlegen))
+        .route("/api/aufgaben/mehrere", post(aufgaben_anlegen).patch(mehrere_aendern))
         .route("/api/aufgaben/archivieren", post(mehrere_archivieren))
         .route("/api/aufgaben/zurueckholen", post(mehrere_zurueckholen))
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
@@ -547,6 +549,42 @@ async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): P
 #[derive(serde::Deserialize)]
 struct Nummern {
     nummern: Vec<u32>,
+}
+
+#[derive(serde::Deserialize)]
+struct Ziele {
+    ziele: Vec<Bewegung>,
+}
+
+async fn mehrere_bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(z): Json<Ziele>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.mehrere_bewegen(p, &slug, &z.ziele)).await
+}
+
+#[derive(serde::Deserialize)]
+struct Legen {
+    nummern: Vec<u32>,
+    spalte: Option<String>,
+}
+
+async fn mehrere_auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(l): Json<Legen>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.mehrere_auf_board_legen(p, &slug, &l.nummern, l.spalte.as_deref())).await
+}
+
+#[derive(serde::Deserialize)]
+struct EineAenderung {
+    nummer: u32,
+    #[serde(flatten)]
+    aenderung: Aufgabenaenderung,
+}
+
+#[derive(serde::Deserialize)]
+struct Aenderungen {
+    aenderungen: Vec<EineAenderung>,
+}
+
+async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, Json(a): Json<Aenderungen>) -> Result<Response, Fehler> {
+    let liste: Vec<_> = a.aenderungen.into_iter().map(|e| (e.nummer, e.aenderung)).collect();
+    als_person(&app, wer, move |k, p| k.mehrere_aendern(p, &liste)).await
 }
 
 async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {

@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle' } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -255,8 +255,61 @@ async function aufgabeAendern(nummer, aenderung) {
 function zuweisenSchliessen() {
   const z = S.ui.zuweisen;
   S.ui.zuweisen = null;
-  if (S.ui.view === 'board') S.ui.fokusKarte = z.nr; else S.ui.fokusZeile = z.nr;
+  if (S.ui.view === 'board') S.ui.fokusKarte = z.nummern[0]; else S.ui.fokusZeile = z.nummern[0];
   return z;
+}
+const nummernAus = l => String(l).split(',').map(Number);
+
+/** Mehrere Aufgaben in einem Commit (R00065). */
+async function mehrereAendern(aenderungen) {
+  if (ichNoetig()) { render(); return; }
+  try {
+    await api('PATCH', '/api/aufgaben/mehrere', { aenderungen });
+    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
+  } catch (f) { S.ui.fehler = f.message; }
+  await laden();
+}
+
+/** Mehrere Karten an `index` der Spalte, in Lesereihenfolge; rückgängig legt jede an ihren alten Platz. */
+function mehrereBewegen(nummern, spalte, index) {
+  const { ziele, zurueck } = mehrfachZiele(brettSpalten(), nummern, spalte, index);
+  return zieleSenden(ziele, zurueck, `${ziele.length} Karten nach „${spalte}“`);
+}
+const brettSpalten = () => S.board.spalten.map(sp => ({ name: sp.name, karten: sp.aufgaben }));
+async function zieleSenden(ziele, zurueck, text) {
+  const u = S.ui;
+  if (ichNoetig()) { render(); return; }
+  // gleich sichtbar machen, dann vom Server bestätigen lassen
+  spaltenNach(brettSpalten(), ziele).forEach((s, i) => { S.board.spalten[i].aufgaben = s.karten; });
+  render();
+  try {
+    const r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen-mehrere`, { ziele });
+    if (r.bewegt) u.hinweis = { text, at: Date.now(), ...(zurueck ? { undo: { art: 'ziele', ziele: zurueck } } : {}), ...(r.warnungen && r.warnungen.length ? { warnungen: r.warnungen, dauer: 20000 } : {}) };
+  } catch (f) { u.fehler = f.message; }
+  return laden();
+}
+
+/** Strg + Klick schaltet eine Karte um, Umschalt + Klick wählt die Reihe vom Anker (R00065). */
+function auswahlKlick(nr, e) {
+  const u = S.ui;
+  if (e.shiftKey) {
+    const anker = u.anker != null ? u.anker : (u.fokusKarte || nr), r = reihe(sichtbareSpalten(), anker, nr);
+    u.auswahl = e.ctrlKey || e.metaKey ? [...new Set([...u.auswahl, ...r])] : r;
+    u.anker = anker;
+  } else {
+    u.auswahl = umschalten(u.auswahl, nr);
+    u.anker = nr;
+  }
+  u.fokusKarte = nr;
+  render();
+}
+function auswahlAufheben() { S.ui.auswahl = []; S.ui.anker = null; }
+
+/** Menü für die ausgewählten Karten, Titel „n Karten“. */
+function menueFuerAuswahl(x, y) {
+  const nummern = lesereihenfolge(brettSpalten()).filter(n => S.ui.auswahl.includes(n));
+  const boards = (S.boards || []).filter(b => b.slug !== S.ui.slug && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
+  menueOeffnen(`${nummern.length} Karten`, massenMenue(nummern, { spalten: S.board.spalten.map(sp => sp.name), klassen: S.zustand.einstellungen.klassen, boards }), x, y);
 }
 /** Im Dialog gelten nur Esc und Enter; die Leertaste schaltet das Kästchen selbst um. */
 function zuweisenTaste(e, t) {
@@ -275,11 +328,15 @@ function render() {
   // Neuzeichnen in derselben Sicht hält die Leseposition — sonst springt das Board unter dem Kontextmenü weg.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
   const rollen = $('#main').dataset.sicht === sicht ? rollpositionen() : [];
+  // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
+  if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
+  S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
   $('#main').dataset.sicht = sicht;
   rollpositionenSetzen(rollen);
   $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
+  document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
@@ -451,6 +508,7 @@ async function act(a, arg, wert) {
         u.hinweis = null;
         const z = h.undo;
         if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
+        if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
         u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
@@ -663,23 +721,56 @@ async function act(a, arg, wert) {
       }
       case 'zuweisen': {
         if (ichNoetig()) break;
-        u.zuweisen = { nr: +arg, wahl: [...aufgabe(+arg).zustaendige] };
+        const nummern = nummernAus(arg);
+        u.zuweisen = { nummern, wahl: zuweisenStart(nummern.map(aufgabe), personen()) };
         u.fokus = '#zuweisen [data-act="zuweisen-wahl"]';
         break;
       }
       case 'zuweisen-wahl': {
-        const w = u.zuweisen.wahl;
-        u.zuweisen.wahl = w.includes(arg) ? w.filter(k => k !== arg) : [...w, arg];
+        u.zuweisen.wahl[arg] = zuweisenWeiter(u.zuweisen.wahl[arg]);
         u.fokus = `#zuweisen [data-arg="${CSS.escape(arg)}"]`;
         break;
       }
       case 'zuweisen-ab': case 'zuweisen-bg': zuweisenSchliessen(); break;
       case 'zuweisen-ok': {
-        const { nr, wahl } = zuweisenSchliessen(), a = aufgabe(nr);
-        // Reihenfolge der bisher Zuständigen bleibt, neu Gewählte kommen in Personenfolge dahinter
-        const z = [...a.zustaendige.filter(k => wahl.includes(k)), ...personen().map(p => p.kuerzel).filter(k => wahl.includes(k) && !a.zustaendige.includes(k))];
-        if (z.join() === a.zustaendige.join()) break;
-        return aufgabeAendern(nr, { zustaendige: z });
+        const { nummern, wahl } = zuweisenSchliessen();
+        const aenderungen = nummern.map(aufgabe).map(a => ({ nummer: a.nummer, vorher: a.zustaendige, zustaendige: zustaendigeNach(a.zustaendige, wahl, personen()) }))
+          .filter(x => x.zustaendige.join() !== x.vorher.join()).map(({ nummer, zustaendige }) => ({ nummer, zustaendige }));
+        if (!aenderungen.length) break;
+        return mehrereAendern(aenderungen);
+      }
+      /* Massenaktionen (R00065): das Argument beginnt bzw. endet mit der Nummernliste „3,5“ */
+      case 'm-verschieben': {
+        const [l, spalte] = arg.split('|'), nummern = nummernAus(l);
+        const index = S.board.spalten.find(sp => sp.name === spalte).aufgaben.filter(n => !nummern.includes(n)).length;
+        return mehrereBewegen(nummern, spalte, index);
+      }
+      case 'm-klasse': { const [l, k] = arg.split('|'); return mehrereAendern(nummernAus(l).map(nummer => ({ nummer, klasse: k || null }))); }
+      case 'm-faellig': {
+        const [l, n] = arg.split('|'), d = new Date();
+        d.setDate(d.getDate() + (+n || 0));
+        return mehrereAendern(nummernAus(l).map(nummer => ({ nummer, faellig: n === '' ? null : isoD(d) })));
+      }
+      case 'm-mich': {
+        if (ichNoetig()) break;
+        const aenderungen = nummernAus(arg).map(aufgabe).filter(a => !a.zustaendige.includes(S.ich)).map(a => ({ nummer: a.nummer, zustaendige: [...a.zustaendige, S.ich] }));
+        if (!aenderungen.length) break;
+        return mehrereAendern(aenderungen);
+      }
+      case 'm-legen': {
+        if (ichNoetig()) break;
+        const [slug, spalte, l] = arg.split('|');
+        await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben/mehrere`, { nummern: nummernAus(l), spalte });
+        return;
+      }
+      case 'm-archivieren': {
+        if (ichNoetig()) break;
+        try {
+          const geaendert = await api('POST', '/api/aufgaben/archivieren', { nummern: nummernAus(arg) });
+          u.auswahl = [];
+          u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
+        } catch (f) { u.fehler = f.message; }
+        return laden();
       }
       case 'mich': {
         if (ichNoetig()) break;
@@ -851,6 +942,10 @@ document.addEventListener('change', e => {
   aufgabeAendern(S.ui.offen, aenderung);
 });
 
+// Umschalt/Strg + Klick auf eine Karte markiert keinen Text
+document.addEventListener('mousedown', e => {
+  if ((e.shiftKey || e.ctrlKey || e.metaKey) && e.target.closest && e.target.closest('.ka[data-id]')) e.preventDefault();
+});
 document.addEventListener('click', e => {
   if (S.ui.menue) {
     const z = e.target.closest('.km-e[data-mp]');
@@ -863,12 +958,17 @@ document.addEventListener('click', e => {
   }
   if (e.target.closest('a[href^="vscode:"]')) return;
   if (e.target.closest('.menue a[href^="#"]')) { S.ui.pop = null; return; }
+  // Mehrfachauswahl (R00065): Strg/Umschalt + Klick wählt, jeder andere Klick außerhalb der Dialoge hebt sie auf
+  const kk = S.ui.view === 'board' && e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)');
+  if (kk && (e.ctrlKey || e.metaKey || e.shiftKey) && !e.target.closest('[data-leiste]')) { auswahlKlick(+kk.dataset.id, e); return; }
+  const aufheben = S.ui.auswahl.length > 0 && !e.target.closest('#over') && !e.target.closest('[data-leiste]');
+  if (aufheben) auswahlAufheben();
   const el = e.target.closest('[data-act]');
   if (S.ui.pop && !e.target.closest('.pop') && !(el && el.dataset.act === 'pop')) {
     S.ui.pop = null; S.ui.ichNoetig = false;
     if (!el) { render(); return; }
   }
-  if (!el || el.disabled) return;
+  if (!el || el.disabled) { if (aufheben) render(); return; }
   if (['schliessen-bg', 'nf-zu-bg', 'zuweisen-bg'].includes(el.dataset.act) && e.target !== el) return;
   if (el.dataset.act === 'oeffnen' && (e.target.closest('[data-leiste]') || e.target.closest('#umbenennen'))) return;
   // Klick auf den Titel öffnet erst, wenn kein Doppelklick (Umbenennen) folgt.
@@ -973,6 +1073,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
+    if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
   }
   if (S.ui.offen && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
     e.preventDefault();
@@ -984,6 +1085,8 @@ document.addEventListener('keydown', e => {
 function menueFuerKarte(nr, x, y) {
   const a = aufgabe(nr);
   if (!a || !S.board) return;
+  if (S.ui.auswahl.length > 1 && S.ui.auswahl.includes(nr)) { menueFuerAuswahl(x, y); return; }
+  auswahlAufheben();
   const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
   const boards = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
   const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
@@ -1074,7 +1177,8 @@ document.addEventListener('mouseover', e => {
   if (!z) return;
   const pfad = z.dataset.mp.split('.').map(Number);
   if (pfad.length === 1) {
-    if (m.index === pfad[0] && (!m.unter || m.unter.von === pfad[0])) return;
+    // offen ist schon, was offen sein soll — auch wenn der erste Eintrag ein Untermenü hat (Menü „n Karten“)
+    if (m.index === pfad[0] && (m.unter ? m.unter.von === pfad[0] : !m.eintraege[pfad[0]].unter)) return;
     m.index = pfad[0];
     const eintrag = m.eintraege[pfad[0]];
     m.unter = eintrag.unter ? { von: pfad[0], eintraege: eintrag.unter, index: -1 } : null;
@@ -1144,7 +1248,8 @@ function listenTaste(e, t) {
 const RICHTUNG = { ArrowLeft: 'links', ArrowRight: 'rechts', ArrowUp: 'hoch', ArrowDown: 'runter' };
 function brettTaste(e, t) {
   const u = S.ui;
-  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.neu || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const senkrecht = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+  if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.neu || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || (e.altKey && !senkrecht)) return false;
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
@@ -1184,7 +1289,17 @@ function brettTaste(e, t) {
   const r = RICHTUNG[e.key];
   if (!r) return false;
   e.preventDefault();
-  if (e.shiftKey) {
+  // Umschalt + ↑/↓ erweitert die Auswahl; getauscht wird mit Alt + ↑/↓ (R00065)
+  if (e.shiftKey && senkrecht) {
+    const n = nr == null ? null : nachbar(sichtbareSpalten(), nr, r);
+    if (n == null) return true;
+    u.auswahl = [...new Set([...u.auswahl, nr, n])];
+    if (u.anker == null) u.anker = nr;
+    u.fokusKarte = n;
+    render();
+    return true;
+  }
+  if (e.shiftKey || e.altKey) {
     if (nr == null) return true;
     const z = verschiebeziel(sichtbareSpalten(), nr, r);
     if (z) { u.fokusKarte = nr; act('bewegen', JSON.stringify({ nummer: nr, ...z })); }
@@ -1196,7 +1311,7 @@ function brettTaste(e, t) {
 }
 
 /* Ziehen: obere Hälfte = davor, untere = dahinter, freie Fläche = ans Ende. */
-let zug = null, ziel = null;
+let zug = null, ziel = null, zugMenge = null;
 const einfuegeMarkenWeg = () => document.querySelectorAll('.ins-b,.ins-a,.ins-end').forEach(x => x.classList.remove('ins-b', 'ins-a', 'ins-end'));
 /* Ziehen aus der Aufgabenliste auf die Ziele daneben */
 let zugZeile = null;
@@ -1233,9 +1348,11 @@ document.addEventListener('dragstart', e => {
   const k = e.target.closest && e.target.closest('.ka[draggable]');
   if (!k) return;
   zug = +k.dataset.id;
+  // eine ausgewählte Karte nimmt die ganze Auswahl mit (R00065)
+  zugMenge = S.ui.auswahl.length > 1 && S.ui.auswahl.includes(zug) ? [...S.ui.auswahl] : null;
   e.dataTransfer.effectAllowed = 'move';
   try { e.dataTransfer.setData('text/plain', String(zug)); } catch (_) { }
-  setTimeout(() => k.classList.add('zieht'));
+  setTimeout(() => (zugMenge || [zug]).forEach(n => { const x = $(`.ka[data-id="${n}"]`); if (x) x.classList.add('zieht'); }));
 });
 /* Mehrzeiliges Einfügen: je Zeile eine Aufgabe bzw. Teilaufgabe, in einem Commit. */
 document.addEventListener('paste', async e => {
@@ -1295,8 +1412,9 @@ document.addEventListener('dragover', e => {
   e.preventDefault();
   einfuegeMarkenWeg();
   const k = e.target.closest('.ka[data-id]'), spalte = bahn.dataset.col;
-  const andere = [...bahn.querySelectorAll('.ka[data-id]')].filter(x => +x.dataset.id !== zug);
-  if (k && +k.dataset.id !== zug) {
+  const bewegte = zugMenge || [zug];
+  const andere = [...bahn.querySelectorAll('.ka[data-id]')].filter(x => !bewegte.includes(+x.dataset.id));
+  if (k && !bewegte.includes(+k.dataset.id)) {
     const r = k.getBoundingClientRect(), davor = e.clientY < r.top + r.height / 2;
     k.classList.add(davor ? 'ins-b' : 'ins-a');
     ziel = { spalte, index: andere.indexOf(k) + (davor ? 0 : 1) };
@@ -1308,14 +1426,15 @@ document.addEventListener('dragover', e => {
 document.addEventListener('drop', e => {
   if (zug == null) return;
   e.preventDefault();
-  const nummer = zug, z = ziel;
-  zug = null; ziel = null;
+  const nummer = zug, z = ziel, menge = zugMenge;
+  zug = null; ziel = null; zugMenge = null;
   if (S.ui.nachZug) render();
   einfuegeMarkenWeg();
-  if (z) act('bewegen', JSON.stringify({ nummer, ...z }));
+  if (z && menge) mehrereBewegen(menge, z.spalte, z.index);
+  else if (z) act('bewegen', JSON.stringify({ nummer, ...z }));
 });
 document.addEventListener('dragend', () => {
-  zug = null; ziel = null; einfuegeMarkenWeg();
+  zug = null; ziel = null; zugMenge = null; einfuegeMarkenWeg();
   document.querySelectorAll('.zieht').forEach(x => x.classList.remove('zieht'));
   if (S.ui.nachZug) render();
 });

@@ -44,6 +44,33 @@ impl Kanban {
         Ok(Bewegt { bewegt: true, warnungen })
     }
 
+    /// Mehrere Karten in einem Commit (R00065): alle heraus, dann der Reihe nach an ihren Platz.
+    /// Warnungen sammeln die Prüfungen jeder verlassenen Spalte.
+    pub fn mehrere_bewegen(&self, wer: &Person, slug: &str, ziele: &[Bewegung]) -> Result<Bewegt, Fehler> {
+        if ziele.is_empty() {
+            return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
+        }
+        let _sperre = self.gesperrt();
+        let mut b = self.ordner().board(slug)?;
+        let von: Vec<Option<String>> = ziele.iter().map(|z| b.spalte_von(z.nummer).map(|s| s.name.clone())).collect();
+        let liste: Vec<(u32, &str, usize)> = ziele.iter().map(|z| (z.nummer, z.spalte.as_str(), z.index.unwrap_or(usize::MAX))).collect();
+        let geaendert = b.mehrere_bewegen(&liste).map_err(|f| match f {
+            Bewegfehler::NichtAufDemBoard => Fehler::NichtGefunden(format!("Nicht alle Aufgaben liegen auf „{}“", b.titel)),
+            _ => Fehler::Ungueltig(format!("Eine Zielspalte gibt es auf „{}“ nicht", b.titel)),
+        })?;
+        if !geaendert {
+            return Ok(Bewegt { bewegt: false, warnungen: vec![] });
+        }
+        let nummern = ziele.iter().map(|z| format!("#{}", z.nummer)).collect::<Vec<_>>().join(", ");
+        let wohin = match ziele.iter().all(|z| z.spalte == ziele[0].spalte) {
+            true => format!("nach „{}“", ziele[0].spalte),
+            false => "bewegt".to_string(),
+        };
+        self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        let warnungen = ziele.iter().zip(von).filter_map(|(z, v)| v.map(|v| self.warnungen(&b, z.nummer, &v, &z.spalte))).flatten().collect();
+        Ok(Bewegt { bewegt: true, warnungen })
+    }
+
     /// Prüft, was der Zug `von` → `nach` auslöst; eine unlesbare Aufgabe prüft nichts.
     fn warnungen(&self, b: &Board, nummer: u32, von: &str, nach: &str) -> Vec<Warnung> {
         let folge = self.phasenstand(b).map(|s| s.folge);

@@ -24,7 +24,7 @@ test.describe('R00026', () => {
     await expect.poll(() => k.lies('boards/entwicklung.md')).toMatch(/## In Arbeit\n\n- \[#1\]/);
     await page.keyboard.press('ArrowLeft');
     await expect(page.locator('.ka[data-id="2"]')).toBeFocused();
-    await page.keyboard.press('Shift+ArrowUp');
+    await page.keyboard.press('Alt+ArrowUp'); // Umschalt + ↑ wählt seit R00065 aus
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toContainText('zwei');
   });

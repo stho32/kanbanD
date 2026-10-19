@@ -17,6 +17,33 @@ impl Kanban {
         Ok(name)
     }
 
+    /// Legt mehrere Aufgaben in einem Commit auf ein Board; schon liegende bleiben unberührt (R00065).
+    pub fn mehrere_auf_board_legen(&self, wer: &Person, slug: &str, nummern: &[u32], spalte: Option<&str>) -> Result<Vec<u32>, Fehler> {
+        let _sperre = self.gesperrt();
+        let mut b = self.ordner().board(slug)?;
+        if let Some(s) = spalte.filter(|s| !b.spalten.iter().any(|x| x.name == *s)) {
+            return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf „{}“ nicht", b.titel)));
+        }
+        let mut gelegt = vec![];
+        let mut name = String::new();
+        for nr in nummern {
+            self.ordner().aufgabe(*nr)?;
+            match b.aufnehmen(*nr, spalte) {
+                Ok(n) => {
+                    name = n;
+                    gelegt.push(*nr);
+                }
+                Err(Bewegfehler::SchonAufDemBoard) => {}
+                Err(_) => return Err(Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", spalte.unwrap_or("—"), b.titel))),
+            }
+        }
+        if !gelegt.is_empty() {
+            let liste = gelegt.iter().map(|n| format!("#{n}")).collect::<Vec<_>>().join(", ");
+            self.aktion(wer, &format!("{liste} auf „{}“ gelegt ({name})", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        }
+        Ok(gelegt)
+    }
+
     pub fn von_board_nehmen(&self, wer: &Person, slug: &str, nummer: u32) -> Result<(), Fehler> {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;

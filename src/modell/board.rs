@@ -124,6 +124,27 @@ impl Board {
         z.aufgaben.insert(i, nummer);
         Ok(self.spalten != vorher)
     }
+
+    /// Nimmt alle genannten Karten heraus und setzt sie der Reihe nach an `index` ihrer Zielspalte (R00065).
+    /// Prüft vorher alles; bei einem Fehler bleibt das Board unverändert.
+    pub fn mehrere_bewegen(&mut self, ziele: &[(u32, &str, usize)]) -> Result<bool, Bewegfehler> {
+        if ziele.iter().any(|(_, spalte, _)| !self.spalten.iter().any(|s| s.name == *spalte)) {
+            return Err(Bewegfehler::SpalteUnbekannt);
+        }
+        if ziele.iter().any(|(nr, _, _)| self.spalte_von(*nr).is_none()) {
+            return Err(Bewegfehler::NichtAufDemBoard);
+        }
+        let vorher = self.spalten.clone();
+        for s in &mut self.spalten {
+            s.aufgaben.retain(|n| !ziele.iter().any(|(nr, _, _)| nr == n));
+        }
+        for (nr, spalte, index) in ziele {
+            let z = self.spalte_mut(spalte).expect("geprüft");
+            let i = (*index).min(z.aufgaben.len());
+            z.aufgaben.insert(i, *nr);
+        }
+        Ok(self.spalten != vorher)
+    }
 }
 
 /// Eine Spalte in der neuen Reihenfolge; `alt` ist der bisherige Name, dessen Aufgaben sie übernimmt.
@@ -280,6 +301,22 @@ mod tests {
         assert_eq!(b.spalten_setzen(&[aend("X", Some("Q"), None)]), Err(Spaltenfehler::AltUnbekannt("Q".into())));
         assert_eq!(b.spalten_setzen(&[aend("X", Some("A"), None), aend("Y", Some("A"), None)]), Err(Spaltenfehler::AltDoppelt("A".into())));
         assert_eq!(b.spalten.len(), 2);
+    }
+
+    #[test]
+    fn mehrere_bewegen_nimmt_erst_alle_heraus() {
+        let mut b = b();
+        let start = b.spalten.clone();
+        let erste = start[0].aufgaben.clone();
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", 0), (erste[1], "Z", 1)]), Ok(true));
+        assert_eq!(b.spalten[0].aufgaben, erste[2..].to_vec());
+        assert_eq!(&b.spalten[1].aufgaben[..2], &[erste[0], erste[1]]);
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", 0), (erste[1], "A", 1)]), Ok(true));
+        assert_eq!(b.spalten, start);
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", 0)]), Ok(false));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "X", 0)]), Err(Bewegfehler::SpalteUnbekannt));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", 0), (99, "Z", 0)]), Err(Bewegfehler::NichtAufDemBoard));
+        assert_eq!(b.spalten, start, "Fehler ändern nichts");
     }
 
     #[test]

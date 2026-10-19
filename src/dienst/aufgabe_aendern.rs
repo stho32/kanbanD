@@ -22,4 +22,39 @@ impl Kanban {
             Ok((!felder.is_empty()).then(|| format!("#{nummer} geändert: {}", felder.join(", "))))
         })
     }
+
+    /// Mehrere Aufgaben in einem Commit (R00065); ein ungültiges Feld bricht ab, bevor etwas geschrieben ist.
+    pub fn mehrere_aendern(&self, wer: &Person, aenderungen: &[(u32, Aufgabenaenderung)]) -> Result<Vec<Aufgabe>, Fehler> {
+        if aenderungen.is_empty() {
+            return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
+        }
+        let e = self.ordner().einstellungen()?.unwrap_or_default();
+        let _sperre = self.gesperrt();
+        let mut ergebnis = vec![];
+        let mut geaendert = vec![];
+        let mut felder_alle: Vec<&str> = vec![];
+        let mut dateien = vec![];
+        for (nummer, aenderung) in aenderungen {
+            let mut a = self.ordner().aufgabe(*nummer)?;
+            let felder = a.aendern(aenderung, &e).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
+            if !felder.is_empty() {
+                geaendert.push(format!("#{nummer}"));
+                for f in felder {
+                    if !felder_alle.contains(&f) {
+                        felder_alle.push(f);
+                    }
+                }
+                dateien.push((format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)));
+            }
+            ergebnis.push(a);
+        }
+        if !dateien.is_empty() {
+            let anzahl = match geaendert.len() {
+                1 => String::new(),
+                n => format!(" ({n} Aufgaben)"),
+            };
+            self.aktion(wer, &format!("{} geändert: {}{anzahl}", geaendert.join(", "), felder_alle.join(", ")), &dateien)?;
+        }
+        Ok(ergebnis)
+    }
 }

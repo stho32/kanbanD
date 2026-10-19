@@ -24,9 +24,20 @@
     ];
   }
 
-  /** Personen im Dialog „Zuständige zuweisen“: aktive, dazu stillgelegte, die zuständig sind. */
-  function zuweisbarePersonen(a, personen) {
-    return personen.filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
+  /** Menü für mehrere ausgewählte Karten (R00065); das Argument trägt die Nummernliste „3,5“. u = {spalten, klassen, boards: [{slug, titel, spalte}]} */
+  function massenMenue(nummern, u) {
+    const l = nummern.join(',');
+    return [
+      { text: 'Verschieben nach', unter: u.spalten.map((s, i) => ({ text: s, kuerzel: i < 9 ? String(i + 1) : undefined, act: 'm-verschieben', arg: `${l}|${s}` })) },
+      { text: 'Klasse', unter: [...u.klassen.map(k => ({ text: k.bezeichnung, act: 'm-klasse', arg: `${l}|${k.schluessel}` })), T, { text: 'keine', act: 'm-klasse', arg: `${l}|` }] },
+      { text: 'Fälligkeit', unter: [{ text: 'heute', act: 'm-faellig', arg: `${l}|0` }, { text: 'morgen', act: 'm-faellig', arg: `${l}|1` }, { text: '+1 Woche', act: 'm-faellig', arg: `${l}|7` }, T, { text: 'entfernen', act: 'm-faellig', arg: `${l}|` }] },
+      T,
+      { text: 'Zuständige zuweisen …', act: 'zuweisen', arg: l },
+      { text: 'Mir zuweisen', act: 'm-mich', arg: l },
+      ...(u.boards.length ? [{ text: 'Auf Board legen', unter: u.boards.map(b => ({ text: `${b.titel} · ${b.spalte}`, act: 'm-legen', arg: `${b.slug}|${b.spalte}|${l}` })) }] : []),
+      T,
+      { text: 'Archivieren', act: 'm-archivieren', arg: l },
+    ];
   }
 
   /** Menü eines Spaltenkopfs: i = Position, anzahl = Spaltenzahl, offen = nicht archivierte Karten der Spalte. */
@@ -69,5 +80,5 @@
     return i;
   }
 
-  Object.assign(ziel, { kartenMenue, spaltenMenue, listenMenue, menueSchritt, zuweisbarePersonen });
+  Object.assign(ziel, { kartenMenue, massenMenue, spaltenMenue, listenMenue, menueSchritt });
 })(typeof module !== 'undefined' ? module.exports : window);

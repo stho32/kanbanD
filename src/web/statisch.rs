@@ -24,6 +24,7 @@ dateien! {
     "eingabe.js" => "text/javascript; charset=utf-8",
     "markdown.js" => "text/javascript; charset=utf-8",
     "menue.js" => "text/javascript; charset=utf-8",
+    "auswahl.js" => "text/javascript; charset=utf-8",
     "berichte.js" => "text/javascript; charset=utf-8",
     "wbs.js" => "text/javascript; charset=utf-8",
     "kd-tokens.css" => "text/css; charset=utf-8",
