@@ -280,7 +280,7 @@ function vKarte(a, fertig) {
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => zeitMs(z.beginn)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}">${hm(Date.now() - erster)}</span></span>` : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${vWirkungen(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}${lz}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}<div class="r3">${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}<span class="rechts">${due}${vHerkunft(a)}${vKartenleiste(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="1" style="${cv(cl.farbe)}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${vWirkungen(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -344,11 +344,10 @@ function vNaechsteTeilaufgabe(a) {
   return `<div class="naechste" data-leiste="1"><button class="naechste-box" data-act="teil-karte" data-arg="${a.nummer}|${i}" role="checkbox" aria-checked="false" aria-label="${esc(a.teilaufgaben[i].text)} abhaken"></button><span>${esc(a.teilaufgaben[i].text)}</span></div>`;
 }
 
-/** Leiste beim Zeigen: eigener Timer, links neben den Zuständigen. Klicks darin öffnen die Karte nicht. */
-function vKartenleiste(a) {
-  if (a.archiviert) return '';
-  const meinerLaeuft = laufende(a).some(z => z.wer === S.ich);
-  return `<span class="kleiste" data-leiste="1">${meinerLaeuft ? `<button class="kl" data-act="stop" data-arg="${a.nummer}|${esc(S.ich)}" title="meinen Timer stoppen (t)" aria-label="Timer an #${a.nummer} stoppen">■</button>` : `<button class="kl" data-act="start" data-arg="${a.nummer}" title="meinen Timer starten (t)" aria-label="Timer an #${a.nummer} starten">▶</button>`}</span>`;
+/** Stoppknopf rechts oben, solange der eigene Timer läuft; gestartet wird über Menü oder Taste t. Klicks darauf öffnen die Karte nicht. */
+function vStoppKnopf(a) {
+  if (a.archiviert || !laufende(a).some(z => z.wer === S.ich)) return '';
+  return `<button class="kl" data-act="stop" data-arg="${a.nummer}|${esc(S.ich)}" title="meinen Timer stoppen (t)" aria-label="Timer an #${a.nummer} stoppen">■</button>`;
 }
 
 /** Dialog „Zuständige zuweisen“ für eine oder mehrere Karten: Auswahl wird erst mit Speichern übertragen (R00064, R00065).

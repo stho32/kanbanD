@@ -9,16 +9,13 @@ test.describe('R00064', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test('US-1: Karte ohne mich-Knopf, Mitglieder rechtsbündig, Timer links daneben', async ({ page }) => {
+  test('US-1: Karte ohne mich-Knopf, Mitglieder rechtsbündig', async ({ page }) => {
     await page.goto(k.adresse);
     const karte = page.locator('.ka[data-id="1"]');
     await karte.hover();
     await expect(page.getByRole('button', { name: /mich (zu|von) #1/ })).toHaveCount(0);
-    const timer = page.getByRole('button', { name: 'Timer an #1 starten' });
-    await expect(timer).toBeVisible();
-    const [k1, mitglieder, knopf] = await Promise.all([karte.boundingBox(), karte.locator('.avs').boundingBox(), timer.boundingBox()]);
+    const [k1, mitglieder] = await Promise.all([karte.boundingBox(), karte.locator('.avs').boundingBox()]);
     expect(k1.x + k1.width - (mitglieder.x + mitglieder.width)).toBeLessThan(16);
-    expect(knopf.x + knopf.width).toBeLessThanOrEqual(mitglieder.x);
   });
 
   test('US-2: Dialog aus dem Kartenmenü speichert gesammelt, Abbrechen und Esc verwerfen', async ({ page }) => {

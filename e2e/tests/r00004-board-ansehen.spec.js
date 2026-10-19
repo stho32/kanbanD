@@ -51,16 +51,16 @@ test.describe('R00004', () => {
     for (const darunter of [herkunft, klasse]) expect(darunter.y).toBeGreaterThanOrEqual(titel.y + titel.height - 1);
   });
 
-  test('Unterste Zeile: Herkunft, Timer und Zuständige rechtsbündig nebeneinander', async ({ page }) => {
+  test('Unterste Zeile: Klasse, Fälligkeit, Herkunft und Zuständige rechtsbündig, kein Startknopf', async ({ page }) => {
     await page.goto(k.adresse);
     const zwei = page.locator('.ka[data-id="2"]');
     await zwei.hover();
-    const [karte, herkunft, timer, person] = await Promise.all([zwei, zwei.locator('.org'), zwei.getByRole('button', { name: 'Timer an #2 starten' }), zwei.locator('.avs .pk')].map(l => l.boundingBox()));
+    await expect(zwei.getByRole('button', { name: 'Timer an #2 starten' })).toHaveCount(0);
+    const [karte, klasse, herkunft, person] = await Promise.all([zwei, zwei.locator('.cls'), zwei.locator('.org'), zwei.locator('.avs .pk')].map(l => l.boundingBox()));
     const mitte = b => b.y + b.height / 2;
-    expect(Math.abs(mitte(herkunft) - mitte(person))).toBeLessThan(4);
-    expect(Math.abs(mitte(timer) - mitte(person))).toBeLessThan(4);
-    expect(herkunft.x + herkunft.width).toBeLessThanOrEqual(timer.x);
-    expect(timer.x + timer.width).toBeLessThanOrEqual(person.x);
+    for (const b of [klasse, herkunft]) expect(Math.abs(mitte(b) - mitte(person))).toBeLessThan(4);
+    expect(klasse.x - karte.x).toBeGreaterThan(24); // links bleibt Platz, die Gruppe steht rechts
+    expect(herkunft.x + herkunft.width).toBeLessThanOrEqual(person.x);
     expect(karte.x + karte.width - (person.x + person.width)).toBeLessThan(16);
     expect(karte.y + karte.height - (person.y + person.height)).toBeLessThan(16);
   });

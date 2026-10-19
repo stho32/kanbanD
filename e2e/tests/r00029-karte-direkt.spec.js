@@ -13,16 +13,25 @@ test.describe('R00029', () => {
   test('US-1: Timer an der Karte', async ({ page }) => {
     await page.goto(k.adresse);
     const karte = page.locator('.ka[data-id="1"]');
+    // gestartet wird über Menü oder Taste t; die Karte selbst hat keinen Startknopf mehr, auch kein „+ mich“ (R00064)
     await karte.hover();
-    await page.getByRole('button', { name: 'Timer an #1 starten' }).click();
+    await expect(page.getByRole('button', { name: 'Timer an #1 starten' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'mich zu #1' })).toHaveCount(0);
+    await karte.focus();
+    await page.keyboard.press('t');
     await expect(karte.locator('.lauf.eigen')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    // „+ mich“ an der Karte abgelöst durch R00064 — zuweisen über Menü, m oder den Dialog
-    await karte.hover();
-    await expect(page.getByRole('button', { name: 'mich zu #1' })).toHaveCount(0);
-    await karte.hover();
-    await page.getByRole('button', { name: 'Timer an #1 stoppen' }).click();
+    // Laufanzeige und Stoppknopf stehen rechts oben, sichtbar auch ohne Zeigen
+    await page.mouse.move(0, 0);
+    const stopp = page.getByRole('button', { name: 'Timer an #1 stoppen' });
+    await expect(stopp).toBeVisible();
+    const [kk, lauf, knopf] = await Promise.all([karte.boundingBox(), karte.locator('.lauf').boundingBox(), stopp.boundingBox()]);
+    expect(kk.x + kk.width - (knopf.x + knopf.width)).toBeLessThan(16);
+    expect(knopf.y - kk.y).toBeLessThan(16);
+    expect(lauf.x + lauf.width).toBeLessThanOrEqual(knopf.x);
+    await stopp.click();
     await expect(karte.locator('.lauf')).toHaveCount(0);
+    await expect(stopp).toHaveCount(0);
   });
 
   test('US-2: umbenennen per Doppelklick und F2, Esc verwirft', async ({ page }) => {

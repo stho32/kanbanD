@@ -72,18 +72,17 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.ins-a::after{bottom:-3px}
 .ka.fremd{box-shadow:inset 3px 0 0 var(--kd-agent)}
 /* oben links Nummer und Titel, alles andere darunter */
-.ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0;margin-bottom:4px}
 .ka .r0 .t,.ka .r0 .umbenennen{flex:1;min-width:0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
-.ka .r1 .lauf{margin-left:auto}
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
 .ka.fertig .t{color:var(--kd-muted)}
 .ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
 .ka .r3 .cls{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ka .r3 .due{font-family:var(--kd-mono)}
-/* rechts in der untersten Zeile: Fälligkeit, Herkunft, Timer, Zuständige; reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile */
+/* unterste Zeile: links der Timer, rechts Klasse, Teilaufgaben, Fälligkeit, Herkunft, Zuständige; reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile */
 .ka .r3 .rechts{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;white-space:normal}
 .ka .r3 .orgs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px}
 .due.warn{color:var(--kd-warn)}
@@ -107,6 +106,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .wirkung-form .fuss{display:flex;gap:var(--kd-s2);align-items:center;flex-wrap:wrap;margin-top:var(--kd-s2)}
 .wirkung-form .fuss .muted{margin-right:auto;font-size:11px}
 .org.leer{background:none;border:1px dashed var(--kd-line-strong);color:var(--kd-faint)}
+/* auf der Karte tritt die Herkunft zurück, bis man auf sie zeigt */
+.ka .org{background:none;color:var(--kd-faint);transition:background .1s,color .1s}
+.ka .org.leer{border-color:transparent}
 .cls{font-size:10.5px;font-weight:600;color:var(--kd-text)}
 .cls::before{content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:var(--cl);vertical-align:0}
 .pk-still{opacity:.5}
@@ -417,9 +419,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .schnell:empty{display:none}
 .schnell .pk{width:16px;height:16px;font-size:8.5px}
 /* Kartenleiste */
-.kleiste{display:flex;gap:2px;opacity:0;transition:opacity .1s}
-.ka .r3 .kl{height:18px;min-width:20px;padding:0 4px}
-.ka:hover .kleiste,.ka:focus-within .kleiste,.ka:focus .kleiste{opacity:1}
+/* rechts oben: Laufanzeige und Stoppknopf des eigenen Timers */
+.ka .r0 .ecke{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;align-self:flex-start}
+.ka .ecke .kl{height:18px;min-width:20px;padding:0 4px}
 .kl{height:20px;min-width:22px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
 .kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
 .inp.umbenennen{width:100%;height:24px}
