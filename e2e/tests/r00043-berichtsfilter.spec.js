@@ -5,12 +5,13 @@ const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const tag = (n, h) => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(h)}:00`; };
 const zeiten = zeilen => '```kanbanD-time\n' + zeilen.map(([n, h, wer]) => `${tag(n, h)} · ${tag(n, h + 1)} · ${wer}`).join('\n') + '\n```\n';
 
+// Stefan hat auch heute eine Zeit auf #1 — sonst ist sein Stundenzettel montags leer, weil gestern in der Vorwoche liegt
 test.describe('R00043', () => {
   let k;
   test.beforeEach(async ({ page }) => {
     k = await kanbanStarten(einrichten({
       'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## Erledigt\n',
-      'aufgaben/0001-fehler.md': `---\nid: 1\ntitle: Fehler\nclass: bug\nlabels: [ui]\n---\n${zeiten([[-1, 9, 'st'], [0, 1, 'mi']])}`,
+      'aufgaben/0001-fehler.md': `---\nid: 1\ntitle: Fehler\nclass: bug\nlabels: [ui]\n---\n${zeiten([[-1, 9, 'st'], [0, 1, 'mi'], [0, 3, 'st']])}`,
       'aufgaben/0002-funktion.md': `---\nid: 2\ntitle: Funktion\nclass: feature\n---\n${zeiten([[-1, 10, 'mi'], [0, 2, 'st']])}`,
     }));
     await alsPerson(page, 'st');
