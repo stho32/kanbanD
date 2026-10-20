@@ -82,7 +82,7 @@ test.describe('R00057', () => {
     await karte(page, 7).getByRole('link', { name: '+ kd:I0048' }).click();
     await expect(z(page, 'I0048')).toHaveClass(/\brot\b/);
     await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveText(['#7']);
-    await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveAttribute('title', '#7 Dialog Export bauen — legt an');
+    await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveAttribute('title', '#7 Dialog Export bauen — anlegen');
     await expect(z(page, 'I0047').locator('.wbs-aufgabe')).toHaveCount(0);
     await z(page, 'I0048').locator('.wbs-aufgabe').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #7' })).toBeVisible();

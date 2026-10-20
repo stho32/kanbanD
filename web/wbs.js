@@ -113,7 +113,7 @@
   }
 
   /** Zeichen und Wort je Aktion einer Wirkung (R00057). */
-  const WIRKUNG = { create: { zeichen: '+', wort: 'legt an' }, rework: { zeichen: '↻', wort: 'setzt zur Überarbeitung auf rot' }, remove: { zeichen: '−', wort: 'verwirft' } };
+  const WIRKUNG = { create: { zeichen: '+', wort: 'anlegen' }, rework: { zeichen: '↻', wort: 'überarbeiten' }, remove: { zeichen: '−', wort: 'verwerfen' } };
 
   /** Ein Chip je Wirkung: `+ kd:I0048` mit Ziel in der WBS-Sicht (`#/wbs/kd/I0048`). */
   function wirkungChip(w) {

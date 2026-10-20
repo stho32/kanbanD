@@ -92,7 +92,7 @@ test('Nachfahren und Menü einer Zeile', () => {
 });
 
 test('Chip je Wirkung mit Zeichen der Aktion und Ziel in der WBS-Sicht (R00057)', () => {
-  assert.deepStrictEqual(wirkungChip({ application: 'kd', action: 'create', node: 'I0048', parent: 'D0002' }), { text: '+ kd:I0048', ziel: '#/wbs/kd/I0048', titel: 'legt an: kd:I0048 — in der WBS-Sicht zeigen', aktion: 'create' });
+  assert.deepStrictEqual(wirkungChip({ application: 'kd', action: 'create', node: 'I0048', parent: 'D0002' }), { text: '+ kd:I0048', ziel: '#/wbs/kd/I0048', titel: 'anlegen: kd:I0048 — in der WBS-Sicht zeigen', aktion: 'create' });
   assert.strictEqual(wirkungChip({ application: 'kd', action: 'rework', node: 'D0002' }).text, '↻ kd:D0002');
   assert.strictEqual(wirkungChip({ application: 'kd', action: 'remove', node: 'I0014' }).text, '− kd:I0014');
   assert.deepStrictEqual([wirkungChip({ application: 'kd', action: 'create' }).text, wirkungChip({ application: 'kd', action: 'create' }).ziel], ['+ kd', '#/wbs/kd'], 'ohne Knoten die Anwendung');
