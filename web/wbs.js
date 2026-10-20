@@ -122,21 +122,34 @@
     return { text: `${a.zeichen} ${schluessel}`, ziel: `#/wbs/${encodeURIComponent(w.application)}${w.node ? '/' + encodeURIComponent(w.node) : ''}`, titel: `${a.wort}: ${schluessel} — in der WBS-Sicht zeigen`, aktion: w.action };
   }
 
-  /** Eingetreten wie der Server (`eingetreten` in src/dienst/wirkungen.rs, R00071): create — der angelegte Knoten steht und
-   *  ist nicht verworfen; remove — verworfen oder fehlt; rework — `executed` nicht false. `null`: WBS nicht geladen. */
-  function eingetreten(w, sicht) {
-    if (w.action === 'rework') return w.executed !== false;
+  /** Im Zielzustand wie der Server (`erfuellt` in src/dienst/wirkungen.rs, R00072): create und rework — der Knoten ist
+   *  gerechnet gruen; remove — verworfen oder fehlt; create ohne Knoten nicht. `null`: WBS nicht geladen. */
+  function erfuellt(w, sicht) {
     if (!w.node) return false;
     if (!sicht) return null;
     const k = sicht.knoten.find(x => x.id === w.node);
-    return w.action === 'create' ? !!k && k.status !== 'verworfen' : !k || k.status === 'verworfen';
+    return w.action === 'remove' ? !k || k.status === 'verworfen' : !!k && k.gerechnet === 'gruen';
   }
 
-  /** Anwendungen, auf die Karten des Boards wirken — ihre WBS braucht der Punkt am Chip (R00071). */
+  /** Der eine Punkt der Karte (R00072): an, wenn alle Wirkungen im Zielzustand sind, aus bei einer offenen, sonst grau;
+   *  je Wirkung eine Zeile für den Tooltip. Ohne Wirkungen null. */
+  function wirkungsPunkt(a, wbsJe) {
+    const ws = a.wirkungen || [];
+    if (!ws.length) return null;
+    const zeilen = ws.map(w => {
+      const sicht = wbsJe[w.application], e = erfuellt(w, sicht), k = sicht && w.node && sicht.knoten.find(x => x.id === w.node);
+      const stand = e == null ? 'WBS nicht geladen' : !w.node ? 'noch nicht angelegt' : w.action === 'remove' ? (e ? 'verworfen' : 'noch aktiv') : !k ? 'Knoten fehlt' : `Knoten ${k.gerechnet}`;
+      return { e, text: `${wirkungChip(w).text} ${(WIRKUNG[w.action] || { wort: w.action }).wort} — ${stand}` };
+    });
+    const stand = zeilen.some(z => z.e === false) ? 'aus' : zeilen.some(z => z.e == null) ? 'grau' : 'an';
+    return { stand, zeilen: zeilen.map(z => z.text) };
+  }
+
+  /** Anwendungen, auf die Karten des Boards wirken — ihre WBS braucht der Punkt der Karte (R00072). */
   function wirkungsAnwendungen(board, aufgaben) {
     if (!board) return [];
     const nummern = new Set(board.spalten.flatMap(s => s.aufgaben));
-    return [...new Set(aufgaben.filter(a => nummern.has(a.nummer)).flatMap(a => (a.wirkungen || []).filter(w => w.action !== 'rework').map(w => w.application)))];
+    return [...new Set(aufgaben.filter(a => nummern.has(a.nummer)).flatMap(a => (a.wirkungen || []).map(w => w.application)))];
   }
 
   /** Der Knoten in `#/wbs/<kürzel>/<id>`, sonst leer. */
@@ -214,5 +227,5 @@
     return [...new Set(k)];
   }
 
-  Object.assign(ziel, { eingetreten, wirkungsAnwendungen, kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, bindungUmschalten, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  Object.assign(ziel, { erfuellt, wirkungsPunkt, wirkungsAnwendungen, kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, bindungUmschalten, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

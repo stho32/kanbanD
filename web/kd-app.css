@@ -103,9 +103,10 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .ampel{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--kd-wbs-error);flex:none}
 .ampel.an{background:var(--kd-wbs-ok)}
 .ampel.grau{background:var(--kd-wbs-neutral)}
-.wchip .punkt{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;background:var(--kd-wbs-error)}
-.wchip .punkt.an{background:var(--kd-wbs-ok)}
-.wchip .punkt.grau{background:var(--kd-wbs-neutral)}
+/* Wirkungsstand der Karte (R00072): ein Punkt, kein Link */
+.wpunkt{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;align-self:center;background:var(--kd-wbs-error);cursor:default}
+.wpunkt.an{background:var(--kd-wbs-ok)}
+.wpunkt.grau{background:var(--kd-wbs-neutral)}
 .as.schalter{height:18px;padding:0 5px;font-size:10.5px}
 .wbs-aufgaben{display:inline-flex;gap:3px;margin-left:var(--kd-s2)}
 .wbs-aufgabe{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;line-height:15px}

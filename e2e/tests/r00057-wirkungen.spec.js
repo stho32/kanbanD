@@ -27,13 +27,16 @@ test.describe('R00057', () => {
   const karte = (page, nr) => page.locator(`.ka[data-id="${nr}"]`);
   const z = (page, id) => page.locator(`tr.wbs-z[data-id="${id}"]`);
 
-  test('Chips + / ↻ / − an Karte und Aufgabenfenster führen zur Zeile in der WBS-Sicht', async ({ page }) => {
+  test('Chips + / ↻ / − im Aufgabenfenster führen zur Zeile in der WBS-Sicht; die Karte zeigt einen Punkt (R00072)', async ({ page }) => {
     await starten(page, {
       'aufgaben/0007-dialog-export-bauen.md': aufgabe(7, 'Dialog Export bauen', 'wbs-effects:\n  - {application: kd, action: create, node: I0047, parent: D0002, level: Interaction, name: Ansehen, done-criterion: US-1}\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n'),
       'aufgaben/0008-ziehen-ueberarbeiten.md': aufgabe(8, 'Ziehen überarbeiten'),
     });
-    await expect(karte(page, 7).locator('.wchip')).toHaveText(['+ kd:I0047', '↻ kd:D0002', '− kd:I0014']);
-    await expect(karte(page, 8).locator('.wchip')).toHaveCount(0);
+    await expect(karte(page, 7).locator('.wchip')).toHaveCount(0);
+    const punkt = karte(page, 7).locator('.wpunkt');
+    await expect(punkt).toHaveClass(/\baus\b/, { timeout: 5000 });
+    await expect(punkt).toHaveAttribute('title', 'WBS-Wirkungen: noch nicht alle im Zielzustand\n+ kd:I0047 anlegen — Knoten gruen\n↻ kd:D0002 überarbeiten — Knoten gruen\n− kd:I0014 verwerfen — noch aktiv');
+    await expect(karte(page, 8).locator('.wpunkt')).toHaveCount(0);
     await karte(page, 7).locator('.t').click();
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #7' });
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0047', '↻ kd:D0002', '− kd:I0014']);
@@ -43,7 +46,8 @@ test.describe('R00057', () => {
     await expect(fenster).toHaveCount(0);
     await expect(z(page, 'D0002')).toHaveClass(/\bziel\b/);
     await page.goBack();
-    await karte(page, 7).getByRole('link', { name: '+ kd:I0047' }).click();
+    await karte(page, 7).locator('.t').click();
+    await page.getByRole('dialog', { name: 'Aufgabe #7' }).getByRole('link', { name: '+ kd:I0047' }).click();
     await expect(z(page, 'I0047')).toBeVisible();
     await expect(z(page, 'I0047')).toHaveClass(/\bziel\b/);
   });
@@ -72,14 +76,15 @@ test.describe('R00057', () => {
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0048']);
     await expect(fenster.getByRole('button', { name: 'Wirkung + kd:I0048 eingetreten' })).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');
-    await expect(karte(page, 7).locator('.wchip')).toHaveText(['+ kd:I0048']);
+    await expect(karte(page, 7).locator('.wpunkt')).toHaveAttribute('title', /\+ kd:I0048 anlegen — Knoten rot/);
     expect(arbeit.lies()).toContain('| I0048 | Interaction | D0002 | Export | rot | US-1 |');
     expect(k.lies('aufgaben/0007-dialog-export-bauen.md')).toMatch(/  - \{application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: Export, done-criterion: US-1, executed: \d{4}-\d\d-\d\d\}/);
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 2);
     expect(k.git('log', '-2', '--format=%s')).toBe('#7 Wirkung auf kd:I0048 (create) eingetreten\n#7 Wirkung auf kd (create „Export“) vermerkt');
     expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
     // Gegenanzeige: die WBS-Sicht zeigt an I0048 die Aufgabe, Klick öffnet sie
-    await karte(page, 7).getByRole('link', { name: '+ kd:I0048' }).click();
+    await karte(page, 7).locator('.t').click();
+    await page.getByRole('dialog', { name: 'Aufgabe #7' }).getByRole('link', { name: '+ kd:I0048' }).click();
     await expect(z(page, 'I0048')).toHaveClass(/\brot\b/);
     await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveText(['#7']);
     await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveAttribute('title', '#7 Dialog Export bauen — anlegen');

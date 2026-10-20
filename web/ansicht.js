@@ -227,16 +227,15 @@ function vHerkunftChip(x) {
   return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
 /** Wirkungen einer Aufgabe auf die WBS als Chips + / ↻ / − mit Link zur Zeile in der WBS-Sicht (R00057). */
-function vWirkungChip(w, e) {
+function vWirkungChip(w) {
   const c = wirkungChip(w);
-  const punkt = e === undefined ? '' : `<i class="punkt ${e == null ? 'grau' : e ? 'an' : 'aus'}" aria-hidden="true"></i>`;
-  const stand = e === undefined ? '' : e == null ? ' · Eintritt unbekannt (WBS nicht geladen)' : e ? ' · eingetreten' : ' · noch nicht eingetreten — schalten im Aufgabenfenster';
-  return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel + stand)}"${e === undefined ? '' : ` data-eingetreten="${e}"`}>${punkt}${esc(c.text)}</a>`;
+  return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel)}">${esc(c.text)}</a>`;
 }
-/** Ampel und Schalter des Eintritts einer Wirkung (R00071): grün eingetreten, rot nicht, grau WBS nicht lesbar. */
+/** Ampel und Schalter einer Wirkung: die Ampel zeigt den Zielzustand (R00072) — grün gebaut bzw. verworfen, rot offen,
+ *  grau WBS nicht lesbar; der Schalter zeigt und schaltet den Eintritt (R00071). */
 function vEintritt(x, j) {
-  const e = ((S.ui.eintritt || []).find(s => s.i === j) || {}).eingetreten, name = esc(wirkungChip(x).text);
-  const ampel = e == null ? ['grau', 'WBS nicht lesbar — Eintritt unbekannt'] : e ? ['an', 'eingetreten'] : ['aus', 'nicht eingetreten'];
+  const s = (S.ui.eintritt || []).find(z => z.i === j) || {}, e = s.eingetreten, name = esc(wirkungChip(x).text);
+  const ampel = s.erfuellt == null ? ['grau', 'WBS nicht lesbar — Stand unbekannt'] : s.erfuellt ? ['an', 'im Zielzustand'] : ['aus', 'noch nicht im Zielzustand'];
   return `<i class="ampel ${ampel[0]}" title="${ampel[1]}" aria-hidden="true"></i>${vWirkungChip(x)}<button class="as schalter${e ? ' an' : ''}" data-act="wirkung-eintritt" data-arg="${j}|${!e}" aria-pressed="${!!e}" aria-label="Wirkung ${name} eingetreten"${e == null ? ' disabled' : ''} title="${e ? 'eingetreten — Klick nimmt die Änderung an der WBS zurück' : 'nicht eingetreten — Klick führt die Änderung an der WBS aus'}">eingetreten</button>`;
 }
 /** Feld `wbs-effects` im Aufgabenfenster: Chips mit Ampel, Schalter und ×, darunter das Formular einer neuen Wirkung. */
@@ -272,8 +271,14 @@ function vWirkungForm(register) {
     + (anlegen ? feld('parent', 'Eltern', 'D0002') + wahl('level', 'Ebene', ['Dialog', 'Interaction', 'Feature', 'Bubble'].map(e => [e, e])) + feld('name', 'Name', 'was entsteht') + feld('done_criterion', 'Fertig', 'US-1') : feld('node', 'Knoten', 'D0002'));
   return `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${felder}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span class="muted">eingetreten: ${anlegen ? 'neuer Knoten rot mit der nächsten freien ID' : f.action === 'rework' ? 'Knoten und zählende Nachfahren rot' : 'Knoten und Nachfahren verworfen'} · vermerken ändert die WBS noch nicht</span><button class="btn" data-act="wirkung-zu">abbrechen</button><button class="btn btn-haupt" data-act="wirkung-setzen">vermerken</button></div></div>`;
 }
-/** Chips an der Karte, je mit Punkt: grün eingetreten, rot noch nicht, grau WBS nicht geladen (R00071); geschaltet wird im Fenster. */
-const vWirkungen = a => (a.wirkungen || []).length ? `<span class="wchips">${a.wirkungen.map(w => vWirkungChip(w, eingetreten(w, (S.pruefWbs || {})[w.application]))).join('')}</span>` : '';
+/** Ein Punkt für alle Wirkungen der Karte (R00072): grün im Zielzustand, rot offen, grau WBS nicht geladen; kein Link —
+ *  Chips, Links und Schalter stehen im Aufgabenfenster. */
+function vWirkungsPunkt(a) {
+  const p = wirkungsPunkt(a, S.pruefWbs || {});
+  if (!p) return '';
+  const wort = { an: 'alle im Zielzustand', aus: 'noch nicht alle im Zielzustand', grau: 'Stand unbekannt' }[p.stand];
+  return `<span class="wpunkt ${p.stand}" role="img" aria-label="WBS-Wirkungen: ${wort}" title="${esc(`WBS-Wirkungen: ${wort}\n${p.zeilen.join('\n')}`)}"></span>`;
+}
 function vHerkunft(a) {
   const o = a.herkunft.length ? a.herkunft : ['thin air'];
   return `<span class="orgs">${o.map(vHerkunftChip).join('')}</span>`;
@@ -303,7 +308,7 @@ function vKarte(a, fertig) {
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${vWirkungen(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vWirkungsPunkt(a)}${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */

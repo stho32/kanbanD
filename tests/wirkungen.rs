@@ -47,6 +47,9 @@ impl Lage {
     fn eingetreten(&self) -> Vec<Option<bool>> {
         self.kanban.wirkungen_stand(7).unwrap().iter().map(|s| s.eingetreten).collect()
     }
+    fn erfuellt(&self) -> Vec<Option<bool>> {
+        self.kanban.wirkungen_stand(7).unwrap().iter().map(|s| s.erfuellt).collect()
+    }
     fn plan(&self) -> String {
         gemeinsam::lies(&self.arbeit, "Dokumentation/Planung/kasse.md")
     }
@@ -242,4 +245,21 @@ fn defekte_aufgabe_ist_423_und_die_wbs_bleibt_unberuehrt() {
     let vorher = l.plan();
     assert!(matches!(l.setzen(serde_json::json!({"application": "kc", "action": "rework", "node": "D0002"})), Err(Fehler::Defekt(m)) if m.contains("wbs-effects[0]")));
     assert_eq!(l.plan(), vorher);
+}
+
+#[test]
+fn zielzustand_gebaut_ist_erfuellt_auch_ohne_eintritt() {
+    let l = lage();
+    l.setzen(serde_json::json!({"application": "kc", "action": "rework", "node": "I0014"})).unwrap();
+    l.setzen(serde_json::json!({"application": "kc", "action": "remove", "node": "I0047"})).unwrap();
+    l.setzen(json(EXPORT)).unwrap();
+    assert_eq!(l.erfuellt(), [Some(true), Some(false), Some(false)], "I0014 gruen gebaut, I0047 noch aktiv, create ohne Knoten");
+    assert_eq!(l.eingetreten(), [Some(false), Some(false), Some(false)]);
+    l.schalten(0, true).unwrap();
+    assert_eq!(l.erfuellt()[0], Some(false), "überarbeiten eingetreten: der Knoten ist rot, das Ziel noch offen");
+    l.kanban.wbs_status_setzen("kc", "B0001", "gruen").unwrap();
+    assert_eq!(l.erfuellt()[0], Some(true), "wieder gebaut");
+    l.schalten(1, true).unwrap();
+    l.schalten(2, true).unwrap();
+    assert_eq!(l.erfuellt()[1..], [Some(true), Some(false)], "verworfen ist erfüllt; der neue Knoten ist rot, noch nicht gebaut");
 }

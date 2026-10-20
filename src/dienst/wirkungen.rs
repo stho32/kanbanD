@@ -111,7 +111,7 @@ impl Kanban {
     pub fn wirkungen_stand(&self, nr: u32) -> Result<Vec<Wirkungsstand>, Fehler> {
         let a = self.ordner().aufgabe(nr)?;
         let mut tabellen = BTreeMap::new();
-        Ok(a.wirkungen.into_iter().enumerate().map(|(i, w)| Wirkungsstand { i, eingetreten: self.eingetreten(&w, &mut tabellen), wirkung: w }).collect())
+        Ok(a.wirkungen.into_iter().enumerate().map(|(i, w)| Wirkungsstand { i, eingetreten: self.eingetreten(&w, &mut tabellen), erfuellt: self.erfuellt(&w, &mut tabellen), wirkung: w }).collect())
     }
 
     /// Schaltet den Eintritt der Wirkung `i`: an führt sie in der WBS aus, aus macht sie rückgängig, wo es eindeutig geht —
@@ -142,6 +142,18 @@ impl Kanban {
         Ok(a)
     }
 
+    /// Im Zielzustand (R00072): create und rework — der Knoten ist gerechnet gruen; remove — verworfen oder fehlt;
+    /// create ohne Knoten nicht. `None`: WBS nicht lesbar.
+    fn erfuellt(&self, w: &Wirkung, tabellen: &mut BTreeMap<String, Option<WbsTabelle>>) -> Option<bool> {
+        let Some(id) = w.knoten.as_deref() else { return Some(false) };
+        let tabelle = tabellen.entry(w.anwendung.clone()).or_insert_with(|| self.wbs_tabelle_lesen(&w.anwendung).ok()).as_ref()?;
+        let knoten = tabelle.knoten(id);
+        Some(match w.aktion {
+            Aktion::Verwerfen => knoten.is_none_or(|k| k.status == "verworfen"),
+            _ => knoten.is_some() && tabelle.gerechneter_status(id) == "gruen",
+        })
+    }
+
     /// Eingetreten: create — der angelegte Knoten steht und zählt; remove — der Knoten ist verworfen oder fehlt;
     /// rework — vermerkt (`executed`). `None`: WBS nicht lesbar.
     fn eingetreten(&self, w: &Wirkung, tabellen: &mut BTreeMap<String, Option<WbsTabelle>>) -> Option<bool> {
@@ -166,13 +178,14 @@ fn beschreibung(w: &Wirkung) -> String {
     }
 }
 
-/// `GET /api/aufgaben/{nr}/wbs-effects`: eine Wirkung mit Position und Eintritt (`null`: WBS nicht lesbar).
+/// `GET /api/aufgaben/{nr}/wbs-effects`: eine Wirkung mit Position, Eintritt und Zielzustand (`null`: WBS nicht lesbar).
 #[derive(Debug, Serialize)]
 pub struct Wirkungsstand {
     pub i: usize,
     #[serde(flatten)]
     pub wirkung: Wirkung,
     pub eingetreten: Option<bool>,
+    pub erfuellt: Option<bool>,
 }
 
 #[cfg(test)]

@@ -285,6 +285,9 @@ zuletzt: 2026-10-20
 | B0201 | Bubble | I0059 | Verwerfen aufheben | gruen | Test gruen | WBS-Text, Knoten, Grund → Knoten und verworfene Nachfahren zählen wieder, Blätter rot, Grund aus der Notiz |  |  |  |  |  |
 | B0202 | Bubble | I0059 | Vermerken, Stand, Schalter im Dienst | gruen | Test gruen | PATCH vermerkt ohne WBS-Änderung; GET …/wbs-effects mit eingetreten; POST …/eintritt {an} führt aus oder nimmt zurück |  |  |  |  |  |
 | B0203 | Bubble | I0059 | Ampel und Schalter im Aufgabenfenster | gruen | Test gruen | Chip je Wirkung mit Ampel (grün, rot, grau) und Schalter „eingetreten“; „+ Wirkung“ vermerkt |  |  |  |  |  |
+| I0060 | Interaction | D0002 | Wirkungsstand als Punkt | gruen | US-1..US-2 |  |  |  | I0059 | R00072 | Auftrag 2026-10-20: ein Punkt statt Chips, Zielzustand statt Eintritt |
+| B0204 | Bubble | I0060 | Zielzustand im Dienst | gruen | Test gruen | Wirkung, WBS → erfuellt: create/rework Knoten gerechnet gruen, remove verworfen oder fehlt; in GET …/wbs-effects |  |  |  |  |  |
+| B0205 | Bubble | I0060 | Ein Punkt je Karte | gruen | Test gruen | Wirkungen der Karte, WBS je Anwendung → Punkt an/aus/grau mit Tooltip je Wirkung, kein Link; Ampel im Fenster = Zielzustand |  |  |  |  |  |
 
 ## Offene Fragen
 

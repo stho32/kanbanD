@@ -35,18 +35,19 @@ test.describe('R00071', () => {
     return fenster;
   };
 
-  test('US-1: einen grünen Knoten anbinden — er bleibt grün, die WBS-Sicht zeigt die Karte, die Ampel ist rot', async ({ page }) => {
+  test('US-1: einen grünen Knoten anbinden — er bleibt grün, die WBS-Sicht zeigt die Karte, Ampel grün, Schalter aus', async ({ page }) => {
     const plan = arbeit.lies();
     const fenster = await vermerken(page, 'rework', 'I0014');
-    await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\baus\b/);
+    // Ampel = Zielzustand (R00072): I0014 ist gebaut; der Schalter zeigt, dass nichts ausgeführt wurde
+    await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\ban\b/);
     await expect(fenster.getByRole('button', { name: 'Wirkung ↻ kd:I0014 eingetreten' })).toHaveAttribute('aria-pressed', 'false');
     expect(arbeit.lies()).toBe(plan);
-    // rework zeigt den Eintritt aus dem Vermerk; der Schalter steht nur im Fenster, die Karte zeigt den Punkt
-    const chip = page.locator('.ka[data-id="8"] .wchip');
-    await expect(chip).toHaveAttribute('data-eingetreten', 'false');
-    await expect(chip.locator('.punkt')).toHaveClass(/\baus\b/);
-    await expect(chip).toHaveAttribute('title', /noch nicht eingetreten/);
-    await expect(page.locator('.ka[data-id="8"] button')).toHaveCount(0);
+    // die Karte zeigt einen grünen Punkt ohne Link und ohne Schalter (R00072)
+    const punkt = page.locator('.ka[data-id="8"] .wpunkt');
+    await expect(punkt).toHaveClass(/\ban\b/);
+    await expect(punkt).toHaveAttribute('title', 'WBS-Wirkungen: alle im Zielzustand\n↻ kd:I0014 überarbeiten — Knoten gruen');
+    await expect(page.locator('.ka[data-id="8"] button, .ka[data-id="8"] a')).toHaveCount(0);
+    expect(await punkt.evaluate(e => getComputedStyle(e).cursor)).toBe('default');
     expect(k.lies('aufgaben/0008-ziehen.md')).toContain('  - {application: kd, action: rework, node: I0014, executed: false}');
     await fenster.getByRole('link', { name: '↻ kd:I0014' }).click();
     const z = page.locator('tr.wbs-z[data-id="I0014"]');
@@ -60,15 +61,14 @@ test.describe('R00071', () => {
     await schalter.click();
     await expect(schalter).toHaveAttribute('aria-pressed', 'true');
     await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\ban\b/);
-    const chip = page.locator('.ka[data-id="8"] .wchip');
-    await expect(chip).toHaveAttribute('data-eingetreten', 'true');
-    await expect(chip.locator('.punkt')).toHaveClass(/\ban\b/);
+    const punkt = page.locator('.ka[data-id="8"] .wpunkt');
+    await expect(punkt).toHaveClass(/\ban\b/);
     expect(arbeit.lies()).toContain('| I0014 | Interaction | D0002 | Ziehen | verworfen |');
     expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|#8 Wirkung auf kd:I0014 (remove) eingetreten');
     await schalter.click();
     await expect(schalter).toHaveAttribute('aria-pressed', 'false');
     await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\baus\b/);
-    await expect(chip).toHaveAttribute('data-eingetreten', 'false');
+    await expect(punkt).toHaveClass(/\baus\b/);
     expect(arbeit.lies()).toContain('| I0014 | Interaction | D0002 | Ziehen | rot |');
     expect(arbeit.lies()).not.toContain('verworfen: #8');
     expect(k.git('log', '-1', '--format=%s')).toBe('#8 Wirkung auf kd:I0014 (remove) zurückgenommen');

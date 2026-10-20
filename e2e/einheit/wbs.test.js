@@ -1,7 +1,7 @@
 // Unit-Tests der WBS-Sicht (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { prozente, standText, gebundeneAnwendungen, bindungUmschalten, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe, wirkungenJeKnoten, eingetreten, wirkungsAnwendungen } = require('../../web/wbs.js');
+const { prozente, standText, gebundeneAnwendungen, bindungUmschalten, tiefen, mitKindern, anzeigename, anforderungsIds, zugeklappt, ausgeblendet, statusSetzbar, kindEbenen, nachfahren, wbsZeilenMenue, wirkungChip, wbsZiel, wirkungEingabe, wirkungenJeKnoten, erfuellt, wirkungsPunkt, wirkungsAnwendungen } = require('../../web/wbs.js');
 
 const kd = { kuerzel: 'kd', name: 'kanbanD' }, kc = { kuerzel: 'kc', name: 'Kasse' };
 
@@ -125,23 +125,27 @@ test('Gegenanzeige: je Knoten der Anwendung die Aufgaben, die auf ihn wirken', (
   assert.deepStrictEqual(wirkungenJeKnoten([], 'kd'), {});
 });
 
-test('Eintritt einer Wirkung wie der Server (R00071)', () => {
-  const sicht = { knoten: [{ id: 'I0014', status: 'gruen' }, { id: 'I0015', status: 'verworfen' }] };
-  assert.strictEqual(eingetreten({ action: 'rework', node: 'I0014', executed: false }, sicht), false);
-  assert.strictEqual(eingetreten({ action: 'rework', node: 'I0014', executed: '2026-10-20' }, null), true, 'rework braucht die WBS nicht');
-  assert.strictEqual(eingetreten({ action: 'rework', node: 'I0014' }, sicht), true, 'ohne executed: Altbestand gilt als eingetreten');
-  assert.strictEqual(eingetreten({ action: 'remove', node: 'I0014' }, sicht), false);
-  assert.strictEqual(eingetreten({ action: 'remove', node: 'I0015' }, sicht), true);
-  assert.strictEqual(eingetreten({ action: 'remove', node: 'I0099' }, sicht), true, 'fehlt: eingetreten');
-  assert.strictEqual(eingetreten({ action: 'create', node: 'I0014' }, sicht), true);
-  assert.strictEqual(eingetreten({ action: 'create', node: 'I0015' }, sicht), false, 'verworfen: zurückgenommen');
-  assert.strictEqual(eingetreten({ action: 'create' }, sicht), false, 'noch ohne Knoten');
-  assert.strictEqual(eingetreten({ action: 'remove', node: 'I0014' }, null), null, 'WBS nicht geladen');
-});
-
-test('Anwendungen, deren WBS der Punkt am Chip braucht: Wirkungen der Karten des Boards ohne rework', () => {
+test('Anwendungen, deren WBS der Punkt der Karte braucht: Wirkungen der Karten des Boards', () => {
   const board = { spalten: [{ aufgaben: [7, 8] }] };
   const aufgaben = [{ nummer: 7, wirkungen: [{ application: 'kd', action: 'remove' }, { application: 'kc', action: 'rework' }] }, { nummer: 9, wirkungen: [{ application: 'xx', action: 'create' }] }];
-  assert.deepStrictEqual(wirkungsAnwendungen(board, aufgaben), ['kd']);
+  assert.deepStrictEqual(wirkungsAnwendungen(board, aufgaben), ['kd', 'kc']);
   assert.deepStrictEqual(wirkungsAnwendungen(null, aufgaben), []);
+});
+
+test('Zielzustand und der eine Punkt der Karte (R00072)', () => {
+  const sicht = { knoten: [{ id: 'I0014', status: 'gruen', gerechnet: 'gruen' }, { id: 'I0047', status: 'rot', gerechnet: 'rot' }, { id: 'I0015', status: 'verworfen', gerechnet: 'verworfen' }] };
+  assert.strictEqual(erfuellt({ action: 'rework', node: 'I0014', executed: false }, sicht), true, 'gebaut, auch ohne Eintritt');
+  assert.strictEqual(erfuellt({ action: 'rework', node: 'I0047' }, sicht), false);
+  assert.strictEqual(erfuellt({ action: 'create', node: 'I0014' }, sicht), true);
+  assert.strictEqual(erfuellt({ action: 'create' }, sicht), false);
+  assert.strictEqual(erfuellt({ action: 'remove', node: 'I0015' }, sicht), true);
+  assert.strictEqual(erfuellt({ action: 'remove', node: 'I0047' }, sicht), false);
+  assert.strictEqual(erfuellt({ action: 'rework', node: 'I0014' }, null), null);
+  const r = (node, application = 'kd') => ({ application, action: 'rework', node });
+  assert.strictEqual(wirkungsPunkt({ wirkungen: [] }, { kd: sicht }), null);
+  assert.deepStrictEqual(wirkungsPunkt({ wirkungen: [r('I0014')] }, { kd: sicht }), { stand: 'an', zeilen: ['↻ kd:I0014 überarbeiten — Knoten gruen'] });
+  assert.deepStrictEqual(wirkungsPunkt({ wirkungen: [r('I0014'), { application: 'kd', action: 'remove', node: 'I0047' }] }, { kd: sicht }), { stand: 'aus', zeilen: ['↻ kd:I0014 überarbeiten — Knoten gruen', '− kd:I0047 verwerfen — noch aktiv'] });
+  assert.strictEqual(wirkungsPunkt({ wirkungen: [r('I0014'), r('I0001', 'kc')] }, { kd: sicht }).stand, 'grau', 'keine offen, eine unbekannt');
+  assert.strictEqual(wirkungsPunkt({ wirkungen: [r('I0047'), r('I0001', 'kc')] }, { kd: sicht }).stand, 'aus', 'eine offen schlägt unbekannt');
+  assert.deepStrictEqual(wirkungsPunkt({ wirkungen: [{ application: 'kd', action: 'create', name: 'X' }, r('I0099')] }, { kd: sicht }).zeilen, ['+ kd anlegen — noch nicht angelegt', '↻ kd:I0099 überarbeiten — Knoten fehlt']);
 });
