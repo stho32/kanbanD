@@ -5,7 +5,7 @@ vision: Anforderungen/R00000-vision.md
 kanban: {folder: /home/shoff/kanbanD-test, board: entwicklung, application: kd}
 wireframes: Dokumentation/Wireframes/
 sprache: de
-zuletzt: 2026-10-18
+zuletzt: 2026-10-20
 ---
 
 # WBS — kanbanD
@@ -272,6 +272,14 @@ zuletzt: 2026-10-18
 | B0191 | Bubble | I0056 | Bindungsregel in der Oberfläche | gruen | Test gruen | gebundeneAnwendungen(board, register) in web/wbs.js: fehlend/null → Standard, [] → keine; Menü ohne „WBS“ | 0,5-1 |  |  |  |  |
 | B0192 | Bubble | I0056 | Bindung über die API setzen | gruen | Test gruen | PUT /api/boards/{slug}/anwendungen [kürzel…] → applications gesetzt ([] löst), Commit „Anwendungen von „<Board>“: …“, unbekanntes Kürzel 400, ohne Änderung kein Commit | 0,5-1 |  |  |  |  |
 | B0193 | Bubble | I0056 | Bindung im Spalten-Dialog | gruen | Test gruen | Spalten-Dialog (R00009) → Abschnitt „Gebunden an“ mit Schalter je registrierter Anwendung und „keine“ → PUT …/anwendungen | 0,5-1 |  |  |  |  |
+| I0057 | Interaction | D0002 | Spalte kommentieren und färben | gruen | US-1..US-2 |  |  |  |  | R00069 | Auftrag 2026-10-20: Kommentar als ⓘ mit Tooltip, eigene Hintergrundfarbe |
+| B0194 | Bubble | I0057 | Kommentar und Farbe im Board-Format | gruen | Test gruen | Board-Text ↔ Spalte.notiz/farbe: column-notes, column-colors; leer und ungültige Farbe fallen weg |  |  |  |  |  |
+| B0195 | Bubble | I0057 | Kommentar und Farbe über die API | gruen | Test gruen | PUT /api/boards/{slug}/spalten {notiz?, farbe?} → fehlt = behalten, leer = entfernen, ungültige Farbe 400 |  |  |  |  |  |
+| B0196 | Bubble | I0057 | ⓘ und Hintergrund auf dem Board | gruen | Test gruen | Spalte mit notiz → ⓘ mit Tooltip im Kopf; mit farbe → Hintergrund der Fläche, im Dunkeln gedämpft |  |  |  |  |  |
+| B0197 | Bubble | I0057 | Kommentar und Farbe im Spalten-Dialog | gruen | Test gruen | Spalten-Dialog → Kommentarfeld, Farbwahl, ✕ entfernt; Vorschau zeigt column-notes und column-colors |  |  |  |  |  |
+| I0058 | Interaction | D0002 | Dunkel darstellen | gruen | US-1..US-2 |  |  |  |  | R00070 | Auftrag 2026-10-20; löst Anmerkung 74 („Beide Themes“ aus I0049) |
+| B0198 | Bubble | I0058 | Dunkle Token | gruen | Test gruen | prefers-color-scheme oder data-theme=dark → dunkle Werte für alle Farb-Tokens; eigene Farben mischen gegen die Fläche |  |  |  |  |  |
+| B0199 | Bubble | I0058 | Darstellung wählen | gruen | Test gruen | Knopf in der Kopfleiste → System, Hell, Dunkel reihum; Wahl in kanbanD.thema gemerkt |  |  |  |  |  |
 
 ## Offene Fragen
 
