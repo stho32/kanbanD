@@ -21,6 +21,11 @@ test.describe('R00029', () => {
     await page.keyboard.press('t');
     await expect(karte.locator('.lauf.eigen')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    // die Laufzeit zeigt Sekunden und zählt sichtbar weiter
+    const zeit = karte.locator('.lauf [data-since]');
+    await expect(zeit).toHaveText(/^\d+:\d{2}:\d{2}$/);
+    const erst = await zeit.textContent();
+    await expect(zeit).not.toHaveText(erst, { timeout: 3000 });
     // Laufanzeige und Stoppknopf stehen rechts oben, sichtbar auch ohne Zeigen
     await page.mouse.move(0, 0);
     const stopp = page.getByRole('button', { name: 'Timer an #1 stoppen' });
