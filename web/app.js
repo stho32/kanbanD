@@ -138,7 +138,8 @@ async function laden({ nurBeiAenderung = false } = {}) {
     if (S.ui.view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
     // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
     const pruefWbs = {};
-    if (S.ui.view === 'board') await Promise.all(pruefWbsAnwendungen(board, aufgaben.aufgaben).map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
+    // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
+    if (S.ui.view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
     // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
     // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
     Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, anwendungen, wbs, wbsFehler, pruefWbs });

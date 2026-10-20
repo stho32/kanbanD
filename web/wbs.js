@@ -122,6 +122,23 @@
     return { text: `${a.zeichen} ${schluessel}`, ziel: `#/wbs/${encodeURIComponent(w.application)}${w.node ? '/' + encodeURIComponent(w.node) : ''}`, titel: `${a.wort}: ${schluessel} — in der WBS-Sicht zeigen`, aktion: w.action };
   }
 
+  /** Eingetreten wie der Server (`eingetreten` in src/dienst/wirkungen.rs, R00071): create — der angelegte Knoten steht und
+   *  ist nicht verworfen; remove — verworfen oder fehlt; rework — `executed` nicht false. `null`: WBS nicht geladen. */
+  function eingetreten(w, sicht) {
+    if (w.action === 'rework') return w.executed !== false;
+    if (!w.node) return false;
+    if (!sicht) return null;
+    const k = sicht.knoten.find(x => x.id === w.node);
+    return w.action === 'create' ? !!k && k.status !== 'verworfen' : !k || k.status === 'verworfen';
+  }
+
+  /** Anwendungen, auf die Karten des Boards wirken — ihre WBS braucht der Punkt am Chip (R00071). */
+  function wirkungsAnwendungen(board, aufgaben) {
+    if (!board) return [];
+    const nummern = new Set(board.spalten.flatMap(s => s.aufgaben));
+    return [...new Set(aufgaben.filter(a => nummern.has(a.nummer)).flatMap(a => (a.wirkungen || []).filter(w => w.action !== 'rework').map(w => w.application)))];
+  }
+
   /** Der Knoten in `#/wbs/<kürzel>/<id>`, sonst leer. */
   const wbsZiel = hash => decodeURIComponent((/^#\/wbs\/[^/]*\/([^/?#]+)/.exec(hash || '') || [])[1] || '');
 
@@ -197,5 +214,5 @@
     return [...new Set(k)];
   }
 
-  Object.assign(ziel, { kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, bindungUmschalten, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
+  Object.assign(ziel, { eingetreten, wirkungsAnwendungen, kartenPruefungen, pruefWbsAnwendungen, warnungsKnoten, WIRKUNG, wirkungEingabe, wirkungenJeKnoten, wirkungChip, wbsZiel, nachfahren, wbsZeilenMenue, kindEbenen, STATUS_WAHL, statusSetzbar, prozente, standText, gebundeneAnwendungen, bindungUmschalten, zaehlt, tiefen, mitKindern, anzeigename, anforderungsIds, klappbar, zugeklappt, ausgeblendet });
 })(typeof module !== 'undefined' ? module.exports : window);

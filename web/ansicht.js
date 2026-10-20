@@ -227,9 +227,11 @@ function vHerkunftChip(x) {
   return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
 /** Wirkungen einer Aufgabe auf die WBS als Chips + / ↻ / − mit Link zur Zeile in der WBS-Sicht (R00057). */
-function vWirkungChip(w) {
+function vWirkungChip(w, e) {
   const c = wirkungChip(w);
-  return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel)}">${esc(c.text)}</a>`;
+  const punkt = e === undefined ? '' : `<i class="punkt ${e == null ? 'grau' : e ? 'an' : 'aus'}" aria-hidden="true"></i>`;
+  const stand = e === undefined ? '' : e == null ? ' · Eintritt unbekannt (WBS nicht geladen)' : e ? ' · eingetreten' : ' · noch nicht eingetreten — schalten im Aufgabenfenster';
+  return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel + stand)}"${e === undefined ? '' : ` data-eingetreten="${e}"`}>${punkt}${esc(c.text)}</a>`;
 }
 /** Ampel und Schalter des Eintritts einer Wirkung (R00071): grün eingetreten, rot nicht, grau WBS nicht lesbar. */
 function vEintritt(x, j) {
@@ -270,7 +272,8 @@ function vWirkungForm(register) {
     + (anlegen ? feld('parent', 'Eltern', 'D0002') + wahl('level', 'Ebene', ['Dialog', 'Interaction', 'Feature', 'Bubble'].map(e => [e, e])) + feld('name', 'Name', 'was entsteht') + feld('done_criterion', 'Fertig', 'US-1') : feld('node', 'Knoten', 'D0002'));
   return `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${felder}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span class="muted">eingetreten: ${anlegen ? 'neuer Knoten rot mit der nächsten freien ID' : f.action === 'rework' ? 'Knoten und zählende Nachfahren rot' : 'Knoten und Nachfahren verworfen'} · vermerken ändert die WBS noch nicht</span><button class="btn" data-act="wirkung-zu">abbrechen</button><button class="btn btn-haupt" data-act="wirkung-setzen">vermerken</button></div></div>`;
 }
-const vWirkungen = a => (a.wirkungen || []).length ? `<span class="wchips">${a.wirkungen.map(vWirkungChip).join('')}</span>` : '';
+/** Chips an der Karte, je mit Punkt: grün eingetreten, rot noch nicht, grau WBS nicht geladen (R00071); geschaltet wird im Fenster. */
+const vWirkungen = a => (a.wirkungen || []).length ? `<span class="wchips">${a.wirkungen.map(w => vWirkungChip(w, eingetreten(w, (S.pruefWbs || {})[w.application]))).join('')}</span>` : '';
 function vHerkunft(a) {
   const o = a.herkunft.length ? a.herkunft : ['thin air'];
   return `<span class="orgs">${o.map(vHerkunftChip).join('')}</span>`;

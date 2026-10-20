@@ -41,6 +41,12 @@ test.describe('R00071', () => {
     await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\baus\b/);
     await expect(fenster.getByRole('button', { name: 'Wirkung ↻ kd:I0014 eingetreten' })).toHaveAttribute('aria-pressed', 'false');
     expect(arbeit.lies()).toBe(plan);
+    // rework zeigt den Eintritt aus dem Vermerk; der Schalter steht nur im Fenster, die Karte zeigt den Punkt
+    const chip = page.locator('.ka[data-id="8"] .wchip');
+    await expect(chip).toHaveAttribute('data-eingetreten', 'false');
+    await expect(chip.locator('.punkt')).toHaveClass(/\baus\b/);
+    await expect(chip).toHaveAttribute('title', /noch nicht eingetreten/);
+    await expect(page.locator('.ka[data-id="8"] button')).toHaveCount(0);
     expect(k.lies('aufgaben/0008-ziehen.md')).toContain('  - {application: kd, action: rework, node: I0014, executed: false}');
     await fenster.getByRole('link', { name: '↻ kd:I0014' }).click();
     const z = page.locator('tr.wbs-z[data-id="I0014"]');
@@ -54,11 +60,15 @@ test.describe('R00071', () => {
     await schalter.click();
     await expect(schalter).toHaveAttribute('aria-pressed', 'true');
     await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\ban\b/);
+    const chip = page.locator('.ka[data-id="8"] .wchip');
+    await expect(chip).toHaveAttribute('data-eingetreten', 'true');
+    await expect(chip.locator('.punkt')).toHaveClass(/\ban\b/);
     expect(arbeit.lies()).toContain('| I0014 | Interaction | D0002 | Ziehen | verworfen |');
     expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|#8 Wirkung auf kd:I0014 (remove) eingetreten');
     await schalter.click();
     await expect(schalter).toHaveAttribute('aria-pressed', 'false');
     await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\baus\b/);
+    await expect(chip).toHaveAttribute('data-eingetreten', 'false');
     expect(arbeit.lies()).toContain('| I0014 | Interaction | D0002 | Ziehen | rot |');
     expect(arbeit.lies()).not.toContain('verworfen: #8');
     expect(k.git('log', '-1', '--format=%s')).toBe('#8 Wirkung auf kd:I0014 (remove) zurückgenommen');
