@@ -19,7 +19,7 @@ test.describe('R00028', () => {
     await page.keyboard.press('Enter');
     const karte = page.locator('.ka[data-id="1"]');
     await expect(karte.locator('.t')).toHaveText('Login reparieren');
-    await expect(karte.locator('.cls')).toHaveText('Fehler');
+    await expect(karte).toHaveAttribute('data-c', 'bug');
     await expect(karte.locator('.due')).toHaveText(morgen());
     expect(k.lies('aufgaben/0001-login-reparieren.md')).toContain('assignees: [mi]');
   });

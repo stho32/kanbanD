@@ -80,7 +80,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.fertig .t{color:var(--kd-muted)}
 .ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
-.ka .r3 .cls{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ka .r3 .due{font-family:var(--kd-mono)}
 /* unterste Zeile: links der Timer, rechts Klasse, Teilaufgaben, Fälligkeit, Herkunft, Zuständige; reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile */
 .ka .r3 .rechts{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;white-space:normal}

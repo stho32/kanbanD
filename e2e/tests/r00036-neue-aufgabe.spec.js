@@ -50,7 +50,7 @@ test.describe('R00036', () => {
     await page.getByLabel('Titel der neuen Aufgabe').fill('B');
     await page.keyboard.press('Control+Shift+Enter');
     await expect(page.locator('.bahn[data-col="Zu erledigen"] .ka .t')).toHaveText(['A', 'B']);
-    await expect(page.locator('.bahn[data-col="Zu erledigen"] .ka .cls')).toHaveText(['Funktion', 'Funktion']);
+    expect(await page.locator('.bahn[data-col="Zu erledigen"] .ka').evaluateAll(ks => ks.map(k => k.dataset.c))).toEqual(['feature', 'feature']);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
   });
@@ -70,6 +70,6 @@ test.describe('R00036', () => {
       dt.setData('text/plain', 'x\ny');
       el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
     });
-    await expect(page.locator('.bahn[data-col="Zu erledigen"] .ka .cls')).toHaveText(['Fehler', 'Fehler']);
+    await expect.poll(() => page.locator('.bahn[data-col="Zu erledigen"] .ka').evaluateAll(ks => ks.map(k => k.dataset.c))).toEqual(['bug', 'bug']);
   });
 });

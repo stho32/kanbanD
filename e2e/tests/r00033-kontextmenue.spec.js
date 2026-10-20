@@ -42,7 +42,7 @@ test.describe('R00033', () => {
     const hoehen = await page.locator('.kmenue.unter .km-e').evaluateAll(es => es.map(e => e.getBoundingClientRect().height));
     expect(new Set(hoehen).size).toBe(1);
     await fehler.click();
-    await expect(page.locator('.ka[data-id="1"] .cls')).toHaveText('Fehler');
+    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('data-c', 'bug');
     await page.locator('.ka[data-id="1"]').click({ button: 'right' });
     await page.getByRole('menuitem', { name: /Auf Board legen/ }).hover();
     await page.getByRole('menuitem', { name: 'Test · Bereit' }).click();

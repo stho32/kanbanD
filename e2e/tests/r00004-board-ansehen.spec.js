@@ -28,11 +28,11 @@ test.describe('R00004', () => {
   test('US-2: Klasse, Zuständige, Fälligkeit und Teilaufgaben auf der Karte', async ({ page }) => {
     await page.goto(k.adresse);
     const zwei = page.locator('.ka[data-id="2"]');
-    await expect(zwei).toHaveAttribute('data-c', '1');
-    await expect(zwei.locator('.cls')).toHaveText('Fehler');
-    // das Quadrat vor der Klasse trägt die Klassenfarbe der Karte, nicht das neutrale Grau
-    const farben = await zwei.evaluate(k => [getComputedStyle(k).borderTopColor, getComputedStyle(k.querySelector('.cls'), '::before').backgroundColor]);
-    expect(farben[1]).toBe(farben[0]);
+    // die Klasse zeigt sich allein in der Farbe der Karte, ohne eigene Einblendung
+    await expect(zwei).toHaveAttribute('data-c', 'bug');
+    await expect(zwei.locator('.cls')).toHaveCount(0);
+    const [mit, ohne] = await Promise.all([zwei, page.locator('.ka[data-id="3"]')].map(l => l.evaluate(k => getComputedStyle(k).backgroundColor)));
+    expect(mit).not.toBe(ohne);
     await expect(zwei.locator('.pk')).toHaveText('ST');
     await expect(zwei.locator('.due')).toHaveText('2030-01-31');
     await expect(zwei.locator('.org')).toHaveText('I0004');
@@ -43,23 +43,23 @@ test.describe('R00004', () => {
   test('Kopfzeile: oben links erst die Nummer, dann der Titel; alles andere darunter', async ({ page }) => {
     await page.goto(k.adresse);
     const zwei = page.locator('.ka[data-id="2"]');
-    const [karte, id, titel, herkunft, klasse] = await Promise.all([zwei, zwei.locator('.id'), zwei.locator('.t'), zwei.locator('.org'), zwei.locator('.cls')].map(l => l.boundingBox()));
+    const [karte, id, titel, herkunft] = await Promise.all([zwei, zwei.locator('.id'), zwei.locator('.t'), zwei.locator('.org')].map(l => l.boundingBox()));
     expect(id.x - karte.x).toBeLessThan(16);
     expect(id.y - karte.y).toBeLessThan(16);
     expect(Math.abs(id.y - titel.y)).toBeLessThan(6);
     expect(titel.x).toBeGreaterThan(id.x + id.width - 1);
-    for (const darunter of [herkunft, klasse]) expect(darunter.y).toBeGreaterThanOrEqual(titel.y + titel.height - 1);
+    expect(herkunft.y).toBeGreaterThanOrEqual(titel.y + titel.height - 1);
   });
 
-  test('Unterste Zeile: Klasse, Fälligkeit, Herkunft und Zuständige rechtsbündig, kein Startknopf', async ({ page }) => {
+  test('Unterste Zeile: Fälligkeit, Herkunft und Zuständige rechtsbündig, kein Startknopf', async ({ page }) => {
     await page.goto(k.adresse);
     const zwei = page.locator('.ka[data-id="2"]');
     await zwei.hover();
     await expect(zwei.getByRole('button', { name: 'Timer an #2 starten' })).toHaveCount(0);
-    const [karte, klasse, herkunft, person] = await Promise.all([zwei, zwei.locator('.cls'), zwei.locator('.org'), zwei.locator('.avs .pk')].map(l => l.boundingBox()));
+    const [karte, herkunft, person] = await Promise.all([zwei, zwei.locator('.org'), zwei.locator('.avs .pk')].map(l => l.boundingBox()));
     const mitte = b => b.y + b.height / 2;
-    for (const b of [klasse, herkunft]) expect(Math.abs(mitte(b) - mitte(person))).toBeLessThan(4);
-    expect(klasse.x - karte.x).toBeGreaterThan(24); // links bleibt Platz, die Gruppe steht rechts
+    expect(Math.abs(mitte(herkunft) - mitte(person))).toBeLessThan(4);
+    expect(herkunft.x - karte.x).toBeGreaterThan(24); // links bleibt Platz, die Gruppe steht rechts
     expect(herkunft.x + herkunft.width).toBeLessThanOrEqual(person.x);
     expect(karte.x + karte.width - (person.x + person.width)).toBeLessThan(16);
     expect(karte.y + karte.height - (person.y + person.height)).toBeLessThan(16);
