@@ -23,7 +23,8 @@ test.describe('R00029', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     // die Laufzeit zeigt Sekunden und zählt sichtbar weiter
     const zeit = karte.locator('.lauf [data-since]');
-    await expect(zeit).toHaveText(/^\d+:\d{2}:\d{2}$/);
+    // beginnt bei null, auch wenn die Datei nur die angebrochene Minute kennt
+    await expect(zeit).toHaveText(/^0:00:0\d$/);
     const erst = await zeit.textContent();
     await expect(zeit).not.toHaveText(erst, { timeout: 3000 });
     // Laufanzeige und Stoppknopf stehen rechts oben, sichtbar auch ohne Zeigen

@@ -8,6 +8,13 @@ S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
 S.ui.pBereich = 'alle';
 const TERMIN_LEER = { i: null, name: '', datum: '', farbe: 'red', linie: 'durchgehend', staerke: 'normal' };
 S.ui.tf = { ...TERMIN_LEER };
+S.timerStart = (() => { try { return JSON.parse(localStorage.getItem('kanbanD.timer-start') || '{}'); } catch (_) { return {}; } })();
+/** Merkt die Startsekunde eines hier gestarteten Timers (`nr|wer`); älter als ein Tag fällt heraus. */
+function timerStartMerken(schluessel, ms) {
+  const grenze = Date.now() - 864e5;
+  S.timerStart = Object.fromEntries(Object.entries({ ...S.timerStart, [schluessel]: ms }).filter(([k, v]) => v !== null && v > grenze));
+  try { localStorage.setItem('kanbanD.timer-start', JSON.stringify(S.timerStart)); } catch (_) { }
+}
 S.ui.bf = (() => { try { return filterAus(localStorage.getItem('kanbanD.berichtsfilter')); } catch (_) { return filterAus(''); } })();
 function berichtsfilterSetzen(aenderung) {
   S.ui.bf = { ...S.ui.bf, ...aenderung };
@@ -508,7 +515,7 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${u.offen}/kommentare`, { text: wert });
         return;
       }
-      case 'start': if (ichNoetig()) break; await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
+      case 'start': if (ichNoetig()) break; timerStartMerken(`${arg}|${S.ich}`, Date.now()); await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
       case 'stop': {
         if (ichNoetig()) break;
         const [nr, wer] = arg.split('|');
