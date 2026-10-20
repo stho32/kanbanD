@@ -80,7 +80,7 @@ function vNeu() {
   const seite = `<aside class="mod-side"><div class="felder">
 <span class="k">board</span><span class="w"><select data-nf="board" aria-label="Board"><option value="">— kein Board —</option>${boards.map(x => `<option value="${esc(x.slug)}"${x.slug === f.board ? ' selected' : ''}>${esc(x.titel)}</option>`).join('')}</select></span>
 ${b ? `<span class="k">column</span><span class="w"><select data-nf="spalte" aria-label="Spalte">${b.spalten.map(sp => `<option${sp.name === f.spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select></span>` : ''}
-<span class="k">class</span><span class="w"><select data-nf="klasse" aria-label="Klasse"><option value="">— keine —</option>${S.zustand.einstellungen.klassen.map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === f.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}</select></span>
+<span class="k">class</span><span class="w">${vKlassenWahl('data-nf', f.klasse)}</span>
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${f.zust.includes(p.kuerzel) ? ' an' : ''}" data-act="nf-zust" data-arg="${esc(p.kuerzel)}" aria-pressed="${f.zust.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-nf="labels" value="${esc(f.labels)}" placeholder="ui, daten" aria-label="Labels der neuen Aufgabe"></span>
 <span class="k">due</span><span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
@@ -112,7 +112,7 @@ function vFenster() {
   const haupt = `<div class="mod-main"><input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel"><div class="abs"><h3>BESCHREIBUNG</h3>${a.beschreibung && !S.ui.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`}</div>${vFensterAbschnitte(a)}</div>`;
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
-<span class="k">class</span><span class="w"><select data-af="klasse" aria-label="Klasse"><option value="">— keine —</option>${(S.zustand.einstellungen.klassen).map(k => `<option value="${esc(k.schluessel)}"${k.schluessel === a.klasse ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`).join('')}${a.klasse && !cl ? `<option selected>${esc(a.klasse)}</option>` : ''}</select></span>
+<span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vZaehlungFeld(a)}
@@ -185,6 +185,12 @@ function vPop() {
 /* zeitMs, anteil, personenZeilen: web/zeiten.js */
 const hm = ms => { const m = Math.max(0, Math.floor(ms / 6e4)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
 const hms = ms => { const s = Math.max(0, Math.floor(ms / 1e3)); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+/** Auswahl der Klasse; Auswahl und Einträge tragen die Klassenfarbe wie die Karte. Eine unbekannte Klasse bleibt als Eintrag ohne Farbe stehen. */
+function vKlassenWahl(attr, wert) {
+  const klassen = S.zustand.einstellungen.klassen, cl = klasse(wert);
+  const eintrag = k => `<option value="${esc(k.schluessel)}" style="${cv(k.farbe)}"${k.schluessel === wert ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`;
+  return `<select class="klwahl" ${attr}="klasse" aria-label="Klasse"${cl ? ` style="${cv(cl.farbe)}"` : ''}><option value="">— keine —</option>${klassen.map(eintrag).join('')}${wert && !cl ? `<option selected>${esc(wert)}</option>` : ''}</select>`;
+}
 const laufende = a => a.zeiten.filter(z => !z.ende);
 /** Beginn eines laufenden Timers in ms: die Datei kennt nur Minuten — ein in diesem Browser gestarteter Timer zählt ab seiner Startsekunde. */
 const laufBeginn = (a, z) => Math.max(zeitMs(z.beginn), S.timerStart[`${a.nummer}|${z.wer}`] || 0);

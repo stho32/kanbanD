@@ -195,6 +195,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .felder .w.wrap{flex-wrap:wrap;padding-block:4px}
 .felder select,.mini-inp{height:24px;border:1px solid transparent;background:none;min-width:0;padding:0 4px}
 .felder select{width:100%}
+.felder select.klwahl[style]{background:var(--c);border-left:6px solid var(--cl)}
+.klwahl option{background:var(--c);color:var(--kd-text);box-shadow:inset 6px 0 var(--cl)}
+.klwahl option:not([style]){--c:var(--kd-surface);--cl:transparent}
 .felder select:hover,.mini-inp:hover{border-color:var(--kd-line-strong)}
 .mini-inp:focus,.felder select:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .mini-inp{width:110px;font-family:var(--kd-mono);font-size:11.5px}

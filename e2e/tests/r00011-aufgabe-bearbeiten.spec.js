@@ -29,6 +29,14 @@ test.describe('R00011', () => {
     await page.locator('.ka[data-id="1"]').click();
     await page.getByLabel('Klasse').selectOption('bug');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('class: bug');
+    // Auswahl und Eintrag tragen die Farbe der Klasse wie die Karte
+    const wahl = page.getByLabel('Klasse');
+    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('data-c', 'bug');
+    await expect(wahl).toHaveAttribute('style', /--cl/);
+    const karte = await page.locator('.ka[data-id="1"]').evaluate(e => getComputedStyle(e).backgroundColor);
+    expect(await wahl.evaluate(e => getComputedStyle(e).backgroundColor)).toBe(karte);
+    expect(await wahl.locator('option[value="bug"]').evaluate(e => getComputedStyle(e).backgroundColor)).toBe(karte);
+    expect(await wahl.locator('option[value=""]').evaluate(e => getComputedStyle(e).backgroundColor)).not.toBe(karte);
     await page.locator('.as', { hasText: 'Mia' }).click();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('assignees: [mi]');
     await page.getByLabel('Fälligkeit').fill('2026-12-24');
