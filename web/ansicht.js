@@ -231,12 +231,18 @@ function vWirkungChip(w) {
   const c = wirkungChip(w);
   return `<a class="wchip ${esc(c.aktion)}" href="${esc(c.ziel)}" data-act="wbs-zu" data-arg="${esc(c.ziel)}" title="${esc(c.titel)}">${esc(c.text)}</a>`;
 }
-/** Feld `wbs-effects` im Aufgabenfenster: Chips mit ×, darunter das Formular einer neuen Wirkung. */
+/** Ampel und Schalter des Eintritts einer Wirkung (R00071): grün eingetreten, rot nicht, grau WBS nicht lesbar. */
+function vEintritt(x, j) {
+  const e = ((S.ui.eintritt || []).find(s => s.i === j) || {}).eingetreten, name = esc(wirkungChip(x).text);
+  const ampel = e == null ? ['grau', 'WBS nicht lesbar — Eintritt unbekannt'] : e ? ['an', 'eingetreten'] : ['aus', 'nicht eingetreten'];
+  return `<i class="ampel ${ampel[0]}" title="${ampel[1]}" aria-hidden="true"></i>${vWirkungChip(x)}<button class="as schalter${e ? ' an' : ''}" data-act="wirkung-eintritt" data-arg="${j}|${!e}" aria-pressed="${!!e}" aria-label="Wirkung ${name} eingetreten"${e == null ? ' disabled' : ''} title="${e ? 'eingetreten — Klick nimmt die Änderung an der WBS zurück' : 'nicht eingetreten — Klick führt die Änderung an der WBS aus'}">eingetreten</button>`;
+}
+/** Feld `wbs-effects` im Aufgabenfenster: Chips mit Ampel, Schalter und ×, darunter das Formular einer neuen Wirkung. */
 function vWirkungenFeld(a) {
   const register = (S.zustand.einstellungen.quellen.anwendungen || []), w = a.wirkungen || [];
   if (!register.length && !w.length) return '';
-  const chips = w.map((x, j) => `<span class="ochip">${vWirkungChip(x)}<button data-act="wirkung-weg" data-arg="${j}" title="aus der Aufgabe entfernen — die WBS bleibt" aria-label="Wirkung ${esc(wirkungChip(x).text)} entfernen">×</button></span>`).join('');
-  const knopf = register.length && !S.ui.wirkungNeu ? `<button class="lnk" data-act="wirkung-neu" title="Wirkung auf die WBS: anlegen, überarbeiten, verwerfen — sofort">+ Wirkung</button>` : '';
+  const chips = w.map((x, j) => `<span class="ochip wirkung">${vEintritt(x, j)}<button data-act="wirkung-weg" data-arg="${j}" title="aus der Aufgabe entfernen — die WBS bleibt" aria-label="Wirkung ${esc(wirkungChip(x).text)} entfernen">×</button></span>`).join('');
+  const knopf = register.length && !S.ui.wirkungNeu ? `<button class="lnk" data-act="wirkung-neu" title="Wirkung auf die WBS vermerken: anlegen, überarbeiten, verwerfen — die WBS ändert sich erst mit dem Schalter „eingetreten“">+ Wirkung</button>` : '';
   return `<span class="k">wbs-effects</span><span class="w wrap" id="wirkungen">${chips}${knopf}</span>${S.ui.wirkungNeu ? vWirkungForm(register) : ''}`;
 }
 /** Feld `phases` (R00058): je Phase nach der Entwicklung ein Schalter „entfällt“ — gedrückt steht die Phase in phases.skipped. */
@@ -255,14 +261,14 @@ function vZaehlungFeld(a) {
   };
   return `<span class="k">Zählt in Berichten</span><span class="w wrap" id="zaehlung">${schalter('burndown', 'Burndown')}${schalter('forecast', 'Wie lange noch')}</span>`;
 }
-/** Formular einer neuen Wirkung — die Wirkung tritt mit „wirken“ sofort ein. */
+/** Formular einer neuen Wirkung — „vermerken“ ändert die WBS nicht, eintreten lässt sie der Schalter am Chip (R00071). */
 function vWirkungForm(register) {
   const f = S.ui.wirkungNeu, wahl = (n, titel, werte) => `<span class="k">${titel}</span><span class="w"><select data-wf="${n}" id="wirkung-${n}" aria-label="${titel}">${werte.map(([v, t]) => `<option value="${esc(v)}"${v === f[n] ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></span>`;
   const feld = (n, titel, ph) => `<span class="k">${titel}</span><span class="w"><input class="mini-inp full" id="wirkung-${n}" data-wf="${n}" value="${esc(f[n])}" placeholder="${esc(ph)}" data-enter="wirkung-setzen" aria-label="${titel}"></span>`;
   const anlegen = f.action === 'create';
   const felder = wahl('action', 'Aktion', [['create', '+ anlegen'], ['rework', '↻ überarbeiten'], ['remove', '− verwerfen']]) + wahl('application', 'Anwendung', register.map(x => [x.kuerzel, `${x.kuerzel} · ${x.name}`]))
     + (anlegen ? feld('parent', 'Eltern', 'D0002') + wahl('level', 'Ebene', ['Dialog', 'Interaction', 'Feature', 'Bubble'].map(e => [e, e])) + feld('name', 'Name', 'was entsteht') + feld('done_criterion', 'Fertig', 'US-1') : feld('node', 'Knoten', 'D0002'));
-  return `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${felder}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span class="muted">${anlegen ? 'neuer Knoten rot mit der nächsten freien ID' : f.action === 'rework' ? 'Knoten und zählende Nachfahren rot' : 'Knoten und Nachfahren verworfen'} · sofort, ohne Commit im Arbeits-Repository</span><button class="btn" data-act="wirkung-zu">abbrechen</button><button class="btn btn-haupt" data-act="wirkung-setzen">wirken</button></div></div>`;
+  return `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${felder}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span class="muted">eingetreten: ${anlegen ? 'neuer Knoten rot mit der nächsten freien ID' : f.action === 'rework' ? 'Knoten und zählende Nachfahren rot' : 'Knoten und Nachfahren verworfen'} · vermerken ändert die WBS noch nicht</span><button class="btn" data-act="wirkung-zu">abbrechen</button><button class="btn btn-haupt" data-act="wirkung-setzen">vermerken</button></div></div>`;
 }
 const vWirkungen = a => (a.wirkungen || []).length ? `<span class="wchips">${a.wirkungen.map(vWirkungChip).join('')}</span>` : '';
 function vHerkunft(a) {

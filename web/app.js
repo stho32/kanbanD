@@ -177,7 +177,8 @@ async function dateiLaden() {
   try {
     S.ui.datei = await api('GET', '/api/aufgaben/' + S.ui.offen);
     S.ui.anhaenge = await api('GET', `/api/aufgaben/${S.ui.offen}/anhaenge`);
-  } catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; S.ui.anhaenge = []; }
+    S.ui.eintritt = await api('GET', `/api/aufgaben/${S.ui.offen}/wbs-effects`).catch(() => []);
+  } catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; S.ui.anhaenge = []; S.ui.eintritt = []; }
 }
 
 async function anhaengeHochladen(dateien) {
@@ -647,6 +648,13 @@ async function act(a, arg, wert) {
         try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
         catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; break; }
         u.wirkungNeu = null; u.gespeichert = Date.now(); u.fensterFehler = null;
+        return laden();
+      }
+      case 'wirkung-eintritt': {
+        if (ichNoetig()) break;
+        const [i, an] = arg.split('|');
+        try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); u.fensterFehler = null; }
+        catch (fehler) { u.fensterFehler = fehler.message; }
         return laden();
       }
       case 'wirkung-weg': {

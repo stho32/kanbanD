@@ -1,11 +1,13 @@
-//! Wirkungen von Aufgaben auf die WBS (R00057): prüfen, in der WBS ausführen, an der Aufgabe festhalten.
+//! Wirkungen von Aufgaben auf die WBS (R00057, R00071): prüfen, an der Aufgabe vermerken, in der WBS eintreten lassen.
 
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Aktion, Anwendungen, Aufgabe, Person, Wirkung, id_gueltig};
-use crate::wbs_datei::NeuerKnoten;
-use serde::Deserialize;
+use crate::modell::{Aktion, Anwendungen, Aufgabe, Ausfuehrung, Person, Wirkung, id_gueltig};
+use crate::wbs::WbsTabelle;
+use crate::wbs_datei::{NeuerKnoten, neuen_knoten_pruefen};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// `PATCH /api/aufgaben/{nr}/wbs-effects` — fehlende Felder sind leer, damit die Prüfung sie mit 400 und klarer Meldung ablehnt.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -43,7 +45,7 @@ pub fn wirkung_pruefen(e: &WirkungEingabe, anwendungen: &Anwendungen) -> Result<
     }
     let Some(aktion) = Aktion::aus(e.action.trim()) else { return ungueltig(format!("Aktion „{}“ — erwartet create, rework oder remove", e.action.trim())) };
     let knoten = gesetzt(&e.node).map(|k| k.to_uppercase());
-    let wirkung = Wirkung { anwendung: kuerzel, aktion, knoten: knoten.clone(), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] };
+    let wirkung = Wirkung { anwendung: kuerzel, aktion, ausgefuehrt: Default::default(), knoten: knoten.clone(), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] };
     match (aktion, knoten) {
         (Aktion::Anlegen, Some(k)) => ungueltig(format!("create vergibt die ID selbst — node „{k}“ weglassen")),
         (Aktion::Anlegen, None) => Ok(Wirkung { eltern: gesetzt(&e.parent).map(|p| p.to_uppercase()), ebene: gesetzt(&e.level), name: gesetzt(&e.name), fertig_kriterium: gesetzt(&e.done_criterion), ..wirkung }),
@@ -69,18 +71,25 @@ fn als_konflikt(f: Fehler) -> Fehler {
 }
 
 impl Kanban {
-    /// Hängt eine Wirkung an die Aufgabe `nr` und führt sie sofort aus: erst die WBS im Arbeits-Repository (ohne Commit),
-    /// dann die Aufgabe mit einem Commit im Board-Repository. Scheitert die WBS, bleibt die Aufgabe unverändert.
-    /// Die Sperre des Ordners hält die Aufgabe fest, die WBS-Operation nimmt die Sperre ihrer Datei selbst.
+    /// Vermerkt eine Wirkung an der Aufgabe `nr`, ohne die WBS zu ändern (R00071); geprüft wird gegen die WBS: der Knoten
+    /// bei rework und remove muss dort stehen, die Angaben zu einem neuen Knoten müssen gelten. Dieselbe Wirkung auf
+    /// denselben Knoten ein zweites Mal: keine zweite Zeile, kein Commit.
     pub fn wirkung_setzen(&self, wer: &Person, nr: u32, eingabe: &WirkungEingabe) -> Result<Aufgabe, Fehler> {
         let e = self.ordner().einstellungen()?.unwrap_or_default();
-        let wirkung = wirkung_pruefen(eingabe, &Anwendungen::aus(&e.quellen))?;
+        let wirkung = Wirkung { ausgefuehrt: Ausfuehrung::Offen, ..wirkung_pruefen(eingabe, &Anwendungen::aus(&e.quellen))? };
         let _sperre = self.gesperrt();
         let mut a = self.ordner().aufgabe(nr)?;
-        let wirkung = self.in_der_wbs_ausfuehren(&a, wirkung).map_err(als_konflikt)?;
-        let schon_da = a.wirkungen.iter().any(|w| w.aktion == wirkung.aktion && w.schluessel() == wirkung.schluessel());
+        let tabelle = self.wbs_tabelle_lesen(&wirkung.anwendung).map_err(als_konflikt)?;
+        match wirkung.knoten.as_deref() {
+            Some(k) if tabelle.knoten(k).is_none() => return Err(Fehler::Konflikt(format!("Knoten „{k}“ steht nicht in der WBS"))),
+            Some(_) => {}
+            None => {
+                neuen_knoten_pruefen(&tabelle, &neuer_knoten(&wirkung))?;
+            }
+        }
+        let schon_da = wirkung.knoten.is_some() && a.wirkungen.iter().any(|w| w.aktion == wirkung.aktion && w.schluessel() == wirkung.schluessel());
         if !schon_da {
-            let nachricht = format!("#{nr} wirkt auf {} ({})", wirkung.schluessel().unwrap_or_default(), wirkung.aktion.schluessel());
+            let nachricht = format!("#{nr} Wirkung auf {} vermerkt", beschreibung(&wirkung));
             a.wirkungen.push(wirkung);
             self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         }
@@ -98,18 +107,72 @@ impl Kanban {
         })
     }
 
-    /// Die Wirkung in der WBS; bei `create` mit der vergebenen ID.
-    fn in_der_wbs_ausfuehren(&self, a: &Aufgabe, w: Wirkung) -> Result<Wirkung, Fehler> {
-        let knoten = w.knoten.clone().unwrap_or_default();
-        match w.aktion {
-            Aktion::Anlegen => {
-                let neu = self.wbs_knoten_anlegen(&w.anwendung, &neuer_knoten(&w))?;
-                Ok(Wirkung { knoten: Some(neu.id), ..w })
-            }
-            Aktion::Ueberarbeiten => self.wbs_ueberarbeiten(&w.anwendung, &knoten).map(|_| w),
-            Aktion::Verwerfen => self.wbs_verwerfen(&w.anwendung, &knoten, &format!("#{} {}", a.nummer, a.titel)).map(|_| w),
-        }
+    /// Die Wirkungen der Aufgabe `nr` mit ihrem Eintritt (R00071).
+    pub fn wirkungen_stand(&self, nr: u32) -> Result<Vec<Wirkungsstand>, Fehler> {
+        let a = self.ordner().aufgabe(nr)?;
+        let mut tabellen = BTreeMap::new();
+        Ok(a.wirkungen.into_iter().enumerate().map(|(i, w)| Wirkungsstand { i, eingetreten: self.eingetreten(&w, &mut tabellen), wirkung: w }).collect())
     }
+
+    /// Schaltet den Eintritt der Wirkung `i`: an führt sie in der WBS aus, aus macht sie rückgängig, wo es eindeutig geht —
+    /// create verwirft den angelegten Knoten, remove hebt das Verwerfen auf, rework nimmt nur den Vermerk zurück.
+    /// Schon im Zielzustand: nichts geändert. Die WBS ohne Commit, die Aufgabe mit einem Commit im Board-Repository.
+    pub fn wirkung_eintritt(&self, wer: &Person, nr: u32, i: usize, an: bool) -> Result<Aufgabe, Fehler> {
+        let _sperre = self.gesperrt();
+        let mut a = self.ordner().aufgabe(nr)?;
+        let w = a.wirkungen.get(i).cloned().ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat keine Wirkung an Position {i}")))?;
+        let eingetreten = self.eingetreten(&w, &mut BTreeMap::new()).ok_or_else(|| Fehler::Konflikt(format!("WBS von „{}“ nicht erreichbar oder Knoten unbekannt", w.anwendung)))?;
+        if eingetreten == an {
+            return Ok(a);
+        }
+        let grund = format!("#{} {}", a.nummer, a.titel);
+        let knoten = w.knoten.clone().unwrap_or_default();
+        let neu = match (w.aktion, an) {
+            (Aktion::Anlegen, true) => Wirkung { knoten: Some(self.wbs_knoten_anlegen(&w.anwendung, &neuer_knoten(&w)).map_err(als_konflikt)?.id), ..w.clone() },
+            (Aktion::Ueberarbeiten, true) => self.wbs_ueberarbeiten(&w.anwendung, &knoten).map_err(als_konflikt).map(|_| w.clone())?,
+            (Aktion::Verwerfen, true) => self.wbs_verwerfen(&w.anwendung, &knoten, &grund).map_err(als_konflikt).map(|_| w.clone())?,
+            (Aktion::Anlegen, false) => self.wbs_verwerfen(&w.anwendung, &knoten, &format!("{grund} zurückgenommen")).map_err(als_konflikt).map(|_| w.clone())?,
+            (Aktion::Verwerfen, false) => self.wbs_wiederherstellen(&w.anwendung, &knoten, &grund).map_err(als_konflikt).map(|_| w.clone())?,
+            (Aktion::Ueberarbeiten, false) => w.clone(),
+        };
+        let neu = Wirkung { ausgefuehrt: if an { Ausfuehrung::Am(crate::uhr::heute()) } else { Ausfuehrung::Offen }, ..neu };
+        let nachricht = format!("#{nr} Wirkung auf {} {}", beschreibung(&neu), if an { "eingetreten" } else { "zurückgenommen" });
+        a.wirkungen[i] = neu;
+        self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
+        Ok(a)
+    }
+
+    /// Eingetreten: create — der angelegte Knoten steht und zählt; remove — der Knoten ist verworfen oder fehlt;
+    /// rework — vermerkt (`executed`). `None`: WBS nicht lesbar.
+    fn eingetreten(&self, w: &Wirkung, tabellen: &mut BTreeMap<String, Option<WbsTabelle>>) -> Option<bool> {
+        if w.aktion == Aktion::Ueberarbeiten {
+            return Some(w.ausgefuehrt.ausgefuehrt());
+        }
+        let Some(id) = w.knoten.as_deref() else { return Some(false) };
+        let tabelle = tabellen.entry(w.anwendung.clone()).or_insert_with(|| self.wbs_tabelle_lesen(&w.anwendung).ok()).as_ref()?;
+        let knoten = tabelle.knoten(id);
+        Some(match w.aktion {
+            Aktion::Anlegen => knoten.is_some_and(|k| k.status != "verworfen"),
+            _ => knoten.is_none_or(|k| k.status == "verworfen"),
+        })
+    }
+}
+
+/// `kc:I0014 (remove)`, bei create ohne Knoten `kc (create „Export“)`.
+fn beschreibung(w: &Wirkung) -> String {
+    match w.schluessel() {
+        Some(s) => format!("{s} ({})", w.aktion.schluessel()),
+        None => format!("{} ({} „{}“)", w.anwendung, w.aktion.schluessel(), w.name.clone().unwrap_or_default()),
+    }
+}
+
+/// `GET /api/aufgaben/{nr}/wbs-effects`: eine Wirkung mit Position und Eintritt (`null`: WBS nicht lesbar).
+#[derive(Debug, Serialize)]
+pub struct Wirkungsstand {
+    pub i: usize,
+    #[serde(flatten)]
+    pub wirkung: Wirkung,
+    pub eingetreten: Option<bool>,
 }
 
 #[cfg(test)]

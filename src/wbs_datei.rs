@@ -332,6 +332,34 @@ pub fn verwerfen(text: &str, id: &str, grund: &str, heute: &str) -> Result<Gesch
     Ok(Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert })
 }
 
+/// Hebt ein Verwerfen auf (R00071): der Knoten und seine verworfenen Nachfahren zählen wieder — Blätter `rot`, die oberen
+/// Knoten des Teilbaums und die Vorfahren gerechnet; `verworfen: <grund>` verschwindet aus der Notiz des Knotens.
+/// Welcher Status vor dem Verwerfen galt, weiß die Datei nicht — deshalb rot. Ein nicht verworfener Knoten: 409.
+pub fn wiederherstellen(text: &str, id: &str, grund: &str, heute: &str) -> Result<Geschrieben, Fehler> {
+    schreibbar(text)?;
+    let t = wbs_tabelle(text);
+    let k = t.knoten(id).ok_or_else(|| Fehler::NichtGefunden(format!("Knoten „{id}“ steht nicht in der WBS")))?;
+    if k.status != "verworfen" {
+        return Err(Fehler::Konflikt(format!("{id} ist nicht verworfen")));
+    }
+    let zurueck: Vec<&WbsKnoten> = t.alle().iter().filter(|x| x.status == "verworfen" && (x.id == id || t.pfad(&x.id).iter().any(|p| p == id))).collect();
+    let mit_roten = WbsTabelle::aus(t.alle().iter().map(|x| if zurueck.iter().any(|z| z.id == x.id) { WbsKnoten { status: "rot".into(), ..x.clone() } } else { x.clone() }).collect());
+    let status_neu: Vec<(String, String)> = zurueck.iter().map(|x| (x.id.clone(), mit_roten.gerechneter_status(&x.id))).collect();
+    let gerechnet = WbsTabelle::aus(t.alle().iter().map(|x| match status_neu.iter().find(|(i, _)| *i == x.id) {
+        Some((_, s)) => WbsKnoten { status: s.clone(), ..x.clone() },
+        None => x.clone(),
+    }).collect());
+    let vorfahren = vorfahren_neu(&gerechnet, id);
+    let mut aenderungen: Vec<(usize, &str, String)> = status_neu.iter().chain(vorfahren.iter()).filter_map(|(v, s)| Some((t.knoten(v)?.zeile, "Status", s.clone()))).collect();
+    let vermerk = format!("verworfen: {}", grund.trim());
+    if !grund.trim().is_empty() && k.notiz.contains(&vermerk) {
+        let notiz = k.notiz.replace(&format!("; {vermerk}"), "").replace(&vermerk, "");
+        aenderungen.push((k.zeile, "Notiz", notiz.trim().to_string()));
+    }
+    let geaendert = status_neu.into_iter().chain(vorfahren).map(|(v, _)| v).collect();
+    Ok(Geschrieben { text: zuletzt_setzen(&zellen_schreiben(text, &aenderungen), heute), geaendert })
+}
+
 /// Setzt einen Knoten zur Überarbeitung zurück: alle zählenden Blätter seines Teilbaums (ein Blatt: er selbst) auf `rot`,
 /// die oberen Knoten des Teilbaums und die Vorfahren neu gerechnet, `zuletzt` gesetzt — in einem Schreibvorgang (R00057).
 /// Blätter mit `bestehend` bleiben; ein Knoten mit `option`, `ausbau`, `verworfen` oder `bestehend` selbst: 409. Schon rot: nichts geändert.
@@ -592,5 +620,20 @@ mod tests {
         let ohne_grund = verwerfen(&vorher, "B0002", "", "h").unwrap();
         assert_eq!(wbs_tabelle(&ohne_grund.text).knoten("B0002").unwrap().notiz, "", "ohne Grund bleibt die Notiz");
         assert_eq!(ohne_grund.geaendert, ["B0002", "I0007", "D0001", "A0001"], "I0007 zählt nur noch B0001 (gruen), B0003 hängt an der Option — damit wird alles darüber gruen");
+    }
+
+    #[test]
+    fn wiederherstellen_hebt_das_verwerfen_auf_blaetter_rot_grund_aus_der_notiz() {
+        let vorher = wbs(&[("A0001", "Application", "—", "gelb"), ("D0001", "Dialog", "A0001", "gelb"), ("I0006", "Interaction", "D0001", "gruen"), ("I0007", "Interaction", "D0001", "rot"), ("B0001", "Bubble", "I0007", "gruen"), ("B0002", "Bubble", "I0007", "rot"), ("F0001", "Feature", "I0007", "option"), ("B0003", "Bubble", "F0001", "rot")]);
+        let verworfen = verwerfen(&vorher, "I0007", "#7 Export", "2026-10-18").unwrap().text;
+        let g = wiederherstellen(&verworfen, "I0007", "#7 Export", "2026-10-20").unwrap();
+        let t = wbs_tabelle(&g.text);
+        let status = |id: &str| t.knoten(id).unwrap().status.clone();
+        assert_eq!(["I0007", "B0001", "B0002", "F0001", "B0003", "D0001", "A0001", "I0006"].map(status), ["rot", "rot", "rot", "option", "rot", "gelb", "gelb", "gruen"], "Blätter rot, I0007 gerechnet, Option bleibt");
+        assert_eq!(t.knoten("I0007").unwrap().notiz, "", "der Grund ist aus der Notiz");
+        assert_eq!(g.text.lines().count(), vorher.lines().count());
+        assert_eq!(wiederherstellen(&g.text, "I0007", "", "h").unwrap_err(), Fehler::Konflikt("I0007 ist nicht verworfen".into()));
+        let fremder_grund = wiederherstellen(&verworfen, "I0007", "anderes", "h").unwrap();
+        assert_eq!(wbs_tabelle(&fremder_grund.text).knoten("I0007").unwrap().notiz, "verworfen: #7 Export", "ein anderer Grund bleibt stehen");
     }
 }

@@ -67,9 +67,59 @@ pub struct Wirkung {
     pub name: Option<String>,
     #[serde(rename = "done_criterion", skip_serializing_if = "Option::is_none")]
     pub fertig_kriterium: Option<String>,
+    /// `executed` — ob und wann die Wirkung in der WBS ausgeführt wurde (R00071).
+    #[serde(rename = "executed", default, skip_serializing_if = "Ausfuehrung::ist_frueher")]
+    pub ausgefuehrt: Ausfuehrung,
     /// Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
+}
+
+/// `executed` einer Wirkung (R00071): fehlt — aus der Zeit vor R00071, als jede Wirkung mit dem Setzen ausgeführt wurde;
+/// `false` — nur vermerkt; ein Datum — an diesem Tag ausgeführt.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum Ausfuehrung {
+    #[default]
+    Frueher,
+    Offen,
+    Am(String),
+}
+
+impl Ausfuehrung {
+    pub fn ist_frueher(&self) -> bool {
+        *self == Ausfuehrung::Frueher
+    }
+
+    /// Ausgeführt gilt auch, was aus der Zeit vor R00071 stammt.
+    pub fn ausgefuehrt(&self) -> bool {
+        *self != Ausfuehrung::Offen
+    }
+}
+
+impl Serialize for Ausfuehrung {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Ausfuehrung::Frueher => s.serialize_bool(true),
+            Ausfuehrung::Offen => s.serialize_bool(false),
+            Ausfuehrung::Am(datum) => s.serialize_str(datum),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Ausfuehrung {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Roh {
+            Ja(bool),
+            Datum(String),
+        }
+        Ok(match Roh::deserialize(d)? {
+            Roh::Ja(false) => Ausfuehrung::Offen,
+            Roh::Ja(true) => Ausfuehrung::Frueher,
+            Roh::Datum(datum) => Ausfuehrung::Am(datum),
+        })
+    }
 }
 
 impl Wirkung {

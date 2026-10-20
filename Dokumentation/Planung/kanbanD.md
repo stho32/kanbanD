@@ -280,6 +280,11 @@ zuletzt: 2026-10-20
 | I0058 | Interaction | D0002 | Dunkel darstellen | gruen | US-1..US-2 |  |  |  |  | R00070 | Auftrag 2026-10-20; löst Anmerkung 74 („Beide Themes“ aus I0049) |
 | B0198 | Bubble | I0058 | Dunkle Token | gruen | Test gruen | prefers-color-scheme oder data-theme=dark → dunkle Werte für alle Farb-Tokens; eigene Farben mischen gegen die Fläche |  |  |  |  |  |
 | B0199 | Bubble | I0058 | Darstellung wählen | gruen | Test gruen | Knopf in der Kopfleiste → System, Hell, Dunkel reihum; Wahl in kanbanD.thema gemerkt |  |  |  |  |  |
+| I0059 | Interaction | D0003 | Wirkung vermerken und eintreten lassen | gruen | US-1..US-2 |  |  |  | I0052 | R00071 | Bug 2026-10-20: Anbinden an gebaute Knoten setzte sie per rework auf rot |
+| B0200 | Bubble | I0059 | executed im Aufgabenformat | gruen | Test gruen | wbs-effects[].executed: fehlt (vor R00071), false, Datum ↔ Wirkung.ausgefuehrt |  |  |  |  |  |
+| B0201 | Bubble | I0059 | Verwerfen aufheben | gruen | Test gruen | WBS-Text, Knoten, Grund → Knoten und verworfene Nachfahren zählen wieder, Blätter rot, Grund aus der Notiz |  |  |  |  |  |
+| B0202 | Bubble | I0059 | Vermerken, Stand, Schalter im Dienst | gruen | Test gruen | PATCH vermerkt ohne WBS-Änderung; GET …/wbs-effects mit eingetreten; POST …/eintritt {an} führt aus oder nimmt zurück |  |  |  |  |  |
+| B0203 | Bubble | I0059 | Ampel und Schalter im Aufgabenfenster | gruen | Test gruen | Chip je Wirkung mit Ampel (grün, rot, grau) und Schalter „eingetreten“; „+ Wirkung“ vermerkt |  |  |  |  |  |
 
 ## Offene Fragen
 

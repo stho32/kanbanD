@@ -30,7 +30,7 @@ pub use bewegen::{Bewegt, Bewegung};
 pub use phasen::{BoardMitPhasen, Phasenstand};
 pub use teilaufgaben::Teilaufgabenaenderung;
 pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
-pub use wirkungen::WirkungEingabe;
+pub use wirkungen::{WirkungEingabe, Wirkungsstand};
 pub use zeiten::Zeitkorrektur;
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};

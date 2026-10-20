@@ -135,7 +135,7 @@ mod tests {
     use crate::modell::{Spalte, Wirkung};
 
     fn wirkung(aktion: Aktion, knoten: Option<&str>) -> Wirkung {
-        Wirkung { anwendung: "kd".into(), aktion, knoten: knoten.map(Into::into), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] }
+        Wirkung { anwendung: "kd".into(), aktion, ausgefuehrt: Default::default(), knoten: knoten.map(Into::into), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] }
     }
 
     fn aufgabe(wirkungen: Vec<Wirkung>) -> Aufgabe {

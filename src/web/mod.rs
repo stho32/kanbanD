@@ -89,7 +89,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/teilaufgaben", post(teilaufgabe_anlegen))
         .route("/api/aufgaben/{nr}/teilaufgaben/mehrere", post(teilaufgaben_anlegen))
         .route("/api/aufgaben/{nr}/kommentare", post(kommentieren))
-        .route("/api/aufgaben/{nr}/wbs-effects", axum::routing::patch(wirkung_setzen))
+        .route("/api/aufgaben/{nr}/wbs-effects", axum::routing::patch(wirkung_setzen).get(wirkungen_stand))
+        .route("/api/aufgaben/{nr}/wbs-effects/{i}/eintritt", axum::routing::post(wirkung_eintritt))
         .route("/api/aufgaben/{nr}/wbs-effects/{i}", axum::routing::delete(wirkung_entfernen))
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
@@ -312,6 +313,19 @@ async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>
 
 async fn wirkung_setzen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(w): Json<crate::dienst::WirkungEingabe>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.wirkung_setzen(p, nr, &w)).await
+}
+
+async fn wirkungen_stand(State(app): State<App>, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    Ok(Json(blockierend(&app, move |k| k.wirkungen_stand(nr)).await?).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Eintritt {
+    an: bool,
+}
+
+async fn wirkung_eintritt(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(e): Json<Eintritt>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.wirkung_eintritt(p, nr, i, e.an)).await
 }
 
 async fn wirkung_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {

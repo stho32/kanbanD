@@ -1,4 +1,5 @@
-// R00057 Wirkungen von Aufgaben auf die WBS — Chips an Karte und Fenster, sofort in der WBS, Gegenanzeige in der WBS-Sicht.
+// R00057 Wirkungen von Aufgaben auf die WBS — Chips an Karte und Fenster, Gegenanzeige in der WBS-Sicht;
+// seit R00071 vermerkt „+ Wirkung“ nur, der Schalter „eingetreten“ ändert die WBS.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
@@ -60,18 +61,22 @@ test.describe('R00057', () => {
     await expect(form.getByLabel('Anwendung')).toHaveValue('kd');
     await form.getByLabel('Eltern').fill('D0002');
     await form.getByLabel('Name').fill('Export');
-    await form.getByRole('button', { name: 'wirken' }).click();
+    await form.getByRole('button', { name: 'vermerken' }).click();
     await expect(form.getByRole('alert')).toHaveText('Fertig-Kriterium fehlt — ein Knoten, ein Fertig-Kriterium');
     await form.getByLabel('Fertig').fill('US-1');
     await form.getByLabel('Fertig').press('Enter');
     await expect(form).toHaveCount(0);
+    await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd']);
+    expect(arbeit.lies()).not.toContain('I0048');
+    await fenster.getByRole('button', { name: 'Wirkung + kd eingetreten' }).click();
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0048']);
+    await expect(fenster.getByRole('button', { name: 'Wirkung + kd:I0048 eingetreten' })).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');
     await expect(karte(page, 7).locator('.wchip')).toHaveText(['+ kd:I0048']);
     expect(arbeit.lies()).toContain('| I0048 | Interaction | D0002 | Export | rot | US-1 |');
-    expect(k.lies('aufgaben/0007-dialog-export-bauen.md')).toContain('  - {application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: Export, done-criterion: US-1}');
-    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 1);
-    expect(k.git('log', '-1', '--format=%s')).toBe('#7 wirkt auf kd:I0048 (create)');
+    expect(k.lies('aufgaben/0007-dialog-export-bauen.md')).toMatch(/  - \{application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: Export, done-criterion: US-1, executed: \d{4}-\d\d-\d\d\}/);
+    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 2);
+    expect(k.git('log', '-2', '--format=%s')).toBe('#7 Wirkung auf kd:I0048 (create) eingetreten\n#7 Wirkung auf kd (create „Export“) vermerkt');
     expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
     // Gegenanzeige: die WBS-Sicht zeigt an I0048 die Aufgabe, Klick öffnet sie
     await karte(page, 7).getByRole('link', { name: '+ kd:I0048' }).click();
@@ -95,20 +100,25 @@ test.describe('R00057', () => {
     await expect(form.getByRole('alert')).toHaveText('Knoten „D0099“ steht nicht in der WBS');
     expect(k.lies('aufgaben/0008-ziehen-ueberarbeiten.md')).toBe(aufgabe(8, 'Ziehen überarbeiten'));
     await form.getByLabel('Knoten').fill('d0002');
-    await form.getByRole('button', { name: 'wirken' }).click();
+    await form.getByRole('button', { name: 'vermerken' }).click();
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['↻ kd:D0002']);
+    expect(arbeit.lies()).toContain('| D0002 | Dialog | A0001 | Board | gruen |');
+    await fenster.getByRole('button', { name: 'Wirkung ↻ kd:D0002 eingetreten' }).click();
+    await expect(fenster.getByRole('button', { name: 'Wirkung ↻ kd:D0002 eingetreten' })).toHaveAttribute('aria-pressed', 'true');
     for (const id of ['D0002', 'I0014', 'B0001', 'I0047']) expect(arbeit.lies()).toMatch(new RegExp(`\\| ${id} \\| [^|]+ \\| [^|]+ \\| [^|]+ \\| rot \\|`));
   });
 
-  test('US-3 und Entfernen: „verwerfen“ wirkt sofort; die Wirkung aus der Aufgabe nehmen lässt die WBS, wie sie ist', async ({ page }) => {
+  test('US-3 und Entfernen: „verwerfen“ wirkt mit dem Schalter; die Wirkung aus der Aufgabe nehmen lässt die WBS, wie sie ist', async ({ page }) => {
     await starten(page, zweiAufgaben());
     const fenster = await oeffnen(page, 8);
     await fenster.getByRole('button', { name: '+ Wirkung' }).click();
     const form = fenster.getByRole('group', { name: 'Neue Wirkung' });
     await form.getByLabel('Aktion').selectOption('remove');
     await form.getByLabel('Knoten').fill('I0014');
-    await form.getByRole('button', { name: 'wirken' }).click();
+    await form.getByRole('button', { name: 'vermerken' }).click();
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['− kd:I0014']);
+    await fenster.getByRole('button', { name: 'Wirkung − kd:I0014 eingetreten' }).click();
+    await expect(fenster.locator('#wirkungen .ampel')).toHaveClass(/\ban\b/);
     expect(arbeit.lies()).toContain('| I0014 | Interaction | D0002 | Ziehen | verworfen |');
     expect(arbeit.lies()).toContain('verworfen: #8 Ziehen überarbeiten');
     const plan = arbeit.lies();

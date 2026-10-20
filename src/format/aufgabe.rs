@@ -1,7 +1,7 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Berichtszaehlung, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 use chrono::NaiveDateTime;
 
@@ -15,7 +15,7 @@ pub const BERICHTE: &str = "reporting";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
 const BERICHTSSCHLUESSEL: [&str; 2] = ["burndown", "forecast"];
 /// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
-const WIRKUNG_BEKANNT: [&str; 7] = ["application", "action", "node", "parent", "level", "name", "done-criterion"];
+const WIRKUNG_BEKANNT: [&str; 8] = ["application", "action", "node", "parent", "level", "name", "done-criterion", "executed"];
 const TRENNER: &str = " · ";
 pub const ZEITFORMAT: &str = "%Y-%m-%d %H:%M";
 
@@ -136,7 +136,12 @@ fn wirkung_lesen(i: usize, v: &Value) -> Result<Wirkung, Formatfehler> {
     let anwendung = text("application").ok_or_else(|| falsch("application fehlt"))?;
     let aktion = text("action").as_deref().and_then(Aktion::aus).ok_or_else(|| falsch("action — erwartet create, rework oder remove"))?;
     let weitere = m.iter().filter_map(|(k, w)| k.as_str().filter(|k| !WIRKUNG_BEKANNT.contains(k)).map(|k| (k.to_string(), w.clone()))).collect();
-    Ok(Wirkung { anwendung, aktion, knoten: text("node"), eltern: text("parent"), ebene: text("level"), name: text("name"), fertig_kriterium: text("done-criterion"), weitere })
+    let ausgefuehrt = match m.get("executed") {
+        None | Some(Value::Null) | Some(Value::Bool(true)) => Ausfuehrung::Frueher,
+        Some(Value::Bool(false)) => Ausfuehrung::Offen,
+        Some(v) => yaml::wert_als_text(v).map(Ausfuehrung::Am).ok_or_else(|| falsch("executed — erwartet false oder ein Datum"))?,
+    };
+    Ok(Wirkung { anwendung, aktion, knoten: text("node"), eltern: text("parent"), ebene: text("level"), name: text("name"), fertig_kriterium: text("done-criterion"), ausgefuehrt, weitere })
 }
 
 /// Ein Wert in einer Flow-Zuordnung: Texte wie sonst im Frontmatter, alles andere als JSON (gültiges YAML).
@@ -155,6 +160,11 @@ fn wirkung_schreiben(w: &Wirkung) -> String {
         if let Some(wert) = wert {
             teile.push(format!("{k}: {}", yaml::skalar(wert)));
         }
+    }
+    match &w.ausgefuehrt {
+        Ausfuehrung::Frueher => {}
+        Ausfuehrung::Offen => teile.push("executed: false".into()),
+        Ausfuehrung::Am(datum) => teile.push(format!("executed: {}", yaml::skalar(datum))),
     }
     teile.extend(w.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), flusswert(v))));
     format!("  - {{{}}}\n", teile.join(", "))
@@ -385,7 +395,7 @@ mod tests {
     }
 
     fn wirkung(aktion: Aktion, knoten: &str) -> Wirkung {
-        Wirkung { anwendung: "kd".into(), aktion, knoten: Some(knoten.into()), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] }
+        Wirkung { anwendung: "kd".into(), aktion, ausgefuehrt: Default::default(), knoten: Some(knoten.into()), eltern: None, ebene: None, name: None, fertig_kriterium: None, weitere: vec![] }
     }
 
     #[test]
@@ -404,6 +414,16 @@ mod tests {
         assert_eq!(schreiben(&wieder), t);
         assert_eq!(wieder.wirkungen[0].schluessel().as_deref(), Some("kd:I0048"));
         assert!(wieder.weitere.is_empty(), "wbs-effects ist kein unbekannter Schlüssel");
+    }
+
+    #[test]
+    fn executed_fehlt_false_oder_datum_rundlauf() {
+        let t = "---\nid: 7\ntitle: X\nwbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014, executed: false}\n  - {application: kd, action: rework, node: I0001, executed: 2026-10-20}\n---\n";
+        let a = lesen("0007-x.md", t).unwrap();
+        assert_eq!(a.wirkungen.iter().map(|w| w.ausgefuehrt.clone()).collect::<Vec<_>>(), [Ausfuehrung::Frueher, Ausfuehrung::Offen, Ausfuehrung::Am("2026-10-20".into())]);
+        assert!(a.weitere.is_empty() && a.wirkungen.iter().all(|w| w.weitere.is_empty()), "executed ist bekannt");
+        assert_eq!(schreiben(&a), t);
+        assert!(lesen("0007-x.md", "---\nid: 7\ntitle: X\nwbs-effects:\n  - {application: kd, action: rework, node: D0002, executed: [1]}\n---\n").unwrap_err().0.contains("executed"));
     }
 
     #[test]

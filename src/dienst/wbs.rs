@@ -3,8 +3,8 @@ use super::herkunft::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;
-use crate::wbs::{Stand, WbsKnoten, stand};
-use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, teilbaum_auf_rot, verwerfen};
+use crate::wbs::{Stand, WbsKnoten, WbsTabelle, stand};
+use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, teilbaum_auf_rot, verwerfen, wiederherstellen};
 use crate::modell::Anwendung;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -138,6 +138,19 @@ impl Kanban {
     /// darunter (R00057); Vorfahren gerechnet, kein Commit.
     pub fn wbs_ueberarbeiten(&self, kuerzel: &str, id: &str) -> Result<WbsGeaendert, Fehler> {
         self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(teilbaum_auf_rot(text, id, heute)?))
+    }
+
+    /// Hebt das Verwerfen eines Knotens der WBS von `kuerzel` auf (R00071); kein Commit.
+    pub fn wbs_wiederherstellen(&self, kuerzel: &str, id: &str, grund: &str) -> Result<WbsGeaendert, Fehler> {
+        self.wbs_aendern(kuerzel, |text, _, heute| mit_geaenderten(wiederherstellen(text, id, grund, heute)?))
+    }
+
+    /// Die Knotentabelle der WBS von `kuerzel`, wenn die Datei lesbar und nicht defekt ist — zum Prüfen ohne Schreiben.
+    pub fn wbs_tabelle_lesen(&self, kuerzel: &str) -> Result<WbsTabelle, Fehler> {
+        let (a, datei) = self.wbs_datei(kuerzel)?;
+        let text = Self::wbs_text(kuerzel, &a, &datei)?;
+        schreibbar(&text)?;
+        Ok(wbs_tabelle(&text))
     }
 }
 

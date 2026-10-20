@@ -6,7 +6,7 @@ mod board;
 mod einstellungen;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
-pub use aufgabe::{Aktion, Aufgabe, Aufgabenaenderung, Berichtszaehlung, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, herkunft_gueltig};
+pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, herkunft_gueltig};
 pub use board::{Bewegfehler, Board, Linie, Spalte, SpaltenAenderung, Spaltenfehler, Staerke, Termin, ist_hexfarbe};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, kuerzel_gueltig};
 
