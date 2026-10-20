@@ -18,7 +18,8 @@ test.describe('R00041', () => {
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press(' ');
     await expect(page.locator('.ka[data-id="1"] .lauf')).toHaveCount(0);
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toMatch(/· \d{4}-\d\d-\d\d \d\d:\d\d · st\n/);
+    // sofort wieder gestoppt: unter 20 Sekunden bleibt kein Zeitblock (R00068)
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).not.toMatch(/· st\n/);
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press('Delete');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('archived:');

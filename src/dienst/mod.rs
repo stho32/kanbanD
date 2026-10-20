@@ -54,6 +54,8 @@ pub struct Kanban {
     /// je WBS-Datei im Arbeits-Repository eine eigene Sperre — getrennt von der des Ordners
     wbs_sperren: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     eigene: Eigene,
+    /// Startsekunde je laufendem Timer (Aufgabe, Kürzel) — die Datei kennt nur Minuten (R00068)
+    timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -73,7 +75,7 @@ pub struct Zustand {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default() }
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default() }
     }
 
     pub fn ordner(&self) -> &Ordner {

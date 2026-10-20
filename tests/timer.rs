@@ -20,11 +20,25 @@ async fn mehrere_timer_und_fremder_stopp() {
     assert_eq!(senden(Method::POST, a, "api/aufgaben/2/timer/start", "st", json!(null)).await.0, 200, "dieselbe Person an zwei Aufgaben");
     let (s, r) = senden(Method::POST, a, "api/aufgaben/1/timer/stop", "st", json!({"wer": "cl"})).await;
     assert_eq!(s, 200);
-    assert!(r["zeiten"][1]["ende"].is_string());
+    // nach weniger als 20 Sekunden bleibt kein Zeitblock (R00068)
+    assert_eq!(r["zeiten"].as_array().unwrap().len(), 1, "Claudes kurzer Lauf ist verworfen");
     assert!(r["zeiten"][0]["ende"].is_null(), "Stefans Timer läuft weiter");
-    assert!(git(tmp.path(), &["log", "-1", "--format=%an|%s"]).starts_with("Stefan|#1 Timer von Claude gestoppt (0:0"));
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#1 Timer von Claude verworfen (unter 20 s)");
     assert_eq!(senden(Method::POST, a, "api/aufgaben/1/timer/stop", "cl", json!(null)).await.0, 409);
     let (s, _) = senden(Method::POST, a, "api/aufgaben/1/timer/stop", "st", json!(null)).await;
     assert_eq!(s, 200, "ohne Angabe stoppt die handelnde Person ihren Timer");
     assert!(!lies(tmp.path(), "aufgaben/0001-eins.md").contains("..."));
+}
+
+// R00068: ohne bekannte Startsekunde (Timer stand schon in der Datei) wird der Lauf festgehalten
+#[tokio::test]
+async fn timer_aus_der_datei_wird_festgehalten() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    std::fs::write(tmp.path().join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\n---\n```kanbanD-time\n2026-10-19 09:00 · ... · st\n```\n").unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/timer/stop", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    assert!(r["zeiten"][0]["ende"].is_string(), "{r}");
+    assert!(git(tmp.path(), &["log", "-1", "--format=%s"]).starts_with("#1 Timer von Stefan gestoppt ("));
 }

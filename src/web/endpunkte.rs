@@ -61,7 +61,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", true, "WBS", "Status eines Blatts setzen {status: rot|gelb|gruen} → {geaendert: [ids]}; Vorfahren gerechnet, zuletzt gesetzt, kein Commit im Arbeits-Repository; 409 bei Kindern oder defekter Datei, 400 bei option/ausbau/verworfen/bestehend"),
     e("POST", "/api/wbs/{kuerzel}/knoten/{id}/verwerfen", true, "WBS", "Knoten verwerfen {grund?} → {geaendert: [ids]}; verworfen an Knoten und zählenden Nachfahren, keine Zeile gelöscht, Grund in der Notiz, kein Commit; 409 schon verworfen oder Application"),
     e("POST", "/api/aufgaben/{nr}/timer/start", true, "Zeiten", "eigenen Timer starten"),
-    e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde"),
+    e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde; lief er (seit dem Start über diesen Server) unter 20 s, wird die Zeile verworfen statt abgeschlossen"),
     e("POST", "/api/aufgaben/{nr}/zeiten", true, "Zeiten", "Zeit nachtragen {dauer}"),
     e("PATCH", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag korrigieren {beginn?, ende?}"),
     e("DELETE", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag löschen"),
