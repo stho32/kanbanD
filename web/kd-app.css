@@ -77,6 +77,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* oben links Nummer und Titel, alles andere darunter */
 .ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0;margin-bottom:4px}
 .ka .r0 .t,.ka .r0 .umbenennen{flex:1;min-width:0}
+.ka .r0 .wpunkt{align-self:flex-start;margin:5px -2px 0 0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
