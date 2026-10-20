@@ -14,6 +14,7 @@ impl Kanban {
             Spaltenfehler::AltUnbekannt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ gibt es nicht")),
             Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
             Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {z} Aufgaben — erst leeren")),
+            Spaltenfehler::FarbeUngueltig(f) => Fehler::Ungueltig(format!("Farbe „{f}“ ist kein #rrggbb")),
         })?;
         if geaendert {
             self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;

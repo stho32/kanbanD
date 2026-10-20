@@ -49,3 +49,27 @@ async fn volle_spalte_fehlt_ist_konflikt_und_fehler_sind_400() {
     let (s, _) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/spalten", "st", json!([{"name": "Alles", "alt": "Zu erledigen"}])).await;
     assert_eq!(s, 200, "leere Spalten dürfen fehlen");
 }
+
+// R00069: Kommentar und Farbe je Spalte — fehlend bleibt, leer entfernt, ungültige Farbe ist 400
+#[tokio::test]
+async fn kommentar_und_farbe_setzen_behalten_entfernen() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, _) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([{"name": "Zu erledigen", "alt": "Zu erledigen", "notiz": "höchstens zwei", "farbe": "#ffe8b0"}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 200);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("---\ncolumn-notes:\n  Zu erledigen: höchstens zwei\ncolumn-colors:\n  Zu erledigen: \"#ffe8b0\"\n---\n"));
+    let (_, b) = senden(Method::GET, a, "api/boards/entwicklung", "st", json!(null)).await;
+    assert_eq!((b["spalten"][0]["notiz"].as_str(), b["spalten"][0]["farbe"].as_str()), (Some("höchstens zwei"), Some("#ffe8b0")));
+    // verschieben ohne die Felder behält sie
+    let (_, r) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([{"name": "Zu erledigen", "alt": "Zu erledigen", "grenze": 5}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(r["geaendert"], true);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("column-colors:\n  Zu erledigen: \"#ffe8b0\""));
+    let (s, f) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([{"name": "Zu erledigen", "alt": "Zu erledigen", "farbe": "rot"}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 400);
+    assert!(f["fehler"].as_str().unwrap().contains("#rrggbb"));
+    senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([{"name": "Zu erledigen", "alt": "Zu erledigen", "notiz": "", "farbe": " "}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    let t = lies(tmp.path(), "boards/entwicklung.md");
+    assert!(!t.contains("column-notes") && !t.contains("column-colors"), "{t}");
+}

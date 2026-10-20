@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Board, Linie, Spalte, Staerke, Termin};
+use crate::modell::{Board, Linie, Spalte, Staerke, Termin, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -13,6 +13,8 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let grenzen = yaml::zuordnung(&m, "limits");
     let phasen = yaml::zuordnung(&m, "column-phases");
     let pruefungen = yaml::zuordnung(&m, "column-checks");
+    let notizen = yaml::zuordnung(&m, "column-notes");
+    let farben = yaml::zuordnung(&m, "column-colors");
     let termine = termine_lesen(m.get("milestones"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let mut titel = None;
@@ -29,7 +31,9 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             let grenze = grenzen.and_then(|g| g.get(name.as_str())).and_then(|v| v.as_u64()).map(|v| v as u32);
             let phase = phasen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).filter(|p| !p.trim().is_empty());
             let pruefungen = pruefungen.and_then(|p| p.get(name.as_str())).map(pruefungsnamen).unwrap_or_default();
-            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen });
+            let notiz = notizen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
+            let farbe = farben.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|f| ist_hexfarbe(f));
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -96,7 +100,9 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
     let phasen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.phase.as_deref().map(|p| (sp.name.as_str(), p))).collect();
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() {
+    let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
+    let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -117,6 +123,14 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
             s.push_str("column-checks:\n");
             for sp in pruefungen {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), yaml::liste(&sp.pruefungen)));
+            }
+        }
+        for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben)] {
+            if !eintraege.is_empty() {
+                s.push_str(&format!("{schluessel}:\n"));
+                for (spalte, wert) in eintraege.iter() {
+                    s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(wert)));
+                }
             }
         }
         if !b.termine.is_empty() {
@@ -152,9 +166,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
-                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
             anwendungen: None,
@@ -248,7 +262,7 @@ mod tests {
     fn spaltenphasen_im_frontmatter_rundlauf() {
         let mut b = beispiel();
         b.spalten[1].phase = Some("Entwicklung".into());
-        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(2, Spalte { notiz: None, farbe: None, name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
@@ -268,6 +282,18 @@ mod tests {
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
         let g = lesen("b", "---\ncolumn-checks: {A: wbs-effects-green, B: [], Fehlt: [x]}\n---\n## A\n## B\n").unwrap();
         assert_eq!(g.spalten.iter().map(|s| s.pruefungen.clone()).collect::<Vec<_>>(), [vec!["wbs-effects-green".to_string()], vec![]], "einzelner Name gilt, leere Liste und Eintrag ohne Spalte fallen weg");
+    }
+
+    #[test]
+    fn spaltenkommentar_und_farbe_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
+        b.spalten[1].notiz = Some("höchstens zwei: gleichzeitig".into());
+        b.spalten[1].farbe = Some("#ffe8b0".into());
+        let t = schreiben(&b, datei);
+        assert!(t.contains("column-notes:\n  In Arbeit: \"höchstens zwei: gleichzeitig\"\ncolumn-colors:\n  In Arbeit: \"#ffe8b0\"\n---\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        let g = lesen("b", "---\ncolumn-notes: {A: \"  \"}\ncolumn-colors: {A: rot, B: \"#00ff00\"}\n---\n## A\n## B\n").unwrap();
+        assert_eq!(g.spalten.iter().map(|s| (s.notiz.clone(), s.farbe.clone())).collect::<Vec<_>>(), [(None, None), (None, Some("#00ff00".to_string()))], "leerer Kommentar und ungültige Farbe fallen weg");
     }
 
     #[test]

@@ -182,7 +182,7 @@ mod tests {
     }
 
     fn brett(spalten: &[(&str, Option<&str>, &[&str])]) -> Board {
-        let spalten = spalten.iter().map(|(n, ph, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: ph.map(String::from), pruefungen: p.iter().map(|x| x.to_string()).collect() }).collect();
+        let spalten = spalten.iter().map(|(n, ph, p)| Spalte { notiz: None, farbe: None, name: n.to_string(), grenze: None, aufgaben: vec![], phase: ph.map(String::from), pruefungen: p.iter().map(|x| x.to_string()).collect() }).collect();
         Board { slug: "b".into(), titel: "B".into(), spalten, termine: vec![], anwendungen: None }
     }
     const G: &[&str] = &["wbs-effects-green"];
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn unbekannte_pruefungen_werden_je_spalte_genannt() {
-        let spalte = |name: &str, p: &[&str]| Spalte { name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect() };
+        let spalte = |name: &str, p: &[&str]| Spalte { notiz: None, farbe: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect() };
         let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Entwicklung", &["wbs-effects-green", "xyz"]), spalte("Erledigt", &[])], termine: vec![], anwendungen: None };
         assert_eq!(unbekannte(&b), ["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"]);
     }

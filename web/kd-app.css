@@ -51,6 +51,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bahn-kopf .n{margin-left:auto;font-family:var(--kd-mono);font-weight:400;color:var(--kd-muted)}
 .bahn-kopf .ok{color:var(--kd-mensch)}
 .bahn-kopf .v{font-weight:400;font-size:11px;color:var(--kd-faint)}
+.bahn-kopf .info{font-weight:400;color:var(--kd-accent-ink);cursor:help}
+/* eigene Spaltenfarbe (R00069): im Dark-Mode gedämpft über --kd-spalte-anteil */
+.bahn.gefaerbt>.flaeche{background:color-mix(in srgb,var(--sf) var(--kd-spalte-anteil),var(--kd-sunken))}
 .flaeche{flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:2px;gap:2px;background:var(--kd-sunken)}
 .bahn.ins-end .flaeche{box-shadow:inset 0 0 0 2px var(--kd-accent)}
 .leer{padding:16px 8px;text-align:center;color:var(--kd-faint);font-size:12px}
@@ -234,6 +237,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bk-ed .r .btn-sym{height:26px;width:24px;color:var(--kd-accent-ink)}
 .bk-ed .r2{display:flex;gap:var(--kd-s3);align-items:center;font-size:11.5px;color:var(--kd-muted);min-height:22px}
 .bk-ed .r2 .inp{height:22px;width:44px;font-size:11.5px;padding:0 4px}
+.bk-ed .r2 .inp.kommentar{flex:1;width:auto;min-width:0}
+.bk-ed .r2 .farbwahl{width:32px;height:22px;padding:0;border:1px solid var(--kd-line-strong);background:none}
 .chk-s{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--kd-text);user-select:none;white-space:nowrap}
 .bk-ed .chk-s{margin-left:auto}
 .chk-s i{width:12px;height:12px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);display:grid;place-items:center;font-style:normal;font-size:9px}

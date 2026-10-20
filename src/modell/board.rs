@@ -11,6 +11,17 @@ pub struct Spalte {
     /// Plausibilitätsprüfungen beim Verlassen nach rechts (`column-checks`), z. B. `wbs-effects-green`.
     #[serde(default)]
     pub pruefungen: Vec<String>,
+    /// Kommentar zur Spalte (`column-notes`), im Spaltenkopf als ⓘ mit Tooltip.
+    #[serde(default)]
+    pub notiz: Option<String>,
+    /// Hintergrundfarbe der Spalte als `#rrggbb` (`column-colors`).
+    #[serde(default)]
+    pub farbe: Option<String>,
+}
+
+/// `#rrggbb` — die einzige Form, in der eine Spaltenfarbe gilt.
+pub fn ist_hexfarbe(s: &str) -> bool {
+    s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -156,6 +167,12 @@ pub struct SpaltenAenderung {
     /// `column-checks` der Spalte; fehlt das Feld, behält sie die der alten Spalte.
     #[serde(default)]
     pub pruefungen: Option<Vec<String>>,
+    /// `column-notes`; fehlt das Feld, behält sie den der alten Spalte, ein leerer Text entfernt ihn.
+    #[serde(default)]
+    pub notiz: Option<String>,
+    /// `column-colors` als `#rrggbb`; fehlt das Feld, behält sie die der alten Spalte, ein leerer Text entfernt sie.
+    #[serde(default)]
+    pub farbe: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -165,6 +182,7 @@ pub enum Spaltenfehler {
     AltUnbekannt(String),
     AltDoppelt(String),
     EnthaeltAufgaben(String, usize),
+    FarbeUngueltig(String),
 }
 
 impl Board {
@@ -181,6 +199,9 @@ impl Board {
                 return Err(Spaltenfehler::NameDoppelt(name.into()));
             }
             namen.push(name);
+            if let Some(f) = n.farbe.as_deref().map(str::trim).filter(|f| !f.is_empty() && !ist_hexfarbe(f)) {
+                return Err(Spaltenfehler::FarbeUngueltig(f.into()));
+            }
             if let Some(alt) = n.alt.as_deref() {
                 if !self.spalten.iter().any(|s| s.name == alt) {
                     return Err(Spaltenfehler::AltUnbekannt(alt.into()));
@@ -198,12 +219,20 @@ impl Board {
             .iter()
             .map(|n| {
                 let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()) }
+                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())) }
             })
             .collect();
         let geaendert = spalten != self.spalten;
         self.spalten = spalten;
         Ok(geaendert)
+    }
+}
+
+/// Ein gesendeter Wert gilt, leer heißt entfernt; nicht gesendet behält den alten.
+fn gesetzt_oder_alt(neu: &Option<String>, alt: Option<String>) -> Option<String> {
+    match neu {
+        Some(t) => Some(t.trim().to_string()).filter(|t| !t.is_empty()),
+        None => alt,
     }
 }
 
@@ -223,8 +252,8 @@ mod tests {
             slug: "b".into(),
             titel: "B".into(),
             spalten: vec![
-                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
             anwendungen: None,
@@ -252,13 +281,13 @@ mod tests {
     }
 
     fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None }
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None, notiz: None, farbe: None }
     }
 
     #[test]
     fn spalten_umbenennen_ergaenzen_begrenzen() {
         let mut b = b();
-        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { notiz: None, farbe: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] });
         let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
@@ -271,7 +300,7 @@ mod tests {
     fn umbenennen_nimmt_die_phase_mit_entfernen_nimmt_sie_weg() {
         let mut b = b();
         b.spalten[0].phase = Some("Entwicklung".into());
-        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { notiz: None, farbe: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
         assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None), aend("Z", Some("Z"), None)]), Ok(true));
         assert_eq!(b.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None, None]);
     }

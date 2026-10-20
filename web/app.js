@@ -8,6 +8,13 @@ S.ui.listBereich = gemerkt('kanbanD.listBereich') || 'alle';
 S.ui.pBereich = 'alle';
 const TERMIN_LEER = { i: null, name: '', datum: '', farbe: 'red', linie: 'durchgehend', staerke: 'normal' };
 S.ui.tf = { ...TERMIN_LEER };
+const THEMEN = ['system', 'light', 'dark'];
+/** Darstellung am Wurzelelement: `system` folgt prefers-color-scheme, sonst erzwungen (R00070). */
+function themaAnwenden(t) {
+  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+}
+S.thema = (t => THEMEN.includes(t) ? t : 'system')((() => { try { return localStorage.getItem('kanbanD.thema'); } catch (_) { return null; } })());
+themaAnwenden(S.thema);
 S.timerStart = (() => { try { return JSON.parse(localStorage.getItem('kanbanD.timer-start') || '{}'); } catch (_) { return {}; } })();
 /** Merkt die Startsekunde eines hier gestarteten Timers (`nr|wer`); älter als ein Tag fällt heraus. */
 function timerStartMerken(schluessel, ms) {
@@ -833,7 +840,7 @@ async function act(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])] })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '' })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
       case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'setup-weg': u.setup = null; break;
@@ -884,18 +891,25 @@ async function act(a, arg, wert) {
         break;
       }
       case 'col-del': u.setup.spalten.splice(+arg, 1); break;
+      case 'thema': {
+        S.thema = THEMEN[(THEMEN.indexOf(S.thema) + 1) % THEMEN.length];
+        themaAnwenden(S.thema);
+        try { localStorage.setItem('kanbanD.thema', S.thema); } catch (_) { }
+        break;
+      }
+      case 'col-farbe-weg': u.setup.spalten[+arg].farbe = ''; break;
       case 'col-add': {
         const name = (wert || '').trim();
         if (!name) break;
         const d = u.setup.spalten;
-        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [] });
+        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [], notiz: '', farbe: '' });
         u.fokus = '#col-new';
         break;
       }
       case 'setup-ok': {
         if (ichNoetig()) break;
         try {
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen })));
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe })));
           if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
           u.setup = null;
           return laden();
@@ -1036,6 +1050,7 @@ document.addEventListener('input', e => {
     const sp = S.ui.setup.spalten[+e.target.dataset.i];
     sp[sf] = sf === 'grenze' ? e.target.value.replace(/\D/g, '') : e.target.value;
     S.ui.setup.fehler = null;
+    if (sf === 'farbe') { const bahn = e.target.closest('.bahn'); bahn.classList.add('gefaerbt'); bahn.style.setProperty('--sf', sp.farbe); e.target.nextElementSibling.textContent = sp.farbe; }
     $('#setup-vorschau').textContent = setupText(S.ui.setup);
     return;
   }
