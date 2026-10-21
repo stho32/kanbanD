@@ -35,7 +35,7 @@ test('US-1 bis US-3: Termin anlegen, Chance, ändern, entfernen', async ({ page 
     await expect(linie).toHaveCount(1);
     expect(await linie.evaluate(l => [getComputedStyle(l).strokeWidth, getComputedStyle(l).strokeDasharray])).toEqual(['4px', 'none']);
     expect(await linie.evaluate(l => getComputedStyle(l).stroke)).not.toBe('none');
-    await expect(page.locator('.wl-termin[data-termin="Deadline"] text')).toHaveText('Deadline 31.10.');
+    await expect(page.locator('.wl-termin[data-termin="Deadline"] text')).toHaveText('Deadline 31.10.2027'); // mit Jahr (R00073)
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('milestones:\n  - {name: Deadline, date: 2027-10-31, color: red, line: solid, width: bold}');
     expect(k.git('log', '-1', '--format=%s')).toBe('Termin „Deadline“ (31.10.2027) angelegt in „Entwicklung“');
     await expect(page.locator('#termine tbody tr')).toContainText(['Deadline']);

@@ -283,6 +283,16 @@
     return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 
+  /* ── Diagramme (R00073) ── */
+  /** Tag (lokale Mitternacht) unter der x-Position einer Zeichenfläche `{ l, breite, t0, t1, stetig }`; außerhalb null.
+      Eine Tagesachse (Punkte je Tag) rundet auf den nächsten Tag, eine stetige Achse (Zeitpunkte) nimmt den Tag des Zeitpunkts. */
+  function tagAnPosition(x, { l, breite, t0, t1, stetig }) {
+    if (x < l || x > l + breite) return null;
+    if (t1 <= t0) return tag(t0);
+    return tag(t0 + (x - l) / breite * (t1 - t0) + (stetig ? 0 : TAG / 2));
+  }
+  const vollDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
+
   /* ── Termine (R00047) ── */
   /** Chance einer Spalte, einen Termin (JJJJ-MM-TT) zu halten: vorbei, erreicht, ungemessen oder p7/p5 in [0, 1]. */
   function terminChance(ph, datum, heute) {
@@ -293,5 +303,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -288,6 +288,10 @@ zuletzt: 2026-10-20
 | I0060 | Interaction | D0002 | Wirkungsstand als Punkt | gruen | US-1..US-2 |  |  |  | I0059 | R00072 | Auftrag 2026-10-20: ein Punkt statt Chips, Zielzustand statt Eintritt |
 | B0204 | Bubble | I0060 | Zielzustand im Dienst | gruen | Test gruen | Wirkung, WBS → erfuellt: create/rework Knoten gerechnet gruen, remove verworfen oder fehlt; in GET …/wbs-effects |  |  |  |  |  |
 | B0205 | Bubble | I0060 | Ein Punkt je Karte | gruen | Test gruen | Wirkungen der Karte, WBS je Anwendung → Punkt an/aus/grau mit Tooltip je Wirkung, kein Link; Ampel im Fenster = Zielzustand |  |  |  |  |  |
+| I0061 | Interaction | D0006 | Diagramme im Vollbild, Datum überall | gruen | US-1..US-3 |  |  |  | I0047 | R00073 | Auftrag 2026-10-21: Vollbild je Diagramm, Tooltip mit Datum auf der ganzen Fläche, Datum mit Jahr |
+| B0206 | Bubble | I0061 | Zeigerposition → Tag | gruen | Test gruen | x in der Zeichenfläche, Achse (L, Breite, t0, t1) → nächster Kalendertag; Datum TT.MM.JJJJ |  |  |  |  |  |
+| B0207 | Bubble | I0061 | Fadenkreuz und Tooltip auf der ganzen Fläche | gruen | Test gruen | Zeiger über Diagramm → Tag → Tooltip je Bericht (Burndown, Durchlaufzeit, Wie lange noch mit Chance je Spalte); Achsen zweizeilig mit Jahr |  |  |  |  |  |
+| B0208 | Bubble | I0061 | Vollbild | gruen | Test gruen | Knopf am Diagramm → Zustand vollbild (übersteht Neuzeichnen) → Fläche fixiert über den Bildschirm; Esc und Ansichtswechsel beenden |  |  |  |  |  |
 
 ## Offene Fragen
 

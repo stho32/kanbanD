@@ -116,7 +116,9 @@ async function laden({ nurBeiAenderung = false } = {}) {
     S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   } else {
     S.ui.first = null;
+    const vorher = S.ui.view;
     S.ui.view = ansichtAusAdresse();
+    if (S.ui.view !== vorher && S.ui.vollbild) vollbildSetzen(false);
     if (S.ui.view !== 'einrichten') S.ui.einr = null;
     else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
     S.ui.slug = gewaehltesBoard();
@@ -906,6 +908,7 @@ async function act(a, arg, wert) {
         try { localStorage.setItem('kanbanD.thema', S.thema); } catch (_) { }
         break;
       }
+      case 'vollbild': vollbildSetzen(!u.vollbild); break;
       case 'col-farbe-weg': u.setup.spalten[+arg].farbe = ''; break;
       case 'col-add': {
         const name = (wert || '').trim();
@@ -1109,6 +1112,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
+  if (S.ui.vollbild && e.key === 'Escape') { vollbildSetzen(false); render(); return; }
   if (S.ui.zuweisen) { zuweisenTaste(e, t); return; }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && S.ui.hinweis && S.ui.hinweis.undo) {
     e.preventDefault();
@@ -1461,24 +1465,40 @@ document.addEventListener('paste', async e => {
   render();
 });
 
-/* Tooltip der Verlaufsdiagramme: Fadenkreuz und Werte des Tages unter dem Zeiger (data-tip: Zeilen mit | getrennt) */
-document.addEventListener('mouseover', e => {
-  const r = e.target.closest && e.target.closest('rect.treffer');
+/* Tooltip der Diagramme (R00073): der Zeiger wird über die ganze Zeichenfläche in einen Tag übersetzt (`data-achse`), das
+   Fadenkreuz steht auf diesem Tag — bei stetiger Achse am Zeiger —, den Inhalt liefert die Ansicht über `S.diagrammTip`. */
+document.addEventListener('mousemove', e => {
   const tip = $('#tooltip'), kreuz = $('#fadenkreuz');
   if (!tip || !kreuz) return;
-  if (!r) { tip.hidden = true; kreuz.setAttribute('x1', -10); kreuz.setAttribute('x2', -10); return; }
-  const mitte = +r.getAttribute('x') + +r.getAttribute('width') / 2;
-  kreuz.setAttribute('x1', mitte); kreuz.setAttribute('x2', mitte);
-  if (r.dataset.tip) {
-    const [kopf, ...zeilen] = r.dataset.tip.split('|');
-    tip.innerHTML = `<b>${esc(kopf)}</b>${zeilen.map(z => `<span>${esc(z)}</span>`).join('')}`;
-  } else {
-    const x = S.bdTage[+r.dataset.tag];
-    tip.innerHTML = `<b>${x.datum}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>`;
-  }
-  tip.hidden = false;
-  const flaeche = r.closest('.dflaeche').getBoundingClientRect(), rb = r.getBoundingClientRect();
-  tip.style.left = Math.min(flaeche.width - 150, Math.max(0, rb.left - flaeche.left + rb.width / 2 + 8)) + 'px';
+  const svg = e.target.closest && e.target.closest('svg.diagramm[data-achse]');
+  const tag = svg && diagrammTag(svg, e);
+  if (tag == null) { tip.hidden = true; kreuz.setAttribute('x1', -10); kreuz.setAttribute('x2', -10); return; }
+  kreuz.setAttribute('x1', tag.x); kreuz.setAttribute('x2', tag.x);
+  tip.innerHTML = S.diagrammTip ? S.diagrammTip(tag.t) : '';
+  tip.hidden = !tip.innerHTML;
+  const flaeche = svg.closest('.dflaeche').getBoundingClientRect();
+  tip.style.left = Math.min(flaeche.width - tip.offsetWidth - 4, Math.max(0, e.clientX - flaeche.left + 14)) + 'px';
+});
+/** Tag unter dem Zeiger und x des Fadenkreuzes in Koordinaten des Diagramms; null außerhalb der Zeichenfläche. */
+function diagrammTag(svg, e) {
+  const [l, breite, t0, t1, stetig] = svg.dataset.achse.split(',').map(Number);
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const x = pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+  const t = tagAnPosition(x, { l, breite, t0, t1, stetig });
+  if (t == null) return null;
+  return { t, x: stetig || t1 <= t0 ? x : l + breite * (t - t0) / (t1 - t0) };
+}
+
+/* Vollbild der Diagramme (R00073): ein Zustand, damit es das Neuzeichnen übersteht; die Fullscreen-API kommt dazu, wo der Browser sie erlaubt. */
+function vollbildSetzen(an) {
+  S.ui.vollbild = an;
+  try {
+    if (an && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { });
+    if (!an && document.fullscreenElement) document.exitFullscreen().catch(() => { });
+  } catch (_) { }
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && S.ui.vollbild) { S.ui.vollbild = false; render(); }
 });
 
 /* Dateien aus dem Rechner auf „Anhänge“ ziehen */

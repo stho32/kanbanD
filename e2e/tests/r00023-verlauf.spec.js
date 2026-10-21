@@ -26,8 +26,9 @@ test('US-1 und US-2: Burndown und Durchlaufzeit aus der Geschichte', async ({ pa
     await expect(page.locator('#durchlauf')).toHaveCount(0, { timeout: 1 }); // Durchlaufzeit ist ein eigener Bericht (R00044)
     await page.mouse.move(1, 1);
     await expect(page.locator('#tooltip')).toBeHidden();
-    await page.locator('rect.treffer').first().hover();
-    await expect(page.locator('#tooltip')).toContainText('2026-10-01');
+    const svg = await page.getByRole('img', { name: 'Offene Aufgaben je Tag' }).boundingBox(); // linker Rand der Zeichenfläche (R00073)
+    await page.mouse.move(svg.x + svg.width * 37 / 800, svg.y + svg.height / 2);
+    await expect(page.locator('#tooltip')).toContainText('01.10.2026');
     await expect(page.locator('#tooltip')).toContainText('offen 2');
     await page.getByText('Tabellenansicht').click();
     await expect(page.locator('.tabellenansicht tbody tr').first()).toContainText('2026-10-01');

@@ -543,13 +543,23 @@ function vKreuz() {
 <div class="body"><table class="pt dicht" id="kreuz"><thead><tr><th>Aufgabe</th>${k.personen.map(p => `<th class="r">${pk(p)} ${esc(per(p).name)}</th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${k.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.jePerson.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || '<tr><td class="muted">Keine Zeiten im Zeitraum.</td></tr>'}<tr class="grp"><td>SUMME</td>${k.jeSpalte.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r">${hm(k.summe)}</td></tr></tbody></table></div>`;
 }
 
+/* Diagramme (R00073): x-Achse zweizeilig mit Jahr; Fläche mit Vollbild-Knopf und Tooltip. Das Fadenkreuz folgt dem Zeiger über
+   die ganze Zeichenfläche — `data-achse` (l, breite, t0, t1, stetig) übersetzt die Position in einen Tag, `S.diagrammTip(tag)`
+   liefert den Inhalt des Tooltips. */
+const achsDatum = (ms, x, y) => { const d = vollDatum(ms); return `<text class="achse achse-x" x="${x}" y="${y}" text-anchor="middle"><tspan x="${x}">${d.slice(0, 6)}</tspan><tspan x="${x}" dy="12">${d.slice(6)}</tspan></text>`; };
+const achsAttribut = (l, breite, t0, t1, stetig) => `data-achse="${[l, breite, t0, t1, stetig ? 1 : 0].join(',')}"`;
+const fadenkreuz = (o, u) => `<line class="fadenkreuz" id="fadenkreuz" y1="${o}" y2="${u}" x1="-10" x2="-10"></line>`;
+function vDiagrammFlaeche(svg, extra = '') {
+  const an = !!S.ui.vollbild;
+  return `<div class="dflaeche${extra}${an ? ' vollbild' : ''}"><button class="btn vollbild-knopf" data-act="vollbild" aria-pressed="${an}" aria-label="${an ? 'Vollbild beenden' : 'Diagramm im Vollbild'}" title="${an ? 'Vollbild beenden (Esc)' : 'Diagramm im Vollbild'}">${an ? '✕ Vollbild beenden' : '⛶ Vollbild'}</button>${svg}<div class="tooltip" id="tooltip" hidden></div></div>`;
+}
+
 /* Burndown: eine Serie (offen) in der Akzentfarbe, Umfang als neutrale Bezugslinie. */
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now()), B = 800;
-  S.bdTage = t;
-  const H = 260, L = 36, R = 96, O = 16, U = 28;
+  const H = 272, L = 36, R = 96, O = 16, U = 40;
   const max = Math.max(1, ...t.map(x => x.umfang));
   const sx = i => L + (t.length < 2 ? (B - L - R) / 2 : i * (B - L - R) / (t.length - 1));
   const sy = y => O + (H - O - U) * (1 - y / max);
@@ -558,22 +568,23 @@ function vVerlauf() {
   const ticks = []; for (let y = 0; y <= max; y += schritt) ticks.push(y);
   const xTicks = t.map((x, i) => ({ x, i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
   const letzte = t[t.length - 1];
-  const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag">
+  const tage = t.map(x => isoTag(x.datum));
+  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${deDatum(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>` : ''; };
+  const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
-${xTicks.map(({ x, i }) => `<text class="achse" x="${sx(i)}" y="${H - 8}" text-anchor="middle">${x.datum.slice(8)}.${x.datum.slice(5, 7)}.</text>`).join('')}
+${xTicks.map(({ i }) => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
 <path class="umfang" d="${linie('umfang')}"></path><path class="offen" d="${linie('offen')}"></path>
 <circle class="punkt" cx="${sx(t.length - 1)}" cy="${sy(letzte.offen)}" r="4"></circle>
 <text class="endwert" x="${sx(t.length - 1) + 10}" y="${sy(letzte.offen) + 4}">offen ${letzte.offen}</text>
 <text class="endwert leise" x="${sx(t.length - 1) + 10}" y="${sy(letzte.umfang) + (letzte.umfang === letzte.offen ? 18 : 4)}">Umfang ${letzte.umfang}</text>
-<line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
-${t.map((x, i) => `<rect class="treffer" x="${sx(i) - (B - L - R) / Math.max(1, t.length - 1) / 2}" y="${O}" width="${(B - L - R) / Math.max(1, t.length - 1)}" height="${H - O - U}" data-tag="${i}"></rect>`).join('')}
+${fadenkreuz(O, H - U)}
 </svg>` : `<div class="leer">${S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.'}</div>`;
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
   const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter({ zeitraum: true, spalten: true, personen: 'zustaendig' })}
-<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}<div class="dflaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}${nicht}</div>`;
+<div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
@@ -585,33 +596,34 @@ function vDurchlauf() {
   const wahl = (k, wert, titel) => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte">${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
   const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter({ zeitraum: true, personen: 'zustaendig' })}`;
   if (!d.gueltig) return `${kopf}<div class="body bericht"><div class="leer">„von“ muss links von „bis“ liegen.</div></div>`;
-  const B = 800, H = 280, L = 40, R = 110, O = 16, U = 28, l = d.liste;
+  const B = 800, H = 292, L = 40, R = 110, O = 16, U = 40, l = d.liste;
   const t0 = Math.min(...l.map(x => x.ankunft)), t1 = Math.max(...l.map(x => x.ankunft));
   const ymax = Math.max(1, ...l.map(x => x.tage)) * 1.1;
   const sx = t => L + (t1 === t0 ? (B - L - R) / 2 : (t - t0) / (t1 - t0) * (B - L - R)), sy = y => O + (H - O - U) * (1 - y / ymax);
   const schritt = Math.max(1, Math.ceil(ymax / 4)), ticks = [];
   for (let y = 0; y <= ymax; y += schritt) ticks.push(y);
-  const datum = ms => { const x = new Date(ms); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.`; };
   const xt = t1 === t0 ? [t0] : [0, 1, 2, 3, 4].map(i => t0 + (t1 - t0) * i / 4);
   const bezug = (wert, cls, text) => `<line class="${cls}" x1="${L}" x2="${B - R}" y1="${sy(wert)}" y2="${sy(wert)}"></line><text class="endwert leise" x="${B - R + 8}" y="${sy(wert) + 4}">${text} ${zahl1(wert)} T</text>`;
-  const svg = l.length ? `<svg class="diagramm streu" viewBox="0 0 ${B} ${H}" role="img" aria-label="Durchlaufzeit je Aufgabe nach Ankunftstag">
+  const punktText = x => { const a = aufgabe(x.nummer); return `#${x.nummer} ${a ? a.titel : ''} · ${zahl1(x.tage)} Tage`; };
+  S.diagrammTip = tg => { const da = l.filter(x => isoTag(isoD(x.ankunft)) === tg); return `<b>Ankunft ${deDatum(tg)}</b><span>${da.length ? `${da.length} ${da.length === 1 ? 'Aufgabe' : 'Aufgaben'} angekommen` : 'keine Aufgabe angekommen'}</span>${da.map(x => `<span>${esc(punktText(x))}</span>`).join('')}`; };
+  const svg = l.length ? `<svg class="diagramm streu" viewBox="0 0 ${B} ${H}" role="img" aria-label="Durchlaufzeit je Aufgabe nach Ankunftstag" ${achsAttribut(L, B - L - R, t0, t1, true)}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
-${xt.map(t => `<text class="achse" x="${sx(t)}" y="${H - 8}" text-anchor="middle">${datum(t)}</text>`).join('')}
+${xt.map(t => achsDatum(t, sx(t), H - U + 18)).join('')}
 ${bezug(d.p85, 'p85', '85 %')}${bezug(d.median, 'median', 'Median')}
-${l.map(x => { const a = aufgabe(x.nummer); return `<circle class="punkt klick" cx="${sx(x.ankunft).toFixed(1)}" cy="${sy(x.tage).toFixed(1)}" r="5" data-act="oeffnen" data-arg="${x.nummer}"><title>#${x.nummer} ${esc(a ? a.titel : '')} · ${zahl1(x.tage)} Tage · angekommen ${datum(x.ankunft)}</title></circle>`; }).join('')}
+${fadenkreuz(O, H - U)}
+${l.map(x => `<circle class="punkt klick" cx="${sx(x.ankunft).toFixed(1)}" cy="${sy(x.tage).toFixed(1)}" r="5" data-act="oeffnen" data-arg="${x.nummer}" aria-label="${esc(punktText(x))} · angekommen ${deDatum(x.ankunft)}"></circle>`).join('')}
 </svg>` : '<div class="leer">Keine Aufgabe hat im Zeitraum „bis“ erreicht.</div>';
   const fmt = ms => { const x = new Date(ms), p = n => String(n).padStart(2, '0'); return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}`; };
   const kennzahlen = `<div class="kennzahlen" id="durchlauf-kennzahl"><span><b>${d.anzahl}</b> Aufgaben</span><span>Mittel <b>${zahl1(d.mittel)}</b> T</span><span>Median <b>${zahl1(d.median)}</b> T</span><span>85 % in <b>${zahl1(d.p85)}</b> T oder weniger</span></div>`;
   const tabelle = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>in „${esc(von)}“</th><th>in „${esc(bis)}“</th><th class="r">Tage</th></tr></thead><tbody>${l.map(x => { const a = aufgabe(x.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${x.nummer}"><td class="tt"><span class="mono muted">#${x.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${fmt(x.eintritt)}</td><td class="mono">${fmt(x.ankunft)}</td><td class="r num">${zahl1(x.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`;
   const legende = '<div class="dlegende"><span><i class="k-punkt"></i>eine Aufgabe</span><span><i class="k-median"></i>Median</span><span><i class="k-p85"></i>85 %</span></div>';
-  return `${kopf}<div class="body bericht">${kennzahlen}<h3 class="dtitel">Tage je Aufgabe nach Ankunft in „${esc(bis)}“</h3>${legende}<div class="dflaeche">${svg}</div><h3 class="dtitel">Aufgaben</h3>${tabelle}</div>`;
+  return `${kopf}<div class="body bericht">${kennzahlen}<h3 class="dtitel">Tage je Aufgabe nach Ankunft in „${esc(bis)}“</h3>${legende}${l.length ? vDiagrammFlaeche(svg) : svg}<h3 class="dtitel">Aufgaben</h3>${tabelle}</div>`;
 }
 
 /* Wie lange noch (R00046): je Spalte noch nicht erreicht, Monte-Carlo-Fächer, Blöcke mit Perzentilen.
    Serienfarben: Slots 1–3 der validierten dataviz-Palette, feste Reihenfolge von links nach rechts. */
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const deDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${WOCHENTAG[d.getDay()]} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
-const kurzDatum = ms => { const d = new Date(ms); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`; };
 /* Termine (R00047): Darstellung einer Linie aus Farbe, Art und Stärke */
 const TERMIN_STAERKE = { fein: 1.25, normal: 2, fett: 4 };
 const TERMIN_ART = { durchgehend: '', gestrichelt: '9 6', gepunktet: '1.5 5' };
@@ -648,7 +660,7 @@ function vPrognose() {
   const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${fertig.nenner} fertig</strong>${p.phasen.slice(0, -1).map(ph => ` · ${esc(blockStand(ph))}`).join('')}</p>`;
   // Diagramm: höchstens drei Serien, die rechten Spalten (nahe „fertig“)
   const serien = p.phasen.slice(-3).map((ph, i) => ({ ph, k: 'wl-s' + (i + 1) }));
-  const W = 960, H = 400, L = 48, R = 24, O = 24, U = 40, pw = W - L - R, ph_ = H - O - U;
+  const W = 960, H = 412, L = 48, R = 24, O = 24, U = 52, pw = W - L - R, ph_ = H - O - U;
   const t0 = p.tage.length ? p.tage[0].t : p.heute;
   const enden = serien.flatMap(s => s.ph.zeilen ? [s.ph.zeilen[3].datum7] : []);
   const termine = (S.board && S.board.termine) || [];
@@ -670,21 +682,27 @@ function vPrognose() {
     const x0 = x(p.heute), y0 = y(s.ph.offen), y1 = y(0);
     faecher += `<polygon class="wl-band ${s.k}" points="${x0.toFixed(1)},${y0.toFixed(1)} ${x(z[50].datum7).toFixed(1)},${y1} ${x(z[95].datum7).toFixed(1)},${y1}"></polygon>`;
     [[50, 'wl-p50'], [85, 'wl-p85'], [95, 'wl-p95']].forEach(([q, cls], stufe) => {
-      const xe = x(z[q].datum7);
-      faecher += `<line class="${cls} ${s.k}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${y1}"></line><text class="wl-lbl" x="${xe.toFixed(1)}" y="${(y1 - 8 - 13 * stufe - 42 * si).toFixed(1)}" text-anchor="middle">${esc(s.ph.schluessel.slice(0, 10))} P${q} ${kurzDatum(z[q].datum7)}</text>`;
+      const xe = x(z[q].datum7), rand = xe > W - R - 80;
+      faecher += `<line class="${cls} ${s.k}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${y1}"></line><text class="wl-lbl" x="${(rand ? W - 2 : xe).toFixed(1)}" y="${(y1 - 8 - 13 * stufe - 42 * si).toFixed(1)}" text-anchor="${rand ? 'end' : 'middle'}">${esc(s.ph.schluessel.slice(0, 10))} P${q} ${vollDatum(z[q].datum7)}</text>`;
     });
   });
-  const tip = d => [kurzDatum(d.t) + (d.t === p.heute ? ' (heute)' : ''), 'Umfang ' + d.umfang, ...p.phasen.map(ph => `${blockOffen(ph)}: ${d.offen[ph.schluessel]}`)].map(esc).join('|');
-  const breite = pw * 864e5 / Math.max(t1 - t0, 1);
-  const svg = `<svg class="diagramm wl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch nicht erreichte Aufgaben je Spalte mit Prognose">
+  // Tooltip: bis heute die gezählten Stände, danach je Spalte die Chance, bis zu diesem Tag fertig zu sein
+  const bisDahin = ph => ph.phase ? `„${ph.phase}“ durchlaufen bis dahin` : `„${ph.spalte}“ erreicht bis dahin`;
+  S.diagrammTip = tg => {
+    const d = p.tage.find(x => x.t === tg), kopf = `<b>${deDatum(tg)}${tg === p.heute ? ' (heute)' : ''}</b>`;
+    const amTag = termine.filter(t => isoTag(t.datum) === tg).map(t => `<span>Termin: ${esc(t.name)}</span>`).join('');
+    if (d) return kopf + [`Umfang ${d.umfang}`, ...p.phasen.map(ph => `${blockOffen(ph)}: ${d.offen[ph.schluessel]}`)].map(z => `<span>${esc(z)}</span>`).join('') + amTag;
+    if (tg < p.heute) return kopf + amTag;
+    return kopf + p.phasen.map(ph => `<span>${esc(bisDahin(ph))}: ${esc(chanceText(terminChance(ph, isoD(tg), jetzt)))}</span>`).join('') + amTag;
+  };
+  const svg = `<svg class="diagramm wl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch nicht erreichte Aufgaben je Spalte mit Prognose" ${achsAttribut(L, pw, t0, t1)}>
 ${yt.map(v => `<line class="gitter" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"></line><text class="achse" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
-${xt.map(t => `<text class="achse" x="${x(t).toFixed(1)}" y="${H - U + 18}" text-anchor="middle">${kurzDatum(t)}</text>`).join('')}
+${xt.map(t => achsDatum(t, x(t).toFixed(1), H - U + 18)).join('')}
 <path class="umfang" d="${pfad(p.tage.map(d => [d.t, d.umfang]))}"></path>
 ${faecher}${linien}${marken}
 <line class="wl-heute" x1="${x(p.heute)}" x2="${x(p.heute)}" y1="${O}" y2="${H - U}"></line><text class="wl-lbl" x="${x(p.heute) + 4}" y="${O + 10}">heute</text>
-${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i) => { const xt = x(isoTag(t.datum)), rechts = xt > W - R - 140; return `<g class="wl-termin" data-termin="${esc(t.name)}"><line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${O}" y2="${H - U}" style="${terminStil(t)}"></line><text class="wl-tlbl" x="${(xt + (rechts ? -5 : 5)).toFixed(1)}" y="${O + 26 + 14 * (i % 4)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(t.name)} ${kurzDatum(isoTag(t.datum))}</text></g>`; }).join('')}
-<line class="fadenkreuz" id="fadenkreuz" y1="${O}" y2="${H - U}" x1="-10" x2="-10"></line>
-${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed(1)}" y="${O}" width="${breite.toFixed(1)}" height="${ph_}" data-tag="${i}" data-tip="${tip(d)}"></rect>`).join('')}
+${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i) => { const xt = x(isoTag(t.datum)), rechts = xt > W - R - 140; return `<g class="wl-termin" data-termin="${esc(t.name)}"><line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${O}" y2="${H - U}" style="${terminStil(t)}"></line><text class="wl-tlbl" x="${(xt + (rechts ? -5 : 5)).toFixed(1)}" y="${O + 26 + 14 * (i % 4)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(t.name)} ${vollDatum(isoTag(t.datum))}</text></g>`; }).join('')}
+${fadenkreuz(O, H - U)}
 </svg>`;
   const legende = `<div class="dlegende wl-legende"><span><i class="k-umfang"></i>Umfang</span>${serien.map(s => `<span><i class="wl-k ${s.k}"></i>${esc(blockOffen(s.ph))} — Prognose P50 · P85 gestrichelt · P95 gepunktet</span>`).join('')}</div>`;
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.phasen.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${isoD(d.t)}</td><td class="r num">${d.umfang}</td>${p.phasen.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
@@ -704,7 +722,7 @@ ${p.tage.map((d, i) => `<rect class="treffer" x="${(x(d.t) - breite / 2).toFixed
   const aufBoard = S.board ? S.board.spalten.reduce((s, sp) => s + sp.aufgaben.length, 0) : 0;
   const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste"><li>Aufgaben ohne Board: ${ohneBoard}.</li><li>Auf diesem Board, aber ausgeschlossen (Spalte, Farbe, Person, Label): ${Math.max(0, aufBoard - p.umfang - p.verworfen - p.ausgenommen)}.</li><li>Archiviert außerhalb der Abschlussspalte (gelten als verworfen): ${p.verworfen}.</li><li id="wl-ausgenommen">Ausgenommen (<span class="mono">reporting.forecast: false</span>): ${p.ausgenommen}.</li></ul>`;
   const methodik = `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Quelle: die Git-Geschichte von <span class="mono">boards/${esc(u.slug || '')}.md</span>; jede Bewegung ist ein Commit. Der Bericht rechnet neu, sobald sich das Board ändert.</li>${p.nachPhasen ? `<li>Das Board ist an die Anwendung „${esc(S.bew.phasen.anwendung)}“ gebunden; gerechnet wird je Phase (${esc(S.bew.phasen.folge.map(x => x.name).join(' → '))}), nicht je Spalte. Eine Aufgabe hat eine Phase durchlaufen, sobald sie in einer Spalte einer späteren Phase oder in der Abschlussspalte liegt oder lag; zwei Spalten derselben Phase sind gleich weit. Im Durchsatz zählt das erste Durchlaufen, offen ist, was heute noch nicht so weit ist (ein Zug nach links öffnet die Phase wieder). „Gleich wie“ fällt mit der genannten Phase zusammen, „eingebettet in“ gilt mit der Vorphase, wenn die Aufgabe das Label trägt; <span class="mono">phases.skipped</span> nimmt eine Aufgabe aus Zähler, Nenner und Durchsatz der Phase.</li>` : '<li>Eine Aufgabe hat eine Spalte erreicht, sobald sie dort oder rechts davon liegt; es zählt das erste Erreichen. Je Spalte (außer der ersten) eine Kurve „noch nicht erreicht“.</li>'}<li>Prognose: ${(10000).toLocaleString('de-DE')} Ziehungen mit Zurücklegen aus der Tagesreihe der Spalte (erreichte Aufgaben je Kalendertag ab dem ersten Lauf oder ab Beginn der Messbasis, Nulltage eingeschlossen), bis die offenen Aufgaben erreicht sind; Perzentile über die gezogenen Tage. Kein Puffer, kein Zuschlag. Eine Spalte wird nie früher prognostiziert als die Spalte links davon — deren Datum steht als Untergrenze dabei, nicht verrechnet.</li><li>5-Tage-Woche: Tagesreihe nur über Werktage (Ankünfte am Wochenende zählen zum nächsten Werktag), gezählt ab heute nur Mo bis Fr.</li><li>Termine: Anteil der Ziehungen, die bis zum Termin fertig sind — in der 7-Tage-Woche nach Kalendertagen, in der 5-Tage-Woche nach Werktagen bis einschließlich Termin.</li><li>Unter ${MIN_LAEUFE} Läufen in der Messbasis gibt es keine Perzentile. Das Diagramm zeigt höchstens die drei rechten Spalten farbig; die Tabellenansicht und die Blöcke führen jede Spalte.</li></ul>`;
-  return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}<div class="dflaeche wl-flaeche">${svg}<div class="tooltip" id="tooltip" hidden></div></div>${tabelle}</div>${vTermine(p)}${bloecke}${nicht}${methodik}</div>`;
+  return `${kopf}<div class="body bericht wl-seite">${zahlen}<div class="wl-panel"><h3 class="dtitel">Noch nicht erreicht je Spalte, mit Prognose-Fächer</h3>${legende}${vDiagrammFlaeche(svg, ' wl-flaeche')}${tabelle}</div>${vTermine(p)}${bloecke}${nicht}${methodik}</div>`;
 }
 
 /* ── WBS-Sicht (R00054): Tabelle nach /planung karte, Stand im Kopf, live aus dem Arbeits-Repository ── */

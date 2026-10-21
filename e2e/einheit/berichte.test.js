@@ -320,3 +320,21 @@ test('Wie lange noch: eine ausgenommene archivierte Aufgabe zählt weder als ver
   const p = prognose({ spalten: sp, aufgaben: [x, zug(2, ['2026-10-12 09:00', 'A'])] }, f({}), n => n === 1 ? { archiviert: '2026-10-13', zustaendige: [], labels: [] } : undefined, jetzt);
   assert.deepStrictEqual([p.umfang, p.verworfen, p.ausgenommen], [1, 0, 0]);
 });
+
+test('Zeigerposition → Tag (R00073)', () => {
+  const { tagAnPosition, vollDatum } = require('../../web/berichte.js');
+  const achse = { l: 40, breite: 100, t0: d(2026, 10, 1), t1: d(2026, 10, 11) }; // 10 px je Tag
+  assert.strictEqual(tagAnPosition(40, achse), d(2026, 10, 1), 'linker Rand ist der erste Tag');
+  assert.strictEqual(tagAnPosition(140, achse), d(2026, 10, 11), 'rechter Rand ist der letzte Tag');
+  assert.strictEqual(tagAnPosition(64, achse), d(2026, 10, 3), '2,4 Tage rundet auf den 3.');
+  assert.strictEqual(tagAnPosition(66, achse), d(2026, 10, 4), '2,6 Tage rundet auf den 4.');
+  assert.strictEqual(tagAnPosition(39, achse), null, 'links der Fläche kein Tag');
+  assert.strictEqual(tagAnPosition(141, achse), null, 'rechts der Fläche kein Tag');
+  assert.strictEqual(tagAnPosition(90, { ...achse, t1: achse.t0 }), d(2026, 10, 1), 'ein einziger Tag gilt auf der ganzen Fläche');
+  const jw = { l: 0, breite: 10, t0: d(2026, 12, 27), t1: d(2027, 1, 6) };
+  assert.strictEqual(tagAnPosition(6, jw), d(2027, 1, 2), 'über den Jahreswechsel');
+  const stetig = { l: 0, breite: 84, t0: new Date(2026, 9, 2, 9).getTime(), t1: new Date(2026, 9, 5, 21).getTime(), stetig: true }; // 1 px je Stunde
+  assert.strictEqual(tagAnPosition(33, stetig), d(2026, 10, 3), 'stetig: 03.10. 18:00 bleibt der 3.');
+  assert.strictEqual(tagAnPosition(33, { ...stetig, stetig: false }), d(2026, 10, 4), 'Tagesachse rundet auf den 4.');
+  assert.strictEqual(vollDatum(d(2027, 1, 2)), '02.01.2027');
+});
