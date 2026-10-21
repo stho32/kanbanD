@@ -165,6 +165,8 @@ pub struct Aufgabe {
     pub labels: Vec<String>,
     pub faellig: Option<String>,
     pub herkunft: Vec<String>,
+    /// `signals`: gesetzte Signale (R00076), Schlüssel aus `kanbanD.md`
+    pub signale: Vec<String>,
     pub archiviert: Option<String>,
     pub beschreibung: String,
     pub teilaufgaben: Vec<Teilaufgabe>,
@@ -191,6 +193,7 @@ impl Aufgabe {
             labels: vec![],
             faellig: None,
             herkunft: vec![],
+            signale: vec![],
             archiviert: None,
             beschreibung: String::new(),
             teilaufgaben: vec![],
@@ -221,6 +224,8 @@ pub struct Aufgabenaenderung {
     #[serde(default, deserialize_with = "entfernbar")]
     pub faellig: Option<Option<String>>,
     pub herkunft: Option<Vec<String>>,
+    /// ersetzt die Signale; jedes muss in `kanbanD.md` eingerichtet sein
+    pub signale: Option<Vec<String>>,
     pub phasen: Option<Phasenaenderung>,
     pub reporting: Option<Zaehlungsaenderung>,
 }
@@ -242,6 +247,11 @@ pub struct Phasenaenderung {
 }
 
 pub const OHNE_HERKUNFT: &str = "thin air";
+
+/// Fehlertext für ein Signal, das nicht eingerichtet ist — `due` wird gerechnet und ist nie setzbar.
+pub fn signal_unbekannt(s: &str) -> String {
+    if s == crate::modell::SIGNAL_FAELLIG { format!("„{s}“ ist das Signal der Fälligkeit und wird gerechnet — die Fälligkeit setzt es") } else { format!("Signal „{s}“ steht nicht in kanbanD.md") }
+}
 
 /// Doppelte entfernen, Reihenfolge des ersten Auftretens behalten.
 fn eindeutig(liste: Vec<String>) -> Vec<String> {
@@ -328,6 +338,13 @@ impl Aufgabe {
             }
             neu.herkunft = eindeutig(h);
         }
+        if let Some(s) = &a.signale {
+            let s: Vec<String> = s.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect();
+            if let Some(f) = s.iter().find(|x| e.signal(x).is_none()) {
+                return Err(signal_unbekannt(f));
+            }
+            neu.signale = eindeutig(s);
+        }
         if let Some(u) = a.phasen.as_ref().and_then(|p| p.uebersprungen.as_ref()) {
             neu.phasen.uebersprungen = eindeutig(u.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect());
         }
@@ -348,6 +365,7 @@ impl Aufgabe {
             ("Labels", neu.labels != self.labels),
             ("Fälligkeit", neu.faellig != self.faellig),
             ("Herkunft", neu.herkunft != self.herkunft),
+            ("Signale", neu.signale != self.signale),
             ("Phasen", neu.phasen != self.phasen),
             ("Zählen in Berichten", neu.zaehlung != self.zaehlung),
         ] {

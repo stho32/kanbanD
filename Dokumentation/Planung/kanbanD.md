@@ -297,6 +297,12 @@ zuletzt: 2026-10-20
 | B0210 | Bubble | I0062 | Streifen zeichnen | gruen | Test gruen | zugeklappte Spalte → Kopf nur Zahl (rot bei Grenze), Streifen-Knopf mit gedrehtem Namen; Ziehen auf den Streifen ans Ende |  |  |  |  |  |
 | I0063 | Interaction | D0002 | Fertig in Spalten einrichten ohne Person | gruen | US-1 |  |  |  | I0009 | R00075 | Bug 2026-10-21: Auswahl „Ich bin …“ ohne Anker verschwand stillschweigend |
 | B0211 | Bubble | I0063 | Personen-Knopf in der Einrichtungs-Kopfzeile | gruen | Test gruen | Fertig ohne Person → Auswahl am Knopf der Kopfzeile mit Hinweis → nach Wahl speichert Fertig |  |  |  |  |  |
+| I0064 | Interaction | D0002 | Signale | gruen | US-1..US-4 |  |  |  | I0011 | R00076 | Auftrag 2026-10-21: Signale je Aufgabe, über API und Klick, Fackel auf Karte und im Spaltenkopf, filterbar, Fälligkeit als Standardsignal |
+| B0212 | Bubble | I0064 | Signale in den Einstellungen | gruen | Test gruen | kanbanD.md signals: {schlüssel: {label, color}} ↔ Einstellungen.signale; due reserviert |  |  |  |  |  |
+| B0213 | Bubble | I0064 | Signal setzen und zurücknehmen | gruen | Test gruen | PUT/DELETE …/signale/{s}, PATCH signale → Frontmatter signals, Commit, unbekannt 400 |  |  |  |  |  |
+| B0214 | Bubble | I0064 | Signale je Aufgabe rechnen und filtern | gruen | Test gruen | Aufgabe, heute, abgeschlossen → Signale inkl. due (heute/ueber); Filter signal:… |  |  |  |  |  |
+| B0215 | Bubble | I0064 | Fackel auf Karte, Fenster und Spaltenkopf | gruen | Test gruen | Signale → pulsierende Fackel je Signal mit Tooltip, Klick nimmt zurück; Schalter im Fenster; Kopf Symbol ×n filtert |  |  |  |  |  |
+| B0216 | Bubble | I0064 | Signale einrichten | gruen | Test gruen | Einrichten: Schlüssel, Bedeutung, Farbe wie Klassen |  |  |  |  |  |
 
 ## Offene Fragen
 

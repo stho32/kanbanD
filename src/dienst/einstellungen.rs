@@ -1,7 +1,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
-use crate::modell::{Anwendung, Einstellungen, Person, kuerzel_gueltig};
+use crate::modell::{Anwendung, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 
 pub const PALETTE: [&str; 16] = ["yellow", "amber", "orange", "red", "rose", "pink", "magenta", "violet", "indigo", "blue", "sky", "cyan", "teal", "green", "lime", "grey"];
 
@@ -48,7 +48,32 @@ pub fn einstellungen_pruefen(alt: &Einstellungen, neu: &Einstellungen) -> Result
         }
         klassen.push(&k.schluessel);
     }
+    signale_pruefen(&neu.signale)?;
     register_pruefen(&neu.quellen.anwendungen)
+}
+
+/// Signale (R00076): Schlüssel wie Klassen, nicht `due` (gerechnet), mit Bedeutung und Farbe, eindeutig.
+fn signale_pruefen(signale: &[Signal]) -> Result<(), Fehler> {
+    let mut gesehen: Vec<&str> = vec![];
+    for g in signale {
+        if !schluessel_gueltig(&g.schluessel) {
+            return Err(Fehler::Ungueltig(format!("Signalschlüssel „{}“: Kleinbuchstaben, Ziffern, - und _", g.schluessel)));
+        }
+        if g.schluessel == SIGNAL_FAELLIG {
+            return Err(Fehler::Ungueltig(format!("„{SIGNAL_FAELLIG}“ ist das Signal der Fälligkeit und wird gerechnet")));
+        }
+        if g.bezeichnung.trim().is_empty() {
+            return Err(Fehler::Ungueltig(format!("Signal „{}“ braucht eine Bedeutung", g.schluessel)));
+        }
+        if !farbe_gueltig(&g.farbe) {
+            return Err(Fehler::Ungueltig(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", g.farbe)));
+        }
+        if gesehen.contains(&g.schluessel.as_str()) {
+            return Err(Fehler::Ungueltig(format!("Signal „{}“ ist doppelt", g.schluessel)));
+        }
+        gesehen.push(&g.schluessel);
+    }
+    Ok(())
 }
 
 /// Kürzel nach den Regeln der Personenkürzel, eindeutig; jede Anwendung hat einen Namen.
@@ -78,6 +103,9 @@ impl Kanban {
         }
         for k in &mut neu.klassen {
             k.bezeichnung = k.bezeichnung.trim().into();
+        }
+        for g in &mut neu.signale {
+            g.bezeichnung = g.bezeichnung.trim().into();
         }
         neu.quellen.wbs = neu.quellen.wbs.trim().into();
         neu.quellen.anforderungen = neu.quellen.anforderungen.trim().into();

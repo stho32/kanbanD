@@ -8,7 +8,9 @@ use chrono::NaiveDateTime;
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
-const BEKANNT: [&str; 11] = ["id", "title", "class", "assignees", "labels", "due", "origins", WIRKUNGEN, PHASEN, BERICHTE, "archived"];
+const BEKANNT: [&str; 12] = ["id", "title", "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived"];
+/// Gesetzte Signale (R00076).
+pub const SIGNALE: &str = "signals";
 pub const WIRKUNGEN: &str = "wbs-effects";
 pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
@@ -51,6 +53,7 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     a.labels = yaml::textliste(&m, "labels");
     a.faellig = yaml::text(&m, "due").filter(|d| !d.is_empty());
     a.herkunft = yaml::textliste(&m, "origins");
+    a.signale = yaml::textliste(&m, SIGNALE);
     a.archiviert = yaml::text(&m, "archived").filter(|d| !d.is_empty());
     if let Some(w) = m.get(WIRKUNGEN) {
         a.wirkungen = wirkungen_lesen(w)?;
@@ -283,6 +286,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     }
     if !a.herkunft.is_empty() {
         s.push_str(&format!("origins: {}\n", yaml::liste(&a.herkunft)));
+    }
+    if !a.signale.is_empty() {
+        s.push_str(&format!("{SIGNALE}: {}\n", yaml::liste(&a.signale)));
     }
     if !a.wirkungen.is_empty() {
         s.push_str(&format!("{WIRKUNGEN}:\n{}", a.wirkungen.iter().map(wirkung_schreiben).collect::<String>()));

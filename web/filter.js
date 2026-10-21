@@ -16,6 +16,14 @@
   /** Gehört `is:archived` zum Filter? */
   const archivGefiltert = text => filterWoerter(text).some(([k, v]) => k === 'is' && v.toLowerCase() === 'archived');
 
+  /** Signale einer Aufgabe (R00076): die gesetzten, dazu `due`, wenn die Fälligkeit heute ist oder überschritten —
+      nicht für eine abgeschlossene Aufgabe. `heute` als JJJJ-MM-TT. */
+  function aufgabenSignale(a, heute, abgeschlossen) {
+    const s = (a.signale || []).map(schluessel => ({ schluessel }));
+    if (a.faellig && !abgeschlossen && a.faellig <= heute) s.push({ schluessel: 'due', faellig: a.faellig === heute ? 'heute' : 'ueber' });
+    return s;
+  }
+
   /** Trifft der Filter die Aufgabe? Alle Wörter müssen passen. */
   function passt(a, text, umfeld) {
     const u = umfeld || {};
@@ -34,6 +42,9 @@
         if (l && (l === 'none' ? a.klasse : (a.klasse || '').toLowerCase() !== l)) return false;
       } else if (k === 'label') {
         if (l && !a.labels.some(x => x.toLowerCase() === l)) return false;
+      } else if (k === 'signal') {
+        const s = aufgabenSignale(a, u.heute || '', u.abgeschlossen && u.abgeschlossen.has(a.nummer)).map(x => x.schluessel.toLowerCase());
+        if (l && (l === 'any' ? !s.length : !s.includes(l))) return false;
       } else if (k === 'is') {
         // is:archived schaltet die Archivansicht; sonst keine Wirkung
       } else if (!a.titel.toLowerCase().includes((k + ':' + v).toLowerCase())) return false;
@@ -48,5 +59,12 @@
     return jetzt === schluessel ? ohne : (ohne + ' class:' + schluessel).trim();
   }
 
-  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten });
+  /** Setzt `signal:<schlüssel>` oder entfernt es, wenn genau dieses schon gesetzt ist; ein anderes Signal wird ersetzt. */
+  function signalUmschalten(text, schluessel) {
+    const jetzt = (filterWoerter(text).find(([k]) => k === 'signal') || [])[1];
+    const ohne = (text || '').replace(/signal:\S+\s*/g, '').trim();
+    return jetzt === schluessel ? ohne : (ohne + ' signal:' + schluessel).trim();
+  }
+
+  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten, aufgabenSignale, signalUmschalten });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -18,6 +18,7 @@ function einstellungenText(e) {
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
   s += '\nclasses:' + (e.klassen.length ? '' : ' {}');
   for (const k of e.klassen) s += `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`;
+  if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
   s += `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}`;
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
   if (register.length) s += '\n  applications:' + register.map(a => `\n    ${yamlSkalar(a.kuerzel)}: {name: ${yamlSkalar(a.name)}, wbs: ${yamlSkalar(a.wbs)}, requirements: ${yamlSkalar(a.anforderungen)}}`).join('');
@@ -121,7 +122,7 @@ function vFenster() {
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
-${vPhasenFeld(a)}${vZaehlungFeld(a)}
+${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
@@ -253,6 +254,16 @@ function vPhasenFeld(a) {
   if (!namen.length) return '';
   return `<span class="k">phases</span><span class="w wrap" id="phasen-entfallen">${namen.map(n => `<button class="as${weg.includes(n) ? ' an' : ''}" data-act="phase-entfaellt" data-arg="${esc(n)}" aria-pressed="${weg.includes(n)}" title="${weg.includes(n) ? 'entfällt — zählt in dieser Phase nicht; Klick nimmt sie wieder auf' : 'Klick: Phase entfällt für diese Aufgabe'}">${esc(n)} entfällt</button>`).join('')}</span>`;
 }
+/** Feld „Signale“ (R00076): je eingerichtetem Signal ein Schalter; ein nicht mehr eingerichtetes, das die Aufgabe trägt, lässt sich nur zurücknehmen. */
+function vSignalFeld(a) {
+  const alle = [...signale().map(g => g.schluessel), ...(a.signale || []).filter(s => !signalDef(s))];
+  if (!alle.length) return '';
+  const schalter = s => {
+    const an = (a.signale || []).includes(s), g = signalDef(s), name = g ? g.bezeichnung : s;
+    return `<button class="as sig${an ? ' an' : ''}" data-act="signal-fenster" data-arg="${esc(s)}" aria-pressed="${an}" aria-label="Signal ${esc(name)}" style="--sg:${esc(signalFarbe(s))}" title="${an ? 'gesetzt — Klick nimmt es zurück' : 'Klick setzt das Signal'} (signals: ${esc(s)})">${FACKEL}${esc(name)}</button>`;
+  };
+  return `<span class="k">Signale</span><span class="w wrap" id="signale">${alle.map(schalter).join('')}</span>`;
+}
 /** Feld „Zählt in Berichten“ (R00060): je Bericht ein Schalter; „(Standard)“, solange der Schlüssel fehlt. Klick nimmt aus bzw. setzt zurück. */
 function vZaehlungFeld(a) {
   const r = a.reporting || {};
@@ -308,7 +319,7 @@ function vKarte(a, fertig) {
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -395,6 +406,34 @@ function vFehlt(nr) {
   return `<div class="ka fehlt" draggable="true" data-id="${nr}"><div class="r1"><span class="id">#${nr}</span></div><div class="t">#${nr} — Aufgabe fehlt</div><div class="r3">keine Datei unter aufgaben/</div></div>`;
 }
 
+/* ── Signale (R00076): Fackel je gesetztem Signal, Kalender für die Fälligkeit ── */
+const FACKEL = '<svg class="i-sig" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .8c3.4 3 5.2 5.7 5.2 8.2a5.2 5.2 0 0 1-10.4 0c0-1.8.9-3.6 2.5-5.2.2 1.7 1.1 2.9 2.2 3.4-.3-2.4-.1-4.5.5-6.4z"></path><path d="M5.8 13.2h12.4l-2.8 4.3H8.6z"></path><rect x="10.4" y="17.2" width="3.2" height="6.4" rx="1.2"></rect></svg>';
+const KALENDER = '<svg class="i-sig strich" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>';
+const signale = () => (S.zustand.einstellungen && S.zustand.einstellungen.signale) || [];
+const signalDef = s => signale().find(g => g.schluessel === s);
+const signalFarbe = s => (g => g ? terminFarbe(g.farbe) : 'var(--kd-muted)')(signalDef(s));
+const deTag = iso => iso.split('-').reverse().join('.');
+/** Die Signale der Karte: gesetzte als Knopf (Klick nimmt zurück), die Fälligkeit als Kalender. */
+function vSignale(a, fertig) {
+  const s = aufgabenSignale(a, isoD(Date.now()), fertig);
+  if (!s.length) return '';
+  return `<span class="sigs">${s.map(x => {
+    if (x.faellig) { const t = x.faellig === 'heute' ? 'heute fällig' : `überfällig seit ${deTag(a.faellig)}`; return `<span class="signal faellig ${x.faellig}" role="img" aria-label="${t}" title="${t}">${KALENDER}</span>`; }
+    const g = signalDef(x.schluessel), name = g ? g.bezeichnung : x.schluessel;
+    return `<button class="signal" data-act="signal-aus" data-arg="${a.nummer}|${esc(x.schluessel)}" style="--sg:${esc(signalFarbe(x.schluessel))}" aria-label="Signal ${esc(name)} zurücknehmen" title="${esc(name)} — Klick nimmt das Signal zurück">${FACKEL}</button>`;
+  }).join('')}</span>`;
+}
+/** Signale im Spaltenkopf: je Signal Symbol und Zahl der sichtbaren Karten, die es tragen; Klick filtert. */
+function vKopfSignale(sichtbar, letzte) {
+  const heute = isoD(Date.now()), zahl = {};
+  sichtbar.forEach(a => aufgabenSignale(a, heute, letzte).forEach(x => { zahl[x.schluessel] = (zahl[x.schluessel] || 0) + 1; }));
+  const reihe = [...signale().map(g => g.schluessel), ...Object.keys(zahl).filter(s => s !== 'due' && !signalDef(s)), 'due'].filter(s => zahl[s]);
+  return reihe.map(s => {
+    const n = zahl[s], name = s === 'due' ? 'fällig (heute oder überschritten)' : (signalDef(s) || { bezeichnung: s }).bezeichnung;
+    return `<button class="sigz${s === 'due' ? ' faellig' : ''}" data-signal="${esc(s)}" data-act="signal-filter" data-arg="${esc(s)}" style="--sg:${s === 'due' ? 'var(--kd-c-red-line)' : esc(signalFarbe(s))}" title="${n} ${n === 1 ? 'Karte' : 'Karten'}: ${esc(name)} — Klick filtert (signal:${esc(s)})" aria-label="${n} ${esc(name)}">${s === 'due' ? KALENDER : FACKEL}×${n}</button>`;
+  }).join('');
+}
+
 /* ── Board ── */
 /** Zugeklappte Spalte (R00074): Kopf nur mit der Zahl, darunter ein Streifen mit dem gedrehten Namen, der aufklappt. */
 function vLaneZu(sp, i, zahl, ueber, farbe) {
@@ -404,14 +443,15 @@ function vLaneZu(sp, i, zahl, ueber, farbe) {
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
   const archiv = imArchiv(), gefiltert = S.ui.filter.trim() !== '' && !(archiv && S.ui.filter.trim() === 'is:archived') || S.ui.bereich !== 'alle';
-  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
+  const sichtbar = [], um = umfeld();
+  const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, um) ? (sichtbar.push(a), vKarte(a, letzte)) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
   const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const ueber = sp.grenze && karten.length > sp.grenze;
   const farbe = sp.farbe ? ` style="--sf:${esc(sp.farbe)}"` : '';
   if (spaltenZu().includes(sp.name)) return vLaneZu(sp, i, karten.length, ueber, farbe);
   const boardLeer = i === 0 && !archiv && !gefiltert && S.board.spalten.every(s => !s.aufgaben.length);
   const leerText = boardLeer ? '<div class="leer hilfe-leer">Noch keine Karten.<br>Taste <kbd>n</kbd> oder „+“ im Spaltenkopf öffnet „Neue Aufgabe“ — eine eingefügte Liste legt mehrere an, Kürzel wie <span class="mono">@kürzel</span> oder <span class="mono">due:morgen</span> setzen Felder.</div>' : '';
-  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}><div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" data-act="spalte-zu" data-arg="${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${sp.notiz ? ` <span class="info" title="${esc(sp.notiz)}" aria-label="Kommentar: ${esc(sp.notiz)}" tabindex="0">ⓘ</span>` : ''}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" title="Phase der Anwendung">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche">${karten.join('') || leerText || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
+  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}><div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" data-act="spalte-zu" data-arg="${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${sp.notiz ? ` <span class="info" title="${esc(sp.notiz)}" aria-label="Kommentar: ${esc(sp.notiz)}" tabindex="0">ⓘ</span>` : ''}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" title="Phase der Anwendung">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}${vKopfSignale(sichtbar, letzte)}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche">${karten.join('') || leerText || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
 }
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {
@@ -428,7 +468,9 @@ function vBoardHinweise(b) {
   return (h.length ? `<div class="archbar phasenbar" role="status" id="phasen-hinweis"><b>Phasen</b>${h.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '') + (p.length ? `<div class="archbar phasenbar" role="status" id="pruefungen-hinweis"><b>Prüfungen</b>${p.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '');
 }
 const imArchiv = () => archivGefiltert(S.ui.filter);
-const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen() });
+const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen(), heute: isoD(Date.now()), abgeschlossen: abgeschlossene() });
+/** Nummern in der Abschlussspalte des Boards — dort ist eine Fälligkeit kein Signal mehr (R00076). */
+const abgeschlossene = () => new Set(S.board && S.board.spalten.length ? S.board.spalten[S.board.spalten.length - 1].aufgaben : []);
 function vLegende() {
   const klassen = S.zustand.einstellungen.klassen;
   if (!klassen.length || !S.board) return '';
@@ -816,10 +858,18 @@ function vEinrichten() {
   const klassen = d.klassen.map((k, i) => `<div class="klz" data-klasse="${esc(k.schluessel)}"><span class="farbe${u.palFuer === i ? ' an' : ''}" style="${cv(k.farbe)}" data-act="k-pal" data-arg="${i}" title="Farbe wählen" role="button" aria-label="Farbe ${esc(k.schluessel)}"></span><span class="key">${esc(k.schluessel)}</span><input class="inp" data-ef="klabel" data-i="${i}" value="${esc(k.bezeichnung)}" aria-label="Bezeichnung ${esc(k.schluessel)}"><span class="n">${S.aufgaben.filter(a => a.klasse === k.schluessel).length}</span><button class="btn btn-sym" data-act="k-del" data-arg="${i}" title="entfernen – Aufgaben behalten den Schlüssel, ohne Farbe" aria-label="Klasse ${esc(k.schluessel)} entfernen">✕</button></div>${u.palFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(k.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${k.farbe === f ? 'an' : ''}" data-act="k-farbe" data-arg="${i}|${f}" title="${f}" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="khex" data-i="${i}" value="${k.farbe.startsWith('#') ? esc(k.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe"></div></div>` : ''}`).join('');
   return `<div class="einrichten"><div class="einr breit"><h3>PERSONEN <span class="mono">people:</span></h3><div class="hin">Menschen sind unter „Ich bin …“ wählbar; Agenten nennen sich an der API selbst. Stilllegen statt entfernen – der Name bleibt an Karten und Zeiten lesbar.</div>${personen}<div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" id="npk" placeholder="kürzel" aria-label="Neues Kürzel"><input class="inp" id="npn" placeholder="Name · Enter" data-enter="p-add" aria-label="Neuer Name"><span class="seg art"><span class="${u.nart !== 'agent' ? 'an' : ''}" data-act="n-art" data-arg="human">Mensch</span><span class="${u.nart === 'agent' ? 'an' : ''}" data-act="n-art" data-arg="agent">Agent</span></span><span></span></div>
 <h3>KLASSEN <span class="mono">classes:</span></h3><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nck" placeholder="schlüssel" aria-label="Neuer Klassenschlüssel"><input class="inp" id="ncl" placeholder="Bezeichnung · Enter" data-enter="k-add" aria-label="Neue Bezeichnung"><span></span><span></span></div>
+${vSignaleEinrichten(d)}
 <h3>QUELLEN <span class="mono">sources:</span></h3><div class="felder"><span class="k">wbs</span><span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span><span class="k">requirements</span><span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>
 <h3>ANWENDUNGEN <span class="mono">sources.applications:</span></h3><div class="hin">Je Anwendung ein Kürzel und die vollen Pfade zu WBS und Anforderungen im Arbeits-Repository. Aufgaben nennen ihre Herkunft dann als <span class="mono">kd:I0007</span>; Boards binden Anwendungen mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
 ${d.fehler ? `<div class="warnh" role="alert">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted">gespeichert</span>' : ''}</div></div>
 <aside class="einr"><h3>KANBAND.MD <span class="mono">Vorschau</span></h3><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d))}</pre></aside></div>`;
+}
+
+/** Signale einrichten (R00076): wie Klassen — Schlüssel, Bedeutung, Farbe; `due` ist die Fälligkeit und gerechnet. */
+function vSignaleEinrichten(d) {
+  const u = S.ui, liste = d.signale || [];
+  const zeilen = liste.map((g, i) => `<div class="klz" data-signal="${esc(g.schluessel)}"><span class="farbe sigfarbe${u.sPalFuer === i ? ' an' : ''}" style="--sg:${esc(terminFarbe(g.farbe))}" data-act="s-pal" data-arg="${i}" title="Farbe wählen" role="button" aria-label="Farbe Signal ${esc(g.schluessel)}">${FACKEL}</span><span class="key">${esc(g.schluessel)}</span><input class="inp" data-ef="slabel" data-i="${i}" value="${esc(g.bezeichnung)}" aria-label="Bedeutung ${esc(g.schluessel)}"><span class="n">${S.aufgaben.filter(a => (a.signale || []).includes(g.schluessel)).length}</span><button class="btn btn-sym" data-act="s-del" data-arg="${i}" title="entfernen – Aufgaben behalten das Signal, ohne Farbe" aria-label="Signal ${esc(g.schluessel)} entfernen">✕</button></div>${u.sPalFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(g.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${g.farbe === f ? 'an' : ''}" data-act="s-farbe" data-arg="${i}|${f}" title="${f}" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="shex" data-i="${i}" value="${g.farbe.startsWith('#') ? esc(g.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe Signal"></div></div>` : ''}`).join('');
+  return `<h3>SIGNALE <span class="mono">signals:</span></h3><div class="hin">Ein Signal hebt eine Aufgabe hervor — gesetzt per Klick im Aufgabenfenster oder über die API (<span class="mono">PUT /api/aufgaben/{nr}/signale/{schlüssel}</span>), zurückgenommen mit einem Klick auf die Fackel. Filterbar mit <span class="mono">signal:schlüssel</span>; <span class="mono">signal:due</span> ist die Fälligkeit (heute oder überschritten).</div>${zeilen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nsk" placeholder="schlüssel" aria-label="Neuer Signalschlüssel"><input class="inp" id="nsl" placeholder="Bedeutung · Enter" data-enter="s-add" aria-label="Neue Bedeutung"><span></span><span></span></div>`;
 }
 
 /* ── Spalten einrichten ── */

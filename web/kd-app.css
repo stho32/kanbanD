@@ -457,6 +457,25 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .schnell .pk{width:16px;height:16px;font-size:8.5px}
 /* Kartenleiste */
 /* rechts oben: Laufanzeige und Stoppknopf des eigenen Timers */
+/* Signale (R00076) */
+@keyframes kd-puls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+.i-sig{width:16px;height:16px;fill:currentColor;flex:none}
+.i-sig.strich{fill:none;stroke:currentColor;stroke-width:2.2}
+.ka .r0 .sigs{display:inline-flex;gap:2px;flex:none;align-self:flex-start;margin-top:1px}
+.signal{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;background:none;color:var(--sg);cursor:pointer}
+.signal .i-sig{animation:kd-puls 1.6s ease-in-out infinite}
+.signal:hover{background:var(--kd-sunken)}
+.signal:hover .i-sig{animation-play-state:paused}
+.signal.faellig{cursor:default}
+.signal.faellig.heute{color:var(--kd-c-amber-line)}
+.signal.faellig.ueber{color:var(--kd-c-red-line)}
+.bahn-kopf .sigz{display:inline-flex;align-items:center;gap:1px;border:0;background:none;padding:0 2px;font-family:var(--kd-mono);font-weight:400;font-size:11px;color:var(--kd-muted);cursor:pointer}
+.bahn-kopf .sigz .i-sig{width:15px;height:15px;color:var(--sg)}
+.bahn-kopf .sigz:hover{color:var(--kd-text);background:var(--kd-surface)}
+.as.sig .i-sig{color:var(--sg);margin-right:4px}
+.as.sig:not(.an) .i-sig{opacity:.45}
+.farbe.sigfarbe{display:inline-flex;align-items:center;justify-content:center;background:none;color:var(--sg)}
+@media (prefers-reduced-motion:reduce){.signal .i-sig{animation:none}}
 .ka .r0 .ecke{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;align-self:flex-start}
 .ka .ecke .kl{height:18px;min-width:20px;padding:0 4px}
 .kl{height:20px;min-width:22px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}

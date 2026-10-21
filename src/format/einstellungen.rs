@@ -1,7 +1,7 @@
 //! `kanbanD.md` — Personen, Klassen und Quellpfade des Ordners.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen};
+use crate::modell::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, Signal};
 
 pub const DATEI: &str = "kanbanD.md";
 
@@ -31,6 +31,13 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
                 farbe: yaml::text(c, "color").unwrap_or_else(|| "grey".into()),
                 schluessel,
             });
+        }
+    }
+    if let Some(signals) = yaml::zuordnung(&m, "signals") {
+        for (k, v) in signals {
+            let schluessel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Schlüssel unter signals ist kein Text".into()))?;
+            let c = v.as_mapping().ok_or_else(|| Formatfehler(format!("signals.{schluessel} ist keine Zuordnung")))?;
+            e.signale.push(Signal { bezeichnung: yaml::text(c, "label").unwrap_or_else(|| schluessel.clone()), farbe: yaml::text(c, "color").unwrap_or_else(|| "grey".into()), schluessel });
         }
     }
     if let Some(s) = yaml::zuordnung(&m, "sources") {
@@ -85,8 +92,14 @@ pub fn schreiben(e: &Einstellungen) -> String {
     for k in &e.klassen {
         s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&k.schluessel), yaml::skalar(&k.bezeichnung), yaml::skalar(&k.farbe)));
     }
+    if !e.signale.is_empty() {
+        s.push_str("\nsignals:");
+    }
+    for g in &e.signale {
+        s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&g.schluessel), yaml::skalar(&g.bezeichnung), yaml::skalar(&g.farbe)));
+    }
     s.push_str(&format!(
-        "\nsources:\n  wbs: {}\n  requirements: {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
+        "\nsources:\n  wbs: {}\n  requirements: {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
         yaml::skalar(&e.quellen.wbs),
         yaml::skalar(&e.quellen.anforderungen),
         anwendungen_schreiben(&e.quellen.anwendungen)
@@ -106,6 +119,7 @@ mod tests {
                 Person { kuerzel: "ab".into(), name: "Anna: Gast".into(), art: Art::Mensch, aktiv: false },
             ],
             klassen: vec![Klasse { schluessel: "bug".into(), bezeichnung: "Fehler".into(), farbe: "#b04a8c".into() }],
+            signale: vec![Signal { schluessel: "mail".into(), bezeichnung: "Neue E-Mail".into(), farbe: "blue".into() }],
             quellen: Quellen { wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
         }
     }

@@ -24,6 +24,17 @@ pub struct Klasse {
     pub farbe: String,
 }
 
+/// Ein Signal (R00076): hebt eine Aufgabe hervor; `bezeichnung` ist seine Bedeutung („Neue E-Mail“).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Signal {
+    pub schluessel: String,
+    pub bezeichnung: String,
+    pub farbe: String,
+}
+
+/// Der Schlüssel des gerechneten Standardsignals „fällig“ — nicht einrichtbar, nicht setzbar.
+pub const SIGNAL_FAELLIG: &str = "due";
+
 /// Eine registrierte Anwendung: ihr Arbeits-Repository mit WBS und Anforderungen, angesprochen über das Kürzel.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Anwendung {
@@ -47,6 +58,8 @@ pub struct Quellen {
 pub struct Einstellungen {
     pub personen: Vec<Person>,
     pub klassen: Vec<Klasse>,
+    #[serde(default)]
+    pub signale: Vec<Signal>,
     pub quellen: Quellen,
 }
 
@@ -57,6 +70,10 @@ impl Einstellungen {
 
     pub fn klasse(&self, schluessel: &str) -> Option<&Klasse> {
         self.klassen.iter().find(|k| k.schluessel == schluessel)
+    }
+
+    pub fn signal(&self, schluessel: &str) -> Option<&Signal> {
+        self.signale.iter().find(|s| s.schluessel == schluessel)
     }
 }
 

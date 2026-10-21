@@ -553,6 +553,14 @@ async function act(a, arg, wert) {
       case 'archiv-aus': filterSetzen(u.filter.replace(/is:\S+\s*/g, '').trim()); u.offen = null; break;
       case 'bereich': u.bereich = arg; merken('kanbanD.bereich', arg); break;
       case 'legende': filterSetzen(klasseUmschalten(u.filter, arg)); break;
+      case 'signal-filter': filterSetzen(signalUmschalten(u.filter, arg)); break;
+      case 'signal-aus': case 'signal-fenster': {
+        // Karte: Klick auf die Fackel nimmt zurück; Fenster: Schalter setzt oder nimmt zurück (R00076)
+        const [nr, s] = a === 'signal-aus' ? arg.split('|') : [u.offen, arg];
+        if (ichNoetig()) break;
+        const an = a === 'signal-fenster' && !(aufgabe(+nr).signale || []).includes(s);
+        return schreiben(an ? 'PUT' : 'DELETE', `/api/aufgaben/${nr}/signale/${encodeURIComponent(s)}`);
+      }
       case 'archivieren': {
         if (ichNoetig()) break;
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
@@ -900,7 +908,20 @@ async function act(a, arg, wert) {
         u.fokus = '#nck';
         break;
       }
-      case 'einr-weg': u.einr = kopie(S.zustand.einstellungen); u.palFuer = null; break;
+      case 's-pal': u.sPalFuer = u.sPalFuer === +arg ? null : +arg; break;
+      case 's-farbe': { const [i, f] = arg.split('|'); u.einr.signale[+i].farbe = f; break; }
+      case 's-del': u.einr.signale.splice(+arg, 1); u.sPalFuer = null; break;
+      case 's-add': {
+        const schluessel = ($('#nsk').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
+        if (!schluessel || !bezeichnung) { u.einr.fehler = 'Schlüssel und Bedeutung nötig'; break; }
+        if (schluessel === 'due') { u.einr.fehler = '„due“ ist das Signal der Fälligkeit und wird gerechnet'; break; }
+        u.einr.signale = u.einr.signale || [];
+        const belegt = u.einr.signale.map(g => g.farbe);
+        u.einr.signale.push({ schluessel, bezeichnung, farbe: PAL.find(f => !belegt.includes(f)) || 'grey' });
+        u.einr.fehler = null; u.fokus = '#nsk';
+        break;
+      }
+      case 'einr-weg': u.einr = kopie(S.zustand.einstellungen); u.palFuer = null; u.sPalFuer = null; break;
       case 'einr-ok': {
         if (ichNoetig()) break;
         const { fehler, gespeichert, ...daten } = u.einr;
@@ -1089,6 +1110,8 @@ document.addEventListener('input', e => {
     const d = S.ui.einr, i = +e.target.dataset.i, v = e.target.value;
     if (ef === 'pname') d.personen[i].name = v;
     if (ef === 'klabel') d.klassen[i].bezeichnung = v;
+    if (ef === 'slabel') d.signale[i].bezeichnung = v;
+    if (ef === 'shex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.signale[i].farbe = v.trim().toLowerCase();
     if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.klassen[i].farbe = v.trim().toLowerCase();
     if (ef === 'wbs') d.quellen.wbs = v;
     if (ef === 'anf') d.quellen.anforderungen = v;

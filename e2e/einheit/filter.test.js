@@ -53,3 +53,30 @@ test('qualifizierte Herkunft (R00053): origin:kd:I0007 trifft genau diese Schrei
   assert.ok(passt(kd, 'origin:kd:I0007') && passt(kd, 'origin:KD:i0007'));
   assert.ok(!passt(kd, 'origin:kc:I0007') && !passt(kd, 'origin:I0007'));
 });
+
+test('Signale je Aufgabe: gesetzte und die Fälligkeit (R00076)', () => {
+  const { aufgabenSignale } = require('../../web/filter.js');
+  const heute = '2026-10-21';
+  const a = (o = {}) => ({ nummer: o.n || 1, signale: o.s || [], faellig: o.f || null });
+  assert.deepStrictEqual(aufgabenSignale(a({ s: ['mail', 'fragen'] }), heute), [{ schluessel: 'mail' }, { schluessel: 'fragen' }]);
+  assert.deepStrictEqual(aufgabenSignale(a({ f: '2026-10-21' }), heute), [{ schluessel: 'due', faellig: 'heute' }]);
+  assert.deepStrictEqual(aufgabenSignale(a({ f: '2026-10-20', s: ['mail'] }), heute), [{ schluessel: 'mail' }, { schluessel: 'due', faellig: 'ueber' }]);
+  assert.deepStrictEqual(aufgabenSignale(a({ f: '2026-10-22' }), heute), [], 'morgen fällig ist noch kein Signal');
+  assert.deepStrictEqual(aufgabenSignale(a({ f: '2026-10-20', s: ['mail'] }), heute, true), [{ schluessel: 'mail' }], 'abgeschlossen: keine Fälligkeit');
+  assert.deepStrictEqual(aufgabenSignale({ nummer: 2 }, heute), [], 'ohne Felder');
+});
+
+test('Filter signal: — Schlüssel, due, any; Umschalten (R00076)', () => {
+  const { signalUmschalten } = require('../../web/filter.js');
+  const u = { heute: '2026-10-21', abgeschlossen: new Set([3]) };
+  const mail = { ...A(1, 'eins'), signale: ['mail'] }, faellig = { ...A(2, 'zwei'), signale: [], faellig: '2026-10-21' }, fertig = { ...A(3, 'drei'), signale: [], faellig: '2026-10-01' }, ohne = { ...A(4, 'vier'), signale: [] };
+  const treffer = f => [mail, faellig, fertig, ohne].filter(x => passt(x, f, u)).map(x => x.nummer);
+  assert.deepStrictEqual(treffer('signal:mail'), [1]);
+  assert.deepStrictEqual(treffer('signal:MAIL'), [1]);
+  assert.deepStrictEqual(treffer('signal:due'), [2], 'die abgeschlossene zählt nicht');
+  assert.deepStrictEqual(treffer('signal:any'), [1, 2]);
+  assert.deepStrictEqual(treffer('signal:fragen'), []);
+  assert.strictEqual(signalUmschalten('kopf', 'mail'), 'kopf signal:mail');
+  assert.strictEqual(signalUmschalten('kopf signal:mail', 'mail'), 'kopf');
+  assert.strictEqual(signalUmschalten('signal:due', 'mail'), 'signal:mail');
+});

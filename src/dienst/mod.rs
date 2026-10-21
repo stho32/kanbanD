@@ -13,6 +13,7 @@ mod einstellungen;
 mod herkunft;
 mod kommentare;
 mod phasen;
+mod signale;
 mod spalten;
 mod teilaufgaben;
 mod termine;

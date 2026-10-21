@@ -51,6 +51,7 @@ impl Einrichtung {
         Einstellungen {
             personen: std::iter::once(self.ich()).chain(agenten).collect(),
             klassen: vec![],
+            signale: vec![],
             quellen: Quellen { wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
         }
     }

@@ -92,6 +92,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/wbs-effects", axum::routing::patch(wirkung_setzen).get(wirkungen_stand))
         .route("/api/aufgaben/{nr}/wbs-effects/{i}/eintritt", axum::routing::post(wirkung_eintritt))
         .route("/api/aufgaben/{nr}/wbs-effects/{i}", axum::routing::delete(wirkung_entfernen))
+        .route("/api/aufgaben/{nr}/signale/{signal}", axum::routing::put(signal_setzen).delete(signal_zuruecknehmen))
         .route("/api/aufgaben/{nr}/timer/start", post(timer_starten))
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
@@ -275,6 +276,23 @@ async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgabe_aendern(&p, nr, &aenderung)
+    })
+    .await?;
+    Ok(Json(a).into_response())
+}
+
+async fn signal_setzen(State(app): State<App>, Wer(wer): Wer, Path((nr, signal)): Path<(u32, String)>) -> Result<Response, Fehler> {
+    signal_schalten(app, wer, nr, signal, true).await
+}
+
+async fn signal_zuruecknehmen(State(app): State<App>, Wer(wer): Wer, Path((nr, signal)): Path<(u32, String)>) -> Result<Response, Fehler> {
+    signal_schalten(app, wer, nr, signal, false).await
+}
+
+async fn signal_schalten(app: App, wer: Option<String>, nr: u32, signal: String, an: bool) -> Result<Response, Fehler> {
+    let a = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.signal_schalten(&p, nr, &signal, an)
     })
     .await?;
     Ok(Json(a).into_response())
