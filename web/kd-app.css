@@ -56,6 +56,15 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bahn.gefaerbt>.flaeche{background:color-mix(in srgb,var(--sf) var(--kd-spalte-anteil),var(--kd-sunken))}
 .flaeche{flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:2px;gap:2px;background:var(--kd-sunken)}
 .bahn.ins-end .flaeche{box-shadow:inset 0 0 0 2px var(--kd-accent)}
+.bk-name{border:0;padding:0;background:none;font:inherit;color:inherit;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-name:hover{color:var(--kd-accent-ink);text-decoration:underline}
+.bahn.zu{flex:0 0 34px}
+.bahn.zu .bahn-kopf{justify-content:center;padding:0}
+.bahn.zu .bahn-kopf .n{margin:0}
+.bahn.zu .bahn-kopf.ueber .n{color:var(--kd-warn);font-weight:700}
+.zu-streifen{align-items:center;padding:var(--kd-s3) 0;border:0;font:inherit;color:var(--kd-text);cursor:pointer}
+.zu-streifen:hover{background:var(--kd-accent-weak)}
+.zu-name{writing-mode:vertical-rl;font-weight:600;font-size:12px;white-space:nowrap}
 .leer{padding:16px 8px;text-align:center;color:var(--kd-faint);font-size:12px}
 .dgrp{padding:4px 6px 0;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-faint)}
 .nach{padding:6px;font-size:11.5px;color:var(--kd-muted)}

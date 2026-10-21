@@ -71,6 +71,22 @@ function wbsKlapp() {
 function wbsKlappMerken() {
   try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(wbsKlapp())); } catch (_) { }
 }
+/** Zugeklappte Spalten des Boards (R00074): je Betrachter und Board im Browser-Speicher, keine Datei ändert sich. */
+function spaltenZu() {
+  const slug = S.ui.slug || '';
+  if (!S.ui.spaltenZu || S.ui.spaltenZu.slug !== slug) {
+    let zu = [];
+    try { zu = JSON.parse(localStorage.getItem('kanbanD.spalten-zu.' + slug) || '[]'); } catch (_) { }
+    S.ui.spaltenZu = { slug, zu: Array.isArray(zu) ? zu : [] };
+  }
+  return S.ui.spaltenZu.zu;
+}
+function spalteKlappen(name, zu) {
+  const liste = spaltenZu().filter(n => n !== name);
+  if (zu) liste.push(name);
+  S.ui.spaltenZu.zu = liste;
+  try { localStorage.setItem('kanbanD.spalten-zu.' + S.ui.spaltenZu.slug, JSON.stringify(liste)); } catch (_) { }
+}
 /** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
 const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
@@ -909,6 +925,8 @@ async function act(a, arg, wert) {
         break;
       }
       case 'vollbild': vollbildSetzen(!u.vollbild); break;
+      case 'spalte-zu': spalteKlappen(arg, true); break;
+      case 'spalte-auf': spalteKlappen(arg, false); u.fokus = `.bk-name[data-arg="${CSS.escape(arg)}"]`; break;
       case 'col-farbe-weg': u.setup.spalten[+arg].farbe = ''; break;
       case 'col-add': {
         const name = (wert || '').trim();
@@ -1525,6 +1543,9 @@ document.addEventListener('dragover', e => {
     const r = k.getBoundingClientRect(), davor = e.clientY < r.top + r.height / 2;
     k.classList.add(davor ? 'ins-b' : 'ins-a');
     ziel = { spalte, index: andere.indexOf(k) + (davor ? 0 : 1) };
+  } else if (bahn.classList.contains('zu')) { // zugeklappt (R00074): keine Karten im Bild, ans Ende der Spalte
+    bahn.classList.add('ins-end');
+    ziel = { spalte, index: S.board.spalten.find(s => s.name === spalte).aufgaben.filter(n => !bewegte.includes(n)).length };
   } else if (!k) {
     if (andere.length) andere[andere.length - 1].classList.add('ins-a'); else bahn.classList.add('ins-end');
     ziel = { spalte, index: andere.length };

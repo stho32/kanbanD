@@ -396,15 +396,22 @@ function vFehlt(nr) {
 }
 
 /* ── Board ── */
+/** Zugeklappte Spalte (R00074): Kopf nur mit der Zahl, darunter ein Streifen mit dem gedrehten Namen, der aufklappt. */
+function vLaneZu(sp, i, zahl, ueber, farbe) {
+  const titel = `${sp.name} · ${zahl} ${zahl === 1 ? 'Aufgabe' : 'Aufgaben'}${sp.grenze ? ` · Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}` : ''} — Klick klappt auf`;
+  return `<section class="bahn zu${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}><div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" title="Rechtsklick: Menü der Spalte"><span class="n">${zahl}</span></div><button class="flaeche zu-streifen" data-act="spalte-auf" data-arg="${esc(sp.name)}" aria-label="${esc(sp.name)} aufklappen" title="${esc(titel)}"><span class="zu-name">${esc(sp.name)}</span></button></section>`;
+}
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
   const archiv = imArchiv(), gefiltert = S.ui.filter.trim() !== '' && !(archiv && S.ui.filter.trim() === 'is:archived') || S.ui.bereich !== 'alle';
   const karten = sp.aufgaben.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, umfeld()) ? vKarte(a, letzte) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
   const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const ueber = sp.grenze && karten.length > sp.grenze;
+  const farbe = sp.farbe ? ` style="--sf:${esc(sp.farbe)}"` : '';
+  if (spaltenZu().includes(sp.name)) return vLaneZu(sp, i, karten.length, ueber, farbe);
   const boardLeer = i === 0 && !archiv && !gefiltert && S.board.spalten.every(s => !s.aufgaben.length);
   const leerText = boardLeer ? '<div class="leer hilfe-leer">Noch keine Karten.<br>Taste <kbd>n</kbd> oder „+“ im Spaltenkopf öffnet „Neue Aufgabe“ — eine eingefügte Liste legt mehrere an, Kürzel wie <span class="mono">@kürzel</span> oder <span class="mono">due:morgen</span> setzen Felder.</div>' : '';
-  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${sp.farbe ? ` style="--sf:${esc(sp.farbe)}"` : ''}><div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" title="Rechtsklick: Menü der Spalte">${esc(sp.name)}${sp.notiz ? ` <span class="info" title="${esc(sp.notiz)}" aria-label="Kommentar: ${esc(sp.notiz)}" tabindex="0">ⓘ</span>` : ''}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" title="Phase der Anwendung">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche">${karten.join('') || leerText || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
+  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}><div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" data-act="spalte-zu" data-arg="${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen">${esc(sp.name)}</button>${sp.notiz ? ` <span class="info" title="${esc(sp.notiz)}" aria-label="Kommentar: ${esc(sp.notiz)}" tabindex="0">ⓘ</span>` : ''}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" title="Phase der Anwendung">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche">${karten.join('') || leerText || `<div class="leer">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
 }
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {

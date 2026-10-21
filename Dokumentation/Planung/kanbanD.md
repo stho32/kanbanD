@@ -292,6 +292,9 @@ zuletzt: 2026-10-20
 | B0206 | Bubble | I0061 | Zeigerposition → Tag | gruen | Test gruen | x in der Zeichenfläche, Achse (L, Breite, t0, t1) → nächster Kalendertag; Datum TT.MM.JJJJ |  |  |  |  |  |
 | B0207 | Bubble | I0061 | Fadenkreuz und Tooltip auf der ganzen Fläche | gruen | Test gruen | Zeiger über Diagramm → Tag → Tooltip je Bericht (Burndown, Durchlaufzeit, Wie lange noch mit Chance je Spalte); Achsen zweizeilig mit Jahr |  |  |  |  |  |
 | B0208 | Bubble | I0061 | Vollbild | gruen | Test gruen | Knopf am Diagramm → Zustand vollbild (übersteht Neuzeichnen) → Fläche fixiert über den Bildschirm; Esc und Ansichtswechsel beenden |  |  |  |  |  |
+| I0062 | Interaction | D0002 | Spalten zusammenklappen | gruen | US-1..US-3 |  |  |  | I0009 | R00074 | Auftrag 2026-10-21: Klick auf den Namen klappt zum Streifen mit gedrehtem Namen, Zahl im Kopf |
+| B0209 | Bubble | I0062 | Klappzustand je Board merken | gruen | Test gruen | Klick Name/Streifen → Menge zugeklappter Spalten je Board → localStorage kanbanD.spalten-zu.<slug> |  |  |  |  |  |
+| B0210 | Bubble | I0062 | Streifen zeichnen | gruen | Test gruen | zugeklappte Spalte → Kopf nur Zahl (rot bei Grenze), Streifen-Knopf mit gedrehtem Namen; Ziehen auf den Streifen ans Ende |  |  |  |  |  |
 
 ## Offene Fragen
 
