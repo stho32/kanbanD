@@ -295,6 +295,8 @@ zuletzt: 2026-10-20
 | I0062 | Interaction | D0002 | Spalten zusammenklappen | gruen | US-1..US-3 |  |  |  | I0009 | R00074 | Auftrag 2026-10-21: Klick auf den Namen klappt zum Streifen mit gedrehtem Namen, Zahl im Kopf |
 | B0209 | Bubble | I0062 | Klappzustand je Board merken | gruen | Test gruen | Klick Name/Streifen → Menge zugeklappter Spalten je Board → localStorage kanbanD.spalten-zu.<slug> |  |  |  |  |  |
 | B0210 | Bubble | I0062 | Streifen zeichnen | gruen | Test gruen | zugeklappte Spalte → Kopf nur Zahl (rot bei Grenze), Streifen-Knopf mit gedrehtem Namen; Ziehen auf den Streifen ans Ende |  |  |  |  |  |
+| I0063 | Interaction | D0002 | Fertig in Spalten einrichten ohne Person | gruen | US-1 |  |  |  | I0009 | R00075 | Bug 2026-10-21: Auswahl „Ich bin …“ ohne Anker verschwand stillschweigend |
+| B0211 | Bubble | I0063 | Personen-Knopf in der Einrichtungs-Kopfzeile | gruen | Test gruen | Fertig ohne Person → Auswahl am Knopf der Kopfzeile mit Hinweis → nach Wahl speichert Fertig |  |  |  |  |  |
 
 ## Offene Fragen
 
