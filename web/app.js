@@ -414,7 +414,7 @@ function popPlatzieren() {
   if (!t) { S.ui.pop = null; p.remove(); return; }
   const r = t.getBoundingClientRect();
   p.style.top = (r.bottom + 2) + 'px';
-  p.style.left = (p.dataset.al === 'r' ? Math.max(4, r.right - p.offsetWidth) : r.left) + 'px';
+  p.style.left = Math.max(4, Math.min(p.dataset.al === 'r' ? r.right - p.offsetWidth : r.left, innerWidth - p.offsetWidth - 4)) + 'px';
 }
 
 async function act(a, arg, wert) {

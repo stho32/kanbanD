@@ -655,3 +655,53 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 /* Mehrfachauswahl (R00065) */
 .ka.gewaehlt{box-shadow:inset 0 0 0 2px var(--kd-accent);background:var(--kd-accent-weak)}
 .auswahl-zahl{color:var(--kd-accent-ink);font-weight:500}
+
+/* Responsive (R00077): dieselbe Oberfläche auf Tablet (bis 1024 px) und Handy (bis 640 px); der Desktop bleibt, wie er ist. */
+.pop,.kmenue{max-width:calc(100vw - 8px)}
+@media (max-width:1024px){
+  .kz{height:auto;flex-wrap:wrap}
+  .kz>.kz-z1,.kz>.kz-nav,.kz>.kz-z3,.kz>.kz-modus{min-height:40px}
+  .kz-nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .kz-nav::-webkit-scrollbar{display:none}
+  .kz-z3{order:2}
+  .kz-werk{order:3;flex:1 0 100%;height:40px;border-left:0;border-top:1px solid var(--kd-head-line);padding:0 var(--kd-s3)}
+  .kz-werk>.inp{max-width:none}
+  .kz.modus .kz-modus{flex-wrap:wrap;padding:var(--kd-s2) var(--kd-s3)}
+  .mod-bg{top:0;padding:0}
+  .mod{width:100%;height:100%}
+  .leiste{flex-wrap:wrap}
+}
+@media (max-width:900px){
+  .einrichten{display:block;overflow:auto}
+  .einr{border-left:0}
+  .einr.breit{border-right:0}
+}
+@media (max-width:640px){
+  .kz-z1{flex:1 1 auto;min-width:0;border-right:0;padding:0 var(--kd-s3)}
+  .kz-z1 .kz-board{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .kz-nav{order:4;flex:1 0 100%;border-top:1px solid var(--kd-head-line)}
+  .kz-nav a{padding:0 var(--kd-s4)}
+  .kz-werk{order:5;gap:var(--kd-s2)}
+  .kz-z3{padding:0 var(--kd-s3);gap:var(--kd-s2)}
+  .ich-name,.neu-btn .lang,.kz-modus .muted{display:none}
+  .bahnen{scroll-snap-type:x mandatory}
+  .bahn{--bw:calc(100vw - 28px);scroll-snap-align:start}
+  .mod-body{display:block;overflow:auto}
+  .mod-main,.mod-side{overflow:visible}
+  .mod-main{padding:var(--kd-s4)}
+  .mod-side{border-left:0;border-top:1px solid var(--kd-line)}
+  .mod-kopf .pfad,.mod-fuss,.mod-kopf .nav,#vsc{display:none}
+  .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2)}
+  .mod-kopf>*{white-space:nowrap}
+  .mod-kopf .seg{margin-right:0}
+  .leg .rechts,.stat>.mono{display:none}
+  .leg{overflow-x:auto}
+  .bericht{padding:var(--kd-s3)}
+  .bfilter{padding:8px var(--kd-s3)}
+  .wbs-tabelle table{min-width:860px}
+}
+@media (pointer:coarse){
+  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal{min-width:32px;min-height:32px}
+  .bahn-kopf{height:auto;min-height:36px}
+  .bahn-kopf .sigz{min-height:32px}
+}

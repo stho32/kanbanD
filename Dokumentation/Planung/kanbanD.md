@@ -303,6 +303,10 @@ zuletzt: 2026-10-20
 | B0214 | Bubble | I0064 | Signale je Aufgabe rechnen und filtern | gruen | Test gruen | Aufgabe, heute, abgeschlossen → Signale inkl. due (heute/ueber); Filter signal:… |  |  |  |  |  |
 | B0215 | Bubble | I0064 | Fackel auf Karte, Fenster und Spaltenkopf | gruen | Test gruen | Signale → pulsierende Fackel je Signal mit Tooltip, Klick nimmt zurück; Schalter im Fenster; Kopf Symbol ×n filtert |  |  |  |  |  |
 | B0216 | Bubble | I0064 | Signale einrichten | gruen | Test gruen | Einrichten: Schlüssel, Bedeutung, Farbe wie Klassen |  |  |  |  |  |
+| I0065 | Interaction | D0002 | Responsive für Tablet und Handy | gruen | US-1..US-3 |  |  |  | I0058 | R00077 | Auftrag 2026-10-21: dieselbe Oberfläche auf Tablet und Handy, kein zweiter Modus |
+| B0217 | Bubble | I0065 | Kopfzeile bricht um | gruen | Test gruen | Breite → Tablet zwei Zeilen, Handy drei mit wischbarer Navigation; Personenknopf nur Kürzel |  |  |  |  |  |
+| B0218 | Bubble | I0065 | Board und Fenster auf dem Handy | gruen | Test gruen | Spalte fast bildschirmbreit mit Einrasten; Dialoge vollflächig, Felder unter dem Text |  |  |  |  |  |
+| B0219 | Bubble | I0065 | Übrige Seiten und Touch | gruen | Test gruen | Einrichten einspaltig, breite Tabellen scrollen in sich, Leisten brechen um; grober Zeiger → Tippflächen ≥ 32 px |  |  |  |  |  |
 
 ## Offene Fragen
 
