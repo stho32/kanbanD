@@ -6,6 +6,11 @@ const path = require('path');
 
 const PROGRAMM = path.resolve(__dirname, '../../target/debug/kanbanD');
 
+// Kein automatisches `git gc` in den Testordnern: es läuft nach einem Commit losgelöst im Hintergrund weiter und
+// schreibt noch in .git/objects/pack, während `stoppen` den Ordner löscht (ENOTEMPTY auf der CI). Gilt für kanbanD
+// und jeden git-Aufruf der Tests, weil beide die Umgebung dieses Prozesses erben.
+Object.assign(process.env, { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'gc.auto', GIT_CONFIG_VALUE_0: '0' });
+
 async function kanbanStarten(vorbereiten) {
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-e2e-'));
   const ordner = path.join(wurzel, 'kanban');
@@ -24,7 +29,7 @@ async function kanbanStarten(vorbereiten) {
     // Erst auf das Ende des Programms warten — ein laufender Commit schreibt sonst noch in .git.
     stoppen: async () => {
       if (kind.exitCode === null) await new Promise(ok => { kind.once('exit', ok); kind.kill(); });
-      fs.rmSync(wurzel, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      fs.rmSync(wurzel, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
 }

@@ -77,6 +77,7 @@ test.describe('R00065', () => {
     await expect.poll(brett).toEqual({ 'Zu erledigen': [2], 'In Arbeit': [], 'Erledigt': [5, 1, 3, 4] });
     await expect.poll(commits).toBe(vorher + 1);
     await expect(page.locator('.ka.gewaehlt')).toHaveCount(3);
+    await expect(page.getByRole('status').getByRole('button', { name: 'rückgängig' })).toBeVisible(); // Strg + Z wirkt erst, wenn die Meldung steht
     await page.keyboard.press('Control+z');
     await expect.poll(brett).toEqual(ANFANG);
     await expect.poll(commits).toBe(vorher + 2);
@@ -121,6 +122,7 @@ test.describe('R00065', () => {
     await expect(karte(page, 2)).toHaveCount(0);
     await expect(karte(page, 4)).toHaveCount(0);
     await expect.poll(commits).toBe(vorher + 1);
+    await expect(page.getByRole('status').getByRole('button', { name: 'rückgängig' })).toBeVisible(); // Strg + Z wirkt erst, wenn die Meldung steht
     await page.keyboard.press('Control+z');
     await expect(karte(page, 2)).toBeVisible();
     await expect(karte(page, 4)).toBeVisible();
@@ -133,6 +135,7 @@ test.describe('R00065', () => {
     await karte(page, 4).dragTo(page.locator('.bahn[data-col="Erledigt"] .flaeche'), { targetPosition: { x: 20, y: 200 } });
     await expect.poll(brett).toEqual({ 'Zu erledigen': [2, 3], 'In Arbeit': [], 'Erledigt': [5, 1, 4] });
     await expect.poll(commits).toBe(vorher + 1);
+    await expect(page.getByRole('status').getByRole('button', { name: 'rückgängig' })).toBeVisible(); // Strg + Z wirkt erst, wenn die Meldung steht
     await page.keyboard.press('Control+z');
     await expect.poll(brett).toEqual(ANFANG);
     // erst ziehen, wenn die Oberfläche den zurückgelegten Stand zeigt — sonst ersetzt das Neuzeichnen die Karte unter dem Zeiger
