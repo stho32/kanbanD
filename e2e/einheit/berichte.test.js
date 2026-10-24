@@ -447,3 +447,11 @@ test('Fever Chart: Auflösung dünnt vom letzten Punkt rückwärts aus (R00080)'
   assert.deepStrictEqual(fieberAusduennen(tage, 30).map(x => x.datum), ['2026-09-23'], 'ein Monat zurück liegt vor dem ersten Punkt');
   assert.deepStrictEqual(fieberAusduennen([], 7), []);
 });
+
+test('Rechnen ab (R00081): Burndown und Durchlaufzeit beginnen am Projektstart, ein Zeitraum überstimmt', () => {
+  const kurz = t => t.map(x => [x.datum.slice(8), x.offen, x.umfang]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({}), zu, jetzt, '2026-10-20')), [['20', 1, 2], ['21', 0, 2]]);
+  assert.deepStrictEqual(kurz(burndown(BEW, f({ zeitraum: 'eigen', von: '2026-10-19', bis: '2026-10-19' }), zu, jetzt, '2026-10-20')), [['19', 2, 3]]);
+  assert.deepStrictEqual(durchlaufzeiten(BEW, f({}), zu, jetzt, 'A', 'Z', '2026-10-20').liste.map(x => x.nummer), [2], '#1 kam am 19.10. an — vor dem Start');
+  assert.deepStrictEqual(durchlaufzeiten(BEW, f({ zeitraum: '30' }), zu, jetzt, 'A', 'Z', '2026-10-20').liste.map(x => x.nummer), [2, 1]);
+});

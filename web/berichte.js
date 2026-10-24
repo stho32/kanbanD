@@ -44,6 +44,13 @@
       .map(a => f.personen.length ? { ...a, zeiten: a.zeiten.filter(z => f.personen.includes(z.wer)) } : a);
   }
 
+  /** Grenzen mit „Rechnen ab“ (R00081): ohne gewählten Zeitraum beginnt die Rechnung am Projektstart. */
+  function grenzenAb(f, jetzt, start) {
+    const g = zeitraumGrenzen(f, jetzt);
+    if (start && f.zeitraum === 'alles') g.von = isoTag(start);
+    return g;
+  }
+
   /** Anzahl wirkender Filter (für die Leiste). */
   const filterAnzahl = f => (f.zeitraum !== 'alles' ? 1 : 0) + f.ohneFarben.length + f.ohneSpalten.length + f.personen.length + f.labels.length;
 
@@ -80,9 +87,9 @@
   }
 
   /* ── Burndown (R00044) ── */
-  /** Je Tag im Zeitraum: offen (nicht in der Abschlussspalte) und Umfang, Stand am Tagesende, heute jetzt. */
-  function burndown(bew, f, aufgabeZu, jetzt) {
-    const g = zeitraumGrenzen(f, jetzt), zaehlt = zaehltMit(f, aufgabeZu);
+  /** Je Tag im Zeitraum: offen (nicht in der Abschlussspalte) und Umfang, Stand am Tagesende, heute jetzt; ab `start`. */
+  function burndown(bew, f, aufgabeZu, jetzt, start = null) {
+    const g = grenzenAb(f, jetzt, start), zaehlt = zaehltMit(f, aufgabeZu);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
     const abschluss = bew.spalten[bew.spalten.length - 1];
@@ -113,12 +120,12 @@
   /** Perzentil nach Nearest-Rank über sortierte Werte. */
   const perzentil = (sortiert, p) => sortiert.length ? sortiert[Math.max(0, Math.ceil(p / 100 * sortiert.length) - 1)] : null;
 
-  /** Je Aufgabe Eintritt in „von“, Ankunft in „bis“ (im Zeitraum) und Tage; dazu Kennzahlen. */
-  function durchlaufzeiten(bew, f, aufgabeZu, jetzt, von, bis) {
+  /** Je Aufgabe Eintritt in „von“, Ankunft in „bis“ (im Zeitraum, ab `start`) und Tage; dazu Kennzahlen. */
+  function durchlaufzeiten(bew, f, aufgabeZu, jetzt, von, bis, start = null) {
     const iv = Math.max(0, bew.spalten.indexOf(von)), ib = bew.spalten.indexOf(bis) < 0 ? bew.spalten.length - 1 : bew.spalten.indexOf(bis);
     const leer = { liste: [], anzahl: 0, mittel: null, median: null, p85: null, gueltig: iv < ib };
     if (iv >= ib) return leer;
-    const g = zeitraumGrenzen(f, jetzt);
+    const g = grenzenAb(f, jetzt, start);
     const liste = bew.aufgaben.map(a => {
       const e = erreicht(a.wechsel, bew.spalten, iv), z = erreicht(a.wechsel, bew.spalten, ib);
       return e != null && z != null && z >= e ? { nummer: a.nummer, eintritt: e, ankunft: z, tage: runden1((z - e) / TAG) } : null;
@@ -232,8 +239,7 @@
       `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten). */
   function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
     if (block) nurLetzter = true;
-    const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
-    if (start && f.zeitraum === 'alles') g.von = isoTag(start);
+    const heute = tag(jetzt), morgen = tag(jetzt, 1), g = grenzenAb(f, jetzt, start);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
     const imFilter = a => aufgabePasst(f, aufgabeZu(a.nummer));
     // reporting.forecast: false (R00060) nimmt die Aufgabe ganz aus der Prognose, zusätzlich zum Filter
@@ -401,5 +407,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

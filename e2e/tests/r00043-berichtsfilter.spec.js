@@ -1,6 +1,6 @@
 // R00043 Berichtsfilter wie Kanbanflow
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
 
 const tag = (n, h) => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(h)}:00`; };
 const zeiten = zeilen => '```kanbanD-time\n' + zeilen.map(([n, h, wer]) => `${tag(n, h)} · ${tag(n, h + 1)} · ${wer}`).join('\n') + '\n```\n';
@@ -21,6 +21,7 @@ test.describe('R00043', () => {
   test('US-1: Zeitraum gestern', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/kreuz');
     await expect(page.locator('#kreuz tr.klick')).toHaveCount(2);
+    await filterOeffnen(page);
     await page.getByLabel('Zeitraum', { exact: true }).selectOption('gestern');
     await expect(page.locator('#kreuz tr.klick td')).toHaveText([/#2/, '0:00', '1:00', '1:00', /#1/, '1:00', '0:00', '1:00'].map(x => typeof x === 'string' && x === '0:00' ? '—' : x));
     await expect(page.getByLabel('Zeitraum von')).toHaveValue(tag(-1, 0).slice(0, 10));
@@ -28,6 +29,7 @@ test.describe('R00043', () => {
 
   test('US-2 und US-3: Farbe ausschließen, nur Mia, gemerkt, zurücksetzen', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/kreuz');
+    await filterOeffnen(page);
     const filter = page.getByRole('group', { name: 'Berichtsfilter' });
     await filter.getByRole('button', { name: 'Fehler' }).click();
     await expect(filter.getByRole('button', { name: 'Fehler' })).toHaveAttribute('aria-pressed', 'false');

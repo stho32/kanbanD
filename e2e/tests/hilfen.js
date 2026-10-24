@@ -73,4 +73,11 @@ async function liveBereit(page) {
   await page.locator('html[data-live="verbunden"]').waitFor({ state: 'attached' });
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit };
+/** Öffnet die zugeklappte Filterbox der Berichte (R00081); offen bleibt sie für den Rest des Tests. */
+async function filterOeffnen(page) {
+  const box = page.locator('details.bfilter-box');
+  if (await box.getAttribute('open') === null) await box.locator('summary').click();
+  await page.getByRole('group', { name: 'Berichtsfilter' }).waitFor();
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen };

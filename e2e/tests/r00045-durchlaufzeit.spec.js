@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
 
 function commitAm(ordner, datum, board) {
   fs.writeFileSync(ordner + '/boards/entwicklung.md', board);
@@ -28,6 +28,7 @@ test('US-1 und US-2: Lead Time, Cycle Time, Filter', async ({ page }) => {
     await expect(page.getByRole('img', { name: /Durchlaufzeit je Aufgabe/ }).locator('circle')).toHaveCount(2);
     await page.getByLabel('von Spalte').selectOption('In Arbeit');
     await expect(page.locator('#durchlauf tr.klick td:last-child')).toHaveText(['2,5', '0,0']);
+    await filterOeffnen(page);
     await page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fehler' }).click();
     await expect(page.locator('#durchlauf tr.klick')).toHaveCount(1);
     await page.getByLabel('bis Spalte').selectOption('Zu erledigen');

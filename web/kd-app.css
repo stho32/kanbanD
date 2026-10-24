@@ -738,4 +738,16 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fb-zonenwort.rot b,.fb-zonenwort.schwarz b{color:var(--kd-c-red-line)}
 .tm-ziel{font-size:14px;color:var(--kd-muted)}
 .tm-ziel.an{color:var(--kd-accent-ink)}
-.fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%}
+.fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%;flex:none}
+.fb-einst label{flex:none}
+
+/* ── Berichtsfilter als Box, zugeklappt, je Filter eine Zeile (R00081) ── */
+.bfilter-box{border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
+.bfilter-box>summary{cursor:pointer;padding:8px var(--kd-s6);font-size:12px;color:var(--kd-muted);list-style-position:inside}
+.bfilter-box>summary:hover{color:var(--kd-text)}
+.bfilter-box>summary.lokal{color:var(--kd-c-amber-line)}
+.bfilter-box .bfilter{flex-direction:column;align-items:stretch;gap:8px;border-bottom:0;padding-top:0}
+.bfilter-box .bf-gruppe{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:6px}
+.bfilter-box .bf-werte{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.bf-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);font-size:11px}
+@media (max-width:640px){.bfilter-box .bf-gruppe{grid-template-columns:1fr}.bfilter-box>summary{padding:8px 14px}}

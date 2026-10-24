@@ -22,11 +22,30 @@ function timerStartMerken(schluessel, ms) {
   S.timerStart = Object.fromEntries(Object.entries({ ...S.timerStart, [schluessel]: ms }).filter(([k, v]) => v !== null && v > grenze));
   try { localStorage.setItem('kanbanD.timer-start', JSON.stringify(S.timerStart)); } catch (_) { }
 }
-S.ui.bf = (() => { try { return filterAus(localStorage.getItem('kanbanD.berichtsfilter')); } catch (_) { return filterAus(''); } })();
+/* Berichtsfilter (R00081): steht am Board (`report-filter:`), für alle. Eine Änderung wirkt sofort und wird mit gewählter
+   Person gespeichert; bis die Antwort da ist — oder ohne Person ganz — gilt der lokale Stand (`bfLokal`). */
+S.ui.bf = filterAus('');
+S.ui.bfOffen = (() => { try { return localStorage.getItem('kanbanD.berichtsfilter-offen') === '1'; } catch (_) { return false; } })();
 function berichtsfilterSetzen(aenderung) {
   S.ui.bf = { ...S.ui.bf, ...aenderung };
-  try { localStorage.setItem('kanbanD.berichtsfilter', JSON.stringify(S.ui.bf)); } catch (_) { }
+  const ich = S.ich && personen().some(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
+  const lokal = S.ui.bfLokal = { slug: S.ui.slug, filter: S.ui.bf, ungespeichert: !ich };
+  if (!ich || !S.ui.slug) return;
+  api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/berichtsfilter`, S.ui.bf)
+    .then(() => { if (S.ui.bfLokal === lokal) S.ui.bfLokal = null; }, f => { S.ui.fehler = 'Berichtsfilter nicht gespeichert: ' + f.message; lokal.ungespeichert = true; })
+    .then(() => laden());
 }
+/** Der Filter des gewählten Boards — oder der lokale, solange er nicht gespeichert ist. */
+function berichtsfilterAusBoard() {
+  if (S.ui.bfLokal && S.ui.bfLokal.slug === S.ui.slug) return S.ui.bfLokal.filter;
+  S.ui.bfLokal = null;
+  return filterAus(JSON.stringify((S.board && S.board.berichtsfilter) || {}));
+}
+document.addEventListener('toggle', e => {
+  if (!e.target.classList || !e.target.classList.contains('bfilter-box')) return;
+  S.ui.bfOffen = e.target.open;
+  try { localStorage.setItem('kanbanD.berichtsfilter-offen', S.ui.bfOffen ? '1' : '0'); } catch (_) { }
+}, true);
 const umschalten = (liste, x) => liste.includes(x) ? liste.filter(y => y !== x) : [...liste, x];
 
 function filterSetzen(text) {
@@ -164,6 +183,7 @@ async function laden({ nurBeiAenderung = false } = {}) {
     // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
     // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
     Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs });
+    S.ui.bf = berichtsfilterAusBoard();
     if (S.ui.offen) await dateiLaden();
     if (S.ui.offenDefekt) await defektLaden();
   }

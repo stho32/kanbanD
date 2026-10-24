@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
 
 function commitAm(ordner, datum, board) {
   fs.writeFileSync(ordner + '/boards/entwicklung.md', board);
@@ -20,6 +20,7 @@ test('US-1 und US-2: Zeitraum und Spalte ausschließen', async ({ page }) => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/berichte/verlauf');
     await expect(page.locator('.endwert').first()).toHaveText('offen 1');
+    await filterOeffnen(page);
     await page.getByLabel('Zeitraum von').fill('2026-10-01');
     await page.getByLabel('Zeitraum bis').fill('2026-10-01');
     await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveValue('eigen');

@@ -320,6 +320,10 @@ zuletzt: 2026-10-24
 | I0068 | Interaction | D0006 | Auflösung im Fever Chart | gruen | US-1 |  |  |  | I0066 | R00080 | Auftrag 2026-10-24: Anzeige je Tag, Woche (7 T) oder Monat (30 T), Cache bleibt täglich |
 | B0228 | Bubble | I0068 | Auflösung am Board | gruen | Test gruen | fever resolution day/week/month ↔ Fieber.aufloesung 1/7/30 |  |  |  |  |  |
 | B0229 | Bubble | I0068 | Bahn ausdünnen | gruen | Test gruen | Punkte, Schritt → Stichtage vom letzten rückwärts; Auswahl im Bericht |  |  |  |  |  |
+| I0069 | Interaction | D0006 | Berichtsfilter am Board, zugeklappt, mit Rechnen ab | gruen | US-1..US-3 |  |  |  | I0043, I0066 | R00081 | Auftrag 2026-10-24: Filter in zugeklappter Box, je Filter eine Zeile, dauerhaft im Board-Frontmatter; Projektstart als „Rechnen ab“ für alle Board-Berichte |
+| B0230 | Bubble | I0069 | Berichtsfilter im Board-Frontmatter | gruen | Test gruen | report-filter ↔ Board.berichtsfilter; PUT …/berichtsfilter |  |  |  |  |  |
+| B0231 | Bubble | I0069 | Rechnen ab in allen Board-Berichten | gruen | Test gruen | start → Burndown, Durchlaufzeit, Prognose, Fever ab diesem Tag; Zeitraum überstimmt |  |  |  |  |  |
+| B0232 | Bubble | I0069 | Filterbox zugeklappt, eine Zeile je Filter | gruen | Test gruen | details mit Zusammenfassung; Änderung → PUT, ohne Person nur Ansicht |  |  |  |  |  |
 
 ## Offene Fragen
 

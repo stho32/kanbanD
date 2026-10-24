@@ -1,6 +1,6 @@
 // R00022 Stundenzettel und CSV
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
 
 const heute = (h, m) => { const d = new Date(); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(h)}:${p(m)}`; };
 
@@ -32,6 +32,7 @@ test.describe('R00022', () => {
 
   test('US-2 und US-3: Kreuztabelle und CSV', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/kreuz');
+    await filterOeffnen(page);
     await page.getByLabel('Zeitraum', { exact: true }).selectOption('alles');
     await expect(page.locator('#kreuz tr.klick td')).toHaveText([/#1/, '1:30', '0:30', '2:00']);
     const download = page.waitForEvent('download');

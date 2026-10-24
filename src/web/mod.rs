@@ -71,6 +71,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards/{slug}/termine", axum::routing::put(termine_setzen))
         .route("/api/boards/{slug}/anwendungen", axum::routing::put(bindung_setzen))
         .route("/api/boards/{slug}/start", axum::routing::put(start_setzen))
+        .route("/api/boards/{slug}/berichtsfilter", axum::routing::put(berichtsfilter_setzen))
         .route("/api/boards/{slug}/fieber", axum::routing::put(fieber_setzen))
         .route("/api/boards/{slug}/fieber/cache", get(fieber_cache).post(fieber_ergaenzen).delete(fieber_verwerfen))
         .route("/api/wer", get(wer))
@@ -253,6 +254,15 @@ async fn start_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<St
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.start_setzen(&p, &slug, s.start)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+async fn berichtsfilter_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(f): Json<crate::modell::Berichtsfilter>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.berichtsfilter_setzen(&p, &slug, f)
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())

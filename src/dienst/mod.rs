@@ -3,6 +3,7 @@
 mod anhaenge;
 mod anwendungen;
 mod archiv;
+mod berichtsfilter;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
 mod bewegen;

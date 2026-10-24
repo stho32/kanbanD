@@ -150,6 +150,53 @@ impl Default for Fieber {
     }
 }
 
+/// Zeiträume des Berichtsfilters, wie `ZEITRAEUME` in web/berichte.js.
+pub const ZEITRAEUME: [&str; 11] = ["heute", "gestern", "woche", "vorwoche", "monat", "vormonat", "30", "90", "jahr", "alles", "eigen"];
+
+/// Filter der Berichte (R00043), seit R00081 am Board: Zeitraum (mit von/bis bei „eigen“), ausgeschlossene Klassen
+/// (`""` = ohne Klasse) und Spalten, nur diese Personen und Labels. Die Namen sind die des Browsers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Berichtsfilter {
+    #[serde(default = "Berichtsfilter::zeitraum_standard")]
+    pub zeitraum: String,
+    #[serde(default)]
+    pub von: String,
+    #[serde(default)]
+    pub bis: String,
+    #[serde(default)]
+    pub ohne_farben: Vec<String>,
+    #[serde(default)]
+    pub ohne_spalten: Vec<String>,
+    #[serde(default)]
+    pub personen: Vec<String>,
+    #[serde(default)]
+    pub labels: Vec<String>,
+}
+
+impl Berichtsfilter {
+    fn zeitraum_standard() -> String {
+        "alles".into()
+    }
+
+    /// Bekannter Zeitraum; von und bis leer oder ein Datum.
+    pub fn pruefen(&self) -> Result<(), String> {
+        if !ZEITRAEUME.contains(&self.zeitraum.as_str()) {
+            return Err(format!("Zeitraum „{}“ ist unbekannt", self.zeitraum));
+        }
+        if let Some(d) = [&self.von, &self.bis].into_iter().find(|d| !d.is_empty() && !ist_datum(d)) {
+            return Err(format!("„{d}“ ist nicht JJJJ-MM-TT"));
+        }
+        Ok(())
+    }
+}
+
+impl Default for Berichtsfilter {
+    fn default() -> Self {
+        Berichtsfilter { zeitraum: Self::zeitraum_standard(), von: String::new(), bis: String::new(), ohne_farben: vec![], ohne_spalten: vec![], personen: vec![], labels: vec![] }
+    }
+}
+
 /// `JJJJ-MM-TT` mit gültigem Datum.
 pub fn ist_datum(s: &str) -> bool {
     s.len() == 10 && chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
@@ -172,6 +219,9 @@ pub struct Board {
     pub start: Option<String>,
     #[serde(default)]
     pub fieber: Fieber,
+    /// Filter der Berichte dieses Boards (R00081), für alle, die es ansehen.
+    #[serde(default)]
+    pub berichtsfilter: Berichtsfilter,
 }
 
 impl Board {
@@ -347,7 +397,7 @@ mod tests {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(),
         }
     }
 
@@ -450,7 +500,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default() };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default() };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

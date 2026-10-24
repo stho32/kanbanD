@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Board, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Berichtsfilter, Board, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -21,6 +21,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
         d => d,
     };
     let fieber = fieber_lesen(m.get("fever"))?;
+    let berichtsfilter = berichtsfilter_lesen(m.get("report-filter"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
@@ -46,7 +47,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter })
 }
 
 /// `[wbs-effects-green]` oder ein einzelner Name → Namen ohne leere.
@@ -134,6 +135,42 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     Ok(f)
 }
 
+/// `report-filter:` — `{period, from, to, exclude-classes, exclude-columns, people, labels}` (R00081).
+fn berichtsfilter_lesen(v: Option<&Value>) -> Result<Berichtsfilter, Formatfehler> {
+    let mut f = Berichtsfilter::default();
+    let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(f) };
+    let m = v.as_mapping().ok_or_else(|| Formatfehler("report-filter ist keine Zuordnung".into()))?;
+    if let Some(z) = yaml::text(m, "period") {
+        f.zeitraum = z;
+    }
+    f.von = yaml::text(m, "from").unwrap_or_default();
+    f.bis = yaml::text(m, "to").unwrap_or_default();
+    f.ohne_farben = yaml::textliste(m, "exclude-classes");
+    f.ohne_spalten = yaml::textliste(m, "exclude-columns");
+    f.personen = yaml::textliste(m, "people");
+    f.labels = yaml::textliste(m, "labels");
+    f.pruefen().map_err(|e| Formatfehler(format!("report-filter: {e}")))?;
+    Ok(f)
+}
+
+fn berichtsfilter_zeile(f: &Berichtsfilter) -> Option<String> {
+    let mut teile = vec![];
+    if f.zeitraum != Berichtsfilter::default().zeitraum {
+        teile.push(format!("period: {}", yaml::skalar(&f.zeitraum)));
+    }
+    for (schluessel, d) in [("from", &f.von), ("to", &f.bis)] {
+        if !d.is_empty() {
+            teile.push(format!("{schluessel}: {d}"));
+        }
+    }
+    for (schluessel, l) in [("exclude-classes", &f.ohne_farben), ("exclude-columns", &f.ohne_spalten), ("people", &f.personen), ("labels", &f.labels)] {
+        if !l.is_empty() {
+            teile.push(format!("{schluessel}: {}", yaml::liste(l)));
+        }
+    }
+    (!teile.is_empty()).then(|| format!("report-filter: {{{}}}\n", teile.join(", ")))
+}
+
 /// Nur was gesetzt bzw. vom Standard verschieden ist; `None`, wenn alles Standard ist.
 fn fieber_zeile(f: &Fieber) -> Option<String> {
     let s = Fieber::default();
@@ -188,7 +225,8 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
     let fieber = fieber_zeile(&b.fieber);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() {
+    let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -231,6 +269,9 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
         if let Some(f) = fieber {
             s.push_str(&f);
         }
+        if let Some(f) = berichtsfilter {
+            s.push_str(&f);
+        }
         s.push_str("---\n\n");
     }
     s.push_str(&format!("# {}\n", b.titel));
@@ -265,7 +306,7 @@ mod tests {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(),
         }
     }
 
@@ -422,5 +463,24 @@ mod tests {
         assert!(mit("fever: {resolution: hourly}").unwrap_err().0.contains("hourly"));
         assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: true}\n  - {name: B, date: 2027-02-01, target: true}").unwrap_err().0.contains("mehr als ein Zieltermin"));
         assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: ja}").unwrap_err().0.contains("target"));
+    }
+
+    #[test]
+    fn berichtsfilter_rundlauf_und_fehler() {
+        let mut b = beispiel();
+        b.berichtsfilter = Berichtsfilter { zeitraum: "eigen".into(), von: "2026-10-01".into(), bis: "2026-10-20".into(), ohne_farben: vec!["bug".into(), "".into()], ohne_spalten: vec!["Zu erledigen".into()], personen: vec!["st".into()], labels: vec!["ui".into()] };
+        let t = schreiben(&b, datei);
+        assert!(t.contains("\nreport-filter: {period: eigen, from: 2026-10-01, to: 2026-10-20, exclude-classes: [bug, \"\"], exclude-columns: [Zu erledigen], people: [st], labels: [ui]}\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        b.berichtsfilter = Berichtsfilter { zeitraum: "30".into(), ..Default::default() };
+        let t = schreiben(&b, datei);
+        assert!(t.contains("report-filter: {period: \"30\"}\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert!(!schreiben(&beispiel(), datei).contains("report-filter"));
+        let mit = |zeile: &str| lesen("b", &format!("---\n{zeile}\n---\n## A\n"));
+        assert!(mit("report-filter: {period: gibts}").unwrap_err().0.contains("gibts"));
+        assert!(mit("report-filter: {from: 1.10.2026}").unwrap_err().0.contains("1.10.2026"));
+        assert!(mit("report-filter: 3").unwrap_err().0.contains("keine Zuordnung"));
     }
 }

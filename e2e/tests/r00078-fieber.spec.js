@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
 
 const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 function commitAm(ordner, n, board) {
@@ -91,18 +91,22 @@ test.describe('R00078', () => {
     expect(k.lies('berichte/entwicklung-fieber.md')).toContain(`| ${tag(-1)} | 5 | 8 |`);
   });
 
-  test('US-4: Projektstart in „Wie lange noch“ ist Messbasis; Zieltermin in der Termintabelle', async ({ page }) => {
+  test('US-4: Projektstart („Rechnen ab“) ist Messbasis in „Wie lange noch“; Zieltermin in der Termintabelle', async ({ page }) => {
     await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { headers: { 'X-KanbanD-Wer': 'st' }, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red' }] });
     await page.goto(k.adresse + '#/berichte/prognose');
     await liveBereit(page);
     const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
     await expect(erledigt.locator('tbody tr')).toHaveCount(4);
-    await expect(page.locator('.fb-start')).toContainText(`erste Aufgabe auf dem Board (${tag(-10).split('-').reverse().join('.')})`);
-    await page.getByLabel('Projektstart').fill(tag(-4));
-    await page.getByLabel('Projektstart').blur();
+    // seit R00081 steht der Projektstart als „Rechnen ab“ in der Filterbox
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Rechnen ab der ersten Aufgabe');
+    await filterOeffnen(page);
+    await expect(page.getByRole('group', { name: 'Berichtsfilter' })).toContainText(`leer = ab der ersten Aufgabe (${tag(-10).split('-').reverse().join('.')})`);
+    await page.getByLabel('Rechnen ab').fill(tag(-4));
+    await page.getByLabel('Rechnen ab').blur();
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain(`\nstart: ${tag(-4)}\n`);
     await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toBe(`Stefan|Projektstart von „Entwicklung“: ${tag(-4).split('-').reverse().join('.')}`);
     await expect(erledigt).toContainText('keine Prognose unter 3 Läufen in der Messbasis (gemessen: 2)');
+    await expect(page.locator('.bf-zusammen')).toHaveText(`Filter · keine · Rechnen ab ${tag(-4).split('-').reverse().join('.')}`);
     const ziel = page.getByRole('radio', { name: 'Termin Deadline ist Zieltermin' });
     await expect(ziel).toHaveAttribute('aria-checked', 'false');
     await ziel.click();
