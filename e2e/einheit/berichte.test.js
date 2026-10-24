@@ -468,3 +468,16 @@ test('Fever Chart: Abstand zum Planende je Punkt (R00082)', () => {
   assert.strictEqual(fieberPunkte(tage, e)[0].abstand, 4, 'Planende Tag 40, Ende Tag 44');
   assert.deepStrictEqual([fieberPunkte(tage, { ...e, puffer: 10 })[0].abstand, fieberPunkte(tage, { ...e, puffer: 10 })[0].b], [-6, -60], 'Planende Tag 50: sechs Tage davor');
 });
+
+test('Prognose wird gemerkt, solange Bewegungen, Aufgaben, Filter, Optionen und Tag gleich sind', () => {
+  const bew = fieberBew();
+  const a = prognose(bew, f({}), ohne, jetzt), b = prognose(bew, f({}), ohne, jetzt + 3600e3);
+  assert.strictEqual(a, b, 'gleicher Tag: dasselbe Ergebnis, nicht neu gerechnet');
+  assert.notStrictEqual(prognose(bew, f({ messbasisTage: 30 }), ohne, jetzt), a, 'anderer Filter');
+  assert.notStrictEqual(prognose(bew, f({}), ohne, jetzt + 864e5), a, 'anderer Tag');
+  assert.strictEqual(prognose(fieberBew(), f({}), ohne, jetzt), a, 'neu geladen, gleicher Inhalt: gemerkt');
+  const mehr = fieberBew(); mehr.aufgaben.push({ nummer: 9, wechsel: [{ zeitpunkt: '2026-10-20 09:00', spalte: 'A' }] });
+  assert.notStrictEqual(prognose(mehr, f({}), ohne, jetzt), a, 'neue Bewegungen');
+  assert.notStrictEqual(prognose(bew, f({}), n => n === 6 ? { klasse: 'doku', zustaendige: [], labels: [] } : undefined, jetzt), a, 'andere Klasse an einer Aufgabe');
+  assert.notStrictEqual(prognose(bew, f({}), ohne, jetzt, undefined, { block: 'B' }), a, 'andere Optionen');
+});

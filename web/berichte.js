@@ -240,7 +240,20 @@
       Der Verlauf beginnt mit der ersten Aufgabe, frühestens bei `start`.
       `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet;
       `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten). */
-  function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
+  function prognose(bew, f, aufgabeZu, jetzt, phasen, optionen = {}) {
+    // Gemerkt nach Inhalt — Bewegungen, was der Filter an den Aufgaben liest, Filter, Optionen, Tag: Neuzeichnen ohne neue
+    // Daten rechnet nicht neu; die Monte-Carlo-Ziehungen kosten auf großen Boards Sekunden. Nach Inhalt, nicht nach Objekt,
+    // weil jedes Live-Ereignis die Bewegungen neu lädt, auch wenn sich nichts geändert hat.
+    const merkmale = bew.aufgaben.map(a => { const x = aufgabeZu(a.nummer); return x ? [x.klasse, x.zustaendige, x.labels, x.archiviert] : null; });
+    const schluessel = JSON.stringify([bew.spalten, bew.aufgaben, merkmale, phasen || null, f, optionen.start || null, !!optionen.nurLetzter, optionen.block || null, tag(jetzt)]);
+    if (!gemerkt.has(schluessel)) {
+      gemerkt.set(schluessel, prognoseRechnen(bew, f, aufgabeZu, jetzt, phasen, optionen));
+      if (gemerkt.size > 64) gemerkt.delete(gemerkt.keys().next().value);
+    }
+    return gemerkt.get(schluessel);
+  }
+  const gemerkt = new Map();
+  function prognoseRechnen(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
     if (block) nurLetzter = true;
     const heute = tag(jetzt), morgen = tag(jetzt, 1);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
