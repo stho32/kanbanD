@@ -481,3 +481,17 @@ test('Prognose wird gemerkt, solange Bewegungen, Aufgaben, Filter, Optionen und 
   assert.notStrictEqual(prognose(bew, f({}), n => n === 6 ? { klasse: 'doku', zustaendige: [], labels: [] } : undefined, jetzt), a, 'andere Klasse an einer Aufgabe');
   assert.notStrictEqual(prognose(bew, f({}), ohne, jetzt, undefined, { block: 'B' }), a, 'andere Optionen');
 });
+
+test('Diagramm von „Wie lange noch“: die drei rechten Blöcke mit Prognose, ungemessene rechts davon genannt', () => {
+  const { diagrammBloecke } = require('../../web/berichte.js');
+  const b = (schluessel, gemessen, offen = 5) => ({ schluessel, zeilen: gemessen ? [] : null, offen });
+  const joinpuya = [b('Entwicklung', true), b('Code-Review', true), b('Entwicklertest', true), b('Security-Review', false), b('Abnahme', false), b('Produktiv', false)];
+  const r = diagrammBloecke(joinpuya);
+  assert.deepStrictEqual(r.gezeigt.map(x => x.schluessel), ['Entwicklung', 'Code-Review', 'Entwicklertest']);
+  assert.deepStrictEqual(r.ohnePrognose.map(x => x.schluessel), ['Security-Review', 'Abnahme', 'Produktiv']);
+  const alle = [b('A', true), b('B', true), b('C', true), b('D', true)];
+  assert.deepStrictEqual([diagrammBloecke(alle).gezeigt.map(x => x.schluessel), diagrammBloecke(alle).ohnePrognose], [['B', 'C', 'D'], []], 'alle gemessen: die drei rechten wie bisher');
+  const keine = [b('A', false), b('B', false), b('C', false), b('D', false, 0)];
+  assert.deepStrictEqual([diagrammBloecke(keine).gezeigt.map(x => x.schluessel), diagrammBloecke(keine).ohnePrognose], [['B', 'C', 'D'], []], 'ohne jede Prognose die drei rechten');
+  assert.deepStrictEqual(diagrammBloecke([b('A', true), b('B', false, 0)]).ohnePrognose, [], 'nichts offen ist keine fehlende Prognose');
+});

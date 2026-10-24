@@ -312,6 +312,15 @@
     return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 
+  /** Blöcke für das Diagramm von „Wie lange noch“: die drei rechten mit Prognose — sonst zeigt es keinen Fächer, sobald
+      die rechten Blöcke ungemessen sind; ohne jede Prognose die drei rechten. Dazu die ungemessenen rechts davon. */
+  function diagrammBloecke(bloecke) {
+    const gemessen = bloecke.filter(b => b.zeilen);
+    const gezeigt = (gemessen.length ? gemessen : bloecke).slice(-3);
+    const ab = gezeigt.length ? bloecke.indexOf(gezeigt[0]) : bloecke.length;
+    return { gezeigt, ohnePrognose: bloecke.slice(ab).filter(b => !b.zeilen && b.offen && !gezeigt.includes(b)) };
+  }
+
   /* ── Projekt-Fever-Chart (R00078) ── */
   const isoD = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
   /** Tag der ersten Bewegung auf dem Board (JJJJ-MM-TT) — der Projektstart, solange keiner eingestellt ist; null ohne Bewegung. */
@@ -425,5 +434,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);
