@@ -187,9 +187,9 @@ async function fieberNachtragen() {
   const neu = S.ui.fieberNeu, imCache = new Set(st.cache.map(t => t.datum));
   const fehlt = fehlendeTage(st.start, [...imCache, ...Object.keys(neu.tage)], Date.now());
   const lauf = S.ui.fieberLauf = { schluessel: st.schluessel, n: 0, von: fehlt.length };
-  const weiter = () => S.ui.fieberLauf === lauf && S.ui.view === 'berichte/fieber' && fieberSchluessel(st.start, S.ui.bf) === st.schluessel;
+  const weiter = () => { const jetzt = S.ui.fieberLauf === lauf && S.ui.view === 'berichte/fieber' && fieberStand(); return !!jetzt && jetzt.schluessel === st.schluessel; };
   for (const [i, datum] of fehlt.entries()) {
-    neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, S.bew.phasen, st.start);
+    neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, S.bew.phasen, st.start, st.block && st.block.schluessel);
     if (i % 4 === 3) {
       lauf.n = i + 1;
       const el = $('#fieber-lauf');
@@ -653,6 +653,7 @@ async function act(a, arg, wert) {
         const f = { ...b.fieber, gelb: [...b.fieber.gelb], rot: [...b.fieber.rot] };
         if (arg === 'puffer') f.puffer = wert === '' ? null : Math.max(1, Math.round(+wert));
         else if (arg === 'perzentil' || arg === 'woche') f[arg] = +wert;
+        else if (arg === 'zielspalte') f.zielspalte = wert || null;
         else f[arg.slice(0, -1)][+arg.slice(-1)] = Math.max(0, Math.round(+wert));
         return fieberEinstellen(f);
       }

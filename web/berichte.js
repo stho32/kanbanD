@@ -228,8 +228,10 @@
   /** Je Block: Nenner, erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. Offen zählt nach dem aktuellen Stand,
       der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046.
       `start` (R00078): ohne gewählten Zeitraum misst die Prognose ab dem Projektstart, und der Verlauf beginnt dort.
-      `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet. */
-  function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false } = {}) {
+      `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet;
+      `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten). */
+  function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
+    if (block) nurLetzter = true;
     const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
     if (start && f.zeitraum === 'alles') g.von = isoTag(start);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
@@ -242,7 +244,8 @@
     const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => zaehlt(x.a, x.s, jetzt));
     const umfang = jetztDa.length;
     let vorige = null;
-    const alle = prognoseStufen(bew, spalten, phasen), stufen = nurLetzter ? alle.slice(-1) : alle;
+    const alle = prognoseStufen(bew, spalten, phasen), gewaehlt = alle.filter(st => st.schluessel === block);
+    const stufen = gewaehlt.length ? gewaehlt : nurLetzter ? alle.slice(-1) : alle;
     const bloecke = stufen.map(st => {
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
@@ -293,18 +296,21 @@
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     return erste === Infinity ? null : isoD(erste);
   }
-  /** Schlüssel des Caches: Projektstart und Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt). */
-  function fieberSchluessel(start, f) {
+  /** Die Blöcke aus „Wie lange noch“ unter dem Filter, von links nach rechts — zur Wahl der Zielspalte (R00079). */
+  const fieberBloecke = (bew, f, phasen) => prognoseStufen(bew, bew.spalten.filter(s => !f.ohneSpalten.includes(s)), phasen).map(st => ({ schluessel: st.schluessel, titel: st.titel }));
+  /** Schlüssel des Caches: Projektstart, Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt)
+      und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
+  function fieberSchluessel(start, f, ziel = null) {
     const filter = {};
     for (const k of Object.keys(FILTER_LEER)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
     if (filter.zeitraum !== 'eigen') { filter.von = ''; filter.bis = ''; }
-    return JSON.stringify({ v: 1, start, filter });
+    return JSON.stringify(ziel ? { v: 1, start, filter, ziel } : { v: 1, start, filter });
   }
   /** Ein Tag des Fever Charts aus der Sicht seines Tagesendes: erledigt und Umfang des letzten Blocks, prognostiziertes Ende
       je Perzentil in 7- und 5-Tage-Woche (null = keine Aussage); nichts offen → Ende ist der Tag selbst. Ohne Umfang ein
       leerer Tag — auch er kommt in den Cache, damit er nicht jedes Mal neu gerechnet wird. */
-  function fieberTag(bew, f, aufgabeZu, datum, phasen, start) {
-    const t = isoTag(datum), p = prognose(bew, f, aufgabeZu, tag(t, 1) - 1, phasen, { start, nurLetzter: true });
+  function fieberTag(bew, f, aufgabeZu, datum, phasen, start, block = null) {
+    const t = isoTag(datum), p = prognose(bew, f, aufgabeZu, tag(t, 1) - 1, phasen, { start, nurLetzter: true, block });
     const b = p.phasen[0], leer = [null, null, null, null];
     if (!b || !b.nenner) return { datum, erledigt: 0, umfang: 0, ende7: leer, ende5: leer };
     const ende = n => PERZENTILE.map(q => !b.offen ? datum : b.zeilen ? isoD(b.zeilen.find(z => z.p === q)['datum' + n]) : null);
@@ -381,5 +387,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { ersterTag, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { ersterTag, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

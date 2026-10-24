@@ -126,6 +126,7 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     if let Some(r) = paar("red")? {
         f.rot = r;
     }
+    f.zielspalte = yaml::text(m, "target-column");
     f.pruefen().map_err(|e| Formatfehler(format!("fever: {e}")))?;
     Ok(f)
 }
@@ -148,6 +149,9 @@ fn fieber_zeile(f: &Fieber) -> Option<String> {
     }
     if f.rot != s.rot {
         teile.push(format!("red: [{}, {}]", f.rot[0], f.rot[1]));
+    }
+    if let Some(z) = &f.zielspalte {
+        teile.push(format!("target-column: {}", yaml::skalar(z)));
     }
     (!teile.is_empty()).then(|| format!("fever: {{{}}}\n", teile.join(", ")))
 }
@@ -388,10 +392,10 @@ mod tests {
     fn start_fieber_und_zieltermin_rundlauf() {
         let mut b = beispiel();
         b.start = Some("2026-09-01".into());
-        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95] };
+        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()) };
         b.termine = vec![Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: true }];
         let t = schreiben(&b, datei);
-        assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95]}\n---\n"), "{t}");
+        assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95], target-column: In Arbeit}\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
         let ohne = lesen("b", "## A\n").unwrap();

@@ -421,3 +421,18 @@ test('Fever Chart: Bahn ohne Wochenende, ohne Aussage, endet bei 100 %', () => {
   assert.deepStrictEqual(fieberPunkte(tage, { ...e, woche: 7 }).map(x => x.datum), ['2026-10-10', '2026-10-12', '2026-10-13', '2026-10-15']);
   assert.deepStrictEqual(fieberPunkte(tage, { ...e, puffer: null }), []);
 });
+
+test('Fever Chart: Zielspalte — Prognose eines benannten Blocks, Tag und Schlüssel (R00079)', () => {
+  const { fieberBloecke } = require('../../web/berichte.js');
+  const bew = fieberBew();
+  assert.deepStrictEqual(fieberBloecke(bew, f({}), undefined).map(x => x.schluessel), ['B', 'Z']);
+  assert.deepStrictEqual(fieberBloecke(bew, f({ ohneSpalten: ['B'] }), undefined).map(x => x.schluessel), ['Z']);
+  const b = prognose(bew, f({}), ohne, jetzt, undefined, { block: 'B' });
+  assert.deepStrictEqual(b.phasen.map(x => [x.spalte, x.erreicht, x.nenner]), [['B', 5, 6]]);
+  assert.deepStrictEqual(prognose(bew, f({}), ohne, jetzt, undefined, { block: 'weg' }).phasen.map(x => x.spalte), ['Z'], 'unbekannt: der letzte');
+  const tagB = fieberTag(bew, f({}), ohne, '2026-10-21', undefined, null, 'B');
+  assert.deepStrictEqual([tagB.erledigt, tagB.umfang], [5, 6]);
+  assert.ok(tagB.ende7.every(Boolean), 'B ist gemessen');
+  assert.strictEqual(fieberSchluessel('2026-10-01', f({})), fieberSchluessel('2026-10-01', f({}), null), 'ohne Zielspalte der Schlüssel aus R00078');
+  assert.notStrictEqual(fieberSchluessel('2026-10-01', f({}), 'B'), fieberSchluessel('2026-10-01', f({})));
+});

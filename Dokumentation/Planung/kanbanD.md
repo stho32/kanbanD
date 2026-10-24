@@ -314,6 +314,9 @@ zuletzt: 2026-10-24
 | B0223 | Bubble | I0066 | Projektstart als Messbasis | gruen | Test gruen | Start → Prognose misst ab Start, Verlauf beginnt am Start |  |  |  |  |  |
 | B0224 | Bubble | I0066 | Fieberpunkte rechnen | gruen | Test gruen | Bewegungen, Tag → Fortschritt, Ende je Perzentil; Einstellungen → Verbrauch, Zone, Puffervorschlag |  |  |  |  |  |
 | B0225 | Bubble | I0066 | Bericht zeichnen und Cache nachtragen | gruen | Test gruen | Cache + fehlende Tage → Zonen, Bahn, Tooltip, Einstellungen; fehlende Tage zurück an den Server |  |  |  |  |  |
+| I0067 | Interaction | D0006 | Zielspalte im Fever Chart | gruen | US-1..US-2 |  |  |  | I0066 | R00079 | Auftrag 2026-10-24: wählbar, welcher Block aus „Wie lange noch“ als erledigt zählt; informelle Regel im Projekt Puya |
+| B0226 | Bubble | I0067 | Zielspalte am Board | gruen | Test gruen | fever target-column ↔ Fieber.zielspalte; PUT …/fieber |  |  |  |  |  |
+| B0227 | Bubble | I0067 | Fever Chart nach Zielspalte rechnen | gruen | Test gruen | Zielspalte → Prognose nur dieses Blocks, Schlüssel mit Zielspalte; Auswahl, Hinweis |  |  |  |  |  |
 
 ## Offene Fragen
 

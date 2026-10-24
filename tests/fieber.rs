@@ -34,7 +34,8 @@ async fn start_und_einstellungen_im_frontmatter_je_ein_commit() {
     let text = lies(tmp.path(), "boards/entwicklung.md");
     assert!(text.starts_with("---\nstart: 2026-09-01\nfever: {buffer: 20, red: [20, 95]}\n---\n"), "nur Abweichendes vom Standard: {text}");
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
-    assert_eq!((b["start"].clone(), b["fieber"].clone()), (json!("2026-09-01"), f.clone()));
+    assert_eq!(b["start"], json!("2026-09-01"));
+    assert_eq!(b["fieber"], json!({"puffer": 20, "perzentil": 95, "woche": 5, "gelb": [10, 70], "rot": [20, 95], "zielspalte": null}));
     let vorher = commits(&tmp);
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", f).await;
     assert_eq!(commits(&tmp), vorher, "unverändert: kein Commit");
@@ -42,6 +43,13 @@ async fn start_und_einstellungen_im_frontmatter_je_ein_commit() {
         assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", falsch.clone()).await.0, 400, "{falsch}");
     }
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/start", "st", json!({"start": "1.9.2026"})).await.0, 400);
+    // R00079: Zielspalte
+    let (s, _) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"puffer": 20, "rot": [20, 95], "zielspalte": " In Arbeit "})).await;
+    assert_eq!(s, 200);
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "Fever Chart von „Entwicklung“ eingestellt: Puffer 20 Arbeitstage, P95, erledigt heißt „In Arbeit“");
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("fever: {buffer: 20, red: [20, 95], target-column: In Arbeit}\n"));
+    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"zielspalte": " "})).await.0, 400);
+    senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"puffer": 20, "rot": [20, 95], "zielspalte": null})).await;
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/start", "st", json!({"start": null})).await;
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "Projektstart von „Entwicklung“ entfernt");
     assert!(!lies(tmp.path(), "boards/entwicklung.md").contains("start:"));

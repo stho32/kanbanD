@@ -110,4 +110,31 @@ test.describe('R00078', () => {
     expect(k.lies('boards/entwicklung.md')).toContain('target: true}');
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe(`Zieltermin von „Entwicklung“: „Deadline“ (${tag(20).split('-').reverse().join('.')})`);
   });
+
+  test('R00079: Zielspalte wählen — eigener Cache-Abschnitt; verschwundene Zielspalte gibt einen Hinweis', async ({ page }) => {
+    const H = { headers: { 'X-KanbanD-Wer': 'st' } };
+    await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...H, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red', ziel: true }] });
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...H, data: { puffer: 4 } });
+    await page.goto(k.adresse + '#/berichte/fieber');
+    await liveBereit(page);
+    await expect.poll(kanbandCommits).toEqual(['Fever Chart „Entwicklung“: 10 Tage ergänzt']);
+    const wahl = page.getByLabel('Erledigt heißt');
+    await expect(wahl.locator('option')).toHaveText(['Spalte „In Arbeit“', 'Spalte „Erledigt“ (Standard)']);
+    await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „Erledigt“');
+    await wahl.selectOption({ label: 'Spalte „In Arbeit“' });
+    await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|Fever Chart von „Entwicklung“ eingestellt: .*, erledigt heißt „In Arbeit“$/);
+    expect(k.lies('boards/entwicklung.md')).toContain('target-column: In Arbeit}');
+    await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „In Arbeit“');
+    await expect.poll(kanbandCommits).toEqual(['Fever Chart „Entwicklung“: 10 Tage ergänzt', 'Fever Chart „Entwicklung“: 10 Tage ergänzt']);
+    expect(k.lies('berichte/entwicklung-fieber.md')).toContain('"ziel":"In Arbeit"');
+    // zurück auf Standard: der alte Abschnitt ist noch da, kein neuer Commit von kanbanD
+    await wahl.selectOption({ label: 'Spalte „Erledigt“ (Standard)' });
+    await expect.poll(() => k.lies('boards/entwicklung.md')).not.toContain('target-column');
+    await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „Erledigt“');
+    expect(kanbandCommits()).toHaveLength(2);
+    // eine Zielspalte, die es nicht gibt
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...H, data: { puffer: 4, zielspalte: 'Review' } });
+    await expect(page.locator('#fb-ziel-weg')).toHaveText('Zielspalte „Review“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.');
+    await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „Erledigt“');
+  });
 });

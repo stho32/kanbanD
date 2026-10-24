@@ -39,6 +39,8 @@ impl Kanban {
 
     /// Ersetzt die Einstellungen des Fever Charts; ohne Änderung kein Commit.
     pub fn fieber_setzen(&self, wer: &Person, slug: &str, neu: Fieber) -> Result<bool, Fehler> {
+        let mut neu = neu;
+        neu.zielspalte = neu.zielspalte.map(|z| z.trim().to_string());
         neu.pruefen().map_err(Fehler::Ungueltig)?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
@@ -47,7 +49,8 @@ impl Kanban {
         }
         let einheit = if neu.woche == 5 { "Arbeitstage" } else { "Kalendertage" };
         let puffer = neu.puffer.map(|p| format!("Puffer {p} {einheit}")).unwrap_or_else(|| "ohne Puffer".into());
-        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}", b.titel, neu.perzentil);
+        let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{z}“")).unwrap_or_default();
+        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}", b.titel, neu.perzentil);
         b.fieber = neu;
         self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)

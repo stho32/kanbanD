@@ -787,15 +787,19 @@ function fieberStand() {
   if (!S.bew || !S.board) return null;
   const start = S.board.start || ersterTag(S.bew);
   if (!start) return { start: null };
-  const schluessel = fieberSchluessel(start, S.ui.bf), f = S.board.fieber;
+  const f = S.board.fieber, bloecke = fieberBloecke(S.bew, S.ui.bf, S.bew.phasen);
+  // Zielspalte (R00079): ein Block aus „Wie lange noch“; gibt es ihn nicht mehr, gilt der letzte
+  const block = bloecke.find(x => x.schluessel === f.zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
+  const zaehlt = block || letzter, verschwunden = f.zielspalte && !block ? f.zielspalte : null;
+  const schluessel = fieberSchluessel(start, S.ui.bf, block && block.schluessel);
   const zielTermin = (S.board.termine || []).find(t => t.ziel) || null;
   const cache = ((S.fieberCache && S.fieberCache.abschnitte || []).find(a => a.schluessel === schluessel) || {}).tage || [];
   const neu = S.ui.fieberNeu && S.ui.fieberNeu.schluessel === schluessel ? Object.values(S.ui.fieberNeu.tage) : [];
   const tage = new Map([...cache, ...neu].map(t => [t.datum, t]));
   const heute = isoD(Date.now());
-  if (start <= heute) tage.set(heute, fieberTag(S.bew, S.ui.bf, aufgabe, heute, S.bew.phasen, start));
+  if (start <= heute) tage.set(heute, fieberTag(S.bew, S.ui.bf, aufgabe, heute, S.bew.phasen, start, block && block.schluessel));
   const e = { start, ziel: zielTermin && zielTermin.datum, puffer: f.puffer, woche: f.woche, perzentil: f.perzentil, gelb: f.gelb, rot: f.rot };
-  return { start, schluessel, zielTermin, e, cache, tage: [...tage.values()], heute };
+  return { start, schluessel, zielTermin, e, cache, tage: [...tage.values()], heute, bloecke, block, zaehlt, verschwunden };
 }
 function vFieber() {
   if (!S.bew || !S.fieberCache) return '<div class="leer">lädt …</div>';
@@ -809,10 +813,11 @@ function vFieber() {
 <label>Projektstart <input type="date" class="mini-inp" data-fb="start" value="${esc(b.start || '')}" aria-label="Projektstart"></label>${b.start ? '' : `<span class="muted">leer = erste Aufgabe (${vollDatum(isoTag(st.start))})</span>`}
 <label>Zieltermin <select class="mini-inp" data-fb="ziel" aria-label="Zieltermin"><option value="">— wählen —</option>${termine.map((t, i) => `<option value="${i}"${t.ziel ? ' selected' : ''}>${esc(t.name)} · ${vollDatum(isoTag(t.datum))}</option>`).join('')}</select></label>
 <label>Puffer <input type="number" class="mini-inp fb-zahl" min="1" data-fb="puffer" value="${f.puffer == null ? '' : f.puffer}" aria-label="Puffer in Tagen"> ${einheit}</label><button class="btn" data-act="fb-vorschlag" title="1/3 der Gesamtdauer — die CCPM-Regel „Puffer = 50 % der Kette“"${st.e.ziel ? '' : ' disabled'}>Puffer vorschlagen</button>
+<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${st.bloecke.map((x, i) => `<option value="${i === st.bloecke.length - 1 ? '' : esc(x.schluessel)}"${st.zaehlt && x.schluessel === st.zaehlt.schluessel && !st.verschwunden ? ' selected' : ''}>${esc(x.titel)}${i === st.bloecke.length - 1 ? ' (Standard)' : ''}</option>`).join('')}${st.verschwunden ? `<option value="${esc(st.verschwunden)}" selected>„${esc(st.verschwunden)}“ — gibt es nicht mehr</option>` : ''}</select></label>
 <label>Perzentil <select class="mini-inp" data-fb="perzentil" aria-label="Perzentil der Prognose">${PERZENTILE.map(q => `<option value="${q}"${q === f.perzentil ? ' selected' : ''}>P${q}</option>`).join('')}</select></label>
 <label>Einheit <select class="mini-inp" data-fb="woche" aria-label="Einheit"><option value="5"${f.woche === 5 ? ' selected' : ''}>Arbeitstage</option><option value="7"${f.woche === 7 ? ' selected' : ''}>Kalendertage</option></select></label>
 <details class="fb-zonen"><summary>Zonengrenzen</summary><span>Gelb ab ${zahl('gelb', 0, 'Gelb ab bei 0 % Fortschritt')} % → ${zahl('gelb', 1, 'Gelb ab bei 100 % Fortschritt')} %</span><span>Rot ab ${zahl('rot', 0, 'Rot ab bei 0 % Fortschritt')} % → ${zahl('rot', 1, 'Rot ab bei 100 % Fortschritt')} %</span><span class="muted">Verbrauch bei 0 % und bei 100 % Fortschritt, gerade dazwischen; über 100 % schwarz</span></details>
-${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}</section>`;
+${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}${st.verschwunden ? `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(st.verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(st.zaehlt ? st.zaehlt.schluessel : '')}“.</span>` : ''}</section>`;
   const lauf = u.fieberLauf && u.fieberLauf.schluessel === st.schluessel;
   const status = `<p class="muted fb-status" id="fieber-lauf">${lauf ? `rechnet ${u.fieberLauf.n} von ${u.fieberLauf.von} Tagen …` : `${st.cache.length} ${st.cache.length === 1 ? 'Tag' : 'Tage'} aus dem Cache <span class="mono">berichte/${esc(u.slug)}-fieber.md</span> · heute live gerechnet`} <button class="btn" data-act="fb-verwerfen" title="löscht den Cache dieses Boards und rechnet alle Tage neu">Cache verwerfen und neu rechnen</button></p>`;
   let inhalt;
@@ -824,9 +829,9 @@ ${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}
 }
 function vFieberDiagramm(st, plan, einheit) {
   const e = st.e, punkte = fieberPunkte(st.tage, e), titel = S.board.titel;
-  const kennzahl = `<div class="kennzahlen" id="fb-kennzahl"><span>Gesamtdauer <b>${plan.gesamt}</b> ${einheit}</span><span>Arbeitsbereich <b>${plan.arbeit}</b> bis ${deDatum(isoTag(plan.planende))}</span><span>Puffer <b>${plan.puffer}</b></span><span>Zieltermin <b>${vollDatum(isoTag(e.ziel))}</b></span></div>`;
+  const kennzahl = `<div class="kennzahlen" id="fb-kennzahl"><span>erledigt = <b>${esc(st.zaehlt ? st.zaehlt.titel : '')}</b></span><span>Gesamtdauer <b>${plan.gesamt}</b> ${einheit}</span><span>Arbeitsbereich <b>${plan.arbeit}</b> bis ${deDatum(isoTag(plan.planende))}</span><span>Puffer <b>${plan.puffer}</b></span><span>Zieltermin <b>${vollDatum(isoTag(e.ziel))}</b></span></div>`;
   if (!punkte.length) {
-    const b = prognose(S.bew, S.ui.bf, aufgabe, Date.now(), S.bew.phasen, { start: e.start, nurLetzter: true }).phasen[0];
+    const b = prognose(S.bew, S.ui.bf, aufgabe, Date.now(), S.bew.phasen, { start: e.start, nurLetzter: true, block: st.block && st.block.schluessel }).phasen[0];
     return `${kennzahl}<div class="leer" id="fb-hinweis">Noch keine Prognose — sie braucht ${MIN_LAEUFE} erledigte Aufgaben in der Messbasis${b ? `, bisher ${b.laeufe}` : ''}.</div>`;
   }
   const W = 960, H = 500, L = 56, R = 24, O = 16, U = 44, pw = W - L - R, ph = H - O - U;
@@ -846,7 +851,7 @@ function vFieberDiagramm(st, plan, einheit) {
   const aktuell = `<circle class="fb-aktuell ${letzter.zone}" id="fb-aktuell" cx="${f1(lx)}" cy="${f1(ly)}" r="8" data-datum="${letzter.datum}" data-zone="${letzter.zone}"></circle><text class="fb-name" x="${f1(lx + (rechts ? -14 : 14))}" y="${f1(ly - 10)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(titel)} · ${ZONENNAME[letzter.zone].split(' ')[0]}${istHeute ? '' : ` · ${vollDatum(isoTag(letzter.datum))}`}</text>`;
   const ende = pt => `${deDatum(isoTag(pt.ende))}`;
   S.fieberLage = lage;
-  S.fieberTip = i => { const pt = punkte[i]; return `<b>${deDatum(isoTag(pt.datum))}${pt.datum === st.heute ? ' (heute)' : ''}</b><span>Fortschritt ${zahl1(pt.p)} % (${pt.erledigt} von ${pt.umfang} erledigt)</span><span>Pufferverbrauch ${zahl1(pt.b)} %</span><span><i class="fb-k ${pt.zone}"></i>Zone ${ZONENNAME[pt.zone]}</span><span>prognostiziert fertig ${ende(pt)} (P${e.perzentil})</span><span>Planende ${deDatum(isoTag(plan.planende))} · Zieltermin ${deDatum(isoTag(e.ziel))}</span>`; };
+  S.fieberTip = i => { const pt = punkte[i]; return `<b>${deDatum(isoTag(pt.datum))}${pt.datum === st.heute ? ' (heute)' : ''}</b><span>Fortschritt ${zahl1(pt.p)} % (${pt.erledigt} von ${pt.umfang}: ${esc(st.zaehlt ? st.zaehlt.titel : '')})</span><span>Pufferverbrauch ${zahl1(pt.b)} %</span><span><i class="fb-k ${pt.zone}"></i>Zone ${ZONENNAME[pt.zone]}</span><span>prognostiziert fertig ${ende(pt)} (P${e.perzentil})</span><span>Planende ${deDatum(isoTag(plan.planende))} · Zieltermin ${deDatum(isoTag(e.ziel))}</span>`; };
   const svg = `<svg class="diagramm fieber" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fieberdiagramm: Fortschritt gegen Pufferverbrauch, heute ${zahl1(letzter.p)} % Fortschritt und ${zahl1(letzter.b)} % Verbrauch, Zone ${ZONENNAME[letzter.zone]}">
 <defs><clipPath id="fb-flaeche"><rect x="${L}" y="${O}" width="${pw}" height="${ph}"></rect></clipPath></defs>
 <g clip-path="url(#fb-flaeche)">${zonen}</g>${gitter}${zonenText}
@@ -861,7 +866,7 @@ ${bahn}${aktuell}
   return `${kennzahl}${heuteText}<div class="wl-panel"><h3 class="dtitel">Fortschritt gegen Pufferverbrauch</h3>${legende}${gemessen}${vDiagrammFlaeche(svg, ' fb-flaeche')}${tabelle}</div>`;
 }
 function vFieberMethodik() {
-  return `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Fortschritt: Anteil der Aufgaben in der Abschlussspalte (bei gebundenem Board: letzte Phase durchlaufen) am Umfang des Tages. Neue Aufgaben senken ihn — der Punkt springt nach links.</li><li>Gesamtdauer = Projektstart bis Zieltermin in der Einheit; davon ist der Puffer abgezogen, der Rest ist der Arbeitsbereich mit seinem Planende.</li><li>Für jeden Tag rechnet der Bericht die Prognose aus „Wie lange noch“ mit dem Wissen dieses Tages (Messbasis ab Projektstart, nur die Abschlussspalte) und nimmt das gewählte Perzentil als prognostiziertes Ende. Pufferverbrauch = (Ende − Planende) / Puffer; negativ heißt Puffer gewonnen. Steht die Arbeit still, steigt der Verbrauch allein, weil Zeit vergeht.</li><li>Zonen: die Grenzen steigen von links nach rechts — früher Verbrauch ist gefährlicher, weil noch die ganze Arbeit folgt. Genau auf einer Grenze gilt die höhere Zone.</li><li>Ohne ${MIN_LAEUFE} Läufe in der Messbasis kein Punkt. In Arbeitstagen nur Werktage. Die Bahn endet am ersten Tag mit 100 %.</li><li>Cache: je Projektstart und Berichtsfilter ein Abschnitt; Zieltermin, Puffer, Perzentil, Einheit und Zonen rechnen nichts neu. Der heutige Tag wird nie gespeichert, fehlende Tage ergänzt der Bericht beim Öffnen (Commit von „kanbanD“).</li></ul>`;
+  return `<h3 class="dtitel">Lesehinweise und Methodik</h3><ul class="wl-liste"><li>Fortschritt: Anteil der Aufgaben, die die Zielspalte erreicht bzw. ihre Phase durchlaufen haben — ohne Wahl die Abschlussspalte bzw. die letzte Phase („Erledigt heißt“) —, am Umfang des Tages. Prognose und Durchsatz gehören zu demselben Block wie in „Wie lange noch“. Neue Aufgaben senken ihn — der Punkt springt nach links.</li><li>Gesamtdauer = Projektstart bis Zieltermin in der Einheit; davon ist der Puffer abgezogen, der Rest ist der Arbeitsbereich mit seinem Planende.</li><li>Für jeden Tag rechnet der Bericht die Prognose aus „Wie lange noch“ mit dem Wissen dieses Tages (Messbasis ab Projektstart, nur die Abschlussspalte) und nimmt das gewählte Perzentil als prognostiziertes Ende. Pufferverbrauch = (Ende − Planende) / Puffer; negativ heißt Puffer gewonnen. Steht die Arbeit still, steigt der Verbrauch allein, weil Zeit vergeht.</li><li>Zonen: die Grenzen steigen von links nach rechts — früher Verbrauch ist gefährlicher, weil noch die ganze Arbeit folgt. Genau auf einer Grenze gilt die höhere Zone.</li><li>Ohne ${MIN_LAEUFE} Läufe in der Messbasis kein Punkt. In Arbeitstagen nur Werktage. Die Bahn endet am ersten Tag mit 100 %.</li><li>Cache: je Projektstart und Berichtsfilter ein Abschnitt; Zieltermin, Puffer, Perzentil, Einheit und Zonen rechnen nichts neu. Der heutige Tag wird nie gespeichert, fehlende Tage ergänzt der Bericht beim Öffnen (Commit von „kanbanD“).</li></ul>`;
 }
 
 /* ── WBS-Sicht (R00054): Tabelle nach /planung karte, Stand im Kopf, live aus dem Arbeits-Repository ── */

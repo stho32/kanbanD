@@ -88,6 +88,9 @@ pub struct Fieber {
     pub gelb: [u32; 2],
     #[serde(default = "Fieber::rot_standard")]
     pub rot: [u32; 2],
+    /// Spalte bzw. Phase, deren Block als „erledigt“ zählt (R00079); `None` = der letzte Block.
+    #[serde(default)]
+    pub zielspalte: Option<String>,
 }
 
 pub const FIEBER_PERZENTILE: [u32; 4] = [50, 70, 85, 95];
@@ -120,6 +123,9 @@ impl Fieber {
         if self.gelb.iter().chain(&self.rot).any(|g| *g > 1000) {
             return Err("Zonengrenzen liegen zwischen 0 und 1000 %".into());
         }
+        if self.zielspalte.as_deref().is_some_and(|z| z.trim().is_empty()) {
+            return Err("Die Zielspalte braucht einen Namen".into());
+        }
         if self.gelb[0] > self.rot[0] || self.gelb[1] > self.rot[1] {
             return Err("Die Grenze zu Gelb liegt über der zu Rot".into());
         }
@@ -129,7 +135,7 @@ impl Fieber {
 
 impl Default for Fieber {
     fn default() -> Self {
-        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard() }
+        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard(), zielspalte: None }
     }
 }
 
