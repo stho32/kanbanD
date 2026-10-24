@@ -752,3 +752,4 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bf-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);font-size:11px}
 @media (max-width:640px){.bfilter-box .bf-gruppe{grid-template-columns:1fr}.bfilter-box>summary{padding:8px 14px}}
 .bf-tage{width:72px}
+.diagramm .fb-ueber{font-size:11px;fill:var(--kd-c-red-line);font-family:var(--kd-font)}

@@ -839,19 +839,25 @@ function vFieberDiagramm(st, plan, einheit) {
   }
   const W = 960, H = 500, L = 56, R = 24, O = 16, U = 44, pw = W - L - R, ph = H - O - U;
   const bs = punkte.map(x => x.b);
-  const ymin = Math.min(-20, Math.floor((Math.min(...bs) - 5) / 20) * 20), ymax = Math.min(400, Math.max(120, Math.ceil((Math.max(...bs) + 10) / 20) * 20));
+  // Achse wächst mit den Werten bis ±1000 %; die Schrittweite hält die Beschriftungen bei höchstens zwölf
+  const roh = [Math.min(-20, Math.min(...bs) - 5), Math.max(120, Math.max(...bs) + 10)];
+  const schritt = [10, 20, 25, 50, 100, 200, 250].find(n => (Math.min(1000, roh[1]) - Math.max(-1000, roh[0])) / n <= 12) || 500;
+  const ymin = Math.max(-1000, Math.floor(roh[0] / schritt) * schritt), ymax = Math.min(1000, Math.ceil(roh[1] / schritt) * schritt);
   const x = p => L + pw * p / 100, y = v => O + ph * (ymax - Math.max(ymin, Math.min(ymax, v))) / (ymax - ymin), f1 = n => n.toFixed(1);
   const poly = (cls, pts) => `<polygon class="fb-zone ${cls}" points="${pts.map(([p, v]) => `${f1(x(p))},${f1(O + ph * (ymax - v) / (ymax - ymin))}`).join(' ')}"></polygon>`;
   const [g0, g1] = e.gelb, [r0, r1] = e.rot;
   const zonen = poly('gruen', [[0, ymin], [100, ymin], [100, g1], [0, g0]]) + poly('gelb', [[0, g0], [100, g1], [100, r1], [0, r0]]) + poly('rot', [[0, r0], [100, r1], [100, ymax], [0, ymax]]) + (ymax > 100 ? `<rect class="fb-zone schwarz" x="${L}" y="${O}" width="${pw}" height="${f1(y(100) - O)}"></rect>` : '');
-  const yt = []; for (let v = Math.ceil(ymin / 20) * 20; v <= ymax; v += 20) yt.push(v);
+  const yt = []; for (let v = Math.ceil(ymin / schritt) * schritt; v <= ymax; v += schritt) yt.push(v);
+  if (!yt.includes(100) && ymax >= 100) yt.push(100);
   const gitter = yt.map(v => `<line class="gitter${v === 0 || v === 100 ? ' fb-marke' : ''}" x1="${L}" x2="${W - R}" y1="${f1(y(v))}" y2="${f1(y(v))}"></line><text class="achse" x="${L - 8}" y="${f1(y(v) + 4)}" text-anchor="end">${v} %</text>`).join('') + [0, 25, 50, 75, 100].map(p => `<line class="gitter" x1="${f1(x(p))}" x2="${f1(x(p))}" y1="${O}" y2="${H - U}"></line><text class="achse" x="${f1(x(p))}" y="${H - U + 18}" text-anchor="middle">${p} %</text>`).join('');
   const zonenText = `<text class="fb-ztext" x="${W - R - 6}" y="${f1(y(ymin) - 8)}" text-anchor="end">GRÜN</text><text class="fb-ztext" id="fb-vorplan" x="${L + 6}" y="${f1(y(0) + 16)}">VOR PLAN — PUFFER GEWONNEN</text><text class="fb-ztext" x="${W - R - 6}" y="${f1(y((g1 + r1) / 2) + 4)}" text-anchor="end">GELB</text><text class="fb-ztext" x="${L + 6}" y="${f1(Math.max(O + 14, y(Math.min(100, r0 + 30))))}">ROT</text>${ymax > 100 ? `<text class="fb-ztext hell" x="${L + 6}" y="${f1(O + 14)}">ÜBER 100 % — PUFFER ÜBERZOGEN</text>` : ''}`;
   const lage = punkte.map(pt => [x(pt.p), y(pt.b)]);
   const letzter = punkte[punkte.length - 1], istHeute = letzter.datum === st.heute;
   const bahn = `<path class="fb-bahn" d="${lage.map(([a, c], i) => `${i ? 'L' : 'M'}${f1(a)},${f1(c)}`).join('')}"></path>` + lage.slice(0, -1).map(([a, c], i) => `<circle class="fb-punkt ${punkte[i].zone}" cx="${f1(a)}" cy="${f1(c)}" r="3.5" data-datum="${punkte[i].datum}"></circle>`).join('');
   const [lx, ly] = lage[lage.length - 1], rechts = lx > W - R - 220;
-  const aktuell = `<circle class="fb-aktuell ${letzter.zone}" id="fb-aktuell" cx="${f1(lx)}" cy="${f1(ly)}" r="8" data-datum="${letzter.datum}" data-zone="${letzter.zone}"></circle><text class="fb-name" x="${f1(lx + (rechts ? -14 : 14))}" y="${f1(ly - 10)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(titel)} · ${ZONENNAME[letzter.zone].split(' ')[0]}${istHeute ? '' : ` · ${vollDatum(isoTag(letzter.datum))}`}</text>`;
+  // über die Achse hinaus: Pfeil am Rand statt eines Punkts, der unter anderen verschwindet
+  const ueber = punkte.map((pt, i) => pt.b > ymax || pt.b < ymin ? `<text class="fb-ueber" x="${f1(lage[i][0])}" y="${f1(pt.b > ymax ? O + 10 : H - U - 4)}" text-anchor="middle">${pt.b > ymax ? '▲' : '▼'}</text>` : '').join('');
+  const aktuell = `<circle class="fb-aktuell ${letzter.zone}" id="fb-aktuell" cx="${f1(lx)}" cy="${f1(ly)}" r="8" data-datum="${letzter.datum}" data-zone="${letzter.zone}"></circle><text class="fb-name" x="${f1(lx + (rechts ? -14 : 14))}" y="${f1(Math.max(O + 14, ly - 10))}" text-anchor="${rechts ? 'end' : 'start'}">${esc(titel)} · ${ZONENNAME[letzter.zone].split(' ')[0]}${istHeute ? '' : ` · ${vollDatum(isoTag(letzter.datum))}`}</text>`;
   const ende = pt => `${deDatum(isoTag(pt.ende))}`;
   S.fieberLage = lage;
   // Negativ ist richtig, heißt aber „vor Plan“ (R00082); früher kleiner Umfang erklärt tiefe Punkte
@@ -862,7 +868,7 @@ function vFieberDiagramm(st, plan, einheit) {
 <defs><clipPath id="fb-flaeche"><rect x="${L}" y="${O}" width="${pw}" height="${ph}"></rect></clipPath></defs>
 <g clip-path="url(#fb-flaeche)">${zonen}</g>${gitter}${zonenText}
 <text class="achse" x="${L + pw / 2}" y="${H - 6}" text-anchor="middle">Fortschritt — erledigte Aufgaben</text><text class="achse" transform="translate(12 ${O + ph / 2}) rotate(-90)" text-anchor="middle">Pufferverbrauch</text>
-${bahn}${aktuell}
+${bahn}${ueber}${aktuell}
 </svg>`;
   const vorher = st.tage.filter(t => t.umfang && t.datum >= st.start && t.datum < punkte[0].datum).length;
   const gemessen = vorher ? `<p class="muted" id="fb-gemessen">ab ${vollDatum(isoTag(punkte[0].datum))} gemessen — vorher zu wenig Läufe für eine Prognose.</p>` : '';
