@@ -1111,6 +1111,12 @@ document.addEventListener('change', e => {
   if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {
+    if (bf === 'messbasisTage') {
+      const n = Math.round(+e.target.value);
+      if (n >= 1 && n <= 3650) berichtsfilterSetzen({ messbasisTage: n });
+      render();
+      return;
+    }
     const aenderung = { [bf]: e.target.value };
     if (bf !== 'zeitraum') aenderung.zeitraum = 'eigen';
     berichtsfilterSetzen(aenderung);

@@ -16,12 +16,16 @@ async fn filter_setzen_lesen_und_ohne_aenderung_kein_commit() {
     let text = lies(tmp.path(), "boards/entwicklung.md");
     assert!(text.contains("report-filter: {period: \"30\", exclude-classes: [bug, \"\"], exclude-columns: [Erledigt], people: [st]}\n"), "von nur bei eigen, Doppelte weg: {text}");
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
-    assert_eq!(b["berichtsfilter"], json!({"zeitraum": "30", "von": "", "bis": "", "ohneFarben": ["bug", ""], "ohneSpalten": ["Erledigt"], "personen": ["st"], "labels": []}));
+    assert_eq!(b["berichtsfilter"], json!({"zeitraum": "30", "von": "", "bis": "", "ohneFarben": ["bug", ""], "ohneSpalten": ["Erledigt"], "personen": ["st"], "labels": [], "messbasisTage": 90}));
     let vorher = git(tmp.path(), &["rev-list", "--count", "HEAD"]);
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", f).await;
     assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]), vorher, "gleicher Filter: kein Commit");
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", json!({"zeitraum": "eigen", "von": "1.1.2026"})).await.0, 400);
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", json!({"zeitraum": "gibts"})).await.0, 400);
+    // R00083: Messbasis der letzten N Tage
+    senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", json!({"messbasisTage": 30})).await;
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("report-filter: {window-days: 30}\n"));
+    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", json!({"messbasisTage": 0})).await.0, 400);
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/berichtsfilter", "st", json!({})).await;
     assert!(!lies(tmp.path(), "boards/entwicklung.md").contains("report-filter"), "leerer Filter: Schlüssel weg");
 }

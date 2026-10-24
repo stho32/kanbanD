@@ -172,17 +172,26 @@ pub struct Berichtsfilter {
     pub personen: Vec<String>,
     #[serde(default)]
     pub labels: Vec<String>,
+    /// Messbasis der Prognose (R00083): die letzten N Tage, gleitend.
+    #[serde(default = "Berichtsfilter::messbasis_standard")]
+    pub messbasis_tage: u32,
 }
 
 impl Berichtsfilter {
     fn zeitraum_standard() -> String {
         "alles".into()
     }
+    pub fn messbasis_standard() -> u32 {
+        90
+    }
 
     /// Bekannter Zeitraum; von und bis leer oder ein Datum.
     pub fn pruefen(&self) -> Result<(), String> {
         if !ZEITRAEUME.contains(&self.zeitraum.as_str()) {
             return Err(format!("Zeitraum „{}“ ist unbekannt", self.zeitraum));
+        }
+        if !(1..=3650).contains(&self.messbasis_tage) {
+            return Err(format!("Messbasis {} Tage liegt nicht zwischen 1 und 3650", self.messbasis_tage));
         }
         if let Some(d) = [&self.von, &self.bis].into_iter().find(|d| !d.is_empty() && !ist_datum(d)) {
             return Err(format!("„{d}“ ist nicht JJJJ-MM-TT"));
@@ -193,7 +202,7 @@ impl Berichtsfilter {
 
 impl Default for Berichtsfilter {
     fn default() -> Self {
-        Berichtsfilter { zeitraum: Self::zeitraum_standard(), von: String::new(), bis: String::new(), ohne_farben: vec![], ohne_spalten: vec![], personen: vec![], labels: vec![] }
+        Berichtsfilter { zeitraum: Self::zeitraum_standard(), von: String::new(), bis: String::new(), ohne_farben: vec![], ohne_spalten: vec![], personen: vec![], labels: vec![], messbasis_tage: Self::messbasis_standard() }
     }
 }
 

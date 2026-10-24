@@ -45,7 +45,9 @@ test.describe('R00046', () => {
     await filter.getByRole('button', { name: 'In Arbeit' }).click();
     await filter.getByRole('button', { name: 'Fehler' }).click();
     await expect(page.locator('#wl-kopf')).toContainText('3 von 5 fertig');
-    await page.getByLabel('Zeitraum', { exact: true }).selectOption('heute');
+    // seit R00083: Messbasis der letzten N Tage statt Kalenderzeitraum
+    await page.getByLabel('Messbasis in Tagen').fill('1');
+    await page.getByLabel('Messbasis in Tagen').press('Enter');
     await expect(erledigt).toContainText('keine Prognose unter 3 Läufen');
   });
 

@@ -80,4 +80,22 @@ test.describe('R00081', () => {
     expect(k.git('rev-list', '--count', 'HEAD')).toBe(vorher);
     expect(k.lies('boards/entwicklung.md')).not.toContain('report-filter');
   });
+
+  test('R00083: Messbasis „letzte N Tage“ in Wie lange noch statt Kalenderzeitraum; gespeichert am Board', async ({ page }) => {
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/berichte/prognose');
+    await liveBereit(page);
+    await expect(zusammen(page)).toHaveText('Filter · keine · Messbasis 90 T · Rechnen ab der ersten Aufgabe');
+    await filterOeffnen(page);
+    await expect(page.locator('.bfilter .bf-k')).toHaveText(['Rechnen ab', 'Messbasis', 'Farben', 'Spalten', 'Zuständig']);
+    await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveCount(0);
+    const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
+    await expect(erledigt).toContainText('Durchsatz Ø 0,4 je Kalendertag aus 2 Läufen');
+    await page.getByLabel('Messbasis in Tagen').fill('2');
+    await page.getByLabel('Messbasis in Tagen').press('Enter');
+    await expect(zusammen(page)).toHaveText('Filter · keine · Messbasis 2 T · Rechnen ab der ersten Aufgabe');
+    await expect(erledigt).toContainText('aus 1 Lauf');
+    await expect(erledigt).toContainText('Tagesreihe: 1 0');
+    await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('report-filter: {window-days: 2}');
+  });
 });

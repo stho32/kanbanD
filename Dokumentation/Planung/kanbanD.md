@@ -327,6 +327,9 @@ zuletzt: 2026-10-24
 | I0070 | Interaction | D0006 | Gewonnenen Puffer beschriften | gruen | US-1 |  |  |  | I0066 | R00082 | Auftrag 2026-10-24: negativer Verbrauch ist richtig, wird aber als „Puffer gewonnen“ beschriftet, kleiner Umfang von damals genannt |
 | B0233 | Bubble | I0070 | Abstand zum Planende je Punkt | gruen | Test gruen | Punkt → Tage vor/nach Planende in der Einheit |  |  |  |  |  |
 | B0234 | Bubble | I0070 | Beschriftung im Diagramm | gruen | Test gruen | Abstand, Umfang → Tooltip, Kennzahl, Fläche „vor Plan“ |  |  |  |  |  |
+| I0071 | Interaction | D0006 | Messbasis letzte N Tage | gruen | US-1..US-2 |  |  |  | I0069 | R00083 | Auftrag 2026-10-24: gleitendes Fenster statt Kalenderzeitraum, Standard 90, nie vor Rechnen ab und erster Aufgabe |
+| B0235 | Bubble | I0071 | Fensterlänge am Board | gruen | Test gruen | report-filter window-days ↔ Berichtsfilter.messbasis_tage |  |  |  |  |  |
+| B0236 | Bubble | I0071 | Prognose aus dem Fenster | gruen | Test gruen | jetzt, N, Rechnen ab, erste Aufgabe → Tagesreihe; Feld in der Filterbox; Cache-Schlüssel |  |  |  |  |  |
 
 ## Offene Fragen
 

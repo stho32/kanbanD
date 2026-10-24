@@ -4,7 +4,7 @@
 
   /* ── Zeitraum und Filter (R00043) ── */
   const ZEITRAEUME = [['heute', 'heute'], ['gestern', 'gestern'], ['woche', 'diese Woche'], ['vorwoche', 'letzte Woche'], ['monat', 'dieser Monat'], ['vormonat', 'letzter Monat'], ['30', 'letzte 30 Tage'], ['90', 'letzte 90 Tage'], ['jahr', 'dieses Jahr'], ['alles', 'alles'], ['eigen', 'eigener Zeitraum']];
-  const FILTER_LEER = { zeitraum: 'alles', von: '', bis: '', ohneFarben: [], ohneSpalten: [], personen: [], labels: [] };
+  const FILTER_LEER = { zeitraum: 'alles', von: '', bis: '', ohneFarben: [], ohneSpalten: [], personen: [], labels: [], messbasisTage: 90 };
 
   const tag = (ms, n = 0) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d.getTime(); };
   const isoTag = s => { const [j, m, t] = s.split('-').map(Number); return new Date(j, m - 1, t).getTime(); };
@@ -60,6 +60,7 @@
     try { x = JSON.parse(text || '{}') || {}; } catch (_) { x = {}; }
     const f = { ...FILTER_LEER };
     for (const k of Object.keys(FILTER_LEER)) if (x[k] != null && typeof x[k] === typeof FILTER_LEER[k] && Array.isArray(x[k]) === Array.isArray(FILTER_LEER[k])) f[k] = x[k];
+    if (!(Number.isInteger(f.messbasisTage) && f.messbasisTage >= 1)) f.messbasisTage = FILTER_LEER.messbasisTage;
     if (!ZEITRAEUME.some(([k]) => k === f.zeitraum)) f.zeitraum = 'alles';
     return f;
   }
@@ -234,12 +235,17 @@
 
   /** Je Block: Nenner, erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. Offen zählt nach dem aktuellen Stand,
       der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046.
-      `start` (R00078): ohne gewählten Zeitraum misst die Prognose ab dem Projektstart, und der Verlauf beginnt dort.
+      Messbasis (R00083): die letzten `f.messbasisTage` Tage bis `jetzt`, gleitend — frühestens ab `start` („Rechnen ab“)
+      und frühestens am Tag der ersten Aufgabe auf dem Board; der Kalenderzeitraum des Filters wirkt hier nicht.
+      Der Verlauf beginnt mit der ersten Aufgabe, frühestens bei `start`.
       `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet;
       `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten). */
   function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
     if (block) nurLetzter = true;
-    const heute = tag(jetzt), morgen = tag(jetzt, 1), g = grenzenAb(f, jetzt, start);
+    const heute = tag(jetzt), morgen = tag(jetzt, 1);
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    const ab = Math.max(start ? isoTag(start) : 0, erste === Infinity ? 0 : tag(erste));
+    const fenster = Math.max(tag(heute, 1 - (f.messbasisTage || FILTER_LEER.messbasisTage)), ab);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
     const imFilter = a => aufgabePasst(f, aufgabeZu(a.nummer));
     // reporting.forecast: false (R00060) nimmt die Aufgabe ganz aus der Prognose, zusätzlich zum Filter
@@ -255,12 +261,11 @@
     const bloecke = stufen.map(st => {
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
-      const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= g.von && d < Math.min(g.bis, morgen));
+      const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= fenster && d <= jetzt);
       const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null };
       if (st.spalte) ph.spalte = st.spalte; else ph.phase = st.phase;
       if (daten.length) {
-        const von = g.von > 0 ? tag(g.von) : tag(Math.min(...daten));
-        Object.assign(ph, tagesreihen(daten, von, Math.min(tag(g.bis === Infinity ? morgen : g.bis), morgen)));
+        Object.assign(ph, tagesreihen(daten, fenster, morgen));
         ph.durchsatz = ph.reihe7.length ? daten.length / ph.reihe7.length : null;
       }
       if (ph.laeufe >= MIN_LAEUFE && offen > 0) {
@@ -282,10 +287,9 @@
       vorige = ph;
       return ph;
     });
-    // Verlauf je Tag im Zeitraum: Umfang und noch nicht erreicht je Block, Stand am Tagesende
-    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    // Verlauf je Tag ab der ersten Aufgabe, frühestens ab Rechnen ab: Umfang und noch nicht erreicht je Block, Stand am Tagesende
     const tage = [];
-    if (erste !== Infinity && !nurLetzter) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
+    if (erste !== Infinity && !nurLetzter) for (let t = ab; t < morgen; t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende));
       tage.push({ t, umfang: da.length, offen: Object.fromEntries(stufen.map(st => [st.schluessel, da.filter(x => !st.entfaellt(x.a) && !st.durch(x.a, x.s)).length])) });
@@ -308,9 +312,9 @@
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
   function fieberSchluessel(start, f, ziel = null) {
     const filter = {};
-    for (const k of Object.keys(FILTER_LEER)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
-    if (filter.zeitraum !== 'eigen') { filter.von = ''; filter.bis = ''; }
-    return JSON.stringify(ziel ? { v: 1, start, filter, ziel } : { v: 1, start, filter });
+    // der Kalenderzeitraum wirkt seit R00083 nicht mehr auf die Prognose, also auch nicht auf den Schlüssel
+    for (const k of Object.keys(FILTER_LEER)) if (!['zeitraum', 'von', 'bis'].includes(k)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
+    return JSON.stringify(ziel ? { v: 2, start, filter, ziel } : { v: 2, start, filter });
   }
   /** Ein Tag des Fever Charts aus der Sicht seines Tagesendes: erledigt und Umfang des letzten Blocks, prognostiziertes Ende
       je Perzentil in 7- und 5-Tage-Woche (null = keine Aussage); nichts offen → Ende ist der Tag selbst. Ohne Umfang ein

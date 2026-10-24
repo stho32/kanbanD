@@ -149,6 +149,9 @@ fn berichtsfilter_lesen(v: Option<&Value>) -> Result<Berichtsfilter, Formatfehle
     f.ohne_spalten = yaml::textliste(m, "exclude-columns");
     f.personen = yaml::textliste(m, "people");
     f.labels = yaml::textliste(m, "labels");
+    if let Some(n) = m.get("window-days") {
+        f.messbasis_tage = n.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| Formatfehler("report-filter: window-days ist keine ganze Zahl".into()))?;
+    }
     f.pruefen().map_err(|e| Formatfehler(format!("report-filter: {e}")))?;
     Ok(f)
 }
@@ -167,6 +170,9 @@ fn berichtsfilter_zeile(f: &Berichtsfilter) -> Option<String> {
         if !l.is_empty() {
             teile.push(format!("{schluessel}: {}", yaml::liste(l)));
         }
+    }
+    if f.messbasis_tage != Berichtsfilter::messbasis_standard() {
+        teile.push(format!("window-days: {}", f.messbasis_tage));
     }
     (!teile.is_empty()).then(|| format!("report-filter: {{{}}}\n", teile.join(", ")))
 }
@@ -468,9 +474,9 @@ mod tests {
     #[test]
     fn berichtsfilter_rundlauf_und_fehler() {
         let mut b = beispiel();
-        b.berichtsfilter = Berichtsfilter { zeitraum: "eigen".into(), von: "2026-10-01".into(), bis: "2026-10-20".into(), ohne_farben: vec!["bug".into(), "".into()], ohne_spalten: vec!["Zu erledigen".into()], personen: vec!["st".into()], labels: vec!["ui".into()] };
+        b.berichtsfilter = Berichtsfilter { zeitraum: "eigen".into(), von: "2026-10-01".into(), bis: "2026-10-20".into(), ohne_farben: vec!["bug".into(), "".into()], ohne_spalten: vec!["Zu erledigen".into()], personen: vec!["st".into()], labels: vec!["ui".into()], messbasis_tage: 30 };
         let t = schreiben(&b, datei);
-        assert!(t.contains("\nreport-filter: {period: eigen, from: 2026-10-01, to: 2026-10-20, exclude-classes: [bug, \"\"], exclude-columns: [Zu erledigen], people: [st], labels: [ui]}\n"), "{t}");
+        assert!(t.contains("\nreport-filter: {period: eigen, from: 2026-10-01, to: 2026-10-20, exclude-classes: [bug, \"\"], exclude-columns: [Zu erledigen], people: [st], labels: [ui], window-days: 30}\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
         b.berichtsfilter = Berichtsfilter { zeitraum: "30".into(), ..Default::default() };
@@ -482,5 +488,7 @@ mod tests {
         assert!(mit("report-filter: {period: gibts}").unwrap_err().0.contains("gibts"));
         assert!(mit("report-filter: {from: 1.10.2026}").unwrap_err().0.contains("1.10.2026"));
         assert!(mit("report-filter: 3").unwrap_err().0.contains("keine Zuordnung"));
+        assert!(mit("report-filter: {window-days: 0}").unwrap_err().0.contains("Messbasis"));
+        assert!(mit("report-filter: {window-days: viele}").unwrap_err().0.contains("window-days"));
     }
 }

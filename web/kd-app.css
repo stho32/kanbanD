@@ -751,3 +751,4 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bfilter-box .bf-werte{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .bf-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);font-size:11px}
 @media (max-width:640px){.bfilter-box .bf-gruppe{grid-template-columns:1fr}.bfilter-box>summary{padding:8px 14px}}
+.bf-tage{width:72px}

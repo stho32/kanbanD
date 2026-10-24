@@ -98,7 +98,7 @@ test.describe('R00078', () => {
     const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
     await expect(erledigt.locator('tbody tr')).toHaveCount(4);
     // seit R00081 steht der Projektstart als „Rechnen ab“ in der Filterbox
-    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Rechnen ab der ersten Aufgabe');
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Messbasis 90 T · Rechnen ab der ersten Aufgabe');
     await filterOeffnen(page);
     await expect(page.getByRole('group', { name: 'Berichtsfilter' })).toContainText(`leer = ab der ersten Aufgabe (${tag(-10).split('-').reverse().join('.')})`);
     await page.getByLabel('Rechnen ab').fill(tag(-4));
@@ -106,7 +106,7 @@ test.describe('R00078', () => {
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain(`\nstart: ${tag(-4)}\n`);
     await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toBe(`Stefan|Projektstart von „Entwicklung“: ${tag(-4).split('-').reverse().join('.')}`);
     await expect(erledigt).toContainText('keine Prognose unter 3 Läufen in der Messbasis (gemessen: 2)');
-    await expect(page.locator('.bf-zusammen')).toHaveText(`Filter · keine · Rechnen ab ${tag(-4).split('-').reverse().join('.')}`);
+    await expect(page.locator('.bf-zusammen')).toHaveText(`Filter · keine · Messbasis 90 T · Rechnen ab ${tag(-4).split('-').reverse().join('.')}`);
     const ziel = page.getByRole('radio', { name: 'Termin Deadline ist Zieltermin' });
     await expect(ziel).toHaveAttribute('aria-checked', 'false');
     await ziel.click();
