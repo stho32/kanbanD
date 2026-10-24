@@ -91,9 +91,14 @@ pub struct Fieber {
     /// Spalte bzw. Phase, deren Block als „erledigt“ zählt (R00079); `None` = der letzte Block.
     #[serde(default)]
     pub zielspalte: Option<String>,
+    /// Anzeige je Tag, Woche oder Monat (R00080): Abstand der Punkte in Tagen, 1, 7 oder 30.
+    #[serde(default = "Fieber::aufloesung_standard")]
+    pub aufloesung: u32,
 }
 
 pub const FIEBER_PERZENTILE: [u32; 4] = [50, 70, 85, 95];
+/// Auflösung in Tagen und ihr Name in der Board-Datei.
+pub const FIEBER_AUFLOESUNGEN: [(u32, &str); 3] = [(1, "day"), (7, "week"), (30, "month")];
 
 impl Fieber {
     fn perzentil_standard() -> u32 {
@@ -107,6 +112,9 @@ impl Fieber {
     }
     fn rot_standard() -> [u32; 2] {
         [30, 100]
+    }
+    fn aufloesung_standard() -> u32 {
+        1
     }
 
     /// Puffer mindestens 1, Perzentil aus FIEBER_PERZENTILE, Woche 5 oder 7, Grenzen bis 1000 %, Gelb nicht über Rot.
@@ -123,6 +131,9 @@ impl Fieber {
         if self.gelb.iter().chain(&self.rot).any(|g| *g > 1000) {
             return Err("Zonengrenzen liegen zwischen 0 und 1000 %".into());
         }
+        if !FIEBER_AUFLOESUNGEN.iter().any(|(t, _)| *t == self.aufloesung) {
+            return Err(format!("Auflösung {} ist nicht 1 (Tag), 7 (Woche) oder 30 (Monat)", self.aufloesung));
+        }
         if self.zielspalte.as_deref().is_some_and(|z| z.trim().is_empty()) {
             return Err("Die Zielspalte braucht einen Namen".into());
         }
@@ -135,7 +146,7 @@ impl Fieber {
 
 impl Default for Fieber {
     fn default() -> Self {
-        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard(), zielspalte: None }
+        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard(), zielspalte: None, aufloesung: Self::aufloesung_standard() }
     }
 }
 

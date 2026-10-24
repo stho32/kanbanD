@@ -652,7 +652,7 @@ async function act(a, arg, wert) {
         if (arg === 'ziel') return termineSchreiben(b.termine.map((t, i) => ({ ...t, ziel: wert !== '' && i === +wert })));
         const f = { ...b.fieber, gelb: [...b.fieber.gelb], rot: [...b.fieber.rot] };
         if (arg === 'puffer') f.puffer = wert === '' ? null : Math.max(1, Math.round(+wert));
-        else if (arg === 'perzentil' || arg === 'woche') f[arg] = +wert;
+        else if (arg === 'perzentil' || arg === 'woche' || arg === 'aufloesung') f[arg] = +wert;
         else if (arg === 'zielspalte') f.zielspalte = wert || null;
         else f[arg.slice(0, -1)][+arg.slice(-1)] = Math.max(0, Math.round(+wert));
         return fieberEinstellen(f);

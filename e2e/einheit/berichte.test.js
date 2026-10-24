@@ -436,3 +436,14 @@ test('Fever Chart: Zielspalte — Prognose eines benannten Blocks, Tag und Schl�
   assert.strictEqual(fieberSchluessel('2026-10-01', f({})), fieberSchluessel('2026-10-01', f({}), null), 'ohne Zielspalte der Schlüssel aus R00078');
   assert.notStrictEqual(fieberSchluessel('2026-10-01', f({}), 'B'), fieberSchluessel('2026-10-01', f({})));
 });
+
+test('Fever Chart: Auflösung dünnt vom letzten Punkt rückwärts aus (R00080)', () => {
+  const { fieberAusduennen } = require('../../web/berichte.js');
+  const p = d => ({ datum: d });
+  const tage = ['2026-09-01', '2026-09-02', '2026-09-08', '2026-09-09', '2026-09-15', '2026-09-16', '2026-09-23'].map(p);
+  assert.deepStrictEqual(fieberAusduennen(tage, 1), tage, 'Tag lässt alles');
+  assert.deepStrictEqual(fieberAusduennen(tage, 7).map(x => x.datum), ['2026-09-02', '2026-09-09', '2026-09-16', '2026-09-23']);
+  assert.deepStrictEqual(fieberAusduennen(tage.slice(0, -1).concat(p('2026-09-24')), 7).map(x => x.datum), ['2026-09-02', '2026-09-09', '2026-09-16', '2026-09-24'], 'Stichtag 17.09. ohne Punkt: der davor');
+  assert.deepStrictEqual(fieberAusduennen(tage, 30).map(x => x.datum), ['2026-09-23'], 'ein Monat zurück liegt vor dem ersten Punkt');
+  assert.deepStrictEqual(fieberAusduennen([], 7), []);
+});

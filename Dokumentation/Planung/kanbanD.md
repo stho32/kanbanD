@@ -317,6 +317,9 @@ zuletzt: 2026-10-24
 | I0067 | Interaction | D0006 | Zielspalte im Fever Chart | gruen | US-1..US-2 |  |  |  | I0066 | R00079 | Auftrag 2026-10-24: wählbar, welcher Block aus „Wie lange noch“ als erledigt zählt; informelle Regel im Projekt Puya |
 | B0226 | Bubble | I0067 | Zielspalte am Board | gruen | Test gruen | fever target-column ↔ Fieber.zielspalte; PUT …/fieber |  |  |  |  |  |
 | B0227 | Bubble | I0067 | Fever Chart nach Zielspalte rechnen | gruen | Test gruen | Zielspalte → Prognose nur dieses Blocks, Schlüssel mit Zielspalte; Auswahl, Hinweis |  |  |  |  |  |
+| I0068 | Interaction | D0006 | Auflösung im Fever Chart | gruen | US-1 |  |  |  | I0066 | R00080 | Auftrag 2026-10-24: Anzeige je Tag, Woche (7 T) oder Monat (30 T), Cache bleibt täglich |
+| B0228 | Bubble | I0068 | Auflösung am Board | gruen | Test gruen | fever resolution day/week/month ↔ Fieber.aufloesung 1/7/30 |  |  |  |  |  |
+| B0229 | Bubble | I0068 | Bahn ausdünnen | gruen | Test gruen | Punkte, Schritt → Stichtage vom letzten rückwärts; Auswahl im Bericht |  |  |  |  |  |
 
 ## Offene Fragen
 

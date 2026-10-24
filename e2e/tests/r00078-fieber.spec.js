@@ -137,4 +137,24 @@ test.describe('R00078', () => {
     await expect(page.locator('#fb-ziel-weg')).toHaveText('Zielspalte „Review“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.');
     await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „Erledigt“');
   });
+
+  test('R00080: Auflösung Woche zeigt jeden 7. Tag, der letzte Stand bleibt, nichts wird neu gerechnet', async ({ page }) => {
+    const H = { headers: { 'X-KanbanD-Wer': 'st' } };
+    await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...H, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red', ziel: true }] });
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...H, data: { puffer: 4, woche: 7 } });
+    await page.goto(k.adresse + '#/berichte/fieber');
+    await liveBereit(page);
+    await expect.poll(kanbandCommits).toEqual(['Fever Chart „Entwicklung“: 10 Tage ergänzt']);
+    const zeilen = page.locator('#fb-tabelle tbody tr td:first-child');
+    const taeglich = await zeilen.allTextContents();
+    expect(taeglich.length).toBeGreaterThan(3);
+    await page.getByLabel('Auflösung').selectOption({ label: 'Woche (alle 7 T)' });
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toMatch(/^Fever Chart von „Entwicklung“ eingestellt/);
+    expect(k.lies('boards/entwicklung.md')).toContain('resolution: week');
+    // gemessen wird ab Tag −6 (drei Läufe), eine Woche zurück liegt davor: nur der letzte Stand bleibt
+    expect(taeglich).toEqual([-6, -5, -4, -3, -2, -1, 0].map(tag));
+    await expect(zeilen).toHaveText([tag(0)]);
+    await expect(page.locator('.dlegende')).toContainText('ein Punkt je Woche');
+    expect(kanbandCommits()).toHaveLength(1);
+  });
 });

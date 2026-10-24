@@ -35,7 +35,7 @@ async fn start_und_einstellungen_im_frontmatter_je_ein_commit() {
     assert!(text.starts_with("---\nstart: 2026-09-01\nfever: {buffer: 20, red: [20, 95]}\n---\n"), "nur Abweichendes vom Standard: {text}");
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
     assert_eq!(b["start"], json!("2026-09-01"));
-    assert_eq!(b["fieber"], json!({"puffer": 20, "perzentil": 95, "woche": 5, "gelb": [10, 70], "rot": [20, 95], "zielspalte": null}));
+    assert_eq!(b["fieber"], json!({"puffer": 20, "perzentil": 95, "woche": 5, "gelb": [10, 70], "rot": [20, 95], "zielspalte": null, "aufloesung": 1}));
     let vorher = commits(&tmp);
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", f).await;
     assert_eq!(commits(&tmp), vorher, "unverändert: kein Commit");
@@ -50,6 +50,11 @@ async fn start_und_einstellungen_im_frontmatter_je_ein_commit() {
     assert!(lies(tmp.path(), "boards/entwicklung.md").contains("fever: {buffer: 20, red: [20, 95], target-column: In Arbeit}\n"));
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"zielspalte": " "})).await.0, 400);
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"puffer": 20, "rot": [20, 95], "zielspalte": null})).await;
+    // R00080: Auflösung
+    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"puffer": 20, "rot": [20, 95], "aufloesung": 7})).await.0, 200);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("fever: {buffer: 20, red: [20, 95], resolution: week}\n"));
+    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"aufloesung": 5})).await.0, 400);
+    senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/fieber", "st", json!({"puffer": 20, "rot": [20, 95]})).await;
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/start", "st", json!({"start": null})).await;
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "Projektstart von „Entwicklung“ entfernt");
     assert!(!lies(tmp.path(), "boards/entwicklung.md").contains("start:"));

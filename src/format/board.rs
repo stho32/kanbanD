@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Board, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Board, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -127,6 +127,9 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
         f.rot = r;
     }
     f.zielspalte = yaml::text(m, "target-column");
+    if let Some(a) = yaml::text(m, "resolution") {
+        f.aufloesung = FIEBER_AUFLOESUNGEN.iter().find(|(_, n)| *n == a).map(|(t, _)| *t).ok_or_else(|| Formatfehler(format!("fever: resolution „{a}“ ist nicht day, week oder month")))?;
+    }
     f.pruefen().map_err(|e| Formatfehler(format!("fever: {e}")))?;
     Ok(f)
 }
@@ -149,6 +152,11 @@ fn fieber_zeile(f: &Fieber) -> Option<String> {
     }
     if f.rot != s.rot {
         teile.push(format!("red: [{}, {}]", f.rot[0], f.rot[1]));
+    }
+    if f.aufloesung != s.aufloesung
+        && let Some((_, name)) = FIEBER_AUFLOESUNGEN.iter().find(|(t, _)| *t == f.aufloesung)
+    {
+        teile.push(format!("resolution: {name}"));
     }
     if let Some(z) = &f.zielspalte {
         teile.push(format!("target-column: {}", yaml::skalar(z)));
@@ -392,10 +400,10 @@ mod tests {
     fn start_fieber_und_zieltermin_rundlauf() {
         let mut b = beispiel();
         b.start = Some("2026-09-01".into());
-        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()) };
+        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()), aufloesung: 30 };
         b.termine = vec![Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: true }];
         let t = schreiben(&b, datei);
-        assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95], target-column: In Arbeit}\n---\n"), "{t}");
+        assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95], resolution: month, target-column: In Arbeit}\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
         let ohne = lesen("b", "## A\n").unwrap();
@@ -411,6 +419,7 @@ mod tests {
         assert!(mit("fever: {buffer: viel}").unwrap_err().0.contains("buffer"));
         assert!(mit("fever: {yellow: [10]}").unwrap_err().0.contains("yellow"));
         assert!(mit("fever: {percentile: 60}").unwrap_err().0.contains("Perzentil"));
+        assert!(mit("fever: {resolution: hourly}").unwrap_err().0.contains("hourly"));
         assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: true}\n  - {name: B, date: 2027-02-01, target: true}").unwrap_err().0.contains("mehr als ein Zieltermin"));
         assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: ja}").unwrap_err().0.contains("target"));
     }

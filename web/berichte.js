@@ -367,6 +367,20 @@
     return punkte;
   }
 
+  /** Auflösung (R00080): vom letzten Punkt rückwärts je `schritt` Kalendertage ein Stichtag; hat er keinen Punkt
+      (Wochenende, keine Prognose), gilt der letzte Punkt davor. Der letzte Stand bleibt immer. */
+  function fieberAusduennen(punkte, schritt) {
+    if (schritt <= 1 || !punkte.length) return punkte;
+    const raus = [];
+    let i = punkte.length - 1;
+    while (i >= 0) {
+      raus.unshift(punkte[i]);
+      const stichtag = isoD(tag(isoTag(punkte[i].datum), -schritt));
+      while (i >= 0 && punkte[i].datum > stichtag) i--;
+    }
+    return raus;
+  }
+
   /* ── Diagramme (R00073) ── */
   /** Tag (lokale Mitternacht) unter der x-Position einer Zeichenfläche `{ l, breite, t0, t1, stetig }`; außerhalb null.
       Eine Tagesachse (Punkte je Tag) rundet auf den nächsten Tag, eine stetige Achse (Zeitpunkte) nimmt den Tag des Zeitpunkts. */
@@ -387,5 +401,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { ersterTag, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);
