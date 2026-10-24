@@ -338,3 +338,86 @@ test('Zeigerposition → Tag (R00073)', () => {
   assert.strictEqual(tagAnPosition(33, { ...stetig, stetig: false }), d(2026, 10, 4), 'Tagesachse rundet auf den 4.');
   assert.strictEqual(vollDatum(d(2027, 1, 2)), '02.01.2027');
 });
+
+/* ── Projekt-Fever-Chart (R00078) ── */
+const { ersterTag, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, PERZENTILE: PZ } = require('../../web/berichte.js');
+const fieberBew = () => {
+  const w = (n, ...st) => ({ nummer: n, wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
+  return { spalten: ['A', 'B', 'Z'], aufgaben: [
+    w(1, ['2026-10-12 09:00', 'A'], ['2026-10-13 09:00', 'Z']),
+    w(2, ['2026-10-12 09:00', 'A'], ['2026-10-14 09:00', 'B'], ['2026-10-15 09:00', 'Z']),
+    w(3, ['2026-10-12 09:00', 'A'], ['2026-10-16 09:00', 'Z']),
+    w(4, ['2026-10-12 09:00', 'A'], ['2026-10-19 09:00', 'Z']),
+    w(5, ['2026-10-12 09:00', 'A'], ['2026-10-20 09:00', 'B']),
+    w(6, ['2026-10-12 09:00', 'A']),
+    w(7, ['2026-10-12 09:00', 'A'], ['2026-10-13 09:00', null]),
+  ] };
+};
+const ohne = () => undefined;
+
+test('Fever Chart: Projektstart ist Messbasis und Beginn des Verlaufs in der Prognose', () => {
+  const bew = fieberBew();
+  assert.strictEqual(ersterTag(bew), '2026-10-12');
+  const mit = prognose(bew, f({}), ohne, jetzt, undefined, { start: '2026-10-16' });
+  assert.deepStrictEqual([mit.phasen[1].laeufe, mit.phasen[1].zeilen], [2, null], 'nur #3 und #4 ab dem 16.10. — unter drei Läufen');
+  assert.strictEqual(mit.tage[0].t, d(2026, 10, 16));
+  assert.strictEqual(mit.tage.length, 6);
+  const zeitraum = prognose(bew, f({ zeitraum: 'eigen', von: '2026-10-12', bis: '2026-10-21' }), ohne, jetzt, undefined, { start: '2026-10-16' });
+  assert.strictEqual(zeitraum.phasen[1].laeufe, 4, 'ein gewählter Zeitraum überstimmt den Start');
+  const letzter = prognose(bew, f({}), ohne, jetzt, undefined, { nurLetzter: true });
+  assert.deepStrictEqual([letzter.phasen.length, letzter.phasen[0].spalte, letzter.tage], [1, 'Z', []]);
+});
+
+test('Fever Chart: ein Tag aus der Sicht seines Tagesendes', () => {
+  const bew = fieberBew(), voll = prognose(bew, f({}), ohne, jetzt).phasen[1];
+  const heute = fieberTag(bew, f({}), ohne, '2026-10-21', undefined, null);
+  const iso = ms => fieberTag.length && new Date(ms).toLocaleDateString('sv-SE');
+  assert.deepStrictEqual(heute, { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: voll.zeilen.map(z => iso(z.datum7)), ende5: voll.zeilen.map(z => iso(z.datum5)) });
+  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-14', undefined, null), { datum: '2026-10-14', erledigt: 1, umfang: 6, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'ein Lauf: keine Aussage');
+  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-11', undefined, null), { datum: '2026-10-11', erledigt: 0, umfang: 0, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'vor der ersten Aufgabe ein leerer Tag');
+  const fertig = { spalten: ['A', 'Z'], aufgaben: [{ nummer: 1, wechsel: [{ zeitpunkt: '2026-10-12 09:00', spalte: 'Z' }] }] };
+  assert.deepStrictEqual(fieberTag(fertig, f({}), ohne, '2026-10-13', undefined, null).ende7, Array(4).fill('2026-10-13'), 'nichts offen: Ende ist der Tag');
+  assert.deepStrictEqual(fehlendeTage('2026-10-18', ['2026-10-19'], jetzt), ['2026-10-18', '2026-10-20'], 'bis gestern, ohne Vorhandenes');
+});
+
+test('Fever Chart: Schlüssel aus Start und Filter', () => {
+  assert.strictEqual(fieberSchluessel('2026-10-01', f({ labels: ['b', 'a'] })), fieberSchluessel('2026-10-01', f({ labels: ['a', 'b'] })));
+  assert.notStrictEqual(fieberSchluessel('2026-10-01', f({})), fieberSchluessel('2026-10-02', f({})));
+  assert.strictEqual(fieberSchluessel('2026-10-01', f({ von: '2026-01-01' })), fieberSchluessel('2026-10-01', f({})), 'von/bis zählen nur im eigenen Zeitraum');
+});
+
+test('Fever Chart: Dauer, Plan, Puffervorschlag, Zone', () => {
+  assert.strictEqual(dauerIn(7, '2026-01-01', '2026-03-02'), 60);
+  assert.strictEqual(dauerIn(5, '2026-10-05', '2026-10-30'), 19, 'Arbeitstage nach Mo 05.10. bis Fr 30.10.');
+  assert.strictEqual(dauerIn(5, '2026-10-09', '2026-10-05'), -4);
+  assert.deepStrictEqual(fieberPlan({ start: '2026-10-05', ziel: '2026-10-30', puffer: 6, woche: 5 }), { gesamt: 19, arbeit: 13, puffer: 6, planende: '2026-10-22' });
+  assert.match(fieberPlan({ start: '2026-10-05', ziel: '2026-10-30', puffer: 19, woche: 5 }).fehler, /nicht kürzer/);
+  assert.match(fieberPlan({ start: '2026-10-30', ziel: '2026-10-05', puffer: 1, woche: 7 }).fehler, /nicht nach dem Projektstart/);
+  assert.strictEqual(fieberPlan({ start: '2026-10-05', ziel: null, puffer: 6, woche: 5 }), null);
+  assert.deepStrictEqual([pufferVorschlag(60), pufferVorschlag(10), pufferVorschlag(1)], [20, 3, 1]);
+  const G = [10, 70], R = [30, 100];
+  assert.deepStrictEqual([fieberZone(0, 9.9, G, R), fieberZone(0, 10, G, R), fieberZone(0, 30, G, R), fieberZone(50, 39.9, G, R), fieberZone(50, 40, G, R), fieberZone(50, 65, G, R), fieberZone(100, 100, G, R), fieberZone(100, 100.1, G, R), fieberZone(0, -20, G, R)],
+    ['gruen', 'gelb', 'rot', 'gruen', 'gelb', 'rot', 'rot', 'schwarz', 'gruen'], 'genau auf der Grenze gilt die höhere Zone');
+  assert.strictEqual(fieberZone(50, 25, [33, 33], [66, 66]), 'gruen', 'andere Grenzen, andere Zone');
+});
+
+test('Fever Chart: Beispiel der CCPM-Beschreibung (Kette 40, Puffer 20) als Bahn', () => {
+  const start = '2026-01-01', am = n => new Date(2026, 0, 1 + n).toLocaleDateString('sv-SE');
+  const tag = (n, erledigt, umfang, ende) => ({ datum: am(n), erledigt, umfang, ende7: Array(4).fill(am(ende)), ende5: Array(4).fill(null) });
+  const tage = [tag(14, 1, 4, 44), tag(20, 1, 4, 50), tag(26, 5, 9, 46), tag(41, 14, 15, 44)];
+  const e = { start, ziel: am(60), puffer: 20, woche: 7, perzentil: 95, gelb: [10, 70], rot: [30, 100] };
+  const r = fieberPunkte(tage, e).map(x => [Math.round(x.p * 10) / 10, Math.round(x.b * 10) / 10, x.zone]);
+  assert.deepStrictEqual(r, [[25, 20, 'gruen'], [25, 50, 'rot'], [55.6, 30, 'gruen'], [93.3, 20, 'gruen']]);
+  assert.strictEqual(fieberPunkte(tage, { ...e, puffer: 10 })[0].b, -60, 'kleinerer Puffer: Arbeitsbereich 50, Ende 44 — derselbe Cache, anderer Verbrauch');
+  assert.strictEqual(fieberPunkte(tage, { ...e, perzentil: 50 })[0].b, 20);
+  assert.deepStrictEqual(PZ, [50, 70, 85, 95]);
+});
+
+test('Fever Chart: Bahn ohne Wochenende, ohne Aussage, endet bei 100 %', () => {
+  const t = (datum, erledigt, umfang, ende) => ({ datum, erledigt, umfang, ende7: Array(4).fill(ende), ende5: Array(4).fill(ende) });
+  const tage = [t('2026-10-09', 1, 4, null), t('2026-10-12', 2, 4, '2026-10-20'), t('2026-10-10', 2, 4, '2026-10-20'), t('2026-10-13', 4, 4, '2026-10-13'), t('2026-10-14', 4, 4, '2026-10-14'), t('2026-10-15', 4, 5, '2026-10-22')];
+  const e = { start: '2026-10-05', ziel: '2026-10-30', puffer: 6, woche: 5, perzentil: 95, gelb: [10, 70], rot: [30, 100] };
+  assert.deepStrictEqual(fieberPunkte(tage, e).map(x => x.datum), ['2026-10-12', '2026-10-13', '2026-10-15'], 'ohne Aussage, Samstag und zweiten 100-%-Tag; neue Aufgabe setzt fort');
+  assert.deepStrictEqual(fieberPunkte(tage, { ...e, woche: 7 }).map(x => x.datum), ['2026-10-10', '2026-10-12', '2026-10-13', '2026-10-15']);
+  assert.deepStrictEqual(fieberPunkte(tage, { ...e, puffer: null }), []);
+});

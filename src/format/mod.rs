@@ -4,6 +4,7 @@
 pub mod aufgabe;
 pub mod board;
 pub mod einstellungen;
+pub mod fieber;
 pub mod frontmatter;
 pub mod yaml;
 

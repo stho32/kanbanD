@@ -10,6 +10,13 @@ fn tt_mm_jjjj(datum: &str) -> String {
 
 /// Commit-Nachricht: genau ein Termin dazu oder weg wird benannt, sonst die Sammelnachricht.
 fn nachricht(alt: &[Termin], neu: &[Termin], board: &str) -> String {
+    let ohne_ziel = |l: &[Termin]| l.iter().map(|t| Termin { ziel: false, ..t.clone() }).collect::<Vec<_>>();
+    if alt.len() == neu.len() && ohne_ziel(alt) == ohne_ziel(neu) {
+        return match neu.iter().find(|t| t.ziel) {
+            Some(t) => format!("Zieltermin von „{board}“: „{}“ ({})", t.name, tt_mm_jjjj(&t.datum)),
+            None => format!("Zieltermin von „{board}“ entfernt"),
+        };
+    }
     let dazu: Vec<&Termin> = neu.iter().filter(|t| !alt.contains(t)).collect();
     let weg: Vec<&Termin> = alt.iter().filter(|t| !neu.contains(t)).collect();
     match (dazu.as_slice(), weg.as_slice()) {
@@ -25,6 +32,9 @@ impl Kanban {
         for t in &mut neu {
             t.name = t.name.trim().to_string();
             t.pruefen().map_err(Fehler::Ungueltig)?;
+        }
+        if neu.iter().filter(|t| t.ziel).count() > 1 {
+            return Err(Fehler::Ungueltig("Nur ein Termin kann Zieltermin sein".into()));
         }
         neu.sort_by(|a, b| a.datum.cmp(&b.datum).then(a.name.cmp(&b.name)));
         let _sperre = self.gesperrt();
@@ -45,7 +55,7 @@ mod tests {
     use crate::modell::{Linie, Staerke};
 
     fn t(name: &str, datum: &str) -> Termin {
-        Termin { name: name.into(), datum: datum.into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Normal }
+        Termin { name: name.into(), datum: datum.into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Normal, ziel: false }
     }
 
     #[test]
@@ -55,6 +65,9 @@ mod tests {
         assert_eq!(nachricht(&[], std::slice::from_ref(&a), "E"), "Termin „Deadline“ (31.10.2027) angelegt in „E“");
         assert_eq!(nachricht(&[a.clone(), b.clone()], std::slice::from_ref(&a), "E"), "Termin „Review“ (15.11.2026) entfernt aus „E“");
         assert_eq!(nachricht(std::slice::from_ref(&a), &[t("Deadline", "2027-11-30")], "E"), "Termine von „E“ geändert");
-        assert_eq!(nachricht(&[], &[a, b], "E"), "Termine von „E“ geändert");
+        assert_eq!(nachricht(&[], &[a.clone(), b.clone()], "E"), "Termine von „E“ geändert");
+        let ziel = Termin { ziel: true, ..a.clone() };
+        assert_eq!(nachricht(&[a.clone(), b.clone()], &[ziel.clone(), b.clone()], "E"), "Zieltermin von „E“: „Deadline“ (31.10.2027)");
+        assert_eq!(nachricht(&[ziel, b.clone()], &[a, b], "E"), "Zieltermin von „E“ entfernt");
     }
 }

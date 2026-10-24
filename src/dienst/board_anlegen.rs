@@ -26,6 +26,8 @@ impl Kanban {
             spalten: spalten.iter().map(|s| Spalte { notiz: None, farbe: None, name: s.trim().into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] }).collect(),
             termine: vec![],
             anwendungen: None,
+            start: None,
+            fieber: Default::default(),
         };
         if self.ordner().existiert(&board_pfad(&b.slug)) {
             return Err(Fehler::Konflikt(format!("Es gibt schon ein Board unter boards/{}.md", b.slug)));

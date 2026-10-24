@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Board, Linie, Spalte, Staerke, Termin, ist_hexfarbe};
+use crate::modell::{Board, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -16,6 +16,11 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let notizen = yaml::zuordnung(&m, "column-notes");
     let farben = yaml::zuordnung(&m, "column-colors");
     let termine = termine_lesen(m.get("milestones"))?;
+    let start = match yaml::text(&m, "start") {
+        Some(d) if !ist_datum(&d) => return Err(Formatfehler(format!("start „{d}“ ist nicht JJJJ-MM-TT"))),
+        d => d,
+    };
+    let fieber = fieber_lesen(m.get("fever"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
@@ -41,7 +46,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber })
 }
 
 /// `[wbs-effects-green]` oder ein einzelner Name → Namen ohne leere.
@@ -73,17 +78,85 @@ fn termine_lesen(v: Option<&Value>) -> Result<Vec<Termin>, Formatfehler> {
                 None => Staerke::default(),
                 Some(w) => STAERKEN.iter().find(|(k, _)| *k == w).map(|(_, x)| *x).ok_or_else(|| Formatfehler(format!("milestones: width „{w}“ ist nicht thin, normal oder bold")))?,
             };
-            let t = Termin { name: wahl("name").unwrap_or_default(), datum: wahl("date").unwrap_or_default(), farbe: wahl("color").unwrap_or_else(|| "red".into()), linie, staerke };
+            let ziel = match m.get("target") {
+                None => false,
+                Some(Value::Bool(b)) => *b,
+                Some(_) => return Err(Formatfehler("milestones: target ist nicht true oder false".into())),
+            };
+            let t = Termin { name: wahl("name").unwrap_or_default(), datum: wahl("date").unwrap_or_default(), farbe: wahl("color").unwrap_or_else(|| "red".into()), linie, staerke, ziel };
             t.pruefen().map_err(|f| Formatfehler(format!("milestones: {f}")))?;
             Ok(t)
         })
-        .collect()
+        .collect::<Result<Vec<Termin>, Formatfehler>>()
+        .and_then(|termine| match termine.iter().filter(|t| t.ziel).count() {
+            0 | 1 => Ok(termine),
+            _ => Err(Formatfehler("milestones: mehr als ein Zieltermin (target: true)".into())),
+        })
+}
+
+/// `fever:` — `{buffer, percentile, week, yellow: [bei 0 %, bei 100 %], red: […]}`; fehlende Werte sind der Standard (R00078).
+fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
+    let mut f = Fieber::default();
+    let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(f) };
+    let m = v.as_mapping().ok_or_else(|| Formatfehler("fever ist keine Zuordnung".into()))?;
+    let zahl = |schluessel: &str| -> Result<Option<u32>, Formatfehler> {
+        match m.get(schluessel) {
+            None => Ok(None),
+            Some(w) => w.as_u64().and_then(|z| u32::try_from(z).ok()).map(Some).ok_or_else(|| Formatfehler(format!("fever: {schluessel} ist keine ganze Zahl"))),
+        }
+    };
+    let paar = |schluessel: &str| -> Result<Option<[u32; 2]>, Formatfehler> {
+        let Some(w) = m.get(schluessel) else { return Ok(None) };
+        let zahlen: Option<Vec<u32>> = w.as_sequence().map(|l| l.iter().filter_map(|z| z.as_u64().and_then(|z| u32::try_from(z).ok())).collect());
+        match zahlen.as_deref() {
+            Some([a, b]) if w.as_sequence().map(Vec::len) == Some(2) => Ok(Some([*a, *b])),
+            _ => Err(Formatfehler(format!("fever: {schluessel} ist nicht [bei 0 %, bei 100 %]"))),
+        }
+    };
+    f.puffer = zahl("buffer")?;
+    if let Some(p) = zahl("percentile")? {
+        f.perzentil = p;
+    }
+    if let Some(w) = zahl("week")? {
+        f.woche = w;
+    }
+    if let Some(g) = paar("yellow")? {
+        f.gelb = g;
+    }
+    if let Some(r) = paar("red")? {
+        f.rot = r;
+    }
+    f.pruefen().map_err(|e| Formatfehler(format!("fever: {e}")))?;
+    Ok(f)
+}
+
+/// Nur was gesetzt bzw. vom Standard verschieden ist; `None`, wenn alles Standard ist.
+fn fieber_zeile(f: &Fieber) -> Option<String> {
+    let s = Fieber::default();
+    let mut teile = vec![];
+    if let Some(p) = f.puffer {
+        teile.push(format!("buffer: {p}"));
+    }
+    if f.perzentil != s.perzentil {
+        teile.push(format!("percentile: {}", f.perzentil));
+    }
+    if f.woche != s.woche {
+        teile.push(format!("week: {}", f.woche));
+    }
+    if f.gelb != s.gelb {
+        teile.push(format!("yellow: [{}, {}]", f.gelb[0], f.gelb[1]));
+    }
+    if f.rot != s.rot {
+        teile.push(format!("red: [{}, {}]", f.rot[0], f.rot[1]));
+    }
+    (!teile.is_empty()).then(|| format!("fever: {{{}}}\n", teile.join(", ")))
 }
 
 fn termin_zeile(t: &Termin) -> String {
     let linie = LINIEN.iter().find(|(_, x)| *x == t.linie).map(|(k, _)| *k).unwrap_or("solid");
     let staerke = STAERKEN.iter().find(|(_, x)| *x == t.staerke).map(|(k, _)| *k).unwrap_or("normal");
-    format!("  - {{name: {}, date: {}, color: {}, line: {linie}, width: {staerke}}}\n", yaml::skalar(&t.name), t.datum, yaml::skalar(&t.farbe))
+    let ziel = if t.ziel { ", target: true" } else { "" };
+    format!("  - {{name: {}, date: {}, color: {}, line: {linie}, width: {staerke}{ziel}}}\n", yaml::skalar(&t.name), t.datum, yaml::skalar(&t.farbe))
 }
 
 /// `- [#12](…)`, `- #12 Text`, `* #12` → 12
@@ -102,7 +175,8 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() {
+    let fieber = fieber_zeile(&b.fieber);
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -139,6 +213,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
                 s.push_str(&termin_zeile(t));
             }
         }
+        if let Some(start) = &b.start {
+            s.push_str(&format!("start: {start}\n"));
+        }
+        if let Some(f) = fieber {
+            s.push_str(&f);
+        }
         s.push_str("---\n\n");
     }
     s.push_str(&format!("# {}\n", b.titel));
@@ -172,6 +252,8 @@ mod tests {
             ],
             termine: vec![],
             anwendungen: None,
+            start: None,
+            fieber: Default::default(),
         }
     }
 
@@ -209,8 +291,8 @@ mod tests {
     fn termine_im_frontmatter_rundlauf() {
         let mut b = beispiel();
         b.termine = vec![
-            Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett },
-            Termin { name: "Review: Kunde".into(), datum: "2026-11-15".into(), farbe: "#2a78d6".into(), linie: Linie::Gestrichelt, staerke: Staerke::Fein },
+            Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: false },
+            Termin { name: "Review: Kunde".into(), datum: "2026-11-15".into(), farbe: "#2a78d6".into(), linie: Linie::Gestrichelt, staerke: Staerke::Fein, ziel: false },
         ];
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\nmilestones:\n  - {name: Deadline, date: 2027-10-31, color: red, line: solid, width: bold}\n  - {name: \"Review: Kunde\", date: 2026-11-15, color: \"#2a78d6\", line: dashed, width: thin}\n---\n\n# Entwicklung\n"), "{t}");
@@ -300,5 +382,32 @@ mod tests {
     fn aufgabe_vor_der_ersten_spalte_und_doppelte_spalte_sind_fehler() {
         assert!(lesen("x", "# X\n- #1\n## A\n").unwrap_err().0.contains("vor der ersten Spalte"));
         assert!(lesen("x", "## A\n## A\n").unwrap_err().0.contains("doppelt"));
+    }
+
+    #[test]
+    fn start_fieber_und_zieltermin_rundlauf() {
+        let mut b = beispiel();
+        b.start = Some("2026-09-01".into());
+        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95] };
+        b.termine = vec![Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: true }];
+        let t = schreiben(&b, datei);
+        assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95]}\n---\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        let ohne = lesen("b", "## A\n").unwrap();
+        assert_eq!((ohne.start, ohne.fieber), (None, Fieber::default()));
+        assert!(!schreiben(&beispiel(), datei).contains("fever"), "Standard wird nicht geschrieben");
+    }
+
+    #[test]
+    fn unlesbare_fieberangaben_sind_fehler() {
+        let mit = |zeilen: &str| lesen("b", &format!("---\n{zeilen}\n---\n## A\n"));
+        assert!(mit("start: 1.9.2026").unwrap_err().0.contains("start"));
+        assert!(mit("fever: 3").unwrap_err().0.contains("keine Zuordnung"));
+        assert!(mit("fever: {buffer: viel}").unwrap_err().0.contains("buffer"));
+        assert!(mit("fever: {yellow: [10]}").unwrap_err().0.contains("yellow"));
+        assert!(mit("fever: {percentile: 60}").unwrap_err().0.contains("Perzentil"));
+        assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: true}\n  - {name: B, date: 2027-02-01, target: true}").unwrap_err().0.contains("mehr als ein Zieltermin"));
+        assert!(mit("milestones:\n  - {name: A, date: 2027-01-01, target: ja}").unwrap_err().0.contains("target"));
     }
 }

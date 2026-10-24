@@ -53,7 +53,7 @@ async function api(methode, pfad, daten) {
 
 function ansichtAusAdresse() {
   if (/^#\/wbs\//.test(location.hash)) return 'wbs';
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose|berichte\/fieber)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
@@ -101,6 +101,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/verlauf') return vVerlauf();
   if (S.ui.view === 'berichte/durchlauf') return vDurchlauf();
   if (S.ui.view === 'berichte/prognose') return vPrognose();
+  if (S.ui.view === 'berichte/fieber') return vFieber();
   if (S.ui.view === 'wbs') return vWbs();
   return vBoard();
 }
@@ -120,7 +121,7 @@ function gewaehltesBoard() {
     eines eigenen Schreibzugriffs, auch der Phasen-Spalten, die das erste Lesen nachträgt —, zeichnet nicht neu: sonst ersetzt
     es die Seite, während jemand klickt oder liest (R00061). */
 let geladenerStand = null;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Lädt den Stand vom Server und zeichnet; `nurBeiAenderung` (Live-Ereignis) zeichnet nur, wenn sich etwas geändert hat.
     Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange` übergibt sein Ereignis). */
@@ -149,7 +150,9 @@ async function laden({ nurBeiAenderung = false } = {}) {
       api('GET', '/api/boards'),
     ]);
     // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
-    const bew = /^berichte\/(verlauf|durchlauf|prognose)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
+    const bew = /^berichte\/(verlauf|durchlauf|prognose|fieber)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
+    // Fever Chart (R00078): der Cache der gerechneten Tage
+    const fieberCache = S.ui.view === 'berichte/fieber' && S.ui.slug ? await api('GET', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; S.ui.fbFehler = f.message; return { abschnitte: [] }; }) : null;
     // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
     const anwendungen = S.ui.view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
     let wbs = null, wbsFehler = null;
@@ -160,7 +163,7 @@ async function laden({ nurBeiAenderung = false } = {}) {
     if (S.ui.view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
     // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
     // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
-    Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, anwendungen, wbs, wbsFehler, pruefWbs });
+    Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs });
     if (S.ui.offen) await dateiLaden();
     if (S.ui.offenDefekt) await defektLaden();
   }
@@ -172,6 +175,48 @@ async function laden({ nurBeiAenderung = false } = {}) {
   const ziel = S.ui.view === 'wbs' && S.wbs && wbsZiel(location.hash);
   if (ziel && S.ui.wbsGesprungen !== location.hash) { S.ui.wbsGesprungen = location.hash; await act('wbs-gehe', ziel); }
   else if (!ziel) S.ui.wbsGesprungen = null;
+  fieberNachtragen();
+}
+
+/** Fever Chart (R00078): rechnet die Tage vom Start bis gestern, die im Cache fehlen, in Häppchen (die Seite bleibt bedienbar)
+    und gibt sie dem Server; der committet sie als „kanbanD“. Läuft je Schlüssel einmal; wechselt Ansicht oder Filter, bricht es ab. */
+async function fieberNachtragen() {
+  const st = S.ui.view === 'berichte/fieber' && fieberStand();
+  if (!st || !st.start || (S.ui.fieberLauf && S.ui.fieberLauf.schluessel === st.schluessel)) return;
+  if (!S.ui.fieberNeu || S.ui.fieberNeu.schluessel !== st.schluessel) S.ui.fieberNeu = { schluessel: st.schluessel, tage: {} };
+  const neu = S.ui.fieberNeu, imCache = new Set(st.cache.map(t => t.datum));
+  const fehlt = fehlendeTage(st.start, [...imCache, ...Object.keys(neu.tage)], Date.now());
+  const lauf = S.ui.fieberLauf = { schluessel: st.schluessel, n: 0, von: fehlt.length };
+  const weiter = () => S.ui.fieberLauf === lauf && S.ui.view === 'berichte/fieber' && fieberSchluessel(st.start, S.ui.bf) === st.schluessel;
+  for (const [i, datum] of fehlt.entries()) {
+    neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, S.bew.phasen, st.start);
+    if (i % 4 === 3) {
+      lauf.n = i + 1;
+      const el = $('#fieber-lauf');
+      if (el && el.firstChild) el.firstChild.textContent = `rechnet ${lauf.n} von ${lauf.von} Tagen … `;
+      await new Promise(r => setTimeout(r, 0));
+      if (!weiter()) { if (S.ui.fieberLauf === lauf) S.ui.fieberLauf = null; return; }
+    }
+  }
+  const senden = Object.values(neu.tage).filter(t => !imCache.has(t.datum) && t.datum < isoD(Date.now()));
+  if (senden.length) {
+    try { await api('POST', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`, { schluessel: st.schluessel, tage: senden }); }
+    catch (f) { S.ui.fbFehler = 'Cache nicht gespeichert: ' + f.message; }
+  }
+  if (S.ui.fieberLauf !== lauf) return;
+  S.ui.fieberLauf = null;
+  if (senden.length) {
+    // der Cache steht jetzt auf dem Server: neu lesen; zeichnet auch dann, wenn das Live-Ereignis schneller war
+    S.fieberCache = await api('GET', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`).catch(() => S.fieberCache);
+  }
+  render();
+}
+
+/** Einstellungen des Fever Charts setzen; ein Fehler steht am Formular. */
+async function fieberEinstellen(f) {
+  try { await api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber`, f); S.ui.fbFehler = null; }
+  catch (x) { S.ui.fbFehler = x.message; }
+  return laden();
 }
 
 /** Schreibende Aktionen brauchen eine Identität; fehlt sie, öffnet sich „Ich bin …“ mit Hinweis. */
@@ -402,7 +447,7 @@ function rollpositionenSetzen(rollen) {
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
   if (S.ui.view === 'wbs' && S.wbs) return `${prozente(S.wbs.stand).gruen} % · WBS · ${S.wbs.name} — kanbanD`;
-  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch' };
+  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart' };
   const n = alleLaufenden().length;
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
@@ -593,13 +638,42 @@ async function act(a, arg, wert) {
       case 'bf-label': berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) }); break;
       case 'tf-bearbeiten': { const t = S.board.termine[+arg]; u.tf = { i: +arg, ...t }; u.tfFehler = null; u.fokus = '[data-tf="name"]'; break; }
       case 'tf-abbrechen': u.tf = { ...TERMIN_LEER }; u.tfFehler = null; break;
+      case 'tf-ziel': {
+        if (ichNoetig()) break;
+        return termineSchreiben(S.board.termine.map((t, i) => ({ ...t, ziel: i === +arg && !t.ziel })));
+      }
+      case 'fb-setzen': {
+        if (ichNoetig()) break;
+        const b = S.board;
+        if (arg === 'start') {
+          try { await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/start`, { start: wert || null }); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
+          return laden();
+        }
+        if (arg === 'ziel') return termineSchreiben(b.termine.map((t, i) => ({ ...t, ziel: wert !== '' && i === +wert })));
+        const f = { ...b.fieber, gelb: [...b.fieber.gelb], rot: [...b.fieber.rot] };
+        if (arg === 'puffer') f.puffer = wert === '' ? null : Math.max(1, Math.round(+wert));
+        else if (arg === 'perzentil' || arg === 'woche') f[arg] = +wert;
+        else f[arg.slice(0, -1)][+arg.slice(-1)] = Math.max(0, Math.round(+wert));
+        return fieberEinstellen(f);
+      }
+      case 'fb-vorschlag': {
+        if (ichNoetig()) break;
+        const st = fieberStand();
+        if (!st || !st.e.ziel) break;
+        return fieberEinstellen({ ...S.board.fieber, puffer: pufferVorschlag(dauerIn(S.board.fieber.woche, st.start, st.e.ziel)) });
+      }
+      case 'fb-verwerfen': {
+        try { await api('DELETE', `/api/boards/${encodeURIComponent(u.slug)}/fieber/cache`); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
+        u.fieberNeu = null; u.fieberLauf = null;
+        return laden();
+      }
       case 'tf-entfernen': {
         if (ichNoetig()) break;
         return termineSchreiben(S.board.termine.filter((_, i) => i !== +arg));
       }
       case 'tf-speichern': {
         if (ichNoetig()) break;
-        const f = u.tf, neu = { name: f.name.trim(), datum: f.datum, farbe: f.farbe, linie: f.linie, staerke: f.staerke };
+        const f = u.tf, neu = { name: f.name.trim(), datum: f.datum, farbe: f.farbe, linie: f.linie, staerke: f.staerke, ziel: !!f.ziel };
         if (!neu.name) { u.tfFehler = 'Der Termin braucht einen Namen'; break; }
         if (!neu.datum) { u.tfFehler = 'Der Termin braucht ein Datum'; break; }
         const liste = S.board.termine.slice();
@@ -1013,6 +1087,7 @@ document.addEventListener('change', e => {
   }
   if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
   if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
+  if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {
     const aenderung = { [bf]: e.target.value };
@@ -1510,6 +1585,7 @@ document.addEventListener('paste', async e => {
    Fadenkreuz steht auf diesem Tag — bei stetiger Achse am Zeiger —, den Inhalt liefert die Ansicht über `S.diagrammTip`. */
 document.addEventListener('mousemove', e => {
   const tip = $('#tooltip'), kreuz = $('#fadenkreuz');
+  if (tip && S.ui.view === 'berichte/fieber') { fieberTipp(tip, e); return; }
   if (!tip || !kreuz) return;
   const svg = e.target.closest && e.target.closest('svg.diagramm[data-achse]');
   const tag = svg && diagrammTag(svg, e);
@@ -1520,6 +1596,22 @@ document.addEventListener('mousemove', e => {
   const flaeche = svg.closest('.dflaeche').getBoundingClientRect();
   tip.style.left = Math.min(flaeche.width - tip.offsetWidth - 4, Math.max(0, e.clientX - flaeche.left + 14)) + 'px';
 });
+/** Fever Chart (R00078): der Tooltip gehört zum nächsten Punkt der Bahn im Umkreis des Zeigers. */
+function fieberTipp(tip, e) {
+  const svg = e.target.closest && e.target.closest('svg.diagramm.fieber');
+  let naechster = null;
+  if (svg && S.fieberLage) {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    S.fieberLage.forEach(([x, y], i) => { const d = Math.hypot(x - q.x, y - q.y); if (d < 24 && (!naechster || d <= naechster.d)) naechster = { d, i }; });
+  }
+  if (!naechster) { tip.hidden = true; return; }
+  tip.innerHTML = S.fieberTip(naechster.i);
+  tip.hidden = false;
+  const flaeche = svg.closest('.dflaeche').getBoundingClientRect();
+  tip.style.left = Math.min(flaeche.width - tip.offsetWidth - 4, Math.max(0, e.clientX - flaeche.left + 14)) + 'px';
+  tip.style.top = Math.min(flaeche.height - tip.offsetHeight - 4, Math.max(0, e.clientY - flaeche.top + 14)) + 'px';
+}
 /** Tag unter dem Zeiger und x des Fadenkreuzes in Koordinaten des Diagramms; null außerhalb der Zeichenfläche. */
 function diagrammTag(svg, e) {
   const [l, breite, t0, t1, stetig] = svg.dataset.achse.split(',').map(Number);

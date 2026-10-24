@@ -70,6 +70,9 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards/{slug}/spalten", axum::routing::put(spalten_setzen))
         .route("/api/boards/{slug}/termine", axum::routing::put(termine_setzen))
         .route("/api/boards/{slug}/anwendungen", axum::routing::put(bindung_setzen))
+        .route("/api/boards/{slug}/start", axum::routing::put(start_setzen))
+        .route("/api/boards/{slug}/fieber", axum::routing::put(fieber_setzen))
+        .route("/api/boards/{slug}/fieber/cache", get(fieber_cache).post(fieber_ergaenzen).delete(fieber_verwerfen))
         .route("/api/wer", get(wer))
         .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
@@ -239,6 +242,51 @@ async fn termine_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Start {
+    start: Option<String>,
+}
+
+async fn start_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(s): Json<Start>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.start_setzen(&p, &slug, s.start)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+async fn fieber_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(f): Json<crate::modell::Fieber>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.fieber_setzen(&p, &slug, f)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+async fn fieber_cache(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
+    let abschnitte = blockierend(&app, move |k| k.fieber_cache(&slug)).await?;
+    Ok(Json(json!({ "abschnitte": abschnitte })).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct Fiebernachtrag {
+    schluessel: String,
+    tage: Vec<crate::format::fieber::Fiebertag>,
+}
+
+/// Ohne Identität: der Cache wird unter „kanbanD“ committet (R00078).
+async fn fieber_ergaenzen(State(app): State<App>, Path(slug): Path<String>, Json(n): Json<Fiebernachtrag>) -> Result<Response, Fehler> {
+    let neu = blockierend(&app, move |k| k.fieber_ergaenzen(&slug, &n.schluessel, n.tage, &crate::uhr::heute())).await?;
+    Ok(Json(json!({ "neu": neu })).into_response())
+}
+
+async fn fieber_verwerfen(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
+    let verworfen = blockierend(&app, move |k| k.fieber_verwerfen(&slug)).await?;
+    Ok(Json(json!({ "verworfen": verworfen })).into_response())
 }
 
 async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(kuerzel): Json<Vec<String>>) -> Result<Response, Fehler> {

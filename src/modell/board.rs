@@ -52,6 +52,9 @@ pub struct Termin {
     pub linie: Linie,
     #[serde(default)]
     pub staerke: Staerke,
+    /// Zieltermin des Projekt-Fever-Charts (R00078); höchstens einer je Board.
+    #[serde(default)]
+    pub ziel: bool,
 }
 
 impl Termin {
@@ -60,7 +63,7 @@ impl Termin {
         if self.name.trim().is_empty() {
             return Err("Ein Termin braucht einen Namen".into());
         }
-        if self.datum.len() != 10 || chrono::NaiveDate::parse_from_str(&self.datum, "%Y-%m-%d").is_err() {
+        if !ist_datum(&self.datum) {
             return Err(format!("Termin „{}“: Datum „{}“ ist nicht JJJJ-MM-TT", self.name, self.datum));
         }
         let farbe_ok = !self.farbe.is_empty() && (self.farbe.chars().all(|c| c.is_ascii_lowercase()) || (self.farbe.len() == 7 && self.farbe.starts_with('#') && self.farbe[1..].chars().all(|c| c.is_ascii_hexdigit())));
@@ -69,6 +72,70 @@ impl Termin {
         }
         Ok(())
     }
+}
+
+/// Einstellungen des Projekt-Fever-Charts (R00078): Puffer in Tagen der Einheit, Perzentil der Prognose,
+/// Einheit (5 = Arbeitstage, 7 = Kalendertage), Zonengrenzen als Verbrauch in % bei 0 und bei 100 % Fortschritt.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Fieber {
+    #[serde(default)]
+    pub puffer: Option<u32>,
+    #[serde(default = "Fieber::perzentil_standard")]
+    pub perzentil: u32,
+    #[serde(default = "Fieber::woche_standard")]
+    pub woche: u32,
+    #[serde(default = "Fieber::gelb_standard")]
+    pub gelb: [u32; 2],
+    #[serde(default = "Fieber::rot_standard")]
+    pub rot: [u32; 2],
+}
+
+pub const FIEBER_PERZENTILE: [u32; 4] = [50, 70, 85, 95];
+
+impl Fieber {
+    fn perzentil_standard() -> u32 {
+        95
+    }
+    fn woche_standard() -> u32 {
+        5
+    }
+    fn gelb_standard() -> [u32; 2] {
+        [10, 70]
+    }
+    fn rot_standard() -> [u32; 2] {
+        [30, 100]
+    }
+
+    /// Puffer mindestens 1, Perzentil aus FIEBER_PERZENTILE, Woche 5 oder 7, Grenzen bis 1000 %, Gelb nicht über Rot.
+    pub fn pruefen(&self) -> Result<(), String> {
+        if self.puffer == Some(0) {
+            return Err("Der Puffer muss mindestens einen Tag lang sein".into());
+        }
+        if !FIEBER_PERZENTILE.contains(&self.perzentil) {
+            return Err(format!("Perzentil {} ist nicht 50, 70, 85 oder 95", self.perzentil));
+        }
+        if self.woche != 5 && self.woche != 7 {
+            return Err(format!("Woche {} ist nicht 5 (Arbeitstage) oder 7 (Kalendertage)", self.woche));
+        }
+        if self.gelb.iter().chain(&self.rot).any(|g| *g > 1000) {
+            return Err("Zonengrenzen liegen zwischen 0 und 1000 %".into());
+        }
+        if self.gelb[0] > self.rot[0] || self.gelb[1] > self.rot[1] {
+            return Err("Die Grenze zu Gelb liegt über der zu Rot".into());
+        }
+        Ok(())
+    }
+}
+
+impl Default for Fieber {
+    fn default() -> Self {
+        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard() }
+    }
+}
+
+/// `JJJJ-MM-TT` mit gültigem Datum.
+pub fn ist_datum(s: &str) -> bool {
+    s.len() == 10 && chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
 }
 
 /// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, feste Termine und gebundene Anwendungen.
@@ -83,6 +150,11 @@ pub struct Board {
     /// `Some([])` = ausdrücklich keine, das Board ist reines Kanban (R00062).
     #[serde(default)]
     pub anwendungen: Option<Vec<String>>,
+    /// Projektstart (R00078): Messbasis von „Wie lange noch“ und Beginn des Fever Charts; `None` = erste Aufgabe auf dem Board.
+    #[serde(default)]
+    pub start: Option<String>,
+    #[serde(default)]
+    pub fieber: Fieber,
 }
 
 impl Board {
@@ -257,6 +329,8 @@ mod tests {
             ],
             termine: vec![],
             anwendungen: None,
+            start: None,
+            fieber: Default::default(),
         }
     }
 
@@ -359,7 +433,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default() };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

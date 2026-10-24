@@ -5,7 +5,7 @@ vision: Anforderungen/R00000-vision.md
 kanban: {folder: /home/shoff/kanbanD-test, board: entwicklung, application: kd}
 wireframes: Dokumentation/Wireframes/
 sprache: de
-zuletzt: 2026-10-20
+zuletzt: 2026-10-24
 ---
 
 # WBS — kanbanD
@@ -307,6 +307,13 @@ zuletzt: 2026-10-20
 | B0217 | Bubble | I0065 | Kopfzeile bricht um | gruen | Test gruen | Breite → Tablet zwei Zeilen, Handy drei mit wischbarer Navigation; Personenknopf nur Kürzel |  |  |  |  |  |
 | B0218 | Bubble | I0065 | Board und Fenster auf dem Handy | gruen | Test gruen | Spalte fast bildschirmbreit mit Einrasten; Dialoge vollflächig, Felder unter dem Text |  |  |  |  |  |
 | B0219 | Bubble | I0065 | Übrige Seiten und Touch | gruen | Test gruen | Einrichten einspaltig, breite Tabellen scrollen in sich, Leisten brechen um; grober Zeiger → Tippflächen ≥ 32 px |  |  |  |  |  |
+| I0066 | Interaction | D0006 | Projekt-Fever-Chart | gruen | US-1..US-4 |  |  |  | I0047, I0061 | R00078 | Auftrag 2026-10-24: CCPM-Fieberdiagramm je Board, Fortschritt = erledigt, Verbrauch aus dem Forecast je Tag, Puffer einstellbar, Cache committet |
+| B0220 | Bubble | I0066 | Projektstart und Fieber-Einstellungen am Board | gruen | Test gruen | Frontmatter start, fever {buffer, percentile, week, yellow, red} ↔ Board; PUT …/start, …/fieber |  |  |  |  |  |
+| B0221 | Bubble | I0066 | Zieltermin am Termin | gruen | Test gruen | milestones target: true ↔ Termin.ziel; höchstens einer |  |  |  |  |  |
+| B0222 | Bubble | I0066 | Cache lesen, ergänzen, verwerfen | gruen | Test gruen | berichte/<slug>-fieber.md ↔ Abschnitte je Schlüssel; POST nur Tage vor heute, Autor kanbanD; DELETE |  |  |  |  |  |
+| B0223 | Bubble | I0066 | Projektstart als Messbasis | gruen | Test gruen | Start → Prognose misst ab Start, Verlauf beginnt am Start |  |  |  |  |  |
+| B0224 | Bubble | I0066 | Fieberpunkte rechnen | gruen | Test gruen | Bewegungen, Tag → Fortschritt, Ende je Perzentil; Einstellungen → Verbrauch, Zone, Puffervorschlag |  |  |  |  |  |
+| B0225 | Bubble | I0066 | Bericht zeichnen und Cache nachtragen | gruen | Test gruen | Cache + fehlende Tage → Zonen, Bahn, Tooltip, Einstellungen; fehlende Tage zurück an den Server |  |  |  |  |  |
 
 ## Offene Fragen
 

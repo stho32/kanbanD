@@ -226,9 +226,12 @@
   }
 
   /** Je Block: Nenner, erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. Offen zählt nach dem aktuellen Stand,
-      der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046. */
-  function prognose(bew, f, aufgabeZu, jetzt, phasen) {
+      der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046.
+      `start` (R00078): ohne gewählten Zeitraum misst die Prognose ab dem Projektstart, und der Verlauf beginnt dort.
+      `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet. */
+  function prognose(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false } = {}) {
     const heute = tag(jetzt), morgen = tag(jetzt, 1), g = zeitraumGrenzen(f, jetzt);
+    if (start && f.zeitraum === 'alles') g.von = isoTag(start);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
     const imFilter = a => aufgabePasst(f, aufgabeZu(a.nummer));
     // reporting.forecast: false (R00060) nimmt die Aufgabe ganz aus der Prognose, zusätzlich zum Filter
@@ -239,7 +242,7 @@
     const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => zaehlt(x.a, x.s, jetzt));
     const umfang = jetztDa.length;
     let vorige = null;
-    const stufen = prognoseStufen(bew, spalten, phasen);
+    const alle = prognoseStufen(bew, spalten, phasen), stufen = nurLetzter ? alle.slice(-1) : alle;
     const bloecke = stufen.map(st => {
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
@@ -273,7 +276,7 @@
     // Verlauf je Tag im Zeitraum: Umfang und noch nicht erreicht je Block, Stand am Tagesende
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     const tage = [];
-    if (erste !== Infinity) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
+    if (erste !== Infinity && !nurLetzter) for (let t = Math.max(tag(erste), tag(g.von)); t < morgen; t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende));
       tage.push({ t, umfang: da.length, offen: Object.fromEntries(stufen.map(st => [st.schluessel, da.filter(x => !st.entfaellt(x.a) && !st.durch(x.a, x.s)).length])) });
@@ -281,6 +284,81 @@
     const verworfen = bew.aufgaben.filter(a => { const s = spalteAm(a.wechsel, jetzt), x = aufgabeZu(a.nummer); return passt(a) && s != null && spalten.includes(s) && !zaehlt(a, s, jetzt) && x; }).length;
     const weg = bew.aufgaben.filter(a => imFilter(a) && !zaehltImBericht(a, 'forecast') && zaehlt(a, spalteAm(a.wechsel, jetzt), jetzt)).length;
     return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
+  }
+
+  /* ── Projekt-Fever-Chart (R00078) ── */
+  const isoD = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  /** Tag der ersten Bewegung auf dem Board (JJJJ-MM-TT) — der Projektstart, solange keiner eingestellt ist; null ohne Bewegung. */
+  function ersterTag(bew) {
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    return erste === Infinity ? null : isoD(erste);
+  }
+  /** Schlüssel des Caches: Projektstart und Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt). */
+  function fieberSchluessel(start, f) {
+    const filter = {};
+    for (const k of Object.keys(FILTER_LEER)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
+    if (filter.zeitraum !== 'eigen') { filter.von = ''; filter.bis = ''; }
+    return JSON.stringify({ v: 1, start, filter });
+  }
+  /** Ein Tag des Fever Charts aus der Sicht seines Tagesendes: erledigt und Umfang des letzten Blocks, prognostiziertes Ende
+      je Perzentil in 7- und 5-Tage-Woche (null = keine Aussage); nichts offen → Ende ist der Tag selbst. Ohne Umfang ein
+      leerer Tag — auch er kommt in den Cache, damit er nicht jedes Mal neu gerechnet wird. */
+  function fieberTag(bew, f, aufgabeZu, datum, phasen, start) {
+    const t = isoTag(datum), p = prognose(bew, f, aufgabeZu, tag(t, 1) - 1, phasen, { start, nurLetzter: true });
+    const b = p.phasen[0], leer = [null, null, null, null];
+    if (!b || !b.nenner) return { datum, erledigt: 0, umfang: 0, ende7: leer, ende5: leer };
+    const ende = n => PERZENTILE.map(q => !b.offen ? datum : b.zeilen ? isoD(b.zeilen.find(z => z.p === q)['datum' + n]) : null);
+    return { datum, erledigt: b.erreicht, umfang: b.nenner, ende7: ende(7), ende5: ende(5) };
+  }
+  /** Tage vom Start bis gestern, die im Cache fehlen; in der Arbeitstage-Einheit zählen auch Wochenenden (der Cache hält beide). */
+  function fehlendeTage(start, vorhanden, jetzt) {
+    const da = new Set(vorhanden), fehlt = [];
+    for (let t = isoTag(start); t < tag(jetzt); t = tag(t, 1)) if (!da.has(isoD(t))) fehlt.push(isoD(t));
+    return fehlt;
+  }
+  /** Tage nach `a` bis einschließlich `b` in der Einheit: 5 = Arbeitstage, 7 = Kalendertage; negativ, wenn `b` vor `a` liegt. */
+  function dauerIn(woche, a, b) {
+    const x = isoTag(a), y = isoTag(b);
+    if (woche === 7) return Math.round((y - x) / TAG);
+    return y >= x ? werktageBis(x, y) : -werktageBis(y, x);
+  }
+  /** Puffervorschlag: 1/3 der Gesamtdauer — die CCPM-Regel „Puffer = 50 % der Kette“ (Kette 2/3, Puffer 1/3); mindestens 1. */
+  const pufferVorschlag = gesamt => Math.max(1, Math.round(gesamt / 3));
+  /** Zone eines Punkts; Grenzen als Verbrauch in % bei 0 und bei 100 % Fortschritt, gerade dazwischen. */
+  function fieberZone(p, b, gelb, rot) {
+    const grenze = ([a, z]) => a + (z - a) * p / 100;
+    if (b > 100) return 'schwarz';
+    if (b >= grenze(rot)) return 'rot';
+    if (b >= grenze(gelb)) return 'gelb';
+    return 'gruen';
+  }
+  /** Gesamtdauer, Arbeitsbereich und Planende aus Start, Zieltermin und Puffer; null, wenn etwas fehlt oder nicht passt. */
+  function fieberPlan({ start, ziel, puffer, woche }) {
+    if (!start || !ziel || !puffer) return null;
+    const gesamt = dauerIn(woche, start, ziel);
+    if (gesamt <= puffer) return { gesamt, fehler: gesamt <= 0 ? 'Der Zieltermin liegt nicht nach dem Projektstart' : `Der Puffer (${puffer}) ist nicht kürzer als die Gesamtdauer (${gesamt})` };
+    const arbeit = gesamt - puffer;
+    return { gesamt, arbeit, puffer, planende: woche === 7 ? isoD(tag(isoTag(start), arbeit)) : isoD(werktagDatum(isoTag(start), arbeit)) };
+  }
+  /** Die Punkte der Bahn aus den Tagen (Cache und frisch gerechnet): Fortschritt p, Verbrauch b, Ende, Zone.
+      Ohne Prognose kein Punkt; in der Arbeitstage-Einheit nur Werktage; nach dem ersten Tag mit 100 % keine weiteren,
+      solange es bei 100 % bleibt. */
+  function fieberPunkte(tage, e) {
+    const plan = fieberPlan(e);
+    if (!plan || plan.fehler) return [];
+    const k = PERZENTILE.indexOf(e.perzentil), punkte = [];
+    let fertig = false;
+    for (const t of [...tage].sort((x, y) => x.datum < y.datum ? -1 : 1)) {
+      const ende = (e.woche === 7 ? t.ende7 : t.ende5)[k];
+      if (!ende || !t.umfang || t.datum < e.start) continue;
+      if (e.woche === 5 && !werktag(isoTag(t.datum))) continue;
+      const p = 100 * t.erledigt / t.umfang;
+      if (p === 100 && fertig) continue;
+      fertig = p === 100;
+      const b = 100 * (dauerIn(e.woche, e.start, ende) - plan.arbeit) / plan.puffer;
+      punkte.push({ datum: t.datum, p, b, ende, erledigt: t.erledigt, umfang: t.umfang, zone: fieberZone(p, b, e.gelb, e.rot) });
+    }
+    return punkte;
   }
 
   /* ── Diagramme (R00073) ── */
@@ -303,5 +381,5 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  Object.assign(ziel, { ersterTag, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
 })(typeof module !== 'undefined' ? module.exports : window);

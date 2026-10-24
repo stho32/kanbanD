@@ -63,6 +63,8 @@ impl Einrichtung {
             spalten: self.spalten.iter().map(|s| Spalte { notiz: None, farbe: None, name: s.trim().into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] }).collect(),
             termine: vec![],
             anwendungen: None,
+            start: None,
+            fieber: Default::default(),
         }
     }
 }

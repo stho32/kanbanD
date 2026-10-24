@@ -10,6 +10,7 @@ mod bindung;
 mod board_anlegen;
 mod einrichten;
 mod einstellungen;
+mod fieber;
 mod herkunft;
 mod kommentare;
 mod phasen;
