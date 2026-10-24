@@ -455,3 +455,11 @@ test('Rechnen ab (R00081): Burndown und Durchlaufzeit beginnen am Projektstart, 
   assert.deepStrictEqual(durchlaufzeiten(BEW, f({}), zu, jetzt, 'A', 'Z', '2026-10-20').liste.map(x => x.nummer), [2], '#1 kam am 19.10. an — vor dem Start');
   assert.deepStrictEqual(durchlaufzeiten(BEW, f({ zeitraum: '30' }), zu, jetzt, 'A', 'Z', '2026-10-20').liste.map(x => x.nummer), [2, 1]);
 });
+
+test('Fever Chart: Abstand zum Planende je Punkt (R00082)', () => {
+  const am = n => new Date(2026, 0, 1 + n).toLocaleDateString('sv-SE');
+  const tage = [{ datum: am(14), erledigt: 1, umfang: 4, ende7: Array(4).fill(am(44)), ende5: Array(4).fill(null) }];
+  const e = { start: am(0), ziel: am(60), puffer: 20, woche: 7, perzentil: 95, gelb: [10, 70], rot: [30, 100] };
+  assert.strictEqual(fieberPunkte(tage, e)[0].abstand, 4, 'Planende Tag 40, Ende Tag 44');
+  assert.deepStrictEqual([fieberPunkte(tage, { ...e, puffer: 10 })[0].abstand, fieberPunkte(tage, { ...e, puffer: 10 })[0].b], [-6, -60], 'Planende Tag 50: sechs Tage davor');
+});

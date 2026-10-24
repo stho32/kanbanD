@@ -324,6 +324,9 @@ zuletzt: 2026-10-24
 | B0230 | Bubble | I0069 | Berichtsfilter im Board-Frontmatter | gruen | Test gruen | report-filter ↔ Board.berichtsfilter; PUT …/berichtsfilter |  |  |  |  |  |
 | B0231 | Bubble | I0069 | Rechnen ab in allen Board-Berichten | gruen | Test gruen | start → Burndown, Durchlaufzeit, Prognose, Fever ab diesem Tag; Zeitraum überstimmt |  |  |  |  |  |
 | B0232 | Bubble | I0069 | Filterbox zugeklappt, eine Zeile je Filter | gruen | Test gruen | details mit Zusammenfassung; Änderung → PUT, ohne Person nur Ansicht |  |  |  |  |  |
+| I0070 | Interaction | D0006 | Gewonnenen Puffer beschriften | gruen | US-1 |  |  |  | I0066 | R00082 | Auftrag 2026-10-24: negativer Verbrauch ist richtig, wird aber als „Puffer gewonnen“ beschriftet, kleiner Umfang von damals genannt |
+| B0233 | Bubble | I0070 | Abstand zum Planende je Punkt | gruen | Test gruen | Punkt → Tage vor/nach Planende in der Einheit |  |  |  |  |  |
+| B0234 | Bubble | I0070 | Beschriftung im Diagramm | gruen | Test gruen | Abstand, Umfang → Tooltip, Kennzahl, Fläche „vor Plan“ |  |  |  |  |  |
 
 ## Offene Fragen
 

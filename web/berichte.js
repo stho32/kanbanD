@@ -367,8 +367,9 @@
       const p = 100 * t.erledigt / t.umfang;
       if (p === 100 && fertig) continue;
       fertig = p === 100;
-      const b = 100 * (dauerIn(e.woche, e.start, ende) - plan.arbeit) / plan.puffer;
-      punkte.push({ datum: t.datum, p, b, ende, erledigt: t.erledigt, umfang: t.umfang, zone: fieberZone(p, b, e.gelb, e.rot) });
+      // Abstand zum Planende in Tagen der Einheit (R00082): negativ = vor Plan, Puffer gewonnen
+      const abstand = dauerIn(e.woche, e.start, ende) - plan.arbeit, b = 100 * abstand / plan.puffer;
+      punkte.push({ datum: t.datum, p, b, abstand, ende, erledigt: t.erledigt, umfang: t.umfang, zone: fieberZone(p, b, e.gelb, e.rot) });
     }
     return punkte;
   }

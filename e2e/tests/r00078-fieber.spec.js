@@ -161,4 +161,19 @@ test.describe('R00078', () => {
     await expect(page.locator('.dlegende')).toContainText('ein Punkt je Woche');
     expect(kanbandCommits()).toHaveLength(1);
   });
+
+  test('R00082: Punkte vor Plan heißen „Puffer gewonnen“, kleiner Umfang von damals wird genannt', async ({ page }) => {
+    const H = { headers: { 'X-KanbanD-Wer': 'st' } };
+    await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...H, data: [{ name: 'Deadline', datum: tag(200), farbe: 'red', ziel: true }] });
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...H, data: { puffer: 20, woche: 7 } });
+    for (const titel of ['neu 1', 'neu 2', 'neu 3']) await page.request.post(k.adresse + 'api/aufgaben', { ...H, data: { titel, board: 'entwicklung' } });
+    await page.goto(k.adresse + '#/berichte/fieber');
+    await liveBereit(page);
+    await expect(page.locator('#fb-vorplan')).toHaveText('VOR PLAN — PUFFER GEWONNEN');
+    await expect(page.locator('#fb-stand')).toContainText(/Puffer gewonnen: \d+ Kalendertage vor Planende/);
+    await page.locator('svg.fieber .fb-punkt').first().hover();
+    const tip = page.locator('#tooltip');
+    await expect(tip.locator('.fb-gewonnen')).toHaveText(/^Puffer gewonnen: \d+ Kalendertage vor Planende$/);
+    await expect(tip.locator('.fb-damals')).toHaveText('Umfang damals 8, heute 11 — die Prognose kannte nur die damaligen Aufgaben');
+  });
 });
