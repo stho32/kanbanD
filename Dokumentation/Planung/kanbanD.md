@@ -353,9 +353,9 @@ zuletzt: 2026-10-25
 | I0078 | Interaction | D0007 | Zeiten-API mit Beginn, Ende und Kennung | gruen | US-1..US-3 |  |  |  | I0072 | R00090 | Feedback 2026-10-25 P8/P9: POST {beginn, ende, wer?}, Kennung wer@beginn |
 | B0251 | Bubble | I0078 | Nachtrag mit Beginn und Ende | gruen | Test gruen | POST {beginn, ende, wer?} | {dauer} → Eintrag |  |  |  |  |  |
 | B0252 | Bubble | I0078 | Kennung statt Index | gruen | Test gruen | wer@beginn → PATCH/DELETE; Oberfläche über Kennung |  |  |  |  |  |
-| I0079 | Interaction | D0007 | Einstellungen lesen und Personen einzeln pflegen | rot | US-1..US-3 |  |  |  |  | R00091 | Feedback 2026-10-25 P10: GET /api/einstellungen, Sammlung /api/personen |
-| B0253 | Bubble | I0079 | Einstellungen lesen | rot | Test gruen | GET /api/einstellungen → Form wie PUT |  |  |  |  |  |
-| B0254 | Bubble | I0079 | Personen einzeln | rot | Test gruen | POST/PATCH/DELETE(stilllegen) /api/personen |  |  |  |  |  |
+| I0079 | Interaction | D0007 | Einstellungen lesen und Personen einzeln pflegen | gruen | US-1..US-3 |  |  |  |  | R00091 | Feedback 2026-10-25 P10: GET /api/einstellungen, Sammlung /api/personen |
+| B0253 | Bubble | I0079 | Einstellungen lesen | gruen | Test gruen | GET /api/einstellungen → Form wie PUT |  |  |  |  |  |
+| B0254 | Bubble | I0079 | Personen einzeln | gruen | Test gruen | POST/PATCH/DELETE(stilllegen) /api/personen |  |  |  |  |  |
 | I0080 | Interaction | D0007 | API aufräumen: Antwortform, Archiv, Filter | rot | US-1..US-3 |  |  |  | I0075 | R00092 | Feedback 2026-10-25 P12-14: Objekt direkt, archivierte weg, Filterparameter |
 | B0255 | Bubble | I0080 | Karte direkt | rot | Test gruen | GET /api/aufgaben/{nr} → Karte mit pfad, text |  |  |  |  |  |
 | B0256 | Bubble | I0080 | Archivierte aus Board-Antworten | rot | Test gruen | Board → Spalten ohne archivierte; ?archivierte=ja |  |  |  |  |  |

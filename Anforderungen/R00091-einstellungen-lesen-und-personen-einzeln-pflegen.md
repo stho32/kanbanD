@@ -1,6 +1,6 @@
 ---
 id: R00091
-status: Neu
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -27,11 +27,11 @@ Agenten richten ihre Rollen-Personen selbst ein, ohne Gefahr, dabei Klassen, Sig
 
 ## Akzeptanzkriterien
 
-- [ ] `GET /api/einstellungen` → `PUT` derselben Antwort ändert nichts (kein Commit)
-- [ ] `POST /api/personen {kuerzel: "crev", name: "Code-Reviewer", art: "agent"}` → `201`; zweites Mal → `409`; Kürzel `Crev!` → `400`
-- [ ] `PATCH /api/personen/crev {name: "Reviewer"}` → Name geändert, andere Personen, Klassen und Signale unverändert
-- [ ] `DELETE /api/personen/crev` → `aktiv: false`, Person bleibt in der Liste
-- [ ] `PATCH /api/personen/xyz` → `404`
+- [x] `GET /api/einstellungen` → `PUT` derselben Antwort ändert nichts (kein Commit)
+- [x] `POST /api/personen {kuerzel: "crev", name: "Code-Reviewer", art: "agent"}` → `201`; zweites Mal → `409`; Kürzel `Crev!` → `400`
+- [x] `PATCH /api/personen/crev {name: "Reviewer"}` → Name geändert, andere Personen, Klassen und Signale unverändert
+- [x] `DELETE /api/personen/crev` → `aktiv: false`, Person bleibt in der Liste
+- [x] `PATCH /api/personen/xyz` → `404`
 
 ## Betroffene Verzeichnisstruktur
 

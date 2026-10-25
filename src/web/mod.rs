@@ -75,7 +75,9 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/boards/{slug}/fieber", axum::routing::put(fieber_setzen))
         .route("/api/boards/{slug}/fieber/cache", get(fieber_cache).post(fieber_ergaenzen).delete(fieber_verwerfen))
         .route("/api/wer", get(wer))
-        .route("/api/einstellungen", axum::routing::put(einstellungen_setzen))
+        .route("/api/einstellungen", get(einstellungen_lesen).put(einstellungen_setzen))
+        .route("/api/personen", get(personen).post(person_anlegen))
+        .route("/api/personen/{kuerzel}", axum::routing::patch(person_aendern).delete(person_stilllegen))
         .route("/api/aufgaben", get(aufgaben).post(aufgabe_anlegen))
         .route("/api/herkunft", get(herkunft))
         .route("/api/anwendungen", get(anwendungen))
@@ -343,6 +345,36 @@ async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+/// Die Einstellungen in der Form, die `PUT` annimmt (R00091).
+async fn einstellungen_lesen(State(app): State<App>) -> Result<Response, Fehler> {
+    let e = blockierend(&app, |k| k.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))).await?;
+    Ok(Json(e).into_response())
+}
+
+async fn personen(State(app): State<App>) -> Result<Response, Fehler> {
+    let e = blockierend(&app, |k| k.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))).await?;
+    Ok(Json(json!({ "personen": e.personen })).into_response())
+}
+
+async fn person_anlegen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<crate::dienst::Personenangabe>) -> Result<Response, Fehler> {
+    let p = blockierend(&app, move |k| {
+        let wer = k.handelnder(wer.as_deref())?;
+        k.person_anlegen(&wer, &n)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(p)).into_response())
+}
+
+async fn person_aendern(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, Json(a): Json<crate::dienst::PersonAenderung>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.person_aendern(p, &kuerzel, &a)).await
+}
+
+/// Personen werden nie entfernt, nur stillgelegt — `DELETE` setzt `aktiv: false`.
+async fn person_stilllegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>) -> Result<Response, Fehler> {
+    let stilllegen = crate::dienst::PersonAenderung { aktiv: Some(false), ..Default::default() };
+    als_person(&app, wer, move |k, p| k.person_aendern(p, &kuerzel, &stilllegen)).await
 }
 
 async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Einstellungen>) -> Result<Response, Fehler> {

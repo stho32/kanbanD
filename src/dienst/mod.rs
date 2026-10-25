@@ -40,7 +40,7 @@ pub use zeiten::{Zeitkorrektur, Zeitnachtrag};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
 pub use herkunft::Quelle;
-pub use einstellungen::{PALETTE, farbe_gueltig};
+pub use einstellungen::{PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
 
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;

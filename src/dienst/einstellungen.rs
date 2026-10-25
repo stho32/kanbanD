@@ -1,7 +1,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
-use crate::modell::{Anwendung, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
+use crate::modell::{Anwendung, Art, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 
 pub const PALETTE: [&str; 16] = ["yellow", "amber", "orange", "red", "rose", "pink", "magenta", "violet", "indigo", "blue", "sky", "cyan", "teal", "green", "lime", "grey"];
 
@@ -94,33 +94,123 @@ fn register_pruefen(anwendungen: &[Anwendung]) -> Result<(), Fehler> {
     Ok(())
 }
 
+/// Rumpf von `POST /api/personen` (R00091); ohne `aktiv` ist die Person aktiv.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct Personenangabe {
+    pub kuerzel: String,
+    pub name: String,
+    pub art: Art,
+    pub aktiv: Option<bool>,
+}
+
+/// Rumpf von `PATCH /api/personen/{kürzel}`: nur genannte Felder ändern sich.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct PersonAenderung {
+    pub name: Option<String>,
+    pub art: Option<Art>,
+    pub aktiv: Option<bool>,
+}
+
+impl PersonAenderung {
+    /// Wendet die genannten Felder an; liefert, ob sich etwas geändert hat.
+    pub fn anwenden(&self, p: &mut Person) -> bool {
+        let vorher = p.clone();
+        if let Some(n) = &self.name {
+            p.name = n.trim().into();
+        }
+        if let Some(a) = self.art {
+            p.art = a;
+        }
+        if let Some(a) = self.aktiv {
+            p.aktiv = a;
+        }
+        *p != vorher
+    }
+}
+
+/// Bezeichnungen und Pfade ohne Rand, Register nach Kürzel — die Normalform, in der verglichen und geschrieben wird.
+fn normalisieren(neu: &mut Einstellungen) {
+    for p in &mut neu.personen {
+        p.name = p.name.trim().into();
+    }
+    for k in &mut neu.klassen {
+        k.bezeichnung = k.bezeichnung.trim().into();
+    }
+    for g in &mut neu.signale {
+        g.bezeichnung = g.bezeichnung.trim().into();
+    }
+    neu.quellen.wbs = neu.quellen.wbs.trim().into();
+    neu.quellen.anforderungen = neu.quellen.anforderungen.trim().into();
+    for a in &mut neu.quellen.anwendungen {
+        a.name = a.name.trim().into();
+        a.wbs = a.wbs.trim().into();
+        a.anforderungen = a.anforderungen.trim().into();
+    }
+    neu.quellen.anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+}
+
 impl Kanban {
-    pub fn einstellungen_setzen(&self, wer: &Person, mut neu: Einstellungen) -> Result<bool, Fehler> {
+    /// Der eine Schreibweg der Einstellungen: unter der Sperre lesen, `aendern` anwenden, normalisieren, prüfen und
+    /// nur bei einer Änderung committen. `aendern` liefert die Commit-Nachricht und ein Ergebnis.
+    fn einstellungen_aendern<T>(&self, wer: &Person, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
         let _sperre = self.gesperrt();
         let alt = self.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
-        for p in &mut neu.personen {
-            p.name = p.name.trim().into();
-        }
-        for k in &mut neu.klassen {
-            k.bezeichnung = k.bezeichnung.trim().into();
-        }
-        for g in &mut neu.signale {
-            g.bezeichnung = g.bezeichnung.trim().into();
-        }
-        neu.quellen.wbs = neu.quellen.wbs.trim().into();
-        neu.quellen.anforderungen = neu.quellen.anforderungen.trim().into();
-        for a in &mut neu.quellen.anwendungen {
-            a.name = a.name.trim().into();
-            a.wbs = a.wbs.trim().into();
-            a.anforderungen = a.anforderungen.trim().into();
-        }
-        neu.quellen.anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+        let mut neu = alt.clone();
+        let (nachricht, ergebnis) = aendern(&mut neu)?;
+        normalisieren(&mut neu);
         einstellungen_pruefen(&alt, &neu)?;
         if neu == alt {
-            return Ok(false);
+            return Ok((false, ergebnis));
         }
-        self.aktion(wer, "Einstellungen geändert", &[(einstellungen::DATEI.into(), einstellungen::schreiben(&neu))])?;
-        Ok(true)
+        self.aktion(wer, &nachricht, &[(einstellungen::DATEI.into(), einstellungen::schreiben(&neu))])?;
+        Ok((true, ergebnis))
+    }
+
+    pub fn einstellungen_setzen(&self, wer: &Person, neu: Einstellungen) -> Result<bool, Fehler> {
+        self.einstellungen_aendern(wer, |e| {
+            *e = neu;
+            Ok(("Einstellungen geändert".into(), ()))
+        })
+        .map(|(geaendert, ())| geaendert)
+    }
+
+    /// Eine Person anlegen (R00091); ein vorhandenes Kürzel ist ein Konflikt, die Regeln prüft `einstellungen_pruefen`.
+    pub fn person_anlegen(&self, wer: &Person, n: &Personenangabe) -> Result<Person, Fehler> {
+        let p = Person { kuerzel: n.kuerzel.trim().into(), name: n.name.trim().into(), art: n.art, aktiv: n.aktiv.unwrap_or(true) };
+        let (_, p) = self.einstellungen_aendern(wer, |e| {
+            if e.person(&p.kuerzel).is_some() {
+                return Err(Fehler::Konflikt(format!("Kürzel „{}“ gibt es schon", p.kuerzel)));
+            }
+            e.personen.push(p.clone());
+            Ok((format!("Person „{}“ ({}) angelegt", p.name, p.kuerzel), p))
+        })?;
+        Ok(p)
+    }
+
+    /// Name, Art oder aktiv einer Person ändern; unbekannt → 404.
+    pub fn person_aendern(&self, wer: &Person, kuerzel: &str, a: &PersonAenderung) -> Result<Person, Fehler> {
+        let (_, p) = self.einstellungen_aendern(wer, |e| {
+            let p = e.personen.iter_mut().find(|p| p.kuerzel == kuerzel).ok_or_else(|| Fehler::NichtGefunden(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
+            let tat = if a.aktiv == Some(false) && p.aktiv { "stillgelegt" } else { "geändert" };
+            a.anwenden(p);
+            Ok((format!("Person „{}“ ({kuerzel}) {tat}", p.name), p.clone()))
+        })?;
+        Ok(p)
+    }
+}
+
+#[cfg(test)]
+mod tests_person {
+    use super::*;
+
+    #[test]
+    fn personaenderung_aendert_nur_genannte_felder() {
+        let mut p = Person { kuerzel: "crev".into(), name: "Code-Reviewer".into(), art: Art::Agent, aktiv: true };
+        assert!(PersonAenderung { name: Some(" Reviewer ".into()), ..Default::default() }.anwenden(&mut p));
+        assert_eq!((p.name.as_str(), p.art, p.aktiv), ("Reviewer", Art::Agent, true));
+        assert!(!PersonAenderung { name: Some("Reviewer".into()), ..Default::default() }.anwenden(&mut p), "gleicher Wert ist keine Änderung");
+        assert!(PersonAenderung { aktiv: Some(false), ..Default::default() }.anwenden(&mut p));
+        assert!(!p.aktiv);
     }
 }
 
