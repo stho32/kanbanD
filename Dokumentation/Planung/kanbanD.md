@@ -362,7 +362,7 @@ zuletzt: 2026-10-25
 | B0257 | Bubble | I0080 | Filter an GET /api/aufgaben | gruen | Test gruen | board, spalte, klasse, signal, zustaendig, reserviert, archivierte → Liste |  |  |  |  |  |
 | I0081 | Interaction | D0003 | Durchläufe als Daten | gelb | US-1..US-2 |  |  |  | I0078 | R00094 | Feedback 2026-10-25 P15: Block kanbanD-runs, POST …/durchlaeufe, Tabelle im Detail |
 | B0258 | Bubble | I0081 | Block kanbanD-runs | gruen | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
-| B0259 | Bubble | I0081 | Durchlauf über die API | rot | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |
+| B0259 | Bubble | I0081 | Durchlauf über die API | gruen | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |
 | B0260 | Bubble | I0081 | Durchläufe im Detail | rot | Test gruen | Durchläufe → Tabelle, befund in Warnfarbe |  |  |  |  |  |
 | I0082 | Interaction | D0007 | OpenAPI-Beschreibung | rot | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |
 | B0261 | Bubble | I0082 | Probe utoipa | rot | Test gruen | Router + Enum + Pfadparameter → Schema |  |  |  |  |  |

@@ -104,6 +104,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
         .route("/api/aufgaben/{nr}/archivieren", post(archivieren))
         .route("/api/aufgaben/{nr}/reservierung", post(reservieren).delete(freigeben))
+        .route("/api/aufgaben/{nr}/durchlaeufe", post(durchlauf_eintragen))
         .route("/api/boards/{slug}/ziehen", post(ziehen))
         .route("/api/aufgaben/{nr}/zurueckholen", post(zurueckholen))
         .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
@@ -609,6 +610,10 @@ async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)
     })
     .await?;
     Ok(Json(json!({ "entfernt": true })).into_response())
+}
+
+async fn durchlauf_eintragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(n): Json<crate::dienst::NeuerDurchlauf>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.durchlauf_eintragen(p, nr, &n)).await
 }
 
 async fn reservieren(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(nr): Path<u32>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
