@@ -3,7 +3,6 @@
 use super::{Formatfehler, frontmatter, yaml};
 use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
-use chrono::NaiveDateTime;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
@@ -31,13 +30,9 @@ pub fn nummer_aus_dateiname(datei: &str) -> Option<u32> {
     datei.split(['-', '.']).next()?.parse().ok()
 }
 
-/// Prüft einen Zeitpunkt `JJJJ-MM-TT HH:MM` (Sekunden erlaubt) und liefert ihn in Normalform.
+/// Prüft einen Zeitpunkt (mit oder ohne Versatz, siehe `uhr::Zeitpunkt::lesen`) und liefert ihn in Dateiform.
 pub fn zeitpunkt(s: &str) -> Option<String> {
-    let s = s.trim();
-    NaiveDateTime::parse_from_str(s, ZEITFORMAT)
-        .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S"))
-        .ok()
-        .map(|d| d.format(ZEITFORMAT).to_string())
+    crate::uhr::Zeitpunkt::lesen(s).map(|z| z.datei())
 }
 
 pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
@@ -361,6 +356,20 @@ mod tests {
         assert!(t.contains("```kanbanD-time\n2026-10-18 09:00 · 2026-10-18 10:30 · cl\n2026-10-18 11:00 · ... · st\n```"));
         assert!(t.contains("2026-10-18 10:31 · st · Zwei\\nZeilen · mit \\\\ Strich"));
         assert!(t.starts_with("---\nid: 12\ntitle: \"Kopfzeile: verdichten\"\nclass: feature\nassignees: [cl, st]\nlabels: [ui]\ndue: 2026-10-20\norigins: [I0027, R00004]\n---\n"));
+    }
+
+    // R00084: mit Versatz bleibt er erhalten, Altzeilen ohne Versatz bleiben unverändert
+    #[test]
+    fn zeiten_mit_und_ohne_versatz_im_rundlauf() {
+        let t = "---\nid: 5\ntitle: Z\n---\n```kanbanD-time\n2026-10-25 02:33+02:00 · 2026-10-25 02:10+01:00 · st\n2026-10-18 09:00 · 2026-10-18 10:42 · cl\n2026-10-25T06:41Z · ... · st\n```\n\n```kanbanD-comments\n2026-10-25 07:41+01:00 · st · Hallo\n```\n";
+        let a = lesen("0005-z.md", t).unwrap();
+        assert_eq!(a.zeiten[0].ende.as_deref(), Some("2026-10-25 02:10+01:00"));
+        assert_eq!(a.zeiten[2].beginn, "2026-10-25 06:41+00:00", "ISO in Dateiform");
+        assert_eq!(a.kommentare[0].zeitpunkt, "2026-10-25 07:41+01:00");
+        let neu = schreiben(&a);
+        assert!(neu.contains("2026-10-25 02:33+02:00 · 2026-10-25 02:10+01:00 · st\n2026-10-18 09:00 · 2026-10-18 10:42 · cl\n"), "{neu}");
+        assert_eq!(schreiben(&lesen("0005-z.md", &neu).unwrap()), neu);
+        assert!(lesen("0005-z.md", &t.replace("02:33+02:00", "02:33+2")).is_err());
     }
 
     #[test]

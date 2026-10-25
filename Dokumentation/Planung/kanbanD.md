@@ -330,8 +330,8 @@ zuletzt: 2026-10-25
 | I0071 | Interaction | D0006 | Messbasis letzte N Tage | gruen | US-1..US-2 |  |  |  | I0069 | R00083 | Auftrag 2026-10-24: gleitendes Fenster statt Kalenderzeitraum, Standard 90, nie vor Rechnen ab und erster Aufgabe |
 | B0235 | Bubble | I0071 | Fensterlänge am Board | gruen | Test gruen | report-filter window-days ↔ Berichtsfilter.messbasis_tage |  |  |  |  |  |
 | B0236 | Bubble | I0071 | Prognose aus dem Fenster | gruen | Test gruen | jetzt, N, Rechnen ab, erste Aufgabe → Tagesreihe; Feld in der Filterbox; Cache-Schlüssel |  |  |  |  |  |
-| I0072 | Interaction | D0003 | Zeitpunkte mit Zeitzone | rot | US-1..US-3 |  |  |  | I0011 | R00084 | Feedback 2026-10-25 P7/B1: Versatz in Datei und API, Rechnen über UTC |
-| B0237 | Bubble | I0072 | Zeitpunkt lesen und schreiben mit Versatz | rot | Test gruen | Text (mit/ohne Versatz, ISO) → Zeitpunkt; jetzt() mit Versatz; minuten über UTC |  |  |  |  |  |
+| I0072 | Interaction | D0003 | Zeitpunkte mit Zeitzone | gelb | US-1..US-3 |  |  |  | I0011 | R00084 | Feedback 2026-10-25 P7/B1: Versatz in Datei und API, Rechnen über UTC |
+| B0237 | Bubble | I0072 | Zeitpunkt lesen und schreiben mit Versatz | gruen | Test gruen | Text (mit/ohne Versatz, ISO) → Zeitpunkt; jetzt() mit Versatz; minuten über UTC |  |  |  |  |  |
 | B0238 | Bubble | I0072 | Schreiber und Vergleiche über Zeitpunkt | rot | Test gruen | Timer, Nachtrag, Korrektur, Kommentar, Archiv, Berichte → Versatz in der Datei |  |  |  |  |  |
 | B0239 | Bubble | I0072 | Client rechnet mit Versatz | rot | Test gruen | zeitMs mit Versatz; Anzeige HH:MM in Ortszeit |  |  |  |  |  |
 | I0073 | Interaction | D0002 | Live-Verbindung mit Herzschlag | rot | US-1..US-3 |  |  |  | I0011 | R00085 | Feedback 2026-10-25 P4: sichtbarer Herzschlag, Wächter verbindet neu |
