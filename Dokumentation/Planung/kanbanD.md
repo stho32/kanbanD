@@ -5,7 +5,7 @@ vision: Anforderungen/R00000-vision.md
 kanban: {folder: /home/shoff/kanbanD-test, board: entwicklung, application: kd}
 wireframes: Dokumentation/Wireframes/
 sprache: de
-zuletzt: 2026-10-24
+zuletzt: 2026-10-25
 ---
 
 # WBS — kanbanD
@@ -14,14 +14,14 @@ zuletzt: 2026-10-24
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
-| D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
+| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
 | D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
-| D0007 | Dialog | A0001 | Agenten-Schnittstelle | gruen | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
+| D0007 | Dialog | A0001 | Agenten-Schnittstelle | gelb | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | D0008 | Dialog | A0001 | WBS-Sicht | gruen | alle Interactions gruen |  |  |  |  | R00054 | WBS einer registrierten Anwendung als eingerückte Tabelle mit Stand; schreibt Status und Knoten ins Arbeits-Repository ohne Commit |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
 | B0001 | Bubble | I0001 | Startargumente lesen | gruen | Test gruen | argv → Startauftrag (Ordner, Port, Host, Browser ja/nein) | 0,5-1 |  |  |  |  |
@@ -330,6 +330,43 @@ zuletzt: 2026-10-24
 | I0071 | Interaction | D0006 | Messbasis letzte N Tage | gruen | US-1..US-2 |  |  |  | I0069 | R00083 | Auftrag 2026-10-24: gleitendes Fenster statt Kalenderzeitraum, Standard 90, nie vor Rechnen ab und erster Aufgabe |
 | B0235 | Bubble | I0071 | Fensterlänge am Board | gruen | Test gruen | report-filter window-days ↔ Berichtsfilter.messbasis_tage |  |  |  |  |  |
 | B0236 | Bubble | I0071 | Prognose aus dem Fenster | gruen | Test gruen | jetzt, N, Rechnen ab, erste Aufgabe → Tagesreihe; Feld in der Filterbox; Cache-Schlüssel |  |  |  |  |  |
+| I0072 | Interaction | D0003 | Zeitpunkte mit Zeitzone | rot | US-1..US-3 |  |  |  | I0011 | R00084 | Feedback 2026-10-25 P7/B1: Versatz in Datei und API, Rechnen über UTC |
+| B0237 | Bubble | I0072 | Zeitpunkt lesen und schreiben mit Versatz | rot | Test gruen | Text (mit/ohne Versatz, ISO) → Zeitpunkt; jetzt() mit Versatz; minuten über UTC |  |  |  |  |  |
+| B0238 | Bubble | I0072 | Schreiber und Vergleiche über Zeitpunkt | rot | Test gruen | Timer, Nachtrag, Korrektur, Kommentar, Archiv, Berichte → Versatz in der Datei |  |  |  |  |  |
+| B0239 | Bubble | I0072 | Client rechnet mit Versatz | rot | Test gruen | zeitMs mit Versatz; Anzeige HH:MM in Ortszeit |  |  |  |  |  |
+| I0073 | Interaction | D0002 | Live-Verbindung mit Herzschlag | rot | US-1..US-3 |  |  |  | I0011 | R00085 | Feedback 2026-10-25 P4: sichtbarer Herzschlag, Wächter verbindet neu |
+| B0240 | Bubble | I0073 | Herzschlag im Ereignisstrom | rot | Test gruen | Takt 15 s → event herzschlag |  |  |  |  |  |
+| B0241 | Bubble | I0073 | Wächter im Client | rot | Test gruen | letztes Ereignis, Zustand, sichtbar/online → neu verbinden mit Rückzug, nachladen |  |  |  |  |  |
+| I0074 | Interaction | D0007 | Zug ohne Index landet oben | rot | US-1..US-2 |  |  |  |  | R00086 | Feedback 2026-10-25 P1/B7: ohne Index oben, bewusst LIFO |
+| B0242 | Bubble | I0074 | Einfügen oben ohne Index | rot | Test gruen | bewegen/bewegen-mehrere ohne index → Position 0, Anfragereihenfolge |  |  |  |  |  |
+| I0075 | Interaction | D0007 | Reservierungen und Ziehen | rot | US-1..US-4 |  |  |  | I0074, I0072 | R00087 | Feedback 2026-10-25 P2: Instanz-GUID, Reservierung 24 h, ziehen atomar, Liste aller Reservierungen |
+| B0243 | Bubble | I0075 | Reservierung an der Aufgabe | rot | Test gruen | reservation ↔ Aufgabe.reservierung; gültig 24 h |  |  |  |  |  |
+| B0244 | Bubble | I0075 | Reservieren und Freigeben über die API | rot | Test gruen | POST/DELETE …/reservierung mit Instanz → 200/409/404 |  |  |  |  |  |
+| B0245 | Bubble | I0075 | Ziehen atomar | rot | Test gruen | von, nach? → oberste freie Karte reserviert, zugeordnet, gezogen, ein Commit |  |  |  |  |  |
+| B0246 | Bubble | I0075 | Reservierung in der Oberfläche | rot | Test gruen | Schloss auf Karte, Detail mit freigeben, Liste aller Reservierungen |  |  |  |  |  |
+| I0076 | Interaction | D0002 | Signal auffällig und Signale oben | rot | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |
+| B0247 | Bubble | I0076 | Karte in Signalfarbe | rot | Test gruen | Signale → Streifen, Hintergrundton, größere Fackel |  |  |  |  |  |
+| B0248 | Bubble | I0076 | Schalter Signale oben | rot | Test gruen | Spalte → Anzeige erst mit Signal; Zug-Sperre; localStorage |  |  |  |  |  |
+| I0077 | Interaction | D0002 | Gesamtzeit auf der Karte | rot | US-1..US-3 |  |  |  | I0072 | R00089 | Feedback 2026-10-25 P6: Σ h:mm unten, leer bei 0, live |
+| B0249 | Bubble | I0077 | Summe der Zeiten | rot | Test gruen | zeiten, jetzt → Summe gesamt und je Person |  |  |  |  |  |
+| B0250 | Bubble | I0077 | Σ auf der Karte live | rot | Test gruen | Summe → .r3, Tooltip, 1-s-Takt |  |  |  |  |  |
+| I0078 | Interaction | D0007 | Zeiten-API mit Beginn, Ende und Kennung | rot | US-1..US-3 |  |  |  | I0072 | R00090 | Feedback 2026-10-25 P8/P9: POST {beginn, ende, wer?}, Kennung wer@beginn |
+| B0251 | Bubble | I0078 | Nachtrag mit Beginn und Ende | rot | Test gruen | POST {beginn, ende, wer?} | {dauer} → Eintrag |  |  |  |  |  |
+| B0252 | Bubble | I0078 | Kennung statt Index | rot | Test gruen | wer@beginn → PATCH/DELETE; Oberfläche über Kennung |  |  |  |  |  |
+| I0079 | Interaction | D0007 | Einstellungen lesen und Personen einzeln pflegen | rot | US-1..US-3 |  |  |  |  | R00091 | Feedback 2026-10-25 P10: GET /api/einstellungen, Sammlung /api/personen |
+| B0253 | Bubble | I0079 | Einstellungen lesen | rot | Test gruen | GET /api/einstellungen → Form wie PUT |  |  |  |  |  |
+| B0254 | Bubble | I0079 | Personen einzeln | rot | Test gruen | POST/PATCH/DELETE(stilllegen) /api/personen |  |  |  |  |  |
+| I0080 | Interaction | D0007 | API aufräumen: Antwortform, Archiv, Filter | rot | US-1..US-3 |  |  |  | I0075 | R00092 | Feedback 2026-10-25 P12-14: Objekt direkt, archivierte weg, Filterparameter |
+| B0255 | Bubble | I0080 | Karte direkt | rot | Test gruen | GET /api/aufgaben/{nr} → Karte mit pfad, text |  |  |  |  |  |
+| B0256 | Bubble | I0080 | Archivierte aus Board-Antworten | rot | Test gruen | Board → Spalten ohne archivierte; ?archivierte=ja |  |  |  |  |  |
+| B0257 | Bubble | I0080 | Filter an GET /api/aufgaben | rot | Test gruen | board, spalte, klasse, signal, zustaendig, reserviert, archivierte → Liste |  |  |  |  |  |
+| I0081 | Interaction | D0003 | Durchläufe als Daten | rot | US-1..US-2 |  |  |  | I0078 | R00094 | Feedback 2026-10-25 P15: Block kanbanD-runs, POST …/durchlaeufe, Tabelle im Detail |
+| B0258 | Bubble | I0081 | Block kanbanD-runs | rot | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
+| B0259 | Bubble | I0081 | Durchlauf über die API | rot | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |
+| B0260 | Bubble | I0081 | Durchläufe im Detail | rot | Test gruen | Durchläufe → Tabelle, befund in Warnfarbe |  |  |  |  |  |
+| I0082 | Interaction | D0007 | OpenAPI-Beschreibung | rot | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |
+| B0261 | Bubble | I0082 | Probe utoipa | rot | Test gruen | Router + Enum + Pfadparameter → Schema |  |  |  |  |  |
+| B0262 | Bubble | I0082 | Beschreibung aller Routen | rot | Test gruen | Router → /api/openapi.json, Accept-Weiterleitung, Vollständigkeitstest |  |  |  |  |  |
 
 ## Offene Fragen
 
