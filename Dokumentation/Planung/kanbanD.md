@@ -350,9 +350,9 @@ zuletzt: 2026-10-25
 | I0077 | Interaction | D0002 | Gesamtzeit auf der Karte | gruen | US-1..US-3 |  |  |  | I0072 | R00089 | Feedback 2026-10-25 P6: Σ h:mm unten, leer bei 0, live |
 | B0249 | Bubble | I0077 | Summe der Zeiten | gruen | Test gruen | zeiten, jetzt → Summe gesamt und je Person |  |  |  |  |  |
 | B0250 | Bubble | I0077 | Σ auf der Karte live | gruen | Test gruen | Summe → .r3, Tooltip, 1-s-Takt |  |  |  |  |  |
-| I0078 | Interaction | D0007 | Zeiten-API mit Beginn, Ende und Kennung | gelb | US-1..US-3 |  |  |  | I0072 | R00090 | Feedback 2026-10-25 P8/P9: POST {beginn, ende, wer?}, Kennung wer@beginn |
+| I0078 | Interaction | D0007 | Zeiten-API mit Beginn, Ende und Kennung | gruen | US-1..US-3 |  |  |  | I0072 | R00090 | Feedback 2026-10-25 P8/P9: POST {beginn, ende, wer?}, Kennung wer@beginn |
 | B0251 | Bubble | I0078 | Nachtrag mit Beginn und Ende | gruen | Test gruen | POST {beginn, ende, wer?} | {dauer} → Eintrag |  |  |  |  |  |
-| B0252 | Bubble | I0078 | Kennung statt Index | rot | Test gruen | wer@beginn → PATCH/DELETE; Oberfläche über Kennung |  |  |  |  |  |
+| B0252 | Bubble | I0078 | Kennung statt Index | gruen | Test gruen | wer@beginn → PATCH/DELETE; Oberfläche über Kennung |  |  |  |  |  |
 | I0079 | Interaction | D0007 | Einstellungen lesen und Personen einzeln pflegen | rot | US-1..US-3 |  |  |  |  | R00091 | Feedback 2026-10-25 P10: GET /api/einstellungen, Sammlung /api/personen |
 | B0253 | Bubble | I0079 | Einstellungen lesen | rot | Test gruen | GET /api/einstellungen → Form wie PUT |  |  |  |  |  |
 | B0254 | Bubble | I0079 | Personen einzeln | rot | Test gruen | POST/PATCH/DELETE(stilllegen) /api/personen |  |  |  |  |  |

@@ -1,6 +1,6 @@
 ---
 id: R00090
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -30,13 +30,13 @@ Ein Agent trägt Zeitblöcke in einem Aufruf nach und korrigiert genau den Eintr
 
 ## Akzeptanzkriterien
 
-- [ ] `POST {beginn: "2026-10-25 05:57+01:00", ende: "2026-10-25 07:40+01:00", wer: "entw"}` → ein Eintrag 1:43 für entw, ein Commit
-- [ ] `POST {dauer: "0:45"}` wirkt wie bisher
-- [ ] `POST {dauer, beginn}` → `400`; Ende vor Beginn → `400`; `wer: "xyz"` → `400`
-- [ ] Zweimal derselbe `{beginn, wer}` → zweites Mal `409`
-- [ ] `PATCH /zeiten/entw@2026-10-25T05:57+01:00 {ende: …}` korrigiert genau diesen Eintrag, auch wenn vorher ein anderer Eintrag davor eingefügt wurde
-- [ ] `DELETE` mit unbekannter Kennung → `404`
-- [ ] Oberfläche: Korrigieren und Löschen in der Zeitliste funktionieren (E2E)
+- [x] `POST {beginn: "2026-10-25 05:57+01:00", ende: "2026-10-25 07:40+01:00", wer: "entw"}` → ein Eintrag 1:43 für entw, ein Commit
+- [x] `POST {dauer: "0:45"}` wirkt wie bisher
+- [x] `POST {dauer, beginn}` → `400`; Ende vor Beginn → `400`; `wer: "xyz"` → `400`
+- [x] Zweimal derselbe `{beginn, wer}` → zweites Mal `409`
+- [x] `PATCH /zeiten/entw@2026-10-25T05:57+01:00 {ende: …}` korrigiert genau diesen Eintrag, auch wenn vorher ein anderer Eintrag davor eingefügt wurde
+- [x] `DELETE` mit unbekannter Kennung → `404`
+- [x] Oberfläche: Korrigieren und Löschen in der Zeitliste funktionieren (E2E)
 
 ## Betroffene Verzeichnisstruktur
 

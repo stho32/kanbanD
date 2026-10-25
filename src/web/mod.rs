@@ -106,7 +106,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/zurueckholen", post(zurueckholen))
         .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/api/aufgaben/{nr}/anhaenge/{name}", get(anhang_lesen).delete(anhang_entfernen))
-        .route("/api/aufgaben/{nr}/zeiten/{i}", axum::routing::patch(zeit_korrigieren).delete(zeit_loeschen))
+        .route("/api/aufgaben/{nr}/zeiten/{kennung}", axum::routing::patch(zeit_korrigieren).delete(zeit_loeschen))
         .route("/api/aufgaben/{nr}/teilaufgaben/{i}", axum::routing::patch(teilaufgabe_aendern).delete(teilaufgabe_entfernen))
         .merge(statisch::router())
         .with_state(app)
@@ -464,12 +464,12 @@ async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u
     als_person(&app, wer, move |k, p| k.zeit_nachtragen(p, nr, &n)).await
 }
 
-async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(z): Json<Zeitkorrektur>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.zeit_korrigieren(p, nr, i, &z)).await
+async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, kennung)): Path<(u32, String)>, Json(z): Json<Zeitkorrektur>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_korrigieren(p, nr, &kennung, &z)).await
 }
 
-async fn zeit_loeschen(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.zeit_loeschen(p, nr, i)).await
+async fn zeit_loeschen(State(app): State<App>, Wer(wer): Wer, Path((nr, kennung)): Path<(u32, String)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_loeschen(p, nr, &kennung)).await
 }
 
 async fn anhaenge(State(app): State<App>, Path(nr): Path<u32>) -> Result<Response, Fehler> {

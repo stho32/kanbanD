@@ -46,7 +46,7 @@ async fn jeder_beschriebene_endpunkt_existiert() {
     let (_, eps) = senden(Method::GET, &lauf.adresse, "api/endpunkte", "st", json!(null)).await;
     assert!(eps.as_array().unwrap().len() >= 30);
     for e in eps.as_array().unwrap() {
-        let pfad = e["pfad"].as_str().unwrap().replace("{slug}", "entwicklung").replace("{nr}", "1").replace("{i}", "0").replace("{name}", "a.txt");
+        let pfad = e["pfad"].as_str().unwrap().replace("{slug}", "entwicklung").replace("{nr}", "1").replace("{kennung}", "st@2026-01-01T00%3A00%2B01%3A00").replace("{name}", "a.txt");
         if pfad == "/api/ereignisse" {
             continue;
         }

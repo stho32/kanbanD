@@ -23,9 +23,10 @@ fn name(k: &Kanban, kuerzel: &str) -> String {
     k.ordner().einstellungen().ok().flatten().and_then(|e| e.person(kuerzel).map(|p| p.name.clone())).unwrap_or_else(|| kuerzel.into())
 }
 
-fn eintrag(a: &mut Aufgabe, i: usize) -> Result<&mut Zeiteintrag, Fehler> {
+/// Der Eintrag zur Kennung `wer@beginn` (R00090) — unabhängig davon, wo er im Block steht.
+fn eintrag<'a>(a: &'a mut Aufgabe, kennung: &str) -> Result<&'a mut Zeiteintrag, Fehler> {
     let nr = a.nummer;
-    a.zeiten.get_mut(i).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat keinen Zeiteintrag an Position {i}")))
+    a.zeiten.iter_mut().find(|z| z.hat_kennung(kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat keinen Zeiteintrag {kennung}")))
 }
 
 impl Kanban {
@@ -56,7 +57,7 @@ impl Kanban {
         })
     }
 
-    pub fn zeit_korrigieren(&self, wer: &Person, nr: u32, i: usize, k: &Zeitkorrektur) -> Result<Aufgabe, Fehler> {
+    pub fn zeit_korrigieren(&self, wer: &Person, nr: u32, kennung: &str, k: &Zeitkorrektur) -> Result<Aufgabe, Fehler> {
         // gespeichert wird in Ortszeit mit Versatz, gleich in welcher Form die Eingabe kam (R00084)
         let lesen = |z: &Option<String>| -> Result<Option<String>, Fehler> {
             z.as_deref()
@@ -65,7 +66,7 @@ impl Kanban {
         };
         let (beginn, ende) = (lesen(&k.beginn)?, lesen(&k.ende)?);
         self.aufgabe_schreiben(wer, nr, |a| {
-            let z = eintrag(a, i)?;
+            let z = eintrag(a, kennung)?;
             if ende.is_some() && z.ende.is_none() {
                 return Err(Fehler::Ungueltig("Ein laufender Eintrag bekommt sein Ende beim Stoppen".into()));
             }
@@ -85,13 +86,13 @@ impl Kanban {
         })
     }
 
-    pub fn zeit_loeschen(&self, wer: &Person, nr: u32, i: usize) -> Result<Aufgabe, Fehler> {
+    pub fn zeit_loeschen(&self, wer: &Person, nr: u32, kennung: &str) -> Result<Aufgabe, Fehler> {
         self.aufgabe_schreiben(wer, nr, |a| {
-            let z = eintrag(a, i)?.clone();
+            let z = eintrag(a, kennung)?.clone();
             let Some(ende) = &z.ende else {
                 return Err(Fehler::Konflikt("Der Eintrag läuft noch — erst stoppen".into()));
             };
-            a.zeiten.remove(i);
+            a.zeiten.retain(|x| x != &z);
             Ok(Some(format!("#{nr} Zeit gelöscht ({}, {})", name(self, &z.wer), uhr::hm(uhr::minuten(&z.beginn, ende).unwrap_or(0)))))
         })
     }

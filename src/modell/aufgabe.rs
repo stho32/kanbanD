@@ -8,12 +8,25 @@ pub struct Teilaufgabe {
     pub erledigt: bool,
 }
 
-/// Eine Zeile im Block `kanbanD-time`. Zeitpunkte als `JJJJ-MM-TT HH:MM` in Ortszeit; ohne Ende läuft sie.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Eine Zeile im Block `kanbanD-time`. Zeitpunkte in Dateiform (R00084); ohne Ende läuft sie.
+/// In der API trägt sie zusätzlich ihre `kennung` (R00090).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Zeiteintrag {
     pub wer: String,
     pub beginn: String,
     pub ende: Option<String>,
+}
+
+impl Serialize for Zeiteintrag {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut z = s.serialize_struct("Zeiteintrag", 4)?;
+        z.serialize_field("wer", &self.wer)?;
+        z.serialize_field("beginn", &self.beginn)?;
+        z.serialize_field("ende", &self.ende)?;
+        z.serialize_field("kennung", &self.kennung())?;
+        z.end()
+    }
 }
 
 impl Zeiteintrag {
@@ -22,6 +35,12 @@ impl Zeiteintrag {
     pub fn kennung(&self) -> String {
         let beginn = crate::uhr::Zeitpunkt::lesen(&self.beginn).map(|z| z.iso()).unwrap_or_else(|| self.beginn.clone());
         format!("{}@{beginn}", self.wer)
+    }
+
+    /// Trifft die Kennung diesen Eintrag? Der Beginn darf in jeder lesbaren Form kommen (`Z`, anderer Versatz, Leerzeichen).
+    pub fn hat_kennung(&self, kennung: &str) -> bool {
+        let normal = kennung.split_once('@').and_then(|(wer, zeit)| crate::uhr::Zeitpunkt::lesen(zeit).map(|z| format!("{wer}@{}", z.iso())));
+        self.kennung() == normal.as_deref().unwrap_or(kennung)
     }
 }
 
@@ -419,6 +438,17 @@ impl Aufgabe {
 
 #[cfg(test)]
 mod tests {
+    // R00090: Kennung aus Person und Beginn als ISO mit Versatz; Altbestand mit dem Versatz seiner Ortszeit-Deutung
+    #[test]
+    fn kennung_eines_zeiteintrags() {
+        let z = |beginn: &str| super::Zeiteintrag { wer: "entw".into(), beginn: beginn.into(), ende: None };
+        assert_eq!(z("2026-10-25 05:57+01:00").kennung(), "entw@2026-10-25T05:57+01:00");
+        assert_eq!(z("2026-10-25 04:57+00:00").kennung(), "entw@2026-10-25T04:57+00:00");
+        let alt = z("2026-10-18 09:00").kennung();
+        assert!(alt.starts_with("entw@2026-10-18T09:00") && (alt.ends_with("+02:00") || alt.len() == "entw@2026-10-18T09:00+00:00".len()), "{alt}");
+        assert_eq!(serde_json::to_value(z("2026-10-25 05:57+01:00")).unwrap()["kennung"], "entw@2026-10-25T05:57+01:00", "in der API");
+    }
+
     // R00087: 24 h ab seit, auf die Minute
     #[test]
     fn reservierung_haelt_24_stunden() {

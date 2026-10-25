@@ -863,16 +863,16 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert });
         return;
       }
-      case 'zeit-edit': u.zeitEdit = +arg; u.fokus = '#z-beginn'; break;
+      case 'zeit-edit': u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
       case 'zeit-ok': {
         if (ichNoetig()) break;
         const ende = $('#z-ende');
         const korrektur = { beginn: $('#z-beginn').value.trim(), ...(ende ? { ende: ende.value.trim() } : {}) };
         u.zeitEdit = null;
-        await schreiben('PATCH', `/api/aufgaben/${u.offen}/zeiten/${arg}`, korrektur);
+        await schreiben('PATCH', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`, korrektur);
         return;
       }
-      case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${arg}`); return;
+      case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`); return;
       case 'spalte-archivieren': {
         if (ichNoetig()) break;
         const nummern = S.board.spalten.find(sp => sp.name === arg).aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; });
