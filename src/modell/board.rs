@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Spalte {
     pub name: String,
     pub grenze: Option<u32>,
@@ -24,7 +24,7 @@ pub fn ist_hexfarbe(s: &str) -> bool {
     s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Linie {
     #[default]
@@ -33,7 +33,7 @@ pub enum Linie {
     Gepunktet,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Staerke {
     Fein,
@@ -43,7 +43,7 @@ pub enum Staerke {
 }
 
 /// Ein fester Termin des Boards, gezeichnet in „Wie lange noch“.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Termin {
     pub name: String,
     pub datum: String,
@@ -76,7 +76,7 @@ impl Termin {
 
 /// Einstellungen des Projekt-Fever-Charts (R00078): Puffer in Tagen der Einheit, Perzentil der Prognose,
 /// Einheit (5 = Arbeitstage, 7 = Kalendertage), Zonengrenzen als Verbrauch in % bei 0 und bei 100 % Fortschritt.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Fieber {
     #[serde(default)]
     pub puffer: Option<u32>,
@@ -155,7 +155,7 @@ pub const ZEITRAEUME: [&str; 11] = ["heute", "gestern", "woche", "vorwoche", "mo
 
 /// Filter der Berichte (R00043), seit R00081 am Board: Zeitraum (mit von/bis bei „eigen“), ausgeschlossene Klassen
 /// (`""` = ohne Klasse) und Spalten, nur diese Personen und Labels. Die Namen sind die des Browsers.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Berichtsfilter {
     #[serde(default = "Berichtsfilter::zeitraum_standard")]
@@ -212,7 +212,7 @@ pub fn ist_datum(s: &str) -> bool {
 }
 
 /// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, feste Termine und gebundene Anwendungen.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Board {
     pub slug: String,
     pub titel: String,
@@ -319,7 +319,7 @@ impl Board {
 }
 
 /// Eine Spalte in der neuen Reihenfolge; `alt` ist der bisherige Name, dessen Aufgaben sie übernimmt.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SpaltenAenderung {
     pub name: String,
     pub alt: Option<String>,

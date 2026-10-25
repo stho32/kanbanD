@@ -181,7 +181,7 @@ pub fn naechste_id(praefix: char, staende: &[String]) -> String {
 }
 
 /// `POST /api/wbs/{kürzel}/knoten` — fehlende Felder sind leer, damit die Prüfung sie mit 400 und klarer Meldung ablehnt.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, utoipa::ToSchema)]
 #[serde(default)]
 pub struct NeuerKnoten {
     pub ebene: String,

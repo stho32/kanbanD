@@ -67,13 +67,13 @@ pub struct Kanban {
     timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BoardKopf {
     pub slug: String,
     pub titel: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Zustand {
     pub ordner: String,
     pub eingerichtet: bool,

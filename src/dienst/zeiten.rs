@@ -5,17 +5,23 @@ use crate::uhr::{self, Zeitpunkt};
 use serde::Deserialize;
 
 /// Rumpf von `POST …/zeiten` (R00090): entweder `dauer` (endet jetzt) oder `beginn` und `ende`; `wer` bucht für eine andere Person.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Zeitnachtrag {
+    /// Dauer, z. B. 0:45, 1,5 (Stunden) oder 90 min — der Eintrag endet jetzt
     pub dauer: Option<String>,
+    /// Zeitpunkt JJJJ-MM-TT HH:MM, optional mit ±HH:MM oder Z, auch ISO mit T; ohne Versatz Ortszeit
     pub beginn: Option<String>,
+    /// wie beginn; nach dem Beginn, nicht in der Zukunft
     pub ende: Option<String>,
+    /// Kürzel der Person, für die gebucht wird; ohne: die handelnde
     pub wer: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Zeitkorrektur {
+    /// Zeitpunkt JJJJ-MM-TT HH:MM, optional mit ±HH:MM oder Z, auch ISO mit T; gespeichert in Ortszeit mit Versatz
     pub beginn: Option<String>,
+    /// wie beginn; nur für einen beendeten Eintrag
     pub ende: Option<String>,
 }
 

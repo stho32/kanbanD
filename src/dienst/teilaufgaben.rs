@@ -3,7 +3,7 @@ use crate::fehler::Fehler;
 use crate::modell::{Aufgabe, Person, Teilaufgabe};
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Teilaufgabenaenderung {
     pub erledigt: Option<bool>,
     pub text: Option<String>,

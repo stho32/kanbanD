@@ -4,38 +4,12 @@ use gemeinsam::{git, senden};
 use reqwest::Method;
 use serde_json::{Value, json};
 
-/// (Pfad, Methoden) aller Routen aus dem Router-Quelltext — die Tabelle muss sie vollständig beschreiben.
-fn routen() -> Vec<(String, Vec<String>)> {
-    let quelle = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/web/mod.rs")).unwrap();
-    quelle
-        .lines()
-        .filter_map(|z| z.trim().strip_prefix(".route(\"/api/"))
-        .map(|rest| {
-            let (pfad, rumpf) = rest.split_once('"').unwrap();
-            let methoden = ["get", "post", "put", "patch", "delete"].iter().filter(|m| rumpf.contains(&format!("{m}("))).map(|m| m.to_uppercase()).collect();
-            (format!("/api/{pfad}"), methoden)
-        })
-        .collect()
-}
-
+/// Router und OpenAPI kommen aus derselben Quelle (R00093): eine `/api`-Route am OpenApiRouter vorbei wäre unbeschrieben.
 #[test]
-fn jede_route_ist_beschrieben_und_jede_beschreibung_eine_route() {
-    let tabelle: Vec<(String, String)> = kanband::web::endpunkte::ENDPUNKTE.iter().map(|e| (e.methode.to_string(), e.pfad.split('?').next().unwrap().to_string())).collect();
-    let mut aus_router = vec![];
-    for (pfad, methoden) in routen() {
-        if pfad == "/api/endpunkte" {
-            continue;
-        }
-        for m in methoden {
-            aus_router.push((m, pfad.clone()));
-        }
-    }
-    for r in &aus_router {
-        assert!(tabelle.contains(r), "nicht beschrieben: {r:?}");
-    }
-    for t in &tabelle {
-        assert!(aus_router.contains(t), "beschrieben, aber nicht im Router: {t:?}");
-    }
+fn keine_api_route_am_openapi_router_vorbei() {
+    let quelle = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/web/mod.rs")).unwrap();
+    let vorbei: Vec<&str> = quelle.lines().filter(|z| z.trim().starts_with(".route(\"/api")).collect();
+    assert!(vorbei.is_empty(), "Routen ohne #[utoipa::path]: {vorbei:?}");
 }
 
 #[tokio::test]

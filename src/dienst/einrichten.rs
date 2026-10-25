@@ -5,14 +5,14 @@ use crate::format::{board, einstellungen};
 use crate::modell::{Art, Board, Einstellungen, Person, Quellen, Spalte, kuerzel_gueltig, slug};
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct NeuePerson {
     pub kuerzel: String,
     pub name: String,
 }
 
 /// Was die Einrichtungsseite schickt.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct Einrichtung {
     pub ich: NeuePerson,
     #[serde(default)]

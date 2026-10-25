@@ -6,7 +6,7 @@ use crate::pruefungen::{Knotenstaende, Knotenstand, Warnung, ausgeloest, gepruef
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct Bewegung {
     pub nummer: u32,
     pub spalte: String,
@@ -14,7 +14,7 @@ pub struct Bewegung {
 }
 
 /// Antwort von `POST …/bewegen`: ob sich etwas geändert hat und was die Prüfungen der verlassenen Spalte melden.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct Bewegt {
     pub bewegt: bool,
     pub warnungen: Vec<Warnung>,

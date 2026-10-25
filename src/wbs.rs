@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 /// Eine Zeile der Knotentabelle.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct WbsKnoten {
     pub id: String,
     pub ebene: String,
@@ -87,7 +87,7 @@ impl WbsTabelle {
 }
 
 /// Der Stand des Ganzen über die Slice-Liste, dazu woran gerade gearbeitet wird.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Stand {
     /// zählende Slices je gerechnetem Status; `gelb` zählt voll in den Rest
     pub gruen: usize,

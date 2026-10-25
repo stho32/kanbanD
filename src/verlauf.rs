@@ -5,14 +5,14 @@ use chrono::{NaiveDate, NaiveDateTime};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Tag {
     pub datum: String,
     pub offen: usize,
     pub umfang: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Durchlauf {
     pub nummer: u32,
     pub eintritt: String,
@@ -20,7 +20,7 @@ pub struct Durchlauf {
     pub tage: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Verlauf {
     pub tage: Vec<Tag>,
     pub durchlauf: Vec<Durchlauf>,
@@ -29,7 +29,7 @@ pub struct Verlauf {
 }
 
 /// Ein Spaltenwechsel; `spalte: None` heißt vom Board genommen.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Wechsel {
     pub zeitpunkt: String,
     pub spalte: Option<String>,
@@ -37,7 +37,7 @@ pub struct Wechsel {
 
 /// Je Aufgabe die Wechsel; dazu, was die Rechnung je Phase braucht: Labels (`im-pair` für „Eingebettet in“) und `phases.skipped`,
 /// und ob sie in den Berichten zählt.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Bewegung {
     pub nummer: u32,
     pub wechsel: Vec<Wechsel>,
@@ -48,14 +48,14 @@ pub struct Bewegung {
 }
 
 /// Welche Phasen ein gebundenes Board hat und welche Spalte welche darstellt (`column-phases`, N:1).
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Phasenkarte {
     pub anwendung: String,
     pub folge: crate::phasen::Phasenfolge,
     pub spaltenphasen: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Bewegungen {
     pub spalten: Vec<String>,
     pub jetzt: String,

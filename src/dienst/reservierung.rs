@@ -10,14 +10,14 @@ use crate::uhr;
 use serde::{Deserialize, Serialize};
 
 /// Rumpf von `POST …/ziehen`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct Zug {
     pub von: String,
     pub nach: Option<String>,
 }
 
 /// Antwort von `POST …/ziehen`: die gezogene Aufgabe, woher, wohin und was die Prüfungen melden.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct Gezogen {
     pub aufgabe: Aufgabe,
     pub von: String,

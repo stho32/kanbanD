@@ -4,7 +4,7 @@ use crate::format::aufgabe;
 use crate::modell::Person;
 use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Anhang {
     pub name: String,
     pub groesse: u64,

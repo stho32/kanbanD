@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 const BUENDELN: Duration = Duration::from_millis(150);
 const EIGEN_GILT: Duration = Duration::from_secs(3);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Ereignis {
     /// relativ zum Ordner; bei fremden WBS-Dateien der volle Pfad
     pub pfade: Vec<String>,

@@ -88,7 +88,7 @@ pub enum Knotenstand {
 pub type Knotenstaende = BTreeMap<String, Knotenstand>;
 
 /// Eine nicht erfüllte Prüfung, wie die Antwort des Bewegens sie nennt.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Warnung {
     pub pruefung: String,
     pub text: String,

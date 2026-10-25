@@ -1,6 +1,6 @@
 ---
 id: R00093
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -28,11 +28,11 @@ Agenten (und Werkzeuge wie Generatoren oder Swagger UI) lesen Felder, Typen und 
 
 ## Akzeptanzkriterien
 
-- [ ] `GET /api/openapi.json` ist gültiges OpenAPI 3.1 (`openapi: 3.1.x`, alle `$ref` auflösbar)
-- [ ] Der Pfad `/api/boards/{slug}/ziehen` enthält `requestBody` mit `von`, `nach` und Antworten `200`, `400`, `404`
-- [ ] Das Schema `Person` hat `art` mit `enum: [human, agent]`
-- [ ] `curl -H 'Accept: application/json' /api` → `303` mit `Location: /api/openapi.json`
-- [ ] Test „jede Router-Route ist beschrieben“ ist grün und schlägt fehl, wenn eine Route ohne Beschreibung hinzukommt
+- [x] `GET /api/openapi.json` ist gültiges OpenAPI 3.1 (`openapi: 3.1.x`, alle `$ref` auflösbar)
+- [x] Der Pfad `/api/boards/{slug}/ziehen` enthält `requestBody` mit `von`, `nach` und Antworten `200`, `400`, `404`
+- [x] Das Schema `Person` hat `art` mit `enum: [human, agent]`
+- [x] `curl -H 'Accept: application/json' /api` → `303` mit `Location: /api/openapi.json`
+- [x] Test „jede Router-Route ist beschrieben“ ist grün und schlägt fehl, wenn eine Route ohne Beschreibung hinzukommt
 
 ## Betroffene Verzeichnisstruktur
 

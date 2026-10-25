@@ -7,12 +7,17 @@ use crate::uhr;
 use serde::Deserialize;
 
 /// Rumpf von `POST …/durchlaeufe`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct NeuerDurchlauf {
+    /// 1–40 Zeichen, ohne ·
     pub phase: String,
+    /// bestanden, befund oder entfaellt
     pub ergebnis: String,
+    /// Dauer, z. B. 0:45, 1,5 (Stunden) oder 90 min
     pub dauer: Option<String>,
+    /// eine Zeile; Umbrüche werden Leerzeichen
     pub text: Option<String>,
+    /// Kürzel der Person, für die der Durchlauf gilt; ohne: die handelnde
     pub wer: Option<String>,
 }
 

@@ -52,7 +52,7 @@ Mehrere Agenten an einem Board: jede laufende Instanz nennt im Header `X-KanbanD
 
 ## Für Agenten
 
-`GET /api` beschreibt alle Endpunkte, `GET /api/endpunkte` liefert sie als JSON. Schreibende Aufrufe nennen `X-KanbanD-Wer: <kürzel>`:
+`GET /api` beschreibt alle Endpunkte, `GET /api/openapi.json` vollständig als OpenAPI 3.1 mit Feldern, erlaubten Werten und Formaten (erzeugt aus den Rust-Typen; `GET /api` mit `Accept: application/json` leitet dorthin), `GET /api/endpunkte` knapp als JSON. Ein Objekt kommt direkt, eine Liste verpackt (`{aufgaben: […]}`); `GET /api/aufgaben` filtert über `board`, `spalte`, `klasse`, `signal`, `zustaendig`, `reserviert`, `archivierte`. Schreibende Aufrufe nennen `X-KanbanD-Wer: <kürzel>`:
 
 ```bash
 curl -X POST http://localhost:7420/api/aufgaben -H 'X-KanbanD-Wer: cl' \

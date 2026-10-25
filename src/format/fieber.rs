@@ -10,7 +10,7 @@ const KOPF: &str = "| Tag | erledigt | Umfang | P50 7T | P70 7T | P85 7T | P95 7
 const LEER: &str = "—";
 
 /// Ein gerechneter Tag; `ende7`/`ende5` je Perzentil 50, 70, 85, 95 in der 7- bzw. 5-Tage-Woche, `None` = keine Aussage.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Fiebertag {
     pub datum: String,
     pub erledigt: u32,
@@ -19,7 +19,7 @@ pub struct Fiebertag {
     pub ende5: [Option<String>; 4],
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Fieberabschnitt {
     pub schluessel: String,
     pub tage: Vec<Fiebertag>,

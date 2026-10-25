@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, utoipa::ToSchema)]
 pub struct Endpunkt {
     pub methode: &'static str,
     pub pfad: &'static str,
@@ -17,6 +17,9 @@ const fn e(methode: &'static str, pfad: &'static str, wer: bool, thema: &'static
 }
 
 pub const ENDPUNKTE: &[Endpunkt] = &[
+    e("GET", "/api", false, "API", "diese Beschreibung als Seite; mit Accept: application/json 303 auf /api/openapi.json"),
+    e("GET", "/api/openapi.json", false, "API", "die vollständige Beschreibung als OpenAPI 3.1 — Felder, erlaubte Werte, Formate und Fehlerformen"),
+    e("GET", "/api/endpunkte", false, "API", "diese Liste maschinenlesbar {methode, pfad, wer, thema, zweck}"),
     e("GET", "/api/zustand", false, "Ordner", "Ordner, eingerichtet?, Einstellungen, Boards, defekte Dateien"),
     e("POST", "/api/einrichten", false, "Ordner", "erster Start {ich, agenten, board, spalten, quellen}"),
     e("GET", "/api/wer", true, "Ordner", "die Person zum Header X-KanbanD-Wer"),
@@ -117,7 +120,7 @@ pub fn api_seite(adresse: &str) -> String {
 <style>html,body{{overflow:auto}}main{{padding:24px 32px;max-width:1100px}}.md{{white-space:pre-wrap}}</style></head>
 <body><header class="kz"><div class="kz-z1"><b>kanbanD · API</b> <span class="mono">für Agenten und Skripte</span></div><div class="kz-z3"><a class="kz-btn" href="/">zur Oberfläche</a></div></header>
 <main><h1 style="margin:0 0 8px;font-size:18px">Alles, was die Oberfläche kann, kann auch ein Agent.</h1>
-<p class="muted">Jeder schreibende Aufruf nennt im Header <span class="mono">X-KanbanD-Wer: &lt;kürzel&gt;</span> die handelnde Person aus <span class="mono">kanbanD.md</span>; kanbanD committet unter ihrem Namen. Lesen braucht keine Identität. Antworten sind JSON: ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (<span class="mono">{{"aufgaben": […]}}</span>), weil Listen Zusatzangaben tragen; Fehler <span class="mono">{{"fehler": "…"}}</span>. Maschinenlesbar: <a href="/api/endpunkte">/api/endpunkte</a>.</p>
+<p class="muted">Jeder schreibende Aufruf nennt im Header <span class="mono">X-KanbanD-Wer: &lt;kürzel&gt;</span> die handelnde Person aus <span class="mono">kanbanD.md</span>; kanbanD committet unter ihrem Namen. Lesen braucht keine Identität. Antworten sind JSON: ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (<span class="mono">{{"aufgaben": […]}}</span>), weil Listen Zusatzangaben tragen; Fehler <span class="mono">{{"fehler": "…"}}</span>. Maschinenlesbar: <b><a href="/api/openapi.json">/api/openapi.json</a></b> (OpenAPI 3.1 mit allen Feldern, Werten und Formaten), knapp: <a href="/api/endpunkte">/api/endpunkte</a>.</p>
 <p class="muted">Mehrere Agenten an einem Board: jede laufende Instanz wählt sich eine Kennung (z.&nbsp;B. eine GUID) und nennt sie im Header <span class="mono">X-KanbanD-Instanz</span>. <span class="mono">POST …/ziehen</span> nimmt atomar die oberste freie Karte einer Spalte, reserviert sie 24&nbsp;h für diese Instanz und zieht sie weiter — zwei Instanzen bekommen nie dieselbe Karte.</p>
 <pre class="md">curl -X POST {adresse}api/aufgaben -H 'X-KanbanD-Wer: cl' -H 'Content-Type: application/json' -d '{{"titel":"Dateiwächter","board":"entwicklung"}}'</pre>
 <table class="pt dicht" style="margin-top:16px"><thead><tr><th>Methode</th><th>Pfad</th><th>Wer</th><th>Zweck</th></tr></thead><tbody>{zeilen}</tbody></table></main></body></html>"#,

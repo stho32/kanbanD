@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// `PATCH /api/aufgaben/{nr}/wbs-effects` — fehlende Felder sind leer, damit die Prüfung sie mit 400 und klarer Meldung ablehnt.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 #[serde(default)]
 pub struct WirkungEingabe {
     pub application: String,
@@ -179,7 +179,7 @@ fn beschreibung(w: &Wirkung) -> String {
 }
 
 /// `GET /api/aufgaben/{nr}/wbs-effects`: eine Wirkung mit Position, Eintritt und Zielzustand (`null`: WBS nicht lesbar).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Wirkungsstand {
     pub i: usize,
     #[serde(flatten)]

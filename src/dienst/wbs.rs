@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 /// Ein Knoten, wie die WBS-Sicht ihn zeigt: die Zeile der Datei und was aus den Kindern folgt.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WbsZeile {
     #[serde(flatten)]
     pub knoten: WbsKnoten,
@@ -23,7 +23,7 @@ pub struct WbsZeile {
 }
 
 /// `GET /api/wbs/{kürzel}`.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WbsSicht {
     pub kuerzel: String,
     pub name: String,
@@ -81,7 +81,7 @@ impl Kanban {
 }
 
 /// `PATCH /api/wbs/{kürzel}/knoten/{id}`: die Knoten, deren Status sich in der Datei geändert hat.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WbsGeaendert {
     pub geaendert: Vec<String>,
 }
@@ -155,7 +155,7 @@ impl Kanban {
 }
 
 /// `POST /api/wbs/{kürzel}/knoten`: die ID des neuen Knotens.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WbsNeu {
     pub id: String,
 }

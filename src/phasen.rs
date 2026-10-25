@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// Eine Phase der Hauptspur: Name, „Eingebettet in“ (z. B. `im-pair`) und „Gleich wie“ (Name einer früheren Phase); leer heißt nicht gesetzt.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Phase {
     pub nr: u32,
     pub name: String,
@@ -14,7 +14,7 @@ pub struct Phase {
 }
 
 /// Die Phasen der Hauptspur in der Reihenfolge der Spalte `Nr`; die erste ist die Entwicklung.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Phasenfolge(Vec<Phase>);
 
 /// Spalten der Tabelle `## Phasen` ohne Kopfzeile — Datenmodell der Phasen-Datei (`/planung`).

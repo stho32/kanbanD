@@ -6,7 +6,7 @@ use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Person};
 use serde::Deserialize;
 
 /// Felder, die schon beim Anlegen gesetzt werden (Schnelleingabe).
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Angaben {
     pub klasse: Option<String>,
     pub zustaendige: Option<Vec<String>>,
@@ -17,7 +17,7 @@ pub struct Angaben {
     pub teilaufgaben: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct NeueAufgabe {
     pub titel: String,
     pub board: Option<String>,
@@ -27,7 +27,7 @@ pub struct NeueAufgabe {
 }
 
 /// Eine neue Aufgabe in einer Liste: nur der Titel oder Titel mit Angaben.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 #[serde(untagged)]
 pub enum Eintrag {
     Titel(String),
@@ -38,7 +38,7 @@ pub enum Eintrag {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct NeueAufgaben {
     pub titel: Vec<Eintrag>,
     pub board: Option<String>,

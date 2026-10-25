@@ -95,8 +95,9 @@ fn register_pruefen(anwendungen: &[Anwendung]) -> Result<(), Fehler> {
 }
 
 /// Rumpf von `POST /api/personen` (R00091); ohne `aktiv` ist die Person aktiv.
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize, utoipa::ToSchema)]
 pub struct Personenangabe {
+    /// 1–8 Kleinbuchstaben oder Ziffern
     pub kuerzel: String,
     pub name: String,
     pub art: Art,
@@ -104,7 +105,7 @@ pub struct Personenangabe {
 }
 
 /// Rumpf von `PATCH /api/personen/{kürzel}`: nur genannte Felder ändern sich.
-#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Deserialize, utoipa::ToSchema)]
 pub struct PersonAenderung {
     pub name: Option<String>,
     pub art: Option<Art>,

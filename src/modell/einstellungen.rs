@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Art {
     #[serde(rename = "human")]
@@ -9,7 +9,7 @@ pub enum Art {
     Agent,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Person {
     pub kuerzel: String,
     pub name: String,
@@ -17,7 +17,7 @@ pub struct Person {
     pub aktiv: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Klasse {
     pub schluessel: String,
     pub bezeichnung: String,
@@ -25,7 +25,7 @@ pub struct Klasse {
 }
 
 /// Ein Signal (R00076): hebt eine Aufgabe hervor; `bezeichnung` ist seine Bedeutung („Neue E-Mail“).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Signal {
     pub schluessel: String,
     pub bezeichnung: String,
@@ -36,7 +36,7 @@ pub struct Signal {
 pub const SIGNAL_FAELLIG: &str = "due";
 
 /// Eine registrierte Anwendung: ihr Arbeits-Repository mit WBS und Anforderungen, angesprochen über das Kürzel.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Anwendung {
     pub kuerzel: String,
     pub name: String,
@@ -45,7 +45,7 @@ pub struct Anwendung {
 }
 
 /// `sources`: `wbs`/`requirements` sind die Standardanwendung ohne Kürzel, `applications` das Register.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Quellen {
     pub wbs: String,
     pub anforderungen: String,
@@ -54,7 +54,7 @@ pub struct Quellen {
 }
 
 /// Inhalt von `kanbanD.md`: gilt für den ganzen Ordner.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Einstellungen {
     pub personen: Vec<Person>,
     pub klassen: Vec<Klasse>,

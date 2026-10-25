@@ -4,14 +4,14 @@ use crate::fehler::Fehler;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, utoipa::ToSchema)]
 pub struct Erreichbar {
     pub wbs: bool,
     pub anforderungen: bool,
 }
 
 /// Eine registrierte Anwendung, wie `GET /api/anwendungen` sie zeigt.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Registereintrag {
     pub name: String,
     pub wbs: String,

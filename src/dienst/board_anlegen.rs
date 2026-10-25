@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 pub const STANDARDSPALTEN: [&str; 3] = ["Zu erledigen", "In Arbeit", "Erledigt"];
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct NeuesBoard {
     pub titel: String,
     pub spalten: Option<Vec<String>>,

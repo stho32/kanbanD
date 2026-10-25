@@ -7,7 +7,7 @@ use serde::Serialize;
 use std::io;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct DefekteDatei {
     pub pfad: String,
     pub fehler: String,

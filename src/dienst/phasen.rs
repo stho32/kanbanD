@@ -8,7 +8,7 @@ use crate::pruefungen::unbekannte;
 use serde::Serialize;
 
 /// Die Phasen eines Boards: die Folge der ersten gebundenen Anwendung mit erreichbarer WBS und was am Board nicht stimmt.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Phasenstand {
     /// Kürzel der Anwendung, deren Folge gilt
     pub anwendung: String,
@@ -17,7 +17,7 @@ pub struct Phasenstand {
 }
 
 /// Ein Board, wie `GET /api/boards/{slug}` es zeigt: die Board-Datei und, wenn es gebunden ist, seine Phasen.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct BoardMitPhasen {
     #[serde(flatten)]
     pub board: Board,

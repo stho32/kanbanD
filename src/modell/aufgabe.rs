@@ -2,7 +2,7 @@ use super::{Anwendungen, Einstellungen, Herkunftsschluessel};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Teilaufgabe {
     pub text: String,
     pub erledigt: bool,
@@ -29,6 +29,26 @@ impl Serialize for Zeiteintrag {
     }
 }
 
+/// Von Hand, weil die API das berechnete Feld `kennung` mitliefert (R00090).
+impl utoipa::PartialSchema for Zeiteintrag {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        use utoipa::openapi::schema::{ObjectBuilder, Type};
+        let text = |beschreibung: &str| ObjectBuilder::new().schema_type(Type::String).description(Some(beschreibung.to_string()));
+        ObjectBuilder::new()
+            .property("wer", text("Kürzel der Person"))
+            .property("beginn", text("Zeitpunkt JJJJ-MM-TT HH:MM±HH:MM (Altbestand ohne Versatz)"))
+            .property("ende", ObjectBuilder::new().schema_type(utoipa::openapi::schema::SchemaType::from_iter([Type::String, Type::Null])).description(Some("wie beginn; null, solange der Eintrag läuft")))
+            .property("kennung", text("wer@JJJJ-MM-TTTHH:MM±HH:MM — adressiert den Eintrag in PATCH/DELETE …/zeiten/{kennung}"))
+            .required("wer")
+            .required("beginn")
+            .required("ende")
+            .required("kennung")
+            .into()
+    }
+}
+
+impl utoipa::ToSchema for Zeiteintrag {}
+
 impl Zeiteintrag {
     /// Kennung `wer@JJJJ-MM-TTTHH:MM±HH:MM` (R00090): Person und Beginn als eindeutiger Moment — ein Altbeginn ohne
     /// Versatz bekommt den seiner Ortszeit-Deutung. Ein unlesbarer Beginn bleibt, wie er ist.
@@ -45,7 +65,7 @@ impl Zeiteintrag {
 }
 
 /// Ergebnis eines Durchlaufs (R00094); in Datei und API klein geschrieben.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Ergebnis {
     Bestanden,
@@ -73,21 +93,26 @@ impl Ergebnis {
 }
 
 /// Eine Phase, die eine Karte durchlaufen hat (R00094): eine Zeile im Block `kanbanD-runs`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Durchlauf {
+    /// Zeitpunkt JJJJ-MM-TT HH:MM±HH:MM
     pub zeitpunkt: String,
     pub phase: String,
     pub ergebnis: Ergebnis,
+    /// Kürzel der Person, für die der Durchlauf gilt
     pub wer: String,
     pub dauer_minuten: Option<i64>,
     pub text: String,
 }
 
 /// Eine Karte, die eine Instanz für sich hält (R00087); in der Datei `reservation: {who, instance, since}`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Reservierung {
+    /// Kürzel der Person
     pub wer: String,
+    /// Kennung der Instanz, 1–64 Zeichen aus A–Z a–z 0–9 . _ -
     pub instanz: String,
+    /// Zeitpunkt JJJJ-MM-TT HH:MM±HH:MM; die Reservierung hält 24 h ab hier
     pub seit: String,
 }
 
@@ -110,15 +135,16 @@ pub fn instanz_gueltig(s: &str) -> bool {
     (1..=64).contains(&s.len()) && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Kommentar {
     pub wer: String,
+    /// Zeitpunkt JJJJ-MM-TT HH:MM±HH:MM (Altbestand ohne Versatz)
     pub zeitpunkt: String,
     pub text: String,
 }
 
 /// Was eine Aufgabe an einem WBS-Knoten bewirkt (R00057); in der Datei englisch wie der Namensraum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum Aktion {
     #[serde(rename = "create")]
     Anlegen,
@@ -145,7 +171,7 @@ impl Aktion {
 }
 
 /// Eine Zeile in `wbs-effects`: Anwendung (Kürzel aus dem Register), Aktion, Knoten und — bei `create` — die Angaben zum neuen Knoten.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Wirkung {
     #[serde(rename = "application")]
     pub anwendung: String,
@@ -163,6 +189,7 @@ pub struct Wirkung {
     pub fertig_kriterium: Option<String>,
     /// `executed` — ob und wann die Wirkung in der WBS ausgeführt wurde (R00071).
     #[serde(rename = "executed", default, skip_serializing_if = "Ausfuehrung::ist_frueher")]
+    #[schema(value_type = Option<serde_json::Value>)]
     pub ausgefuehrt: Ausfuehrung,
     /// Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
@@ -202,7 +229,7 @@ impl Serialize for Ausfuehrung {
 
 impl<'de> Deserialize<'de> for Ausfuehrung {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
+        #[derive(Deserialize, utoipa::ToSchema)]
         #[serde(untagged)]
         enum Roh {
             Ja(bool),
@@ -224,7 +251,7 @@ impl Wirkung {
 }
 
 /// `phases`: wie die Aufgabe die Phasen ihrer Anwendung durchläuft (R00058); in der Datei englisch wie der Namensraum.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Phasenangaben {
     /// `skipped`: Phasen, die für diese Aufgabe entfallen — sie zählt dort weder in Zähler und Nenner noch im Durchsatz
     pub uebersprungen: Vec<String>,
@@ -234,7 +261,7 @@ pub struct Phasenangaben {
 }
 
 /// `reporting`: ob die Aufgabe in Berichten zählt (R00060); fehlt ein Schlüssel, gilt der Standard — sie zählt.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Berichtszaehlung {
     /// `burndown: false` nimmt die Aufgabe aus dem Burndown
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -248,7 +275,7 @@ pub struct Berichtszaehlung {
 }
 
 /// Eine Aufgabe: unabhängige Datei, weiß nichts von Boards.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Aufgabe {
     pub nummer: u32,
     /// Dateiname unter `aufgaben/`, z. B. `0012-kopfzeile.md`.
@@ -317,7 +344,7 @@ impl Aufgabe {
 }
 
 /// Was eine Änderung setzt; `None` heißt „unverändert“, `Some(None)` bei entfernbaren Feldern „entfernen“.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Aufgabenaenderung {
     pub titel: Option<String>,
     pub beschreibung: Option<String>,
@@ -335,7 +362,7 @@ pub struct Aufgabenaenderung {
 }
 
 /// `{"burndown": false, "forecast": null}` — ein Wert setzt, `null` entfernt den Schlüssel (der Standard gilt wieder), fehlt er, bleibt er.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Zaehlungsaenderung {
     #[serde(default, deserialize_with = "entfernbar")]
     pub burndown: Option<Option<bool>>,
@@ -344,7 +371,7 @@ pub struct Zaehlungsaenderung {
 }
 
 /// `{"uebersprungen": [...]}` (auch `skipped` wie in der Datei) ersetzt die entfallenden Phasen.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
 pub struct Phasenaenderung {
     #[serde(alias = "skipped")]
     pub uebersprungen: Option<Vec<String>>,
