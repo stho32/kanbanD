@@ -1,6 +1,6 @@
 ---
 id: R00093
-status: Neu
+status: In Arbeit
 datum: 2026-10-25
 ---
 

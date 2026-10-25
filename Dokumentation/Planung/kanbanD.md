@@ -364,8 +364,8 @@ zuletzt: 2026-10-25
 | B0258 | Bubble | I0081 | Block kanbanD-runs | gruen | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
 | B0259 | Bubble | I0081 | Durchlauf über die API | gruen | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |
 | B0260 | Bubble | I0081 | Durchläufe im Detail | gruen | Test gruen | Durchläufe → Tabelle, befund in Warnfarbe |  |  |  |  |  |
-| I0082 | Interaction | D0007 | OpenAPI-Beschreibung | rot | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |
-| B0261 | Bubble | I0082 | Probe utoipa | rot | Test gruen | Router + Enum + Pfadparameter → Schema |  |  |  |  |  |
+| I0082 | Interaction | D0007 | OpenAPI-Beschreibung | gelb | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |
+| B0261 | Bubble | I0082 | Probe utoipa | gruen | Test gruen | Router + Enum + Pfadparameter → Schema |  |  |  |  |  |
 | B0262 | Bubble | I0082 | Beschreibung aller Routen | rot | Test gruen | Router → /api/openapi.json, Accept-Weiterleitung, Vollständigkeitstest |  |  |  |  |  |
 
 ## Offene Fragen
