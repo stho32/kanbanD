@@ -1,6 +1,6 @@
 ---
 id: R00085
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -27,11 +27,11 @@ Wer einem reinen KI-Lauf zusieht, sieht ihn tatsächlich — ohne Reload und ohn
 
 ## Akzeptanzkriterien
 
-- [ ] Server: der Strom liefert innerhalb von 16 s ein `herzschlag`-Ereignis (Integrationstest mit verkürztem Intervall)
-- [ ] Unit (Wächter als pure Funktion): letzte Meldung vor 41 s → `neu verbinden`; vor 39 s und `OPEN` → `nichts`; `CLOSED` → `neu verbinden`; Rückzugsfolge 1, 2, 5, 10, 10 s
-- [ ] E2E: Verbindung über die Testschnittstelle stilllegen (Herzschlag aus, `onerror` unterdrückt) → nach höchstens 40 s + Puffer verbindet der Client neu, und eine zwischenzeitlich per API gemachte Änderung erscheint ohne Reload
-- [ ] E2E: Server neu gestartet → Karte, die währenddessen per API angelegt wurde, erscheint ohne Reload
-- [ ] Ein Herzschlag zeichnet nicht neu (Zähler der Render-Aufrufe bleibt)
+- [x] Server: der Strom liefert innerhalb von 16 s ein `herzschlag`-Ereignis (Integrationstest mit verkürztem Intervall)
+- [x] Unit (Wächter als pure Funktion): letzte Meldung vor 41 s → `neu verbinden`; vor 39 s und `OPEN` → `nichts`; `CLOSED` → `neu verbinden`; Rückzugsfolge 1, 2, 5, 10, 10 s
+- [x] E2E: Verbindung über die Testschnittstelle stilllegen (Herzschlag aus, `onerror` unterdrückt) → nach höchstens 40 s + Puffer verbindet der Client neu, und eine zwischenzeitlich per API gemachte Änderung erscheint ohne Reload
+- [x] E2E: Server neu gestartet → Karte, die währenddessen per API angelegt wurde, erscheint ohne Reload
+- [x] Ein Herzschlag zeichnet nicht neu (Zähler der Render-Aufrufe bleibt)
 
 ## Betroffene Verzeichnisstruktur
 

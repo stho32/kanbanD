@@ -419,6 +419,7 @@ function zuweisenTaste(e, t) {
 function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
+  S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
   // Das aktive Eingabefeld übersteht das Neuzeichnen: Wert, Cursor, Fokus
   const aktiv = document.activeElement;
@@ -1731,12 +1732,24 @@ async function ereignis(e) {
   render();
 }
 
+function liveGetrennt() {
+  delete document.documentElement.dataset.live;
+  if (S.live) { S.live = false; render(); }
+}
+
 function liveVerbinden() {
   if (typeof EventSource === 'undefined') return;
   const q = new EventSource('/api/ereignisse');
-  q.onmessage = m => ereignis(JSON.parse(m.data)).catch(() => { });
-  q.onerror = () => { delete document.documentElement.dataset.live; if (S.live) { S.live = false; render(); } };
+  S.liveZuletzt = Date.now();
+  q.onmessage = m => { S.liveZuletzt = Date.now(); ereignis(JSON.parse(m.data)).catch(() => { }); };
+  // der Herzschlag zeigt nur, dass die Leitung lebt — er zeichnet nichts neu (R00085)
+  q.kdHerzschlag = () => { S.liveZuletzt = Date.now(); };
+  q.addEventListener('herzschlag', q.kdHerzschlag);
+  // Neu verbindet allein der Wächter, mit Rückzug — EventSource soll nicht zusätzlich selbst wiederholen
+  q.onerror = () => { q.close(); liveGetrennt(); };
   q.onopen = () => {
+    S.liveZuletzt = Date.now();
+    S.liveVersuch = 0;
     document.documentElement.dataset.live = 'verbunden'; // Prüfpunkt: ab jetzt kommt jede Änderung an
     if (!S.live) {
       S.live = true;
@@ -1746,6 +1759,26 @@ function liveVerbinden() {
   S.ereignisquelle = q;
 }
 
+/** Wächter (R00085): schließt eine geschlossene oder stille Verbindung und baut sie nach dem Rückzug neu auf — nie zwei zugleich. */
+function liveWaechter(sofort = false) {
+  const q = S.ereignisquelle;
+  if (!q || S.liveWartet) return;
+  if (entscheide({ zuletzt: S.liveZuletzt, jetzt: Date.now(), zustand: q.readyState, sofort }) !== 'neu') return;
+  q.close();
+  liveGetrennt();
+  S.liveWartet = true;
+  setTimeout(() => { S.liveWartet = false; liveVerbinden(); }, rueckzug(S.liveVersuch || 0));
+  S.liveVersuch = (S.liveVersuch || 0) + 1;
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') liveWaechter(true); });
+window.addEventListener('online', () => liveWaechter(true));
+
+/* Testschnittstelle der E2E-Tests: die Leitung still legen, ohne sie zu schließen; Neuzeichnen zählen */
+window.kdTest = {
+  liveStilllegen() { const q = S.ereignisquelle; q.onmessage = q.onerror = null; q.removeEventListener('herzschlag', q.kdHerzschlag); },
+  renders: () => S.renders || 0,
+};
+
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
@@ -1754,6 +1787,7 @@ setInterval(() => {
   document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
   if (neu && zug == null && !S.ui.neu) render();
+  liveWaechter();
 }, 1000);
 
 liveVerbinden();

@@ -334,9 +334,9 @@ zuletzt: 2026-10-25
 | B0237 | Bubble | I0072 | Zeitpunkt lesen und schreiben mit Versatz | gruen | Test gruen | Text (mit/ohne Versatz, ISO) → Zeitpunkt; jetzt() mit Versatz; minuten über UTC |  |  |  |  |  |
 | B0238 | Bubble | I0072 | Schreiber und Vergleiche über Zeitpunkt | gruen | Test gruen | Timer, Nachtrag, Korrektur, Kommentar, Archiv, Berichte → Versatz in der Datei |  |  |  |  |  |
 | B0239 | Bubble | I0072 | Client rechnet mit Versatz | gruen | Test gruen | zeitMs mit Versatz; Anzeige HH:MM in Ortszeit |  |  |  |  |  |
-| I0073 | Interaction | D0002 | Live-Verbindung mit Herzschlag | gelb | US-1..US-3 |  |  |  | I0011 | R00085 | Feedback 2026-10-25 P4: sichtbarer Herzschlag, Wächter verbindet neu |
+| I0073 | Interaction | D0002 | Live-Verbindung mit Herzschlag | gruen | US-1..US-3 |  |  |  | I0011 | R00085 | Feedback 2026-10-25 P4: sichtbarer Herzschlag, Wächter verbindet neu |
 | B0240 | Bubble | I0073 | Herzschlag im Ereignisstrom | gruen | Test gruen | Takt 15 s → event herzschlag |  |  |  |  |  |
-| B0241 | Bubble | I0073 | Wächter im Client | rot | Test gruen | letztes Ereignis, Zustand, sichtbar/online → neu verbinden mit Rückzug, nachladen |  |  |  |  |  |
+| B0241 | Bubble | I0073 | Wächter im Client | gruen | Test gruen | letztes Ereignis, Zustand, sichtbar/online → neu verbinden mit Rückzug, nachladen |  |  |  |  |  |
 | I0074 | Interaction | D0007 | Zug ohne Index landet oben | rot | US-1..US-2 |  |  |  |  | R00086 | Feedback 2026-10-25 P1/B7: ohne Index oben, bewusst LIFO |
 | B0242 | Bubble | I0074 | Einfügen oben ohne Index | rot | Test gruen | bewegen/bewegen-mehrere ohne index → Position 0, Anfragereihenfolge |  |  |  |  |  |
 | I0075 | Interaction | D0007 | Reservierungen und Ziehen | rot | US-1..US-4 |  |  |  | I0074, I0072 | R00087 | Feedback 2026-10-25 P2: Instanz-GUID, Reservierung 24 h, ziehen atomar, Liste aller Reservierungen |

@@ -13,24 +13,39 @@ Object.assign(process.env, { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'gc.auto',
 // Server in derselben Zone wie der Browser (timezoneId), damit der Versatz neuer Zeitpunkte feststeht (R00084)
 process.env.TZ = 'Europe/Berlin';
 
-async function kanbanStarten(vorbereiten) {
-  const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-e2e-'));
-  const ordner = path.join(wurzel, 'kanban');
-  if (vorbereiten) await vorbereiten(ordner);
-  const kind = spawn(PROGRAMM, [ordner, '--kein-browser', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'inherit'] });
-  const adresse = await new Promise((ok, fehler) => {
+/** Startet kanbanD und liefert die Adresse aus der Startzeile; `umgebung` ergänzt die Umgebungsvariablen. */
+function programmStarten(ordner, port, umgebung) {
+  const kind = spawn(PROGRAMM, [ordner, '--kein-browser', '--host', '127.0.0.1', '--port', String(port)], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...umgebung } });
+  const adresse = new Promise((ok, fehler) => {
     let puffer = '';
     kind.stdout.on('data', d => { puffer += d; const m = /(http:\/\/\S+)/.exec(puffer); if (m) ok(m[1]); });
     kind.once('exit', c => fehler(new Error('kanbanD beendet mit ' + c)));
   });
+  return { kind, adresse };
+}
+
+async function kanbanStarten(vorbereiten, umgebung = {}) {
+  const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-e2e-'));
+  const ordner = path.join(wurzel, 'kanban');
+  if (vorbereiten) await vorbereiten(ordner);
+  let { kind, adresse } = programmStarten(ordner, 0, umgebung);
+  adresse = await adresse;
+  const beenden = () => new Promise(ok => { if (kind.exitCode !== null) ok(); else { kind.once('exit', ok); kind.kill(); } });
   return {
     ordner, adresse,
+    // Neustart auf demselben Port (R00085): offene Seiten müssen von selbst wieder verbinden
+    neuStarten: async () => {
+      await beenden();
+      const neu = programmStarten(ordner, new URL(adresse).port, umgebung);
+      kind = neu.kind;
+      await neu.adresse;
+    },
     git: (...args) => execFileSync('git', ['-C', ordner, ...args], { encoding: 'utf8' }).trim(),
     lies: rel => fs.readFileSync(path.join(ordner, rel), 'utf8'),
     schreib: (rel, inhalt) => { fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true }); fs.writeFileSync(path.join(ordner, rel), inhalt); },
     // Erst auf das Ende des Programms warten — ein laufender Commit schreibt sonst noch in .git.
     stoppen: async () => {
-      if (kind.exitCode === null) await new Promise(ok => { kind.once('exit', ok); kind.kill(); });
+      await beenden();
       fs.rmSync(wurzel, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
