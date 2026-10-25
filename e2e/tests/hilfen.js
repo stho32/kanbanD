@@ -10,6 +10,8 @@ const PROGRAMM = path.resolve(__dirname, '../../target/debug/kanbanD');
 // schreibt noch in .git/objects/pack, während `stoppen` den Ordner löscht (ENOTEMPTY auf der CI). Gilt für kanbanD
 // und jeden git-Aufruf der Tests, weil beide die Umgebung dieses Prozesses erben.
 Object.assign(process.env, { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'gc.auto', GIT_CONFIG_VALUE_0: '0' });
+// Server in derselben Zone wie der Browser (timezoneId), damit der Versatz neuer Zeitpunkte feststeht (R00084)
+process.env.TZ = 'Europe/Berlin';
 
 async function kanbanStarten(vorbereiten) {
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-e2e-'));

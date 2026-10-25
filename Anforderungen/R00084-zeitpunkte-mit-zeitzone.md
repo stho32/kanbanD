@@ -1,6 +1,6 @@
 ---
 id: R00084
-status: Neu
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -28,19 +28,19 @@ Zeiten stimmen auch über die Zeitumstellung, zwischen Rechnern in verschiedenen
 ## Akzeptanzkriterien
 
 ### Rechnen
-- [ ] `minuten("2026-10-25 02:33+02:00", "2026-10-25 02:10+01:00")` = 37 (über die Umstellung)
-- [ ] `minuten("2026-10-25 01:00", "2026-10-25 04:00")` ohne Versatz in `Europe/Berlin` = 240 (Altbestand als Ortszeit)
-- [ ] `jetzt()` endet auf einen Versatz `+01:00` bzw. `+02:00`
-- [ ] Zeitpunkte `…T…Z`, `…T…+01:00`, `… HH:MM` und `… HH:MM:SS` werden gelesen und in Dateiform normalisiert
+- [x] `minuten("2026-10-25 02:33+02:00", "2026-10-25 02:10+01:00")` = 37 (über die Umstellung)
+- [x] `minuten("2026-10-25 01:00", "2026-10-25 04:00")` ohne Versatz in `Europe/Berlin` = 240 (Altbestand als Ortszeit)
+- [x] `jetzt()` endet auf einen Versatz `+01:00` bzw. `+02:00`
+- [x] Zeitpunkte `…T…Z`, `…T…+01:00`, `… HH:MM` und `… HH:MM:SS` werden gelesen und in Dateiform normalisiert
 
 ### Datei und API
-- [ ] Ein Timer-Start schreibt `JJJJ-MM-TT HH:MM±HH:MM` in den Block `kanbanD-time`; Rundlauf lesen → schreiben ist verlustfrei, Altzeilen bleiben ohne Versatz unverändert
-- [ ] Kommentar- und Archivzeitpunkt tragen den Versatz
+- [x] Ein Timer-Start schreibt `JJJJ-MM-TT HH:MM±HH:MM` in den Block `kanbanD-time`; Rundlauf lesen → schreiben ist verlustfrei, Altzeilen bleiben ohne Versatz unverändert
+- [x] Kommentar- und Archivzeitpunkt tragen den Versatz
 
 ### Oberfläche
-- [ ] `zeitMs("2026-10-25 02:33+02:00")` = `Date.UTC(2026,9,25,0,33)` unabhängig von der Zone des Browsers
-- [ ] Die Zeitliste und der Timer zeigen `HH:MM` ohne Versatz in Ortszeit
-- [ ] Ein laufender Timer, gestartet `05:57+01:00`, zeigt um 07:40 Ortszeit `1:43`
+- [x] `zeitMs("2026-10-25 02:33+02:00")` = `Date.UTC(2026,9,25,0,33)` unabhängig von der Zone des Browsers
+- [x] Die Zeitliste und der Timer zeigen `HH:MM` ohne Versatz in Ortszeit
+- [x] Ein laufender Timer, gestartet `05:57+01:00`, zeigt um 07:40 Ortszeit `1:43`
 
 ## Betroffene Verzeichnisstruktur
 

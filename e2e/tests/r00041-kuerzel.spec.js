@@ -13,7 +13,7 @@ test.describe('R00041', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press(' ');
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toMatch(/kanbanD-time\n\d{4}-\d\d-\d\d \d\d:\d\d · \.\.\. · st\n/);
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toMatch(/kanbanD-time\n\d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · \.\.\. · st\n/);
     await expect(page.locator('.ka[data-id="1"] .lauf.eigen')).toBeVisible();
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press(' ');

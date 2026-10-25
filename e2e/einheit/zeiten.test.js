@@ -1,7 +1,7 @@
 // Unit-Tests der Zeitrechnung (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { anteil, personenZeilen, wochenbeginn, zeitMs } = require('../../web/zeiten.js');
+const { anteil, ortszeit, personenZeilen, wochenbeginn, zeitMs } = require('../../web/zeiten.js');
 
 const jetzt = new Date(2026, 9, 21, 12, 0).getTime(); // Mittwoch, 21.10.2026 12:00
 const t0 = new Date(2026, 9, 21).getTime(), morgen = t0 + 864e5;
@@ -65,4 +65,23 @@ test('Kreuztabelle mit Summen in beide Richtungen', () => {
   const woche = kreuztabelle(aufgaben, wochenbeginn(jetzt), jetzt);
   assert.deepStrictEqual(woche.zeilen.map(z => z.aufgabe.nummer), [1]);
   assert.strictEqual(woche.summe, 2 * H);
+});
+
+// R00084: mit Versatz ein eindeutiger Moment, gleich in welcher Zone der Browser läuft; ohne Versatz Ortszeit wie bisher
+test('Zeitpunkte mit Versatz', () => {
+  assert.strictEqual(zeitMs('2026-10-25 02:33+02:00'), Date.UTC(2026, 9, 25, 0, 33));
+  assert.strictEqual(zeitMs('2026-10-25 02:10+01:00'), Date.UTC(2026, 9, 25, 1, 10));
+  assert.strictEqual(zeitMs('2026-10-25 06:41+00:00'), Date.UTC(2026, 9, 25, 6, 41));
+  assert.strictEqual(zeitMs('2026-10-25 07:41-03:30'), Date.UTC(2026, 9, 25, 11, 11));
+  assert.strictEqual(zeitMs('2026-10-25 02:10+01:00') - zeitMs('2026-10-25 02:33+02:00'), 37 * 6e4, 'über die Umstellung');
+  // ein laufender Timer, gestartet 05:57+01:00, um 07:40 Ortszeit: 1:43
+  assert.strictEqual(Date.UTC(2026, 9, 25, 6, 40) - zeitMs('2026-10-25 05:57+01:00'), (60 + 43) * 6e4);
+});
+
+test('Anzeige in Ortszeit ohne Versatz', () => {
+  const ort = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+  assert.strictEqual(ortszeit('2026-10-18 09:00'), '2026-10-18 09:00', 'Altbestand bleibt, wie er ist');
+  assert.strictEqual(ortszeit('2026-10-25 02:33+02:00'), ort(Date.UTC(2026, 9, 25, 0, 33)));
+  if (process.env.TZ === 'Europe/Berlin') assert.strictEqual(ortszeit('2026-10-25 06:41+00:00'), '2026-10-25 07:41');
+  if (process.env.TZ === 'UTC') assert.strictEqual(ortszeit('2026-10-25 07:41+01:00'), '2026-10-25 06:41');
 });

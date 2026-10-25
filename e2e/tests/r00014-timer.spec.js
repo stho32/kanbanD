@@ -20,7 +20,7 @@ test.describe('R00014', () => {
     await expect(page.locator('.tz.eigen')).toContainText('Stefan');
     await expect(page.getByRole('button', { name: '▶ Meinen Timer starten' })).toHaveCount(0);
     await expect(page.locator('.ka[data-id="1"] .lauf.eigen')).toContainText('0:00');
-    expect(k.lies('aufgaben/0001-eins.md')).toMatch(/```kanbanD-time\n\d{4}-\d\d-\d\d \d\d:\d\d · \.\.\. · st\n```/);
+    expect(k.lies('aufgaben/0001-eins.md')).toMatch(/```kanbanD-time\n\d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · \.\.\. · st\n```/);
     await page.getByRole('button', { name: 'Timer von Stefan stoppen' }).click();
     await expect(page.getByRole('button', { name: '▶ Meinen Timer starten' })).toBeVisible();
     await expect(page.locator('.ka[data-id="1"] .lauf')).toHaveCount(0);
@@ -38,7 +38,7 @@ test.describe('R00014', () => {
     await expect(page.locator('#pop .pz2')).toHaveCount(2);
     await page.getByRole('button', { name: 'Timer von Claude stoppen' }).click();
     await expect(page.locator('#t-lauf')).toContainText('1 läuft');
-    expect(k.lies('aufgaben/0001-eins.md')).toMatch(/· st\n.* · \d{4}-\d\d-\d\d \d\d:\d\d · cl\n/);
+    expect(k.lies('aufgaben/0001-eins.md')).toMatch(/· st\n.* · \d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · cl\n/);
     expect(k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|#1 Timer von Claude gestoppt \(0:(29|30|31)\)$/);
   });
 });

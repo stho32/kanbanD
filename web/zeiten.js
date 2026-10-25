@@ -1,6 +1,18 @@
 /* kanbanD — Zeitrechnung: reine Funktionen, im Browser und in Node (Unit-Tests) nutzbar. */
 (function (ziel) {
-  const zeitMs = z => { const [d, t] = z.split(' '); const [j, m, tg] = d.split('-').map(Number); const [h, mi] = t.split(':').map(Number); return new Date(j, m - 1, tg, h, mi).getTime(); };
+  /** Dateiform `JJJJ-MM-TT HH:MM` mit optionalem Versatz `±HH:MM` oder `Z` (R00084): mit Versatz ein eindeutiger Moment, ohne Ortszeit. */
+  function zeitMs(z) {
+    const [d, t] = z.split(' '), [j, m, tg] = d.split('-').map(Number), [h, mi] = t.slice(0, 5).split(':').map(Number), versatz = t.slice(5);
+    if (!versatz) return new Date(j, m - 1, tg, h, mi).getTime();
+    const [vh, vm] = versatz === 'Z' ? [0, 0] : versatz.slice(1).split(':').map(Number);
+    return Date.UTC(j, m - 1, tg, h, mi) - (versatz[0] === '-' ? -1 : 1) * (vh * 60 + vm) * 6e4;
+  }
+  /** Zeitpunkt zur Anzeige als `JJJJ-MM-TT HH:MM` in der Ortszeit des Browsers; Altbestand ohne Versatz bleibt, wie er ist. */
+  function ortszeit(z) {
+    if (z.length <= 16) return z;
+    const o = new Date(zeitMs(z)), p = n => String(n).padStart(2, '0');
+    return `${o.getFullYear()}-${p(o.getMonth() + 1)}-${p(o.getDate())} ${p(o.getHours())}:${p(o.getMinutes())}`;
+  }
   const tagesbeginn = jetzt => { const d = new Date(jetzt); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const wochenbeginn = jetzt => { const t = new Date(tagesbeginn(jetzt)); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return t.getTime(); };
 
@@ -53,5 +65,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { zeitMs, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { zeitMs, ortszeit, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);
