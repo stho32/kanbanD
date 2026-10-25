@@ -149,3 +149,19 @@ fn eigener_schreibzugriff_auf_fremde_wbs_ist_nicht_extern() {
     let e = rx.recv_timeout(Duration::from_secs(2)).unwrap();
     assert_eq!((e.wbs.clone(), e.von_aussen), (vec!["kd".to_string()], false), "kanbanD schreibt selbst");
 }
+
+// R00085: ein sichtbarer Herzschlag, damit der Client Stille erkennt; Takt über KANBAND_HERZSCHLAG_MS verkürzt
+#[tokio::test]
+async fn ereignisstrom_sendet_herzschlag() {
+    use futures_util::StreamExt;
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(tmp.path());
+    let lauf = gemeinsam::starten_mit(tmp.path(), &["--port", "0"], &[("KANBAND_HERZSCHLAG_MS", "200")]);
+    let mut strom = reqwest::get(format!("{}api/ereignisse", lauf.adresse)).await.unwrap().bytes_stream();
+    let mut puffer = String::new();
+    let ende = tokio::time::Instant::now() + Duration::from_secs(3);
+    while !puffer.contains("event: herzschlag\ndata: {}\n") {
+        let Ok(Some(Ok(teil))) = tokio::time::timeout_at(ende, strom.next()).await else { panic!("kein Herzschlag in: {puffer}") };
+        puffer.push_str(&String::from_utf8_lossy(&teil));
+    }
+}

@@ -38,7 +38,7 @@ pub fn starten_in_berlin(ordner: &Path, zusatz: &[&str]) -> Laufendes {
     starten_mit(ordner, zusatz, &[("TZ", "Europe/Berlin")])
 }
 
-fn starten_mit(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)]) -> Laufendes {
+pub fn starten_mit(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)]) -> Laufendes {
     let mut kind = Command::new(env!("CARGO_BIN_EXE_kanbanD"))
         .envs(umgebung.iter().copied())
         .arg(ordner)

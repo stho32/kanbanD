@@ -22,7 +22,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/wer", true, "Ordner", "die Person zum Header X-KanbanD-Wer"),
     e("PUT", "/api/einstellungen", true, "Ordner", "Personen, Klassen, Signale, Quellen und Register der Anwendungen ersetzen (Personen nur stilllegen); signale: [{schluessel, bezeichnung, farbe}] — Schlüssel wie Klassen, „due“ vergeben"),
     e("GET", "/api/anwendungen", false, "Ordner", "Register der Anwendungen {kürzel: {name, wbs, anforderungen, erreichbar: {wbs, anforderungen}}}"),
-    e("GET", "/api/ereignisse", false, "Ordner", "Server-Sent Events {pfade, extern} je Änderung im Ordner"),
+    e("GET", "/api/ereignisse", false, "Ordner", "Server-Sent Events {pfade, extern} je Änderung im Ordner; alle 15 s `event: herzschlag` mit `{}` — still länger als 40 s heißt: neu verbinden"),
     e("GET", "/api/boards", false, "Boards", "alle Boards mit Spalten und Aufgabennummern"),
     e("POST", "/api/boards", true, "Boards", "Board anlegen {titel, spalten?}"),
     e("GET", "/api/boards/{slug}", false, "Boards", "ein Board {slug, titel, spalten: [{name, grenze, aufgaben, phase, pruefungen: column-checks, notiz: column-notes, farbe: column-colors}], termine (je {name, datum, farbe, linie, staerke, ziel}), anwendungen, start: Projektstart JJJJ-MM-TT | null, fieber: {puffer, perzentil, woche, gelb: [bei 0 %, bei 100 %], rot, zielspalte, aufloesung}, berichtsfilter: {zeitraum, von, bis, ohneFarben, ohneSpalten, personen, labels, messbasisTage}, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}, hinweise: [unbekannte Prüfung …]}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“)"),

@@ -204,17 +204,30 @@ async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>
     Ok(Json(bewegt).into_response())
 }
 
-/// Server-Sent Events: je Änderung im Ordner ein `data: {"pfade": […], "extern": …}`.
+/// Takt des Herzschlags; `KANBAND_HERZSCHLAG_MS` verkürzt ihn für Tests.
+fn herzschlag_takt() -> std::time::Duration {
+    let ms = std::env::var("KANBAND_HERZSCHLAG_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(15_000);
+    std::time::Duration::from_millis(ms)
+}
+
+/// Server-Sent Events: je Änderung im Ordner ein `data: {"pfade": […], "extern": …}`, dazu im Takt ein
+/// `event: herzschlag`, an dem der Client eine still abgerissene Verbindung erkennt (R00085).
 async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
     let mut ende = app.ende.clone();
     let geschlossen = async move {
         let _ = ende.wait_for(|e| *e).await;
     };
-    let strom = futures_util::StreamExt::take_until(BroadcastStream::new(app.ereignisse.subscribe()), geschlossen).map(|e| {
+    let aenderungen = BroadcastStream::new(app.ereignisse.subscribe()).map(|e| {
         // Wer zu langsam liest, bekommt ein leeres Ereignis und lädt einfach alles neu.
         let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true, wbs: vec![] });
         Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))
     });
+    let takt = herzschlag_takt();
+    let herzschlag = futures_util::stream::unfold((), move |()| async move {
+        tokio::time::sleep(takt).await;
+        Some((Ok(Event::default().event("herzschlag").data("{}")), ()))
+    });
+    let strom = futures_util::StreamExt::take_until(futures_util::stream::select(aenderungen, herzschlag), geschlossen);
     Sse::new(strom).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
 }
 
