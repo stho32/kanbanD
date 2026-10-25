@@ -1802,6 +1802,7 @@ setInterval(() => {
   let neu = false;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
   if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
+  document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => { const d = jetzt - +el.dataset.since; el.textContent = el.dataset.fmt === 's' ? hms(d) : hm(d); });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
   if (neu && zug == null && !S.ui.neu) render();

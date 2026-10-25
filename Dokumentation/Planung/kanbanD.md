@@ -347,9 +347,9 @@ zuletzt: 2026-10-25
 | I0076 | Interaction | D0002 | Signal auffällig und Signale oben | gruen | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |
 | B0247 | Bubble | I0076 | Karte in Signalfarbe | gruen | Test gruen | Signale → Streifen, Hintergrundton, größere Fackel |  |  |  |  |  |
 | B0248 | Bubble | I0076 | Schalter Signale oben | gruen | Test gruen | Spalte → Anzeige erst mit Signal; Zug-Sperre; localStorage |  |  |  |  |  |
-| I0077 | Interaction | D0002 | Gesamtzeit auf der Karte | gelb | US-1..US-3 |  |  |  | I0072 | R00089 | Feedback 2026-10-25 P6: Σ h:mm unten, leer bei 0, live |
+| I0077 | Interaction | D0002 | Gesamtzeit auf der Karte | gruen | US-1..US-3 |  |  |  | I0072 | R00089 | Feedback 2026-10-25 P6: Σ h:mm unten, leer bei 0, live |
 | B0249 | Bubble | I0077 | Summe der Zeiten | gruen | Test gruen | zeiten, jetzt → Summe gesamt und je Person |  |  |  |  |  |
-| B0250 | Bubble | I0077 | Σ auf der Karte live | rot | Test gruen | Summe → .r3, Tooltip, 1-s-Takt |  |  |  |  |  |
+| B0250 | Bubble | I0077 | Σ auf der Karte live | gruen | Test gruen | Summe → .r3, Tooltip, 1-s-Takt |  |  |  |  |  |
 | I0078 | Interaction | D0007 | Zeiten-API mit Beginn, Ende und Kennung | rot | US-1..US-3 |  |  |  | I0072 | R00090 | Feedback 2026-10-25 P8/P9: POST {beginn, ende, wer?}, Kennung wer@beginn |
 | B0251 | Bubble | I0078 | Nachtrag mit Beginn und Ende | rot | Test gruen | POST {beginn, ende, wer?} | {dauer} → Eintrag |  |  |  |  |  |
 | B0252 | Bubble | I0078 | Kennung statt Index | rot | Test gruen | wer@beginn → PATCH/DELETE; Oberfläche über Kennung |  |  |  |  |  |

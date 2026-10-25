@@ -1,6 +1,6 @@
 ---
 id: R00089
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -26,10 +26,10 @@ Man sieht auf einen Blick, wie viel Zeit in einer Karte steckt — und bei Agent
 
 ## Akzeptanzkriterien
 
-- [ ] Einträge 1:00 (sh) und 0:42 (entw) → Karte zeigt `Σ 1:42`, Tooltip „Stefan 1:00 · Entwickler 0:42“
-- [ ] Keine Einträge → kein `Σ`
-- [ ] Laufender Timer seit 0:05 plus abgeschlossen 1:00 → `Σ 1:05`, nach einer Minute `Σ 1:06` ohne Reload
-- [ ] Detail und Karte zeigen dieselbe Summe
+- [x] Einträge 1:00 (sh) und 0:42 (entw) → Karte zeigt `Σ 1:42`, Tooltip „Stefan 1:00 · Entwickler 0:42“
+- [x] Keine Einträge → kein `Σ`
+- [x] Laufender Timer seit 0:05 plus abgeschlossen 1:00 → `Σ 1:05`, nach einer Minute `Σ 1:06` ohne Reload
+- [x] Detail und Karte zeigen dieselbe Summe
 
 ## Betroffene Verzeichnisstruktur
 
