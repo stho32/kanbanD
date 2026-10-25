@@ -17,6 +17,7 @@ impl Kanban {
                 gestoppt += 1;
             }
             a.archiviert = Some(uhr::heute());
+            a.reservierung = None;
             Ok(Some(match gestoppt {
                 0 => format!("#{nr} archiviert"),
                 n => format!("#{nr} archiviert, {n} Timer gestoppt"),
@@ -54,6 +55,7 @@ impl Kanban {
                     z.ende = Some(jetzt.clone());
                 }
                 a.archiviert = Some(uhr::heute());
+                a.reservierung = None;
             } else {
                 a.archiviert = None;
             }

@@ -59,7 +59,9 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api/aufgaben/{nr}/wbs-effects", false, "Aufgaben", "Wirkungen mit Eintritt [{i, application, action, node?, …, executed, eingetreten: true|false|null, erfuellt: true|false|null}] — erfuellt (Zielzustand): create/rework Knoten gerechnet gruen, remove verworfen oder fehlt; eingetreten — create: Knoten steht und ist nicht verworfen; remove: Knoten verworfen oder fehlt; rework: executed gesetzt (fehlt = vor R00071, gilt als eingetreten); null: WBS nicht lesbar"),
     e("POST", "/api/aufgaben/{nr}/wbs-effects/{i}/eintritt", true, "Aufgaben", "Eintritt schalten {an: true|false} → Aufgabe; an: create legt an (ID wird eingetragen), rework setzt den Teilbaum rot, remove verwirft; aus: create verwirft den Knoten, remove hebt das Verwerfen auf (Blätter rot), rework nimmt nur den Vermerk zurück; schon so: keine Änderung; die WBS ohne Commit, ein Commit im Board-Repository"),
     e("DELETE", "/api/aufgaben/{nr}/wbs-effects/{i}", true, "Aufgaben", "Wirkung aus der Aufgabe entfernen — die WBS bleibt, wie sie ist"),
-    e("POST", "/api/aufgaben/{nr}/archivieren", true, "Aufgaben", "archivieren (stoppt laufende Timer)"),
+    e("POST", "/api/aufgaben/{nr}/archivieren", true, "Aufgaben", "archivieren (stoppt laufende Timer, entfernt die Reservierung)"),
+    e("POST", "/api/aufgaben/{nr}/reservierung", true, "Reservierungen", "reservieren für Wer und Instanz (Header X-KanbanD-Instanz oder Feld instanz, 1–64 Zeichen A–Z a–z 0–9 . _ -) — 24 h ab jetzt; eigene Instanz verlängert; fremde gültige → 409 mit Inhaber; Antwort: die Aufgabe mit reservierung {wer, instanz, seit}. Eine fremde Reservierung sperrt nur Reservieren und Ziehen"),
+    e("DELETE", "/api/aufgaben/{nr}/reservierung", true, "Reservierungen", "freigeben — die eigene Instanz, oder ein Mensch jede; fremde Instanz eines Agenten → 409; keine Reservierung → 404"),
     e("POST", "/api/aufgaben/{nr}/zurueckholen", true, "Aufgaben", "aus dem Archiv zurückholen"),
     e("GET", "/api/aufgaben/{nr}/anhaenge", false, "Aufgaben", "Anhänge auflisten"),
     e("POST", "/api/aufgaben/{nr}/anhaenge", true, "Aufgaben", "Anhang hochladen (multipart, Feld datei)"),
@@ -109,6 +111,7 @@ pub fn api_seite(adresse: &str) -> String {
 <body><header class="kz"><div class="kz-z1"><b>kanbanD · API</b> <span class="mono">für Agenten und Skripte</span></div><div class="kz-z3"><a class="kz-btn" href="/">zur Oberfläche</a></div></header>
 <main><h1 style="margin:0 0 8px;font-size:18px">Alles, was die Oberfläche kann, kann auch ein Agent.</h1>
 <p class="muted">Jeder schreibende Aufruf nennt im Header <span class="mono">X-KanbanD-Wer: &lt;kürzel&gt;</span> die handelnde Person aus <span class="mono">kanbanD.md</span>; kanbanD committet unter ihrem Namen. Lesen braucht keine Identität. Antworten sind JSON, Fehler <span class="mono">{{"fehler": "…"}}</span>. Maschinenlesbar: <a href="/api/endpunkte">/api/endpunkte</a>.</p>
+<p class="muted">Mehrere Agenten an einem Board: jede laufende Instanz wählt sich eine Kennung (z.&nbsp;B. eine GUID) und nennt sie im Header <span class="mono">X-KanbanD-Instanz</span>. <span class="mono">POST …/ziehen</span> nimmt atomar die oberste freie Karte einer Spalte, reserviert sie 24&nbsp;h für diese Instanz und zieht sie weiter — zwei Instanzen bekommen nie dieselbe Karte.</p>
 <pre class="md">curl -X POST {adresse}api/aufgaben -H 'X-KanbanD-Wer: cl' -H 'Content-Type: application/json' -d '{{"titel":"Dateiwächter","board":"entwicklung"}}'</pre>
 <table class="pt dicht" style="margin-top:16px"><thead><tr><th>Methode</th><th>Pfad</th><th>Wer</th><th>Zweck</th></tr></thead><tbody>{zeilen}</tbody></table></main></body></html>"#,
         adresse = esc(adresse)

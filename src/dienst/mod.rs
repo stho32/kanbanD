@@ -15,6 +15,7 @@ mod fieber;
 mod herkunft;
 mod kommentare;
 mod phasen;
+mod reservierung;
 mod signale;
 mod spalten;
 mod teilaufgaben;
@@ -28,6 +29,7 @@ mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
 pub use anwendungen::{Erreichbar, Registereintrag};
+pub use reservierung::instanz_pruefen;
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::{Bewegt, Bewegung};
 pub use phasen::{BoardMitPhasen, Phasenstand};

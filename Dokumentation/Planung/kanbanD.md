@@ -341,7 +341,7 @@ zuletzt: 2026-10-25
 | B0242 | Bubble | I0074 | Einfügen oben ohne Index | gruen | Test gruen | bewegen/bewegen-mehrere ohne index → Position 0, Anfragereihenfolge |  |  |  |  |  |
 | I0075 | Interaction | D0007 | Reservierungen und Ziehen | gelb | US-1..US-4 |  |  |  | I0074, I0072 | R00087 | Feedback 2026-10-25 P2: Instanz-GUID, Reservierung 24 h, ziehen atomar, Liste aller Reservierungen |
 | B0243 | Bubble | I0075 | Reservierung an der Aufgabe | gruen | Test gruen | reservation ↔ Aufgabe.reservierung; gültig 24 h |  |  |  |  |  |
-| B0244 | Bubble | I0075 | Reservieren und Freigeben über die API | rot | Test gruen | POST/DELETE …/reservierung mit Instanz → 200/409/404 |  |  |  |  |  |
+| B0244 | Bubble | I0075 | Reservieren und Freigeben über die API | gruen | Test gruen | POST/DELETE …/reservierung mit Instanz → 200/409/404 |  |  |  |  |  |
 | B0245 | Bubble | I0075 | Ziehen atomar | rot | Test gruen | von, nach? → oberste freie Karte reserviert, zugeordnet, gezogen, ein Commit |  |  |  |  |  |
 | B0246 | Bubble | I0075 | Reservierung in der Oberfläche | rot | Test gruen | Schloss auf Karte, Detail mit freigeben, Liste aller Reservierungen |  |  |  |  |  |
 | I0076 | Interaction | D0002 | Signal auffällig und Signale oben | rot | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |

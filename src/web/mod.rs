@@ -101,6 +101,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/timer/stop", post(timer_stoppen))
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
         .route("/api/aufgaben/{nr}/archivieren", post(archivieren))
+        .route("/api/aufgaben/{nr}/reservierung", post(reservieren).delete(freigeben))
         .route("/api/aufgaben/{nr}/zurueckholen", post(zurueckholen))
         .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/api/aufgaben/{nr}/anhaenge/{name}", get(anhang_lesen).delete(anhang_entfernen))
@@ -153,6 +154,28 @@ impl<S: Send + Sync> FromRequestParts<S> for Wer {
     async fn from_request_parts(teile: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         Ok(Wer(teile.headers.get("x-kanband-wer").and_then(|w| w.to_str().ok()).map(str::to_string)))
     }
+}
+
+/// Die Kennung der Instanz aus dem Header `X-KanbanD-Instanz`, falls genannt (R00087).
+pub struct Instanz(pub Option<String>);
+
+impl<S: Send + Sync> FromRequestParts<S> for Instanz {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(teile: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(Instanz(teile.headers.get("x-kanband-instanz").and_then(|w| w.to_str().ok()).map(str::to_string)))
+    }
+}
+
+/// Optionaler Rumpf `{instanz}` — das Feld ersetzt den Header für Aufrufer, die keine Header setzen können.
+#[derive(serde::Deserialize)]
+struct MitInstanz {
+    instanz: Option<String>,
+}
+
+/// Der Header gilt vor dem Feld; ein leerer oder fremder Rumpf heißt „kein Feld“.
+fn instanz_aus(header: Option<String>, rumpf: &[u8]) -> Option<String> {
+    header.or_else(|| serde_json::from_slice::<MitInstanz>(rumpf).ok().and_then(|r| r.instanz))
 }
 
 /// Führt einen Anwendungsfall außerhalb der Ereignisschleife aus (Dateien, Git).
@@ -510,6 +533,16 @@ async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)
     })
     .await?;
     Ok(Json(json!({ "entfernt": true })).into_response())
+}
+
+async fn reservieren(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(nr): Path<u32>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
+    let instanz = crate::dienst::instanz_pruefen(instanz_aus(instanz, &rumpf).as_deref())?;
+    als_person(&app, wer, move |k, p| k.reservieren(p, &instanz, nr)).await
+}
+
+async fn freigeben(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(nr): Path<u32>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
+    let instanz = instanz_aus(instanz, &rumpf);
+    als_person(&app, wer, move |k, p| k.freigeben(p, instanz.as_deref(), nr)).await
 }
 
 async fn archivieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
