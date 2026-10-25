@@ -269,6 +269,12 @@ impl Board {
         self.spalten.iter().map(|s| s.aufgaben.len()).sum::<usize>() < vorher
     }
 
+    /// Die Spalte rechts von `name`; die letzte Spalte hat keine (R00087).
+    pub fn folgespalte(&self, name: &str) -> Option<&str> {
+        let i = self.spalten.iter().position(|s| s.name == name)?;
+        self.spalten.get(i + 1).map(|s| s.name.as_str())
+    }
+
     /// Nimmt die Aufgabe aus ihrer Spalte und setzt sie an `index` der Zielspalte (zu groß: ans Ende;
     /// ohne Index: oben, R00086). Liefert, ob sich etwas geändert hat.
     pub fn bewegen(&mut self, nummer: u32, ziel: &str, index: Option<usize>) -> Result<bool, Bewegfehler> {
@@ -425,6 +431,14 @@ mod tests {
         assert_eq!(b.spalten[1].aufgaben, vec![2, 3]);
         assert_eq!(b.bewegen(1, "Z", Some(99)), Ok(true));
         assert_eq!(b.spalten[1].aufgaben, vec![2, 3, 1]);
+    }
+
+    #[test]
+    fn folgespalte_rechts_daneben() {
+        let b = b();
+        assert_eq!(b.folgespalte("A"), Some("Z"));
+        assert_eq!(b.folgespalte("Z"), None);
+        assert_eq!(b.folgespalte("X"), None);
     }
 
     // R00086: ohne Index oben — auch beim Umsortieren in derselben Spalte

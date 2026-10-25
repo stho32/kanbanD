@@ -85,3 +85,86 @@ async fn fremde_reservierung_sperrt_nur_reservieren_und_archiv_entfernt_sie() {
     assert_eq!((s, r["reservierung"].is_null()), (200, true));
     assert!(!lies(tmp.path(), "aufgaben/0001-eins.md").contains("reservation"));
 }
+
+/// Board „Fluss“ mit „Bereit“ = 7, 8, 9 (n Karten ab 7), „In Arbeit“, „Fertig“.
+fn mit_bereit(pfad: &std::path::Path, n: u32) {
+    gemeinsam::eingerichtet(pfad);
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    let mut zeilen = String::new();
+    for nr in 7..7 + n {
+        std::fs::write(pfad.join(format!("aufgaben/{nr:04}-k.md")), format!("---\nid: {nr}\ntitle: k{nr}\n---\n")).unwrap();
+        zeilen.push_str(&format!("- #{nr}\n"));
+    }
+    std::fs::write(pfad.join("boards/fluss.md"), format!("# Fluss\n\n## Bereit\n\n{zeilen}\n## In Arbeit\n\n- #99\n\n## Fertig\n")).unwrap();
+    std::fs::write(pfad.join("aufgaben/0099-alt.md"), "---\nid: 99\ntitle: alt\n---\n").unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Fluss"]);
+}
+
+fn spalte(board: &str, name: &str) -> Vec<u32> {
+    board.split(&format!("## {name}\n\n")).nth(1).unwrap_or("").lines().take_while(|z| !z.starts_with("## ")).filter_map(|z| z.split('#').nth(1)?.split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()).collect()
+}
+
+#[tokio::test]
+async fn ziehen_nimmt_die_oberste_freie_karte() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_bereit(tmp.path(), 3);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    als(Method::POST, a, "api/aufgaben/7/reservierung", "cl", Some("B"), json!(null)).await;
+    let vorher: u32 = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Bereit"})).await;
+    assert_eq!(s, 200, "{r}");
+    assert_eq!((r["aufgabe"]["nummer"].as_u64(), r["von"].as_str(), r["nach"].as_str()), (Some(8), Some("Bereit"), Some("In Arbeit")));
+    assert_eq!(r["aufgabe"]["reservierung"]["instanz"], "A");
+    assert_eq!(r["aufgabe"]["zustaendige"], json!(["cl"]));
+    assert!(r["warnungen"].is_array());
+    let board = lies(tmp.path(), "boards/fluss.md");
+    assert_eq!((spalte(&board, "Bereit"), spalte(&board, "In Arbeit")), (vec![7, 9], vec![8, 99]), "oben in der Folgespalte");
+    assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher + 1, "ein Commit");
+    assert_eq!(git(tmp.path(), &["show", "--name-only", "--format=%an|%s", "HEAD"]), "Claude|#8 gezogen: „Bereit“ → „In Arbeit“ (Claude · Instanz A, Fluss)\n\naufgaben/0008-k.md\nboards/fluss.md");
+    // die eigene Reservierung zählt als frei; mit nach in eine beliebige Spalte
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("B"), json!({"von": "Bereit", "nach": "Fertig"})).await;
+    assert_eq!((s, r["aufgabe"]["nummer"].as_u64()), (200, Some(7)));
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "Fertig"), vec![7]);
+}
+
+#[tokio::test]
+async fn ziehen_ohne_freie_karte_ohne_folgespalte_ohne_instanz() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_bereit(tmp.path(), 1);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    als(Method::POST, a, "api/aufgaben/7/reservierung", "cl", Some("B"), json!(null)).await;
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Bereit"})).await;
+    assert_eq!((s, r["fehler"].as_str()), (404, Some("nichts zu ziehen")));
+    assert_eq!(als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Fertig", "nach": "Bereit"})).await.0, 404, "leer");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "nichts bewegt");
+    std::fs::write(tmp.path().join("boards/fluss.md"), "# Fluss\n\n## Bereit\n\n## In Arbeit\n\n## Fertig\n\n- #99\n").unwrap();
+    assert_eq!(als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Fertig"})).await.0, 400, "letzte Spalte ohne nach");
+    assert_eq!(als(Method::POST, a, "api/boards/fluss/ziehen", "cl", None, json!({"von": "Bereit"})).await.0, 400, "ohne Instanz");
+    assert_eq!(als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Gibtsnicht"})).await.0, 400);
+    std::fs::write(tmp.path().join("aufgaben/0099-alt.md"), "---\nid: 99\ntitle: alt\narchived: 2026-10-01\n---\n").unwrap();
+    assert_eq!(als(Method::POST, a, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Fertig", "nach": "Bereit"})).await.0, 404, "archivierte zählen nicht");
+}
+
+#[tokio::test]
+async fn zehn_parallele_ziehen_bekommen_zehn_verschiedene_karten() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_bereit(tmp.path(), 10);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let aufrufe = (0..10).map(|i| {
+        let a = lauf.adresse.clone();
+        tokio::spawn(async move { als(Method::POST, &a, "api/boards/fluss/ziehen", "cl", Some(&format!("I{i}")), json!({"von": "Bereit"})).await })
+    });
+    let mut nummern = vec![];
+    for t in aufrufe {
+        let (s, r) = t.await.unwrap();
+        assert_eq!(s, 200, "{r}");
+        nummern.push(r["aufgabe"]["nummer"].as_u64().unwrap());
+    }
+    nummern.sort();
+    assert_eq!(nummern, (7..17).collect::<Vec<_>>());
+    assert!(spalte(&lies(tmp.path(), "boards/fluss.md"), "Bereit").is_empty());
+}

@@ -102,6 +102,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .route("/api/aufgaben/{nr}/zeiten", post(zeit_nachtragen))
         .route("/api/aufgaben/{nr}/archivieren", post(archivieren))
         .route("/api/aufgaben/{nr}/reservierung", post(reservieren).delete(freigeben))
+        .route("/api/boards/{slug}/ziehen", post(ziehen))
         .route("/api/aufgaben/{nr}/zurueckholen", post(zurueckholen))
         .route("/api/aufgaben/{nr}/anhaenge", get(anhaenge).post(anhang_ablegen).layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/api/aufgaben/{nr}/anhaenge/{name}", get(anhang_lesen).delete(anhang_entfernen))
@@ -538,6 +539,12 @@ async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)
 async fn reservieren(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(nr): Path<u32>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
     let instanz = crate::dienst::instanz_pruefen(instanz_aus(instanz, &rumpf).as_deref())?;
     als_person(&app, wer, move |k, p| k.reservieren(p, &instanz, nr)).await
+}
+
+async fn ziehen(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(slug): Path<String>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
+    let instanz = crate::dienst::instanz_pruefen(instanz_aus(instanz, &rumpf).as_deref())?;
+    let zug: crate::dienst::Zug = serde_json::from_slice(&rumpf).map_err(|e| Fehler::Ungueltig(format!("Rumpf {{von, nach?}}: {e}")))?;
+    als_person(&app, wer, move |k, p| k.ziehen(p, &instanz, &slug, &zug)).await
 }
 
 async fn freigeben(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Path(nr): Path<u32>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {

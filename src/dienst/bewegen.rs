@@ -72,7 +72,7 @@ impl Kanban {
     }
 
     /// Prüft, was der Zug `von` → `nach` auslöst; eine unlesbare Aufgabe prüft nichts.
-    fn warnungen(&self, b: &Board, nummer: u32, von: &str, nach: &str) -> Vec<Warnung> {
+    pub(super) fn warnungen(&self, b: &Board, nummer: u32, von: &str, nach: &str) -> Vec<Warnung> {
         let folge = self.phasenstand(b).map(|s| s.folge);
         let pruefungen = ausgeloest(b, folge.as_ref(), von, nach);
         let Some(aufgabe) = (!pruefungen.is_empty()).then(|| self.ordner().aufgabe(nummer).ok()).flatten() else { return vec![] };
