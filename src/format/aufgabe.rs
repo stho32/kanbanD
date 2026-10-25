@@ -1,15 +1,16 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Kommentar, Phasenangaben, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
-const BEKANNT: [&str; 12] = ["id", "title", "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived"];
+const BEKANNT: [&str; 13] = ["id", "title", "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
+pub const RESERVIERUNG: &str = "reservation";
 pub const WIRKUNGEN: &str = "wbs-effects";
 pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
@@ -59,6 +60,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     if let Some(r) = m.get(BERICHTE) {
         a.zaehlung = zaehlung_lesen(r)?;
     }
+    if let Some(r) = m.get(RESERVIERUNG) {
+        a.reservierung = reservierung_lesen(r)?;
+    }
     for (k, v) in &m {
         if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k)) {
             a.weitere.push((k.to_string(), v.clone()));
@@ -66,6 +70,20 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     koerper_lesen(&mut a, koerper)?;
     Ok(a)
+}
+
+/// `reservation: {who: cl, instance: agent-1, since: 2026-10-25 07:41+01:00}` (R00087); leer heißt keine.
+fn reservierung_lesen(v: &Value) -> Result<Option<Reservierung>, Formatfehler> {
+    let falsch = || Formatfehler("reservation braucht who, instance und since (JJJJ-MM-TT HH:MM±HH:MM)".into());
+    match v {
+        Value::Null => Ok(None),
+        Value::Mapping(m) => {
+            let feld = |k: &str| m.get(k).and_then(yaml::wert_als_text).filter(|t| !t.trim().is_empty());
+            let (wer, instanz, seit) = (feld("who").ok_or_else(falsch)?, feld("instance").ok_or_else(falsch)?, feld("since").ok_or_else(falsch)?);
+            Ok(Some(Reservierung { wer, instanz, seit: zeitpunkt(&seit).ok_or_else(falsch)? }))
+        }
+        _ => Err(falsch()),
+    }
 }
 
 /// `phases: {skipped: [Abnahme], …}` — `skipped` als Liste oder einzelner Text; andere Schlüssel bleiben erhalten.
@@ -293,6 +311,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
     }
+    if let Some(r) = &a.reservierung {
+        s.push_str(&format!("{RESERVIERUNG}: {{who: {}, instance: {}, since: {}}}\n", yaml::skalar(&r.wer), yaml::skalar(&r.instanz), yaml::skalar(&r.seit)));
+    }
     for (k, v) in &a.weitere {
         let wert = serde_yaml::to_string(v).unwrap_or_default();
         let wert = wert.trim_end();
@@ -356,6 +377,21 @@ mod tests {
         assert!(t.contains("```kanbanD-time\n2026-10-18 09:00 · 2026-10-18 10:30 · cl\n2026-10-18 11:00 · ... · st\n```"));
         assert!(t.contains("2026-10-18 10:31 · st · Zwei\\nZeilen · mit \\\\ Strich"));
         assert!(t.starts_with("---\nid: 12\ntitle: \"Kopfzeile: verdichten\"\nclass: feature\nassignees: [cl, st]\nlabels: [ui]\ndue: 2026-10-20\norigins: [I0027, R00004]\n---\n"));
+    }
+
+    // R00087: die Reservierung im Rundlauf, auch mit Kennungen, die YAML sonst als Zahl läse
+    #[test]
+    fn reservierung_im_rundlauf() {
+        let t = "---\nid: 7\ntitle: R\nreservation: {who: cl, instance: agent-1, since: \"2026-10-25 07:41+01:00\"}\n---\n";
+        let a = lesen("0007-r.md", t).unwrap();
+        assert_eq!(a.reservierung, Some(Reservierung { wer: "cl".into(), instanz: "agent-1".into(), seit: "2026-10-25 07:41+01:00".into() }));
+        assert_eq!(schreiben(&a), t);
+        let mut b = a.clone();
+        b.reservierung.as_mut().unwrap().instanz = "123".into();
+        assert_eq!(lesen("0007-r.md", &schreiben(&b)).unwrap(), b, "Zahl als Kennung bleibt Text");
+        assert!(lesen("0007-r.md", &t.replace("who: cl, ", "")).is_err());
+        assert!(lesen("0007-r.md", &t.replace("\"2026-10-25 07:41+01:00\"", "gestern")).is_err());
+        assert_eq!(lesen("0007-r.md", &t.replace("{who: cl, instance: agent-1, since: \"2026-10-25 07:41+01:00\"}", "")).unwrap().reservierung, None);
     }
 
     // R00084: mit Versatz bleibt er erhalten, Altzeilen ohne Versatz bleiben unverändert

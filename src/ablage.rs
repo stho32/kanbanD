@@ -77,7 +77,7 @@ impl Ordner {
         let mut defekt = vec![];
         for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
             let text = self.lies(&rel)?.unwrap_or_default();
-            match aufgabe::lesen(&format!("{stamm}.md"), &text) {
+            match aufgabe::lesen(&format!("{stamm}.md"), &text).map(ohne_abgelaufene) {
                 Ok(a) => match gut.iter().find(|g| g.nummer == a.nummer) {
                     Some(erste) => defekt.push(DefekteDatei { pfad: rel, fehler: format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, erste.datei) }),
                     None => gut.push(a),
@@ -106,7 +106,7 @@ impl Ordner {
         let pfad = self.aufgabenpfad(nummer)?;
         let text = self.lies(&pfad)?.unwrap_or_default();
         let datei = pfad.rsplit('/').next().unwrap_or_default().to_string();
-        aufgabe::lesen(&datei, &text).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
+        aufgabe::lesen(&datei, &text).map(ohne_abgelaufene).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
     }
 
     /// Höchste Nummer unter allen Dateinamen in `aufgaben/` plus 1 — auch defekte Dateien zählen.
@@ -153,4 +153,12 @@ impl From<format::Formatfehler> for Fehler {
     fn from(e: format::Formatfehler) -> Self {
         Fehler::Defekt(e.0)
     }
+}
+
+/// Eine abgelaufene Reservierung gilt als nicht vorhanden (R00087); der nächste Schreibzugriff entfernt sie aus der Datei.
+fn ohne_abgelaufene(mut a: Aufgabe) -> Aufgabe {
+    if a.reservierung.as_ref().is_some_and(|r| !r.gueltig(&crate::uhr::jetzt())) {
+        a.reservierung = None;
+    }
+    a
 }

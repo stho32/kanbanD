@@ -16,6 +16,33 @@ pub struct Zeiteintrag {
     pub ende: Option<String>,
 }
 
+/// Eine Karte, die eine Instanz für sich hält (R00087); in der Datei `reservation: {who, instance, since}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Reservierung {
+    pub wer: String,
+    pub instanz: String,
+    pub seit: String,
+}
+
+/// Eine Reservierung hält 24 h ab `seit`; wer sie verlängert, setzt `seit` neu.
+pub const RESERVIERUNG_MINUTEN: i64 = 24 * 60;
+
+impl Reservierung {
+    /// Gültig, solange seit `seit` weniger als 24 h vergangen sind; ein unlesbarer Zeitpunkt gilt nicht.
+    pub fn gueltig(&self, jetzt: &str) -> bool {
+        crate::uhr::minuten(&self.seit, jetzt).is_some_and(|m| m < RESERVIERUNG_MINUTEN)
+    }
+
+    pub fn gehoert(&self, instanz: &str) -> bool {
+        self.instanz == instanz
+    }
+}
+
+/// Kennung einer Instanz: 1–64 Zeichen aus `A-Z a-z 0-9 . _ -` (R00087).
+pub fn instanz_gueltig(s: &str) -> bool {
+    (1..=64).contains(&s.len()) && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Kommentar {
     pub wer: String,
@@ -168,6 +195,8 @@ pub struct Aufgabe {
     /// `signals`: gesetzte Signale (R00076), Schlüssel aus `kanbanD.md`
     pub signale: Vec<String>,
     pub archiviert: Option<String>,
+    /// `reservation` (R00087); abgelaufene blendet schon das Lesen aus der Ablage aus
+    pub reservierung: Option<Reservierung>,
     pub beschreibung: String,
     pub teilaufgaben: Vec<Teilaufgabe>,
     pub zeiten: Vec<Zeiteintrag>,
@@ -195,6 +224,7 @@ impl Aufgabe {
             herkunft: vec![],
             signale: vec![],
             archiviert: None,
+            reservierung: None,
             beschreibung: String::new(),
             teilaufgaben: vec![],
             zeiten: vec![],
@@ -380,6 +410,27 @@ impl Aufgabe {
 
 #[cfg(test)]
 mod tests {
+    // R00087: 24 h ab seit, auf die Minute
+    #[test]
+    fn reservierung_haelt_24_stunden() {
+        let r = super::Reservierung { wer: "cl".into(), instanz: "a".into(), seit: "2026-10-24 10:00+02:00".into() };
+        assert!(r.gueltig("2026-10-25 08:59+01:00"), "23:59 h — über die Zeitumstellung");
+        assert!(!r.gueltig("2026-10-25 10:01+02:00"), "24:01 h");
+        assert!(!r.gueltig("2026-10-25 09:00+01:00"), "genau 24 h");
+        assert!(r.gueltig("2026-10-24 09:00+02:00"), "seit in der Zukunft zählt als frisch");
+        assert!(r.gehoert("a") && !r.gehoert("b"));
+    }
+
+    #[test]
+    fn instanz_kennungen() {
+        for k in ["a", "agent-1", "Rechner.2_b", &"x".repeat(64)] {
+            assert!(super::instanz_gueltig(k), "{k}");
+        }
+        for k in ["", "mit leer", "ä", "a/b", &"x".repeat(65)] {
+            assert!(!super::instanz_gueltig(k), "{k}");
+        }
+    }
+
     use super::*;
     use crate::modell::{Art, Klasse, Person};
 
