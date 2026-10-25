@@ -13,6 +13,16 @@
     const o = new Date(zeitMs(z)), p = n => String(n).padStart(2, '0');
     return `${o.getFullYear()}-${p(o.getMonth() + 1)}-${p(o.getDate())} ${p(o.getHours())}:${p(o.getMinutes())}`;
   }
+  /** Gebuchte Zeit in ms (R00089): abgeschlossene Einträge ganz, laufende bis `jetzt`; `beginnVon` liefert den Beginn
+      eines laufenden Eintrags (die Oberfläche kennt die Startsekunde genauer als die Datei). */
+  function summeMs(zeiten, jetzt, beginnVon = z => zeitMs(z.beginn)) {
+    return zeiten.reduce((s, z) => s + Math.max(0, z.ende ? zeitMs(z.ende) - zeitMs(z.beginn) : jetzt - beginnVon(z)), 0);
+  }
+  /** Summe je Person, größte zuerst: `[{wer, ms}]`. */
+  function summeJePerson(zeiten, jetzt, beginnVon) {
+    const wer = [...new Set(zeiten.map(z => z.wer))];
+    return wer.map(w => ({ wer: w, ms: summeMs(zeiten.filter(z => z.wer === w), jetzt, beginnVon) })).sort((a, b) => b.ms - a.ms);
+  }
   /** Millisekunden, die eine Reservierung (R00087) noch hält — 24 h ab `seit`; abgelaufen oder keine: null. */
   function reservierungRest(r, jetzt) {
     const rest = r ? zeitMs(r.seit) + 864e5 - jetzt : 0;
@@ -70,5 +80,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { zeitMs, ortszeit, reservierungRest, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { zeitMs, ortszeit, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -94,3 +94,18 @@ test('Restzeit einer Reservierung', () => {
   assert.strictEqual(reservierungRest({ seit }, t + 24 * H), null);
   assert.strictEqual(reservierungRest(null, t), null);
 });
+
+// R00089: Summe aller Einträge, laufende bis jetzt; je Person absteigend
+test('Summe der Zeiten gesamt und je Person', () => {
+  const { summeMs, summeJePerson } = require('../../web/zeiten.js');
+  const zeiten = [
+    { wer: 'st', beginn: '2026-10-21 09:00', ende: '2026-10-21 10:00' },
+    { wer: 'en', beginn: '2026-10-21 10:00', ende: '2026-10-21 10:42' },
+    { wer: 'en', beginn: '2026-10-21 11:55', ende: null },
+  ];
+  assert.strictEqual(summeMs(zeiten.slice(0, 2), jetzt), 102 * 6e4);
+  assert.strictEqual(summeMs(zeiten, jetzt), (102 + 5) * 6e4, 'laufend bis jetzt');
+  assert.strictEqual(summeMs(zeiten, jetzt, z => zeitMs(z.beginn) + 60e3), (102 + 4) * 6e4, 'eigener Beginn eines laufenden Timers');
+  assert.deepStrictEqual(summeJePerson(zeiten, jetzt), [{ wer: 'en', ms: 47 * 6e4 }, { wer: 'st', ms: 60 * 6e4 }].sort((a, b) => b.ms - a.ms));
+  assert.strictEqual(summeMs([], jetzt), 0);
+});
