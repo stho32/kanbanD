@@ -1,6 +1,6 @@
 ---
 id: R00092
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -36,14 +36,14 @@ Agenten-Skripte werden kürzer und robuster: eine Antwortform, dieselbe Sicht wi
 
 ## Akzeptanzkriterien
 
-- [ ] `GET /api/aufgaben/7` → Objekt mit `nummer: 7`, `titel`, `pfad`, `text` auf oberster Ebene
-- [ ] Oberfläche öffnet Aufgaben und defekte Dateien wie bisher (E2E)
-- [ ] Backlog-Datei [89, 90, 91], #89 und #91 archiviert → `GET /api/boards/x` zeigt [90]; `?archivierte=ja` zeigt [89, 90, 91]
-- [ ] Zurückholen von #89 → steht wieder an Position 0
-- [ ] `GET /api/aufgaben?board=x&spalte=Backlog&klasse=vorrang` → genau die nicht archivierten Vorrang-Karten in Backlog
-- [ ] `?klasse=a&klasse=b` → Karten mit Klasse a oder b
-- [ ] `?spalte=Backlog` ohne `board` → `400`
-- [ ] Ohne Parameter → alle Aufgaben wie bisher
+- [x] `GET /api/aufgaben/7` → Objekt mit `nummer: 7`, `titel`, `pfad`, `text` auf oberster Ebene
+- [x] Oberfläche öffnet Aufgaben und defekte Dateien wie bisher (E2E)
+- [x] Backlog-Datei [89, 90, 91], #89 und #91 archiviert → `GET /api/boards/x` zeigt [90]; `?archivierte=ja` zeigt [89, 90, 91]
+- [x] Zurückholen von #89 → steht wieder an Position 0
+- [x] `GET /api/aufgaben?board=x&spalte=Backlog&klasse=vorrang` → genau die nicht archivierten Vorrang-Karten in Backlog
+- [x] `?klasse=a&klasse=b` → Karten mit Klasse a oder b
+- [x] `?spalte=Backlog` ohne `board` → `400`
+- [x] Ohne Parameter → alle Aufgaben wie bisher
 
 ## Betroffene Verzeichnisstruktur
 

@@ -3,6 +3,7 @@
 mod anhaenge;
 mod anwendungen;
 mod archiv;
+mod aufgabenfilter;
 mod berichtsfilter;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
@@ -29,6 +30,7 @@ mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
 pub use anwendungen::{Erreichbar, Registereintrag};
+pub use aufgabenfilter::{Archivierte, Aufgabenfilter};
 pub use reservierung::{Gezogen, Zug, erste_freie, instanz_pruefen};
 pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
 pub use bewegen::{Bewegt, Bewegung};

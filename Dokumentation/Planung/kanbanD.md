@@ -356,10 +356,10 @@ zuletzt: 2026-10-25
 | I0079 | Interaction | D0007 | Einstellungen lesen und Personen einzeln pflegen | gruen | US-1..US-3 |  |  |  |  | R00091 | Feedback 2026-10-25 P10: GET /api/einstellungen, Sammlung /api/personen |
 | B0253 | Bubble | I0079 | Einstellungen lesen | gruen | Test gruen | GET /api/einstellungen → Form wie PUT |  |  |  |  |  |
 | B0254 | Bubble | I0079 | Personen einzeln | gruen | Test gruen | POST/PATCH/DELETE(stilllegen) /api/personen |  |  |  |  |  |
-| I0080 | Interaction | D0007 | API aufräumen: Antwortform, Archiv, Filter | gelb | US-1..US-3 |  |  |  | I0075 | R00092 | Feedback 2026-10-25 P12-14: Objekt direkt, archivierte weg, Filterparameter |
+| I0080 | Interaction | D0007 | API aufräumen: Antwortform, Archiv, Filter | gruen | US-1..US-3 |  |  |  | I0075 | R00092 | Feedback 2026-10-25 P12-14: Objekt direkt, archivierte weg, Filterparameter |
 | B0255 | Bubble | I0080 | Karte direkt | gruen | Test gruen | GET /api/aufgaben/{nr} → Karte mit pfad, text |  |  |  |  |  |
 | B0256 | Bubble | I0080 | Archivierte aus Board-Antworten | gruen | Test gruen | Board → Spalten ohne archivierte; ?archivierte=ja |  |  |  |  |  |
-| B0257 | Bubble | I0080 | Filter an GET /api/aufgaben | rot | Test gruen | board, spalte, klasse, signal, zustaendig, reserviert, archivierte → Liste |  |  |  |  |  |
+| B0257 | Bubble | I0080 | Filter an GET /api/aufgaben | gruen | Test gruen | board, spalte, klasse, signal, zustaendig, reserviert, archivierte → Liste |  |  |  |  |  |
 | I0081 | Interaction | D0003 | Durchläufe als Daten | rot | US-1..US-2 |  |  |  | I0078 | R00094 | Feedback 2026-10-25 P15: Block kanbanD-runs, POST …/durchlaeufe, Tabelle im Detail |
 | B0258 | Bubble | I0081 | Block kanbanD-runs | rot | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
 | B0259 | Bubble | I0081 | Durchlauf über die API | rot | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |

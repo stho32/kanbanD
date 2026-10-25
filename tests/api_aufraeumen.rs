@@ -58,3 +58,29 @@ async fn board_antworten_ohne_archivierte() {
     senden(Method::POST, a, "api/aufgaben/89/zurueckholen", "st", json!(null)).await;
     assert_eq!(backlog(&lesen(a, "api/boards/x").await.1), json!([89, 90, 93]), "zurückgeholt steht sie wieder an ihrem Platz");
 }
+
+fn nummern(r: &Value) -> Vec<u64> {
+    let mut n: Vec<u64> = r["aufgaben"].as_array().unwrap().iter().map(|a| a["nummer"].as_u64().unwrap()).collect();
+    n.sort();
+    n
+}
+
+#[tokio::test]
+async fn aufgaben_filtern() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_backlog(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    assert_eq!(nummern(&lesen(a, "api/aufgaben").await.1), vec![89, 90, 91, 93], "ohne Parameter alles wie bisher");
+    let (s, r) = lesen(a, "api/aufgaben?board=x&spalte=Backlog&klasse=bug").await;
+    assert_eq!((s, nummern(&r)), (200, vec![90]), "nicht archivierte Fehler in Backlog");
+    assert!(r["defekte"].is_array());
+    assert_eq!(nummern(&lesen(a, "api/aufgaben?klasse=bug&archivierte=ja").await.1), vec![90, 91]);
+    assert_eq!(nummern(&lesen(a, "api/aufgaben?archivierte=nur").await.1), vec![89, 91]);
+    std::fs::write(tmp.path().join("aufgaben/0093-k.md"), "---\nid: 93\ntitle: k93\nclass: doku\n---\n").unwrap();
+    assert_eq!(nummern(&lesen(a, "api/aufgaben?klasse=bug&klasse=doku").await.1), vec![90, 93], "derselbe Parameter mehrfach: oder");
+    assert_eq!(lesen(a, "api/aufgaben?spalte=Backlog").await.0, 400, "spalte ohne board");
+    assert_eq!(lesen(a, "api/aufgaben?board=x&spalte=Gibtsnicht").await.0, 400);
+    assert_eq!(lesen(a, "api/aufgaben?farbe=rot").await.0, 400);
+    assert_eq!(lesen(a, "api/aufgaben?board=gibtsnicht").await.0, 404);
+}

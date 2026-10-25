@@ -238,8 +238,19 @@ async fn wer(State(app): State<App>, Wer(wer): Wer) -> Result<Response, Fehler> 
     Ok(Json(p).into_response())
 }
 
-async fn aufgaben(State(app): State<App>) -> Result<Response, Fehler> {
-    let (aufgaben, defekte) = blockierend(&app, |k| k.ordner().aufgaben()).await?;
+/// Alle Aufgaben, oder gefiltert über `board`, `spalte`, `klasse`, `signal`, `zustaendig`, `reserviert`, `archivierte` (R00092).
+async fn aufgaben(State(app): State<App>, Query(paare): Query<Vec<(String, String)>>) -> Result<Response, Fehler> {
+    let filter = crate::dienst::Aufgabenfilter::aus_paaren(&paare)?;
+    let (aufgaben, defekte) = blockierend(&app, move |k| {
+        let (aufgaben, defekte) = k.ordner().aufgaben()?;
+        let board = filter.board.as_deref().map(|slug| k.ordner().board(slug)).transpose()?;
+        if let Some(s) = filter.spalten.iter().find(|s| board.as_ref().is_some_and(|b| !b.spalten.iter().any(|x| &x.name == *s))) {
+            return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf diesem Board nicht")));
+        }
+        let heute = crate::uhr::heute();
+        Ok((aufgaben.into_iter().filter(|a| filter.passt(a, board.as_ref(), &heute)).collect::<Vec<_>>(), defekte))
+    })
+    .await?;
     Ok(Json(json!({ "aufgaben": aufgaben, "defekte": defekte })).into_response())
 }
 
