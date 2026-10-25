@@ -49,4 +49,35 @@ test.describe('R00088', () => {
     await expect(karte(page, 2)).toHaveAttribute('data-sig', 'mail');
     await expect(karte(page, 3)).not.toHaveAttribute('data-sig');
   });
+
+  const reihe = page => page.locator('.bahn[data-col="Zu erledigen"] .ka').evaluateAll(ks => ks.map(k => +k.dataset.id));
+
+  test('US-2: Signale oben — erst mit Signal, nach dem Neuladen noch an, aus wieder wie im Board', async ({ page }) => {
+    await expect.poll(() => reihe(page)).toEqual([1, 2, 3, 4]);
+    await page.locator('#signale-oben').click();
+    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => reihe(page)).toEqual([2, 4, 1, 3]);
+    expect(k.lies('boards/entwicklung.md')).toBe(BOARD);
+    await page.reload();
+    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => reihe(page)).toEqual([2, 4, 1, 3]);
+    await page.locator('#signale-oben').click();
+    await expect.poll(() => reihe(page)).toEqual([1, 2, 3, 4]);
+  });
+
+  test('US-3: bei Signale oben ändert Ziehen nichts, ein Hinweis erklärt warum', async ({ page }) => {
+    await page.locator('#signale-oben').click();
+    await karte(page, 3).dragTo(karte(page, 2));
+    await expect(page.getByText('Bei „Signale oben“ nicht umsortierbar')).toBeVisible();
+    await karte(page, 1).focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.waitForTimeout(300);
+    expect(k.lies('boards/entwicklung.md')).toBe(BOARD);
+  });
+
+  test('ein Signal per API rückt bei Signale oben live nach oben', async ({ page }) => {
+    await page.locator('#signale-oben').click();
+    await page.request.put(k.adresse + 'api/aufgaben/3/signale/review', ALS_AGENT);
+    await expect.poll(() => reihe(page)).toEqual([2, 3, 4, 1]);
+  });
 });

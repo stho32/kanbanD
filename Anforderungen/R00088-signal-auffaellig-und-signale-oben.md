@@ -1,6 +1,6 @@
 ---
 id: R00088
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -27,11 +27,11 @@ Bei einem reinen KI-Lauf springt ins Auge, welche Karten Aufmerksamkeit verlange
 
 ## Akzeptanzkriterien
 
-- [ ] Pure Sortierung: Spalte [1, 2s, 3, 4s] (s = Signal) → Anzeige [2, 4, 1, 3]; Board-Datei unverändert
-- [ ] Karte mit Signal „review“ (Farbe rot) hat Streifen und Hintergrundton in Rot; ohne Signal keinen
-- [ ] Schalter an → Reihenfolge wie oben; neu laden → Schalter bleibt an
-- [ ] Schalter an → Ziehen mit der Maus ändert nichts, Hinweis erscheint
-- [ ] Signal per API gesetzt → Karte färbt sich live und rückt bei „Signale oben“ live nach oben
+- [x] Pure Sortierung: Spalte [1, 2s, 3, 4s] (s = Signal) → Anzeige [2, 4, 1, 3]; Board-Datei unverändert
+- [x] Karte mit Signal „review“ (Farbe rot) hat Streifen und Hintergrundton in Rot; ohne Signal keinen
+- [x] Schalter an → Reihenfolge wie oben; neu laden → Schalter bleibt an
+- [x] Schalter an → Ziehen mit der Maus ändert nichts, Hinweis erscheint
+- [x] Signal per API gesetzt → Karte färbt sich live und rückt bei „Signale oben“ live nach oben
 
 ## Betroffene Verzeichnisstruktur
 

@@ -90,3 +90,13 @@ test('erstes Signal nach der Reihenfolge der Einstellungen', () => {
   assert.strictEqual(ersteSignal({ signale: ['unbekannt'] }, reihe), 'unbekannt', 'ein unbekanntes Signal zählt trotzdem');
   assert.strictEqual(ersteSignal({ signale: [], faellig: '2026-01-01' }, reihe), null, 'die Fälligkeit färbt nicht');
 });
+
+// R00088: „Signale oben“ zeigt erst die Karten mit Signal, dann den Rest — beide in ihrer echten Reihenfolge
+test('Signale oben sortiert stabil, ohne das Board zu ändern', () => {
+  const { signaleOben } = require('../../web/filter.js');
+  const aufgaben = { 1: { signale: [] }, 2: { signale: ['mail'] }, 3: {}, 4: { signale: ['review'] } };
+  const spalte = [1, 2, 3, 4];
+  assert.deepStrictEqual(signaleOben(spalte, n => aufgaben[n]), [2, 4, 1, 3]);
+  assert.deepStrictEqual(spalte, [1, 2, 3, 4], 'die Eingabe bleibt');
+  assert.deepStrictEqual(signaleOben([9, 2], n => aufgaben[n]), [2, 9], 'eine fehlende Aufgabe zählt als ohne Signal');
+});

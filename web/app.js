@@ -25,6 +25,14 @@ function timerStartMerken(schluessel, ms) {
 /* Berichtsfilter (R00081): steht am Board (`report-filter:`), für alle. Eine Änderung wirkt sofort und wird mit gewählter
    Person gespeichert; bis die Antwort da ist — oder ohne Person ganz — gilt der lokale Stand (`bfLokal`). */
 S.ui.bf = filterAus('');
+S.ui.signaleOben = (() => { try { return localStorage.getItem('kanbanD.signale-oben') === '1'; } catch (_) { return false; } })();
+/** Bei „Signale oben“ ist die Anzeige nicht die echte Reihenfolge — ein Zug daraus wäre ein Zug an die falsche Stelle (R00088). */
+function zugGesperrt() {
+  if (!S.ui.signaleOben) return false;
+  S.ui.hinweis = { text: 'Bei „Signale oben“ nicht umsortierbar — zum Verschieben das Kontextmenü nutzen oder den Schalter ausschalten', at: Date.now() };
+  render();
+  return true;
+}
 S.ui.bfOffen = (() => { try { return localStorage.getItem('kanbanD.berichtsfilter-offen') === '1'; } catch (_) { return false; } })();
 function berichtsfilterSetzen(aenderung) {
   S.ui.bf = { ...S.ui.bf, ...aenderung };
@@ -618,6 +626,7 @@ async function act(a, arg, wert) {
       case 'archiv-an': filterSetzen((u.filter.replace(/is:\S+\s*/g, '') + ' is:archived').trim()); u.offen = null; break;
       case 'archiv-aus': filterSetzen(u.filter.replace(/is:\S+\s*/g, '').trim()); u.offen = null; break;
       case 'bereich': u.bereich = arg; merken('kanbanD.bereich', arg); break;
+      case 'signale-oben': u.signaleOben = !u.signaleOben; try { localStorage.setItem('kanbanD.signale-oben', u.signaleOben ? '1' : '0'); } catch (_) { } break;
       case 'legende': filterSetzen(klasseUmschalten(u.filter, arg)); break;
       case 'signal-filter': filterSetzen(signalUmschalten(u.filter, arg)); break;
       case 'signal-aus': case 'signal-fenster': {
@@ -1513,7 +1522,7 @@ function brettTaste(e, t) {
     return true;
   }
   if (e.shiftKey || e.altKey) {
-    if (nr == null) return true;
+    if (nr == null || zugGesperrt()) return true;
     const z = verschiebeziel(sichtbareSpalten(), nr, r);
     if (z) { u.fokusKarte = nr; act('bewegen', JSON.stringify({ nummer: nr, ...z })); }
     return true;
@@ -1709,6 +1718,7 @@ document.addEventListener('drop', e => {
   zug = null; ziel = null; zugMenge = null;
   if (S.ui.nachZug) render();
   einfuegeMarkenWeg();
+  if (z && zugGesperrt()) return;
   if (z && menge) mehrereBewegen(menge, z.spalte, z.index);
   else if (z) act('bewegen', JSON.stringify({ nummer, ...z }));
 });

@@ -31,6 +31,12 @@
     return reihenfolge.find(s => gesetzt.includes(s)) || gesetzt[0] || null;
   }
 
+  /** Anzeige-Reihenfolge bei „Signale oben“ (R00088): erst die Nummern mit gesetztem Signal, dann die ohne — beide stabil. */
+  function signaleOben(nummern, aufgabeZu) {
+    const mit = n => ((aufgabeZu(n) || {}).signale || []).length > 0;
+    return [...nummern.filter(mit), ...nummern.filter(n => !mit(n))];
+  }
+
   /** Trifft der Filter die Aufgabe? Alle Wörter müssen passen. */
   function passt(a, text, umfeld) {
     const u = umfeld || {};
@@ -73,5 +79,5 @@
     return jetzt === schluessel ? ohne : (ohne + ' signal:' + schluessel).trim();
   }
 
-  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten, aufgabenSignale, ersteSignal, signalUmschalten });
+  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten, aufgabenSignale, ersteSignal, signaleOben, signalUmschalten });
 })(typeof module !== 'undefined' ? module.exports : window);
