@@ -360,8 +360,8 @@ zuletzt: 2026-10-25
 | B0255 | Bubble | I0080 | Karte direkt | gruen | Test gruen | GET /api/aufgaben/{nr} → Karte mit pfad, text |  |  |  |  |  |
 | B0256 | Bubble | I0080 | Archivierte aus Board-Antworten | gruen | Test gruen | Board → Spalten ohne archivierte; ?archivierte=ja |  |  |  |  |  |
 | B0257 | Bubble | I0080 | Filter an GET /api/aufgaben | gruen | Test gruen | board, spalte, klasse, signal, zustaendig, reserviert, archivierte → Liste |  |  |  |  |  |
-| I0081 | Interaction | D0003 | Durchläufe als Daten | rot | US-1..US-2 |  |  |  | I0078 | R00094 | Feedback 2026-10-25 P15: Block kanbanD-runs, POST …/durchlaeufe, Tabelle im Detail |
-| B0258 | Bubble | I0081 | Block kanbanD-runs | rot | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
+| I0081 | Interaction | D0003 | Durchläufe als Daten | gelb | US-1..US-2 |  |  |  | I0078 | R00094 | Feedback 2026-10-25 P15: Block kanbanD-runs, POST …/durchlaeufe, Tabelle im Detail |
+| B0258 | Bubble | I0081 | Block kanbanD-runs | gruen | Test gruen | Zeile ↔ Durchlauf, Rundlauf verlustfrei |  |  |  |  |  |
 | B0259 | Bubble | I0081 | Durchlauf über die API | rot | Test gruen | POST …/durchlaeufe → Block + Kommentar, ein Commit |  |  |  |  |  |
 | B0260 | Bubble | I0081 | Durchläufe im Detail | rot | Test gruen | Durchläufe → Tabelle, befund in Warnfarbe |  |  |  |  |  |
 | I0082 | Interaction | D0007 | OpenAPI-Beschreibung | rot | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |

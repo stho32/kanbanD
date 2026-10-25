@@ -6,7 +6,7 @@ mod board;
 mod einstellungen;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
-pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
+pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Durchlauf, Ergebnis, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
 pub use board::{Berichtsfilter, Bewegfehler, Board, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Linie, Spalte, SpaltenAenderung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 

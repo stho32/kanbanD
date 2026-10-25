@@ -44,6 +44,45 @@ impl Zeiteintrag {
     }
 }
 
+/// Ergebnis eines Durchlaufs (R00094); in Datei und API klein geschrieben.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Ergebnis {
+    Bestanden,
+    Befund,
+    Entfaellt,
+}
+
+impl Ergebnis {
+    pub fn lesen(s: &str) -> Option<Ergebnis> {
+        match s {
+            "bestanden" => Some(Ergebnis::Bestanden),
+            "befund" => Some(Ergebnis::Befund),
+            "entfaellt" => Some(Ergebnis::Entfaellt),
+            _ => None,
+        }
+    }
+
+    pub fn text(self) -> &'static str {
+        match self {
+            Ergebnis::Bestanden => "bestanden",
+            Ergebnis::Befund => "befund",
+            Ergebnis::Entfaellt => "entfaellt",
+        }
+    }
+}
+
+/// Eine Phase, die eine Karte durchlaufen hat (R00094): eine Zeile im Block `kanbanD-runs`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Durchlauf {
+    pub zeitpunkt: String,
+    pub phase: String,
+    pub ergebnis: Ergebnis,
+    pub wer: String,
+    pub dauer_minuten: Option<i64>,
+    pub text: String,
+}
+
 /// Eine Karte, die eine Instanz für sich hält (R00087); in der Datei `reservation: {who, instance, since}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Reservierung {
@@ -229,6 +268,11 @@ pub struct Aufgabe {
     pub teilaufgaben: Vec<Teilaufgabe>,
     pub zeiten: Vec<Zeiteintrag>,
     pub kommentare: Vec<Kommentar>,
+    /// Block `kanbanD-runs` (R00094)
+    pub durchlaeufe: Vec<Durchlauf>,
+    /// Zeilen im Block `kanbanD-runs`, die kein Durchlauf sind, mit ihrer Stelle im Block — sie bleiben beim Schreiben erhalten.
+    #[serde(skip)]
+    pub durchlaeufe_fremd: Vec<(usize, String)>,
     /// `wbs-effects`: wie die Aufgabe auf Knoten einer Anwendung gewirkt hat (R00057)
     pub wirkungen: Vec<Wirkung>,
     pub phasen: Phasenangaben,
@@ -257,6 +301,8 @@ impl Aufgabe {
             teilaufgaben: vec![],
             zeiten: vec![],
             kommentare: vec![],
+            durchlaeufe: vec![],
+            durchlaeufe_fremd: vec![],
             wirkungen: vec![],
             phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),

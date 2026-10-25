@@ -1,12 +1,13 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
+pub const DURCHLAEUFE: &str = "kanbanD-runs";
 const BEKANNT: [&str; 13] = ["id", "title", "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
@@ -195,6 +196,14 @@ fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
                 match *art {
                     ZEITEN => a.zeiten = zeilen.iter().map(|z| zeit_lesen(z)).collect::<Result<_, _>>()?,
                     KOMMENTARE => a.kommentare = zeilen.iter().map(|z| kommentar_lesen(z)).collect::<Result<_, _>>()?,
+                    DURCHLAEUFE => {
+                        for (i, z) in zeilen.iter().enumerate() {
+                            match durchlauf_lesen(z) {
+                                Some(d) => a.durchlaeufe.push(d),
+                                None => a.durchlaeufe_fremd.push((i, z.to_string())),
+                            }
+                        }
+                    }
                     _ => {
                         beschreibung.push(art);
                         beschreibung.extend(zeilen.iter());
@@ -202,7 +211,7 @@ fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
                     }
                 }
                 block = None;
-            } else if !zeile.trim().is_empty() || !matches!(*art, ZEITEN | KOMMENTARE) {
+            } else if !zeile.trim().is_empty() || !matches!(*art, ZEITEN | KOMMENTARE | DURCHLAEUFE) {
                 zeilen.push(zeile);
             }
             continue;
@@ -212,6 +221,8 @@ fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
             block = Some((ZEITEN, vec![]));
         } else if t == format!("```{KOMMENTARE}") {
             block = Some((KOMMENTARE, vec![]));
+        } else if t == format!("```{DURCHLAEUFE}") {
+            block = Some((DURCHLAEUFE, vec![]));
         } else if t.starts_with("```") {
             block = Some((zeile, vec![]));
         } else if let Some(ta) = teilaufgabe_lesen(t) {
@@ -221,7 +232,7 @@ fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
         }
     }
     if let Some((art, zeilen)) = block {
-        if matches!(art, ZEITEN | KOMMENTARE) {
+        if matches!(art, ZEITEN | KOMMENTARE | DURCHLAEUFE) {
             return Err(Formatfehler(format!("Codeblock {art} ist nicht geschlossen")));
         }
         beschreibung.push(art);
@@ -229,6 +240,31 @@ fn koerper_lesen(a: &mut Aufgabe, koerper: &str) -> Result<(), Formatfehler> {
     }
     a.beschreibung = beschreibung.join("\n").trim().to_string();
     Ok(())
+}
+
+/// `Zeitpunkt · Phase · Ergebnis · wer · Dauer h:mm oder - · Text` — der Text ist der Rest und darf ` · ` enthalten;
+/// ohne Text endet die Zeile nach der Dauer. Eine Zeile, die so nicht passt, ist kein Durchlauf.
+fn durchlauf_lesen(z: &str) -> Option<Durchlauf> {
+    let teile: Vec<&str> = z.trim_end().splitn(6, TRENNER).collect();
+    let [zp, phase, ergebnis, wer, dauer, ..] = teile[..] else { return None };
+    let dauer_minuten = match dauer.trim() {
+        "-" => None,
+        d => Some(crate::uhr::dauer_lesen(d).filter(|_| d.contains(':'))?),
+    };
+    Some(Durchlauf {
+        zeitpunkt: zeitpunkt(zp)?,
+        phase: phase.trim().to_string(),
+        ergebnis: Ergebnis::lesen(ergebnis.trim())?,
+        wer: wer.trim().to_string(),
+        dauer_minuten,
+        text: teile.get(5).map(|t| t.to_string()).unwrap_or_default(),
+    })
+}
+
+fn durchlauf_schreiben(d: &Durchlauf) -> String {
+    let dauer = d.dauer_minuten.map(crate::uhr::hm).unwrap_or_else(|| "-".into());
+    let kopf = [d.zeitpunkt.as_str(), &d.phase, d.ergebnis.text(), &d.wer, &dauer].join(TRENNER);
+    if d.text.is_empty() { kopf } else { format!("{kopf}{TRENNER}{}", d.text) }
 }
 
 fn teilaufgabe_lesen(z: &str) -> Option<Teilaufgabe> {
@@ -339,6 +375,19 @@ pub fn schreiben(a: &Aufgabe) -> String {
         let zeilen = a.kommentare.iter().map(|k| format!("{}{TRENNER}{}{TRENNER}{}", k.zeitpunkt, k.wer, verschluesseln(&k.text)));
         teile.push(format!("```{KOMMENTARE}\n{}\n```", zeilen.collect::<Vec<_>>().join("\n")));
     }
+    if !a.durchlaeufe.is_empty() || !a.durchlaeufe_fremd.is_empty() {
+        // fremde Zeilen zurück an ihre Stelle, die Durchläufe der Reihe nach in die Lücken
+        let mut eigene = a.durchlaeufe.iter().map(durchlauf_schreiben);
+        let mut zeilen: Vec<String> = vec![];
+        let gesamt = a.durchlaeufe.len() + a.durchlaeufe_fremd.len();
+        for i in 0..gesamt {
+            match a.durchlaeufe_fremd.iter().find(|(stelle, _)| *stelle == i) {
+                Some((_, z)) => zeilen.push(z.clone()),
+                None => zeilen.extend(eigene.next()),
+            }
+        }
+        teile.push(format!("```{DURCHLAEUFE}\n{}\n```", zeilen.join("\n")));
+    }
     for t in teile {
         s.push('\n');
         s.push_str(&t);
@@ -377,6 +426,23 @@ mod tests {
         assert!(t.contains("```kanbanD-time\n2026-10-18 09:00 · 2026-10-18 10:30 · cl\n2026-10-18 11:00 · ... · st\n```"));
         assert!(t.contains("2026-10-18 10:31 · st · Zwei\\nZeilen · mit \\\\ Strich"));
         assert!(t.starts_with("---\nid: 12\ntitle: \"Kopfzeile: verdichten\"\nclass: feature\nassignees: [cl, st]\nlabels: [ui]\ndue: 2026-10-20\norigins: [I0027, R00004]\n---\n"));
+    }
+
+    // R00094: Durchläufe im Rundlauf — Text mit Trenner, ohne Text, ohne Dauer, fremde Zeilen an ihrer Stelle
+    #[test]
+    fn durchlaeufe_im_rundlauf() {
+        let t = "---\nid: 9\ntitle: D\n---\n\n```kanbanD-runs\n2026-10-25 07:41+01:00 · Entwicklung · bestanden · entw · 1:43 · Gate grün · Tests auch\nkeine Durchlaufzeile\n2026-10-25 08:00+01:00 · Code-Review · befund · crev · -\n```\n";
+        let a = lesen("0009-d.md", t).unwrap();
+        assert_eq!(a.durchlaeufe.len(), 2);
+        assert_eq!(a.durchlaeufe[0], Durchlauf { zeitpunkt: "2026-10-25 07:41+01:00".into(), phase: "Entwicklung".into(), ergebnis: Ergebnis::Bestanden, wer: "entw".into(), dauer_minuten: Some(103), text: "Gate grün · Tests auch".into() });
+        assert_eq!((a.durchlaeufe[1].dauer_minuten, a.durchlaeufe[1].text.as_str()), (None, ""));
+        assert_eq!(schreiben(&a), t, "verlustfrei");
+        let mut b = a.clone();
+        b.durchlaeufe.push(Durchlauf { zeitpunkt: "2026-10-25 09:00+01:00".into(), phase: "Abnahme".into(), ergebnis: Ergebnis::Entfaellt, wer: "st".into(), dauer_minuten: None, text: "".into() });
+        assert!(schreiben(&b).contains("· crev · -\n2026-10-25 09:00+01:00 · Abnahme · entfaellt · st · -\n```"), "neu am Ende");
+        assert_eq!(lesen("0009-d.md", &schreiben(&b)).unwrap(), b);
+        assert_eq!(durchlauf_lesen("2026-10-25 07:41 · E · ok · x · -"), None, "unbekanntes Ergebnis");
+        assert_eq!(durchlauf_lesen("2026-10-25 07:41 · E · befund · x · 90"), None, "Dauer nur als h:mm");
     }
 
     // R00087: die Reservierung im Rundlauf, auch mit Kennungen, die YAML sonst als Zahl läse
