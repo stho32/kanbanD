@@ -76,7 +76,7 @@ async fn patch_ersetzt_die_liste_unbekannte_aus_der_datei_bleiben_lesbar() {
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#1 geändert: Signale");
     std::fs::write(tmp.path().join("aufgaben/0003-drei.md"), "---\nid: 3\ntitle: drei\nsignals: [alt]\n---\n").unwrap();
     let a: serde_json::Value = reqwest::get(format!("{}api/aufgaben/3", lauf.adresse)).await.unwrap().json().await.unwrap();
-    assert_eq!(a["aufgabe"]["signale"], json!(["alt"]), "ein nicht mehr eingerichtetes Signal bleibt an der Aufgabe");
+    assert_eq!(a["signale"], json!(["alt"]), "ein nicht mehr eingerichtetes Signal bleibt an der Aufgabe");
     let (s, a) = senden(Method::DELETE, &lauf.adresse, "api/aufgaben/3/signale/alt", "st", json!(null)).await;
     assert_eq!((s, a["signale"].clone()), (200, json!([])), "auch ein unbekanntes lässt sich zurücknehmen");
 }

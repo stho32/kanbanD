@@ -63,7 +63,7 @@ async fn qualifizierte_herkunft_schreiben_unbekanntes_kuerzel_ist_400() {
     assert_eq!(s, 400);
     assert!(f["fehler"].as_str().unwrap().contains("„xx“"));
     let (_, a) = senden(Method::GET, &lauf.adresse, "api/aufgaben/2", "st", json!(null)).await;
-    assert_eq!(a["aufgabe"]["herkunft"], json!(["kd:I0007"]), "Rundlauf über die Datei");
+    assert_eq!(a["herkunft"], json!(["kd:I0007"]), "Rundlauf über die Datei");
 }
 
 const WBS: &str = "# WBS\n\n| ID | Ebene | Eltern | Name | Status | Braucht |\n|---|---|---|---|---|---|\n| I0005 | Interaction | D0001 | Anlegen | gruen | |\n| I0007 | Interaction | D0001 | {name} | rot | I0005 |\n";

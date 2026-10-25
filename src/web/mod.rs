@@ -392,7 +392,13 @@ async fn aufgabe_lesen(State(app): State<App>, Path(nr): Path<u32>) -> Result<Re
         let pfad = k.ordner().aufgabenpfad(nr)?;
         let text = k.ordner().lies(&pfad)?.unwrap_or_default();
         Ok(match k.ordner().aufgabe(nr) {
-            Ok(a) => Json(json!({ "aufgabe": a, "pfad": pfad, "text": text })).into_response(),
+            // ein Objekt direkt (R00092): die Karte, daneben Pfad und Text der Datei
+            Ok(a) => {
+                let mut karte = serde_json::to_value(&a).map_err(|e| Fehler::Intern(format!("Aufgabe als JSON: {e}")))?;
+                karte["pfad"] = json!(pfad);
+                karte["text"] = json!(text);
+                Json(karte).into_response()
+            }
             Err(f) => (StatusCode::LOCKED, Json(json!({ "fehler": f.meldung(), "pfad": pfad, "text": text }))).into_response(),
         })
     })
