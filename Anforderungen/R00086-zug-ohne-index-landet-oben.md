@@ -1,6 +1,6 @@
 ---
 id: R00086
-status: Neu
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -27,11 +27,11 @@ Eine eindeutige Regel im Server: wer einem Agenten zusieht, findet die gerade be
 
 ## Akzeptanzkriterien
 
-- [ ] Spalte B = [5, 6]; `bewegen {nummer: 7, spalte: B}` → B = [7, 5, 6]
-- [ ] `bewegen {nummer: 7, spalte: B, index: 99}` → B = [5, 6, 7]
-- [ ] `bewegen-mehrere [{7,B},{8,B}]` ohne Index, B = [5] → B = [7, 8, 5]
-- [ ] Umsortieren in derselben Spalte ohne Index: A = [1, 2, 3], `bewegen {nummer: 3, spalte: A}` → A = [3, 1, 2]
-- [ ] Die Oberfläche: Karte mit der Maus ans Ende gezogen landet am Ende (E2E bleibt grün)
+- [x] Spalte B = [5, 6]; `bewegen {nummer: 7, spalte: B}` → B = [7, 5, 6]
+- [x] `bewegen {nummer: 7, spalte: B, index: 99}` → B = [5, 6, 7]
+- [x] `bewegen-mehrere [{7,B},{8,B}]` ohne Index, B = [5] → B = [7, 8, 5]
+- [x] Umsortieren in derselben Spalte ohne Index: A = [1, 2, 3], `bewegen {nummer: 3, spalte: A}` → A = [3, 1, 2]
+- [x] Die Oberfläche: Karte mit der Maus ans Ende gezogen landet am Ende (E2E bleibt grün)
 
 ## Betroffene Verzeichnisstruktur
 

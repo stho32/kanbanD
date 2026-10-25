@@ -269,8 +269,8 @@ impl Board {
         self.spalten.iter().map(|s| s.aufgaben.len()).sum::<usize>() < vorher
     }
 
-    /// Nimmt die Aufgabe aus ihrer Spalte und setzt sie an `index` der Zielspalte (ohne Index oder
-    /// zu groß: ans Ende). Liefert, ob sich etwas geändert hat.
+    /// Nimmt die Aufgabe aus ihrer Spalte und setzt sie an `index` der Zielspalte (zu groß: ans Ende;
+    /// ohne Index: oben, R00086). Liefert, ob sich etwas geändert hat.
     pub fn bewegen(&mut self, nummer: u32, ziel: &str, index: Option<usize>) -> Result<bool, Bewegfehler> {
         if !self.spalten.iter().any(|s| s.name == ziel) {
             return Err(Bewegfehler::SpalteUnbekannt);
@@ -279,14 +279,15 @@ impl Board {
         let quelle = self.spalten.iter_mut().find(|s| s.aufgaben.contains(&nummer)).ok_or(Bewegfehler::NichtAufDemBoard)?;
         quelle.aufgaben.retain(|n| *n != nummer);
         let z = self.spalte_mut(ziel).expect("geprüft");
-        let i = index.unwrap_or(z.aufgaben.len()).min(z.aufgaben.len());
+        let i = index.unwrap_or(0).min(z.aufgaben.len());
         z.aufgaben.insert(i, nummer);
         Ok(self.spalten != vorher)
     }
 
-    /// Nimmt alle genannten Karten heraus und setzt sie der Reihe nach an `index` ihrer Zielspalte (R00065).
-    /// Prüft vorher alles; bei einem Fehler bleibt das Board unverändert.
-    pub fn mehrere_bewegen(&mut self, ziele: &[(u32, &str, usize)]) -> Result<bool, Bewegfehler> {
+    /// Nimmt alle genannten Karten heraus und setzt sie der Reihe nach an `index` ihrer Zielspalte (R00065);
+    /// ohne Index oben, in der Reihenfolge der Anfrage (R00086). Prüft vorher alles; bei einem Fehler bleibt
+    /// das Board unverändert.
+    pub fn mehrere_bewegen(&mut self, ziele: &[(u32, &str, Option<usize>)]) -> Result<bool, Bewegfehler> {
         if ziele.iter().any(|(_, spalte, _)| !self.spalten.iter().any(|s| s.name == *spalte)) {
             return Err(Bewegfehler::SpalteUnbekannt);
         }
@@ -297,10 +298,15 @@ impl Board {
         for s in &mut self.spalten {
             s.aufgaben.retain(|n| !ziele.iter().any(|(nr, _, _)| nr == n));
         }
+        let mut oben: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
         for (nr, spalte, index) in ziele {
+            let naechste_oben = oben.entry(spalte).or_default();
+            let i = index.unwrap_or(*naechste_oben);
+            if index.is_none() {
+                *naechste_oben += 1;
+            }
             let z = self.spalte_mut(spalte).expect("geprüft");
-            let i = (*index).min(z.aufgaben.len());
-            z.aufgaben.insert(i, *nr);
+            z.aufgaben.insert(i.min(z.aufgaben.len()), *nr);
         }
         Ok(self.spalten != vorher)
     }
@@ -413,12 +419,36 @@ mod tests {
     #[test]
     fn bewegen_in_andere_spalte_und_innerhalb() {
         let mut b = b();
-        assert_eq!(b.bewegen(2, "Z", None), Ok(true));
+        assert_eq!(b.bewegen(2, "Z", Some(1)), Ok(true));
         assert_eq!((b.spalten[0].aufgaben.clone(), b.spalten[1].aufgaben.clone()), (vec![1], vec![3, 2]));
         assert_eq!(b.bewegen(2, "Z", Some(0)), Ok(true));
         assert_eq!(b.spalten[1].aufgaben, vec![2, 3]);
         assert_eq!(b.bewegen(1, "Z", Some(99)), Ok(true));
         assert_eq!(b.spalten[1].aufgaben, vec![2, 3, 1]);
+    }
+
+    // R00086: ohne Index oben — auch beim Umsortieren in derselben Spalte
+    #[test]
+    fn ohne_index_landet_die_karte_oben() {
+        let mut b = b();
+        b.spalten[1].aufgaben = vec![5, 6];
+        b.spalten[0].aufgaben = vec![1, 2, 3, 7];
+        assert_eq!(b.bewegen(7, "Z", None), Ok(true));
+        assert_eq!(b.spalten[1].aufgaben, vec![7, 5, 6]);
+        assert_eq!(b.bewegen(3, "A", None), Ok(true));
+        assert_eq!(b.spalten[0].aufgaben, vec![3, 1, 2]);
+        assert_eq!(b.bewegen(3, "A", None), Ok(false), "schon oben");
+    }
+
+    #[test]
+    fn mehrere_ohne_index_oben_in_anfragereihenfolge() {
+        let mut b = b();
+        b.spalten[0].aufgaben = vec![7, 8, 1];
+        b.spalten[1].aufgaben = vec![5];
+        assert_eq!(b.mehrere_bewegen(&[(7, "Z", None), (8, "Z", None)]), Ok(true));
+        assert_eq!(b.spalten[1].aufgaben, vec![7, 8, 5]);
+        assert_eq!(b.mehrere_bewegen(&[(1, "Z", None), (5, "A", Some(9))]), Ok(true));
+        assert_eq!((b.spalten[0].aufgaben.clone(), b.spalten[1].aufgaben.clone()), (vec![5], vec![1, 7, 8]));
     }
 
     #[test]
@@ -487,14 +517,14 @@ mod tests {
         let mut b = b();
         let start = b.spalten.clone();
         let erste = start[0].aufgaben.clone();
-        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", 0), (erste[1], "Z", 1)]), Ok(true));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", Some(0)), (erste[1], "Z", Some(1))]), Ok(true));
         assert_eq!(b.spalten[0].aufgaben, erste[2..].to_vec());
         assert_eq!(&b.spalten[1].aufgaben[..2], &[erste[0], erste[1]]);
-        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", 0), (erste[1], "A", 1)]), Ok(true));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", Some(0)), (erste[1], "A", Some(1))]), Ok(true));
         assert_eq!(b.spalten, start);
-        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", 0)]), Ok(false));
-        assert_eq!(b.mehrere_bewegen(&[(erste[0], "X", 0)]), Err(Bewegfehler::SpalteUnbekannt));
-        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", 0), (99, "Z", 0)]), Err(Bewegfehler::NichtAufDemBoard));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "A", Some(0))]), Ok(false));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "X", Some(0))]), Err(Bewegfehler::SpalteUnbekannt));
+        assert_eq!(b.mehrere_bewegen(&[(erste[0], "Z", Some(0)), (99, "Z", Some(0))]), Err(Bewegfehler::NichtAufDemBoard));
         assert_eq!(b.spalten, start, "Fehler ändern nichts");
     }
 

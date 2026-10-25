@@ -43,3 +43,20 @@ async fn fehlerfaelle() {
     assert_eq!(senden(Method::POST, &lauf.adresse, "api/boards/gibtsnicht/bewegen", "st", json!({"nummer": 1, "spalte": "A"})).await.0, 404);
     assert_eq!(senden(Method::POST, &lauf.adresse, "api/boards/entwicklung/bewegen", "", json!({"nummer": 1, "spalte": "Erledigt"})).await.0, 400);
 }
+
+// R00086: ohne Index oben, mit Index wie angegeben (zu groß → ans Ende); mehrere in Anfragereihenfolge
+#[tokio::test]
+async fn ohne_index_oben_mit_index_wie_angegeben() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = starten(&tmp);
+    let a = &lauf.adresse;
+    senden(Method::POST, a, "api/boards/entwicklung/bewegen", "cl", json!({"nummer": 1, "spalte": "Erledigt"})).await;
+    senden(Method::POST, a, "api/boards/entwicklung/bewegen", "cl", json!({"nummer": 2, "spalte": "Erledigt"})).await;
+    let spalte = |b: &str| b.split("## Erledigt\n\n").nth(1).unwrap().lines().filter_map(|z| z.strip_prefix("- [#")).map(|z| z[..1].to_string()).collect::<Vec<_>>().join(",");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/entwicklung.md")), "2,1");
+    senden(Method::POST, a, "api/boards/entwicklung/bewegen", "cl", json!({"nummer": 3, "spalte": "Erledigt", "index": 99})).await;
+    assert_eq!(spalte(&lies(tmp.path(), "boards/entwicklung.md")), "2,1,3");
+    let (s, _) = senden(Method::POST, a, "api/boards/entwicklung/bewegen-mehrere", "cl", json!({"ziele": [{"nummer": 3, "spalte": "Erledigt"}, {"nummer": 1, "spalte": "Erledigt"}]})).await;
+    assert_eq!(s, 200);
+    assert_eq!(spalte(&lies(tmp.path(), "boards/entwicklung.md")), "3,1,2");
+}

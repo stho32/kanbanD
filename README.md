@@ -46,7 +46,7 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
 
 Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendung einmal mit vollen Pfaden ins Register ein (Einrichten → Anwendungen); Aufgaben nennen ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Ein Board ohne `applications:` gilt bei genau einer registrierten Anwendung als an sie gebunden; `applications: []` löst es ausdrücklich (reines Kanban, keine Phasen-Spalten, keine WBS-Sicht). Die Bindung setzt der Spalten-Dialog („Gebunden an“) oder `PUT /api/boards/{slug}/anwendungen` mit `[kürzel…]`, ein Commit je Änderung. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
 
-Eine Aufgabe zu bewegen ändert nur die Board-Datei. Dieselbe Aufgabe kann auf mehreren Boards liegen. Wer an kanbanD vorbei Dateien ändert, sieht sie live in allen Browsern; committet wird das nicht von kanbanD.
+Eine Aufgabe zu bewegen ändert nur die Board-Datei. Ein Zug über die API ohne `index` setzt die Karte oben in die Zielspalte, damit die zuletzt bewegte Karte immer oben steht. Dieselbe Aufgabe kann auf mehreren Boards liegen. Wer an kanbanD vorbei Dateien ändert, sieht sie live in allen Browsern; committet wird das nicht von kanbanD.
 
 ## Für Agenten
 

@@ -53,7 +53,7 @@ impl Kanban {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
         let von: Vec<Option<String>> = ziele.iter().map(|z| b.spalte_von(z.nummer).map(|s| s.name.clone())).collect();
-        let liste: Vec<(u32, &str, usize)> = ziele.iter().map(|z| (z.nummer, z.spalte.as_str(), z.index.unwrap_or(usize::MAX))).collect();
+        let liste: Vec<(u32, &str, Option<usize>)> = ziele.iter().map(|z| (z.nummer, z.spalte.as_str(), z.index)).collect();
         let geaendert = b.mehrere_bewegen(&liste).map_err(|f| match f {
             Bewegfehler::NichtAufDemBoard => Fehler::NichtGefunden(format!("Nicht alle Aufgaben liegen auf „{}“", b.titel)),
             _ => Fehler::Ungueltig(format!("Eine Zielspalte gibt es auf „{}“ nicht", b.titel)),
