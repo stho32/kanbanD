@@ -627,6 +627,14 @@ async function act(a, arg, wert) {
         const an = a === 'signal-fenster' && !(aufgabe(+nr).signale || []).includes(s);
         return schreiben(an ? 'PUT' : 'DELETE', `/api/aufgaben/${nr}/signale/${encodeURIComponent(s)}`);
       }
+      // R00087: freigeben als die gewählte Person (Mensch) — der Server erlaubt das für jede Reservierung
+      case 'freigeben': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${arg}/reservierung`); return;
+      case 'alle-freigeben': {
+        if (ichNoetig()) break;
+        for (const { a } of reservierteDesBoards()) await api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`).catch(f => { u.fensterFehler = f.message; });
+        await laden();
+        return;
+      }
       case 'archivieren': {
         if (ichNoetig()) break;
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);

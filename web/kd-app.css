@@ -101,6 +101,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* unterste Zeile: links der Timer, rechts Klasse, Teilaufgaben, Fälligkeit, Herkunft, Zuständige; reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile */
 .ka .r3 .rechts{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;white-space:normal}
 .ka .r3 .orgs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px}
+.ka .r3 .schloss{display:inline-flex;align-items:center;gap:2px;font-family:var(--kd-mono);color:var(--kd-text);border:1px solid var(--kd-line);border-radius:4px;padding:0 4px}
+.ka .r3 .schloss .i,#reservierung .i{width:12px;height:12px}
+#reservierung{gap:6px;align-items:center}
+.res-rahmen{overflow-x:auto}
+.res-rahmen table{width:100%}
+.res-rahmen td,.res-rahmen th{white-space:nowrap}
 .due.warn{color:var(--kd-warn)}
 .avs{display:flex}
 .avs .pk+.pk{margin-left:-3px;box-shadow:0 0 0 1px var(--kd-surface)}

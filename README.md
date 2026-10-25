@@ -48,6 +48,8 @@ Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendu
 
 Eine Aufgabe zu bewegen ändert nur die Board-Datei. Ein Zug über die API ohne `index` setzt die Karte oben in die Zielspalte, damit die zuletzt bewegte Karte immer oben steht. Dieselbe Aufgabe kann auf mehreren Boards liegen. Wer an kanbanD vorbei Dateien ändert, sieht sie live in allen Browsern; committet wird das nicht von kanbanD.
 
+Mehrere Agenten an einem Board: jede laufende Instanz nennt im Header `X-KanbanD-Instanz` eine selbst gewählte Kennung. `POST /api/boards/{slug}/ziehen {von, nach?}` nimmt atomar die oberste freie Karte einer Spalte, reserviert sie 24 h für diese Instanz (`reservation` im Frontmatter), macht die Person zuständig und zieht sie oben in die Folgespalte — zwei Instanzen bekommen nie dieselbe Karte. Menschen sehen Reservierungen als Schloss auf der Karte und unter „Alle Aufgabenreservierungen anzeigen“ im Board-Menü und können sie dort freigeben.
+
 ## Für Agenten
 
 `GET /api` beschreibt alle Endpunkte, `GET /api/endpunkte` liefert sie als JSON. Schreibende Aufrufe nennen `X-KanbanD-Wer: <kürzel>`:

@@ -13,6 +13,11 @@
     const o = new Date(zeitMs(z)), p = n => String(n).padStart(2, '0');
     return `${o.getFullYear()}-${p(o.getMonth() + 1)}-${p(o.getDate())} ${p(o.getHours())}:${p(o.getMinutes())}`;
   }
+  /** Millisekunden, die eine Reservierung (R00087) noch hält — 24 h ab `seit`; abgelaufen oder keine: null. */
+  function reservierungRest(r, jetzt) {
+    const rest = r ? zeitMs(r.seit) + 864e5 - jetzt : 0;
+    return rest > 0 ? rest : null;
+  }
   const tagesbeginn = jetzt => { const d = new Date(jetzt); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const wochenbeginn = jetzt => { const t = new Date(tagesbeginn(jetzt)); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return t.getTime(); };
 
@@ -65,5 +70,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { zeitMs, ortszeit, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { zeitMs, ortszeit, reservierungRest, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);

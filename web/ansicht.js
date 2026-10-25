@@ -122,7 +122,7 @@ function vFenster() {
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
-${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}
+${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
@@ -168,7 +168,7 @@ function vZeiten(a) {
 const defekteBoards = () => (S.zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
 function vBoardPop() {
   const u = S.ui;
-  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="menu"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<div class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}" role="menuitem">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></div>`).join('')}${defekteBoards().map(s => `<div class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}" role="menuitem">${esc(s)}<span class="muted mono warn">defekt</span></div>`).join('')}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="menu"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<div class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}" role="menuitem">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></div>`).join('')}${defekteBoards().map(s => `<div class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}" role="menuitem">${esc(s)}<span class="muted mono warn">defekt</span></div>`).join('')}${S.board ? `<div class="iz" data-act="pop" data-arg="reservierungen" role="menuitem" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></div>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
 }
 
 function vPop() {
@@ -178,6 +178,7 @@ function vPop() {
   if (u.pop === 'legen') return vLegenPop();
   if (u.pop === 'ber') return vBerichtePop();
   if (u.pop === 'defekt') return vDefektePop();
+  if (u.pop === 'reservierungen') return vReservierungenPop();
   if (u.pop === 'wbs-status') return vWbsStatusPop();
   if (u.pop === 'wbs-neu') return vWbsNeuPop();
   if (u.pop === 'wbs-verwerfen') return vWbsVerwerfenPop();
@@ -319,7 +320,7 @@ function vKarte(a, fertig) {
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${tk}${due}${vHerkunft(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}" style="${cv(cl.farbe)}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -369,6 +370,28 @@ function vMenue() {
   const m = S.ui.menue;
   if (!m) return '';
   return `<div class="kmenue" id="kmenue" role="menu" aria-label="${esc(m.titel)}" style="left:${m.x}px;top:${m.y}px"><div class="km-titel">${esc(m.titel)}</div>${vMenueEintraege(m.eintraege, m, true, '')}</div>`;
+}
+
+/* ── Reservierungen (R00087) ── */
+const SCHLOSS = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
+/** Die Reservierung, solange sie hält — eine abgelaufene zeigt die Oberfläche nicht, auch in einem lange offenen Tab. */
+const gueltigeReservierung = a => a && reservierungRest(a.reservierung, Date.now()) ? a.reservierung : null;
+const reservierungText = r => `reserviert von ${per(r.wer).name} · Instanz ${r.instanz} · noch ${hm(reservierungRest(r, Date.now()))}`;
+function vSchloss(a) {
+  const r = gueltigeReservierung(a);
+  return r ? `<span class="schloss" title="${esc(reservierungText(r))}" aria-label="${esc(reservierungText(r))}">${SCHLOSS}${esc(r.wer)}</span>` : '';
+}
+function vReservierungFeld(a) {
+  const r = gueltigeReservierung(a);
+  if (!r) return '';
+  return `<span class="k">reservation</span><span class="w wrap" id="reservierung">${pk(r.wer)}<span>${esc(per(r.wer).name)} · Instanz <span class="mono">${esc(r.instanz)}</span> · seit ${esc(ortszeit(r.seit).slice(11))} · noch ${hm(reservierungRest(r, Date.now()))}</span><button class="as" data-act="freigeben" data-arg="${a.nummer}">freigeben</button></span>`;
+}
+/** Gültige Reservierungen auf dem offenen Board, in Board-Reihenfolge. */
+const reservierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben.map(n => ({ sp, a: aufgabe(n) }))).filter(x => x.a && !x.a.archiviert && gueltigeReservierung(x.a)) : [];
+function vReservierungenPop() {
+  const zeilen = reservierteDesBoards();
+  const tabelle = zeilen.length ? `<div class="res-rahmen"><table class="pt dicht" id="reservierungen"><thead><tr><th>Karte</th><th>Titel</th><th>Spalte</th><th>Person</th><th>Instanz</th><th>seit</th><th class="r">noch</th><th></th></tr></thead><tbody>${zeilen.map(({ sp, a }) => { const r = a.reservierung; return `<tr data-reserviert="${a.nummer}"><td><a href="#" class="id" data-act="oeffnen" data-arg="${a.nummer}">#${a.nummer}</a></td><td>${esc(a.titel)}</td><td>${esc(sp.name)}</td><td>${pk(r.wer)}${esc(per(r.wer).name)}</td><td class="mono">${esc(r.instanz)}</td><td class="mono">${esc(ortszeit(r.seit).slice(5))}</td><td class="r num">${hm(reservierungRest(r, Date.now()))}</td><td><button class="btn" data-act="freigeben" data-arg="${a.nummer}">freigeben</button></td></tr>`; }).join('')}</tbody></table></div>` : '<div class="leer">Keine gültigen Reservierungen auf diesem Board.</div>';
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:820px;max-width:calc(100vw - 32px)" role="dialog" aria-label="Aufgabenreservierungen"><h4>AUFGABENRESERVIERUNGEN <span class="mono">${zeilen.length}</span></h4>${tabelle}<div class="fuss">Eine Reservierung hält 24 h; Agenten lassen reservierte Karten beim Ziehen aus.${zeilen.length ? ` <button class="btn" data-act="alle-freigeben" style="margin-left:auto">alle freigeben</button>` : ''}</div></div>`;
 }
 
 function vDefektePop() {

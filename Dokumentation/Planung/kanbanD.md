@@ -339,11 +339,11 @@ zuletzt: 2026-10-25
 | B0241 | Bubble | I0073 | Wächter im Client | gruen | Test gruen | letztes Ereignis, Zustand, sichtbar/online → neu verbinden mit Rückzug, nachladen |  |  |  |  |  |
 | I0074 | Interaction | D0007 | Zug ohne Index landet oben | gruen | US-1..US-2 |  |  |  |  | R00086 | Feedback 2026-10-25 P1/B7: ohne Index oben, bewusst LIFO |
 | B0242 | Bubble | I0074 | Einfügen oben ohne Index | gruen | Test gruen | bewegen/bewegen-mehrere ohne index → Position 0, Anfragereihenfolge |  |  |  |  |  |
-| I0075 | Interaction | D0007 | Reservierungen und Ziehen | gelb | US-1..US-4 |  |  |  | I0074, I0072 | R00087 | Feedback 2026-10-25 P2: Instanz-GUID, Reservierung 24 h, ziehen atomar, Liste aller Reservierungen |
+| I0075 | Interaction | D0007 | Reservierungen und Ziehen | gruen | US-1..US-4 |  |  |  | I0074, I0072 | R00087 | Feedback 2026-10-25 P2: Instanz-GUID, Reservierung 24 h, ziehen atomar, Liste aller Reservierungen |
 | B0243 | Bubble | I0075 | Reservierung an der Aufgabe | gruen | Test gruen | reservation ↔ Aufgabe.reservierung; gültig 24 h |  |  |  |  |  |
 | B0244 | Bubble | I0075 | Reservieren und Freigeben über die API | gruen | Test gruen | POST/DELETE …/reservierung mit Instanz → 200/409/404 |  |  |  |  |  |
 | B0245 | Bubble | I0075 | Ziehen atomar | gruen | Test gruen | von, nach? → oberste freie Karte reserviert, zugeordnet, gezogen, ein Commit |  |  |  |  |  |
-| B0246 | Bubble | I0075 | Reservierung in der Oberfläche | rot | Test gruen | Schloss auf Karte, Detail mit freigeben, Liste aller Reservierungen |  |  |  |  |  |
+| B0246 | Bubble | I0075 | Reservierung in der Oberfläche | gruen | Test gruen | Schloss auf Karte, Detail mit freigeben, Liste aller Reservierungen |  |  |  |  |  |
 | I0076 | Interaction | D0002 | Signal auffällig und Signale oben | rot | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |
 | B0247 | Bubble | I0076 | Karte in Signalfarbe | rot | Test gruen | Signale → Streifen, Hintergrundton, größere Fackel |  |  |  |  |  |
 | B0248 | Bubble | I0076 | Schalter Signale oben | rot | Test gruen | Spalte → Anzeige erst mit Signal; Zug-Sperre; localStorage |  |  |  |  |  |

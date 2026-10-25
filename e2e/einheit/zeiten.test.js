@@ -85,3 +85,12 @@ test('Anzeige in Ortszeit ohne Versatz', () => {
   if (process.env.TZ === 'Europe/Berlin') assert.strictEqual(ortszeit('2026-10-25 06:41+00:00'), '2026-10-25 07:41');
   if (process.env.TZ === 'UTC') assert.strictEqual(ortszeit('2026-10-25 07:41+01:00'), '2026-10-25 06:41');
 });
+
+// R00087: Restzeit einer Reservierung — 24 h ab seit, abgelaufen ist null
+test('Restzeit einer Reservierung', () => {
+  const { reservierungRest } = require('../../web/zeiten.js');
+  const seit = '2026-10-25 08:00+01:00', t = zeitMs(seit);
+  assert.strictEqual(reservierungRest({ seit }, t + H), 23 * H);
+  assert.strictEqual(reservierungRest({ seit }, t + 24 * H), null);
+  assert.strictEqual(reservierungRest(null, t), null);
+});

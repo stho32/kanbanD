@@ -1,6 +1,6 @@
 ---
 id: R00087
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -49,21 +49,21 @@ N Agenten lassen sich über ein Board synchronisieren — Parallelität über de
 ## Akzeptanzkriterien
 
 ### Reservieren
-- [ ] Instanz A reserviert #7 → `reservation` steht in der Datei; Instanz B reserviert #7 → `409` mit Inhaber A
-- [ ] A reserviert #7 erneut → `since` wird jetzt; nach 24 h ohne Verlängerung kann B reservieren
-- [ ] B (Agent) gibt #7 frei → `409`; Mensch gibt frei → frei; A gibt frei → frei
-- [ ] Mit fremder Reservierung darf B kommentieren, Zeit buchen und #7 bewegen
+- [x] Instanz A reserviert #7 → `reservation` steht in der Datei; Instanz B reserviert #7 → `409` mit Inhaber A
+- [x] A reserviert #7 erneut → `since` wird jetzt; nach 24 h ohne Verlängerung kann B reservieren
+- [x] B (Agent) gibt #7 frei → `409`; Mensch gibt frei → frei; A gibt frei → frei
+- [x] Mit fremder Reservierung darf B kommentieren, Zeit buchen und #7 bewegen
 
 ### Ziehen
-- [ ] Spalte „Bereit“ = [7, 8, 9], #7 reserviert von B: A zieht ohne `nach` → bekommt #8, #8 steht oben in der Folgespalte, reserviert von A, A zuständig, ein Commit
-- [ ] „Bereit“ leer oder nur fremd reserviert → `404` „nichts zu ziehen“
-- [ ] `von` ist die letzte Spalte, ohne `nach` → `400`
-- [ ] 10 parallele `ziehen` auf eine Spalte mit 10 Karten → 10 verschiedene Karten, keine doppelt (Integrationstest)
-- [ ] Ohne Instanz → `400`
+- [x] Spalte „Bereit“ = [7, 8, 9], #7 reserviert von B: A zieht ohne `nach` → bekommt #8, #8 steht oben in der Folgespalte, reserviert von A, A zuständig, ein Commit
+- [x] „Bereit“ leer oder nur fremd reserviert → `404` „nichts zu ziehen“
+- [x] `von` ist die letzte Spalte, ohne `nach` → `400`
+- [x] 10 parallele `ziehen` auf eine Spalte mit 10 Karten → 10 verschiedene Karten, keine doppelt (Integrationstest)
+- [x] Ohne Instanz → `400`
 
 ### Oberfläche
-- [ ] Reservierte Karte zeigt das Schloss; nach Freigabe im Detail verschwindet es live
-- [ ] Die Liste „Alle Aufgabenreservierungen anzeigen“ zeigt genau die gültigen Reservierungen des Boards; „alle freigeben“ leert sie
+- [x] Reservierte Karte zeigt das Schloss; nach Freigabe im Detail verschwindet es live
+- [x] Die Liste „Alle Aufgabenreservierungen anzeigen“ zeigt genau die gültigen Reservierungen des Boards; „alle freigeben“ leert sie
 
 ## Betroffene Verzeichnisstruktur
 
