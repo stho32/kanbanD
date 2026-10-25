@@ -42,3 +42,16 @@ async fn timer_aus_der_datei_wird_festgehalten() {
     assert!(r["zeiten"][0]["ende"].is_string(), "{r}");
     assert!(git(tmp.path(), &["log", "-1", "--format=%s"]).starts_with("#1 Timer von Stefan gestoppt ("));
 }
+
+// R00084: ein neuer Timer schreibt den Beginn mit dem Versatz der Ortszeit
+#[tokio::test]
+async fn timer_start_schreibt_versatz() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/timer/start", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    let beginn = r["zeiten"][0]["beginn"].as_str().unwrap();
+    assert!(beginn.ends_with("+01:00") || beginn.ends_with("+02:00"), "{beginn}");
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains(&format!("{beginn} · ... · st")));
+}

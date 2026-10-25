@@ -73,7 +73,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("POST", "/api/aufgaben/{nr}/timer/start", true, "Zeiten", "eigenen Timer starten"),
     e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde; lief er (seit dem Start über diesen Server) unter 20 s, wird die Zeile verworfen statt abgeschlossen"),
     e("POST", "/api/aufgaben/{nr}/zeiten", true, "Zeiten", "Zeit nachtragen {dauer}"),
-    e("PATCH", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag korrigieren {beginn?, ende?}"),
+    e("PATCH", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag korrigieren {beginn?, ende?} — JJJJ-MM-TT HH:MM, optional ±HH:MM oder Z, auch ISO mit T; ohne Versatz als Ortszeit, gespeichert in Ortszeit mit Versatz"),
     e("DELETE", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag löschen"),
     e("GET", "/api/berichte/zeiten.csv", false, "Berichte", "alle Zeiteinträge als CSV"),
     e("GET", "/api/berichte/verlauf?board={slug}", false, "Berichte", "offene Aufgaben je Tag und Durchlaufzeiten aus Git"),

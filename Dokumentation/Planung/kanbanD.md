@@ -332,7 +332,7 @@ zuletzt: 2026-10-25
 | B0236 | Bubble | I0071 | Prognose aus dem Fenster | gruen | Test gruen | jetzt, N, Rechnen ab, erste Aufgabe → Tagesreihe; Feld in der Filterbox; Cache-Schlüssel |  |  |  |  |  |
 | I0072 | Interaction | D0003 | Zeitpunkte mit Zeitzone | gelb | US-1..US-3 |  |  |  | I0011 | R00084 | Feedback 2026-10-25 P7/B1: Versatz in Datei und API, Rechnen über UTC |
 | B0237 | Bubble | I0072 | Zeitpunkt lesen und schreiben mit Versatz | gruen | Test gruen | Text (mit/ohne Versatz, ISO) → Zeitpunkt; jetzt() mit Versatz; minuten über UTC |  |  |  |  |  |
-| B0238 | Bubble | I0072 | Schreiber und Vergleiche über Zeitpunkt | rot | Test gruen | Timer, Nachtrag, Korrektur, Kommentar, Archiv, Berichte → Versatz in der Datei |  |  |  |  |  |
+| B0238 | Bubble | I0072 | Schreiber und Vergleiche über Zeitpunkt | gruen | Test gruen | Timer, Nachtrag, Korrektur, Kommentar, Archiv, Berichte → Versatz in der Datei |  |  |  |  |  |
 | B0239 | Bubble | I0072 | Client rechnet mit Versatz | rot | Test gruen | zeitMs mit Versatz; Anzeige HH:MM in Ortszeit |  |  |  |  |  |
 | I0073 | Interaction | D0002 | Live-Verbindung mit Herzschlag | rot | US-1..US-3 |  |  |  | I0011 | R00085 | Feedback 2026-10-25 P4: sichtbarer Herzschlag, Wächter verbindet neu |
 | B0240 | Bubble | I0073 | Herzschlag im Ereignisstrom | rot | Test gruen | Takt 15 s → event herzschlag |  |  |  |  |  |

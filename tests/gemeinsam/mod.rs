@@ -30,7 +30,17 @@ pub fn geordnet_beenden(kind: &mut Child) {
 }
 
 pub fn starten(ordner: &Path, zusatz: &[&str]) -> Laufendes {
+    starten_mit(ordner, zusatz, &[])
+}
+
+/// Wie `starten`, mit fester Zone Europe/Berlin — für Erwartungen an den Versatz (R00084).
+pub fn starten_in_berlin(ordner: &Path, zusatz: &[&str]) -> Laufendes {
+    starten_mit(ordner, zusatz, &[("TZ", "Europe/Berlin")])
+}
+
+fn starten_mit(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)]) -> Laufendes {
     let mut kind = Command::new(env!("CARGO_BIN_EXE_kanbanD"))
+        .envs(umgebung.iter().copied())
         .arg(ordner)
         .args(["--kein-browser", "--host", "127.0.0.1"])
         .args(zusatz)

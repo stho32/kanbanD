@@ -20,3 +20,15 @@ async fn agent_kommentiert_zweizeilig() {
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%an|%s"]), "Claude|#2 kommentiert: Zwei Zeilen");
     assert_eq!(senden(Method::POST, &lauf.adresse, "api/aufgaben/2/kommentare", "cl", json!({"text": "  "})).await.0, 400);
 }
+
+// R00084: der Kommentarzeitpunkt trägt den Versatz der Ortszeit
+#[tokio::test]
+async fn kommentar_traegt_versatz() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben/2/kommentare", "cl", json!({"text": "Hallo"})).await;
+    assert_eq!(s, 200);
+    let zp = a["kommentare"][0]["zeitpunkt"].as_str().unwrap();
+    assert!(zp.ends_with("+01:00") || zp.ends_with("+02:00"), "{zp}");
+}

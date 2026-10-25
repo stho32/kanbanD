@@ -1,8 +1,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
-use crate::format::aufgabe::zeitpunkt;
 use crate::modell::{Aufgabe, Person, Zeiteintrag};
-use crate::uhr;
+use crate::uhr::{self, Zeitpunkt};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -33,8 +32,11 @@ impl Kanban {
     }
 
     pub fn zeit_korrigieren(&self, wer: &Person, nr: u32, i: usize, k: &Zeitkorrektur) -> Result<Aufgabe, Fehler> {
+        // gespeichert wird in Ortszeit mit Versatz, gleich in welcher Form die Eingabe kam (R00084)
         let lesen = |z: &Option<String>| -> Result<Option<String>, Fehler> {
-            z.as_deref().map(|s| zeitpunkt(s).ok_or_else(|| Fehler::Ungueltig(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM")))).transpose()
+            z.as_deref()
+                .map(|s| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit().datei()).ok_or_else(|| Fehler::Ungueltig(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z"))))
+                .transpose()
         };
         let (beginn, ende) = (lesen(&k.beginn)?, lesen(&k.ende)?);
         self.aufgabe_schreiben(wer, nr, |a| {
@@ -50,7 +52,7 @@ impl Kanban {
                 z.ende = Some(e);
             }
             if let Some(e) = &z.ende
-                && e < &z.beginn
+                && Zeitpunkt::lesen(e).zip(Zeitpunkt::lesen(&z.beginn)).is_some_and(|(e, b)| e.utc() < b.utc())
             {
                 return Err(Fehler::Ungueltig("Das Ende liegt vor dem Beginn".into()));
             }

@@ -29,17 +29,17 @@ async fn nachtragen_endet_jetzt() {
 async fn korrigieren_und_regeln() {
     let tmp = tempfile::tempdir().unwrap();
     mit_zeiten(tmp.path());
-    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
     let a = &lauf.adresse;
     let (s, _) = senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17 10:00"})).await;
     assert_eq!(s, 200);
-    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-17 09:00 · 2026-10-17 10:00 · cl"));
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-17 09:00 · 2026-10-17 10:00+02:00 · cl"), "Eingabe ohne Versatz als Ortszeit, Altbeginn bleibt");
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#1 Zeit korrigiert (Claude)");
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17 08:00"})).await.0, 400);
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"beginn": "gestern"})).await.0, 400);
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/1", "st", json!({"ende": "2026-10-18 09:00"})).await.0, 400);
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/1", "st", json!({"beginn": "2026-10-18 07:30"})).await.0, 200);
-    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-18 07:30 · ... · st"));
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-18 07:30+02:00 · ... · st"));
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/9", "st", json!({})).await.0, 404);
     let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
     senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({})).await;
@@ -55,4 +55,21 @@ async fn loeschen_nur_beendete() {
     assert_eq!(senden(Method::DELETE, &lauf.adresse, "api/aufgaben/1/zeiten/0", "st", json!(null)).await.0, 200);
     assert!(!lies(tmp.path(), "aufgaben/0001-eins.md").contains("· cl"));
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#1 Zeit gelöscht (Claude, 2:00)");
+}
+
+// R00084: ISO-Eingabe wird Ortszeit mit Versatz, verglichen wird über UTC statt über den Text
+#[tokio::test]
+async fn korrektur_mit_versatz_vergleicht_ueber_utc() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_zeiten(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, r) = senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17T08:00Z"})).await;
+    assert_eq!(s, 200);
+    assert_eq!(r["zeiten"][0]["ende"], "2026-10-17 10:00+02:00");
+    // 08:30+01:00 ist 09:30 Berliner Sommerzeit — nach dem Beginn 09:00, als Text aber kleiner
+    assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17 08:30+01:00"})).await.0, 200);
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-17 09:00 · 2026-10-17 09:30+02:00 · cl"));
+    // 09:30+03:00 ist 08:30 Berliner Zeit — vor dem Beginn, als Text aber größer
+    assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17 09:30+03:00"})).await.0, 400);
 }
