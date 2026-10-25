@@ -1,6 +1,6 @@
 ---
 id: R00094
-status: In Arbeit
+status: Erledigt
 datum: 2026-10-25
 ---
 
@@ -28,11 +28,11 @@ Durchläufe werden auswertbar: wie oft eine Phase Befunde liefert, welche Rolle 
 
 ## Akzeptanzkriterien
 
-- [ ] `POST …/durchlaeufe {phase: "Entwicklung", ergebnis: "bestanden", dauer: "1:43", text: "Gate grün", wer: "entw"}` → Zeile `… · Entwicklung · bestanden · entw · 1:43 · Gate grün` im Block und Kommentar „Entwicklung bestanden (entw, 1:43): Gate grün“, ein Commit
-- [ ] `ergebnis: "ok"` → `400`; `phase: ""` → `400`; `dauer: "x"` → `400`
-- [ ] Text mit ` · ` und Zeilenumbruch → Rundlauf liefert denselben Text (Umbruch als Leerzeichen)
-- [ ] Rundlauf lesen → schreiben ohne Änderung ist verlustfrei
-- [ ] Detail zeigt die Tabelle mit „befund“ in Warnfarbe
+- [x] `POST …/durchlaeufe {phase: "Entwicklung", ergebnis: "bestanden", dauer: "1:43", text: "Gate grün", wer: "entw"}` → Zeile `… · Entwicklung · bestanden · entw · 1:43 · Gate grün` im Block und Kommentar „Entwicklung bestanden (entw, 1:43): Gate grün“, ein Commit
+- [x] `ergebnis: "ok"` → `400`; `phase: ""` → `400`; `dauer: "x"` → `400`
+- [x] Text mit ` · ` und Zeilenumbruch → Rundlauf liefert denselben Text (Umbruch als Leerzeichen)
+- [x] Rundlauf lesen → schreiben ohne Änderung ist verlustfrei
+- [x] Detail zeigt die Tabelle mit „befund“ in Warnfarbe
 
 ## Betroffene Verzeichnisstruktur
 

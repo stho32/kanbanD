@@ -765,3 +765,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 @media (max-width:640px){.bfilter-box .bf-gruppe{grid-template-columns:1fr}.bfilter-box>summary{padding:8px 14px}}
 .bf-tage{width:72px}
 .diagramm .fb-ueber{font-size:11px;fill:var(--kd-c-red-line);font-family:var(--kd-font)}
+/* R00094: Durchläufe im Detail — ein Befund fällt in Warnfarbe auf */
+.dl-tab{width:100%}
+.dl-tab td{vertical-align:top}
+.erg{font-family:var(--kd-mono);font-size:11px;padding:0 4px;border-radius:3px;border:1px solid var(--kd-line)}
+.erg.bestanden{color:var(--kd-c-green-line);border-color:var(--kd-c-green-line)}
+.erg.befund{color:var(--kd-warn);border-color:var(--kd-warn);font-weight:600}
+.erg.entfaellt{color:var(--kd-muted)}

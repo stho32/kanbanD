@@ -131,7 +131,15 @@ ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.ma
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
 function vFensterAbschnitte(a) {
-  return vTeilaufgaben(a) + vAnhaenge(a) + vKommentare(a);
+  return vTeilaufgaben(a) + vAnhaenge(a) + vDurchlaeufe(a) + vKommentare(a);
+}
+/** Durchläufe (R00094) als Tabelle, neueste oben; ohne Durchläufe kein Abschnitt. */
+function vDurchlaeufe(a) {
+  // neueste oben; in derselben Minute entscheidet die Reihenfolge im Block
+  const ds = (a.durchlaeufe || []).map((d, i) => ({ d, i })).sort((x, y) => zeitMs(y.d.zeitpunkt) - zeitMs(x.d.zeitpunkt) || y.i - x.i).map(x => x.d);
+  if (!ds.length) return '';
+  const zeilen = ds.map(d => `<tr><td class="mono">${esc(ortszeit(d.zeitpunkt).slice(5))}</td><td>${esc(d.phase)}</td><td><span class="erg ${esc(d.ergebnis)}">${esc(d.ergebnis)}</span></td><td>${pk(d.wer)}${esc(per(d.wer).name)}</td><td class="r mono">${d.dauer_minuten == null ? '–' : hm(d.dauer_minuten * 6e4)}</td><td>${esc(d.text)}</td></tr>`).join('');
+  return `<div class="abs" id="durchlaeufe"><h3>DURCHLÄUFE <span class="mono">kanbanD-runs · ${ds.length}</span></h3><table class="pt dicht dl-tab"><thead><tr><th>Zeit</th><th>Phase</th><th>Ergebnis</th><th>Wer</th><th class="r">Dauer</th><th>Text</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
 }
 const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
 function vAnhaenge(a) {
