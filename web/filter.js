@@ -24,6 +24,13 @@
     return s;
   }
 
+  /** Das Signal, dessen Farbe die Karte trägt (R00088): das erste gesetzte in der Reihenfolge der Einstellungen,
+      sonst das erste gesetzte überhaupt; die Fälligkeit zählt nicht. */
+  function ersteSignal(a, reihenfolge) {
+    const gesetzt = a.signale || [];
+    return reihenfolge.find(s => gesetzt.includes(s)) || gesetzt[0] || null;
+  }
+
   /** Trifft der Filter die Aufgabe? Alle Wörter müssen passen. */
   function passt(a, text, umfeld) {
     const u = umfeld || {};
@@ -66,5 +73,5 @@
     return jetzt === schluessel ? ohne : (ohne + ' signal:' + schluessel).trim();
   }
 
-  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten, aufgabenSignale, signalUmschalten });
+  Object.assign(ziel, { filterWoerter, passt, archivGefiltert, klasseUmschalten, aufgabenSignale, ersteSignal, signalUmschalten });
 })(typeof module !== 'undefined' ? module.exports : window);

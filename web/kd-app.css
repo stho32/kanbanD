@@ -80,6 +80,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Karte */
 .ka{position:relative;flex:none;min-height:64px;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:pointer}
 .ka[data-c]{background:var(--c);border-color:var(--cl)}
+/* R00088: eine Karte mit Signal trägt dessen Farbe — Streifen links und ein leichter Ton, in Hell und Dunkel aus der Fläche gemischt */
+.ka[data-sig]{border-left:4px solid var(--sg);background:color-mix(in srgb,var(--sg) 12%,var(--kd-surface));padding-left:calc(var(--kd-s3) - 3px)}
+.ka[data-c][data-sig]{background:color-mix(in srgb,var(--sg) 12%,var(--c))}
+.ka[data-sig] .signal{width:22px;height:22px}
+.ka[data-sig] .signal .i-sig{width:20px;height:20px}
 .ka:hover{border-color:var(--kd-accent)}
 .ka.offen{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .ka.zieht{opacity:.4}

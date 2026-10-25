@@ -80,3 +80,13 @@ test('Filter signal: — Schlüssel, due, any; Umschalten (R00076)', () => {
   assert.strictEqual(signalUmschalten('kopf signal:mail', 'mail'), 'kopf');
   assert.strictEqual(signalUmschalten('signal:due', 'mail'), 'signal:mail');
 });
+
+// R00088: die Farbe der Karte kommt vom ersten gesetzten Signal in der Reihenfolge der Einstellungen
+test('erstes Signal nach der Reihenfolge der Einstellungen', () => {
+  const { ersteSignal } = require('../../web/filter.js');
+  const reihe = ['review', 'blockiert'];
+  assert.strictEqual(ersteSignal({ signale: ['blockiert', 'review'] }, reihe), 'review');
+  assert.strictEqual(ersteSignal({ signale: ['blockiert'] }, reihe), 'blockiert');
+  assert.strictEqual(ersteSignal({ signale: ['unbekannt'] }, reihe), 'unbekannt', 'ein unbekanntes Signal zählt trotzdem');
+  assert.strictEqual(ersteSignal({ signale: [], faellig: '2026-01-01' }, reihe), null, 'die Fälligkeit färbt nicht');
+});

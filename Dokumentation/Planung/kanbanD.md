@@ -344,8 +344,8 @@ zuletzt: 2026-10-25
 | B0244 | Bubble | I0075 | Reservieren und Freigeben über die API | gruen | Test gruen | POST/DELETE …/reservierung mit Instanz → 200/409/404 |  |  |  |  |  |
 | B0245 | Bubble | I0075 | Ziehen atomar | gruen | Test gruen | von, nach? → oberste freie Karte reserviert, zugeordnet, gezogen, ein Commit |  |  |  |  |  |
 | B0246 | Bubble | I0075 | Reservierung in der Oberfläche | gruen | Test gruen | Schloss auf Karte, Detail mit freigeben, Liste aller Reservierungen |  |  |  |  |  |
-| I0076 | Interaction | D0002 | Signal auffällig und Signale oben | rot | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |
-| B0247 | Bubble | I0076 | Karte in Signalfarbe | rot | Test gruen | Signale → Streifen, Hintergrundton, größere Fackel |  |  |  |  |  |
+| I0076 | Interaction | D0002 | Signal auffällig und Signale oben | gelb | US-1..US-3 |  |  |  | I0064 | R00088 | Feedback 2026-10-25 P5: Karte in Signalfarbe, Schalter Signale oben nur Anzeige |
+| B0247 | Bubble | I0076 | Karte in Signalfarbe | gruen | Test gruen | Signale → Streifen, Hintergrundton, größere Fackel |  |  |  |  |  |
 | B0248 | Bubble | I0076 | Schalter Signale oben | rot | Test gruen | Spalte → Anzeige erst mit Signal; Zug-Sperre; localStorage |  |  |  |  |  |
 | I0077 | Interaction | D0002 | Gesamtzeit auf der Karte | rot | US-1..US-3 |  |  |  | I0072 | R00089 | Feedback 2026-10-25 P6: Σ h:mm unten, leer bei 0, live |
 | B0249 | Bubble | I0077 | Summe der Zeiten | rot | Test gruen | zeiten, jetzt → Summe gesamt und je Person |  |  |  |  |  |
