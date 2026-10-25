@@ -4,6 +4,15 @@ use crate::modell::{Aufgabe, Person, Zeiteintrag};
 use crate::uhr::{self, Zeitpunkt};
 use serde::Deserialize;
 
+/// Rumpf von `POST …/zeiten` (R00090): entweder `dauer` (endet jetzt) oder `beginn` und `ende`; `wer` bucht für eine andere Person.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Zeitnachtrag {
+    pub dauer: Option<String>,
+    pub beginn: Option<String>,
+    pub ende: Option<String>,
+    pub wer: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Zeitkorrektur {
     pub beginn: Option<String>,
@@ -20,14 +29,30 @@ fn eintrag(a: &mut Aufgabe, i: usize) -> Result<&mut Zeiteintrag, Fehler> {
 }
 
 impl Kanban {
-    /// Ein Eintrag der handelnden Person, der jetzt endet und um die Dauer früher beginnt.
-    pub fn zeit_nachtragen(&self, wer: &Person, nr: u32, dauer: &str) -> Result<Aufgabe, Fehler> {
-        let minuten = uhr::dauer_lesen(dauer).ok_or_else(|| Fehler::Ungueltig(format!("Dauer „{dauer}“: z. B. 0:45, 1,5 oder 90 min")))?;
-        let ende = uhr::jetzt();
-        let beginn = uhr::verschieben(&ende, -minuten).expect("jetzt ist lesbar");
+    /// Ein abgeschlossener Eintrag: mit `dauer` endet er jetzt und beginnt um die Dauer früher, mit `beginn` und `ende`
+    /// liegt er, wo angegeben (R00090). Gebucht für `n.wer` oder die handelnde Person; Autor des Commits bleibt sie.
+    pub fn zeit_nachtragen(&self, wer: &Person, nr: u32, n: &Zeitnachtrag) -> Result<Aufgabe, Fehler> {
+        let fuer = match n.wer.as_deref() {
+            Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::Ungueltig(format!("Person „{k}“ steht nicht in kanbanD.md")))?,
+            None => wer.clone(),
+        };
+        let (beginn, ende) = match (&n.dauer, &n.beginn, &n.ende) {
+            (Some(dauer), None, None) => {
+                let minuten = uhr::dauer_lesen(dauer).ok_or_else(|| Fehler::Ungueltig(format!("Dauer „{dauer}“: z. B. 0:45, 1,5 oder 90 min")))?;
+                let ende = uhr::jetzt();
+                (uhr::verschieben(&ende, -minuten).expect("jetzt ist lesbar"), ende)
+            }
+            (None, Some(b), Some(e)) => block_lesen(b, e)?,
+            _ => return Err(Fehler::Ungueltig("Entweder {dauer} oder {beginn, ende} angeben".into())),
+        };
+        let minuten = uhr::minuten(&beginn, &ende).unwrap_or(0);
         self.aufgabe_schreiben(wer, nr, |a| {
-            a.zeiten.push(Zeiteintrag { wer: wer.kuerzel.clone(), beginn, ende: Some(ende) });
-            Ok(Some(format!("#{nr} Zeit nachgetragen: {} ({})", uhr::hm(minuten), wer.name)))
+            let neu = Zeiteintrag { wer: fuer.kuerzel.clone(), beginn, ende: Some(ende) };
+            if a.zeiten.iter().any(|z| z.kennung() == neu.kennung()) {
+                return Err(Fehler::Konflikt(format!("#{nr} hat schon einen Eintrag {}", neu.kennung())));
+            }
+            a.zeiten.push(neu);
+            Ok(Some(format!("#{nr} Zeit nachgetragen: {} ({})", uhr::hm(minuten), fuer.name)))
         })
     }
 
@@ -70,4 +95,17 @@ impl Kanban {
             Ok(Some(format!("#{nr} Zeit gelöscht ({}, {})", name(self, &z.wer), uhr::hm(uhr::minuten(&z.beginn, ende).unwrap_or(0)))))
         })
     }
+}
+
+/// Beginn und Ende eines Nachtrags in Ortszeit mit Versatz; das Ende liegt nach dem Beginn und nicht in der Zukunft.
+fn block_lesen(beginn: &str, ende: &str) -> Result<(String, String), Fehler> {
+    let lesen = |s: &str| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit()).ok_or_else(|| Fehler::Ungueltig(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z")));
+    let (b, e) = (lesen(beginn)?, lesen(ende)?);
+    if e.utc() <= b.utc() {
+        return Err(Fehler::Ungueltig("Das Ende liegt nicht nach dem Beginn".into()));
+    }
+    if e.utc() > chrono::Utc::now() {
+        return Err(Fehler::Ungueltig("Das Ende liegt in der Zukunft".into()));
+    }
+    Ok((b.datei(), e.datei()))
 }

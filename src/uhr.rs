@@ -47,6 +47,11 @@ impl Zeitpunkt {
         Zeitpunkt::aus(self.moment().with_timezone(&Local).fixed_offset())
     }
 
+    /// ISO-Form mit Versatz, `2026-10-25T05:57+01:00`; ohne Versatz der der Ortszeit-Deutung (R00090).
+    pub fn iso(&self) -> String {
+        self.moment().format("%Y-%m-%dT%H:%M%:z").to_string()
+    }
+
     /// Dateiform: mit Versatz, wenn er gelesen oder gesetzt wurde, sonst wie der Altbestand ohne.
     pub fn datei(&self) -> String {
         let wanduhr = self.wanduhr.format(ZEITFORMAT);

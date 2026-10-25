@@ -16,6 +16,15 @@ pub struct Zeiteintrag {
     pub ende: Option<String>,
 }
 
+impl Zeiteintrag {
+    /// Kennung `wer@JJJJ-MM-TTTHH:MM±HH:MM` (R00090): Person und Beginn als eindeutiger Moment — ein Altbeginn ohne
+    /// Versatz bekommt den seiner Ortszeit-Deutung. Ein unlesbarer Beginn bleibt, wie er ist.
+    pub fn kennung(&self) -> String {
+        let beginn = crate::uhr::Zeitpunkt::lesen(&self.beginn).map(|z| z.iso()).unwrap_or_else(|| self.beginn.clone());
+        format!("{}@{beginn}", self.wer)
+    }
+}
+
 /// Eine Karte, die eine Instanz für sich hält (R00087); in der Datei `reservation: {who, instance, since}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Reservierung {

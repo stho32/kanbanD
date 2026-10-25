@@ -73,3 +73,39 @@ async fn korrektur_mit_versatz_vergleicht_ueber_utc() {
     // 09:30+03:00 ist 08:30 Berliner Zeit — vor dem Beginn, als Text aber größer
     assert_eq!(senden(Method::PATCH, a, "api/aufgaben/1/zeiten/0", "st", json!({"ende": "2026-10-17 09:30+03:00"})).await.0, 400);
 }
+
+// R00090: ein Block mit Beginn und Ende in einem Aufruf, auch für eine andere Person
+#[tokio::test]
+async fn nachtragen_mit_beginn_und_ende_fuer_eine_person() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_zeiten(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/1/zeiten", "st", json!({"beginn": "2026-10-25 05:57+01:00", "ende": "2026-10-25 07:40+01:00", "wer": "cl"})).await;
+    assert_eq!(s, 200, "{r}");
+    let z = r["zeiten"].as_array().unwrap().iter().find(|z| z["beginn"] == "2026-10-25 05:57+01:00").unwrap().clone();
+    assert_eq!((z["wer"].as_str(), z["ende"].as_str()), (Some("cl"), Some("2026-10-25 07:40+01:00")));
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("2026-10-25 05:57+01:00 · 2026-10-25 07:40+01:00 · cl\n"));
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%an|%s"]), "Stefan|#1 Zeit nachgetragen: 1:43 (Claude)");
+    // ISO und ohne wer: für die handelnde Person
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/1/zeiten", "st", json!({"beginn": "2026-10-24T08:00Z", "ende": "2026-10-24T08:30Z"})).await;
+    assert_eq!(s, 200);
+    assert!(r["zeiten"].as_array().unwrap().iter().any(|z| z["beginn"] == "2026-10-24 10:00+02:00" && z["wer"] == "st"));
+}
+
+#[tokio::test]
+async fn nachtragen_regeln() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_zeiten(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let post = |d: serde_json::Value| senden(Method::POST, a, "api/aufgaben/1/zeiten", "st", d);
+    assert_eq!(post(json!({"dauer": "0:45", "beginn": "2026-10-24 08:00"})).await.0, 400, "beides");
+    assert_eq!(post(json!({})).await.0, 400, "keins");
+    assert_eq!(post(json!({"beginn": "2026-10-24 08:00"})).await.0, 400, "ohne Ende");
+    assert_eq!(post(json!({"beginn": "2026-10-24 09:00", "ende": "2026-10-24 08:00"})).await.0, 400, "Ende vor Beginn");
+    assert_eq!(post(json!({"beginn": "2026-10-24 09:00", "ende": "2099-01-01 08:00"})).await.0, 400, "Ende in der Zukunft");
+    assert_eq!(post(json!({"beginn": "2026-10-24 08:00", "ende": "2026-10-24 09:00", "wer": "xyz"})).await.0, 400, "unbekannte Person");
+    assert_eq!(post(json!({"beginn": "2026-10-24 08:00", "ende": "2026-10-24 09:00", "wer": "cl"})).await.0, 200);
+    assert_eq!(post(json!({"beginn": "2026-10-24 08:00+02:00", "ende": "2026-10-24 08:10+02:00", "wer": "cl"})).await.0, 409, "derselbe Beginn für dieselbe Person");
+}

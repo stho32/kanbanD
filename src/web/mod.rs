@@ -460,13 +460,8 @@ async fn timer_stoppen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32
     als_person(&app, wer, move |k, p| k.timer_stoppen(p, nr, fuer.as_deref())).await
 }
 
-#[derive(serde::Deserialize)]
-struct Dauer {
-    dauer: String,
-}
-
-async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(d): Json<Dauer>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.zeit_nachtragen(p, nr, &d.dauer)).await
+async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(n): Json<crate::dienst::Zeitnachtrag>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.zeit_nachtragen(p, nr, &n)).await
 }
 
 async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(z): Json<Zeitkorrektur>) -> Result<Response, Fehler> {

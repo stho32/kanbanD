@@ -75,7 +75,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("POST", "/api/wbs/{kuerzel}/knoten/{id}/verwerfen", true, "WBS", "Knoten verwerfen {grund?} → {geaendert: [ids]}; verworfen an Knoten und zählenden Nachfahren, keine Zeile gelöscht, Grund in der Notiz, kein Commit; 409 schon verworfen oder Application"),
     e("POST", "/api/aufgaben/{nr}/timer/start", true, "Zeiten", "eigenen Timer starten"),
     e("POST", "/api/aufgaben/{nr}/timer/stop", true, "Zeiten", "Timer stoppen {wer?} — auch fremde; lief er (seit dem Start über diesen Server) unter 20 s, wird die Zeile verworfen statt abgeschlossen"),
-    e("POST", "/api/aufgaben/{nr}/zeiten", true, "Zeiten", "Zeit nachtragen {dauer}"),
+    e("POST", "/api/aufgaben/{nr}/zeiten", true, "Zeiten", "Zeit nachtragen — entweder {dauer} (endet jetzt) oder {beginn, ende} (Formen wie bei der Korrektur; Ende nach Beginn, nicht in der Zukunft); optional wer: bucht für diese Person, Autor bleibt die handelnde; gleiche Kennung wer@beginn schon vorhanden → 409"),
     e("PATCH", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag korrigieren {beginn?, ende?} — JJJJ-MM-TT HH:MM, optional ±HH:MM oder Z, auch ISO mit T; ohne Versatz als Ortszeit, gespeichert in Ortszeit mit Versatz"),
     e("DELETE", "/api/aufgaben/{nr}/zeiten/{i}", true, "Zeiten", "Zeiteintrag löschen"),
     e("GET", "/api/berichte/zeiten.csv", false, "Berichte", "alle Zeiteinträge als CSV"),
