@@ -170,11 +170,12 @@ async function laden({ nurBeiAenderung = false } = {}) {
     // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
     // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
     let boardDefekt = null;
-    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug)).catch(f => { if (f.status !== 423) throw f; boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null;
+    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug) + '?archivierte=ja').catch(f => { if (f.status !== 423) throw f; boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null;
     const [aufgaben, herkunft, boards] = await Promise.all([
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
-      api('GET', '/api/boards'),
+      // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
+      api('GET', '/api/boards?archivierte=ja'),
     ]);
     // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
     const bew = /^berichte\/(verlauf|durchlauf|prognose|fieber)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;

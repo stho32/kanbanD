@@ -24,3 +24,37 @@ async fn karte_direkt_mit_pfad_und_text() {
     assert_eq!(s, 423);
     assert!(d["fehler"].is_string() && d["pfad"] == "aufgaben/0003-drei.md" && d["text"].as_str().unwrap().contains("[kaputt"));
 }
+
+/// Board „x“ mit Backlog [89, 90, 91]; #89 und #91 archiviert.
+fn mit_backlog(pfad: &std::path::Path) {
+    gemeinsam::eingerichtet(pfad);
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    for (nr, mehr) in [(89, "archived: 2026-10-01\n"), (90, "class: bug\n"), (91, "archived: 2026-10-02\nclass: bug\n"), (93, "")] {
+        std::fs::write(pfad.join(format!("aufgaben/{nr:04}-k.md")), format!("---\nid: {nr}\ntitle: k{nr}\n{mehr}---\n")).unwrap();
+    }
+    std::fs::write(pfad.join("boards/x.md"), "# X\n\n## Backlog\n\n- #89\n- #90\n- #91\n- #93\n\n## Fertig\n").unwrap();
+    gemeinsam::git(pfad, &["add", "-A"]);
+    gemeinsam::git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "x"]);
+}
+
+fn backlog(b: &Value) -> Value {
+    b["spalten"].as_array().unwrap().iter().find(|s| s["name"] == "Backlog").unwrap()["aufgaben"].clone()
+}
+
+#[tokio::test]
+async fn board_antworten_ohne_archivierte() {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_backlog(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    assert_eq!(backlog(&lesen(a, "api/boards/x").await.1), json!([90, 93]));
+    assert_eq!(backlog(&lesen(a, "api/boards/x?archivierte=ja").await.1), json!([89, 90, 91, 93]));
+    let (_, alle) = lesen(a, "api/boards").await;
+    let x = alle.as_array().unwrap().iter().find(|b| b["slug"] == "x").unwrap();
+    assert_eq!(backlog(x), json!([90, 93]));
+    let (_, alle) = lesen(a, "api/boards?archivierte=ja").await;
+    assert_eq!(backlog(alle.as_array().unwrap().iter().find(|b| b["slug"] == "x").unwrap()), json!([89, 90, 91, 93]));
+    assert!(gemeinsam::lies(tmp.path(), "boards/x.md").contains("- #89\n"), "die Board-Datei behält den Platz");
+    senden(Method::POST, a, "api/aufgaben/89/zurueckholen", "st", json!(null)).await;
+    assert_eq!(backlog(&lesen(a, "api/boards/x").await.1), json!([89, 90, 93]), "zurückgeholt steht sie wieder an ihrem Platz");
+}

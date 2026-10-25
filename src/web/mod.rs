@@ -12,7 +12,7 @@ use futures_util::stream::Stream;
 use tokio::sync::{broadcast, watch};
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
-use axum::extract::{FromRequestParts, Path, State};
+use axum::extract::{FromRequestParts, Path, Query, State};
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -197,8 +197,39 @@ async fn einrichten(State(app): State<App>, Json(e): Json<Einrichtung>) -> Resul
     Ok((StatusCode::CREATED, Json(json!({ "board": slug }))).into_response())
 }
 
-async fn board(State(app): State<App>, Path(slug): Path<String>) -> Result<Response, Fehler> {
-    let b = blockierend(&app, move |k| k.board_mit_phasen(&slug)).await?;
+/// `?archivierte=ja` nimmt archivierte Karten in die Spalten der Board-Antworten auf (R00092).
+#[derive(serde::Deserialize, Default)]
+struct MitArchivierten {
+    archivierte: Option<String>,
+}
+
+impl MitArchivierten {
+    fn gewuenscht(&self) -> bool {
+        self.archivierte.as_deref() == Some("ja")
+    }
+}
+
+/// Die Spalten ohne archivierte Karten — dieselbe Sicht wie die Oberfläche; die Board-Datei behält ihren Platz für „zurückholen“.
+fn ohne_archivierte(k: &Kanban, boards: &mut [&mut crate::modell::Board]) -> Result<(), Fehler> {
+    let (aufgaben, _) = k.ordner().aufgaben()?;
+    let archiviert: std::collections::HashSet<u32> = aufgaben.iter().filter(|a| a.archiviert.is_some()).map(|a| a.nummer).collect();
+    for b in boards.iter_mut() {
+        for s in &mut b.spalten {
+            s.aufgaben.retain(|n| !archiviert.contains(n));
+        }
+    }
+    Ok(())
+}
+
+async fn board(State(app): State<App>, Path(slug): Path<String>, Query(q): Query<MitArchivierten>) -> Result<Response, Fehler> {
+    let b = blockierend(&app, move |k| {
+        let mut b = k.board_mit_phasen(&slug)?;
+        if !q.gewuenscht() {
+            ohne_archivierte(k, &mut [&mut b.board])?;
+        }
+        Ok(b)
+    })
+    .await?;
     Ok(Json(b).into_response())
 }
 
@@ -664,8 +695,15 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)
 }
 
 /// Alle lesbaren Boards mit Struktur, nach Dateiname sortiert.
-async fn boards(State(app): State<App>) -> Result<Response, Fehler> {
-    let (boards, _) = blockierend(&app, |k| k.ordner().boards()).await?;
+async fn boards(State(app): State<App>, Query(q): Query<MitArchivierten>) -> Result<Response, Fehler> {
+    let boards = blockierend(&app, move |k| {
+        let (mut boards, _) = k.ordner().boards()?;
+        if !q.gewuenscht() {
+            ohne_archivierte(k, &mut boards.iter_mut().collect::<Vec<_>>())?;
+        }
+        Ok(boards)
+    })
+    .await?;
     Ok(Json(boards).into_response())
 }
 
