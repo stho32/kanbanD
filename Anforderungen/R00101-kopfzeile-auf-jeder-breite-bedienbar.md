@@ -34,7 +34,7 @@ Zahlt ein auf: [Vision](R00000-vision.md) — das Board ist überall da, wo die 
 
 ## Nicht-funktionale Anforderungen
 
-- Benutzerfreundlichkeit: Bei grobem Zeiger (Touch) haben Knöpfe, Chips und Menüeinträge der Kopfzeile eine Tippfläche von mindestens 32 × 32 px. Das ist die Dichte aus R00077, nicht die 48 dp von M3, weil der zentrale Stil vorgeht.
+- Benutzerfreundlichkeit: Bei grobem Zeiger (Touch) haben Knöpfe, Chips und Menüeinträge der Kopfzeile eine Tippfläche von mindestens 32 × 32 px. Das Maß kommt aus dem zentralen Touch-Maß des Projekts (heute 32 px aus R00077). Die Kopfzeile setzt keinen eigenen Wert. Hebt Karte #10 das zentrale Maß, gilt es hier ohne Änderung.
 - Barrierefreiheit: Das Menü „Mehr“ und das Navigationsmenü sind per Tastatur erreichbar (Tab, Enter, Esc) und tragen `aria-haspopup`.
 
 ## Akzeptanzkriterien
@@ -73,7 +73,7 @@ Lesart der Probe:
 - „Sichtbar“ heißt ohne Öffnen eines Menüs.
 - „Eigene Karten“ sind die Karten, bei denen das gewählte Ich unter den Zuständigen steht, also dieselbe Regel wie heute über 980 px (`web/filter.js`).
 - Rechenbeispiel: Das Board hat 5 Karten, EM ist bei #1 und #4 zuständig, #2 hat EM und einen Agenten, #3 und #5 haben niemanden. „meine“ zeigt dann 3 Karten (#1, #2, #4), „alle“ wieder 5.
-- „Per Touch“ wird in Playwright mit `hasTouch: true` und `tap()` geprüft. Die Tippfläche ist mindestens 32 × 32 px.
+- „Per Touch“ wird in Playwright mit `hasTouch: true` und `tap()` geprüft. Die Tippfläche ist mindestens 32 × 32 px, oder das zentrale Touch-Maß, falls es höher ist.
 
 ### F0002 — Grenzen
 
@@ -137,6 +137,7 @@ Abgerufen 2026-10-31 über die Notizen des ux-reviewers.
 - `vKopf`: Elemente nach Stufe verteilen, Knopf „Mehr“ und Navigationsknopf.
 - `vListenWerk` und der Modus „Spalten einrichten“: dieselben Stufen.
 - `kd-app.css`: Die Kopfzeilen-Regeln bei 1180, 1024, 980 und 640 px ersetzen die M3-Stufen. Regeln anderer Bereiche (Fenster, Bahnen, Einrichten) bleiben.
+- Hinweis für den Entwickler: Die Tippfläche von Knöpfen, Chips und Menüeinträgen der Kopfzeile kommt aus dem zentralen Token bzw. der zentralen Regel für `pointer: coarse`. Sie wird nie in der Kopfzeile hart gesetzt, damit Karte #10 das Maß an einem Ort heben kann.
 
 ## Tests
 
@@ -153,7 +154,7 @@ Nach Skill `test-pyramide`:
 
 ## Offene Fragen
 
-- keine im Dokument. Richtungsfragen an den Product Owner stehen im Bericht des planers vom 2026-10-31: Navigation Bar unten statt Navigationsmenü unter 600 px, und Button group über 840 px.
+- keine. Die drei Richtungsfragen vom 2026-10-31 hat der Product Owner entschieden: Navigationsmenü unter 600 px statt Navigation Bar, keine Button group über 840 px, Tippfläche aus dem zentralen Touch-Maß. Siehe `AI-Team/po-entscheidungen.md`, Zeilen 15–17.
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -180,5 +181,5 @@ Auslöser ist der Befund der UX-Durchsicht: Bei 1280 px liegt „3 laufen“ üb
 
 **Bewusst außerhalb**
 
-- Den Bereichsfilter über 840 px als M3-Button-group neu zu zeichnen, ist Gestaltung ohne Befund. Das gehört in eine eigene Karte, wenn der Product Owner sie will.
+- Den Bereichsfilter über 840 px als M3-Button-group neu zu zeichnen, ist Gestaltung ohne Befund: keine Karte ohne Befund (Entscheidung des Product Owners 2026-10-31).
 - Eine Navigation Bar unten für compact steht nicht im Umfang. M3 erlaubt 3–5 Ziele, kanbanD hat sechs.
