@@ -10,3 +10,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-10-31 | #7 #14 | Detailplanung | planer, product-owner | bestanden: I0083/R00101, 6 Bubbles; PO 3 Fragen entschieden; Skizze vom Betreiber freigegeben; Reihenfolge: Features vor übrigen UX-Karten | — | |
 | 2026-10-31 | #7 #14 | Entwicklung | entwickler | bestanden: 6 Bubbles, 9 Commits aea9362–ddeb2a5; Gate nachgefahren 347/113/227 grün; WBS B0263–B0268 grün | 18 min | Vertragsänderung ältere Specs (Menü „Mehr“) angenommen |
 | 2026-10-31 | #7 #14 | Auto-Reviews | code-reviewer, ux-reviewer, rechtschreib-reviewer | bestanden: 0 Muss; Sollte/Optional auf Härtungskarte, Tastatur-Funde an #8 | — | ux auf Anweisung des Betreibers auf eigenes headless Chromium umgestellt |
+| 2026-10-31 | #7 #14 | Entwicklertest | entwicklertester | bestanden: US-1–US-5, kein Befund; gepusht c4cab25; Erledigt; cargo install + Board 7422 neu gestartet | — | |
+| 2026-10-31 | #7 #14 | Retrospektive | director | Lehren ins Projekt (headless per Skript, Mindest-Leseliste im Sparbetrieb, Token je Karte); keine allgemeine Lehre neu | — | |
