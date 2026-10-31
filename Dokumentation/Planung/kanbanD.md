@@ -14,9 +14,9 @@ zuletzt: 2026-10-31
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -367,15 +367,15 @@ zuletzt: 2026-10-31
 | I0082 | Interaction | D0007 | OpenAPI-Beschreibung | gruen | US-1..US-2 |  |  |  | I0075, I0078, I0079, I0080, I0081 | R00093 | Feedback 2026-10-25 P11: OpenAPI 3.1 über utoipa |
 | B0261 | Bubble | I0082 | Probe utoipa | gruen | Test gruen | Router + Enum + Pfadparameter → Schema |  |  |  |  |  |
 | B0262 | Bubble | I0082 | Beschreibung aller Routen | gruen | Test gruen | Router → /api/openapi.json, Accept-Weiterleitung, Vollständigkeitstest |  |  |  |  |  |
-| I0083 | Interaction | D0002 | Kopfzeile auf jeder Breite bedienbar | rot | Bei 375, 414, 600, 768, 900, 1024, 1100, 1280, 1366 und 1440 px überlappt kein Kopfzeilen-Bedienelement ein anderes; „Neue Aufgabe“ und der Bereichsfilter bleiben ohne Menü bedienbar |  |  |  | I0065 |  | Karten #7 (Muss) und #14 (Sollte) aus der UX-Durchsicht 2026-10-31, Umfang vom Betreiber auf alle Breiten erweitert; ein Bau, eine Anforderung |
-| F0001 | Feature | I0083 | Kopfzeile ohne Überlappung, Rest im Menü | rot | Abnahme-Probe von #7 bei allen zehn Breiten grün; was nicht passt, liegt nach M3-Breakpoints im Menü „Mehr“ bzw. im Navigationsmenü |  |  |  |  | R00101 | #7 |
-| B0263 | Bubble | F0001 | Kopfzeile vermessen | rot | Test gruen | Rechtecke der Kopfzeilen-Bedienelemente, Fenster → Konflikte (Überlappung, abgeschnitten, verdeckt per elementFromPoint); Prüfhelfer für E2E bei allen zehn Breiten | 0,5-1 |  |  |  |  |
-| B0264 | Bubble | F0001 | Breakpoints nach M3 | rot | Test gruen | Breite → Stufe compact < 600, medium 600–839, expanded 840–1199, large ≥ 1200 → welche Elemente in der Kopfzeile stehen, welche ins Menü wandern; ersetzt 1180/1024/980/640 der Kopfzeile, auch im Modus „Spalten einrichten“ | 1-2 |  |  |  |  |
-| B0265 | Bubble | F0001 | Menü „Mehr“ | rot | Test gruen | Elemente ohne Platz (Signale oben, Spalten, Darstellung, je nach Stufe laufende Timer) → Knopf ⋮ mit M3-Menü; Eintrag löst dieselbe Aktion aus wie bisher der Knopf | 1-2 |  |  |  |  |
-| B0266 | Bubble | F0001 | Navigation als Menü unter 600 px | rot | Test gruen | compact → ein Knopf „<aktuelle Seite> ▾“ öffnet Board, Aufgaben, Personen, Berichte, WBS, Einrichten; keine waagerecht wischbare Leiste mehr | 0,5-1 |  |  |  |  |
-| B0267 | Bubble | F0001 | „Neue Aufgabe“ immer direkt | rot | Test gruen | jede Breite → Knopf nie im Menü, unter 600 px nur „+“ mit Namen „Neue Aufgabe“; Klick öffnet das Fenster „Neue Aufgabe“ | 0,5-1 |  |  |  |  |
-| F0002 | Feature | I0083 | Bereichsfilter auf schmalen Breiten | rot | Bei 375 und 768 px ist „meine“ sichtbar, per Touch auslösbar und filtert das Board auf die eigenen Karten |  |  |  |  | R00101 | #14 |
-| B0268 | Bubble | F0002 | Bereich als Filter-Chips unter 840 px | rot | Test gruen | Breite < 840 → alle/meine/Agenten als Filter-Chips in der Werkzeugzeile (Tippfläche ≥ 32 px), darüber wie bisher; Tippen setzt den Bereich, Board filtert | 1-2 |  |  |  |  |
+| I0083 | Interaction | D0002 | Kopfzeile auf jeder Breite bedienbar | gruen | Bei 375, 414, 600, 768, 900, 1024, 1100, 1280, 1366 und 1440 px überlappt kein Kopfzeilen-Bedienelement ein anderes; „Neue Aufgabe“ und der Bereichsfilter bleiben ohne Menü bedienbar |  |  |  | I0065 |  | Karten #7 (Muss) und #14 (Sollte) aus der UX-Durchsicht 2026-10-31, Umfang vom Betreiber auf alle Breiten erweitert; ein Bau, eine Anforderung |
+| F0001 | Feature | I0083 | Kopfzeile ohne Überlappung, Rest im Menü | gruen | Abnahme-Probe von #7 bei allen zehn Breiten grün; was nicht passt, liegt nach M3-Breakpoints im Menü „Mehr“ bzw. im Navigationsmenü |  |  |  |  | R00101 | #7 |
+| B0263 | Bubble | F0001 | Kopfzeile vermessen | gruen | Test gruen | Rechtecke der Kopfzeilen-Bedienelemente, Fenster → Konflikte (Überlappung, abgeschnitten, verdeckt per elementFromPoint); Prüfhelfer für E2E bei allen zehn Breiten | 0,5-1 |  |  |  |  |
+| B0264 | Bubble | F0001 | Breakpoints nach M3 | gruen | Test gruen | Breite → Stufe compact < 600, medium 600–839, expanded 840–1199, large ≥ 1200 → welche Elemente in der Kopfzeile stehen, welche ins Menü wandern; ersetzt 1180/1024/980/640 der Kopfzeile, auch im Modus „Spalten einrichten“ | 1-2 |  |  |  |  |
+| B0265 | Bubble | F0001 | Menü „Mehr“ | gruen | Test gruen | Elemente ohne Platz (Signale oben, Spalten, Darstellung, je nach Stufe laufende Timer) → Knopf ⋮ mit M3-Menü; Eintrag löst dieselbe Aktion aus wie bisher der Knopf | 1-2 |  |  |  |  |
+| B0266 | Bubble | F0001 | Navigation als Menü unter 600 px | gruen | Test gruen | compact → ein Knopf „<aktuelle Seite> ▾“ öffnet Board, Aufgaben, Personen, Berichte, WBS, Einrichten; keine waagerecht wischbare Leiste mehr | 0,5-1 |  |  |  |  |
+| B0267 | Bubble | F0001 | „Neue Aufgabe“ immer direkt | gruen | Test gruen | jede Breite → Knopf nie im Menü, unter 600 px nur „+“ mit Namen „Neue Aufgabe“; Klick öffnet das Fenster „Neue Aufgabe“ | 0,5-1 |  |  |  |  |
+| F0002 | Feature | I0083 | Bereichsfilter auf schmalen Breiten | gruen | Bei 375 und 768 px ist „meine“ sichtbar, per Touch auslösbar und filtert das Board auf die eigenen Karten |  |  |  |  | R00101 | #14 |
+| B0268 | Bubble | F0002 | Bereich als Filter-Chips unter 840 px | gruen | Test gruen | Breite < 840 → alle/meine/Agenten als Filter-Chips in der Werkzeugzeile (Tippfläche ≥ 32 px), darüber wie bisher; Tippen setzt den Bereich, Board filtert | 1-2 |  |  |  |  |
 
 ## Offene Fragen
 
