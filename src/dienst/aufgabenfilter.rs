@@ -14,6 +14,8 @@ pub struct Aufgabenfilter {
     pub zustaendige: Vec<String>,
     /// `ja`, `nein` oder eine Instanz-Kennung
     pub reserviert: Vec<String>,
+    /// R00095: ganzer Text ohne Groß/Klein
+    pub labels: Vec<String>,
     pub archivierte: Archivierte,
 }
 
@@ -37,6 +39,7 @@ impl Aufgabenfilter {
                 "signal" => f.signale.push(v.clone()),
                 "zustaendig" => f.zustaendige.push(v.clone()),
                 "reserviert" => f.reserviert.push(v.clone()),
+                "label" => f.labels.push(v.clone()),
                 "archivierte" => {
                     f.archivierte = match v.as_str() {
                         "ja" => Archivierte::Mit,
@@ -70,6 +73,7 @@ impl Aufgabenfilter {
             && oder(&self.klassen, &|k| a.klasse.as_deref() == Some(k))
             && oder(&self.signale, &|s| if s == "due" { !abgeschlossen && a.faellig.as_deref().is_some_and(|f| f <= heute) } else { a.signale.iter().any(|x| x == s) })
             && oder(&self.zustaendige, &|z| a.zustaendige.iter().any(|x| x == z))
+            && oder(&self.labels, &|l| a.labels.iter().any(|x| x.to_lowercase() == l.to_lowercase()))
             && oder(&self.reserviert, &|r| match r {
                 "ja" => a.reservierung.is_some(),
                 "nein" => a.reservierung.is_none(),
@@ -139,6 +143,54 @@ mod tests {
         let mut fertig = a.clone();
         fertig.nummer = 94;
         assert!(!Aufgabenfilter::aus_paaren(&paare(&[("signal", "due")])).unwrap().passt(&fertig, Some(&b), "2026-10-25"), "in der Abschlussspalte ist die Fälligkeit kein Signal");
+    }
+
+    /// R00095: #1 `[nc:304, repo:shop]`, #2 `[nc:305]`, #3 ohne Labels.
+    fn mit_labels() -> Vec<Aufgabe> {
+        let mut eins = aufgabe(1, None, false);
+        eins.labels = vec!["nc:304".into(), "repo:shop".into()];
+        let mut zwei = aufgabe(2, None, false);
+        zwei.labels = vec!["nc:305".into()];
+        vec![eins, zwei, aufgabe(3, None, false)]
+    }
+
+    fn getroffen(aufgaben: &[Aufgabe], q: &[(&str, &str)]) -> Vec<u32> {
+        let f = Aufgabenfilter::aus_paaren(&paare(q)).unwrap();
+        aufgaben.iter().filter(|a| f.passt(a, None, "2026-10-31")).map(|a| a.nummer).collect()
+    }
+
+    #[test]
+    fn label_genau_mehrfach_oder_verschieden_und() {
+        let a = mit_labels();
+        assert_eq!(getroffen(&a, &[("label", "nc:304")]), vec![1]);
+        assert_eq!(getroffen(&a, &[("label", "nc:304"), ("label", "nc:305")]), vec![1, 2]);
+        assert_eq!(getroffen(&a, &[("label", "nc:304"), ("label", "repo:shop")]), vec![1]);
+        assert_eq!(getroffen(&a, &[("label", "nc:30")]), Vec::<u32>::new(), "der ganze Text, kein Teilstück");
+    }
+
+    #[test]
+    fn label_ohne_gross_klein() {
+        assert_eq!(getroffen(&mit_labels(), &[("label", "NC:304")]), vec![1]);
+    }
+
+    #[test]
+    fn label_archivierte_nur_auf_wunsch() {
+        let mut a = mit_labels();
+        a[0].archiviert = Some("2026-10-01".into());
+        assert_eq!(getroffen(&a, &[("label", "nc:304")]), Vec::<u32>::new());
+        assert_eq!(getroffen(&a, &[("label", "nc:304"), ("archivierte", "ja")]), vec![1]);
+    }
+
+    #[test]
+    fn label_leer_trifft_nichts_ohne_fehler() {
+        assert_eq!(getroffen(&mit_labels(), &[("label", "")]), Vec::<u32>::new());
+    }
+
+    #[test]
+    fn label_und_klasse_verknuepft_und() {
+        let mut a = mit_labels();
+        a[1].klasse = Some("bug".into());
+        assert_eq!(getroffen(&a, &[("label", "nc:304"), ("label", "nc:305"), ("klasse", "bug")]), vec![2]);
     }
 
     #[test]
