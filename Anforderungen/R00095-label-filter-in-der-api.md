@@ -14,7 +14,7 @@ Zahlt ein auf: [Vision](R00000-vision.md) — Menschen im Browser, KI-Agenten ü
 
 ## Geschäftlicher Nutzen
 
-In der Wartungsfabrik ordnen Labels mit Präfix jede Karte einem Repository (`repo:<name>`) und einer verletzten Bedingung (`nc:<nr>`) zu. Sensoren und Behandler müssen ihre Karten danach finden können, ohne alle Aufgaben zu laden und selbst zu filtern. R00096–R00100 setzen diese Abfrage voraus.
+In der Wartungsfabrik ordnen Labels mit Präfix jede Karte einem Repository (`repo:<name>`) und einer verletzten Bedingung (`nc:<nr>`) zu. Sensoren und Behandler müssen ihre Karten danach finden können, ohne alle Aufgaben zu laden und selbst zu filtern. R00099 und R00100 setzen diese Abfrage voraus.
 
 ## Bestand (geprüft am 2026-10-31, nicht Teil dieser Anforderung)
 
@@ -87,7 +87,7 @@ Filterlogik in `src/dienst/aufgabenfilter.rs`, Beschreibung in `src/web/endpunkt
 
 ## Abhängigkeiten
 - Abhängig von: R00092 (Filter an `GET /api/aufgaben`)
-- Blockiert: R00098 (Befund erledigt sich), R00100 (Bestand je Label-Paar)
+- Blockiert: R00099 (Befund erledigt sich), R00100 (Bestand nach Labels)
 
 ## Offene Fragen
 - keine

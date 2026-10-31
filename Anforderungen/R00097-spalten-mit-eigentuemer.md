@@ -104,8 +104,8 @@ Format in `src/format/board.rs` (neben `column-checks`, `column-colors`), Modell
 
 ## Abhängigkeiten
 - Abhängig von: R00009 (Spalten einrichten), R00087 (`ziehen`)
-- Wirkt zusammen mit: R00096 (Grenze), R00098 (Befund erledigt sich: in Menschen-Spalten nur Kommentar und Signal)
-- Blockiert: R00098
+- Wirkt zusammen mit: R00096 (Grenze), R00099 (Befund erledigt sich: in Menschen-Spalten nur Kommentar und Signal)
+- Blockiert: R00099
 
 ## Offene Fragen
 - keine
