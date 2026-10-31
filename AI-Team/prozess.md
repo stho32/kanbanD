@@ -23,7 +23,7 @@ Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **gan
 - **Nacheinander**: Es ist höchstens eine Karte zwischen „Architektur“ und „Entwicklertest“ unterwegs. Die nächste Karte wird erst freigegeben und gezogen, wenn die vorige in „Erledigt“ oder „Ohne Mensch nicht lösbar“ liegt. Es gibt keinen Vorlauf und keinen Puffer, und `entw2` baut nur, während `entw1` nicht baut.
 - **Sparsam prüfen**: In den Auto-Reviews läuft `code-reviewer` immer, jede andere Rolle nur, wenn die Karte ihr Thema nachweislich berührt. Eine Wiederholung gibt es nur für Rollen mit Befund. Befunde, die nur über künstliche Fehlerinjektion erreichbar sind, gelten als `Sollte` und gehen auf eine Härtungskarte, nicht in die Nacharbeit.
 - **Knappe Aufträge**: Der Director nennt jeder Rolle die Dateien und Abschnitte, die sie braucht, statt sie suchen zu lassen. Die Berichte bleiben im Berichtsformat, ohne Wiederholungen.
-- **Reihenfolge der Karten**: R00095 → R00096 → R00097 → R00098 → R00099 → R00100, so wie die Abhängigkeiten laufen. Kleine Karten zuerst, wenn sie gleichwertig sind.
+- **Reihenfolge der Karten** (Betreiber 2026-10-31, nach der UX-Durchsicht): erst #7/#14 (R00101), dann R00095 → R00096 → R00097 → R00098 → R00099 → R00100, danach die übrigen UX-Karten (#8–#13, #15, #16); Features der Wartungsfabrik bringen den größten Nutzen je Token.
 
 ## Auslieferung bei „Erledigt“ (Betreiber 2026-10-31)
 
