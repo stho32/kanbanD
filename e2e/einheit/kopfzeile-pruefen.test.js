@@ -29,3 +29,8 @@ test('Zeile mit waagerechtem Überlauf ist ein Konflikt', () => {
   const zeile = { name: 'Zeile 1', scrollBreite: 1300, clientBreite: 1280 };
   assert.deepStrictEqual(kopfKonflikte([], FENSTER, { ...KOPF, zeilen: [zeile] }), [{ art: 'Überlauf', name: 'Zeile 1', um: 20 }]);
 });
+
+test('Element, dessen Inhalt über seinen eigenen Rand läuft, ist abgeschnitten', () => {
+  const zuSchmal = { ...element('EM ▾', 10, 20), inhaltLaeuftUeber: true };
+  assert.deepStrictEqual(kopfKonflikte([zuSchmal], FENSTER, KOPF), [{ art: 'Inhalt läuft über', name: 'EM ▾' }]);
+});

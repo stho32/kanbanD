@@ -141,3 +141,26 @@ test.describe('compact, 375 px', () => {
     await expect(page.locator('header.kz.modus')).toContainText('Spalten einrichten');
   });
 });
+
+const neuKnopf = page => kopf(page).getByRole('button', { name: /Neue Aufgabe/ });
+
+test('bei allen zehn Breiten und an den Untergrenzen: keine Konflikte, „Neue Aufgabe“ ohne Menü sichtbar, ein Klick öffnet das Fenster', async ({ page }) => {
+  await starten(page);
+  for (const breite of [...BREITEN, 320, 840, 1200]) {
+    await breiteSetzen(page, breite);
+    await ohneKonflikte(page, `${breite} px`);
+    await expect(neuKnopf(page), `${breite} px`).toBeVisible();
+    await neuKnopf(page).click();
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' }), `${breite} px`).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
+  }
+});
+
+test('unter 600 px zeigt „Neue Aufgabe“ nur „+“, behält aber den Namen; darüber den ganzen Text', async ({ page }) => {
+  await starten(page);
+  await breiteSetzen(page, 375);
+  expect((await neuKnopf(page).innerText()).trim()).toBe('+');
+  await breiteSetzen(page, 600);
+  expect((await neuKnopf(page).innerText()).replace(/\s+/g, ' ').trim()).toBe('+ Neue Aufgabe');
+});

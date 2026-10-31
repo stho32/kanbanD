@@ -16,7 +16,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
 .kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
 .kz-board{max-width:240px;min-width:0}
-.kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
+.kz[data-stufe="large"] .kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
 .ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .kz-z1 .mono{font-size:11px}
@@ -28,6 +28,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz:not([data-stufe="large"]) .ich-name,.kz:not([data-stufe="large"]) #t-lauf .lang{display:none}
 .kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
 .kz.modus .kz-reihe{flex-wrap:wrap}
+.kz[data-stufe="compact"] .neu-btn .lang{display:none}
 .kz-menue a.iz{color:inherit;text-decoration:none}
 .kz-menue{width:260px}
 .kz-menue .iz{width:100%;border:0;border-bottom:1px solid var(--kd-line);background:none;font:inherit;color:inherit;text-align:left}

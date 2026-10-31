@@ -1,13 +1,14 @@
 // Prüfhelfer für die Kopfzeile (R00101): vermisst die Bedienelemente im Browser und findet Konflikte.
 "use strict";
 
-/** Konflikte der Kopfzeile: Überlappung (Schnittfläche > 0), abgeschnitten (nicht ganz im Fenster und im Kopf), verdeckt (elementFromPoint im Mittelpunkt trifft ein anderes Element), Überlauf einer Zeile. */
+/** Konflikte der Kopfzeile: Überlappung (Schnittfläche > 0), abgeschnitten (nicht ganz im Fenster und im Kopf), verdeckt (elementFromPoint im Mittelpunkt trifft ein anderes Element), Inhalt breiter als das Element, Überlauf einer Zeile. */
 function kopfKonflikte(elemente, fenster, kopf) {
   const fensterRahmen = { x: 0, y: 0, breite: fenster.breite, hoehe: fenster.hoehe };
   return [
     ...ueberlappungen(elemente),
     ...elemente.filter(e => !liegtInnen(e, fensterRahmen) || !liegtInnen(e, kopf)).map(e => ({ art: 'abgeschnitten', name: e.name })),
     ...elemente.filter(e => !e.getroffen).map(e => ({ art: 'verdeckt', name: e.name })),
+    ...elemente.filter(e => e.inhaltLaeuftUeber).map(e => ({ art: 'Inhalt läuft über', name: e.name })),
     ...kopf.zeilen.filter(z => z.scrollBreite > z.clientBreite).map(z => ({ art: 'Überlauf', name: z.name, um: z.scrollBreite - z.clientBreite })),
   ];
 }
@@ -43,7 +44,8 @@ function vermessen() {
     .map(({ el, r }) => {
       const treffer = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
       const name = (el.getAttribute('aria-label') || el.textContent || el.placeholder || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 40);
-      return { name, x: r.x, y: r.y, breite: r.width, hoehe: r.height, getroffen: !!treffer && el.contains(treffer) };
+      const inhaltLaeuftUeber = el.tagName !== 'INPUT' && el.scrollWidth > el.clientWidth + 1;
+      return { name, x: r.x, y: r.y, breite: r.width, hoehe: r.height, getroffen: !!treffer && el.contains(treffer), inhaltLaeuftUeber };
     });
   const zeilen = [kopf, ...kopf.querySelectorAll('.kz-reihe')].map((z, i) => ({ name: i ? `Zeile ${i}` : 'Kopfzeile', scrollBreite: z.scrollWidth, clientBreite: z.clientWidth }));
   return { elemente, fenster: { breite: innerWidth, hoehe: innerHeight }, kopf: { x: kopfRect.x, y: kopfRect.y, breite: kopfRect.width, hoehe: kopfRect.height, zeilen } };
