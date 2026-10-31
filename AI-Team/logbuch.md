@@ -13,3 +13,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-10-31 | #7 #14 | Entwicklertest | entwicklertester | bestanden: US-1–US-5, kein Befund; gepusht c4cab25; Erledigt; cargo install + Board 7422 neu gestartet | — | |
 | 2026-10-31 | #7 #14 | Retrospektive | director | Lehren ins Projekt (headless per Skript, Mindest-Leseliste im Sparbetrieb, Token je Karte); keine allgemeine Lehre neu | — | |
 | 2026-10-31 | #1–#6 | Architektur | architekt (fortgesetzt) | bestanden: Technikfrage bei #2 #3 #4 #5, ADR-0002–0005 akzeptiert, 4e7fd1a | — | +30.651 Tokens (fortgesetzt, 96.476 → 127.127), ≈ 5.100 je Karte |
+| 2026-10-31 | #1 | Detailplanung | planer (frisch), product-owner (fortgesetzt) | bestanden: I0084, 5 Bubbles; PO 2 Fragen entschieden | — | planer 86.397 Tokens; PO +16.000 (73.200 → 89.421) für Preisetikett und R00095 |
+| 2026-10-31 | #18 | Backlog | realist-consultant, product-owner | Preisetikett entschieden (PO 25ea662), Karte #18 angelegt | — | realist 67.924 Tokens |
