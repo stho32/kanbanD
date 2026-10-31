@@ -24,4 +24,4 @@ IDs aus `AI-Team/quellen.md`, die diese Rolle besonders braucht.
 
 ## Gelerntes
 
-- noch keine
+- 2026-10-31 (#7): `web/` ist per `include_bytes!` ins Programm eingebettet (`src/web/statisch.rs`) — CSS/JS-Änderungen erst nach `cargo build` und Neustart der Instanz sichtbar.
