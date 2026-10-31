@@ -213,6 +213,14 @@ mod tests {
     }
 
     #[test]
+    fn label_gespeichert_gross_trifft_muster_klein() {
+        let mut a = mit_labels();
+        a[0].labels = vec!["Repo:Shop".into()];
+        assert_eq!(getroffen(&a, &[("label", "repo:shop")]), vec![1]);
+        assert_eq!(getroffen(&a, &[("label", "repo:*")]), vec![1]);
+    }
+
+    #[test]
     fn label_nur_stern_trifft_jede_aufgabe_mit_label_nicht_die_ohne() {
         assert_eq!(getroffen(&mit_labels(), &[("label", "*")]), vec![1, 2], "#3 ohne Label nicht");
     }

@@ -5,7 +5,7 @@ use gemeinsam::senden;
 use reqwest::Method;
 use serde_json::{Value, json};
 
-const HINWEIS_STERN: &str = "Ein Label, das auf * endet, wird über sein Präfix gefunden und trifft dann auch längere Labels.";
+const HINWEIS_STERN: &str = "ein Label, das auf * endet, wird über sein Präfix gefunden und trifft dann auch längere Labels.";
 
 async fn lesen(adresse: &str, pfad: &str) -> (u16, Value) {
     senden(Method::GET, adresse, pfad, "st", json!(null)).await
