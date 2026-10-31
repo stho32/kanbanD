@@ -306,7 +306,7 @@ async fn aufgaben(State(app): State<App>, Query(paare): Query<Vec<(String, Strin
     post,
     path = "/api/aufgaben",
     tag = "Aufgaben",
-    description = "anlegen {titel, board?, spalte?}",
+    description = "anlegen {titel, board?, spalte?, klasse?, zustaendige?: [Kürzel], labels?: [Text], faellig?: JJJJ-MM-TT, herkunft?: [Verweis], beschreibung?, teilaufgaben?: [Text]}",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::dienst::NeueAufgabe,
     responses((status = 201, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))

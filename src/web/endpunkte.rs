@@ -49,7 +49,7 @@ pub const ENDPUNKTE: &[Endpunkt] = &[
     e("POST", "/api/boards/{slug}/aufgaben", true, "Boards", "Aufgabe auf das Board legen {nummer, spalte?}"),
     e("DELETE", "/api/boards/{slug}/aufgaben/{nr}", true, "Boards", "Aufgabe vom Board nehmen"),
     e("GET", "/api/aufgaben", false, "Aufgaben", "alle Aufgaben und defekte Dateien — Filter: board, spalte (braucht board), klasse, signal (auch due), zustaendig, reserviert=ja|nein|<instanz>, label=<text> (ganzer Text ohne Groß/Klein; * am Ende sucht nach Präfix: label=repo:* trifft jedes Label, das mit repo: beginnt, label=* jede Aufgabe mit mindestens einem Label; Ein Label, das auf * endet, wird über sein Präfix gefunden und trifft dann auch längere Labels.), archivierte=ja|nein|nur; verschiedene Parameter UND, derselbe mehrfach ODER (?klasse=a&klasse=b); ohne Parameter alle, auch archivierte, sobald einer genannt ist gilt archivierte=nein; unbekannter Parameter → 400"),
-    e("POST", "/api/aufgaben", true, "Aufgaben", "anlegen {titel, board?, spalte?}"),
+    e("POST", "/api/aufgaben", true, "Aufgaben", "anlegen {titel, board?, spalte?, klasse?, zustaendige?: [Kürzel], labels?: [Text], faellig?: JJJJ-MM-TT, herkunft?: [Verweis], beschreibung?, teilaufgaben?: [Text]}"),
     e("POST", "/api/aufgaben/mehrere", true, "Aufgaben", "mehrere anlegen {titel: [...], board?, spalte?} — ein Commit"),
     e("POST", "/api/aufgaben/archivieren", true, "Aufgaben", "mehrere archivieren {nummern} — ein Commit"),
     e("PATCH", "/api/aufgaben/mehrere", true, "Aufgaben", "mehrere ändern {aenderungen: [{nummer, …Felder wie PATCH /api/aufgaben/{nr}}]} — ein Commit, ein ungültiges Feld ändert nichts"),

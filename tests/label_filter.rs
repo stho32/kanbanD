@@ -80,3 +80,37 @@ async fn rundreise_ueber_neustart_und_archiv() {
     assert_eq!(getroffen(a, "label=nc:304").await, Vec::<u64>::new());
     assert_eq!(getroffen(a, "label=nc:304&archivierte=ja").await, vec![1]);
 }
+
+/// Feldnamen eines Schemas, auch über `allOf` und `$ref` (serde flatten).
+fn felder(schema: &Value, d: &Value, namen: &mut Vec<String>) {
+    if let Some(r) = schema["$ref"].as_str() {
+        return felder(&d["components"]["schemas"][r.rsplit('/').next().unwrap()], d, namen);
+    }
+    if let Some(p) = schema["properties"].as_object() {
+        namen.extend(p.keys().cloned());
+    }
+    for teil in schema["allOf"].as_array().into_iter().flatten() {
+        felder(teil, d, namen);
+    }
+}
+
+#[tokio::test]
+async fn anlegen_beschreibt_jedes_feld() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let a = &lauf.adresse;
+    let (_, d) = lesen(a, "api/openapi.json").await;
+    let post = &d["paths"]["/api/aufgaben"]["post"];
+    let mut namen = vec![];
+    felder(&post["requestBody"]["content"]["application/json"]["schema"], &d, &mut namen);
+    for feld in ["titel", "board", "spalte", "klasse", "zustaendige", "labels", "faellig", "herkunft", "beschreibung", "teilaufgaben"] {
+        assert!(namen.iter().any(|n| n == feld), "Schema ohne {feld}: {namen:?}");
+    }
+    let (_, liste) = lesen(a, "api/endpunkte").await;
+    let zweck = liste.as_array().unwrap().iter().find(|e| e["methode"] == "POST" && e["pfad"] == "/api/aufgaben").unwrap()["zweck"].as_str().unwrap().to_string();
+    let beschreibung = post["description"].as_str().unwrap();
+    for feld in &namen {
+        assert!(zweck.contains(feld.as_str()), "/api/endpunkte nennt {feld} nicht: {zweck}");
+        assert!(beschreibung.contains(feld.as_str()), "OpenAPI-Beschreibung nennt {feld} nicht: {beschreibung}");
+    }
+}
