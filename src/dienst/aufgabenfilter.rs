@@ -73,12 +73,23 @@ impl Aufgabenfilter {
             && oder(&self.klassen, &|k| a.klasse.as_deref() == Some(k))
             && oder(&self.signale, &|s| if s == "due" { !abgeschlossen && a.faellig.as_deref().is_some_and(|f| f <= heute) } else { a.signale.iter().any(|x| x == s) })
             && oder(&self.zustaendige, &|z| a.zustaendige.iter().any(|x| x == z))
-            && oder(&self.labels, &|l| a.labels.iter().any(|x| x.to_lowercase() == l.to_lowercase()))
+            && oder(&self.labels, &|l| a.labels.iter().any(|x| label_trifft(l, x)))
             && oder(&self.reserviert, &|r| match r {
                 "ja" => a.reservierung.is_some(),
                 "nein" => a.reservierung.is_none(),
                 instanz => a.reservierung.as_ref().is_some_and(|x| x.gehoert(instanz)),
             })
+    }
+}
+
+/// Endet das Muster auf `*`, genügt das Präfix davor (kein Escape: ein Label, das selbst auf `*` endet,
+/// wird über sein Präfix gefunden); sonst der ganze Text. Beides ohne Groß/Klein.
+fn label_trifft(muster: &str, label: &str) -> bool {
+    let muster = muster.to_lowercase();
+    let label = label.to_lowercase();
+    match muster.strip_suffix('*') {
+        Some(praefix) => label.starts_with(praefix),
+        None => label == muster,
     }
 }
 
@@ -191,6 +202,27 @@ mod tests {
         let mut a = mit_labels();
         a[1].klasse = Some("bug".into());
         assert_eq!(getroffen(&a, &[("label", "nc:304"), ("label", "nc:305"), ("klasse", "bug")]), vec![2]);
+    }
+
+    #[test]
+    fn label_praefix_mit_stern() {
+        let a = mit_labels();
+        assert_eq!(getroffen(&a, &[("label", "nc:*")]), vec![1, 2]);
+        assert_eq!(getroffen(&a, &[("label", "repo:*")]), vec![1]);
+        assert_eq!(getroffen(&a, &[("label", "REPO:*")]), vec![1], "Präfix ohne Groß/Klein");
+    }
+
+    #[test]
+    fn label_nur_stern_trifft_jede_aufgabe_mit_label_nicht_die_ohne() {
+        assert_eq!(getroffen(&mit_labels(), &[("label", "*")]), vec![1, 2], "#3 ohne Label nicht");
+    }
+
+    #[test]
+    fn label_mit_stern_am_ende_wird_ueber_sein_praefix_gefunden() {
+        let mut a = mit_labels();
+        a[2].labels = vec!["wichtig*".into()];
+        a[1].labels = vec!["wichtiger".into()];
+        assert_eq!(getroffen(&a, &[("label", "wichtig*")]), vec![2, 3], "kein Escape: Präfix trifft auch längere Labels");
     }
 
     #[test]
