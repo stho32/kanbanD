@@ -31,6 +31,8 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 
 ## Entscheidungen
 
+- [ADR-0002: Zugregeln gemeinsam vor der Aktion](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)
+- [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md)
 ## Offene Fragen
 
 ## Notizen / Quellen

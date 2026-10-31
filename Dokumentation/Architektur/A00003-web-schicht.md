@@ -32,6 +32,7 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 
 ## Entscheidungen
 
+- [ADR-0003: Abweisungen mit strukturiertem Rumpf](../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md)
 ## Offene Fragen
 
 ## Notizen / Quellen

@@ -32,6 +32,9 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 
 ## Entscheidungen
 
+- [ADR-0002: Zugregeln gemeinsam vor der Aktion](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)
+- [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md)
+- [ADR-0005: Zusammengesetzte Aktionen in einem Commit](../ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md)
 ## Offene Fragen
 
 ## Notizen / Quellen

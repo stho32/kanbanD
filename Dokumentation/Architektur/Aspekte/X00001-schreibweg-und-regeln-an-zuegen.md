@@ -9,6 +9,8 @@ betrifft:
   - A00004
   - A00007
   - A00008
+  - A00006
+  - A00003
 herkunft: code
 quellen:
   - src/dienst/mod.rs
@@ -33,13 +35,23 @@ Nach dem Commit kommen nur noch Warnungen (z. B. Spaltenprüfungen `column-check
 
 ## Systemantwort
 
-Einhängepunkte der geplanten Regeln (alle in Schritt 2, unter der Sperre, damit zwei Agenten nicht gleichzeitig dieselbe Lücke sehen):
+Regeln an Zügen nach [ADR-0002](../../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md): Zählen und Eigentümer als reine Funktionen am `Board` ([A00006](../A00006-modell.md)), eine Entscheidungsfunktion `zugregeln(wer, vorher, nachher, archiviert)` im Dienst — unter der Sperre, nach der Änderung im Speicher, **vor** `aktion()`. Agent ⇒ `Fehler::GrenzeErreicht` (409) bzw. `Fehler::Verboten` (403) nach [ADR-0003](../../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md); Mensch ⇒ `Warnung { pruefung: "grenze" }`.
 
-| Regel | Anforderung | Einhängepunkt | Art des Handelnden |
+Zusammengesetzte Aktionen nach [ADR-0005](../../ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md): **eine öffentliche Methode = eine Sperre = ein `aktion()`**; Teilschritte ohne Sperre und ohne Commit.
+
+| Schreibweg | Ort | Grenze R00096 | Eigentümer R00097 |
 |---|---|---|---|
-| WIP-Grenze: Agent → 409, Mensch → Warnung | R00096 | `bewegen`, `mehrere_bewegen` (`bewegen.rs`), `ziehen` (`reservierung.rs`), Anlegen in eine Spalte (`aufgabe_anlegen.rs`) — jeweils vor `aktion()`; Mensch-Warnung neben den bestehenden Warnungen | `Person` aus `handelnder()` (Art aus `kanbanD.md`) |
-| Spalten mit Eigentümer | R00097 | dieselben Züge wie R00096; gemeinsame Prüffunktion statt Kopie je Methode | wie oben |
-| Idempotentes Anlegen über `key` | R00098 | `aufgabe_anlegen` vor der Nummernvergabe: Suche über alle Aufgaben samt Archiv unter der Sperre; Treffer offen ⇒ kein `aktion()`, Treffer archiviert ⇒ ein `aktion()` für das Wiederöffnen | unabhängig |
+| `ziehen` | `reservierung.rs` | ja, vor der Reservierung | ja (`von` = Menschen-Spalte) |
+| `bewegen`, `mehrere_bewegen` | `bewegen.rs` | ja, Stand nach allen Zügen | ja, auch Umsortieren |
+| Anlegen mit `spalte` (einzeln, mehrere, Board-Pfad) | `aufgabe_anlegen.rs` | ja | nein (Hineinlegen erlaubt) |
+| Auf das Board legen | Board-Pfad `…/aufgaben` | ja | nein |
+| Vom Board nehmen | `DELETE …/aufgaben/{nr}` | nein | ja |
+| Archivieren (einzeln, mehrere) | `archiv.rs` | nein | ja, auf jedem Board |
+| Zurückholen (einzeln, mehrere) | `archiv.rs` | ja, auf jedem Board | nein |
+| Wiederöffnen über `key` | `aufgabe_anlegen.rs`, R00098 | ja | nein |
+| Erledigen | `erledigen.rs` (geplant), R00099 | ja (Abschlussspalte) | eigener Ablauf: Agent in Menschen-Spalte ⇒ Signal statt Zug |
+
+Schlüsselsuche (R00098, R00099) nach [ADR-0004](../../ADRs/0004-schluesselsuche-unter-der-sperre.md): unter derselben Sperre über `ordner().aufgaben()`, einmal je Anfrage.
 
 Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich mit `grep -rn "\.schreib(\|committen(" src/dienst`; jede Fundstelle außer `mod.rs` steht unten oder ist ein Befund. Eine Regel, die erst nach `aktion()` prüft, ist ein Befund (dann ist der Commit schon da).
 
@@ -52,7 +64,7 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 
 ## Offene Fragen
 
-- Soll die gemeinsame Zug-Prüfung (R00096/R00097) eine eigene Funktion im Modell (`Board`) sein oder im Dienst? Empfehlung: Zählen im Modell (rein, testbar), Entscheidung nach Art des Handelnden im Dienst.
+- keine (Zug-Prüfung entschieden in ADR-0002)
 
 ## Notizen / Quellen
 
