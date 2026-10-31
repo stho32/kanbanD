@@ -38,3 +38,7 @@ Rückmeldungen gibt der Betreiber von sich aus („wenn ich was zu nörgeln habe
 ## Signal „Ich habe Fragen“ (Betreiber 2026-10-31)
 
 Hat der Director eine Frage, die der Betreiber entscheiden muss (richtungsweisend laut product-owner, Freigabe einer Skizze, Konflikt mit der Vision), setzt er auf der betroffenen Karte das Signal `frage` („Ich habe Fragen“, orange; steht in der Reihenfolge der Signale vorn, die Karte trägt also seine Farbe) und schreibt die Frage als Kartenkommentar: ein Satz Kontext, nummerierte Optionen, Empfehlung zuerst. Dieselbe Frage stellt er auch in der Session. Ist sie beantwortet, nimmt er das Signal zurück und vermerkt die Antwort als Kommentar. Fragen ohne Karte bekommen eine Karte „Frage: …“ oben im Backlog.
+
+## Token-Kosten je Karte (Betreiber 2026-10-31)
+
+Nach jedem Rollenauftrag notiert der Director das Token-Volumen aus der Abschlussmeldung des Subagents; beim Zug nach „Erledigt“ steht auf der Karte ein Kommentar „Token-Kosten der Karte“ mit einer Zeile je Rollenauftrag und der Summe. Der Anteil des Directors ist nicht messbar und wird nicht geschätzt. Einmalige Aufträge für das ganze Board (z. B. eine Durchsicht) werden getrennt genannt, nicht auf eine Karte gerechnet. Die Logbuchzeile je Auftrag nennt die Tokens in der Notiz.
