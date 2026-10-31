@@ -48,7 +48,7 @@ impl Aufgabenfilter {
                         _ => return Err(Fehler::Ungueltig(format!("archivierte={v}: ja, nein oder nur"))),
                     }
                 }
-                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, archivierte"))),
+                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, archivierte"))),
             }
         }
         if !f.spalten.is_empty() && f.board.is_none() {
@@ -223,6 +223,12 @@ mod tests {
         a[2].labels = vec!["wichtig*".into()];
         a[1].labels = vec!["wichtiger".into()];
         assert_eq!(getroffen(&a, &[("label", "wichtig*")]), vec![2, 3], "kein Escape: Präfix trifft auch längere Labels");
+    }
+
+    #[test]
+    fn unbekannter_filter_nennt_label() {
+        let Err(Fehler::Ungueltig(text)) = Aufgabenfilter::aus_paaren(&paare(&[("farbe", "x")])) else { panic!("400 erwartet") };
+        assert!(text.contains(", label,") || text.ends_with(", label"), "{text}");
     }
 
     #[test]
