@@ -210,3 +210,22 @@ test('ohne gewähltes Ich zeigt „meine“ bei 375 px 0 Karten, die Kopfzeile b
   await expect(page.locator('.ka')).toHaveCount(5);
   expect(fehler).toEqual([]);
 });
+
+test('Aufgaben, Personen, Berichte, Einrichten und „Spalten einrichten“: keine Konflikte bei 375, 768 und 1280 px', async ({ page }) => {
+  await starten(page);
+  for (const ziel of ['#/aufgaben', '#/personen', '#/berichte/verlauf', '#/einrichten']) {
+    await page.goto(k.adresse + ziel);
+    for (const breite of [375, 768, 1280]) {
+      await breiteSetzen(page, breite);
+      await ohneKonflikte(page, `${ziel} bei ${breite} px`);
+    }
+  }
+  await page.goto(k.adresse);
+  await mehr(page).click();
+  await menue(page).getByRole('menuitem', { name: 'Spalten einrichten' }).click();
+  for (const breite of [375, 768, 1280]) {
+    await breiteSetzen(page, breite);
+    await expect(page.locator('header.kz.modus')).toBeVisible();
+    await ohneKonflikte(page, `Spalten einrichten bei ${breite} px`);
+  }
+});

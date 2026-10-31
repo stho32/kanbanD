@@ -28,6 +28,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz:not([data-stufe="large"]) .ich-name,.kz:not([data-stufe="large"]) #t-lauf .lang{display:none}
 .kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
 .kz.modus .kz-reihe{flex-wrap:wrap}
+.kz.modus:not([data-stufe="large"]) .kz-modus{flex-wrap:wrap;row-gap:var(--kd-s2);padding:var(--kd-s2) var(--kd-s3)}
 .kz[data-stufe="compact"] .neu-btn .lang{display:none}
 .kz-chips{display:flex;gap:var(--kd-s2)}
 .kz-chip{height:var(--kd-row);padding:0 var(--kd-s3);border:1px solid var(--kd-head-line);background:none;color:var(--kd-head-muted);font-size:12px;cursor:pointer;white-space:nowrap}
