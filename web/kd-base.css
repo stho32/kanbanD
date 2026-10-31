@@ -9,7 +9,6 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
 .kz-nav a{display:flex;align-items:center;padding:0 var(--kd-s5);color:var(--kd-head-muted);border-bottom:2px solid transparent}
 .kz-nav a:hover{color:var(--kd-head-text);text-decoration:none;background:var(--kd-head-line)}
 .kz-nav a.an{color:var(--kd-head-text);border-bottom-color:var(--kd-accent-weak)}
-.kz-z3{margin-left:auto;display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s4)}
 .kz-btn{display:flex;align-items:center;gap:6px;height:26px;padding:0 var(--kd-s3);background:none;border:1px solid var(--kd-head-line);color:var(--kd-head-text);font:inherit;font-size:12px;cursor:pointer}
 .kz-btn:hover{background:var(--kd-head-line)}
 .btn{display:inline-flex;align-items:center;gap:6px;height:var(--kd-row);padding:0 var(--kd-s4);font:inherit;font-weight:500;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);cursor:pointer;white-space:nowrap}

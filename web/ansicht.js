@@ -116,12 +116,6 @@ function vBereichChips() {
 }
 
 /** Menü „Mehr“: was in der Kopfzeile keinen Platz hat; jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
-function ichNameOderLeer() {
-  const me = ichPerson();
-  if (me) return me.name;
-  return 'nicht gewählt';
-}
-
 function vMehrPop() {
   const u = S.ui;
   const eintrag = {
@@ -133,6 +127,12 @@ function vMehrPop() {
   };
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
   return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><h4>MEHR</h4>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
+}
+
+function ichNameOderLeer() {
+  const me = ichPerson();
+  if (me) return me.name;
+  return 'nicht gewählt';
 }
 
 const THEMA_NAME = { system: 'System', light: 'Hell', dark: 'Dunkel' }, THEMA_ZEICHEN = { system: '◐', light: '☀', dark: '☾' };
