@@ -46,4 +46,4 @@ Nach jedem Rollenauftrag notiert der Director das Token-Volumen aus der Abschlus
 
 ## Preisetikett je Karte (Betreiber 2026-10-31)
 
-Sobald kanbanD ein Preisetikett an Aufgaben kennt (Wunsch des Betreibers vom 2026-10-31, beim product-owner in Klärung), stattet der Director **jede** Karte damit aus: beim Zug nach „Erledigt“ den Preis, der den API-Kosten entsprochen hätte (Grundlage: die Token-Kosten der Karte, Preise des verwendeten Modells, Annahme zur Aufteilung genannt). Bis dahin bleibt der Kommentar „Token-Kosten der Karte“.
+Sobald kanbanD ein Preisetikett an Aufgaben kennt (Wunsch des Betreibers vom 2026-10-31, beim product-owner in Klärung), stattet der Director **jede** Karte damit aus: beim Zug nach „Erledigt“ den Preis, der den API-Kosten entsprochen hätte (Grundlage: die Token-Kosten der Karte, Preise des verwendeten Modells, Annahme zur Aufteilung genannt). Bis dahin stehen Token-Kosten **und Preis** als Kartenkommentar (Betreiber 2026-10-31): Preis als API-Gegenwert mit Modellpreisen, Annahme 85 % Cache-Lesen / 10 % Input / 5 % Output, dazu die Spanne alles-Cache bis alles-Output.

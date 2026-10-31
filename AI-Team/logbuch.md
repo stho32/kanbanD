@@ -12,3 +12,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-10-31 | #7 #14 | Auto-Reviews | code-reviewer, ux-reviewer, rechtschreib-reviewer | bestanden: 0 Muss; Sollte/Optional auf Härtungskarte, Tastatur-Funde an #8 | — | ux auf Anweisung des Betreibers auf eigenes headless Chromium umgestellt |
 | 2026-10-31 | #7 #14 | Entwicklertest | entwicklertester | bestanden: US-1–US-5, kein Befund; gepusht c4cab25; Erledigt; cargo install + Board 7422 neu gestartet | — | |
 | 2026-10-31 | #7 #14 | Retrospektive | director | Lehren ins Projekt (headless per Skript, Mindest-Leseliste im Sparbetrieb, Token je Karte); keine allgemeine Lehre neu | — | |
+| 2026-10-31 | #1–#6 | Architektur | architekt (fortgesetzt) | bestanden: Technikfrage bei #2 #3 #4 #5, ADR-0002–0005 akzeptiert, 4e7fd1a | — | +30.651 Tokens (fortgesetzt, 96.476 → 127.127), ≈ 5.100 je Karte |
