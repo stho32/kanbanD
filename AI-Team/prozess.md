@@ -47,3 +47,11 @@ Nach jedem Rollenauftrag notiert der Director das Token-Volumen aus der Abschlus
 ## Preisetikett je Karte (Betreiber 2026-10-31)
 
 Sobald kanbanD ein Preisetikett an Aufgaben kennt (Wunsch des Betreibers vom 2026-10-31, beim product-owner in Klärung), stattet der Director **jede** Karte damit aus: beim Zug nach „Erledigt“ den Preis, der den API-Kosten entsprochen hätte (Grundlage: die Token-Kosten der Karte, Preise des verwendeten Modells, Annahme zur Aufteilung genannt). Bis dahin stehen Token-Kosten **und Preis** als Kartenkommentar (Betreiber 2026-10-31): Preis als API-Gegenwert mit Modellpreisen; lässt er sich nicht genau sagen, als Spanne von–bis (Betreiber 2026-10-31), mit der Annahme dahinter (heute: plausibel 85 % Cache-Lesen / 10 % Input / 5 % Output, Spanne alles-Cache bis alles-Output).
+
+## Kosten messen: Einzel- und Gemeinkosten (Betreiber 2026-10-31)
+
+- **Einzelkosten** einer Karte werden gemessen, nicht geschätzt: `python3 werkzeuge/token_kosten.py <Protokolle der Subagents dieser Karte>` (Factory); die Protokolle liegen unter `<scratchpad-elternordner>/tasks/<agent-id>.output`, die Agent-ID steht in der Logbuchzeile. Ergebnis ist eine Spanne (Cache-Schreiben 5 oder 8 $ je Mio.). Ein fortgesetzter Subagent, der mehrere Karten bedient, wird nach seinen Läufen geteilt, sonst als „einschließlich …“ genannt.
+- **Gemeinkosten** (Director-Session, einmalige Aufträge für das ganze Board) stehen auf der Sammelkarte „Gemeinkosten: Director und Einmaliges“, je Tag fortgeschrieben; die Director-Session wird über ihr Protokoll `~/.claude/projects/-home-shoff-Projekte-Software-Factory/<session>.jsonl` gemessen.
+- **Preis-Kommentar** beim Zug nach „Erledigt“: „Preis: <von>–<bis> USD · Basis: …“ mit den Einzelkosten je Rolle, dazu getrennt „Gemeinkostenanteil: … USD (Zuschlag … % nach Einzelkosten)“.
+- Die Abschlussmeldungen der Subagents (Token-Summe) zählen das Cache-Lesen nicht und unterschätzen stark; sie werden nicht mehr für Preise benutzt.
+
