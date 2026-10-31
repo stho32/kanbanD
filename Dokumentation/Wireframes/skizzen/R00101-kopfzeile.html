@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skizze Kopfzeile</title>
+<style>
+:root{
+--kd-bg:oklch(0.965 0.005 250);--kd-surface:oklch(0.995 0.002 250);--kd-sunken:oklch(0.94 0.007 250);
+--kd-line:oklch(0.87 0.01 250);--kd-text:oklch(0.24 0.02 255);--kd-muted:oklch(0.48 0.018 255);
+--kd-head:oklch(0.29 0.028 255);--kd-head-text:oklch(0.93 0.01 250);--kd-head-muted:oklch(0.72 0.02 250);--kd-head-line:oklch(0.38 0.03 255);
+--kd-accent:oklch(0.5 0.13 255);--kd-accent-weak:oklch(0.93 0.035 255);--kd-accent-ink:oklch(0.38 0.12 255);
+--kd-mensch:oklch(0.52 0.07 215);--kd-agent:oklch(0.6 0.13 65);
+--kd-font:"IBM Plex Sans",system-ui,sans-serif;--kd-mono:"IBM Plex Mono",ui-monospace,monospace;
+--kd-shadow:0 2px 8px oklch(0.24 0.02 255 / .18);
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 64px;background:var(--kd-bg);color:var(--kd-text);font:13px/1.4 var(--kd-font)}
+h1{font-size:18px;margin:0 0 4px}
+.lead{color:var(--kd-muted);max-width:880px;margin:0 0 24px}
+section{margin:0 0 40px}
+h2{font-size:14px;margin:0 0 4px}
+.hinweis{color:var(--kd-muted);margin:0 0 8px;max-width:880px}
+.rahmen{border:1px solid var(--kd-line);background:var(--kd-surface);position:relative;overflow:visible;max-width:100%}
+.scroll{overflow-x:auto;padding-bottom:4px}
+/* Kopfzeile */
+.kz{background:var(--kd-head);color:var(--kd-head-text);display:flex;flex-direction:column}
+.reihe{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 8px;flex-wrap:nowrap}
+.reihe+.reihe{border-top:1px solid var(--kd-head-line)}
+.btn{background:transparent;border:1px solid var(--kd-head-line);color:var(--kd-head-text);font:inherit;height:28px;padding:0 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;border-radius:0}
+.btn.sym{width:32px;justify-content:center;padding:0}
+.btn.prim{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff;font-weight:600}
+.mono{font-family:var(--kd-mono);color:var(--kd-head-muted);font-size:11px;white-space:nowrap}
+nav{display:flex;gap:2px}
+nav a{color:var(--kd-head-muted);text-decoration:none;padding:0 8px;height:40px;display:flex;align-items:center;white-space:nowrap}
+nav a.an{color:var(--kd-head-text);box-shadow:inset 0 -3px 0 var(--kd-accent)}
+.inp{height:28px;border:1px solid var(--kd-head-line);background:oklch(0.24 0.02 255);color:var(--kd-head-text);padding:0 8px;font:inherit;min-width:80px;flex:1 1 auto}
+.seg{display:inline-flex}
+.seg span{border:1px solid var(--kd-head-line);padding:0 8px;height:28px;display:inline-flex;align-items:center;margin-left:-1px;color:var(--kd-head-muted)}
+.seg span.an{background:var(--kd-head-text);color:var(--kd-head)}
+.chips{display:flex;gap:6px}
+.chip{border:1px solid var(--kd-head-line);height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:4px;color:var(--kd-head-muted)}
+.chip.an{background:var(--kd-accent-weak);color:var(--kd-accent-ink);border-color:var(--kd-accent-weak)}
+.av{width:20px;height:20px;border-radius:50%;background:var(--kd-mensch);color:#fff;font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.platz{flex:1 1 auto}
+/* Board-Andeutung */
+.board{display:flex;gap:8px;padding:8px;background:var(--kd-bg);min-height:90px}
+.sp{flex:1 1 0;min-width:120px;background:var(--kd-sunken);padding:6px}
+.sp b{font-size:11px;color:var(--kd-muted)}
+.ka{background:var(--kd-surface);border:1px solid var(--kd-line);height:26px;margin-top:6px}
+/* Menü */
+.menu{position:absolute;background:var(--kd-surface);color:var(--kd-text);box-shadow:var(--kd-shadow);border:1px solid var(--kd-line);min-width:200px;padding:4px 0;z-index:3}
+.menu .e{height:40px;display:flex;align-items:center;gap:8px;padding:0 12px}
+.menu .e.an{background:var(--kd-accent-weak);color:var(--kd-accent-ink);font-weight:600}
+.menu .e small{margin-left:auto;color:var(--kd-muted)}
+.menu hr{border:0;border-top:1px solid var(--kd-line);margin:4px 0}
+.menu .k{font-size:11px;color:var(--kd-muted);padding:6px 12px 2px;letter-spacing:.04em}
+.marke{position:absolute;background:oklch(0.6 0.13 65);color:#fff;font-size:11px;font-weight:600;padding:1px 6px;z-index:4}
+.legende{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;max-width:880px;margin-top:8px;color:var(--kd-muted)}
+.legende b{color:var(--kd-text)}
+</style>
+</head>
+<body>
+<h1>Skizze: Kopfzeile auf jeder Breite (R00101)</h1>
+<p class="lead">Entwurf zur Freigabe vor dem Bau, Stil von kanbanD (blaugrau, eckig, dicht). Was nicht in die Zeile passt, wandert nach den Breakpoints von Material 3 in das Menü „Mehr“ (⋮); unter 600 px wird die Navigation zum Menü „&lt;Seite&gt; ▾“. „+ Neue Aufgabe“ bleibt immer direkt erreichbar. Die orangefarbenen Marken nummerieren, was sich gegenüber heute ändert.</p>
+
+<section>
+<h2>1 · large, ab 1200 px (hier 1280 px)</h2>
+<p class="hinweis">Heute überdecken „3 laufen“ und „Darstellung“ den Knopf „+ Neue Aufgabe“. Neu: „Signale oben“, „Spalten“ und „Darstellung“ wandern ins Menü „Mehr“, der Ordnername in den Tooltip der Board-Wahl; alles andere bleibt in einer Zeile.</p>
+<div class="scroll"><div class="rahmen" style="width:1280px">
+<div class="kz"><div class="reihe">
+<button class="btn" title="Ordner: kanbanD-Kanbanboard">Entwicklung ▾</button>
+<nav><a class="an" href="#">Board</a><a href="#">Aufgaben</a><a href="#">Personen</a><a href="#">Berichte</a><a href="#">WBS</a><a href="#">Einrichten</a></nav>
+<input class="inp" value="" placeholder="Filter: Titel, @kürzel, label:…" style="max-width:260px">
+<span class="seg"><span class="an">alle</span><span>meine</span><span>Agenten</span></span>
+<button class="btn prim">+ Neue Aufgabe</button>
+<span class="platz"></span>
+<button class="btn">◷ 3 laufen</button>
+<button class="btn"><span class="av">SH</span> Stefan Hoffmann ▾</button>
+<button class="btn sym" aria-label="Mehr">⋮</button>
+</div></div>
+<div class="board"><div class="sp"><b>Backlog</b><div class="ka"></div><div class="ka"></div></div><div class="sp"><b>Architektur</b><div class="ka"></div></div><div class="sp"><b>Entwicklung</b><div class="ka"></div></div><div class="sp"><b>Auto-Reviews</b></div><div class="sp"><b>Erledigt</b><div class="ka"></div></div></div>
+<div class="menu" style="right:8px;top:38px;width:240px">
+<div class="k">MEHR</div>
+<div class="e">☑ Signale oben</div>
+<div class="e">▥ Spalten einrichten</div>
+<div class="e">◐ Darstellung: System <small>Hell · Dunkel</small></div>
+</div>
+<span class="marke" style="right:250px;top:46px">1</span>
+</div></div>
+</section>
+
+<section>
+<h2>2 · expanded, 840–1199 px (hier 960 px)</h2>
+<p class="hinweis">Zwei Zeilen – in eine passt es nicht (Navigation, Filter, Bereich und „Neue Aufgabe“ brauchen zusammen gut 1.100 px). Oben Board, Navigation, Timer, Person, „Mehr“; unten Filter, Bereich als Umschalter, „+ Neue Aufgabe“.</p>
+<div class="scroll"><div class="rahmen" style="width:960px">
+<div class="kz">
+<div class="reihe"><button class="btn" title="Ordner: kanbanD-Kanbanboard">Entwicklung ▾</button><nav><a class="an" href="#">Board</a><a href="#">Aufgaben</a><a href="#">Personen</a><a href="#">Berichte</a><a href="#">WBS</a><a href="#">Einrichten</a></nav><span class="platz"></span><button class="btn">◷ 3 laufen</button><button class="btn"><span class="av">SH</span> ▾</button><button class="btn sym">⋮</button></div>
+<div class="reihe"><input class="inp" placeholder="Filter: Titel, @kürzel, label:…" style="max-width:420px"><span class="seg"><span class="an">alle</span><span>meine</span><span>Agenten</span></span><span class="platz"></span><button class="btn prim">+ Neue Aufgabe</button></div>
+</div>
+<div class="board"><div class="sp"><b>Backlog</b><div class="ka"></div></div><div class="sp"><b>Entwicklung</b><div class="ka"></div></div><div class="sp"><b>Erledigt</b></div></div>
+<span class="marke" style="left:430px;top:52px">2</span>
+</div></div>
+</section>
+
+<section>
+<h2>3 · medium, 600–839 px (hier 768 px)</h2>
+<p class="hinweis">Zwei Zeilen: oben Board, Navigation und „Mehr“; unten Filter, Bereich als Chips (neu, F0002 – heute verschwindet er unter 980 px ganz), „+ Neue Aufgabe“, Timer und Person.</p>
+<div class="scroll"><div class="rahmen" style="width:768px">
+<div class="kz">
+<div class="reihe"><button class="btn">Entwicklung ▾</button><nav><a class="an" href="#">Board</a><a href="#">Aufgaben</a><a href="#">Personen</a><a href="#">Berichte</a><a href="#">WBS</a><a href="#">Einrichten</a></nav><span class="platz"></span><button class="btn sym">⋮</button></div>
+<div class="reihe"><input class="inp" placeholder="Filter"><span class="chips"><span class="chip an">✓ alle</span><span class="chip">meine</span><span class="chip">Agenten</span></span><button class="btn prim">+ Neue Aufgabe</button><button class="btn">◷ 3</button><button class="btn"><span class="av">SH</span></button></div>
+</div>
+<div class="board"><div class="sp"><b>Backlog</b><div class="ka"></div></div><div class="sp"><b>Entwicklung</b><div class="ka"></div></div></div>
+<span class="marke" style="left:200px;top:52px">3</span>
+</div></div>
+</section>
+
+<section>
+<h2>4 · compact, unter 600 px (hier 375 px) – Navigationsmenü offen</h2>
+<p class="hinweis">Oben: Board-Wahl, Seiten-Menü „Board ▾“ (ersetzt die Navigationsleiste), „+“ für Neue Aufgabe (immer direkt, mit Namen für Screenreader), Timer, Person, „Mehr“. Darunter Filter und Bereichs-Chips über die ganze Breite.</p>
+<div class="rahmen" style="width:375px">
+<div class="kz">
+<div class="reihe" style="gap:4px;padding:0 6px"><button class="btn" style="max-width:96px;overflow:hidden">Entwickl… ▾</button><button class="btn" style="border-color:var(--kd-accent)">Board ▾</button><span class="platz"></span><button class="btn sym prim" aria-label="Neue Aufgabe">+</button><button class="btn sym">◷</button><button class="btn sym"><span class="av">SH</span></button><button class="btn sym">⋮</button></div>
+<div class="reihe" style="flex-wrap:wrap;padding:6px;gap:6px"><input class="inp" placeholder="Filter" style="flex-basis:100%"><span class="chips"><span class="chip an">✓ alle</span><span class="chip">meine</span><span class="chip">Agenten</span></span></div>
+</div>
+<div class="board"><div class="sp"><b>Backlog</b><div class="ka"></div><div class="ka"></div></div></div>
+<div class="menu" style="left:104px;top:38px;width:220px">
+<div class="k">SEITE</div>
+<div class="e an">▦ Board</div><div class="e">☰ Aufgaben</div><div class="e">◉ Personen</div><div class="e">▤ Berichte ›</div><div class="e">⌗ WBS</div><div class="e">⚙ Einrichten</div>
+</div>
+<span class="marke" style="left:150px;top:8px">4</span>
+</div>
+</section>
+
+<section>
+<h2>5 · compact, 375 px – Menü „Mehr“ offen</h2>
+<p class="hinweis">Liegt vollständig im Fenster; „Spalten einrichten“ öffnet den Modus wie heute der Knopf.</p>
+<div class="rahmen" style="width:375px;min-height:260px">
+<div class="kz">
+<div class="reihe" style="gap:4px;padding:0 6px"><button class="btn" style="max-width:96px;overflow:hidden">Entwickl… ▾</button><button class="btn">Board ▾</button><span class="platz"></span><button class="btn sym prim">+</button><button class="btn sym">◷</button><button class="btn sym"><span class="av">SH</span></button><button class="btn sym" style="border-color:var(--kd-accent)">⋮</button></div>
+<div class="reihe" style="flex-wrap:wrap;padding:6px;gap:6px"><input class="inp" placeholder="Filter" style="flex-basis:100%"><span class="chips"><span class="chip an">✓ alle</span><span class="chip">meine</span><span class="chip">Agenten</span></span></div>
+</div>
+<div class="menu" style="right:6px;top:38px;width:240px">
+<div class="k">MEHR</div>
+<div class="e">☑ Signale oben</div><div class="e">▥ Spalten einrichten</div><div class="e">◐ Darstellung: System</div>
+<hr><div class="e">◷ 3 Timer laufen</div><div class="e"><span class="av">SH</span> Ich: Stefan Hoffmann</div>
+</div>
+<span class="marke" style="right:250px;top:46px">5</span>
+</div>
+</section>
+
+<div class="legende">
+<b>1</b><span>„Signale oben“, „Spalten“, „Darstellung“ wandern ins Menü „Mehr“ (⋮) – damit überlappt bei 1280 px nichts mehr.</span>
+<b>2</b><span>Unter 1200 px zwei Zeilen: oben Navigation, Timer, Person, „Mehr“; unten Filter, Bereich, „+ Neue Aufgabe“.</span>
+<b>3</b><span>Unter 840 px zwei Zeilen; Bereich als Chips statt Umschalter, bleibt also auf Tablet erhalten.</span>
+<b>4</b><span>Unter 600 px Seiten-Menü „&lt;Seite&gt; ▾“ statt Navigationsleiste; „+“ für Neue Aufgabe bleibt direkt.</span>
+<b>5</b><span>Im Menü „Mehr“ auf compact zusätzlich Timer und Ich als Einträge (Doppel zum Knopf, für kleine Ziele).</span>
+</div>
+</body>
+</html>

@@ -34,3 +34,7 @@ Das Board, das der Betreiber für das Projekt beobachtet, ist zugleich die Insta
 3. eine Logbuchzeile mit Version bzw. Commit. Schlägt die Installation fehl, bleibt die alte Instanz laufen, und die Karte wird eine Befundkarte.
 
 Rückmeldungen gibt der Betreiber von sich aus („wenn ich was zu nörgeln habe, sage ich es“). Sie werden über den PO zu Karten im Backlog.
+
+## Signal „Ich habe Fragen“ (Betreiber 2026-10-31)
+
+Hat der Director eine Frage, die der Betreiber entscheiden muss (richtungsweisend laut product-owner, Freigabe einer Skizze, Konflikt mit der Vision), setzt er auf der betroffenen Karte das Signal `frage` („Ich habe Fragen“, orange; steht in der Reihenfolge der Signale vorn, die Karte trägt also seine Farbe) und schreibt die Frage als Kartenkommentar: ein Satz Kontext, nummerierte Optionen, Empfehlung zuerst. Dieselbe Frage stellt er auch in der Session. Ist sie beantwortet, nimmt er das Signal zurück und vermerkt die Antwort als Kommentar. Fragen ohne Karte bekommen eine Karte „Frage: …“ oben im Backlog.
