@@ -33,7 +33,8 @@ test.describe('Handy', () => {
     expect(spalte.width).toBeGreaterThan(330);
     expect(spalte.width).toBeLessThanOrEqual(390);
     expect(await page.locator('.bahnen').evaluate(e => getComputedStyle(e).scrollSnapType)).toContain('x');
-    await page.locator('.kz-nav a', { hasText: 'Einrichten' }).click();
+    await page.locator('#t-seite').click();
+    await page.locator('#pop').getByRole('menuitem', { name: 'Einrichten' }).click();
     await expect(page).toHaveURL(/#\/einrichten$/);
     for (const ziel of ['#/einrichten', '#/aufgaben', '#/berichte/prognose', '#/berichte/verlauf', '#/wbs/kd']) {
       await page.goto(k.adresse + ziel);

@@ -507,7 +507,8 @@ async function act(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
-      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; if (u.pop === 'mehr') u.fokus = '#pop [role^="menuitem"]'; break;
+      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; if (u.pop === 'mehr' || u.pop === 'seite') u.fokus = '#pop [role^="menuitem"]'; break;
+      case 'seite': u.pop = null; if (location.hash === arg) break; location.hash = arg; return;
       case 'board-wahl': u.pop = null; location.hash = '#/board/' + arg; return;
       case 'board-neu': {
         const titel = (wert || '').trim();

@@ -100,3 +100,44 @@ test('Menü „Mehr“: ein Eintrag löst dieselbe Aktion aus wie vorher der Kno
   await expect(menue(page)).toHaveCount(0);
   await expect(mehr(page)).toBeFocused();
 });
+
+test.describe('compact, 375 px', () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+  const seite = page => kopf(page).getByRole('button', { name: /Seite/ });
+
+  test('der Navigationsknopf öffnet Board, Aufgaben, Personen, Berichte, WBS, Einrichten; „Aufgaben“ zeigt die Aufgabenliste', async ({ page }) => {
+    await starten(page);
+    await expect(kopf(page).locator('.kz-nav')).toHaveCount(0);
+    await expect(seite(page)).toHaveText(/Board/);
+    await expect(seite(page)).toHaveAttribute('aria-haspopup', 'menu');
+    await seite(page).click();
+    await expect(menue(page).getByRole('menuitem')).toHaveText(['Board', 'Aufgaben', 'Personen', /Berichte/, 'WBS', 'Einrichten']);
+    await menue(page).getByRole('menuitem', { name: 'Aufgaben' }).click();
+    await expect(page).toHaveURL(/#\/aufgaben$/);
+    await expect(page.locator('.leiste')).toContainText('Aufgaben');
+    await expect(menue(page)).toHaveCount(0);
+    await expect(seite(page)).toHaveText(/Aufgaben/);
+  });
+
+  test('„Berichte“ im Navigationsmenü öffnet die Liste der Berichte', async ({ page }) => {
+    await starten(page);
+    await seite(page).click();
+    await menue(page).getByRole('menuitem', { name: /Berichte/ }).click();
+    await page.locator('#pop').getByRole('menuitem', { name: /Burndown/ }).click();
+    await expect(page).toHaveURL(/#\/berichte\/verlauf$/);
+  });
+
+  test('„Signale oben“, „Spalten“ und „Darstellung“ mit zwei Klicks über „Mehr“; das offene Menü liegt ganz im Fenster', async ({ page }) => {
+    await starten(page);
+    await mehr(page).click();
+    await expect(menue(page).getByRole('menuitemcheckbox', { name: 'Signale oben' })).toBeVisible();
+    await expect(menue(page).getByRole('menuitem', { name: /Darstellung/ })).toBeVisible();
+    const r = await menue(page).boundingBox();
+    expect(r.x).toBeGreaterThanOrEqual(0);
+    expect(r.y).toBeGreaterThanOrEqual(0);
+    expect(r.x + r.width).toBeLessThanOrEqual(375);
+    expect(r.y + r.height).toBeLessThanOrEqual(800);
+    await menue(page).getByRole('menuitem', { name: 'Spalten einrichten' }).click();
+    await expect(page.locator('header.kz.modus')).toContainText('Spalten einrichten');
+  });
+});

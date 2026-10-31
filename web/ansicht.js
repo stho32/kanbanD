@@ -56,7 +56,7 @@ function kopfElemente() {
   return {
     board: () => `<div class="kz-z1"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true" title="${esc(S.zustand.ordner)}"><span class="kz-board-name">${esc(b ? b.titel : 'kein Board')}</span> ▾</button></div>`,
     navigation: vNavigation,
-    seitenmenue: vNavigation,
+    seitenmenue: vSeitenKnopf,
     filter: () => `<input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
     bereich: vBereich,
     bereichChips: vBereich,
@@ -74,6 +74,33 @@ const DREI_PUNKTE = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="5" r
 function vNavigation() {
   const u = S.ui;
   return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}">Aufgaben</a><a href="#/personen" class="${u.view === 'personen' ? 'an' : ''}">Personen</a><a href="#" id="t-ber" class="${u.view.startsWith('berichte') ? 'an' : ''}${u.pop === 'ber' ? ' auf' : ''}" data-act="pop" data-arg="ber" aria-haspopup="true">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>`;
+}
+
+/** Unter 600 px ersetzt ein Knopf mit dem Namen der aktuellen Seite die Navigationsleiste (R00101, PO 2026-10-31). */
+function vSeitenKnopf() {
+  const name = seitenName();
+  return `<button type="button" class="kz-btn kz-seite${S.ui.pop === 'seite' ? ' auf' : ''}" id="t-seite" data-act="pop" data-arg="seite" aria-haspopup="menu" aria-label="Seite: ${name}">${name} ▾</button>`;
+}
+
+function seitenName() {
+  const v = S.ui.view;
+  if (v === 'aufgaben') return 'Aufgaben';
+  if (v === 'personen') return 'Personen';
+  if (v.startsWith('berichte')) return 'Berichte';
+  if (v === 'wbs') return 'WBS';
+  if (v === 'einrichten') return 'Einrichten';
+  return 'Board';
+}
+
+function vSeitenPop() {
+  const u = S.ui, name = seitenName();
+  const ziel = (titel, hash) => `<a class="iz${name === titel ? ' an' : ''}" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem">${esc(titel)}</a>`;
+  const wbs = gebunden().map(a => {
+    const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
+    return `<a class="iz${u.view === 'wbs' && wbsKuerzel() === a.kuerzel ? ' an' : ''}" href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem">${esc(titel)}</a>`;
+  }).join('');
+  const berichte = `<button type="button" class="iz${name === 'Berichte' ? ' an' : ''}" data-act="pop" data-arg="ber" role="menuitem" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><h4>SEITE</h4>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
 }
 
 function vBereich() {
@@ -241,6 +268,7 @@ function vPop() {
   const u = S.ui;
   if (u.pop === 'board') return vBoardPop();
   if (u.pop === 'mehr') return vMehrPop();
+  if (u.pop === 'seite') return vSeitenPop();
   if (u.pop === 'lauf') return alleLaufenden().length ? vLaufPop() : '';
   if (u.pop === 'legen') return vLegenPop();
   if (u.pop === 'ber') return vBerichtePop();
@@ -646,10 +674,14 @@ function vPersonen() {
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */
 const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>', csv: '<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>' };
+function berichteAusloeser() {
+  if (S.ui.stufe === 'compact') return 't-seite';
+  return 't-ber';
+}
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="t-ber" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
 function vBerichtsfilter(teile) {
