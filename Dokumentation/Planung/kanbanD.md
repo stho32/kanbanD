@@ -2,7 +2,7 @@
 application: kanbanD
 system: kanbanD
 vision: Anforderungen/R00000-vision.md
-kanban: {folder: /home/shoff/kanbanD-test, board: entwicklung, application: kd}
+kanban: {folder: /home/shoff/Projekte/Kanban-Boards/kanbanD-Kanbanboard, board: entwicklung, application: kd, url: http://127.0.0.1:7422/}
 wireframes: Dokumentation/Wireframes/
 sprache: de
 zuletzt: 2026-10-25
