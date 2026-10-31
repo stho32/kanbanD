@@ -430,6 +430,7 @@ function render() {
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
+  S.ui.stufe = stufeAusBreite(innerWidth);
   // Das aktive Eingabefeld übersteht das Neuzeichnen: Wert, Cursor, Fokus
   const aktiv = document.activeElement;
   const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
@@ -1252,7 +1253,11 @@ document.addEventListener('input', e => {
   }
 });
 window.addEventListener('hashchange', laden);
-window.addEventListener('resize', popPlatzieren);
+window.addEventListener('resize', () => {
+  const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
+  if (stufeGewechselt) render();
+  else popPlatzieren();
+});
 document.addEventListener('keydown', e => {
   const t = e.target;
   if (S.ui.menue) { menueTaste(e); return; }
