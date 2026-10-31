@@ -59,7 +59,7 @@ function kopfElemente() {
     seitenmenue: vSeitenKnopf,
     filter: () => `<input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
     bereich: vBereich,
-    bereichChips: vBereich,
+    bereichChips: vBereichChips,
     listenbereich: vListenbereich,
     neu: () => '<button type="button" class="kz-btn neu-btn" data-act="add" data-arg="" title="Neue Aufgabe (n)" aria-label="+ Neue Aufgabe">+ <span class="lang">Neue Aufgabe</span></button>',
     luecke: () => '<span class="kz-luecke"></span>',
@@ -103,9 +103,16 @@ function vSeitenPop() {
   return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><h4>SEITE</h4>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
 }
 
+const BEREICHE = [['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']];
 function vBereich() {
   const u = S.ui;
-  return `<span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span>`;
+  return `<span class="seg" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span>`;
+}
+
+/** Unter 840 px steht der Bereich als Filter-Chips (M3) in der Werkzeugzeile; die Tippfläche kommt aus der zentralen Regel für pointer: coarse. */
+function vBereichChips() {
+  const u = S.ui;
+  return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</button>`).join('')}</span>`;
 }
 
 /** Menü „Mehr“: was in der Kopfzeile keinen Platz hat; jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */

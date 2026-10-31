@@ -29,6 +29,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
 .kz.modus .kz-reihe{flex-wrap:wrap}
 .kz[data-stufe="compact"] .neu-btn .lang{display:none}
+.kz-chips{display:flex;gap:var(--kd-s2)}
+.kz-chip{height:var(--kd-row);padding:0 var(--kd-s3);border:1px solid var(--kd-head-line);background:none;color:var(--kd-head-muted);font-size:12px;cursor:pointer;white-space:nowrap}
+.kz-chip:hover{color:var(--kd-head-text)}
+.kz-chip.an{background:var(--kd-accent-weak);border-color:var(--kd-accent-weak);color:var(--kd-accent-ink);font-weight:500}
 .kz-menue a.iz{color:inherit;text-decoration:none}
 .kz-menue{width:260px}
 .kz-menue .iz{width:100%;border:0;border-bottom:1px solid var(--kd-line);background:none;font:inherit;color:inherit;text-align:left}
@@ -710,7 +714,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .wbs-tabelle table{min-width:860px}
 }
 @media (pointer:coarse){
-  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal,.kz-menue .iz{min-width:32px;min-height:32px}
+  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal,.kz-menue .iz,.kz-chip{min-width:32px;min-height:32px}
   .bahn-kopf{height:auto;min-height:36px}
   .bahn-kopf .sigz{min-height:32px}
 }

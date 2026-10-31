@@ -164,3 +164,49 @@ test('unter 600 px zeigt „Neue Aufgabe“ nur „+“, behält aber den Namen;
   await breiteSetzen(page, 600);
   expect((await neuKnopf(page).innerText()).replace(/\s+/g, ' ').trim()).toBe('+ Neue Aufgabe');
 });
+
+for (const breite of [375, 768]) {
+  test.describe(`Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 800 }, isMobile: true, hasTouch: true });
+
+    test('„meine“ ist ohne Menü sichtbar, als Filter-Chip mit Tippfläche nach dem zentralen Touch-Maß, und filtert auf die eigenen Karten', async ({ page }) => {
+      await starten(page);
+      const meine = kopf(page).getByRole('radio', { name: 'meine' });
+      await expect(meine).toBeVisible();
+      await expect(meine).toHaveClass(/kz-chip/);
+      const r = await meine.boundingBox();
+      expect(Math.min(r.width, r.height)).toBeGreaterThanOrEqual(32);
+      await meine.tap();
+      await expect(page.locator('.ka')).toHaveCount(3);
+      expect(await page.locator('.ka').evaluateAll(ks => ks.map(k => +k.dataset.id).sort())).toEqual([1, 2, 4]);
+      await expect(kopf(page).getByRole('radio', { name: 'meine' })).toHaveAttribute('aria-checked', 'true');
+      await kopf(page).getByRole('radio', { name: 'alle' }).tap();
+      await expect(page.locator('.ka')).toHaveCount(5);
+      await ohneKonflikte(page, `${breite} px`);
+    });
+  });
+}
+
+test('nach einem Wechsel von 375 auf 1280 px bleibt „meine“ gewählt, das Board zeigt weiter 3 von 5 Karten', async ({ page }) => {
+  await starten(page);
+  await breiteSetzen(page, 375);
+  await kopf(page).getByRole('radio', { name: 'meine' }).click();
+  await expect(page.locator('.ka')).toHaveCount(3);
+  await breiteSetzen(page, 1280);
+  await expect(kopf(page).getByRole('radio', { name: 'meine' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.ka')).toHaveCount(3);
+});
+
+test('ohne gewähltes Ich zeigt „meine“ bei 375 px 0 Karten, die Kopfzeile bleibt bedienbar, die Konsole bleibt ohne Fehler', async ({ page }) => {
+  const fehler = [];
+  page.on('console', m => { if (m.type() === 'error') fehler.push(m.text()); });
+  page.on('pageerror', e => fehler.push(e.message));
+  await page.setViewportSize({ width: 375, height: 800 });
+  await starten(page, { ich: null });
+  await kopf(page).getByRole('radio', { name: 'meine' }).click();
+  await expect(page.locator('.ka')).toHaveCount(0);
+  await ohneKonflikte(page, '375 px ohne Ich');
+  await kopf(page).getByRole('radio', { name: 'alle' }).click();
+  await expect(page.locator('.ka')).toHaveCount(5);
+  expect(fehler).toEqual([]);
+});
