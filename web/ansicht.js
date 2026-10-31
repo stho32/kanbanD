@@ -35,24 +35,82 @@ const pk = k => { const p = per(k); return `<span class="pk ${p.art === 'agent' 
 /* ── Kopfzeile ── */
 function vKopf() {
   const u = S.ui, z = S.zustand;
-  if (!z) return '<header class="kz"><div class="kz-z1">kanbanD</div></header>';
+  if (!z) return '<header class="kz"><div class="kz-reihe"><div class="kz-z1">kanbanD</div></div></header>';
   const ordnerName = z.ordner.split('/').filter(Boolean).pop();
-  if (u.setup) return `<header class="kz modus"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button>${vIchKnopf()}</div></div></header>`;
-  if (!z.eingerichtet || u.first) return `<header class="kz"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></header>`;
-  const b = S.board;
-  return `<header class="kz" data-stufe="${u.stufe}"><div class="kz-z1" title="${esc(z.ordner)}"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true">${esc(b ? b.titel : 'kein Board')} ▾</button> <span class="mono">${esc(ordnerName)}</span></div><nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}">Aufgaben</a><a href="#/personen" class="${u.view === 'personen' ? 'an' : ''}">Personen</a><a href="#" id="t-ber" class="${u.view.startsWith('berichte') ? 'an' : ''}${u.pop === 'ber' ? ' auf' : ''}" data-act="pop" data-arg="ber" aria-haspopup="true">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>${u.view === 'aufgaben' ? vListenWerk() : ''}${b && u.view === 'board' ? `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span><button class="kz-btn${u.signaleOben ? ' auf' : ''}" id="signale-oben" data-act="signale-oben" aria-pressed="${!!u.signaleOben}" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">Signale oben</button><button class="kz-btn" data-act="setup" title="Spalten dieses Boards einrichten">Spalten</button><button class="kz-btn neu-btn" data-act="add" data-arg="" title="Neue Aufgabe (n)" aria-label="+ Neue Aufgabe">+ <span class="lang">Neue Aufgabe</span></button></div>` : ''}<div class="kz-z3">${vLaufKnopf()}${S.live ? '' : '<span class="kz-btn leer" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>'}${vThemaKnopf()}${vIchKnopf()}</div></header>`;
+  if (u.setup) return `<header class="kz modus" data-stufe="${u.stufe}"><div class="kz-reihe"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button>${vIchKnopf()}</div></div></div></header>`;
+  if (!z.eingerichtet || u.first) return `<header class="kz" data-stufe="${u.stufe}"><div class="kz-reihe"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></div></header>`;
+  const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
+  const element = kopfElemente();
+  return `<header class="kz" data-stufe="${u.stufe}">${plaetze.reihen.map(reihe => `<div class="kz-reihe">${reihe.map(schluessel => element[schluessel]()).join('')}</div>`).join('')}</header>`;
+}
+
+function kopfAnsicht() {
+  if (S.board && S.ui.view === 'board') return 'board';
+  if (S.ui.view === 'aufgaben') return 'aufgaben';
+  return 'sonst';
+}
+
+/** Je Platz aus kopfPlaetze (web/kopfzeile.js) das Markup des Elements. */
+function kopfElemente() {
+  const u = S.ui, b = S.board;
+  return {
+    board: () => `<div class="kz-z1"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true" title="${esc(S.zustand.ordner)}"><span class="kz-board-name">${esc(b ? b.titel : 'kein Board')}</span> ▾</button></div>`,
+    navigation: vNavigation,
+    seitenmenue: vNavigation,
+    filter: () => `<input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
+    bereich: vBereich,
+    bereichChips: vBereich,
+    listenbereich: vListenbereich,
+    neu: () => '<button type="button" class="kz-btn neu-btn" data-act="add" data-arg="" title="Neue Aufgabe (n)" aria-label="+ Neue Aufgabe">+ <span class="lang">Neue Aufgabe</span></button>',
+    luecke: () => '<span class="kz-luecke"></span>',
+    lauf: vLaufKnopf,
+    live: () => S.live ? '' : '<span class="kz-btn leer kz-live" title="Die Verbindung zum Server ist unterbrochen; die Seite lädt neu, sobald sie zurück ist.">nicht live</span>',
+    ich: vIchKnopf,
+    mehr: () => `<button type="button" class="kz-btn kz-mehr${u.pop === 'mehr' ? ' auf' : ''}" id="t-mehr" data-act="pop" data-arg="mehr" aria-haspopup="menu" aria-label="Mehr" title="Mehr">${DREI_PUNKTE}</button>`,
+  };
+}
+const DREI_PUNKTE = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>';
+
+function vNavigation() {
+  const u = S.ui;
+  return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}">Aufgaben</a><a href="#/personen" class="${u.view === 'personen' ? 'an' : ''}">Personen</a><a href="#" id="t-ber" class="${u.view.startsWith('berichte') ? 'an' : ''}${u.pop === 'ber' ? ' auf' : ''}" data-act="pop" data-arg="ber" aria-haspopup="true">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>`;
+}
+
+function vBereich() {
+  const u = S.ui;
+  return `<span class="seg" role="radiogroup" aria-label="Bereich">${[['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']].map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span>`;
+}
+
+/** Menü „Mehr“: was in der Kopfzeile keinen Platz hat; jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
+function ichNameOderLeer() {
+  const me = ichPerson();
+  if (me) return me.name;
+  return 'nicht gewählt';
+}
+
+function vMehrPop() {
+  const u = S.ui;
+  const eintrag = {
+    signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">Signale oben</button>`,
+    spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
+    darstellung: vThemaEintrag,
+    lauf: () => `<button type="button" class="iz" id="mehr-lauf" role="menuitem" data-act="pop" data-arg="lauf">Laufende Timer<span class="muted">${alleLaufenden().length}</span></button>`,
+    ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
+  };
+  const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
+  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><h4>MEHR</h4>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
 }
 
 const THEMA_NAME = { system: 'System', light: 'Hell', dark: 'Dunkel' }, THEMA_ZEICHEN = { system: '◐', light: '☀', dark: '☾' };
 /** Darstellung reihum System → Hell → Dunkel (R00070). */
-function vThemaKnopf() {
+function vThemaEintrag() {
   const t = S.thema, weiter = THEMEN[(THEMEN.indexOf(t) + 1) % THEMEN.length];
-  return `<button class="kz-btn" id="t-thema" data-act="thema" data-thema="${t}" title="Darstellung: ${THEMA_NAME[t]} — Klick: ${THEMA_NAME[weiter]}" aria-label="Darstellung: ${THEMA_NAME[t]}">${THEMA_ZEICHEN[t]}</button>`;
+  return `<button type="button" class="iz" id="t-thema" role="menuitem" data-act="thema" data-thema="${t}" title="Darstellung: ${THEMA_NAME[t]} — Klick: ${THEMA_NAME[weiter]}" aria-label="Darstellung: ${THEMA_NAME[t]}">Darstellung: ${THEMA_NAME[t]}<span class="muted">${THEMA_ZEICHEN[t]}</span></button>`;
 }
 const UHR = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
 function vLaufKnopf() {
   const n = alleLaufenden().length;
-  return n ? `<button class="kz-btn${S.ui.pop === 'lauf' ? ' auf' : ''}" id="t-lauf" data-act="pop" data-arg="lauf" aria-haspopup="true">${UHR}${n} ${n === 1 ? 'läuft' : 'laufen'}</button>` : '';
+  return n ? `<button class="kz-btn${S.ui.pop === 'lauf' ? ' auf' : ''}" id="t-lauf" data-act="pop" data-arg="lauf" aria-haspopup="true">${UHR}${n}<span class="lang"> ${n === 1 ? 'läuft' : 'laufen'}</span></button>` : '';
 }
 
 function vLaufPop() {
@@ -182,6 +240,7 @@ function vBoardPop() {
 function vPop() {
   const u = S.ui;
   if (u.pop === 'board') return vBoardPop();
+  if (u.pop === 'mehr') return vMehrPop();
   if (u.pop === 'lauf') return alleLaufenden().length ? vLaufPop() : '';
   if (u.pop === 'legen') return vLegenPop();
   if (u.pop === 'ber') return vBerichtePop();
@@ -534,9 +593,9 @@ function listenBereich(a, bereich) {
   if (bereich === 'ohne') return !a.archiviert && !liegtAuf(a).length;
   return true;
 }
-function vListenWerk() {
+function vListenbereich() {
   const u = S.ui, zahl = b => S.aufgaben.filter(a => listenBereich(a, b)).length;
-  return `<div class="kz-werk"><input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter"><span class="seg" role="radiogroup" aria-label="Aufgabenbereich">${[['alle', 'alle'], ['ohne', 'ohne Board'], ['archiv', 'archiviert']].map(([k, t]) => `<span class="${u.listBereich === k ? 'an' : ''}" data-act="list-bereich" data-arg="${k}" role="radio" aria-checked="${u.listBereich === k}">${t} <span class="mono">${zahl(k)}</span></span>`).join('')}</span></div>`;
+  return `<span class="seg" role="radiogroup" aria-label="Aufgabenbereich">${[['alle', 'alle'], ['ohne', 'ohne Board'], ['archiv', 'archiviert']].map(([k, t]) => `<span class="${u.listBereich === k ? 'an' : ''}" data-act="list-bereich" data-arg="${k}" role="radio" aria-checked="${u.listBereich === k}">${t} <span class="mono">${zahl(k)}</span></span>`).join('')}</span>`;
 }
 function vAufgaben() {
   const u = S.ui, me = ichPerson();

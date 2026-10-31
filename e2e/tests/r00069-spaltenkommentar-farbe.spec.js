@@ -1,6 +1,6 @@
 // R00069 Spaltenkommentar und Spaltenfarbe
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n- #1\n\n## Erledigt\n',
@@ -18,7 +18,7 @@ test.describe('R00069', () => {
     await page.goto(k.adresse);
     const kopf = page.locator('.bahn[data-col="In Arbeit"] .bahn-kopf');
     await expect(kopf.locator('.info')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Kommentar In Arbeit').fill('höchstens zwei gleichzeitig');
     await expect(page.locator('#setup-vorschau')).toContainText('column-notes:\n  In Arbeit: höchstens zwei gleichzeitig');
     await page.getByRole('button', { name: 'Fertig' }).click();
@@ -33,14 +33,14 @@ test.describe('R00069', () => {
     await page.goto(k.adresse);
     const flaeche = page.locator('.bahn[data-col="In Arbeit"] > .flaeche');
     const vorher = await hintergrund(flaeche);
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Farbe In Arbeit').fill('#ffcc00');
     await expect(page.locator('#setup-vorschau')).toContainText('column-colors:\n  In Arbeit: "#ffcc00"');
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect.poll(() => hintergrund(flaeche)).toBe('color(srgb 1 0.8 0)');
     expect(await hintergrund(page.locator('.bahn[data-col="Erledigt"] > .flaeche'))).toBe(vorher);
     expect(k.lies('boards/entwicklung.md')).toContain('column-colors:\n  In Arbeit: "#ffcc00"\n');
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Farbe In Arbeit entfernen').click();
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect.poll(() => hintergrund(flaeche)).toBe(vorher);

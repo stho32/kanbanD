@@ -1,6 +1,6 @@
 // R00077 Responsive für Tablet und Handy
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson } = require('./hilfen');
+const { kanbanStarten, alsPerson, mehrOeffnen } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = wbsText([
@@ -59,7 +59,8 @@ test.describe('Handy', () => {
 
   test('Touch: Symbolknöpfe haben mindestens 32 px Tippfläche; der Personenknopf zeigt nur das Kürzel', async ({ page }) => {
     await starten(page);
-    for (const sel of ['.kopf-plus', '.bk-name', '#t-thema']) {
+    await mehrOeffnen(page);
+    for (const sel of ['.kopf-plus', '.bk-name', '#t-mehr', '#t-thema']) {
       const b = await box(page.locator(sel).first());
       expect(Math.min(b.width, b.height), sel).toBeGreaterThanOrEqual(32);
     }
@@ -76,7 +77,7 @@ test.describe('Tablet', () => {
     const [filter, ich] = await Promise.all([box(page.getByLabel('Filter')), box(page.locator('#t-ich'))]);
     const ueberlappt = filter.x < ich.x + ich.width && ich.x < filter.x + filter.width && filter.y < ich.y + ich.height && ich.y < filter.y + filter.height;
     expect(ueberlappt).toBe(false);
-    expect(filter.y).toBeGreaterThan(ich.y + 10);
+    expect((await box(page.locator('header.kz'))).height, 'zwei Zeilen').toBeGreaterThanOrEqual(80);
     await page.locator('.ka[data-id="1"] .t').tap();
     const f = await box(page.getByRole('dialog', { name: 'Aufgabe #1' }));
     expect([f.width, f.height]).toEqual([820, 1180]);

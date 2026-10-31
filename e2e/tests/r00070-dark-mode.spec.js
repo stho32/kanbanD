@@ -1,6 +1,6 @@
 // R00070 Dark-Mode
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mehrOeffnen } = require('./hilfen');
 
 const DATEIEN = {
   'kanbanD.md': '---\npeople:\n  st: {name: Stefan, kind: human}\nclasses:\n  bug: {label: Fehler, color: red}\n  eigen: {label: Eigen, color: "#3366ff"}\n---\n',
@@ -51,6 +51,7 @@ test.describe('R00070', () => {
   test('US-2: Knopf wechselt System → Hell → Dunkel → System, Wahl überlebt Neuladen', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto(k.adresse);
+    await mehrOeffnen(page);
     const knopf = page.locator('#t-thema');
     await expect(knopf).toHaveAttribute('aria-label', 'Darstellung: System');
     const hell = await grund(page);
@@ -64,6 +65,7 @@ test.describe('R00070', () => {
     const dunkel = await grund(page);
     expect(dunkel, 'Dunkel gilt auch bei hellem System').not.toBe(hell);
     await page.reload();
+    await mehrOeffnen(page);
     await expect(page.locator('#t-thema')).toHaveAttribute('aria-label', 'Darstellung: Dunkel');
     expect(await grund(page)).toBe(dunkel);
     await page.locator('#t-thema').click();

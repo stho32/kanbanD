@@ -1,6 +1,6 @@
 // R00088 Signal auffällig und „Signale oben“
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, mehrOeffnen, ausMehr } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -54,19 +54,23 @@ test.describe('R00088', () => {
 
   test('US-2: Signale oben — erst mit Signal, nach dem Neuladen noch an, aus wieder wie im Board', async ({ page }) => {
     await expect.poll(() => reihe(page)).toEqual([1, 2, 3, 4]);
-    await page.locator('#signale-oben').click();
-    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-pressed', 'true');
+    await ausMehr(page, 'Signale oben');
+    await mehrOeffnen(page);
+    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
     await expect.poll(() => reihe(page)).toEqual([2, 4, 1, 3]);
     expect(k.lies('boards/entwicklung.md')).toBe(BOARD);
     await page.reload();
-    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-pressed', 'true');
+    await mehrOeffnen(page);
+    await expect(page.locator('#signale-oben')).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
     await expect.poll(() => reihe(page)).toEqual([2, 4, 1, 3]);
-    await page.locator('#signale-oben').click();
+    await ausMehr(page, 'Signale oben');
     await expect.poll(() => reihe(page)).toEqual([1, 2, 3, 4]);
   });
 
   test('US-3: bei Signale oben ändert Ziehen nichts, ein Hinweis erklärt warum', async ({ page }) => {
-    await page.locator('#signale-oben').click();
+    await ausMehr(page, 'Signale oben');
     await karte(page, 3).dragTo(karte(page, 2));
     await expect(page.getByText('Bei „Signale oben“ nicht umsortierbar')).toBeVisible();
     await karte(page, 1).focus();
@@ -76,7 +80,7 @@ test.describe('R00088', () => {
   });
 
   test('ein Signal per API rückt bei Signale oben live nach oben', async ({ page }) => {
-    await page.locator('#signale-oben').click();
+    await ausMehr(page, 'Signale oben');
     await page.request.put(k.adresse + 'api/aufgaben/3/signale/review', ALS_AGENT);
     await expect.poll(() => reihe(page)).toEqual([2, 3, 4, 1]);
   });

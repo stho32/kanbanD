@@ -1,12 +1,12 @@
 // R00075 „Fertig“ in „Spalten einrichten“ ohne gewählte Person
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten } = require('./hilfen');
+const { kanbanStarten, einrichten, ausMehr } = require('./hilfen');
 
 test('US-1: ohne Person erst wählen, dann speichert „Fertig“ — auch mit „/“ im Namen', async ({ page }) => {
   const k = await kanbanStarten(einrichten({ 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n\n- #1\n', 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n' }));
   try {
     await page.goto(k.adresse);
-    await page.getByRole('button', { name: 'Spalten', exact: true }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Spaltenname 3').fill('Läuft Produktiv/Erledigt');
     await page.getByRole('button', { name: 'Fertig' }).click();
     const auswahl = page.locator('#pop');

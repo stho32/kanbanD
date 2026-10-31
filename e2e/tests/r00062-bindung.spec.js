@@ -1,6 +1,6 @@
 // R00062 Leere Anwendungsliste löst die Bindung
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson } = require('./hilfen');
+const { kanbanStarten, alsPerson, ausMehr } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 const WBS = wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]);
@@ -28,7 +28,7 @@ test.describe('R00062', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await expect(spalten(page)).toHaveCount(5);
-    await page.getByRole('button', { name: 'Spalten', exact: true }).click();
+    await ausMehr(page, 'Spalten einrichten');
     const kd = page.getByRole('button', { name: 'Bindung kanbanD' });
     await expect(kd).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'Bindung keine' }).click();

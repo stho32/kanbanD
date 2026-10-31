@@ -1,6 +1,6 @@
 // R00059 Plausibilitätsprüfung je Spalte
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, einrichten, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, einrichten, liveBereit, ausMehr } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 const WBS = wbsText([
@@ -65,14 +65,14 @@ test.describe('R00059 Konfiguration', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await expect(page.locator('#pruefungen-hinweis')).toContainText('Spalte „In Arbeit“: unbekannte Prüfung „xyz“');
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Prüfung wbs-effects-green Zu erledigen').click();
     await page.getByLabel('Prüfung wbs-effects-green In Arbeit').click();
     await expect(page.locator('#setup-vorschau')).toContainText('column-checks:\n  Zu erledigen: [wbs-effects-green]\n  In Arbeit: [xyz, wbs-effects-green]');
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect(page.locator('.bk-ed')).toHaveCount(0); // .bahn zählt auch die Spalten der Einrichtung — erst das Ende der Einrichtung zeigt das Speichern
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('column-checks:\n  Zu erledigen: [wbs-effects-green]\n  In Arbeit: [xyz, wbs-effects-green]\n');
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Prüfung wbs-effects-green Zu erledigen').click();
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('column-checks:\n  In Arbeit: [xyz, wbs-effects-green]\n---');

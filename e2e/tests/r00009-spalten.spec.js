@@ -1,6 +1,6 @@
 // R00009 Spalten einrichten
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n- #1\n- #2\n\n## Erledigt\n',
@@ -15,7 +15,7 @@ test.describe('R00009', () => {
 
   test('US-1: umbenennen und ergänzen', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Spaltenname 2').fill('Doing');
     await page.getByLabel('Neue Spalte').fill('Review');
     await page.keyboard.press('Enter');
@@ -29,7 +29,7 @@ test.describe('R00009', () => {
 
   test('US-2: volle Spalte lässt sich nicht entfernen', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await expect(page.getByLabel('Spalte In Arbeit entfernen')).toBeDisabled();
     await expect(page.getByLabel('Spalte In Arbeit entfernen')).toHaveAttribute('title', /2 Karten/);
     await page.getByLabel('Spalte Zu erledigen entfernen').click();
@@ -39,7 +39,7 @@ test.describe('R00009', () => {
 
   test('US-3: Grenze überschritten', async ({ page }) => {
     await page.goto(k.adresse);
-    await page.getByRole('button', { name: 'Spalten' }).click();
+    await ausMehr(page, 'Spalten einrichten');
     await page.getByLabel('Grenze In Arbeit').fill('1');
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect(page.locator('.bahn[data-col="In Arbeit"] .bahn-kopf')).toHaveClass(/ueber/);

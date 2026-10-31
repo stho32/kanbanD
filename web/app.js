@@ -434,6 +434,9 @@ function render() {
   // Das aktive Eingabefeld übersteht das Neuzeichnen: Wert, Cursor, Fokus
   const aktiv = document.activeElement;
   const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
+  // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
+  const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
+  if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht hält die Leseposition — sonst springt das Board unter dem Kontextmenü weg.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
@@ -483,6 +486,13 @@ function fenstertitel() {
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
 
+/** Selektor des Knopfs, der das offene Menü geöffnet hat — Esc gibt ihm den Fokus zurück. */
+function ausloeserDesMenues() {
+  const pop = $('#pop');
+  if (!pop || !document.getElementById(pop.dataset.for)) return null;
+  return '#' + CSS.escape(pop.dataset.for);
+}
+
 function popPlatzieren() {
   const p = $('#pop');
   if (!p) return;
@@ -497,7 +507,7 @@ async function act(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
-      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; break;
+      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; if (u.pop === 'mehr') u.fokus = '#pop [role^="menuitem"]'; break;
       case 'board-wahl': u.pop = null; location.hash = '#/board/' + arg; return;
       case 'board-neu': {
         const titel = (wert || '').trim();
@@ -1295,7 +1305,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key === 'Escape') {
-    if (S.ui.pop) { S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
+    if (S.ui.pop) { S.ui.fokus = ausloeserDesMenues(); S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }

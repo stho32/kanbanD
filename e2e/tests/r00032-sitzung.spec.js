@@ -30,9 +30,9 @@ test.describe('R00032', () => {
     await page.goto(k.adresse + '#/board/test');
     await expect(page.locator('.hilfe-leer')).toContainText('Noch keine Karten');
     await page.evaluate(() => { S.ereignisquelle.onerror(); });
-    await expect(page.locator('.kz-z3')).toContainText('nicht live');
+    await expect(page.locator('header.kz')).toContainText('nicht live');
     await page.evaluate(() => { S.ereignisquelle.onopen(); });
     await expect(page.getByRole('status')).toContainText('Wieder verbunden');
-    await expect(page.locator('.kz-z3')).not.toContainText('nicht live');
+    await expect(page.locator('header.kz')).not.toContainText('nicht live');
   });
 });

@@ -7,20 +7,31 @@ button,input,select,textarea{font:inherit;color:inherit}
 #main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .btn-sym:disabled:hover{background:none;border-color:transparent}
-/* Kopfzeile */
-.kz-z1{flex-direction:row-reverse;justify-content:flex-end;white-space:nowrap}
+/* Kopfzeile (R00101): Zeilen und Plätze je M3-Stufe aus web/kopfzeile.js, die Stufe steht in data-stufe */
+.kz{height:auto;flex-direction:column}
+.kz-reihe{display:flex;align-items:center;gap:var(--kd-s3);min-height:var(--kd-head-h);padding:0 var(--kd-s3) 0 0;min-width:0}
+.kz-reihe+.kz-reihe{border-top:1px solid var(--kd-head-line);padding-left:var(--kd-s3)}
+.kz-reihe>*{flex:none}
+.kz-reihe>.kz-nav{align-self:stretch}
+.kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
+.kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
+.kz-board{max-width:240px;min-width:0}
+.kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
+.ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .kz-z1 .mono{font-size:11px}
-.kz-nav a{cursor:pointer;white-space:nowrap}
+.kz-nav a{cursor:pointer;white-space:nowrap;padding:0 var(--kd-s4)}
 .kz-nav a .dd{font-size:9px;margin-left:5px}
 .kz-nav a.auf{background:var(--kd-head-line);color:var(--kd-head-text)}
-.kz-werk{display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s4);border-left:1px solid var(--kd-head-line);min-width:0;flex:1 1 auto}
-.kz-werk>*{flex:none}
-.kz-werk>.inp{flex:1 1 auto;width:auto;min-width:80px;max-width:330px}
-@media (max-width:1180px){.kz-chk span.lb{display:none}.kz-nav a{padding:0 var(--kd-s4)}}
-@media (max-width:980px){.kz-z1 .mono{display:none}.kz-werk .seg{display:none}}
-.kz-z3{flex:none}
-.kz-nav{flex:none}
-.kz .inp{width:330px;min-width:120px;flex:0 1 330px;height:26px;background:var(--kd-head-line);border-color:transparent;color:var(--kd-head-text);font-size:12px}
+.kz-mehr{padding:0 var(--kd-s2)}
+.kz-mehr .i{width:16px;height:16px;fill:currentColor;stroke:none}
+.kz:not([data-stufe="large"]) .ich-name,.kz:not([data-stufe="large"]) #t-lauf .lang{display:none}
+.kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
+.kz.modus .kz-reihe{flex-wrap:wrap}
+.kz[data-stufe="compact"] .kz-reihe>.kz-nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.kz-menue{width:260px}
+.kz-menue .iz{width:100%;border:0;border-bottom:1px solid var(--kd-line);background:none;font:inherit;color:inherit;text-align:left}
+.kz .inp{width:330px;min-width:80px;flex:0 1 330px;height:26px;background:var(--kd-head-line);border-color:transparent;color:var(--kd-head-text);font-size:12px}
 .kz .inp::placeholder{color:var(--kd-head-muted)}
 .kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-accent-weak)}
 .kz .seg{border-color:var(--kd-head-line);flex:none}
@@ -671,14 +682,6 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 /* Responsive (R00077): dieselbe Oberfläche auf Tablet (bis 1024 px) und Handy (bis 640 px); der Desktop bleibt, wie er ist. */
 .pop,.kmenue{max-width:calc(100vw - 8px)}
 @media (max-width:1024px){
-  .kz{height:auto;flex-wrap:wrap}
-  .kz>.kz-z1,.kz>.kz-nav,.kz>.kz-z3,.kz>.kz-modus{min-height:40px}
-  .kz-nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
-  .kz-nav::-webkit-scrollbar{display:none}
-  .kz-z3{order:2}
-  .kz-werk{order:3;flex:1 0 100%;height:40px;border-left:0;border-top:1px solid var(--kd-head-line);padding:0 var(--kd-s3)}
-  .kz-werk>.inp{max-width:none}
-  .kz.modus .kz-modus{flex-wrap:wrap;padding:var(--kd-s2) var(--kd-s3)}
   .mod-bg{top:0;padding:0}
   .mod{width:100%;height:100%}
   .leiste{flex-wrap:wrap}
@@ -689,13 +692,6 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .einr.breit{border-right:0}
 }
 @media (max-width:640px){
-  .kz-z1{flex:1 1 auto;min-width:0;border-right:0;padding:0 var(--kd-s3)}
-  .kz-z1 .kz-board{min-width:0;overflow:hidden;text-overflow:ellipsis}
-  .kz-nav{order:4;flex:1 0 100%;border-top:1px solid var(--kd-head-line)}
-  .kz-nav a{padding:0 var(--kd-s4)}
-  .kz-werk{order:5;gap:var(--kd-s2)}
-  .kz-z3{padding:0 var(--kd-s3);gap:var(--kd-s2)}
-  .ich-name,.neu-btn .lang,.kz-modus .muted{display:none}
   .bahnen{scroll-snap-type:x mandatory}
   .bahn{--bw:calc(100vw - 28px);scroll-snap-align:start}
   .mod-body{display:block;overflow:auto}
@@ -713,7 +709,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .wbs-tabelle table{min-width:860px}
 }
 @media (pointer:coarse){
-  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal{min-width:32px;min-height:32px}
+  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal,.kz-menue .iz{min-width:32px;min-height:32px}
   .bahn-kopf{height:auto;min-height:36px}
   .bahn-kopf .sigz{min-height:32px}
 }

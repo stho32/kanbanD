@@ -97,4 +97,18 @@ async function filterOeffnen(page) {
   await page.getByRole('group', { name: 'Berichtsfilter' }).waitFor();
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen };
+/** Öffnet das Menü „Mehr“ der Kopfzeile (R00101), falls es zu ist. */
+async function mehrOeffnen(page) {
+  const menue = page.locator('#pop[aria-label="Mehr"]');
+  if (await menue.count() === 0) await page.locator('#t-mehr').click();
+  await menue.waitFor();
+}
+
+/** Wählt einen Eintrag im Menü „Mehr“ (R00101: früher ein eigener Knopf der Kopfzeile) und schließt das Menü, falls es offen bleibt. */
+async function ausMehr(page, eintrag) {
+  await mehrOeffnen(page);
+  await page.locator('#pop[aria-label="Mehr"] .iz', { hasText: eintrag }).click();
+  if (await page.locator('#pop[aria-label="Mehr"]').count()) await page.keyboard.press('Escape');
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr };
