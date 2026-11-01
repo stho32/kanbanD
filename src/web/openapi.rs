@@ -10,6 +10,8 @@ use utoipa::OpenApi;
         description = "Kanban-Boards als Markdown-Dateien in einem Git-Repository; Menschen im Browser, KI-Agenten über diese API.\n\n\
 Jeder schreibende Aufruf nennt im Header `X-KanbanD-Wer` die handelnde Person (Kürzel aus `kanbanD.md`); kanbanD committet unter ihrem Namen. \
 Mehrere Agenten an einem Board nennen zusätzlich `X-KanbanD-Instanz` (eigene Kennung je laufender Instanz) für Reservieren und Ziehen.\n\n\
+Spalten mit Eigentümer (`column-owner`: `human` | `agent`): aus einer Spalte, die dem Menschen gehört, nimmt ein Agent keine Karte (403 `Verboten`); \
+die Sperre beruht auf `X-KanbanD-Wer` und schützt vor Versehen, nicht vor Angriffen.\n\n\
 Antwortregel: ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (`{\"aufgaben\": […]}`), weil Listen Zusatzangaben tragen; \
 ältere Listen-Endpunkte liefern ein Array. Statusantworten wie `{geaendert}` bleiben. Fehler: `{\"fehler\": \"…\"}`.\n\n\
 Zeitpunkte: `JJJJ-MM-TT HH:MM±HH:MM` (Ortszeit mit Versatz); Eingaben auch als ISO mit `T`, mit `Z` oder ohne Versatz (dann Ortszeit). \

@@ -120,3 +120,43 @@ async fn neun_endpunkte_nennen_die_grenze() {
     let felder = &d["components"]["schemas"]["GrenzeErreicht"]["properties"];
     assert!(["fehler", "spalte", "grenze", "anzahl"].iter().all(|f| felder[f].is_object()), "{felder}");
 }
+
+/// R00097 B0298: die sechs Endpunkte, an denen ein Agent keine Karte aus einer Menschen-Spalte nimmt.
+const SPERRE: [(&str, &str); 6] = [
+    ("post", "/api/boards/{slug}/ziehen"),
+    ("post", "/api/boards/{slug}/bewegen"),
+    ("post", "/api/boards/{slug}/bewegen-mehrere"),
+    ("delete", "/api/boards/{slug}/aufgaben/{nr}"),
+    ("post", "/api/aufgaben/{nr}/archivieren"),
+    ("post", "/api/aufgaben/archivieren"),
+];
+
+#[tokio::test]
+async fn sechs_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    let agent = "Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer}";
+    let zweck = |methode: &str, pfad: &str| kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode.eq_ignore_ascii_case(methode) && e.pfad == pfad).unwrap().zweck;
+    for (methode, pfad) in SPERRE {
+        assert!(zweck(methode, pfad).contains(agent), "/api/endpunkte {pfad}: {}", zweck(methode, pfad));
+        let op = &d["paths"][pfad][methode];
+        assert!(op["description"].as_str().unwrap().contains(agent), "openapi {pfad}");
+        assert_eq!(op["responses"]["403"]["content"]["application/json"]["schema"]["$ref"], "#/components/schemas/Verboten", "403 {pfad}");
+    }
+    assert_eq!(seite.matches(agent).count(), 6, "Seite /api");
+    let felder = &d["components"]["schemas"]["Verboten"]["properties"];
+    assert!(["fehler", "spalte", "nummer"].iter().all(|f| felder[f].is_object()), "{felder}");
+    let spalten = "eigentuemer: human, agent oder null";
+    assert!(zweck("PUT", "/api/boards/{slug}/spalten").contains(spalten), "{}", zweck("PUT", "/api/boards/{slug}/spalten"));
+    let put = d["paths"]["/api/boards/{slug}/spalten"]["put"]["description"].as_str().unwrap();
+    assert!(put.contains(spalten), "{put}");
+    assert!(!put.contains("Agent") && !zweck("PUT", "/api/boards/{slug}/spalten").contains("Agent"), "PUT …/spalten verspricht Agenten weder Erlaubnis noch Sperre (Frage 3 offen)");
+    assert!(d["components"]["schemas"]["SpaltenAenderung"]["properties"]["eigentuemer"].is_object());
+    for text in [zweck("GET", "/api/boards/{slug}"), d["paths"]["/api/boards/{slug}"]["get"]["description"].as_str().unwrap()] {
+        assert!(text.contains("eigentuemer: column-owner"), "{text}");
+    }
+    assert!(d["info"]["description"].as_str().unwrap().contains("schützt vor Versehen, nicht vor Angriffen"), "openapi info");
+    assert!(seite.contains("column-owner") && seite.contains("beruht auf <span class=\"mono\">X-KanbanD-Wer</span> und schützt vor Versehen, nicht vor Angriffen"), "Seite /api nennt Eigentümer und Full Trust");
+}
