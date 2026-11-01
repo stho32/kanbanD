@@ -4,7 +4,7 @@
 //! vor der Grenzprüfung, also 403 vor 409.
 
 use crate::fehler::Fehler;
-use crate::modell::{Art, Aufgabe, Board, Grenzverletzungen};
+use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Grenzverletzungen};
 use crate::pruefungen::Warnung;
 use std::collections::BTreeSet;
 
@@ -67,6 +67,14 @@ impl super::Kanban {
             zugregeln(wer.art, &b.belegung(&nachher).grenzverletzungen(&b.belegung(&vorher)))?;
         }
         Ok(())
+    }
+}
+
+/// Agent: die erste geänderte Einstellung als `EinstellungVerboten` (R00102). Mensch: nie gesperrt.
+pub(crate) fn einstellungen_pruefen(art: Art, aenderungen: &Einstellungsaenderungen) -> Result<(), Fehler> {
+    match (art, aenderungen.erste()) {
+        (Art::Agent, Some(a)) => Err(Fehler::einstellung_verboten(&a.spalte, a.einstellung)),
+        _ => Ok(()),
     }
 }
 
@@ -157,6 +165,19 @@ mod tests {
         assert!(matches!(entnahme_und_zug_pruefen(Art::Agent, &vorher, &nachher, &[1], &keine), Err(Fehler::Verboten { nummer: 1, .. })));
         assert!(matches!(entnahme_und_zug_pruefen(Art::Agent, &vorher, &nachher, &[], &keine), Err(Fehler::GrenzeErreicht { .. })), "ohne Entnahme gilt die Grenze");
         assert_eq!(entnahme_und_zug_pruefen(Art::Mensch, &vorher, &nachher, &[1], &keine).map(|w| w.len()), Ok(1), "Mensch: nur die Grenzwarnung");
+    }
+
+    // R00102: Grenze und Eigentümer ändern nur Menschen — der Agent bekommt die erste Änderung, der Mensch nie eine
+    #[test]
+    fn einstellungen_aendert_nur_der_mensch() {
+        use crate::modell::{Einstellung, Einstellungsaenderung, Einstellungsaenderungen};
+        let aenderung = |spalte: &str, einstellung| Einstellungsaenderung { spalte: spalte.into(), einstellung };
+        let zwei = Einstellungsaenderungen(vec![aenderung("Eingang", Einstellung::Eigentuemer), aenderung("In Arbeit", Einstellung::Grenze)]);
+        assert_eq!(einstellungen_pruefen(Art::Agent, &zwei), Err(Fehler::einstellung_verboten("Eingang", Einstellung::Eigentuemer)), "die erste");
+        let eine = Einstellungsaenderungen(vec![aenderung("In Arbeit", Einstellung::Grenze)]);
+        assert_eq!(einstellungen_pruefen(Art::Agent, &eine), Err(Fehler::einstellung_verboten("In Arbeit", Einstellung::Grenze)));
+        assert_eq!(einstellungen_pruefen(Art::Mensch, &zwei), Ok(()), "Mensch nie gesperrt");
+        assert_eq!(einstellungen_pruefen(Art::Agent, &Einstellungsaenderungen::default()), Ok(()), "ohne Änderung frei");
     }
 
     #[test]
