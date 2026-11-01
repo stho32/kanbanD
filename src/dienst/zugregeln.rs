@@ -2,8 +2,19 @@
 //! und Menschen gemeldet. Gezählt wird im Modell (`Belegung`), entschieden hier — unter der Sperre, vor `aktion()`.
 
 use crate::fehler::Fehler;
-use crate::modell::{Art, Grenzverletzungen};
+use crate::modell::{Art, Aufgabe, Board, Grenzverletzungen};
 use crate::pruefungen::Warnung;
+use std::collections::BTreeSet;
+
+/// Die Nummern der archivierten Aufgaben — sie stehen weiter in der Board-Datei, zählen aber nicht.
+pub(crate) fn archivierte(aufgaben: &[Aufgabe]) -> BTreeSet<u32> {
+    aufgaben.iter().filter(|a| a.archiviert.is_some()).map(|a| a.nummer).collect()
+}
+
+/// Ein Zug auf einem Board: `vorher` und `nachher` im Speicher, dieselben Archivierten.
+pub(crate) fn zug_pruefen(art: Art, vorher: &Board, nachher: &Board, archiviert: &BTreeSet<u32>) -> Result<Vec<Warnung>, Fehler> {
+    zugregeln(art, &nachher.belegung(archiviert).grenzverletzungen(&vorher.belegung(archiviert)))
+}
 
 /// Agent: die erste Verletzung von links als `GrenzeErreicht` mit der Belegung vor dem Zug.
 /// Mensch: je Verletzung eine Warnung `grenze`; der Text nennt die Anzahl nach dem Zug.

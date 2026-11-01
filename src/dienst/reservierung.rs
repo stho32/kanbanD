@@ -1,6 +1,7 @@
 //! Reservierungen (R00087): eine Instanz hält eine Karte für sich, andere lassen sie beim Reservieren und Ziehen aus.
 
 use super::Kanban;
+use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
@@ -88,11 +89,13 @@ impl Kanban {
         if !a.zustaendige.contains(&wer.kuerzel) {
             a.zustaendige.push(wer.kuerzel.clone());
         }
+        let vorher = b.clone();
         b.bewegen(nr, &nach, Some(0)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ bewegen")))?;
+        let grenzwarnungen = zug_pruefen(wer.art, &vorher, &b, &archivierte(&aufgaben))?;
         let nachricht = format!("#{nr} gezogen: „{}“ → „{nach}“ ({}, {})", zug.von, self.inhaber(a.reservierung.as_ref().expect("gesetzt")), b.titel);
         let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
         self.aktion(wer, &nachricht, &dateien)?;
-        let warnungen = self.warnungen(&b, nr, &zug.von, &nach);
+        let warnungen = [grenzwarnungen, self.warnungen(&b, nr, &zug.von, &nach)].concat();
         Ok(Gezogen { aufgabe: a, von: zug.von.clone(), nach, warnungen })
     }
 
