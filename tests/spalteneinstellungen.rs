@@ -216,3 +216,45 @@ async fn fehlende_grenze_behaelt_null_und_0_entfernen() {
     assert_eq!((w.status, w.neue_commits), (200, 1), "{}", w.roh);
     assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\n"), "Umbenennen ohne grenze nimmt sie mit: {}", w.board);
 }
+
+// ---- F0020 Erlaubt bleibt (B0306)
+
+#[tokio::test]
+async fn agent_richtet_ein_was_keine_regel_traegt() {
+    let mit_review = {
+        let mut s = alle(|_, _| {});
+        s.as_array_mut().unwrap().insert(2, json!({"name": "Review"}));
+        s
+    };
+    let w = setzen("bot", mit_review).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "neue Spalte: {}", w.roh);
+    assert_eq!(w.board, w.board_vorher.replace("## Erledigt\n", "## Review\n\n## Erledigt\n"), "Review ohne Grenze und Eigentümer");
+
+    let umbenannt = json!([{"name": "Posteingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    let w = setzen("bot", umbenannt).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "umbenannt: {}", w.roh);
+    assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\ncolumn-owner:\n  Posteingang: human\n---\n"), "{}", w.board);
+
+    let umsortiert = json!([{"name": "In Arbeit", "alt": "In Arbeit", "grenze": 2}, {"name": "Eingang", "alt": "Eingang"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    let w = setzen("bot", umsortiert).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "umsortiert: {}", w.roh);
+    assert!(w.board.contains("## In Arbeit\n\n## Eingang\n"), "{}", w.board);
+
+    let w = setzen("bot", alle(|name, s| if name == "Eingang" { s["pruefungen"] = json!(["Ziel klar"]); s["notiz"] = json!("nur Neues"); s["farbe"] = json!("#336699"); })).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "pruefungen, notiz, farbe: {}", w.roh);
+    assert!(w.board.contains("column-owner:\n  Eingang: human\n") && w.board.contains("Ziel klar") && w.board.contains("nur Neues") && w.board.contains("#336699"), "{}", w.board);
+}
+
+#[tokio::test]
+async fn agent_sendet_einstellungen_unveraendert_ohne_commit() {
+    let faelle = [
+        ("gleiche Werte gesendet", alle(eigentuemer_von("Eingang", json!("human")))),
+        ("ohne grenze und eigentuemer", json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}])),
+        ("0 an Spalte ohne Grenze", alle(grenze_von("Erledigt", json!(0)))),
+    ];
+    for (fall, anfrage) in faelle {
+        let w = setzen("bot", anfrage).await;
+        assert_eq!((w.status, w.rumpf(), w.neue_commits), (200, json!({"geaendert": false}), 0), "{fall}");
+        assert_eq!(w.board, w.board_vorher, "{fall}: limits In Arbeit 2 und column-owner Eingang human bleiben");
+    }
+}

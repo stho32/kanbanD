@@ -300,3 +300,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0303 Eigentümeränderungen ermitteln | Standard | 0,4-1h | 0,3h | 0,3h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0304 Eigentümer über die API gesperrt | Standard | 0,4-1h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0305 grenze entfernbar | Standard | 0,4-1h | 0,3h | 0,3h | autonom |
+| 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0306 Erlaubte Spaltenänderungen für Agenten | Standard | 0,4-1h | 0,2h | 0,2h | autonom |
