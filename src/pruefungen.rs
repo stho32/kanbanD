@@ -32,13 +32,14 @@ impl Pruefung {
     }
 }
 
-/// Je Spalte und unbekanntem Prüfungsnamen ein Hinweis; die Datei bleibt lesbar und schreibbar.
+/// Je Spalte und unbekanntem Prüfungsnamen ein Hinweis, dazu je unbekanntem Eigentümer (R00097); die Datei bleibt lesbar und schreibbar.
 pub fn unbekannte(board: &Board) -> Vec<String> {
-    board
+    let pruefungen = board
         .spalten
         .iter()
-        .flat_map(|s| s.pruefungen.iter().filter(|n| Pruefung::aus(n).is_none()).map(move |n| format!("Spalte „{}“: unbekannte Prüfung „{n}“ — bekannt sind {}", s.name, Pruefung::ALLE.map(Pruefung::name).join(", "))))
-        .collect()
+        .flat_map(|s| s.pruefungen.iter().filter(|n| Pruefung::aus(n).is_none()).map(move |n| format!("Spalte „{}“: unbekannte Prüfung „{n}“ — bekannt sind {}", s.name, Pruefung::ALLE.map(Pruefung::name).join(", "))));
+    let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| format!("Spalte „{}“: unbekannter Eigentümer „{e}“", s.name)));
+    pruefungen.chain(eigentuemer).collect()
 }
 
 /// Rang einer Spalte für „nach rechts“: mit Phasen wie `phasenRang` in `web/berichte.js` (Abschlussspalte hinter allen
@@ -217,5 +218,12 @@ mod tests {
         let spalte = |name: &str, p: &[&str]| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect() };
         let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Entwicklung", &["wbs-effects-green", "xyz"]), spalte("Erledigt", &[])], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default() };
         assert_eq!(unbekannte(&b), ["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"]);
+    }
+
+    #[test]
+    fn unbekannter_eigentuemer_wird_je_spalte_genannt() {
+        let spalte = |name: &str, roh: Option<&str>| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", Some("chef")), spalte("Erledigt", None)], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default() };
+        assert_eq!(unbekannte(&b), ["Spalte „Eingang“: unbekannter Eigentümer „chef“"]);
     }
 }

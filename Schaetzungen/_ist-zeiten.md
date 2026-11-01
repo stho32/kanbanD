@@ -281,3 +281,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | Lauf R00096 | Konsolidierung | — | — | 0,00h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0285 column-owner lesen und schreiben | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0286 Spalten setzen mit eigentuemer | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-01 | R00097 Spalten mit Eigentümer | B0287 eigentuemer und Hinweis im Board | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
