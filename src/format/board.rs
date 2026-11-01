@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Berichtsfilter, Board, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Berichtsfilter, Board, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -15,6 +15,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let pruefungen = yaml::zuordnung(&m, "column-checks");
     let notizen = yaml::zuordnung(&m, "column-notes");
     let farben = yaml::zuordnung(&m, "column-colors");
+    let eigentuemer = yaml::zuordnung(&m, "column-owner");
     let termine = termine_lesen(m.get("milestones"))?;
     let start = match yaml::text(&m, "start") {
         Some(d) if !ist_datum(&d) => return Err(Formatfehler(format!("start „{d}“ ist nicht JJJJ-MM-TT"))),
@@ -39,7 +40,13 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             let pruefungen = pruefungen.and_then(|p| p.get(name.as_str())).map(pruefungsnamen).unwrap_or_default();
             let notiz = notizen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
             let farbe = farben.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|f| ist_hexfarbe(f));
-            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe });
+            let wert = eigentuemer.and_then(|e| e.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
+            let (eigentuemer, eigentuemer_unbekannt) = match wert.as_deref().map(|w| (Eigentuemer::aus(w), w)) {
+                Some((Some(e), _)) => (Some(e), None),
+                Some((None, w)) => (None, Some(w.to_string())),
+                None => (None, None),
+            };
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe, eigentuemer, eigentuemer_unbekannt });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -230,9 +237,10 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
+    let eigentuemer: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.as_str(), e))).collect();
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -255,7 +263,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), yaml::liste(&sp.pruefungen)));
             }
         }
-        for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben)] {
+        for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben), ("column-owner", &eigentuemer)] {
             if !eintraege.is_empty() {
                 s.push_str(&format!("{schluessel}:\n"));
                 for (spalte, wert) in eintraege.iter() {
@@ -305,9 +313,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { notiz: None, farbe: None, name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
             anwendungen: None,
@@ -403,7 +411,7 @@ mod tests {
     fn spaltenphasen_im_frontmatter_rundlauf() {
         let mut b = beispiel();
         b.spalten[1].phase = Some("Entwicklung".into());
-        b.spalten.insert(2, Spalte { notiz: None, farbe: None, name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(2, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
@@ -435,6 +443,26 @@ mod tests {
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         let g = lesen("b", "---\ncolumn-notes: {A: \"  \"}\ncolumn-colors: {A: rot, B: \"#00ff00\"}\n---\n## A\n## B\n").unwrap();
         assert_eq!(g.spalten.iter().map(|s| (s.notiz.clone(), s.farbe.clone())).collect::<Vec<_>>(), [(None, None), (None, Some("#00ff00".to_string()))], "leerer Kommentar und ungültige Farbe fallen weg");
+    }
+
+    #[test]
+    fn spalteneigentuemer_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
+        b.spalten[0].eigentuemer = Some(Eigentuemer::Human);
+        b.spalten[1].eigentuemer = Some(Eigentuemer::Agent);
+        let t = schreiben(&b, datei);
+        assert!(t.contains("column-owner:\n  Zu erledigen: human\n  In Arbeit: agent\n---\n"), "in Spaltenreihenfolge: {t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        assert!(!schreiben(&beispiel(), datei).contains("column-owner"), "ohne Eintrag kein Schlüssel");
+    }
+
+    #[test]
+    fn unbekannter_eigentuemer_gilt_nicht_und_bleibt_in_der_datei() {
+        let g = lesen("b", "---\ncolumn-owner: {Eingang: chef, B: agent, Fehlt: human}\n---\n## Eingang\n## B\n").unwrap();
+        let gelesen: Vec<(Option<Eigentuemer>, Option<&str>)> = g.spalten.iter().map(|s| (s.eigentuemer, s.eigentuemer_unbekannt.as_deref())).collect();
+        assert_eq!(gelesen, [(None, Some("chef")), (Some(Eigentuemer::Agent), None)], "chef gilt nicht, Eintrag ohne Spalte fällt weg");
+        assert!(schreiben(&g, |_| None).contains("column-owner:\n  Eingang: chef\n  B: agent\n"), "die Datei verliert den Wert nicht");
     }
 
     #[test]

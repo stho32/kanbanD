@@ -110,7 +110,7 @@ mod tests {
     }
 
     fn board() -> Board {
-        let spalte = |name: &str, aufgaben: Vec<u32>| Spalte { notiz: None, farbe: None, name: name.into(), grenze: None, aufgaben, phase: None, pruefungen: vec![] };
+        let spalte = |name: &str, aufgaben: Vec<u32>| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben, phase: None, pruefungen: vec![] };
         let mut b = crate::format::board::lesen("x", "# X\n").unwrap();
         b.spalten = vec![spalte("Backlog", vec![89, 90, 93]), spalte("Fertig", vec![94])];
         b

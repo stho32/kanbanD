@@ -279,3 +279,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0283 Zurückholen prüft auf jedem Board | Standard | 1-2h | 0,02h | 0,02h | autonom |
 | 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0284 Grenze in der Beschreibung | Standard | 0,5-1h | 0,04h | 0,04h | autonom |
 | 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | Lauf R00096 | Konsolidierung | — | — | 0,00h | autonom |
+| 2026-11-01 | R00097 Spalten mit Eigentümer | B0285 column-owner lesen und schreiben | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

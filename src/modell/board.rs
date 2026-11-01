@@ -18,6 +18,39 @@ pub struct Spalte {
     /// Hintergrundfarbe der Spalte als `#rrggbb` (`column-colors`).
     #[serde(default)]
     pub farbe: Option<String>,
+    /// Wem die Spalte gehört (`column-owner`, R00097); keiner heißt heutiges Verhalten.
+    #[serde(default)]
+    pub eigentuemer: Option<Eigentuemer>,
+    /// Ein Wert unter `column-owner`, der weder `human` noch `agent` ist: gilt nicht, bleibt in der Datei und wird als Hinweis gemeldet.
+    #[serde(skip)]
+    pub eigentuemer_unbekannt: Option<String>,
+}
+
+/// Eigentümer einer Spalte (R00097): aus einer Spalte des Menschen nimmt kein Agent eine Karte heraus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+pub enum Eigentuemer {
+    #[serde(rename = "human")]
+    Human,
+    #[serde(rename = "agent")]
+    Agent,
+}
+
+impl Eigentuemer {
+    /// `human` oder `agent` — dieselben Werte wie `kind` der Personen.
+    pub fn aus(wert: &str) -> Option<Eigentuemer> {
+        match wert {
+            "human" => Some(Eigentuemer::Human),
+            "agent" => Some(Eigentuemer::Agent),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Eigentuemer::Human => "human",
+            Eigentuemer::Agent => "agent",
+        }
+    }
 }
 
 /// `#rrggbb` — die einzige Form, in der eine Spaltenfarbe gilt.
@@ -380,7 +413,7 @@ impl Board {
             .iter()
             .map(|n| {
                 let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())) }
+                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: alt.and_then(|s| s.eigentuemer), eigentuemer_unbekannt: alt.and_then(|s| s.eigentuemer_unbekannt.clone()) }
             })
             .collect();
         let geaendert = spalten != self.spalten;
@@ -480,8 +513,8 @@ mod tests {
             slug: "b".into(),
             titel: "B".into(),
             spalten: vec![
-                Spalte { notiz: None, farbe: None, name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
+                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
             ],
             termine: vec![],
             anwendungen: None,
@@ -549,7 +582,7 @@ mod tests {
     #[test]
     fn spalten_umbenennen_ergaenzen_begrenzen() {
         let mut b = b();
-        b.spalten.insert(1, Spalte { notiz: None, farbe: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] });
         let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
@@ -562,7 +595,7 @@ mod tests {
     fn umbenennen_nimmt_die_phase_mit_entfernen_nimmt_sie_weg() {
         let mut b = b();
         b.spalten[0].phase = Some("Entwicklung".into());
-        b.spalten.insert(1, Spalte { notiz: None, farbe: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
         assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None), aend("Z", Some("Z"), None)]), Ok(true));
         assert_eq!(b.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None, None]);
     }
@@ -639,8 +672,8 @@ mod tests {
     fn mit_grenze() -> Board {
         let mut b = b();
         b.spalten = vec![
-            Spalte { notiz: None, farbe: None, name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, pruefungen: vec![] },
-            Spalte { notiz: None, farbe: None, name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, pruefungen: vec![] },
+            Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, pruefungen: vec![] },
+            Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, pruefungen: vec![] },
         ];
         b
     }
