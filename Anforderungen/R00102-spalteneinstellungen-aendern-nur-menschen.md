@@ -8,11 +8,11 @@ datum: 2026-11-01
 
 ## Beschreibung
 
-Grenze (`limits`) und Eigentümer (`column-owner`) einer Spalte ändern nur Menschen. Ein Agent, dessen `PUT /api/boards/{slug}/spalten` einen dieser Werte tatsächlich ändert, bekommt `403` ohne Commit. Gemeint ist Setzen, Ändern, Entfernen und das Löschen einer Spalte, die einen der Werte trägt. Alles andere am Einrichten der Spalten bleibt ihm erlaubt. Ein `PUT` ohne `grenze` behält künftig die Grenze, wie es die übrigen Felder schon tun.
+Grenze (`limits`) und Eigentümer (`column-owner`) einer Spalte ändern nur Menschen. Ein Agent, dessen `PUT /api/boards/{slug}/spalten` einen dieser Werte tatsächlich ändert, bekommt `403` ohne Commit. Gemeint ist Setzen, Ändern, Entfernen, das Löschen einer Spalte, die einen der Werte trägt, und das Umbenennen oder Tauschen einer solchen Spalte: Für Agenten vergleicht kanbanD die Einträge nach Spaltennamen, so wie sie in der Datei stehen. Alles andere am Einrichten der Spalten bleibt ihm erlaubt. Ein `PUT` ohne `grenze` behält künftig die Grenze, wie es die übrigen Felder schon tun.
 
 Zahlt ein auf: [Vision](R00000-vision.md) — Mensch und Agent arbeiten gleichberechtigt auf einem gemeinsamen Board; der Mensch stellt die Regeln ein, nach denen die Agenten ziehen.
 
-Zur Leitplanke „Full-Trust“ (keine Anmeldung, keine Rechteprüfung): Die Regel unterscheidet wie R00096 und R00097 nur nach `kind` der handelnden Person aus `X-KanbanD-Wer`. Es kommt keine Anmeldung und keine Rechteverwaltung dazu (PO-Entscheidung `AI-Team/po-entscheidungen.md` Z. 55).
+Zur Leitplanke „Full-Trust“ (keine Anmeldung, keine Rechteprüfung): Die Regel unterscheidet wie R00096 und R00097 nur nach `kind` der handelnden Person aus `X-KanbanD-Wer`. Es kommt keine Anmeldung und keine Rechteverwaltung dazu (PO-Entscheidung `AI-Team/po-entscheidungen.md` Z. 55, präzisiert durch Z. 57: Vergleich nach Namen).
 
 ## Geschäftlicher Nutzen
 
@@ -21,31 +21,33 @@ R00096 setzt die WIP-Grenze für Agenten durch, R00097 die Freigabe durch den Me
 ## Funktionale Anforderungen
 
 ### Was als Änderung gilt (handelnde Person mit `kind: agent`)
-- **Grenze**: Die wirksame Grenze einer Spalte ist nach dem `PUT` eine andere als vorher. Dazu zählen setzen (keine → 3), ändern (2 → 3), entfernen (2 → `null` oder `0`), eine neue Spalte mit Grenze und das Entfernen einer Spalte mit Grenze. `0` und „keine“ sind derselbe Wert.
-- **Eigentümer**: Der `column-owner`-Eintrag der Spalte ist nach dem `PUT` ein anderer als vorher, so wie er in der Datei steht. Ein unbekannter Wert (`chef`) zählt mit, also ist auch `chef` → `null` eine Änderung. Dazu zählen eine neue Spalte mit Eigentümer und das Entfernen einer Spalte mit Eigentümer.
-- Verglichen wird jede Spalte der Anfrage mit der Spalte, die sie über `alt` übernimmt. Eine Spalte ohne `alt` wird mit „keine Grenze, kein Eigentümer“ verglichen. Beim Umbenennen wandern beide Werte mit, das ist keine Änderung.
+- **Vergleich nach Namen, nicht über `alt`** (PO Z. 57): Verglichen werden die Einträge unter `limits` (Name → Grenze) und `column-owner` (Name → Eigentümer), so wie sie in der Board-Datei stehen. „Vorher“ ist die Datei vor dem `PUT`. „Nachher“ ist der Text, den kanbanD schreiben würde, wieder eingelesen (nach dem Zurücklesen). Geprüft wird jeder Name, der in der Anfrage steht oder vorher eine Spalte war. Fehlt unter einem Namen ein Eintrag, heißt das „keine Grenze“ bzw. „kein Eigentümer“.
+- **Grenze**: Unter einem Namen steht nachher eine andere wirksame Grenze als vorher. Dazu zählen setzen (keine → 3), ändern (2 → 3), entfernen (2 → `null` oder `0`), eine neue Spalte mit Grenze, das Entfernen einer Spalte mit Grenze, das Umbenennen einer Spalte mit Grenze (der alte Name verliert sie, der neue bekommt sie) und das Tauschen zweier Spalten über `alt`. `0` und „keine“ sind derselbe Wert.
+- **Eigentümer**: Unter einem Namen steht nachher ein anderer `column-owner`-Eintrag als vorher, so wie er in der Datei steht. Ein unbekannter Wert (`chef`) zählt mit, also ist auch `chef` → `null` eine Änderung. Dazu zählen eine neue Spalte mit Eigentümer, das Entfernen, Umbenennen und Tauschen einer Spalte mit Eigentümer.
+- Folge: Eine Spalte unter einem Namen, der vorher eine Grenze oder einen Eigentümer trug, muss sie nachher unverändert tragen. Wer die Menschen-Spalte „Eingang“ in „Eingang alt“ umbenennt und daneben eine neue „Eingang“ ohne Eigentümer anlegt, ändert also beide Namen.
+- **Nicht rundlauf-stabile Namen**: Ein neuer Name, der nach dem Zurücklesen anders lautet oder seinen Eintrag verliert (z. B. mit Zeilenumbruch `"In Arbeit\nx"` oder als Zahl lesbar wie `0x10`, `0o17`, `0b101`), nimmt keine Grenze und keinen Eigentümer still mit. Entweder weist kanbanD den Namen als Formfehler mit `400` ab (dann für alle), oder der Vergleich nach dem Zurücklesen findet die Änderung und antwortet `403`. In beiden Fällen gibt es keinen Commit, und die Board-Datei bleibt unverändert. Welcher der beiden Wege, entscheidet der Entwickler.
 
 ### Abweisung
 - Antwort `403` `{fehler, spalte, einstellung}` ohne Commit, die Board-Datei bleibt unverändert.
   - `fehler`: „Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer der Spalte „<Name>“ ändern nur Menschen“
-  - `spalte`: Name der Spalte in der Anfrage, bei einer entfernten Spalte ihr bisheriger Name
+  - `spalte`: der Name, unter dem die Änderung festgestellt wird — der Name aus der Anfrage oder, wenn es ihn nachher nicht mehr gibt, der bisherige Name
   - `einstellung`: `"grenze"` oder `"eigentuemer"`
-- Bei mehreren Verletzungen nennt die Antwort die erste von links. Zuerst kommen die Spalten der Anfrage in Anfragereihenfolge (das ist die neue Reihenfolge von links nach rechts). Danach kommen entfernte Spalten in ihrer bisherigen Reihenfolge. Innerhalb einer Spalte steht die Grenze vor dem Eigentümer.
+- Bei mehreren Verletzungen nennt die Antwort die erste. Zuerst kommen die Namen der Anfrage in Anfragereihenfolge (das ist die neue Reihenfolge von links nach rechts). Danach kommen die Namen, die es nachher nicht mehr gibt (entfernte und umbenannte Spalten), in ihrer bisherigen Reihenfolge. Je Name steht die Grenze vor dem Eigentümer.
 - Formfehler (`400`, z. B. leerer Name, Farbe kein `#rrggbb`) und „Spalte enthält Aufgaben“ (`409`) werden vor der `403` gemeldet, wie heute.
 
 ### Erlaubt bleibt (auch für Agenten)
-- Spalten anlegen ohne Grenze und ohne Eigentümer, umbenennen (Grenze und Eigentümer wandern mit), umsortieren, leere Spalten ohne Grenze und Eigentümer entfernen
+- Spalten ohne Grenze und ohne Eigentümer anlegen, umbenennen und (leer) entfernen; umsortieren ohne Namenswechsel
 - `pruefungen`, `notiz` und `farbe` ändern
 - ein `PUT`, das `grenze` und `eigentuemer` unverändert mitschickt oder gar nicht mitschickt
 
 ### Fehlendes `grenze` behält den Wert (für alle)
-- `grenze` fehlt: Die Spalte behält die Grenze der Spalte, die sie über `alt` übernimmt. `grenze: null` oder `0` entfernt die Grenze, `n > 0` setzt sie. Heute entfernt ein fehlendes `grenze` die Grenze. Das gilt künftig nicht mehr, für Menschen wie für Agenten. Damit verhält sich `grenze` wie `pruefungen`, `notiz`, `farbe` und `eigentuemer`. Siehe „Offene Fragen“.
+- `grenze` fehlt: Die Spalte behält die Grenze der Spalte, die sie über `alt` übernimmt. `grenze: null` oder `0` entfernt die Grenze, `n > 0` setzt sie. Heute entfernt ein fehlendes `grenze` die Grenze. Das gilt künftig nicht mehr, für Menschen wie für Agenten. Damit verhält sich `grenze` wie `pruefungen`, `notiz`, `farbe` und `eigentuemer` (PO Z. 56).
 
 ### Mensch
-- Für Menschen ändert sich nichts außer dem fehlenden `grenze`. Der Spalten-Dialog sendet `grenze` immer und verhält sich unverändert.
+- Für Menschen ändert sich nichts außer dem fehlenden `grenze`. Beim Umbenennen wandern Grenze und Eigentümer über `alt` mit wie heute. Der Spalten-Dialog sendet `grenze` immer und verhält sich unverändert.
 
 ### Beschreibung
-- `/api`, `/api/endpunkte` und `/api/openapi.json` nennen an `PUT /api/boards/{slug}/spalten` die Regel, die `403` mit Rumpf und Reihenfolge sowie das Verhalten von fehlendem `grenze`, `null` und `0`.
+- `/api`, `/api/endpunkte` und `/api/openapi.json` nennen an `PUT /api/boards/{slug}/spalten` die Regel samt Vergleich nach Namen (Umbenennen und Tauschen einer Spalte mit Grenze oder Eigentümer zählen als Änderung), die `403` mit Rumpf und Reihenfolge sowie das Verhalten von fehlendem `grenze`, `null` und `0`.
 - `/api` nennt die bekannte Grenze: Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch. Die Regel schützt vor Versehen, nicht vor Absicht.
 
 ## Nicht-funktionale Anforderungen
@@ -77,9 +79,17 @@ Ausgangsboard jeder Prüfung: Board `entwicklung` mit den Spalten Eingang (`colu
 - [ ] `[Erledigt eigentuemer "human", In Arbeit]` (Eingang entfernt) → `spalte: "Erledigt"`, die entfernte Spalte kommt zuletzt
 - [ ] `bot` entfernt die Spalte Eingang, während sie Karte #1 enthält, und setzt dabei In Arbeit auf `grenze: 3` → `409` „Spalte „Eingang“ enthält 1 Aufgaben — erst leeren“, nicht `403`
 
+### Umbenennen und Tauschen (Vergleich nach Namen)
+- [ ] `bot` benennt Eingang → Posteingang und In Arbeit → Bau um (mit `alt`, In Arbeit mit `grenze: 2`) → `403` `{spalte: "Posteingang", einstellung: "eigentuemer"}`, Board-Datei unverändert, kein Commit
+- [ ] `bot` benennt nur Eingang → Posteingang um (mit `alt`, ohne `eigentuemer`) → `403` `{fehler: "Eigentümer der Spalte „Posteingang“ ändern nur Menschen", spalte: "Posteingang", einstellung: "eigentuemer"}`, kein Commit
+- [ ] `bot` benennt nur In Arbeit → Bau um (mit `alt`, ohne `grenze`) → `403` `{fehler: "Grenze der Spalte „Bau“ ändern nur Menschen", spalte: "Bau", einstellung: "grenze"}`, kein Commit; mit `grenze: 2` ebenso
+- [ ] `bot` tauscht über `alt`: `[Eingang alt=In Arbeit, In Arbeit alt=Eingang, Erledigt]` (ohne `grenze` und `eigentuemer`) → `403` `{spalte: "Eingang", einstellung: "grenze"}` (unter Eingang stünde nachher Grenze 2 statt keiner), kein Commit
+- [ ] `bot` sendet `[Eingang alt (alt=Eingang), Eingang (ohne alt, ohne eigentuemer), In Arbeit, Erledigt]` → `403` `{spalte: "Eingang alt", einstellung: "eigentuemer"}` (Eingang alt bekäme `human`, Eingang verlöre es), kein Commit, Datei mit `column-owner: Eingang: human` unverändert
+- [ ] Rundlauf: `bot` benennt In Arbeit (Grenze 2) und, in einer zweiten Anfrage, Eingang (`human`) je in `"In Arbeit\nx"`, `"0x10"`, `"0o17"` und `"0b101"` um (mit `alt`; je einmal ohne `grenze`/`eigentuemer` und einmal mit `grenze: 2` bzw. `eigentuemer: "human"`) → jeder der 16 Fälle `400` oder `403`, kein Commit, Board-Datei byte-gleich
+
 ### Erlaubt bleibt
 - [ ] `bot` legt eine neue Spalte Review vor Erledigt an, ohne `grenze` und `eigentuemer` → `200`, ein Commit, Review ohne Grenze und Eigentümer
-- [ ] `bot` benennt Eingang → Posteingang und In Arbeit → Bau um (mit `alt`, In Arbeit mit `grenze: 2`) → `200`, Datei enthält `column-owner: Posteingang: human` und `limits: Bau: 2`
+- [ ] `bot` benennt Erledigt → Fertig um (mit `alt`, Erledigt hat weder Grenze noch Eigentümer) → `200`, ein Commit, Datei enthält Fertig, `limits: In Arbeit: 2` und `column-owner: Eingang: human` unverändert
 - [ ] `bot` sortiert um `[In Arbeit, Eingang, Erledigt]` mit unveränderten Werten → `200`, ein Commit
 - [ ] `bot` setzt `pruefungen`, `notiz` und `farbe` für Eingang → `200`, ein Commit, Eigentümer bleibt `human`
 - [ ] `bot` sendet alle Spalten mit `grenze: 2` für In Arbeit und `eigentuemer: "human"` für Eingang, sonst unverändert → `200`, kein Commit (keine Änderung)
@@ -93,9 +103,10 @@ Ausgangsboard jeder Prüfung: Board `entwicklung` mit den Spalten Eingang (`colu
 
 ### Mensch
 - [ ] `st` führt jeden der abgewiesenen Fälle aus „Grenze“ und „Eigentümer“ aus → `200`, ein Commit, Datei wie gesendet
+- [ ] `st` benennt Eingang → Posteingang und In Arbeit → Bau um (mit `alt`, ohne `grenze` und `eigentuemer`) → `200`, ein Commit, Datei enthält `column-owner: Posteingang: human` und `limits: Bau: 2`
 
 ### Beschreibung
-- [ ] Eintrag `PUT /api/boards/{slug}/spalten` in `/api/endpunkte` nennt „Grenze und Eigentümer ändern nur Menschen“, `403 {fehler, spalte, einstellung}`, die Reihenfolge und „`grenze` fehlt → behält, `null` oder `0` → entfernt“
+- [ ] Eintrag `PUT /api/boards/{slug}/spalten` in `/api/endpunkte` nennt „Grenze und Eigentümer ändern nur Menschen“, den Vergleich nach Namen (Umbenennen und Tauschen zählen), `403 {fehler, spalte, einstellung}`, die Reihenfolge und „`grenze` fehlt → behält, `null` oder `0` → entfernt“
 - [ ] `/api/openapi.json` führt an `PUT /api/boards/{slug}/spalten` die Antwort `403` mit einem Schema, das `fehler`, `spalte` und `einstellung` enthält
 - [ ] `/api` enthält den Satz zur bekannten Grenze mit `PATCH /api/personen`
 
@@ -110,9 +121,9 @@ Vorplanung aus der WBS (I0087, F0017–F0021, B0299–B0307). Welche Bubbles es 
 ### Ablauf
 1. **`PUT …/spalten`** unter `gesperrt()`: Board lesen, Kopie als „vorher“ behalten
 2. **`Board::spalten_setzen(neu)`** wie heute: Formfehler (`400`) und „enthält Aufgaben“ (`409`) zuerst; `grenze` neu als „fehlt → alt, `null`/`0` → keine“
-3. **Änderungen ermitteln**: vorher + nachher + `alt`-Zuordnung → `Einstellungsaenderungen`
-   - 3.1 Spalten der Anfrage in Anfragereihenfolge: Grenze, dann Eigentümer-Eintrag gegen die `alt`-Spalte (ohne `alt`: gegen keine/keinen)
-   - 3.2 danach entfernte Spalten in bisheriger Reihenfolge, wenn sie eine Grenze oder einen Eigentümer-Eintrag tragen
+3. **Änderungen ermitteln** (PO Z. 57): vorher + nachher (aus dem zu schreibenden Text zurückgelesen) + Reihenfolge der Anfrage → `Einstellungsaenderungen`
+   - 3.1 Namen der Anfrage in Anfragereihenfolge: Grenze, dann Eigentümer-Eintrag unter diesem Namen vorher gegen nachher (`alt` spielt keine Rolle)
+   - 3.2 danach Namen, die es nachher nicht mehr gibt, in bisheriger Reihenfolge, wenn sie vorher eine Grenze oder einen Eigentümer-Eintrag trugen
 4. **Regel** (`zugregeln.rs`): Agent mit mindestens einer Änderung → `Fehler::EinstellungVerboten` der ersten; Mensch → weiter
 5. **`aktion()`** wie heute, ohne Änderung kein Commit
 
@@ -124,7 +135,7 @@ Vorplanung aus der WBS (I0087, F0017–F0021, B0299–B0307). Welche Bubbles es 
 - `Einstellungsaenderung` (DTO, immutable) — Spalte und Einstellung
 - `Einstellungsaenderungen` (benannte Collection) — in Prüfreihenfolge; `fn erste(&self) -> Option<&Einstellungsaenderung>`
 - `Board` (vorhanden)
-  - `fn einstellungsaenderungen(&self, nachher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen` — reine Funktion
+  - `fn einstellungsaenderungen(&self, nachher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen` — reine Funktion; `nachher` ist das zurückgelesene Board, `neu` liefert nur die Reihenfolge der Namen
 - `Fehler::EinstellungVerboten { meldung, spalte, einstellung }` (neu) → HTTP `403` (Ergänzung zu ADR-0003, Entscheidung des architekt)
 
 ### Änderungen an bestehenden Klassen
@@ -135,8 +146,8 @@ Vorplanung aus der WBS (I0087, F0017–F0021, B0299–B0307). Welche Bubbles es 
 
 ## Tests
 
-**Unit:** `Board::einstellungsaenderungen` mit allen Fällen der Akzeptanzkriterien „Grenze“, „Eigentümer“, „Reihenfolge“ und den Gegenproben (Umbenennen, `0` auf Spalte ohne Grenze); die Regel je Zweig (Agent mit/ohne Änderung, Mensch); `IntoResponse` der neuen Variante; `spalten_setzen` mit fehlendem/`null`/`0` `grenze`.
-**Integration:** jeder Fall der Akzeptanzkriterien gegen einen echten Ordner über `PUT …/spalten` mit Status, Rumpf, Board-Datei und `git log`.
+**Unit:** `Board::einstellungsaenderungen` mit allen Fällen der Akzeptanzkriterien „Grenze“, „Eigentümer“, „Reihenfolge“, „Umbenennen und Tauschen“ und den Gegenproben (Umbenennen einer Spalte ohne Werte, `0` auf Spalte ohne Grenze); die Regel je Zweig (Agent mit/ohne Änderung, Mensch); `IntoResponse` der neuen Variante; `spalten_setzen` mit fehlendem/`null`/`0` `grenze`.
+**Integration:** jeder Fall der Akzeptanzkriterien gegen einen echten Ordner, die Rundlauf-Fälle gegen eine echte Instanz, über `PUT …/spalten` mit Status, Rumpf, Board-Datei und `git log`.
 **E2E:** keine neue; die bestehende E2E des Einrichtemodus (Grenze setzen und leeren) bleibt grün.
 
 ## Abhängigkeiten
@@ -145,7 +156,7 @@ Vorplanung aus der WBS (I0087, F0017–F0021, B0299–B0307). Welche Bubbles es 
 - Blockiert: —
 
 ## Offene Fragen
-- **Fehlendes `grenze`** (an den Product Owner): Z. 55 erlaubt Agenten ein `PUT`, das die Werte „gar nicht mitschickt“. Heute entfernt ein fehlendes `grenze` aber die Grenze (`src/modell/board.rs`, `spalten_setzen`: `n.grenze.filter(…)`). R00009 sagt „Grenze 0 oder leer = keine“, die API-Beschreibung sagt „fehlende Felder behalten den Wert der alten Spalte“. Die Anforderung ist nach der Empfehlung geschrieben: Fehlend behält den Wert, `null` oder `0` entfernt, für alle. Begründung: Nur so lässt sich „gar nicht mitschickt“ erlauben, ohne eine Lücke zu öffnen. Es passt zu allen übrigen Feldern. Der Spalten-Dialog sendet `grenze` ohnehin immer. Und `werkzeuge/board_aus_prozess.py` der Factory sendet als Agent `dir` kein `grenze` und würde heute jede Grenze des Factory-Boards still entfernen. Entscheidet der PO für „fehlend bleibt Entfernen“, entfallen der Abschnitt „Fehlendes `grenze`“ und das Kriterium „ohne `grenze` und ohne `eigentuemer`“. Ein Agent ohne `grenze` bekäme dann an einer Spalte mit Grenze die `403`.
+- keine (fehlendes `grenze`: PO Z. 56; Vergleich nach Namen: PO Z. 57)
 
 ## Manuelle Vorbereitungstätigkeiten
 - keine
@@ -155,7 +166,7 @@ Vorplanung aus der WBS (I0087, F0017–F0021, B0299–B0307). Welche Bubbles es 
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
-Auslöser ist ein Loch in R00096 und R00097: Beide Regeln stehen in der Board-Datei, und genau diese Datei kann ein Agent über `PUT …/spalten` umschreiben. Ein Behandler, der an „Grenze erreicht“ scheitert, kann die Grenze von 2 auf 3 setzen und weiterziehen. Ein Sensor kann den Eigentümer des Eingangs entfernen und die Freigabe umgehen. Mit dieser Anforderung prüft kanbanD vor dem Commit, ob ein Agent eine der beiden Einstellungen tatsächlich ändert, und weist dann die ganze Anfrage mit `403` ab. Die Regel bleibt so, wie der Mensch sie eingestellt hat, und die `409` und `403` aus R00096 und R00097 behalten ihre Wirkung. Der Hebel liegt am einzigen Schreibweg für diese Einstellungen und nicht an den Zug-Endpunkten. Board anlegen und Einrichten setzen keine Grenze und keinen Eigentümer. Alles übrige Einrichten bleibt Agenten erlaubt, so wird ihnen nichts genommen, was keine Regel trägt.
+Auslöser ist ein Loch in R00096 und R00097: Beide Regeln stehen in der Board-Datei, und genau diese Datei kann ein Agent über `PUT …/spalten` umschreiben. Ein Behandler, der an „Grenze erreicht“ scheitert, kann die Grenze von 2 auf 3 setzen und weiterziehen. Ein Sensor kann den Eigentümer des Eingangs entfernen und die Freigabe umgehen. Ebenso kann er die Menschen-Spalte umbenennen und daneben eine gleichnamige ohne Eigentümer anlegen; neue Karten, die nach Namen abgelegt werden, landen dann ungeschützt. Mit dieser Anforderung prüft kanbanD vor dem Commit nach Spaltennamen, ob ein Agent eine der beiden Einstellungen tatsächlich ändert, und weist dann die ganze Anfrage mit `403` ab. Die Regel bleibt so, wie der Mensch sie eingestellt hat, und die `409` und `403` aus R00096 und R00097 behalten ihre Wirkung. Der Hebel liegt am einzigen Schreibweg für diese Einstellungen und nicht an den Zug-Endpunkten. Board anlegen und Einrichten setzen keine Grenze und keinen Eigentümer. Alles übrige Einrichten bleibt Agenten erlaubt, so wird ihnen nichts genommen, was keine Regel trägt.
 
 ## Missing-Docs
 - keine
@@ -167,6 +178,7 @@ Auslöser ist ein Loch in R00096 und R00097: Beide Regeln stehen in der Board-Da
 - **Reihenfolge**: Spalten der Anfrage in Anfragereihenfolge, entfernte zuletzt. Wie in Z. 47 gilt die Reihenfolge, die der Agent selbst schickt, und sie ist die neue Reihenfolge von links nach rechts (Z. 28). Entfernte Spalten haben in der Anfrage keinen Platz.
 - **Neue Spalte mit Grenze oder Eigentümer ist eine Änderung**: Sie setzt einen Wert, den es vorher nicht gab. „Spalten anlegen“ bleibt ohne diese Werte erlaubt.
 - **Unbekannter Eigentümer zählt**: Verglichen wird der Eintrag, wie er in der Datei steht. Ein Agent soll einen von Menschen geschriebenen Wert nicht entfernen (Z. 52: unbekannter Wert bleibt erhalten).
+- **Vergleich nach Namen statt über `alt`** (PO Z. 57, Rückfrage des security-review): Die Regeln stehen in der Datei nach Namen, und Menschen wie Sensoren legen Karten nach Namen ab. Ein Vergleich über `alt` ließ Umbenennen plus Neuanlegen und Tauschen durch und war deshalb abschaltbar. Verworfen: „gewollt, nur in der Beschreibung nennen“. Für Menschen bleibt der Vergleich über `alt` ohne Bedeutung, sie dürfen ohnehin alles.
 - **`400`/`409` vor `403`**: Eine Anfrage, die so nicht ausführbar ist, wird zuerst als solche gemeldet. Die `403` nennt nur Änderungen, die sonst geschrieben würden.
 
 **Außerhalb des Umfangs**: Änderungen an der Board-Datei an kanbanD vorbei (Git, Editor) und das Anlegen eines Boards (`POST /api/boards` setzt weder Grenze noch Eigentümer).
