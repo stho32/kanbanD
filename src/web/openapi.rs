@@ -28,6 +28,17 @@ pub struct Fehlerantwort {
     pub fehler: String,
 }
 
+/// 409 eines Agenten-Zugs über die WIP-Grenze (R00096, ADR-0003): `fehler` zuerst, dann die erste verletzte Spalte
+/// von links, ihre Grenze und die Anzahl zählender Karten vor dem Zug.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct GrenzeErreicht {
+    /// immer „Grenze erreicht"
+    pub fehler: String,
+    pub spalte: String,
+    pub grenze: u32,
+    pub anzahl: u32,
+}
+
 /// Ob ein Aufruf etwas geändert (und committet) hat.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Geaendert {

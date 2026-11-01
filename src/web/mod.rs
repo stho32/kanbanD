@@ -152,8 +152,15 @@ impl IntoResponse for Fehler {
             Fehler::Konflikt(_) => StatusCode::CONFLICT,
             Fehler::Defekt(_) => StatusCode::LOCKED,
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
         };
-        (status, Json(json!({ "fehler": self.meldung() }))).into_response()
+        match &self {
+            Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
+                let rumpf = openapi::GrenzeErreicht { fehler: self.meldung().to_string(), spalte: spalte.clone(), grenze: *grenze, anzahl: *anzahl };
+                (status, Json(rumpf)).into_response()
+            }
+            _ => (status, Json(json!({ "fehler": self.meldung() }))).into_response(),
+        }
     }
 }
 
@@ -1459,4 +1466,31 @@ async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Jso
 )]
 async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, false)).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn antwort(f: Fehler) -> (StatusCode, String) {
+        let antwort = f.into_response();
+        let status = antwort.status();
+        let rumpf = axum::body::to_bytes(antwort.into_body(), usize::MAX).await.unwrap();
+        (status, String::from_utf8(rumpf.to_vec()).unwrap())
+    }
+
+    // R00096 / ADR-0003: Agenten lesen die Felder, nicht den Text; `fehler` bleibt das erste Feld
+    #[tokio::test]
+    async fn grenze_erreicht_ist_409_mit_feldern_hinter_fehler() {
+        let (status, rumpf) = antwort(Fehler::GrenzeErreicht { spalte: "In Arbeit".into(), grenze: 2, anzahl: 2 }).await;
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(rumpf, r#"{"fehler":"Grenze erreicht","spalte":"In Arbeit","grenze":2,"anzahl":2}"#);
+    }
+
+    #[tokio::test]
+    async fn uebrige_fehler_behalten_den_rumpf_nur_mit_fehler() {
+        let (status, rumpf) = antwort(Fehler::Konflikt("schon reserviert".into())).await;
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(rumpf, r#"{"fehler":"schon reserviert"}"#);
+    }
 }

@@ -11,12 +11,15 @@ pub enum Fehler {
     Defekt(String),
     /// Dateisystem oder Git versagen (500).
     Intern(String),
+    /// Ein Zug brächte die Spalte über ihre Grenze (409, ADR-0003); `anzahl` ist die Belegung vor dem Zug.
+    GrenzeErreicht { spalte: String, grenze: u32, anzahl: u32 },
 }
 
 impl Fehler {
     pub fn meldung(&self) -> &str {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) => m,
+            Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
         }
     }
 }
