@@ -27,6 +27,7 @@ mod verlauf;
 mod wbs;
 mod wirkungen;
 mod zeiten;
+mod zugregeln;
 mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
