@@ -421,6 +421,49 @@ impl Board {
     }
 }
 
+/// Eine Spalte, die nach einem Zug mehr Karten hat, als ihre Grenze erlaubt; `vorher`/`nachher` sind die zählenden Karten.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Grenzverletzung {
+    pub spalte: String,
+    pub grenze: u32,
+    pub vorher: u32,
+    pub nachher: u32,
+}
+
+/// Die verletzten Grenzen eines Zugs, Spalten von links nach rechts.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Grenzverletzungen(pub Vec<Grenzverletzung>);
+
+impl Grenzverletzungen {
+    pub fn ist_leer(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Belegung {
+    /// `self` ist der Stand nach dem Zug. Verletzt ist eine Spalte mit Grenze (nicht 0), die einen Zugang hat — eine
+    /// zählende Karte, die vorher dort nicht zählte — und danach mehr Karten hat als die Grenze. Umsortieren ist kein Zugang.
+    pub fn grenzverletzungen(&self, vorher: &Belegung) -> Grenzverletzungen {
+        let verletzungen = self
+            .0
+            .iter()
+            .filter_map(|nach| {
+                let grenze = nach.grenze.filter(|g| *g > 0)?;
+                let vor: &[u32] = vorher.0.iter().find(|v| v.spalte == nach.spalte).map_or(&[], |v| &v.nummern);
+                let hat_zugang = nach.nummern.iter().any(|n| !vor.contains(n));
+                let anzahl_nachher = nach.nummern.len() as u32;
+                (hat_zugang && anzahl_nachher > grenze).then(|| Grenzverletzung {
+                    spalte: nach.spalte.clone(),
+                    grenze,
+                    vorher: vor.len() as u32,
+                    nachher: anzahl_nachher,
+                })
+            })
+            .collect();
+        Grenzverletzungen(verletzungen)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Bewegfehler {
     NichtAufDemBoard,
@@ -614,5 +657,57 @@ mod tests {
         let belegung = b.belegung(&BTreeSet::from([6, 8, 42]));
         assert_eq!(zaehlend(&belegung), vec![("Bereit", vec![7]), ("In Arbeit", vec![5])], "#6 archiviert → „In Arbeit“ zählt 1");
         assert_eq!(belegung.0[1].grenze, Some(2));
+    }
+
+    fn belegt(spalten: &[(&str, Option<u32>, &[u32])]) -> Belegung {
+        Belegung(spalten.iter().map(|(s, g, n)| Spaltenbelegung { spalte: s.to_string(), grenze: *g, nummern: n.to_vec() }).collect())
+    }
+
+    fn verletzt(spalte: &str, grenze: u32, vorher: u32, nachher: u32) -> Grenzverletzung {
+        Grenzverletzung { spalte: spalte.into(), grenze, vorher, nachher }
+    }
+
+    // R00096: Rechenbeispiele der Akzeptanzkriterien
+    #[test]
+    fn grenzverletzungen_nur_bei_zugang_ueber_die_grenze() {
+        let vorher = belegt(&[("Bereit", None, &[7, 8]), ("In Arbeit", Some(2), &[5, 6])]);
+        let nachher = belegt(&[("Bereit", None, &[8]), ("In Arbeit", Some(2), &[7, 5, 6])]);
+        assert_eq!(nachher.grenzverletzungen(&vorher), Grenzverletzungen(vec![verletzt("In Arbeit", 2, 2, 3)]), "[5, 6] + #7 bei 2");
+        let vorher = belegt(&[("Bereit", None, &[7, 8]), ("In Arbeit", Some(2), &[5])]);
+        let nachher = belegt(&[("Bereit", None, &[]), ("In Arbeit", Some(2), &[7, 8, 5])]);
+        assert_eq!(nachher.grenzverletzungen(&vorher), Grenzverletzungen(vec![verletzt("In Arbeit", 2, 1, 3)]), "[5] + #7, #8 bei 2");
+        let nachher = belegt(&[("Bereit", None, &[8]), ("In Arbeit", Some(2), &[7, 5])]);
+        assert!(nachher.grenzverletzungen(&vorher).ist_leer(), "[5] + #7 bei 2: genau voll ist erlaubt");
+    }
+
+    #[test]
+    fn umsortieren_tausch_und_ohne_grenze_verletzen_nichts() {
+        let vorher = belegt(&[("Bereit", None, &[7]), ("In Arbeit", Some(2), &[5, 6])]);
+        let umsortiert = belegt(&[("Bereit", None, &[7]), ("In Arbeit", Some(2), &[6, 5])]);
+        assert!(umsortiert.grenzverletzungen(&vorher).ist_leer(), "Umsortieren [6, 5]");
+        let getauscht = belegt(&[("Bereit", None, &[6]), ("In Arbeit", Some(2), &[7, 5])]);
+        assert!(getauscht.grenzverletzungen(&vorher).ist_leer(), "eine heraus, eine hinein");
+        let ueberfuellt = belegt(&[("Bereit", None, &[]), ("In Arbeit", Some(1), &[5, 6])]);
+        let umsortiert = belegt(&[("Bereit", None, &[]), ("In Arbeit", Some(1), &[6, 5])]);
+        assert!(umsortiert.grenzverletzungen(&ueberfuellt).ist_leer(), "schon über der Grenze: Umsortieren ist kein Zugang");
+        for grenze in [None, Some(0)] {
+            let vorher = belegt(&[("Bereit", None, &[7, 8, 9]), ("In Arbeit", grenze, &[5])]);
+            let nachher = belegt(&[("Bereit", None, &[]), ("In Arbeit", grenze, &[7, 8, 9, 5])]);
+            assert!(nachher.grenzverletzungen(&vorher).ist_leer(), "Grenze {grenze:?} ist keine Grenze");
+        }
+    }
+
+    #[test]
+    fn grenzverletzungen_in_spaltenreihenfolge_auch_durch_zurueckholen() {
+        let mut b = mit_grenze();
+        b.spalten[0].grenze = Some(1);
+        b.spalten[1].aufgaben = vec![5, 6, 9];
+        let vorher = b.belegung(&BTreeSet::from([6, 8]));
+        let nachher = b.belegung(&BTreeSet::new());
+        assert_eq!(
+            nachher.grenzverletzungen(&vorher),
+            Grenzverletzungen(vec![verletzt("Bereit", 1, 1, 2), verletzt("In Arbeit", 2, 2, 3)]),
+            "#8 und #6 zurückgeholt: beide zählen wieder, links zuerst"
+        );
     }
 }
