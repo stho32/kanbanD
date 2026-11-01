@@ -73,3 +73,38 @@ async fn kommentar_und_farbe_setzen_behalten_entfernen() {
     let t = lies(tmp.path(), "boards/entwicklung.md");
     assert!(!t.contains("column-notes") && !t.contains("column-colors"), "{t}");
 }
+
+// R00097: Eigentümer je Spalte — fehlend bleibt (auch ein unbekannter Rohwert, auch beim Umbenennen), null entfernt, anderer Wert ist 400
+#[tokio::test]
+async fn eigentuemer_setzen_behalten_umbenennen_und_ungueltig() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let pfad = "api/boards/entwicklung/spalten";
+    let (s, _) = senden(Method::PUT, a, pfad, "st", json!([{"name": "Zu erledigen", "alt": "Zu erledigen", "eigentuemer": "human"}, {"name": "In Arbeit", "alt": "In Arbeit", "eigentuemer": "agent"}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 200);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("---\ncolumn-owner:\n  Zu erledigen: human\n  In Arbeit: agent\n---\n"));
+    let (s, _) = senden(Method::PUT, a, pfad, "st", json!([{"name": "Eingang", "alt": "Zu erledigen"}, {"name": "In Arbeit", "alt": "In Arbeit", "eigentuemer": null}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 200);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("---\ncolumn-owner:\n  Eingang: human\n---\n"), "Umbenennen nimmt mit, null entfernt");
+    let vorher = lies(tmp.path(), "boards/entwicklung.md");
+    let (s, f) = senden(Method::PUT, a, pfad, "st", json!([{"name": "Eingang", "alt": "Eingang", "eigentuemer": "chef"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 400);
+    assert!(f["fehler"].as_str().unwrap().contains("chef"));
+    assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), vorher, "400 schreibt nichts");
+}
+
+// PO-Entscheidung: ein unbekannter Rohwert in column-owner geht durch PUT …/spalten ohne Feld nicht verloren, auch beim Umbenennen nicht
+#[tokio::test]
+async fn unbekannter_eigentuemer_bleibt_beim_umbenennen_in_der_datei() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let b = lies(tmp.path(), "boards/entwicklung.md");
+    std::fs::write(tmp.path().join("boards/entwicklung.md"), format!("---\ncolumn-owner:\n  Zu erledigen: chef\n---\n\n{b}")).unwrap();
+    git(tmp.path(), &["commit", "-qam", "chef"]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, _) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/spalten", "st", json!([{"name": "Eingang", "alt": "Zu erledigen"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}])).await;
+    assert_eq!(s, 200);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("---\ncolumn-owner:\n  Eingang: chef\n---\n"));
+}

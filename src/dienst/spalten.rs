@@ -15,6 +15,7 @@ impl Kanban {
             Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
             Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {z} Aufgaben — erst leeren")),
             Spaltenfehler::FarbeUngueltig(f) => Fehler::Ungueltig(format!("Farbe „{f}“ ist kein #rrggbb")),
+            Spaltenfehler::EigentuemerUngueltig(e) => Fehler::Ungueltig(format!("Eigentümer „{e}“ ist nicht human, agent oder null")),
         })?;
         if geaendert {
             self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;

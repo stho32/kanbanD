@@ -411,7 +411,7 @@ fn herkunft_normalisieren(x: &str) -> String {
     }
 }
 
-fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Option<Option<T>>, D::Error> {
+pub(crate) fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Option<Option<T>>, D::Error> {
     Ok(Some(Option::deserialize(d)?))
 }
 

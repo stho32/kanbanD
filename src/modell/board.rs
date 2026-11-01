@@ -367,6 +367,10 @@ pub struct SpaltenAenderung {
     /// `column-colors` als `#rrggbb`; fehlt das Feld, behält sie die der alten Spalte, ein leerer Text entfernt sie.
     #[serde(default)]
     pub farbe: Option<String>,
+    /// `column-owner`: `human` oder `agent` setzt, `null` entfernt, fehlt das Feld, behält sie den der alten Spalte.
+    #[serde(default, deserialize_with = "super::aufgabe::entfernbar")]
+    #[schema(value_type = Option<String>)]
+    pub eigentuemer: Option<Option<String>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -377,6 +381,7 @@ pub enum Spaltenfehler {
     AltDoppelt(String),
     EnthaeltAufgaben(String, usize),
     FarbeUngueltig(String),
+    EigentuemerUngueltig(String),
 }
 
 impl Board {
@@ -396,6 +401,11 @@ impl Board {
             if let Some(f) = n.farbe.as_deref().map(str::trim).filter(|f| !f.is_empty() && !ist_hexfarbe(f)) {
                 return Err(Spaltenfehler::FarbeUngueltig(f.into()));
             }
+            if let Some(Some(e)) = &n.eigentuemer {
+                if Eigentuemer::aus(e.trim()).is_none() {
+                    return Err(Spaltenfehler::EigentuemerUngueltig(e.trim().into()));
+                }
+            }
             if let Some(alt) = n.alt.as_deref() {
                 if !self.spalten.iter().any(|s| s.name == alt) {
                     return Err(Spaltenfehler::AltUnbekannt(alt.into()));
@@ -413,7 +423,12 @@ impl Board {
             .iter()
             .map(|n| {
                 let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: alt.and_then(|s| s.eigentuemer), eigentuemer_unbekannt: alt.and_then(|s| s.eigentuemer_unbekannt.clone()) }
+                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: match &n.eigentuemer {
+                        Some(e) => e.as_deref().and_then(|e| Eigentuemer::aus(e.trim())),
+                        None => alt.and_then(|s| s.eigentuemer),
+                    },
+                    eigentuemer_unbekannt: if n.eigentuemer.is_some() { None } else { alt.and_then(|s| s.eigentuemer_unbekannt.clone()) },
+                }
             })
             .collect();
         let geaendert = spalten != self.spalten;
@@ -576,7 +591,7 @@ mod tests {
     }
 
     fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None, notiz: None, farbe: None }
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
     }
 
     #[test]
@@ -614,6 +629,40 @@ mod tests {
         assert_eq!(b.spalten[1].pruefungen, ["wbs-effects-green"], "gesetzt, leere fallen weg");
         assert_eq!(b.spalten_setzen(&[aend("Bau", Some("Bau"), None), setzen(&[])]), Ok(true));
         assert!(b.spalten[1].pruefungen.is_empty(), "leere Liste entfernt");
+    }
+
+    #[test]
+    fn eigentuemer_setzen_behalten_entfernen_umbenennen() {
+        let mut b = b();
+        let mit = |e: Option<Option<&str>>, name: &str, alt: &str| SpaltenAenderung { eigentuemer: e.map(|x| x.map(String::from)), ..aend(name, Some(alt), None) };
+        assert_eq!(b.spalten_setzen(&[mit(Some(Some("human")), "A", "A"), mit(Some(Some("agent")), "Z", "Z")]), Ok(true));
+        assert_eq!(b.spalten.iter().map(|s| s.eigentuemer).collect::<Vec<_>>(), [Some(Eigentuemer::Human), Some(Eigentuemer::Agent)]);
+        assert_eq!(b.spalten_setzen(&[mit(None, "A", "A"), mit(None, "Z", "Z")]), Ok(false), "fehlendes Feld behält");
+        assert_eq!(b.spalten_setzen(&[mit(None, "Posteingang", "A"), mit(Some(None), "Z", "Z")]), Ok(true));
+        assert_eq!(b.spalten.iter().map(|s| s.eigentuemer).collect::<Vec<_>>(), [Some(Eigentuemer::Human), None], "Umbenennen nimmt mit, null entfernt");
+        b.spalten[1].aufgaben.clear();
+        assert_eq!(b.spalten_setzen(&[mit(None, "Posteingang", "Posteingang"), aend("Neu", None, None)]), Ok(true));
+        assert_eq!(b.spalten[1].eigentuemer, None, "entfernte Spalte nimmt ihn mit, neue hat keinen");
+        let vorher = b.spalten.clone();
+        assert_eq!(b.spalten_setzen(&[mit(Some(Some("chef")), "Posteingang", "Posteingang")]), Err(Spaltenfehler::EigentuemerUngueltig("chef".into())));
+        assert_eq!(b.spalten, vorher, "Fehler ändern nichts");
+    }
+
+    #[test]
+    fn unbekannter_rohwert_bleibt_ohne_feld_auch_beim_umbenennen() {
+        let mut b = b();
+        b.spalten[0].eigentuemer_unbekannt = Some("chef".into());
+        assert_eq!(b.spalten_setzen(&[aend("Posteingang", Some("A"), None), aend("Z", Some("Z"), None)]), Ok(true));
+        assert_eq!((b.spalten[0].eigentuemer, b.spalten[0].eigentuemer_unbekannt.as_deref()), (None, Some("chef")));
+    }
+
+    #[test]
+    fn gesetzter_eigentuemer_ersetzt_einen_unbekannten() {
+        let mut b = b();
+        b.spalten[0].eigentuemer_unbekannt = Some("chef".into());
+        let neu = SpaltenAenderung { eigentuemer: Some(Some("human".into())), ..aend("A", Some("A"), None) };
+        assert_eq!(b.spalten_setzen(&[neu, aend("Z", Some("Z"), None)]), Ok(true));
+        assert_eq!((b.spalten[0].eigentuemer, b.spalten[0].eigentuemer_unbekannt.as_deref()), (Some(Eigentuemer::Human), None));
     }
 
     #[test]
