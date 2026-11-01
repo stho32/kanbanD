@@ -437,6 +437,26 @@ impl Board {
     }
 }
 
+/// Eine Karte, die ein Agent nicht herausnehmen darf: sie liegt in einer Spalte, die dem Menschen gehört (R00097).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Entnahmesperre {
+    pub spalte: String,
+    pub nummer: u32,
+}
+
+impl Board {
+    /// Darf `art` die Karte `nummer` aus ihrer Spalte nehmen? Gesperrt ist nur ein Agent aus einer Menschen-Spalte; eine Nummer, die nicht auf dem Board liegt, ist frei.
+    pub fn entnahme_erlaubt(&self, art: super::Art, nummer: u32) -> Result<(), Entnahmesperre> {
+        if art != super::Art::Agent {
+            return Ok(());
+        }
+        match self.spalten.iter().find(|s| s.aufgaben.contains(&nummer)) {
+            Some(s) if s.eigentuemer == Some(Eigentuemer::Human) => Err(Entnahmesperre { spalte: s.name.clone(), nummer }),
+            _ => Ok(()),
+        }
+    }
+}
+
 /// Ein gesendeter Wert gilt, leer heißt entfernt; nicht gesendet behält den alten.
 fn gesetzt_oder_alt(neu: &Option<String>, alt: Option<String>) -> Option<String> {
     match neu {
@@ -646,6 +666,25 @@ mod tests {
         let vorher = b.spalten.clone();
         assert_eq!(b.spalten_setzen(&[mit(Some(Some("chef")), "Posteingang", "Posteingang")]), Err(Spaltenfehler::EigentuemerUngueltig("chef".into())));
         assert_eq!(b.spalten, vorher, "Fehler ändern nichts");
+    }
+
+    #[test]
+    fn entnahme_nur_agent_aus_menschen_spalte_gesperrt() {
+        use super::super::Art;
+        for (eigner, mensch, agent) in [(Some(Eigentuemer::Human), true, false), (Some(Eigentuemer::Agent), true, true), (None, true, true)] {
+            let mut b = b();
+            b.spalten[0].eigentuemer = eigner;
+            assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1).is_ok(), mensch, "Mensch × {eigner:?}");
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1).is_ok(), agent, "Agent × {eigner:?}");
+        }
+        let mut b = b();
+        b.spalten[0].eigentuemer = Some(Eigentuemer::Human);
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 2), Err(Entnahmesperre { spalte: "A".into(), nummer: 2 }));
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 3), Ok(()), "Karte in einer Spalte ohne Eigentümer");
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 99), Ok(()), "Nummer nicht auf dem Board");
+        b.spalten[0].eigentuemer_unbekannt = Some("chef".into());
+        b.spalten[0].eigentuemer = None;
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "ein unbekannter Wert gilt nicht");
     }
 
     #[test]
