@@ -25,3 +25,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #2 | Detailplanung | product-owner (frisch) | bestanden: Frage 1 Warnung nur bei Zügen, Frage 2 erste Verletzung (links nach rechts, Board-Reihenfolge), 7e6591a; nichts richtungsweisend | 2 min | Agent a4ac9fec |
 | 2026-11-01 | #2 | Detailplanung | planer (fortgesetzt) | bestanden: Nachtrag PO-Entscheidung in F0007–F0009, B0283, B0284, 34565e7 | 1 min | Agent a4384186, gesamt 124.583 Tokens |
 | 2026-11-01 | #2 | Entwicklung | entwickler entw1 (frisch) | läuft: I0085 ab F0005 Walking Slice, Nachtbetrieb (nice 19, Job-Grenze 1) | — | — |
+| 2026-11-01 | #18 | Backlog | realist-consultant, product-owner (frisch) | Auftraggeber-Wunsch Reiter „Kosten“ eingearbeitet: Schlüssel `cost` mit Positionen, Tokens nur Anzeige, Mitte auf der Karte, d83f29c; Währung an den Auftraggeber | 3 min | 74.518 + PO; Agents ae6b8408, a1ae8799 |
