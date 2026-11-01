@@ -60,6 +60,23 @@ test.describe('R00097', () => {
     expect(k.lies('boards/entwicklung.md')).toContain('column-owner:\n  Laufend: chef\n');
   });
 
+  test('Nacharbeit: unbekannter Rohwert lässt sich per „— keiner —“ entfernen', async ({ page }) => {
+    k = await kanbanStarten(einrichten({ ...DATEIEN, 'boards/entwicklung.md': '---\ncolumn-owner:\n  In Arbeit: chef\n---\n\n' + DATEIEN['boards/entwicklung.md'] }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await ausMehr(page, 'Spalten einrichten');
+    const wahl = page.getByRole('combobox', { name: 'Eigentümer In Arbeit' });
+    const roh = page.locator('[title="unbekannter Eigentümer — bleibt erhalten"]');
+    await expect(roh).toHaveText('chef');
+    await wahl.selectOption({ label: 'Mensch' });
+    await wahl.selectOption({ label: '— keiner —' });
+    await expect(roh).toBeHidden();
+    await expect(page.locator('#setup-vorschau')).not.toContainText('column-owner');
+    await page.getByRole('button', { name: 'Fertig' }).click();
+    await expect.poll(() => k.lies('boards/entwicklung.md')).not.toContain('column-owner');
+    expect(k.lies('boards/entwicklung.md')).not.toContain('chef');
+  });
+
   test('B0297: Zeichen im Spaltenkopf und im zugeklappten Streifen, Kontrast in Hell und Dunkel', async ({ page }) => {
     const datei = '---\nlimits:\n  Eingang: 1\ncolumn-owner:\n  Eingang: human\n  In Arbeit: agent\n---\n\n# Entwicklung\n\n## Eingang\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n';
     k = await kanbanStarten(einrichten({ ...DATEIEN, 'boards/entwicklung.md': datei, 'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n' }));

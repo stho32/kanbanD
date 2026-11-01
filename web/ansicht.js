@@ -1138,7 +1138,8 @@ function vSignaleEinrichten(d) {
 }
 
 /* ── Spalten einrichten ── */
-const eigentuemerGeaendert = sp => (sp.eigentuemer || '') !== (sp.eigentuemerAlt || '');
+/** Bei einem unbekannten Rohwert zählt jede aktive Wahl als Änderung — auch „— keiner —“, das sonst gleich dem Ausgangswert wäre. */
+const eigentuemerGeaendert = sp => Boolean(sp.roh && sp.beruehrt) || (sp.eigentuemer || '') !== (sp.eigentuemerAlt || '');
 const eigentuemerInDatei = sp => eigentuemerGeaendert(sp) ? sp.eigentuemer : (sp.eigentuemer || sp.roh || '');
 function setupText(d) {
   const grenzen = d.spalten.filter(s => +s.grenze > 0);

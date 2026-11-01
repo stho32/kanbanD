@@ -1234,7 +1234,7 @@ document.addEventListener('input', e => {
     const sp = S.ui.setup.spalten[+e.target.dataset.i];
     sp[sf] = sf === 'grenze' ? e.target.value.replace(/\D/g, '') : e.target.value;
     S.ui.setup.fehler = null;
-    if (sf === 'eigentuemer') { $(`#eig-hin-${e.target.dataset.i}`).textContent = EIGENTUEMER_TEXT[sp.eigentuemer]; const roh = e.target.parentElement.querySelector('.eig-roh'); if (roh) roh.hidden = eigentuemerGeaendert(sp); }
+    if (sf === 'eigentuemer') { sp.beruehrt = true; $(`#eig-hin-${e.target.dataset.i}`).textContent = EIGENTUEMER_TEXT[sp.eigentuemer]; const roh = e.target.parentElement.querySelector('.eig-roh'); if (roh) roh.hidden = eigentuemerGeaendert(sp); }
     if (sf === 'farbe') { const bahn = e.target.closest('.bahn'); bahn.classList.add('gefaerbt'); bahn.style.setProperty('--sf', sp.farbe); e.target.nextElementSibling.textContent = sp.farbe; }
     $('#setup-vorschau').textContent = setupText(S.ui.setup);
     return;
