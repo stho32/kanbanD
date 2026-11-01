@@ -33,3 +33,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #2 | Auto-Reviews | architektur-reviewer (frisch) | gestartet | — | — |
 | 2026-11-01 | #2 | Auto-Reviews | architektur-reviewer | bestanden; 3 Sollte (Modell-Drift X00001, A00004/A00006/A00003) → architekt (frisch) führt nach; 2 Optional (Muster strukturierte 409 für R00097, Probe „Aufruf vergessen“) | — | — |
 | 2026-11-01 | #2 | Auto-Reviews | rechtschreib-reviewer (frisch), architekt (frisch, Modell-Nachführung) | gestartet | — | — |
+| 2026-11-01 | #2 | Auto-Reviews | rechtschreib-reviewer | bestanden; 2 Sollte (Anführungszeichen openapi.rs:35, verschachtelt in endpunkte.rs/openapi.rs bei bewegen, bewegen-mehrere, ziehen), 1 Kann (Karte→Aufgabe beim Auflegen) → mit R00097 beheben | — | — |
+| 2026-11-01 | #2 | Entwicklertest | entwicklertester (frisch) | gestartet auf main d263215, Wegwerf-Instanz | — | — |
