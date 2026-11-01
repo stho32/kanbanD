@@ -13,7 +13,8 @@ pub struct Bewegung {
     pub index: Option<usize>,
 }
 
-/// Antwort von `POST …/bewegen`: ob sich etwas geändert hat und was die Prüfungen der verlassenen Spalte melden.
+/// Antwort von `POST …/bewegen`: ob sich etwas geändert hat, welche Grenze ein Mensch überschritten hat (R00096)
+/// und was die Prüfungen der verlassenen Spalte melden.
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct Bewegt {
     pub bewegt: bool,
@@ -27,6 +28,7 @@ impl Kanban {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
         let von = b.spalte_von(bw.nummer).map(|s| s.name.clone());
+        let vorher = b.clone();
         let geaendert = b.bewegen(bw.nummer, &bw.spalte, bw.index).map_err(|f| match f {
             Bewegfehler::NichtAufDemBoard => Fehler::NichtGefunden(format!("#{} liegt nicht auf „{}“", bw.nummer, b.titel)),
             Bewegfehler::SpalteUnbekannt | Bewegfehler::SchonAufDemBoard => Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", bw.spalte, b.titel)),
@@ -34,13 +36,14 @@ impl Kanban {
         if !geaendert {
             return Ok(Bewegt { bewegt: false, warnungen: vec![] });
         }
+        let grenzwarnungen = self.grenzen_pruefen(wer, &vorher, &b)?;
         let nachricht = if von.as_deref() == Some(bw.spalte.as_str()) {
             format!("#{} in „{}“ umsortiert ({})", bw.nummer, bw.spalte, b.titel)
         } else {
             format!("#{} nach „{}“ ({})", bw.nummer, bw.spalte, b.titel)
         };
         self.aktion(wer, &nachricht, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
-        let warnungen = von.map(|v| self.warnungen(&b, bw.nummer, &v, &bw.spalte)).unwrap_or_default();
+        let warnungen = [grenzwarnungen, von.map(|v| self.warnungen(&b, bw.nummer, &v, &bw.spalte)).unwrap_or_default()].concat();
         Ok(Bewegt { bewegt: true, warnungen })
     }
 
@@ -54,6 +57,7 @@ impl Kanban {
         let mut b = self.ordner().board(slug)?;
         let von: Vec<Option<String>> = ziele.iter().map(|z| b.spalte_von(z.nummer).map(|s| s.name.clone())).collect();
         let liste: Vec<(u32, &str, Option<usize>)> = ziele.iter().map(|z| (z.nummer, z.spalte.as_str(), z.index)).collect();
+        let vorher = b.clone();
         let geaendert = b.mehrere_bewegen(&liste).map_err(|f| match f {
             Bewegfehler::NichtAufDemBoard => Fehler::NichtGefunden(format!("Nicht alle Aufgaben liegen auf „{}“", b.titel)),
             _ => Fehler::Ungueltig(format!("Eine Zielspalte gibt es auf „{}“ nicht", b.titel)),
@@ -61,13 +65,15 @@ impl Kanban {
         if !geaendert {
             return Ok(Bewegt { bewegt: false, warnungen: vec![] });
         }
+        let grenzwarnungen = self.grenzen_pruefen(wer, &vorher, &b)?;
         let nummern = ziele.iter().map(|z| format!("#{}", z.nummer)).collect::<Vec<_>>().join(", ");
         let wohin = match ziele.iter().all(|z| z.spalte == ziele[0].spalte) {
             true => format!("nach „{}“", ziele[0].spalte),
             false => "bewegt".to_string(),
         };
         self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
-        let warnungen = ziele.iter().zip(von).filter_map(|(z, v)| v.map(|v| self.warnungen(&b, z.nummer, &v, &z.spalte))).flatten().collect();
+        let spaltenwarnungen = ziele.iter().zip(von).filter_map(|(z, v)| v.map(|v| self.warnungen(&b, z.nummer, &v, &z.spalte))).flatten();
+        let warnungen = grenzwarnungen.into_iter().chain(spaltenwarnungen).collect();
         Ok(Bewegt { bewegt: true, warnungen })
     }
 

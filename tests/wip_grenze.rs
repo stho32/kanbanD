@@ -130,3 +130,72 @@ async fn zwei_gleichzeitige_ziehen_um_den_letzten_platz() {
     assert_eq!(status, [200, 409]);
     assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit").len(), 3);
 }
+
+// ---- bewegen und bewegen-mehrere (B0279)
+
+async fn bewegen(adresse: &str, wer: &str, nummer: u32, spalte: &str, index: Option<usize>) -> (u16, Value) {
+    als(Method::POST, adresse, "api/boards/fluss/bewegen", wer, None, json!({"nummer": nummer, "spalte": spalte, "index": index})).await
+}
+
+async fn mehrere(adresse: &str, wer: &str, ziele: &[(u32, &str)]) -> (u16, Value) {
+    let ziele: Vec<Value> = ziele.iter().map(|(n, s)| json!({"nummer": n, "spalte": s})).collect();
+    als(Method::POST, adresse, "api/boards/fluss/bewegen-mehrere", wer, None, json!({"ziele": ziele})).await
+}
+
+#[tokio::test]
+async fn agent_bewegt_nicht_in_die_volle_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7, 8], &[5, 6]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    assert_eq!(bewegen(a, "cl", 7, "In Arbeit", None).await, (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "bewegen");
+    assert_eq!(mehrere(a, "cl", &[(7, "In Arbeit")]).await, (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "bewegen-mehrere");
+    let (s, r) = bewegen(a, "cl", 6, "In Arbeit", Some(0)).await;
+    assert_eq!((s, &r["bewegt"]), (200, &json!(true)), "Umsortieren in voller Spalte: {r}");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![6, 5]);
+}
+
+#[tokio::test]
+async fn mehrere_bewegen_zaehlt_den_stand_nach_allen_zuegen() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7, 8], &[5]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    assert_eq!(mehrere(a, "cl", &[(7, "In Arbeit"), (8, "In Arbeit")]).await, (409, grenze_erreicht("In Arbeit", 2, 1)), "es wären 3 von 2");
+    unveraendert(tmp.path(), &vorher, "keine der beiden bewegt");
+    let (s, r) = mehrere(a, "cl", &[(7, "In Arbeit"), (5, "Fertig")]).await;
+    assert_eq!(s, 200, "eine hinein, eine heraus: {r}");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![7]);
+}
+
+#[tokio::test]
+async fn ohne_grenze_bewegt_ein_agent_beliebig_viele() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 1, &[], &[5, 6, 7, 8]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let (s, r) = mehrere(&lauf.adresse, "cl", &[(5, "Bereit"), (6, "Bereit"), (7, "Bereit")]).await;
+    assert_eq!(s, 200, "„Bereit“ hat keinen limits-Eintrag: {r}");
+    assert_eq!(bewegen(&lauf.adresse, "cl", 8, "Fertig", None).await.0, 200);
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "Bereit").len(), 3);
+}
+
+#[tokio::test]
+async fn mensch_bewegt_in_die_volle_spalte_mit_warnung() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7, 8], &[5, 6]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let warnung = json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 3 von 2", "knoten": [], "details": []}]);
+    let commits = || git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap();
+    let vorher = commits();
+    let (s, r) = bewegen(a, "st", 7, "In Arbeit", None).await;
+    assert_eq!((s, &r["warnungen"]), (200, &warnung), "{r}");
+    assert_eq!(commits(), vorher + 1, "ein Commit");
+    let (s, r) = mehrere(a, "st", &[(8, "In Arbeit")]).await;
+    assert_eq!((s, &r["warnungen"]), (200, &json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 4 von 2", "knoten": [], "details": []}])), "{r}");
+    assert_eq!(commits(), vorher + 2);
+}

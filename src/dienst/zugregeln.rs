@@ -16,6 +16,14 @@ pub(crate) fn zug_pruefen(art: Art, vorher: &Board, nachher: &Board, archiviert:
     zugregeln(art, &nachher.belegung(archiviert).grenzverletzungen(&vorher.belegung(archiviert)))
 }
 
+impl super::Kanban {
+    /// `zug_pruefen` mit den Archivierten des Ordners; für Schreibwege, die die Aufgaben nicht ohnehin lesen.
+    pub(super) fn grenzen_pruefen(&self, wer: &crate::modell::Person, vorher: &Board, nachher: &Board) -> Result<Vec<Warnung>, Fehler> {
+        let (aufgaben, _) = self.ordner().aufgaben()?;
+        zug_pruefen(wer.art, vorher, nachher, &archivierte(&aufgaben))
+    }
+}
+
 /// Agent: die erste Verletzung von links als `GrenzeErreicht` mit der Belegung vor dem Zug.
 /// Mensch: je Verletzung eine Warnung `grenze`; der Text nennt die Anzahl nach dem Zug.
 pub(crate) fn zugregeln(art: Art, verletzungen: &Grenzverletzungen) -> Result<Vec<Warnung>, Fehler> {
