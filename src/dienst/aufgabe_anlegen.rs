@@ -1,4 +1,5 @@
 use super::Kanban;
+use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
@@ -63,6 +64,7 @@ impl Kanban {
     }
 
     /// Mehrere Aufgaben mit fortlaufenden Nummern in der Reihenfolge der Liste — ein Commit für alle.
+    /// Mit Board zählt die Zielspalte nach allen neuen; ein Agent über der Grenze legt keine an (R00096).
     pub fn aufgaben_anlegen(&self, wer: &Person, neu: &NeueAufgaben) -> Result<Vec<Aufgabe>, Fehler> {
         let eintraege: Vec<(&str, Option<&Angaben>)> = neu.titel.iter().map(Eintrag::teile).collect();
         if eintraege.is_empty() || eintraege.iter().any(|(t, _)| t.is_empty()) {
@@ -105,10 +107,13 @@ impl Kanban {
                 Some(s) => s.clone(),
                 None => b.spalten.first().map(|s| s.name.clone()).ok_or_else(|| Fehler::Ungueltig(format!("Board „{}“ hat keine Spalte", b.titel)))?,
             };
+            let vorher = b.clone();
             let spalte = b.spalte_mut(&spaltenname).ok_or_else(|| Fehler::Ungueltig(format!("Spalte „{spaltenname}“ gibt es auf „{slug}“ nicht")))?;
             spalte.aufgaben.extend(aufgaben.iter().map(|a| a.nummer));
-            nachricht.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
             let (vorhanden, _) = self.ordner().aufgaben()?;
+            // Agent: 409 über der Grenze; Mensch: durchgelassen ohne Warnung, die Antwort bleibt die Aufgabe (R00096)
+            zug_pruefen(wer.art, &vorher, &b, &archivierte(&vorhanden))?;
+            nachricht.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
             let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden.iter()).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
             dateien.push((board_pfad(&b.slug), text));
         }
