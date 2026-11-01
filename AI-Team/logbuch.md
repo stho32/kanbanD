@@ -46,3 +46,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Detailplanung | planer (fortgesetzt) | bestanden: Notizen nach PO-Entscheidungen, 244b2a6 | 1 min | Agent a5416e6a, gesamt 122.180 Tokens |
 | 2026-11-01 | #3 | Entwicklung | entwickler (frisch) | gestartet: F0010–F0014, F0016 (API) im Worktree kanbanD-wt-entw1-3, Zweig karte/3; F0015 wartet auf UX-Vorprüfung | — | Agent ae078f86 |
 | 2026-11-01 | #3 | Detailplanung | ux-reviewer (frisch) | gestartet: Vorprüfung F0015 (Eigentümer in der Oberfläche) | — | Agent a5d3fd4c |
+| 2026-11-01 | #3 | Detailplanung | ux-reviewer | befund: 4 Muss-Kriterien für F0015 (Wireframe D0002 vor B0297, Form statt nur Farbe, Text-Alternative im Streifen, Kontrast ≥ 3:1), 5 Sollte, 2 Optional; 4 Fragen an PO; API-Slices unberührt | 4 min | Agent a5d3fd4c, 119.056 Tokens |
+| 2026-11-01 | #3 | Detailplanung | product-owner (frisch) | gestartet: 4 UX-Fragen zu F0015 | — | Agent a838e30e |
