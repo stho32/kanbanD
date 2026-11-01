@@ -21,3 +21,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | — | Fortsetzen | director | Board-Instanz 7422 neu gestartet; keine Timer offen, keine Worktrees; Gate a9aad18 nachgefahren vor Push von #1 | — | |
 | 2026-11-01 | #1 | Auslieferung | director | Gate a9aad18 grün (360/113/227 ×2), gepusht origin 18b91d1, cargo install, Board 7422 neu (PID 35456), Probe label=UX/pr* ok | — | github-Remote unverändert (ed79243), wie bisher nur origin |
 | 2026-11-01 | #1 | Retrospektive | director | Lehre ins Projekt: Zug nach Erledigt erst nach Push und Auslieferung; Neustart über PID-Datei. Keine allgemeine Lehre neu (Push-Regel steht schon in regeln.md) | — | Entwicklung 10 min, Nacharbeit 1 min |
+| 2026-11-01 | #2 | Detailplanung | planer (frisch) | bestanden: I0085, F0005–F0009, B0274–B0284 (11 Bubbles, 8–16 h Hypothese), bace4a0; kein Schnitt, keine UX-Vorprüfung nötig; 2 Fragen an PO | 4 min | 119.449 Tokens; Agent a4384186 |
+| 2026-11-01 | #2 | Detailplanung | product-owner (frisch) | bestanden: Frage 1 Warnung nur bei Zügen, Frage 2 erste Verletzung (links nach rechts, Board-Reihenfolge), 7e6591a; nichts richtungsweisend | 2 min | Agent a4ac9fec |
+| 2026-11-01 | #2 | Detailplanung | planer (fortgesetzt) | bestanden: Nachtrag PO-Entscheidung in F0007–F0009, B0283, B0284, 34565e7 | 1 min | Agent a4384186, gesamt 124.583 Tokens |
+| 2026-11-01 | #2 | Entwicklung | entwickler entw1 (frisch) | läuft: I0085 ab F0005 Walking Slice, Nachtbetrieb (nice 19, Job-Grenze 1) | — | — |
