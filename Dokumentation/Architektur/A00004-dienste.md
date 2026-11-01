@@ -41,3 +41,10 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 
 - `src/dienst/mod.rs`: `Kanban`, `gesperrt()` (eine `Mutex` je Ordner, eigene Sperren je WBS-Datei), `aktion()` (schreiben, `Eigene` merken, committen).
 - Je Anwendungsfall eine Datei (`bewegen.rs`, `reservierung.rs`, `aufgabe_anlegen.rs`, …).
+- Daneben gemeinsame Regeldateien, die mehrere Anwendungsfälle aufrufen: `zugregeln.rs` (R00096, [ADR-0002](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)) mit `zug_pruefen`, `zugregeln` und den Lesehelfern `grenzen_pruefen`/`zurueckholen_pruefen` — aufgerufen von `reservierung.rs`, `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs`, `archiv.rs`; Einzelheiten in [X00001](Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md).
+
+## Ergänzungshistorie
+
+| Datum | Änderung | Grund |
+|---|---|---|
+| 2026-11-01 | Notizen: `zugregeln.rs` als gemeinsame Regeldatei neben „je Anwendungsfall eine Datei“ | Architektur-Review zu R00096 (Karte #2, I0085) |

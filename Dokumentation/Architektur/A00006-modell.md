@@ -23,6 +23,7 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 ## Schnittstellen
 
 - eingehend: Typen `Aufgabe`, `Board`, `Spalte`, `Einstellungen`, `Person` (mit Art human/agent), Operationen wie `Board::bewegen`
+- eingehend (R00096, Zählen der WIP-Grenze): `Board::belegung(archiviert)` → `Belegung` (je Spalte eine `Spaltenbelegung` mit Name, Grenze und zählenden Nummern, archivierte ausgenommen), `Belegung::grenzverletzungen(vorher)` → `Grenzverletzungen` (Liste von `Grenzverletzung { spalte, grenze, vorher, nachher }`, Spalten von links nach rechts; Umsortieren ist kein Zugang); rein, ohne Dateien, re-exportiert in `src/modell/mod.rs`, definiert in `board.rs`
 - ausgehend: keine
 
 ## Abhaengigkeiten
@@ -38,3 +39,9 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 ## Notizen / Quellen
 
 - `src/modell/mod.rs` Re-Exporte und `slug`; `board.rs` Spalten, Grenzen (`limits`), Bewegen; `einstellungen.rs` Personen.
+
+## Ergänzungshistorie
+
+| Datum | Änderung | Grund |
+|---|---|---|
+| 2026-11-01 | Schnittstellen um `Belegung`, `Spaltenbelegung`, `Grenzverletzung(en)`, `Board::belegung`, `Belegung::grenzverletzungen` ergänzt | Architektur-Review zu R00096 (Karte #2, I0085) |

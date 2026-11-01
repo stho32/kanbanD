@@ -19,6 +19,9 @@ quellen:
   - src/dienst/aufgabe_anlegen.rs
   - src/dienst/anhaenge.rs
   - src/dienst/fieber.rs
+  - src/dienst/zugregeln.rs
+  - src/dienst/zuordnung.rs
+  - src/dienst/archiv.rs
 ---
 
 # Schreibweg und Regeln an Zügen
@@ -28,28 +31,36 @@ quellen:
 Jede schreibende Aktion ist eine Methode von `Kanban` in [A00004 Dienste](../A00004-dienste.md) und läuft in drei Schritten:
 
 1. **Sperre** — `let _sperre = self.gesperrt();` (eine `Mutex` je Ordner; WBS-Dateien fremder Repos haben eigene Sperren in `wbs_sperren`).
-2. **Prüfung** — Stand frisch aus dem Ordner lesen, fachliche Regel am [Modell](../A00006-modell.md) anwenden, bei Verstoß `Fehler::{Ungueltig, Konflikt, NichtGefunden}` (→ 400/409/404) zurückgeben, **bevor** etwas geschrieben ist.
+2. **Prüfung** — Stand frisch aus dem Ordner lesen, fachliche Regel am [Modell](../A00006-modell.md) anwenden, bei Verstoß `Fehler::{Ungueltig, Konflikt, GrenzeErreicht, NichtGefunden}` (→ 400/409/409/404) zurückgeben, **bevor** etwas geschrieben ist.
 3. **`aktion(autor, nachricht, dateien)`** — Dateien schreiben, Pfade als eigen merken ([A00008 Wächter](../A00008-waechter.md)), genau ein Commit über [A00007 Git](../A00007-git.md).
 
-Nach dem Commit kommen nur noch Warnungen (z. B. Spaltenprüfungen `column-checks` in `bewegen.rs::warnungen`), nie Abweisungen.
+Nach dem Commit kommen nur noch Warnungen (z. B. Spaltenprüfungen `column-checks` in `bewegen.rs::warnungen`), nie Abweisungen. Die Warnung `grenze` entsteht dagegen schon in Schritt 2 und wird nur angehängt.
 
 ## Systemantwort
 
-Regeln an Zügen nach [ADR-0002](../../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md): Zählen und Eigentümer als reine Funktionen am `Board` ([A00006](../A00006-modell.md)), eine Entscheidungsfunktion `zugregeln(wer, vorher, nachher, archiviert)` im Dienst — unter der Sperre, nach der Änderung im Speicher, **vor** `aktion()`. Agent ⇒ `Fehler::GrenzeErreicht` (409) bzw. `Fehler::Verboten` (403) nach [ADR-0003](../../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md); Mensch ⇒ `Warnung { pruefung: "grenze" }`.
+Regeln an Zügen nach [ADR-0002](../../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md): Zählen als reine Funktionen am Modell ([A00006](../A00006-modell.md): `Board::belegung(archiviert)` → `Belegung`, `Belegung::grenzverletzungen(vorher)` → `Grenzverletzungen`), Entscheiden in der gemeinsamen Regeldatei `src/dienst/zugregeln.rs` — unter der Sperre, nach der Änderung im Speicher, **vor** `aktion()`:
+
+- `zug_pruefen(art, vorher, nachher, archiviert)` (`zugregeln.rs:15`) — rein, ein Zug auf einem Board; für Schreibwege, die die Aufgaben ohnehin gelesen haben (`reservierung.rs`, `aufgabe_anlegen.rs`).
+- `zugregeln(art, &Grenzverletzungen)` (`zugregeln.rs:42`) — die Entscheidung: Agent ⇒ erste Verletzung von links als `Fehler::GrenzeErreicht { spalte, grenze, anzahl }` (409, `anzahl` = Belegung vor dem Zug); Mensch ⇒ je Verletzung `Warnung { pruefung: "grenze" }`.
+- Lesehelfer an `Kanban`: `grenzen_pruefen(wer, vorher, nachher)` (`zugregeln.rs:21`, liest die Archivierten selbst; `bewegen.rs`, `zuordnung.rs`) und `zurueckholen_pruefen(wer, nummern)` (`zugregeln.rs:28`, je Board in der Reihenfolge der Boardliste; `archiv.rs`).
+
+Eigentümer (R00097) und `Fehler::Verboten` (403) nach [ADR-0003](../../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md) sind noch nicht gebaut.
+
+Ob ein **Mensch** über der Grenze eine Warnung bekommt, hängt am Schreibweg (PO-Entscheidung 2026-11-01, `AI-Team/po-entscheidungen.md:26`): nur dort, wo die Antwort schon `warnungen` trägt — `ziehen`, `bewegen`, `mehrere_bewegen`. Beim Anlegen mit `spalte`, Auflegen und Zurückholen wird der Mensch ohne Warnung durchgelassen, die Antwortform bleibt unverändert; die Belegung sieht er im Spaltenkopf.
 
 Zusammengesetzte Aktionen nach [ADR-0005](../../ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md): **eine öffentliche Methode = eine Sperre = ein `aktion()`**; Teilschritte ohne Sperre und ohne Commit.
 
-| Schreibweg | Ort | Grenze R00096 | Eigentümer R00097 |
-|---|---|---|---|
-| `ziehen` | `reservierung.rs` | ja, vor der Reservierung | ja (`von` = Menschen-Spalte) |
-| `bewegen`, `mehrere_bewegen` | `bewegen.rs` | ja, Stand nach allen Zügen | ja, auch Umsortieren |
-| Anlegen mit `spalte` (einzeln, mehrere, Board-Pfad) | `aufgabe_anlegen.rs` | ja | nein (Hineinlegen erlaubt) |
-| Auf das Board legen | Board-Pfad `…/aufgaben` | ja | nein |
-| Vom Board nehmen | `DELETE …/aufgaben/{nr}` | nein | ja |
-| Archivieren (einzeln, mehrere) | `archiv.rs` | nein | ja, auf jedem Board |
-| Zurückholen (einzeln, mehrere) | `archiv.rs` | ja, auf jedem Board | nein |
-| Wiederöffnen über `key` | `aufgabe_anlegen.rs`, R00098 | ja | nein |
-| Erledigen | `erledigen.rs` (geplant), R00099 | ja (Abschlussspalte) | eigener Ablauf: Agent in Menschen-Spalte ⇒ Signal statt Zug |
+| Schreibweg | Ort | Grenze R00096 | Warnung an Mensch | Eigentümer R00097 |
+|---|---|---|---|---|
+| `ziehen` | `reservierung.rs` | ja, vor der Reservierung | ja | ja (`von` = Menschen-Spalte) |
+| `bewegen`, `mehrere_bewegen` | `bewegen.rs` | ja, Stand nach allen Zügen | ja | ja, auch Umsortieren |
+| Anlegen mit `spalte` (einzeln, mehrere, Board-Pfad) | `aufgabe_anlegen.rs` | ja | nein | nein (Hineinlegen erlaubt) |
+| Auf das Board legen (einzeln, mehrere) | `zuordnung.rs` (`auf_board_legen`, `mehrere_auf_board_legen`) | ja | nein | nein |
+| Vom Board nehmen | `zuordnung.rs` (`von_board_nehmen`) | nein | — | ja |
+| Archivieren (einzeln, mehrere) | `archiv.rs` | nein | — | ja, auf jedem Board |
+| Zurückholen (einzeln, mehrere) | `archiv.rs` | ja, auf jedem Board | nein | nein |
+| Wiederöffnen über `key` | `aufgabe_anlegen.rs`, R00098 | ja | offen (R00098) | nein |
+| Erledigen | `erledigen.rs` (geplant), R00099 | ja (Abschlussspalte) | offen (R00099) | eigener Ablauf: Agent in Menschen-Spalte ⇒ Signal statt Zug |
 
 Schlüsselsuche (R00098, R00099) nach [ADR-0004](../../ADRs/0004-schluesselsuche-unter-der-sperre.md): unter derselben Sperre über `ordner().aufgaben()`, einmal je Anfrage.
 
@@ -70,3 +81,9 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 
 - `gesperrt()` wird in 17 Dateien unter `src/dienst/` benutzt (gezählt 2026-10-31).
 - Die Sperre ist prozessweit; ein zweiter kanbanD-Prozess auf demselben Ordner ist nicht abgesichert.
+
+## Ergänzungshistorie
+
+| Datum | Änderung | Grund |
+|---|---|---|
+| 2026-11-01 | Systemantwort an den gebauten Stand R00096 (Karte #2, I0085) nachgeführt: `zug_pruefen`/`zugregeln` statt `zugregeln(wer, …)`, Lesehelfer `grenzen_pruefen`/`zurueckholen_pruefen`, Spalte „Warnung an Mensch“, Ort `zuordnung.rs`, Quellen ergänzt, `GrenzeErreicht` in der Hausantwort | Architektur-Review zu R00096; PO-Entscheidung `AI-Team/po-entscheidungen.md:26` |

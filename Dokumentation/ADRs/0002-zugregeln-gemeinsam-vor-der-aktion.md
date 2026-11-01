@@ -49,3 +49,4 @@ Die Regel steht einmal, das Zählen ist rein und am Modell testbar, und die Mens
 
 - `src/dienst/bewegen.rs`, `reservierung.rs`, `aufgabe_anlegen.rs`, `archiv.rs`; `src/modell/board.rs`
 - ADR-0003 (Fehlerform), [X00001](../Architektur/Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md)
+- Warnung an Menschen nur auf den Wegen, deren Antwort schon `warnungen` trägt (`ziehen`, `bewegen`, `mehrere_bewegen`); Anlegen, Auflegen und Zurückholen ohne Warnung — PO-Entscheidung 2026-11-01, `AI-Team/po-entscheidungen.md:26`; gebaut als `zug_pruefen`/`zugregeln` in `src/dienst/zugregeln.rs`, Einzelheiten in X00001
