@@ -35,6 +35,13 @@ fn stand(pfad: &Path) -> (String, Vec<(String, String)>) {
     (git(pfad, &["rev-parse", "HEAD"]), dateien)
 }
 
+/// Aufruf als Person mit Instanz (Header `X-KanbanD-Instanz`).
+async fn mit_instanz(methode: Method, adresse: &str, pfad: &str, wer: &str, instanz: &str, daten: Value) -> (u16, Value) {
+    let r = reqwest::Client::new().request(methode, format!("{adresse}{pfad}")).header("X-KanbanD-Wer", wer).header("X-KanbanD-Instanz", instanz).json(&daten).send().await.unwrap();
+    let status = r.status().as_u16();
+    (status, serde_json::from_str(&r.text().await.unwrap()).unwrap_or(Value::Null))
+}
+
 fn commits(pfad: &Path) -> usize {
     git(pfad, &["rev-list", "--count", "HEAD"]).trim().parse().unwrap()
 }
@@ -84,4 +91,33 @@ async fn agent_legt_in_die_menschen_spalte_ab_und_mensch_bewegt_frei() {
     let (s, _) = senden(Method::POST, a, "api/boards/fluss/bewegen-mehrere", "st", json!({"ziele": [{"nummer": 2, "spalte": "Bereit"}]})).await;
     assert_eq!(s, 200);
     assert!(lies(tmp.path(), "boards/fluss.md").contains("## Eingang\n\n## In Arbeit"), "Eingang ist leer");
+}
+
+// ---- ziehen (B0292)
+
+#[tokio::test]
+async fn agent_zieht_nicht_aus_der_menschen_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = mit_instanz(Method::POST, a, "api/boards/fluss/ziehen", "cl", "A", json!({"von": "Eingang", "nach": "Bereit"})).await;
+    assert_eq!((s, r), (403, verboten(1)));
+    let (s, r) = mit_instanz(Method::POST, a, "api/boards/fluss/ziehen", "cl", "A", json!({"von": "Eingang", "nach": "Voll"})).await;
+    assert_eq!((s, r), (403, verboten(1)), "403 vor 409");
+    assert_eq!(stand(tmp.path()), vorher, "kein Commit, #1 ohne Reservierung, cl nicht zuständig");
+    let (s, _) = mit_instanz(Method::POST, a, "api/boards/fluss/ziehen", "cl", "A", json!({"von": "In Arbeit", "nach": "Verstehen & Freigabe"})).await;
+    assert_eq!(s, 200, "aus einer freien Spalte in eine Menschen-Spalte ziehen bleibt erlaubt");
+    let (s, r) = mit_instanz(Method::POST, a, "api/boards/fluss/ziehen", "st", "M", json!({"von": "Eingang", "nach": "Bereit"})).await;
+    assert_eq!((s, r["aufgabe"]["nummer"].as_u64()), (200, Some(1)));
+}
+
+#[tokio::test]
+async fn agent_zieht_aus_leerer_menschen_spalte_wie_heute() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, _) = mit_instanz(Method::POST, &lauf.adresse, "api/boards/fluss/ziehen", "cl", "A", json!({"von": "Verstehen & Freigabe", "nach": "Voll"})).await;
+    assert_eq!(s, 404, "ohne ziehbare Karte bleibt es 404 (po-entscheidungen Z. 48)");
 }
