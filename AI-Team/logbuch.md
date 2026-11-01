@@ -63,3 +63,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Nacharbeit | entwickler (fortgesetzt) | gestartet: 2 Muss Rechtschreibung | — | Agent ae078f86 |
 | 2026-11-01 | #3 | Nacharbeit | entwickler (fortgesetzt) | bestanden: d7bf49a Rechtschreibung API-Texte, Abnahme-Greps vom Director nachgeprüft, cargo 411/0 | 1 min | Agent ae078f86, 85.668 Tokens |
 | 2026-11-01 | #3 | Auto-Reviews | director | Sollte/Optional aller Reviews auf Härtungskarte gesammelt | — | — |
+| 2026-11-01 | #3 | Entwicklertest (US-1–US-3) | entwicklertester (frisch) | bestanden: alle Dann-Zeilen an der Schnittstelle beobachtet, eigene Instanz, keine Befunde; Anmerkung Leerzug als Agent → 200 statt 403 → Härtung #26; US-4 wartet auf Oberfläche | 12 min | Agent adbc65c3 |
