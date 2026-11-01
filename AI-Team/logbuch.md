@@ -19,3 +19,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-10-31 | #1 | Auto-Reviews | code-reviewer | bestanden: 0 Muss; 2 Sollte als kleine Nacharbeit an entw1 (a9aad18, 360/0) | 2 min | nachgetragen; Optionales nicht übernommen (siehe Kartenkommentar) |
 | 2026-10-31 | #1 | Entwicklertest | entwicklertester | bestanden: US-1–US-4, kein Befund; Zug nach Erledigt 20:21 ohne Push und Auslieferung (Abbruch) | 2 min | nachgetragen |
 | 2026-11-01 | — | Fortsetzen | director | Board-Instanz 7422 neu gestartet; keine Timer offen, keine Worktrees; Gate a9aad18 nachgefahren vor Push von #1 | — | |
+| 2026-11-01 | #1 | Auslieferung | director | Gate a9aad18 grün (360/113/227 ×2), gepusht origin 18b91d1, cargo install, Board 7422 neu (PID 35456), Probe label=UX/pr* ok | — | github-Remote unverändert (ed79243), wie bisher nur origin |
+| 2026-11-01 | #1 | Retrospektive | director | Lehre ins Projekt: Zug nach Erledigt erst nach Push und Auslieferung; Neustart über PID-Datei. Keine allgemeine Lehre neu (Push-Regel steht schon in regeln.md) | — | Entwicklung 10 min, Nacharbeit 1 min |
