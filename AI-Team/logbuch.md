@@ -31,3 +31,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #2 | Auto-Reviews | code-reviewer (frisch) | läuft: main d263215 (Gegenprobe 388/113/228×2 grün); danach architektur-, rechtschreib-reviewer | — | — |
 | 2026-11-01 | #2 | Auto-Reviews | code-reviewer | bestanden, kein Befund (137k Tokens, 2:39 min); 3 Kann-Anmerkungen; Hinweis „Agent ändert Grenzen über PUT …/spalten“ → neue Karte #21 (besprechen, Backlog) | — | — |
 | 2026-11-01 | #2 | Auto-Reviews | architektur-reviewer (frisch) | gestartet | — | — |
+| 2026-11-01 | #2 | Auto-Reviews | architektur-reviewer | bestanden; 3 Sollte (Modell-Drift X00001, A00004/A00006/A00003) → architekt (frisch) führt nach; 2 Optional (Muster strukturierte 409 für R00097, Probe „Aufruf vergessen“) | — | — |
+| 2026-11-01 | #2 | Auto-Reviews | rechtschreib-reviewer (frisch), architekt (frisch, Modell-Nachführung) | gestartet | — | — |
