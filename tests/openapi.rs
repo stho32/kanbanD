@@ -152,7 +152,7 @@ async fn sechs_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
     assert!(zweck("PUT", "/api/boards/{slug}/spalten").contains(spalten), "{}", zweck("PUT", "/api/boards/{slug}/spalten"));
     let put = d["paths"]["/api/boards/{slug}/spalten"]["put"]["description"].as_str().unwrap();
     assert!(put.contains(spalten), "{put}");
-    assert!(!put.contains("Agent") && !zweck("PUT", "/api/boards/{slug}/spalten").contains("Agent"), "PUT …/spalten verspricht Agenten weder Erlaubnis noch Sperre (Frage 3 offen)");
+    assert!(put.contains("ändern nur Menschen") && zweck("PUT", "/api/boards/{slug}/spalten").contains("ändern nur Menschen"), "PUT …/spalten nennt die Sperre für Agenten");
     assert!(d["components"]["schemas"]["SpaltenAenderung"]["properties"]["eigentuemer"].is_object());
     for text in [zweck("GET", "/api/boards/{slug}"), d["paths"]["/api/boards/{slug}"]["get"]["description"].as_str().unwrap()] {
         assert!(text.contains("eigentuemer: column-owner"), "{text}");
@@ -171,7 +171,7 @@ async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
     let zweck = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "PUT" && e.pfad == "/api/boards/{slug}/spalten").unwrap().zweck;
     let put = &d["paths"]["/api/boards/{slug}/spalten"]["put"];
     for text in [zweck, put["description"].as_str().unwrap()] {
-        for teil in ["Grenze und Eigentümer ändern nur Menschen", "403 {fehler, spalte, einstellung: grenze|eigentuemer}", "von links, je Spalte grenze vor eigentuemer, entfernte Spalten zuletzt", "grenze fehlt → behält, null oder 0 → entfernt"] {
+        for teil in ["Grenze und Eigentümer ändern nur Menschen", "403 {fehler, spalte, einstellung: grenze|eigentuemer}", "für Agenten nach Spaltennamen", "Umbenennen und Tauschen einer Spalte mit Einstellung zählen", "Namen der Anfrage von links, dann bisherige Namen, die fehlen, je Name grenze vor eigentuemer", "grenze fehlt → behält, null oder 0 → entfernt"] {
             assert!(text.contains(teil), "fehlt „{teil}“: {text}");
         }
     }

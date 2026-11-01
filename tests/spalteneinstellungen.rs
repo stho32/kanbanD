@@ -33,6 +33,8 @@ struct Wirkung {
     board_vorher: String,
     board: String,
     neue_commits: usize,
+    /// `GET /api/boards/entwicklung` nach dem Aufruf: was kanbanD aus der geschriebenen Datei liest.
+    gelesen: Value,
 }
 
 impl Wirkung {
@@ -55,7 +57,8 @@ async fn setzen_mit(vorspann: &str, eingang: &[u32], wer: &str, spalten: Value) 
     let r = reqwest::Client::new().put(format!("{}api/boards/entwicklung/spalten", lauf.adresse)).header("X-KanbanD-Wer", wer).json(&spalten).send().await.unwrap();
     let status = r.status().as_u16();
     let roh = r.text().await.unwrap();
-    Wirkung { status, roh, board_vorher, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher }
+    let gelesen = reqwest::get(format!("{}api/boards/entwicklung", lauf.adresse)).await.unwrap().json().await.unwrap();
+    Wirkung { status, roh, board_vorher, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher, gelesen }
 }
 
 async fn setzen(wer: &str, spalten: Value) -> Wirkung {
@@ -230,10 +233,9 @@ async fn agent_richtet_ein_was_keine_regel_traegt() {
     assert_eq!((w.status, w.neue_commits), (200, 1), "neue Spalte: {}", w.roh);
     assert_eq!(w.board, w.board_vorher.replace("## Erledigt\n", "## Review\n\n## Erledigt\n"), "Review ohne Grenze und Eigentümer");
 
-    let umbenannt = json!([{"name": "Posteingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]);
-    let w = setzen("bot", umbenannt).await;
-    assert_eq!((w.status, w.neue_commits), (200, 1), "umbenannt: {}", w.roh);
-    assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\ncolumn-owner:\n  Posteingang: human\n---\n"), "{}", w.board);
+    let w = setzen("bot", umbenannt("Erledigt", "Fertig")).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "Spalte ohne Einstellung umbenannt: {}", w.roh);
+    assert_eq!(w.board, w.board_vorher.replace("## Erledigt\n", "## Fertig\n"), "nur der Name");
 
     let umsortiert = json!([{"name": "In Arbeit", "alt": "In Arbeit", "grenze": 2}, {"name": "Eingang", "alt": "Eingang"}, {"name": "Erledigt", "alt": "Erledigt"}]);
     let w = setzen("bot", umsortiert).await;
@@ -257,4 +259,75 @@ async fn agent_sendet_einstellungen_unveraendert_ohne_commit() {
         assert_eq!((w.status, w.rumpf(), w.neue_commits), (200, json!({"geaendert": false}), 0), "{fall}");
         assert_eq!(w.board, w.board_vorher, "{fall}: limits In Arbeit 2 und column-owner Eingang human bleiben");
     }
+}
+
+// ---- Nacharbeit 1 (Security-Review): die Sperre gilt für das, was zurückgelesen wird, nicht für das Board im Speicher
+
+/// Namen, die beim Schreiben und Zurücklesen nicht dieselben bleiben — Grenze bzw. Eigentümer gingen still verloren.
+const NICHT_RUNDLAUFSTABIL: [&str; 4] = ["In Arbeit\nx", "0x10", "0o17", "0b101"];
+
+fn umbenannt(spalte: &'static str, neuer_name: &'static str) -> Value {
+    alle(move |name, s| {
+        if name == spalte {
+            s["name"] = json!(neuer_name);
+        }
+    })
+}
+
+/// Abgewiesen mit 400 oder 403 (Grenze oder Eigentümer, je nachdem welcher Name zuerst abweicht); Datei byte-gleich, kein Commit.
+fn nicht_durchgelassen(w: &Wirkung, fall: &str) {
+    assert!(w.status == 400 || w.status == 403, "{fall}: {} {}", w.status, w.roh);
+    if w.status == 403 {
+        assert!(["grenze", "eigentuemer"].contains(&w.rumpf()["einstellung"].as_str().unwrap()), "{fall}: {}", w.roh);
+    }
+    assert_eq!(w.board, w.board_vorher, "{fall}: Board-Datei byte-gleich");
+    assert_eq!(w.neue_commits, 0, "{fall}: kein Commit");
+}
+
+#[tokio::test]
+async fn agent_entfernt_grenze_und_eigentuemer_nicht_ueber_einen_namen_ohne_rundlauf() {
+    for name in NICHT_RUNDLAUFSTABIL {
+        for (spalte, feld, wert) in [("In Arbeit", "grenze", json!(2)), ("Eingang", "eigentuemer", json!("human"))] {
+            nicht_durchgelassen(&setzen("bot", umbenannt(spalte, name)).await, &format!("{spalte} → {name:?} ohne {feld}"));
+            let mit_wert = alle(move |n, s| {
+                if n == spalte {
+                    s["name"] = json!(name);
+                    s[feld] = wert.clone();
+                }
+            });
+            nicht_durchgelassen(&setzen("bot", mit_wert).await, &format!("{spalte} → {name:?} mit {feld}"));
+        }
+    }
+}
+
+// ---- PO-Entscheidung zu Nacharbeit 1: für Agenten zählen limits und column-owner nach Spaltennamen, nicht über `alt`
+
+#[tokio::test]
+async fn agent_benennt_und_tauscht_keine_spalte_mit_einstellung() {
+    let faelle = [
+        ("Eingang → Posteingang", umbenannt("Eingang", "Posteingang"), "Posteingang", "eigentuemer"),
+        ("In Arbeit → Bau", umbenannt("In Arbeit", "Bau"), "Bau", "grenze"),
+        ("In Arbeit → Bau mit grenze 2", json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]), "Bau", "grenze"),
+        ("beide umbenannt", json!([{"name": "Posteingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]), "Posteingang", "eigentuemer"),
+        ("Tausch", json!([{"name": "Eingang", "alt": "In Arbeit"}, {"name": "In Arbeit", "alt": "Eingang"}, {"name": "Erledigt", "alt": "Erledigt"}]), "Eingang", "grenze"),
+        (
+            "Eingang → „Eingang alt“, neue Eingang ohne Eigentümer",
+            json!([{"name": "Eingang alt", "alt": "Eingang"}, {"name": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]),
+            "Eingang alt",
+            "eigentuemer",
+        ),
+    ];
+    for (fall, anfrage, spalte, einstellung) in faelle {
+        abgewiesen(&setzen("bot", anfrage).await, spalte, einstellung, fall);
+    }
+}
+
+#[tokio::test]
+async fn beim_menschen_wandern_grenze_und_eigentuemer_mit_alt() {
+    let beide = json!([{"name": "Posteingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    let w = setzen("st", beide).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "{}", w.roh);
+    assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\ncolumn-owner:\n  Posteingang: human\n---\n"), "{}", w.board);
+    let gelesen = |i: usize, feld: &str| (w.gelesen["spalten"][i]["name"].clone(), w.gelesen["spalten"][i][feld].clone());
+    assert_eq!((gelesen(0, "eigentuemer"), gelesen(1, "grenze")), ((json!("Posteingang"), json!("human")), (json!("Bau"), json!(2))), "{}", w.gelesen);
 }

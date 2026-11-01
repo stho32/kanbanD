@@ -53,8 +53,9 @@ pub struct Verboten {
 }
 
 /// 403 eines Agenten, der über `PUT …/spalten` Grenze oder Eigentümer einer Spalte ändert (R00102, ADR-0006): `fehler`
-/// zuerst („Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer …“), dann die erste geänderte Spalte und
-/// welche Einstellung — `grenze` vor `eigentuemer`, Spalten der Anfrage von links, entfernte zuletzt.
+/// zuerst („Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer …“), dann der erste Spaltenname, unter dem
+/// `limits` oder `column-owner` danach anders steht, und welche Einstellung — Namen der Anfrage von links, dann bisherige
+/// Namen, die fehlen, je Name `grenze` vor `eigentuemer`.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct EinstellungVerboten {
     pub fehler: String,

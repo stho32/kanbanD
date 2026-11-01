@@ -490,15 +490,19 @@ impl Einstellungsaenderungen {
 }
 
 impl Board {
-    /// Was `neu` an Grenze und Eigentümer ändert; `nachher` ist dieses Board nach `spalten_setzen(neu)`, seine Spalten
-    /// stehen also in der Reihenfolge von `neu`. Jede Spalte wird mit der verglichen, die sie über `alt` übernimmt —
-    /// ohne `alt` mit „keine Grenze, kein Eigentümer“; eine nicht übernommene Spalte mit „entfernt“.
+    /// Was `nachher` gegenüber diesem Board an Grenze und Eigentümer ändert, verglichen nach Spaltennamen — so, wie
+    /// `limits` und `column-owner` in der Datei Name → Wert stehen; `alt` zählt nicht, Umbenennen und Tauschen einer
+    /// Spalte mit Einstellung ändern also. Reihenfolge: die Namen der Anfrage `neu` von links, dann die bisherigen Namen,
+    /// die darin fehlen, zuletzt Namen, die nur `nachher` kennt.
     pub fn einstellungsaenderungen(&self, nachher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen {
-        let uebernommen = |n: &SpaltenAenderung| n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-        let angefragt = neu.iter().zip(&nachher.spalten).flat_map(|(n, s)| geaenderte_einstellungen(uebernommen(n), Some(s), &s.name));
-        let alte: Vec<&str> = neu.iter().filter_map(|n| n.alt.as_deref()).collect();
-        let entfernt = self.spalten.iter().filter(|s| !alte.contains(&s.name.as_str())).flat_map(|s| geaenderte_einstellungen(Some(s), None, &s.name));
-        Einstellungsaenderungen(angefragt.chain(entfernt).collect())
+        let mut namen: Vec<&str> = vec![];
+        for name in neu.iter().map(|n| n.name.trim()).chain(self.spalten.iter().chain(&nachher.spalten).map(|s| s.name.as_str())) {
+            if !namen.contains(&name) {
+                namen.push(name);
+            }
+        }
+        let spalte = |b: &'_ Board, name: &str| b.spalten.iter().find(|s| s.name == name).cloned();
+        Einstellungsaenderungen(namen.into_iter().flat_map(|n| geaenderte_einstellungen(spalte(self, n).as_ref(), spalte(nachher, n).as_ref(), n)).collect())
     }
 }
 
@@ -946,12 +950,16 @@ mod tests {
     }
 
     #[test]
-    fn keine_grenzaenderung_bei_0_ohne_grenze_umbenennen_und_umsortieren() {
+    fn grenze_nach_namen_0_umbenennen_umsortieren_tauschen() {
         let b = ausgang();
         assert_eq!(geaendert(&b, &unveraendert()), [], "unverändert");
-        let mut neu = unveraendert_bis_auf(1, mit_grenze_an("Bau", Some("In Arbeit"), 2));
-        neu.swap(0, 2);
-        assert_eq!(geaendert(&b, &neu), [], "0 für Erledigt ohne Grenze, In Arbeit → Bau mit gleicher Grenze, umsortiert");
+        let mut neu = unveraendert_bis_auf(2, mit_grenze_an("Fertig", Some("Erledigt"), 0));
+        neu.swap(0, 1);
+        assert_eq!(geaendert(&b, &neu), [], "0 und Umbenennen für Erledigt ohne Einstellung, umsortiert");
+        let bau = unveraendert_bis_auf(1, mit_grenze_an("Bau", Some("In Arbeit"), 2));
+        assert_eq!(geaendert(&b, &bau), [grenze("Bau"), grenze("In Arbeit")], "In Arbeit → Bau ändert nach Namen, auch mit gleicher Grenze");
+        let tausch = [mit_grenze_an("Eingang", Some("In Arbeit"), 2), mit_grenze_an("In Arbeit", Some("Eingang"), 0), mit_grenze_an("Erledigt", Some("Erledigt"), 0)];
+        assert_eq!(geaendert(&b, &tausch), [grenze("Eingang"), eigentuemer("Eingang"), grenze("In Arbeit"), eigentuemer("In Arbeit")], "Tausch ändert beide Namen");
         let mut neu = unveraendert();
         neu.remove(2);
         assert_eq!(geaendert(&b, &neu), [], "leere Spalte ohne Grenze entfernt");
@@ -1014,7 +1022,10 @@ mod tests {
         let mut neu = unveraendert();
         neu.remove(0);
         assert_eq!(geaendert(&b, &neu), [eigentuemer("Eingang")], "entfernte Spalte mit human");
-        assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_grenze_an("Posteingang", Some("Eingang"), 0))), [], "Umbenennen ohne Feld nimmt mit");
+        let posteingang = unveraendert_bis_auf(0, mit_grenze_an("Posteingang", Some("Eingang"), 0));
+        assert_eq!(geaendert(&b, &posteingang), [eigentuemer("Posteingang"), eigentuemer("Eingang")], "Umbenennen ändert nach Namen: neuer Name bekommt, alter verliert");
+        let eingang_alt = [mit_grenze_an("Eingang alt", Some("Eingang"), 0), aend("Eingang", None, None), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2), mit_grenze_an("Erledigt", Some("Erledigt"), 0)];
+        assert_eq!(geaendert(&b, &eingang_alt), [eigentuemer("Eingang alt"), eigentuemer("Eingang")], "„Eingang alt“ bekommt human, die neue Eingang verliert es");
         assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_eigentuemer(eingang, Some("human")))), [], "gleicher Eigentümer gesendet");
     }
 
