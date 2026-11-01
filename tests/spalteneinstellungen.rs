@@ -197,3 +197,22 @@ async fn die_erste_verletzung_von_links_grenze_vor_eigentuemer_entfernte_zuletzt
         abgewiesen(&w, spalte, einstellung, fall);
     }
 }
+
+// ---- F0019 Fehlendes `grenze` (B0305)
+
+#[tokio::test]
+async fn fehlende_grenze_behaelt_null_und_0_entfernen() {
+    let ohne = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    let w = setzen("st", ohne).await;
+    assert_eq!((w.status, w.neue_commits), (200, 0), "ohne grenze: nichts geändert — {}", w.roh);
+    assert!(w.board.starts_with("---\nlimits:\n  In Arbeit: 2\n"), "{}", w.board);
+    for (fall, grenze) in [("null", Value::Null), ("0", json!(0))] {
+        let w = setzen("st", alle(grenze_von("In Arbeit", grenze))).await;
+        assert_eq!((w.status, w.neue_commits), (200, 1), "{fall}: {}", w.roh);
+        assert!(w.board.starts_with("---\ncolumn-owner:\n  Eingang: human\n---\n"), "{fall} entfernt: {}", w.board);
+    }
+    let umbenannt = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    let w = setzen("st", umbenannt).await;
+    assert_eq!((w.status, w.neue_commits), (200, 1), "{}", w.roh);
+    assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\n"), "Umbenennen ohne grenze nimmt sie mit: {}", w.board);
+}

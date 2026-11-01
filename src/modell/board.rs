@@ -358,7 +358,10 @@ impl Board {
 pub struct SpaltenAenderung {
     pub name: String,
     pub alt: Option<String>,
-    pub grenze: Option<u32>,
+    /// `limits`: `n > 0` setzt, `null` oder `0` entfernt, fehlt das Feld, behält sie die der alten Spalte (R00102).
+    #[serde(default, deserialize_with = "super::aufgabe::entfernbar")]
+    #[schema(value_type = Option<u32>)]
+    pub grenze: Option<Option<u32>>,
     /// `column-checks` der Spalte; fehlt das Feld, behält sie die der alten Spalte.
     #[serde(default)]
     pub pruefungen: Option<Vec<String>>,
@@ -422,7 +425,10 @@ impl Board {
             .iter()
             .map(|n| {
                 let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
-                Spalte { name: n.name.trim().into(), grenze: n.grenze.filter(|g| *g > 0), aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: match &n.eigentuemer {
+                Spalte { name: n.name.trim().into(), grenze: match n.grenze {
+                        Some(g) => g.filter(|g| *g > 0),
+                        None => alt.and_then(|s| s.grenze),
+                    }, aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), pruefungen: n.pruefungen.as_ref().map(|p| p.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_else(|| alt.map(|s| s.pruefungen.clone()).unwrap_or_default()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: match &n.eigentuemer {
                         Some(e) => e.as_deref().and_then(|e| Eigentuemer::aus(e.trim())),
                         None => alt.and_then(|s| s.eigentuemer),
                     },
@@ -666,7 +672,7 @@ mod tests {
     }
 
     fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze, pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: Some(grenze), pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
     }
 
     #[test]
@@ -962,6 +968,26 @@ mod tests {
         assert_eq!(geaendert(&b, &neu), [grenze("Review"), grenze("Erledigt"), grenze("Eingang"), eigentuemer("Eingang"), grenze("In Arbeit")]);
         assert_eq!(aenderungen(&b, &neu).erste().map(|a| a.spalte.as_str()), Some("Review"));
         assert_eq!(aenderungen(&ausgang(), &unveraendert()).erste(), None);
+    }
+
+    #[test]
+    fn fehlende_grenze_behaelt_die_alte_null_und_0_entfernen() {
+        let mit = |grenze: Option<Option<u32>>, name: &str| {
+            let mut b = ausgang();
+            let neu = unveraendert_bis_auf(1, SpaltenAenderung { grenze, ..aend(name, Some("In Arbeit"), None) });
+            b.spalten_setzen(&neu).unwrap();
+            (b.spalten[1].name.clone(), b.spalten[1].grenze)
+        };
+        assert_eq!(mit(None, "In Arbeit"), ("In Arbeit".into(), Some(2)), "fehlt → behält");
+        assert_eq!(mit(None, "Bau"), ("Bau".into(), Some(2)), "Umbenennen ohne grenze nimmt sie mit");
+        assert_eq!(mit(Some(None), "In Arbeit"), ("In Arbeit".into(), None), "null → keine");
+        assert_eq!(mit(Some(Some(0)), "In Arbeit"), ("In Arbeit".into(), None), "0 → keine");
+        assert_eq!(mit(Some(Some(5)), "In Arbeit"), ("In Arbeit".into(), Some(5)), "n → n");
+        let mut b = ausgang();
+        let mut neu = unveraendert();
+        neu.push(SpaltenAenderung { grenze: None, ..aend("Review", None, None) });
+        b.spalten_setzen(&neu).unwrap();
+        assert_eq!(b.spalten[3].grenze, None, "neue Spalte ohne grenze hat keine");
     }
 
     fn eigentuemer(spalte: &str) -> (String, Einstellung) {
