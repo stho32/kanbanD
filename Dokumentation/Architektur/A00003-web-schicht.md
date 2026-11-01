@@ -40,9 +40,4 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 - `src/web/mod.rs` Router, `router_mit_ende`; `endpunkte.rs` Endpunkt-Liste; `openapi.rs`; `statisch.rs` eingebettete Dateien aus `web/`.
 - 409 hat zwei Rumpfformen nach [ADR-0003](../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md): `openapi::Fehlerantwort { fehler }` und, für einen Agenten über der WIP-Grenze (R00096), `openapi::GrenzeErreicht { fehler, spalte, grenze, anzahl }` (`fehler` zuerst, immer „Grenze erreicht“); abgebildet in `src/web/mod.rs` aus `Fehler::GrenzeErreicht`. Die Endpunkte mit Grenze beschreiben ihre 409 mit dem Schema `openapi::Konflikt` (`untagged`-Enum beider Formen, nur für die Beschreibung, deshalb `#[allow(dead_code)]`).
 - Eine weitere strukturierte Abweisung (z. B. R00097 Eigentümer, 403) folgt demselben Muster: eigene Rumpf-Struktur in `openapi.rs`, Abbildung aus der `Fehler`-Variante in `web/mod.rs`, bei mehreren möglichen Rümpfen ein Beschreibungsschema wie `Konflikt`.
-
-## Ergänzungshistorie
-
-| Datum | Änderung | Grund |
-|---|---|---|
-| 2026-11-01 | Notizen: zweite 409-Rumpfform `GrenzeErreicht`, Beschreibungsschema `Konflikt`, Muster für weitere strukturierte Abweisungen | Architektur-Review zu R00096 (Karte #2, I0085) |
+- nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)

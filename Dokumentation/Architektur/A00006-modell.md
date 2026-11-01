@@ -39,9 +39,4 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 ## Notizen / Quellen
 
 - `src/modell/mod.rs` Re-Exporte und `slug`; `board.rs` Spalten, Grenzen (`limits`), Bewegen; `einstellungen.rs` Personen.
-
-## Ergänzungshistorie
-
-| Datum | Änderung | Grund |
-|---|---|---|
-| 2026-11-01 | Schnittstellen um `Belegung`, `Spaltenbelegung`, `Grenzverletzung(en)`, `Board::belegung`, `Belegung::grenzverletzungen` ergänzt | Architektur-Review zu R00096 (Karte #2, I0085) |
+- nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)

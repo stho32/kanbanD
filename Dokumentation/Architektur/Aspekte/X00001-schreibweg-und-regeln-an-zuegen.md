@@ -81,9 +81,4 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 
 - `gesperrt()` wird in 17 Dateien unter `src/dienst/` benutzt (gezählt 2026-10-31).
 - Die Sperre ist prozessweit; ein zweiter kanbanD-Prozess auf demselben Ordner ist nicht abgesichert.
-
-## Ergänzungshistorie
-
-| Datum | Änderung | Grund |
-|---|---|---|
-| 2026-11-01 | Systemantwort an den gebauten Stand R00096 (Karte #2, I0085) nachgeführt: `zug_pruefen`/`zugregeln` statt `zugregeln(wer, …)`, Lesehelfer `grenzen_pruefen`/`zurueckholen_pruefen`, Spalte „Warnung an Mensch“, Ort `zuordnung.rs`, Quellen ergänzt, `GrenzeErreicht` in der Hausantwort | Architektur-Review zu R00096; PO-Entscheidung `AI-Team/po-entscheidungen.md:26` |
+- nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
