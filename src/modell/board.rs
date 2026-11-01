@@ -496,14 +496,20 @@ impl Board {
     }
 }
 
-/// Die Einstellungen, in denen sich `vorher` und `nachher` unterscheiden; eine fehlende Spalte hat keine.
+/// Die Einstellungen, in denen sich `vorher` und `nachher` unterscheiden, `grenze` vor `eigentuemer`; eine fehlende
+/// Spalte hat keine. Der Eigentümer zählt wie sein `column-owner`-Eintrag in der Datei, ein unbekannter Rohwert also mit.
 fn geaenderte_einstellungen(vorher: Option<&Spalte>, nachher: Option<&Spalte>, spalte: &str) -> Vec<Einstellungsaenderung> {
     let grenze = |s: Option<&Spalte>| s.and_then(|s| s.grenze).filter(|g| *g > 0);
-    [(Einstellung::Grenze, grenze(vorher) != grenze(nachher))]
+    [(Einstellung::Grenze, grenze(vorher) != grenze(nachher)), (Einstellung::Eigentuemer, eigentuemer_eintrag(vorher) != eigentuemer_eintrag(nachher))]
         .into_iter()
         .filter(|(_, anders)| *anders)
         .map(|(einstellung, _)| Einstellungsaenderung { spalte: spalte.into(), einstellung })
         .collect()
+}
+
+/// Der `column-owner`-Eintrag der Spalte, wie er in der Datei steht — `human`, `agent`, ein unbekannter Rohwert oder keiner.
+fn eigentuemer_eintrag(spalte: Option<&Spalte>) -> Option<&str> {
+    spalte.and_then(|s| s.eigentuemer.map(Eigentuemer::name).or(s.eigentuemer_unbekannt.as_deref()))
 }
 
 /// Ein gesendeter Wert gilt, leer heißt entfernt; nicht gesendet behält den alten.
@@ -953,8 +959,51 @@ mod tests {
         let mut b = ausgang();
         b.spalten[0].grenze = Some(5);
         let neu = [mit_grenze_an("Review", None, 1), mit_grenze_an("Erledigt", Some("Erledigt"), 4)];
-        assert_eq!(geaendert(&b, &neu), [grenze("Review"), grenze("Erledigt"), grenze("Eingang"), grenze("In Arbeit")]);
+        assert_eq!(geaendert(&b, &neu), [grenze("Review"), grenze("Erledigt"), grenze("Eingang"), eigentuemer("Eingang"), grenze("In Arbeit")]);
         assert_eq!(aenderungen(&b, &neu).erste().map(|a| a.spalte.as_str()), Some("Review"));
         assert_eq!(aenderungen(&ausgang(), &unveraendert()).erste(), None);
+    }
+
+    fn eigentuemer(spalte: &str) -> (String, Einstellung) {
+        (spalte.into(), Einstellung::Eigentuemer)
+    }
+
+    /// `s` mit gesendetem Eigentümer: `Some(None)` ist `null`.
+    fn mit_eigentuemer(s: SpaltenAenderung, e: Option<&str>) -> SpaltenAenderung {
+        SpaltenAenderung { eigentuemer: Some(e.map(String::from)), ..s }
+    }
+
+    #[test]
+    fn eigentuemeraenderungen_je_spalte_ein_eintrag() {
+        let b = ausgang();
+        let erledigt = mit_grenze_an("Erledigt", Some("Erledigt"), 0);
+        let eingang = mit_grenze_an("Eingang", Some("Eingang"), 0);
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(2, mit_eigentuemer(erledigt, Some("human")))), [eigentuemer("Erledigt")], "keiner → human");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_eigentuemer(eingang.clone(), Some("agent")))), [eigentuemer("Eingang")], "human → agent");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_eigentuemer(eingang.clone(), None))), [eigentuemer("Eingang")], "human → keiner");
+        let mut chef = ausgang();
+        chef.spalten[2].eigentuemer_unbekannt = Some("chef".into());
+        assert_eq!(geaendert(&chef, &unveraendert_bis_auf(2, mit_eigentuemer(mit_grenze_an("Erledigt", Some("Erledigt"), 0), None))), [eigentuemer("Erledigt")], "chef → keiner");
+        assert_eq!(geaendert(&chef, &unveraendert()), [], "chef ohne Feld bleibt");
+        let mut neu = unveraendert();
+        neu.remove(0);
+        assert_eq!(geaendert(&b, &neu), [eigentuemer("Eingang")], "entfernte Spalte mit human");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_grenze_an("Posteingang", Some("Eingang"), 0))), [], "Umbenennen ohne Feld nimmt mit");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(0, mit_eigentuemer(eingang, Some("human")))), [], "gleicher Eigentümer gesendet");
+    }
+
+    #[test]
+    fn reihenfolge_grenze_vor_eigentuemer_anfrage_vor_entfernten() {
+        let b = ausgang();
+        let eingang_agent = || mit_eigentuemer(mit_grenze_an("Eingang", Some("Eingang"), 0), Some("agent"));
+        let in_arbeit_3 = || mit_grenze_an("In Arbeit", Some("In Arbeit"), 3);
+        let erledigt = || mit_grenze_an("Erledigt", Some("Erledigt"), 0);
+        let erste = |neu: &[SpaltenAenderung]| aenderungen(&b, neu).erste().map(|a| (a.spalte.clone(), a.einstellung));
+        assert_eq!(erste(&[eingang_agent(), in_arbeit_3(), erledigt()]), Some(eigentuemer("Eingang")));
+        assert_eq!(erste(&[in_arbeit_3(), eingang_agent(), erledigt()]), Some(grenze("In Arbeit")), "umsortiert");
+        let beides = mit_eigentuemer(in_arbeit_3(), Some("agent"));
+        assert_eq!(geaendert(&b, &[mit_grenze_an("Eingang", Some("Eingang"), 0), beides, erledigt()]), [grenze("In Arbeit"), eigentuemer("In Arbeit")], "in einer Spalte grenze vor eigentuemer");
+        let neu = [mit_eigentuemer(erledigt(), Some("human")), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2)];
+        assert_eq!(geaendert(&b, &neu), [eigentuemer("Erledigt"), eigentuemer("Eingang")], "die entfernte kommt zuletzt");
     }
 }

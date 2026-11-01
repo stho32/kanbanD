@@ -297,3 +297,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0300 Abweisung Einstellung verboten | Standard | 0,4-1h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0301 Einstellungsregel in den Zugregeln | Standard | 0,4-1h | 0,1h | 0,1h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0302 Spalten setzen prüft | Standard | 0,4-1h | 0,4h | 0,4h | autonom |
+| 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0303 Eigentümeränderungen ermitteln | Standard | 0,4-1h | 0,3h | 0,3h | autonom |
