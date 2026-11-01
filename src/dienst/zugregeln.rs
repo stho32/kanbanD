@@ -1,5 +1,7 @@
 //! Zugregeln (R00096, ADR-0002): ein Zug, der eine Spalte über ihre WIP-Grenze bringt, wird für Agenten abgewiesen
 //! und Menschen gemeldet. Gezählt wird im Modell (`Belegung`), entschieden hier — unter der Sperre, vor `aktion()`.
+//! Dazu die Entnahmeregel (R00097): ein Agent nimmt keine Karte aus einer Spalte, die dem Menschen gehört — sie läuft
+//! vor der Grenzprüfung, also 403 vor 409.
 
 use crate::fehler::Fehler;
 use crate::modell::{Art, Aufgabe, Board, Grenzverletzungen};
@@ -16,7 +18,28 @@ pub(crate) fn zug_pruefen(art: Art, vorher: &Board, nachher: &Board, archiviert:
     zugregeln(art, &nachher.belegung(archiviert).grenzverletzungen(&vorher.belegung(archiviert)))
 }
 
+/// Agent: die erste Karte in Anfragereihenfolge, die in einer Menschen-Spalte von `vorher` liegt, als `Verboten`.
+/// Mensch: nie gesperrt.
+pub(crate) fn entnahme_pruefen(art: Art, vorher: &Board, entnommen: &[u32]) -> Result<(), Fehler> {
+    match entnommen.iter().find_map(|n| vorher.entnahme_erlaubt(art, *n).err()) {
+        Some(sperre) => Err(Fehler::Verboten { meldung: format!("Spalte „{}“ gehört dem Menschen", sperre.spalte), spalte: sperre.spalte, nummer: sperre.nummer }),
+        None => Ok(()),
+    }
+}
+
+/// Erst die Entnahmeregel, dann die Grenzen (ADR-0002) — für Züge, die Karten aus ihrer Spalte nehmen.
+pub(crate) fn entnahme_und_zug_pruefen(art: Art, vorher: &Board, nachher: &Board, entnommen: &[u32], archiviert: &BTreeSet<u32>) -> Result<Vec<Warnung>, Fehler> {
+    entnahme_pruefen(art, vorher, entnommen)?;
+    zug_pruefen(art, vorher, nachher, archiviert)
+}
+
 impl super::Kanban {
+    /// `entnahme_und_zug_pruefen` mit den Archivierten des Ordners.
+    pub(super) fn entnahme_und_grenzen_pruefen(&self, wer: &crate::modell::Person, vorher: &Board, nachher: &Board, entnommen: &[u32]) -> Result<Vec<Warnung>, Fehler> {
+        entnahme_pruefen(wer.art, vorher, entnommen)?;
+        self.grenzen_pruefen(wer, vorher, nachher)
+    }
+
     /// `zug_pruefen` mit den Archivierten des Ordners; für Schreibwege, die die Aufgaben nicht ohnehin lesen.
     pub(super) fn grenzen_pruefen(&self, wer: &crate::modell::Person, vorher: &Board, nachher: &Board) -> Result<Vec<Warnung>, Fehler> {
         let (aufgaben, _) = self.ordner().aufgaben()?;
@@ -58,7 +81,7 @@ fn grenzwarnung(v: &crate::modell::Grenzverletzung) -> Warnung {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modell::Grenzverletzung;
+    use crate::modell::{Eigentuemer, Grenzverletzung};
 
     fn verletzungen() -> Grenzverletzungen {
         Grenzverletzungen(vec![
@@ -87,6 +110,43 @@ mod tests {
             gemeldet,
             [("grenze", "Grenze erreicht: „Bereit“ hat 2 von 1", 0, 0), ("grenze", "Grenze erreicht: „In Arbeit“ hat 3 von 2", 0, 0)]
         );
+    }
+
+    fn board_mit_eingang() -> Board {
+        let spalte = |name: &str, eigner, grenze, aufgaben: Vec<u32>| crate::modell::Spalte { notiz: None, farbe: None, eigentuemer: eigner, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben, phase: None, pruefungen: vec![] };
+        Board {
+            slug: "b".into(),
+            titel: "B".into(),
+            spalten: vec![spalte("Eingang", Some(Eigentuemer::Human), None, vec![1, 2]), spalte("In Arbeit", None, None, vec![9]), spalte("Voll", None, Some(1), vec![5])],
+            termine: vec![],
+            anwendungen: None,
+            start: None,
+            fieber: Default::default(),
+            berichtsfilter: Default::default(),
+        }
+    }
+
+    // R00097: die erste Sperre in Anfragereihenfolge (po-entscheidungen Z. 47), Mensch nie gesperrt
+    #[test]
+    fn entnahme_nennt_die_erste_sperre_in_anfragereihenfolge() {
+        let b = board_mit_eingang();
+        let verboten = |nummer| Err(Fehler::Verboten { meldung: "Spalte „Eingang“ gehört dem Menschen".into(), spalte: "Eingang".into(), nummer });
+        assert_eq!(entnahme_pruefen(Art::Agent, &b, &[9, 2, 1]), verboten(2));
+        assert_eq!(entnahme_pruefen(Art::Agent, &b, &[1, 2]), verboten(1));
+        assert_eq!(entnahme_pruefen(Art::Agent, &b, &[9, 5]), Ok(()));
+        assert_eq!(entnahme_pruefen(Art::Mensch, &b, &[1, 2]), Ok(()));
+    }
+
+    // ADR-0002: die Entnahmeregel läuft vor der Grenzprüfung — 403 vor 409
+    #[test]
+    fn verboten_kommt_vor_grenze_erreicht() {
+        let vorher = board_mit_eingang();
+        let mut nachher = vorher.clone();
+        nachher.bewegen(1, "Voll", None).unwrap();
+        let keine = BTreeSet::new();
+        assert!(matches!(entnahme_und_zug_pruefen(Art::Agent, &vorher, &nachher, &[1], &keine), Err(Fehler::Verboten { nummer: 1, .. })));
+        assert!(matches!(entnahme_und_zug_pruefen(Art::Agent, &vorher, &nachher, &[], &keine), Err(Fehler::GrenzeErreicht { .. })), "ohne Entnahme gilt die Grenze");
+        assert_eq!(entnahme_und_zug_pruefen(Art::Mensch, &vorher, &nachher, &[1], &keine).map(|w| w.len()), Ok(1), "Mensch: nur die Grenzwarnung");
     }
 
     #[test]
