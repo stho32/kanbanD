@@ -73,3 +73,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Nacharbeit | entwickler (frisch) | gestartet: 1 Muss aus dem Code-Review | — | — |
 | 2026-11-01 | #3 | Nacharbeit | entwickler (frisch) | bestanden: 186d864 Merker „berührt“ für Rohwert-Spalten, Test zuerst (rot→grün), cargo 411/0, Einheit 113/0, E2E 233/0 | — | Agent a22dcdbc |
 | 2026-11-01 | #3 | Auto-Reviews (Wiederholung) | code-reviewer (frisch) | bestanden: Rohwert-Befund behoben, kein neuer Fehler; Optional direkte Wahl „— keiner —“ wirkungslos → Härtung #26 | — | Agent a36c4533 |
+| 2026-11-01 | #3 | Entwicklertest US-4 | entwicklertester (frisch) | bestanden hell und dunkel; explorativ Rohwert unberührt bleibt, „— keiner —“ entfernt; Anm. Titelleiste Spalten-Dialog dunkel kontrastschwach (nicht aus #3) → #26 | — | Agent a307abd1 |
