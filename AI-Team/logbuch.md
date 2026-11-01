@@ -26,3 +26,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #2 | Detailplanung | planer (fortgesetzt) | bestanden: Nachtrag PO-Entscheidung in F0007–F0009, B0283, B0284, 34565e7 | 1 min | Agent a4384186, gesamt 124.583 Tokens |
 | 2026-11-01 | #2 | Entwicklung | entwickler entw1 (frisch) | läuft: I0085 ab F0005 Walking Slice, Nachtbetrieb (nice 19, Job-Grenze 1) | — | — |
 | 2026-11-01 | #18 | Backlog | realist-consultant, product-owner (frisch) | Auftraggeber-Wunsch Reiter „Kosten“ eingearbeitet: Schlüssel `cost` mit Positionen, Tokens nur Anzeige, Mitte auf der Karte, d83f29c; Währung an den Auftraggeber | 3 min | 74.518 + PO; Agents ae6b8408, a1ae8799 |
+| 2026-11-01 | #18 | Backlog | product-owner (fortgesetzt) | Währung vom Auftraggeber entschieden: Dollar überall; Euro-Fassung (Z. 36–44, 2792e92) durch Korrektur gekippt (Z. 45–46, 3532694); keine Vision-Änderung | 2 min | Agent a1ae8799 |
+| 2026-11-01 | #2 | Entwicklung | entwickler entw1 | bestanden: 11 Bubbles auf karte/2 (d65dc16…15312b7), I0085 grün, Gate laut Rolle 388/113/228; Director-Gegenprobe läuft | 21 min | 108.736 Tokens; Agent a0620a1e |
