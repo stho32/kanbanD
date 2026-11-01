@@ -30,6 +30,7 @@ const VORSPANN: &str = "---\nlimits:\n  In Arbeit: 2\ncolumn-owner:\n  Eingang: 
 struct Wirkung {
     status: u16,
     roh: String,
+    board_vorher: String,
     board: String,
     neue_commits: usize,
 }
@@ -50,21 +51,15 @@ async fn setzen_mit(vorspann: &str, eingang: &[u32], wer: &str, spalten: Value) 
     ausgang_mit(tmp.path(), vorspann, eingang);
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
     let vorher = commits(tmp.path());
+    let board_vorher = lies(tmp.path(), BOARD);
     let r = reqwest::Client::new().put(format!("{}api/boards/entwicklung/spalten", lauf.adresse)).header("X-KanbanD-Wer", wer).json(&spalten).send().await.unwrap();
     let status = r.status().as_u16();
     let roh = r.text().await.unwrap();
-    Wirkung { status, roh, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher }
+    Wirkung { status, roh, board_vorher, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher }
 }
 
 async fn setzen(wer: &str, spalten: Value) -> Wirkung {
     setzen_mit(VORSPANN, &[], wer, spalten).await
-}
-
-/// Die Board-Datei des Ausgangs, wie `ausgang_mit` sie schreibt.
-fn ausgangsdatei() -> String {
-    let tmp = tempfile::tempdir().unwrap();
-    ausgang_mit(tmp.path(), VORSPANN, &[]);
-    lies(tmp.path(), BOARD)
 }
 
 /// Abgewiesen: 403 mit genau diesem Rumpf, Board-Datei unverändert, kein Commit.
@@ -73,7 +68,7 @@ fn abgewiesen(w: &Wirkung, spalte: &str, einstellung: &str, fall: &str) {
     let was = if einstellung == "grenze" { "Grenze" } else { "Eigentümer" };
     let erwartet = format!(r#"{{"fehler":"{was} der Spalte „{spalte}“ ändern nur Menschen","spalte":"{spalte}","einstellung":"{einstellung}"}}"#);
     assert_eq!(w.roh, erwartet, "{fall}: Rumpf, fehler zuerst");
-    assert_eq!(w.board, ausgangsdatei(), "{fall}: Board-Datei unverändert");
+    assert_eq!(w.board, w.board_vorher, "{fall}: Board-Datei unverändert");
     assert_eq!(w.neue_commits, 0, "{fall}: kein Commit");
 }
 
@@ -138,4 +133,67 @@ async fn enthaelt_aufgaben_geht_vor_der_einstellungsregel() {
     assert_eq!(w.status, 409, "{}", w.roh);
     assert_eq!(w.rumpf(), json!({"fehler": "Spalte „Eingang“ enthält 1 Aufgaben — erst leeren"}));
     assert_eq!(w.neue_commits, 0);
+}
+
+// ---- F0018 Eigentümer und Reihenfolge (B0304)
+
+fn eigentuemer_von(spalte: &'static str, eigentuemer: Value) -> impl Fn(&str, &mut Value) {
+    move |name, s| {
+        if name == spalte {
+            s["eigentuemer"] = eigentuemer.clone();
+        }
+    }
+}
+
+/// Die abgewiesenen Fälle aus „Eigentümer“: (Fall, Anfrage, Spalte der Abweisung, column-owner-Block der Datei nach `st`).
+fn eigentuemerfaelle() -> Vec<(&'static str, Value, &'static str, &'static str)> {
+    vec![
+        ("Erledigt → human", alle(eigentuemer_von("Erledigt", json!("human"))), "Erledigt", "column-owner:\n  Eingang: human\n  Erledigt: human\n"),
+        ("Eingang → agent", alle(eigentuemer_von("Eingang", json!("agent"))), "Eingang", "column-owner:\n  Eingang: agent\n"),
+        ("Eingang → null", alle(eigentuemer_von("Eingang", Value::Null)), "Eingang", ""),
+        ("Eingang entfernt", json!([{"name": "In Arbeit", "alt": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]), "Eingang", ""),
+    ]
+}
+
+#[tokio::test]
+async fn agent_aendert_keinen_eigentuemer() {
+    for (fall, anfrage, spalte, _) in eigentuemerfaelle() {
+        let w = setzen("bot", anfrage).await;
+        abgewiesen(&w, spalte, "eigentuemer", fall);
+    }
+}
+
+#[tokio::test]
+async fn agent_entfernt_auch_keinen_unbekannten_eigentuemer() {
+    let vorspann = "---\nlimits:\n  In Arbeit: 2\ncolumn-owner:\n  Eingang: human\n  Erledigt: chef\n---\n";
+    let w = setzen_mit(vorspann, &[], "bot", alle(eigentuemer_von("Erledigt", Value::Null))).await;
+    abgewiesen(&w, "Erledigt", "eigentuemer", "chef → null");
+    assert!(w.board.contains("  Erledigt: chef\n"), "chef steht weiter in der Datei");
+}
+
+#[tokio::test]
+async fn mensch_setzt_und_entfernt_eigentuemer() {
+    for (fall, anfrage, _, eigentuemer) in eigentuemerfaelle() {
+        let w = setzen("st", anfrage).await;
+        assert_eq!((w.status, w.neue_commits), (200, 1), "{fall}: {}", w.roh);
+        assert!(w.board.starts_with(&format!("---\nlimits:\n  In Arbeit: 2\n{eigentuemer}---\n")), "{fall}: {}", w.board);
+    }
+}
+
+#[tokio::test]
+async fn die_erste_verletzung_von_links_grenze_vor_eigentuemer_entfernte_zuletzt() {
+    let eingang_agent = json!({"name": "Eingang", "alt": "Eingang", "eigentuemer": "agent"});
+    let in_arbeit_3 = json!({"name": "In Arbeit", "alt": "In Arbeit", "grenze": 3});
+    let eingang = json!({"name": "Eingang", "alt": "Eingang"});
+    let erledigt = json!({"name": "Erledigt", "alt": "Erledigt"});
+    let faelle = [
+        ("Eingang zuerst", json!([eingang_agent, in_arbeit_3, erledigt]), "Eingang", "eigentuemer"),
+        ("umsortiert", json!([in_arbeit_3, eingang_agent, erledigt]), "In Arbeit", "grenze"),
+        ("beides in einer Spalte", json!([eingang, {"name": "In Arbeit", "alt": "In Arbeit", "grenze": 3, "eigentuemer": "agent"}, erledigt]), "In Arbeit", "grenze"),
+        ("entfernte zuletzt", json!([{"name": "Erledigt", "alt": "Erledigt", "eigentuemer": "human"}, {"name": "In Arbeit", "alt": "In Arbeit", "grenze": 2}]), "Erledigt", "eigentuemer"),
+    ];
+    for (fall, anfrage, spalte, einstellung) in faelle {
+        let w = setzen("bot", anfrage).await;
+        abgewiesen(&w, spalte, einstellung, fall);
+    }
 }
