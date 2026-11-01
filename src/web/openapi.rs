@@ -50,6 +50,16 @@ pub struct Verboten {
     pub nummer: u32,
 }
 
+/// 403 eines Agenten, der über `PUT …/spalten` Grenze oder Eigentümer einer Spalte ändert (R00102, ADR-0006): `fehler`
+/// zuerst („Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer …“), dann die erste geänderte Spalte und
+/// welche Einstellung — `grenze` vor `eigentuemer`, Spalten der Anfrage von links, entfernte zuletzt.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct EinstellungVerboten {
+    pub fehler: String,
+    pub spalte: String,
+    pub einstellung: crate::modell::Einstellung,
+}
+
 /// 409 der Endpunkte mit WIP-Grenze (R00096): ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
 /// die [`Fehlerantwort`]. Nur für die Beschreibung.
 #[derive(serde::Serialize, utoipa::ToSchema)]

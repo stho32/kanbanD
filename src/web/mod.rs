@@ -153,7 +153,7 @@ impl IntoResponse for Fehler {
             Fehler::Defekt(_) => StatusCode::LOCKED,
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
-            Fehler::Verboten { .. } => StatusCode::FORBIDDEN,
+            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } => StatusCode::FORBIDDEN,
         };
         match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
@@ -162,6 +162,10 @@ impl IntoResponse for Fehler {
             }
             Fehler::Verboten { meldung, spalte, nummer } => {
                 let rumpf = openapi::Verboten { fehler: meldung.clone(), spalte: spalte.clone(), nummer: *nummer };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::EinstellungVerboten { meldung, spalte, einstellung } => {
+                let rumpf = openapi::EinstellungVerboten { fehler: meldung.clone(), spalte: spalte.clone(), einstellung: *einstellung };
                 (status, Json(rumpf)).into_response()
             }
             _ => (status, Json(json!({ "fehler": self.meldung() }))).into_response(),
@@ -1498,6 +1502,18 @@ mod tests {
         let (status, rumpf) = antwort(Fehler::Verboten { meldung: "Spalte „Eingang“ gehört dem Menschen".into(), spalte: "Eingang".into(), nummer: 1 }).await;
         assert_eq!(status, StatusCode::FORBIDDEN);
         assert_eq!(rumpf, r#"{"fehler":"Spalte „Eingang“ gehört dem Menschen","spalte":"Eingang","nummer":1}"#);
+    }
+
+    // R00102 / ADR-0006: Agent ändert Grenze oder Eigentümer — 403, Felder fehler, spalte, einstellung in dieser Reihenfolge, kein nummer
+    #[tokio::test]
+    async fn einstellung_verboten_ist_403_mit_spalte_und_einstellung_hinter_fehler() {
+        use crate::modell::Einstellung;
+        let (status, rumpf) = antwort(Fehler::einstellung_verboten("In Arbeit", Einstellung::Grenze)).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(rumpf, r#"{"fehler":"Grenze der Spalte „In Arbeit“ ändern nur Menschen","spalte":"In Arbeit","einstellung":"grenze"}"#);
+        let (status, rumpf) = antwort(Fehler::einstellung_verboten("Erledigt", Einstellung::Eigentuemer)).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(rumpf, r#"{"fehler":"Eigentümer der Spalte „Erledigt“ ändern nur Menschen","spalte":"Erledigt","einstellung":"eigentuemer"}"#);
     }
 
     #[tokio::test]

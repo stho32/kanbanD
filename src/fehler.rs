@@ -1,3 +1,5 @@
+use crate::modell::Einstellung;
+
 /// Was ein Anwendungsfall melden kann; jede Art hat ihren HTTP-Status.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Fehler {
@@ -15,6 +17,9 @@ pub enum Fehler {
     GrenzeErreicht { spalte: String, grenze: u32, anzahl: u32 },
     /// Ein Agent nähme eine Karte aus einer Spalte, die dem Menschen gehört (403, R00097, ADR-0003).
     Verboten { meldung: String, spalte: String, nummer: u32 },
+    /// Ein Agent änderte Grenze oder Eigentümer einer Spalte (403, R00102, ADR-0006); nur über `einstellung_verboten`
+    /// anlegen, damit Meldung und Einstellung zusammenpassen.
+    EinstellungVerboten { meldung: String, spalte: String, einstellung: Einstellung },
 }
 
 impl Fehler {
@@ -22,8 +27,17 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } => meldung,
         }
+    }
+
+    /// „Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer der Spalte …“ — der eine Ort für den Wortlaut.
+    pub fn einstellung_verboten(spalte: &str, einstellung: Einstellung) -> Fehler {
+        let was = match einstellung {
+            Einstellung::Grenze => "Grenze",
+            Einstellung::Eigentuemer => "Eigentümer",
+        };
+        Fehler::EinstellungVerboten { meldung: format!("{was} der Spalte „{spalte}“ ändern nur Menschen"), spalte: spalte.into(), einstellung }
     }
 }
 

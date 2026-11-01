@@ -294,3 +294,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0296 Eigentümer im Spalten-Dialog | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0297 Zeichen im Spaltenkopf | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0299 Grenzänderungen ermitteln | Standard | 0,4-1h | 0,3h | 0,3h | autonom |
+| 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0300 Abweisung Einstellung verboten | Standard | 0,4-1h | 0,2h | 0,2h | autonom |
