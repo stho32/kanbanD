@@ -78,3 +78,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Retrospektive | director | Lehre entwicklertester (ungültige Werte per Datei herstellen) im Projekt; Vorschlag: PO-Muss aus Fertig-Notiz je ein Testfall; Fortbildungsidee Merker „berührt“ | — | — |
 | 2026-11-01 | #27 | Detailplanung | planer (frisch) | bestanden: R00102, I0087 mit F0017–F0021, 9 Bubbles 3,8–9 h; offen PO-Frage fehlendes grenze, ADR-0003-Ergänzung | — | Agent a195bc1c |
 | 2026-11-01 | #27 | Detailplanung (PO) | product-owner (frisch) | entschieden Z. 56: fehlendes grenze behält den Wert, null/0 entfernt; F0019 bleibt | — | Agent a55a1d8b |
+| 2026-11-01 | #27 | Detailplanung (Architektur) | architekt (frisch) | bestanden: ADR-0006 Einstellung verboten als eigene 403-Variante (Enum Einstellung, Konstruktor, je Endpunkt eine 403-Form); keine Abweichung von R00102 | — | Agent acc381f7 |
