@@ -6,7 +6,7 @@ canvas:
 seed: .claude/wireframes/kanbanD.html
 art: prototyp
 richtung: Blaugrau, eckig, dicht — IBM Plex Sans/Mono, dunkle Kopfzeile, Zeile 28 px (kd-tokens.css)
-stand: 2026-10-18
+stand: 2026-11-01
 zurueckgeholt: 2026-09-26
 ---
 
@@ -33,5 +33,6 @@ Design-System im Repository.
 | 2026-10-18 | Artboard D0004 Aufgabenliste | Neuentwurf in der Richtung: Tabelle mit „Liegt auf“, Bereiche alle/ohne Board/archiviert | Dialog fehlte im Prototyp |
 | 2026-10-18 | Artboard D0007 Agenten-Schnittstelle | Seite /api: Satz zur Identität, Beispiel, Tabelle Methode · Pfad · Wer · Zweck nach Themen | Dialog ohne Vorbild im Prototyp |
 | 2026-10-18 | „Kein Git in der Oberfläche“ | bleibt für Pull/Push/Merge; kanbanD committet jede eigene Aktion, ohne Git-Bedienung in der Oberfläche | Vision-Fortschreibung 2026-10-18 |
+| 2026-11-01 | D0002 Zustand „Spalten mit Eigentümer“ (R00097, F0015) | angehängt unter dem Board, Hell und Dunkel: Kopfzeichen Mensch (Person, `--kd-mensch`) und Agent (Roboterkopf, `--kd-agent-ink`), 14 px SVG im Stil `svg.i` hinter dem Namen-Knopf vor ⓘ; zugeklappte Mensch-Spalte mit Zeichen über dem gedrehten Namen; „Spalten einrichten“ mit Auswahl „Eigentümer“, Hinweissatz (11 px, `--kd-muted`), unbekanntem Rohwert und Vorschau `column-owner` | Vorgabe vor B0297; PO-Entscheidungen #3 Z. 50–54; Kontrast ≥ 3:1 gegen `--kd-sunken` und `.bahn-kopf.ueber` in beiden Themen gerechnet |
 
 ## Offene Fragen
