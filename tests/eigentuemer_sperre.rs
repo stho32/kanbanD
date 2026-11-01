@@ -140,3 +140,50 @@ async fn agent_nimmt_keine_karte_aus_der_menschen_spalte_vom_board() {
     assert_eq!(s, 200, "Mensch wie heute");
     assert!(!lies(tmp.path(), "boards/fluss.md").contains("#1\n"));
 }
+
+// ---- archivieren (B0294)
+
+/// Ein zweites Board, das in der Boardliste vor „fluss“ steht: „Prüfen“ (human) mit `nummern`.
+fn vorn(pfad: &Path, nummern: &[u32]) {
+    let zeilen: String = nummern.iter().map(|n| format!("- #{n}\n")).collect();
+    std::fs::write(pfad.join("boards/aaa-vorn.md"), format!("---\ncolumn-owner:\n  Prüfen: human\n---\n\n# Vorn\n\n## Prüfen\n\n{zeilen}\n## Frei\n")).unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Vorn"]);
+}
+
+#[tokio::test]
+async fn agent_archiviert_keine_karte_aus_einer_menschen_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/1/archivieren", "cl", json!(null)).await;
+    assert_eq!((s, r), (403, verboten(1)));
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/archivieren", "cl", json!({"nummern": [9, 2, 1]})).await;
+    assert_eq!((s, r), (403, verboten(2)), "erste Sperre in Anfragereihenfolge");
+    assert_eq!(stand(tmp.path()), vorher, "archived fehlt, #9 nicht archiviert, kein Commit");
+    let (s, _) = senden(Method::POST, a, "api/aufgaben/9/archivieren", "cl", json!(null)).await;
+    assert_eq!(s, 200, "Spalte ohne Eigentümer wie heute");
+    let (s, _) = senden(Method::POST, a, "api/aufgaben/9/zurueckholen", "cl", json!(null)).await;
+    assert_eq!(s, 200, "Zurückholen bleibt ungesperrt");
+    let (s, _) = senden(Method::POST, a, "api/aufgaben/1/archivieren", "st", json!(null)).await;
+    assert_eq!(s, 200, "Mensch wie heute");
+    assert!(lies(tmp.path(), "aufgaben/0001-k.md").contains("archived:"));
+}
+
+#[tokio::test]
+async fn archivieren_prueft_jedes_board_in_der_boardliste() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    vorn(tmp.path(), &[9, 1]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let pruefen = |nummer| json!({"fehler": "Spalte „Prüfen“ gehört dem Menschen", "spalte": "Prüfen", "nummer": nummer});
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/9/archivieren", "cl", json!(null)).await;
+    assert_eq!((s, r), (403, pruefen(9)), "#9 liegt auf dem zweiten Board in einer Menschen-Spalte");
+    let (s, r) = senden(Method::POST, a, "api/aufgaben/archivieren", "cl", json!({"nummern": [1]})).await;
+    assert_eq!((s, r), (403, pruefen(1)), "das erste Board der Boardliste nennt die Sperre");
+    assert_eq!(stand(tmp.path()), vorher);
+}

@@ -46,6 +46,16 @@ impl super::Kanban {
         zug_pruefen(wer.art, vorher, nachher, &archivierte(&aufgaben))
     }
 
+    /// Archivieren nimmt die Karten von jedem Board, auf dem sie liegen (R00097): geprüft je Board in der Reihenfolge
+    /// der Boardliste, darin die Nummern in Anfragereihenfolge — die Abweisung nennt die erste Sperre. Mensch nie gesperrt.
+    pub(super) fn archivieren_pruefen(&self, wer: &crate::modell::Person, nummern: &[u32]) -> Result<(), Fehler> {
+        if wer.art == Art::Mensch {
+            return Ok(());
+        }
+        let (boards, _) = self.ordner().boards()?;
+        boards.iter().try_for_each(|b| entnahme_pruefen(wer.art, b, nummern))
+    }
+
     /// Zurückholen ändert kein Board, lässt die Karten aber auf jedem Board, auf dem sie liegen, wieder zählen:
     /// geprüft je Board in der Reihenfolge der Boardliste, also nennt die Abweisung das erste. Mensch ohne Warnung.
     pub(super) fn zurueckholen_pruefen(&self, wer: &crate::modell::Person, nummern: &[u32]) -> Result<(), Fehler> {

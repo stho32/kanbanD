@@ -288,3 +288,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0291 Bewegen und mehrere bewegen sperren | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0292 Ziehen prüft die Herkunft | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0293 Vom Board nehmen prüft | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-01 | R00097 Spalten mit Eigentümer | B0294 Archivieren prüft auf jedem Board | Standard | 1-2h | 0,2h | 0,2h | autonom |

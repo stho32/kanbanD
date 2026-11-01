@@ -5,11 +5,13 @@ use crate::uhr;
 
 impl Kanban {
     /// Setzt `archived` auf heute und beendet laufende Timer; Datei und Board-Zeile bleiben.
+    /// Ein Agent nicht, wenn die Karte auf einem Board in einer Menschen-Spalte liegt (403, R00097).
     pub fn archivieren(&self, wer: &Person, nr: u32) -> Result<Aufgabe, Fehler> {
         self.aufgabe_schreiben(wer, nr, |a| {
             if a.archiviert.is_some() {
                 return Err(Fehler::Konflikt(format!("#{nr} ist schon archiviert")));
             }
+            self.archivieren_pruefen(wer, &[nr])?;
             let jetzt = uhr::jetzt();
             let mut gestoppt = 0;
             for z in a.zeiten.iter_mut().filter(|z| z.ende.is_none()) {
@@ -63,6 +65,9 @@ impl Kanban {
             }
             geaendert.push(*nr);
             dateien.push((format!("{}/{}", crate::format::aufgabe::ORDNER, a.datei), crate::format::aufgabe::schreiben(&a)));
+        }
+        if archivieren && !geaendert.is_empty() {
+            self.archivieren_pruefen(wer, &geaendert)?;
         }
         if !archivieren && !geaendert.is_empty() {
             self.zurueckholen_pruefen(wer, &geaendert)?;
