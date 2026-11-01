@@ -292,6 +292,10 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bk-ed .r2 .inp{height:22px;width:44px;font-size:11.5px;padding:0 4px}
 .bk-ed .r2 .inp.kommentar{flex:1;width:auto;min-width:0}
 .bk-ed .r2 .farbwahl{width:32px;height:22px;padding:0;border:1px solid var(--kd-line-strong);background:none}
+.bk-ed .r2 .inp.eig-wahl{width:auto;flex:1;min-width:0;padding:0 2px;font-size:11.5px}
+.eig-zeile label{white-space:nowrap}
+.eig-roh{color:var(--kd-warn)}
+.eig-hin{font-size:11px;line-height:1.35;color:var(--kd-muted);padding:0 0 2px}
 .chk-s{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--kd-text);user-select:none;white-space:nowrap}
 .bk-ed .chk-s{margin-left:auto}
 .chk-s i{width:12px;height:12px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);display:grid;place-items:center;font-style:normal;font-size:9px}

@@ -1001,7 +1001,7 @@ async function act(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '' })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || '', eigentuemerAlt: sp.eigentuemer || '', roh: sp.eigentuemer_unbekannt || '' })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
       case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'setup-weg': u.setup = null; break;
@@ -1086,7 +1086,7 @@ async function act(a, arg, wert) {
       case 'setup-ok': {
         if (ichNoetig()) break;
         try {
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe })));
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer || null } : {}) })));
           if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
           u.setup = null;
           return laden();
@@ -1234,6 +1234,7 @@ document.addEventListener('input', e => {
     const sp = S.ui.setup.spalten[+e.target.dataset.i];
     sp[sf] = sf === 'grenze' ? e.target.value.replace(/\D/g, '') : e.target.value;
     S.ui.setup.fehler = null;
+    if (sf === 'eigentuemer') { $(`#eig-hin-${e.target.dataset.i}`).textContent = EIGENTUEMER_TEXT[sp.eigentuemer]; const roh = e.target.parentElement.querySelector('.eig-roh'); if (roh) roh.hidden = eigentuemerGeaendert(sp); }
     if (sf === 'farbe') { const bahn = e.target.closest('.bahn'); bahn.classList.add('gefaerbt'); bahn.style.setProperty('--sf', sp.farbe); e.target.nextElementSibling.textContent = sp.farbe; }
     $('#setup-vorschau').textContent = setupText(S.ui.setup);
     return;

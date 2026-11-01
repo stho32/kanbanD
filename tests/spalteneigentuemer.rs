@@ -17,6 +17,9 @@ async fn eigentuemer_und_hinweis_im_board() {
     assert_eq!(s, 200);
     let eigentuemer: Vec<_> = r["spalten"].as_array().unwrap().iter().map(|s| s["eigentuemer"].clone()).collect();
     assert_eq!(eigentuemer, [json!(null), json!("agent"), json!(null)]);
+    // B0296: der Rohwert kommt für „Spalten einrichten“ mit, nur wo es ihn gibt
+    let roh: Vec<_> = r["spalten"].as_array().unwrap().iter().map(|s| s.get("eigentuemer_unbekannt").cloned()).collect();
+    assert_eq!(roh, [Some(json!("chef")), None, None]);
     let hinweise = r["hinweise"].as_array().unwrap();
     assert!(hinweise.iter().any(|h| h == "Spalte „Eingang“: unbekannter Eigentümer „chef“"), "{hinweise:?}");
     let (s, l) = senden(Method::GET, &lauf.adresse, "api/boards", "st", json!(null)).await;
