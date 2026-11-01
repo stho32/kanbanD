@@ -316,3 +316,71 @@ async fn mensch_legt_in_die_volle_spalte_ohne_warnung() {
     assert_eq!((s, r), (200, json!([11])), "Antwortform unverändert");
     assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![5, 6, 10, 11]);
 }
+
+// ---- Zurückholen (B0283)
+
+/// „Fluss“ mit „In Arbeit“ = [5, 6, 8] bei Grenze 2, #6 archiviert — die Spalte zählt 2 und ist voll.
+fn voll_mit_archivierter(pfad: &Path) {
+    fluss(pfad, 2, &[7], &[5, 6, 8]);
+    archivieren(pfad, 6);
+}
+
+/// Zweites Board „Zweit“ (in der Boardliste nach „Fluss“) mit „Doing“ = `doing` bei Grenze 1.
+fn zweites_board(pfad: &Path, doing: &[u32]) {
+    let zeilen: String = doing.iter().map(|nr| format!("- #{nr}\n")).collect();
+    std::fs::write(pfad.join("boards/zweit.md"), format!("---\nlimits:\n  Doing: 1\n---\n\n# Zweit\n\n## Doing\n\n{zeilen}\n## Done\n")).unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["commit", "-q", "-m", "zweit"]);
+}
+
+#[tokio::test]
+async fn agent_holt_nicht_in_die_volle_spalte_zurueck() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll_mit_archivierter(tmp.path());
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = als(Method::POST, a, "api/aufgaben/6/zurueckholen", "cl", None, json!(null)).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "zurückholen");
+    assert!(lies(tmp.path(), "aufgaben/0006-k.md").contains("archived:"), "#6 bleibt archiviert");
+    let (s, r) = als(Method::POST, a, "api/aufgaben/zurueckholen", "cl", None, json!({"nummern": [6]})).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "mehrere zurückholen");
+}
+
+#[tokio::test]
+async fn zurueckholen_ohne_board_und_auf_jedem_board() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll_mit_archivierter(tmp.path());
+    lose(tmp.path(), &[20]);
+    archivieren(tmp.path(), 20);
+    zweites_board(tmp.path(), &[6, 9]);
+    lose(tmp.path(), &[9, 10]);
+    archivieren(tmp.path(), 10);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, r) = als(Method::POST, a, "api/aufgaben/20/zurueckholen", "cl", None, json!(null)).await;
+    assert_eq!((s, r["archiviert"].is_null()), (200, true), "Karte auf keinem Board: {r}");
+    let (s, r) = als(Method::POST, a, "api/aufgaben/zurueckholen", "cl", None, json!({"nummern": [6]})).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 2)), "beide Boards voll: das erste der Boardliste");
+    std::fs::write(tmp.path().join("boards/zweit.md"), "---\nlimits:\n  Doing: 1\n---\n\n# Zweit\n\n## Doing\n\n- #10\n- #9\n\n## Done\n").unwrap();
+    git(tmp.path(), &["commit", "-q", "-a", "-m", "#10 auf Zweit"]);
+    let vorher = stand(tmp.path());
+    let (s, r) = als(Method::POST, a, "api/aufgaben/10/zurueckholen", "cl", None, json!(null)).await;
+    assert_eq!((s, r), (409, grenze_erreicht("Doing", 1, 1)), "nur das zweite Board voll");
+    unveraendert(tmp.path(), &vorher, "zurückholen auf dem zweiten Board");
+}
+
+#[tokio::test]
+async fn mensch_holt_in_die_volle_spalte_zurueck_ohne_warnung() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll_mit_archivierter(tmp.path());
+    lose(tmp.path(), &[11]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let (s, r) = als(Method::POST, &lauf.adresse, "api/aufgaben/6/zurueckholen", "st", None, json!(null)).await;
+    assert_eq!((s, r["nummer"].as_u64(), r["archiviert"].is_null(), r.get("warnungen")), (200, Some(6), true, None), "Antwortform unverändert: {r}");
+    archivieren(tmp.path(), 6);
+    let (s, r) = als(Method::POST, &lauf.adresse, "api/aufgaben/zurueckholen", "st", None, json!({"nummern": [6]})).await;
+    assert_eq!((s, r), (200, json!([6])));
+}

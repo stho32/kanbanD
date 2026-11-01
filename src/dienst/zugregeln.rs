@@ -22,6 +22,19 @@ impl super::Kanban {
         let (aufgaben, _) = self.ordner().aufgaben()?;
         zug_pruefen(wer.art, vorher, nachher, &archivierte(&aufgaben))
     }
+
+    /// Zurückholen ändert kein Board, lässt die Karten aber auf jedem Board, auf dem sie liegen, wieder zählen:
+    /// geprüft je Board in der Reihenfolge der Boardliste, also nennt die Abweisung das erste. Mensch ohne Warnung.
+    pub(super) fn zurueckholen_pruefen(&self, wer: &crate::modell::Person, nummern: &[u32]) -> Result<(), Fehler> {
+        let (aufgaben, _) = self.ordner().aufgaben()?;
+        let vorher = archivierte(&aufgaben);
+        let nachher: BTreeSet<u32> = vorher.iter().copied().filter(|n| !nummern.contains(n)).collect();
+        let (boards, _) = self.ordner().boards()?;
+        for b in boards.iter().filter(|b| nummern.iter().any(|n| b.spalte_von(*n).is_some())) {
+            zugregeln(wer.art, &b.belegung(&nachher).grenzverletzungen(&b.belegung(&vorher)))?;
+        }
+        Ok(())
+    }
 }
 
 /// Agent: die erste Verletzung von links als `GrenzeErreicht` mit der Belegung vor dem Zug.

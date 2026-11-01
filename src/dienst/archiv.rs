@@ -25,11 +25,13 @@ impl Kanban {
         })
     }
 
+    /// Agent: 409, wenn die Karte dadurch auf einem Board über die Grenze käme (R00096).
     pub fn zurueckholen(&self, wer: &Person, nr: u32) -> Result<Aufgabe, Fehler> {
         self.aufgabe_schreiben(wer, nr, |a| {
             if a.archiviert.take().is_none() {
                 return Err(Fehler::Konflikt(format!("#{nr} ist nicht archiviert")));
             }
+            self.zurueckholen_pruefen(wer, &[nr])?;
             Ok(Some(format!("#{nr} zurückgeholt")))
         })
     }
@@ -61,6 +63,9 @@ impl Kanban {
             }
             geaendert.push(*nr);
             dateien.push((format!("{}/{}", crate::format::aufgabe::ORDNER, a.datei), crate::format::aufgabe::schreiben(&a)));
+        }
+        if !archivieren && !geaendert.is_empty() {
+            self.zurueckholen_pruefen(wer, &geaendert)?;
         }
         if !geaendert.is_empty() {
             let liste = geaendert.iter().map(|n| format!("#{n}")).collect::<Vec<_>>().join(", ");
