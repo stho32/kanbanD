@@ -61,3 +61,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Auto-Reviews | rechtschreib-reviewer (frisch) | befund: 2 Muss (Infinitiv-Großschreibung endpunkte.rs:46/mod.rs:339 „Hineinlegen“, endpunkte.rs:125 Satz /api umformulieren) → Nacharbeit nach Security-Review gebündelt; Sollte: openapi.rs:13, Gelerntes.md:49 → Härtung | — | Agent a65d8930 |
 | 2026-11-01 | #3 | Auto-Reviews | security-reviewer (frisch) | bestanden: Probe auf eigener Instanz, kein Umgehungsweg; Sollte: verwaister column-owner-Schlüssel/Listenwert fällt still weg und wird beim nächsten Schreiben gelöscht → Härtung; Optional: doppelte Nummer prüft nur erste Spalte | 5 min | Agent a2f692e5, 138.868 Tokens |
 | 2026-11-01 | #3 | Nacharbeit | entwickler (fortgesetzt) | gestartet: 2 Muss Rechtschreibung | — | Agent ae078f86 |
+| 2026-11-01 | #3 | Nacharbeit | entwickler (fortgesetzt) | bestanden: d7bf49a Rechtschreibung API-Texte, Abnahme-Greps vom Director nachgeprüft, cargo 411/0 | 1 min | Agent ae078f86, 85.668 Tokens |
+| 2026-11-01 | #3 | Auto-Reviews | director | Sollte/Optional aller Reviews auf Härtungskarte gesammelt | — | — |
