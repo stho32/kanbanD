@@ -187,3 +187,37 @@ async fn archivieren_prueft_jedes_board_in_der_boardliste() {
     assert_eq!((s, r), (403, pruefen(1)), "das erste Board der Boardliste nennt die Sperre");
     assert_eq!(stand(tmp.path()), vorher);
 }
+
+// ---- erlaubte Wege (B0295): ein Agent liefert in Menschen-Spalten ab und arbeitet an ihren Karten, ohne sie herauszunehmen
+
+#[tokio::test]
+async fn agent_liefert_ab_und_arbeitet_an_karten_der_menschen_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    let einstellungen = gemeinsam::EINSTELLUNGEN.replace("sources:", "signals:\n  review: {label: Bitte prüfen, color: violet}\nsources:");
+    std::fs::write(tmp.path().join("kanbanD.md"), einstellungen).unwrap();
+    std::fs::write(tmp.path().join("aufgaben/0003-k.md"), "---\nid: 3\ntitle: k3\n---\n").unwrap();
+    git(tmp.path(), &["add", "-A"]);
+    git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Signal und #3"]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, _) = senden(Method::POST, a, "api/aufgaben", "cl", json!({"titel": "neu vom Agenten", "board": "fluss", "spalte": "Eingang"})).await;
+    assert_eq!(s, 201, "neue Aufgabe in die Menschen-Spalte anlegen");
+    let (s, _) = senden(Method::POST, a, "api/boards/fluss/aufgaben", "cl", json!({"nummer": 3, "spalte": "Eingang"})).await;
+    assert_eq!(s, 201, "vorhandene Karte in die Menschen-Spalte legen");
+    let (s, _) = senden(Method::POST, a, "api/aufgaben/1/kommentare", "cl", json!({"text": "erledigt, bitte prüfen"})).await;
+    assert!((200..300).contains(&s), "kommentieren: {s}");
+    let (s, _) = senden(Method::POST, a, "api/aufgaben/1/zeiten", "cl", json!({"dauer": "0:30"})).await;
+    assert!((200..300).contains(&s), "Zeit buchen: {s}");
+    let (s, _) = senden(Method::PUT, a, "api/aufgaben/1/signale/review", "cl", json!(null)).await;
+    assert!((200..300).contains(&s), "Signal setzen: {s}");
+    let (s, _) = senden(Method::PATCH, a, "api/aufgaben/1", "cl", json!({"labels": ["geprüft"]})).await;
+    assert!((200..300).contains(&s), "Labels ändern: {s}");
+    let r = reqwest::Client::new().post(format!("{a}api/aufgaben/1/reservierung")).header("X-KanbanD-Wer", "cl").header("X-KanbanD-Instanz", "A").send().await.unwrap();
+    assert!(r.status().is_success(), "reservieren: {}", r.status());
+    let (_, b) = senden(Method::GET, a, "api/boards/fluss", "cl", json!(null)).await;
+    let eingang = b["spalten"][0]["aufgaben"].as_array().unwrap().iter().filter_map(|n| n.as_u64()).collect::<Vec<_>>();
+    assert!(eingang.contains(&1) && eingang.contains(&3) && eingang.len() == 4, "#1 bleibt, #3 und die neue liegen in Eingang: {eingang:?}");
+    let datei = lies(tmp.path(), "aufgaben/0001-k.md");
+    assert!(datei.contains("review") && datei.contains("geprüft") && datei.contains("reservation: {who: cl"), "{datei}");
+}
