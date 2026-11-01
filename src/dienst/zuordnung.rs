@@ -1,4 +1,5 @@
 use super::Kanban;
+use super::zugregeln::entnahme_pruefen;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Bewegfehler, Person};
@@ -50,9 +51,11 @@ impl Kanban {
         Ok(gelegt)
     }
 
+    /// Nimmt die Karte vom Board; ein Agent nicht aus einer Spalte, die dem Menschen gehört (403, R00097).
     pub fn von_board_nehmen(&self, wer: &Person, slug: &str, nummer: u32) -> Result<(), Fehler> {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
+        entnahme_pruefen(wer.art, &b, &[nummer])?;
         if !b.abnehmen(nummer) {
             return Err(Fehler::NichtGefunden(format!("#{nummer} liegt nicht auf „{}“", b.titel)));
         }

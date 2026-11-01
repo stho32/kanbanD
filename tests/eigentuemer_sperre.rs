@@ -121,3 +121,22 @@ async fn agent_zieht_aus_leerer_menschen_spalte_wie_heute() {
     let (s, _) = mit_instanz(Method::POST, &lauf.adresse, "api/boards/fluss/ziehen", "cl", "A", json!({"von": "Verstehen & Freigabe", "nach": "Voll"})).await;
     assert_eq!(s, 404, "ohne ziehbare Karte bleibt es 404 (po-entscheidungen Z. 48)");
 }
+
+// ---- vom Board nehmen (B0293)
+
+#[tokio::test]
+async fn agent_nimmt_keine_karte_aus_der_menschen_spalte_vom_board() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = senden(Method::DELETE, a, "api/boards/fluss/aufgaben/1", "cl", json!(null)).await;
+    assert_eq!((s, r), (403, verboten(1)));
+    assert_eq!(stand(tmp.path()), vorher, "Board-Datei und git log unverändert");
+    let (s, _) = senden(Method::DELETE, a, "api/boards/fluss/aufgaben/9", "cl", json!(null)).await;
+    assert_eq!(s, 200, "Spalte ohne Eigentümer wie heute");
+    let (s, _) = senden(Method::DELETE, a, "api/boards/fluss/aufgaben/1", "st", json!(null)).await;
+    assert_eq!(s, 200, "Mensch wie heute");
+    assert!(!lies(tmp.path(), "boards/fluss.md").contains("#1\n"));
+}
