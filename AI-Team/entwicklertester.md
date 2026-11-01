@@ -21,3 +21,4 @@ IDs aus `AI-Team/quellen.md`, die diese Rolle besonders braucht.
 ## Gelerntes
 
 - 2026-10-31 (#7): `web/` ist per `include_bytes!` ins Programm eingebettet (`src/web/statisch.rs`) — CSS/JS-Änderungen erst nach `cargo build` und Neustart der Instanz sichtbar.
+- 2026-11-01 (#3): Ungültige Werte in der Board-Datei (z. B. `column-owner: Eingang: chef`) weist die API mit 400 ab — als Gegeben per Datei und Commit im Testordner herstellen und im Bericht als „manuell hergestellt“ kennzeichnen.
