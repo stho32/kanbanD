@@ -65,3 +65,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Auto-Reviews | director | Sollte/Optional aller Reviews auf Härtungskarte gesammelt | — | — |
 | 2026-11-01 | #3 | Entwicklertest (US-1–US-3) | entwicklertester (frisch) | bestanden: alle Dann-Zeilen an der Schnittstelle beobachtet, eigene Instanz, keine Befunde; Anmerkung Leerzug als Agent → 200 statt 403 → Härtung #26; US-4 wartet auf Oberfläche | 12 min | Agent adbc65c3 |
 | 2026-11-01 | #3 | Entwicklung | sh (Auftraggeber) | Wireframe D0002 #spalten-mit-eigentuemer freigegeben, ohne Änderungen; Bau der Oberfläche F0015 beauftragt | — | — |
+| 2026-11-01 | #3, #21 | Rückfrage | product-owner (frisch) | Frage 3 vom Auftraggeber delegiert, entschieden: Grenze und Eigentümer ändern nur Menschen (po-entscheidungen Z. 55, ed0034b); neue Karte #27 für die Ausbaustufe; #21 erledigt | 2 min | Agent a7e9bd91, 86.083 Tokens |
