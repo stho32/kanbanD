@@ -456,6 +456,56 @@ impl Board {
     }
 }
 
+/// Eine Einstellung der Spalte, die nur Menschen ändern (R00102); im Rumpf der 403 als `"grenze"` bzw. `"eigentuemer"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Einstellung {
+    Grenze,
+    Eigentuemer,
+}
+
+/// Eine geänderte Einstellung: `spalte` ist der Name in der Anfrage, bei einer entfernten Spalte ihr bisheriger Name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Einstellungsaenderung {
+    pub spalte: String,
+    pub einstellung: Einstellung,
+}
+
+/// Die geänderten Einstellungen eines `PUT …/spalten` in Prüfreihenfolge: die Spalten der Anfrage von links, darin
+/// die Grenze vor dem Eigentümer, danach die entfernten Spalten in ihrer bisherigen Reihenfolge.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Einstellungsaenderungen(pub Vec<Einstellungsaenderung>);
+
+impl Einstellungsaenderungen {
+    /// Die Änderung, die eine Abweisung nennt.
+    pub fn erste(&self) -> Option<&Einstellungsaenderung> {
+        self.0.first()
+    }
+}
+
+impl Board {
+    /// Was `neu` an Grenze und Eigentümer ändert; `nachher` ist dieses Board nach `spalten_setzen(neu)`, seine Spalten
+    /// stehen also in der Reihenfolge von `neu`. Jede Spalte wird mit der verglichen, die sie über `alt` übernimmt —
+    /// ohne `alt` mit „keine Grenze, kein Eigentümer“; eine nicht übernommene Spalte mit „entfernt“.
+    pub fn einstellungsaenderungen(&self, nachher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen {
+        let uebernommen = |n: &SpaltenAenderung| n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
+        let angefragt = neu.iter().zip(&nachher.spalten).flat_map(|(n, s)| geaenderte_einstellungen(uebernommen(n), Some(s), &s.name));
+        let alte: Vec<&str> = neu.iter().filter_map(|n| n.alt.as_deref()).collect();
+        let entfernt = self.spalten.iter().filter(|s| !alte.contains(&s.name.as_str())).flat_map(|s| geaenderte_einstellungen(Some(s), None, &s.name));
+        Einstellungsaenderungen(angefragt.chain(entfernt).collect())
+    }
+}
+
+/// Die Einstellungen, in denen sich `vorher` und `nachher` unterscheiden; eine fehlende Spalte hat keine.
+fn geaenderte_einstellungen(vorher: Option<&Spalte>, nachher: Option<&Spalte>, spalte: &str) -> Vec<Einstellungsaenderung> {
+    let grenze = |s: Option<&Spalte>| s.and_then(|s| s.grenze).filter(|g| *g > 0);
+    [(Einstellung::Grenze, grenze(vorher) != grenze(nachher))]
+        .into_iter()
+        .filter(|(_, anders)| *anders)
+        .map(|(einstellung, _)| Einstellungsaenderung { spalte: spalte.into(), einstellung })
+        .collect()
+}
+
 /// Ein gesendeter Wert gilt, leer heißt entfernt; nicht gesendet behält den alten.
 fn gesetzt_oder_alt(neu: &Option<String>, alt: Option<String>) -> Option<String> {
     match neu {
@@ -829,5 +879,82 @@ mod tests {
             Grenzverletzungen(vec![verletzt("Bereit", 1, 1, 2), verletzt("In Arbeit", 2, 2, 3)]),
             "#8 und #6 zurückgeholt: beide zählen wieder, links zuerst"
         );
+    }
+
+    // ---- R00102: Einstellungsänderungen eines PUT …/spalten
+
+    /// Ausgangsboard der Akzeptanzkriterien: Eingang (human), In Arbeit (Grenze 2, leer), Erledigt.
+    fn ausgang() -> Board {
+        let spalte = |name: &str, grenze, eigentuemer| Spalte { notiz: None, farbe: None, eigentuemer, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        Board { spalten: vec![spalte("Eingang", None, Some(Eigentuemer::Human)), spalte("In Arbeit", Some(2), None), spalte("Erledigt", None, None)], ..b() }
+    }
+
+    /// Eine Spalte der Anfrage mit ausdrücklicher Grenze (`0` entfernt).
+    fn mit_grenze_an(name: &str, alt: Option<&str>, grenze: u32) -> SpaltenAenderung {
+        aend(name, alt, Some(grenze))
+    }
+
+    /// Die drei Spalten unverändert mit `alt` = Name und allen Werten.
+    fn unveraendert() -> Vec<SpaltenAenderung> {
+        vec![mit_grenze_an("Eingang", Some("Eingang"), 0), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2), mit_grenze_an("Erledigt", Some("Erledigt"), 0)]
+    }
+
+    fn unveraendert_bis_auf(i: usize, s: SpaltenAenderung) -> Vec<SpaltenAenderung> {
+        let mut neu = unveraendert();
+        neu[i] = s;
+        neu
+    }
+
+    fn aenderungen(vorher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen {
+        let mut nachher = vorher.clone();
+        nachher.spalten_setzen(neu).unwrap();
+        vorher.einstellungsaenderungen(&nachher, neu)
+    }
+
+    fn geaendert(vorher: &Board, neu: &[SpaltenAenderung]) -> Vec<(String, Einstellung)> {
+        aenderungen(vorher, neu).0.into_iter().map(|a| (a.spalte, a.einstellung)).collect()
+    }
+
+    fn grenze(spalte: &str) -> (String, Einstellung) {
+        (spalte.into(), Einstellung::Grenze)
+    }
+
+    #[test]
+    fn grenzaenderungen_je_spalte_ein_eintrag() {
+        let b = ausgang();
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(1, mit_grenze_an("In Arbeit", Some("In Arbeit"), 3))), [grenze("In Arbeit")], "2 → 3");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(1, mit_grenze_an("In Arbeit", Some("In Arbeit"), 0))), [grenze("In Arbeit")], "2 → keine");
+        assert_eq!(geaendert(&b, &unveraendert_bis_auf(2, mit_grenze_an("Erledigt", Some("Erledigt"), 4))), [grenze("Erledigt")], "keine → 4");
+        let mut neu = unveraendert();
+        neu.insert(2, mit_grenze_an("Review", None, 1));
+        assert_eq!(geaendert(&b, &neu), [grenze("Review")], "neue Spalte mit Grenze");
+        let mut neu = unveraendert();
+        neu.remove(1);
+        assert_eq!(geaendert(&b, &neu), [grenze("In Arbeit")], "entfernte Spalte mit Grenze, bisheriger Name");
+    }
+
+    #[test]
+    fn keine_grenzaenderung_bei_0_ohne_grenze_umbenennen_und_umsortieren() {
+        let b = ausgang();
+        assert_eq!(geaendert(&b, &unveraendert()), [], "unverändert");
+        let mut neu = unveraendert_bis_auf(1, mit_grenze_an("Bau", Some("In Arbeit"), 2));
+        neu.swap(0, 2);
+        assert_eq!(geaendert(&b, &neu), [], "0 für Erledigt ohne Grenze, In Arbeit → Bau mit gleicher Grenze, umsortiert");
+        let mut neu = unveraendert();
+        neu.remove(2);
+        assert_eq!(geaendert(&b, &neu), [], "leere Spalte ohne Grenze entfernt");
+        let mut neu = unveraendert();
+        neu.push(mit_grenze_an("Review", None, 0));
+        assert_eq!(geaendert(&b, &neu), [], "neue Spalte ohne Grenze");
+    }
+
+    #[test]
+    fn grenzaenderungen_erst_die_anfrage_von_links_dann_die_entfernten() {
+        let mut b = ausgang();
+        b.spalten[0].grenze = Some(5);
+        let neu = [mit_grenze_an("Review", None, 1), mit_grenze_an("Erledigt", Some("Erledigt"), 4)];
+        assert_eq!(geaendert(&b, &neu), [grenze("Review"), grenze("Erledigt"), grenze("Eingang"), grenze("In Arbeit")]);
+        assert_eq!(aenderungen(&b, &neu).erste().map(|a| a.spalte.as_str()), Some("Review"));
+        assert_eq!(aenderungen(&ausgang(), &unveraendert()).erste(), None);
     }
 }
