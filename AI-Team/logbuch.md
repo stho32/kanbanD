@@ -57,3 +57,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Entwicklung | director | Rebase karte/3 auf main (WBS-Konflikte nach main aufgelöst, Status gruen nachgezogen), Gate cargo 411/0; Reviews gestartet: code, security, architektur | — | — |
 | 2026-11-01 | #3 | Auto-Reviews | architektur-reviewer (frisch) | bestanden: ADR-0002/0003 eingehalten auf allen 6 Wegen; Sollte: Modell-Drift X00001, A00004, A00006 → Härtung/Architekt; Optional: Regel doppelt in zugregeln.rs, Art/Eigentuemer festhalten | — | Agent a16ee54d |
 | 2026-11-01 | #3 | Auto-Reviews | rechtschreib-reviewer (frisch) | gestartet: Texte API-Teil | — | — |
+| 2026-11-01 | #3 | Auto-Reviews | code-reviewer (frisch) | bestanden: alle AK außer Oberfläche erfüllt; Sollte: Archivieren überspringt defekte Boards (zugregeln.rs:55), Listenwert unter column-owner fällt still weg (format/board.rs:43) → Härtung; Optional: ""→400, Spalte-Konstruktor | — | Agent a04eb6c1 |
