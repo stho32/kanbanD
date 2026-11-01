@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Spalte {
@@ -396,6 +397,30 @@ fn gesetzt_oder_alt(neu: &Option<String>, alt: Option<String>) -> Option<String>
     }
 }
 
+/// Die zählenden Karten einer Spalte (R00096): nicht archiviert — dieselbe Zahl wie im Spaltenkopf.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Spaltenbelegung {
+    pub spalte: String,
+    pub grenze: Option<u32>,
+    pub nummern: Vec<u32>,
+}
+
+/// Belegung eines Boards, Spalten von links nach rechts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Belegung(pub Vec<Spaltenbelegung>);
+
+impl Board {
+    /// Je Spalte die Karten, die zählen; archivierte bleiben in der Board-Datei stehen und werden hier ausgenommen.
+    pub fn belegung(&self, archiviert: &BTreeSet<u32>) -> Belegung {
+        Belegung(
+            self.spalten
+                .iter()
+                .map(|s| Spaltenbelegung { spalte: s.name.clone(), grenze: s.grenze, nummern: s.aufgaben.iter().copied().filter(|n| !archiviert.contains(n)).collect() })
+                .collect(),
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Bewegfehler {
     NichtAufDemBoard,
@@ -566,5 +591,28 @@ mod tests {
         b.spalte_mut("A").unwrap().aufgaben.push(4);
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2, 4]);
         assert!(b.spalte_mut("X").is_none());
+    }
+
+    fn mit_grenze() -> Board {
+        let mut b = b();
+        b.spalten = vec![
+            Spalte { notiz: None, farbe: None, name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, pruefungen: vec![] },
+            Spalte { notiz: None, farbe: None, name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, pruefungen: vec![] },
+        ];
+        b
+    }
+
+    fn zaehlend(b: &Belegung) -> Vec<(&str, Vec<u32>)> {
+        b.0.iter().map(|s| (s.spalte.as_str(), s.nummern.clone())).collect()
+    }
+
+    // R00096: archivierte Karten zählen nicht
+    #[test]
+    fn belegung_ohne_archivierte_in_spaltenreihenfolge() {
+        let b = mit_grenze();
+        assert_eq!(zaehlend(&b.belegung(&BTreeSet::new())), vec![("Bereit", vec![7, 8]), ("In Arbeit", vec![5, 6])]);
+        let belegung = b.belegung(&BTreeSet::from([6, 8, 42]));
+        assert_eq!(zaehlend(&belegung), vec![("Bereit", vec![7]), ("In Arbeit", vec![5])], "#6 archiviert → „In Arbeit“ zählt 1");
+        assert_eq!(belegung.0[1].grenze, Some(2));
     }
 }
