@@ -43,3 +43,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Detailplanung | planer | bestanden: I0086, F0010–F0016, B0285–B0298 (14 Bubbles, 9,5–19 h Hypothese), 5263c3e; 3 Fragen an PO; UX-Vorprüfung/Wireframe D0002 nötig für F0015 | — | Agent a5416e6a |
 | 2026-11-01 | #3 | Detailplanung | product-owner (frisch) | gestartet: 3 Fragen des planers (403 bei mehreren Sperren, Ziehen aus leerer Menschen-Spalte, Eigentümer per PUT entfernen – verwandt #21) | — | Agent aa8d22f3 |
 | 2026-11-01 | #3 | Detailplanung | product-owner | befund: Frage 1 erste Sperre, Frage 2 bleibt 404, Frage 3 richtungsweisend → Auftraggeber mit #21; dcdf21c; Bau nicht blockiert | — | Agent aa8d22f3 |
+| 2026-11-01 | #3 | Detailplanung | planer (fortgesetzt) | bestanden: Notizen nach PO-Entscheidungen, 244b2a6 | 1 min | Agent a5416e6a, gesamt 122.180 Tokens |
+| 2026-11-01 | #3 | Entwicklung | entwickler (frisch) | gestartet: F0010–F0014, F0016 (API) im Worktree kanbanD-wt-entw1-3, Zweig karte/3; F0015 wartet auf UX-Vorprüfung | — | Agent ae078f86 |
+| 2026-11-01 | #3 | Detailplanung | ux-reviewer (frisch) | gestartet: Vorprüfung F0015 (Eigentümer in der Oberfläche) | — | Agent a5d3fd4c |
