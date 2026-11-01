@@ -15,3 +15,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-10-31 | #1–#6 | Architektur | architekt (fortgesetzt) | bestanden: Technikfrage bei #2 #3 #4 #5, ADR-0002–0005 akzeptiert, 4e7fd1a | — | +30.651 Tokens (fortgesetzt, 96.476 → 127.127), ≈ 5.100 je Karte |
 | 2026-10-31 | #1 | Detailplanung | planer (frisch), product-owner (fortgesetzt) | bestanden: I0084, 5 Bubbles; PO 2 Fragen entschieden | — | planer 86.397 Tokens; PO +16.000 (73.200 → 89.421) für Preisetikett und R00095 |
 | 2026-10-31 | #18 | Backlog | realist-consultant, product-owner | Preisetikett entschieden (PO 25ea662), Karte #18 angelegt | — | realist 67.924 Tokens |
+| 2026-10-31 | #1 | Entwicklung | entwickler (entw1) | bestanden: B0269–B0273 grün, d831a6f–c966c7b; Gate 359/113/227 grün | 10 min | nachgetragen 2026-11-01 aus den Kartenkommentaren (Session-Abbruch 20:21) |
+| 2026-10-31 | #1 | Auto-Reviews | code-reviewer | bestanden: 0 Muss; 2 Sollte als kleine Nacharbeit an entw1 (a9aad18, 360/0) | 2 min | nachgetragen; Optionales nicht übernommen (siehe Kartenkommentar) |
+| 2026-10-31 | #1 | Entwicklertest | entwicklertester | bestanden: US-1–US-4, kein Befund; Zug nach Erledigt 20:21 ohne Push und Auslieferung (Abbruch) | 2 min | nachgetragen |
+| 2026-11-01 | — | Fortsetzen | director | Board-Instanz 7422 neu gestartet; keine Timer offen, keine Worktrees; Gate a9aad18 nachgefahren vor Push von #1 | — | |
