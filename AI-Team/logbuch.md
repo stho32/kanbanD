@@ -28,3 +28,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #18 | Backlog | realist-consultant, product-owner (frisch) | Auftraggeber-Wunsch Reiter „Kosten“ eingearbeitet: Schlüssel `cost` mit Positionen, Tokens nur Anzeige, Mitte auf der Karte, d83f29c; Währung an den Auftraggeber | 3 min | 74.518 + PO; Agents ae6b8408, a1ae8799 |
 | 2026-11-01 | #18 | Backlog | product-owner (fortgesetzt) | Währung vom Auftraggeber entschieden: Dollar überall; Euro-Fassung (Z. 36–44, 2792e92) durch Korrektur gekippt (Z. 45–46, 3532694); keine Vision-Änderung | 2 min | Agent a1ae8799 |
 | 2026-11-01 | #2 | Entwicklung | entwickler entw1 | bestanden: 11 Bubbles auf karte/2 (d65dc16…15312b7), I0085 grün, Gate laut Rolle 388/113/228; Director-Gegenprobe läuft | 21 min | 108.736 Tokens; Agent a0620a1e |
+| 2026-11-01 | #2 | Auto-Reviews | code-reviewer (frisch) | läuft: main d263215 (Gegenprobe 388/113/228×2 grün); danach architektur-, rechtschreib-reviewer | — | — |
