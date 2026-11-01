@@ -35,3 +35,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #2 | Auto-Reviews | rechtschreib-reviewer (frisch), architekt (frisch, Modell-Nachführung) | gestartet | — | — |
 | 2026-11-01 | #2 | Auto-Reviews | rechtschreib-reviewer | bestanden; 2 Sollte (Anführungszeichen openapi.rs:35, verschachtelt in endpunkte.rs/openapi.rs bei bewegen, bewegen-mehrere, ziehen), 1 Kann (Karte→Aufgabe beim Auflegen) → mit R00097 beheben | — | — |
 | 2026-11-01 | #2 | Entwicklertest | entwicklertester (frisch) | gestartet auf main d263215, Wegwerf-Instanz | — | — |
+| 2026-11-01 | #2 | Entwicklertest | architekt | Modell nachgeführt (73b8c26, Korrektur ba6ca08: Herkunft unter „Notizen / Quellen“ statt eigener Historie); offen: ADR-0002 Option B nennt alte Signatur (Entscheidungstext, bleibt) | — | — |
