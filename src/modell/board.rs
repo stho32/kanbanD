@@ -401,10 +401,8 @@ impl Board {
             if let Some(f) = n.farbe.as_deref().map(str::trim).filter(|f| !f.is_empty() && !ist_hexfarbe(f)) {
                 return Err(Spaltenfehler::FarbeUngueltig(f.into()));
             }
-            if let Some(Some(e)) = &n.eigentuemer {
-                if Eigentuemer::aus(e.trim()).is_none() {
-                    return Err(Spaltenfehler::EigentuemerUngueltig(e.trim().into()));
-                }
+            if let Some(e) = n.eigentuemer.as_ref().and_then(|e| e.as_deref()).map(str::trim).filter(|e| Eigentuemer::aus(e).is_none()) {
+                return Err(Spaltenfehler::EigentuemerUngueltig(e.into()));
             }
             if let Some(alt) = n.alt.as_deref() {
                 if !self.spalten.iter().any(|s| s.name == alt) {
