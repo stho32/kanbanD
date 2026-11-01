@@ -259,3 +259,60 @@ async fn mensch_legt_in_der_vollen_spalte_an_ohne_warnung() {
     assert_eq!((s, r.as_array().map(Vec::len)), (201, Some(1)), "{r}");
     assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![5, 6, 8, 9]);
 }
+
+// ---- Auf das Board legen (B0282)
+
+/// Aufgaben, die auf keinem Board liegen.
+fn lose(pfad: &Path, nummern: &[u32]) {
+    for nr in nummern {
+        std::fs::write(pfad.join(format!("aufgaben/{nr:04}-k.md")), format!("---\nid: {nr}\ntitle: k{nr}\n---\n")).unwrap();
+    }
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["commit", "-q", "-m", "lose"]);
+}
+
+#[tokio::test]
+async fn agent_legt_nicht_in_die_volle_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7], &[5, 6]);
+    lose(tmp.path(), &[10, 11]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben", "cl", None, json!({"nummer": 10, "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "auflegen");
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben/mehrere", "cl", None, json!({"nummern": [10, 11], "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 2)));
+    unveraendert(tmp.path(), &vorher, "mehrere auflegen");
+}
+
+#[tokio::test]
+async fn schon_liegende_karte_ist_kein_zugang_beim_auflegen() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7], &[5]);
+    lose(tmp.path(), &[10, 11]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben/mehrere", "cl", None, json!({"nummern": [10, 11], "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (409, grenze_erreicht("In Arbeit", 2, 1)), "ein Platz, zwei neue");
+    unveraendert(tmp.path(), &vorher, "keine gelegt");
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben/mehrere", "cl", None, json!({"nummern": [5, 7, 10], "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (200, json!([10])), "#5 und #7 liegen schon: nur #10 kommt hinzu");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![5, 10]);
+}
+
+#[tokio::test]
+async fn mensch_legt_in_die_volle_spalte_ohne_warnung() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7], &[5, 6]);
+    lose(tmp.path(), &[10, 11]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben", "st", None, json!({"nummer": 10, "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (201, json!({"spalte": "In Arbeit"})), "Antwortform unverändert");
+    let (s, r) = als(Method::POST, a, "api/boards/fluss/aufgaben/mehrere", "st", None, json!({"nummern": [11], "spalte": "In Arbeit"})).await;
+    assert_eq!((s, r), (200, json!([11])), "Antwortform unverändert");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![5, 6, 10, 11]);
+}
