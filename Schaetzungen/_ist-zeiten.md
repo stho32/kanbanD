@@ -292,3 +292,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0295 Erlaubte Wege für Agenten | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0298 Eigentümer in der Beschreibung | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00097 Spalten mit Eigentümer | B0296 Eigentümer im Spalten-Dialog | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-01 | R00097 Spalten mit Eigentümer | B0297 Zeichen im Spaltenkopf | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
