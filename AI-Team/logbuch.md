@@ -72,3 +72,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Auto-Reviews (Oberfläche) | code-reviewer (frisch) | befund: 1 Muss — unbekannter Rohwert lässt sich im Dialog nicht per „— keiner —“ entfernen (PO Z. 52); XSS geprobt, sicher; Sollte: eigentuemer_unbekannt fehlt im OpenAPI-Schema → Härtung #26 | — | Agent a18729a5 |
 | 2026-11-01 | #3 | Nacharbeit | entwickler (frisch) | gestartet: 1 Muss aus dem Code-Review | — | — |
 | 2026-11-01 | #3 | Nacharbeit | entwickler (frisch) | bestanden: 186d864 Merker „berührt“ für Rohwert-Spalten, Test zuerst (rot→grün), cargo 411/0, Einheit 113/0, E2E 233/0 | — | Agent a22dcdbc |
+| 2026-11-01 | #3 | Auto-Reviews (Wiederholung) | code-reviewer (frisch) | bestanden: Rohwert-Befund behoben, kein neuer Fehler; Optional direkte Wahl „— keiner —“ wirkungslos → Härtung #26 | — | Agent a36c4533 |
