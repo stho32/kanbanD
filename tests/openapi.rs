@@ -160,3 +160,34 @@ async fn sechs_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
     assert!(d["info"]["description"].as_str().unwrap().contains("schützt vor Versehen, nicht vor Angriffen"), "openapi info");
     assert!(seite.contains("column-owner") && seite.contains("beruht auf <span class=\"mono\">X-KanbanD-Wer</span> und schützt vor Versehen, nicht vor Angriffen"), "Seite /api nennt Eigentümer und Full Trust");
 }
+
+/// R00102 B0307: PUT …/spalten nennt die Einstellungsregel; das 403-Schema `EinstellungVerboten` steht nur dort (ADR-0006).
+#[tokio::test]
+async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    let zweck = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "PUT" && e.pfad == "/api/boards/{slug}/spalten").unwrap().zweck;
+    let put = &d["paths"]["/api/boards/{slug}/spalten"]["put"];
+    for text in [zweck, put["description"].as_str().unwrap()] {
+        for teil in ["Grenze und Eigentümer ändern nur Menschen", "403 {fehler, spalte, einstellung: grenze|eigentuemer}", "von links, je Spalte grenze vor eigentuemer, entfernte Spalten zuletzt", "grenze fehlt → behält, null oder 0 → entfernt"] {
+            assert!(text.contains(teil), "fehlt „{teil}“: {text}");
+        }
+    }
+    assert_eq!(put["responses"]["403"]["content"]["application/json"]["schema"]["$ref"], "#/components/schemas/EinstellungVerboten");
+    let felder = d["components"]["schemas"]["EinstellungVerboten"]["properties"].as_object().unwrap();
+    assert_eq!(felder.keys().collect::<Vec<_>>(), ["einstellung", "fehler", "spalte"], "{felder:?}");
+    let mit_schema: Vec<String> = d["paths"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .flat_map(|(pfad, ops)| ops.as_object().unwrap().iter().map(move |(m, op)| (format!("{m} {pfad}"), op)))
+        .filter(|(_, op)| op["responses"]["403"].to_string().contains("EinstellungVerboten"))
+        .map(|(wo, _)| wo)
+        .collect();
+    assert_eq!(mit_schema, ["put /api/boards/{slug}/spalten"], "403 EinstellungVerboten nur an PUT …/spalten");
+    let satz = "Wer sich per <span class=\"mono\">PATCH /api/personen/{kuerzel}</span> zum Menschen macht, kommt durch";
+    assert!(seite.contains(satz), "Seite /api nennt die bekannte Grenze");
+    assert!(d["info"]["description"].as_str().unwrap().contains("Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch"), "openapi info");
+}
