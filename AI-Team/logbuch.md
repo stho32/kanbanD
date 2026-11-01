@@ -50,3 +50,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Detailplanung | product-owner (frisch) | gestartet: 4 UX-Fragen zu F0015 | — | Agent a838e30e |
 | 2026-11-01 | #3 | Detailplanung | product-owner | bestanden: 4 UX-Fragen nach Empfehlung, cb2b766; Gestaltungsvorschlag ohne Widerspruch; neue Karte #24 (Tooltip ohne Hover) im Backlog; Vorgabe Rohwert erhalten an entwickler nachgereicht | 1 min | Agent a838e30e, 82.330 Tokens |
 | 2026-11-01 | #3 | Detailplanung | planer (fortgesetzt) | gestartet: UX-Muss-Kriterien und PO-Entscheidungen in F0015 | — | Agent a5416e6a |
+| 2026-11-01 | #3 | Detailplanung | planer (fortgesetzt) | bestanden: F0015, B0296, B0297, B0285, B0286 nach UX-Muss und PO Z. 50–54, e24b861 | 1 min | Agent a5416e6a, gesamt 129.975 Tokens |
+| 2026-11-01 | #3 | Detailplanung | gestalter (frisch) | gestartet: Artboard D0002 Zustand „Spalten mit Eigentümer“ (Hell/Dunkel), Betrieb lokal | — | Agent aecc9110 |
