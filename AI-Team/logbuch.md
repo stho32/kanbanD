@@ -48,3 +48,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-01 | #3 | Detailplanung | ux-reviewer (frisch) | gestartet: Vorprüfung F0015 (Eigentümer in der Oberfläche) | — | Agent a5d3fd4c |
 | 2026-11-01 | #3 | Detailplanung | ux-reviewer | befund: 4 Muss-Kriterien für F0015 (Wireframe D0002 vor B0297, Form statt nur Farbe, Text-Alternative im Streifen, Kontrast ≥ 3:1), 5 Sollte, 2 Optional; 4 Fragen an PO; API-Slices unberührt | 4 min | Agent a5d3fd4c, 119.056 Tokens |
 | 2026-11-01 | #3 | Detailplanung | product-owner (frisch) | gestartet: 4 UX-Fragen zu F0015 | — | Agent a838e30e |
+| 2026-11-01 | #3 | Detailplanung | product-owner | bestanden: 4 UX-Fragen nach Empfehlung, cb2b766; Gestaltungsvorschlag ohne Widerspruch; neue Karte #24 (Tooltip ohne Hover) im Backlog; Vorgabe Rohwert erhalten an entwickler nachgereicht | 1 min | Agent a838e30e, 82.330 Tokens |
+| 2026-11-01 | #3 | Detailplanung | planer (fortgesetzt) | gestartet: UX-Muss-Kriterien und PO-Entscheidungen in F0015 | — | Agent a5416e6a |
