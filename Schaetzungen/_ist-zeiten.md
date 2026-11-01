@@ -267,3 +267,15 @@ Nie vom User erfragen.
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | B0193 Bindung im Spalten-Dialog | Standard | 0,5-1h | 0,05h | 0,05h | autonom |
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | Lauf R00062 | Nacharbeit | — | — | 0,06h | autonom |
 | 2026-10-18 | R00062 Leere Anwendungsliste löst die Bindung | Lauf R00062 | Konsolidierung | — | — | 0,00h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0274 Belegung zählen | Standard | 0,5-1h | 0,07h | 0,07h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0275 Grenzverletzungen | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0276 Abweisung Grenze erreicht | Standard | 0,5-1h | 0,01h | 0,01h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0277 Zugregeln | Standard | 0,5-1h | 0,03h | 0,03h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0278 Ziehen prüft vor der Reservierung | Standard | 1-2h | 0,03h | 0,03h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0279 Bewegen und mehrere bewegen prüfen | Standard | 1-2h | 0,02h | 0,02h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0280 Warnung in der Oberfläche | Standard | 0,5-1h | 0,02h | 0,02h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0281 Anlegen prüft | Standard | 1-2h | 0,01h | 0,01h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0282 Auflegen prüft | Standard | 1-2h | 0,01h | 0,01h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0283 Zurückholen prüft auf jedem Board | Standard | 1-2h | 0,02h | 0,02h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | B0284 Grenze in der Beschreibung | Standard | 0,5-1h | 0,04h | 0,04h | autonom |
+| 2026-11-01 | R00096 WIP-Grenze für Agenten durchsetzen | Lauf R00096 | Konsolidierung | — | — | 0,00h | autonom |
