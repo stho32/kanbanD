@@ -1,13 +1,15 @@
-use super::Kanban;
+use super::{Kanban, zugregeln};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Person, SpaltenAenderung, Spaltenfehler};
 
 impl Kanban {
-    /// Schreibt die neue Spaltenfolge in die Board-Datei; ohne Änderung kein Commit.
+    /// Schreibt die neue Spaltenfolge in die Board-Datei; ohne Änderung kein Commit. Formfehler (400) und „enthält
+    /// Aufgaben“ (409) gehen vor; ein Agent, der Grenze oder Eigentümer ändert, bekommt 403 (R00102).
     pub fn spalten_setzen(&self, wer: &Person, slug: &str, neu: &[SpaltenAenderung]) -> Result<bool, Fehler> {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
+        let vorher = b.clone();
         let geaendert = b.spalten_setzen(neu).map_err(|f| match f {
             Spaltenfehler::NameLeer => Fehler::Ungueltig("Eine Spalte braucht einen Namen".into()),
             Spaltenfehler::NameDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ ist doppelt")),
@@ -17,6 +19,7 @@ impl Kanban {
             Spaltenfehler::FarbeUngueltig(f) => Fehler::Ungueltig(format!("Farbe „{f}“ ist kein #rrggbb")),
             Spaltenfehler::EigentuemerUngueltig(e) => Fehler::Ungueltig(format!("Eigentümer „{e}“ ist nicht human, agent oder null")),
         })?;
+        zugregeln::einstellungen_pruefen(wer.art, &vorher.einstellungsaenderungen(&b, neu))?;
         if geaendert {
             self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         }
