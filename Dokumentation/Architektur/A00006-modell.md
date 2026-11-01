@@ -34,6 +34,8 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 
 - [ADR-0002: Zugregeln gemeinsam vor der Aktion](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)
 - [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md)
+- [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md) — Soll: `Einstellung { Grenze, Eigentuemer }` liegt im Modell, `Fehler::EinstellungVerboten` verweist darauf
+
 ## Offene Fragen
 
 ## Notizen / Quellen

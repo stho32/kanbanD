@@ -5,6 +5,7 @@
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00096, R00097
 **Erprobt durch**: —
+**Ergänzt durch**: [ADR-0006](0006-einstellung-verboten-als-dritte-abweisung.md) (dritte Variante `EinstellungVerboten`, 403, R00102)
 
 ## Kontext
 

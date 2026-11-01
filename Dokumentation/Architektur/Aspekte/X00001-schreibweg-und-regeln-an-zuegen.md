@@ -31,7 +31,7 @@ quellen:
 Jede schreibende Aktion ist eine Methode von `Kanban` in [A00004 Dienste](../A00004-dienste.md) und läuft in drei Schritten:
 
 1. **Sperre** — `let _sperre = self.gesperrt();` (eine `Mutex` je Ordner; WBS-Dateien fremder Repos haben eigene Sperren in `wbs_sperren`).
-2. **Prüfung** — Stand frisch aus dem Ordner lesen, fachliche Regel am [Modell](../A00006-modell.md) anwenden, bei Verstoß `Fehler::{Ungueltig, Konflikt, GrenzeErreicht, NichtGefunden}` (→ 400/409/409/404) zurückgeben, **bevor** etwas geschrieben ist.
+2. **Prüfung** — Stand frisch aus dem Ordner lesen, fachliche Regel am [Modell](../A00006-modell.md) anwenden, bei Verstoß `Fehler::{Ungueltig, Konflikt, GrenzeErreicht, Verboten, NichtGefunden}` (→ 400/409/409/403/404; Soll R00102: `EinstellungVerboten` → 403) zurückgeben, **bevor** etwas geschrieben ist.
 3. **`aktion(autor, nachricht, dateien)`** — Dateien schreiben, Pfade als eigen merken ([A00008 Wächter](../A00008-waechter.md)), genau ein Commit über [A00007 Git](../A00007-git.md).
 
 Nach dem Commit kommen nur noch Warnungen (z. B. Spaltenprüfungen `column-checks` in `bewegen.rs::warnungen`), nie Abweisungen. Die Warnung `grenze` entsteht dagegen schon in Schritt 2 und wird nur angehängt.
@@ -44,7 +44,9 @@ Regeln an Zügen nach [ADR-0002](../../ADRs/0002-zugregeln-gemeinsam-vor-der-akt
 - `zugregeln(art, &Grenzverletzungen)` (`zugregeln.rs:42`) — die Entscheidung: Agent ⇒ erste Verletzung von links als `Fehler::GrenzeErreicht { spalte, grenze, anzahl }` (409, `anzahl` = Belegung vor dem Zug); Mensch ⇒ je Verletzung `Warnung { pruefung: "grenze" }`.
 - Lesehelfer an `Kanban`: `grenzen_pruefen(wer, vorher, nachher)` (`zugregeln.rs:21`, liest die Archivierten selbst; `bewegen.rs`, `zuordnung.rs`) und `zurueckholen_pruefen(wer, nummern)` (`zugregeln.rs:28`, je Board in der Reihenfolge der Boardliste; `archiv.rs`).
 
-Eigentümer (R00097) und `Fehler::Verboten` (403) nach [ADR-0003](../../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md) sind noch nicht gebaut.
+Eigentümer (R00097) ist gebaut: `entnahme_und_zug_pruefen` (`zugregeln.rs`) gibt einem Agenten die erste gesperrte Karte als `Fehler::Verboten { meldung, spalte, nummer }` (403) nach [ADR-0003](../../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md).
+
+Soll (R00102, I0087, noch nicht gebaut): `PUT /api/boards/{slug}/spalten` (`spalten.rs`) behält das Board vor `spalten_setzen` als „vorher“, ermittelt nach Formfehler (400) und „enthält Aufgaben“ (409) die `Einstellungsaenderungen` (reine Funktion am [Modell](../A00006-modell.md)) und entscheidet in `zugregeln.rs`: Agent mit Änderung ⇒ erste als `Fehler::EinstellungVerboten { meldung, spalte, einstellung }` (403) nach [ADR-0006](../../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md); Mensch ⇒ weiter; dann `aktion()`.
 
 Ob ein **Mensch** über der Grenze eine Warnung bekommt, hängt am Schreibweg (PO-Entscheidung 2026-11-01, `AI-Team/po-entscheidungen.md:26`): nur dort, wo die Antwort schon `warnungen` trägt — `ziehen`, `bewegen`, `mehrere_bewegen`. Beim Anlegen mit `spalte`, Auflegen und Zurückholen wird der Mensch ohne Warnung durchgelassen, die Antwortform bleibt unverändert; die Belegung sieht er im Spaltenkopf.
 
