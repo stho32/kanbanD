@@ -39,6 +39,15 @@ pub struct GrenzeErreicht {
     pub anzahl: u32,
 }
 
+/// 403 eines Agenten, der eine Karte aus einer Spalte nähme, die dem Menschen gehört (R00097, ADR-0003): `fehler` zuerst
+/// („Spalte „<Name>“ gehört dem Menschen“), dann die Spalte und die erste gesperrte Karte in Anfragereihenfolge.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Verboten {
+    pub fehler: String,
+    pub spalte: String,
+    pub nummer: u32,
+}
+
 /// 409 der Endpunkte mit WIP-Grenze (R00096): ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
 /// die [`Fehlerantwort`]. Nur für die Beschreibung.
 #[derive(serde::Serialize, utoipa::ToSchema)]

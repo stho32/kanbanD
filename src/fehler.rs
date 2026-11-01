@@ -13,6 +13,8 @@ pub enum Fehler {
     Intern(String),
     /// Ein Zug brächte die Spalte über ihre Grenze (409, ADR-0003); `anzahl` ist die Belegung vor dem Zug.
     GrenzeErreicht { spalte: String, grenze: u32, anzahl: u32 },
+    /// Ein Agent nähme eine Karte aus einer Spalte, die dem Menschen gehört (403, R00097, ADR-0003).
+    Verboten { meldung: String, spalte: String, nummer: u32 },
 }
 
 impl Fehler {
@@ -20,6 +22,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
+            Fehler::Verboten { meldung, .. } => meldung,
         }
     }
 }

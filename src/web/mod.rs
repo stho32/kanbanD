@@ -153,10 +153,15 @@ impl IntoResponse for Fehler {
             Fehler::Defekt(_) => StatusCode::LOCKED,
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
+            Fehler::Verboten { .. } => StatusCode::FORBIDDEN,
         };
         match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
                 let rumpf = openapi::GrenzeErreicht { fehler: self.meldung().to_string(), spalte: spalte.clone(), grenze: *grenze, anzahl: *anzahl };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::Verboten { meldung, spalte, nummer } => {
+                let rumpf = openapi::Verboten { fehler: meldung.clone(), spalte: spalte.clone(), nummer: *nummer };
                 (status, Json(rumpf)).into_response()
             }
             _ => (status, Json(json!({ "fehler": self.meldung() }))).into_response(),
@@ -1485,6 +1490,14 @@ mod tests {
         let (status, rumpf) = antwort(Fehler::GrenzeErreicht { spalte: "In Arbeit".into(), grenze: 2, anzahl: 2 }).await;
         assert_eq!(status, StatusCode::CONFLICT);
         assert_eq!(rumpf, r#"{"fehler":"Grenze erreicht","spalte":"In Arbeit","grenze":2,"anzahl":2}"#);
+    }
+
+    // R00097 / ADR-0003: Agent aus einer Menschen-Spalte — 403, `fehler` zuerst, dann Spalte und Karte
+    #[tokio::test]
+    async fn verboten_ist_403_mit_spalte_und_nummer_hinter_fehler() {
+        let (status, rumpf) = antwort(Fehler::Verboten { meldung: "Spalte „Eingang“ gehört dem Menschen".into(), spalte: "Eingang".into(), nummer: 1 }).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(rumpf, r#"{"fehler":"Spalte „Eingang“ gehört dem Menschen","spalte":"Eingang","nummer":1}"#);
     }
 
     #[tokio::test]
