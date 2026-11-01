@@ -36,7 +36,7 @@ impl Kanban {
         if !geaendert {
             return Ok(Bewegt { bewegt: false, warnungen: vec![] });
         }
-        let grenzwarnungen = self.grenzen_pruefen(wer, &vorher, &b)?;
+        let grenzwarnungen = self.entnahme_und_grenzen_pruefen(wer, &vorher, &b, &[bw.nummer])?;
         let nachricht = if von.as_deref() == Some(bw.spalte.as_str()) {
             format!("#{} in „{}“ umsortiert ({})", bw.nummer, bw.spalte, b.titel)
         } else {
@@ -65,7 +65,8 @@ impl Kanban {
         if !geaendert {
             return Ok(Bewegt { bewegt: false, warnungen: vec![] });
         }
-        let grenzwarnungen = self.grenzen_pruefen(wer, &vorher, &b)?;
+        let entnommen: Vec<u32> = ziele.iter().map(|z| z.nummer).collect();
+        let grenzwarnungen = self.entnahme_und_grenzen_pruefen(wer, &vorher, &b, &entnommen)?;
         let nummern = ziele.iter().map(|z| format!("#{}", z.nummer)).collect::<Vec<_>>().join(", ");
         let wohin = match ziele.iter().all(|z| z.spalte == ziele[0].spalte) {
             true => format!("nach „{}“", ziele[0].spalte),
