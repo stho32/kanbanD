@@ -83,3 +83,40 @@ async fn accept_json_auf_api_leitet_weiter() {
     assert_eq!(seite.status().as_u16(), 200);
     assert!(seite.text().await.unwrap().contains("<b><a href=\"/api/openapi.json\">"), "die Seite verlinkt die Beschreibung oben");
 }
+
+/// R00096 B0284: die neun Endpunkte, an denen ein Agent an der WIP-Grenze abgewiesen wird; `true` = Zug mit Warnung für Menschen.
+const GRENZE: [(&str, &str, bool); 9] = [
+    ("post", "/api/boards/{slug}/ziehen", true),
+    ("post", "/api/boards/{slug}/bewegen", true),
+    ("post", "/api/boards/{slug}/bewegen-mehrere", true),
+    ("post", "/api/aufgaben", false),
+    ("post", "/api/aufgaben/mehrere", false),
+    ("post", "/api/boards/{slug}/aufgaben", false),
+    ("post", "/api/boards/{slug}/aufgaben/mehrere", false),
+    ("post", "/api/aufgaben/{nr}/zurueckholen", false),
+    ("post", "/api/aufgaben/zurueckholen", false),
+];
+
+#[tokio::test]
+async fn neun_endpunkte_nennen_die_grenze() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    let agent = "Agent über der WIP-Grenze → 409";
+    for (methode, pfad, zug) in GRENZE {
+        let mensch = if zug { "Mensch: Warnung grenze" } else { "Mensch: ohne Warnung" };
+        let zeile = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode.eq_ignore_ascii_case(methode) && e.pfad == pfad).unwrap();
+        assert!(zeile.zweck.contains(agent) && zeile.zweck.contains(mensch), "/api/endpunkte {pfad}: {}", zeile.zweck);
+        let op = &d["paths"][pfad][methode];
+        let text = op["description"].as_str().unwrap();
+        assert!(text.contains(agent) && text.contains(mensch), "openapi {pfad}: {text}");
+        let verweis = op["responses"]["409"]["content"]["application/json"]["schema"]["$ref"].as_str().unwrap_or_default();
+        let schema = d["components"]["schemas"][verweis.rsplit('/').next().unwrap()].to_string();
+        assert!(schema.contains("#/components/schemas/GrenzeErreicht") && schema.contains("#/components/schemas/Fehlerantwort"), "409 {pfad}: {schema}");
+    }
+    let zaehle = |t: &str| seite.matches(t).count();
+    assert_eq!((zaehle(agent), zaehle("Mensch: Warnung grenze"), zaehle("Mensch: ohne Warnung")), (9, 3, 6), "Seite /api");
+    let felder = &d["components"]["schemas"]["GrenzeErreicht"]["properties"];
+    assert!(["fehler", "spalte", "grenze", "anzahl"].iter().all(|f| felder[f].is_object()), "{felder}");
+}

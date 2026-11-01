@@ -80,6 +80,11 @@ async fn agent_zieht_nicht_in_die_volle_spalte() {
     unveraendert(tmp.path(), &vorher, "abgewiesenes Ziehen");
     let karte = lies(tmp.path(), "aufgaben/0007-k.md");
     assert!(!karte.contains("reservation") && !karte.contains("cl"), "#7 weder reserviert noch zugewiesen: {karte}");
+    // US-2: eine Karte verlässt „In Arbeit“, der Behandler zieht erneut und bekommt #7; „In Arbeit“ hat wieder 2 von 2
+    assert_eq!(bewegen(&lauf.adresse, "st", 5, "Fertig", None).await.0, 200);
+    let (s, r) = als(Method::POST, &lauf.adresse, "api/boards/fluss/ziehen", "cl", Some("A"), json!({"von": "Bereit"})).await;
+    assert_eq!((s, r["aufgabe"]["nummer"].as_u64()), (200, Some(7)), "{r}");
+    assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![7, 6]);
 }
 
 #[tokio::test]

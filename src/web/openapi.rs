@@ -39,6 +39,16 @@ pub struct GrenzeErreicht {
     pub anzahl: u32,
 }
 
+/// 409 der Endpunkte mit WIP-Grenze (R00096): ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
+/// die [`Fehlerantwort`]. Nur für die Beschreibung.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+#[serde(untagged)]
+#[allow(dead_code)]
+pub enum Konflikt {
+    GrenzeErreicht(GrenzeErreicht),
+    Fehlerantwort(Fehlerantwort),
+}
+
 /// Ob ein Aufruf etwas geändert (und committet) hat.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Geaendert {
