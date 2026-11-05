@@ -117,3 +117,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, Wiederholung code-reviewer und ux-reviewer | — | — |
 | 2026-11-05 | #19 | Auto-Reviews | code-reviewer, ux-reviewer (Runde 2) | bestanden; Sollte für später: indexbasierte Entfernen-Knöpfe halten Fokus auf Nachfolger, Kartenausnahme ohne Tastaturführung | 0:10 | — |
 | 2026-11-05 | #19 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
+| 2026-11-05 | #19 | Entwicklertest | entwicklertester (frisch) | bestanden: US-1–US-7 wörtlich, Gegenbeispiele, explorativ 3 Chartas (5 Ereignisse/s beim Tippen) | 0:05 | — |
+| 2026-11-05 | #19 | Erledigt | director | Auslieferung cargo install aus b6ec37a, 7422 neu gestartet, Health 200; kein Push; Worktree karte/19 entfernt; Kosten 31,90–39,16 $ (Rollen-Agenten der Karte) | — | — |
