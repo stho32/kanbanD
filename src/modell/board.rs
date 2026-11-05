@@ -241,6 +241,15 @@ impl Default for Berichtsfilter {
     }
 }
 
+/// Längste Form eines Board-Namens — dieselbe Grenze wie `modell::slug`.
+pub const SLUG_HOECHSTENS: usize = 40;
+
+/// Board-Name in der Form, die kanbanD selbst erzeugt (`modell::slug`): 1–40 Zeichen aus `a–z`, `0–9`, `-` (ADR-0008).
+/// Nur so ein Name wird zum Dateipfad `boards/{name}.md`; `..`, `/` und NUL erreichen das Dateisystem nie.
+pub fn slug_gueltig(s: &str) -> bool {
+    (1..=SLUG_HOECHSTENS).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 /// `JJJJ-MM-TT` mit gültigem Datum.
 pub fn ist_datum(s: &str) -> bool {
     s.len() == 10 && chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
@@ -646,6 +655,28 @@ pub enum Bewegfehler {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // B0340: genau die Form, die modell::slug erzeugt (ADR-0008)
+    #[test]
+    fn slug_gueltig_nimmt_nur_die_eigene_form() {
+        for gut in ["fabrik", "a", &"a".repeat(40), "kanban-d-2"] {
+            assert!(slug_gueltig(gut), "{gut:?} ist gültig");
+        }
+        for schlecht in ["", &"a".repeat(41), "Fabrik", "a_b", "a b", "a/b", ".", "..", "fabrik\0", "ä", "../aufgaben/0012-x", "./fabrik"] {
+            assert!(!slug_gueltig(schlecht), "{schlecht:?} ist ungültig");
+        }
+    }
+
+    #[test]
+    fn jeder_erzeugte_slug_ist_gueltig() {
+        let lang = "Ein sehr langer Titel mit Ümläuten und Sonderzeichen !?/\\ bis 60";
+        let titel = ["Fabrik", "Größe ändern: Übersicht!", "  --A  B--  ", "../../fremd/boards/b", "a_b c/d.e", "Straße 7 — Ärger", "İstanbul Kelvin \u{212A}", lang, &"x".repeat(60), &"ab-".repeat(20)];
+        for t in titel {
+            let s = crate::modell::slug(t);
+            assert!(!s.is_empty(), "{t:?} ergibt einen Slug");
+            assert!(slug_gueltig(&s), "slug({t:?}) = {s:?} ist gültig");
+        }
+    }
 
     fn b() -> Board {
         Board {

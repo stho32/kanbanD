@@ -115,7 +115,11 @@ impl Ordner {
         Ok(hoechste + 1)
     }
 
+    /// Die eine Eingangstür zu einer Board-Datei: erst die Form (400), dann die Datei (404) — ADR-0008.
     pub fn board(&self, slug: &str) -> Result<Board, Fehler> {
+        if !crate::modell::slug_gueltig(slug) {
+            return Err(Fehler::Ungueltig(board_name_ungueltig(slug)));
+        }
         let rel = board_pfad(slug);
         let text = self.lies(&rel)?.ok_or_else(|| Fehler::NichtGefunden(format!("Board „{slug}“ gibt es nicht")))?;
         board::lesen(slug, &text).map_err(|e| Fehler::Defekt(format!("{rel}: {e}")))
@@ -145,6 +149,12 @@ impl Ordner {
     }
 }
 
+/// Meldung zu einem Board-Namen außerhalb der Form; Steuerzeichen (NUL) kommen nie roh in die Antwort.
+fn board_name_ungueltig(slug: &str) -> String {
+    const FORM: &str = "1–40 Zeichen aus a–z, 0–9, -";
+    if slug.chars().any(char::is_control) { format!("Board-Name ungültig: {FORM}") } else { format!("Board-Name „{slug}“ ungültig: {FORM}") }
+}
+
 pub fn board_pfad(slug: &str) -> String {
     format!("{}/{slug}.md", board::ORDNER)
 }
@@ -161,4 +171,31 @@ fn ohne_abgelaufene(mut a: Aufgabe) -> Aufgabe {
         a.reservierung = None;
     }
     a
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Ordner;
+    use crate::fehler::Fehler;
+
+    fn ordner_mit_fabrik() -> (tempfile::TempDir, Ordner) {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("boards")).unwrap();
+        std::fs::write(tmp.path().join("boards/fabrik.md"), "# fabrik\n\n## In Arbeit\n").unwrap();
+        std::fs::write(tmp.path().join("fremd.md"), "# fremd\n\n## Geheim\n").unwrap();
+        let o = Ordner::neu(tmp.path().to_path_buf());
+        (tmp, o)
+    }
+
+    // B0340: die Eingangstür prüft die Form vor dem Lesen — auch wenn hinter dem Pfad ein lesbares Board läge
+    #[test]
+    fn board_weist_ungueltige_form_vor_dem_lesen_ab() {
+        let (_tmp, o) = ordner_mit_fabrik();
+        for name in ["../fremd", "./fabrik", "Fabrik", "", "fabrik\0"] {
+            assert!(matches!(o.board(name), Err(Fehler::Ungueltig(_))), "{name:?}: {:?}", o.board(name));
+        }
+        assert!(!o.board("fabrik\0").unwrap_err().meldung().contains('\0'), "kein NUL in der Meldung");
+        assert!(matches!(o.board(&"a".repeat(40)), Err(Fehler::NichtGefunden(_))));
+        assert_eq!(o.board("fabrik").unwrap().titel, "fabrik");
+    }
 }
