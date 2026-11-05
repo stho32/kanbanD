@@ -2,7 +2,7 @@
 //! findet. Suche, Prüfung und Schreiben laufen unter einer Sperre und enden in höchstens einem Commit.
 
 use crate::fehler::Fehler;
-use crate::modell::{Einstellungen, Fremdschluessel, signal_unbekannt};
+use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, signal_unbekannt};
 
 /// Eingabe von `POST /api/aufgaben/erledigen`; fehlende Felder gelten als leer und werden abgewiesen.
 #[derive(Debug, Clone, Default, serde::Deserialize, utoipa::ToSchema)]
@@ -49,6 +49,32 @@ impl Erledigung {
         }
         Ok(GepruefteErledigung { schluessel, board: board.to_string(), text, signal: self.signal.clone() })
     }
+}
+
+/// Was eine Erledigung mit der gefundenen Karte tut (R00099 Ablauf 2–5).
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Erledigungslage {
+    SchonErledigt,
+    NichtAufBoard,
+    SchonGemeldet,
+    Melden,
+    Erledigen { von: String, nach: String },
+}
+
+/// Reine Entscheidung in der Reihenfolge des Ablaufs: archiviert oder in der Abschlussspalte, nicht auf dem Board,
+/// Agent in einer Menschen-Spalte (melden statt bewegen), sonst erledigen.
+pub(super) fn lage(a: &Aufgabe, b: &Board, art: Art, signal: &str) -> Erledigungslage {
+    let abschluss = b.abschlussspalte().map(|s| s.name.as_str());
+    let Some(von) = b.spalte_von(a.nummer).map(|s| s.name.clone()) else {
+        return if a.archiviert.is_some() { Erledigungslage::SchonErledigt } else { Erledigungslage::NichtAufBoard };
+    };
+    if a.archiviert.is_some() || abschluss == Some(von.as_str()) {
+        return Erledigungslage::SchonErledigt;
+    }
+    if b.entnahme_erlaubt(art, a.nummer).is_err() {
+        return if a.signale.iter().any(|s| s == signal) { Erledigungslage::SchonGemeldet } else { Erledigungslage::Melden };
+    }
+    Erledigungslage::Erledigen { von, nach: abschluss.unwrap_or_default().to_string() }
 }
 
 #[cfg(test)]
@@ -111,5 +137,41 @@ mod tests {
         }
         let fehlend: Erledigung = serde_json::from_str(r#"{"key": "k1", "text": "weg", "signal": "behoben"}"#).unwrap();
         assert_eq!(ungueltig(fehlend.pruefen(&einstellungen())), "Board fehlt");
+    }
+
+    fn fabrik() -> Board {
+        crate::format::board::lesen("fabrik", "---\ncolumn-owner:\n  Eingang: human\n---\n\n# Fabrik\n\n## Eingang\n\n- #8\n\n## In Arbeit\n\n- #7\n\n## Fertig\n\n- #3\n").unwrap()
+    }
+
+    fn karte(nr: u32) -> Aufgabe {
+        Aufgabe::neu(nr, format!("000{nr}-x.md"), "x".into())
+    }
+
+    fn erledigen(von: &str) -> Erledigungslage {
+        Erledigungslage::Erledigen { von: von.into(), nach: "Fertig".into() }
+    }
+
+    // R00099 B0332: Lage je Fall × Mensch/Agent, Reihenfolge wie Ablauf 2–5
+    #[test]
+    fn lage_je_fall() {
+        let b = fabrik();
+        let mut archiviert = karte(7);
+        archiviert.archiviert = Some("2026-11-05".into());
+        let mut nirgends_archiviert = karte(9);
+        nirgends_archiviert.archiviert = Some("2026-11-05".into());
+        let mut gemeldet = karte(8);
+        gemeldet.signale.push("behoben".into());
+        for art in [Art::Agent, Art::Mensch] {
+            assert_eq!(lage(&archiviert, &b, art, "behoben"), Erledigungslage::SchonErledigt, "{art:?} archiviert");
+            assert_eq!(lage(&nirgends_archiviert, &b, art, "behoben"), Erledigungslage::SchonErledigt, "{art:?} archiviert, nicht auf dem Board");
+            assert_eq!(lage(&karte(3), &b, art, "behoben"), Erledigungslage::SchonErledigt, "{art:?} in der letzten Spalte");
+            assert_eq!(lage(&karte(9), &b, art, "behoben"), Erledigungslage::NichtAufBoard, "{art:?}");
+            assert_eq!(lage(&karte(7), &b, art, "behoben"), erledigen("In Arbeit"), "{art:?}");
+        }
+        assert_eq!(lage(&karte(8), &b, Art::Agent, "behoben"), Erledigungslage::Melden);
+        assert_eq!(lage(&gemeldet, &b, Art::Agent, "behoben"), Erledigungslage::SchonGemeldet);
+        assert_eq!(lage(&gemeldet, &b, Art::Agent, "anderes"), Erledigungslage::Melden, "nur das genannte Signal zählt");
+        assert_eq!(lage(&karte(8), &b, Art::Mensch, "behoben"), erledigen("Eingang"), "Menschen-Spalten sperren nur Agenten");
+        assert_eq!(lage(&gemeldet, &b, Art::Mensch, "behoben"), erledigen("Eingang"));
     }
 }
