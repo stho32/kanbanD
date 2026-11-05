@@ -470,3 +470,19 @@ async fn nicht_druckbare_zeichen_im_rundlauf() {
         assert_eq!((karte["titel"].as_str(), karte["key"].as_str()), (Some(titel.as_str()), Some(k)), "{k:?}");
     }
 }
+
+// Nacharbeit (optional, Review): #7 liegt archiviert auf „fabrik“ in der vollen „Fertig“; die Anfrage nennt ein
+// anderes Board — die Rückkehr auf „fabrik“ zählt mit, 409, nichts geschrieben (rueckkehr_pruefen)
+#[tokio::test]
+async fn grenze_auf_dem_zweiten_board_beim_wiederoeffnen() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll(tmp.path(), "  Fertig: 1\n", &[], &[5]);
+    std::fs::write(tmp.path().join("boards/zweit.md"), "# Zweit\n\n## Eingang\n").unwrap();
+    git(tmp.path(), &["add", "-A"]);
+    git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "zweit"]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = alles(tmp.path());
+    let (s, f) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "zweit", "spalte": "Eingang"})).await;
+    assert_eq!((s, f), (409, json!({"fehler": "Grenze erreicht", "spalte": "Fertig", "grenze": 1, "anzahl": 1})));
+    assert_eq!(alles(tmp.path()), vorher, "#7 bleibt archiviert, kein Commit");
+}
