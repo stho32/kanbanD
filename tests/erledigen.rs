@@ -268,3 +268,23 @@ async fn melden_prueft_keine_grenze() {
     assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("gemeldet"), &json!([])), "{r}");
     assert_eq!((spalte(tmp.path(), "Eingang"), commits(tmp.path())), (vec![8], vorher + 1));
 }
+
+// Prüfpunkt Rücklesen (B0334): key wird nur gelesen — nach dem Neuschreiben der Aufgabendatei liest er sich als derselbe
+// Text zurück (auch rein numerisch); der Text kommt mit Steuerzeichen, Zahlpräfix, Umlaut und Zeilenumbruch unverändert zurück (\r\n wird \n)
+#[tokio::test]
+async fn schluessel_und_text_lesen_sich_unveraendert_zurueck() {
+    for key in ["0815/größe-ü", "0815"] {
+        let tmp = tempfile::tempdir().unwrap();
+        fabrik(tmp.path(), "", &[(7, &format!("\"{key}\""), "In Arbeit", "")]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let text = "42. Lösung\tmit\u{1}Steuerzeichen\r\nzweite Zeile \\n kein Umbruch";
+        let (s, r) = erledigen(&lauf.adresse, "bot", json!({"key": key, "board": "fabrik", "text": text, "signal": "behoben"})).await;
+        assert_eq!((s, &r["ergebnis"]), (200, &json!("erledigt")), "{key}: {r}");
+        let erwartet = "Befund nicht mehr gefunden: 42. Lösung\tmit\u{1}Steuerzeichen\nzweite Zeile \\n kein Umbruch";
+        assert_eq!(r["aufgabe"]["kommentare"][0]["text"], erwartet, "Antwort");
+        let gelesen: Value = reqwest::get(format!("{}api/aufgaben/7", lauf.adresse)).await.unwrap().json().await.unwrap();
+        assert_eq!((gelesen["key"].as_str(), gelesen["kommentare"][0]["text"].as_str()), (Some(key), Some(erwartet)), "aus der Datei gelesen: {}", lies(tmp.path(), "aufgaben/0007-befund.md"));
+        let (s, r) = erledigen(&lauf.adresse, "bot", json!({"key": key, "board": "fabrik", "text": "x", "signal": "behoben"})).await;
+        assert_eq!((s, &r["ergebnis"]), (200, &json!("schon erledigt")), "{key}: über den Schlüssel wiedergefunden: {r}");
+    }
+}
