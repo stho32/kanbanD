@@ -130,3 +130,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Nacharbeit | director | Zug, entwickler fortgesetzt (a2424de), Klassen-Fix in skalar | — | — |
 | 2026-11-05 | #4 | Nacharbeit | entwickler (a2424de) | bestanden: Klassen-Fix skalar (Rücklese-Test, \uXXXX), +3 Tests; Fund NUL-Titel → 500 | 0:06 | — |
 | 2026-11-05 | #4 | Auto-Reviews | director | Zug, Wiederholung nur security-reviewer auf 685db20 | — | — |
+| 2026-11-05 | #4 | Auto-Reviews | security-reviewer (aa33983) | Wiederholung auf 3e462ac (Korrektur: nicht 685db20) bestanden; Nebenfund NUL-Titel → 500 bestätigt, vorbestehend | 0:09 | — |
+| 2026-11-05 | #4 | Entwicklertest | director | Zug, entwicklertester frisch | — | — |
