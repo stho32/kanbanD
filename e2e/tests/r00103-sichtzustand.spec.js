@@ -214,3 +214,109 @@ test.describe('R00103 Tippen', () => {
     expect((await eingabe(page)).wert).toBe('Abnahme durchführen');
   });
 });
+
+test.describe('R00103 Nur das Verlassen speichert', () => {
+  let k;
+  let speichern;
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten(DATEIEN));
+    // Speicheraufrufe des Browsers für #1 — die Anfragen des Tests über page.request zählen hier nicht mit
+    speichern = [];
+    page.on('request', r => { if (r.method() === 'PATCH' && r.url().endsWith('/api/aufgaben/1')) speichern.push(r.postDataJSON()); });
+  });
+  test.afterEach(() => k.stoppen());
+
+  const TITEL = '#1 geändert: Titel';
+  const titelImServer = async (page) => (await (await page.request.get(`${k.adresse}api/aufgaben/1`)).json()).titel;
+
+  /** st kürzt den Titel von #1 auf „Abnahme prü“, der Cursor steht dahinter. */
+  async function titelGekuerzt(page) {
+    await page.getByLabel('Titel', { exact: true }).click();
+    await page.keyboard.press('End');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
+  }
+
+  /** Zwei Kommentare von bot an #2 kurz hintereinander, gewartet bis beide gezeichnet sind. */
+  async function zweiFremdeEreignisse(page) {
+    const vorher = await renders(page);
+    const schon = await page.evaluate(() => window.kdTest.kommentare(2));
+    await Promise.all([kommentiert(page, k, 2, 'erster'), kommentiert(page, k, 2, 'zweiter')]);
+    await gezeichnetMitKommentaren(page, vorher, 2, schon + 2);
+  }
+
+  test('US-3 Negativbeweis: zwei fremde Ereignisse speichern den halben Titel nicht', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    expect(commits(k, TITEL)).toBe(0);
+    await zweiFremdeEreignisse(page);
+    expect(commits(k, TITEL)).toBe(0);
+    expect(speichern).toEqual([]);
+    expect(await titelImServer(page)).toBe('Abnahme prüfen');
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
+  });
+
+  test('US-4: weitertippen und verlassen speichert genau einmal', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    await zweiFremdeEreignisse(page);
+    await page.keyboard.type('fen lassen');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => titelImServer(page)).toBe('Abnahme prüfen lassen');
+    await zweiFremdeEreignisse(page);
+    await expect.poll(() => commits(k, TITEL)).toBe(1);
+    expect(speichern).toEqual([{ titel: 'Abnahme prüfen lassen' }]);
+  });
+
+  test('nach dem Zurücksetzen speichert Verlassen ohne Weitertippen den getippten Wert genau einmal', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    await zweiFremdeEreignisse(page);
+    await page.keyboard.press('Tab');
+    await expect.poll(() => titelImServer(page)).toBe('Abnahme prü');
+    await zweiFremdeEreignisse(page);
+    await expect.poll(() => commits(k, TITEL)).toBe(1);
+    expect(speichern).toEqual([{ titel: 'Abnahme prü' }]);
+  });
+
+  test('Leerfall: Fokus im unveränderten Titel, Ereignisse, Verlassen — kein Commit', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel', { exact: true }).click();
+    await zweiFremdeEreignisse(page);
+    await page.keyboard.press('Tab');
+    await zweiFremdeEreignisse(page);
+    expect(speichern).toEqual([]);
+    expect(commits(k, TITEL)).toBe(0);
+  });
+
+  test('US-7 getippt: der Commit von bot steht vor genau einem Commit von st', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    const vorher = await renders(page);
+    expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } })).ok()).toBe(true);
+    await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
+    await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Abnahme durchführen');
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
+    await page.keyboard.type('fen lassen');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => titelImServer(page)).toBe('Abnahme prüfen lassen');
+    // Die Datei steht vor dem Commit — auf den Commit warten, dann die Geschichte prüfen
+    await expect.poll(() => commits(k, TITEL)).toBe(2);
+    await zweiFremdeEreignisse(page);
+    const titelCommits = k.git('log', '--format=%an|%s').split('\n').filter(z => z.endsWith(TITEL));
+    expect(titelCommits).toEqual(['Stefan|' + TITEL, 'Bot|' + TITEL]);
+  });
+
+  test('US-7 nicht getippt: das Feld zeigt den fremden Titel, Verlassen speichert nichts', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel', { exact: true }).click();
+    const vorher = await renders(page);
+    expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } })).ok()).toBe(true);
+    await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
+    await expect(page.getByLabel('Titel', { exact: true })).toHaveValue('Abnahme durchführen');
+    await page.keyboard.press('Tab');
+    await zweiFremdeEreignisse(page);
+    expect(speichern).toEqual([]);
+    expect(k.git('log', '--format=%an|%s').split('\n').filter(z => z.endsWith(TITEL))).toEqual(['Bot|' + TITEL]);
+    expect(await titelImServer(page)).toBe('Abnahme durchführen');
+  });
+});

@@ -448,11 +448,18 @@ function render() {
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
-  $('#kopf').innerHTML = vKopf();
-  $('#main').innerHTML = vHaupt();
-  $('#main').dataset.sicht = sicht;
-  $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
-  $('#over').dataset.offen = String(S.ui.offen || '');
+  // Beim Ersetzen meldet der Browser für das fokussierte, getippte Feld „change“, solange es noch im Dokument hängt;
+  // das ist kein Verlassen und speichert nichts (R00103). Der Wert kommt über den Sicherer zurück.
+  S.neuzeichnen = true;
+  try {
+    $('#kopf').innerHTML = vKopf();
+    $('#main').innerHTML = vHaupt();
+    $('#main').dataset.sicht = sicht;
+    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
+    $('#over').dataset.offen = String(S.ui.offen || '');
+  } finally {
+    S.neuzeichnen = false;
+  }
   rollstaendeSetzen(rollen);
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
@@ -1107,6 +1114,8 @@ document.addEventListener('dblclick', e => {
   if (t) { e.preventDefault(); clearTimeout(S.titelKlick); act(t.dataset.dbl, t.dataset.arg); }
 });
 document.addEventListener('focusout', e => {
+  // Verlassen eines zurückgesetzten Felds meldet den getippten Wert nach (R00103); Ersetzen ist kein Verlassen
+  if (!S.neuzeichnen) aenderungNachtragen(e.target);
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
   if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
   // Verlassen des Teilaufgaben-Feldes speichert (R00066); nach Enter oder Esc ist teilEdit schon leer
@@ -1115,6 +1124,8 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('change', e => {
+  if (S.neuzeichnen) return;
+  aenderungGemeldet(e.target);
   // Aktion und Ebene einer Wirkung ändern, welche Felder das Formular zeigt
   if (e.target.dataset && e.target.dataset.wf && e.target.tagName === 'SELECT' && S.ui.wirkungNeu) { S.ui.wirkungNeu[e.target.dataset.wf] = e.target.value; S.ui.wirkungNeu.fehler = null; render(); return; }
   const tf = e.target.dataset && e.target.dataset.tf;

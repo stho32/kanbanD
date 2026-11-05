@@ -102,7 +102,10 @@
   function eingabeSetzen(stand) {
     const feld = wiedergefunden(stand.bereich, stand.schluessel);
     if (!feld) return false;
-    if (stand.geaendert) feld.value = stand.wert;
+    if (stand.geaendert) {
+      feld.value = stand.wert;
+      ungemeldet.add(feld);
+    }
     feld.focus({ preventScroll: true });
     if (typeof stand.von === 'number' && typeof stand.bis === 'number') {
       try { feld.setSelectionRange(stand.von, stand.bis); } catch (_) { /* Feldtyp ohne Textauswahl */ }
@@ -110,5 +113,21 @@
     return true;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, eingabestand, eingabeSetzen });
+  // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
+  // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
+  const ungemeldet = new WeakSet();
+
+  /** Ein „change“ des Felds ist angekommen: nichts mehr nachzutragen. */
+  function aenderungGemeldet(feld) {
+    ungemeldet.delete(feld);
+  }
+
+  /** Beim Verlassen: ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
+  function aenderungNachtragen(feld) {
+    if (!ungemeldet.has(feld)) return;
+    ungemeldet.delete(feld);
+    if (geaendert(feld)) feld.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, eingabestand, eingabeSetzen, aenderungGemeldet, aenderungNachtragen });
 })(typeof module !== 'undefined' ? module.exports : window);
