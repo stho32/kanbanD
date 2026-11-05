@@ -86,14 +86,16 @@
     return feld.value !== gezeichneterWert(feld);
   }
 
-  /** Das fokussierte Eingabefeld in einem der Bereiche: Schlüssel, Wert, ob geändert, Auswahl; sonst null. */
-  function eingabestand(aktiv, bereiche) {
-    if (!aktiv || !EINGABEFELD.test(aktiv.tagName)) return null;
+  /** Das fokussierte Element in einem der Bereiche: Schlüssel und — nur bei Eingabefeldern — Wert, ob geändert, Auswahl; sonst null. */
+  function fokusstand(aktiv, bereiche) {
+    if (!aktiv) return null;
     const bereich = bereiche.find(kandidat => kandidat && kandidat.contains(aktiv));
     if (!bereich) return null;
-    const schluesselDesFelds = schluesselIm(aktiv, bereich);
-    if (!schluesselDesFelds) return null;
-    return { bereich, schluessel: schluesselDesFelds, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd') };
+    const schluesselDesElements = schluesselIm(aktiv, bereich);
+    if (!schluesselDesElements) return null;
+    const stand = { bereich, schluessel: schluesselDesElements, wert: null, geaendert: false, von: null, bis: null };
+    if (!EINGABEFELD.test(aktiv.tagName)) return stand;
+    return { ...stand, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd') };
   }
 
   /** Cursor- oder Auswahlgrenze; Felder ohne Textauswahl (Datum, Auswahlliste) haben keine. */
@@ -101,8 +103,8 @@
     try { return feld[name]; } catch (_) { return null; }
   }
 
-  /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl. Wahr, wenn das Feld wiedergefunden ist. */
-  function eingabeSetzen(stand) {
+  /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl. Wahr, wenn das Element wiedergefunden ist. */
+  function fokusSetzen(stand) {
     const feld = wiedergefunden(stand.bereich, stand.schluessel);
     if (!feld) return false;
     if (stand.geaendert) {
@@ -128,5 +130,5 @@
     if (geaendert(feld)) feld.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, eingabestand, eingabeSetzen, aenderungGemeldet, aenderungNachtragen });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen });
 })(typeof module !== 'undefined' ? module.exports : window);

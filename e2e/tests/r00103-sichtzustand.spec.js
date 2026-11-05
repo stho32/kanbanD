@@ -215,6 +215,76 @@ test.describe('R00103 Tippen', () => {
   });
 });
 
+test.describe('R00103 Fokus auf Knöpfen', () => {
+  let k;
+  test.beforeEach(async () => { k = await kanbanStarten(einrichten(DATEIEN)); });
+  test.afterEach(() => k.stoppen());
+
+  const ZIELE = [
+    '.mod-kopf [data-act="blaettern"][data-arg="1"]',
+    '.mod-kopf [data-act="blaettern"][data-arg="-1"]',
+    '.mod-kopf [data-act="schliessen"]',
+    '.mod-kopf [data-act="archivieren"]',
+    '.mod-main .besch-lesen',
+  ];
+  /** Wahr, wenn das aktive Element genau das eine Element zum Selektor ist. */
+  const aktivIst = (page, selektor) => page.evaluate(sel => {
+    const treffer = document.querySelectorAll(sel);
+    return treffer.length === 1 && document.activeElement === treffer[0];
+  }, selektor);
+  /** Kurzbeschreibung des aktiven Elements für die Tab-Folge. */
+  const aktivesElement = page => page.evaluate(() => {
+    const e = document.activeElement;
+    return [e.tagName, e.getAttribute('aria-label') || e.title || e.id || ''].join(' ');
+  });
+  /** Ein Kommentar von bot an #2, gewartet bis er gezeichnet ist. */
+  async function fremdesEreignis(page) {
+    const vorher = await renders(page);
+    const schon = await page.evaluate(() => window.kdTest.kommentare(2));
+    await kommentiert(page, k, 2, 'fremd');
+    await gezeichnetMitKommentaren(page, vorher, 2, schon + 1);
+  }
+
+  for (const ziel of ZIELE) {
+    test(`Fokus bleibt auf ${ziel}`, async ({ page }) => {
+      await fensterOeffnen(page, k, BREIT);
+      await page.locator(ziel).focus();
+      expect(await aktivIst(page, ziel)).toBe(true);
+      await fremdesEreignis(page);
+      expect(await aktivIst(page, ziel), `aktiv ist ${await aktivesElement(page)}`).toBe(true);
+    });
+  }
+
+  test('„nächste Karte“, Ereignis, Enter blättert zu #2', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.locator(ZIELE[0]).focus();
+    await fremdesEreignis(page);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
+  });
+
+  test('Tab-Folge ab „vorige Karte“ ist mit Ereignissen dieselbe wie ohne', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.locator(ZIELE[1]).focus();
+    const ohne = [];
+    for (let i = 0; i < 4; i++) { await page.keyboard.press('Tab'); ohne.push(await aktivesElement(page)); }
+    await page.locator(ZIELE[1]).focus();
+    const mit = [];
+    for (let i = 0; i < 4; i++) { await fremdesEreignis(page); await page.keyboard.press('Tab'); mit.push(await aktivesElement(page)); }
+    expect(ohne.every(e => !e.startsWith('BODY')), ohne.join(' · ')).toBe(true);
+    expect(mit).toEqual(ohne);
+  });
+
+  test('zwei Ereignisse kurz hintereinander: der Fokus bleibt auf „nächste Karte“', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.locator(ZIELE[0]).focus();
+    const vorher = await renders(page);
+    await Promise.all([kommentiert(page, k, 2, 'erster'), kommentiert(page, k, 2, 'zweiter')]);
+    await gezeichnetMitKommentaren(page, vorher, 2, 2);
+    expect(await aktivIst(page, ZIELE[0]), `aktiv ist ${await aktivesElement(page)}`).toBe(true);
+  });
+});
+
 test.describe('R00103 Nur das Verlassen speichert', () => {
   let k;
   let speichern;

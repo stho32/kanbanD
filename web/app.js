@@ -439,12 +439,14 @@ function render() {
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
-  // Das fokussierte Eingabefeld übersteht es ebenso: Fokus, Cursor und — nur wenn getippt wurde — der Wert.
+  // Das fokussierte Element übersteht es ebenso: der Fokus, bei Eingabefeldern auch Cursor und — nur wenn getippt wurde — der Wert.
   const bereiche = [$('#kopf')];
   if ($('#main').dataset.sicht === sicht) bereiche.push($('#main'));
   if ($('#over').dataset.offen === String(S.ui.offen || '')) bereiche.push($('#over'));
   const rollen = bereiche.flatMap(bereich => rollstaende(bereich));
-  const eingabe = eingabestand(aktiv, bereiche);
+  // Karten und Zeilen führt die Tastatur über fokusKarte und fokusZeile — dort ist das Ziel ausdrücklich
+  const zielGefuehrt = Boolean(aktiv && aktiv.matches && aktiv.matches('.ka[data-id], tr[data-zeile]'));
+  const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -466,7 +468,7 @@ function render() {
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   // Ein ausdrückliches Fokusziel geht vor
-  const gehalten = Boolean(eingabe) && !S.ui.fokus && eingabeSetzen(eingabe);
+  const gehalten = Boolean(fokus) && !S.ui.fokus && fokusSetzen(fokus);
   if (!gehalten) fokusZurueckgeben();
 }
 
