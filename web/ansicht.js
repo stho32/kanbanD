@@ -210,7 +210,7 @@ function vFenster() {
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll"><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
   const haupt = `<div class="mod-main"><input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel"><div class="abs"><h3>BESCHREIBUNG</h3>${a.beschreibung && !S.ui.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`}</div>${vFensterAbschnitte(a)}</div>`;
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
-  const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder"><span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
+  const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
 <span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
@@ -490,6 +490,11 @@ const reservierungText = r => `reserviert von ${per(r.wer).name} · Instanz ${r.
 function vSchloss(a) {
   const r = gueltigeReservierung(a);
   return r ? `<span class="schloss" title="${esc(reservierungText(r))}" aria-label="${esc(reservierungText(r))}">${SCHLOSS}${esc(r.wer)}</span>` : '';
+}
+/** Der Fremdschlüssel wird nur beim Anlegen gesetzt (R00098) — hier nur lesbar. */
+function vSchluesselFeld(a) {
+  if (!a.key) return '';
+  return `<span class="k">Schlüssel</span><span class="w mono" id="schluessel">${esc(a.key)}</span>`;
 }
 function vReservierungFeld(a) {
   const r = gueltigeReservierung(a);
