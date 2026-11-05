@@ -49,6 +49,11 @@ fn commits(pfad: &Path) -> usize {
 
 /// Frischer Ordner nach `ausgang_mit`, ein `PUT …/spalten` als `wer`.
 async fn setzen_mit(vorspann: &str, eingang: &[u32], wer: &str, spalten: Value) -> Wirkung {
+    setzen_und_ziehen(vorspann, eingang, wer, spalten, None).await.0
+}
+
+/// Wie `setzen_mit`; danach, wenn `folgezug` gegeben, `POST …/bewegen` mit diesen Daten als `bot` — dessen Status.
+async fn setzen_und_ziehen(vorspann: &str, eingang: &[u32], wer: &str, spalten: Value, folgezug: Option<Value>) -> (Wirkung, Option<u16>) {
     let tmp = tempfile::tempdir().unwrap();
     ausgang_mit(tmp.path(), vorspann, eingang);
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
@@ -58,7 +63,12 @@ async fn setzen_mit(vorspann: &str, eingang: &[u32], wer: &str, spalten: Value) 
     let status = r.status().as_u16();
     let roh = r.text().await.unwrap();
     let gelesen = reqwest::get(format!("{}api/boards/entwicklung", lauf.adresse)).await.unwrap().json().await.unwrap();
-    Wirkung { status, roh, board_vorher, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher, gelesen }
+    let wirkung = Wirkung { status, roh, board_vorher, board: lies(tmp.path(), BOARD), neue_commits: commits(tmp.path()) - vorher, gelesen };
+    let zug = match folgezug {
+        Some(daten) => Some(gemeinsam::senden(reqwest::Method::POST, &lauf.adresse, "api/boards/entwicklung/bewegen", "bot", daten).await.0),
+        None => None,
+    };
+    (wirkung, zug)
 }
 
 async fn setzen(wer: &str, spalten: Value) -> Wirkung {
@@ -330,4 +340,76 @@ async fn beim_menschen_wandern_grenze_und_eigentuemer_mit_alt() {
     assert!(w.board.starts_with("---\nlimits:\n  Bau: 2\ncolumn-owner:\n  Posteingang: human\n---\n"), "{}", w.board);
     let gelesen = |i: usize, feld: &str| (w.gelesen["spalten"][i]["name"].clone(), w.gelesen["spalten"][i][feld].clone());
     assert_eq!((gelesen(0, "eigentuemer"), gelesen(1, "grenze")), ((json!("Posteingang"), json!("human")), (json!("Bau"), json!(2))), "{}", w.gelesen);
+}
+
+// ---- Nacharbeit 2 (Security-Wiederholung): Umbenennen oder Tauschen mit passend mitgesendeten Werten. Der Name allein
+// reicht nicht — die geschützte Spalte samt Karten wandert über `alt`; beide Identitäten zählen.
+
+/// U5b–U5e der Abnahme-Probe: (Fall, Anfrage, Spalte und Einstellung der 403).
+fn umgehungen() -> [(&'static str, Value, &'static str, &'static str); 4] {
+    [
+        (
+            "U5b Eingang → „Eingang alt“ ohne Eigentümer, neue Eingang mit human",
+            json!([{"name": "Eingang alt", "alt": "Eingang", "eigentuemer": null}, {"name": "Eingang", "eigentuemer": "human"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]),
+            "Eingang alt",
+            "eigentuemer",
+        ),
+        (
+            "U5c In Arbeit → Bau ohne Grenze, neue In Arbeit mit 2",
+            json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit", "grenze": 0}, {"name": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]),
+            "Bau",
+            "grenze",
+        ),
+        (
+            "U5d Tausch Eingang/In Arbeit mit getauschten Werten",
+            json!([{"name": "In Arbeit", "alt": "Eingang", "grenze": 2, "eigentuemer": null}, {"name": "Eingang", "alt": "In Arbeit", "grenze": 0, "eigentuemer": "human"}, {"name": "Erledigt", "alt": "Erledigt"}]),
+            "In Arbeit",
+            "grenze",
+        ),
+        (
+            "U5e Tausch Eingang/Erledigt mit getauschtem Eigentümer",
+            json!([{"name": "Erledigt", "alt": "Eingang", "eigentuemer": null}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Eingang", "alt": "Erledigt", "eigentuemer": "human"}]),
+            "Erledigt",
+            "eigentuemer",
+        ),
+    ]
+}
+
+#[tokio::test]
+async fn agent_umgeht_die_sperre_nicht_mit_mitgesendeten_werten() {
+    let mut durchgelassen = vec![];
+    for (fall, anfrage, spalte, einstellung) in umgehungen() {
+        let (w, zug) = setzen_und_ziehen(VORSPANN, &[1], "bot", anfrage, Some(json!({"nummer": 1, "spalte": "Erledigt"}))).await;
+        if w.status != 403 {
+            durchgelassen.push(format!("{fall}: {} {}, Folgezug {zug:?}", w.status, w.roh));
+            continue;
+        }
+        abgewiesen(&w, spalte, einstellung, fall);
+        assert_eq!(zug, Some(403), "{fall}: Folgezug #1 aus der Menschen-Spalte bleibt gesperrt");
+    }
+    assert!(durchgelassen.is_empty(), "durchgelassen:\n{}", durchgelassen.join("\n"));
+}
+
+#[tokio::test]
+async fn agent_verdoppelt_und_ersetzt_keine_geschuetzte_spalte() {
+    let doppelt = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "Eingang 2", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    nicht_durchgelassen(&setzen("bot", doppelt).await, "zwei Einträge mit alt = Eingang");
+    let ersetzt = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "Bau", "alt": "In Arbeit"}, {"name": "In Arbeit", "grenze": 2}, {"name": "Erledigt", "alt": "Erledigt"}]);
+    abgewiesen(&setzen("bot", ersetzt).await, "Bau", "grenze", "In Arbeit → Bau, neue In Arbeit mit grenze 2");
+}
+
+#[tokio::test]
+async fn agent_schleust_keine_spalte_ueber_einen_zeilenumbruch_ein() {
+    let u6a = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}, {"name": "Foo\n## Eingang"}]);
+    let w = setzen("bot", u6a).await;
+    assert_eq!(w.status, 403, "U6a: {}", w.roh);
+    assert_eq!((w.board.as_str(), w.neue_commits), (w.board_vorher.as_str(), 0), "U6a: byte-gleich, kein Commit");
+}
+
+#[tokio::test]
+async fn mensch_darf_jede_umgehung_ausfuehren() {
+    for (fall, anfrage, _, _) in umgehungen() {
+        let w = setzen_mit(VORSPANN, &[1], "st", anfrage).await;
+        assert_eq!((w.status, w.neue_commits), (200, 1), "{fall}: {}", w.roh);
+    }
 }

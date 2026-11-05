@@ -171,7 +171,7 @@ async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
     let zweck = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "PUT" && e.pfad == "/api/boards/{slug}/spalten").unwrap().zweck;
     let put = &d["paths"]["/api/boards/{slug}/spalten"]["put"];
     for text in [zweck, put["description"].as_str().unwrap()] {
-        for teil in ["Grenze und Eigentümer ändern nur Menschen", "403 {fehler, spalte, einstellung: grenze|eigentuemer}", "für Agenten nach Spaltennamen", "Umbenennen und Tauschen einer Spalte mit Einstellung zählen", "Namen der Anfrage von links, dann bisherige Namen, die fehlen, je Name grenze vor eigentuemer", "grenze fehlt → behält, null oder 0 → entfernt"] {
+        for teil in ["Grenze und Eigentümer ändern nur Menschen", "403 {fehler, spalte, einstellung: grenze|eigentuemer}", "für Agenten nach Spaltennamen", "Umbenennen und Tauschen einer Spalte mit Einstellung zählen als Änderung, auch mit mitgesendeten Werten", "Namen der Anfrage von links, dann bisherige Namen, die fehlen, je Name grenze vor eigentuemer", "grenze fehlt → behält, null oder 0 → entfernt"] {
             assert!(text.contains(teil), "fehlt „{teil}“: {text}");
         }
     }

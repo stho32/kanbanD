@@ -490,10 +490,11 @@ impl Einstellungsaenderungen {
 }
 
 impl Board {
-    /// Was `nachher` gegenüber diesem Board an Grenze und Eigentümer ändert, verglichen nach Spaltennamen — so, wie
-    /// `limits` und `column-owner` in der Datei Name → Wert stehen; `alt` zählt nicht, Umbenennen und Tauschen einer
-    /// Spalte mit Einstellung ändern also. Reihenfolge: die Namen der Anfrage `neu` von links, dann die bisherigen Namen,
-    /// die darin fehlen, zuletzt Namen, die nur `nachher` kennt.
+    /// Was `nachher` gegenüber diesem Board an Grenze und Eigentümer ändert. Eine geschützte Spalte hat zwei
+    /// Identitäten, und beide zählen: ihr Name — verglichen wird Name → Wert, so wie `limits` und `column-owner` in der
+    /// Datei stehen — und die Spalte samt Karten, die über `alt` unter einen anderen Namen wandert (siehe
+    /// `mitgenommene_einstellungen`). Reihenfolge: die Namen der Anfrage `neu` von links, dann die bisherigen Namen, die
+    /// darin fehlen, zuletzt Namen, die nur `nachher` kennt; je Name die Grenze vor dem Eigentümer.
     pub fn einstellungsaenderungen(&self, nachher: &Board, neu: &[SpaltenAenderung]) -> Einstellungsaenderungen {
         let mut namen: Vec<&str> = vec![];
         for name in neu.iter().map(|n| n.name.trim()).chain(self.spalten.iter().chain(&nachher.spalten).map(|s| s.name.as_str())) {
@@ -502,18 +503,43 @@ impl Board {
             }
         }
         let spalte = |b: &'_ Board, name: &str| b.spalten.iter().find(|s| s.name == name).cloned();
-        Einstellungsaenderungen(namen.into_iter().flat_map(|n| geaenderte_einstellungen(spalte(self, n).as_ref(), spalte(nachher, n).as_ref(), n)).collect())
+        let mut aenderungen = vec![];
+        for n in namen {
+            let danach = spalte(nachher, n);
+            let mut geaendert = geaenderte_einstellungen(spalte(self, n).as_ref(), danach.as_ref());
+            geaendert.extend(self.mitgenommene_einstellungen(danach.as_ref(), n, neu));
+            let je_einstellung = [Einstellung::Grenze, Einstellung::Eigentuemer].into_iter().filter(|e| geaendert.contains(e));
+            aenderungen.extend(je_einstellung.map(|einstellung| Einstellungsaenderung { spalte: n.into(), einstellung }));
+        }
+        Einstellungsaenderungen(aenderungen)
+    }
+
+    /// Eine Zeile der Anfrage mit Namen `name`, deren `alt` eine andere Spalte mit Grenze oder Eigentümer nennt, ändert
+    /// immer: die geschützte Spalte samt Karten stünde danach unter einem anderen Namen. Genannt werden die Einstellungen,
+    /// in denen sich die `alt`-Spalte und `danach` unterscheiden, sonst die erste, die die `alt`-Spalte trägt.
+    fn mitgenommene_einstellungen(&self, danach: Option<&Spalte>, name: &str, neu: &[SpaltenAenderung]) -> Vec<Einstellung> {
+        neu.iter()
+            .filter(|n| n.name.trim() == name)
+            .filter_map(|n| n.alt.as_deref())
+            .filter(|alt| alt.trim() != name)
+            .filter_map(|alt| self.spalten.iter().find(|s| s.name == alt))
+            .flat_map(|herkunft| {
+                let geaendert = geaenderte_einstellungen(Some(herkunft), danach);
+                let getragen = geaenderte_einstellungen(Some(herkunft), None);
+                if geaendert.is_empty() { getragen.into_iter().take(1).collect() } else { geaendert }
+            })
+            .collect()
     }
 }
 
 /// Die Einstellungen, in denen sich `vorher` und `nachher` unterscheiden, `grenze` vor `eigentuemer`; eine fehlende
 /// Spalte hat keine. Der Eigentümer zählt wie sein `column-owner`-Eintrag in der Datei, ein unbekannter Rohwert also mit.
-fn geaenderte_einstellungen(vorher: Option<&Spalte>, nachher: Option<&Spalte>, spalte: &str) -> Vec<Einstellungsaenderung> {
+fn geaenderte_einstellungen(vorher: Option<&Spalte>, nachher: Option<&Spalte>) -> Vec<Einstellung> {
     let grenze = |s: Option<&Spalte>| s.and_then(|s| s.grenze).filter(|g| *g > 0);
     [(Einstellung::Grenze, grenze(vorher) != grenze(nachher)), (Einstellung::Eigentuemer, eigentuemer_eintrag(vorher) != eigentuemer_eintrag(nachher))]
         .into_iter()
         .filter(|(_, anders)| *anders)
-        .map(|(einstellung, _)| Einstellungsaenderung { spalte: spalte.into(), einstellung })
+        .map(|(einstellung, _)| einstellung)
         .collect()
 }
 
@@ -1005,6 +1031,21 @@ mod tests {
     /// `s` mit gesendetem Eigentümer: `Some(None)` ist `null`.
     fn mit_eigentuemer(s: SpaltenAenderung, e: Option<&str>) -> SpaltenAenderung {
         SpaltenAenderung { eigentuemer: Some(e.map(String::from)), ..s }
+    }
+
+    #[test]
+    fn umbenannte_spalte_mit_einstellung_aendert_auch_mit_mitgesendeten_werten() {
+        let b = ausgang();
+        let u5b = [mit_eigentuemer(aend("Eingang alt", Some("Eingang"), None), None), mit_eigentuemer(aend("Eingang", None, None), Some("human")), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2), aend("Erledigt", Some("Erledigt"), None)];
+        assert_eq!(geaendert(&b, &u5b), [eigentuemer("Eingang alt")], "Eingang alt: Name gleich, aber die Spalte mit human verliert ihn");
+        let u5d = [mit_eigentuemer(mit_grenze_an("In Arbeit", Some("Eingang"), 2), None), mit_eigentuemer(mit_grenze_an("Eingang", Some("In Arbeit"), 0), Some("human")), aend("Erledigt", Some("Erledigt"), None)];
+        assert_eq!(geaendert(&b, &u5d), [grenze("In Arbeit"), eigentuemer("In Arbeit"), grenze("Eingang"), eigentuemer("Eingang")], "Tausch mit getauschten Werten: was sich gegen die alt-Spalte unterscheidet");
+        let mut gleich = ausgang();
+        gleich.spalten[2].eigentuemer = Some(Eigentuemer::Human);
+        let tausch = [aend("Erledigt", Some("Eingang"), None), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2), aend("Eingang", Some("Erledigt"), None)];
+        assert_eq!(geaendert(&gleich, &tausch), [eigentuemer("Erledigt"), eigentuemer("Eingang")], "Tausch zweier gleich geschützter Spalten: die erste getragene Einstellung");
+        let ohne = [aend("Eingang", Some("Eingang"), None), mit_grenze_an("In Arbeit", Some("In Arbeit"), 2), aend("Fertig", Some("Erledigt"), None)];
+        assert_eq!(geaendert(&b, &ohne), [], "Spalte ohne Einstellung umbenannt");
     }
 
     #[test]
