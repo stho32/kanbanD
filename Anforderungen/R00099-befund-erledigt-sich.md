@@ -8,7 +8,7 @@ datum: 2026-10-31
 
 ## Beschreibung
 
-Findet ein Sensor einen Befund nicht mehr, erledigt er dessen Karte über ihren Schlüssel (`key`, R00098) mit einem einzigen Aufruf: Er kommentiert mit Begründung und legt die Karte in die Abschlussspalte, beides in einem Commit. Liegt die Karte in einer Spalte, die dem Menschen gehört (R00097), wird sie nicht bewegt, sondern nur kommentiert und mit einem Signal versehen. Wiederholte Aufrufe ändern nichts mehr.
+Findet ein Sensor einen Befund nicht mehr, erledigt er dessen Karte über ihren Schlüssel (`key`, R00098) mit einem einzigen Aufruf: Er kommentiert mit Begründung und legt die Karte in die Abschlussspalte, beides in einem Commit. Liegt die Karte in einer Spalte, die dem Menschen gehört (R00097), wird sie nicht bewegt, sondern nur kommentiert und mit einem Signal versehen. Wiederholte Aufrufe ändern nichts mehr. Jede erfolgreiche Antwort trägt `warnungen` (sonst leer); erledigt ein Mensch in eine volle Abschlussspalte, steht dort die Warnung `grenze`, ein Agent wird dort abgewiesen.
 
 Zahlt ein auf: [Vision](R00000-vision.md) — Menschen im Browser, KI-Agenten über die API auf einem gemeinsamen Board.
 
@@ -37,20 +37,25 @@ Zwischen 2 und 3 kann ein Mensch die Karte bewegen, und ein Abbruch hinterlässt
 ### Ablauf unter der Sperre, ein Commit
 0. Eingaben prüfen (`key`, `text`, `signal`, `board` nicht leer) → sonst `400`, vor jeder Suche. Ein unbekanntes Board → `404`.
 1. Schlüssel suchen. Keine Karte → `404`, mehrfach vergeben → `409` (wie R00098).
-2. Karte archiviert oder in der Abschlussspalte (letzte Spalte) des Boards → `200` `{ergebnis: "schon erledigt"}`, kein Commit.
+2. Karte archiviert oder in der Abschlussspalte (letzte Spalte) des Boards → `200` `{aufgabe, ergebnis: "schon erledigt", warnungen: []}`, kein Commit.
 3. Karte nicht auf dem Board → `404`.
 4. Karte in einer Spalte mit `column-owner: human` und Wer ist ein Agent:
-   - Signal schon gesetzt → `200` `{ergebnis: "schon gemeldet"}`, kein Commit;
-   - sonst Kommentar „Befund nicht mehr gefunden: <text>“ und Signal setzen → `200` `{ergebnis: "gemeldet"}`, Commit „#n Befund nicht mehr gefunden — gemeldet (<Board>)“.
-5. Sonst Kommentar „Befund nicht mehr gefunden: <text>“, Karte oben in die Abschlussspalte, eine Reservierung entfernen → `200` `{ergebnis: "erledigt"}`, Commit „#n erledigt sich: „<von>“ → „<Abschlussspalte>“ (<Board>)“.
-- Die Antwort enthält immer `{aufgabe, ergebnis}`.
-- Die Grenze (R00096) gilt auch für die Abschlussspalte. Ist sie voll, folgt `409`, ohne Kommentar.
+   - Signal schon gesetzt → `200` `{aufgabe, ergebnis: "schon gemeldet", warnungen: []}`, kein Commit;
+   - sonst Kommentar „Befund nicht mehr gefunden: <text>“ und Signal setzen → `200` `{aufgabe, ergebnis: "gemeldet", warnungen: []}`, Commit „#n Befund nicht mehr gefunden — gemeldet (<Board>)“.
+5. Sonst Kommentar „Befund nicht mehr gefunden: <text>“, Karte oben in die Abschlussspalte, eine Reservierung entfernen → `200` `{aufgabe, ergebnis: "erledigt", warnungen}`, Commit „#n erledigt sich: „<von>“ → „<Abschlussspalte>“ (<Board>)“.
+- Jede `200`-Antwort hat die Form `{aufgabe, ergebnis, warnungen}`, dieselbe Form wie `warnungen` bei `ziehen` (`{aufgabe, von, nach, warnungen}`). `warnungen` ist eine Liste und leer, außer im Fall „Mensch über der Grenze“.
+- Die Grenze (R00096) gilt auch für die Abschlussspalte (Schritt 5), und es kommt auf Wer an (PO-Entscheidung 2026-11-05, `AI-Team/po-entscheidungen.md` Zeile 69):
+  - **Agent**: Ist sie voll, folgt `409 {fehler: "Grenze erreicht", spalte, grenze, anzahl}` mit der Anzahl vor dem Zug, ohne Kommentar und ohne Commit.
+  - **Mensch**: Der Zug wird wie in Schritt 5 ausgeführt (Kommentar, oben in die Abschlussspalte, Reservierung entfernt, ein Commit). `warnungen` enthält genau einen Eintrag `{pruefung: "grenze", text: "Grenze erreicht: „<Spalte>“ hat <n> von <Grenze>"}`, dabei ist `n` die Anzahl nicht archivierter Karten der Abschlussspalte **nach** dem Zug (Form wie R00096, „Antwort an einen Menschen“).
+  - Archivierte Karten zählen in beiden Fällen nicht.
+- Spaltenprüfungen (`column-checks`, R00059) laufen beim Erledigen nicht. `warnungen` trägt hier nur `grenze`; die Prüfungen lassen sich später additiv nachrüsten.
+- Liegt die Karte eines Agenten in einer Menschen-Spalte, gilt Schritt 4 vor der Grenze. Weil dort nichts bewegt wird, ergibt eine volle Abschlussspalte keine `409`, sondern „gemeldet“ bzw. „schon gemeldet“.
 - Für einen Menschen als Wer gilt Schritt 4 nicht, denn Menschen-Spalten sperren nur Agenten.
 - Im Fall „gemeldet“ bleiben Spalte und Reservierung unverändert; der Commit enthält nur die Aufgabendatei.
 - Ein schon gesetztes Signal an einer Karte außerhalb einer Menschen-Spalte bleibt beim Erledigen unverändert.
 
 ### Beschreibung
-- `/api`, `/api/endpunkte`, `/api/openapi.json` beschreiben den Endpunkt, die vier Ergebnisse und die Fehler.
+- `/api`, `/api/endpunkte`, `/api/openapi.json` beschreiben den Endpunkt, die vier Ergebnisse, das Feld `warnungen` (Liste, hier nur `grenze`, nur für Menschen über der Grenze) und die Fehler, darunter die `409` der Grenze für Agenten.
 
 ## Nicht-funktionale Anforderungen
 
@@ -62,25 +67,28 @@ Zwischen 2 und 3 kann ein Mensch die Karte bewegen, und ein Abbruch hinterlässt
 Alle Beispiele spielen auf dem Board „fabrik“ mit den Spalten Eingang (`column-owner: human`), Freigegeben, In Arbeit, Verstehen & Freigabe, Fertig; in `kanbanD.md` ist das Signal `behoben` eingerichtet. `bot` ist ein Agent, `st` ein Mensch. Der Aufruf heißt kurz `erledigen {…}` für `POST /api/aufgaben/erledigen`.
 
 ### Erledigen
-- [ ] Gegeben #7 trägt `key: k1`, liegt in „In Arbeit“ (ohne Eigentümer) und ist von Instanz A reserviert, wenn `bot` `erledigen {key: "k1", board: "fabrik", text: "lodash 4.17.21 ist eingespielt", signal: "behoben"}` schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt"}`, #7 liegt oben in „Fertig“, trägt den Kommentar „Befund nicht mehr gefunden: lodash 4.17.21 ist eingespielt“ von `bot` und keine Reservierung, und `git log` hat genau einen neuen Commit „#7 erledigt sich: „In Arbeit“ → „Fertig“ (fabrik)“, der Board-Datei und Aufgabendatei enthält.
-- [ ] Gegeben derselbe Ausgang nach dem ersten Aufruf, wenn `bot` denselben Aufruf noch einmal schickt, dann antwortet kanbanD `200 {ergebnis: "schon erledigt"}`, es gibt keinen neuen Commit und keinen neuen Kommentar.
-- [ ] Gegeben #7 trägt `key: k1` und ist archiviert, wenn `bot` erledigen schickt, dann antwortet kanbanD `200 {ergebnis: "schon erledigt"}` ohne Commit — auch wenn #7 nicht auf „fabrik“ liegt.
-- [ ] **Grenzwert:** Gegeben derselbe Ausgang, wenn `text` 2000 Zeichen hat, dann `200 {ergebnis: "erledigt"}`; mit 2001 Zeichen `400` ohne Commit.
+- [ ] Gegeben #7 trägt `key: k1`, liegt in „In Arbeit“ (ohne Eigentümer) und ist von Instanz A reserviert, wenn `bot` `erledigen {key: "k1", board: "fabrik", text: "lodash 4.17.21 ist eingespielt", signal: "behoben"}` schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt", warnungen: []}`, #7 liegt oben in „Fertig“, trägt den Kommentar „Befund nicht mehr gefunden: lodash 4.17.21 ist eingespielt“ von `bot` und keine Reservierung, und `git log` hat genau einen neuen Commit „#7 erledigt sich: „In Arbeit“ → „Fertig“ (fabrik)“, der Board-Datei und Aufgabendatei enthält.
+- [ ] Gegeben derselbe Ausgang nach dem ersten Aufruf, wenn `bot` denselben Aufruf noch einmal schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "schon erledigt", warnungen: []}`, es gibt keinen neuen Commit und keinen neuen Kommentar.
+- [ ] Gegeben #7 trägt `key: k1` und ist archiviert, wenn `bot` erledigen schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "schon erledigt", warnungen: []}` ohne Commit — auch wenn #7 nicht auf „fabrik“ liegt.
+- [ ] **Gegenbeispiel Spaltenprüfung:** Gegeben „In Arbeit“ trägt `column-checks: [wbs-effects-green]`, #7 wirkt `create kd:I0048` (`rot`), sonst wie oben, wenn `bot` #7 erledigt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt", warnungen: []}` — dieselbe Lage gäbe bei `ziehen` eine Warnung `wbs-effects-green`, beim Erledigen laufen die Spaltenprüfungen nicht.
+- [ ] **Grenzwert:** Gegeben derselbe Ausgang, wenn `text` 2000 Zeichen hat, dann `200 {aufgabe, ergebnis: "erledigt", warnungen: []}`; mit 2001 Zeichen `400` ohne Commit.
 
 ### Menschen-Spalte
-- [ ] Gegeben #8 trägt `key: k2` und liegt im Eingang, der Menschen gehört, wenn `bot` `erledigen {key: "k2", board: "fabrik", text: "nicht mehr gefunden", signal: "behoben"}` schickt, dann antwortet kanbanD `200 {ergebnis: "gemeldet"}`, #8 liegt weiter im Eingang, trägt das Signal `behoben` und einen Kommentar „Befund nicht mehr gefunden: nicht mehr gefunden“, eine Reservierung bleibt unverändert, und es gibt genau einen Commit „#8 Befund nicht mehr gefunden — gemeldet (fabrik)“.
-- [ ] Gegeben #8 trägt danach das Signal `behoben`, wenn `bot` denselben Aufruf noch einmal schickt, dann antwortet kanbanD `200 {ergebnis: "schon gemeldet"}` ohne Commit und ohne Kommentar.
-- [ ] Gegeben #8 liegt im Eingang, wenn `st` denselben Aufruf schickt, dann antwortet kanbanD `200 {ergebnis: "erledigt"}`, und #8 liegt oben in „Fertig“ (Menschen-Spalten sperren nur Agenten).
+- [ ] Gegeben #8 trägt `key: k2` und liegt im Eingang, der Menschen gehört, wenn `bot` `erledigen {key: "k2", board: "fabrik", text: "nicht mehr gefunden", signal: "behoben"}` schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "gemeldet", warnungen: []}`, #8 liegt weiter im Eingang, trägt das Signal `behoben` und einen Kommentar „Befund nicht mehr gefunden: nicht mehr gefunden“, eine Reservierung bleibt unverändert, und es gibt genau einen Commit „#8 Befund nicht mehr gefunden — gemeldet (fabrik)“.
+- [ ] Gegeben #8 trägt danach das Signal `behoben`, wenn `bot` denselben Aufruf noch einmal schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "schon gemeldet", warnungen: []}` ohne Commit und ohne Kommentar.
+- [ ] Gegeben #8 liegt im Eingang, wenn `st` denselben Aufruf schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt", warnungen: []}`, und #8 liegt oben in „Fertig“ (Menschen-Spalten sperren nur Agenten).
+- [ ] **Gegenbeispiel Grenze:** Gegeben „Fertig“ hat die Grenze 1 und trägt #3, #8 trägt `key: k2` und liegt im Eingang ohne Signal, wenn `bot` erledigen für `k2` schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "gemeldet", warnungen: []}`, nicht `409`: #8 bleibt im Eingang, bekommt Signal und Kommentar, ein Commit (Schritt 4 vor der Grenze).
 
 ### Fehler
 - [ ] **Leerfall:** Gegeben keine Karte trägt `k9`, wenn `bot` mit `key: "k9"` erledigen schickt, dann antwortet kanbanD `404`, ohne Commit.
 - [ ] **Leerfall:** Gegeben #7 trägt `k1`, liegt aber nicht auf „fabrik“, wenn `bot` mit `board: "fabrik"` erledigen schickt, dann `404`; mit `board: "gibtsnicht"` ebenfalls `404`; jeweils ohne Commit.
 - [ ] **Fehlfall:** Gegeben #7 liegt in „In Arbeit“, wenn `bot` mit `signal: "gibtsnicht"` erledigen schickt, dann antwortet kanbanD `400`, obwohl das Signal in dieser Spalte gar nicht gesetzt würde; mit `text: ""` oder `"   "` ebenfalls `400`; jeweils ohne Commit. Eingaben werden vor der Suche geprüft: ein ungültiger Text mit einem unbekannten Schlüssel ergibt `400`, nicht `404`.
 - [ ] **Fehlfall Dublette:** Gegeben #8 und #9 tragen beide `key: k5`, wenn `bot` mit `key: "k5"` erledigen schickt, dann antwortet kanbanD `409` „Schlüssel „k5“ mehrfach vergeben: #8, #9“, ohne Commit.
-- [ ] **Fehlfall Grenze:** Gegeben „Fertig“ hat die Grenze 1 und trägt #3, wenn `bot` #7 erledigen will, dann antwortet kanbanD `409 {fehler: "Grenze erreicht", spalte: "Fertig", grenze: 1, anzahl: 1}`, #7 bleibt mit Reservierung in „In Arbeit“, ohne Kommentar und ohne Commit. Eine archivierte Karte in „Fertig“ zählt nicht. Für `st` gilt die Antwort auf Offene Frage 1.
+- [ ] **Fehlfall Grenze:** Gegeben „Fertig“ hat die Grenze 1 und trägt #3, wenn `bot` #7 erledigen will, dann antwortet kanbanD `409 {fehler: "Grenze erreicht", spalte: "Fertig", grenze: 1, anzahl: 1}`, #7 bleibt mit Reservierung in „In Arbeit“, ohne Kommentar und ohne Commit. Eine archivierte Karte in „Fertig“ zählt nicht: liegt dort nur #2 archiviert, antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt", warnungen: []}`.
+- [ ] **Grenze, Mensch:** Gegeben „Fertig“ hat die Grenze 1 und trägt #3, #7 trägt `key: k1`, liegt in „In Arbeit“ und ist von Instanz A reserviert, wenn `st` `erledigen {key: "k1", board: "fabrik", text: "lodash 4.17.21 ist eingespielt", signal: "behoben"}` schickt, dann antwortet kanbanD `200 {aufgabe, ergebnis: "erledigt", warnungen: [{pruefung: "grenze", text: "Grenze erreicht: „Fertig“ hat 2 von 1"}]}`, #7 liegt oben in „Fertig“ vor #3, trägt den Kommentar „Befund nicht mehr gefunden: lodash 4.17.21 ist eingespielt“ von `st` und keine Reservierung, und `git log` hat genau einen neuen Commit „#7 erledigt sich: „In Arbeit“ → „Fertig“ (fabrik)“. Rechenbeispiel: 1 Karte vorher + #7 = 2 nach dem Zug, also „2 von 1“; liegt zusätzlich #2 archiviert in „Fertig“, bleibt es „2 von 1“.
 
 ### Beschreibung
-- [ ] `/api`, `/api/endpunkte` und `/api/openapi.json` nennen `POST /api/aufgaben/erledigen` mit `key`, `board`, `text` (1–2000 Zeichen), `signal` (eingerichtet, immer geprüft), den vier Ergebnissen `erledigt`, `schon erledigt`, `gemeldet`, `schon gemeldet` und den Fehlern `400`, `404`, `409`.
+- [ ] `/api`, `/api/endpunkte` und `/api/openapi.json` nennen `POST /api/aufgaben/erledigen` mit `key`, `board`, `text` (1–2000 Zeichen), `signal` (eingerichtet, immer geprüft), den vier Ergebnissen `erledigt`, `schon erledigt`, `gemeldet`, `schon gemeldet`, dem Feld `warnungen` mit der Warnung `grenze` für Menschen über der Grenze und den Fehlern `400`, `404`, `409` (Dublette; Grenze für Agenten).
 
 ## Betroffene Verzeichnisstruktur
 
@@ -100,7 +108,7 @@ Ablauf als neuer Dienst `src/dienst/erledigen.rs` neben `src/dienst/reservierung
 - `Erledigung` (DTO, immutable, Anfrage) — `key`, `board`, `text`, `signal`
 - `Erledigungslage` (Enum) — die vier Fälle
   - `fn bestimmen(aufgabe: &Aufgabe, board: &Board, art: Art, signal: &str) -> Erledigungslage` (pure)
-- `Erledigt` (DTO, Antwort) — `aufgabe`, `ergebnis`
+- `Erledigt` (DTO, Antwort) — `aufgabe`, `ergebnis`, `warnungen: Vec<Warnung>` (wie `Gezogen` in `src/dienst/reservierung.rs`; die Grenzwarnung liefert `zugregeln` in `src/dienst/zugregeln.rs`)
 - `Kanban::erledigen(&self, wer: &Person, e: &Erledigung) -> Result<Erledigt, Fehler>` (Integration)
 
 ### Änderungen an bestehenden Klassen
@@ -117,7 +125,7 @@ Ablauf als neuer Dienst `src/dienst/erledigen.rs` neben `src/dienst/reservierung
 - Blockiert: —
 
 ## Offene Fragen
-1. **Mensch über der Grenze** (offen, an den PO): „Ist sie voll, folgt `409`“ unterscheidet nicht nach Wer; R00096 weist nur Agenten ab, Menschen bekommen an Zug-Endpunkten eine Warnung `grenze`, beim Anlegen und Zurückholen keine (PO-Entscheidung 2026-11-01). Empfehlung: `st` bekommt `200 {ergebnis: "erledigt", warnungen: [grenze]}`, denn Erledigen ist ein Zug und die Antwortform ist neu. Alternativen: `200` ohne Warnung, oder `409` auch für Menschen.
+1. **Mensch über der Grenze** — *entschieden 2026-11-05* (`AI-Team/po-entscheidungen.md` Zeile 69): `200` mit Warnung `grenze`, wie empfohlen; `warnungen` in jeder `200`-Antwort, Spaltenprüfungen bleiben außen vor; eingearbeitet in „Ablauf“ und die Akzeptanzkriterien. Ursprüngliche Frage: „Ist sie voll, folgt `409`“ unterscheidet nicht nach Wer; R00096 weist nur Agenten ab, Menschen bekommen an Zug-Endpunkten eine Warnung `grenze`, beim Anlegen und Zurückholen keine (PO-Entscheidung 2026-11-01). Empfehlung: `st` bekommt `200 {ergebnis: "erledigt", warnungen: [grenze]}`, denn Erledigen ist ein Zug und die Antwortform ist neu. Alternativen: `200` ohne Warnung, oder `409` auch für Menschen.
 
 ## Manuelle Vorbereitungstätigkeiten
 - In `kanbanD.md` des Factory-Ordners ein Signal einrichten, zum Beispiel `behoben`, „Befund nicht mehr gefunden“.
@@ -151,3 +159,5 @@ Auslöser ist, dass behobene Befunde ohne Rückmeldung des Sensors auf dem Board
 **Ohne Rückfrage entschieden:** `signal` ist immer Pflicht und wird immer geprüft. Die Reservierung wird beim Erledigen entfernt, wie beim Archivieren.
 
 **Ergänzung 2026-11-05 (`/anforderung abschliessen`, planer):** Akzeptanzkriterien als Gegeben/Wenn/Dann mit Werten umgeschrieben; Grenz-, Leer- und Fehlfälle ergänzt (2000/2001 Zeichen, leerer Text, archivierte Karte, Karte nicht auf dem Board, unbekanntes Board, Dublette, Reihenfolge 400 vor 404); Prüfschritt 0, Trimmen des Texts und das Verhalten von Reservierung und Signal im Fall „gemeldet“ in die funktionalen Anforderungen übernommen; eine offene Frage an den PO. User Story um US-4 bis US-6 ergänzt. Code-Stand 2026-11-05: nichts davon gebaut; Kerne aus R00098 (`zurueckgeholt`, `kommentiert`, `Board::oben_einordnen`, `zug_mit_rueckkehr_pruefen`) vorhanden, Signal-Kern fehlt.
+
+**Ergänzung 2026-11-05 (PO-Entscheidung eingearbeitet, planer):** Offene Frage 1 nach `AI-Team/po-entscheidungen.md` Zeile 69 entschieden. Antwortform jeder `200` jetzt `{aufgabe, ergebnis, warnungen}`; Grenze nach Wer (Agent `409`, Mensch Zug mit Warnung `grenze`, `n` nach dem Zug); Spaltenprüfungen laufen beim Erledigen nicht; Agent in Menschen-Spalte meldet vor der Grenze. Akzeptanzkriterien: `warnungen: []` in allen `200`-Fällen, neu „Grenze, Mensch“, Gegenbeispiele Spaltenprüfung und Grenze bei Menschen-Spalte, archivierte Karte als Wert. User Story US-6 als Agent-Fall, neu US-7. Status bleibt Neu.
