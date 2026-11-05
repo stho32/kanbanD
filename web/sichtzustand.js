@@ -1,6 +1,7 @@
 // Sichtzustand, der das Neuzeichnen übersteht (R00103, ADR-0007): die Schlüsselregel.
 // Ein Element wird nach dem Neuzeichnen über einen stabilen Schlüssel wiedergefunden.
-// Rein: das Element kommt als { id, daten, klassen }, der Bereich als Zählfunktion je Selektor.
+// Die Schlüsselregel ist rein: das Element kommt als { id, daten, klassen }, der Bereich als Zählfunktion je Selektor.
+// Sichern und Zurücksetzen arbeiten auf dem DOM eines Bereichs, dessen Inhalt neu gezeichnet wird.
 (function (ziel) {
   const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf'];
   const EINFACHE_KLASSE = /^[A-Za-z_][\w-]*$/;
@@ -33,5 +34,36 @@
     return eindeutig;
   }
 
-  Object.assign(ziel, { schluessel });
+  /** Schlüssel eines DOM-Elements in seinem Bereich. */
+  function schluesselIm(element, bereich) {
+    const beschreibung = { id: element.id, daten: { ...element.dataset }, klassen: [...element.classList] };
+    return schluessel(beschreibung, selektor => bereich.querySelectorAll(selektor).length);
+  }
+
+  /** Das eine Element zum Schlüssel; mehrdeutig oder fehlend: null. */
+  function wiedergefunden(bereich, selektor) {
+    const treffer = bereich.querySelectorAll(selektor);
+    if (treffer.length !== 1) return null;
+    return treffer[0];
+  }
+
+  /** Rollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
+  function rollstaende(bereich) {
+    const gerollt = [...bereich.querySelectorAll('*')].filter(element => element.scrollTop || element.scrollLeft);
+    return gerollt
+      .map(element => ({ bereich, schluessel: schluesselIm(element, bereich), links: element.scrollLeft, oben: element.scrollTop }))
+      .filter(stand => stand.schluessel);
+  }
+
+  /** Setzt die Rollstände auf die nach dem Neuzeichnen wiedergefundenen Flächen. */
+  function rollstaendeSetzen(staende) {
+    for (const stand of staende) {
+      const flaeche = wiedergefunden(stand.bereich, stand.schluessel);
+      if (!flaeche) continue;
+      flaeche.scrollLeft = stand.links;
+      flaeche.scrollTop = stand.oben;
+    }
+  }
+
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen });
 })(typeof module !== 'undefined' ? module.exports : window);

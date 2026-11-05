@@ -438,17 +438,21 @@ function render() {
   const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
   document.title = fenstertitel();
-  // Neuzeichnen in derselben Sicht hält die Leseposition — sonst springt das Board unter dem Kontextmenü weg.
+  // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
+  // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
-  const rollen = $('#main').dataset.sicht === sicht ? rollpositionen() : [];
+  const rollen = [];
+  if ($('#main').dataset.sicht === sicht) rollen.push(...rollstaende($('#main')));
+  if ($('#over').dataset.offen === String(S.ui.offen || '')) rollen.push(...rollstaende($('#over')));
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
   $('#kopf').innerHTML = vKopf();
   $('#main').innerHTML = vHaupt();
   $('#main').dataset.sicht = sicht;
-  rollpositionenSetzen(rollen);
   $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
+  $('#over').dataset.offen = String(S.ui.offen || '');
+  rollstaendeSetzen(rollen);
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
@@ -462,20 +466,6 @@ function render() {
   else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
   else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
-}
-
-/** Gescrollte Flächen der Hauptsicht, je mit dem Selektor, der sie nach dem Neuzeichnen wiederfindet. */
-function rollpositionen() {
-  const spalten = [...document.querySelectorAll('.bahn[data-col] > .flaeche')].map(f => [`.bahn[data-col="${CSS.escape(f.parentElement.dataset.col)}"] > .flaeche`, f]);
-  return [['.body', $('.body')], ['.wbs-tabelle', $('.wbs-tabelle')], ['.bahnen', $('.bahnen')], ...spalten]
-    .filter(([, el]) => el && (el.scrollLeft || el.scrollTop))
-    .map(([sel, el]) => ({ sel, links: el.scrollLeft, oben: el.scrollTop }));
-}
-function rollpositionenSetzen(rollen) {
-  for (const r of rollen) {
-    const el = $(r.sel);
-    if (el) { el.scrollLeft = r.links; el.scrollTop = r.oben; }
-  }
 }
 
 function fenstertitel() {
