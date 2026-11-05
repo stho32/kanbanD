@@ -97,3 +97,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #27 | Nacharbeit | director | Rückzug Auto-Reviews → Nacharbeit, Nacharbeit 2 von 2, Label nacharbeit-auto-reviews-2, Durchlauf befund; Art: Fix erzeugt Befund; vor dem Fix realist-consultant befragt | — | Agent a131a729 |
 | 2026-11-05 | #27 | Nacharbeit | entwickler (fortgesetzt) | bestanden: B0310, ef43430; U5b–U5e 403, Folgezug 403, Kontrollen grün; cargo 441/0, Playwright 233/0; Director auf frischem Bau nachgefahren (U5b, U5d, Mensch-Kontrolle) | 0:54 | Agent a36998b8 |
 | 2026-11-05 | #27 | Auto-Reviews | director | Fast-Forward main auf ef43430, Zug Nacharbeit → Auto-Reviews, Wiederholung nur Security-Review | — | Agent a9d0c61e |
+| 2026-11-05 | #27 | Auto-Reviews | security-reviewer (fortgesetzt) | bestanden: Befund geschlossen, V1–V12 ohne dritte Umgehung; Director-Stichprobe V9/V12 | 0:07 | Agent a9d0c61e |
+| 2026-11-05 | #27 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
