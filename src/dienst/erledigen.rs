@@ -3,6 +3,8 @@
 
 use super::Kanban;
 use super::aufgabe_anlegen::nummernliste;
+use super::kommentare::kommentiert;
+use super::signale::signal_geschaltet;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
@@ -102,9 +104,16 @@ impl Kanban {
         match lage(&a, &b, wer.art, &g.signal) {
             Erledigungslage::SchonErledigt => fertig(a, Erledigungsergebnis::SchonErledigt),
             Erledigungslage::NichtAufBoard => Err(Fehler::NichtGefunden(format!("#{nr} liegt nicht auf „{}“", b.titel))),
-            Erledigungslage::SchonGemeldet | Erledigungslage::Melden => Err(Fehler::Intern("melden ist noch nicht gebaut".into())),
+            Erledigungslage::SchonGemeldet => fertig(a, Erledigungsergebnis::SchonGemeldet),
+            Erledigungslage::Melden => {
+                kommentiert(&mut a, wer, &befund_weg(&g.text));
+                signal_geschaltet(&mut a, &g.signal, true);
+                let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))];
+                self.aktion(wer, &format!("#{nr} Befund nicht mehr gefunden — gemeldet ({})", b.titel), &dateien)?;
+                fertig(a, Erledigungsergebnis::Gemeldet)
+            }
             Erledigungslage::Erledigen { von, nach } => {
-                super::kommentare::kommentiert(&mut a, wer, &format!("Befund nicht mehr gefunden: {}", g.text));
+                kommentiert(&mut a, wer, &befund_weg(&g.text));
                 a.reservierung = None;
                 b.oben_einordnen(nr, Some(&nach)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ legen")))?;
                 let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
@@ -113,6 +122,10 @@ impl Kanban {
             }
         }
     }
+}
+
+fn befund_weg(text: &str) -> String {
+    format!("Befund nicht mehr gefunden: {text}")
 }
 
 /// Was eine Erledigung mit der gefundenen Karte tut (R00099 Ablauf 2–5).

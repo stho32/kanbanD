@@ -178,3 +178,35 @@ async fn text_mit_2000_zeichen_wird_erledigt() {
     assert_eq!(commits(tmp.path()), vorher + 1);
     assert_eq!(r["aufgabe"]["kommentare"][0]["text"], json!(format!("Befund nicht mehr gefunden: {text}")));
 }
+
+// AK Menschen-Spalte 1–3, US-2, US-3, US-4 (B0336): Agent meldet, statt die Karte herauszunehmen; ein Mensch erledigt
+#[tokio::test]
+async fn in_der_menschen_spalte_meldet_der_agent() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", &[(8, "k2", "Eingang", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    reservieren(&lauf.adresse, 8, "bot", "A").await;
+    let reservierung = lies(tmp.path(), "aufgaben/0008-befund.md").lines().find(|z| z.starts_with("reservation:")).unwrap().to_string();
+    let board = lies(tmp.path(), "boards/fabrik.md");
+    let vorher = commits(tmp.path());
+    let daten = json!({"key": "k2", "board": "fabrik", "text": "nicht mehr gefunden", "signal": "behoben"});
+
+    let (s, r) = erledigen(&lauf.adresse, "bot", daten.clone()).await;
+    assert_eq!((s, &r["ergebnis"], &r["warnungen"], &r["aufgabe"]["signale"]), (200, &json!("gemeldet"), &json!([]), &json!(["behoben"])), "{r}");
+    let datei = lies(tmp.path(), "aufgaben/0008-befund.md");
+    assert!(datei.contains("\nsignals: [behoben]\n") && datei.contains(&format!("\n{reservierung}\n")), "Signal gesetzt, Reservierung unverändert: {datei}");
+    assert_eq!(datei.matches(" · bot · Befund nicht mehr gefunden: nicht mehr gefunden\n").count(), 1, "{datei}");
+    assert_eq!(lies(tmp.path(), "boards/fabrik.md"), board, "Karte bleibt im Eingang");
+    assert_eq!(commits(tmp.path()), vorher + 1);
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#8 Befund nicht mehr gefunden — gemeldet (fabrik)");
+    assert_eq!(git(tmp.path(), &["show", "--name-only", "--format=", "HEAD"]), "aufgaben/0008-befund.md");
+
+    let (s, r) = erledigen(&lauf.adresse, "bot", daten.clone()).await;
+    assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("schon gemeldet"), &json!([])), "{r}");
+    assert_eq!((commits(tmp.path()), lies(tmp.path(), "aufgaben/0008-befund.md")), (vorher + 1, datei), "kein Commit, kein zweiter Kommentar");
+
+    let (s, r) = erledigen(&lauf.adresse, "st", daten).await;
+    assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("erledigt"), &json!([])), "{r}");
+    assert_eq!((spalte(tmp.path(), "Fertig"), spalte(tmp.path(), "Eingang")), (vec![8], vec![]));
+    assert_eq!(commits(tmp.path()), vorher + 2);
+}
