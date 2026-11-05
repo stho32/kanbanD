@@ -389,3 +389,43 @@ async fn zustand_meldet_dublette() {
     let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", Value::Null).await;
     assert_eq!(z["dubletten"], json!([{"key": "k5", "nummern": [8, 9]}]));
 }
+
+// AK Beschreibung: /api/endpunkte und OpenAPI nennen key, neu, 200/201/409, das Wiederöffnen,
+// den Filter key, den Fehler beim Ändern und die Dubletten im Zustand (B0330)
+#[tokio::test]
+async fn beschreibung_nennt_schluessel() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, liste) = senden(Method::GET, &lauf.adresse, "api/endpunkte", "st", Value::Null).await;
+    let (_, d) = senden(Method::GET, &lauf.adresse, "api/openapi.json", "st", Value::Null).await;
+    let zweck = |methode: &str, pfad: &str| liste.as_array().unwrap().iter().find(|e| e["methode"] == methode && e["pfad"] == pfad).unwrap()["zweck"].as_str().unwrap().to_string();
+    let op = |methode: &str, pfad: &str| d["paths"][pfad][methode.to_lowercase()].clone();
+    let erwartet: [(&str, &str, &[&str]); 5] = [
+        ("POST", "/api/aufgaben", &["key", "neu", "200", "201", "409", "wieder geöffnet", "mehrfach vergeben"]),
+        ("POST", "/api/aufgaben/mehrere", &["key", "neu", "200", "201", "409", "wieder geöffnet"]),
+        ("PATCH", "/api/aufgaben/{nr}", &["Schlüssel ist nicht änderbar"]),
+        ("GET", "/api/aufgaben", &["key="]),
+        ("GET", "/api/zustand", &["dubletten"]),
+    ];
+    for (methode, pfad, woerter) in erwartet {
+        let z = zweck(methode, pfad);
+        let o = op(methode, pfad);
+        let beschreibung = o["description"].as_str().unwrap();
+        for w in woerter {
+            assert!(z.contains(w), "{methode} {pfad}: /api/endpunkte nennt „{w}“ nicht: {z}");
+            assert!(beschreibung.contains(w), "{methode} {pfad}: OpenAPI nennt „{w}“ nicht: {beschreibung}");
+        }
+    }
+    for pfad in ["/api/aufgaben", "/api/aufgaben/mehrere"] {
+        let antworten = &op("POST", pfad)["responses"];
+        for status in ["200", "201", "409"] {
+            assert!(antworten[status].is_object(), "POST {pfad} ohne Antwort {status}");
+        }
+        assert!(antworten["200"].to_string().contains("Angelegt") && antworten["201"].to_string().contains("Angelegt"), "POST {pfad}: Antwort ohne Schema Angelegt: {antworten}");
+    }
+    assert!(d["components"]["schemas"]["Angelegt"].to_string().contains("\"neu\""), "Schema Angelegt ohne neu");
+    let params = op("GET", "/api/aufgaben")["parameters"].to_string();
+    assert!(params.contains("\"key\""), "GET /api/aufgaben ohne Parameter key: {params}");
+    assert!(d["components"]["schemas"]["Zustand"].to_string().contains("dubletten"), "Schema Zustand ohne dubletten");
+}
