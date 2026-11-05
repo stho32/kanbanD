@@ -431,9 +431,7 @@ function render() {
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
   S.ui.stufe = stufeAusBreite(innerWidth);
-  // Das aktive Eingabefeld übersteht das Neuzeichnen: Wert, Cursor, Fokus
   const aktiv = document.activeElement;
-  const halten = aktiv && aktiv.id && /INPUT|TEXTAREA/.test(aktiv.tagName) && !S.ui.fokus ? { id: aktiv.id, wert: aktiv.value, von: aktiv.selectionStart, bis: aktiv.selectionEnd } : null;
   // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
   const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
@@ -441,9 +439,12 @@ function render() {
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
-  const rollen = [];
-  if ($('#main').dataset.sicht === sicht) rollen.push(...rollstaende($('#main')));
-  if ($('#over').dataset.offen === String(S.ui.offen || '')) rollen.push(...rollstaende($('#over')));
+  // Das fokussierte Eingabefeld übersteht es ebenso: Fokus, Cursor und — nur wenn getippt wurde — der Wert.
+  const bereiche = [$('#kopf')];
+  if ($('#main').dataset.sicht === sicht) bereiche.push($('#main'));
+  if ($('#over').dataset.offen === String(S.ui.offen || '')) bereiche.push($('#over'));
+  const rollen = bereiche.flatMap(bereich => rollstaende(bereich));
+  const eingabe = eingabestand(aktiv, bereiche);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -457,11 +458,9 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
+  // Ein ausdrückliches Fokusziel geht vor
   let gehalten = false;
-  if (halten) {
-    const el = document.getElementById(halten.id);
-    if (el) { el.value = halten.wert; el.focus(); gehalten = true; try { el.setSelectionRange(halten.von, halten.bis); } catch (_) { } }
-  }
+  if (eingabe && !S.ui.fokus) gehalten = eingabeSetzen(eingabe);
   if (gehalten) { /* das Feld behält den Fokus */ }
   else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
@@ -1803,6 +1802,10 @@ window.addEventListener('online', () => liveWaechter(true));
 window.kdTest = {
   liveStilllegen() { const q = S.ereignisquelle; q.onmessage = q.onerror = null; q.removeEventListener('herzschlag', q.kdHerzschlag); },
   renders: () => S.renders || 0,
+  /** Wahr, wenn der zuletzt geladene Stand gezeichnet ist — kein Laden steht zwischen Übernahme und Zeichnen (R00103). */
+  gezeichnet: () => geladenerStand === serverStand(),
+  /** Zahl der Kommentare einer Aufgabe im geladenen Stand. */
+  kommentare: nr => aufgabe(nr).kommentare.length,
 };
 
 setInterval(() => {

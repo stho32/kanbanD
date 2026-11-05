@@ -65,5 +65,50 @@
     }
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen });
+  const EINGABEFELD = /^(INPUT|TEXTAREA|SELECT)$/;
+  const SCHALTER = /^(checkbox|radio)$/;
+
+  /** Der zuletzt gezeichnete Wert eines Felds: Wertattribut, Textinhalt oder die als ausgewählt gezeichnete Option. */
+  function gezeichneterWert(feld) {
+    if (feld.tagName !== 'SELECT') return feld.defaultValue;
+    const optionen = [...feld.options];
+    const gezeichnet = optionen.find(option => option.defaultSelected) || optionen[0];
+    if (!gezeichnet) return '';
+    return gezeichnet.value;
+  }
+
+  /** Geändert heißt: der Wert weicht vom zuletzt gezeichneten ab. Schalter speichern sofort und gelten nie als geändert. */
+  function geaendert(feld) {
+    if (SCHALTER.test(feld.type)) return false;
+    return feld.value !== gezeichneterWert(feld);
+  }
+
+  /** Das fokussierte Eingabefeld in einem der Bereiche: Schlüssel, Wert, ob geändert, Auswahl; sonst null. */
+  function eingabestand(aktiv, bereiche) {
+    if (!aktiv || !EINGABEFELD.test(aktiv.tagName)) return null;
+    const bereich = bereiche.find(kandidat => kandidat && kandidat.contains(aktiv));
+    if (!bereich) return null;
+    const schluesselDesFelds = schluesselIm(aktiv, bereich);
+    if (!schluesselDesFelds) return null;
+    return { bereich, schluessel: schluesselDesFelds, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd') };
+  }
+
+  /** Cursor- oder Auswahlgrenze; Felder ohne Textauswahl (Datum, Auswahlliste) haben keine. */
+  function auswahlGrenze(feld, name) {
+    try { return feld[name]; } catch (_) { return null; }
+  }
+
+  /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl. Wahr, wenn das Feld wiedergefunden ist. */
+  function eingabeSetzen(stand) {
+    const feld = wiedergefunden(stand.bereich, stand.schluessel);
+    if (!feld) return false;
+    if (stand.geaendert) feld.value = stand.wert;
+    feld.focus({ preventScroll: true });
+    if (typeof stand.von === 'number' && typeof stand.bis === 'number') {
+      try { feld.setSelectionRange(stand.von, stand.bis); } catch (_) { /* Feldtyp ohne Textauswahl */ }
+    }
+    return true;
+  }
+
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, eingabestand, eingabeSetzen });
 })(typeof module !== 'undefined' ? module.exports : window);

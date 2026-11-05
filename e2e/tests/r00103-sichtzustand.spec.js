@@ -48,6 +48,19 @@ async function neuGezeichnet(page, vorher) {
   await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
 }
 
+/** Wartet, bis gezeichnet wurde und der gezeichnete Stand `anzahl` Kommentare an `nummer` kennt — auch nach zwei Ereignissen kurz hintereinander. */
+async function gezeichnetMitKommentaren(page, vorher, nummer, anzahl) {
+  await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
+  await expect.poll(() => page.evaluate(n => window.kdTest.gezeichnet() && window.kdTest.kommentare(n), nummer)).toBe(anzahl);
+}
+
+/** Fokus, Wert und Auswahl des aktiven Elements. */
+const eingabe = page => page.evaluate(() => {
+  const e = document.activeElement;
+  return { feld: e.dataset.af || e.id, wert: e.value, von: e.selectionStart, bis: e.selectionEnd };
+});
+const commits = (k, betreff) => k.git('log', '--format=%an|%s').split('\n').filter(z => z.endsWith(betreff)).length;
+
 /** Rollstand gleich bis auf einen Pixel (Rundung bei gebrochenen Höhen). */
 const nahe = (ist, soll) => expect(Math.abs(ist - soll), `Rollstand ${ist} statt ${soll}`).toBeLessThanOrEqual(1);
 const rollstand = (page, selektor) => page.locator(selektor).evaluate(e => e.scrollTop);
@@ -120,5 +133,84 @@ test.describe('R00103 Leseposition', () => {
     await page.locator('.mod-kopf [data-act="blaettern"][data-arg="1"]').click();
     await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
     expect(await rollstand(page, '.mod-main')).toBe(0);
+  });
+});
+
+test.describe('R00103 Tippen', () => {
+  let k;
+  test.beforeEach(async () => { k = await kanbanStarten(einrichten(DATEIEN)); });
+  test.afterEach(() => k.stoppen());
+
+  /** st kürzt den Titel von #1 auf „Abnahme prü“, der Cursor steht dahinter. */
+  async function titelGekuerzt(page) {
+    const titel = page.getByLabel('Titel', { exact: true });
+    await titel.click();
+    await page.keyboard.press('End');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
+  }
+
+  test('US-3: zwei Kommentare an #2 — der Titel behält Fokus, „Abnahme prü“ und den Cursor', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    const vorher = await renders(page);
+    await Promise.all([kommentiert(page, k, 2, 'erster'), kommentiert(page, k, 2, 'zweiter')]);
+    await gezeichnetMitKommentaren(page, vorher, 2, 2);
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
+  });
+
+  test('Auswahl: markiertes „prüfen“ bleibt markiert', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel', { exact: true }).click();
+    await page.getByLabel('Titel', { exact: true }).evaluate(e => e.setSelectionRange(8, 14));
+    const vorher = await renders(page);
+    await kommentiert(page, k, 2, 'erster');
+    await gezeichnetMitKommentaren(page, vorher, 2, 1);
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prüfen', von: 8, bis: 14 });
+  });
+
+  test('Labels: angefangenes „ux, bu“ bleibt mit Fokus und Cursor', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Labels').click();
+    await page.keyboard.press('End');
+    await page.keyboard.type(', bu');
+    const vorher = await renders(page);
+    await Promise.all([kommentiert(page, k, 2, 'erster'), kommentiert(page, k, 2, 'zweiter')]);
+    await gezeichnetMitKommentaren(page, vorher, 2, 2);
+    expect(await eingabe(page)).toEqual({ feld: 'labels', wert: 'ux, bu', von: 6, bis: 6 });
+  });
+
+  test('US-6: das Kommentarfeld behält Fokus und „noch offen“, von st kein Kommentar', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Neuer Kommentar').click();
+    await page.keyboard.type('noch offen');
+    const vorher = await renders(page);
+    await Promise.all([kommentiert(page, k, 1, 'erster'), kommentiert(page, k, 1, 'zweiter')]);
+    await gezeichnetMitKommentaren(page, vorher, 1, 42);
+    expect(await eingabe(page)).toEqual({ feld: 'km-inp', wert: 'noch offen', von: 10, bis: 10 });
+    expect(k.lies('aufgaben/0001-abnahme-pruefen.md')).not.toContain(' · st · ');
+  });
+
+  test('US-7 getippt: bot ändert den Titel — das Feld zeigt weiter „Abnahme prü“ mit Fokus und Cursor', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await titelGekuerzt(page);
+    const vorher = await renders(page);
+    const antwort = await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } });
+    expect(antwort.ok()).toBe(true);
+    await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
+    await expect.poll(() => page.evaluate(() => window.kdTest.gezeichnet())).toBe(true);
+    expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
+  });
+
+  test('US-7 nicht getippt: bot ändert den Titel — das Feld zeigt „Abnahme durchführen“ und behält den Fokus', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel', { exact: true }).click();
+    const vorher = await renders(page);
+    const antwort = await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } });
+    expect(antwort.ok()).toBe(true);
+    await expect.poll(() => renders(page)).toBeGreaterThan(vorher);
+    await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Abnahme durchführen');
+    expect((await eingabe(page)).feld).toBe('titel');
+    expect((await eingabe(page)).wert).toBe('Abnahme durchführen');
   });
 });
