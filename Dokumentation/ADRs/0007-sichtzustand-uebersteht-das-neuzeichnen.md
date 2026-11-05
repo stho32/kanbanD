@@ -1,4 +1,4 @@
-# ADR-0007: Sichtzustand übersteht das Neuzeichnen — ein allgemeiner Sicherer über stabile Schlüssel statt Selektorliste und Feld-ids
+# ADR-0007: Sichtzustand übersteht das Neuzeichnen — ein allgemeiner Sicherer über stabile Schlüssel statt Selektorliste und Feld-IDs
 
 **Status**: Akzeptiert
 **Datum**: 2026-11-05
@@ -10,12 +10,12 @@
 
 - Belegt (Code): Die Oberfläche zeichnet bei jedem Live-Ereignis, das den Serverstand ändert, **alles** neu — `ereignis()` → `laden({ nurBeiAenderung: true })` → `render()` (`web/app.js:1756–1769`, `153–208`); `render()` ersetzt `#kopf`, `#main` und `#over` per `innerHTML` (`web/app.js:446–452`). Ein Kommentar an **irgendeine** Aufgabe ändert `S.aufgaben` und damit den Vergleichsstand (`web/app.js:150`).
 - Belegt (Code): Was das Neuzeichnen überstehen soll, retten drei Einzelmechanismen: eine feste Selektorliste der Scrollflächen nur in `#main` (`rollpositionen()`, `web/app.js:467–479`), das fokussierte Eingabefeld nur, wenn es eine `id` trägt (`web/app.js:434–460`), der Fokus über einzelne Sonderfälle (`S.ui.fokus`, `fokusKarte`, `fokusZeile`, `web/app.js:462–464`).
-- Belegt (Code): Das Aufgabenfenster liegt in `#over` (`web/ansicht.js:222–237`). Seine Scrollflächen sind im breiten Layout `.mod-main` und `.mod-side` (`web/kd-app.css:226–227`), erst unter 640 px `.mod-body` (`web/kd-app.css:710–714`). Die Felder `input.titel`, Labels, Fälligkeit, Spalte und Klasse tragen `data-af`, aber keine `id` (`web/ansicht.js:225–236`); sie speichern über `change` (`web/app.js:1165–1172`). 37 Eingabeelemente in `web/*.js` haben keine `id`.
-- Beobachtet (Probe, 1400×700 und 600×700, Aufgabe mit 40 Kommentaren, Kommentar per API): Scrollstand von `.mod-main` bzw. `.mod-body` nach dem Ereignis 0 statt 400, sowohl bei Kommentar an dieselbe wie an eine andere Aufgabe. Beim Tippen im Titel landet der Fokus auf `BODY`, **und der halb getippte Titel wird committet** („#1 geändert: Titel“ direkt nach dem fremden Kommentar). Das Kommentarfeld `#km-inp` (mit `id`) behält Inhalt und Fokus.
-- Vermutung: der Commit entsteht, weil das fokussierte, geänderte Feld beim Ersetzen seinen Knoten verliert und dabei `change` auslöst. Nicht im Einzelnen nachverfolgt; die Wirkung ist belegt.
+- Belegt (Code): Das Aufgabenfenster liegt in `#over` (`web/ansicht.js:222–237`). Seine Scrollflächen sind im breiten Layout `.mod-main` und `.mod-side` (`web/kd-app.css:226–227`), erst bis 640 px `.mod-body` (`web/kd-app.css:710–714`). Die Felder `input.titel`, Labels, Fälligkeit, Spalte und Klasse tragen `data-af`, aber keine `id` (`web/ansicht.js:225–236`); sie speichern über `change` (`web/app.js:1165–1172`). 37 Eingabeelemente in `web/*.js` haben keine `id`.
+- Beobachtet (Probe, 1400 × 700 und 600 × 700, Aufgabe mit 40 Kommentaren, Kommentar per API): Scrollstand von `.mod-main` bzw. `.mod-body` nach dem Ereignis 0 statt 400, sowohl bei Kommentar an dieselbe wie an eine andere Aufgabe. Beim Tippen im Titel landet der Fokus auf `BODY`, **und der halb getippte Titel wird committet** („#1 geändert: Titel“ direkt nach dem fremden Kommentar). Das Kommentarfeld `#km-inp` (mit `id`) behält Inhalt und Fokus.
+- Vermutung: Der Commit entsteht, weil das fokussierte, geänderte Feld beim Ersetzen seinen Knoten verliert und dabei `change` auslöst. Nicht im Einzelnen nachverfolgt; die Wirkung ist belegt.
 - Ziel aus `AI-Team/umgebung.md` (Lastprofil): Live-Änderung in allen offenen Sichten < 1 s, bis 10 Agenten schreiben gleichzeitig — bei 5 Schreibaufrufen/s zeichnet die Oberfläche also bis zu fünfmal je Sekunde neu. Was ein Mensch gerade liest oder tippt, muss das überstehen, sonst ist das Fenster unter Agentenlast nicht benutzbar.
 
-Die Klasse des Fehlers ist damit nicht „ein Selektor fehlt“, sondern „jede Fläche und jedes Feld, das niemand in eine Liste einträgt, verliert beim Neuzeichnen seinen Zustand“. Die Karte nennt `.mod-body`; das allein hilft nur unter 640 px und weder Fokus noch Titel.
+Die Klasse des Fehlers ist damit nicht „ein Selektor fehlt“, sondern „jede Fläche und jedes Feld, das niemand in eine Liste einträgt, verliert beim Neuzeichnen seinen Zustand“. Die Karte nennt `.mod-body`; das allein hilft nur bis 640 px und weder Fokus noch Titel.
 
 ## Optionen
 
@@ -46,7 +46,7 @@ Neues Markup in einen losen Baum zeichnen und den lebenden DOM per Abgleich angl
 
 **Gewählt: Option B** — ein allgemeiner Sicherer in `render()`, Schlüsselregel wie oben, gilt für `#main` und `#over`.
 
-B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege durch einen, ohne das Zeichenmodell anzufassen. Bewusst in Kauf genommen: es wird weiter alles neu gezeichnet (C bleibt als spätere Lastmaßnahme möglich und baut auf B auf), und Elemente ohne eindeutigen Schlüssel brauchen `data-halt`. D wird erst wieder Thema, wenn B an Restfällen (Textauswahl, `<details>`) mehrfach scheitert oder das Neuzeichnen unter dem Lastprofil messbar zu teuer wird — dann neue ADR, die diese ablöst.
+B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege durch einen, ohne das Zeichenmodell anzufassen. Bewusst in Kauf genommen: Es wird weiter alles neu gezeichnet (C bleibt als spätere Lastmaßnahme möglich und baut auf B auf), und Elemente ohne eindeutigen Schlüssel brauchen `data-halt`. D wird erst wieder Thema, wenn B an Restfällen (Textauswahl, `<details>`) mehrfach scheitert oder das Neuzeichnen unter dem Lastprofil messbar zu teuer wird — dann neue ADR, die diese ablöst.
 
 ## Konsequenzen
 
@@ -55,7 +55,7 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 - Kein halb getippter Wert wird mehr durch ein fremdes Ereignis committet.
 - Neue Flächen und Felder sind ohne Zutun abgedeckt, solange ihr Schlüssel eindeutig ist.
 
-**Negativ / Inkauf zu nehmen:**
+**Negativ / In Kauf zu nehmen:**
 - Rechenaufwand je Ereignis bleibt (volles Neuzeichnen).
 - Gleichartige Elemente ohne eindeutigen Schlüssel werden nicht wiederhergestellt; das muss im Markup mit `data-halt` gelöst werden.
 
@@ -68,7 +68,7 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 - [ ] Anforderung aus Karte #19 nach dieser ADR (Vorschlag im Bericht an den Director).
 - [ ] Option C prüfen, falls das Neuzeichnen unter dem Lastprofil (5 Schreibaufrufe/s) messbar ruckelt — eigene Karte, eigene ADR.
 
-## Quellen / Bezuege
+## Quellen / Bezüge
 
 - Karte #19 (Betreiber, 2026-10-31); `AI-Team/umgebung.md`, Lastprofil
 - Bausteine [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md), [A00008 Wächter](../Architektur/A00008-waechter.md) (Quelle der Ereignisse, unverändert)

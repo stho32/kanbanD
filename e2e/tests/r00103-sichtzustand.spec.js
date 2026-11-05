@@ -61,8 +61,8 @@ const eingabe = page => page.evaluate(() => {
 });
 const commits = (k, betreff) => k.git('log', '--format=%an|%s').split('\n').filter(z => z.endsWith(betreff)).length;
 
-/** Rollstand gleich bis auf einen Pixel (Rundung bei gebrochenen Höhen). */
-const nahe = (ist, soll) => expect(Math.abs(ist - soll), `Rollstand ${ist} statt ${soll}`).toBeLessThanOrEqual(1);
+/** Scrollstand gleich bis auf einen Pixel (Rundung bei gebrochenen Höhen). */
+const nahe = (ist, soll) => expect(Math.abs(ist - soll), `Scrollstand ${ist} statt ${soll}`).toBeLessThanOrEqual(1);
 const rollstand = (page, selektor) => page.locator(selektor).evaluate(e => e.scrollTop);
 const rollen = (page, selektor, oben) => page.locator(selektor).evaluate((e, y) => { e.scrollTop = y; return e.scrollTop; }, oben);
 
@@ -337,7 +337,7 @@ test.describe('R00103 Nur das Verlassen speichert', () => {
     expect(await eingabe(page)).toEqual({ feld: 'titel', wert: 'Abnahme prü', von: 11, bis: 11 });
   });
 
-  test('US-4: weitertippen und verlassen speichert genau einmal', async ({ page }) => {
+  test('US-4: Weitertippen und Verlassen speichern genau einmal', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
     await titelGekuerzt(page);
     await zweiFremdeEreignisse(page);

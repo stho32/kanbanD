@@ -1,6 +1,6 @@
 // Sichtzustand, der das Neuzeichnen übersteht (R00103, ADR-0007): die Schlüsselregel.
 // Ein Element wird nach dem Neuzeichnen über einen stabilen Schlüssel wiedergefunden.
-// Die Schlüsselregel ist rein: das Element kommt als { id, daten, klassen }, der Bereich als Zählfunktion je Selektor.
+// Die Schlüsselregel ist rein: Das Element kommt als { id, daten, klassen }, der Bereich als Zählfunktion je Selektor.
 // Sichern und Zurücksetzen arbeiten auf dem DOM eines Bereichs, dessen Inhalt neu gezeichnet wird.
 (function (ziel) {
   // Aufgabe, Neu, Wirkung, WBS-Knoten, Termin, Fieber-Chart, Berichtsfilter, Durchlaufzeit, Einrichtung, Spalten, Erststart
@@ -53,7 +53,7 @@
     return treffer[0];
   }
 
-  /** Rollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
+  /** Scrollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
   function rollstaende(bereich) {
     const gerollt = [...bereich.querySelectorAll('*')].filter(element => element.scrollTop || element.scrollLeft);
     return gerollt
@@ -61,7 +61,7 @@
       .filter(stand => stand.schluessel);
   }
 
-  /** Setzt die Rollstände auf die nach dem Neuzeichnen wiedergefundenen Flächen. */
+  /** Setzt die Scrollstände auf die nach dem Neuzeichnen wiedergefundenen Flächen. */
   function rollstaendeSetzen(staende) {
     for (const stand of staende) {
       const flaeche = wiedergefunden(stand.bereich, stand.schluessel);
@@ -83,7 +83,7 @@
     return gezeichnet.value;
   }
 
-  /** Geändert heißt: der Wert weicht vom zuletzt gezeichneten ab. Schalter speichern sofort und gelten nie als geändert. */
+  /** Geändert heißt: Der Wert weicht vom zuletzt gezeichneten ab. Schalter speichern sofort und gelten nie als geändert. */
   function geaendert(feld) {
     if (SCHALTER.test(feld.type)) return false;
     return feld.value !== gezeichneterWert(feld);
