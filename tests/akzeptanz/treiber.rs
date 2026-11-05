@@ -2,10 +2,13 @@
 use crate::gemeinsam::{self, Laufendes, git, senden};
 use reqwest::Method;
 use serde_json::{Value, json};
-use std::path::Path;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
+/// Der Arbeitsordner liegt als `w/` in einem Elternordner, damit Nachbardateien außerhalb des Repositorys möglich sind.
 pub struct Treiber {
-    _ordner: tempfile::TempDir,
+    _eltern: tempfile::TempDir,
+    w: PathBuf,
     lauf: Laufendes,
 }
 
@@ -17,24 +20,35 @@ pub struct Antwort {
 impl Treiber {
     /// Legt `kanbanD.md`, ein Board und die Aufgabendateien an, committet und startet das Programm auf freiem Port.
     pub fn starten(einstellungen: &str, board: &str, aufgaben: &[(String, String)]) -> Treiber {
-        let ordner = tempfile::tempdir().unwrap();
-        let p = ordner.path();
-        std::fs::create_dir_all(p.join("boards")).unwrap();
-        std::fs::create_dir_all(p.join("aufgaben")).unwrap();
-        std::fs::write(p.join("kanbanD.md"), einstellungen).unwrap();
-        std::fs::write(p.join("boards/fabrik.md"), board).unwrap();
-        for (datei, text) in aufgaben {
-            std::fs::write(p.join("aufgaben").join(datei), text).unwrap();
+        let mut dateien = vec![("boards/fabrik.md".to_string(), board.to_string())];
+        dateien.extend(aufgaben.iter().map(|(datei, text)| (format!("aufgaben/{datei}"), text.clone())));
+        Treiber::starten_mit(einstellungen, &dateien, &[])
+    }
+
+    /// Wie `starten`, mit beliebigen Dateien im Arbeitsordner (`dateien`, committet) und daneben (`nachbarn`, relativ zum Elternordner).
+    pub fn starten_mit(einstellungen: &str, dateien: &[(String, String)], nachbarn: &[(String, String)]) -> Treiber {
+        let eltern = tempfile::tempdir().unwrap();
+        let w = eltern.path().join("w");
+        std::fs::create_dir_all(w.join("boards")).unwrap();
+        std::fs::create_dir_all(w.join("aufgaben")).unwrap();
+        std::fs::write(w.join("kanbanD.md"), einstellungen).unwrap();
+        for (rel, text) in dateien {
+            std::fs::write(w.join(rel), text).unwrap();
         }
-        git(p, &["init", "-q"]);
-        git(p, &["add", "-A"]);
-        git(p, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Fabrik"]);
-        let lauf = gemeinsam::starten(p, &["--port", "0"]);
-        Treiber { _ordner: ordner, lauf }
+        for (rel, text) in nachbarn {
+            let ziel = eltern.path().join(rel);
+            std::fs::create_dir_all(ziel.parent().unwrap()).unwrap();
+            std::fs::write(ziel, text).unwrap();
+        }
+        git(&w, &["init", "-q"]);
+        git(&w, &["add", "-A"]);
+        git(&w, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Fabrik"]);
+        let lauf = gemeinsam::starten(&w, &["--port", "0"]);
+        Treiber { _eltern: eltern, w, lauf }
     }
 
     fn pfad(&self) -> &Path {
-        self._ordner.path()
+        &self.w
     }
 
     pub async fn reservieren(&self, nr: u32, wer: &str) {
@@ -43,8 +57,33 @@ impl Treiber {
     }
 
     pub async fn erledigen(&self, wer: &str, key: &str, text: &str, signal: &str) -> Antwort {
-        let (status, rumpf) = senden(Method::POST, &self.lauf.adresse, "api/aufgaben/erledigen", wer, json!({"key": key, "board": "fabrik", "text": text, "signal": signal})).await;
+        self.erledigen_auf(wer, key, "fabrik", text, signal).await
+    }
+
+    pub async fn erledigen_auf(&self, wer: &str, key: &str, board: &str, text: &str, signal: &str) -> Antwort {
+        let (status, rumpf) = senden(Method::POST, &self.lauf.adresse, "api/aufgaben/erledigen", wer, json!({"key": key, "board": board, "text": text, "signal": signal})).await;
         Antwort { status, rumpf }
+    }
+
+    pub async fn anlegen(&self, wer: &str, titel: &str, board: &str) -> Antwort {
+        let (status, rumpf) = senden(Method::POST, &self.lauf.adresse, "api/aufgaben", wer, json!({"titel": titel, "board": board})).await;
+        Antwort { status, rumpf }
+    }
+
+    /// GET mit dem Pfad genau so, wie er dasteht (`%2E%2E` bleibt kodiert) — reqwest würde Punkt-Segmente auflösen.
+    pub fn roh_lesen(&self, pfad_und_query: &str) -> (u16, String) {
+        let adresse = self.lauf.adresse.trim_start_matches("http://").trim_end_matches('/');
+        let mut s = std::net::TcpStream::connect(adresse).unwrap();
+        write!(s, "GET /{pfad_und_query} HTTP/1.1\r\nHost: {adresse}\r\nConnection: close\r\n\r\n").unwrap();
+        let mut antwort = String::new();
+        s.read_to_string(&mut antwort).unwrap();
+        let status = antwort.split_whitespace().nth(1).and_then(|c| c.parse().ok()).unwrap_or(0);
+        let rumpf = antwort.split_once("\r\n\r\n").map(|(_, r)| r.to_string()).unwrap_or_default();
+        (status, rumpf)
+    }
+
+    pub async fn lesen(&self, pfad: &str) -> Value {
+        reqwest::get(format!("{}{pfad}", self.lauf.adresse)).await.unwrap().json().await.unwrap()
     }
 
     /// Die Nummern der Spalte, oben zuerst, wie das Board sie ausliefert.
@@ -56,6 +95,27 @@ impl Treiber {
 
     pub async fn aufgabe(&self, nr: u32) -> Value {
         reqwest::get(format!("{}api/aufgaben/{nr}", self.lauf.adresse)).await.unwrap().json().await.unwrap()
+    }
+
+    pub fn arbeitsbaum(&self) -> String {
+        git(self.pfad(), &["status", "--porcelain"])
+    }
+
+    /// Bytes einer Datei im Arbeitsordner (`w/<rel>`); fehlt sie, `None`.
+    pub fn datei(&self, rel: &str) -> Option<Vec<u8>> {
+        std::fs::read(self.w.join(rel)).ok()
+    }
+
+    /// Bytes einer Datei neben dem Arbeitsordner (relativ zum Elternordner).
+    pub fn nachbar(&self, rel: &str) -> Option<Vec<u8>> {
+        std::fs::read(self._eltern.path().join(rel)).ok()
+    }
+
+    /// Dateinamen in `w/<ordner>`, sortiert.
+    pub fn dateien(&self, ordner: &str) -> Vec<String> {
+        let mut namen: Vec<String> = std::fs::read_dir(self.w.join(ordner)).map(|d| d.map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect()).unwrap_or_default();
+        namen.sort();
+        namen
     }
 
     pub fn commits(&self) -> usize {
