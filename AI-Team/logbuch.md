@@ -113,3 +113,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Auto-Reviews | director | Zug Entwicklung → Auto-Reviews, code-reviewer, ux-reviewer, rechtschreib-reviewer parallel | — | — |
 | 2026-11-05 | #19 | Auto-Reviews | code-reviewer, ux-reviewer, rechtschreib-reviewer (frisch) | befund: UX Muss Knopf-Fokus fällt auf BODY (ADR-0007:29 nicht eingelöst); Code-Review bestanden mit Sollte A1 Fieber-Eingabe verloren, A2; Rechtschreibung bestanden, 8 Sollte | 0:12 | — |
 | 2026-11-05 | #19 | Nacharbeit | director | Zug Auto-Reviews → Nacharbeit, gebündelter Auftrag an entwickler | — | — |
+| 2026-11-05 | #19 | Nacharbeit | entwickler | bestanden: Knopf-Fokus, Feldschlüssel, A2/A3/A6, Rechtschreibung, Planung; nachgeprüft 41 E2E + 126 Einheit | 0:27 | — |
+| 2026-11-05 | #19 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, Wiederholung code-reviewer und ux-reviewer | — | — |
