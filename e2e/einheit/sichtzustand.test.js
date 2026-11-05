@@ -1,0 +1,74 @@
+// Unit-Tests der Schlüsselregel des Sichtzustands (R00103, ADR-0007, node --test)
+const test = require('node:test');
+const assert = require('node:assert');
+const { schluessel } = require('../../web/sichtzustand.js');
+
+/** Zählt Treffer eines Selektors im Bereich aus einer festen Tabelle; was nicht drinsteht, kommt einmal vor. */
+const bereichMit = anzahlJeSelektor => selektor => {
+  if (selektor in anzahlJeSelektor) return anzahlJeSelektor[selektor];
+  return 1;
+};
+const element = ({ id = '', daten = {}, klassen = [] }) => ({ id, daten, klassen });
+
+test('id ist der Schlüssel', () => {
+  assert.strictEqual(schluessel(element({ id: 'km-inp', klassen: ['inp'] }), bereichMit({})), '[id="km-inp"]');
+});
+
+test('data-halt ist der Schlüssel, wenn keine id da ist', () => {
+  assert.strictEqual(schluessel(element({ daten: { halt: 'leiste' }, klassen: ['mod-side'] }), bereichMit({})), '[data-halt="leiste"]');
+});
+
+test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, wf, wn, tf', () => {
+  assert.strictEqual(schluessel(element({ daten: { af: 'titel' }, klassen: ['titel'] }), bereichMit({})), '[data-af="titel"]');
+  assert.strictEqual(schluessel(element({ daten: { nf: 'board' } }), bereichMit({})), '[data-nf="board"]');
+  assert.strictEqual(schluessel(element({ daten: { wf: 'aktion' } }), bereichMit({})), '[data-wf="aktion"]');
+  assert.strictEqual(schluessel(element({ daten: { wn: 'ebene' } }), bereichMit({})), '[data-wn="ebene"]');
+  assert.strictEqual(schluessel(element({ daten: { tf: 'name' } }), bereichMit({})), '[data-tf="name"]');
+  assert.strictEqual(schluessel(element({ daten: { tf: 'name', af: 'labels' } }), bereichMit({})), '[data-af="labels"]', 'af vor tf');
+});
+
+test('Aktion mit Argument, sonst Aktion allein', () => {
+  assert.strictEqual(schluessel(element({ daten: { act: 'blaettern', arg: '1' }, klassen: ['btn'] }), bereichMit({ '.btn': 5 })), '[data-act="blaettern"][data-arg="1"]');
+  assert.strictEqual(schluessel(element({ daten: { act: 'schliessen' }, klassen: ['btn'] }), bereichMit({ '.btn': 5 })), '[data-act="schliessen"]');
+});
+
+test('eine im Bereich eindeutige Klasse, die erste eindeutige gewinnt', () => {
+  assert.strictEqual(schluessel(element({ klassen: ['mod-main'] }), bereichMit({})), '.mod-main');
+  assert.strictEqual(schluessel(element({ klassen: ['flaeche', 'wbs-tabelle'] }), bereichMit({ '.flaeche': 3 })), '.wbs-tabelle');
+});
+
+test('Vorrang: id vor data-halt vor Feld vor Aktion vor Klasse', () => {
+  const alles = { id: 'x', daten: { halt: 'h', af: 'titel', act: 'a', arg: '1' }, klassen: ['k'] };
+  assert.strictEqual(schluessel(element(alles), bereichMit({})), '[id="x"]');
+  assert.strictEqual(schluessel(element({ ...alles, id: '' }), bereichMit({})), '[data-halt="h"]');
+  assert.strictEqual(schluessel(element({ ...alles, id: '', daten: { af: 'titel', act: 'a', arg: '1' } }), bereichMit({})), '[data-af="titel"]');
+  assert.strictEqual(schluessel(element({ ...alles, id: '', daten: { act: 'a', arg: '1' } }), bereichMit({})), '[data-act="a"][data-arg="1"]');
+});
+
+test('Fehlfall: zwei Flächen derselben Klasse ohne weiteren Schlüssel haben keinen', () => {
+  const zwei = bereichMit({ '.flaeche': 2 });
+  assert.strictEqual(schluessel(element({ klassen: ['flaeche'] }), zwei), '');
+  assert.strictEqual(schluessel(element({}), bereichMit({})), '', 'ohne alles kein Schlüssel');
+});
+
+test('Fehlfall: data-halt an der einen, nur die Klasse an der anderen — data-halt ist Schlüssel, die andere hat keinen', () => {
+  const bereich = bereichMit({ '.flaeche': 2 });
+  assert.strictEqual(schluessel(element({ daten: { halt: 'x' }, klassen: ['flaeche'] }), bereich), '[data-halt="x"]');
+  assert.strictEqual(schluessel(element({ klassen: ['flaeche'] }), bereich), '');
+});
+
+test('ein mehrdeutiger Schlüssel fällt auf den nächsten zurück', () => {
+  const bereich = bereichMit({ '[data-act="zustaendig"][data-arg="st"]': 2 });
+  assert.strictEqual(schluessel(element({ daten: { act: 'zustaendig', arg: 'st' }, klassen: ['as', 'leiste-st'] }), bereich), '.as', 'die Aktion kommt zweimal vor');
+});
+
+test('Werte mit Anführungszeichen und Rückstrich bleiben ein gültiger Selektor', () => {
+  assert.strictEqual(schluessel(element({ daten: { act: 'bewegen', arg: '{"nummer":1}' } }), bereichMit({})), '[data-act="bewegen"][data-arg="{\\"nummer\\":1}"]');
+  assert.strictEqual(schluessel(element({ id: 'a\\b' }), bereichMit({})), '[id="a\\\\b"]');
+  assert.strictEqual(schluessel(element({ daten: { halt: 'zwei\nzeilen' } }), bereichMit({})), '[data-halt="zwei\\a zeilen"]');
+});
+
+test('Klassen, die kein einfacher Selektor sind, zählen nicht als Schlüssel', () => {
+  assert.strictEqual(schluessel(element({ klassen: ['w-1/2', 'bahn'] }), bereichMit({})), '.bahn');
+  assert.strictEqual(schluessel(element({ klassen: ['3spaltig'] }), bereichMit({})), '');
+});
