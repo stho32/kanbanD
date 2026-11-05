@@ -313,3 +313,4 @@ Nie vom User erfragen.
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0322 Einordnen- und Kommentar-Kern | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0323 Wiederöffnen in einem Commit | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0324 Grenze beim Wiederöffnen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0325 Eigentümer beim Wiederöffnen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

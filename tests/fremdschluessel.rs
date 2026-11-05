@@ -301,3 +301,27 @@ async fn grenze_in_mehrere_nach_allen_eintraegen() {
     let (s, _) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": [{"titel": "x", "key": "k4"}], "board": "fabrik"})).await;
     assert_eq!(s, 200, "allein passt das Wiederöffnen unter die Grenze");
 }
+
+/// Wie `behoben`, „fabrik“ mit Menschen-Spalten nach `besitz` (`column-owner`-Zeilen).
+fn menschenspalten(pfad: &Path, besitz: &str) {
+    behoben(pfad);
+    std::fs::write(pfad.join("boards/fabrik.md"), format!("---\ncolumn-owner:\n{besitz}---\n\n# Fabrik\n\n## Eingang\n\n- #3\n\n## In Arbeit\n\n## Fertig\n\n- #7\n")).unwrap();
+    git(pfad, &["commit", "-q", "-a", "-m", "Eigentümer"]);
+}
+
+// AK Eigentümer: Wiederöffnen ist kein Herausnehmen nach R00097 (PO-Zeilen 67–68, B0325)
+#[tokio::test]
+async fn agent_oeffnet_aus_menschenspalte() {
+    for besitz in ["  Fertig: human\n", "  Eingang: human\n  Fertig: human\n"] {
+        let tmp = tempfile::tempdir().unwrap();
+        menschenspalten(tmp.path(), besitz);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let vorher = commits(tmp.path());
+        let (s, a) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "fabrik", "spalte": "Eingang"})).await;
+        assert_eq!((s, &a["nummer"], &a["neu"]), (200, &json!(7), &json!(false)), "{besitz}: {a}");
+        assert_eq!((spalte(tmp.path(), "Eingang"), spalte(tmp.path(), "Fertig")), (vec![7, 3], vec![]), "{besitz}");
+        assert_eq!(commits(tmp.path()), vorher + 1, "{besitz}");
+        assert!(lies(tmp.path(), "boards/fabrik.md").starts_with(&format!("---\ncolumn-owner:\n{besitz}---\n")), "Eigentümer bleiben");
+        wieder_offen_mit_geschichte(tmp.path());
+    }
+}
