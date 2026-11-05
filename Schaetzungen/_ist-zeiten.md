@@ -325,3 +325,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00099 Befund erledigt sich | B0334 Idempotenz und Fehler | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00099 Befund erledigt sich | B0335 Signal-Kern | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00099 Befund erledigt sich | B0336 Melden in einem Commit | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00099 Befund erledigt sich | B0337 Grenze der Abschlussspalte | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

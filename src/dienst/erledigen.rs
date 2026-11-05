@@ -5,6 +5,7 @@ use super::Kanban;
 use super::aufgabe_anlegen::nummernliste;
 use super::kommentare::kommentiert;
 use super::signale::signal_geschaltet;
+use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
@@ -92,6 +93,7 @@ impl Kanban {
             Schluesseltreffer::Mehrfach(nummern) => return Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", g.schluessel.text(), nummernliste(nummern.into_iter())))),
             Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => nr,
         };
+        let archiviert = archivierte(&aufgaben);
         let mut a = aufgaben.into_iter().find(|a| a.nummer == nr).expect("Treffer stammt aus der Liste");
         #[cfg(test)]
         {
@@ -113,12 +115,14 @@ impl Kanban {
                 fertig(a, Erledigungsergebnis::Gemeldet)
             }
             Erledigungslage::Erledigen { von, nach } => {
+                let vorher = b.clone();
+                b.oben_einordnen(nr, Some(&nach)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ legen")))?;
+                let warnungen = zug_pruefen(wer.art, &vorher, &b, &archiviert)?;
                 kommentiert(&mut a, wer, &befund_weg(&g.text));
                 a.reservierung = None;
-                b.oben_einordnen(nr, Some(&nach)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ legen")))?;
                 let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
                 self.aktion(wer, &format!("#{nr} erledigt sich: „{von}“ → „{nach}“ ({})", b.titel), &dateien)?;
-                fertig(a, Erledigungsergebnis::Erledigt)
+                Ok(Erledigt { aufgabe: a, ergebnis: Erledigungsergebnis::Erledigt, warnungen })
             }
         }
     }

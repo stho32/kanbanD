@@ -210,3 +210,61 @@ async fn in_der_menschen_spalte_meldet_der_agent() {
     assert_eq!((spalte(tmp.path(), "Fertig"), spalte(tmp.path(), "Eingang")), (vec![8], vec![]));
     assert_eq!(commits(tmp.path()), vorher + 2);
 }
+
+const GRENZE: &str = "limits:\n  Fertig: 1\n";
+
+// AK Fehlfall Grenze, US-6 (B0337): ein Agent bekommt 409, nichts wird geschrieben; archivierte zählen nicht
+#[tokio::test]
+async fn agent_ueber_der_grenze_der_abschlussspalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), GRENZE, &[(3, "k3", "Fertig", ""), (7, "k1", "In Arbeit", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    reservieren(&lauf.adresse, 7, "bot", "A").await;
+    let vorher = stand(tmp.path());
+    let (s, r) = erledigen(&lauf.adresse, "bot", eingespielt("k1")).await;
+    assert_eq!((s, r), (409, json!({"fehler": "Grenze erreicht", "spalte": "Fertig", "grenze": 1, "anzahl": 1})));
+    assert_eq!(stand(tmp.path()), vorher, "kein Kommentar, kein Commit");
+    assert!(lies(tmp.path(), "aufgaben/0007-befund.md").contains("\nreservation: "), "Reservierung bleibt");
+    assert_eq!(spalte(tmp.path(), "In Arbeit"), [7]);
+
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), GRENZE, &[(2, "k2", "Fertig", "archived: 2026-11-01\n"), (7, "k1", "In Arbeit", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = erledigen(&lauf.adresse, "bot", eingespielt("k1")).await;
+    assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("erledigt"), &json!([])), "archivierte zählen nicht: {r}");
+}
+
+// AK Grenze, Mensch, US-7 (B0337): der Zug läuft, die Antwort trägt genau eine Warnung grenze mit der Anzahl danach
+#[tokio::test]
+async fn mensch_ueber_der_grenze_wird_gewarnt() {
+    for (fall, mehr) in [("ohne Archivierte", vec![]), ("mit #2 archiviert", vec![(2, "k2", "Fertig", "archived: 2026-11-01\n")])] {
+        let tmp = tempfile::tempdir().unwrap();
+        let karten = [vec![(3, "k3", "Fertig", ""), (7, "k1", "In Arbeit", "")], mehr].concat();
+        fabrik(tmp.path(), GRENZE, &karten);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        reservieren(&lauf.adresse, 7, "bot", "A").await;
+        let vorher = commits(tmp.path());
+        let (s, r) = erledigen(&lauf.adresse, "st", eingespielt("k1")).await;
+        assert_eq!((s, &r["ergebnis"]), (200, &json!("erledigt")), "{fall}: {r}");
+        let w = r["warnungen"].as_array().unwrap();
+        assert_eq!(w.len(), 1, "{fall}: {r}");
+        assert_eq!((&w[0]["pruefung"], &w[0]["text"]), (&json!("grenze"), &json!("Grenze erreicht: „Fertig“ hat 2 von 1")), "{fall}");
+        assert_eq!(spalte(tmp.path(), "Fertig")[..2], [7, 3], "{fall}");
+        let datei = lies(tmp.path(), "aufgaben/0007-befund.md");
+        assert!(datei.contains(" · st · Befund nicht mehr gefunden: lodash 4.17.21 ist eingespielt\n") && !datei.contains("reservation"), "{fall}: {datei}");
+        assert_eq!(commits(tmp.path()), vorher + 1, "{fall}");
+        assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#7 erledigt sich: „In Arbeit“ → „Fertig“ (fabrik)");
+    }
+}
+
+// AK Gegenbeispiel Grenze (B0337): in der Menschen-Spalte meldet der Agent vor der Grenze — 200 gemeldet, kein 409
+#[tokio::test]
+async fn melden_prueft_keine_grenze() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), GRENZE, &[(3, "k3", "Fertig", ""), (8, "k2", "Eingang", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = commits(tmp.path());
+    let (s, r) = erledigen(&lauf.adresse, "bot", json!({"key": "k2", "board": "fabrik", "text": "weg", "signal": "behoben"})).await;
+    assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("gemeldet"), &json!([])), "{r}");
+    assert_eq!((spalte(tmp.path(), "Eingang"), commits(tmp.path())), (vec![8], vorher + 1));
+}
