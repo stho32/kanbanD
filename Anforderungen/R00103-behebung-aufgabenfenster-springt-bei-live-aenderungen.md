@@ -108,6 +108,8 @@ Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mi
 - [ ] Weitere Felder ohne `id`: Gegeben `st` tippt in den Labels von #1 „ux, bu“, wenn `bot` #2 kommentiert, dann behält das Feld Fokus und Wert, und es entsteht kein Commit „#1 geändert: Labels“
 - [ ] Zwei Ereignisse: Gegeben `st` tippt im Titel wie oben, wenn `bot` kurz hintereinander zwei Kommentare an #2 schreibt (zweiter, bevor `st` weitertippt), dann gelten Fokus, Wert, Cursor und Negativbeweis nach beiden Ereignissen
 - [ ] Regression Kommentarfeld: Gegeben `st` hat im Kommentarfeld von #1 „noch offen“ getippt, wenn `bot` zwei Kommentare kurz hintereinander an #1 schreibt, dann behält das Kommentarfeld Fokus und „noch offen“, und `st` hat keinen Kommentar abgeschickt
+- [ ] Fremde Änderung am selben Titel, getippt: Gegeben `st` hat im Titel von #1 „Abnahme prü“ getippt (Cursor 11), wenn `bot` den Titel von #1 über die API in „Abnahme durchführen“ ändert, dann zeigt das Feld weiter „Abnahme prü“, Fokus und Cursor 11 bleiben; vervollständigt `st` danach zu „Abnahme prüfen lassen“ und verlässt das Feld, dann heißt die Aufgabe „Abnahme prüfen lassen“, und `git log` zeigt den Commit von `bot` vor genau einem Commit „#1 geändert: Titel“ von `st`
+- [ ] Fremde Änderung am selben Titel, nicht getippt: Gegeben der Titel von #1 hat den Fokus und ist unverändert, wenn `bot` ihn über die API in „Abnahme durchführen“ ändert, dann zeigt das Feld „Abnahme durchführen“, beim Verlassen entsteht kein Commit von `st`, und `GET /api/aufgaben/1` liefert „Abnahme durchführen“
 
 ### Durchsetzung (ADR-0007)
 - [ ] Neben dem Sicherer gibt es keine Selektorliste für Scrollflächen und keinen eigenen Sonderweg, der das aktive Feld über die `id` hält (`rollpositionen()` und das `halten` sind ersetzt); ein ausdrückliches Fokusziel einer Aktion geht vor wie heute
@@ -117,12 +119,13 @@ Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mi
 - Bereich `#main`: Leseposition nur, wenn `#main[data-sicht]` gleich bleibt (Bedingung aus R00063 übernehmen). Bereich `#over`: nur, wenn dieselbe Aufgabe offen bleibt (`S.ui.offen` vor und nach dem Neuzeichnen gleich).
 - Wiederherstellen des Scrollstands vor dem Setzen des Fokus (`focus({ preventScroll: true })`), sonst zieht der Fokus die Fläche weg.
 - Der gerettete Wert wird gesetzt, ohne dass das Verlassen des Feldes danach stumm bleibt: Ein Feld, dessen Wert programmatisch gesetzt wurde, löst beim Verlassen sonst kein `change` aus — die Gegenprobe „Speichern“ deckt das ab.
+- „Geändert“ heißt: der Wert des Feldes weicht vom zuletzt gezeichneten Wert dieses Feldes ab. Nur ein geändertes Feld behält beim Neuzeichnen seinen Wert; einem unveränderten Feld schreibt der Sicherer nie den alten Wert zurück — es zeigt den neu gezeichneten (auch fremden) Wert, Fokus und Cursor bleiben (PO-Entscheidung `AI-Team/po-entscheidungen.md`, Zeile 63).
 - Muster der E2E-Tests: `kanbanStarten`, `alsPerson`, `liveBereit` aus `e2e/tests/hilfen.js`; Warten über `window.kdTest.renders()`.
 - Lastprofil (`AI-Team/umgebung.md`): bis 5 Schreibaufrufe/s, also bis zu fünf Neuzeichnungen je Sekunde — der Sicherer darf keine Anfrage an den Server stellen.
 
 ## Offene Fragen
 
-- Siehe Bericht des planers an den Director (Karte #19); bis zur Antwort gilt die jeweils empfohlene Fassung dieses Dokuments.
+- Entschieden vom Product Owner: `AI-Team/po-entscheidungen.md`, Zeilen 63–66
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
@@ -134,4 +137,5 @@ Auslöser ist das volle Neuzeichnen bei jedem fremden Ereignis, das im Fenster a
 - Betroffene Nutzer/Systeme: jeder Mensch, der ein Aufgabenfenster offen hat, während Agenten oder ein zweiter Browser schreiben
 - Workaround: keiner; Titel nur ändern, wenn niemand sonst schreibt
 - Herkunft: Karte #19 „Aufgabenfenster springt bei Live-Änderungen nach oben“ (Labels ux, bug, Betreiber 2026-10-31); Befund und Abnahme-Probe des architekt (2026-11-05, ADR-0007, Commit 01bf27a)
+- Kein Konflikt-Hinweis bei gleichzeitiger Änderung desselben Feldes (PO Zeile 63); eigene Karte erst bei Befund
 - Nicht Umfang (ADR-0007): Textauswahl in Lesetext und aufgeklappte `<details>` überstehen das Neuzeichnen weiter nicht; weniger Neuzeichnen (Option C) ist eigene Karte
