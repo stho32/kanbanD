@@ -123,6 +123,13 @@ impl Kanban {
             plan.push((nummer, true));
             aufgaben.push(a);
         }
+        #[cfg(test)]
+        {
+            let haken = self.zwischen_suche_und_schreiben.lock().unwrap().take();
+            if let Some(haken) = haken {
+                haken();
+            }
+        }
         if !aufgaben.is_empty() {
             self.neue_schreiben(wer, neu, &aufgaben, &vorhanden)?;
         }
@@ -166,5 +173,63 @@ fn schon_da(neue: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fremdschluessel) -> Opt
             Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => Some(nr),
             Schluesseltreffer::Mehrfach(nummern) => Some(nummern[0]),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Angaben, Eintrag, Kanban, NeueAufgaben};
+    use std::path::Path;
+    use std::process::Command;
+    use std::sync::{Arc, mpsc};
+    use std::thread;
+    use std::time::Duration;
+
+    fn git(pfad: &Path, args: &[&str]) -> String {
+        let aus = Command::new("git").args(args).current_dir(pfad).output().unwrap();
+        String::from_utf8_lossy(&aus.stdout).trim().to_string()
+    }
+
+    fn mit_schluessel(titel: &str, key: &str) -> NeueAufgaben {
+        let angaben = Angaben { key: Some(key.into()), ..Default::default() };
+        NeueAufgaben { titel: vec![Eintrag::MitAngaben { titel: titel.into(), angaben }], board: None, spalte: None }
+    }
+
+    // B0319 Prüfen-dann-Handeln: der erste Aufruf hält die Sperre zwischen Suche und Schreiben, der zweite läuft in dieser Zeit an
+    #[test]
+    fn gleichzeitig_genau_eine_karte() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("kanbanD.md"), "---\npeople:\n  cl: {name: Claude, kind: agent}\n---\n").unwrap();
+        git(tmp.path(), &["init", "-q"]);
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+        let k = Arc::new(Kanban::neu(tmp.path().to_path_buf()));
+        let cl = k.handelnder(Some("cl")).unwrap();
+
+        let (zweiter_tx, zweiter_rx) = mpsc::channel();
+        let (k2, cl2) = (Arc::clone(&k), cl.clone());
+        *k.zwischen_suche_und_schreiben.lock().unwrap() = Some(Box::new(move || {
+            let (fertig_tx, fertig_rx) = mpsc::channel();
+            let lauf = thread::spawn(move || {
+                let r = k2.aufgaben_anlegen(&cl2, &mit_schluessel("zweiter", "k2"));
+                fertig_tx.send(()).ok();
+                r
+            });
+            let durchgelaufen = fertig_rx.recv_timeout(Duration::from_secs(2)).is_ok();
+            zweiter_tx.send((lauf, durchgelaufen)).unwrap();
+        }));
+        let vorher: usize = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+
+        let erster = k.aufgaben_anlegen(&cl, &mit_schluessel("erster", "k2"));
+        let (lauf, durchgelaufen) = zweiter_rx.recv().unwrap();
+        let zweiter = lauf.join().unwrap();
+
+        assert!(!durchgelaufen, "der zweite Aufruf kam durch, während der erste zwischen Suche und Schreiben stand");
+        let (erster, zweiter) = (erster.unwrap(), zweiter.unwrap());
+        assert_eq!((erster[0].aufgabe.nummer, erster[0].neu), (1, true));
+        assert_eq!((zweiter[0].aufgabe.nummer, zweiter[0].neu), (1, false), "dieselbe Karte, nicht neu (→ 200)");
+        let dateien: Vec<_> = std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().map(|e| e.unwrap().file_name()).collect();
+        assert_eq!(dateien, ["0001-erster.md"], "genau eine Datei mit k2");
+        assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap(), vorher + 1, "ein Commit");
     }
 }

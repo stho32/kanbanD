@@ -66,6 +66,9 @@ pub struct Kanban {
     eigene: Eigene,
     /// Startsekunde je laufendem Timer (Aufgabe, Kürzel) — die Datei kennt nur Minuten (R00068)
     timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
+    /// Testnaht (R00098 B0319): läuft beim Anlegen einmal zwischen Suche und Schreiben, unter der Sperre
+    #[cfg(test)]
+    zwischen_suche_und_schreiben: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -85,7 +88,10 @@ pub struct Zustand {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default() }
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(),
+            #[cfg(test)]
+            zwischen_suche_und_schreiben: Mutex::default(),
+        }
     }
 
     pub fn ordner(&self) -> &Ordner {
