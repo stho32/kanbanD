@@ -96,7 +96,7 @@ impl Kanban {
         let mut aufgaben: Vec<Aufgabe> = vec![];
         let mut plan: Vec<(u32, bool)> = vec![];
         for ((t, angaben), k) in eintraege.iter().zip(&schluessel) {
-            if let Some(nr) = k.as_ref().and_then(|k| schon_da(&aufgaben, &vorhanden, k)) {
+            if let Some(nr) = k.as_ref().map(|k| schon_da(&aufgaben, &vorhanden, k)).transpose()?.flatten() {
                 plan.push((nr, false));
                 continue;
             }
@@ -165,13 +165,17 @@ impl Kanban {
 }
 
 /// Die Nummer der Karte, die den Schlüssel schon trägt — zuerst unter den neuen dieser Anfrage, dann im Ordner.
-fn schon_da(neue: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fremdschluessel) -> Option<u32> {
+/// Tragen ihn mehrere Karten im Ordner, entscheidet kanbanD nicht, welche gemeint ist: 409.
+fn schon_da(neue: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fremdschluessel) -> Result<Option<u32>, Fehler> {
     match Schluesseltreffer::suchen(neue, k) {
-        Schluesseltreffer::Offen(nr) => Some(nr),
+        Schluesseltreffer::Offen(nr) => Ok(Some(nr)),
         _ => match Schluesseltreffer::suchen(vorhanden, k) {
-            Schluesseltreffer::Keiner => None,
-            Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => Some(nr),
-            Schluesseltreffer::Mehrfach(nummern) => Some(nummern[0]),
+            Schluesseltreffer::Keiner => Ok(None),
+            Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => Ok(Some(nr)),
+            Schluesseltreffer::Mehrfach(nummern) => {
+                let liste = nummern.iter().map(|nr| format!("#{nr}")).collect::<Vec<_>>().join(", ");
+                Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {liste}", k.text())))
+            }
         },
     }
 }

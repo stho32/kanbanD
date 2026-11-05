@@ -125,3 +125,30 @@ async fn ohne_schluessel_wie_bisher() {
     let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": ["p", "q"]})).await;
     assert_eq!((s, r.as_array().unwrap().iter().all(|a| a["neu"] == json!(true))), (201, true));
 }
+
+/// Zwei Dateien mit demselben Schlüssel, von Hand angelegt und committet.
+fn dublette(pfad: &Path, key: &str) {
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    for nr in [8, 9] {
+        std::fs::write(pfad.join(format!("aufgaben/000{nr}-fund.md")), format!("---\nid: {nr}\ntitle: Fund\nkey: {key}\n---\n")).unwrap();
+    }
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Dublette"]);
+}
+
+// AK Dublette (B0320)
+#[tokio::test]
+async fn dublette_weist_ab() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    dublette(tmp.path(), "k5");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let kopf = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let (s, f) = anlegen(&lauf.adresse, json!({"titel": "Fund", "key": "k5", "board": "fabrik"})).await;
+    assert_eq!((s, f["fehler"].as_str().unwrap_or("")), (409, "Schlüssel „k5“ mehrfach vergeben: #8, #9"));
+    let (s, f) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": [{"titel": "neu", "key": "k6"}, {"titel": "Fund", "key": "k5"}], "board": "fabrik"})).await;
+    assert_eq!((s, f["fehler"].as_str().unwrap_or("")), (409, "Schlüssel „k5“ mehrfach vergeben: #8, #9"), "ganze Anfrage abgewiesen");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), kopf, "kein Commit");
+    assert_eq!(aufgabendateien(tmp.path()), ["0008-fund.md", "0009-fund.md"], "keine Datei");
+    assert_eq!(lies(tmp.path(), "boards/fabrik.md"), "# Fabrik\n\n## Eingang\n\n## Fertig\n");
+}
