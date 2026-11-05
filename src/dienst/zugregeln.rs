@@ -15,7 +15,13 @@ pub(crate) fn archivierte(aufgaben: &[Aufgabe]) -> BTreeSet<u32> {
 
 /// Ein Zug auf einem Board: `vorher` und `nachher` im Speicher, dieselben Archivierten.
 pub(crate) fn zug_pruefen(art: Art, vorher: &Board, nachher: &Board, archiviert: &BTreeSet<u32>) -> Result<Vec<Warnung>, Fehler> {
-    zugregeln(art, &nachher.belegung(archiviert).grenzverletzungen(&vorher.belegung(archiviert)))
+    zug_mit_rueckkehr_pruefen(art, vorher, nachher, archiviert, archiviert)
+}
+
+/// Ein Zug, der zugleich archivierte Karten wieder zählen lässt (Wiederöffnen, R00098): `vorher` mit den Archivierten
+/// vor dem Zug gezählt, `nachher` mit denen danach.
+pub(crate) fn zug_mit_rueckkehr_pruefen(art: Art, vorher: &Board, nachher: &Board, archiviert_vorher: &BTreeSet<u32>, archiviert_nachher: &BTreeSet<u32>) -> Result<Vec<Warnung>, Fehler> {
+    zugregeln(art, &nachher.belegung(archiviert_nachher).grenzverletzungen(&vorher.belegung(archiviert_vorher)))
 }
 
 /// Agent: die erste Karte in Anfragereihenfolge, die in einer Menschen-Spalte von `vorher` liegt, als `Verboten`.

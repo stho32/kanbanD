@@ -1,12 +1,13 @@
 use super::Kanban;
 use super::archiv::zurueckgeholt;
 use super::kommentare::kommentiert;
-use super::zugregeln::{archivierte, zug_pruefen};
+use super::zugregeln::{archivierte, zug_mit_rueckkehr_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Fremdschluessel, Person, Schluesseltreffer};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::sync::MutexGuard;
 
 /// Felder, die schon beim Anlegen gesetzt werden (Schnelleingabe).
@@ -159,6 +160,9 @@ impl Kanban {
             [a] => Some(format!("#{} „{}“ angelegt", a.nummer, a.titel)),
             alle => Some(format!("#{}–#{} angelegt ({} Aufgaben)", alle[0].nummer, alle[0].nummer + alle.len() as u32 - 1, alle.len())),
         };
+        let archiviert_vorher = archivierte(vorhanden);
+        let archiviert_nachher: BTreeSet<u32> = archiviert_vorher.iter().copied().filter(|n| !wieder.iter().any(|a| a.nummer == *n)).collect();
+        self.rueckkehr_pruefen(wer, neu.board.as_deref(), wieder, &archiviert_vorher, &archiviert_nachher)?;
         if let Some(slug) = &neu.board {
             let mut b = self.ordner().board(slug)?;
             let spaltenname = match &neu.spalte {
@@ -172,7 +176,7 @@ impl Kanban {
                 b.oben_einordnen(a.nummer, Some(&spaltenname)).expect("Spalte geprüft");
             }
             // Agent: 409 über der Grenze; Mensch: durchgelassen ohne Warnung, die Antwort bleibt die Aufgabe (R00096)
-            zug_pruefen(wer.art, &vorher, &b, &archivierte(vorhanden))?;
+            zug_mit_rueckkehr_pruefen(wer.art, &vorher, &b, &archiviert_vorher, &archiviert_nachher)?;
             if let Some(n) = &mut angelegt {
                 n.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
             }
@@ -182,6 +186,17 @@ impl Kanban {
         let geoeffnet = (!wieder.is_empty()).then(|| format!("{} erneut gefunden: wieder geöffnet", nummernliste(wieder.iter().map(|a| a.nummer))));
         let nachricht = [angelegt, geoeffnet].into_iter().flatten().collect::<Vec<_>>().join("; ");
         self.aktion(wer, &nachricht, &dateien)
+    }
+
+    /// Wieder geöffnete Karten zählen auf jedem Board, auf dem sie liegen, wieder — das Board der Anfrage prüft der Zug
+    /// selbst, die übrigen hier in der Reihenfolge der Boardliste (wie Zurückholen, R00097).
+    fn rueckkehr_pruefen(&self, wer: &Person, ziel: Option<&str>, wieder: &[Aufgabe], vorher: &BTreeSet<u32>, nachher: &BTreeSet<u32>) -> Result<(), Fehler> {
+        if wieder.is_empty() {
+            return Ok(());
+        }
+        let (boards, _) = self.ordner().boards()?;
+        let betroffen = boards.iter().filter(|b| Some(b.slug.as_str()) != ziel && wieder.iter().any(|a| b.spalte_von(a.nummer).is_some()));
+        betroffen.map(|b| zug_mit_rueckkehr_pruefen(wer.art, b, b, vorher, nachher)).collect::<Result<Vec<_>, _>>().map(drop)
     }
 }
 

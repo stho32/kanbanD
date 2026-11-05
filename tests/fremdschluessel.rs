@@ -239,3 +239,65 @@ async fn mehrere_mit_archiviertem_und_neuem_in_einem_commit() {
     assert_eq!(spalte(tmp.path(), "Eingang"), vec![7, 3, 8]);
     assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#8 „Neu“ angelegt in „Eingang“ (Fabrik); #7 erneut gefunden: wieder geöffnet");
 }
+
+/// Wie `behoben`, aber „fabrik“ mit Grenzen (`limits:`-Zeilen) und offenen Karten in „Eingang“ und „Fertig“ (#7 bleibt in „Fertig“).
+fn voll(pfad: &Path, limits: &str, eingang: &[u32], fertig: &[u32]) {
+    behoben(pfad);
+    for nr in eingang.iter().chain(fertig) {
+        std::fs::write(pfad.join(format!("aufgaben/{nr:04}-k.md")), format!("---\nid: {nr}\ntitle: k{nr}\n---\n")).unwrap();
+    }
+    let zeilen = |n: &[u32]| n.iter().map(|nr| format!("- #{nr}\n")).collect::<String>();
+    let board = format!("---\nlimits:\n{limits}---\n\n# Fabrik\n\n## Eingang\n\n{}\n## In Arbeit\n\n## Fertig\n\n{}- #7\n", zeilen(eingang), zeilen(fertig));
+    std::fs::write(pfad.join("boards/fabrik.md"), board).unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "voll"]);
+}
+
+/// HEAD und alle Dateien — was eine Abweisung nicht verändern darf.
+fn alles(pfad: &Path) -> (String, Vec<(String, String)>) {
+    let mut d: Vec<(String, String)> = ["boards", "aufgaben"].iter().flat_map(|o| std::fs::read_dir(pfad.join(o)).unwrap().map(|e| e.unwrap().path())).map(|p| (p.display().to_string(), std::fs::read_to_string(&p).unwrap())).collect();
+    d.sort();
+    (git(pfad, &["rev-parse", "HEAD"]), d)
+}
+
+// AK Fehlfall Grenze (B0324)
+#[tokio::test]
+async fn grenze_beim_wiederoeffnen() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll(tmp.path(), "  Eingang: 2\n", &[5, 6], &[]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = alles(tmp.path());
+    let (s, f) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "fabrik"})).await;
+    assert_eq!((s, f), (409, json!({"fehler": "Grenze erreicht", "spalte": "Eingang", "grenze": 2, "anzahl": 2})));
+    assert_eq!(alles(tmp.path()), vorher, "#7 bleibt archiviert, kein Commit");
+
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "x", "key": "k4", "board": "fabrik"})).await;
+    assert_eq!((s, &a["nummer"], &a["neu"], a.get("warnungen")), (200, &json!(7), &json!(false), None), "Mensch: ohne Warnung");
+    assert!(!lies(tmp.path(), "aufgaben/0007-fund.md").contains("archived:"));
+}
+
+// AK Grenze: ohne board zählt die Karte wieder in ihrer alten Spalte (B0324)
+#[tokio::test]
+async fn grenze_der_alten_spalte_ohne_board() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll(tmp.path(), "  Fertig: 1\n", &[], &[9]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = alles(tmp.path());
+    let (s, f) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4"})).await;
+    assert_eq!((s, f), (409, json!({"fehler": "Grenze erreicht", "spalte": "Fertig", "grenze": 1, "anzahl": 1})));
+    assert_eq!(alles(tmp.path()), vorher);
+}
+
+// AK Grenze in …/mehrere nach dem Stand aller Einträge (B0324)
+#[tokio::test]
+async fn grenze_in_mehrere_nach_allen_eintraegen() {
+    let tmp = tempfile::tempdir().unwrap();
+    voll(tmp.path(), "  Eingang: 3\n", &[5, 6], &[]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = alles(tmp.path());
+    let (s, f) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": [{"titel": "x", "key": "k4"}, {"titel": "neu"}], "board": "fabrik"})).await;
+    assert_eq!((s, f), (409, json!({"fehler": "Grenze erreicht", "spalte": "Eingang", "grenze": 3, "anzahl": 2})));
+    assert_eq!(alles(tmp.path()), vorher);
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": [{"titel": "x", "key": "k4"}], "board": "fabrik"})).await;
+    assert_eq!(s, 200, "allein passt das Wiederöffnen unter die Grenze");
+}
