@@ -376,3 +376,16 @@ async fn filter_key_liefert_dublette() {
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
     assert_eq!(gefiltert(&lauf.adresse, "key=k5").await, [8, 9]);
 }
+
+// AK Fehlfall Dublette: der Zustand meldet sie (B0329)
+#[tokio::test]
+async fn zustand_meldet_dublette() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", Value::Null).await;
+    assert_eq!(z["dubletten"], json!([]), "ohne Dublette leere Liste");
+    dublette(tmp.path(), "k5");
+    let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", Value::Null).await;
+    assert_eq!(z["dubletten"], json!([{"key": "k5", "nummern": [8, 9]}]));
+}

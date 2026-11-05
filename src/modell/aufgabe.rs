@@ -168,6 +168,30 @@ impl Fremdschluessel {
     }
 }
 
+/// Ein Schlüssel, den mehrere Karten tragen (nach einem Merge oder von Hand) — `GET /api/zustand` meldet ihn (R00098).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+pub struct Dublette {
+    pub key: String,
+    pub nummern: Vec<u32>,
+}
+
+/// Je Schlüssel mit mehr als einer Karte die Nummern aufsteigend, nach Schlüssel sortiert.
+pub fn doppelte_schluessel(aufgaben: &[Aufgabe]) -> Vec<Dublette> {
+    let mut je_schluessel: std::collections::BTreeMap<&str, Vec<u32>> = Default::default();
+    for a in aufgaben {
+        if let Some(k) = &a.schluessel {
+            je_schluessel.entry(k.text()).or_default().push(a.nummer);
+        }
+    }
+    let mehrfach = je_schluessel.into_iter().filter(|(_, n)| n.len() > 1);
+    mehrfach
+        .map(|(key, mut nummern)| {
+            nummern.sort();
+            Dublette { key: key.to_string(), nummern }
+        })
+        .collect()
+}
+
 /// Was die Suche nach einem Schlüssel unter den Aufgaben findet (R00098, ADR-0004).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Schluesseltreffer {
@@ -637,6 +661,20 @@ mod tests {
         assert_eq!(Schluesseltreffer::suchen(&[karte(7, Some("k4"), true)], &k("k4")), Schluesseltreffer::Archiviert(7));
         let doppelt = [karte(9, Some("k5"), false), karte(8, Some("k5"), true)];
         assert_eq!(Schluesseltreffer::suchen(&doppelt, &k("k5")), Schluesseltreffer::Mehrfach(vec![8, 9]));
+    }
+
+    // R00098 B0329: je Schlüssel mit mehr als einer Karte die Nummern aufsteigend, Schlüssel sortiert
+    #[test]
+    fn doppelte_schluessel_finden() {
+        use super::{Aufgabe, Dublette, Fremdschluessel, doppelte_schluessel};
+        let karte = |nr: u32, schluessel: Option<&str>| {
+            let mut a = Aufgabe::neu(nr, format!("{nr:04}-x.md"), "x".into());
+            a.schluessel = schluessel.map(|t| Fremdschluessel::pruefen(t).unwrap());
+            a
+        };
+        assert_eq!(doppelte_schluessel(&[karte(1, Some("k1")), karte(2, None), karte(3, None)]), vec![]);
+        let alle = [karte(9, Some("k5")), karte(4, Some("a")), karte(8, Some("k5")), karte(5, Some("A")), karte(6, Some("a")), karte(7, Some("k4"))];
+        assert_eq!(doppelte_schluessel(&alle), vec![Dublette { key: "a".into(), nummern: vec![4, 6] }, Dublette { key: "k5".into(), nummern: vec![8, 9] }]);
     }
 
     #[test]

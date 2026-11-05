@@ -317,3 +317,4 @@ Nie vom User erfragen.
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0326 PATCH mit Schlüssel abweisen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0327 Schlüssel im Aufgabenfenster | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0328 Filter key | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0329 Zustand meldet doppelte Schlüssel | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

@@ -84,6 +84,8 @@ pub struct Zustand {
     pub einstellungen: Option<Einstellungen>,
     pub boards: Vec<BoardKopf>,
     pub defekte: Vec<DefekteDatei>,
+    /// R00098: Schlüssel, die mehrere Karten tragen — wie doppelte Nummern unter `defekte`
+    pub dubletten: Vec<crate::modell::Dublette>,
 }
 
 impl Kanban {
@@ -115,13 +117,15 @@ impl Kanban {
         };
         let (boards, defekte_boards) = self.ordner.boards()?;
         defekte.extend(defekte_boards);
-        defekte.extend(self.ordner.aufgaben()?.1);
+        let (aufgaben, defekte_aufgaben) = self.ordner.aufgaben()?;
+        defekte.extend(defekte_aufgaben);
         Ok(Zustand {
             ordner: self.ordner.wurzel().to_string_lossy().into(),
             eingerichtet: self.ordner.existiert(crate::format::einstellungen::DATEI),
             einstellungen,
             boards: boards.into_iter().map(|b| BoardKopf { slug: b.slug, titel: b.titel }).collect(),
             defekte,
+            dubletten: crate::modell::doppelte_schluessel(&aufgaben),
         })
     }
 
