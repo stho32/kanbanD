@@ -168,6 +168,29 @@ impl Fremdschluessel {
     }
 }
 
+/// Was die Suche nach einem Schlüssel unter den Aufgaben findet (R00098, ADR-0004).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Schluesseltreffer {
+    Keiner,
+    Offen(u32),
+    Archiviert(u32),
+    /// mehrere Karten tragen den Schlüssel, Nummern aufsteigend
+    Mehrfach(Vec<u32>),
+}
+
+impl Schluesseltreffer {
+    pub fn suchen(aufgaben: &[Aufgabe], schluessel: &Fremdschluessel) -> Schluesseltreffer {
+        let mut treffer: Vec<&Aufgabe> = aufgaben.iter().filter(|a| a.schluessel.as_ref() == Some(schluessel)).collect();
+        treffer.sort_by_key(|a| a.nummer);
+        match treffer.as_slice() {
+            [] => Schluesseltreffer::Keiner,
+            [a] if a.archiviert.is_some() => Schluesseltreffer::Archiviert(a.nummer),
+            [a] => Schluesseltreffer::Offen(a.nummer),
+            alle => Schluesseltreffer::Mehrfach(alle.iter().map(|a| a.nummer).collect()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Kommentar {
     pub wer: String,
@@ -583,6 +606,26 @@ mod tests {
         let lang = "ä".repeat(200);
         assert_eq!(super::Fremdschluessel::pruefen(&lang).unwrap().text(), lang, "200 Zeichen, nicht Bytes");
         assert!(super::Fremdschluessel::pruefen(&"ä".repeat(201)).is_err());
+    }
+
+    // R00098 B0317: genau mit Groß/Klein; offen, archiviert, mehrfach aufsteigend
+    #[test]
+    fn schluessel_suchen() {
+        use super::{Aufgabe, Fremdschluessel, Schluesseltreffer};
+        let k = |t: &str| Fremdschluessel::pruefen(t).unwrap();
+        let karte = |nr: u32, schluessel: Option<&str>, archiviert: bool| {
+            let mut a = Aufgabe::neu(nr, format!("{nr:04}-x.md"), "x".into());
+            a.schluessel = schluessel.map(k);
+            a.archiviert = archiviert.then(|| "2026-10-01".into());
+            a
+        };
+        assert_eq!(Schluesseltreffer::suchen(&[], &k("k4")), Schluesseltreffer::Keiner);
+        let offen = [karte(3, None, false), karte(7, Some("k4"), false), karte(8, Some("k5"), false)];
+        assert_eq!(Schluesseltreffer::suchen(&offen, &k("k4")), Schluesseltreffer::Offen(7));
+        assert_eq!(Schluesseltreffer::suchen(&offen, &k("K4")), Schluesseltreffer::Keiner, "Groß/Klein zählt");
+        assert_eq!(Schluesseltreffer::suchen(&[karte(7, Some("k4"), true)], &k("k4")), Schluesseltreffer::Archiviert(7));
+        let doppelt = [karte(9, Some("k5"), false), karte(8, Some("k5"), true)];
+        assert_eq!(Schluesseltreffer::suchen(&doppelt, &k("k5")), Schluesseltreffer::Mehrfach(vec![8, 9]));
     }
 
     #[test]
