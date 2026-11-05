@@ -325,3 +325,22 @@ async fn agent_oeffnet_aus_menschenspalte() {
         wieder_offen_mit_geschichte(tmp.path());
     }
 }
+
+// AK PATCH mit key, einzeln und über …/mehrere (B0326)
+#[tokio::test]
+async fn schluessel_ist_nicht_aenderbar() {
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = alles(tmp.path());
+    for wert in [json!("x"), json!("k4"), Value::Null, json!(5)] {
+        let (s, f) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/7", "cl", json!({"key": wert, "titel": "anders"})).await;
+        assert_eq!((s, &f["fehler"]), (400, &json!("Schlüssel ist nicht änderbar")), "{wert}");
+        let (s, f) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/mehrere", "st", json!({"aenderungen": [{"nummer": 3, "titel": "y"}, {"nummer": 7, "key": wert}]})).await;
+        assert_eq!(s, 400, "{wert}");
+        assert!(f["fehler"].as_str().unwrap().ends_with("Schlüssel ist nicht änderbar"), "{f}");
+        assert_eq!(alles(tmp.path()), vorher, "{wert}: Dateien byte-gleich, kein Commit");
+    }
+    let (s, _) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/7", "cl", json!({"titel": "anders"})).await;
+    assert_eq!(s, 200, "ohne key wie bisher");
+}

@@ -419,6 +419,14 @@ pub struct Aufgabenaenderung {
     pub signale: Option<Vec<String>>,
     pub phasen: Option<Phasenaenderung>,
     pub reporting: Option<Zaehlungsaenderung>,
+    /// Ob `key` mitgeschickt wurde, mit welchem Wert auch immer — der Schlüssel wird nur beim Anlegen gesetzt (R00098).
+    #[serde(default, rename = "key", deserialize_with = "mitgeschickt")]
+    #[schema(ignore)]
+    pub schluessel_mitgeschickt: bool,
+}
+
+fn mitgeschickt<'de, D: serde::Deserializer<'de>>(d: D) -> Result<bool, D::Error> {
+    serde::de::IgnoredAny::deserialize(d).map(|_| true)
 }
 
 /// `{"burndown": false, "forecast": null}` — ein Wert setzt, `null` entfernt den Schlüssel (der Standard gilt wieder), fehlt er, bleibt er.
@@ -478,6 +486,9 @@ pub(crate) fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
 impl Aufgabe {
     /// Wendet die Änderung an und liefert die Namen der Felder, die sich wirklich geändert haben.
     pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen) -> Result<Vec<&'static str>, String> {
+        if a.schluessel_mitgeschickt {
+            return Err("Schlüssel ist nicht änderbar".into());
+        }
         let mut neu = self.clone();
         if let Some(t) = &a.titel {
             if t.trim().is_empty() {
