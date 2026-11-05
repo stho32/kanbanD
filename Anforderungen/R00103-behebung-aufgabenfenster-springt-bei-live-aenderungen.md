@@ -16,7 +16,14 @@ Reproduktion (architekt, headless gegen `target/release/kanbanD`, Stand `6333800
 
 Zahlt ein auf: [Vision](R00000-vision.md) — „Live überall, egal woher die Änderung kommt“: Live darf nicht heißen, dass ein Mensch neben arbeitenden Agenten nicht mehr lesen und schreiben kann.
 
-Begriffe: Das Projekt führt kein Glossar (`Dokumentation/Domaenenwissen/` fehlt). Verwendet werden die Wörter der Oberfläche und früherer Anforderungen: **Aufgabenfenster** (R00011), **Hauptbereich** (Titel, Beschreibung, Abschnitte), **Seitenleiste** (Felder rechts), **schmales Layout** (≤ 640 px, R00077: Hauptbereich und Seitenleiste scrollen gemeinsam), **Live-Ereignis** (R00007), **Leseposition** (R00063).
+### Domänenbezug
+
+- [Aufgabenfenster](../Dokumentation/Domaenenwissen/D00001-aufgabenfenster.md)
+- [Hauptbereich](../Dokumentation/Domaenenwissen/D00002-hauptbereich.md)
+- [Seitenleiste](../Dokumentation/Domaenenwissen/D00003-seitenleiste.md)
+- [Schmales Layout](../Dokumentation/Domaenenwissen/D00004-schmales-layout.md)
+- [Live-Ereignis](../Dokumentation/Domaenenwissen/D00005-live-ereignis.md)
+- [Leseposition](../Dokumentation/Domaenenwissen/D00006-leseposition.md)
 
 ## Ursachenanalyse
 
@@ -28,7 +35,7 @@ Belegt im Code (ADR-0007, Kontext):
 - `render()` ersetzt `#kopf`, `#main` und `#over` per `innerHTML` (`web/app.js:446–452`). Das Aufgabenfenster liegt in `#over` (`web/ansicht.js:222–237`) und entsteht dabei mit Scrollstand 0 neu.
 - Leseposition gerettet wird nur über eine feste Selektorliste in `#main` (`rollpositionen()`, `web/app.js:467–479`, aus R00063). Die Scrollflächen des Fensters — breit `.mod-main` und `.mod-side` (`web/kd-app.css:226–227`), schmal `.mod-body` (`web/kd-app.css:710–714`) — stehen nicht darin.
 - Fokus, Wert und Cursor gerettet werden nur für ein Eingabefeld mit `id` (`web/app.js:434–460`). Titel, Labels, Fälligkeit, Spalte und Klasse tragen `data-af`, aber keine `id` (`web/ansicht.js:211`, `225–236`); 37 Eingabeelemente in `web/*.js` haben keine `id`. Das Kommentarfeld `#km-inp` hat eine und ist deshalb heil.
-- Der ungewollte Commit: Die Felder speichern über `change` (`web/app.js:1165–1172`). Vermutung (ADR-0007, Wirkung belegt, Weg nicht im Einzelnen verfolgt): Das fokussierte, geänderte Feld verliert beim Ersetzen seinen Knoten und löst dabei `change` aus; der Handler prüft nicht, ob das Feld noch im Dokument hängt.
+- Der ungewollte Commit: Die Felder speichern über `change` (`web/app.js:1165–1172`). Belegt beim Bau (roter Test, `Dokumentation/Gelerntes.md`, 2026-11-05): Das fokussierte, geänderte Feld löst `change` aus, während `innerHTML` es ersetzt — zu diesem Zeitpunkt hängt es noch im Dokument (`isConnected` wahr), ein Wächter „hängt das Feld noch?“ greift deshalb nicht. Abhilfe ist ein Merker um das Ersetzen: `change`-Ereignisse währenddessen werden verworfen. Und weil der Browser „geändert“ ab dem Fokussieren misst, meldet das zurückgesetzte Feld beim Verlassen ohne Weitertippen kein `change` mehr; dieses eine `change` wird beim Verlassen nachgetragen.
 
 Ausgeschlossen: Die Ereignisse selbst sind korrekt (R00007, R00085); das Neuzeichnen nur bei Änderung (R00061) greift, aber jede fremde Änderung ist eine Änderung. R00063 hat das Fenster ausdrücklich nicht geprüft (dort Notizen: „Nicht geprüft: das Aufgabenfenster … bei Live-Änderungen“).
 
@@ -81,7 +88,7 @@ Die Schlüsselregel als reine Funktion in einem eigenen Modul (wie `web/auswahl.
 
 ## Akzeptanzkriterien
 
-Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mit 40 Kommentaren, Aufgabe #2 „Board aufräumen“, Person `st` hat #1 im Aufgabenfenster offen; Live-Ereignis heißt: der Agent `bot` schreibt über die API einen Kommentar. Scrollstände in Pixeln, Toleranz ±1.
+Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mit 40 Kommentaren, Aufgabe #2 „Board aufräumen“, Person `st` hat #1 im Aufgabenfenster offen; Live-Ereignis heißt: Der Agent `bot` schreibt über die API einen Kommentar. Scrollstände in Pixeln, Toleranz ±1.
 
 ### Bug behoben (Pflicht)
 - [ ] Der Reproduktionstest ist ohne Fix rot und mit Fix grün
@@ -119,7 +126,7 @@ Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mi
 - Bereich `#main`: Leseposition nur, wenn `#main[data-sicht]` gleich bleibt (Bedingung aus R00063 übernehmen). Bereich `#over`: nur, wenn dieselbe Aufgabe offen bleibt (`S.ui.offen` vor und nach dem Neuzeichnen gleich).
 - Wiederherstellen des Scrollstands vor dem Setzen des Fokus (`focus({ preventScroll: true })`), sonst zieht der Fokus die Fläche weg.
 - Der gerettete Wert wird gesetzt, ohne dass das Verlassen des Feldes danach stumm bleibt: Ein Feld, dessen Wert programmatisch gesetzt wurde, löst beim Verlassen sonst kein `change` aus — die Gegenprobe „Speichern“ deckt das ab.
-- „Geändert“ heißt: der Wert des Feldes weicht vom zuletzt gezeichneten Wert dieses Feldes ab. Nur ein geändertes Feld behält beim Neuzeichnen seinen Wert; einem unveränderten Feld schreibt der Sicherer nie den alten Wert zurück — es zeigt den neu gezeichneten (auch fremden) Wert, Fokus und Cursor bleiben (PO-Entscheidung `AI-Team/po-entscheidungen.md`, Zeile 63).
+- „Geändert“ heißt: Der Wert des Feldes weicht vom zuletzt gezeichneten Wert dieses Feldes ab. Nur ein geändertes Feld behält beim Neuzeichnen seinen Wert; einem unveränderten Feld schreibt der Sicherer nie den alten Wert zurück — es zeigt den neu gezeichneten (auch fremden) Wert, Fokus und Cursor bleiben (PO-Entscheidung `AI-Team/po-entscheidungen.md`, Zeile 63).
 - Muster der E2E-Tests: `kanbanStarten`, `alsPerson`, `liveBereit` aus `e2e/tests/hilfen.js`; Warten über `window.kdTest.renders()`.
 - Lastprofil (`AI-Team/umgebung.md`): bis 5 Schreibaufrufe/s, also bis zu fünf Neuzeichnungen je Sekunde — der Sicherer darf keine Anfrage an den Server stellen.
 
@@ -129,7 +136,7 @@ Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mi
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
-Auslöser ist das volle Neuzeichnen bei jedem fremden Ereignis, das im Fenster alles ohne Schlüssel auf Anfang setzt und ein fokussiertes Feld aushängt. Sichert `render()` den Zustand über stabile Schlüssel und stellt ihn danach her, steht nach jedem Ereignis dieselbe Leseposition, derselbe Fokus und derselbe Cursor da — egal, welche Fläche oder welches Feld es ist, auch künftige ohne Zutun. Ignoriert der Speicherweg ausgehängte Felder, entsteht kein Commit mehr, den die Person nicht ausgelöst hat; gespeichert wird erst, wenn sie das Feld verlässt. Der Hebel sitzt in `render()`, weil dort der Verlust entsteht: eine Korrektur je Fläche oder Feld (Option A) lässt die Fehlerklasse offen, ein selteneres Neuzeichnen (Option C) hilft bei Änderungen an der offenen Aufgabe nicht. Damit bleibt das Aufgabenfenster unter Agentenlast (bis fünf Neuzeichnungen je Sekunde) benutzbar.
+Auslöser ist das volle Neuzeichnen bei jedem fremden Ereignis, das im Fenster alles ohne Schlüssel auf Anfang setzt und ein fokussiertes Feld aushängt. Sichert `render()` den Zustand über stabile Schlüssel und stellt ihn danach her, steht nach jedem Ereignis dieselbe Leseposition, derselbe Fokus und derselbe Cursor da — egal, welche Fläche oder welches Feld es ist, auch künftige ohne Zutun. Verwirft der Speicherweg das `change` während des Ersetzens und trägt es beim Verlassen genau einmal nach, entsteht kein Commit mehr, den die Person nicht ausgelöst hat; gespeichert wird erst, wenn sie das Feld verlässt. Der Hebel sitzt in `render()`, weil dort der Verlust entsteht: eine Korrektur je Fläche oder Feld (Option A) lässt die Fehlerklasse offen, ein selteneres Neuzeichnen (Option C) hilft bei Änderungen an der offenen Aufgabe nicht. Damit bleibt das Aufgabenfenster unter Agentenlast (bis fünf Neuzeichnungen je Sekunde) benutzbar.
 
 ## Notizen
 

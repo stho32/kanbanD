@@ -27,8 +27,8 @@ Die Klasse des Fehlers ist damit nicht „ein Selektor fehlt“, sondern „jede
 ### Option B: allgemeiner Sicherer in `render()` über stabile Schlüssel
 `render()` sichert vor dem Ersetzen **alle** Zustände in `#main` und `#over` und stellt sie danach über einen Schlüssel wieder her, statt Listen zu führen:
 - Scrollstand jedes Elements mit `scrollTop`/`scrollLeft` ≠ 0, Fokus des aktiven Elements, Wert und Cursor eines fokussierten Feldes.
-- Schlüssel eines Elements: `id`; sonst `data-halt="<name>"`; sonst ein Feldschlüssel (`data-af`, `data-nf`, `data-wf`, `data-wn`, `data-tf` samt Wert); sonst `data-act` + `data-arg`; sonst die Klasse, wenn sie im Bereich eindeutig ist. Ohne eindeutigen Schlüssel wird nichts zurückgesetzt (kein Raten an der falschen Stelle).
-- Ein Element, das nur durch das Neuzeichnen seinen Knoten verliert, löst keine Speicheraktion aus (der `change`-Weg ignoriert ausgehängte Knoten).
+- Schlüssel eines Elements: `id`; sonst `data-halt="<name>"`; sonst ein Feldschlüssel (`data-af`, `data-nf`, `data-wf`, `data-wn`, `data-tf`, `data-fb`, `data-bf`, `data-dl`, `data-ef`, `data-sf`, `data-fr` samt Wert, bei Listenzeilen mit `data-i`); sonst `data-act` + `data-arg`; sonst die Klasse, wenn sie im Bereich eindeutig ist. Ohne eindeutigen Schlüssel wird nichts zurückgesetzt (kein Raten an der falschen Stelle).
+- Ein Element, das nur durch das Neuzeichnen seinen Knoten verliert, löst keine Speicheraktion aus (ein Merker um das Ersetzen verwirft das `change`, das währenddessen feuert — das Feld hängt dann noch im Dokument; beim Verlassen wird es genau einmal nachgetragen).
 - Vorteile: deckt die Klasse ab, auch für künftige Flächen und Felder, ohne dass jemand eine Liste pflegt; ersetzt drei Einzelmechanismen durch einen; bleibt beim heutigen Zeichenmodell (Vorlagen als Zeichenketten, kein Build-Schritt, `A00009`).
 - Nachteile: zeichnet weiter alles neu (Kosten je Ereignis unverändert); der Schlüssel aus Klasse oder `data-act` kann bei gleichartigen Elementen mehrdeutig sein — dann gilt die Regel „nichts zurücksetzen“, und es braucht `data-halt`. Restfälle (Textauswahl in Lesetext, aufgeklappte `<details>`) deckt er nicht.
 
