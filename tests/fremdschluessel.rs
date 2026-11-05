@@ -429,3 +429,44 @@ async fn beschreibung_nennt_schluessel() {
     assert!(params.contains("\"key\""), "GET /api/aufgaben ohne Parameter key: {params}");
     assert!(d["components"]["schemas"]["Zustand"].to_string().contains("dubletten"), "Schema Zustand ohne dubletten");
 }
+
+// Nacharbeit Security-Review: ein Schlüssel, den YAML als Zahl läse, bleibt Text — 0x11 und 17 sind verschiedene Karten
+#[tokio::test]
+async fn schluessel_mit_zahlpraefix_bleibt_text() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s1, a) = anlegen(&lauf.adresse, json!({"titel": "0x10", "key": "0x11"})).await;
+    let (s2, b) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "17"})).await;
+    assert_eq!((s1, s2), (201, 201), "{a} {b}");
+    assert_ne!(a["nummer"], b["nummer"]);
+    assert_eq!(b["neu"], true);
+    let (_, karte) = senden(Method::GET, &lauf.adresse, &format!("api/aufgaben/{}", a["nummer"]), "st", Value::Null).await;
+    assert_eq!((karte["titel"].as_str(), karte["key"].as_str()), (Some("0x10"), Some("0x11")), "Titel und Schlüssel unverändert");
+    for k in ["0x10", "0o17", "0b11", "0xFF", "0X1A", "1e3"] {
+        let (_, erst) = anlegen(&lauf.adresse, json!({"titel": "t", "key": k})).await;
+        let (status, zweit) = anlegen(&lauf.adresse, json!({"titel": "t", "key": k})).await;
+        assert_eq!((status, &zweit["nummer"]), (200, &erst["nummer"]), "{k}: zweiter Aufruf trifft dieselbe Karte");
+        let (_, karte) = senden(Method::GET, &lauf.adresse, &format!("api/aufgaben/{}", erst["nummer"]), "st", Value::Null).await;
+        assert_eq!(karte["key"].as_str(), Some(k), "{k}");
+        assert_eq!(gefiltert(&lauf.adresse, &format!("key={k}")).await, [erst["nummer"].as_u64().unwrap()], "Filter {k}");
+    }
+}
+
+// Nacharbeit Security-Review: nicht druckbare Zeichen in Schlüssel und Titel machen die Datei nicht unlesbar
+#[tokio::test]
+async fn nicht_druckbare_zeichen_im_rundlauf() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    for k in ["a\u{7f}b", "\u{80}", "\u{9b}", "\u{fffe}", "a\u{0}b", "a\u{1b}b", "a\tb", "\u{feff}x", "\u{202e}abc"] {
+        // NUL im Titel scheitert schon an der Commit-Nachricht (git: „nul byte“) — außerhalb dieses Befunds
+        let titel = if k.contains('\0') { "T".to_string() } else { format!("T{k}") };
+        let (s1, erst) = anlegen(&lauf.adresse, json!({"titel": titel, "key": k})).await;
+        let (s2, zweit) = anlegen(&lauf.adresse, json!({"titel": "t", "key": k})).await;
+        assert_eq!((s1, s2, &zweit["nummer"]), (201, 200, &erst["nummer"]), "{k:?}: {erst} {zweit}");
+        let (status, karte) = senden(Method::GET, &lauf.adresse, &format!("api/aufgaben/{}", erst["nummer"]), "st", Value::Null).await;
+        assert_eq!(status, 200, "{k:?}: {karte}");
+        assert_eq!((karte["titel"].as_str(), karte["key"].as_str()), (Some(titel.as_str()), Some(k)), "{k:?}");
+    }
+}

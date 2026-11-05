@@ -4,15 +4,34 @@ use super::Formatfehler;
 use serde_yaml::{Mapping, Value};
 
 /// Ein Skalar so, dass YAML ihn als denselben Text zurückliest: ohne Anführungszeichen,
-/// wenn das eindeutig ist, sonst als JSON-String (gültiges YAML).
+/// wenn das eindeutig ist, sonst in doppelten Anführungszeichen mit `\uXXXX` für alles,
+/// was YAML nicht roh in einer Datei duldet. „Eindeutig“ entscheidet am Ende der Rücklese-Test,
+/// nicht eine Liste der Sonderfälle: `0x11`, `0o17`, `.inf` liest YAML sonst als Zahl (R00098).
 pub fn skalar(s: &str) -> String {
     let schlicht = !s.is_empty()
         && s.chars().all(|c| c.is_alphanumeric() || " _./-()äöüÄÖÜß".contains(c))
         && !s.starts_with([' ', '-', '.'])
         && !s.ends_with(' ')
         && !matches!(s.to_lowercase().as_str(), "true" | "false" | "yes" | "no" | "on" | "off" | "null" | "~")
-        && s.parse::<f64>().is_err();
-    if schlicht || ist_qualifizierte_herkunft(s) { s.to_string() } else { serde_json::to_string(s).expect("String ist JSON") }
+        && s.parse::<f64>().is_err()
+        && liest_sich_als_derselbe_text(s);
+    if schlicht || ist_qualifizierte_herkunft(s) { s.to_string() } else { in_anfuehrungszeichen(s) }
+}
+
+fn liest_sich_als_derselbe_text(s: &str) -> bool {
+    matches!(serde_yaml::from_str::<Value>(s), Ok(Value::String(t)) if t == s)
+}
+
+/// JSON-String (gültiges YAML), darin zusätzlich escapet, was YAML nicht druckbar nennt
+/// (DEL, C1, U+FFFE/U+FFFF) oder als Zeilenumbruch faltet (U+0085, U+2028, U+2029).
+fn in_anfuehrungszeichen(s: &str) -> String {
+    let json = serde_json::to_string(s).expect("String ist JSON");
+    json.chars()
+        .map(|c| match c {
+            '\u{7f}'..='\u{9f}' | '\u{2028}' | '\u{2029}' | '\u{fffe}' | '\u{ffff}' => format!("\\u{:04X}", c as u32),
+            _ => c.to_string(),
+        })
+        .collect()
 }
 
 /// `kd:I0007` liest YAML auch in einer Liste als einen Text — ein Doppelpunkt ohne folgendes Leerzeichen trennt nichts.
@@ -78,6 +97,23 @@ mod tests {
             let y = format!("k: {}\n", skalar(s));
             let m = lesen(&y).unwrap();
             assert_eq!(text(&m, "k").unwrap_or_default(), s, "{y}");
+        }
+    }
+
+    // R00098 Nacharbeit (Security-Review): jeder Text liest sich als derselbe String zurück — Klasse
+    // „YAML liest etwas anderes“ (Zahlen mit Präfix) und „Datei unlesbar“ (nicht druckbare Zeichen)
+    #[test]
+    fn jeder_text_im_rundlauf() {
+        let werte = [
+            "0x11", "0o17", "0b11", "0xFF", "0x10", "0X1A", "1e3", "17", "+1", "-1", ".5", "1_000", "0.", ".inf", "-.inf", ".nan", "Infinity",
+            "a\u{7f}b", "\u{80}", "\u{9b}", "\u{fffe}", "\u{ffff}", "\u{85}", "a\u{2028}b", "a\u{2029}b",
+            "\0", "\u{1b}", "a\tb", "\u{feff}x", "\u{202e}abc", "a\nb", "Größe", "kd:I0007", "Stefan Hoffmann",
+        ];
+        for s in werte.map(String::from) {
+            let y = format!("k: {}\nl: {}\n", skalar(&s), liste(std::slice::from_ref(&s)));
+            let m = lesen(&y).unwrap_or_else(|e| panic!("{s:?} → {y:?}: {e:?}"));
+            assert!(matches!(m.get("k"), Some(Value::String(t)) if *t == s), "{s:?} → {y:?} → {:?}", m.get("k"));
+            assert_eq!(textliste(&m, "l"), vec![s.clone()], "{y:?}");
         }
     }
 
