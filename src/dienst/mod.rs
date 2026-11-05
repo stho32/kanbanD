@@ -13,6 +13,7 @@ mod board_anlegen;
 mod durchlaeufe;
 mod einrichten;
 mod einstellungen;
+mod erledigen;
 mod fieber;
 mod herkunft;
 mod kommentare;
