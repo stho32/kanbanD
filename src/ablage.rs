@@ -57,11 +57,15 @@ impl Ordner {
         }
     }
 
-    /// Alle Board-Dateien, nach Dateiname sortiert; unlesbare kommen als defekt zurück.
+    /// Alle Board-Dateien, nach Dateiname sortiert; unlesbare und solche mit einem Namen außerhalb der Form (ADR-0008) kommen als defekt zurück.
     pub fn boards(&self) -> Result<(Vec<Board>, Vec<DefekteDatei>), Fehler> {
         let mut gut = vec![];
         let mut defekt = vec![];
         for (slug, rel) in self.markdown_dateien(board::ORDNER)? {
+            if !crate::modell::slug_gueltig(&slug) {
+                defekt.push(DefekteDatei { pfad: rel, fehler: "Dateiname ist kein gültiger Board-Name — umbenennen".into() });
+                continue;
+            }
             let text = self.lies(&rel)?.unwrap_or_default();
             match board::lesen(&slug, &text) {
                 Ok(b) => gut.push(b),
@@ -197,5 +201,16 @@ mod tests {
         assert!(!o.board("fabrik\0").unwrap_err().meldung().contains('\0'), "kein NUL in der Meldung");
         assert!(matches!(o.board(&"a".repeat(40)), Err(Fehler::NichtGefunden(_))));
         assert_eq!(o.board("fabrik").unwrap().titel, "fabrik");
+    }
+
+    // B0341: Liste und Eingangstür sagen dasselbe — ein Dateistamm außerhalb der Form ist defekt, nichts wird umbenannt
+    #[test]
+    fn boards_meldet_handbenannte_datei_als_defekt() {
+        let (tmp, o) = ordner_mit_fabrik();
+        std::fs::write(tmp.path().join("boards/Alt_Board.md"), "# Alt\n\n## Offen\n").unwrap();
+        let (gut, defekt) = o.boards().unwrap();
+        assert_eq!(gut.iter().map(|b| b.slug.as_str()).collect::<Vec<_>>(), ["fabrik"]);
+        assert_eq!(defekt, [super::DefekteDatei { pfad: "boards/Alt_Board.md".into(), fehler: "Dateiname ist kein gültiger Board-Name — umbenennen".into() }]);
+        assert_eq!(std::fs::read_to_string(tmp.path().join("boards/Alt_Board.md")).unwrap(), "# Alt\n\n## Offen\n");
     }
 }
