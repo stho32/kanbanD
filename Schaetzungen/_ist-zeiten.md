@@ -321,3 +321,4 @@ Nie vom User erfragen.
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0330 Beschreibung nennt Schlüssel, neu, Status und Dubletten | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00099 Befund erledigt sich | B0331 Erledigung prüfen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-05 | R00099 Befund erledigt sich | B0332 Lage bestimmen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00099 Befund erledigt sich | B0333 Erledigen in einem Commit | Standard | 1-2h | 0,6h | 0,6h | autonom |

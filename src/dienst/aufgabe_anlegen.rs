@@ -232,7 +232,7 @@ fn wieder_geoeffnet(mut a: Aufgabe, wer: &Person, k: &Fremdschluessel) -> Result
     Ok(a)
 }
 
-fn nummernliste(nummern: impl Iterator<Item = u32>) -> String {
+pub(super) fn nummernliste(nummern: impl Iterator<Item = u32>) -> String {
     nummern.map(|nr| format!("#{nr}")).collect::<Vec<_>>().join(", ")
 }
 

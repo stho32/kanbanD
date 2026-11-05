@@ -1,8 +1,14 @@
 //! Befund erledigt sich (R00099, ADR-0005): ein Sensor meldet über seinen Schlüssel, dass er einen Befund nicht mehr
 //! findet. Suche, Prüfung und Schreiben laufen unter einer Sperre und enden in höchstens einem Commit.
 
+use super::Kanban;
+use super::aufgabe_anlegen::nummernliste;
+use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
-use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, signal_unbekannt};
+use crate::format::aufgabe;
+use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, signal_unbekannt};
+use crate::pruefungen::Warnung;
+use serde::Serialize;
 
 /// Eingabe von `POST /api/aufgaben/erledigen`; fehlende Felder gelten als leer und werden abgewiesen.
 #[derive(Debug, Clone, Default, serde::Deserialize, utoipa::ToSchema)]
@@ -48,6 +54,64 @@ impl Erledigung {
             return Err(Fehler::Ungueltig("Board fehlt".into()));
         }
         Ok(GepruefteErledigung { schluessel, board: board.to_string(), text, signal: self.signal.clone() })
+    }
+}
+
+/// Was die Erledigung bewirkt hat.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+pub enum Erledigungsergebnis {
+    #[serde(rename = "erledigt")]
+    Erledigt,
+    #[serde(rename = "schon erledigt")]
+    SchonErledigt,
+    #[serde(rename = "gemeldet")]
+    Gemeldet,
+    #[serde(rename = "schon gemeldet")]
+    SchonGemeldet,
+}
+
+/// Antwort von `POST /api/aufgaben/erledigen` — jede 200 hat diese Form, `warnungen` wie bei `Gezogen`.
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct Erledigt {
+    pub aufgabe: Aufgabe,
+    pub ergebnis: Erledigungsergebnis,
+    pub warnungen: Vec<Warnung>,
+}
+
+impl Kanban {
+    /// Befund erledigt sich (R00099): Suche, Lage und Schreiben unter einer Sperre, höchstens ein Commit.
+    pub fn erledigen(&self, wer: &Person, e: &Erledigung) -> Result<Erledigt, Fehler> {
+        let _sperre = self.gesperrt();
+        let g = e.pruefen(&self.ordner().einstellungen()?.unwrap_or_default())?;
+        let mut b = self.ordner().board(&g.board)?;
+        let (aufgaben, _) = self.ordner().aufgaben()?;
+        let nr = match Schluesseltreffer::suchen(&aufgaben, &g.schluessel) {
+            Schluesseltreffer::Keiner => return Err(Fehler::NichtGefunden(format!("Schlüssel „{}“ gibt es nicht", g.schluessel.text()))),
+            Schluesseltreffer::Mehrfach(nummern) => return Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", g.schluessel.text(), nummernliste(nummern.into_iter())))),
+            Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => nr,
+        };
+        let mut a = aufgaben.into_iter().find(|a| a.nummer == nr).expect("Treffer stammt aus der Liste");
+        #[cfg(test)]
+        {
+            let haken = self.zwischen_suche_und_schreiben.lock().unwrap().take();
+            if let Some(haken) = haken {
+                haken();
+            }
+        }
+        let fertig = |a: Aufgabe, ergebnis| Ok(Erledigt { aufgabe: a, ergebnis, warnungen: vec![] });
+        match lage(&a, &b, wer.art, &g.signal) {
+            Erledigungslage::SchonErledigt => fertig(a, Erledigungsergebnis::SchonErledigt),
+            Erledigungslage::NichtAufBoard => Err(Fehler::NichtGefunden(format!("#{nr} liegt nicht auf „{}“", b.titel))),
+            Erledigungslage::SchonGemeldet | Erledigungslage::Melden => Err(Fehler::Intern("melden ist noch nicht gebaut".into())),
+            Erledigungslage::Erledigen { von, nach } => {
+                super::kommentare::kommentiert(&mut a, wer, &format!("Befund nicht mehr gefunden: {}", g.text));
+                a.reservierung = None;
+                b.oben_einordnen(nr, Some(&nach)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ legen")))?;
+                let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
+                self.aktion(wer, &format!("#{nr} erledigt sich: „{von}“ → „{nach}“ ({})", b.titel), &dateien)?;
+                fertig(a, Erledigungsergebnis::Erledigt)
+            }
+        }
     }
 }
 

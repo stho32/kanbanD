@@ -98,6 +98,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(teilaufgabe_anlegen))
         .routes(routes!(teilaufgaben_anlegen))
         .routes(routes!(kommentieren))
+        .routes(routes!(erledigen))
         .routes(routes!(wirkung_setzen, wirkungen_stand))
         .routes(routes!(wirkung_eintritt))
         .routes(routes!(wirkung_entfernen))
@@ -796,6 +797,19 @@ async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, 
 )]
 async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kommentieren(p, nr, &t.text)).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/aufgaben/erledigen",
+    tag = "Aufgaben",
+    description = "Befund erledigt sich {key, board, text, signal}",
+    params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Erledigung,
+    responses((status = 200, description = "Erfolg", body = crate::dienst::Erledigt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn erledigen(State(app): State<App>, Wer(wer): Wer, Json(e): Json<crate::dienst::Erledigung>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.erledigen(p, &e)).await
 }
 
 #[utoipa::path(

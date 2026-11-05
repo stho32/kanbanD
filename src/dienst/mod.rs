@@ -46,6 +46,7 @@ pub use zeiten::{Zeitkorrektur, Zeitnachtrag};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use einrichten::{Einrichtung, NeuePerson};
 pub use herkunft::Quelle;
+pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
 pub use einstellungen::{PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
 
 use crate::ablage::{DefekteDatei, Ordner};
