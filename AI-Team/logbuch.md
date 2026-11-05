@@ -104,3 +104,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #27 | Retrospektive | director | Fortbildungsidee „Schutzprüfung über zwei Identitäten“; Vorschläge planer (beide Identitäten im Kriterium) und entwickler (alte Proben bleiben als Regression); Vorschlag Gegenprobe-Binary | — | Factory fe4c50f, 3ebcbbe |
 | 2026-11-05 | #39 | Backlog | director | Anmerkung A1 aus Entwicklertest #27 als Karte erfasst (422 statt 400 bei Typfehlern), Freigabe beim Betreiber | — | — |
 | 2026-11-05 | #19 | Architektur | director | Signal in-arbeit, Auftrag an architekt | — | — |
+| 2026-11-05 | #19 | Architektur | architekt (frisch) | bestanden: Technikfrage ja, ADR-0007 Sichtzustand übersteht das Neuzeichnen (Option B Sicherer über stabile Schlüssel), Fehler headless nachgestellt (Scroll 0 in beiden Layouts, Titel halb getippt committet) | 0:04 | 01bf27a; Agent a60c6a0a |
+| 2026-11-05 | #19 | Detailplanung | director | Zug Architektur → Detailplanung, Auftrag an planer (aus-bug) | — | — |
