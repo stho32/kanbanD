@@ -303,3 +303,4 @@ Nie vom User erfragen.
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0306 Erlaubte Spaltenänderungen für Agenten | Standard | 0,4-1h | 0,2h | 0,2h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | B0307 Regel in der Beschreibung | Standard | 0,4-1h | 0,3h | 0,3h | autonom |
 | 2026-11-01 | R00102 Spalteneinstellungen ändern nur Menschen | Nacharbeit 1: Sperre nach Spaltennamen gegen das zurückgelesene Board (Security-Befund Rundlauf, PO Z. 57) | Nacharbeit | — | 1,2h | 1,2h | autonom |
+| 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0315 Schlüssel prüfen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

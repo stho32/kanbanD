@@ -135,6 +135,26 @@ pub fn instanz_gueltig(s: &str) -> bool {
     (1..=64).contains(&s.len()) && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
+/// Schlüssel eines fremden Systems (R00098, `key:`): außen getrimmt 1–200 Zeichen ohne Zeilenumbruch, genau mit Groß/Klein.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+#[serde(transparent)]
+pub struct Fremdschluessel(String);
+
+impl Fremdschluessel {
+    pub fn pruefen(text: &str) -> Result<Fremdschluessel, String> {
+        let text = text.trim();
+        let umbruch = |c: char| matches!(c, '\n' | '\r' | '\u{0B}' | '\u{0C}' | '\u{85}' | '\u{2028}' | '\u{2029}');
+        if !(1..=200).contains(&text.chars().count()) || text.contains(umbruch) {
+            return Err("Schlüssel: 1–200 Zeichen ohne Zeilenumbruch".into());
+        }
+        Ok(Fremdschluessel(text.to_string()))
+    }
+
+    pub fn text(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Kommentar {
     pub wer: String,
@@ -531,6 +551,21 @@ mod tests {
         assert!(!r.gueltig("2026-10-25 09:00+01:00"), "genau 24 h");
         assert!(r.gueltig("2026-10-24 09:00+02:00"), "seit in der Zukunft zählt als frisch");
         assert!(r.gehoert("a") && !r.gehoert("b"));
+    }
+
+    // R00098 B0315: 1–200 Zeichen ohne Zeilenumbruch, außen getrimmt, Groß/Klein bleibt
+    #[test]
+    fn schluessel_pruefen() {
+        let fehler = Err("Schlüssel: 1–200 Zeichen ohne Zeilenumbruch".to_string());
+        for k in ["", "   ", "\n", "a\nb", "a\rb", "a\u{2028}b", &"x".repeat(201)] {
+            assert_eq!(super::Fremdschluessel::pruefen(k), fehler, "{k:?}");
+        }
+        for (k, erwartet) in [("k", "k"), (" k1 ", "k1"), ("K4", "K4"), ("shop/nc-304/lodash", "shop/nc-304/lodash"), ("a: b", "a: b")] {
+            assert_eq!(super::Fremdschluessel::pruefen(k).unwrap().text(), erwartet, "{k:?}");
+        }
+        let lang = "ä".repeat(200);
+        assert_eq!(super::Fremdschluessel::pruefen(&lang).unwrap().text(), lang, "200 Zeichen, nicht Bytes");
+        assert!(super::Fremdschluessel::pruefen(&"ä".repeat(201)).is_err());
     }
 
     #[test]
