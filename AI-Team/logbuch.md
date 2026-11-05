@@ -126,3 +126,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-4 (karte/4) | — | — |
 | 2026-11-05 | #4 | Entwicklung | entwickler (a2424de) | bestanden: B0315–B0330, 468/126/262 grün, zusammengeführt bis 42ca5be | 0:35 | — |
 | 2026-11-05 | #4 | Auto-Reviews | director | Zug, Auswahl code-reviewer und security-reviewer | — | — |
+| 2026-11-05 | #4 | Auto-Reviews | code-reviewer (a1d2bdc), security-reviewer (a0eaedb) | crev bestanden (Sollte: ungültiger key in Handdatei); srev befund: Muss Zahlen-Rundlauf in skalar (0x11 → 17), Sollte Steuerzeichen → 423 | 0:08 | — |
+| 2026-11-05 | #4 | Nacharbeit | director | Zug, entwickler fortgesetzt (a2424de), Klassen-Fix in skalar | — | — |
