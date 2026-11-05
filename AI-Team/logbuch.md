@@ -150,3 +150,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-48 | — | — |
 | 2026-11-06 | #48 | Entwicklung | entwickler entw1 | bestanden: B0339–B0343, Matrix rot→grün 9/9, cargo test 513/513, clippy 0; ff auf main | 0:42 | 6422376..c4168c6 |
 | 2026-11-06 | #48 | Auto-Reviews | director | Zug Entwicklung → Auto-Reviews (Code-Review, Security-Review) | — | — |
+| 2026-11-06 | #48 | Auto-Reviews | code-reviewer (frisch) | befund: Muss B1 doppelte Nummer in Sammel-Aufrufen → 500 (Rückschritt aus B0342) → Nacharbeit I0091; A1 Anhänge an schreib() vorbei (Härtung) | 0:05 | — |
