@@ -134,3 +134,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Entwicklertest | director | Zug, entwicklertester frisch | — | — |
 | 2026-11-05 | #4 | Entwicklertest | entwicklertester (aaaa26b) | bestanden, US-1–US-6 und Gegenbeispiele, keine Befunde | 0:08 | — |
 | 2026-11-05 | #4 | Erledigt | director | Auslieferung aus 6327ab7, 7422 neu (PID 2349155), Health 200; Befundkarten #43–#47 im Backlog; Kosten 49.45–61.42 $ | — | — |
+| 2026-11-05 | #5 | Detailplanung | director | Signal in-arbeit, Zug Architektur → Detailplanung (Architektur bestanden 2026-10-31, ADR-0004/0005), planer fortgesetzt (adcd1a9) | — | — |
