@@ -309,3 +309,4 @@ Nie vom User erfragen.
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0318 Anlegen mit Schlüssel | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0319 Gleichzeitig genau eine Karte | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0320 Dublette weist ab | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-05 | R00098 Idempotentes Anlegen über einen Fremdschlüssel | B0321 Zurückholen-Kern | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

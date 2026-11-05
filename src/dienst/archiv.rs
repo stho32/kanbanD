@@ -30,9 +30,7 @@ impl Kanban {
     /// Agent: 409, wenn die Karte dadurch auf einem Board über die Grenze käme (R00096).
     pub fn zurueckholen(&self, wer: &Person, nr: u32) -> Result<Aufgabe, Fehler> {
         self.aufgabe_schreiben(wer, nr, |a| {
-            if a.archiviert.take().is_none() {
-                return Err(Fehler::Konflikt(format!("#{nr} ist nicht archiviert")));
-            }
+            zurueckgeholt(a)?;
             self.zurueckholen_pruefen(wer, &[nr])?;
             Ok(Some(format!("#{nr} zurückgeholt")))
         })
@@ -61,7 +59,7 @@ impl Kanban {
                 a.archiviert = Some(uhr::heute());
                 a.reservierung = None;
             } else {
-                a.archiviert = None;
+                zurueckgeholt(&mut a)?;
             }
             geaendert.push(*nr);
             dateien.push((format!("{}/{}", crate::format::aufgabe::ORDNER, a.datei), crate::format::aufgabe::schreiben(&a)));
@@ -82,5 +80,33 @@ impl Kanban {
             self.aktion(wer, &nachricht, &dateien)?;
         }
         Ok(geaendert)
+    }
+}
+
+/// Zurückholen-Kern (ADR-0005): ohne Sperre und ohne Commit — die Aufgabe im Speicher verliert `archived`.
+/// Die Zugregel prüft die Hülle, weil erst sie weiß, auf welchen Boards die Karte liegt.
+pub(super) fn zurueckgeholt(a: &mut Aufgabe) -> Result<(), Fehler> {
+    match a.archiviert.take() {
+        Some(_) => Ok(()),
+        None => Err(Fehler::Konflikt(format!("#{} ist nicht archiviert", a.nummer))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::zurueckgeholt;
+    use crate::fehler::Fehler;
+    use crate::modell::Aufgabe;
+
+    #[test]
+    fn zurueckholen_kern() {
+        let mut a = Aufgabe::neu(7, "0007-x.md".into(), "x".into());
+        a.archiviert = Some("2026-11-01".into());
+        assert!(zurueckgeholt(&mut a).is_ok());
+        assert_eq!(a.archiviert, None);
+        match zurueckgeholt(&mut a) {
+            Err(Fehler::Konflikt(t)) => assert_eq!(t, "#7 ist nicht archiviert"),
+            anders => panic!("{anders:?}"),
+        }
     }
 }
