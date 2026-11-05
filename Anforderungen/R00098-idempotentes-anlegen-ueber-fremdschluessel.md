@@ -32,9 +32,9 @@ Die Sensoren der Wartungsfabrik laufen täglich und melden dieselben Befunde imm
   3. Kommentar von Wer: „Erneut gefunden (Schlüssel „<key>“)“;
   4. Antwort `200` mit der Karte, Commit „#n erneut gefunden: wieder geöffnet“.
 - In `…/mehrere` gilt das je Eintrag. Zweimal derselbe Schlüssel in einer Anfrage ergibt eine Karte. Die Antwort nennt je Eintrag die Nummer und `neu: true|false`.
-- Antwort: jedes Element trägt zusätzlich `neu: true|false`, auch die Einzelantwort; `…/mehrere` antwortet `201`, sobald ein Eintrag neu ist, sonst `200` (vorbehaltlich Offene Frage 2).
+- Antwort: jedes Element trägt zusätzlich `neu: true|false`, auch die Einzelantwort; `…/mehrere` antwortet `201`, sobald ein Eintrag neu ist, sonst `200`. Die Antwort bleibt sonst die heutige: dasselbe Objekt bzw. dieselbe Liste, `neu` kommt hinzu (kein `207`, keine Hülle).
 - Ein ungültiger Schlüssel (leer nach dem Trimmen, über 200 Zeichen, mit Zeilenumbruch) → `400` „Schlüssel: 1–200 Zeichen ohne Zeilenumbruch“; in `…/mehrere` für die ganze Anfrage.
-- Grenze (R00096) und Eigentümer (R00097) gelten beim Wiederöffnen wie bei jedem anderen Hineinlegen.
+- Grenze (R00096) und Eigentümer (R00097) gelten beim Wiederöffnen wie bei jedem anderen Hineinlegen. Das Wiederöffnen ist kein Herausnehmen im Sinne von R00097: Liegt die archivierte Karte in einer Spalte, die Menschen gehört, darf ein Agent sie trotzdem wieder öffnen, auch mit `board`.
 
 ### Doppelte Schlüssel
 - Tragen nach einem Merge zwei Dateien denselben Schlüssel, liefert `?key=` beide. `POST` mit diesem Schlüssel → `409` „Schlüssel „<key>“ mehrfach vergeben: #a, #b“. Der Zustand (`GET /api/zustand`) meldet doppelte Schlüssel wie doppelte Nummern.
@@ -73,7 +73,7 @@ Alle Beispiele spielen im Ordner mit dem Board „fabrik“ (Spalten „Eingang�
 - [ ] Gegeben derselbe Ausgang, wenn die Anfrage keine `spalte` nennt, dann liegt #7 oben in „Eingang“ als erster Spalte von „fabrik“.
 - [ ] Gegeben derselbe Ausgang, wenn die Anfrage kein `board` nennt, dann liegt #7 wieder in „Fertig“, wohin das Zurückholen sie legt.
 - [ ] **Fehlfall Grenze:** Gegeben „Eingang“ hat die Grenze 2 und trägt #5 und #6, wenn `bot` mit `key: "k4"`, `board: "fabrik"` anlegt, dann antwortet kanbanD `409` `{fehler: "Grenze erreicht", spalte: "Eingang", grenze: 2, anzahl: 2}`, #7 bleibt archiviert, und es gibt keinen Commit. Schickt `st` denselben Aufruf, wird #7 mit `200` ohne Warnung wieder geöffnet.
-- [ ] **Eigentümer** (vorbehaltlich Offene Frage 1): Gegeben „Fertig“ gehört Menschen, wenn `bot` #7 wie oben wieder öffnet, dann antwortet kanbanD `200`; das Hineinlegen in eine Spalte, die Menschen gehört, ist wie in R00097 erlaubt.
+- [ ] **Eigentümer:** Gegeben „Fertig“ gehört Menschen, wenn `bot` #7 wie oben mit `board: "fabrik"`, `spalte: "Eingang"` wieder öffnet, dann antwortet kanbanD `200`, #7 liegt oben in „Eingang“ und nicht mehr in „Fertig“, und es gibt genau einen Commit. Gehört auch „Eingang“ Menschen, gilt dasselbe, denn das Hineinlegen in eine Spalte, die Menschen gehört, ist wie in R00097 erlaubt.
 
 ### Unveränderlich
 - [ ] Gegeben #7 trägt `key: k4`, wenn `PATCH /api/aufgaben/7 {key: "x"}` ankommt, dann antwortet kanbanD `400` „Schlüssel ist nicht änderbar“, die Datei ist unverändert, und es gibt keinen Commit. Dasselbe gilt für `{key: "k4"}`, für `{key: null}` und über `PATCH /api/aufgaben/mehrere`.
@@ -132,8 +132,7 @@ Format in `src/format/aufgabe.rs` (`BEKANNT`, lesen, schreiben), Modell in `src/
 
 ## Offene Fragen
 - Archivfall entschieden am 2026-10-31: wieder öffnen.
-1. **Eigentümer beim Wiederöffnen** (offen, an den PO): Liegt die archivierte Karte in einer Spalte, die Menschen gehört (etwa „Fertig“), und nennt der Sensor ein `board`, nimmt das Wiederöffnen sie dort heraus. Gilt dafür die Entnahmeregel aus R00097? Empfehlung: nein — die Karte ist abgeschlossen und nicht in Arbeit; mit `403` bliebe ein Rückfall für den Sensor unsichtbar. Bei „ja“ antwortet kanbanD `403` „Verboten“ ohne Commit.
-2. **Antwortform** (offen, an den PO): Empfehlung `neu` als zusätzliches Feld je Element der heutigen Antwort (rückwärtsverträglich) und für `…/mehrere` `201`, sobald ein Eintrag neu ist, sonst `200`.
+- Eigentümer beim Wiederöffnen und Antwortform entschieden am 2026-11-05 vom Product Owner, beide nach Empfehlung: `AI-Team/po-entscheidungen.md`, Zeilen 67–68.
 
 ## Manuelle Vorbereitungstätigkeiten
 - keine
@@ -160,3 +159,5 @@ Auslöser ist, dass tägliche Sensoren denselben Befund jeden Tag neu melden und
 - *Wählbar je Aufruf (`beiArchiv`)*: drei Wege, die getestet und beschrieben werden müssten, ohne dass ein Bedarf benannt ist.
 
 **Ergänzung 2026-11-05 (`/anforderung abschliessen`, planer):** Akzeptanzkriterien als Gegeben/Wenn/Dann mit Werten umgeschrieben, Grenz-, Leer- und Fehlfälle ergänzt (ungültiger Schlüssel, Groß- und Kleinschreibung, Trimmen, leerer Filter, Grenze beim Wiederöffnen, `PATCH` mit gleichem Wert); Regel für ungültige Schlüssel und Antwortform in die funktionalen Anforderungen übernommen; Probe für gleichzeitige Aufrufe deterministisch; zwei offene Fragen an den PO. User Story um US-5 und US-6 ergänzt. Code-Stand 2026-11-05: nichts davon gebaut.
+
+**Ergänzung 2026-11-05 (`/anforderung abschliessen`, product-owner):** Beide offenen Fragen nach Empfehlung entschieden (PO Zeilen 67–68). Das Wiederöffnen ist kein Herausnehmen im Sinne von R00097. Es legt die Karte nur dorthin, wohin der Agent auch eine neue Karte legen dürfte, und mit `403` sähe der Sensor einen Rückfall nicht. Das Kriterium „Eigentümer“ nennt jetzt Zielspalte, Lage und Commit. Die Antwortform ist festgelegt: `neu` je Element, `201` für `…/mehrere`, sobald ein Eintrag neu ist, sonst `200`. Keine offenen Fragen mehr.
