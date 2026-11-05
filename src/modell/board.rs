@@ -295,6 +295,19 @@ impl Board {
         Ok(ziel.name.clone())
     }
 
+    /// Legt die Aufgabe oben in die Spalte (ohne Angabe: die erste) und nimmt sie aus jeder anderen Spalte
+    /// dieses Boards (R00098, Wiederöffnen). Unbekannte Spalte: Board unverändert. Liefert den Spaltennamen.
+    pub fn oben_einordnen(&mut self, nummer: u32, spalte: Option<&str>) -> Result<String, Bewegfehler> {
+        let ziel = match spalte {
+            Some(s) => self.spalten.iter().position(|x| x.name == s),
+            None => (!self.spalten.is_empty()).then_some(0),
+        }
+        .ok_or(Bewegfehler::SpalteUnbekannt)?;
+        self.abnehmen(nummer);
+        self.spalten[ziel].aufgaben.insert(0, nummer);
+        Ok(self.spalten[ziel].name.clone())
+    }
+
     /// Nimmt die Aufgabe vom Board; liefert, ob sie dort lag.
     pub fn abnehmen(&mut self, nummer: u32) -> bool {
         let vorher: usize = self.spalten.iter().map(|s| s.aufgaben.len()).sum();
@@ -647,6 +660,21 @@ mod tests {
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(),
         }
+    }
+
+    // R00098 B0322: Wiederöffnen legt die Karte oben in die Zielspalte, aus jeder anderen Spalte heraus
+    #[test]
+    fn oben_einordnen() {
+        let mut b = b();
+        assert_eq!(b.oben_einordnen(3, Some("A")), Ok("A".to_string()));
+        assert_eq!((b.spalten[0].aufgaben.clone(), b.spalten[1].aufgaben.clone()), (vec![3, 1, 2], vec![]));
+        assert_eq!(b.oben_einordnen(2, None), Ok("A".to_string()), "ohne Spalte die erste");
+        assert_eq!(b.spalten[0].aufgaben, vec![2, 3, 1]);
+        assert_eq!(b.oben_einordnen(7, Some("Z")), Ok("Z".to_string()), "nicht auf dem Board: neu oben");
+        assert_eq!(b.spalten[1].aufgaben, vec![7]);
+        let vorher = b.clone();
+        assert_eq!(b.oben_einordnen(7, Some("X")), Err(Bewegfehler::SpalteUnbekannt));
+        assert_eq!(b, vorher, "bei Fehler unverändert");
     }
 
     #[test]
