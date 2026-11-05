@@ -238,4 +238,46 @@ mod tests {
         assert_eq!(lage(&karte(8), &b, Art::Mensch, "behoben"), erledigen("Eingang"), "Menschen-Spalten sperren nur Agenten");
         assert_eq!(lage(&gemeldet, &b, Art::Mensch, "behoben"), erledigen("Eingang"));
     }
+
+    fn git(pfad: &std::path::Path, args: &[&str]) -> String {
+        let aus = std::process::Command::new("git").args(args).current_dir(pfad).output().unwrap();
+        String::from_utf8_lossy(&aus.stdout).trim().to_string()
+    }
+
+    // R00099 B0334 Nebenläufigkeit: zwei Aufrufe gegen dieselbe Karte — die Sperre steht zwischen Suche und Schreiben,
+    // der zweite startet genau dort und sieht danach die erledigte Karte; genau ein Commit, ein Kommentar
+    #[test]
+    fn gleichzeitig_genau_ein_commit() {
+        use std::sync::{Arc, mpsc};
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("boards")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("kanbanD.md"), "---\npeople:\n  bot: {name: Sensor, kind: agent}\nsignals:\n  behoben: {label: weg, color: green}\n---\n").unwrap();
+        std::fs::write(tmp.path().join("boards/fabrik.md"), "# fabrik\n\n## In Arbeit\n\n- #7\n\n## Fertig\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0007-x.md"), "---\nid: 7\ntitle: x\nkey: k1\n---\n").unwrap();
+        git(tmp.path(), &["init", "-q"]);
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+        let k = Arc::new(Kanban::neu(tmp.path().to_path_buf()));
+        let bot = k.handelnder(Some("bot")).unwrap();
+        let e = Erledigung { key: "k1".into(), board: "fabrik".into(), text: "weg".into(), signal: "behoben".into() };
+
+        let (zweiter_tx, zweiter_rx) = mpsc::channel();
+        let (k2, bot2, e2) = (Arc::clone(&k), bot.clone(), e.clone());
+        *k.zwischen_suche_und_schreiben.lock().unwrap() = Some(Box::new(move || {
+            let gehalten = matches!(k2.sperre.try_lock(), Err(std::sync::TryLockError::WouldBlock));
+            let k3 = Arc::clone(&k2);
+            zweiter_tx.send((gehalten, std::thread::spawn(move || k3.erledigen(&bot2, &e2)))).unwrap();
+        }));
+        let vorher: usize = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+
+        let erster = k.erledigen(&bot, &e).unwrap();
+        let (gehalten, lauf) = zweiter_rx.recv().unwrap();
+        let zweiter = lauf.join().unwrap().unwrap();
+
+        assert!(gehalten, "zwischen Suche und Schreiben ist die Sperre frei");
+        assert_eq!((erster.ergebnis, zweiter.ergebnis), (Erledigungsergebnis::Erledigt, Erledigungsergebnis::SchonErledigt));
+        assert_eq!(zweiter.aufgabe.kommentare.len(), 1, "ein Kommentar");
+        assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap(), vorher + 1, "ein Commit");
+    }
 }

@@ -90,3 +90,91 @@ async fn spaltenpruefungen_laufen_beim_erledigen_nicht() {
     assert_eq!(commits(tmp.path()), vorher + 1);
     assert!(lies(tmp.path(), "boards/fabrik.md").contains("column-checks:\n  In Arbeit: [wbs-effects-green]\n"), "Board-Kopf bleibt");
 }
+
+/// Zustand, an dem „nichts geschrieben“ abzulesen ist: Kopf-Commit und alle Dateien.
+fn stand(pfad: &Path) -> (String, String) {
+    (git(pfad, &["rev-parse", "HEAD"]), git(pfad, &["status", "--porcelain"]))
+}
+
+// AK Idempotenz, US-3 (B0334): zweiter Aufruf, archivierte Karte — schon erledigt, kein Commit, kein Kommentar
+#[tokio::test]
+async fn wiederholung_und_archivierte_sind_schon_erledigt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let archiviert = "archived: 2026-11-01\n";
+    fabrik(tmp.path(), "", &[(7, "k1", "In Arbeit", ""), (2, "k2", "Fertig", archiviert), (4, "k4", "", archiviert)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    assert_eq!(erledigen(&lauf.adresse, "bot", eingespielt("k1")).await.0, 200);
+    let vorher = stand(tmp.path());
+    let datei = lies(tmp.path(), "aufgaben/0007-befund.md");
+    for (wer, key, nr) in [("bot", "k1", 7), ("st", "k1", 7), ("bot", "k2", 2), ("bot", "k4", 4), ("st", "k4", 4)] {
+        let (s, r) = erledigen(&lauf.adresse, wer, eingespielt(key)).await;
+        assert_eq!((s, &r["ergebnis"], &r["warnungen"], &r["aufgabe"]["nummer"]), (200, &json!("schon erledigt"), &json!([]), &json!(nr)), "{wer} {key}: {r}");
+        assert_eq!(stand(tmp.path()), vorher, "{wer} {key}: kein Commit");
+    }
+    assert_eq!(lies(tmp.path(), "aufgaben/0007-befund.md"), datei, "kein zweiter Kommentar");
+}
+
+// AK Leerfall, Fehlfall, Fehlfall Dublette, US-5 (B0334): 404, 409, 400 — jeweils nichts geschrieben
+#[tokio::test]
+async fn fehler_schreiben_nichts() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", &[(7, "k1", "", ""), (6, "k6", "In Arbeit", ""), (8, "k5", "Eingang", ""), (9, "k5", "In Arbeit", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = stand(tmp.path());
+    let mit = |feld: &str, wert: Value, key: &str| {
+        let mut d = eingespielt(key);
+        d[feld] = wert;
+        d
+    };
+    let faelle = [
+        ("Karte nicht auf dem Board", eingespielt("k1"), 404, None),
+        ("unbekannter Schlüssel", eingespielt("gibtsnicht"), 404, None),
+        ("unbekanntes Board", mit("board", json!("gibtsnicht"), "k6"), 404, None),
+        ("Dublette", eingespielt("k5"), 409, Some("Schlüssel „k5“ mehrfach vergeben: #8, #9")),
+        ("Signal nicht eingerichtet", mit("signal", json!("gibtsnicht"), "k6"), 400, Some("Signal „gibtsnicht“ steht nicht in kanbanD.md")),
+        ("Text leer", mit("text", json!(""), "k6"), 400, Some("Text: 1–2000 Zeichen")),
+        ("Text nur Leerzeichen", mit("text", json!("   "), "k6"), 400, Some("Text: 1–2000 Zeichen")),
+        ("Text 2001 Zeichen", mit("text", json!("x".repeat(2001)), "k6"), 400, Some("Text: 1–2000 Zeichen")),
+        ("Text fehlt", json!({"key": "k6", "board": "fabrik", "signal": "behoben"}), 400, Some("Text: 1–2000 Zeichen")),
+        ("Schlüssel leer", mit("key", json!("  "), "k6"), 400, Some("Schlüssel: 1–200 Zeichen ohne Zeilenumbruch")),
+        ("Board fehlt", json!({"key": "k6", "text": "weg", "signal": "behoben"}), 400, Some("Board fehlt")),
+    ];
+    for (fall, daten, status, meldung) in faelle {
+        let (s, r) = erledigen(&lauf.adresse, "bot", daten).await;
+        assert_eq!(s, status, "{fall}: {r}");
+        if let Some(m) = meldung {
+            assert_eq!(r["fehler"], json!(m), "{fall}");
+        }
+        assert_eq!(stand(tmp.path()), vorher, "{fall}: nichts geschrieben");
+    }
+}
+
+// AK Fehlfall „Eingaben vor der Suche“ (B0334): ein ungültiger Text gewinnt gegen 404 und 409
+#[tokio::test]
+async fn eingaben_werden_vor_der_suche_geprueft() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", &[(7, "k1", "", ""), (8, "k5", "Eingang", ""), (9, "k5", "In Arbeit", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = stand(tmp.path());
+    for (fall, key, board) in [("unbekannter Schlüssel", "gibtsnicht", "fabrik"), ("Dublette", "k5", "fabrik"), ("nicht auf dem Board", "k1", "fabrik"), ("unbekanntes Board", "k1", "gibtsnicht")] {
+        let (s, r) = erledigen(&lauf.adresse, "bot", json!({"key": key, "board": board, "text": "   ", "signal": "behoben"})).await;
+        assert_eq!((s, &r["fehler"]), (400, &json!("Text: 1–2000 Zeichen")), "{fall}");
+        let (s, _) = erledigen(&lauf.adresse, "bot", json!({"key": key, "board": board, "text": "weg", "signal": "gibtsnicht"})).await;
+        assert_eq!(s, 400, "{fall}: Signal vor der Suche");
+    }
+    assert_eq!(stand(tmp.path()), vorher);
+}
+
+// AK Grenzwert (B0334): 2000 Zeichen werden angenommen
+#[tokio::test]
+async fn text_mit_2000_zeichen_wird_erledigt() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", &[(7, "k1", "In Arbeit", "")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = commits(tmp.path());
+    let text = "ä".repeat(2000);
+    let (s, r) = erledigen(&lauf.adresse, "bot", json!({"key": "k1", "board": "fabrik", "text": text, "signal": "behoben"})).await;
+    assert_eq!((s, &r["ergebnis"]), (200, &json!("erledigt")), "{r}");
+    assert_eq!(commits(tmp.path()), vorher + 1);
+    assert_eq!(r["aufgabe"]["kommentare"][0]["text"], json!(format!("Befund nicht mehr gefunden: {text}")));
+}
