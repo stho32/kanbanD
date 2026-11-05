@@ -120,3 +120,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Entwicklertest | entwicklertester (frisch) | bestanden: US-1–US-7 wörtlich, Gegenbeispiele, explorativ 3 Chartas (5 Ereignisse/s beim Tippen) | 0:05 | — |
 | 2026-11-05 | #19 | Erledigt | director | Auslieferung cargo install aus b6ec37a, 7422 neu gestartet, Health 200; kein Push; Worktree karte/19 entfernt; Kosten 31,90–39,16 $ (Rollen-Agenten der Karte) | — | — |
 | 2026-11-05 | #19 | Retrospektive | director | Anmerkungen als Karten #40 (Fokus nach Entfernen springt auf Nachbarn), #41 (Tastaturfokus Öffnen/Blättern/Karten), #42 (Wackler r00047) im Backlog, Freigabe beim Betreiber; Vorschläge entwickler (kein Listenindex als Fokus-Schlüssel) und Leseliste je Rollenart | — | Factory f679e1a |
+| 2026-11-05 | #4 | Detailplanung | director | Zug Architektur → Detailplanung (Architektur bestanden 2026-10-31, ADR-0004/0005) | — | — |
