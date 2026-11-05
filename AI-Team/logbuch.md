@@ -115,3 +115,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Nacharbeit | director | Zug Auto-Reviews → Nacharbeit, gebündelter Auftrag an entwickler | — | — |
 | 2026-11-05 | #19 | Nacharbeit | entwickler | bestanden: Knopf-Fokus, Feldschlüssel, A2/A3/A6, Rechtschreibung, Planung; nachgeprüft 41 E2E + 126 Einheit | 0:27 | — |
 | 2026-11-05 | #19 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, Wiederholung code-reviewer und ux-reviewer | — | — |
+| 2026-11-05 | #19 | Auto-Reviews | code-reviewer, ux-reviewer (Runde 2) | bestanden; Sollte für später: indexbasierte Entfernen-Knöpfe halten Fokus auf Nachfolger, Kartenausnahme ohne Tastaturführung | 0:10 | — |
+| 2026-11-05 | #19 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
