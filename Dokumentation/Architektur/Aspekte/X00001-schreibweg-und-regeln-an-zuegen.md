@@ -22,6 +22,7 @@ quellen:
   - src/dienst/zugregeln.rs
   - src/dienst/zuordnung.rs
   - src/dienst/archiv.rs
+  - src/ablage.rs
 ---
 
 # Schreibweg und Regeln an Zügen
@@ -66,6 +67,8 @@ Zusammengesetzte Aktionen nach [ADR-0005](../../ADRs/0005-zusammengesetzte-aktio
 
 Schlüsselsuche (R00098, R00099) nach [ADR-0004](../../ADRs/0004-schluesselsuche-unter-der-sperre.md): unter derselben Sperre über `ordner().aufgaben()`, einmal je Anfrage.
 
+Pfade nach [ADR-0008](../../ADRs/0008-board-slug-geprueft-vor-jedem-dateizugriff.md): ein Board-Slug aus Body, Pfad oder Query erreicht die Platte nur über `Ordner::board`, das die Form (`board::slug_gueltig`, 1–40 Zeichen `[a-z0-9-]`) **vor** jedem Lesen prüft — ungültig ⇒ `Fehler::Ungueltig` (400), gültig und fehlend ⇒ 404; `board_pfad` bekommt nur `b.slug` eines so gelesenen Boards. Zweite Linie: `aktion()` prüft alle Pfade vor dem ersten Schreiben (relativ, ohne `..`, eindeutig) und `Ordner::schreib` den Einschluss — Treffer ⇒ `Fehler::Intern`, nichts geschrieben. Soll (#48, noch nicht gebaut). Erkennen: `grep -rn "board_pfad(" src` — jedes Argument außer `&b.slug`/`&board.slug` eines über `Ordner::board` gelesenen Boards ist ein Befund.
+
 Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich mit `grep -rn "\.schreib(\|committen(" src/dienst`; jede Fundstelle außer `mod.rs` steht unten oder ist ein Befund. Eine Regel, die erst nach `aktion()` prüft, ist ein Befund (dann ist der Commit schon da).
 
 ## Abweichungen
@@ -84,3 +87,4 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 - `gesperrt()` wird in 17 Dateien unter `src/dienst/` benutzt (gezählt 2026-10-31).
 - Die Sperre ist prozessweit; ein zweiter kanbanD-Prozess auf demselben Ordner ist nicht abgesichert.
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
+- ergänzt 2026-11-06: Pfadregel nach ADR-0008 (#48)
