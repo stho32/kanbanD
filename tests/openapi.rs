@@ -191,3 +191,30 @@ async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
     assert!(seite.contains(satz), "Seite /api nennt die bekannte Grenze");
     assert!(d["info"]["description"].as_str().unwrap().contains("Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch"), "openapi info");
 }
+
+/// R00099 B0338: POST /api/aufgaben/erledigen ist vollständig beschrieben — Felder, vier Ergebnisse, warnungen, 409 mit Grenze.
+#[tokio::test]
+async fn erledigen_ist_beschrieben() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    let op = &d["paths"]["/api/aufgaben/erledigen"]["post"];
+    for status in ["200", "400", "404", "409"] {
+        assert!(op["responses"][status].is_object(), "Antwort {status}");
+    }
+    let konflikt = op["responses"]["409"]["content"]["application/json"]["schema"]["$ref"].as_str().unwrap_or_default();
+    let schema = d["components"]["schemas"][konflikt.rsplit('/').next().unwrap()].to_string();
+    assert!(schema.contains("#/components/schemas/GrenzeErreicht"), "409: {schema}");
+    let erledigt = &d["components"]["schemas"]["Erledigt"]["properties"];
+    let ergebnis = erledigt["ergebnis"]["$ref"].as_str().unwrap().rsplit('/').next().unwrap().to_string();
+    assert_eq!(d["components"]["schemas"][&ergebnis]["enum"], serde_json::json!(["erledigt", "schon erledigt", "gemeldet", "schon gemeldet"]));
+    assert!(erledigt["warnungen"]["items"]["$ref"].as_str().unwrap().ends_with("/Warnung"), "{erledigt}");
+    let zweck = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "POST" && e.pfad == "/api/aufgaben/erledigen").unwrap().zweck;
+    for text in [zweck, op["description"].as_str().unwrap()] {
+        for teil in ["key", "board", "text 1–2000 Zeichen", "signal", "„erledigt“, „schon erledigt“, „gemeldet“, „schon gemeldet“", "warnungen", "grenze", "409", "mehrfach vergeben", "„Grenze erreicht“"] {
+            assert!(text.contains(teil), "fehlt „{teil}“: {text}");
+        }
+    }
+    assert!(seite.contains("/api/aufgaben/erledigen") && seite.contains("„schon gemeldet“"), "Seite /api");
+}
