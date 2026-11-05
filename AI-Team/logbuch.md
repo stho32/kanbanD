@@ -124,3 +124,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Detailplanung | planer | bestanden: I0089 mit F0024–F0028, 16 Bubbles (B0315–B0330, 9–18 h ungemessen), R00098 Kriterien als Gegeben/Wenn/Dann mit Grenz-, Leer- und Fehlfällen, US-5/US-6; f47bd8d c2a8143; 2 Fragen an den PO | 0:06 | — |
 | 2026-11-05 | #4 | Detailplanung | product-owner | beide Fragen wie empfohlen entschieden (PO-Zeilen 67–68), R00098 umsetzungsbereit; 1670aab aa86952 | — | — |
 | 2026-11-05 | #4 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-4 (karte/4) | — | — |
+| 2026-11-05 | #4 | Entwicklung | entwickler (a2424de) | bestanden: B0315–B0330, 468/126/262 grün, zusammengeführt bis 42ca5be | 0:35 | — |
+| 2026-11-05 | #4 | Auto-Reviews | director | Zug, Auswahl code-reviewer und security-reviewer | — | — |
