@@ -35,7 +35,7 @@ pub use anwendungen::{Erreichbar, Registereintrag};
 pub use aufgabenfilter::{Archivierte, Aufgabenfilter};
 pub use durchlaeufe::NeuerDurchlauf;
 pub use reservierung::{Gezogen, Zug, erste_freie, instanz_pruefen};
-pub use aufgabe_anlegen::{NeueAufgabe, NeueAufgaben};
+pub use aufgabe_anlegen::{Angelegt, NeueAufgabe, NeueAufgaben};
 pub use bewegen::{Bewegt, Bewegung};
 pub use phasen::{BoardMitPhasen, Phasenstand};
 pub use teilaufgaben::Teilaufgabenaenderung;

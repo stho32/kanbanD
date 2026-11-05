@@ -4,7 +4,7 @@ pub mod endpunkte;
 pub mod openapi;
 mod statisch;
 
-use crate::dienst::{Bewegung, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
+use crate::dienst::{Angelegt, Bewegung, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -322,7 +322,7 @@ async fn aufgaben(State(app): State<App>, Query(paare): Query<Vec<(String, Strin
     post,
     path = "/api/aufgaben",
     tag = "Aufgaben",
-    description = "anlegen {titel, board?, spalte?, klasse?, zustaendige?: [Kürzel], labels?: [Text], faellig?: JJJJ-MM-TT, herkunft?: [Verweis], beschreibung?, teilaufgaben?: [Text]} — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (ohne spalte: die erste Spalte), nichts wird geschrieben; Mensch: ohne Warnung",
+    description = "anlegen {titel, key?: Schlüssel, board?, spalte?, klasse?, zustaendige?: [Kürzel], labels?: [Text], faellig?: JJJJ-MM-TT, herkunft?: [Verweis], beschreibung?, teilaufgaben?: [Text]} — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (ohne spalte: die erste Spalte), nichts wird geschrieben; Mensch: ohne Warnung",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::dienst::NeueAufgabe,
     responses((status = 201, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
@@ -333,7 +333,7 @@ async fn aufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<
         k.aufgabe_anlegen(&p, &neu)
     })
     .await?;
-    Ok((StatusCode::CREATED, Json(a)).into_response())
+    Ok((anlegestatus(std::slice::from_ref(&a)), Json(a)).into_response())
 }
 
 #[utoipa::path(
@@ -1362,7 +1362,12 @@ async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json
         k.aufgaben_anlegen(&p, &neu)
     })
     .await?;
-    Ok((StatusCode::CREATED, Json(a)).into_response())
+    Ok((anlegestatus(&a), Json(a)).into_response())
+}
+
+/// 201, sobald eine Karte neu ist; trugen alle Schlüssel schon eine Karte, 200 (R00098).
+fn anlegestatus(angelegt: &[Angelegt]) -> StatusCode {
+    if angelegt.iter().any(|a| a.neu) { StatusCode::CREATED } else { StatusCode::OK }
 }
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
