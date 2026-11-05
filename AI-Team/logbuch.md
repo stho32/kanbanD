@@ -106,3 +106,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Architektur | director | Signal in-arbeit, Auftrag an architekt | — | — |
 | 2026-11-05 | #19 | Architektur | architekt (frisch) | bestanden: Technikfrage ja, ADR-0007 Sichtzustand übersteht das Neuzeichnen (Option B Sicherer über stabile Schlüssel), Fehler headless nachgestellt (Scroll 0 in beiden Layouts, Titel halb getippt committet) | 0:04 | 01bf27a; Agent a60c6a0a |
 | 2026-11-05 | #19 | Detailplanung | director | Zug Architektur → Detailplanung, Auftrag an planer (aus-bug) | — | — |
+| 2026-11-05 | #19 | Detailplanung | planer (frisch), product-owner (frisch) | bestanden: R00103 + US-1..US-7, I0088 bis Bubble (F0022 B0311–B0312, F0023 B0313–B0314), 2,5–5 h Hypothese; PO entschied 4 Rückfragen ohne Auftraggeber | 0:08 | ab6e77f, f3ede99, 10ffdfd, f66f9ca |
+| 2026-11-05 | #19 | Entwicklung | director | Zug Detailplanung → Entwicklung, Herkunft kd:I0088, Worktree kanbanD-wt-entw1-19 (karte/19), Auftrag an entwickler; Worktree karte/27 entfernt (gemergt) | — | — |
