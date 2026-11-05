@@ -16,6 +16,8 @@ pub struct Aufgabenfilter {
     pub reserviert: Vec<String>,
     /// R00095: ganzer Text ohne Groß/Klein
     pub labels: Vec<String>,
+    /// R00098: genau dieser Schlüssel, mit Groß/Klein
+    pub schluessel: Vec<String>,
     pub archivierte: Archivierte,
 }
 
@@ -40,6 +42,7 @@ impl Aufgabenfilter {
                 "zustaendig" => f.zustaendige.push(v.clone()),
                 "reserviert" => f.reserviert.push(v.clone()),
                 "label" => f.labels.push(v.clone()),
+                "key" => f.schluessel.push(v.clone()),
                 "archivierte" => {
                     f.archivierte = match v.as_str() {
                         "ja" => Archivierte::Mit,
@@ -48,7 +51,7 @@ impl Aufgabenfilter {
                         _ => return Err(Fehler::Ungueltig(format!("archivierte={v}: ja, nein oder nur"))),
                     }
                 }
-                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, archivierte"))),
+                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte"))),
             }
         }
         if !f.spalten.is_empty() && f.board.is_none() {
@@ -74,6 +77,7 @@ impl Aufgabenfilter {
             && oder(&self.signale, &|s| if s == "due" { !abgeschlossen && a.faellig.as_deref().is_some_and(|f| f <= heute) } else { a.signale.iter().any(|x| x == s) })
             && oder(&self.zustaendige, &|z| a.zustaendige.iter().any(|x| x == z))
             && oder(&self.labels, &|l| a.labels.iter().any(|x| label_trifft(l, x)))
+            && oder(&self.schluessel, &|k| a.schluessel.as_ref().is_some_and(|x| x.text() == k))
             && oder(&self.reserviert, &|r| match r {
                 "ja" => a.reservierung.is_some(),
                 "nein" => a.reservierung.is_none(),
@@ -244,5 +248,19 @@ mod tests {
         assert!(Aufgabenfilter::aus_paaren(&paare(&[("spalte", "Backlog")])).is_err(), "spalte ohne board");
         assert!(Aufgabenfilter::aus_paaren(&paare(&[("farbe", "rot")])).is_err(), "unbekannt");
         assert!(Aufgabenfilter::aus_paaren(&paare(&[("archivierte", "vielleicht")])).is_err());
+    }
+
+    #[test]
+    fn schluessel_genau_mit_gross_klein() {
+        let mut a = aufgabe(7, None, false);
+        a.schluessel = Some(crate::modell::Fremdschluessel::pruefen("k4").unwrap());
+        let trifft = |q: &[(&str, &str)], a: &Aufgabe| Aufgabenfilter::aus_paaren(&paare(q)).unwrap().passt(a, None, "");
+        assert!(trifft(&[("key", "k4")], &a));
+        assert!(!trifft(&[("key", "K4")], &a) && !trifft(&[("key", "k")], &a) && !trifft(&[("key", "")], &a), "genau, Groß/Klein, leer trifft nichts");
+        assert!(trifft(&[("key", "x"), ("key", "k4")], &a), "mehrfach: ODER");
+        assert!(!trifft(&[("key", "k4")], &aufgabe(8, None, false)), "ohne Schlüssel");
+        let mut alt = a.clone();
+        alt.archiviert = Some("2026-10-01".into());
+        assert!(!trifft(&[("key", "k4")], &alt) && trifft(&[("key", "k4"), ("archivierte", "ja")], &alt), "Archivregel R00092");
     }
 }

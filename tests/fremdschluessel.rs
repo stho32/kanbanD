@@ -344,3 +344,35 @@ async fn schluessel_ist_nicht_aenderbar() {
     let (s, _) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/7", "cl", json!({"titel": "anders"})).await;
     assert_eq!(s, 200, "ohne key wie bisher");
 }
+
+async fn gefiltert(adresse: &str, abfrage: &str) -> Vec<u64> {
+    let (s, r) = senden(Method::GET, adresse, &format!("api/aufgaben?{abfrage}"), "cl", Value::Null).await;
+    assert_eq!(s, 200, "{abfrage}: {r}");
+    r["aufgaben"].as_array().unwrap().iter().map(|a| a["nummer"].as_u64().unwrap()).collect()
+}
+
+// AK Filter (B0328)
+#[tokio::test]
+async fn filter_key() {
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    assert_eq!(gefiltert(&lauf.adresse, "key=k4").await, Vec::<u64>::new(), "#7 archiviert");
+    assert_eq!(gefiltert(&lauf.adresse, "key=k4&archivierte=ja").await, [7]);
+    assert_eq!(anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4"})).await.0, 200);
+    assert_eq!(gefiltert(&lauf.adresse, "key=k4").await, [7], "wieder offen");
+    assert_eq!(gefiltert(&lauf.adresse, "key=K4").await, Vec::<u64>::new());
+    assert_eq!(gefiltert(&lauf.adresse, "key=").await, Vec::<u64>::new(), "leer trifft nichts, kein 400");
+    assert_eq!(anlegen(&lauf.adresse, json!({"titel": "y", "key": "k9"})).await.0, 201);
+    assert_eq!(gefiltert(&lauf.adresse, "key=k4&key=k9").await, [7, 8]);
+}
+
+// AK Fehlfall Dublette: der Filter liefert beide (B0328)
+#[tokio::test]
+async fn filter_key_liefert_dublette() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path());
+    dublette(tmp.path(), "k5");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    assert_eq!(gefiltert(&lauf.adresse, "key=k5").await, [8, 9]);
+}
