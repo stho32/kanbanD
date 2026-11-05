@@ -152,8 +152,11 @@ impl Kanban {
     }
 
     /// Schreibt Dateien und committet sie als eine Aktion. Scheitert der Commit, bleibt der
-    /// geschriebene Stand stehen und der Fehler wird gemeldet.
+    /// geschriebene Stand stehen und der Fehler wird gemeldet. Vorher prüft sie alle Pfade (ADR-0008, zweite Linie):
+    /// ein Pfad außerhalb des Ordners oder doppelt ⇒ `Fehler::Intern`, ohne dass etwas geschrieben ist.
     fn aktion(&self, autor: &Person, nachricht: &str, dateien: &[(String, String)]) -> Result<(), Fehler> {
+        let alle: Vec<&str> = dateien.iter().map(|(p, _)| p.as_str()).collect();
+        crate::ablage::pfade_pruefen(&alle).map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts geschrieben: {grund}")))?;
         for (rel, text) in dateien {
             self.eigene.merken(rel);
             self.ordner.schreib(rel, text)?;
@@ -173,5 +176,43 @@ impl Kanban {
 
     fn gesperrt(&self) -> std::sync::MutexGuard<'_, ()> {
         self.sperre.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Kanban;
+    use crate::fehler::Fehler;
+    use std::path::Path;
+    use std::process::Command;
+
+    fn git(pfad: &Path, args: &[&str]) -> String {
+        let aus = Command::new("git").args(args).current_dir(pfad).output().unwrap();
+        String::from_utf8_lossy(&aus.stdout).trim().to_string()
+    }
+
+    // B0342: aktion() prüft alle Pfade vor dem ersten Schreiben (ADR-0008 Option D)
+    #[test]
+    fn aktion_bricht_vor_dem_ersten_schreiben_ab() {
+        let eltern = tempfile::tempdir().unwrap();
+        let w = eltern.path().join("w");
+        std::fs::create_dir_all(w.join("aufgaben")).unwrap();
+        std::fs::write(w.join("kanbanD.md"), "---\npeople:\n  cl: {name: Claude, kind: agent}\n---\n").unwrap();
+        std::fs::write(w.join("aufgaben/0001-a.md"), "---\nid: 1\ntitle: a\n---\n").unwrap();
+        git(&w, &["init", "-q"]);
+        git(&w, &["add", "-A"]);
+        git(&w, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "a"]);
+        let k = Kanban::neu(w.clone());
+        let cl = k.handelnder(Some("cl")).unwrap();
+        let vorher = (git(&w, &["rev-list", "--count", "HEAD"]), std::fs::read(w.join("aufgaben/0001-a.md")).unwrap());
+        let absolut = eltern.path().join("abs.md").to_string_lossy().into_owned();
+        for zweiter in ["../x.md", absolut.as_str(), "aufgaben/x\0.md", "aufgaben/0001-a.md"] {
+            let dateien = [("aufgaben/0001-a.md".to_string(), "überschrieben".to_string()), (zweiter.to_string(), "x".to_string())];
+            let e = k.aktion(&cl, "Probe", &dateien);
+            assert!(matches!(e, Err(Fehler::Intern(_))), "{zweiter:?}: {e:?}");
+            assert_eq!((git(&w, &["rev-list", "--count", "HEAD"]), std::fs::read(w.join("aufgaben/0001-a.md")).unwrap()), vorher, "{zweiter:?}: nichts geschrieben, kein Commit");
+        }
+        assert!(!eltern.path().join("x.md").exists() && !eltern.path().join("abs.md").exists(), "nichts neben dem Ordner");
+        assert_eq!(git(&w, &["status", "--porcelain"]), "");
     }
 }

@@ -36,7 +36,9 @@ impl Ordner {
     }
 
     /// Schreibt über eine Nachbardatei und Umbenennen, damit kein Leser eine halbe Datei sieht.
+    /// Ein Pfad außerhalb der Wurzel wird abgewiesen, bevor etwas angelegt ist.
     pub fn schreib(&self, rel: &str, text: &str) -> io::Result<()> {
+        eingeschlossen(rel).map_err(|grund| io::Error::new(io::ErrorKind::InvalidInput, grund))?;
         let ziel = self.wurzel.join(rel);
         if let Some(eltern) = ziel.parent() {
             std::fs::create_dir_all(eltern)?;
@@ -159,6 +161,35 @@ fn board_name_ungueltig(slug: &str) -> String {
     if slug.chars().any(char::is_control) { format!("Board-Name ungültig: {FORM}") } else { format!("Board-Name „{slug}“ ungültig: {FORM}") }
 }
 
+/// Zweite Linie (ADR-0008 Option D): jeder Pfad relativ und nur aus normalen Bestandteilen (kein `..`, `.`, keine Wurzel,
+/// kein NUL), keiner doppelt. Ein Treffer ist ein Programmierfehler, nie eine Benutzereingabe.
+pub fn pfade_pruefen(pfade: &[&str]) -> Result<(), String> {
+    for (i, rel) in pfade.iter().enumerate() {
+        eingeschlossen(rel)?;
+        if pfade[..i].contains(rel) {
+            return Err(format!("Pfad „{rel}“ doppelt in einer Aktion"));
+        }
+    }
+    Ok(())
+}
+
+/// Ein Pfad, der unter der Wurzel bleibt und in Normalform steht: nicht leer, ohne NUL, nur `Component::Normal` und
+/// kein leerer oder `.`-Abschnitt (`components()` glättet `a/./b` und `a//b` still) — so ist „doppelt“ ein Textvergleich.
+fn eingeschlossen(rel: &str) -> Result<(), String> {
+    if rel.contains('\0') {
+        return Err("Pfad mit NUL".into());
+    }
+    if rel.is_empty() {
+        return Err("Pfad leer".into());
+    }
+    let normal = Path::new(rel).components().all(|c| matches!(c, std::path::Component::Normal(_)));
+    let ohne_leere_abschnitte = rel.split('/').all(|t| !t.is_empty() && t != "." && t != "..");
+    if !(normal && ohne_leere_abschnitte) {
+        return Err(format!("Pfad „{rel}“ verlässt den Ordner oder steht nicht in Normalform"));
+    }
+    Ok(())
+}
+
 pub fn board_pfad(slug: &str) -> String {
     format!("{}/{slug}.md", board::ORDNER)
 }
@@ -212,5 +243,40 @@ mod tests {
         assert_eq!(gut.iter().map(|b| b.slug.as_str()).collect::<Vec<_>>(), ["fabrik"]);
         assert_eq!(defekt, [super::DefekteDatei { pfad: "boards/Alt_Board.md".into(), fehler: "Dateiname ist kein gültiger Board-Name — umbenennen".into() }]);
         assert_eq!(std::fs::read_to_string(tmp.path().join("boards/Alt_Board.md")).unwrap(), "# Alt\n\n## Offen\n");
+    }
+
+    // B0342: zweite Linie — die reine Prüfung der Pfade einer Aktion
+    #[test]
+    fn pfade_pruefen_laesst_nur_eindeutige_normale_pfade_durch() {
+        assert_eq!(super::pfade_pruefen(&["aufgaben/0001-a.md", "boards/fabrik.md", "anhaenge/1/bild.png"]), Ok(()));
+        for (pfade, grund) in [
+            (vec!["aufgaben/0001-a.md", "../x.md"], "verlässt"),
+            (vec!["/tmp/x.md"], "verlässt"),
+            (vec!["aufgaben/./x.md"], "Normalform"),
+            (vec!["aufgaben//x.md"], "Normalform"),
+            (vec!["aufgaben/x.md/"], "Normalform"),
+            (vec!["aufgaben/a\0.md"], "NUL"),
+            (vec![""], "leer"),
+            (vec!["aufgaben/0001-a.md", "aufgaben/0001-a.md"], "doppelt"),
+        ] {
+            let e = super::pfade_pruefen(&pfade).expect_err(&format!("{pfade:?}"));
+            assert!(e.contains(grund), "{pfade:?}: {e}");
+            assert!(!e.contains('\0'), "kein NUL in der Meldung");
+        }
+    }
+
+    #[test]
+    fn schreib_bleibt_unter_der_wurzel() {
+        let eltern = tempfile::tempdir().unwrap();
+        let w = eltern.path().join("w");
+        std::fs::create_dir_all(&w).unwrap();
+        let o = Ordner::neu(w.clone());
+        assert!(o.schreib("../x.md", "x").is_err());
+        assert!(!eltern.path().join("x.md").exists(), "keine Datei neben dem Ordner");
+        let absolut = eltern.path().join("y.md");
+        assert!(o.schreib(absolut.to_str().unwrap(), "y").is_err());
+        assert!(!absolut.exists());
+        o.schreib("anhaenge/1/bild.png", "png").unwrap();
+        assert_eq!(std::fs::read_to_string(w.join("anhaenge/1/bild.png")).unwrap(), "png");
     }
 }
