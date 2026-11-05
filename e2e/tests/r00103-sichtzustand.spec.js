@@ -191,6 +191,18 @@ test.describe('R00103 Tippen', () => {
     expect(k.lies('aufgaben/0001-abnahme-pruefen.md')).not.toContain(' · st · ');
   });
 
+  test('Fokus und Scrollstand: das Kommentarfeld behält den Fokus, ohne dass der Hauptbereich zu ihm springt', async ({ page }) => {
+    await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Neuer Kommentar').click();
+    await page.keyboard.type('noch offen');
+    expect(await rollen(page, '.mod-main', 400)).toBe(400);
+    const vorher = await renders(page);
+    await kommentiert(page, k, 2, 'an zwei');
+    await gezeichnetMitKommentaren(page, vorher, 2, 1);
+    expect(await eingabe(page)).toEqual({ feld: 'km-inp', wert: 'noch offen', von: 10, bis: 10 });
+    nahe(await rollstand(page, '.mod-main'), 400);
+  });
+
   test('US-7 getippt: bot ändert den Titel — das Feld zeigt weiter „Abnahme prü“ mit Fokus und Cursor', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
     await titelGekuerzt(page);
