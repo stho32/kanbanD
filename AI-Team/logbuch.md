@@ -146,3 +146,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #5 | Auto-Reviews | security-reviewer (frisch) | befund: Muss B1 Board-Slug als Pfad (Schreiben außerhalb boards/, Aufgabendatei zerstört) → Vorrang-Karte #48 | 0:07 | — |
 | 2026-11-06 | #48 | Architektur | architekt (frisch) | bestanden: ADR-0008 Board-Slug geprüft in Ordner::board, zweite Linie in aktion()/schreib(), X00001 ergänzt; Trainer-Anfrage Pfad-Einschluss | 0:02 | b4b1107 |
 | 2026-11-06 | #48 | Detailplanung | director | Zug Architektur → Detailplanung | — | — |
+| 2026-11-06 | #48 | Detailplanung | planer (frisch) | bestanden: R00104 aus-bug, WBS I0091 mit B0339–B0343 | 0:10 | abe8658 |
+| 2026-11-06 | #48 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-48 | — | — |
