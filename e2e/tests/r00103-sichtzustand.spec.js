@@ -390,3 +390,35 @@ test.describe('R00103 Nur das Verlassen speichert', () => {
     expect(await titelImServer(page)).toBe('Abnahme durchführen');
   });
 });
+
+test.describe('R00103 Felder außerhalb des Fensters', () => {
+  let k;
+  test.beforeEach(async () => { k = await kanbanStarten(einrichten(DATEIEN)); });
+  test.afterEach(() => k.stoppen());
+
+  const FIEBER = 'Fever Chart von „Entwicklung“ eingestellt';
+  const fieberCommitsVonSt = () => k.git('log', '--format=%an|%s').split('\n').filter(z => z.startsWith('Stefan|' + FIEBER)).length;
+
+  test('Fieber: „1“ in „Puffer in Tagen“ übersteht einen Kommentar an #1, Verlassen speichert genau einmal', async ({ page }) => {
+    await page.setViewportSize(BREIT);
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('#t-ber').click();
+    await page.getByRole('menuitem', { name: /Projekt-Fever-Chart/ }).click();
+    const puffer = page.getByLabel('Puffer in Tagen');
+    await puffer.click();
+    await page.keyboard.type('1');
+    const vorher = await renders(page);
+    await kommentiert(page, k, 1, 'an eins');
+    await gezeichnetMitKommentaren(page, vorher, 1, 41);
+    expect(await page.evaluate(() => ({ feld: document.activeElement.dataset.fb, wert: document.activeElement.value }))).toEqual({ feld: 'puffer', wert: '1' });
+    expect(fieberCommitsVonSt()).toBe(0);
+    await page.keyboard.press('Tab');
+    await expect.poll(fieberCommitsVonSt).toBe(1);
+    const nachher = await renders(page);
+    await kommentiert(page, k, 1, 'noch eins');
+    await gezeichnetMitKommentaren(page, nachher, 1, 42);
+    expect(fieberCommitsVonSt()).toBe(1);
+  });
+});

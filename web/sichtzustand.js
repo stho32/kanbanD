@@ -3,7 +3,8 @@
 // Die Schlüsselregel ist rein: das Element kommt als { id, daten, klassen }, der Bereich als Zählfunktion je Selektor.
 // Sichern und Zurücksetzen arbeiten auf dem DOM eines Bereichs, dessen Inhalt neu gezeichnet wird.
 (function (ziel) {
-  const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf'];
+  // Aufgabe, Neu, Wirkung, WBS-Knoten, Termin, Fieber-Chart, Berichtsfilter, Durchlaufzeit, Einrichtung, Spalten, Erststart
+  const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf', 'fb', 'bf', 'dl', 'ef', 'sf', 'fr'];
   const EINFACHE_KLASSE = /^[A-Za-z_][\w-]*$/;
   // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
   // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
@@ -15,14 +16,16 @@
     return `"${ersetzt}"`;
   }
 
-  /** Die Kandidaten in Vorrangfolge: id, data-halt, Feldschlüssel, Aktion, Klassen. */
+  /** Die Kandidaten in Vorrangfolge: id, data-halt, Feldschlüssel (samt Zeile), Aktion, Klassen. */
   function kandidaten(element) {
     const daten = element.daten || {};
     const liste = [];
     if (element.id) liste.push(`[id=${zitiert(element.id)}]`);
     if (daten.halt) liste.push(`[data-halt=${zitiert(daten.halt)}]`);
     const feld = FELDSCHLUESSEL.find(name => daten[name]);
-    if (feld) liste.push(`[data-${feld}=${zitiert(daten[feld])}]`);
+    // In Listen (Spalten, Personen, Klassen) steht dasselbe Feld je Zeile; data-i nennt die Zeile
+    const zeile = daten.i !== undefined ? `[data-i=${zitiert(daten.i)}]` : '';
+    if (feld) liste.push(`[data-${feld}=${zitiert(daten[feld])}]${zeile}`);
     if (daten.act && daten.arg !== undefined) liste.push(`[data-act=${zitiert(daten.act)}][data-arg=${zitiert(daten.arg)}]`);
     else if (daten.act) liste.push(`[data-act=${zitiert(daten.act)}]`);
     const einfacheKlassen = (element.klassen || []).filter(klasse => EINFACHE_KLASSE.test(klasse));

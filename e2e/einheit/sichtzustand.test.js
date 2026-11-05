@@ -27,6 +27,20 @@ test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, wf, wn, tf', () => {
   assert.strictEqual(schluessel(element({ daten: { tf: 'name', af: 'labels' } }), bereichMit({})), '[data-af="labels"]', 'af vor tf');
 });
 
+test('Feldschlüssel der Berichte, des Fieber-Charts und der Einrichtung: fb, bf, dl, ef, sf, fr', () => {
+  assert.strictEqual(schluessel(element({ daten: { fb: 'puffer' }, klassen: ['mini-inp', 'fb-zahl'] }), bereichMit({ '.mini-inp': 7, '.fb-zahl': 5 })), '[data-fb="puffer"]');
+  assert.strictEqual(schluessel(element({ daten: { bf: 'von' }, klassen: ['mini-inp'] }), bereichMit({ '.mini-inp': 7 })), '[data-bf="von"]');
+  assert.strictEqual(schluessel(element({ daten: { dl: 'dlSpalte' }, klassen: ['mini-inp'] }), bereichMit({ '.mini-inp': 7 })), '[data-dl="dlSpalte"]');
+  assert.strictEqual(schluessel(element({ daten: { fr: 'name' }, klassen: ['mini-inp', 'full'] }), bereichMit({ '.mini-inp': 6, '.full': 5 })), '[data-fr="name"]');
+});
+
+test('Feldschlüssel einer Listenzeile tragen ihre Zeile: data-i gehört zum Schlüssel', () => {
+  const bereich = bereichMit({ '[data-ef="pname"]': 3, '[data-sf="name"]': 4, '.inp': 9 });
+  assert.strictEqual(schluessel(element({ daten: { ef: 'pname', i: '1' }, klassen: ['inp'] }), bereich), '[data-ef="pname"][data-i="1"]');
+  assert.strictEqual(schluessel(element({ daten: { sf: 'name', i: '2' }, klassen: ['inp'] }), bereich), '[data-sf="name"][data-i="2"]');
+  assert.strictEqual(schluessel(element({ daten: { ef: 'wbs' }, klassen: ['mini-inp'] }), bereichMit({ '.mini-inp': 4 })), '[data-ef="wbs"]', 'ohne Zeile der Feldschlüssel allein');
+});
+
 test('Aktion mit Argument, sonst Aktion allein', () => {
   assert.strictEqual(schluessel(element({ daten: { act: 'blaettern', arg: '1' }, klassen: ['btn'] }), bereichMit({ '.btn': 5 })), '[data-act="blaettern"][data-arg="1"]');
   assert.strictEqual(schluessel(element({ daten: { act: 'schliessen' }, klassen: ['btn'] }), bereichMit({ '.btn': 5 })), '[data-act="schliessen"]');
