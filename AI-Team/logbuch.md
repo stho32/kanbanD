@@ -135,3 +135,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Entwicklertest | entwicklertester (aaaa26b) | bestanden, US-1–US-6 und Gegenbeispiele, keine Befunde | 0:08 | — |
 | 2026-11-05 | #4 | Erledigt | director | Auslieferung aus 6327ab7, 7422 neu (PID 2349155), Health 200; Befundkarten #43–#47 im Backlog; Kosten 49.45–61.42 $ | — | — |
 | 2026-11-05 | #5 | Detailplanung | director | Signal in-arbeit, Zug Architektur → Detailplanung (Architektur bestanden 2026-10-31, ADR-0004/0005), planer fortgesetzt (adcd1a9) | — | — |
+| 2026-11-05 | #5 | Detailplanung | planer (fortgesetzt) | bestanden: I0090 unter D0007 mit F0029–F0032, 8 Bubbles B0331–B0338 (5–10 h ungemessen), R00099 Kriterien als Gegeben/Wenn/Dann mit Grenz-, Leer- und Fehlfällen, US-4–US-6; 1 Frage an den PO (Mensch über der Grenze); Kontext ~155k → nächster planer frisch | — | f59671a, df68636 |
