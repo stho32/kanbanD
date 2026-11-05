@@ -132,3 +132,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #4 | Auto-Reviews | director | Zug, Wiederholung nur security-reviewer auf 685db20 | — | — |
 | 2026-11-05 | #4 | Auto-Reviews | security-reviewer (aa33983) | Wiederholung auf 3e462ac (Korrektur: nicht 685db20) bestanden; Nebenfund NUL-Titel → 500 bestätigt, vorbestehend | 0:09 | — |
 | 2026-11-05 | #4 | Entwicklertest | director | Zug, entwicklertester frisch | — | — |
+| 2026-11-05 | #4 | Entwicklertest | entwicklertester (aaaa26b) | bestanden, US-1–US-6 und Gegenbeispiele, keine Befunde | 0:08 | — |
+| 2026-11-05 | #4 | Erledigt | director | Auslieferung aus 6327ab7, 7422 neu (PID 2349155), Health 200; Befundkarten #43–#47 im Backlog; Kosten 49.45–61.42 $ | — | — |
