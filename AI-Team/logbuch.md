@@ -141,3 +141,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #5 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-5 (karte/5) | — | — |
 | 2026-11-06 | #5 | Entwicklung | entwickler (frisch) | bestanden: B0331–B0338, Ist 2,7 h (geplant 5–10 h), 497/126/262 grün, clippy 0; fmt rot als Altlast; zusammengeführt bis add6936 | 0:23 | 4a22055…681c0af |
 | 2026-11-06 | #5 | Auto-Reviews | director | Zug Entwicklung → Auto-Reviews; crev, srev, arev | — | — |
+| 2026-11-06 | #5 | Auto-Reviews | architektur-reviewer (frisch) | bestanden: ADR-0002–0005 eingehalten, Sollte S1–S4 (Fitness-Test ADR-0005, Drift X00001, ADR-0005 nachziehen, GRENZE in openapi-Test) für Härtungskarte | 0:03 | — |
+| 2026-11-06 | #5 | Auto-Reviews | code-reviewer (frisch) | bestanden: Sollte A1 Commit-Fehler rollt nicht zurück (aktion, projektweit), A2 422 statt 400 bei Typverwechslung; Optional A3/A4 | 0:05 | — |
+| 2026-11-06 | #5 | Auto-Reviews | security-reviewer (frisch) | befund: Muss B1 Board-Slug als Pfad (Schreiben außerhalb boards/, Aufgabendatei zerstört) → Vorrang-Karte #48 | 0:07 | — |
