@@ -1,17 +1,19 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
 pub const DURCHLAEUFE: &str = "kanbanD-runs";
-const BEKANNT: [&str; 13] = ["id", "title", "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived", RESERVIERUNG];
+const BEKANNT: [&str; 14] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
 pub const RESERVIERUNG: &str = "reservation";
+/// Schlüssel eines fremden Systems (R00098)
+pub const SCHLUESSEL: &str = "key";
 pub const WIRKUNGEN: &str = "wbs-effects";
 pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
@@ -45,6 +47,10 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
         None => nummer_aus_dateiname(datei).ok_or_else(|| Formatfehler("weder id noch Nummer im Dateinamen".into()))?,
     };
     let mut a = Aufgabe::neu(nummer, datei.to_string(), yaml::text(&m, "title").unwrap_or_default());
+    if let Some(k) = m.get(SCHLUESSEL) {
+        let text = yaml::wert_als_text(k).unwrap_or_default();
+        a.schluessel = Some(Fremdschluessel::pruefen(&text).map_err(|f| Formatfehler(format!("{SCHLUESSEL}: {f}")))?);
+    }
     a.klasse = yaml::text(&m, "class").filter(|k| !k.is_empty());
     a.zustaendige = yaml::textliste(&m, "assignees");
     a.labels = yaml::textliste(&m, "labels");
@@ -322,6 +328,9 @@ fn entschluesseln(t: &str) -> String {
 
 pub fn schreiben(a: &Aufgabe) -> String {
     let mut s = format!("---\nid: {}\ntitle: {}\n", a.nummer, yaml::skalar(&a.titel));
+    if let Some(k) = &a.schluessel {
+        s.push_str(&format!("{SCHLUESSEL}: {}\n", yaml::skalar(k.text())));
+    }
     if let Some(k) = &a.klasse {
         s.push_str(&format!("class: {}\n", yaml::skalar(k)));
     }
@@ -443,6 +452,25 @@ mod tests {
         assert_eq!(lesen("0009-d.md", &schreiben(&b)).unwrap(), b);
         assert_eq!(durchlauf_lesen("2026-10-25 07:41 · E · ok · x · -"), None, "unbekanntes Ergebnis");
         assert_eq!(durchlauf_lesen("2026-10-25 07:41 · E · befund · x · 90"), None, "Dauer nur als h:mm");
+    }
+
+    // R00098 B0316: key im Rundlauf, auch mit Doppelpunkt und Schrägstrichen; ohne key keine Zeile; ungültig → Formatfehler
+    #[test]
+    fn schluessel_im_rundlauf() {
+        for (zeile, text) in [("key: \"a: b\"\n", "a: b"), ("key: shop/nc-304/lodash\n", "shop/nc-304/lodash"), ("key: \"304\"\n", "304")] {
+            let t = format!("---\nid: 7\ntitle: S\n{zeile}---\n");
+            let a = lesen("0007-s.md", &t).unwrap();
+            assert_eq!(a.schluessel.as_ref().map(|k| k.text()), Some(text), "{zeile}");
+            assert!(a.weitere.is_empty(), "key ist bekannt, nicht weitere");
+            assert_eq!(schreiben(&a), t, "zeichengleich");
+        }
+        let ohne = "---\nid: 7\ntitle: S\n---\n";
+        let a = lesen("0007-s.md", ohne).unwrap();
+        assert_eq!((a.schluessel.is_none(), schreiben(&a).as_str()), (true, ohne), "ohne key keine Zeile");
+        for falsch in ["key: \"\"\n", "key: \"a\\nb\"\n", "key: [a, b]\n"] {
+            let fehler = lesen("0007-s.md", &format!("---\nid: 7\ntitle: S\n{falsch}---\n")).unwrap_err();
+            assert!(fehler.0.contains("Schlüssel"), "{falsch}: {}", fehler.0);
+        }
     }
 
     // R00087: die Reservierung im Rundlauf, auch mit Kennungen, die YAML sonst als Zahl läse

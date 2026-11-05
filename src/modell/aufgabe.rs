@@ -136,9 +136,22 @@ pub fn instanz_gueltig(s: &str) -> bool {
 }
 
 /// Schlüssel eines fremden Systems (R00098, `key:`): außen getrimmt 1–200 Zeichen ohne Zeilenumbruch, genau mit Groß/Klein.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
-#[serde(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+#[serde(try_from = "String", into = "String")]
 pub struct Fremdschluessel(String);
+
+impl TryFrom<String> for Fremdschluessel {
+    type Error = String;
+    fn try_from(text: String) -> Result<Fremdschluessel, String> {
+        Fremdschluessel::pruefen(&text)
+    }
+}
+
+impl From<Fremdschluessel> for String {
+    fn from(k: Fremdschluessel) -> String {
+        k.0
+    }
+}
 
 impl Fremdschluessel {
     pub fn pruefen(text: &str) -> Result<Fremdschluessel, String> {
@@ -301,6 +314,9 @@ pub struct Aufgabe {
     /// Dateiname unter `aufgaben/`, z. B. `0012-kopfzeile.md`.
     pub datei: String,
     pub titel: String,
+    /// `key` (R00098): Schlüssel eines fremden Systems, beim Anlegen gesetzt, danach unveränderlich
+    #[serde(rename = "key")]
+    pub schluessel: Option<Fremdschluessel>,
     pub klasse: Option<String>,
     pub zustaendige: Vec<String>,
     pub labels: Vec<String>,
@@ -336,6 +352,7 @@ impl Aufgabe {
             nummer,
             datei,
             titel,
+            schluessel: None,
             klasse: None,
             zustaendige: vec![],
             labels: vec![],
