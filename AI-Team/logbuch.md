@@ -102,3 +102,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #27 | Entwicklertest | entwicklertester (frisch) | bestanden: US-1–US-6 wörtlich, 84/84 Gegenbeispiele und Regression, explorativ 3 Chartas; Anm. 422 statt 400 bei Typfehlern (alt, außer Paket) | 0:07 | Agent a63a9dff |
 | 2026-11-05 | #27 | Erledigt | director | Auslieferung cargo install aus 9444c12, 7422 neu gestartet, Health 200; kein Push; Kosten 20,93–26,37 $ (ab Nacharbeit 1) | — | — |
 | 2026-11-05 | #27 | Retrospektive | director | Fortbildungsidee „Schutzprüfung über zwei Identitäten“; Vorschläge planer (beide Identitäten im Kriterium) und entwickler (alte Proben bleiben als Regression); Vorschlag Gegenprobe-Binary | — | Factory fe4c50f, 3ebcbbe |
+| 2026-11-05 | #39 | Backlog | director | Anmerkung A1 aus Entwicklertest #27 als Karte erfasst (422 statt 400 bei Typfehlern), Freigabe beim Betreiber | — | — |
+| 2026-11-05 | #19 | Architektur | director | Signal in-arbeit, Auftrag an architekt | — | — |
