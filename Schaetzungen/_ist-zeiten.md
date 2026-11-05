@@ -327,3 +327,8 @@ Nie vom User erfragen.
 | 2026-11-06 | R00099 Befund erledigt sich | B0336 Melden in einem Commit | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00099 Befund erledigt sich | B0337 Grenze der Abschlussspalte | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00099 Befund erledigt sich | B0338 erledigen in der Beschreibung | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0339 Abnahme-Matrix der drei Wege | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0340 Form prüfen an der Eingangstür | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0341 Handbenannte Board-Datei als defekt | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0342 Zweite Linie in aktion und schreib | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0343 Verlauf nimmt den gelesenen Board-Namen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
