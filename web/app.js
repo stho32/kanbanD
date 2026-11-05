@@ -466,10 +466,13 @@ function render() {
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   // Ein ausdrückliches Fokusziel geht vor
-  let gehalten = false;
-  if (eingabe && !S.ui.fokus) gehalten = eingabeSetzen(eingabe);
-  if (gehalten) { /* das Feld behält den Fokus */ }
-  else if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
+  const gehalten = Boolean(eingabe) && !S.ui.fokus && eingabeSetzen(eingabe);
+  if (!gehalten) fokusZurueckgeben();
+}
+
+/** Fokus nach dem Neuzeichnen, wenn der Sicherer nichts hält: ausdrückliches Ziel, sonst Karte im Board oder Zeile in der Aufgabenliste. */
+function fokusZurueckgeben() {
+  if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
   else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
   else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
 }

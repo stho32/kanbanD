@@ -5,6 +5,9 @@
 (function (ziel) {
   const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf'];
   const EINFACHE_KLASSE = /^[A-Za-z_][\w-]*$/;
+  // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
+  // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
+  const ungemeldet = new WeakSet();
 
   /** Attributwert für einen Selektor in Anführungszeichen. */
   function zitiert(wert) {
@@ -112,10 +115,6 @@
     }
     return true;
   }
-
-  // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
-  // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
-  const ungemeldet = new WeakSet();
 
   /** Ein „change“ des Felds ist angekommen: nichts mehr nachzutragen. */
   function aenderungGemeldet(feld) {
