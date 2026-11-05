@@ -139,3 +139,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #5 | Detailplanung | product-owner (frisch) | Frage entschieden wie empfohlen (PO-Zeile 69): Mensch über der Grenze → 200 mit Warnung grenze, warnungen in jeder 200-Antwort; Anforderung nicht geändert (Rollengrenze, Auftrag des Directors war falsch) → Nachzug an planer (frisch) | 0:01 | 842eb14 |
 | 2026-11-05 | #5 | Detailplanung | planer (frisch) | bestanden: PO-Zeile 69 in R00099, US-7 und WBS eingearbeitet, keine offene Frage | 0:03 | d715a5d, 20bcc42 |
 | 2026-11-05 | #5 | Entwicklung | director | Zug Detailplanung → Entwicklung, Worktree kanbanD-wt-entw1-5 (karte/5) | — | — |
+| 2026-11-06 | #5 | Entwicklung | entwickler (frisch) | bestanden: B0331–B0338, Ist 2,7 h (geplant 5–10 h), 497/126/262 grün, clippy 0; fmt rot als Altlast; zusammengeführt bis add6936 | 0:23 | 4a22055…681c0af |
+| 2026-11-06 | #5 | Auto-Reviews | director | Zug Entwicklung → Auto-Reviews; crev, srev, arev | — | — |
