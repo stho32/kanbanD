@@ -1,4 +1,6 @@
 use super::Kanban;
+use super::archiv::zurueckgeholt;
+use super::kommentare::kommentiert;
 use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
@@ -94,11 +96,23 @@ impl Kanban {
         let (vorhanden, _) = if neu.board.is_some() || schluessel.iter().any(Option::is_some) { self.ordner().aufgaben()? } else { Default::default() };
         let erste = self.ordner().naechste_nummer()?;
         let mut aufgaben: Vec<Aufgabe> = vec![];
+        let mut wieder: Vec<Aufgabe> = vec![];
         let mut plan: Vec<(u32, bool)> = vec![];
         for ((t, angaben), k) in eintraege.iter().zip(&schluessel) {
-            if let Some(nr) = k.as_ref().map(|k| schon_da(&aufgaben, &vorhanden, k)).transpose()?.flatten() {
-                plan.push((nr, false));
-                continue;
+            if let Some(k) = k {
+                match schon_da(&aufgaben, &wieder, &vorhanden, k)? {
+                    Vorhanden::Keiner => {}
+                    Vorhanden::Offen(nr) => {
+                        plan.push((nr, false));
+                        continue;
+                    }
+                    Vorhanden::Archiviert(nr) => {
+                        let a = vorhanden.iter().find(|a| a.nummer == nr).cloned().expect("Treffer stammt aus dem Ordner");
+                        wieder.push(wieder_geoeffnet(a, wer, k)?);
+                        plan.push((nr, false));
+                        continue;
+                    }
+                }
             }
             let nummer = erste + aufgaben.len() as u32;
             let mut a = Aufgabe::neu(nummer, aufgabe::dateiname(nummer, t), t.to_string());
@@ -130,20 +144,20 @@ impl Kanban {
                 haken();
             }
         }
-        if !aufgaben.is_empty() {
-            self.neue_schreiben(wer, neu, &aufgaben, &vorhanden)?;
+        if !aufgaben.is_empty() || !wieder.is_empty() {
+            self.schreiben(wer, neu, &aufgaben, &wieder, &vorhanden)?;
         }
-        let karte = |nr: u32| aufgaben.iter().chain(&vorhanden).find(|a| a.nummer == nr).cloned().expect("geplante Karte ist bekannt");
+        let karte = |nr: u32| aufgaben.iter().chain(&wieder).chain(&vorhanden).find(|a| a.nummer == nr).cloned().expect("geplante Karte ist bekannt");
         Ok(plan.into_iter().map(|(nr, neu)| Angelegt { aufgabe: karte(nr), neu }).collect())
     }
 
-    /// Die neuen Dateien, mit Board unten in die Spalte — ein Commit.
-    fn neue_schreiben(&self, wer: &Person, neu: &NeueAufgaben, aufgaben: &[Aufgabe], vorhanden: &[Aufgabe]) -> Result<(), Fehler> {
-        let erste = aufgaben[0].nummer;
-        let mut dateien: Vec<(String, String)> = aufgaben.iter().map(|a| (format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
-        let mut nachricht = match aufgaben {
-            [a] => format!("#{} „{}“ angelegt", a.nummer, a.titel),
-            alle => format!("#{}–#{} angelegt ({} Aufgaben)", erste, erste + alle.len() as u32 - 1, alle.len()),
+    /// Neue und wieder geöffnete Karten, mit Board: neue unten, wieder geöffnete oben in die Spalte — ein Commit.
+    fn schreiben(&self, wer: &Person, neu: &NeueAufgaben, aufgaben: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe]) -> Result<(), Fehler> {
+        let mut dateien: Vec<(String, String)> = aufgaben.iter().chain(wieder).map(|a| (format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
+        let mut angelegt = match aufgaben {
+            [] => None,
+            [a] => Some(format!("#{} „{}“ angelegt", a.nummer, a.titel)),
+            alle => Some(format!("#{}–#{} angelegt ({} Aufgaben)", alle[0].nummer, alle[0].nummer + alle.len() as u32 - 1, alle.len())),
         };
         if let Some(slug) = &neu.board {
             let mut b = self.ordner().board(slug)?;
@@ -154,30 +168,57 @@ impl Kanban {
             let vorher = b.clone();
             let spalte = b.spalte_mut(&spaltenname).ok_or_else(|| Fehler::Ungueltig(format!("Spalte „{spaltenname}“ gibt es auf „{slug}“ nicht")))?;
             spalte.aufgaben.extend(aufgaben.iter().map(|a| a.nummer));
+            for a in wieder {
+                b.oben_einordnen(a.nummer, Some(&spaltenname)).expect("Spalte geprüft");
+            }
             // Agent: 409 über der Grenze; Mensch: durchgelassen ohne Warnung, die Antwort bleibt die Aufgabe (R00096)
             zug_pruefen(wer.art, &vorher, &b, &archivierte(vorhanden))?;
-            nachricht.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
-            let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden.iter()).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
+            if let Some(n) = &mut angelegt {
+                n.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
+            }
+            let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
             dateien.push((board_pfad(&b.slug), text));
         }
+        let geoeffnet = (!wieder.is_empty()).then(|| format!("{} erneut gefunden: wieder geöffnet", nummernliste(wieder.iter().map(|a| a.nummer))));
+        let nachricht = [angelegt, geoeffnet].into_iter().flatten().collect::<Vec<_>>().join("; ");
         self.aktion(wer, &nachricht, &dateien)
     }
 }
 
-/// Die Nummer der Karte, die den Schlüssel schon trägt — zuerst unter den neuen dieser Anfrage, dann im Ordner.
+/// Was ein Schlüssel beim Anlegen vorfindet.
+enum Vorhanden {
+    Keiner,
+    Offen(u32),
+    Archiviert(u32),
+}
+
+/// Zuerst unter den Karten dieser Anfrage (neue und schon wieder geöffnete), dann im Ordner.
 /// Tragen ihn mehrere Karten im Ordner, entscheidet kanbanD nicht, welche gemeint ist: 409.
-fn schon_da(neue: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fremdschluessel) -> Result<Option<u32>, Fehler> {
-    match Schluesseltreffer::suchen(neue, k) {
-        Schluesseltreffer::Offen(nr) => Ok(Some(nr)),
-        _ => match Schluesseltreffer::suchen(vorhanden, k) {
-            Schluesseltreffer::Keiner => Ok(None),
-            Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => Ok(Some(nr)),
-            Schluesseltreffer::Mehrfach(nummern) => {
-                let liste = nummern.iter().map(|nr| format!("#{nr}")).collect::<Vec<_>>().join(", ");
-                Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {liste}", k.text())))
-            }
-        },
+fn schon_da(neue: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fremdschluessel) -> Result<Vorhanden, Fehler> {
+    let in_anfrage = [neue, wieder].into_iter().find_map(|liste| match Schluesseltreffer::suchen(liste, k) {
+        Schluesseltreffer::Offen(nr) => Some(nr),
+        _ => None,
+    });
+    if let Some(nr) = in_anfrage {
+        return Ok(Vorhanden::Offen(nr));
     }
+    match Schluesseltreffer::suchen(vorhanden, k) {
+        Schluesseltreffer::Keiner => Ok(Vorhanden::Keiner),
+        Schluesseltreffer::Offen(nr) => Ok(Vorhanden::Offen(nr)),
+        Schluesseltreffer::Archiviert(nr) => Ok(Vorhanden::Archiviert(nr)),
+        Schluesseltreffer::Mehrfach(nummern) => Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", k.text(), nummernliste(nummern.into_iter())))),
+    }
+}
+
+/// Wiederöffnen aus den Kernen (ADR-0005): zurückholen und kommentieren, im Speicher.
+fn wieder_geoeffnet(mut a: Aufgabe, wer: &Person, k: &Fremdschluessel) -> Result<Aufgabe, Fehler> {
+    zurueckgeholt(&mut a)?;
+    kommentiert(&mut a, wer, &format!("Erneut gefunden (Schlüssel „{}“)", k.text()));
+    Ok(a)
+}
+
+fn nummernliste(nummern: impl Iterator<Item = u32>) -> String {
+    nummern.map(|nr| format!("#{nr}")).collect::<Vec<_>>().join(", ")
 }
 
 #[cfg(test)]

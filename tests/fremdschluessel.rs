@@ -152,3 +152,90 @@ async fn dublette_weist_ab() {
     assert_eq!(aufgabendateien(tmp.path()), ["0008-fund.md", "0009-fund.md"], "keine Datei");
     assert_eq!(lies(tmp.path(), "boards/fabrik.md"), "# Fabrik\n\n## Eingang\n\n## Fertig\n");
 }
+
+const ZEIT: &str = "2026-10-20 09:00 · 2026-10-20 10:00 · st";
+const ALT: &str = "2026-10-20 10:05 · st · behoben";
+
+/// #3 offen in „Eingang“, #7 mit k4 behoben und archiviert in „Fertig“, mit früherer Zeit und früherem Kommentar.
+fn behoben(pfad: &Path) {
+    gemeinsam::eingerichtet(pfad);
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    std::fs::write(pfad.join("aufgaben/0003-offen.md"), "---\nid: 3\ntitle: offen\n---\n").unwrap();
+    std::fs::write(pfad.join("aufgaben/0007-fund.md"), format!("---\nid: 7\ntitle: Fund\nkey: k4\narchived: 2026-10-21\n---\n```kanbanD-time\n{ZEIT}\n```\n\n```kanbanD-comments\n{ALT}\n```\n")).unwrap();
+    std::fs::write(pfad.join("boards/fabrik.md"), "# Fabrik\n\n## Eingang\n\n- [#3](../aufgaben/0003-offen.md)\n\n## In Arbeit\n\n## Fertig\n\n- [#7](../aufgaben/0007-fund.md)\n").unwrap();
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "behoben"]);
+}
+
+fn spalte(pfad: &Path, name: &str) -> Vec<u32> {
+    let text = lies(pfad, "boards/fabrik.md");
+    let teil = text.split(&format!("## {name}\n")).nth(1).unwrap_or("");
+    let teil = teil.split("\n## ").next().unwrap();
+    teil.lines().filter_map(|z| z.strip_prefix("- [#")?.split(']').next()?.parse().ok()).collect()
+}
+
+fn wieder_offen_mit_geschichte(pfad: &Path) {
+    let t = lies(pfad, "aufgaben/0007-fund.md");
+    assert!(!t.contains("archived:"), "nicht mehr archiviert: {t}");
+    assert!(t.contains("\nkey: k4\n") && t.contains("title: Fund\n"), "{t}");
+    assert!(t.contains(&format!("{ZEIT}\n")) && t.contains(&format!("{ALT}\n")), "frühere Zeiten und Kommentare: {t}");
+    assert!(t.contains(" · cl · Erneut gefunden (Schlüssel „k4“)\n"), "Kommentar von cl: {t}");
+    assert_eq!(t.matches("Erneut gefunden").count(), 1, "genau ein neuer Kommentar");
+}
+
+// US-3, AK Wiederöffnen (B0323)
+#[tokio::test]
+async fn befund_kehrt_zurueck_in_einem_commit() {
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = commits(tmp.path());
+    let (s, a) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "fabrik", "spalte": "Eingang"})).await;
+    assert_eq!((s, &a["nummer"], &a["neu"], &a["titel"]), (200, &json!(7), &json!(false), &json!("Fund")));
+    assert_eq!(a["archiviert"], Value::Null);
+    wieder_offen_mit_geschichte(tmp.path());
+    assert_eq!((spalte(tmp.path(), "Eingang"), spalte(tmp.path(), "Fertig")), (vec![7, 3], vec![]), "oben in Eingang, raus aus Fertig");
+    assert_eq!(commits(tmp.path()), vorher + 1);
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#7 erneut gefunden: wieder geöffnet");
+    assert_eq!(aufgabendateien(tmp.path()), ["0003-offen.md", "0007-fund.md"], "keine neue Datei");
+
+    let (s, b) = anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "fabrik", "spalte": "Eingang"})).await;
+    assert_eq!((s, &b["nummer"], &b["neu"]), (200, &json!(7), &json!(false)), "jetzt offen: unverändert");
+    assert_eq!(commits(tmp.path()), vorher + 1);
+}
+
+// AK Wiederöffnen ohne spalte / ohne board (B0323)
+#[tokio::test]
+async fn wiederoeffnen_ohne_spalte_erste_ohne_board_alte_spalte() {
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    assert_eq!(anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4", "board": "fabrik"})).await.0, 200);
+    assert_eq!((spalte(tmp.path(), "Eingang"), spalte(tmp.path(), "Fertig")), (vec![7, 3], vec![]), "ohne spalte: erste Spalte");
+
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    assert_eq!(anlegen(&lauf.adresse, json!({"titel": "x", "key": "k4"})).await.0, 200);
+    wieder_offen_mit_geschichte(tmp.path());
+    assert_eq!((spalte(tmp.path(), "Eingang"), spalte(tmp.path(), "Fertig")), (vec![3], vec![7]), "ohne board: bleibt in Fertig");
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#7 erneut gefunden: wieder geöffnet");
+}
+
+// AK Wiederöffnen über …/mehrere (B0323)
+#[tokio::test]
+async fn mehrere_mit_archiviertem_und_neuem_in_einem_commit() {
+    let tmp = tempfile::tempdir().unwrap();
+    behoben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = commits(tmp.path());
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "cl", json!({"titel": [{"titel": "x", "key": "k4"}, {"titel": "Neu", "key": "k8"}, {"titel": "y", "key": "k4"}], "board": "fabrik"})).await;
+    assert_eq!(s, 201);
+    let paare: Vec<(Value, Value)> = r.as_array().unwrap().iter().map(|a| (a["nummer"].clone(), a["neu"].clone())).collect();
+    assert_eq!(paare, [(json!(7), json!(false)), (json!(8), json!(true)), (json!(7), json!(false))]);
+    wieder_offen_mit_geschichte(tmp.path());
+    assert_eq!(commits(tmp.path()), vorher + 1, "ein Commit");
+    assert_eq!(aufgabendateien(tmp.path()), ["0003-offen.md", "0007-fund.md", "0008-neu.md"]);
+    assert_eq!(spalte(tmp.path(), "Eingang"), vec![7, 3, 8]);
+    assert_eq!(git(tmp.path(), &["log", "-1", "--format=%s"]), "#8 „Neu“ angelegt in „Eingang“ (Fabrik); #7 erneut gefunden: wieder geöffnet");
+}
