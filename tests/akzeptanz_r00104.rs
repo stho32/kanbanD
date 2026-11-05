@@ -48,6 +48,23 @@ async fn us3_lesen_mit_kodiertem_pfad_wird_abgewiesen() {
     bestanden(abweichungen);
 }
 
+// B0343: die Berichte aus der Git-Geschichte lesen den Board-Namen aus derselben Tür — vor jedem git-Aufruf
+#[tokio::test]
+async fn us3_berichte_mit_kodiertem_pfad_werden_abgewiesen() {
+    let ordner = Arbeitsordner::default().oeffnen().await;
+    let mut abweichungen = vec![];
+    for bericht in ["verlauf", "bewegungen"] {
+        for kodiert in fehlfaelle_kodiert() {
+            let vorher = ordner.stand();
+            let aus = ordner.bericht_abrufen(bericht, &kodiert);
+            abweichungen.extend(abweichung(bericht, &kodiert, &aus, 400, ordner.aenderungen(&vorher)));
+        }
+        let aus = ordner.bericht_abrufen(bericht, "fabrik");
+        abweichungen.extend(abweichung(bericht, "fabrik", &aus, 200, ordner.aenderungen_seit_start()));
+    }
+    bestanden(abweichungen);
+}
+
 #[tokio::test]
 async fn us4_gueltiger_name_aber_kein_solches_board() {
     let ordner = Arbeitsordner::default().oeffnen().await;

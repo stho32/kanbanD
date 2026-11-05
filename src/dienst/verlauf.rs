@@ -39,7 +39,7 @@ impl Kanban {
 
     fn staende(&self, slug: &str) -> Result<(Vec<(chrono::NaiveDateTime, Board)>, chrono::NaiveDateTime), Fehler> {
         let aktuell = self.ordner().board(slug)?;
-        let rel = board_pfad(slug);
+        let rel = board_pfad(&aktuell.slug);
         let mut staende: Vec<_> = git::staende(self.ordner().wurzel(), &rel)?.into_iter().filter_map(|(zp, text)| board::lesen(slug, &text).ok().map(|b| (zp, b))).collect();
         // Nach Zeitpunkt ordnen: die Commit-Folge muss nicht der Datumsfolge entsprechen (Rebase, gesetzte Daten).
         staende.sort_by_key(|(zp, _)| *zp);

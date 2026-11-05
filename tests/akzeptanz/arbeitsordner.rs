@@ -146,6 +146,11 @@ impl Ordnerlage {
         lesefall(self.treiber.roh_lesen(&format!("api/aufgaben?board={kodiert}")))
     }
 
+    /// Bericht aus der Git-Geschichte des Boards (`verlauf` oder `bewegungen`); `kodiert` steht so in der URL.
+    pub fn bericht_abrufen(&self, bericht: &str, kodiert: &str) -> Ausgang {
+        lesefall(self.treiber.roh_lesen(&format!("api/berichte/{bericht}?board={kodiert}")))
+    }
+
     pub async fn spalte(&self, name: &str) -> Vec<u32> {
         self.treiber.spalte(name).await
     }
