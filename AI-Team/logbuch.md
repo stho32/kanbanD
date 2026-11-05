@@ -111,3 +111,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-05 | #19 | Detailplanung (Nachgang) | fachspezialist (frisch) | bestanden: Glossar angelegt, D00001–D00006 + _domaene.md; offen nicht blockierend: Hauptsicht vs. Hauptbereich, englische Feldbeschriftungen der Seitenleiste, Karte | 0:04 | 4447a38 |
 | 2026-11-05 | #19 | Entwicklung | entwickler (frisch) | bestanden: B0311–B0314 grün, cargo 441, node 124, E2E 251 ×2; Director-Gegenprobe frisch gebaut 30 passed; ff auf main | 0:31 | ddf5ca7..1ca208b |
 | 2026-11-05 | #19 | Auto-Reviews | director | Zug Entwicklung → Auto-Reviews, code-reviewer, ux-reviewer, rechtschreib-reviewer parallel | — | — |
+| 2026-11-05 | #19 | Auto-Reviews | code-reviewer, ux-reviewer, rechtschreib-reviewer (frisch) | befund: UX Muss Knopf-Fokus fällt auf BODY (ADR-0007:29 nicht eingelöst); Code-Review bestanden mit Sollte A1 Fieber-Eingabe verloren, A2; Rechtschreibung bestanden, 8 Sollte | 0:12 | — |
+| 2026-11-05 | #19 | Nacharbeit | director | Zug Auto-Reviews → Nacharbeit, gebündelter Auftrag an entwickler | — | — |
