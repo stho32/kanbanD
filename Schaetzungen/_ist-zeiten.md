@@ -357,3 +357,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0379 Startziel und Rückgabe nach render() | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0388 Spalte zu und auf über data-halt | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0380 Hilfe und Zuweisen über dem Fenster | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0381 Live-Ereignis bei offener Ebene | Standard | 0,5-1h | 0,2h | 0,2h | autonom |

@@ -182,6 +182,26 @@ test('US-4: ? über dem Fenster: Hilfe fängt, Fenster inert, Esc schließt nur 
   expect((await fokus(page)).id).toBe('fenster');
 });
 
+test('US-5: Live-Ereignis bei offenem Fenster: Fokus bleibt im Fenster, Tab bleibt darin, Esc → Karte #1', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel: 'drei neu' } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1000 }).toBeGreaterThan(vorher);
+  await expect(page.locator('.ka[data-id="3"]')).toContainText('drei neu');
+  expect((await fokus(page)).dialog).toBe('Aufgabe #1');
+  await tabBleibtIm(page, 'Aufgabe #1', 'Tab');
+  await page.keyboard.press('Escape');
+  expect((await fokus(page)).karte).toBe('1');
+});
+
+test('US-5: Fenster offen, #1 live nach „In Arbeit“ verschoben, Esc → Karte #1 in „In Arbeit“', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  expect((await page.request.post(`${k.adresse}api/boards/fabrik/bewegen`, { ...ALS_PLANER, data: { nummer: 1, spalte: 'In Arbeit' } })).ok()).toBe(true);
+  await expect(page.locator('[data-col="In Arbeit"] .ka[data-id="1"]')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => document.activeElement.matches('[data-col="In Arbeit"] .ka[data-id="1"]'))).toBe(true);
+});
+
 test('US-8: Enter auf „In Arbeit“ klappt zu, Fokus auf den Aufklapp-Knopf; Live-Ereignis hält ihn; Enter klappt auf, Fokus auf „In Arbeit“', async ({ page }) => {
   await page.locator('.bk-name[data-arg="In Arbeit"]').focus();
   await page.keyboard.press('Enter');
