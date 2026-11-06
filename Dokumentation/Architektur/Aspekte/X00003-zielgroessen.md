@@ -29,7 +29,9 @@ Soll nach [ADR-0012](../../ADRs/0012-zielgroessen-als-zentrales-mass-mit-messpro
 
 ## Systemantwort
 
-Ist 2026-11-06 (kanbanD `49d99ef`): Es gibt kein Token. Für den feinen Zeiger gibt es keine Regel, für Touch eine Selektorliste mit festem Wert 32 px (`web/kd-app.css:791–795`, R00077) und eine Einzelregel mit 44 px (`:277`, Bestandsbericht). Gemessen (headless Chromium, sechs Ansichten, ohne Abstandsausnahme): Bei feinem Zeiger liegen 18 von 114 Zielen unter 24, alle auf Board und Aufgabenliste. Bei Touch liegen 93 von 93 unter 44.
+Ist 2026-11-06 nach Karte #10 (Zweig `karte/10`, `a83a43a`, noch nicht auf `main`): Token `--kd-ziel` in `web/kd-tokens.css` (24, unter `pointer:coarse` 48), `--kd-head-h` folgt ihm; Basisregel in `web/kd-base.css` (dazu `a.kz-btn` und der Link allein in seiner Zelle); Trefferhof bei feinem Zeiger nur an Symbolzeichen (`.lnk-x`, `.kopf-plus`, `.signal`, `.sigz`, `.kl`), Textknöpfe `.lnk` wachsen selbst; Leisten mit fester Höhe (`.bahn-kopf`, `.leg`, `.mod-kopf`, `.mod-fuss`, `.stat`) umschließen ihre Ziele mit `min-block-size`; keine Coarse-Liste mehr außerhalb der Tokens (Wächter `e2e/einheit/ziele.test.js`). Messprobe `e2e/tests/ziele.spec.js`: 22 Ansichten fein bei 1280 px und 21 bei Touch 390 px ohne Verstoß, `NICHT_GEMESSEN` leer. Breitenprobe 320/375/414 px: 59 von 60 grün, offen die Aufgabenliste bei 320 px (siehe Abweichungen).
+
+Vorher (kanbanD `49d99ef`): Es gibt kein Token. Für den feinen Zeiger gibt es keine Regel, für Touch eine Selektorliste mit festem Wert 32 px (`web/kd-app.css:791–795`, R00077) und eine Einzelregel mit 44 px (`:277`, Bestandsbericht). Gemessen (headless Chromium, sechs Ansichten, ohne Abstandsausnahme): Bei feinem Zeiger liegen 18 von 114 Zielen unter 24, alle auf Board und Aufgabenliste. Bei Touch liegen 93 von 93 unter 44.
 
 Erkennen von Abweichungen (Durchsetzung):
 
@@ -40,16 +42,9 @@ Erkennen von Abweichungen (Durchsetzung):
 
 | Baustein | Ort | Was anders ist |
 |---|---|---|
-| A00009 | `web/kd-app.css:791–795` | Touch-Maß 32 px als Selektorliste (`.btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal,.kz-menue .iz,.kz-chip`) statt Token; Felder, `.btn`, Chips der Berichte fehlen |
-| A00009 | `web/kd-app.css:277` | zweites, eigenes Touch-Maß 44 px nur für `.best-tab a.bz`, `.best-tausch`, `.best-sel` |
-| A00009 | `web/kd-app.css:615`, `web/ansicht.js:585` | Teilaufgabe auf der Karte: Kästchen 13×13 ohne Text im Ziel; ein Tipp auf den Text öffnet die Karte |
-| A00009 | `web/kd-app.css:448` | `.lnk` ohne Mindestgröße, „von Board nehmen“ (✕) gemessen 8×14 |
-| A00009 | `web/kd-app.css:609` | `.kopf-plus` 20×20 |
-| A00009 | `web/kd-app.css:562`, `:109` | `.signal` 18×18, auf Karten mit Signal 22×22 |
-| A00009 | `web/kd-app.css:569` | `.bahn-kopf .sigz` (Signalzähler im Spaltenkopf) 34×15 |
-| A00009 | `web/kd-app.css:76`, `:67` | `.bk-name` 17 hoch im 30-px-Spaltenkopf |
-| A00009 | `web/kd-app.css:182`, `:189` | Knöpfe der Legende 22 hoch, `.leg .x` 22×22, unter `overflow:hidden` (`:180`) |
-| A00009 | `web/ansicht.js:591` | Timer-Stopp `.kl` auf der Karte (Karte #10: 24×22) |
+| A00009 | `web/kd-app.css` `.kz-reihe` (nowrap), Kopfzeile der Aufgabenliste | bei 320 px ist die Seite 349 px breit: Filter 80 px und Segmentschalter „alle · ohne Board · archiviert“ 253 px in einer Zeile; mit Maus derselbe Überlauf (Breiten vom Text). Entscheidung zu B0407 offen (Umbruch, 44 px oder Menü „<Seite> ▾“) |
+
+Behoben auf `karte/10` (B0399–B0405, B0408, B0409): Touch-Liste 32 px und Einzelregel 44 px aufgelöst; Teilaufgabe als ein Ziel mit Text; ✕ „von Board nehmen“, `.kopf-plus`, `.signal`, `.sigz`, `.kl` mit Trefferhof; Spaltenkopf, Legende, Statuszeile und Fensterleisten wachsen mit dem Token.
 
 ## Offene Fragen
 
@@ -62,3 +57,4 @@ Erkennen von Abweichungen (Durchsetzung):
 - Muster der Messprobe: R00107 `e2e/tests/kontrast.spec.js` (Ansichtenliste, `NICHT_GEMESSEN` mit Karte, Selbstproben). Die Ansichtenliste wird ein gemeinsames Modul beider Proben.
 - angelegt 2026-11-06 nach #10 (ADR-0012)
 - nachgeführt 2026-11-06 nach PO-Entscheidung zu ADR-0012 (`AI-Team/po-entscheidungen.md:129–132`)
+- nachgeführt 2026-11-06 nach dem Bau von Karte #10 auf `karte/10` (R00108, B0399–B0406)
