@@ -301,3 +301,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Auto-Reviews | code-reviewer | befund: Token-Parser verwirft hellen Block bei zweitem :root (mit main 24 fail), Platzhalter Filter im Fokus 2,04, Ansichtenliste nicht aus Router; → Nacharbeit 1 | 0:09 | — |
 | 2026-11-06 | #9 | Auto-Reviews | product-owner | entschieden: vier sichtbare Zusatzänderungen angenommen (Z. 139), nicht richtungsweisend; Auflagen an Nacharbeit | 0:06 | 487e684 |
 | 2026-11-06 | #9 | Nacharbeit 1 | entwickler | blockiert: Befunde behoben, Gate 2 failed ziele.spec:654 (Konflikt .seg>span ↔ Umbruch-Test #10); PO gefragt | 0:33 | f2b1c9f |
+| 2026-11-06 | #9 | Nacharbeit 1 | product-owner | entschieden Z. 140/141: Test von #10 folgt Regel Z. 133, Umbruchfall bleibt geprüft; nicht richtungsweisend | 0:08 | 0e725ee |
