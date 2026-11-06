@@ -13,7 +13,8 @@ Viele Bedienziele auf dem Board sind kleiner, als Maus und Finger sie sicher tre
 Diese Anforderung setzt ADR-0012 (Option B) um:
 - Das Zielmaß steht an genau einem Ort: 24 px bei feinem Zeiger, 48 px bei Touch.
 - Eine Grundregel gibt jedem Bedienelement dieses Mindestmaß.
-- Kleine Zeichen bleiben klein gezeichnet und bekommen eine unsichtbare Trefferfläche um sich herum (Trefferhof).
+- Kleine Zeichen bleiben bei feinem Zeiger klein gezeichnet und bekommen eine unsichtbare Trefferfläche um sich herum (Trefferhof); bei Touch wachsen sie selbst, damit kein Hof den Kartentitel überdeckt.
+- Leisten werden so hoch wie ihre Ziele, und versteckte Löschknöpfe sind bei Touch sichtbar.
 - Die Teilaufgabe auf der Karte wird ein Ziel aus Kästchen und Text.
 - Bei 320, 375 und 414 px scrollt keine Ansicht waagrecht.
 - Eine Messprobe im Browser geht jede Ansicht ab; eine Probe ohne Browser hält das Zielmaß und verbietet verstreute Mindestgrößen.
@@ -37,27 +38,35 @@ Der Betreiber hakt Teilaufgaben, nimmt Signale zurück und stoppt Timer direkt a
 3. **Kreis-Ausnahme** (nur feiner Zeiger): Ein Ziel unter 24 px besteht, wenn ein Kreis mit 24 px Durchmesser um seine Mitte kein anderes Ziel und keinen solchen Kreis eines anderen kleinen Ziels schneidet. Berühren ist erlaubt. Gerechnet: Zwei 20 × 20 px große Ziele brauchen dafür mindestens 24 px Abstand ihrer Mitten.
 
 ### Was ein Bedienziel ist (ADR-0012 Regel 2 und 5)
-4. Bedienziel ist jedes Element, das ein Mensch anklickt oder antippt, um etwas auszulösen: Knöpfe, Auswahllisten, Eingabefelder, Kästchen, Menüeinträge, Reiter, Schalter und Links, die allein in einer Zelle oder Zeile stehen (z. B. die Nummer in der Aufgabenliste).
+4. Bedienziel ist jedes Element, das ein Mensch anklickt oder antippt, um etwas auszulösen: Knöpfe, Auswahllisten, Eingabefelder, Kästchen, Menüeinträge, Reiter, Schalter, Farbfelder (Klassenfarbe, Signalfarbe, Felder der Farbpalette) und Links, die allein in einer Zelle oder Zeile stehen (z. B. die Nummer in der Aufgabenliste).
 5. Ein Link mitten im Fließtext ist kein Bedienziel im Sinne dieser Anforderung.
 6. Liegt ein Fenster oder Menü offen über der Seite, zählen nur seine Ziele; die verdeckten Ziele darunter nicht.
-7. Die Trefferfläche ist die Fläche, auf der ein Klick tatsächlich dieses Ziel trifft — die gezeichnete Fläche samt einer unsichtbaren Erweiterung um sie herum. Wird die Erweiterung abgeschnitten oder von einem Nachbarn überdeckt, zählt sie nicht.
+7. Die Trefferfläche ist die Fläche, auf der ein Klick tatsächlich dieses Ziel trifft — die gezeichnete Fläche samt einer unsichtbaren Erweiterung um sie herum. Wird die Erweiterung abgeschnitten oder von einem Nachbarn überdeckt, zählt sie nicht. Die unsichtbare Fläche eines Ziels überdeckt weder ein anderes Ziel noch Text oder Fläche, deren Tipp etwas anderes auslöst (Kartentitel, Karte). Bei Touch wachsen die Zeichen auf der Karte deshalb selbst auf das Zielmaß, statt eine unsichtbare Fläche zu bekommen.
 
 ### Kleine Zeichen (ADR-0012 Regel 3)
-8. Das ✕ „von Board nehmen“, das „+“ im Spaltenkopf, „Signal zurücknehmen“ auf der Karte, der Signal-Chip im Spaltenkopf und der Timer-Stopp auf der Karte behalten bei feinem Zeiger ihre gezeichnete Größe und bekommen eine unsichtbare Trefferfläche bis zum Zielmaß. Sie ändern weder Farbe noch Grund.
+8. Das ✕ „von Board nehmen“, das „+“ im Spaltenkopf, „Signal zurücknehmen“ auf der Karte, der Signal-Chip im Spaltenkopf und der Timer-Stopp auf der Karte behalten bei feinem Zeiger ihre gezeichnete Größe (das „+“ 20 × 20 px, das Signal 22 × 22 px) und bekommen eine unsichtbare Trefferfläche bis zum Zielmaß. Sie ändern weder Farbe noch Grund. Bei Touch wachsen sie sichtbar (FA 7).
 9. Wo die unsichtbare Fläche keinen Platz hat, wächst das Ziel selbst.
 
+### Leisten und Palette
+10. Eine Leiste, die ein Ziel enthält (Kopfzeile, Spaltenkopf, Legende, Fuß des Aufgabenfensters, Statuszeile), ist mindestens so hoch wie das Zielmaß; kein Ziel ragt aus seiner Leiste heraus.
+11. Die Farbpalette bricht in Zeilen um, wenn ihre Felder in Zielgröße nicht in eine Zeile passen.
+
+### Löschknöpfe bei Touch
+12. Die Löschknöpfe neben Teilaufgaben, Zeiten und Anhängen im Aufgabenfenster erscheinen heute erst, wenn die Maus darüberfährt. Auf Geräten ohne Hover sind sie immer sichtbar, damit kein unsichtbares Ziel einen Tipp neben den Text als Löschen deutet.
+
 ### Teilaufgabe auf der Karte (ADR-0012 Regel 4)
-10. Kästchen und Text der nächsten offenen Teilaufgabe auf der Karte sind ein einziges Ziel. Ein Klick oder Tipp irgendwo darauf hakt die Teilaufgabe ab, wie heute ein Klick auf das Kästchen.
-11. Das Ziel heißt für Screenreader weiter „<Text> abhaken“ und ist als Kästchen angekündigt. Die Tabulatortaste hält auf der Karte nicht öfter als heute.
-12. Ein Klick auf den Titel der Karte öffnet weiter das Aufgabenfenster. Im Aufgabenfenster ändert sich an den Teilaufgaben nichts: dort bearbeitet ein Klick auf den Text die Teilaufgabe.
+13. Kästchen und Text der nächsten offenen Teilaufgabe auf der Karte sind ein einziges Ziel. Ein Klick oder Tipp irgendwo darauf hakt die Teilaufgabe ab, wie heute ein Klick auf das Kästchen.
+14. Das Ziel heißt für Screenreader weiter „<Text> abhaken“ und ist als Kästchen angekündigt. Die Tabulatortaste hält auf der Karte nicht öfter als heute. Der Text sieht aus wie heute: gleiche Schrift und Farbe, linksbündig, lange Wörter brechen um.
+15. Wer per Leertaste oder Enter abhakt, hat danach den Fokus auf der nächsten offenen Teilaufgabe; gibt es keine, auf der Karte.
+16. Ein Klick auf den Titel der Karte öffnet weiter das Aufgabenfenster. Im Aufgabenfenster ändert sich an den Teilaufgaben nichts: dort bearbeitet ein Klick auf den Text die Teilaufgabe.
 
 ### Schmale Breiten (PO Z. 98, 105, 130)
-13. Bei 320, 375 und 414 px Breite und Touch scrollt keine Ansicht waagrecht: Seite und Inhaltsbereich sind höchstens so breit wie das Fenster.
-14. Bereiche, die schon heute in sich quer scrollen, bleiben erlaubt: die Spaltenleiste des Boards, breite Tabellen (WBS, Bestand, Kosten, Ressourcen, „Wie lange noch“) und die Legende.
-15. Passt ein Ziel bei 320 px nicht, bricht die Zeile um oder das Ziel schrumpft bis 44 px. Waagrechtes Scrollen ist nie die Ausweichlösung. Ob ein Ziel stattdessen ins Menü „<Seite> ▾“ wandert, ist offen (Offene Fragen 1).
+17. Bei 320, 375 und 414 px Breite und Touch scrollt keine Ansicht waagrecht: Seite und Inhaltsbereich sind höchstens so breit wie das Fenster.
+18. Bereiche, die schon heute in sich quer scrollen, bleiben erlaubt: die Spaltenleiste des Boards, breite Tabellen (WBS, Bestand, Kosten, Ressourcen, „Wie lange noch“) und die Legende.
+19. Passt ein Ziel bei 320 px nicht, bricht die Zeile um oder das Ziel schrumpft bis 44 px. Waagrechtes Scrollen ist nie die Ausweichlösung. Ob ein Ziel stattdessen ins Menü „<Seite> ▾“ wandert, ist offen (Offene Fragen 1).
 
 ### Kopfzeile
-16. Die Kopfzeile erbt das Zielmaß (PO Z. 17). Die Probe aus R00101 „mindestens 32 × 32“ bleibt als Untergrenze bestehen und wird nicht gelockert.
+20. Die Kopfzeile erbt das Zielmaß (PO Z. 17). Die Probe aus R00101 „mindestens 32 × 32“ bleibt als Untergrenze bestehen und wird nicht gelockert.
 
 ## Nicht-funktionale Anforderungen
 
@@ -68,29 +77,33 @@ Der Betreiber hakt Teilaufgaben, nimmt Signale zurück und stoppt Timer direkt a
 
 ## Akzeptanzkriterien
 
-Gemessen in den Ansichten des Grundbestands aus `user-stories/R00108.md` (Board, Archiv, Aufgabenliste, Personen, Einrichten, jeder Bericht, WBS-Sicht, Seite „API für Agenten“, Aufgabenfenster, offene Menüs).
+Gemessen in den Ansichten des Grundbestands aus `user-stories/R00108.md` (Board, Archiv, Aufgabenliste, Personen, Einrichten mit offener Farbpalette, jeder Bericht, WBS-Sicht, Seite „API für Agenten“, Aufgabenfenster, offene Menüs).
 
 - [ ] **1. Feiner Zeiger, 1280 px**: Jedes Bedienziel in jeder Ansicht hat eine Trefferfläche von mindestens 24 × 24 px oder erfüllt die Kreis-Ausnahme.
   - Besteht: ein Ziel von 24 × 24 px; zwei Ziele von je 20 × 20 px, deren Mitten 30 px auseinanderliegen.
   - Fällt durch: dieselben zwei Ziele mit 20 px Abstand der Mitten; ein Ziel von 23 × 24 px, dessen Nachbar 20 px entfernt liegt (Mitte zu Mitte).
   - Heute fällt z. B. das Kästchen der Teilaufgabe (13 × 13 px) durch; danach misst seine Trefferfläche mindestens 24 × 24 px, gezeichnet bleibt es 13 px.
+  - Heute fällt jedes Feld der offenen Farbpalette durch (26 × 20 px, Mitten 23 px auseinander); danach ist jedes Feld mindestens 24 px hoch.
 - [ ] **2. Touch, 390 px**: Jedes Bedienziel in jeder Ansicht hat eine Trefferfläche von mindestens 44 × 44 px, ohne Ausnahme.
   - Besteht: ein Knopf der Kopfzeile mit 44 × 44 px.
   - Fällt durch: derselbe Knopf mit 32 × 32 px (heute) oder 43 × 44 px.
+  - Ein Tipp auf den Kartentitel 8 px links neben dem Signal öffnet das Aufgabenfenster, das Signal bleibt gesetzt. Fällt durch: derselbe Tipp nimmt das Signal zurück (heute mit einem 48-px-Hof um das 22-px-Signal gemessen).
+  - Die Löschknöpfe neben Teilaufgaben, Zeiten und Anhängen sind sichtbar, ohne dass etwas berührt wurde. Fällt durch: ein Löschknopf, der erst nach Berühren erscheint.
 - [ ] **3. Schmale Breiten**: Bei 320, 375 und 414 px mit Touch scrollt keine Ansicht waagrecht.
   - Besteht: bei 320 px eine Seite von 320 px Breite, deren Spaltenleiste in sich quer scrollt.
   - Fällt durch: bei 320 px eine Seite von 321 px Breite.
 - [ ] **4. Teilaufgabe**: Ein Tipp auf den Text der ersten offenen Teilaufgabe einer Karte hakt sie ab und öffnet die Karte nicht.
   - Besteht: #1 mit „a“ erledigt, „b“ und „c“ offen — nach dem Tipp auf „b“ ist „b“ erledigt, die Karte zeigt „c“, kein Aufgabenfenster ist offen.
   - Gegenbeispiel, das gleich bleibt: ein Tipp auf den Titel von #1 öffnet das Aufgabenfenster.
+  - Mit der Tastatur: „b abhaken“ hat den Fokus, Leertaste — danach ist „b“ erledigt und „c abhaken“ hat den Fokus.
 
 ## Betroffene Verzeichnisstruktur
 
 ```
 web/
   kd-tokens.css          Zielmaß, einmal je Zeigerart
-  kd-base.css            Grundregel für Bedienelemente
-  kd-app.css             Trefferhof kleiner Zeichen; Touch-Liste :277 und :791–795 entfällt
+  kd-base.css            Grundregel für Bedienelemente; Kopfhöhe .kz (:5)
+  kd-app.css             Trefferhof kleiner Zeichen; Leistenhöhen; Palette; Löschknöpfe; Touch-Liste :277 und :791–795 entfällt
   ansicht.js             vNaechsteTeilaufgabe (:585) als ein Ziel
 e2e/
   einheit/ziele.test.js  neu: reine Probe ohne Browser
@@ -105,29 +118,37 @@ Entschieden in ADR-0012 (Option B, Architektur bestanden 97d73f7); Aspekt X00003
 
 ### Ablauf
 
-Zuerst das Zielmaß samt reiner Probe (B0399), parallel der Messhelfer mit Selbstproben (B0400) und die Teilaufgabe (B0408). Danach Grundregel (B0402) und Trefferhof (B0403), dann die Ansichtenliste (B0401). Touch (B0404, B0405) und schmale Breiten (B0406, B0407) folgen.
+Zuerst das Zielmaß samt reiner Probe (B0399), parallel der Messhelfer mit Selbstproben (B0400) und die Teilaufgabe (B0408). Frei baubar ist auch B0409 (Löschknöpfe). Danach Grundregel (B0402) und Trefferhof (B0403), dann die Ansichtenliste (B0401). Touch (B0404, B0405) und schmale Breiten (B0406, B0407) folgen.
 
 ### Grobentwurf
 
 - **Token** `--kd-ziel` in `web/kd-tokens.css`: `24px`, in `@media (pointer:coarse)` `48px`.
-- **Grundregel** in `web/kd-base.css`: `:where(button, select, input:not([type=hidden]), a.btn, [role=checkbox], [role=radio], [role=menuitem], [role=tab], [role=switch]){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}`; `:where` hält die Spezifität bei null, damit Bestandsregeln nicht brechen.
-- **Trefferhof**: `position:relative` am Ziel und ein durchsichtiges `::after` mit `inset:min(0px, (100% - var(--kd-ziel)) / 2)`.
+- **Grundregel** in `web/kd-base.css`: `:where(button, select, input:not([type=hidden]), a.btn, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=tab], [role=switch]){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}`; `:where` hält die Spezifität bei null, damit Bestandsregeln nicht brechen. `[role=button]` erfasst `.farbe` (`web/ansicht.js:1299`, `:1312`) und die Palettenfelder.
+- **Palette** `.pal .g` (`web/kd-app.css:384`, heute `repeat(8,26px)`): `grid-template-columns:repeat(auto-fill, var(--kd-ziel))`. Mit festen acht Spalten bräuchte sie bei Touch 8 × 51 = 408 px > 320 px.
+- **Leisten mit fester Höhe**: `.bahn-kopf` (`web/kd-app.css:67`, 30 px), `.leg` (`:180`, 28 px), `.mod-fuss` (`:347`, 28 px), `.stat` (`:442`, 24 px), `.kz` (`web/kd-base.css:5`, `--kd-head-h` 40 px aus `web/kd-tokens.css:42`, auch Bezug von `.mod-bg`) → `height:auto; min-block-size:var(--kd-ziel)` bzw. Kopfhöhe aus dem Token. Gemessen ohne Touch-Liste: `.bahn-kopf` scrollHeight 39 bei clientHeight 29, `.bk-name` 9 px über dem Kopf (UX-Vorprüfung).
+- **Löschknöpfe** `.chk .x`, `.zt .btn-sym`, `.anh-z .x` (`web/kd-app.css:491–495`, `opacity:0`): in `@media (hover:none)` `opacity:1`. Das ist keine Mindestgröße; der Wächter bleibt grün.
+- **Trefferhof** (nur bei feinem Zeiger): `position:relative` am Ziel und ein durchsichtiges `::after` mit `inset:min(0px, (100% - var(--kd-ziel)) / 2)`.
+  - An den fünf Zeichen `min-block-size:0; min-inline-size:0` — die Klasse schlägt `:where` der Grundregel, die Zeichnung bleibt klein.
+  - Bei Touch kein Hof auf der Karte: die Zeichen wachsen selbst auf `--kd-ziel`. Gemessen mit Hof: bei 390 px lag der 48-px-Hof um das 22-px-Signal 13 px über dem Kartentitel, ein Tipp 8 px links vom Signal löste `signal-aus` statt `oeffnen` aus (UX-Vorprüfung).
   - `.farbe` trägt im `::after` schon das „▾“ (`web/kd-app.css:381`) und wächst deshalb selbst.
   - Unter `overflow:hidden` wird der Hof abgeschnitten: `.leg` (`:180`), `.mod-fuss` (`:347`), `.ka .r3` (`:126`). Dort wächst das Ziel; `.bk-name` und die Knöpfe der Legende (22 hoch, `:182`) gehören dazu.
-- **Teilaufgabe**: `vNaechsteTeilaufgabe` (`web/ansicht.js:585`) rendert ein `button role=checkbox` mit `aria-checked`, Kästchen-Zeichnung und Text als Inhalt; `aria-label="<Text> abhaken"` und `data-act="teil-karte"` bleiben (r00038 nutzt den Namen).
+- **Teilaufgabe**: `vNaechsteTeilaufgabe` (`web/ansicht.js:585`) rendert ein `button role=checkbox` mit `aria-checked`, Kästchen-Zeichnung und Text als Inhalt; `aria-label="<Text> abhaken"` und `data-act="teil-karte"` bleiben (r00038 nutzt den Namen). Der button erbt `font`, `color` und `text-align:start` und bricht mit `overflow-wrap:anywhere` um. Nach dem Abhaken per Tastatur geht der Fokus auf den nächsten `.naechste-box`, sonst auf die Karte.
 - **Touch-Liste** `web/kd-app.css:791–795` und `:277` entfallen; die 48 px kommen aus Token, Grundregel und Hof.
 - **Erkennung im Review**: `grep -nE "pointer: ?coarse" web/*.css` findet danach nur Regeln ohne Mindestgröße.
 
 ### Gestaltung
 
-Kein neuer Gestaltungszustand: Die Maße ändern sich, Zeichnung, Farben und Anordnung nicht (wie Karte #9, PO Z. 130). Artboard D0002 zeigt keine Teilaufgabe und muss nicht nachgezogen werden. Artboard D0003 („Reiter Kosten“) zeichnet bei 320/375/414 px Knöpfe mit 32 px; das ist ein Entwurfsmaß, Vorgabe für den Bau ist diese Anforderung. Eine Ausweichlösung über das Menü „<Seite> ▾“ wäre ein neuer Zustand (Offene Fragen 1).
+Kein neuer Gestaltungszustand: Die Maße ändern sich, Farben und Anordnung nicht; bei Touch wachsen die Zeichen sichtbar, und die Löschknöpfe im Aufgabenfenster sind immer zu sehen (wie Karte #9, PO Z. 130). Artboard D0002 zeigt keine Teilaufgabe und muss nicht nachgezogen werden. Artboard D0003 („Reiter Kosten“) zeichnet bei 320/375/414 px Knöpfe mit 32 px; das ist ein Entwurfsmaß, Vorgabe für den Bau ist diese Anforderung. Eine Ausweichlösung über das Menü „<Seite> ▾“ wäre ein neuer Zustand (Offene Fragen 1).
+
+Bei Touch wird eine Karte rund 52 % höher (gemessen 94 → 143 px, UX-Vorprüfung). Deshalb gehören in die Abnahme Bildschirmfotos von Board und Aufgabenfenster bei 375 px mit Touch, vorher und nachher, damit der Auftraggeber die neue Dichte sieht, bevor er urteilt.
 
 ### Umfang
 
-I0097: 4 Features, 10 Bubbles, 11,5–24,5 h.
-- Herleitung: Summe der Bubble-Spannen — F0048 7–14 h (B0399 1-2, B0400 2-3, B0401 1,5-3, B0402 1-3, B0403 1,5-3), F0049 2–4,5 h (B0404 1,5-3, B0405 0,5-1,5), F0050 1,5–4 h (B0406 0,5-1, B0407 1-3), F0051 1–2 h (B0408 1-2).
+I0097: 4 Features, 11 Bubbles, 14,5–28,5 h (vor der UX-Vorprüfung 10 Bubbles, 11,5–24,5 h).
+- Herleitung: Summe der Bubble-Spannen — F0048 8,5–15,5 h (B0399 1-2, B0400 2,5-3,5, B0401 1,5-3, B0402 1,5-3,5, B0403 2-3,5), F0049 3–6,5 h (B0404 2-4, B0405 0,5-1,5, B0409 0,5-1), F0050 1,5–4 h (B0406 0,5-1, B0407 1-3), F0051 1,5–2,5 h (B0408 1,5-2,5).
+- Zuschläge aus der UX-Vorprüfung: Titelprobe +0,5 (B0400), Palette und `[role=button]` +0,5 (B0402), Zeigerweiche des Hofs +0,5 (B0403), Leistenhöhen +0,5–1 (B0404), Fokus und Schrift +0,5 (B0408), Löschknöpfe neu 0,5–1 (B0409); je Punkt eine Regel nach vorhandenem Muster (Hypothese).
 - Die Spannen sind ungemessen (Hypothese), nach dem Muster von I0095 und I0096.
-- B0407 ist bedingt: Ist die Breitenprobe nach dem Touch-Umbau grün, entfällt sie, und der Umfang sinkt auf 10,5–21,5 h.
+- B0407 ist bedingt: Ist die Breitenprobe nach dem Touch-Umbau grün, entfällt sie, und der Umfang sinkt auf 13,5–25,5 h.
 - Gezählte Eingänge: 18 Ziele fein und 93 Ziele Touch unter Maß (ADR-0012, sechs Ansichten); Fenster, Menüs, WBS-Sicht und API-Seite sind ungemessen, ihre Zahl ist unbekannt.
 
 ### Vorplanung (Bubbles in `Dokumentation/Planung/kanbanD.md`)
@@ -135,15 +156,16 @@ I0097: 4 Features, 10 Bubbles, 11,5–24,5 h.
 | Bubble | Feature | Inhalt | Aufwand | Braucht |
 |---|---|---|---|---|
 | B0399 | F0048 | Zielmaß an einem Ort mit reiner Probe | 1-2 | — |
-| B0400 | F0048 | Trefferfläche messen mit Selbstproben | 2-3 | — |
+| B0400 | F0048 | Trefferfläche messen mit Selbstproben und Titelprobe | 2,5-3,5 | — |
 | B0401 | F0048 | Ansichten mit Fixtures abgehen | 1,5-3 | B0400, B0402, B0403 |
-| B0402 | F0048 | Grundregel für alle Bedienelemente | 1-3 | B0399 |
-| B0403 | F0048 | Trefferhof für kleine Zeichen | 1,5-3 | B0399 |
-| B0404 | F0049 | Touch-Liste in das Token auflösen | 1,5-3 | B0399, B0402 |
+| B0402 | F0048 | Grundregel für alle Bedienelemente samt Palette | 1,5-3,5 | B0399 |
+| B0403 | F0048 | Trefferhof für kleine Zeichen, nur bei feinem Zeiger | 2-3,5 | B0399 |
+| B0404 | F0049 | Touch-Liste in das Token auflösen, Leisten ohne feste Höhe | 2-4 | B0399, B0402 |
 | B0405 | F0049 | Touch-Lauf der Messprobe | 0,5-1,5 | B0401, B0404 |
+| B0409 | F0049 | Löschknöpfe bei Touch sichtbar | 0,5-1 | — |
 | B0406 | F0050 | Breitenprobe 320, 375, 414 px | 0,5-1 | B0401 |
 | B0407 | F0050 | Ausweichen bei 320 px (bedingt) | 1-3 | B0404, B0406 |
-| B0408 | F0051 | Teilaufgabe als ein Ziel mit Text | 1-2 | — |
+| B0408 | F0051 | Teilaufgabe als ein Ziel mit Text | 1,5-2,5 | — |
 
 Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen die Akzeptanzkriterien und die User Story.
 
@@ -156,17 +178,22 @@ Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen d
 - **Messhelfer** `e2e/tests/ziele-hilfen.js` mit Selbstproben auf einer Testseite (`page.setContent`):
   - 20 × 20 fällt, 24 × 24 besteht.
   - Zwei 20 × 20 mit Mitten 30 px besteht, 20 px fällt, 24 px besteht (Grenzwert).
-  - Ein 13-px-Zeichen mit Hof besteht; derselbe Hof unter `overflow:hidden` fällt.
+  - Ein 13-px-Zeichen mit Hof besteht; derselbe Hof unter `overflow:hidden` fällt; ein Hof, der über einen Titel ragt, fällt.
+  - Titelprobe je Karte: `document.elementFromPoint` an fünf Punkten des Rechtecks `.ka .t` (vier Ecken nach innen versetzt, Mitte), `closest('[data-act]')` ist das Öffnen der Karte.
+  - Zielauswahl samt `[role=button]` (`.farbe`, Palettenfelder).
   - Trefferfläche = Rechteck des Elements vereinigt mit dem seines `::after`; die Ecken werden mit `document.elementFromPoint` geprüft.
   - Eigene Datei statt `hilfen.js`, weil Karte #9 (Zweig karte/9) dort den Kontrast-Helfer ergänzt.
 - **Messprobe** `e2e/tests/ziele.spec.js`:
   - Feiner Zeiger, 1280 px: jede Ansicht der Liste, Verstöße mit Ansicht, Selektor, Name und Maß.
-  - Touch (`hasTouch`), 390 px: dieselbe Liste ohne Kontextmenü, Maß 44.
+  - Maus 1280 px, Einrichten mit offener Palette: jedes Feld mindestens 24 hoch (heute 20).
+  - Touch (`hasTouch`), 390 px: dieselbe Liste ohne Kontextmenü, Maß 44; Titelprobe je Karte; Löschknöpfe `.chk .x`, `.zt .btn-sym`, `.anh-z .x` mit computed `opacity` `'1'`.
+  - Leisten: je Leiste `scrollHeight <= clientHeight`, `.bk-name` liegt im Spaltenkopf.
+  - Zeichnung bei Maus: `.kopf-plus` 20 × 20, `.signal` 22 × 22, Trefferfläche jeweils mindestens 24.
   - 320, 375, 414 px mit Touch: `document.documentElement.scrollWidth <= clientWidth` und dasselbe für `#main`.
   - Liste `NICHT_GEMESSEN` startet leer; ein Eintrag braucht Selektor, Ansicht, Karte, heutiges Maß und Grund und schlägt Alarm, wenn das Ziel verschwindet, das Maß erreicht oder kleiner wird.
   - Eigene Ansichtenliste; der Zusammenschluss mit der Liste aus `kontrast.spec.js` (ADR-0012 Regel 6) folgt erst nach dem Merge von Karte #9.
 - **r00077-responsive.spec.js:61–68**: Die Schleife „mindestens 32“ über `.kopf-plus`, `.bk-name`, `#t-mehr`, `#t-thema` entfällt (die Messprobe prüft 44); die Prüfung „der Personenknopf zeigt nur das Kürzel“ bleibt.
-- **Teilaufgabe**: E2E „Tipp auf den Text ‚b‘ von #1 → Datei enthält `- [x] b`, Karte zeigt ‚c‘, kein Fenster offen“; Zahl der Tab-Halte auf der Karte vor und nach gleich; `r00038-naechste-teilaufgabe.spec.js` bleibt grün.
+- **Teilaufgabe**: E2E „Tipp auf den Text ‚b‘ von #1 → Datei enthält `- [x] b`, Karte zeigt ‚c‘, kein Fenster offen“; Zahl der Tab-Halte auf der Karte vor und nach gleich; #1, „b abhaken“ fokussiert, Leertaste → `document.activeElement` heißt „c abhaken“; Schrift und Farbe des Textes gleich wie die der Karte; `r00038-naechste-teilaufgabe.spec.js` bleibt grün.
 - Abnahme-Befehle: `node --test e2e/einheit/ziele.test.js` und `npx playwright test ziele`.
 
 ## Abhängigkeiten
@@ -202,5 +229,7 @@ Die zu kleinen Ziele haben eine gemeinsame Ursache: Es gibt kein Zielmaß, nur e
   - `NICHT_GEMESSEN` startet leer; ein nötiger Eintrag ist ein Befund an den Director, kein stiller Ausweg.
   - Der Grenzwert der Kreis-Ausnahme (Mitten genau 24 px) ist Selbstprobe des Helfers, kein Akzeptanzkriterium.
   - r00077 nur teilweise umstellen: die 32-px-Schleife geht, die Kürzel-Prüfung bleibt.
+- **UX-Vorprüfung 2026-11-06** eingearbeitet: Hof über dem Kartentitel bei Touch (FA 7, AK 2), feste Leistenhöhen (FA 10), `[role=button]` und Palette (FA 4, 11), Löschknöpfe bei Touch (FA 12, B0409 neu), Zeichnung bei feinem Zeiger (FA 8), Schrift und Fokus der Teilaufgabe (FA 14, 15), Bildschirmfotos in der Abnahme (Gestaltung). Die UX-Prüfung stimmt den Empfehlungen zu beiden offenen Fragen zu und hat gemessen: bei 320 px läuft das Board nicht über.
+- **Vermerkt, nicht eingeplant**: `any-pointer:coarse` statt `pointer:coarse` für Hybridgeräte mit Maus und Touch (UX-Vorprüfung, Kann-Punkt); ändert nur die Medienbedingung am Token und wäre ein Nachtrag zu ADR-0012.
 - **Bewusst außerhalb**: Ränder und Kontrast der Bedienelemente (Karten #9, #55); Zielgrößen in Werkzeugen außerhalb der Weboberfläche.
 - **Verworfene Alternativen (Schnitt)**: je Ansicht eine Anforderung (Token und Proben sind gemeinsam, die Karte hat eine Abnahme); Schnitt nach Schichten (erst CSS, dann Tests) — nicht von außen prüfbar.
