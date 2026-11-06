@@ -377,7 +377,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr h3:first-child{border-top:0}
 .einr h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
-.klz{display:grid;grid-template-columns:30px 76px minmax(0,1fr) 28px 24px;align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
+/* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß (B0412) */
+.klz{--klz-vorn:max(30px,var(--kd-ziel));--klz-hinten:max(24px,var(--kd-ziel));display:grid;grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px var(--klz-hinten);align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
 .klz .inp{height:24px;min-width:0;font-size:12px}
 .klz .key{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);overflow:hidden;text-overflow:ellipsis}
 .klz .n{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);text-align:right}
@@ -395,8 +396,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .pal .eig .inp{height:22px;width:84px;font-size:11.5px;padding:0 6px}
 .pal .eig input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--kd-line-strong);background:none;cursor:pointer}
 .pal .nm{font-family:var(--kd-mono);font-size:10.5px;color:var(--kd-faint)}
-.klz.pz{grid-template-columns:30px 44px minmax(0,1fr) auto 24px}
-.klz.az{grid-template-columns:30px 76px minmax(0,1fr) auto 24px}
+.klz.pz{grid-template-columns:var(--klz-vorn) 44px minmax(0,1fr) auto var(--klz-hinten)}
+.klz.az{grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) auto var(--klz-hinten)}
 .klz.az .pk{justify-self:center}
 .anw{border-bottom:1px solid var(--kd-line-strong)}
 .anw .felder{border-top:0;grid-template-columns:110px minmax(0,1fr)}
@@ -487,7 +488,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr .felder .k{min-width:0}
 .zeile-knoepfe{display:flex;gap:var(--kd-s3);align-items:center;padding:var(--kd-s4)}
 .einr .felder{grid-template-columns:110px minmax(0,1fr)}
-.einrichten .klz.pz{grid-template-columns:30px 70px minmax(0,1fr) auto 24px}
+.einrichten .klz.pz{grid-template-columns:var(--klz-vorn) 70px minmax(0,1fr) auto var(--klz-hinten)}
 .km-inp{resize:vertical;min-height:max(26px,var(--kd-ziel));padding:4px var(--kd-s3);font:inherit;font-size:12px}
 .zt tr.edit td{padding:2px 0;display:flex;gap:4px;align-items:center}
 .zt tr.edit .mini-inp{width:130px;border-color:var(--kd-line-strong)}
@@ -838,7 +839,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .tm-ziel{font-size:14px;color:var(--kd-muted)}
 .tm-ziel.an{color:var(--kd-accent-ink)}
 .fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%;flex:none}
-.fb-einst label{flex:none}
+/* Bei schmaler Breite bricht das Feld unter seinen Text, statt die Seite quer scrollen zu lassen (B0412) */
+.fb-einst label{flex:none;flex-wrap:wrap;max-width:100%}
 
 /* ── Berichtsfilter als Box, zugeklappt, je Filter eine Zeile (R00081) ── */
 .bfilter-box{border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}

@@ -132,14 +132,26 @@ test.describe('Selbstprobe ohne Kreis-Ausnahme', () => {
 
 test.describe('Selbstprobe Breite', () => {
   test.use({ viewport: { width: 320, height: 600 } });
-  test('321 px Inhalt bei 320 px fällt durch, 320 px besteht, ein in sich scrollender Bereich zählt nicht', async ({ page }) => {
+  test('321 px Inhalt bei 320 px fällt durch, 320 px besteht', async ({ page }) => {
     const seite = inhalt => `<style>body{margin:0}</style><main id="main">${inhalt}</main>`;
     await page.setContent(seite('<div style="width:321px;height:10px"></div>'));
     expect((await breiteMessen(page, 'probe')).map(v => v.ort)).toEqual(['Seite', '#main']);
     await page.setContent(seite('<div style="width:320px;height:10px"></div>'));
     expect(await breiteMessen(page, 'probe')).toEqual([]);
-    await page.setContent(seite('<div style="overflow-x:auto"><div style="width:900px;height:10px"></div></div>'));
+  });
+
+  // B0412: ein Bereich unter #main, der quer scrollt, zählt — außer er ist nach F0050 benannt oder trägt eine breite Tabelle
+  test('ein quer scrollender Bereich zählt, die Spaltenleiste und ein Bereich mit breiter Tabelle nicht', async ({ page }) => {
+    const seite = inhalt => `<style>body{margin:0}</style><main id="main">${inhalt}</main>`;
+    const breit = '<div style="width:336px;height:10px"></div>';
+    await page.setContent(seite(`<div class="einr breit" style="overflow:auto">${breit}</div>`));
+    expect(await breiteMessen(page, 'probe')).toEqual([{ ansicht: 'probe', ort: 'div.einr.breit', breite: 320, scrollWidth: 336, clientWidth: 320 }]);
+    await page.setContent(seite(`<div class="bahnen" style="overflow-x:auto">${breit}</div>`));
     expect(await breiteMessen(page, 'probe')).toEqual([]);
+    await page.setContent(seite('<div class="body" style="overflow:auto"><table style="width:900px"><tr><td>x</td></tr></table></div>'));
+    expect(await breiteMessen(page, 'probe')).toEqual([]);
+    await page.setContent(seite(`<div class="body" style="overflow:auto"><table><tr><td>x</td></tr></table>${breit}</div>`));
+    expect((await breiteMessen(page, 'probe')).map(v => v.ort)).toEqual(['div.body']);
   });
 });
 

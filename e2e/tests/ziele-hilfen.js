@@ -5,6 +5,12 @@
 const MASS = { fein: 24, touch: 44 };
 
 /**
+ * Was nach F0050 in sich quer scrollen darf, benannt wie in B0406: Spaltenleiste, Legende des Boards und die
+ * Tabellenbereiche; eine breite Tabelle in einem anderen Bereich erkennt breiteMessen selbst.
+ */
+const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .wbs-tabelle, .wl-scroll';
+
+/**
  * Läuft im Browser: misst jedes Bedienziel und liefert die Verstöße.
  * Trefferfläche = Rechteck des Elements vereinigt mit dem seines leeren ::after (Trefferhof);
  * ob sie trifft, prüft document.elementFromPoint an den vier Kantenmitten (1 px innen).
@@ -148,16 +154,22 @@ function titelPruefen(page, ansicht) {
 }
 
 /**
- * Waagrechtes Scrollen der Seite (B0406): Seite und #main höchstens so breit wie das Fenster.
- * In sich scrollende Bereiche (Spaltenleiste, breite Tabellen) sind eigene Scroll-Container und zählen nicht.
+ * Waagrechtes Scrollen (B0406, B0412): Seite, #main und jeder Bereich unter #main mit overflow-x auto oder scroll
+ * höchstens so breit wie sein Fenster. Ausgenommen nur, was nach F0050 in sich quer scrollen darf: die benannten
+ * Bereiche (querErlaubt) und ein Bereich, in dem eine Tabelle breiter ist als er.
  */
-function breiteMessen(page, ansicht) {
-  return page.evaluate(ansicht => {
-    const orte = [['Seite', document.documentElement], ['#main', document.getElementById('main')]];
+function breiteMessen(page, ansicht, querErlaubt = QUER_ERLAUBT) {
+  return page.evaluate(({ ansicht, querErlaubt }) => {
+    const main = document.getElementById('main');
+    const rollend = main ? [...main.querySelectorAll('*')].filter(el => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX)) : [];
+    // Eine breite Tabelle darf ihren Bereich quer scrollen; alles andere, was übersteht, ist ein Verstoß
+    const tabelleZuBreit = el => [...el.querySelectorAll('table')].some(t => t.getBoundingClientRect().width > el.clientWidth);
+    const bereiche = rollend.filter(el => !el.matches(querErlaubt) && !tabelleZuBreit(el)).map(el => [el.tagName.toLowerCase() + [...el.classList].map(k => '.' + k).join(''), el]);
+    const orte = [['Seite', document.documentElement], ['#main', main], ...bereiche];
     return orte
       .filter(([, el]) => el && el.scrollWidth > el.clientWidth)
       .map(([ort, el]) => ({ ansicht, ort, breite: innerWidth, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
-  }, ansicht);
+  }, { ansicht, querErlaubt });
 }
 
 /**

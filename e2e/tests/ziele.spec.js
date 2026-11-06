@@ -399,6 +399,28 @@ test.describe('Messprobe, Touch, 390 px', () => {
   });
 });
 
+// B0412: die Spalten der Klassen-, Personen- und Signalzeilen wachsen mit dem Zielmaß — kein Ziel ragt über seine Spalte
+// in den Nachbarn (Farbfeld über den Schlüssel, Löschknopf über den Rand).
+for (const breite of [320, 375, 414]) {
+  test.describe(`Einrichten, Zeilen ohne Überlappung, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+    test('in jeder Zeile endet jedes Element vor dem nächsten', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/einrichten');
+      await page.locator('.klz .farbe').first().waitFor();
+      const ueberlappt = await page.evaluate(() => [...document.querySelectorAll('.klz')].flatMap(zeile => {
+        const teile = [...zeile.children].filter(el => el.getBoundingClientRect().width > 0);
+        return teile.slice(1).flatMap((el, i) => {
+          const links = teile[i].getBoundingClientRect(), rechts = el.getBoundingClientRect();
+          if (links.right <= rechts.left + 0.5) return [];
+          return [`${teile[i].className || teile[i].tagName} ${Math.round(links.right)} > ${el.className || el.tagName} ${Math.round(rechts.left)}`];
+        });
+      }));
+      expect(ueberlappt).toEqual([]);
+    });
+  });
+}
+
 // B0406: Breitenprobe — bei 320, 375 und 414 px mit Touch scrollt keine Ansicht waagrecht (in sich scrollende Bereiche ausgenommen).
 for (const breite of [320, 375, 414]) {
   test.describe(`Breitenprobe, Touch, ${breite} px`, () => {
