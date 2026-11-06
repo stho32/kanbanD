@@ -312,3 +312,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Auto-Reviews | rechtschreib-reviewer | bestanden (0 Muss, 11 Sollte, 2 Optional) | 0:20 | — |
 | 2026-11-07 | #11 | Auto-Reviews | code-reviewer | befund (B1 Unit-Ebene AK 10; A1 esc an Datumsausgaben) | 0:35 | — |
 | 2026-11-07 | #11 | Auto-Reviews | ux-reviewer | befund (Muss: Name der Fälligkeit; Sollte: Feld nach Ablehnung leer) | 0:35 | — |
+| 2026-11-07 | #11 | Nacharbeit | planer | bestanden (Textfunde R00109 und US eingearbeitet, r00081 ergänzt) | 0:15 | eaf1bb4 |
