@@ -838,3 +838,18 @@ for (const weg of ['Tab', 'focus']) {
     await expect(page.locator(info)).toBeFocused();
   });
 }
+
+test('S2: Mehr per Klick, dann per Klick auf „Board“ gewechselt, „Test“ per Enter → Fokus auf #t-board, nicht auf „Mehr“', async ({ page }) => {
+  k.schreib('boards/test.md', '# Test\n\n## Offen\n');
+  await page.locator('#t-mehr').click();
+  await expect(page.locator('#pop[role="menu"]')).toBeVisible();
+  await page.locator('#t-board').click();
+  const fenster = page.getByRole('dialog', { name: 'Boards' });
+  const test = fenster.getByRole('button', { name: /^Test/ });
+  await expect(test).toBeVisible();
+  await test.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/board\/test$/);
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-board')).toBeFocused();
+});

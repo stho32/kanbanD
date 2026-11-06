@@ -604,6 +604,17 @@ function fallenTaste(ereignis) {
 let vorigeEbenen = [];
 const gemerkteAusloeser = {};
 
+let vorigerPop = null;
+
+/** Ein offenes Pop wurde gegen ein anderes getauscht (etwa Mehr → Boards per Klick), und zwar über dessen eigenen Auslöser:
+ *  dann gibt das neue Pop den Fokus diesem Auslöser zurück, nicht dem des alten (R00106, Karte #8 S2). */
+function popGewechseltDurch(ausloeser) {
+  const pop = $('#pop');
+  if (!pop || !vorigerPop || !S.ui.pop || S.ui.pop === vorigerPop || !ausloeser) return false;
+  const element = $(ausloeser);
+  return Boolean(element) && element.id === pop.dataset.for;
+}
+
 /** Selektor, unter dem sich der Auslöser nach dem Neuzeichnen wiederfindet: Karte, Zeile, sonst der Schlüssel des Sicherers. */
 function ausloeserSelektor(aktiv) {
   if (!aktiv || aktiv === document.body || !aktiv.isConnected) return null;
@@ -620,6 +631,8 @@ function fokusFuehren(aktiv, ausloeser, gesichert) {
   const arten = liste => liste.map(ebene => ebene.art);
   const geoeffnet = ebenen(S.ui).filter(ebene => !arten(vorher).includes(ebene.art));
   for (const ebene of geoeffnet) gemerkteAusloeser[ebene.art] = ausloeser;
+  if (popGewechseltDurch(ausloeser)) gemerkteAusloeser.pop = ausloeser;
+  vorigerPop = S.ui.pop || null;
   const geschlossen = vorher.filter(ebene => !arten(ebenen(S.ui)).includes(ebene.art));
   for (const ebene of geschlossen) delete gemerkteAusloeser[ebene.art];
   const jetzt = ebenen(S.ui, gemerkteAusloeser);
