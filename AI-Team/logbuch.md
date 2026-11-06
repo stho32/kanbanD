@@ -241,3 +241,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Auto-Reviews | ux-reviewer | bestanden: 3 Sollte (Kontrast Legendenhinweis, Touch 44 px, führender Punkt), 3 Optional | 0:07 | — |
 | 2026-11-06 | #6 | Auto-Reviews | rechtschreib-reviewer | bestanden: Gedankenstrich Menübeschreibung (→ PO), 3 Kleinigkeiten | 0:02 | — |
 | 2026-11-06 | #6 | Nacharbeit 1 | entwickler | bestanden: Funde 1–8 behoben, 9 begründet (R00100:38 wörtlich); Gate 554/clippy/208/437 passed; nachgefahren 208 Unit, r00100 27/27 | 0:18 | dae43c8..47076cb |
+| 2026-11-06 | #6 | Auto-Reviews Runde 2 | code-reviewer | bestanden, keine Befunde; Strich in R00100 (planer) und D0006 (gestalter) angeglichen | 0:10 | 1165731, 1d4b51c |
