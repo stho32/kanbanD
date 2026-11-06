@@ -33,9 +33,11 @@ const NICHT_GEMESSEN = [
 ];
 
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
-const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(3).replace('.', ',')}`;
+/** Messwert mit drei Nachkommastellen und Dezimalkomma, wie in jeder Meldung. */
+const komma = wert => wert.toFixed(3).replace('.', ',');
+const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${komma(v.wert)}`;
 
-/** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von .1 s): gemessen wird der ruhende Zustand; angehaltene laufen nie zu Ende und zählen nicht. */
+/** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von 0,1 s): gemessen wird der ruhende Zustand; angehaltene laufen nie zu Ende und zählen nicht. */
 async function farbuebergaengeAbwarten(page) {
   await page.waitForFunction(() => document.getAnimations().filter(a => a instanceof CSSTransition).every(a => a.playState !== 'running'));
 }
@@ -90,23 +92,23 @@ test.describe('R00107 Kontrast', () => {
     expect(gemeldet[0].wert).toBeLessThan(4.5);
   });
 
-  test('Opazität: die eigene und die der Vorfahren wird mitgemalt, als Gruppe über dem Grund darunter; unsichtbar (0) zählt nicht', async ({ page }) => {
+  test('Opazität: die eigene und die der Vorfahren werden mitgemalt, als Gruppe über dem Grund darunter; unsichtbar (0) zählt nicht', async ({ page }) => {
     await thema(page, 'light');
     await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
       '<div id="probe-eigen" style="background:#fff"><span style="color:#000;opacity:.5">eigen</span></div>' +
       '<div id="probe-vorfahr" style="background:#fff"><div style="opacity:.5"><span style="color:#000">vorfahr</span></div></div>' +
       '<div id="probe-gruppe" style="background:#fff"><div style="background:#000;opacity:.5"><span style="color:#fff">gruppe</span></div></div>' +
       '<div id="probe-weg" style="background:#fff"><span style="color:#000;opacity:0">weg</span></div>'));
-    // halb deckend gemalt landet je nach 8-bit-Rundung des Canvas zwischen Grau 126 und 128, also bei 3,95 bis 4,06 statt 21
+    // halb deckend gemalt landet je nach 8-Bit-Rundung des Canvas zwischen Grau 126 und 128, also bei 3,95 bis 4,06 statt 21
     const halbGrau = await kontrastFarben(page, 'rgb(127,127,127)', '#fff');
     for (const bereich of ['#probe-eigen', '#probe-vorfahr', '#probe-gruppe']) {
       const [m] = await kontrastMessen(page, [bereich]);
-      expect(Math.abs(m.wert - halbGrau), `${bereich} misst ${m.wert}`).toBeLessThan(0.1);
+      expect(Math.abs(m.wert - halbGrau), `${bereich} misst ${komma(m.wert)}`).toBeLessThan(0.1);
     }
     expect(await kontrastMessen(page, ['#probe-weg'])).toEqual([]);
   });
 
-  test('Bis Zeigen oder Fokus unsichtbar (opacity:0, sichtbar bei :focus) wird im fokussierten Zustand gemessen; Fokus wird zurückgegeben', async ({ page }) => {
+  test('Bis zum Zeigen oder Fokussieren unsichtbar (opacity:0, sichtbar bei :focus) wird im fokussierten Zustand gemessen; Fokus wird zurückgegeben', async ({ page }) => {
     await thema(page, 'light');
     await page.evaluate(() => {
       document.head.insertAdjacentHTML('beforeend', '<style>#probe-zeile button{opacity:0;color:#bbb;background:none;border:0}#probe-zeile button:focus{opacity:1}</style>');
@@ -357,7 +359,7 @@ test.describe('R00107 Wie lange noch', () => {
       expect(stil, spalte).toContain('--anteil');
       expect(stil, spalte).not.toContain('--h');
       const sel = `.wl-phase[data-spalte="${spalte}"]`;
-      const zuWenig = (await kontrastVerstoesse(page, [sel])).map(m => `${spalte} ${m.element} „${m.text}“ ${m.wert}`);
+      const zuWenig = (await kontrastVerstoesse(page, [sel])).map(m => `${spalte} ${m.element} „${m.text}“ ${komma(m.wert)}`);
       expect(zuWenig).toEqual([]);
     }
   });

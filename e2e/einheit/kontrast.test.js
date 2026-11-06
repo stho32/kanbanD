@@ -6,9 +6,9 @@ const path = require('node:path');
 const WEB = path.join(__dirname, '../../web');
 const lies = datei => fs.readFileSync(path.join(WEB, datei), 'utf8');
 
-/* ── Rechner: oklch → OKLab → lineares sRGB → Gamut-Clip → WCAG-Leuchtdichte (ohne 8-bit-Rundung; das Canvas im E2E weicht um ±0,03 ab) ── */
+/* ── Rechner: oklch → OKLab → lineares sRGB → Gamut-Clip → WCAG-Leuchtdichte (ohne 8-Bit-Rundung; das Canvas im E2E weicht um ±0,03 ab) ── */
 
-/** Relative Leuchtdichte nach WCAG 2.1 einer Farbe `oklch(L C H)`; Alpha zählt nicht. */
+/** Relative Leuchtdichte einer Farbe `oklch(L C H)` nach WCAG 2.1; Alpha zählt nicht. */
 function leuchtdichte(farbe) {
   const teile = /^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(farbe);
   if (!teile) throw new Error(`keine oklch-Farbe: ${farbe}`);
@@ -90,7 +90,7 @@ const PAARE = [
   { name: 'Modusleiste', flaechen: kd(['modus']), vorne: kd(['modus-text', 'muted', 'warn']), mass: SCHRIFT },
   { name: 'Klassengründe', flaechen: kd(KLASSEN.map(farbe => `c-${farbe}`)), vorne: kd(['text', 'muted', 'warn']), mass: SCHRIFT },
   ...AMPEL.map(status => ({ name: `WBS-Ampel ${status}`, flaechen: kd([`wbs-${status}-bg`]), vorne: kd([`wbs-${status}-ink`, 'text']), mass: SCHRIFT })),
-  { name: 'Linien Diagramm', flaechen: kd(['surface']), vorne: kd(['wl-1', 'wl-2', 'wl-3']), mass: LINIE },
+  { name: 'Diagrammlinien', flaechen: kd(['surface']), vorne: kd(['wl-1', 'wl-2', 'wl-3']), mass: LINIE },
   { name: 'Linie Abschluss Modusleiste', flaechen: kd(['modus', 'sunken']), vorne: kd(['modus-linie']), mass: LINIE },
   { name: 'Linie Fokusring Modusleiste', flaechen: kd(['modus']), vorne: kd(['accent']), mass: LINIE },
   { name: 'Linie Zustand .bf-chip', flaechen: kd(['bg']), vorne: kd(['faint']), mass: LINIE },
@@ -210,7 +210,7 @@ test('Rechner: var() wird über mehrere Stufen aufgelöst, ein fehlendes Token b
 
 const TOKENS = lies('kd-tokens.css');
 for (const paar of PAARE) {
-  test(`Paar ${paar.name}: mindestens ${mass(paar.mass)} in hell und dunkel`, { todo: AUSSTEHEND[paar.name] }, () => {
+  test(`Paar ${paar.name}: mindestens ${mass(paar.mass)} in Hell und Dunkel`, { todo: AUSSTEHEND[paar.name] }, () => {
     assert.deepStrictEqual(verstoesse(paar, themen(TOKENS)), []);
   });
 }

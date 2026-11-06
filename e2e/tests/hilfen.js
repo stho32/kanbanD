@@ -118,7 +118,7 @@ async function thema(page, name) {
 }
 
 /*
- * Kontrast nach WCAG im Browser (R00107, Funktionale Anforderung 17). Der eine Ort, an dem Farben über 1×1-Canvas
+ * Kontrast nach WCAG im Browser (R00107, Funktionale Anforderung 17). Der eine Ort, an dem Farben über ein 1×1-Canvas
  * in sRGB aufgelöst werden: oklch, color-mix und Transparenz rechnet so der Browser selbst. Gemalt wird wie der Browser
  * komponiert: je Vorfahr eine Ebene aus seinem Hintergrund und der Ebene darin, die mit ihrer `opacity` als Gruppe
  * daraufkommt; ganz unten Weiß. Einmal mit der Schrift (Schriftpixel), einmal ohne (Grund daneben).
@@ -186,7 +186,7 @@ function kontrastWerkzeugEinbauen() {
   };
   const messungen = (bereich, e) => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: schriftGegenGrund(e, s.farbe) }));
   const fokussierbar = e => e.tabIndex >= 0 && !inaktiv(e);
-  /** Bis Zeigen oder Fokus unsichtbar (`opacity:0`, sichtbar bei `:focus`): gemessen im fokussierten Zustand, danach Fokus zurück. */
+  /** Bis zum Zeigen oder Fokussieren unsichtbar (`opacity:0`, sichtbar bei `:focus`): gemessen im fokussierten Zustand, danach Fokus zurück. */
   const imFokus = (bereich, e) => {
     const vorher = document.activeElement;
     e.focus({ preventScroll: true });
@@ -227,7 +227,7 @@ async function kontrastFarben(page, a, b) {
   return page.evaluate(([x, y]) => window.kdKontrast.verhaeltnis(x, y), [a, b]);
 }
 
-/** Relative Leuchtdichte nach WCAG einer CSS-Farbe (0 schwarz, 1 weiß). */
+/** Relative Leuchtdichte einer CSS-Farbe nach WCAG (0 schwarz, 1 weiß). */
 async function leuchtdichte(page, farbe) {
   await page.evaluate(kontrastWerkzeugEinbauen);
   return page.evaluate(f => window.kdKontrast.leuchtdichte(f), farbe);
