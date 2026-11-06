@@ -2,6 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
+const { ansichtenDerAnwendung } = require('./ansichten');
 const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
@@ -325,15 +326,17 @@ test.describe('Trefferhof für kleine Zeichen', () => {
 const brett = page => page.goto(k.adresse + '#/board/entwicklung');
 const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
 const bericht = name => page => page.goto(k.adresse + '#/berichte/' + name);
+/** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihre Ziele stehen. */
+const NACH_DEM_LADEN = { 'WBS-Sicht': page => page.locator('.wbs-tabelle').waitFor() };
+const geladen = async () => {};
+/** Die Ansichten der Anwendung aus der gemeinsamen Liste (ADR-0012 Regel 6), dazu die Zustände, die nur diese Probe misst. */
 const ANSICHTEN = [
-  { ansicht: 'Board', oeffnen: brett },
+  ...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(({ ansicht, adresse }) => ({
+    ansicht,
+    oeffnen: async page => { await page.goto(k.adresse + adresse); await (NACH_DEM_LADEN[ansicht] || geladen)(page); },
+  })),
   { ansicht: 'Archiv des Boards', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="4"]').waitFor(); } },
-  { ansicht: 'Aufgabenliste', oeffnen: page => page.goto(k.adresse + '#/aufgaben') },
-  { ansicht: 'Personen', oeffnen: page => page.goto(k.adresse + '#/personen') },
-  { ansicht: 'Einrichten', oeffnen: page => page.goto(k.adresse + '#/einrichten') },
   { ansicht: 'Einrichten mit offener Palette', oeffnen: async page => { await page.goto(k.adresse + '#/einrichten'); await page.getByRole('button', { name: 'Farbe bug' }).click(); await page.locator('.pal').waitFor(); } },
-  ...['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'].map(name => ({ ansicht: 'Bericht ' + name, oeffnen: bericht(name) })),
-  { ansicht: 'WBS-Sicht', oeffnen: async page => { await page.goto(k.adresse + '#/wbs/kd'); await page.locator('.wbs-tabelle').waitFor(); } },
   { ansicht: 'API für Agenten', oeffnen: page => page.goto(k.adresse + 'api') },
   { ansicht: 'Aufgabenfenster #1', oeffnen: page => fensterOeffnen(page, 1) },
   // Das Menü „<Seite> ▾“ gibt es nur in der Stufe compact (unter 600 px, web/kopfzeile.js)
@@ -344,6 +347,15 @@ const ANSICHTEN = [
   { ansicht: 'Menü Ich', oeffnen: menue('#t-ich') },
   { ansicht: 'Kontextmenü #1', oeffnen: async page => { await brett(page); await page.locator('.ka[data-id="1"]').click({ button: 'right' }); await page.getByRole('menu').first().waitFor(); } },
 ];
+
+test('Ansichten der Messprobe: jede Ansicht der gemeinsamen Liste und die Zustände mit Archiv, Palette, API, Fenster und Menüs, keine doppelt', () => {
+  const namen = ANSICHTEN.map(a => a.ansicht);
+  const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+  const zustaende = ['Archiv des Boards', 'Einrichten mit offener Palette', 'API für Agenten', 'Aufgabenfenster #1', 'Menü Seite', 'Menü Mehr', 'Menü Berichte', 'Menü Ich', 'Kontextmenü #1'];
+  expect([...gemeinsam, ...zustaende].filter(name => !namen.includes(name))).toEqual([]);
+  expect(new Set(namen).size).toBe(namen.length);
+  expect(namen.length).toBeGreaterThanOrEqual(22);
+});
 
 /**
  * Bekannte Verstöße, die (noch) nicht gemessen werden dürfen — je Eintrag Selektor, Ansicht, Karte, heutiges Maß und Grund.
