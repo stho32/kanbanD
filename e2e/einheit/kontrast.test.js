@@ -146,9 +146,12 @@ function dunkelAbweichungen(text) {
 const FARBEIGENSCHAFT = /(?:^|[\s;{"'`.,(])((?:[\w-]*[Cc]olor[\w-]*|background[\w-]*|border[\w-]*|outline[\w-]*|box-?[Ss]hadow|text-?[Ss]hadow|text-?[Dd]ecoration[\w-]*|column-?[Rr]ule[\w-]*|fill|stroke|--[\w-]+)\s*[:=]\s*['"`]?[^;{}"'`]*)/g;
 const SET_PROPERTY = /setProperty\(\s*['"`]([\w-]+)['"`]\s*,\s*([^)]*)\)/g;
 const FARBNAMEN = ('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen').split(' ');
-const FARBLITERAL = new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\b(?:rgba?|hsla?|oklch|oklab|lch|lab|hwb|color)\\(|(?<![\\w-])(?:${FARBNAMEN.join('|')})(?![\\w-])`, 'i');
-/** Wert ohne Token-Verweise: `var(--kd-c-red)` nennt ein Token, keinen Farbnamen. */
-const ohneVerweise = wert => wert.replace(/var\([^()]*\)/g, '');
+const FARBLITERAL = new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\b(?:rgba?|hsla?|oklch|oklab|lch|lab|hwb|color)\\(|(?<![\\w.-])(?:${FARBNAMEN.join('|')})(?![\\w-])`, 'i');
+/**
+ * Wert ohne Token-Namen und Bildadressen: `var(--kd-c-red)` nennt ein Token, `url(red.png)` eine Datei, beides keine Farbe.
+ * Der Rückfallwert bleibt stehen, auch verschachtelt: `var(--kd-a, var(--kd-b, #fff))` trägt das Literal `#fff`.
+ */
+const ohneVerweise = wert => wert.replace(/url\([^)]*\)/g, '').replace(/var\(\s*--[\w-]+\s*,?/g, '(');
 /** Die Farbdeklarationen einer Zeile, die ein Literal tragen, als `eigenschaft:wert`. */
 function literalDeklarationen(zeile) {
   const deklarationen = [
@@ -326,8 +329,14 @@ test('Selbstprobe Literal: Nutzerfarben, Token-Verweise, Mischungen und Kommenta
   assert.deepStrictEqual(literalZeilen('probe', probe), ['probe:5']);
 });
 
-test('Selbstprobe Literal: Farbnamen, weitere Farbeigenschaften, JS-Zuweisung, Objekt-Literal und SVG-Attribute werden erkannt', () => {
+test('Selbstprobe Literal: Farbnamen, weitere Farbeigenschaften, JS-Zuweisung, Objekt-Literal, SVG-Attribute und Rückfallwerte in var() werden erkannt', () => {
+  // vollständige Mutationsliste aller Runden: wer den Wächter erweitert, sieht hier, ob er Älteres schwächt
   const mutationen = [
+    // Bau (B0396)
+    '.x{color:#fff}',
+    '.y{background:hsl(10 50% 50%)}',
+    '<span style="color:#123456">',
+    // Nacharbeit 1
     '.a{color:white}',
     '.a{background:black}',
     '.a{text-shadow:0 1px 0 #fff}',
@@ -342,6 +351,11 @@ test('Selbstprobe Literal: Farbnamen, weitere Farbeigenschaften, JS-Zuweisung, O
     "const stil = { backgroundColor: 'black' };",
     '<rect fill="#fff"></rect>',
     '<path stroke="black"></path>',
+    // Nacharbeit 2: Literal als Rückfallwert eines Token-Verweises, auch verschachtelt
+    '.x{background:var(--kd-c-green-line,#2e7d32)}',
+    '.x{color:var(--kd-text,white)}',
+    '.x{color:var(--kd-a, var(--kd-b, #fff))}',
+    '.x{border:1px solid var(--kd-line, rgb(0 0 0 / .1))}',
   ];
   const funde = literalZeilen('probe', mutationen.join('\n'));
   assert.deepStrictEqual(funde, mutationen.map((_, i) => `probe:${i + 1}`));
@@ -354,6 +368,9 @@ test('Selbstprobe Literal: Farbnamen in Token-Namen, Schlüsselwörter und Nicht
     'const name = "white";',
     '<path stroke="var(--kd-wl-1)" fill="${farbe}"></path>',
     "e.style.color = '';",
+    '.a{color:var(--kd-text, var(--kd-muted))}',
+    'const stil = { color: farben.red };',
+    '.a{background:url(red.png) no-repeat}',
   ].join('\n');
   assert.deepStrictEqual(literalZeilen('probe', probe), []);
 });
