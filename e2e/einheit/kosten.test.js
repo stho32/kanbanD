@@ -1,7 +1,8 @@
 // Unit-Tests des Preisetiketts (R00105, node --test): Rechnen in ganzen Cent, Formatieren erst beim Anzeigen
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle } = require('../../web/kosten.js');
+const { kostenInCent, geld, kostentabelle, kostenbericht } = require('../../web/kosten.js');
+const { FILTER_LEER } = require('../../web/berichte.js');
 
 const NBSP = ' ';
 const usd = rest => ({ currency: 'USD', ...rest });
@@ -83,4 +84,51 @@ test('Gegenbeispiel: Positionen ohne Tokens — keine Spalte Tokens, Summe ohne 
   assert.deepStrictEqual([t.spalteTokens, t.summe], [false, { tokens: null, niedrig: 40, hoch: 50 }]);
   const null_tokens = kostentabelle(kostenInCent(usd({ items: [{ text: 'a', amount: 0.1, tokens: 0 }] })));
   assert.deepStrictEqual([null_tokens.spalteTokens, null_tokens.summe.tokens], [true, 0], 'Grenzwert: 0 Tokens sind Tokens');
+});
+
+/* ── Kostenbericht (B0371): Grundbestand aus F0041 ── */
+const aufgabe = (nummer, cost = null, mehr = {}) => ({ nummer, klasse: null, zustaendige: [], labels: [], archiviert: null, cost, ...mehr });
+const spalten = (eingang, inArbeit, fertig) => ({ spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'In Arbeit', aufgaben: inArbeit }, { name: 'Fertig', aufgaben: fertig }] });
+const GRUND = [aufgabe(1, usd({ min: 0.6, max: 1.6 })), aufgabe(2, usd({ amount: 1.63 }), { klasse: 'drift' }), aufgabe(3), aufgabe(4)];
+const GRUND_BOARD = spalten([1, 4], [2], [3]);
+const ARCHIV = [...GRUND, aufgabe(5, usd({ amount: 0.5 }), { archiviert: '2026-11-01' }), aufgabe(6, usd({ min: 0.1, max: 0.3 }), { archiviert: '2026-11-02' })];
+const ARCHIV_BOARD = spalten([1, 4, 6], [2], [3, 5]);
+const filter = mehr => ({ ...FILTER_LEER, ...mehr });
+
+test('Kostenbericht: Summe je Währung über die Aufgaben mit Etikett, m über alle Aufgaben des Boards', () => {
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, FILTER_LEER), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
+  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER), { m: 6, jeWaehrung: [{ waehrung: 'USD', n: 4, niedrig: 283, hoch: 403 }] }, 'archivierte zählen mit');
+});
+
+test('Kostenbericht: je Währung eine Zeile, USD zuerst, dann alphabetisch', () => {
+  const mitEur = [...ARCHIV, aufgabe(7, { currency: 'EUR', amount: 25.55 })];
+  assert.deepStrictEqual(kostenbericht(spalten([1, 4, 6, 7], [2], [3, 5]), mitEur, FILTER_LEER).jeWaehrung,
+    [{ waehrung: 'USD', n: 4, niedrig: 283, hoch: 403 }, { waehrung: 'EUR', n: 1, niedrig: 2555, hoch: 2555 }]);
+  const mitChf = [...mitEur, aufgabe(8, { currency: 'CHF', amount: 2 }), aufgabe(9, { currency: 'AUD', amount: 1 })];
+  assert.deepStrictEqual(kostenbericht(spalten([1, 4, 6, 7, 8, 9], [2], [3, 5]), mitChf, FILTER_LEER).jeWaehrung.map(z => z.waehrung), ['USD', 'AUD', 'CHF', 'EUR']);
+  const ohneUsd = [aufgabe(1, { currency: 'EUR', amount: 1 }), aufgabe(2, { currency: 'CHF', amount: 1 })];
+  assert.deepStrictEqual(kostenbericht(spalten([1, 2], [], []), ohneUsd, FILTER_LEER).jeWaehrung.map(z => z.waehrung), ['CHF', 'EUR']);
+});
+
+test('Kostenbericht Gegenbeispiele: Aufgabe auf keinem Board, Leerfälle', () => {
+  const mitFremder = [...GRUND, aufgabe(10, usd({ amount: 5 }))];
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitFremder, FILTER_LEER), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] }, 'nicht auf dem Board → zählt nicht');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, [aufgabe(1), aufgabe(2), aufgabe(3), aufgabe(4)], FILTER_LEER), { m: 4, jeWaehrung: [] }, 'kein Etikett');
+  assert.deepStrictEqual(kostenbericht(spalten([], [], []), [], FILTER_LEER), { m: 0, jeWaehrung: [] }, 'Board ohne Aufgaben');
+});
+
+test('Kostenbericht nach Filter: Spalten, Klasse, Zuständige, Labels', () => {
+  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, filter({ ohneSpalten: ['Fertig'] })), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 3, niedrig: 233, hoch: 353 }] });
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Fertig'] })), { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] }, '2 von 3');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang'] })), { m: 2, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 163, hoch: 163 }] }, '1,63 · 1 von 2');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneFarben: ['drift'] })), { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 60, hoch: 160 }] }, 'Klasse drift aus');
+  const mitPerson = GRUND.map(a => a.nummer === 1 ? { ...a, zustaendige: ['st'], labels: ['x'] } : a);
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitPerson, filter({ personen: ['st'] })), { m: 1, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 60, hoch: 160 }] });
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitPerson, filter({ labels: ['x'] })).m, 1);
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang', 'In Arbeit', 'Fertig'] })), { m: 0, jeWaehrung: [] }, 'alle Spalten aus');
+});
+
+test('Kostenbericht: eine Nummer in der Spalte ohne lesbare Aufgabe zählt in m wie in den übrigen Berichten, ohne Etikett', () => {
+  assert.deepStrictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, FILTER_LEER), { m: 5, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
+  assert.strictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, filter({ labels: ['x'] })).m, 0, 'mit Label-Filter passt sie nicht');
 });

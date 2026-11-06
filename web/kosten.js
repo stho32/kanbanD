@@ -37,5 +37,25 @@
     return { beschriftung: `Geschätzte API-Kosten (${k.waehrung})`, spalteTokens: mitTokens.length > 0, zeilen, summe, basis: k.basis };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, kostentabelle });
+  /** Reihenfolge der Währungszeilen: USD zuerst, dann alphabetisch nach ISO-Code. */
+  const waehrungVor = (a, b) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b));
+
+  /** Board (Spalten samt archivierter Aufgaben) + Aufgaben + Filter der Berichte → {m, jeWaehrung: [{waehrung, n, niedrig, hoch}]}
+      in Cent. m zählt alle passenden Aufgaben in den Spalten, n und Summen die davon mit Etikett; der Filter wirkt über
+      Spalten, Klasse, Zuständige und Labels wie in den übrigen Berichten. */
+  function kostenbericht(board, aufgaben, f) {
+    const { aufgabePasst } = typeof module !== 'undefined' ? require('./berichte.js') : window;
+    const nachNummer = new Map(aufgaben.map(a => [a.nummer, a]));
+    const gezaehlt = board.spalten.filter(sp => !f.ohneSpalten.includes(sp.name))
+      .flatMap(sp => sp.aufgaben.map(nr => nachNummer.get(nr)))
+      .filter(a => aufgabePasst(f, a));
+    const summen = new Map();
+    for (const a of gezaehlt.filter(x => x && x.cost)) {
+      const k = kostenInCent(a.cost), s = summen.get(k.waehrung) || { waehrung: k.waehrung, n: 0, niedrig: 0, hoch: 0 };
+      summen.set(k.waehrung, { ...s, n: s.n + 1, niedrig: s.niedrig + k.min, hoch: s.hoch + k.max });
+    }
+    return { m: gezaehlt.length, jeWaehrung: [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+  }
+
+  Object.assign(ziel, { kostenInCent, geld, kostentabelle, kostenbericht });
 })(typeof module !== 'undefined' ? module.exports : window);
