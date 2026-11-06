@@ -184,16 +184,26 @@ test.describe('R00100 Bestand nach Labels', () => {
     expect(datei).not.toContain('Eingang]');
   });
 
-  test('Zu wenige Präfixe: nur repo:* → Hinweis statt Tabelle, kein Commit; ganz ohne Präfix derselbe Hinweis', async ({ page }) => {
+  test('Zu wenige Präfixe: nur repo:* → Hinweis statt Tabelle, Feld „Zeilen“ bietet repo an, kein Commit; ganz ohne Präfix derselbe Hinweis ohne Präfix-Option', async ({ page }) => {
     const nurRepo = { 'kanbanD.md': EINSTELLUNGEN, 'boards/fabrik.md': boardMd([1, 2], []), 'aufgaben/0001-a1.md': aufgabeMd(1, ['repo:shop'], 'drift'), 'aufgaben/0002-a2.md': aufgabeMd(2, ['repo:lager', 'dringend']) };
     await bericht(page, nurRepo);
-    const vorher = commits(k);
+    const vorher = commits(k), puts = [];
+    page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()); });
     await expect(bericht_(page)).toContainText(HINWEIS);
     await expect(tabelle(page)).toHaveCount(0);
+    await expect(feld(page, 'Zeilen').locator('option')).toHaveText(['repo']);
+    await expect(feld(page, 'Zeilen')).toHaveValue('repo');
+    await expect(feld(page, 'Spalten')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '⇄ Achsen tauschen' })).toBeDisabled();
+    await feld(page, 'Zeilen').selectOption('repo');
+    await expect(bericht_(page)).toContainText(HINWEIS);
+    expect(puts).toEqual([]);
     expect(commits(k)).toBe(vorher);
     k.schreib('aufgaben/0001-a1.md', aufgabeMd(1, ['dringend'], 'drift'));
     k.schreib('aufgaben/0002-a2.md', aufgabeMd(2, []));
+    await expect(feld(page, 'Zeilen')).toHaveCount(0);
     await expect(bericht_(page)).toContainText(HINWEIS);
+    await expect(bericht_(page).locator('option')).toHaveCount(0);
     await expect(tabelle(page)).toHaveCount(0);
   });
 

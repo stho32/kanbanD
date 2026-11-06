@@ -907,11 +907,19 @@ function vBestand() {
 /** Die Auswahlfelder „Zeilen“ und „Spalten“ mit allen Präfixen der offenen Aufgaben und den gespeicherten; darunter,
     falls die Wahl nur in dieser Ansicht gilt, warum. Ohne Achsen (unter zwei Präfixen) nichts. */
 function vBestandAchsen(achsen) {
-  if (!achsen) return '';
-  const wahl = [...praefixe(offeneAufgaben(S.aufgaben, S.board)).map(p => p.praefix)];
+  const wahl = praefixe(offeneAufgaben(S.aufgaben, S.board)).map(p => p.praefix);
+  if (!achsen) return vBestandEinFeld(wahl);
   for (const gespeichert of [achsen.zeilen, achsen.spalten]) if (!wahl.some(p => p.toLowerCase() === gespeichert.toLowerCase())) wahl.push(gespeichert);
-  const feld = (name, schluessel) => `<span class="best-feld"><label for="best-${schluessel}">${name}</label><select class="mini-inp best-sel" id="best-${schluessel}" data-bestand="${schluessel}">${wahl.map(p => `<option value="${esc(p)}"${p.toLowerCase() === achsen[schluessel].toLowerCase() ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></span>`;
-  return `<div class="best-achsen" id="bestand-achsen">${feld('Zeilen', 'zeilen')}${feld('Spalten', 'spalten')}<button class="btn best-tausch" data-act="bestand-tauschen">⇄ Achsen tauschen</button>${vBestandStatus()}</div>`;
+  return `<div class="best-achsen" id="bestand-achsen">${vBestandFeld('Zeilen', 'zeilen', wahl, achsen.zeilen)}${vBestandFeld('Spalten', 'spalten', wahl, achsen.spalten)}<button class="btn best-tausch" data-act="bestand-tauschen">⇄ Achsen tauschen</button>${vBestandStatus()}</div>`;
+}
+/** Unter zwei Präfixen (Artboard D0006): nur „Zeilen“ mit dem vorhandenen Präfix, Tauschen gesperrt; ohne Präfix kein Feld. */
+function vBestandEinFeld(wahl) {
+  if (!wahl.length) return '';
+  return `<div class="best-achsen" id="bestand-achsen">${vBestandFeld('Zeilen', 'zeilen', wahl, wahl[0])}<button class="btn best-tausch" disabled>⇄ Achsen tauschen</button></div>`;
+}
+function vBestandFeld(name, schluessel, wahl, gewaehlt) {
+  const optionen = wahl.map(p => `<option value="${esc(p)}"${p.toLowerCase() === gewaehlt.toLowerCase() ? ' selected' : ''}>${esc(p)}</option>`).join('');
+  return `<span class="best-feld"><label for="best-${schluessel}">${name}</label><select class="mini-inp best-sel" id="best-${schluessel}" data-bestand="${schluessel}">${optionen}</select></span>`;
 }
 function vBestandStatus() {
   const lokal = bestandLokal();

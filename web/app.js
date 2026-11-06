@@ -44,9 +44,12 @@ function berichtsfilterSetzen(aenderung) {
     .then(() => laden());
 }
 /** Neue Achsen für „Bestand nach Labels“ nach einer Wahl (Feld „zeilen“, „spalten“ oder „tauschen“): genau ein PUT …/bestand;
-    ohne gewählte Person oder bei einem Fehler gilt die Wahl nur in dieser Ansicht. Ändert die Wahl nichts, nichts. */
+    ohne gewählte Person oder bei einem Fehler gilt die Wahl nur in dieser Ansicht. Ändert die Wahl nichts oder gibt es
+    unter zwei Präfixen noch keine Achsen, nichts. */
 function bestandAchsenSetzen(feld, praefix) {
-  const neu = achsenNachWahl(bestandAchsen(kostenFilter(S.ui.bf)), feld, praefix);
+  const jetzt = bestandAchsen(kostenFilter(S.ui.bf));
+  if (!jetzt) return;
+  const neu = achsenNachWahl(jetzt, feld, praefix);
   if (!neu) return;
   const ich = !!ichPerson();
   const lokal = S.ui.bestandLokal = { slug: S.ui.slug, achsen: neu, ungespeichert: !ich, fehler: null };
