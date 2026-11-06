@@ -167,3 +167,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #5 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
 | 2026-11-06 | #5 | Entwicklertest | entwicklertester (frisch) | bestanden: US-1–US-7, Gegenbeispiele, Browser live, Parallelität; Anmerkungen Doppelkommentar bei zwei Boards, leere Warnfelder → Härtung | 0:10 | — |
 | 2026-11-06 | #5 | Erledigt | director | Zug Entwicklertest → Erledigt; Code bereits mit 771208f auf 7422 ausgeliefert | — | — |
+| 2026-11-06 | #6 | Detailplanung | director | Zug Architektur → Detailplanung (Architektur gebündelt bestanden, 4e7fd1a); planer | — | — |
