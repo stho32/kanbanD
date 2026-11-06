@@ -165,3 +165,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Erledigt | director | Zug Entwicklertest → Erledigt, ausgeliefert 771208f auf 7422 (eine Instanz, zustand 200) | — | — |
 | 2026-11-06 | #5 | Auto-Reviews | security-reviewer (frisch) | bestanden: enge Wiederholung B1 über erledigen, 33 Angriffswerte je Rolle ohne Schreibzugriff, Regression Kernfälle grün | 0:10 | — |
 | 2026-11-06 | #5 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
+| 2026-11-06 | #5 | Entwicklertest | entwicklertester (frisch) | bestanden: US-1–US-7, Gegenbeispiele, Browser live, Parallelität; Anmerkungen Doppelkommentar bei zwei Boards, leere Warnfelder → Härtung | 0:10 | — |
+| 2026-11-06 | #5 | Erledigt | director | Zug Entwicklertest → Erledigt; Code bereits mit 771208f auf 7422 ausgeliefert | — | — |
