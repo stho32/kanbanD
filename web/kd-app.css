@@ -658,6 +658,17 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Ziehen aus der Liste */
 .liste-mit-zielen{display:flex;gap:16px;align-items:flex-start}
 .liste-mit-zielen>table{flex:1}
+/* PO Z. 137 (c): bei Touch und schmalem Fenster scrollt die Aufgabenliste nie quer — jede Zelle bricht um, der Titel
+   vollständig und auch mitten im Wort ohne Trennstelle, „Ziehen auf“ rückt unter die Tabelle; mit der Maus im breiten Fenster wie bisher */
+@media (pointer:coarse),(max-width:640px){
+  .liste-mit-zielen{flex-wrap:wrap}
+  .liste-mit-zielen>table{flex-basis:100%}
+  .liste-mit-zielen .ziele{position:static;flex-basis:100%}
+  .pt.liste :is(th,td){padding:0 var(--kd-s1);white-space:normal;hyphens:auto}
+  .pt.liste .tt{max-width:none;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  .pt.liste .lbl.ort{height:auto;flex-wrap:wrap}
+  .pt.liste .btn{white-space:normal;overflow-wrap:anywhere}
+}
 .ziele{flex:none;width:210px;position:sticky;top:0;border:1px solid var(--kd-line);background:var(--kd-surface);padding:8px}
 .ziele h4{margin:0 0 6px;font:600 10px/1.4 var(--kd-mono);letter-spacing:.06em;color:var(--kd-muted)}
 .ziel-board{margin-bottom:8px}.ziel-board b{display:block;font-size:12px;margin-bottom:3px}

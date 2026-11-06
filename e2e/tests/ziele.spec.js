@@ -574,6 +574,39 @@ for (const breite of [320, 375, 414]) {
   });
 }
 
+// B0424 (PO Z. 137 c): Die Aufgabenliste scrollt bei Touch nie quer — der Titel bricht vollständig um, auch ein Wort ohne
+// Trennstelle, ohne Ellipse; keine Spalte fällt weg. Bei feinem Zeiger im breiten Fenster bleibt die Titelspalte wie heute.
+/** Titelzelle von #5: Text, Ellipse an, steht der Link ganz in der Zelle; dazu die sichtbaren Spaltenköpfe. */
+const titelZelle = page => page.evaluate(() => {
+  const td = document.querySelector('tr[data-zeile="5"] td.tt'), a = td.querySelector('a'), stil = getComputedStyle(td);
+  const zelle = td.getBoundingClientRect(), ganz = [...a.getClientRects()].every(r => r.left >= zelle.left - 0.5 && r.right <= zelle.right + 0.5);
+  const spalten = [...document.querySelectorAll('table.liste thead th')].filter(th => th.getBoundingClientRect().width > 0).length;
+  return { text: a.textContent, ellipse: stil.textOverflow === 'ellipsis' && stil.overflow !== 'visible', ganz, umbruch: stil.whiteSpace, spalten };
+});
+for (const breite of [320, 375, 414]) {
+  test.describe(`Aufgabenliste mit langem Titel, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+    test('kein Bereich scrollt quer, der Titel steht ganz in der Zelle ohne Ellipse, alle sechs Spalten bleiben', async ({ page }) => {
+      await starten(page, BREITE_DATEN);
+      await page.goto(k.adresse + '#/aufgaben');
+      await page.locator('tr[data-zeile="5"]').waitFor();
+      expect(await breiteMessen(page, 'Aufgabenliste')).toEqual([]);
+      expect(await titelZelle(page)).toEqual({ text: LANGER_TITEL, ellipse: false, ganz: true, umbruch: 'normal', spalten: 6 });
+    });
+  });
+}
+test.describe('Aufgabenliste mit langem Titel, Maus, 1280 px', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  test('die Titelspalte bleibt einzeilig mit Ellipse wie heute', async ({ page }) => {
+    await starten(page, BREITE_DATEN);
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.locator('tr[data-zeile="5"]').waitFor();
+    expect(await titelZelle(page)).toEqual({ text: LANGER_TITEL, ellipse: true, ganz: false, umbruch: 'nowrap', spalten: 6 });
+    const hoehe = nr => page.locator(`tr[data-zeile="${nr}"]`).evaluate(tr => tr.getBoundingClientRect().height);
+    expect(await hoehe(5), 'so hoch wie die Zeile mit kurzem Titel').toBe(await hoehe(1));
+  });
+});
+
 // B0407 (PO Z. 133): In der Stufe compact bricht die Werkzeugzeile der Kopfzeile um, wenn sie nicht passt —
 // Filter in voller Breite oben, Bereichsschalter darunter; passt sie, bleibt sie wie heute.
 
