@@ -31,9 +31,9 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 
 ## Entscheidungen
 
-- [ADR-0007: Sichtzustand übersteht das Neuzeichnen](../ADRs/0007-sichtzustand-uebersteht-das-neuzeichnen.md)
+- [ADR-0007: Sichtzustand übersteht das Neuzeichnen](../ADRs/0007-sichtzustand-uebersteht-das-neuzeichnen.md) — Nachtrag N1 (#8): alle Kinder von `#app` gesichert, `#main`/`#over` hinter Wächtern, `href` als Schlüssel
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): Chip „≈“ mit Mitte, Reiter „Kosten“, Kostenbericht; gerechnet in ganzen Cent in einem reinen Modul neben `web/berichte.js`
-- [ADR-0010: Fokusführung über Ebenen mit Rückgabe](../ADRs/0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) — gebaut (#8, R00106): reines Modul `web/fokus.js` (Ebenen, Tab-Umlauf, Rand der Pop-Fenster, Fokusziele), Kleber am Ende von `render()`, Menüs mit Fokus per Skript ohne Tab-Halt, Radiogruppen roving; Abweichungen vom Text im Nachtrag N1–N6
+- [ADR-0010: Fokusführung über Ebenen mit Rückgabe](../ADRs/0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) — gebaut (#8, R00106): reines Modul `web/fokus.js` (Ebenen, Tab-Umlauf, Rand der Pop-Fenster, Fokusziele), Kleber am Ende von `render()`, Menüs mit Fokus per Skript ohne Tab-Halt, Radiogruppen roving; Abweichungen vom Text im Nachtrag N1–N6; N7 Rückfall ohne offene Ebene nie auf ein fremdes Element
 
 ## Offene Fragen
 
@@ -56,3 +56,6 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 - Erlaubte `.focus()`-Orte (ADR-0010 N5), entschieden durch den product-owner 2026-11-06 (`AI-Team/po-entscheidungen.md:109`): `fensterTaste`, `listenTaste`, `brettTaste` und der `/`-Zweig des `keydown`-Hörers gelten als keydown-Zweige und werden in R00106 Z. 110 und ADR-0010 namentlich genannt; kein Umbau auf `S.ui.fokus`. Der Wächtertest zählt künftig `.focus()` je erlaubter Funktion (heute je einer: `web/app.js:1534`, `:1681`, `:1706`, `:1783`); Umsetzung in #8 durch den entwickler.
 - Identität einer Ebene (ADR-0010 N3), entschieden durch den product-owner 2026-11-06 (`AI-Team/po-entscheidungen.md:110`): bleibt `art`; der Pop → Pop-Ausgleich `popGewechseltDurch`/`vorigerPop` bleibt im Kleber, gesichert durch E2E „S2“ (`e2e/tests/r00106-fokus.spec.js:842`). Umstellung auf `art` + Pop-Name erst bei einem Befund am Pop-Wechsel oder einem zweiten Ausgleich im Kleber.
 - nachgeführt 2026-11-06 nach PO-Entscheidungen zu ADR-0010 N3/N5
+- Soll nach ADR-0007 N1 (Karte #8, Nacharbeit 3, noch nicht gebaut): Der Sicherer gilt für alle Kinder von `#app` (heute `#kopf`, `#main`, `#stat`), nur `#main` (gleiche Sicht) und `#over` (gleiche offene Aufgabe) bleiben hinter Wächtern. `#stat` wird im selben Block wie die übrigen Bereiche ersetzt, vor `rollstaendeSetzen`. Schlüsselkandidat `[href="…"]` steht zwischen `data-act` und den Klassen. Ist 2026-11-06: gesichert `#kopf` immer, `#main`/`#over` mit Wächter, `#stat` nicht (`web/app.js:446–448`, `:474`); kein `href` in `web/sichtzustand.js:20–34`. Gemessen (realist-consultant): 34/110 bzw. 16/92 fokussierbare Elemente verloren.
+- Soll nach ADR-0010 N7 (PO 2026-11-06, `AI-Team/po-entscheidungen.md:111`): Rückfall „erstes tabbares Element“ nur bei offener oder gerade geschlossener Ebene. Ohne Ebene gilt: dasselbe Element, sonst geführte Karte bzw. Zeile, sonst `BODY`, nie ein fremdes Eingabefeld oder Bedienelement. Ist: `ersterTabbarer` auch ohne Ebene auf `#main` (`web/app.js:650`, `:680–684`). Abnahme beider Nachträge als ein Abtastraster über alle fokussierbaren Elemente × 5 Sichten × 2 Breiten.
+- nachgeführt 2026-11-06 nach ADR-0007 N1 und ADR-0010 N7
