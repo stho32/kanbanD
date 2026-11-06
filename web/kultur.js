@@ -6,14 +6,16 @@
   const { ortszeit } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
   const zweistellig = zahl => String(zahl).padStart(2, '0');
 
-  /** Tag `JJJJ-MM-TT` (auch Anfang eines Zeitpunkts) → `TT.MM.JJJJ`. */
+  const ISO_TAG = /^\d{4}-\d{2}-\d{2}/;
+  /** Tag `JJJJ-MM-TT` (auch Anfang eines Zeitpunkts) → `TT.MM.JJJJ`; ein Wert, der kein ISO-Tag ist, bleibt unverändert. */
   function datumLang(iso) {
+    if (!ISO_TAG.test(iso)) return iso;
     const [jahr, monat, tag] = iso.slice(0, 10).split('-');
     return `${tag}.${monat}.${jahr}`;
   }
   /** `TT.MM.` im Jahr von `heute` (ISO-Tag), sonst lang — nur für die drei kompakten Stellen (FA 4). */
   function datumKurz(iso, heute) {
-    if (iso.slice(0, 4) !== heute.slice(0, 4)) return datumLang(iso);
+    if (!ISO_TAG.test(iso) || iso.slice(0, 4) !== heute.slice(0, 4)) return datumLang(iso);
     return datumLang(iso).slice(0, 6);
   }
   /** Zeitpunkt der Datei (mit oder ohne Versatz) → `TT.MM.JJJJ HH:MM` in Ortszeit. */

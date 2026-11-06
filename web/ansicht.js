@@ -161,7 +161,7 @@ function vIchKnopf() {
 function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: S.zustand.einstellungen.klassen }; }
 function vSchnellVorschau(text) {
   const s = schnelleingabe(text, schnellUmfeld(), new Date());
-  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${datumLang(s.faellig)}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
+  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(datumLang(s.faellig))}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
   return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
 }
 /* ── Dialog „Neue Aufgabe“ — alle Felder sofort, wie in Kanbanflow ── */
@@ -490,7 +490,7 @@ function vKarte(a, fertig) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
   // vorgelesen wird „fällig“ mit Jahr, die sichtbare Kurzform bleibt stumm
-  const due = a.faellig ? `<span class="vh">fällig ${datumLang(a.faellig)}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${datumLang(a.faellig)}">${datumKurz(a.faellig, isoD(Date.now()))}</span>` : '';
+  const due = a.faellig ? `<span class="vh">fällig ${esc(datumLang(a.faellig))}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${esc(datumLang(a.faellig))}">${esc(datumKurz(a.faellig, isoD(Date.now())))}</span>` : '';
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
@@ -620,7 +620,7 @@ function vSignale(a, fertig) {
   const s = aufgabenSignale(a, isoD(Date.now()), fertig);
   if (!s.length) return '';
   return `<span class="sigs">${s.map(x => {
-    if (x.faellig) { const t = x.faellig === 'heute' ? 'heute fällig' : `überfällig seit ${datumLang(a.faellig)}`; return `<span class="signal faellig ${x.faellig}" role="img" aria-label="${t}" title="${t}">${KALENDER}</span>`; }
+    if (x.faellig) { const t = x.faellig === 'heute' ? 'heute fällig' : `überfällig seit ${esc(datumLang(a.faellig))}`; return `<span class="signal faellig ${x.faellig}" role="img" aria-label="${t}" title="${t}">${KALENDER}</span>`; }
     const g = signalDef(x.schluessel), name = g ? g.bezeichnung : x.schluessel;
     return `<button class="signal" data-act="signal-aus" data-arg="${a.nummer}|${esc(x.schluessel)}" style="--sg:${esc(signalFarbe(x.schluessel))}" aria-label="Signal ${esc(name)} zurücknehmen" title="${esc(name)} — Klick nimmt das Signal zurück">${FACKEL}</button>`;
   }).join('')}</span>`;

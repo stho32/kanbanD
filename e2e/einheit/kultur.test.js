@@ -64,3 +64,10 @@ test('herkunftAusFeld: Feld von „Neue Aufgabe“ — „ohne Herkunft“ als g
   assert.deepStrictEqual(herkunftAusFeld('ohne Herkunft', ['I0001']), []);
   assert.deepStrictEqual(herkunftAusFeld('I0001 ohne Herkunft', []), ['I0001', 'ohne', 'Herkunft']);
 });
+
+test('kein ISO-Tag: datumLang und datumKurz geben den Wert unverändert zurück, das Escapen bleibt beim Aufrufer', () => {
+  for (const wert of ['<b>x', 'morgen', '24.12.', '2026', '']) {
+    assert.strictEqual(datumLang(wert), wert, wert);
+    assert.strictEqual(datumKurz(wert, '2026-11-07'), wert, wert);
+  }
+});

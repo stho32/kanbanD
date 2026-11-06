@@ -139,6 +139,21 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     expect(karten.filter(t => ISO.test(t))).toEqual([]);
   });
 
+  test('Fälligkeit, die kein Datum ist, erscheint unverändert und escaped auf der Karte (Code-Review A1)', async ({ page }) => {
+    arbeit = arbeitsRepository(WBS);
+    const bestand = grundbestand(arbeit);
+    bestand['boards/entwicklung.md'] = BOARD.replace('- #6\n', '- #6\n- #7\n');
+    bestand['aufgaben/0007-sieben.md'] = karte(7, 'sieben', 'due: "<b>x"\n');
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await brett(page);
+    const sieben = page.locator('.ka[data-id="7"]');
+    await expect(sieben.locator('.due')).toHaveText('<b>x');
+    await expect(sieben.locator('.due')).toHaveAttribute('title', 'fällig <b>x');
+    expect(await sieben.locator('b').count()).toBe(0);
+    expect(await sieben.ariaSnapshot()).toContain('fällig <b>x');
+  });
+
   test('US-2: Kommentar, Reservierungen, Archivleiste lang; Reiter Datei und Datumsfeld bleiben ISO', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
