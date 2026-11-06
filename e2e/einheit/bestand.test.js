@@ -1,7 +1,8 @@
 // R00100 Bestand nach Labels: reine Rechnung in web/berichte.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl } = require('../../web/berichte.js');
+const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter } = require('../../web/berichte.js');
+const { passt } = require('../../web/filter.js');
 
 const aufgabe = (nummer, labels, klasse = '', mehr = {}) => ({ nummer, titel: `A${nummer}`, klasse, labels, zustaendige: [], archiviert: false, ...mehr });
 const boardMit = (eingang, fertig = []) => ({ slug: 'fabrik', spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'Fertig', aufgaben: fertig }] });
@@ -198,4 +199,52 @@ test('B0361 Achsen nach Wahl ohne Groß/Klein: NC ist nc, Repo im anderen Feld t
   assert.strictEqual(achsenNachWahl(jetzt, 'spalten', 'NC'), null);
   assert.strictEqual(achsenNachWahl(jetzt, 'zeilen', 'REPO'), null);
   assert.deepStrictEqual(achsenNachWahl(jetzt, 'spalten', 'Repo'), { zeilen: 'nc', spalten: 'repo' });
+});
+
+/** Was das Board mit einem Filtertext zeigt: nicht archivierte Aufgaben auf dem Board, die passen. */
+function boardZeigt({ aufgaben, board }, text) {
+  const drauf = new Set(board.spalten.flatMap(sp => sp.aufgaben));
+  return aufgaben.filter(a => drauf.has(a.nummer) && !a.archiviert && passt(a, text)).map(a => a.nummer).sort((x, y) => x - y);
+}
+const ortVon = (t, i, j) => ({ zeile: t.zeilen[i], spalte: t.spalten[j], zelle: t.zellen[i][j] });
+
+test('B0352 Zielfilter: zwei label-Wörter, auf dem Board sichtbar #1, #2 und #6 (Abschlussspalte)', () => {
+  const g = grundbestand(), t = bestand(g);
+  const text = zielfilter(ortVon(t, 1, 0), ACHSEN);
+  assert.strictEqual(text, 'label:repo:shop label:nc:304');
+  assert.deepStrictEqual(boardZeigt(g, text), [1, 2, 6]);
+});
+
+test('B0352 Zielfilter: „(ohne …)“, Summe und leere Zelle haben keinen', () => {
+  const t = bestand(grundbestand());
+  assert.strictEqual(zielfilter(ortVon(t, 0, 2), ACHSEN), null, 'lager × (ohne nc) mit Zahl 1');
+  assert.strictEqual(zielfilter(ortVon(t, 2, 0), ACHSEN), null, '(ohne repo) × 304');
+  assert.strictEqual(zielfilter(ortVon(t, 1, 2), ACHSEN), null, 'shop × (ohne nc) leer');
+  assert.strictEqual(zielfilter({ zeile: t.zeilen[1], spalte: null, zelle: { zahl: 3, jeKlasse: {} } }, ACHSEN), null, 'Summe shop');
+  assert.strictEqual(zielfilter({ zeile: null, spalte: null, zelle: { zahl: 5, jeKlasse: {} } }, ACHSEN), null, 'Summe gesamt');
+});
+
+test('B0352 Zielfilter mit Leerzeichen in Anführungszeichen, Groß/Klein und Doppelpunkt im Wert', () => {
+  const g = grundbestand([aufgabe(20, ['repo:mein shop', 'nc:304:a']), aufgabe(21, ['Repo:Mein Shop', 'NC:304:A'])]);
+  const t = bestand(g), i = namen(t.zeilen).indexOf('mein shop'), j = namen(t.spalten).indexOf('304:a');
+  const text = zielfilter(ortVon(t, i, j), ACHSEN);
+  assert.strictEqual(text, 'label:"repo:mein shop" label:nc:304:a');
+  assert.deepStrictEqual(boardZeigt(g, text), [20, 21]);
+  const zitat = bestand(grundbestand([aufgabe(22, ['repo:a "b"', 'nc:304'])]));
+  assert.strictEqual(zielfilter(ortVon(zitat, 0, 0), ACHSEN), null, 'Leerzeichen und Anführungszeichen: als Filterwort nicht schreibbar, also nicht klickbar');
+  assert.strictEqual(namen(zitat.zeilen)[0], 'a "b"');
+});
+
+test('B0352 Rundprobe: jeder Zielfilter trifft genau die Aufgaben seiner Zelle plus passende in der Abschlussspalte', () => {
+  const g = grundbestand([aufgabe(8, ['repo:shop', 'nc:304', 'nc:305'], 'drift'), aufgabe(11, ['Repo:Shop', 'NC:304'], 'eol'), aufgabe(20, ['repo:mein shop', 'nc:1000'])]);
+  const t = bestand(g), fertig = g.board.spalten[1].aufgaben;
+  let geprueft = 0;
+  t.zellen.forEach((reihe, i) => reihe.forEach((z, j) => {
+    const text = zielfilter(ortVon(t, i, j), ACHSEN);
+    if (text === null) return;
+    const offenGezeigt = boardZeigt(g, text).filter(n => !fertig.includes(n));
+    assert.deepStrictEqual(offenGezeigt, z.nummern, text);
+    geprueft++;
+  }));
+  assert.strictEqual(geprueft, 4, 'lager × 304, shop × 304, shop × 305, mein shop × 1000');
 });

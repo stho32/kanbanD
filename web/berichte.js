@@ -594,5 +594,22 @@
     return { ...einstellung, [feld]: praefix };
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl });
+  /** Ein Wort `label:<präfix>:<wert>` für den Board-Filter, mit Leerzeichen in Anführungszeichen (filterWoerter);
+      ein Label mit Leerzeichen und Anführungszeichen lässt sich nicht als Wort schreiben (null). */
+  function labelWort(label) {
+    if (!/\s/.test(label)) return `label:${label}`;
+    if (label.includes('"')) return null;
+    return `label:"${label}"`;
+  }
+
+  /** Board-Filter einer Zelle: genau ihr Label-Paar, ohne die Filter der Berichte; nur für eine Zelle mit Zahl,
+      nicht für „(ohne …)“ und Summen (null). */
+  function zielfilter({ zeile, spalte, zelle }, achsen) {
+    if (!zeile || !spalte || zeile.ohne || spalte.ohne || !zelle.zahl) return null;
+    const woerter = [labelWort(`${achsen.zeilen}:${zeile.wert}`), labelWort(`${achsen.spalten}:${spalte.wert}`)];
+    if (woerter.includes(null)) return null;
+    return woerter.join(' ');
+  }
+
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
