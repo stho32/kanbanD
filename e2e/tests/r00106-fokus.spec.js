@@ -1,5 +1,8 @@
 // R00106 Fokus in Fenstern und Menüs führen und nach jeder Aktion halten (ADR-0010: Fokusführung über Ebenen)
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
@@ -19,6 +22,13 @@ const DATEIEN = {
 };
 const ALS_PLANER = { headers: { 'X-KanbanD-Wer': 'pl' } };
 
+/** Grundbestand der Anforderung: nur das Board „fabrik“ — das Board „Entwicklung“ des Helfers wird wieder entfernt. */
+function grundbestand(ordner) {
+  einrichten(DATEIEN)(ordner);
+  fs.rmSync(path.join(ordner, 'boards/entwicklung.md'));
+  execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-am', 'nur fabrik']);
+}
+
 /** Beschreibung des fokussierten Elements: Tag, Rolle, Name des umgebenden Dialogs, Karte, ob inert. */
 const fokus = page => page.evaluate(() => {
   const e = document.activeElement;
@@ -32,7 +42,7 @@ const fokus = page => page.evaluate(() => {
 
 let k;
 test.beforeEach(async ({ page }) => {
-  k = await kanbanStarten(einrichten(DATEIEN));
+  k = await kanbanStarten(grundbestand);
   await alsPerson(page, 'st');
   await page.goto(k.adresse + '#/board/fabrik');
   await liveBereit(page);
@@ -456,4 +466,180 @@ test('US-8: Esc im Filterfeld mit Text leert den Filter, der Fokus bleibt im Fil
   await expect(page.locator('#flt')).toHaveValue('');
   await expect(page.locator('.ka[data-id="2"]')).toBeVisible();
   await expect(page.locator('#flt')).toBeFocused();
+});
+
+/* ── B0385: Ich-Menü und Pop-Fenster ── */
+const ALS_ST = { headers: { 'X-KanbanD-Wer': 'st' } };
+const ichEintrag = (page, name) => page.locator('#pop [role="menu"] [role="menuitemradio"]', { hasText: name });
+
+async function annaAnlegen(page) {
+  expect((await page.request.post(`${k.adresse}api/personen`, { ...ALS_ST, data: { kuerzel: 'an', name: 'Anna', art: 'human' } })).status()).toBe(201);
+  await expect.poll(() => page.evaluate(() => fetch('/api/personen').then(r => r.json()).then(j => j.personen.length))).toBe(4);
+  await page.reload();
+  await liveBereit(page);
+}
+
+test('US-6: Ich-Menü: Enter → menuitemradio, „Stefan“ gewählt und fokussiert, planer aria-disabled; ↓ Anna, ↓ Umlauf auf Stefan', async ({ page }) => {
+  await annaAnlegen(page);
+  await expect(page.locator('#t-ich')).toContainText('Stefan');
+  await page.locator('#t-ich').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-ich')).toHaveAttribute('aria-haspopup', 'menu');
+  await expect(page.locator('#t-ich')).toHaveAttribute('aria-expanded', 'true');
+  await expect(ichEintrag(page, 'Stefan')).toBeFocused();
+  await expect(ichEintrag(page, 'Stefan')).toHaveAttribute('aria-checked', 'true');
+  await expect(ichEintrag(page, 'Anna')).toHaveAttribute('aria-checked', 'false');
+  await expect(ichEintrag(page, 'planer')).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('ArrowDown');
+  await expect(ichEintrag(page, 'Anna')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(ichEintrag(page, 'Stefan'), 'Umlauf, planer übersprungen').toBeFocused();
+  await expect(page.locator('#pop [role="menu"]')).not.toHaveAttribute('aria-describedby', /.+/);
+});
+
+test('US-6: Ich-Menü: Enter auf „Anna“ → Menü zu, #t-ich zeigt Anna, Fokus auf #t-ich; wieder offen: Anna gewählt', async ({ page }) => {
+  await annaAnlegen(page);
+  await page.locator('#t-ich').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-ich')).toContainText('Anna');
+  await expect(page.locator('#t-ich')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#t-ich')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(ichEintrag(page, 'Anna')).toHaveAttribute('aria-checked', 'true');
+  await expect(ichEintrag(page, 'Stefan')).toHaveAttribute('aria-checked', 'false');
+});
+
+test('US-6: ohne Ich: m auf Karte #1 → Ich-Menü mit Hinweis; Überschrift, Hinweis, Fuß außerhalb von role=menu, verbunden', async ({ page }) => {
+  await page.evaluate(() => sessionStorage.removeItem('kanbanD.ich'));
+  await page.addInitScript(() => sessionStorage.removeItem('kanbanD.ich'));
+  await page.reload();
+  await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
+  await page.locator('.ka[data-id="1"]').focus();
+  await page.keyboard.press('m');
+  const menue = page.locator('#pop [role="menu"]');
+  await expect(menue).toHaveCount(1);
+  await expect(page.locator('#pop')).toContainText('Für diese Aktion zuerst wählen, wer du bist.');
+  expect(await menue.evaluate(m => [...m.children].every(c => c.getAttribute('role') === 'menuitemradio'))).toBe(true);
+  for (const text of ['ICH BIN', 'Für diese Aktion zuerst wählen', 'Die Wahl gilt nur für diesen Tab.']) await expect(menue).not.toContainText(text);
+  expect(await menue.evaluate(m => document.getElementById(m.getAttribute('aria-labelledby')).textContent)).toContain('ICH BIN');
+  expect(await menue.evaluate(m => document.getElementById(m.getAttribute('aria-describedby')).textContent)).toBe('Für diese Aktion zuerst wählen, wer du bist.');
+  await expect(ichEintrag(page, 'Stefan')).toBeFocused();
+});
+
+test('US-4: Board-Fenster: Enter → role=dialog „Boards“ ohne aria-modal und inert, Fokus auf „fabrik“; Tab Tab → Reservierungen, Feld; Tab am Feld schließt → Navigationslink „Board“', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#t-board').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-board')).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(page.locator('#t-board')).toHaveAttribute('aria-expanded', 'true');
+  const fenster = page.getByRole('dialog', { name: 'Boards' });
+  await expect(fenster).toBeVisible();
+  await expect(fenster).not.toHaveAttribute('aria-modal', /.*/);
+  await expect(page.locator('[inert]')).toHaveCount(0);
+  await expect(fenster.getByRole('button', { name: /fabrik/ })).toBeFocused();
+  await expect(page.locator('#board-neu')).not.toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(fenster.getByRole('button', { name: /Alle Aufgabenreservierungen anzeigen/ })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#board-neu')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-board')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.kz-nav a', { hasText: /^Board$/ })).toBeFocused();
+});
+
+test('US-4: Board-Fenster: Umschalt+Tab auf „fabrik“ → zu, Fokus #t-board; Esc auf Reservierungen → zu, Fokus #t-board', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#t-board').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-board')).toBeFocused();
+  await expect(page.locator('#t-board')).toHaveAttribute('aria-expanded', 'false');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-board')).toBeFocused();
+  await expect(page.locator('#t-board')).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('US-4: Board-Fenster: ↓ und → lassen Fokus und Fenster; im Feld bewegen ← → nur die Schreibmarke', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#t-board').focus();
+  await page.keyboard.press('Enter');
+  const fabrik = page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /fabrik/ });
+  await expect(fabrik).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await expect(fabrik).toBeFocused();
+  await expect(page.locator('#pop')).toHaveCount(1);
+  await page.locator('#board-neu').fill('neu');
+  await page.keyboard.press('ArrowLeft');
+  expect(await page.locator('#board-neu').evaluate(e => e.selectionStart)).toBe(2);
+  await page.keyboard.press('ArrowRight');
+  expect(await page.locator('#board-neu').evaluate(e => e.selectionStart)).toBe(3);
+  await expect(page.locator('#board-neu')).toBeFocused();
+  await expect(page.locator('#pop')).toHaveCount(1);
+});
+
+test('US-5: Board-Fenster offen, Live-Ereignis: Fokus bleibt auf „Alle Aufgabenreservierungen anzeigen“', async ({ page }) => {
+  await page.locator('#t-board').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  const knopf = page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Alle Aufgabenreservierungen anzeigen/ });
+  await expect(knopf).toBeFocused();
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel: 'drei neu' } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1000 }).toBeGreaterThan(vorher);
+  await expect(page.locator('#pop')).toHaveCount(1);
+  await expect(knopf).toBeFocused();
+});
+
+test('US-4: Lauf-Fenster: Fokus auf „#1 öffnen“, Tab → „Timer von Stefan stoppen“, Tab → zu, #t-ich; Umschalt+Tab am Anfang → #t-lauf, Timer läuft', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/start`, ALS_ST)).ok()).toBe(true);
+  await expect(page.locator('#t-lauf')).toBeVisible();
+  await page.locator('#t-lauf').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-lauf')).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(page.locator('#t-lauf')).toHaveAttribute('aria-expanded', 'true');
+  const fenster = page.getByRole('dialog', { name: 'Läuft gerade' });
+  await expect(fenster).not.toHaveAttribute('aria-modal', /.*/);
+  await expect(fenster.getByRole('button', { name: '#1 öffnen' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(fenster.getByRole('button', { name: 'Timer von Stefan stoppen' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-ich')).toBeFocused();
+  await page.locator('#t-lauf').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-lauf')).toBeFocused();
+  await expect(page.locator('#t-lauf')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#t-lauf')).toBeVisible();
+});
+
+test('US-4: Defekte Dateien: role=dialog, Fokus auf dem Pfad-Link, Fehlertext daneben; Tab → „Tastenkürzel“; Esc → #t-defekt', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#t-defekt').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-defekt')).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(page.locator('#t-defekt')).toHaveAttribute('aria-expanded', 'true');
+  const fenster = page.getByRole('dialog', { name: 'Defekte Dateien' });
+  await expect(fenster).not.toHaveAttribute('aria-modal', /.*/);
+  const link = fenster.getByRole('link', { name: 'aufgaben/0009-kaputt.md', exact: true });
+  await expect(link).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Tastenkürzel/ })).toBeFocused();
+  await page.locator('#t-defekt').focus();
+  await page.keyboard.press('Enter');
+  await expect(link).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#t-defekt')).toBeFocused();
 });

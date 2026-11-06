@@ -363,3 +363,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0384 Kontextmenü auf DOM-Fokus | Standard | 1-3h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0387 Gruppen mit roving tabindex | Standard | 1-3h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0389 Übrige Fokusaufrufe in die Fokusführung | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0385 Board-, Lauf-, Ich- und Defekte-Dateien-Pop einordnen | Standard | 1-2h | 1,2h | 1,2h | autonom |

@@ -1,7 +1,7 @@
 // Unit-Tests der Fokusführung über Ebenen (R00106, ADR-0010): node --test
 const test = require('node:test');
 const assert = require('node:assert');
-const { ebenen, fallenSchritt, fokusZiel } = require('../../web/fokus.js');
+const { ebenen, fallenSchritt, fokusZiel, fensterRand } = require('../../web/fokus.js');
 
 const arten = ui => ebenen(ui).map(ebene => ebene.art);
 
@@ -100,4 +100,29 @@ test('Fokusaufrufe: .focus() nur in Sicherer, Kleber und Tastenzweigen', () => {
 test('Fokusaufrufe: kein .focus() direkt nach render() — das Ziel geht über S.ui.fokus in die Rangfolge', () => {
   const danach = fokusAufrufe().filter(f => /render\(\);[^;]*\.focus\(/.test(f.zeile));
   assert.deepStrictEqual(danach.map(f => f.ort), []);
+});
+
+test('fensterRand: Tab am letzten Element schließt nach vorn, Umschalt+Tab am ersten zum Auslöser, dazwischen weiter', () => {
+  assert.strictEqual(fensterRand(3, 2, false), 'nach-ausloeser');
+  assert.strictEqual(fensterRand(3, 0, true), 'ausloeser');
+  assert.strictEqual(fensterRand(3, 1, false), 'weiter');
+  assert.strictEqual(fensterRand(3, 1, true), 'weiter');
+  assert.strictEqual(fensterRand(3, 0, false), 'weiter');
+  assert.strictEqual(fensterRand(3, 2, true), 'weiter');
+  assert.strictEqual(fensterRand(1, 0, false), 'nach-ausloeser', 'ein Element: Tab schließt');
+  assert.strictEqual(fensterRand(0, -1, false), 'nach-ausloeser', 'nichts Tabbares: Tab schließt');
+});
+
+test('ebenen: Board-, Lauf- und Defekte-Dateien-Pop sind nicht-modale Fenster ohne eigenes Startziel, die Menüs nicht', () => {
+  for (const pop of ['board', 'lauf', 'defekt']) {
+    const ebene = ebenen({ pop })[0];
+    assert.deepStrictEqual([ebene.modal, ebene.fenster, ebene.start], [false, true, null], pop);
+  }
+  for (const pop of ['mehr', 'ich', 'seite', 'ber']) assert.strictEqual(ebenen({ pop })[0].fenster, false, pop);
+});
+
+test('ebenen: das Ich-Menü startet auf dem gewählten Eintrag, ohne Wahl auf dem ersten wählbaren', () => {
+  const ich = ebenen({ pop: 'ich' })[0];
+  const ziele = fokusZiel({ geoeffnet: ich, oberste: ich });
+  assert.deepStrictEqual(ziele, ['#pop [role="menuitemradio"][aria-checked="true"]', '#pop [role^="menuitem"]:not([aria-disabled="true"])']);
 });

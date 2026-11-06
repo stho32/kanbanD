@@ -1,5 +1,5 @@
 /* kanbanD — Fokusführung über Ebenen (R00106, ADR-0010): reine Funktionen, im Browser und in Node nutzbar.
-   Eine Ebene ist ein offener Dialog oder ein offenes Menü: {art, selektor, start, rueckgabe: [Selektoren], modal}. */
+   Eine Ebene ist ein offener Dialog oder ein offenes Menü: {art, selektor, start (Selektor oder Liste in Rangfolge), rueckgabe: [Selektoren], modal, fenster}. */
 (function (ziel) {
   'use strict';
   const GESICHERT = 'gesichert';
@@ -23,7 +23,18 @@
   }
 
   function menue(art, selektor, start, rueckgabe) {
-    return { art, selektor, start, rueckgabe, modal: false };
+    return { art, selektor, start, rueckgabe, modal: false, fenster: false };
+  }
+
+  /** Pops, die nicht-modale Fenster sind (PO Z. 107–108): kein Startziel, der Fokus geht aufs erste Tabbare. */
+  const POP_FENSTER = new Set(['board', 'lauf', 'defekt']);
+  /** Das Ich-Menü öffnet auf dem gewählten Menschen, ohne Wahl auf dem ersten wählbaren. */
+  const GEWAEHLTER_MENSCH = '#pop [role="menuitemradio"][aria-checked="true"]';
+
+  function popEbene(ui, gemerkt) {
+    if (POP_FENSTER.has(ui.pop)) return { art: 'pop', selektor: '#pop', start: null, rueckgabe: ausloeser(gemerkt, 'pop'), modal: false, fenster: true };
+    if (ui.pop === 'ich') return menue('pop', '#pop', [GEWAEHLTER_MENSCH, `#pop ${ERSTER_MENUEEINTRAG}`], ausloeser(gemerkt, 'pop'));
+    return menue('pop', '#pop', `#pop ${ERSTER_MENUEEINTRAG}`, ausloeser(gemerkt, 'pop'));
   }
 
   /** Offene Dialoge von unten nach oben: Fenster bzw. Neu und Defekt, darüber Zuweisen und Hilfe. */
@@ -46,7 +57,7 @@
   /** Offene Ebenen von unten nach oben; gemerkt = {art: Selektor des Auslösers beim Öffnen}. */
   function ebenen(ui, gemerkt = {}) {
     const liste = dialogstapel(ui, gemerkt);
-    if (ui.pop) liste.push(menue('pop', '#pop', `#pop ${ERSTER_MENUEEINTRAG}`, ausloeser(gemerkt, 'pop')));
+    if (ui.pop) liste.push(popEbene(ui, gemerkt));
     if (ui.menue) liste.push(menue('kmenue', '#kmenue', kmenueEintrag(ui.menue), ausloeser(gemerkt, 'kmenue')));
     return liste;
   }
@@ -60,6 +71,13 @@
     return (index + 1) % anzahl;
   }
 
+  /** Tab am Rand eines nicht-modalen Pop-Fensters: 'nach-ausloeser' (Tab am letzten), 'ausloeser' (Umschalt+Tab am ersten), sonst 'weiter'. */
+  function fensterRand(anzahl, index, rueckwaerts) {
+    if (rueckwaerts && index <= 0 && anzahl > 0) return 'ausloeser';
+    if (!rueckwaerts && index >= anzahl - 1) return 'nach-ausloeser';
+    return 'weiter';
+  }
+
   /** Fokusziele nach dem Neuzeichnen in Rangfolge; das erste, das sich setzen lässt, gilt. 'gesichert' steht für den Sicherer.
       lage = {ausdruecklich, gesichert, gesichertInOberster, geschlossen, geoeffnet, oberste, fuehrung} */
   function fokusZiel(lage) {
@@ -67,11 +85,11 @@
     if (lage.ausdruecklich) ziele.push(lage.ausdruecklich);
     if (lage.gesichert && lage.gesichertInOberster) ziele.push(GESICHERT);
     if (lage.geschlossen) ziele.push(...lage.geschlossen.rueckgabe);
-    if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(lage.geoeffnet.start);
-    if (lage.oberste && lage.oberste.start) ziele.push(lage.oberste.start);
+    if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(...[].concat(lage.geoeffnet.start));
+    if (lage.oberste && lage.oberste.start) ziele.push(...[].concat(lage.oberste.start));
     if (!lage.oberste && lage.fuehrung) ziele.push(lage.fuehrung);
     return [...new Set(ziele)];
   }
 
-  Object.assign(ziel, { ebenen, fallenSchritt, fokusZiel, kmenueEintrag, GESICHERT });
+  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, GESICHERT });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -27,10 +27,10 @@ test.describe('R00035', () => {
     await page.keyboard.press('b');
     await expect(page.locator('.bahn')).toHaveCount(3);
     await page.keyboard.press('b');
-    await expect(page.getByRole('menuitem', { name: /Entwicklung/ })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Entwicklung/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await page.keyboard.press('i');
-    await expect(page.getByRole('menuitem', { name: /Stefan/ })).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: /Stefan/ })).toBeVisible();
   });
 
   test('US-2: im Fenster arbeiten, Hilfe je Ort', async ({ page }) => {

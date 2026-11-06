@@ -23,7 +23,7 @@ test.describe('R00104', () => {
     await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
 
     await page.locator('#t-board').click();
-    await page.getByRole('menuitem', { name: /Alt_Board/ }).click();
+    await page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Alt_Board/ }).click();
 
     await expect(page).toHaveURL(/#\/board\/Alt_Board$/);
     await expect(page.getByRole('alert')).toContainText('boards/Alt_Board.md ist defekt');
@@ -33,7 +33,7 @@ test.describe('R00104', () => {
     expect(seitenfehler).toEqual([]);
 
     await page.locator('#t-board').click();
-    await page.getByRole('menuitem', { name: /Entwicklung/ }).click();
+    await page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Entwicklung/ }).click();
     await expect(page).toHaveURL(/#\/board\/entwicklung$/);
     await expect(page.locator('#t-board')).toContainText('Entwicklung');
     await expect(page.locator('.ka[data-id="1"]')).toBeVisible();

@@ -54,7 +54,7 @@ function kopfAnsicht() {
 function kopfElemente() {
   const u = S.ui, b = S.board;
   return {
-    board: () => `<div class="kz-z1"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="true" title="${esc(S.zustand.ordner)}"><span class="kz-board-name">${esc(b ? b.titel : 'kein Board')}</span> ▾</button></div>`,
+    board: () => `<div class="kz-z1"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="dialog" title="${esc(S.zustand.ordner)}"><span class="kz-board-name">${esc(b ? b.titel : 'kein Board')}</span> ▾</button></div>`,
     navigation: vNavigation,
     seitenmenue: vSeitenKnopf,
     filter: () => `<input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
@@ -144,17 +144,17 @@ function vThemaEintrag() {
 const UHR = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
 function vLaufKnopf() {
   const n = alleLaufenden().length;
-  return n ? `<button class="kz-btn${S.ui.pop === 'lauf' ? ' auf' : ''}" id="t-lauf" data-act="pop" data-arg="lauf" aria-haspopup="true">${UHR}${n}<span class="lang"> ${n === 1 ? 'läuft' : 'laufen'}</span></button>` : '';
+  return n ? `<button class="kz-btn${S.ui.pop === 'lauf' ? ' auf' : ''}" id="t-lauf" data-act="pop" data-arg="lauf" aria-haspopup="dialog">${UHR}${n}<span class="lang"> ${n === 1 ? 'läuft' : 'laufen'}</span></button>` : '';
 }
 
 function vLaufPop() {
   const r = alleLaufenden().sort((x, y) => zeitMs(x.z.beginn) - zeitMs(y.z.beginn)), jetzt = Date.now();
-  return `<div class="pop" id="pop" data-for="t-lauf" data-al="r" style="width:450px" role="menu"><h4>LÄUFT GERADE <span class="mono">${r.length} Timer · ${new Set(r.map(x => x.a.nummer)).size} Aufgaben</span></h4>${r.map(({ a, z }) => `<div class="pz2${z.wer === S.ich ? ' eigen' : ''}" data-act="oeffnen" data-arg="${a.nummer}" role="menuitem">${pk(z.wer)}<span class="id">#${a.nummer}</span><span class="t">${esc(a.titel)}<small>${esc(per(z.wer).name)}${z.wer === S.ich ? ' · ich' : ''} · seit ${esc(ortszeit(z.beginn).slice(11))}</small></span><b data-since="${laufBeginn(a, z)}" data-fmt="s">${hms(jetzt - laufBeginn(a, z))}</b><button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Aufgabe · fremde Timer lassen sich stoppen</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-lauf" data-al="r" style="width:450px" role="dialog" aria-label="Läuft gerade"><h4>LÄUFT GERADE <span class="mono">${r.length} Timer · ${new Set(r.map(x => x.a.nummer)).size} Aufgaben</span></h4>${r.map(({ a, z }) => `<div class="pz2${z.wer === S.ich ? ' eigen' : ''}" data-act="oeffnen" data-arg="${a.nummer}">${pk(z.wer)}<button type="button" class="id" data-act="oeffnen" data-arg="${a.nummer}" aria-label="#${a.nummer} öffnen">#${a.nummer}</button><span class="t">${esc(a.titel)}<small>${esc(per(z.wer).name)}${z.wer === S.ich ? ' · ich' : ''} · seit ${esc(ortszeit(z.beginn).slice(11))}</small></span><b data-since="${laufBeginn(a, z)}" data-fmt="s">${hms(jetzt - laufBeginn(a, z))}</b><button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Aufgabe · fremde Timer lassen sich stoppen</div></div>`;
 }
 
 function vIchKnopf() {
   const me = S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
-  return `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="true">${me ? pk(me.kuerzel) + `<span class="ich-name">${esc(me.name)}</span>` : 'nicht gewählt'} ▾</button>`;
+  return `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="menu">${me ? pk(me.kuerzel) + `<span class="ich-name">${esc(me.name)}</span>` : 'nicht gewählt'} ▾</button>`;
 }
 
 /* ── Schnelleingabe: Vorschau der erkannten Felder ── */
@@ -277,7 +277,7 @@ function vZeiten(a) {
 const defekteBoards = () => (S.zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
 function vBoardPop() {
   const u = S.ui;
-  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="menu"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<div class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}" role="menuitem">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></div>`).join('')}${defekteBoards().map(s => `<div class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}" role="menuitem">${esc(s)}<span class="muted mono warn">defekt</span></div>`).join('')}${S.board ? `<div class="iz" data-act="pop" data-arg="reservierungen" role="menuitem" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></div>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></button>`).join('')}${defekteBoards().map(s => `<button type="button" class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}">${esc(s)}<span class="muted mono warn">defekt</span></button>`).join('')}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
 }
 
 function vPop() {
@@ -297,7 +297,14 @@ function vPop() {
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
   const nicht = ps.filter(p => p.art === 'agent' || !p.aktiv);
-  return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px" role="menu"><h4>ICH BIN … <span class="mono">people:</span></h4>${u.ichNoetig ? '<div class="warnh">Für diese Aktion zuerst wählen, wer du bist.</div>' : ''}${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitem">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}<div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
+  // Überschrift, Hinweis und Fuß stehen neben dem Menü und benennen bzw. beschreiben es (R00106)
+  let hinweis = '';
+  let beschrieben = '';
+  if (u.ichNoetig) {
+    hinweis = '<div class="warnh" id="ich-hinweis">Für diese Aktion zuerst wählen, wer du bist.</div>';
+    beschrieben = ' aria-describedby="ich-hinweis"';
+  }
+  return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px"><h4 id="ich-titel">ICH BIN … <span class="mono">people:</span></h4>${hinweis}<div role="menu" aria-labelledby="ich-titel"${beschrieben}>${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitemradio" aria-checked="${p.kuerzel === S.ich}" tabindex="-1">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" role="menuitemradio" aria-checked="false" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}</div><div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
 /* ── Zeiten ── */
@@ -520,7 +527,7 @@ function vReservierungenPop() {
 
 function vDefektePop() {
   const ds = S.zustand.defekte || [];
-  return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="menu"><h4>DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="dialog" aria-label="Defekte Dateien"><h4>DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
 }
 
 /** Erste offene Teilaufgabe als nächster Schritt; das Kästchen hakt sie ab. */
@@ -1218,5 +1225,5 @@ function vStatus() {
   const z = S.zustand;
   if (!z) return '';
   const nd = (z.defekte || []).length;
-  return `<span class="mono">${esc(z.ordner)}</span>${nd ? `<button class="lnk warn" id="t-defekt" data-act="pop" data-arg="defekt">${nd} ${nd === 1 ? 'defekte Datei' : 'defekte Dateien'}</button>` : ''}${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}${(n => n ? `<span class="auswahl-zahl">${n} ${n === 1 ? 'Karte' : 'Karten'} ausgewählt</span>` : '')(S.ui.auswahl.length)}<span class="rechts"><button class="lnk" data-act="hilfe" title="Tastenkürzel (?)">Tastenkürzel <kbd>?</kbd></button><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
+  return `<span class="mono">${esc(z.ordner)}</span>${nd ? `<button class="lnk warn" id="t-defekt" data-act="pop" data-arg="defekt" aria-haspopup="dialog">${nd} ${nd === 1 ? 'defekte Datei' : 'defekte Dateien'}</button>` : ''}${z.eingerichtet ? `<span>${z.boards.length} ${z.boards.length === 1 ? 'Board' : 'Boards'}</span>` : '<span>kanbanD.md fehlt</span>'}${S.ui.fehler ? `<span class="fehl">${esc(S.ui.fehler)}</span>` : ''}${(n => n ? `<span class="auswahl-zahl">${n} ${n === 1 ? 'Karte' : 'Karten'} ausgewählt</span>` : '')(S.ui.auswahl.length)}<span class="rechts"><button class="lnk" data-act="hilfe" title="Tastenkürzel (?)">Tastenkürzel <kbd>?</kbd></button><a href="/api" target="_blank" rel="noopener">API für Agenten</a></span>`;
 }

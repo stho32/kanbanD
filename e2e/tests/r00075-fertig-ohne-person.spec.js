@@ -12,7 +12,7 @@ test('US-1: ohne Person erst wählen, dann speichert „Fertig“ — auch mit �
     const auswahl = page.locator('#pop');
     await expect(auswahl).toBeVisible();
     await expect(auswahl).toContainText('Für diese Aktion zuerst wählen, wer du bist.');
-    await auswahl.getByRole('menuitem', { name: /Stefan/ }).click();
+    await auswahl.getByRole('menuitemradio', { name: /Stefan/ }).click();
     await expect(page.locator('#t-ich')).toContainText('Stefan');
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect(page.locator('.bahn[data-col="Läuft Produktiv/Erledigt"] .ka')).toHaveCount(1);

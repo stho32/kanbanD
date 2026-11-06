@@ -531,6 +531,35 @@ function gewaehltesRadioFokussieren(name, wert) {
 
 const MENUE_RICHTUNG = { ArrowDown: 1, ArrowUp: -1, Home: 'anfang', End: 'ende' };
 
+/** Enter und Leertaste auf einem Eintrag, der kein Knopf ist, lösen ihn wie ein Klick aus; Knöpfe tun das selbst. */
+function eintragAusloesen(ereignis, eintraege) {
+  const eintrag = document.activeElement;
+  if ((ereignis.key !== 'Enter' && ereignis.key !== ' ') || !eintraege.includes(eintrag) || eintrag.tagName === 'BUTTON') return false;
+  ereignis.preventDefault();
+  eintrag.click();
+  return true;
+}
+
+/** Im nicht-modalen Pop-Fenster: Tab am Rand schließt (nach vorn wie im Menü, zurück auf den Auslöser), Pfeile tun nichts außer in Feldern; wahr, wenn die Taste verbraucht ist. */
+function popFensterTaste(ereignis) {
+  const oberste = vorigeEbenen.at(-1);
+  if (!oberste || !oberste.fenster) return false;
+  if (ereignis.key === 'Tab') return fensterRandTaste(ereignis);
+  if (!ereignis.key.startsWith('Arrow')) return false;
+  if (!/INPUT|TEXTAREA|SELECT/.test(ereignis.target.tagName)) ereignis.preventDefault();
+  return true;
+}
+
+function fensterRandTaste(ereignis) {
+  const tabbare = tabbareIn($('#pop'));
+  const rand = fensterRand(tabbare.length, tabbare.indexOf(document.activeElement), ereignis.shiftKey);
+  if (rand === 'weiter') return false;
+  if (rand === 'ausloeser') ereignis.preventDefault();
+  // der Fokus steht vor der Standardaktion auf dem Auslöser: Tab führt von dort weiter, Umschalt+Tab ist verbraucht
+  popZuMitTab();
+  return true;
+}
+
 /** Tab im Menü schließt es: der Fokus steht vor der Standardaktion auf dem Auslöser, der Browser führt ihn von dort weiter. */
 function popZuMitTab() {
   S.ui.fokus = ausloeserDesMenues();
@@ -541,11 +570,12 @@ function popZuMitTab() {
 
 /** Im offenen Pop-Menü: Pfeile, Pos1 und Ende führen den DOM-Fokus über die wählbaren Einträge, Tab schließt; wahr, wenn die Taste verbraucht ist. */
 function popMenueTaste(ereignis) {
-  const menue = $('#pop[role="menu"]');
+  const menue = $('#pop[role="menu"]') || $('#pop [role="menu"]');
   if (!menue) return false;
   if (ereignis.key === 'Tab') { popZuMitTab(); return true; }
-  if (!Object.hasOwn(MENUE_RICHTUNG, ereignis.key)) return false;
   const eintraege = [...menue.querySelectorAll('[role^="menuitem"]')];
+  if (eintragAusloesen(ereignis, eintraege)) return true;
+  if (!Object.hasOwn(MENUE_RICHTUNG, ereignis.key)) return false;
   // menueSchritt überspringt, was „aktuell“ ist — hier die nicht wählbaren Einträge
   const modell = eintraege.map(eintrag => ({ aktuell: eintrag.getAttribute('aria-disabled') === 'true' }));
   const ziel = menueSchritt(modell, eintraege.indexOf(document.activeElement), MENUE_RICHTUNG[ereignis.key]);
@@ -669,7 +699,7 @@ async function act(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
-      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; if (u.pop === 'board') u.fokus = '#board-neu'; if (u.pop === 'mehr' || u.pop === 'seite') u.fokus = '#pop [role^="menuitem"]'; break;
+      case 'pop': u.pop = u.pop === arg ? null : arg; u.popFehler = null; if (arg !== 'ich') u.ichNoetig = false; break;
       case 'seite': u.pop = null; if (location.hash === arg) break; location.hash = arg; return;
       case 'board-wahl': u.pop = null; location.hash = '#/board/' + arg; return;
       case 'board-neu': {
@@ -1440,7 +1470,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
-  if (S.ui.pop && popMenueTaste(e)) return;
+  if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {

@@ -37,7 +37,7 @@ test.describe('R00025', () => {
     await expect(page.locator('#pop .dz')).toContainText(['boards/entwicklung.md']);
     await page.keyboard.press('Escape');
     await page.locator('#t-board').click();
-    await page.getByRole('menuitem', { name: /Test/ }).click();
+    await page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Test/ }).click();
     await expect(page.locator('.bahn')).toHaveCount(1);
     await liveBereit(page);
     k.schreib('kanbanD.md', '---\npeople: [\n---\n');

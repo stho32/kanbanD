@@ -20,7 +20,7 @@ test.describe('R00032', () => {
     await page.goto(k.adresse);
     await expect(page).toHaveTitle('(1 ▶) Entwicklung — kanbanD');
     await page.locator('#t-board').click();
-    await page.getByRole('menuitem', { name: /Test/ }).click();
+    await page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Test/ }).click();
     await expect(page).toHaveTitle('(1 ▶) Test — kanbanD');
     await page.goto(k.adresse);
     await expect(page.locator('#t-board')).toContainText('Test');

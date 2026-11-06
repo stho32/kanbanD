@@ -14,8 +14,8 @@ test.describe('R00008', () => {
     await page.goto(k.adresse);
     await expect(page.locator('#t-board')).toContainText('Entwicklung');
     await page.locator('#t-board').click();
-    await expect(page.getByRole('menuitem')).toHaveText([/Entwicklung/, /Test/, /Alle Aufgabenreservierungen anzeigen/]);
-    await page.getByRole('menuitem', { name: /Test/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Boards' }).getByRole('button')).toHaveText([/Entwicklung/, /Test/, /Alle Aufgabenreservierungen anzeigen/]);
+    await page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Test/ }).click();
     await expect(page.locator('.bahn-kopf')).toHaveCount(2);
     await expect(page.locator('.bahn').first()).toHaveAttribute('data-col', 'Bereit');
     expect(page.url()).toMatch(/#\/board\/test$/);

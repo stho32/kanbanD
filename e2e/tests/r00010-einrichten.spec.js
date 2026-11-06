@@ -26,7 +26,7 @@ test.describe('R00010', () => {
     expect(k.lies('kanbanD.md')).toContain('doku: {label: Doku, color:');
     expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|Einstellungen geändert');
     await page.locator('#t-ich').click();
-    await expect(page.getByRole('menuitem', { name: /Kai/ })).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: /Kai/ })).toBeVisible();
   });
 
   test('US-2: stilllegen statt entfernen', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('R00010', () => {
     await expect(page.getByText('gespeichert')).toBeVisible();
     expect(k.lies('kanbanD.md')).toContain('mi: {name: Mia, kind: human, active: false}');
     await page.locator('#t-ich').click();
-    await expect(page.getByRole('menuitem', { name: /Mia/ })).toHaveCount(0);
+    await expect(page.getByRole('menuitemradio', { name: /Mia/, disabled: false })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await page.getByRole('link', { name: 'Board' }).click();
     await expect(page.locator('.ka[data-id="1"] .pk')).toHaveAttribute('title', 'Mia (stillgelegt)');
