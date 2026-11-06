@@ -192,3 +192,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Architektur | architekt (frisch) | bestanden: ADR-0010 Fokusführung über Ebenen, A00009 | 0:05 | 976ab85 |
 | 2026-11-06 | #8 | Detailplanung | planer (frisch) | bestanden: R00106, I0095 mit 13 Bubbles; B0385 an product-owner; Entwicklung entw1 beauftragt | 0:09 | cadb278 |
 | 2026-11-06 | #8 | Detailplanung | product-owner (frisch) | bestanden: Pops eingeordnet (Z. 107–108), nichts an den Betreiber; Nachtrag planer (frisch) und architekt (fortgesetzt) beauftragt | 0:02 | 679216a |
+| 2026-11-06 | #8 | Detailplanung | planer (frisch), architekt (fortgesetzt) | Nachtrag bestanden: R00106 52 Kriterien, US-9/US-10, B0385 frei, ADR-0010 Folgeentscheidung | 0:06 | e847fb2, 189ed1b, f6506e6 |
