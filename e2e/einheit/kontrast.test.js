@@ -139,26 +139,42 @@ function dunkelAbweichungen(text) {
   return [...namen].filter(name => dunkelSystem.get(name) !== dunkel.get(name));
 }
 
-/** Farbeigenschaft im Stylesheet oder in einem style-Attribut; Eingabewerte (value, placeholder) sind Nutzerfarben und zählen nicht. */
-const FARBEIGENSCHAFT = /(?:^|[\s;{"'`])((?:color|background[\w-]*|border[\w-]*|outline[\w-]*|box-shadow|fill|stroke|text-decoration-color|--[\w-]+)\s*:\s*[^;{}"'`]*)/g;
-const FARBLITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lch|lab|hwb)\(/;
+/**
+ * Farbeigenschaft im Stylesheet, in einem style-Attribut, als SVG-Attribut (`fill="…"`), als JS-Zuweisung (`e.style.color = …`)
+ * oder als Schlüssel eines Objekt-Literals (`{ color: … }`); Eingabewerte (value, placeholder) sind Nutzerfarben und zählen nicht.
+ */
+const FARBEIGENSCHAFT = /(?:^|[\s;{"'`.,(])((?:[\w-]*[Cc]olor[\w-]*|background[\w-]*|border[\w-]*|outline[\w-]*|box-?[Ss]hadow|text-?[Ss]hadow|text-?[Dd]ecoration[\w-]*|column-?[Rr]ule[\w-]*|fill|stroke|--[\w-]+)\s*[:=]\s*['"`]?[^;{}"'`]*)/g;
+const SET_PROPERTY = /setProperty\(\s*['"`]([\w-]+)['"`]\s*,\s*([^)]*)\)/g;
+const FARBNAMEN = ('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen').split(' ');
+const FARBLITERAL = new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\b(?:rgba?|hsla?|oklch|oklab|lch|lab|hwb|color)\\(|(?<![\\w-])(?:${FARBNAMEN.join('|')})(?![\\w-])`, 'i');
+/** Wert ohne Token-Verweise: `var(--kd-c-red)` nennt ein Token, keinen Farbnamen. */
+const ohneVerweise = wert => wert.replace(/var\([^()]*\)/g, '');
+/** Die Farbdeklarationen einer Zeile, die ein Literal tragen, als `eigenschaft:wert`. */
+function literalDeklarationen(zeile) {
+  const deklarationen = [
+    ...[...zeile.matchAll(FARBEIGENSCHAFT)].map(treffer => treffer[1]),
+    ...[...zeile.matchAll(SET_PROPERTY)].map(treffer => `${treffer[1]}:${treffer[2]}`),
+  ];
+  return deklarationen.filter(deklaration => FARBLITERAL.test(ohneVerweise(deklaration.slice(deklaration.search(/[:=]/) + 1)))).map(deklaration => deklaration.trim());
+}
 /** Zeilen mit einem Farbliteral in einer Farbeigenschaft, als `datei:zeile`; Kommentare zählen nicht. */
 function literalZeilen(datei, text) {
-  const funde = [];
-  ohneKommentare(text).split('\n').forEach((zeile, i) => {
-    const mitLiteral = [...zeile.matchAll(FARBEIGENSCHAFT)].some(deklaration => FARBLITERAL.test(deklaration[1]));
-    if (mitLiteral) funde.push(`${datei}:${i + 1}`);
-  });
-  return funde;
+  return ohneKommentare(text).split('\n').flatMap((zeile, i) => literalDeklarationen(zeile).length ? [`${datei}:${i + 1}`] : []);
 }
-/** Zeilen, die bis zu ihrer Bubble ein Literal behalten; erkannt am Selektor, nicht an der Zeilennummer. */
+/** Regeln, die bis zu ihrer Bubble ein Literal behalten: genau dieser Selektor mit genau diesen Deklarationen, sonst nichts. */
 const LITERAL_AUSSTEHEND = [
-  { selektor: '.kz.modus .kz-z1', bubble: MODUS },
-  { selektor: '.kz-modus .kz-btn', bubble: MODUS },
+  { selektor: '.kz.modus .kz-z1', deklarationen: ['border-color:oklch(1 0 0 / .2)'], bubble: MODUS },
+  { selektor: '.kz-modus .kz-btn', deklarationen: ['border-color:oklch(1 0 0 / .3)'], bubble: MODUS },
 ];
 function literaleOhneAusstehende(datei, text) {
-  const zeilen = text.split('\n');
-  const ausstehend = ort => LITERAL_AUSSTEHEND.some(aus => zeilen[Number(ort.split(':')[1]) - 1].includes(aus.selektor));
+  const zeilen = ohneKommentare(text).split('\n');
+  const alleRegeln = regeln(text);
+  const ausstehend = ort => {
+    const nr = Number(ort.split(':')[1]);
+    const regel = alleRegeln.find(r => r.zeile === nr);
+    const literale = literalDeklarationen(zeilen[nr - 1]);
+    return regel !== undefined && LITERAL_AUSSTEHEND.some(aus => aus.selektor === regel.selektor && literale.every(d => aus.deklarationen.includes(d)));
+  };
   return literalZeilen(datei, text).filter(ort => !ausstehend(ort));
 }
 const gepruefteDateien = () => ['kd-app.css', 'kd-base.css', ...fs.readdirSync(WEB).filter(name => name.endsWith('.js')).sort()];
@@ -308,6 +324,51 @@ test('Selbstprobe Literal: Nutzerfarben, Token-Verweise, Mischungen und Kommenta
     '<span style="color:#123456">',
   ].join('\n');
   assert.deepStrictEqual(literalZeilen('probe', probe), ['probe:5']);
+});
+
+test('Selbstprobe Literal: Farbnamen, weitere Farbeigenschaften, JS-Zuweisung, Objekt-Literal und SVG-Attribute werden erkannt', () => {
+  const mutationen = [
+    '.a{color:white}',
+    '.a{background:black}',
+    '.a{text-shadow:0 1px 0 #fff}',
+    '.a{caret-color:#fff}',
+    '.a{accent-color:#fff}',
+    '.a{column-rule:1px solid #fff}',
+    '.a{column-rule-color:rgb(0 0 0)}',
+    'e.style.color = "#fff";',
+    "e.style.backgroundColor = 'white';",
+    "e.style.setProperty('color', '#fff');",
+    'const stil = { color: "#fff" };',
+    "const stil = { backgroundColor: 'black' };",
+    '<rect fill="#fff"></rect>',
+    '<path stroke="black"></path>',
+  ];
+  const funde = literalZeilen('probe', mutationen.join('\n'));
+  assert.deepStrictEqual(funde, mutationen.map((_, i) => `probe:${i + 1}`));
+});
+
+test('Selbstprobe Literal: Farbnamen in Token-Namen, Schlüsselwörter und Nicht-Farbeigenschaften zählen nicht', () => {
+  const probe = [
+    '.a{background:var(--kd-c-red);color:currentColor;border:none;fill:none;stroke:transparent}',
+    '.a{white-space:nowrap;stroke-width:1.5}',
+    'const name = "white";',
+    '<path stroke="var(--kd-wl-1)" fill="${farbe}"></path>',
+    "e.style.color = '';",
+  ].join('\n');
+  assert.deepStrictEqual(literalZeilen('probe', probe), []);
+});
+
+test('Selbstprobe ausstehend: die Ausnahme gilt nur für den genauen Selektor mit seinem Literal', () => {
+  const app = lies('kd-app.css');
+  const zeilen = app.split('\n');
+  const nr = zeilen.findIndex(zeile => zeile.startsWith('.kz-modus .kz-btn.haupt{')) + 1;
+  assert.ok(nr > 0, '.kz-modus .kz-btn.haupt gefunden');
+  zeilen[nr - 1] = zeilen[nr - 1].replace('}', ';color:#fff}');
+  assert.deepStrictEqual(literaleOhneAusstehende('kd-app.css', zeilen.join('\n')), [`kd-app.css:${nr}`]);
+  const btn = zeilen.findIndex(zeile => zeile.startsWith('.kz-modus .kz-btn{')) + 1;
+  zeilen[nr - 1] = zeilen[nr - 1].replace(';color:#fff}', '}');
+  zeilen[btn - 1] = zeilen[btn - 1].replace('}', ';color:#fff}');
+  assert.deepStrictEqual(literaleOhneAusstehende('kd-app.css', zeilen.join('\n')), [`kd-app.css:${btn}`]);
 });
 
 /* ── faint ── */
