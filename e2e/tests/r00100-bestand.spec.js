@@ -214,6 +214,24 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(page.locator('#flt')).toHaveValue('');
   });
 
+  for (const breite of [320, 375, 414]) {
+    test(`Schmales Layout ${breite} px: nur der Tabellenbereich scrollt quer, „shop“ und „409“ bleiben am Ende sichtbar`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      const dazu = {};
+      for (let i = 0; i < 10; i++) dazu[8 + i] = aufgabeMd(8 + i, ['repo:shop', `nc:${400 + i}`], 'drift');
+      await bericht(page, grundbestand({ dazu }));
+      await expect(spaltenkoepfe(page).last()).toHaveText('Summe');
+      const flaeche = page.locator('#best-scroll');
+      await flaeche.evaluate(e => { e.scrollLeft = e.scrollWidth; });
+      expect(await flaeche.evaluate(e => e.scrollLeft)).toBeGreaterThan(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(breite);
+      const rahmen = await flaeche.boundingBox();
+      const drin = async ort => { const b = await ort.boundingBox(); return b.x >= rahmen.x - 0.5 && b.x + b.width <= rahmen.x + rahmen.width + 0.5; };
+      expect(await drin(zeilenkoepfe(page).filter({ hasText: /^shop$/ })), 'Zeilenkopf shop').toBe(true);
+      expect(await drin(spaltenkoepfe(page).filter({ hasText: /^409$/ })), 'Spaltenkopf 409').toBe(true);
+    });
+  }
+
   test('Live: eine neue Aufgabe [repo:shop, nc:304] in „Eingang“ zeigt shop × 304 = 3 ohne Neuladen', async ({ page }) => {
     await bericht(page, grundbestand());
     await expect(await zelle(page, 'shop', '304')).toHaveText('2');

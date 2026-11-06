@@ -259,6 +259,14 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .kost-api:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 .kost-reset{margin-top:4px}
 /* Bestand nach Labels (R00100, Artboard D0006 #bestand-nach-labels) */
+.best-scroll{overflow-x:auto;max-width:100%;background:var(--kd-surface)}
+.best-tab{width:auto;min-width:100%}
+.best-tab th,.best-tab td{min-width:72px}
+.best-tab thead th{position:sticky;top:0;z-index:2}
+.best-tab tbody th{position:sticky;left:0;z-index:1;background:var(--kd-surface);text-align:left;font-size:13px;font-weight:500;color:var(--kd-text);padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);border-right:1px solid var(--kd-line);white-space:nowrap}
+.best-tab thead th.ecke{left:0;z-index:3;border-right:1px solid var(--kd-line);font-family:var(--kd-mono);font-weight:400}
+.best-tab tr.best-summe th{background:var(--kd-bg);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
+.best-tab tr.best-summe td{color:var(--kd-text)}
 .best-tab td.k{background:var(--c);border-left:3px solid var(--cl)}
 .best-tab tbody tr:hover td.k{background:var(--c)}
 .best-leg{position:static;height:auto;min-height:28px;flex-wrap:wrap;border-top:1px solid var(--kd-line);gap:var(--kd-s3)}
