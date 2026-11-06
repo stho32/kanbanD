@@ -268,3 +268,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Auto-Reviews | entwickler | S1 Ausnahme nur in ihrer Ansicht (Mutant rot „AB“ 1,225 auf #/board/), O1 Untergrenze je Thema (rot 1,235 < 2,048), ansichtOeffnen gegen Reste der Voransicht; node 246/0, Spec 23 passed | 0:20 | b1b27b4 (karte/9) |
 | 2026-11-06 | #9 | Ohne Mensch nicht lösbar | director | wartet auf Freigabe Zustand D0002 Modusleiste (B0393), Rest gebaut und reviewt auf karte/9 bis b1b27b4; nach po Z.76 läuft die nächste Karte | 0:05 | — |
 | 2026-11-06 | #10 | Architektur | architekt (frisch) | beauftragt; #20 übersprungen (Gemeinkosten-Sammelkarte) | — | — |
+| 2026-11-06 | #10 | Architektur | architekt | befund: ADR-0012 Zielgrößen zentral (Vorgeschlagen), X00003, A00009; fein 18/114 < 24, Touch 93/93 < 44; zwei Maße an PO | 0:40 | f979e37 |
