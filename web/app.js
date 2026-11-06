@@ -986,7 +986,7 @@ async function act(a, arg, wert) {
         if (f.i == null) liste.push(neu); else liste[f.i] = neu;
         return termineSchreiben(liste, true);
       }
-      case 'bf-leeren': berichtsfilterSetzen(filterZuruecksetzen(u.bf, arg === 'zeitraum')); break;
+      case 'bf-leeren': berichtsfilterSetzen(filterZuruecksetzen(u.bf, arg === 'zeitraum')); u.fokus = '.bf-zusammen'; break; // der Knopf verschwindet oft mit dem Filter: Fokus auf die Zusammenfassung (Rangfolge, ADR-0010)
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'wbs-klapp': {

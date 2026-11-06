@@ -160,6 +160,28 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(reset(page)).toHaveCount(0);
   });
 
+  test('Nacharbeit S2: nach „Zurücksetzen“ im Leerzustand steht der Fokus auf der Zusammenfassung der Filterleiste', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand());
+    await filterOeffnen(page);
+    for (const name of ['Eingang', 'In Arbeit', 'Fertig']) await spalte(page, name).click();
+    await expect(reset(page)).toHaveText('Zurücksetzen');
+    await reset(page).click();
+    await expect(reset(page)).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement.matches('.bf-zusammen'))).toBe(true);
+  });
+
+  for (const route of ['prognose', 'verlauf']) {
+    test(`Nacharbeit S2: nach „Zurücksetzen“ in #/berichte/${route} steht der Fokus auf der Zusammenfassung`, async ({ page }) => {
+      await kostenOeffnen(page, grundbestand({}, {}, '---\nstart: 2026-10-01\nreport-filter: {exclude-classes: [bug]}\n---\n'));
+      await page.goto(k.adresse + '#/berichte/' + route);
+      await expect(page.locator('.bf-zusammen')).toContainText('1 aktiv');
+      await filterOeffnen(page);
+      await page.locator('.bf-fuss .bf-leeren').click();
+      await expect(page.locator('.bf-zusammen')).toContainText('Filter · keine');
+      await expect.poll(() => page.evaluate(() => document.activeElement.matches('.bf-zusammen'))).toBe(true);
+    });
+  }
+
   test('US-13: gespeicherter Zeitraum gilt hier nicht, zählt nicht, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {
     k = await kanbanStarten(einrichten(grundbestand({}, {}, LETZTE_WOCHE)));
     const vorher = pruefsumme(k.lies('boards/fabrik.md'));
