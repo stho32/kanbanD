@@ -388,13 +388,14 @@ test.describe('Touch-Maß aus dem Token, 390 px', () => {
   });
 });
 
-// B0405: Touch-Lauf der Messprobe — dieselben Ansichten bei 390 px, Maß 44 ohne Kreis-Ausnahme.
+// B0405: Touch-Lauf der Messprobe — dieselben Ansichten bei 390 px, Maß 44 ohne Kreis-Ausnahme; dazu bei 320 px,
+// der schmalsten Breite aus F0050, wo freie Spalten am engsten werden (B0419).
 // Das Kontextmenü fehlt: es öffnet nur per Rechtsklick. Unter offenem Fenster misst der Helfer nur die oberste Ebene.
-test.describe('Messprobe, Touch, 390 px', () => {
-  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+for (const breite of [390, 320]) test.describe(`Messprobe, Touch, ${breite} px`, () => {
+  test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
   for (const { ansicht, oeffnen, touchBreite } of ANSICHTEN.filter(a => !a.ansicht.startsWith('Kontextmenü'))) {
     test(`${ansicht}: jedes Ziel mindestens 44 × 44`, async ({ page }) => {
-      if (touchBreite) await page.setViewportSize({ width: touchBreite, height: 844 });
+      if (touchBreite) await page.setViewportSize({ width: Math.max(touchBreite, breite), height: 844 });
       await starten(page);
       await oeffnen(page);
       await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
@@ -421,6 +422,31 @@ test.describe('Board-Name in der Kopfzeile, Touch, 375 px', () => {
     expect((await knopf.boundingBox()).width).toBeGreaterThanOrEqual(88);
   });
 });
+
+// Die Zelle des Board-Namens schrumpft nicht unter ihren Knopf: der Knopf ragt nicht unter den Seitenknopf (B0420)
+for (const breite of [320, 375, 414]) {
+  test.describe(`Board-Name neben dem Seitenknopf, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 812 }, isMobile: true, hasTouch: true });
+    test('die Zelle umschließt den Knopf, der Knopf schneidet den Seitenknopf nicht, seine rechte Hälfte trifft ihn selbst', async ({ page }) => {
+      await starten(page);
+      await brett(page);
+      await page.locator('.ka').first().waitFor();
+      const m = await page.evaluate(() => {
+        const zelle = document.querySelector('.kz-reihe>.kz-z1'), knopf = document.querySelector('.kz-board');
+        const rb = knopf.getBoundingClientRect(), rs = document.querySelector('.kz-seite').getBoundingClientRect();
+        const mitteY = (rb.top + rb.bottom) / 2;
+        const punkte = [0.55, 0.75, 0.95].map(anteil => rb.left + rb.width * anteil);
+        return {
+          zelle: [zelle.scrollWidth, zelle.clientWidth], knopfRechts: rb.right, seiteLinks: rs.left,
+          verfehlt: punkte.filter(x => !document.elementFromPoint(x, mitteY).closest('.kz-board')).map(Math.round),
+        };
+      });
+      expect(m.zelle[0], 'scrollWidth ≤ clientWidth der Zelle').toBeLessThanOrEqual(m.zelle[1]);
+      expect(m.knopfRechts, 'Board-Knopf endet vor dem Seitenknopf').toBeLessThanOrEqual(m.seiteLinks);
+      expect(m.verfehlt, 'Punkte der rechten Hälfte, die nicht den Board-Knopf treffen').toEqual([]);
+    });
+  });
+}
 
 // Klickbare Berichtszeilen: bei Touch wachsen sie auf das Zielmaß (Messprobe), mit der Maus bleiben sie dicht.
 test.describe('Berichtszeilen mit der Maus, 1280 px', () => {

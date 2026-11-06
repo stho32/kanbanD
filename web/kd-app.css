@@ -14,12 +14,16 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>*{flex:none}
 .kz-reihe>.kz-nav{align-self:stretch}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
-.kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
+.kz-reihe>.kz-z1{flex:0 .2 auto;box-sizing:content-box;min-width:var(--kd-ziel);padding:0 var(--kd-s3);white-space:nowrap}
 .kz-board{max-width:240px;min-width:var(--kd-ziel)}
 /* Der Board-Name bleibt lesbar: in der Stufe compact rücken die Ziele der Reihe enger zusammen und die Zelle
    des Namens verzichtet auf den rechten Abstand — so bleiben bei 375 px mit Touch rund 96 px für den Namen */
 .kz[data-stufe="compact"] .kz-reihe{gap:var(--kd-s1)}
 .kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-right:0}
+/* Die Zelle schrumpft nie unter den Knopf (Inhaltsbox mindestens ein Ziel, Z. 17), sonst ragt er unter den Nachbarn; damit
+   bei 320 px mit Timer, „+“, Ich und Mehr ein Ziel bleibt, rücken Zelle und Reihe in compact um je 4 px an den Rand */
+.kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-left:var(--kd-s2)}
+.kz[data-stufe="compact"] .kz-reihe:first-child{padding-right:var(--kd-s2)}
 .kz[data-stufe="large"] .kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
 .ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
