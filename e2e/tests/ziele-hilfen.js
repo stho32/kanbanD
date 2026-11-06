@@ -18,11 +18,11 @@ const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .wbs-tabelle, .wl-scroll';
  */
 /**
  * Was als Bedienziel gemessen wird (ADR-0012 Regel 2): Steuerelemente und Rollen, Textfelder, ein Label, das für
- * sein verstecktes Feld angetippt wird, und jede Klickfläche mit data-act — auch ohne Rolle, auch eine Tabellenzeile.
- * Diagrammpunkte noch nicht (B0414).
+ * sein verstecktes Feld angetippt wird, und jede Klickfläche mit data-act — auch ohne Rolle, auch eine Tabellenzeile
+ * und ein Diagrammpunkt (der besteht über ein gleichwertiges Ziel, siehe gleichwertigBesteht).
  */
 const ZIELE = 'button, select, input:not([type=hidden]), textarea, a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href], '
-  + 'label:has(> input:is([hidden], [type=file])), [data-act]:not(circle)';
+  + 'label:has(> input:is([hidden], [type=file])), [data-act]';
 
 function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);
@@ -115,9 +115,18 @@ function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
     return !schneidetZiel && !schneidetKreis;
   }
 
+  // Ausnahme „gleichwertiges Ziel“ (WCAG 2.5.8 Equivalent, PO Z. 135): ein Diagrammpunkt besteht, wenn dieselbe Ansicht
+  // ein gemessenes, bestehendes Ziel mit gleichem data-act und data-arg bietet
+  function gleichwertigBesteht(m, bestehend) {
+    if (!m.el.matches('circle[data-act]')) return false;
+    return bestehend.some(o => o !== m && o.el.dataset.act === m.el.dataset.act && o.el.dataset.arg === m.el.dataset.arg);
+  }
+
   const gemessen = [...document.querySelectorAll(ZIELE)].filter(istZiel).map(messen);
   const zuKlein = gemessen.filter(m => m.breite < mass || m.hoehe < mass);
-  const verstoesse = gemessen.filter(m => !m.trifft || (zuKlein.includes(m) && !(kreisAusnahme && kreisFrei(m, gemessen, zuKlein))));
+  const verfehlt = gemessen.filter(m => !m.trifft || (zuKlein.includes(m) && !(kreisAusnahme && kreisFrei(m, gemessen, zuKlein))));
+  const bestehend = gemessen.filter(m => !verfehlt.includes(m));
+  const verstoesse = verfehlt.filter(m => !gleichwertigBesteht(m, bestehend));
   scrollTo(0, 0);
   return verstoesse.map(m => ({ ansicht, selektor: selektor(m.el), name: name(m.el), breite: m.breite, hoehe: m.hoehe, mass, trifft: m.trifft }));
 }

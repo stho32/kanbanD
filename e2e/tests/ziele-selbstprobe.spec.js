@@ -101,6 +101,31 @@ test.describe('Selbstproben, Touch', () => {
     await page.setContent(STIL + knopf(100, 100, 32, 'kopf32') + knopf(300, 100, 44, 'kopf44') + knopf(100, 300, 20, 'einsam'));
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['kopf32', 'einsam']);
   });
+
+  // B0414 (PO Z. 135): ein Diagrammpunkt ist klein, besteht aber, wenn dieselbe Ansicht ein gleichwertiges Ziel
+  // (gleiches data-act und data-arg) bietet, das selbst gemessen ist und besteht
+  const punkt = '<svg style="position:absolute;left:0;top:200px" width="300" height="60"><circle cx="30" cy="30" r="5" data-act="oeffnen" data-arg="7" aria-label="Punkt 7"></circle></svg>';
+  const zeile = hoehe => `<table style="position:absolute;left:0;top:0;border-collapse:collapse"><tr data-act="oeffnen" data-arg="7" aria-label="Zeile 7"><td style="height:${hoehe}px;padding:0;width:200px">sieben</td></tr></table>`;
+
+  test('ein Diagrammpunkt mit gleichwertiger Zeile besteht', async ({ page }) => {
+    await page.setContent(STIL + zeile(48) + punkt);
+    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' })).toEqual([]);
+  });
+
+  test('Mutante „Zeile fehlt“: der Punkt zählt als Verstoß', async ({ page }) => {
+    await page.setContent(STIL + punkt);
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Punkt 7']);
+  });
+
+  test('Mutante „Zeile unter Maß“: Zeile und Punkt zählen als Verstoß', async ({ page }) => {
+    await page.setContent(STIL + zeile(28) + punkt);
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Zeile 7', 'Punkt 7']);
+  });
+
+  test('eine Zeile mit anderem data-arg ist nicht gleichwertig', async ({ page }) => {
+    await page.setContent(STIL + zeile(48).replace('data-arg="7"', 'data-arg="8"') + punkt);
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Punkt 7']);
+  });
 });
 
 test.describe('Selbstprobe Titel', () => {
