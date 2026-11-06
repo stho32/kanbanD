@@ -334,3 +334,11 @@ Nie vom User erfragen.
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0343 Verlauf nimmt den gelesenen Board-Namen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0344 Doppelte Nummer an der Tür der Sammel-Wege | Nacharbeit | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0345 Ungültiger Board-Dateiname im Menü zeigt die Defektfläche | Nacharbeit | 0,5-1h | 0,1h | 0,2h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0346 Präfixe und Vorschlag | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0347 Bestand rechnen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0357 Name je Zelle | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0361 Achsen nach Wahl | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0352 Zielfilter einer Zelle | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0349 report-labels im Frontmatter | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0350 PUT Achsen des Bestands | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | B0354 Filterleiste in der Rechnung | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
