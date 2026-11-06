@@ -203,3 +203,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Auto-Review (Wdh.) | ux-reviewer (fortgesetzt) | befund: Muss Live-Ereignis holt Fokus nach Mausbedienung zurück und scrollt Board (375 px), neu ggü. f8fc5bc | 0:07 | — |
 | 2026-11-06 | #8 | Architektur (Drift) | architekt (frisch) | bestanden; ADR-0010 Nachtrag N1–N6, A00009 nachgezogen; 2 offene Fragen an PO | 0:20 | 98e753b, 8897b75 |
 | 2026-11-06 | #8 | Rückfrage | product-owner (frisch) | entschieden: R00106 Z.110 angleichen + Zählung im Wächter; Pop-Ausgleich bleibt | 0:08 | 3aae3ce |
+| 2026-11-06 | #8 | Architektur (PO-Folge) | architekt (frisch) | bestanden; ADR-0010 N3/N5 und A00009 nach PO-Entscheidung | 0:06 | ba09db5, 0c122c5 |
