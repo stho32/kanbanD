@@ -22,6 +22,8 @@ const plus = (iso, n) => { const d = utc(iso); d.setUTCDate(d.getUTCDate() + n);
 const montag = iso => plus(iso, -((utc(iso).getUTCDay() + 6) % 7));
 const woche = iso => [0, 1, 2, 3, 4, 5, 6].map(n => plus(montag(iso), n));
 
+/** Hilfstext beider Herkunftsfelder (Aufgabenfenster und „Neue Aufgabe“). */
+const HERKUNFT_HILFE = 'WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder „ohne Herkunft“ · Enter';
 const ALS_ST = { headers: { 'X-KanbanD-Wer': 'st' } };
 const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl', 'X-KanbanD-Instanz': 'lauf-1' } };
 
@@ -426,6 +428,12 @@ test.describe('US-9: ohne Herkunft', () => {
     // die abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
     await expect(page.getByLabel('Neue Herkunft')).toHaveValue('ohne Herkunftx');
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
+  });
+
+  test('US-9, Hilfstext: das Feld „Neue Herkunft“ nennt „ohne Herkunft“ in Anführungszeichen, nicht thin air', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    await expect(page.getByLabel('Neue Herkunft')).toHaveAttribute('title', HERKUNFT_HILFE);
   });
 
   test('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {
