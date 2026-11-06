@@ -176,3 +176,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Entwicklung | gestalter (frisch) | bestanden: D0006 Zustand Bestand nach Labels gezeichnet, wartet auf Freigabe des Auftraggebers | 0:08 | 9cdedb4 |
 | 2026-11-06 | #6 | Entwicklung | entwickler (frisch) | bestanden: 8 freie Bubbles auf main (ff 9db218c), Ist-Zeiten/Gelerntes 3449da6; Karte nach „Ohne Mensch nicht lösbar“ — Freigabe Artboard D0006 | 0:16 | 9db218c |
 | 2026-11-06 | #18 | Architektur | director | gezogen, architekt (frisch) beauftragt | — | — |
+| 2026-11-06 | #18 | Architektur | architekt (frisch) | bestanden: ADR-0009 Kosten als ganze Cent, eine Prüfung für Datei und API; Zug in Detailplanung, PO zu 5 Produktfragen | 0:07 | 2dad3ef |
