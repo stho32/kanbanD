@@ -31,7 +31,8 @@ function kontrast(vorne, grund) {
   const [hell, dunkel] = [leuchtdichte(vorne), leuchtdichte(grund)].sort((x, y) => y - x);
   return (hell + 0.05) / (dunkel + 0.05);
 }
-const zahl = wert => wert.toFixed(2).replace('.', ',');
+/** Nur für die Meldung, drei Stellen, damit 4,497 nicht als „4,50 < 4,5“ erscheint; verglichen wird immer ungerundet. */
+const zahl = wert => wert.toFixed(3).replace('.', ',');
 const mass = wert => String(wert).replace('.', ',');
 
 /* ── Stylesheets lesen: Regeln mit Zeile, Token-Blöcke, var() ── */
@@ -205,7 +206,14 @@ for (const paarung of PAARUNGEN) {
 test('Selbstprobe Paar: --kd-faint auf --kd-bg von heute (3,29) ist als Schrift ein Verstoß', () => {
   const werte = new Map([['--kd-faint', 'oklch(0.62 0.014 255)'], ['--kd-bg', 'oklch(0.965 0.005 250)']]);
   const paar = { name: 'Probe', flaechen: ['--kd-bg'], vorne: ['--kd-faint'], mass: SCHRIFT };
-  assert.deepStrictEqual(verstoesse(paar, { hell: werte }), ['Probe: --kd-faint auf --kd-bg, hell 3,29 < 4,5']);
+  assert.deepStrictEqual(verstoesse(paar, { hell: werte }), ['Probe: --kd-faint auf --kd-bg, hell 3,288 < 4,5']);
+});
+
+test('Selbstprobe Grenze: 4,4979 ist ein Verstoß, 4,5 nicht — verglichen wird ungerundet', () => {
+  const werte = new Map([['--kd-knapp', 'oklch(0.5682 0 0)'], ['--kd-weiss', 'oklch(1 0 0)']]);
+  const paar = { name: 'Probe', flaechen: ['--kd-weiss'], vorne: ['--kd-knapp'], mass: SCHRIFT };
+  assert.deepStrictEqual(verstoesse(paar, { hell: werte }), ['Probe: --kd-knapp auf --kd-weiss, hell 4,498 < 4,5']);
+  assert.deepStrictEqual(verstoesse({ ...paar, mass: 4.497 }, { hell: werte }), []);
 });
 
 test('Selbstprobe Paar: ein fehlendes Token wird mit Namen und Thema gemeldet', () => {

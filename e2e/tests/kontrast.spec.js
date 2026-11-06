@@ -21,7 +21,7 @@ const GRUNDBESTAND = () => ({
 });
 
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
-const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(2).replace('.', ',')}`;
+const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(3).replace('.', ',')}`;
 
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
 async function verstoesseInBeidenThemen(page, bereiche, vorher = async () => {}) {
@@ -62,6 +62,16 @@ test.describe('R00107 Kontrast', () => {
     expect(gemeldet).toHaveLength(1);
     expect(gemeldet[0]).toMatchObject({ bereich: '#probe-faint', element: 'span', text: 'blass' });
     expect(gemeldet[0].wert).toBeCloseTo(3.29, 1);
+  });
+
+  test('Grenzwert: knapp unter 4,5 (ungerundet 4,4967) ist ein Verstoß, auch wenn die Anzeige 4,50 ergäbe', async ({ page }) => {
+    await thema(page, 'light');
+    await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
+      '<div id="probe-knapp" style="background:#fff"><span style="color:rgb(117,118,130)">x</span></div>'));
+    const gemeldet = await kontrastVerstoesse(page, ['#probe-knapp'], 4.5);
+    expect(gemeldet).toHaveLength(1);
+    expect(gemeldet[0].wert).toBeGreaterThan(4.49);
+    expect(gemeldet[0].wert).toBeLessThan(4.5);
   });
 
   test('US-1: Board mit Legende und leerer Spalte, beide Themen', async ({ page }) => {

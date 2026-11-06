@@ -169,11 +169,11 @@ function kontrastWerkzeugEinbauen() {
   const messen = bereiche => bereiche.flatMap(bereich => [...document.querySelectorAll(bereich)]
     .flatMap(wurzel => [wurzel, ...wurzel.querySelectorAll('*')])
     .filter(e => sichtbar(e) && !inaktiv(e))
-    .flatMap(e => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: Math.round(schriftGegenGrund(e, s.farbe) * 100) / 100 }))));
+    .flatMap(e => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: schriftGegenGrund(e, s.farbe) }))));
   window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])) };
 }
 
-/** Alle Schriften mit eigenem Text unter den Bereichen: [{bereich, element, text, wert}]; Inaktives zählt nicht. */
+/** Alle Schriften mit eigenem Text unter den Bereichen: [{bereich, element, text, wert}]; Inaktives zählt nicht. `wert` ist ungerundet — gerundet wird nur für die Anzeige, nie vor dem Vergleich mit dem Maß. */
 async function kontrastMessen(page, bereiche) {
   await page.evaluate(kontrastWerkzeugEinbauen);
   return page.evaluate(b => window.kdKontrast.messen(b), bereiche);
