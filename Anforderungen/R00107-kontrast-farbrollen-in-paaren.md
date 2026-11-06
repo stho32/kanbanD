@@ -8,7 +8,7 @@ datum: 2026-11-06
 
 ## Beschreibung
 
-Im Dunkelthema ist ein Teil der Schrift kaum lesbar. Die Modusleiste „Spalten einrichten“ zeigt ihren Titel mit 1,33:1. Die Initialen der Personen erreichen 2,61:1 bei Menschen und 2,55:1 bei Agenten, „Neue Aufgabe“ in der Kopfzeile 3,83:1. Auch im hellen Thema liegen Texte unter 4,5:1: die Initiale eines Agenten (4,08:1), der Untertitel der Modusleiste (4,08:1), ein überfälliges Datum auf einer Karte der Klasse „bug“ (4,37:1) und jeder Text in `--kd-faint`, etwa die Herkunft auf einer Karte (2,63–3,58:1). Gemessen wurde am 2026-11-06 im headless Chromium auf Stand `d9674e3`; wo Messung und Rechnung in der zweiten Nachkommastelle abweichen, steht hier wie überall in dieser Anforderung der gerechnete Wert. Werkzeug und Grundbestand stehen in den Notizen.
+Im Dunkelthema ist ein Teil der Schrift kaum lesbar. Die Modusleiste „Spalten einrichten“ zeigt ihren Titel mit 1,33:1. Die Initialen der Personen erreichen 2,61:1 bei Menschen und 2,55:1 bei Agenten, „Neue Aufgabe“ in der Kopfzeile 3,81:1. Auch im hellen Thema liegen Texte unter 4,5:1: die Initiale eines Agenten (4,08:1), der Untertitel der Modusleiste (4,08:1), ein überfälliges Datum auf einer Karte der Klasse „bug“ (4,37:1) und jeder Text in `--kd-faint`, etwa die Herkunft auf einer Karte (2,63–3,58:1). Gemessen wurde am 2026-11-06 im headless Chromium auf Stand `d9674e3`; wo Messung und Rechnung in der zweiten Nachkommastelle abweichen, steht hier wie überall in dieser Anforderung der gerechnete Wert. Werkzeug und Grundbestand stehen in den Notizen.
 
 Die Ursache ist kein einzelner zu heller Ton. Eine Schriftfarbe steht auf einer Fläche, für die niemand ihren Kontrast versprochen hat (ADR-0011). Diese Anforderung setzt die Entscheidung der ADR um:
 - Jede Farbe in `web/kd-tokens.css` hat genau eine Rolle: Fläche, Schrift oder Linie.
@@ -196,10 +196,10 @@ Je Thema werden alle sichtbaren Elemente mit eigenem Text unter `header`, `.ka`,
 
 | Zustand | Bereiche | hell heute → Soll | dunkel heute → Soll |
 |---|---|---|---|
-| Board | `header`, `.ka`, `.bahn-kopf` | 2,63 (`.org.leer`), 4,08 (Initiale CL), 4,37 (Fälligkeit #1 auf Klasse rot) → ≥ 4,5 | 2,55 (Initiale CL), 2,61 (Initiale ST, MI), 2,98 (`.org.leer`), 3,83 („Neue Aufgabe“) → ≥ 4,5 |
+| Board | `header`, `.ka`, `.bahn-kopf` | 2,63 (`.org.leer`), 4,08 (Initiale CL), 4,37 (Fälligkeit #1 auf Klasse rot) → ≥ 4,5 | 2,55 (Initiale CL), 2,61 (Initiale ST, MI), 2,98 (`.org.leer`), 3,81 („Neue Aufgabe“) → ≥ 4,5 |
 | Spaltenkopf „In Arbeit“ mit „Grenze 1“ und Karte #1 dazu gezogen („überschritten“) | `.bahn-kopf` | 3,05 (`.v` auf `--kd-sunken`, gerechnet) → ≥ 4,5 | ≥ 4,5 bleibt |
 | Aufgabenfenster #2 per Klick | `[role=dialog]` | 3,58 (`.org.leer`), 4,08 (CL) → ≥ 4,5 | 2,55 (CL), 4,40 (`.org.leer`) → ≥ 4,5 |
-| Modusleiste über „Mehr“ → „Spalten einrichten“ | `header` | 4,08 (Pfad und Untertitel) → ≥ 4,5 | 1,33 (Titel, „Verwerfen“, Ich-Knopf), 1,53 (Pfad, Untertitel) → ≥ 4,5 |
+| Modusleiste über „Mehr“ → „Spalten einrichten“ | `header` | 4,08 (Pfad und Untertitel) → ≥ 4,5 | 1,33 (Titel, „Verwerfen“, Ich-Knopf), 1,52 (Pfad, Untertitel) → ≥ 4,5 |
 | Modusleiste mit Fehler: `PUT /api/boards/entwicklung/spalten` über `page.route` mit 409 und einer Fehlermeldung beantwortet, dann „Fertig“ | `header` | `.fehl-kopf` heute Amber auf `--kd-accent-ink` 8,79; auf der neuen Fläche bliebe Amber bei 1,07 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,86) | heute 8,12; Amber auf der neuen Fläche unter 1,1 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,79) |
 | Toast nach Ziehen von #2 nach „Erledigt“ (`#2 nach „Erledigt“`, „rückgängig“) | `.toast` | „rückgängig“ 11,49 (gerechnet) → ≥ 4,5 | „rückgängig“ 1,55 (gerechnet) → ≥ 4,5 |
 | Warnungs-Toast nach Ziehen von #1 nach „In Arbeit“ über die Grenze (`#pruef-warnung`, wie `r00096-wip-grenze.spec.js`) | `.toast` | „!“ 4,71 (gerechnet) → ≥ 4,5 | „!“ 2,63 (gerechnet) → ≥ 4,5 |
@@ -343,7 +343,7 @@ Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer 
   - Werkzeug: headless Chromium aus `e2e/node_modules` gegen `target/release/kanbanD` auf freiem Port, eigener Testordner, Grundbestand wie oben. Messregel wie Funktionale Anforderung 17.
   - Gerechnete Werte aus `kd-tokens.css`: oklch → sRGB → WCAG in Node.
   - Beide Wege bestätigen die Werte der ADR (1,33; 2,61; 2,55; 3,81; 4,08).
-  - Der Browser liegt bis 0,01 über der Rechnung: das 1×1-Canvas (Funktionale Anforderung 17) rundet jeden Kanal auf 8 Bit. Nachgerechnet (Review 2026-11-06, oklch → sRGB → WCAG ohne Rundung wie `kontrast()` der Unit): Weiß auf `--kd-agent` hell 4,0799, `--kd-head-muted` auf `--kd-accent-ink` hell 4,0833; mit 8-Bit-Kanälen je 0,01 mehr. Die Anforderung nennt durchgehend den gerechneten Wert.
+  - Der Browser liegt bis 0,01 über der Rechnung: das 1×1-Canvas (Funktionale Anforderung 17) rundet jeden Kanal auf 8 Bit. Nachgerechnet (Review 2026-11-06, oklch → sRGB → WCAG ohne Rundung wie `kontrast()` der Unit): Weiß auf `--kd-agent` hell 4,0799, `--kd-head-muted` auf `--kd-accent-ink` hell 4,0833; mit 8-Bit-Kanälen je 0,01 mehr. Die Anforderung nennt durchgehend den gerechneten Wert. Ebenso vereinheitlicht (Director 2026-11-06): Untertitel dunkel 1,52 (exakt 1,519) und „Neue Aufgabe“ dunkel 3,81 (exakt 3,806); für „Neue Aufgabe“ erklärt die 8-Bit-Rundung die frühere Browserangabe nicht, die Browsermessung liefert der Entwickler nach.
 - **Entscheidung Modusleiste**: Akzent-Container statt einer dunklen Fläche.
   - Verworfen: `--kd-accent` als Fläche mit `--kd-on-accent`. Dunkel misst das nur 4,67, und die Leiste hätte zwei Knöpfe auf gleicher Füllung.
   - Verworfen: `--kd-head` mit eigenem Akzentstreifen. Der Modus wäre dann kaum von der normalen Kopfzeile zu unterscheiden.
