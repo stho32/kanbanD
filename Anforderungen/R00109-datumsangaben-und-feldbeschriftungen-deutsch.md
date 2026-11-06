@@ -70,11 +70,13 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
 13. Übrige Beschriftungen im Aufgabenfenster: `wbs-effects` → „Wirkungen“, `phases` → „Phasen“, `reservation` → „Reservierung“. In „Einrichten“: `wbs` → „WBS“, `requirements` → „Anforderungen“. Beim ersten Start: `ich` → „Ich“, `agents` → „Agenten“, `board` → „Board“, `spalten` → „Spalten“, `wbs` → „WBS“, `anforderungen` → „Anforderungen“. Der Schlüssel steht jeweils als Hilfstext daneben (FA 11).
 14. „wartet auf“ ist eine Anzeige, kein Feld, und bleibt.
 
-### Ohne Herkunft (PO Z. 145)
+### Ohne Herkunft (PO Z. 145, Z. 147)
 
 15. Eine Aufgabe ohne Herkunft oder mit der Herkunft `thin air` zeigt auf der Karte und im Aufgabenfenster den Chip „ohne Herkunft“.
 16. Das Herkunftsfeld im Aufgabenfenster nimmt „ohne Herkunft“ und `thin air` an, ohne Rücksicht auf Groß- und Kleinschreibung und mit getrimmten Leerzeichen. Beides speichert `thin air` und ersetzt die übrigen Herkünfte, wie heute `thin air`.
 17. Der sichtbare Hinweis des Felds (Tooltip) nennt „ohne Herkunft“, nicht `thin air`.
+20. **Herkunftsfeld in „Neue Aufgabe“** (PO Z. 147): Ist der ganze Inhalt des Felds, getrimmt und ohne Rücksicht auf Groß- und Kleinschreibung, „ohne Herkunft“ oder `thin air`, entsteht `herkunft: [thin air]`. Erkannt wird mit derselben reinen Funktion des Kulturmoduls wie in FA 16. Bringt der Titel über die Schnelleingabe eine Herkunft mit (etwa „x I0001“ → `I0001`, `web/eingabe.js:42`), gilt nur diese, und `thin air` entfällt, so wie im Aufgabenfenster eine echte Herkunft `thin air` verdrängt (`web/app.js:1149`). Jeder andere Inhalt, auch gemischt wie „I0001 ohne Herkunft“, wird an Leerzeichen und Kommas getrennt wie heute (`web/app.js:336`). Die Schnelleingabe selbst bleibt unverändert (ADR-0013 Regel 1).
+    - Heute trennt das Feld `thin air` in `thin` und `air`; der Server weist die Aufgabe mit „„THIN“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air“ ab und legt nichts an (`src/modell/aufgabe.rs:561–567`, über `aendern` aus `src/dienst/aufgabe_anlegen.rs:134`; gelesen, nicht am Programm geprobt). Es entstehen also keine zwei Herkünfte. Die Meldung des Servers ist Text der API und bleibt nach FA 1 außerhalb dieser Anforderung.
 
 ### Probe (ADR-0013 Regel 5)
 
@@ -133,6 +135,13 @@ Geprüft mit dem Grundbestand aus `user-stories/R00109.md`.
   - `node --test e2e/einheit/kultur.test.js` ist grün, ebenso `npx playwright test kultur` in `e2e/`.
   - Wird an der Fälligkeit der Karte (`web/ansicht.js`, Funktion der Karte) wieder `esc(a.faellig)` geschrieben, ist `npx playwright test kultur` rot und nennt Ansicht, Element und Text; nach dem Zurücknehmen ist er wieder grün.
   - Alle bisherigen Unit- und E2E-Tests sind grün, die sechs mitgeänderten (siehe Tests) mit ihren neuen Erwartungen.
+- [ ] **10. Ohne Herkunft in „Neue Aufgabe“** (PO Z. 147, FA 20): Abnahme-Probe wörtlich: „„Neue Aufgabe“ mit Herkunft „  Ohne Herkunft “ → Datei `origins: [thin air]`, Chip „ohne Herkunft“; „THIN AIR“ → dasselbe; „I0001 R00014“ → zwei Herkünfte wie heute; „ohne Herkunft“ mit Titel „x I0001“ → `origins: [I0001]`“.
+  - Besteht: Titel „neu“, Herkunft „  Ohne Herkunft “ → neue Aufgabe, Datei `origins: [thin air]`, Chip „ohne Herkunft“, auch nach Neuladen.
+  - Besteht: Herkunft „THIN AIR“ → dasselbe; Herkunft „I0001 R00014“ → `origins: [I0001, R00014]`; Titel „x I0001“ mit Herkunft „ohne Herkunft“ → Titel „x“, `origins: [I0001]`.
+  - Fällt durch (heute): Herkunft „thin air“ oder „ohne Herkunft“ → der Server lehnt ab, es entsteht keine Aufgabe (die Zahl der Aufgaben im Board bleibt gleich).
+  - Fällt durch: Titel „x I0001“ mit Herkunft „ohne Herkunft“ → Ablehnung „„thin air“ steht nur allein“ oder `origins: [thin air, I0001]`.
+  - Gegenbeispiel, das gleich bleibt: Herkunft „I0001 ohne Herkunft“ wird getrennt wie heute und vom Server abgelehnt; keine Aufgabe entsteht.
+  - Prüfebene: Unit (Erkennung des ganzen Feldinhalts und Vereinigung mit der Herkunft aus dem Titel); E2E US-9, Teil „Neue Aufgabe“, mit Zahl der Aufgaben und Dateiinhalt vor und nach dem Anlegen.
 
 ## Betroffene Verzeichnisstruktur
 
@@ -159,7 +168,7 @@ Entschieden in ADR-0013 (Option A, Akzeptiert); Aspekt X00004 Kultur der Anzeige
 
 ### Ablauf
 
-Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben mit Selbstproben (B0427, B0435). Danach laufen die vier Features parallel: Datumsangaben auf Karte und Fenster (B0428, B0429, B0430), in Personen und Berichten (B0431, B0432, B0433), Beschriftungen (B0436, B0437) und „ohne Herkunft“ (B0438, B0439).
+Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben mit Selbstproben (B0427, B0435). Danach laufen die vier Features parallel: Datumsangaben auf Karte und Fenster (B0428, B0429, B0430), in Personen und Berichten (B0431, B0432, B0433), Beschriftungen (B0436, B0437) und „ohne Herkunft“ (B0438, B0439, B0440). B0436 und B0437 warten auf die Freigabe der Gestaltung (Offene Frage 2, PO Z. 148).
 
 ### Grobentwurf
 
@@ -184,12 +193,12 @@ Artboards: `Dokumentation/Wireframes/D0003.dc.html` (Seitenleiste des Aufgabenfe
 
 ### Umfang
 
-I0098: 4 Features, 14 Bubbles, 14–28,5 h, ungemessen (Hypothese).
-- Herleitung: Summe der Bubble-Spannen — F0052 5,5–10,5 h (B0426 1,5-2,5, B0427 1-2, B0428 1-2, B0429 1,5-2,5, B0430 0,5-1,5), F0053 4–9,5 h (B0431 0,5-1,5, B0432 1,5-3, B0433 1-2, B0434 1-3), F0054 3,5–6,5 h (B0435 1-2, B0436 1,5-2,5, B0437 1-2), F0055 1–2 h (B0438 0,5-1, B0439 0,5-1).
+I0098: 4 Features, 15 Bubbles, 14,5–29,5 h, ungemessen (Hypothese).
+- Herleitung: Summe der Bubble-Spannen — F0052 5,5–10,5 h (B0426 1,5-2,5, B0427 1-2, B0428 1-2, B0429 1,5-2,5, B0430 0,5-1,5), F0053 4–9,5 h (B0431 0,5-1,5, B0432 1,5-3, B0433 1-2, B0434 1-3), F0054 3,5–6,5 h (B0435 1-2, B0436 1,5-2,5, B0437 1-2), F0055 1,5–3 h (B0438 0,5-1, B0439 0,5-1, B0440 0,5-1).
 - Die Spannen sind ungemessen, nach dem Muster von I0095–I0097.
-- B0434 ist bedingt: Findet die Probe nach B0433 nichts, entfällt sie, und der Umfang sinkt auf 13–25,5 h.
+- B0434 ist bedingt: Findet die Probe nach B0433 nichts, entfällt sie, und der Umfang sinkt auf 13,5–26,5 h.
 - Gezählte Eingänge (Stand f74a8c1): 14 Datumsstellen in `web/ansicht.js` und 4 Former (`deTag`, `deDatum`, `vollDatum`, `isoD` in `web/berichte.js`), 26 Beschriftungen, die einen Schlüssel zeigen (`grep 'class="k"' web/ansicht.js`), 6 E2E-Dateien mit Erwartungen an sichtbaren ISO-Text. Fenster, Menüs, WBS-Sicht und erster Start sind nicht abgesucht; ihre Zahl ist unbekannt.
-- Offene Frage 1 brächte bei Zustimmung eine Bubble mit 0,5–1 h dazu.
+- B0440 kam mit PO Z. 147 dazu (0,5–1 h, Spanne aus der Entscheidung).
 
 ### Vorplanung (Bubbles in `Dokumentation/Planung/kanbanD.md`)
 
@@ -209,6 +218,7 @@ I0098: 4 Features, 14 Bubbles, 14–28,5 h, ungemessen (Hypothese).
 | B0437 | F0054 | Übrige Beschriftungen | 1-2 | B0426, B0435 |
 | B0438 | F0055 | Chip und Hinweis „ohne Herkunft“ | 0,5-1 | B0426 |
 | B0439 | F0055 | Eingabe „ohne Herkunft“ | 0,5-1 | B0426 |
+| B0440 | F0055 | Eingabe „ohne Herkunft“ in „Neue Aufgabe“ | 0,5-1 | B0426 |
 
 Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen die Akzeptanzkriterien und die User Story.
 
@@ -218,7 +228,7 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
 
 - **Reihenfolge**: die Szenarien US-1 bis US-10 stehen vor der ersten Bubble als erwartet rot (`test.fail`) in `kultur.spec.js`; jede Bubble nimmt das `test.fail` an ihren Szenarien weg. Nach der letzten Bubble steht kein `test.fail` mehr dort. Erster roter Unit-Test: „Kurzform: heute 2026-12-31, Datum 2027-01-01 → 01.01.2027“; erster roter E2E-Test: US-1 „Fälligkeit 06.11.“.
 - **Integration**: entfällt. Server, API und Dateien ändern sich nicht; dass sie gleich bleiben, belegen die bestehenden API- und Dateitests (unverändert grün) und US-9 über den Dateiinhalt.
-- **Ehrlichkeit je Szene**: US-9 liest den Dateiinhalt vor der Eingabe (`[I0001, R00014]`) und danach (`[thin air]`), lädt die Seite neu und prüft den Chip erneut; das Gegenbeispiel „ohne Herkunftx“ beweist, dass die übrigen Herkünfte stehen bleiben (drei Einträge). Die Proben prüfen nicht nur „nichts gefunden“, sondern sind über AK 7 und AK 8 als rot-fähig belegt. US-10 stellt die Uhr des Browsers, damit der Jahreswechsel nicht vom Tag des Laufs abhängt.
+- **Ehrlichkeit je Szene**: US-9 liest den Dateiinhalt vor der Eingabe (`[I0001, R00014]`) und danach (`[thin air]`), lädt die Seite neu und prüft den Chip erneut; das Gegenbeispiel „ohne Herkunftx“ beweist, dass die übrigen Herkünfte stehen bleiben (drei Einträge). Der Teil „Neue Aufgabe“ zählt die Aufgaben vor und nach dem Anlegen und liest die Datei der neuen Aufgabe. Die Proben prüfen nicht nur „nichts gefunden“, sondern sind über AK 7 und AK 8 als rot-fähig belegt. US-10 stellt die Uhr des Browsers, damit der Jahreswechsel nicht vom Tag des Laufs abhängt.
 
 - **Unit-Test** `e2e/einheit/kultur.test.js` (node:test, wie `zeiten.test.js`):
   - Langform `2026-10-28` → `28.10.2026`; Zeitpunkt `2026-10-28T14:05+01:00` → `28.10.2026 14:05` (Ortszeit wie `ortszeit`); Wochentag wie `deDatum` für Mo bis So, darunter „Do 01.10.2026“ und „Sa 03.10.2026“ (die Erwartungen aus `r00073-diagramme.spec.js`); Achsenmarke „01.10.“ und „2026“.
@@ -226,6 +236,7 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
   - Mutanten fallen durch: Kurzform ohne Jahresvergleich, Tag und Monat vertauscht, fehlende führende Null.
   - `FELDER` enthält jeden Schlüssel aus FA 10 und 13 mit seiner Beschriftung; keine Beschriftung ist ein Schlüssel.
   - Erkennung „ohne Herkunft“ nach AK 6: „ohne Herkunft“, „  Ohne Herkunft “, „OHNE HERKUNFT“, „Thin Air“ → ja; „ohne Herkunftx“, „ohne“, „Herkunft“ → nein.
+  - Herkunftsfeld „Neue Aufgabe“ nach AK 10 (reine Funktion aus Feldinhalt und Herkunft der Schnelleingabe): „  Ohne Herkunft “ und „THIN AIR“ mit leerer Titel-Herkunft → `[thin air]`; „I0001 R00014“ → `[I0001, R00014]`; „ohne Herkunft“ mit Titel-Herkunft `[I0001]` → `[I0001]`; „I0001 ohne Herkunft“ → `[I0001, ohne, Herkunft]` (getrennt wie heute). Mutante: Vereinigung ohne Wegnahme von `thin air` fällt durch.
 - **Selbstproben** in `e2e/tests/kultur-hilfen.js` (`page.setContent`, ohne kanbanD), jede Regex positiv und negativ geprüft:
   - ISO-Probe positiv: „2026-10-28“, „fällig 2026-10-28“, „2026-10-28 14:05“ im Text, im `title` und im `aria-label` werden gefunden.
   - ISO-Probe negativ: „28.10.2026“, „28.10.“, „R00108“, „kd:I0001“, „JJJJ-MM-TT“ werden nicht gefunden; ISO in `#dateitext` und im `value` eines `input[type=date]` wird nicht gefunden, derselbe Text in einem `span` daneben schon.
@@ -252,8 +263,8 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
 
 ## Offene Fragen
 
-1. **Herkunftsfeld in „Neue Aufgabe“**: Das Feld trennt die Eingabe an Leerzeichen und Kommas (`web/app.js:336`). „ohne Herkunft“ würde zwei Herkünfte „ohne“ und „Herkunft“, `thin air` schon heute „thin“ und „air“. PO Z. 145 nennt nur das Feld im Aufgabenfenster. Empfehlung: dieselbe Regel — ist der ganze Feldinhalt getrimmt „ohne Herkunft“ oder `thin air`, entsteht `[thin air]`; eine Bubble mehr unter F0055 (0,5–1 h). Bis zur Antwort nicht eingeplant und kein Akzeptanzkriterium.
-2. **Gestaltung der Beschriftung vor dem Bau**: Beschriftung plus Schlüssel als Mono-Hilfstext ist ein neuer Zustand ohne Artboard. Die Vision verlangt, dass der Mensch jede Gestaltung sieht, bevor sie gebaut wird. Empfehlung: der gestalter zeichnet die Seitenleiste des Aufgabenfensters und „Neue Aufgabe“ an D0003 sowie die Felder des ersten Starts an D0001, bevor B0436 und B0437 bauen; F0052, F0053, F0055 und B0435 hängen nicht daran.
+1. **Herkunftsfeld in „Neue Aufgabe“** — geschlossen, entschieden durch PO Z. 147: dieselbe Regel wie im Aufgabenfenster, eine Herkunft aus dem Titel verdrängt `thin air`; eingearbeitet als FA 20, AK 10, B0440 und US-9 Teil „Neue Aufgabe“. Richtigstellung zur Frage: heute entstehen nicht zwei Herkünfte, der Server lehnt ab (`src/modell/aufgabe.rs:564–567`).
+2. **Gestaltung der Beschriftung vor dem Bau** — offen, liegt laut PO Z. 148 beim Auftraggeber (Vorschlag 1: der gestalter zeichnet den Zustand an D0003 und D0001, hell, dunkel und bei 320 px, der Auftraggeber gibt frei; bis dahin warten B0436 und B0437): Beschriftung plus Schlüssel als Mono-Hilfstext ist ein neuer Zustand ohne Artboard. Die Vision verlangt, dass der Mensch jede Gestaltung sieht, bevor sie gebaut wird. Empfehlung: der gestalter zeichnet die Seitenleiste des Aufgabenfensters und „Neue Aufgabe“ an D0003 sowie die Felder des ersten Starts an D0001, bevor B0436 und B0437 bauen; F0052, F0053, F0055 und B0435 hängen nicht daran.
 
 ## Manuelle Vorbereitungstätigkeiten
 Keine.
@@ -294,3 +305,4 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
   - FA 7 und US-5: Tooltips und Achsen der Diagramme in der Form aus R00073, Probe fährt je Diagramm über die Zeichenfläche;
   - WBS: Fertig-Kriterium I0098 auf US-1..US-10, Notizen an B0428 und B0433.
   - Keine Bubble neu, Umfang unverändert.
+- **PO Z. 147–148 eingearbeitet 2026-11-06**: FA 20, AK 10, B0440 „Eingabe ‚ohne Herkunft‘ in ‚Neue Aufgabe‘“ (0,5–1 h, braucht B0426), US-9 Teil „Neue Aufgabe“, Unit-Fälle; Umfang 15 Bubbles, 14,5–29,5 h; Offene Frage 1 geschlossen und richtiggestellt (Server lehnt ab, gelesen in `src/modell/aufgabe.rs:561–571` und `src/dienst/aufgabe_anlegen.rs:134`); Offene Frage 2 wartet auf Z. 148.
