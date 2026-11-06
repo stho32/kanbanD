@@ -184,7 +184,8 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
   test('US-5: Tabellenansichten lang, Achsenmarken TT.MM. über JJJJ, Tooltips mit Wochentag', async ({ page }) => {
     await starten(page);
     await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...ALS_ST, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red', ziel: true }] });
-    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...ALS_ST, data: { puffer: 4, zielspalte: 'Entwicklung' } });
+    // Kalendertage: in der Einheit Arbeitstage hätte das Fieber an einem Wochenende keinen Punkt und keine Tabelle
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...ALS_ST, data: { puffer: 4, zielspalte: 'Entwicklung', woche: 7 } });
     // die Prognose braucht drei erledigte Aufgaben in der Messbasis
     for (const nummer of [4, 5, 6]) await page.request.post(k.adresse + 'api/boards/entwicklung/bewegen', { ...ALS_ST, data: { nummer, spalte: 'Erledigt' } });
     const TAG_LANG = /^\d\d\.\d\d\.\d{4}$/;
