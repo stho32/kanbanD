@@ -35,6 +35,8 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 - [ADR-0002: Zugregeln gemeinsam vor der Aktion](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)
 - [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md)
 - [ADR-0005: Zusammengesetzte Aktionen in einem Commit](../ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md)
+- [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `aufgabe_aendern` prüft `cost` über den Modell-Konstruktor, Verstoß → `Fehler::Ungueltig` (400)
+
 ## Offene Fragen
 
 ## Notizen / Quellen
@@ -43,3 +45,5 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 - Je Anwendungsfall eine Datei (`bewegen.rs`, `reservierung.rs`, `aufgabe_anlegen.rs`, …).
 - Daneben gemeinsame Regeldateien, die mehrere Anwendungsfälle aufrufen: `zugregeln.rs` (R00096, [ADR-0002](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)) mit `zug_pruefen`, `zugregeln` und den Lesehelfern `grenzen_pruefen`/`zurueckholen_pruefen` — aufgerufen von `reservierung.rs`, `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs`, `archiv.rs`; Einzelheiten in [X00001](Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md).
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
+- Soll nach ADR-0009 (Karte #18): `cost` ersetzt den ganzen Abschnitt, `null` entfernt; Commit „#n geändert: Kosten“, ohne Änderung keiner. Der Dienst rechnet keine Summen.
+- nachgeführt 2026-11-06 nach #18 (ADR-0009)
