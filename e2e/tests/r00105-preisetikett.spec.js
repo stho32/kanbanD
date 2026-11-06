@@ -238,13 +238,39 @@ const KOMPOSITUM = 'Gemeinkostenanteilsberechnung';
 const MIT_KOMPOSITUM = POSITIONEN.replace('  basis:', `    - text: ${KOMPOSITUM}\n      amount: 0.05\n  basis:`);
 const MIT_LANG = POSITIONEN.replace('  basis:', `    - text: ${LANG}\n      amount: 0.05\n  basis:`);
 
-/** Zeilen eines Textknotens im Layout: Positionen, vor denen eine neue Zeile beginnt (über Range je Zeichen). */
-// Zeile je Zeichen aus dem letzten Kasten: am Trennstrich trägt das Zeichen danach auch den Kasten des Strichs am Zeilenende
-const umbrueche = zelle => zelle.evaluate(el => {
-  const text = el.firstChild, oben = [];
-  for (let i = 0; i < text.length; i++) { const r = document.createRange(); r.setStart(text, i); r.setEnd(text, i + 1); const kaesten = [...r.getClientRects()]; oben.push(Math.round(kaesten[kaesten.length - 1].top)); }
+/** Zeilen eines Zeilenkopfs im Layout: Positionen, vor denen eine neue Zeile beginnt (über Range je Zeichen).
+ *  Auflösen und Messen in einem einzigen evaluate, damit kein Neuzeichnen dazwischen den Knoten löst; alle Textknoten
+ *  per TreeWalker, auch die im span.ganz. Zeile je Zeichen aus dem letzten Kasten: am Trennstrich trägt das Zeichen
+ *  danach auch den Kasten des Strichs am Zeilenende. */
+const umbrueche = (page, name) => page.evaluate(gesucht => {
+  const zelle = [...document.querySelectorAll('#reiterpanel-kosten th[scope="row"]')].find(th => th.textContent.trim() === gesucht);
+  if (!zelle) throw new Error(`kein Zeilenkopf „${gesucht}“`);
+  const gaenger = document.createTreeWalker(zelle, NodeFilter.SHOW_TEXT), oben = [];
+  for (let knoten = gaenger.nextNode(); knoten; knoten = gaenger.nextNode()) {
+    for (let i = 0; i < knoten.length; i++) {
+      if (/\s/.test(knoten.data[i])) continue;
+      const r = document.createRange(); r.setStart(knoten, i); r.setEnd(knoten, i + 1);
+      const kaesten = [...r.getClientRects()];
+      if (!kaesten.length) throw new Error(`„${gesucht}“ Zeichen ${oben.length} hat keinen Kasten — Knoten gelöst oder nicht gezeichnet`);
+      oben.push(Math.round(kaesten[kaesten.length - 1].top));
+    }
+  }
+  if (oben.length !== gesucht.length) throw new Error(`„${gesucht}“: ${oben.length} statt ${gesucht.length} Zeichen gemessen`);
   return oben.map((y, i) => (i > 0 && y > oben[i - 1] ? i : -1)).filter(i => i > 0);
-});
+}, name);
+
+/** Breite setzen und warten, bis der resize-Hörer neu gezeichnet und das Layout gerechnet hat (zwei Frames). */
+async function breiteSetzen(page, breite, hoehe) {
+  await page.setViewportSize({ width: breite, height: hoehe });
+  await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
+}
+
+/** Reiter „Kosten“ zeigen und warten, bis die Schriften für die neue Tabelle geladen sind. */
+async function kostenZeigen(page, dialog) {
+  await dialog.getByRole('tab', { name: 'Kosten' }).click();
+  await expect(page.locator('#reiterpanel-kosten table')).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+}
 
 test.describe('R00105 Reiter Kosten', () => {
   let k;
@@ -443,30 +469,28 @@ test.describe('R00105 Reiter Kosten', () => {
   });
 
   test('US-22: Positionsnamen trennen nur nach Silben und nur, wo die Zelle zu schmal ist; bei 1280 px gar nicht', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 700 });
+    await breiteSetzen(page, 320, 700);
     const dialog = await fenster(page, 1, MIT_KOMPOSITUM);
-    await dialog.getByRole('tab', { name: 'Kosten' }).click();
+    await kostenZeigen(page, dialog);
     const koepfe = page.locator('#reiterpanel-kosten th[scope="row"]');
     const stile = await koepfe.evaluateAll(ths => ths.map(th => { const s = getComputedStyle(th); return [s.hyphens, s.overflowWrap, s.wordBreak, th.closest('[lang]').getAttribute('lang')].join(' '); }));
     expect(new Set(stile)).toEqual(new Set(['auto normal normal de']));
     for (const [wort, silben] of [['Gemeinkostenanteil', [2, 6, 9, 12, 14]], [KOMPOSITUM, [2, 6, 9, 12, 14, 19, 21, 25]]]) {
-      for (const i of await umbrueche(koepfe.filter({ hasText: new RegExp(`^${wort}$`) }))) expect(silben, `Umbruch nach „${wort.slice(0, i)}“`).toContain(i);
+      for (const i of await umbrueche(page, wort)) expect(silben, `Umbruch nach „${wort.slice(0, i)}“`).toContain(i);
     }
-    const lang = await umbrueche(koepfe.filter({ hasText: KOMPOSITUM }));
-    expect(lang.length, 'zu schmal für das ganze Wort').toBeGreaterThan(0);
+    expect((await umbrueche(page, KOMPOSITUM)).length, 'zu schmal für das ganze Wort').toBeGreaterThan(0);
     const panel = await page.locator('#reiterpanel-kosten').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
     expect(panel.sw).toBeLessThanOrEqual(panel.cw);
-    await page.setViewportSize({ width: 1280, height: 800 });
-    expect(await umbrueche(koepfe.filter({ hasText: /^Gemeinkostenanteil$/ }))).toEqual([]);
-    expect(await umbrueche(koepfe.filter({ hasText: KOMPOSITUM }))).toEqual([]);
+    await breiteSetzen(page, 1280, 800);
+    expect(await umbrueche(page, 'Gemeinkostenanteil')).toEqual([]);
+    expect(await umbrueche(page, KOMPOSITUM)).toEqual([]);
   });
 
   test('US-23: Wort ohne Silbengrenze bleibt ganz, die Tabelle scrollt quer im Panel per Tastatur', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 700 });
+    await breiteSetzen(page, 320, 700);
     const dialog = await fenster(page, 1, MIT_LANG);
-    await dialog.getByRole('tab', { name: 'Kosten' }).click();
-    const lang = page.locator('#reiterpanel-kosten th[scope="row"]', { hasText: LANG });
-    expect(await umbrueche(lang)).toEqual([]);
+    await kostenZeigen(page, dialog);
+    expect(await umbrueche(page, LANG)).toEqual([]);
     const stile = await page.locator('#reiterpanel-kosten th[scope="row"]').evaluateAll(ths => ths.map(th => getComputedStyle(th).overflowWrap + ' ' + getComputedStyle(th).wordBreak));
     expect(new Set(stile)).toEqual(new Set(['normal normal']));
     const scroll = page.locator('#reiterpanel-kosten .ko-scroll');
