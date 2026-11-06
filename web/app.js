@@ -1457,6 +1457,10 @@ function fensterTaste(e) {
   const nr = S.ui.offen, a = aufgabe(nr);
   if (!a) return false;
   const fokus = sel => { const el = $(sel); if (el) { e.preventDefault(); el.focus(); } return true; };
+  // Auf einem Reiter: Pfeile, Pos1, Ende, Enter und Leertaste wählen und fokussieren (R00105); nur dort, nie im Titelfeld
+  const reiter = e.target.closest && e.target.closest('[role="tab"][data-act="tab"]');
+  const zielReiter = reiter && naechsterReiter(reiterSchluessel(), reiter.dataset.arg, e.key);
+  if (zielReiter) { e.preventDefault(); S.ui.fokus = '#reiter-' + zielReiter; act('tab', zielReiter); return true; }
   switch (e.key) {
     case 't': e.preventDefault(); laufende(a).some(z => z.wer === S.ich) ? act('stop', `${nr}|${S.ich}`) : act('start', String(nr)); return true;
     case 'm': e.preventDefault(); act('mich', String(nr)); return true;

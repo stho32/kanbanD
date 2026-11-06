@@ -42,5 +42,20 @@
     return { ziel: null, warte: taste === 'g' && vorher !== 'g' };
   }
 
-  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE });
+  /** Reiterleiste (R00105, APG Tabs mit automatischer Aktivierung): reiter = Schlüssel in Anzeigereihenfolge, aktuell =
+      fokussierter Reiter. Liefert den Reiter, der Fokus und Auswahl bekommt, oder null, wenn die Taste nicht der Leiste gehört. */
+  function naechsterReiter(reiter, aktuell, taste) {
+    const i = reiter.indexOf(aktuell), n = reiter.length;
+    if (i < 0) return null;
+    switch (taste) {
+      case 'ArrowRight': return reiter[(i + 1) % n];
+      case 'ArrowLeft': return reiter[(i - 1 + n) % n];
+      case 'Home': return reiter[0];
+      case 'End': return reiter[n - 1];
+      case 'Enter': case ' ': return aktuell;
+      default: return null;
+    }
+  }
+
+  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, naechsterReiter });
 })(typeof module !== 'undefined' ? module.exports : window);
