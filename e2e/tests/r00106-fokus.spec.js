@@ -10,10 +10,11 @@ people:
 `;
 const DATEIEN = {
   'kanbanD.md': EINSTELLUNGEN,
-  'boards/fabrik.md': '# fabrik\n\n## Eingang\n\n- #1\n- #2\n\n## In Arbeit\n\n- #3\n\n## Fertig\n',
+  'boards/fabrik.md': '# fabrik\n\n## Eingang\n\n- #1\n- #2\n\n## In Arbeit\n\n- #3\n\n## Fertig\n\n- #9\n',
   'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n',
   'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n',
   'aufgaben/0003-drei.md': '---\nid: 3\ntitle: drei\n---\n',
+  'aufgaben/0009-kaputt.md': '---\nid: 9\n<<<<<<< HEAD\ntitle: neun\n=======\ntitle: neun anders\n>>>>>>> zweig\n---\n',
 };
 const ALS_PLANER = { headers: { 'X-KanbanD-Wer': 'pl' } };
 
@@ -141,6 +142,44 @@ test('US-3: „Neue Aufgabe“ hält den Fokus im Fenster, Esc gibt ihn dem Ausl
   await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
   const f = await fokus(page);
   expect(f.imMain || f.id === 'main', `${f.tag}#${f.id}`).toBe(true);
+});
+
+test('US-4: p öffnet „Zuständige“ mit Fokus auf der ersten Wahl, Tab bleibt darin, Esc → Karte #1', async ({ page }) => {
+  await page.locator('.ka[data-id="1"]').focus();
+  await page.keyboard.press('p');
+  const dialog = page.locator('#zuweisen');
+  await expect(dialog).toBeVisible();
+  const name = await dialog.getAttribute('aria-label');
+  expect(await page.evaluate(() => document.activeElement.closest('#zuweisen') !== null)).toBe(true);
+  expect(await page.evaluate(() => document.activeElement === document.querySelector('#zuweisen [data-act="zuweisen-wahl"]'))).toBe(true);
+  await tabBleibtIm(page, name, 'Tab');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('1');
+});
+
+test('US-4: defekte Datei #9: Enter → Fokus im Fenster, Tab bleibt darin, Esc → Karte #9', async ({ page }) => {
+  await perTastaturOeffnen(page, 9);
+  await expect(page.getByRole('dialog', { name: 'Defekte Datei #9' })).toBeVisible();
+  expect((await fokus(page)).dialog).toBe('Defekte Datei #9');
+  await tabBleibtIm(page, 'Defekte Datei #9', 'Tab');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('9');
+});
+
+test('US-4: ? über dem Fenster: Hilfe fängt, Fenster inert, Esc schließt nur die Hilfe, Fokus wieder auf dem Fenster', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  await page.keyboard.press('?');
+  const hilfe = page.locator('#hilfe');
+  await expect(hilfe).toBeVisible();
+  const name = await hilfe.getAttribute('aria-label');
+  expect((await fokus(page)).dialog).toBe(name);
+  expect(await page.evaluate(() => Boolean(document.querySelector('#fenster').closest('[inert]')))).toBe(true);
+  await tabBleibtIm(page, name, 'Tab');
+  await page.keyboard.press('Escape');
+  await expect(hilfe).toHaveCount(0);
+  expect((await fokus(page)).id).toBe('fenster');
 });
 
 test('US-8: Enter auf „In Arbeit“ klappt zu, Fokus auf den Aufklapp-Knopf; Live-Ereignis hält ihn; Enter klappt auf, Fokus auf „In Arbeit“', async ({ page }) => {

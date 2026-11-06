@@ -61,3 +61,7 @@ test('fallenSchritt: Umlauf an beiden Rändern', () => {
   assert.strictEqual(fallenSchritt(5, -1, true), 4, 'Fokus außerhalb der Ebene: rückwärts zum letzten');
   assert.strictEqual(fallenSchritt(0, 0, false), -1, 'nichts Tabbares');
 });
+
+test('ebenen: die Hilfe hat nichts Tabbares und startet auf sich selbst', () => {
+  assert.strictEqual(ebenen({ hilfe: true })[0].start, '#hilfe');
+});

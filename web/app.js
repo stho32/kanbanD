@@ -536,7 +536,7 @@ function fokusFuehren(aktiv, ausloeser, gesichert) {
   S.ui.fokus = null;
   const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste));
   const verloren = aktiv && aktiv !== document.body;
-  if (!gesetzt && (verloren || geschlossen.length) && !imDokumentFokussiert()) ersterTabbarer(oberste);
+  if (!gesetzt && (verloren || geschlossen.length || oberste) && !fokusSitztIn(oberste)) ersterTabbarer(oberste);
 }
 
 /** Karte im Board bzw. Zeile in der Aufgabenliste, die die Tastatur zuletzt geführt hat. */
@@ -561,8 +561,10 @@ function liegtIn(element, ebene) {
   return Boolean(bereich) && bereich.contains(element);
 }
 
-function imDokumentFokussiert() {
-  return document.activeElement && document.activeElement !== document.body;
+/** Der Fokus steht auf einem Element der obersten Ebene bzw., ohne Ebene, irgendwo außer auf BODY. */
+function fokusSitztIn(oberste) {
+  const element = document.activeElement;
+  return Boolean(element) && element !== document.body && liegtIn(element, oberste);
 }
 
 /** Rückfall: das erste tabbare Element der obersten Ebene, ohne Ebene des Hauptbereichs. */

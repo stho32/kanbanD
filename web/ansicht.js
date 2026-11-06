@@ -468,7 +468,7 @@ function hilfeOrt() {
 function vHilfe() {
   const zeilen = liste => liste.map(([k, t]) => `<tr><td>${k.split(' ').map(x => x === '+' ? ' + ' : `<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${esc(t)}</td></tr>`).join('');
   const ort = hilfeOrt();
-  return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" id="hilfe" role="dialog" aria-label="Tastaturkürzel">${ort ? `<h3>HIER: ${esc(ort[0].toUpperCase())}</h3><table>${zeilen(ort[1])}</table>` : ''}<h3>ÜBERALL</h3><table>${zeilen(KUERZEL_UEBERALL)}</table><h3>NEUE AUFGABE</h3><table>${zeilen(KUERZEL_NEU)}</table><p class="muted hilfe-quelle">Belegung nach gängiger Kanban-Konvention (Kanbanflow, Kanban Tool, Kanboard).</p></div></div>`;
+  return `<div class="mod-bg hilfe-bg" data-act="schliessen-hilfe"><div class="hilfe" id="hilfe" tabindex="-1" role="dialog" aria-label="Tastaturkürzel">${ort ? `<h3>HIER: ${esc(ort[0].toUpperCase())}</h3><table>${zeilen(ort[1])}</table>` : ''}<h3>ÜBERALL</h3><table>${zeilen(KUERZEL_UEBERALL)}</table><h3>NEUE AUFGABE</h3><table>${zeilen(KUERZEL_NEU)}</table><p class="muted hilfe-quelle">Belegung nach gängiger Kanban-Konvention (Kanbanflow, Kanban Tool, Kanboard).</p></div></div>`;
 }
 /** Sichtbare Karten je Spalte des Boards — Grundlage der Tastaturziele. */
 function sichtbareSpalten() {

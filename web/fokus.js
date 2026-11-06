@@ -33,7 +33,7 @@
     if (ui.neu) stapel.push(dialog('neu', '#neu-fenster', null, ausloeser(gemerkt, 'neu')));
     if (ui.offenDefekt) stapel.push(dialog('defekt', '#defekt-fenster', null, [...ortDerAufgabe(ui.view, ui.offenDefekt), ...ausloeser(gemerkt, 'defekt')]));
     if (ui.zuweisen) stapel.push(dialog('zuweisen', '#zuweisen', null, ausloeser(gemerkt, 'zuweisen')));
-    if (ui.hilfe) stapel.push(dialog('hilfe', '#hilfe', null, ausloeser(gemerkt, 'hilfe')));
+    if (ui.hilfe) stapel.push(dialog('hilfe', '#hilfe', '#hilfe', ausloeser(gemerkt, 'hilfe')));
     return stapel;
   }
 
