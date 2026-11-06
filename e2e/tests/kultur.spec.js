@@ -410,10 +410,11 @@ test.describe('US-9: ohne Herkunft', () => {
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
   });
 
-  test.fail('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {
+  test('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {
     await starten(page);
     await brett(page);
-    const anzahl = async () => (await (await page.request.get(k.adresse + 'api/aufgaben')).json()).length;
+    const alle = async () => (await (await page.request.get(k.adresse + 'api/aufgaben')).json()).aufgaben;
+    const anzahl = async () => (await alle()).length;
     const vorher = await anzahl();
     const anlegen = async (titel, herkunft) => {
       await page.keyboard.press('n');
@@ -424,7 +425,7 @@ test.describe('US-9: ohne Herkunft', () => {
       await expect(dialog).toHaveCount(0);
     };
     const datei = async titel => {
-      const a = (await (await page.request.get(k.adresse + 'api/aufgaben')).json()).find(x => x.titel === titel);
+      const a = (await alle()).find(x => x.titel === titel);
       expect(a, titel).toBeTruthy();
       return { nummer: a.nummer, text: k.lies('aufgaben/' + a.datei) };
     };

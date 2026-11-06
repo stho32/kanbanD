@@ -333,7 +333,9 @@ function neuEintrag(titel, f) {
   const s = schnelleingabe(titel, schnellUmfeld(), new Date());
   const vereint = (a, b) => [...new Set([...a, ...b])];
   const labels = f.labels.split(',').map(x => x.trim()).filter(Boolean);
-  const herkunft = f.herkunft.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+  // „ohne Herkunft“ oder thin air als ganzer Feldinhalt (FA 16); eine Herkunft aus dem Titel gilt dann allein
+  const ohne = istOhneHerkunft(f.herkunft);
+  const herkunft = ohne ? (s.herkunft.length ? [] : ['thin air']) : f.herkunft.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
   // @kürzel ersetzt die Vorbelegung (mich), solange niemand die Zuständigen von Hand gewählt hat (R00028)
   const zust = s.zustaendige.length ? (f.zustGewaehlt ? vereint(f.zust, s.zustaendige) : s.zustaendige) : f.zust;
   const e = { titel: s.titel || titel.trim(), zustaendige: zust, labels: vereint(labels, s.labels), herkunft: vereint(herkunft, s.herkunft) };
