@@ -393,6 +393,46 @@ test.describe('R00107 Kontrast', () => {
     }
   });
 
+  /** Messungen je Thema, nur die Platzhalter eines Felds; `vorher` stellt den Zustand nach dem Themenwechsel her. */
+  async function platzhalterInBeidenThemen(page, bereich, id, vorher = async () => {}) {
+    const alle = [];
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await vorher();
+      await farbuebergaengeAbwarten(page);
+      const messungen = (await kontrastMessen(page, [bereich])).filter(m => m.element.startsWith(`input#${id}`) || m.element.startsWith(`textarea#${id}`));
+      alle.push(...messungen.filter(m => m.element.endsWith('::placeholder')).map(m => ({ thema: t, ...m })));
+    }
+    await test.info().attach(`Platzhalter ${id}`, { body: alle.map(lesbar).join('\n'), contentType: 'text/plain' });
+    return alle;
+  }
+
+  test('Kopf: Platzhalter jedes leeren Felds ungefokussiert und fokussiert (Grund wechselt auf --kd-surface) mindestens 4,5, beide Themen', async ({ page }) => {
+    await expect(page.locator('#flt')).toHaveValue('');
+    const ids = await page.locator('header input[placeholder]').evaluateAll(liste => liste.map(e => e.id));
+    expect(ids, 'das Filterfeld ist dabei').toContain('flt');
+    for (const id of ids) {
+      const feld = page.locator(`#${id}`);
+      const ruhend = await platzhalterInBeidenThemen(page, 'header', id, () => feld.blur());
+      const fokussiert = await platzhalterInBeidenThemen(page, 'header', id, () => feld.focus());
+      await expect(feld).toBeFocused();
+      expect(ruhend.length, `${id} ungefokussiert: je Thema ein Platzhalter`).toBe(2);
+      expect(fokussiert.length, `${id} fokussiert: je Thema ein Platzhalter`).toBe(2);
+      expect([...ruhend, ...fokussiert].filter(m => m.wert < MASS).map(lesbar), id).toEqual([]);
+    }
+  });
+
+  test('Platzhalter, den nur die globale Regel ::placeholder färbt: Kommentarfeld im Aufgabenfenster #2, beide Themen', async ({ page }) => {
+    await page.locator('.ka[data-id="2"]').click();
+    const feld = page.locator('#km-inp');
+    await expect(feld).toHaveValue('');
+    const eigeneRegel = await page.evaluate(() => [...document.styleSheets].flatMap(b => [...b.cssRules]).filter(r => r.selectorText && r.selectorText.includes('::placeholder') && r.selectorText.trim() !== '::placeholder').some(r => document.querySelector('#km-inp').matches(r.selectorText.replace(/::placeholder/g, ''))));
+    expect(eigeneRegel, 'keine eigene Platzhalter-Regel trifft das Feld').toBe(false);
+    const messungen = await platzhalterInBeidenThemen(page, '[role=dialog]', 'km-inp');
+    expect(messungen.length, 'je Thema ein Platzhalter').toBe(2);
+    expect(messungen.filter(m => m.wert < MASS).map(lesbar)).toEqual([]);
+  });
+
   test('Ansichten: jede Ansicht samt Kopf, beide Themen, ohne die ausdrücklich nicht gemessenen Zustände', async ({ page }) => {
     for (const { ansicht, adresse } of ANSICHTEN) {
       await ansichtOeffnen(page, k.adresse + adresse);

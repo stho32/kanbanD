@@ -51,6 +51,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz .inp{width:330px;min-width:80px;flex:0 1 330px;height:26px;background:var(--kd-head-line);border-color:transparent;color:var(--kd-head-text);font-size:12px}
 .kz .inp::placeholder{color:var(--kd-head-muted)}
 .kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-accent-weak)}
+.kz .inp:focus::placeholder{color:var(--kd-muted)}
 .kz .seg{border-color:var(--kd-head-line);flex:none}
 .kz .seg>span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
 .kz .seg>span+span{border-left-color:var(--kd-head-line)}
