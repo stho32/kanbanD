@@ -70,5 +70,5 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 - Ist 2026-11-06 (Karte #10, kanbanD `49d99ef`, headless gemessen, sechs Ansichten): Bei feinem Zeiger liegen 18 von 114 Zielen unter 24 px (nur Board und Aufgabenliste), bei Touch 93 von 93 unter 44 px. Das Touch-Maß ist eine Selektorliste mit 32 px (`web/kd-app.css:791–795`) plus eine Einzelregel mit 44 px (`:277`). Fundstellen in [X00003](Aspekte/X00003-zielgroessen.md), Soll nach ADR-0012.
 - nachgeführt 2026-11-06 nach #10 (ADR-0012)
 - nachgeführt 2026-11-06 nach PO-Entscheidung zu ADR-0012 (`AI-Team/po-entscheidungen.md:129–132`)
-- Ist 2026-11-06 (Karte #10 auf `karte/10`, `a83a43a`): Token `--kd-ziel` gebaut, Coarse-Listen aufgelöst, Messprobe fein (22 Ansichten) und Touch (21 Ansichten) ohne Verstoß; Breitenprobe 320/375/414 px grün, die Werkzeugzeile bricht in compact bei Bedarf um (B0407, PO `:133`) — siehe [X00003](Aspekte/X00003-zielgroessen.md)
+- Ist 2026-11-06 (Karte #10 auf `karte/10`, `a83a43a`): Token `--kd-ziel` gebaut, Touch-Listen aufgelöst, Messprobe fein (22 Ansichten) und Touch (21 Ansichten) ohne Verstoß; Breitenprobe 320/375/414 px grün, die Werkzeugzeile bricht in compact bei Bedarf um (B0407, PO `:133`) — siehe [X00003](Aspekte/X00003-zielgroessen.md)
 - nachgeführt 2026-11-06 nach dem Bau von #10 (R00108)

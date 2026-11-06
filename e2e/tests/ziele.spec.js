@@ -235,7 +235,7 @@ test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
 });
 
 // Die fünf kleinen Zeichen: Zeichnung bleibt klein, bei feinem Zeiger trägt ein Hof die Trefferfläche, bei Touch wachsen sie selbst.
-// Die Leisten um sie herum (Statuszeile, Spaltenkopf) wachsen erst mit B0404 und gehören zur Messprobe über die Ansichten.
+// Die Leisten um sie herum (Statuszeile, Spaltenkopf) wachsen mit dem Token (B0404) und gehören zur Messprobe über die Ansichten.
 const ZEICHEN = /\.lnk-x\[|\.kopf-plus|\.signal\[|\.sigz|\.kl\[/;
 const zeichenVerstoesse = async (page, zeiger, ansicht) => (await zieleMessen(page, { zeiger, ansicht, ohneKreis: true })).filter(v => ZEICHEN.test(v.selektor));
 const groesse = async loc => { const b = await loc.boundingBox(); return [Math.round(b.width), Math.round(b.height)]; };
@@ -263,7 +263,7 @@ test.describe('Trefferhof für kleine Zeichen', () => {
   test.describe('Touch, 390 px', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-    // Das Maß 44 der Zeichen prüft der Touch-Lauf (B0405), sobald die Touch-Liste im Token aufgeht (B0404).
+    // Das Maß 44 der Zeichen prüft der Touch-Lauf der Messprobe (B0405); die Touch-Liste ist in das Token aufgelöst (B0404).
     test('Board: kein Hof auf der Karte, kein Punkt des Titels trifft ein Zeichen, ein Tipp 8 px links vom Signal öffnet die Karte', async ({ page }) => {
       await starten(page);
       await page.goto(k.adresse + '#/board/entwicklung');
@@ -357,7 +357,7 @@ test.describe('Messprobe, feiner Zeiger, 1280 px', () => {
   });
 });
 
-// B0404: Touch-Liste im Token aufgelöst — Leisten wachsen mit ihren Zielen, kein festes Touch-Maß mehr.
+// B0404: Touch-Liste in das Token aufgelöst — Leisten wachsen mit ihren Zielen, kein festes Touch-Maß mehr.
 test.describe('Touch-Maß aus dem Token, 390 px', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
@@ -497,7 +497,7 @@ for (const [zeiger, geraet] of [['touch', { isMobile: true, hasTouch: true }], [
       const reihe = await page.locator('header.kz .kz-reihe').filter({ has: page.locator('#flt') }).boundingBox();
       expect(filter.width, 'Filter in voller Breite').toBeGreaterThanOrEqual(reihe.width - 2 * 16);
       expect((await bereiche.first().boundingBox()).y, 'Bereichsschalter unter dem Filter').toBeGreaterThanOrEqual(filter.y + filter.height);
-      expect(await kopfZeilen(page), 'zwei Reihen, die zweite umgebrochen').toBe(3);
+      expect(await kopfZeilen(page), 'drei Zeilen — die erste Reihe einzeilig, die zweite auf zwei Zeilen umgebrochen').toBe(3);
       expect(await zieleMessen(page, { zeiger, ansicht: 'Aufgabenliste' })).toEqual([]);
     });
   });
