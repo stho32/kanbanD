@@ -509,6 +509,7 @@ test('Zurücksetzen je Leiste (R00105 US-19, PO Z. 106/116): Klassen, Spalten, Z
     wieLangeNoch: ohneGruppen,
     fieber: ohneGruppen,
     kosten: ohneGruppen,
+    bestand: ohneGruppen,
   };
   assert.deepStrictEqual(Object.keys(BERICHTSLEISTEN).sort(), Object.keys(erwartet).sort(), 'jede Leiste genau einmal');
   for (const [leiste, nachher] of Object.entries(erwartet)) {
@@ -525,6 +526,7 @@ test('Hinweis an „Zurücksetzen“ je Leiste (R00105 US-25, PO Z. 118): nennt 
     stundenzettel: nur,
     zeiten: nur,
     kosten: nur,
+    bestand: nur,
     burndown: `${nur} — „Rechnen ab“ bleibt`,
     durchlaufzeit: `${nur} — „Rechnen ab“ bleibt`,
     wieLangeNoch: `${nur} — Messbasis und „Rechnen ab“ bleiben`,

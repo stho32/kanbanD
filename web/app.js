@@ -80,7 +80,7 @@ async function api(methode, pfad, daten) {
 
 function ansichtAusAdresse() {
   if (/^#\/wbs\//.test(location.hash)) return 'wbs';
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten|berichte\/bestand)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
@@ -130,6 +130,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/prognose') return vPrognose();
   if (S.ui.view === 'berichte/fieber') return vFieber();
   if (S.ui.view === 'berichte/kosten') return vKosten();
+  if (S.ui.view === 'berichte/bestand') return vBestand();
   if (S.ui.view === 'wbs') return vWbs();
   return vBoard();
 }
@@ -725,7 +726,7 @@ function ersterTabbarer(bereich) {
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
   if (S.ui.view === 'wbs' && S.wbs) return `${prozente(S.wbs.stand).gruen} % · WBS · ${S.wbs.name} — kanbanD`;
-  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart', 'berichte/kosten': 'Kosten' };
+  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart', 'berichte/kosten': 'Kosten', 'berichte/bestand': 'Bestand' };
   const n = alleLaufenden().length;
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }

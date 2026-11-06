@@ -63,6 +63,7 @@
     wieLangeNoch: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     fieber: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     kosten: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
+    bestand: { spalten: true, personen: 'zustaendig' },
   };
 
   /** Hinweis an „Zurücksetzen“ (R00105 US-25, PO Z. 118): nennt von Messbasis und „Rechnen ab“ nur, was die Leiste zeigt. */

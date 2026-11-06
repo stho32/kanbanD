@@ -768,7 +768,7 @@ function vPersonen() {
 }
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */
-const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>', csv: '<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>', etikett: '<path d="M4 4h8l9 9-8 8-9-9z"></path><circle cx="8.5" cy="8.5" r="1.5"></circle>' };
+const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', tabelle: '<path d="M4 4h16v16H4zM4 9h16M4 14h16M9 4v16M14 4v16"></path>', kreuz: '<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>', csv: '<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>', etikett: '<path d="M4 4h8l9 9-8 8-9-9z"></path><circle cx="8.5" cy="8.5" r="1.5"></circle>' };
 function berichteAusloeser() {
   if (S.ui.stufe === 'compact') return 't-seite';
   return 't-ber';
@@ -776,7 +776,7 @@ function berichteAusloeser() {
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem" tabindex="-1"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/kosten', SVG.etikett, 'Kosten', 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/bestand', SVG.tabelle, 'Bestand nach Labels', 'Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse — Klick öffnet das Board.', v === 'berichte/bestand')}${e('#/berichte/kosten', SVG.etikett, 'Kosten', 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `leiste`: Schlüssel in BERICHTSLEISTEN (web/berichte.js), dort stehen die Gruppen je Bericht. */
 function vBerichtsfilter(leiste) {
@@ -894,6 +894,42 @@ function vKostenSummen(bericht, umfang) {
 }
 function vKostenLeer(bericht, umfang, knopf) {
   return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')}, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
+}
+
+/** Bericht „Bestand nach Labels“ (R00100): offene Aufgaben je Paar aus zwei Label-Präfixen — liest nur. */
+function vBestand() {
+  const kopf = `<div class="leiste"><b>Bestand nach Labels</b> <span class="muted" style="font-size:12px">· liest nur · Klick auf eine Zahl öffnet das Board</span></div>${vBerichtsfilter('bestand')}`;
+  if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
+  const filter = kostenFilter(S.ui.bf);
+  const achsen = bestandAchsen(filter);
+  return `${kopf}<div class="body" id="bestand">${vBestandInhalt(achsen, filter)}</div>`;
+}
+/** Achsen des Berichts: die gespeicherte Einstellung des Boards, sonst der Vorschlag aus den offenen Aufgaben (schreibt nichts). */
+function bestandAchsen(filter) {
+  if (S.board.bestand) return S.board.bestand;
+  return vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board, filter)));
+}
+function vBestandInhalt(achsen, filter) {
+  const klassen = S.zustand.einstellungen.klassen;
+  const tabelle = bestandNachLabels(S.aufgaben, S.board, klassen.map(k => k.schluessel), achsen.zeilen, achsen.spalten, filter);
+  return vBestandTabelle(tabelle, achsen, klassen);
+}
+function vBestandTabelle(t, achsen, klassen) {
+  const zelle = (zeile, spalte, z) => vBestandZelle({ zeile, spalte, zelle: z }, achsen, klassen);
+  const kopf = `<tr><th scope="col" class="ecke">${esc(achsen.zeilen)} ↓ · ${esc(achsen.spalten)} →</th>${t.spalten.map(s => `<th scope="col" class="r">${esc(s.wert)}</th>`).join('')}<th scope="col" class="r">Summe</th></tr>`;
+  const zeilen = t.zeilen.map((z, i) => `<tr><th scope="row">${esc(z.wert)}</th>${t.spalten.map((s, j) => zelle(z, s, t.zellen[i][j])).join('')}${zelle(z, null, { zahl: t.summen.zeilen[i] })}</tr>`).join('');
+  const summen = `<tr class="grp best-summe"><th scope="row">Summe</th>${t.spalten.map((s, j) => zelle(null, s, { zahl: t.summen.spalten[j] })).join('')}${zelle(null, null, { zahl: t.summen.gesamt })}</tr>`;
+  return `<div class="best-scroll" id="best-scroll"><table class="pt dicht best-tab" aria-label="Bestand nach Labels: ${esc(achsen.zeilen)} × ${esc(achsen.spalten)}"><thead>${kopf}</thead><tbody>${zeilen}${summen}</tbody></table></div>`;
+}
+/** Eine Stelle der Tabelle: Summe fett, leere Zelle „—“, sonst die Zahl in der Farbe der dringendsten Klasse; Name als title und aria-label. */
+function vBestandZelle(stelle, achsen, klassen) {
+  const name = esc(zellName(stelle, achsen, klassen)), z = stelle.zelle;
+  const benannt = `title="${name}" aria-label="${name}"`;
+  if (!stelle.zeile || !stelle.spalte) return `<td class="r num" ${benannt}><b>${z.zahl}</b></td>`;
+  if (!z.zahl) return `<td class="r" ${benannt}><span class="muted">—</span></td>`;
+  const klasse = klassen.find(k => k.schluessel === z.dringendste);
+  const farbe = klasse ? ` style="${cv(klasse.farbe)}"` : '';
+  return `<td class="r${klasse ? ' k' : ''}"${farbe} ${benannt}><span class="bz-t">${z.zahl}</span></td>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
