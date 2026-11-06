@@ -41,7 +41,7 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
 - **Rückgabe beim Schließen** (Esc, ✕ oder Klick auf den Hintergrund):
   - Aufgaben- und Defekt-Fenster geben den Fokus an die Karte bzw. Zeile der zuletzt gezeigten Aufgabe zurück, auch nach dem Blättern.
   - Die übrigen Fenster geben ihn an das Element zurück, das beim Öffnen fokussiert war.
-  - Gibt es dieses Element nicht mehr, geht der Fokus auf den Hauptbereich (`#main`).
+  - Gibt es dieses Element nicht mehr, gilt die Regel aus „Fokus nach Aktionen“, Punkt „Ohne offene Ebene“ (PO Z. 113): Bleibt eine Ebene offen, das erste tabbare Element der obersten offenen Ebene; wird die letzte Ebene geschlossen, die zuletzt geführte Karte bzw. Zeile, sonst `BODY`. `#main` ist nur Ziel, wenn die Ebene nie einen Auslöser hatte.
 - **Stapel**: Hilfe und Zuweisen öffnen wie heute über dem Aufgabenfenster.
   - Das oberste Fenster hält den Fokus.
   - Schließt es, kehrt der Fokus in das Fenster darunter zurück, auf das Element, das vorher fokussiert war.
@@ -411,6 +411,7 @@ Der Hebel ist die eine Stelle am Ende von `render()`: Einzelne `.focus()`-Aufruf
   - je Feature eine Anforderung — die vier Slices teilen den Kleber und die Invariante, und die Karte hat eine Abnahme
   - Schnitt nach Schichten (erst Modul, dann Oberfläche) — nicht von außen prüfbar
 - **Einarbeitung PO Z. 111 und Beratung realist-consultant** (2026-11-06): Funktionale Anforderung „Ohne offene Ebene“ ersetzt durch den Wortlaut der PO-Entscheidung, „Live-Ereignis ohne offene Ebene“ als Allquantor neu, Beschreibung geschärft; neue Kriteriengruppe „Ohne offene Ebene“ mit Abtastung und Proben für Einrichten, Personen und Board; 52 → 58 Akzeptanzkriterien (6 neu, keines gestrichen); US-11 und US-12 neu. Die WBS I0095 ist dabei nicht geändert.
+- **Angleichung Rückgabe bei fehlendem Auslöser** (2026-11-06, Quelle: Code-Review Wiederholung #8): Die Beschreibung der Fenster sagte noch „Gibt es dieses Element nicht mehr, geht der Fokus auf den Hauptbereich (`#main`)“, im Widerspruch zu PO Z. 113. Jetzt Verweis auf „Fokus nach Aktionen“, Punkt „Ohne offene Ebene“. Weitere Stellen mit `#main` bzw. „Hauptbereich“ für einen fehlenden Auslöser gibt es in Anforderung und Story nicht (grep); das Kriterium „Leerfall“ meint die Ebene ohne Auslöser und bleibt. Kriterien unverändert (61).
 - **Klärung Rang 6 ohne Ebene** (2026-11-06, Quelle: Bericht entwickler Nacharbeit 3, Commit f8e16e4): Spannung zwischen „ohne offene Ebene entfällt Rang 6“ und dem Kriterium „Leerfall“ (`n` aus `BODY`, Esc → `#main`). Gefasst wie gebaut: Rang 6 ohne Ebene nur, wenn die geschlossene Ebene nie einen Auslöser hatte; scheitert die Rückgabe an einen gemerkten, inzwischen fehlenden Auslöser, gilt die Kette Karte/Zeile → `BODY`. „Fokus nach Aktionen“ um einen Unterpunkt ergänzt, der Folgepunkt geschärft; Kriterien unverändert (61).
 - **Einarbeitung PO Z. 113** (2026-11-06): Rang 6 nur bei nach dem Neuzeichnen offener Ebene, Kette ohne Ebene nach dem Schließen der letzten Ebene mit fehlendem Auslöser; „Fokus nach Aktionen“ um einen Punkt präzisiert und einen ergänzt; 58 → 61 Akzeptanzkriterien (3 neu, keines geändert); US-12 ergänzt.
 - **Detailplanung:** WBS I0095 (F0044–F0047, B0377–B0389), 2026-11-06.
