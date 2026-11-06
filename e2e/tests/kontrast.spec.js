@@ -23,14 +23,18 @@ const GRUNDBESTAND = () => ({
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
 const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(3).replace('.', ',')}`;
 
+/** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von .1 s): gemessen wird der ruhende Zustand. */
+async function farbuebergaengeAbwarten(page) {
+  await page.waitForFunction(() => document.getAnimations().filter(a => a instanceof CSSTransition).every(a => a.playState === 'finished'));
+}
+
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
 async function verstoesseInBeidenThemen(page, bereiche, vorher = async () => {}) {
   const alle = [];
   for (const t of THEMEN) {
     await thema(page, t);
     await vorher();
-    // die Farbübergänge (.1 s) erst auslaufen lassen: gemessen wird der ruhende Zustand
-    await page.waitForTimeout(250);
+    await farbuebergaengeAbwarten(page);
     const messungen = (await kontrastMessen(page, bereiche)).map(m => ({ thema: t, ...m }));
     await test.info().attach(`Messungen ${t}`, { body: messungen.map(lesbar).join('\n'), contentType: 'text/plain' });
     alle.push(...messungen);
@@ -88,6 +92,19 @@ test.describe('R00107 Kontrast', () => {
       expect(Math.abs(m.wert - halbGrau), `${bereich} misst ${m.wert}`).toBeLessThan(0.1);
     }
     expect(await kontrastMessen(page, ['#probe-weg'])).toEqual([]);
+  });
+
+  test('Warten auf ruhenden Zustand: nach dem Themenwechsel läuft ein Farbübergang, gemessen wird erst nach seinem Ende', async ({ page }) => {
+    await thema(page, 'light');
+    await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
+      '<div id="probe-uebergang" style="background:var(--kd-surface)"><span style="color:var(--kd-text);transition:color 2s linear">gleitet</span></div>'));
+    const laufende = () => page.evaluate(() => document.getAnimations().filter(a => a instanceof CSSTransition && a.playState === 'running').length);
+    await thema(page, 'dark');
+    expect(await laufende()).toBeGreaterThan(0);
+    await farbuebergaengeAbwarten(page);
+    expect(await laufende()).toBe(0);
+    const [m] = await kontrastMessen(page, ['#probe-uebergang']);
+    expect(m.wert).toBeGreaterThanOrEqual(MASS);
   });
 
   test('Ungültige Farbe ist ein Fehler mit dem Wert, nicht still Schwarz', async ({ page }) => {
