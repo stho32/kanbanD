@@ -204,3 +204,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Architektur (Drift) | architekt (frisch) | bestanden; ADR-0010 Nachtrag N1–N6, A00009 nachgezogen; 2 offene Fragen an PO | 0:20 | 98e753b, 8897b75 |
 | 2026-11-06 | #8 | Rückfrage | product-owner (frisch) | entschieden: R00106 Z.110 angleichen + Zählung im Wächter; Pop-Ausgleich bleibt | 0:08 | 3aae3ce |
 | 2026-11-06 | #8 | Architektur (PO-Folge) | architekt (frisch) | bestanden; ADR-0010 N3/N5 und A00009 nach PO-Entscheidung | 0:06 | ba09db5, 0c122c5 |
+| 2026-11-06 | #8 | Planung (PO-Folge) | planer (frisch) | bestanden; R00106 NFA erlaubte .focus()-Orte, Zählung je Funktion | 0:06 | 9af3cc6 |
