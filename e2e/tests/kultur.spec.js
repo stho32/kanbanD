@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
 const { isoFundstellen, ausnahmenAbgleichen } = require('./kultur-hilfen');
+const { ansichtenDerAnwendung } = require('./ansichten');
 
 // „Heute“ ist der Tag des Laufs in Europe/Berlin (playwright.config.js); die erwarteten Texte rechnet der Test aus ihm.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -231,22 +232,89 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
  */
 const AUSNAHMEN = [];
 
-/** B0430: Karte und Fenster — Board, Archiv des Boards, Aufgabenfenster (offen und archiviert) und „Neue Aufgabe“. */
-const KARTE_UND_FENSTER = [
-  { ansicht: 'Board', oeffnen: brett },
+/** Titel der Berichte: erst wenn er steht, hat der Bericht das Bild des vorigen ersetzt. */
+const BERICHTSTITEL = { stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', durchlauf: 'Durchlaufzeit',
+  prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels' };
+/** Klappt alles Zugeklappte auf, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl. */
+async function allesAufklappen(page) {
+  const zu = page.locator('details:not([open]) > summary');
+  for (let n = 0; n < 20 && await zu.count(); n++) await zu.first().click();
+  await expect(zu).toHaveCount(0);
+}
+/** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihr Inhalt steht. */
+function nachDemLaden(ansicht) {
+  if (ansicht === 'Board') return page => page.locator('.ka[data-id="1"]').waitFor();
+  if (ansicht === 'WBS-Sicht') return page => page.locator('.wbs-tabelle').waitFor();
+  if (ansicht === 'Personen') return page => page.locator('tr[data-person="st"]').waitFor();
+  if (ansicht === 'Aufgabenliste') return page => page.locator('main').getByText('eins').first().waitFor();
+  if (ansicht === 'Einrichten') return page => page.locator('pre.yaml').first().waitFor();
+  const bericht = ansicht.startsWith('Bericht ') && ansicht.slice(8);
+  if (bericht) return page => expect(page.locator('.leiste > b').first()).toHaveText(BERICHTSTITEL[bericht]);
+  return async () => {};
+}
+const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
+/** Der Tooltip eines Diagramms erscheint erst unter dem Zeiger (FA 18): einmal über die Mitte der Zeichenfläche. */
+const tooltip = (bericht, name) => async page => {
+  await page.goto(k.adresse + '#/berichte/' + bericht);
+  const box = await page.getByRole('img', { name: new RegExp('^' + name) }).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.locator('#tooltip').waitFor();
+};
+
+/**
+ * Die Ansichten der Probe (FA 18): jede Ansicht der gemeinsamen Liste (ADR-0012 Regel 6), dazu Karte und Fenster (B0430)
+ * und die Zustände, die nur unter einer Handlung erscheinen. `leer` startet in einem leeren Ordner (erster Start).
+ */
+const ANSICHTEN = [
+  ...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(({ ansicht, adresse }) => ({
+    ansicht,
+    oeffnen: async page => { await page.goto(k.adresse + adresse); await liveBereit(page); await nachDemLaden(ansicht)(page); await allesAufklappen(page); },
+  })),
   { ansicht: 'Archiv des Boards', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="3"]').waitFor(); } },
   { ansicht: 'Aufgabenfenster #1', oeffnen: async page => { await (await fensterOeffnen(page, 1)).locator('.km').first().waitFor(); } },
   { ansicht: 'Aufgabenfenster #3 (archiviert)', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="3"]').click(); await page.locator('.mod .archbar').waitFor(); } },
   { ansicht: 'Neue Aufgabe', oeffnen: async page => { await brett(page); await page.keyboard.press('n'); await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor(); } },
+  { ansicht: 'API für Agenten', oeffnen: async page => { await page.goto(k.adresse + 'api'); await page.locator('body').getByText('JJJJ-MM-TT').first().waitFor(); } },
+  // Das Menü „<Seite> ▾“ gibt es nur in der Stufe compact (unter 600 px, web/kopfzeile.js)
+  { ansicht: 'Menü Seite', breite: 560, oeffnen: menue('#t-seite') },
+  { ansicht: 'Menü Mehr', oeffnen: menue('#t-mehr') },
+  { ansicht: 'Menü Berichte', oeffnen: menue('#t-ber') },
+  { ansicht: 'Menü Ich', oeffnen: menue('#t-ich') },
+  { ansicht: 'Kontextmenü #1', oeffnen: async page => { await brett(page); await page.locator('.ka[data-id="1"]').click({ button: 'right' }); await page.getByRole('menu').first().waitFor(); } },
+  { ansicht: 'Aufgabenreservierungen des Boards', oeffnen: async page => { await brett(page); await page.locator('#t-board').click(); await page.locator('#reservierungen-zeigen').click(); await page.locator('#reservierungen tbody tr').first().waitFor(); } },
+  { ansicht: 'Tooltip Burndown', oeffnen: tooltip('verlauf', 'Offene Aufgaben je Tag') },
+  { ansicht: 'Tooltip Durchlaufzeit', oeffnen: tooltip('durchlauf', 'Durchlaufzeit je Aufgabe') },
+  { ansicht: 'Tooltip Wie lange noch', oeffnen: tooltip('prognose', 'Noch nicht erreichte Aufgaben') },
+  { ansicht: 'Erster Start', leer: true, oeffnen: async page => { await page.goto(k.adresse); await page.getByRole('button', { name: 'Einrichten und committen' }).waitFor(); } },
 ];
+/** Die Zustände aus FA 18 und B0430, die die gemeinsame Liste nicht kennt. */
+const ZUSTAENDE = ['Archiv des Boards', 'Aufgabenfenster #1', 'Aufgabenfenster #3 (archiviert)', 'Neue Aufgabe', 'API für Agenten', 'Menü Seite', 'Menü Mehr',
+  'Menü Berichte', 'Menü Ich', 'Kontextmenü #1', 'Aufgabenreservierungen des Boards', 'Tooltip Burndown', 'Tooltip Durchlaufzeit', 'Tooltip Wie lange noch', 'Erster Start'];
 
-test.describe('US-6: keine ISO-Form in Karte und Fenster', () => {
+/** Vollständigkeit (FA 18, wie ziele.spec.js): welche verlangte Ansicht fehlt der Probe, welche steht doppelt. */
+function vollstaendigkeit(namen, gemeinsam, zustaende) {
+  return { fehlend: [...gemeinsam, ...zustaende].filter(name => !namen.includes(name)), doppelt: namen.filter((n, i) => namen.indexOf(n) !== i) };
+}
+
+test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
   test('die Ausnahmeliste ist leer', () => {
     expect(AUSNAHMEN).toEqual([]);
   });
-  for (const { ansicht, oeffnen } of KARTE_UND_FENSTER) {
-    test(`US-6: ${ansicht} ohne ISO-Form in Text, title und Namen`, async ({ page }) => {
-      await starten(page);
+  test('Vollständigkeit: jede Ansicht der gemeinsamen Liste und jeder Zustand steht in der Probe, keiner doppelt', () => {
+    const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+    expect(vollstaendigkeit(ANSICHTEN.map(a => a.ansicht), gemeinsam, ZUSTAENDE)).toEqual({ fehlend: [], doppelt: [] });
+  });
+  test('Selbstprobe der Vollständigkeit: eine neue Ansicht der gemeinsamen Liste und eine doppelte fallen auf', () => {
+    const gemeinsam = [...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht), 'Bericht neu'];
+    const namen = [...ANSICHTEN.map(a => a.ansicht), 'Menü Ich'];
+    expect(vollstaendigkeit(namen, gemeinsam, ZUSTAENDE)).toEqual({ fehlend: ['Bericht neu'], doppelt: ['Menü Ich'] });
+  });
+  // Restfund der Probe, behoben in B0434: die Aufgabenliste zeigt „archiviert 2026-10-01“
+  const RESTFUNDE = ['Aufgabenliste'];
+  for (const { ansicht, oeffnen, breite, leer } of ANSICHTEN) {
+    (RESTFUNDE.includes(ansicht) ? test.fail : test)(`US-6: ${ansicht} ohne ISO-Form in Text, title und Namen`, async ({ page }) => {
+      if (breite) await page.setViewportSize({ width: breite, height: 800 });
+      if (leer) { k = await kanbanStarten(); } else await starten(page);
       await oeffnen(page);
       const { offen, alarme } = ausnahmenAbgleichen(await isoFundstellen(page, ansicht), AUSNAHMEN, ansicht);
       expect(alarme).toEqual([]);

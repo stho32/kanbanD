@@ -417,3 +417,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0430 Probe über Karte und Fenster | Standard | 0,5-1,5h | 0,4h | 0,4h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0431 Personen und Stundenzettel | Standard | 0,5-1,5h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0432 Berichte: Tabellen, Achsen, Tooltips | Standard | 1-2h | 0,9h | 0,9h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0433 Probe über alle Ansichten | Standard | 1-2h | 0,5h | 0,5h | autonom |
