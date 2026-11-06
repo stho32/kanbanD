@@ -372,3 +372,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0374 Filterleiste im Kostenbericht ohne Zeitraum | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | Nacharbeit 1 Karte #6 (Felder bei zu wenigen Präfixen, Legende, Summe 0, Menütext, Name ohne Zielfilter, filterOhneZeitraum, Kontrast, Touch) | Nacharbeit | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0399 Zielmaß an einem Ort mit reiner Probe | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0400 Trefferfläche messen mit Selbstproben | Standard | 2,5-3,5h | 0,1h | 0,1h | autonom |
