@@ -470,9 +470,41 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
+  ebenenAbschirmen(ebenen(S.ui));
   // Ein ausdrückliches Fokusziel geht vor
   const gehalten = Boolean(fokus) && !S.ui.fokus && fokusSetzen(fokus);
   if (!gehalten) fokusZurueckgeben();
+}
+
+/* Fokusführung über Ebenen (R00106, ADR-0010): die Entscheidungen rechnet web/fokus.js, hier wird nur angewendet. */
+const TABBAR = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]';
+
+/** Unter dem obersten offenen Dialog ist alles inert; der Dialog selbst ist aria-modal. Menüs sind nicht modal. */
+function ebenenAbschirmen(liste) {
+  $('#app').inert = false;
+  const dialoge = liste.filter(ebene => ebene.modal).map(ebene => $(ebene.selektor)).filter(Boolean);
+  if (!dialoge.length) return;
+  const oberster = dialoge.pop();
+  oberster.setAttribute('aria-modal', 'true');
+  $('#app').inert = true;
+  // Der abgedunkelte Hintergrund gehört zum Dialog und bleibt klickbar; tiefere Dialoge samt Hintergrund nicht
+  for (const tiefer of dialoge) (tiefer.closest('.mod-bg') || tiefer).inert = true;
+}
+
+/** Tabbare, sichtbare Elemente eines Bereichs in Dokumentreihenfolge. */
+function tabbareIn(bereich) {
+  return [...bereich.querySelectorAll(TABBAR)].filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
+}
+
+/** Tab und Umschalt+Tab laufen im obersten offenen Dialog um, statt ihn zu verlassen; wahr, wenn die Taste verbraucht ist. */
+function fallenTaste(ereignis) {
+  const oberste = ebenen(S.ui).at(-1);
+  if (!oberste || !oberste.modal || !$(oberste.selektor)) return false;
+  const tabbare = tabbareIn($(oberste.selektor));
+  const ziel = fallenSchritt(tabbare.length, tabbare.indexOf(document.activeElement), ereignis.shiftKey);
+  ereignis.preventDefault();
+  if (ziel >= 0) tabbare[ziel].focus();
+  return true;
 }
 
 /** Fokus nach dem Neuzeichnen, wenn der Sicherer nichts hält: ausdrückliches Ziel, sonst Karte im Board oder Zeile in der Aufgabenliste. */
@@ -1281,6 +1313,7 @@ window.addEventListener('resize', () => {
 document.addEventListener('keydown', e => {
   const t = e.target;
   if (S.ui.menue) { menueTaste(e); return; }
+  if (e.key === 'Tab' && fallenTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
