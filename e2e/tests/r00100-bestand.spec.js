@@ -92,7 +92,7 @@ test.describe('R00100 Bestand nach Labels', () => {
     expect(gruppen.slice(gruppen.indexOf('[VERLAUF]') + 1).filter(g => g.startsWith('['))).toEqual(['[BESTAND]', '[AUSLEITEN]']);
     expect(gruppen[gruppen.indexOf('[BESTAND]') + 1]).toBe('Bestand nach Labels');
     const eintrag = menue.getByRole('menuitem', { name: /^Bestand nach Labels/ });
-    await expect(eintrag.locator('small')).toHaveText('Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse — Klick öffnet das Board.');
+    await expect(eintrag.locator('small')).toHaveText('Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse – Klick öffnet das Board.');
     await expect(eintrag.locator('svg.i path')).toHaveCount(1);
     await expect(eintrag).toHaveAttribute('href', '#/berichte/bestand');
     await eintrag.click();
