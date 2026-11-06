@@ -237,6 +237,8 @@ const LANG = 'KSTXQZRTPLKMNBVCXZWQRTPLKMNBVCXZWQRTPLKM';
 const KOMPOSITUM = 'Gemeinkostenanteilsberechnung';
 const MIT_KOMPOSITUM = POSITIONEN.replace('  basis:', `    - text: ${KOMPOSITUM}\n      amount: 0.05\n  basis:`);
 const MIT_LANG = POSITIONEN.replace('  basis:', `    - text: ${LANG}\n      amount: 0.05\n  basis:`);
+const EIN_VOKAL = 'KSTXQZRTPLKMNBVCXZWQRAPLKMNBVCXZWQRTPLKM'; // 40 Zeichen, genau eine Vokalgruppe: keine Silbengrenze
+const MIT_EIN_VOKAL = POSITIONEN.replace('  basis:', `    - text: ${EIN_VOKAL}\n      amount: 0.05\n  basis:`);
 
 /** Zeilen eines Zeilenkopfs im Layout: Positionen, vor denen eine neue Zeile beginnt (über Range je Zeichen).
  *  Auflösen und Messen in einem einzigen evaluate, damit kein Neuzeichnen dazwischen den Knoten löst; alle Textknoten
@@ -484,6 +486,15 @@ test.describe('R00105 Reiter Kosten', () => {
     await breiteSetzen(page, 1280, 800);
     expect(await umbrueche(page, 'Gemeinkostenanteil')).toEqual([]);
     expect(await umbrueche(page, KOMPOSITUM)).toEqual([]);
+  });
+
+  test('Nacharbeit S5: ein Wort mit genau einer Vokalgruppe (40 Zeichen) hat keine Silbengrenze und bleibt ganz', async ({ page }) => {
+    expect(EIN_VOKAL).toHaveLength(40);
+    await breiteSetzen(page, 320, 700);
+    const dialog = await fenster(page, 1, MIT_EIN_VOKAL);
+    await kostenZeigen(page, dialog);
+    await expect(page.locator('#reiterpanel-kosten th[scope="row"] span.ganz', { hasText: EIN_VOKAL })).toHaveText(EIN_VOKAL);
+    expect(await umbrueche(page, EIN_VOKAL)).toEqual([]);
   });
 
   test('US-23: Wort ohne Silbengrenze bleibt ganz, die Tabelle scrollt quer im Panel per Tastatur', async ({ page }) => {
