@@ -258,7 +258,7 @@ test('Selbstprobe Literal: Nutzerfarben, Token-Verweise, Mischungen und Kommenta
 
 /* ── faint ── */
 
-test('faint: --kd-faint nur an den 5 erlaubten Selektoren', { todo: 'B0395' }, () => {
+test('faint: --kd-faint nur an den 5 erlaubten Selektoren', () => {
   const funde = ['kd-app.css', 'kd-base.css'].flatMap(datei => faintStellen(datei, lies(datei)));
   assert.deepStrictEqual(funde, []);
 });

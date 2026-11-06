@@ -26,7 +26,7 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
 .mono{font-family:var(--kd-mono);font-size:12px}
 .muted{color:var(--kd-muted)}
 .pk{display:inline-grid;place-items:center;width:18px;height:18px;font-size:9px;font-weight:600;flex:none}
-.pk-m{background:var(--kd-mensch);color:var(--kd-on-mensch)}.pk-a{background:var(--kd-agent);color:var(--kd-on-agent)}.pk-0{background:none;box-shadow:inset 0 0 0 1px var(--kd-line-strong);color:var(--kd-faint)}
+.pk-m{background:var(--kd-mensch);color:var(--kd-on-mensch)}.pk-a{background:var(--kd-agent);color:var(--kd-on-agent)}.pk-0{background:none;box-shadow:inset 0 0 0 1px var(--kd-line-strong);color:var(--kd-muted)}
 .lauf{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 5px;font-family:var(--kd-mono);font-size:11px;background:var(--kd-agent-weak);color:var(--kd-agent-ink);white-space:nowrap}
 .lauf::before{content:"";width:6px;height:6px;background:var(--kd-agent)}
 .lauf.eigen{background:var(--kd-accent);color:var(--kd-on-accent)}.lauf.eigen::before{background:var(--kd-on-accent)}
