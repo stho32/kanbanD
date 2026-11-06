@@ -1,5 +1,6 @@
 /* kanbanD — Berichte: Zeitraum, Filter und Rechnungen über Bewegungen; rein, im Browser und in Node nutzbar. */
 (function (ziel) {
+  const { datumAusMs } = typeof module !== 'undefined' ? require('./kultur.js') : window;
   const TAG = 864e5;
 
   /* ── Zeitraum und Filter (R00043) ── */
@@ -450,7 +451,8 @@
     if (t1 <= t0) return tag(t0);
     return tag(t0 + (x - l) / breite * (t1 - t0) + (stetig ? 0 : TAG / 2));
   }
-  const vollDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
+  /** Tag in ms → `TT.MM.JJJJ`; die Form gehört dem Kulturmodul (R00109). */
+  const vollDatum = ms => datumAusMs(ms);
 
   /* ── Termine (R00047) ── */
   /** Chance einer Spalte, einen Termin (JJJJ-MM-TT) zu halten: vorbei, erreicht, ungemessen oder p7/p5 in [0, 1]. */

@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // Ortszeit der Erwartungen, wie e2e/tests/hilfen.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT } = require('../../web/kultur.js');
+const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT } = require('../../web/kultur.js');
 
 test('lang(2026-10-28) ist 28.10.2026', () => {
   assert.strictEqual(datumLang('2026-10-28'), '28.10.2026');
@@ -33,6 +33,7 @@ test('Zeitstempel in ms: lang, mit Wochentag Mo–So wie deDatum (R00073), Achse
   for (const [t, wt] of woche) assert.strictEqual(datumMitWochentag(ms(2026, 10, t)), `${wt} 0${t}.10.2026`);
   assert.strictEqual(datumMitWochentag(ms(2026, 10, 28)), 'Mi 28.10.2026');
   assert.deepStrictEqual(achsenMarke(ms(2026, 10, 1)), ['01.10.', '2026']);
+  assert.strictEqual(zeitpunktAusMs(new Date(2026, 0, 5, 9, 7).getTime()), '05.01.2026 09:07');
 });
 
 test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel', () => {

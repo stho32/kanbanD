@@ -31,6 +31,11 @@
     const d = new Date(ms);
     return `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}.${d.getFullYear()}`;
   }
+  /** Zeitstempel in ms → `TT.MM.JJJJ HH:MM` in Ortszeit. */
+  function zeitpunktAusMs(ms) {
+    const d = new Date(ms);
+    return `${datumAusMs(ms)} ${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
+  }
   /** Zeitstempel in ms → `Mi 28.10.2026` (Tooltip-Kopf, R00073). */
   function datumMitWochentag(ms) {
     return `${WOCHENTAG[new Date(ms).getDay()]} ${datumAusMs(ms)}`;
@@ -50,5 +55,5 @@
   /** Anzeigetext der Herkunft `thin air` (FA 15); in Datei, API und Filter bleibt `thin air`. */
   const OHNE_HERKUNFT = 'ohne Herkunft';
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT });
 })(typeof module !== 'undefined' ? module.exports : window);

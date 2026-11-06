@@ -31,6 +31,6 @@ test('US-1 und US-2: Burndown und Durchlaufzeit aus der Geschichte', async ({ pa
     await expect(page.locator('#tooltip')).toContainText('01.10.2026');
     await expect(page.locator('#tooltip')).toContainText('offen 2');
     await page.getByText('Tabellenansicht').click();
-    await expect(page.locator('.tabellenansicht tbody tr').first()).toContainText('2026-10-01');
+    await expect(page.locator('.tabellenansicht tbody tr').first()).toContainText('01.10.2026'); // R00109: Tabellen lang
   } finally { await k.stoppen(); }
 });

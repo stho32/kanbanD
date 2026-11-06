@@ -180,34 +180,45 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(neujahr.map(kurz));
   });
 
-  test.fail('US-5: Tabellenansichten lang, Achsenmarken TT.MM. über JJJJ, Tooltips mit Wochentag', async ({ page }) => {
+  test('US-5: Tabellenansichten lang, Achsenmarken TT.MM. über JJJJ, Tooltips mit Wochentag', async ({ page }) => {
     await starten(page);
     await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...ALS_ST, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red', ziel: true }] });
-    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...ALS_ST, data: { puffer: 4 } });
-    await page.request.post(k.adresse + 'api/boards/entwicklung/bewegen', { ...ALS_ST, data: { nummer: 4, spalte: 'Erledigt' } });
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...ALS_ST, data: { puffer: 4, zielspalte: 'Entwicklung' } });
+    // die Prognose braucht drei erledigte Aufgaben in der Messbasis
+    for (const nummer of [4, 5, 6]) await page.request.post(k.adresse + 'api/boards/entwicklung/bewegen', { ...ALS_ST, data: { nummer, spalte: 'Erledigt' } });
     const TAG_LANG = /^\d\d\.\d\d\.\d{4}$/;
     const MIT_WOCHENTAG = /(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/;
     for (const [bericht, tabelle] of [['verlauf', '.tabellenansicht table'], ['prognose', '.tabellenansicht table'], ['fieber', '#fb-tabelle']]) {
       await page.goto(k.adresse + '#/berichte/' + bericht);
+      await liveBereit(page);
       await page.locator('.tabellenansicht summary').click();
       const tage = await page.locator(`${tabelle} tbody tr td:first-child`).allTextContents();
       expect(tage.length, bericht).toBeGreaterThan(0);
       expect(tage.filter(t => !TAG_LANG.test(t)), bericht).toEqual([]);
     }
-    for (const [bericht, kopf] of [['verlauf', MIT_WOCHENTAG], ['durchlauf', /Ankunft (Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/], ['prognose', MIT_WOCHENTAG]]) {
+    for (const [bericht, name, kopf] of [['verlauf', 'Offene Aufgaben je Tag', MIT_WOCHENTAG],
+      ['durchlauf', 'Durchlaufzeit je Aufgabe', /Ankunft (Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/],
+      ['prognose', 'Noch nicht erreichte Aufgaben', MIT_WOCHENTAG]]) {
       await page.goto(k.adresse + '#/berichte/' + bericht);
-      const svg = page.locator('svg.diagramm').first();
-      await expect(svg.locator('text.achse', { hasText: /^\d\d\.\d\d\.$/ }).first()).toBeAttached();
-      await expect(svg.locator('text.achse', { hasText: /^\d{4}$/ }).first()).toBeAttached();
+      // der Bericht ersetzt das Diagramm des vorigen erst nach dem Rendern
+      const svg = page.getByRole('img', { name: new RegExp('^' + name) });
+      // eine Marke ist ein text.achse mit zwei Zeilen (tspan, R00073): TT.MM. über JJJJ
+      const marke = svg.locator('text.achse', { has: page.locator('tspan', { hasText: /^\d{4}$/ }) }).first();
+      await expect(marke.locator('tspan')).toHaveText([/^\d\d\.\d\d\.$/, /^\d{4}$/]);
       const box = await svg.boundingBox();
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await expect(page.locator('#tooltip'), bericht).toContainText(kopf);
       await page.mouse.move(1, 1);
     }
-    for (const bericht of ['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand']) {
+    const TITEL = { stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', durchlauf: 'Durchlaufzeit',
+      prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels' };
+    for (const [bericht, titel] of Object.entries(TITEL)) {
       await page.goto(k.adresse + '#/berichte/' + bericht);
-      await page.locator('.body').first().waitFor();
-      for (const s of await page.locator('details:not([open]) > summary').all()) await s.click();
+      await expect(page.locator('.leiste > b').first()).toHaveText(titel);
+      // alles Zugeklappte aufklappen, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl
+      const zu = page.locator('details:not([open]) > summary');
+      for (let n = 0; n < 20 && await zu.count(); n++) await zu.first().click();
+      await expect(zu).toHaveCount(0);
       const texte = await page.locator('main, body').first().evaluate(b => [b.innerText, ...[...b.querySelectorAll('[title],[aria-label]')].flatMap(x => [x.title, x.getAttribute('aria-label') || ''])]);
       expect(texte.filter(t => ISO.test(t)).map(t => t.match(ISO)[0]), bericht).toEqual([]);
     }

@@ -57,11 +57,11 @@ test.describe('R00081', () => {
     await page.goto(k.adresse + '#/berichte/verlauf');
     await liveBereit(page);
     const tage = page.locator('.tabellenansicht tbody tr td:first-child');
-    await expect(tage).toHaveText([-4, -3, -2, -1, 0].map(tag));
+    await expect(tage).toHaveText([-4, -3, -2, -1, 0].map(deutsch)); // R00109: Tabellen lang
     await filterOeffnen(page);
     await page.getByLabel('Rechnen ab').fill(tag(-2));
     await page.getByLabel('Rechnen ab').blur();
-    await expect(tage).toHaveText([-2, -1, 0].map(tag));
+    await expect(tage).toHaveText([-2, -1, 0].map(deutsch));
     await expect(zusammen(page)).toHaveText(`Filter · keine · Rechnen ab ${deutsch(-2)}`);
     expect(k.lies('boards/entwicklung.md')).toContain(`\nstart: ${tag(-2)}\n`);
     await page.goto(k.adresse + '#/berichte/stundenzettel');
