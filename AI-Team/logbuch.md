@@ -231,3 +231,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Auto-Reviews | rechtschreib-reviewer | befund: „0 von 1 Aufgaben“, Tooltip „Rechnen ab“, AK:104, doppeltes „geschätzt“ | 0:02 | — |
 | 2026-11-06 | #18 | Rückfrage | product-owner | entschieden Z.117–120 | 0:02 | da44085 |
 | 2026-11-06 | #18 | Angleichung | planer | R00105 87 → 89 AK, US-24/US-25 | — | 82284f2 |
+| 2026-11-06 | #18 | Entwicklung (Nacharbeit 2) | entwickler | bestanden: R1–R5 (Zählwort, Hinweis je Leiste, Name, D0006, Kommentare); volle Suite 410 passed | 0:17 | 8151719..5632221 |
