@@ -340,6 +340,27 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect(page.locator('#dateitext')).toBeVisible();
   });
 
+  for (const [start, folge] of [['Kosten', ['datei', 'inhalt']], ['Inhalt', ['datei', 'inhalt']]]) {
+    test(`Nacharbeit S1: d mit Fokus auf dem Reiter „${start}“ — der Fokus folgt dem gewählten Reiter`, async ({ page }) => {
+      const dialog = await fenster(page, 1, SPANNE);
+      await dialog.getByRole('tab', { name: start }).click();
+      await expect(dialog.getByRole('tab', { name: start })).toBeFocused();
+      for (const ziel of folge) {
+        await page.keyboard.press('d');
+        await expect(page.locator(`#reiter-${ziel}`)).toHaveAttribute('aria-selected', 'true');
+        await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe(`reiter-${ziel}`);
+      }
+    });
+  }
+
+  test('Nacharbeit S1 Gegenbeispiel: d mit Fokus außerhalb der Reiter lässt den Fokus dort', async ({ page }) => {
+    const dialog = await fenster(page, 1, SPANNE);
+    await dialog.getByRole('button', { name: 'Schließen' }).focus();
+    await page.keyboard.press('d');
+    await expect(page.locator('#reiter-datei')).toHaveAttribute('aria-selected', 'true');
+    await expect(dialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
+  });
+
   test('US-16: ↓ zu einer Aufgabe ohne Etikett zeigt „Inhalt“, zurück zu #1 bleibt „Inhalt“', async ({ page }) => {
     const dialog = await fenster(page, 1);
     await dialog.getByRole('tab', { name: 'Kosten' }).click();

@@ -1732,9 +1732,16 @@ function fensterTaste(e) {
     case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
     case 's': return fokus('#teil-neu');
     case 'k': return fokus('#km-inp');
-    case 'd': e.preventDefault(); act('tab', S.ui.tab === 'datei' ? 'inhalt' : 'datei'); return true;
+    case 'd': e.preventDefault(); dateiReiterUmschalten(reiter); return true;
     default: return false;
   }
+}
+/** d wechselt zu Datei, aus Datei zu Inhalt; stand der Fokus auf einem Reiter, folgt er dem gewählten (R00105:48). */
+function dateiReiterUmschalten(reiterImFokus) {
+  let ziel = 'datei';
+  if (S.ui.tab === 'datei') ziel = 'inhalt';
+  if (reiterImFokus) S.ui.fokus = '#reiter-' + ziel;
+  act('tab', ziel);
 }
 function listenTaste(e, t) {
   const zeilen = [...document.querySelectorAll('tr[data-zeile]')];
