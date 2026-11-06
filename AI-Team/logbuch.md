@@ -220,3 +220,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Nacharbeit 3 (Doku) | architekt | bestanden: ADR-0010 N7b (Leerfall ohne Auslöser → #main, Auslöser fort → Kette, Geister-Pop zu), A00009 Ist; Härtung: Rückfall-Entscheidung aus dem Kleber in fokusZiel (Unit statt nur E2E) | 0:04 | d92aab0 |
 | 2026-11-06 | #8 | Auto-Review (Wdh.) | code-reviewer | bestanden: keine Befunde; Sollte S1 Wächter #main/#over ohne Test, S2 R00106 Z.43–44 Widerspruch; O1–O4 | 0:12 | — |
 | 2026-11-06 | #8 | Nacharbeit 3 (Doku) | planer | bestanden: R00106 Z.44 an PO Z.113 angeglichen (Auslöser fort → Karte/Zeile bzw. BODY), 61 AK unverändert | 0:02 | e66b200 |
+| 2026-11-06 | #8 | Auto-Review (Wdh. 3) | ux-reviewer | bestanden: 549/549 Fokus gehalten, Rückfälle und Regression grün; → Entwicklertest | 0:35 | — |
