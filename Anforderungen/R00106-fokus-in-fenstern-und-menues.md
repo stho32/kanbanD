@@ -13,6 +13,7 @@ Wer kanbanD mit der Tastatur bedient, verliert heute an vielen Stellen den Fokus
 Diese Anforderung führt den Fokus an einer Stelle:
 - Ein offenes Fenster hält den Fokus und gibt ihn beim Schließen an seinen Auslöser zurück.
 - Ein Menü bekommt beim Öffnen den Fokus auf seinem ersten Eintrag und lässt sich mit Pfeilen bedienen.
+- Ein Pop-Fenster (nicht-modal) bekommt beim Öffnen den Fokus auf seinem ersten Element, lässt Tab durch seine Elemente laufen und schließt, wenn der Fokus es an einem Rand verlässt.
 - Eine Radiogruppe ist ein Tab-Halt und wird mit Pfeilen umgeschaltet.
 - Nach einer Aktion bleibt der Fokus auf dem Gegenstück des bedienten Elements.
 
@@ -45,9 +46,15 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
   - Das oberste Fenster hält den Fokus.
   - Schließt es, kehrt der Fokus in das Fenster darunter zurück, auf das Element, das vorher fokussiert war.
 
+### Einordnung der Pops (PO Z. 107)
+- **Regel**: Ein Pop (`#pop`), der nur Einträge enthält, ist ein Menü (`role=menu`). Enthält er Eingabefelder, Knöpfe in Zeilen, Links mit Begleittext oder anderes, ist er ein nicht-modales Pop-Fenster (`role=dialog` ohne `aria-modal`). Die Regel gilt auch für künftige Pops.
+- **Menüs**: „Mehr“, „Seite“, „Berichte“, „Auf Board legen“, „Status“ der WBS-Sicht, das Kontextmenü und das Ich-Menü (`#t-ich`). Für sie gilt der Abschnitt „Menüs“.
+- **Pop-Fenster**: Board (`#t-board`), Lauf (`#t-lauf`) und Defekte Dateien (`#t-defekt`). Für sie gilt der Abschnitt „Pop-Fenster“, nicht der Abschnitt „Menüs“.
+- Reservierungen, „WBS neu“ und „WBS verwerfen“ sind schon heute `role=dialog` im `#pop` und bleiben außerhalb dieser Anforderung.
+
 ### Menüs
-- **Gilt für alle Menüs** (`role=menu`): „Mehr“ (`#t-mehr`), „Seite“ (`#t-seite`), „Berichte“ (`#t-ber`), „Auf Board legen“, „Status“ der WBS-Sicht und das Kontextmenü (`#kmenue`, Karte, Spaltenkopf, Zeile der Aufgabenliste).
-- **Öffnen**: Beim Öffnen (Klick, Enter, Leertaste, Umschalt+F10 bzw. Menütaste) steht der echte DOM-Fokus auf dem ersten wählbaren Eintrag (`role=menuitem`).
+- **Gilt für diese Menüs** (`role=menu`): „Mehr“ (`#t-mehr`), „Seite“ (`#t-seite`), „Berichte“ (`#t-ber`), „Auf Board legen“, „Status“ der WBS-Sicht, das Kontextmenü (`#kmenue`, Karte, Spaltenkopf, Zeile der Aufgabenliste) und das Ich-Menü (`#t-ich`). Nicht für die drei Pop-Fenster.
+- **Öffnen**: Beim Öffnen (Klick, Enter, Leertaste, Umschalt+F10 bzw. Menütaste) steht der echte DOM-Fokus auf dem ersten wählbaren Eintrag (`role=menuitem`, im Ich-Menü `role=menuitemradio`).
 - **Pfeiltasten**:
   - ↓ und ↑ gehen zum nächsten bzw. vorigen wählbaren Eintrag, mit Umlauf.
   - Pos1 und Ende springen zum ersten bzw. letzten Eintrag.
@@ -59,10 +66,28 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
   - Tab schließt das Menü, und der Fokus geht zum nächsten Element nach dem Auslöser.
   - Löst ein Eintrag eine Aktion aus, steht der Fokus danach auf dem Auslöser oder dem Ziel, das die Aktion nennt, nie auf `BODY`.
 - **Auslöser**: tragen `aria-haspopup="menu"` und `aria-expanded` („true“ bei offenem Menü, sonst „false“).
-- **Pops ohne Einordnung**: Board-, Lauf-, Ich- und Defekte-Dateien-Pop (`#t-board`, `#t-lauf`, `#t-ich`, `#t-defekt`) sind Menü oder nicht-modales Fenster, je nach Entscheidung (siehe Offene Fragen). Unabhängig davon gilt:
-  - Beim Öffnen liegt der Fokus im Pop.
-  - Esc gibt ihn an den Auslöser zurück.
-  - Der Auslöser trägt `aria-expanded`.
+- **Ich-Menü** (`#t-ich`, `web/ansicht.js:300`):
+  - Die wählbaren Menschen sind `role=menuitemradio`. Der gewählte trägt `aria-checked="true"`, die übrigen `aria-checked="false"`.
+  - Agenten und stillgelegte Personen tragen `aria-disabled="true"` und werden von den Pfeilen übersprungen, wie in allen Menüs.
+  - Überschrift „ICH BIN …“, Hinweis „Für diese Aktion zuerst wählen, wer du bist.“ und Fußzeile „Die Wahl gilt nur für diesen Tab.“ stehen nicht innerhalb des Elements `role=menu`. Das Menü wird über `aria-labelledby` nach der Überschrift benannt. Steht der Hinweis da, verweist `aria-describedby` des Menüs auf ihn.
+  - Das Aussehen bleibt wie heute.
+
+### Pop-Fenster (nicht-modal, PO Z. 107–108)
+- **Gilt für**:
+  - Board (`#t-board`, `web/ansicht.js:280`), Name „Boards“. Die Board-Einträge und „Alle Aufgabenreservierungen anzeigen“ werden Knöpfe, `#board-neu` bleibt Eingabefeld.
+  - Lauf (`#t-lauf`, `:152`), Name „Läuft gerade“. Je Zeile zwei Knöpfe: „#n öffnen“ und „Timer von … stoppen“.
+  - Defekte Dateien (`#t-defekt`, `:523`), Name „Defekte Dateien“. Je Datei ein Link mit dem Pfad, der Fehlertext bleibt lesbarer Text neben dem Link.
+- **Rolle**: `role=dialog` mit dem genannten Namen, ohne `aria-modal`. Darunter trägt nichts `inert`, es gibt keine Fokusfalle (WCAG 2.1.2).
+- **Öffnen**: Der Fokus steht auf dem ersten tabbaren Element des Pop-Fensters.
+- **Tab**:
+  - Tab und Umschalt+Tab laufen durch die Elemente des Pop-Fensters.
+  - Tab auf dem letzten Element schließt das Pop-Fenster. Der Fokus geht zum nächsten tabbaren Element nach dem Auslöser, wie Tab im Menü.
+  - Umschalt+Tab auf dem ersten Element schließt das Pop-Fenster. Der Fokus steht auf dem Auslöser.
+- **Esc** schließt das Pop-Fenster, und der Fokus steht auf dem Auslöser.
+- **Pfeiltasten** haben im Pop-Fenster keine Funktion. Im Feld `#board-neu` bewegen ← und → nur die Schreibmarke.
+- **Live-Ereignis**: lässt den Fokus im offenen Pop-Fenster.
+- **Auslöser**: tragen `aria-haspopup="dialog"` und `aria-expanded` („true“ bei offenem Pop-Fenster, sonst „false“).
+- **Aussehen**: wie heute; neu sind nur Rolle, Fokus und Tasten.
 
 ### Radiogruppen
 - **Betroffene Gruppen** (`role=radiogroup`): „Bereich“ in der Kopfzeile (Segmente ab 840 px, Chips darunter), „Aufgabenbereich“ in der Aufgabenliste, „Personen“ auf der Seite Personen und „Person“ im Stundenzettel.
@@ -72,13 +97,13 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
 
 ### Fokus nach Aktionen
 - **Gegenstück**: Aktionen mit Gegenstück lassen den Fokus auf dem Gegenstück. Beispiel: Spalte zuklappen ↔ aufklappen.
-- **Live-Ereignis**: Ein Live-Ereignis, das während eines offenen Fensters oder Menüs eintrifft, lässt den Fokus im obersten Fenster bzw. Menü.
-- **Ohne offene Ebene**: Ist kein Fenster und kein Menü offen, steht der Fokus nach einem Neuzeichnen nie auf `BODY`, wenn vorher ein Element fokussiert war.
+- **Live-Ereignis**: Ein Live-Ereignis, das während eines offenen Fensters, Pop-Fensters oder Menüs eintrifft, lässt den Fokus in der obersten offenen Ebene.
+- **Ohne offene Ebene**: Ist kein Fenster, kein Pop-Fenster und kein Menü offen, steht der Fokus nach einem Neuzeichnen nie auf `BODY`, wenn vorher ein Element fokussiert war.
 
 ## Nicht-funktionale Anforderungen
-- **Barrierefreiheit**: Muster der WAI-ARIA APG „Dialog (Modal)“, „Menu Button“ und „Radio Group“, dazu WCAG 2.1 SC 2.1.1, 2.1.2, 2.4.3, 2.4.7 und 4.1.2.
+- **Barrierefreiheit**: Muster der WAI-ARIA APG „Dialog (Modal)“, „Menu Button“ und „Radio Group“, dazu WCAG 2.1 SC 2.1.1, 2.1.2, 2.4.3, 2.4.7 und 4.1.2. Für die Pop-Fenster gilt die Tab-Regel aus PO Z. 108; die APG beschreibt kein eigenes Muster für nicht-modale Fenster.
 - **Sichtbarer Fokus**:
-  - Jeder fokussierte Menüeintrag und jedes fokussierte Radio zeigt einen Fokusring. Er folgt dem vorhandenen Muster `outline: 2px solid var(--kd-accent)` (wie `.ka:focus`, `web/kd-app.css:489`), oder das Element trägt die vorhandene Hervorhebung `.km-e.an`.
+  - Jeder fokussierte Menüeintrag, jedes fokussierte Element eines Pop-Fensters und jedes fokussierte Radio zeigt einen Fokusring. Er folgt dem vorhandenen Muster `outline: 2px solid var(--kd-accent)` (wie `.ka:focus`, `web/kd-app.css:489`), oder das Element trägt die vorhandene Hervorhebung `.km-e.an`.
   - Der Ring ist in Hell und Dunkel sichtbar (berechneter `outline-style` nicht `none`, `outline-width` ≥ 2 px).
 - **Kein neues Aussehen**: Fenster, Menüs, Radiogruppen und Knöpfe sehen aus wie heute. Neu sind nur Rolle, Fokus und Tasten.
 - **Eine Stelle für den Fokus** (ADR-0010):
@@ -121,8 +146,53 @@ Breite 1280 px und Thema hell, sofern nicht anders genannt. „Fokus auf X“ he
 - [ ] Gegeben Fokus auf Karte #1, wenn Umschalt+F10 gedrückt wird, dann steht der Fokus auf dem Eintrag „Öffnen“ des Menüs „#1 eins“. Zweimal ↓ führt auf „Mir zuweisen“, der Trenner wird übersprungen. Esc gibt den Fokus an Karte #1 zurück.
 - [ ] Grenzwert: Gegeben das Kontextmenü von Karte #1 (in „Eingang“) mit Fokus auf „Verschieben nach“, wenn → gedrückt wird, dann öffnet das Untermenü, und der Fokus steht auf „In Arbeit“, nicht auf „Eingang“ (der trägt `aria-disabled="true"`). ← schließt das Untermenü, und der Fokus steht wieder auf „Verschieben nach“.
 - [ ] Gegeben das Kontextmenü von Karte #1 mit Fokus auf „Mir zuweisen“, wenn Enter gedrückt wird, dann ist ST zuständig für #1, das Menü geschlossen, und der Fokus steht auf Karte #1.
-- [ ] Gegeben Fokus auf dem Board-Knopf (`#t-board`), wenn Enter gedrückt wird, dann trägt er `aria-expanded="true"`, und der Fokus liegt im Pop. Esc gibt den Fokus an `#t-board` mit `aria-expanded="false"` zurück. Das gilt ebenso für `#t-ich` und, bei laufendem Timer, für `#t-lauf`.
-- [ ] Gegeben eines der Menüs dieser Gruppe offen und das Thema hell bzw. dunkel, wenn der Fokus auf einem Eintrag steht, dann ist der Eintrag sichtbar hervorgehoben. Der berechnete `outline-style` ist nicht `none` bei `outline-width` ≥ 2 px, oder der Eintrag trägt die Hervorhebung `.km-e.an`.
+- [ ] Gegeben eines der Menüs dieser Gruppe offen (auch das Ich-Menü) und das Thema hell bzw. dunkel, wenn der Fokus auf einem Eintrag steht, dann ist der Eintrag sichtbar hervorgehoben. Der berechnete `outline-style` ist nicht `none` bei `outline-width` ≥ 2 px, oder der Eintrag trägt die Hervorhebung `.km-e.an`.
+
+### Ich-Menü
+Zusätzlich zum Grundbestand: der Mensch „Anna“ (AN), angelegt über `POST /api/personen` nach Stefan. Die Personenliste lautet damit Stefan, Anna, planer.
+
+- [ ] Gegeben Fokus auf dem Ich-Knopf (`#t-ich`, zeigt „Stefan“), wenn Enter gedrückt wird, dann gilt:
+  - `#t-ich` trägt `aria-haspopup="menu"` und `aria-expanded="true"`.
+  - Der Fokus steht auf dem Eintrag „Stefan“ mit `role=menuitemradio` und `aria-checked="true"`.
+  - „Anna“ trägt `role=menuitemradio` und `aria-checked="false"`, „planer“ trägt `aria-disabled="true"`.
+- [ ] Gegeben das Ich-Menü offen mit Fokus auf „Stefan“, wenn ↓ gedrückt wird, dann steht der Fokus auf „Anna“. Ein weiteres ↓ führt zurück auf „Stefan“ (Umlauf).
+  - Gegenbeispiel: Der Fokus steht nach keinem ↓ auf „planer“ (Agent, `aria-disabled`).
+- [ ] Gegeben das Ich-Menü offen mit Fokus auf „Anna“, wenn Enter gedrückt wird, dann ist das Menü geschlossen, `#t-ich` zeigt „Anna“ mit `aria-expanded="false"`, und der Fokus steht auf `#t-ich`. Wird das Menü wieder geöffnet, trägt „Anna“ `aria-checked="true"` und „Stefan“ `aria-checked="false"`.
+- [ ] Gegeben ein Tab ohne gewähltes Ich (frisch geöffnet, `sessionStorage` leer) und Fokus auf Karte #1, wenn `m` gedrückt wird, dann öffnet das Ich-Menü mit dem Hinweis „Für diese Aktion zuerst wählen, wer du bist.“, und es gilt:
+  - Alle Kinder des Elements `role=menu` tragen `role=menuitemradio`.
+  - Überschrift „ICH BIN …“, Hinweis und Fußzeile „Die Wahl gilt nur für diesen Tab.“ liegen außerhalb von `role=menu`.
+  - `aria-labelledby` des Menüs zeigt auf die Überschrift, `aria-describedby` auf den Hinweis.
+  - Der Fokus steht auf dem ersten wählbaren Eintrag „Stefan“.
+  - Gegenbeispiel: Wird das Ich-Menü über `#t-ich` geöffnet (ohne Hinweis), trägt `role=menu` kein `aria-describedby`.
+
+### Pop-Fenster
+Breite 1280 px: Nach `#t-board` folgt der Navigationslink „Board“, nach `#t-lauf` der Ich-Knopf `#t-ich`. In der Statuszeile folgt nach `#t-defekt` der Knopf „Tastenkürzel“.
+
+- [ ] Gegeben Fokus auf dem Board-Knopf (`#t-board`), wenn Enter gedrückt wird, dann gilt:
+  - `#t-board` trägt `aria-haspopup="dialog"` und `aria-expanded="true"`.
+  - Der Pop ist `role=dialog` mit dem Namen „Boards“, ohne `aria-modal`, und kein Element trägt `inert`.
+  - Der Fokus steht auf dem Knopf „fabrik“, dem ersten tabbaren Element.
+  - Gegenbeispiel: Der Fokus steht nicht im Feld `#board-neu`, wie es heute der Fall ist (`web/app.js:514`).
+- [ ] Gegeben das Board-Fenster offen mit Fokus auf „fabrik“, wenn zweimal Tab gedrückt wird, dann steht der Fokus zuerst auf „Alle Aufgabenreservierungen anzeigen“, danach im Feld `#board-neu`.
+- [ ] Grenzwert: Gegeben das Board-Fenster offen mit Fokus im Feld `#board-neu` (letztes Element), wenn Tab gedrückt wird, dann ist kein `#pop` mehr im Dokument, `#t-board` trägt `aria-expanded="false"`, und der Fokus steht auf dem Navigationslink „Board“.
+- [ ] Grenzwert: Gegeben das Board-Fenster offen mit Fokus auf „fabrik“ (erstes Element), wenn Umschalt+Tab gedrückt wird, dann ist das Board-Fenster geschlossen, und der Fokus steht auf `#t-board` mit `aria-expanded="false"`.
+- [ ] Gegeben das Board-Fenster offen mit Fokus auf „Alle Aufgabenreservierungen anzeigen“, wenn Esc gedrückt wird, dann ist es geschlossen, und der Fokus steht auf `#t-board` mit `aria-expanded="false"`.
+- [ ] Gegeben das Board-Fenster offen mit Fokus auf „fabrik“, wenn ↓ und danach → gedrückt wird, dann steht der Fokus weiter auf „fabrik“, und das Board-Fenster ist offen.
+  - Gegenbeispiel: Gegeben Fokus im Feld `#board-neu` mit dem Text „neu“ und der Schreibmarke am Ende (`selectionStart` 3), wenn ← gedrückt wird, dann ist `selectionStart` 2, der Fokus bleibt im Feld, und das Board-Fenster ist offen. → setzt die Schreibmarke zurück auf 3.
+- [ ] Gegeben ein laufender Timer von Stefan auf #1 (`POST /api/aufgaben/1/timer/start` als ST) und Fokus auf `#t-lauf`, wenn Enter gedrückt wird, dann gilt:
+  - `#t-lauf` trägt `aria-haspopup="dialog"` und `aria-expanded="true"`.
+  - Der Pop ist `role=dialog` mit dem Namen „Läuft gerade“, ohne `aria-modal`.
+  - Der Fokus steht auf dem Knopf „#1 öffnen“. Tab führt zum Knopf „Timer von Stefan stoppen“.
+  - Ein weiteres Tab schließt das Lauf-Fenster, und der Fokus steht auf `#t-ich`.
+- [ ] Grenzwert: Gegeben das Lauf-Fenster aus dem vorigen Kriterium offen mit Fokus auf „#1 öffnen“, wenn Umschalt+Tab gedrückt wird, dann ist es geschlossen, und der Fokus steht auf `#t-lauf` mit `aria-expanded="false"`. Der Timer läuft weiter.
+- [ ] Gegeben die defekte Aufgabe #9 (wie im Fenster-Kriterium zu #9) und Fokus auf dem Knopf „1 defekte Datei“ (`#t-defekt`), wenn Enter gedrückt wird, dann gilt:
+  - `#t-defekt` trägt `aria-haspopup="dialog"` und `aria-expanded="true"`.
+  - Der Pop ist `role=dialog` mit dem Namen „Defekte Dateien“, ohne `aria-modal`.
+  - Der Fokus steht auf dem Link mit dem Pfad der Datei von #9. Der Fehlertext steht als Text daneben und ist nicht Teil des Linknamens.
+  - Tab schließt das Fenster, und der Fokus steht auf „Tastenkürzel“. Wieder geöffnet, gibt Esc den Fokus an `#t-defekt` zurück.
+- [ ] Gegeben das Board-Fenster offen mit Fokus auf „Alle Aufgabenreservierungen anzeigen“, wenn über die API als planer der Titel von #3 geändert wird, dann ist das Board-Fenster nach dem Live-Ereignis (≤ 1 s) offen, und der Fokus steht weiter auf diesem Knopf.
+  - Gegenbeispiel: Der Fokus steht danach nicht auf `BODY` und nicht auf `#t-board`.
+- [ ] Gegeben das Board-Fenster offen und das Thema hell bzw. dunkel, wenn der Fokus auf „fabrik“ steht, dann ist der berechnete `outline-style` nicht `none` bei `outline-width` ≥ 2 px.
 
 ### Radiogruppen
 - [ ] Gegeben 1280 px und Fokus im Filterfeld, wenn Tab gedrückt wird, dann steht der Fokus auf dem Radio „alle“ (`aria-checked="true"`) der Gruppe „Bereich“.
@@ -188,7 +258,7 @@ Die Bubbles der WBS (I0095) sind **Vorplanung**; welche es beim Bauen werden, en
    - 2.1 Öffnen mit Fokus auf dem ersten Eintrag, Pfeile, Pos1/Ende (B0382, frei)
    - 2.2 Esc, Tab und Auswahl schließen mit Rückgabe; `aria-expanded` an allen Auslösern (B0383, frei)
    - 2.3 Kontextmenü auf DOM-Fokus (B0384, frei)
-   - 2.4 Board-, Lauf-, Ich- und Defekte-Dateien-Pop nach Einordnung (B0385, wartet auf die Entscheidung des Betreibers)
+   - 2.4 Ich-Menü mit `menuitemradio`; Board-, Lauf- und Defekte-Dateien-Pop als nicht-modale Pop-Fenster mit Tab-Rand (B0385, frei nach PO Z. 107–108)
 3. **Radiogruppen** (F0046, frei)
    - 3.1 Radio-Schritt als reine Funktion (B0386)
    - 3.2 Gruppen mit roving `tabindex`, `tm-ziel` als Umschalter (B0387)
@@ -214,15 +284,17 @@ Die Bubbles der WBS (I0095) sind **Vorplanung**; welche es beim Bauen werden, en
 
 ### Änderungen an bestehenden Klassen
 - Fenster: `tabindex="-1"`, `aria-labelledby`, `aria-modal`.
-- Pops und Kontextmenü: Einträge mit `tabindex="-1"` und DOM-Fokus. Die Klasse `.km-e.an` folgt dem Fokus oder entfällt zugunsten von `:focus`.
-- `#t-ber` und die übrigen Auslöser: `aria-haspopup="menu"` und `aria-expanded`.
+- Menü-Pops und Kontextmenü: Einträge mit `tabindex="-1"` und DOM-Fokus. Die Klasse `.km-e.an` folgt dem Fokus oder entfällt zugunsten von `:focus`.
+- Ich-Pop: Einträge `role=menuitemradio` mit `aria-checked`; `h4`, `.warnh` und `.fuss` außerhalb des Elements `role=menu`, verbunden über `aria-labelledby` und `aria-describedby`.
+- Board-, Lauf- und Defekte-Dateien-Pop: `role=dialog` mit `aria-label` statt `role=menu`; `div.iz` bzw. `div.pz2` mit `data-act` werden Knöpfe; `u.fokus = '#board-neu'` beim Öffnen des Board-Pops (`web/app.js:514`) entfällt.
+- `#t-ber`, `#t-ich` und die übrigen Menü-Auslöser: `aria-haspopup="menu"` und `aria-expanded`. `#t-board`, `#t-lauf` und `#t-defekt`: `aria-haspopup="dialog"` und `aria-expanded` (heute `aria-haspopup="true"` bzw. ohne).
 - `span role=radio`: `tabindex` je nach Wahl.
 - `tm-ziel`: `aria-pressed` statt `role=radio`.
 
 ### Umfang
 I0095: 4 Features, 13 Bubbles, 11–25 h.
 - Herleitung: Summe der Bubble-Spannen. Die Richtwerte folgen dem Muster der Nachbar-Interactions (I0093: 10 Bubbles, 8,5–18 h) und sind ungemessen (Hypothese).
-- Stand: alles bis Bubble geplant. 12 Bubbles sind frei baubar, 1 (B0385) wartet auf die Entscheidung des Betreibers.
+- Stand: alles bis Bubble geplant. Alle 13 Bubbles sind frei baubar; B0385 seit der Entscheidung des PO (Z. 107–108). Die Spanne von B0385 (1–2 h) bleibt, der Umfang wächst nur um die Tab-Ränder (Hypothese, ungemessen).
 
 ## Tests
 Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
@@ -232,12 +304,14 @@ Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
 - `fallenSchritt` an den Rändern (0, letztes, rückwärts von 0)
 - `fokusZiel` je Rang, mit dem Fall „Sicherer findet ein Ziel unter der obersten Ebene → verworfen“
 - `radioSchritt` je Taste mit Umlauf in `e2e/einheit/tastatur.test.js`
+- Pop-Fenster am Rand (B0385): Tab auf dem letzten Element → schließen, Fokus nach dem Auslöser; Umschalt+Tab auf dem ersten → schließen, Fokus auf den Auslöser; dazwischen → nächstes Element; ein einziges Element ist erstes und letztes zugleich
+- `ebenen` mit Board-, Lauf- und Defekte-Dateien-Pop als Pop-Fenster und Ich-Pop als Menü
 - erster roter Test: `fokusZiel` mit geschlossenem Aufgabenfenster #1 und leerem Sicherer → Karte #1
 
 **Integration:** entfällt; der Server ändert sich nicht.
 
 **E2E** gegen das laufende Programm auf freiem Port, `e2e/tests/r00106-fokus.spec.js`:
-- US-1 bis US-8
+- US-1 bis US-10
 - 30× Tab und 30× Umschalt+Tab je Fenster
 - Live-Proben mit Warten auf das Ereignis
 
@@ -253,20 +327,14 @@ Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
 - Blockiert: —
 
 ## Offene Fragen
-- **Einordnung der Pops** (ADR-0010, Folgeentscheidung).
-  - Frage: Ist der Pop jeweils ein Menü (Pfeiltasten, nur Einträge) oder ein nicht-modales Fenster (Tab durch Knöpfe und Felder, keine Pfeile)?
-  - Stand: Eine Entscheidung des PO dazu gibt es nicht (`AI-Team/po-entscheidungen.md`, Stand 2026-11-06). Bis dahin wartet B0385. Die Kriterien zu diesen Pops beschränken sich auf das, was in beiden Fällen gilt: Fokus im Pop, Esc zurück an den Auslöser, `aria-expanded`.
-
-  | Pop | Ort | Inhalt heute | Empfehlung | Begründung |
-  |---|---|---|---|---|
-  | Board-Pop | `web/ansicht.js:280` | Board-Einträge, Eintrag „Alle Aufgabenreservierungen anzeigen“, Eingabefeld `#board-neu` | nicht-modales Fenster | Ein Eingabefeld darf nicht in `role=menu` stehen. Die Board-Einträge werden Knöpfe in Tab-Reihenfolge, das Aussehen bleibt. Die Alternative „Menü plus Eintrag ‚Neues Board …‘, der ein eigenes Fenster öffnet“ ist neue Gestaltung und bräuchte ein Artboard. |
-  | Lauf-Pop | `:152` | Zeilen, die die Aufgabe öffnen, je mit Knopf ■ „stoppen“ | nicht-modales Fenster | Ein Knopf in einem menuitem ist kein gültiges Menü. Je Zeile werden es zwei Knöpfe, „#n öffnen“ und „Timer von … stoppen“. |
-  | Ich-Pop | `:300` | wählbare Menschen, nicht wählbare Agenten und Stillgelegte | Menü | Er enthält nur Einträge. Die Wahl wird `menuitemradio` mit `aria-checked`, nicht Wählbares `aria-disabled` und wird übersprungen. |
-  | Defekte Dateien | `:523`, in ADR-0010 nicht genannt | Pfad als Link und Fehlertext | nicht-modales Fenster | Der Fehlertext muss lesbar bleiben; als menuitem ginge er im Namen des Links unter. |
+- **Einordnung der Pops** (ADR-0010, Folgeentscheidung): entschieden vom PO am 2026-11-06 (`AI-Team/po-entscheidungen.md` Z. 107–108, Commit 679216a), wie vom planer empfohlen.
+  - Ich-Pop ist ein Menü mit `menuitemradio`. Board-, Lauf- und Defekte-Dateien-Pop sind nicht-modale Pop-Fenster mit Tab-Rand.
+  - Für künftige Pops gilt: nur Einträge → Menü, sonst Pop-Fenster.
+  - Eingearbeitet in die Abschnitte „Einordnung der Pops“, „Menüs“ (Ich-Menü) und „Pop-Fenster“, in die Akzeptanzkriterien „Ich-Menü“ und „Pop-Fenster“ sowie in US-9 und US-10. B0385 wartet nicht mehr.
 - **Hilfe und Zuweisen über dem Fenster** (ADR-0010, Folgeentscheidung): Sie bleiben gestapelt wie heute. Die Fokusführung trägt auch ein Schließen des Fensters; das wäre eine Verhaltensänderung, die hier nicht verlangt ist.
 
 ## Manuelle Vorbereitungstätigkeiten
-- Entscheidung des Betreibers zur Einordnung der Pops (siehe Offene Fragen), vor dem Bau von B0385.
+- Keine.
 
 ## Manuelle Nachbereitungstätigkeiten
 - Keine.
@@ -285,6 +353,7 @@ Der Hebel ist die eine Stelle am Ende von `render()`: Einzelne `.focus()`-Aufruf
 
 ## Missing-Docs
 - Verhalten von `inert` zusammen mit `position: fixed`-Hintergründen (`.mod-bg`) in Chromium. Angenommen ist, dass ein Klick auf den Hintergrund weiter schließt, weil der Hintergrund zum Fenster gehört und nicht `inert` ist. Das ist im ersten E2E festzuhalten.
+- Nicht-modale Fenster: Die WAI-ARIA APG beschreibt nur das modale Dialog-Muster. Dass Tab am Rand ein Pop-Fenster schließt, ist die Regel des Projekts (PO Z. 108) und keine Vorgabe der APG.
 
 ## Notizen
 - **Abnahme-Probe der Karte #8** steht wörtlich in den Kriterien:
@@ -294,6 +363,7 @@ Der Hebel ist die eine Stelle am Ende von `render()`: Einzelne `.focus()`-Aufruf
 - **Proben aus Kommentar 1** stehen ebenfalls wörtlich darin:
   - „Mehr“ und „Seite“ mit `aria-expanded`, ↓, ↑ mit Umlauf, Tab und Esc
   - Bereichsfilter ab 840 px per Tab und Pfeil
+- **Entscheidung Pops** (PO Z. 107–108): Begründung beim PO. Ein Menü enthält nach der APG nur `menuitem`, `menuitemcheckbox`, `menuitemradio` und Trenner; Eingabefeld, Knopf in einer Zeile und Link mit Fehlertext passen nicht hinein. Verworfen ist das Menü „Boards“ mit einem Eintrag „Neues Board …“, der ein eigenes Fenster öffnet, weil das neue Gestaltung wäre.
 - **Bewusst außerhalb:**
   - die Reiterleiste (R00105, F0043, PO Z. 88)
   - ein Tooltip bei Fokus (PO Z. 53, eigene Karte)
