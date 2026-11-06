@@ -82,4 +82,17 @@ async function beschriftungenPruefen(fenster, felder) {
   return fenster.evaluate(imBrowserBeschriften, { schluessel: Object.keys(felder) });
 }
 
-module.exports = { ISO, isoFundstellen, beschriftungenPruefen };
+/**
+ * Trennt die Fundstellen einer Ansicht in offene (nicht gelistet) und Alarme der Ausnahmeliste (FA 19):
+ * ein Eintrag gilt für Fundstellen mit gleichem Element und Text; findet er keine mehr, schlägt er Alarm.
+ */
+function ausnahmenAbgleichen(funde, liste, ansicht) {
+  const gelistet = liste.filter(e => e.ansicht === ansicht);
+  const passt = (f, e) => f.element === e.selektor && f.text === e.text;
+  const offen = funde.filter(f => !gelistet.some(e => passt(f, e)));
+  const alarme = gelistet.filter(e => !funde.some(f => passt(f, e)))
+    .map(e => `${e.selektor} „${e.text}“ in ${ansicht}: Fundstelle verschwunden — Eintrag aus AUSNAHMEN streichen (${e.karte})`);
+  return { offen, alarme };
+}
+
+module.exports = { ISO, isoFundstellen, beschriftungenPruefen, ausnahmenAbgleichen };

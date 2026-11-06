@@ -1,6 +1,6 @@
 // R00109 Selbstproben der Kulturproben (ADR-0013 Regel 5, AK 7): künstliche Seiten ohne kanbanD, jede Regel positiv und negativ.
 const { test, expect } = require('@playwright/test');
-const { isoFundstellen, beschriftungenPruefen } = require('./kultur-hilfen');
+const { isoFundstellen, beschriftungenPruefen, ausnahmenAbgleichen } = require('./kultur-hilfen');
 const { FELDER } = require('../../web/kultur.js');
 
 const funde = async (page, html) => {
@@ -102,5 +102,18 @@ test.describe('Selbstproben der Beschriftungsprobe', () => {
     expect(await pruefen(page, zeile('wartet auf', '<a href="#">#2</a>'), zeile('reservation', '<span>Claude</span>')))
       .toEqual([{ beschriftung: 'wartet auf', name: null, verstoesse: [] },
         { beschriftung: 'reservation', name: null, verstoesse: ['Beschriftung ist der Schlüssel reservation'] }]);
+  });
+});
+
+test.describe('Selbstprobe der Ausnahmeliste (FA 19)', () => {
+  const fund = (element, text) => ({ ansicht: 'X', ort: 'Text', element, text });
+  const liste = [{ ansicht: 'X', selektor: 'span.due', text: '2026-10-28', karte: '#99', grund: 'Probe' }];
+
+  test('gelistete Fundstelle besteht, ungelistete bleibt offen, eine Ausnahme ohne Fundstelle schlägt Alarm', () => {
+    expect(ausnahmenAbgleichen([fund('span.due', '2026-10-28')], liste, 'X')).toEqual({ offen: [], alarme: [] });
+    expect(ausnahmenAbgleichen([fund('span.due', '2026-10-28'), fund('td', '2026-10-01')], liste, 'X').offen).toEqual([fund('td', '2026-10-01')]);
+    expect(ausnahmenAbgleichen([], liste, 'X').alarme).toEqual(['span.due „2026-10-28“ in X: Fundstelle verschwunden — Eintrag aus AUSNAHMEN streichen (#99)']);
+    expect(ausnahmenAbgleichen([fund('span.due', '2026-10-29')], liste, 'X').alarme).toHaveLength(1);
+    expect(ausnahmenAbgleichen([], liste, 'Y')).toEqual({ offen: [], alarme: [] });
   });
 });

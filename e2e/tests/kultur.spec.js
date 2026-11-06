@@ -2,6 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
+const { isoFundstellen, ausnahmenAbgleichen } = require('./kultur-hilfen');
 
 // „Heute“ ist der Tag des Laufs in Europe/Berlin (playwright.config.js); die erwarteten Texte rechnet der Test aus ihm.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -213,16 +214,34 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
   });
 });
 
-test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
-  test('US-6: Board, Aufgabenfenster #1 und „Neue Aufgabe“ ohne ISO-Form', async ({ page }) => {
-    await starten(page);
-    await fensterOeffnen(page, 1);
-    const sichtbar = await page.locator('body').evaluate(b => {
-      const ausgenommen = e => e.closest('#dateitext') || (e.matches && e.matches('input[type=date]'));
-      return [b.innerText, ...[...b.querySelectorAll('[title],[aria-label]')].filter(e => !ausgenommen(e)).flatMap(x => [x.title, x.getAttribute('aria-label') || ''])];
-    });
-    expect(sichtbar.filter(t => ISO.test(t))).toEqual([]);
+/**
+ * Bekannte ISO-Fundstellen, die (noch) nicht gemeldet werden dürfen — je Eintrag Ansicht, Selektor, Text, Folgekarte, Grund.
+ * Leer (FA 19); ein Eintrag schlägt Alarm, sobald seine Fundstelle verschwindet, damit die Liste nur schrumpft.
+ */
+const AUSNAHMEN = [];
+
+/** B0430: Karte und Fenster — Board, Archiv des Boards, Aufgabenfenster (offen und archiviert) und „Neue Aufgabe“. */
+const KARTE_UND_FENSTER = [
+  { ansicht: 'Board', oeffnen: brett },
+  { ansicht: 'Archiv des Boards', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="3"]').waitFor(); } },
+  { ansicht: 'Aufgabenfenster #1', oeffnen: async page => { await (await fensterOeffnen(page, 1)).locator('.km').first().waitFor(); } },
+  { ansicht: 'Aufgabenfenster #3 (archiviert)', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="3"]').click(); await page.locator('.mod .archbar').waitFor(); } },
+  { ansicht: 'Neue Aufgabe', oeffnen: async page => { await brett(page); await page.keyboard.press('n'); await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor(); } },
+];
+
+test.describe('US-6: keine ISO-Form in Karte und Fenster', () => {
+  test('die Ausnahmeliste ist leer', () => {
+    expect(AUSNAHMEN).toEqual([]);
   });
+  for (const { ansicht, oeffnen } of KARTE_UND_FENSTER) {
+    test(`US-6: ${ansicht} ohne ISO-Form in Text, title und Namen`, async ({ page }) => {
+      await starten(page);
+      await oeffnen(page);
+      const { offen, alarme } = ausnahmenAbgleichen(await isoFundstellen(page, ansicht), AUSNAHMEN, ansicht);
+      expect(alarme).toEqual([]);
+      expect(offen).toEqual([]);
+    });
+  }
 });
 
 test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148)', () => {
