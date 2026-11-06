@@ -235,7 +235,7 @@ test.describe('R00107 Kontrast', () => {
     expect(fehler.length, 'die Fehlermeldung wird gemessen').toBe(1);
   });
 
-  test('Paarungen Modusleiste: Fläche --kd-modus, Titel --kd-modus-text, Fertig --kd-accent mit --kd-on-accent, über das Canvas, beide Themen', async ({ page }) => {
+  test('Paarungen Modusleiste: Fläche --kd-modus; Titel, Board-Name, Dateipfad und Verwerfen --kd-modus-text; Untertitel --kd-muted; Fertig --kd-accent mit --kd-on-accent; über das Canvas, beide Themen', async ({ page }) => {
     await ausMehr(page, 'Spalten einrichten');
     const leiste = page.locator('header.kz.modus');
     await expect(leiste).toBeVisible();
@@ -247,10 +247,19 @@ test.describe('R00107 Kontrast', () => {
       expect(await pixelVon(page, leiste.locator('.kz-modus b'), 'color'), `${t}: Titel`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-modus-text')));
       expect(await pixelVon(page, fertig, 'backgroundColor'), `${t}: Fertig Fläche`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-accent')));
       expect(await pixelVon(page, fertig, 'color'), `${t}: Fertig Schrift`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-on-accent')));
+      const schriften = [
+        ['Board-Name', leiste.locator('.kz-z1'), '--kd-modus-text'],
+        ['Dateipfad', leiste.locator('.kz-z1 .mono'), '--kd-modus-text'],
+        ['Verwerfen', leiste.getByRole('button', { name: 'Verwerfen' }), '--kd-modus-text'],
+        ['Untertitel', leiste.locator('.kz-modus .muted'), '--kd-muted'],
+      ];
+      for (const [name, ort, token] of schriften) {
+        expect(await pixelVon(page, ort, 'color'), `${t}: ${name}`).toEqual(await farbPixel(page, await tokenFarbe(page, token)));
+      }
     }
   });
 
-  test('Unterer Abschluss der Modusleiste: 1 px in --kd-modus-linie, beide Themen; die Kopfzeile ohne Modus hat diese Linie nicht', async ({ page }) => {
+  test('Unterer Abschluss der Modusleiste: 1 px in --kd-modus-linie, mindestens 3:1 gegen --kd-modus und --kd-sunken, beide Themen; die Kopfzeile ohne Modus hat diese Linie nicht', async ({ page }) => {
     const kopf = page.locator('header.kz');
     const linie = () => kopf.evaluate(e => ({ breite: getComputedStyle(e).borderBottomWidth, farbe: getComputedStyle(e).borderBottomColor }));
     for (const t of THEMEN) {
@@ -268,6 +277,7 @@ test.describe('R00107 Kontrast', () => {
       expect(mitModus.breite, t).toBe('1px');
       expect(await farbPixel(page, mitModus.farbe), `${t}: Linie`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-modus-linie')));
       expect(await kontrastFarben(page, mitModus.farbe, await tokenFarbe(page, '--kd-modus')), `${t}: Linie gegen Fläche`).toBeGreaterThanOrEqual(3);
+      expect(await kontrastFarben(page, mitModus.farbe, await tokenFarbe(page, '--kd-sunken')), `${t}: Linie gegen den Grund darunter (--kd-sunken)`).toBeGreaterThanOrEqual(3);
     }
   });
 
