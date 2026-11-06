@@ -8,7 +8,7 @@ const bereichMit = anzahlJeSelektor => selektor => {
   if (selektor in anzahlJeSelektor) return anzahlJeSelektor[selektor];
   return 1;
 };
-const element = ({ id = '', daten = {}, klassen = [] }) => ({ id, daten, klassen });
+const element = ({ id = '', daten = {}, klassen = [], href = null }) => ({ id, daten, klassen, href });
 
 test('id ist der Schlüssel', () => {
   assert.strictEqual(schluessel(element({ id: 'km-inp', klassen: ['inp'] }), bereichMit({})), '[id="km-inp"]');
@@ -85,4 +85,19 @@ test('Werte mit Anführungszeichen und Rückstrich bleiben ein gültiger Selekto
 test('Klassen, die kein einfacher Selektor sind, zählen nicht als Schlüssel', () => {
   assert.strictEqual(schluessel(element({ klassen: ['w-1/2', 'bahn'] }), bereichMit({})), '.bahn');
   assert.strictEqual(schluessel(element({ klassen: ['3spaltig'] }), bereichMit({})), '');
+});
+
+test('href ist der Schlüssel eines Links ohne id, data-halt, Feld und Aktion — vor der Klasse', () => {
+  const navigation = bereichMit({ '.an': 1 });
+  assert.strictEqual(schluessel(element({ href: '#/personen', klassen: ['an'] }), navigation), '[href="#/personen"]', 'eindeutig: href vor der Klasse');
+  assert.strictEqual(schluessel(element({ href: '/api/berichte/zeiten.csv' }), bereichMit({})), '[href="/api/berichte/zeiten.csv"]');
+  assert.strictEqual(schluessel(element({ href: '#', daten: { act: 'pop', arg: 'ber' } }), bereichMit({})), '[data-act="pop"][data-arg="ber"]', 'Aktion vor href');
+});
+
+test('Fehlfall: ein mehrdeutiges href fällt auf die Klasse zurück; ohne href und ohne Klasse kein Schlüssel', () => {
+  const zweiGleiche = bereichMit({ '[href="#"]': 2, '.kz-wbs': 1 });
+  assert.strictEqual(schluessel(element({ href: '#', klassen: ['kz-wbs'] }), zweiGleiche), '.kz-wbs');
+  assert.strictEqual(schluessel(element({ href: '#' }), zweiGleiche), '');
+  assert.strictEqual(schluessel(element({ href: null }), bereichMit({})), '', 'fehlendes href ist kein Schlüssel');
+  assert.strictEqual(schluessel(element({ href: '' }), bereichMit({})), '', 'leeres href ist kein Schlüssel');
 });
