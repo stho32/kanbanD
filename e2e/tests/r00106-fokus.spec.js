@@ -6,6 +6,7 @@ const EINSTELLUNGEN = `---
 people:
   st: {name: Stefan, kind: human}
   pl: {name: planer, kind: agent}
+  al: {name: Alt, kind: human, active: false}
 ---
 `;
 const DATEIEN = {
@@ -346,4 +347,104 @@ test('US-7: Enter auf „Mir zuweisen“ → ST zuständig, Menü zu, Fokus auf 
   await expect(page.locator('#kmenue')).toHaveCount(0);
   await expect.poll(async () => (await (await page.request.get(`${k.adresse}api/aufgaben/1`)).json()).zustaendige).toContain('st');
   expect((await fokus(page)).karte).toBe('1');
+});
+
+/** Radio der Gruppe `gruppe` mit Text `text` (sichtbar). */
+const radio = (page, gruppe, text) => page.getByRole('radiogroup', { name: gruppe, exact: true }).getByRole('radio', { name: text, exact: true });
+
+test('US-9: 1280 px: Tab aus dem Filterfeld → Radio „alle“; → wählt „meine“ (tabindex wandert, Board filtert); ↓ wie →; ← auf dem ersten → letztes; Tab verlässt die Gruppe', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/2`, { ...ALS_PLANER, data: { zustaendige: ['st'] } })).ok()).toBe(true);
+  await expect(page.locator('.ka[data-id="2"]')).toContainText(/ST|Stefan/);
+  await page.locator('#flt').focus();
+  await page.keyboard.press('Tab');
+  await expect(radio(page, 'Bereich', 'alle')).toBeFocused();
+  await expect(radio(page, 'Bereich', 'alle')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('ArrowRight');
+  await expect(radio(page, 'Bereich', 'meine')).toBeFocused();
+  await expect(radio(page, 'Bereich', 'meine')).toHaveAttribute('aria-checked', 'true');
+  await expect(radio(page, 'Bereich', 'meine')).toHaveAttribute('tabindex', '0');
+  await expect(radio(page, 'Bereich', 'alle')).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('.ka[data-id="2"]')).toBeVisible();
+  await expect(page.locator('.ka[data-id="1"]')).toHaveCount(0);
+  await page.keyboard.press('ArrowDown');
+  await expect(radio(page, 'Bereich', 'Agenten')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowLeft');
+  await expect(radio(page, 'Bereich', 'alle')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(radio(page, 'Bereich', 'Agenten'), 'Umlauf').toBeFocused();
+  await expect(radio(page, 'Bereich', 'Agenten')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => Boolean(document.activeElement.closest('[role="radiogroup"]')))).toBe(false);
+  expect((await fokus(page)).tag).not.toBe('BODY');
+});
+
+test('US-9: → im Filterfeld bewegt nur die Schreibmarke, der Bereich bleibt „alle“', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#flt').fill('ein');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#flt')).toBeFocused();
+  await expect(radio(page, 'Bereich', 'alle')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('US-9: 375 px Chips: nur der gewählte trägt tabindex 0, Tab verlässt die Gruppe, → wählt „meine“', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  const alle = radio(page, 'Bereich', 'alle');
+  await alle.focus();
+  await expect(alle).toHaveAttribute('tabindex', '0');
+  await expect(radio(page, 'Bereich', 'meine')).toHaveAttribute('tabindex', '-1');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => Boolean(document.activeElement.closest('[role="radiogroup"]')))).toBe(false);
+  await alle.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(radio(page, 'Bereich', 'meine')).toBeFocused();
+  await expect(radio(page, 'Bereich', 'meine')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('US-9: Aufgabenliste: → auf „alle“ wählt „ohne Board“, fokussiert, Liste ohne Aufgaben auf Boards', async ({ page }) => {
+  await page.goto(k.adresse + '#/aufgaben');
+  const alle = page.getByRole('radiogroup', { name: 'Aufgabenbereich' }).getByRole('radio').first();
+  await expect(alle).toHaveAttribute('aria-checked', 'true');
+  await alle.focus();
+  await page.keyboard.press('ArrowRight');
+  const ohne = page.getByRole('radiogroup', { name: 'Aufgabenbereich' }).getByRole('radio').nth(1);
+  await expect(ohne).toBeFocused();
+  await expect(ohne).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('tr[data-zeile="1"]')).toHaveCount(0);
+});
+
+test('US-9: Personen: → auf „Menschen + Agenten“ wählt „nur Menschen“, planer verschwindet', async ({ page }) => {
+  await page.goto(k.adresse + '#/personen');
+  await expect(page.locator('#main')).toContainText('planer');
+  await radio(page, 'Personen', 'Menschen + Agenten').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(radio(page, 'Personen', 'nur Menschen')).toBeFocused();
+  await expect(radio(page, 'Personen', 'nur Menschen')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#main')).not.toContainText('planer');
+});
+
+test('US-9: Stundenzettel ohne gewählte Person: Tab in die Gruppe → erstes Radio', async ({ page }) => {
+  await alsPerson(page, 'al');
+  await page.goto(k.adresse + '#/berichte/stundenzettel');
+  await page.reload();
+  const gruppe = page.getByRole('radiogroup', { name: 'Person' });
+  await expect(gruppe.getByRole('radio')).not.toHaveCount(0);
+  await expect(gruppe.locator('[aria-checked="true"]')).toHaveCount(0);
+  await expect(gruppe.getByRole('radio').first()).toHaveAttribute('tabindex', '0');
+  await page.locator('.leiste b', { hasText: 'Stundenzettel' }).click();
+  for (let i = 0; i < 40 && !(await gruppe.evaluate(g => g.contains(document.activeElement))); i++) await page.keyboard.press('Tab');
+  await expect(gruppe.getByRole('radio').first()).toBeFocused();
+});
+
+test('US-9: Zieltermin-Markierung ist ein Knopf mit aria-pressed, ohne role=radio', async ({ page }) => {
+  const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  expect((await page.request.put(`${k.adresse}api/boards/fabrik/termine`, { headers: { 'X-KanbanD-Wer': 'st' }, data: [{ name: 'Eins', datum: tag(20), farbe: 'red', ziel: true }, { name: 'Zwei', datum: tag(40), farbe: 'blue' }] })).ok()).toBe(true);
+  await page.goto(k.adresse + '#/berichte/prognose');
+  const eins = page.locator('#termine button.tm-ziel').first();
+  await expect(page.locator('#termine button.tm-ziel')).toHaveCount(2);
+  await expect(eins).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#termine button.tm-ziel').nth(1)).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#termine .tm-ziel[role="radio"]')).toHaveCount(0);
 });

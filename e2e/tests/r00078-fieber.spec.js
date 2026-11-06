@@ -107,10 +107,11 @@ test.describe('R00078', () => {
     await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toBe(`Stefan|Projektstart von „Entwicklung“: ${tag(-4).split('-').reverse().join('.')}`);
     await expect(erledigt).toContainText('keine Prognose unter 3 Läufen in der Messbasis (gemessen: 2)');
     await expect(page.locator('.bf-zusammen')).toHaveText(`Filter · keine · Messbasis 90 T · Rechnen ab ${tag(-4).split('-').reverse().join('.')}`);
-    const ziel = page.getByRole('radio', { name: 'Termin Deadline ist Zieltermin' });
-    await expect(ziel).toHaveAttribute('aria-checked', 'false');
+    // seit R00106 ein Umschalter mit aria-pressed statt role=radio
+    const ziel = page.getByRole('button', { name: 'Termin Deadline ist Zieltermin' });
+    await expect(ziel).toHaveAttribute('aria-pressed', 'false');
     await ziel.click();
-    await expect(ziel).toHaveAttribute('aria-checked', 'true');
+    await expect(ziel).toHaveAttribute('aria-pressed', 'true');
     expect(k.lies('boards/entwicklung.md')).toContain('target: true}');
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe(`Zieltermin von „Entwicklung“: „Deadline“ (${tag(20).split('-').reverse().join('.')})`);
   });

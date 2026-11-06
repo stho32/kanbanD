@@ -497,6 +497,38 @@ function ausloeserMarkieren() {
   for (const knopf of document.querySelectorAll('[aria-haspopup="menu"][id], [aria-haspopup="dialog"][id]')) knopf.setAttribute('aria-expanded', String(knopf.id === offenFuer));
 }
 
+/** Ein Tab-Halt je Radiogruppe: das gewählte Radio trägt tabindex 0, ohne Wahl das erste, alle anderen -1. */
+function radiogruppenFuehren() {
+  for (const gruppe of document.querySelectorAll('[role="radiogroup"]')) {
+    const radios = [...gruppe.querySelectorAll('[role="radio"]')];
+    const gewaehlt = Math.max(0, radios.findIndex(r => r.getAttribute('aria-checked') === 'true'));
+    radios.forEach((r, i) => r.setAttribute('tabindex', i === gewaehlt ? '0' : '-1'));
+  }
+}
+
+/** Im Radio: Pfeile wählen das Nachbar-Radio wie ein Klick und fokussieren es, Leertaste wählt das fokussierte; wahr, wenn die Taste verbraucht ist. */
+function radioTaste(ereignis) {
+  const jetzt = ereignis.target;
+  const gruppe = jetzt.closest && jetzt.getAttribute('role') === 'radio' && jetzt.closest('[role="radiogroup"]');
+  if (!gruppe || ereignis.ctrlKey || ereignis.metaKey || ereignis.altKey) return false;
+  if (ereignis.key === ' ') { ereignis.preventDefault(); jetzt.click(); return true; }
+  const radios = [...gruppe.querySelectorAll('[role="radio"]')];
+  const ziel = radioSchritt(radios.length, radios.indexOf(jetzt), ereignis.key);
+  if (ziel === null) return false;
+  ereignis.preventDefault();
+  const name = gruppe.getAttribute('aria-label'), wert = radios[ziel].dataset.arg;
+  radios[ziel].click();
+  gewaehltesRadioFokussieren(name, wert);
+  return true;
+}
+
+/** Nach dem Neuzeichnen: das Radio mit dem Wert in der sichtbaren Gruppe gleichen Namens. */
+function gewaehltesRadioFokussieren(name, wert) {
+  const gruppen = [...document.querySelectorAll('[role="radiogroup"]')].filter(g => g.getAttribute('aria-label') === name && g.getClientRects().length);
+  const radio = gruppen.map(g => [...g.querySelectorAll('[role="radio"]')].find(r => r.dataset.arg === wert)).find(Boolean);
+  if (radio) radio.focus();
+}
+
 const MENUE_RICHTUNG = { ArrowDown: 1, ArrowUp: -1, Home: 'anfang', End: 'ende' };
 
 /** Tab im Menü schließt es: der Fokus steht vor der Standardaktion auf dem Auslöser, der Browser führt ihn von dort weiter. */
@@ -564,6 +596,7 @@ function fokusFuehren(aktiv, ausloeser, gesichert) {
   vorigeEbenen = jetzt;
   ebenenAbschirmen(jetzt);
   ausloeserMarkieren();
+  radiogruppenFuehren();
   const oberste = jetzt.at(-1) || null;
   const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel() });
   S.ui.fokus = null;
@@ -1408,6 +1441,7 @@ document.addEventListener('keydown', e => {
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && popMenueTaste(e)) return;
+  if (radioTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();

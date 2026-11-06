@@ -361,3 +361,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0382 Menü öffnen und mit Pfeilen bedienen | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0383 Menü schließen mit Rückgabe, aria-expanded | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0384 Kontextmenü auf DOM-Fokus | Standard | 1-3h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0387 Gruppen mit roving tabindex | Standard | 1-3h | 0,5h | 0,5h | autonom |
