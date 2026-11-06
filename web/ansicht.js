@@ -261,7 +261,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder ${OHNE_HERKUNFT} · Enter" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder ${OHNE_HERKUNFT} · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -368,6 +368,13 @@ const cv = farbe => !farbe ? '' : PAL.includes(farbe) ? `--c:var(--kd-c-${farbe}
 const klasse = k => k && S.zustand.einstellungen && S.zustand.einstellungen.klassen.find(c => c.schluessel === k);
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+/** Abgelehnte Eingabe im Feld „Neue Herkunft“ dieser Aufgabe, sonst leer. */
+function herkunftEntwurf(a) {
+  const e = S.ui.herkunftEntwurf;
+  if (!e || e.nummer !== a.nummer) return '';
+  return e.wert;
+}
 
 function quelleLink(x) {
   const q = S.herkunft[x];

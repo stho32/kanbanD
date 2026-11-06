@@ -372,12 +372,14 @@ async function schreiben(methode, pfad, daten) {
 }
 
 async function aufgabeAendern(nummer, aenderung) {
-  if (ichNoetig()) { render(); return; }
+  if (ichNoetig()) { render(); return false; }
+  let gelungen = true;
   try {
     await api('PATCH', '/api/aufgaben/' + nummer, aenderung);
     S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
-  } catch (f) { S.ui.fensterFehler = f.message; }
+  } catch (f) { S.ui.fensterFehler = f.message; gelungen = false; }
   await laden();
+  return gelungen;
 }
 
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
@@ -1147,7 +1149,12 @@ async function act(a, arg, wert) {
         if (!(wert || '').trim() || ichNoetig()) break;
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
         u.fokus = '#herkunft-neu';
-        return aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] });
+        // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
+        u.herkunftEntwurf = { nummer: u.offen, wert };
+        const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] });
+        if (gelungen) u.herkunftEntwurf = null;
+        render();
+        return;
       }
       case 'herkunft-weg': {
         if (ichNoetig()) break;

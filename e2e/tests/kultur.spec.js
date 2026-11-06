@@ -423,6 +423,8 @@ test.describe('US-9: ohne Herkunft', () => {
     await page.keyboard.press('Enter');
     expect((await anfrage).postDataJSON().herkunft).toEqual(['I0001', 'R00014', 'ohne Herkunftx']);
     await expect(page.getByText('„OHNE HERKUNFTX“ ist keine Herkunft')).toBeVisible();
+    // die abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
+    await expect(page.getByLabel('Neue Herkunft')).toHaveValue('ohne Herkunftx');
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
   });
 
