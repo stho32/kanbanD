@@ -230,6 +230,21 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .mod-body{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 350px;min-height:0}
 .mod-body.voll{grid-template-columns:minmax(0,1fr)}
 .mod-main{overflow:auto;padding:var(--kd-s5) var(--kd-s6);display:flex;flex-direction:column;gap:var(--kd-s5)}
+/* R00105 Reiter „Kosten“ (D0003): Tabelle nur lesend; Positionsnamen trennen nach Silben mit Strich, nie mitten im Wort ohne Strich —
+   ein Name ohne Silbengrenze lässt die Tabelle im Scrollbereich quer scrollen, nicht den Kopf und nicht die Seite */
+.ko-panel{gap:0;min-width:0}
+.ko-scroll{min-width:0;max-width:640px;overflow-x:auto}
+.ko-tab{width:100%;border-collapse:collapse;font-size:12px;background:var(--kd-surface)}
+.ko-tab caption{caption-side:top;text-align:left;padding:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.ko-tab thead th{height:26px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);white-space:nowrap}
+.ko-tab th.r,.ko-tab td.r{text-align:right}
+.ko-tab tbody th,.ko-tab tfoot th{height:26px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);text-align:left;font-weight:400;font-size:13px;-webkit-hyphens:auto;hyphens:auto}
+.ko-tab td{height:26px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);font-family:var(--kd-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ko-tab td.leer{color:var(--kd-muted)}
+.ko-tab .ganz{-webkit-hyphens:manual;hyphens:manual}
+.ko-tab tr.ko-summe>*{border-top:2px solid var(--kd-line-strong);border-bottom:0;background:var(--kd-bg);font-weight:600;color:var(--kd-text)}
+.ko-basis{margin:8px 0 0;font-size:12px;color:var(--kd-text)}
+.ko-hin{margin:2px 0 0;font-size:12px;color:var(--kd-muted)}
 .mod-side{border-left:1px solid var(--kd-line);background:var(--kd-bg);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4)}
 .titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%}
 .titel:hover{border-color:var(--kd-line-strong)}
@@ -727,6 +742,9 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2)}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}
+  .mod-kopf .cls{display:none}
+  .mod-kopf .seg span{padding:0 6px}
+  .ko-tab td,.ko-tab th{padding:0 6px}
   .leg .rechts,.stat>.mono{display:none}
   .leg{overflow-x:auto}
   .bericht{padding:var(--kd-s3)}

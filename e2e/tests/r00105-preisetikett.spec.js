@@ -219,3 +219,185 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     }
   });
 });
+
+// R00105 Reiter „Kosten“ im Aufgabenfenster (B0370)
+const LANG = 'KSTXQZRTPLKMNBVCXZWQRTPLKMNBVCXZWQRTPLKM';
+const KOMPOSITUM = 'Gemeinkostenanteilsberechnung';
+const MIT_KOMPOSITUM = POSITIONEN.replace('  basis:', `    - text: ${KOMPOSITUM}\n      amount: 0.05\n  basis:`);
+const MIT_LANG = POSITIONEN.replace('  basis:', `    - text: ${LANG}\n      amount: 0.05\n  basis:`);
+
+/** Zeilen eines Textknotens im Layout: Positionen, vor denen eine neue Zeile beginnt (über Range je Zeichen). */
+// Zeile je Zeichen aus dem letzten Kasten: am Trennstrich trägt das Zeichen danach auch den Kasten des Strichs am Zeilenende
+const umbrueche = zelle => zelle.evaluate(el => {
+  const text = el.firstChild, oben = [];
+  for (let i = 0; i < text.length; i++) { const r = document.createRange(); r.setStart(text, i); r.setEnd(text, i + 1); const kaesten = [...r.getClientRects()]; oben.push(Math.round(kaesten[kaesten.length - 1].top)); }
+  return oben.map((y, i) => (i > 0 && y > oben[i - 1] ? i : -1)).filter(i => i > 0);
+});
+
+test.describe('R00105 Reiter Kosten', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  async function fenster(page, nr, eins = POSITIONEN) {
+    k = await kanbanStarten(einrichten(fabrik(eins)));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await page.locator(`.ka[data-id="${nr}"]`).click();
+    const dialog = page.getByRole('dialog', { name: `Aufgabe #${nr}` });
+    await expect(dialog).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    return dialog;
+  }
+  const zeilen = panel => panel.locator('tbody tr, tfoot tr').evaluateAll(trs => trs.map(tr => [...tr.children].map(c => c.textContent.replace(/\s+/g, ' ').trim()).join(' · ')));
+
+  test('US-3: Tabelle mit Beschriftung, Spalten- und Zeilenköpfen, Summe und Basis, nur lesend', async ({ page }) => {
+    const dialog = await fenster(page, 1);
+    const datei = k.lies('aufgaben/0001-eins.md'), commits = k.git('rev-list', '--count', 'HEAD');
+    const leiste = dialog.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
+    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Kosten']);
+    await leiste.getByRole('tab', { name: 'Kosten' }).click();
+    await expect(leiste.getByRole('tab', { name: 'Kosten' })).toHaveAttribute('aria-selected', 'true');
+    const panel = page.locator('#' + await leiste.getByRole('tab', { name: 'Kosten' }).getAttribute('aria-controls'));
+    await expect(panel).toHaveAttribute('role', 'tabpanel');
+    await expect(panel).toHaveAttribute('aria-labelledby', 'reiter-kosten');
+    const tabelle = panel.locator('table');
+    await expect(tabelle.locator('caption')).toHaveText('Geschätzte API-Kosten (USD)');
+    await expect(tabelle.locator('th[scope="col"]')).toHaveText(['Position', 'Tokens', 'niedrig', 'hoch']);
+    await expect(tabelle.locator('th[scope="row"]')).toHaveText(['Planung', 'Bau', 'Gemeinkostenanteil', 'Summe']);
+    expect(await zeilen(panel)).toEqual(['Planung · 12.000 · 0,10 $ · 0,20 $', 'Bau · — · 0,20 $ · 0,40 $', 'Gemeinkostenanteil · — · 0,30 $ · 0,30 $', 'Summe · 12.000 · 0,60 $ · 0,90 $']);
+    await expect(panel.locator('.ko-basis')).toContainText('Schätzung planer');
+    expect((await panel.innerText()).match(/geschätzte API-Kosten/gi)).toHaveLength(1);
+    await expect(panel.locator('input, textarea, select, [contenteditable]')).toHaveCount(0);
+    const rechts = await tabelle.locator('td').evaluateAll(tds => tds.map(td => getComputedStyle(td).textAlign));
+    expect(new Set(rechts)).toEqual(new Set(['right']));
+    expect(k.lies('aufgaben/0001-eins.md')).toBe(datei);
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commits);
+  });
+
+  test('US-4: ohne Positionen eine Zeile „Gesamt“ ohne Spalte Tokens, Betrag in beiden Spalten, Euro', async ({ page }) => {
+    const dialog = await fenster(page, 1, SPANNE);
+    const commits = k.git('rev-list', '--count', 'HEAD');
+    await dialog.getByRole('tab', { name: 'Kosten' }).click();
+    const panel = page.locator('#reiterpanel-kosten');
+    await expect(panel.locator('th[scope="col"]')).toHaveText(['Position', 'niedrig', 'hoch']);
+    expect(await zeilen(panel)).toEqual(['Gesamt · 0,60 $ · 1,60 $']);
+    await expect(panel.locator('th[scope="row"]')).toHaveText(['Gesamt']);
+    await page.keyboard.press('Escape');
+    await page.locator('.ka[data-id="2"]').click();
+    await page.getByRole('dialog', { name: 'Aufgabe #2' }).getByRole('tab', { name: 'Kosten' }).click();
+    expect(await zeilen(page.locator('#reiterpanel-kosten'))).toEqual(['Gesamt · 1,63 $ · 1,63 $']);
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commits);
+    await k.stoppen();
+    const euro = await fenster(page, 1, 'cost:\n  currency: EUR\n  amount: 25.55\n');
+    await euro.getByRole('tab', { name: 'Kosten' }).click();
+    await expect(page.locator('#reiterpanel-kosten caption')).toHaveText('Geschätzte API-Kosten (EUR)');
+    expect(await zeilen(page.locator('#reiterpanel-kosten'))).toEqual(['Gesamt · 25,55 € · 25,55 €']);
+  });
+
+  test('US-5: ohne Etikett genau zwei Reiter', async ({ page }) => {
+    const dialog = await fenster(page, 4);
+    await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei']);
+    await expect(dialog.getByText('Kein Preisetikett')).toHaveCount(0);
+  });
+
+  test('US-15: drei Reiter per Tastatur mit Umlauf, d führt aus Kosten zu Datei', async ({ page }) => {
+    const dialog = await fenster(page, 1, SPANNE);
+    const tab = n => dialog.getByRole('tab', { name: n });
+    await tab('Inhalt').focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(tab('Kosten')).toBeFocused();
+    await expect(tab('Kosten')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#reiterpanel-kosten table')).toBeVisible();
+    const tabindizes = () => dialog.getByRole('tab').evaluateAll(t => t.map(x => x.getAttribute('tabindex')));
+    expect(await tabindizes()).toEqual(['-1', '-1', '0']);
+    await page.keyboard.press('ArrowRight');
+    await expect(tab('Inhalt')).toBeFocused();
+    await expect(page.getByLabel('Titel')).toBeVisible();
+    await page.keyboard.press('ArrowLeft');
+    await expect(tab('Kosten')).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(tab('Inhalt')).toBeFocused();
+    expect(await tabindizes()).toEqual(['0', '-1', '-1']);
+    await page.keyboard.press('End');
+    await expect(tab('Kosten')).toBeFocused();
+    await expect(tab('Kosten')).toHaveAttribute('aria-selected', 'true');
+    await page.locator('.mod-kopf .id').click();
+    await page.keyboard.press('d');
+    await expect(tab('Datei')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#dateitext')).toBeVisible();
+  });
+
+  test('US-17: Kopf mit drei Reitern bei 320, 375 und 414 px in Hell und Dunkel ohne waagrechtes Scrollen', async ({ page }) => {
+    await fenster(page, 1, `class: feature\n${SPANNE}`);
+    await expect(page.locator('#fenster .mod-kopf .cls')).toHaveText('Funktion');
+    for (const breite of [320, 375, 414]) {
+      for (const thema of ['light', 'dark']) {
+        await page.setViewportSize({ width: breite, height: 700 });
+        await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
+        if (!await page.locator('#fenster').count()) await page.locator('.ka[data-id="1"]').click();
+        const kopf = page.locator('#fenster .mod-kopf');
+        const masse = await kopf.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+        expect(masse.sw, `${breite} px ${thema}`).toBeLessThanOrEqual(masse.cw);
+        const ziele = [...['Inhalt', 'Datei', 'Kosten'].map(n => page.getByRole('tab', { name: n })), page.getByRole('button', { name: 'Schließen' })];
+        for (const ziel of ziele) {
+          const box = await ziel.boundingBox();
+          expect(box.x, `${breite} px ${thema}`).toBeGreaterThanOrEqual(0);
+          expect(box.x + box.width, `${breite} px ${thema}`).toBeLessThanOrEqual(breite);
+        }
+        for (const n of ['Kosten', 'Datei', 'Inhalt']) {
+          await page.getByRole('tab', { name: n }).click();
+          await expect(page.getByRole('tab', { name: n })).toHaveAttribute('aria-selected', 'true');
+        }
+        await page.getByRole('button', { name: 'Schließen' }).click();
+        await expect(page.locator('#fenster')).toHaveCount(0);
+      }
+    }
+  });
+
+  test('US-22: Positionsnamen trennen nur nach Silben und nur, wo die Zelle zu schmal ist; bei 1280 px gar nicht', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    const dialog = await fenster(page, 1, MIT_KOMPOSITUM);
+    await dialog.getByRole('tab', { name: 'Kosten' }).click();
+    const koepfe = page.locator('#reiterpanel-kosten th[scope="row"]');
+    const stile = await koepfe.evaluateAll(ths => ths.map(th => { const s = getComputedStyle(th); return [s.hyphens, s.overflowWrap, s.wordBreak, th.closest('[lang]').getAttribute('lang')].join(' '); }));
+    expect(new Set(stile)).toEqual(new Set(['auto normal normal de']));
+    for (const [wort, silben] of [['Gemeinkostenanteil', [2, 6, 9, 12, 14]], [KOMPOSITUM, [2, 6, 9, 12, 14, 19, 21, 25]]]) {
+      for (const i of await umbrueche(koepfe.filter({ hasText: new RegExp(`^${wort}$`) }))) expect(silben, `Umbruch nach „${wort.slice(0, i)}“`).toContain(i);
+    }
+    const lang = await umbrueche(koepfe.filter({ hasText: KOMPOSITUM }));
+    expect(lang.length, 'zu schmal für das ganze Wort').toBeGreaterThan(0);
+    const panel = await page.locator('#reiterpanel-kosten').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+    expect(panel.sw).toBeLessThanOrEqual(panel.cw);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    expect(await umbrueche(koepfe.filter({ hasText: /^Gemeinkostenanteil$/ }))).toEqual([]);
+    expect(await umbrueche(koepfe.filter({ hasText: KOMPOSITUM }))).toEqual([]);
+  });
+
+  test('US-23: Wort ohne Silbengrenze bleibt ganz, die Tabelle scrollt quer im Panel per Tastatur', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    const dialog = await fenster(page, 1, MIT_LANG);
+    await dialog.getByRole('tab', { name: 'Kosten' }).click();
+    const lang = page.locator('#reiterpanel-kosten th[scope="row"]', { hasText: LANG });
+    expect(await umbrueche(lang)).toEqual([]);
+    const stile = await page.locator('#reiterpanel-kosten th[scope="row"]').evaluateAll(ths => ths.map(th => getComputedStyle(th).overflowWrap + ' ' + getComputedStyle(th).wordBreak));
+    expect(new Set(stile)).toEqual(new Set(['normal normal']));
+    const scroll = page.locator('#reiterpanel-kosten .ko-scroll');
+    const vorher = await scroll.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, links: el.scrollLeft }));
+    expect(vorher.sw).toBeGreaterThan(vorher.cw);
+    await page.getByRole('button', { name: 'Schließen' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(scroll).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => scroll.evaluate(el => el.scrollLeft)).toBeGreaterThan(vorher.links);
+    const kopf = await page.locator('#fenster .mod-kopf').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+    expect(kopf.sw).toBeLessThanOrEqual(kopf.cw);
+    for (const ziel of [...['Inhalt', 'Datei', 'Kosten'].map(n => page.getByRole('tab', { name: n })), page.getByRole('button', { name: 'Schließen' })]) {
+      const box = await ziel.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(320);
+    }
+    const seite = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+    expect(seite.sw).toBeLessThanOrEqual(seite.cw);
+  });
+});

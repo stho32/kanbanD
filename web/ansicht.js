@@ -173,6 +173,7 @@ function vNeu() {
   const ps = personen().filter(p => p.aktiv);
   const cl = klasse(f.klasse);
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
+  if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${fuss}</div></div>`;
   const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
 <div class="abs"><h3>BESCHREIBUNG</h3><textarea class="besch" data-nf="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung der neuen Aufgabe">${esc(f.beschreibung)}</textarea></div>
 <div class="abs"><h3>TEILAUFGABEN <span class="mono">${f.teil.length}</span></h3>${f.teil.map((t, j) => `<div class="chk"><i></i><span>${esc(t)}</span><button class="btn btn-sym x" data-act="nf-teil-weg" data-arg="${j}" aria-label="Teilaufgabe ${esc(t)} entfernen">✕</button></div>`).join('')}<input class="inp add" id="neu-teil" placeholder="+ Teilaufgabe · Enter · Liste einfügen" data-enter="nf-teil" data-mehrfach="neu-teil" aria-label="Neue Teilaufgabe der neuen Aufgabe"></div></div>`;
@@ -199,12 +200,51 @@ function sichtbareReihe() {
 
 /* Reiterleiste des Aufgabenfensters (R00105, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
    Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. */
-const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei']];
-const reiterSchluessel = () => REITER.map(([k]) => k);
-function vReiterleiste(gewaehlt) {
-  return `<span class="seg" role="tablist" aria-label="Ansicht der Aufgabe">${REITER.map(([k, t]) => `<span class="${gewaehlt === k ? 'an' : ''}" id="reiter-${k}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${gewaehlt === k}" aria-controls="reiterpanel-${k}" tabindex="${gewaehlt === k ? 0 : -1}">${t}</span>`).join('')}</span>`;
+const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei'], ['kosten', 'Kosten']];
+/** Reiter einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105). */
+const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || a.cost);
+const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
+function vReiterleiste(a, gewaehlt) {
+  return `<span class="seg" role="tablist" aria-label="Ansicht der Aufgabe">${reiterDerAufgabe(a).map(([k, t]) => `<span class="${gewaehlt === k ? 'an' : ''}" id="reiter-${k}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${gewaehlt === k}" aria-controls="reiterpanel-${k}" tabindex="${gewaehlt === k ? 0 : -1}">${t}</span>`).join('')}</span>`;
 }
 const reiterPanel = k => `id="reiterpanel-${k}" role="tabpanel" aria-labelledby="reiter-${k}"`;
+
+/** Panel „Kosten“ (R00105): Tabelle aus dem Preisetikett, nur lesend; ein Name ohne Silbengrenze scrollt in .ko-scroll quer. */
+function vKostenPanel(a) {
+  const k = kostenInCent(a.cost), t = kostentabelle(k);
+  const rumpf = t.zeilen.map(z => vKostenZeile(z.text, z, t.spalteTokens, k.waehrung, '')).join('');
+  return `<div class="mod-main ko-panel"><div class="ko-scroll" tabindex="0" role="group" aria-label="${esc(t.beschriftung)}"><table class="ko-tab"><caption>${esc(t.beschriftung)}</caption><thead>${vKostenKopf(t.spalteTokens)}</thead><tbody>${rumpf}</tbody>${vKostenSumme(t, k.waehrung)}</table></div>${vKostenBasis(t.basis)}<p class="ko-hin">liest nur · gesetzt über die API</p></div>`;
+}
+function vKostenKopf(spalteTokens) {
+  let tokens = '';
+  if (spalteTokens) tokens = '<th scope="col" class="r">Tokens</th>';
+  return `<tr><th scope="col">Position</th>${tokens}<th scope="col" class="r">niedrig</th><th scope="col" class="r">hoch</th></tr>`;
+}
+function vKostenZeile(text, z, spalteTokens, waehrung, klasse) {
+  const betrag = cent => `<td class="r">${esc(geld(cent, waehrung))}</td>`;
+  return `<tr${klasse}><th scope="row">${vPositionsname(text)}</th>${vTokenZelle(spalteTokens, z.tokens)}${betrag(z.niedrig)}${betrag(z.hoch)}</tr>`;
+}
+/** Ein Wort ohne zwei Vokalgruppen hat keine Silbengrenze: die Trennung nach Wörterbuch fände dort falsche Stellen (US-23), es bleibt ganz. */
+const ohneSilbengrenze = wort => (wort.match(/[aeiouyäöü]+/gi) || []).length < 2;
+function vPositionsname(text) {
+  return text.split(/(\s+)/).map(teil => {
+    if (/^\s*$/.test(teil) || !ohneSilbengrenze(teil)) return esc(teil);
+    return `<span class="ganz">${esc(teil)}</span>`;
+  }).join('');
+}
+function vTokenZelle(spalteTokens, tokens) {
+  if (!spalteTokens) return '';
+  if (tokens == null) return '<td class="r leer">—</td>';
+  return `<td class="r">${tokens.toLocaleString('de-DE')}</td>`;
+}
+function vKostenSumme(t, waehrung) {
+  if (!t.summe) return '';
+  return `<tfoot>${vKostenZeile('Summe', t.summe, t.spalteTokens, waehrung, ' class="ko-summe"')}</tfoot>`;
+}
+function vKostenBasis(basis) {
+  if (!basis) return '';
+  return `<p class="ko-basis">Basis: ${esc(basis)}</p>`;
+}
 
 function vFenster() {
   const a = aufgabe(S.ui.offen);
@@ -212,11 +252,12 @@ function vFenster() {
   const u = S.ui, cl = klasse(a.klasse), reihe = sichtbareReihe(), i = reihe.indexOf(a.nummer);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
   const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
-  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(a.archiviert)} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
+  if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${fuss}</div></div>`;
   const haupt = `<div class="mod-main"><input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel"><div class="abs"><h3>BESCHREIBUNG</h3>${a.beschreibung && !S.ui.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`}</div>${vFensterAbschnitte(a)}</div>`;
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>

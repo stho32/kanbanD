@@ -366,3 +366,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0385 Board-, Lauf-, Ich- und Defekte-Dateien-Pop einordnen | Standard | 1-2h | 1,2h | 1,2h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | Nacharbeit Fokusring (Menüs, Pop-Fenster, Radios) | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0368 Preisetikett auf der Karte zeigen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0370 Reiter Kosten zeigen | Standard | 1-3h | 0,3h | 0,3h | autonom |
