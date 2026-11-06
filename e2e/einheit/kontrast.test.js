@@ -97,7 +97,6 @@ const PAARE = [
 const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
 const AUSSTEHEND = {
   'Neutrale Flächen': 'B0392', 'Akzent-Container': 'B0392', 'Klassengründe': 'B0392',
-  'Füllung Akzent': 'B0391', 'Füllung Mensch': 'B0391', 'Füllung Agent': 'B0391',
   'Kopf': 'B0394', 'Linien Diagramm': 'B0396',
   'Modusleiste': MODUS, 'Linie Abschluss Modusleiste': MODUS, 'Linie Fokusring Modusleiste': MODUS,
 };

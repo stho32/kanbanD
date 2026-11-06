@@ -145,7 +145,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka .ein{font-size:11px;color:var(--kd-agent-ink);border-top:1px solid var(--kd-line);padding-top:3px}
 .orgs{display:inline-flex;gap:3px;flex-wrap:wrap}
 .org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);white-space:nowrap}
-a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
+a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-accent)}
 .wchips{display:inline-flex;gap:3px;flex-wrap:wrap}
 .wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
 .wchip:hover{text-decoration:none;border-color:var(--kd-accent);color:var(--kd-accent-ink)}
@@ -324,7 +324,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .mini-inp.full{width:100%;font-family:var(--kd-font);font-size:12.5px}
 .ochip{display:inline-flex}
 .ochip button{border:0;background:var(--kd-accent-weak);color:var(--kd-accent-ink);cursor:pointer;height:16px;padding:0 4px;font-size:11px;line-height:1}
-.ochip button:hover{background:var(--kd-accent);color:#fff}
+.ochip button:hover{background:var(--kd-accent);color:var(--kd-on-accent)}
 .oerr{font-size:11px;color:var(--kd-warn);width:100%}
 .as{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 6px 0 2px;border:1px solid var(--kd-line);background:var(--kd-surface);cursor:pointer;font-size:11.5px;color:var(--kd-muted)}
 .as:hover{border-color:var(--kd-line-strong)}
@@ -576,7 +576,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .ka .r0 .ecke{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;align-self:flex-start}
 .ka .ecke .kl{height:18px;min-width:20px;padding:0 4px}
 .kl{height:20px;min-width:22px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
-.kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
+.kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
 .inp.umbenennen{width:100%;height:24px}
 .due-knoepfe{display:inline-flex;gap:2px}
 .besch-lesen{min-height:60px;padding:var(--kd-s2) var(--kd-s3);border:1px solid transparent;line-height:1.55;cursor:text}
@@ -595,10 +595,10 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .kmenue.unter.links{left:auto;right:100%}
 .km-titel{padding:3px 10px 5px;font-size:11px;color:var(--kd-muted);border-bottom:1px solid var(--kd-line);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
 .km-e{position:relative;display:flex;align-items:center;gap:var(--kd-s4);height:26px;padding:0 10px;cursor:default;white-space:nowrap}
-.km-e.an{background:var(--kd-accent);color:#fff}
+.km-e.an{background:var(--kd-accent);color:var(--kd-on-accent)}
 .km-e.km-aktuell{color:var(--kd-muted)}
 .km-k{margin-left:auto;font-family:var(--kd-mono);font-size:11px;color:var(--kd-faint)}
-.km-e.an .km-k{color:var(--kd-accent-weak)}
+.km-e.an .km-k{color:var(--kd-on-accent)}
 .km-tr{height:1px;background:var(--kd-line);margin:3px 0}
 .kmenue.unter{color:var(--kd-text);text-align:left;font-weight:400}
 .km-e.an .kmenue.unter .km-e:not(.an){background:none;color:var(--kd-text)}
@@ -608,7 +608,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Neue Aufgabe */
 .kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
-.kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent)}
+.kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-faint);font-weight:400}
 .neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}
 .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
