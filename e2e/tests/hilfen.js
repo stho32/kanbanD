@@ -118,43 +118,61 @@ async function thema(page, name) {
 }
 
 /*
- * Kontrast nach WCAG im Browser (R00107, Funktionale Anforderung 17). Der eine Ort, an dem Farben über ein 1×1-Canvas
- * in sRGB aufgelöst werden: oklch, color-mix und Transparenz rechnet so der Browser selbst. Der Grund eines Elements ist
- * der Stapel der Hintergründe bis zum ersten deckenden, durchscheinende Schichten und eine durchscheinende Schrift
- * werden darüber gemalt; ohne deckenden Grund gilt Weiß.
+ * Kontrast nach WCAG im Browser (R00107, Funktionale Anforderung 17). Der eine Ort, an dem Farben über 1×1-Canvas
+ * in sRGB aufgelöst werden: oklch, color-mix und Transparenz rechnet so der Browser selbst. Gemalt wird wie der Browser
+ * komponiert: je Vorfahr eine Ebene aus seinem Hintergrund und der Ebene darin, die mit ihrer `opacity` als Gruppe
+ * daraufkommt; ganz unten Weiß. Einmal mit der Schrift (Schriftpixel), einmal ohne (Grund daneben).
  */
 function kontrastWerkzeugEinbauen() {
   if (window.kdKontrast) return;
-  const leinwand = document.createElement('canvas');
-  leinwand.width = leinwand.height = 1;
-  const pinsel = leinwand.getContext('2d', { willReadFrequently: true });
-  const gemalt = schichten => {
-    pinsel.clearRect(0, 0, 1, 1);
-    for (const farbe of schichten) { pinsel.fillStyle = '#000'; pinsel.fillStyle = farbe; pinsel.fillRect(0, 0, 1, 1); }
-    return [...pinsel.getImageData(0, 0, 1, 1).data];
+  const neueEbene = () => {
+    const leinwand = document.createElement('canvas');
+    leinwand.width = leinwand.height = 1;
+    return leinwand.getContext('2d', { willReadFrequently: true });
   };
-  const deckung = farbe => gemalt([farbe])[3];
+  const ebenen = [neueEbene(), neueEbene()];
+  /** Füllt die Ebene mit der Farbe; eine Farbe, die der Browser nicht kennt, ist ein Fehler statt still Schwarz. */
+  const fuellen = (ebene, farbe) => {
+    ebene.fillStyle = '#000'; ebene.fillStyle = farbe; const nachSchwarz = ebene.fillStyle;
+    ebene.fillStyle = '#fff'; ebene.fillStyle = farbe;
+    if (nachSchwarz === '#000000' && ebene.fillStyle === '#ffffff') throw new Error(`keine Farbe: ${farbe}`);
+    ebene.fillRect(0, 0, 1, 1);
+  };
+  const pixel = ebene => [...ebene.getImageData(0, 0, 1, 1).data];
+  const gemalt = schichten => {
+    const ebene = ebenen[0];
+    ebene.clearRect(0, 0, 1, 1);
+    for (const farbe of schichten) fuellen(ebene, farbe);
+    return pixel(ebene);
+  };
   const linear = v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
   const leuchtdichte = ([r, g, b]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
   const verhaeltnis = (a, b) => { const [h, d] = [leuchtdichte(a), leuchtdichte(b)].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); };
-  /** Hintergründe von unten nach oben bis zum ersten deckenden über dem Element. */
-  const grundSchichten = e => {
-    const schichten = [];
-    for (let x = e; x; x = x.parentElement) {
-      const farbe = getComputedStyle(x).backgroundColor;
-      const alpha = deckung(farbe);
-      if (alpha === 0) continue;
-      schichten.unshift(farbe);
-      if (alpha === 255) return schichten;
+  const opazitaet = e => Number(getComputedStyle(e).opacity);
+  /** Das Pixel am Element: seine Ebene (Hintergrund, ggf. Schrift), dann je Vorfahr dessen Hintergrund mit der Ebene darin als Gruppe. */
+  const komponiert = (e, schrift) => {
+    let [innen, aussen] = ebenen;
+    innen.clearRect(0, 0, 1, 1);
+    fuellen(innen, getComputedStyle(e).backgroundColor);
+    if (schrift) fuellen(innen, schrift);
+    let deckung = opazitaet(e);
+    for (let x = e.parentElement; x; x = x.parentElement) {
+      aussen.clearRect(0, 0, 1, 1);
+      fuellen(aussen, getComputedStyle(x).backgroundColor);
+      aussen.globalAlpha = deckung; aussen.drawImage(innen.canvas, 0, 0); aussen.globalAlpha = 1;
+      [innen, aussen] = [aussen, innen];
+      deckung = opazitaet(x);
     }
-    return ['#fff', ...schichten];
+    aussen.clearRect(0, 0, 1, 1);
+    fuellen(aussen, '#fff');
+    aussen.globalAlpha = deckung; aussen.drawImage(innen.canvas, 0, 0); aussen.globalAlpha = 1;
+    return pixel(aussen);
   };
-  const schriftGegenGrund = (e, schrift) => {
-    const grund = grundSchichten(e);
-    return verhaeltnis(gemalt([...grund, schrift]), gemalt(grund));
-  };
+  const schriftGegenGrund = (e, schrift) => verhaeltnis(komponiert(e, schrift), komponiert(e, null));
+  /** Opazität des Elements mal der aller Vorfahren; 0 heißt unsichtbar. */
+  const gesamtOpazitaet = e => { let produkt = 1; for (let x = e; x; x = x.parentElement) produkt *= opazitaet(x); return produkt; };
   const eigenerText = e => [...e.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('').trim();
-  const sichtbar = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility === 'visible';
+  const sichtbar = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility === 'visible' && gesamtOpazitaet(e) > 0;
   const inaktiv = e => e.closest('[aria-disabled="true"], :disabled') !== null;
   const beschreibung = e => e.localName + (e.id ? '#' + e.id : '') + [...e.classList].map(k => '.' + k).join('');
   const OHNE_TEXT = ['checkbox', 'radio', 'color', 'range', 'hidden', 'file'];

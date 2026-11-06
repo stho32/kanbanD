@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastFarben } = require('./hilfen');
 
 const THEMEN = ['light', 'dark'];
 const MASS = 4.5;
@@ -72,6 +72,26 @@ test.describe('R00107 Kontrast', () => {
     expect(gemeldet).toHaveLength(1);
     expect(gemeldet[0].wert).toBeGreaterThan(4.49);
     expect(gemeldet[0].wert).toBeLessThan(4.5);
+  });
+
+  test('Opazität: die eigene und die der Vorfahren wird mitgemalt, als Gruppe über dem Grund darunter; unsichtbar (0) zählt nicht', async ({ page }) => {
+    await thema(page, 'light');
+    await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
+      '<div id="probe-eigen" style="background:#fff"><span style="color:#000;opacity:.5">eigen</span></div>' +
+      '<div id="probe-vorfahr" style="background:#fff"><div style="opacity:.5"><span style="color:#000">vorfahr</span></div></div>' +
+      '<div id="probe-gruppe" style="background:#fff"><div style="background:#000;opacity:.5"><span style="color:#fff">gruppe</span></div></div>' +
+      '<div id="probe-weg" style="background:#fff"><span style="color:#000;opacity:0">weg</span></div>'));
+    // halb deckend gemalt landet je nach 8-bit-Rundung des Canvas zwischen Grau 126 und 128, also bei 3,95 bis 4,06 statt 21
+    const halbGrau = await kontrastFarben(page, 'rgb(127,127,127)', '#fff');
+    for (const bereich of ['#probe-eigen', '#probe-vorfahr', '#probe-gruppe']) {
+      const [m] = await kontrastMessen(page, [bereich]);
+      expect(Math.abs(m.wert - halbGrau), `${bereich} misst ${m.wert}`).toBeLessThan(0.1);
+    }
+    expect(await kontrastMessen(page, ['#probe-weg'])).toEqual([]);
+  });
+
+  test('Ungültige Farbe ist ein Fehler mit dem Wert, nicht still Schwarz', async ({ page }) => {
+    await expect(kontrastFarben(page, 'keine-farbe', '#fff')).rejects.toThrow(/keine Farbe: keine-farbe/);
   });
 
   test('US-1: Board mit Legende und leerer Spalte, beide Themen', async ({ page }) => {
