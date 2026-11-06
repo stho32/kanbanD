@@ -62,6 +62,16 @@ const feld = (page, name) => page.getByLabel(name, { exact: true });
 const status = page => page.locator('#bestand-achsen .best-status');
 const NICHT_GESPEICHERT = 'nicht gespeichert — zum Speichern „Ich bin …“ wählen';
 const farbe = (page, wert) => page.evaluate(w => { const p = document.createElement('p'); p.style.color = w; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }, wert);
+/** Kontrast WCAG zwischen Textfarbe und dem ersten deckenden Hintergrund darüber; Farben über ein Canvas in sRGB aufgelöst. */
+const kontrast = ort => ort.evaluate(e => {
+  const rgb = farbe => { const c = document.createElement('canvas'); c.width = c.height = 1; const g = c.getContext('2d'); g.fillStyle = farbe; g.fillRect(0, 0, 1, 1); return [...g.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+  const linear = v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const leuchte = ([r, g, b]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  let hinten = e;
+  while (['rgba(0, 0, 0, 0)', 'transparent'].includes(getComputedStyle(hinten).backgroundColor)) hinten = hinten.parentElement;
+  const [vorn, grund] = [leuchte(rgb(getComputedStyle(e).color)), leuchte(rgb(getComputedStyle(hinten).backgroundColor))];
+  return (Math.max(vorn, grund) + 0.05) / (Math.min(vorn, grund) + 0.05);
+});
 const commits = k => Number(k.git('rev-list', '--count', 'HEAD'));
 
 test.describe('R00100 Bestand nach Labels', () => {
@@ -248,6 +258,18 @@ test.describe('R00100 Bestand nach Labels', () => {
     expect(page.url()).toBe(adresse);
     await page.goto(k.adresse + '#/board/fabrik');
     await expect(page.locator('#flt')).toHaveValue('');
+  });
+
+  test('Legendenhinweis „zeigt nur, filtert nicht“ in der Farbe des Erklärsatzes, Kontrast mindestens 4,5:1 hell und dunkel', async ({ page }) => {
+    await bericht(page, grundbestand());
+    const hinweis = legende(page).locator('.rechts');
+    await expect(hinweis).toHaveText('zeigt nur, filtert nicht');
+    for (const schema of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: schema });
+      const erklaerfarbe = await page.locator('#bestand .best-erkl').evaluate(e => getComputedStyle(e).color);
+      await expect(hinweis, schema).toHaveCSS('color', erklaerfarbe);
+      expect(await kontrast(hinweis), schema).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   test('Feldwahl: „Spalten“ = repo tauscht zu nc × repo, ein PUT, ein Commit, Frontmatter; ein zweiter Browser folgt ohne und nach Neuladen', async ({ page, browser }) => {
