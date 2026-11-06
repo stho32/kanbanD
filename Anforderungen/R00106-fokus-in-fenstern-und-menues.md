@@ -106,9 +106,10 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
   - Jeder fokussierte Menüeintrag, jedes fokussierte Element eines Pop-Fensters und jedes fokussierte Radio zeigt einen Fokusring. Er folgt dem vorhandenen Muster `outline: 2px solid var(--kd-accent)` (wie `.ka:focus`, `web/kd-app.css:489`), oder das Element trägt die vorhandene Hervorhebung `.km-e.an`.
   - Der Ring ist in Hell und Dunkel sichtbar (berechneter `outline-style` nicht `none`, `outline-width` ≥ 2 px).
 - **Kein neues Aussehen**: Fenster, Menüs, Radiogruppen und Knöpfe sehen aus wie heute. Neu sind nur Rolle, Fokus und Tasten.
-- **Eine Stelle für den Fokus** (ADR-0010):
-  - `grep -n "\.focus(" web/*.js` findet danach nur `fokusSetzen` (`web/sichtzustand.js`), den Kleber am Ende von `render()` und den keydown-Zweig der Fokusführung.
-  - Heute sind es 9 Fundstellen, gezählt am 2026-11-06: `web/app.js` 8, `web/sichtzustand.js` 1.
+- **Eine Stelle für den Fokus** (ADR-0010, PO Z. 109):
+  - `grep -n "\.focus(" web/*.js` findet danach nur `fokusSetzen` (`web/sichtzustand.js`), den Kleber am Ende von `render()` (`fokusVersuchen`, `ersterTabbarer`) und keydown-Zweige. Keydown-Zweige sind die der Fokusführung (`fallenTaste`, `popMenueTaste`, `gewaehltesRadioFokussieren`) und die vier Tastenzweige, die den Fokus unmittelbar auf eine Taste des Menschen setzen, ohne Neuzeichnen dazwischen: `fensterTaste`, `listenTaste`, `brettTaste` und der `/`-Zweig im `keydown`-Hörer (→ `#flt`).
+  - Gemessen am 2026-11-06 auf main mit `grep -n "\.focus(" web/*.js`: 10 Fundstellen, `web/app.js` 9, `web/sichtzustand.js` 1, je erlaubter Funktion genau eine. Vor dem Bau waren es 9 (`web/app.js` 8).
+  - Der Wächtertest `e2e/einheit/fokus.test.js` zählt die `.focus()`-Aufrufe je erlaubter Funktion und wird rot, sobald eine davon einen Aufruf mehr hat als heute.
 - **Bestand**: Alle bestehenden E2E-Tests bleiben grün. Die Tests des Kontextmenüs (R00033, R00034), die heute die Klasse `.km-e.an` abfragen, werden auf `document.activeElement` umgestellt.
 
 ## Akzeptanzkriterien
@@ -331,6 +332,10 @@ Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
   - Ich-Pop ist ein Menü mit `menuitemradio`. Board-, Lauf- und Defekte-Dateien-Pop sind nicht-modale Pop-Fenster mit Tab-Rand.
   - Für künftige Pops gilt: nur Einträge → Menü, sonst Pop-Fenster.
   - Eingearbeitet in die Abschnitte „Einordnung der Pops“, „Menüs“ (Ich-Menü) und „Pop-Fenster“, in die Akzeptanzkriterien „Ich-Menü“ und „Pop-Fenster“ sowie in US-9 und US-10. B0385 wartet nicht mehr.
+- **Erlaubte `.focus()`-Orte** (ADR-0010 N5): entschieden vom PO am 2026-11-06 (`AI-Team/po-entscheidungen.md` Z. 109, Commit 3aae3ce), Option a — Anforderung angleichen, kein Umbau über `S.ui.fokus`.
+  - `fensterTaste`, `listenTaste`, `brettTaste` und der `/`-Zweig gelten als keydown-Zweige und stehen mit Namen in der NFA „Eine Stelle für den Fokus“.
+  - Eingearbeitet dort am 2026-11-06: Fundstellen neu gemessen (vorher 9, `web/app.js` 8; jetzt 10, `web/app.js` 9) und die Zählung je erlaubter Funktion im Wächtertest.
+  - Die Ebenen-Identität beim Pop-Wechsel (PO Z. 110) bleibt im Kleber; an R00106 ändert sie nichts.
 - **Hilfe und Zuweisen über dem Fenster** (ADR-0010, Folgeentscheidung): Sie bleiben gestapelt wie heute. Die Fokusführung trägt auch ein Schließen des Fensters; das wäre eine Verhaltensänderung, die hier nicht verlangt ist.
 
 ## Manuelle Vorbereitungstätigkeiten
