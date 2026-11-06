@@ -79,7 +79,8 @@
   }
 
   /** Fokusziele nach dem Neuzeichnen in Rangfolge; das erste, das sich setzen lässt, gilt. 'gesichert' steht für den Sicherer.
-      lage = {ausdruecklich, gesichert, gesichertInOberster, geschlossen, geoeffnet, oberste, fuehrung} */
+      lage = {ausdruecklich, gesichert, gesichertInOberster, geschlossen, geoeffnet, oberste, fuehrung, vorher}
+      vorher = {stand: 'nichts' (BODY) | 'gehalten' (hängt noch im Dokument) | 'verloren' (mit dem Neuzeichnen ersetzt), selektor, sichtbar} */
   function fokusZiel(lage) {
     const ziele = [];
     if (lage.ausdruecklich) ziele.push(lage.ausdruecklich);
@@ -87,9 +88,24 @@
     if (lage.geschlossen) ziele.push(...lage.geschlossen.rueckgabe);
     if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(...[].concat(lage.geoeffnet.start));
     if (lage.oberste && lage.oberste.start) ziele.push(...[].concat(lage.oberste.start));
-    if (!lage.oberste && lage.fuehrung) ziele.push(lage.fuehrung);
+    if (fuehrungGilt(lage)) ziele.push(lage.fuehrung);
     return [...new Set(ziele)];
   }
 
-  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, GESICHERT });
+  /** Karte bzw. Zeile der Führung nur ohne offene Ebene und nur, wenn das Neuzeichnen den Fokus genommen hat:
+      wer per Maus ins Leere geklickt hat (BODY), bekommt ihn von einem Live-Ereignis nicht zurück. */
+  function fuehrungGilt(lage) {
+    const fokusVerloren = Boolean(lage.vorher) && lage.vorher.stand === 'verloren';
+    return !lage.oberste && Boolean(lage.fuehrung) && fokusVerloren;
+  }
+
+  /** Das Ziel ohne Scrollen setzen: das Aufgabenfenster selbst immer; dasselbe Element wie vor dem Neuzeichnen, wenn es
+      außer Sicht lag — der Nutzer hat weggescrollt. Rückgabe an den Auslöser, Öffnen und ein neues Ziel dürfen scrollen. */
+  function ohneRollen(ziel, vorher) {
+    if (ziel === '#fenster') return true;
+    const gehalten = Boolean(vorher.selektor) && ziel === vorher.selektor;
+    return gehalten && !vorher.sichtbar;
+  }
+
+  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, ohneRollen, GESICHERT });
 })(typeof module !== 'undefined' ? module.exports : window);

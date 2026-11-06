@@ -1,7 +1,7 @@
 // Unit-Tests der Fokusführung über Ebenen (R00106, ADR-0010): node --test
 const test = require('node:test');
 const assert = require('node:assert');
-const { ebenen, fallenSchritt, fokusZiel, fensterRand } = require('../../web/fokus.js');
+const { ebenen, fallenSchritt, fokusZiel, fensterRand, ohneRollen } = require('../../web/fokus.js');
 
 const arten = ui => ebenen(ui).map(ebene => ebene.art);
 
@@ -33,9 +33,35 @@ test('fokusZiel: Rangfolge ausdrücklich > Sicherer in oberster > Rückgabe > St
   assert.ok(!ziele.includes('.ka[data-id="2"]'), 'Führung über Karten nur, wenn keine Ebene offen ist');
 });
 
-test('fokusZiel: ohne Ebene führt fokusKarte bzw. fokusZeile', () => {
-  assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="2"]' }), ['.ka[data-id="2"]']);
+test('fokusZiel: ohne Ebene führt fokusKarte bzw. fokusZeile, wenn das Neuzeichnen den Fokus genommen hat', () => {
+  assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="2"]', vorher: { stand: 'verloren' } }), ['.ka[data-id="2"]']);
+  assert.deepStrictEqual(fokusZiel({ fuehrung: 'tr[data-zeile="2"]', vorher: { stand: 'verloren' } }), ['tr[data-zeile="2"]']);
   assert.deepStrictEqual(fokusZiel({}), []);
+});
+
+test('fokusZiel: war vor dem Neuzeichnen nichts fokussiert (BODY), führt fokusKarte bzw. fokusZeile nicht — BODY bleibt', () => {
+  assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="1"]', vorher: { stand: 'nichts' } }), []);
+  assert.deepStrictEqual(fokusZiel({ fuehrung: 'tr[data-zeile="1"]', vorher: { stand: 'nichts' } }), []);
+  assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="1"]' }), [], 'ohne Angabe gilt nichts als verloren');
+});
+
+test('fokusZiel: hängt das fokussierte Element nach dem Neuzeichnen noch im Dokument, nimmt die Führung ihm den Fokus nicht', () => {
+  assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="1"]', vorher: { stand: 'gehalten' } }), []);
+});
+
+test('fokusZiel: Rückgabe beim Schließen gilt auch, wenn vorher nichts fokussiert war', () => {
+  const geschlossen = ebenen({ view: 'board', offen: 1 })[0];
+  assert.deepStrictEqual(fokusZiel({ geschlossen, fuehrung: '.ka[data-id="2"]', vorher: { stand: 'nichts' } }), ['.ka[data-id="1"]']);
+});
+
+test('ohneRollen: der Dialog selbst nie; dasselbe Element nur, wenn es vorher außer Sicht lag', () => {
+  const karte = '.ka[data-id="1"]';
+  assert.strictEqual(ohneRollen('#fenster', { stand: 'nichts' }), true, 'Startziel des Aufgabenfensters');
+  assert.strictEqual(ohneRollen(karte, { stand: 'verloren', selektor: karte, sichtbar: false }), true, 'weggescrollt: Halten holt die Karte nicht zurück');
+  assert.strictEqual(ohneRollen(karte, { stand: 'verloren', selektor: karte, sichtbar: true }), false, 'im Blick: darf nachrücken, etwa nach dem Verschieben');
+  assert.strictEqual(ohneRollen(karte, { stand: 'verloren', selektor: '#fenster', sichtbar: false }), false, 'Rückgabe an den Auslöser darf scrollen');
+  assert.strictEqual(ohneRollen(karte, { stand: 'verloren', selektor: '.ka[data-id="2"]', sichtbar: false }), false, 'anderes Ziel als vorher darf scrollen');
+  assert.strictEqual(ohneRollen(karte, { stand: 'nichts', selektor: null, sichtbar: false }), false);
 });
 
 test('ebenen: Reihenfolge von unten nach oben, Kontextmenü über Pop über Dialogstapel', () => {

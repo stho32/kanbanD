@@ -869,3 +869,65 @@ test('S5: das Berichte-Menü hat den zugänglichen Namen „Berichte“', async 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('menu', { name: 'Berichte', exact: true })).toBeVisible();
 });
+
+/* ── Nacharbeit 2 Karte #8 (UX-Review Wiederholung): ein Live-Ereignis holt den Fokus nicht zurück, den die Maus abgegeben hat ── */
+
+/** Eine andere Person (planer) schreibt den Titel von #3; der Render des Live-Ereignisses ist abgewartet. */
+async function andereSchreibtDrei(page, titel) {
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1200 }).toBeGreaterThan(vorher);
+  await expect(page.locator('[data-id="3"], [data-zeile="3"]').first()).toContainText(titel, { timeout: 1200 });
+}
+
+/** .bahnen ganz nach rechts gescrollt; liefert den scrollLeft danach (> 0, sonst prüft der Test nichts). */
+async function bahnenGanzRechts(page) {
+  await expect.poll(() => page.locator('.bahnen').evaluate(b => b.scrollWidth - b.clientWidth), { message: 'bei 375 px muss .bahnen waagrecht scrollen' }).toBeGreaterThan(0);
+  const links = await page.locator('.bahnen').evaluate(b => { b.scrollLeft = b.scrollWidth; return b.scrollLeft; });
+  expect(links, 'bei 375 px muss .bahnen waagrecht scrollen').toBeGreaterThan(0);
+  return links;
+}
+
+const scrollLinks = page => page.locator('.bahnen').evaluate(b => b.scrollLeft);
+const aktivesTag = page => page.evaluate(() => document.activeElement.tagName);
+
+test('N2: 375 px, Karte #1 angeklickt, Esc, .bahnen ganz rechts, Klick ins Leere, zwei fremde Live-Ereignisse → BODY bleibt, scrollLeft unverändert', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.locator('.ka[data-id="1"]').click();
+  await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  await expect(page.locator('.ka[data-id="1"]')).toBeFocused();
+  const links = await bahnenGanzRechts(page);
+  const box = await page.locator('.bahnen').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 10);
+  expect(await aktivesTag(page), 'Klick ins Leere gibt den Fokus ab').toBe('BODY');
+  for (const titel of ['fremd eins', 'fremd zwei']) {
+    await andereSchreibtDrei(page, titel);
+    expect(await scrollLinks(page), `nach „${titel}“`).toBe(links);
+    expect(await aktivesTag(page), `nach „${titel}“`).toBe('BODY');
+  }
+});
+
+test('N2: 1280 px Aufgabenliste, Zeile #1 angeklickt, Esc, Klick ins Leere, fremdes Live-Ereignis → BODY bleibt', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(k.adresse + '#/aufgaben');
+  await page.locator('tr[data-zeile="1"] a[data-act="oeffnen"]').click();
+  await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  await expect(page.locator('tr[data-zeile="1"]')).toBeFocused();
+  await page.mouse.click(640, 790);
+  expect(await aktivesTag(page), 'Klick ins Leere gibt den Fokus ab').toBe('BODY');
+  await andereSchreibtDrei(page, 'fremd eins');
+  expect(await aktivesTag(page)).toBe('BODY');
+});
+
+test('N2-Variante: 375 px, Fokus auf Karte #1, .bahnen ohne Fokuswechsel ganz rechts (Wischen), fremdes Live-Ereignis → Fokus bleibt auf #1, scrollLeft unverändert', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.locator('.ka[data-id="1"]').focus();
+  const links = await bahnenGanzRechts(page);
+  await andereSchreibtDrei(page, 'fremd eins');
+  await expect(page.locator('.ka[data-id="1"]')).toBeFocused();
+  expect(await scrollLinks(page)).toBe(links);
+});

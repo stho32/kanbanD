@@ -452,6 +452,7 @@ function render() {
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
   // Vor dem Ersetzen merken, solange der Auslöser noch im Dokument hängt
   const ausloeser = ausloeserSelektor(aktiv);
+  const aktivWarSichtbar = imSichtbereich(aktiv);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -472,7 +473,7 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
-  fokusFuehren(aktiv, ausloeser, fokus);
+  fokusFuehren(aktiv, ausloeser, fokus, aktivWarSichtbar);
 }
 
 /* Fokusführung über Ebenen (R00106, ADR-0010): die Entscheidungen rechnet web/fokus.js, hier wird nur angewendet. */
@@ -626,7 +627,7 @@ function ausloeserSelektor(aktiv) {
 }
 
 /** Nach dem Neuzeichnen: Ebenen abschirmen, dann das erste Fokusziel der Rangfolge aus web/fokus.js setzen. */
-function fokusFuehren(aktiv, ausloeser, gesichert) {
+function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar) {
   const vorher = vorigeEbenen;
   const arten = liste => liste.map(ebene => ebene.art);
   const geoeffnet = ebenen(S.ui).filter(ebene => !arten(vorher).includes(ebene.art));
@@ -641,11 +642,32 @@ function fokusFuehren(aktiv, ausloeser, gesichert) {
   ausloeserMarkieren();
   radiogruppenFuehren();
   const oberste = jetzt.at(-1) || null;
-  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel() });
+  const fokusVorher = { stand: fokusStandVorher(aktiv), selektor: ausloeser, sichtbar: aktivWarSichtbar };
+  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
   S.ui.fokus = null;
-  const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste));
+  const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste, fokusVorher));
   const verloren = aktiv && aktiv !== document.body;
   if (!gesetzt && (verloren || geschlossen.length || oberste) && !fokusSitztIn(oberste)) ersterTabbarer(oberste);
+}
+
+/** Was vor dem Neuzeichnen fokussiert war: nichts (BODY), noch im Dokument oder mit dem Neuzeichnen ersetzt. */
+function fokusStandVorher(aktiv) {
+  if (!aktiv || aktiv === document.body) return 'nichts';
+  if (aktiv.isConnected) return 'gehalten';
+  return 'verloren';
+}
+
+/** Ob das Element im Fenster und in jedem scrollenden Vorfahren zu sehen ist — vor dem Ersetzen gemessen. */
+function imSichtbereich(element) {
+  if (!element || element === document.body || !element.isConnected) return false;
+  const elementRect = element.getBoundingClientRect();
+  const ueberlappt = rahmenRect => elementRect.right > rahmenRect.left && elementRect.left < rahmenRect.right && elementRect.bottom > rahmenRect.top && elementRect.top < rahmenRect.bottom;
+  if (!ueberlappt({ left: 0, top: 0, right: innerWidth, bottom: innerHeight })) return false;
+  for (let rahmen = element.parentElement; rahmen && rahmen !== document.body; rahmen = rahmen.parentElement) {
+    const scrollt = rahmen.scrollWidth > rahmen.clientWidth || rahmen.scrollHeight > rahmen.clientHeight;
+    if (scrollt && !ueberlappt(rahmen.getBoundingClientRect())) return false;
+  }
+  return true;
 }
 
 /** Karte im Board bzw. Zeile in der Aufgabenliste, die die Tastatur zuletzt geführt hat. */
@@ -656,11 +678,11 @@ function fuehrungsziel() {
 }
 
 /** Ein Ziel setzen; der Sicherer zählt nur, wenn sein Element in der obersten Ebene liegt. Wahr, wenn der Fokus sitzt. */
-function fokusVersuchen(ziel, gesichert, oberste) {
+function fokusVersuchen(ziel, gesichert, oberste, fokusVorher) {
   if (ziel === GESICHERT) return fokusSetzen(gesichert) && liegtIn(document.activeElement, oberste);
   const element = $(ziel);
   if (!element) return false;
-  element.focus({ preventScroll: ziel === '#fenster' });
+  element.focus({ preventScroll: ohneRollen(ziel, fokusVorher) });
   return document.activeElement === element;
 }
 
