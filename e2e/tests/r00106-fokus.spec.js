@@ -269,3 +269,44 @@ test('US-5: Live-Ereignis bei offenem Menü „Mehr“: Fokus bleibt auf dem zwe
   await expect(page.locator('.ka[data-id="3"]')).toContainText('drei neu');
   expect(await menueIndex(page)).toBe(1);
 });
+
+test('US-6: Menü „Mehr“: Esc → kein role=menu, Fokus auf #t-mehr mit aria-expanded=false', async ({ page }) => {
+  await page.locator('#t-mehr').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[role="menu"]')).toHaveCount(0);
+  await expect(page.locator('#t-mehr')).toBeFocused();
+  await expect(page.locator('#t-mehr')).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('US-6: Menü „Mehr“: Tab schließt, Fokus auf dem Element nach dem Auslöser, nicht BODY', async ({ page }) => {
+  const nachDemAusloeser = await page.evaluate(() => {
+    const alle = [...document.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]')].filter(e => e.tabIndex >= 0 && e.getClientRects().length);
+    return alle[alle.indexOf(document.querySelector('#t-mehr')) + 1].outerHTML.slice(0, 100);
+  });
+  await page.locator('#t-mehr').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#pop')).toHaveCount(0);
+  await expect(page.locator('#t-mehr')).toHaveAttribute('aria-expanded', 'false');
+  expect(await page.evaluate(() => document.activeElement.outerHTML.slice(0, 100))).toBe(nachDemAusloeser);
+});
+
+test('US-6: 375 px: Seite-Menü Esc → Fokus auf #t-seite mit aria-expanded=false', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.locator('#t-seite').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#t-seite')).toBeFocused();
+  await expect(page.locator('#t-seite')).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('US-6: ein Eintrag mit Aktion („Signale oben“ in „Mehr“) lässt den Fokus nie auf BODY', async ({ page }) => {
+  await page.locator('#t-mehr').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('#pop [role^="menuitem"]').first().focus();
+  await page.keyboard.press('Enter');
+  expect((await fokus(page)).tag).not.toBe('BODY');
+});

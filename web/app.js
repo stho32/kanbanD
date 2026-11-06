@@ -499,10 +499,20 @@ function ausloeserMarkieren() {
 
 const MENUE_RICHTUNG = { ArrowDown: 1, ArrowUp: -1, Home: 'anfang', End: 'ende' };
 
-/** Pfeile, Pos1 und Ende führen den DOM-Fokus über die wählbaren Einträge des offenen Pop-Menüs; wahr, wenn die Taste verbraucht ist. */
+/** Tab im Menü schließt es: der Fokus steht vor der Standardaktion auf dem Auslöser, der Browser führt ihn von dort weiter. */
+function popZuMitTab() {
+  S.ui.fokus = ausloeserDesMenues();
+  S.ui.pop = null;
+  S.ui.ichNoetig = false;
+  render();
+}
+
+/** Im offenen Pop-Menü: Pfeile, Pos1 und Ende führen den DOM-Fokus über die wählbaren Einträge, Tab schließt; wahr, wenn die Taste verbraucht ist. */
 function popMenueTaste(ereignis) {
   const menue = $('#pop[role="menu"]');
-  if (!menue || !Object.hasOwn(MENUE_RICHTUNG, ereignis.key)) return false;
+  if (!menue) return false;
+  if (ereignis.key === 'Tab') { popZuMitTab(); return true; }
+  if (!Object.hasOwn(MENUE_RICHTUNG, ereignis.key)) return false;
   const eintraege = [...menue.querySelectorAll('[role^="menuitem"]')];
   // menueSchritt überspringt, was „aktuell“ ist — hier die nicht wählbaren Einträge
   const modell = eintraege.map(eintrag => ({ aktuell: eintrag.getAttribute('aria-disabled') === 'true' }));
