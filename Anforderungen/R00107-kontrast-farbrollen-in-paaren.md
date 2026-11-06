@@ -8,7 +8,7 @@ datum: 2026-11-06
 
 ## Beschreibung
 
-Im Dunkelthema ist ein Teil der Schrift kaum lesbar. Die Modusleiste „Spalten einrichten“ zeigt ihren Titel mit 1,33:1. Die Initialen der Personen erreichen 2,61:1 bei Menschen und 2,55:1 bei Agenten, „Neue Aufgabe“ in der Kopfzeile 3,83:1. Auch im hellen Thema liegen Texte unter 4,5:1: die Initiale eines Agenten (4,09:1), der Untertitel der Modusleiste (4,09:1), ein überfälliges Datum auf einer Karte der Klasse „bug“ (4,37:1) und jeder Text in `--kd-faint`, etwa die Herkunft auf einer Karte (2,63–3,58:1). Gemessen wurde am 2026-11-06 im headless Chromium auf Stand `d9674e3`, Werkzeug und Grundbestand stehen in den Notizen.
+Im Dunkelthema ist ein Teil der Schrift kaum lesbar. Die Modusleiste „Spalten einrichten“ zeigt ihren Titel mit 1,33:1. Die Initialen der Personen erreichen 2,61:1 bei Menschen und 2,55:1 bei Agenten, „Neue Aufgabe“ in der Kopfzeile 3,83:1. Auch im hellen Thema liegen Texte unter 4,5:1: die Initiale eines Agenten (4,08:1), der Untertitel der Modusleiste (4,08:1), ein überfälliges Datum auf einer Karte der Klasse „bug“ (4,37:1) und jeder Text in `--kd-faint`, etwa die Herkunft auf einer Karte (2,63–3,58:1). Gemessen wurde am 2026-11-06 im headless Chromium auf Stand `d9674e3`; wo Messung und Rechnung in der zweiten Nachkommastelle abweichen, steht hier wie überall in dieser Anforderung der gerechnete Wert. Werkzeug und Grundbestand stehen in den Notizen.
 
 Die Ursache ist kein einzelner zu heller Ton. Eine Schriftfarbe steht auf einer Fläche, für die niemand ihren Kontrast versprochen hat (ADR-0011). Diese Anforderung setzt die Entscheidung der ADR um:
 - Jede Farbe in `web/kd-tokens.css` hat genau eine Rolle: Fläche, Schrift oder Linie.
@@ -34,7 +34,7 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
 1. Die Paartabelle ist Daten im Unit-Test und hat genau diese Zeilen:
    - **neutrale Flächen** `--kd-bg`, `--kd-surface`, `--kd-sunken` ↔ Schrift `--kd-text`, `--kd-muted`, `--kd-warn`, `--kd-accent-ink`, `--kd-mensch`, `--kd-agent-ink`;
    - **Container** `--kd-accent-weak` ↔ `--kd-accent-ink`, `--kd-text`, `--kd-muted`, `--kd-warn`; `--kd-agent-weak` ↔ `--kd-agent-ink`, `--kd-text`, `--kd-muted`; `--kd-mensch-weak` ↔ `--kd-text`, `--kd-muted`;
-   - **Füllung** `--kd-accent` ↔ `--kd-on-accent`, `--kd-mensch` ↔ `--kd-on-mensch`, `--kd-agent` ↔ `--kd-on-agent` (neu);
+   - **Füllung** `--kd-accent` ↔ `--kd-on-accent`, `--kd-mensch` ↔ `--kd-on-mensch`, `--kd-agent` ↔ `--kd-on-agent` (neu); Zustand **Hover** `--kd-accent-hover` ↔ `--kd-on-accent` (`.btn-haupt:hover`, `web/kd-base.css:17`);
    - **Kopf** `--kd-head` ↔ `--kd-head-text`, `--kd-head-muted`, `--kd-head-link` (neu);
    - **Modusleiste** `--kd-modus` ↔ `--kd-modus-text`, `--kd-muted`, `--kd-warn` (neu, siehe unten);
    - **Klassengründe** `--kd-c-<farbe>` (16 Paletten-Farben) ↔ `--kd-text`, `--kd-muted`, `--kd-warn`;
@@ -55,7 +55,7 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
    - `:611` `.kz-btn.neu-btn` (heute `--kd-head-text` auf Akzent)
    - `:600` `.km-e.an .km-k` (heute `--kd-accent-weak` auf Akzent, dunkel 2,72:1)
 4. Die Werte stellt der Entwickler ein, das Kriterium ist das Maß. Gerechnete Startwerte (Hypothese, aus `kd-tokens.css` am 2026-11-06):
-   - `--kd-on-accent` hell und dunkel Weiß (6,04 bzw. 4,67).
+   - `--kd-on-accent` hell und dunkel Weiß (6,04 bzw. 4,67). Auf `--kd-accent-hover` hält Weiß hell 7,84, dunkel heute 3,65 (L 0,62); dunkel braucht `--kd-accent-hover` deshalb L ≤ 0,56 (Startwert L 0,52, dunkler als `--kd-accent` wie im hellen Thema: 5,54).
    - `--kd-on-mensch` hell Weiß (5,36), dunkel der Ton von `--kd-head` (7,54).
    - `--kd-on-agent` hell Weiß und `--kd-agent` hell von L 0,6 auf 0,55 (5,02; heute 4,08). Dunkel der Ton von `--kd-head` (7,71).
 5. `--kd-head-link` ist die Linkfarbe auf `--kd-head`. Hell bleibt der Ton von heute (`--kd-accent-weak`, 11,49), dunkel ein heller Akzentton (Startwert oklch(0.85 0.06 255), 12,47; heute 1,55). Er ersetzt `--kd-accent-weak` an `.toast .lnk` (`web/kd-app.css:455`).
@@ -74,8 +74,8 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
    - „Fertig“ als Füllung `--kd-accent` mit `--kd-on-accent`;
    - der Ich-Knopf mit Name in `--kd-modus-text` und Initiale in ihrem Füllungspaar;
    - Ränder in `--kd-modus-linie` statt `oklch(1 0 0 / …)` (`web/kd-app.css:57`, `:62`); dort Verzierung;
-   - Die Modusleiste schließt unten mit 1 px `--kd-modus-linie` ab; `--kd-modus-linie` hat in beiden Themen mindestens 3:1 gegen `--kd-modus` und gegen `--kd-sunken`. Probe: Unit-Paare `modus-linie/modus` und `modus-linie/sunken` ≥ 3,0 in hell und dunkel. Grund: die Fläche allein hebt sich nicht vom Board ab (UX-Vorprüfung, gerechnet aus `kd-tokens.css`: hell 1,03 gegen `--kd-sunken` und 1,11 gegen `--kd-bg`, dunkel 1,26–1,51);
-   - die Knöpfe der Leiste zeigen den Tastaturfokus als Ring in `--kd-accent` (`.kz-modus .kz-btn:focus-visible`, heute ohne eigene Regel, also Browser-Standard); Probe: Unit-Paar `accent/modus` ≥ 3,0 in hell und dunkel (gerechnet heute 4,92 hell, 2,72 dunkel; siehe Funktionale Anforderung 7).
+   - die Modusleiste schließt unten mit 1 px `--kd-modus-linie` ab; `--kd-modus-linie` hat in beiden Themen mindestens 3:1 gegen `--kd-modus` und gegen `--kd-sunken`. Probe: Unit-Paare `modus-linie/modus` und `modus-linie/sunken` ≥ 3,0 in Hell und Dunkel. Grund: die Fläche allein hebt sich nicht vom Board ab (UX-Vorprüfung, gerechnet aus `kd-tokens.css`: hell 1,03 gegen `--kd-sunken` und 1,11 gegen `--kd-bg`, dunkel 1,26–1,51);
+   - die Knöpfe der Leiste zeigen den Tastaturfokus als Ring in `--kd-accent` (`.kz-modus .kz-btn:focus-visible`, heute ohne eigene Regel, also Browser-Standard); Probe: Unit-Paar `accent/modus` ≥ 3,0 in Hell und Dunkel (gerechnet heute 4,92 hell, 2,72 dunkel; siehe Funktionale Anforderung 7).
 9. Gemessene Werte des Vorschlags (Werte aus `kd-tokens.css`): Titel 8,24 hell und 7,79 dunkel, Untertitel 5,32 und 5,51, Fehlerzeile mit `--kd-warn` nach Punkt 6 4,86 und 4,79. Heute misst der Titel dunkel 1,33 und der Untertitel 4,08 hell und 1,52 dunkel.
 
 ### `--kd-faint` ist keine Schrift (ADR-0011 Regel 4, je Stelle hier entschieden)
@@ -141,10 +141,9 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
 17. `e2e/tests/hilfen.js` exportiert einen Helfer, der im Browser den Kontrast eines Elements misst:
     - Schriftfarbe gegen den ersten deckenden Grund darüber;
     - halbtransparente Gründe werden aufeinander verrechnet;
-    - Farben werden über ein 1×1-Canvas nach sRGB aufgelöst;
-    - einen zweiten Helfer, der alle Verstöße unter einer Liste von Bereichen liefert.
+    - Farben werden über ein 1×1-Canvas nach sRGB aufgelöst.
 
-    Er ersetzt die drei Kopien `e2e/tests/r00070-dark-mode.spec.js:13–20`, `e2e/tests/r00097-eigentuemer.spec.js:98–103` und `e2e/tests/r00100-bestand.spec.js:66–74`; deren Tests bleiben inhaltlich gleich und grün.
+    Dazu exportiert `hilfen.js` einen zweiten Helfer, der alle Verstöße unter einer Liste von Bereichen liefert. Der erste Helfer ersetzt die drei Kopien `e2e/tests/r00070-dark-mode.spec.js:13–20`, `e2e/tests/r00097-eigentuemer.spec.js:98–103` und `e2e/tests/r00100-bestand.spec.js:66–74`; deren Tests bleiben inhaltlich gleich und grün.
 
 ## Nicht-funktionale Anforderungen
 
@@ -182,14 +181,14 @@ Breite 1280 px. „Kontrast“ heißt das WCAG-Verhältnis der Schrift gegen den
 
 - [ ] **Rechner**: `kontrast("oklch(1 0 0)", "oklch(0 0 0)")` ist 21,0 (auf eine Nachkommastelle), `kontrast("oklch(0.5 0.13 255)", "oklch(1 0 0)")` ist 6,0 (Rechenbeispiel aus den heutigen Tokens: `--kd-accent` hell gegen Weiß).
 - [ ] **Paare**: jedes Paar der Paartabelle (Funktionale Anforderung 1) erreicht in beiden Themen sein Maß. Der Test meldet ein verfehltes Paar mit Name, Thema und Wert, z. B. `Modusleiste: --kd-modus-text auf --kd-modus, dunkel 1,33 < 4,5`.
-- [ ] **Linien der Modusleiste**: die Paare `modus-linie/modus`, `modus-linie/sunken` und `accent/modus` erreichen in hell und dunkel je mindestens 3,0; `faint/bg` ebenso (Zustandslinie `.bf-chip`). Gegen heute meldet der Test mindestens `accent/modus` dunkel 2,72 (gerechnet).
+- [ ] **Linien der Modusleiste**: die Paare `modus-linie/modus`, `modus-linie/sunken` und `accent/modus` erreichen in Hell und Dunkel je mindestens 3,0; `faint/bg` ebenso (Zustandslinie `.bf-chip`). Gegen heute meldet der Test mindestens `accent/modus` dunkel 2,72 (gerechnet).
 - [ ] **Dunkelblöcke**: die beiden Dunkelblöcke setzen dieselbe Menge Tokens mit denselben Werten. Gegenbeispiel: ein Token nur im `@media`-Block oder mit anderem Wert → rot mit Name des Tokens.
 - [ ] **Literale**: in `web/kd-app.css`, `web/kd-base.css` und `web/*.js` findet der Wächter kein Farbliteral nach Funktionaler Anforderung 14. Die Meldung nennt Datei und Zeile.
 - [ ] **faint**: `--kd-faint` steht in `color:` nur an den 5 Selektoren der Erlaubt-Liste (Funktionale Anforderung 11).
 - [ ] **Selbstprobe Paar**: ein im Test erzeugtes Paar `oklch(0.62 0.014 255)` auf `oklch(0.965 0.005 250)` (das heutige `--kd-faint` auf `--kd-bg`, 3,29) wird als Verstoß erkannt.
 - [ ] **Selbstprobe Literal**: ein im Test an den Text von `web/kd-app.css` angehängtes `.x{color:#fff}` wird mit Zeilennummer erkannt; dasselbe mit `background:hsl(10 50% 50%)`.
 - [ ] **Selbstprobe Dunkelblock**: ein im Test nur im `@media`-Block geänderter Wert wird erkannt.
-- [ ] **Negativ gegen heute**: dieselben Prüfungen gegen den Stand `d9674e3` melden mindestens die Modusleiste (dunkel 1,33), die Initialen (`#fff` auf `--kd-mensch` dunkel 2,61, auf `--kd-agent` dunkel 2,55, hell 4,08), „Neue Aufgabe“ (dunkel 3,81), die 18 Literal-Zeilen und die 15 faint-Stellen. Belegt im Bericht des Entwicklers mit der Ausgabe.
+- [ ] **Negativ gegen heute**: dieselben Prüfungen gegen den Stand `d9674e3` melden mindestens die Modusleiste (dunkel 1,33), die Initialen (`#fff` auf `--kd-mensch` dunkel 2,61, auf `--kd-agent` dunkel 2,55, hell 4,08; auf `--kd-accent-hover` dunkel 3,65), „Neue Aufgabe“ (dunkel 3,81), die 18 Literal-Zeilen und die 15 faint-Stellen. Belegt im Bericht des Entwicklers mit der Ausgabe.
 
 ### E2E-Probe `e2e/tests/kontrast.spec.js` (Abnahme-Probe der Karte #9)
 
@@ -197,10 +196,10 @@ Je Thema werden alle sichtbaren Elemente mit eigenem Text unter `header`, `.ka`,
 
 | Zustand | Bereiche | hell heute → Soll | dunkel heute → Soll |
 |---|---|---|---|
-| Board | `header`, `.ka`, `.bahn-kopf` | 2,63 (`.org.leer`), 4,09 (Initiale CL), 4,37 (Fälligkeit #1 auf Klasse rot) → ≥ 4,5 | 2,55 (Initiale CL), 2,61 (Initiale ST, MI), 2,98 (`.org.leer`), 3,83 („Neue Aufgabe“) → ≥ 4,5 |
+| Board | `header`, `.ka`, `.bahn-kopf` | 2,63 (`.org.leer`), 4,08 (Initiale CL), 4,37 (Fälligkeit #1 auf Klasse rot) → ≥ 4,5 | 2,55 (Initiale CL), 2,61 (Initiale ST, MI), 2,98 (`.org.leer`), 3,83 („Neue Aufgabe“) → ≥ 4,5 |
 | Spaltenkopf „In Arbeit“ mit „Grenze 1“ und Karte #1 dazu gezogen („überschritten“) | `.bahn-kopf` | 3,05 (`.v` auf `--kd-sunken`, gerechnet) → ≥ 4,5 | ≥ 4,5 bleibt |
-| Aufgabenfenster #2 per Klick | `[role=dialog]` | 3,58 (`.org.leer`), 4,09 (CL) → ≥ 4,5 | 2,55 (CL), 4,40 (`.org.leer`) → ≥ 4,5 |
-| Modusleiste über „Mehr“ → „Spalten einrichten“ | `header` | 4,09 (Pfad und Untertitel) → ≥ 4,5 | 1,33 (Titel, „Verwerfen“, Ich-Knopf), 1,53 (Pfad, Untertitel) → ≥ 4,5 |
+| Aufgabenfenster #2 per Klick | `[role=dialog]` | 3,58 (`.org.leer`), 4,08 (CL) → ≥ 4,5 | 2,55 (CL), 4,40 (`.org.leer`) → ≥ 4,5 |
+| Modusleiste über „Mehr“ → „Spalten einrichten“ | `header` | 4,08 (Pfad und Untertitel) → ≥ 4,5 | 1,33 (Titel, „Verwerfen“, Ich-Knopf), 1,53 (Pfad, Untertitel) → ≥ 4,5 |
 | Modusleiste mit Fehler: `PUT /api/boards/entwicklung/spalten` über `page.route` mit 409 und einer Fehlermeldung beantwortet, dann „Fertig“ | `header` | `.fehl-kopf` heute Amber auf `--kd-accent-ink` 8,79; auf der neuen Fläche bliebe Amber bei 1,07 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,86) | heute 8,12; Amber auf der neuen Fläche unter 1,1 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,79) |
 | Toast nach Ziehen von #2 nach „Erledigt“ (`#2 nach „Erledigt“`, „rückgängig“) | `.toast` | „rückgängig“ 11,49 (gerechnet) → ≥ 4,5 | „rückgängig“ 1,55 (gerechnet) → ≥ 4,5 |
 | Warnungs-Toast nach Ziehen von #1 nach „In Arbeit“ über die Grenze (`#pruef-warnung`, wie `r00096-wip-grenze.spec.js`) | `.toast` | „!“ 4,71 (gerechnet) → ≥ 4,5 | „!“ 2,63 (gerechnet) → ≥ 4,5 |
@@ -344,6 +343,7 @@ Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer 
   - Werkzeug: headless Chromium aus `e2e/node_modules` gegen `target/release/kanbanD` auf freiem Port, eigener Testordner, Grundbestand wie oben. Messregel wie Funktionale Anforderung 17.
   - Gerechnete Werte aus `kd-tokens.css`: oklch → sRGB → WCAG in Node.
   - Beide Wege bestätigen die Werte der ADR (1,33; 2,61; 2,55; 3,81; 4,08).
+  - Der Browser liegt bis 0,01 über der Rechnung: das 1×1-Canvas (Funktionale Anforderung 17) rundet jeden Kanal auf 8 Bit. Nachgerechnet (Review 2026-11-06, oklch → sRGB → WCAG ohne Rundung wie `kontrast()` der Unit): Weiß auf `--kd-agent` hell 4,0799, `--kd-head-muted` auf `--kd-accent-ink` hell 4,0833; mit 8-Bit-Kanälen je 0,01 mehr. Die Anforderung nennt durchgehend den gerechneten Wert.
 - **Entscheidung Modusleiste**: Akzent-Container statt einer dunklen Fläche.
   - Verworfen: `--kd-accent` als Fläche mit `--kd-on-accent`. Dunkel misst das nur 4,67, und die Leiste hätte zwei Knöpfe auf gleicher Füllung.
   - Verworfen: `--kd-head` mit eigenem Akzentstreifen. Der Modus wäre dann kaum von der normalen Kopfzeile zu unterscheiden.
@@ -367,3 +367,8 @@ Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer 
   - Optional 5: Fokusring `accent/modus` ≥ 3:1. Gerechnet heute dunkel 2,72, deshalb darf `--kd-modus` dunkel von `--kd-accent-weak` abweichen (FA 7, Startwert gerechnet). Dazu `.bf-chip` neu begründet und das Paar `faint/bg` in FA 1 aufgenommen. `aria-hidden` am Trenner ist optional in FA 11.
   - Zählung: 26 → 33 Akzeptanzkriterien (7 neu; im Wortlaut geändert Board und Fenster, über FA 1 und FA 7/8 inhaltlich erweitert Paare und Modusleiste; keines gestrichen). User Story: US-4 und der Grundbestand angepasst, US-8 und US-9 neu. WBS: B0390, B0393, B0395 und B0398 nachgezogen, B0398 1-3 → 1,5-4, Summe 7,5–17 → 8–18 h.
   - Nachprüfung gegen die PO-Entscheidungen (2026-11-06): Die Modusleiste ist neue Gestaltung, die kein Artboard zeigt. Nach Z. 75 und 76 gilt die Leitplanke „Der Mensch sieht jede Gestaltung, bevor sie gebaut wird“ ohne Ausnahme. Abschnitt „Gestaltung“ verlangt deshalb jetzt den Zustand an D0002 und die Freigabe vor dem Bau der Modusleiste. Vorher stand dort nur ein Hinweis an den gestalter nach dem Bau. Der Fokusring in `--kd-accent` folgt dem Muster aus R00106 (Funktionale Anforderung zum Fokusring, `outline: 2px solid var(--kd-accent)`). Er gilt nur für die Knöpfe der Leiste, die diese Anforderung neu einfärbt, wie Z. 88 eine Korrektur auf die gebaute Komponente beschränkt. Der abweichende Dunkelwert von `--kd-modus` bleibt ein einziger Wert in `kd-tokens.css` (Z. 17, 54). Der Grundbestand gilt nur für diese Anforderung, R00100 hat einen eigenen.
+- **Einarbeitung Rechtschreib- und UX-Review 2026-11-06** (Karte #9):
+  - Paar `--kd-accent-hover` ↔ `--kd-on-accent` in FA 1 (Füllung, Zustand Hover) und in „Negativ gegen heute“ (dunkel 3,65 gerechnet, im Browser an `.btn-haupt:hover` im Zustand „Anlegen“ 3,64 gemessen); Startwert in FA 4. Weitere Zustands-Tokens (`*-hover`, `*-active`) gibt es in `web/kd-tokens.css` nicht; die übrigen Hover-Gründe mit Schrift (`--kd-sunken`, `--kd-accent-weak`, `--kd-surface`, `--kd-accent`) stehen schon in der Tabelle.
+  - „in Hell und Dunkel“ einheitlich (FA 8 zweimal, Unit-Kriterium „Linien der Modusleiste“); Aufzählung in FA 8 klein; FA 17 zweiter Helfer als eigener Satz.
+  - Initiale CL und Untertitel hell einheitlich 4,08 (vorher stand in der Beschreibung und der E2E-Tabelle der um 0,01 höhere Browserwert); Herleitung unter „Messung“.
+  - Kein Akzeptanzkriterium neu oder gestrichen.
