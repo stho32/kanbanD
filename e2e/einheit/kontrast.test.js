@@ -213,6 +213,53 @@ test('Selbstprobe Paar: ein fehlendes Token wird mit Namen und Thema gemeldet', 
   assert.deepStrictEqual(verstoesse(paar, { dunkel: new Map([['--kd-bg', 'oklch(0.2 0 0)']]) }), ['Probe: --kd-on-nichts fehlt, dunkel']);
 });
 
+/* ── Phasenblock „Wie lange noch“ (FA 13): Grund mischt die Ampel nach dem Anteil ── */
+
+/** color-mix(in oklch, a anteil, b) mit kürzerem Farbtonweg, wie der Browser mischt. */
+function mische(a, b, anteil) {
+  const [pa, pb] = [a, b].map(farbe => /^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(farbe).slice(1).map(Number));
+  let differenz = pb[2] - pa[2];
+  if (differenz > 180) differenz -= 360;
+  if (differenz < -180) differenz += 360;
+  const winkel = (pa[2] + (1 - anteil) * differenz + 360) % 360;
+  return `oklch(${anteil * pa[0] + (1 - anteil) * pb[0]} ${anteil * pa[1] + (1 - anteil) * pb[1]} ${winkel})`;
+}
+const ANTEILE = [0, 1 / 3, 0.5, 2 / 3, 1];
+/** Verstöße von Schrift (vorne) auf Grund, beide als Mischung ok/error, je Thema und Anteil. */
+function phasenVerstoesse(vorne, grund) {
+  const saetze = [];
+  for (const [thema, werte] of Object.entries(themen(TOKENS))) {
+    const farbe = (paar, anteil) => typeof paar === 'string' ? aufgeloest(paar, werte) : mische(aufgeloest(paar[0], werte), aufgeloest(paar[1], werte), anteil);
+    for (const anteil of ANTEILE) {
+      const wert = kontrast(farbe(vorne, anteil), farbe(grund, anteil));
+      if (wert < SCHRIFT) saetze.push(`${thema}, Anteil ${zahl(anteil)}: ${zahl(wert)} < 4,5`);
+    }
+  }
+  return saetze;
+}
+const GRUND = ['--kd-wbs-ok-bg', '--kd-wbs-error-bg'];
+
+test('Phasenblock: --kd-text und --kd-muted auf dem gemischten Grund mindestens 4,5 bei jedem Anteil', () => {
+  assert.deepStrictEqual([...phasenVerstoesse('--kd-text', GRUND), ...phasenVerstoesse('--kd-muted', GRUND)], []);
+});
+
+test('Phasenblock: Abzeichen mit gemischter Ampelschrift auf dem gemischten Grund mindestens 4,5', () => {
+  assert.deepStrictEqual(phasenVerstoesse(['--kd-wbs-ok-ink', '--kd-wbs-error-ink'], GRUND), []);
+});
+
+test('Phasenblock: ansicht.js setzt den Anteil (--anteil), keinen Farbton (--h)', () => {
+  const ansicht = lies('ansicht.js');
+  assert.match(ansicht, /<section class="wl-phase" style="--anteil:\$\{anteil\}"/);
+  assert.doesNotMatch(ansicht, /--h:/);
+  assert.doesNotMatch(lies('kd-app.css'), /var\(--h\)/);
+});
+
+test('Selbstprobe Mischung: Anteil 1 ist die erste Farbe, 0 die zweite, ½ geht den kürzeren Farbtonweg', () => {
+  assert.strictEqual(mische('oklch(0.9 0.1 350)', 'oklch(0.5 0.1 10)', 1), 'oklch(0.9 0.1 350)');
+  assert.strictEqual(mische('oklch(0.9 0.1 350)', 'oklch(0.5 0.1 10)', 0), 'oklch(0.5 0.1 10)');
+  assert.strictEqual(mische('oklch(0.9 0.1 350)', 'oklch(0.5 0.1 10)', 0.5), 'oklch(0.7 0.1 0)');
+});
+
 /* ── Dunkelblöcke ── */
 
 test('Dunkelblöcke: @media und [data-theme="dark"] setzen dieselben Tokens mit denselben Werten', () => {
@@ -227,7 +274,7 @@ test('Selbstprobe Dunkelblock: ein nur im @media-Block geänderter Wert und ein 
 
 /* ── Literale ── */
 
-test('Literale: kein Farbwert außerhalb von kd-tokens.css in kd-app.css, kd-base.css und web/*.js', { todo: 'B0397' }, () => {
+test('Literale: kein Farbwert außerhalb von kd-tokens.css in kd-app.css, kd-base.css und web/*.js', () => {
   const funde = gepruefteDateien().flatMap(datei => literaleOhneAusstehende(datei, lies(datei)));
   assert.deepStrictEqual(funde, []);
 });
