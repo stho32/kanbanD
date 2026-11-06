@@ -25,12 +25,16 @@ const ANSICHTEN = ['#/board/', '#/aufgaben', '#/personen', '#/einrichten', '#/wb
   '#/berichte/durchlauf', '#/berichte/prognose', '#/berichte/fieber', '#/berichte/kosten', '#/berichte/bestand'];
 /**
  * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und heute unter 4,5 messen.
- * Erwartet rot mit Verweis auf Karte #57, die ihre Gestaltung klärt; der Test „Nicht gemessen“ schlägt Alarm, sobald ein Eintrag lesbar wird oder verschwindet.
+ * Erwartet rot mit Verweis auf Karte #57, die ihre Gestaltung klärt. Ein Eintrag gilt nur in seiner `ansicht`; `heute` ist sein Messwert je Thema.
+ * Der Test „Nicht gemessen“ schlägt Alarm, sobald ein Eintrag lesbar wird, verschwindet oder um mehr als `SPIELRAUM` unter `heute` fällt.
  */
 const NICHT_GEMESSEN = [
-  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', karte: '#57', grund: 'Initialen ruhender Personen, opacity .55' },
-  { selektor: '.pk-still', ansicht: '#/einrichten', karte: '#57', grund: 'Initiale stillgelegter Person, opacity .5' },
+  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', karte: '#57', heute: { light: 2.280, dark: 3.211 }, grund: 'Initialen ruhender Personen, opacity .55' },
+  { selektor: '.pk-still', ansicht: '#/einrichten', karte: '#57', heute: { light: 2.148, dark: 2.802 }, grund: 'Initiale stillgelegter Person, opacity .5' },
 ];
+
+/** Wie weit ein nicht gemessener Zustand unter seinen heutigen Wert fallen darf, bevor die Probe ihn meldet. */
+const SPIELRAUM = 0.1;
 
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
 /** Messwert mit drei Nachkommastellen und Dezimalkomma, wie in jeder Meldung. */
@@ -40,6 +44,17 @@ const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${komm
 /** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von 0,1 s): gemessen wird der ruhende Zustand; angehaltene laufen nie zu Ende und zählen nicht. */
 async function farbuebergaengeAbwarten(page) {
   await page.waitForFunction(() => document.getAnimations().filter(a => a instanceof CSSTransition).every(a => a.playState !== 'running'));
+}
+
+/**
+ * Wechselt die Ansicht und wartet, bis `#main` neu gezeichnet ist: ein Hashwechsel lädt die Seite nicht neu, bis zum Zeichnen
+ * stünde sonst noch die vorige Ansicht im Dokument und würde unter dem Namen der neuen gemessen.
+ */
+async function ansichtOeffnen(page, adresse) {
+  await page.evaluate(() => document.querySelector('#main').firstElementChild?.setAttribute('data-vorige-ansicht', ''));
+  await page.goto(adresse);
+  await page.waitForFunction(() => !document.querySelector('#main [data-vorige-ansicht]') && document.querySelector('#main').firstElementChild);
+  await liveBereit(page);
 }
 
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
@@ -288,21 +303,26 @@ test.describe('R00107 Kontrast', () => {
 
   test('Ansichten: jede Ansicht samt Kopf, beide Themen, ohne die ausdrücklich nicht gemessenen Zustände', async ({ page }) => {
     for (const ansicht of ANSICHTEN) {
-      await page.goto(k.adresse + ansicht);
-      await liveBereit(page);
-      const verstoesse = await verstoesseInBeidenThemen(page, ['body'], async () => {}, NICHT_GEMESSEN.map(n => n.selektor));
+      await ansichtOeffnen(page, k.adresse + ansicht);
+      const ohne = NICHT_GEMESSEN.filter(n => n.ansicht === ansicht).map(n => n.selektor);
+      const verstoesse = await verstoesseInBeidenThemen(page, ['body'], async () => {}, ohne);
       expect(verstoesse, ansicht).toEqual([]);
     }
   });
 
-  test('Nicht gemessen: jeder Eintrag verweist auf Karte #57, kommt in seiner Ansicht vor und misst heute unter 4,5', async ({ page }) => {
+  test('Nicht gemessen: jeder Eintrag verweist auf Karte #57, kommt in seiner Ansicht vor und misst je Thema unter 4,5, aber nicht schlechter als heute', async ({ page }) => {
     for (const n of NICHT_GEMESSEN) {
       expect(n.karte, n.selektor).toBe('#57');
-      await page.goto(k.adresse + n.ansicht);
-      await liveBereit(page);
+      await ansichtOeffnen(page, k.adresse + n.ansicht);
       const ort = page.locator(n.selektor).first();
       await expect(ort, n.selektor).toBeVisible();
-      expect(await kontrastAm(ort), `${n.selektor}: ${n.grund}`).toBeLessThan(MASS);
+      for (const t of THEMEN) {
+        await thema(page, t);
+        await farbuebergaengeAbwarten(page);
+        const wert = await kontrastAm(ort);
+        expect(wert, `${t} ${n.selektor}: ${n.grund}`).toBeLessThan(MASS);
+        expect(wert, `${t} ${n.selektor}: nicht schlechter als heute ${komma(n.heute[t])}`).toBeGreaterThanOrEqual(n.heute[t] - SPIELRAUM);
+      }
     }
   });
 
