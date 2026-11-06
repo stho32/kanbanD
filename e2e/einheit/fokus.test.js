@@ -70,3 +70,34 @@ test('ebenen: Kontextmenü startet auf dem aktiven Eintrag, bei offenem Untermen
   assert.strictEqual(ebenen({ menue: { index: 2, unter: null } })[0].start, '#kmenue [data-mp="2"]');
   assert.strictEqual(ebenen({ menue: { index: 4, unter: { von: 4, index: 1 } } })[0].start, '#kmenue [data-mp="4.1"]');
 });
+
+// Fokusführung als einziger Ort für Fokus nach dem Neuzeichnen (B0389): .focus() nur im Sicherer, im Kleber und in Tastenzweigen
+const fs = require('node:fs');
+const path = require('node:path');
+const WEB = path.join(__dirname, '../../web');
+const ERLAUBT = new Set(['fokusSetzen', 'fokusVersuchen', 'ersterTabbarer', 'fallenTaste', 'popMenueTaste', 'gewaehltesRadioFokussieren', 'fensterTaste', 'listenTaste', 'brettTaste', 'keydown']);
+const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'/;
+
+/** Je .focus()-Aufruf in web/*.js: Datei, Zeile und die umgebende Funktion bzw. das Ereignis des Listeners. */
+function fokusAufrufe() {
+  const funde = [];
+  for (const datei of fs.readdirSync(WEB).filter(n => n.endsWith('.js'))) {
+    let umgebend = '(oben)';
+    fs.readFileSync(path.join(WEB, datei), 'utf8').split('\n').forEach((zeile, i) => {
+      const anfang = ANFANG.exec(zeile);
+      if (anfang) umgebend = anfang[1] || anfang[2] || anfang[3];
+      if (zeile.includes('.focus(')) funde.push({ ort: `${datei}:${i + 1}`, umgebend, zeile });
+    });
+  }
+  return funde;
+}
+
+test('Fokusaufrufe: .focus() nur in Sicherer, Kleber und Tastenzweigen', () => {
+  const fremd = fokusAufrufe().filter(f => !ERLAUBT.has(f.umgebend));
+  assert.deepStrictEqual(fremd.map(f => `${f.ort} in ${f.umgebend}`), []);
+});
+
+test('Fokusaufrufe: kein .focus() direkt nach render() — das Ziel geht über S.ui.fokus in die Rangfolge', () => {
+  const danach = fokusAufrufe().filter(f => /render\(\);[^;]*\.focus\(/.test(f.zeile));
+  assert.deepStrictEqual(danach.map(f => f.ort), []);
+});

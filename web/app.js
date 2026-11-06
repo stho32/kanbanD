@@ -1456,7 +1456,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && t.id === 'beschreibung') { e.preventDefault(); t.blur(); return; }
   if (e.key === 'Escape' && t.id === 'flt') {
-    if (S.ui.filter) { t.value = ''; filterSetzen(''); render(); $('#flt').focus(); } else t.blur();
+    if (S.ui.filter) { t.value = ''; filterSetzen(''); S.ui.fokus = '#flt'; render(); } else t.blur();
     return;
   }
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }

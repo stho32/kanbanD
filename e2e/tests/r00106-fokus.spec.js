@@ -448,3 +448,12 @@ test('US-9: Zieltermin-Markierung ist ein Knopf mit aria-pressed, ohne role=radi
   await expect(page.locator('#termine button.tm-ziel').nth(1)).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#termine .tm-ziel[role="radio"]')).toHaveCount(0);
 });
+
+test('US-8: Esc im Filterfeld mit Text leert den Filter, der Fokus bleibt im Filterfeld', async ({ page }) => {
+  await page.locator('#flt').fill('eins');
+  await expect(page.locator('.ka[data-id="2"]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#flt')).toHaveValue('');
+  await expect(page.locator('.ka[data-id="2"]')).toBeVisible();
+  await expect(page.locator('#flt')).toBeFocused();
+});
