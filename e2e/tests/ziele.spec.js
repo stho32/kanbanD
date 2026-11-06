@@ -242,7 +242,8 @@ const ANSICHTEN = [
   // Das Menü „<Seite> ▾“ gibt es nur in der Stufe compact (unter 600 px, web/kopfzeile.js)
   { ansicht: 'Menü Seite', breite: 560, oeffnen: menue('#t-seite') },
   { ansicht: 'Menü Mehr', oeffnen: menue('#t-mehr') },
-  { ansicht: 'Menü Berichte', oeffnen: menue('#t-ber') },
+  // Das Menü „Berichte“ steht erst ab der Stufe medium (600 px) in der Kopfzeile, darunter im Menü „<Seite> ▾“
+  { ansicht: 'Menü Berichte', touchBreite: 600, oeffnen: menue('#t-ber') },
   { ansicht: 'Menü Ich', oeffnen: menue('#t-ich') },
   { ansicht: 'Kontextmenü #1', oeffnen: async page => { await brett(page); await page.locator('.ka[data-id="1"]').click({ button: 'right' }); await page.getByRole('menu').first().waitFor(); } },
 ];
@@ -315,5 +316,27 @@ test.describe('Touch-Maß aus dem Token, 390 px', () => {
     await starten(page);
     await fensterOeffnen(page, 1);
     expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'Aufgabenfenster #1' })).toEqual([]);
+  });
+});
+
+// B0405: Touch-Lauf der Messprobe — dieselben Ansichten bei 390 px, Maß 44 ohne Kreis-Ausnahme.
+// Das Kontextmenü fehlt: es öffnet nur per Rechtsklick. Unter offenem Fenster misst der Helfer nur die oberste Ebene.
+test.describe('Messprobe, Touch, 390 px', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  for (const { ansicht, oeffnen, touchBreite } of ANSICHTEN.filter(a => !a.ansicht.startsWith('Kontextmenü'))) {
+    test(`${ansicht}: jedes Ziel mindestens 44 × 44`, async ({ page }) => {
+      if (touchBreite) await page.setViewportSize({ width: touchBreite, height: 844 });
+      await starten(page);
+      await oeffnen(page);
+      await expect(page.locator('body')).not.toBeEmpty();
+      const { offen, alarme } = abgleichen(await zieleMessen(page, { zeiger: 'touch', ansicht }), NICHT_GEMESSEN, ansicht);
+      expect(alarme).toEqual([]);
+      expect(offen).toEqual([]);
+    });
+  }
+  test('Board: kein Punkt eines Kartentitels trifft ein anderes Ziel', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    expect(await titelPruefen(page, 'Board')).toEqual([]);
   });
 });

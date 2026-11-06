@@ -14,9 +14,11 @@ function imBrowserMessen({ mass, kreisAusnahme, ansicht }) {
   const ZIELE = 'button, select, input:not([type=hidden]), a.btn, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=tab], [role=switch], a[href]';
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);
 
+  // Allein heißt: allein in seinem Block — Hervorhebungen (b, span) um den Link zählen nicht als Block
   function istLinkAllein(el) {
-    const eltern = el.parentElement;
-    return eltern && eltern.textContent.trim() === el.textContent.trim();
+    let block = el.parentElement;
+    while (block && getComputedStyle(block).display === 'inline') block = block.parentElement;
+    return block && block.textContent.trim() === el.textContent.trim();
   }
   function istZiel(el) {
     if (el.matches('a[href]') && !el.matches('a.btn, [role]') && !istLinkAllein(el)) return false;

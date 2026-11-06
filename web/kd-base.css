@@ -4,7 +4,7 @@ body{margin:0;font-family:var(--kd-font);color:var(--kd-text)}
 a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent);text-decoration:underline}
 /* Zielgröße (R00108, ADR-0012 Regel 2): jedes Bedienelement mindestens --kd-ziel, ohne Spezifität, damit Klassen die Zeichnung behalten.
    Ein Link allein in einer Zelle ist ein Ziel und wird dafür inline-flex; ein Link im Fließtext nicht. */
-:where(button,select,input:not([type=hidden]),a.btn,[role=button],[role=checkbox],[role=radio],[role=menuitem],[role=tab],[role=switch],td>a[href]:only-child){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
+:where(button,select,input:not([type=hidden]),a.btn,a.kz-btn,[role=button],[role=checkbox],[role=radio],[role=menuitem],[role=tab],[role=switch],td>a[href]:only-child){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
 :where(td>a[href]:only-child){display:inline-flex;align-items:center}
 .kz{height:var(--kd-head-h);flex:none;display:flex;align-items:stretch;background:var(--kd-head);color:var(--kd-head-text)}
 .kz-z1{display:flex;align-items:center;gap:var(--kd-s3);padding:0 var(--kd-s5);font-weight:600;font-size:14px;border-right:1px solid var(--kd-head-line)}

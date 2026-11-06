@@ -49,6 +49,11 @@ test.describe('Selbstproben, Zielauswahl', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['#1']);
   });
 
+  test('ein Link in einer Hervorhebung im Fließtext zählt nicht, ein Link allein in einem Absatz schon', async ({ page }) => {
+    await page.setContent('<p>Maschinenlesbar: <b><a href="#1">eins</a></b> und mehr.</p><p><b><a href="#2">zwei</a></b></p>');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['zwei']);
+  });
+
   test('unter einem offenen Dialog zählt nur die oberste Ebene', async ({ page }) => {
     await page.setContent(STIL + '<main inert>' + knopf(10, 10, 10, 'darunter') + '</main><div role="dialog">' + knopf(100, 100, 10, 'oben') + '</div>');
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['oben']);

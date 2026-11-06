@@ -95,6 +95,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .leer{padding:16px 8px;text-align:center;color:var(--kd-faint);font-size:12px}
 .dgrp{padding:4px 6px 0;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-faint)}
 .nach{padding:6px;font-size:11.5px;color:var(--kd-muted)}
+.nach>a{display:inline-flex;align-items:center;min-block-size:var(--kd-ziel)}
 .bahn-fuss{flex:none;border-top:1px solid var(--kd-line)}
 .bahn-fuss>button{width:100%;height:28px;border:0;background:none;text-align:left;padding:0 var(--kd-s3);color:var(--kd-muted);cursor:pointer}
 .bahn-fuss>button:hover{background:var(--kd-accent-weak);color:var(--kd-accent-ink)}
@@ -257,7 +258,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .kost-satz{margin:0;font-size:13px;color:var(--kd-text);overflow-wrap:anywhere}
 .kost-hinweis{margin:0;font-size:12.5px;color:var(--kd-muted);overflow-wrap:anywhere}
 .kost-hinweis code{font-size:12px;color:var(--kd-text)}
-.kost-api{display:inline-flex;align-items:center;min-height:24px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:500}
+.kost-api{display:inline-flex;align-items:center;min-height:var(--kd-ziel);color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:500}
 .kost-api:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 .kost-reset{margin-top:4px}
 /* Bestand nach Labels (R00100, Artboard D0006 #bestand-nach-labels) */
@@ -577,8 +578,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .farbe.sigfarbe{display:inline-flex;align-items:center;justify-content:center;background:none;color:var(--sg)}
 @media (prefers-reduced-motion:reduce){.signal .i-sig{animation:none}}
 .ka .r0 .ecke{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;align-self:flex-start}
-.ka .ecke .kl{height:18px;min-width:20px;padding:0 4px}
-.kl{height:20px;min-width:22px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
+.ka .ecke .kl{height:18px;padding:0 4px}
+.kl{height:20px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
 .kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
 .inp.umbenennen{width:100%;height:24px}
 .due-knoepfe{display:inline-flex;gap:2px}
