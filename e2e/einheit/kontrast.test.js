@@ -96,7 +96,6 @@ const PAARE = [
 /** Bubble, die ein heute verfehltes Paar herstellt; bis dahin läuft die Prüfung als todo (erwartet rot). */
 const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
 const AUSSTEHEND = {
-  'Neutrale Flächen': 'B0392', 'Akzent-Container': 'B0392', 'Klassengründe': 'B0392',
   'Kopf': 'B0394', 'Linien Diagramm': 'B0396',
   'Modusleiste': MODUS, 'Linie Abschluss Modusleiste': MODUS, 'Linie Fokusring Modusleiste': MODUS,
 };

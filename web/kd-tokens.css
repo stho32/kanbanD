@@ -12,7 +12,7 @@
 --kd-accent:oklch(0.5 0.13 255);--kd-accent-hover:oklch(0.44 0.13 255);--kd-accent-weak:oklch(0.93 0.035 255);--kd-accent-ink:oklch(0.38 0.12 255);--kd-on-accent:oklch(1 0 0);
 --kd-mensch:oklch(0.52 0.07 215);--kd-mensch-weak:oklch(0.93 0.025 215);--kd-on-mensch:oklch(1 0 0);
 --kd-agent:oklch(0.55 0.13 65);--kd-agent-weak:oklch(0.94 0.045 75);--kd-agent-ink:oklch(0.42 0.1 60);--kd-on-agent:oklch(1 0 0);
---kd-warn:oklch(0.55 0.16 30);
+--kd-warn:oklch(0.52 0.16 30);
 /* 16 Klassenfarben: Grund (hell) + Linie. Gleiche Helligkeit, Farbton im Abstand ~22°. Eigene Farben: Linie = gewählter Wert, Grund = color-mix(Linie 14%, weiß). */
 --kd-c-yellow:oklch(0.97 0.06 98);--kd-c-yellow-line:oklch(0.8 0.14 95);
 --kd-c-amber:oklch(0.955 0.05 80);--kd-c-amber-line:oklch(0.72 0.14 70);
