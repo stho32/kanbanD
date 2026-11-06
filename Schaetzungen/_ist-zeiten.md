@@ -381,3 +381,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0404 Touch-Liste im Token auflösen | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0405 Touch-Lauf der Messprobe | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0407 Ausweichen bei 320 px | Standard | 1-3h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0406 Breitenprobe 320, 375, 414 px | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
