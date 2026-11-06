@@ -442,19 +442,35 @@ test.describe('Berichtszeilen mit der Maus, 1280 px', () => {
 for (const breite of [320, 375, 414]) {
   test.describe(`Einrichten, Zeilen ohne Überlappung, Touch, ${breite} px`, () => {
     test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
-    test('in jeder Zeile endet jedes Element vor dem nächsten', async ({ page }) => {
+    // Je Paar von Elementen einer Zeile: die Rechtecke schneiden sich nicht — auch wenn die Zeile in zwei Reihen steht (B0419)
+    test('in jeder Zeile überdeckt kein Element ein anderes', async ({ page }) => {
       await starten(page);
       await page.goto(k.adresse + '#/einrichten');
       await page.locator('.klz .farbe').first().waitFor();
       const ueberlappt = await page.evaluate(() => [...document.querySelectorAll('.klz')].flatMap(zeile => {
-        const teile = [...zeile.children].filter(el => el.getBoundingClientRect().width > 0);
-        return teile.slice(1).flatMap((el, i) => {
-          const links = teile[i].getBoundingClientRect(), rechts = el.getBoundingClientRect();
-          if (links.right <= rechts.left + 0.5) return [];
-          return [`${teile[i].className || teile[i].tagName} ${Math.round(links.right)} > ${el.className || el.tagName} ${Math.round(rechts.left)}`];
-        });
+        const teile = [...zeile.children].filter(el => el.getBoundingClientRect().width > 0).map(el => [el, el.getBoundingClientRect()]);
+        const name = el => el.getAttribute('aria-label') || el.className || el.tagName;
+        return teile.flatMap(([a, ra], i) => teile.slice(i + 1).flatMap(([b, rb]) => {
+          const breite = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+          const hoehe = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+          if (breite <= 0.5 || hoehe <= 0.5) return [];
+          return [`${name(a)} überdeckt ${name(b)}: ${Math.round(breite)} × ${Math.round(hoehe)}`];
+        }));
       }));
       expect(ueberlappt).toEqual([]);
+    });
+    // Ein Feld in der freien Spalte einer Zeile bleibt lesbar: mindestens 44 breit und sein Wert steht ganz darin
+    test('jedes Feld einer Zeile ist mindestens 44 breit und zeigt seinen Wert ganz', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/einrichten');
+      await page.locator('.klz .farbe').first().waitFor();
+      const felder = await page.locator('.klz input').evaluateAll(liste => liste.map(feld => ({
+        name: feld.getAttribute('aria-label'), breite: Math.round(feld.getBoundingClientRect().width), wert: feld.value,
+        ganz: feld.scrollWidth <= feld.clientWidth,
+      })));
+      expect(felder.map(f => f.name)).toEqual(expect.arrayContaining(['Name st', 'Neuer Name', 'Bezeichnung bug', 'Bedeutung mail', 'Name der Anwendung kd']));
+      expect(felder.filter(f => f.breite < 44), 'schmaler als 44').toEqual([]);
+      expect(felder.filter(f => !f.ganz).map(f => `${f.name}: „${f.wert}“ in ${f.breite} px`), 'Wert abgeschnitten').toEqual([]);
     });
   });
 }

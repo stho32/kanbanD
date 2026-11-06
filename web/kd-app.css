@@ -495,6 +495,16 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .zeile-knoepfe{display:flex;gap:var(--kd-s3);align-items:center;padding:var(--kd-s4)}
 .einr .felder{grid-template-columns:110px minmax(0,1fr)}
 .einrichten .klz.pz{grid-template-columns:var(--klz-vorn) 70px minmax(0,1fr) auto var(--klz-hinten)}
+/* Schmal (Handy, R00077): Kürzel, Art und die beiden Ziele lassen dem Namen in einer Zeile zu wenig Platz (bei Touch 320
+   blieben 18 px); der Name rückt deshalb in eine eigene Zeile unter Kürzel und Art, Kürzelfeld und Knopf stehen daneben */
+@media (max-width:640px){
+  .einrichten .klz.pz{grid-template-areas:"pk key . art aus" "pk name name name aus"}
+  .einrichten .klz.pz>:nth-child(1){grid-area:pk}
+  .einrichten .klz.pz>:nth-child(2){grid-area:key}
+  .einrichten .klz.pz>:nth-child(3){grid-area:name}
+  .einrichten .klz.pz>:nth-child(4){grid-area:art}
+  .einrichten .klz.pz>:nth-child(5){grid-area:aus}
+}
 .km-inp{resize:vertical;min-height:max(26px,var(--kd-ziel));padding:4px var(--kd-s3);font:inherit;font-size:12px}
 .zt tr.edit td{padding:2px 0;display:flex;gap:4px;align-items:center}
 .zt tr.edit .mini-inp{width:130px;border-color:var(--kd-line-strong)}
