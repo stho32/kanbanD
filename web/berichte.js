@@ -440,9 +440,9 @@
   const nachNummer = aufgaben => [...aufgaben].sort((x, y) => x.nummer - y.nummer);
 
   /** Offen heißt: auf dem Board, nicht archiviert und nicht in der letzten Spalte (Abschlussspalte); nach Nummer. */
-  function offeneAufgaben(aufgaben, board) {
-    const offen = new Set(board.spalten.slice(0, -1).flatMap(s => s.aufgaben));
-    return nachNummer(aufgaben.filter(a => offen.has(a.nummer) && !a.archiviert));
+  function offeneAufgaben(aufgaben, board, filter = FILTER_LEER) {
+    const offen = new Set(board.spalten.slice(0, -1).filter(s => !filter.ohneSpalten.includes(s.name)).flatMap(s => s.aufgaben));
+    return nachNummer(aufgaben.filter(a => offen.has(a.nummer) && !a.archiviert && aufgabePasst(filter, a)));
   }
 
   /** Präfix und Wert eines Labels, getrennt am ersten Doppelpunkt; ohne Doppelpunkt oder mit leerem Präfix null. */
@@ -534,8 +534,8 @@
 
   /** Bestand nach Labels: offene Aufgaben je Paar aus Zeilen- und Spaltenwert. Eine Aufgabe mit mehreren Werten
       zählt in jeder ihrer Zellen; die Summen je Zeile, je Spalte und gesamt zählen jede Aufgabe einmal. */
-  function bestandNachLabels(aufgaben, board, reihenfolge, zeilenpraefix, spaltenpraefix) {
-    const offene = offeneAufgaben(aufgaben, board);
+  function bestandNachLabels(aufgaben, board, reihenfolge, zeilenpraefix, spaltenpraefix, filter = FILTER_LEER) {
+    const offene = offeneAufgaben(aufgaben, board, filter);
     const zw = offene.map(a => werteDerAufgabe(a, zeilenpraefix)), sw = offene.map(a => werteDerAufgabe(a, spaltenpraefix));
     const zeilen = achse(zw, zeilenpraefix), spalten = achse(sw, spaltenpraefix);
     const sammel = zeilen.map(() => spalten.map(() => []));

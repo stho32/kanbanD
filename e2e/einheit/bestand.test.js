@@ -1,7 +1,7 @@
 // R00100 Bestand nach Labels: reine Rechnung in web/berichte.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter } = require('../../web/berichte.js');
+const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter, FILTER_LEER } = require('../../web/berichte.js');
 const { passt } = require('../../web/filter.js');
 
 const aufgabe = (nummer, labels, klasse = '', mehr = {}) => ({ nummer, titel: `A${nummer}`, klasse, labels, zustaendige: [], archiviert: false, ...mehr });
@@ -247,4 +247,43 @@ test('B0352 Rundprobe: jeder Zielfilter trifft genau die Aufgaben seiner Zelle p
     geprueft++;
   }));
   assert.strictEqual(geprueft, 4, 'lager × 304, shop × 304, shop × 305, mein shop × 1000');
+});
+
+/* ── B0354 Filterleiste in der Rechnung; Zeitraum, Rechnen ab und Messbasis wirken nicht ── */
+const gefiltert = (aenderung, daten = grundbestand()) => bestandNachLabels(daten.aufgaben, daten.board, KLASSEN, 'repo', 'nc', { ...FILTER_LEER, ...aenderung });
+
+test('B0354 Klasse drift ausgeschlossen: Beispiel der Akzeptanzkriterien', () => {
+  const t = gefiltert({ ohneFarben: ['drift'] });
+  assert.strictEqual(zelle(t, 'shop', '304').zahl, 1);
+  assert.deepStrictEqual(zelle(t, 'shop', '304').nummern, [1]);
+  assert.strictEqual(zelle(t, 'lager', '(ohne nc)').zahl, 0, 'lager × (ohne) leer');
+  assert.deepStrictEqual([t.summen.zeilen[namen(t.zeilen).indexOf('shop')], t.summen.zeilen[namen(t.zeilen).indexOf('lager')], t.summen.gesamt], [2, 1, 3]);
+});
+
+test('B0354 Spalte „Eingang“ ausgeschlossen und Person ohne Zuständigkeit: gesamt 0', () => {
+  assert.strictEqual(gefiltert({ ohneSpalten: ['Eingang'] }).summen.gesamt, 0);
+  assert.strictEqual(gefiltert({ personen: ['xy'] }).summen.gesamt, 0);
+  assert.strictEqual(gefiltert({ ohneFarben: [''] }).summen.gesamt, 4, '„ohne Klasse“ ausgeschlossen: von #1–#5 fällt nur #4 weg');
+});
+
+test('B0354 Personen und Labels der Filterleiste schränken ein', () => {
+  const daten = grundbestand();
+  daten.aufgaben.find(a => a.nummer === 3).zustaendige = ['st'];
+  const t = gefiltert({ personen: ['st'] }, daten);
+  assert.deepStrictEqual([t.summen.gesamt, zelle(t, 'shop', '305').zahl], [1, 1]);
+  assert.strictEqual(gefiltert({ labels: ['repo:lager'] }).summen.gesamt, 2);
+});
+
+test('B0354 Zeitraum, Rechnen ab und Messbasis ändern nichts', () => {
+  const ohne = bestand(grundbestand());
+  assert.deepStrictEqual(gefiltert({ zeitraum: 'vorwoche' }), ohne);
+  assert.deepStrictEqual(gefiltert({ zeitraum: 'eigen', von: '2020-01-01', bis: '2020-01-02', messbasisTage: 1 }), ohne);
+  assert.strictEqual(ohne.summen.gesamt, 5);
+});
+
+test('B0354 ohne Filter wie bisher; praefixe zählt nur die eingeschränkten Aufgaben', () => {
+  const daten = grundbestand();
+  assert.deepStrictEqual(bestandNachLabels(daten.aufgaben, daten.board, KLASSEN, 'repo', 'nc'), gefiltert({}));
+  const nurLager = offeneAufgaben(daten.aufgaben, daten.board, { ...FILTER_LEER, labels: ['repo:lager'] });
+  assert.deepStrictEqual(praefixe(nurLager).map(p => [p.praefix, p.anzahl]), [['repo', 2], ['nc', 1]]);
 });
