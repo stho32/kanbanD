@@ -134,7 +134,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     expect(karten.filter(t => ISO.test(t))).toEqual([]);
   });
 
-  test.fail('US-2: Kommentar, Reservierungen, Archivleiste lang; Reiter Datei und Datumsfeld bleiben ISO', async ({ page }) => {
+  test('US-2: Kommentar, Reservierungen, Archivleiste lang; Reiter Datei und Datumsfeld bleiben ISO', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(fenster(page).locator('.km').first()).toContainText('Claude · 17.10.2026 09:00');
@@ -155,7 +155,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(page.locator('.mod .archbar')).toContainText('Archiviert am 01.10.2026');
   });
 
-  test.fail('US-3: Durchläufe und Zeiten im laufenden Jahr kurz, sonst lang', async ({ page }) => {
+  test('US-3: Durchläufe und Zeiten im laufenden Jahr kurz, sonst lang', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(page.locator('#durchlaeufe tbody tr td:first-child')).toHaveText([`${kurz(HEUTE)} 14:05`, `${lang(VORJAHR_3012)} 14:05`]);
