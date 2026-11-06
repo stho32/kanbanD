@@ -356,3 +356,56 @@ for (const breite of [320, 375, 414]) {
     }
   });
 }
+
+// B0407 (PO Z. 133): In der Stufe compact bricht die Werkzeugzeile der Kopfzeile um, wenn sie nicht passt —
+// Filter in voller Breite oben, Bereichsschalter darunter; passt sie, bleibt sie wie heute.
+
+/** Sichtbare Zeilen der Kopfzeile: je .kz-reihe die Kinder, die unter allen vorigen beginnen, eröffnen eine neue Zeile. */
+const kopfZeilen = page => page.evaluate(() => [...document.querySelectorAll('header.kz .kz-reihe')].map(reihe => {
+  const kisten = [...reihe.children].filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+  let zeilen = 0, unten = -Infinity;
+  for (const k of kisten) { if (k.top >= unten - 1) zeilen++; unten = Math.max(unten, k.bottom); }
+  return zeilen;
+}).reduce((a, b) => a + b, 0));
+
+for (const [zeiger, geraet] of [['touch', { isMobile: true, hasTouch: true }], ['fein', {}]]) {
+  test.describe(`Ausweichen bei 320 px, ${zeiger}`, () => {
+    test.use({ viewport: { width: 320, height: 700 }, ...geraet });
+
+    test('Aufgabenliste: kein Überlauf, Bereichsschalter ganz sichtbar unter dem Filter in voller Breite, jedes Ziel im Maß', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/aufgaben');
+      await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
+      expect(await breiteMessen(page, 'Aufgabenliste')).toEqual([]);
+      const breite = await page.evaluate(() => document.documentElement.clientWidth);
+      const bereiche = page.locator('header.kz [role=radio][data-act=list-bereich]');
+      await expect(bereiche).toHaveCount(3);
+      for (const bereich of await bereiche.all()) {
+        await expect(bereich).toHaveText(/^(alle|ohne Board|archiviert)\s*\d+$/);
+        const box = await bereich.boundingBox();
+        expect(box.x, await bereich.innerText()).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, await bereich.innerText()).toBeLessThanOrEqual(breite);
+      }
+      const filter = await page.locator('header.kz #flt').boundingBox();
+      const reihe = await page.locator('header.kz .kz-reihe').filter({ has: page.locator('#flt') }).boundingBox();
+      expect(filter.width, 'Filter in voller Breite').toBeGreaterThanOrEqual(reihe.width - 2 * 16);
+      expect((await bereiche.first().boundingBox()).y, 'Bereichsschalter unter dem Filter').toBeGreaterThanOrEqual(filter.y + filter.height);
+      expect(await kopfZeilen(page), 'zwei Reihen, die zweite umgebrochen').toBe(3);
+      expect(await zieleMessen(page, { zeiger, ansicht: 'Aufgabenliste' })).toEqual([]);
+    });
+  });
+}
+
+test.describe('Ausweichen: Gegenprobe, Touch', () => {
+  for (const [ansicht, breite, adresse, zeilen] of [['Board', 320, '#/board/entwicklung', 2], ['Aufgabenliste', 414, '#/aufgaben', 2]]) {
+    test.describe(`${breite} px`, () => {
+      test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+      test(`${ansicht}: Zeilenzahl der Kopfzeile wie vor dem Umbruch`, async ({ page }) => {
+        await starten(page);
+        await page.goto(k.adresse + adresse);
+        await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
+        expect(await kopfZeilen(page)).toBe(zeilen);
+      });
+    });
+  }
+});

@@ -15,7 +15,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>.kz-nav{align-self:stretch}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
 .kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
-.kz-board{max-width:240px;min-width:0}
+.kz-board{max-width:240px;min-width:var(--kd-ziel)}
 .kz[data-stufe="large"] .kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
 .ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -28,6 +28,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz:not([data-stufe="large"]) .ich-name,.kz:not([data-stufe="large"]) #t-lauf .lang{display:none}
 .kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
 .kz.modus .kz-reihe{flex-wrap:wrap}
+/* Werkzeugzeile in compact (PO Z. 133): bricht nur um, wenn Filter (ab 80 px) und Schalter nicht in eine Zeile passen; dann Filter in voller Breite oben */
+.kz[data-stufe="compact"] .kz-reihe:has(>#flt){flex-wrap:wrap;row-gap:var(--kd-s2)}
+.kz[data-stufe="compact"] .kz-reihe>#flt{flex:1 1 80px}
 .kz.modus:not([data-stufe="large"]) .kz-modus{flex-wrap:wrap;row-gap:var(--kd-s2);padding:var(--kd-s2) var(--kd-s3)}
 .kz[data-stufe="compact"] .neu-btn .lang{display:none}
 .kz-chips{display:flex;gap:var(--kd-s2)}
