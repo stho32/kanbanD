@@ -258,6 +258,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .kost-api{display:inline-flex;align-items:center;min-height:24px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:500}
 .kost-api:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 .kost-reset{margin-top:4px}
+/* Bestand nach Labels (R00100, Artboard D0006 #bestand-nach-labels) */
+.best-leer{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);margin:0;padding:16px var(--kd-s6);color:var(--kd-muted);font-size:13px}
 .mod-side{border-left:1px solid var(--kd-line);background:var(--kd-bg);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4)}
 .titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%}
 .titel:hover{border-color:var(--kd-line-strong)}

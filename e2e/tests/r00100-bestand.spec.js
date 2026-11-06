@@ -49,6 +49,9 @@ async function zelle(page, zeile, spalte) {
   expect(j, `Spalte ${spalte} in ${koepfe.join(' | ')}`).toBeGreaterThan(0);
   return tabelle(page).locator('tbody tr').filter({ has: page.locator(`th:text-is("${zeile}")`) }).locator(':scope > *').nth(j);
 }
+const LEER = 'Keine offenen Aufgaben, die zu den Filtern der Berichte passen.';
+const HINWEIS = 'Für diese Tabelle braucht das Board Labels mit zwei verschiedenen Präfixen, z. B. repo:shop und nc:304.';
+const bericht_ = page => page.locator('#bestand');
 const gesamt = page => page.getByRole('cell', { name: /^Summe gesamt: / });
 const commits = k => Number(k.git('rev-list', '--count', 'HEAD'));
 
@@ -138,6 +141,42 @@ test.describe('R00100 Bestand nach Labels', () => {
     await page.goto(k.adresse + '#/berichte/verlauf');
     await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveValue('vorwoche');
     expect(k.lies('boards/fabrik.md')).toBe(vorher);
+  });
+
+  test('US-6: alles in „Fertig“ oder archiviert → Leersatz ohne „Zurücksetzen“, kein Commit', async ({ page }) => {
+    await bericht(page, grundbestand({ eingang: [7], fertig: [1, 2, 3, 4, 5, 6] }));
+    const vorher = commits(k);
+    await expect(bericht_(page)).toContainText(LEER);
+    await expect(tabelle(page)).toHaveCount(0);
+    await expect(bericht_(page).getByRole('button', { name: 'Zurücksetzen' })).toHaveCount(0);
+    expect(commits(k)).toBe(vorher);
+  });
+
+  test('Leerfall mit Filter: „Eingang“ ausgeschlossen → Leersatz mit „Zurücksetzen“; Klick hebt nur den Spaltenausschluss auf (ein Commit), Zeitraum und Messbasis bleiben', async ({ page }) => {
+    await bericht(page, grundbestand({ kopf: `${ACHSEN_REPO_NC}report-filter: {period: vorwoche, exclude-columns: [Eingang], window-days: 30}\n` }));
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · 1 aktiv · Zeitraum gilt hier nicht');
+    await expect(bericht_(page)).toContainText(LEER);
+    const vorher = commits(k);
+    await bericht_(page).getByRole('button', { name: 'Zurücksetzen', exact: true }).click();
+    await expect(gesamt(page)).toHaveText('5');
+    await expect.poll(() => commits(k)).toBe(vorher + 1);
+    const datei = k.lies('boards/fabrik.md');
+    expect(datei).toContain('period: vorwoche');
+    expect(datei).toContain('window-days: 30');
+    expect(datei).not.toContain('Eingang]');
+  });
+
+  test('Zu wenige Präfixe: nur repo:* → Hinweis statt Tabelle, kein Commit; ganz ohne Präfix derselbe Hinweis', async ({ page }) => {
+    const nurRepo = { 'kanbanD.md': EINSTELLUNGEN, 'boards/fabrik.md': boardMd([1, 2], []), 'aufgaben/0001-a1.md': aufgabeMd(1, ['repo:shop'], 'drift'), 'aufgaben/0002-a2.md': aufgabeMd(2, ['repo:lager', 'dringend']) };
+    await bericht(page, nurRepo);
+    const vorher = commits(k);
+    await expect(bericht_(page)).toContainText(HINWEIS);
+    await expect(tabelle(page)).toHaveCount(0);
+    expect(commits(k)).toBe(vorher);
+    k.schreib('aufgaben/0001-a1.md', aufgabeMd(1, ['dringend'], 'drift'));
+    k.schreib('aufgaben/0002-a2.md', aufgabeMd(2, []));
+    await expect(bericht_(page)).toContainText(HINWEIS);
+    await expect(tabelle(page)).toHaveCount(0);
   });
 
   test('Live: eine neue Aufgabe [repo:shop, nc:304] in „Eingang“ zeigt shop × 304 = 3 ohne Neuladen', async ({ page }) => {

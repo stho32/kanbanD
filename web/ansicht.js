@@ -904,15 +904,24 @@ function vBestand() {
   const achsen = bestandAchsen(filter);
   return `${kopf}<div class="body" id="bestand">${vBestandInhalt(achsen, filter)}</div>`;
 }
-/** Achsen des Berichts: die gespeicherte Einstellung des Boards, sonst der Vorschlag aus den offenen Aufgaben (schreibt nichts). */
+/** Achsen des Berichts: die gespeicherte Einstellung des Boards, sonst der Vorschlag aus den offenen Aufgaben nach der
+    Filterleiste — lässt die nichts übrig, aus allen offenen, damit ein leerer Filter nicht als fehlende Labels erscheint;
+    schreibt nichts. Unter zwei Präfixen null. */
 function bestandAchsen(filter) {
   if (S.board.bestand) return S.board.bestand;
-  return vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board, filter)));
+  return vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board, filter))) || vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board)));
 }
 function vBestandInhalt(achsen, filter) {
+  if (!achsen) return '<p class="best-leer">Für diese Tabelle braucht das Board Labels mit zwei verschiedenen Präfixen, z. B. repo:shop und nc:304.</p>';
   const klassen = S.zustand.einstellungen.klassen;
   const tabelle = bestandNachLabels(S.aufgaben, S.board, klassen.map(k => k.schluessel), achsen.zeilen, achsen.spalten, filter);
+  if (!tabelle.summen.gesamt) return vBestandLeer(filterAnzahl(filter) > 0);
   return vBestandTabelle(tabelle, achsen, klassen);
+}
+/** Leerzustand: mit aktiven Filtern der Berichte der Knopf „Zurücksetzen“ (ohne Zahl, PO Z. 77). */
+function vBestandLeer(gefiltert) {
+  const knopf = gefiltert ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="bestand">Zurücksetzen</button>' : '';
+  return `<div class="best-leer"><span>Keine offenen Aufgaben, die zu den Filtern der Berichte passen.</span>${knopf}</div>`;
 }
 function vBestandTabelle(t, achsen, klassen) {
   const zelle = (zeile, spalte, z) => vBestandZelle({ zeile, spalte, zelle: z }, achsen, klassen);
