@@ -16,6 +16,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
 .kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
 .kz-board{max-width:240px;min-width:var(--kd-ziel)}
+/* Der Board-Name bleibt lesbar (B0415): in der Stufe compact rücken die Ziele der Reihe enger zusammen und die Zelle
+   des Namens verzichtet auf den rechten Abstand — so bleiben bei 375 px mit Touch rund 96 px für den Namen */
+.kz[data-stufe="compact"] .kz-reihe{gap:var(--kd-s1)}
+.kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-right:0}
 .kz[data-stufe="large"] .kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
 .ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}

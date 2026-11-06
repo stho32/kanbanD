@@ -399,6 +399,18 @@ test.describe('Messprobe, Touch, 390 px', () => {
   });
 });
 
+// B0415: der Board-Name bleibt bei Touch 375 lesbar — er schrumpft nicht auf „E…“
+test.describe('Board-Name in der Kopfzeile, Touch, 375 px', () => {
+  test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+  test('der Knopf des Board-Namens ist mindestens 88 px breit', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    const knopf = page.locator('.kz-board');
+    await knopf.waitFor();
+    expect((await knopf.boundingBox()).width).toBeGreaterThanOrEqual(88);
+  });
+});
+
 // B0413: klickbare Berichtszeilen (PO Z. 134) — bei Touch wachsen sie auf das Zielmaß (Messprobe), mit der Maus bleiben sie dicht.
 test.describe('Berichtszeilen mit der Maus, 1280 px', () => {
   test.use({ viewport: { width: 1280, height: 800 } });

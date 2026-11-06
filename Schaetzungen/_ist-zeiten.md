@@ -387,3 +387,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0412 Kein Bereich unter #main scrollt quer, die Zeilen von Einrichten wachsen mit dem Zielmaß | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0413 Klickbare Berichtszeilen wachsen bei Touch auf das Zielmaß | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0414 Ein Diagrammpunkt besteht über ein gleichwertiges Ziel | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0415 Der Board-Name bleibt bei Touch 375 lesbar | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
