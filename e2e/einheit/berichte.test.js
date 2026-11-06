@@ -496,12 +496,24 @@ test('Diagramm von „Wie lange noch“: die drei rechten Blöcke mit Prognose, 
   assert.deepStrictEqual(diagrammBloecke([b('A', true), b('B', false, 0)]).ohnePrognose, [], 'nichts offen ist keine fehlende Prognose');
 });
 
-test('Zurücksetzen (R00105 US-19): hebt Farben, Spalten, Personen, Labels auf; Zeitraum nur, wenn die Leiste ihn zeigt; Messbasis nie', () => {
-  const { filterZuruecksetzen, FILTER_LEER: LEER } = require('../../web/berichte.js');
+test('Zurücksetzen je Leiste (R00105 US-19, PO Z. 106/116): Klassen, Spalten, Zuständige, Labels; Zeitraum nur, wo die Leiste ihn zeigt; Messbasis und Rechnen ab nie', () => {
+  const { filterZuruecksetzen, BERICHTSLEISTEN } = require('../../web/berichte.js');
   const gesetzt = { zeitraum: 'eigen', von: '2026-10-01', bis: '2026-10-31', ohneFarben: ['bug'], ohneSpalten: ['Fertig'], personen: ['st'], labels: ['repo:x'], messbasisTage: 30 };
   const ohneGruppen = { ...gesetzt, ohneFarben: [], ohneSpalten: [], personen: [], labels: [] };
-  assert.deepStrictEqual(filterZuruecksetzen(gesetzt, false), ohneGruppen);
-  assert.deepStrictEqual(filterZuruecksetzen(gesetzt, true), { ...ohneGruppen, zeitraum: 'alles', von: '', bis: '' });
-  assert.deepStrictEqual(filterZuruecksetzen({ ...LEER, zeitraum: 'vorwoche' }, false), { ...LEER, zeitraum: 'vorwoche' });
+  const ohneZeitraum = { ...ohneGruppen, zeitraum: 'alles', von: '', bis: '' };
+  const erwartet = {
+    stundenzettel: ohneGruppen,
+    zeiten: ohneZeitraum,
+    burndown: ohneZeitraum,
+    durchlaufzeit: ohneZeitraum,
+    wieLangeNoch: ohneGruppen,
+    fieber: ohneGruppen,
+    kosten: ohneGruppen,
+  };
+  assert.deepStrictEqual(Object.keys(BERICHTSLEISTEN).sort(), Object.keys(erwartet).sort(), 'jede Leiste genau einmal');
+  for (const [leiste, nachher] of Object.entries(erwartet)) {
+    assert.deepStrictEqual(filterZuruecksetzen(gesetzt, BERICHTSLEISTEN[leiste]), nachher, leiste);
+  }
+  assert.strictEqual(filterZuruecksetzen(gesetzt, BERICHTSLEISTEN.wieLangeNoch).messbasisTage, 30, 'Messbasis bleibt, auch wo die Leiste sie zeigt');
   assert.deepStrictEqual(gesetzt.ohneSpalten, ['Fertig'], 'der gespeicherte Filter bleibt unverändert');
 });

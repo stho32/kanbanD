@@ -182,6 +182,23 @@ test.describe('R00105 Kostenbericht', () => {
     });
   }
 
+  test('Nacharbeit S6: „Zurücksetzen“ in „Wie lange noch“ hebt die Klasse auf, Messbasis 30 T bleibt (PO Z. 116)', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand({}, {}, '---\nstart: 2026-10-01\nreport-filter: {exclude-classes: [bug], window-days: 30}\n---\n'));
+    await page.goto(k.adresse + '#/berichte/prognose');
+    await expect(page.locator('.bf-zusammen')).toContainText('1 aktiv');
+    await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
+    await filterOeffnen(page);
+    await expect(page.locator('.bf-fuss .bf-leeren')).toHaveAttribute('data-arg', 'wieLangeNoch');
+    await page.locator('.bf-fuss .bf-leeren').click();
+    await expect(page.locator('.bf-zusammen')).toContainText('Filter · keine');
+    await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
+    await expect(page.getByLabel('Messbasis in Tagen')).toHaveValue('30');
+    await expect.poll(() => k.lies('boards/fabrik.md')).not.toContain('exclude-classes');
+    expect(k.lies('boards/fabrik.md')).toContain('window-days: 30');
+    await page.reload();
+    await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
+  });
+
   test('US-13: gespeicherter Zeitraum gilt hier nicht, zählt nicht, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {
     k = await kanbanStarten(einrichten(grundbestand({}, {}, LETZTE_WOCHE)));
     const vorher = pruefsumme(k.lies('boards/fabrik.md'));

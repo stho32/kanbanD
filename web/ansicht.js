@@ -779,7 +779,8 @@ function vBerichtePop() {
   return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/kosten', SVG.etikett, 'Kosten', 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
-function vBerichtsfilter(teile) {
+function vBerichtsfilter(leiste) {
+  const teile = BERICHTSLEISTEN[leiste];
   const f = S.ui.bf, jetzt = Date.now();
   const chip = (act, arg, an, inhalt, titel) => `<button class="bf-chip${an ? ' an' : ''}" data-act="${act}" data-arg="${esc(arg)}" aria-pressed="${an}" title="${esc(titel)}">${inhalt}</button>`;
   const gruppe = (k, inhalt) => inhalt ? `<div class="bf-gruppe"><span class="bf-k">${k}</span><span class="bf-werte">${inhalt}</span></div>` : '';
@@ -807,7 +808,7 @@ function vBerichtsfilter(teile) {
   // Zusammenfassung der zugeklappten Box: wie viele wirken, ab wann gerechnet wird, ob gespeichert
   const lokal = S.ui.bfLokal && S.ui.bfLokal.ungespeichert;
   const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${vollDatum(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
-  return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" data-arg="${teile.zeitraum ? 'zeitraum' : ''}" title="alle Berichtsfilter aufheben">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
+  return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" data-arg="${leiste}" title="alle Berichtsfilter aufheben">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
@@ -816,14 +817,14 @@ function vStundenzettel() {
   const wer = u.sp || S.ich || (personen().find(p => p.aktiv) || {}).kuerzel;
   const s = stundenzettel(S.aufgaben.filter(a => aufgabePasst({ ...u.bf, personen: [] }, a)), wer, w0, jetzt), namen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], heute = tagesbeginn(jetzt);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">·</span>';
-  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${isoD(s.tage[0])} – ${isoD(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter({})}
+  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${isoD(s.tage[0])} – ${isoD(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('stundenzettel')}
 <div class="body"><table class="pt dicht" id="stundenzettel"><thead><tr><th>Aufgabe</th>${s.tage.map((t, i) => `<th class="r"${t === heute ? ' style="color:var(--kd-accent-ink)"' : ''}>${namen[i]} <span class="mono">${isoD(t).slice(8)}</span></th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${s.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.proTag.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || `<tr><td class="muted" colspan="9">${esc(per(wer || '').name)} hat in dieser Woche keine Zeiten.</td></tr>`}<tr class="grp"><td>SUMME</td>${s.jeTag.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r" id="zettelsumme">${hm(s.summe)}</td></tr></tbody></table></div>`;
 }
 function vKreuz() {
   const jetzt = Date.now(), g = zeitraumGrenzen(S.ui.bf, jetzt);
   const k = kreuztabelle(zeitenGefiltert(S.aufgaben, S.ui.bf), g.von, jetzt, g.bis);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">—</span>';
-  return `<div class="leiste"><b>Zeiten nach Aufgabe und Person</b><span class="muted" style="font-size:12px">liest nur · korrigiert wird an der Aufgabe</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter({ zeitraum: true, personen: 'zeit' })}
+  return `<div class="leiste"><b>Zeiten nach Aufgabe und Person</b><span class="muted" style="font-size:12px">liest nur · korrigiert wird an der Aufgabe</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('zeiten')}
 <div class="body"><table class="pt dicht" id="kreuz"><thead><tr><th>Aufgabe</th>${k.personen.map(p => `<th class="r">${pk(p)} ${esc(per(p).name)}</th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${k.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.jePerson.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || '<tr><td class="muted">Keine Zeiten im Zeitraum.</td></tr>'}<tr class="grp"><td>SUMME</td>${k.jeSpalte.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r">${hm(k.summe)}</td></tr></tbody></table></div>`;
 }
 
@@ -867,14 +868,14 @@ ${fadenkreuz(O, H - U)}
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
   const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
-  return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter({ start: true, zeitraum: true, spalten: true, personen: 'zustaendig' })}
+  return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
 <div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
 function vKosten() {
-  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter({ spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true })}`;
+  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
   const filter = kostenFilter(S.ui.bf);
   const bericht = kostenbericht(S.board, S.aufgaben, filter);
@@ -884,7 +885,7 @@ function vKosten() {
 function vKostenInhalt(bericht, umfang, aktiv) {
   if (bericht.jeWaehrung.length) return vKostenSummen(bericht, umfang);
   let knopf = '';
-  if (aktiv) knopf = '<button class="btn bf-leeren kost-reset" data-act="bf-leeren" data-arg="">Zurücksetzen</button>';
+  if (aktiv) knopf = '<button class="btn bf-leeren kost-reset" data-act="bf-leeren" data-arg="kosten">Zurücksetzen</button>';
   if (aktiv && bericht.m === 0) return `<div class="kost-leer"><p class="kost-satz">Keine Aufgaben, die zu den Filtern der Berichte passen.</p>${knopf}</div>`;
   return vKostenLeer(bericht, umfang, knopf);
 }
@@ -902,7 +903,7 @@ function vDurchlauf() {
   const von = sp.includes(u.dlVon) ? u.dlVon : sp[0], bis = sp.includes(u.dlBis) ? u.dlBis : sp[sp.length - 1];
   const d = durchlaufzeiten(S.bew, u.bf, aufgabe, Date.now(), von, bis, S.board && S.board.start);
   const wahl = (k, wert, titel) => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte">${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
-  const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter({ start: true, zeitraum: true, personen: 'zustaendig' })}`;
+  const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter('durchlaufzeit')}`;
   if (!d.gueltig) return `${kopf}<div class="body bericht"><div class="leer">„von“ muss links von „bis“ liegen.</div></div>`;
   const B = 800, H = 292, L = 40, R = 110, O = 16, U = 40, l = d.liste;
   const t0 = Math.min(...l.map(x => x.ankunft)), t1 = Math.max(...l.map(x => x.ankunft));
@@ -963,7 +964,7 @@ function vPrognose() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt, S.bew.phasen, { start: S.board && S.board.start }), u = S.ui;
   const stand = new Date(jetzt).toTimeString().slice(0, 8);
-  const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${deDatum(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter({ start: true, messbasis: true, spalten: true, personen: 'zustaendig' })}`;
+  const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${deDatum(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('wieLangeNoch')}`;
   if (!p.phasen.length) return `${kopf}<div class="body bericht"><div class="leer">Es braucht mindestens zwei gezählte Spalten.</div></div>`;
   const fertig = p.phasen[p.phasen.length - 1];
   const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${fertig.nenner} fertig</strong>${p.phasen.slice(0, -1).map(ph => ` · ${esc(blockStand(ph))}`).join('')}</p>`;
@@ -1058,7 +1059,7 @@ function fieberStand() {
 function vFieber() {
   if (!S.bew || !S.fieberCache) return '<div class="leer">lädt …</div>';
   const u = S.ui, st = fieberStand(), b = S.board, f = b.fieber, jetzt = Date.now();
-  const kopf = `<div class="leiste"><b>Projekt-Fever-Chart</b><span class="muted">${esc(b.titel)} · Stand ${deDatum(jetzt)} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter({ start: true, messbasis: true, spalten: true, personen: 'zustaendig' })}`;
+  const kopf = `<div class="leiste"><b>Projekt-Fever-Chart</b><span class="muted">${esc(b.titel)} · Stand ${deDatum(jetzt)} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('fieber')}`;
   if (!st.start) return `${kopf}<div class="body bericht"><div class="leer">Noch keine Aufgabe auf diesem Board — ohne Start kein Projekt.</div></div>`;
   const einheit = f.woche === 5 ? 'Arbeitstage' : 'Kalendertage', plan = fieberPlan(st.e);
   const termine = b.termine || [];

@@ -54,11 +54,22 @@
   /** Anzahl wirkender Filter (für die Leiste). */
   const filterAnzahl = f => (f.zeitraum !== 'alles' ? 1 : 0) + f.ohneFarben.length + f.ohneSpalten.length + f.personen.length + f.labels.length;
 
-  /** „Zurücksetzen“ (R00105 US-19): hebt die gezählten Gruppen auf; den Zeitraum nur, wenn die Leiste des gezeigten
-   *  Berichts ihn zeigt. Ausgeblendetes — Zeitraum, Messbasis — bleibt gespeichert. */
-  function filterZuruecksetzen(f, mitZeitraum) {
+  /** Was die Filterleiste je Bericht zeigt — die eine Quelle für die Leiste und für „Zurücksetzen“. */
+  const BERICHTSLEISTEN = {
+    stundenzettel: {},
+    zeiten: { zeitraum: true, personen: 'zeit' },
+    burndown: { start: true, zeitraum: true, spalten: true, personen: 'zustaendig' },
+    durchlaufzeit: { start: true, zeitraum: true, personen: 'zustaendig' },
+    wieLangeNoch: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
+    fieber: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
+    kosten: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
+  };
+
+  /** „Zurücksetzen“ (R00105 US-19, PO Z. 106/116): hebt Klassen, Spalten, Zuständige und Labels auf, den Zeitraum nur,
+   *  wenn die Leiste ihn zeigt. Messbasis und „Rechnen ab“ sind Einstellungen der Rechnung und bleiben immer. */
+  function filterZuruecksetzen(f, teile) {
     const aufgehoben = { ...f, ohneFarben: [], ohneSpalten: [], personen: [], labels: [] };
-    if (!mitZeitraum) return aufgehoben;
+    if (!teile.zeitraum) return aufgehoben;
     return { ...aufgehoben, zeitraum: 'alles', von: '', bis: '' };
   }
 
@@ -619,5 +630,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
