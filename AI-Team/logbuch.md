@@ -189,3 +189,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Entwicklung (parallel) | gestalter (frisch) | bestanden: Artboards D0002/D0003/D0006 für R00105; Bug-Karte Σ-Kontrast | 0:13 | 89b9d89 |
 | 2026-11-06 | #18 | Entwicklung | entwickler (frisch, entw1) | bestanden: 9 freie Bubbles, rebased, ff auf main; Karte an den Menschen (Artboard-Freigabe) | 0:36 | 365915d |
 | 2026-11-06 | #8 | Architektur | architekt (frisch) | beauftragt; #20 übersprungen (Gemeinkosten-Sammelkarte) | — | — |
+| 2026-11-06 | #8 | Architektur | architekt (frisch) | bestanden: ADR-0010 Fokusführung über Ebenen, A00009 | 0:05 | 976ab85 |
