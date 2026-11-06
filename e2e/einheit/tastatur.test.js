@@ -1,7 +1,7 @@
 // Unit-Tests der Tastaturziele (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { nachbar, verschiebeziel, naechsterReiter } = require('../../web/tastatur.js');
+const { nachbar, verschiebeziel, naechsterReiter, radioSchritt } = require('../../web/tastatur.js');
 
 const sp = [{ name: 'A', karten: [1, 2, 3] }, { name: 'B', karten: [] }, { name: 'C', karten: [4] }];
 
@@ -71,4 +71,17 @@ test('Reiter: Enter und Leertaste zeigen den fokussierten Reiter, andere Tasten 
   assert.strictEqual(naechsterReiter(DREI, 'kosten', ' '), 'kosten');
   for (const taste of ['ArrowUp', 'ArrowDown', 'd', 'Tab', 'Escape']) assert.strictEqual(naechsterReiter(DREI, 'inhalt', taste), null, taste);
   assert.strictEqual(naechsterReiter(DREI, 'unbekannt', 'ArrowRight'), null, 'Fehlfall: Reiter nicht in der Liste');
+});
+
+test('radioSchritt(3, 0, ArrowLeft) → 2: Pfeile mit Umlauf, andere Tasten gehören nicht der Gruppe (R00106)', () => {
+  assert.strictEqual(radioSchritt(3, 0, 'ArrowLeft'), 2);
+  assert.strictEqual(radioSchritt(3, 0, 'ArrowUp'), 2);
+  assert.strictEqual(radioSchritt(3, 2, 'ArrowRight'), 0);
+  assert.strictEqual(radioSchritt(3, 2, 'ArrowDown'), 0);
+  assert.strictEqual(radioSchritt(3, 1, 'ArrowRight'), 2);
+  assert.strictEqual(radioSchritt(3, 1, 'ArrowLeft'), 0);
+  assert.strictEqual(radioSchritt(3, -1, 'ArrowRight'), 0, 'ohne Wahl: vorwärts zum ersten');
+  assert.strictEqual(radioSchritt(3, 1, 'Tab'), null);
+  assert.strictEqual(radioSchritt(3, 1, 'Enter'), null);
+  assert.strictEqual(radioSchritt(3, 1, 'a'), null);
 });

@@ -57,5 +57,17 @@
     }
   }
 
-  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, naechsterReiter });
+  const RADIO_RICHTUNG = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+
+  /** Radiogruppe (R00106, APG Radio Group): Index des Radios, das Fokus und Wahl bekommt, mit Umlauf;
+      ohne Wahl (index -1) vorwärts das erste, rückwärts das letzte. Null, wenn die Taste nicht der Gruppe gehört. */
+  function radioSchritt(anzahl, index, taste) {
+    if (!Object.hasOwn(RADIO_RICHTUNG, taste)) return null;
+    const richtung = RADIO_RICHTUNG[taste];
+    if (index < 0 && richtung > 0) return 0;
+    if (index < 0) return anzahl - 1;
+    return (index + richtung + anzahl) % anzahl;
+  }
+
+  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, naechsterReiter, radioSchritt });
 })(typeof module !== 'undefined' ? module.exports : window);

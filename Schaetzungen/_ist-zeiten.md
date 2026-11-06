@@ -352,3 +352,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0373 Filter auf den Kostenbericht anwenden | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0375 Reiterleiste als tablist mit Tastatur | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0377 Ebenen und Fokusziel rechnen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0386 Radio-Schritt rechnen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
