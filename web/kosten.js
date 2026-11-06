@@ -80,14 +80,15 @@
     return { m: gezaehlt.length, jeWaehrung: [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
-  /** Filter der Berichte für den Kostenbericht: ein gespeicherter Zeitraum gilt hier nicht (Kosten sind ein Bestand, keine
-      Bewegung) und bleibt für die übrigen Berichte unverändert gespeichert; „Rechnen ab“ nimmt kostenbericht gar nicht an. */
-  const kostenFilter = f => ({ ...f, zeitraum: 'alles', von: '', bis: '' });
+  /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht
+      (ein Bestand ist keine Bewegung) und bleibt für die übrigen Berichte unverändert gespeichert; „Rechnen ab“ nehmen
+      kostenbericht und bestandNachLabels gar nicht an. */
+  const filterOhneZeitraum = f => ({ ...f, zeitraum: 'alles', von: '', bis: '' });
 
   /** Umfangstext der Summenzeile: „alle Spalten“ nur, wenn ohne Zeitraum kein Filter wirkt. */
   function kostenUmfang(f) {
     const { filterAnzahl } = typeof module !== 'undefined' ? require('./berichte.js') : window;
-    return filterAnzahl(kostenFilter(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
+    return filterAnzahl(filterOhneZeitraum(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
   }
 
   /** Rückfall (R00105 US-16): trägt die offene Aufgabe kein Etikett mehr, gilt statt „Kosten“ der Reiter „Inhalt“.
@@ -99,5 +100,5 @@
     return { tab: 'inhalt', fokus };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, zaehlwort, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, zaehlwort, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

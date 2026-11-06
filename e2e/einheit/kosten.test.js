@@ -1,7 +1,7 @@
 // Unit-Tests des Preisetiketts (R00105, node --test): Rechnen in ganzen Cent, Formatieren erst beim Anzeigen
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle, kostenbericht, kostenFilter, kostenUmfang } = require('../../web/kosten.js');
+const { kostenInCent, geld, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
 const { FILTER_LEER, filterAnzahl } = require('../../web/berichte.js');
 
 const NBSP = ' ';
@@ -137,17 +137,17 @@ test('Kostenbericht: eine Nummer in der Spalte ohne lesbare Aufgabe zählt in m 
 const ALLE = 'alle Spalten, auch archivierte', NACH_FILTER = 'nach Filter, auch archivierte';
 const MIT_PRUEFUNG = { spalten: [...GRUND_BOARD.spalten.slice(0, 2), { name: 'Prüfung', aufgaben: [] }, GRUND_BOARD.spalten[2]] };
 
-test('Kostenfilter: gespeicherter Zeitraum fällt weg, alles andere bleibt', () => {
+test('Filter ohne Zeitraum (Kosten, Bestand): gespeicherter Zeitraum fällt weg, alles andere bleibt', () => {
   const letzteWoche = filter({ zeitraum: 'vorwoche', ohneFarben: ['drift'], personen: ['st'], labels: ['x'], ohneSpalten: ['Fertig'] });
-  assert.deepStrictEqual(kostenFilter(letzteWoche), { ...letzteWoche, zeitraum: 'alles', von: '', bis: '' });
+  assert.deepStrictEqual(filterOhneZeitraum(letzteWoche), { ...letzteWoche, zeitraum: 'alles', von: '', bis: '' });
   const eigen = filter({ zeitraum: 'eigen', von: '2026-11-01', bis: '2026-11-07' });
-  assert.deepStrictEqual(kostenFilter(eigen), FILTER_LEER);
+  assert.deepStrictEqual(filterOhneZeitraum(eigen), FILTER_LEER);
   assert.deepStrictEqual(eigen.zeitraum, 'eigen', 'der gespeicherte Filter bleibt unverändert (Burndown zeigt ihn weiter)');
 });
 
 test('Kostenbericht mit gespeichertem Zeitraum: gleiche Zahlen und Umfang „alle Spalten“', () => {
   const letzteWoche = filter({ zeitraum: 'vorwoche' });
-  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, kostenFilter(letzteWoche)), kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER));
+  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, filterOhneZeitraum(letzteWoche)), kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER));
   assert.strictEqual(kostenUmfang(letzteWoche), ALLE);
   assert.strictEqual(kostenUmfang(filter({ zeitraum: 'eigen', von: '2026-11-01' })), ALLE);
   assert.strictEqual(kostenUmfang(FILTER_LEER), ALLE);
@@ -160,7 +160,7 @@ test('Probe PO Z. 89 mit vierter Spalte „Prüfung“: 1, 2, 3 ausgeschlossene 
     assert.strictEqual(kostenUmfang(f), NACH_FILTER, ohne.join(', '));
     assert.doesNotMatch(kostenUmfang(f), /alle Spalten/, ohne.join(', '));
   }
-  assert.deepStrictEqual(kostenbericht(MIT_PRUEFUNG, GRUND, kostenFilter(filter({ ohneSpalten: ['Prüfung', 'Fertig'] }))),
+  assert.deepStrictEqual(kostenbericht(MIT_PRUEFUNG, GRUND, filterOhneZeitraum(filter({ ohneSpalten: ['Prüfung', 'Fertig'] }))),
     { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
   for (const f of [{ ohneFarben: ['drift'] }, { personen: ['st'] }, { labels: ['x'] }, { zeitraum: 'vorwoche', labels: ['x'] }])
     assert.strictEqual(kostenUmfang(filter(f)), NACH_FILTER, JSON.stringify(f));

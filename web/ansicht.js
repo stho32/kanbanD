@@ -876,7 +876,7 @@ ${fadenkreuz(O, H - U)}
 function vKosten() {
   const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
-  const filter = kostenFilter(S.ui.bf);
+  const filter = filterOhneZeitraum(S.ui.bf);
   const bericht = kostenbericht(S.board, S.aufgaben, filter);
   const aktiv = filterAnzahl(filter) > 0;
   return `${kopf}<div class="body" id="kosten">${vKostenInhalt(bericht, kostenUmfang(S.ui.bf), aktiv)}</div>`;
@@ -900,7 +900,7 @@ function vKostenLeer(bericht, umfang, knopf) {
 function vBestand() {
   const kopf = `<div class="leiste"><b>Bestand nach Labels</b> <span class="muted" style="font-size:12px">· liest nur · Klick auf eine Zahl öffnet das Board</span></div>${vBerichtsfilter('bestand')}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
-  const filter = kostenFilter(S.ui.bf);
+  const filter = filterOhneZeitraum(S.ui.bf);
   const achsen = bestandAchsen(filter);
   return `${kopf}<div class="body" id="bestand">${vBestandAchsen(achsen)}${vBestandInhalt(achsen, filter)}</div>`;
 }

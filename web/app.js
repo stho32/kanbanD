@@ -47,7 +47,7 @@ function berichtsfilterSetzen(aenderung) {
     ohne gewählte Person oder bei einem Fehler gilt die Wahl nur in dieser Ansicht. Ändert die Wahl nichts oder gibt es
     unter zwei Präfixen noch keine Achsen, nichts. */
 function bestandAchsenSetzen(feld, praefix) {
-  const jetzt = bestandAchsen(kostenFilter(S.ui.bf));
+  const jetzt = bestandAchsen(filterOhneZeitraum(S.ui.bf));
   if (!jetzt) return;
   const neu = achsenNachWahl(jetzt, feld, praefix);
   if (!neu) return;
