@@ -911,7 +911,7 @@ function vBestandAchsen(achsen) {
   const wahl = [...praefixe(offeneAufgaben(S.aufgaben, S.board)).map(p => p.praefix)];
   for (const gespeichert of [achsen.zeilen, achsen.spalten]) if (!wahl.some(p => p.toLowerCase() === gespeichert.toLowerCase())) wahl.push(gespeichert);
   const feld = (name, schluessel) => `<span class="best-feld"><label for="best-${schluessel}">${name}</label><select class="mini-inp best-sel" id="best-${schluessel}" data-bestand="${schluessel}">${wahl.map(p => `<option value="${esc(p)}"${p.toLowerCase() === achsen[schluessel].toLowerCase() ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></span>`;
-  return `<div class="best-achsen" id="bestand-achsen">${feld('Zeilen', 'zeilen')}${feld('Spalten', 'spalten')}${vBestandStatus()}</div>`;
+  return `<div class="best-achsen" id="bestand-achsen">${feld('Zeilen', 'zeilen')}${feld('Spalten', 'spalten')}<button class="btn best-tausch" data-act="bestand-tauschen">⇄ Achsen tauschen</button>${vBestandStatus()}</div>`;
 }
 function vBestandStatus() {
   const lokal = bestandLokal();

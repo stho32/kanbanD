@@ -284,6 +284,46 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(spaltenkoepfe(page)).toHaveText(['repo ↓ · os →', '(ohne os)', 'Summe']);
   });
 
+  test('US-3: „⇄ Achsen tauschen“ → nc × repo, genau ein PUT, ein Commit, Frontmatter; zweiter Browser live und nach Neuladen; Enter tauscht zurück', async ({ page, browser }) => {
+    await bericht(page, grundbestand());
+    const zweit = await browser.newContext(), seite2 = await zweit.newPage();
+    try {
+      await alsPerson(seite2, 'st');
+      await seite2.goto(k.adresse + '#/board/fabrik');
+      await liveBereit(seite2);
+      await seite2.goto(k.adresse + '#/berichte/bestand');
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: repo × nc' })).toBeVisible();
+      const vorher = commits(k), puts = [];
+      page.on('request', r => { if (r.method() === 'PUT') puts.push(new URL(r.url()).pathname); });
+      await page.getByRole('button', { name: '⇄ Achsen tauschen' }).click();
+      await expect(page.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+      await expect.poll(() => commits(k)).toBe(vorher + 1);
+      expect(puts).toEqual(['/api/boards/fabrik/bestand']);
+      expect(k.lies('boards/fabrik.md')).toContain('report-labels: {rows: nc, columns: repo}');
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+      await seite2.reload();
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+      await page.getByRole('button', { name: '⇄ Achsen tauschen' }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('table', { name: 'Bestand nach Labels: repo × nc' })).toBeVisible();
+      await expect.poll(() => commits(k)).toBe(vorher + 2);
+      expect(k.lies('boards/fabrik.md')).toContain('report-labels: {rows: repo, columns: nc}');
+    } finally { await zweit.close(); }
+  });
+
+  test('US-8: „⇄ Achsen tauschen“ ohne Person → nc × repo nur hier mit Hinweis, kein PUT, git log und boards/fabrik.md gleich', async ({ page }) => {
+    await bericht(page, grundbestand(), { person: null });
+    const vorher = commits(k), datei = k.lies('boards/fabrik.md'), puts = [];
+    page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()); });
+    await page.getByRole('button', { name: '⇄ Achsen tauschen' }).click();
+    await expect(page.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+    await expect(status(page)).toHaveText(NICHT_GESPEICHERT);
+    await page.waitForTimeout(300);
+    expect(puts).toEqual([]);
+    expect(commits(k)).toBe(vorher);
+    expect(k.lies('boards/fabrik.md')).toBe(datei);
+  });
+
   test('US-2: Klick auf die Zahl in shop × 304 öffnet das Board mit label:repo:shop label:nc:304 — sichtbar genau #1, #2, #6', async ({ page }) => {
     await bericht(page, grundbestand());
     await (await zelle(page, 'shop', '304')).getByRole('link', { name: /^repo:shop × nc:304: 2 offen/ }).click();
