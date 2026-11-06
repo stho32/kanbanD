@@ -206,3 +206,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Architektur (PO-Folge) | architekt (frisch) | bestanden; ADR-0010 N3/N5 und A00009 nach PO-Entscheidung | 0:06 | ba09db5, 0c122c5 |
 | 2026-11-06 | #8 | Planung (PO-Folge) | planer (frisch) | bestanden; R00106 NFA erlaubte .focus()-Orte, Zählung je Funktion | 0:06 | 9af3cc6 |
 | 2026-11-06 | #8 | Nacharbeit 2 | entwickler (frisch) | bestanden; Führung nur bei verlorenem Fokus, preventScroll beim Halten, Wächter zählt je Funktion; r00078 auf main stabil rot (Altlast) | 0:15 | 59e2a60..01aa78e |
+| 2026-11-06 | #6 | Artboard-Freigabe | Betreiber | freigegeben: D0006 „Bestand nach Labels“ wie gezeichnet | — | — |
