@@ -193,3 +193,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Detailplanung | planer (frisch) | bestanden: R00106, I0095 mit 13 Bubbles; B0385 an product-owner; Entwicklung entw1 beauftragt | 0:09 | cadb278 |
 | 2026-11-06 | #8 | Detailplanung | product-owner (frisch) | bestanden: Pops eingeordnet (Z. 107–108), nichts an den Betreiber; Nachtrag planer (frisch) und architekt (fortgesetzt) beauftragt | 0:02 | 679216a |
 | 2026-11-06 | #8 | Detailplanung | planer (frisch), architekt (fortgesetzt) | Nachtrag bestanden: R00106 52 Kriterien, US-9/US-10, B0385 frei, ADR-0010 Folgeentscheidung | 0:06 | e847fb2, 189ed1b, f6506e6 |
+| 2026-11-06 | #8 | Entwicklung | entwickler (fortgesetzt) | teilweise: 13 Bubbles grün, Gate grün nach Rebase (554 cargo, clippy 0, 189 Einheit, 308 E2E laut Bericht), Mutante fallenSchritt getötet; offen Ring-Kriterien 149, Radio-Ring, 195 → Nacharbeit frisch | 0:55 | 0206f3b..2588dc3 |
