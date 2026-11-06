@@ -769,7 +769,7 @@ function vPersonen() {
 }
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */
-const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>', csv: '<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>' };
+const SVG = { zettel: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>', kreuz: '<path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16"></path>', csv: '<path d="M12 4v11M8 11l4 4 4-4M4 19h16"></path>', etikett: '<path d="M4 4h8l9 9-8 8-9-9z"></path><circle cx="8.5" cy="8.5" r="1.5"></circle>' };
 function berichteAusloeser() {
   if (S.ui.stufe === 'compact') return 't-seite';
   return 't-ber';
@@ -777,7 +777,7 @@ function berichteAusloeser() {
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem" tabindex="-1"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/kosten', SVG.etikett, 'Kosten', 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `teile`: zeitraum, spalten, personen ('zeit' | 'zustaendig'). */
 function vBerichtsfilter(teile) {
@@ -873,6 +873,22 @@ ${fadenkreuz(O, H - U)}
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
+/** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
+function vKosten() {
+  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter({ spalten: true, personen: 'zustaendig' })}`;
+  if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
+  const bericht = kostenbericht(S.board, S.aufgaben, kostenFilter(S.ui.bf));
+  const umfang = kostenUmfang(S.ui.bf);
+  return `${kopf}<div class="body" id="kosten">${bericht.jeWaehrung.length ? vKostenSummen(bericht, umfang) : vKostenLeer(bericht, umfang)}</div>`;
+}
+function vKostenSummen(bericht, umfang) {
+  const zeile = s => `<p class="kost-zeile"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(s.niedrig, s.hoch, s.waehrung, '–')}</span> <span class="kost-umfang">· ${s.n} von ${bericht.m} Aufgaben mit Etikett, ${umfang}</span></p>`;
+  return `<div class="kost-summen">${bericht.jeWaehrung.map(zeile).join('')}</div>`;
+}
+function vKostenLeer(bericht, umfang) {
+  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} Aufgaben, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p></div>`;
+}
+
 function vDurchlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const sp = S.bew.spalten, u = S.ui;
