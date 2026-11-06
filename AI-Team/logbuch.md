@@ -208,3 +208,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Nacharbeit 2 | entwickler (frisch) | bestanden; Führung nur bei verlorenem Fokus, preventScroll beim Halten, Wächter zählt je Funktion; r00078 auf main stabil rot (Altlast) | 0:15 | 59e2a60..01aa78e |
 | 2026-11-06 | #6 | Artboard-Freigabe | Betreiber | freigegeben: D0006 „Bestand nach Labels“ wie gezeichnet | — | — |
 | 2026-11-06 | #8 | Auto-Review (Wdh. 2) | ux-reviewer (fortgesetzt) | befund: Muss Fokus in Statuszeile/Navigation geht beim Live-Ereignis an eine Karte (#stat außerhalb der gesicherten Bereiche); alter Ablauf bestanden; Schleifenbremse erreicht → realist-consultant | 0:14 | — |
+| 2026-11-06 | #18 | Artboard-Freigabe #18 | gestalter | bestanden: D0002 Komma vor Σ, D0003 Silbentrennung Zeilenkopf, Index-Nachtrag | 0:03 | c06f7e4 |
