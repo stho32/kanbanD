@@ -189,6 +189,7 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
     await filterOeffnen(page);
     await expect(page.locator('.bf-fuss .bf-leeren')).toHaveAttribute('data-arg', 'wieLangeNoch');
+    await expect(page.locator('.bf-fuss .bf-leeren'), 'Nacharbeit S7: der Tooltip sagt, was bleibt').toHaveAttribute('title', 'die gezählten Filter aufheben — Messbasis und Rechnen ab bleiben');
     await page.locator('.bf-fuss .bf-leeren').click();
     await expect(page.locator('.bf-zusammen')).toContainText('Filter · keine');
     await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
