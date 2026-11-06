@@ -443,7 +443,9 @@ function render() {
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
   const sicht = `${S.ui.view}/${S.ui.slug || ''}/${S.ui.setup ? 'setup' : ''}`;
   // Das fokussierte Element übersteht es ebenso: der Fokus, bei Eingabefeldern auch Cursor und — nur wenn getippt wurde — der Wert.
-  const bereiche = [$('#kopf')];
+  // Jeder Bereich der Seite zählt (Kopf, Statuszeile, künftige); nur Haupt und Fenster hinter ihren Wächtern —
+  // nach einem Sichtwechsel träfe derselbe Schlüssel ein anderes Element.
+  const bereiche = [...$('#app').children].filter(bereich => bereich.id !== 'main');
   if ($('#main').dataset.sicht === sicht) bereiche.push($('#main'));
   if ($('#over').dataset.offen === String(S.ui.offen || '')) bereiche.push($('#over'));
   const rollen = bereiche.flatMap(bereich => rollstaende(bereich));
