@@ -96,7 +96,6 @@ const PAARE = [
 /** Bubble, die ein heute verfehltes Paar herstellt; bis dahin läuft die Prüfung als todo (erwartet rot). */
 const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
 const AUSSTEHEND = {
-  'Linien Diagramm': 'B0396',
   'Modusleiste': MODUS, 'Linie Abschluss Modusleiste': MODUS, 'Linie Fokusring Modusleiste': MODUS,
 };
 
@@ -228,7 +227,7 @@ test('Selbstprobe Dunkelblock: ein nur im @media-Block geänderter Wert und ein 
 
 /* ── Literale ── */
 
-test('Literale: kein Farbwert außerhalb von kd-tokens.css in kd-app.css, kd-base.css und web/*.js', { todo: 'B0391, B0394, B0396, B0397' }, () => {
+test('Literale: kein Farbwert außerhalb von kd-tokens.css in kd-app.css, kd-base.css und web/*.js', { todo: 'B0397' }, () => {
   const funde = gepruefteDateien().flatMap(datei => literaleOhneAusstehende(datei, lies(datei)));
   assert.deepStrictEqual(funde, []);
 });

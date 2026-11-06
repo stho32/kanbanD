@@ -41,6 +41,9 @@ color-scheme:light;
 --kd-spalte-anteil:100%;--kd-klasse-anteil:14%;
 --kd-row:28px;--kd-head-h:40px;
 --kd-shadow:0 2px 8px oklch(0.24 0.02 255 / .14);
+--kd-shadow-mod:0 12px 40px oklch(0.24 0.02 255 / .35);--kd-scrim:oklch(0.24 0.02 255 / .45);
+/* Diagrammlinien „Wie lange noch“: Linie mit Zustand, ≥ 3:1 auf --kd-surface */
+--kd-wl-1:oklch(0.575 0.163 256);--kd-wl-2:oklch(0.62 0.175 41);--kd-wl-3:oklch(0.6 0.141 162);
 }
 /* Dark-Mode (R00070): folgt dem System, solange keine Wahl gesetzt ist; data-theme am Wurzelelement erzwingt. */
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -71,6 +74,8 @@ color-scheme:dark;
 --kd-c-grey:oklch(0.3 0.006 250);--kd-c-grey-line:oklch(0.66 0.012 250);
 --kd-wbs-ok-ink:oklch(0.86 0.1 150);--kd-wbs-warn-ink:oklch(0.87 0.11 75);--kd-wbs-error-ink:oklch(0.84 0.1 27);--kd-wbs-neutral-ink:oklch(0.84 0.012 250);
 --kd-shadow:0 2px 8px oklch(0 0 0 / .5);
+--kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6);--kd-scrim:oklch(0 0 0 / .55);
+--kd-wl-1:oklch(0.68 0.15 256);--kd-wl-2:oklch(0.671 0.175 41);--kd-wl-3:oklch(0.669 0.141 162);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
 }}
 :root[data-theme="dark"]{
@@ -101,5 +106,7 @@ color-scheme:dark;
 --kd-c-grey:oklch(0.3 0.006 250);--kd-c-grey-line:oklch(0.66 0.012 250);
 --kd-wbs-ok-ink:oklch(0.86 0.1 150);--kd-wbs-warn-ink:oklch(0.87 0.11 75);--kd-wbs-error-ink:oklch(0.84 0.1 27);--kd-wbs-neutral-ink:oklch(0.84 0.012 250);
 --kd-shadow:0 2px 8px oklch(0 0 0 / .5);
+--kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6);--kd-scrim:oklch(0 0 0 / .55);
+--kd-wl-1:oklch(0.68 0.15 256);--kd-wl-2:oklch(0.671 0.175 41);--kd-wl-3:oklch(0.669 0.141 162);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
 }
