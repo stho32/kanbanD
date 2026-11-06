@@ -82,3 +82,63 @@ test('US-1: das letzte tabbare Element läuft zum ersten um, das erste rückwär
   expect(await merkmal(), 'vom ersten rückwärts zum letzten').toBe(letztes);
 });
 
+
+test('US-1: Enter auf Karte #1 fokussiert den Dialog selbst; d zeigt sofort „Datei“, im Titelfeld wird d getippt', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  const f = await fokus(page);
+  expect(f.rolle).toBe('dialog');
+  expect(f.dialog).toBe('Aufgabe #1');
+  await page.keyboard.press('d');
+  await expect(page.getByRole('tab', { name: 'Datei' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await perTastaturOeffnen(page, 1);
+  await page.locator('[data-af="titel"]').focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('d');
+  await expect(page.locator('[data-af="titel"]')).toHaveValue('einsd');
+});
+
+test('US-1: Esc → Fokus auf Karte #1, nichts mehr inert', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('1');
+  await expect(page.locator('[inert]')).toHaveCount(0);
+});
+
+test('US-2: ↓ blättert zu #2, Esc → Fokus auf Karte #2', async ({ page }) => {
+  await perTastaturOeffnen(page, 1);
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('2');
+});
+
+test('US-2: aus der Aufgabenliste: Enter auf Zeile #3, Esc → Fokus auf tr[data-zeile="3"]', async ({ page }) => {
+  await page.goto(k.adresse + '#/aufgaben');
+  await page.locator('tr[data-zeile="3"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Aufgabe #3' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  expect((await fokus(page)).zeile).toBe('3');
+});
+
+test('US-3: „Neue Aufgabe“ hält den Fokus im Fenster, Esc gibt ihn dem Auslöser zurück; Leerfall n aus BODY → Fokus im #main', async ({ page }) => {
+  const knopf = page.locator('#kopf [data-act="add"]').first();
+  await knopf.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
+  await tabBleibtIm(page, 'Neue Aufgabe', 'Tab', 12);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement.dataset.act)).toBe('add');
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('n');
+  await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
+  const f = await fokus(page);
+  expect(f.imMain || f.id === 'main', `${f.tag}#${f.id}`).toBe(true);
+});

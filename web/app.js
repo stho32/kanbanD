@@ -450,6 +450,8 @@ function render() {
   // Karten und Zeilen führt die Tastatur über fokusKarte und fokusZeile — dort ist das Ziel ausdrücklich
   const zielGefuehrt = Boolean(aktiv && aktiv.matches && aktiv.matches('.ka[data-id], tr[data-zeile]'));
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
+  // Vor dem Ersetzen merken, solange der Auslöser noch im Dokument hängt
+  const ausloeser = ausloeserSelektor(aktiv);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -470,10 +472,7 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
-  ebenenAbschirmen(ebenen(S.ui));
-  // Ein ausdrückliches Fokusziel geht vor
-  const gehalten = Boolean(fokus) && !S.ui.fokus && fokusSetzen(fokus);
-  if (!gehalten) fokusZurueckgeben();
+  fokusFuehren(aktiv, ausloeser, fokus);
 }
 
 /* Fokusführung über Ebenen (R00106, ADR-0010): die Entscheidungen rechnet web/fokus.js, hier wird nur angewendet. */
@@ -507,11 +506,70 @@ function fallenTaste(ereignis) {
   return true;
 }
 
-/** Fokus nach dem Neuzeichnen, wenn der Sicherer nichts hält: ausdrückliches Ziel, sonst Karte im Board oder Zeile in der Aufgabenliste. */
-function fokusZurueckgeben() {
-  if (S.ui.fokus) { const f = $(S.ui.fokus); S.ui.fokus = null; if (f) f.focus(); }
-  else if (S.ui.fokusKarte && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'board') { const k = $(`.ka[data-id="${S.ui.fokusKarte}"]`); if (k) k.focus(); }
-  else if (S.ui.fokusZeile && !S.ui.offen && !S.ui.hilfe && !S.ui.zuweisen && S.ui.view === 'aufgaben') { const z = $(`tr[data-zeile="${S.ui.fokusZeile}"]`); if (z) z.focus(); }
+/** Die Ebenen des letzten Neuzeichnens und je Ebene der Auslöser, der sie geöffnet hat. */
+let vorigeEbenen = [];
+const gemerkteAusloeser = {};
+
+/** Selektor, unter dem sich der Auslöser nach dem Neuzeichnen wiederfindet: Karte, Zeile, sonst der Schlüssel des Sicherers. */
+function ausloeserSelektor(aktiv) {
+  if (!aktiv || aktiv === document.body || !aktiv.isConnected) return null;
+  if (aktiv.matches('.ka[data-id]')) return `.ka[data-id="${aktiv.dataset.id}"]`;
+  if (aktiv.matches('tr[data-zeile]')) return `tr[data-zeile="${aktiv.dataset.zeile}"]`;
+  const stand = fokusstand(aktiv, [document.body]);
+  if (!stand) return null;
+  return stand.schluessel;
+}
+
+/** Nach dem Neuzeichnen: Ebenen abschirmen, dann das erste Fokusziel der Rangfolge aus web/fokus.js setzen. */
+function fokusFuehren(aktiv, ausloeser, gesichert) {
+  const vorher = vorigeEbenen;
+  const arten = liste => liste.map(ebene => ebene.art);
+  const geoeffnet = ebenen(S.ui).filter(ebene => !arten(vorher).includes(ebene.art));
+  for (const ebene of geoeffnet) gemerkteAusloeser[ebene.art] = ausloeser;
+  const geschlossen = vorher.filter(ebene => !arten(ebenen(S.ui)).includes(ebene.art));
+  for (const ebene of geschlossen) delete gemerkteAusloeser[ebene.art];
+  const jetzt = ebenen(S.ui, gemerkteAusloeser);
+  vorigeEbenen = jetzt;
+  ebenenAbschirmen(jetzt);
+  const oberste = jetzt.at(-1) || null;
+  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel() });
+  S.ui.fokus = null;
+  const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste));
+  const verloren = aktiv && aktiv !== document.body;
+  if (!gesetzt && (verloren || geschlossen.length) && !imDokumentFokussiert()) ersterTabbarer(oberste);
+}
+
+/** Karte im Board bzw. Zeile in der Aufgabenliste, die die Tastatur zuletzt geführt hat. */
+function fuehrungsziel() {
+  if (S.ui.view === 'board' && S.ui.fokusKarte) return `.ka[data-id="${S.ui.fokusKarte}"]`;
+  if (S.ui.view === 'aufgaben' && S.ui.fokusZeile) return `tr[data-zeile="${S.ui.fokusZeile}"]`;
+  return null;
+}
+
+/** Ein Ziel setzen; der Sicherer zählt nur, wenn sein Element in der obersten Ebene liegt. Wahr, wenn der Fokus sitzt. */
+function fokusVersuchen(ziel, gesichert, oberste) {
+  if (ziel === GESICHERT) return fokusSetzen(gesichert) && liegtIn(document.activeElement, oberste);
+  const element = $(ziel);
+  if (!element) return false;
+  element.focus({ preventScroll: ziel === '#fenster' });
+  return document.activeElement === element;
+}
+
+function liegtIn(element, ebene) {
+  if (!ebene) return true;
+  const bereich = $(ebene.selektor);
+  return Boolean(bereich) && bereich.contains(element);
+}
+
+function imDokumentFokussiert() {
+  return document.activeElement && document.activeElement !== document.body;
+}
+
+/** Rückfall: das erste tabbare Element der obersten Ebene, ohne Ebene des Hauptbereichs. */
+function ersterTabbarer(oberste) {
+  const bereich = (oberste && $(oberste.selektor)) || $('#main');
+  const erstes = tabbareIn(bereich)[0];
+  if (erstes) erstes.focus({ preventScroll: true });
 }
 
 function fenstertitel() {
