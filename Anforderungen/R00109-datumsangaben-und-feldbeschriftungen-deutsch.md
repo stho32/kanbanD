@@ -75,8 +75,8 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
 15. Eine Aufgabe ohne Herkunft oder mit der Herkunft `thin air` zeigt auf der Karte und im Aufgabenfenster den Chip „ohne Herkunft“.
 16. Das Herkunftsfeld im Aufgabenfenster nimmt „ohne Herkunft“ und `thin air` an, ohne Rücksicht auf Groß- und Kleinschreibung und mit getrimmten Leerzeichen. Beides speichert `thin air` und ersetzt die übrigen Herkünfte, wie heute `thin air`.
 17. Der sichtbare Hinweis des Felds (Tooltip) nennt „ohne Herkunft“, nicht `thin air`.
-20. **Herkunftsfeld in „Neue Aufgabe“** (PO Z. 147): Ist der ganze Inhalt des Felds, getrimmt und ohne Rücksicht auf Groß- und Kleinschreibung, „ohne Herkunft“ oder `thin air`, entsteht `herkunft: [thin air]`. Erkannt wird mit derselben reinen Funktion des Kulturmoduls wie in FA 16. Bringt der Titel über die Schnelleingabe eine Herkunft mit (etwa „x I0001“ → `I0001`, `web/eingabe.js:42`), gilt nur diese, und `thin air` entfällt, so wie im Aufgabenfenster eine echte Herkunft `thin air` verdrängt (`web/app.js:1149`). Jeder andere Inhalt, auch gemischt wie „I0001 ohne Herkunft“, wird an Leerzeichen und Kommas getrennt wie heute (`web/app.js:336`). Die Schnelleingabe selbst bleibt unverändert (ADR-0013 Regel 1).
-    - Heute trennt das Feld `thin air` in `thin` und `air`; der Server weist die Aufgabe mit „„THIN“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air“ ab und legt nichts an (`src/modell/aufgabe.rs:561–567`, über `aendern` aus `src/dienst/aufgabe_anlegen.rs:134`; gelesen, nicht am Programm geprobt). Es entstehen also keine zwei Herkünfte. Die Meldung des Servers ist Text der API und bleibt nach FA 1 außerhalb dieser Anforderung.
+20. **Herkunftsfeld in „Neue Aufgabe“** (PO Z. 147): Ist der ganze Inhalt des Felds, getrimmt und ohne Rücksicht auf Groß- und Kleinschreibung, „ohne Herkunft“ oder `thin air`, entsteht `origins: [thin air]`. Erkannt wird mit derselben reinen Funktion des Kulturmoduls wie in FA 16. Bringt der Titel über die Schnelleingabe eine Herkunft mit (etwa „x I0001“ → `I0001`, `web/eingabe.js:42`), gilt nur diese, und `thin air` entfällt, so wie im Aufgabenfenster eine echte Herkunft `thin air` verdrängt (`web/app.js:1149`). Jeder andere Inhalt, auch gemischt wie „I0001 ohne Herkunft“, wird an Leerzeichen und Kommas getrennt wie heute (`web/app.js:336`). Die Schnelleingabe selbst bleibt unverändert (ADR-0013 Regel 1).
+    - Heute trennt das Feld `thin air` in `thin` und `air`; der Server weist die Aufgabe mit `„THIN“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air` ab und legt nichts an (`src/modell/aufgabe.rs:561–567`, über `aendern` aus `src/dienst/aufgabe_anlegen.rs:134`; gelesen, nicht am Programm geprobt). Es entstehen also keine zwei Herkünfte. Die Meldung des Servers ist Text der API und bleibt nach FA 1 außerhalb dieser Anforderung.
 
 ### Probe (ADR-0013 Regel 5)
 
@@ -134,12 +134,12 @@ Geprüft mit dem Grundbestand aus `user-stories/R00109.md`.
 - [ ] **9. Abnahme der Karte**:
   - `node --test e2e/einheit/kultur.test.js` ist grün, ebenso `npx playwright test kultur` in `e2e/`.
   - Wird an der Fälligkeit der Karte (`web/ansicht.js`, Funktion der Karte) wieder `esc(a.faellig)` geschrieben, ist `npx playwright test kultur` rot und nennt Ansicht, Element und Text; nach dem Zurücknehmen ist er wieder grün.
-  - Alle bisherigen Unit- und E2E-Tests sind grün, die sechs mitgeänderten (siehe Tests) mit ihren neuen Erwartungen.
-- [ ] **10. Ohne Herkunft in „Neue Aufgabe“** (PO Z. 147, FA 20): Abnahme-Probe wörtlich: „„Neue Aufgabe“ mit Herkunft „  Ohne Herkunft “ → Datei `origins: [thin air]`, Chip „ohne Herkunft“; „THIN AIR“ → dasselbe; „I0001 R00014“ → zwei Herkünfte wie heute; „ohne Herkunft“ mit Titel „x I0001“ → `origins: [I0001]`“.
+  - Alle bisherigen Unit- und E2E-Tests sind grün, die sieben mitgeänderten (siehe Tests) mit ihren neuen Erwartungen.
+- [ ] **10. Ohne Herkunft in „Neue Aufgabe“** (PO Z. 147, FA 20): Abnahme-Probe wörtlich: „‚Neue Aufgabe‘ mit Herkunft ‚  Ohne Herkunft ‘ → Datei `origins: [thin air]`, Chip ‚ohne Herkunft‘; ‚THIN AIR‘ → dasselbe; ‚I0001 R00014‘ → zwei Herkünfte wie heute; ‚ohne Herkunft‘ mit Titel ‚x I0001‘ → `origins: [I0001]`“.
   - Besteht: Titel „neu“, Herkunft „  Ohne Herkunft “ → neue Aufgabe, Datei `origins: [thin air]`, Chip „ohne Herkunft“, auch nach Neuladen.
   - Besteht: Herkunft „THIN AIR“ → dasselbe; Herkunft „I0001 R00014“ → `origins: [I0001, R00014]`; Titel „x I0001“ mit Herkunft „ohne Herkunft“ → Titel „x“, `origins: [I0001]`.
   - Fällt durch (heute): Herkunft „thin air“ oder „ohne Herkunft“ → der Server lehnt ab, es entsteht keine Aufgabe (die Zahl der Aufgaben im Board bleibt gleich).
-  - Fällt durch: Titel „x I0001“ mit Herkunft „ohne Herkunft“ → Ablehnung „„thin air“ steht nur allein“ oder `origins: [thin air, I0001]`.
+  - Fällt durch: Titel „x I0001“ mit Herkunft „ohne Herkunft“ → Ablehnung `„thin air“ steht nur allein` oder `origins: [thin air, I0001]`.
   - Gegenbeispiel, das gleich bleibt: Herkunft „I0001 ohne Herkunft“ wird getrennt wie heute und vom Server abgelehnt; keine Aufgabe entsteht.
   - Prüfebene: Unit (Erkennung des ganzen Feldinhalts und Vereinigung mit der Herkunft aus dem Titel); E2E US-9, Teil „Neue Aufgabe“, mit Zahl der Aufgaben und Dateiinhalt vor und nach dem Anlegen.
 
@@ -197,7 +197,7 @@ I0098: 4 Features, 15 Bubbles, 14,5–29,5 h, ungemessen (Hypothese).
 - Herleitung: Summe der Bubble-Spannen — F0052 5,5–10,5 h (B0426 1,5-2,5, B0427 1-2, B0428 1-2, B0429 1,5-2,5, B0430 0,5-1,5), F0053 4–9,5 h (B0431 0,5-1,5, B0432 1,5-3, B0433 1-2, B0434 1-3), F0054 3,5–6,5 h (B0435 1-2, B0436 1,5-2,5, B0437 1-2), F0055 1,5–3 h (B0438 0,5-1, B0439 0,5-1, B0440 0,5-1).
 - Die Spannen sind ungemessen, nach dem Muster von I0095–I0097.
 - B0434 ist bedingt: Findet die Probe nach B0433 nichts, entfällt sie, und der Umfang sinkt auf 13,5–26,5 h.
-- Gezählte Eingänge (Stand f74a8c1): 14 Datumsstellen in `web/ansicht.js` und 4 Former (`deTag`, `deDatum`, `vollDatum`, `isoD` in `web/berichte.js`), 26 Beschriftungen, die einen Schlüssel zeigen (`grep 'class="k"' web/ansicht.js`), 6 E2E-Dateien mit Erwartungen an sichtbaren ISO-Text. Fenster, Menüs, WBS-Sicht und erster Start sind nicht abgesucht; ihre Zahl ist unbekannt.
+- Gezählte Eingänge (Stand f74a8c1): 14 Datumsstellen in `web/ansicht.js` und 4 Former (`deTag`, `deDatum`, `vollDatum`, `isoD` in `web/berichte.js`), 26 Beschriftungen, die einen Schlüssel zeigen (`grep 'class="k"' web/ansicht.js`), 7 E2E-Dateien mit Erwartungen an sichtbaren ISO-Text (zuerst 6 gezählt, `r00081` fand das Code-Review). Fenster, Menüs, WBS-Sicht und erster Start sind nicht abgesucht; ihre Zahl ist unbekannt.
 - B0440 kam mit PO Z. 147 dazu (0,5–1 h, Spanne aus der Entscheidung).
 
 ### Vorplanung (Bubbles in `Dokumentation/Planung/kanbanD.md`)
@@ -251,7 +251,8 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
   - `r00017-archiv.spec.js:35` — „Archiviert am 2026-10-01“ → „Archiviert am 01.10.2026“;
   - `r00013-kommentare.spec.js:19` — „Claude · 2026-10-17 09:00“ → „Claude · 17.10.2026 09:00“;
   - `r00023-verlauf.spec.js:34` — Tabelle „2026-10-01“ → „01.10.2026“;
-  - `r00078-fieber.spec.js:160–161` — Tabelle `tag()` als ISO → Langform.
+  - `r00078-fieber.spec.js:160–161` — Tabelle `tag()` als ISO → Langform;
+  - `r00081-berichtsfilter-am-board.spec.js:60, :64` — Tabellenansicht Verlauf `tag()` als ISO → Langform (Fund des Code-Reviews).
 - **Unverändert grün**: `r00073-diagramme.spec.js` (Tooltips und Achsen, FA 7) und r00076:73 (schon deutsch), r00090:18 (`data-kennung`, nicht sichtbar), r00035:50 (`assignees` im Reiter „Datei“), r00059 (`wbs-effects-green` ist ein Prüfname), alle Prüfungen von Dateiinhalten, `e2e/einheit/filter.test.js:12, :25` (`origin:"thin air"`), die 17 Tests mit `getByLabel`.
 - Abnahme-Befehle: `node --test e2e/einheit/kultur.test.js` und `npx playwright test kultur`.
 
@@ -263,7 +264,7 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
 
 ## Offene Fragen
 
-1. **Herkunftsfeld in „Neue Aufgabe“** — geschlossen, entschieden durch PO Z. 147: dieselbe Regel wie im Aufgabenfenster, eine Herkunft aus dem Titel verdrängt `thin air`; eingearbeitet als FA 20, AK 10, B0440 und US-9 Teil „Neue Aufgabe“. Richtigstellung zur Frage: heute entstehen nicht zwei Herkünfte, der Server lehnt ab (`src/modell/aufgabe.rs:564–567`).
+1. **Herkunftsfeld in „Neue Aufgabe“** — geschlossen, entschieden durch PO Z. 147: dieselbe Regel wie im Aufgabenfenster, eine Herkunft aus dem Titel verdrängt `thin air`; eingearbeitet als FA 20, AK 10, B0440 und US-9 Teil „Neue Aufgabe“. Richtigstellung zur Frage: Heute entstehen nicht zwei Herkünfte, der Server lehnt ab (`src/modell/aufgabe.rs:564–567`).
 2. **Gestaltung der Beschriftung vor dem Bau** — offen, liegt laut PO Z. 148 beim Auftraggeber (Vorschlag 1: der gestalter zeichnet den Zustand an D0003 und D0001, hell, dunkel und bei 320 px, der Auftraggeber gibt frei; bis dahin warten B0436 und B0437): Beschriftung plus Schlüssel als Mono-Hilfstext ist ein neuer Zustand ohne Artboard. Die Vision verlangt, dass der Mensch jede Gestaltung sieht, bevor sie gebaut wird. Empfehlung: der gestalter zeichnet die Seitenleiste des Aufgabenfensters und „Neue Aufgabe“ an D0003 sowie die Felder des ersten Starts an D0001, bevor B0436 und B0437 bauen; F0052, F0053, F0055 und B0435 hängen nicht daran.
 
 ## Manuelle Vorbereitungstätigkeiten
@@ -284,7 +285,7 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
 ## Notizen
 - **Abnahme der Karte #11**: die Abnahme-Probe steht wörtlich in AK 1.
 - **PO-Entscheidungen**: Z. 144 (Umfang: alle sichtbaren Datumsangaben und Feldbeschriftungen, Probe ohne Ausnahmeliste, Vision vor Wireframe, Bildschirmfotos), Z. 145 („ohne Herkunft“ als Eingabe, Filter unverändert), Z. 146 (Lang- und Kurzform, Jahreswechsel im Unit-Test).
-- **Abnahme-Idee des architekt** übernommen: Probe nach `e2e/tests/ziele.spec.js` mit `e2e/tests/ansichten.js`, Unit-Test `e2e/einheit/kultur.test.js`, jede Regex positiv und negativ, mitgeänderte E2E-Tests im Umfang.
+- **Abnahme-Idee des architekten** übernommen: Probe nach `e2e/tests/ziele.spec.js` mit `e2e/tests/ansichten.js`, Unit-Test `e2e/einheit/kultur.test.js`, jede Regex positiv und negativ, mitgeänderte E2E-Tests im Umfang.
 - **Entscheidungen des planers**:
   - Elterndialog D0003: zwei der drei Teile der Abnahme-Probe, das Herkunftsfeld, `FELDER` und die Tabellen Durchläufe und Zeiten liegen im Aufgabenfenster und in „Neue Aufgabe“; auf dem Board liegt nur die Fälligkeit.
   - Vier Features: Datum auf Karte und Fenster, Datum in Personen und Berichten, Beschriftungen, „ohne Herkunft“ — je von außen prüfbar, nach dem Modul parallel baubar; eine Anforderung, eine Karte (PO Z. 144).
@@ -307,3 +308,5 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
   - Keine Bubble neu, Umfang unverändert.
 - **PO Z. 147–148 eingearbeitet 2026-11-06**: FA 20, AK 10, B0440 „Eingabe ‚ohne Herkunft‘ in ‚Neue Aufgabe‘“ (0,5–1 h, braucht B0426), US-9 Teil „Neue Aufgabe“, Unit-Fälle; Umfang 15 Bubbles, 14,5–29,5 h; Offene Frage 1 geschlossen und richtiggestellt (Server lehnt ab, gelesen in `src/modell/aufgabe.rs:561–571` und `src/dienst/aufgabe_anlegen.rs:134`); Offene Frage 2 wartet auf Z. 148.
 - **PO Z. 149 eingearbeitet 2026-11-06** (Rückfrage des entwicklers, Option 1): Das Gegenbeispiel „ohne Herkunftx“ in AK 6 und US-9 erwartete `origins: [I0001, R00014, ohne Herkunftx]`, das der Server nach R00018 nie annimmt (Sachfehler beim Schreiben). Jetzt: nicht als „ohne Herkunft“ erkannt, vom Server mit sichtbarer Meldung abgelehnt, Datei bleibt `origins: [I0001, R00014]`; Ehrlichkeit je Szene „drei Einträge in der Anfrage, zwei in der Datei“. Der `test.fail` mit dem alten Wortlaut wird gelöscht, nicht grün umgedeutet. Freie Herkünfte (Option 2) verworfen. WBS unverändert.
+- **Textfunde Rechtschreib-Review #11 eingearbeitet 2026-11-07** (dazu ein Fund des Code-Reviews): Servermeldungen als Code (FA 20, AK 10), halbe Anführungszeichen in der Abnahme-Probe von AK 10, `origins:` statt `herkunft:` in FA 20, Großschreibung nach Doppelpunkt, „des architekten“; `r00081-berichtsfilter-am-board.spec.js` in die Liste der mitgeänderten Tests, AK 9 nennt jetzt sieben. Der Wortlaut in `AI-Team/po-entscheidungen.md` bleibt, das Protokoll ändert sich nicht.
+- **Nummernfolge der FA**: FA 20 steht zwischen FA 17 und FA 18 im Abschnitt „Ohne Herkunft“. Sie bleibt so, damit die Verweise auf FA 18 und FA 19 (Probe) gültig bleiben.
