@@ -297,3 +297,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Entwicklung | entwickler | bestanden: B0393 Modusleiste (Kontrast ≥ 4,5 beide Themen, Fokusring, 8-%-Zustandsebene), Ansichtenmodul, todo 0; Gate node 255, cargo 554, PW 466; nachgefahren kontrast 29/29; → Auto-Reviews | 0:26 | b185cdf |
 | 2026-11-06 | #10 | Entwicklertest | entwicklertester | bestanden: 7/7 Szenarien, Suite 214/214; Anmerkung Doppeltipp hakt zwei Teilaufgaben ab → Backlog #65 | 0:25 | — |
 | 2026-11-06 | #10 | Auslieferung | director | gemergt 1ce5efd, installiert, Board neu gestartet → Erledigt; Retrospektive: zwei Fortbildungsideen (Folgetreffer, schmale Breiten), Restanmerkungen #62–#65 im Backlog | 0:10 | 1ce5efd |
+| 2026-11-06 | #9 | Auto-Reviews | ux-reviewer | bestanden; Testlücke Linie gegen --kd-sunken (kontrast.spec.js:270); Bestand → Backlog #66–#69 | 0:07 | — |
+| 2026-11-06 | #9 | Auto-Reviews | code-reviewer | befund: Token-Parser verwirft hellen Block bei zweitem :root (mit main 24 fail), Platzhalter Filter im Fokus 2,04, Ansichtenliste nicht aus Router; → Nacharbeit 1 | 0:09 | — |
