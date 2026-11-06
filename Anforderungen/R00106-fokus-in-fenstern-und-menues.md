@@ -100,7 +100,8 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
 - **Live-Ereignis**: Ein Live-Ereignis, das während eines offenen Fensters, Pop-Fensters oder Menüs eintrifft, lässt den Fokus in der obersten offenen Ebene.
 - **Live-Ereignis ohne offene Ebene** (Allquantor): Für jedes fokussierbare Element in `#app` gilt: Steht der Fokus darauf, wenn ein fremdes Live-Ereignis eintrifft, steht er danach auf demselben Element. Das gilt in jeder Ansicht und in jedem Bereich von `#app`, auch in Kopfzeile, Navigation und Statuszeile. Abgenommen wird das über eine Abtastung der ganzen Menge, nicht über ausgewählte Beispiele (Akzeptanzkriterium „Abtastung“).
 - **Ohne offene Ebene** (PO Z. 111): Steht vor einem Neuzeichnen der Fokus auf einem Element, steht er danach auf demselben Element, sofern es noch da ist. Fehlt es, steht er auf der zuletzt geführten Karte bzw. Zeile (`fokusKarte`/`fokusZeile`), sonst auf `BODY`, nie auf einem Eingabefeld oder Bedienelement, das mit dem vorigen nichts zu tun hat.
-  - Das erste tabbare Element (ADR-0010 Rang 6) ist nur Ziel, wenn eine Ebene offen ist. Ohne offene Ebene entfällt dieser Rang.
+  - Das erste tabbare Element (ADR-0010 Rang 6) ist nur Ziel, wenn **nach** dem Neuzeichnen noch eine Ebene offen ist; gesucht wird dann in der obersten offenen Ebene (z. B. Pop geschlossen über offenem Aufgabenfenster → erstes tabbares Element des Fensters). Ohne offene Ebene entfällt dieser Rang. (PO Z. 113)
+  - Wird die letzte Ebene geschlossen und scheitert die Rückgabe an den Auslöser, weil er nicht mehr da ist, gilt dieselbe Kette wie ohne offene Ebene: zuletzt geführte Karte bzw. Zeile, sonst `BODY`, nie das erste tabbare Element der Seite. (PO Z. 113)
   - Karte und Zeile führen nur Board (`fokusKarte`) und Aufgabenliste (`fokusZeile`). In den übrigen Ansichten, etwa Einrichten und Personen, ist das Ziel für ein entferntes Element deshalb `BODY`.
 
 ## Nicht-funktionale Anforderungen
@@ -228,6 +229,10 @@ Zusätzlich zum Grundbestand: der Mensch „Anna“ (AN) wie im Abschnitt „Ich
   - Gegenbeispiel: Der Fokus steht danach auf keinem Radio der Gruppe „Personen“ und in keinem Eingabefeld.
 - [ ] Gegeben ein laufender Timer von Anna auf #1, das Board mit Fokus per ↓ von Karte #1 auf Karte #2 geführt und danach der Fokus auf `#t-lauf` gesetzt, wenn über die API als AN der Timer gestoppt wird, dann ist `#t-lauf` nach dem Live-Ereignis (≤ 1 s) fort, und der Fokus steht auf Karte #2.
   - Leerfall: Gegeben dasselbe auf einem frisch geladenen Board ohne geführte Karte, dann ist `document.activeElement` `BODY`, nicht das Filterfeld und nicht das Radio „alle“.
+- [ ] Letzte Ebene geschlossen, Auslöser fort (PO Z. 113): Gegeben ein laufender Timer von Anna auf #1 und die Seite Personen, wenn der Link „#1“ in Annas Zeile mit Enter das Aufgabenfenster #1 öffnet, danach über die API als AN der Timer gestoppt wird (der Link „#1“ ist nach dem Live-Ereignis fort) und dann Esc gedrückt wird, dann ist das Fenster zu, und `document.activeElement` ist `BODY`.
+  - Gegenbeispiel: Der Fokus steht danach auf keinem Radio der Gruppe „Personen“, auf keinem Personenlink und in keinem Eingabefeld.
+- [ ] Gegeben ein laufender Timer von Anna auf #1 und Einrichten, wenn `#t-lauf` mit Enter das Pop-Fenster „Läuft gerade“ öffnet, danach über die API als AN der Timer gestoppt wird (`#t-lauf` ist nach dem Live-Ereignis fort) und dann Esc gedrückt wird, dann ist kein Pop-Fenster offen, und `document.activeElement` ist `BODY`, nicht das Feld „Name ST“ und kein anderes Eingabefeld (PO Z. 113).
+- [ ] Gegeben ein laufender Timer von Anna auf #1 und das Board mit Fokus per ↓ von Karte #1 auf Karte #2 geführt, wenn `#t-lauf` mit Enter das Pop-Fenster „Läuft gerade“ öffnet, danach über die API als AN der Timer gestoppt wird und dann Esc gedrückt wird, dann ist kein Pop-Fenster offen, und der Fokus steht auf Karte #2, nicht auf dem Filterfeld und nicht auf dem Radio „alle“ (PO Z. 113).
 
 ### Live-Ereignis während offener Ebene
 - [ ] Gegeben Aufgabenfenster #1 offen mit Fokus auf dem Fenster, wenn über die API als planer der Titel von #3 geändert wird, dann liegt der Fokus nach dem Live-Ereignis (≤ 1 s) im Fenster. 30-mal Tab bleibt danach im Fenster, und Esc gibt den Fokus an Karte #1 zurück.
@@ -335,7 +340,8 @@ Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
 - 30× Tab und 30× Umschalt+Tab je Fenster
 - Live-Proben mit Warten auf das Ereignis
 - Abtastung (Kriterium „Abtastung“): ein Test läuft über 5 Ansichten × 2 Breiten, sammelt je Paar die Tab-Folge, setzt den Fokus auf jedes Element, löst je Element ein Live-Ereignis aus und meldet „gehalten n von n“; rot ist jedes verlorene Element mit Ansicht, Breite, Index und Name. Ein Befund an einem Element heißt: Raster erweitern, nicht ein Einzelbeispiel ergänzen
-- Rückfall ohne offene Ebene auf Einrichten, Personen und Board je mit Gegenbeispiel (kein Eingabefeld, kein fremdes Radio)
+- Rückfall ohne offene Ebene auf Einrichten, Personen und Board je mit Gegenbeispiel (kein Eingabefeld, kein fremdes Radio), auch nach dem Schließen der letzten Ebene mit live entferntem Auslöser (PO Z. 113)
+- `fokusZiel` mit gerade geschlossener letzter Ebene und fehlendem Auslöser → geführte Karte bzw. Zeile, sonst kein Ziel (`BODY`); mit noch offenem Fenster unter einem geschlossenen Pop → erstes tabbares Element des Fensters
 
 ## Abhängigkeiten
 - Abhängig von:
@@ -360,6 +366,7 @@ Nach Skill `test-pyramide`; jede User-Story-Szene wird ein Test.
 - **Rückfall ohne offene Ebene** (Z. 101 alt „nie auf `BODY`“): entschieden vom PO am 2026-11-06 (`AI-Team/po-entscheidungen.md` Z. 111, Commit 5783b4a), neuer Wortlaut wie vom realist-consultant vorgeschlagen.
   - Anlass: Der Rückfall auf das erste tabbare Element setzte den Fokus auf Einrichten in das Feld „Name“ und auf Personen auf ein Radio einer anderen Gruppe (Messung realist-consultant).
   - Eingearbeitet in „Fokus nach Aktionen“ (Wortlaut der PO-Entscheidung) und in die Kriterien „Ohne offene Ebene“. Die Fassung der Invariante in ADR-0010 (Z. 91, Rang 6) gehört dem architekt.
+- **Rang 6 nach dem Schließen der letzten Ebene** (Nachfrage Director, PO Z. 113, Commit 98ed11a): Rang 6 gilt nur, wenn nach dem Neuzeichnen noch eine Ebene offen ist. Scheitert beim Schließen der letzten Ebene die Rückgabe an den Auslöser, gilt die Kette ohne Ebene. Eingearbeitet in „Fokus nach Aktionen“ und drei Kriterien „Letzte Ebene geschlossen“ (Personen, Einrichten, Board).
 - **Live-Ereignis als Allquantor** (Beratung realist-consultant, Karte #8, 2026-11-06): Der Satz „Ein Live-Ereignis ändert an alledem nichts“ ist jetzt ein Kriterium über die ganze Menge der fokussierbaren Elemente, abgenommen über eine Abtastung von 5 Ansichten × 2 Breiten statt über Beispiele.
 - **Hilfe und Zuweisen über dem Fenster** (ADR-0010, Folgeentscheidung): Sie bleiben gestapelt wie heute. Die Fokusführung trägt auch ein Schließen des Fensters; das wäre eine Verhaltensänderung, die hier nicht verlangt ist.
 
@@ -403,4 +410,5 @@ Der Hebel ist die eine Stelle am Ende von `render()`: Einzelne `.focus()`-Aufruf
   - je Feature eine Anforderung — die vier Slices teilen den Kleber und die Invariante, und die Karte hat eine Abnahme
   - Schnitt nach Schichten (erst Modul, dann Oberfläche) — nicht von außen prüfbar
 - **Einarbeitung PO Z. 111 und Beratung realist-consultant** (2026-11-06): Funktionale Anforderung „Ohne offene Ebene“ ersetzt durch den Wortlaut der PO-Entscheidung, „Live-Ereignis ohne offene Ebene“ als Allquantor neu, Beschreibung geschärft; neue Kriteriengruppe „Ohne offene Ebene“ mit Abtastung und Proben für Einrichten, Personen und Board; 52 → 58 Akzeptanzkriterien (6 neu, keines gestrichen); US-11 und US-12 neu. Die WBS I0095 ist dabei nicht geändert.
+- **Einarbeitung PO Z. 113** (2026-11-06): Rang 6 nur bei nach dem Neuzeichnen offener Ebene, Kette ohne Ebene nach dem Schließen der letzten Ebene mit fehlendem Auslöser; „Fokus nach Aktionen“ um einen Punkt präzisiert und einen ergänzt; 58 → 61 Akzeptanzkriterien (3 neu, keines geändert); US-12 ergänzt.
 - **Detailplanung:** WBS I0095 (F0044–F0047, B0377–B0389), 2026-11-06.
