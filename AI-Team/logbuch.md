@@ -244,3 +244,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Auto-Reviews Runde 2 | code-reviewer | bestanden, keine Befunde; Strich in R00100 (planer) und D0006 (gestalter) angeglichen | 0:10 | 1165731, 1d4b51c |
 | 2026-11-06 | #6 | Entwicklertest | entwicklertester | bestanden: US-1..8, zu wenige Präfixe, Live, hell/dunkel, 375/320 px, Tastatur; keine Befunde; Anmerkung Farbfeld „ohne Klasse“ → #51 | 0:10 | — |
 | 2026-11-06 | — | Befundkarten | director | #51 Farbfeld ohne Klasse, #52 Wackler, #53 Fever-Einzahl, #54 Esc im Titelfeld, #55 Härtung | 0:05 | — |
+| 2026-11-06 | #6 | Auslieferung | director | cargo install, Board neu (PID 4030146), /web/ansicht.js mit neuem Stand geprüft; Zug nach Erledigt erfolgte versehentlich vor der Auslieferung | 0:08 | — |
+| 2026-11-06 | #6 | Retrospektive | director | Projektlehre `.leer`; 3 Vorschläge an die Factory (Auslieferung vor Zug, Leseliste abgleichen, grep-Probe); 3 Fortbildungsideen | 0:05 | — |
