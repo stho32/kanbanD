@@ -271,7 +271,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .best-tab tbody tr:hover td.k{background:var(--c)}
 .best-leg{position:static;height:auto;min-height:28px;flex-wrap:wrap;border-top:1px solid var(--kd-line);gap:var(--kd-s3)}
 .best-le{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 var(--kd-s2);white-space:nowrap}
-.best-tab a.bz{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
+.best-tab a.bz{display:inline-flex;align-items:center;justify-content:flex-end;min-width:24px;min-height:24px;padding:0 4px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
+.best-tab a.bz:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+@media (pointer:coarse){.best-tab a.bz{min-width:44px;min-height:44px}}
 .best-erkl{margin:0;padding:var(--kd-s2) var(--kd-s6);color:var(--kd-muted);font-size:12px}
 .best-achsen{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s2) var(--kd-s4);padding:var(--kd-s2) var(--kd-s6);border-bottom:1px solid var(--kd-line);font-size:12px;color:var(--kd-muted)}
 .best-feld{display:inline-flex;align-items:center;gap:6px}

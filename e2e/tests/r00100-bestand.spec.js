@@ -350,6 +350,40 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(page.locator('#flt')).toHaveValue('');
   });
 
+  test('US-7: nur Tab ab „Spalten“ — nach „⇄ Achsen tauschen“ genau lager × 304, shop × 304, shop × 305 mit Fokusring, dann aus der Tabelle; zurück und Enter öffnet das Board', async ({ page }) => {
+    await bericht(page, grundbestand());
+    await feld(page, 'Spalten').focus();
+    const fokus = () => page.evaluate(() => { const e = document.activeElement, s = getComputedStyle(e); return { name: e.getAttribute('aria-label') || e.textContent.trim(), inTabelle: !!e.closest('table'), ring: s.outlineStyle !== 'none' && s.outlineWidth !== '0px' || s.boxShadow !== 'none', breite: e.getBoundingClientRect().width, hoehe: e.getBoundingClientRect().height }; });
+    const weg = [];
+    for (let i = 0; i < 5; i++) { await page.keyboard.press('Tab'); weg.push(await fokus()); }
+    expect(weg[0].name).toBe('⇄ Achsen tauschen');
+    expect(weg.slice(1, 4).map(f => f.name.split(':').slice(0, 3).join(':'))).toEqual(['repo:lager × nc:304', 'repo:shop × nc:304', 'repo:shop × nc:305']);
+    for (const f of weg.slice(1, 4)) {
+      expect(f.inTabelle && f.ring, f.name).toBe(true);
+      expect(f.breite, f.name).toBeGreaterThanOrEqual(24);
+      expect(f.hoehe, f.name).toBeGreaterThanOrEqual(24);
+    }
+    expect(weg[4].inTabelle).toBe(false);
+    await expect(tabelle(page).locator('a.bz:focus-visible')).toHaveCount(0);
+    await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Shift+Tab');
+    expect((await fokus()).name).toMatch(/^repo:shop × nc:304: /);
+    await expect(tabelle(page).locator('a.bz:focus-visible')).toHaveCSS('outline-style', 'solid');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/board\/fabrik$/);
+    await expect(page.locator('#flt')).toHaveValue('label:repo:shop label:nc:304');
+  });
+
+  test('Zielgröße bei Touch (pointer: coarse, 375 px): jede klickbare Zahl mindestens 44 px hoch', async ({ browser }) => {
+    const ctx = await browser.newContext({ hasTouch: true, viewport: { width: 375, height: 800 } }), page = await ctx.newPage();
+    try {
+      expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+      await bericht(page, grundbestand());
+      const hoehen = await tabelle(page).locator('a.bz').evaluateAll(e => e.map(x => x.getBoundingClientRect().height));
+      expect(hoehen).toHaveLength(3);
+      for (const h of hoehen) expect(h).toBeGreaterThanOrEqual(44);
+    } finally { await ctx.close(); }
+  });
+
   for (const breite of [320, 375, 414]) {
     test(`Schmales Layout ${breite} px: nur der Tabellenbereich scrollt quer, „shop“ und „409“ bleiben am Ende sichtbar`, async ({ page }) => {
       await page.setViewportSize({ width: breite, height: 800 });
