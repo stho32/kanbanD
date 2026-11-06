@@ -1,7 +1,7 @@
 // R00100 Bestand nach Labels: reine Rechnung in web/berichte.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName } = require('../../web/berichte.js');
+const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl } = require('../../web/berichte.js');
 
 const aufgabe = (nummer, labels, klasse = '', mehr = {}) => ({ nummer, titel: `A${nummer}`, klasse, labels, zustaendige: [], archiviert: false, ...mehr });
 const boardMit = (eingang, fertig = []) => ({ slug: 'fabrik', spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'Fertig', aufgaben: fertig }] });
@@ -180,4 +180,22 @@ test('B0357 Name mit einer Klasse, die es unter classes nicht mehr gibt: mit ihr
   const zelle = { zahl: 3, jeKlasse: { '': 1, alt: 1, eol: 1 } };
   const ort = { zeile: { wert: 'shop', ohne: false }, spalte: { wert: '304', ohne: false }, zelle };
   assert.strictEqual(zellName(ort, ACHSEN, KLASSEN_MIT_NAMEN), 'repo:shop × nc:304: 3 offen — EOL 1 · alt 1 · ohne Klasse 1 · ohne Abschlussspalte, ohne Filter der Berichte');
+});
+
+test('B0361 Achsen nach Wahl: belegter Präfix im anderen Feld tauscht, neuer ersetzt, gleiche Einstellung → null', () => {
+  const jetzt = { zeilen: 'repo', spalten: 'nc' };
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'spalten', 'repo'), { zeilen: 'nc', spalten: 'repo' });
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'zeilen', 'nc'), { zeilen: 'nc', spalten: 'repo' });
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'tauschen'), { zeilen: 'nc', spalten: 'repo' });
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'spalten', 'team'), { zeilen: 'repo', spalten: 'team' });
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'zeilen', 'team'), { zeilen: 'team', spalten: 'nc' });
+  assert.deepStrictEqual(jetzt, { zeilen: 'repo', spalten: 'nc' }, 'die alte Einstellung bleibt unverändert');
+});
+
+test('B0361 Achsen nach Wahl ohne Groß/Klein: NC ist nc, Repo im anderen Feld tauscht', () => {
+  const jetzt = { zeilen: 'repo', spalten: 'nc' };
+  assert.strictEqual(achsenNachWahl(jetzt, 'spalten', 'nc'), null);
+  assert.strictEqual(achsenNachWahl(jetzt, 'spalten', 'NC'), null);
+  assert.strictEqual(achsenNachWahl(jetzt, 'zeilen', 'REPO'), null);
+  assert.deepStrictEqual(achsenNachWahl(jetzt, 'spalten', 'Repo'), { zeilen: 'nc', spalten: 'repo' });
 });

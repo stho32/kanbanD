@@ -581,5 +581,18 @@
     return `${kopf}: ${zelle.zahl} offen — ${[...klassenTeile(zelle.jeKlasse, klassen), schluss].join(' · ')}`;
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName });
+  const gleicherPraefix = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+  /** Neue Achsen nach einer Wahl im Feld „zeilen“ oder „spalten“ oder nach „tauschen“: steht der gewählte Präfix
+      im anderen Feld, tauschen beide; ändert die Wahl nichts, null (kein PUT). Präfixe ohne Groß/Klein. */
+  function achsenNachWahl(einstellung, feld, praefix) {
+    const getauscht = { zeilen: einstellung.spalten, spalten: einstellung.zeilen };
+    if (feld === 'tauschen') return getauscht;
+    const anderes = { zeilen: 'spalten', spalten: 'zeilen' }[feld];
+    if (gleicherPraefix(praefix, einstellung[feld])) return null;
+    if (gleicherPraefix(praefix, einstellung[anderes])) return getauscht;
+    return { ...einstellung, [feld]: praefix };
+  }
+
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl });
 })(typeof module !== 'undefined' ? module.exports : window);
