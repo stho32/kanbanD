@@ -181,3 +181,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Detailplanung | planer (frisch) | bestanden: R00105, I0093/I0094, 12 Bubbles (8 frei), 10–20 h Hypothese; UX-Vorprüfung beauftragt | 0:09 | 0117956 |
 | 2026-11-06 | #18 | Detailplanung | ux-reviewer (frisch) | befund: Vorprüfung R00105 — 2 Muss (tablist, Umfangstext bei Filter), 9 Sollte, 3 Kann; Planer-Fragen a–c bestätigt; PO beauftragt | 0:12 | — |
 | 2026-11-06 | #18 | Detailplanung | product-owner (frisch) | bestanden: Z. 85–102, 12 Punkte als Muss in R00105, 3 Kann abgelehnt, nichts an den Auftraggeber; planer zum Einarbeiten | 0:06 | 85022d9 |
+| 2026-11-06 | #18 | Detailplanung | planer (frisch) | bestanden: PO Z. 85–102 eingearbeitet, 75 Kriterien, US-1..US-18, 14 Bubbles (10 frei); Zug in Entwicklung | 0:08 | 0914902 |
