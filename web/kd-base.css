@@ -19,6 +19,7 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
 .btn-sym:hover{background:var(--kd-sunken);color:var(--kd-text);border-color:var(--kd-line)}
 .inp{height:var(--kd-row);border:1px solid var(--kd-line-strong);background:var(--kd-surface);font:inherit;padding:0 var(--kd-s3);color:var(--kd-text)}
 .inp:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
+::placeholder{color:var(--kd-muted);opacity:1}
 .seg{display:inline-flex;border:1px solid var(--kd-line-strong)}
 .seg span{height:26px;display:flex;align-items:center;padding:0 var(--kd-s3);cursor:pointer;background:var(--kd-surface)}
 .seg span+span{border-left:1px solid var(--kd-line-strong)}

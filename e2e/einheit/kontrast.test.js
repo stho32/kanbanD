@@ -84,7 +84,7 @@ const PAARE = [
   { name: 'Füllung Akzent', flaechen: kd(['accent']), vorne: kd(['on-accent']), mass: SCHRIFT },
   { name: 'Füllung Mensch', flaechen: kd(['mensch']), vorne: kd(['on-mensch']), mass: SCHRIFT },
   { name: 'Füllung Agent', flaechen: kd(['agent']), vorne: kd(['on-agent']), mass: SCHRIFT },
-  { name: 'Kopf', flaechen: kd(['head']), vorne: kd(['head-text', 'head-muted', 'head-link']), mass: SCHRIFT },
+  { name: 'Kopf', flaechen: kd(['head', 'head-line']), vorne: kd(['head-text', 'head-muted', 'head-link']), mass: SCHRIFT },
   { name: 'Modusleiste', flaechen: kd(['modus']), vorne: kd(['modus-text', 'muted', 'warn']), mass: SCHRIFT },
   { name: 'Klassengründe', flaechen: kd(KLASSEN.map(farbe => `c-${farbe}`)), vorne: kd(['text', 'muted', 'warn']), mass: SCHRIFT },
   ...AMPEL.map(status => ({ name: `WBS-Ampel ${status}`, flaechen: kd([`wbs-${status}-bg`]), vorne: kd([`wbs-${status}-ink`, 'text']), mass: SCHRIFT })),

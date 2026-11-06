@@ -1,6 +1,6 @@
 // R00097 F0015 Eigentümer in der Oberfläche
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, ausMehr, kontrastFarben } = require('./hilfen');
 
 const MENSCH = 'Spalte gehört dem Menschen — Agenten können Karten hineinlegen, aber nicht herausnehmen';
 const AGENT = 'Spalte gehört den Agenten — kennzeichnet nur, sperrt nichts';
@@ -95,16 +95,13 @@ test.describe('R00097', () => {
     expect(await zeichen('Eingang').evaluate(e => [e.tabIndex, e.hasAttribute('tabindex')])).toEqual([-1, false]);
     expect(await zeichen('Eingang').boundingBox()).toMatchObject({ width: 14, height: 14 });
     // Kontrast gegen den Kopf (--kd-sunken) und den Kopf über der Grenze, in beiden Themen
-    const kontrast = () => page.evaluate(() => {
-      const rgb = farbe => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = farbe; c.fillRect(0, 0, 1, 1); return [...c.getImageData(0, 0, 1, 1).data].slice(0, 3); };
-      const hell = f => { const l = rgb(f).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2]; };
-      const verh = (a, b) => { const [x, y] = [hell(a), hell(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-      const farbe = sel => getComputedStyle(document.querySelector(sel)).color;
-      const sunken = getComputedStyle(document.documentElement).getPropertyValue('--kd-sunken');
-      const ueber = getComputedStyle(document.querySelector('.bahn[data-col="Eingang"] .bahn-kopf.ueber')).backgroundColor;
-      const m = farbe('.bahn[data-col="Eingang"] .bahn-kopf [role="img"]'), a = farbe('.bahn[data-col="In Arbeit"] .bahn-kopf [role="img"]');
-      return Math.min(verh(m, sunken), verh(m, ueber), verh(a, sunken), verh(a, ueber));
-    });
+    const kontrast = async () => {
+      const sunken = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--kd-sunken'));
+      const ueber = await page.locator('.bahn[data-col="Eingang"] .bahn-kopf.ueber').evaluate(e => getComputedStyle(e).backgroundColor);
+      const farbe = sel => page.locator(sel).evaluate(e => getComputedStyle(e).color);
+      const m = await farbe('.bahn[data-col="Eingang"] .bahn-kopf [role="img"]'), a = await farbe('.bahn[data-col="In Arbeit"] .bahn-kopf [role="img"]');
+      return Math.min(await kontrastFarben(page, m, sunken), await kontrastFarben(page, m, ueber), await kontrastFarben(page, a, sunken), await kontrastFarben(page, a, ueber));
+    };
     for (const thema of ['light', 'dark']) {
       await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
       expect(await kontrast(), thema).toBeGreaterThanOrEqual(3);

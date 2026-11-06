@@ -111,4 +111,95 @@ async function ausMehr(page, eintrag) {
   if (await page.locator('#pop[aria-label="Mehr"]').count()) await page.keyboard.press('Escape');
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr };
+/** Setzt das Thema wie ein Nutzer mit Systemvorgabe und Umschalter: Medienabfrage und `data-theme` (R00070). */
+async function thema(page, name) {
+  await page.emulateMedia({ colorScheme: name });
+  await page.evaluate(t => { document.documentElement.dataset.theme = t; }, name);
+}
+
+/*
+ * Kontrast nach WCAG im Browser (R00107, Funktionale Anforderung 17). Der eine Ort, an dem Farben über ein 1×1-Canvas
+ * in sRGB aufgelöst werden: oklch, color-mix und Transparenz rechnet so der Browser selbst. Der Grund eines Elements ist
+ * der Stapel der Hintergründe bis zum ersten deckenden, durchscheinende Schichten und eine durchscheinende Schrift
+ * werden darüber gemalt; ohne deckenden Grund gilt Weiß.
+ */
+function kontrastWerkzeugEinbauen() {
+  if (window.kdKontrast) return;
+  const leinwand = document.createElement('canvas');
+  leinwand.width = leinwand.height = 1;
+  const pinsel = leinwand.getContext('2d', { willReadFrequently: true });
+  const gemalt = schichten => {
+    pinsel.clearRect(0, 0, 1, 1);
+    for (const farbe of schichten) { pinsel.fillStyle = '#000'; pinsel.fillStyle = farbe; pinsel.fillRect(0, 0, 1, 1); }
+    return [...pinsel.getImageData(0, 0, 1, 1).data];
+  };
+  const deckung = farbe => gemalt([farbe])[3];
+  const linear = v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const leuchtdichte = ([r, g, b]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const verhaeltnis = (a, b) => { const [h, d] = [leuchtdichte(a), leuchtdichte(b)].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); };
+  /** Hintergründe von unten nach oben bis zum ersten deckenden über dem Element. */
+  const grundSchichten = e => {
+    const schichten = [];
+    for (let x = e; x; x = x.parentElement) {
+      const farbe = getComputedStyle(x).backgroundColor;
+      const alpha = deckung(farbe);
+      if (alpha === 0) continue;
+      schichten.unshift(farbe);
+      if (alpha === 255) return schichten;
+    }
+    return ['#fff', ...schichten];
+  };
+  const schriftGegenGrund = (e, schrift) => {
+    const grund = grundSchichten(e);
+    return verhaeltnis(gemalt([...grund, schrift]), gemalt(grund));
+  };
+  const eigenerText = e => [...e.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('').trim();
+  const sichtbar = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility === 'visible';
+  const inaktiv = e => e.closest('[aria-disabled="true"], :disabled') !== null;
+  const beschreibung = e => e.localName + (e.id ? '#' + e.id : '') + [...e.classList].map(k => '.' + k).join('');
+  const OHNE_TEXT = ['checkbox', 'radio', 'color', 'range', 'hidden', 'file'];
+  /** Je Element die Schrift, die es zeigt: eigener Text, Wert eines Felds oder sein Platzhalter. */
+  const schriften = e => {
+    const feld = e.matches('input, textarea') && !OHNE_TEXT.includes(e.type);
+    if (feld && !e.value && e.placeholder) return [{ text: e.placeholder, farbe: getComputedStyle(e, '::placeholder').color, art: '::placeholder' }];
+    if (feld && e.value) return [{ text: e.value, farbe: getComputedStyle(e).color, art: '' }];
+    const text = eigenerText(e);
+    return text ? [{ text, farbe: getComputedStyle(e).color, art: '' }] : [];
+  };
+  const messen = bereiche => bereiche.flatMap(bereich => [...document.querySelectorAll(bereich)]
+    .flatMap(wurzel => [wurzel, ...wurzel.querySelectorAll('*')])
+    .filter(e => sichtbar(e) && !inaktiv(e))
+    .flatMap(e => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: Math.round(schriftGegenGrund(e, s.farbe) * 100) / 100 }))));
+  window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])) };
+}
+
+/** Alle Schriften mit eigenem Text unter den Bereichen: [{bereich, element, text, wert}]; Inaktives zählt nicht. */
+async function kontrastMessen(page, bereiche) {
+  await page.evaluate(kontrastWerkzeugEinbauen);
+  return page.evaluate(b => window.kdKontrast.messen(b), bereiche);
+}
+
+/** Die Messungen unter dem Maß — die Probe meldet alle Verstöße auf einmal statt beim ersten abzubrechen. */
+async function kontrastVerstoesse(page, bereiche, mass = 4.5) {
+  return (await kontrastMessen(page, bereiche)).filter(m => m.wert < mass);
+}
+
+/** Kontrast der Schrift eines Elements gegen seinen ersten deckenden Grund. */
+async function kontrastAm(ort) {
+  await ort.page().evaluate(kontrastWerkzeugEinbauen);
+  return ort.evaluate(e => window.kdKontrast.schriftGegenGrund(e, getComputedStyle(e).color));
+}
+
+/** Kontrast zweier CSS-Farben, jede deckend über Weiß gemalt. */
+async function kontrastFarben(page, a, b) {
+  await page.evaluate(kontrastWerkzeugEinbauen);
+  return page.evaluate(([x, y]) => window.kdKontrast.verhaeltnis(x, y), [a, b]);
+}
+
+/** Relative Leuchtdichte nach WCAG einer CSS-Farbe (0 schwarz, 1 weiß). */
+async function leuchtdichte(page, farbe) {
+  await page.evaluate(kontrastWerkzeugEinbauen);
+  return page.evaluate(f => window.kdKontrast.leuchtdichte(f), farbe);
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, leuchtdichte };
