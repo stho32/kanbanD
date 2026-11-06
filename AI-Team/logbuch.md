@@ -242,3 +242,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Auto-Reviews | rechtschreib-reviewer | bestanden: Gedankenstrich Menübeschreibung (→ PO), 3 Kleinigkeiten | 0:02 | — |
 | 2026-11-06 | #6 | Nacharbeit 1 | entwickler | bestanden: Funde 1–8 behoben, 9 begründet (R00100:38 wörtlich); Gate 554/clippy/208/437 passed; nachgefahren 208 Unit, r00100 27/27 | 0:18 | dae43c8..47076cb |
 | 2026-11-06 | #6 | Auto-Reviews Runde 2 | code-reviewer | bestanden, keine Befunde; Strich in R00100 (planer) und D0006 (gestalter) angeglichen | 0:10 | 1165731, 1d4b51c |
+| 2026-11-06 | #6 | Entwicklertest | entwicklertester | bestanden: US-1..8, zu wenige Präfixe, Live, hell/dunkel, 375/320 px, Tastatur; keine Befunde; Anmerkung Farbfeld „ohne Klasse“ → #51 | 0:10 | — |
+| 2026-11-06 | — | Befundkarten | director | #51 Farbfeld ohne Klasse, #52 Wackler, #53 Fever-Einzahl, #54 Esc im Titelfeld, #55 Härtung | 0:05 | — |
