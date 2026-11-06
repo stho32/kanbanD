@@ -390,3 +390,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0415 Der Board-Name bleibt bei Touch 375 lesbar | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0417 Namen sagen, was der Code prüft | Nacharbeit | 0,25-0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0416 Texte zu Karte #10 berichtigt | Nacharbeit | 0,25-0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0418 Leertaste auf dem Text der Teilaufgabe bearbeitet wie bei jedem Knopf | Nacharbeit | 0,25-0,5h | 0,1h | 0,1h | autonom |

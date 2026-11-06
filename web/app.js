@@ -1567,7 +1567,7 @@ document.addEventListener('keydown', e => {
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
-  if (e.key === 'Enter' && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     act(t.dataset.enter, t.dataset.arg, t.value);

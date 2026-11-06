@@ -152,6 +152,17 @@ test.describe('Klickflächen ohne Knopf tragen eine Rolle und gehen mit der Tast
     await expect(page.locator('#teil-edit')).toBeFocused();
   });
 
+  test('Aufgabenfenster #1: Leertaste auf dem Text der Teilaufgabe „b“ öffnet die Bearbeitung wie bei jedem Knopf', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    await expect(page.locator('#teil-edit')).toHaveCount(0);
+    const text = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true });
+    await text.focus();
+    await page.keyboard.press('Space');
+    await expect(page.locator('#teil-edit')).toHaveValue('b');
+    await expect(page.locator('#teil-edit')).toBeFocused();
+  });
+
   test('Einrichten: die Art von Mia ist eine Radiogruppe, Pfeil rechts wählt „Agent“', async ({ page }) => {
     await starten(page);
     await page.goto(k.adresse + '#/einrichten');
