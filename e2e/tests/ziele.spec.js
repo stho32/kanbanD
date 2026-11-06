@@ -298,3 +298,22 @@ test.describe('Messprobe, feiner Zeiger, 1280 px', () => {
   });
 });
 
+// B0404: Touch-Liste im Token aufgelöst — Leisten wachsen mit ihren Zielen, kein festes Touch-Maß mehr.
+test.describe('Touch-Maß aus dem Token, 390 px', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test('Board: Kopfzeile, Spaltenkopf, Signal-Chip, Felder und Knöpfe mindestens 44, die Leisten umschließen sie', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'Board' })).toEqual([]);
+    for (const leiste of ['.kz-reihe', '.bahn-kopf', '.stat']) {
+      expect((await groesse(page.locator(leiste).first()))[1], leiste).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test('Aufgabenfenster #1: Reiter, Felder, Fuß und Löschknöpfe mindestens 44', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'Aufgabenfenster #1' })).toEqual([]);
+  });
+});

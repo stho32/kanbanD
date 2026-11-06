@@ -102,10 +102,6 @@ const TOUCH_LISTE = () => fs.readdirSync(WEB)
   .filter(d => d.endsWith('.css') && d !== TOKENS)
   .flatMap(datei => touchZahlen(lies(datei)).map(fund => `${datei} ${fund}`));
 
-test('Wächter: kein Stylesheet außer kd-tokens.css nennt unter pointer:coarse eine Mindestgröße in Zahlen', { todo: 'Touch-Liste aufgelöst (B0404)' }, () => {
+test('Wächter: kein Stylesheet außer kd-tokens.css nennt unter pointer:coarse eine Mindestgröße in Zahlen', () => {
   assert.deepStrictEqual(TOUCH_LISTE(), []);
-});
-
-test('Alarm: die Touch-Liste besteht noch — fällt dieser Test, ist B0404 erledigt und das todo oben zu entfernen', () => {
-  assert.ok(TOUCH_LISTE().length > 0);
 });

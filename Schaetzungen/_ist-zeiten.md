@@ -378,3 +378,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0402 Basisregel für alle Bedienelemente | Standard | 1,5-3,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0403 Trefferhof für kleine Zeichen | Standard | 2-3,5h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0401 Ansichten mit Fixtures abgehen | Standard | 1,5-3h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0404 Touch-Liste im Token auflösen | Standard | 1-2h | 0,1h | 0,1h | autonom |
