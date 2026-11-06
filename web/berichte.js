@@ -481,5 +481,73 @@
     return { zeilen: praefixListe[0].praefix, spalten: praefixListe[1].praefix };
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag });
+  /** Schlüssel der Achsenposition „(ohne …)“: Aufgaben ohne Label des Präfixes. */
+  const OHNE = Symbol('ohne');
+
+  /** Werte einer Aufgabe zu einem Präfix, beides ohne Groß/Klein: kleingeschrieben → Schreibweise; ohne Wert nur OHNE. */
+  function werteDerAufgabe(a, praefix) {
+    const gesucht = praefix.toLowerCase(), je = new Map();
+    for (const t of a.labels.map(labelTeile).filter(Boolean)) {
+      const schluessel = t.wert.toLowerCase();
+      if (t.praefix.toLowerCase() === gesucht && !je.has(schluessel)) je.set(schluessel, t.wert);
+    }
+    if (!je.size) je.set(OHNE, `(ohne ${praefix})`);
+    return je;
+  }
+
+  /** Eine Achse: die Werte in natürlicher Ordnung in der Schreibweise der ersten Aufgabe (der kleinsten Nummer),
+      dahinter immer „(ohne …)“. */
+  function achse(werteJeAufgabe, praefix) {
+    const je = new Map();
+    for (const [schluessel, wert] of werteJeAufgabe.flatMap(w => [...w])) {
+      if (schluessel !== OHNE && !je.has(schluessel)) je.set(schluessel, wert);
+    }
+    const werte = [...je].sort(([x], [y]) => NATUERLICH.compare(x, y)).map(([schluessel, wert]) => ({ wert, schluessel, ohne: false }));
+    return [...werte, { wert: `(ohne ${praefix})`, schluessel: OHNE, ohne: true }];
+  }
+
+  /** Rang einer Klasse: Reihenfolge unter `classes`, eine unbekannte danach, ohne Klasse (`''`) zuletzt. */
+  function dringlichkeitsRang(klasse, reihenfolge) {
+    if (klasse === '') return reihenfolge.length + 1;
+    const i = reihenfolge.indexOf(klasse);
+    if (i < 0) return reihenfolge.length;
+    return i;
+  }
+
+  /** Die dringendste der Klassen einer Zelle; eine Zelle ohne Aufgaben hat keine (null). */
+  function dringendste(klassenDerZelle, reihenfolge) {
+    let beste = null;
+    for (const k of klassenDerZelle) {
+      if (beste === null || dringlichkeitsRang(k, reihenfolge) < dringlichkeitsRang(beste, reihenfolge)) beste = k;
+    }
+    return beste;
+  }
+
+  /** Eine Zelle aus ihren Aufgaben: Zahl, Nummern, Anzahl je Klasse (`''` = ohne Klasse), dringendste Klasse. */
+  function zelleAus(aufgabenDerZelle, reihenfolge) {
+    const jeKlasse = {};
+    for (const a of aufgabenDerZelle) jeKlasse[a.klasse || ''] = (jeKlasse[a.klasse || ''] || 0) + 1;
+    return { zahl: aufgabenDerZelle.length, nummern: aufgabenDerZelle.map(a => a.nummer), jeKlasse, dringendste: dringendste(Object.keys(jeKlasse), reihenfolge) };
+  }
+
+  const positionen = (werte, achsenwerte) => [...werte.keys()].map(s => achsenwerte.findIndex(x => x.schluessel === s));
+
+  /** Bestand nach Labels: offene Aufgaben je Paar aus Zeilen- und Spaltenwert. Eine Aufgabe mit mehreren Werten
+      zählt in jeder ihrer Zellen; die Summen je Zeile, je Spalte und gesamt zählen jede Aufgabe einmal. */
+  function bestandNachLabels(aufgaben, board, reihenfolge, zeilenpraefix, spaltenpraefix) {
+    const offene = offeneAufgaben(aufgaben, board);
+    const zw = offene.map(a => werteDerAufgabe(a, zeilenpraefix)), sw = offene.map(a => werteDerAufgabe(a, spaltenpraefix));
+    const zeilen = achse(zw, zeilenpraefix), spalten = achse(sw, spaltenpraefix);
+    const sammel = zeilen.map(() => spalten.map(() => []));
+    const summen = { zeilen: zeilen.map(() => 0), spalten: spalten.map(() => 0), gesamt: offene.length };
+    offene.forEach((a, k) => {
+      const zi = positionen(zw[k], zeilen), si = positionen(sw[k], spalten);
+      for (const i of zi) summen.zeilen[i]++;
+      for (const j of si) summen.spalten[j]++;
+      for (const i of zi) for (const j of si) sammel[i][j].push(a);
+    });
+    return { zeilen, spalten, zellen: sammel.map(z => z.map(liste => zelleAus(liste, reihenfolge))), summen };
+  }
+
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste });
 })(typeof module !== 'undefined' ? module.exports : window);
