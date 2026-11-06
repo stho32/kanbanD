@@ -397,10 +397,21 @@ test.describe('R00105 Reiter Kosten', () => {
       await liveBereit(page);
       await vorbereiten(dialog);
       await expect(ziel(dialog)).toBeFocused();
+      const auswahl = () => page.evaluate(() => [document.activeElement.selectionStart, document.activeElement.selectionEnd]);
+      const imTitel = ort === 'Titelfeld';
+      if (imTitel) {
+        await page.keyboard.press('End');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('Shift+ArrowLeft');
+      }
+      const vorher = await auswahl();
+      if (imTitel) expect(vorher, 'Schreibmarke mitten im Titel, ein Zeichen markiert').toEqual([2, 3]);
       expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
       await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei'], { timeout: 1000 });
       await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+      await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
       await expect(ziel(dialog)).toBeFocused();
+      expect(await auswahl(), 'Schreibmarke unverändert').toEqual(vorher);
     });
   }
 
