@@ -434,5 +434,52 @@
     return { art: 'chance', p7: anteilBis(ph.erg7, Math.round((ziel - tag(heute)) / TAG)), p5: anteilBis(ph.erg5, werktageBis(heute, ziel)) };
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag });
+  /* ── Bestand nach Labels (R00100) ── */
+  /** Natürliche Ordnung: Ziffernfolgen als Zahl (304 vor 1000), sonst deutsch ohne Groß/Klein. */
+  const NATUERLICH = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+  const nachNummer = aufgaben => [...aufgaben].sort((x, y) => x.nummer - y.nummer);
+
+  /** Offen heißt: auf dem Board, nicht archiviert und nicht in der letzten Spalte (Abschlussspalte); nach Nummer. */
+  function offeneAufgaben(aufgaben, board) {
+    const offen = new Set(board.spalten.slice(0, -1).flatMap(s => s.aufgaben));
+    return nachNummer(aufgaben.filter(a => offen.has(a.nummer) && !a.archiviert));
+  }
+
+  /** Präfix und Wert eines Labels, getrennt am ersten Doppelpunkt; ohne Doppelpunkt oder mit leerem Präfix null. */
+  function labelTeile(label) {
+    const i = label.indexOf(':');
+    if (i < 1) return null;
+    return { praefix: label.slice(0, i), wert: label.slice(i + 1) };
+  }
+
+  /** Präfixe einer Aufgabe: kleingeschrieben → Schreibweise ihres ersten Labels. */
+  function praefixeDerAufgabe(a) {
+    const je = new Map();
+    for (const t of a.labels.map(labelTeile).filter(Boolean)) {
+      const schluessel = t.praefix.toLowerCase();
+      if (!je.has(schluessel)) je.set(schluessel, t.praefix);
+    }
+    return je;
+  }
+
+  /** Präfixe der offenen Aufgaben mit Häufigkeit (Aufgaben mit mindestens einem Label davon), ohne Groß/Klein
+      zusammengefasst und in der Schreibweise der kleinsten Nummer; häufigster zuerst, bei Gleichstand alphabetisch. */
+  function praefixe(offene) {
+    const je = new Map();
+    for (const a of nachNummer(offene)) {
+      for (const [schluessel, praefix] of praefixeDerAufgabe(a)) {
+        if (!je.has(schluessel)) je.set(schluessel, { praefix, schluessel, anzahl: 0 });
+        je.get(schluessel).anzahl++;
+      }
+    }
+    return [...je.values()].sort((x, y) => y.anzahl - x.anzahl || NATUERLICH.compare(x.schluessel, y.schluessel));
+  }
+
+  /** Ohne gespeicherte Einstellung: die zwei häufigsten Präfixe, der häufigste als Zeilen; unter zwei Präfixen null. */
+  function vorschlag(praefixListe) {
+    if (praefixListe.length < 2) return null;
+    return { zeilen: praefixListe[0].praefix, spalten: praefixListe[1].praefix };
+  }
+
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag });
 })(typeof module !== 'undefined' ? module.exports : window);
