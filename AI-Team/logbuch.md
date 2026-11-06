@@ -155,3 +155,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Nacharbeit | director | Rückzug Auto-Reviews → Nacharbeit (Muss B1 doppelte Nummer → 500), Zweig nacharbeit/48 | — | — |
 | 2026-11-06 | #48 | Nacharbeit | entwickler (entw1) | bestanden: B0344 doppelte Nummer → 400 an der Tür, 5 Sammel-Wege, 519/519, ff b05d4d4 | 0:06 | Typ Nacharbeit |
 | 2026-11-06 | #48 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, enge Wiederholung Code-Review | — | — |
+| 2026-11-06 | #48 | Auto-Reviews | code-reviewer (Wiederholung) | bestanden: B1 geschlossen (Probe gegen eigene Instanz), keine weiteren Wege in die zweite Linie; Härtung A6–A8 | 0:10 | — |
+| 2026-11-06 | #48 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
