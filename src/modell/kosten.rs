@@ -39,6 +39,141 @@ pub enum Wert {
     Spanne { min: u64, max: u64 },
 }
 
+/// Für `GET` (ADR-0009 Entscheidung 5): die Schlüssel der Datei, Geldwerte als JSON-Zahl in Dollar, ohne unbekannte
+/// Schlüssel und ohne abgeleitete Werte (keine Summe, keine Mitte).
+impl serde::Serialize for Kosten {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut m = s.serialize_map(None)?;
+        m.serialize_entry("currency", &self.waehrung)?;
+        match &self.wert {
+            Gesamt::Betrag(c) => wert_eintragen(&mut m, Wert::Betrag(*c))?,
+            Gesamt::Spanne { min, max } => wert_eintragen(
+                &mut m,
+                Wert::Spanne {
+                    min: *min,
+                    max: *max,
+                },
+            )?,
+            Gesamt::Positionen(_) => {}
+        }
+        if let Some(b) = &self.basis {
+            m.serialize_entry("basis", b)?;
+        }
+        if let Gesamt::Positionen(p) = &self.wert {
+            m.serialize_entry("items", p)?;
+        }
+        m.end()
+    }
+}
+
+/// Zurück aus der Form von `GET` nur über den prüfenden Konstruktor — eine ungültige Angabe ist nie ein `Kosten`.
+impl<'de> serde::Deserialize<'de> for Kosten {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Kosten, D::Error> {
+        let v = serde_json::Value::deserialize(d)?;
+        Kosten::aus_anfrage(&v).map_err(serde::de::Error::custom)
+    }
+}
+
+impl serde::Serialize for Position {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut m = s.serialize_map(None)?;
+        m.serialize_entry("text", &self.text)?;
+        wert_eintragen(&mut m, self.wert)?;
+        if let Some(t) = self.tokens {
+            m.serialize_entry("tokens", &t)?;
+        }
+        m.end()
+    }
+}
+
+fn wert_eintragen<M: serde::ser::SerializeMap>(m: &mut M, w: Wert) -> Result<(), M::Error> {
+    match w {
+        Wert::Betrag(c) => m.serialize_entry("amount", &dollar(c)),
+        Wert::Spanne { min, max } => {
+            m.serialize_entry("min", &dollar(min))?;
+            m.serialize_entry("max", &dollar(max))
+        }
+    }
+}
+
+/// Cent → Dollar als nächstgelegene `f64`; die Division ist korrekt gerundet, also dieselbe Zahl, die der Text `1.10` ergibt.
+fn dollar(cent: u64) -> f64 {
+    cent as f64 / 100.0
+}
+
+/// Von Hand, weil `Kosten` keine Felder in der Form der API hat (ADR-0009 Entscheidung 5: eigenes Schema).
+impl utoipa::PartialSchema for Kosten {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        use utoipa::openapi::schema::{ArrayBuilder, ObjectBuilder, Type};
+        let positionen = ArrayBuilder::new()
+            .items(utoipa::openapi::Ref::from_schema_name("Kostenposition"))
+            .min_items(Some(1))
+            .max_items(Some(HOECHSTZAHL_POSITIONEN));
+        ObjectBuilder::new()
+            .description(Some(
+                "Preisetikett: geschätzte API-Kosten. Genau eines von amount, min + max oder items. Geldwerte in Einheiten der Währung, 0 bis 1000000.00, höchstens zwei Nachkommastellen; \
+                 ein unbekannter Schlüssel → 400. Ein Wert ersetzt den ganzen Abschnitt, null entfernt ihn.",
+            ))
+            .property("currency", ObjectBuilder::new().schema_type(Type::String).pattern(Some("^[A-Z]{3}$")).description(Some("ISO-Code, genau drei Großbuchstaben, z. B. USD")))
+            .required("currency")
+            .property("amount", geld("fester Betrag"))
+            .property("min", geld("Untergrenze der Spanne, zusammen mit max"))
+            .property("max", geld("Obergrenze der Spanne, ≥ min"))
+            .property("basis", ObjectBuilder::new().schema_type(Type::String).min_length(Some(1)).description(Some("woher die Schätzung stammt, nicht leer")))
+            .property("items", positionen.description(Some("Positionen; dann weder amount noch min/max — die Summe rechnet die Oberfläche")))
+            .into()
+    }
+}
+
+impl utoipa::ToSchema for Kosten {
+    fn schemas(
+        schemas: &mut Vec<(
+            String,
+            utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>,
+        )>,
+    ) {
+        schemas.push(("Kostenposition".into(), Position::schema()));
+    }
+}
+
+impl Position {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        use utoipa::openapi::schema::{ObjectBuilder, Type};
+        ObjectBuilder::new()
+            .description(Some("Position eines Preisetiketts: amount oder min + max"))
+            .property(
+                "text",
+                ObjectBuilder::new()
+                    .schema_type(Type::String)
+                    .min_length(Some(1)),
+            )
+            .required("text")
+            .property("amount", geld("fester Betrag"))
+            .property("min", geld("Untergrenze"))
+            .property("max", geld("Obergrenze"))
+            .property(
+                "tokens",
+                ObjectBuilder::new()
+                    .schema_type(Type::Integer)
+                    .minimum(Some(0.0))
+                    .description(Some("geschätzte Tokens, ganze Zahl")),
+            )
+            .into()
+    }
+}
+
+fn geld(beschreibung: &str) -> utoipa::openapi::schema::ObjectBuilder {
+    use utoipa::openapi::schema::{ObjectBuilder, Type};
+    ObjectBuilder::new()
+        .schema_type(Type::Number)
+        .minimum(Some(0.0))
+        .maximum(Some(1_000_000.0))
+        .multiple_of(Some(0.01))
+        .description(Some(beschreibung))
+}
+
 /// Die Werte, wie sie in Datei oder Anfrage stehen — Geldwerte schon in Cent, sonst ungeprüft.
 #[derive(Debug, Clone, Default)]
 pub struct Rohkosten {
@@ -957,5 +1092,37 @@ mod tests {
         ] {
             assert_eq!(abgewiesen(json), meldung, "{json}");
         }
+    }
+
+    #[test]
+    fn json_form_im_rundlauf_ohne_unbekannte_schluessel() {
+        let datei: Value = serde_yaml::from_str("currency: USD\nbasis: b\nnote: x\nitems:\n  - {text: a, min: 0.10, max: 0.20, tokens: 12000, z: 1}\n  - {text: c, amount: 1000000.00}\n").unwrap();
+        let k = Kosten::lesen(&datei).unwrap();
+        let json = serde_json::to_value(&k).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"currency": "USD", "basis": "b", "items": [{"text": "a", "min": 0.1, "max": 0.2, "tokens": 12000}, {"text": "c", "amount": 1000000.0}]})
+        );
+        let zurueck: Kosten = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(
+            serde_json::to_value(&zurueck).unwrap(),
+            json,
+            "GET → Kosten → GET gleich"
+        );
+        for c in [0u64, 1, 7, 10, 110, 163, 2555, 99_999_999, HOECHSTWERT_CENT] {
+            let k = Kosten::pruefen(Rohkosten {
+                waehrung: Some("USD".into()),
+                betrag: Some(c),
+                ..Default::default()
+            })
+            .unwrap();
+            let zurueck: Kosten =
+                serde_json::from_str(&serde_json::to_string(&k).unwrap()).unwrap();
+            assert_eq!(zurueck.wert, Gesamt::Betrag(c), "{c} Cent");
+        }
+        assert!(
+            serde_json::from_str::<Kosten>(r#"{"currency":"usd","amount":1}"#).is_err(),
+            "nur über den Konstruktor"
+        );
     }
 }

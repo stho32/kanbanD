@@ -388,8 +388,8 @@ pub struct Aufgabe {
     pub phasen: Phasenangaben,
     #[serde(rename = "reporting")]
     pub zaehlung: Berichtszaehlung,
-    /// `cost` (R00105): Preisetikett, geschätzte API-Kosten
-    #[serde(skip)]
+    /// `cost` (R00105): Preisetikett, geschätzte API-Kosten; null ohne Etikett
+    #[serde(rename = "cost")]
     pub kosten: Option<Kosten>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
@@ -449,6 +449,7 @@ pub struct Aufgabenaenderung {
     pub reporting: Option<Zaehlungsaenderung>,
     /// `cost` (R00105) roh, damit jeder Fehler 400 wird und nie 422; ein Wert ersetzt den Abschnitt, `null` entfernt ihn
     #[serde(default, deserialize_with = "entfernbar")]
+    #[schema(value_type = Option<Kosten>)]
     pub cost: Option<Option<serde_json::Value>>,
     /// Ob `key` mitgeschickt wurde, mit welchem Wert auch immer — der Schlüssel wird nur beim Anlegen gesetzt (R00098).
     #[serde(default, rename = "key", deserialize_with = "mitgeschickt")]
