@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
-const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -576,17 +576,6 @@ for (const breite of [320, 375, 414]) {
 
 // B0425 (PO Z. 138): Die Personentabelle ist ein Zeitstrahl und scrollt bei Touch nur in ihrem benannten Rahmen quer;
 // Leiste, #main und .body nie — ohne und mit breiten Zeitdaten.
-/** Überlauf von Dokument, #main und .body: je [scrollWidth, clientWidth]. */
-const ueberlauf = page => page.evaluate(() => Object.fromEntries([['Seite', document.documentElement], ['#main', document.getElementById('main')], ['.body', document.querySelector('#main .body')]]
-  .map(([ort, el]) => [ort, el.scrollWidth <= el.clientWidth || `${el.scrollWidth} > ${el.clientWidth}`])));
-/** Drückt Tab, bis der Fokus auf dem Element steht, höchstens 60-mal; liefert die Zahl der Schritte oder 0. */
-async function perTabErreicht(page, ziel) {
-  for (let schritt = 1; schritt <= 60; schritt++) {
-    await page.keyboard.press('Tab');
-    if (await ziel.evaluate(el => el === document.activeElement)) return schritt;
-  }
-  return 0;
-}
 for (const breite of [320, 375, 414]) {
   for (const [daten, mehr] of [['Grundbestand', {}], ['breite Zeitdaten', BREITE_DATEN]]) {
     test.describe(`Personen, Touch, ${breite} px, ${daten}`, () => {
@@ -611,13 +600,6 @@ for (const breite of [320, 375, 414]) {
 
 // B0424 (PO Z. 137 c): Die Aufgabenliste scrollt bei Touch nie quer — der Titel bricht vollständig um, auch ein Wort ohne
 // Trennstelle, ohne Ellipse; keine Spalte fällt weg. Bei feinem Zeiger im breiten Fenster bleibt die Titelspalte wie heute.
-/** Titelzelle von #5: Text, Ellipse an, steht der Link ganz in der Zelle; dazu die sichtbaren Spaltenköpfe. */
-const titelZelle = page => page.evaluate(() => {
-  const td = document.querySelector('tr[data-zeile="5"] td.tt'), a = td.querySelector('a'), stil = getComputedStyle(td);
-  const zelle = td.getBoundingClientRect(), ganz = [...a.getClientRects()].every(r => r.left >= zelle.left - 0.5 && r.right <= zelle.right + 0.5);
-  const spalten = [...document.querySelectorAll('table.liste thead th')].filter(th => th.getBoundingClientRect().width > 0).length;
-  return { text: a.textContent, ellipse: stil.textOverflow === 'ellipsis' && stil.overflow !== 'visible', ganz, umbruch: stil.whiteSpace, spalten };
-});
 for (const breite of [320, 375, 414]) {
   test.describe(`Aufgabenliste mit langem Titel, Touch, ${breite} px`, () => {
     test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });

@@ -193,4 +193,25 @@ function zieleImInhalt(page) {
   }, ZIELE);
 }
 
-module.exports = { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, MASS };
+/** Überlauf von Dokument, #main und .body: je Ort true, oder „scrollWidth > clientWidth“ als Text. */
+const ueberlauf = page => page.evaluate(() => Object.fromEntries([['Seite', document.documentElement], ['#main', document.getElementById('main')], ['.body', document.querySelector('#main .body')]]
+  .map(([ort, el]) => [ort, el.scrollWidth <= el.clientWidth || `${el.scrollWidth} > ${el.clientWidth}`])));
+
+/** Drückt Tab, bis der Fokus auf dem Element steht, höchstens 60-mal; liefert die Zahl der Schritte oder 0. */
+async function perTabErreicht(page, ziel) {
+  for (let schritt = 1; schritt <= 60; schritt++) {
+    await page.keyboard.press('Tab');
+    if (await ziel.evaluate(el => el === document.activeElement)) return schritt;
+  }
+  return 0;
+}
+
+/** Titelzelle von #5: Text, Ellipse an, steht der Link ganz in der Zelle; dazu die sichtbaren Spaltenköpfe. */
+const titelZelle = page => page.evaluate(() => {
+  const td = document.querySelector('tr[data-zeile="5"] td.tt'), a = td.querySelector('a'), stil = getComputedStyle(td);
+  const zelle = td.getBoundingClientRect(), ganz = [...a.getClientRects()].every(r => r.left >= zelle.left - 0.5 && r.right <= zelle.right + 0.5);
+  const spalten = [...document.querySelectorAll('table.liste thead th')].filter(th => th.getBoundingClientRect().width > 0).length;
+  return { text: a.textContent, ellipse: stil.textOverflow === 'ellipsis' && stil.overflow !== 'visible', ganz, umbruch: stil.whiteSpace, spalten };
+});
+
+module.exports = { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle, MASS };
