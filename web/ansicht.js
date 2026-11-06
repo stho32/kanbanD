@@ -902,12 +902,34 @@ function vBestand() {
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
   const filter = kostenFilter(S.ui.bf);
   const achsen = bestandAchsen(filter);
-  return `${kopf}<div class="body" id="bestand">${vBestandInhalt(achsen, filter)}</div>`;
+  return `${kopf}<div class="body" id="bestand">${vBestandAchsen(achsen)}${vBestandInhalt(achsen, filter)}</div>`;
 }
-/** Achsen des Berichts: die gespeicherte Einstellung des Boards, sonst der Vorschlag aus den offenen Aufgaben nach der
+/** Die Auswahlfelder „Zeilen“ und „Spalten“ mit allen Präfixen der offenen Aufgaben und den gespeicherten; darunter,
+    falls die Wahl nur in dieser Ansicht gilt, warum. Ohne Achsen (unter zwei Präfixen) nichts. */
+function vBestandAchsen(achsen) {
+  if (!achsen) return '';
+  const wahl = [...praefixe(offeneAufgaben(S.aufgaben, S.board)).map(p => p.praefix)];
+  for (const gespeichert of [achsen.zeilen, achsen.spalten]) if (!wahl.some(p => p.toLowerCase() === gespeichert.toLowerCase())) wahl.push(gespeichert);
+  const feld = (name, schluessel) => `<span class="best-feld"><label for="best-${schluessel}">${name}</label><select class="mini-inp best-sel" id="best-${schluessel}" data-bestand="${schluessel}">${wahl.map(p => `<option value="${esc(p)}"${p.toLowerCase() === achsen[schluessel].toLowerCase() ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></span>`;
+  return `<div class="best-achsen" id="bestand-achsen">${feld('Zeilen', 'zeilen')}${feld('Spalten', 'spalten')}${vBestandStatus()}</div>`;
+}
+function vBestandStatus() {
+  const lokal = bestandLokal();
+  if (lokal && lokal.fehler) return `<span class="best-status fehler" role="status">Achsen nicht gespeichert: ${esc(lokal.fehler)}</span>`;
+  if (lokal && lokal.ungespeichert) return '<span class="best-status lokal" role="status">nicht gespeichert — zum Speichern „Ich bin …“ wählen</span>';
+  return '';
+}
+/** Die Wahl dieser Ansicht, solange sie nicht im Board steht — nur für das gewählte Board. */
+function bestandLokal() {
+  const lokal = S.ui.bestandLokal;
+  return lokal && lokal.slug === S.ui.slug ? lokal : null;
+}
+/** Achsen des Berichts: die Wahl dieser Ansicht, solange sie nicht gespeichert ist, dann die gespeicherte Einstellung des Boards, sonst der Vorschlag aus den offenen Aufgaben nach der
     Filterleiste — lässt die nichts übrig, aus allen offenen, damit ein leerer Filter nicht als fehlende Labels erscheint;
     schreibt nichts. Unter zwei Präfixen null. */
 function bestandAchsen(filter) {
+  const lokal = bestandLokal();
+  if (lokal) return lokal.achsen;
   if (S.board.bestand) return S.board.bestand;
   return vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board, filter))) || vorschlag(praefixe(offeneAufgaben(S.aufgaben, S.board)));
 }

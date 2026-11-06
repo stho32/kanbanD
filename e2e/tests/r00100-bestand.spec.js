@@ -1,5 +1,7 @@
 // E2E R00100 Bericht „Bestand nach Labels“ (I0092): offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
@@ -56,11 +58,18 @@ const bericht_ = page => page.locator('#bestand');
 const legende = page => page.locator('#bestand .best-leg');
 const alleZahlen = page => tabelle(page).locator('tbody tr').evaluateAll(z => z.map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())));
 const gesamt = page => page.getByRole('cell', { name: /^Summe gesamt: / });
+const feld = (page, name) => page.getByLabel(name, { exact: true });
+const status = page => page.locator('#bestand-achsen .best-status');
+const NICHT_GESPEICHERT = 'nicht gespeichert — zum Speichern „Ich bin …“ wählen';
+const farbe = (page, wert) => page.evaluate(w => { const p = document.createElement('p'); p.style.color = w; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }, wert);
 const commits = k => Number(k.git('rev-list', '--count', 'HEAD'));
 
 test.describe('R00100 Bestand nach Labels', () => {
-  let k;
-  test.afterEach(() => k && k.stoppen());
+  let k, schreibgeschuetzt = null;
+  test.afterEach(async () => {
+    if (schreibgeschuetzt) { fs.chmodSync(schreibgeschuetzt, 0o755); schreibgeschuetzt = null; }
+    if (k) await k.stoppen();
+  });
 
   async function bericht(page, dateien, { person = 'st' } = {}) {
     k = await kanbanStarten(einrichten(dateien));
@@ -152,6 +161,8 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(bericht_(page)).toContainText(LEER);
     await expect(tabelle(page)).toHaveCount(0);
     await expect(bericht_(page).getByRole('button', { name: 'Zurücksetzen' })).toHaveCount(0);
+    await expect(feld(page, 'Zeilen')).toHaveValue('repo');
+    await expect(feld(page, 'Spalten')).toHaveValue('nc');
     expect(commits(k)).toBe(vorher);
   });
 
@@ -212,6 +223,65 @@ test.describe('R00100 Bestand nach Labels', () => {
     expect(page.url()).toBe(adresse);
     await page.goto(k.adresse + '#/board/fabrik');
     await expect(page.locator('#flt')).toHaveValue('');
+  });
+
+  test('Feldwahl: „Spalten“ = repo tauscht zu nc × repo, ein PUT, ein Commit, Frontmatter; ein zweiter Browser folgt ohne und nach Neuladen', async ({ page, browser }) => {
+    await bericht(page, grundbestand());
+    const zweit = await browser.newContext(), seite2 = await zweit.newPage();
+    try {
+      await alsPerson(seite2, 'st');
+      await seite2.goto(k.adresse + '#/board/fabrik');
+      await liveBereit(seite2);
+      await seite2.goto(k.adresse + '#/berichte/bestand');
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: repo × nc' })).toBeVisible();
+      await expect(feld(page, 'Zeilen').locator('option')).toHaveText(['repo', 'nc']);
+      const vorher = commits(k), puts = [];
+      page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()); });
+      await feld(page, 'Spalten').selectOption('repo');
+      await expect(page.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+      await expect(feld(page, 'Zeilen')).toHaveValue('nc');
+      await expect(feld(page, 'Spalten')).toHaveValue('repo');
+      await expect.poll(() => commits(k)).toBe(vorher + 1);
+      expect(puts.map(u => new URL(u).pathname)).toEqual(['/api/boards/fabrik/bestand']);
+      expect(k.lies('boards/fabrik.md')).toContain('report-labels: {rows: nc, columns: repo}');
+      await expect(status(page)).toHaveCount(0);
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+      await seite2.reload();
+      await expect(seite2.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+    } finally { await zweit.close(); }
+  });
+
+  test('Feldwahl ohne Person: nur diese Ansicht wechselt, Hinweis in Textfarbe mit amberfarbener Linie, git log und Datei gleich', async ({ page }) => {
+    await bericht(page, grundbestand(), { person: null });
+    const vorher = commits(k), datei = k.lies('boards/fabrik.md'), puts = [];
+    page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()); });
+    await feld(page, 'Zeilen').selectOption('nc');
+    await expect(page.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+    await expect(status(page)).toHaveText(NICHT_GESPEICHERT);
+    await expect(status(page)).toHaveCSS('color', await farbe(page, 'var(--kd-text)'));
+    await expect(status(page)).toHaveCSS('border-left-color', await farbe(page, 'var(--kd-c-amber-line)'));
+    await page.waitForTimeout(300);
+    expect(puts).toEqual([]);
+    expect(commits(k)).toBe(vorher);
+    expect(k.lies('boards/fabrik.md')).toBe(datei);
+  });
+
+  test('Speicherfehler: boards/ schreibgeschützt → „Achsen nicht gespeichert: “ + Grund, Ansicht zeigt die Wahl, git log gleich', async ({ page }) => {
+    await bericht(page, grundbestand());
+    const vorher = commits(k);
+    schreibgeschuetzt = path.join(k.ordner, 'boards');
+    fs.chmodSync(schreibgeschuetzt, 0o555);
+    await feld(page, 'Spalten').selectOption('repo');
+    await expect(status(page)).toHaveText(/^Achsen nicht gespeichert: \S/);
+    await expect(page.getByRole('table', { name: 'Bestand nach Labels: nc × repo' })).toBeVisible();
+    expect(commits(k)).toBe(vorher);
+  });
+
+  test('Gespeicherter Präfix ohne offene Aufgaben bleibt wählbar und zeigt nur „(ohne …)“', async ({ page }) => {
+    await bericht(page, grundbestand({ kopf: 'report-labels: {rows: repo, columns: os}\n' }));
+    await expect(feld(page, 'Spalten')).toHaveValue('os');
+    await expect(feld(page, 'Spalten').locator('option')).toHaveText(['repo', 'nc', 'os']);
+    await expect(spaltenkoepfe(page)).toHaveText(['repo ↓ · os →', '(ohne os)', 'Summe']);
   });
 
   test('US-2: Klick auf die Zahl in shop × 304 öffnet das Board mit label:repo:shop label:nc:304 — sichtbar genau #1, #2, #6', async ({ page }) => {

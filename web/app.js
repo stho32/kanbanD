@@ -43,6 +43,19 @@ function berichtsfilterSetzen(aenderung) {
     .then(() => { if (S.ui.bfLokal === lokal) S.ui.bfLokal = null; }, f => { S.ui.fehler = 'Berichtsfilter nicht gespeichert: ' + f.message; lokal.ungespeichert = true; })
     .then(() => laden());
 }
+/** Neue Achsen für „Bestand nach Labels“ nach einer Wahl (Feld „zeilen“, „spalten“ oder „tauschen“): genau ein PUT …/bestand;
+    ohne gewählte Person oder bei einem Fehler gilt die Wahl nur in dieser Ansicht. Ändert die Wahl nichts, nichts. */
+function bestandAchsenSetzen(feld, praefix) {
+  const neu = achsenNachWahl(bestandAchsen(kostenFilter(S.ui.bf)), feld, praefix);
+  if (!neu) return;
+  const ich = !!ichPerson();
+  const lokal = S.ui.bestandLokal = { slug: S.ui.slug, achsen: neu, ungespeichert: !ich, fehler: null };
+  render();
+  if (!ich || !S.ui.slug) return;
+  api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/bestand`, neu)
+    .then(() => { if (S.ui.bestandLokal === lokal) S.ui.bestandLokal = null; }, f => { lokal.fehler = f.message; })
+    .then(() => laden());
+}
 /** Der Filter des gewählten Boards — oder der lokale, solange er nicht gespeichert ist. */
 function berichtsfilterAusBoard() {
   if (S.ui.bfLokal && S.ui.bfLokal.slug === S.ui.slug) return S.ui.bfLokal.filter;
@@ -1405,6 +1418,7 @@ document.addEventListener('change', e => {
     if (vorschau) vorschau.setAttribute('style', terminStil(S.ui.tf));
     return;
   }
+  if (e.target.dataset && e.target.dataset.bestand) { bestandAchsenSetzen(e.target.dataset.bestand, e.target.value); return; }
   if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
   if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
   if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
