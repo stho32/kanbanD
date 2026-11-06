@@ -124,6 +124,13 @@ test.describe('Selbstproben, Touch', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Zeile 7', 'Punkt 7']);
   });
 
+  // Die Ausnahme gilt nur für Diagrammpunkte (PO Z. 135): ein kleines Ziel ohne circle fällt trotz gleichwertiger Zeile
+  test('ein kleines span mit gleichem data-act und data-arg wie die Zeile fällt durch, nur der Punkt ist ausgenommen', async ({ page }) => {
+    const span = '<span data-act="oeffnen" data-arg="7" aria-label="Span 7" style="position:absolute;left:0;top:300px;width:20px;height:20px;background:#ccc"></span>';
+    await page.setContent(STIL + zeile(48) + punkt + span);
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Span 7']);
+  });
+
   test('eine Zeile mit anderem data-arg ist nicht gleichwertig', async ({ page }) => {
     await page.setContent(STIL + zeile(48).replace('data-arg="7"', 'data-arg="8"') + punkt);
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['Punkt 7']);
