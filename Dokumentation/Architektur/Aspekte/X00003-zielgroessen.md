@@ -4,7 +4,7 @@ name: Zielgrößen
 art: Aspekt
 geltung: Makro
 befund: Uneinheitlich
-hausantwort: "ADR-0012 (Vorgeschlagen): Token --kd-ziel in web/kd-tokens.css, Basisregel in web/kd-base.css, Trefferhof für kleine Zeichen, Messprobe e2e/tests/ziele.spec.js"
+hausantwort: "ADR-0012 (Akzeptiert): Token --kd-ziel in web/kd-tokens.css, Basisregel in web/kd-base.css, Trefferhof für kleine Zeichen, Messprobe e2e/tests/ziele.spec.js"
 betrifft:
   - A00009
 herkunft: code
@@ -20,9 +20,9 @@ quellen:
 
 ## Hausantwort
 
-Soll nach [ADR-0012](../../ADRs/0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Vorgeschlagen, Karte #10):
+Soll nach [ADR-0012](../../ADRs/0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Akzeptiert, Karte #10, PO `AI-Team/po-entscheidungen.md:129–132`):
 
-- Die Mindestkante jedes Zeigerziels ist `var(--kd-ziel)`. Sie steht genau einmal in `web/kd-tokens.css`: 24px bei feinem Zeiger (WCAG 2.2 SC 2.5.8), in `@media (pointer:coarse)` der Touch-Wert (Vorschlag 48, mindestens 44).
+- Die Mindestkante jedes Zeigerziels ist `var(--kd-ziel)`. Sie steht genau einmal in `web/kd-tokens.css`: genau 24px bei feinem Zeiger (WCAG 2.2 SC 2.5.8), genau 48px in `@media (pointer:coarse)`. Die Messprobe verlangt bei Touch ≥ 44 ohne Ausnahme; bei 320 px darf ein Ziel bis 44 schrumpfen oder ins Menü „<Seite> ▾“ wandern, waagrechtes Scrollen bleibt verboten (PO `:130`). Die Abstandsausnahme ist die WCAG-Kreisformel, nur bei feinem Zeiger (`:131`).
 - Die Basisregel in `web/kd-base.css` (`:where(button, select, input, a.btn, [role=checkbox|radio|menuitem|tab|switch])`) setzt die Mindestgröße. Inline-Links im Fließtext sind ausgenommen.
 - Kleine Zeichen behalten ihre Zeichnung. Ihr Ziel wächst über einen durchsichtigen Trefferhof (`::after`), der weder Nachbarn überdeckt noch abgeschnitten wird.
 - Benennt ein Text die Aktion, gehört er zum Ziel (Teilaufgabe: Kästchen und Text sind ein Element).
@@ -53,7 +53,7 @@ Erkennen von Abweichungen (Durchsetzung):
 
 ## Offene Fragen
 
-- Maß bei feinem Zeiger 24 oder 44, Maß bei Touch 48 oder 44: offen beim PO, Empfehlungen in ADR-0012, „Offene Fragen“.
+- keine. Maße entschieden durch den PO 2026-11-06: fein genau 24 (`AI-Team/po-entscheidungen.md:129`), Touch genau 48 mit Untergrenze 44 und Ausweichregel 320 px (`:130`), Kreisformel nur fein (`:131`); Aufteilung Akzeptanzkriterium oder Test nach `:132` (ADR-0012 Regel 8).
 
 ## Notizen / Quellen
 
@@ -61,3 +61,4 @@ Erkennen von Abweichungen (Durchsetzung):
 - M3: Touch-Ziel 48 dp, Checkbox-Box 18 dp mit Ziel 48 dp, Chips 32 dp hoch (Factory-Gedächtnis `material3/notizen.md:197`, `:223`; https://m3.material.io/foundations/designing/structure).
 - Muster der Messprobe: R00107 `e2e/tests/kontrast.spec.js` (Ansichtenliste, `NICHT_GEMESSEN` mit Karte, Selbstproben). Die Ansichtenliste wird ein gemeinsames Modul beider Proben.
 - angelegt 2026-11-06 nach #10 (ADR-0012)
+- nachgeführt 2026-11-06 nach PO-Entscheidung zu ADR-0012 (`AI-Team/po-entscheidungen.md:129–132`)

@@ -1,7 +1,7 @@
 # ADR-0012: Zielgrößen als zentrales Maß, Messprobe über alle Ansichten
 
-**Status**: Vorgeschlagen
-**Datum**: 2026-11-06
+**Status**: Akzeptiert
+**Datum**: 2026-11-06 (vorgeschlagen; akzeptiert am selben Tag nach PO-Entscheidung `AI-Team/po-entscheidungen.md:129–132`)
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #10)
 **Kontext-Anforderung**: — (Karte #10 „Zielgrößen auf mindestens 24×24 px bringen, bei Touch 44–48 px“; Anforderung legt der planer an)
 **Erprobt durch**: Messprobe ohne Testsuite (headless Chromium, `target/release/kanbanD` auf freiem Port, Stand kanbanD `49d99ef`, 2026-11-06), sechs Ansichten (`#/board/…`, `#/aufgaben`, `#/personen`, `#/einrichten`, zwei Berichte), gezählt wurde jedes sichtbare `button`, `a`, `input`, `[role=checkbox]` in `#kopf` und `#main`, ohne Abstandsausnahme:
@@ -16,7 +16,7 @@
 - Belegt (Code): Die Teilaufgabe auf der Karte ist ein Kästchen `button.naechste-box[role=checkbox]` neben einem `span` mit dem Text (`web/ansicht.js:585`). Der Text ist kein Teil des Ziels, und ein Tipp auf den Text öffnet die Karte (`.ka` hat `cursor:pointer`, `web/kd-app.css:104`).
 - Belegt (PO): „Eine Zielgröße an genau einem Ort“: Die Kopfzeile nutzt das zentrale Touch-Maß als Untergrenze. Karte #10 legt den Wert fest und hebt ihn zentral, R00101 erbt ihn (`AI-Team/po-entscheidungen.md:17`). Außerdem: 320/375/414 px ohne waagrechtes Scrollen (`:98`), alle Ziele auch in compact erreichbar (`:15`).
 - Maß (Primärquelle, abgerufen 2026-11-06): WCAG 2.2 SC 2.5.8 *Target Size (Minimum)*, Stufe AA, https://www.w3.org/TR/WCAG22/#target-size-minimum. Gefordert sind mindestens 24×24 CSS-px. Ausnahmen: **Spacing**, d. h. ein Kreis von 24 px Durchmesser um die Mitte jedes zu kleinen Ziels schneidet kein anderes Ziel und keinen anderen solchen Kreis; außerdem *Equivalent*, *Inline* (im Satz oder durch die Zeilenhöhe begrenzt), *User Agent Control* und *Essential*. SC 2.5.5 *Target Size (Enhanced)*, Stufe AAA, verlangt 44×44 CSS-px (https://www.w3.org/TR/WCAG22/#target-size-enhanced).
-- Maß (Referenz-Designsystem, Factory-Gedächtnis `rollen/ux-reviewer/spezialisierungen/material3/notizen.md:223`, `:197`, `:117`): Touch-Ziel mindestens 48×48 dp, Abstand ≥ 8 dp, Icon 24 dp im 48-dp-Ziel (https://m3.material.io/foundations/designing/structure). Die Checkbox hat eine Box von 18 dp und ein Ziel von 48 dp (https://m3.material.io/components/checkbox/specs). Chips sind 32 dp hoch (https://m3.material.io/components/chips/specs). Auf dem Web gilt 1 dp ≈ 1 CSS-px (`notizen.md:12`). Für den feinen Zeiger nennt das Gedächtnis 44 dp, für ein dichtes Desktop-Board ist das ein Richtungsentscheid, siehe Offene Fragen.
+- Maß (Referenz-Designsystem, Factory-Gedächtnis `rollen/ux-reviewer/spezialisierungen/material3/notizen.md:223`, `:197`, `:117`): Touch-Ziel mindestens 48×48 dp, Abstand ≥ 8 dp, Icon 24 dp im 48-dp-Ziel (https://m3.material.io/foundations/designing/structure). Die Checkbox hat eine Box von 18 dp und ein Ziel von 48 dp (https://m3.material.io/components/checkbox/specs). Chips sind 32 dp hoch (https://m3.material.io/components/chips/specs). Auf dem Web gilt 1 dp ≈ 1 CSS-px (`notizen.md:12`). Für den feinen Zeiger nennt das Gedächtnis 44 dp, für ein dichtes Desktop-Board ist das ein Richtungsentscheid; entschieden: 24 px (`AI-Team/po-entscheidungen.md:129`).
 - Zwänge: Der zentrale Stil des Projekts (Blaugrau, eckig, dicht) und die Vision gehen M3 vor (Factory `gemeinsam/regeln.md`, „Gestaltung“). Es gibt keinen Build-Schritt (`A00009`). Gezeichnet wird per `innerHTML` (ADR-0007). Tab-Halte und Fokus regelt ADR-0010, Farben ADR-0011.
 
 Die Klasse des Fehlers lautet: „Die Größe eines Ziels entscheidet jede CSS-Regel selbst, und nichts misst sie.“ Sie lautet nicht: „Sechs Stellen sind zu klein.“ Die 32-px-Liste zeigt, wohin Einzelkorrekturen führen. Sie zählt Klassen auf, hat einen festen Wert an einer zweiten Stelle (Z. 277), und jedes neue Element fehlt darin.
@@ -49,28 +49,35 @@ Ein `pointerdown`-Hörer sucht im Umkreis von 24 bzw. 44 px das nächste Ziel un
 
 ## Entscheidung
 
-**Vorgeschlagen: Option B**: Zielmaß als Token, eine Basisregel, Trefferhof für kleine Zeichen, Messprobe über alle Ansichten.
+**Gewählt: Option B**: Zielmaß als Token, eine Basisregel, Trefferhof für kleine Zeichen, Messprobe über alle Ansichten.
 
-B schließt die Klasse, bedient die PO-Linie „eine Zielgröße an genau einem Ort“ und hält die Dichte bei feinem Zeiger. A bleibt der Weg für ein einzelnes Element innerhalb der Regel. Bewusst in Kauf genommen: Bei Touch wächst die Zeichnung von Kopfzeile, Feldern und Zeilen sichtbar, und es gibt eine weitere E2E-Probe. Der Status bleibt „Vorgeschlagen“, bis der PO die beiden Maße bestätigt (Offene Fragen 1 und 2).
+B schließt die Klasse, bedient die PO-Linie „eine Zielgröße an genau einem Ort“ und hält die Dichte bei feinem Zeiger. A bleibt der Weg für ein einzelnes Element innerhalb der Regel. Bewusst in Kauf genommen: Bei Touch wächst die Zeichnung von Kopfzeile, Feldern und Zeilen sichtbar, und es gibt eine weitere E2E-Probe. Die beiden Maße hat der PO entschieden: fein genau 24 px, Touch genau 48 px mit Untergrenze 44 in der Messprobe (`AI-Team/po-entscheidungen.md:129–131`).
 
 Regeln:
 
-1. **Ein Maß, ein Ort.** `web/kd-tokens.css` trägt `--kd-ziel` (Mindestkante eines Ziels). Der Wert ist 24px bei feinem Zeiger, in `@media (pointer:coarse)` der Touch-Wert, Vorschlag 48px, mindestens 44px. Kein anderes Stylesheet nennt einen Zahlenwert für die Mindestgröße eines Ziels. `web/kd-app.css:277` und die Liste `:791–795` gehen in der Regel auf. Die Kopfzeile (R00101) und die Stufe compact lesen dasselbe Token.
+1. **Ein Maß, ein Ort.** `web/kd-tokens.css` trägt `--kd-ziel` (Mindestkante eines Ziels). Der Wert ist genau 24px bei feinem Zeiger und genau 48px in `@media (pointer:coarse)` (PO `AI-Team/po-entscheidungen.md:129`, `:130`). Kein anderes Stylesheet nennt einen Zahlenwert für die Mindestgröße eines Ziels. `web/kd-app.css:277` und die Liste `:791–795` gehen in der Regel auf. Die Kopfzeile (R00101) und die Stufe compact lesen dasselbe Token.
 2. **Basisregel.** `web/kd-base.css` gibt jedem Bedienelement `min-block-size`/`min-inline-size: var(--kd-ziel)`. Gemeint sind `button`, `select`, `input` (außer versteckten), `a.btn` und die Rollen `checkbox`, `radio`, `menuitem`, `tab`, `switch`. Der Selektor steht in `:where(…)`, damit die Spezifität null bleibt und Komponenten sie gezielt überschreiben können. Ausgenommen ist ein `a` im Fließtext (WCAG *Inline*). Ein Link, der allein in einer Zelle oder Zeile steht (z. B. die Nummer in der Aufgabenliste), ist kein Fließtext und fällt unter die Regel.
 3. **Trefferhof statt Vergrößerung**, wo ein Zeichen klein bleiben soll (Kästchen, Signal, `+`, `✕`). Das Element bekommt `position:relative` und ein durchsichtiges `::after` mit `inset: min(0px, (100% - var(--kd-ziel)) / 2)`, sodass die Trefferfläche das Ziel auf `--kd-ziel` ergänzt. Das gilt nur, wenn der Hof keinen Nachbarn überdeckt und kein Elternelement ihn abschneidet. Sonst wächst das Element selbst. Der Hof trägt keine Farbe, Kontrast und Grund bleiben bei ADR-0011. Gemessen wird das Rechteck des Hofs, nicht das des Zeichens (siehe Regel 6).
 4. **Text gehört zum Ziel, wo er die Aktion benennt** (M3 Checkbox, Ziel schließt den Text ein). Bei der Teilaufgabe wird der Text Teil desselben Ziels: ein Element mit `role=checkbox` und dem Text als Inhalt, oder ein `label`, das beide umschließt. Ein Tipp auf den Text setzt `aria-checked`, die Karte öffnet sich nicht.
 5. **Verhältnis zu ADR-0010.** Regel 4 legt keinen neuen Tab-Halt an. Kästchen und Text sind *ein* fokussierbares Element, wie heute das Kästchen allein, und `data-act` bleibt am nächsten Vorfahren des Klicks. Menüeinträge (`tabindex=-1`) und roving Radiogruppen sind Zeigerziele und werden gemessen, auch wenn sie keinen Tab-Halt haben. Unter einem offenen Dialog (`inert`) wird nur die oberste Ebene gemessen.
 6. **Messprobe als Fitness Function**, im Muster von R00107 (`e2e/tests/kontrast.spec.js`, auf `karte/9`):
    - `e2e/tests/ziele.spec.js` öffnet jede Ansicht der gemeinsamen Ansichtenliste mit Fixtures, die Signal, Fälligkeit, Teilaufgabe, laufenden Timer, Archiv und Zuweisung zeigen. Die Probe läuft je einmal mit feinem Zeiger (1280 px) und mit Touch (`hasTouch`, 390 px).
-   - Bei feinem Zeiger besteht ein Ziel, wenn seine Trefferfläche ≥ 24×24 ist oder es die **Spacing**-Ausnahme von SC 2.5.8 wörtlich erfüllt: Der Kreis von 24 px um seine Mitte schneidet kein anderes Ziel und keinen anderen Kreis. Ein „Abstand von 24 px zwischen Rändern“ ist eine andere, strengere Formel. Bei Touch besteht ein Ziel nur, wenn die Fläche ≥ 44×44 ist, ohne Ausnahme.
+   - Bei feinem Zeiger besteht ein Ziel, wenn seine Trefferfläche ≥ 24×24 ist oder es die **Spacing**-Ausnahme von SC 2.5.8 wörtlich erfüllt: Der Kreis von 24 px um seine Mitte schneidet kein anderes Ziel und keinen anderen Kreis. Ein „Abstand von 24 px zwischen Rändern“ ist eine andere, strengere Formel. Bei Touch besteht ein Ziel nur, wenn die Fläche ≥ 44×44 ist, ohne Ausnahme (PO `:131`: Kreisformel nur bei feinem Zeiger, der Kartenwortlaut „24 px Abstand“ ist ihre Kurzform).
+   - **Ausweichregel 320 px** (PO `:130`): Würde das Token 48 bei 320 px ein waagrechtes Scrollen erzwingen, darf ein Ziel dort bis 44 schrumpfen oder ins Menü „<Seite> ▾“ wandern (`:15`). Waagrechtes Scrollen bleibt verboten (`:98`, `:105`). Die Messprobe prüft deshalb bei Touch die Untergrenze 44, nicht 48, und zusätzlich bei 320, 375 und 414 px, dass keine Ansicht waagrecht scrollt (`scrollWidth ≤ clientWidth` an Dokument und `#main`).
    - Die Trefferfläche ist das Rechteck des Elements, vereinigt mit dem seines `::after`. Ob der Hof wirklich trifft, prüft die Probe per `document.elementFromPoint` an den Ecken.
    - Eine Liste `NICHT_GEMESSEN` führt Ausnahmen mit Selektor, Ansicht, Karte, heutigem Maß und Grund. Der Test schlägt Alarm, wenn ein Eintrag verschwindet, das Maß erreicht oder kleiner wird.
    - Selbstproben: Ein künstliches 20×20-Ziel fällt durch, ein 24×24-Ziel besteht. Zwei 20×20-Ziele mit 30 px Mittenabstand bestehen bei feinem Zeiger, mit 20 px fallen sie durch. Ein 13-px-Zeichen mit Hof besteht, derselbe Hof unter `overflow:hidden` fällt durch.
    - Die Ansichtenliste teilen Kontrast- und Zielprobe in einem Modul (z. B. `e2e/tests/ansichten.js`) statt in zwei Kopien.
-7. **Reine Probe für den Ort.** Ein Node-Test (`e2e/einheit/ziele.test.js`, als Text über die Stylesheets, ohne Browser) prüft dreierlei:
-   - `--kd-ziel` steht genau einmal je Zeiger in `web/kd-tokens.css`, der feine Wert ist 24, der grobe ≥ 44.
+7. **Reine Probe für den Ort und die genauen Werte.** Ein Node-Test (`e2e/einheit/ziele.test.js`, als Text über die Stylesheets, ohne Browser) prüft:
+   - `--kd-ziel` steht genau einmal je Zeiger in `web/kd-tokens.css`.
+   - Der feine Wert ist **genau 24**: die Mutanten 23 und 44 fallen durch. 44 als Mutante sichert, dass niemand das dichte Board still auf das M3-Zeigermaß hebt.
+   - Der Touch-Wert ist **genau 48**: die Mutanten 47 und 43 fallen durch.
    - Kein anderes Stylesheet setzt `min-width`/`min-height`/`min-*-size` mit einem Zahlenwert innerhalb von `@media (pointer:coarse)`.
-   - Die Spanne ist geprüft, d. h. Mutanten 23 und 43 fallen durch (Factory `gemeinsam/gelerntes.md`, „Wert als Spanne prüfen“).
+
+   Die reine Probe sichert die Obergrenzen, die die Messprobe als reine Untergrenze nicht prüft (Factory `gemeinsam/gelerntes.md`, „Wert als Spanne prüfen“; PO `:129`, `:130`).
+8. **Akzeptanzkriterium oder Test** (PO `AI-Team/po-entscheidungen.md:132`):
+   - **Akzeptanzkriterien** der Anforderung, fachlich und beobachtbar, je eines als Gegeben/Wenn/Dann mit Werten: Bei feinem Zeiger ist jedes Bedienziel in jeder Ansicht mindestens 24 × 24 px groß oder erfüllt die Kreis-Ausnahme (zwei 20-px-Ziele mit Mitten 30 px auseinander bestehen, 20 px auseinander fallen durch). Bei Touch ist jedes Bedienziel mindestens 44 × 44 px groß, ohne Ausnahme. Bei 320, 375 und 414 px scrollt keine Ansicht waagrecht. Ein Tipp auf den Text einer Teilaufgabe hakt sie ab und öffnet die Karte nicht.
+   - **Kein Akzeptanzkriterium**, sondern „Technische Überlegungen“ und Tests: der Token-Name `--kd-ziel`, die genauen Werte 24 und 48, „genau einmal je Zeiger in `web/kd-tokens.css`“ und die Mutanten 23/44 bzw. 47/43 (Regel 7, Unit-Ebene); ebenso Basisregel, Trefferhof und die Liste `NICHT_GEMESSEN` (Regeln 2, 3, 6).
 
 ## Konsequenzen
 
@@ -85,14 +92,17 @@ Regeln:
 
 ## Offene Fragen
 
-1. **Maß bei feinem Zeiger**: 24 px (WCAG 2.5.8 AA, Kartenvorschlag) oder 44 px (Gedächtnis M3 für Zeiger)? Empfehlung: **24 px**. Das dichte Desktop-Board ist der zentrale Stil des Projekts, und kleine Zeichen erreichen 24 über einen Hof, ohne dass sich die Zeichnung ändert.
-2. **Maß bei Touch**: 48 px (M3, Standard nach Factory `gemeinsam/regeln.md`, „Gestaltung“) oder 44 px (WCAG 2.5.5 AAA, Kartenuntergrenze)? Empfehlung: **48 px als Token, 44 px als Untergrenze der Probe**. Das folgt dem Referenz-Designsystem, und die Probe bleibt grün, falls der PO auf 44 geht.
+Keine. Geschlossen durch den PO am 2026-11-06:
+
+1. Maß bei feinem Zeiger: **24 px**, genau (`AI-Team/po-entscheidungen.md:129`), wie empfohlen.
+2. Maß bei Touch: **48 px** im Token, genau; die Messprobe verlangt ≥ 44 ohne Ausnahme, mit der Ausweichregel für 320 px (`:130`), wie empfohlen und ergänzt.
+3. Abstandsausnahme: WCAG-Kreisformel, nur bei feinem Zeiger (`:131`).
 
 ## Quellen / Bezüge
 
 - Karte #10 (Board), Messprobe oben, Stand kanbanD `49d99ef`
 - WCAG 2.2 SC 2.5.8 und 2.5.5: https://www.w3.org/TR/WCAG22/#target-size-minimum, https://www.w3.org/TR/WCAG22/#target-size-enhanced (abgerufen 2026-11-06)
 - M3 über das Factory-Gedächtnis `rollen/ux-reviewer/spezialisierungen/material3/notizen.md:117`, `:197`, `:223`. Primärquellen https://m3.material.io/foundations/designing/structure, https://m3.material.io/components/checkbox/specs, https://m3.material.io/components/chips/specs (ohne Skript nicht abrufbar, Werte aus dem Gedächtnis)
-- `AI-Team/po-entscheidungen.md:15`, `:17`, `:98`
+- `AI-Team/po-entscheidungen.md:15`, `:17`, `:98`, `:105`, `:129–132` (Entscheidung zu dieser ADR)
 - [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md)
 - Modell: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md), [X00003 Zielgrößen](../Architektur/Aspekte/X00003-zielgroessen.md)
