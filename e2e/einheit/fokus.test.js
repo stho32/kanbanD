@@ -101,7 +101,11 @@ test('ebenen: Kontextmenü startet auf dem aktiven Eintrag, bei offenem Untermen
 const fs = require('node:fs');
 const path = require('node:path');
 const WEB = path.join(__dirname, '../../web');
-const ERLAUBT = new Set(['fokusSetzen', 'fokusVersuchen', 'ersterTabbarer', 'fallenTaste', 'popMenueTaste', 'gewaehltesRadioFokussieren', 'fensterTaste', 'listenTaste', 'brettTaste', 'keydown']);
+/** Erlaubte Anzahl .focus()-Aufrufe je Funktion (PO-Entscheidung Z. 109): ein zusätzlicher Aufruf in einer erlaubten Funktion ist ebenso ein Befund. */
+const ERLAUBT = new Map([
+  ['fokusSetzen', 1], ['fokusVersuchen', 1], ['ersterTabbarer', 1], ['fallenTaste', 1], ['popMenueTaste', 1], ['gewaehltesRadioFokussieren', 1],
+  ['fensterTaste', 1], ['listenTaste', 1], ['brettTaste', 1], ['keydown', 1],
+]);
 const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'|^(?:const|let|var) (\w+) = (?:async )?(?:\([^)]*\)|\w+) =>/;
 /** Eine andere Zeile auf oberster Ebene beendet die umgebende Funktion — außer schließende Klammer, Kommentar und Fortsetzung. */
 const OBERSTE_EBENE = /^(?![\s}/*)\]]|$)/;
@@ -125,7 +129,14 @@ function fokusAufrufe(quellen = webQuellen()) {
   return funde;
 }
 
-const fremdeFokusaufrufe = quellen => fokusAufrufe(quellen).filter(f => !ERLAUBT.has(f.umgebend)).map(f => `${f.ort} in ${f.umgebend}`);
+/** Aufrufe außerhalb der erlaubten Funktionen und jeder Aufruf über der erlaubten Anzahl seiner Funktion. */
+function fremdeFokusaufrufe(quellen) {
+  const gezaehlt = new Map();
+  return fokusAufrufe(quellen).filter(f => {
+    gezaehlt.set(f.umgebend, (gezaehlt.get(f.umgebend) || 0) + 1);
+    return gezaehlt.get(f.umgebend) > (ERLAUBT.get(f.umgebend) || 0);
+  }).map(f => `${f.ort} in ${f.umgebend}`);
+}
 const RENDER_DANN_FOKUS = /render\(\);[^;]*\.focus\(/;
 const fokusNachRender = quellen => fokusAufrufe(quellen).filter(f => RENDER_DANN_FOKUS.test(f.zeile) || /render\(\);\s*$/.test(f.vorige)).map(f => f.ort);
 
@@ -149,6 +160,11 @@ function appMit(einschub, nach, hinterEnde = false) {
 test('Wächter erkennt eine Pfeilfunktion auf oberster Ebene mit .focus() hinter einem erlaubten Tastenzweig', () => {
   const quellen = appMit("const springe = () => { $('#neu-titel').focus(); };\n", 'function fensterTaste(e) {', true);
   assert.deepStrictEqual(fremdeFokusaufrufe(quellen).map(f => f.replace(/:\d+/, '')), ['app.js in springe']);
+});
+
+test('Wächter erkennt einen zweiten .focus() in brettTaste', () => {
+  const quellen = appMit("  $('#flt').focus();\n", 'function brettTaste(e, t) {');
+  assert.deepStrictEqual(fremdeFokusaufrufe(quellen).map(f => f.replace(/:\d+/, '')), ['app.js in brettTaste']);
 });
 
 test('Wächter erkennt .focus() in der Zeile nach render();', () => {
