@@ -420,7 +420,7 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(page.locator('#flt')).toHaveValue('label:repo:shop label:nc:304');
   });
 
-  test('Zielgröße bei Touch (pointer: coarse, 375 px): jede klickbare Zahl mindestens 44 px hoch', async ({ browser }) => {
+  test('Zielgröße bei Touch (pointer: coarse, 375 px): jede klickbare Zahl, beide Auswahlfelder und „⇄ Achsen tauschen“ mindestens 44 px hoch', async ({ browser }) => {
     const ctx = await browser.newContext({ hasTouch: true, viewport: { width: 375, height: 800 } }), page = await ctx.newPage();
     try {
       expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
@@ -428,6 +428,10 @@ test.describe('R00100 Bestand nach Labels', () => {
       const hoehen = await tabelle(page).locator('a.bz').evaluateAll(e => e.map(x => x.getBoundingClientRect().height));
       expect(hoehen).toHaveLength(3);
       for (const h of hoehen) expect(h).toBeGreaterThanOrEqual(44);
+      for (const ort of [feld(page, 'Zeilen'), feld(page, 'Spalten'), page.getByRole('button', { name: '⇄ Achsen tauschen' })]) {
+        const box = await ort.boundingBox();
+        expect(box.height, await ort.evaluate(e => e.id || e.textContent)).toBeGreaterThanOrEqual(44);
+      }
     } finally { await ctx.close(); }
   });
 
