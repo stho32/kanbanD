@@ -221,3 +221,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Auto-Review (Wdh.) | code-reviewer | bestanden: keine Befunde; Sollte S1 Wächter #main/#over ohne Test, S2 R00106 Z.43–44 Widerspruch; O1–O4 | 0:12 | — |
 | 2026-11-06 | #8 | Nacharbeit 3 (Doku) | planer | bestanden: R00106 Z.44 an PO Z.113 angeglichen (Auslöser fort → Karte/Zeile bzw. BODY), 61 AK unverändert | 0:02 | e66b200 |
 | 2026-11-06 | #8 | Auto-Review (Wdh. 3) | ux-reviewer | bestanden: 549/549 Fokus gehalten, Rückfälle und Regression grün; → Entwicklertest | 0:35 | — |
+| 2026-11-06 | #8 | Entwicklertest | entwicklertester | bestanden: US-1–12, 0 Befunde; Anm.: US-5 menuitemcheckbox, null/anhaenge 400 (alt), Ich-Menü „people:“; → Erledigt, ausgeliefert (cargo install, 7422 neu) | 0:19 | — |
