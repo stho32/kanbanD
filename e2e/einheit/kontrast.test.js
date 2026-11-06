@@ -96,7 +96,7 @@ const PAARE = [
 /** Bubble, die ein heute verfehltes Paar herstellt; bis dahin läuft die Prüfung als todo (erwartet rot). */
 const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
 const AUSSTEHEND = {
-  'Kopf': 'B0394', 'Linien Diagramm': 'B0396',
+  'Linien Diagramm': 'B0396',
   'Modusleiste': MODUS, 'Linie Abschluss Modusleiste': MODUS, 'Linie Fokusring Modusleiste': MODUS,
 };
 
@@ -114,6 +114,20 @@ function verstoesse(paar, werteJeThema) {
     }
   }
   return saetze;
+}
+
+/** Regeln, deren Schrift ein Paar der Tabelle sein muss; die Fläche steht in der Regel selbst oder kommt vom Eltern-Element. */
+const PAARUNGEN = [
+  { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-wbs-error-ink', flaeche: '--kd-wbs-error-bg', ring: '--kd-wbs-error' },
+  { datei: 'kd-app.css', selektor: '.toast .lnk', vorne: '--kd-head-link', flaeche: '--kd-head' },
+];
+/** Abweichungen einer Regel von ihrer Paarung: falsche Schrift, falsche Fläche, fehlender Ring. */
+function paarungsFehler(paarung, text) {
+  const regel = regeln(text).find(r => r.selektor === paarung.selektor);
+  if (!regel) return [`${paarung.selektor} fehlt`];
+  const verlangt = [`color:var(${paarung.vorne})`];
+  if (paarung.ring) verlangt.push(`background:var(${paarung.flaeche})`, `box-shadow:0 0 0 1px var(${paarung.ring})`);
+  return verlangt.filter(deklaration => !regel.rumpf.split(';').includes(deklaration)).map(deklaration => `${paarung.datei}:${regel.zeile} ${paarung.selektor} ohne ${deklaration}`);
 }
 
 /* ── Wächter: Dunkelblöcke, Literale, faint ── */
@@ -177,6 +191,14 @@ test('Rechner: var() wird über mehrere Stufen aufgelöst, ein fehlendes Token b
 const TOKENS = lies('kd-tokens.css');
 for (const paar of PAARE) {
   test(`Paar ${paar.name}: mindestens ${mass(paar.mass)} in hell und dunkel`, { todo: AUSSTEHEND[paar.name] }, () => {
+    assert.deepStrictEqual(verstoesse(paar, themen(TOKENS)), []);
+  });
+}
+
+for (const paarung of PAARUNGEN) {
+  test(`Paarung ${paarung.selektor}: Schrift ${paarung.vorne} auf ${paarung.flaeche}`, () => {
+    assert.deepStrictEqual(paarungsFehler(paarung, lies(paarung.datei)), []);
+    const paar = { name: paarung.selektor, flaechen: [paarung.flaeche], vorne: [paarung.vorne], mass: SCHRIFT };
     assert.deepStrictEqual(verstoesse(paar, themen(TOKENS)), []);
   });
 }
