@@ -95,11 +95,6 @@ const PAARE = [
   { name: 'Linie Fokusring Modusleiste', flaechen: kd(['modus']), vorne: kd(['accent']), mass: LINIE },
   { name: 'Linie Zustand .bf-chip', flaechen: kd(['bg']), vorne: kd(['faint']), mass: LINIE },
 ];
-/** Bubble, die ein heute verfehltes Paar herstellt; bis dahin läuft die Prüfung als todo (erwartet rot). */
-const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
-const AUSSTEHEND = {
-  'Modusleiste': MODUS, 'Linie Abschluss Modusleiste': MODUS, 'Linie Fokusring Modusleiste': MODUS,
-};
 
 /** Verstöße eines Paares je Thema, je als Satz `Name: --x auf --y, dunkel 1,33 < 4,5`. */
 function verstoesse(paar, werteJeThema) {
@@ -165,22 +160,6 @@ function literalDeklarationen(zeile) {
 function literalZeilen(datei, text) {
   return ohneKommentare(text).split('\n').flatMap((zeile, i) => literalDeklarationen(zeile).length ? [`${datei}:${i + 1}`] : []);
 }
-/** Regeln, die bis zu ihrer Bubble ein Literal behalten: genau dieser Selektor mit genau diesen Deklarationen, sonst nichts. */
-const LITERAL_AUSSTEHEND = [
-  { selektor: '.kz.modus .kz-z1', deklarationen: ['border-color:oklch(1 0 0 / .2)'], bubble: MODUS },
-  { selektor: '.kz-modus .kz-btn', deklarationen: ['border-color:oklch(1 0 0 / .3)'], bubble: MODUS },
-];
-function literaleOhneAusstehende(datei, text) {
-  const zeilen = ohneKommentare(text).split('\n');
-  const alleRegeln = regeln(text);
-  const ausstehend = ort => {
-    const nr = Number(ort.split(':')[1]);
-    const regel = alleRegeln.find(r => r.zeile === nr);
-    const literale = literalDeklarationen(zeilen[nr - 1]);
-    return regel !== undefined && LITERAL_AUSSTEHEND.some(aus => aus.selektor === regel.selektor && literale.every(d => aus.deklarationen.includes(d)));
-  };
-  return literalZeilen(datei, text).filter(ort => !ausstehend(ort));
-}
 const gepruefteDateien = () => ['kd-app.css', 'kd-base.css', ...fs.readdirSync(WEB).filter(name => name.endsWith('.js')).sort()];
 
 /** Verzierung, Linie oder inaktives Bedienelement (R00107 FA 11). */
@@ -210,7 +189,7 @@ test('Rechner: var() wird über mehrere Stufen aufgelöst, ein fehlendes Token b
 
 const TOKENS = lies('kd-tokens.css');
 for (const paar of PAARE) {
-  test(`Paar ${paar.name}: mindestens ${mass(paar.mass)} in Hell und Dunkel`, { todo: AUSSTEHEND[paar.name] }, () => {
+  test(`Paar ${paar.name}: mindestens ${mass(paar.mass)} in Hell und Dunkel`, () => {
     assert.deepStrictEqual(verstoesse(paar, themen(TOKENS)), []);
   });
 }
@@ -288,6 +267,53 @@ test('Selbstprobe Mischung: Anteil 1 ist die erste Farbe, 0 die zweite, ½ geht 
   assert.strictEqual(mische('oklch(0.9 0.1 350)', 'oklch(0.5 0.1 10)', 0.5), 'oklch(0.7 0.1 0)');
 });
 
+/* ── Modusleiste (FA 7): Akzent-Container mit Linie, Fokusring und Zustandsebene beim Zeigen ── */
+
+/** M3-Zustandsebene: 8 % der Schrift über der Fläche, wie in kd-app.css als color-mix geschrieben. */
+const ZUSTANDSEBENE = 'color-mix(in oklch, var(--kd-modus-text) 8%, var(--kd-modus))';
+const MODUSLEISTE = [
+  { selektor: '.kz.modus', deklarationen: ['background:var(--kd-modus)', 'color:var(--kd-modus-text)', 'border-bottom:1px solid var(--kd-modus-linie)'] },
+  { selektor: '.kz.modus .kz-z1', deklarationen: ['border-color:var(--kd-modus-linie)'] },
+  { selektor: '.kz.modus .kz-z1 .mono', deklarationen: ['color:var(--kd-modus-text)'] },
+  { selektor: '.kz.modus .kz-modus .muted', deklarationen: ['color:var(--kd-muted)'] },
+  { selektor: '.kz-modus .kz-btn', deklarationen: ['border-color:var(--kd-modus-linie)', 'color:var(--kd-modus-text)'] },
+  { selektor: '.kz-modus .kz-btn:not(.haupt):hover,.kz-modus .kz-btn.auf', deklarationen: [`background:${ZUSTANDSEBENE}`] },
+  { selektor: '.kz-modus .kz-btn.haupt', deklarationen: ['background:var(--kd-accent)', 'border-color:var(--kd-accent)', 'color:var(--kd-on-accent)'] },
+  { selektor: '.kz-modus .kz-btn:focus-visible', deklarationen: ['outline:2px solid var(--kd-accent)'] },
+  { selektor: '.fehl-kopf', deklarationen: ['color:var(--kd-warn)'] },
+];
+/** Deklarationen der Modusleiste, die in kd-app.css fehlen, als `selektor ohne deklaration`. */
+function modusleistenFehler(text) {
+  const alle = regeln(text);
+  return MODUSLEISTE.flatMap(({ selektor, deklarationen }) => {
+    const regel = alle.find(r => r.selektor === selektor);
+    if (!regel) return [`${selektor} fehlt`];
+    const rumpf = regel.rumpf.split(';').map(d => d.trim());
+    return deklarationen.filter(d => !rumpf.includes(d)).map(d => `${selektor} ohne ${d}`);
+  });
+}
+
+test('Modusleiste: Fläche, Schrift, Linie, Fertig, Fokusring, Fehler und Zeigen über die Tokens in kd-app.css', () => {
+  assert.deepStrictEqual(modusleistenFehler(lies('kd-app.css')), []);
+});
+
+test('Modusleiste beim Zeigen: --kd-modus-text auf der Zustandsebene mindestens 4,5 in Hell und Dunkel', () => {
+  const saetze = Object.entries(themen(TOKENS)).flatMap(([thema, werte]) => {
+    const text = aufgeloest('--kd-modus-text', werte);
+    const wert = kontrast(text, mische(text, aufgeloest('--kd-modus', werte), 0.08));
+    return wert < SCHRIFT ? [`${thema} ${zahl(wert)} < 4,5`] : [];
+  });
+  assert.deepStrictEqual(saetze, []);
+});
+
+test('Selbstprobe Modusleiste: eine Leiste von heute (Fläche accent-ink, Ränder mit Literal) wird je fehlender Deklaration gemeldet', () => {
+  const heute = '.kz.modus{background:var(--kd-accent-ink)}\n.kz-modus .kz-btn{border-color:oklch(1 0 0 / .3)}';
+  const fehler = modusleistenFehler(heute);
+  assert.ok(fehler.includes('.kz.modus ohne background:var(--kd-modus)'), fehler.join('\n'));
+  assert.ok(fehler.includes('.kz-modus .kz-btn ohne border-color:var(--kd-modus-linie)'), fehler.join('\n'));
+  assert.ok(fehler.includes('.kz-modus .kz-btn:focus-visible fehlt'), fehler.join('\n'));
+});
+
 /* ── Dunkelblöcke ── */
 
 test('Dunkelblöcke: @media und [data-theme="dark"] setzen dieselben Tokens mit denselben Werten', () => {
@@ -303,13 +329,8 @@ test('Selbstprobe Dunkelblock: ein nur im @media-Block geänderter Wert und ein 
 /* ── Literale ── */
 
 test('Literale: kein Farbwert außerhalb von kd-tokens.css in kd-app.css, kd-base.css und web/*.js', () => {
-  const funde = gepruefteDateien().flatMap(datei => literaleOhneAusstehende(datei, lies(datei)));
+  const funde = gepruefteDateien().flatMap(datei => literalZeilen(datei, lies(datei)));
   assert.deepStrictEqual(funde, []);
-});
-
-test('Literale Modusleiste: .kz.modus .kz-z1 und .kz-modus .kz-btn ohne Farbliteral', { todo: MODUS }, () => {
-  const app = lies('kd-app.css');
-  assert.deepStrictEqual(literalZeilen('kd-app.css', app).length, literaleOhneAusstehende('kd-app.css', app).length);
 });
 
 test('Selbstprobe Literal: angehängtes .x{color:#fff} und background:hsl(…) werden mit Datei:Zeile erkannt', () => {
@@ -374,19 +395,6 @@ test('Selbstprobe Literal: Farbnamen in Token-Namen, Schlüsselwörter und Nicht
     '.a{background:url(red.png) no-repeat}',
   ].join('\n');
   assert.deepStrictEqual(literalZeilen('probe', probe), []);
-});
-
-test('Selbstprobe ausstehend: die Ausnahme gilt nur für den genauen Selektor mit seinem Literal', () => {
-  const app = lies('kd-app.css');
-  const zeilen = app.split('\n');
-  const nr = zeilen.findIndex(zeile => zeile.startsWith('.kz-modus .kz-btn.haupt{')) + 1;
-  assert.ok(nr > 0, '.kz-modus .kz-btn.haupt gefunden');
-  zeilen[nr - 1] = zeilen[nr - 1].replace('}', ';color:#fff}');
-  assert.deepStrictEqual(literaleOhneAusstehende('kd-app.css', zeilen.join('\n')), [`kd-app.css:${nr}`]);
-  const btn = zeilen.findIndex(zeile => zeile.startsWith('.kz-modus .kz-btn{')) + 1;
-  zeilen[nr - 1] = zeilen[nr - 1].replace(';color:#fff}', '}');
-  zeilen[btn - 1] = zeilen[btn - 1].replace('}', ';color:#fff}');
-  assert.deepStrictEqual(literaleOhneAusstehende('kd-app.css', zeilen.join('\n')), [`kd-app.css:${btn}`]);
 });
 
 /* ── faint ── */

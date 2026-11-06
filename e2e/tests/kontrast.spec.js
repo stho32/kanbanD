@@ -2,14 +2,13 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel } = require('./hilfen');
 const { ansichtenDerAnwendung } = require('./ansichten');
 
 const THEMEN = ['light', 'dark'];
 const MASS = 4.5;
 /** Bekannte Verstöße, die zu einer anderen Karte gehören (nur #50 und #55), je mit Kartennummer: { karte, element, text }. */
 const AUSNAHMEN = [];
-const MODUS = 'B0393 Modusleiste als Akzent-Container (wartet auf Freigabe des Zustands an D0002)';
 
 const gestern = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); };
 const GRUNDBESTAND = () => ({
@@ -55,6 +54,17 @@ async function ansichtOeffnen(page, adresse) {
   await page.goto(adresse);
   await page.waitForFunction(() => !document.querySelector('#main [data-vorige-ansicht]') && document.querySelector('#main').firstElementChild);
   await liveBereit(page);
+}
+
+/** Die Farbe eines Tokens oder Ausdrucks, wie der Browser sie für `color` auflöst. */
+async function tokenFarbe(page, token) {
+  const wert = token.startsWith('--') ? `var(${token})` : token;
+  return page.evaluate(w => { const p = document.createElement('p'); p.style.color = w; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }, wert);
+}
+
+/** Das Pixel einer berechneten Farbeigenschaft am Element, über das Canvas. */
+async function pixelVon(page, ort, eigenschaft) {
+  return farbPixel(page, await ort.evaluate((e, x) => getComputedStyle(e)[x], eigenschaft));
 }
 
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
@@ -204,13 +214,16 @@ test.describe('R00107 Kontrast', () => {
     expect(verstoesse).toEqual([]);
   });
 
-  test.fixme(`US-4: Modusleiste, beide Themen — ${MODUS}`, async ({ page }) => {
+  test('US-4: Modusleiste, beide Themen; Titel, Dateipfad, Untertitel, Verwerfen, Fertig und Ich-Knopf gemessen', async ({ page }) => {
     await ausMehr(page, 'Spalten einrichten');
     await expect(page.locator('header.kz.modus')).toBeVisible();
     expect(await verstoesseInBeidenThemen(page, ['header'])).toEqual([]);
+    const texte = (await kontrastMessen(page, ['header'])).map(m => m.text);
+    for (const text of ['Spalten einrichten', 'boards/entwicklung.md', 'Verwerfen', 'Fertig', 'Stefan']) expect(texte, text).toContain(text);
+    expect(texte.some(t => t.startsWith('schreibt nur die Board-Datei')), 'Untertitel gemessen').toBe(true);
   });
 
-  test.fixme(`US-4: Modusleiste mit Fehler nach 409, beide Themen — ${MODUS}`, async ({ page }) => {
+  test('US-4: Modusleiste mit Fehler nach 409, beide Themen', async ({ page }) => {
     await page.route('**/api/boards/entwicklung/spalten', route => route.request().method() === 'PUT'
       ? route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ fehler: 'Die Board-Datei wurde inzwischen geändert.' }) })
       : route.continue());
@@ -218,6 +231,85 @@ test.describe('R00107 Kontrast', () => {
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect(page.locator('.fehl-kopf')).toBeVisible();
     expect(await verstoesseInBeidenThemen(page, ['header'])).toEqual([]);
+    const fehler = (await kontrastMessen(page, ['header'])).filter(m => m.element.includes('.fehl-kopf'));
+    expect(fehler.length, 'die Fehlermeldung wird gemessen').toBe(1);
+  });
+
+  test('Paarungen Modusleiste: Fläche --kd-modus, Titel --kd-modus-text, Fertig --kd-accent mit --kd-on-accent, über das Canvas, beide Themen', async ({ page }) => {
+    await ausMehr(page, 'Spalten einrichten');
+    const leiste = page.locator('header.kz.modus');
+    await expect(leiste).toBeVisible();
+    const fertig = leiste.getByRole('button', { name: 'Fertig' });
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      expect(await pixelVon(page, leiste, 'backgroundColor'), `${t}: Fläche`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-modus')));
+      expect(await pixelVon(page, leiste.locator('.kz-modus b'), 'color'), `${t}: Titel`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-modus-text')));
+      expect(await pixelVon(page, fertig, 'backgroundColor'), `${t}: Fertig Fläche`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-accent')));
+      expect(await pixelVon(page, fertig, 'color'), `${t}: Fertig Schrift`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-on-accent')));
+    }
+  });
+
+  test('Unterer Abschluss der Modusleiste: 1 px in --kd-modus-linie, beide Themen; die Kopfzeile ohne Modus hat diese Linie nicht', async ({ page }) => {
+    const kopf = page.locator('header.kz');
+    const linie = () => kopf.evaluate(e => ({ breite: getComputedStyle(e).borderBottomWidth, farbe: getComputedStyle(e).borderBottomColor }));
+    for (const t of THEMEN) {
+      await thema(page, t);
+      const ohneModus = await linie();
+      const hatLinie = ohneModus.breite === '1px' && ohneModus.farbe === await tokenFarbe(page, '--kd-modus-linie');
+      expect(hatLinie, `${t}: Kopfzeile ohne Modus ${ohneModus.breite} ${ohneModus.farbe}`).toBe(false);
+    }
+    await ausMehr(page, 'Spalten einrichten');
+    await expect(page.locator('header.kz.modus')).toBeVisible();
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const mitModus = await linie();
+      expect(mitModus.breite, t).toBe('1px');
+      expect(await farbPixel(page, mitModus.farbe), `${t}: Linie`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-modus-linie')));
+      expect(await kontrastFarben(page, mitModus.farbe, await tokenFarbe(page, '--kd-modus')), `${t}: Linie gegen Fläche`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test('Fokusring Modusleiste: Verwerfen per Tastatur fokussiert zeigt 2 px --kd-accent, mindestens 3:1 gegen --kd-modus, beide Themen', async ({ page }) => {
+    await ausMehr(page, 'Spalten einrichten');
+    const leiste = page.locator('header.kz.modus');
+    const verwerfen = leiste.getByRole('button', { name: 'Verwerfen' });
+    await leiste.getByRole('button', { name: 'Fertig' }).focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(verwerfen).toBeFocused();
+    expect(await verwerfen.evaluate(e => e.matches(':focus-visible')), 'Fokus von der Tastatur').toBe(true);
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const ring = await verwerfen.evaluate(e => ({ breite: getComputedStyle(e).outlineWidth, stil: getComputedStyle(e).outlineStyle, farbe: getComputedStyle(e).outlineColor }));
+      expect([ring.breite, ring.stil], t).toEqual(['2px', 'solid']);
+      expect(await farbPixel(page, ring.farbe), `${t}: Ring`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-accent')));
+      const wert = await kontrastFarben(page, ring.farbe, await tokenFarbe(page, '--kd-modus'));
+      await test.info().attach(`Fokusring ${t}`, { body: komma(wert), contentType: 'text/plain' });
+      expect(wert, `${t}: Ring gegen Fläche`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test('Modusleiste beim Zeigen: Verwerfen und Ich-Knopf auf der Zustandsebene (8 % --kd-modus-text über --kd-modus), Schrift mindestens 4,5, beide Themen', async ({ page }) => {
+    await ausMehr(page, 'Spalten einrichten');
+    const leiste = page.locator('header.kz.modus');
+    await expect(leiste).toBeVisible();
+    const verwerfen = leiste.getByRole('button', { name: 'Verwerfen' });
+    const ich = leiste.locator('#t-ich');
+    const knoepfe = [{ name: 'Verwerfen', knopf: verwerfen, schrift: verwerfen }, { name: 'Ich-Knopf', knopf: ich, schrift: ich.locator('.ich-name') }];
+    for (const t of THEMEN) {
+      await thema(page, t);
+      const ebene = await farbPixel(page, await tokenFarbe(page, 'color-mix(in oklch, var(--kd-modus-text) 8%, var(--kd-modus))'));
+      for (const { name, knopf, schrift } of knoepfe) {
+        await knopf.hover();
+        await farbuebergaengeAbwarten(page);
+        expect(await pixelVon(page, knopf, 'backgroundColor'), `${t}: ${name} Grund`).toEqual(ebene);
+        const wert = await kontrastAm(schrift);
+        await test.info().attach(`Zeigen ${name} ${t}`, { body: komma(wert), contentType: 'text/plain' });
+        expect(wert, `${t}: ${name}`).toBeGreaterThanOrEqual(MASS);
+      }
+    }
   });
 
   test('US-5: Toast mit „rückgängig“ nach dem Ziehen, beide Themen', async ({ page }) => {

@@ -379,3 +379,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00107 Farbrollen in Paaren | B0396 Restliche Farbliterale in Tokens | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00107 Farbrollen in Paaren | B0397 Phasenblock über Anteil statt Farbton | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-11-06 | R00107 Farbrollen in Paaren | B0398 Kontrast-Probe im Browser mit einem Helfer | Standard | 1,5-4h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0393 Modusleiste als Akzent-Container | Standard | 1-2h | 0,2h | 0,0h | autonom |

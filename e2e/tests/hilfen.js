@@ -198,7 +198,7 @@ function kontrastWerkzeugEinbauen() {
     .flatMap(wurzel => [wurzel, ...wurzel.querySelectorAll('*')])
     .filter(e => !inaktiv(e) && !ohne.some(sel => e.closest(sel)))
     .flatMap(e => sichtbar(e) ? messungen(bereich, e) : fokussierbar(e) && e.getClientRects().length > 0 ? imFokus(bereich, e) : []));
-  window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])) };
+  window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])), pixel: f => gemalt(['#fff', f]) };
 }
 
 /**
@@ -233,4 +233,10 @@ async function leuchtdichte(page, farbe) {
   return page.evaluate(f => window.kdKontrast.leuchtdichte(f), farbe);
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, leuchtdichte };
+/** Das Pixel [r, g, b, a] einer CSS-Farbe, deckend über Weiß gemalt: zwei Schreibweisen derselben Farbe ergeben dasselbe Pixel. */
+async function farbPixel(page, farbe) {
+  await page.evaluate(kontrastWerkzeugEinbauen);
+  return page.evaluate(f => window.kdKontrast.pixel(f), farbe);
+}
+
+module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
