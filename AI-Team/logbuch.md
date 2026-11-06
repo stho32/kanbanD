@@ -172,3 +172,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Detailplanung | product-owner (frisch) | bestanden: 5 Fragen entschieden wie empfohlen, Anzeige-Schreibweise und Tooltip-Satz ergänzt | 0:01 | aaa5cf0 |
 | 2026-11-06 | #6 | Detailplanung | ux-reviewer (frisch) | befund: 4 Muss (Achsentausch, Farbe ohne Info, Tastatur, Wireframe), 9 Sollte, 2 Optional; 2 Fragen an PO | 0:08 | — |
 | 2026-11-06 | #6 | Detailplanung | product-owner (frisch) | befund: Wireframe-Pflicht (gestalter, D0006), Zeitraum ausblenden; Freigabe Artboard an den Auftraggeber, Bau ohne Oberfläche läuft weiter | 0:02 | ba49fee |
+| 2026-11-06 | #6 | Detailplanung | planer (frisch) | bestanden: UX-Muss und PO eingearbeitet, B0356–B0362 neu, 17 Bubbles (11–22 h Hypothese); 8 frei baubar, 9 warten auf die Freigabe von D0006; Zug nach Entwicklung | 0:08 | 98e285d |
