@@ -10,8 +10,13 @@ const MASS = { fein: 24, touch: 44 };
  * ob sie trifft, prüft document.elementFromPoint an den vier Kantenmitten (1 px innen).
  * Bei feinem Zeiger gilt die Kreis-Ausnahme aus WCAG 2.5.8, bei Touch nicht.
  */
-/** Was als Bedienziel gemessen wird (ADR-0012 Regel 2). */
-const ZIELE = 'button, select, input:not([type=hidden]), a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href]';
+/**
+ * Was als Bedienziel gemessen wird (ADR-0012 Regel 2): Steuerelemente und Rollen, Textfelder, ein Label, das für
+ * sein verstecktes Feld angetippt wird, und jede Klickfläche mit data-act — auch ohne Rolle.
+ * Tabellenzeilen und Diagrammpunkte noch nicht (B0413, B0414).
+ */
+const ZIELE = 'button, select, input:not([type=hidden]), textarea, a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href], '
+  + 'label:has(> input:is([hidden], [type=file])), [data-act]:not(tr, circle)';
 
 function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);

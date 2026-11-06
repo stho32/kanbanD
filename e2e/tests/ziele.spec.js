@@ -141,6 +141,28 @@ test.describe('Teilaufgabe auf der Karte: Text gehört zum Ziel', () => {
   });
 });
 
+test.describe('Klickflächen ohne Knopf tragen eine Rolle und gehen mit der Tastatur', () => {
+  test('Aufgabenfenster #1: Enter auf dem Text der Teilaufgabe „b“ öffnet die Bearbeitung', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    const text = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true });
+    await text.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#teil-edit')).toHaveValue('b');
+    await expect(page.locator('#teil-edit')).toBeFocused();
+  });
+
+  test('Einrichten: die Art von Mia ist eine Radiogruppe, Pfeil rechts wählt „Agent“', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/einrichten');
+    const art = page.getByRole('radiogroup', { name: 'Art mi' });
+    await expect(art.getByRole('radio', { name: 'Mensch' })).toHaveAttribute('aria-checked', 'true');
+    await art.getByRole('radio', { name: 'Mensch' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('radiogroup', { name: 'Art mi' }).getByRole('radio', { name: 'Agent' })).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
 test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
   test('Aufgabenliste mit Maus: der Titel-Link von #1, allein in seiner Zelle, mindestens 24 × 24', async ({ page }) => {
     await starten(page);

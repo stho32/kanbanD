@@ -3,8 +3,9 @@
 body{margin:0;font-family:var(--kd-font);color:var(--kd-text)}
 a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent);text-decoration:underline}
 /* Zielgröße (R00108, ADR-0012 Regel 2): jedes Bedienelement mindestens --kd-ziel, ohne Spezifität, damit Klassen die Zeichnung behalten.
+   Textfelder und ein Label, das für sein verstecktes Feld angetippt wird, sind Ziele wie Knöpfe.
    Ein Link allein in einer Zelle ist ein Ziel und wird dafür inline-flex; ein Link im Fließtext nicht. */
-:where(button,select,input:not([type=hidden]),a.btn,a.kz-btn,[role=button],[role=checkbox],[role=radio],[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox],[role=tab],[role=switch],summary,td>a[href]:only-child){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
+:where(button,select,input:not([type=hidden]),textarea,label:has(> input:is([hidden],[type=file])),a.btn,a.kz-btn,[role=button],[role=checkbox],[role=radio],[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox],[role=tab],[role=switch],summary,td>a[href]:only-child){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
 :where(summary){align-content:center}
 :where(td>a[href]:only-child){display:inline-flex;align-items:center}
 .kz{height:var(--kd-head-h);flex:none;display:flex;align-items:stretch;background:var(--kd-head);color:var(--kd-head-text)}

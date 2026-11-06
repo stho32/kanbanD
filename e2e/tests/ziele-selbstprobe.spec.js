@@ -54,6 +54,23 @@ test.describe('Selbstproben, Zielauswahl', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['zwei']);
   });
 
+  test('ein einzeiliges Textfeld mit 26 px und eine Klickfläche ohne Rolle mit 22 px zählen', async ({ page }) => {
+    await page.setContent('<textarea rows="1" aria-label="feld" style="height:26px;width:300px"></textarea>'
+      + '<div><span data-act="art" style="display:inline-block;height:22px;width:50px">Agent</span></div>');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['feld', 'Agent']);
+  });
+
+  test('ein Label um ein verstecktes Dateifeld zählt, ein Label neben einem sichtbaren Feld nicht', async ({ page }) => {
+    await page.setContent('<label style="display:block;height:26px;width:300px">+ Datei wählen<input type="file" hidden></label>'
+      + '<label for="n" style="display:block;height:20px">Name</label><input id="n" aria-label="name" style="height:44px;width:200px">');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['+ Datei wählen']);
+  });
+
+  test('ein Hintergrund mit data-act über die ganze Fläche besteht, er ist so groß wie das Fenster', async ({ page }) => {
+    await page.setContent('<div data-act="schliessen-bg" style="position:fixed;inset:0"></div>');
+    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' })).toEqual([]);
+  });
+
   test('unter einem offenen Dialog zählt nur die oberste Ebene', async ({ page }) => {
     await page.setContent(STIL + '<main inert>' + knopf(10, 10, 10, 'darunter') + '</main><div role="dialog">' + knopf(100, 100, 10, 'oben') + '</div>');
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['oben']);
