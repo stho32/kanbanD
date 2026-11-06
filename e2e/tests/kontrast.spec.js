@@ -94,6 +94,19 @@ test.describe('R00107 Kontrast', () => {
     expect(await kontrastMessen(page, ['#probe-weg'])).toEqual([]);
   });
 
+  test('Bis Zeigen oder Fokus unsichtbar (opacity:0, sichtbar bei :focus) wird im fokussierten Zustand gemessen; Fokus wird zurückgegeben', async ({ page }) => {
+    await thema(page, 'light');
+    await page.evaluate(() => {
+      document.head.insertAdjacentHTML('beforeend', '<style>#probe-zeile button{opacity:0;color:#bbb;background:none;border:0}#probe-zeile button:focus{opacity:1}</style>');
+      document.body.insertAdjacentHTML('beforeend', '<input id="probe-vorher"><div id="probe-zeile" style="background:#fff"><button>×</button><span style="opacity:0">weg</span></div>');
+      document.querySelector('#probe-vorher').focus();
+    });
+    const messungen = await kontrastMessen(page, ['#probe-zeile']);
+    expect(messungen.map(m => m.text)).toEqual(['×']);
+    expect(messungen[0].wert).toBeLessThan(MASS);
+    expect(await page.evaluate(() => document.activeElement.id)).toBe('probe-vorher');
+  });
+
   test('Warten auf ruhenden Zustand: nach dem Themenwechsel läuft ein Farbübergang, gemessen wird erst nach seinem Ende', async ({ page }) => {
     await thema(page, 'light');
     await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',

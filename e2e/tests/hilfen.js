@@ -184,10 +184,20 @@ function kontrastWerkzeugEinbauen() {
     const text = eigenerText(e);
     return text ? [{ text, farbe: getComputedStyle(e).color, art: '' }] : [];
   };
+  const messungen = (bereich, e) => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: schriftGegenGrund(e, s.farbe) }));
+  const fokussierbar = e => e.tabIndex >= 0 && !inaktiv(e);
+  /** Bis Zeigen oder Fokus unsichtbar (`opacity:0`, sichtbar bei `:focus`): gemessen im fokussierten Zustand, danach Fokus zurück. */
+  const imFokus = (bereich, e) => {
+    const vorher = document.activeElement;
+    e.focus({ preventScroll: true });
+    const ergebnis = document.activeElement === e && sichtbar(e) ? messungen(bereich, e) : [];
+    if (vorher instanceof HTMLElement && vorher !== document.body) vorher.focus({ preventScroll: true }); else e.blur();
+    return ergebnis;
+  };
   const messen = bereiche => bereiche.flatMap(bereich => [...document.querySelectorAll(bereich)]
     .flatMap(wurzel => [wurzel, ...wurzel.querySelectorAll('*')])
-    .filter(e => sichtbar(e) && !inaktiv(e))
-    .flatMap(e => schriften(e).map(s => ({ bereich, element: beschreibung(e) + s.art, text: s.text.slice(0, 40), wert: schriftGegenGrund(e, s.farbe) }))));
+    .filter(e => !inaktiv(e))
+    .flatMap(e => sichtbar(e) ? messungen(bereich, e) : fokussierbar(e) && e.getClientRects().length > 0 ? imFokus(bereich, e) : []));
   window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])) };
 }
 
