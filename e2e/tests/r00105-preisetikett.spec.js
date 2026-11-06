@@ -18,6 +18,18 @@ test.describe('R00105', () => {
     await expect(page.getByRole('dialog', { name: 'Aufgabe #4' })).toBeVisible();
   }
 
+  test('Nacharbeit M1: n auf einer Karte öffnet „Neue Aufgabe“ ohne Fehler — der Reiter Kosten gehört nur ins Aufgabenfenster', async ({ page }) => {
+    const fehler = [];
+    page.on('pageerror', e => fehler.push(e.message));
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('.ka[data-id="4"]').focus();
+    await page.keyboard.press('n');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
+    await expect(page.getByLabel('Titel der neuen Aufgabe')).toBeVisible();
+    expect(fehler).toEqual([]);
+  });
+
   test('US-15: Reiterleiste ist eine tablist mit roving tabindex', async ({ page }) => {
     await oeffnen(page);
     const leiste = page.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
