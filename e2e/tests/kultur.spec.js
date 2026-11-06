@@ -163,7 +163,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(page.locator('table.zt tr[data-zeit] td:first-child')).toHaveText([kurz(HEUTE), lang(VORJAHR_3012)]);
   });
 
-  test.fail('US-4: Personen „zuletzt“ und Wochenleiste lang, Tagesköpfe kurz im laufenden Jahr', async ({ page }) => {
+  test('US-4: Personen „zuletzt“ und Wochenleiste lang, Tagesköpfe kurz im laufenden Jahr', async ({ page }) => {
     await starten(page);
     // Stefans letzte Zeit liegt heute; einen Tag später zeigt „zuletzt“ ein Datum statt der Uhrzeit
     await page.clock.install({ time: new Date(Date.now() + 864e5) });
