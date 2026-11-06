@@ -59,6 +59,11 @@
     const wort = eingabe.trim().toLowerCase();
     return wort === OHNE_HERKUNFT.toLowerCase() || wort === 'thin air';
   }
+  /** Anzeigetext einer gespeicherten Herkunft: `thin air` → „ohne Herkunft“, jede andere bleibt (FA 15). */
+  function herkunftAnzeige(wert) {
+    if (wert === 'thin air') return OHNE_HERKUNFT;
+    return wert;
+  }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige });
 })(typeof module !== 'undefined' ? module.exports : window);
