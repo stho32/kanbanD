@@ -246,3 +246,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | — | Befundkarten | director | #51 Farbfeld ohne Klasse, #52 Wackler, #53 Fever-Einzahl, #54 Esc im Titelfeld, #55 Härtung | 0:05 | — |
 | 2026-11-06 | #6 | Auslieferung | director | cargo install, Board neu (PID 4030146), /web/ansicht.js mit neuem Stand geprüft; Zug nach Erledigt erfolgte versehentlich vor der Auslieferung | 0:08 | — |
 | 2026-11-06 | #6 | Retrospektive | director | Projektlehre `.leer`; 3 Vorschläge an die Factory (Auslieferung vor Zug, Leseliste abgleichen, grep-Probe); 3 Fortbildungsideen | 0:05 | — |
+| 2026-11-06 | #9 | Architektur | architekt | bestanden: ADR-0011 Farbrollen in Paaren, Kontrast als Probe; A00009 ergänzt | 0:05 | d462236 |
