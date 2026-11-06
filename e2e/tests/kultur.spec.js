@@ -391,19 +391,8 @@ test.describe('US-9: ohne Herkunft', () => {
     await expect(gefunden).toHaveCount(0);
   });
 
-  // Gegenbeispiel aus US-9 wörtlich. Unerfüllbar ohne Änderung der API: der Server nimmt als Herkunft nur I0001, R00014,
-  // kd:I0001 oder thin air und weist „ohne Herkunftx“ ab (src/modell/aufgabe.rs:499, :564) — Rückfrage im Bericht an den Director
-  test.fail('US-9, Gegenbeispiel wörtlich: „ohne Herkunftx“ wird eine gewöhnliche Herkunft neben I0001 und R00014', async ({ page }) => {
-    await starten(page);
-    await fensterOeffnen(page, 1);
-    await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014, ohne Herkunftx]');
-    await page.locator('.ochip', { hasText: 'ohne Herkunftx' }).getByRole('button').click();
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
-  });
-
-  test('US-9, Gegenbeispiel wie heute möglich: „ohne Herkunftx“ ersetzt die Herkünfte nicht, sondern geht als gewöhnliche Herkunft an den Server', async ({ page }) => {
+  // Drei Einträge in der Anfrage, zwei in der Datei: würde „ohne Herkunftx“ als „ohne Herkunft“ erkannt, ginge [thin air] an den Server
+  test('US-9, Gegenbeispiel: „ohne Herkunftx“ wird nicht als „ohne Herkunft“ erkannt, der Server lehnt es ab, die Datei bleibt [I0001, R00014]', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     const anfrage = page.waitForRequest(r => r.method() === 'PATCH' && r.url().endsWith('/api/aufgaben/1'));
