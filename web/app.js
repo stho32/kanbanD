@@ -490,6 +490,28 @@ function ebenenAbschirmen(liste) {
   for (const tiefer of dialoge) (tiefer.closest('.mod-bg') || tiefer).inert = true;
 }
 
+/** Menü- und Fenster-Auslöser tragen aria-expanded: „true“ nur der, für den der Pop gerade offen ist. */
+function ausloeserMarkieren() {
+  const pop = $('#pop');
+  const offenFuer = pop ? pop.dataset.for : '';
+  for (const knopf of document.querySelectorAll('[aria-haspopup="menu"][id], [aria-haspopup="dialog"][id]')) knopf.setAttribute('aria-expanded', String(knopf.id === offenFuer));
+}
+
+const MENUE_RICHTUNG = { ArrowDown: 1, ArrowUp: -1, Home: 'anfang', End: 'ende' };
+
+/** Pfeile, Pos1 und Ende führen den DOM-Fokus über die wählbaren Einträge des offenen Pop-Menüs; wahr, wenn die Taste verbraucht ist. */
+function popMenueTaste(ereignis) {
+  const menue = $('#pop[role="menu"]');
+  if (!menue || !Object.hasOwn(MENUE_RICHTUNG, ereignis.key)) return false;
+  const eintraege = [...menue.querySelectorAll('[role^="menuitem"]')];
+  // menueSchritt überspringt, was „aktuell“ ist — hier die nicht wählbaren Einträge
+  const modell = eintraege.map(eintrag => ({ aktuell: eintrag.getAttribute('aria-disabled') === 'true' }));
+  const ziel = menueSchritt(modell, eintraege.indexOf(document.activeElement), MENUE_RICHTUNG[ereignis.key]);
+  ereignis.preventDefault();
+  if (ziel >= 0) eintraege[ziel].focus();
+  return true;
+}
+
 /** Tabbare, sichtbare Elemente eines Bereichs in Dokumentreihenfolge. */
 function tabbareIn(bereich) {
   return [...bereich.querySelectorAll(TABBAR)].filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
@@ -531,6 +553,7 @@ function fokusFuehren(aktiv, ausloeser, gesichert) {
   const jetzt = ebenen(S.ui, gemerkteAusloeser);
   vorigeEbenen = jetzt;
   ebenenAbschirmen(jetzt);
+  ausloeserMarkieren();
   const oberste = jetzt.at(-1) || null;
   const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel() });
   S.ui.fokus = null;
@@ -1374,6 +1397,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
+  if (S.ui.pop && popMenueTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();

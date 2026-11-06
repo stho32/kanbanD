@@ -215,3 +215,57 @@ test('US-8: Enter auf „In Arbeit“ klappt zu, Fokus auf den Aufklapp-Knopf; L
   await page.keyboard.press('Enter');
   await expect(page.locator('.bk-name[data-arg="In Arbeit"]')).toBeFocused();
 });
+
+/** Index des fokussierten Eintrags unter den wählbaren Einträgen des offenen Pops, -1 außerhalb. */
+const menueIndex = page => page.evaluate(() => [...document.querySelectorAll('#pop [role^="menuitem"]:not([aria-disabled="true"])')].indexOf(document.activeElement));
+const menueAnzahl = page => page.locator('#pop [role^="menuitem"]:not([aria-disabled="true"])').count();
+
+test('US-6: Enter auf „Mehr“ → aria-expanded, Fokus auf dem ersten Eintrag; ↓, ↑↑ (Umlauf), Ende, Pos1', async ({ page }) => {
+  await page.locator('#t-mehr').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-mehr')).toHaveAttribute('aria-expanded', 'true');
+  expect(await page.evaluate(() => document.activeElement.getAttribute('role') || '')).toMatch(/^menuitem/);
+  expect(await menueIndex(page)).toBe(0);
+  const letzter = (await menueAnzahl(page)) - 1;
+  await page.keyboard.press('ArrowDown');
+  expect(await menueIndex(page)).toBe(1);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  expect(await menueIndex(page), 'Umlauf nach oben').toBe(letzter);
+  await page.keyboard.press('Home');
+  expect(await menueIndex(page)).toBe(0);
+  await page.keyboard.press('End');
+  expect(await menueIndex(page)).toBe(letzter);
+});
+
+test('US-6: 375 px: Enter auf „Seite“ → Fokus auf „Board“, ↓ → „Aufgaben“', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.locator('#t-seite').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-seite')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Board$/ })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Aufgaben$/ })).toBeFocused();
+});
+
+test('US-6: Enter auf „Berichte“ → aria-haspopup=menu, aria-expanded, Fokus auf „Stundenzettel“, ↓ → zweiter Eintrag', async ({ page }) => {
+  await page.locator('#t-ber').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#t-ber')).toHaveAttribute('aria-haspopup', 'menu');
+  await expect(page.locator('#t-ber')).toHaveAttribute('aria-expanded', 'true');
+  expect(await page.evaluate(() => document.activeElement.textContent)).toContain('Stundenzettel');
+  await page.keyboard.press('ArrowDown');
+  expect(await menueIndex(page)).toBe(1);
+});
+
+test('US-5: Live-Ereignis bei offenem Menü „Mehr“: Fokus bleibt auf dem zweiten Eintrag', async ({ page }) => {
+  await page.locator('#t-mehr').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  expect(await menueIndex(page)).toBe(1);
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel: 'drei neu' } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1000 }).toBeGreaterThan(vorher);
+  await expect(page.locator('.ka[data-id="3"]')).toContainText('drei neu');
+  expect(await menueIndex(page)).toBe(1);
+});
