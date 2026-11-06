@@ -399,6 +399,21 @@ test.describe('Messprobe, Touch, 390 px', () => {
   });
 });
 
+// B0413: klickbare Berichtszeilen (PO Z. 134) — bei Touch wachsen sie auf das Zielmaß (Messprobe), mit der Maus bleiben sie dicht.
+test.describe('Berichtszeilen mit der Maus, 1280 px', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  for (const name of ['stundenzettel', 'kreuz', 'durchlauf']) {
+    test(`${name}: jede klickbare Zeile bleibt 28 px hoch`, async ({ page }) => {
+      await starten(page);
+      await bericht(name)(page);
+      await page.locator('tr.klick').first().waitFor();
+      const hoehen = await page.locator('tr.klick').evaluateAll(zeilen => zeilen.map(z => Math.round(z.getBoundingClientRect().height)));
+      expect(hoehen.length).toBeGreaterThan(0);
+      expect(new Set(hoehen)).toEqual(new Set([28]));
+    });
+  }
+});
+
 // B0412: die Spalten der Klassen-, Personen- und Signalzeilen wachsen mit dem Zielmaß — kein Ziel ragt über seine Spalte
 // in den Nachbarn (Farbfeld über den Schlüssel, Löschknopf über den Rand).
 for (const breite of [320, 375, 414]) {

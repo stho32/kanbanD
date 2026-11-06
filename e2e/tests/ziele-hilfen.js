@@ -18,11 +18,11 @@ const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .wbs-tabelle, .wl-scroll';
  */
 /**
  * Was als Bedienziel gemessen wird (ADR-0012 Regel 2): Steuerelemente und Rollen, Textfelder, ein Label, das für
- * sein verstecktes Feld angetippt wird, und jede Klickfläche mit data-act — auch ohne Rolle.
- * Tabellenzeilen und Diagrammpunkte noch nicht (B0413, B0414).
+ * sein verstecktes Feld angetippt wird, und jede Klickfläche mit data-act — auch ohne Rolle, auch eine Tabellenzeile.
+ * Diagrammpunkte noch nicht (B0414).
  */
 const ZIELE = 'button, select, input:not([type=hidden]), textarea, a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href], '
-  + 'label:has(> input:is([hidden], [type=file])), [data-act]:not(tr, circle)';
+  + 'label:has(> input:is([hidden], [type=file])), [data-act]:not(circle)';
 
 function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);

@@ -418,6 +418,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .pt th.r,.pt td.r{text-align:right}
 .pt td{height:40px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);vertical-align:middle;white-space:nowrap}
 .pt.dicht td{height:28px}
+/* Eine klickbare Zeile ist ein Ziel (PO Z. 134): mit der Maus bleibt sie dicht, bei Touch wächst sie auf das Zielmaß (B0413) */
+.pt.dicht tr.klick td{height:max(28px,var(--kd-ziel))}
 .pt tbody tr:hover td{background:var(--kd-accent-weak)}
 .pt tr.klick{cursor:pointer}
 .pt tr.grp td{height:26px;background:var(--kd-bg);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
