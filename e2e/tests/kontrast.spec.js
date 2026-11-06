@@ -23,9 +23,9 @@ const GRUNDBESTAND = () => ({
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
 const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(3).replace('.', ',')}`;
 
-/** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von .1 s): gemessen wird der ruhende Zustand. */
+/** Wartet, bis keine CSS-Transition mehr läuft (der Themenwechsel startet Farbübergänge von .1 s): gemessen wird der ruhende Zustand; angehaltene laufen nie zu Ende und zählen nicht. */
 async function farbuebergaengeAbwarten(page) {
-  await page.waitForFunction(() => document.getAnimations().filter(a => a instanceof CSSTransition).every(a => a.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().filter(a => a instanceof CSSTransition).every(a => a.playState !== 'running'));
 }
 
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
@@ -105,6 +105,17 @@ test.describe('R00107 Kontrast', () => {
     expect(messungen.map(m => m.text)).toEqual(['×']);
     expect(messungen[0].wert).toBeLessThan(MASS);
     expect(await page.evaluate(() => document.activeElement.id)).toBe('probe-vorher');
+  });
+
+  test('Warten auf ruhenden Zustand: eine angehaltene Transition lässt das Warten nicht hängen', async ({ page }) => {
+    await thema(page, 'light');
+    await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
+      '<div id="probe-angehalten" style="background:var(--kd-surface)"><span style="color:var(--kd-text);transition:color 60s linear">steht</span></div>'));
+    await thema(page, 'dark');
+    await page.evaluate(() => document.getAnimations().filter(a => a instanceof CSSTransition).forEach(a => a.pause()));
+    const beginn = Date.now();
+    await farbuebergaengeAbwarten(page);
+    expect(Date.now() - beginn).toBeLessThan(2000);
   });
 
   test('Warten auf ruhenden Zustand: nach dem Themenwechsel läuft ein Farbübergang, gemessen wird erst nach seinem Ende', async ({ page }) => {
