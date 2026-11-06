@@ -24,5 +24,18 @@
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: waehrung, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cent / 100);
   }
 
-  Object.assign(ziel, { kostenInCent, geld });
+  /** Kosten in Cent → Zeilen des Reiters „Kosten“: Positionen in Dateireihenfolge mit Summenzeile, ohne Positionen eine
+      Zeile „Gesamt“ ohne Summe; die Spalte Tokens nur, wenn eine Position Tokens trägt. Beträge bleiben Cent. */
+  function kostentabelle(k) {
+    const zeilen = k.positionen.length
+      ? k.positionen.map(p => ({ text: p.text, tokens: p.tokens, niedrig: p.min, hoch: p.max }))
+      : [{ text: 'Gesamt', tokens: null, niedrig: k.min, hoch: k.max }];
+    const mitTokens = zeilen.filter(z => z.tokens != null);
+    const summe = k.positionen.length
+      ? { tokens: mitTokens.length ? mitTokens.reduce((s, z) => s + z.tokens, 0) : null, niedrig: k.min, hoch: k.max }
+      : null;
+    return { beschriftung: `Geschätzte API-Kosten (${k.waehrung})`, spalteTokens: mitTokens.length > 0, zeilen, summe, basis: k.basis };
+  }
+
+  Object.assign(ziel, { kostenInCent, geld, kostentabelle });
 })(typeof module !== 'undefined' ? module.exports : window);
