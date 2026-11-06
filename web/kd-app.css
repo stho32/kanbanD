@@ -16,7 +16,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
 .kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
 .kz-board{max-width:240px;min-width:var(--kd-ziel)}
-/* Der Board-Name bleibt lesbar (B0415): in der Stufe compact rücken die Ziele der Reihe enger zusammen und die Zelle
+/* Der Board-Name bleibt lesbar: in der Stufe compact rücken die Ziele der Reihe enger zusammen und die Zelle
    des Namens verzichtet auf den rechten Abstand — so bleiben bei 375 px mit Touch rund 96 px für den Namen */
 .kz[data-stufe="compact"] .kz-reihe{gap:var(--kd-s1)}
 .kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-right:0}
@@ -381,7 +381,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr h3:first-child{border-top:0}
 .einr h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
-/* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß (B0412) */
+/* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß */
 .klz{--klz-vorn:max(30px,var(--kd-ziel));--klz-hinten:max(24px,var(--kd-ziel));display:grid;grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px var(--klz-hinten);align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
 .klz .inp{height:24px;min-width:0;font-size:12px}
 .klz .key{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);overflow:hidden;text-overflow:ellipsis}
@@ -422,7 +422,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .pt th.r,.pt td.r{text-align:right}
 .pt td{height:40px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);vertical-align:middle;white-space:nowrap}
 .pt.dicht td{height:28px}
-/* Eine klickbare Zeile ist ein Ziel (PO Z. 134): mit der Maus bleibt sie dicht, bei Touch wächst sie auf das Zielmaß (B0413) */
+/* Eine klickbare Zeile ist ein Ziel: mit der Maus bleibt sie dicht, bei Touch wächst sie auf das Zielmaß */
 .pt.dicht tr.klick td{height:max(28px,var(--kd-ziel))}
 .pt tbody tr:hover td{background:var(--kd-accent-weak)}
 .pt tr.klick{cursor:pointer}
@@ -845,7 +845,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .tm-ziel{font-size:14px;color:var(--kd-muted)}
 .tm-ziel.an{color:var(--kd-accent-ink)}
 .fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%;flex:none}
-/* Bei schmaler Breite bricht das Feld unter seinen Text, statt die Seite quer scrollen zu lassen (B0412) */
+/* Bei schmaler Breite bricht das Feld unter seinen Text, statt die Seite quer scrollen zu lassen */
 .fb-einst label{flex:none;flex-wrap:wrap;max-width:100%}
 
 /* ── Berichtsfilter als Box, zugeklappt, je Filter eine Zeile (R00081) ── */

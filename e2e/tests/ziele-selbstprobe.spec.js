@@ -102,7 +102,7 @@ test.describe('Selbstproben, Touch', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['kopf32', 'einsam']);
   });
 
-  // B0414 (PO Z. 135): ein Diagrammpunkt ist klein, besteht aber, wenn dieselbe Ansicht ein gleichwertiges Ziel
+  // Ein Diagrammpunkt ist klein, besteht aber, wenn dieselbe Ansicht ein gleichwertiges Ziel
   // (gleiches data-act und data-arg) bietet, das selbst gemessen ist und besteht
   const punkt = '<svg style="position:absolute;left:0;top:200px" width="300" height="60"><circle cx="30" cy="30" r="5" data-act="oeffnen" data-arg="7" aria-label="Punkt 7"></circle></svg>';
   const zeile = hoehe => `<table style="position:absolute;left:0;top:0;border-collapse:collapse"><tr data-act="oeffnen" data-arg="7" aria-label="Zeile 7"><td style="height:${hoehe}px;padding:0;width:200px">sieben</td></tr></table>`;
@@ -165,7 +165,7 @@ test.describe('Selbstprobe Breite', () => {
     expect(await breiteMessen(page, 'probe')).toEqual([]);
   });
 
-  // B0412: ein Bereich unter #main, der quer scrollt, zählt — außer er ist nach F0050 benannt oder trägt eine breite Tabelle
+  // Ein Bereich unter #main, der quer scrollt, zählt — außer er ist nach F0050 benannt oder trägt eine breite Tabelle
   test('ein quer scrollender Bereich zählt, die Spaltenleiste und ein Bereich mit breiter Tabelle nicht', async ({ page }) => {
     const seite = inhalt => `<style>body{margin:0}</style><main id="main">${inhalt}</main>`;
     const breit = '<div style="width:336px;height:10px"></div>';

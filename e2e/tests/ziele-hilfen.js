@@ -5,8 +5,8 @@
 const MASS = { fein: 24, touch: 44 };
 
 /**
- * Was nach F0050 in sich quer scrollen darf, benannt wie in B0406: Spaltenleiste, Legende des Boards und die
- * Tabellenbereiche; eine breite Tabelle in einem anderen Bereich erkennt breiteMessen selbst.
+ * Was nach F0050 in sich quer scrollen darf: Spaltenleiste, Legende des Boards und die Tabellenbereiche;
+ * eine breite Tabelle in einem anderen Bereich erkennt breiteMessen selbst.
  */
 const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .wbs-tabelle, .wl-scroll';
 
@@ -115,7 +115,7 @@ function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
     return !schneidetZiel && !schneidetKreis;
   }
 
-  // Ausnahme „gleichwertiges Ziel“ (WCAG 2.5.8 Equivalent, PO Z. 135): ein Diagrammpunkt besteht, wenn dieselbe Ansicht
+  // Ausnahme „gleichwertiges Ziel“ (WCAG 2.5.8 Equivalent): ein Diagrammpunkt besteht, wenn dieselbe Ansicht
   // ein gemessenes, bestehendes Ziel mit gleichem data-act und data-arg bietet
   function gleichwertigBesteht(m, bestehend) {
     if (!m.el.matches('circle[data-act]')) return false;
@@ -163,11 +163,11 @@ function titelPruefen(page, ansicht) {
 }
 
 /**
- * Waagrechtes Scrollen (B0406, B0412): Seite, #main und jeder Bereich unter #main mit overflow-x auto oder scroll
+ * Waagrechtes Scrollen: Seite, #main und jeder Bereich unter #main mit overflow-x auto oder scroll
  * höchstens so breit wie sein Fenster. Ausgenommen nur, was nach F0050 in sich quer scrollen darf: die benannten
- * Bereiche (querErlaubt) und ein Bereich, in dem eine Tabelle breiter ist als er.
+ * Bereiche (QUER_ERLAUBT) und ein Bereich, in dem eine Tabelle breiter ist als er.
  */
-function breiteMessen(page, ansicht, querErlaubt = QUER_ERLAUBT) {
+function breiteMessen(page, ansicht) {
   return page.evaluate(({ ansicht, querErlaubt }) => {
     const main = document.getElementById('main');
     const rollend = main ? [...main.querySelectorAll('*')].filter(el => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX)) : [];
@@ -178,7 +178,7 @@ function breiteMessen(page, ansicht, querErlaubt = QUER_ERLAUBT) {
     return orte
       .filter(([, el]) => el && el.scrollWidth > el.clientWidth)
       .map(([ort, el]) => ({ ansicht, ort, breite: innerWidth, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
-  }, { ansicht, querErlaubt });
+  }, { ansicht, querErlaubt: QUER_ERLAUBT });
 }
 
 /**
