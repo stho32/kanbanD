@@ -42,4 +42,44 @@ async function isoFundstellen(page, ansicht) {
   return page.evaluate(imBrowserSuchen, { ansicht, muster: ISO.source });
 }
 
-module.exports = { ISO, isoFundstellen };
+/**
+ * Läuft im Browser: je Zeile `.k` (Beschriftung) + folgendes `.w` (Feld) eines `.felder`-Rasters im Fenster.
+ * Der Name ist eine Näherung der zugänglichen Namensberechnung, die für kanbanDs Felder reicht:
+ * aria-labelledby, aria-label, label for, umschließendes label. Eine Knopfgruppe braucht role=group mit Namen.
+ */
+function imBrowserBeschriften(fenster, { schluessel }) {
+  const text = el => el.textContent.replace(/\s+/g, ' ').trim();
+  function name(feld) {
+    const verweis = feld.getAttribute('aria-labelledby');
+    if (verweis) return verweis.split(/\s+/).map(id => document.getElementById(id)).filter(Boolean).map(text).join(' ');
+    if (feld.hasAttribute('aria-label')) return feld.getAttribute('aria-label');
+    const label = (feld.id && document.querySelector(`label[for="${CSS.escape(feld.id)}"]`)) || feld.closest('label');
+    if (label) return text(label);
+    return '';
+  }
+  const enthaeltWort = (satz, wort) => satz.split(' ').includes(wort);
+  return [...fenster.querySelectorAll('.felder > .k')].map(k => {
+    const beschriftung = text(k);
+    const zelle = k.nextElementSibling;
+    const verstoesse = [];
+    const istSchluessel = schluessel.includes(beschriftung);
+    if (istSchluessel) verstoesse.push(`Beschriftung ist der Schlüssel ${beschriftung}`);
+    const enthalten = schluessel.find(s => !istSchluessel && enthaeltWort(beschriftung, s));
+    if (enthalten) verstoesse.push(`Beschriftung enthält den Schlüssel ${enthalten}`);
+    const gruppe = zelle && zelle.matches('[role=group]') ? zelle : zelle && zelle.querySelector('[role=group], [role=radiogroup]');
+    const feld = gruppe || (zelle && zelle.querySelector('select, textarea, input:not([type=hidden])'));
+    const knopfgruppe = !feld && zelle && zelle.querySelectorAll('button').length > 1;
+    if (knopfgruppe) verstoesse.push('Knopfgruppe ohne Gruppennamen');
+    if (!feld) return { beschriftung, name: null, verstoesse };
+    const n = name(feld);
+    if (!n.toLowerCase().includes(beschriftung.toLowerCase())) verstoesse.push(`Name „${n}“ enthält die Beschriftung nicht`);
+    return { beschriftung, name: n, verstoesse };
+  });
+}
+
+/** Je Feld des Fensters {beschriftung, name, verstoesse}; FELDER liefert die Schlüssel, die keine Beschriftung sein dürfen. */
+async function beschriftungenPruefen(fenster, felder) {
+  return fenster.evaluate(imBrowserBeschriften, { schluessel: Object.keys(felder) });
+}
+
+module.exports = { ISO, isoFundstellen, beschriftungenPruefen };
