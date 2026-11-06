@@ -309,10 +309,8 @@ test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
     const namen = [...ANSICHTEN.map(a => a.ansicht), 'Menü Ich'];
     expect(vollstaendigkeit(namen, gemeinsam, ZUSTAENDE)).toEqual({ fehlend: ['Bericht neu'], doppelt: ['Menü Ich'] });
   });
-  // Restfund der Probe, behoben in B0434: die Aufgabenliste zeigt „archiviert 2026-10-01“
-  const RESTFUNDE = ['Aufgabenliste'];
   for (const { ansicht, oeffnen, breite, leer } of ANSICHTEN) {
-    (RESTFUNDE.includes(ansicht) ? test.fail : test)(`US-6: ${ansicht} ohne ISO-Form in Text, title und Namen`, async ({ page }) => {
+    test(`US-6: ${ansicht} ohne ISO-Form in Text, title und Namen`, async ({ page }) => {
       if (breite) await page.setViewportSize({ width: breite, height: 800 });
       if (leer) { k = await kanbanStarten(); } else await starten(page);
       await oeffnen(page);
