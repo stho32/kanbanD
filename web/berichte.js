@@ -549,5 +549,37 @@
     return { zeilen, spalten, zellen: sammel.map(z => z.map(liste => zelleAus(liste, reihenfolge))), summen };
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste });
+  /** Kopf einer Achsenposition im Namen: `repo:shop`, bei „(ohne …)“ nur dieser Text. */
+  function achsenKopf(achsenwert, praefix) {
+    if (achsenwert.ohne) return achsenwert.wert;
+    return `${praefix}:${achsenwert.wert}`;
+  }
+
+  /** Klassen einer Zelle in der Reihenfolge der Dringlichkeit mit Bezeichnung, unbekannte mit Schlüssel, ohne Klasse am Ende. */
+  function klassenTeile(jeKlasse, klassen) {
+    const bekannt = klassen.filter(k => jeKlasse[k.schluessel]).map(k => `${k.bezeichnung} ${jeKlasse[k.schluessel]}`);
+    const unbekannt = Object.keys(jeKlasse).filter(k => k !== '' && !klassen.some(x => x.schluessel === k)).map(k => `${k} ${jeKlasse[k]}`);
+    const ohne = Object.keys(jeKlasse).filter(k => k === '').map(k => `ohne Klasse ${jeKlasse[k]}`);
+    return [...bekannt, ...unbekannt, ...ohne];
+  }
+
+  /** Name einer Summe: Zeile, Spalte oder gesamt (beide null); nie klickbar. */
+  function summenName(kopf, zahl) {
+    if (!zahl) return `Summe ${kopf}: keine offen · nicht klickbar`;
+    return `Summe ${kopf}: ${zahl} offen · nicht klickbar`;
+  }
+
+  /** Tooltip und zugänglicher Name einer Stelle der Tabelle `{zeile, spalte, zelle}`; Zeile oder Spalte null heißt Summe. */
+  function zellName({ zeile, spalte, zelle }, achsen, klassen) {
+    if (!zeile && !spalte) return summenName('gesamt', zelle.zahl);
+    if (!spalte) return summenName(achsenKopf(zeile, achsen.zeilen), zelle.zahl);
+    if (!zeile) return summenName(achsenKopf(spalte, achsen.spalten), zelle.zahl);
+    const kopf = `${achsenKopf(zeile, achsen.zeilen)} × ${achsenKopf(spalte, achsen.spalten)}`;
+    if (!zelle.zahl) return `${kopf}: keine offen`;
+    let schluss = 'ohne Abschlussspalte, ohne Filter der Berichte';
+    if (zeile.ohne || spalte.ohne) schluss = 'nicht klickbar';
+    return `${kopf}: ${zelle.zahl} offen — ${[...klassenTeile(zelle.jeKlasse, klassen), schluss].join(' · ')}`;
+  }
+
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName });
 })(typeof module !== 'undefined' ? module.exports : window);

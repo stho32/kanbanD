@@ -1,7 +1,7 @@
 // R00100 Bestand nach Labels: reine Rechnung in web/berichte.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste } = require('../../web/berichte.js');
+const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName } = require('../../web/berichte.js');
 
 const aufgabe = (nummer, labels, klasse = '', mehr = {}) => ({ nummer, titel: `A${nummer}`, klasse, labels, zustaendige: [], archiviert: false, ...mehr });
 const boardMit = (eingang, fertig = []) => ({ slug: 'fabrik', spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'Fertig', aufgaben: fertig }] });
@@ -143,4 +143,41 @@ test('B0347 Leistung: 500 offene Aufgaben, 30 × 30 Werte in unter 200 ms gerech
   const dauer = performance.now() - start;
   assert.deepStrictEqual([t.zeilen.length, t.spalten.length, t.summen.gesamt], [31, 31, 500]);
   assert.ok(dauer < 200, `${dauer.toFixed(1)} ms`);
+});
+
+const KLASSEN_MIT_NAMEN = [{ schluessel: 'sicherheit', bezeichnung: 'Sicherheit' }, { schluessel: 'eol', bezeichnung: 'EOL' }, { schluessel: 'drift', bezeichnung: 'Drift' }];
+const ACHSEN = { zeilen: 'repo', spalten: 'nc' };
+/** Name einer Stelle der Tabelle; null als Zeile oder Spalte heißt Summe. */
+function nameAn(t, zeile, spalte) {
+  const i = namen(t.zeilen).indexOf(zeile), j = namen(t.spalten).indexOf(spalte);
+  const ort = { zeile: t.zeilen[i] || null, spalte: t.spalten[j] || null };
+  if (ort.zeile && ort.spalte) return zellName({ ...ort, zelle: t.zellen[i][j] }, ACHSEN, KLASSEN_MIT_NAMEN);
+  let zahl = t.summen.gesamt;
+  if (ort.zeile) zahl = t.summen.zeilen[i];
+  if (ort.spalte) zahl = t.summen.spalten[j];
+  return zellName({ ...ort, zelle: { zahl, jeKlasse: {} } }, ACHSEN, KLASSEN_MIT_NAMEN);
+}
+
+test('B0357 Name einer klickbaren Zahl: Kopf, Zahl, Klassen in der Reihenfolge der Dringlichkeit, ohne Klasse am Ende', () => {
+  const t = bestand(grundbestand([aufgabe(14, ['repo:shop', 'nc:304'])]));
+  assert.strictEqual(nameAn(bestand(grundbestand()), 'shop', '304'), 'repo:shop × nc:304: 2 offen — Sicherheit 1 · Drift 1 · ohne Abschlussspalte, ohne Filter der Berichte');
+  assert.strictEqual(nameAn(bestand(grundbestand()), 'lager', '304'), 'repo:lager × nc:304: 1 offen — ohne Klasse 1 · ohne Abschlussspalte, ohne Filter der Berichte');
+  assert.strictEqual(nameAn(t, 'shop', '304'), 'repo:shop × nc:304: 3 offen — Sicherheit 1 · Drift 1 · ohne Klasse 1 · ohne Abschlussspalte, ohne Filter der Berichte');
+});
+
+test('B0357 Name von „(ohne …)“, Summen und leerer Zelle: nicht klickbar', () => {
+  const t = bestand(grundbestand());
+  assert.strictEqual(nameAn(t, 'lager', '(ohne nc)'), 'repo:lager × (ohne nc): 1 offen — Drift 1 · nicht klickbar');
+  assert.strictEqual(nameAn(t, 'shop', null), 'Summe repo:shop: 3 offen · nicht klickbar');
+  assert.strictEqual(nameAn(t, null, '304'), 'Summe nc:304: 3 offen · nicht klickbar');
+  assert.strictEqual(nameAn(t, null, '(ohne nc)'), 'Summe (ohne nc): 1 offen · nicht klickbar');
+  assert.strictEqual(nameAn(t, null, null), 'Summe gesamt: 5 offen · nicht klickbar');
+  assert.strictEqual(nameAn(t, 'shop', '(ohne nc)'), 'repo:shop × (ohne nc): keine offen');
+  assert.strictEqual(nameAn(t, '(ohne repo)', null), 'Summe (ohne repo): keine offen · nicht klickbar');
+});
+
+test('B0357 Name mit einer Klasse, die es unter classes nicht mehr gibt: mit ihrem Schlüssel vor „ohne Klasse“', () => {
+  const zelle = { zahl: 3, jeKlasse: { '': 1, alt: 1, eol: 1 } };
+  const ort = { zeile: { wert: 'shop', ohne: false }, spalte: { wert: '304', ohne: false }, zelle };
+  assert.strictEqual(zellName(ort, ACHSEN, KLASSEN_MIT_NAMEN), 'repo:shop × nc:304: 3 offen — EOL 1 · alt 1 · ohne Klasse 1 · ohne Abschlussspalte, ohne Filter der Berichte');
 });
