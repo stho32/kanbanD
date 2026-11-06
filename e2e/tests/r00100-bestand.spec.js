@@ -410,6 +410,23 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(await zelle(page, 'shop', '304')).toHaveText('3', { timeout: 1000 });
   });
 
+  test('Live-Neuzeichnen hält den Sichtzustand: Fokus bleibt auf der Zahl shop × 304, das Querscrollen der Tabelle bleibt (375 px)', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    const dazu = {};
+    for (let i = 0; i < 10; i++) dazu[8 + i] = aufgabeMd(8 + i, ['repo:shop', `nc:${400 + i}`], 'drift');
+    await bericht(page, grundbestand({ dazu }));
+    const flaeche = page.locator('#best-scroll');
+    await flaeche.evaluate(e => { e.scrollLeft = 120; });
+    const quer = await flaeche.evaluate(e => e.scrollLeft);
+    expect(quer).toBeGreaterThan(0);
+    await (await zelle(page, 'shop', '304')).getByRole('link').focus();
+    const antwort = await page.request.post(`${k.adresse}api/aufgaben`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { titel: 'neu', board: 'fabrik', spalte: 'Eingang', labels: ['repo:shop', 'nc:304'] } });
+    expect(antwort.ok(), await antwort.text()).toBe(true);
+    await expect(await zelle(page, 'shop', '304')).toHaveText('3', { timeout: 1000 });
+    expect(await page.evaluate(() => document.activeElement.getAttribute('aria-label'))).toMatch(/^repo:shop × nc:304: 3 offen/);
+    expect(await flaeche.evaluate(e => e.scrollLeft)).toBe(quer);
+  });
+
   test('Nicht-funktional: 500 offene Aufgaben mit 30 × 30 Werten in unter 200 ms gerechnet und gezeichnet', async ({ page }) => {
     const dazu = {};
     for (let n = 8; n < 508; n++) dazu[n] = aufgabeMd(n, [`repo:r${n % 30}`, `nc:${(n * 7) % 30}`], ['sicherheit', 'eol', 'drift', ''][n % 4]);
