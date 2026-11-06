@@ -53,10 +53,37 @@ function eigenschaften(rumpf) {
 }
 
 const HELL = ':root', DUNKEL_SYSTEM = ':root:not([data-theme="light"])', DUNKEL = ':root[data-theme="dark"]';
-/** Die drei Token-Blöcke von kd-tokens.css als Map Name → Wert. */
+const DUNKEL_MEDIA = '@media (prefers-color-scheme:dark)';
+/** Blöcke der obersten Ebene als { kopf, rumpf }; der Rumpf eines @media trägt dessen Regeln. */
+function obersteBloecke(text) {
+  const rein = ohneKommentare(text);
+  const bloecke = [];
+  let tiefe = 0, kopfAnfang = 0, rumpfAnfang = 0;
+  for (let i = 0; i < rein.length; i++) {
+    if (rein[i] === '{') {
+      if (tiefe === 0) rumpfAnfang = i + 1;
+      tiefe++;
+    } else if (rein[i] === '}') {
+      tiefe--;
+      if (tiefe === 0) {
+        bloecke.push({ kopf: rein.slice(kopfAnfang, rumpfAnfang - 1).trim(), rumpf: rein.slice(rumpfAnfang, i) });
+        kopfAnfang = i + 1;
+      }
+    }
+  }
+  return bloecke;
+}
+/** Die Eigenschaften aller Rümpfe in Reihenfolge zusammengeführt; spätere gewinnen wie in der Kaskade. */
+const zusammengefuehrt = ruempfe => new Map(ruempfe.flatMap(rumpf => [...eigenschaften(rumpf)]));
+/**
+ * Die drei Token-Blöcke von kd-tokens.css als Map Name → Wert: hell jeder :root der obersten Ebene, dunkel genau die beiden Themenblöcke.
+ * Ein :root in einem anderen @media (etwa pointer:coarse für --kd-ziel) ist kein Thema und zählt nicht.
+ */
 function tokenBloecke(text) {
-  const bloecke = new Map(regeln(text).map(({ selektor, rumpf }) => [selektor, eigenschaften(rumpf)]));
-  return { hell: bloecke.get(HELL), dunkelSystem: bloecke.get(DUNKEL_SYSTEM), dunkel: bloecke.get(DUNKEL) };
+  const oben = obersteBloecke(text);
+  const ruempfe = kopf => oben.filter(block => block.kopf === kopf).map(block => block.rumpf);
+  const systemRuempfe = ruempfe(DUNKEL_MEDIA).flatMap(rumpf => regeln(rumpf).filter(regel => regel.selektor === DUNKEL_SYSTEM).map(regel => regel.rumpf));
+  return { hell: zusammengefuehrt(ruempfe(HELL)), dunkelSystem: zusammengefuehrt(systemRuempfe), dunkel: zusammengefuehrt(ruempfe(DUNKEL)) };
 }
 /** Token je Thema: hell der Wurzelblock, dunkel der Wurzelblock überschrieben vom erzwungenen Dunkelblock. */
 function themen(text) {
@@ -315,6 +342,26 @@ test('Selbstprobe Modusleiste: eine Leiste von heute (Fläche accent-ink, Rände
 });
 
 /* ── Dunkelblöcke ── */
+
+/* Der Ausgangsfall (Nacharbeit 1, Befund 1): ein zweiter :root-Block in einem anderen @media ersetzte den hellen Block */
+const ZIEL_TOUCH = '\n@media (pointer:coarse){:root{--kd-ziel:48px}}';
+
+test('Selbstprobe Token-Blöcke: ein :root in @media (pointer:coarse) ersetzt den hellen Block nicht', () => {
+  const { hell } = tokenBloecke(TOKENS + ZIEL_TOUCH);
+  assert.ok(hell.has('--kd-text'), 'hell ohne --kd-text');
+  assert.strictEqual(hell.get('--kd-ziel'), '24px');
+  const neutral = PAARE.find(paar => paar.name === 'Neutrale Flächen');
+  assert.deepStrictEqual(verstoesse(neutral, themen(TOKENS + ZIEL_TOUCH)), []);
+});
+
+test('Selbstprobe Token-Blöcke: Dunkelblöcke in einem anderen @media zählen nicht, ein zweiter :root oben wird zusammengeführt', () => {
+  const zusatz = '\n@media (pointer:coarse){:root[data-theme="dark"]{--kd-ziel:48px}:root:not([data-theme="light"]){--kd-ziel:48px}}\n:root{--kd-zusatz:oklch(0.5 0 0)}';
+  const { hell, dunkelSystem, dunkel } = tokenBloecke(TOKENS + zusatz);
+  assert.ok(dunkel.has('--kd-text') && dunkelSystem.has('--kd-text'), 'Dunkelblock ersetzt');
+  assert.ok(!dunkel.has('--kd-ziel') && !dunkelSystem.has('--kd-ziel'), 'Dunkelblock aus @media (pointer:coarse) gelesen');
+  assert.ok(hell.has('--kd-text') && hell.has('--kd-zusatz'), 'zweiter :root nicht zusammengeführt');
+});
+
 
 test('Dunkelblöcke: @media und [data-theme="dark"] setzen dieselben Tokens mit denselben Werten', () => {
   assert.deepStrictEqual(dunkelAbweichungen(TOKENS), []);
