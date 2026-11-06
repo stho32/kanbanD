@@ -230,10 +230,28 @@ test.describe('R00105 Kostenbericht', () => {
     await spalte(page, 'Eingang').click();
     await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
     await spalte(page, 'In Arbeit').click();
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgaben, ${NACH}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten .kost-hinweis').first()).toContainText('Preisetiketten setzt ein Agent über die API');
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await expect(page.locator('#kosten')).not.toContainText('alle Spalten');
+  });
+
+  test('US-24 Grenzwert: bei m = 1 „Aufgabe“, bei m = 2 „Aufgaben“; „von 1 Aufgaben“ steht nirgends (PO Z. 117)', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand());
+    await filterOeffnen(page);
+    const nieMehrzahlNachEins = async () => expect(await page.locator('#kosten').innerText()).not.toMatch(/von 1 Aufgaben/);
+    await spalte(page, 'Eingang').click();
+    await spalte(page, 'Fertig').click();
+    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 1 Aufgabe mit Etikett, ${NACH}`]);
+    await nieMehrzahlNachEins();
+    await spalte(page, 'Fertig').click();
+    await spalte(page, 'In Arbeit').click();
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(/0 von 1 Aufgabe, nach Filter/);
+    await nieMehrzahlNachEins();
+    await spalte(page, 'In Arbeit').click();
+    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 2 Aufgaben mit Etikett, ${NACH}`]);
+    await nieMehrzahlNachEins();
   });
 
   test('US-19: Zurücksetzen im Leerzustand ohne Etikett hebt Spalten auf, Zeitraum, Messbasis und „Rechnen ab“ bleiben', async ({ page }) => {
@@ -243,7 +261,7 @@ test.describe('R00105 Kostenbericht', () => {
     await filterOeffnen(page);
     await spalte(page, 'Eingang').click();
     await spalte(page, 'In Arbeit').click();
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgaben, ${NACH}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await reset(page).click();

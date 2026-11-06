@@ -197,3 +197,11 @@ test('Reiter-Rückfall: ohne Etikett gilt „Inhalt“; Fokus nur von Reiterleis
   assert.strictEqual(reiterRueckfall({ tab: 'kosten', etikett: true, fokusBeiKosten: true }), null, 'mit Etikett bleibt der Reiter');
   assert.strictEqual(reiterRueckfall({ tab: 'datei', etikett: false, fokusBeiKosten: true }), null, 'nur „Kosten“ fällt weg');
 });
+
+test('Zählwort (R00105 US-24, PO Z. 117): nach der Zahl 1 Einzahl, sonst Mehrzahl', () => {
+  const { zaehlwort } = require('../../web/kosten.js');
+  assert.strictEqual(zaehlwort(1, 'Aufgabe', 'Aufgaben'), 'Aufgabe');
+  assert.strictEqual(zaehlwort(0, 'Aufgabe', 'Aufgaben'), 'Aufgaben', '0 von 0 Aufgaben');
+  assert.strictEqual(zaehlwort(2, 'Aufgabe', 'Aufgaben'), 'Aufgaben');
+  assert.strictEqual(zaehlwort(11, 'Aufgabe', 'Aufgaben'), 'Aufgaben', 'nur die Zahl 1, nicht die Endziffer');
+});

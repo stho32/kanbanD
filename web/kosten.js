@@ -32,6 +32,12 @@
     return `${zahl(min)}${zwischen}${geld(max, waehrung)}`;
   }
 
+  /** Zählwort (PO Z. 117): das Wort richtet sich nach der Zahl unmittelbar davor — 1 → Einzahl, sonst Mehrzahl („0 von 0 Aufgaben“). */
+  function zaehlwort(zahl, einzahl, mehrzahl) {
+    if (zahl === 1) return einzahl;
+    return mehrzahl;
+  }
+
   /** Kosten in Cent → Texte des Preisetiketts der Karte: sichtbar die Mitte, Hinweis und zugänglicher Name mit den Grenzen. */
   function preisetikett(k) {
     return {
@@ -93,5 +99,5 @@
     return { tab: 'inhalt', fokus };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, zaehlwort, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

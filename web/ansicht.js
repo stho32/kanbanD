@@ -889,11 +889,11 @@ function vKostenInhalt(bericht, umfang, aktiv) {
   return vKostenLeer(bericht, umfang, knopf);
 }
 function vKostenSummen(bericht, umfang) {
-  const zeile = s => `<p class="kost-zeile"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(s.niedrig, s.hoch, s.waehrung, '–')}</span> <span class="kost-umfang">· ${s.n} von ${bericht.m} Aufgaben mit Etikett, ${umfang}</span></p>`;
+  const zeile = s => `<p class="kost-zeile"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(s.niedrig, s.hoch, s.waehrung, '–')}</span> <span class="kost-umfang">· ${s.n} von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')} mit Etikett, ${umfang}</span></p>`;
   return `<div class="kost-summen">${bericht.jeWaehrung.map(zeile).join('')}</div>`;
 }
 function vKostenLeer(bericht, umfang, knopf) {
-  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} Aufgaben, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
+  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')}, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
