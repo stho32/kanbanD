@@ -53,6 +53,7 @@ impl Kanban {
         if ziele.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }
+        super::ohne_doppelte(ziele.iter().map(|z| z.nummer))?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
         let von: Vec<Option<String>> = ziele.iter().map(|z| b.spalte_von(z.nummer).map(|s| s.name.clone())).collect();

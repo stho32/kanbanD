@@ -70,6 +70,12 @@ impl Treiber {
         Antwort { status, rumpf }
     }
 
+    /// Ein Aufruf mit JSON-Rumpf als `wer` (Sammel-Wege, B0344).
+    pub async fn rufen(&self, methode: Method, pfad: &str, wer: &str, daten: Value) -> Antwort {
+        let (status, rumpf) = senden(methode, &self.lauf.adresse, pfad, wer, daten).await;
+        Antwort { status, rumpf }
+    }
+
     /// GET mit dem Pfad genau so, wie er dasteht (`%2E%2E` bleibt kodiert) — reqwest würde Punkt-Segmente auflösen.
     pub fn roh_lesen(&self, pfad_und_query: &str) -> (u16, String) {
         let adresse = self.lauf.adresse.trim_start_matches("http://").trim_end_matches('/');

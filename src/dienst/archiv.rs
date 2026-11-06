@@ -43,6 +43,7 @@ impl Kanban {
         if nummern.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }
+        super::ohne_doppelte(nummern.iter().copied())?;
         let _sperre = self.gesperrt();
         let mut geaendert = vec![];
         let mut dateien = vec![];

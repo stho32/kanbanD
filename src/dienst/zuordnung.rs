@@ -24,6 +24,7 @@ impl Kanban {
     /// Legt mehrere Aufgaben in einem Commit auf ein Board; schon liegende bleiben unberührt (R00065).
     /// Die Grenze zählt nach allen gelegten; ein Agent darüber legt keine (R00096).
     pub fn mehrere_auf_board_legen(&self, wer: &Person, slug: &str, nummern: &[u32], spalte: Option<&str>) -> Result<Vec<u32>, Fehler> {
+        super::ohne_doppelte(nummern.iter().copied())?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
         if let Some(s) = spalte.filter(|s| !b.spalten.iter().any(|x| x.name == *s)) {

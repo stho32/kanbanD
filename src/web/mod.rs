@@ -1416,7 +1416,7 @@ struct Ziele {
     post,
     path = "/api/boards/{slug}/bewegen-mehrere",
     tag = "Boards",
-    description = "mehrere Aufgaben bewegen {ziele: [{nummer, spalte, index?}]} — alle heraus, dann der Reihe nach an index ihrer Spalte, ohne index oben in Anfragereihenfolge (die erste genannte ganz oben); ein Commit; Antwort wie bewegen — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (erste verletzte Spalte von links, anzahl vor dem Zug), der Zug unterbleibt; Mensch: Warnung grenze „Grenze erreicht: „<Spalte>“ hat n von g“, der Zug wird ausgeführt — Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (column-owner: human; die erste gesperrte Karte in Anfragereihenfolge, vor der Grenze), keine Karte wird bewegt; Mensch: frei",
+    description = "mehrere Aufgaben bewegen {ziele: [{nummer, spalte, index?}]} — eine Nummer doppelt → 400, nichts wird geschrieben — alle heraus, dann der Reihe nach an index ihrer Spalte, ohne index oben in Anfragereihenfolge (die erste genannte ganz oben); ein Commit; Antwort wie bewegen — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (erste verletzte Spalte von links, anzahl vor dem Zug), der Zug unterbleibt; Mensch: Warnung grenze „Grenze erreicht: „<Spalte>“ hat n von g“, der Zug wird ausgeführt — Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (column-owner: human; die erste gesperrte Karte in Anfragereihenfolge, vor der Grenze), keine Karte wird bewegt; Mensch: frei",
     params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Ziele,
     responses((status = 200, description = "Erfolg", body = crate::dienst::Bewegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
@@ -1435,7 +1435,7 @@ struct Legen {
     post,
     path = "/api/boards/{slug}/aufgaben/mehrere",
     tag = "Boards",
-    description = "mehrere Aufgaben auf das Board legen {nummern, spalte?} — ein Commit, schon liegende bleiben; Antwort: gelegte Nummern — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl}, nichts wird geschrieben; Mensch: ohne Warnung",
+    description = "mehrere Aufgaben auf das Board legen {nummern, spalte?} — ein Commit — eine Nummer doppelt → 400, nichts wird geschrieben, schon liegende bleiben; Antwort: gelegte Nummern — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl}, nichts wird geschrieben; Mensch: ohne Warnung",
     params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Legen,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
@@ -1460,7 +1460,7 @@ struct Aenderungen {
     patch,
     path = "/api/aufgaben/mehrere",
     tag = "Aufgaben",
-    description = "mehrere ändern {aenderungen: [{nummer, …Felder wie PATCH /api/aufgaben/{nr}}]} — ein Commit, ein ungültiges Feld ändert nichts",
+    description = "mehrere ändern {aenderungen: [{nummer, …Felder wie PATCH /api/aufgaben/{nr}}]} — ein Commit, ein ungültiges Feld ändert nichts — eine Nummer doppelt → 400, nichts wird geschrieben",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Aenderungen,
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Aufgabe>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
@@ -1474,7 +1474,7 @@ async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, Json(a): Json<Ae
     post,
     path = "/api/aufgaben/archivieren",
     tag = "Aufgaben",
-    description = "mehrere archivieren {nummern} — ein Commit — Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (column-owner: human auf irgendeinem Board; je Board in der Reihenfolge der Boardliste die erste gesperrte Karte in Anfragereihenfolge), keine wird archiviert; Mensch: frei",
+    description = "mehrere archivieren {nummern} — ein Commit — eine Nummer doppelt → 400, nichts wird geschrieben — Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (column-owner: human auf irgendeinem Board; je Board in der Reihenfolge der Boardliste die erste gesperrte Karte in Anfragereihenfolge), keine wird archiviert; Mensch: frei",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
@@ -1487,7 +1487,7 @@ async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Jso
     post,
     path = "/api/aufgaben/zurueckholen",
     tag = "Aufgaben",
-    description = "mehrere zurückholen {nummern} — ein Commit — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (geprüft auf jedem Board der Karten, das erste der Boardliste zuerst), nichts wird geschrieben; Mensch: ohne Warnung",
+    description = "mehrere zurückholen {nummern} — ein Commit — eine Nummer doppelt → 400, nichts wird geschrieben — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (geprüft auf jedem Board der Karten, das erste der Boardliste zuerst), nichts wird geschrieben; Mensch: ohne Warnung",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))

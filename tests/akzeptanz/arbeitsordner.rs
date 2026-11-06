@@ -5,6 +5,9 @@ use super::treiber::Treiber;
 pub const IN_ARBEIT: &str = "In Arbeit";
 pub const FERTIG: &str = "Fertig";
 pub const AGENT: &str = "bot";
+pub const MENSCH: &str = "st";
+/// Zweite Aufgabe (`mit_zweiter_aufgabe`), auf keinem Board.
+pub const ZWEITE: u32 = 14;
 /// Steht nur in der fremden Datei; taucht er in einer Antwort auf, hat kanbanD sie gelesen.
 pub const FREMDES_MERKMAL: &str = "FREMD-GEHEIM";
 const FREMD: &str = "fremd/boards/b.md";
@@ -37,6 +40,7 @@ pub fn vierzig_a() -> String {
 #[derive(Default)]
 pub struct Arbeitsordner {
     handbenannt: Option<&'static str>,
+    zweite: bool,
 }
 
 impl Arbeitsordner {
@@ -46,10 +50,19 @@ impl Arbeitsordner {
         self
     }
 
+    /// Dazu Aufgabe #14 `aufgaben/0014-y.md`, auf keinem Board.
+    pub fn mit_zweiter_aufgabe(mut self) -> Self {
+        self.zweite = true;
+        self
+    }
+
     pub async fn oeffnen(self) -> Ordnerlage {
-        let einstellungen = format!("---\npeople:\n  {AGENT}: {{name: Sensor, kind: agent}}\nsignals:\n  {SIGNAL}: {{label: Befund nicht mehr gefunden, color: green}}\n---\n");
+        let einstellungen = format!("---\npeople:\n  {AGENT}: {{name: Sensor, kind: agent}}\n  {MENSCH}: {{name: Stefan, kind: human}}\nsignals:\n  {SIGNAL}: {{label: Befund nicht mehr gefunden, color: green}}\n---\n");
         let board = format!("# fabrik\n\n## {IN_ARBEIT}\n\n- [#12](../aufgaben/0012-x.md)\n\n## {FERTIG}\n");
         let mut dateien = vec![("boards/fabrik.md".to_string(), board), (AUFGABE_12.to_string(), AUFGABE_12_TEXT.to_string())];
+        if self.zweite {
+            dateien.push((format!("aufgaben/00{ZWEITE}-y.md"), format!("---\nid: {ZWEITE}\ntitle: y\nkey: k{ZWEITE}\n---\n")));
+        }
         if let Some(name) = self.handbenannt {
             dateien.push((format!("boards/{name}.md"), "# Alt\n\n## Offen\n".to_string()));
         }
@@ -75,6 +88,16 @@ impl Stand {
     fn von(t: &Treiber) -> Stand {
         Stand { commits: t.commits(), arbeitsbaum: t.arbeitsbaum(), fremd: t.nachbar(FREMD), aufgabe_12: t.datei(AUFGABE_12), aufgaben: t.dateien("aufgaben") }
     }
+}
+
+/// Die Wege, die eine Liste von Karten aus dem Rumpf nehmen.
+#[derive(Clone, Copy, Debug)]
+pub enum Sammelweg {
+    Legen,
+    Bewegen,
+    Aendern,
+    Archivieren,
+    Zurueckholen,
 }
 
 pub struct Ausgang {
@@ -144,6 +167,20 @@ impl Ordnerlage {
     /// Die Aufgaben nach Board filtern; `kodiert` steht so in der URL.
     pub fn aufgaben_filtern(&self, kodiert: &str) -> Ausgang {
         lesefall(self.treiber.roh_lesen(&format!("api/aufgaben?board={kodiert}")))
+    }
+
+    /// Ein Sammel-Weg mit einer Liste von Karten; `nummern` in Anfragereihenfolge, auch doppelt.
+    pub async fn sammelt(&self, wer: &str, weg: Sammelweg, nummern: &[u32]) -> Ausgang {
+        use serde_json::json;
+        let (methode, pfad, daten) = match weg {
+            Sammelweg::Legen => (reqwest::Method::POST, "api/boards/fabrik/aufgaben/mehrere", json!({"nummern": nummern})),
+            Sammelweg::Bewegen => (reqwest::Method::POST, "api/boards/fabrik/bewegen-mehrere", json!({"ziele": nummern.iter().map(|n| json!({"nummer": n, "spalte": FERTIG})).collect::<Vec<_>>()})),
+            Sammelweg::Aendern => (reqwest::Method::PATCH, "api/aufgaben/mehrere", json!({"aenderungen": nummern.iter().enumerate().map(|(i, n)| json!({"nummer": n, "titel": format!("t{i}")})).collect::<Vec<_>>()})),
+            Sammelweg::Archivieren => (reqwest::Method::POST, "api/aufgaben/archivieren", json!({"nummern": nummern})),
+            Sammelweg::Zurueckholen => (reqwest::Method::POST, "api/aufgaben/zurueckholen", json!({"nummern": nummern})),
+        };
+        let a = self.treiber.rufen(methode, pfad, wer, daten).await;
+        Ausgang { status: a.status, fehler: text(&a.rumpf["fehler"]), ergebnis: a.rumpf.to_string(), rumpf: String::new() }
     }
 
     /// Bericht aus der Git-Geschichte des Boards (`verlauf` oder `bewegungen`); `kodiert` steht so in der URL.

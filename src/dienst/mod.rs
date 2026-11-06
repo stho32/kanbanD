@@ -179,6 +179,16 @@ impl Kanban {
     }
 }
 
+/// Eingangstür der Sammel-Wege (B0344): eine Nummer zweimal in einer Anfrage ist ungültige Eingabe (400) —
+/// geprüft, bevor gelesen oder geschrieben wird, damit sie nie die zweite Linie in `aktion` erreicht.
+pub(crate) fn ohne_doppelte(nummern: impl IntoIterator<Item = u32>) -> Result<(), Fehler> {
+    let mut gesehen = std::collections::HashSet::new();
+    match nummern.into_iter().find(|n| !gesehen.insert(*n)) {
+        Some(n) => Err(Fehler::Ungueltig(format!("#{n} doppelt in der Anfrage — jede Aufgabe höchstens einmal"))),
+        None => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Kanban;
@@ -214,5 +224,12 @@ mod tests {
         }
         assert!(!eltern.path().join("x.md").exists() && !eltern.path().join("abs.md").exists(), "nichts neben dem Ordner");
         assert_eq!(git(&w, &["status", "--porcelain"]), "");
+    }
+
+    #[test]
+    fn ohne_doppelte_nennt_die_erste_doppelte_nummer() {
+        assert!(super::ohne_doppelte([1, 2, 3]).is_ok());
+        let e = super::ohne_doppelte([1, 2, 1, 2]).unwrap_err();
+        assert!(matches!(&e, Fehler::Ungueltig(m) if m.contains("#1 doppelt")), "{e:?}");
     }
 }

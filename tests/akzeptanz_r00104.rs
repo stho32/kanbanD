@@ -3,7 +3,7 @@
 mod akzeptanz;
 mod gemeinsam;
 
-use akzeptanz::arbeitsordner::{Arbeitsordner, FERTIG, IN_ARBEIT, abweichung, fehlfaelle, fehlfaelle_kodiert, vierzig_a};
+use akzeptanz::arbeitsordner::{AGENT, Arbeitsordner, FERTIG, IN_ARBEIT, MENSCH, Sammelweg, ZWEITE, abweichung, fehlfaelle, fehlfaelle_kodiert, vierzig_a};
 
 fn bestanden(abweichungen: Vec<String>) {
     assert!(abweichungen.is_empty(), "{} Abweichungen:\n{}", abweichungen.len(), abweichungen.join("\n"));
@@ -126,3 +126,56 @@ async fn us6_handbenannte_board_datei_wird_gemeldet_nicht_veraendert() {
     assert_eq!(ordner.board_datei("Alt_Board"), datei, "unverändert unter demselben Namen");
     assert_eq!(ordner.aenderungen_seit_start(), Vec::<String>::new());
 }
+
+// B0344 (Nacharbeit #48, Befund B1): eine doppelte Nummer in einem Sammel-Aufruf ist eine Benutzereingabe —
+// 400 „doppelt“ an der Eingangstür des Dienstes, nichts geschrieben; nie die zweite Linie in aktion() (500).
+// Kontrollpaar [12, 14] → 200 und genau ein Commit. Je Weg für Agent und Mensch.
+async fn doppelt_wird_abgewiesen(weg: Sammelweg, vorbereitung: Option<(Sammelweg, &[u32])>, doppelt: &[u32]) {
+    let mut abweichungen = vec![];
+    for wer in [AGENT, MENSCH] {
+        let ordner = Arbeitsordner::default().mit_zweiter_aufgabe().oeffnen().await;
+        if let Some((vorweg, nummern)) = vorbereitung {
+            let aus = ordner.sammelt(MENSCH, vorweg, nummern).await;
+            assert_eq!(aus.status, 200, "Vorbereitung {vorweg:?} {nummern:?}: {} {}", aus.fehler, aus.ergebnis);
+        }
+        let vorher = ordner.stand();
+        let aus = ordner.sammelt(wer, weg, doppelt).await;
+        let zeile = format!("{weg:?} als {wer}");
+        abweichungen.extend(abweichung(&zeile, &format!("{doppelt:?}"), &aus, 400, ordner.aenderungen(&vorher)));
+        if aus.status == 400 && !aus.fehler.contains("doppelt") {
+            abweichungen.push(format!("{zeile} {doppelt:?}: Grund nennt „doppelt“ nicht: {}", aus.fehler));
+        }
+        let commits = ordner.neue_commits();
+        let aus = ordner.sammelt(wer, weg, &[12, ZWEITE]).await;
+        if aus.status != 200 || ordner.neue_commits() != commits + 1 {
+            abweichungen.push(format!("{zeile} Kontrollpaar [12, {ZWEITE}]: {} ({}), {} neue Commits statt 1", aus.status, aus.fehler, ordner.neue_commits() - commits));
+        }
+    }
+    bestanden(abweichungen);
+}
+
+#[tokio::test]
+async fn b0344_auf_board_legen_mit_doppelter_nummer() {
+    doppelt_wird_abgewiesen(Sammelweg::Legen, None, &[ZWEITE, ZWEITE]).await;
+}
+
+#[tokio::test]
+async fn b0344_bewegen_mit_doppelter_nummer() {
+    doppelt_wird_abgewiesen(Sammelweg::Bewegen, Some((Sammelweg::Legen, &[ZWEITE])), &[12, 12]).await;
+}
+
+#[tokio::test]
+async fn b0344_aendern_mit_doppelter_nummer() {
+    doppelt_wird_abgewiesen(Sammelweg::Aendern, None, &[12, 12]).await;
+}
+
+#[tokio::test]
+async fn b0344_archivieren_mit_doppelter_nummer() {
+    doppelt_wird_abgewiesen(Sammelweg::Archivieren, None, &[12, 12]).await;
+}
+
+#[tokio::test]
+async fn b0344_zurueckholen_mit_doppelter_nummer() {
+    doppelt_wird_abgewiesen(Sammelweg::Zurueckholen, Some((Sammelweg::Archivieren, &[12, ZWEITE])), &[12, 12]).await;
+}
+

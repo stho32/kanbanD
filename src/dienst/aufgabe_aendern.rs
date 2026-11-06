@@ -28,6 +28,7 @@ impl Kanban {
         if aenderungen.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }
+        super::ohne_doppelte(aenderungen.iter().map(|(n, _)| *n))?;
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         let _sperre = self.gesperrt();
         let mut ergebnis = vec![];
