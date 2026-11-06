@@ -493,6 +493,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .anh-z{display:flex;align-items:center;gap:var(--kd-s3);min-height:26px;border-bottom:1px solid var(--kd-line)}
 .anh-z a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .anh-z .x{opacity:0}.anh-z:hover .x,.anh-z .x:focus{opacity:1}
+/* Ohne Hover (Touch) gäbe es kein Zeigen: ein unsichtbarer Löschknopf neben dem Text löschte beim Tippen (R00108) */
+@media (hover:none){.zt .btn-sym,.chk .x,.anh-z .x{opacity:1}}
 .anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
 .anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}
 .ka .wartet{font-size:11px;color:var(--kd-warn);font-weight:500}
