@@ -75,6 +75,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(bindung_setzen))
         .routes(routes!(start_setzen))
         .routes(routes!(berichtsfilter_setzen))
+        .routes(routes!(bestand_setzen))
         .routes(routes!(fieber_setzen))
         .routes(routes!(fieber_cache, fieber_ergaenzen, fieber_verwerfen))
         .routes(routes!(wer))
@@ -479,6 +480,24 @@ async fn berichtsfilter_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug)
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.berichtsfilter_setzen(&p, &slug, f)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/boards/{slug}/bestand",
+    tag = "Boards",
+    description = "Achsen des Berichts Bestand nach Labels setzen {zeilen, spalten}: je ein Label-Präfix (Teil vor dem ersten Doppelpunkt), nicht leer, ohne Doppelpunkt, ohne Groß/Klein verschieden, sonst 400 — gilt für alle, die das Board ansehen; ohne Änderung kein Commit",
+    params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::modell::Bestandseinstellung,
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn bestand_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(e): Json<crate::modell::Bestandseinstellung>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.bestand_setzen(&p, &slug, e)
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())

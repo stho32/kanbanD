@@ -5,6 +5,7 @@ mod anwendungen;
 mod archiv;
 mod aufgabenfilter;
 mod berichtsfilter;
+mod bestand;
 mod aufgabe_aendern;
 mod aufgabe_anlegen;
 mod bewegen;
