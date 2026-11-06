@@ -24,6 +24,23 @@
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: waehrung, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cent / 100);
   }
 
+  const zahl = cent => new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cent / 100);
+
+  /** Grenzen als Text mit einem Währungszeichen am Ende: „0,60–1,60 $“, bei gleichen Grenzen ein Betrag „1,63 $“. */
+  function spanne(min, max, waehrung, zwischen) {
+    if (min === max) return geld(max, waehrung);
+    return `${zahl(min)}${zwischen}${geld(max, waehrung)}`;
+  }
+
+  /** Kosten in Cent → Texte des Preisetiketts der Karte: sichtbar die Mitte, Hinweis und zugänglicher Name mit den Grenzen. */
+  function preisetikett(k) {
+    return {
+      sichtbar: `≈ ${geld(k.mitte, k.waehrung)}`,
+      hinweis: `${spanne(k.min, k.max, k.waehrung, '–')} · geschätzte API-Kosten`,
+      name: `Preisetikett: geschätzt ${spanne(k.min, k.max, k.waehrung, ' bis ')}, geschätzte API-Kosten`,
+    };
+  }
+
   /** Kosten in Cent → Zeilen des Reiters „Kosten“: Positionen in Dateireihenfolge mit Summenzeile, ohne Positionen eine
       Zeile „Gesamt“ ohne Summe; die Spalte Tokens nur, wenn eine Position Tokens trägt. Beträge bleiben Cent. */
   function kostentabelle(k) {
@@ -67,5 +84,5 @@
     return filterAnzahl(kostenFilter(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
   }
 
-  Object.assign(ziel, { kostenInCent, geld, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

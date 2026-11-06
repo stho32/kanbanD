@@ -165,3 +165,27 @@ test('Probe PO Z. 89 mit vierter Spalte „Prüfung“: 1, 2, 3 ausgeschlossene 
   for (const f of [{ ohneFarben: ['drift'] }, { personen: ['st'] }, { labels: ['x'] }, { zeitraum: 'vorwoche', labels: ['x'] }])
     assert.strictEqual(kostenUmfang(filter(f)), NACH_FILTER, JSON.stringify(f));
 });
+
+test('Preisetikett: Spanne zeigt die Mitte, nennt die Spanne im Hinweis und im zugänglichen Namen', () => {
+  const { preisetikett } = require('../../web/kosten.js');
+  assert.deepStrictEqual(preisetikett(kostenInCent(usd({ min: 0.6, max: 1.6 }))), {
+    sichtbar: `≈ 1,10${NBSP}$`,
+    hinweis: `0,60–1,60${NBSP}$ · geschätzte API-Kosten`,
+    name: `Preisetikett: geschätzt 0,60 bis 1,60${NBSP}$, geschätzte API-Kosten`,
+  });
+  assert.strictEqual(preisetikett(kostenInCent(usd({ min: 0.6, max: 1.61 }))).sichtbar, `≈ 1,11${NBSP}$`, 'Mitte an der Rundungsgrenze');
+});
+
+test('Preisetikett: Betrag und Positionen mit gleichen Grenzen nennen einen Betrag, keine Spanne', () => {
+  const { preisetikett } = require('../../web/kosten.js');
+  assert.deepStrictEqual(preisetikett(kostenInCent({ currency: 'EUR', amount: 25.55 })), {
+    sichtbar: `≈ 25,55${NBSP}€`,
+    hinweis: `25,55${NBSP}€ · geschätzte API-Kosten`,
+    name: `Preisetikett: geschätzt 25,55${NBSP}€, geschätzte API-Kosten`,
+  });
+  const gleich = preisetikett(kostenInCent(usd({ items: [{ text: 'a', amount: 0.1 }, { text: 'b', amount: 0.2 }] })));
+  assert.strictEqual(gleich.hinweis, `0,30${NBSP}$ · geschätzte API-Kosten`);
+  const positionen = preisetikett(kostenInCent(usd({ items: [{ text: 'a', min: 0.1, max: 0.2 }, { text: 'b', min: 0.2, max: 0.4 }, { text: 'c', amount: 0.3 }] })));
+  assert.strictEqual(positionen.sichtbar, `≈ 0,75${NBSP}$`);
+  assert.strictEqual(preisetikett(kostenInCent(usd({ min: 1000, max: 2000 }))).hinweis, `1.000,00–2.000,00${NBSP}$ · geschätzte API-Kosten`, 'Tausenderpunkt in beiden Grenzen');
+});

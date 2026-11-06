@@ -438,6 +438,14 @@ function vSumme(a) {
   const anteile = summeJePerson(a.zeiten, jetzt, beginn).map(x => `${per(x.wer).name} ${hm(x.ms)}`).join(' · ');
   return `<span class="sum" data-summe-basis="${basis}" data-summe-seit="${seit}" title="${esc(anteile)}" aria-label="gebuchte Zeit ${hm(gesamt)}: ${esc(anteile)}">Σ ${hm(gesamt)}</span>`;
 }
+/** Preisetikett (R00105): sichtbar die Mitte, Hinweis und versteckter Name nennen die Grenzen; steht Σ daneben, hängt das Komma am Betrag. */
+function vPreisetikett(a, vorSumme) {
+  if (!a.cost) return '';
+  const texte = preisetikett(kostenInCent(a.cost));
+  let sichtbar = texte.sichtbar;
+  if (vorSumme) sichtbar += ',';
+  return `<span class="preis" title="${esc(texte.hinweis)}"><span class="vh">${esc(texte.name)}</span><span aria-hidden="true">${esc(sichtbar)}</span></span>`;
+}
 function vKarte(a, fertig) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
@@ -445,8 +453,8 @@ function vKarte(a, fertig) {
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
-  const gewaehlt = S.ui.auswahl.includes(a.nummer);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vSumme(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}"${gewaehlt ? ' aria-selected="true"' : ''} draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
