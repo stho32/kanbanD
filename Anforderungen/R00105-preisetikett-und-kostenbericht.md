@@ -41,6 +41,7 @@ Der Betreiber will jedem Feature einen Preis geben: was hat es an API-Kosten gek
 - Der zugängliche Name steht als visuell versteckter Text im Etikett, nicht als `aria-label` an einem Element ohne Rolle: „Preisetikett: geschätzt <min> bis <max>, geschätzte API-Kosten“, bei einem Betrag „Preisetikett: geschätzt <Betrag>, geschätzte API-Kosten“. Das sichtbare „≈ <Mitte>“ ist `aria-hidden`.
 - Das Etikett heißt im zugänglichen Namen „Preisetikett“; sichtbar steht nur „≈ <Betrag>“.
 - Das Etikett steht in der Zeile r3 der Karte vor „Σ“ und sieht aus wie die Zeitsumme `.sum` (Text, kein Rahmen), nicht wie ein Label. Kontrast mindestens 4,5:1 in Hell und Dunkel, auch auf dem getönten Grund jeder Klassenfarbe. „Chip“ in den PO-Zeilen 21 und 30 meint dieses Element.
+- Steht auf der Karte neben dem Preisetikett auch die Zeitsumme „Σ“, trennt ein Komma beide: „≈ 1,10 $, Σ 0:46“. Ohne „Σ“ steht kein Komma: „≈ 1,10 $“. Das Komma hängt am Betrag: zwischen Betrag und Komma bricht die Zeile nie um, ein Umbruch liegt höchstens nach dem Komma. Das Komma gehört zum sichtbaren, `aria-hidden` Teil; der zugängliche Name des Etiketts bleibt ohne Komma. (Betreiber, Freigabe Artboard D0002, 2026-11-06, Karte #18)
 
 ### Reiter „Kosten“ (PO Z. 29, 31, 85, 88, 90, 93, 94, 98)
 - Reiter „Kosten“ neben „Inhalt“ und „Datei“ im Aufgabenfenster, nur bei einer Aufgabe mit Etikett. Ohne Etikett zeigt das Fenster genau die Reiter „Inhalt“ und „Datei“; einen Reiter mit „Kein Preisetikett“ gibt es nicht.
@@ -48,6 +49,7 @@ Der Betreiber will jedem Feature einen Preis geben: was hat es an API-Kosten gek
 - Rückfall: Hat die gezeigte Aufgabe kein Etikett mehr (Blättern zu einer Aufgabe ohne Etikett oder Etikett live entfernt), zeigt das Fenster „Inhalt“. Lag der Fokus auf der Reiterleiste oder im Panel „Kosten“, steht er danach auf dem Reiter „Inhalt“; lag er woanders (Titel, Kommentar, Blätterknopf), bleibt er dort.
 - Tabelle `Position | Tokens | niedrig | hoch` mit der Beschriftung (`caption`) „Geschätzte API-Kosten (<Währungscode>)“, also „(USD)“ oder „(EUR)“ je Aufgabe. Die Spaltenköpfe sind `th scope=col`, jede Zeile beginnt mit `th scope=row` (Position, „Gesamt“, „Summe“). Die Summenzeile beginnt mit „Summe“. Die Spalte Tokens steht nur, wenn eine Position Tokens trägt. Unter der Tabelle steht die Basis; der Satz „geschätzte API-Kosten“ steht nur in der Beschriftung, nicht noch einmal darunter.
 - Ohne Positionen eine Zeile „Gesamt“; ein Betrag steht in beiden Spalten.
+- Positionsnamen (Zeilenköpfe) trennen nach Silben mit Trennstrich (`hyphens: auto`, Sprache `de`), nie mitten im Wort ohne Strich (kein `overflow-wrap: anywhere` oder `break-word`, kein `word-break: break-all`). Reicht die Breite, steht der Name ungetrennt. Beispiel bei 320 px: „Gemein-“ / „kosten-“ / „anteil“; im Artboard bricht das Wort heute mitten im Wort ohne Strich. (Betreiber, Freigabe Artboard D0003, 2026-11-06, Karte #18)
 - Bei 320, 375 und 414 px Breite sind im Kopf des Aufgabenfensters alle Reiter und ✕ sichtbar und bedienbar, und der Kopf scrollt nicht waagrecht (`scrollWidth ≤ clientWidth`), in Hell und Dunkel.
 - Nur lesend; Bearbeiten ist eine spätere Ausbaustufe.
 
@@ -116,7 +118,9 @@ Grundbestand für Karte und Reiter: Board „fabrik“ mit den Spalten Eingang, 
 - [ ] Gegeben #1 mit 0,60–1,60 USD, wenn der zugängliche Name des Preisetiketts gelesen wird, dann lautet er „Preisetikett: geschätzt 0,60 bis 1,60 $, geschätzte API-Kosten“ und stammt aus einem visuell versteckten Text im Etikett; das sichtbare „≈ 1,10 $“ trägt `aria-hidden="true"`, und das Etikett trägt kein `aria-label`
 - [ ] Gegeben #1 mit `amount: 1.63` USD, wenn der zugängliche Name des Preisetiketts gelesen wird, dann lautet er „Preisetikett: geschätzt 1,63 $, geschätzte API-Kosten“
 - [ ] Gegenbeispiel: Gegeben #1 mit 0,60–1,60 USD, wenn der sichtbare Text der Karte gelesen wird (`innerText`), dann enthält er „≈ 1,10 $“, aber nicht „Preisetikett“ und nicht „geschätzt“
-- [ ] Gegeben #1 mit 0,60–1,60 USD und gebuchter Zeit, wenn das Board angesehen wird, dann steht das Preisetikett in der Zeile r3 unmittelbar vor „Σ …“, ohne Rahmen und ohne eigenen Hintergrund wie `.sum`
+- [ ] Gegeben #1 mit 0,60–1,60 USD und 46 Minuten gebuchter Zeit, wenn das Board angesehen wird, dann zeigt die Zeile r3 „≈ 1,10 $, Σ 0:46“ — Preisetikett, unmittelbar daran ein Komma, ein Leerzeichen, dann die Zeitsumme —, das Preisetikett steht ohne Rahmen und ohne eigenen Hintergrund wie `.sum`, und sein zugänglicher Name lautet weiter „Preisetikett: geschätzt 0,60 bis 1,60 $, geschätzte API-Kosten“ (das Komma ist `aria-hidden`)
+- [ ] Gegenbeispiel: Gegeben #2 mit 1,63 USD ohne gebuchte Zeit (die Karte zeigt kein „Σ“), wenn das Board angesehen wird, dann zeigt die Zeile r3 „≈ 1,63 $“, und auf „$“ folgt kein Komma
+- [ ] Grenzwert: Gegeben #1 mit 0,60–1,60 USD und 46 Minuten gebuchter Zeit, wenn das Board bei 320, 375 und 414 px Breite angesehen wird, dann stehen „$“ und das folgende „,“ in derselben Zeile (gleiche Oberkante ihrer Zeichenrechtecke), und keine Zeile der Karte beginnt mit „,“; bricht r3 um, dann frühestens nach dem Komma
 - [ ] Gegenbeispiel: Gegeben #1 mit 0,60–1,60 USD und dem Label `repo:shop`, wenn das Board angesehen wird, dann steht in der Labelzeile r1 nur „repo:shop“, und das Preisetikett trägt nicht die Gestalt eines Labels (`.lbl`)
 - [ ] Gegeben je Klasse des Boards eine Aufgabe dieser Klasse mit 0,60–1,60 USD, wenn das Board in Hell und in Dunkel angesehen wird, dann ist der Kontrast zwischen der Textfarbe des Preisetiketts und dem berechneten Hintergrund seiner Karte jeweils mindestens 4,5:1 (relative Leuchtdichte nach WCAG 2.1, Rechenbeispiel: #5b6470 auf #ffffff = (1,05) ÷ (0,1251 + 0,05) = 6,0:1)
 
@@ -139,6 +143,8 @@ Grundbestand für Karte und Reiter: Board „fabrik“ mit den Spalten Eingang, 
 - [ ] Gegeben #1 mit Etikett im Reiter „Kosten“ und Fokus auf dem Reiter „Kosten“ (ebenso: Fokus im Panel „Kosten“), wenn über die API `cost: null` für #1 gesetzt wird, dann ist innerhalb von 1 s `document.activeElement` der Reiter „Inhalt“, er hat `aria-selected=true`, und es gibt zwei Reiter
 - [ ] Gegenbeispiel: Gegeben #1 mit Etikett im Reiter „Kosten“ und Fokus im Titelfeld, wenn über die API `cost: null` für #1 gesetzt wird, dann zeigt das Fenster innerhalb von 1 s „Inhalt“, und der Fokus bleibt im Titelfeld
 - [ ] Gegeben #1 mit Etikett, wenn das Aufgabenfenster bei 320, 375 und 414 px Breite jeweils in Hell und in Dunkel geöffnet wird, dann liegen die Reiter „Inhalt“, „Datei“, „Kosten“ und ✕ ganz im sichtbaren Bereich, ein Klick auf jeden wirkt, und für den Kopf des Fensters gilt `scrollWidth ≤ clientWidth`
+- [ ] Gegeben #1 mit den Positionen Planung, Bau und Gemeinkostenanteil (wie oben), wenn der Reiter „Kosten“ bei 320 px Breite gezeigt wird, dann hat jeder Zeilenkopf (`th scope=row`) den berechneten Stil `hyphens: auto`, `overflow-wrap: normal` und `word-break: normal` und die Sprache `de` (nächstes `lang`); reicht die Zelle nicht für das ganze Wort (wie im Artboard bei 320 px), steht „Gemeinkostenanteil“ auf mehreren Zeilen, und jede Zeile außer der letzten endet mit einem Trennstrich an einer Silbengrenze (Ge·mein·kos·ten·an·teil, z. B. „Gemein-“ / „kosten-“ / „anteil“), nie mitten in einer Silbe ohne Strich; für das Panel „Kosten“ gilt `scrollWidth ≤ clientWidth`
+- [ ] Gegenbeispiel: Gegeben dieselben Positionen, wenn der Reiter „Kosten“ bei 1280 px Breite gezeigt wird, dann steht „Gemeinkostenanteil“ ungetrennt in einer Zeile ohne Trennstrich (der Zeilenkopf ist eine Zeile hoch)
 
 ### Kostenbericht
 - [ ] Gegeben der Grundbestand, wenn der Bericht „Kosten“ für „fabrik“ geöffnet wird, dann steht „Summe 2,23–3,23 $ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte“ (0,60 + 1,63 = 2,23; 1,60 + 1,63 = 3,23)
@@ -186,15 +192,15 @@ Alle Entscheidungen zur Technik stehen in [ADR-0009](../Dokumentation/ADRs/0009-
    - 1.2 `Kosten` bauen und prüfen, eine Prüfung für Datei und API (B0363)
    - 1.3 Abschnitt in der Datei lesen und schreiben, Rundlauf (B0364)
    - 1.4 PATCH einzeln und `/mehrere`, GET, OpenAPI (B0366)
-2. **Anzeigen** (Oberfläche, Chip und Reiter warten auf die Freigabe der Artboards)
+2. **Anzeigen** (Oberfläche; Artboards D0002, D0003, D0006 am 2026-11-06 freigegeben, D0002 und D0003 mit je einer Änderung)
    - 2.1 Cent-Rechnung und Format in `web/kosten.js` (B0367, frei)
-   - 2.2 Preisetikett auf der Karte (B0368, wartet D0002)
-   - 2.3 Kostentabelle rechnen mit Zeilenköpfen und Summenzeile „Summe“ (B0369, frei), Reiter zeigen mit Beschriftung und schmalen Breiten (B0370, wartet D0003)
+   - 2.2 Preisetikett auf der Karte, mit Komma vor „Σ“, wenn die Zeitsumme steht; Betrag und Komma als eine nicht umbrechende Einheit (B0368, D0002 freigegeben mit Änderung)
+   - 2.3 Kostentabelle rechnen mit Zeilenköpfen und Summenzeile „Summe“ (B0369, frei), Reiter zeigen mit Beschriftung, schmalen Breiten und Silbentrennung der Zeilenköpfe (`hyphens: auto` unter `lang="de"`) (B0370, D0003 freigegeben mit Änderung)
    - 2.4 Reiterleiste als `tablist` mit Tastatur für die heutigen zwei Reiter (F0043, B0375, frei; ohne neue Gestaltung, nutzt Aussehen und Kürzelhilfe von heute)
    - 2.5 Rückfall auf „Inhalt“ mit Fokusregel (B0376, ohne eigene Gestaltung, baubar sobald B0370 und B0375 stehen)
 3. **Kostenbericht**
    - 3.1 Bericht rechnen mit Reihenfolge der Währungen (B0371, frei), Filter ohne Zeitraum und Umfangstext nach `filterAnzahl` (B0373, frei)
-   - 3.2 Ansicht mit Kopfleiste, Menüeintrag und Leerzustand ohne Etikett samt Link „API für Agenten“ (B0372, wartet D0006), Filterleiste ohne Zeitraum, „Zurücksetzen“ in jedem Leerzustand bei aktivem Filter (ohne Zeitraum, Messbasis und „Rechnen ab“ anzufassen; Regel zentral in `bf-leeren` nach den `teile` des gezeigten Berichts, PO Z. 106) und schmale Breiten der ganzen Seite (B0374, wartet D0006)
+   - 3.2 Ansicht mit Kopfleiste, Menüeintrag und Leerzustand ohne Etikett samt Link „API für Agenten“ (B0372, D0006 freigegeben), Filterleiste ohne Zeitraum, „Zurücksetzen“ in jedem Leerzustand bei aktivem Filter (ohne Zeitraum, Messbasis und „Rechnen ab“ anzufassen; Regel zentral in `bf-leeren` nach den `teile` des gezeigten Berichts, PO Z. 106) und schmale Breiten der ganzen Seite (B0374, D0006 freigegeben)
 
 ### Grobentwurf
 
@@ -210,7 +216,7 @@ Alle Entscheidungen zur Technik stehen in [ADR-0009](../Dokumentation/ADRs/0009-
 - `kostenbericht(board, aufgaben, filter)` (rein, JS) — m und je Währung n, niedrig, hoch.
 
 ### Gestaltung
-- Artboards: `Dokumentation/Wireframes/D0002.dc.html` (Zustand Preisetikett auf der Karte mit Hinweis), `D0003.dc.html` (Reiter „Kosten“), `D0006.dc.html` (Bericht „Kosten“ mit Kopfleiste, Menüeintrag, Filterleiste ohne Zeitraum und beiden Leerzuständen). Die Reiterleiste als `tablist` (F0043) braucht kein neues Artboard: sie behält das heutige Aussehen, nur Rolle, Fokus und Tasten ändern sich. Die Zustände fehlen noch; sie entstehen vor dem Bau über `/wireframe verfeinern` und brauchen die Freigabe des Auftraggebers (PO Z. 34, 76).
+- Artboards: `Dokumentation/Wireframes/D0002.dc.html` (Zustand Preisetikett auf der Karte mit Hinweis), `D0003.dc.html` (Reiter „Kosten“), `D0006.dc.html` (Bericht „Kosten“ mit Kopfleiste, Menüeintrag, Filterleiste ohne Zeitraum und beiden Leerzuständen). Die Reiterleiste als `tablist` (F0043) braucht kein neues Artboard: sie behält das heutige Aussehen, nur Rolle, Fokus und Tasten ändern sich. Der Auftraggeber hat die Artboards am 2026-11-06 freigegeben (Karte #18): D0006 wie gezeichnet, D0002 und D0003 mit je einer Änderung — Komma vor „Σ“ auf der Karte, Silbentrennung mit Strich für Positionsnamen im Reiter „Kosten“. Beide Änderungen stehen hier als Funktionale Anforderung und Akzeptanzkriterien; das Nachzeichnen in den Artboards gehört der Gestaltung. Gilt ein Artboard anders als ein Kriterium, gilt das Kriterium.
 
 ### Änderungen an bestehenden Klassen
 - Aufgabe und Aufgabenänderung: neues entfernbares Feld `cost`.
@@ -227,20 +233,21 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
 **Integration:** PATCH einzeln und `/mehrere` gegen einen echten Ordner mit Git: Commit-Zahl vorher/nachher, Datei neu gelesen, jeder Fehlfall 400 mit Datei byte-gleich; defekte Datei → nur lesbar.
 
-**E2E:** US-1 bis US-20 gegen das laufende Programm auf freiem Port; Live mit Warten auf das Ereignis; Prüfsumme der Board-Datei vor und nach dem Öffnen des Berichts.
+**E2E:** US-1 bis US-22 gegen das laufende Programm auf freiem Port; Live mit Warten auf das Ereignis; Prüfsumme der Board-Datei vor und nach dem Öffnen des Berichts. Komma vor „Σ“: sichtbarer Text der Zeile r3 und Oberkante der Zeichenrechtecke von „$“ und „,“ (`Range.getClientRects`). Silbentrennung: berechneter Stil der Zeilenköpfe und Zahl der Zeilen (Höhe ÷ Zeilenhöhe); der Trennstrich selbst steht nicht im DOM, ihn zeigt ein Screenshot, den der Entwicklertest ansieht.
 
 ## Abhängigkeiten
-- Abhängig von: R00004 Board ansehen (I0004, gruen), R00011 Aufgabe ansehen und bearbeiten (I0011, gruen), R00081 Berichtsfilter (I0069, gruen); Freigabe der Artboards D0002, D0003, D0006 durch den Auftraggeber.
+- Abhängig von: R00004 Board ansehen (I0004, gruen), R00011 Aufgabe ansehen und bearbeiten (I0011, gruen), R00081 Berichtsfilter (I0069, gruen); Freigabe der Artboards D0002, D0003, D0006 durch den Auftraggeber (erteilt 2026-11-06).
 - Berührt: R00100 Bestand nach Labels (I0092, rot) — derselbe Satz „Zeitraum gilt hier nicht“ und dieselbe Menügruppe; wer zuerst gebaut wird, legt beides an.
 - Blockiert: —
 
 ## Offene Fragen
-- Freigabe der Artboards D0002, D0003 und D0006 beim Auftraggeber (PO Z. 76); bis dahin warten die Oberflächen-Bubbles.
+- Erledigt (2026-11-06): Freigabe der Artboards D0002, D0003 und D0006 durch den Auftraggeber, D0002 und D0003 mit je einer Änderung (eingearbeitet).
+- Offen: Ein Positionsname ohne Silbengrenze (z. B. eine lange Kennung oder URL) kann bei 320 px nicht mit Strich getrennt werden; „nie ohne Strich“ lässt ihn dann über die Zelle hinausragen. Empfehlung: kein strichloser Bruch, die Tabelle darf in diesem Sonderfall im Panel „Kosten“ quer scrollen, der Kopf des Fensters bleibt ohne Scrollen (das Kriterium „Kopf `scrollWidth ≤ clientWidth`“ bleibt erfüllt). Bis zur Antwort gilt die Empfehlung.
 - Entschieden und eingearbeitet (2026-11-06): Reiter ohne Etikett (PO Z. 85), Ort und Name des Berichts (PO Z. 86), Reihenfolge der Währungszeilen, Einzelbetrag und kein „≈“ in der Summe (PO Z. 87); „Zurücksetzen“ in jedem Leerzustand bei aktivem Filter, Linktext „API für Agenten“, schmale Breiten des Berichts (PO Z. 103–105).
 - Entschieden (PO Z. 106): „Zurücksetzen“ hebt im Kostenbericht Zeitraum, Messbasis und „Rechnen ab“ nicht auf, weil sie hier nicht gelten und gespeichert unverändert bleiben (PO Z. 80); für alle Berichte hebt der eine gemeinsame Knopf genau auf, was die Leiste des gezeigten Berichts zeigt und als aktiv zählt. Der heutige Knopf setzt Zeitraum und Messbasis pauschal mit zurück (`FILTER_LEER`, web/berichte.js:7, web/app.js:739); B0374 baut die Regel zentral in `bf-leeren`.
 
 ## Manuelle Vorbereitungstätigkeiten
-- Artboards D0002, D0003, D0006 um die Zustände ergänzen und vom Auftraggeber freigeben lassen.
+- Erledigt bis auf das Nachzeichnen: Artboards D0002, D0003, D0006 freigegeben am 2026-11-06; die zwei Änderungen (Komma vor „Σ“, Silbentrennung) zeichnet die Gestaltung in D0002 und D0003 nach.
 
 ## Manuelle Nachbereitungstätigkeiten
 - Keine. Die Factory beschreibt das Etikett nach der Abnahme in ihrer Rolle; das ist eine Änderung der Factory, nicht dieser Anforderung.
@@ -251,6 +258,7 @@ Auslöser ist der Auftrag, jedem Feature einen Preis zu geben; heute stehen API-
 
 ## Missing-Docs
 - Ausgabe von `Intl.NumberFormat('de-DE', {style: 'currency'})` je Währung (geschütztes Leerzeichen vor dem Zeichen, „CHF“ als Code) ist aus Erfahrung angenommen und im Unit-Test festzuhalten.
+- Silbentrennung im Browser: Probe des planers am 2026-11-06 mit dem headless Chromium der E2E-Suite (143.0.7499.4): `hyphens: auto` unter `lang="de"` trennt „Gemeinkostenanteil“ bei 70 px Breite zu „Gemein-“ / „kosten-“ / „anteil“ mit Strich; unter `lang="en"` wird nicht getrennt, das Wort ragt hinaus (`scrollWidth` 141 > 70); `overflow-wrap: anywhere` bricht ohne Strich („Gemeink…“). Firefox und Safari trennen mit eigenen Wörterbüchern an möglicherweise anderen Silbengrenzen; geprüft wird nur, dass an einer Silbengrenze mit Strich getrennt wird.
 
 ## Notizen
 - Die Abnahme-Probe der Karte #18 nannte für die Spanne „0,60–1,60 $“ auf der Karte; nach PO Z. 30 zeigt die Karte „≈ 1,10 $“, die Spanne steht im Hinweis. Die übrigen Proben (1,63; Summe 2,23–3,23 $ · 2 von m; 400 bei Betrag und Spanne zugleich oder min > max) stehen wörtlich in den Kriterien.
@@ -260,3 +268,4 @@ Auslöser ist der Auftrag, jedem Feature einen Preis zu geben; heute stehen API-
 - **Einarbeitung PO Z. 85–102** (2026-11-06): Reiterleiste als `tablist` (F0043, B0375), Rückfall mit Fokusregel (B0376), zugänglicher Name, Ort und Kontrast des Etiketts (B0368), Tabelle mit `caption`, Zeilenköpfen und „Summe“ (B0369, B0370), schmale Breiten (B0370), Kopfleiste, Menüeintrag, Umfangstext nach Filter und zwei Leerzustände (B0371–B0374); 51 → 75 Akzeptanzkriterien (6 davon ausdrücklich Gegenbeispiele, vorher 0), US-15 bis US-18 neu. Die Probe aus PO Z. 89 („1, 2 und 3 ausgeschlossene Spalten“) läuft mit einer vierten Spalte „Prüfung“, weil im Grundbestand drei ausgeschlossene Spalten m = 0 ergeben und dann der Leerzustand nach Filter (PO Z. 96) ohne „nach Filter, auch archivierte“ steht.
 - **Einarbeitung PO Z. 103–105** (2026-11-06): „Zurücksetzen“ in jedem Leerzustand bei aktivem Filter, mit Klick-Ergebnis und Gegenbeispiel „nur gespeicherter Zeitraum → kein Knopf“; Zurücksetzen lässt Zeitraum und „Rechnen ab“ stehen (abgeleitet aus PO Z. 80); Link „API für Agenten“ auf `/api` im neuen Tab mit `rel="noopener"`; ganze Seite des Kostenberichts bei 320, 375, 414 px ohne waagrechtes Scrollen (B0372, B0374); 75 → 81 Akzeptanzkriterien (2 geändert, 6 neu, davon 1 Gegenbeispiel), US-14 geändert, US-19 und US-20 neu.
 - **Einarbeitung PO Z. 106** (2026-11-06): „Zurücksetzen“ lässt auch die Messbasis stehen, die Notiz „abgeleitet, vom PO zu bestätigen“ ist entschieden, die Regel gilt für alle Berichte (ein Knopf, hebt auf, was die Leiste des gezeigten Berichts zeigt und zählt); Funktionale Anforderung „Zurücksetzen in jedem Leerzustand“, ein Akzeptanzkriterium (Gegeben und Dann um Messbasis 30 Tage), US-19 und Ablauf 3.2 geändert; Anzahl der Kriterien unverändert; WBS B0374 Entwurfsnotiz.
+- **Einarbeitung Artboard-Freigabe** (2026-11-06, Betreiber, Kommentare auf Karte #18): D0002 — steht neben dem Preisetikett die Zeitsumme, trennt ein Komma beide („≈ 1,10 $, Σ 0:46“), ohne „Σ“ kein Komma, kein Umbruch vor dem Komma; D0003 — Positionsnamen trennen nach Silben mit Trennstrich (`hyphens: auto`, `lang=de`), nie ohne Strich; D0006 wie gezeichnet. Funktionale Anforderungen „Preisetikett auf der Karte“ und „Reiter Kosten“ je um einen Punkt ergänzt; 81 → 85 Akzeptanzkriterien (1 geändert: Ort vor „Σ“ jetzt mit Komma und Rechenbeispiel; 4 neu, davon 2 Gegenbeispiele: ohne „Σ“ kein Komma, breite Ansicht ohne Trennung); US-1 geändert, US-21 und US-22 neu; WBS B0368 und B0370 Notiz.
