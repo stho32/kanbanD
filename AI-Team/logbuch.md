@@ -210,3 +210,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Auto-Review (Wdh. 2) | ux-reviewer (fortgesetzt) | befund: Muss Fokus in Statuszeile/Navigation geht beim Live-Ereignis an eine Karte (#stat außerhalb der gesicherten Bereiche); alter Ablauf bestanden; Schleifenbremse erreicht → realist-consultant | 0:14 | — |
 | 2026-11-06 | #18 | Artboard-Freigabe #18 | gestalter | bestanden: D0002 Komma vor Σ, D0003 Silbentrennung Zeilenkopf, Index-Nachtrag | 0:03 | c06f7e4 |
 | 2026-11-06 | #18 | Artboard-Freigabe #18 | planer | bestanden: Betreiber-Änderungen in R00105 (85 AK) und Story (US-21, US-22); Karte im Auftrag des Betreibers nach Entwicklung | 0:12 | 7c1ca1d |
+| 2026-11-06 | #8 | Schleifenbremse | realist-consultant | befund: Umsteuern an der Ursache (Bereiche umkehren, href als Schlüssel) mit Abtastraster als Abnahme; gemessen 34/110 bzw. 16/92 verloren, Probe 0; Anforderungsschärfung Rückfall an PO | 0:20 | — |
