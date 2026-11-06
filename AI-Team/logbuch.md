@@ -303,3 +303,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Nacharbeit 1 | entwickler | blockiert: Befunde behoben, Gate 2 failed ziele.spec:654 (Konflikt .seg>span ↔ Umbruch-Test #10); PO gefragt | 0:33 | f2b1c9f |
 | 2026-11-06 | #9 | Nacharbeit 1 | product-owner | entschieden Z. 140/141: Test von #10 folgt Regel Z. 133, Umbruchfall bleibt geprüft; nicht richtungsweisend | 0:08 | 0e725ee |
 | 2026-11-06 | #9 | Nacharbeit 1 | entwickler | bestanden: Befunde 1–3, US-4, Ansichtenliste, Ausweichprobe nach PO Z. 140/141; Gate 266/266 + 685 passed | 0:52 | 9e68917 |
+| 2026-11-06 | #9 | Auto-Reviews | code-reviewer | bestanden (Wiederholung): B1–B3 behoben, per Mutation geprobt; Anmerkungen A1–A3 → #70 | 0:09 | — |
