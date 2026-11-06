@@ -351,7 +351,7 @@ test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148
 });
 
 test.describe('US-9: ohne Herkunft', () => {
-  test.fail('US-9: Chip und Hinweis „ohne Herkunft“; Eingabe „ohne Herkunft“ und THIN AIR ersetzen die Herkunft', async ({ page }) => {
+  test('US-9: Chip und Hinweis „ohne Herkunft“; Eingabe „ohne Herkunft“ und THIN AIR ersetzen die Herkunft', async ({ page }) => {
     await starten(page);
     await brett(page);
     await expect(page.locator('.ka[data-id="2"] .org')).toHaveText('ohne Herkunft');
@@ -361,11 +361,7 @@ test.describe('US-9: ohne Herkunft', () => {
     await expect(page.getByLabel('Neue Herkunft')).not.toHaveAttribute('title', /thin air/);
     await schliessen(page);
     await fensterOeffnen(page, 1);
-    await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014, ohne Herkunftx]');
-    await page.locator('.ochip', { hasText: 'ohne Herkunftx' }).getByRole('button').click();
-    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
+    expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
     await page.getByLabel('Neue Herkunft').fill('  Ohne Herkunft ');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [thin air]');
@@ -374,14 +370,44 @@ test.describe('US-9: ohne Herkunft', () => {
     await expect(page.locator('.ka[data-id="1"] .org')).toHaveText('ohne Herkunft');
     // „THIN AIR“ bewirkt dasselbe
     await page.request.patch(k.adresse + 'api/aufgaben/1', { ...ALS_ST, data: { herkunft: ['I0001'] } });
+    await expect(page.locator('.ka[data-id="1"] .org')).toHaveText('I0001');
     await fensterOeffnen(page, 1);
-    await expect(fenster(page).locator('.ochip')).toHaveCount(1);
+    // .ochip tragen auch die WBS-Wirkungen; je Herkunft gibt es genau einen Entfernen-Knopf
+    await expect(fenster(page).getByRole('button', { name: /^Herkunft .* entfernen$/ })).toHaveCount(1);
     await page.getByLabel('Neue Herkunft').fill('THIN AIR');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [thin air]');
     await schliessen(page);
+    // Im Grundbestand hat nur #1 eine Herkunft; der Filter findet #1 und #2 und alle übrigen offenen Karten ohne Herkunft
     await page.getByLabel('Filter').fill('origin:"thin air"');
-    await expect(page.locator('.ka:visible')).toHaveCount(2);
+    const gefunden = page.locator('.ka:visible');
+    await expect.poll(() => gefunden.evaluateAll(ks => ks.map(k => k.dataset.id).sort())).toEqual(['1', '2', '4', '5', '6']);
+    await expect(gefunden.locator('.org')).toHaveText(Array(5).fill('ohne Herkunft'));
+    await page.getByLabel('Filter').fill('origin:I0001');
+    await expect(gefunden).toHaveCount(0);
+  });
+
+  // Gegenbeispiel aus US-9 wörtlich. Unerfüllbar ohne Änderung der API: der Server nimmt als Herkunft nur I0001, R00014,
+  // kd:I0001 oder thin air und weist „ohne Herkunftx“ ab (src/modell/aufgabe.rs:499, :564) — Rückfrage im Bericht an den Director
+  test.fail('US-9, Gegenbeispiel wörtlich: „ohne Herkunftx“ wird eine gewöhnliche Herkunft neben I0001 und R00014', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014, ohne Herkunftx]');
+    await page.locator('.ochip', { hasText: 'ohne Herkunftx' }).getByRole('button').click();
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
+  });
+
+  test('US-9, Gegenbeispiel wie heute möglich: „ohne Herkunftx“ ersetzt die Herkünfte nicht, sondern geht als gewöhnliche Herkunft an den Server', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    const anfrage = page.waitForRequest(r => r.method() === 'PATCH' && r.url().endsWith('/api/aufgaben/1'));
+    await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
+    await page.keyboard.press('Enter');
+    expect((await anfrage).postDataJSON().herkunft).toEqual(['I0001', 'R00014', 'ohne Herkunftx']);
+    await expect(page.getByText('„OHNE HERKUNFTX“ ist keine Herkunft')).toBeVisible();
+    expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
   });
 
   test.fail('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {

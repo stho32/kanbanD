@@ -1147,7 +1147,7 @@ async function act(a, arg, wert) {
         if (!(wert || '').trim() || ichNoetig()) break;
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
         u.fokus = '#herkunft-neu';
-        return aufgabeAendern(u.offen, { herkunft: wert.trim().toLowerCase() === 'thin air' ? ['thin air'] : [...alt, wert.trim()] });
+        return aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] });
       }
       case 'herkunft-weg': {
         if (ichNoetig()) break;

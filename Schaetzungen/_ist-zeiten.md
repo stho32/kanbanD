@@ -420,3 +420,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0433 Probe über alle Ansichten | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0434 Restfunde der Probe | Standard | 1-3h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0438 Chip und Hinweis „ohne Herkunft“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0439 Eingabe „ohne Herkunft“ | Standard | 0,5-1h | 0,6h | 0,6h | autonom |

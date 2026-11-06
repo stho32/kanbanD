@@ -54,6 +54,11 @@
   });
   /** Anzeigetext der Herkunft `thin air` (FA 15); in Datei, API und Filter bleibt `thin air`. */
   const OHNE_HERKUNFT = 'ohne Herkunft';
+  /** Meint die Eingabe „keine Herkunft“? „ohne Herkunft“ oder `thin air`, getrimmt, Groß/klein egal (FA 16). */
+  function istOhneHerkunft(eingabe) {
+    const wort = eingabe.trim().toLowerCase();
+    return wort === OHNE_HERKUNFT.toLowerCase() || wort === 'thin air';
+  }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft });
 })(typeof module !== 'undefined' ? module.exports : window);

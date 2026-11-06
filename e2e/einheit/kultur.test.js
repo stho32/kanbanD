@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // Ortszeit der Erwartungen, wie e2e/tests/hilfen.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT } = require('../../web/kultur.js');
+const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft } = require('../../web/kultur.js');
 
 test('lang(2026-10-28) ist 28.10.2026', () => {
   assert.strictEqual(datumLang('2026-10-28'), '28.10.2026');
@@ -45,4 +45,9 @@ test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel
   const schluessel = Object.keys(FELDER);
   assert.deepStrictEqual(Object.values(FELDER).filter(b => schluessel.includes(b)), []);
   assert.strictEqual(OHNE_HERKUNFT, 'ohne Herkunft');
+});
+
+test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß/klein egal (FA 16) — Ähnliches nicht', () => {
+  for (const ja of ['ohne Herkunft', '  Ohne Herkunft ', 'OHNE HERKUNFT', 'Thin Air', 'thin air', ' THIN AIR ']) assert.strictEqual(istOhneHerkunft(ja), true, ja);
+  for (const nein of ['ohne Herkunftx', 'ohne', 'Herkunft', 'thin', 'ohne  Herkunft', 'I0001', '']) assert.strictEqual(istOhneHerkunft(nein), false, nein);
 });
