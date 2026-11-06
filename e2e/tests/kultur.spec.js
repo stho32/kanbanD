@@ -430,10 +430,13 @@ test.describe('US-9: ohne Herkunft', () => {
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
   });
 
-  test('US-9, Hilfstext: das Feld „Neue Herkunft“ nennt „ohne Herkunft“ in Anführungszeichen, nicht thin air', async ({ page }) => {
+  test('US-9, Hilfstext: beide Herkunftsfelder nennen „ohne Herkunft“ in Anführungszeichen, nicht thin air', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(page.getByLabel('Neue Herkunft')).toHaveAttribute('title', HERKUNFT_HILFE);
+    await schliessen(page);
+    await page.keyboard.press('n');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' }).getByLabel('Herkunft der neuen Aufgabe')).toHaveAttribute('title', HERKUNFT_HILFE);
   });
 
   test('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {
