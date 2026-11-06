@@ -223,3 +223,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Auto-Review (Wdh. 3) | ux-reviewer | bestanden: 549/549 Fokus gehalten, Rückfälle und Regression grün; → Entwicklertest | 0:35 | — |
 | 2026-11-06 | #8 | Entwicklertest | entwicklertester | bestanden: US-1–12, 0 Befunde; Anm.: US-5 menuitemcheckbox, null/anhaenge 400 (alt), Ich-Menü „people:“; → Erledigt, ausgeliefert (cargo install, 7422 neu) | 0:19 | — |
 | 2026-11-06 | #18 | Entwicklung | entwickler | bestanden: I0093+I0094, 5 Bubbles grün, Gate grün; Nachprüfung 1× US-22 rot (nicht reproduziert); 2 PO-Fragen; → Auto-Reviews, ff-Merge | 0:55 | 6f014af..3446d14 |
+| 2026-11-06 | #18 | Entwicklung | product-owner, planer | PO Z.114–116 (US-16 ✕/Titel, US-22 Prüfwort, Zurücksetzen lässt Messbasis); R00105 86→87 AK; Testlücke Schreibmarke Fall (b) → Nacharbeit nach Reviews | 0:10 | 16e4a9e, 4ddd0a8 |
