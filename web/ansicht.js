@@ -940,10 +940,10 @@ function vBestandInhalt(achsen, filter) {
   if (!tabelle.summen.gesamt) return vBestandLeer(filterAnzahl(filter) > 0);
   return vBestandTabelle(tabelle, achsen, klassen) + vBestandLegende(klassen);
 }
-/** Legende der Klassen in Dringlichkeitsreihenfolge, „ohne Klasse“ ohne Farbfeld; zeigt nur, filtert nicht. */
+/** Legende der Klassen in Dringlichkeitsreihenfolge, „ohne Klasse“ mit leerem Farbfeld wie in der Board-Legende; zeigt nur, filtert nicht. */
 function vBestandLegende(klassen) {
   const eintraege = klassen.map(k => `<span class="best-le"><span class="sw" style="${cv(k.farbe)}"></span>${esc(k.bezeichnung)}</span>`).join('');
-  return `<div class="leg best-leg" aria-label="Legende"><span class="tt">LEGENDE</span>${eintraege}<span class="best-le">ohne Klasse</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
+  return `<div class="leg best-leg" aria-label="Legende"><span class="tt">LEGENDE</span>${eintraege}<span class="best-le"><span class="sw leer"></span>ohne Klasse</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
 }
 /** Leerzustand: mit aktiven Filtern der Berichte der Knopf „Zurücksetzen“ (ohne Zahl, PO Z. 77). */
 function vBestandLeer(gefiltert) {

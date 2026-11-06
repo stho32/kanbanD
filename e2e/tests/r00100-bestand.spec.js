@@ -216,11 +216,22 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(lager304).toHaveCSS('background-color', await leer.evaluate(e => getComputedStyle(e).backgroundColor));
   });
 
-  test('Legende: Sicherheit, EOL, Drift mit Farbfeld, „ohne Klasse“ ohne; ein Klick darauf ändert nichts', async ({ page }) => {
+  test('Legende: je Eintrag genau ein Farbfeld, „ohne Klasse“ leer wie in der Board-Legende (hell und dunkel); ein Klick darauf ändert nichts', async ({ page }) => {
     await bericht(page, grundbestand());
     await expect(legende(page)).toHaveAttribute('aria-label', 'Legende');
     await expect(legende(page).locator('.best-le')).toHaveText(['Sicherheit', 'EOL', 'Drift', 'ohne Klasse']);
-    await expect(legende(page).locator('.best-le').filter({ has: page.locator('.sw') })).toHaveText(['Sicherheit', 'EOL', 'Drift']);
+    for (const eintrag of await legende(page).locator('.best-le').all()) await expect(eintrag.locator('.sw')).toHaveCount(1);
+    const feldOhne = legende(page).locator('.best-le').filter({ hasText: 'ohne Klasse' }).locator('.sw');
+    await expect(feldOhne).toHaveClass('sw leer');
+    const flaeche = ort => ort.evaluate(e => { const s = getComputedStyle(e); return [s.backgroundColor, s.borderTopColor, s.borderTopWidth]; });
+    for (const schema of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: schema });
+      await page.goto(k.adresse + '#/board/fabrik');
+      const vorbild = await flaeche(page.locator('.leg button[data-arg="none"] .sw'));
+      await page.goto(k.adresse + '#/berichte/bestand');
+      expect(await flaeche(feldOhne), schema).toEqual(vorbild);
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
     const vorher = await alleZahlen(page), adresse = page.url();
     await legende(page).getByText('Drift', { exact: true }).click();
     expect(await alleZahlen(page)).toEqual(vorher);
