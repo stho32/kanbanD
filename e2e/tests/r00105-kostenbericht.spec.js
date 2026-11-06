@@ -189,7 +189,7 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
     await filterOeffnen(page);
     await expect(page.locator('.bf-fuss .bf-leeren')).toHaveAttribute('data-arg', 'wieLangeNoch');
-    await expect(page.locator('.bf-fuss .bf-leeren'), 'Nacharbeit S7: der Tooltip sagt, was bleibt').toHaveAttribute('title', 'die gezählten Filter aufheben — Messbasis und Rechnen ab bleiben');
+    await expect(page.locator('.bf-fuss .bf-leeren'), 'US-25: der Hinweis nennt Messbasis und „Rechnen ab“').toHaveAttribute('title', 'die gezählten Filter aufheben — Messbasis und „Rechnen ab“ bleiben');
     await page.locator('.bf-fuss .bf-leeren').click();
     await expect(page.locator('.bf-zusammen')).toContainText('Filter · keine');
     await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
@@ -198,6 +198,17 @@ test.describe('R00105 Kostenbericht', () => {
     expect(k.lies('boards/fabrik.md')).toContain('window-days: 30');
     await page.reload();
     await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
+  });
+
+  test('US-25: der Hinweis an „Zurücksetzen“ nennt nur, was die Leiste zeigt — Kosten ohne, Burndown mit „Rechnen ab“ (PO Z. 118)', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand({}, {}, '---\nstart: 2026-10-01\nreport-filter: {exclude-classes: [drift], window-days: 30}\n---\n'));
+    const knopf = page.locator('.bf-fuss .bf-leeren');
+    await filterOeffnen(page);
+    await expect(knopf).toHaveAttribute('title', 'die gezählten Filter aufheben');
+    expect(await knopf.getAttribute('title'), 'Gegenbeispiel Kosten').not.toMatch(/Messbasis|Rechnen ab/);
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await filterOeffnen(page);
+    await expect(knopf).toHaveAttribute('title', 'die gezählten Filter aufheben — „Rechnen ab“ bleibt');
   });
 
   test('US-13: gespeicherter Zeitraum gilt hier nicht, zählt nicht, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {

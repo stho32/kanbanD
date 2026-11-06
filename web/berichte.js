@@ -65,6 +65,14 @@
     kosten: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
   };
 
+  /** Hinweis an „Zurücksetzen“ (R00105 US-25, PO Z. 118): nennt von Messbasis und „Rechnen ab“ nur, was die Leiste zeigt. */
+  function zuruecksetzenHinweis(teile) {
+    const text = 'die gezählten Filter aufheben';
+    if (teile.messbasis && teile.start) return `${text} — Messbasis und „Rechnen ab“ bleiben`;
+    if (teile.start) return `${text} — „Rechnen ab“ bleibt`;
+    return text;
+  }
+
   /** „Zurücksetzen“ (R00105 US-19, PO Z. 106/116): hebt Klassen, Spalten, Zuständige und Labels auf, den Zeitraum nur,
    *  wenn die Leiste ihn zeigt. Messbasis und „Rechnen ab“ sind Einstellungen der Rechnung und bleiben immer. */
   function filterZuruecksetzen(f, teile) {
@@ -630,5 +638,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

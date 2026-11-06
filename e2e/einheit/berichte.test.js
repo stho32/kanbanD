@@ -517,3 +517,20 @@ test('Zurücksetzen je Leiste (R00105 US-19, PO Z. 106/116): Klassen, Spalten, Z
   assert.strictEqual(filterZuruecksetzen(gesetzt, BERICHTSLEISTEN.wieLangeNoch).messbasisTage, 30, 'Messbasis bleibt, auch wo die Leiste sie zeigt');
   assert.deepStrictEqual(gesetzt.ohneSpalten, ['Fertig'], 'der gespeicherte Filter bleibt unverändert');
 });
+
+test('Hinweis an „Zurücksetzen“ je Leiste (R00105 US-25, PO Z. 118): nennt nur, was die Leiste zeigt', () => {
+  const { zuruecksetzenHinweis, BERICHTSLEISTEN } = require('../../web/berichte.js');
+  const nur = 'die gezählten Filter aufheben';
+  const erwartet = {
+    stundenzettel: nur,
+    zeiten: nur,
+    kosten: nur,
+    burndown: `${nur} — „Rechnen ab“ bleibt`,
+    durchlaufzeit: `${nur} — „Rechnen ab“ bleibt`,
+    wieLangeNoch: `${nur} — Messbasis und „Rechnen ab“ bleiben`,
+    fieber: `${nur} — Messbasis und „Rechnen ab“ bleiben`,
+  };
+  assert.deepStrictEqual(Object.keys(BERICHTSLEISTEN).sort(), Object.keys(erwartet).sort(), 'jede Leiste genau einmal');
+  for (const [leiste, hinweis] of Object.entries(erwartet)) assert.strictEqual(zuruecksetzenHinweis(BERICHTSLEISTEN[leiste]), hinweis, leiste);
+  assert.doesNotMatch(zuruecksetzenHinweis(BERICHTSLEISTEN.kosten), /Messbasis|Rechnen ab/, 'Gegenbeispiel Kosten');
+});
