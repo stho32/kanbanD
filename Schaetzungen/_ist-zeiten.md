@@ -395,3 +395,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0420 Der Board-Knopf ragt bei 320 px nicht unter den Seitenknopf | Nacharbeit | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0421 Nach dem Bearbeiten einer Teilaufgabe kehrt der Fokus auf ihren Text zurück | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0422 Gegenprobe: nur ein Diagrammpunkt ist über ein gleichwertiges Ziel ausgenommen | Nacharbeit | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0423 Nur benannte Rahmen scrollen quer, die Zeitberichte in einem Rahmen um die Tabelle | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |

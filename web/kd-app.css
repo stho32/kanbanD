@@ -422,6 +422,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .leiste b{font-weight:600}
 .body{flex:1;min-height:0;overflow:auto;background:var(--kd-surface)}
 .pt{width:100%;border-collapse:collapse}
+/* Zeitberichte (PO Z. 137): nur der Rahmen um die Tabelle scrollt quer; füllt er .body allein, scrollt er auch hoch, damit die Kopfzeile klebt */
+.bericht-rahmen{min-width:0;overflow-x:auto}
+.body>.bericht-rahmen:only-child{height:100%;overflow:auto}
 .pt th{position:sticky;top:0;z-index:2;background:var(--kd-sunken);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);padding:0 var(--kd-s3);height:26px;border-bottom:1px solid var(--kd-line-strong);white-space:nowrap}
 .pt th.r,.pt td.r{text-align:right}
 .pt td{height:40px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);vertical-align:middle;white-space:nowrap}

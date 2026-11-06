@@ -43,9 +43,9 @@ const grundbestand = arbeit => ({
 });
 
 let k, arbeit;
-const starten = async page => {
+const starten = async (page, mehr = {}) => {
   arbeit = arbeitsRepository(WBS);
-  k = await kanbanStarten(einrichten(grundbestand(arbeit)));
+  k = await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr }));
   expect((await page.request.post(`${k.adresse}api/aufgaben/3/timer/start`, ALS_ST)).ok()).toBe(true);
   await alsPerson(page, 'st');
 };
@@ -540,6 +540,35 @@ for (const breite of [320, 375, 414]) {
         await oeffnen(page);
         await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
         expect(await breiteMessen(page, ansicht)).toEqual([]);
+      });
+    }
+  });
+}
+
+// B0423 (PO Z. 137 a, b): Die Zeitberichte scrollen bei 320 px nur in einem benannten Rahmen um genau die Tabelle quer.
+// Breite Daten: Aufgabe #5 mit 200 Zeichen Titel (darin ein Wort aus 60 Zeichen), heute Zeiten von drei Personen, in „Erledigt“.
+const LANGES_WORT = 'Durchlaufzeitenberechnungsvorschriftenzusammenfassungsentwurf'.slice(0, 60).padEnd(60, 'x');
+const LANGER_TITEL = (`Sehr langer Titel ${LANGES_WORT} ` + 'mit vielen weiteren Wörtern, die umbrechen dürfen, '.repeat(4)).slice(0, 200);
+const zeitHeute = wer => `${tag(0)} 06:00 · ${tag(0)} 06:30 · ${wer}`;
+const BREITE_DATEN = {
+  'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n\n## In Arbeit\n\n- [#3](../aufgaben/0003-drei.md)\n\n## Erledigt\n\n- [#4](../aufgaben/0004-vier.md)\n- [#5](../aufgaben/0005-lang.md)\n',
+  'aufgaben/0005-lang.md': `---\nid: 5\ntitle: ${LANGER_TITEL}\n---\n\`\`\`kanbanD-time\n${['st', 'mi', 'cl'].map(zeitHeute).join('\n')}\n\`\`\`\n`,
+};
+for (const breite of [320, 375, 414]) {
+  test.describe(`Zeitberichte mit breiten Daten, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+    for (const [name, tabelle, beschriftung] of [['stundenzettel', '#stundenzettel', 'Stundenzettel'], ['kreuz', '#kreuz', 'Zeiten nach Aufgabe und Person'], ['durchlauf', '#durchlauf', 'Aufgaben']]) {
+      test(`Bericht ${name}: nur der Rahmen „${beschriftung}“ um die Tabelle scrollt quer, per Tastatur erreichbar`, async ({ page }) => {
+        await starten(page, BREITE_DATEN);
+        await bericht(name)(page);
+        await expect(page.locator(`${tabelle} tr[data-arg="5"]`)).toHaveCount(1);
+        expect(await breiteMessen(page, 'Bericht ' + name)).toEqual([]);
+        const rahmen = page.getByRole('group', { name: beschriftung, exact: true });
+        await expect(rahmen).toHaveAttribute('tabindex', '0');
+        await expect(rahmen.locator(':scope > *')).toHaveCount(1);
+        await expect(rahmen.locator(':scope > table')).toHaveAttribute('id', tabelle.slice(1));
+        await rahmen.focus();
+        await expect(rahmen).toBeFocused();
       });
     }
   });

@@ -174,8 +174,8 @@ test.describe('Selbstprobe Breite', () => {
     expect(await breiteMessen(page, 'probe')).toEqual([]);
   });
 
-  // Ein Bereich unter #main, der quer scrollt, zählt — außer er ist nach F0050 benannt oder trägt eine breite Tabelle
-  test('ein quer scrollender Bereich zählt, die Spaltenleiste und ein Bereich mit breiter Tabelle nicht', async ({ page }) => {
+  // Ein Bereich unter #main, der quer scrollt, zählt — außer er steht in der abschließenden Liste (PO Z. 137)
+  test('ein quer scrollender Bereich zählt, auch mit breiter Tabelle; die benannten Rahmen nicht', async ({ page }) => {
     const seite = inhalt => `<style>body{margin:0}</style><main id="main">${inhalt}</main>`;
     const breit = '<div style="width:336px;height:10px"></div>';
     await page.setContent(seite(`<div class="einr breit" style="overflow:auto">${breit}</div>`));
@@ -183,9 +183,11 @@ test.describe('Selbstprobe Breite', () => {
     await page.setContent(seite(`<div class="bahnen" style="overflow-x:auto">${breit}</div>`));
     expect(await breiteMessen(page, 'probe')).toEqual([]);
     await page.setContent(seite('<div class="body" style="overflow:auto"><table style="width:900px"><tr><td>x</td></tr></table></div>'));
-    expect(await breiteMessen(page, 'probe')).toEqual([]);
-    await page.setContent(seite(`<div class="body" style="overflow:auto"><table><tr><td>x</td></tr></table>${breit}</div>`));
     expect((await breiteMessen(page, 'probe')).map(v => v.ort)).toEqual(['div.body']);
+    for (const rahmen of ['wbs-tabelle', 'best-scroll', 'ko-scroll', 'res-rahmen', 'wl-scroll', 'bericht-rahmen']) {
+      await page.setContent(seite(`<div class="body" style="overflow:auto"><div class="${rahmen}" style="overflow-x:auto"><table style="width:900px"><tr><td>x</td></tr></table></div></div>`));
+      expect(await breiteMessen(page, 'probe'), rahmen).toEqual([]);
+    }
   });
 });
 

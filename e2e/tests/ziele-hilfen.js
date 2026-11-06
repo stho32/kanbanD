@@ -8,7 +8,8 @@ const MASS = { fein: 24, touch: 44 };
  * Was nach F0050 in sich quer scrollen darf: Spaltenleiste, Legende des Boards und die Tabellenbereiche;
  * eine breite Tabelle in einem anderen Bereich erkennt breiteMessen selbst.
  */
-const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .wbs-tabelle, .wl-scroll';
+// Abschließende Liste nach F0050 und PO Z. 137: nur diese benannten Rahmen dürfen in sich quer scrollen
+const QUER_ERLAUBT = '.bahnen, .leg, .wbs-tabelle, .best-scroll, .ko-scroll, .res-rahmen, .wl-scroll, .bericht-rahmen';
 
 /**
  * Läuft im Browser: misst jedes Bedienziel und liefert die Verstöße.
@@ -164,16 +165,14 @@ function titelPruefen(page, ansicht) {
 
 /**
  * Waagrechtes Scrollen: Seite, #main und jeder Bereich unter #main mit overflow-x auto oder scroll
- * höchstens so breit wie sein Fenster. Ausgenommen nur, was nach F0050 in sich quer scrollen darf: die benannten
- * Bereiche (QUER_ERLAUBT) und ein Bereich, in dem eine Tabelle breiter ist als er.
+ * höchstens so breit wie sein Fenster. Ausgenommen nur die benannten Rahmen, die nach F0050 in sich quer scrollen
+ * dürfen (QUER_ERLAUBT) — eine breite Tabelle allein ist keine Ausnahme.
  */
 function breiteMessen(page, ansicht) {
   return page.evaluate(({ ansicht, querErlaubt }) => {
     const main = document.getElementById('main');
     const rollend = main ? [...main.querySelectorAll('*')].filter(el => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX)) : [];
-    // Eine breite Tabelle darf ihren Bereich quer scrollen; alles andere, was übersteht, ist ein Verstoß
-    const tabelleZuBreit = el => [...el.querySelectorAll('table')].some(t => t.getBoundingClientRect().width > el.clientWidth);
-    const bereiche = rollend.filter(el => !el.matches(querErlaubt) && !tabelleZuBreit(el)).map(el => [el.tagName.toLowerCase() + [...el.classList].map(k => '.' + k).join(''), el]);
+    const bereiche = rollend.filter(el => !el.matches(querErlaubt)).map(el => [el.tagName.toLowerCase() + [...el.classList].map(k => '.' + k).join(''), el]);
     const orte = [['Seite', document.documentElement], ['#main', main], ...bereiche];
     return orte
       .filter(([, el]) => el && el.scrollWidth > el.clientWidth)
