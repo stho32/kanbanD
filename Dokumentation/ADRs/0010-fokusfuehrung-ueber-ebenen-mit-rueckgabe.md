@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #8)
 **Kontext-Anforderung**: — (Karte #8 „Fokus in Fenstern und Menüs führen und nach jeder Aktion halten“, Anforderung folgt über den planer)
 **Erprobt durch**: headless Chromium-Probe 2026-11-06 (Scratchpad, nicht versioniert): `inert` gegen natives `<dialog>.showModal()` unter `innerHTML`-Neuzeichnen, siehe Kontext
-**Nachträge**: 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
+**Nachträge**: 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). N7b: gebauter Stand (`f8e16e4`) — Leerfall ohne Auslöser, Pop ohne Element ist zu. Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
 
 ## Kontext
 
@@ -194,6 +194,28 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 - Wenn die Führung (Rang 5) bisher nur bei `vorher.stand: 'verloren'` gilt (`fuehrungGilt`, `web/fokus.js:97–100`), muss sie nach dem Schließen der letzten Ebene ebenfalls gelten. Der Fokus lag dann in der Ebene, die entfernt wurde, ist also „verloren“. Das prüft der entwickler am ersten Test.
 
 **Durchsetzung** (ersetzt den Review-Punkt in N7): Aufruf von `ersterTabbarer` ohne oberste offene Ebene ist ein Befund.
+
+### N7b Gebauter Stand zu N7a: Leerfall ohne Auslöser, Pop ohne Element ist zu
+
+**Anlass**: Nacharbeit 3 auf Karte #8 ist gebaut (kanbanD `f8e16e4`, davor `e9e50f5` `href` als Schlüssel und `fb8361c` Sicherer für alle Bereiche nach ADR-0007 N1). Der Bau präzisiert N7a an einer Stelle und schließt eine Geister-Ebene. Beides steht hier belegt am Code. N7a bleibt gültig, wo N7b nichts sagt.
+
+**Belegt (Code)**:
+- Rückfall im Kleber (`fokusFuehren`, `web/app.js:651–656`): `ersterTabbarer` sucht in der obersten offenen Ebene, wenn eine offen ist und der Fokus nicht schon in ihr sitzt (`:655`). Ohne offene Ebene sucht es in `#main` nur, wenn die zuletzt geschlossene Ebene eine **leere** `rueckgabe` hat (`ohneAusloeserGeschlossen`, `:654`, `:656`). `ersterTabbarer(bereich)` nimmt jetzt den Bereich statt der Ebene und hat keinen eigenen Rückfall auf `#main` mehr (`:708–711`).
+- `rueckgabe` ist leer, wenn beim Öffnen kein Auslöser gemerkt wurde (`ausloeser(gemerkt, art)`, `web/fokus.js:16–19`), also wenn die Ebene aus `BODY` geöffnet wurde. Bei Fenster und Defekt-Fenster steht der Ort der offenen Aufgabe davor (`ortDerAufgabe`, `web/fokus.js:9–13`).
+- `popPlatzieren` (`web/app.js:728–738`) läuft in `render()` vor der Fokusführung (`:477–478`). Zeichnet `vPop()` nichts (Lauf-Pop ohne laufenden Timer), setzt es `S.ui.pop = null` (`:732`). Fehlt der Auslöser `#pop[data-for]`, entfernt es zusätzlich den Pop aus dem DOM (`:734`).
+- Proben: `e2e/tests/r00106-fokus-rueckfall.spec.js` (neu), `e2e/tests/r00106-fokus-raster.spec.js` (Abtastraster, erweitert).
+
+**Entschieden (gebaut)**:
+
+1. **Rang 6 ohne offene Ebene, Leerfall**: Ist nach dem Neuzeichnen keine Ebene offen, gilt das erste tabbare Element von `#main` nur, wenn die zuletzt geschlossene Ebene **nie einen Auslöser hatte**, also `rueckgabe` leer ist. Das ist der Leerfall aus R00106 Z. 142: Board frisch geladen, Fokus auf `BODY`, `n`, dann Esc → Fokus auf `#main` oder einem Element darin. Es gibt dort nichts zurückzugeben, und `BODY` wäre der Zustand vor dem Öffnen. Das Ziel stammt aus keiner früheren Lage und ist deshalb kein „fremdes“ Element im Sinn von N7.
+2. **Rückgabe gescheitert, weil der Auslöser fort ist**: Hatte die Ebene einen Auslöser und ist er nach dem Neuzeichnen nicht mehr da, gilt die Kette aus N7a: zuletzt geführte Karte bzw. Zeile, sonst `BODY`, nie das erste tabbare Element von `#main` (PO `AI-Team/po-entscheidungen.md:113`).
+3. **Pop ohne Element ist zu**: Ein Pop, für den `vPop()` nichts zeichnet oder dessen Auslöser fehlt, ist auch im Zustand geschlossen (`S.ui.pop = null`). Die Fokusführung rechnet dann nicht mit einer Ebene, die es auf dem Schirm nicht gibt. Sonst stünde Rang 6 „in der obersten Ebene“ ohne Element da, und Tab und Esc liefen ins Leere. Weil `popPlatzieren` vor `fokusFuehren` läuft, sieht die Fokusführung im selben `render()` schon den geschlossenen Zustand.
+
+**Invariante** (ergänzt die Fassung in N7a um einen Satz): Wurde die letzte Ebene geschlossen und hatte sie nie einen Auslöser, steht der Fokus nach `render()` auf dem ersten tabbaren Element von `#main` bzw. in `#main`. Eine Ebene ohne gezeichnetes Element ist nicht offen.
+
+**Abweichung von N7/N7a, offen**: Die Entscheidung über den Rückfall steht weiter im Kleber (`web/app.js:654–656`) und nicht als Platzhalter in der reinen Funktion `fokusZiel`, wie N7 und N7a vorschlugen. Sie ist damit nur per E2E prüfbar (`r00106-fokus-rueckfall.spec.js`), nicht per Node-Unit. Ob sie nach `web/fokus.js` wandert, ist nicht entschieden. Vorschlag: so lassen, bis ein Befund am Rückfall auftritt (gleiche Regel wie für die Ebenen-Identität in N3).
+
+**Durchsetzung** (ersetzt den Review-Punkt in N7a): Aufruf von `ersterTabbarer` ohne oberste offene Ebene ist ein Befund, außer mit `#main` im Leerfall (`ohneAusloeserGeschlossen`). Ein Pop-Zustand ohne gezeichneten Pop ist ein Befund.
 
 ## Quellen / Bezüge
 

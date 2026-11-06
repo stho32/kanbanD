@@ -33,7 +33,7 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 
 - [ADR-0007: Sichtzustand übersteht das Neuzeichnen](../ADRs/0007-sichtzustand-uebersteht-das-neuzeichnen.md) — Nachtrag N1 (#8): alle Kinder von `#app` gesichert, `#main`/`#over` hinter Wächtern, `href` als Schlüssel
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): Chip „≈“ mit Mitte, Reiter „Kosten“, Kostenbericht; gerechnet in ganzen Cent in einem reinen Modul neben `web/berichte.js`
-- [ADR-0010: Fokusführung über Ebenen mit Rückgabe](../ADRs/0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) — gebaut (#8, R00106): reines Modul `web/fokus.js` (Ebenen, Tab-Umlauf, Rand der Pop-Fenster, Fokusziele), Kleber am Ende von `render()`, Menüs mit Fokus per Skript ohne Tab-Halt, Radiogruppen roving; Abweichungen vom Text im Nachtrag N1–N6; N7 Rückfall ohne offene Ebene nie auf ein fremdes Element; N7a Rang 6 nur bei nach dem Neuzeichnen offener Ebene
+- [ADR-0010: Fokusführung über Ebenen mit Rückgabe](../ADRs/0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) — gebaut (#8, R00106): reines Modul `web/fokus.js` (Ebenen, Tab-Umlauf, Rand der Pop-Fenster, Fokusziele), Kleber am Ende von `render()`, Menüs mit Fokus per Skript ohne Tab-Halt, Radiogruppen roving; Abweichungen vom Text im Nachtrag N1–N6; N7 Rückfall ohne offene Ebene nie auf ein fremdes Element; N7a Rang 6 nur bei nach dem Neuzeichnen offener Ebene; N7b gebaut: Leerfall ohne Auslöser, Pop ohne Element ist zu
 
 ## Offene Fragen
 
@@ -61,3 +61,5 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 - nachgeführt 2026-11-06 nach ADR-0007 N1 und ADR-0010 N7
 - Präzisiert nach ADR-0010 N7a (PO 2026-11-06, `AI-Team/po-entscheidungen.md:113`): Rückfall „erstes tabbares Element“ nur, wenn nach dem Neuzeichnen noch eine Ebene offen ist, und dann in der obersten. Letzte Ebene geschlossen und Rückgabe gescheitert → geführte Karte bzw. Zeile, sonst `BODY`. Die Notiz zu N7 („offener oder gerade geschlossener Ebene“) gilt insoweit nicht mehr.
 - nachgeführt 2026-11-06 nach ADR-0010 N7a
+- Gebaut 2026-11-06 (Karte #8, Nacharbeit 3, kanbanD `e9e50f5`, `fb8361c`, `f8e16e4`): ADR-0007 N1 (alle Bereiche gesichert, `href` als Schlüssel, Abtastraster `e2e/tests/r00106-fokus-raster.spec.js`) und ADR-0010 N7a/N7b. Rückfall im Kleber (`web/app.js:651–656`): erstes Tabbares nur in der obersten offenen Ebene. Ohne Ebene in `#main` nur, wenn die zuletzt geschlossene Ebene nie einen Auslöser hatte (Leerfall R00106 Z. 142), sonst Karte/Zeile → `BODY`. `popPlatzieren` (`:728–738`) schließt einen Pop ohne gezeichnetes Element, vor der Fokusführung. Die Soll-Notizen zu ADR-0007 N1 und ADR-0010 N7 oben sind damit Ist. Offen (ADR-0010 N7b): Rückfall-Entscheidung im Kleber statt in `web/fokus.js`.
+- nachgeführt 2026-11-06 nach ADR-0010 N7b (gebauter Stand)
