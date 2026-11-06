@@ -299,3 +299,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #10 | Auslieferung | director | gemergt 1ce5efd, installiert, Board neu gestartet → Erledigt; Retrospektive: zwei Fortbildungsideen (Folgetreffer, schmale Breiten), Restanmerkungen #62–#65 im Backlog | 0:10 | 1ce5efd |
 | 2026-11-06 | #9 | Auto-Reviews | ux-reviewer | bestanden; Testlücke Linie gegen --kd-sunken (kontrast.spec.js:270); Bestand → Backlog #66–#69 | 0:07 | — |
 | 2026-11-06 | #9 | Auto-Reviews | code-reviewer | befund: Token-Parser verwirft hellen Block bei zweitem :root (mit main 24 fail), Platzhalter Filter im Fokus 2,04, Ansichtenliste nicht aus Router; → Nacharbeit 1 | 0:09 | — |
+| 2026-11-06 | #9 | Auto-Reviews | product-owner | entschieden: vier sichtbare Zusatzänderungen angenommen (Z. 139), nicht richtungsweisend; Auflagen an Nacharbeit | 0:06 | 487e684 |
