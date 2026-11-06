@@ -438,6 +438,7 @@ function render() {
   // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
   const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
+  kostenReiterRueckfall(aktiv);
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
@@ -601,6 +602,16 @@ function fallenTaste(ereignis) {
   ereignis.preventDefault();
   if (ziel >= 0) tabbare[ziel].focus();
   return true;
+}
+
+/** Fällt der Reiter „Kosten“ weg (Blättern, Live-Ereignis), zeigt das Fenster „Inhalt“ (R00105 B0376). */
+function kostenReiterRueckfall(aktiv) {
+  const offen = S.ui.offen && aufgabe(S.ui.offen);
+  const fokusBeiKosten = Boolean(aktiv && aktiv.closest && aktiv.closest('#fenster [role=tablist], #reiterpanel-kosten'));
+  const rueckfall = reiterRueckfall({ tab: S.ui.tab, etikett: Boolean(offen && offen.cost), fokusBeiKosten });
+  if (!rueckfall) return;
+  S.ui.tab = rueckfall.tab;
+  if (rueckfall.fokus) S.ui.fokus = rueckfall.fokus;
 }
 
 /** Die Ebenen des letzten Neuzeichnens und je Ebene der Auslöser, der sie geöffnet hat. */

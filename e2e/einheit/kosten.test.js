@@ -189,3 +189,11 @@ test('Preisetikett: Betrag und Positionen mit gleichen Grenzen nennen einen Betr
   assert.strictEqual(positionen.sichtbar, `≈ 0,75${NBSP}$`);
   assert.strictEqual(preisetikett(kostenInCent(usd({ min: 1000, max: 2000 }))).hinweis, `1.000,00–2.000,00${NBSP}$ · geschätzte API-Kosten`, 'Tausenderpunkt in beiden Grenzen');
 });
+
+test('Reiter-Rückfall: ohne Etikett gilt „Inhalt“; Fokus nur von Reiterleiste oder Panel „Kosten“', () => {
+  const { reiterRueckfall } = require('../../web/kosten.js');
+  assert.deepStrictEqual(reiterRueckfall({ tab: 'kosten', etikett: false, fokusBeiKosten: true }), { tab: 'inhalt', fokus: '#reiter-inhalt' });
+  assert.deepStrictEqual(reiterRueckfall({ tab: 'kosten', etikett: false, fokusBeiKosten: false }), { tab: 'inhalt', fokus: null }, 'Fokus anderswo bleibt dort');
+  assert.strictEqual(reiterRueckfall({ tab: 'kosten', etikett: true, fokusBeiKosten: true }), null, 'mit Etikett bleibt der Reiter');
+  assert.strictEqual(reiterRueckfall({ tab: 'datei', etikett: false, fokusBeiKosten: true }), null, 'nur „Kosten“ fällt weg');
+});

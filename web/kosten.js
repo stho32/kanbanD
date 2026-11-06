@@ -84,5 +84,14 @@
     return filterAnzahl(kostenFilter(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
+  /** Rückfall (R00105 US-16): trägt die offene Aufgabe kein Etikett mehr, gilt statt „Kosten“ der Reiter „Inhalt“.
+ *  Den Fokus bekommt „Inhalt“ nur, wenn er auf der Reiterleiste oder im Panel „Kosten“ lag — sonst bleibt er, wo er ist (ADR-0010). */
+function reiterRueckfall(lage) {
+  if (lage.tab !== 'kosten' || lage.etikett) return null;
+  let fokus = null;
+  if (lage.fokusBeiKosten) fokus = '#reiter-inhalt';
+  return { tab: 'inhalt', fokus };
+}
+
+Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

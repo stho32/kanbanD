@@ -1,6 +1,6 @@
 // R00105 Preisetikett je Aufgabe — Reiterleiste des Aufgabenfensters per Tastatur (US-15, F0043)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Eingang\n\n- #4\n\n## In Arbeit\n\n## Fertig\n',
@@ -327,6 +327,49 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect(tab('Datei')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#dateitext')).toBeVisible();
   });
+
+  test('US-16: ↓ zu einer Aufgabe ohne Etikett zeigt „Inhalt“, zurück zu #1 bleibt „Inhalt“', async ({ page }) => {
+    const dialog = await fenster(page, 1);
+    await dialog.getByRole('tab', { name: 'Kosten' }).click();
+    await expect(dialog.getByRole('tab', { name: 'Kosten' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    const vier = page.getByRole('dialog', { name: 'Aufgabe #4' });
+    await expect(vier.getByRole('tab')).toHaveText(['Inhalt', 'Datei']);
+    await expect(vier.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
+    await expect(vier.getByRole('tab', { name: 'Inhalt' })).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  for (const [ort, fokussieren] of [['Reiter „Kosten“', d => d.getByRole('tab', { name: 'Kosten' }).focus()], ['Panel „Kosten“', d => d.locator('#reiterpanel-kosten .ko-scroll').focus()]]) {
+    test(`US-16: Live-Ereignis nimmt das Etikett, Fokus auf ${ort} → Fokus auf „Inhalt“ in 1 s`, async ({ page }) => {
+      const dialog = await fenster(page, 1);
+      await liveBereit(page);
+      await dialog.getByRole('tab', { name: 'Kosten' }).click();
+      await fokussieren(dialog);
+      expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
+      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei'], { timeout: 1000 });
+      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toBeFocused({ timeout: 1000 });
+    });
+  }
+
+  for (const [ort, vorbereiten, ziel] of [
+    ['Schließen-Knopf im Reiter „Kosten“', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('button', { name: 'Schließen' }).focus(); }, d => d.getByRole('button', { name: 'Schließen' })],
+    ['Titelfeld', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('tab', { name: 'Inhalt' }).click(); await d.getByRole('textbox', { name: 'Titel' }).click(); }, d => d.getByRole('textbox', { name: 'Titel' })],
+  ]) {
+    test(`US-16: Live-Ereignis nimmt das Etikett, Fokus im ${ort} bleibt dort`, async ({ page }) => {
+      const dialog = await fenster(page, 1);
+      await liveBereit(page);
+      await vorbereiten(dialog);
+      await expect(ziel(dialog)).toBeFocused();
+      expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
+      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei'], { timeout: 1000 });
+      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+      await expect(ziel(dialog)).toBeFocused();
+    });
+  }
 
   test('US-17: Kopf mit drei Reitern bei 320, 375 und 414 px in Hell und Dunkel ohne waagrechtes Scrollen', async ({ page }) => {
     await fenster(page, 1, `class: feature\n${SPANNE}`);
