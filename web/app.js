@@ -148,6 +148,8 @@ function gewaehltesBoard() {
     eines eigenen Schreibzugriffs, auch der Phasen-Spalten, die das erste Lesen nachträgt —, zeichnet nicht neu: sonst ersetzt
     es die Seite, während jemand klickt oder liest (R00061). */
 let geladenerStand = null;
+/** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
+const defekterGrund = slug => ((S.zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
 const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Lädt den Stand vom Server und zeichnet; `nurBeiAenderung` (Live-Ereignis) zeichnet nur, wenn sich etwas geändert hat.
@@ -170,7 +172,8 @@ async function laden({ nurBeiAenderung = false } = {}) {
     // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
     // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
     let boardDefekt = null;
-    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug) + '?archivierte=ja').catch(f => { if (f.status !== 423) throw f; boardDefekt = { slug: S.ui.slug, fehler: f.message }; return null; }) : null;
+    // 423: Board-Datei defekt (R00025); 400: Dateiname nicht in Board-Form (R00104) — beide als Defektfläche, der Grund aus `defekte`
+    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug) + '?archivierte=ja').catch(f => { if (f.status !== 423 && f.status !== 400) throw f; boardDefekt = { slug: S.ui.slug, fehler: defekterGrund(S.ui.slug) || f.message }; return null; }) : null;
     const [aufgaben, herkunft, boards] = await Promise.all([
       api('GET', '/api/aufgaben'),
       api('GET', '/api/herkunft'),
