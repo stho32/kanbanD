@@ -63,6 +63,27 @@ pub struct Rohposition {
 
 impl Kosten {
     /// Abschnitt `cost` aus YAML (Datei oder umgewandeltes JSON): erst die Form, dann [`Kosten::pruefen`].
+    /// `cost` aus dem Rumpf einer Anfrage (roh, damit jeder Fehler 400 wird und nie 422): unbekannte Schlüssel
+    /// sind hier ein Fehler, sonst gilt derselbe Leser wie für die Datei (ADR-0009 Entscheidung 4).
+    pub fn aus_anfrage(v: &serde_json::Value) -> Result<Kosten, String> {
+        if let Some(m) = v.as_object() {
+            nur_bekannte("cost", m, &KOSTEN_BEKANNT)?;
+            let positionen = m
+                .get("items")
+                .and_then(serde_json::Value::as_array)
+                .into_iter()
+                .flatten();
+            for (i, p) in positionen
+                .enumerate()
+                .filter_map(|(i, p)| p.as_object().map(|p| (i, p)))
+            {
+                nur_bekannte(&format!("cost.items[{i}]"), p, &POSITION_BEKANNT)?;
+            }
+        }
+        let yaml = serde_yaml::to_value(v).map_err(|_| "cost: keine Zuordnung".to_string())?;
+        Kosten::lesen(&yaml)
+    }
+
     pub fn lesen(v: &Value) -> Result<Kosten, String> {
         let m = v.as_mapping().ok_or("cost: keine Zuordnung")?;
         let feld = Felder { m, pfad: "cost" };
@@ -123,6 +144,17 @@ impl Kosten {
 
 const KOSTEN_BEKANNT: [&str; 6] = ["currency", "amount", "min", "max", "basis", "items"];
 const POSITION_BEKANNT: [&str; 5] = ["text", "amount", "min", "max", "tokens"];
+
+fn nur_bekannte(
+    pfad: &str,
+    m: &serde_json::Map<String, serde_json::Value>,
+    bekannt: &[&str],
+) -> Result<(), String> {
+    match m.keys().find(|k| !bekannt.contains(&k.as_str())) {
+        Some(k) => Err(format!("{pfad}: unbekannter Schlüssel „{k}“")),
+        None => Ok(()),
+    }
+}
 
 fn position_lesen(i: usize, v: &Value) -> Result<Rohposition, String> {
     let pfad = format!("cost.items[{i}]");
@@ -785,5 +817,145 @@ mod tests {
             panic!()
         };
         assert_eq!(p[0].weitere, vec![("quelle".to_string(), yaml("log"))]);
+    }
+
+    fn angefragt(json: &str) -> Result<Kosten, String> {
+        Kosten::aus_anfrage(&serde_json::from_str(json).unwrap())
+    }
+
+    fn abgewiesen(json: &str) -> String {
+        angefragt(json).expect_err(json)
+    }
+
+    #[test]
+    fn anfrage_baut_kosten_wie_die_datei() {
+        let k = angefragt(r#"{"currency":"USD","min":0.6,"max":1.6,"basis":"Schätzung planer"}"#)
+            .unwrap();
+        assert_eq!(
+            (k.waehrung.as_str(), k.basis.as_deref(), &k.wert),
+            (
+                "USD",
+                Some("Schätzung planer"),
+                &Gesamt::Spanne { min: 60, max: 160 }
+            )
+        );
+        assert_eq!(
+            angefragt(r#"{"currency":"USD","amount":0}"#).unwrap().wert,
+            Gesamt::Betrag(0)
+        );
+        assert_eq!(
+            angefragt(r#"{"currency":"USD","amount":1.1}"#)
+                .unwrap()
+                .wert,
+            Gesamt::Betrag(110)
+        );
+        assert_eq!(
+            angefragt(r#"{"currency":"USD","amount":1000000.00}"#)
+                .unwrap()
+                .wert,
+            Gesamt::Betrag(HOECHSTWERT_CENT)
+        );
+        assert!(angefragt(r#"{"currency":"USD","items":[{"text":"a","amount":600000.00},{"text":"b","amount":600000.00}]}"#).is_ok());
+        let hundert = (0..100)
+            .map(|i| format!(r#"{{"text":"p{i}","min":0.01,"max":0.02,"tokens":{i}}}"#))
+            .collect::<Vec<_>>();
+        assert!(angefragt(&format!(
+            r#"{{"currency":"USD","items":[{}]}}"#,
+            hundert.join(",")
+        ))
+        .is_ok());
+        let hunderteins = format!(
+            r#"{{"currency":"USD","items":[{},{{"text":"x","amount":1}}]}}"#,
+            hundert.join(",")
+        );
+        assert_eq!(
+            abgewiesen(&hunderteins),
+            "cost.items: höchstens 100 Positionen"
+        );
+    }
+
+    #[test]
+    fn jeder_fehlfall_ist_eine_meldung_mit_pfad() {
+        for (json, meldung) in [
+            (r#"{"amount":1.63}"#, "cost: currency fehlt"),
+            (
+                r#"{"currency":"usd","amount":1.63}"#,
+                "cost.currency: genau drei Großbuchstaben A–Z",
+            ),
+            (
+                r#"{"currency":"USD","amount":"1.63"}"#,
+                "cost.amount: keine Zahl",
+            ),
+            (
+                r#"{"currency":"USD","amount":true}"#,
+                "cost.amount: keine Zahl",
+            ),
+            (
+                r#"{"currency":"USD","amount":[1]}"#,
+                "cost.amount: keine Zahl",
+            ),
+            (
+                r#"{"currency":"USD","amount":1.005}"#,
+                "cost.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet",
+            ),
+            (
+                r#"{"currency":"USD","amount":-1}"#,
+                "cost.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet",
+            ),
+            (
+                r#"{"currency":"USD","amount":1000000.01}"#,
+                "cost.amount: höchstens 1000000.00",
+            ),
+            (
+                r#"{"currency":"USD","amount":1e30}"#,
+                "cost.amount: höchstens 1000000.00",
+            ),
+            (
+                r#"{"currency":"USD","amount":1.63,"min":1,"max":2}"#,
+                "cost: amount zusammen mit min/max",
+            ),
+            (
+                r#"{"currency":"USD","amount":1.63,"items":[{"text":"a","amount":1}]}"#,
+                "cost: items zusammen mit amount, min oder max",
+            ),
+            (r#"{"currency":"USD","min":2,"max":1}"#, "cost: min > max"),
+            (
+                r#"{"currency":"USD","items":[{"text":"a","amount":1},{"text":"b","min":2,"max":1}]}"#,
+                "cost.items[1]: min > max",
+            ),
+            (
+                r#"{"currency":"USD","items":[]}"#,
+                "cost.items: mindestens eine Position",
+            ),
+            (
+                r#"{"currency":"USD","items":[{"text":"   ","amount":1}]}"#,
+                "cost.items[0].text: leer",
+            ),
+            (
+                r#"{"currency":"USD","basis":"","amount":1}"#,
+                "cost.basis: leer",
+            ),
+            (
+                r#"{"currency":"USD","basis":3,"amount":1}"#,
+                "cost.basis: kein Text",
+            ),
+            (
+                r#"{"currency":"USD","items":[{"text":"a","amount":1,"tokens":-5}]}"#,
+                "cost.items[0].tokens: ganze Zahl ≥ 0 erwartet",
+            ),
+            (
+                r#"{"currency":"USD","ammount":1.63}"#,
+                "cost: unbekannter Schlüssel „ammount“",
+            ),
+            (
+                r#"{"currency":"USD","items":[{"text":"a","amount":1},{"text":"b","preis":1}]}"#,
+                "cost.items[1]: unbekannter Schlüssel „preis“",
+            ),
+            (r#""USD""#, "cost: keine Zuordnung"),
+            (r#"[{"currency":"USD"}]"#, "cost: keine Zuordnung"),
+            (r#"1.63"#, "cost: keine Zuordnung"),
+        ] {
+            assert_eq!(abgewiesen(json), meldung, "{json}");
+        }
     }
 }

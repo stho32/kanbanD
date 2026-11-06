@@ -447,6 +447,9 @@ pub struct Aufgabenaenderung {
     pub signale: Option<Vec<String>>,
     pub phasen: Option<Phasenaenderung>,
     pub reporting: Option<Zaehlungsaenderung>,
+    /// `cost` (R00105) roh, damit jeder Fehler 400 wird und nie 422; ein Wert ersetzt den Abschnitt, `null` entfernt ihn
+    #[serde(default, deserialize_with = "entfernbar")]
+    pub cost: Option<Option<serde_json::Value>>,
     /// Ob `key` mitgeschickt wurde, mit welchem Wert auch immer — der Schlüssel wird nur beim Anlegen gesetzt (R00098).
     #[serde(default, rename = "key", deserialize_with = "mitgeschickt")]
     #[schema(ignore)]
@@ -586,6 +589,9 @@ impl Aufgabe {
                 neu.zaehlung.forecast = f;
             }
         }
+        if let Some(k) = &a.cost {
+            neu.kosten = k.as_ref().map(Kosten::aus_anfrage).transpose()?;
+        }
         let mut felder = vec![];
         for (name, geaendert) in [
             ("Titel", neu.titel != self.titel),
@@ -598,6 +604,7 @@ impl Aufgabe {
             ("Signale", neu.signale != self.signale),
             ("Phasen", neu.phasen != self.phasen),
             ("Zählen in Berichten", neu.zaehlung != self.zaehlung),
+            ("Kosten", neu.kosten != self.kosten),
         ] {
             if geaendert {
                 felder.push(name);
@@ -765,5 +772,39 @@ mod tests {
         }
         assert_eq!(a, Aufgabe::neu(1, "0001-x.md".into(), "x".into()));
         assert!(a.aendern(&aend(r#"{"klasse":"  ","faellig":""}"#), &e()).unwrap().is_empty());
+    }
+
+    // R00105: cost ersetzt den Abschnitt, null entfernt ihn, fehlt er, bleibt er; jeder Fehler ist eine Meldung, kein serde-Fehler
+    #[test]
+    fn kosten_setzen_ersetzen_entfernen() {
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        let setzen = r#"{"cost":{"currency":"USD","min":0.6,"max":1.6,"basis":"Schätzung planer"}}"#;
+        assert_eq!(a.aendern(&aend(setzen), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.kosten.as_ref().map(|k| &k.wert), Some(&crate::modell::Gesamt::Spanne { min: 60, max: 160 }));
+        assert!(a.aendern(&aend(setzen), &e()).unwrap().is_empty(), "derselbe Wert ändert nichts");
+        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e()).unwrap(), vec!["Titel"]);
+        assert!(a.kosten.is_some(), "ohne cost bleibt der Abschnitt");
+        assert_eq!(a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.1}}"#), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.kosten.as_ref().map(|k| (&k.wert, &k.basis)), Some((&crate::modell::Gesamt::Betrag(110), &None)), "ersetzt, nicht gemischt");
+        assert_eq!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.kosten, None);
+        assert!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn falsche_kosten_aendern_nichts() {
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.63}}"#), &e()).unwrap();
+        let vorher = a.clone();
+        for (cost, meldung) in [
+            (r#""1.63""#, "cost: keine Zuordnung"),
+            (r#"{"currency":"USD","amount":"1.63"}"#, "cost.amount: keine Zahl"),
+            (r#"{"currency":"USD","ammount":1.63}"#, "cost: unbekannter Schlüssel „ammount“"),
+            (r#"{"currency":"usd","amount":1}"#, "cost.currency: genau drei Großbuchstaben A–Z"),
+        ] {
+            let aenderung: Aufgabenaenderung = serde_json::from_str(&format!(r#"{{"titel":"neu","cost":{cost}}}"#)).expect("roh angenommen, kein serde-Fehler");
+            assert_eq!(a.aendern(&aenderung, &e()).unwrap_err(), meldung, "{cost}");
+            assert_eq!(a, vorher, "{cost}: auch der Titel bleibt");
+        }
     }
 }
