@@ -236,3 +236,8 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Entwicklertest | entwicklertester | bestanden: US-1..25, keine Befunde; 3 Anmerkungen (US-3 „nur“, US-21 Gap statt Leerzeichen, Esc speichert Titel) | 0:40 | 183ede7 |
 | 2026-11-06 | #18 | Auslieferung + Retrospektive | director | ausgeliefert 7422 (PID 3788358); 3 Factory-Vorschläge; kein Push | 0:05 | 1e442cd |
 | 2026-11-06 | #6 | Entwicklung | entwickler | bestanden: 9 Bubbles (B0348…B0362) grün, Gate 554/clippy/207/436 passed (Log nachgelesen, 54 Specs nachgefahren); 3 Rückfragen an PO | 0:58 | dc1660a..efb3606 |
+| 2026-11-06 | #6 | Auto-Reviews | product-owner | 4 Rückfragen entschieden (Tab-Weg wie gebaut; „ohne Klasse“ mit Farbfeld; Summe 0 „0 offen“; Halbgeviertstrich) | 0:05 | eabc320, 5cff129 |
+| 2026-11-06 | #6 | Auto-Reviews | code-reviewer | befund: 3 Muss (Felder bei <2 Präfixen, Legende, Summe 0), 2 Sollte | 0:05 | — |
+| 2026-11-06 | #6 | Auto-Reviews | ux-reviewer | bestanden: 3 Sollte (Kontrast Legendenhinweis, Touch 44 px, führender Punkt), 3 Optional | 0:07 | — |
+| 2026-11-06 | #6 | Auto-Reviews | rechtschreib-reviewer | bestanden: Gedankenstrich Menübeschreibung (→ PO), 3 Kleinigkeiten | 0:02 | — |
+| 2026-11-06 | #6 | Nacharbeit 1 | entwickler | bestanden: Funde 1–8 behoben, 9 begründet (R00100:38 wörtlich); Gate 554/clippy/208/437 passed; nachgefahren 208 Unit, r00100 27/27 | 0:18 | dae43c8..47076cb |
