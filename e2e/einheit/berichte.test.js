@@ -495,3 +495,13 @@ test('Diagramm von „Wie lange noch“: die drei rechten Blöcke mit Prognose, 
   assert.deepStrictEqual([diagrammBloecke(keine).gezeigt.map(x => x.schluessel), diagrammBloecke(keine).ohnePrognose], [['B', 'C', 'D'], []], 'ohne jede Prognose die drei rechten');
   assert.deepStrictEqual(diagrammBloecke([b('A', true), b('B', false, 0)]).ohnePrognose, [], 'nichts offen ist keine fehlende Prognose');
 });
+
+test('Zurücksetzen (R00105 US-19): hebt Farben, Spalten, Personen, Labels auf; Zeitraum nur, wenn die Leiste ihn zeigt; Messbasis nie', () => {
+  const { filterZuruecksetzen, FILTER_LEER: LEER } = require('../../web/berichte.js');
+  const gesetzt = { zeitraum: 'eigen', von: '2026-10-01', bis: '2026-10-31', ohneFarben: ['bug'], ohneSpalten: ['Fertig'], personen: ['st'], labels: ['repo:x'], messbasisTage: 30 };
+  const ohneGruppen = { ...gesetzt, ohneFarben: [], ohneSpalten: [], personen: [], labels: [] };
+  assert.deepStrictEqual(filterZuruecksetzen(gesetzt, false), ohneGruppen);
+  assert.deepStrictEqual(filterZuruecksetzen(gesetzt, true), { ...ohneGruppen, zeitraum: 'alles', von: '', bis: '' });
+  assert.deepStrictEqual(filterZuruecksetzen({ ...LEER, zeitraum: 'vorwoche' }, false), { ...LEER, zeitraum: 'vorwoche' });
+  assert.deepStrictEqual(gesetzt.ohneSpalten, ['Fertig'], 'der gespeicherte Filter bleibt unverändert');
+});

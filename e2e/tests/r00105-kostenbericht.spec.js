@@ -1,17 +1,19 @@
 // E2E R00105 Kostenbericht (I0094): Summe niedrig–hoch je Währung über alle Spalten und das Archiv, nur lesend
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const crypto = require('crypto');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
 
 const NBSP = ' ';
 const SPANNE = 'cost:\n  currency: USD\n  min: 0.60\n  max: 1.60\n';
 const BETRAG = 'cost:\n  currency: USD\n  amount: 1.63\n';
 const aufgabeMd = (nr, titel, kopf = '') => `---\nid: ${nr}\ntitle: ${titel}\n${kopf}---\n`;
-const boardMd = spalten => '# fabrik\n\n' + Object.entries(spalten).map(([name, nrn]) => `## ${name}\n\n${nrn.map(n => `- #${n}\n`).join('')}`).join('\n');
+const boardMd = (spalten, kopf = '') => kopf + '# fabrik\n\n' + Object.entries(spalten).map(([name, nrn]) => `## ${name}\n\n${nrn.map(n => `- #${n}\n`).join('')}`).join('\n');
 
 /** Grundbestand aus R00105: #1 Eingang 0,60–1,60 USD, #2 In Arbeit 1,63 USD, #3 Fertig und #4 Eingang ohne Etikett. */
-function grundbestand(extra = {}, spalten = {}) {
+function grundbestand(extra = {}, spalten = {}, kopf = '') {
+  const pruefung = spalten.Prüfung ? { Prüfung: spalten.Prüfung } : {};
   return {
-    'boards/fabrik.md': boardMd({ Eingang: [1, 4, ...(spalten.Eingang || [])], 'In Arbeit': [2], Fertig: [3, ...(spalten.Fertig || [])] }),
+    'boards/fabrik.md': boardMd({ Eingang: [1, 4, ...(spalten.Eingang || [])], 'In Arbeit': [2], Fertig: [3, ...(spalten.Fertig || [])], ...pruefung }, kopf),
     'aufgaben/0001-eins.md': aufgabeMd(1, 'eins', SPANNE),
     'aufgaben/0002-zwei.md': aufgabeMd(2, 'zwei', BETRAG),
     'aufgaben/0003-drei.md': aufgabeMd(3, 'drei'),
@@ -116,5 +118,145 @@ test.describe('R00105 Kostenbericht', () => {
     await bericht(page, { 'boards/fabrik.md': boardMd({ Eingang: [], 'In Arbeit': [], Fertig: [] }) });
     await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgabe mit Preisetikett · 0 von 0 Aufgaben, alle Spalten, auch archivierte');
     await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
+  });
+
+  /* ── B0374: Filterleiste ohne Zeitraum, Leerzustände mit „Zurücksetzen“ ── */
+  const ALLE = 'alle Spalten, auch archivierte', NACH = 'nach Filter, auch archivierte';
+  const summe = (betrag, n, m, umfang) => `Summe ${betrag}${NBSP}$ · ${n} von ${m} Aufgaben mit Etikett, ${umfang}`;
+  const LETZTE_WOCHE = '---\nstart: 2026-10-01\nreport-filter: {period: vorwoche, window-days: 30}\n---\n';
+  const spalte = (page, name) => page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
+  const reset = page => page.locator('#kosten').getByRole('button', { name: /Zurücksetzen/ });
+  const ganzImBild = async (ort, breite) => {
+    const r = await ort.evaluate(e => ({ links: e.getBoundingClientRect().left, rechts: e.getBoundingClientRect().right, scroll: e.scrollWidth - e.clientWidth }));
+    expect(r.links, 'links im Bild').toBeGreaterThanOrEqual(0);
+    expect(r.rechts, 'rechts im Bild').toBeLessThanOrEqual(breite);
+    expect(r.scroll, 'nichts abgeschnitten').toBeLessThanOrEqual(0);
+  };
+  const pruefsumme = text => crypto.createHash('sha256').update(text).digest('hex');
+  async function kostenOeffnen(page, dateien) {
+    k = await kanbanStarten(einrichten(dateien));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    await page.goto(k.adresse + '#/berichte/kosten');
+    await expect(page.locator('#kosten')).toBeVisible();
+  }
+
+  test('US-12: die Filterleiste verkleinert m; ganz leer nach Filter → Satz und „Zurücksetzen“ ohne Zahl', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand());
+    await filterOeffnen(page);
+    await spalte(page, 'Fertig').click();
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 3, NACH)]);
+    await spalte(page, 'Fertig').click();
+    await spalte(page, 'Eingang').click();
+    await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
+    await spalte(page, 'Fertig').click();
+    await spalte(page, 'In Arbeit').click();
+    await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgaben, die zu den Filtern der Berichte passen.');
+    await expect(page.locator('#kosten .kost-hinweis')).toHaveCount(0);
+    await expect(reset(page)).toHaveText('Zurücksetzen');
+    await reset(page).click();
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(reset(page)).toHaveCount(0);
+  });
+
+  test('US-13: gespeicherter Zeitraum gilt hier nicht, zählt nicht, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {
+    k = await kanbanStarten(einrichten(grundbestand({}, {}, LETZTE_WOCHE)));
+    const vorher = pruefsumme(k.lies('boards/fabrik.md'));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    await page.goto(k.adresse + '#/berichte/kosten');
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Zeitraum gilt hier nicht');
+    await filterOeffnen(page);
+    await expect(page.locator('.bfilter .bf-k')).toHaveText(['Farben', 'Spalten', 'Zuständig']);
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveValue('vorwoche');
+    expect(pruefsumme(k.lies('boards/fabrik.md'))).toBe(vorher);
+  });
+
+  test('US-18: der Umfangstext folgt dem Filter, nie „alle Spalten“ bei aktivem Filter', async ({ page }) => {
+    await kostenOeffnen(page, { ...grundbestand({ 'aufgaben/0009-neun.md': aufgabeMd(9, 'neun') }, { Prüfung: [9] }) });
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE)]);
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await filterOeffnen(page);
+    await page.getByLabel('Zeitraum', { exact: true }).selectOption('vorwoche');
+    await expect(page.locator('.bf-zusammen')).toContainText('1 aktiv');
+    await page.goto(k.adresse + '#/berichte/kosten');
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE)]);
+    await spalte(page, 'Fertig').click();
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH)]);
+    await spalte(page, 'Eingang').click();
+    await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
+    await spalte(page, 'In Arbeit').click();
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgaben, ${NACH}`);
+    await expect(page.locator('#kosten .kost-hinweis').first()).toContainText('Preisetiketten setzt ein Agent über die API');
+    await expect(reset(page)).toHaveText('Zurücksetzen');
+    await expect(page.locator('#kosten')).not.toContainText('alle Spalten');
+  });
+
+  test('US-19: Zurücksetzen im Leerzustand ohne Etikett hebt Spalten auf, Zeitraum, Messbasis und „Rechnen ab“ bleiben', async ({ page }) => {
+    await kostenOeffnen(page, grundbestand({}, {}, LETZTE_WOCHE));
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
+    await filterOeffnen(page);
+    await spalte(page, 'Eingang').click();
+    await spalte(page, 'In Arbeit').click();
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgaben, ${NACH}`);
+    await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
+    await expect(reset(page)).toHaveText('Zurücksetzen');
+    await reset(page).click();
+    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
+    await expect.poll(() => k.lies('boards/fabrik.md')).not.toContain('exclude-columns');
+    const datei = k.lies('boards/fabrik.md');
+    expect(datei).toContain('period: vorwoche');
+    expect(datei).toContain('window-days: 30');
+    expect(datei).toContain('\nstart: 2026-10-01\n');
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveValue('vorwoche');
+    await page.goto(k.adresse + '#/berichte/prognose');
+    await expect(page.locator('.bf-zusammen')).toContainText('Messbasis 30 T');
+  });
+
+  test('US-19 Gegenbeispiel: im Leerzustand ohne Etikett ist ein gespeicherter Zeitraum allein kein Filter — kein „Zurücksetzen“', async ({ page }) => {
+    await kostenOeffnen(page, { ...grundbestand({}, {}, LETZTE_WOCHE), 'aufgaben/0001-eins.md': aufgabeMd(1, 'eins'), 'aufgaben/0002-zwei.md': aufgabeMd(2, 'zwei') });
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, ${ALLE}`);
+    await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
+  });
+
+  for (const breite of [320, 375, 414]) {
+    test(`US-20: bei ${breite} px scrollt die Seite in keinem Zustand waagrecht, „Zurücksetzen“ ist ganz sichtbar`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 700 });
+      await kostenOeffnen(page, grundbestand({ 'aufgaben/0007-sieben.md': aufgabeMd(7, 'sieben', 'cost:\n  currency: EUR\n  amount: 25.55\n') }, { Eingang: [7] }));
+      const ohneWaagrecht = async zustand => expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), zustand).toBeLessThanOrEqual(0);
+      await ohneWaagrecht('Summen');
+      await filterOeffnen(page);
+      await ohneWaagrecht('Filterleiste offen');
+      await page.locator('.bf-zusammen').click();
+      await ohneWaagrecht('Filterleiste zu');
+      await filterOeffnen(page);
+      await spalte(page, 'Fertig').click();
+      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH), `Summe 25,55${NBSP}€ · 1 von 4 Aufgaben mit Etikett, ${NACH}`]);
+      for (const z of await zeilen(page).all()) await ganzImBild(z, breite);
+      await ohneWaagrecht('Summen nach Filter');
+      await spalte(page, 'Eingang').click();
+      await spalte(page, 'In Arbeit').click();
+      await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgaben, die zu den Filtern der Berichte passen.');
+      await ohneWaagrecht('Leer nach Filter');
+      await ganzImBild(page.locator('#kosten .kost-satz'), breite);
+      await ganzImBild(reset(page), breite);
+      await reset(page).click();
+      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE), `Summe 25,55${NBSP}€ · 1 von 5 Aufgaben mit Etikett, ${ALLE}`]);
+      await ohneWaagrecht('nach Zurücksetzen');
+    });
+  }
+
+  test('US-20: Leerzustand ohne Etikett bei 320 px ohne waagrechtes Scrollen', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await kostenOeffnen(page, { ...grundbestand(), 'aufgaben/0001-eins.md': aufgabeMd(1, 'eins'), 'aufgaben/0002-zwei.md': aufgabeMd(2, 'zwei') });
+    for (const p of await page.locator('#kosten .kost-leer p').all()) await ganzImBild(p, 320);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 });

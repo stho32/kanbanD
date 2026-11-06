@@ -807,8 +807,8 @@ function vBerichtsfilter(teile) {
   const n = filterAnzahl(teile.zeitraum ? f : { ...f, zeitraum: 'alles' });
   // Zusammenfassung der zugeklappten Box: wie viele wirken, ab wann gerechnet wird, ob gespeichert
   const lokal = S.ui.bfLokal && S.ui.bfLokal.ungespeichert;
-  const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${vollDatum(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
-  return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" title="alle Berichtsfilter aufheben">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
+  const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${vollDatum(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
+  return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" data-arg="${teile.zeitraum ? 'zeitraum' : ''}" title="alle Berichtsfilter aufheben">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
@@ -875,18 +875,26 @@ ${fadenkreuz(O, H - U)}
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
 function vKosten() {
-  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter({ spalten: true, personen: 'zustaendig' })}`;
+  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter({ spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true })}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
-  const bericht = kostenbericht(S.board, S.aufgaben, kostenFilter(S.ui.bf));
-  const umfang = kostenUmfang(S.ui.bf);
-  return `${kopf}<div class="body" id="kosten">${bericht.jeWaehrung.length ? vKostenSummen(bericht, umfang) : vKostenLeer(bericht, umfang)}</div>`;
+  const filter = kostenFilter(S.ui.bf);
+  const bericht = kostenbericht(S.board, S.aufgaben, filter);
+  const aktiv = filterAnzahl(filter) > 0;
+  return `${kopf}<div class="body" id="kosten">${vKostenInhalt(bericht, kostenUmfang(S.ui.bf), aktiv)}</div>`;
+}
+function vKostenInhalt(bericht, umfang, aktiv) {
+  if (bericht.jeWaehrung.length) return vKostenSummen(bericht, umfang);
+  let knopf = '';
+  if (aktiv) knopf = '<button class="btn bf-leeren kost-reset" data-act="bf-leeren" data-arg="">Zurücksetzen</button>';
+  if (aktiv && bericht.m === 0) return `<div class="kost-leer"><p class="kost-satz">Keine Aufgaben, die zu den Filtern der Berichte passen.</p>${knopf}</div>`;
+  return vKostenLeer(bericht, umfang, knopf);
 }
 function vKostenSummen(bericht, umfang) {
   const zeile = s => `<p class="kost-zeile"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(s.niedrig, s.hoch, s.waehrung, '–')}</span> <span class="kost-umfang">· ${s.n} von ${bericht.m} Aufgaben mit Etikett, ${umfang}</span></p>`;
   return `<div class="kost-summen">${bericht.jeWaehrung.map(zeile).join('')}</div>`;
 }
-function vKostenLeer(bericht, umfang) {
-  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} Aufgaben, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p></div>`;
+function vKostenLeer(bericht, umfang, knopf) {
+  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} Aufgaben, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
 }
 
 function vDurchlauf() {

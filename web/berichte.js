@@ -54,6 +54,14 @@
   /** Anzahl wirkender Filter (für die Leiste). */
   const filterAnzahl = f => (f.zeitraum !== 'alles' ? 1 : 0) + f.ohneFarben.length + f.ohneSpalten.length + f.personen.length + f.labels.length;
 
+  /** „Zurücksetzen“ (R00105 US-19): hebt die gezählten Gruppen auf; den Zeitraum nur, wenn die Leiste des gezeigten
+   *  Berichts ihn zeigt. Ausgeblendetes — Zeitraum, Messbasis — bleibt gespeichert. */
+  function filterZuruecksetzen(f, mitZeitraum) {
+    const aufgehoben = { ...f, ohneFarben: [], ohneSpalten: [], personen: [], labels: [] };
+    if (!mitZeitraum) return aufgehoben;
+    return { ...aufgehoben, zeitraum: 'alles', von: '', bis: '' };
+  }
+
   /** Gespeicherten Filter lesen: unbekannte Felder verwerfen, fehlende ergänzen. */
   function filterAus(text) {
     let x = {};
@@ -611,5 +619,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
