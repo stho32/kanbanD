@@ -872,7 +872,6 @@ ${fadenkreuz(O, H - U)}
 <div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
 
-/* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
 function vKosten() {
   const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
@@ -897,6 +896,7 @@ function vKostenLeer(bericht, umfang, knopf) {
   return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} Aufgaben, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
 }
 
+/* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
 function vDurchlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const sp = S.bew.spalten, u = S.ui;
