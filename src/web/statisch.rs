@@ -28,6 +28,7 @@ dateien! {
     "menue.js" => "text/javascript; charset=utf-8",
     "auswahl.js" => "text/javascript; charset=utf-8",
     "sichtzustand.js" => "text/javascript; charset=utf-8",
+    "fokus.js" => "text/javascript; charset=utf-8",
     "berichte.js" => "text/javascript; charset=utf-8",
     "kosten.js" => "text/javascript; charset=utf-8",
     "wbs.js" => "text/javascript; charset=utf-8",
