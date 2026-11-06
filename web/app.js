@@ -1600,14 +1600,14 @@ document.addEventListener('contextmenu', e => {
   else if (kopf && S.ui.view === 'board' && !S.ui.setup) { e.preventDefault(); menueFuerSpalte(+kopf.dataset.kopf, e.clientX, e.clientY); }
   else if (zeile) { e.preventDefault(); menueFuerZeile(+zeile.dataset.zeile, e.clientX, e.clientY); }
 });
-/** Menütaste oder Umschalt+F10 auf Spaltenkopf oder Listenzeile; Enter auf einer Zeile öffnet die Aufgabe. */
+/** Menütaste oder Umschalt+F10 auf Spaltenkopf oder Listenzeile; Enter auf der Zeile selbst öffnet die Aufgabe — auf einem Knopf darin wirkt der Knopf. */
 function menueTasteAufZiel(e, t) {
   const menuetaste = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
   const kopf = t.closest && t.closest('.bahn-kopf[data-kopf]'), zeile = t.closest && t.closest('tr[data-zeile]');
   if (!kopf && !zeile) return false;
   const r = t.getBoundingClientRect();
   if (menuetaste) { e.preventDefault(); if (kopf) menueFuerSpalte(+kopf.dataset.kopf, r.left + 16, r.bottom); else menueFuerZeile(+zeile.dataset.zeile, r.left + 40, r.bottom); return true; }
-  if (zeile && e.key === 'Enter') { e.preventDefault(); act('oeffnen', zeile.dataset.zeile); return true; }
+  if (zeile === t && e.key === 'Enter') { e.preventDefault(); act('oeffnen', zeile.dataset.zeile); return true; }
   if (kopf && e.key === 'n') { e.preventDefault(); act('add', S.board.spalten[+kopf.dataset.kopf].name); return true; }
   return false;
 }

@@ -126,3 +126,37 @@ test('ebenen: das Ich-Menü startet auf dem gewählten Eintrag, ohne Wahl auf de
   const ziele = fokusZiel({ geoeffnet: ich, oberste: ich });
   assert.deepStrictEqual(ziele, ['#pop [role="menuitemradio"][aria-checked="true"]', '#pop [role^="menuitem"]:not([aria-disabled="true"])']);
 });
+
+// Menüs mit echtem DOM-Fokus (R00106 „Menüs“, ADR-0010): jeder wählbare Eintrag ist per .focus() erreichbar und kein eigener Tab-Halt
+/** Je Element mit role="menuitem…" in einem Quelltext: Zeile und der öffnende Tag (bis zum ersten „>“, das kein „=>“ ist). */
+function menueEintraege(quelltext) {
+  const funde = [];
+  const muster = /role="menuitem\w*"/g;
+  let treffer;
+  while ((treffer = muster.exec(quelltext))) {
+    const anfang = quelltext.lastIndexOf('<', treffer.index);
+    let ende = quelltext.indexOf('>', treffer.index);
+    while (ende > 0 && quelltext[ende - 1] === '=') ende = quelltext.indexOf('>', ende + 1);
+    const zeile = quelltext.slice(0, treffer.index).split('\n').length;
+    funde.push({ zeile, tag: quelltext.slice(anfang, ende + 1) });
+  }
+  return funde;
+}
+
+/** Ausnahme laut R00106 „Pfeiltasten“: Einträge mit aria-disabled="true" (Ich-Menü „aus“, Agenten) sind nicht wählbar und bekommen keinen Fokus. */
+const NICHT_WAEHLBAR = /aria-disabled="true"/;
+const EIGENER_FOKUS_OHNE_TAB_HALT = /tabindex="-1"/;
+
+test('Menüs: jeder wählbare menuitem-Eintrag in web/ansicht.js trägt tabindex="-1" (Ausnahme: aria-disabled="true")', () => {
+  const quelltext = fs.readFileSync(path.join(WEB, 'ansicht.js'), 'utf8');
+  const eintraege = menueEintraege(quelltext);
+  assert.ok(eintraege.length >= 10, `zu wenige Einträge gefunden: ${eintraege.length}`);
+  const ohne = eintraege.filter(e => !NICHT_WAEHLBAR.test(e.tag) && !EIGENER_FOKUS_OHNE_TAB_HALT.test(e.tag));
+  assert.deepStrictEqual(ohne.map(e => `ansicht.js:${e.zeile} ${e.tag.slice(0, 90)}`), []);
+});
+
+test('Menüs: die Prüfung erkennt einen Eintrag ohne tabindex und lässt einen nicht wählbaren durch', () => {
+  const probe = '<div class="iz" data-act="x" role="menuitem">a</div>\n<div class="iz aus" role="menuitemradio" aria-disabled="true">b</div>\n<button type="button" role="menuitem" tabindex="-1" ${x ? \'a\' : \'\'}>c</button>';
+  const ohne = menueEintraege(probe).filter(e => !NICHT_WAEHLBAR.test(e.tag) && !EIGENER_FOKUS_OHNE_TAB_HALT.test(e.tag));
+  assert.deepStrictEqual(ohne.map(e => e.zeile), [1]);
+});

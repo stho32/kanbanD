@@ -94,12 +94,12 @@ function seitenName() {
 
 function vSeitenPop() {
   const u = S.ui, name = seitenName();
-  const ziel = (titel, hash) => `<a class="iz${name === titel ? ' an' : ''}" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem">${esc(titel)}</a>`;
+  const ziel = (titel, hash) => `<a class="iz${name === titel ? ' an' : ''}" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   const wbs = gebunden().map(a => {
     const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
-    return `<a class="iz${u.view === 'wbs' && wbsKuerzel() === a.kuerzel ? ' an' : ''}" href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem">${esc(titel)}</a>`;
+    return `<a class="iz${u.view === 'wbs' && wbsKuerzel() === a.kuerzel ? ' an' : ''}" href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   }).join('');
-  const berichte = `<button type="button" class="iz${name === 'Berichte' ? ' an' : ''}" data-act="pop" data-arg="ber" role="menuitem" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
+  const berichte = `<button type="button" class="iz${name === 'Berichte' ? ' an' : ''}" data-act="pop" data-arg="ber" role="menuitem" tabindex="-1" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
   return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><h4>SEITE</h4>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
 }
 
@@ -119,11 +119,11 @@ function vBereichChips() {
 function vMehrPop() {
   const u = S.ui;
   const eintrag = {
-    signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">Signale oben</button>`,
-    spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
+    signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">Signale oben</button>`,
+    spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" tabindex="-1" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
     darstellung: vThemaEintrag,
-    lauf: () => `<button type="button" class="iz" id="mehr-lauf" role="menuitem" data-act="pop" data-arg="lauf">Laufende Timer<span class="muted">${alleLaufenden().length}</span></button>`,
-    ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
+    lauf: () => `<button type="button" class="iz" id="mehr-lauf" role="menuitem" tabindex="-1" data-act="pop" data-arg="lauf">Laufende Timer<span class="muted">${alleLaufenden().length}</span></button>`,
+    ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" tabindex="-1" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
   };
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
   return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><h4>MEHR</h4>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
@@ -139,7 +139,7 @@ const THEMA_NAME = { system: 'System', light: 'Hell', dark: 'Dunkel' }, THEMA_ZE
 /** Darstellung reihum System → Hell → Dunkel (R00070). */
 function vThemaEintrag() {
   const t = S.thema, weiter = THEMEN[(THEMEN.indexOf(t) + 1) % THEMEN.length];
-  return `<button type="button" class="iz" id="t-thema" role="menuitem" data-act="thema" data-thema="${t}" title="Darstellung: ${THEMA_NAME[t]} — Klick: ${THEMA_NAME[weiter]}" aria-label="Darstellung: ${THEMA_NAME[t]}">Darstellung: ${THEMA_NAME[t]}<span class="muted">${THEMA_ZEICHEN[t]}</span></button>`;
+  return `<button type="button" class="iz" id="t-thema" role="menuitem" tabindex="-1" data-act="thema" data-thema="${t}" title="Darstellung: ${THEMA_NAME[t]} — Klick: ${THEMA_NAME[weiter]}" aria-label="Darstellung: ${THEMA_NAME[t]}">Darstellung: ${THEMA_NAME[t]}<span class="muted">${THEMA_ZEICHEN[t]}</span></button>`;
 }
 const UHR = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
 function vLaufKnopf() {
@@ -690,7 +690,7 @@ function vLegenPop() {
   const nr = S.ui.legenNr, a = aufgabe(nr);
   if (!a) return '';
   const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)));
-  return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu"><h4>#${nr} AUF BOARD LEGEN</h4>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
+  return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu"><h4>#${nr} AUF BOARD LEGEN</h4>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem" tabindex="-1">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
 }
 
 /* ── Personen (Artboard D0005) ── */
@@ -726,7 +726,7 @@ function berichteAusloeser() {
   return 't-ber';
 }
 function vBerichtePop() {
-  const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
+  const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem" tabindex="-1"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
   return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, 'Stundenzettel', 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, 'Zeiten nach Aufgabe und Person', 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', 'Burndown', 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', 'Wie lange noch', 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', 'Projekt-Fever-Chart', 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', 'Durchlaufzeit', 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
@@ -1106,7 +1106,7 @@ function vWbsTabelle(w) {
 function vWbsStatusPop() {
   const id = S.ui.wbsKnoten, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
   if (!k) return '';
-  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><h4>STATUS <span class="mono">${esc(id)}</span></h4>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
+  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><h4>STATUS <span class="mono">${esc(id)}</span></h4>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem" tabindex="-1"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
 }
 
 /** Neuer Knoten unter einem Eltern-Knoten: Ebene, Name, Fertig-Kriterium; Bubbles dazu Eingabe → Ausgabe und Aufwand. */
