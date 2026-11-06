@@ -195,3 +195,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Detailplanung | planer (frisch), architekt (fortgesetzt) | Nachtrag bestanden: R00106 52 Kriterien, US-9/US-10, B0385 frei, ADR-0010 Folgeentscheidung | 0:06 | e847fb2, 189ed1b, f6506e6 |
 | 2026-11-06 | #8 | Entwicklung | entwickler (fortgesetzt) | teilweise: 13 Bubbles grün, Gate grün nach Rebase (554 cargo, clippy 0, 189 Einheit, 308 E2E laut Bericht), Mutante fallenSchritt getötet; offen Ring-Kriterien 149, Radio-Ring, 195 → Nacharbeit frisch | 0:55 | 0206f3b..2588dc3 |
 | 2026-11-06 | #8 | Entwicklung (Nacharbeit) | entwickler (frisch) | bestanden: Fokusring Menüs, Radios, Pop-Fenster; Rot 3/3 belegt, 3 Mutanten getötet (Director-Gegenprobe Radio-Regel → 1 rot), Playwright 311/0 | 0:10 | b91d97c |
+| 2026-11-06 | #8 | Auto-Review | architektur-reviewer (frisch) | befund: Muss 1 Menüs Legen/WBS-Status ohne DOM-Fokus; Sollte 3; Drift A00009/ADR-0010 | 0:04 | — |
+| 2026-11-06 | #8 | Auto-Review | code-reviewer (frisch) | bestanden; Sollte S1 Wächterlücken (M2, M3), S2 Rückgabe nach Pop-Wechsel; Leseliste lückenhaft | 0:10 | — |
+| 2026-11-06 | #8 | Auto-Review | ux-reviewer (frisch) | befund: Muss Live-Ereignis nimmt Tab-Fokus auf Karte/Zeile/Spaltenkopf; Sollte Defekte-Pop außer Sicht, Hilfe-Scroll, Berichte-Name | 0:11 | — |
