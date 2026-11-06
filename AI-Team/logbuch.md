@@ -247,3 +247,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Auslieferung | director | cargo install, Board neu (PID 4030146), /web/ansicht.js mit neuem Stand geprüft; Zug nach Erledigt erfolgte versehentlich vor der Auslieferung | 0:08 | — |
 | 2026-11-06 | #6 | Retrospektive | director | Projektlehre `.leer`; 3 Vorschläge an die Factory (Auslieferung vor Zug, Leseliste abgleichen, grep-Probe); 3 Fortbildungsideen | 0:05 | — |
 | 2026-11-06 | #9 | Architektur | architekt | bestanden: ADR-0011 Farbrollen in Paaren, Kontrast als Probe; A00009 ergänzt | 0:05 | d462236 |
+| 2026-11-06 | #9 | Detailplanung | planer | bestanden: R00107, I0096 mit 9 Bubbles; 4 Fragen an product-owner, UX-Vorprüfung beauftragt | 0:15 | 015005e, 0ba13be |
