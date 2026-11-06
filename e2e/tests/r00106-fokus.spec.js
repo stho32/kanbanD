@@ -310,3 +310,40 @@ test('US-6: ein Eintrag mit Aktion („Signale oben“ in „Mehr“) lässt den
   await page.keyboard.press('Enter');
   expect((await fokus(page)).tag).not.toBe('BODY');
 });
+
+test('US-7: Umschalt+F10 auf Karte #1 → Fokus auf „Öffnen“; ↓↓ → „Mir zuweisen“ (Trenner übersprungen); Esc → Karte #1', async ({ page }) => {
+  await page.locator('.ka[data-id="1"]').focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(page.getByRole('menu', { name: '#1 eins' })).toBeVisible();
+  await expect(page.locator('#kmenue [role="menuitem"]', { hasText: 'Öffnen' }).first()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#kmenue [role="menuitem"]', { hasText: 'Mir zuweisen' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#kmenue')).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('1');
+});
+
+test('US-7: → öffnet „Verschieben nach“ mit Fokus auf „In Arbeit“ (nicht „Eingang“), ← zurück auf „Verschieben nach“', async ({ page }) => {
+  await page.locator('.ka[data-id="1"]').focus();
+  await page.keyboard.press('Shift+F10');
+  const verschieben = page.locator('#kmenue > [role="menuitem"]', { hasText: 'Verschieben nach' });
+  for (let i = 0; i < 12 && !(await verschieben.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('ArrowDown');
+  await expect(verschieben).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#kmenue .unter [role="menuitem"]', { hasText: 'In Arbeit' })).toBeFocused();
+  await expect(page.locator('#kmenue .unter [role="menuitem"]', { hasText: 'Eingang' })).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('ArrowLeft');
+  await expect(verschieben).toBeFocused();
+});
+
+test('US-7: Enter auf „Mir zuweisen“ → ST zuständig, Menü zu, Fokus auf Karte #1', async ({ page }) => {
+  await page.locator('.ka[data-id="1"]').focus();
+  await page.keyboard.press('Shift+F10');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#kmenue')).toHaveCount(0);
+  await expect.poll(async () => (await (await page.request.get(`${k.adresse}api/aufgaben/1`)).json()).zustaendige).toContain('st');
+  expect((await fokus(page)).karte).toBe('1');
+});

@@ -65,3 +65,8 @@ test('fallenSchritt: Umlauf an beiden Rändern', () => {
 test('ebenen: die Hilfe hat nichts Tabbares und startet auf sich selbst', () => {
   assert.strictEqual(ebenen({ hilfe: true })[0].start, '#hilfe');
 });
+
+test('ebenen: Kontextmenü startet auf dem aktiven Eintrag, bei offenem Untermenü auf dessen Eintrag', () => {
+  assert.strictEqual(ebenen({ menue: { index: 2, unter: null } })[0].start, '#kmenue [data-mp="2"]');
+  assert.strictEqual(ebenen({ menue: { index: 4, unter: { von: 4, index: 1 } } })[0].start, '#kmenue [data-mp="4.1"]');
+});

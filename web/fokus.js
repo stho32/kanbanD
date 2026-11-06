@@ -37,11 +37,17 @@
     return stapel;
   }
 
+  /** Selektor des aktiven Kontextmenü-Eintrags: im offenen Untermenü dessen Eintrag, sonst der Eintrag der obersten Ebene. */
+  function kmenueEintrag(menue) {
+    if (menue.unter && menue.unter.index >= 0) return `#kmenue [data-mp="${menue.unter.von}.${menue.unter.index}"]`;
+    return `#kmenue [data-mp="${menue.index}"]`;
+  }
+
   /** Offene Ebenen von unten nach oben; gemerkt = {art: Selektor des Auslösers beim Öffnen}. */
   function ebenen(ui, gemerkt = {}) {
     const liste = dialogstapel(ui, gemerkt);
     if (ui.pop) liste.push(menue('pop', '#pop', `#pop ${ERSTER_MENUEEINTRAG}`, ausloeser(gemerkt, 'pop')));
-    if (ui.menue) liste.push(menue('kmenue', '#kmenue', '#kmenue .km-e.an', ausloeser(gemerkt, 'kmenue')));
+    if (ui.menue) liste.push(menue('kmenue', '#kmenue', kmenueEintrag(ui.menue), ausloeser(gemerkt, 'kmenue')));
     return liste;
   }
 
@@ -67,5 +73,5 @@
     return [...new Set(ziele)];
   }
 
-  Object.assign(ziel, { ebenen, fallenSchritt, fokusZiel, GESICHERT });
+  Object.assign(ziel, { ebenen, fallenSchritt, fokusZiel, kmenueEintrag, GESICHERT });
 })(typeof module !== 'undefined' ? module.exports : window);

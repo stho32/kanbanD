@@ -1520,6 +1520,7 @@ function menueTaste(ev) {
     const treffer = ebene.eintraege.find(e => e.kuerzel && e.kuerzel.toLowerCase() === k.toLowerCase() && !e.aktuell);
     if (treffer) { menueAusfuehren(treffer); return; }
   }
+  S.ui.fokus = kmenueEintrag(m);
   render();
 }
 document.addEventListener('contextmenu', e => {
@@ -1559,6 +1560,7 @@ document.addEventListener('mouseover', e => {
     m.unter = eintrag.unter ? { von: pfad[0], eintraege: eintrag.unter, index: -1 } : null;
   } else if (m.unter && m.unter.index !== pfad[1]) m.unter.index = pfad[1];
   else return;
+  S.ui.fokus = kmenueEintrag(m);
   render();
 });
 

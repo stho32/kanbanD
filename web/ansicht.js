@@ -482,7 +482,7 @@ function vMenueEintraege(eintraege, ebene, aktiv, pfad) {
     if (e.trenner) return '<div class="km-tr" role="separator"></div>';
     const p = pfad === '' ? String(i) : `${pfad}.${i}`;
     const unterOffen = ebene.unter && ebene.unter.von === i;
-    return `<div class="km-e${i === ebene.index ? ' an' : ''}${e.aktuell ? ' km-aktuell' : ''}" role="menuitem" data-mp="${p}"${e.unter ? ' aria-haspopup="true"' : ''}${e.aktuell ? ' aria-disabled="true"' : ''}>${e.aktuell || e.haken ? '✓ ' : '<span class="km-ohne"></span>'}${esc(e.text)}<span class="km-k">${e.unter ? (e.kuerzel ? esc(e.kuerzel) + ' ▸' : '▸') : esc(e.kuerzel || '')}</span>${unterOffen ? `<div class="kmenue unter" role="menu">${vMenueEintraege(e.unter, ebene.unter, aktiv, p)}</div>` : ''}</div>`;
+    return `<div class="km-e${i === ebene.index ? ' an' : ''}${e.aktuell ? ' km-aktuell' : ''}" role="menuitem" tabindex="-1" data-mp="${p}"${e.unter ? ' aria-haspopup="true"' : ''}${e.aktuell ? ' aria-disabled="true"' : ''}>${e.aktuell || e.haken ? '✓ ' : '<span class="km-ohne"></span>'}${esc(e.text)}<span class="km-k">${e.unter ? (e.kuerzel ? esc(e.kuerzel) + ' ▸' : '▸') : esc(e.kuerzel || '')}</span>${unterOffen ? `<div class="kmenue unter" role="menu">${vMenueEintraege(e.unter, ebene.unter, aktiv, p)}</div>` : ''}</div>`;
   }).join('');
 }
 function vMenue() {
