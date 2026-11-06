@@ -201,3 +201,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Nacharbeit | entwickler (frisch) | bestanden: M1, M2, S1–S5 mit Rot-Beleg; r00078 flattert (Altlast) | 0:30 | 2eeca2b |
 | 2026-11-06 | #8 | Auto-Review (Wdh.) | architektur-reviewer (frisch) | bestanden; Sollte A Fitness-Probe schärfen (Härtung); Drift 6 Punkte an architekt | 0:15 | — |
 | 2026-11-06 | #8 | Auto-Review (Wdh.) | ux-reviewer (fortgesetzt) | befund: Muss Live-Ereignis holt Fokus nach Mausbedienung zurück und scrollt Board (375 px), neu ggü. f8fc5bc | 0:07 | — |
+| 2026-11-06 | #8 | Architektur (Drift) | architekt (frisch) | bestanden; ADR-0010 Nachtrag N1–N6, A00009 nachgezogen; 2 offene Fragen an PO | 0:20 | 98e753b, 8897b75 |
