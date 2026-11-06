@@ -847,9 +847,10 @@ async function act(a, arg, wert) {
         const [nr, i] = arg.split('|').map(Number);
         aufgabe(nr).teilaufgaben[i].erledigt = true;
         u.fokusKarte = nr;
-        // Per Tastatur abgehakt: weiter zur nächsten offenen Teilaufgabe der Karte, ohne sie führt fokusKarte (R00108)
-        const perTastatur = document.activeElement && document.activeElement.matches('.naechste-ziel');
-        if (perTastatur) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
+        // Lag der Fokus auf dem Abhaken der nächsten Teilaufgabe, bleibt er dort und trifft die nächste offene;
+        // ohne sie führt fokusKarte (R00108)
+        const fokusAufNaechsterTeilaufgabe = Boolean(document.activeElement && document.activeElement.matches('.naechste-ziel'));
+        if (fokusAufNaechsterTeilaufgabe) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
         render();
         warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
         return;
@@ -1799,8 +1800,8 @@ function brettTaste(e, t) {
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
   // Enter und Leertaste auf einem Knopf in der Karte (Teilaufgabe, Signal, Stopp) lösen den Knopf aus, nicht die Karte (R00108)
-  const knopfInKarte = karte && t !== karte && t.closest('button');
-  if (knopfInKarte && (e.key === 'Enter' || e.key === ' ')) return false;
+  const fokusAufKnopfInKarte = Boolean(karte) && t !== karte && Boolean(t.closest('button'));
+  if (fokusAufKnopfInKarte && (e.key === 'Enter' || e.key === ' ')) return false;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
   if (karte && e.key === 'p' && aufgabe(nr)) { e.preventDefault(); act('zuweisen', String(nr)); return true; }
   if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
