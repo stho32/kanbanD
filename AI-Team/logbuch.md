@@ -211,3 +211,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Artboard-Freigabe #18 | gestalter | bestanden: D0002 Komma vor Σ, D0003 Silbentrennung Zeilenkopf, Index-Nachtrag | 0:03 | c06f7e4 |
 | 2026-11-06 | #18 | Artboard-Freigabe #18 | planer | bestanden: Betreiber-Änderungen in R00105 (85 AK) und Story (US-21, US-22); Karte im Auftrag des Betreibers nach Entwicklung | 0:12 | 7c1ca1d |
 | 2026-11-06 | #8 | Schleifenbremse | realist-consultant | befund: Umsteuern an der Ursache (Bereiche umkehren, href als Schlüssel) mit Abtastraster als Abnahme; gemessen 34/110 bzw. 16/92 verloren, Probe 0; Anforderungsschärfung Rückfall an PO | 0:20 | — |
+| 2026-11-06 | #8, #18 | Rückfrage | product-owner | entschieden: R00106 Z.101 Rückfall nie auf fremdes Feld (sonst BODY); R00105 Name ohne Silbengrenze → nur Tabelle scrollt quer; nicht richtungsweisend | 0:02 | 5783b4a |
