@@ -370,3 +370,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0376 Rückfall auf Inhalt mit Fokusregel | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0372 Ansicht Kosten mit Menüeintrag | Standard | 1-3h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0374 Filterleiste im Kostenbericht ohne Zeitraum | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00100 Bericht Bestand nach Labels | Nacharbeit 1 Karte #6 (Felder bei zu wenigen Präfixen, Legende, Summe 0, Menütext, Name ohne Zielfilter, filterOhneZeitraum, Kontrast, Touch) | Nacharbeit | 1-2h | 0,3h | 0,3h | autonom |
