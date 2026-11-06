@@ -61,9 +61,10 @@ test.describe('Selbstproben, Zielauswahl', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['datei.txt', 'zwei', '#3']);
   });
 
-  test('ein Link in einem Satz zählt nicht, auch nicht neben einem Element im selben Satz', async ({ page }) => {
-    await page.setContent('<div>Mehr unter <a href="#1">Hilfe</a> <span>(neu)</span>.</div><span>Siehe <a href="#2">zwei</a></span>');
-    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' })).toEqual([]);
+  test('ein Link in einem Satz zählt nicht, auch nicht neben einem Element im selben Satz; der Kontroll-Link mit eigener Box zählt', async ({ page }) => {
+    await page.setContent('<div>Mehr unter <a href="#1">Hilfe</a> <span>(neu)</span>.</div><span>Siehe <a href="#2">zwei</a></span>'
+      + '<div style="display:flex"><a href="#3">kontrolle</a><span>x</span></div>');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['kontrolle']);
   });
 
   test('ein einzeiliges Textfeld mit 26 px und eine Klickfläche ohne Rolle mit 22 px zählen', async ({ page }) => {
@@ -78,9 +79,10 @@ test.describe('Selbstproben, Zielauswahl', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['+ Datei wählen']);
   });
 
-  test('ein Hintergrund mit data-act über die ganze Fläche besteht, er ist so groß wie das Fenster', async ({ page }) => {
-    await page.setContent('<div data-act="schliessen-bg" style="position:fixed;inset:0"></div>');
-    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' })).toEqual([]);
+  test('ein Hintergrund mit data-act über die ganze Fläche besteht, er ist so groß wie das Fenster; die kleine Kontrollfläche darüber fällt', async ({ page }) => {
+    await page.setContent('<div data-act="schliessen-bg" style="position:fixed;inset:0"></div>'
+      + '<span data-act="kontrolle" style="position:relative;z-index:1;display:inline-block;height:22px;width:50px">kontrolle</span>');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['kontrolle']);
   });
 
   test('unter einem offenen Dialog zählt nur die oberste Ebene', async ({ page }) => {
