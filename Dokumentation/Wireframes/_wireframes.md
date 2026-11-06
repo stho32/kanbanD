@@ -6,7 +6,7 @@ canvas:
 seed: .claude/wireframes/kanbanD.html
 art: prototyp
 richtung: Blaugrau, eckig, dicht — IBM Plex Sans/Mono, dunkle Kopfzeile, Zeile 28 px (kd-tokens.css)
-stand: 2026-11-01
+stand: 2026-11-06
 zurueckgeholt: 2026-09-26
 ---
 
@@ -34,5 +34,6 @@ Design-System im Repository.
 | 2026-10-18 | Artboard D0007 Agenten-Schnittstelle | Seite /api: Satz zur Identität, Beispiel, Tabelle Methode · Pfad · Wer · Zweck nach Themen | Dialog ohne Vorbild im Prototyp |
 | 2026-10-18 | „Kein Git in der Oberfläche“ | bleibt für Pull/Push/Merge; kanbanD committet jede eigene Aktion, ohne Git-Bedienung in der Oberfläche | Vision-Fortschreibung 2026-10-18 |
 | 2026-11-01 | D0002 Zustand „Spalten mit Eigentümer“ (R00097, F0015) | angehängt unter dem Board, Hell und Dunkel: Kopfzeichen Mensch (Person, `--kd-mensch`) und Agent (Roboterkopf, `--kd-agent-ink`), 14 px SVG im Stil `svg.i` hinter dem Namen-Knopf vor ⓘ; zugeklappte Mensch-Spalte mit Zeichen über dem gedrehten Namen; „Spalten einrichten“ mit Auswahl „Eigentümer“, Hinweissatz (11 px, `--kd-muted`), unbekanntem Rohwert und Vorschau `column-owner` | Vorgabe vor B0297; PO-Entscheidungen #3 Z. 50–54; Kontrast ≥ 3:1 gegen `--kd-sunken` und `.bahn-kopf.ueber` in beiden Themen gerechnet |
+| 2026-11-06 | D0006 Zustand „Bestand nach Labels“ (R00100, I0092) | angehängt unter den Berichten, Hell und Dunkel: Menügruppe BESTAND mit Tabellensymbol (Raster 3 × 3); Kopfleiste, Filterbox ohne Zeitraum, Achsenzeile „Zeilen“/„Spalten“/„⇄ Achsen tauschen“; Tabelle mit Eckzelle, sticky Köpfen, Summen wie die Kreuztabelle, Zelle `--c` mit Zellmarke `inset 3px` in `--cl`, Zahl als Link in `--kd-accent-ink` mit Fokusring in derselben Farbe; Legende ohne Filterwirkung, Erklärsatz; Ränder leer (mit/ohne Zurücksetzen), zu wenige Präfixe, ohne Person, Speicherfehler; Telefon 375 px mit Querscrollen nur der Tabelle | Vorgabe vor dem Bau von I0092, PO-Entscheidungen Z. 75–78; Daten aus dem Grundbestand von R00100, Klassenfarben der Beispiele gewählt (red, magenta, blue); Kontraste in beiden Themen gerechnet |
 
 ## Offene Fragen
