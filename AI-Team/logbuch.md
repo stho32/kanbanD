@@ -306,3 +306,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Auto-Reviews | code-reviewer | bestanden (Wiederholung): B1–B3 behoben, per Mutation geprobt; Anmerkungen A1–A3 → #70 | 0:09 | — |
 | 2026-11-06 | #9 | Entwicklertest | entwicklertester | bestanden: US-1–US-9 hell/dunkel nachgemessen; Anmerkungen → PO Z. 142–143, #71, #72 | 0:07 | — |
 | 2026-11-06 | #9 | Erledigt | director | Merge a917765, Gate cargo 554 · Unit 266 · E2E 685, ausgeliefert, nicht gepusht | 0:15 | a917765 |
+| 2026-11-06 | #11 | Architektur | architekt | bestanden: ADR-0013 deutsche Anzeige an der Zeichengrenze, X00004 | 0:04 | edc022c |
