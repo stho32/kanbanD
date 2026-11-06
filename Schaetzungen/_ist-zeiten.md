@@ -332,3 +332,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0341 Handbenannte Board-Datei als defekt | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0342 Zweite Linie in aktion und schreib | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0343 Verlauf nimmt den gelesenen Board-Namen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00104 Behebung Board-Name als Pfad | B0344 Doppelte Nummer an der Tür der Sammel-Wege | Nacharbeit | 0,5-1h | 0,1h | 0,1h | autonom |
