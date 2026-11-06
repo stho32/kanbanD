@@ -853,3 +853,13 @@ test('S2: Mehr per Klick, dann per Klick auf „Board“ gewechselt, „Test“ 
   await expect(page.locator('#pop')).toHaveCount(0);
   await expect(page.locator('#t-board')).toBeFocused();
 });
+
+test('S4: Defekte Dateien bei 1280×800 öffnet im Fenster — das fokussierte Element liegt ganz zwischen 0 und innerHeight', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#t-defekt').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Defekte Dateien' }).getByRole('link', { name: 'aufgaben/0009-kaputt.md', exact: true })).toBeFocused();
+  const lage = await page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return { oben: r.top, unten: r.bottom, hoehe: innerHeight }; });
+  expect(lage.oben, JSON.stringify(lage)).toBeGreaterThanOrEqual(0);
+  expect(lage.unten, JSON.stringify(lage)).toBeLessThanOrEqual(lage.hoehe);
+});

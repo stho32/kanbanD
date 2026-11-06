@@ -704,8 +704,15 @@ function popPlatzieren() {
   const t = document.getElementById(p.dataset.for);
   if (!t) { S.ui.pop = null; p.remove(); return; }
   const r = t.getBoundingClientRect();
-  p.style.top = (r.bottom + 2) + 'px';
+  p.style.top = popOben(r, p.offsetHeight) + 'px';
   p.style.left = Math.max(4, Math.min(p.dataset.al === 'r' ? r.right - p.offsetWidth : r.left, innerWidth - p.offsetWidth - 4)) + 'px';
+}
+
+/** Unter dem Auslöser, wenn das Pop dort ganz ins Fenster passt; sonst darüber — etwa beim Auslöser in der Statuszeile (Karte #8 S4). */
+function popOben(ausloeser, hoehe) {
+  const darunter = ausloeser.bottom + 2;
+  if (darunter + hoehe <= innerHeight) return darunter;
+  return Math.max(4, ausloeser.top - 2 - hoehe);
 }
 
 async function act(a, arg, wert) {
