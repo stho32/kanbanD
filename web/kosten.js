@@ -57,5 +57,15 @@
     return { m: gezaehlt.length, jeWaehrung: [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, kostentabelle, kostenbericht });
+  /** Filter der Berichte für den Kostenbericht: ein gespeicherter Zeitraum gilt hier nicht (Kosten sind ein Bestand, keine
+      Bewegung) und bleibt für die übrigen Berichte unverändert gespeichert; „Rechnen ab“ nimmt kostenbericht gar nicht an. */
+  const kostenFilter = f => ({ ...f, zeitraum: 'alles', von: '', bis: '' });
+
+  /** Umfangstext der Summenzeile: „alle Spalten“ nur, wenn ohne Zeitraum kein Filter wirkt. */
+  function kostenUmfang(f) {
+    const { filterAnzahl } = typeof module !== 'undefined' ? require('./berichte.js') : window;
+    return filterAnzahl(kostenFilter(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
+  }
+
+  Object.assign(ziel, { kostenInCent, geld, kostentabelle, kostenbericht, kostenFilter, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);
