@@ -574,6 +574,41 @@ for (const breite of [320, 375, 414]) {
   });
 }
 
+// B0425 (PO Z. 138): Die Personentabelle ist ein Zeitstrahl und scrollt bei Touch nur in ihrem benannten Rahmen quer;
+// Leiste, #main und .body nie — ohne und mit breiten Zeitdaten.
+/** Überlauf von Dokument, #main und .body: je [scrollWidth, clientWidth]. */
+const ueberlauf = page => page.evaluate(() => Object.fromEntries([['Seite', document.documentElement], ['#main', document.getElementById('main')], ['.body', document.querySelector('#main .body')]]
+  .map(([ort, el]) => [ort, el.scrollWidth <= el.clientWidth || `${el.scrollWidth} > ${el.clientWidth}`])));
+/** Drückt Tab, bis der Fokus auf dem Element steht, höchstens 60-mal; liefert die Zahl der Schritte oder 0. */
+async function perTabErreicht(page, ziel) {
+  for (let schritt = 1; schritt <= 60; schritt++) {
+    await page.keyboard.press('Tab');
+    if (await ziel.evaluate(el => el === document.activeElement)) return schritt;
+  }
+  return 0;
+}
+for (const breite of [320, 375, 414]) {
+  for (const [daten, mehr] of [['Grundbestand', {}], ['breite Zeitdaten', BREITE_DATEN]]) {
+    test.describe(`Personen, Touch, ${breite} px, ${daten}`, () => {
+      test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+      test('nur der Rahmen „Personen“ um die Tabelle scrollt quer, per Tab erreichbar', async ({ page }) => {
+        await starten(page, mehr);
+        await page.goto(k.adresse + '#/personen');
+        await page.locator('tr[data-person="st"]').waitFor();
+        expect(await ueberlauf(page)).toEqual({ Seite: true, '#main': true, '.body': true });
+        expect(await breiteMessen(page, 'Personen')).toEqual([]);
+        const rahmen = page.getByRole('group', { name: 'Personen', exact: true });
+        await expect(rahmen).toHaveAttribute('tabindex', '0');
+        await expect(rahmen.locator(':scope > *')).toHaveCount(1);
+        await expect(rahmen.locator(':scope > table.pt')).toHaveCount(1);
+        await expect(page.locator('.leiste').locator('xpath=ancestor::*[contains(@class,"bericht-rahmen")]')).toHaveCount(0);
+        if (breite === 320) expect(await rahmen.evaluate(el => el.scrollWidth > el.clientWidth), 'der Rahmen scrollt bei 320 quer').toBe(true);
+        expect(await perTabErreicht(page, rahmen), 'per Tab erreichbar').toBeGreaterThan(0);
+      });
+    });
+  }
+}
+
 // B0424 (PO Z. 137 c): Die Aufgabenliste scrollt bei Touch nie quer — der Titel bricht vollständig um, auch ein Wort ohne
 // Trennstelle, ohne Ellipse; keine Spalte fällt weg. Bei feinem Zeiger im breiten Fenster bleibt die Titelspalte wie heute.
 /** Titelzelle von #5: Text, Ellipse an, steht der Link ganz in der Zelle; dazu die sichtbaren Spaltenköpfe. */

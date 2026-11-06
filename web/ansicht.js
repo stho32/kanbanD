@@ -764,7 +764,7 @@ function vPersonen() {
   }
   const still = alle.filter(p => !p.aktiv).length;
   return `<div class="leiste"><span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste ${W0}–${W1} Uhr · schraffiert = läuft</div></div>
-<div class="body"><table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${[6, 8, 10, 12, 14, 16, 18, 20].map(h => `<span style="left:${(h - W0) / (W1 - W0) * 100}%">${h}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div>`;
+<div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${[6, 8, 10, 12, 14, 16, 18, 20].map(h => `<span style="left:${(h - W0) / (W1 - W0) * 100}%">${h}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
 }
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */
