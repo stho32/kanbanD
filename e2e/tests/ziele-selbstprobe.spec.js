@@ -24,6 +24,11 @@ test.describe('Selbstproben, feiner Zeiger', () => {
 
   const HOF = '<style>.hof{position:absolute;width:13px;height:13px}.hof::after{content:"";position:absolute;inset:min(0px, (100% - 24px) / 2)}</style>';
 
+  test('ein ::after mit Zeichen (▾) ist kein Hof: gemessen wird nur das Element', async ({ page }) => {
+    await page.setContent(STIL + '<style>.dek::after{content:"▾";position:absolute;right:-6px;bottom:-6px}</style>' + knopf(100, 100, 26, 'pfeil', '') .replace('<button', '<button class="dek"'));
+    expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe', ohneKreis: true })).toEqual([]);
+  });
+
   test('13-px-Zeichen mit Hof besteht, derselbe Hof unter overflow:hidden fällt durch', async ({ page }) => {
     await page.setContent(STIL + HOF + '<button class="hof" aria-label="frei" style="left:100px;top:100px"></button>');
     expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe' })).toEqual([]);

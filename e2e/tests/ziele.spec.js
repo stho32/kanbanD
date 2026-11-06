@@ -178,7 +178,7 @@ test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
 
 // Die fünf kleinen Zeichen: Zeichnung bleibt klein, bei feinem Zeiger trägt ein Hof die Trefferfläche, bei Touch wachsen sie selbst.
 // Die Leisten um sie herum (Statuszeile, Spaltenkopf) wachsen erst mit B0404 und gehören zur Messprobe über die Ansichten.
-const ZEICHEN = /\.lnk\[data-act="abnehmen"\]|\.kopf-plus|\.signal\[|\.sigz|\.kl\[/;
+const ZEICHEN = /\.lnk-x\[|\.kopf-plus|\.signal\[|\.sigz|\.kl\[/;
 const zeichenVerstoesse = async (page, zeiger, ansicht) => (await zieleMessen(page, { zeiger, ansicht, ohneKreis: true })).filter(v => ZEICHEN.test(v.selektor));
 const groesse = async loc => { const b = await loc.boundingBox(); return [Math.round(b.width), Math.round(b.height)]; };
 
@@ -199,6 +199,7 @@ test.describe('Trefferhof für kleine Zeichen', () => {
     await page.goto(k.adresse + '#/aufgaben');
     await expect(page.locator('.lnk[data-act="abnehmen"]').first()).toBeVisible();
     expect(await zeichenVerstoesse(page, 'fein', 'aufgaben')).toEqual([]);
+    expect((await groesse(page.locator('.lnk[data-act="abnehmen"]').first()))[0], 'gezeichnet klein').toBeLessThan(24);
   });
 
   test.describe('Touch, 390 px', () => {
@@ -220,6 +221,80 @@ test.describe('Trefferhof für kleine Zeichen', () => {
       await expect(page.locator('.ka[data-id="2"] .signal')).toHaveCount(1);
       expect(k.lies('aufgaben/0002-zwei.md')).toContain('signals: [mail]');
     });
+  });
+});
+
+// Messprobe über die Ansichten (B0401): jede Ansicht mit Signal, Fälligkeit, Teilaufgabe, laufendem Timer, Archiv und Zuweisung.
+const brett = page => page.goto(k.adresse + '#/board/entwicklung');
+const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
+const bericht = name => page => page.goto(k.adresse + '#/berichte/' + name);
+const ANSICHTEN = [
+  { ansicht: 'Board', oeffnen: brett },
+  { ansicht: 'Archiv des Boards', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="4"]').waitFor(); } },
+  { ansicht: 'Aufgabenliste', oeffnen: page => page.goto(k.adresse + '#/aufgaben') },
+  { ansicht: 'Personen', oeffnen: page => page.goto(k.adresse + '#/personen') },
+  { ansicht: 'Einrichten', oeffnen: page => page.goto(k.adresse + '#/einrichten') },
+  { ansicht: 'Einrichten mit offener Palette', oeffnen: async page => { await page.goto(k.adresse + '#/einrichten'); await page.getByRole('button', { name: 'Farbe bug' }).click(); await page.locator('.pal').waitFor(); } },
+  ...['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'].map(name => ({ ansicht: 'Bericht ' + name, oeffnen: bericht(name) })),
+  { ansicht: 'WBS-Sicht', oeffnen: async page => { await page.goto(k.adresse + '#/wbs/kd'); await page.locator('.wbs-tabelle').waitFor(); } },
+  { ansicht: 'API für Agenten', oeffnen: page => page.goto(k.adresse + 'api') },
+  { ansicht: 'Aufgabenfenster #1', oeffnen: page => fensterOeffnen(page, 1) },
+  // Das Menü „<Seite> ▾“ gibt es nur in der Stufe compact (unter 600 px, web/kopfzeile.js)
+  { ansicht: 'Menü Seite', breite: 560, oeffnen: menue('#t-seite') },
+  { ansicht: 'Menü Mehr', oeffnen: menue('#t-mehr') },
+  { ansicht: 'Menü Berichte', oeffnen: menue('#t-ber') },
+  { ansicht: 'Menü Ich', oeffnen: menue('#t-ich') },
+  { ansicht: 'Kontextmenü #1', oeffnen: async page => { await brett(page); await page.locator('.ka[data-id="1"]').click({ button: 'right' }); await page.getByRole('menu').first().waitFor(); } },
+];
+
+/**
+ * Bekannte Verstöße, die (noch) nicht gemessen werden dürfen — je Eintrag Selektor, Ansicht, Karte, heutiges Maß und Grund.
+ * Leer nach Entscheidung des planers (R00108, Notizen). Ein Eintrag schlägt Alarm, sobald sein Verstoß verschwindet,
+ * das Maß erreicht oder kleiner wird.
+ */
+const NICHT_GEMESSEN = [];
+
+/** Trennt gemessene Verstöße in offene (nicht gelistet) und Alarme der Liste. */
+function abgleichen(verstoesse, liste, ansicht) {
+  const gelistet = liste.filter(e => e.ansicht === ansicht);
+  const passt = (v, e) => v.selektor === e.selektor;
+  const offen = verstoesse.filter(v => !gelistet.some(e => passt(v, e)));
+  const alarme = gelistet.flatMap(e => {
+    const v = verstoesse.find(x => passt(x, e));
+    if (!v) return [`${e.selektor} in ${ansicht}: Verstoß verschwunden oder Maß erreicht — Eintrag aus NICHT_GEMESSEN streichen (${e.karte})`];
+    if (Math.min(v.breite, v.hoehe) < e.mass) return [`${e.selektor} in ${ansicht}: kleiner geworden, ${Math.min(v.breite, v.hoehe)} statt ${e.mass} (${e.karte})`];
+    return [];
+  });
+  return { offen, alarme };
+}
+
+test('Abgleich mit NICHT_GEMESSEN: Verschwinden, Kleinerwerden und ungelistete Verstöße fallen auf', () => {
+  const liste = [{ selektor: 'button.a', ansicht: 'X', karte: '#99', mass: 20, grund: 'Probe' }];
+  const v = (selektor, breite) => ({ ansicht: 'X', selektor, name: '', breite, hoehe: 30, mass: 24, trifft: true });
+  expect(abgleichen([v('button.a', 20)], liste, 'X')).toEqual({ offen: [], alarme: [] });
+  expect(abgleichen([], liste, 'X').alarme).toHaveLength(1);
+  expect(abgleichen([v('button.a', 18)], liste, 'X').alarme).toHaveLength(1);
+  expect(abgleichen([v('button.b', 18)], liste, 'X').offen.map(x => x.selektor)).toEqual(['button.b']);
+  expect(NICHT_GEMESSEN).toEqual([]);
+});
+
+test.describe('Messprobe, feiner Zeiger, 1280 px', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  for (const { ansicht, oeffnen, breite } of ANSICHTEN) {
+    test(`${ansicht}: jedes Ziel mindestens 24 × 24 oder Kreis-Ausnahme`, async ({ page }) => {
+      if (breite) await page.setViewportSize({ width: breite, height: 800 });
+      await starten(page);
+      await oeffnen(page);
+      await expect(page.locator('body')).not.toBeEmpty();
+      const { offen, alarme } = abgleichen(await zieleMessen(page, { zeiger: 'fein', ansicht }), NICHT_GEMESSEN, ansicht);
+      expect(alarme).toEqual([]);
+      expect(offen).toEqual([]);
+    });
+  }
+  test('Board: jeder Punkt eines Kartentitels öffnet die Karte', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    expect(await titelPruefen(page, 'Board')).toEqual([]);
   });
 });
 

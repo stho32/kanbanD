@@ -6,7 +6,7 @@ const MASS = { fein: 24, touch: 44 };
 
 /**
  * Läuft im Browser: misst jedes Bedienziel und liefert die Verstöße.
- * Trefferfläche = Rechteck des Elements vereinigt mit dem seines ::after (Trefferhof);
+ * Trefferfläche = Rechteck des Elements vereinigt mit dem seines leeren ::after (Trefferhof);
  * ob sie trifft, prüft document.elementFromPoint an den vier Kantenmitten (1 px innen).
  * Bei feinem Zeiger gilt die Kreis-Ausnahme aus WCAG 2.5.8, bei Touch nicht.
  */
@@ -32,7 +32,8 @@ function imBrowserMessen({ mass, kreisAusnahme, ansicht }) {
   }
   function hofRechteck(el, r) {
     const nach = getComputedStyle(el, '::after');
-    if (nach.content === 'none' || nach.position !== 'absolute') return null;
+    // Nur ein leerer, absolut gesetzter ::after ist ein Hof; ein Zeichen wie „▾“ ist Zeichnung
+    if (nach.content !== '""' || nach.position !== 'absolute') return null;
     const [oben, rechts, unten, links] = [nach.top, nach.right, nach.bottom, nach.left].map(px);
     if ([oben, rechts, unten, links].includes(null)) return null;
     const rand = getComputedStyle(el);

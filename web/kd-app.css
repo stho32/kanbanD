@@ -441,7 +441,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .skala{position:relative;width:380px;height:14px;font-family:var(--kd-mono);font-size:10px;color:var(--kd-faint);font-weight:400}
 .skala span{position:absolute;transform:translateX(-50%)}
 /* Statuszeile */
-.stat{flex:none;height:24px;display:flex;align-items:center;gap:var(--kd-s5);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
+.stat{flex:none;min-block-size:var(--kd-ziel);display:flex;align-items:center;gap:var(--kd-s5);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
 .stat .rechts{margin-left:auto;display:flex;gap:var(--kd-s4);align-items:center;flex:none}
 .stat>span:not(.rechts){min-width:0;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1180px){.stat>.mono{display:none}}
@@ -612,11 +612,12 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Neue Aufgabe */
 .kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
 /* Trefferhof (R00108, ADR-0012 Regel 3): kleine Zeichen bleiben gezeichnet klein; bei feinem Zeiger trägt ein durchsichtiges ::after
-   die Trefferfläche auf --kd-ziel. Bei Touch kein Hof: dort wachsen die Zeichen selbst über die Basisregel. */
+   die Trefferfläche auf --kd-ziel. Bei Touch kein Hof: dort wachsen die Zeichen selbst über die Basisregel.
+   Textknöpfe (.lnk) bekommen keinen Hof, sie wachsen selbst: gestapelt würde ihr Hof den Nachbarn überdecken. */
 @media (pointer:fine){
-  .lnk,.kopf-plus,.signal,.sigz,.kl{position:relative;min-block-size:0}
-  .lnk,.kopf-plus,.signal,.sigz{min-inline-size:0}
-  :is(.lnk,.kopf-plus,.signal,.sigz,.kl)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
+  .lnk-x,.kopf-plus,.signal,.sigz,.kl{position:relative;min-block-size:0}
+  .lnk-x,.kopf-plus,.signal,.sigz{min-inline-size:0}
+  :is(.lnk-x,.kopf-plus,.signal,.sigz,.kl)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
 }
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent)}
