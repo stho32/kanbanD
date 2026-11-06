@@ -270,3 +270,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #10 | Architektur | architekt (frisch) | beauftragt; #20 übersprungen (Gemeinkosten-Sammelkarte) | — | — |
 | 2026-11-06 | #10 | Architektur | architekt | befund: ADR-0012 Zielgrößen zentral (Vorgeschlagen), X00003, A00009; fein 18/114 < 24, Touch 93/93 < 44; zwei Maße an PO | 0:40 | f979e37 |
 | 2026-11-06 | #10 | Architektur | product-owner | bestanden: fein 24 px, Touch Token 48/Probe ≥ 44 (320 px darf auf 44 oder ins Menü), WCAG-Kreisformel; Z.132 Akzeptanzkriterien vs. Tests; Leseliste nachgeholt | 0:15 | 2904570, 13f5856 |
+| 2026-11-06 | #10 | Architektur | architekt | bestanden: ADR-0012 akzeptiert, Regel 8 Akzeptanzkriterien vs. Tests, /architektur pruefen ohne Befund; Zug nach Detailplanung | 0:10 | d416e56 |
