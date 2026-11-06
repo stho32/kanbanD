@@ -422,3 +422,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0438 Chip und Hinweis „ohne Herkunft“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0439 Eingabe „ohne Herkunft“ | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0440 Eingabe „ohne Herkunft“ in „Neue Aufgabe“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | Lauf R00109 | Konsolidierung | — | — | 0,3h | autonom |
