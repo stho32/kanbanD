@@ -43,8 +43,8 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
    3. Spaltenköpfe der Tage im Stundenzettel.
    Liegt das Datum in einem anderen Jahr, steht es dort lang.
 5. **Zugänglicher Name und Tooltip** nennen immer das Jahr. Die Fälligkeit auf der Karte trägt „fällig 28.10.2026“ als `title` und Namen, auch wenn sie „28.10.“ zeigt.
-6. **Langform überall sonst**, darunter: Schnellvorschau, Archivleiste, Kommentare, Reservierungen, Signal „überfällig seit“, Personen „zuletzt“, Wochenleiste des Stundenzettels (`28.10.2026 – 03.11.2026`), Kennzahlen und Leisten der Berichte, Tabellenansichten von Burndown, Verlauf, Wie lange noch und Fever.
-7. Die Achsenmarken der Diagramme bleiben `TT.MM.` über `JJJJ` (R00073). Angaben ohne Datum (`seit 14:05`) bleiben.
+6. **Langform überall sonst**, darunter: Schnellvorschau, Archivleiste, Kommentare, Reservierungen, Signal „überfällig seit“, Personen „zuletzt“, Wochenleiste des Stundenzettels (`28.10.2026 – 03.11.2026`), Kennzahlen, Leisten und Tabellenansichten aller Berichte (darunter Burndown, Verlauf, Wie lange noch und Fever).
+7. Die Diagramme behalten die Form aus R00073: Achsenmarken in zwei Zeilen `TT.MM.` über `JJJJ` („01.10.“ / „2026“), Tooltip-Kopf lang mit Wochentag („Do 01.10.2026“, bei Durchlaufzeit „Ankunft Sa 03.10.2026“). Beides entsteht danach im Modul (FA 8); `e2e/tests/r00073-diagramme.spec.js` bleibt unverändert grün. Angaben ohne Datum (`seit 14:05`) bleiben.
 8. Jede Form entsteht im Modul `web/kultur.js`. Die Kurzform bekommt „heute“ als Argument. Die heutigen Former `deTag`, `vollDatum` und `deDatum` werden zu Aufrufen des Moduls oder entfallen; `isoD` bleibt nur für Schlüssel und Vergleiche.
 
 ### Wo ISO sichtbar bleiben darf (ADR-0013 Regel 3)
@@ -78,7 +78,7 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
 
 ### Probe (ADR-0013 Regel 5)
 
-18. Eine Probe im Browser geht jede Ansicht der gemeinsamen Ansichtenliste (`e2e/tests/ansichten.js`) ab, dazu Archiv des Boards, Seite „API für Agenten“, Aufgabenfenster, „Neue Aufgabe“, die Menüs Seite, Mehr, Berichte und Ich, das Kontextmenü einer Karte, die Aufgabenreservierungen des Boards und den ersten Start. Kein sichtbarer Textknoten, kein `title` und kein zugänglicher Name passt auf `/\d{4}-\d{2}-\d{2}/`, ausgenommen FA 9.
+18. Eine Probe im Browser geht jede Ansicht der gemeinsamen Ansichtenliste (`e2e/tests/ansichten.js`) ab, dazu Archiv des Boards, Seite „API für Agenten“, Aufgabenfenster, „Neue Aufgabe“, die Menüs Seite, Mehr, Berichte und Ich, das Kontextmenü einer Karte, die Aufgabenreservierungen des Boards und den ersten Start. Kein sichtbarer Textknoten, kein `title` und kein zugänglicher Name passt auf `/\d{4}-\d{2}-\d{2}/`, ausgenommen FA 9. Die Tooltips der Diagramme erscheinen erst unter dem Zeiger; die Probe fährt deshalb je Diagramm (Burndown, Durchlaufzeit, Wie lange noch) einmal über die Zeichenfläche und prüft den Tooltip mit.
 19. Die Liste der Ausnahmen startet leer. Ein Eintrag braucht Ansicht, Selektor, Text und eine eigene Folgekarte. Verschwindet die Fundstelle, schlägt die Probe Alarm, damit die Liste nur schrumpft.
 
 ## Nicht-funktionale Anforderungen
@@ -96,26 +96,43 @@ Geprüft mit dem Grundbestand aus `user-stories/R00109.md`.
   - Besteht: Beschriftung „Spalte“, daneben Hilfstext `column` in Mono, Auswahl mit dem Namen „Spalte“.
   - Besteht: Beschriftung „Labels“ (der Schlüssel heißt `labels`; der Vergleich beachtet Groß- und Kleinschreibung).
   - Fällt durch: Beschriftung „column“; Beschriftung „Spalte column“ in einem Element; Gruppe der Zuständigen ohne Namen; Karte mit der Fälligkeit „2026-10-28“.
+  - Prüfebene: E2E `kultur.spec.js` (US-1, US-6, US-7); die Proben selbst über AK 7.
 - [ ] **2. Kurz nur im laufenden Jahr**: An den drei Stellen aus FA 4 steht ein Datum des laufenden Jahres kurz, jedes andere lang; Name und Tooltip nennen immer das Jahr.
   - Besteht (heute 06.11.2026): fällig 2026-10-28 → Karte „28.10.“, Name „fällig 28.10.2026“; fällig 2025-03-15 → „15.03.2025“; fällig 2027-01-01 → „01.01.2027“.
   - Jahreswechsel (Unit-Test, „heute“ als Argument): heute 2026-12-31, Datum 2026-12-31 → „31.12.“; Datum 2027-01-01 → „01.01.2027“; heute 2027-01-01, Datum 2026-12-31 → „31.12.2026“.
+  - Jahreswechsel im Browser (E2E, Uhr des Browsers über `page.clock` gestellt): Uhr 31.12.2026 12:00 → #5 „31.12.“, #6 „01.01.2027“; Uhr 01.01.2027 12:00 → #5 „31.12.2026“, #6 „01.01.“.
   - Fällt durch: „28.10.“ für 2025-10-28; Name „fällig 28.10.“ ohne Jahr; Durchlauf „10-28 14:05“ (heutige Form).
+  - Prüfebene: Unit `kultur.test.js` (Formen, Jahreswechsel mit „heute“ als Argument); E2E US-1, US-3, US-4, US-10.
 - [ ] **3. Karte und Aufgabenfenster**: Schnellvorschau, Archivleiste, Kommentare und die Tabelle der Aufgabenreservierungen zeigen lang; Durchläufe und Zeiten nach AK 2. Die Probe über Board, Archiv des Boards, Aufgabenfenster und „Neue Aufgabe“ findet nichts.
   - Besteht: „Archiviert am 01.10.2026“; „Claude · 17.10.2026 09:00“; Reservierung „seit 06.11.2026 14:05“ in der Tabelle.
   - Fällt durch: Reservierung „11-06 14:05“ (heutige Form, passt nicht auf die Regex).
   - Fällt durch: „Archiviert am 2026-10-01“; „Claude · 2026-10-17 09:00“.
   - Gegenbeispiel, das gleich bleibt: der Reiter „Datei“ zeigt `due: 2026-10-28`.
-- [ ] **4. Ganze Oberfläche**: Personen, Stundenzettel und jeder Bericht zeigen kein Datum in ISO-Form; Achsenmarken bleiben `TT.MM.` über `JJJJ`. Die Probe aus FA 18 findet in keiner Ansicht etwas, und ihre Ausnahmeliste ist leer.
+  - Prüfebene: E2E US-1, US-2, US-3.
+- [ ] **4. Ganze Oberfläche**: Personen, Stundenzettel und jeder Bericht zeigen kein Datum in ISO-Form; Achsenmarken und Tooltips der Diagramme bleiben in der Form aus R00073 (FA 7). Die Probe aus FA 18 findet in keiner Ansicht etwas, und ihre Ausnahmeliste ist leer.
   - Besteht: Wochenleiste in der Form „28.10.2026 – 03.11.2026“; Tabellenansicht Verlauf „01.10.2026“.
-  - Fällt durch: Tabellenansicht mit „2026-10-01“; ein `title` „2026-10-01“ an einem Balken.
+  - Besteht: Tooltip Burndown „Do 01.10.2026“; Achse „01.10.“ / „2026“.
+  - Fällt durch: Tabellenansicht mit „2026-10-01“; ein `title` „2026-10-01“ an einem Balken; Tooltip „2026-10-01“ oder „01.10.“ ohne Jahr.
+  - Prüfebene: E2E US-4, US-5, US-6; `r00073-diagramme.spec.js` unverändert grün.
 - [ ] **5. Übrige Beschriftungen**: Wirkungen, Phasen und Reservierung im Aufgabenfenster, WBS und Anforderungen in „Einrichten“ und die Felder des ersten Starts tragen die Beschriftungen aus FA 13, der Schlüssel steht als Hilfstext daneben.
   - Fällt durch: Beschriftung „wbs-effects“, „phases“, „reservation“ oder „agents“.
   - Gegenbeispiel, das gleich bleibt: der Prüfpunkt `wbs-effects-green` (R00059, R00071) nennt seinen Prüfnamen weiter in Tooltip und Namen; er ist keine Feldbeschriftung.
+  - Prüfebene: Unit (`FELDER`); E2E US-8.
 - [ ] **6. Ohne Herkunft**: Eine Aufgabe ohne Herkunft zeigt „ohne Herkunft“. Die Eingabe „ohne Herkunft“ oder `thin air` im Herkunftsfeld des Aufgabenfensters speichert `thin air` und ersetzt die übrigen Herkünfte.
   - Besteht: #1 mit `origins: [I0001, R00014]`, Eingabe „  Ohne Herkunft “ → Datei `origins: [thin air]`, Chip „ohne Herkunft“.
   - Besteht: Eingabe „THIN AIR“ → dasselbe.
   - Fällt durch: Eingabe „ohne Herkunftx“ ersetzt die Herkünfte (richtig ist: `origins: [I0001, R00014, ohne Herkunftx]`).
   - Gegenbeispiel, das gleich bleibt: der Filter `origin:"thin air"` findet die Aufgabe; der Filter `origin:"ohne Herkunft"` gehört nicht zu dieser Anforderung.
+  - Prüfebene: Unit (Erkennung der Eingabe); E2E US-9 mit Dateiinhalt vor und nach der Eingabe und nach Neuladen der Seite.
+- [ ] **7. Die Proben können rot werden** (Selbstproben in `e2e/tests/kultur-hilfen.js`, `page.setContent` ohne kanbanD): jede Regex und jede Regel der Beschriftungsprobe ist positiv und negativ geprüft (Fälle unter Tests).
+  - Besteht: „fällig 2026-10-28“ in einem `span` wird gemeldet, derselbe Text in `#dateitext` nicht; Beschriftung „column“ wird gemeldet, „Spalte“ mit Namen „Spalte“ nicht.
+  - Vollständigkeit: eine im Test an die Ansichtenliste angehängte Ansicht, die die Probe nicht abgeht, macht den Vollständigkeitstest rot.
+  - Ausnahmeliste: ein Eintrag, dessen Fundstelle es nicht gibt, macht die Probe rot.
+- [ ] **8. Negativ gegen heute**: dieselben Proben gegen den Stand `f74a8c1` melden mindestens die Fälligkeit auf der Karte, „Archiviert am 2026-10-01“, den Kommentar „Claude · 2026-10-17 09:00“, die Tabellenansicht Verlauf und die Beschriftungen `column`, `class`, `origins`, `assignees`, `due` sowie den Chip „thin air“. Belegt im Bericht des Entwicklers mit der Ausgabe.
+- [ ] **9. Abnahme der Karte**:
+  - `node --test e2e/einheit/kultur.test.js` ist grün, ebenso `npx playwright test kultur` in `e2e/`.
+  - Wird an der Fälligkeit der Karte (`web/ansicht.js`, Funktion der Karte) wieder `esc(a.faellig)` geschrieben, ist `npx playwright test kultur` rot und nennt Ansicht, Element und Text; nach dem Zurücknehmen ist er wieder grün.
+  - Alle bisherigen Unit- und E2E-Tests sind grün, die sechs mitgeänderten (siehe Tests) mit ihren neuen Erwartungen.
 
 ## Betroffene Verzeichnisstruktur
 
@@ -197,8 +214,14 @@ Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen d
 
 ## Tests
 
+Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine Zustandsänderung oder einen beobachteten Text gegen das Beispiel (Skill `test-ehrlichkeit`).
+
+- **Reihenfolge**: die Szenarien US-1 bis US-10 stehen vor der ersten Bubble als erwartet rot (`test.fail`) in `kultur.spec.js`; jede Bubble nimmt das `test.fail` an ihren Szenarien weg. Nach der letzten Bubble steht kein `test.fail` mehr dort. Erster roter Unit-Test: „Kurzform: heute 2026-12-31, Datum 2027-01-01 → 01.01.2027“; erster roter E2E-Test: US-1 „Fälligkeit 06.11.“.
+- **Integration**: entfällt. Server, API und Dateien ändern sich nicht; dass sie gleich bleiben, belegen die bestehenden API- und Dateitests (unverändert grün) und US-9 über den Dateiinhalt.
+- **Ehrlichkeit je Szene**: US-9 liest den Dateiinhalt vor der Eingabe (`[I0001, R00014]`) und danach (`[thin air]`), lädt die Seite neu und prüft den Chip erneut; das Gegenbeispiel „ohne Herkunftx“ beweist, dass die übrigen Herkünfte stehen bleiben (drei Einträge). Die Proben prüfen nicht nur „nichts gefunden“, sondern sind über AK 7 und AK 8 als rot-fähig belegt. US-10 stellt die Uhr des Browsers, damit der Jahreswechsel nicht vom Tag des Laufs abhängt.
+
 - **Unit-Test** `e2e/einheit/kultur.test.js` (node:test, wie `zeiten.test.js`):
-  - Langform `2026-10-28` → `28.10.2026`; Zeitpunkt `2026-10-28T14:05+01:00` → `28.10.2026 14:05` (Ortszeit wie `ortszeit`); Wochentag wie `deDatum` für Mo bis So (Verhalten aus R00073).
+  - Langform `2026-10-28` → `28.10.2026`; Zeitpunkt `2026-10-28T14:05+01:00` → `28.10.2026 14:05` (Ortszeit wie `ortszeit`); Wochentag wie `deDatum` für Mo bis So, darunter „Do 01.10.2026“ und „Sa 03.10.2026“ (die Erwartungen aus `r00073-diagramme.spec.js`); Achsenmarke „01.10.“ und „2026“.
   - Kurzform mit „heute“: Jahreswechsel nach AK 2 (31.12. kurz, 01.01. des Folgejahrs lang, Vorjahr lang); 28.10. mit heute 2026-11-06 kurz.
   - Mutanten fallen durch: Kurzform ohne Jahresvergleich, Tag und Monat vertauscht, fehlende führende Null.
   - `FELDER` enthält jeden Schlüssel aus FA 10 und 13 mit seiner Beschriftung; keine Beschriftung ist ein Schlüssel.
@@ -209,7 +232,8 @@ Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen d
   - Bekannte Grenze der Regex: Die heutige Form „10-28 14:05“ (Durchläufe) passt nicht. Diese Stellen prüfen die Szenarien US-2 und US-3 mit konkreten Erwartungen.
   - Beschriftungsprobe positiv (Verstoß erkannt): Beschriftung „column“, „labels“, „Spalte column“ in einem Element, Feld mit Namen „origins“ zur Beschriftung „Herkunft“, Knopfgruppe ohne Namen.
   - Beschriftungsprobe negativ (kein Verstoß): „Spalte“ mit Namen „Spalte“, „Labels“ mit Namen „Labels“, „Herkunft“ mit Namen „Neue Herkunft“.
-- **Probe** `e2e/tests/kultur.spec.js` nach dem Muster von `e2e/tests/ziele.spec.js`: Grundbestand, Ansichtenliste aus `e2e/tests/ansichten.js` plus Zustände aus FA 18, Vollständigkeitstest der Liste, Ausnahmeliste leer mit Alarm; Szenarien US-1 bis US-9 mit konkreten Erwartungen.
+- **Probe** `e2e/tests/kultur.spec.js` nach dem Muster von `e2e/tests/ziele.spec.js`, gegen das laufende Programm auf freiem Port: Grundbestand, Ansichtenliste aus `e2e/tests/ansichten.js` plus Zustände aus FA 18 und je Diagramm ein Tooltip, Vollständigkeitstest der Liste, Ausnahmeliste leer mit Alarm; Szenarien US-1 bis US-10 mit konkreten Erwartungen.
+  - Selbstprobe Vollständigkeit und Ausnahmeliste nach AK 7.
 - **Mitgeänderte E2E-Tests** (Erwartungen an sichtbaren Text, ADR-0013 Konsequenzen):
   - `r00004-board-ansehen.spec.js:37` — `.due` „2030-01-31“ → „31.01.2030“;
   - `r00028-schnelleingabe.spec.js:23` — `.due` morgen als ISO → Kurzform (am 31.12. lang);
@@ -217,7 +241,7 @@ Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen d
   - `r00013-kommentare.spec.js:19` — „Claude · 2026-10-17 09:00“ → „Claude · 17.10.2026 09:00“;
   - `r00023-verlauf.spec.js:34` — Tabelle „2026-10-01“ → „01.10.2026“;
   - `r00078-fieber.spec.js:160–161` — Tabelle `tag()` als ISO → Langform.
-- **Unverändert grün**: r00073 und r00076:73 (schon deutsch), r00090:18 (`data-kennung`, nicht sichtbar), r00035:50 (`assignees` im Reiter „Datei“), r00059 (`wbs-effects-green` ist ein Prüfname), alle Prüfungen von Dateiinhalten, `e2e/einheit/filter.test.js:12, :25` (`origin:"thin air"`), die 17 Tests mit `getByLabel`.
+- **Unverändert grün**: `r00073-diagramme.spec.js` (Tooltips und Achsen, FA 7) und r00076:73 (schon deutsch), r00090:18 (`data-kennung`, nicht sichtbar), r00035:50 (`assignees` im Reiter „Datei“), r00059 (`wbs-effects-green` ist ein Prüfname), alle Prüfungen von Dateiinhalten, `e2e/einheit/filter.test.js:12, :25` (`origin:"thin air"`), die 17 Tests mit `getByLabel`.
 - Abnahme-Befehle: `node --test e2e/einheit/kultur.test.js` und `npx playwright test kultur`.
 
 ## Abhängigkeiten
@@ -261,3 +285,12 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
   - Die Auswahl der Zuständigen bekommt einen Gruppennamen, damit auch sie ein Feld mit Namen ist.
 - **Bewusst außerhalb**: Filter `origin:"ohne Herkunft"` (PO Z. 145); Sprache des Browsers im nativen Datumsfeld (ADR-0013 „Was überwiegt“); Texte außerhalb der Weboberfläche (API-Antworten, CLI).
 - **Verworfene Alternativen (Schnitt)**: Karte und Fenster allein (PO Z. 144: alle); je Ansicht eine Anforderung (Modul und Probe sind gemeinsam, die Karte hat eine Abnahme); Schnitt nach Schichten (erst Modul, dann Ansichten) — nicht von außen prüfbar.
+- **Nachprüfung des Directors 2026-11-06** gegen `test-pyramide`, `test-ehrlichkeit`, R00073 und R00107:
+  - je Akzeptanzkriterium die Prüfebene;
+  - neu AK 7 (Proben können rot werden), AK 8 (negativ gegen heute) und AK 9 (Abnahme der Karte mit Rückbau-Probe), nach dem Muster von R00107;
+  - Tests: Reihenfolge mit `test.fail`, erste rote Tests, Integration entfällt mit Grund, Ehrlichkeit je Szene;
+  - US-9 mit Dateiinhalt vorher und nachher und Neuladen;
+  - neu US-10 Jahreswechsel mit gestellter Browser-Uhr (`page.clock`, wie `r00089`), #5 und #6 im Grundbestand;
+  - FA 7 und US-5: Tooltips und Achsen der Diagramme in der Form aus R00073, Probe fährt je Diagramm über die Zeichenfläche;
+  - WBS: Fertig-Kriterium I0098 auf US-1..US-10, Notizen an B0428 und B0433.
+  - Keine Bubble neu, Umfang unverändert.
