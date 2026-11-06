@@ -747,6 +747,11 @@ function fenstertitel() {
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
 
+/** Selektor des Texts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück. */
+function textDerTeilaufgabe(index) {
+  return `[role=dialog] [data-act="teil-bearbeiten"][data-arg="${index}"]`;
+}
+
 /** Selektor des Knopfs, der das offene Menü geöffnet hat — Esc gibt ihm den Fokus zurück. */
 function ausloeserDesMenues() {
   const pop = $('#pop');
@@ -865,6 +870,8 @@ async function act(a, arg, wert) {
       case 'teil-text': {
         const e = u.teilEdit, text = (wert || '').trim();
         u.teilEdit = null;
+        // Mit Enter gespeichert: zurück auf den Text; beim Verlassen per Klick bleibt der Fokus, wo er hingeht
+        if (e && document.activeElement === $('#teil-edit')) u.fokus = textDerTeilaufgabe(e.i);
         const t = e && aufgabe(e.nr) && aufgabe(e.nr).teilaufgaben[e.i];
         if (!t || !text || text === t.text) break;
         // sofort zeigen, geordnet im Hintergrund senden (R00037)
@@ -1603,7 +1610,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.fokus = ausloeserDesMenues(); S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
-    if (S.ui.teilEdit) { S.ui.teilEdit = null; render(); return; }
+    if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }

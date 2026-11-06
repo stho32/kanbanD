@@ -393,3 +393,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0418 Leertaste auf dem Text der Teilaufgabe bearbeitet wie bei jedem Knopf | Nacharbeit | 0,25-0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0419 Der Name einer Person bleibt in Einrichten bei 320 px lesbar | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0420 Der Board-Knopf ragt bei 320 px nicht unter den Seitenknopf | Nacharbeit | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0421 Nach dem Bearbeiten einer Teilaufgabe kehrt der Fokus auf ihren Text zurück | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
