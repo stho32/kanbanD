@@ -249,8 +249,8 @@ function nachDemLaden(ansicht) {
   if (ansicht === 'Aufgabenliste') return page => page.locator('main').getByText('eins').first().waitFor();
   if (ansicht === 'Einrichten') return page => page.locator('pre.yaml').first().waitFor();
   const bericht = ansicht.startsWith('Bericht ') && ansicht.slice(8);
-  if (bericht) return page => expect(page.locator('.leiste > b').first()).toHaveText(BERICHTSTITEL[bericht]);
-  return async () => {};
+  if (bericht && BERICHTSTITEL[bericht]) return page => expect(page.locator('.leiste > b').first()).toHaveText(BERICHTSTITEL[bericht]);
+  throw new Error(`nachDemLaden kennt „${ansicht}“ nicht — ohne Wartebedingung läse die Probe eine leere Seite`);
 }
 const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
 /** Der Tooltip eines Diagramms erscheint erst unter dem Zeiger (FA 18): einmal über die Mitte der Zeichenfläche. */
@@ -303,6 +303,10 @@ test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
   test('Vollständigkeit: jede Ansicht der gemeinsamen Liste und jeder Zustand steht in der Probe, keiner doppelt', () => {
     const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
     expect(vollstaendigkeit(ANSICHTEN.map(a => a.ansicht), gemeinsam, ZUSTAENDE)).toEqual({ fehlend: [], doppelt: [] });
+  });
+  test('jede Ansicht der gemeinsamen Liste hat eine Wartebedingung, eine unbekannte fällt auf', () => {
+    for (const { ansicht } of ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' })) expect(typeof nachDemLaden(ansicht), ansicht).toBe('function');
+    expect(() => nachDemLaden('Bericht neu')).toThrow('nachDemLaden kennt „Bericht neu“ nicht');
   });
   test('Selbstprobe der Vollständigkeit: eine neue Ansicht der gemeinsamen Liste und eine doppelte fallen auf', () => {
     const gemeinsam = [...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht), 'Bericht neu'];
