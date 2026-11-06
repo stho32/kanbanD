@@ -581,6 +581,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bf-gruppe .bf-chip[data-act="bf-person"],.bf-gruppe .bf-chip[data-act="bf-label"]{text-decoration:none}
 .bf-chip[data-act="bf-person"].an,.bf-chip[data-act="bf-label"].an{background:var(--kd-accent-weak);border-color:var(--kd-accent);color:var(--kd-accent-ink)}
 .bf-chip:focus-visible{outline:2px solid var(--kd-accent);outline-offset:1px}
+/* Fokusring nach dem vorhandenen Muster, wo er fehlte (R00106): Menüeinträge und Elemente der Pops, Radios; Felder behalten `.inp:focus` (`:where` hält die Spezifität darunter) */
+:where(.pop) :focus-visible,[role="radio"]:focus-visible{outline:2px solid var(--kd-accent);outline-offset:-2px}
 .bf-chip .pk{width:16px;height:16px;font-size:8px}
 .bf-farbe{width:10px;height:10px;border:1px solid var(--cl,var(--kd-line-strong));background:var(--c,var(--kd-surface))}
 .bf-leeren{margin-left:auto;height:24px}

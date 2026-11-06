@@ -643,3 +643,143 @@ test('US-4: Defekte Dateien: role=dialog, Fokus auf dem Pfad-Link, Fehlertext da
   await page.keyboard.press('Escape');
   await expect(page.locator('#t-defekt')).toBeFocused();
 });
+
+/* ── Sichtbarer Fokus: Ring nach dem vorhandenen Muster `outline: 2px solid var(--kd-accent)`, in Hell und Dunkel ── */
+const THEMEN = ['light', 'dark'];
+
+/** Ring des fokussierten Elements: berechneter Stil und Breite, ob die Farbe der Akzent ist; `.km-e.an` zählt als Hervorhebung. */
+const fokusRing = page => page.evaluate(() => {
+  const e = document.activeElement, s = getComputedStyle(e);
+  const probe = document.createElement('i');
+  probe.style.color = 'var(--kd-accent)';
+  document.body.append(probe);
+  const akzent = getComputedStyle(probe).color;
+  probe.remove();
+  return {
+    stil: s.outlineStyle, breite: parseFloat(s.outlineWidth), akzent: s.outlineColor === akzent,
+    hervorgehoben: e.matches('.km-e.an'), was: `${e.tagName}.${e.className} „${(e.textContent || '').trim().slice(0, 30)}“`,
+  };
+});
+
+/** Weich geprüft, damit ein Lauf alle fehlenden Ringe zeigt; `wo` nennt Thema und Stelle. */
+async function ringErwarten(page, wo) {
+  const r = await fokusRing(page);
+  expect.soft(r.was, `${wo}: Fokus nicht auf BODY`).not.toMatch(/^BODY/);
+  if (r.hervorgehoben) return;
+  expect.soft(r.stil, `${wo}: outline-style von ${r.was}`).not.toBe('none');
+  expect.soft(r.breite, `${wo}: outline-width von ${r.was}`).toBeGreaterThanOrEqual(2);
+  expect.soft(r.akzent, `${wo}: outline-color von ${r.was} ist var(--kd-accent)`).toBe(true);
+}
+
+/** Thema per Systemeinstellung; geprüft, dass es wirklich gilt (kein gespeichertes Thema übersteuert). */
+async function themaSetzen(page, thema) {
+  await page.emulateMedia({ colorScheme: thema });
+  expect(await page.evaluate(() => [matchMedia('(prefers-color-scheme: dark)').matches, document.documentElement.dataset.theme || ''])).toEqual([thema === 'dark', '']);
+}
+
+test('Sichtbarer Fokus: fokussierte Menüeinträge (Mehr, Seite, Berichte, Ich, Kontextmenü) tragen den Ring in Hell und Dunkel', async ({ page }) => {
+  for (const thema of THEMEN) {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await themaSetzen(page, thema);
+    await page.locator('#t-mehr').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#t-mehr')).toHaveAttribute('aria-expanded', 'true');
+    await ringErwarten(page, `${thema} Mehr, erster Eintrag`);
+    await page.keyboard.press('ArrowDown');
+    await ringErwarten(page, `${thema} Mehr, zweiter Eintrag`);
+    await page.keyboard.press('Escape');
+    await page.locator('#t-ber').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#t-ber')).toHaveAttribute('aria-expanded', 'true');
+    await ringErwarten(page, `${thema} Berichte, „Stundenzettel“`);
+    await page.keyboard.press('Escape');
+    await page.locator('#t-ich').focus();
+    await page.keyboard.press('Enter');
+    await expect(ichEintrag(page, 'Stefan')).toBeFocused();
+    await ringErwarten(page, `${thema} Ich-Menü, „Stefan“`);
+    await page.keyboard.press('Escape');
+    await page.locator('.ka[data-id="1"]').focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(page.locator('#kmenue [role="menuitem"]', { hasText: 'Öffnen' }).first()).toBeFocused();
+    await ringErwarten(page, `${thema} Kontextmenü, „Öffnen“`);
+    await page.keyboard.press('ArrowDown');
+    await ringErwarten(page, `${thema} Kontextmenü, zweiter Eintrag`);
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.locator('#t-seite').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Board$/ })).toBeFocused();
+    await ringErwarten(page, `${thema} Seite, „Board“`);
+    await page.keyboard.press('Escape');
+  }
+});
+
+test('Sichtbarer Fokus: fokussierte Elemente der Pop-Fenster (Boards, Läuft gerade, Defekte Dateien) tragen den Ring in Hell und Dunkel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/start`, ALS_ST)).ok()).toBe(true);
+  await expect(page.locator('#t-lauf')).toBeVisible();
+  for (const thema of THEMEN) {
+    await themaSetzen(page, thema);
+    await page.locator('#t-board').focus();
+    await page.keyboard.press('Enter');
+    const boards = page.getByRole('dialog', { name: 'Boards' });
+    await expect(boards.getByRole('button', { name: /fabrik/ })).toBeFocused();
+    await ringErwarten(page, `${thema} Boards, „fabrik“`);
+    await page.keyboard.press('Tab');
+    await ringErwarten(page, `${thema} Boards, Reservierungen`);
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#board-neu')).toBeFocused();
+    await ringErwarten(page, `${thema} Boards, Feld #board-neu`);
+    expect.soft(await page.locator('#board-neu').evaluate(e => getComputedStyle(e).outlineOffset), `${thema}: das Feld behält seinen Ring aus .inp:focus`).toBe('-1px');
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#pop')).toHaveCount(0);
+    await page.locator('#t-lauf').focus();
+    await page.keyboard.press('Enter');
+    const lauf = page.getByRole('dialog', { name: 'Läuft gerade' });
+    await expect(lauf.getByRole('button', { name: '#1 öffnen' })).toBeFocused();
+    await ringErwarten(page, `${thema} Läuft gerade, „#1 öffnen“`);
+    await page.keyboard.press('Tab');
+    await ringErwarten(page, `${thema} Läuft gerade, „Timer stoppen“`);
+    await page.keyboard.press('Escape');
+    await page.locator('#t-defekt').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Defekte Dateien' }).getByRole('link')).toBeFocused();
+    await ringErwarten(page, `${thema} Defekte Dateien, Pfad-Link`);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#pop')).toHaveCount(0);
+  }
+});
+
+test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Personen, Person) tragen den Ring in Hell und Dunkel', async ({ page }) => {
+  /** Fokus auf das gewählte Radio der Gruppe, → wählt das nächste: beide Male ein Ring; ← stellt die Wahl wieder her. */
+  async function gruppePruefen(gruppe, wo) {
+    const gewaehlt = page.getByRole('radiogroup', { name: gruppe, exact: true }).locator('[role="radio"][tabindex="0"]');
+    await gewaehlt.focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowLeft');
+    await expect(gewaehlt).toBeFocused();
+    await ringErwarten(page, `${wo}, gewählt`);
+    await page.keyboard.press('ArrowRight');
+    await ringErwarten(page, `${wo}, nach →`);
+    await page.keyboard.press('ArrowLeft');
+  }
+  for (const thema of THEMEN) {
+    await themaSetzen(page, thema);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(k.adresse + '#/board/fabrik');
+    await page.locator('#flt').focus();
+    await page.keyboard.press('Tab');
+    await expect(radio(page, 'Bereich', 'alle')).toBeFocused();
+    await ringErwarten(page, `${thema} Bereich 1280 px, „alle“ per Tab`);
+    await gruppePruefen('Bereich', `${thema} Bereich 1280 px`);
+    await page.setViewportSize({ width: 375, height: 800 });
+    await gruppePruefen('Bereich', `${thema} Bereich 375 px (Chips)`);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(k.adresse + '#/aufgaben');
+    await gruppePruefen('Aufgabenbereich', `${thema} Aufgabenbereich`);
+    await page.goto(k.adresse + '#/personen');
+    await gruppePruefen('Personen', `${thema} Personen`);
+    await page.goto(k.adresse + '#/berichte/stundenzettel');
+    await gruppePruefen('Person', `${thema} Stundenzettel, Person`);
+  }
+});
