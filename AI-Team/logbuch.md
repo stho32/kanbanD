@@ -304,3 +304,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Nacharbeit 1 | product-owner | entschieden Z. 140/141: Test von #10 folgt Regel Z. 133, Umbruchfall bleibt geprüft; nicht richtungsweisend | 0:08 | 0e725ee |
 | 2026-11-06 | #9 | Nacharbeit 1 | entwickler | bestanden: Befunde 1–3, US-4, Ansichtenliste, Ausweichprobe nach PO Z. 140/141; Gate 266/266 + 685 passed | 0:52 | 9e68917 |
 | 2026-11-06 | #9 | Auto-Reviews | code-reviewer | bestanden (Wiederholung): B1–B3 behoben, per Mutation geprobt; Anmerkungen A1–A3 → #70 | 0:09 | — |
+| 2026-11-06 | #9 | Entwicklertest | entwicklertester | bestanden: US-1–US-9 hell/dunkel nachgemessen; Anmerkungen → PO Z. 142–143, #71, #72 | 0:07 | — |
+| 2026-11-06 | #9 | Erledigt | director | Merge a917765, Gate cargo 554 · Unit 266 · E2E 685, ausgeliefert, nicht gepusht | 0:15 | a917765 |
