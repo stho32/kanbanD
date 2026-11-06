@@ -1,6 +1,6 @@
 // R00108 Selbstproben des Messhelfers (ADR-0012 Regel 6): künstliche Seiten ohne kanbanD.
 const { test, expect } = require('@playwright/test');
-const { zieleMessen, titelPruefen } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen } = require('./ziele-hilfen');
 
 const STIL = '<style>body{margin:0}button{all:unset;box-sizing:border-box;position:absolute;background:#ccc}</style>';
 const knopf = (x, y, groesse, name, stil = '') => `<button aria-label="${name}" style="left:${x}px;top:${y}px;width:${groesse}px;height:${groesse}px;${stil}"></button>`;
@@ -98,5 +98,18 @@ test.describe('Selbstprobe ohne Kreis-Ausnahme', () => {
     await page.setContent(STIL + knopf(100, 100, 20, 'einsam'));
     expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe' })).toEqual([]);
     expect(namen(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe', ohneKreis: true }))).toEqual(['einsam']);
+  });
+});
+
+test.describe('Selbstprobe Breite', () => {
+  test.use({ viewport: { width: 320, height: 600 } });
+  test('321 px Inhalt bei 320 px fällt durch, 320 px besteht, ein in sich scrollender Bereich zählt nicht', async ({ page }) => {
+    const seite = inhalt => `<style>body{margin:0}</style><main id="main">${inhalt}</main>`;
+    await page.setContent(seite('<div style="width:321px;height:10px"></div>'));
+    expect((await breiteMessen(page, 'probe')).map(v => v.ort)).toEqual(['Seite', '#main']);
+    await page.setContent(seite('<div style="width:320px;height:10px"></div>'));
+    expect(await breiteMessen(page, 'probe')).toEqual([]);
+    await page.setContent(seite('<div style="overflow-x:auto"><div style="width:900px;height:10px"></div></div>'));
+    expect(await breiteMessen(page, 'probe')).toEqual([]);
   });
 });

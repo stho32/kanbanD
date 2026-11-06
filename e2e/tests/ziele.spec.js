@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
-const { zieleMessen, titelPruefen } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -340,3 +340,19 @@ test.describe('Messprobe, Touch, 390 px', () => {
     expect(await titelPruefen(page, 'Board')).toEqual([]);
   });
 });
+
+// B0406: Breitenprobe — bei 320, 375 und 414 px mit Touch scrollt keine Ansicht waagrecht (in sich scrollende Bereiche ausgenommen).
+for (const breite of [320, 375, 414]) {
+  test.describe(`Breitenprobe, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+    for (const { ansicht, oeffnen, touchBreite } of ANSICHTEN.filter(a => !a.ansicht.startsWith('Kontextmenü'))) {
+      if (touchBreite && touchBreite > breite) continue;
+      test(`${ansicht}: höchstens ${breite} px breit`, async ({ page }) => {
+        await starten(page);
+        await oeffnen(page);
+        await expect(page.locator('body')).not.toBeEmpty();
+        expect(await breiteMessen(page, ansicht)).toEqual([]);
+      });
+    }
+  });
+}

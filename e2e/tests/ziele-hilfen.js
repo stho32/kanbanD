@@ -128,4 +128,17 @@ function titelPruefen(page, ansicht) {
   return page.evaluate(imBrowserTitelPruefen, { ansicht });
 }
 
-module.exports = { zieleMessen, titelPruefen, MASS };
+/**
+ * Waagrechtes Scrollen der Seite (B0406): Seite und #main höchstens so breit wie das Fenster.
+ * In sich scrollende Bereiche (Spaltenleiste, breite Tabellen) sind eigene Scroll-Container und zählen nicht.
+ */
+function breiteMessen(page, ansicht) {
+  return page.evaluate(ansicht => {
+    const orte = [['Seite', document.documentElement], ['#main', document.getElementById('main')]];
+    return orte
+      .filter(([, el]) => el && el.scrollWidth > el.clientWidth)
+      .map(([ort, el]) => ({ ansicht, ort, breite: innerWidth, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+  }, ansicht);
+}
+
+module.exports = { zieleMessen, titelPruefen, breiteMessen, MASS };
