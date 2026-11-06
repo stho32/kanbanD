@@ -25,11 +25,11 @@ const ANSICHTEN = ['#/board/', '#/aufgaben', '#/personen', '#/einrichten', '#/wb
   '#/berichte/durchlauf', '#/berichte/prognose', '#/berichte/fieber', '#/berichte/kosten', '#/berichte/bestand'];
 /**
  * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und heute unter 4,5 messen.
- * Die Gestaltung ist offen (Befund an den Director aus der UX-Nacharbeit); der Test „Nicht gemessen“ hält die Liste ehrlich.
+ * Erwartet rot mit Verweis auf Karte #57, die ihre Gestaltung klärt; der Test „Nicht gemessen“ schlägt Alarm, sobald ein Eintrag lesbar wird oder verschwindet.
  */
 const NICHT_GEMESSEN = [
-  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', grund: 'Initialen ruhender Personen, opacity .55' },
-  { selektor: '.pk-still', ansicht: '#/einrichten', grund: 'Initiale stillgelegter Person, opacity .5' },
+  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', karte: '#57', grund: 'Initialen ruhender Personen, opacity .55' },
+  { selektor: '.pk-still', ansicht: '#/einrichten', karte: '#57', grund: 'Initiale stillgelegter Person, opacity .5' },
 ];
 
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
@@ -295,8 +295,9 @@ test.describe('R00107 Kontrast', () => {
     }
   });
 
-  test('Nicht gemessen: jeder Eintrag kommt in seiner Ansicht vor und misst heute unter 4,5', async ({ page }) => {
+  test('Nicht gemessen: jeder Eintrag verweist auf Karte #57, kommt in seiner Ansicht vor und misst heute unter 4,5', async ({ page }) => {
     for (const n of NICHT_GEMESSEN) {
+      expect(n.karte, n.selektor).toBe('#57');
       await page.goto(k.adresse + n.ansicht);
       await liveBereit(page);
       const ort = page.locator(n.selektor).first();
