@@ -161,3 +161,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Nacharbeit | director | Rückzug Entwicklertest → Nacharbeit (A1 Oberfläche), Zweig nacharbeit/48 | — | — |
 | 2026-11-06 | #48 | Nacharbeit | entwickler (entw1) | bestanden: B0345 400 beim Board-Laden wie 423 → Defektfläche, E2E rot→grün, ff 1c85499 | 0:12 | Typ Nacharbeit |
 | 2026-11-06 | #48 | Entwicklertest | director | Zug Nacharbeit → Entwicklertest, enge Wiederholung | — | — |
+| 2026-11-06 | #48 | Entwicklertest | entwicklertester (etst) | bestanden: enge Wiederholung A1 + Regression 423, Reload, US-5, US-6 | 0:04 | Anmerkung jede 400 → Defektfläche auf Härtungskarte |
+| 2026-11-06 | #48 | Erledigt | director | Zug Entwicklertest → Erledigt, ausgeliefert 771208f auf 7422 (eine Instanz, zustand 200) | — | — |
