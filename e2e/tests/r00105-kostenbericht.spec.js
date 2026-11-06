@@ -53,7 +53,8 @@ test.describe('R00105 Kostenbericht', () => {
     await page.locator('#t-ber').click();
     const menue = page.getByRole('menu', { name: 'Berichte' });
     const gruppen = await menue.evaluate(m => [...m.children].map(e => (e.classList.contains('k') ? `[${e.textContent}]` : e.querySelector('b').textContent)));
-    expect(gruppen.slice(gruppen.indexOf('[BESTAND]'), gruppen.indexOf('[AUSLEITEN]'))).toEqual(['[BESTAND]', 'Kosten']);
+    // AK R00105: „hinter „Bestand nach Labels“, falls R00100 gebaut ist, sonst als einziger Eintrag“ — R00100 ist gebaut.
+    expect(gruppen.slice(gruppen.indexOf('[BESTAND]'), gruppen.indexOf('[AUSLEITEN]'))).toEqual(['[BESTAND]', 'Bestand nach Labels', 'Kosten']);
     const eintrag = menue.getByRole('menuitem', { name: /^Kosten/ });
     await expect(eintrag.locator('small')).toHaveText('Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.');
     await expect(eintrag.locator('svg.i')).toHaveCount(1);
