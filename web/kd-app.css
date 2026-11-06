@@ -271,6 +271,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .best-tab tbody tr:hover td.k{background:var(--c)}
 .best-leg{position:static;height:auto;min-height:28px;flex-wrap:wrap;border-top:1px solid var(--kd-line);gap:var(--kd-s3)}
 .best-le{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 var(--kd-s2);white-space:nowrap}
+.best-tab a.bz{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
+.best-erkl{margin:0;padding:var(--kd-s2) var(--kd-s6);color:var(--kd-muted);font-size:12px}
 .best-leer{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);margin:0;padding:16px var(--kd-s6);color:var(--kd-muted);font-size:13px}
 .mod-side{border-left:1px solid var(--kd-line);background:var(--kd-bg);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4)}
 .titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%}

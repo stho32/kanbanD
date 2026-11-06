@@ -214,6 +214,32 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(page.locator('#flt')).toHaveValue('');
   });
 
+  test('US-2: Klick auf die Zahl in shop × 304 öffnet das Board mit label:repo:shop label:nc:304 — sichtbar genau #1, #2, #6', async ({ page }) => {
+    await bericht(page, grundbestand());
+    await (await zelle(page, 'shop', '304')).getByRole('link', { name: /^repo:shop × nc:304: 2 offen/ }).click();
+    await expect(page).toHaveURL(/#\/board\/fabrik$/);
+    await expect(page.locator('#flt')).toHaveValue('label:repo:shop label:nc:304');
+    await expect(page.locator('.ka[data-id]:visible')).toHaveCount(3);
+    expect((await page.locator('.ka[data-id]:visible').evaluateAll(e => e.map(x => Number(x.dataset.id)))).sort()).toEqual([1, 2, 6]);
+  });
+
+  test('Gegenbeispiele: „(ohne …)“, Summe und leere Zelle sind kein Link, ein Klick ändert weder Route noch Filter; unterstrichen sind genau die drei klickbaren Zahlen; Erklärsatz', async ({ page }) => {
+    await bericht(page, grundbestand());
+    await expect(tabelle(page).getByRole('link')).toHaveText(['1', '2', '1']);
+    const unterstrichen = await tabelle(page).locator('td, td *').evaluateAll(e => e.filter(x => getComputedStyle(x).textDecorationLine.includes('underline')).map(x => x.textContent.trim()));
+    expect(unterstrichen).toEqual(['1', '2', '1']);
+    const adresse = page.url();
+    for (const [z, s] of [['lager', '(ohne nc)'], ['shop', 'Summe'], ['shop', '(ohne nc)'], ['Summe', '304']]) {
+      const ort = await zelle(page, z, s);
+      await expect(ort.getByRole('link'), `${z} × ${s}`).toHaveCount(0);
+      await ort.click();
+      expect(page.url(), `${z} × ${s}`).toBe(adresse);
+    }
+    await expect(page.locator('#bestand .best-erkl')).toHaveText('Eine Zahl öffnet das Board mit diesen Aufgaben. Nicht klickbar sind „(ohne …)“ und die Summen. Das Board übernimmt die Filter der Berichte nicht und zeigt auch die Abschlussspalte.');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await expect(page.locator('#flt')).toHaveValue('');
+  });
+
   for (const breite of [320, 375, 414]) {
     test(`Schmales Layout ${breite} px: nur der Tabellenbereich scrollt quer, „shop“ und „409“ bleiben am Ende sichtbar`, async ({ page }) => {
       await page.setViewportSize({ width: breite, height: 800 });

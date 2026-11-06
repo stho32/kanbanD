@@ -989,6 +989,7 @@ async function act(a, arg, wert) {
       }
       case 'bf-leeren': berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); u.fokus = '.bf-zusammen'; break; // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
+      case 'bestand-zelle': filterSetzen(arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'wbs-klapp': {
         const kl = wbsKlapp(), zu = zugeklappt(S.wbs.knoten, kl, S.wbs.stand.pfad);

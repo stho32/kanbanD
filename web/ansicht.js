@@ -933,9 +933,9 @@ function vBestandTabelle(t, achsen, klassen) {
   const kopf = `<tr><th scope="col" class="ecke">${esc(achsen.zeilen)} ↓ · ${esc(achsen.spalten)} →</th>${t.spalten.map(s => `<th scope="col" class="r">${esc(s.wert)}</th>`).join('')}<th scope="col" class="r">Summe</th></tr>`;
   const zeilen = t.zeilen.map((z, i) => `<tr><th scope="row">${esc(z.wert)}</th>${t.spalten.map((s, j) => zelle(z, s, t.zellen[i][j])).join('')}${zelle(z, null, { zahl: t.summen.zeilen[i] })}</tr>`).join('');
   const summen = `<tr class="grp best-summe"><th scope="row">Summe</th>${t.spalten.map((s, j) => zelle(null, s, { zahl: t.summen.spalten[j] })).join('')}${zelle(null, null, { zahl: t.summen.gesamt })}</tr>`;
-  return `<div class="best-scroll" id="best-scroll"><table class="pt dicht best-tab" aria-label="Bestand nach Labels: ${esc(achsen.zeilen)} × ${esc(achsen.spalten)}"><thead>${kopf}</thead><tbody>${zeilen}${summen}</tbody></table></div>`;
+  return `<div class="best-scroll" id="best-scroll"><table class="pt dicht best-tab" aria-label="Bestand nach Labels: ${esc(achsen.zeilen)} × ${esc(achsen.spalten)}"><thead>${kopf}</thead><tbody>${zeilen}${summen}</tbody></table></div><p class="best-erkl">Eine Zahl öffnet das Board mit diesen Aufgaben. Nicht klickbar sind „(ohne …)“ und die Summen. Das Board übernimmt die Filter der Berichte nicht und zeigt auch die Abschlussspalte.</p>`;
 }
-/** Eine Stelle der Tabelle: Summe fett, leere Zelle „—“, sonst die Zahl in der Farbe der dringendsten Klasse; Name als title und aria-label. */
+/** Eine Stelle der Tabelle: Summe fett, leere Zelle „—“, sonst die Zahl in der Farbe der dringendsten Klasse, mit Zielfilter als Link aufs Board; Name als title und aria-label am Link bzw. an der Zelle. */
 function vBestandZelle(stelle, achsen, klassen) {
   const name = esc(zellName(stelle, achsen, klassen)), z = stelle.zelle;
   const benannt = `title="${name}" aria-label="${name}"`;
@@ -943,7 +943,9 @@ function vBestandZelle(stelle, achsen, klassen) {
   if (!z.zahl) return `<td class="r" ${benannt}><span class="muted">—</span></td>`;
   const klasse = klassen.find(k => k.schluessel === z.dringendste);
   const farbe = klasse ? ` style="${cv(klasse.farbe)}"` : '';
-  return `<td class="r${klasse ? ' k' : ''}"${farbe} ${benannt}><span class="bz-t">${z.zahl}</span></td>`;
+  const ziel = zielfilter(stelle, achsen);
+  if (!ziel) return `<td class="r${klasse ? ' k' : ''}"${farbe} ${benannt}><span class="bz-t">${z.zahl}</span></td>`;
+  return `<td class="r${klasse ? ' k' : ''}"${farbe}><a class="bz" href="#/board/${esc(S.ui.slug || '')}" data-act="bestand-zelle" data-arg="${esc(ziel)}" ${benannt}>${z.zahl}</a></td>`;
 }
 
 /* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
