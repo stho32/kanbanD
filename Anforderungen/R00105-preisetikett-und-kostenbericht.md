@@ -35,21 +35,30 @@ Der Betreiber will jedem Feature einen Preis geben: was hat es an API-Kosten gek
 - Jeder ungültige Wert wird mit 400 abgewiesen, die Meldung nennt den Pfad und bei Schutzwerten die Grenze; nichts wird geschrieben.
 - Ein ungültiger Abschnitt in der Datei macht die Aufgabe defekt (nur lesbar), die Meldung nennt den Pfad.
 
-### Preisetikett auf der Karte (PO Z. 19, 30)
+### Preisetikett auf der Karte (PO Z. 19, 30, 91, 92, 99)
 - Die Karte zeigt „≈“ und die Mitte, kaufmännisch auf Cent gerundet.
-- Beim Darüberfahren steht die Spanne (bzw. der Betrag) mit „geschätzte API-Kosten“; der zugängliche Name nennt „geschätzt <min> bis <max>“.
-- Beschriftung auf der Karte „Preisetikett“.
+- Beim Darüberfahren steht die Spanne (bzw. der Betrag) mit „geschätzte API-Kosten“, z. B. „0,60–1,60 $ · geschätzte API-Kosten“.
+- Der zugängliche Name steht als visuell versteckter Text im Etikett, nicht als `aria-label` an einem Element ohne Rolle: „Preisetikett: geschätzt <min> bis <max>, geschätzte API-Kosten“, bei einem Betrag „Preisetikett: geschätzt <Betrag>, geschätzte API-Kosten“. Das sichtbare „≈ <Mitte>“ ist `aria-hidden`.
+- Das Etikett heißt im zugänglichen Namen „Preisetikett“; sichtbar steht nur „≈ <Betrag>“.
+- Das Etikett steht in der Zeile r3 der Karte vor „Σ“ und sieht aus wie die Zeitsumme `.sum` (Text, kein Rahmen), nicht wie ein Label. Kontrast mindestens 4,5:1 in Hell und Dunkel, auch auf dem getönten Grund jeder Klassenfarbe. „Chip“ in den PO-Zeilen 21 und 30 meint dieses Element.
 
-### Reiter „Kosten“ (PO Z. 29, 31)
-- Reiter „Kosten“ neben „Inhalt“ und „Datei“ im Aufgabenfenster.
-- Tabelle `Position | Tokens | niedrig | hoch` mit Summenzeile; die Spalte Tokens nur, wenn eine Position Tokens trägt; darunter die Basis und „geschätzte API-Kosten“.
+### Reiter „Kosten“ (PO Z. 29, 31, 85, 88, 90, 93, 94, 98)
+- Reiter „Kosten“ neben „Inhalt“ und „Datei“ im Aufgabenfenster, nur bei einer Aufgabe mit Etikett. Ohne Etikett zeigt das Fenster genau die Reiter „Inhalt“ und „Datei“; einen Reiter mit „Kein Preisetikett“ gibt es nicht.
+- Reiterleiste (gilt für alle drei Reiter, eine Komponente): Die Reiter Inhalt, Datei und Kosten liegen in einem Element `role=tablist` mit dem Namen „Ansicht der Aufgabe“. Jeder Reiter hat `role=tab`, `aria-selected` und `aria-controls` auf ein `role=tabpanel`. Nur der gewählte Reiter hat `tabindex=0`, die anderen `-1`. ← und → bewegen den Fokus zum vorigen bzw. nächsten Reiter mit Umlauf und zeigen dessen Inhalt sofort; Pos1 und Ende springen zum ersten bzw. letzten Reiter; Enter und Leertaste zeigen den Inhalt des fokussierten Reiters. Nach jedem Wechsel steht der Fokus auf dem gewählten Reiter. `d` wechselt wie bisher zu Datei, aus Datei zu Inhalt. Die Kürzelhilfe des Aufgabenfensters nennt „← →“ mit „Reiter wechseln (Fokus auf einem Reiter)“.
+- Rückfall: Hat die gezeigte Aufgabe kein Etikett mehr (Blättern zu einer Aufgabe ohne Etikett oder Etikett live entfernt), zeigt das Fenster „Inhalt“. Lag der Fokus auf der Reiterleiste oder im Panel „Kosten“, steht er danach auf dem Reiter „Inhalt“; lag er woanders (Titel, Kommentar, Blätterknopf), bleibt er dort.
+- Tabelle `Position | Tokens | niedrig | hoch` mit der Beschriftung (`caption`) „Geschätzte API-Kosten (<Währungscode>)“, also „(USD)“ oder „(EUR)“ je Aufgabe. Die Spaltenköpfe sind `th scope=col`, jede Zeile beginnt mit `th scope=row` (Position, „Gesamt“, „Summe“). Die Summenzeile beginnt mit „Summe“. Die Spalte Tokens steht nur, wenn eine Position Tokens trägt. Unter der Tabelle steht die Basis; der Satz „geschätzte API-Kosten“ steht nur in der Beschriftung, nicht noch einmal darunter.
 - Ohne Positionen eine Zeile „Gesamt“; ein Betrag steht in beiden Spalten.
+- Bei 320, 375 und 414 px Breite sind im Kopf des Aufgabenfensters alle Reiter und ✕ sichtbar und bedienbar, und der Kopf scrollt nicht waagrecht (`scrollWidth ≤ clientWidth`), in Hell und Dunkel.
 - Nur lesend; Bearbeiten ist eine spätere Ausbaustufe.
 
-### Kostenbericht (PO Z. 33, 79–83)
-- Bericht „Kosten“ im Menü „Berichte“ mit eigener Route und Fenstertitel „Kosten — kanbanD“.
+### Kostenbericht (PO Z. 33, 79–83, 86, 87, 89, 95–97)
+- Bericht „Kosten“ im Menü „Berichte“ in der Gruppe BESTAND hinter „Bestand nach Labels“, mit eigenem Symbol und der Beschreibung „Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.“; Route `#/berichte/kosten`, Fenstertitel „Kosten — kanbanD“. Wird R00105 vor R00100 gebaut, legt es die Gruppe BESTAND an.
+- Kopfleiste „Kosten · geschätzte API-Kosten · liest nur“.
 - **m** sind alle Aufgaben des Boards in jeder Spalte, auch in der Abschlussspalte, und alle archivierten (auch die außerhalb der Abschlussspalte archivierten, also verworfenen), soweit sie zur Filterleiste passen; **n** sind davon die mit Etikett. Aufgaben auf keinem Board zählen nicht; eine Aufgabe auf zwei Boards zählt in beiden.
-- Je Währung eine Zeile „Summe <niedrig>–<hoch> · n von m Aufgaben mit Etikett, alle Spalten, auch archivierte“; beide Summen laufen über dieselben n Aufgaben; sind niedrig und hoch gleich, steht ein Betrag; keine Umrechnung zwischen Währungen.
+- Je Währung eine Zeile „Summe <niedrig>–<hoch> · n von m Aufgaben mit Etikett, <Umfang>“; beide Summen laufen über dieselben n Aufgaben; sind niedrig und hoch gleich, steht ein Betrag („Summe 1,63 $“); die Summe trägt kein „≈“; keine Umrechnung zwischen Währungen. Reihenfolge der Zeilen: USD zuerst, danach alphabetisch nach ISO-Code.
+- **Umfang**: ohne aktiven Filter „alle Spalten, auch archivierte“, mit mindestens einem aktiven Filter „nach Filter, auch archivierte“. Aktiv ist, was die Filterleiste als aktiv zählt (`filterAnzahl`), ein gespeicherter Zeitraum also nicht. Gilt für die Summenzeilen und für den Leerzustand ohne Etikett.
+- Leerzustand ohne Etikett (n = 0, und m > 0 oder kein aktiver Filter): „Keine Aufgabe mit Preisetikett · 0 von m Aufgaben, <Umfang>“, darunter „Preisetiketten setzt ein Agent über die API (Feld `cost` beim Ändern einer Aufgabe).“ mit einem Link auf die Seite der Agenten-Schnittstelle (D0007, `/api`).
+- Leerzustand nach Filter (m = 0 bei mindestens einem aktiven Filter): „Keine Aufgaben, die zu den Filtern der Berichte passen.“ und darunter der Knopf „Zurücksetzen“ der Filterleiste, derselbe wie in R00100, ohne Zahl im Knopf; die Zahl aktiver Filter steht in der Zusammenfassung.
 - Jedes Etikett zählt genau einmal, auch eine Position „Gemeinkostenanteil“ und eine Sammelkarte.
 - Sichtbare Texte sagen „Aufgaben“, nicht „Karten“.
 
@@ -63,7 +72,7 @@ Der Betreiber will jedem Feature einen Preis geben: was hat es an API-Kosten gek
 ## Nicht-funktionale Anforderungen
 - Genauigkeit: gerechnet wird in ganzen Cent; keine Gleitkomma-Abweichung in Mitte und Summen (ADR-0009).
 - Verträglichkeit: kein API-Fehler zu `cost` antwortet mit 422 oder 500.
-- Barrierefreiheit: das Preisetikett hat einen zugänglichen Namen mit der Spanne; die Tabelle des Reiters hat Spaltenköpfe.
+- Barrierefreiheit: das Preisetikett hat einen zugänglichen Namen mit der Spanne als visuell versteckten Text, „≈“ ist `aria-hidden`; die Reiterleiste folgt dem Muster „Tabs“ der WAI-ARIA APG mit automatischer Aktivierung; die Tabelle des Reiters hat `caption`, Spaltenköpfe `th scope=col` und Zeilenköpfe `th scope=row`; Kontrast des Etiketts mindestens 4,5:1 (WCAG 2.1 SC 1.4.3); der Kopf des Aufgabenfensters scrollt ab 320 px nicht waagrecht (SC 1.4.10).
 - Bestand: keine vorhandene Aufgabe ändert sich; heute trägt keine `cost` (ADR-0009).
 
 ## Akzeptanzkriterien
@@ -102,14 +111,32 @@ Grundbestand für Karte und Reiter: Board „fabrik“ mit den Spalten Eingang, 
 - [ ] Gegeben #1 mit `{currency: EUR, amount: 25.55}`, wenn das Board angesehen wird, dann zeigt die Karte „≈ 25,55 €“
 - [ ] Leerfall: Gegeben #4 ohne Etikett, wenn das Board angesehen wird, dann trägt die Karte kein Preisetikett
 - [ ] Gegeben #1 mit 0,60–1,60 USD, wenn das Board angesehen wurde, dann enthält die Datei von #1 keine Mitte (byte-gleich wie vorher)
+- [ ] Gegeben #1 mit 0,60–1,60 USD, wenn der zugängliche Name des Preisetiketts gelesen wird, dann lautet er „Preisetikett: geschätzt 0,60 bis 1,60 $, geschätzte API-Kosten“ und stammt aus einem visuell versteckten Text im Etikett; das sichtbare „≈ 1,10 $“ trägt `aria-hidden="true"`, und das Etikett trägt kein `aria-label`
+- [ ] Gegeben #1 mit `amount: 1.63` USD, wenn der zugängliche Name des Preisetiketts gelesen wird, dann lautet er „Preisetikett: geschätzt 1,63 $, geschätzte API-Kosten“
+- [ ] Gegenbeispiel: Gegeben #1 mit 0,60–1,60 USD, wenn der sichtbare Text der Karte gelesen wird (`innerText`), dann enthält er „≈ 1,10 $“, aber nicht „Preisetikett“ und nicht „geschätzt“
+- [ ] Gegeben #1 mit 0,60–1,60 USD und gebuchter Zeit, wenn das Board angesehen wird, dann steht das Preisetikett in der Zeile r3 unmittelbar vor „Σ …“, ohne Rahmen und ohne eigenen Hintergrund wie `.sum`
+- [ ] Gegenbeispiel: Gegeben #1 mit 0,60–1,60 USD und dem Label `repo:shop`, wenn das Board angesehen wird, dann steht in der Labelzeile r1 nur „repo:shop“, und das Preisetikett trägt nicht die Gestalt eines Labels (`.lbl`)
+- [ ] Gegeben je Klasse des Boards eine Aufgabe dieser Klasse mit 0,60–1,60 USD, wenn das Board in Hell und in Dunkel angesehen wird, dann ist der Kontrast zwischen der Textfarbe des Preisetiketts und dem berechneten Hintergrund seiner Karte jeweils mindestens 4,5:1 (relative Leuchtdichte nach WCAG 2.1, Rechenbeispiel: #5b6470 auf #ffffff = (1,05) ÷ (0,1251 + 0,05) = 6,0:1)
 
 ### Reiter Kosten
-- [ ] Gegeben #1 mit Positionen Planung (0,10–0,20, 12000 Tokens), Bau (0,20–0,40), Gemeinkostenanteil (0,30), wenn das Aufgabenfenster den Reiter „Kosten“ zeigt, dann stehen die Zeilen in dieser Reihenfolge mit den Spalten Position, Tokens, niedrig, hoch und die Summenzeile „12.000 · 0,60 $ · 0,90 $“, darunter „Schätzung planer“ und „geschätzte API-Kosten“
-- [ ] Gegeben #1 mit 0,60–1,60 USD ohne Positionen, wenn der Reiter „Kosten“ gezeigt wird, dann steht genau eine Zeile „Gesamt · 0,60 $ · 1,60 $“ und keine Spalte Tokens
+- [ ] Gegeben #1 mit Positionen Planung (0,10–0,20, 12000 Tokens), Bau (0,20–0,40), Gemeinkostenanteil (0,30), wenn das Aufgabenfenster den Reiter „Kosten“ zeigt, dann trägt die Tabelle die Beschriftung „Geschätzte API-Kosten (USD)“, die Zeilen stehen in dieser Reihenfolge mit den Spalten Position, Tokens, niedrig, hoch, die Summenzeile lautet „Summe · 12.000 · 0,60 $ · 0,90 $“, und darunter steht „Schätzung planer“, aber nicht noch einmal „geschätzte API-Kosten“
+- [ ] Gegeben #1 mit denselben Positionen, wenn die Tabelle des Reiters gelesen wird, dann sind „Position“, „Tokens“, „niedrig“ und „hoch“ `th scope=col`, und die Zeilen beginnen mit `th scope=row` „Planung“, „Bau“, „Gemeinkostenanteil“ und „Summe“
+- [ ] Gegeben #1 mit 0,60–1,60 USD ohne Positionen, wenn der Reiter „Kosten“ gezeigt wird, dann steht genau eine Zeile „Gesamt · 0,60 $ · 1,60 $“ mit „Gesamt“ als `th scope=row` und keine Spalte Tokens
 - [ ] Gegeben #1 mit `amount: 1.63`, wenn der Reiter „Kosten“ gezeigt wird, dann steht „Gesamt · 1,63 $ · 1,63 $“
+- [ ] Gegeben #1 mit `{currency: EUR, amount: 25.55}`, wenn der Reiter „Kosten“ gezeigt wird, dann lautet die Beschriftung „Geschätzte API-Kosten (EUR)“ und die Zeile „Gesamt · 25,55 € · 25,55 €“
 - [ ] Gegeben #1 mit zwei Positionen ohne Tokens, wenn der Reiter „Kosten“ gezeigt wird, dann fehlt die Spalte Tokens
-- [ ] Leerfall: Gegeben #4 ohne Etikett, wenn das Aufgabenfenster geöffnet wird, dann gibt es keinen Reiter „Kosten“ (nach Empfehlung geplant, siehe Offene Fragen)
+- [ ] Leerfall: Gegeben #4 ohne Etikett, wenn das Aufgabenfenster geöffnet wird, dann enthält die Reiterleiste genau zwei `role=tab`, „Inhalt“ und „Datei“, und keinen Reiter „Kosten“ oder „Kein Preisetikett“
 - [ ] Gegeben #1 mit Etikett, wenn der Reiter „Kosten“ geöffnet wird, dann gibt es kein Eingabefeld und Datei und Zahl der Commits bleiben gleich
+- [ ] Gegeben #1 mit Etikett, wenn das Aufgabenfenster geöffnet wird, mit Tab bis zum gewählten Reiter „Inhalt“ gegangen und zweimal → gedrückt wird, dann hat `document.activeElement` `role=tab`, den Namen „Kosten“ und `aria-selected=true`, ist das dritte von drei `role=tab` im Element `role=tablist` mit dem Namen „Ansicht der Aufgabe“, und das `role=tabpanel`, auf das sein `aria-controls` zeigt, zeigt die Kostentabelle; ein weiteres → setzt Fokus und Auswahl auf „Inhalt“ (Umlauf)
+- [ ] Gegeben #1 mit Etikett und Fokus auf dem gewählten Reiter „Inhalt“, wenn ← gedrückt wird, dann stehen Fokus und Auswahl auf „Kosten“ (Umlauf rückwärts); wenn danach Pos1 gedrückt wird, auf „Inhalt“; wenn danach Ende gedrückt wird, auf „Kosten“; nach jedem Schritt hat nur der gewählte Reiter `tabindex=0`, die beiden anderen `-1`
+- [ ] Gegeben #1 mit Etikett und Fokus auf dem Reiter „Datei“, wenn Enter und danach Leertaste gedrückt wird, dann zeigt das Panel jeweils den Inhalt von „Datei“, „Datei“ hat `aria-selected=true`, und der Fokus steht auf „Datei“
+- [ ] Gegeben #1 mit Etikett im Reiter „Inhalt“ und Fokus nicht in einem Eingabefeld, wenn `d` gedrückt wird, dann zeigt das Fenster „Datei“; ein zweites `d` zeigt „Inhalt“; aus „Kosten“ führt `d` zu „Datei“
+- [ ] Gegeben das Aufgabenfenster ist offen, wenn die Kürzelhilfe geöffnet wird, dann nennt sie „← →“ mit „Reiter wechseln (Fokus auf einem Reiter)“
+- [ ] Gegenbeispiel: Gegeben #1 mit Etikett im Reiter „Inhalt“ und Fokus im Titelfeld, wenn → gedrückt wird, dann bewegt sich nur die Schreibmarke im Titel, und der gewählte Reiter bleibt „Inhalt“
+- [ ] Gegeben #1 mit Etikett im Reiter „Kosten“ und #4 ohne Etikett direkt unter #1 in „Eingang“, wenn mit ↓ zu #4 geblättert wird, dann zeigt das Fenster das Panel „Inhalt“, und „Inhalt“ hat `aria-selected=true`
+- [ ] Gegeben #1 mit Etikett im Reiter „Kosten“ und Fokus auf dem Reiter „Kosten“ (ebenso: Fokus im Panel „Kosten“), wenn über die API `cost: null` für #1 gesetzt wird, dann ist innerhalb von 1 s `document.activeElement` der Reiter „Inhalt“, er hat `aria-selected=true`, und es gibt zwei Reiter
+- [ ] Gegenbeispiel: Gegeben #1 mit Etikett im Reiter „Kosten“ und Fokus im Titelfeld, wenn über die API `cost: null` für #1 gesetzt wird, dann zeigt das Fenster innerhalb von 1 s „Inhalt“, und der Fokus bleibt im Titelfeld
+- [ ] Gegeben #1 mit Etikett, wenn das Aufgabenfenster bei 320, 375 und 414 px Breite jeweils in Hell und in Dunkel geöffnet wird, dann liegen die Reiter „Inhalt“, „Datei“, „Kosten“ und ✕ ganz im sichtbaren Bereich, ein Klick auf jeden wirkt, und für den Kopf des Fensters gilt `scrollWidth ≤ clientWidth`
 
 ### Kostenbericht
 - [ ] Gegeben der Grundbestand, wenn der Bericht „Kosten“ für „fabrik“ geöffnet wird, dann steht „Summe 2,23–3,23 $ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte“ (0,60 + 1,63 = 2,23; 1,60 + 1,63 = 3,23)
@@ -119,16 +146,22 @@ Grundbestand für Karte und Reiter: Board „fabrik“ mit den Spalten Eingang, 
 - [ ] Gegeben eine Aufgabe mit 1,00 USD auf den Boards „fabrik“ und „lager“, wenn der Bericht für jedes der beiden Boards geöffnet wird, dann zählt sie in beiden
 - [ ] Gegeben der Grundbestand plus #8 in Eingang mit dem Titel „Gemeinkosten“, dem Label `gemeinkosten` und 2,00 USD, wenn der Bericht geöffnet wird, dann steht „Summe 4,23–5,23 $ · 3 von 5 …“ (keine Ausnahme nach Titel oder Label)
 - [ ] Gegeben `reporting: {cost: false}` von Hand in #2, wenn der Bericht geöffnet wird, dann zählt #2 weiter mit und der Schlüssel bleibt in der Datei
-- [ ] Leerfall: Gegeben #1–#4 ohne Etikett, wenn der Bericht geöffnet wird, dann steht „Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, alle Spalten, auch archivierte“
+- [ ] Leerfall: Gegeben #1–#4 ohne Etikett, wenn der Bericht geöffnet wird, dann steht „Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, alle Spalten, auch archivierte“, darunter „Preisetiketten setzt ein Agent über die API (Feld `cost` beim Ändern einer Aufgabe).“ mit einem Link auf `/api` (Seite der Agenten-Schnittstelle, D0007), und es gibt keinen Knopf „Zurücksetzen“
+- [ ] Gegenbeispiel: Gegeben ein Board „leer“ ohne Aufgaben und ohne aktiven Filter, wenn der Bericht geöffnet wird, dann steht „Keine Aufgabe mit Preisetikett · 0 von 0 Aufgaben, alle Spalten, auch archivierte“ mit dem Hinweis auf die API, nicht „Keine Aufgaben, die zu den Filtern der Berichte passen.“
 - [ ] Gegeben der Bericht ist offen, wenn über die API #4 `{currency: USD, amount: 1.00}` bekommt, dann steht innerhalb von 1 s ohne Neuladen „Summe 3,23–4,23 $ · 3 von 4 …“
 - [ ] Gegeben der Grundbestand, wenn der Bericht geöffnet wird, dann ist der Fenstertitel „Kosten — kanbanD“ und die Zahl der Commits bleibt gleich
+- [ ] Gegeben der Grundbestand, wenn der Bericht geöffnet wird, dann lautet die Kopfleiste „Kosten · geschätzte API-Kosten · liest nur“, und die Summenzeile enthält kein „≈“
+- [ ] Gegeben das Menü „Berichte“ ist offen, wenn die Gruppe BESTAND gelesen wird, dann steht dort der Eintrag „Kosten“ mit eigenem Symbol und der Beschreibung „Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.“, hinter „Bestand nach Labels“, falls R00100 gebaut ist, sonst als einziger Eintrag der Gruppe; ein Klick darauf führt zur Route `#/berichte/kosten`
+- [ ] Gegeben der Grundbestand plus #7 in Eingang mit 25,55 EUR und #8 in Eingang mit 2,00 CHF, wenn der Bericht geöffnet wird, dann stehen drei Zeilen in dieser Reihenfolge: „Summe 2,23–3,23 $ · 2 von 6 …“, „Summe 2,00 CHF · 1 von 6 …“, „Summe 25,55 € · 1 von 6 …“ (USD zuerst, dann CHF vor EUR nach ISO-Code)
+- [ ] Gegenbeispiel: Gegeben derselbe Bestand, wenn der Bericht geöffnet wird, dann steht die EUR-Zeile trotz des größten Betrags nicht vor der CHF-Zeile und die USD-Zeile nicht zuletzt (keine Ordnung nach Betrag oder Zeichen)
 
 ### Filterleiste im Kostenbericht
-- [ ] Gegeben der Grundbestand, wenn die Spalte „Fertig“ ausgeschlossen wird, dann steht „Summe 2,23–3,23 $ · 2 von 3 …“ (m schrumpft, n nicht)
-- [ ] Gegeben der Grundbestand, wenn die Spalte „Eingang“ ausgeschlossen wird, dann steht „Summe 1,63 $ · 1 von 2 …“
-- [ ] Gegeben der Grundbestand mit #2 in Klasse drift, wenn die Klasse drift ausgeschlossen wird, dann steht „Summe 0,60–1,60 $ · 1 von 3 …“; Zuständige und Labels schränken auf dieselbe Weise ein
-- [ ] Leerfall: Gegeben der Grundbestand, wenn alle drei Spalten ausgeschlossen sind, dann steht der Leerzustand mit „Zurücksetzen“, und „Zurücksetzen“ führt zurück zu „2 von 4“
-- [ ] Gegeben im Board „fabrik“ gespeichert sind Zeitraum „letzte Woche“ und ein „Rechnen ab“, wenn der Bericht geöffnet wird, dann steht „Summe 2,23–3,23 $ · 2 von 4 …“, die Gruppe Zeitraum fehlt, die Zusammenfassung nennt „Zeitraum gilt hier nicht“ und zählt den Zeitraum nicht als aktiven Filter
+- [ ] Gegeben der Grundbestand, wenn die Spalte „Fertig“ ausgeschlossen wird, dann steht „Summe 2,23–3,23 $ · 2 von 3 Aufgaben mit Etikett, nach Filter, auch archivierte“ (m schrumpft, n nicht)
+- [ ] Gegeben der Grundbestand, wenn die Spalte „Eingang“ ausgeschlossen wird, dann steht „Summe 1,63 $ · 1 von 2 Aufgaben mit Etikett, nach Filter, auch archivierte“
+- [ ] Gegeben der Grundbestand mit #2 in Klasse drift, wenn die Klasse drift ausgeschlossen wird, dann steht „Summe 0,60–1,60 $ · 1 von 3 Aufgaben mit Etikett, nach Filter, auch archivierte“; Zuständige und Labels schränken auf dieselbe Weise ein
+- [ ] Leerfall: Gegeben der Grundbestand, wenn alle drei Spalten ausgeschlossen sind, dann steht „Keine Aufgaben, die zu den Filtern der Berichte passen.“ und darunter der Knopf „Zurücksetzen“ ohne Zahl im Knopf (die Zahl aktiver Filter steht in der Zusammenfassung), und „Zurücksetzen“ führt zurück zu „Summe 2,23–3,23 $ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte“
+- [ ] Gegeben der Grundbestand plus eine vierte Spalte „Prüfung“ mit #9 ohne Etikett (m = 5), wenn der Bericht ohne aktiven Filter, dann mit gespeichertem Zeitraum „letzte Woche“, dann mit 1, 2 und 3 ausgeschlossenen Spalten („Fertig“; dazu „Eingang“; dazu „In Arbeit“) geöffnet wird, dann trifft das Muster `/alle Spalten/` den Bericht in den ersten beiden Fällen („2 von 5 Aufgaben mit Etikett, alle Spalten, auch archivierte“) und in den drei übrigen nicht; dort trifft `/nach Filter, auch archivierte/`: „Summe 2,23–3,23 $ · 2 von 4 Aufgaben mit Etikett, nach Filter, auch archivierte“, „Summe 1,63 $ · 1 von 2 Aufgaben mit Etikett, nach Filter, auch archivierte“, „Keine Aufgabe mit Preisetikett · 0 von 1 Aufgaben, nach Filter, auch archivierte“ (heute im Plan rot: die alte Fassung von R00105 schrieb „alle Spalten“ auch bei ausgeschlossenen Spalten)
+- [ ] Gegeben im Board „fabrik“ gespeichert sind Zeitraum „letzte Woche“ und ein „Rechnen ab“, wenn der Bericht geöffnet wird, dann steht „Summe 2,23–3,23 $ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte“ (ein gespeicherter Zeitraum allein ist kein aktiver Filter), die Gruppe Zeitraum fehlt, die Zusammenfassung nennt „Zeitraum gilt hier nicht“ und zählt den Zeitraum nicht als aktiven Filter
 - [ ] Gegeben derselbe gespeicherte Zeitraum, wenn der Kostenbericht geöffnet und wieder verlassen wird, dann ist die Board-Datei byte-gleich und das Burndown zeigt weiter „letzte Woche“
 
 ## Betroffene Verzeichnisstruktur
@@ -148,10 +181,12 @@ Alle Entscheidungen zur Technik stehen in [ADR-0009](../Dokumentation/ADRs/0009-
 2. **Anzeigen** (Oberfläche, Chip und Reiter warten auf die Freigabe der Artboards)
    - 2.1 Cent-Rechnung und Format in `web/kosten.js` (B0367, frei)
    - 2.2 Preisetikett auf der Karte (B0368, wartet D0002)
-   - 2.3 Kostentabelle rechnen (B0369, frei), Reiter zeigen (B0370, wartet D0003)
+   - 2.3 Kostentabelle rechnen mit Zeilenköpfen und Summenzeile „Summe“ (B0369, frei), Reiter zeigen mit Beschriftung und schmalen Breiten (B0370, wartet D0003)
+   - 2.4 Reiterleiste als `tablist` mit Tastatur für die heutigen zwei Reiter (F0043, B0375, frei; ohne neue Gestaltung, nutzt Aussehen und Kürzelhilfe von heute)
+   - 2.5 Rückfall auf „Inhalt“ mit Fokusregel (B0376, ohne eigene Gestaltung, baubar sobald B0370 und B0375 stehen)
 3. **Kostenbericht**
-   - 3.1 Bericht rechnen (B0371, frei), Filter ohne Zeitraum (B0373, frei)
-   - 3.2 Ansicht mit Menüeintrag (B0372, wartet D0006), Filterleiste ohne Zeitraum (B0374, wartet D0006)
+   - 3.1 Bericht rechnen mit Reihenfolge der Währungen (B0371, frei), Filter ohne Zeitraum und Umfangstext nach `filterAnzahl` (B0373, frei)
+   - 3.2 Ansicht mit Kopfleiste, Menüeintrag und Leerzustand ohne Etikett (B0372, wartet D0006), Filterleiste ohne Zeitraum und Leerzustand nach Filter (B0374, wartet D0006)
 
 ### Grobentwurf
 
@@ -167,14 +202,15 @@ Alle Entscheidungen zur Technik stehen in [ADR-0009](../Dokumentation/ADRs/0009-
 - `kostenbericht(board, aufgaben, filter)` (rein, JS) — m und je Währung n, niedrig, hoch.
 
 ### Gestaltung
-- Artboards: `Dokumentation/Wireframes/D0002.dc.html` (Zustand Preisetikett auf der Karte mit Hinweis), `D0003.dc.html` (Reiter „Kosten“), `D0006.dc.html` (Bericht „Kosten“ mit Filterleiste ohne Zeitraum und Leerzustand). Die Zustände fehlen noch; sie entstehen vor dem Bau über `/wireframe verfeinern` und brauchen die Freigabe des Auftraggebers (PO Z. 34, 76).
+- Artboards: `Dokumentation/Wireframes/D0002.dc.html` (Zustand Preisetikett auf der Karte mit Hinweis), `D0003.dc.html` (Reiter „Kosten“), `D0006.dc.html` (Bericht „Kosten“ mit Kopfleiste, Menüeintrag, Filterleiste ohne Zeitraum und beiden Leerzuständen). Die Reiterleiste als `tablist` (F0043) braucht kein neues Artboard: sie behält das heutige Aussehen, nur Rolle, Fokus und Tasten ändern sich. Die Zustände fehlen noch; sie entstehen vor dem Bau über `/wireframe verfeinern` und brauchen die Freigabe des Auftraggebers (PO Z. 34, 76).
 
 ### Änderungen an bestehenden Klassen
 - Aufgabe und Aufgabenänderung: neues entfernbares Feld `cost`.
+- Reiterleiste des Aufgabenfensters (`vFenster`, `web/ansicht.js`; Tasten in `web/app.js`): heute `span role=tab` mit `tabIndex -1` ohne `tablist`; wird `tablist` nach APG mit automatischer Aktivierung, für zwei und drei Reiter; `KUERZEL_FENSTER` bekommt „← →“.
 - `vBerichtsfilter`: für den Kostenbericht ohne Gruppe Zeitraum und ohne „Rechnen ab“ (gleicher Satz wie B0355 aus R00100).
 
 ### Umfang
-- I0093: 8 Bubbles, 7–14 h; I0094: 4 Bubbles, 3–6 h; zusammen 12 Bubbles, 10–20 h. Richtwerte nach dem Muster der Nachbar-Interactions, ungemessen. Alles bis Bubble geplant.
+- I0093: 10 Bubbles, 8,5–18 h; I0094: 4 Bubbles, 3–7 h; zusammen 14 Bubbles, 11,5–25 h. Richtwerte nach dem Muster der Nachbar-Interactions, ungemessen (Hypothese). Vorher 12 Bubbles, 10–20 h; neu B0375 (1–2 h) und B0376 (0,5–1 h), B0370 und B0372 je von 1–2 auf 1–3 h (Beschriftung und Breiten bzw. Kopfleiste, zwei Leerzustände, Menübeschreibung). Alles bis Bubble geplant.
 
 ## Tests
 Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
@@ -183,7 +219,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
 **Integration:** PATCH einzeln und `/mehrere` gegen einen echten Ordner mit Git: Commit-Zahl vorher/nachher, Datei neu gelesen, jeder Fehlfall 400 mit Datei byte-gleich; defekte Datei → nur lesbar.
 
-**E2E:** US-1 bis US-14 gegen das laufende Programm auf freiem Port; Live mit Warten auf das Ereignis; Prüfsumme der Board-Datei vor und nach dem Öffnen des Berichts.
+**E2E:** US-1 bis US-18 gegen das laufende Programm auf freiem Port; Live mit Warten auf das Ereignis; Prüfsumme der Board-Datei vor und nach dem Öffnen des Berichts.
 
 ## Abhängigkeiten
 - Abhängig von: R00004 Board ansehen (I0004, gruen), R00011 Aufgabe ansehen und bearbeiten (I0011, gruen), R00081 Berichtsfilter (I0069, gruen); Freigabe der Artboards D0002, D0003, D0006 durch den Auftraggeber.
@@ -192,9 +228,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
 ## Offene Fragen
 - Freigabe der Artboards D0002, D0003 und D0006 beim Auftraggeber (PO Z. 76); bis dahin warten die Oberflächen-Bubbles.
-- Reiter „Kosten“ bei einer Aufgabe ohne Etikett: geplant nach Empfehlung ohne Reiter; alternativ Reiter mit „Kein Preisetikett“.
-- Ort und Name des Berichts: geplant nach Empfehlung als „Kosten“ in der Gruppe BESTAND hinter „Bestand nach Labels“, Route `#/berichte/kosten`.
-- Reihenfolge der Währungszeilen: geplant USD zuerst, dann alphabetisch.
+- Entschieden und eingearbeitet (2026-11-06): Reiter ohne Etikett (PO Z. 85), Ort und Name des Berichts (PO Z. 86), Reihenfolge der Währungszeilen, Einzelbetrag und kein „≈“ in der Summe (PO Z. 87).
 
 ## Manuelle Vorbereitungstätigkeiten
 - Artboards D0002, D0003, D0006 um die Zustände ergänzen und vom Auftraggeber freigeben lassen.
@@ -211,6 +245,7 @@ Auslöser ist der Auftrag, jedem Feature einen Preis zu geben; heute stehen API-
 
 ## Notizen
 - Die Abnahme-Probe der Karte #18 nannte für die Spanne „0,60–1,60 $“ auf der Karte; nach PO Z. 30 zeigt die Karte „≈ 1,10 $“, die Spanne steht im Hinweis. Die übrigen Proben (1,63; Summe 2,23–3,23 $ · 2 von m; 400 bei Betrag und Spanne zugleich oder min > max) stehen wörtlich in den Kriterien.
-- **Bewusst außerhalb:** ein Schalter `reporting.cost` (PO Z. 82); das Erkennen oder Ausnehmen von Gemeinkosten (PO Z. 83); Bearbeiten des Etiketts in der Oberfläche; Rechnen aus Tokens (PO Z. 18); Umrechnung zwischen Währungen und eine EUR-Schaltung (PO Z. 45–46); ein Zeitraum nach Ankunft in der Abschlussspalte (PO Z. 80, spätere Ausbaustufe auf Wunsch).
+- **Bewusst außerhalb:** ein Schalter `reporting.cost` (PO Z. 82); das Erkennen oder Ausnehmen von Gemeinkosten (PO Z. 83); Bearbeiten des Etiketts in der Oberfläche; Rechnen aus Tokens (PO Z. 18); Umrechnung zwischen Währungen und eine EUR-Schaltung (PO Z. 45–46); ein Zeitraum nach Ankunft in der Abschlussspalte (PO Z. 80, spätere Ausbaustufe auf Wunsch); ein Kürzel `g o` für den Bericht (PO Z. 100, erst gemeinsam für beide Bestandsberichte auf Wunsch oder Befund); Summen in einer `role=status`-Region (PO Z. 101); eine Liste der Aufgaben hinter der Summe (PO Z. 102, spätere Ausbaustufe auf Wunsch); der versteckte zugängliche Name am Zeit-Σ (PO Z. 91); die übrigen Punkte der Karte #8 — Fokusfalle, Menüs, `role=radio`-Gruppen (PO Z. 88).
 - **Verworfene Alternativen** (Schnitt): eine Interaction für alles — 12 Bubbles und zwei Dialogs, über der Schnittgrenze; Chip als eigene Interaction unter D0002 — er hat keine eigene Tür, nur Darstellung derselben Daten.
 - **Detailplanung:** WBS I0093 (F0038–F0040, B0363–B0370) und I0094 (F0041–F0042, B0371–B0374), 2026-11-06.
+- **Einarbeitung PO Z. 85–102** (2026-11-06): Reiterleiste als `tablist` (F0043, B0375), Rückfall mit Fokusregel (B0376), zugänglicher Name, Ort und Kontrast des Etiketts (B0368), Tabelle mit `caption`, Zeilenköpfen und „Summe“ (B0369, B0370), schmale Breiten (B0370), Kopfleiste, Menüeintrag, Umfangstext nach Filter und zwei Leerzustände (B0371–B0374); 51 → 75 Akzeptanzkriterien (6 davon ausdrücklich Gegenbeispiele, vorher 0), US-15 bis US-18 neu. Die Probe aus PO Z. 89 („1, 2 und 3 ausgeschlossene Spalten“) läuft mit einer vierten Spalte „Prüfung“, weil im Grundbestand drei ausgeschlossene Spalten m = 0 ergeben und dann der Leerzustand nach Filter (PO Z. 96) ohne „nach Filter, auch archivierte“ steht.
