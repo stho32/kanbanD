@@ -383,3 +383,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0407 Ausweichen bei 320 px | Standard | 1-3h | 0,0h | 0,0h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0406 Breitenprobe 320, 375, 414 px | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0410 Textfelder, Datei-Label und Klickflächen ohne Rolle als Ziele | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0411 Link neben Elementen ist ein Ziel, nur der Link im Satz nicht | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |

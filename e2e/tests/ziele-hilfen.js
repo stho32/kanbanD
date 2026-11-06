@@ -21,14 +21,26 @@ const ZIELE = 'button, select, input:not([type=hidden]), textarea, a.btn, summar
 function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);
 
-  // Allein heißt: allein in seinem Block — Hervorhebungen (b, span) um den Link zählen nicht als Block
-  function istLinkAllein(el) {
-    let block = el.parentElement;
-    while (block && getComputedStyle(block).display === 'inline') block = block.parentElement;
-    return block && block.textContent.trim() === el.textContent.trim();
+  // Im Satz heißt: in derselben Zeile des Blocks steht Text außerhalb des Links (ADR-0012: nur Links im Fließtext
+  // sind ausgenommen). Hervorhebungen (b, span) gehören zum Satz; Elemente mit eigener Box (Etikett, Flex-Nachbar) nicht.
+  function istInline(el) {
+    return getComputedStyle(el).display === 'inline';
+  }
+  function satzText(knoten, link) {
+    return [...knoten.childNodes].map(kind => {
+      if (kind === link) return '';
+      if (kind.nodeType === Node.TEXT_NODE) return kind.textContent;
+      if (kind.nodeType === Node.ELEMENT_NODE && istInline(kind)) return satzText(kind, link);
+      return '';
+    }).join('');
+  }
+  function stehtImSatz(link) {
+    let block = link.parentElement;
+    while (block && istInline(block)) block = block.parentElement;
+    return Boolean(block) && satzText(block, link).trim() !== '';
   }
   function istZiel(el) {
-    if (el.matches('a[href]') && !el.matches('a.btn, [role]') && !istLinkAllein(el)) return false;
+    if (el.matches('a[href]') && !el.matches('a.btn, [role]') && stehtImSatz(el)) return false;
     if (el.closest('[inert]')) return false;
     if (oberste && !oberste.contains(el)) return false;
     if (!el.checkVisibility({ visibilityProperty: true })) return false;

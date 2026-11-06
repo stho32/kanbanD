@@ -54,6 +54,18 @@ test.describe('Selbstproben, Zielauswahl', () => {
     expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['zwei']);
   });
 
+  test('ein Link, neben dem nur Elemente stehen, zählt: Zeile mit Größe und ✕, Zelle mit Etikett, Zeile mit Uhr und Titel', async ({ page }) => {
+    await page.setContent('<div style="display:flex;align-items:center;gap:8px"><a href="#1">datei.txt</a><span>12 KB</span><button style="width:44px;height:44px">✕</button></div>'
+      + '<table><tr><td><a href="#2">zwei</a> <span style="display:inline-flex">archiviert 2026-10-01</span></td></tr></table>'
+      + '<div style="display:flex"><span>0:12</span><a href="#3">#3</a><span>drei</span></div>');
+    expect(namen(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' }))).toEqual(['datei.txt', 'zwei', '#3']);
+  });
+
+  test('ein Link in einem Satz zählt nicht, auch nicht neben einem Element im selben Satz', async ({ page }) => {
+    await page.setContent('<div>Mehr unter <a href="#1">Hilfe</a> <span>(neu)</span>.</div><span>Siehe <a href="#2">zwei</a></span>');
+    expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'probe' })).toEqual([]);
+  });
+
   test('ein einzeiliges Textfeld mit 26 px und eine Klickfläche ohne Rolle mit 22 px zählen', async ({ page }) => {
     await page.setContent('<textarea rows="1" aria-label="feld" style="height:26px;width:300px"></textarea>'
       + '<div><span data-act="art" style="display:inline-block;height:22px;width:50px">Agent</span></div>');

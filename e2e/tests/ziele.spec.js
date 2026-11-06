@@ -181,6 +181,42 @@ test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
     expect(felder.filter(([b, h]) => b < 24 || h < 24)).toEqual([]);
   });
 
+  test('Personen mit Maus: die Nummer „#3“ neben dem laufenden Timer mindestens 24 × 24', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/personen');
+    const [breite, hoehe] = await groesse(page.locator('.akt a.id', { hasText: '#3' }));
+    expect(Math.min(breite, hoehe), `${breite} × ${hoehe}`).toBeGreaterThanOrEqual(24);
+  });
+
+  test.describe('Links neben Elementen, Touch, 390 px', () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const mindestens44 = async loc => {
+      const [breite, hoehe] = await groesse(loc);
+      expect(Math.min(breite, hoehe), `${breite} × ${hoehe}`).toBeGreaterThanOrEqual(44);
+    };
+
+    test('Anhang „notiz.txt“ im Aufgabenfenster #1 und „API für Agenten“ in der Fußzeile mindestens 44', async ({ page }) => {
+      await starten(page);
+      await fensterOeffnen(page, 1);
+      await mindestens44(page.locator('.anh-z a', { hasText: 'notiz.txt' }));
+      await page.keyboard.press('Escape');
+      await mindestens44(page.locator('#stat a', { hasText: 'API für Agenten' }));
+    });
+
+    test('Aufgabenliste: Titel „vier“ neben dem Etikett „archiviert“ mindestens 44', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/aufgaben');
+      await page.getByRole('radio', { name: /archiviert/ }).tap();
+      await mindestens44(page.locator('td.tt a[data-arg="4"]'));
+    });
+
+    test('Personen: die Nummer „#3“ neben dem laufenden Timer mindestens 44', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/personen');
+      await mindestens44(page.locator('.akt a.id', { hasText: '#3' }));
+    });
+  });
+
   test.describe('Touch, 320 px', () => {
     test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
 
