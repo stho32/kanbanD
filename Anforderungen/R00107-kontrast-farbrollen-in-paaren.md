@@ -39,7 +39,7 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
    - **Modusleiste** `--kd-modus` ↔ `--kd-modus-text`, `--kd-muted`, `--kd-warn` (neu, siehe unten);
    - **Klassengründe** `--kd-c-<farbe>` (16 Paletten-Farben) ↔ `--kd-text`, `--kd-muted`, `--kd-warn`;
    - **WBS-Ampel** `--kd-wbs-<status>-bg` ↔ `--kd-wbs-<status>-ink` und `--kd-text` (ok, warn, error, neutral);
-   - **Linien** `--kd-wl-1`, `--kd-wl-2`, `--kd-wl-3` ↔ `--kd-surface`, Maß 3:1.
+   - **Linien** `--kd-wl-1`, `--kd-wl-2`, `--kd-wl-3` ↔ `--kd-surface`; `--kd-modus-linie` ↔ `--kd-modus`, `--kd-sunken`; `--kd-accent` (Fokusring) ↔ `--kd-modus`; `--kd-faint` (Zustandslinie `.bf-chip`) ↔ `--kd-bg`; Maß 3:1 (Modusleiste siehe Funktionale Anforderung 8).
 2. Jede Schrift dieser Tabelle hält auf jeder ihrer Flächen in beiden Themen mindestens 4,5:1, jede Linie mindestens 3:1. Gerechnet wird aus `web/kd-tokens.css`, oklch → sRGB → WCAG.
 
 ### Neue Tokens
@@ -64,16 +64,18 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
 ### Modusleiste „Spalten einrichten“ (ADR-0011 Folgeentscheidung, hier entschieden)
 
 7. Die Fläche der Modusleiste ist der Container des Akzents. Dafür gibt es drei neue Tokens:
-   - `--kd-modus` hat den Wert von `--kd-accent-weak`;
+   - `--kd-modus` hat den Wert von `--kd-accent-weak`; im dunklen Thema darf er dunkler sein, damit der Fokusring (Funktionale Anforderung 8) 3:1 hält. Gerechnet aus `kd-tokens.css` am 2026-11-06: `--kd-accent` auf `--kd-accent-weak` dunkel 2,72. Startwert (Hypothese): `--kd-modus` dunkel oklch(0.28 0.06 255) mit `--kd-accent` 3,13, `--kd-modus-text` 8,96, `--kd-muted` 6,34, `--kd-warn` 5,51;
    - `--kd-modus-text` hat den Wert von `--kd-accent-ink`;
-   - `--kd-modus-linie` ist ein Akzentton für Ränder und Trenner und reine Verzierung.
+   - `--kd-modus-linie` ist ein Akzentton für Ränder, Trenner und den unteren Abschluss der Leiste. Am unteren Abschluss ist sie eine Linie mit Zustand (sie grenzt den Modus vom Board ab) und hält 3:1 (Funktionale Anforderung 8); an Rändern und Trennern innerhalb der Leiste ist sie Verzierung.
 
-   Der Markenton bleibt: die Leiste ist blau getönt wie heute, nur hell statt dunkel (Material 3: primary-container / on-primary-container). Sie wechselt also bei Moduswechsel sichtbar von der dunklen Kopfzeile auf eine helle, blau getönte Leiste, und das ist so gewollt.
+   Die Leiste trägt `--kd-modus` (Material 3 primary-container), im hellen Thema hell, im dunklen Thema ein mittleres Blau über der dunklen Kopfzeile; erkennbar ist der Modus am Titel „Spalten einrichten“ und am Knopf „Fertig“ in `--kd-accent`.
 8. In der Modusleiste gilt:
    - Titel, Board-Name, Dateipfad (`.mono`) und der Knopf „Verwerfen“ in `--kd-modus-text`; der Untertitel in `--kd-muted`; die Fehlerzeile `.fehl-kopf` in `--kd-warn`;
    - „Fertig“ als Füllung `--kd-accent` mit `--kd-on-accent`;
    - der Ich-Knopf mit Name in `--kd-modus-text` und Initiale in ihrem Füllungspaar;
-   - Ränder in `--kd-modus-linie` statt `oklch(1 0 0 / …)` (`web/kd-app.css:57`, `:62`).
+   - Ränder in `--kd-modus-linie` statt `oklch(1 0 0 / …)` (`web/kd-app.css:57`, `:62`); dort Verzierung;
+   - Die Modusleiste schließt unten mit 1 px `--kd-modus-linie` ab; `--kd-modus-linie` hat in beiden Themen mindestens 3:1 gegen `--kd-modus` und gegen `--kd-sunken`. Probe: Unit-Paare `modus-linie/modus` und `modus-linie/sunken` ≥ 3,0 in hell und dunkel. Grund: die Fläche allein hebt sich nicht vom Board ab (UX-Vorprüfung, gerechnet aus `kd-tokens.css`: hell 1,03 gegen `--kd-sunken` und 1,11 gegen `--kd-bg`, dunkel 1,26–1,51);
+   - die Knöpfe der Leiste zeigen den Tastaturfokus als Ring in `--kd-accent` (`.kz-modus .kz-btn:focus-visible`, heute ohne eigene Regel, also Browser-Standard); Probe: Unit-Paar `accent/modus` ≥ 3,0 in hell und dunkel (gerechnet heute 4,92 hell, 2,72 dunkel; siehe Funktionale Anforderung 7).
 9. Gemessene Werte des Vorschlags (Werte aus `kd-tokens.css`): Titel 8,24 hell und 7,79 dunkel, Untertitel 5,32 und 5,51, Fehlerzeile mit `--kd-warn` nach Punkt 6 4,86 und 4,79. Heute misst der Titel dunkel 1,33 und der Untertitel 4,08 hell und 1,52 dunkel.
 
 ### `--kd-faint` ist keine Schrift (ADR-0011 Regel 4, je Stelle hier entschieden)
@@ -105,8 +107,8 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
     | `:78` `.bk-name .bk-klapp` | Symbol neben dem Spaltennamen (`aria-hidden`) | Verzierung, der Name trägt die Information |
     | `:210` `.iz.aus` | Agent oder stillgelegte Person im Ich-Menü (`aria-disabled="true"`) | inaktives Bedienelement, WCAG-Ausnahme |
     | `:523` `.diagramm .fadenkreuz` | `stroke` des Fadenkreuzes | Linie, Verzierung |
-    | `:634` `.bf-chip` | `text-decoration-color` | Linie, Verzierung |
-    | `:743` `.wbs-zeile .trenner` | Trenner „›“ | Verzierung |
+    | `:634` `.bf-chip` | `text-decoration-color` | Zustandslinie, faint ≥ 3:1 gegen bg (gerechnet 3,29 hell, 4,98 dunkel) |
+    | `:743` `.wbs-zeile .trenner` | Trenner „›“ | Verzierung; optional `aria-hidden="true"` am Trenner (`web/ansicht.js:1234`), damit ein Vorleser ihn nicht ansagt |
 
 ### Übrige Schrift auf falscher Fläche (neue Befunde, nicht in der ADR)
 
@@ -148,7 +150,7 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
 
 - **Maß**: Schrift mindestens 4,5:1 (WCAG 2.1 SC 1.4.3), Linie mit Zustand mindestens 3:1 (SC 1.4.11), in `data-theme=light` und `data-theme=dark`. Ausnahme nur inaktive Bedienelemente mit `aria-disabled="true"` oder `disabled`.
 - **Gestaltung**: Formen, Abstände, Schriftgrößen und Gestaltungsrichtung bleiben. Sichtbar ändern sich nur:
-  - die Fläche der Modusleiste;
+  - die Fläche der Modusleiste und ihr unterer Abschluss als Linie von 1 px;
   - die Initialen im Dunkelthema (dunkle Schrift);
   - „Neue Aufgabe“, wo Weiß die heutige Schrift `--kd-head-text` ersetzt;
   - die 15 bisherigen `--kd-faint`-Texte, nun etwas dunkler bzw. heller;
@@ -166,11 +168,13 @@ Grundbestand (herstellbar über die Dateien des Testordners mit `einrichten` aus
 - Board „entwicklung“ mit den Spalten „Zu erledigen“, „In Arbeit“ (Grenze 1) und „Erledigt“.
 - Aufgaben:
   - #1 „eins“, Klasse `bug` (Palette rot), zuständig Stefan, fällig gestern, in „Zu erledigen“;
-  - #2 „zwei“, zuständig Claude, Labels `ux` und `a:b`;
+  - #2 „zwei“, zuständig Claude, Labels `ux` und `a:b`, ein Kommentar von Stefan („passt“);
   - #3 „drei“, Klasse `feature` (grün), zuständig Mia und Claude;
   - #4 „vier“ ohne Klasse und ohne Person;
   - #5 „fünf“, Klasse `bug`, zuständig Stefan, in „In Arbeit“.
 - Personen: Stefan (ST) und Mia (MI) als Menschen, Claude (CL) als Agent, Anna (AN) stillgelegt. Stefan ist im Tab als „Ich“ gewählt.
+- Klassen `bug` und `feature` in `kanbanD.md`, damit die Legende `.leg` unter dem Board erscheint.
+- #2, #3 und #4 liegen in „Zu erledigen“; „Erledigt“ ist leer und zeigt den Leertext „leer“ (`.leer`, nicht der Hilfetext eines ganz leeren Boards).
 
 Breite 1280 px. „Kontrast“ heißt das WCAG-Verhältnis der Schrift gegen den ersten deckenden Grund nach der Messregel in Funktionaler Anforderung 17. „Beide Themen“ heißt `data-theme=light` und `data-theme=dark`.
 
@@ -178,6 +182,7 @@ Breite 1280 px. „Kontrast“ heißt das WCAG-Verhältnis der Schrift gegen den
 
 - [ ] **Rechner**: `kontrast("oklch(1 0 0)", "oklch(0 0 0)")` ist 21,0 (auf eine Nachkommastelle), `kontrast("oklch(0.5 0.13 255)", "oklch(1 0 0)")` ist 6,0 (Rechenbeispiel aus den heutigen Tokens: `--kd-accent` hell gegen Weiß).
 - [ ] **Paare**: jedes Paar der Paartabelle (Funktionale Anforderung 1) erreicht in beiden Themen sein Maß. Der Test meldet ein verfehltes Paar mit Name, Thema und Wert, z. B. `Modusleiste: --kd-modus-text auf --kd-modus, dunkel 1,33 < 4,5`.
+- [ ] **Linien der Modusleiste**: die Paare `modus-linie/modus`, `modus-linie/sunken` und `accent/modus` erreichen in hell und dunkel je mindestens 3,0; `faint/bg` ebenso (Zustandslinie `.bf-chip`). Gegen heute meldet der Test mindestens `accent/modus` dunkel 2,72 (gerechnet).
 - [ ] **Dunkelblöcke**: die beiden Dunkelblöcke setzen dieselbe Menge Tokens mit denselben Werten. Gegenbeispiel: ein Token nur im `@media`-Block oder mit anderem Wert → rot mit Name des Tokens.
 - [ ] **Literale**: in `web/kd-app.css`, `web/kd-base.css` und `web/*.js` findet der Wächter kein Farbliteral nach Funktionaler Anforderung 14. Die Meldung nennt Datei und Zeile.
 - [ ] **faint**: `--kd-faint` steht in `color:` nur an den 5 Selektoren der Erlaubt-Liste (Funktionale Anforderung 11).
@@ -188,7 +193,7 @@ Breite 1280 px. „Kontrast“ heißt das WCAG-Verhältnis der Schrift gegen den
 
 ### E2E-Probe `e2e/tests/kontrast.spec.js` (Abnahme-Probe der Karte #9)
 
-Je Thema werden alle sichtbaren Elemente mit eigenem Text unter `header`, `.ka`, `.bahn-kopf`, `[role=dialog]` und `.toast` gemessen, außer Elementen in `[aria-disabled="true"]` bzw. `:disabled`. Jedes Ergebnis ist mindestens 4,5:1.
+Je Thema werden alle sichtbaren Elemente mit eigenem Text unter `header`, `.ka`, `.bahn-kopf`, `[role=dialog]` und `.toast` gemessen, außer Elementen in `[aria-disabled="true"]` bzw. `:disabled`. Jedes Ergebnis ist mindestens 4,5:1. Dazu kommen (Einarbeitung UX-Vorprüfung) die Bereiche `.leg`, `.leer` und `[role=menu]` in den Zuständen unten sowie der Platzhalter `::placeholder` im Titelfeld von „Neue Aufgabe“. Damit misst die Probe jede faint→muted-Stelle aus Funktionaler Anforderung 10 im Browser außer `.pal .nm` (`:392`, Einstellungen) und `.skala` (`:439`, Tagesleiste); diese beiden prüft die Unit über den faint-Wächter.
 
 | Zustand | Bereiche | hell heute → Soll | dunkel heute → Soll |
 |---|---|---|---|
@@ -199,16 +204,26 @@ Je Thema werden alle sichtbaren Elemente mit eigenem Text unter `header`, `.ka`,
 | Modusleiste mit Fehler: `PUT /api/boards/entwicklung/spalten` über `page.route` mit 409 und einer Fehlermeldung beantwortet, dann „Fertig“ | `header` | `.fehl-kopf` heute Amber auf `--kd-accent-ink` 8,79; auf der neuen Fläche bliebe Amber bei 1,07 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,86) | heute 8,12; Amber auf der neuen Fläche unter 1,1 → mit `--kd-warn` ≥ 4,5 (gerechnet 4,79) |
 | Toast nach Ziehen von #2 nach „Erledigt“ (`#2 nach „Erledigt“`, „rückgängig“) | `.toast` | „rückgängig“ 11,49 (gerechnet) → ≥ 4,5 | „rückgängig“ 1,55 (gerechnet) → ≥ 4,5 |
 | Warnungs-Toast nach Ziehen von #1 nach „In Arbeit“ über die Grenze (`#pruef-warnung`, wie `r00096-wip-grenze.spec.js`) | `.toast` | „!“ 4,71 (gerechnet) → ≥ 4,5 | „!“ 2,63 (gerechnet) → ≥ 4,5 |
+| Menü „Mehr“ geöffnet (`#t-mehr`) | `[role=menu]` (`#pop.kz-menue`) | nicht gemessen → ≥ 4,5 | nicht gemessen → ≥ 4,5 |
+| Menü „Berichte“ geöffnet (`#t-ber`, in der Stufe `compact` über `#t-seite`) | `[role=menu]` (`#pop.menue`, Gruppenköpfe `.k` „ZEITEN“ usw., `:220`) | `.k` faint auf `--kd-bg` 3,29 (gerechnet) → ≥ 4,5 | nicht gemessen → ≥ 4,5 |
+| Kontextmenü von #1 per Rechtsklick, dann Eintrag „Klasse …“ (Untermenü offen, wie `r00033-kontextmenue.spec.js`) | `[role=menu]` (`#kmenue`, `.kmenue.unter`; Kürzel `.km-k` `:600`, `:606`) | nicht gemessen → ≥ 4,5 | nicht gemessen → ≥ 4,5 |
+| Board, Spalte „Erledigt“ leer (vor dem Toast-Zustand) | `.leer` (`:95`) | faint auf Fläche der Spalte, nicht gemessen → ≥ 4,5 | nicht gemessen → ≥ 4,5 |
+| „Neue Aufgabe“ (Taste `n`), Titelfeld leer | `.mod.neu .titel` mit `getComputedStyle(el, '::placeholder').color` gegen den Feldgrund (`:612`) | faint auf `--kd-surface` bzw. Feldgrund, nicht gemessen → ≥ 4,5 | nicht gemessen → ≥ 4,5 |
 
-Werte „heute“ gemessen am 2026-11-06 im headless Chromium gegen `d9674e3`, außer den als gerechnet markierten (aus `kd-tokens.css`, oklch → sRGB → WCAG; Zeile Modusleiste mit Fehler ganz gerechnet).
+Werte „heute“ gemessen am 2026-11-06 im headless Chromium gegen `d9674e3`, außer den als gerechnet markierten (aus `kd-tokens.css`, oklch → sRGB → WCAG; Zeile Modusleiste mit Fehler ganz gerechnet). „nicht gemessen“: die fünf Zustände der Einarbeitung UX-Vorprüfung sind heute nicht gemessen; der rote Lauf gegen heute ist Teil von B0398.
 
-- [ ] **Board**, beide Themen: jedes Element mit eigenem Text unter `header`, `.ka` und `.bahn-kopf` misst mindestens 4,5:1, darunter die Initialen ST, MI, CL, „Neue Aufgabe“, die Fälligkeit von #1 und die Herkunft.
+- [ ] **Board**, beide Themen: jedes Element mit eigenem Text unter `header`, `.ka`, `.bahn-kopf` und `.leg` misst mindestens 4,5:1, darunter die Initialen ST, MI, CL, „Neue Aufgabe“, die Fälligkeit von #1, die Herkunft und „Klick filtert · class:“ in der Legende.
 - [ ] **Grenze**: Spaltenkopf „In Arbeit“ mit „Grenze 1 · überschritten“, beide Themen, mindestens 4,5:1.
-- [ ] **Fenster**: Aufgabenfenster #2 per Klick, beide Themen, jedes Element unter `[role=dialog]` mindestens 4,5:1.
+- [ ] **Fenster**: Aufgabenfenster #2 per Klick, beide Themen, jedes Element unter `[role=dialog]` mindestens 4,5:1, die Zeile „Stefan · <Zeit>“ des Kommentars (`.km .mono`) eingeschlossen.
 - [ ] **Modusleiste**: nach „Mehr“ → „Spalten einrichten“, beide Themen, jedes Element unter `header` mindestens 4,5:1. Dazu sind Titel „Spalten einrichten“, Dateipfad, Untertitel, „Verwerfen“, „Fertig“ und der Ich-Knopf einzeln mit Wert im Testprotokoll genannt.
 - [ ] **Modusleiste mit Fehler**: Fehlerzeile `.fehl-kopf` mit der Fehlermeldung sichtbar, beide Themen, mindestens 4,5:1.
 - [ ] **Toast**: Toast mit „rückgängig“, beide Themen, jedes Element unter `.toast` mindestens 4,5:1.
 - [ ] **Warnungs-Toast**: `#pruef-warnung` mit „!“ und Text „Grenze erreicht: …“, beide Themen, mindestens 4,5:1, das „!“ eingeschlossen.
+- [ ] **Menü „Mehr“**: geöffnet über `#t-mehr`, beide Themen, jedes Element mit eigenem Text unter `[role=menu]` mindestens 4,5:1, die Zusätze `.muted` („Stefan“ bei „Ich bin …“) eingeschlossen.
+- [ ] **Menü „Berichte“**: geöffnet über `#t-ber`, beide Themen, jedes Element unter `[role=menu]` mindestens 4,5:1, die Gruppenköpfe „ZEITEN“, „VERLAUF“, „BESTAND“, „AUSLEITEN“ eingeschlossen.
+- [ ] **Kontextmenü**: Rechtsklick auf #1, dann „Klasse …“, beide Themen, jedes Element unter `#kmenue` mindestens 4,5:1, die Tastenkürzel `.km-k` im Menü und im offenen Untermenü eingeschlossen; Einträge mit `aria-disabled="true"` (`.km-aktuell`) sind ausgenommen.
+- [ ] **Leere Spalte**: Board vor jedem Ziehen, Spalte „Erledigt“ leer, beide Themen, der Leertext „leer“ unter `.leer` mindestens 4,5:1.
+- [ ] **Platzhalter**: „Neue Aufgabe“ per Taste `n`, Titelfeld leer, beide Themen: die Farbe aus `getComputedStyle(el, '::placeholder').color` gegen den ersten deckenden Grund des Felds mindestens 4,5:1.
 - [ ] **Grenzwert**: der Helfer misst schwarzen Text auf `rgba(0,0,0,0)` über einem weißen Grund als 21:1. Ein Element mit `color: oklch(0.62 0.014 255)` auf `--kd-bg` hell misst 3,29 und wird gemeldet. Das ist die Gegenprobe, dass die Probe rot werden kann; sie läuft im Test als eigener Fall mit einem eingefügten Element.
 - [ ] **Gegenbeispiel inaktiv**: im Ich-Menü sind „Claude“ und „Anna“ (`aria-disabled="true"`, `--kd-faint`) nicht gemeldet. „Stefan“ und „Mia“ werden gemessen und erreichen mindestens 4,5:1.
 - [ ] **Ausnahmeliste**: sie steht im Test, startet leer und nimmt nur Verstöße auf, die zu #50 oder #55 gehören, je mit Kartennummer. Ist sie bei Abschluss nicht leer, nennt der Bericht jeden Eintrag.
@@ -217,6 +232,7 @@ Werte „heute“ gemessen am 2026-11-06 im headless Chromium gegen `d9674e3`, a
 ### Paarungen am Element
 
 - [ ] **Modusleiste**: `getComputedStyle(header.kz.modus).backgroundColor` entspricht `--kd-modus`, der Titel `--kd-modus-text`, „Fertig“ der Fläche `--kd-accent` mit Schrift `--kd-on-accent`. Verglichen über das Canvas, beide Themen.
+- [ ] **Unterer Abschluss der Modusleiste**: `border-bottom-width` von `header.kz.modus` ist `1px`, `border-bottom-color` entspricht `--kd-modus-linie`, beide Themen. Gegenbeispiel: auf der Kopfzeile ohne Modus fehlt die Linie in `--kd-modus-linie`.
 - [ ] **Initialen**: `.pk-m` hat die Schrift `--kd-on-mensch`, `.pk-a` die Schrift `--kd-on-agent`, beide Themen.
 - [ ] **„Wie lange noch“**, dunkel: der Block einer Phase mit 0 von 3, 1 von 3 und 3 von 3 durchlaufen misst Text gegen Grund mindestens 4,5:1 (gerechnet mindestens 10,21). `style` der Section enthält `--anteil` und kein `--h`.
 
@@ -230,13 +246,13 @@ Werte „heute“ gemessen am 2026-11-06 im headless Chromium gegen `d9674e3`, a
 
 ```
 web/
-  kd-tokens.css         geändert: on-Farben, head-link, modus, scrim, shadow-mod, wl-1..3; warn und agent hell; beide Dunkelblöcke gleich
+  kd-tokens.css         geändert: on-Farben, head-link, modus (dunkel ggf. eigener Wert), modus-linie, scrim, shadow-mod, wl-1..3; warn und agent hell; beide Dunkelblöcke gleich
   kd-base.css           geändert: #fff → on-Farben (.btn-haupt, .pk, .lauf.eigen), .pk-0 → muted
-  kd-app.css            geändert: Modusleiste, faint → muted (14 Stellen), .toast .lnk, .ausruf, .wl-*, Literale → Tokens
-  ansicht.js            geändert: --anteil statt --h an .wl-phase (:1102, :1111)
+  kd-app.css            geändert: Modusleiste (Fläche, unterer Abschluss 1 px, Fokusring der Knöpfe), faint → muted (14 Stellen), .toast .lnk, .ausruf, .wl-*, Literale → Tokens
+  ansicht.js            geändert: --anteil statt --h an .wl-phase (:1102, :1111); optional aria-hidden am Trenner .trenner (:1234)
 e2e/
   einheit/kontrast.test.js   neu: Rechner, Paartabelle, Wächter, Selbstproben
-  tests/kontrast.spec.js     neu: Abnahme-Probe beider Themen
+  tests/kontrast.spec.js     neu: Abnahme-Probe beider Themen (inkl. Menüs, Kontextmenü, leere Spalte, Platzhalter)
   tests/hilfen.js            geändert: Kontrast-Helfer
   tests/r00070-dark-mode.spec.js, r00097-eigentuemer.spec.js, r00100-bestand.spec.js   geändert: Helfer aus hilfen.js
 Dokumentation/Architektur/A00009-oberflaeche.md   nur falls doch eine Abweichung von Regel 5 bleibt (Ziel: keine)
@@ -265,8 +281,9 @@ Die Gestaltungsrichtung bleibt (`_wireframes.md`). Die Artboards sind DOM-Abzüg
 
 ### Umfang
 
-I0096: 9 Bubbles, kein Feature, 7,5–17 h.
-- Herleitung: Summe der Bubble-Spannen (B0390 1-3, B0391 1-2, B0392 0,5-1, B0393 1-2, B0394 0,5-1, B0395 0,5-1, B0396 1-2, B0397 1-2, B0398 1-3).
+I0096: 9 Bubbles, kein Feature, 8–18 h (vor der Einarbeitung UX-Vorprüfung 7,5–17 h).
+- Herleitung: Summe der Bubble-Spannen (B0390 1-3, B0391 1-2, B0392 0,5-1, B0393 1-2, B0394 0,5-1, B0395 0,5-1, B0396 1-2, B0397 1-2, B0398 1,5-4).
+- Einarbeitung UX-Vorprüfung: B0398 von 1-3 auf 1,5-4 (fünf Zustände und der Platzhalter mehr, Hypothese: je Zustand ein Aufbau nach vorhandenem Muster); B0390 (vier Paare mehr, nur Daten) und B0393 (eine Linie, ein Fokusring, ggf. ein Dunkelwert) bleiben in ihrer Spanne; B0395 (optional ein Attribut) ebenso. Keine neue Bubble, weil keine über 4 h wächst.
 - Die Spannen folgen dem Muster von I0095 (13 Bubbles, 11–25 h) und sind ungemessen (Hypothese).
 - Gezählte Eingänge: 18 Literal-Zeilen, 20 faint-Stellen (15 umgehängt, 5 erlaubt), 9 feste `#fff` in 8 Zeilen (davon `.ausruf` nach Funktionaler Anforderung 12), 3 Kontrast-Helfer.
 
@@ -280,12 +297,13 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft einen
 - Literal-Wächter mit Datei:Zeile.
 - faint-Wächter mit Erlaubt-Liste.
 - Selbstproben: schlechtes Paar, `#fff`, `hsl()`, abweichender Dunkelblock.
+- Linien-Paare der Modusleiste und `faint/bg` je Thema mit 3,0.
 - Erster roter Test: „Paar Modusleiste dunkel ≥ 4,5“. Er läuft heute als `todo` mit 1,33.
 
 **Integration:** entfällt; der Server ändert sich nicht.
 
 **E2E**, `e2e/tests/kontrast.spec.js`, gegen das laufende Programm auf freiem Port (`kanbanStarten`):
-- US-1 bis US-5 und US-7, je Zustand beide Themen; US-6 als Selbstprobe der Unit;
+- US-1 bis US-5 und US-7 bis US-9, je Zustand beide Themen; US-6 als Selbstprobe der Unit;
 - dazu der Grenzwert-Fall mit eingefügtem Element;
 - dazu das Gegenbeispiel „inaktiv“.
 
@@ -312,7 +330,7 @@ Keine.
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
-Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer Fläche, für die kein Kontrast versprochen ist. Die Paartabelle macht jedes Versprechen ausdrücklich, und die Unit rechnet es in beiden Themen nach. Ein neuer Ton bricht damit kein Paar unbemerkt. Der Literal-Wächter schließt den Weg, auf dem die Befunde entstanden: ein festes `#fff` neben einem Token, das im Dunkelthema hell wird. Die E2E-Probe misst, was die Unit nicht sieht, also gemischte Flächen, Transparenz und Klassentönung, an genau den fünf Bereichen der Abnahme-Probe. Alle heute gemessenen Verstöße in diesen Bereichen sind einer Funktionalen Anforderung zugeordnet: Initialen 3–4, „Neue Aufgabe“ 3, Fälligkeit 6, Modusleiste 7–9, faint 10, Toast 5 und 12.
+Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer Fläche, für die kein Kontrast versprochen ist. Die Paartabelle macht jedes Versprechen ausdrücklich, und die Unit rechnet es in beiden Themen nach. Ein neuer Ton bricht damit kein Paar unbemerkt. Der Literal-Wächter schließt den Weg, auf dem die Befunde entstanden: ein festes `#fff` neben einem Token, das im Dunkelthema hell wird. Die E2E-Probe misst, was die Unit nicht sieht, also gemischte Flächen, Transparenz und Klassentönung, an den fünf Bereichen der Abnahme-Probe und, seit der Einarbeitung der UX-Vorprüfung, an Legende, leerer Spalte, Menüs und Platzhalter. Die Linie unter der Modusleiste trennt den Modus vom Board, auch wo die Flächen fast gleich hell sind. Alle heute gemessenen Verstöße in diesen Bereichen sind einer Funktionalen Anforderung zugeordnet: Initialen 3–4, „Neue Aufgabe“ 3, Fälligkeit 6, Modusleiste 7–9, faint 10, Toast 5 und 12.
 
 ## Missing-Docs
 - `A00009-oberflaeche.md` beschreibt Regel 5 noch als Soll. Nach dem Bau nennt der Entwickler die Paartabelle und den Wächter dort; Abweichungen keine.
@@ -339,3 +357,10 @@ Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer 
   - je Bereich eine Anforderung: die Paare teilen Tokens und Proben, die Karte hat eine Abnahme;
   - Schnitt nach Schichten (erst Tokens, dann CSS, dann Tests): nicht von außen prüfbar.
 - **Detailplanung:** WBS I0096 (B0390–B0398), 2026-11-06.
+- **Einarbeitung UX-Vorprüfung 2026-11-06** (Karte #9, bestanden mit 2 Sollte- und 3 Optional-Lücken, alle eingearbeitet):
+  - Sollte 1: FA 7 neu gefasst. Statt „hell und blau getönt“ gilt jetzt der Wortlaut der Vorprüfung (dunkel ein mittleres Blau, Modus erkennbar an Titel und „Fertig“); US-4 ebenso.
+  - Sollte 2: FA 8 um den unteren Abschluss erweitert (1 px `--kd-modus-linie`, ≥ 3:1 gegen `--kd-modus` und `--kd-sunken`). FA 7 nennt `--kd-modus-linie` dort als Linie mit Zustand statt „reine Verzierung“. Linien-Paare in FA 1, Unit-Kriterium „Linien der Modusleiste“ und Paarung „Unterer Abschluss“ neu.
+  - Optional 3: E2E um Menü „Mehr“, Menü „Berichte“, Kontextmenü mit Untermenü und leere Spalte erweitert, dazu `.leg` im Board und der Kommentar an #2 im Grundbestand. Abweichung vom Wortlaut der Vorprüfung: „`.menue`“ ist im Code das Menü „Berichte“ (`web/ansicht.js:779`), das Menü „Mehr“ ist `#pop.kz-menue` (`:128`). „`.km`“ ist der Kommentar im Aufgabenfenster (`:295`), das Kontextmenü einer Karte ist `#kmenue` (`:546`). Gemessen werden deshalb beide Menüs, das Kontextmenü und der Kommentar.
+  - Optional 4: Platzhalter-Messung über `::placeholder` als eigenes Kriterium.
+  - Optional 5: Fokusring `accent/modus` ≥ 3:1. Gerechnet heute dunkel 2,72, deshalb darf `--kd-modus` dunkel von `--kd-accent-weak` abweichen (FA 7, Startwert gerechnet). Dazu `.bf-chip` neu begründet und das Paar `faint/bg` in FA 1 aufgenommen. `aria-hidden` am Trenner ist optional in FA 11.
+  - Zählung: 26 → 33 Akzeptanzkriterien (7 neu; im Wortlaut geändert Board und Fenster, über FA 1 und FA 7/8 inhaltlich erweitert Paare und Modusleiste; keines gestrichen). User Story: US-4 und der Grundbestand angepasst, US-8 und US-9 neu. WBS: B0390, B0393, B0395 und B0398 nachgezogen, B0398 1-3 → 1,5-4, Summe 7,5–17 → 8–18 h.
