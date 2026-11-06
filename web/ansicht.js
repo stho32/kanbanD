@@ -489,7 +489,8 @@ function vPreisetikett(a, vorSumme) {
 function vKarte(a, fertig) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
-  const due = a.faellig ? `<span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" title="fällig ${datumLang(a.faellig)}">${datumKurz(a.faellig, isoD(Date.now()))}</span>` : '';
+  // vorgelesen wird „fällig“ mit Jahr, die sichtbare Kurzform bleibt stumm
+  const due = a.faellig ? `<span class="vh">fällig ${datumLang(a.faellig)}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${datumLang(a.faellig)}">${datumKurz(a.faellig, isoD(Date.now()))}</span>` : '';
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';

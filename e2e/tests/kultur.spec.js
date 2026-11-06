@@ -125,7 +125,10 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     const due = nr => page.locator(`.ka[data-id="${nr}"] .due`);
     await expect(due(1)).toHaveText(kurz(HEUTE));
     await expect(due(1)).toHaveAttribute('title', `fällig ${lang(HEUTE)}`);
-    await expect(due(1)).toHaveAccessibleName(`fällig ${lang(HEUTE)}`);
+    // was ein Screenreader liest: „fällig“ mit Jahr, nicht nur die sichtbare Kurzform
+    const vorgelesen = await page.locator('.ka[data-id="1"]').ariaSnapshot();
+    expect(vorgelesen).toContain(`fällig ${lang(HEUTE)}`);
+    expect(vorgelesen).not.toMatch(new RegExp(kurz(HEUTE).replace(/\./g, '\\.') + '(?!\\d{4})'));
     await expect(due(2)).toHaveText(lang(VORJAHR_1503));
     await expect(page.locator('.ka[data-id="2"] .signal.faellig')).toHaveAttribute('aria-label', `überfällig seit ${lang(VORJAHR_1503)}`);
     await expect(due(4)).toHaveText(lang(FOLGEJAHR_0101));
@@ -453,9 +456,12 @@ test.describe('US-10: Jahreswechsel', () => {
     const due = nr => page.locator(`.ka[data-id="${nr}"] .due`);
     await expect(due(5)).toHaveText('31.12.');
     await expect(due(6)).toHaveText('01.01.2027');
+    const vorgelesen = await page.locator('.ka[data-id="5"]').ariaSnapshot();
+    expect(vorgelesen).toContain('fällig 31.12.2026');
+    expect(vorgelesen).not.toMatch(/31\.12\.(?!\d{4})/);
     for (const [nr, name] of [[5, 'fällig 31.12.2026'], [6, 'fällig 01.01.2027']]) {
       await expect(due(nr)).toHaveAttribute('title', name);
-      await expect(due(nr)).toHaveAccessibleName(name);
+      expect(await page.locator(`.ka[data-id="${nr}"]`).ariaSnapshot(), `#${nr}`).toContain(name);
     }
     await page.clock.setSystemTime(new Date('2027-01-01T12:00:00+01:00'));
     await page.reload();
@@ -463,7 +469,7 @@ test.describe('US-10: Jahreswechsel', () => {
     await expect(due(6)).toHaveText('01.01.');
     for (const [nr, name] of [[5, 'fällig 31.12.2026'], [6, 'fällig 01.01.2027']]) {
       await expect(due(nr)).toHaveAttribute('title', name);
-      await expect(due(nr)).toHaveAccessibleName(name);
+      expect(await page.locator(`.ka[data-id="${nr}"]`).ariaSnapshot(), `#${nr}`).toContain(name);
     }
   });
 });
