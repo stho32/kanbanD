@@ -47,7 +47,7 @@ test.describe('Selbstproben der ISO-Probe', () => {
     expect(orte(await isoFundstellen(page, 'probe'))).toEqual(['Text: 2026-10-28', 'title: 2026-10-28']);
   });
 
-  test('Grenze: die heutige Kurzform „10-28 14:05“ passt nicht — sie fangen US-2 und US-3', async ({ page }) => {
+  test('Grenze: die heutige Kurzform „10-28 14:05“ passt nicht — US-2 und US-3 fangen sie', async ({ page }) => {
     expect(await funde(page, '<p>10-28 14:05</p>')).toEqual([]);
   });
 });
@@ -65,7 +65,7 @@ test.describe('Selbstproben der Beschriftungsprobe', () => {
       .toEqual([{ beschriftung: 'Spalte', name: 'Spalte', verstoesse: [] }]);
   });
 
-  test('Beschriftung exakt ein Schlüssel fällt, Groß/klein beachtet: „column“ und „labels“ fallen, „Labels“ besteht', async ({ page }) => {
+  test('Beschriftung exakt ein Schlüssel fällt, Groß-/Kleinschreibung beachtet: „column“ und „labels“ fallen, „Labels“ besteht', async ({ page }) => {
     expect(verstoesse(await pruefen(page, zeile('column', '<select aria-label="column"></select>'))))
       .toEqual(['column: Beschriftung ist der Schlüssel column']);
     expect(verstoesse(await pruefen(page, zeile('labels', '<input aria-label="labels">'))))

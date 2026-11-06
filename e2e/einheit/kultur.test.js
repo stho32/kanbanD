@@ -47,7 +47,7 @@ test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel
   assert.strictEqual(OHNE_HERKUNFT, 'ohne Herkunft');
 });
 
-test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß/klein egal (FA 16) — Ähnliches nicht', () => {
+test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß-/Kleinschreibung egal (FA 16) — Ähnliches nicht', () => {
   for (const ja of ['ohne Herkunft', '  Ohne Herkunft ', 'OHNE HERKUNFT', 'Thin Air', 'thin air', ' THIN AIR ']) assert.strictEqual(istOhneHerkunft(ja), true, ja);
   for (const nein of ['ohne Herkunftx', 'ohne', 'Herkunft', 'thin', 'ohne  Herkunft', 'I0001', '']) assert.strictEqual(istOhneHerkunft(nein), false, nein);
 });
