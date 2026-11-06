@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
-const { zieleMessen, titelPruefen, breiteMessen } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -38,7 +38,7 @@ const grundbestand = arbeit => ({
   'aufgaben/0001-eins/notiz.txt': 'Anhang',
   'aufgaben/0002-zwei.md': `---\nid: 2\ntitle: zwei\nclass: feature\nassignees: [cl]\nsignals: [mail]\n---\n${ZEIT}`,
   'aufgaben/0002-zwei/protokoll.txt': 'Anhang',
-  'aufgaben/0003-drei.md': '---\nid: 3\ntitle: drei\nassignees: [mi]\n---\n',
+  'aufgaben/0003-drei.md': '---\nid: 3\ntitle: drei\nassignees: [mi]\nlabels: [repo:shop, nc:304]\n---\n',
   'aufgaben/0004-vier.md': '---\nid: 4\ntitle: vier\narchived: 2026-10-01\n---\n',
 });
 
@@ -286,7 +286,7 @@ test.describe('Messprobe, feiner Zeiger, 1280 px', () => {
       if (breite) await page.setViewportSize({ width: breite, height: 800 });
       await starten(page);
       await oeffnen(page);
-      await expect(page.locator('body')).not.toBeEmpty();
+      await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
       const { offen, alarme } = abgleichen(await zieleMessen(page, { zeiger: 'fein', ansicht }), NICHT_GEMESSEN, ansicht);
       expect(alarme).toEqual([]);
       expect(offen).toEqual([]);
@@ -328,7 +328,7 @@ test.describe('Messprobe, Touch, 390 px', () => {
       if (touchBreite) await page.setViewportSize({ width: touchBreite, height: 844 });
       await starten(page);
       await oeffnen(page);
-      await expect(page.locator('body')).not.toBeEmpty();
+      await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
       const { offen, alarme } = abgleichen(await zieleMessen(page, { zeiger: 'touch', ansicht }), NICHT_GEMESSEN, ansicht);
       expect(alarme).toEqual([]);
       expect(offen).toEqual([]);
@@ -350,7 +350,7 @@ for (const breite of [320, 375, 414]) {
       test(`${ansicht}: höchstens ${breite} px breit`, async ({ page }) => {
         await starten(page);
         await oeffnen(page);
-        await expect(page.locator('body')).not.toBeEmpty();
+        await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
         expect(await breiteMessen(page, ansicht)).toEqual([]);
       });
     }

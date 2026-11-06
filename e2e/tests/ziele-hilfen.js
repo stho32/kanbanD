@@ -10,8 +10,10 @@ const MASS = { fein: 24, touch: 44 };
  * ob sie trifft, prüft document.elementFromPoint an den vier Kantenmitten (1 px innen).
  * Bei feinem Zeiger gilt die Kreis-Ausnahme aus WCAG 2.5.8, bei Touch nicht.
  */
-function imBrowserMessen({ mass, kreisAusnahme, ansicht }) {
-  const ZIELE = 'button, select, input:not([type=hidden]), a.btn, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=tab], [role=switch], a[href]';
+/** Was als Bedienziel gemessen wird (ADR-0012 Regel 2). */
+const ZIELE = 'button, select, input:not([type=hidden]), a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href]';
+
+function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);
 
   // Allein heißt: allein in seinem Block — Hervorhebungen (b, span) um den Link zählen nicht als Block
@@ -120,7 +122,7 @@ function imBrowserTitelPruefen({ ansicht }) {
  * ohneKreis: true misst auch bei feinem Zeiger ohne Kreis-Ausnahme — für Proben, die die Trefferfläche selbst verlangen.
  */
 function zieleMessen(page, { zeiger, ansicht, ohneKreis = false }) {
-  return page.evaluate(imBrowserMessen, { mass: MASS[zeiger], kreisAusnahme: zeiger === 'fein' && !ohneKreis, ansicht });
+  return page.evaluate(imBrowserMessen, { mass: MASS[zeiger], kreisAusnahme: zeiger === 'fein' && !ohneKreis, ansicht, ZIELE });
 }
 
 /** Verstöße der Titelprobe: Punkte des Kartentitels, die nicht das Öffnen der Karte treffen. */
@@ -141,4 +143,17 @@ function breiteMessen(page, ansicht) {
   }, ansicht);
 }
 
-module.exports = { zieleMessen, titelPruefen, breiteMessen, MASS };
+/**
+ * Zahl der sichtbaren Ziele im Inhalt: oberste Ebene (Dialog, Menü), sonst main — die Kopfzeile zählt nicht.
+ * Beweist, dass eine Ansicht wirklich geöffnet ist; ohne Ziele wäre „kein Verstoß“ leer bestanden.
+ */
+function zieleImInhalt(page) {
+  return page.evaluate(ziele => {
+    const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);
+    const inhalt = oberste || document.querySelector('main');
+    if (!inhalt) return 0;
+    return [...inhalt.querySelectorAll(ziele)].filter(e => e.checkVisibility({ visibilityProperty: true })).length;
+  }, ZIELE);
+}
+
+module.exports = { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, MASS };

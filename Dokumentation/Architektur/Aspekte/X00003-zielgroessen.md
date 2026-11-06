@@ -23,7 +23,7 @@ quellen:
 Soll nach [ADR-0012](../../ADRs/0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Akzeptiert, Karte #10, PO `AI-Team/po-entscheidungen.md:129–132`):
 
 - Die Mindestkante jedes Zeigerziels ist `var(--kd-ziel)`. Sie steht genau einmal in `web/kd-tokens.css`: genau 24px bei feinem Zeiger (WCAG 2.2 SC 2.5.8), genau 48px in `@media (pointer:coarse)`. Die Messprobe verlangt bei Touch ≥ 44 ohne Ausnahme; bei 320 px darf ein Ziel bis 44 schrumpfen oder ins Menü „<Seite> ▾“ wandern, waagrechtes Scrollen bleibt verboten (PO `:130`). Die Abstandsausnahme ist die WCAG-Kreisformel, nur bei feinem Zeiger (`:131`).
-- Die Basisregel in `web/kd-base.css` (`:where(button, select, input, a.btn, [role=checkbox|radio|menuitem|tab|switch])`) setzt die Mindestgröße. Inline-Links im Fließtext sind ausgenommen.
+- Die Basisregel in `web/kd-base.css` (`:where(button, select, input, a.btn, summary, [role=checkbox|radio|menuitem|menuitemradio|menuitemcheckbox|tab|switch])`) setzt die Mindestgröße. Inline-Links im Fließtext sind ausgenommen. Die Messprobe zählt dieselben Ziele und verlangt je Ansicht mindestens ein sichtbares Ziel im Inhalt, damit eine leere Ansicht nicht leer besteht.
 - Kleine Zeichen behalten ihre Zeichnung. Ihr Ziel wächst über einen durchsichtigen Trefferhof (`::after`), der weder Nachbarn überdeckt noch abgeschnitten wird.
 - Benennt ein Text die Aktion, gehört er zum Ziel (Teilaufgabe: Kästchen und Text sind ein Element).
 

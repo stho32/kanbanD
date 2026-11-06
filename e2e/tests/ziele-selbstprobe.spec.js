@@ -1,6 +1,6 @@
 // R00108 Selbstproben des Messhelfers (ADR-0012 Regel 6): künstliche Seiten ohne kanbanD.
 const { test, expect } = require('@playwright/test');
-const { zieleMessen, titelPruefen, breiteMessen } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt } = require('./ziele-hilfen');
 
 const STIL = '<style>body{margin:0}button{all:unset;box-sizing:border-box;position:absolute;background:#ccc}</style>';
 const knopf = (x, y, groesse, name, stil = '') => `<button aria-label="${name}" style="left:${x}px;top:${y}px;width:${groesse}px;height:${groesse}px;${stil}"></button>`;
@@ -111,5 +111,16 @@ test.describe('Selbstprobe Breite', () => {
     expect(await breiteMessen(page, 'probe')).toEqual([]);
     await page.setContent(seite('<div style="overflow-x:auto"><div style="width:900px;height:10px"></div></div>'));
     expect(await breiteMessen(page, 'probe')).toEqual([]);
+  });
+});
+
+test.describe('Selbstprobe Inhalt', () => {
+  test('zieleImInhalt zählt sichtbare Ziele der obersten Ebene, sonst in main; Kopfzeile zählt nicht', async ({ page }) => {
+    await page.setContent('<header><button>Kopf</button></header><main id="main"></main>');
+    expect(await zieleImInhalt(page)).toBe(0);
+    await page.setContent('<header><button>Kopf</button></header><main id="main"><button>a</button><button hidden>b</button><a href="#x">c</a></main>');
+    expect(await zieleImInhalt(page)).toBe(2);
+    await page.setContent('<main id="main"><button>a</button></main><div role="menu"><button role="menuitem">x</button><button role="menuitem">y</button><button role="menuitem">z</button></div>');
+    expect(await zieleImInhalt(page)).toBe(3);
   });
 });
