@@ -174,3 +174,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Detailplanung | product-owner (frisch) | befund: Wireframe-Pflicht (gestalter, D0006), Zeitraum ausblenden; Freigabe Artboard an den Auftraggeber, Bau ohne Oberfläche läuft weiter | 0:02 | ba49fee |
 | 2026-11-06 | #6 | Detailplanung | planer (frisch) | bestanden: UX-Muss und PO eingearbeitet, B0356–B0362 neu, 17 Bubbles (11–22 h Hypothese); 8 frei baubar, 9 warten auf die Freigabe von D0006; Zug nach Entwicklung | 0:08 | 98e285d |
 | 2026-11-06 | #6 | Entwicklung | gestalter (frisch) | bestanden: D0006 Zustand Bestand nach Labels gezeichnet, wartet auf Freigabe des Auftraggebers | 0:08 | 9cdedb4 |
+| 2026-11-06 | #6 | Entwicklung | entwickler (frisch) | bestanden: 8 freie Bubbles auf main (ff 9db218c), Ist-Zeiten/Gelerntes 3449da6; Karte nach „Ohne Mensch nicht lösbar“ — Freigabe Artboard D0006 | 0:16 | 9db218c |
