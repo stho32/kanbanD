@@ -308,3 +308,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Erledigt | director | Merge a917765, Gate cargo 554 · Unit 266 · E2E 685, ausgeliefert, nicht gepusht | 0:15 | a917765 |
 | 2026-11-06 | #11 | Architektur | architekt | bestanden: ADR-0013 deutsche Anzeige an der Zeichengrenze, X00004 | 0:04 | edc022c |
 | 2026-11-06 | #11 | Detailplanung | planer | bestanden: I0098 mit 4 Features, 15 Bubbles, R00109 mit US-1..US-10; PO Z. 144–148; Z. 148 an den Auftraggeber (B0436/B0437 warten) | 0:40 | 0337bae |
+| 2026-11-07 | #11 | Entwicklung | entwickler | bestanden (Teilbau ohne B0436/B0437), Nachprüfung Stil/Tests | 1:57 | 77627e7 |
