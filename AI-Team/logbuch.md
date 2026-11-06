@@ -198,3 +198,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #8 | Auto-Review | architektur-reviewer (frisch) | befund: Muss 1 Menüs Legen/WBS-Status ohne DOM-Fokus; Sollte 3; Drift A00009/ADR-0010 | 0:04 | — |
 | 2026-11-06 | #8 | Auto-Review | code-reviewer (frisch) | bestanden; Sollte S1 Wächterlücken (M2, M3), S2 Rückgabe nach Pop-Wechsel; Leseliste lückenhaft | 0:10 | — |
 | 2026-11-06 | #8 | Auto-Review | ux-reviewer (frisch) | befund: Muss Live-Ereignis nimmt Tab-Fokus auf Karte/Zeile/Spaltenkopf; Sollte Defekte-Pop außer Sicht, Hilfe-Scroll, Berichte-Name | 0:11 | — |
+| 2026-11-06 | #8 | Nacharbeit | entwickler (frisch) | bestanden: M1, M2, S1–S5 mit Rot-Beleg; r00078 flattert (Altlast) | 0:30 | 2eeca2b |
