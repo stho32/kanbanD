@@ -261,7 +261,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${x === 'thin air' ? OHNE_HERKUNFT : esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder ${OHNE_HERKUNFT} · Enter" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -382,7 +382,7 @@ function anwendungenZahl() {
 const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenZahl() > 1;
 function vHerkunftChip(x) {
   const q = S.herkunft[x], h = quelleLink(x);
-  if (x === 'thin air') return `<span class="org leer" title="ohne Herkunft">thin air</span>`;
+  if (x === 'thin air') return `<span class="org leer" title="${OHNE_HERKUNFT}">${OHNE_HERKUNFT}</span>`;
   if (mehrdeutig(x)) return `<span class="org mehrdeutig" title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
   return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
