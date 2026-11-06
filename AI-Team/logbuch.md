@@ -271,3 +271,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #10 | Architektur | architekt | befund: ADR-0012 Zielgrößen zentral (Vorgeschlagen), X00003, A00009; fein 18/114 < 24, Touch 93/93 < 44; zwei Maße an PO | 0:40 | f979e37 |
 | 2026-11-06 | #10 | Architektur | product-owner | bestanden: fein 24 px, Touch Token 48/Probe ≥ 44 (320 px darf auf 44 oder ins Menü), WCAG-Kreisformel; Z.132 Akzeptanzkriterien vs. Tests; Leseliste nachgeholt | 0:15 | 2904570, 13f5856 |
 | 2026-11-06 | #10 | Architektur | architekt | bestanden: ADR-0012 akzeptiert, Regel 8 Akzeptanzkriterien vs. Tests, /architektur pruefen ohne Befund; Zug nach Detailplanung | 0:10 | d416e56 |
+| 2026-11-06 | #10 | Detailplanung | planer | bestanden: I0097 unter D0002, F0048–F0051, B0399–B0408 (11,5–24,5 h Hypothese), R00108 mit US-1..6; zwei bedingte Fragen (nur wenn B0406 bei 320 px rot); .farbe ::after belegt | 0:45 | 72a174c, efe1cdd |
