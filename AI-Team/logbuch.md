@@ -234,3 +234,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Entwicklung (Nacharbeit 2) | entwickler | bestanden: R1–R5 (Zählwort, Hinweis je Leiste, Name, D0006, Kommentare); volle Suite 410 passed | 0:17 | 8151719..5632221 |
 | 2026-11-06 | #18 | Auto-Reviews Wdh. | rechtschreib-reviewer | bestanden: 4 Funde behoben, keine neuen; → Entwicklertest | 0:03 | 3b987ea |
 | 2026-11-06 | #18 | Entwicklertest | entwicklertester | bestanden: US-1..25, keine Befunde; 3 Anmerkungen (US-3 „nur“, US-21 Gap statt Leerzeichen, Esc speichert Titel) | 0:40 | 183ede7 |
+| 2026-11-06 | #18 | Auslieferung + Retrospektive | director | ausgeliefert 7422 (PID 3788358); 3 Factory-Vorschläge; kein Push | 0:05 | 1e442cd |
