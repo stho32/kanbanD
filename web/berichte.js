@@ -597,14 +597,15 @@
   }
 
   /** Tooltip und zugänglicher Name einer Stelle der Tabelle `{zeile, spalte, zelle}`; Zeile oder Spalte null heißt Summe. */
-  function zellName({ zeile, spalte, zelle }, achsen, klassen) {
+  function zellName(stelle, achsen, klassen) {
+    const { zeile, spalte, zelle } = stelle;
     if (!zeile && !spalte) return summenName('gesamt', zelle.zahl);
     if (!spalte) return summenName(achsenKopf(zeile, achsen.zeilen), zelle.zahl);
     if (!zeile) return summenName(achsenKopf(spalte, achsen.spalten), zelle.zahl);
     const kopf = `${achsenKopf(zeile, achsen.zeilen)} × ${achsenKopf(spalte, achsen.spalten)}`;
     if (!zelle.zahl) return `${kopf}: keine offen`;
     let schluss = 'ohne Abschlussspalte, ohne Filter der Berichte';
-    if (zeile.ohne || spalte.ohne) schluss = 'nicht klickbar';
+    if (zielfilter(stelle, achsen) === null) schluss = 'nicht klickbar';
     return `${kopf}: ${zelle.zahl} offen — ${[...klassenTeile(zelle.jeKlasse, klassen), schluss].join(' · ')}`;
   }
 

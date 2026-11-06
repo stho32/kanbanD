@@ -252,6 +252,14 @@ test('B0352 Rundprobe: jeder Zielfilter trifft genau die Aufgaben seiner Zelle p
 /* ── B0354 Filterleiste in der Rechnung; Zeitraum, Rechnen ab und Messbasis wirken nicht ── */
 const gefiltert = (aenderung, daten = grundbestand()) => bestandNachLabels(daten.aufgaben, daten.board, KLASSEN, 'repo', 'nc', { ...FILTER_LEER, ...aenderung });
 
+test('B0357 Name einer Zahl ohne Zielfilter (Leerzeichen und Anführungszeichen im Wert): nicht klickbar wie die Zelle', () => {
+  const t = bestand(grundbestand([aufgabe(22, ['repo:mein "shop"', 'nc:304'], 'eol')]));
+  const ort = ortVon(t, namen(t.zeilen).indexOf('mein "shop"'), namen(t.spalten).indexOf('304'));
+  assert.strictEqual(zielfilter(ort, ACHSEN), null, 'Vorbedingung: die Zelle hat keinen Zielfilter');
+  assert.strictEqual(zellName(ort, ACHSEN, KLASSEN_MIT_NAMEN), 'repo:mein "shop" × nc:304: 1 offen — EOL 1 · nicht klickbar');
+  assert.match(nameAn(t, 'shop', '304'), /ohne Abschlussspalte, ohne Filter der Berichte$/, 'eine klickbare Zahl daneben behält ihren Schluss');
+});
+
 test('B0354 Klasse drift ausgeschlossen: Beispiel der Akzeptanzkriterien', () => {
   const t = gefiltert({ ohneFarben: ['drift'] });
   assert.strictEqual(zelle(t, 'shop', '304').zahl, 1);
