@@ -250,3 +250,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #9 | Detailplanung | planer | bestanden: R00107, I0096 mit 9 Bubbles; 4 Fragen an product-owner, UX-Vorprüfung beauftragt | 0:15 | 015005e, 0ba13be |
 | 2026-11-06 | #9 | Detailplanung | product-owner | bestanden: 4 Fragen wie empfohlen (Z. 125–128), nichts an den Betreiber; Amber aus #55 hier | 0:02 | e321dc6 |
 | 2026-11-06 | #9 | Detailplanung | ux-reviewer | bestanden, Vorprüfung: 2 Sollte (Modusleiste „hell“ im Dunkelthema, Abgrenzung zum Board 1,03–1,51), 3 Optional (Menüs/leere Spalte in der E2E, ::placeholder, Fokusring); Nachtrag planer beauftragt | 0:03 | — |
+| 2026-11-06 | #9 | Detailplanung | planer | Nachtrag UX-Vorprüfung (483e1d3, 5d0d711); nach Nachforderung der Leseliste: Modusleiste als neuer Zustand an D0002 vor dem Bau freizugeben (po Z.75/76), B0393 wartet (6017333) | 0:16 | 483e1d3, 5d0d711, 6017333 |
