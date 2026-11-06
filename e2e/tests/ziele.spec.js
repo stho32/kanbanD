@@ -76,3 +76,67 @@ test.describe('Touch, 390 px', () => {
     expect(deckkraft.every(wert => wert === '1'), deckkraft.join(' ')).toBe(true);
   });
 });
+
+test.describe('Teilaufgabe auf der Karte: Text gehört zum Ziel', () => {
+  test.describe('Touch', () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+    test('Tipp auf den Text „b“ von #1 → Datei - [x] b, Karte zeigt „c“, kein Fenster', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      const eins = page.locator('.ka[data-id="1"]');
+      await eins.locator('.naechste').getByText('b', { exact: true }).tap();
+      await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] b');
+      await expect(eins.locator('.naechste')).toHaveText('c');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    });
+
+    test('Tipp auf den Titel von #1 öffnet weiterhin das Fenster', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await page.locator('.ka[data-id="1"] .t').tap();
+      await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+      expect(k.lies('aufgaben/0001-eins.md')).toContain('- [ ] b');
+    });
+  });
+
+  // Der Tipp oben bestand schon vor dem Umbau: Chromium lenkt einen Tipp auf ein nahes Ziel um (Touch Adjustment).
+  // Der Mausklick auf denselben Text wird nicht umgelenkt und zeigt, ob der Text selbst zum Ziel gehört.
+  test('Klick mit der Maus auf den Text „b“ von #1 → Datei - [x] b, Karte zeigt „c“, kein Fenster', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/board/entwicklung');
+    const eins = page.locator('.ka[data-id="1"]');
+    await eins.locator('.naechste').getByText('b', { exact: true }).click();
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] b');
+    await expect(eins.locator('.naechste')).toHaveText('c');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('ein Tab-Halt: Kästchen und Text sind ein Element role=checkbox, Schrift und Farbe wie der Kartentext', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/board/entwicklung');
+    const naechste = page.locator('.ka[data-id="1"] .naechste');
+    const halte = naechste.locator('button, a[href], input, select, [tabindex]:not([tabindex="-1"])');
+    await expect(halte).toHaveCount(1);
+    await expect(halte).toHaveAttribute('role', 'checkbox');
+    await expect(halte).toHaveAttribute('aria-checked', 'false');
+    await expect(halte).toHaveAccessibleName('b abhaken');
+    await expect(halte).toHaveText('b');
+    const stil = loc => loc.evaluate(e => { const s = getComputedStyle(e); return [s.fontFamily, s.fontSize, s.fontWeight, s.color, s.textAlign]; });
+    const [ziel, umgebung] = await Promise.all([stil(halte), stil(naechste)]);
+    expect(ziel).toEqual(umgebung.slice(0, 4).concat(['start']));
+  });
+
+  test('Leertaste hakt ab und setzt den Fokus auf die nächste offene Teilaufgabe, danach auf die Karte', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/board/entwicklung');
+    await page.getByRole('checkbox', { name: 'b abhaken' }).focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('checkbox', { name: 'c abhaken' })).toBeFocused();
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] b');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.ka[data-id="1"]')).toBeFocused();
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] c');
+  });
+});
+

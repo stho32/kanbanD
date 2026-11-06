@@ -374,3 +374,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0399 Zielmaß an einem Ort mit reiner Probe | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0400 Trefferfläche messen mit Selbstproben | Standard | 2,5-3,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0409 Löschknöpfe bei Touch sichtbar | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0408 Teilaufgabe als ein Ziel mit Text | Standard | 1,5-2,5h | 0,1h | 0,1h | autonom |
