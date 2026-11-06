@@ -783,3 +783,58 @@ test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Per
     await gruppePruefen('Person', `${thema} Stundenzettel, Person`);
   }
 });
+
+/* ── Nacharbeit Karte #8 (M2): ein Live-Ereignis lässt den Fokus auf Karte, Spaltenkopf und Listenzeile stehen ── */
+
+/** Fokus über Tab (höchstens 80 Schritte) oder element.focus() auf `selektor`; danach muss genau dieses Element fokussiert sein. */
+async function fokusSetzen(page, selektor, weg) {
+  const ziel = page.locator(selektor);
+  if (weg === 'focus') await ziel.focus();
+  else {
+    await page.locator('body').focus();
+    for (let i = 0; i < 80 && !(await ziel.evaluate(el => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+  }
+  await expect(ziel).toBeFocused();
+}
+
+/** Eine andere Person (planer) schreibt #3 und #2; der Render des Live-Ereignisses ist abgewartet, der neue Titel sichtbar. */
+async function andereSchreibt(page, sichtbar) {
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  for (const nr of [3, 2]) expect((await page.request.patch(`${k.adresse}api/aufgaben/${nr}`, { ...ALS_PLANER, data: { titel: `neu ${nr}` } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1000 }).toBeGreaterThan(vorher);
+  await expect(page.locator(sichtbar)).toContainText('neu 2', { timeout: 1000 });
+}
+
+for (const weg of ['Tab', 'focus']) {
+  test(`M2 (${weg}): Fokus auf Karte #2, Live-Schreiben an #3 und #2 → Fokus bleibt auf #2, m macht Stefan zuständig`, async ({ page }) => {
+    await fokusSetzen(page, '.ka[data-id="2"]', weg);
+    await andereSchreibt(page, '.ka[data-id="2"]');
+    await expect(page.locator('.ka[data-id="2"]')).toBeFocused();
+    await page.keyboard.press('m');
+    await expect.poll(async () => (await (await page.request.get(`${k.adresse}api/aufgaben/2`)).json()).zustaendige).toContain('st');
+  });
+
+  test(`M2 (${weg}): Fokus auf den Kopf „In Arbeit“, Live-Schreiben an #3 und #2 → Fokus bleibt auf dem Kopf`, async ({ page }) => {
+    const kopf = '[data-col="In Arbeit"] > .bahn-kopf';
+    await fokusSetzen(page, kopf, weg);
+    await andereSchreibt(page, '.ka[data-id="2"]');
+    await expect(page.locator(kopf)).toBeFocused();
+  });
+
+  test(`M2 (${weg}): Fokus auf Zeile #2 der Aufgabenliste, Live-Schreiben an #3 und #2 → Fokus bleibt auf der Zeile`, async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    await expect(page.locator('tr[data-zeile="2"]')).toBeVisible();
+    await fokusSetzen(page, 'tr[data-zeile="2"]', weg);
+    await andereSchreibt(page, 'tr[data-zeile="2"]');
+    await expect(page.locator('tr[data-zeile="2"]')).toBeFocused();
+  });
+
+  test(`M2-Variante (${weg}): Fokus auf dem Kommentar-Symbol der Spalte „In Arbeit“ (zwei Spalten mit Kommentar), Live-Schreiben → Fokus bleibt darauf`, async ({ page }) => {
+    k.schreib('boards/fabrik.md', '---\ncolumn-notes:\n  Eingang: alles Neue\n  In Arbeit: nur zwei gleichzeitig\n---\n# fabrik\n\n## Eingang\n\n- #1\n- #2\n\n## In Arbeit\n\n- #3\n\n## Fertig\n\n- #9\n');
+    const info = '[data-col="In Arbeit"] .info';
+    await expect(page.locator(info)).toBeVisible();
+    await fokusSetzen(page, info, weg);
+    await andereSchreibt(page, '.ka[data-id="2"]');
+    await expect(page.locator(info)).toBeFocused();
+  });
+}

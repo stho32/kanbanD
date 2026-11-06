@@ -1309,6 +1309,14 @@ document.addEventListener('dblclick', e => {
   const t = e.target.closest && e.target.closest('[data-dbl]');
   if (t) { e.preventDefault(); clearTimeout(S.titelKlick); act(t.dataset.dbl, t.dataset.arg); }
 });
+/** Die Führung folgt dem echten Fokus: auch eine per Tab, Klick oder Skript fokussierte Karte bzw. Zeile ist nach
+ *  dem nächsten Neuzeichnen — etwa durch ein Live-Ereignis — wieder das Ziel (R00106, Karte #8 M2). */
+function fuehrungNachziehen(element) {
+  if (!element.matches) return;
+  if (element.matches('.ka[data-id]')) S.ui.fokusKarte = +element.dataset.id;
+  else if (element.matches('tr[data-zeile]')) S.ui.fokusZeile = +element.dataset.zeile;
+}
+document.addEventListener('focusin', e => fuehrungNachziehen(e.target));
 document.addEventListener('focusout', e => {
   // Verlassen eines zurückgesetzten Felds meldet den getippten Wert nach (R00103); Ersetzen ist kein Verlassen
   if (!S.neuzeichnen) aenderungNachtragen(e.target);
