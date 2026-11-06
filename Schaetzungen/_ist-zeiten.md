@@ -355,3 +355,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0386 Radio-Schritt rechnen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0378 Fokusfalle mit inert und Tab-Umlauf | Standard | 1-3h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0379 Startziel und Rückgabe nach render() | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00106 Fokus in Fenstern und Menüs | B0388 Spalte zu und auf über data-halt | Standard | 0,5-1h | 0,2h | 0,2h | autonom |

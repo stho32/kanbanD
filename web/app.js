@@ -1167,7 +1167,7 @@ async function act(a, arg, wert) {
       }
       case 'vollbild': vollbildSetzen(!u.vollbild); break;
       case 'spalte-zu': spalteKlappen(arg, true); break;
-      case 'spalte-auf': spalteKlappen(arg, false); u.fokus = `.bk-name[data-arg="${CSS.escape(arg)}"]`; break;
+      case 'spalte-auf': spalteKlappen(arg, false); break;
       case 'col-farbe-weg': u.setup.spalten[+arg].farbe = ''; break;
       case 'col-add': {
         const name = (wert || '').trim();

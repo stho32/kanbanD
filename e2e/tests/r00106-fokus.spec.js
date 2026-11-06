@@ -142,3 +142,17 @@ test('US-3: „Neue Aufgabe“ hält den Fokus im Fenster, Esc gibt ihn dem Ausl
   const f = await fokus(page);
   expect(f.imMain || f.id === 'main', `${f.tag}#${f.id}`).toBe(true);
 });
+
+test('US-8: Enter auf „In Arbeit“ klappt zu, Fokus auf den Aufklapp-Knopf; Live-Ereignis hält ihn; Enter klappt auf, Fokus auf „In Arbeit“', async ({ page }) => {
+  await page.locator('.bk-name[data-arg="In Arbeit"]').focus();
+  await page.keyboard.press('Enter');
+  const streifen = page.locator('.zu-streifen[data-arg="In Arbeit"]');
+  await expect(streifen).toBeVisible();
+  await expect(streifen).toBeFocused();
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_PLANER, data: { titel: 'eins neu' } })).ok()).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 1000 }).toBeGreaterThan(vorher);
+  await expect(streifen).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.bk-name[data-arg="In Arbeit"]')).toBeFocused();
+});
