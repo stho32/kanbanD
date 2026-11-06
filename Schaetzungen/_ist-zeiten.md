@@ -412,3 +412,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0426 Kulturmodul mit Jahreswechsel-Test | Standard | 1,5-2,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0427 ISO-Probe mit Selbstproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0435 Beschriftungsprobe mit Selbstproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0428 Fälligkeit auf der Karte und Schnellvorschau | Standard | 1-2h | 0,3h | 0,3h | autonom |

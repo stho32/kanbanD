@@ -117,7 +117,7 @@ const fenster = page => page.locator('#fenster');
 const schliessen = page => page.keyboard.press('Escape');
 
 test.describe('US-1 bis US-5: Datumsangaben', () => {
-  test.fail('US-1: Fälligkeit auf der Karte kurz im laufenden Jahr, sonst lang, Name und title mit Jahr', async ({ page }) => {
+  test('US-1: Fälligkeit auf der Karte kurz im laufenden Jahr, sonst lang, Name und title mit Jahr', async ({ page }) => {
     await starten(page);
     await brett(page);
     const due = nr => page.locator(`.ka[data-id="${nr}"] .due`);
@@ -127,6 +127,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(due(2)).toHaveText(lang(VORJAHR_1503));
     await expect(page.locator('.ka[data-id="2"] .signal.faellig')).toHaveAttribute('aria-label', `überfällig seit ${lang(VORJAHR_1503)}`);
     await expect(due(4)).toHaveText(lang(FOLGEJAHR_0101));
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
     await page.getByLabel('Titel der neuen Aufgabe').fill('eins due:morgen');
     await expect(page.locator('#neu-vorschau .due')).toHaveText(`fällig ${lang(tag(1))}`);
     const karten = await page.locator('.ka').evaluateAll(l => l.flatMap(e => [e.innerText, ...[...e.querySelectorAll('[title],[aria-label]')].flatMap(x => [x.title, x.getAttribute('aria-label') || ''])]));
@@ -213,7 +214,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
 });
 
 test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
-  test.fail('US-6: Board, Aufgabenfenster #1 und „Neue Aufgabe“ ohne ISO-Form', async ({ page }) => {
+  test('US-6: Board, Aufgabenfenster #1 und „Neue Aufgabe“ ohne ISO-Form', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     const sichtbar = await page.locator('body').evaluate(b => {
@@ -324,7 +325,7 @@ test.describe('US-9: ohne Herkunft', () => {
 });
 
 test.describe('US-10: Jahreswechsel', () => {
-  test.fail('US-10: am 31.12.2026 ist 31.12. kurz, am 01.01.2027 lang; Name und title immer mit Jahr', async ({ page }) => {
+  test('US-10: am 31.12.2026 ist 31.12. kurz, am 01.01.2027 lang; Name und title immer mit Jahr', async ({ page }) => {
     await starten(page);
     await page.clock.install({ time: new Date('2026-12-31T12:00:00+01:00') });
     await brett(page);

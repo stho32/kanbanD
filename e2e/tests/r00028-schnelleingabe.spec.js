@@ -3,6 +3,8 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 
 const morgen = () => { const d = new Date(); d.setDate(d.getDate() + 1); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+// Die Karte zeigt die Fälligkeit kurz (TT.MM.) im laufenden Jahr, am 31.12. ist morgen im Folgejahr und lang (R00109)
+const morgenAufDerKarte = () => { const [j, m, t] = morgen().split('-'); return j === String(new Date().getFullYear()) ? `${t}.${m}.` : `${t}.${m}.${j}`; };
 
 test.describe('R00028', () => {
   let k;
@@ -20,7 +22,7 @@ test.describe('R00028', () => {
     const karte = page.locator('.ka[data-id="1"]');
     await expect(karte.locator('.t')).toHaveText('Login reparieren');
     await expect(karte).toHaveAttribute('data-c', 'bug');
-    await expect(karte.locator('.due')).toHaveText(morgen());
+    await expect(karte.locator('.due')).toHaveText(morgenAufDerKarte());
     expect(k.lies('aufgaben/0001-login-reparieren.md')).toContain('assignees: [mi]');
   });
 
