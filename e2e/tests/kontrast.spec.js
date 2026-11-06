@@ -303,6 +303,21 @@ test.describe('R00107 Kontrast', () => {
     }
   });
 
+  test('US-9: „Anlegen“ beim Zeigen (accent-hover mit on-accent), beide Themen', async ({ page }) => {
+    await page.keyboard.press('n');
+    const anlegen = page.locator('.mod.neu .btn-haupt', { hasText: 'Anlegen' });
+    await expect(anlegen).toBeVisible();
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await anlegen.hover();
+      await farbuebergaengeAbwarten(page);
+      const grund = await anlegen.evaluate(e => getComputedStyle(e).backgroundColor);
+      const verlangt = await page.evaluate(() => { const p = document.createElement('p'); p.style.color = 'var(--kd-accent-hover)'; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; });
+      expect(grund, `${t}: Grund ist accent-hover`).toBe(verlangt);
+      expect(await kontrastAm(anlegen), t).toBeGreaterThanOrEqual(MASS);
+    }
+  });
+
   test('Ausnahmeliste: leer, jeder Eintrag mit Kartennummer #50 oder #55', () => {
     for (const a of AUSNAHMEN) expect(['#50', '#55']).toContain(a.karte);
     expect(AUSNAHMEN).toEqual([]);

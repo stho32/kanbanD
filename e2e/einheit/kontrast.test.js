@@ -83,6 +83,7 @@ const PAARE = [
   { name: 'Agent-Container', flaechen: kd(['agent-weak']), vorne: kd(['agent-ink', 'text', 'muted']), mass: SCHRIFT },
   { name: 'Mensch-Container', flaechen: kd(['mensch-weak']), vorne: kd(['text', 'muted']), mass: SCHRIFT },
   { name: 'Füllung Akzent', flaechen: kd(['accent']), vorne: kd(['on-accent']), mass: SCHRIFT },
+  { name: 'Füllung Akzent beim Zeigen', flaechen: kd(['accent-hover']), vorne: kd(['on-accent']), mass: SCHRIFT },
   { name: 'Füllung Mensch', flaechen: kd(['mensch']), vorne: kd(['on-mensch']), mass: SCHRIFT },
   { name: 'Füllung Agent', flaechen: kd(['agent']), vorne: kd(['on-agent']), mass: SCHRIFT },
   { name: 'Kopf', flaechen: kd(['head', 'head-line']), vorne: kd(['head-text', 'head-muted', 'head-link']), mass: SCHRIFT },
