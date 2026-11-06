@@ -7,7 +7,7 @@ mod einstellungen;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
 pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Dublette, Durchlauf, Ergebnis, Fremdschluessel, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Schluesseltreffer, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, doppelte_schluessel, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
-pub use board::{Belegung, Berichtsfilter, Bewegfehler, Board, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, slug_gueltig};
+pub use board::{Belegung, Berichtsfilter, Bestandseinstellung, Bewegfehler, Board, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, slug_gueltig};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 
 /// Dateiname aus einem Titel: Kleinbuchstaben, Umlaute als ae/oe/ue/ss, sonst Bindestriche; höchstens 40 Zeichen.

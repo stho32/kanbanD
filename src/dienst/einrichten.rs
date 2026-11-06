@@ -64,7 +64,7 @@ impl Einrichtung {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(), berichtsfilter: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
         }
     }
 }

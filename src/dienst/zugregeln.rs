@@ -146,7 +146,7 @@ mod tests {
             anwendungen: None,
             start: None,
             fieber: Default::default(),
-            berichtsfilter: Default::default(),
+            berichtsfilter: Default::default(), bestand: None,
         }
     }
 

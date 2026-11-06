@@ -27,7 +27,7 @@ impl Kanban {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(), berichtsfilter: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
         };
         if self.ordner().existiert(&board_pfad(&b.slug)) {
             return Err(Fehler::Konflikt(format!("Es gibt schon ein Board unter boards/{}.md", b.slug)));

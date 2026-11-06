@@ -241,6 +241,14 @@ impl Default for Berichtsfilter {
     }
 }
 
+/// Achsen des Berichts „Bestand nach Labels“ (R00100): je ein Label-Präfix für Zeilen und Spalten,
+/// im Frontmatter `report-labels: {rows, columns}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct Bestandseinstellung {
+    pub zeilen: String,
+    pub spalten: String,
+}
+
 /// Längste Form eines Board-Namens — dieselbe Grenze wie `modell::slug`.
 pub const SLUG_HOECHSTENS: usize = 40;
 
@@ -275,6 +283,9 @@ pub struct Board {
     /// Filter der Berichte dieses Boards (R00081), für alle, die es ansehen.
     #[serde(default)]
     pub berichtsfilter: Berichtsfilter,
+    /// Achsen des Berichts „Bestand nach Labels“ (R00100); `None` = keine gespeichert, der Bericht schlägt vor.
+    #[serde(default)]
+    pub bestand: Option<Bestandseinstellung>,
 }
 
 impl Board {
@@ -689,7 +700,7 @@ mod tests {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(), berichtsfilter: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
         }
     }
 
@@ -892,7 +903,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default() };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None };
         assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Berichtsfilter, Board, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -23,6 +23,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     };
     let fieber = fieber_lesen(m.get("fever"))?;
     let berichtsfilter = berichtsfilter_lesen(m.get("report-filter"))?;
+    let bestand = bestand_lesen(m.get("report-labels"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
@@ -54,7 +55,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand })
 }
 
 /// `[wbs-effects-green]` oder ein einzelner Name → Namen ohne leere.
@@ -163,6 +164,18 @@ fn berichtsfilter_lesen(v: Option<&Value>) -> Result<Berichtsfilter, Formatfehle
     Ok(f)
 }
 
+/// `report-labels:` — `{rows, columns}`, die Achsen des Berichts „Bestand nach Labels“ (R00100); beide Präfixe als Text.
+fn bestand_lesen(v: Option<&Value>) -> Result<Option<Bestandseinstellung>, Formatfehler> {
+    let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(None) };
+    let m = v.as_mapping().ok_or_else(|| Formatfehler("report-labels ist keine Zuordnung".into()))?;
+    let praefix = |schluessel: &str| yaml::text(m, schluessel).ok_or_else(|| Formatfehler(format!("report-labels: {schluessel} fehlt oder ist kein Text")));
+    Ok(Some(Bestandseinstellung { zeilen: praefix("rows")?, spalten: praefix("columns")? }))
+}
+
+fn bestand_zeile(b: &Option<Bestandseinstellung>) -> Option<String> {
+    b.as_ref().map(|b| format!("report-labels: {{rows: {}, columns: {}}}\n", yaml::skalar(&b.zeilen), yaml::skalar(&b.spalten)))
+}
+
 fn berichtsfilter_zeile(f: &Berichtsfilter) -> Option<String> {
     let mut teile = vec![];
     if f.zeitraum != Berichtsfilter::default().zeitraum {
@@ -240,7 +253,8 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let eigentuemer: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.as_str(), e))).collect();
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() {
+    let bestand = bestand_zeile(&b.bestand);
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -286,6 +300,9 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
         if let Some(f) = berichtsfilter {
             s.push_str(&f);
         }
+        if let Some(z) = bestand {
+            s.push_str(&z);
+        }
         s.push_str("---\n\n");
     }
     s.push_str(&format!("# {}\n", b.titel));
@@ -320,7 +337,7 @@ mod tests {
             termine: vec![],
             anwendungen: None,
             start: None,
-            fieber: Default::default(), berichtsfilter: Default::default(),
+            fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
         }
     }
 
@@ -518,5 +535,39 @@ mod tests {
         assert!(mit("report-filter: 3").unwrap_err().0.contains("keine Zuordnung"));
         assert!(mit("report-filter: {window-days: 0}").unwrap_err().0.contains("Messbasis"));
         assert!(mit("report-filter: {window-days: viele}").unwrap_err().0.contains("window-days"));
+    }
+
+    // R00100 B0349: report-labels im Rundlauf, auch mit Werten, die YAML sonst als Zahl, Wahrheitswert oder gar nicht liest
+    #[test]
+    fn bestand_rundlauf_und_fehler() {
+        let ohne = schreiben(&beispiel(), datei);
+        assert!(!ohne.contains("report-labels"), "{ohne}");
+        assert_eq!(lesen("entwicklung", &ohne).unwrap().bestand, None);
+        assert_eq!(schreiben(&lesen("entwicklung", &ohne).unwrap(), datei), ohne, "ohne Eintrag byte-gleich");
+        let mut b = beispiel();
+        b.bestand = Some(Bestandseinstellung { zeilen: "nc".into(), spalten: "repo".into() });
+        let t = schreiben(&b, datei);
+        assert!(t.contains("\nreport-labels: {rows: nc, columns: repo}\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        for (zeilen, spalten) in [("0x11", "true"), ("304", "null"), ("a\u{7f}b", "x\u{2028}y"), ("a, b", "{c}"), ("Größe", "kd:I0007")] {
+            b.bestand = Some(Bestandseinstellung { zeilen: zeilen.into(), spalten: spalten.into() });
+            let t = schreiben(&b, datei);
+            assert_eq!(lesen("entwicklung", &t).unwrap_or_else(|e| panic!("{zeilen:?}/{spalten:?}: {e:?}\n{t}")).bestand, b.bestand, "{t}");
+        }
+        let mit = |zeile: &str| lesen("b", &format!("---\n{zeile}\n---\n## A\n"));
+        assert!(mit("report-labels: 3").unwrap_err().0.contains("report-labels ist keine Zuordnung"));
+        assert!(mit("report-labels: {rows: nc}").unwrap_err().0.contains("columns"));
+        assert!(mit("report-labels: {columns: [a]}").unwrap_err().0.contains("rows"));
+        assert_eq!(mit("report-labels: {rows: 304, columns: true}").unwrap().bestand, Some(Bestandseinstellung { zeilen: "304".into(), spalten: "true".into() }), "von Hand ohne Anführungszeichen: als Text");
+        assert_eq!(mit("report-labels: ~").unwrap().bestand, None);
+    }
+
+    #[test]
+    fn bestand_im_json_des_boards() {
+        let mut b = beispiel();
+        assert_eq!(serde_json::to_value(&b).unwrap()["bestand"], serde_json::Value::Null);
+        b.bestand = Some(Bestandseinstellung { zeilen: "nc".into(), spalten: "repo".into() });
+        assert_eq!(serde_json::to_value(&b).unwrap()["bestand"], serde_json::json!({"zeilen": "nc", "spalten": "repo"}));
     }
 }
