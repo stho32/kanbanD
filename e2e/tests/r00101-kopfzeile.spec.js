@@ -91,8 +91,9 @@ test('Menü „Mehr“: ein Eintrag löst dieselbe Aktion aus wie vorher der Kno
   await expect(signale).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(menue(page).getByRole('menuitemcheckbox', { name: 'Signale oben' })).toHaveAttribute('aria-checked', 'true');
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
+  // seit R00106 führen die Pfeile durchs Menü; Tab schließt es
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await expect(menue(page).getByRole('menuitem', { name: /Darstellung/ })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
