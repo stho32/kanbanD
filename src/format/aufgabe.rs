@@ -1,14 +1,14 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Kommentar, Phasenangaben, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
 pub const DURCHLAEUFE: &str = "kanbanD-runs";
-const BEKANNT: [&str; 14] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, "archived", RESERVIERUNG];
+const BEKANNT: [&str; 15] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, KOSTEN, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
 pub const RESERVIERUNG: &str = "reservation";
@@ -17,6 +17,8 @@ pub const SCHLUESSEL: &str = "key";
 pub const WIRKUNGEN: &str = "wbs-effects";
 pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
+/// Preisetikett (R00105, ADR-0009)
+pub const KOSTEN: &str = "cost";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
 const BERICHTSSCHLUESSEL: [&str; 2] = ["burndown", "forecast"];
 /// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
@@ -66,6 +68,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     if let Some(r) = m.get(BERICHTE) {
         a.zaehlung = zaehlung_lesen(r)?;
+    }
+    if let Some(k) = m.get(KOSTEN).filter(|k| !k.is_null()) {
+        a.kosten = Some(Kosten::lesen(k).map_err(Formatfehler)?);
     }
     if let Some(r) = m.get(RESERVIERUNG) {
         a.reservierung = reservierung_lesen(r)?;
@@ -142,6 +147,41 @@ fn zaehlung_schreiben(z: &Berichtszaehlung) -> String {
     }
     s.extend(z.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
     if s.is_empty() { s } else { format!("{BERICHTE}:\n{s}") }
+}
+
+/// `cost:` als Block: currency, amount oder min + max, basis, items (je Position eine Flusszuordnung), dann Unbekanntes.
+fn kosten_schreiben(k: &Kosten) -> String {
+    let mut s = format!("{KOSTEN}:\n  currency: {}\n", yaml::skalar(&k.waehrung));
+    match &k.wert {
+        Gesamt::Betrag(c) => s.push_str(&format!("  amount: {}\n", geld(*c))),
+        Gesamt::Spanne { min, max } => s.push_str(&format!("  min: {}\n  max: {}\n", geld(*min), geld(*max))),
+        Gesamt::Positionen(_) => {}
+    }
+    if let Some(b) = &k.basis {
+        s.push_str(&format!("  basis: {}\n", yaml::skalar(b)));
+    }
+    if let Gesamt::Positionen(p) = &k.wert {
+        s.push_str("  items:\n");
+        s.extend(p.iter().map(|p| format!("    - {{{}}}\n", position_schreiben(p))));
+    }
+    s.extend(k.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
+    s
+}
+
+fn position_schreiben(p: &Position) -> String {
+    let mut teile = vec![format!("text: {}", yaml::skalar(&p.text))];
+    match p.wert {
+        Wert::Betrag(c) => teile.push(format!("amount: {}", geld(c))),
+        Wert::Spanne { min, max } => teile.extend([format!("min: {}", geld(min)), format!("max: {}", geld(max))]),
+    }
+    teile.extend(p.tokens.map(|t| format!("tokens: {t}")));
+    teile.extend(p.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), flusswert(v))));
+    teile.join(", ")
+}
+
+/// Geldwert in Dollar mit genau zwei Nachkommastellen, ohne Anführungszeichen: `0.60`, `17.00`.
+fn geld(cent: u64) -> String {
+    format!("{}.{:02}", cent / 100, cent % 100)
 }
 
 fn wirkungen_lesen(v: &Value) -> Result<Vec<Wirkung>, Formatfehler> {
@@ -353,6 +393,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     }
     s.push_str(&phasen_schreiben(&a.phasen));
     s.push_str(&zaehlung_schreiben(&a.zaehlung));
+    if let Some(k) = &a.kosten {
+        s.push_str(&kosten_schreiben(k));
+    }
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
     }
@@ -408,6 +451,7 @@ pub fn schreiben(a: &Aufgabe) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modell::{Gesamt, HOECHSTWERT_CENT, Kosten, Position, Wert};
 
     fn voll() -> Aufgabe {
         let mut a = Aufgabe::neu(12, "0012-kopfzeile-verdichten.md".into(), "Kopfzeile: verdichten".into());
@@ -627,6 +671,106 @@ mod tests {
         assert_eq!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting:\n---\n").unwrap(), Aufgabe::neu(2, "0002-x.md".into(), "X".into()), "ohne Schlüssel gilt der Standard");
         assert!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting: [x]\n---\n").unwrap_err().0.contains("reporting ist keine Zuordnung"));
         assert!(lesen("0002-x.md", "---\nid: 2\ntitle: X\nreporting: {forecast: nein}\n---\n").unwrap_err().0.contains("reporting.forecast ist nicht true oder false"));
+    }
+
+    fn mit_kosten(k: Kosten) -> Aufgabe {
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "X".into());
+        a.kosten = Some(k);
+        a
+    }
+
+    fn kosten(wert: Gesamt) -> Kosten {
+        Kosten { waehrung: "USD".into(), basis: None, wert, weitere: vec![] }
+    }
+
+    fn kosten_aus(cost: &str) -> Result<Aufgabe, Formatfehler> {
+        lesen("0001-x.md", &format!("---\nid: 1\ntitle: X\ncost: {cost}\n---\n"))
+    }
+
+    // R00105: Abschnitt cost in fester Reihenfolge, Geldwerte mit genau zwei Nachkommastellen
+    #[test]
+    fn kosten_schreiben_in_fester_reihenfolge() {
+        let mut k = kosten(Gesamt::Spanne { min: 60, max: 160 });
+        k.basis = Some("Schätzung planer".into());
+        let t = schreiben(&mit_kosten(k.clone()));
+        assert_eq!(t, "---\nid: 1\ntitle: X\ncost:\n  currency: USD\n  min: 0.60\n  max: 1.60\n  basis: Schätzung planer\n---\n");
+        assert_eq!(lesen("0001-x.md", &t).unwrap().kosten, Some(k));
+        assert!(schreiben(&mit_kosten(kosten(Gesamt::Betrag(110)))).contains("cost:\n  currency: USD\n  amount: 1.10\n---"));
+        let p = vec![
+            Position { text: "architekt".into(), wert: Wert::Spanne { min: 4, max: 10 }, tokens: Some(67924), weitere: vec![] },
+            Position { text: "Gemeinkostenanteil".into(), wert: Wert::Betrag(30), tokens: None, weitere: vec![] },
+        ];
+        let mut k = kosten(Gesamt::Positionen(p));
+        k.basis = Some("Token-Messung je Rolle, Opus 5.5, Preisstand 2026-10-06".into());
+        let t = schreiben(&mit_kosten(k.clone()));
+        assert!(
+            t.contains("cost:\n  currency: USD\n  basis: \"Token-Messung je Rolle, Opus 5.5, Preisstand 2026-10-06\"\n  items:\n    - {text: architekt, min: 0.04, max: 0.10, tokens: 67924}\n    - {text: Gemeinkostenanteil, amount: 0.30}\n---"),
+            "{t}"
+        );
+        assert_eq!(lesen("0001-x.md", &t).unwrap().kosten, Some(k));
+        assert!(!schreiben(&Aufgabe::neu(1, "0001-x.md".into(), "X".into())).contains("cost"), "ohne Kosten kein Abschnitt");
+    }
+
+    // ADR-0009 Durchsetzung: jeder Cent-Wert liest sich als derselbe zurück, die Datei zeichengleich
+    #[test]
+    fn jeder_centwert_im_rundlauf_zeichengleich() {
+        for c in (0..=100_000).chain([999_999, 99_999_999, HOECHSTWERT_CENT]) {
+            let a = mit_kosten(kosten(Gesamt::Betrag(c)));
+            let t = schreiben(&a);
+            let zurueck = lesen("0001-x.md", &t).unwrap_or_else(|e| panic!("{c}: {e:?}"));
+            assert_eq!(zurueck, a, "{c}");
+            assert_eq!(schreiben(&zurueck), t, "{c}");
+        }
+    }
+
+    #[test]
+    fn jeder_text_als_basis_und_positionstext_im_rundlauf() {
+        for s in yaml::tests::RUNDLAUF_TEXTE.iter().filter(|s| !s.trim().is_empty()) {
+            let p = Position { text: s.to_string(), wert: Wert::Betrag(1), tokens: None, weitere: vec![] };
+            let mut k = kosten(Gesamt::Positionen(vec![p]));
+            k.basis = Some(s.to_string());
+            let a = mit_kosten(k);
+            let t = schreiben(&a);
+            let zurueck = lesen("0001-x.md", &t).unwrap_or_else(|e| panic!("{s:?} → {t:?}: {e:?}"));
+            assert_eq!(zurueck, a, "{s:?} → {t:?}");
+            assert_eq!(schreiben(&zurueck), t);
+        }
+    }
+
+    #[test]
+    fn formwidrige_kosten_machen_die_aufgabe_defekt() {
+        let fall = |cost: &str| kosten_aus(cost).map(|_| ()).unwrap_err().0;
+        assert_eq!(fall("{amount: 1.63}"), "cost: currency fehlt");
+        assert_eq!(fall("{currency: USD, amount: \"1.63\"}"), "cost.amount: keine Zahl");
+        assert_eq!(lesen("0001-x.md", "---\nid: 1\ntitle: X\ncost:\n  currency: USD\n  amount: 1,63\n---\n").unwrap_err().0, "cost.amount: keine Zahl");
+        for zahl in ["1.005", "-1", ".inf", ".nan"] {
+            assert_eq!(fall(&format!("{{currency: USD, amount: {zahl}}}")), "cost.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet", "{zahl}");
+        }
+        assert_eq!(fall("{currency: USD, items: [{text: a, amount: 1}, {text: b, min: 2, max: 1}]}"), "cost.items[1]: min > max");
+        assert_eq!(fall("[USD]"), "cost: keine Zuordnung");
+        assert_eq!(lesen("0001-x.md", "---\nid: 1\ntitle: X\ncost:\n---\n").unwrap().kosten, None, "leer heißt keine Kosten");
+    }
+
+    #[test]
+    fn zahlen_in_anderer_schreibweise_gelten_und_werden_normal_geschrieben() {
+        let a = kosten_aus("{currency: USD, min: 0x11, max: 1e2}").unwrap();
+        assert_eq!(a.kosten.as_ref().map(|k| &k.wert), Some(&Gesamt::Spanne { min: 1700, max: 10000 }));
+        assert!(schreiben(&a).contains("  min: 17.00\n  max: 100.00\n"));
+    }
+
+    #[test]
+    fn unbekannte_schluessel_in_kosten_bleiben_erhalten() {
+        let a = kosten_aus("{currency: USD, amount: 1.00, note: x}").unwrap();
+        let mut b = a.clone();
+        b.titel = "Y".into();
+        let t = schreiben(&b);
+        assert!(t.contains("cost:\n  currency: USD\n  amount: 1.00\n  note: x\n"), "{t}");
+        assert_eq!(lesen("0001-x.md", &t).unwrap(), b);
+        let a = kosten_aus("{currency: USD, items: [{text: a, amount: 1, quelle: log, n: [1, 2]}]}").unwrap();
+        let t = schreiben(&a);
+        assert!(t.contains("    - {text: a, amount: 1.00, quelle: log, n: [1,2]}\n"), "{t}");
+        assert_eq!(lesen("0001-x.md", &t).unwrap(), a);
+        assert!(a.weitere.is_empty(), "cost ist ein bekannter Schlüssel");
     }
 
     #[test]

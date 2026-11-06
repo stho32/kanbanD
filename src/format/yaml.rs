@@ -81,8 +81,15 @@ pub fn zuordnung<'a>(m: &'a Mapping, schluessel: &str) -> Option<&'a Mapping> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+
+    /// Texte, die YAML sonst als etwas anderes liest oder nicht roh duldet — auch für eigene Rundlauf-Tests (R00105).
+    pub(crate) const RUNDLAUF_TEXTE: [&str; 34] = [
+        "0x11", "0o17", "0b11", "0xFF", "0x10", "0X1A", "1e3", "17", "+1", "-1", ".5", "1_000", "0.", ".inf", "-.inf", ".nan", "Infinity",
+        "a\u{7f}b", "\u{80}", "\u{9b}", "\u{fffe}", "\u{ffff}", "\u{85}", "a\u{2028}b", "a\u{2029}b",
+        "\0", "\u{1b}", "a\tb", "\u{feff}x", "\u{202e}abc", "a\nb", "Größe", "kd:I0007", "Stefan Hoffmann",
+    ];
 
     #[test]
     fn schlichte_texte_bleiben_ohne_anfuehrungszeichen() {
@@ -104,12 +111,7 @@ mod tests {
     // „YAML liest etwas anderes“ (Zahlen mit Präfix) und „Datei unlesbar“ (nicht druckbare Zeichen)
     #[test]
     fn jeder_text_im_rundlauf() {
-        let werte = [
-            "0x11", "0o17", "0b11", "0xFF", "0x10", "0X1A", "1e3", "17", "+1", "-1", ".5", "1_000", "0.", ".inf", "-.inf", ".nan", "Infinity",
-            "a\u{7f}b", "\u{80}", "\u{9b}", "\u{fffe}", "\u{ffff}", "\u{85}", "a\u{2028}b", "a\u{2029}b",
-            "\0", "\u{1b}", "a\tb", "\u{feff}x", "\u{202e}abc", "a\nb", "Größe", "kd:I0007", "Stefan Hoffmann",
-        ];
-        for s in werte.map(String::from) {
+        for s in RUNDLAUF_TEXTE.map(String::from) {
             let y = format!("k: {}\nl: {}\n", skalar(&s), liste(std::slice::from_ref(&s)));
             let m = lesen(&y).unwrap_or_else(|e| panic!("{s:?} → {y:?}: {e:?}"));
             assert!(matches!(m.get("k"), Some(Value::String(t)) if *t == s), "{s:?} → {y:?} → {:?}", m.get("k"));

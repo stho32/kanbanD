@@ -1,6 +1,8 @@
 //! Preisetikett einer Aufgabe (R00105, ADR-0009): geschätzte API-Kosten in ganzen Cent.
 //! Ein Konstruktor prüft alle Inhaltsregeln — Datei und API rufen denselben.
 
+use serde_yaml::{Mapping, Value};
+
 /// Höchster Geldwert in Cent (1.000.000,00) — technischer Schutzwert für exakte `f64`- und JavaScript-Rechnung.
 pub const HOECHSTWERT_CENT: u64 = 100_000_000;
 pub const HOECHSTZAHL_POSITIONEN: usize = 100;
@@ -60,6 +62,31 @@ pub struct Rohposition {
 }
 
 impl Kosten {
+    /// Abschnitt `cost` aus YAML (Datei oder umgewandeltes JSON): erst die Form, dann [`Kosten::pruefen`].
+    pub fn lesen(v: &Value) -> Result<Kosten, String> {
+        let m = v.as_mapping().ok_or("cost: keine Zuordnung")?;
+        let feld = Felder { m, pfad: "cost" };
+        let positionen = match feld.wert("items") {
+            None => None,
+            Some(Value::Sequence(s)) => Some(
+                s.iter()
+                    .enumerate()
+                    .map(|(i, p)| position_lesen(i, p))
+                    .collect::<Result<_, _>>()?,
+            ),
+            Some(_) => return Err("cost.items: keine Liste".into()),
+        };
+        Kosten::pruefen(Rohkosten {
+            waehrung: feld.text("currency")?,
+            basis: feld.text("basis")?,
+            betrag: feld.geld("amount")?,
+            min: feld.geld("min")?,
+            max: feld.geld("max")?,
+            positionen,
+            weitere: feld.weitere(&KOSTEN_BEKANNT),
+        })
+    }
+
     /// Alle Inhaltsregeln von ADR-0009 an einer Stelle; der Fehler nennt den Pfad (`cost.items[1]: min > max`).
     pub fn pruefen(roh: Rohkosten) -> Result<Kosten, String> {
         let waehrung = roh.waehrung.ok_or("cost: currency fehlt")?;
@@ -92,6 +119,102 @@ impl Kosten {
             weitere: roh.weitere,
         })
     }
+}
+
+const KOSTEN_BEKANNT: [&str; 6] = ["currency", "amount", "min", "max", "basis", "items"];
+const POSITION_BEKANNT: [&str; 5] = ["text", "amount", "min", "max", "tokens"];
+
+fn position_lesen(i: usize, v: &Value) -> Result<Rohposition, String> {
+    let pfad = format!("cost.items[{i}]");
+    let m = v
+        .as_mapping()
+        .ok_or_else(|| format!("{pfad}: keine Zuordnung"))?;
+    let feld = Felder { m, pfad: &pfad };
+    Ok(Rohposition {
+        text: feld.text("text")?,
+        betrag: feld.geld("amount")?,
+        min: feld.geld("min")?,
+        max: feld.geld("max")?,
+        tokens: feld.tokens()?,
+        weitere: feld.weitere(&POSITION_BEKANNT),
+    })
+}
+
+/// Die Schlüssel einer Zuordnung in `cost` mit dem Pfad für die Meldung; `null` gilt als fehlend.
+struct Felder<'a> {
+    m: &'a Mapping,
+    pfad: &'a str,
+}
+
+impl Felder<'_> {
+    fn wert(&self, k: &str) -> Option<&Value> {
+        self.m.get(k).filter(|v| !v.is_null())
+    }
+
+    fn text(&self, k: &str) -> Result<Option<String>, String> {
+        match self.wert(k) {
+            None => Ok(None),
+            Some(Value::String(s)) => Ok(Some(s.clone())),
+            Some(_) => Err(format!("{}.{k}: kein Text", self.pfad)),
+        }
+    }
+
+    fn geld(&self, k: &str) -> Result<Option<u64>, String> {
+        match self.wert(k) {
+            None => Ok(None),
+            Some(Value::Number(n)) => {
+                cent_aus_zahltext(&n.to_string()).map(Some).ok_or_else(|| {
+                    format!(
+                        "{}.{k}: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet",
+                        self.pfad
+                    )
+                })
+            }
+            Some(_) => Err(format!("{}.{k}: keine Zahl", self.pfad)),
+        }
+    }
+
+    fn tokens(&self) -> Result<Option<u64>, String> {
+        match self.wert("tokens") {
+            None => Ok(None),
+            Some(v) => v
+                .as_u64()
+                .map(Some)
+                .ok_or_else(|| format!("{}.tokens: ganze Zahl ≥ 0 erwartet", self.pfad)),
+        }
+    }
+
+    fn weitere(&self, bekannt: &[&str]) -> Vec<(String, Value)> {
+        self.m
+            .iter()
+            .filter_map(|(k, w)| {
+                k.as_str()
+                    .filter(|k| !bekannt.contains(k))
+                    .map(|k| (k.to_string(), w.clone()))
+            })
+            .collect()
+    }
+}
+
+/// Kürzester Zahltext streng als `Ziffern[.Ziffern]` mit höchstens zwei Nachkommastellen → Cent (ADR-0009 Entscheidung 2).
+/// Zu große Werte werden gesättigt, damit der Konstruktor sie mit „höchstens 1000000.00“ abweist.
+fn cent_aus_zahltext(t: &str) -> Option<u64> {
+    if t.contains(['e', 'E']) {
+        // so schreibt der kürzeste Zahltext nur sehr große oder sehr kleine Zahlen — beide sind keine gültigen Geldwerte
+        return t
+            .parse::<f64>()
+            .ok()
+            .filter(|z| *z > 1_000_000.0)
+            .map(|_| u64::MAX);
+    }
+    let (ganz, bruch) = t.split_once('.').unwrap_or((t, ""));
+    let ziffern = |s: &str| s.bytes().all(|b| b.is_ascii_digit());
+    if ganz.is_empty() || !ziffern(ganz) || !ziffern(bruch) || bruch.len() > 2 {
+        return None;
+    }
+    let ganz = ganz.parse::<u64>().unwrap_or(u64::MAX);
+    let bruch = format!("{bruch:0<2}").parse::<u64>().unwrap_or(0);
+    Some(ganz.saturating_mul(100).saturating_add(bruch))
 }
 
 fn positionen_pruefen(roh: Vec<Rohposition>) -> Result<Vec<Position>, String> {
@@ -486,5 +609,181 @@ mod tests {
             panic!()
         };
         assert_eq!(p[0].weitere, note);
+    }
+
+    fn yaml(text: &str) -> serde_yaml::Value {
+        serde_yaml::from_str(text).unwrap()
+    }
+
+    fn gelesen(text: &str) -> Result<Kosten, String> {
+        Kosten::lesen(&yaml(text))
+    }
+
+    fn betrag_aus(zahl: &str) -> Result<Kosten, String> {
+        gelesen(&format!("currency: USD\namount: {zahl}\n"))
+    }
+
+    #[test]
+    fn lesen_baut_spanne_mit_basis() {
+        let k = gelesen("currency: USD\nmin: 0.60\nmax: 1.60\nbasis: Schätzung planer\n").unwrap();
+        assert_eq!(
+            (k.waehrung.as_str(), k.basis.as_deref(), &k.wert),
+            (
+                "USD",
+                Some("Schätzung planer"),
+                &Gesamt::Spanne { min: 60, max: 160 }
+            )
+        );
+    }
+
+    #[test]
+    fn geldwerte_streng_als_zahl_mit_hoechstens_zwei_nachkommastellen() {
+        for (zahl, cent) in [
+            ("0", 0),
+            ("0.0", 0),
+            ("0.6", 60),
+            ("0.60", 60),
+            ("1.63", 163),
+            ("17", 1700),
+            ("0x11", 1700),
+            ("1e2", 10000),
+            ("0.01", 1),
+            ("999999.99", 99_999_999),
+            ("1000000.00", 100_000_000),
+        ] {
+            assert_eq!(
+                betrag_aus(zahl).map(|k| k.wert),
+                Ok(Gesamt::Betrag(cent)),
+                "{zahl}"
+            );
+        }
+        for zahl in ["1000000.01", "1000001", "1e20", "18446744073709551615"] {
+            assert_eq!(
+                betrag_aus(zahl).unwrap_err(),
+                "cost.amount: höchstens 1000000.00",
+                "{zahl}"
+            );
+        }
+        for zahl in ["1.005", "-1", "-0.01", ".inf", "-.inf", ".nan", "0.001"] {
+            assert_eq!(
+                betrag_aus(zahl).unwrap_err(),
+                "cost.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet",
+                "{zahl}"
+            );
+        }
+        for zahl in ["\"1.63\"", "1,63", "true", "[1]", "{a: 1}", "zwei"] {
+            assert_eq!(
+                betrag_aus(zahl).unwrap_err(),
+                "cost.amount: keine Zahl",
+                "{zahl}"
+            );
+        }
+        assert_eq!(
+            gelesen("{currency: USD, min: \"1\", max: 2}").unwrap_err(),
+            "cost.min: keine Zahl"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: [{text: a, min: 1, max: 1.001}]}").unwrap_err(),
+            "cost.items[0].max: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet"
+        );
+    }
+
+    #[test]
+    fn form_der_texte_listen_und_zuordnungen() {
+        assert_eq!(gelesen("[USD]").unwrap_err(), "cost: keine Zuordnung");
+        assert_eq!(gelesen("USD").unwrap_err(), "cost: keine Zuordnung");
+        assert_eq!(
+            gelesen("{currency: 123, amount: 1}").unwrap_err(),
+            "cost.currency: kein Text"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, amount: 1, basis: [a]}").unwrap_err(),
+            "cost.basis: kein Text"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: {text: a}}").unwrap_err(),
+            "cost.items: keine Liste"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: [a]}").unwrap_err(),
+            "cost.items[0]: keine Zuordnung"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: [{text: 5, amount: 1}]}").unwrap_err(),
+            "cost.items[0].text: kein Text"
+        );
+        for t in ["1.5", "-1", "\"12\"", "true"] {
+            assert_eq!(
+                gelesen(&format!(
+                    "{{currency: USD, items: [{{text: a, amount: 1, tokens: {t}}}]}}"
+                ))
+                .unwrap_err(),
+                "cost.items[0].tokens: ganze Zahl ≥ 0 erwartet",
+                "{t}"
+            );
+        }
+        let Gesamt::Positionen(p) =
+            gelesen("{currency: USD, items: [{text: a, amount: 1, tokens: 0}]}")
+                .unwrap()
+                .wert
+        else {
+            panic!()
+        };
+        assert_eq!(p[0].tokens, Some(0));
+    }
+
+    #[test]
+    fn inhaltsregeln_kommen_aus_dem_konstruktor() {
+        assert_eq!(
+            gelesen("{amount: 1.63}").unwrap_err(),
+            "cost: currency fehlt"
+        );
+        assert_eq!(
+            gelesen("{currency: usd, amount: 1.63}").unwrap_err(),
+            "cost.currency: genau drei Großbuchstaben A–Z"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: [{text: a, amount: 1}, {text: b, min: 2, max: 1}]}")
+                .unwrap_err(),
+            "cost.items[1]: min > max"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, items: []}").unwrap_err(),
+            "cost.items: mindestens eine Position"
+        );
+        assert_eq!(
+            gelesen("{currency: USD, amount: 1, min: 1, max: 2}").unwrap_err(),
+            "cost: amount zusammen mit min/max"
+        );
+    }
+
+    #[test]
+    fn null_gilt_als_fehlend_unbekannte_schluessel_bleiben_in_reihenfolge() {
+        assert_eq!(
+            gelesen("{currency: USD, amount: 1, basis: null}")
+                .unwrap()
+                .basis,
+            None
+        );
+        assert_eq!(
+            gelesen("{currency: null, amount: 1}").unwrap_err(),
+            "cost: currency fehlt"
+        );
+        let k = gelesen("{currency: USD, note: x, amount: 1.00, a: {b: 1}}").unwrap();
+        assert_eq!(
+            k.weitere,
+            vec![
+                ("note".to_string(), yaml("x")),
+                ("a".to_string(), yaml("{b: 1}"))
+            ]
+        );
+        let Gesamt::Positionen(p) =
+            gelesen("{currency: USD, items: [{text: a, amount: 1, quelle: log}]}")
+                .unwrap()
+                .wert
+        else {
+            panic!()
+        };
+        assert_eq!(p[0].weitere, vec![("quelle".to_string(), yaml("log"))]);
     }
 }

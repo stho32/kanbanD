@@ -1,4 +1,4 @@
-use super::{Anwendungen, Einstellungen, Herkunftsschluessel};
+use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Kosten};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -388,6 +388,9 @@ pub struct Aufgabe {
     pub phasen: Phasenangaben,
     #[serde(rename = "reporting")]
     pub zaehlung: Berichtszaehlung,
+    /// `cost` (R00105): Preisetikett, geschätzte API-Kosten
+    #[serde(skip)]
+    pub kosten: Option<Kosten>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -417,6 +420,7 @@ impl Aufgabe {
             wirkungen: vec![],
             phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),
+            kosten: None,
             weitere: vec![],
         }
     }
