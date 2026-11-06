@@ -325,6 +325,8 @@ test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148
   test.fail('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als Hilfstext', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
+    // erst wenn die Felder stehen, ist eine leere Liste ein Befund und kein zu früher Blick
+    await page.locator('.felder .k').first().waitFor();
     const beschriftungen = () => page.locator('.felder .k').allTextContents();
     const SCHLUESSEL = ['column', 'class', 'origins', 'assignees', 'due', 'thin air'];
     expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
@@ -332,7 +334,7 @@ test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148
     await expect(page.getByRole('group', { name: 'Zuständig' })).toBeVisible();
     await schliessen(page);
     await page.keyboard.press('n');
-    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor();
+    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).locator('.felder .k').first().waitFor();
     expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
     expect(await beschriftungen()).toEqual(expect.arrayContaining(['Board', 'Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
   });
@@ -340,9 +342,11 @@ test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148
   test.fail('US-8: Wirkungen, Phasen, Reservierung, WBS, Anforderungen und erster Start deutsch beschriftet', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
+    await page.locator('.felder .k').first().waitFor();
     expect(await page.locator('.felder .k').allTextContents()).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
     await schliessen(page);
     await fensterOeffnen(page, 2);
+    await page.locator('.felder .k').first().waitFor();
     expect(await page.locator('.felder .k').allTextContents()).toContain('Reservierung');
     await page.goto(k.adresse + '#/einrichten');
     await expect(page.locator('.k', { hasText: /^WBS$/ }).first()).toBeVisible();
