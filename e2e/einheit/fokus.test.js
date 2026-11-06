@@ -76,30 +76,58 @@ const fs = require('node:fs');
 const path = require('node:path');
 const WEB = path.join(__dirname, '../../web');
 const ERLAUBT = new Set(['fokusSetzen', 'fokusVersuchen', 'ersterTabbarer', 'fallenTaste', 'popMenueTaste', 'gewaehltesRadioFokussieren', 'fensterTaste', 'listenTaste', 'brettTaste', 'keydown']);
-const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'/;
+const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'|^(?:const|let|var) (\w+) = (?:async )?(?:\([^)]*\)|\w+) =>/;
+/** Eine andere Zeile auf oberster Ebene beendet die umgebende Funktion — außer schließende Klammer, Kommentar und Fortsetzung. */
+const OBERSTE_EBENE = /^(?![\s}/*)\]]|$)/;
 
-/** Je .focus()-Aufruf in web/*.js: Datei, Zeile und die umgebende Funktion bzw. das Ereignis des Listeners. */
-function fokusAufrufe() {
+/** Quelltexte von web/*.js als { datei, text }. */
+const webQuellen = () => fs.readdirSync(WEB).filter(n => n.endsWith('.js')).map(datei => ({ datei, text: fs.readFileSync(path.join(WEB, datei), 'utf8') }));
+
+/** Je .focus()-Aufruf: Datei, Zeile, die umgebende Funktion bzw. das Ereignis des Listeners und die vorige nicht leere Zeile. */
+function fokusAufrufe(quellen = webQuellen()) {
   const funde = [];
-  for (const datei of fs.readdirSync(WEB).filter(n => n.endsWith('.js'))) {
-    let umgebend = '(oben)';
-    fs.readFileSync(path.join(WEB, datei), 'utf8').split('\n').forEach((zeile, i) => {
+  for (const { datei, text } of quellen) {
+    let umgebend = '(oben)', vorige = '';
+    text.split('\n').forEach((zeile, i) => {
       const anfang = ANFANG.exec(zeile);
-      if (anfang) umgebend = anfang[1] || anfang[2] || anfang[3];
-      if (zeile.includes('.focus(')) funde.push({ ort: `${datei}:${i + 1}`, umgebend, zeile });
+      if (anfang) umgebend = anfang[1] || anfang[2] || anfang[3] || anfang[4];
+      else if (OBERSTE_EBENE.test(zeile)) umgebend = '(oben)';
+      if (zeile.includes('.focus(')) funde.push({ ort: `${datei}:${i + 1}`, umgebend, zeile, vorige });
+      if (zeile.trim()) vorige = zeile;
     });
   }
   return funde;
 }
 
+const fremdeFokusaufrufe = quellen => fokusAufrufe(quellen).filter(f => !ERLAUBT.has(f.umgebend)).map(f => `${f.ort} in ${f.umgebend}`);
+const RENDER_DANN_FOKUS = /render\(\);[^;]*\.focus\(/;
+const fokusNachRender = quellen => fokusAufrufe(quellen).filter(f => RENDER_DANN_FOKUS.test(f.zeile) || /render\(\);\s*$/.test(f.vorige)).map(f => f.ort);
+
 test('Fokusaufrufe: .focus() nur in Sicherer, Kleber und Tastenzweigen', () => {
-  const fremd = fokusAufrufe().filter(f => !ERLAUBT.has(f.umgebend));
-  assert.deepStrictEqual(fremd.map(f => `${f.ort} in ${f.umgebend}`), []);
+  assert.deepStrictEqual(fremdeFokusaufrufe(), []);
 });
 
 test('Fokusaufrufe: kein .focus() direkt nach render() — das Ziel geht über S.ui.fokus in die Rangfolge', () => {
-  const danach = fokusAufrufe().filter(f => /render\(\);[^;]*\.focus\(/.test(f.zeile));
-  assert.deepStrictEqual(danach.map(f => f.ort), []);
+  assert.deepStrictEqual(fokusNachRender(), []);
+});
+
+/** web/app.js mit `einschub` hinter der Zeile, die `nach` enthält bzw. — mit `hinterEnde` — hinter dem Ende jener Funktion. */
+function appMit(einschub, nach, hinterEnde = false) {
+  const text = fs.readFileSync(path.join(WEB, 'app.js'), 'utf8');
+  const anfang = text.indexOf(nach);
+  assert.ok(anfang >= 0, nach);
+  const stelle = hinterEnde ? text.indexOf('\n}\n', anfang) + 3 : text.indexOf('\n', anfang) + 1;
+  return [{ datei: 'app.js', text: text.slice(0, stelle) + einschub + text.slice(stelle) }];
+}
+
+test('Wächter erkennt eine Pfeilfunktion auf oberster Ebene mit .focus() hinter einem erlaubten Tastenzweig', () => {
+  const quellen = appMit("const springe = () => { $('#neu-titel').focus(); };\n", 'function fensterTaste(e) {', true);
+  assert.deepStrictEqual(fremdeFokusaufrufe(quellen).map(f => f.replace(/:\d+/, '')), ['app.js in springe']);
+});
+
+test('Wächter erkennt .focus() in der Zeile nach render();', () => {
+  const quellen = appMit("  render();\n  $('#neu-titel').focus();\n", 'function fensterTaste(e) {');
+  assert.strictEqual(fokusNachRender(quellen).length, 1);
 });
 
 test('fensterRand: Tab am letzten Element schließt nach vorn, Umschalt+Tab am ersten zum Auslöser, dazwischen weiter', () => {
