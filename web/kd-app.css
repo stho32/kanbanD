@@ -41,10 +41,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz .inp::placeholder{color:var(--kd-head-muted)}
 .kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-accent-weak)}
 .kz .seg{border-color:var(--kd-head-line);flex:none}
-.kz .seg span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
-.kz .seg span+span{border-left-color:var(--kd-head-line)}
-.kz .seg span:hover{color:var(--kd-head-text)}
-.kz .seg span.an{background:var(--kd-head-text);color:var(--kd-head)}
+.kz .seg>span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
+.kz .seg>span+span{border-left-color:var(--kd-head-line)}
+.kz .seg>span:hover{color:var(--kd-head-text)}
+.kz .seg>span.an{background:var(--kd-head-text);color:var(--kd-head)}
 .kz-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--kd-head-muted);cursor:pointer;white-space:nowrap;user-select:none}
 .kz-chk:hover{color:var(--kd-head-text)}
 .kz-chk i{width:13px;height:13px;display:grid;place-items:center;font-style:normal;font-size:10px;background:var(--kd-head-text);color:var(--kd-head)}
@@ -401,7 +401,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .klz.pz .pk{justify-self:center}
 .klz.pz.still{background:var(--kd-bg)}
 .klz.pz.still .inp{color:var(--kd-muted);background:var(--kd-bg)}
-.seg.art span{height:22px;font-size:11px;padding:0 6px}
+.seg.art>span{height:22px;font-size:11px;padding:0 6px}
 .yaml{margin:0;padding:var(--kd-s3) var(--kd-s4);font:11px/1.55 var(--kd-mono);color:var(--kd-text);background:var(--kd-bg);white-space:pre-wrap;flex:1}
 .yaml .neu{background:var(--kd-c-green)}
 /* Personen und Berichte */
@@ -780,7 +780,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}
   .mod-kopf .cls{display:none}
-  .mod-kopf .seg span{padding:0 6px}
+  .mod-kopf .seg>span{padding:0 6px}
   .ko-tab td,.ko-tab th{padding:0 6px}
   .leg .rechts,.stat>.mono{display:none}
   .leg{overflow-x:auto}

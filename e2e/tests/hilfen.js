@@ -194,17 +194,20 @@ function kontrastWerkzeugEinbauen() {
     if (vorher instanceof HTMLElement && vorher !== document.body) vorher.focus({ preventScroll: true }); else e.blur();
     return ergebnis;
   };
-  const messen = bereiche => bereiche.flatMap(bereich => [...document.querySelectorAll(bereich)]
+  const messen = (bereiche, ohne = []) => bereiche.flatMap(bereich => [...document.querySelectorAll(bereich)]
     .flatMap(wurzel => [wurzel, ...wurzel.querySelectorAll('*')])
-    .filter(e => !inaktiv(e))
+    .filter(e => !inaktiv(e) && !ohne.some(sel => e.closest(sel)))
     .flatMap(e => sichtbar(e) ? messungen(bereich, e) : fokussierbar(e) && e.getClientRects().length > 0 ? imFokus(bereich, e) : []));
   window.kdKontrast = { messen, schriftGegenGrund, verhaeltnis: (a, b) => verhaeltnis(gemalt(['#fff', a]), gemalt(['#fff', b])), leuchtdichte: f => leuchtdichte(gemalt(['#fff', f])) };
 }
 
-/** Alle Schriften mit eigenem Text unter den Bereichen: [{bereich, element, text, wert}]; Inaktives zählt nicht. `wert` ist ungerundet — gerundet wird nur für die Anzeige, nie vor dem Vergleich mit dem Maß. */
-async function kontrastMessen(page, bereiche) {
+/**
+ * Alle Schriften mit eigenem Text unter den Bereichen: [{bereich, element, text, wert}]; Inaktives zählt nicht, ebenso nichts unter
+ * einem Selektor aus `ohne` (ausdrücklich nicht gemessen). `wert` ist ungerundet — gerundet wird nur für die Anzeige, nie vor dem Vergleich mit dem Maß.
+ */
+async function kontrastMessen(page, bereiche, ohne = []) {
   await page.evaluate(kontrastWerkzeugEinbauen);
-  return page.evaluate(b => window.kdKontrast.messen(b), bereiche);
+  return page.evaluate(([b, o]) => window.kdKontrast.messen(b, o), [bereiche, ohne]);
 }
 
 /** Die Messungen unter dem Maß — die Probe meldet alle Verstöße auf einmal statt beim ersten abzubrechen. */

@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastFarben } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben } = require('./hilfen');
 
 const THEMEN = ['light', 'dark'];
 const MASS = 4.5;
@@ -20,6 +20,18 @@ const GRUNDBESTAND = () => ({
   'aufgaben/0005-fuenf.md': '---\nid: 5\ntitle: fünf\nclass: bug\nassignees: [st]\n---\n',
 });
 
+/** Alle Ansichten der Anwendung (Ziele von `g`-Kürzeln in tastatur.js); gemessen wird der ganze `body` samt Kopf mit seinem aktiven Segment. */
+const ANSICHTEN = ['#/board/', '#/aufgaben', '#/personen', '#/einrichten', '#/wbs/', '#/berichte/stundenzettel', '#/berichte/kreuz', '#/berichte/verlauf',
+  '#/berichte/durchlauf', '#/berichte/prognose', '#/berichte/fieber', '#/berichte/kosten', '#/berichte/bestand'];
+/**
+ * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und heute unter 4,5 messen.
+ * Die Gestaltung ist offen (Befund an den Director aus der UX-Nacharbeit); der Test „Nicht gemessen“ hält die Liste ehrlich.
+ */
+const NICHT_GEMESSEN = [
+  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', grund: 'Initialen ruhender Personen, opacity .55' },
+  { selektor: '.pk-still', ansicht: '#/einrichten', grund: 'Initiale stillgelegter Person, opacity .5' },
+];
+
 const ausgenommen = v => AUSNAHMEN.some(a => a.element === v.element && a.text === v.text);
 const lesbar = v => `${v.thema} ${v.bereich} ${v.element} „${v.text}“ ${v.wert.toFixed(3).replace('.', ',')}`;
 
@@ -29,13 +41,13 @@ async function farbuebergaengeAbwarten(page) {
 }
 
 /** Misst die Bereiche je Thema, legt alle Messungen ins Testprotokoll und liefert die Verstöße außerhalb der Ausnahmeliste. */
-async function verstoesseInBeidenThemen(page, bereiche, vorher = async () => {}) {
+async function verstoesseInBeidenThemen(page, bereiche, vorher = async () => {}, ohne = []) {
   const alle = [];
   for (const t of THEMEN) {
     await thema(page, t);
     await vorher();
     await farbuebergaengeAbwarten(page);
-    const messungen = (await kontrastMessen(page, bereiche)).map(m => ({ thema: t, ...m }));
+    const messungen = (await kontrastMessen(page, bereiche, ohne)).map(m => ({ thema: t, ...m }));
     await test.info().attach(`Messungen ${t}`, { body: messungen.map(lesbar).join('\n'), contentType: 'text/plain' });
     alle.push(...messungen);
   }
@@ -259,6 +271,36 @@ test.describe('R00107 Kontrast', () => {
     expect(verstoesse).toEqual([]);
     const platzhalter = (await kontrastMessen(page, ['.mod.neu'])).filter(m => m.element.endsWith('::placeholder'));
     expect(platzhalter.length, 'der Platzhalter wird gemessen').toBeGreaterThan(0);
+  });
+
+  test('US-1 Liste: Zahl im aktiven Segment des Kopfs („alle 5“) ist lesbar, beide Themen', async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    const zahl = page.locator('.kz .seg span.an span.mono');
+    await expect(zahl).toHaveText('5');
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      expect(await kontrastAm(zahl), t).toBeGreaterThanOrEqual(MASS);
+    }
+  });
+
+  test('Ansichten: jede Ansicht samt Kopf, beide Themen, ohne die ausdrücklich nicht gemessenen Zustände', async ({ page }) => {
+    for (const ansicht of ANSICHTEN) {
+      await page.goto(k.adresse + ansicht);
+      await liveBereit(page);
+      const verstoesse = await verstoesseInBeidenThemen(page, ['body'], async () => {}, NICHT_GEMESSEN.map(n => n.selektor));
+      expect(verstoesse, ansicht).toEqual([]);
+    }
+  });
+
+  test('Nicht gemessen: jeder Eintrag kommt in seiner Ansicht vor und misst heute unter 4,5', async ({ page }) => {
+    for (const n of NICHT_GEMESSEN) {
+      await page.goto(k.adresse + n.ansicht);
+      await liveBereit(page);
+      const ort = page.locator(n.selektor).first();
+      await expect(ort, n.selektor).toBeVisible();
+      expect(await kontrastAm(ort), `${n.selektor}: ${n.grund}`).toBeLessThan(MASS);
+    }
   });
 
   test('Ausnahmeliste: leer, jeder Eintrag mit Kartennummer #50 oder #55', () => {
