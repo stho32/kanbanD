@@ -153,3 +153,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Auto-Reviews | code-reviewer (frisch) | befund: Muss B1 doppelte Nummer in Sammel-Aufrufen → 500 (Rückschritt aus B0342) → Nacharbeit I0091; A1 Anhänge an schreib() vorbei (Härtung) | 0:05 | — |
 | 2026-11-06 | #48 | Auto-Reviews | security-reviewer (frisch) | bestanden: 646 Matrixzeilen, zweite Linie per Mutante, B1 aus #5 geschlossen; Sollte: fieber/anhang-Wege an schreib() vorbei (Härtung) | 0:10 | — |
 | 2026-11-06 | #48 | Nacharbeit | director | Rückzug Auto-Reviews → Nacharbeit (Muss B1 doppelte Nummer → 500), Zweig nacharbeit/48 | — | — |
+| 2026-11-06 | #48 | Nacharbeit | entwickler (entw1) | bestanden: B0344 doppelte Nummer → 400 an der Tür, 5 Sammel-Wege, 519/519, ff b05d4d4 | 0:06 | Typ Nacharbeit |
+| 2026-11-06 | #48 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, enge Wiederholung Code-Review | — | — |
