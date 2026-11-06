@@ -93,7 +93,7 @@ Regeln für die Bausteine der Oberfläche:
 
 ### Folgeentscheidungen
 
-- Einordnung der gemischten Pops (Board, Lauf) als Menü oder Dialog — planer/ux.
+- **Entschieden** 2026-11-06 durch den product-owner (`AI-Team/po-entscheidungen.md:107–108`, Commit `679216a`): Ich-Pop ist Menü (`menuitemradio` mit `aria-checked`); Board-, Lauf- und Defekte-Dateien-Pop sind nicht-modale Fenster (`role=dialog` ohne `aria-modal`). Für diese gilt in der Fokusführung: Ebene ohne Falle und **ohne `inert`** darunter, Startziel erstes tabbares Element, Tab hinter dem letzten bzw. Umschalt+Tab vor dem ersten schließt den Pop (weiter hinter bzw. auf den Auslöser), Esc schließt mit Rückgabe an den Auslöser, Live-Ereignis lässt den Fokus im Pop. Regel für künftige `#pop`: nur Einträge ⇒ Menü, sonst nicht-modales Fenster.
 - Ob Hilfe und Zuweisen über dem Fenster das Fenster schließen oder stapeln — heute stapeln sie; die Fokusführung trägt beides.
 
 ## Quellen / Bezüge
