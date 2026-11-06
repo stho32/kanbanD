@@ -31,8 +31,10 @@ function grundbestand(ordner) {
 }
 
 let k;
+let schreibzaehler = 0;
 test.beforeEach(async ({ page }) => {
   k = await kanbanStarten(grundbestand);
+  schreibzaehler = 0;
   await alsPerson(page, 'st');
 });
 test.afterEach(async () => { await k.stoppen(); });
@@ -76,12 +78,14 @@ async function sichtOeffnen(page, sicht) {
   await page.evaluate(rasterImBrowser);
 }
 
-let schreibzaehler = 0;
+/** Titel von #3 nach dem n-ten Ereignis: abwechselnd „drei neu“ und „drei“ (R00106 Abtastung) — jedes Ereignis ändert ihn. */
+const titelNach = n => (n % 2 ? 'drei neu' : 'drei');
+
 /** Der Agent planer ändert den Titel von #3; gewartet wird auf das Neuzeichnen (Zähler), nicht auf die Uhr. */
 async function fremdesEreignis(page) {
   const vorher = await page.evaluate(() => window.kdTest.renders());
   schreibzaehler += 1;
-  const antwort = await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel: `drei ${schreibzaehler}` } });
+  const antwort = await page.request.patch(`${k.adresse}api/aufgaben/3`, { ...ALS_PLANER, data: { titel: titelNach(schreibzaehler) } });
   expect(antwort.ok()).toBe(true);
   await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 2000 }).toBeGreaterThan(vorher);
 }
@@ -115,6 +119,7 @@ for (const breite of [1280, 375]) {
     const alle = [];
     for (const sicht of SICHTEN) {
       const { anzahl, abweichungen } = await sichtAbtasten(page, sicht, breite);
+      console.log(`${sicht.name} ${breite} px: gehalten ${anzahl - abweichungen.length} von ${anzahl}`);
       gesamt += anzahl;
       alle.push(...abweichungen);
     }
@@ -145,7 +150,7 @@ for (const [sicht, selektor] of [[SICHTEN[0], '.ka[data-id="3"]'], [SICHTEN[1], 
     await sichtOeffnen(page, sicht);
     await page.locator(selektor).focus();
     await fremdesEreignis(page);
-    await expect(page.locator(selektor)).toContainText(`drei ${schreibzaehler}`);
+    await expect(page.locator(selektor)).toContainText(titelNach(schreibzaehler));
     await expect(page.locator(selektor)).toBeFocused();
   });
 }
@@ -161,3 +166,67 @@ test('Raster-Grenze: Fokus auf Karte #2, planer archiviert #2 → der Fokus steh
   expect(['INPUT', 'TEXTAREA', 'SELECT'], danach.merkmal).not.toContain(danach.tag);
   expect(danach.rolle, danach.merkmal).not.toBe('radio');
 });
+
+/* ── Rückfall ohne offene Ebene (PO 2026-11-06, R00106 Z. 101 neuer Wortlaut): das fokussierte Element verschwindet live ── */
+
+const REPARIERT = '---\nid: 9\ntitle: neun\n---\n';
+
+/** Fremdes Ereignis, das den Auslöser „1 defekte Datei“ (#t-defekt) entfernt: die Datei wird draußen repariert. */
+async function defekteDateiRepariert(page) {
+  const vorher = await page.evaluate(() => window.kdTest.renders());
+  k.schreib('aufgaben/0009-kaputt.md', REPARIERT);
+  await expect(page.locator('#t-defekt')).toHaveCount(0, { timeout: 3000 });
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+}
+
+const aktivesElement = page => page.evaluate(() => window.kdRaster.merkmal(document.activeElement));
+const OHNE_FUEHRUNG = [SICHTEN[2], SICHTEN[3], SICHTEN[4]];
+const MIT_FUEHRUNG = [[SICHTEN[0], '.ka[data-id="1"]'], [SICHTEN[1], 'tr[data-zeile="1"]']];
+
+for (const breite of [1280, 375]) {
+  for (const sicht of OHNE_FUEHRUNG) {
+    test(`Rückfall ${breite} px ${sicht.name}: Fokus auf „1 defekte Datei“, Datei live repariert, nichts geführt → BODY, nie ein Feld oder Radio`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await sichtOeffnen(page, sicht);
+      await page.locator('#t-defekt').focus();
+      await defekteDateiRepariert(page);
+      expect(await aktivesElement(page)).toBe('BODY');
+    });
+
+    // Ein Pop hängt an seinem Auslöser (data-for); fehlt der, schließt popPlatzieren die Ebene — die letzte Ebene
+    // schließt also mit dem Ereignis selbst, und die Rückgabe an den Auslöser scheitert.
+    test(`Rückfall ${breite} px ${sicht.name}: „Defekte Dateien“ per Enter offen, Auslöser live entfernt, die Ebene schließt → BODY, nie ein Feld oder Radio`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await sichtOeffnen(page, sicht);
+      await page.locator('#t-defekt').focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#pop a')).toBeFocused();
+      await defekteDateiRepariert(page);
+      await expect(page.locator('#pop')).toHaveCount(0);
+      expect(await aktivesElement(page)).toBe('BODY');
+    });
+  }
+
+  for (const [sicht, gefuehrt] of MIT_FUEHRUNG) {
+    test(`Rückfall ${breite} px ${sicht.name}: ${gefuehrt} geführt, Fokus auf „1 defekte Datei“, Datei live repariert → zurück auf ${gefuehrt}`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await sichtOeffnen(page, sicht);
+      await page.locator(gefuehrt).focus();
+      await page.locator('#t-defekt').focus();
+      await defekteDateiRepariert(page);
+      await expect(page.locator(gefuehrt)).toBeFocused();
+    });
+
+    test(`Rückfall ${breite} px ${sicht.name}: ${gefuehrt} geführt, „Defekte Dateien“ offen, Auslöser live entfernt, die Ebene schließt → ${gefuehrt}`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await sichtOeffnen(page, sicht);
+      await page.locator(gefuehrt).focus();
+      await page.locator('#t-defekt').focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#pop a')).toBeFocused();
+      await defekteDateiRepariert(page);
+      await expect(page.locator('#pop')).toHaveCount(0);
+      await expect(page.locator(gefuehrt)).toBeFocused();
+    });
+  }
+}

@@ -648,8 +648,12 @@ function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar) {
   const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
   S.ui.fokus = null;
   const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste, fokusVorher));
-  const verloren = aktiv && aktiv !== document.body;
-  if (!gesetzt && (verloren || geschlossen.length || oberste) && !fokusSitztIn(oberste)) ersterTabbarer(oberste);
+  // Rückfall (R00106 Z. 102–104, PO Z. 111/113): das erste tabbare Element nur in einer nach dem Neuzeichnen offenen Ebene.
+  // Ohne offene Ebene bleibt es beim BODY — auch wenn die letzte gerade schloss und ihr Auslöser fort ist. Hatte sie nie
+  // einen Auslöser (aus BODY geöffnet, Z. 142), gibt es nichts zurückzugeben: dann in den Hauptbereich.
+  const ohneAusloeserGeschlossen = !oberste && geschlossen.length > 0 && !geschlossen.at(-1).rueckgabe.length;
+  if (!gesetzt && oberste && !fokusSitztIn(oberste)) ersterTabbarer($(oberste.selektor));
+  if (!gesetzt && ohneAusloeserGeschlossen) ersterTabbarer($('#main'));
 }
 
 /** Was vor dem Neuzeichnen fokussiert war: nichts (BODY), noch im Dokument oder mit dem Neuzeichnen ersetzt. */
@@ -700,10 +704,9 @@ function fokusSitztIn(oberste) {
   return Boolean(element) && element !== document.body && liegtIn(element, oberste);
 }
 
-/** Rückfall: das erste tabbare Element der obersten Ebene, ohne Ebene des Hauptbereichs. */
-function ersterTabbarer(oberste) {
-  const bereich = (oberste && $(oberste.selektor)) || $('#main');
-  const erstes = tabbareIn(bereich)[0];
+/** Rückfall: das erste tabbare Element im Bereich (oberste offene Ebene bzw. Hauptbereich). */
+function ersterTabbarer(bereich) {
+  const erstes = bereich && tabbareIn(bereich)[0];
   if (erstes) erstes.focus({ preventScroll: true });
 }
 
@@ -724,7 +727,9 @@ function ausloeserDesMenues() {
 
 function popPlatzieren() {
   const p = $('#pop');
-  if (!p) return;
+  // Ein Pop ohne Inhalt (Lauf ohne laufenden Timer) oder ohne Auslöser ist zu — auch im Zustand, sonst rechnet die
+  // Fokusführung mit einer Ebene, die es nicht gibt (R00106).
+  if (!p) { S.ui.pop = null; return; }
   const t = document.getElementById(p.dataset.for);
   if (!t) { S.ui.pop = null; p.remove(); return; }
   const r = t.getBoundingClientRect();
