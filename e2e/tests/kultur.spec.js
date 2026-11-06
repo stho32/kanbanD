@@ -1,0 +1,347 @@
+// R00109 Datumsangaben und Feldbeschriftungen deutsch (ADR-0013, Aspekt X00004)
+const { test, expect } = require('@playwright/test');
+const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
+
+// „Heute“ ist der Tag des Laufs in Europe/Berlin (playwright.config.js); die erwarteten Texte rechnet der Test aus ihm.
+const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
+const HEUTE = tag(0);
+const JAHR = Number(HEUTE.slice(0, 4));
+const VORJAHR_3012 = `${JAHR - 1}-12-30`;
+const VORJAHR_1503 = `${JAHR - 1}-03-15`;
+const FOLGEJAHR_0101 = `${JAHR + 1}-01-01`;
+const lang = iso => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+const kurz = iso => iso.startsWith(`${JAHR}-`) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : lang(iso);
+const ISO = /\d{4}-\d{2}-\d{2}/;
+
+// Tagesrechnung in UTC, damit die Zeitumstellung keinen Tag verschiebt
+const utc = iso => new Date(iso + 'T00:00:00Z');
+const plus = (iso, n) => { const d = utc(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const montag = iso => plus(iso, -((utc(iso).getUTCDay() + 6) % 7));
+const woche = iso => [0, 1, 2, 3, 4, 5, 6].map(n => plus(montag(iso), n));
+
+const ALS_ST = { headers: { 'X-KanbanD-Wer': 'st' } };
+const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl', 'X-KanbanD-Instanz': 'lauf-1' } };
+
+const WBS = wbsText([
+  zeile('A0001', 'Application', '—', 'kanbanD', 'rot'),
+  zeile('D0001', 'Dialog', 'A0001', 'Board', 'rot', { fertig: 'alle Interactions gruen' }),
+  zeile('I0002', 'Interaction', 'D0001', 'Ansehen', 'rot', { fertig: 'US-1' }),
+]);
+const einstellungen = arbeit => `---
+people:
+  st: {name: Stefan, kind: human}
+  mi: {name: Mia, kind: human}
+  cl: {name: Claude, kind: agent}
+classes:
+  bug: {label: Fehler, color: red}
+  feature: {label: Funktion, color: green}
+sources:
+  wbs: ""
+  requirements: ""
+  applications:
+    kd: {name: kanbanD, wbs: "${arbeit.wbs}", requirements: "${arbeit.wurzel}/Anforderungen"}
+---
+`;
+const BOARD = `---
+start: ${tag(-14)}
+column-phases:
+  In Arbeit: Entwicklung
+---
+
+# Entwicklung
+
+## Zu erledigen
+
+- #2
+- #4
+- #5
+- #6
+
+## In Arbeit
+
+- #1
+
+## Erledigt
+
+- #3
+`;
+const karte = (nr, titel, kopf = '', rumpf = '') => `---\nid: ${nr}\ntitle: ${titel}\n${kopf}---\n${rumpf}`;
+const EINS_RUMPF = `
+\`\`\`kanbanD-comments
+2026-10-17 09:00+02:00 · cl · Erster Gedanke
+\`\`\`
+
+\`\`\`kanbanD-time
+${HEUTE} 09:00 · ${HEUTE} 10:00 · st
+${VORJAHR_3012} 09:00 · ${VORJAHR_3012} 10:00 · st
+\`\`\`
+
+\`\`\`kanbanD-runs
+${HEUTE} 14:05 · Entwicklung · bestanden · st · -
+${VORJAHR_3012} 14:05 · Entwicklung · bestanden · st · -
+\`\`\`
+`;
+const grundbestand = arbeit => ({
+  'kanbanD.md': einstellungen(arbeit),
+  'boards/entwicklung.md': BOARD,
+  'aufgaben/0001-eins.md': karte(1, 'eins', `class: bug\nassignees: [st]\ndue: ${HEUTE}\norigins: [I0001, R00014]\nwbs-effects:\n  - {application: kd, action: create, node: I0001, parent: D0001, level: Interaction, name: Eins}\n`, EINS_RUMPF),
+  'aufgaben/0002-zwei.md': karte(2, 'zwei', `assignees: [cl]\ndue: ${VORJAHR_1503}\n`),
+  'aufgaben/0003-drei.md': karte(3, 'drei', 'archived: 2026-10-01\n'),
+  'aufgaben/0004-vier.md': karte(4, 'vier', `due: ${FOLGEJAHR_0101}\n`),
+  'aufgaben/0005-fuenf.md': karte(5, 'fünf', 'due: 2026-12-31\n'),
+  'aufgaben/0006-sechs.md': karte(6, 'sechs', 'due: 2027-01-01\n'),
+});
+
+let k, arbeit;
+const starten = async page => {
+  arbeit = arbeitsRepository(WBS);
+  k = await kanbanStarten(einrichten(grundbestand(arbeit)));
+  expect((await page.request.post(`${k.adresse}api/aufgaben/2/reservierung`, ALS_CL)).ok()).toBe(true);
+  await alsPerson(page, 'st');
+};
+test.afterEach(async () => {
+  if (k) await k.stoppen();
+  if (arbeit) arbeit.aufraeumen();
+  k = null; arbeit = null;
+});
+
+const brett = async page => { await page.goto(k.adresse + '#/board/entwicklung'); await page.locator('.ka[data-id="1"]').waitFor(); };
+/** Öffnet das Aufgabenfenster einer Karte des Boards. */
+async function fensterOeffnen(page, nummer) {
+  await brett(page);
+  await page.locator(`.ka[data-id="${nummer}"] .t`).click();
+  return page.getByRole('dialog', { name: `Aufgabe #${nummer}` });
+}
+const fenster = page => page.locator('#fenster');
+const schliessen = page => page.keyboard.press('Escape');
+
+test.describe('US-1 bis US-5: Datumsangaben', () => {
+  test.fail('US-1: Fälligkeit auf der Karte kurz im laufenden Jahr, sonst lang, Name und title mit Jahr', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    const due = nr => page.locator(`.ka[data-id="${nr}"] .due`);
+    await expect(due(1)).toHaveText(kurz(HEUTE));
+    await expect(due(1)).toHaveAttribute('title', `fällig ${lang(HEUTE)}`);
+    await expect(due(1)).toHaveAccessibleName(`fällig ${lang(HEUTE)}`);
+    await expect(due(2)).toHaveText(lang(VORJAHR_1503));
+    await expect(page.locator('.ka[data-id="2"] .signal.faellig')).toHaveAttribute('aria-label', `überfällig seit ${lang(VORJAHR_1503)}`);
+    await expect(due(4)).toHaveText(lang(FOLGEJAHR_0101));
+    await page.getByLabel('Titel der neuen Aufgabe').fill('eins due:morgen');
+    await expect(page.locator('#neu-vorschau .due')).toHaveText(`fällig ${lang(tag(1))}`);
+    const karten = await page.locator('.ka').evaluateAll(l => l.flatMap(e => [e.innerText, ...[...e.querySelectorAll('[title],[aria-label]')].flatMap(x => [x.title, x.getAttribute('aria-label') || ''])]));
+    expect(karten.filter(t => ISO.test(t))).toEqual([]);
+  });
+
+  test.fail('US-2: Kommentar, Reservierungen, Archivleiste lang; Reiter Datei und Datumsfeld bleiben ISO', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    await expect(fenster(page).locator('.km').first()).toContainText('Claude · 17.10.2026 09:00');
+    await expect(page.getByLabel('Fälligkeit', { exact: true })).toHaveValue(HEUTE);
+    await page.getByRole('tab', { name: 'Datei' }).click();
+    await expect(page.locator('#dateitext')).toContainText(`due: ${HEUTE}`);
+    await schliessen(page);
+    await fensterOeffnen(page, 2);
+    await expect(page.locator('#reservierung')).toContainText(/seit \d\d:\d\d ·/);
+    await expect(page.locator('#reservierung')).not.toContainText(ISO);
+    await schliessen(page);
+    await page.locator('#t-board').click();
+    await page.locator('#reservierungen-zeigen').click();
+    await expect(page.locator('#reservierungen tr[data-reserviert="2"] td').nth(5)).toHaveText(new RegExp(`^${lang(HEUTE).replace(/\./g, '\\.')} \\d\\d:\\d\\d$`));
+    await page.keyboard.press('Escape');
+    await page.locator('[data-act="archiv-an"]').click();
+    await page.locator('.ka[data-id="3"]').click();
+    await expect(page.locator('.mod .archbar')).toContainText('Archiviert am 01.10.2026');
+  });
+
+  test.fail('US-3: Durchläufe und Zeiten im laufenden Jahr kurz, sonst lang', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    await expect(page.locator('#durchlaeufe tbody tr td:first-child')).toHaveText([`${kurz(HEUTE)} 14:05`, `${lang(VORJAHR_3012)} 14:05`]);
+    await expect(page.locator('table.zt tr[data-zeit] td:first-child')).toHaveText([kurz(HEUTE), lang(VORJAHR_3012)]);
+  });
+
+  test.fail('US-4: Personen „zuletzt“ und Wochenleiste lang, Tagesköpfe kurz im laufenden Jahr', async ({ page }) => {
+    await starten(page);
+    // Stefans letzte Zeit liegt heute; einen Tag später zeigt „zuletzt“ ein Datum statt der Uhrzeit
+    await page.clock.install({ time: new Date(Date.now() + 864e5) });
+    await page.goto(k.adresse + '#/personen');
+    await expect(page.locator('tr[data-person="st"]')).toContainText(`zuletzt ${lang(HEUTE)}`);
+    await page.clock.setSystemTime(new Date());
+    await page.goto(k.adresse + '#/berichte/stundenzettel');
+    const tage = woche(tag(1));
+    await expect(page.locator('#woche')).toHaveText(`${lang(tage[0])} – ${lang(tage[6])}`);
+    await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(tage.map(kurz));
+    const neujahr = woche(`${JAHR}-01-01`);
+    for (let w = 0; w < (utc(tage[0]) - utc(neujahr[0])) / (7 * 864e5); w++) await page.getByRole('button', { name: 'vorige Woche' }).click();
+    await expect(page.locator('#woche')).toHaveText(`${lang(neujahr[0])} – ${lang(neujahr[6])}`);
+    await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(neujahr.map(kurz));
+  });
+
+  test.fail('US-5: Tabellenansichten lang, Achsenmarken TT.MM. über JJJJ, Tooltips mit Wochentag', async ({ page }) => {
+    await starten(page);
+    await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { ...ALS_ST, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red', ziel: true }] });
+    await page.request.put(k.adresse + 'api/boards/entwicklung/fieber', { ...ALS_ST, data: { puffer: 4 } });
+    await page.request.post(k.adresse + 'api/boards/entwicklung/bewegen', { ...ALS_ST, data: { nummer: 4, spalte: 'Erledigt' } });
+    const TAG_LANG = /^\d\d\.\d\d\.\d{4}$/;
+    const MIT_WOCHENTAG = /(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/;
+    for (const [bericht, tabelle] of [['verlauf', '.tabellenansicht table'], ['prognose', '.tabellenansicht table'], ['fieber', '#fb-tabelle']]) {
+      await page.goto(k.adresse + '#/berichte/' + bericht);
+      await page.locator('.tabellenansicht summary').click();
+      const tage = await page.locator(`${tabelle} tbody tr td:first-child`).allTextContents();
+      expect(tage.length, bericht).toBeGreaterThan(0);
+      expect(tage.filter(t => !TAG_LANG.test(t)), bericht).toEqual([]);
+    }
+    for (const [bericht, kopf] of [['verlauf', MIT_WOCHENTAG], ['durchlauf', /Ankunft (Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/], ['prognose', MIT_WOCHENTAG]]) {
+      await page.goto(k.adresse + '#/berichte/' + bericht);
+      const svg = page.locator('svg.diagramm').first();
+      await expect(svg.locator('text.achse', { hasText: /^\d\d\.\d\d\.$/ }).first()).toBeAttached();
+      await expect(svg.locator('text.achse', { hasText: /^\d{4}$/ }).first()).toBeAttached();
+      const box = await svg.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await expect(page.locator('#tooltip'), bericht).toContainText(kopf);
+      await page.mouse.move(1, 1);
+    }
+    for (const bericht of ['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand']) {
+      await page.goto(k.adresse + '#/berichte/' + bericht);
+      await page.locator('.body').first().waitFor();
+      for (const s of await page.locator('details:not([open]) > summary').all()) await s.click();
+      const texte = await page.locator('main, body').first().evaluate(b => [b.innerText, ...[...b.querySelectorAll('[title],[aria-label]')].flatMap(x => [x.title, x.getAttribute('aria-label') || ''])]);
+      expect(texte.filter(t => ISO.test(t)).map(t => t.match(ISO)[0]), bericht).toEqual([]);
+    }
+  });
+});
+
+test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
+  test.fail('US-6: Board, Aufgabenfenster #1 und „Neue Aufgabe“ ohne ISO-Form', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    const sichtbar = await page.locator('body').evaluate(b => {
+      const ausgenommen = e => e.closest('#dateitext') || (e.matches && e.matches('input[type=date]'));
+      return [b.innerText, ...[...b.querySelectorAll('[title],[aria-label]')].filter(e => !ausgenommen(e)).flatMap(x => [x.title, x.getAttribute('aria-label') || ''])];
+    });
+    expect(sichtbar.filter(t => ISO.test(t))).toEqual([]);
+  });
+});
+
+test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148)', () => {
+  test.fail('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als Hilfstext', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    const beschriftungen = () => page.locator('.felder .k').allTextContents();
+    const SCHLUESSEL = ['column', 'class', 'origins', 'assignees', 'due', 'thin air'];
+    expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
+    expect(await beschriftungen()).toEqual(expect.arrayContaining(['Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
+    await expect(page.getByRole('group', { name: 'Zuständig' })).toBeVisible();
+    await schliessen(page);
+    await page.keyboard.press('n');
+    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor();
+    expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
+    expect(await beschriftungen()).toEqual(expect.arrayContaining(['Board', 'Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
+  });
+
+  test.fail('US-8: Wirkungen, Phasen, Reservierung, WBS, Anforderungen und erster Start deutsch beschriftet', async ({ page }) => {
+    await starten(page);
+    await fensterOeffnen(page, 1);
+    expect(await page.locator('.felder .k').allTextContents()).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
+    await schliessen(page);
+    await fensterOeffnen(page, 2);
+    expect(await page.locator('.felder .k').allTextContents()).toContain('Reservierung');
+    await page.goto(k.adresse + '#/einrichten');
+    await expect(page.locator('.k', { hasText: /^WBS$/ }).first()).toBeVisible();
+    await expect(page.locator('.k', { hasText: /^Anforderungen$/ }).first()).toBeVisible();
+  });
+});
+
+test.describe('US-9: ohne Herkunft', () => {
+  test.fail('US-9: Chip und Hinweis „ohne Herkunft“; Eingabe „ohne Herkunft“ und THIN AIR ersetzen die Herkunft', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    await expect(page.locator('.ka[data-id="2"] .org')).toHaveText('ohne Herkunft');
+    await fensterOeffnen(page, 2);
+    await expect(fenster(page).locator('.org.leer')).toHaveText('ohne Herkunft');
+    await expect(page.getByLabel('Neue Herkunft')).toHaveAttribute('title', /ohne Herkunft/);
+    await expect(page.getByLabel('Neue Herkunft')).not.toHaveAttribute('title', /thin air/);
+    await schliessen(page);
+    await fensterOeffnen(page, 1);
+    await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014, ohne Herkunftx]');
+    await page.locator('.ochip', { hasText: 'ohne Herkunftx' }).getByRole('button').click();
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
+    await page.getByLabel('Neue Herkunft').fill('  Ohne Herkunft ');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [thin air]');
+    await schliessen(page);
+    await page.reload();
+    await expect(page.locator('.ka[data-id="1"] .org')).toHaveText('ohne Herkunft');
+    // „THIN AIR“ bewirkt dasselbe
+    await page.request.patch(k.adresse + 'api/aufgaben/1', { ...ALS_ST, data: { herkunft: ['I0001'] } });
+    await fensterOeffnen(page, 1);
+    await expect(fenster(page).locator('.ochip')).toHaveCount(1);
+    await page.getByLabel('Neue Herkunft').fill('THIN AIR');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('origins: [thin air]');
+    await schliessen(page);
+    await page.getByLabel('Filter').fill('origin:"thin air"');
+    await expect(page.locator('.ka:visible')).toHaveCount(2);
+  });
+
+  test.fail('US-9, Teil „Neue Aufgabe“: „ohne Herkunft“ und THIN AIR legen eine Aufgabe ohne Herkunft an', async ({ page }) => {
+    await starten(page);
+    await brett(page);
+    const anzahl = async () => (await (await page.request.get(k.adresse + 'api/aufgaben')).json()).length;
+    const vorher = await anzahl();
+    const anlegen = async (titel, herkunft) => {
+      await page.keyboard.press('n');
+      const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+      await dialog.getByLabel('Titel der neuen Aufgabe').fill(titel);
+      await dialog.getByLabel('Herkunft der neuen Aufgabe').fill(herkunft);
+      await dialog.getByLabel('Titel der neuen Aufgabe').press('Enter');
+      await expect(dialog).toHaveCount(0);
+    };
+    const datei = async titel => {
+      const a = (await (await page.request.get(k.adresse + 'api/aufgaben')).json()).find(x => x.titel === titel);
+      expect(a, titel).toBeTruthy();
+      return { nummer: a.nummer, text: k.lies('aufgaben/' + a.datei) };
+    };
+    await anlegen('neu', '  Ohne Herkunft ');
+    await expect.poll(anzahl).toBe(vorher + 1);
+    const neu = await datei('neu');
+    expect(neu.text).toContain('origins: [thin air]');
+    await page.reload();
+    await expect(page.locator(`.ka[data-id="${neu.nummer}"] .org`)).toHaveText('ohne Herkunft');
+    await anlegen('neu2', 'THIN AIR');
+    await expect.poll(anzahl).toBe(vorher + 2);
+    expect((await datei('neu2')).text).toContain('origins: [thin air]');
+    await anlegen('neu3', 'I0001 R00014');
+    await expect.poll(anzahl).toBe(vorher + 3);
+    expect((await datei('neu3')).text).toContain('origins: [I0001, R00014]');
+    await anlegen('x I0001', 'ohne Herkunft');
+    await expect.poll(anzahl).toBe(vorher + 4);
+    expect((await datei('x')).text).toContain('origins: [I0001]');
+  });
+});
+
+test.describe('US-10: Jahreswechsel', () => {
+  test.fail('US-10: am 31.12.2026 ist 31.12. kurz, am 01.01.2027 lang; Name und title immer mit Jahr', async ({ page }) => {
+    await starten(page);
+    await page.clock.install({ time: new Date('2026-12-31T12:00:00+01:00') });
+    await brett(page);
+    const due = nr => page.locator(`.ka[data-id="${nr}"] .due`);
+    await expect(due(5)).toHaveText('31.12.');
+    await expect(due(6)).toHaveText('01.01.2027');
+    for (const [nr, name] of [[5, 'fällig 31.12.2026'], [6, 'fällig 01.01.2027']]) {
+      await expect(due(nr)).toHaveAttribute('title', name);
+      await expect(due(nr)).toHaveAccessibleName(name);
+    }
+    await page.clock.setSystemTime(new Date('2027-01-01T12:00:00+01:00'));
+    await page.reload();
+    await expect(due(5)).toHaveText('31.12.2026');
+    await expect(due(6)).toHaveText('01.01.');
+    for (const [nr, name] of [[5, 'fällig 31.12.2026'], [6, 'fällig 01.01.2027']]) {
+      await expect(due(nr)).toHaveAttribute('title', name);
+      await expect(due(nr)).toHaveAccessibleName(name);
+    }
+  });
+});
