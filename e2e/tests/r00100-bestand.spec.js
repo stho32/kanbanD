@@ -1,6 +1,6 @@
 // E2E R00100 Bericht „Bestand nach Labels“ (I0092): offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -49,6 +49,7 @@ async function zelle(page, zeile, spalte) {
   expect(j, `Spalte ${spalte} in ${koepfe.join(' | ')}`).toBeGreaterThan(0);
   return tabelle(page).locator('tbody tr').filter({ has: page.locator(`th:text-is("${zeile}")`) }).locator(':scope > *').nth(j);
 }
+const gesamt = page => page.getByRole('cell', { name: /^Summe gesamt: / });
 const commits = k => Number(k.git('rev-list', '--count', 'HEAD'));
 
 test.describe('R00100 Bestand nach Labels', () => {
@@ -125,6 +126,18 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(spaltenkoepfe(page).first()).toHaveText('repo ↓ · nc →');
     expect(commits(k)).toBe(vorher);
     expect(k.lies('boards/fabrik.md')).not.toContain('report-labels');
+  });
+
+  test('US-4: gespeicherter Zeitraum „letzte Woche“ gilt hier nicht — Zahlen wie ohne, keine Gruppe Zeitraum, nicht unter „aktiv“, Datei byte-gleich', async ({ page }) => {
+    await bericht(page, grundbestand({ kopf: `${ACHSEN_REPO_NC}report-filter: {period: vorwoche, window-days: 30}\n` }));
+    const vorher = k.lies('boards/fabrik.md');
+    await expect(gesamt(page)).toHaveText('5');
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Zeitraum gilt hier nicht');
+    await filterOeffnen(page);
+    await expect(page.locator('.bfilter .bf-k')).toHaveText(['Farben', 'Spalten', 'Zuständig', 'Labels']);
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveValue('vorwoche');
+    expect(k.lies('boards/fabrik.md')).toBe(vorher);
   });
 
   test('Live: eine neue Aufgabe [repo:shop, nc:304] in „Eingang“ zeigt shop × 304 = 3 ohne Neuladen', async ({ page }) => {
