@@ -65,6 +65,12 @@
     if (wert === 'thin air') return OHNE_HERKUNFT;
     return wert;
   }
+  /** Herkunft aus dem Feld von „Neue Aufgabe“: „ohne Herkunft“ oder thin air als ganzer Inhalt wird thin air, außer der Titel bringt eine Herkunft mit (FA 20); sonst getrennt an Leerzeichen und Kommas. */
+  function herkunftAusFeld(feld, herkunftAusTitel) {
+    if (!istOhneHerkunft(feld)) return feld.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+    if (herkunftAusTitel.length) return [];
+    return ['thin air'];
+  }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
 })(typeof module !== 'undefined' ? module.exports : window);

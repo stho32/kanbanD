@@ -341,12 +341,6 @@ function neuEintrag(titel, f) {
   if (s.faellig || f.faellig) e.faellig = s.faellig || f.faellig;
   return e;
 }
-/** Herkunft aus dem Feld von „Neue Aufgabe“: „ohne Herkunft“ oder thin air als ganzer Inhalt wird thin air, außer der Titel bringt eine Herkunft mit (FA 16); sonst getrennt an Leerzeichen und Kommas. */
-function herkunftAusFeld(feld, herkunftAusTitel) {
-  if (!istOhneHerkunft(feld)) return feld.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
-  if (herkunftAusTitel.length) return [];
-  return ['thin air'];
-}
 async function neueAufgabeAnlegen(weitere, zeilen) {
   const u = S.ui, f = u.neu;
   if (!f || ichNoetig()) { render(); return; }

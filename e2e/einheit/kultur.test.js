@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // Ortszeit der Erwartungen, wie e2e/tests/hilfen.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige } = require('../../web/kultur.js');
+const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld } = require('../../web/kultur.js');
 
 test('lang(2026-10-28) ist 28.10.2026', () => {
   assert.strictEqual(datumLang('2026-10-28'), '28.10.2026');
@@ -55,4 +55,12 @@ test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß/klein e
 test('herkunftAnzeige: thin air heißt „ohne Herkunft“, jede andere Herkunft bleibt, wie sie ist (FA 15)', () => {
   assert.strictEqual(herkunftAnzeige('thin air'), 'ohne Herkunft');
   for (const wert of ['I0001', 'R00014', 'kd:I0001', 'Thin Air']) assert.strictEqual(herkunftAnzeige(wert), wert);
+});
+
+test('herkunftAusFeld: Feld von „Neue Aufgabe“ — „ohne Herkunft“ als ganzer Inhalt wird thin air, eine Herkunft aus dem Titel verdrängt es (FA 20, AK 10)', () => {
+  assert.deepStrictEqual(herkunftAusFeld('  Ohne Herkunft ', []), ['thin air']);
+  assert.deepStrictEqual(herkunftAusFeld(' THIN AIR ', []), ['thin air']);
+  assert.deepStrictEqual(herkunftAusFeld('I0001 R00014', []), ['I0001', 'R00014']);
+  assert.deepStrictEqual(herkunftAusFeld('ohne Herkunft', ['I0001']), []);
+  assert.deepStrictEqual(herkunftAusFeld('I0001 ohne Herkunft', []), ['I0001', 'ohne', 'Herkunft']);
 });
