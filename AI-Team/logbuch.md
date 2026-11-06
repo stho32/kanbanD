@@ -226,3 +226,8 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Entwicklung | product-owner, planer | PO Z.114–116 (US-16 ✕/Titel, US-22 Prüfwort, Zurücksetzen lässt Messbasis); R00105 86→87 AK; Testlücke Schreibmarke Fall (b) → Nacharbeit nach Reviews | 0:10 | 16e4a9e, 4ddd0a8 |
 | 2026-11-06 | #18 | Auto-Reviews | code-reviewer, ux-reviewer | crev befund Muss: „Neue Aufgabe“ öffnet nicht (ansicht.js:176, r00036 rot, nachgeprüft) — gemeldete volle Suite war nicht grün; ux bestanden mit B1 Kürzel-Fokus (verletzt R00105:48), B2 Fokus nach Zurücksetzen → Nacharbeit | 0:20 | — |
 | 2026-11-06 | #18 | Entwicklung (Nacharbeit) | entwickler | bestanden: M1 + S1–S7, volle Suite 407/1 (r00078 Altlast); falsche 381 durch grep vor ANSI-Strip; → Auto-Reviews Wdh. | 0:28 | 528d32b..cf3336d |
+| 2026-11-06 | #18 | Auto-Reviews Wdh. | code-reviewer | bestanden: alle Befunde 1. Runde behoben, Mutanten getötet | 0:07 | — |
+| 2026-11-06 | #18 | Auto-Reviews Wdh. | ux-reviewer | bestanden: B1, B2, A1, Neue Aufgabe | 0:03 | — |
+| 2026-11-06 | #18 | Auto-Reviews | rechtschreib-reviewer | befund: „0 von 1 Aufgaben“, Tooltip „Rechnen ab“, AK:104, doppeltes „geschätzt“ | 0:02 | — |
+| 2026-11-06 | #18 | Rückfrage | product-owner | entschieden Z.117–120 | 0:02 | da44085 |
+| 2026-11-06 | #18 | Angleichung | planer | R00105 87 → 89 AK, US-24/US-25 | — | 82284f2 |
