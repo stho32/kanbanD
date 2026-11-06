@@ -747,6 +747,11 @@ function fenstertitel() {
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
 
+/** Selektor des Texts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück. */
+function textDerTeilaufgabe(index) {
+  return `[role=dialog] [data-act="teil-bearbeiten"][data-arg="${index}"]`;
+}
+
 /** Selektor des Knopfs, der das offene Menü geöffnet hat — Esc gibt ihm den Fokus zurück. */
 function ausloeserDesMenues() {
   const pop = $('#pop');
@@ -847,6 +852,10 @@ async function act(a, arg, wert) {
         const [nr, i] = arg.split('|').map(Number);
         aufgabe(nr).teilaufgaben[i].erledigt = true;
         u.fokusKarte = nr;
+        // Lag der Fokus auf dem Abhaken der nächsten Teilaufgabe, bleibt er dort und trifft die nächste offene;
+        // ohne sie führt fokusKarte (R00108)
+        const fokusAufNaechsterTeilaufgabe = Boolean(document.activeElement && document.activeElement.matches('.naechste-ziel'));
+        if (fokusAufNaechsterTeilaufgabe) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
         render();
         warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
         return;
@@ -861,6 +870,8 @@ async function act(a, arg, wert) {
       case 'teil-text': {
         const e = u.teilEdit, text = (wert || '').trim();
         u.teilEdit = null;
+        // Mit Enter gespeichert: zurück auf den Text; beim Verlassen per Klick bleibt der Fokus, wo er hingeht
+        if (e && document.activeElement === $('#teil-edit')) u.fokus = textDerTeilaufgabe(e.i);
         const t = e && aufgabe(e.nr) && aufgabe(e.nr).teilaufgaben[e.i];
         if (!t || !text || text === t.text) break;
         // sofort zeigen, geordnet im Hintergrund senden (R00037)
@@ -1563,6 +1574,7 @@ document.addEventListener('keydown', e => {
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     act(t.dataset.enter, t.dataset.arg, t.value);
@@ -1598,7 +1610,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.fokus = ausloeserDesMenues(); S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
-    if (S.ui.teilEdit) { S.ui.teilEdit = null; render(); return; }
+    if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
@@ -1794,6 +1806,9 @@ function brettTaste(e, t) {
   if (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || u.neu || u.offen || u.offenDefekt || u.setup || u.pop || u.view !== 'board' || !S.board || e.ctrlKey || e.metaKey || (e.altKey && !senkrecht)) return false;
   const karte = t.closest && t.closest('.ka[data-id]');
   const nr = karte ? +karte.dataset.id : null;
+  // Enter und Leertaste auf einem Knopf in der Karte (Teilaufgabe, Signal, Stopp) lösen den Knopf aus, nicht die Karte (R00108)
+  const fokusAufKnopfInKarte = Boolean(karte) && t !== karte && Boolean(t.closest('button'));
+  if (fokusAufKnopfInKarte && (e.key === 'Enter' || e.key === ' ')) return false;
   if (e.key === 'Enter' && karte) { act(karte.dataset.act, karte.dataset.arg); return true; }
   if (karte && e.key === 'p' && aufgabe(nr)) { e.preventDefault(); act('zuweisen', String(nr)); return true; }
   if (karte && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {

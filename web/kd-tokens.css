@@ -39,7 +39,8 @@
 --kd-s1:2px;--kd-s2:4px;--kd-s3:8px;--kd-s4:12px;--kd-s5:16px;--kd-s6:24px;
 color-scheme:light;
 --kd-spalte-anteil:100%;--kd-klasse-anteil:14%;
---kd-row:28px;--kd-head-h:40px;
+--kd-row:28px;--kd-head-h:max(40px,var(--kd-ziel));
+--kd-ziel:24px;
 --kd-shadow:0 2px 8px oklch(0.24 0.02 255 / .14);
 }
 /* Dark-Mode (R00070): folgt dem System, solange keine Wahl gesetzt ist; data-theme am Wurzelelement erzwingt. */
@@ -103,3 +104,5 @@ color-scheme:dark;
 --kd-shadow:0 2px 8px oklch(0 0 0 / .5);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
 }
+/* Zielgröße (R00108, ADR-0012 Regel 1): Mindestkante jedes Bedienziels, der einzige Ort dieses Maßes. */
+@media (pointer:coarse){:root{--kd-ziel:48px}}

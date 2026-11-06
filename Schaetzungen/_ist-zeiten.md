@@ -371,3 +371,30 @@ Nie vom User erfragen.
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0372 Ansicht Kosten mit Menüeintrag | Standard | 1-3h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0374 Filterleiste im Kostenbericht ohne Zeitraum | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | Nacharbeit 1 Karte #6 (Felder bei zu wenigen Präfixen, Legende, Summe 0, Menütext, Name ohne Zielfilter, filterOhneZeitraum, Kontrast, Touch) | Nacharbeit | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0399 Zielmaß an einem Ort mit reiner Probe | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0400 Trefferfläche messen mit Selbstproben | Standard | 2,5-3,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0409 Löschknöpfe bei Touch sichtbar | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0408 Teilaufgabe als ein Ziel mit Text | Standard | 1,5-2,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0402 Basisregel für alle Bedienelemente | Standard | 1,5-3,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0403 Trefferhof für kleine Zeichen | Standard | 2-3,5h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0401 Ansichten mit Fixtures abgehen | Standard | 1,5-3h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0404 Touch-Liste in das Token auflösen | Standard | 2-4h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0405 Touch-Lauf der Messprobe | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0407 Ausweichen bei 320 px | Standard | 1-3h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0406 Breitenprobe 320, 375, 414 px | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0410 Textfelder, Datei-Label und Klickflächen ohne Rolle als Ziele | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0411 Link neben Elementen ist ein Ziel, nur der Link im Satz nicht | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0412 Kein Bereich unter #main scrollt quer, die Zeilen von Einrichten wachsen mit dem Zielmaß | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0413 Klickbare Berichtszeilen wachsen bei Touch auf das Zielmaß | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0414 Ein Diagrammpunkt besteht über ein gleichwertiges Ziel | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0415 Der Board-Name bleibt bei Touch 375 lesbar | Nacharbeit | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0417 Namen sagen, was der Code prüft | Nacharbeit | 0,25-0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0416 Texte zu Karte #10 berichtigt | Nacharbeit | 0,25-0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0418 Leertaste auf dem Text der Teilaufgabe bearbeitet wie bei jedem Knopf | Nacharbeit | 0,25-0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0419 Der Name einer Person bleibt in Einrichten bei 320 px lesbar | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0420 Der Board-Knopf ragt bei 320 px nicht unter den Seitenknopf | Nacharbeit | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0421 Nach dem Bearbeiten einer Teilaufgabe kehrt der Fokus auf ihren Text zurück | Nacharbeit | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0422 Gegenprobe: nur ein Diagrammpunkt ist über ein gleichwertiges Ziel ausgenommen | Nacharbeit | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0423 Nur benannte Rahmen scrollen quer, die Zeitberichte in einem Rahmen um die Tabelle | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0424 Aufgabenliste bei Touch und schmal ohne Querscrollen, Titel ganz umbrochen | Nacharbeit | 0,5-1h | 1h | 1h | autonom |
+| 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0425 Die Personentabelle scrollt bei Touch nur in ihrem benannten Rahmen quer | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |

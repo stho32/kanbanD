@@ -14,8 +14,16 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-reihe>*{flex:none}
 .kz-reihe>.kz-nav{align-self:stretch}
 .kz-reihe>.kz-luecke{flex:1 1 0;min-width:0}
-.kz-reihe>.kz-z1{flex:0 .2 auto;min-width:0;padding:0 var(--kd-s3);white-space:nowrap}
-.kz-board{max-width:240px;min-width:0}
+.kz-reihe>.kz-z1{flex:0 .2 auto;box-sizing:content-box;min-width:var(--kd-ziel);padding:0 var(--kd-s3);white-space:nowrap}
+.kz-board{max-width:240px;min-width:var(--kd-ziel)}
+/* Der Board-Name bleibt lesbar: in der Stufe compact rücken die Ziele der Reihe enger zusammen und die Zelle
+   des Namens verzichtet auf den rechten Abstand — so bleiben bei 375 px mit Touch rund 96 px für den Namen */
+.kz[data-stufe="compact"] .kz-reihe{gap:var(--kd-s1)}
+.kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-right:0}
+/* Die Zelle schrumpft nie unter den Knopf (Inhaltsbox mindestens ein Ziel, Z. 17), sonst ragt er unter den Nachbarn; damit
+   bei 320 px mit Timer, „+“, Ich und Mehr ein Ziel bleibt, rücken Zelle und Reihe in compact um je 4 px an den Rand */
+.kz[data-stufe="compact"] .kz-reihe>.kz-z1{padding-left:var(--kd-s2)}
+.kz[data-stufe="compact"] .kz-reihe:first-child{padding-right:var(--kd-s2)}
 .kz[data-stufe="large"] .kz-reihe>#t-ich{flex:0 .5 auto;min-width:0}
 .ich-name{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -28,6 +36,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz:not([data-stufe="large"]) .ich-name,.kz:not([data-stufe="large"]) #t-lauf .lang{display:none}
 .kz:not([data-stufe="large"]) .kz-z1 .mono,.kz:not([data-stufe="large"]) .kz-modus .muted{display:none}
 .kz.modus .kz-reihe{flex-wrap:wrap}
+/* Werkzeugzeile in compact (PO Z. 133): bricht nur um, wenn Filter (ab 80 px) und Schalter nicht in eine Zeile passen; dann Filter in voller Breite oben */
+.kz[data-stufe="compact"] .kz-reihe:has(>#flt){flex-wrap:wrap;row-gap:var(--kd-s2)}
+.kz[data-stufe="compact"] .kz-reihe>#flt{flex:1 1 80px}
 .kz.modus:not([data-stufe="large"]) .kz-modus{flex-wrap:wrap;row-gap:var(--kd-s2);padding:var(--kd-s2) var(--kd-s3)}
 .kz[data-stufe="compact"] .neu-btn .lang{display:none}
 .kz-chips{display:flex;gap:var(--kd-s2)}
@@ -64,7 +75,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Bahnen */
 .bahnen{flex:1;display:flex;min-height:0;min-width:0;overflow-x:auto;background:var(--kd-surface)}
 .bahn{flex:0 0 var(--bw,272px);display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0}
-.bahn-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);height:30px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);font-weight:600;font-size:12px}
+.bahn-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(30px,var(--kd-ziel));padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);font-weight:600;font-size:12px}
 .bahn-kopf .n{margin-left:auto;font-family:var(--kd-mono);font-weight:400;color:var(--kd-muted)}
 .bahn-kopf .ok{color:var(--kd-mensch)}
 .bahn-kopf .v{font-weight:400;font-size:11px;color:var(--kd-faint)}
@@ -95,6 +106,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .leer{padding:16px 8px;text-align:center;color:var(--kd-faint);font-size:12px}
 .dgrp{padding:4px 6px 0;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-faint)}
 .nach{padding:6px;font-size:11.5px;color:var(--kd-muted)}
+.nach>a{display:inline-flex;align-items:center;min-block-size:var(--kd-ziel)}
 .bahn-fuss{flex:none;border-top:1px solid var(--kd-line)}
 .bahn-fuss>button{width:100%;height:28px;border:0;background:none;text-align:left;padding:0 var(--kd-s3);color:var(--kd-muted);cursor:pointer}
 .bahn-fuss>button:hover{background:var(--kd-accent-weak);color:var(--kd-accent-ink)}
@@ -122,6 +134,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
+/* R00108: der Titel antwortet selbst auf Tipp (Hover-Regel), damit Chromiums Touch-Anpassung einen Tipp auf den Titel nicht zum Nachbarknopf zieht */
+.ka .t:hover{cursor:pointer}
 .ka.fertig .t{color:var(--kd-muted)}
 .ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
@@ -177,7 +191,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .cls::before{content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:var(--cl);vertical-align:0}
 .pk-still{opacity:.5}
 /* Legende */
-.leg{flex:none;display:flex;align-items:center;gap:2px;height:28px;padding:0 var(--kd-s3);border-top:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:12px;overflow:hidden}
+.leg{flex:none;display:flex;align-items:center;gap:2px;min-block-size:max(28px,var(--kd-ziel));padding:0 var(--kd-s3);border-top:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:12px;overflow:hidden}
 .leg .tt{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);margin-right:var(--kd-s3)}
 .leg button{display:flex;align-items:center;gap:6px;height:22px;padding:0 var(--kd-s3);border:1px solid transparent;background:none;cursor:pointer;white-space:nowrap}
 .leg button:hover{border-color:var(--kd-line-strong)}
@@ -221,7 +235,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 /* Modal */
 .mod-bg{position:fixed;left:0;right:0;top:var(--kd-head-h);bottom:0;background:oklch(0.24 0.02 255 / .45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
 .mod{width:min(1080px,100%);height:min(780px,100%);background:var(--kd-surface);box-shadow:0 12px 40px oklch(0.24 0.02 255 / .35);display:flex;flex-direction:column;border-top:4px solid var(--cl,var(--kd-line-strong))}
-.mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);height:36px;padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
+.mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(36px,var(--kd-ziel));padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
 .mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
 .mod-kopf .pfad{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mod-kopf .rechts{margin-left:auto;display:flex;gap:2px;align-items:center}
@@ -255,7 +269,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .kost-satz{margin:0;font-size:13px;color:var(--kd-text);overflow-wrap:anywhere}
 .kost-hinweis{margin:0;font-size:12.5px;color:var(--kd-muted);overflow-wrap:anywhere}
 .kost-hinweis code{font-size:12px;color:var(--kd-text)}
-.kost-api{display:inline-flex;align-items:center;min-height:24px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:500}
+.kost-api{display:inline-flex;align-items:center;min-height:var(--kd-ziel);color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:500}
 .kost-api:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 .kost-reset{margin-top:4px}
 /* Bestand nach Labels (R00100, Artboard D0006 #bestand-nach-labels) */
@@ -272,9 +286,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .best-leg{position:static;height:auto;min-height:28px;flex-wrap:wrap;border-top:1px solid var(--kd-line);gap:var(--kd-s3)}
 .best-le{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 var(--kd-s2);white-space:nowrap}
 .best-leg .rechts{color:var(--kd-muted)}
-.best-tab a.bz{display:inline-flex;align-items:center;justify-content:flex-end;min-width:24px;min-height:24px;padding:0 4px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
+.best-tab a.bz{display:inline-flex;align-items:center;justify-content:flex-end;min-width:var(--kd-ziel);min-height:var(--kd-ziel);padding:0 4px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
 .best-tab a.bz:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
-@media (pointer:coarse){.best-tab a.bz{min-width:44px;min-height:44px}.best-tausch,.best-sel{min-height:44px}}
 .best-erkl{margin:0;padding:var(--kd-s2) var(--kd-s6);color:var(--kd-muted);font-size:12px}
 .best-achsen{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s2) var(--kd-s4);padding:var(--kd-s2) var(--kd-s6);border-bottom:1px solid var(--kd-line);font-size:12px;color:var(--kd-muted)}
 .best-feld{display:inline-flex;align-items:center;gap:6px}
@@ -298,7 +311,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .chk.ins-b::before{top:-1px}
 .chk.ins-a::after{bottom:-1px}
 .chk i{width:13px;height:13px;border:1px solid var(--kd-line-strong);flex:none;display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1;cursor:pointer;background:var(--kd-surface)}
-.chk span{cursor:text;flex:1}
+.chk span{cursor:text;flex:1;align-content:center}
 .chk .teil-edit{flex:1;height:24px}
 .chk.ok span{color:var(--kd-muted);text-decoration:line-through}
 .chk.ok i{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
@@ -344,7 +357,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:#fff}
 .zt .btn-sym{height:22px;width:24px;visibility:hidden}
 .zt tr:hover .btn-sym{visibility:visible}
 .md{margin:0;font:12px/1.6 var(--kd-mono);white-space:pre-wrap;background:var(--kd-bg);border:1px solid var(--kd-line);padding:var(--kd-s4)}
-.mod-fuss{flex:none;height:28px;display:flex;align-items:center;gap:var(--kd-s4);padding:0 var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
+.mod-fuss{flex:none;min-block-size:max(28px,var(--kd-ziel));display:flex;align-items:center;gap:var(--kd-s4);padding:0 var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
 kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;color:var(--kd-text)}
 /* Board einrichten */
 .setup{flex:1;display:flex;min-height:0}
@@ -372,7 +385,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr h3:first-child{border-top:0}
 .einr h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
-.klz{display:grid;grid-template-columns:30px 76px minmax(0,1fr) 28px 24px;align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
+/* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß */
+.klz{--klz-vorn:max(30px,var(--kd-ziel));--klz-hinten:max(24px,var(--kd-ziel));display:grid;grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px var(--klz-hinten);align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
 .klz .inp{height:24px;min-width:0;font-size:12px}
 .klz .key{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);overflow:hidden;text-overflow:ellipsis}
 .klz .n{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);text-align:right}
@@ -381,8 +395,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .farbe::after{content:"▾";position:absolute;right:-1px;bottom:-3px;font-size:8px;color:var(--kd-muted)}
 .farbe.an{outline:2px solid var(--kd-accent);outline-offset:1px}
 .pal{display:flex;flex-direction:column;gap:6px;padding:8px var(--kd-s4) 10px 50px;border-bottom:1px solid var(--kd-line);background:var(--kd-bg)}
-.pal .g{display:grid;grid-template-columns:repeat(8,26px);gap:3px}
-.pal .g span{width:26px;height:20px;border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
+.pal .g{display:grid;grid-template-columns:repeat(auto-fill,var(--kd-ziel));gap:3px}
+.pal .g span{border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
 .pal .g span:hover{outline:1px solid var(--kd-text)}
 .pal .g span.an{outline:2px solid var(--kd-text);outline-offset:1px}
 .pal .g span::after{content:"";position:absolute;left:3px;right:3px;bottom:3px;height:3px;background:var(--cl)}
@@ -390,8 +404,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .pal .eig .inp{height:22px;width:84px;font-size:11.5px;padding:0 6px}
 .pal .eig input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--kd-line-strong);background:none;cursor:pointer}
 .pal .nm{font-family:var(--kd-mono);font-size:10.5px;color:var(--kd-faint)}
-.klz.pz{grid-template-columns:30px 44px minmax(0,1fr) auto 24px}
-.klz.az{grid-template-columns:30px 76px minmax(0,1fr) auto 24px}
+.klz.pz{grid-template-columns:var(--klz-vorn) 44px minmax(0,1fr) auto var(--klz-hinten)}
+.klz.az{grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) auto var(--klz-hinten)}
 .klz.az .pk{justify-self:center}
 .anw{border-bottom:1px solid var(--kd-line-strong)}
 .anw .felder{border-top:0;grid-template-columns:110px minmax(0,1fr)}
@@ -408,10 +422,15 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .leiste b{font-weight:600}
 .body{flex:1;min-height:0;overflow:auto;background:var(--kd-surface)}
 .pt{width:100%;border-collapse:collapse}
+/* Zeitberichte (PO Z. 137): nur der Rahmen um die Tabelle scrollt quer; füllt er .body allein, scrollt er auch hoch, damit die Kopfzeile klebt */
+.bericht-rahmen{min-width:0;overflow-x:auto}
+.body>.bericht-rahmen:only-child{height:100%;overflow:auto}
 .pt th{position:sticky;top:0;z-index:2;background:var(--kd-sunken);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);padding:0 var(--kd-s3);height:26px;border-bottom:1px solid var(--kd-line-strong);white-space:nowrap}
 .pt th.r,.pt td.r{text-align:right}
 .pt td{height:40px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);vertical-align:middle;white-space:nowrap}
 .pt.dicht td{height:28px}
+/* Eine klickbare Zeile ist ein Ziel: mit der Maus bleibt sie dicht, bei Touch wächst sie auf das Zielmaß */
+.pt.dicht tr.klick td{height:max(28px,var(--kd-ziel))}
 .pt tbody tr:hover td{background:var(--kd-accent-weak)}
 .pt tr.klick{cursor:pointer}
 .pt tr.grp td{height:26px;background:var(--kd-bg);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
@@ -439,7 +458,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .skala{position:relative;width:380px;height:14px;font-family:var(--kd-mono);font-size:10px;color:var(--kd-faint);font-weight:400}
 .skala span{position:absolute;transform:translateX(-50%)}
 /* Statuszeile */
-.stat{flex:none;height:24px;display:flex;align-items:center;gap:var(--kd-s5);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
+.stat{flex:none;min-block-size:var(--kd-ziel);display:flex;align-items:center;gap:var(--kd-s5);padding:0 var(--kd-s4);border-top:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
 .stat .rechts{margin-left:auto;display:flex;gap:var(--kd-s4);align-items:center;flex:none}
 .stat>span:not(.rechts){min-width:0;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1180px){.stat>.mono{display:none}}
@@ -482,8 +501,18 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .einr .felder .k{min-width:0}
 .zeile-knoepfe{display:flex;gap:var(--kd-s3);align-items:center;padding:var(--kd-s4)}
 .einr .felder{grid-template-columns:110px minmax(0,1fr)}
-.einrichten .klz.pz{grid-template-columns:30px 70px minmax(0,1fr) auto 24px}
-.km-inp{resize:vertical;min-height:26px;padding:4px var(--kd-s3);font:inherit;font-size:12px}
+.einrichten .klz.pz{grid-template-columns:var(--klz-vorn) 70px minmax(0,1fr) auto var(--klz-hinten)}
+/* Schmal (Handy, R00077): Kürzel, Art und die beiden Ziele lassen dem Namen in einer Zeile zu wenig Platz (bei Touch 320
+   blieben 18 px); der Name rückt deshalb in eine eigene Zeile unter Kürzel und Art, Kürzelfeld und Knopf stehen daneben */
+@media (max-width:640px){
+  .einrichten .klz.pz{grid-template-areas:"pk key . art aus" "pk name name name aus"}
+  .einrichten .klz.pz>:nth-child(1){grid-area:pk}
+  .einrichten .klz.pz>:nth-child(2){grid-area:key}
+  .einrichten .klz.pz>:nth-child(3){grid-area:name}
+  .einrichten .klz.pz>:nth-child(4){grid-area:art}
+  .einrichten .klz.pz>:nth-child(5){grid-area:aus}
+}
+.km-inp{resize:vertical;min-height:max(26px,var(--kd-ziel));padding:4px var(--kd-s3);font:inherit;font-size:12px}
 .zt tr.edit td{padding:2px 0;display:flex;gap:4px;align-items:center}
 .zt tr.edit .mini-inp{width:130px;border-color:var(--kd-line-strong)}
 .zt td.x{width:52px;white-space:nowrap}
@@ -493,6 +522,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .anh-z{display:flex;align-items:center;gap:var(--kd-s3);min-height:26px;border-bottom:1px solid var(--kd-line)}
 .anh-z a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .anh-z .x{opacity:0}.anh-z:hover .x,.anh-z .x:focus{opacity:1}
+/* Ohne Hover (Touch) gäbe es kein Zeigen: ein unsichtbarer Löschknopf neben dem Text löschte beim Tippen (R00108) */
+@media (hover:none){.zt .btn-sym,.chk .x,.anh-z .x{opacity:1}}
 .anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
 .anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}
 .ka .wartet{font-size:11px;color:var(--kd-warn);font-weight:500}
@@ -574,8 +605,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .farbe.sigfarbe{display:inline-flex;align-items:center;justify-content:center;background:none;color:var(--sg)}
 @media (prefers-reduced-motion:reduce){.signal .i-sig{animation:none}}
 .ka .r0 .ecke{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;align-self:flex-start}
-.ka .ecke .kl{height:18px;min-width:20px;padding:0 4px}
-.kl{height:20px;min-width:22px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
+.ka .ecke .kl{height:18px;padding:0 4px}
+.kl{height:20px;padding:0 5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);font-size:11px;cursor:pointer;color:var(--kd-text)}
 .kl:hover{background:var(--kd-accent);border-color:var(--kd-accent);color:#fff}
 .inp.umbenennen{width:100%;height:24px}
 .due-knoepfe{display:inline-flex;gap:2px}
@@ -607,17 +638,37 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bahn-kopf:focus,tr[data-zeile]:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}
 /* Neue Aufgabe */
 .kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
+/* Trefferhof (R00108, ADR-0012 Regel 3): kleine Zeichen bleiben gezeichnet klein; bei feinem Zeiger trägt ein durchsichtiges ::after
+   die Trefferfläche auf --kd-ziel. Bei Touch kein Hof: dort wachsen die Zeichen selbst über die Basisregel.
+   Textknöpfe (.lnk) bekommen keinen Hof, sie wachsen selbst: gestapelt würde ihr Hof den Nachbarn überdecken. */
+@media (pointer:fine){
+  .lnk-x,.kopf-plus,.signal,.sigz,.kl{position:relative;min-block-size:0}
+  .lnk-x,.kopf-plus,.signal,.sigz{min-inline-size:0}
+  :is(.lnk-x,.kopf-plus,.signal,.sigz,.kl)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
+}
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-faint);font-weight:400}
 .neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}
 .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
-.naechste-box{flex:none;width:13px;height:13px;margin-top:1px;padding:0;border:1px solid var(--kd-line-strong);background:var(--kd-surface);cursor:pointer}
-.naechste-box:hover,.naechste-box:focus{border-color:var(--kd-accent);background:var(--kd-accent-weak)}
+.naechste-ziel{display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer}
+.naechste-box{flex:none;width:13px;height:13px;margin-top:1px;border:1px solid var(--kd-line-strong);background:var(--kd-surface)}
+.naechste-ziel:hover .naechste-box,.naechste-ziel:focus .naechste-box{border-color:var(--kd-accent);background:var(--kd-accent-weak)}
 .km-ohne{display:inline-block;width:1.1em}
 /* Ziehen aus der Liste */
 .liste-mit-zielen{display:flex;gap:16px;align-items:flex-start}
 .liste-mit-zielen>table{flex:1}
+/* PO Z. 137 (c): bei Touch und schmalem Fenster scrollt die Aufgabenliste nie quer — jede Zelle bricht um, der Titel
+   vollständig und auch mitten im Wort ohne Trennstelle, „Ziehen auf“ rückt unter die Tabelle; mit der Maus im breiten Fenster wie bisher */
+@media (pointer:coarse),(max-width:640px){
+  .liste-mit-zielen{flex-wrap:wrap}
+  .liste-mit-zielen>table{flex-basis:100%}
+  .liste-mit-zielen .ziele{position:static;flex-basis:100%}
+  .pt.liste :is(th,td){padding:0 var(--kd-s1);white-space:normal;hyphens:auto}
+  .pt.liste .tt{max-width:none;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  .pt.liste .lbl.ort{height:auto;flex-wrap:wrap}
+  .pt.liste .btn{white-space:normal;overflow-wrap:anywhere}
+}
 .ziele{flex:none;width:210px;position:sticky;top:0;border:1px solid var(--kd-line);background:var(--kd-surface);padding:8px}
 .ziele h4{margin:0 0 6px;font:600 10px/1.4 var(--kd-mono);letter-spacing:.06em;color:var(--kd-muted)}
 .ziel-board{margin-bottom:8px}.ziel-board b{display:block;font-size:12px;margin-bottom:3px}
@@ -788,11 +839,6 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .bfilter{padding:8px var(--kd-s3)}
   .wbs-tabelle table{min-width:860px}
 }
-@media (pointer:coarse){
-  .btn-sym,.kz-btn,.kopf-plus,.bk-name,.signal,.kz-menue .iz,.kz-chip{min-width:32px;min-height:32px}
-  .bahn-kopf{height:auto;min-height:36px}
-  .bahn-kopf .sigz{min-height:32px}
-}
 
 /* ── Projekt-Fever-Chart (R00078) ── */
 .fb-einst{display:flex;flex-wrap:wrap;align-items:center;gap:6px var(--kd-s4);margin:var(--kd-s2) 0;font-size:13px}
@@ -827,7 +873,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .tm-ziel{font-size:14px;color:var(--kd-muted)}
 .tm-ziel.an{color:var(--kd-accent-ink)}
 .fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%;flex:none}
-.fb-einst label{flex:none}
+/* Bei schmaler Breite bricht das Feld unter seinen Text, statt die Seite quer scrollen zu lassen */
+.fb-einst label{flex:none;flex-wrap:wrap;max-width:100%}
 
 /* ── Berichtsfilter als Box, zugeklappt, je Filter eine Zeile (R00081) ── */
 .bfilter-box{border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
