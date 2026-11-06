@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben } = require('./hilfen');
+const { ansichtenDerAnwendung } = require('./ansichten');
 
 const THEMEN = ['light', 'dark'];
 const MASS = 4.5;
@@ -20,17 +21,16 @@ const GRUNDBESTAND = () => ({
   'aufgaben/0005-fuenf.md': '---\nid: 5\ntitle: fünf\nclass: bug\nassignees: [st]\n---\n',
 });
 
-/** Alle Ansichten der Anwendung (Ziele von `g`-Kürzeln in tastatur.js); gemessen wird der ganze `body` samt Kopf mit seinem aktiven Segment. */
-const ANSICHTEN = ['#/board/', '#/aufgaben', '#/personen', '#/einrichten', '#/wbs/', '#/berichte/stundenzettel', '#/berichte/kreuz', '#/berichte/verlauf',
-  '#/berichte/durchlauf', '#/berichte/prognose', '#/berichte/fieber', '#/berichte/kosten', '#/berichte/bestand'];
+/** Alle Ansichten der Anwendung aus der gemeinsamen Liste; gemessen wird der ganze `body` samt Kopf mit seinem aktiven Segment. Der Bestand hat keine WBS. */
+const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: '' });
 /**
  * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und heute unter 4,5 messen.
  * Erwartet rot mit Verweis auf Karte #57, die ihre Gestaltung klärt. Ein Eintrag gilt nur in seiner `ansicht`; `heute` ist sein Messwert je Thema.
  * Der Test „Nicht gemessen“ schlägt Alarm, sobald ein Eintrag lesbar wird, verschwindet oder um mehr als `SPIELRAUM` unter `heute` fällt.
  */
 const NICHT_GEMESSEN = [
-  { selektor: '.pt tr.ruhe .pk', ansicht: '#/personen', karte: '#57', heute: { light: 2.280, dark: 3.211 }, grund: 'Initialen ruhender Personen, opacity .55' },
-  { selektor: '.pk-still', ansicht: '#/einrichten', karte: '#57', heute: { light: 2.148, dark: 2.802 }, grund: 'Initiale stillgelegter Person, opacity .5' },
+  { selektor: '.pt tr.ruhe .pk', ansicht: 'Personen', karte: '#57', heute: { light: 2.280, dark: 3.211 }, grund: 'Initialen ruhender Personen, opacity .55' },
+  { selektor: '.pk-still', ansicht: 'Einrichten', karte: '#57', heute: { light: 2.148, dark: 2.802 }, grund: 'Initiale stillgelegter Person, opacity .5' },
 ];
 
 /** Wie weit ein nicht gemessener Zustand unter seinen heutigen Wert fallen darf, bevor die Probe ihn meldet. */
@@ -302,8 +302,8 @@ test.describe('R00107 Kontrast', () => {
   });
 
   test('Ansichten: jede Ansicht samt Kopf, beide Themen, ohne die ausdrücklich nicht gemessenen Zustände', async ({ page }) => {
-    for (const ansicht of ANSICHTEN) {
-      await ansichtOeffnen(page, k.adresse + ansicht);
+    for (const { ansicht, adresse } of ANSICHTEN) {
+      await ansichtOeffnen(page, k.adresse + adresse);
       const ohne = NICHT_GEMESSEN.filter(n => n.ansicht === ansicht).map(n => n.selektor);
       const verstoesse = await verstoesseInBeidenThemen(page, ['body'], async () => {}, ohne);
       expect(verstoesse, ansicht).toEqual([]);
@@ -313,7 +313,7 @@ test.describe('R00107 Kontrast', () => {
   test('Nicht gemessen: jeder Eintrag verweist auf Karte #57, kommt in seiner Ansicht vor und misst je Thema unter 4,5, aber nicht schlechter als heute', async ({ page }) => {
     for (const n of NICHT_GEMESSEN) {
       expect(n.karte, n.selektor).toBe('#57');
-      await ansichtOeffnen(page, k.adresse + n.ansicht);
+      await ansichtOeffnen(page, k.adresse + ANSICHTEN.find(a => a.ansicht === n.ansicht).adresse);
       const ort = page.locator(n.selektor).first();
       await expect(ort, n.selektor).toBeVisible();
       for (const t of THEMEN) {
