@@ -22,14 +22,14 @@ quellen:
 
 Soll nach [ADR-0012](../../ADRs/0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Akzeptiert, Karte #10, PO `AI-Team/po-entscheidungen.md:129–132`):
 
-- Die Mindestkante jedes Zeigerziels ist `var(--kd-ziel)`. Sie steht genau einmal in `web/kd-tokens.css`: genau 24px bei feinem Zeiger (WCAG 2.2 SC 2.5.8), genau 48px in `@media (pointer:coarse)`. Die Messprobe verlangt bei Touch ≥ 44 ohne Ausnahme; bei 320 px darf ein Ziel bis 44 schrumpfen oder ins Menü „<Seite> ▾“ wandern, waagrechtes Scrollen bleibt verboten (PO `:130`). Die Abstandsausnahme ist die WCAG-Kreisformel, nur bei feinem Zeiger (`:131`).
+- Die Mindestkante jedes Zeigerziels ist `var(--kd-ziel)`. Sie steht genau einmal in `web/kd-tokens.css`: genau 24px bei feinem Zeiger (WCAG 2.2 SC 2.5.8), genau 48px in `@media (pointer:coarse)`. Die Messprobe verlangt bei Touch ≥ 44 ohne Ausnahme; bei 320 px weicht die Werkzeugzeile der Kopfzeile durch Umbruch aus — kein Menü, kein zweites Token (PO `:133`, präzisiert `:130`); waagrechtes Scrollen bleibt verboten. Die Abstandsausnahme ist die WCAG-Kreisformel, nur bei feinem Zeiger (`:131`).
 - Die Basisregel in `web/kd-base.css` (`:where(button, select, input, a.btn, summary, [role=checkbox|radio|menuitem|menuitemradio|menuitemcheckbox|tab|switch])`) setzt die Mindestgröße. Inline-Links im Fließtext sind ausgenommen. Die Messprobe zählt dieselben Ziele und verlangt je Ansicht mindestens ein sichtbares Ziel im Inhalt, damit eine leere Ansicht nicht leer besteht.
 - Kleine Zeichen behalten ihre Zeichnung. Ihr Ziel wächst über einen durchsichtigen Trefferhof (`::after`), der weder Nachbarn überdeckt noch abgeschnitten wird.
 - Benennt ein Text die Aktion, gehört er zum Ziel (Teilaufgabe: Kästchen und Text sind ein Element).
 
 ## Systemantwort
 
-Ist 2026-11-06 nach Karte #10 (Zweig `karte/10`, `a83a43a`, noch nicht auf `main`): Token `--kd-ziel` in `web/kd-tokens.css` (24, unter `pointer:coarse` 48), `--kd-head-h` folgt ihm; Basisregel in `web/kd-base.css` (dazu `a.kz-btn` und der Link allein in seiner Zelle); Trefferhof bei feinem Zeiger nur an Symbolzeichen (`.lnk-x`, `.kopf-plus`, `.signal`, `.sigz`, `.kl`), Textknöpfe `.lnk` wachsen selbst; Leisten mit fester Höhe (`.bahn-kopf`, `.leg`, `.mod-kopf`, `.mod-fuss`, `.stat`) umschließen ihre Ziele mit `min-block-size`; keine Coarse-Liste mehr außerhalb der Tokens (Wächter `e2e/einheit/ziele.test.js`). Messprobe `e2e/tests/ziele.spec.js`: 22 Ansichten fein bei 1280 px und 21 bei Touch 390 px ohne Verstoß, `NICHT_GEMESSEN` leer. Breitenprobe 320/375/414 px: 59 von 60 grün, offen die Aufgabenliste bei 320 px (siehe Abweichungen).
+Ist 2026-11-06 nach Karte #10 (Zweig `karte/10`, `a83a43a`, noch nicht auf `main`): Token `--kd-ziel` in `web/kd-tokens.css` (24, unter `pointer:coarse` 48), `--kd-head-h` folgt ihm; Basisregel in `web/kd-base.css` (dazu `a.kz-btn` und der Link allein in seiner Zelle); Trefferhof bei feinem Zeiger nur an Symbolzeichen (`.lnk-x`, `.kopf-plus`, `.signal`, `.sigz`, `.kl`), Textknöpfe `.lnk` wachsen selbst; Leisten mit fester Höhe (`.bahn-kopf`, `.leg`, `.mod-kopf`, `.mod-fuss`, `.stat`) umschließen ihre Ziele mit `min-block-size`; keine Coarse-Liste mehr außerhalb der Tokens (Wächter `e2e/einheit/ziele.test.js`). Messprobe `e2e/tests/ziele.spec.js`: 22 Ansichten fein bei 1280 px und 21 bei Touch 390 px ohne Verstoß, `NICHT_GEMESSEN` leer. Breitenprobe 320/375/414 px: 60 von 60 grün; Ausweichen bei 320 px durch Umbruch der Werkzeugzeile (`:133`).
 
 Vorher (kanbanD `49d99ef`): Es gibt kein Token. Für den feinen Zeiger gibt es keine Regel, für Touch eine Selektorliste mit festem Wert 32 px (`web/kd-app.css:791–795`, R00077) und eine Einzelregel mit 44 px (`:277`, Bestandsbericht). Gemessen (headless Chromium, sechs Ansichten, ohne Abstandsausnahme): Bei feinem Zeiger liegen 18 von 114 Zielen unter 24, alle auf Board und Aufgabenliste. Bei Touch liegen 93 von 93 unter 44.
 
@@ -42,9 +42,9 @@ Erkennen von Abweichungen (Durchsetzung):
 
 | Baustein | Ort | Was anders ist |
 |---|---|---|
-| A00009 | `web/kd-app.css` `.kz-reihe` (nowrap), Kopfzeile der Aufgabenliste | bei 320 px ist die Seite 349 px breit: Filter 80 px und Segmentschalter „alle · ohne Board · archiviert“ 253 px in einer Zeile; mit Maus derselbe Überlauf (Breiten vom Text). Entscheidung zu B0407 offen (Umbruch, 44 px oder Menü „<Seite> ▾“) |
+| — | — | keine |
 
-Behoben auf `karte/10` (B0399–B0405, B0408, B0409): Touch-Liste 32 px und Einzelregel 44 px aufgelöst; Teilaufgabe als ein Ziel mit Text; ✕ „von Board nehmen“, `.kopf-plus`, `.signal`, `.sigz`, `.kl` mit Trefferhof; Spaltenkopf, Legende, Statuszeile und Fensterleisten wachsen mit dem Token.
+Behoben auf `karte/10` (B0399–B0409): Touch-Liste 32 px und Einzelregel 44 px aufgelöst; Teilaufgabe als ein Ziel mit Text; ✕ „von Board nehmen“, `.kopf-plus`, `.signal`, `.sigz`, `.kl` mit Trefferhof; Spaltenkopf, Legende, Statuszeile und Fensterleisten wachsen mit dem Token. Die Werkzeugzeile der Kopfzeile bricht in der Stufe compact um, wenn Filter (ab 80 px) und Schalter nicht in eine Zeile passen — Filter in voller Breite oben, Schalter darunter (PO `AI-Team/po-entscheidungen.md:133`, B0407); der Board-Knopf schrumpft nicht unter das Zielmaß; Menüeinträge `menuitemradio`/`menuitemcheckbox` und `summary` stehen in Basisregel und Messprobe.
 
 ## Offene Fragen
 
