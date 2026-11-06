@@ -58,13 +58,10 @@ test.describe('Handy', () => {
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('## In Arbeit\n\n- [#3](../aufgaben/0003-a3.md)\n- [#1]');
   });
 
-  test('Touch: Symbolknöpfe haben mindestens 32 px Tippfläche; der Personenknopf zeigt nur das Kürzel', async ({ page }) => {
+  // Die Mindestgröße der Ziele prüft die Touch-Messprobe in ziele.spec.js (R00108, Maß 44 aus dem Token).
+  test('Touch: der Personenknopf zeigt nur das Kürzel', async ({ page }) => {
     await starten(page);
     await mehrOeffnen(page);
-    for (const sel of ['.kopf-plus', '.bk-name', '#t-mehr', '#t-thema']) {
-      const b = await box(page.locator(sel).first());
-      expect(Math.min(b.width, b.height), sel).toBeGreaterThanOrEqual(32);
-    }
     await expect(page.locator('#t-ich .ich-name')).toBeHidden();
   });
 });

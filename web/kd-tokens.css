@@ -40,7 +40,8 @@
 --kd-s1:2px;--kd-s2:4px;--kd-s3:8px;--kd-s4:12px;--kd-s5:16px;--kd-s6:24px;
 color-scheme:light;
 --kd-spalte-anteil:100%;--kd-klasse-anteil:14%;
---kd-row:28px;--kd-head-h:40px;
+--kd-row:28px;--kd-head-h:max(40px,var(--kd-ziel));
+--kd-ziel:24px;
 --kd-shadow:0 2px 8px oklch(0.24 0.02 255 / .14);
 --kd-shadow-mod:0 12px 40px oklch(0.24 0.02 255 / .35);--kd-scrim:oklch(0.24 0.02 255 / .45);
 /* Diagrammlinien „Wie lange noch“: Linie mit Zustand, ≥ 3:1 auf --kd-surface */
@@ -113,3 +114,5 @@ color-scheme:dark;
 --kd-wl-1:oklch(0.68 0.15 256);--kd-wl-2:oklch(0.671 0.175 41);--kd-wl-3:oklch(0.669 0.141 162);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
 }
+/* Zielgröße (R00108, ADR-0012 Regel 1): Mindestkante jedes Bedienziels, der einzige Ort dieses Maßes. */
+@media (pointer:coarse){:root{--kd-ziel:48px}}
