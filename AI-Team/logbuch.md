@@ -235,3 +235,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #18 | Auto-Reviews Wdh. | rechtschreib-reviewer | bestanden: 4 Funde behoben, keine neuen; → Entwicklertest | 0:03 | 3b987ea |
 | 2026-11-06 | #18 | Entwicklertest | entwicklertester | bestanden: US-1..25, keine Befunde; 3 Anmerkungen (US-3 „nur“, US-21 Gap statt Leerzeichen, Esc speichert Titel) | 0:40 | 183ede7 |
 | 2026-11-06 | #18 | Auslieferung + Retrospektive | director | ausgeliefert 7422 (PID 3788358); 3 Factory-Vorschläge; kein Push | 0:05 | 1e442cd |
+| 2026-11-06 | #6 | Entwicklung | entwickler | bestanden: 9 Bubbles (B0348…B0362) grün, Gate 554/clippy/207/436 passed (Log nachgelesen, 54 Specs nachgefahren); 3 Rückfragen an PO | 0:58 | dc1660a..efb3606 |
