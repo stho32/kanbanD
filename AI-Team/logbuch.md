@@ -310,3 +310,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #11 | Detailplanung | planer | bestanden: I0098 mit 4 Features, 15 Bubbles, R00109 mit US-1..US-10; PO Z. 144–148; Z. 148 an den Auftraggeber (B0436/B0437 warten) | 0:40 | 0337bae |
 | 2026-11-07 | #11 | Entwicklung | entwickler | bestanden (Teilbau ohne B0436/B0437), Nachprüfung Stil/Tests | 1:57 | 77627e7 |
 | 2026-11-07 | #11 | Auto-Reviews | rechtschreib-reviewer | bestanden (0 Muss, 11 Sollte, 2 Optional) | 0:20 | — |
+| 2026-11-07 | #11 | Auto-Reviews | code-reviewer | befund (B1 Unit-Ebene AK 10; A1 esc an Datumsausgaben) | 0:35 | — |
