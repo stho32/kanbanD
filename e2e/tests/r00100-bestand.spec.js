@@ -44,6 +44,7 @@ const spaltenkoepfe = page => tabelle(page).locator('thead th');
 const zeilenkoepfe = page => tabelle(page).locator('tbody th');
 /** Zelle nach Zeilen- und Spaltenkopf (sichtbarer Text). */
 async function zelle(page, zeile, spalte) {
+  await expect(tabelle(page)).toBeVisible();
   const koepfe = await spaltenkoepfe(page).allTextContents();
   const j = koepfe.indexOf(spalte);
   expect(j, `Spalte ${spalte} in ${koepfe.join(' | ')}`).toBeGreaterThan(0);
@@ -52,6 +53,8 @@ async function zelle(page, zeile, spalte) {
 const LEER = 'Keine offenen Aufgaben, die zu den Filtern der Berichte passen.';
 const HINWEIS = 'Für diese Tabelle braucht das Board Labels mit zwei verschiedenen Präfixen, z. B. repo:shop und nc:304.';
 const bericht_ = page => page.locator('#bestand');
+const legende = page => page.locator('#bestand .best-leg');
+const alleZahlen = page => tabelle(page).locator('tbody tr').evaluateAll(z => z.map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())));
 const gesamt = page => page.getByRole('cell', { name: /^Summe gesamt: / });
 const commits = k => Number(k.git('rev-list', '--count', 'HEAD'));
 
@@ -177,6 +180,38 @@ test.describe('R00100 Bestand nach Labels', () => {
     k.schreib('aufgaben/0002-a2.md', aufgabeMd(2, []));
     await expect(bericht_(page)).toContainText(HINWEIS);
     await expect(tabelle(page)).toHaveCount(0);
+  });
+
+  test('Zellmarke: Balken 3 px in --cl der dringendsten Klasse wie der Kartenrand, Hintergrund wie die Karte; ohne Klasse weder Farbe noch Balken', async ({ page }) => {
+    k = await kanbanStarten(einrichten(grundbestand()));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    const karte = n => page.locator(`.ka[data-id="${n}"]`);
+    const rand = async n => [await karte(n).evaluate(e => getComputedStyle(e).borderLeftColor), await karte(n).evaluate(e => getComputedStyle(e).backgroundColor)];
+    const [randSicherheit, grundSicherheit] = await rand(1), [randEol] = await rand(3);
+    await page.goto(k.adresse + '#/berichte/bestand');
+    const shop304 = await zelle(page, 'shop', '304'), shop305 = await zelle(page, 'shop', '305'), lager304 = await zelle(page, 'lager', '304'), leer = await zelle(page, 'shop', '(ohne nc)');
+    await expect(shop304).toHaveCSS('border-left-width', '3px');
+    await expect(shop304).toHaveCSS('border-left-style', 'solid');
+    await expect(shop304).toHaveCSS('border-left-color', randSicherheit);
+    await expect(shop304).toHaveCSS('background-color', grundSicherheit);
+    await expect(shop305).toHaveCSS('border-left-color', randEol);
+    await expect(lager304).toHaveCSS('border-left-width', '0px');
+    await expect(lager304).toHaveCSS('background-color', await leer.evaluate(e => getComputedStyle(e).backgroundColor));
+  });
+
+  test('Legende: Sicherheit, EOL, Drift mit Farbfeld, „ohne Klasse“ ohne; ein Klick darauf ändert nichts', async ({ page }) => {
+    await bericht(page, grundbestand());
+    await expect(legende(page)).toHaveAttribute('aria-label', 'Legende');
+    await expect(legende(page).locator('.best-le')).toHaveText(['Sicherheit', 'EOL', 'Drift', 'ohne Klasse']);
+    await expect(legende(page).locator('.best-le').filter({ has: page.locator('.sw') })).toHaveText(['Sicherheit', 'EOL', 'Drift']);
+    const vorher = await alleZahlen(page), adresse = page.url();
+    await legende(page).getByText('Drift', { exact: true }).click();
+    expect(await alleZahlen(page)).toEqual(vorher);
+    expect(page.url()).toBe(adresse);
+    await page.goto(k.adresse + '#/board/fabrik');
+    await expect(page.locator('#flt')).toHaveValue('');
   });
 
   test('Live: eine neue Aufgabe [repo:shop, nc:304] in „Eingang“ zeigt shop × 304 = 3 ohne Neuladen', async ({ page }) => {

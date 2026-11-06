@@ -916,7 +916,12 @@ function vBestandInhalt(achsen, filter) {
   const klassen = S.zustand.einstellungen.klassen;
   const tabelle = bestandNachLabels(S.aufgaben, S.board, klassen.map(k => k.schluessel), achsen.zeilen, achsen.spalten, filter);
   if (!tabelle.summen.gesamt) return vBestandLeer(filterAnzahl(filter) > 0);
-  return vBestandTabelle(tabelle, achsen, klassen);
+  return vBestandTabelle(tabelle, achsen, klassen) + vBestandLegende(klassen);
+}
+/** Legende der Klassen in Dringlichkeitsreihenfolge, „ohne Klasse“ ohne Farbfeld; zeigt nur, filtert nicht. */
+function vBestandLegende(klassen) {
+  const eintraege = klassen.map(k => `<span class="best-le"><span class="sw" style="${cv(k.farbe)}"></span>${esc(k.bezeichnung)}</span>`).join('');
+  return `<div class="leg best-leg" aria-label="Legende"><span class="tt">LEGENDE</span>${eintraege}<span class="best-le">ohne Klasse</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
 }
 /** Leerzustand: mit aktiven Filtern der Berichte der Knopf „Zurücksetzen“ (ohne Zahl, PO Z. 77). */
 function vBestandLeer(gefiltert) {
