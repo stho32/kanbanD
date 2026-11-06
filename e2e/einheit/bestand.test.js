@@ -174,7 +174,7 @@ test('B0357 Name von „(ohne …)“, Summen und leerer Zelle: nicht klickbar',
   assert.strictEqual(nameAn(t, null, '(ohne nc)'), 'Summe (ohne nc): 1 offen · nicht klickbar');
   assert.strictEqual(nameAn(t, null, null), 'Summe gesamt: 5 offen · nicht klickbar');
   assert.strictEqual(nameAn(t, 'shop', '(ohne nc)'), 'repo:shop × (ohne nc): keine offen');
-  assert.strictEqual(nameAn(t, '(ohne repo)', null), 'Summe (ohne repo): keine offen · nicht klickbar');
+  assert.strictEqual(nameAn(t, '(ohne repo)', null), 'Summe (ohne repo): 0 offen · nicht klickbar', 'eine Summe nennt auch 0 als Zahl');
 });
 
 test('B0357 Name mit einer Klasse, die es unter classes nicht mehr gibt: mit ihrem Schlüssel vor „ohne Klasse“', () => {

@@ -132,6 +132,10 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(page.getByRole('cell', { name: 'Summe repo:shop: 3 offen · nicht klickbar' })).toHaveText('3');
     await expect(page.getByRole('cell', { name: 'Summe gesamt: 5 offen · nicht klickbar' })).toHaveText('5');
     await expect(page.getByRole('cell', { name: 'repo:shop × (ohne nc): keine offen' })).toHaveText('—');
+    const summeOhneRepo = await zelle(page, '(ohne repo)', 'Summe');
+    await expect(summeOhneRepo).toHaveText('0');
+    await expect(summeOhneRepo).toHaveAttribute('title', 'Summe (ohne repo): 0 offen · nicht klickbar');
+    await expect(summeOhneRepo).toHaveAttribute('aria-label', 'Summe (ohne repo): 0 offen · nicht klickbar');
   });
 
   test('US-5: ohne gespeicherte Achsen der Vorschlag repo × nc, ohne Commit', async ({ page }) => {

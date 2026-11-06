@@ -593,7 +593,6 @@
 
   /** Name einer Summe: Zeile, Spalte oder gesamt (beide null); nie klickbar. */
   function summenName(kopf, zahl) {
-    if (!zahl) return `Summe ${kopf}: keine offen · nicht klickbar`;
     return `Summe ${kopf}: ${zahl} offen · nicht klickbar`;
   }
 
