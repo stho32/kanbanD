@@ -140,3 +140,38 @@ test.describe('Teilaufgabe auf der Karte: Text gehört zum Ziel', () => {
   });
 });
 
+test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
+  test('Aufgabenliste mit Maus: der Titel-Link von #1, allein in seiner Zelle, mindestens 24 × 24', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/aufgaben');
+    const box = await page.locator('td.tt a[data-arg="1"]').boundingBox();
+    expect(box.width, 'Breite').toBeGreaterThanOrEqual(24);
+    expect(box.height, 'Höhe').toBeGreaterThanOrEqual(24);
+  });
+
+  test('Einrichten mit Maus: jedes Farbfeld der offenen Palette mindestens 24 × 24', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/einrichten');
+    await page.getByRole('button', { name: 'Farbe bug' }).click();
+    const felder = await page.locator('.pal .g [role=button]').evaluateAll(l => l.map(e => e.getBoundingClientRect()).map(r => [r.width, r.height]));
+    expect(felder.length).toBe(await page.locator('.pal .g [role=button]').count());
+    expect(felder.filter(([b, h]) => b < 24 || h < 24)).toEqual([]);
+  });
+
+  test.describe('Touch, 320 px', () => {
+    test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+
+    test('die Palette bricht um: jedes Feld mindestens 44, keins ragt über den Rand, keins überlappt ein anderes', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/einrichten');
+      await page.getByRole('button', { name: 'Farbe bug' }).tap();
+      const felder = await page.locator('.pal .g [role=button]').evaluateAll(l => l.map(e => e.getBoundingClientRect().toJSON()));
+      expect(felder.length).toBeGreaterThan(0);
+      expect(felder.filter(r => r.width < 44 || r.height < 44).length, 'kleiner als 44').toBe(0);
+      expect(felder.filter(r => r.right > 320).length, 'über den Rand').toBe(0);
+      const ueberlappt = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      expect(felder.filter((a, i) => felder.some((b, j) => i !== j && ueberlappt(a, b))).length, 'überlappend').toBe(0);
+    });
+  });
+});
+

@@ -381,8 +381,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .farbe::after{content:"▾";position:absolute;right:-1px;bottom:-3px;font-size:8px;color:var(--kd-muted)}
 .farbe.an{outline:2px solid var(--kd-accent);outline-offset:1px}
 .pal{display:flex;flex-direction:column;gap:6px;padding:8px var(--kd-s4) 10px 50px;border-bottom:1px solid var(--kd-line);background:var(--kd-bg)}
-.pal .g{display:grid;grid-template-columns:repeat(8,26px);gap:3px}
-.pal .g span{width:26px;height:20px;border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
+.pal .g{display:grid;grid-template-columns:repeat(auto-fill,var(--kd-ziel));gap:3px}
+.pal .g span{border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
 .pal .g span:hover{outline:1px solid var(--kd-text)}
 .pal .g span.an{outline:2px solid var(--kd-text);outline-offset:1px}
 .pal .g span::after{content:"";position:absolute;left:3px;right:3px;bottom:3px;height:3px;background:var(--cl)}
