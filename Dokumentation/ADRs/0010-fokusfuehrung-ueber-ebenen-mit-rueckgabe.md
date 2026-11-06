@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #8)
 **Kontext-Anforderung**: — (Karte #8 „Fokus in Fenstern und Menüs führen und nach jeder Aktion halten“, Anforderung folgt über den planer)
 **Erprobt durch**: headless Chromium-Probe 2026-11-06 (Scratchpad, nicht versioniert): `inert` gegen natives `<dialog>.showModal()` unter `innerHTML`-Neuzeichnen, siehe Kontext
-**Nachträge**: 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
+**Nachträge**: 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
 
 ## Kontext
 
@@ -153,7 +153,7 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 
 **Entschieden**:
 
-- **Rang 6** („erstes tabbares Element der obersten Ebene“) gilt nur, wenn eine Ebene **offen** ist oder mit diesem Neuzeichnen **geschlossen** wurde. Im zweiten Fall greift er erst, nachdem das Rückgabeziel nach Rang 3 gescheitert ist (N3).
+- **Rang 6** („erstes tabbares Element der obersten Ebene“) gilt nur, wenn eine Ebene **offen** ist oder mit diesem Neuzeichnen **geschlossen** wurde. Im zweiten Fall greift er erst, nachdem das Rückgabeziel nach Rang 3 gescheitert ist (N3). *(→ N7a: nur bei nach dem Neuzeichnen offener Ebene)*
 - **Ohne offene Ebene** und ohne gerade geschlossene Ebene gilt nach Rang 1 (`S.ui.fokus`) diese Folge:
   1. dasselbe Element, sofern es noch da ist (Sicherer nach ADR-0007, Rang 2);
   2. fehlt es: die zuletzt geführte Karte bzw. Zeile (`fokusKarte`/`fokusZeile`, Rang 5, N2);
@@ -162,17 +162,38 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 
 **Invariante, neu gefasst** (ersetzt den Satz unter „Durchsetzung“ oben):
 
-> Ist eine Ebene offen, liegt `document.activeElement` nach jedem `render()` in ihr und nie auf `BODY`. Ist keine offen, steht er nach jedem `render()` auf demselben Element wie vorher, sofern es noch da ist; fehlt es, auf der zuletzt geführten Karte bzw. Zeile; sonst auf `BODY`, nie auf einem fremden Eingabefeld oder Bedienelement. Wurde mit diesem `render()` eine Ebene geschlossen, gilt deren Rückgabeziel (Rang 3), danach Rang 6.
+> Ist eine Ebene offen, liegt `document.activeElement` nach jedem `render()` in ihr und nie auf `BODY`. Ist keine offen, steht er nach jedem `render()` auf demselben Element wie vorher, sofern es noch da ist; fehlt es, auf der zuletzt geführten Karte bzw. Zeile; sonst auf `BODY`, nie auf einem fremden Eingabefeld oder Bedienelement. Wurde mit diesem `render()` eine Ebene geschlossen, gilt deren Rückgabeziel (Rang 3), danach Rang 6. *(→ N7a: nur bei nach dem Neuzeichnen offener Ebene)*
 
 **Verworfen**:
 - Rang 6 unverändert lassen, Wortlaut „nie auf BODY“ behalten: führt nachweislich auf das Namensfeld und fremde Radios (Messung).
 - Rückfall auf einen festen „neutralen“ Anker wie `#main` mit `tabindex="-1"`: Dann stünde der Fokus nicht auf `BODY`, aber auf einem Ziel, das der Mensch nicht gewählt hat. Außerdem braucht jede Sicht einen Anker. Nichts gewinnt gegenüber `BODY`, wo die globalen Kürzel ohnehin greifen.
 
 **Testbarkeit**:
-- Erster Test (Node-Unit, `e2e/einheit/fokus.test.js`): Der Rückfall geht als Entscheidung in die reine Funktion, etwa als Platzhalter wie `GESICHERT` in der Zielliste von `fokusZiel`. Eingabe ist eine `lage` ohne `oberste` und ohne `geschlossen`, mit `vorher.stand: 'verloren'`. Ausgabe ist eine Zielliste ohne Rückfall-Platzhalter. Mit `oberste` bzw. `geschlossen` steht der Platzhalter am Ende. Wie der entwickler das schneidet, ist seine Wahl. Die Bedingung im Kleber muss danach aus dieser Funktion kommen und nicht neben ihr stehen.
+- Erster Test (Node-Unit, `e2e/einheit/fokus.test.js`): Der Rückfall geht als Entscheidung in die reine Funktion, etwa als Platzhalter wie `GESICHERT` in der Zielliste von `fokusZiel`. Eingabe ist eine `lage` ohne `oberste` und ohne `geschlossen`, mit `vorher.stand: 'verloren'`. Ausgabe ist eine Zielliste ohne Rückfall-Platzhalter. Mit `oberste` bzw. `geschlossen` steht der Platzhalter am Ende. *(→ N7a: nur bei nach dem Neuzeichnen offener Ebene)* Wie der entwickler das schneidet, ist seine Wahl. Die Bedingung im Kleber muss danach aus dieser Funktion kommen und nicht neben ihr stehen.
 - Abnahme als **Abtastraster** statt Beispielen, gemeinsam mit ADR-0007 N1: jedes fokussierbare Element × fünf Sichten (Board, Aufgaben, Personen, Einrichten, Stundenzettel) × 1280 und 375 px, je Element ein fremder Schreibaufruf. Erwartet wird dasselbe Element. Entfernt der Schreibaufruf das Element, steht der Fokus auf der geführten Karte bzw. Zeile, sonst auf `BODY`. Fehlschlag ist jedes `activeElement`, das ein anderes Eingabefeld, Radio oder anderes Bedienelement ist. Einzelproben aus der PO-Entscheidung (Einrichten und Personen: gleiches Element; entfernt mit Führung; entfernt ohne Führung → `BODY`, nie `#name` oder fremdes Radio) sind Fälle dieses Rasters.
 
-**Durchsetzung** (ergänzt): Review-Punkt für architektur-reviewer und code-reviewer: Aufruf von `ersterTabbarer` ohne offene oder gerade geschlossene Ebene ist ein Befund.
+**Durchsetzung** (ergänzt): Review-Punkt für architektur-reviewer und code-reviewer: Aufruf von `ersterTabbarer` ohne offene oder gerade geschlossene Ebene ist ein Befund. *(→ N7a: nur bei nach dem Neuzeichnen offener Ebene)*
+
+### N7a Präzisierung: Rang 6 nur bei nach dem Neuzeichnen offener Ebene
+
+**Anlass**: Nachfrage des Directors zu N7 (`05c3d34`). N7 ließ Rang 6 auch für eine gerade geschlossene Ebene gelten, die PO-Entscheidung `AI-Team/po-entscheidungen.md:111` nur bei offener Ebene. Entschieden vom product-owner (`AI-Team/po-entscheidungen.md:113`, Commit `98ed11a`). N7a gilt vor den markierten Stellen in N7.
+
+**Entschieden**:
+
+- Rang 6 („erstes tabbares Element der obersten Ebene“) gilt nur, wenn **nach** dem Neuzeichnen noch eine Ebene offen ist. Er sucht dann in dieser obersten offenen Ebene. Beispiel: Pop über offenem Aufgabenfenster geschlossen, Rückgabe gescheitert → erstes tabbares Element des Fensters.
+- Wird die **letzte** Ebene geschlossen und scheitert die Rückgabe an den Auslöser (Rang 3), folgt dieselbe Kette wie ohne offene Ebene: zuletzt geführte Karte bzw. Zeile (Rang 5), sonst `BODY`. Nie das erste tabbare Element der Seite bzw. von `#main`.
+- Damit ruft der Kleber `ersterTabbarer` nur mit einer obersten offenen Ebene auf, nie mit `#main` als Bereich. Der Zweig „ohne Ebene des Hauptbereichs“ in `ersterTabbarer` (`web/app.js:680–684`) entfällt.
+
+**Invariante, endgültig** (ersetzt die Fassung in N7):
+
+> Ist nach `render()` eine Ebene offen, liegt `document.activeElement` in der obersten offenen Ebene und nie auf `BODY`. Ist keine offen, auch wenn gerade die letzte geschlossen wurde, steht er auf dem Ziel der ersten Stufe, die greift: ausdrückliches `S.ui.fokus`, dasselbe Element wie vorher, das Rückgabeziel der geschlossenen Ebene, die zuletzt geführte Karte bzw. Zeile; sonst auf `BODY`. Nie auf einem fremden Eingabefeld oder Bedienelement.
+
+**Testbarkeit** (ersetzt die markierten Sätze in N7):
+- Node-Unit `fokusZiel`: Rückfall-Platzhalter genau dann am Ende der Zielliste, wenn `lage.oberste` gesetzt ist. Mit `geschlossen` ohne `oberste` steht kein Platzhalter darin, die Liste endet mit Rückgabezielen und ggf. `fuehrung`.
+- E2E-Probe aus `:113`: Einrichten bzw. Personen, ein Pop oder Fenster öffnen, den Auslöser während es offen ist entfernen (fremder Schreibaufruf), dann schließen → Fokus auf geführter Karte bzw. Zeile oder `BODY`, nie `#name` oder ein fremdes Radio. Dazu ein Fall mit zwei Ebenen: Pop über Aufgabenfenster, Auslöser entfernt, Pop schließen → Fokus im Fenster.
+- Wenn die Führung (Rang 5) bisher nur bei `vorher.stand: 'verloren'` gilt (`fuehrungGilt`, `web/fokus.js:97–100`), muss sie nach dem Schließen der letzten Ebene ebenfalls gelten. Der Fokus lag dann in der Ebene, die entfernt wurde, ist also „verloren“. Das prüft der entwickler am ersten Test.
+
+**Durchsetzung** (ersetzt den Review-Punkt in N7): Aufruf von `ersterTabbarer` ohne oberste offene Ebene ist ein Befund.
 
 ## Quellen / Bezüge
 
