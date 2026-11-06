@@ -342,3 +342,12 @@ Nie vom User erfragen.
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | B0349 report-labels im Frontmatter | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | B0350 PUT Achsen des Bestands | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | B0354 Filterleiste in der Rechnung | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0363 Kosten aus Werten bauen und prüfen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0364 Kosten in der Aufgabendatei lesen und schreiben | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0365 cost aus der Anfrage umwandeln | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0366 PATCH und GET mit cost | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0367 Kosten rechnen und formatieren in Cent | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0369 Kostentabelle rechnen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0371 Kostenbericht rechnen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0373 Filter auf den Kostenbericht anwenden | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0375 Reiterleiste als tablist mit Tastatur | Standard | 1-2h | 0,1h | 0,1h | autonom |
