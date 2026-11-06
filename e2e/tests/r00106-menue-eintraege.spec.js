@@ -76,3 +76,18 @@ test.describe('Menü „Status“ der WBS-Sicht', () => {
     await menueFuehrtDenFokus(page, '#wbs-st-B0002', [/^rot/, /^gelb/, /^gruen/]);
   });
 });
+
+test.describe('Menünamen', () => {
+  let k;
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten({ 'aufgaben/0004-vier.md': '---\nid: 4\ntitle: vier ohne Board\n---\n' }));
+    await alsPerson(page, 'st');
+  });
+  test.afterEach(async () => { await k.stoppen(); });
+
+  test('„Auf Board legen“ heißt „#4 auf Board legen“', async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.locator('#leg-4').click();
+    await expect(page.getByRole('menu', { name: '#4 auf Board legen', exact: true })).toBeVisible();
+  });
+});

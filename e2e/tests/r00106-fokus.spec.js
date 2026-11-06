@@ -863,3 +863,9 @@ test('S4: Defekte Dateien bei 1280×800 öffnet im Fenster — das fokussierte E
   expect(lage.oben, JSON.stringify(lage)).toBeGreaterThanOrEqual(0);
   expect(lage.unten, JSON.stringify(lage)).toBeLessThanOrEqual(lage.hoehe);
 });
+
+test('S5: das Berichte-Menü hat den zugänglichen Namen „Berichte“', async ({ page }) => {
+  await page.locator('#t-ber').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menu', { name: 'Berichte', exact: true })).toBeVisible();
+});

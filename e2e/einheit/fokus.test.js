@@ -188,3 +188,11 @@ test('Menüs: die Prüfung erkennt einen Eintrag ohne tabindex und lässt einen 
   const ohne = menueEintraege(probe).filter(e => !NICHT_WAEHLBAR.test(e.tag) && !EIGENER_FOKUS_OHNE_TAB_HALT.test(e.tag));
   assert.deepStrictEqual(ohne.map(e => e.zeile), [1]);
 });
+
+test('Menüs: jeder role="menu"-Container in web/ansicht.js hat einen zugänglichen Namen (aria-label oder aria-labelledby)', () => {
+  const quelltext = fs.readFileSync(path.join(WEB, 'ansicht.js'), 'utf8');
+  const menues = [...quelltext.matchAll(/<[a-z]+ [^<>]*role="menu"[^<>]*>/g)].map(t => ({ zeile: quelltext.slice(0, t.index).split('\n').length, tag: t[0] }));
+  assert.ok(menues.length >= 7, `zu wenige Menüs gefunden: ${menues.length}`);
+  const namenlos = menues.filter(m => !/aria-label(ledby)?="/.test(m.tag));
+  assert.deepStrictEqual(namenlos.map(m => `ansicht.js:${m.zeile} ${m.tag.slice(0, 70)}`), []);
+});
