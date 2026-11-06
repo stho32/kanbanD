@@ -1,6 +1,6 @@
 // R00105 Preisetikett je Aufgabe — Reiterleiste des Aufgabenfensters per Tastatur (US-15, F0043)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Eingang\n\n- #4\n\n## In Arbeit\n\n## Fertig\n',
@@ -216,14 +216,15 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     dateien[`aufgaben/${String(farben.length + 1).padStart(4, '0')}-ohne.md`] = aufgabeMd(farben.length + 1, 'ohne Klasse', SPANNE);
     await board(page, dateien, kopf);
     await expect(page.locator('.ka .preis')).toHaveCount(farben.length + 1);
-    const schlechteste = () => page.evaluate(() => {
-      const rgb = farbe => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = farbe; c.fillRect(0, 0, 1, 1); return [...c.getImageData(0, 0, 1, 1).data].slice(0, 3); };
-      const hell = f => { const l = rgb(f).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2]; };
-      const verh = (a, b) => { const [x, y] = [hell(a), hell(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-      return [...document.querySelectorAll('.ka')].filter(ka => ka.querySelector('.preis')).map(ka => ({
-        karte: ka.dataset.id, wert: verh(getComputedStyle(ka.querySelector('.preis')).color, getComputedStyle(ka).backgroundColor),
-      })).sort((a, b) => a.wert - b.wert)[0];
-    });
+    const schlechteste = async () => {
+      const etiketten = page.locator('.ka .preis');
+      const werte = [];
+      for (let i = 0; i < await etiketten.count(); i++) {
+        const etikett = etiketten.nth(i);
+        werte.push({ karte: await etikett.evaluate(e => e.closest('.ka').dataset.id), wert: await kontrastAm(etikett) });
+      }
+      return werte.sort((x, y) => x.wert - y.wert)[0];
+    };
     for (const thema of ['light', 'dark']) {
       await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
       const s = await schlechteste();

@@ -371,6 +371,15 @@ Nie vom User erfragen.
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0372 Ansicht Kosten mit Menüeintrag | Standard | 1-3h | 0,2h | 0,2h | autonom |
 | 2026-11-06 | R00105 Preisetikett und Kostenbericht | B0374 Filterleiste im Kostenbericht ohne Zeitraum | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-06 | R00100 Bericht Bestand nach Labels | Nacharbeit 1 Karte #6 (Felder bei zu wenigen Präfixen, Legende, Summe 0, Menütext, Name ohne Zielfilter, filterOhneZeitraum, Kontrast, Touch) | Nacharbeit | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0390 Kontrast rechnen und Paare prüfen | Standard | 1-3h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0391 On-Farben statt festem Weiß | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0392 Warnfarbe hell nachdunkeln | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0394 Kopf-Link und Ausrufzeichen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0395 Blasse Schrift auf muted | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0396 Restliche Farbliterale in Tokens | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0397 Phasenblock über Anteil statt Farbton | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0398 Kontrast-Probe im Browser mit einem Helfer | Standard | 1,5-4h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00107 Farbrollen in Paaren | B0393 Modusleiste als Akzent-Container | Standard | 1-2h | 0,2h | 0,0h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0399 Zielmaß an einem Ort mit reiner Probe | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0400 Trefferfläche messen mit Selbstproben | Standard | 2,5-3,5h | 0,1h | 0,1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0409 Löschknöpfe bei Touch sichtbar | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
@@ -398,3 +407,5 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0423 Nur benannte Rahmen scrollen quer, die Zeitberichte in einem Rahmen um die Tabelle | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0424 Aufgabenliste bei Touch und schmal ohne Querscrollen, Titel ganz umbrochen | Nacharbeit | 0,5-1h | 1h | 1h | autonom |
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0425 Die Personentabelle scrollt bei Touch nur in ihrem benannten Rahmen quer | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1: Merge main, Token-Parser je Ebene, Platzhalter im Fokus, Router-Vollständigkeit, US-4-Linie, eine Ansichtenliste | Nacharbeit | 1-2h | 1h | 1h | autonom |
+| 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1, Folge PO Z. 141: Ausweichprobe 320 px als Fall A einzeilig und B Umbruch mit Vor- und Gegenbedingung, zwei Mutanten | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |

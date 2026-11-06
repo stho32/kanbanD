@@ -2,6 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
+const { ansichtenDerAnwendung } = require('./ansichten');
 const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
@@ -325,15 +326,17 @@ test.describe('Trefferhof für kleine Zeichen', () => {
 const brett = page => page.goto(k.adresse + '#/board/entwicklung');
 const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
 const bericht = name => page => page.goto(k.adresse + '#/berichte/' + name);
+/** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihre Ziele stehen. */
+const NACH_DEM_LADEN = { 'WBS-Sicht': page => page.locator('.wbs-tabelle').waitFor() };
+const geladen = async () => {};
+/** Die Ansichten der Anwendung aus der gemeinsamen Liste (ADR-0012 Regel 6), dazu die Zustände, die nur diese Probe misst. */
 const ANSICHTEN = [
-  { ansicht: 'Board', oeffnen: brett },
+  ...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(({ ansicht, adresse }) => ({
+    ansicht,
+    oeffnen: async page => { await page.goto(k.adresse + adresse); await (NACH_DEM_LADEN[ansicht] || geladen)(page); },
+  })),
   { ansicht: 'Archiv des Boards', oeffnen: async page => { await brett(page); await page.locator('[data-act="archiv-an"]').click(); await page.locator('.ka[data-id="4"]').waitFor(); } },
-  { ansicht: 'Aufgabenliste', oeffnen: page => page.goto(k.adresse + '#/aufgaben') },
-  { ansicht: 'Personen', oeffnen: page => page.goto(k.adresse + '#/personen') },
-  { ansicht: 'Einrichten', oeffnen: page => page.goto(k.adresse + '#/einrichten') },
   { ansicht: 'Einrichten mit offener Palette', oeffnen: async page => { await page.goto(k.adresse + '#/einrichten'); await page.getByRole('button', { name: 'Farbe bug' }).click(); await page.locator('.pal').waitFor(); } },
-  ...['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'].map(name => ({ ansicht: 'Bericht ' + name, oeffnen: bericht(name) })),
-  { ansicht: 'WBS-Sicht', oeffnen: async page => { await page.goto(k.adresse + '#/wbs/kd'); await page.locator('.wbs-tabelle').waitFor(); } },
   { ansicht: 'API für Agenten', oeffnen: page => page.goto(k.adresse + 'api') },
   { ansicht: 'Aufgabenfenster #1', oeffnen: page => fensterOeffnen(page, 1) },
   // Das Menü „<Seite> ▾“ gibt es nur in der Stufe compact (unter 600 px, web/kopfzeile.js)
@@ -344,6 +347,15 @@ const ANSICHTEN = [
   { ansicht: 'Menü Ich', oeffnen: menue('#t-ich') },
   { ansicht: 'Kontextmenü #1', oeffnen: async page => { await brett(page); await page.locator('.ka[data-id="1"]').click({ button: 'right' }); await page.getByRole('menu').first().waitFor(); } },
 ];
+
+test('Ansichten der Messprobe: jede Ansicht der gemeinsamen Liste und die Zustände mit Archiv, Palette, API, Fenster und Menüs, keine doppelt', () => {
+  const namen = ANSICHTEN.map(a => a.ansicht);
+  const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+  const zustaende = ['Archiv des Boards', 'Einrichten mit offener Palette', 'API für Agenten', 'Aufgabenfenster #1', 'Menü Seite', 'Menü Mehr', 'Menü Berichte', 'Menü Ich', 'Kontextmenü #1'];
+  expect([...gemeinsam, ...zustaende].filter(name => !namen.includes(name))).toEqual([]);
+  expect(new Set(namen).size).toBe(namen.length);
+  expect(namen.length).toBeGreaterThanOrEqual(22);
+});
 
 /**
  * Bekannte Verstöße, die (noch) nicht gemessen werden dürfen — je Eintrag Selektor, Ansicht, Karte, heutiges Maß und Grund.
@@ -635,28 +647,83 @@ const kopfZeilen = page => page.evaluate(() => [...document.querySelectorAll('he
   return zeilen;
 }).reduce((a, b) => a + b, 0));
 
+/** Mindestbasis des Filters neben dem Bereichsschalter (web/kd-app.css:41, Skizze R00101-kopfzeile.html:37). */
+const FILTER_MIN = 80;
+
+/** Misst die Werkzeugzeile: Bereichsschalter, Filter, Lücke und Inhaltsbreite der Reihe (clientWidth ohne Innenabstand). */
+const werkzeugzeile = page => page.evaluate(() => {
+  const filter = document.querySelector('header.kz #flt');
+  const reihe = filter.parentElement;
+  const schalter = reihe.querySelector('[role=radiogroup][aria-label=Aufgabenbereich]');
+  const stil = getComputedStyle(reihe);
+  const kiste = e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, breite: r.width, hoehe: r.height, unten: r.bottom }; };
+  return {
+    inhalt: reihe.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight),
+    luecke: parseFloat(stil.columnGap) || 0,
+    reihe: kiste(reihe), filter: kiste(filter), schalter: kiste(schalter),
+  };
+});
+
+/** Bereiche „alle“, „ohne Board“, „archiviert“: je mit Zahl und ganz im Fenster. */
+async function bereicheGanzSichtbar(page) {
+  const breite = await page.evaluate(() => document.documentElement.clientWidth);
+  const bereiche = page.locator('header.kz [role=radio][data-act=list-bereich]');
+  await expect(bereiche).toHaveCount(3);
+  for (const bereich of await bereiche.all()) {
+    await expect(bereich).toHaveText(/^(alle|ohne Board|archiviert)\s*\d+$/);
+    const box = await bereich.boundingBox();
+    expect(box.x, await bereich.innerText()).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, await bereich.innerText()).toBeLessThanOrEqual(breite);
+  }
+}
+
+/** 100 Aufgaben ohne Board und 100 archivierte über die API — dreistellige Zahlen im Bereichsschalter. */
+async function dreistelligeBereiche(page) {
+  const nummern = [];
+  for (let n = 1; n <= 200; n++) {
+    const antwort = await page.request.post(`${k.adresse}api/aufgaben`, { ...ALS_ST, data: { titel: `Last ${n}` } });
+    expect(antwort.ok(), `Aufgabe ${n} angelegt`).toBe(true);
+    nummern.push((await antwort.json()).nummer);
+  }
+  const archiv = await page.request.post(`${k.adresse}api/aufgaben/archivieren`, { ...ALS_ST, data: { nummern: nummern.slice(100) } });
+  expect(archiv.ok(), 'hundert Aufgaben archiviert').toBe(true);
+}
+
+async function aufgabenlisteZeigen(page) {
+  await page.goto(k.adresse + '#/aufgaben');
+  await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
+}
+
+// PO Z. 140/141: je Fall genau ein Zweig; Gegen- bzw. Vorbedingung begründet den Fall, statt ihn still umkippen zu lassen.
 for (const [zeiger, geraet] of [['touch', { isMobile: true, hasTouch: true }], ['fein', {}]]) {
   test.describe(`Ausweichen bei 320 px, ${zeiger}`, () => {
     test.use({ viewport: { width: 320, height: 700 }, ...geraet });
 
-    test('Aufgabenliste: kein Überlauf, Bereichsschalter ganz sichtbar unter dem Filter in voller Breite, jedes Ziel im Maß', async ({ page }) => {
+    test('A einzeilig, Grundbestand: Filter ab 80 px neben dem ganzen Bereichsschalter, kein Überlauf, jedes Ziel im Maß', async ({ page }) => {
       await starten(page);
-      await page.goto(k.adresse + '#/aufgaben');
-      await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
+      await aufgabenlisteZeigen(page);
+      const m = await werkzeugzeile(page);
+      expect(m.schalter.breite + FILTER_MIN + m.luecke,
+        `Gegenbedingung: Bereichsschalter ${m.schalter.breite} + ${FILTER_MIN} + Lücke ${m.luecke} passt in die Reihe ${m.inhalt} — sonst ist der Grundbestand ein Umbruchfall geworden`).toBeLessThanOrEqual(m.inhalt);
       expect(await breiteMessen(page, 'Aufgabenliste')).toEqual([]);
-      const breite = await page.evaluate(() => document.documentElement.clientWidth);
-      const bereiche = page.locator('header.kz [role=radio][data-act=list-bereich]');
-      await expect(bereiche).toHaveCount(3);
-      for (const bereich of await bereiche.all()) {
-        await expect(bereich).toHaveText(/^(alle|ohne Board|archiviert)\s*\d+$/);
-        const box = await bereich.boundingBox();
-        expect(box.x, await bereich.innerText()).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width, await bereich.innerText()).toBeLessThanOrEqual(breite);
-      }
-      const filter = await page.locator('header.kz #flt').boundingBox();
-      const reihe = await page.locator('header.kz .kz-reihe').filter({ has: page.locator('#flt') }).boundingBox();
-      expect(filter.width, 'Filter in voller Breite').toBeGreaterThanOrEqual(reihe.width - 2 * 16);
-      expect((await bereiche.first().boundingBox()).y, 'Bereichsschalter unter dem Filter').toBeGreaterThanOrEqual(filter.y + filter.height);
+      await bereicheGanzSichtbar(page);
+      expect(Math.abs(m.schalter.y + m.schalter.hoehe / 2 - (m.filter.y + m.filter.hoehe / 2)), 'Filter und Bereichsschalter auf derselben Zeile').toBeLessThan(1);
+      expect(m.filter.breite, 'Filter mindestens 80 px').toBeGreaterThanOrEqual(FILTER_MIN);
+      expect(await kopfZeilen(page), 'zwei Zeilen — jede Reihe einzeilig').toBe(2);
+      expect(await zieleMessen(page, { zeiger, ansicht: 'Aufgabenliste' })).toEqual([]);
+    });
+
+    test('B Umbruch, 100 ohne Board und 100 archiviert: Filter in voller Breite, Bereichsschalter ganz darunter, kein Überlauf', async ({ page }) => {
+      await starten(page);
+      await dreistelligeBereiche(page);
+      await aufgabenlisteZeigen(page);
+      const m = await werkzeugzeile(page);
+      expect(m.schalter.breite + FILTER_MIN + m.luecke,
+        `Vorbedingung: Bereichsschalter ${m.schalter.breite} + ${FILTER_MIN} + Lücke ${m.luecke} passt nicht in die Reihe ${m.inhalt} — sonst ist das kein Umbruchfall`).toBeGreaterThan(m.inhalt);
+      expect(await breiteMessen(page, 'Aufgabenliste')).toEqual([]);
+      await bereicheGanzSichtbar(page);
+      expect(m.filter.breite, 'Filter in voller Breite').toBeGreaterThanOrEqual(m.reihe.breite - 2 * 16);
+      expect(m.schalter.y, 'Bereichsschalter unter dem Filter').toBeGreaterThanOrEqual(m.filter.unten);
       expect(await kopfZeilen(page), 'drei Zeilen — die erste Reihe einzeilig, die zweite auf zwei Zeilen umgebrochen').toBe(3);
       expect(await zieleMessen(page, { zeiger, ansicht: 'Aufgabenliste' })).toEqual([]);
     });
