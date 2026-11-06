@@ -170,3 +170,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #6 | Detailplanung | director | Zug Architektur → Detailplanung (Architektur gebündelt bestanden, 4e7fd1a); planer | — | — |
 | 2026-11-06 | #6 | Detailplanung | planer (frisch) | bestanden: I0092, F0033–F0036, B0346–B0355 (7–14 h Hypothese), 5 Fragen an PO, UX-Vorprüfung | 0:06 | 5602dea |
 | 2026-11-06 | #6 | Detailplanung | product-owner (frisch) | bestanden: 5 Fragen entschieden wie empfohlen, Anzeige-Schreibweise und Tooltip-Satz ergänzt | 0:01 | aaa5cf0 |
+| 2026-11-06 | #6 | Detailplanung | ux-reviewer (frisch) | befund: 4 Muss (Achsentausch, Farbe ohne Info, Tastatur, Wireframe), 9 Sollte, 2 Optional; 2 Fragen an PO | 0:08 | — |
