@@ -112,9 +112,12 @@ function imBrowserTitelPruefen({ ansicht }) {
   return verstoesse;
 }
 
-/** Verstöße der Zielgröße in der offenen Seite; zeiger 'fein' (Maß 24, Kreis-Ausnahme) oder 'touch' (Maß 44). */
-function zieleMessen(page, { zeiger, ansicht }) {
-  return page.evaluate(imBrowserMessen, { mass: MASS[zeiger], kreisAusnahme: zeiger === 'fein', ansicht });
+/**
+ * Verstöße der Zielgröße in der offenen Seite; zeiger 'fein' (Maß 24, Kreis-Ausnahme) oder 'touch' (Maß 44).
+ * ohneKreis: true misst auch bei feinem Zeiger ohne Kreis-Ausnahme — für Proben, die die Trefferfläche selbst verlangen.
+ */
+function zieleMessen(page, { zeiger, ansicht, ohneKreis = false }) {
+  return page.evaluate(imBrowserMessen, { mass: MASS[zeiger], kreisAusnahme: zeiger === 'fein' && !ohneKreis, ansicht });
 }
 
 /** Verstöße der Titelprobe: Punkte des Kartentitels, die nicht das Öffnen der Karte treffen. */

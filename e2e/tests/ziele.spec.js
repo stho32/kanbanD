@@ -2,6 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
+const { zieleMessen, titelPruefen } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -171,6 +172,53 @@ test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
       expect(felder.filter(r => r.right > 320).length, 'über den Rand').toBe(0);
       const ueberlappt = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
       expect(felder.filter((a, i) => felder.some((b, j) => i !== j && ueberlappt(a, b))).length, 'überlappend').toBe(0);
+    });
+  });
+});
+
+// Die fünf kleinen Zeichen: Zeichnung bleibt klein, bei feinem Zeiger trägt ein Hof die Trefferfläche, bei Touch wachsen sie selbst.
+// Die Leisten um sie herum (Statuszeile, Spaltenkopf) wachsen erst mit B0404 und gehören zur Messprobe über die Ansichten.
+const ZEICHEN = /\.lnk\[data-act="abnehmen"\]|\.kopf-plus|\.signal\[|\.sigz|\.kl\[/;
+const zeichenVerstoesse = async (page, zeiger, ansicht) => (await zieleMessen(page, { zeiger, ansicht, ohneKreis: true })).filter(v => ZEICHEN.test(v.selektor));
+const groesse = async loc => { const b = await loc.boundingBox(); return [Math.round(b.width), Math.round(b.height)]; };
+
+test.describe('Trefferhof für kleine Zeichen', () => {
+  test('Board mit Maus: Signal, Spalten-„+“, Signal-Chip und Timer-Stopp treffen auf mindestens 24 × 24, gezeichnet bleiben sie klein', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/board/entwicklung');
+    await expect(page.locator('.ka[data-id="3"] .kl')).toBeVisible();
+    expect(await zeichenVerstoesse(page, 'fein', 'board')).toEqual([]);
+    expect(await groesse(page.locator('.kopf-plus').first())).toEqual([20, 20]);
+    expect(await groesse(page.locator('.ka[data-id="2"] .signal'))).toEqual([22, 22]);
+    expect((await groesse(page.locator('.ka[data-id="3"] .kl')))[1]).toBeLessThan(24);
+    expect(await titelPruefen(page, 'board')).toEqual([]);
+  });
+
+  test('Aufgabenliste mit Maus: ✕ „von Board nehmen“ trifft auf mindestens 24 × 24', async ({ page }) => {
+    await starten(page);
+    await page.goto(k.adresse + '#/aufgaben');
+    await expect(page.locator('.lnk[data-act="abnehmen"]').first()).toBeVisible();
+    expect(await zeichenVerstoesse(page, 'fein', 'aufgaben')).toEqual([]);
+  });
+
+  test.describe('Touch, 390 px', () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+    // Das Maß 44 der Zeichen prüft der Touch-Lauf (B0405), sobald die Touch-Liste im Token aufgeht (B0404).
+    test('Board: kein Hof auf der Karte, kein Punkt des Titels trifft ein Zeichen, ein Tipp 8 px links vom Signal öffnet die Karte', async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await expect(page.locator('.ka[data-id="2"] .signal')).toBeVisible();
+      const hoefe = await page.locator('.ka .signal, .ka .kl').evaluateAll(l => l.map(e => getComputedStyle(e, '::after').content));
+      expect(hoefe.every(c => c === 'none'), hoefe.join(' ')).toBe(true);
+      expect(await titelPruefen(page, 'board')).toEqual([]);
+      // Die Messung hat die Spaltenleiste quer gescrollt; das Signal zurück ins Bild holen
+      await page.locator('.ka[data-id="2"] .signal').scrollIntoViewIfNeeded();
+      const signal = await page.locator('.ka[data-id="2"] .signal').boundingBox();
+      await page.touchscreen.tap(signal.x - 8, signal.y + signal.height / 2);
+      await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
+      await expect(page.locator('.ka[data-id="2"] .signal')).toHaveCount(1);
+      expect(k.lies('aufgaben/0002-zwei.md')).toContain('signals: [mail]');
     });
   });
 });

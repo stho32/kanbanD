@@ -82,3 +82,11 @@ test.describe('Selbstprobe Titel', () => {
     expect(verstoesse.every(v => v.getroffen === 'signal-aus')).toBe(true);
   });
 });
+
+test.describe('Selbstprobe ohne Kreis-Ausnahme', () => {
+  test('ohneKreis: ein einsames 20 × 20 fällt auch bei feinem Zeiger durch', async ({ page }) => {
+    await page.setContent(STIL + knopf(100, 100, 20, 'einsam'));
+    expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe' })).toEqual([]);
+    expect(namen(await zieleMessen(page, { zeiger: 'fein', ansicht: 'probe', ohneKreis: true }))).toEqual(['einsam']);
+  });
+});

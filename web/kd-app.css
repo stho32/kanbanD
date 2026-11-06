@@ -122,6 +122,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
+/* R00108: der Titel antwortet selbst auf Tipp (Hover-Regel), damit Chromiums Touch-Anpassung einen Tipp auf den Titel nicht zum Nachbarknopf zieht */
+.ka .t:hover{cursor:pointer}
 .ka.fertig .t{color:var(--kd-muted)}
 .ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
@@ -609,6 +611,13 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bahn-kopf:focus,tr[data-zeile]:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}
 /* Neue Aufgabe */
 .kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
+/* Trefferhof (R00108, ADR-0012 Regel 3): kleine Zeichen bleiben gezeichnet klein; bei feinem Zeiger trägt ein durchsichtiges ::after
+   die Trefferfläche auf --kd-ziel. Bei Touch kein Hof: dort wachsen die Zeichen selbst über die Basisregel. */
+@media (pointer:fine){
+  .lnk,.kopf-plus,.signal,.sigz,.kl{position:relative;min-block-size:0}
+  .lnk,.kopf-plus,.signal,.sigz{min-inline-size:0}
+  :is(.lnk,.kopf-plus,.signal,.sigz,.kl)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
+}
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-faint);font-weight:400}
