@@ -157,3 +157,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Auto-Reviews | director | Zug Nacharbeit → Auto-Reviews, enge Wiederholung Code-Review | — | — |
 | 2026-11-06 | #48 | Auto-Reviews | code-reviewer (Wiederholung) | bestanden: B1 geschlossen (Probe gegen eigene Instanz), keine weiteren Wege in die zweite Linie; Härtung A6–A8 | 0:10 | — |
 | 2026-11-06 | #48 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
+| 2026-11-06 | #48 | Entwicklertest | entwicklertester | US-1–US-6 bestanden; Anmerkung A1 (namensdefektes Board im Menü → unbehandelter Seitenfehler) vom Director als Muss gewertet (Rückschritt des Pakets) | 0:07 | — |
+| 2026-11-06 | #48 | Nacharbeit | director | Rückzug Entwicklertest → Nacharbeit (A1 Oberfläche), Zweig nacharbeit/48 | — | — |
