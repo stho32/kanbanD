@@ -149,7 +149,7 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     await expect(etikett).toHaveCount(1);
     await expect(etikett.locator('[aria-hidden="true"]')).toHaveText('≈ 1,10 $');
     await expect(etikett).toHaveAttribute('title', `0,60–1,60${NBSP}$ · geschätzte API-Kosten`);
-    expect(await vorgelesen(etikett)).toBe(`Preisetikett: geschätzt 0,60 bis 1,60${NBSP}$, geschätzte API-Kosten`);
+    expect(await vorgelesen(etikett)).toBe(`Preisetikett: geschätzt 0,60 bis 1,60${NBSP}$, API-Kosten`);
     expect(await etikett.getAttribute('aria-label')).toBeNull();
     // sichtbar heißt: der Text steht in einem Kasten größer als 1 × 1 px; der versteckte Name ist auf 1 px abgeschnitten
     const sichtbar = await karte.evaluate(el => [...el.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))
@@ -174,7 +174,7 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     await board(page, fabrik('cost:\n  currency: EUR\n  amount: 25.55\n'));
     const zwei = page.locator('.ka[data-id="2"] .preis');
     await expect(zwei.locator('[aria-hidden="true"]')).toHaveText('≈ 1,63 $');
-    expect(await vorgelesen(zwei)).toBe(`Preisetikett: geschätzt 1,63${NBSP}$, geschätzte API-Kosten`);
+    expect(await vorgelesen(zwei)).toBe(`Preisetikett: geschätzt 1,63${NBSP}$, API-Kosten`);
     await expect(zwei).toHaveAttribute('title', `1,63${NBSP}$ · geschätzte API-Kosten`);
     await expect(page.locator('.ka[data-id="1"] .preis [aria-hidden="true"]')).toHaveText('≈ 25,55 €');
   });
@@ -199,7 +199,7 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
       expect(zeilen, `Betrag und Komma in einer Zeile bei ${breite} px`).toBe(1);
       const zeilenanfang = await r3.evaluate(el => el.innerText.split('\n').some(z => z.trim().startsWith(',')));
       expect(zeilenanfang, `keine Zeile beginnt mit „,“ bei ${breite} px`).toBe(false);
-      expect(await vorgelesen(r3.locator('.preis'))).toBe(`Preisetikett: geschätzt 0,60 bis 1,60${NBSP}$, geschätzte API-Kosten`);
+      expect(await vorgelesen(r3.locator('.preis'))).toBe(`Preisetikett: geschätzt 0,60 bis 1,60${NBSP}$, API-Kosten`);
     }
     const zwei = page.locator('.ka[data-id="2"] .r3');
     await expect(zwei.locator('.preis [aria-hidden="true"]')).toHaveText('≈ 1,63 $');

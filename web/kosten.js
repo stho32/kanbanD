@@ -43,7 +43,7 @@
     return {
       sichtbar: `≈ ${geld(k.mitte, k.waehrung)}`,
       hinweis: `${spanne(k.min, k.max, k.waehrung, '–')} · geschätzte API-Kosten`,
-      name: `Preisetikett: geschätzt ${spanne(k.min, k.max, k.waehrung, ' bis ')}, geschätzte API-Kosten`,
+      name: `Preisetikett: geschätzt ${spanne(k.min, k.max, k.waehrung, ' bis ')}, API-Kosten`,
     };
   }
 
