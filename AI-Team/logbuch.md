@@ -159,3 +159,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-06 | #48 | Entwicklertest | director | Zug Auto-Reviews → Entwicklertest | — | — |
 | 2026-11-06 | #48 | Entwicklertest | entwicklertester | US-1–US-6 bestanden; Anmerkung A1 (namensdefektes Board im Menü → unbehandelter Seitenfehler) vom Director als Muss gewertet (Rückschritt des Pakets) | 0:07 | — |
 | 2026-11-06 | #48 | Nacharbeit | director | Rückzug Entwicklertest → Nacharbeit (A1 Oberfläche), Zweig nacharbeit/48 | — | — |
+| 2026-11-06 | #48 | Nacharbeit | entwickler (entw1) | bestanden: B0345 400 beim Board-Laden wie 423 → Defektfläche, E2E rot→grün, ff 1c85499 | 0:12 | Typ Nacharbeit |
+| 2026-11-06 | #48 | Entwicklertest | director | Zug Nacharbeit → Entwicklertest, enge Wiederholung | — | — |
