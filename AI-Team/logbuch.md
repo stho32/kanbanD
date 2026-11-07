@@ -319,3 +319,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Nacharbeit | entwickler | bestanden (Nacharbeit 2: Entwurf mit Ende, Guard datumKurz, esc überfällig, US-5 wartet) | 0:25 | df4e6e6 |
 | 2026-11-07 | #11 | Auto-Reviews | ux-reviewer | bestanden (Runde 3; S1 behoben; Vorbestand A1 → Vorrang-Karte #74) | 0:08 | — |
 | 2026-11-07 | #11 | Auto-Reviews | code-reviewer | bestanden (Runde 3; B2 behoben; Sollte A1 Blättern ohne Suite-Test) | 0:12 | — |
+| 2026-11-07 | #11 | Entwicklertest | entwicklertester | bestanden (8 Szenarien; US-7/US-8 warten auf PO Z. 148; Merge wartet auf #73) | 0:25 | — |
