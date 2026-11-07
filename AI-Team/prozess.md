@@ -38,7 +38,7 @@ Rückmeldungen gibt der Betreiber von sich aus („wenn ich was zu nörgeln habe
 
 ## Signal „Ich habe Fragen“ (Betreiber 2026-10-31)
 
-Hat der Director eine Frage, die der Betreiber entscheiden muss (richtungsweisend laut product-owner, Freigabe einer Skizze, Konflikt mit der Vision), setzt er auf der betroffenen Karte das Signal `frage` („Ich habe Fragen“, orange; steht in der Reihenfolge der Signale vorn, die Karte trägt also seine Farbe) und schreibt die Frage als Kartenkommentar: ein Satz Kontext, nummerierte Optionen, Empfehlung zuerst. Dieselbe Frage stellt er auch in der Session. Ist sie beantwortet, nimmt er das Signal zurück und vermerkt die Antwort als Kommentar. Fragen ohne Karte bekommen eine Karte „Frage: …“ oben im Backlog.
+Hat der Director eine Frage, die der Betreiber entscheiden muss (richtungsweisend laut product-owner, Konflikt mit der Vision), setzt er auf der betroffenen Karte das Signal `frage` („Ich habe Fragen“, orange; steht in der Reihenfolge der Signale vorn, die Karte trägt also seine Farbe) und schreibt die Frage als Kartenkommentar: ein Satz Kontext, nummerierte Optionen, Empfehlung zuerst. Dieselbe Frage stellt er auch in der Session. Ist sie beantwortet, nimmt er das Signal zurück und vermerkt die Antwort als Kommentar. Fragen ohne Karte bekommen eine Karte „Frage: …“ oben im Backlog.
 
 ## Token-Kosten je Karte (Betreiber 2026-10-31)
 
@@ -55,3 +55,6 @@ Sobald kanbanD ein Preisetikett an Aufgaben kennt (Wunsch des Betreibers vom 202
 - **Preis-Kommentar** beim Zug nach „Erledigt“: „Preis: <von>–<bis> USD · Basis: …“ mit den Einzelkosten je Rolle, dazu getrennt „Gemeinkostenanteil: … USD (Zuschlag … % nach Einzelkosten)“.
 - Die Abschlussmeldungen der Subagents (Token-Summe) zählen das Cache-Lesen nicht und unterschätzen stark; sie werden nicht mehr für Preise benutzt.
 
+## Freigabe von Artboards (Betreiber 2026-11-07)
+
+Artboards und Skizzen gibt der product-owner frei, bevor gebaut wird (Vision R00000, Leitplanke „Jede Gestaltung wird freigegeben“). Der Director legt sie ihm vor, nicht dem Betreiber; der PO protokolliert die Freigabe in `po-entscheidungen.md`. Der Betreiber darf weiterhin selbst freigeben, muss es aber nicht.

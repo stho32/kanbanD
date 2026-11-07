@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-10-18
+zuletzt-ergaenzt: 2026-11-07
 ---
 
 # R00000: Vision — kanbanD
@@ -163,7 +163,8 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   Aufruf.
 - **Eine festgelegte Kultur.** Die Oberfläche ist deutsch, Datumsangaben stehen im
   deutschen Format, Tage und Zeiten gelten in Ortszeit.
-- **Der Mensch sieht jede Gestaltung, bevor sie gebaut wird.**
+- **Jede Gestaltung wird freigegeben, bevor sie gebaut wird** — vom Auftraggeber
+  oder vom product-owner der Factory in seinem Auftrag.
 
 ## Ausdrücklich nicht Ziel
 
@@ -207,3 +208,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-10-18 | Zielbild „Die WBS als Nachbar statt als Importquelle“ ersetzt durch „Die WBS als Stand, die Aufgaben als Fortschritt“ (eigene WBS-Sicht, Wirkungen von Aufgaben auf Knoten, Phasen als Spalten); Nutzen um den Agenten ohne Verwaltungsdateien ergänzt — Grund: kanbanD soll WBS und Arbeit gemeinsam führen und Verwaltungs-Commands in `~/.claude` ersetzen (Durchgang im Pair) |
 | 2026-10-18 | Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ mit Register der Anwendungen (Kürzel, volle Pfade) und qualifizierter Herkunft ergänzt |
 | 2026-10-18 | Nicht-Ziele „Kein Ersatz für Vision, Anforderungen und WBS“ und „Kein Git-Client“ geschärft — Grund: kanbanD schreibt die WBS im Arbeits-Repository ohne dortigen Commit, `gruen` nie aus einer Bewegung; ersetzt „Es fließt nichts in die WBS zurück“ |
+| 2026-11-07 | Leitplanke „Der Mensch sieht jede Gestaltung, bevor sie gebaut wird“ ersetzt durch „Jede Gestaltung wird freigegeben, bevor sie gebaut wird“, vom Auftraggeber oder vom product-owner — Grund: der Auftraggeber überträgt die Artboard-Freigabe dem product-owner (Anlass po-entscheidungen Z. 76, 148, 153) |
