@@ -216,9 +216,9 @@ async function mutanteEinsetzen(page) {
   });
 }
 
-/** Startet kanbanD, führt `ablauf` aus und räumt auch nach einem Timeout auf (Server-Stopp im inneren finally). */
-async function mitKanban(page, ablauf) {
-  const k = await kanbanStarten(einrichten(DATEIEN));
+/** Startet kanbanD mit `dateien`, führt `ablauf` aus und räumt auch nach einem Timeout auf (Server-Stopp im inneren finally). */
+async function mitKanban(page, ablauf, dateien = DATEIEN) {
+  const k = await kanbanStarten(einrichten(dateien));
   try {
     await alsPerson(page, 'st');
     await mutanteEinsetzen(page);
@@ -356,4 +356,141 @@ test('F4: wird das Laden eines Ereignisses von außen vor der Marke verworfen, m
     await neuBleibtStehen(page, k);
     await nurZweiExtern(page);
   });
+});
+
+/**
+ * Hält die nächste Anfrage `methode` auf `pfad`, sobald `scharf()` gerufen ist, bevor sie den Server erreicht: so bleibt eine
+ * eigene Änderung in der Warteschlange offen, bis `freigeben()` sie durchlässt.
+ */
+async function anfrageHalten(page, methode, pfad) {
+  let scharfGeschaltet = false;
+  const angekommen = versprechen(), freigabe = versprechen(), beantwortet = versprechen();
+  offeneFreigaben.push(freigabe.aufloesen);
+  await page.route(url => url.pathname === pfad, async route => {
+    if (!scharfGeschaltet || route.request().method() !== methode) return route.fallback();
+    scharfGeschaltet = false;
+    angekommen.aufloesen();
+    await freigabe.zusage;
+    await route.fallback();
+    beantwortet.aufloesen();
+  });
+  return {
+    scharf: () => { scharfGeschaltet = true; },
+    angekommen: () => abwarten(angekommen.zusage, `gehaltene Anfrage ${methode} ${pfad}`),
+    freigeben: () => { freigabe.aufloesen(); return abwarten(beantwortet.zusage, `Durchlass ${methode} ${pfad}`); },
+  };
+}
+
+const DEFEKT_PFAD = 'aufgaben/0003-defekt.md';
+/** G1: Konfliktmarker; G2: kaputtes YAML — zwei verschiedene Gründe, damit sichtbar ist, welcher Stand übernommen wurde. */
+const DEFEKT_G1 = '---\nid: 3\n<<<<<<< HEAD\ntitle: drei\n=======\ntitle: drei anders\n>>>>>>> zweig\n---\n';
+const DEFEKT_G2 = '---\nid: 3\ntitle: [kaputt\n---\n';
+const REPARIERT = '---\nid: 3\ntitle: drei repariert\n---\n';
+const MIT_DEFEKT = {
+  ...DATEIEN,
+  'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n- #3\n\n## In Arbeit\n\n## Erledigt\n',
+  [DEFEKT_PFAD]: DEFEKT_G1,
+};
+
+/** Öffnet die Seite und das Fenster der defekten #3 mit Grund G1. */
+async function defektFensterOeffnen(page, k) {
+  await page.goto(k.adresse);
+  await liveBereit(page);
+  await page.locator('.ka.defekt[data-id="3"]').click();
+  await expect(page.locator('#defekttext')).toContainText('<<<<<<< HEAD');
+  await ruhig(page, { nachLaden: false });
+}
+
+/** Endbild: das Defektfenster von #3 steht und zeigt G2 — nicht das normale Fenster mit leerer Datei. */
+async function defektZeigtG2(page) {
+  await expect(page.locator('#defekt-fenster')).toBeVisible();
+  await expect(page.locator('#defekttext')).toContainText('title: [kaputt');
+  await expect(page.locator('#defekt-fenster .warnbar')).not.toContainText('Konflikt');
+  await expect(page.locator('#fenster')).toHaveCount(0);
+}
+
+async function defektGegenprobe(page) {
+  await page.unrouteAll({ behavior: 'wait' });
+  await page.reload();
+  await liveBereit(page);
+  await page.locator('.ka.defekt[data-id="3"]').click();
+  await defektZeigtG2(page);
+}
+
+/**
+ * N1 (Nacharbeit 1): das Laden A aus der Reparatur liest #3 „repariert“ (200) und wird gehalten; die Datei wird wieder defekt (G2),
+ * Laden B liest 423 und übernimmt. Kommt A danach an, ist es älter als das, was das Fenster übernommen hat — es schaltet nicht um.
+ */
+for (const verzoegerungMs of [0, 250, 400]) {
+  test(`N1: eine ältere Antwort „repariert“ schaltet das Defektfenster nicht um, ${verzoegerungMs} ms`, async ({ page }) => {
+    await mitKanban(page, async k => {
+      const reparatur = await antwortHalten(page, '/api/aufgaben/3', verzoegerungMs);
+      await defektFensterOeffnen(page, k);
+      reparatur.scharf();
+      k.schreib(DEFEKT_PFAD, REPARIERT);
+      await reparatur.angekommen();
+      k.schreib(DEFEKT_PFAD, DEFEKT_G2);
+      await expect(page.locator('#defekttext'), 'Laden B übernimmt G2').toContainText('title: [kaputt');
+      await ruhig(page, { gehalten: 1 });
+      await reparatur.freigeben();
+      await ruhig(page);
+      await defektZeigtG2(page);
+      await defektGegenprobe(page);
+    }, MIT_DEFEKT);
+  });
+}
+
+/**
+ * N1, umgekehrte Reihenfolge: A („repariert“) kommt zuerst an und schaltet um, B (423, G2) ist neuer und kommt danach —
+ * B schaltet das Fenster derselben Aufgabe zurück, obwohl es inzwischen im normalen Modus steht (Vergleich mit der offenen Nummer).
+ */
+test('N1: eine neuere Antwort „defekt“ nach der älteren „repariert“ schaltet zurück auf das Defektfenster', async ({ page }) => {
+  await mitKanban(page, async k => {
+    // der zuletzt angelegte Halter fängt zuerst: antwortA hält das Laden der Reparatur, antwortB das des neuen Defekts
+    const antwortB = await antwortHalten(page, '/api/aufgaben/3');
+    const antwortA = await antwortHalten(page, '/api/aufgaben/3');
+    await defektFensterOeffnen(page, k);
+    antwortA.scharf();
+    k.schreib(DEFEKT_PFAD, REPARIERT);
+    await antwortA.angekommen();
+    antwortB.scharf();
+    k.schreib(DEFEKT_PFAD, DEFEKT_G2);
+    await antwortB.angekommen();
+    await antwortA.freigeben();
+    await ruhig(page, { gehalten: 1, nachLaden: false });
+    await antwortB.freigeben();
+    await ruhig(page);
+    await defektZeigtG2(page);
+    await defektGegenprobe(page);
+  }, MIT_DEFEKT);
+});
+
+/**
+ * N1 bei offener Schlange: A („repariert“) ist gehalten, ein Abhaken auf dem Board hält die Warteschlange offen, die Datei wird wieder
+ * defekt (G2) — das Ereignis lädt nicht, solange die Schlange offen ist. A kommt bei offener Schlange an und wird verworfen;
+ * das Laden der leer gewordenen Schlange zeigt G2.
+ */
+test('N1: bei offener Warteschlange schaltet die Antwort „repariert“ das Defektfenster nicht um', async ({ page }) => {
+  await mitKanban(page, async k => {
+    const anlegen = await page.request.post(`${k.adresse}api/aufgaben/1/teilaufgaben`, { ...ALS_BOT, data: { text: 'eins' } });
+    expect(anlegen.ok()).toBe(true);
+    const reparatur = await antwortHalten(page, '/api/aufgaben/3');
+    const abhaken = await anfrageHalten(page, 'PATCH', '/api/aufgaben/1/teilaufgaben/0');
+    await defektFensterOeffnen(page, k);
+    reparatur.scharf();
+    k.schreib(DEFEKT_PFAD, REPARIERT);
+    await reparatur.angekommen();
+    abhaken.scharf();
+    // die Karte liegt unter dem Fenster: der Klick geht direkt an den Knopf, wie ihn die Delegation sieht
+    await page.locator('.ka[data-id="1"] .naechste-ziel').dispatchEvent('click');
+    await abhaken.angekommen();
+    k.schreib(DEFEKT_PFAD, DEFEKT_G2);
+    await reparatur.freigeben();
+    await ruhig(page, { gehalten: 1, nachLaden: false });
+    await expect(page.locator('#defekt-fenster'), 'die Antwort „repariert“ bei offener Schlange schaltet nicht um').toBeVisible();
+    await abhaken.freigeben();
+    await ruhig(page);
+    await defektZeigtG2(page);
+    await defektGegenprobe(page);
+  }, MIT_DEFEKT);
 });

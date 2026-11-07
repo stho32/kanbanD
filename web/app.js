@@ -306,19 +306,22 @@ function ichNoetig() {
   return true;
 }
 
-/** Lädt die defekte Datei des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort des Fensters
-    übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. */
+/** Lädt die defekte Datei des Fensters; übernommen nur, solange das Fenster dieselbe Aufgabe zeigt — defekt oder schon repariert —
+    und keine neuere Antwort des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer
+    `start`. „Repariert“ setzt `zuletztFenster` nicht selbst: das folgende `dateiLaden` prüft unter derselben Nummer und übernimmt. */
 async function defektLaden(start = naechsterTakt()) {
   const nummer = S.ui.offenDefekt;
+  const aktuell = () => (S.ui.offenDefekt === nummer || S.ui.offen === nummer) && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen });
   try {
     await api('GET', '/api/aufgaben/' + nummer);
-    if (S.ui.offenDefekt !== nummer) return;
+    if (!aktuell()) return;
     S.ui.offen = nummer; S.ui.offenDefekt = null; S.ui.defektDatei = null; // repariert
     await dateiLaden(start);
   } catch (f) {
-    if (S.ui.offenDefekt !== nummer || !uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen })) return;
+    if (!aktuell()) return;
     zuletztFenster = start;
-    if (f.status === 423) S.ui.defektDatei = { pfad: f.daten.pfad, text: f.daten.text, fehler: f.message };
+    S.ui.offen = null; S.ui.datei = null;
+    if (f.status === 423) { S.ui.offenDefekt = nummer; S.ui.defektDatei = { pfad: f.daten.pfad, text: f.daten.text, fehler: f.message }; }
     else { S.ui.offenDefekt = null; S.ui.defektDatei = null; }
   }
 }
