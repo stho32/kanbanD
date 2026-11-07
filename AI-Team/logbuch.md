@@ -337,3 +337,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #75 | Erledigt | director | Gate grün bis auf Wackler r00105 S2 (→ #78), ausgeliefert, ohne Push | 0:20 | 6f6ddef |
 | 2026-11-07 | #76 | Architektur | architekt | bestanden (ADR-0014 Option A, Nachtrag N1 nach Leseliste-Nachforderung) | 0:25 | ee75418 |
 | 2026-11-07 | #76 | Detailplanung | product-owner | beantwortet (Z. 150 Lesart Kopf + Live-Auflage F1, Z. 151 Wächtertest in #76) | 0:05 | 52bb8d4 |
+| 2026-11-07 | #76 | Detailplanung | planer | bestanden (R00110, I0099 mit 3 Features/6 Bubbles) | 0:20 | 0b60cfa |
