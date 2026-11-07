@@ -334,3 +334,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #75 | Nacharbeit | entwickler | bestanden (Aufräumen übersteht Timeout, Frist fürs Neuladen, A1/A2) | 0:25 | 34486ba |
 | 2026-11-07 | #75 | Auto-Reviews | code-reviewer | bestanden (Wiederholung; B1 geschlossen, A5 → #76) | 0:06 | — |
 | 2026-11-07 | #75 | Entwicklertest | entwicklertester | bestanden (20/20, Mutanten 9/9 rot, US-1 im echten Programm; Anmerkung → #77) | 0:15 | 6f6ddef |
+| 2026-11-07 | #75 | Erledigt | director | Gate grün bis auf Wackler r00105 S2 (→ #78), ausgeliefert, ohne Push | 0:20 | 6f6ddef |
