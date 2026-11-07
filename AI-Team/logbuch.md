@@ -320,3 +320,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Auto-Reviews | ux-reviewer | bestanden (Runde 3; S1 behoben; Vorbestand A1 → Vorrang-Karte #74) | 0:08 | — |
 | 2026-11-07 | #11 | Auto-Reviews | code-reviewer | bestanden (Runde 3; B2 behoben; Sollte A1 Blättern ohne Suite-Test) | 0:12 | — |
 | 2026-11-07 | #11 | Entwicklertest | entwicklertester | bestanden (8 Szenarien; US-7/US-8 warten auf PO Z. 148; Merge wartet auf #73) | 0:25 | — |
+| 2026-11-07 | #73 | Architektur | architekt | weiter (Wettlauf im Test belegt, kein Wochenend-Effekt; keine ADR) | 0:05 | — |
+| 2026-11-07 | #73 | Detailplanung | — | entfällt (Testpflege an R00079) | 0:00 | — |
