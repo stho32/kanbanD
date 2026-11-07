@@ -169,3 +169,48 @@ Bewusst in Kauf genommen:
     - Gleichstand
 - [ ] Wächtertest nach dem Muster von `e2e/einheit/fokus.test.js` (Liste `ERLAUBT`): Zuweisungen an `S.aufgaben`, `S.board`, `S.zustand`, `S.ui.datei`, `S.ui.defektDatei` aus einer Antwort nur an den erlaubten Stellen. Ob er in #76 oder später kommt, entscheidet der planer (Empfehlung: in #76, weil die Regel sonst beim nächsten Bau umgangen wird).
 - [ ] Ob Option B (Abbruch) die Netzlast unter 5 Ereignissen je Sekunde messbar senkt, ist eine eigene Karte, erst nach einer Messung.
+
+## Nachtrag N1 2026-11-07: Vergleichstabelle und geschärfte Abnahme
+
+Die Entscheidung bleibt unverändert. Ergänzt werden zwei Dinge:
+- die Vergleichstabelle nach Skill `optionen-vor-entscheidung`,
+- die Abnahme-Idee, geprüft gegen die Skills `test-pyramide` und `test-ehrlichkeit`.
+
+### Vergleich
+
+| # | Option | Komplexität | Testbarkeit | Reversibilität | Risiko | Last bei 5 Schreibzugriffen/s |
+|---|---|---|---|---|---|---|
+| A | Laufende Nummer im Browser plus reine Prüfung | gering, nur `web/app.js` und ein reines Modul | sehr gut: Unit-Test der Prüfung, Mutante in einer Zeile | hoch, eine Prüfung entfernen | niedrig; Restrisiko ist die Umordnung auf dem Server (ungemessen) | verworfene Antworten kosten Netzlast |
+| B | `AbortController` | mittel, `signal` und Behandlung von `AbortError` an jedem Aufrufer | mittel, der Abbruch hängt am Zeitpunkt | hoch | hoch: allein unwirksam nach dem Eintreffen, die Anzeige verhungert | geringste Last |
+| C | Version vom Server | hoch, rund 10 Endpunkte, Zähler über Wächter und Commits | gut, die Revision ist beobachtbar | gering, die API ändert sich nach außen | mittel: Antworten eines Ladens mit verschiedenen Revisionen; der optimistische Fall bleibt offen | wie A |
+| D | Einzelflug mit einmal Nachladen | mittel, geteiltes Versprechen für rund 9 Aufrufer | mittel | mittel | mittel: der optimistische Fall bleibt offen, `dateiLaden` liegt außerhalb | gering |
+
+Gewählt bleibt A. Was überwiegt und welche Schwäche in Kauf genommen wird, steht unter „Entscheidung“.
+
+### Abnahme-Idee, geschärft
+
+**Ebenen**
+- **Unit** (`e2e/einheit/`): die reine Prüfung, Fälle wie unter „Folgeaufgaben“.
+- **Integration**: entfällt mit Grund. Server und API ändern sich nicht. Die einzige neue Grenze ist die zwischen Browser und API, und die prüft E2E über den echten Einstieg.
+- **E2E**: im Bestand der Suite, mit `e2e/tests/hilfen.js` als Treiber.
+
+**Je E2E-Fall gilt**
+- **Vorher und nachher.** Vorher ist im Fenster 0 Teilaufgaben angezeigt und die Datei enthält keine. Nachher enthält die Datei `- [ ] neu`, und Liste und Zähler „TEILAUFGABEN“ zeigen 1.
+- **Neu laden zur Gegenprobe.** Nach Seitenneuladen zeigt das Fenster ebenfalls 1. Das beweist die Speicherung, nicht den Speicher im Browser.
+- **Warten auf ein Ereignis, keine feste Pause.**
+  - Auf das Ende der gehaltenen Antwort, also den aufgelösten Route-Handler.
+  - Dann auf `kdTest.gezeichnet()` (`web/app.js:2143`).
+  - Erst danach wird geurteilt. Die 1,5 s Pause der Probe E gehören nicht in den Test.
+- **Monotonie.** Ein MutationObserver protokolliert die Anzahl `.chk` im Fenster. Sie fällt nie.
+
+**Fälle und Mutanten** (Mechanismus aus #75: `page.route('**/web/app.js', …)` mit Wurf, wenn der Ersatz nicht greift)
+
+| Fall | Herstellung | Mutante, die rot werden muss |
+|---|---|---|
+| F1 Alte Antwort nach neueren | Probe E: `GET /api/aufgaben` aus dem Ereignis wird gehalten, bis zwei neuere Ladevorgänge übernommen sind | Prüfung liefert immer `true` |
+| F2 Alte Antwort vor dem Laden der Warteschlange (Regel 3) | Die gehaltene Antwort wird freigegeben, nachdem der POST beantwortet ist und bevor das Laden der Warteschlange startet, zum Beispiel durch Halten auch des ersten `GET /api/zustand` nach dem POST | nur die Marke entfernt, die Monotonie bleibt. F1 allein bemerkt diese Mutante nicht |
+| F3 Blättern (Regel 6) | Fenster #1 offen, `GET /api/aufgaben/1` gehalten, Blättern nach #2, dann freigeben. Nachher: Reiter „Datei“ zeigt die Datei von #2 | Vergleich mit `S.ui.offen` entfernt |
+| F4 Markierung „extern“ (Regel 7) | Wie F1, das Laden des Ereignisses wird verworfen. Nachher trägt Karte #2 die Markierung einer fremden Änderung | Merken der Pfade entfernt |
+
+- **Verzögerung 0 ms unter CPU-Drossel** läuft nur als Regression mit. Rot wurde sie nur einmal in 4 Läufen (`crev-75/wdh/b-instr.log:48`), deshalb tritt sie nicht als Nachweis gegen eine Mutante an.
+- **Nachweis gegen Mutanten** führen nur F1–F4, weil sie die Reihenfolge der Antworten festlegen.
