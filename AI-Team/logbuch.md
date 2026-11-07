@@ -364,3 +364,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Artboard-Freigabe | product-owner (frisch) | freigegeben mit Änderung (Z. 154–159): Schlüssel unter der Beschriftung, `requirements` beim ersten Start; Folgekarte #87 im Backlog | 0:05 | a77d008 |
 | 2026-11-07 | #11 | Artboard-Nachzug | gestalter | bestanden: D0001 erster Start zeigt `requirements` (PO Z. 159) | 0:03 | 634097c |
 | 2026-11-07 | #11 | Nachzug Planung | planer (frisch) | bestanden: R00109, US-7/US-8, WBS B0436/B0437 nach PO Z. 154–159; Frage ADR-0013 Regel 4 an architekt | 0:12 | 388c437 |
+| 2026-11-07 | #11 | ADR-Nachzug | architekt (frisch) | bestanden: ADR-0013 Nachtrag N1 Schlüssel unter der Beschriftung, A00009 Entscheidungen | 0:06 | f3e8b12 |
