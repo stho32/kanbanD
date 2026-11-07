@@ -70,4 +70,6 @@ test('kein ISO-Tag: datumLang und datumKurz geben den Wert unverändert zurück,
     assert.strictEqual(datumLang(wert), wert, wert);
     assert.strictEqual(datumKurz(wert, '2026-11-07'), wert, wert);
   }
+  // Jahr wie heute, aber kein Tag: nur der Guard in datumKurz hält ihn vom Zerschneiden ab
+  assert.strictEqual(datumKurz('2026-1x', '2026-11-07'), '2026-1x');
 });
