@@ -5,6 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #11 „Sichtbare Feldbeschriftungen und Datumsangaben eindeutschen“; Anforderung und WBS-Knoten folgen über den planer
 **Erprobt durch**: — (getragen von der Systemantwort: ADR-0009 Regel 6 formt Geldwerte erst beim Anzeigen in einem reinen Modul; `vollDatum`/`deDatum` zeigen in Diagrammen und Terminen schon `TT.MM.JJJJ`, R00073)
+**Nachträge**: 2026-11-07 — Schlüssel unter der Beschriftung statt daneben (Karte #11, R00109, product-owner `AI-Team/po-entscheidungen.md:156`), siehe [Nachtrag N1](#nachtrag-2026-11-07-schlüssel-unter-der-beschriftung-r00109). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo der Nachtrag gilt.
 
 ## Kontext
 
@@ -48,7 +49,7 @@ Die sichtbaren Stellen der Karte rufen `deTag` bzw. `vollDatum`; Beschriftungen 
    - die Tabelle `FELDER`: Frontmatter-Schlüssel → sichtbare Beschriftung (`column` Spalte, `class` Klasse, `origins` Herkunft, `assignees` Zuständig, `labels` Labels, `due` Fällig, `wbs-effects`, `phases`, `reservation`, `board` …) und den Anzeigetext für `thin air` („ohne Herkunft“).
    `deTag`, `vollDatum` und `deDatum` werden zu Aufrufen dieses Moduls oder entfallen; `isoD` bleibt nur für Schlüssel und Vergleiche.
 3. **Wo ISO sichtbar bleiben darf.** Nur, wo die Datei selbst gezeigt wird: Reiter „Datei“, YAML-Vorschau in „Einrichten“ und beim ersten Start, und der Schlüssel als Hilfstext in Mono. Tooltips (`title`) und zugängliche Namen sind sichtbarer Text im Sinne der Leitplanke und folgen Regel 2. Das native `<input type=date>` bleibt: Sein Wert ist nach HTML-Standard ISO, die Anzeige folgt der Browsersprache (E2E läuft mit `locale: 'de-DE'`, `e2e/playwright.config.js:9`); Eingabe deutscher Daten ohne Feld deckt `due:28.10.` der Schnelleingabe (`web/eingabe.js:24`).
-4. **Beschriftung und Hilfstext getrennt.** Die Beschriftung ist das Element, das den Namen des Felds gibt (sichtbar „Spalte“, Name enthält „Spalte“); der Schlüssel `column` steht daneben in einem eigenen Element und nie im Text der Beschriftung, sonst enthielte der sichtbare Labeltext „column“ und die Probe der Karte schlüge fehl. Wie das Feld seinen Namen bekommt (`<label for>` oder `aria-label` gleich der Beschriftung), entscheidet die Anforderung.
+4. **Beschriftung und Hilfstext getrennt.** Die Beschriftung ist das Element, das den Namen des Felds gibt (sichtbar „Spalte“, Name enthält „Spalte“); der Schlüssel `column` steht daneben in einem eigenen Element und nie im Text der Beschriftung, sonst enthielte der sichtbare Labeltext „column“ und die Probe der Karte schlüge fehl. Wie das Feld seinen Namen bekommt (`<label for>` oder `aria-label` gleich der Beschriftung), entscheidet die Anforderung. *(→ N1: „daneben“ heißt unter der Beschriftung, als zweite Zeile in eigenem Element; der Kern — eigenes Element, nie im Text der Beschriftung — gilt unverändert)*
 5. **Durchsetzung (Makro, Aspekt [X00004](../Architektur/Aspekte/X00004-kultur.md)).** Eine E2E-Probe über alle Ansichten und offenen Fenster nach dem Muster von `e2e/tests/ziele.spec.js` (ADR-0012): kein sichtbarer Textknoten und kein `title` passt auf `/\d{4}-\d{2}-\d{2}/`, ausgenommen Regel 3; je Feld in Aufgabenfenster und „Neue Aufgabe“ enthält der zugängliche Name die Beschriftung aus `FELDER`, und keine Beschriftung ist ein Schlüssel. Dazu ein Unit-Test für `web/kultur.js`. Eine Ausnahmeliste der Probe ist erlaubt, je Eintrag mit Karte, und schrumpft nur.
 
 Was überwiegt: Die Leitplanke ist eine Regel über die ganze Oberfläche; sie lässt sich nur an einer Stelle formen und nur über alle Ansichten prüfen. Bewusst in Kauf genommen: Die Karte wird breiter als ihr Text (Fundstellen außerhalb von Karte und Fenster), und das native Datumsfeld zeigt bei einem Browser in anderer Sprache dessen Format — kanbanD erzwingt die Kultur dort nicht.
@@ -69,3 +70,21 @@ Was überwiegt: Die Leitplanke ist eine Regel über die ganze Oberfläche; sie l
 - [ ] Umfang an den planer: Karte und Fenster allein oder alle Fundstellen aus dem Kontext (Empfehlung: alle, weil Regel 2 sie ohnehin berührt und die Probe sonst mit langer Ausnahmeliste startet).
 - [ ] Regel Kurz- gegen Langform an den product-owner (Vorschlag: Karte und Tabellen mit Jahr im Kopf `28.10.`, sonst und in Name und Tooltip `28.10.2026`; Diagramme bleiben nach R00073 mit Jahr).
 - [ ] Ob das Eingabefeld der Herkunft „ohne Herkunft“ als Eingabe annimmt (heute nur `thin air`, `web/app.js:1150`), entscheidet die Anforderung.
+
+## Nachtrag 2026-11-07: Schlüssel unter der Beschriftung (R00109)
+
+**Anlass**: Bei der Freigabe der Artboards „Beschriftung mit Schlüssel“ hat der product-owner die Lage des Schlüssels festgelegt (`AI-Team/po-entscheidungen.md:155–156`). Regel 4 sagt „steht daneben“; das war Wortlaut ohne Prüfung — keine Probe misst die Lage (PO Z. 156). Die Wahl (Option A) und der Kern von Regel 4 gelten unverändert, der Status bleibt Akzeptiert. Der Nachtrag ändert nur, wo das eigene Element des Schlüssels steht.
+
+**Belegt (Dialog und Entwurf)**: PO Z. 155–158 (2026-11-07); Artboards D0003 und D0001, Zustand `#beschriftung-schluessel` (kanbanD `5a1c49c`, erster Start mit `requirements` in `634097c`); R00109 FA 11 nachgezogen in `171e7fe`. **Belegt (Code, Ist)**: `.felder` teilt die Zeile in Beschriftungsspalte 84 px und Wert (`web/kd-app.css:332`), die Beschriftung ist `.felder .k` (`web/kd-app.css:334`).
+
+### N1 Regel 4: Lage des Schlüssels
+
+**Entschieden** (product-owner, `AI-Team/po-entscheidungen.md:156`):
+
+1. **Unter der Beschriftung.** Der Schlüssel steht als zweite Zeile unter der Beschriftung, in eigenem Element außerhalb von `.k`, nie im Element der Beschriftung. Die Beschriftungsspalte bleibt 84 px (D0003) bzw. 110 px (D0001), die Feldzeile ist mindestens 38 px hoch. Gilt für alle Feldzeilen mit Schlüssel in kanbanD.
+2. **Warum nicht daneben.** Daneben bräuchte die Spalte rund 150 px; bei 320 px blieben dem Wert rund 140 px, gegen den Geist von PO Z. 98 (bei 320 px scrollt nichts quer). Material 3 Lists setzt unterstützenden Text unter die Überschrift.
+3. **Nur Feldzeilen.** Die Abschnittsköpfe in „Einrichten“ bleiben beim Hausmuster `QUELLEN sources:` (Kontext Z. 17, PO Z. 155). Felder ohne Schlüssel bleiben einzeilig (PO Z. 157).
+
+**Durchsetzung**: unverändert Regel 5 — die Probe prüft, dass der Schlüssel in eigenem Element außerhalb von `.k` steht und keine Beschriftung ein Schlüssel ist. Die Lage misst kein Test; sie steht auf den Bildschirmfotos des Abnahmezettels (PO Z. 158).
+
+**Bezug**: Karte #11, I0098 Datumsangaben und Feldbeschriftungen deutsch, R00109 FA 11 und AK 1; Folgekarte #87 für die Felder ohne Schlüssel (`reporting`, `signals`, `key`; PO Z. 157, `AI-Team/logbuch.md:364`).
