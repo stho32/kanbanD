@@ -323,3 +323,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #73 | Architektur | architekt | weiter (Wettlauf im Test belegt, kein Wochenend-Effekt; keine ADR) | 0:05 | — |
 | 2026-11-07 | #73 | Detailplanung | — | entfällt (Testpflege an R00079) | 0:00 | — |
 | 2026-11-07 | #73 | Entwicklung | entwickler | bestanden (Commit-Folge statt log -1; 100/100; Wackler r00050 → Vorrang-Karte) | 0:23 | a678837 |
+| 2026-11-07 | #73 | Auto-Reviews | code-reviewer | bestanden (keine Befunde, 3 Anmerkungen) | 0:05 | — |
