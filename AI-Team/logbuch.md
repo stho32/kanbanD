@@ -316,3 +316,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Nacharbeit | entwickler | gebaut (6 Punkte, Gate 1 Fehlschlag Vorbestand → #73) | 0:36 | ff7a023 |
 | 2026-11-07 | #11 | Auto-Reviews | ux-reviewer | bestanden (Wiederholung; Sollte S1 Entwurf beim Neuzeichnen) | 0:40 | — |
 | 2026-11-07 | #11 | Auto-Reviews | code-reviewer | befund (Wiederholung; B2 Muss Entwurf ohne Lebensende, Sollte Guard datumKurz) | 0:15 | — |
+| 2026-11-07 | #11 | Nacharbeit | entwickler | bestanden (Nacharbeit 2: Entwurf mit Ende, Guard datumKurz, esc überfällig, US-5 wartet) | 0:25 | df4e6e6 |
