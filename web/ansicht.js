@@ -314,7 +314,7 @@ function vZeiten(a) {
 }
 
 /* ── Popover ── */
-const defekteBoards = () => (S.zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
+const defekteBoards = (zustand = S.zustand) => (zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
 function vBoardPop() {
   const u = S.ui;
   return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></button>`).join('')}${defekteBoards().map(s => `<button type="button" class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}">${esc(s)}<span class="muted mono warn">defekt</span></button>`).join('')}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;

@@ -429,3 +429,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00050 Live-Ereignisse während eigener Anfragen | Karte #75: E2E-Wackler US-1 — Testende an die letzte Auslieferung und das Neuladen bei leerer Schlange gebunden, Routen vor dem Stoppen abgewartet | Nacharbeit | — | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00050 Live-Ereignisse während eigener Anfragen | Karte #75, Nacharbeit 1: Aufräumen von US-1 übersteht einen Timeout (Server-Stopp im inneren finally), Neuladen mit eigener Frist und Meldung, Prüfung erst nach dem Zeichnen danach | Nacharbeit | — | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0441 Prüfung übernehmen (samt rotem F1-Test vorab) | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0442 Laden übernimmt alles oder nichts | Integration | 1-2h | 0,1h | 0,1h | autonom |

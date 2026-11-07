@@ -108,6 +108,7 @@ async function botKommentiert(page, k, nummer, text) {
   expect(antwort.ok()).toBe(true);
 }
 
+const teilaufgabenTexte = page => page.locator('[role="dialog"] .chk [data-act="teil-bearbeiten"]');
 const teilaufgabenKopf = page => page.locator('[role="dialog"] h3', { hasText: 'TEILAUFGABEN' });
 
 /** Zählt die ausgelieferten `GET /api/aufgaben` nach der Antwort auf das Anlegen der Teilaufgabe — die neueren Ladevorgänge. */
@@ -153,7 +154,7 @@ async function alteAntwortNachNeueren(page, k, { verzoegerungMs, aendern }) {
 /** Endbild von F1/F2: Datei, Liste und Kopf zeigen „neu“, die Anzahl fiel nie — auch nach dem Neuladen. */
 async function neuBleibtStehen(page, k) {
   expect(k.lies('aufgaben/0001-abnahme-pruefen.md')).toContain('- [ ] neu\n');
-  await expect(page.locator('[role="dialog"] .chk')).toHaveText(['neu']);
+  await expect(teilaufgabenTexte(page)).toHaveText(['neu']);
   await expect(teilaufgabenKopf(page)).toHaveText('TEILAUFGABEN 0/1');
   const { anzahlen } = await protokoll(page);
   expect(anzahlen.filter((n, i) => i > 0 && n < anzahlen[i - 1]), 'die Anzahl der Teilaufgaben fällt: ' + anzahlen.join(', ')).toEqual([]);
@@ -164,7 +165,7 @@ async function gegenprobeNachNeuladen(page) {
   await page.reload();
   await liveBereit(page);
   await page.locator('.ka[data-id="1"] .t').click();
-  await expect(page.locator('[role="dialog"] .chk')).toHaveText(['neu']);
+  await expect(teilaufgabenTexte(page)).toHaveText(['neu']);
   await expect(teilaufgabenKopf(page)).toHaveText('TEILAUFGABEN 0/1');
 }
 
@@ -181,7 +182,7 @@ async function mitKanban(page, ablauf) {
 }
 
 for (const verzoegerungMs of [250, 400]) {
-  test.fail(`F1: alte Antwort nach neueren, ${verzoegerungMs} ms — rot bis #76 behoben`, async ({ page }) => {
+  test(`F1: alte Antwort nach neueren, ${verzoegerungMs} ms`, async ({ page }) => {
     await mitKanban(page, async k => {
       await alteAntwortNachNeueren(page, k, { verzoegerungMs, aendern: () => fremdeAenderung(page, k) });
       await neuBleibtStehen(page, k);
@@ -193,7 +194,7 @@ for (const verzoegerungMs of [250, 400]) {
   });
 }
 
-test.fail('F1 Regression: 0 ms unter CPU-Drossel 6× — rot bis #76 behoben', async ({ page }) => {
+test('F1 Regression: 0 ms unter CPU-Drossel 6×', async ({ page }) => {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
   await mitKanban(page, async k => {

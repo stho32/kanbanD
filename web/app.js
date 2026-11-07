@@ -153,9 +153,9 @@ function vHaupt() {
 
 const kopie = x => JSON.parse(JSON.stringify(x));
 
-function gewaehltesBoard() {
+function gewaehltesBoard(zustand) {
   const m = /^#\/board\/([^/]+)/.exec(location.hash);
-  const slugs = [...S.zustand.boards.map(b => b.slug), ...defekteBoards()];
+  const slugs = [...zustand.boards.map(b => b.slug), ...defekteBoards(zustand)];
   let zuletzt = null;
   try { zuletzt = localStorage.getItem('kanbanD.board'); } catch (_) { }
   if (!m && zuletzt && slugs.includes(zuletzt)) return zuletzt;
@@ -167,56 +167,36 @@ function gewaehltesBoard() {
     es die Seite, während jemand klickt oder liest (R00061). */
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
-const defekterGrund = slug => ((S.zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
+const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
 const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
+/** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
+    wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
+let takt = 0, zuletztStand = 0, zuletztFenster = 0, marke = 0;
+const naechsterTakt = () => ++takt;
+
 /** Lädt den Stand vom Server und zeichnet; `nurBeiAenderung` (Live-Ereignis) zeichnet nur, wenn sich etwas geändert hat.
-    Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange` übergibt sein Ereignis). */
-async function laden({ nurBeiAenderung = false } = {}) {
-  S.zustand = await api('GET', '/api/zustand');
-  S.einstellungenDefekt = S.zustand.eingerichtet && !S.zustand.einstellungen;
-  if (S.einstellungenDefekt) S.zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
-  if (!S.zustand.eingerichtet) {
-    S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
-  } else {
-    S.ui.first = null;
-    const vorher = S.ui.view;
-    S.ui.view = ansichtAusAdresse();
-    if (S.ui.view !== vorher && S.ui.vollbild) vollbildSetzen(false);
-    if (S.ui.view !== 'einrichten') S.ui.einr = null;
-    else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
-    S.ui.slug = gewaehltesBoard();
-    try { if (S.ui.slug) localStorage.setItem('kanbanD.board', S.ui.slug); } catch (_) { }
-    // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
-    // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
-    let boardDefekt = null;
-    // 423: Board-Datei defekt (R00025); 400: Dateiname nicht in Board-Form (R00104) — beide als Defektfläche, der Grund aus `defekte`
-    const board = S.ui.slug ? await api('GET', '/api/boards/' + encodeURIComponent(S.ui.slug) + '?archivierte=ja').catch(f => { if (f.status !== 423 && f.status !== 400) throw f; boardDefekt = { slug: S.ui.slug, fehler: defekterGrund(S.ui.slug) || f.message }; return null; }) : null;
-    const [aufgaben, herkunft, boards] = await Promise.all([
-      api('GET', '/api/aufgaben'),
-      api('GET', '/api/herkunft'),
-      // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
-      api('GET', '/api/boards?archivierte=ja'),
-    ]);
-    // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
-    const bew = /^berichte\/(verlauf|durchlauf|prognose|fieber)$/.test(S.ui.view) && S.ui.slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(S.ui.slug)) : null;
-    // Fever Chart (R00078): der Cache der gerechneten Tage
-    const fieberCache = S.ui.view === 'berichte/fieber' && S.ui.slug ? await api('GET', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; S.ui.fbFehler = f.message; return { abschnitte: [] }; }) : null;
-    // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
-    const anwendungen = S.ui.view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
-    let wbs = null, wbsFehler = null;
-    if (S.ui.view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
-    // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
-    const pruefWbs = {};
-    // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
-    if (S.ui.view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-    // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
-    // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
-    Object.assign(S, { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs });
-    S.ui.bf = berichtsfilterAusBoard();
-    if (S.ui.offen) await dateiLaden();
-    if (S.ui.offenDefekt) await defektLaden();
+    Ist inzwischen ein neueres Laden übernommen oder wartet eine eigene Änderung, wird nichts übernommen, nichts gezeichnet,
+    `wennVerworfen` gerufen und `false` zurückgegeben (R00110). Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange`
+    übergibt sein Ereignis). */
+async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}) {
+  const start = naechsterTakt();
+  const zustand = await api('GET', '/api/zustand');
+  const einstellungenDefekt = zustand.eingerichtet && !zustand.einstellungen;
+  if (einstellungenDefekt) zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
+  const sicht = zustand.eingerichtet ? await sichtLaden(zustand) : null;
+  if (!uebernehmen({ start, zuletzt: zuletztStand, marke, schlangeOffen })) {
+    wennVerworfen();
+    return false;
   }
+  zuletztStand = start;
+  // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
+  // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
+  const neu = { zustand, einstellungenDefekt };
+  if (sicht) Object.assign(neu, sicht.haupt);
+  Object.assign(S, neu);
+  if (sicht) await sichtFolgen(sicht);
+  else S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   const stand = serverStand();
   if (nurBeiAenderung && stand === geladenerStand) return false;
   geladenerStand = stand;
@@ -226,6 +206,53 @@ async function laden({ nurBeiAenderung = false } = {}) {
   if (ziel && S.ui.wbsGesprungen !== location.hash) { S.ui.wbsGesprungen = location.hash; await act('wbs-gehe', ziel); }
   else if (!ziel) S.ui.wbsGesprungen = null;
   fieberNachtragen();
+}
+
+/** Alles, was ein Laden für die Ansicht der Adresse liest — nur lokal gesammelt, übernommen erst über `sichtUebernehmen`. */
+async function sichtLaden(zustand) {
+  const view = ansichtAusAdresse();
+  const slug = gewaehltesBoard(zustand);
+  let fbFehler = null;
+  // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
+  // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
+  let boardDefekt = null;
+  // 423: Board-Datei defekt (R00025); 400: Dateiname nicht in Board-Form (R00104) — beide als Defektfläche, der Grund aus `defekte`
+  const board = slug ? await api('GET', '/api/boards/' + encodeURIComponent(slug) + '?archivierte=ja').catch(f => { if (f.status !== 423 && f.status !== 400) throw f; boardDefekt = { slug, fehler: defekterGrund(slug, zustand) || f.message }; return null; }) : null;
+  const [aufgaben, herkunft, boards] = await Promise.all([
+    api('GET', '/api/aufgaben'),
+    api('GET', '/api/herkunft'),
+    // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
+    api('GET', '/api/boards?archivierte=ja'),
+  ]);
+  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
+  const bew = /^berichte\/(verlauf|durchlauf|prognose|fieber)$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
+  // Fever Chart (R00078): der Cache der gerechneten Tage
+  const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
+  // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
+  const anwendungen = view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
+  let wbs = null, wbsFehler = null;
+  if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
+  // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
+  const pruefWbs = {};
+  // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
+  if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
+  return { view, slug, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs } };
+}
+
+/** Nach der Übernahme: die gelesene Sicht samt ihrer Folgen für Vollbild, Einrichten und gemerktes Board, dann das offene Fenster. */
+async function sichtFolgen({ view, slug, fbFehler }) {
+  S.ui.first = null;
+  const vorher = S.ui.view;
+  S.ui.view = view;
+  if (view !== vorher && S.ui.vollbild) vollbildSetzen(false);
+  if (view !== 'einrichten') S.ui.einr = null;
+  else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
+  S.ui.slug = slug;
+  try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
+  if (fbFehler) S.ui.fbFehler = fbFehler;
+  S.ui.bf = berichtsfilterAusBoard();
+  if (S.ui.offen) await dateiLaden();
+  if (S.ui.offenDefekt) await defektLaden();
 }
 
 /** Fever Chart (R00078): rechnet die Tage vom Start bis gestern, die im Cache fehlen, in Häppchen (die Seite bleibt bedienbar)
