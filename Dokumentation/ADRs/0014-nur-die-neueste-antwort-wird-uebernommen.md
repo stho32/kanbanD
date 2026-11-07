@@ -214,3 +214,25 @@ Gewählt bleibt A. Was überwiegt und welche Schwäche in Kauf genommen wird, st
 
 - **Verzögerung 0 ms unter CPU-Drossel** läuft nur als Regression mit. Rot wurde sie nur einmal in 4 Läufen (`crev-75/wdh/b-instr.log:48`), deshalb tritt sie nicht als Nachweis gegen eine Mutante an.
 - **Nachweis gegen Mutanten** führen nur F1–F4, weil sie die Reihenfolge der Antworten festlegen.
+
+## Nachtrag N2 2026-11-07: Regeln nach dem Bau — je Ziel, Markierung vom Überholenden, Umschalten als Übernahme
+
+Nachgetragen nach dem Merge von #76 (R00110, kanbanD `eb5a81f`). Der Bau hat drei Regeln geschärft, die der Text oben offen ließ. Belege aus `web/app.js` und `web/uebernahme.js` auf `eb5a81f`.
+
+**Zu Regel 2 (Monotonie): je Ziel.** Ein Takt für alle Ladevorgänge (`takt`, `web/app.js:175–176`), aber zwei Stände „zuletzt übernommen“:
+- `zuletztStand` für den Hauptstand. Gelesen und gesetzt nur in `laden` (`web/app.js:190`, `:194`).
+- `zuletztFenster` für das Aufgabenfenster. Gelesen und gesetzt in `defektLaden` (`:315`, `:319`, `:324`) und `dateiLaden` (`:336`, `:342`, `:346`).
+
+Ein Laden des Fensters (Öffnen, Blättern: `act` `:894`, `:900–904`) überholt den Hauptstand also nicht und umgekehrt. Innerhalb von `laden` laufen `dateiLaden` und `defektLaden` unter dessen Nummer (`sichtFolgen`, `:259–260`).
+
+**Zu Regel 7 (Markierung „extern“): der überholende Stand markiert.** Verwirft `laden` die Antwort eines Ereignisses, merkt `ereignis` dessen Pfade und die Spalten von vorher (`externVerworfen`, `:178`, `:2146–2149`). Markiert wird beim nächsten übernommenen Laden (`externNachtragen`, `:206`, `:2169–2173`). Ist schon ein neueres übernommen (`wennVerworfen(zuletztStand > start)`, `:191`), kommt keines mehr nach. Dann markiert sofort der Stand, der das verworfene überholt hat, und es wird gezeichnet (`:2149`). Spalten-Markierungen vergleichen gegen `vorher` des verworfenen Ereignisses, nicht gegen den Stand dazwischen.
+
+**Umschalten des Fensters ist eine Übernahme.** Wechselt das Fenster seine Art (defekt → repariert → normal), rückt „zuletzt übernommen“ dort vor, wo umgeschaltet wird: in `defektLaden` vor dem Umschalten auf „repariert“ (`:319–320`). Eine ältere Antwort „defekt“, die währenddessen eintrifft, schaltet dadurch nicht zurück (Nacharbeit 2). Das folgende `dateiLaden` derselben Nummer (`gleicherTakt: true`, `:321`) gilt als Gleichstand und wird übernommen, obwohl `start` gleich `zuletztFenster` ist.
+
+**Bekannte Schuld (Karte #82).** Der Gleichstand ist nicht als Regel im reinen Modul gebaut. Er steckt als `zuletzt: gleicherTakt ? zuletztFenster - 1 : zuletztFenster` im Aufrufer (`web/app.js:336`). `uebernehmen` (`web/uebernahme.js:9–11`) kennt nur `start > zuletzt`, und der Unit-Test `e2e/einheit/uebernahme.test.js` prüft den Gleichstand nicht. Folgen:
+- Die Regel „dieselbe Nummer wird nicht zweimal übernommen“ (Test `:27–29`) hat eine Ausnahme, die nur im Aufrufer steht.
+- Ein zweiter Aufrufer mit `gleicherTakt` würde die Ausnahme still erben.
+
+Zielbild für #82: Der Gleichstand wird ein benannter Parameter der reinen Prüfung, zum Beispiel `gleichstandErlaubt`, und bekommt einen eigenen Unit-Fall. Der Wächter (`ERLAUBT`, `:40–45`) bleibt unverändert, weil sich die Übernahmestellen nicht ändern. Keine neue Option, keine Änderung an Regeln 1–8.
+
+**Status bleibt `Akzeptiert`.** Der Bau hat die Wahl A bestätigt. Belege: die Fälle F1–F4 aus Nachtrag N1 samt Mutanten und die Wächtertests `e2e/einheit/uebernahme.test.js:157–247` im Gate des Merges.
