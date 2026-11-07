@@ -330,3 +330,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #75 | Architektur | architekt | weiter, keine ADR — Ursache nur im Test (Handler überdauert Testkörper), Bugkarte #76 aus Probe E | 0:10 | — |
 | 2026-11-07 | #75 | Detailplanung | — | entfällt (Testpflege an R00050) | 0:00 | — |
 | 2026-11-07 | #75 | Entwicklung | entwickler | bestanden (Testende an letzte Auslieferung gebunden; 30/30 verschärft, Mutanten rot) | 0:22 | e67f646 |
+| 2026-11-07 | #75 | Auto-Reviews | code-reviewer | befund (B1 finally stoppt kanbanD nach Timeout nicht; A1, A2, A4) → Nacharbeit 1 | 0:07 | — |
