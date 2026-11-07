@@ -360,3 +360,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #74 | Detailplanung | planer | ADR-0016/N1 nachgezogen: Tastatur nach dem Fokus, AK 3 lange Meldung (#84), Mutanten M3–M6; 8–15,5 h | 0:07 | 0170974 |
 | 2026-11-07 | #74 | Detailplanung | ux-reviewer | Bestätigungsrunde bestanden: beide Muss geschlossen, 4 Hinweise; Zug nach Entwicklung | 0:03 | — |
 | 2026-11-07 | #11 | Artboard-Frage Z. 148 | Betreiber | entschieden: 1 — gestalter zeichnet „Beschriftung mit Schlüssel“ an D0003/D0001, Freigabe vor B0436/B0437; gestalter beauftragt | — | — |
+| 2026-11-07 | #11 | Artboard B0436/B0437 | gestalter (frisch) | bestanden: Zustand „Beschriftung mit Schlüssel“ an D0003/D0001 hell, dunkel, 320 px; 2 Fragen an den PO | 0:08 | 5a1c49c |
