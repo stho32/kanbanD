@@ -16,15 +16,27 @@ test('US-1: die Liste verliert beim schnellen Tippen keinen Eintrag', async ({ p
       window.anzahlen = [];
       new MutationObserver(() => window.anzahlen.push(document.querySelectorAll('[role="dialog"] .chk').length)).observe(document.body, { childList: true, subtree: true });
     });
-    // das eine Neuladen bei leerer Schlange: erst nach der zehnten ausgelieferten Antwort; vor dem Tippen abonniert, damit es nicht vorbeigeht
-    const neuGeladen = page.waitForResponse(r => new URL(r.url()).pathname === '/api/aufgaben' && r.request().method() === 'GET' && ausgeliefert === 10);
+    // das eine Neuladen bei leerer Schlange: erst nach der zehnten ausgelieferten Antwort; vor dem Tippen abonniert, damit es nicht
+    // vorbeigeht. Beim Absenden die Zahl der bisherigen Zeichnungen merken — erst was danach gezeichnet wird, zeigt den neu geladenen Stand.
+    // Eigene Frist unter dem Test-Timeout: bleibt das Neuladen aus, wird der Test mit einer Meldung rot und räumt noch auf.
+    let zeichnungenVorDemNeuladen;
+    const neuGeladen = page.waitForRequest(async r => {
+      if (new URL(r.url()).pathname !== '/api/aufgaben' || r.method() !== 'GET' || ausgeliefert !== 10) return false;
+      zeichnungenVorDemNeuladen = await page.evaluate(() => window.anzahlen.length);
+      return true;
+    }, { timeout: 15000 });
+    neuGeladen.catch(() => {}); // scheitert vorher etwas anderes, bleibt die Ablehnung nicht unbehandelt
     await page.getByLabel('Neue Teilaufgabe').focus();
     for (let i = 1; i <= 10; i++) { await page.keyboard.type('t' + i); await page.keyboard.press('Enter'); }
     await expect.poll(() => k.lies('aufgaben/0001-eins.md'), { timeout: 20000 }).toContain('- [ ] t10\n');
-    await neuGeladen;
+    await neuGeladen.catch(f => { throw new Error('kein Neuladen der Seite nach der zehnten ausgelieferten Antwort — ' + f.message); });
+    await expect.poll(() => page.evaluate(() => window.anzahlen.length), { message: 'nach dem Neuladen nicht neu gezeichnet' }).toBeGreaterThan(zeichnungenVorDemNeuladen);
     await expect(page.locator('[role="dialog"] .chk')).toHaveCount(10);
     const anzahlen = await page.evaluate(() => window.anzahlen.filter(n => n > 0));
     expect(anzahlen.every((n, i) => i === 0 || n >= anzahlen[i - 1])).toBe(true);
     expect(k.git('rev-list', '--count', 'HEAD', '--', 'aufgaben/0001-eins.md')).toBe('11');
-  } finally { await page.unrouteAll({ behavior: 'wait' }); await k.stoppen(); }
+  } finally {
+    // der Server wird auch gestoppt, wenn die Seite nach einem Timeout schon geschlossen ist und unrouteAll wirft
+    try { await page.unrouteAll({ behavior: 'wait' }); } finally { await k.stoppen(); }
+  }
 });
