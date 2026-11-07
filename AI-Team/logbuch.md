@@ -358,3 +358,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #74 | Detailplanung | planer | Einarbeitung PO/UX/Text: F0062 Bildschirmtastatur, Umbruch nach Bedarf, aria-invalid; 11 Bubbles 7,5–15 h; 2 Technikfragen → architekt | 0:06 | 734075c |
 | 2026-11-07 | #74 | Detailplanung | architekt | ADR-0016 visualViewport-Bindung, ADR-0015 N1 Umbruch nach Bedarf; Probe AK 11 rot/grün, Mutant „nur beim Start“ verlangt Tastatur nach dem Fokus | 0:08 | a309555 |
 | 2026-11-07 | #74 | Detailplanung | planer | ADR-0016/N1 nachgezogen: Tastatur nach dem Fokus, AK 3 lange Meldung (#84), Mutanten M3–M6; 8–15,5 h | 0:07 | 0170974 |
+| 2026-11-07 | #74 | Detailplanung | ux-reviewer | Bestätigungsrunde bestanden: beide Muss geschlossen, 4 Hinweise; Zug nach Entwicklung | 0:03 | — |
