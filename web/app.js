@@ -345,12 +345,15 @@ async function termineSchreiben(liste, formularLeeren) {
   return laden();
 }
 
-/** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. */
+/** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. Vor diesem Laden setzt sie die Marke: was davor
+    gestartet ist, las womöglich einen Stand ohne die eigenen Änderungen und wird verworfen (R00110, ADR-0014 Regel 3). */
 let schlange = Promise.resolve(), schlangeOffen = 0;
 function warteschlange(anfrage) {
   schlangeOffen++;
   schlange = schlange.then(anfrage).then(() => { S.ui.gespeichert = Date.now(); }).catch(f => { S.ui.fensterFehler = f.message; }).then(() => {
-    if (--schlangeOffen === 0) return laden();
+    if (--schlangeOffen > 0) return;
+    marke = takt;
+    return laden();
   });
   return schlange;
 }

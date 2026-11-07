@@ -12,6 +12,9 @@ const ALS_BOT = { headers: { 'X-KanbanD-Wer': 'bot' } };
 /** Eigene Frist je Warten, unter dem Test-Timeout: bleibt ein Ereignis aus, wird der Test mit Meldung rot und räumt noch auf. */
 const FRIST = { timeout: 10000 };
 
+/** Freigaben aller noch gehaltenen Antworten: das Aufräumen gibt sie frei, damit `unrouteAll` nach einem Fehler nicht hängt. */
+const offeneFreigaben = [];
+
 /** Ein Versprechen samt seinem Auflöser. */
 function versprechen() {
   let aufloesen;
@@ -31,6 +34,7 @@ function abwarten(zusage, was) {
 async function antwortHalten(page, pfad, verzoegerungMs = 0) {
   let scharfGeschaltet = false;
   const angekommen = versprechen(), freigabe = versprechen(), ausgeliefert = versprechen();
+  offeneFreigaben.push(freigabe.aufloesen);
   await page.route(url => url.pathname === pfad, async route => {
     if (!scharfGeschaltet || route.request().method() !== 'GET') return route.fallback();
     scharfGeschaltet = false;
@@ -46,6 +50,34 @@ async function antwortHalten(page, pfad, verzoegerungMs = 0) {
     angekommen: () => abwarten(angekommen.zusage, 'gehaltene Anfrage ' + pfad),
     /** Gibt die gehaltene Antwort frei und wartet, bis der Route-Handler sie ausgeliefert hat. */
     freigeben: () => { freigabe.aufloesen(); return abwarten(ausgeliefert.zusage, 'Auslieferung ' + pfad); },
+  };
+}
+
+/**
+ * Hält ab `scharf()` jede GET-Antwort auf `pfad` — vom Server sofort geholt —, bis `freigeben()` alle ausliefert; danach gehen
+ * weitere Anfragen ungehalten durch.
+ */
+async function alleHalten(page, pfad) {
+  let scharfGeschaltet = false, gehalten = 0, ausgeliefert = 0;
+  const freigabe = versprechen();
+  offeneFreigaben.push(freigabe.aufloesen);
+  await page.route(url => url.pathname === pfad, async route => {
+    if (!scharfGeschaltet || route.request().method() !== 'GET') return route.fallback();
+    gehalten++;
+    const antwort = await route.fetch();
+    await freigabe.zusage;
+    await route.fulfill({ response: antwort });
+    ausgeliefert++;
+  });
+  return {
+    scharf: () => { scharfGeschaltet = true; },
+    anzahl: () => gehalten,
+    /** Gibt alle gehaltenen Antworten frei und wartet, bis jede ausgeliefert ist. */
+    freigeben: async () => {
+      scharfGeschaltet = false;
+      freigabe.aufloesen();
+      await expect.poll(() => ausgeliefert, { ...FRIST, message: 'Auslieferung ' + pfad }).toBe(gehalten);
+    },
   };
 }
 
@@ -177,6 +209,7 @@ async function mitKanban(page, ablauf) {
     await anfragenZaehlen(page);
     await ablauf(k);
   } finally {
+    for (const freigeben of offeneFreigaben.splice(0)) freigeben();
     try { await page.unrouteAll({ behavior: 'wait' }); } finally { await k.stoppen(); }
   }
 }
@@ -199,6 +232,30 @@ test('F1 Regression: 0 ms unter CPU-Drossel 6×', async ({ page }) => {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
   await mitKanban(page, async k => {
     await alteAntwortNachNeueren(page, k, { verzoegerungMs: 0, aendern: () => fremdeAenderung(page, k) });
+    await neuBleibtStehen(page, k);
+    await gegenprobeNachNeuladen(page);
+  });
+});
+
+test('F2: alte Antwort kommt zwischen dem Leeren der Schlange und ihrem eigenen Laden an', async ({ page }) => {
+  await mitKanban(page, async k => {
+    const liste = await antwortHalten(page, '/api/aufgaben');
+    const zustand = await alleHalten(page, '/api/zustand');
+    await fensterOeffnen(page, k, 1);
+    await protokollStarten(page);
+    liste.scharf();
+    await fremdeAenderung(page, k);
+    await liste.angekommen();
+    // das Laden der leer gewordenen Schlange (Q) und das Echo des eigenen Schreibens (E) bleiben vor ihrer Übernahme stehen
+    zustand.scharf();
+    await teilaufgabeNeu(page, k);
+    await expect.poll(() => zustand.anzahl(), { ...FRIST, message: 'das Laden der Warteschlange bleibt aus' }).toBeGreaterThanOrEqual(1);
+    await expect(teilaufgabenTexte(page), 'optimistisch eingetragen').toHaveText(['neu']);
+    await liste.freigeben();
+    await expect.poll(async () => await page.evaluate(() => window.kdOffeneAnfragen) - zustand.anzahl(), { ...FRIST, message: 'die alte Antwort ist nicht verarbeitet' }).toBe(0);
+    await expect(teilaufgabenTexte(page), 'die alte Antwort ersetzt die eigene Teilaufgabe nicht').toHaveText(['neu']);
+    await zustand.freigeben();
+    await ruhig(page);
     await neuBleibtStehen(page, k);
     await gegenprobeNachNeuladen(page);
   });
