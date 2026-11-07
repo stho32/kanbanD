@@ -107,13 +107,15 @@ const ruhig = (page, { nachLaden = true, gehalten = 0 } = {}) => expect.poll(() 
 /** Schreibt über den ganzen Lauf mit: Anzahl Teilaufgaben im Fenster, „nicht live“ und Wegfall von data-live (Live-Auflage, PO Z. 150). */
 async function protokollStarten(page) {
   await page.evaluate(() => {
-    const p = window.kdProtokoll = { anzahlen: [], nichtLive: false, getrennt: false, dateien: [] };
+    const p = window.kdProtokoll = { anzahlen: [], nichtLive: false, getrennt: false, dateien: [], anhaenge: [] };
     const notieren = () => {
       p.anzahlen.push(document.querySelectorAll('[role="dialog"] .chk').length);
       if (document.querySelector('.kz-live')) p.nichtLive = true;
       if (document.documentElement.dataset.live !== 'verbunden') p.getrennt = true;
       const kopf = document.querySelector('.mod-kopf .id'), text = document.querySelector('#dateitext');
       if (kopf && text) p.dateien.push({ fenster: kopf.textContent, text: text.textContent });
+      const anhaenge = [...document.querySelectorAll('#anhaenge .anh-z a')].map(a => a.textContent);
+      if (kopf && anhaenge.length) p.anhaenge.push({ fenster: kopf.textContent, anhaenge });
     };
     new MutationObserver(notieren).observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-live'] });
     notieren();
@@ -494,3 +496,54 @@ test('N1: bei offener Warteschlange schaltet die Antwort „repariert“ das Def
     await defektGegenprobe(page);
   }, MIT_DEFEKT);
 });
+
+/** Einträge des Protokolls, in denen das Fenster von `fenster` den Anhang `name` zeigte. */
+const fremderAnhang = async (page, fenster, name) => (await protokoll(page)).anhaenge.filter(a => a.fenster === fenster && a.anhaenge.includes(name));
+
+/**
+ * N3: eine eigene Teilaufgabe an #1 hält die Warteschlange offen; der Wechsel zu #2 lädt dessen Datei, die bei offener Schlange
+ * verworfen wird. Bis die Schlange leer ist, zeigt das Fenster von #2 nichts von #1 — weder Anhang noch Datei.
+ */
+const MIT_ANHANG = { ...DATEIEN, 'aufgaben/0001-abnahme-pruefen/protokoll.txt': 'Inhalt des Protokolls' };
+const WECHSEL = {
+  blaettern: page => page.locator('[data-act="blaettern"][data-arg="1"]').click(),
+  'schließen und öffnen': async page => {
+    await page.locator('#fenster [data-act="schliessen"]').click();
+    await page.locator('.ka[data-id="2"] .t').click();
+  },
+};
+for (const [wie, wechseln] of Object.entries(WECHSEL)) {
+  test(`N3: nach ${wie} bei offener Warteschlange zeigt #2 weder Anhang noch Datei von #1`, async ({ page }) => {
+    await mitKanban(page, async k => {
+      const anlegen = await anfrageHalten(page, 'POST', '/api/aufgaben/1/teilaufgaben');
+      await fensterOeffnen(page, k, 1);
+      await expect(page.getByRole('link', { name: 'protokoll.txt' })).toBeVisible();
+      await protokollStarten(page);
+      anlegen.scharf();
+      await page.getByLabel('Neue Teilaufgabe').fill('neu');
+      await page.getByLabel('Neue Teilaufgabe').press('Enter');
+      await anlegen.angekommen();
+      await wechseln(page);
+      await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
+      await ruhig(page, { gehalten: 1, nachLaden: false });
+      expect(await fremderAnhang(page, '#2', 'protokoll.txt'), 'das Fenster von #2 zeigte den Anhang von #1').toEqual([]);
+      await page.locator('#reiter-datei').click();
+      expect(await fremdeDatei(page, '#2', 'Abnahme prüfen'), 'das Fenster von #2 zeigte die Datei von #1').toEqual([]);
+      await anlegen.freigeben();
+      await ruhig(page);
+      await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
+      await page.locator('#reiter-inhalt').click();
+      await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
+      expect(await fremderAnhang(page, '#2', 'protokoll.txt'), 'das Fenster von #2 zeigte den Anhang von #1').toEqual([]);
+      expect(await fremdeDatei(page, '#2', 'Abnahme prüfen'), 'das Fenster von #2 zeigte die Datei von #1').toEqual([]);
+      expect(k.lies('aufgaben/0001-abnahme-pruefen.md'), 'die Teilaufgabe ist gespeichert').toContain('- [ ] neu\n');
+      await page.unrouteAll({ behavior: 'wait' });
+      await page.reload();
+      await liveBereit(page);
+      await page.locator('.ka[data-id="2"] .t').click();
+      await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
+      await page.locator('#reiter-datei').click();
+      await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
+    }, MIT_ANHANG);
+  });
+}

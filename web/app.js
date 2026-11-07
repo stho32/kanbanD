@@ -888,7 +888,7 @@ async function act(a, arg, wert) {
         if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = []; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
@@ -900,6 +900,8 @@ async function act(a, arg, wert) {
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
         u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null;
+        // bis die Datei der neuen Aufgabe übernommen ist, zeigt das Fenster nichts von der vorigen (R00110 Nacharbeit 1)
+        u.datei = null; u.anhaenge = []; u.eintritt = [];
         await dateiLaden();
         break;
       }
