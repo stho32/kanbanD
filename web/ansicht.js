@@ -165,6 +165,14 @@ function vSchnellVorschau(text) {
   return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
 }
 /* ── Dialog „Neue Aufgabe“ — alle Felder sofort, wie in Kanbanflow ── */
+/** id der Meldung im Fuß von „Neue Aufgabe“; bleibt über jedes Neuzeichnen gleich, damit der Titel auf sie verweisen kann. */
+const NEU_MELDUNG = 'neu-meldung';
+/** Solange die Meldung den leeren Titel betrifft, ist der Titel ungültig und verweist auf sie (R00111 AK 5). */
+function titelVerweis(f) {
+  const titelFehlt = f.fehler && f.fehlerFeld === 'titel';
+  if (!titelFehlt) return '';
+  return ` aria-invalid="true" aria-describedby="${NEU_MELDUNG}"`;
+}
 function vNeu() {
   const f = S.ui.neu;
   if (!f) return '';
@@ -173,7 +181,7 @@ function vNeu() {
   const ps = personen().filter(p => p.aktiv);
   const cl = klasse(f.klasse);
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
+  const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"${titelVerweis(f)}><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
 <div class="abs"><h3>BESCHREIBUNG</h3><textarea class="besch" data-nf="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung der neuen Aufgabe">${esc(f.beschreibung)}</textarea></div>
 <div class="abs"><h3>TEILAUFGABEN <span class="mono">${f.teil.length}</span></h3>${f.teil.map((t, j) => `<div class="chk"><i></i><span>${esc(t)}</span><button class="btn btn-sym x" data-act="nf-teil-weg" data-arg="${j}" aria-label="Teilaufgabe ${esc(t)} entfernen">✕</button></div>`).join('')}<input class="inp add" id="neu-teil" placeholder="+ Teilaufgabe · Enter · Liste einfügen" data-enter="nf-teil" data-mehrfach="neu-teil" aria-label="Neue Teilaufgabe der neuen Aufgabe"></div></div>`;
   const seite = `<aside class="mod-side"><div class="felder">
@@ -184,7 +192,7 @@ ${b ? `<span class="k">column</span><span class="w"><select data-nf="spalte" ari
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-nf="labels" value="${esc(f.labels)}" placeholder="ui, daten" aria-label="Labels der neuen Aufgabe"></span>
 <span class="k">due</span><span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
 <span class="k">origins</span><span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" title="${HERKUNFT_HILFE}" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
-  const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" role="alert">${esc(f.fehler)}</span>` : '<span class="tastenhinweis"><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span class="nf-knoepfe"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
+  const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" id="${NEU_MELDUNG}" role="alert">${esc(f.fehler)}</span>` : '<span class="tastenhinweis"><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span class="nf-knoepfe"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
   return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
 }
 

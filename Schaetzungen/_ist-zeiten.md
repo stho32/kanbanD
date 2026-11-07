@@ -445,3 +445,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0456 Herkunftsfeld verweist auf seine Meldung | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0450 Akzeptanztests „Neue Aufgabe“ schmal | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0451 Knopfgruppe bricht gemeinsam um, Knöpfe in der Gruppe nach Bedarf | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0457 Titel verweist auf seine Meldung | Operation | 0,5-1h | 0,1h | 0,1h | autonom |

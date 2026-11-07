@@ -403,7 +403,8 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
   if (!f || ichNoetig()) { render(); return; }
   const titel = $('#neu-titel') ? $('#neu-titel').value : f.titel;
   const liste = zeilen || [titel];
-  if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; u.fokus = '#neu-titel'; render(); return; }
+  if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; f.fehlerFeld = 'titel'; u.fokus = '#neu-titel'; render(); return; }
+  f.fehlerFeld = null;
   const ziel = f.board ? { board: f.board, spalte: f.spalte } : {};
   try {
     let neu;

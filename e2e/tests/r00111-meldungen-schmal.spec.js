@@ -204,6 +204,21 @@ test.describe('„Neue Aufgabe“, 414 px mit Touch', () => {
     expect(await alertImSnapshot(fenster, MELDUNG_TITEL)).toHaveLength(1);
     expect(await page.evaluate(() => document.activeElement.id)).toBe('neu-titel');
     expect(k.lies(BOARD_DATEI)).toBe(BOARD);
+
+    const titel = page.getByLabel('Titel der neuen Aufgabe');
+    const id = await meldung.getAttribute('id');
+    expect(id, 'die Meldung hat eine id').toBeTruthy();
+    await expect(titel).toHaveAttribute('aria-invalid', 'true');
+    await expect(titel).toHaveAttribute('aria-describedby', id);
+    await expect(titel, 'der Verweis führt zur Meldung').toHaveAccessibleDescription(MELDUNG_TITEL);
+
+    // „Anlegen und weitere“ lässt den Titel stehen: so ist beobachtbar, dass der Verweis mit der angenommenen Eingabe wegfällt
+    await titel.fill('Handy-Aufgabe');
+    await fenster.getByRole('button', { name: 'Anlegen und weitere', exact: true }).tap();
+    await expect.poll(zuErledigen).toHaveLength(2);
+    await expect(meldung).toHaveCount(0);
+    await expect(titel).not.toHaveAttribute('aria-invalid');
+    await expect(titel).not.toHaveAttribute('aria-describedby');
   });
 
   test('US-5: Titel „Handy-Aufgabe“ und Tipp auf „Anlegen“ legt in „Zu erledigen“ an und schließt', async ({ page }) => {
