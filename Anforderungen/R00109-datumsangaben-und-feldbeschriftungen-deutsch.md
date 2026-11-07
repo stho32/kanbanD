@@ -13,7 +13,7 @@ Die Oberfläche zeigt Datumsangaben in ISO-Form und Feldnamen als englische Schl
 Diese Anforderung setzt ADR-0013 (Option A) für die ganze Oberfläche um (PO Z. 144):
 - Daten bleiben in Dateien, API, CSV, Filtersprache und Schnelleingabe ISO, mit englischen Schlüsseln und dem Wert `thin air`. Deutsch wird erst beim Zeichnen.
 - Ein reines Modul `web/kultur.js` formt jedes sichtbare Datum. Die Langform `28.10.2026` ist der Standard. Die Kurzform `28.10.` gibt es an drei Stellen und nur für Daten im laufenden Jahr (PO Z. 146).
-- Dasselbe Modul führt die Tabelle `FELDER`: Schlüssel → deutsche Beschriftung. Der Schlüssel steht daneben als eigener Hilfstext in Mono.
+- Dasselbe Modul führt die Tabelle `FELDER`: Schlüssel → deutsche Beschriftung. Der Schlüssel steht unter der Beschriftung, in eigenem Element, als Hilfstext in Mono (PO Z. 156).
 - Eine Aufgabe ohne Herkunft zeigt „ohne Herkunft“. Das Herkunftsfeld nimmt diese Worte auch als Eingabe an (PO Z. 145).
 - Eine Probe im Browser geht jede Ansicht ab. Ein Unit-Test prüft das Modul samt Jahreswechsel.
 
@@ -65,9 +65,9 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
     | `labels` | Labels |
     | `due` | Fällig |
 
-11. Der Schlüssel steht neben der Beschriftung in einem eigenen Element als Hilfstext in Mono, nie im Text der Beschriftung.
+11. Der Schlüssel steht unter der Beschriftung, in eigenem Element, als Hilfstext in Mono, nie im Text der Beschriftung (PO Z. 156). Felder ohne Schlüssel in FA 10 und 13 bleiben einzeilig (PO Z. 157).
 12. Der zugängliche Name jedes Felds enthält den Text seiner Beschriftung. Die Auswahl der Zuständigen ist eine Gruppe mit dem Namen „Zuständig“. Vorhandene Namen, die die Beschriftung schon enthalten („Spalte“, „Klasse“, „Labels“, „Fälligkeit“, „Neue Herkunft“, „Herkunft der neuen Aufgabe“), bleiben.
-13. Übrige Beschriftungen im Aufgabenfenster: `wbs-effects` → „Wirkungen“, `phases` → „Phasen“, `reservation` → „Reservierung“. In „Einrichten“: `wbs` → „WBS“, `requirements` → „Anforderungen“. Beim ersten Start: `ich` → „Ich“, `agents` → „Agenten“, `board` → „Board“, `spalten` → „Spalten“, `wbs` → „WBS“, `anforderungen` → „Anforderungen“. Der Schlüssel steht jeweils als Hilfstext daneben (FA 11).
+13. Übrige Beschriftungen im Aufgabenfenster: `wbs-effects` → „Wirkungen“, `phases` → „Phasen“, `reservation` → „Reservierung“. In „Einrichten“: `wbs` → „WBS“, `requirements` → „Anforderungen“. Beim ersten Start: `ich` → „Ich“, `agents` → „Agenten“, `board` → „Board“, `spalten` → „Spalten“, `wbs` → „WBS“, `requirements` → „Anforderungen“ (PO Z. 159: der Schlüssel, unter dem der erste Start den Wert in die Datei schreibt). Der Schlüssel steht jeweils unter der Beschriftung, in eigenem Element, als Hilfstext (FA 11).
 14. „wartet auf“ ist eine Anzeige, kein Feld, und bleibt.
 
 ### Ohne Herkunft (PO Z. 145, Z. 147)
@@ -95,7 +95,7 @@ Wer das Board liest, liest Datumsangaben ohne Umrechnen und Felder ohne Englisch
 Geprüft mit dem Grundbestand aus `user-stories/R00109.md`.
 
 - [ ] **1. Abnahme-Probe der Karte #11 (wörtlich)**: „Für jedes Feld im Aufgabenfenster und im Fenster „Neue Aufgabe“ enthält der Accessible Name den sichtbaren Labeltext; kein sichtbarer Kartentext passt auf `/\d{4}-\d{2}-\d{2}/`; keine der Zeichenketten `column|class|origins|assignees|due|thin air` ist sichtbarer Labeltext."
-  - Besteht: Beschriftung „Spalte“, daneben Hilfstext `column` in Mono, Auswahl mit dem Namen „Spalte“.
+  - Besteht: Beschriftung „Spalte“, darunter in eigenem Element Hilfstext `column` in Mono, Auswahl mit dem Namen „Spalte“.
   - Besteht: Beschriftung „Labels“ (der Schlüssel heißt `labels`; der Vergleich beachtet Groß- und Kleinschreibung).
   - Fällt durch: Beschriftung „column“; Beschriftung „Spalte column“ in einem Element; Gruppe der Zuständigen ohne Namen; Karte mit der Fälligkeit „2026-10-28“.
   - Prüfebene: E2E `kultur.spec.js` (US-1, US-6, US-7); die Proben selbst über AK 7.
@@ -116,8 +116,9 @@ Geprüft mit dem Grundbestand aus `user-stories/R00109.md`.
   - Besteht: Tooltip Burndown „Do 01.10.2026“; Achse „01.10.“ / „2026“.
   - Fällt durch: Tabellenansicht mit „2026-10-01“; ein `title` „2026-10-01“ an einem Balken; Tooltip „2026-10-01“ oder „01.10.“ ohne Jahr.
   - Prüfebene: E2E US-4, US-5, US-6; `r00073-diagramme.spec.js` unverändert grün.
-- [ ] **5. Übrige Beschriftungen**: Wirkungen, Phasen und Reservierung im Aufgabenfenster, WBS und Anforderungen in „Einrichten“ und die Felder des ersten Starts tragen die Beschriftungen aus FA 13, der Schlüssel steht als Hilfstext daneben.
-  - Fällt durch: Beschriftung „wbs-effects“, „phases“, „reservation“ oder „agents“.
+- [ ] **5. Übrige Beschriftungen**: Wirkungen, Phasen und Reservierung im Aufgabenfenster, WBS und Anforderungen in „Einrichten“ und die Felder des ersten Starts tragen die Beschriftungen aus FA 13, der Schlüssel steht unter der Beschriftung, in eigenem Element, als Hilfstext.
+  - Besteht: erster Start in einer leeren Instanz mit den Beschriftungen „Ich“, „Agenten“, „Board“, „Spalten“, „WBS“, „Anforderungen“, je mit ihrem Schlüssel in eigenem Element außerhalb der Beschriftung, unter „Anforderungen“ `requirements` (PO Z. 158, Z. 159).
+  - Fällt durch: Beschriftung „wbs-effects“, „phases“, „reservation“ oder „agents“; Beschriftung ohne Schlüssel-Element; unter „Anforderungen“ beim ersten Start `anforderungen`.
   - Gegenbeispiel, das gleich bleibt: der Prüfpunkt `wbs-effects-green` (R00059, R00071) nennt seinen Prüfnamen weiter in Tooltip und Namen; er ist keine Feldbeschriftung.
   - Prüfebene: Unit (`FELDER`); E2E US-8.
 - [ ] **6. Ohne Herkunft**: Eine Aufgabe ohne Herkunft zeigt „ohne Herkunft“. Die Eingabe „ohne Herkunft“ oder `thin air` im Herkunftsfeld des Aufgabenfensters speichert `thin air` und ersetzt die übrigen Herkünfte.
@@ -168,7 +169,7 @@ Entschieden in ADR-0013 (Option A, Akzeptiert); Aspekt X00004 Kultur der Anzeige
 
 ### Ablauf
 
-Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben mit Selbstproben (B0427, B0435). Danach laufen die vier Features parallel: Datumsangaben auf Karte und Fenster (B0428, B0429, B0430), in Personen und Berichten (B0431, B0432, B0433), Beschriftungen (B0436, B0437) und „ohne Herkunft“ (B0438, B0439, B0440). B0436 und B0437 warten auf die Freigabe der Gestaltung (Offene Frage 2, PO Z. 148).
+Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben mit Selbstproben (B0427, B0435). Danach laufen die vier Features parallel: Datumsangaben auf Karte und Fenster (B0428, B0429, B0430), in Personen und Berichten (B0431, B0432, B0433), Beschriftungen (B0436, B0437) und „ohne Herkunft“ (B0438, B0439, B0440). Die Gestaltung von B0436 und B0437 ist freigegeben (Offene Frage 2, PO Z. 155–159).
 
 ### Grobentwurf
 
@@ -179,7 +180,7 @@ Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben 
   - Datum: Schnellvorschau `:164`, Archivleiste `:255`, Durchläufe `:282` (`ortszeit().slice(5)`), Kommentare `:295`, Zeiten `:312` (`slice(5,10)`), Karte `:492`, Aufgabenreservierungen des Boards `:572` (`slice(5)`), `deTag` `:617` mit „überfällig seit“ `:623`, Personen `:761`, Stundenzettel `:820–821`, Burndown `:874`, `deDatum` `:1021`, Wie lange noch `:1104`, Fever `:1214`; `web/berichte.js` `isoD` `:353`, `vollDatum` `:453`.
   - Beschriftungen: „Neue Aufgabe“ `:180–186`, Aufgabenfenster `:262–270`, `:407`, `:414`, `:566`, Einrichten `:1296`, `:1307`, erster Start `:1372–1377`.
   - Herkunft: Chip `vHerkunftChip` `:385` und `vHerkunft` `:453`, Feld `:264`; Eingabe `web/app.js:1146–1150`.
-- **Beschriftung**: Heute ist `.felder .k` die Beschriftung und zeigt den Schlüssel in Mono (`web/kd-app.css:334`). Danach trägt `.k` die deutsche Beschriftung, und der Schlüssel steht in einem eigenen Element daneben. Die Felder behalten ihre `aria-label` (FA 12); die Knopfreihe der Zuständigen bekommt `role="group"` mit dem Namen „Zuständig“.
+- **Beschriftung**: Heute ist `.felder .k` die Beschriftung und zeigt den Schlüssel in Mono (`web/kd-app.css:334`). Danach trägt `.k` nur die deutsche Beschriftung, und der Schlüssel steht unter der Beschriftung, in eigenem Element außerhalb von `.k` (PO Z. 156, Z. 158; im Artboard ein Rahmenelement mit Beschriftung und Schlüssel als Geschwistern). Der Eintrag `anforderungen` in `FELDER` entfällt; der erste Start nutzt `requirements` (PO Z. 159). Die Felder behalten ihre `aria-label` (FA 12); die Knopfreihe der Zuständigen bekommt `role="group"` mit dem Namen „Zuständig“.
 - **Proben** in `e2e/tests/kultur-hilfen.js`:
   - ISO-Probe: sichtbare Textknoten (über `TreeWalker`, ohne `display:none` und `visibility:hidden`), `title` und zugängliche Namen; ausgenommen `#dateitext`, die YAML-Vorschau und der `value` von `input[type=date]`.
   - Beschriftungsprobe: je Feld Text der Beschriftung, zugänglicher Name, Vergleich mit `FELDER` und den Schlüsseln (exakt, Groß- und Kleinschreibung beachtet).
@@ -189,7 +190,9 @@ Zuerst das Modul mit Unit-Test (B0426). Frei baubar sind auch die beiden Proben 
 
 Artboards: `Dokumentation/Wireframes/D0003.dc.html` (Seitenleiste des Aufgabenfensters, „Neue Aufgabe“), `D0002.dc.html` (Karte), `D0001.dc.html` (erster Start), Betrieb `lokal`.
 - Die Datumsform ist kein neuer Zustand: D0002 und D0003 zeigen ISO auf der Karte, die Vision geht vor (PO Z. 144). Der Director nimmt Bildschirmfotos von Karte, Aufgabenfenster und einer Berichtstabelle auf den Abnahmezettel (Auflage PO Z. 144).
-- Die Beschriftung mit Schlüssel als Hilfstext ist ein neuer Zustand: D0003 und D0001 zeigen die Schlüssel als Beschriftung. Ob der gestalter ihn vor B0436 und B0437 zeichnet, ist Offene Frage 2.
+- Die Beschriftung mit Schlüssel als Hilfstext ist gezeichnet (Abschnitt `#beschriftung-schluessel` in D0003 und D0001, hell, dunkel und 320 px) und vom product-owner mit Änderung freigegeben (PO Z. 155): Schlüssel unter der Beschriftung, in eigenem Element; Beschriftungsspalte 84 px (D0003) bzw. 110 px (D0001), Zeile mindestens 38 px (PO Z. 156). Die Lage misst kein Test, sie steht auf den Bildschirmfotos des Abnahmezettels (PO Z. 158, Z. 144).
+- Die Abschnittsköpfe in „Einrichten“ bleiben beim Hausmuster „QUELLEN sources:“ mit dem Schlüssel in der Zeile; die neue Lage gilt nur für Feldzeilen (PO Z. 155).
+- Das Herkunftsfeld in „Neue Aufgabe“ ist im Artboard mit „ohne Herkunft“ gefüllt; das ist eine Beispieleingabe, das Feld startet weiter leer (PO Z. 155).
 
 ### Umfang
 
@@ -234,7 +237,7 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
   - Langform `2026-10-28` → `28.10.2026`; Zeitpunkt `2026-10-28T14:05+01:00` → `28.10.2026 14:05` (Ortszeit wie `ortszeit`); Wochentag wie `deDatum` für Mo bis So, darunter „Do 01.10.2026“ und „Sa 03.10.2026“ (die Erwartungen aus `r00073-diagramme.spec.js`); Achsenmarke „01.10.“ und „2026“.
   - Kurzform mit „heute“: Jahreswechsel nach AK 2 (31.12. kurz, 01.01. des Folgejahrs lang, Vorjahr lang); 28.10. mit heute 2026-11-06 kurz.
   - Mutanten fallen durch: Kurzform ohne Jahresvergleich, Tag und Monat vertauscht, fehlende führende Null.
-  - `FELDER` enthält jeden Schlüssel aus FA 10 und 13 mit seiner Beschriftung; keine Beschriftung ist ein Schlüssel.
+  - `FELDER` enthält jeden Schlüssel aus FA 10 und 13 mit seiner Beschriftung; keine Beschriftung ist ein Schlüssel; der Eintrag `anforderungen` fehlt, „Anforderungen“ steht unter `requirements` (PO Z. 159).
   - Erkennung „ohne Herkunft“ nach AK 6: „ohne Herkunft“, „  Ohne Herkunft “, „OHNE HERKUNFT“, „Thin Air“ → ja; „ohne Herkunftx“, „ohne“, „Herkunft“ → nein.
   - Herkunftsfeld „Neue Aufgabe“ nach AK 10 (reine Funktion aus Feldinhalt und Herkunft der Schnelleingabe): „  Ohne Herkunft “ und „THIN AIR“ mit leerer Titel-Herkunft → `[thin air]`; „I0001 R00014“ → `[I0001, R00014]`; „ohne Herkunft“ mit Titel-Herkunft `[I0001]` → `[I0001]`; „I0001 ohne Herkunft“ → `[I0001, ohne, Herkunft]` (getrennt wie heute). Mutante: Vereinigung ohne Wegnahme von `thin air` fällt durch.
 - **Selbstproben** in `e2e/tests/kultur-hilfen.js` (`page.setContent`, ohne kanbanD), jede Regex positiv und negativ geprüft:
@@ -265,7 +268,7 @@ Nach Skill `test-pyramide`. Jede US-Szene wird ein Test, jeder Test prüft eine 
 ## Offene Fragen
 
 1. **Herkunftsfeld in „Neue Aufgabe“** — geschlossen, entschieden durch PO Z. 147: dieselbe Regel wie im Aufgabenfenster, eine Herkunft aus dem Titel verdrängt `thin air`; eingearbeitet als FA 20, AK 10, B0440 und US-9 Teil „Neue Aufgabe“. Richtigstellung zur Frage: Heute entstehen nicht zwei Herkünfte, der Server lehnt ab (`src/modell/aufgabe.rs:564–567`).
-2. **Gestaltung der Beschriftung vor dem Bau** — offen, liegt laut PO Z. 148 beim Auftraggeber (Vorschlag 1: der gestalter zeichnet den Zustand an D0003 und D0001, hell, dunkel und bei 320 px, der Auftraggeber gibt frei; bis dahin warten B0436 und B0437): Beschriftung plus Schlüssel als Mono-Hilfstext ist ein neuer Zustand ohne Artboard. Die Vision verlangt, dass der Mensch jede Gestaltung sieht, bevor sie gebaut wird. Empfehlung: der gestalter zeichnet die Seitenleiste des Aufgabenfensters und „Neue Aufgabe“ an D0003 sowie die Felder des ersten Starts an D0001, bevor B0436 und B0437 bauen; F0052, F0053, F0055 und B0435 hängen nicht daran.
+2. **Gestaltung der Beschriftung vor dem Bau** — geschlossen, freigegeben durch den PO, Z. 155–159 (Z. 148 vom Auftraggeber mit Vorschlag 1 entschieden, Freigabe von Artboards beim product-owner, Z. 154); eingearbeitet in FA 11, FA 13, AK 1, AK 5, Grobentwurf, Gestaltung, US-7 und US-8. Ursprüngliche Frage: Beschriftung plus Schlüssel als Mono-Hilfstext ist ein neuer Zustand ohne Artboard. Die Vision verlangt, dass der Mensch jede Gestaltung sieht, bevor sie gebaut wird. Empfehlung: der gestalter zeichnet die Seitenleiste des Aufgabenfensters und „Neue Aufgabe“ an D0003 sowie die Felder des ersten Starts an D0001, bevor B0436 und B0437 bauen; F0052, F0053, F0055 und B0435 hängen nicht daran.
 
 ## Manuelle Vorbereitungstätigkeiten
 Keine.
@@ -295,7 +298,7 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
   - Die ISO-Regex der Karte fängt die heutige Form „10-28 14:05“ nicht; konkrete Szenarien (US-2, US-3) decken sie.
   - Die Seite „API für Agenten“ gehört zur Probe: sie nennt Formate als „JJJJ-MM-TT“, nicht als Datum, und braucht keine Ausnahme.
   - Die Auswahl der Zuständigen bekommt einen Gruppennamen, damit auch sie ein Feld mit Namen ist.
-- **Bewusst außerhalb**: Filter `origin:"ohne Herkunft"` (PO Z. 145); Sprache des Browsers im nativen Datumsfeld (ADR-0013 „Was überwiegt“); Texte außerhalb der Weboberfläche (API-Antworten, CLI).
+- **Bewusst außerhalb**: Schlüssel als Hilfstext für „Zählt in Berichten“ (`reporting`), „Signale“ (`signals`) und „Schlüssel“ (`key`) — diese Felder bleiben einzeilig, Folgekarte #87 „Schlüssel als Hilfstext auch für Zählt in Berichten, Signale und Schlüssel“ (PO Z. 157); ob die übrigen Schlüssel des ersten Starts (`ich`, `agents`, `board`, `spalten`) auf Dateischlüssel umgestellt werden, gehört auf dieselbe Karte (PO Z. 159); „wartet auf“ bleibt Anzeige ohne Schlüssel (FA 14); Filter `origin:"ohne Herkunft"` (PO Z. 145); Sprache des Browsers im nativen Datumsfeld (ADR-0013 „Was überwiegt“); Texte außerhalb der Weboberfläche (API-Antworten, CLI).
 - **Verworfene Alternativen (Schnitt)**: Karte und Fenster allein (PO Z. 144: alle); je Ansicht eine Anforderung (Modul und Probe sind gemeinsam, die Karte hat eine Abnahme); Schnitt nach Schichten (erst Modul, dann Ansichten) — nicht von außen prüfbar.
 - **Nachprüfung des Directors 2026-11-06** gegen `test-pyramide`, `test-ehrlichkeit`, R00073 und R00107:
   - je Akzeptanzkriterium die Prüfebene;
@@ -310,3 +313,4 @@ Die englischen und ISO-Stellen haben eine gemeinsame Ursache: Es gibt keinen Ort
 - **PO Z. 149 eingearbeitet 2026-11-06** (Rückfrage des entwicklers, Option 1): Das Gegenbeispiel „ohne Herkunftx“ in AK 6 und US-9 erwartete `origins: [I0001, R00014, ohne Herkunftx]`, das der Server nach R00018 nie annimmt (Sachfehler beim Schreiben). Jetzt: nicht als „ohne Herkunft“ erkannt, vom Server mit sichtbarer Meldung abgelehnt, Datei bleibt `origins: [I0001, R00014]`; Ehrlichkeit je Szene „drei Einträge in der Anfrage, zwei in der Datei“. Der `test.fail` mit dem alten Wortlaut wird gelöscht, nicht grün umgedeutet. Freie Herkünfte (Option 2) verworfen. WBS unverändert.
 - **Textfunde Rechtschreib-Review #11 eingearbeitet 2026-11-07** (dazu ein Fund des Code-Reviews): Servermeldungen als Code (FA 20, AK 10), halbe Anführungszeichen in der Abnahme-Probe von AK 10, `origins:` statt `herkunft:` in FA 20, Großschreibung nach Doppelpunkt, „des architekten“; `r00081-berichtsfilter-am-board.spec.js` in die Liste der mitgeänderten Tests, AK 9 nennt jetzt sieben. Der Wortlaut in `AI-Team/po-entscheidungen.md` bleibt, das Protokoll ändert sich nicht.
 - **Nummernfolge der FA**: FA 20 steht zwischen FA 17 und FA 18 im Abschnitt „Ohne Herkunft“. Sie bleibt so, damit die Verweise auf FA 18 und FA 19 (Probe) gültig bleiben.
+- **PO Z. 154–159 eingearbeitet 2026-11-07** (Nachzug nach PO-Entscheidung, Freigabe der Artboards „Beschriftung mit Schlüssel“, Commit 5a1c49c): Wortlaut „neben“/„daneben“ → „unter der Beschriftung, in eigenem Element“ in Beschreibung, FA 11, FA 13, AK 1, AK 5, Grobentwurf und Gestaltung (Z. 156); erster Start `anforderungen` → `requirements`, Eintrag `anforderungen` in `FELDER` entfällt (Z. 159); AK 5 mit Besteht-Fall erster Start und Fällt-durch ohne Schlüssel-Element, US-7 und US-8 prüfen den Schlüssel in eigenem Element außerhalb von `.k`, US-8 den ersten Start in einer leeren Instanz (Z. 158); Felder ohne Schlüssel bleiben einzeilig, Folgekarte #87 unter „Bewusst außerhalb“ (Z. 157); Ablauf und Offene Frage 2 geschlossen (Z. 154, Z. 155). Kein neues Kriterium außer diesen, Umfang unverändert (15 Bubbles). ADR-0013 Regel 4 sagt weiter „daneben“; das ADR ändert der planer nicht.
