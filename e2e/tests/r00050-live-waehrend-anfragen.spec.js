@@ -7,7 +7,8 @@ test('US-1: die Liste verliert beim schnellen Tippen keinen Eintrag', async ({ p
   try {
     await alsPerson(page, 'st');
     // Antworten verzögern: der Server committet sofort (Live-Ereignis), die Seite erfährt es erst später
-    await page.route('**/api/aufgaben/1/teilaufgaben', async route => { const antwort = await route.fetch(); await new Promise(r => setTimeout(r, 250)); await route.fulfill({ response: antwort }); });
+    let ausgeliefert = 0;
+    await page.route('**/api/aufgaben/1/teilaufgaben', async route => { const antwort = await route.fetch(); await new Promise(r => setTimeout(r, 250)); await route.fulfill({ response: antwort }); ausgeliefert++; });
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click({ position: { x: 5, y: 5 } });
     // jede Änderung der Liste mitschreiben: die Anzahl darf nie sinken
@@ -15,12 +16,15 @@ test('US-1: die Liste verliert beim schnellen Tippen keinen Eintrag', async ({ p
       window.anzahlen = [];
       new MutationObserver(() => window.anzahlen.push(document.querySelectorAll('[role="dialog"] .chk').length)).observe(document.body, { childList: true, subtree: true });
     });
+    // das eine Neuladen bei leerer Schlange: erst nach der zehnten ausgelieferten Antwort; vor dem Tippen abonniert, damit es nicht vorbeigeht
+    const neuGeladen = page.waitForResponse(r => new URL(r.url()).pathname === '/api/aufgaben' && r.request().method() === 'GET' && ausgeliefert === 10);
     await page.getByLabel('Neue Teilaufgabe').focus();
     for (let i = 1; i <= 10; i++) { await page.keyboard.type('t' + i); await page.keyboard.press('Enter'); }
     await expect.poll(() => k.lies('aufgaben/0001-eins.md'), { timeout: 20000 }).toContain('- [ ] t10\n');
+    await neuGeladen;
     await expect(page.locator('[role="dialog"] .chk')).toHaveCount(10);
     const anzahlen = await page.evaluate(() => window.anzahlen.filter(n => n > 0));
     expect(anzahlen.every((n, i) => i === 0 || n >= anzahlen[i - 1])).toBe(true);
     expect(k.git('rev-list', '--count', 'HEAD', '--', 'aufgaben/0001-eins.md')).toBe('11');
-  } finally { await k.stoppen(); }
+  } finally { await page.unrouteAll({ behavior: 'wait' }); await k.stoppen(); }
 });
