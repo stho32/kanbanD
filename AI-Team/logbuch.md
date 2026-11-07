@@ -356,3 +356,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #74 | Detailplanung | rechtschreib-reviewer | Text-Vorprüfung bestanden (0 Muss, 9 Sollte, 4 Optional; Zitate gegen Code stimmen) | 0:06 | — |
 | 2026-11-07 | #74 | Detailplanung | ux-reviewer | UX-Vorprüfung befund (2 Muss: Meldung hinter Bildschirmtastatur; Knöpfe 641–895 px abgeschnitten; 4 Sollte, 3 Optional) | 0:09 | — |
 | 2026-11-07 | #74 | Detailplanung | planer | Einarbeitung PO/UX/Text: F0062 Bildschirmtastatur, Umbruch nach Bedarf, aria-invalid; 11 Bubbles 7,5–15 h; 2 Technikfragen → architekt | 0:06 | 734075c |
+| 2026-11-07 | #74 | Detailplanung | architekt | ADR-0016 visualViewport-Bindung, ADR-0015 N1 Umbruch nach Bedarf; Probe AK 11 rot/grün, Mutant „nur beim Start“ verlangt Tastatur nach dem Fokus | 0:08 | a309555 |
