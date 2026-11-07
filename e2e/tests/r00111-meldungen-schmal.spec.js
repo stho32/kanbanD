@@ -10,6 +10,8 @@ const BOARD = '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-abnah
 const AUSGANGSLAGE = { 'boards/entwicklung.md': BOARD, [AUFGABE_1]: '---\nid: 1\ntitle: Abnahme prüfen\n---\n' };
 
 const MELDUNG_X1 = '\u201eX1\u201c ist keine Herkunft';
+/** Eine Herkunft, deren Meldung breiter ist als der Fuß bei 1280 px (ADR-0015 N1: heute endet sie bei 2195 px, der Fuß bei 1180 px). */
+const LANGE_HERKUNFT = 'Herkunft aus dem Gespräch mit dem Auftraggeber am Montagmorgen über die Abnahme der Fenster auf schmalen Bildschirmen, über die Meldungen darin und über die Knöpfe, die nicht abgeschnitten werden dürfen';
 /** Höhe des Fußes am Desktop mit der Meldung aus US-1, gemessen vor dem Fix (ADR-0015 N1: 28 px, einzeilig). */
 const FUSS_HOEHE_VOR_DEM_FIX = 28;
 
@@ -63,6 +65,23 @@ function sichtbarkeit(locator) {
   });
 }
 
+/** Waagrechtes Scrollen an Dokument und Fenster und ob die Meldung ganz lesbar ist: je `[scrollWidth, clientWidth]`. */
+function breiten(page, fenster, meldung) {
+  return Promise.all([
+    page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]),
+    fenster.evaluate(f => [f.scrollWidth, f.clientWidth]),
+    meldung.evaluate(m => [m.scrollWidth, m.clientWidth]),
+  ]);
+}
+
+/** Liegt das Rechteck der Meldung ganz im Rechteck des Fußes? */
+function imFuss(meldung) {
+  return meldung.evaluate(m => {
+    const r = m.getBoundingClientRect(), f = m.closest('.mod-fuss').getBoundingClientRect();
+    return r.left >= f.left - 0.5 && r.right <= f.right + 0.5 && r.top >= f.top - 0.5 && r.bottom <= f.bottom + 0.5;
+  });
+}
+
 /** Zeile des Accessibility-Snapshots, die eine Meldung als `alert` mit dem erwarteten Text führt. */
 async function alertImSnapshot(fenster, text) {
   const snapshot = await fenster.ariaSnapshot();
@@ -78,8 +97,7 @@ function sekundenInBerlin(zeitpunkt) {
 test.describe('Handy, 414 px mit Touch', () => {
   test.use(HANDY);
 
-  // Erwartet rot bis B0449: die Meldung hat Client-Rects, aber .mod-fuss schneidet sie mit nowrap/overflow ab (#74, ADR-0015 N1)
-  test.fail('US-1: abgelehnte Herkunft X1 wird bei 414 px als alert gemeldet, Fokus bleibt im Feld (#74)', async ({ page }) => {
+  test('US-1: abgelehnte Herkunft X1 wird bei 414 px als alert gemeldet, Fokus bleibt im Feld (#74)', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
     await herkunftEingeben(page, fenster, 'X1', true);
@@ -114,6 +132,27 @@ test.describe('Handy, 414 px mit Touch', () => {
   });
 });
 
+for (const breite of [320, 375, 414]) {
+  test.describe(`Handy, ${breite} px mit Touch`, () => {
+    test.use({ viewport: { width: breite, height: 896 }, isMobile: true, hasTouch: true });
+
+    test(`AK 4: die Meldung aus US-1 bricht bei ${breite} px um, ist ganz lesbar, nichts scrollt quer`, async ({ page }) => {
+      await starten(page);
+      const fenster = await fensterOeffnen(page, 1, true);
+      await herkunftEingeben(page, fenster, 'X1', true);
+      const meldung = fenster.locator('[role=alert]');
+      await expect(meldung).toHaveText(new RegExp('^' + MELDUNG_X1));
+      expect(await sichtbarkeit(meldung)).toEqual([]);
+      const [dokument, imFenster, inMeldung] = await breiten(page, fenster, meldung);
+      expect(dokument[0], 'Seite scrollt nicht quer').toBeLessThanOrEqual(dokument[1]);
+      expect(dokument[0], 'Seite höchstens so breit wie der Bildschirm').toBeLessThanOrEqual(breite);
+      expect(imFenster[0], 'Fenster scrollt nicht quer').toBeLessThanOrEqual(imFenster[1]);
+      expect(inMeldung[0], 'Meldung nicht abgeschnitten').toBeLessThanOrEqual(inMeldung[1]);
+      expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' }))).toEqual(['keine Client-Rects']);
+    });
+  });
+}
+
 test.describe('Desktop, 1280 px mit Maus', () => {
   test.use(DESKTOP);
 
@@ -134,5 +173,19 @@ test.describe('Desktop, 1280 px mit Maus', () => {
     const tastenhinweis = fuss.locator('span', { hasText: 'schließen' });
     await expect(tastenhinweis).toContainText('Karte wechseln');
     expect(await sichtbarkeit(tastenhinweis)).toEqual([]);
+  });
+
+  test('AK 3: eine Meldung, breiter als der Fuß, bricht im Fuß um und ist ganz lesbar (#84)', async ({ page }) => {
+    await starten(page);
+    const fenster = await fensterOeffnen(page, 1, false);
+    await herkunftEingeben(page, fenster, LANGE_HERKUNFT, false);
+    const meldung = fenster.locator('[role=alert]');
+    await expect(meldung).toContainText('ist keine Herkunft');
+    await expect(meldung).toContainText('oder thin air');
+    expect(await sichtbarkeit(meldung)).toEqual([]);
+    expect(await imFuss(meldung), 'Rechteck der Meldung im Rechteck von .mod-fuss').toBe(true);
+    const [, , inMeldung] = await breiten(page, fenster, meldung);
+    expect(inMeldung[0], 'Meldung nicht abgeschnitten').toBeLessThanOrEqual(inMeldung[1]);
+    expect((await meldung.boundingBox()).height, 'die Meldung bricht um').toBeGreaterThan(20);
   });
 });
