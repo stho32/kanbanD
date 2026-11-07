@@ -1,6 +1,6 @@
 // R00111 Meldungen und Knöpfe der Fenster auf schmalen Bildschirmen (Karte #74, ADR-0015, ADR-0016)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
 
 const HANDY = { viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true };
 const DESKTOP = { viewport: { width: 1280, height: 800 } };
@@ -22,6 +22,7 @@ const ZWISCHENBREITEN = [{ width: 641, height: 896 }, { width: 768, height: 1024
 const SCHMALE_BREITEN = [320, 375, 414].map(width => ({ width, height: 896 }));
 
 let k;
+test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
 test.afterEach(async () => { if (k) await k.stoppen(); k = null; });
 
 async function starten(page, dateien = AUSGANGSLAGE) {

@@ -1,6 +1,6 @@
 // R00111 AK 8–10: jedes Fenster ist schmal so bedienbar wie breit (Fitness-Funktion ADR-0015, Karte #74)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
 const { fensterDerAnwendung } = require('./ansichten');
 
 const BREIT = { viewport: { width: 1280, height: 800 } };
@@ -103,6 +103,8 @@ for (const { fenster: name, oeffnen } of fensterDerAnwendung()) {
       const breitKontext = await browser.newContext(BREIT);
       const schmalKontext = await browser.newContext({ viewport, isMobile: true, hasTouch: true });
       try {
+        await mutanteEinsetzen(breitKontext);
+        await mutanteEinsetzen(schmalKontext);
         const breit = await fensterMessen(await oeffnen(await seiteOeffnen(breitKontext)), liste);
         const schmal = await fensterMessen(await oeffnen(await seiteOeffnen(schmalKontext)), liste);
         expect(breit.sichtbar.length, 'breit gibt es Bedienelemente').toBeGreaterThan(0);

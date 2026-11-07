@@ -447,3 +447,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0451 Knopfgruppe bricht gemeinsam um, Knöpfe in der Gruppe nach Bedarf | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0457 Titel verweist auf seine Meldung | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0452 Probe schmal gegen breit über alle Fenster | Operation | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0453 Mutanten M1 bis M3 | Operation | 0,5-1h | 0,4h | 0,4h | autonom |
