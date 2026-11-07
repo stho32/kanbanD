@@ -195,7 +195,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   const neu = { zustand, einstellungenDefekt };
   if (sicht) Object.assign(neu, sicht.haupt);
   Object.assign(S, neu);
-  if (sicht) await sichtFolgen(sicht);
+  if (sicht) await sichtFolgen(sicht, start);
   else S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
   const stand = serverStand();
   if (nurBeiAenderung && stand === geladenerStand) return false;
@@ -240,7 +240,7 @@ async function sichtLaden(zustand) {
 }
 
 /** Nach der Übernahme: die gelesene Sicht samt ihrer Folgen für Vollbild, Einrichten und gemerktes Board, dann das offene Fenster. */
-async function sichtFolgen({ view, slug, fbFehler }) {
+async function sichtFolgen({ view, slug, fbFehler }, start) {
   S.ui.first = null;
   const vorher = S.ui.view;
   S.ui.view = view;
@@ -251,8 +251,8 @@ async function sichtFolgen({ view, slug, fbFehler }) {
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
   if (fbFehler) S.ui.fbFehler = fbFehler;
   S.ui.bf = berichtsfilterAusBoard();
-  if (S.ui.offen) await dateiLaden();
-  if (S.ui.offenDefekt) await defektLaden();
+  if (S.ui.offen) await dateiLaden(start);
+  if (S.ui.offenDefekt) await defektLaden(start);
 }
 
 /** Fever Chart (R00078): rechnet die Tage vom Start bis gestern, die im Cache fehlen, in Häppchen (die Seite bleibt bedienbar)
@@ -303,23 +303,41 @@ function ichNoetig() {
   return true;
 }
 
-async function defektLaden() {
+/** Lädt die defekte Datei des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort des Fensters
+    übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. */
+async function defektLaden(start = naechsterTakt()) {
+  const nummer = S.ui.offenDefekt;
   try {
-    await api('GET', '/api/aufgaben/' + S.ui.offenDefekt);
-    S.ui.offen = S.ui.offenDefekt; S.ui.offenDefekt = null; S.ui.defektDatei = null; // repariert
-    await dateiLaden();
+    await api('GET', '/api/aufgaben/' + nummer);
+    if (S.ui.offenDefekt !== nummer) return;
+    S.ui.offen = nummer; S.ui.offenDefekt = null; S.ui.defektDatei = null; // repariert
+    await dateiLaden(start);
   } catch (f) {
+    if (S.ui.offenDefekt !== nummer || !uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen })) return;
+    zuletztFenster = start;
     if (f.status === 423) S.ui.defektDatei = { pfad: f.daten.pfad, text: f.daten.text, fehler: f.message };
     else { S.ui.offenDefekt = null; S.ui.defektDatei = null; }
   }
 }
 
-async function dateiLaden() {
+/** Lädt Datei, Anhänge und WBS-Eintritt des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort
+    des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. */
+async function dateiLaden(start = naechsterTakt()) {
+  const nummer = S.ui.offen;
+  const aktuell = () => S.ui.offen === nummer && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen });
   try {
-    S.ui.datei = await api('GET', '/api/aufgaben/' + S.ui.offen);
-    S.ui.anhaenge = await api('GET', `/api/aufgaben/${S.ui.offen}/anhaenge`);
-    S.ui.eintritt = await api('GET', `/api/aufgaben/${S.ui.offen}/wbs-effects`).catch(() => []);
-  } catch (f) { if (f.status === 404) S.ui.offen = null; S.ui.datei = null; S.ui.anhaenge = []; S.ui.eintritt = []; }
+    const datei = await api('GET', '/api/aufgaben/' + nummer);
+    const anhaenge = await api('GET', `/api/aufgaben/${nummer}/anhaenge`);
+    const eintritt = await api('GET', `/api/aufgaben/${nummer}/wbs-effects`).catch(() => []);
+    if (!aktuell()) return;
+    zuletztFenster = start;
+    S.ui.datei = datei; S.ui.anhaenge = anhaenge; S.ui.eintritt = eintritt;
+  } catch (f) {
+    if (!aktuell()) return;
+    zuletztFenster = start;
+    if (f.status === 404) S.ui.offen = null;
+    S.ui.datei = null; S.ui.anhaenge = []; S.ui.eintritt = [];
+  }
 }
 
 async function anhaengeHochladen(dateien) {

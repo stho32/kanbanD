@@ -260,3 +260,42 @@ test('F2: alte Antwort kommt zwischen dem Leeren der Schlange und ihrem eigenen 
     await gegenprobeNachNeuladen(page);
   });
 });
+
+/** Einträge des Protokolls, in denen das Fenster von `fenster` eine Datei mit `text` zeigte. */
+const fremdeDatei = async (page, fenster, text) => (await protokoll(page)).dateien.filter(d => d.fenster === fenster && d.text.includes(text));
+
+/**
+ * F3 (Probe F): das Laden aus einem Kommentar an #1 hält die neue Datei von #1, das Blättern zu #2 die Datei von #2. Wird die alte
+ * zuerst frei, ist sie neuer als alles, was das Fenster übernommen hat — nur der Vergleich mit der offenen Aufgabe verwirft sie.
+ */
+test('F3: nach dem Blättern zeigt der Reiter „Datei“ die Datei der offenen Aufgabe, nie die der vorigen', async ({ page }) => {
+  await mitKanban(page, async k => {
+    const dateiVonEins = await antwortHalten(page, '/api/aufgaben/1');
+    const dateiVonZwei = await antwortHalten(page, '/api/aufgaben/2');
+    await fensterOeffnen(page, k, 1);
+    await page.locator('#reiter-datei').click();
+    await expect(page.locator('#dateitext')).toContainText('Abnahme prüfen');
+    await protokollStarten(page);
+    dateiVonEins.scharf();
+    await botKommentiert(page, k, 1, 'ein Laden');
+    await dateiVonEins.angekommen();
+    expect(k.lies('aufgaben/0001-abnahme-pruefen.md'), 'die gehaltene Datei von #1 trägt den Kommentar').toContain('ein Laden');
+    dateiVonZwei.scharf();
+    await page.locator('[data-act="blaettern"][data-arg="1"]').click();
+    await dateiVonZwei.angekommen();
+    await dateiVonEins.freigeben();
+    await ruhig(page, { gehalten: 1, nachLaden: false });
+    expect(await fremdeDatei(page, '#2', 'ein Laden'), 'das Fenster von #2 zeigte die neue Datei von #1').toEqual([]);
+    await dateiVonZwei.freigeben();
+    await ruhig(page, { nachLaden: false });
+    await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
+    await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
+    expect(await fremdeDatei(page, '#2', 'ein Laden'), 'das Fenster von #2 zeigte die neue Datei von #1').toEqual([]);
+    await page.unrouteAll({ behavior: 'wait' });
+    await page.reload();
+    await liveBereit(page);
+    await page.locator('.ka[data-id="2"] .t').click();
+    await page.locator('#reiter-datei').click();
+    await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
+  });
+});
