@@ -1637,18 +1637,25 @@ window.addEventListener('hashchange', laden);
  * gelesen nur von `.mod-bg`. Gesetzt nur bei verdecktem Bereich ohne Zoom, sonst entfernt; kein Fokus, kein Neuzeichnen.
  */
 function sichtbarenBereichSetzen() {
-  const bereich = window.visualViewport;
+  const versatz = tastaturVersatzInPx(innerHeight, window.visualViewport);
   const wurzelStil = document.documentElement.style;
-  const unten = innerHeight - bereich.offsetTop - bereich.height;
-  const ohneZoom = Math.abs(bereich.scale - 1) < 0.01;
-  const verdeckt = unten > 1 || bereich.offsetTop > 1;
-  if (ohneZoom && verdeckt) {
-    wurzelStil.setProperty('--kd-vv-oben', `${bereich.offsetTop}px`);
-    wurzelStil.setProperty('--kd-vv-unten', `${Math.max(0, unten)}px`);
+  if (versatz.bereichIstVerdeckt) {
+    wurzelStil.setProperty('--kd-vv-oben', `${versatz.oben}px`);
+    wurzelStil.setProperty('--kd-vv-unten', `${versatz.unten}px`);
   } else {
     wurzelStil.removeProperty('--kd-vv-oben');
     wurzelStil.removeProperty('--kd-vv-unten');
   }
+}
+/** Wie weit der sichtbare Bereich oben und unten vom Layout-Bereich abweicht; ein Zoom mit zwei Fingern zählt nicht als Verdecken (ADR-0016 Regel 2). */
+function tastaturVersatzInPx(layoutHoeheInPx, bereich) {
+  const ZOOM_TOLERANZ = 0.01;
+  const RUNDUNGS_TOLERANZ_IN_PX = 1;
+  const oben = bereich.offsetTop;
+  const unten = Math.max(0, layoutHoeheInPx - bereich.offsetTop - bereich.height);
+  const bereichIstUngezoomt = Math.abs(bereich.scale - 1) < ZOOM_TOLERANZ;
+  const randIstVerdeckt = unten > RUNDUNGS_TOLERANZ_IN_PX || oben > RUNDUNGS_TOLERANZ_IN_PX;
+  return { bereichIstVerdeckt: bereichIstUngezoomt && randIstVerdeckt, oben, unten };
 }
 let sichtbarerBereichGeplant = false;
 /** Höchstens ein Setzen je Frame, egal wie viele `resize`- und `scroll`-Ereignisse kommen (ADR-0016 Regel 1). */
