@@ -449,3 +449,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0452 Probe schmal gegen breit über alle Fenster | Operation | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0453 Mutanten M1 bis M3 | Operation | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0454 Akzeptanztest Meldung über der Tastatur | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0455 Fenster folgt dem sichtbaren Bereich | Operation | 1-2h | 0,3h | 0,3h | autonom |

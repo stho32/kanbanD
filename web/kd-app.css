@@ -240,7 +240,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .menue .e svg{margin-top:2px;color:var(--kd-muted)}
 .menue .k{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);padding:6px var(--kd-s4) 2px;background:var(--kd-bg);border-bottom:1px solid var(--kd-line)}
 /* Modal */
-.mod-bg{position:fixed;left:0;right:0;top:var(--kd-head-h);bottom:0;background:var(--kd-scrim);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+/* Oben und unten folgt das Fenster dem sichtbaren Bereich, wenn die Bildschirmtastatur ihn verdeckt (ADR-0016) */
+.mod-bg{position:fixed;left:0;right:0;top:calc(var(--kd-head-h) + var(--kd-vv-oben,0px));bottom:var(--kd-vv-unten,0px);background:var(--kd-scrim);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
 .mod{width:min(1080px,100%);height:min(780px,100%);background:var(--kd-surface);box-shadow:var(--kd-shadow-mod);display:flex;flex-direction:column;border-top:4px solid var(--cl,var(--kd-line-strong))}
 .mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(36px,var(--kd-ziel));padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
 .mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
@@ -820,7 +821,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 /* Responsive (R00077): dieselbe Oberfläche auf Tablet (bis 1024 px) und Handy (bis 640 px); der Desktop bleibt, wie er ist. */
 .pop,.kmenue{max-width:calc(100vw - 8px)}
 @media (max-width:1024px){
-  .mod-bg{top:0;padding:0}
+  .mod-bg{top:var(--kd-vv-oben,0px);padding:0}
   .mod{width:100%;height:100%}
   .leiste{flex-wrap:wrap}
 }

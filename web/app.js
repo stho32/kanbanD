@@ -1631,6 +1631,36 @@ document.addEventListener('input', e => {
   }
 });
 window.addEventListener('hashchange', laden);
+
+/**
+ * Das Fenster folgt dem sichtbaren Bereich, wenn die Bildschirmtastatur ihn verdeckt (ADR-0016): zwei Variablen an der Wurzel,
+ * gelesen nur von `.mod-bg`. Gesetzt nur bei verdecktem Bereich ohne Zoom, sonst entfernt; kein Fokus, kein Neuzeichnen.
+ */
+function sichtbarenBereichSetzen() {
+  const bereich = window.visualViewport;
+  const wurzelStil = document.documentElement.style;
+  const unten = innerHeight - bereich.offsetTop - bereich.height;
+  const ohneZoom = Math.abs(bereich.scale - 1) < 0.01;
+  const verdeckt = unten > 1 || bereich.offsetTop > 1;
+  if (ohneZoom && verdeckt) {
+    wurzelStil.setProperty('--kd-vv-oben', `${bereich.offsetTop}px`);
+    wurzelStil.setProperty('--kd-vv-unten', `${Math.max(0, unten)}px`);
+  } else {
+    wurzelStil.removeProperty('--kd-vv-oben');
+    wurzelStil.removeProperty('--kd-vv-unten');
+  }
+}
+let sichtbarerBereichGeplant = false;
+/** Höchstens ein Setzen je Frame, egal wie viele `resize`- und `scroll`-Ereignisse kommen (ADR-0016 Regel 1). */
+function sichtbarenBereichPlanen() {
+  if (sichtbarerBereichGeplant) return;
+  sichtbarerBereichGeplant = true;
+  requestAnimationFrame(() => { sichtbarerBereichGeplant = false; sichtbarenBereichSetzen(); });
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', sichtbarenBereichPlanen);
+  visualViewport.addEventListener('scroll', sichtbarenBereichPlanen);
+}
 window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
   if (stufeGewechselt) render();

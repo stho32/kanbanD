@@ -241,7 +241,7 @@ async function farbPixel(page, farbe) {
 
 /**
  * Mutantenprobe (Muster aus R00110 „Mutanten“): nennt KD_MUTANTE eine JSON-Datei `{ pfad, alt, neu }`, liefert `ziel` (Seite oder
- * Kontext) die Datei unter `pfad` mit `alt` durch `neu` ersetzt aus. Greift der Ersatz nicht, wirft die Route — der Mutant liegt
+ * Kontext) die Datei unter `pfad` mit jedem `alt` durch `neu` ersetzt aus. Greift der Ersatz nicht, wirft die Route — der Mutant liegt
  * nie im Repository. Ohne KD_MUTANTE geschieht nichts.
  */
 async function mutanteEinsetzen(ziel) {
@@ -251,7 +251,7 @@ async function mutanteEinsetzen(ziel) {
     const antwort = await route.fetch();
     const text = await antwort.text();
     if (!text.includes(alt)) throw new Error(`Mutante greift nicht: ${pfad} enthält ${JSON.stringify(alt)} nicht`);
-    await route.fulfill({ response: antwort, body: text.replace(alt, neu) });
+    await route.fulfill({ response: antwort, body: text.replaceAll(alt, neu) });
   });
 }
 

@@ -92,7 +92,6 @@ test.describe('Bildschirmtastatur, 414 px mit Touch', () => {
   test.beforeEach(async ({ page }) => { await tastaturNachbilden(page); });
 
   test('AK 11 zu US-1, US-9: abgelehnte Herkunft — Meldung und Feld über der Tastatur, auch gescrollt; Kopf unverändert', async ({ page }) => {
-    test.fail(true, '#74: das Fenster folgt dem sichtbaren Bereich erst mit B0455');
     await starten(page);
     const kopf = await rechteck(page.locator('#kopf'));
     const { meldung, feld } = await herkunftMitTastatur(page, TASTATUR_HOCH);
@@ -105,7 +104,6 @@ test.describe('Bildschirmtastatur, 414 px mit Touch', () => {
   });
 
   test('AK 11 zu US-4: „Anlegen“ mit leerem Titel — Meldung und Titel über der Tastatur, auch gescrollt; Kopf unverändert', async ({ page }) => {
-    test.fail(true, '#74: das Fenster folgt dem sichtbaren Bereich erst mit B0455');
     await starten(page);
     const kopf = await rechteck(page.locator('#kopf'));
     await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).tap();
@@ -142,7 +140,6 @@ test.describe('Bildschirmtastatur, Handy quer 844 × 390 mit Touch', () => {
   test.beforeEach(async ({ page }) => { await tastaturNachbilden(page); });
 
   test('AK 11 zu US-1 quer: bei 200 px sichtbarem Bereich liegen Meldung und Feld über der Tastatur', async ({ page }) => {
-    test.fail(true, '#74: das Fenster folgt dem sichtbaren Bereich erst mit B0455');
     await starten(page);
     const { meldung, feld } = await herkunftMitTastatur(page, TASTATUR_QUER);
     await expect.poll(() => imSichtbarenBereich(page, meldung, feld)).toEqual([]);
