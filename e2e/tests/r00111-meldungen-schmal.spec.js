@@ -15,6 +15,12 @@ const LANGE_HERKUNFT = 'Herkunft aus dem Gespräch mit dem Auftraggeber am Monta
 /** Höhe des Fußes am Desktop mit der Meldung aus US-1, gemessen vor dem Fix (ADR-0015 N1: 28 px, einzeilig). */
 const FUSS_HOEHE_VOR_DEM_FIX = 28;
 
+const MELDUNG_TITEL = 'Die Aufgabe braucht einen Titel';
+const BOARD_DATEI = 'boards/entwicklung.md';
+/** Handy hoch, quer und Tablet: die Breiten, bei denen „Anlegen“ vor dem Fix fehlte, und die schmalen (AK 7). */
+const ZWISCHENBREITEN = [{ width: 641, height: 896 }, { width: 768, height: 1024 }, { width: 844, height: 390 }];
+const SCHMALE_BREITEN = [320, 375, 414].map(width => ({ width, height: 896 }));
+
 let k;
 test.afterEach(async () => { if (k) await k.stoppen(); k = null; });
 
@@ -40,6 +46,24 @@ async function herkunftEingeben(page, fenster, wert, touch) {
   if (touch) await feld.tap(); else await feld.click();
   await page.keyboard.type(wert);
   await page.keyboard.press('Enter');
+}
+
+/** Öffnet „Neue Aufgabe“ über das „+“ der Spalte „Zu erledigen“, wie der Mensch am Handy. */
+async function neueAufgabeOeffnen(page) {
+  await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).tap();
+  const fenster = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+  await expect(fenster).toBeVisible();
+  return fenster;
+}
+
+/** Die Knöpfe im Fuß von „Neue Aufgabe“ in der Reihenfolge des Desktops. */
+function fussKnoepfe(fenster) {
+  return ['Abbrechen', 'Anlegen und weitere', 'Anlegen'].map(name => fenster.getByRole('button', { name, exact: true }));
+}
+
+/** Karten der Spalte „Zu erledigen“ in der Board-Datei, je als Link-Zeile. */
+function zuErledigen() {
+  return k.lies(BOARD_DATEI).split('## In Arbeit')[0].split('\n').filter(z => z.startsWith('- ['));
 }
 
 /**
@@ -163,6 +187,94 @@ for (const breite of [320, 375, 414]) {
       expect(imFenster[0], 'Fenster scrollt nicht quer').toBeLessThanOrEqual(imFenster[1]);
       expect(inMeldung[0], 'Meldung nicht abgeschnitten').toBeLessThanOrEqual(inMeldung[1]);
       expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' }))).toEqual(['keine Client-Rects']);
+    });
+  });
+}
+
+test.describe('„Neue Aufgabe“, 414 px mit Touch', () => {
+  test.use(HANDY);
+
+  test('US-4: Tipp auf „Anlegen“ mit leerem Titel wird gemeldet, Fokus im Titel, keine neue Aufgabe', async ({ page }) => {
+    await starten(page);
+    const fenster = await neueAufgabeOeffnen(page);
+    await fenster.getByRole('button', { name: 'Anlegen', exact: true }).tap();
+    const meldung = fenster.locator('[role=alert]');
+    await expect(meldung).toHaveText(MELDUNG_TITEL);
+    expect(await sichtbarkeit(meldung)).toEqual([]);
+    expect(await alertImSnapshot(fenster, MELDUNG_TITEL)).toHaveLength(1);
+    expect(await page.evaluate(() => document.activeElement.id)).toBe('neu-titel');
+    expect(k.lies(BOARD_DATEI)).toBe(BOARD);
+  });
+
+  test('US-5: Titel „Handy-Aufgabe“ und Tipp auf „Anlegen“ legt in „Zu erledigen“ an und schließt', async ({ page }) => {
+    await starten(page);
+    const fenster = await neueAufgabeOeffnen(page);
+    for (const knopf of fussKnoepfe(fenster)) expect(await sichtbarkeit(knopf)).toEqual([]);
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Handy-Aufgabe');
+    await fenster.getByRole('button', { name: 'Anlegen', exact: true }).tap();
+    await expect(fenster).toHaveCount(0);
+    await expect.poll(zuErledigen).toHaveLength(2);
+    expect(zuErledigen()[1]).toContain('handy-aufgabe');
+  });
+
+  test('US-6: „Anlegen und weitere“ legt an und lässt das Fenster mit leerem Titel offen', async ({ page }) => {
+    await starten(page);
+    const fenster = await neueAufgabeOeffnen(page);
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Zweite');
+    await fenster.getByRole('button', { name: 'Anlegen und weitere', exact: true }).tap();
+    await expect.poll(zuErledigen).toHaveLength(2);
+    expect(zuErledigen()[1]).toContain('zweite');
+    await expect(fenster).toBeVisible();
+    await expect(page.getByLabel('Titel der neuen Aufgabe')).toHaveValue('');
+  });
+
+  test('US-7: Tipp auf „Abbrechen“ schließt ohne neue Aufgabe', async ({ page }) => {
+    await starten(page);
+    const fenster = await neueAufgabeOeffnen(page);
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Verworfen');
+    await fenster.getByRole('button', { name: 'Abbrechen', exact: true }).tap();
+    await expect(fenster).toHaveCount(0);
+    expect(k.lies(BOARD_DATEI)).toBe(BOARD);
+    await expect(page.locator('.ka', { hasText: 'Verworfen' })).toHaveCount(0);
+  });
+});
+
+/** AK 7 und US-5 Gegeben: die drei Knöpfe ganz im Fenster, Touch-Zielmaß, „Anlegen“ zuletzt und rechtsbündig, nichts scrollt quer. */
+async function knoepfeUndBreitePruefen(page, fenster, breite, zustand) {
+  const kaesten = [];
+  for (const knopf of fussKnoepfe(fenster)) {
+    expect(await sichtbarkeit(knopf), zustand).toEqual([]);
+    const kasten = await knopf.boundingBox();
+    expect(kasten.width, `${zustand}: Knopf mindestens 44 breit`).toBeGreaterThanOrEqual(44);
+    expect(kasten.height, `${zustand}: Knopf mindestens 44 hoch`).toBeGreaterThanOrEqual(44);
+    kaesten.push(kasten);
+  }
+  const [, weitere, anlegen] = kaesten;
+  const nachWeitere = anlegen.y > weitere.y + weitere.height - 1 || (Math.abs(anlegen.y - weitere.y) < 1 && anlegen.x > weitere.x);
+  expect(nachWeitere, `${zustand}: „Anlegen“ steht hinter „Anlegen und weitere“`).toBe(true);
+  const rechts = Math.max(...kaesten.map(b => b.x + b.width));
+  expect(Math.abs(anlegen.x + anlegen.width - rechts), `${zustand}: „Anlegen“ rechtsbündig zur Gruppe`).toBeLessThanOrEqual(1);
+  const [dokument, imFenster] = await Promise.all([
+    page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]),
+    fenster.evaluate(f => [f.scrollWidth, f.clientWidth]),
+  ]);
+  expect(dokument[0], `${zustand}: Seite scrollt nicht quer`).toBeLessThanOrEqual(dokument[1]);
+  expect(dokument[0], `${zustand}: Seite höchstens so breit wie der Bildschirm`).toBeLessThanOrEqual(breite);
+  expect(imFenster[0], `${zustand}: Fenster scrollt nicht quer`).toBeLessThanOrEqual(imFenster[1]);
+}
+
+for (const viewport of [...SCHMALE_BREITEN, ...ZWISCHENBREITEN]) {
+  test.describe(`„Neue Aufgabe“, ${viewport.width} × ${viewport.height} mit Touch`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true });
+
+    test(`AK 7: bei ${viewport.width} px ist jeder Knopf ganz da, ≥ 44 × 44, „Anlegen“ zuletzt, nichts scrollt quer — beim Öffnen und mit der Meldung aus US-4`, async ({ page }) => {
+      test.fail(viewport.width === 320, 'Erwartet rot bis B0451: die Knopfgruppe (301 px) ist breiter als die Zeile und bricht nicht um (#74)');
+      await starten(page);
+      const fenster = await neueAufgabeOeffnen(page);
+      await knoepfeUndBreitePruefen(page, fenster, viewport.width, 'beim Öffnen');
+      await fenster.getByRole('button', { name: 'Anlegen', exact: true }).tap();
+      await expect(fenster.locator('[role=alert]')).toHaveText(MELDUNG_TITEL);
+      await knoepfeUndBreitePruefen(page, fenster, viewport.width, 'mit Meldung');
     });
   });
 }
