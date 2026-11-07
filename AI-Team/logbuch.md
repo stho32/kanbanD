@@ -327,3 +327,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #73 | Entwicklertest | entwicklertester | bestanden (100/100, Folge im echten Programm bestätigt) | 0:04 | — |
 | 2026-11-07 | #73 | Erledigt | dir | nach main, Gate grün, ausgeliefert | 0:05 | d82430c |
 | 2026-11-07 | #11 | Erledigt | dir | nach main zusammengeführt, Gate grün (751 passed), ausgeliefert; US-7/US-8 offen (PO Z. 148) | 0:15 | efa8607 |
+| 2026-11-07 | #75 | Architektur | architekt | weiter, keine ADR — Ursache nur im Test (Handler überdauert Testkörper), Bugkarte #76 aus Probe E | 0:10 | — |
