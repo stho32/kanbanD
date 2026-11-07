@@ -268,7 +268,6 @@ for (const viewport of [...SCHMALE_BREITEN, ...ZWISCHENBREITEN]) {
     test.use({ viewport, isMobile: true, hasTouch: true });
 
     test(`AK 7: bei ${viewport.width} px ist jeder Knopf ganz da, ≥ 44 × 44, „Anlegen“ zuletzt, nichts scrollt quer — beim Öffnen und mit der Meldung aus US-4`, async ({ page }) => {
-      test.fail(viewport.width === 320, 'Erwartet rot bis B0451: die Knopfgruppe (301 px) ist breiter als die Zeile und bricht nicht um (#74)');
       await starten(page);
       const fenster = await neueAufgabeOeffnen(page);
       await knoepfeUndBreitePruefen(page, fenster, viewport.width, 'beim Öffnen');

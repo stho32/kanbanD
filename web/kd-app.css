@@ -658,6 +658,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-muted);font-weight:400}
 .neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}
+/* Die Knöpfe von „Neue Aufgabe“ brechen als Gruppe um, bei Bedarf auch in sich; „Anlegen“ bleibt letzter und rechtsbündig (R00111 AK 7, ADR-0015 N1) */
+.nf-knoepfe{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
 .naechste-ziel{display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer}
 .naechste-box{flex:none;width:13px;height:13px;margin-top:1px;border:1px solid var(--kd-line-strong);background:var(--kd-surface)}
