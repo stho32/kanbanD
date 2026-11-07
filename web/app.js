@@ -308,15 +308,17 @@ function ichNoetig() {
 
 /** Lädt die defekte Datei des Fensters; übernommen nur, solange das Fenster dieselbe Aufgabe zeigt — defekt oder schon repariert —
     und keine neuere Antwort des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer
-    `start`. „Repariert“ setzt `zuletztFenster` nicht selbst: das folgende `dateiLaden` prüft unter derselben Nummer und übernimmt. */
+    `start`. „Repariert“ rückt `zuletztFenster` schon beim Umschalten vor — eine ältere Antwort „defekt“, die währenddessen ankommt,
+    schaltet nicht zurück (Nacharbeit 2) —, und das folgende `dateiLaden` übernimmt unter derselben Nummer (`gleicherTakt`). */
 async function defektLaden(start = naechsterTakt()) {
   const nummer = S.ui.offenDefekt;
   const aktuell = () => (S.ui.offenDefekt === nummer || S.ui.offen === nummer) && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen });
   try {
     await api('GET', '/api/aufgaben/' + nummer);
     if (!aktuell()) return;
+    zuletztFenster = start;
     S.ui.offen = nummer; S.ui.offenDefekt = null; S.ui.defektDatei = null; // repariert
-    await dateiLaden(start);
+    await dateiLaden(start, { gleicherTakt: true });
   } catch (f) {
     if (!aktuell()) return;
     zuletztFenster = start;
@@ -327,10 +329,11 @@ async function defektLaden(start = naechsterTakt()) {
 }
 
 /** Lädt Datei, Anhänge und WBS-Eintritt des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort
-    des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. */
-async function dateiLaden(start = naechsterTakt()) {
+    des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. `gleicherTakt`: das
+    Umschalten aus der Reparatur hat das Fenster unter derselben Nummer schon übernommen — sie gilt dann als nicht überholt. */
+async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}) {
   const nummer = S.ui.offen;
-  const aktuell = () => S.ui.offen === nummer && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen });
+  const aktuell = () => S.ui.offen === nummer && uebernehmen({ start, zuletzt: gleicherTakt ? zuletztFenster - 1 : zuletztFenster, marke, schlangeOffen });
   try {
     const datei = await api('GET', '/api/aufgaben/' + nummer);
     const anhaenge = await api('GET', `/api/aufgaben/${nummer}/anhaenge`);

@@ -547,3 +547,43 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
     }, MIT_ANHANG);
   });
 }
+
+/**
+ * B4 (Nacharbeit 2): Laden A (älter) liest #3 noch defekt (423 G1) und wird gehalten; die Datei wird repariert, Laden B (neuer) liest
+ * 200, schaltet das Fenster in den normalen Modus und wartet auf die Anhänge. Kommt A jetzt an, ist es älter als das Umschalten
+ * von B — es schaltet nicht in den veralteten Defektmodus zurück, und B übernimmt danach die reparierte Datei.
+ */
+for (const verzoegerungMs of [0, 250, 400]) {
+  test(`B4: eine ältere Antwort „defekt“ schaltet die neuere Reparatur nicht zurück, ${verzoegerungMs} ms`, async ({ page }) => {
+    await mitKanban(page, async k => {
+      const antwortA = await antwortHalten(page, '/api/aufgaben/3', verzoegerungMs);
+      const anhaengeB = await antwortHalten(page, '/api/aufgaben/3/anhaenge');
+      await defektFensterOeffnen(page, k);
+      antwortA.scharf();
+      k.schreib('aufgaben/0001-abnahme-pruefen.md', '---\nid: 1\ntitle: Abnahme prüfen, geändert\n---\n');
+      await antwortA.angekommen();
+      anhaengeB.scharf();
+      k.schreib(DEFEKT_PFAD, REPARIERT);
+      await anhaengeB.angekommen();
+      await ruhig(page, { gehalten: 2, nachLaden: false });
+      await antwortA.freigeben();
+      await ruhig(page, { gehalten: 1, nachLaden: false });
+      await anhaengeB.freigeben();
+      await ruhig(page);
+      await repariertSichtbar(page);
+      await page.unrouteAll({ behavior: 'wait' });
+      await page.reload();
+      await liveBereit(page);
+      await page.locator('.ka[data-id="3"] .t').click();
+      await repariertSichtbar(page);
+    }, MIT_DEFEKT);
+  });
+}
+
+/** Endbild: das normale Fenster von #3 zeigt die reparierte Datei, kein Defektfenster. */
+async function repariertSichtbar(page) {
+  await expect(page.locator('#defekt-fenster')).toHaveCount(0);
+  await expect(page.locator('.mod-kopf .id')).toHaveText('#3');
+  await page.locator('#reiter-datei').click();
+  await expect(page.locator('#dateitext')).toContainText('drei repariert');
+}
