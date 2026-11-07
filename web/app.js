@@ -834,8 +834,8 @@ async function act(a, arg, wert) {
         if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
-      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null; await dateiLaden(); break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
@@ -845,7 +845,7 @@ async function act(a, arg, wert) {
         if (!reihe.length) break;
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
-        u.gespeichert = null; u.fensterFehler = null;
+        u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null;
         await dateiLaden();
         break;
       }
@@ -1528,6 +1528,8 @@ document.addEventListener('input', e => {
     if (nf === 'titel') { const v = $('#neu-vorschau'); if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : ''; }
     return;
   }
+  // der Entwurf folgt dem Feld, damit ein Neuzeichnen die eigene Berichtigung stehen lässt
+  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.herkunftEntwurf = { nummer: S.ui.offen, wert: e.target.value }; return; }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
     $('#main').innerHTML = vHaupt();
@@ -1619,7 +1621,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
-    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
+    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.herkunftEntwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
   }

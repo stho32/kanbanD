@@ -430,6 +430,68 @@ test.describe('US-9: ohne Herkunft', () => {
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
   });
 
+  test.describe('US-9, abgelehnte Eingabe: der Entwurf gehört zum offenen Fenster und folgt dem Feld', () => {
+    const feld = page => page.getByLabel('Neue Herkunft');
+    /** Ausgangslage: „X1“ in #2 abgelehnt, Meldung sichtbar, Eingabe steht im Feld. */
+    const ablehnen = async page => {
+      await starten(page);
+      await fensterOeffnen(page, 2);
+      await feld(page).fill('X1');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.mod-fuss .fehl')).toHaveCount(1);
+      await expect(feld(page)).toHaveValue('X1');
+    };
+    /** Ändert #2 von außen und wartet, bis das Fenster neu gezeichnet ist. */
+    const vonAussenAendern = async page => {
+      const vorher = await page.evaluate(() => window.kdTest.renders());
+      expect((await page.request.patch(k.adresse + 'api/aufgaben/2', { ...ALS_ST, data: { labels: ['live'] } })).ok()).toBe(true);
+      await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+    };
+
+    test('(a) Escape und erneut öffnen: Feld leer, keine Meldung', async ({ page }) => {
+      await ablehnen(page);
+      await schliessen(page);
+      await page.locator('.ka[data-id="2"] .t').click();
+      await expect(feld(page)).toHaveValue('');
+      await expect(page.locator('.mod-fuss .fehl')).toHaveCount(0);
+    });
+
+    test('(b) Feld geleert, Änderung von außen: das Feld bleibt leer', async ({ page }) => {
+      await ablehnen(page);
+      await feld(page).fill('');
+      await feld(page).blur();
+      await vonAussenAendern(page);
+      await expect(feld(page)).toHaveValue('');
+    });
+
+    test('(c) Berichtigung ohne Enter, Änderung von außen: die Berichtigung bleibt stehen', async ({ page }) => {
+      await ablehnen(page);
+      await feld(page).fill('I0003');
+      await feld(page).blur();
+      await vonAussenAendern(page);
+      await expect(feld(page)).toHaveValue('I0003');
+    });
+
+    test('(d) Escape, eine andere Aufgabe öffnen, Escape, #2 öffnen: Feld leer', async ({ page }) => {
+      await ablehnen(page);
+      await schliessen(page);
+      await page.locator('.ka[data-id="1"] .t').click();
+      await expect(feld(page)).toHaveValue('');
+      await schliessen(page);
+      await page.locator('.ka[data-id="2"] .t').click();
+      await expect(feld(page)).toHaveValue('');
+    });
+
+    test('(e) nach erfolgreichem Speichern ist das Feld leer', async ({ page }) => {
+      await ablehnen(page);
+      await feld(page).fill('I0003');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.mod-fuss .fehl')).toHaveCount(0);
+      await expect(page.locator('#fenster .org', { hasText: 'I0003' })).toBeVisible();
+      await expect(feld(page)).toHaveValue('');
+    });
+  });
+
   test('US-9, Hilfstext: beide Herkunftsfelder nennen „ohne Herkunft“ in Anführungszeichen, nicht thin air', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
