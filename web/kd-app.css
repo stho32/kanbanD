@@ -833,7 +833,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-main,.mod-side{overflow:visible}
   .mod-main{padding:var(--kd-s4)}
   .mod-side{border-left:0;border-top:1px solid var(--kd-line)}
-  .mod-kopf .pfad,.mod-fuss,.mod-kopf .nav,#vsc{display:none}
+  .mod-kopf .pfad,.mod-fuss .tastenhinweis,.mod-kopf .nav,#vsc{display:none}
   .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2)}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}

@@ -78,7 +78,7 @@ function sekundenInBerlin(zeitpunkt) {
 test.describe('Handy, 414 px mit Touch', () => {
   test.use(HANDY);
 
-  // Erwartet rot bis zum Fix von #74: bis 640 px blendet web/kd-app.css den ganzen Fuß aus (R00111, Reproduktion)
+  // Erwartet rot bis B0449: die Meldung hat Client-Rects, aber .mod-fuss schneidet sie mit nowrap/overflow ab (#74, ADR-0015 N1)
   test.fail('US-1: abgelehnte Herkunft X1 wird bei 414 px als alert gemeldet, Fokus bleibt im Feld (#74)', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
@@ -90,9 +90,10 @@ test.describe('Handy, 414 px mit Touch', () => {
     expect(await alertImSnapshot(fenster, MELDUNG_X1)).toHaveLength(1);
     expect(await page.evaluate(() => [document.activeElement.id, document.activeElement.value])).toEqual(['herkunft-neu', 'X1']);
     expect(k.lies(AUFGABE_1)).not.toContain('X1');
+    expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' })), 'Tastenhinweise schmal nicht gezeichnet').toEqual(['keine Client-Rects']);
   });
 
-  test.fail('US-2: „gespeichert“ mit der Uhrzeit der Änderung ist bei 414 px sichtbar', async ({ page }) => {
+  test('US-2: „gespeichert“ mit der Uhrzeit der Änderung ist bei 414 px sichtbar', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
     const titel = fenster.getByLabel('Titel', { exact: true });
