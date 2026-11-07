@@ -428,3 +428,14 @@ Nie vom User erfragen.
 | 2026-11-07 | R00079 Zielspalte im Fever Chart | Karte #73: E2E-Prüfung der Zielspaltenwahl an die geordnete Commit-Folge seit der Wahl gebunden statt an `git log -1` | Nacharbeit | — | 0,2h | 0,2h | autonom |
 | 2026-11-07 | R00050 Live-Ereignisse während eigener Anfragen | Karte #75: E2E-Wackler US-1 — Testende an die letzte Auslieferung und das Neuladen bei leerer Schlange gebunden, Routen vor dem Stoppen abgewartet | Nacharbeit | — | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00050 Live-Ereignisse während eigener Anfragen | Karte #75, Nacharbeit 1: Aufräumen von US-1 übersteht einen Timeout (Server-Stopp im inneren finally), Neuladen mit eigener Frist und Meldung, Prüfung erst nach dem Zeichnen danach | Nacharbeit | — | 0,4h | 0,4h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0441 Prüfung übernehmen (samt rotem F1-Test vorab) | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0442 Laden übernimmt alles oder nichts | Integration | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0443 Marke der Warteschlange (E2E F2) | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0444 Datei nur für die offene Aufgabe (E2E F3 mit zwei gehaltenen Dateien) | Integration | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0445 Wächter der Übernahmestellen (Unit, Mutanten M1/M2) | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0446 Pfade eines verworfenen Ereignis-Ladens merken (E2E F4 zwei Wege, Mutanten per page.route) | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 1 N1: defektLaden übernimmt die Reparatur nur nach der Prüfung (E2E 0/250/400 ms, Umkehr, offene Schlange) | Operation | — | 0,4h | 0,4h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 1 N2: Wächter erkennt Alias, Object.assign(S.ui), Übernahme vor der Prüfung | Operation | — | 0,3h | 0,3h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 1 N3: Öffnen und Blättern leeren Datei, Anhänge, Eintritt (E2E zwei Wege) | Operation | — | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B4: Reparatur rückt zuletztFenster beim Umschalten vor (E2E 0/250/400 ms) | Operation | — | 0,3h | 0,3h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B5: Wächter „Aufruf vor Übernahme“ je Block (Mutante 4) | Operation | — | 0,2h | 0,2h | autonom |
