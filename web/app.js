@@ -174,11 +174,13 @@ const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.b
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
 let takt = 0, zuletztStand = 0, zuletztFenster = 0, marke = 0;
 const naechsterTakt = () => ++takt;
+/** Pfade und Spalten von Ereignissen „extern“, deren Laden verworfen wurde — das nächste übernommene Laden markiert sie. */
+const externVerworfen = [];
 
 /** Lädt den Stand vom Server und zeichnet; `nurBeiAenderung` (Live-Ereignis) zeichnet nur, wenn sich etwas geändert hat.
     Ist inzwischen ein neueres Laden übernommen oder wartet eine eigene Änderung, wird nichts übernommen, nichts gezeichnet,
-    `wennVerworfen` gerufen und `false` zurückgegeben (R00110). Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange`
-    übergibt sein Ereignis). */
+    `wennVerworfen(ueberholt)` gerufen — `ueberholt`, wenn ein neueres Laden schon übernommen ist — und `false` zurückgegeben
+    (R00110). Als Objekt, weil `laden` auch Ereignis-Handler ist (`hashchange` übergibt sein Ereignis). */
 async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}) {
   const start = naechsterTakt();
   const zustand = await api('GET', '/api/zustand');
@@ -186,7 +188,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   if (einstellungenDefekt) zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
   const sicht = zustand.eingerichtet ? await sichtLaden(zustand) : null;
   if (!uebernehmen({ start, zuletzt: zuletztStand, marke, schlangeOffen })) {
-    wennVerworfen();
+    wennVerworfen(zuletztStand > start);
     return false;
   }
   zuletztStand = start;
@@ -197,8 +199,9 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   Object.assign(S, neu);
   if (sicht) await sichtFolgen(sicht, start);
   else S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
+  const nachgetragen = externNachtragen();
   const stand = serverStand();
-  if (nurBeiAenderung && stand === geladenerStand) return false;
+  if (nurBeiAenderung && stand === geladenerStand && !nachgetragen) return false;
   geladenerStand = stand;
   render();
   // `#/wbs/<kürzel>/<id>` zeigt die Zeile einmal — spätere Ereignisse laden neu, ohne erneut zu springen
@@ -2130,16 +2133,35 @@ function spaltenJeAufgabe() {
 async function ereignis(e) {
   if (schlangeOffen > 0) return; // eigene Anfragen laufen noch; danach wird ohnehin neu geladen
   const vorher = spaltenJeAufgabe();
-  const neu = await laden({ nurBeiAenderung: true });
+  // Verworfen ist nicht „unverändert“: die Pfade gehen ans nächste übernommene Laden, sonst fehlte die Markierung (R00110 Regel 7).
+  // Ist schon ein neueres übernommen, kommt keins mehr nach — dann markiert der Stand, der das verworfene überholt hat.
+  const wennVerworfen = ueberholt => {
+    if (!e.extern) return;
+    externVerworfen.push({ pfade: e.pfade, vorher });
+    if (ueberholt && externNachtragen()) render();
+  };
+  const neu = await laden({ nurBeiAenderung: true, wennVerworfen });
   if (!e.extern || neu === false) return;
+  externMarkieren(e.pfade, vorher);
+  render();
+}
+
+/** Markiert 10 s die Aufgaben, deren Datei unter `pfade` ist, und — bei geändertem Board — die verschobenen gegenüber `vorher`. */
+function externMarkieren(pfade, vorher) {
   const jetzt = Date.now();
-  for (const a of S.aufgaben) if (e.pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
+  for (const a of S.aufgaben) if (pfade.includes('aufgaben/' + a.datei)) S.extern[a.nummer] = { at: jetzt, datei: 'aufgaben/' + a.datei };
   const boardDatei = S.ui.slug && 'boards/' + S.ui.slug + '.md';
-  if (boardDatei && e.pfade.includes(boardDatei)) {
+  if (boardDatei && pfade.includes(boardDatei)) {
     const nachher = spaltenJeAufgabe();
     for (const n of Object.keys(nachher)) if (vorher[n] !== nachher[n]) S.extern[n] = { at: jetzt, datei: boardDatei };
   }
-  render();
+}
+
+/** Trägt die Markierungen verworfener Ereignis-Ladevorgänge nach; `true`, wenn es welche gab. */
+function externNachtragen() {
+  const gemerkt = externVerworfen.splice(0);
+  for (const { pfade, vorher } of gemerkt) externMarkieren(pfade, vorher);
+  return gemerkt.length > 0;
 }
 
 function liveGetrennt() {

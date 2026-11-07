@@ -201,11 +201,27 @@ async function gegenprobeNachNeuladen(page) {
   await expect(teilaufgabenKopf(page)).toHaveText('TEILAUFGABEN 0/1');
 }
 
+/**
+ * Mutantenprobe (R00110 „Mutanten“): nennt KD_MUTANTE eine JSON-Datei `{ pfad, alt, neu }`, liefert die Seite unter `pfad` die
+ * ausgelieferte Datei mit `alt` durch `neu` ersetzt aus. Greift der Ersatz nicht, wirft die Route — der Mutant liegt nie im Repository.
+ */
+async function mutanteEinsetzen(page) {
+  if (!process.env.KD_MUTANTE) return;
+  const { pfad, alt, neu } = JSON.parse(require('node:fs').readFileSync(process.env.KD_MUTANTE, 'utf8'));
+  await page.route(url => url.pathname === pfad, async route => {
+    const antwort = await route.fetch();
+    const text = await antwort.text();
+    if (!text.includes(alt)) throw new Error(`Mutante greift nicht: ${pfad} enthält ${JSON.stringify(alt)} nicht`);
+    await route.fulfill({ response: antwort, body: text.replace(alt, neu) });
+  });
+}
+
 /** Startet kanbanD, führt `ablauf` aus und räumt auch nach einem Timeout auf (Server-Stopp im inneren finally). */
 async function mitKanban(page, ablauf) {
   const k = await kanbanStarten(einrichten(DATEIEN));
   try {
     await alsPerson(page, 'st');
+    await mutanteEinsetzen(page);
     await anfragenZaehlen(page);
     await ablauf(k);
   } finally {
@@ -237,25 +253,33 @@ test('F1 Regression: 0 ms unter CPU-Drossel 6×', async ({ page }) => {
   });
 });
 
+/**
+ * Herstellung von F2: das Laden aus der Änderung `aendern` hält seine Liste der Aufgaben; „neu“ + Enter; die alte Antwort kommt an,
+ * nachdem die Schlange leer ist, aber bevor ihr Laden (Q) und das Echo des eigenen Schreibens (E) übernommen sind.
+ */
+async function alteAntwortVorDerMarke(page, k, aendern) {
+  const liste = await antwortHalten(page, '/api/aufgaben');
+  const zustand = await alleHalten(page, '/api/zustand');
+  await fensterOeffnen(page, k, 1);
+  await protokollStarten(page);
+  liste.scharf();
+  await aendern();
+  await liste.angekommen();
+  // das Laden der leer gewordenen Schlange (Q) und das Echo des eigenen Schreibens (E) bleiben vor ihrer Übernahme stehen
+  zustand.scharf();
+  await teilaufgabeNeu(page, k);
+  await expect.poll(() => zustand.anzahl(), { ...FRIST, message: 'das Laden der Warteschlange bleibt aus' }).toBeGreaterThanOrEqual(1);
+  await expect(teilaufgabenTexte(page), 'optimistisch eingetragen').toHaveText(['neu']);
+  await liste.freigeben();
+  await expect.poll(async () => await page.evaluate(() => window.kdOffeneAnfragen) - zustand.anzahl(), { ...FRIST, message: 'die alte Antwort ist nicht verarbeitet' }).toBe(0);
+  await expect(teilaufgabenTexte(page), 'die alte Antwort ersetzt die eigene Teilaufgabe nicht').toHaveText(['neu']);
+  await zustand.freigeben();
+  await ruhig(page);
+}
+
 test('F2: alte Antwort kommt zwischen dem Leeren der Schlange und ihrem eigenen Laden an', async ({ page }) => {
   await mitKanban(page, async k => {
-    const liste = await antwortHalten(page, '/api/aufgaben');
-    const zustand = await alleHalten(page, '/api/zustand');
-    await fensterOeffnen(page, k, 1);
-    await protokollStarten(page);
-    liste.scharf();
-    await fremdeAenderung(page, k);
-    await liste.angekommen();
-    // das Laden der leer gewordenen Schlange (Q) und das Echo des eigenen Schreibens (E) bleiben vor ihrer Übernahme stehen
-    zustand.scharf();
-    await teilaufgabeNeu(page, k);
-    await expect.poll(() => zustand.anzahl(), { ...FRIST, message: 'das Laden der Warteschlange bleibt aus' }).toBeGreaterThanOrEqual(1);
-    await expect(teilaufgabenTexte(page), 'optimistisch eingetragen').toHaveText(['neu']);
-    await liste.freigeben();
-    await expect.poll(async () => await page.evaluate(() => window.kdOffeneAnfragen) - zustand.anzahl(), { ...FRIST, message: 'die alte Antwort ist nicht verarbeitet' }).toBe(0);
-    await expect(teilaufgabenTexte(page), 'die alte Antwort ersetzt die eigene Teilaufgabe nicht').toHaveText(['neu']);
-    await zustand.freigeben();
-    await ruhig(page);
+    await alteAntwortVorDerMarke(page, k, () => fremdeAenderung(page, k));
     await neuBleibtStehen(page, k);
     await gegenprobeNachNeuladen(page);
   });
@@ -297,5 +321,39 @@ test('F3: nach dem Blättern zeigt der Reiter „Datei“ die Datei der offenen 
     await page.locator('.ka[data-id="2"] .t').click();
     await page.locator('#reiter-datei').click();
     await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
+  });
+});
+
+/** Ändert #2 außerhalb von kanbanD in der Datei: nur so kommt das Ereignis als „extern“ an (R00050). */
+async function externAendern(k) {
+  k.schreib('aufgaben/0002-board-aufraeumen.md', '---\nid: 2\ntitle: Board aufräumen lassen\n---\n');
+}
+
+/** Markierung „extern“ an #2, nur dort. */
+async function nurZweiExtern(page) {
+  await expect(page.locator('.ka[data-id="2"] .t')).toHaveText('Board aufräumen lassen');
+  await expect(page.locator('.ka[data-id="2"]')).toHaveClass(/\bfremd\b/);
+  await expect(page.locator('.ka[data-id="2"] .ein')).toContainText('extern · aufgaben/0002-board-aufraeumen.md');
+  await expect(page.locator('.ka[data-id="1"]'), 'nur die geänderte Datei ist markiert').not.toHaveClass(/\bfremd\b/);
+}
+
+/**
+ * F4 (Regel 7): wie F1, aber die Änderung kommt von außen; das Laden ihres Ereignisses wird verworfen, nachdem neuere übernommen sind.
+ * Die Markierung der fremden Änderung hängt trotzdem an Karte #2 — gesetzt aus dem Stand, der es überholt hat, innerhalb der 10 s, die sie steht.
+ */
+test('F4: wird das Laden eines Ereignisses von außen nach neueren verworfen, trägt die Karte trotzdem die Markierung „extern“', async ({ page }) => {
+  await mitKanban(page, async k => {
+    await alteAntwortNachNeueren(page, k, { verzoegerungMs: 250, aendern: () => externAendern(k) });
+    await neuBleibtStehen(page, k);
+    await nurZweiExtern(page);
+  });
+});
+
+/** F4, zweiter Weg: verworfen vor der Marke, noch kein neueres übernommen — das Laden der Schlange trägt die Markierung nach. */
+test('F4: wird das Laden eines Ereignisses von außen vor der Marke verworfen, markiert das Laden der Schlange die Karte', async ({ page }) => {
+  await mitKanban(page, async k => {
+    await alteAntwortVorDerMarke(page, k, () => externAendern(k));
+    await neuBleibtStehen(page, k);
+    await nurZweiExtern(page);
   });
 });
