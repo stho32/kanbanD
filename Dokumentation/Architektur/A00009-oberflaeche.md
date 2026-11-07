@@ -24,6 +24,7 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 
 - ausgehend: `fetch` auf `/api/…` mit `X-KanbanD-Wer`, SSE für Live-Aktualisierung (`web/verbindung.js`)
 - eingehend: ausgeliefert eingebettet durch die [Web-Schicht](A00003-web-schicht.md)
+- eingehend (Soll, ADR-0016): `visualViewport` `resize`/`scroll` des Browsers → zwei Maße `--kd-vv-oben`, `--kd-vv-unten` an `document.documentElement`, gelesen nur von `.mod-bg`
 
 ## Abhaengigkeiten
 
@@ -40,6 +41,8 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 - [ADR-0014: Nur die neueste Antwort wird übernommen](../ADRs/0014-nur-die-neueste-antwort-wird-uebernommen.md) — Soll (#76, akzeptiert): ein Takt zählt jeden Start von `laden()`, `dateiLaden()`, `defektLaden()`; eine reine Prüfung `uebernehmen({ start, zuletzt, marke, schlangeOffen })` entscheidet vor jeder Übernahme in `S` (monoton, nichts bei offener Warteschlange, nichts von vor ihrer Leerung); `S.zustand` geht mit in die Übernahme auf einmal (R00061); verworfenes Laden zeichnet nicht; Proben: E2E nach Probe E mit Mutante, Unit-Test der Prüfung
 - [ADR-0014 Nachtrag N2](../ADRs/0014-nur-die-neueste-antwort-wird-uebernommen.md) — gebaut (#76, R00110, kanbanD `eb5a81f`): reines Modul `web/uebernahme.js`, ein Takt je Laden, zwei Ziele `zuletztStand` (Hauptstand) und `zuletztFenster` (Aufgabenfenster); die Markierung „extern“ setzt der überholende Stand; das Umschalten defekt → repariert ist eine Übernahme, das folgende `dateiLaden` derselben Nummer ein Gleichstand (Schuld #82: Gleichstand im Aufrufer statt im Modul); Fitness-Funktion Wächtertest `e2e/einheit/uebernahme.test.js`
 - [ADR-0015: Meldungen und Aktionen überstehen jede Breite](../ADRs/0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) — Soll (#74, akzeptiert): Breitenregeln blenden nie einen Container mit Meldung (`role=alert|status`, `aria-live`) oder einziger Aktion aus, nur markierte Hinweise einzeln; der Fuß `.mod-fuss` bleibt Meldungsort je Fenster in jeder Breite und bricht schmal um; Meldung nimmt keinen Fokus; ab 641 px unverändert; Probe bei 414/1280 px: Meldung und Knöpfe gegen Desktop
+- [ADR-0015 Nachtrag N1](../ADRs/0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) — Soll (#74, R00111): Regel 5 ersetzt — der Fuß bricht in jeder Breite um, sobald sein Inhalt nicht passt, einzeilig nur, wo alles passt (Aufgabenfenster mit Meldung aus US-1 bei 1280 px gleich hoch); `overflow:hidden` und `nowrap` am Fuß entfallen; erledigt #84 sachlich; Kontexttabelle „gespeichert HH:MM:SS“
+- [ADR-0016: Fenster folgen dem sichtbaren Bereich](../ADRs/0016-fenster-folgen-dem-sichtbaren-bereich.md) — Soll (#74, R00111, akzeptiert, erprobt): ein Hörer auf `visualViewport` `resize`/`scroll`, gedrosselt je Frame, setzt `--kd-vv-oben`/`--kd-vv-unten` nur bei verdecktem Bereich ohne Zoom; nur `.mod-bg` liest sie mit dem heutigen Wert als Rückfall (Desktop ohne Effekt); kein `.focus()`, kein Neuzeichnen; verworfen `interactive-widget` (kein iOS, nicht prüfbar), Vollbild-Fenster, `scrollIntoView`
 
 ## Offene Fragen
 
@@ -84,3 +87,5 @@ Die Oberfläche zeigt Boards im Browser als Einzelseite, die allein über die AP
 - nachgeführt 2026-11-07 nach Merge #76 (R00110, ADR-0014 Nachtrag N2)
 - Ist 2026-11-07 (Karte #74, kanbanD `6636db3`): bis 640 px ist `.mod-fuss` ganz ausgeblendet (`web/kd-app.css:836`). Damit fehlen auf dem Handy die Meldung des Aufgabenfensters (`web/ansicht.js:256`), Meldung und Knöpfe „Abbrechen“, „Anlegen und weitere“, „Anlegen“ von „Neue Aufgabe“ (`:187`) und der Erklärsatz des Defektfensters (`:520`). Isolierte Probe mit den echten Stilen: bei 414/640 px 0 Client-Rects und kein Eintrag im Accessibility-Snapshot, ab 641 px sichtbar. Soll nach ADR-0015.
 - nachgeführt 2026-11-07 nach #74 (ADR-0015)
+- Ist 2026-11-07 (Karte #74, R00111, kanbanD `791509c`): `.mod-bg` endet an der Unterkante des Layouts (`web/kd-app.css:243`, `:820ff`), kein Code liest `visualViewport`, `web/index.html:5` ohne `interactive-widget`. Probe mit nachgebildeter Tastatur (414 × 896, sichtbar 500): Meldung unten 868 px, Feld 758–806 px — unter der Tastatur; mit Bindung nach ADR-0016 Meldung 472 px, Feld im sichtbaren Bereich, Desktop identisch. `.mod-fuss` schneidet bei 1280 px eine lange Meldung ab (`:367`, Meldung bis 2195 px, Fuß bis 1180 px). Soll nach ADR-0015 N1 und ADR-0016.
+- nachgeführt 2026-11-07 nach #74 (ADR-0015 N1, ADR-0016)
