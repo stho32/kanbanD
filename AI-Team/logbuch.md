@@ -341,3 +341,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #76 | Entwicklung | entwickler | bestanden (6 Bubbles, Mutanten 10/10 rot, Regel 7 erweitert; Leseliste nachgefordert; agent aac2ad2) | 1:00 | 949b364 |
 | 2026-11-07 | #76 | Auto-Reviews | architektur-reviewer | befund (B1 Muss defektLaden ohne Takt; B2 ADR-N2, B3 A00009) | 0:05 | — |
 | 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden mit Sollte (B1 = arev B1, B2 Wächter-Alias, A1 Rückschritt Blättern) → Nacharbeit 1; Karten #79, #80 | 0:06 | — |
+| 2026-11-07 | #76 | Nacharbeit | entwickler | bestanden (N1–N3, Gate 554/291/765 grün) → Auto-Reviews Wiederholung | 0:21 | 6f96a3e |
