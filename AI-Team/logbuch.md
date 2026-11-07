@@ -347,3 +347,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #76 | Nacharbeit | entwickler | bestanden (Nacharbeit 2: B4 gleicherTakt, B5 Wächter je Block; Gate 554/294/768 grün) → Auto-Reviews | 0:16 | 51fcd1f |
 | 2026-11-07 | #76 | Auto-Reviews | architektur-reviewer | bestanden (Wiederholung 2; O1 Gleichstand ins Modul, O2 Klammer-Annahme; N2/A00009 nach Merge) | 0:04 | — |
 | 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden (Wiederholung 2, frischer Reviewer; Folgekarten #81 423 im normalen Fenster, #82 Gleichstand ins Modul) → Entwicklertest | 0:03 | — |
+| 2026-11-07 | #76 | Entwicklertest | entwicklertester | bestanden (US-1..US-5, Kontrollprobe mit Mutante rot, explorativ 3 Charten ohne Befund) | 0:45 | — |
