@@ -32,6 +32,8 @@ test.describe('R00078', () => {
   });
   test.afterEach(() => k.stoppen());
   const kanbandCommits = () => k.git('log', '--reverse', '--format=%an|%s').split('\n').filter(z => z.startsWith('kanbanD|')).map(z => z.slice(8));
+  // alle Commits nach `stand`, älteste zuerst — bleibt auch dann richtig, wenn kanbanD nach der Aktion noch nachträgt
+  const commitsSeit = stand => k.git('log', '--reverse', '--format=%an|%s', `${stand}..HEAD`).split('\n').filter(Boolean);
 
   test('US-1 bis US-3: Zieltermin wählen, Puffer vorschlagen, Bahn mit Zonen, Tooltip, Cache, verwerfen', async ({ page }) => {
     await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { headers: { 'X-KanbanD-Wer': 'st' }, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red' }, { name: 'Review', datum: tag(5), farbe: 'blue' }] });
@@ -126,8 +128,13 @@ test.describe('R00078', () => {
     const wahl = page.getByLabel('Erledigt heißt');
     await expect(wahl.locator('option')).toHaveText(['Spalte „In Arbeit“', 'Spalte „Erledigt“ (Standard)']);
     await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „Erledigt“');
+    const vorDerWahl = k.git('rev-parse', 'HEAD');
     await wahl.selectOption({ label: 'Spalte „In Arbeit“' });
-    await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|Fever Chart von „Entwicklung“ eingestellt: .*, erledigt heißt „In Arbeit“$/);
+    // die Wahl ändert den Cache-Schlüssel: auf die Einstellung folgt der Cache-Commit von kanbanD
+    await expect.poll(() => commitsSeit(vorDerWahl)).toEqual([
+      expect.stringMatching(/^Stefan\|Fever Chart von „Entwicklung“ eingestellt: .*, erledigt heißt „In Arbeit“$/),
+      'kanbanD|Fever Chart „Entwicklung“: 10 Tage ergänzt',
+    ]);
     expect(k.lies('boards/entwicklung.md')).toContain('target-column: In Arbeit}');
     await expect(page.locator('#fb-kennzahl')).toContainText('erledigt = Spalte „In Arbeit“');
     await expect.poll(kanbandCommits).toEqual(['Fever Chart „Entwicklung“: 10 Tage ergänzt', 'Fever Chart „Entwicklung“: 10 Tage ergänzt']);

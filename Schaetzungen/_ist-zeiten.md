@@ -409,3 +409,4 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0425 Die Personentabelle scrollt bei Touch nur in ihrem benannten Rahmen quer | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1: Merge main, Token-Parser je Ebene, Platzhalter im Fokus, Router-Vollständigkeit, US-4-Linie, eine Ansichtenliste | Nacharbeit | 1-2h | 1h | 1h | autonom |
 | 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1, Folge PO Z. 141: Ausweichprobe 320 px als Fall A einzeilig und B Umbruch mit Vor- und Gegenbedingung, zwei Mutanten | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-07 | R00079 Zielspalte im Fever Chart | Karte #73: E2E-Prüfung der Zielspaltenwahl an die geordnete Commit-Folge seit der Wahl gebunden statt an `git log -1` | Nacharbeit | — | 0,2h | 0,2h | autonom |
