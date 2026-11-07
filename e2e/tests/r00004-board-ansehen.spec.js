@@ -34,7 +34,7 @@ test.describe('R00004', () => {
     const [mit, ohne] = await Promise.all([zwei, page.locator('.ka[data-id="3"]')].map(l => l.evaluate(k => getComputedStyle(k).backgroundColor)));
     expect(mit).not.toBe(ohne);
     await expect(zwei.locator('.pk')).toHaveText('ST');
-    await expect(zwei.locator('.due')).toHaveText('2030-01-31');
+    await expect(zwei.locator('.due')).toHaveText('31.01.2030');
     await expect(zwei.locator('.org')).toHaveText('I0004');
     await expect(page.locator('.ka[data-id="1"] .tk')).toHaveText('☑ 1/3');
     await expect(page.locator('.ka[data-id="3"] .lbl')).toHaveText('ui');

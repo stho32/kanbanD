@@ -4,6 +4,8 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
 
+/** Tag als TT.MM.JJJJ, wie die Tabellenansicht ihn zeigt (R00109). */
+const tagLang = n => tag(n).split('-').reverse().join('.');
 const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 function commitAm(ordner, n, board) {
   fs.writeFileSync(ordner + '/boards/entwicklung.md', board);
@@ -164,8 +166,8 @@ test.describe('R00078', () => {
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toMatch(/^Fever Chart von „Entwicklung“ eingestellt/);
     expect(k.lies('boards/entwicklung.md')).toContain('resolution: week');
     // gemessen wird ab Tag −6 (drei Läufe), eine Woche zurück liegt davor: nur der letzte Stand bleibt
-    expect(taeglich).toEqual([-6, -5, -4, -3, -2, -1, 0].map(tag));
-    await expect(zeilen).toHaveText([tag(0)]);
+    expect(taeglich).toEqual([-6, -5, -4, -3, -2, -1, 0].map(tagLang));
+    await expect(zeilen).toHaveText([tagLang(0)]);
     await expect(page.locator('.dlegende')).toContainText('ein Punkt je Woche');
     expect(kanbandCommits()).toHaveLength(1);
   });

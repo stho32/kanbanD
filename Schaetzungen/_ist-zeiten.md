@@ -409,4 +409,20 @@ Nie vom User erfragen.
 | 2026-11-06 | R00108 Zielgrößen 24 px, Touch 44 px | B0425 Die Personentabelle scrollt bei Touch nur in ihrem benannten Rahmen quer | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1: Merge main, Token-Parser je Ebene, Platzhalter im Fokus, Router-Vollständigkeit, US-4-Linie, eine Ansichtenliste | Nacharbeit | 1-2h | 1h | 1h | autonom |
 | 2026-11-06 | R00107 Kontrast: Farbrollen in Paaren | Nacharbeit 1, Folge PO Z. 141: Ausweichprobe 320 px als Fall A einzeilig und B Umbruch mit Vor- und Gegenbedingung, zwei Mutanten | Nacharbeit | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0426 Kulturmodul mit Jahreswechsel-Test | Standard | 1,5-2,5h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0427 ISO-Probe mit Selbstproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0435 Beschriftungsprobe mit Selbstproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0428 Fälligkeit auf der Karte und Schnellvorschau | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0429 Datumsangaben im Aufgabenfenster | Standard | 1,5-2,5h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0430 Probe über Karte und Fenster | Standard | 0,5-1,5h | 0,4h | 0,4h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0431 Personen und Stundenzettel | Standard | 0,5-1,5h | 0,2h | 0,2h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0432 Berichte: Tabellen, Achsen, Tooltips | Standard | 1-2h | 0,9h | 0,9h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0433 Probe über alle Ansichten | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0434 Restfunde der Probe | Standard | 1-3h | 0,1h | 0,1h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0438 Chip und Hinweis „ohne Herkunft“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0439 Eingabe „ohne Herkunft“ | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | B0440 Eingabe „ohne Herkunft“ in „Neue Aufgabe“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-06 | R00109 Datumsangaben und Feldbeschriftungen deutsch | Lauf R00109 | Konsolidierung | — | — | 0,3h | autonom |
+| 2026-11-07 | R00109 Datumsangaben und Feldbeschriftungen deutsch | Nacharbeit 1: herkunftAusFeld mit Unit-Ebene, vorgelesene Fälligkeit, esc() an Datumsausgaben, Feldwert nach 400, Hilfstext beider Herkunftsfelder, Rechtschreibung | Nacharbeit | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-07 | R00109 Datumsangaben und Feldbeschriftungen deutsch | Nacharbeit 2: Entwurf „Neue Herkunft“ mit Ende und Mitschreiben, fünf Proben samt Mutante, Guard-Fall datumKurz, Signal-Escape | Nacharbeit | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-07 | R00079 Zielspalte im Fever Chart | Karte #73: E2E-Prüfung der Zielspaltenwahl an die geordnete Commit-Folge seit der Wahl gebunden statt an `git log -1` | Nacharbeit | — | 0,2h | 0,2h | autonom |

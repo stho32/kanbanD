@@ -16,7 +16,7 @@ test.describe('R00013', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
-    await expect(page.locator('.km').first()).toContainText('Claude · 2026-10-17 09:00');
+    await expect(page.locator('.km').first()).toContainText('Claude · 17.10.2026 09:00');
     await expect(page.locator('.km p').first()).toHaveText('ErsterGedanke');
     await page.getByLabel('Neuer Kommentar').fill('Gut so.');
     await page.keyboard.press('Enter');

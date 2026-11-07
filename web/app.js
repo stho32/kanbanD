@@ -333,7 +333,7 @@ function neuEintrag(titel, f) {
   const s = schnelleingabe(titel, schnellUmfeld(), new Date());
   const vereint = (a, b) => [...new Set([...a, ...b])];
   const labels = f.labels.split(',').map(x => x.trim()).filter(Boolean);
-  const herkunft = f.herkunft.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+  const herkunft = herkunftAusFeld(f.herkunft, s.herkunft);
   // @kürzel ersetzt die Vorbelegung (mich), solange niemand die Zuständigen von Hand gewählt hat (R00028)
   const zust = s.zustaendige.length ? (f.zustGewaehlt ? vereint(f.zust, s.zustaendige) : s.zustaendige) : f.zust;
   const e = { titel: s.titel || titel.trim(), zustaendige: zust, labels: vereint(labels, s.labels), herkunft: vereint(herkunft, s.herkunft) };
@@ -372,12 +372,14 @@ async function schreiben(methode, pfad, daten) {
 }
 
 async function aufgabeAendern(nummer, aenderung) {
-  if (ichNoetig()) { render(); return; }
+  if (ichNoetig()) { render(); return false; }
+  let gelungen = true;
   try {
     await api('PATCH', '/api/aufgaben/' + nummer, aenderung);
     S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
-  } catch (f) { S.ui.fensterFehler = f.message; }
+  } catch (f) { S.ui.fensterFehler = f.message; gelungen = false; }
   await laden();
+  return gelungen;
 }
 
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
@@ -832,8 +834,8 @@ async function act(a, arg, wert) {
         if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; await dateiLaden(); break;
-      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null; await dateiLaden(); break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
@@ -843,7 +845,7 @@ async function act(a, arg, wert) {
         if (!reihe.length) break;
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
-        u.gespeichert = null; u.fensterFehler = null;
+        u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null;
         await dateiLaden();
         break;
       }
@@ -1147,7 +1149,12 @@ async function act(a, arg, wert) {
         if (!(wert || '').trim() || ichNoetig()) break;
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
         u.fokus = '#herkunft-neu';
-        return aufgabeAendern(u.offen, { herkunft: wert.trim().toLowerCase() === 'thin air' ? ['thin air'] : [...alt, wert.trim()] });
+        // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
+        u.herkunftEntwurf = { nummer: u.offen, wert };
+        const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] });
+        if (gelungen) u.herkunftEntwurf = null;
+        render();
+        return;
       }
       case 'herkunft-weg': {
         if (ichNoetig()) break;
@@ -1521,6 +1528,8 @@ document.addEventListener('input', e => {
     if (nf === 'titel') { const v = $('#neu-vorschau'); if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : ''; }
     return;
   }
+  // der Entwurf folgt dem Feld, damit ein Neuzeichnen die eigene Berichtigung stehen lässt
+  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.herkunftEntwurf = { nummer: S.ui.offen, wert: e.target.value }; return; }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
     $('#main').innerHTML = vHaupt();
@@ -1612,7 +1621,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
-    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; render(); return; }
+    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.herkunftEntwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
   }

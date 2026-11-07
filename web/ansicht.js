@@ -161,7 +161,7 @@ function vIchKnopf() {
 function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: S.zustand.einstellungen.klassen }; }
 function vSchnellVorschau(text) {
   const s = schnelleingabe(text, schnellUmfeld(), new Date());
-  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(s.faellig)}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
+  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(datumLang(s.faellig))}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
   return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
 }
 /* ── Dialog „Neue Aufgabe“ — alle Felder sofort, wie in Kanbanflow ── */
@@ -183,7 +183,7 @@ ${b ? `<span class="k">column</span><span class="w"><select data-nf="spalte" ari
 <span class="k">assignees</span><span class="w wrap">${ps.map(p => `<button class="as${f.zust.includes(p.kuerzel) ? ' an' : ''}" data-act="nf-zust" data-arg="${esc(p.kuerzel)}" aria-pressed="${f.zust.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-nf="labels" value="${esc(f.labels)}" placeholder="ui, daten" aria-label="Labels der neuen Aufgabe"></span>
 <span class="k">due</span><span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
-<span class="k">origins</span><span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
+<span class="k">origins</span><span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" title="${HERKUNFT_HILFE}" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
   const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" role="alert">${esc(f.fehler)}</span>` : '<span><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span style="margin-left:auto;display:flex;gap:6px"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
   return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
 }
@@ -252,7 +252,7 @@ function vFenster() {
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
   const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
   const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
-  const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(a.archiviert)} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
+  const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
@@ -261,7 +261,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(x)} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder thin air · Enter" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -279,7 +279,7 @@ function vDurchlaeufe(a) {
   // neueste oben; in derselben Minute entscheidet die Reihenfolge im Block
   const ds = (a.durchlaeufe || []).map((d, i) => ({ d, i })).sort((x, y) => zeitMs(y.d.zeitpunkt) - zeitMs(x.d.zeitpunkt) || y.i - x.i).map(x => x.d);
   if (!ds.length) return '';
-  const zeilen = ds.map(d => `<tr><td class="mono">${esc(ortszeit(d.zeitpunkt).slice(5))}</td><td>${esc(d.phase)}</td><td><span class="erg ${esc(d.ergebnis)}">${esc(d.ergebnis)}</span></td><td>${pk(d.wer)}${esc(per(d.wer).name)}</td><td class="r mono">${d.dauer_minuten == null ? '–' : hm(d.dauer_minuten * 6e4)}</td><td>${esc(d.text)}</td></tr>`).join('');
+  const zeilen = ds.map(d => `<tr><td class="mono">${esc(zeitpunktKurz(d.zeitpunkt, isoD(Date.now())))}</td><td>${esc(d.phase)}</td><td><span class="erg ${esc(d.ergebnis)}">${esc(d.ergebnis)}</span></td><td>${pk(d.wer)}${esc(per(d.wer).name)}</td><td class="r mono">${d.dauer_minuten == null ? '–' : hm(d.dauer_minuten * 6e4)}</td><td>${esc(d.text)}</td></tr>`).join('');
   return `<div class="abs" id="durchlaeufe"><h3>DURCHLÄUFE <span class="mono">kanbanD-runs · ${ds.length}</span></h3><table class="pt dicht dl-tab"><thead><tr><th>Zeit</th><th>Phase</th><th>Ergebnis</th><th>Wer</th><th class="r">Dauer</th><th>Text</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
 }
 const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
@@ -292,7 +292,7 @@ function ichPerson() {
 }
 function vKommentare(a) {
   const me = ichPerson();
-  return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><p>${esc(k.text).replace(/\n/g, '<br>')}</p><span class="mono">${esc(per(k.wer).name)} · ${esc(ortszeit(k.zeitpunkt))}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
+  return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><p>${esc(k.text).replace(/\n/g, '<br>')}</p><span class="mono">${esc(per(k.wer).name)} · ${esc(zeitpunktLang(k.zeitpunkt))}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
 }
 /** Kästchen hakt ab, Klick auf den Text bearbeitet ihn (R00066), Ziehen ordnet um (R00067). */
 function vTeilaufgaben(a) {
@@ -309,7 +309,7 @@ function vZeiten(a) {
   const summe = summeMs(a.zeiten, jetzt, z => laufBeginn(a, z));
   const zeilen = a.zeiten.map((z, i) => ({ z, i })).sort((x, y) => zeitMs(y.z.beginn) - zeitMs(x.z.beginn)).map(({ z, i }) => u.zeitEdit === z.kennung
     ? `<tr class="edit"><td colspan="5"><input class="mini-inp" id="z-beginn" value="${esc(z.beginn)}" aria-label="Beginn" data-enter="zeit-ok" data-arg="${esc(z.kennung)}">${z.ende ? `<input class="mini-inp" id="z-ende" value="${esc(z.ende)}" aria-label="Ende" data-enter="zeit-ok" data-arg="${esc(z.kennung)}">` : ' <span class="muted">läuft</span>'}<button class="btn btn-sym" data-act="zeit-ok" data-arg="${esc(z.kennung)}" aria-label="Korrektur speichern">✓</button></td></tr>`
-    : `<tr data-zeit="${i}" data-kennung="${esc(z.kennung)}"><td class="mono">${esc(ortszeit(z.beginn).slice(5, 10))}</td><td class="mono">${esc(ortszeit(z.beginn).slice(11))}–${z.ende ? esc(ortszeit(z.ende).slice(11)) : '…'}</td><td>${pk(z.wer)}</td><td class="r">${z.ende ? hm(dauer(z)) : `<span class="lauf${z.wer === S.ich ? ' eigen' : ''}"><span data-since="${laufBeginn(a, z)}">${hm(dauer(z))}</span></span>`}</td><td class="x"><button class="btn btn-sym" data-act="zeit-edit" data-arg="${esc(z.kennung)}" title="korrigieren" aria-label="Zeit ${i + 1} korrigieren">✎</button>${z.ende ? `<button class="btn btn-sym" data-act="zeit-weg" data-arg="${esc(z.kennung)}" title="Eintrag löschen" aria-label="Zeit ${i + 1} löschen">✕</button>` : ''}</td></tr>`).join('');
+    : `<tr data-zeit="${i}" data-kennung="${esc(z.kennung)}"><td class="mono">${esc(datumKurz(ortszeit(z.beginn), isoD(Date.now())))}</td><td class="mono">${esc(ortszeit(z.beginn).slice(11))}–${z.ende ? esc(ortszeit(z.ende).slice(11)) : '…'}</td><td>${pk(z.wer)}</td><td class="r">${z.ende ? hm(dauer(z)) : `<span class="lauf${z.wer === S.ich ? ' eigen' : ''}"><span data-since="${laufBeginn(a, z)}">${hm(dauer(z))}</span></span>`}</td><td class="x"><button class="btn btn-sym" data-act="zeit-edit" data-arg="${esc(z.kennung)}" title="korrigieren" aria-label="Zeit ${i + 1} korrigieren">✎</button>${z.ende ? `<button class="btn btn-sym" data-act="zeit-weg" data-arg="${esc(z.kennung)}" title="Eintrag löschen" aria-label="Zeit ${i + 1} löschen">✕</button>` : ''}</td></tr>`).join('');
   return `<div class="abs"><h3>ZEITEN <span class="mono" id="zeitsumme">kanbanD-time · ${hm(summe)}</span></h3><table class="zt">${zeilen}</table><input class="inp add" id="zeit-neu" placeholder="${me ? '+ Zeit nachtragen, z. B. 0:45 · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="zeit-neu" aria-label="Zeit nachtragen"${me ? '' : ' disabled'}></div>`;
 }
 
@@ -369,6 +369,15 @@ const klasse = k => k && S.zustand.einstellungen && S.zustand.einstellungen.klas
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
+/** Hilfstext der Herkunftsfelder: was man eingeben kann, der Eingabewert „ohne Herkunft“ in Anführungszeichen. */
+const HERKUNFT_HILFE = `WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder „${OHNE_HERKUNFT}“ · Enter`;
+/** Abgelehnte Eingabe im Feld „Neue Herkunft“ dieser Aufgabe, sonst leer. */
+function herkunftEntwurf(a) {
+  const e = S.ui.herkunftEntwurf;
+  if (!e || e.nummer !== a.nummer) return '';
+  return e.wert;
+}
+
 function quelleLink(x) {
   const q = S.herkunft[x];
   return q ? `vscode://file${q.datei}:${q.zeile}` : null;
@@ -382,7 +391,7 @@ function anwendungenZahl() {
 const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenZahl() > 1;
 function vHerkunftChip(x) {
   const q = S.herkunft[x], h = quelleLink(x);
-  if (x === 'thin air') return `<span class="org leer" title="ohne Herkunft">thin air</span>`;
+  if (x === 'thin air') return `<span class="org leer" title="${OHNE_HERKUNFT}">${OHNE_HERKUNFT}</span>`;
   if (mehrdeutig(x)) return `<span class="org mehrdeutig" title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
   return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
@@ -489,7 +498,8 @@ function vPreisetikett(a, vorSumme) {
 function vKarte(a, fertig) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
-  const due = a.faellig ? `<span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}">${esc(a.faellig)}</span>` : '';
+  // vorgelesen wird „fällig“ mit Jahr, die sichtbare Kurzform bleibt stumm
+  const due = a.faellig ? `<span class="vh">fällig ${esc(datumLang(a.faellig))}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${esc(datumLang(a.faellig))}">${esc(datumKurz(a.faellig, isoD(Date.now())))}</span>` : '';
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const lz = rs.length ? `<span class="lauf${eigen ? ' eigen' : ''}" title="läuft: ${esc(rs.map(z => per(z.wer).name).join(', '))}">${rs.length > 1 ? rs.length + '× ' : ''}<span data-since="${erster}" data-fmt="s">${hms(Date.now() - erster)}</span></span>` : '';
@@ -569,7 +579,7 @@ function vReservierungFeld(a) {
 const reservierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben.map(n => ({ sp, a: aufgabe(n) }))).filter(x => x.a && !x.a.archiviert && gueltigeReservierung(x.a)) : [];
 function vReservierungenPop() {
   const zeilen = reservierteDesBoards();
-  const tabelle = zeilen.length ? `<div class="res-rahmen"><table class="pt dicht" id="reservierungen"><thead><tr><th>Karte</th><th>Titel</th><th>Spalte</th><th>Person</th><th>Instanz</th><th>seit</th><th class="r">noch</th><th></th></tr></thead><tbody>${zeilen.map(({ sp, a }) => { const r = a.reservierung; return `<tr data-reserviert="${a.nummer}"><td><a href="#" class="id" data-act="oeffnen" data-arg="${a.nummer}">#${a.nummer}</a></td><td>${esc(a.titel)}</td><td>${esc(sp.name)}</td><td>${pk(r.wer)}${esc(per(r.wer).name)}</td><td class="mono">${esc(r.instanz)}</td><td class="mono">${esc(ortszeit(r.seit).slice(5))}</td><td class="r num">${hm(reservierungRest(r, Date.now()))}</td><td><button class="btn" data-act="freigeben" data-arg="${a.nummer}">freigeben</button></td></tr>`; }).join('')}</tbody></table></div>` : '<div class="leer">Keine gültigen Reservierungen auf diesem Board.</div>';
+  const tabelle = zeilen.length ? `<div class="res-rahmen"><table class="pt dicht" id="reservierungen"><thead><tr><th>Karte</th><th>Titel</th><th>Spalte</th><th>Person</th><th>Instanz</th><th>seit</th><th class="r">noch</th><th></th></tr></thead><tbody>${zeilen.map(({ sp, a }) => { const r = a.reservierung; return `<tr data-reserviert="${a.nummer}"><td><a href="#" class="id" data-act="oeffnen" data-arg="${a.nummer}">#${a.nummer}</a></td><td>${esc(a.titel)}</td><td>${esc(sp.name)}</td><td>${pk(r.wer)}${esc(per(r.wer).name)}</td><td class="mono">${esc(r.instanz)}</td><td class="mono">${esc(zeitpunktLang(r.seit))}</td><td class="r num">${hm(reservierungRest(r, Date.now()))}</td><td><button class="btn" data-act="freigeben" data-arg="${a.nummer}">freigeben</button></td></tr>`; }).join('')}</tbody></table></div>` : '<div class="leer">Keine gültigen Reservierungen auf diesem Board.</div>';
   return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:820px;max-width:calc(100vw - 32px)" role="dialog" aria-label="Aufgabenreservierungen"><h4>AUFGABENRESERVIERUNGEN <span class="mono">${zeilen.length}</span></h4>${tabelle}<div class="fuss">Eine Reservierung hält 24 h; Agenten lassen reservierte Karten beim Ziehen aus.${zeilen.length ? ` <button class="btn" data-act="alle-freigeben" style="margin-left:auto">alle freigeben</button>` : ''}</div></div>`;
 }
 
@@ -614,13 +624,12 @@ const KALENDER = '<svg class="i-sig strich" viewBox="0 0 24 24" aria-hidden="tru
 const signale = () => (S.zustand.einstellungen && S.zustand.einstellungen.signale) || [];
 const signalDef = s => signale().find(g => g.schluessel === s);
 const signalFarbe = s => (g => g ? terminFarbe(g.farbe) : 'var(--kd-muted)')(signalDef(s));
-const deTag = iso => iso.split('-').reverse().join('.');
 /** Die Signale der Karte: gesetzte als Knopf (Klick nimmt zurück), die Fälligkeit als Kalender. */
 function vSignale(a, fertig) {
   const s = aufgabenSignale(a, isoD(Date.now()), fertig);
   if (!s.length) return '';
   return `<span class="sigs">${s.map(x => {
-    if (x.faellig) { const t = x.faellig === 'heute' ? 'heute fällig' : `überfällig seit ${deTag(a.faellig)}`; return `<span class="signal faellig ${x.faellig}" role="img" aria-label="${t}" title="${t}">${KALENDER}</span>`; }
+    if (x.faellig) { const t = x.faellig === 'heute' ? 'heute fällig' : `überfällig seit ${esc(datumLang(a.faellig))}`; return `<span class="signal faellig ${x.faellig}" role="img" aria-label="${t}" title="${t}">${KALENDER}</span>`; }
     const g = signalDef(x.schluessel), name = g ? g.bezeichnung : x.schluessel;
     return `<button class="signal" data-act="signal-aus" data-arg="${a.nummer}|${esc(x.schluessel)}" style="--sg:${esc(signalFarbe(x.schluessel))}" aria-label="Signal ${esc(name)} zurücknehmen" title="${esc(name)} — Klick nimmt das Signal zurück">${FACKEL}</button>`;
   }).join('')}</span>`;
@@ -724,7 +733,7 @@ function vAufgaben() {
   const u = S.ui, me = ichPerson();
   const zeilen = S.aufgaben.filter(a => listenBereich(a, u.listBereich) && passt(a, u.filter, { ich: S.ich, bereich: 'alle', personen: personen() })).map(a => {
     const cl = klasse(a.klasse), orte = liegtAuf(a);
-    return `<tr class="${a.archiviert ? 'ruhe' : ''}" data-zeile="${a.nummer}" tabindex="0"${a.archiviert ? '' : ' draggable="true" title="Ziehen auf eine Spalte rechts oder ins Archiv"'}><td class="mono">#${a.nummer}</td><td class="tt"><a href="#" data-act="oeffnen" data-arg="${a.nummer}">${esc(a.titel)}</a>${a.archiviert ? ` <span class="lbl">archiviert ${esc(a.archiviert)}</span>` : ''}</td><td>${cl ? `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>` : a.klasse ? esc(a.klasse) : ''}</td><td><span class="avs">${a.zustaendige.map(pk).join('')}</span></td><td class="orte">${orte.length ? orte.map(({ b, sp }) => `<span class="lbl ort">${esc(b.titel)} · ${esc(sp.name)}<button class="lnk lnk-x" data-act="abnehmen" data-arg="${esc(b.slug)}|${a.nummer}" title="von ${esc(b.titel)} nehmen" aria-label="#${a.nummer} von ${esc(b.titel)} nehmen">✕</button></span>`).join(' ') : '<span class="muted">auf keinem Board</span>'}</td><td>${a.archiviert ? `<button class="btn" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button>` : `<button class="btn" id="leg-${a.nummer}" data-act="legen-pop" data-arg="${a.nummer}" aria-haspopup="menu">auf Board legen ▾</button>`}</td></tr>`;
+    return `<tr class="${a.archiviert ? 'ruhe' : ''}" data-zeile="${a.nummer}" tabindex="0"${a.archiviert ? '' : ' draggable="true" title="Ziehen auf eine Spalte rechts oder ins Archiv"'}><td class="mono">#${a.nummer}</td><td class="tt"><a href="#" data-act="oeffnen" data-arg="${a.nummer}">${esc(a.titel)}</a>${a.archiviert ? ` <span class="lbl">archiviert ${esc(datumLang(a.archiviert))}</span>` : ''}</td><td>${cl ? `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>` : a.klasse ? esc(a.klasse) : ''}</td><td><span class="avs">${a.zustaendige.map(pk).join('')}</span></td><td class="orte">${orte.length ? orte.map(({ b, sp }) => `<span class="lbl ort">${esc(b.titel)} · ${esc(sp.name)}<button class="lnk lnk-x" data-act="abnehmen" data-arg="${esc(b.slug)}|${a.nummer}" title="von ${esc(b.titel)} nehmen" aria-label="#${a.nummer} von ${esc(b.titel)} nehmen">✕</button></span>`).join(' ') : '<span class="muted">auf keinem Board</span>'}</td><td>${a.archiviert ? `<button class="btn" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button>` : `<button class="btn" id="leg-${a.nummer}" data-act="legen-pop" data-arg="${a.nummer}" aria-haspopup="menu">auf Board legen ▾</button>`}</td></tr>`;
   }).join('');
   return `<div class="leiste"><b>Aufgaben</b><span class="muted">alle Dateien unter aufgaben/ · eine Aufgabe kann auf mehreren Boards liegen</span><div class="rechts"><button class="btn btn-haupt" data-act="add" data-arg="-" title="Neue Aufgabe ohne Board (n)">+ Neue Aufgabe</button></div></div>
 <div class="body liste-mit-zielen"><table class="pt dicht liste"><thead><tr><th>#</th><th>Titel</th><th>Klasse</th><th>Zuständig</th><th>Liegt auf</th><th></th></tr></thead><tbody>${zeilen || '<tr><td colspan="6" class="muted">keine Aufgaben in diesem Bereich</td></tr>'}</tbody></table>${vZiele()}</div>`;
@@ -758,7 +767,7 @@ function vPersonen() {
       const k = d.person.kuerzel;
       const leiste = d.abschnitte.map(x => { const a = pos(x.von), b = pos(x.bis); return b > a ? `<i class="${x.laeuft ? 'l' : d.person.art === 'agent' ? 'a' : ''}" style="left:${a}%;width:${Math.max(0.5, b - a)}%" title="#${x.nummer}"></i>` : ''; }).join('');
       const gerade = d.laeuft.length ? `<div class="akt">${d.laeuft.map(x => `<div class="z"><span class="lauf${k === S.ich ? ' eigen' : ''}"><span data-since="${laufBeginn(x.a, x.z)}">${hm(jetzt - laufBeginn(x.a, x.z))}</span></span><a href="#" class="id" data-act="oeffnen" data-arg="${x.a.nummer}">#${x.a.nummer}</a><span class="t">${esc(x.a.titel)}</span><button class="btn stop${k === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${x.a.nummer}|${esc(k)}" aria-label="Timer von ${esc(d.person.name)} stoppen">■</button></div>`).join('')}</div>`
-        : `<span class="muted">${d.zuletzt ? 'zuletzt ' + (d.zuletzt >= t0 ? new Date(d.zuletzt).toTimeString().slice(0, 5) : isoD(d.zuletzt)) : '—'}</span>`;
+        : `<span class="muted">${d.zuletzt ? 'zuletzt ' + (d.zuletzt >= t0 ? new Date(d.zuletzt).toTimeString().slice(0, 5) : datumAusMs(d.zuletzt)) : '—'}</span>`;
       return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}<span class="jetzt" style="left:${pos(jetzt)}%"></span></div></td><td class="r num heute">${hm(d.heute)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
     }).join('');
   }
@@ -786,7 +795,7 @@ function vBerichtsfilter(leiste) {
   const gruppe = (k, inhalt) => inhalt ? `<div class="bf-gruppe"><span class="bf-k">${k}</span><span class="bf-werte">${inhalt}</span></div>` : '';
   // Rechnen ab (R00081): der Projektstart, für die Berichte aus den Bewegungen des Boards
   const start = S.board && S.board.start, erster = S.bew && ersterTag(S.bew);
-  const ab = teile.start ? gruppe('Rechnen ab', `<input type="date" class="mini-inp" data-fb="start" value="${esc(start || '')}" aria-label="Rechnen ab"><span class="muted">${start ? 'davor zählt nichts; ein gewählter Zeitraum überstimmt das' : `leer = ab der ersten Aufgabe${erster ? ` (${vollDatum(isoTag(erster))})` : ''}`}</span>`) : '';
+  const ab = teile.start ? gruppe('Rechnen ab', `<input type="date" class="mini-inp" data-fb="start" value="${esc(start || '')}" aria-label="Rechnen ab"><span class="muted">${start ? 'davor zählt nichts; ein gewählter Zeitraum überstimmt das' : `leer = ab der ersten Aufgabe${erster ? ` (${datumAusMs(isoTag(erster))})` : ''}`}</span>`) : '';
   // Messbasis der Prognose (R00083): die letzten N Tage, gleitend — statt eines Kalenderzeitraums
   const mb = teile.messbasis ? gruppe('Messbasis', `<span class="muted">letzte</span><input type="number" class="mini-inp bf-tage" min="1" max="3650" data-bf="messbasisTage" value="${f.messbasisTage}" aria-label="Messbasis in Tagen"><span class="muted">Tage, gleitend — beginnt nie vor „Rechnen ab“ und nie vor der ersten Aufgabe</span>`) : '';
   let zr = '';
@@ -807,7 +816,7 @@ function vBerichtsfilter(leiste) {
   const n = filterAnzahl(teile.zeitraum ? f : { ...f, zeitraum: 'alles' });
   // Zusammenfassung der zugeklappten Box: wie viele wirken, ab wann gerechnet wird, ob gespeichert
   const lokal = S.ui.bfLokal && S.ui.bfLokal.ungespeichert;
-  const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${vollDatum(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
+  const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${datumAusMs(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
   return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" data-arg="${leiste}" title="${esc(zuruecksetzenHinweis(teile))}">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
@@ -817,8 +826,8 @@ function vStundenzettel() {
   const wer = u.sp || S.ich || (personen().find(p => p.aktiv) || {}).kuerzel;
   const s = stundenzettel(S.aufgaben.filter(a => aufgabePasst({ ...u.bf, personen: [] }, a)), wer, w0, jetzt), namen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], heute = tagesbeginn(jetzt);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">·</span>';
-  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${isoD(s.tage[0])} – ${isoD(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('stundenzettel')}
-<div class="body">${berichtRahmen('Stundenzettel')}<table class="pt dicht" id="stundenzettel"><thead><tr><th>Aufgabe</th>${s.tage.map((t, i) => `<th class="r"${t === heute ? ' style="color:var(--kd-accent-ink)"' : ''}>${namen[i]} <span class="mono">${isoD(t).slice(8)}</span></th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${s.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.proTag.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || `<tr><td class="muted" colspan="9">${esc(per(wer || '').name)} hat in dieser Woche keine Zeiten.</td></tr>`}<tr class="grp"><td>SUMME</td>${s.jeTag.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r" id="zettelsumme">${hm(s.summe)}</td></tr></tbody></table></div></div>`;
+  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${datumAusMs(s.tage[0])} – ${datumAusMs(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('stundenzettel')}
+<div class="body">${berichtRahmen('Stundenzettel')}<table class="pt dicht" id="stundenzettel"><thead><tr><th>Aufgabe</th>${s.tage.map((t, i) => `<th class="r"${t === heute ? ' style="color:var(--kd-accent-ink)"' : ''}>${namen[i]} <span class="mono">${datumKurz(isoD(t), isoD(Date.now()))}</span></th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${s.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.proTag.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || `<tr><td class="muted" colspan="9">${esc(per(wer || '').name)} hat in dieser Woche keine Zeiten.</td></tr>`}<tr class="grp"><td>SUMME</td>${s.jeTag.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r" id="zettelsumme">${hm(s.summe)}</td></tr></tbody></table></div></div>`;
 }
 /** Öffnender Rahmen um eine Berichtstabelle (PO Z. 137): nur er scrollt bei schmaler Breite quer, per Tastatur erreichbar wie .ko-scroll. */
 function berichtRahmen(beschriftung) {
@@ -835,7 +844,7 @@ function vKreuz() {
 /* Diagramme (R00073): x-Achse zweizeilig mit Jahr; Fläche mit Vollbild-Knopf und Tooltip. Das Fadenkreuz folgt dem Zeiger über
    die ganze Zeichenfläche — `data-achse` (l, breite, t0, t1, stetig) übersetzt die Position in einen Tag, `S.diagrammTip(tag)`
    liefert den Inhalt des Tooltips. */
-const achsDatum = (ms, x, y) => { const d = vollDatum(ms); return `<text class="achse achse-x" x="${x}" y="${y}" text-anchor="middle"><tspan x="${x}">${d.slice(0, 6)}</tspan><tspan x="${x}" dy="12">${d.slice(6)}</tspan></text>`; };
+const achsDatum = (ms, x, y) => { const [tagMonat, jahr] = achsenMarke(ms); return `<text class="achse achse-x" x="${x}" y="${y}" text-anchor="middle"><tspan x="${x}">${tagMonat}</tspan><tspan x="${x}" dy="12">${jahr}</tspan></text>`; };
 const achsAttribut = (l, breite, t0, t1, stetig) => `data-achse="${[l, breite, t0, t1, stetig ? 1 : 0].join(',')}"`;
 const fadenkreuz = (o, u) => `<line class="fadenkreuz" id="fadenkreuz" y1="${o}" y2="${u}" x1="-10" x2="-10"></line>`;
 function vDiagrammFlaeche(svg, extra = '') {
@@ -858,7 +867,7 @@ function vVerlauf() {
   const xTicks = t.map((x, i) => ({ x, i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
-  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${deDatum(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>` : ''; };
+  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>` : ''; };
   const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
 ${xTicks.map(({ i }) => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
@@ -871,7 +880,7 @@ ${fadenkreuz(O, H - U)}
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
   const nicht = `<h3 class="dtitel">Nicht enthalten</h3><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
-  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${x.datum}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
 <div class="body bericht"><h3 class="dtitel">Offene Aufgaben je Tag</h3>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
@@ -1000,25 +1009,22 @@ function vDurchlauf() {
   const xt = t1 === t0 ? [t0] : [0, 1, 2, 3, 4].map(i => t0 + (t1 - t0) * i / 4);
   const bezug = (wert, cls, text) => `<line class="${cls}" x1="${L}" x2="${B - R}" y1="${sy(wert)}" y2="${sy(wert)}"></line><text class="endwert leise" x="${B - R + 8}" y="${sy(wert) + 4}">${text} ${zahl1(wert)} T</text>`;
   const punktText = x => { const a = aufgabe(x.nummer); return `#${x.nummer} ${a ? a.titel : ''} · ${zahl1(x.tage)} Tage`; };
-  S.diagrammTip = tg => { const da = l.filter(x => isoTag(isoD(x.ankunft)) === tg); return `<b>Ankunft ${deDatum(tg)}</b><span>${da.length ? `${da.length} ${da.length === 1 ? 'Aufgabe' : 'Aufgaben'} angekommen` : 'keine Aufgabe angekommen'}</span>${da.map(x => `<span>${esc(punktText(x))}</span>`).join('')}`; };
+  S.diagrammTip = tg => { const da = l.filter(x => isoTag(isoD(x.ankunft)) === tg); return `<b>Ankunft ${datumMitWochentag(tg)}</b><span>${da.length ? `${da.length} ${da.length === 1 ? 'Aufgabe' : 'Aufgaben'} angekommen` : 'keine Aufgabe angekommen'}</span>${da.map(x => `<span>${esc(punktText(x))}</span>`).join('')}`; };
   const svg = l.length ? `<svg class="diagramm streu" viewBox="0 0 ${B} ${H}" role="img" aria-label="Durchlaufzeit je Aufgabe nach Ankunftstag" ${achsAttribut(L, B - L - R, t0, t1, true)}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
 ${xt.map(t => achsDatum(t, sx(t), H - U + 18)).join('')}
 ${bezug(d.p85, 'p85', '85 %')}${bezug(d.median, 'median', 'Median')}
 ${fadenkreuz(O, H - U)}
-${l.map(x => `<circle class="punkt klick" cx="${sx(x.ankunft).toFixed(1)}" cy="${sy(x.tage).toFixed(1)}" r="5" data-act="oeffnen" data-arg="${x.nummer}" aria-label="${esc(punktText(x))} · angekommen ${deDatum(x.ankunft)}"></circle>`).join('')}
+${l.map(x => `<circle class="punkt klick" cx="${sx(x.ankunft).toFixed(1)}" cy="${sy(x.tage).toFixed(1)}" r="5" data-act="oeffnen" data-arg="${x.nummer}" aria-label="${esc(punktText(x))} · angekommen ${datumMitWochentag(x.ankunft)}"></circle>`).join('')}
 </svg>` : '<div class="leer">Keine Aufgabe hat im Zeitraum „bis“ erreicht.</div>';
-  const fmt = ms => { const x = new Date(ms), p = n => String(n).padStart(2, '0'); return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}`; };
   const kennzahlen = `<div class="kennzahlen" id="durchlauf-kennzahl"><span><b>${d.anzahl}</b> Aufgaben</span><span>Mittel <b>${zahl1(d.mittel)}</b> T</span><span>Median <b>${zahl1(d.median)}</b> T</span><span>85 % in <b>${zahl1(d.p85)}</b> T oder weniger</span></div>`;
-  const tabelle = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>in „${esc(von)}“</th><th>in „${esc(bis)}“</th><th class="r">Tage</th></tr></thead><tbody>${l.map(x => { const a = aufgabe(x.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${x.nummer}"><td class="tt"><span class="mono muted">#${x.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${fmt(x.eintritt)}</td><td class="mono">${fmt(x.ankunft)}</td><td class="r num">${zahl1(x.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`;
+  const tabelle = `<table class="pt dicht" id="durchlauf"><thead><tr><th>Aufgabe</th><th>in „${esc(von)}“</th><th>in „${esc(bis)}“</th><th class="r">Tage</th></tr></thead><tbody>${l.map(x => { const a = aufgabe(x.nummer); return `<tr class="klick" data-act="oeffnen" data-arg="${x.nummer}"><td class="tt"><span class="mono muted">#${x.nummer}</span> ${esc(a ? a.titel : '')}</td><td class="mono">${zeitpunktAusMs(x.eintritt)}</td><td class="mono">${zeitpunktAusMs(x.ankunft)}</td><td class="r num">${zahl1(x.tage)}</td></tr>`; }).join('') || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`;
   const legende = '<div class="dlegende"><span><i class="k-punkt"></i>eine Aufgabe</span><span><i class="k-median"></i>Median</span><span><i class="k-p85"></i>85 %</span></div>';
   return `${kopf}<div class="body bericht">${kennzahlen}<h3 class="dtitel">Tage je Aufgabe nach Ankunft in „${esc(bis)}“</h3>${legende}${l.length ? vDiagrammFlaeche(svg) : svg}<h3 class="dtitel">Aufgaben</h3>${berichtRahmen('Aufgaben')}${tabelle}</div></div>`;
 }
 
 /* Wie lange noch (R00046): je Spalte noch nicht erreicht, Monte-Carlo-Fächer, Blöcke mit Perzentilen.
    Serienfarben: Slots 1–3 der validierten dataviz-Palette, feste Reihenfolge von links nach rechts. */
-const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-const deDatum = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${WOCHENTAG[d.getDay()]} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`; };
 /* Termine (R00047): Darstellung einer Linie aus Farbe, Art und Stärke */
 const TERMIN_STAERKE = { fein: 1.25, normal: 2, fett: 4 };
 const TERMIN_ART = { durchgehend: '', gestrichelt: '9 6', gepunktet: '1.5 5' };
@@ -1035,7 +1041,7 @@ function vTermine(p) {
   const u = S.ui, termine = (S.board && S.board.termine) || [], f = u.tf;
   const fertig = p.phasen[p.phasen.length - 1];
   const zielKnopf = (t, i) => `<button class="btn btn-sym tm-ziel${t.ziel ? ' an' : ''}" data-act="tf-ziel" data-arg="${i}" aria-pressed="${!!t.ziel}" aria-label="Termin ${esc(t.name)} ist Zieltermin" title="${t.ziel ? 'Zieltermin des Fever Charts — Klick nimmt die Markierung zurück' : 'als Zieltermin des Fever Charts markieren'}">${t.ziel ? '◉' : '○'}</button>`;
-  const zeilen = termine.map((t, i) => `<tr data-termin="${esc(t.name)}"><td>${zielKnopf(t, i)}</td><td><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg></td><td>${esc(t.name)}</td><td class="mono">${deDatum(isoTag(t.datum))}</td><td>${fertig ? esc(chanceText(terminChance(fertig, t.datum, Date.now()))) : '—'}</td><td class="r"><button class="btn btn-sym" data-act="tf-bearbeiten" data-arg="${i}" aria-label="Termin ${esc(t.name)} ändern" title="ändern">✎</button><button class="btn btn-sym" data-act="tf-entfernen" data-arg="${i}" aria-label="Termin ${esc(t.name)} entfernen" title="entfernen">✕</button></td></tr>`).join('');
+  const zeilen = termine.map((t, i) => `<tr data-termin="${esc(t.name)}"><td>${zielKnopf(t, i)}</td><td><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg></td><td>${esc(t.name)}</td><td class="mono">${datumMitWochentag(isoTag(t.datum))}</td><td>${fertig ? esc(chanceText(terminChance(fertig, t.datum, Date.now()))) : '—'}</td><td class="r"><button class="btn btn-sym" data-act="tf-bearbeiten" data-arg="${i}" aria-label="Termin ${esc(t.name)} ändern" title="ändern">✎</button><button class="btn btn-sym" data-act="tf-entfernen" data-arg="${i}" aria-label="Termin ${esc(t.name)} entfernen" title="entfernen">✕</button></td></tr>`).join('');
   const wahl = (feld, werte, titel) => `<select class="mini-inp" data-tf="${feld}" aria-label="${titel}">${werte.map(([k, t]) => `<option value="${k}"${f[feld] === k ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
   const FARBNAMEN = { yellow: 'gelb', amber: 'bernstein', orange: 'orange', red: 'rot', rose: 'rosé', pink: 'pink', magenta: 'magenta', violet: 'violett', indigo: 'indigo', blue: 'blau', sky: 'himmelblau', cyan: 'cyan', teal: 'petrol', green: 'grün', lime: 'limette', grey: 'grau' };
   const farben = PAL.map(x => [x, FARBNAMEN[x] || x]);
@@ -1050,7 +1056,7 @@ function vPrognose() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt, S.bew.phasen, { start: S.board && S.board.start }), u = S.ui;
   const stand = new Date(jetzt).toTimeString().slice(0, 8);
-  const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${deDatum(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('wieLangeNoch')}`;
+  const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${datumMitWochentag(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('wieLangeNoch')}`;
   if (!p.phasen.length) return `${kopf}<div class="body bericht"><div class="leer">Es braucht mindestens zwei gezählte Spalten.</div></div>`;
   const fertig = p.phasen[p.phasen.length - 1];
   const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${fertig.nenner} fertig</strong>${p.phasen.slice(0, -1).map(ph => ` · ${esc(blockStand(ph))}`).join('')}</p>`;
@@ -1079,13 +1085,13 @@ function vPrognose() {
     faecher += `<polygon class="wl-band ${s.k}" points="${x0.toFixed(1)},${y0.toFixed(1)} ${x(z[50].datum7).toFixed(1)},${y1} ${x(z[95].datum7).toFixed(1)},${y1}"></polygon>`;
     [[50, 'wl-p50'], [85, 'wl-p85'], [95, 'wl-p95']].forEach(([q, cls], stufe) => {
       const xe = x(z[q].datum7), rand = xe > W - R - 80;
-      faecher += `<line class="${cls} ${s.k}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${y1}"></line><text class="wl-lbl" x="${(rand ? W - 2 : xe).toFixed(1)}" y="${(y1 - 8 - 13 * stufe - 42 * si).toFixed(1)}" text-anchor="${rand ? 'end' : 'middle'}">${esc(s.ph.schluessel.slice(0, 10))} P${q} ${vollDatum(z[q].datum7)}</text>`;
+      faecher += `<line class="${cls} ${s.k}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${y1}"></line><text class="wl-lbl" x="${(rand ? W - 2 : xe).toFixed(1)}" y="${(y1 - 8 - 13 * stufe - 42 * si).toFixed(1)}" text-anchor="${rand ? 'end' : 'middle'}">${esc(s.ph.schluessel.slice(0, 10))} P${q} ${datumAusMs(z[q].datum7)}</text>`;
     });
   });
   // Tooltip: bis heute die gezählten Stände, danach je Spalte die Chance, bis zu diesem Tag fertig zu sein
   const bisDahin = ph => ph.phase ? `„${ph.phase}“ durchlaufen bis dahin` : `„${ph.spalte}“ erreicht bis dahin`;
   S.diagrammTip = tg => {
-    const d = p.tage.find(x => x.t === tg), kopf = `<b>${deDatum(tg)}${tg === p.heute ? ' (heute)' : ''}</b>`;
+    const d = p.tage.find(x => x.t === tg), kopf = `<b>${datumMitWochentag(tg)}${tg === p.heute ? ' (heute)' : ''}</b>`;
     const amTag = termine.filter(t => isoTag(t.datum) === tg).map(t => `<span>Termin: ${esc(t.name)}</span>`).join('');
     if (d) return kopf + [`Umfang ${d.umfang}`, ...p.phasen.map(ph => `${blockOffen(ph)}: ${d.offen[ph.schluessel]}`)].map(z => `<span>${esc(z)}</span>`).join('') + amTag;
     if (tg < p.heute) return kopf + amTag;
@@ -1097,11 +1103,11 @@ ${xt.map(t => achsDatum(t, x(t).toFixed(1), H - U + 18)).join('')}
 <path class="umfang" d="${pfad(p.tage.map(d => [d.t, d.umfang]))}"></path>
 ${faecher}${linien}${marken}
 <line class="wl-heute" x1="${x(p.heute)}" x2="${x(p.heute)}" y1="${O}" y2="${H - U}"></line><text class="wl-lbl" x="${x(p.heute) + 4}" y="${O + 10}">heute</text>
-${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i) => { const xt = x(isoTag(t.datum)), rechts = xt > W - R - 140; return `<g class="wl-termin" data-termin="${esc(t.name)}"><line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${O}" y2="${H - U}" style="${terminStil(t)}"></line><text class="wl-tlbl" x="${(xt + (rechts ? -5 : 5)).toFixed(1)}" y="${O + 26 + 14 * (i % 4)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(t.name)} ${vollDatum(isoTag(t.datum))}</text></g>`; }).join('')}
+${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i) => { const xt = x(isoTag(t.datum)), rechts = xt > W - R - 140; return `<g class="wl-termin" data-termin="${esc(t.name)}"><line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${O}" y2="${H - U}" style="${terminStil(t)}"></line><text class="wl-tlbl" x="${(xt + (rechts ? -5 : 5)).toFixed(1)}" y="${O + 26 + 14 * (i % 4)}" text-anchor="${rechts ? 'end' : 'start'}">${esc(t.name)} ${datumAusMs(isoTag(t.datum))}</text></g>`; }).join('')}
 ${fadenkreuz(O, H - U)}
 </svg>`;
   const legende = `<div class="dlegende wl-legende"><span><i class="k-umfang"></i>Umfang</span>${serien.map(s => `<span><i class="wl-k ${s.k}"></i>${esc(blockOffen(s.ph))} — ${s.ph.zeilen ? 'Prognose P50 · P85 gestrichelt · P95 gepunktet' : 'keine Prognose'}</span>`).join('')}${auswahl.ohnePrognose.length ? `<span class="muted" id="wl-ohne">ohne Prognose (unter ${MIN_LAEUFE} Läufen in der Messbasis): ${esc(auswahl.ohnePrognose.map(ph => ph.schluessel).join(', '))}</span>` : ''}</div>`;
-  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.phasen.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${isoD(d.t)}</td><td class="r num">${d.umfang}</td>${p.phasen.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.phasen.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${datumAusMs(d.t)}</td><td class="r num">${d.umfang}</td>${p.phasen.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
   const bloecke = p.phasen.map(ph => {
     const anteil = ph.nenner ? ph.erreicht / ph.nenner : 1, wort = ph.phase ? 'DURCHLAUFEN' : 'ERREICHT';
     const kopfzeile = `<div class="wl-phase-kopf"><h3>${esc(ph.titel)} <span class="wl-badge">${ph.erreicht} VON ${ph.nenner} ${wort}</span></h3><div class="wl-fortschritt" role="img" aria-label="${Math.round(100 * anteil)} Prozent ${wort.toLowerCase()}"><i style="width:${Math.round(100 * anteil)}%"></i></div></div>`;
@@ -1110,8 +1116,8 @@ ${fadenkreuz(O, H - U)}
     let inhalt;
     if (!ph.offen) inhalt = `<p>Alle ${ph.nenner} Aufgaben haben ${ph.phase ? `„${esc(ph.phase)}“ durchlaufen` : `„${esc(ph.spalte)}“ erreicht`}.</p>`;
     else if (!ph.zeilen) inhalt = `<p>${ph.offen} offen — keine Prognose unter ${MIN_LAEUFE} Läufen in der Messbasis (gemessen: ${ph.laeufe}).</p>`;
-    else inhalt = `<div class="wl-scroll"><table class="pt dicht wl-tab"><thead><tr><th>Mit X % Wkt.</th><th>Fertig zum, 7-Tage-Woche</th><th>Fertig zum, 5-Tage-Woche</th><th>Restliche Dauer</th><th>Nicht vor (${p.nachPhasen ? 'Vorphase' : 'Spalte links'})</th></tr></thead><tbody>${ph.zeilen.map(z => `<tr><td>${z.p} %</td><td>${deDatum(z.datum7)}</td><td>${deDatum(z.datum5)}</td><td>${z.kalendertage} Kalendertage · ${z.arbeitstage} Arbeitstage</td><td>${z.untergrenze7 ? deDatum(z.untergrenze7) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
-    const termin = termine.length ? `<ul class="wl-tchance">${termine.map(t => `<li><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg>${esc(t.name)} · bis ${deDatum(isoTag(t.datum))}: <b>${esc(chanceText(terminChance(ph, t.datum, jetzt)))}</b></li>`).join('')}</ul>` : '';
+    else inhalt = `<div class="wl-scroll"><table class="pt dicht wl-tab"><thead><tr><th>Mit X % Wkt.</th><th>Fertig zum, 7-Tage-Woche</th><th>Fertig zum, 5-Tage-Woche</th><th>Restliche Dauer</th><th>Nicht vor (${p.nachPhasen ? 'Vorphase' : 'Spalte links'})</th></tr></thead><tbody>${ph.zeilen.map(z => `<tr><td>${z.p} %</td><td>${datumMitWochentag(z.datum7)}</td><td>${datumMitWochentag(z.datum5)}</td><td>${z.kalendertage} Kalendertage · ${z.arbeitstage} Arbeitstage</td><td>${z.untergrenze7 ? datumMitWochentag(z.untergrenze7) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    const termin = termine.length ? `<ul class="wl-tchance">${termine.map(t => `<li><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg>${esc(t.name)} · bis ${datumMitWochentag(isoTag(t.datum))}: <b>${esc(chanceText(terminChance(ph, t.datum, jetzt)))}</b></li>`).join('')}</ul>` : '';
     return `<section class="wl-phase" style="--anteil:${anteil}" ${ph.phase ? `data-phase="${esc(ph.phase)}"` : `data-spalte="${esc(ph.spalte)}"`}>${kopfzeile}${inhalt}${termin}${messung}</section>`;
   }).join('');
   const ohneBoard = S.aufgaben.filter(a => !a.archiviert && !(S.boards || []).some(b => b.spalten.some(sp => sp.aufgaben.includes(a.nummer)))).length;
@@ -1145,13 +1151,13 @@ function fieberStand() {
 function vFieber() {
   if (!S.bew || !S.fieberCache) return '<div class="leer">lädt …</div>';
   const u = S.ui, st = fieberStand(), b = S.board, f = b.fieber, jetzt = Date.now();
-  const kopf = `<div class="leiste"><b>Projekt-Fever-Chart</b><span class="muted">${esc(b.titel)} · Stand ${deDatum(jetzt)} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('fieber')}`;
+  const kopf = `<div class="leiste"><b>Projekt-Fever-Chart</b><span class="muted">${esc(b.titel)} · Stand ${datumMitWochentag(jetzt)} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('fieber')}`;
   if (!st.start) return `${kopf}<div class="body bericht"><div class="leer">Noch keine Aufgabe auf diesem Board — ohne Start kein Projekt.</div></div>`;
   const einheit = f.woche === 5 ? 'Arbeitstage' : 'Kalendertage', plan = fieberPlan(st.e);
   const termine = b.termine || [];
   const zahl = (k, i, titel) => `<input type="number" class="mini-inp fb-zahl" min="0" max="1000" data-fb="${k}${i}" value="${f[k][i]}" aria-label="${titel}">`;
   const einst = `<section class="fb-einst" role="group" aria-label="Einstellungen des Fever Charts">
-<label>Zieltermin <select class="mini-inp" data-fb="ziel" aria-label="Zieltermin"><option value="">— wählen —</option>${termine.map((t, i) => `<option value="${i}"${t.ziel ? ' selected' : ''}>${esc(t.name)} · ${vollDatum(isoTag(t.datum))}</option>`).join('')}</select></label>
+<label>Zieltermin <select class="mini-inp" data-fb="ziel" aria-label="Zieltermin"><option value="">— wählen —</option>${termine.map((t, i) => `<option value="${i}"${t.ziel ? ' selected' : ''}>${esc(t.name)} · ${datumAusMs(isoTag(t.datum))}</option>`).join('')}</select></label>
 <label>Puffer <input type="number" class="mini-inp fb-zahl" min="1" data-fb="puffer" value="${f.puffer == null ? '' : f.puffer}" aria-label="Puffer in Tagen"> ${einheit}</label><button class="btn" data-act="fb-vorschlag" title="1/3 der Gesamtdauer — die CCPM-Regel „Puffer = 50 % der Kette“"${st.e.ziel ? '' : ' disabled'}>Puffer vorschlagen</button>
 <label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${st.bloecke.map((x, i) => `<option value="${i === st.bloecke.length - 1 ? '' : esc(x.schluessel)}"${st.zaehlt && x.schluessel === st.zaehlt.schluessel && !st.verschwunden ? ' selected' : ''}>${esc(x.titel)}${i === st.bloecke.length - 1 ? ' (Standard)' : ''}</option>`).join('')}${st.verschwunden ? `<option value="${esc(st.verschwunden)}" selected>„${esc(st.verschwunden)}“ — gibt es nicht mehr</option>` : ''}</select></label>
 <label>Perzentil <select class="mini-inp" data-fb="perzentil" aria-label="Perzentil der Prognose">${PERZENTILE.map(q => `<option value="${q}"${q === f.perzentil ? ' selected' : ''}>P${q}</option>`).join('')}</select></label>
@@ -1170,7 +1176,7 @@ ${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}
 }
 function vFieberDiagramm(st, plan, einheit) {
   const e = st.e, punkte = fieberAusduennen(fieberPunkte(st.tage, e), S.board.fieber.aufloesung || 1), titel = S.board.titel;
-  const kennzahl = `<div class="kennzahlen" id="fb-kennzahl"><span>erledigt = <b>${esc(st.zaehlt ? st.zaehlt.titel : '')}</b></span><span>Gesamtdauer <b>${plan.gesamt}</b> ${einheit}</span><span>Arbeitsbereich <b>${plan.arbeit}</b> bis ${deDatum(isoTag(plan.planende))}</span><span>Puffer <b>${plan.puffer}</b></span><span>Zieltermin <b>${vollDatum(isoTag(e.ziel))}</b></span></div>`;
+  const kennzahl = `<div class="kennzahlen" id="fb-kennzahl"><span>erledigt = <b>${esc(st.zaehlt ? st.zaehlt.titel : '')}</b></span><span>Gesamtdauer <b>${plan.gesamt}</b> ${einheit}</span><span>Arbeitsbereich <b>${plan.arbeit}</b> bis ${datumMitWochentag(isoTag(plan.planende))}</span><span>Puffer <b>${plan.puffer}</b></span><span>Zieltermin <b>${datumAusMs(isoTag(e.ziel))}</b></span></div>`;
   if (!punkte.length) {
     const b = prognose(S.bew, S.ui.bf, aufgabe, Date.now(), S.bew.phasen, { start: e.start, nurLetzter: true, block: st.block && st.block.schluessel }).phasen[0];
     return `${kennzahl}<div class="leer" id="fb-hinweis">Noch keine Prognose — sie braucht ${MIN_LAEUFE} erledigte Aufgaben in der Messbasis${b ? `, bisher ${b.laeufe}` : ''}.</div>`;
@@ -1195,13 +1201,13 @@ function vFieberDiagramm(st, plan, einheit) {
   const [lx, ly] = lage[lage.length - 1], rechts = lx > W - R - 220;
   // über die Achse hinaus: Pfeil am Rand statt eines Punkts, der unter anderen verschwindet
   const ueber = punkte.map((pt, i) => pt.b > ymax || pt.b < ymin ? `<text class="fb-ueber" x="${f1(lage[i][0])}" y="${f1(pt.b > ymax ? O + 10 : H - U - 4)}" text-anchor="middle">${pt.b > ymax ? '▲' : '▼'}</text>` : '').join('');
-  const aktuell = `<circle class="fb-aktuell ${letzter.zone}" id="fb-aktuell" cx="${f1(lx)}" cy="${f1(ly)}" r="8" data-datum="${letzter.datum}" data-zone="${letzter.zone}"></circle><text class="fb-name" x="${f1(lx + (rechts ? -14 : 14))}" y="${f1(Math.max(O + 14, ly - 10))}" text-anchor="${rechts ? 'end' : 'start'}">${esc(titel)} · ${ZONENNAME[letzter.zone].split(' ')[0]}${istHeute ? '' : ` · ${vollDatum(isoTag(letzter.datum))}`}</text>`;
-  const ende = pt => `${deDatum(isoTag(pt.ende))}`;
+  const aktuell = `<circle class="fb-aktuell ${letzter.zone}" id="fb-aktuell" cx="${f1(lx)}" cy="${f1(ly)}" r="8" data-datum="${letzter.datum}" data-zone="${letzter.zone}"></circle><text class="fb-name" x="${f1(lx + (rechts ? -14 : 14))}" y="${f1(Math.max(O + 14, ly - 10))}" text-anchor="${rechts ? 'end' : 'start'}">${esc(titel)} · ${ZONENNAME[letzter.zone].split(' ')[0]}${istHeute ? '' : ` · ${datumAusMs(isoTag(letzter.datum))}`}</text>`;
+  const ende = pt => `${datumMitWochentag(isoTag(pt.ende))}`;
   S.fieberLage = lage;
   // Negativ ist richtig, heißt aber „vor Plan“ (R00082); früher kleiner Umfang erklärt tiefe Punkte
   const gewonnen = pt => pt.abstand < 0 ? `Puffer gewonnen: ${-pt.abstand} ${-pt.abstand === 1 ? einheit.slice(0, -1) : einheit} vor Planende` : '';
   const damals = pt => pt.umfang < 0.8 * letzter.umfang ? `Umfang damals ${pt.umfang}, heute ${letzter.umfang} — die Prognose kannte nur die damaligen Aufgaben` : '';
-  S.fieberTip = i => { const pt = punkte[i]; return `<b>${deDatum(isoTag(pt.datum))}${pt.datum === st.heute ? ' (heute)' : ''}</b><span>Fortschritt ${zahl1(pt.p)} % (${pt.erledigt} von ${pt.umfang}: ${esc(st.zaehlt ? st.zaehlt.titel : '')})</span><span>Pufferverbrauch ${zahl1(pt.b)} %</span>${gewonnen(pt) ? `<span class="fb-gewonnen">${gewonnen(pt)}</span>` : ''}${damals(pt) ? `<span class="fb-damals">${esc(damals(pt))}</span>` : ''}<span><i class="fb-k ${pt.zone}"></i>Zone ${ZONENNAME[pt.zone]}</span><span>prognostiziert fertig ${ende(pt)} (P${e.perzentil})</span><span>Planende ${deDatum(isoTag(plan.planende))} · Zieltermin ${deDatum(isoTag(e.ziel))}</span>`; };
+  S.fieberTip = i => { const pt = punkte[i]; return `<b>${datumMitWochentag(isoTag(pt.datum))}${pt.datum === st.heute ? ' (heute)' : ''}</b><span>Fortschritt ${zahl1(pt.p)} % (${pt.erledigt} von ${pt.umfang}: ${esc(st.zaehlt ? st.zaehlt.titel : '')})</span><span>Pufferverbrauch ${zahl1(pt.b)} %</span>${gewonnen(pt) ? `<span class="fb-gewonnen">${gewonnen(pt)}</span>` : ''}${damals(pt) ? `<span class="fb-damals">${esc(damals(pt))}</span>` : ''}<span><i class="fb-k ${pt.zone}"></i>Zone ${ZONENNAME[pt.zone]}</span><span>prognostiziert fertig ${ende(pt)} (P${e.perzentil})</span><span>Planende ${datumMitWochentag(isoTag(plan.planende))} · Zieltermin ${datumMitWochentag(isoTag(e.ziel))}</span>`; };
   const svg = `<svg class="diagramm fieber" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fieberdiagramm: Fortschritt gegen Pufferverbrauch, heute ${zahl1(letzter.p)} % Fortschritt und ${zahl1(letzter.b)} % Verbrauch, Zone ${ZONENNAME[letzter.zone]}">
 <defs><clipPath id="fb-flaeche"><rect x="${L}" y="${O}" width="${pw}" height="${ph}"></rect></clipPath></defs>
 <g clip-path="url(#fb-flaeche)">${zonen}</g>${gitter}${zonenText}
@@ -1209,9 +1215,9 @@ function vFieberDiagramm(st, plan, einheit) {
 ${bahn}${ueber}${aktuell}
 </svg>`;
   const vorher = st.tage.filter(t => t.umfang && t.datum >= st.start && t.datum < punkte[0].datum).length;
-  const gemessen = vorher ? `<p class="muted" id="fb-gemessen">ab ${vollDatum(isoTag(punkte[0].datum))} gemessen — vorher zu wenig Läufe für eine Prognose.</p>` : '';
-  const heuteText = `<div class="kennzahlen fb-heute" id="fb-stand"><span>${istHeute ? 'heute' : vollDatum(isoTag(letzter.datum))}: Fortschritt <b>${zahl1(letzter.p)} %</b></span><span>Pufferverbrauch <b>${zahl1(letzter.b)} %</b>${gewonnen(letzter) ? ` (${gewonnen(letzter)})` : ''}</span><span class="fb-zonenwort ${letzter.zone}">Zone <b>${ZONENNAME[letzter.zone]}</b></span><span>prognostiziert fertig <b>${vollDatum(isoTag(letzter.ende))}</b></span></div>`;
-  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht" id="fb-tabelle"><thead><tr><th>Tag</th><th class="r">erledigt</th><th class="r">Fortschritt</th><th>prognostiziert fertig</th><th class="r">Verbrauch</th><th>Zone</th></tr></thead><tbody>${punkte.map(pt => `<tr><td class="mono">${pt.datum}</td><td class="r num">${pt.erledigt} / ${pt.umfang}</td><td class="r num">${zahl1(pt.p)} %</td><td class="mono">${pt.ende}</td><td class="r num">${zahl1(pt.b)} %</td><td>${ZONENNAME[pt.zone]}</td></tr>`).join('')}</tbody></table></details>`;
+  const gemessen = vorher ? `<p class="muted" id="fb-gemessen">ab ${datumAusMs(isoTag(punkte[0].datum))} gemessen — vorher zu wenig Läufe für eine Prognose.</p>` : '';
+  const heuteText = `<div class="kennzahlen fb-heute" id="fb-stand"><span>${istHeute ? 'heute' : datumAusMs(isoTag(letzter.datum))}: Fortschritt <b>${zahl1(letzter.p)} %</b></span><span>Pufferverbrauch <b>${zahl1(letzter.b)} %</b>${gewonnen(letzter) ? ` (${gewonnen(letzter)})` : ''}</span><span class="fb-zonenwort ${letzter.zone}">Zone <b>${ZONENNAME[letzter.zone]}</b></span><span>prognostiziert fertig <b>${datumAusMs(isoTag(letzter.ende))}</b></span></div>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht" id="fb-tabelle"><thead><tr><th>Tag</th><th class="r">erledigt</th><th class="r">Fortschritt</th><th>prognostiziert fertig</th><th class="r">Verbrauch</th><th>Zone</th></tr></thead><tbody>${punkte.map(pt => `<tr><td class="mono">${datumLang(pt.datum)}</td><td class="r num">${pt.erledigt} / ${pt.umfang}</td><td class="r num">${zahl1(pt.p)} %</td><td class="mono">${datumLang(pt.ende)}</td><td class="r num">${zahl1(pt.b)} %</td><td>${ZONENNAME[pt.zone]}</td></tr>`).join('')}</tbody></table></details>`;
   const legende = `<div class="dlegende"><span><i class="fb-k gruen"></i>grün</span><span><i class="fb-k gelb"></i>gelb</span><span><i class="fb-k rot"></i>rot</span><span><i class="fb-k schwarz"></i>über 100 %</span><span><i class="k-umfang"></i>Bahn, ein Punkt je ${{ 1: 'Tag', 7: 'Woche', 30: 'Monat' }[S.board.fieber.aufloesung] || 'Tag'}; groß: der letzte Stand</span></div>`;
   return `${kennzahl}${heuteText}<div class="wl-panel"><h3 class="dtitel">Fortschritt gegen Pufferverbrauch</h3>${legende}${gemessen}${vDiagrammFlaeche(svg, ' fb-flaeche')}${tabelle}</div>`;
 }

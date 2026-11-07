@@ -21,6 +21,7 @@ dateien! {
     "filter.js" => "text/javascript; charset=utf-8",
     "kopfzeile.js" => "text/javascript; charset=utf-8",
     "zeiten.js" => "text/javascript; charset=utf-8",
+    "kultur.js" => "text/javascript; charset=utf-8",
     "verbindung.js" => "text/javascript; charset=utf-8",
     "tastatur.js" => "text/javascript; charset=utf-8",
     "eingabe.js" => "text/javascript; charset=utf-8",
