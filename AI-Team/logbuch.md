@@ -352,3 +352,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | — | Nachtrag #76 | architekt | erledigt (ADR-0014 N2, A00009 Übernahme-Modul) | 0:03 | 6636db3 |
 | 2026-11-07 | #74 | Architektur | architekt | ADR-0015 Meldungen und Aktionen überstehen jede Breite; zweiter Fall „Neue Aufgabe“; Nebenbefunde → #84, #85 (Backlog) | 0:04 | 84a2651 |
 | 2026-11-07 | #74 | Detailplanung | planer | I0100 (F0059–F0061, B0447–B0453, 4,5–9 h), R00111 mit US-1..US-8; 2 offene Fragen → po | 0:07 | b608cfa |
+| 2026-11-07 | #74 | Detailplanung | product-owner | 2 Fragen entschieden (Screenreader → #86 Backlog; kein Artboard, Fotos 414/320 px auf Abnahmezettel; Regel Artboard-Pflicht Z. 153) | 0:03 | fd6c7c7 |
