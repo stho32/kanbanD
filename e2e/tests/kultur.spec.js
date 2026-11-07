@@ -220,8 +220,9 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
       await page.goto(k.adresse + '#/berichte/' + bericht);
       await liveBereit(page);
       await page.locator('.tabellenansicht summary').click();
+      // die Tabelle des Fever-Charts füllt sich erst nach dem Ergänzen der Tage — warten vor dem Lesen
+      await expect.poll(() => page.locator(`${tabelle} tbody tr td:first-child`).count(), bericht).toBeGreaterThan(0);
       const tage = await page.locator(`${tabelle} tbody tr td:first-child`).allTextContents();
-      expect(tage.length, bericht).toBeGreaterThan(0);
       expect(tage.filter(t => !TAG_LANG.test(t)), bericht).toEqual([]);
     }
     for (const [bericht, name, kopf] of [['verlauf', 'Offene Aufgaben je Tag', MIT_WOCHENTAG],
