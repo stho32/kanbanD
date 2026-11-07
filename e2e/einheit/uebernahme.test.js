@@ -99,15 +99,49 @@ function ungepruefteUebernahmen(quellen = webQuellen()) {
   return GEPRUEFT.filter(name => !zeilen.some(z => z.umgebend === name && z.zeile.includes('uebernehmen(')));
 }
 
-/** Übernahmen in den Ladefunktionen, vor denen im Rumpf noch kein Aufruf der Prüfung steht, als „Datei:Zeile in Funktion“. */
+/**
+ * Schreiben in den Ladefunktionen: jede Übernahme, dazu das Rücksetzen derselben Ziele und das Vorrücken von zuletztStand bzw.
+ * zuletztFenster — auch ein Rücksetzen aus einer veralteten Fehlerantwort überschreibt einen neueren Stand. Liefert die Spalten.
+ */
+function schreibstellen(zeile, aliase) {
+  const ui = ['S\\.ui', ...aliase.map(a => '\\b' + a)].join('|');
+  const muster = new RegExp(`\\bS\\.(?:aufgaben|board|zustand)\\s*=(?!=)|(?:${ui})\\.(?:datei|defektDatei|offenDefekt|offen|anhaenge|eintritt)\\s*=(?!=)|Object\\.assign\\((?:S\\.ui|S|${aliase.join('|') || '(?!)'})\\s*,|\\bzuletzt(?:Stand|Fenster)\\s*=(?!=)`, 'g');
+  return [...zeile.matchAll(muster)].map(m => m.index);
+}
+
+/** Spalte des ersten Aufrufs der Prüfung in der Zeile, sonst -1. */
+const pruefaufrufSpalte = zeile => {
+  if (!PRUEFAUFRUF(zeile)) return -1;
+  return [zeile.indexOf('aktuell()'), zeile.indexOf('uebernehmen(')].filter(i => i >= 0).reduce((a, b) => Math.min(a, b));
+};
+
+/**
+ * Schreiben in den Ladefunktionen, vor dem in seinem Block noch kein Aufruf der Prüfung steht, als „Datei:Zeile in Funktion“.
+ * Geprüft gilt je Block: ein Block erbt den Stand seiner Umgebung, und mit `}` gilt wieder der Stand davor — so beginnt ein
+ * `catch`- oder `else`-Zweig mit dem Stand vor dem `try` bzw. `if`, und eine Prüfung im `try` deckt den `catch` nicht.
+ */
 function uebernahmenVorDerPruefung(quellen = webQuellen()) {
   const funde = [];
-  let funktion = null, geprueft = false;
-  for (const z of zeilenMitFunktion(quellen)) {
-    if (z.umgebend !== funktion) { funktion = z.umgebend; geprueft = false; }
-    if (!GEPRUEFT.includes(funktion)) continue;
-    if (z.ziele.length && !geprueft) funde.push(`${z.ort} in ${funktion}`);
-    if (PRUEFAUFRUF(z.zeile)) geprueft = true;
+  for (const { datei, text } of quellen) {
+    const aliase = uiAliase(text);
+    let funktion = null, stapel = [false];
+    for (const z of zeilenMitFunktion([{ datei, text }])) {
+      if (z.umgebend !== funktion) { funktion = z.umgebend; stapel = [false]; }
+      if (!GEPRUEFT.includes(funktion)) continue;
+      const ereignisse = [
+        ...[...z.zeile].flatMap((c, i) => c === '{' || c === '}' ? [{ i, art: c }] : []),
+        ...schreibstellen(z.zeile, aliase).map(i => ({ i, art: 'schreiben' })),
+      ];
+      const pruefung = pruefaufrufSpalte(z.zeile);
+      if (pruefung >= 0) ereignisse.push({ i: pruefung, art: 'pruefung' });
+      let gemeldet = false;
+      for (const { art } of ereignisse.sort((x, y) => x.i - y.i)) {
+        if (art === '{') stapel.push(stapel[stapel.length - 1]);
+        else if (art === '}') { if (stapel.length > 1) stapel.pop(); }
+        else if (art === 'pruefung') stapel[stapel.length - 1] = true;
+        else if (!stapel[stapel.length - 1] && !gemeldet) { funde.push(`${z.ort} in ${funktion}`); gemeldet = true; }
+      }
+    }
   }
   return funde;
 }
@@ -173,5 +207,44 @@ test('Wächter erkennt eine Übernahme in dateiLaden vor dem ersten Aufruf der P
   const ende = text.indexOf('\n}\n', anfang);
   const ohne = text.slice(0, anfang) + text.slice(anfang, ende).replace('    if (!aktuell()) return;\n', '') + text.slice(ende);
   const zeile = ohne.split('\n').findIndex(z => z.includes('S.ui.datei = datei;')) + 1;
-  assert.deepStrictEqual(uebernahmenVorDerPruefung([{ datei: 'app.js', text: ohne }]), [`app.js:${zeile} in dateiLaden`]);
+  // davor rückt die Zeile darüber zuletztFenster vor — auch das ist Schreiben vor der Prüfung
+  assert.deepStrictEqual(uebernahmenVorDerPruefung([{ datei: 'app.js', text: ohne }]), [`app.js:${zeile - 1} in dateiLaden`, `app.js:${zeile} in dateiLaden`]);
+});
+
+/** web/app.js, in dessen Funktion `name` das `nr`-te Vorkommen (ab 0) von `alt` entfernt ist. */
+function appOhne(name, alt, nr) {
+  const text = fs.readFileSync(path.join(WEB, 'app.js'), 'utf8');
+  const anfang = text.indexOf(`async function ${name}(`);
+  let stelle = anfang;
+  for (let i = 0; i <= nr; i++) stelle = text.indexOf(alt, stelle + (i ? alt.length : 0));
+  assert.ok(stelle > anfang && stelle < text.indexOf('\n}\n', anfang), `${nr}. ${alt} in ${name}`);
+  return text.slice(0, stelle) + text.slice(stelle + alt.length);
+}
+
+const zeileVon = (text, ab, inhalt) => {
+  const zeilen = text.split('\n');
+  return zeilen.findIndex((z, i) => i >= ab && z.includes(inhalt)) + 1;
+};
+
+test('Wächter erkennt in defektLaden den catch-Zweig ohne eigene Prüfung (Mutante 4)', () => {
+  const ohne = appOhne('defektLaden', '    if (!aktuell()) return;\n', 1);
+  const catchZeile = zeileVon(ohne, ohne.slice(0, ohne.indexOf('async function defektLaden(')).split('\n').length, '} catch (f) {');
+  const funde = uebernahmenVorDerPruefung([{ datei: 'app.js', text: ohne }]);
+  assert.ok(funde.length > 0, 'keine Meldung');
+  assert.deepStrictEqual(funde, funde.filter(f => f.endsWith(' in defektLaden') && +f.split(':')[1].split(' ')[0] > catchZeile), funde.join());
+  assert.ok(funde.includes(`app.js:${zeileVon(ohne, catchZeile, 'S.ui.offenDefekt = nummer;')} in defektLaden`), funde.join());
+});
+
+test('Wächter erkennt in dateiLaden den catch-Zweig ohne eigene Prüfung (Mutante 4)', () => {
+  const ohne = appOhne('dateiLaden', '    if (!aktuell()) return;\n', 1);
+  const catchZeile = zeileVon(ohne, ohne.slice(0, ohne.indexOf('async function dateiLaden(')).split('\n').length, '} catch (f) {');
+  const funde = uebernahmenVorDerPruefung([{ datei: 'app.js', text: ohne }]);
+  assert.ok(funde.length > 0, 'keine Meldung');
+  assert.strictEqual(funde[0], `app.js:${catchZeile + 1} in dateiLaden`);
+  assert.ok(funde.every(f => f.endsWith(' in dateiLaden')), funde.join());
+});
+
+test('Wächter: eine Prüfung in einem verschachtelten Block deckt die Zeilen hinter dem Block nicht', () => {
+  const text = 'async function dateiLaden() {\n  if (x) {\n    if (!aktuell()) return;\n  }\n  S.ui.datei = datei;\n}\n';
+  assert.deepStrictEqual(uebernahmenVorDerPruefung([{ datei: 'x.js', text }]), ['x.js:5 in dateiLaden']);
 });
