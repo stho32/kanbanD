@@ -109,6 +109,20 @@ test.describe('Handy, 414 px mit Touch', () => {
     expect(await page.evaluate(() => [document.activeElement.id, document.activeElement.value])).toEqual(['herkunft-neu', 'X1']);
     expect(k.lies(AUFGABE_1)).not.toContain('X1');
     expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' })), 'Tastenhinweise schmal nicht gezeichnet').toEqual(['keine Client-Rects']);
+
+    const feld = fenster.getByLabel('Neue Herkunft');
+    const id = await meldung.getAttribute('id');
+    expect(id, 'die Meldung hat eine id').toBeTruthy();
+    await expect(feld).toHaveAttribute('aria-invalid', 'true');
+    await expect(feld).toHaveAttribute('aria-describedby', id);
+    await expect(feld, 'der Verweis führt zur Meldung').toHaveAccessibleDescription(new RegExp('^' + MELDUNG_X1));
+
+    await feld.fill('');
+    await herkunftEingeben(page, fenster, 'I0001', true);
+    await expect.poll(() => k.lies(AUFGABE_1)).toContain('I0001');
+    await expect(meldung).toHaveCount(0);
+    await expect(feld).not.toHaveAttribute('aria-invalid');
+    await expect(feld).not.toHaveAttribute('aria-describedby');
   });
 
   test('US-2: „gespeichert“ mit der Uhrzeit der Änderung ist bei 414 px sichtbar', async ({ page }) => {

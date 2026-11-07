@@ -253,7 +253,7 @@ function vFenster() {
   const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
   const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
-  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
+  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
   if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${fuss}</div></div>`;
@@ -261,7 +261,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -376,6 +376,14 @@ function herkunftEntwurf(a) {
   const e = S.ui.herkunftEntwurf;
   if (!e || e.nummer !== a.nummer) return '';
   return e.wert;
+}
+/** id der Meldung im Fuß des Aufgabenfensters; bleibt über jedes Neuzeichnen gleich, damit ein Feld auf sie verweisen kann. */
+const FENSTER_MELDUNG = 'fenster-meldung';
+/** Solange die Meldung eine abgelehnte Herkunft dieser Aufgabe betrifft, ist das Feld ungültig und verweist auf sie (R00111 AK 1). */
+function herkunftVerweis(a) {
+  const abgelehnt = S.ui.fensterFehler && herkunftEntwurf(a);
+  if (!abgelehnt) return '';
+  return ` aria-invalid="true" aria-describedby="${FENSTER_MELDUNG}"`;
 }
 
 function quelleLink(x) {
