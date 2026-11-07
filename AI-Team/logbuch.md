@@ -344,3 +344,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #76 | Nacharbeit | entwickler | bestanden (N1–N3, Gate 554/291/765 grün) → Auto-Reviews Wiederholung | 0:21 | 6f96a3e |
 | 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden (Wiederholung; Sollte B3 Wächter zweigblind, A5 dateiLaden ohne 423) | 0:05 | — |
 | 2026-11-07 | #76 | Auto-Reviews | architektur-reviewer | befund (Wiederholung; B4 Muss Reparatur-Zweig rückt zuletztFenster nicht vor, B5 = crev B3) → Nacharbeit 2 | 0:05 | — |
+| 2026-11-07 | #76 | Nacharbeit | entwickler | bestanden (Nacharbeit 2: B4 gleicherTakt, B5 Wächter je Block; Gate 554/294/768 grün) → Auto-Reviews | 0:16 | 51fcd1f |
