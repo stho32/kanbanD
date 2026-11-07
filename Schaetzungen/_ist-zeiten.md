@@ -432,3 +432,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0442 Laden übernimmt alles oder nichts | Integration | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0443 Marke der Warteschlange (E2E F2) | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0444 Datei nur für die offene Aufgabe (E2E F3 mit zwei gehaltenen Dateien) | Integration | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | B0445 Wächter der Übernahmestellen (Unit, Mutanten M1/M2) | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
