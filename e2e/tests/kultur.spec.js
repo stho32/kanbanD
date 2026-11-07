@@ -141,11 +141,13 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     expect(karten.filter(t => ISO.test(t))).toEqual([]);
   });
 
-  test('Fälligkeit, die kein Datum ist, erscheint unverändert und escaped auf der Karte (Code-Review A1)', async ({ page }) => {
+  test('Fälligkeit, die kein Datum ist, erscheint unverändert und escaped auf der Karte und im Signal „überfällig“ (Code-Review A1)', async ({ page }) => {
     arbeit = arbeitsRepository(WBS);
     const bestand = grundbestand(arbeit);
-    bestand['boards/entwicklung.md'] = BOARD.replace('- #6\n', '- #6\n- #7\n');
+    bestand['boards/entwicklung.md'] = BOARD.replace('- #6\n', '- #6\n- #7\n- #8\n');
     bestand['aufgaben/0007-sieben.md'] = karte(7, 'sieben', 'due: "<b>x"\n');
+    // vor heute im Zeichenvergleich, also „überfällig“; das Anführungszeichen will aus dem Attribut ausbrechen
+    bestand['aufgaben/0008-acht.md'] = karte(8, 'acht', `due: '1" data-ausbruch="x'\n`);
     k = await kanbanStarten(einrichten(bestand));
     await alsPerson(page, 'st');
     await brett(page);
@@ -154,6 +156,10 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(sieben.locator('.due')).toHaveAttribute('title', 'fällig <b>x');
     expect(await sieben.locator('b').count()).toBe(0);
     expect(await sieben.ariaSnapshot()).toContain('fällig <b>x');
+    const signal = page.locator('.ka[data-id="8"] .signal.faellig');
+    await expect(signal).toHaveAttribute('aria-label', 'überfällig seit 1" data-ausbruch="x');
+    await expect(signal).toHaveAttribute('title', 'überfällig seit 1" data-ausbruch="x');
+    await expect(signal).not.toHaveAttribute('data-ausbruch');
   });
 
   test('US-2: Kommentar, Reservierungen, Archivleiste lang; Reiter Datei und Datumsfeld bleiben ISO', async ({ page }) => {
