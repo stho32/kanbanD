@@ -313,3 +313,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | Auto-Reviews | code-reviewer | befund (B1 Unit-Ebene AK 10; A1 esc an Datumsausgaben) | 0:35 | — |
 | 2026-11-07 | #11 | Auto-Reviews | ux-reviewer | befund (Muss: Name der Fälligkeit; Sollte: Feld nach Ablehnung leer) | 0:35 | — |
 | 2026-11-07 | #11 | Nacharbeit | planer | bestanden (Textfunde R00109 und US eingearbeitet, r00081 ergänzt) | 0:15 | eaf1bb4 |
+| 2026-11-07 | #11 | Nacharbeit | entwickler | gebaut (6 Punkte, Gate 1 Fehlschlag Vorbestand → #73) | 0:36 | ff7a023 |
