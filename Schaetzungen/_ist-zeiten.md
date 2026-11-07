@@ -439,3 +439,4 @@ Nie vom User erfragen.
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 1 N3: Öffnen und Blättern leeren Datei, Anhänge, Eintritt (E2E zwei Wege) | Operation | — | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B4: Reparatur rückt zuletztFenster beim Umschalten vor (E2E 0/250/400 ms) | Operation | — | 0,3h | 0,3h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B5: Wächter „Aufruf vor Übernahme“ je Block (Mutante 4) | Operation | — | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0447 Akzeptanztests Aufgabenfenster schmal | Operation | 0,5-1h | 0,0h | 0,2h | autonom |
