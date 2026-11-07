@@ -332,3 +332,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #75 | Entwicklung | entwickler | bestanden (Testende an letzte Auslieferung gebunden; 30/30 verschärft, Mutanten rot) | 0:22 | e67f646 |
 | 2026-11-07 | #75 | Auto-Reviews | code-reviewer | befund (B1 finally stoppt kanbanD nach Timeout nicht; A1, A2, A4) → Nacharbeit 1 | 0:07 | — |
 | 2026-11-07 | #75 | Nacharbeit | entwickler | bestanden (Aufräumen übersteht Timeout, Frist fürs Neuladen, A1/A2) | 0:25 | 34486ba |
+| 2026-11-07 | #75 | Auto-Reviews | code-reviewer | bestanden (Wiederholung; B1 geschlossen, A5 → #76) | 0:06 | — |
