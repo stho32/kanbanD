@@ -339,3 +339,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #76 | Detailplanung | product-owner | beantwortet (Z. 150 Lesart Kopf + Live-Auflage F1, Z. 151 Wächtertest in #76) | 0:05 | 52bb8d4 |
 | 2026-11-07 | #76 | Detailplanung | planer | bestanden (R00110, I0099 mit 3 Features/6 Bubbles) | 0:20 | 0b60cfa |
 | 2026-11-07 | #76 | Entwicklung | entwickler | bestanden (6 Bubbles, Mutanten 10/10 rot, Regel 7 erweitert; Leseliste nachgefordert; agent aac2ad2) | 1:00 | 949b364 |
+| 2026-11-07 | #76 | Auto-Reviews | architektur-reviewer | befund (B1 Muss defektLaden ohne Takt; B2 ADR-N2, B3 A00009) | 0:05 | — |
+| 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden mit Sollte (B1 = arev B1, B2 Wächter-Alias, A1 Rückschritt Blättern) → Nacharbeit 1; Karten #79, #80 | 0:06 | — |
