@@ -342,3 +342,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #76 | Auto-Reviews | architektur-reviewer | befund (B1 Muss defektLaden ohne Takt; B2 ADR-N2, B3 A00009) | 0:05 | — |
 | 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden mit Sollte (B1 = arev B1, B2 Wächter-Alias, A1 Rückschritt Blättern) → Nacharbeit 1; Karten #79, #80 | 0:06 | — |
 | 2026-11-07 | #76 | Nacharbeit | entwickler | bestanden (N1–N3, Gate 554/291/765 grün) → Auto-Reviews Wiederholung | 0:21 | 6f96a3e |
+| 2026-11-07 | #76 | Auto-Reviews | code-reviewer | bestanden (Wiederholung; Sollte B3 Wächter zweigblind, A5 dateiLaden ohne 423) | 0:05 | — |
