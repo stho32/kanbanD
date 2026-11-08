@@ -669,6 +669,7 @@ zuletzt: 2026-11-08
 | B0476 | Bubble | F0065 | Testlücken: Commit-Zähler US-5, Hinweis-Anker in Neu und Defekt | gruen | Test gruen | US-5 prüft genau einen Commit; „Anlegen und weitere“ → .toast in #neu-fenster; Hinweis von vorher → .toast in #defekt-fenster → grün, Mutant hinweisDialog ohne neu/defekt rot | 0,5 |  | B0475 |  | code-reviewer zu Karte #12 (SOLLTE 3 und 4) |
 | B0477 | Bubble | F0065 | Textkorrekturen: Tastenhilfe, Doc-Kommentar, 400-Meldung mit „…“ | gruen | Test gruen | Tastenhilfe „letzte Aktion rückgängig“; ganze_zahl_ab_null dokumentiert `feld`; 400 nennt „position“/„erledigt“ typografisch → teilaufgaben.rs rot, dann grün | 0,25 |  | B0476 |  | code-reviewer zu Karte #12 (SOLLTE 6) |
 | B0478 | Bubble | F0065 | Helfer anhangSenden statt doppeltem Multipart-Upload | gruen | Test gruen | Hochladen und Rückgängig des Anhangs senden über anhangSenden(nummer, datei, name) → r00016 und r00112 Anhänge grün | 0,25 |  | B0477 |  | code-reviewer zu Karte #12 (SOLLTE 9) |
+| B0479 | Bubble | F0065 | Hinweistext des Anhang-Rückgängig ohne Ternary (J11) | gruen | Test gruen | anhangWiederhergestellt(gemerkt, vergeben) mit benannter Bedingung und if → r00112 Anhänge (auch „als plan-2.pdf“) grün | 0,25 |  | B0478 |  | code-reviewer zu Karte #12 (SOLLTE 5) |
 
 ## Offene Fragen
 

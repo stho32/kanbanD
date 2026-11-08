@@ -513,11 +513,18 @@ async function zeitZuruecklegen(z) {
 
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
 function anhangZuruecklegen(z) {
-  return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`, (gelungen, antwort) => {
+  return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => anhangWiederhergestellt(z.name, antwort.name), (gelungen, antwort) => {
     let name = z.name;
     if (gelungen) name = antwort.name;
     return [knopfSelektor('anhang-weg', name), '#anhaenge [data-act="anhang-weg"]'];
   });
+}
+
+/** Hinweis nach dem Zurücklegen; nennt den neuen Namen, wenn der Server wegen Belegung einen anderen vergeben hat. */
+function anhangWiederhergestellt(gemerkt, vergeben) {
+  const umbenannt = vergeben !== gemerkt;
+  if (umbenannt) return `Anhang als „${vergeben}“ wiederhergestellt`;
+  return `Anhang „${gemerkt}“ wiederhergestellt`;
 }
 
 /** Führt die Gegenaktion `senden` aus; Erfolg steht als Hinweis ohne Knopf da (ADR-0017 Regel 6), die Ablehnung im Fuß oder im Hinweis.
