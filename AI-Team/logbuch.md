@@ -380,3 +380,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #88 | Auto-Reviews | code-reviewer | bestanden, keine Befunde; Agent af1ad4abe282c407d · 3,97–5,44 $ | 0:04 | — |
 | 2026-11-08 | #88 | Auto-Reviews | ux-reviewer | bestanden, kein Muss; Sollte Mono/Sans → #99, Vorbestand 320 px erster Start → #100; Agent a611d2c9063256f8d · 4,29–5,71 $ | 0:05 | — |
 | 2026-11-08 | #88 | Auto-Reviews | architektur-reviewer | bestanden, kein Muss; Sollte Modell-Drift X00004/A00009 nach dem Merge; Agent acfd26c6415828257 · 3,28–4,67 $ | 0:04 | — |
+| 2026-11-08 | #88 | Entwicklertest | entwicklertester | bestanden, keine Befunde; US-7/US-8 alle Dann-Zeilen, Fotos für den Abnahmezettel; Anmerkung Einzug Einrichten → #99; Agent a08cc253625b0ab08 · 6,32–7,81 $ | 0:11 | e119592 |
