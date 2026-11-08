@@ -242,8 +242,6 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   });
 
   test.describe('Aktuelle Seite', () => {
-    test.fail(true, 'Karte #13: die Navigation trägt noch kein aria-current');
-
     test('US-9: die Navigation nennt die aktuelle Seite', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
       const k = await starten(page);
@@ -254,6 +252,22 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
         verstoesse.push(...await aktuelleSeitePruefen(page, route));
       }
       expect(verstoesse).toEqual([]);
+    });
+
+    test('US-9: M4 — ein zweites aria-current an „Aufgaben“ macht die Probe rot', async ({ page }) => {
+      await page.route('**/ansicht.js', async route => {
+        const antwort = await route.fetch();
+        const text = await antwort.text();
+        const mutiert = text.replace('<a href="#/aufgaben" class="', '<a href="#/aufgaben" aria-current="page" class="');
+        expect(mutiert, 'Mutante M4 greift nicht').not.toBe(text);
+        await route.fulfill({ response: antwort, body: mutiert });
+      });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const k = await starten(page);
+      const board = ROUTEN.find(r => r.ansicht === 'Board');
+      await page.goto(k.adresse + board.adresse);
+      await gezeichnet(page, board.adresse, board.bereit);
+      expect(await aktuelleSeitePruefen(page, board)).toEqual(['Board: aria-current an „Board, Aufgaben“ statt „Board“']);
     });
 
     test('US-10: schmal nennt das Seitenmenü die aktuelle Seite', async ({ page }) => {

@@ -488,3 +488,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0491 Akzeptanztest Karte als Listeneintrag | Standard | 1-1,5 | 0,5 | 0,75 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0492 Rollen und Namen beim Zeichnen | Standard | 1-2 | 0,75 | 1 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0493 Akzeptanztest aktuelle Seite breit und schmal | Standard | 0,5-1 | 0,5 | 1 | autonom |
+| 2026-11-08 | R00113 Struktur für Hilfstechnik | B0494 aria-current wie die Klasse an | Standard | 0,5-1 | 0,5 | 1 | autonom |

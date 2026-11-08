@@ -71,9 +71,13 @@ function kopfElemente() {
 }
 const DREI_PUNKTE = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>';
 
+/** Die aktuelle Seite: Klasse an fürs Auge, aria-current für die Hilfstechnik — immer unter derselben Bedingung (R00113, ADR-0018 Regel 5). */
+const aktuellAttribut = istAktuell => (istAktuell ? ' aria-current="page"' : '');
+
 function vNavigation() {
   const u = S.ui;
-  return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}">Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}">Aufgaben</a><a href="#/personen" class="${u.view === 'personen' ? 'an' : ''}">Personen</a><a href="#" id="t-ber" class="${u.view.startsWith('berichte') ? 'an' : ''}${u.pop === 'ber' ? ' auf' : ''}" data-act="pop" data-arg="ber" aria-haspopup="menu">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}">Einrichten</a></nav>`;
+  const berichte = u.view.startsWith('berichte');
+  return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${u.view === 'board' ? 'an' : ''}"${aktuellAttribut(u.view === 'board')}>Board</a><a href="#/aufgaben" class="${u.view === 'aufgaben' ? 'an' : ''}"${aktuellAttribut(u.view === 'aufgaben')}>Aufgaben</a><a href="#/personen" class="${u.view === 'personen' ? 'an' : ''}"${aktuellAttribut(u.view === 'personen')}>Personen</a><a href="#" id="t-ber" class="${berichte ? 'an' : ''}${u.pop === 'ber' ? ' auf' : ''}"${aktuellAttribut(berichte)} data-act="pop" data-arg="ber" aria-haspopup="menu">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${u.view === 'einrichten' ? 'an' : ''}"${aktuellAttribut(u.view === 'einrichten')}>Einrichten</a></nav>`;
 }
 
 /** Unter 600 px ersetzt ein Knopf mit dem Namen der aktuellen Seite die Navigationsleiste (R00101, PO 2026-10-31). */
@@ -86,12 +90,13 @@ const seitenName = () => seitenNameVon(S.ui.view);
 
 function vSeitenPop() {
   const u = S.ui, name = seitenName();
-  const ziel = (titel, hash) => `<a class="iz${name === titel ? ' an' : ''}" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
+  const ziel = (titel, hash) => `<a class="iz${name === titel ? ' an' : ''}"${aktuellAttribut(name === titel)} href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   const wbs = gebunden().map(a => {
     const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
-    return `<a class="iz${u.view === 'wbs' && wbsKuerzel() === a.kuerzel ? ' an' : ''}" href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
+    const istAktuell = u.view === 'wbs' && wbsKuerzel() === a.kuerzel;
+    return `<a class="iz${istAktuell ? ' an' : ''}"${aktuellAttribut(istAktuell)} href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   }).join('');
-  const berichte = `<button type="button" class="iz${name === 'Berichte' ? ' an' : ''}" data-act="pop" data-arg="ber" role="menuitem" tabindex="-1" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
+  const berichte = `<button type="button" class="iz${name === 'Berichte' ? ' an' : ''}"${aktuellAttribut(name === 'Berichte')} data-act="pop" data-arg="ber" role="menuitem" tabindex="-1" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
   return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><h4>SEITE</h4>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
 }
 
@@ -1272,7 +1277,7 @@ function vFieberMethodik() {
 /** Ein Menüpunkt je gebundener Anwendung; bei mehreren mit Kürzel. */
 function vWbsMenue() {
   const g = gebunden(), k = wbsKuerzel();
-  return g.map(a => `<a href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" class="${S.ui.view === 'wbs' && k === a.kuerzel ? 'an' : ''}" title="WBS von ${esc(a.name)} (g k)">${g.length > 1 ? 'WBS · ' + esc(a.kuerzel) : 'WBS'}</a>`).join('');
+  return g.map(a => `<a href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" class="${S.ui.view === 'wbs' && k === a.kuerzel ? 'an' : ''}"${aktuellAttribut(S.ui.view === 'wbs' && k === a.kuerzel)} title="WBS von ${esc(a.name)} (g k)">${g.length > 1 ? 'WBS · ' + esc(a.kuerzel) : 'WBS'}</a>`).join('');
 }
 function vWbs() {
   if (!wbsKuerzel()) return `<div class="body bericht"><p class="muted">Dieses Board ist an keine Anwendung gebunden. Anwendungen registrierst du unter <a href="#/einrichten">Einrichten</a>; ein Board bindet sie mit <span class="mono">applications: [kd]</span>.</p></div>`;
