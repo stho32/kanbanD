@@ -32,7 +32,9 @@ test.describe('R00065', () => {
     await karte(page, 1).click({ modifiers: ['ControlOrMeta'] });
     await karte(page, 3).click({ modifiers: ['ControlOrMeta'] });
     await expect(page.locator('.ka.gewaehlt')).toHaveCount(2);
-    await expect(karte(page, 3)).toHaveAttribute('aria-selected', 'true');
+    // die Auswahl steht im Namen der Karte, nicht in aria-selected (R00113, ADR-0018 Regel 4)
+    await expect(karte(page, 3)).toHaveAttribute('aria-label', /, ausgewählt$/);
+    await expect(karte(page, 3)).not.toHaveAttribute('aria-selected');
     await expect(page.locator('#stat')).toContainText('2 Karten ausgewählt');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await karte(page, 3).click({ modifiers: ['ControlOrMeta'] });

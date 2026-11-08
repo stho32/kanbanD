@@ -152,9 +152,11 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   });
 
   test.describe('Karten', () => {
-    test.fail(true, 'Karte #13: Spalten sind noch keine Liste, Karten haben noch keinen Namen');
-
     const spalte = (page, name) => page.locator(`#main section.bahn[data-col="${name}"]`);
+    /** Zugänglicher Name je Listeneintrag einer Spalte, wie ihn die Hilfstechnik ansagt (leer ohne Namen). */
+    const namenDerSpalte = (page, name) => spalte(page, name).getByRole('list').getByRole('listitem')
+      .evaluateAll(eintraege => eintraege.map(e => e.getAttribute('aria-label') || ''));
+    const NAMEN_ZU_ERLEDIGEN = ['#1 eins, Fehler', '#2 zwei, Funktion', '#3 Ölwechsel & <Prüfung>'];
 
     test('US-5: Karte #1 wird als „#1 eins, Fehler“ angesagt', async ({ page }) => {
       const k = await starten(page);
@@ -164,9 +166,8 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       await expect(liste).toHaveCount(1);
       const eintraege = liste.getByRole('listitem');
       await expect(eintraege).toHaveCount(3);
-      const namen = [];
-      for (const eintrag of await eintraege.all()) namen.push(await eintrag.evaluate(e => e.getAttribute('aria-label')));
-      expect(namen).toEqual(['#1 eins, Fehler', '#2 zwei, Funktion', '#3 Ölwechsel & <Prüfung>']);
+      const namen = await namenDerSpalte(page, 'Zu erledigen');
+      expect(namen).toEqual(NAMEN_ZU_ERLEDIGEN);
       const eins = liste.getByRole('listitem', { name: '#1 eins, Fehler', exact: true });
       await expect(eins.getByRole('button', { name: /Neue E-Mail/ })).toHaveCount(1);
       await expect(eins.getByRole('link').first()).toHaveAccessibleName(/\S/);
@@ -209,6 +210,22 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       await expect(zwei).toHaveCount(1);
       await expect(zwei.locator('.t')).toHaveText('umbenannt');
       expect(await page.evaluate(() => window.ohneNeuladen)).toBe(true);
+    });
+
+    test('US-5: M3 — ohne aria-label an .ka macht die Probe rot', async ({ page }) => {
+      await page.route('**/ansicht.js', async route => {
+        const antwort = await route.fetch();
+        const text = await antwort.text();
+        const mutiert = text.replace('role="listitem" aria-label="${esc(kartenName(', 'role="listitem" data-m3="${esc(kartenName(');
+        expect(mutiert, 'Mutante M3 greift nicht').not.toBe(text);
+        await route.fulfill({ response: antwort, body: mutiert });
+      });
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      const namen = await namenDerSpalte(page, 'Zu erledigen');
+      expect(namen).toEqual(['', '', '']);
+      expect(namen).not.toEqual(NAMEN_ZU_ERLEDIGEN);
     });
   });
 });
