@@ -4,7 +4,7 @@
 **Datum**: 2026-11-08
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #12 „Entfernende Aktionen mit Rückgängig versehen und dauerhaft sichtbar machen“ (UX-Durchsicht 2026-10-31); Anforderung und WBS-Knoten folgen über den planer
-**Nachträge**: 2026-11-08 — Regel 5 unter Zuständige und Hilfe, siehe [Nachtrag N1](#nachtrag-2026-11-08-n1-hinweis-unter-zustaendige-und-hilfe-r00112). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-08 — Regel 5 unter Zuständige und Hilfe, siehe [Nachtrag N1](#nachtrag-2026-11-08-n1-hinweis-unter-zustaendige-und-hilfe-r00112). 2026-11-08 — Strg+Z im leeren Feld des Entfernens und Fokus als Rangliste, siehe [Nachtrag N2](#nachtrag-2026-11-08-n2-strgz-im-leeren-feld-und-fokus-als-rangliste-r00112). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: Probe 2026-11-08 gegen eine eigene Instanz (`target/release/kanbanD <wegwerf-ordner> --port <frei> --kein-browser`, kanbanD `283b94c`, unter `nice -n 19`), nur über die HTTP-API:
 - **Board:** `DELETE /api/boards/{slug}/aufgaben/1`, danach `POST /api/boards/{slug}/aufgaben {nummer:1, spalte}` stellt „Liegt auf“ und die Spalte wieder her. Die Karte landet aber **unten**: vorher Reihenfolge 1, 2, 3, nachher 2, 3, 1. Ein zweites Auflegen ergibt 409.
 - **Teilaufgabe:** `POST …/teilaufgaben {text, position:1, erledigt:true}` ignoriert `position` und `erledigt`. Die Teilaufgabe hängt am Ende und ist offen.
@@ -181,3 +181,40 @@ Vor dem Entfernen merkt sich die Oberfläche, was sie zum Wiederherstellen brauc
 - Test „US-7 Gegenfall unter der Hilfe“ (`e2e/tests/r00112-rueckgaengig.spec.js:280`): die Ablehnung steht im Hinweis obenauf, nicht im Fuß.
 - Kippt die Annahme „Zuständige und Hilfe entfernen nichts“, weil eines der beiden eine entfernende Aktion bekommt, braucht es einen Anker. Dann ist das ein Review-Punkt des `architektur-reviewer`: `dialogMitHinweis` gegen jede neue Aktion mit `undo` prüfen.
 
+## Nachtrag 2026-11-08 N2: Strg+Z im leeren Feld und Fokus als Rangliste (R00112)
+
+**Anlass**: Code-Review zu Karte #12 (R00112). Regel 5 sagt „Strg+Z gilt auch bei offenem Fenster, außer in Eingabefeldern“, R00112 FA 2 ebenso. Gebaut ist eine Ausnahme davon (Commit `a4f3b95`). Regel 6 verweist für den Fokus nur auf N7a/N7b (ADR-0010) und nennt keine Ziele. Die Wahl, Option A, gilt unverändert; der Status bleibt `Akzeptiert`.
+
+**Belegt (Code, kanbanD Zweig `karte/12`, `9d246a3`)**:
+- Nach dem Entfernen der letzten Teilaufgabe oder des letzten Zeiteintrags gibt es kein ✕ mehr, auf dem der Fokus stehen könnte. Er geht ins Eingabefeld des Abschnitts (`#teil-neu`, `#zeit-neu`). Ohne Ausnahme wäre Strg+Z dort das Rückgängig des Browsers im leeren Feld, also ohne Wirkung. Das Entfernen per Tastatur hätte keinen Rückweg per Tastatur.
+- Der Hinweis merkt sich dieses Feld (`feld: '#teil-neu'` bzw. `'#zeit-neu'`, `web/app.js:1098`, `:1425`). `leeresFeldDesEntfernens(feld)` (`:494–497`) ist wahr, wenn der Fokus in genau diesem Feld steht und es leer ist. Die Tastenprüfung lässt Strg+Z dann durch (`:1891–1892`).
+- Fokusziele sind Listen in Rangfolge (`S.ui.fokus`). Es gilt das erste vorhandene Ziel, wie bei den Startzielen der Ebenen (ADR-0010).
+  - nach dem Entfernen: `fokusNachEntfernen` (`:477–482`)
+  - nach dem Rückgängig: `rueckgaengigAusfuehren` (`:533–547`) mit den Zielen je Art
+  - den Nachbarn rechnet `nachbarNachEntfernen(anzahl, index)` (`web/fokus.js:112–115`): der folgende rückt nach, am Ende der vorige, `-1`, wenn keiner bleibt
+
+### N2 Regel 5 und Regel 6, Ergänzung
+
+**Entschieden**:
+1. **Ausnahme zu Regel 5 (Strg+Z in Eingabefeldern)**: Strg+Z wirkt zusätzlich in genau dem Eingabefeld, auf das das Entfernen den Fokus gesetzt hat, solange dieses leer ist und der Hinweis mit `undo` lebt. In jedem anderen Feld und sobald etwas getippt ist, gehört Strg+Z dem Feld. Ein leeres Feld hat nichts Getipptes zurückzunehmen; der Nutzen ist der Tastaturweg zurück nach dem Entfernen des letzten Eintrags.
+2. **Fokus nach dem Entfernen, Rangliste**:
+   1. das eigene ✕, solange es noch steht (Entfernen abgelehnt)
+   2. das ✕ des Nachbarn nach `nachbarNachEntfernen`
+   3. der Ort des Abschnitts: `#teil-neu`, `#zeit-neu`, bei „Liegt auf“ die Zeile `tr[data-zeile=n]`
+   4. beim Anhang keiner; der Fokus bleibt beim Fenster, weil die Dateiwahl kein tabbares Feld ist
+3. **Fokus nach dem Rückgängig, Rangliste**:
+   1. das ✕ des wiederhergestellten Elements; beim Anhang unter dem vom Server vergebenen Namen, bei der Teilaufgabe an der gekappten Stelle
+   2. sonst der Ort des Entfernens: das Eingabefeld, die Zeile oder beim Anhang das ✕ eines beliebigen Anhangs
+
+   Dieselbe Liste gilt bei der Ablehnung. Bei der Ablehnung steht das Element meist schon wieder da (409).
+4. Ranglisten statt eines Ziels, weil der Stand nach `laden()` erst feststeht. Ein Agent kann dazwischen ändern, und die Liste fällt dann auf das nächste vorhandene Ziel zurück, statt ins Leere (N7a/N7b) zu greifen.
+
+**In Kauf genommen**: Steht der Fokus im leeren Feld und der Hinweis ist noch aktiv, tippt der Nutzer und drückt dann Strg+Z, so nimmt Strg+Z das Getippte zurück, nicht das Entfernen. Das ist gewollt, aber nicht sichtbar unterschieden.
+
+**Durchsetzung** (Tests in `e2e/tests/r00112-rueckgaengig.spec.js`, Bubble B0474, Commit `a4f3b95`):
+- Ausnahme positiv: „Abnahme-Probe (b)“ (`:613`). Die einzige Zeit wird gelöscht, der Fokus steht in `#zeit-neu` (`:631`), und Strg+Z stellt wieder her.
+- Ausnahme negativ: „im Feld „Zeit nachtragen“ mit getipptem Text bleibt Strg+Z beim Feld“ (`:637`).
+- Ranglisten je Art: `:566–586` (Liegt auf), `:613–653` (Zeit), `:681–697` (Teilaufgabe), `:726–765` (Anhang). Die Ablehnung prüfen `:586` (Liegt auf) und `:653` (Zeit); für Teilaufgabe und Anhang gibt es keinen Ablehnungsfall mit Fokus.
+- Nachbar: Einheitstest `nachbarNachEntfernen` (`e2e/einheit/fokus.test.js:247`).
+
+Die Tests sind gelesen, nicht ausgeführt: im Zweig lief parallel der Entwicklertest, ohne Build.
