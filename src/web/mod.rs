@@ -1227,21 +1227,36 @@ async fn wbs_verwerfen(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)
 struct Ablage {
     nummer: u32,
     spalte: Option<String>,
+    /// Stelle in der Spalte, 0-basiert, außerhalb = ans Ende (R00112); roh, damit jeder Fehler 400 wird und nie 422
+    #[schema(value_type = Option<usize>)]
+    index: Option<serde_json::Value>,
+}
+
+/// `index` als Stelle: fehlt er oder ist null, unten; sonst eine ganze Zahl ab 0, alles andere 400.
+fn einfuegestelle(index: Option<&serde_json::Value>) -> Result<Option<usize>, Fehler> {
+    match index {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(wert) => wert
+            .as_u64()
+            .map(|n| Some(n as usize))
+            .ok_or_else(|| Fehler::Ungueltig(format!("index muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
+    }
 }
 
 #[utoipa::path(
     post,
     path = "/api/boards/{slug}/aufgaben",
     tag = "Boards",
-    description = "Aufgabe auf das Board legen {nummer, spalte?} — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (eine schon liegende Karte ist kein Zugang), nichts wird geschrieben; Mensch: ohne Warnung",
+    description = "Aufgabe auf das Board legen {nummer, spalte?, index?} — index legt an diese Stelle der Spalte (0-basiert, außerhalb = ans Ende, ohne = unten; keine ganze Zahl ab 0 → 400) — Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl} (eine schon liegende Karte ist kein Zugang), nichts wird geschrieben; Mensch: ohne Warnung",
     params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = Ablage,
     responses((status = 201, description = "Erfolg", body = crate::web::openapi::SpalteAntwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(a): Json<Ablage>) -> Result<Response, Fehler> {
+    let index = einfuegestelle(a.index.as_ref())?;
     let spalte = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
-        k.auf_board_legen(&p, &slug, a.nummer, a.spalte.as_deref())
+        k.auf_board_legen(&p, &slug, a.nummer, a.spalte.as_deref(), index)
     })
     .await?;
     Ok((StatusCode::CREATED, Json(json!({ "spalte": spalte }))).into_response())

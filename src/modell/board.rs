@@ -302,8 +302,9 @@ impl Board {
         self.spalten.last()
     }
 
-    /// Hängt die Aufgabe unten an die Spalte (ohne Angabe: die erste). Liefert den Spaltennamen.
-    pub fn aufnehmen(&mut self, nummer: u32, spalte: Option<&str>) -> Result<String, Bewegfehler> {
+    /// Legt die Aufgabe an `index` der Spalte (ohne Angabe: die erste); ohne `index` oder dahinter unten (R00112).
+    /// Liefert den Spaltennamen.
+    pub fn aufnehmen(&mut self, nummer: u32, spalte: Option<&str>, index: Option<usize>) -> Result<String, Bewegfehler> {
         if self.spalte_von(nummer).is_some() {
             return Err(Bewegfehler::SchonAufDemBoard);
         }
@@ -311,7 +312,8 @@ impl Board {
             Some(s) => self.spalte_mut(s).ok_or(Bewegfehler::SpalteUnbekannt)?,
             None => self.spalten.first_mut().ok_or(Bewegfehler::SpalteUnbekannt)?,
         };
-        ziel.aufgaben.push(nummer);
+        let stelle = index.unwrap_or(ziel.aufgaben.len()).min(ziel.aufgaben.len());
+        ziel.aufgaben.insert(stelle, nummer);
         Ok(ziel.name.clone())
     }
 
@@ -895,16 +897,27 @@ mod tests {
     #[test]
     fn aufnehmen_und_abnehmen() {
         let mut b = b();
-        assert_eq!(b.aufnehmen(7, None), Ok("A".into()));
-        assert_eq!(b.aufnehmen(8, Some("Z")), Ok("Z".into()));
+        assert_eq!(b.aufnehmen(7, None, None), Ok("A".into()));
+        assert_eq!(b.aufnehmen(8, Some("Z"), None), Ok("Z".into()));
         assert_eq!(b.spalten[1].aufgaben, vec![3, 8]);
-        assert_eq!(b.aufnehmen(7, Some("Z")), Err(Bewegfehler::SchonAufDemBoard));
-        assert_eq!(b.aufnehmen(9, Some("X")), Err(Bewegfehler::SpalteUnbekannt));
+        assert_eq!(b.aufnehmen(7, Some("Z"), None), Err(Bewegfehler::SchonAufDemBoard));
+        assert_eq!(b.aufnehmen(9, Some("X"), None), Err(Bewegfehler::SpalteUnbekannt));
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
         let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None };
-        assert_eq!(leer.aufnehmen(1, None), Err(Bewegfehler::SpalteUnbekannt));
+        assert_eq!(leer.aufnehmen(1, None, None), Err(Bewegfehler::SpalteUnbekannt));
+    }
+
+    #[test]
+    fn aufnehmen_an_einer_stelle_gekappt_auf_die_laenge() {
+        let mut b = b();
+        assert_eq!(b.aufnehmen(8, Some("Z"), Some(0)), Ok("Z".into()));
+        assert_eq!(b.spalten[1].aufgaben, vec![8, 3]);
+        assert_eq!(b.aufnehmen(9, Some("Z"), Some(1)), Ok("Z".into()));
+        assert_eq!(b.spalten[1].aufgaben, vec![8, 9, 3]);
+        assert_eq!(b.aufnehmen(10, Some("Z"), Some(99)), Ok("Z".into()));
+        assert_eq!(b.spalten[1].aufgaben, vec![8, 9, 3, 10]);
     }
 
     #[test]

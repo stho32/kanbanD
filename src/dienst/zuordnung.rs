@@ -5,14 +5,14 @@ use crate::fehler::Fehler;
 use crate::modell::{Bewegfehler, Person};
 
 impl Kanban {
-    /// Legt eine vorhandene Aufgabe unten in eine Spalte des Boards; die Aufgabe selbst bleibt unberührt.
+    /// Legt eine vorhandene Aufgabe in eine Spalte des Boards, an `index` oder unten (R00112); die Aufgabe selbst bleibt unberührt.
     /// Agent über der Grenze → 409; ein Mensch wird durchgelassen, ohne Warnung (R00096).
-    pub fn auf_board_legen(&self, wer: &Person, slug: &str, nummer: u32, spalte: Option<&str>) -> Result<String, Fehler> {
+    pub fn auf_board_legen(&self, wer: &Person, slug: &str, nummer: u32, spalte: Option<&str>, index: Option<usize>) -> Result<String, Fehler> {
         let _sperre = self.gesperrt();
         let a = self.ordner().aufgabe(nummer)?;
         let mut b = self.ordner().board(slug)?;
         let vorher = b.clone();
-        let name = b.aufnehmen(nummer, spalte).map_err(|f| match f {
+        let name = b.aufnehmen(nummer, spalte, index).map_err(|f| match f {
             Bewegfehler::SchonAufDemBoard => Fehler::Konflikt(format!("#{nummer} liegt schon auf „{}“", b.titel)),
             _ => Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", spalte.unwrap_or("—"), b.titel)),
         })?;
@@ -35,7 +35,7 @@ impl Kanban {
         let mut name = String::new();
         for nr in nummern {
             self.ordner().aufgabe(*nr)?;
-            match b.aufnehmen(*nr, spalte) {
+            match b.aufnehmen(*nr, spalte, None) {
                 Ok(n) => {
                     name = n;
                     gelegt.push(*nr);

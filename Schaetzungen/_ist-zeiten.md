@@ -453,3 +453,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 B1: Meldung trägt ihr Feld, „Neue Herkunft“ nur bei eigener Ablehnung ungültig (E2E Titel, Dauer, Gegenprobe; M8 rot) | Operation | — | 0,1h | 0,1h | autonom |
 | 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 S1: Fensterliste gegen das Markup abgeglichen, „Zuständige“ aufgenommen | Operation | — | 0,1h | 0,1h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0458 Akzeptanztests „von Board nehmen“ rückgängig | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0459 Auflegen an einer Stelle | Operation | 1-2h | 0,4h | 0,4h | autonom |
