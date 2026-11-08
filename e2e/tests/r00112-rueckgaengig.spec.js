@@ -220,3 +220,56 @@ test.describe('R00112 ✕ sichtbar mit Maus', () => {
     await alleEntfernenKnoepfeSichtbar(page, k);
   });
 });
+
+// US-7: Stefan 09:00–10:00 an #1. Die User Story sagt „heute“; vor 10:00 läge das Ende in der Zukunft, und der Server lehnt
+// das Wiederherstellen ab (Zeitnachtrag: ende nicht in der Zukunft). Gestern ergibt dieselbe Zeile und denselben Hinweis.
+const gestern = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(Date.now() - 864e5);
+const mitZeit = () => ({
+  ...grundbestand(),
+  'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\n---\n\n\`\`\`kanbanD-time\n${gestern()} 09:00 · ${gestern()} 10:00 · st\n\`\`\`\n`,
+});
+const zeitenVon1 = async (page, k) => (await (await page.request.get(k.adresse + 'api/aufgaben/1')).json()).zeiten;
+
+test.describe('R00112 Zeiteintrag im Fenster', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeit())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+
+  async function zeitEntfernen(page) {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.locator('.zt')).toContainText('09:00–10:00');
+    await page.getByLabel('Zeit 1 löschen').click();
+    await expect(page.locator('.zt')).not.toContainText('09:00–10:00');
+    await expect(imFenster(page)).toContainText('Zeit 09:00–10:00 von Stefan gelöscht');
+  }
+
+  test.fail('US-7: entfernter Zeiteintrag kommt mit Strg+Z zurück (#12)', async ({ page }) => {
+    const [vorher] = await zeitenVon1(page, k);
+    await zeitEntfernen(page);
+    const knopf = imFenster(page).getByRole('button', { name: 'rückgängig' });
+    for (let i = 0; i < 80 && !(await knopf.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(knopf).toBeFocused();
+    const commitsVorher = commits(k);
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('.zt')).toContainText('09:00–10:00');
+    await expect(imFenster(page)).toHaveText('Zeit 09:00–10:00 von Stefan wiederhergestellt');
+    const nachher = await zeitenVon1(page, k);
+    expect(nachher.map(z => z.kennung)).toEqual([vorher.kennung]);
+    expect(commits(k)).toBe(commitsVorher + 1);
+    expect(k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|#1 Zeit nachgetragen: 1:00 \(Stefan\)$/);
+  });
+
+  test.fail('US-7 Gegenfall: hat ein Agent den Eintrag schon wiederhergestellt, meldet der Fuß das (#12)', async ({ page }) => {
+    await zeitEntfernen(page);
+    const zurueck = await page.request.post(k.adresse + 'api/aufgaben/1/zeiten', { ...ALS_CL, data: { wer: 'st', beginn: `${gestern()} 09:00`, ende: `${gestern()} 10:00` } });
+    expect(zurueck.status()).toBe(201);
+    const commitsVorher = commits(k);
+    await imFenster(page).getByRole('button', { name: 'rückgängig' }).click();
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('nicht rückgängig: #1 hat schon einen Eintrag st@');
+    expect(await zeitenVon1(page, k)).toHaveLength(1);
+    expect(commits(k)).toBe(commitsVorher);
+  });
+});
