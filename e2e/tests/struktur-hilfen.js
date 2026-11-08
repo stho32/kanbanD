@@ -69,14 +69,22 @@ function erwarteterSeitenname(route) {
 /** Was auf einer Route fertig geladen sein muss, bevor geprüft wird; die WBS-Sicht lädt ihre Datei nach. */
 const BEREIT = { 'WBS-Sicht': '.wbs-titel', Board: '.bahn' };
 
-/** Die Routen aus ansichtenDerAnwendung mit ihrem Seitennamen. */
-const ROUTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(r => ({ ...r, seitenname: erwarteterSeitenname(r), bereit: BEREIT[r.ansicht] }));
+/** Die Sicht aus vHaupt() (web/app.js), die eine Route zeichnet: daran gleicht die Probe ab, ob jede Verzweigung geprüft wird. */
+const SICHTEN = {
+  Board: 'vBoard', Aufgabenliste: 'vAufgaben', Personen: 'vPersonen', Einrichten: 'vEinrichten', 'WBS-Sicht': 'vWbs',
+  'Bericht stundenzettel': 'vStundenzettel', 'Bericht kreuz': 'vKreuz', 'Bericht verlauf': 'vVerlauf', 'Bericht durchlauf': 'vDurchlauf',
+  'Bericht prognose': 'vPrognose', 'Bericht fieber': 'vFieber', 'Bericht kosten': 'vKosten', 'Bericht bestand': 'vBestand',
+};
+
+/** Die Routen aus ansichtenDerAnwendung mit Seitenname und Sicht. */
+const ROUTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' })
+  .map(r => ({ ...r, seitenname: erwarteterSeitenname(r), bereit: BEREIT[r.ansicht], sicht: SICHTEN[r.ansicht] }));
 
 /** Die drei Zustände neben den Routen (US-1); der Test stellt jeden selbst her. */
 const ZUSTAENDE = [
-  { ansicht: 'erster Start', seitenname: 'Einrichten', ohneNavigation: true },
-  { ansicht: 'Einrichtungsmodus', seitenname: 'Board · Entwicklung', ohneNavigation: true },
-  { ansicht: 'defektes Board', seitenname: 'Board' },
+  { ansicht: 'erster Start', seitenname: 'Einrichten', ohneNavigation: true, sicht: 'vFirst' },
+  { ansicht: 'Einrichtungsmodus', seitenname: 'Board · Entwicklung', ohneNavigation: true, sicht: 'vSetup' },
+  { ansicht: 'defektes Board', seitenname: 'Board', sicht: 'vBoard' },
 ];
 
 /** Die Ansicht (S.ui.view) einer Adresse: „#/berichte/verlauf“ → „berichte/verlauf“, „#/board/entwicklung“ → „board“. */
@@ -121,21 +129,20 @@ async function landmarkenPruefen(page, { ansicht, ohneNavigation }) {
 
 const APP_JS = path.resolve(__dirname, '../../web/app.js');
 
-/** Zahl der Verzweigungen `return v…()` in vHaupt() des Quelltexts. */
-function verzweigungenVonVHaupt(quelltext) {
+/** Die Sichten, die vHaupt() im Quelltext zurückgibt (`return vBoard();` → „vBoard“), in Reihenfolge der Verzweigungen. */
+function sichtenVonVHaupt(quelltext) {
   const rumpf = quelltext.match(/function vHaupt\(\) \{([\s\S]*?)\n\}/);
   if (!rumpf) throw new Error('vHaupt() nicht gefunden');
-  return [...rumpf[1].matchAll(/return v\w+\(\)/g)].length;
+  return [...rumpf[1].matchAll(/return (v\w+)\(\)/g)].map(treffer => treffer[1]);
 }
 
-/** Verstoß, wenn vHaupt() mehr Verzweigungen hat, als die Probe Routen und Zustände prüft. */
+/** Je Verzweigung von vHaupt(), deren Sicht keine geprüfte Route und kein geprüfter Zustand zeichnet, ein Verstoß. */
 function vollstaendigkeitPruefen(quelltext, geprueft) {
-  const verzweigungen = verzweigungenVonVHaupt(quelltext);
-  if (verzweigungen > geprueft) return [`Route ohne Prüfung: vHaupt() verzweigt ${verzweigungen}-mal, die Probe prüft ${geprueft} Routen und Zustände`];
-  return [];
+  const abgedeckt = new Set(geprueft.map(g => g.sicht));
+  return sichtenVonVHaupt(quelltext).filter(sicht => !abgedeckt.has(sicht)).map(sicht => `Route ohne Prüfung: ${sicht}() in vHaupt()`);
 }
 
 module.exports = {
   grundbestand, arbeitMitEinerPhase, BERICHTSNAMEN, ROUTEN, ZUSTAENDE, APP_JS,
-  gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, verzweigungenVonVHaupt, vollstaendigkeitPruefen,
+  gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
 };

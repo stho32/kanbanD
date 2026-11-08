@@ -4,10 +4,11 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
 const {
   grundbestand, arbeitMitEinerPhase, ROUTEN, ZUSTAENDE, APP_JS,
-  gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, vollstaendigkeitPruefen,
+  gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
 } = require('./struktur-hilfen');
 
 const [ERSTER_START, EINRICHTUNGSMODUS, DEFEKTES_BOARD] = ZUSTAENDE;
+const WBS_SICHT = ROUTEN.find(r => r.ansicht === 'WBS-Sicht');
 
 let laufende = [];
 test.afterEach(async () => {
@@ -70,7 +71,29 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   });
 
   test('US-1: die Probe prüft jede Verzweigung von vHaupt()', () => {
-    expect(vollstaendigkeitPruefen(fs.readFileSync(APP_JS, 'utf8'), ROUTEN.length + ZUSTAENDE.length)).toEqual([]);
+    const quelltext = fs.readFileSync(APP_JS, 'utf8');
+    expect(sichtenVonVHaupt(quelltext)).toHaveLength(15);
+    expect(vollstaendigkeitPruefen(quelltext, [...ROUTEN, ...ZUSTAENDE])).toEqual([]);
   });
 
+  test('US-2: M1 — eine zweite Überschrift erster Ebene in der WBS-Sicht macht die Probe rot', async ({ page }) => {
+    await page.route('**/ansicht.js', async route => {
+      const antwort = await route.fetch();
+      const text = await antwort.text();
+      const mutiert = text.replace('<h2 class="wbs-titel">', '<h1 class="wbs-titel">').replace('${nc}</h2>', '${nc}</h1>');
+      expect(mutiert, 'Mutante M1 greift nicht').not.toBe(text);
+      await route.fulfill({ response: antwort, body: mutiert });
+    });
+    const k = await starten(page);
+    await page.goto(k.adresse + WBS_SICHT.adresse);
+    await gezeichnet(page, WBS_SICHT.adresse, WBS_SICHT.bereit);
+    expect(await seitenueberschriftPruefen(page, WBS_SICHT)).toEqual(['2 Überschriften erster Ebene in WBS-Sicht']);
+  });
+
+  test('US-2: M2 — eine Verzweigung mehr in vHaupt(), als die Probe prüft, macht die Probe rot', () => {
+    const quelltext = fs.readFileSync(APP_JS, 'utf8');
+    const mutiert = quelltext.replace("  if (S.ui.view === 'wbs') return vWbs();", "  if (S.ui.view === 'wbs') return vWbs();\n  if (S.ui.view === 'neu') return vNeueSicht();");
+    expect(mutiert, 'Mutante M2 greift nicht').not.toBe(quelltext);
+    expect(vollstaendigkeitPruefen(mutiert, [...ROUTEN, ...ZUSTAENDE])).toEqual(['Route ohne Prüfung: vNeueSicht() in vHaupt()']);
+  });
 });
