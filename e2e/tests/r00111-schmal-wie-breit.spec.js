@@ -2,6 +2,8 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
 const { fensterDerAnwendung } = require('./ansichten');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const BREIT = { viewport: { width: 1280, height: 800 } };
 const SCHMAL_UND_ZWISCHEN = [{ width: 414, height: 896 }, { width: 641, height: 896 }, { width: 768, height: 1024 }, { width: 844, height: 390 }];
@@ -24,6 +26,28 @@ const BESTAND = {
 const AUSNAHMEN = [
   { selektor: '#vsc', fenster: 'Aufgabenfenster', grund: 'öffnet die Datei, deren Pfad (.mod-kopf .pfad) schmal ebenfalls fehlt (R00077)', bis: 640 },
 ];
+
+/** Fenster aus `web/ansicht.js`, die die Probe nicht fährt, weil sie nichts zu bedienen haben — je Eintrag id und Grund. */
+const OHNE_BEDIENELEMENTE = [
+  { id: 'hilfe', grund: 'zeigt nur die Tastaturkürzel, keine Bedienelemente; geschlossen wird mit Esc oder Tipp daneben' },
+];
+
+/** Ein Fenster ist ein Dialog direkt über dem Hintergrund `.mod-bg`; die Popups (`.pop`) hängen an ihrem Auslöser und sind keine Fenster. */
+const FENSTER_IM_MARKUP = /<div class="mod-bg[^"]*"[^>]*><div ([^>]*)>/g;
+const ANSICHT_JS = path.resolve(__dirname, '../../web/ansicht.js');
+
+/** Je Fenster in `quelltext` die id (oder null) und die Zeile. */
+function fensterImMarkup(quelltext) {
+  return [...quelltext.matchAll(FENSTER_IM_MARKUP)]
+    .filter(treffer => treffer[1].includes('role="dialog"'))
+    .map(treffer => ({ id: (treffer[1].match(/\bid="([^"]+)"/) || [])[1] || null, zeile: quelltext.slice(0, treffer.index).split('\n').length }));
+}
+
+/** Fenster des Markups, die weder die Fensterliste noch `OHNE_BEDIENELEMENTE` führt — je Verstoß id und Zeile. */
+function ungelisteteFenster(gefunden, gelistet, ohne) {
+  const bekannt = new Set([...gelistet, ...ohne.map(e => e.id)]);
+  return gefunden.filter(f => !bekannt.has(f.id)).map(f => `${f.id || 'Fenster ohne id'} (web/ansicht.js:${f.zeile})`);
+}
 
 const BEDIENELEMENTE = 'button, select, textarea, input:not([type=hidden]), a[href], [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=tab], [role=switch]';
 const MELDUNGSTRAEGER = '[role=alert], [role=status], [aria-live]';
@@ -95,7 +119,23 @@ test('Abgleich: Fehlende zählen mit Vielfachheit, Ausnahmen schlagen bei breit 
   expect(AUSNAHMEN.map(a => a.selektor), 'heute genau ein Eintrag (AK 8)').toEqual(['#vsc']);
 });
 
-for (const { fenster: name, oeffnen } of fensterDerAnwendung()) {
+test('Fensterliste vollständig: jedes Fenster aus web/ansicht.js wird gefahren oder ist mit Grund ausgenommen', () => {
+  const gefunden = fensterImMarkup(fs.readFileSync(ANSICHT_JS, 'utf8'));
+  expect(gefunden.length, 'die Suche findet Fenster').toBeGreaterThan(0);
+  expect(ungelisteteFenster(gefunden, fensterDerAnwendung().map(f => f.id), OHNE_BEDIENELEMENTE), 'nicht in fensterDerAnwendung() und nicht in OHNE_BEDIENELEMENTE').toEqual([]);
+  expect(OHNE_BEDIENELEMENTE.every(e => e.id && e.grund), 'jeder Eintrag nennt id und Grund').toBe(true);
+});
+
+test('Abgleich der Fensterliste: ein ungelistetes Fenster wird mit id und Zeile gemeldet', () => {
+  const quelltext = 'x\n`<div class="mod-bg" data-act="a"><div class="mod" id="neu" role="dialog">`\n`<div class="mod-bg"><div class="pop" role="dialog">`\n`<div class="mod-bg"><div id="still">`';
+  const gefunden = fensterImMarkup(quelltext);
+  expect(gefunden).toEqual([{ id: 'neu', zeile: 2 }, { id: null, zeile: 3 }]);
+  expect(ungelisteteFenster(gefunden, ['neu'], [])).toEqual(['Fenster ohne id (web/ansicht.js:3)']);
+  expect(ungelisteteFenster(gefunden, [], [{ id: 'neu', grund: 'g' }])).toEqual(['Fenster ohne id (web/ansicht.js:3)']);
+  expect(ungelisteteFenster([{ id: 'neu', zeile: 2 }], [], [])).toEqual(['neu (web/ansicht.js:2)']);
+});
+
+for (const { fenster: name, id, oeffnen } of fensterDerAnwendung()) {
   for (const viewport of SCHMAL_UND_ZWISCHEN) {
     test(`${name}: bei ${viewport.width} × ${viewport.height} mit Touch ist alles sichtbar, was bei 1280 px sichtbar ist`, async ({ browser }) => {
       k = await kanbanStarten(einrichten(BESTAND));
@@ -105,7 +145,9 @@ for (const { fenster: name, oeffnen } of fensterDerAnwendung()) {
       try {
         await mutanteEinsetzen(breitKontext);
         await mutanteEinsetzen(schmalKontext);
-        const breit = await fensterMessen(await oeffnen(await seiteOeffnen(breitKontext)), liste);
+        const breitFenster = await oeffnen(await seiteOeffnen(breitKontext));
+        await expect(breitFenster, 'die Liste nennt die id des geöffneten Fensters').toHaveAttribute('id', id);
+        const breit = await fensterMessen(breitFenster, liste);
         const schmal = await fensterMessen(await oeffnen(await seiteOeffnen(schmalKontext)), liste);
         expect(breit.sichtbar.length, 'breit gibt es Bedienelemente').toBeGreaterThan(0);
         expect(fehlende(breit.sichtbar, schmal.sichtbar), 'schmal fehlt').toEqual([]);
