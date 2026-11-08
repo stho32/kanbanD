@@ -23,6 +23,27 @@ async function aufgabenfenster(page, nummer, reiter) {
   return fenster;
 }
 
+/** Datum von gestern in Berlin: ein Zeitnachtrag darf nicht in der Zukunft enden. */
+const gestern = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(Date.now() - 864e5);
+
+/**
+ * Aufgabenfenster #1 mit lebendem Hinweis „Zeit … gelöscht“ samt „rückgängig“ (R00112 B0465). Legt den Zeiteintrag selbst an
+ * (ein schon vorhandener ergibt 409), weil breite und schmale Seite denselben Server teilen; die Uhr steht still, solange gemessen
+ * wird, damit der Hinweis seine 8 s nicht ablebt.
+ */
+async function aufgabenfensterMitHinweis(page) {
+  const adresse = new URL(page.url()).origin + '/';
+  const angelegt = await page.request.post(adresse + 'api/aufgaben/1/zeiten', { headers: { 'X-KanbanD-Wer': 'st' }, data: { wer: 'st', beginn: `${gestern()} 09:00`, ende: `${gestern()} 10:00` } });
+  if (![200, 409].includes(angelegt.status())) throw new Error(`Zeiteintrag für #1 nicht angelegt: ${angelegt.status()} ${await angelegt.text()}`);
+  await page.clock.install();
+  await page.reload();
+  const fenster = await aufgabenfenster(page, 1);
+  await fenster.getByLabel('Zeit 1 löschen').click();
+  await fenster.locator('.toast[role=status] [data-act=rueckgaengig]').waitFor({ state: 'attached' });
+  await page.clock.pauseAt(Date.now() + 1000);
+  return fenster;
+}
+
 /**
  * Die Fenster der Anwendung, geteilt von Proben über alle Fenster (R00111 AK 8–10, ADR-0015): eine Liste, damit keine Probe
  * ein Fenster auslässt. `id` ist die id des Dialogs in `web/ansicht.js`, `oeffnen` beginnt am geladenen Board und liefert ihn. Erwarteter Testbestand: #1 offen
@@ -43,6 +64,7 @@ function fensterDerAnwendung() {
         return fenster;
       },
     },
+    { fenster: 'Aufgabenfenster #1 mit Hinweis', id: 'fenster', oeffnen: aufgabenfensterMitHinweis },
     { fenster: 'Aufgabenfenster #2, Reiter Kosten', id: 'fenster', oeffnen: page => aufgabenfenster(page, 2, 'Kosten') },
     {
       fenster: 'Aufgabenfenster #3 (archiviert)',
