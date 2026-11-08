@@ -419,3 +419,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #13 | Entwicklung | entwickler entw1 (frisch, aed968b95313b13cc) | beauftragt; Worktree kanbanD-entw1-13, Zweig karte/13 von f719975 | — | — |
 | 2026-11-08 | #13 | Entwicklung | entwickler entw1 (frisch, aed968b95313b13cc) | bestanden: B0483–B0496 grün, karte/13 @ c4d9d5e; Gate cargo 558/0, Einheit 311/0, Playwright 388/1 (kultur:194 #89); Gelesen-Zeile nachgefordert → 4 Verstöße behoben (J11, US-10 je Route, Konsole/Netz, Ist-Zeiten); Fotos vorher/nachher gleich; Nebenfix .bahn{position:relative}; 27.81–33.68 $ | 1:25 | c4d9d5e |
 | 2026-11-08 | #13 | Auto-Reviews | crev a1b6947516c80b10d, ux a20c720f3acb1d8f0, rsr a4784c20f7ce03484, arev a1d9f77627bf14b54 (alle frisch) | beauftragt, parallel (Tagbetrieb) | — | — |
+| 2026-11-08 | #13 | Auto-Reviews | architektur-reviewer (frisch, a1d9f77627bf14b54) | bestanden; B1 Sollte Routenprobe, B2/B3 Kann, Nachzug ADR-0018/X00005/A00009; 2.92–3.75 $ | — | — |
+| 2026-11-08 | #13 | Auto-Reviews | ux-reviewer (frisch, a20c720f3acb1d8f0) | bestanden; 3 vorbestehende Sollte 320 px → PO; 5.53–7.23 $ | — | — |
+| 2026-11-08 | #13 | Auto-Reviews | code-reviewer (frisch, a1b6947516c80b10d) | befund; B1 Muss Testlücke AK 4/6, FA 6; A1 Sollte; 5.92–7.82 $ | — | — |
+| 2026-11-08 | #13 | Nacharbeit | entwickler (frisch, a2f81d3d5cd263ca1; Vorgänger bei 150k) | beauftragt: crev B1 + crev A1 + arev B1 | — | — |
