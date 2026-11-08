@@ -65,6 +65,15 @@ const SPALTEN_MUTANTEN = [
   { name: '„Archiv“ ohne Rolle', ersetzen: [['<div class="nach" role="listitem">', '<div class="nach">']], erwartet: ['Erledigt: .nach ist kein listitem'] },
 ];
 
+/** Rückgaben in vHaupt(), die nicht die Form `[if (…) ]return vX();` haben: die Probe kann ihre Sicht nicht lesen und muss das melden. */
+const WBS_ZWEIG = "  if (S.ui.view === 'wbs') return vWbs();";
+const RUECKGABE_MUTANTEN = [
+  { name: 'anderer Rückgabeausdruck', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return vWbs() + vNeueSicht();" },
+  { name: 'Ternary', aus: '  return vBoard();\n}', ein: "  return S.ui.view === 'neu' ? vNeueSicht() : vBoard();\n}" },
+  { name: 'Aufruf mit Argument', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return vWbs(S.ui);" },
+  { name: 'return ohne v-Präfix', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return wbsSicht();" },
+];
+
 /** Der Navigationseintrag, der je Route `aria-current="page"` trägt (US-9); `#t-ber` ist der Auslöser des Berichtsmenüs. */
 const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten', 'WBS-Sicht': 'WBS' };
 const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || '#t-ber Berichte';
@@ -225,6 +234,17 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
     expect(mutiert, 'Mutante M2 greift nicht').not.toBe(quelltext);
     expect(vollstaendigkeitPruefen(mutiert, [...ROUTEN, ...ZUSTAENDE])).toEqual(['Route ohne Prüfung: vNeueSicht() in vHaupt()']);
   });
+
+  for (const mutant of RUECKGABE_MUTANTEN) {
+    test(`US-2: Mutante „${mutant.name}“ in vHaupt() macht die Probe rot, mit Zeile`, () => {
+      const quelltext = fs.readFileSync(APP_JS, 'utf8');
+      const mutiert = quelltext.replace(mutant.aus, mutant.ein);
+      expect(mutiert, `Mutante „${mutant.name}“ greift nicht`).not.toBe(quelltext);
+      const rueckgabe = mutant.ein.split('\n')[0];
+      const zeile = mutiert.split('\n').indexOf(rueckgabe) + 1;
+      expect(vollstaendigkeitPruefen(mutiert, [...ROUTEN, ...ZUSTAENDE])).toEqual([`Rückgabe ohne Prüfung: web/app.js:${zeile} „${rueckgabe.trim()}“`]);
+    });
+  }
 
   for (const vorher of SPALTEN_VORHER) {
     test.describe(`${vorher.breite} px`, () => {

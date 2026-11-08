@@ -198,17 +198,30 @@ async function gestaltungPruefen(page, { ansicht, kopf, anzahl, soll, abweichend
 
 const APP_JS = path.resolve(__dirname, '../../web/app.js');
 
-/** Die Sichten, die vHaupt() im Quelltext zurückgibt (`return vBoard();` → „vBoard“), in Reihenfolge der Verzweigungen. */
-function sichtenVonVHaupt(quelltext) {
+/** Eine Rückgabe in vHaupt(), deren Sicht die Probe lesen kann: `return vBoard();`, wahlweise hinter einem `if (…)`. */
+const LESBARE_RUECKGABE = /^\s*(if \(.+\) )?return (v\w+)\(\);$/;
+
+/** Jede Zeile mit `return` im Rumpf von vHaupt(), mit ihrer Nummer in web/app.js und der Sicht, wenn sie lesbar ist. */
+function rueckgabenVonVHaupt(quelltext) {
   const rumpf = quelltext.match(/function vHaupt\(\) \{([\s\S]*?)\n\}/);
   if (!rumpf) throw new Error('vHaupt() nicht gefunden');
-  return [...rumpf[1].matchAll(/return (v\w+)\(\)/g)].map(treffer => treffer[1]);
+  const ersteZeile = quelltext.slice(0, rumpf.index).split('\n').length;
+  return rumpf[1].split('\n')
+    .map((text, i) => ({ zeile: ersteZeile + i, text, lesbar: LESBARE_RUECKGABE.exec(text) }))
+    .filter(r => /\breturn\b/.test(r.text));
 }
 
-/** Je Verzweigung von vHaupt(), deren Sicht keine geprüfte Route und kein geprüfter Zustand zeichnet, ein Verstoß. */
+/** Die Sichten, die vHaupt() zurückgibt (`return vBoard();` → „vBoard“), in Reihenfolge der Verzweigungen. */
+function sichtenVonVHaupt(quelltext) {
+  return rueckgabenVonVHaupt(quelltext).filter(r => r.lesbar).map(r => r.lesbar[2]);
+}
+
+/** Verstöße gegen „jede Rückgabe von vHaupt() ist lesbar und ihre Sicht steht in `geprueft`“. */
 function vollstaendigkeitPruefen(quelltext, geprueft) {
   const abgedeckt = new Set(geprueft.map(g => g.sicht));
-  return sichtenVonVHaupt(quelltext).filter(sicht => !abgedeckt.has(sicht)).map(sicht => `Route ohne Prüfung: ${sicht}() in vHaupt()`);
+  const unlesbar = rueckgabenVonVHaupt(quelltext).filter(r => !r.lesbar).map(r => `Rückgabe ohne Prüfung: web/app.js:${r.zeile} „${r.text.trim()}“`);
+  const ungeprueft = sichtenVonVHaupt(quelltext).filter(sicht => !abgedeckt.has(sicht)).map(sicht => `Route ohne Prüfung: ${sicht}() in vHaupt()`);
+  return [...unlesbar, ...ungeprueft];
 }
 
 module.exports = {
