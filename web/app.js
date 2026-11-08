@@ -538,8 +538,9 @@ async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
     if (S.ui.offen) fensterMelden(null);
   } catch (f) {
     S.ui.fokus = ziele(false);
-    // Bei offenem Aufgabenfenster gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis
-    if (S.ui.offen) fensterMelden(`nicht rückgängig: ${f.message}`);
+    // Ist das Aufgabenfenster oberster Dialog, gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis darüber
+    const imFensterFuss = hinweisDialog() === 'fenster';
+    if (imFensterFuss) fensterMelden(`nicht rückgängig: ${f.message}`);
     else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
   }
   await laden();

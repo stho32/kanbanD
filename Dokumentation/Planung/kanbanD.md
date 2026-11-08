@@ -671,6 +671,7 @@ zuletzt: 2026-11-08
 | B0478 | Bubble | F0065 | Helfer anhangSenden statt doppeltem Multipart-Upload | gruen | Test gruen | Hochladen und Rückgängig des Anhangs senden über anhangSenden(nummer, datei, name) → r00016 und r00112 Anhänge grün | 0,25 |  | B0477 |  | code-reviewer zu Karte #12 (SOLLTE 9) |
 | B0479 | Bubble | F0065 | Hinweistext des Anhang-Rückgängig ohne Ternary (J11) | gruen | Test gruen | anhangWiederhergestellt(gemerkt, vergeben) mit benannter Bedingung und if → r00112 Anhänge (auch „als plan-2.pdf“) grün | 0,25 |  | B0478 |  | code-reviewer zu Karte #12 (SOLLTE 5) |
 | B0480 | Bubble | F0065 | hinweisDialog aus ebenen(S.ui) ableiten | gruen | Test gruen | oberster modaler Dialog der Ebenen, Anker nur in Fenster, Neu, Defekt mit gezeichnetem Inhalt → 297 Einheitstests und r00112 (41) grün | 0,5 |  | B0479 |  | code-reviewer zu Karte #12 (SOLLTE 7) |
+| B0481 | Bubble | F0065 | Ablehnung des Rückgängig unter einer höheren Ebene sichtbar | gruen | Test gruen | Fuß nur, wenn das Fenster oberster Dialog ist, sonst Hinweis oben → „US-7 Gegenfall unter der Hilfe“ rot (Meldung im verdeckten Fuß), dann grün | 0,5 |  | B0480 |  | code-reviewer zu Karte #12 (SOLLTE 8) |
 
 ## Offene Fragen
 

@@ -276,6 +276,25 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
     expect(await zeitenVon1(page, k)).toHaveLength(1);
     expect(commits(k)).toBe(commitsVorher);
   });
+
+  test('US-7 Gegenfall unter der Hilfe: die Ablehnung steht oben sichtbar, nicht im verdeckten Fuß (#12)', async ({ page }) => {
+    await zeitEntfernen(page);
+    const zurueck = await page.request.post(k.adresse + 'api/aufgaben/1/zeiten', { ...ALS_CL, data: { wer: 'st', beginn: `${gestern()} 09:00`, ende: `${gestern()} 10:00` } });
+    expect(zurueck.status()).toBe(200);
+    await page.evaluate(() => document.activeElement.blur());
+    await page.keyboard.press('?');
+    await expect(page.locator('#hilfe')).toBeVisible();
+    await page.keyboard.press('Control+z');
+    const meldung = page.locator('.toast').filter({ hasText: 'nicht rückgängig' });
+    await expect(meldung).toContainText('nicht rückgängig: #1 hat schon eine Zeit 09:00–10:00 von Stefan');
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toHaveCount(0);
+    // Oben heißt: an der Mitte der Meldung liegt sie selbst, keine Ebene darüber
+    const obenauf = await meldung.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+    });
+    expect(obenauf).toBe(true);
+  });
 });
 
 // US-5 und US-6: #1 hat die Teilaufgaben a, b (erledigt), c
