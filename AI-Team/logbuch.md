@@ -370,3 +370,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #74 | Auto-Reviews | ux-reviewer (frisch) | bestanden (kein Muss; B1 Sollte bestätigt + Dauer-Fall; Abnahmefotos ux-74/; Fund außerhalb → #93) | 0:15 | — |
 | 2026-11-08 | #74 | Auto-Reviews | architektur-reviewer (frisch) | bestanden (S1 Fensterliste von Hand; A00009 nach Merge nachführen) → Nacharbeit B1+S1 (entw1 fortgesetzt) | 0:10 | — |
 | 2026-11-08 | #74 | Nacharbeit | entwickler (entw1) | bestanden (B1 111105b, S1 cbaf7d7, Fund #zuweisen; Rust-Flakies → #91) → Auto-Reviews | 0:23 | bea608b |
+| 2026-11-08 | #74 | Auto-Reviews | code-reviewer (fortgesetzt) | bestanden (Wiederholung, keine Befunde; Anmerkungen → #94) → Entwicklertest | 0:15 | — |
