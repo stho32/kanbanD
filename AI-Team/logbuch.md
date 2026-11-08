@@ -395,3 +395,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #12 | Auto-Review Code | code-reviewer (frisch, a07de9976e5ab6080) | befund: Muss FA 8 Fokus nach Rückgängig (BODY bzw. #fenster, ungetestet); 3 Sollte (US-5 Commit-Zähler, Anker Neu/Defekt ohne Test, Ternary J11), 6 Optional, Hinweis an Security (wer beim Zeit-Rückgängig); 5,96–7,89 $ | 0:08 | — |
 | 2026-11-08 | #12 | Auto-Review UX | ux-reviewer (frisch, ac8e50189b574a43c) | bestanden: 3 Sollte (Fokus unter Hinweis bei 320/414, Fokus nach Rückgängig = FA 8, Kennung in Ablehnungstext), 2 Optional; 7,29–9,24 $ | 0:12 | — |
 | 2026-11-08 | #12 | Zug → Nacharbeit | Director | Muss FA 8 aus code-reviewer; Sollte aus crev/ux/rsr/arev mitgenommen | — | — |
+| 2026-11-08 | #12 | Nacharbeit | entwickler entw1 (fortgesetzt, af2cb1818cf8247b5) | erledigt: FA 8 + 8 Sollte, ux-Sollte 1 nur Probe (grün); Gate 884/885 (kultur:194 Sonntag), cargo live rot wegen inotify-Grenze; Gelesen ohne po-entscheidungen/R00112/ADRs; 16,06–19,93 $ | 0:46 | 9d246a3 (karte/12) |
+| 2026-11-08 | #12 | Zug → Auto-Reviews | Director | r00112 46/46 nachgefahren; Wiederholung crev, ux | — | — |
