@@ -273,3 +273,46 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
     expect(commits(k)).toBe(commitsVorher);
   });
 });
+
+// US-5 und US-6: #1 hat die Teilaufgaben a, b (erledigt), c
+test.describe('R00112 Teilaufgabe im Fenster', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(grundbestand())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+  const zeilen = page => page.locator('#fenster .chk');
+  const checkliste = () => k.lies('aufgaben/0001-eins.md').split('\n').filter(z => /^- \[[ x]\] /.test(z));
+
+  async function bEntfernen(page) {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(zeilen(page)).toHaveCount(3);
+    await page.getByLabel('Teilaufgabe b entfernen').click();
+    await expect(zeilen(page)).toHaveText(['a', 'c'].map(t => new RegExp(`^${t}`)));
+    await expect(imFenster(page)).toContainText('Teilaufgabe „b“ entfernt');
+  }
+
+  test.fail('US-5: entfernte Teilaufgabe b kommt an Index 1 und erledigt zurück (#12)', async ({ page }) => {
+    await bEntfernen(page);
+    const knopf = imFenster(page).getByRole('button', { name: 'rückgängig' });
+    for (let i = 0; i < 80 && !(await knopf.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(knopf).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(zeilen(page)).toHaveText(['a', 'b', 'c'].map(t => new RegExp(`^${t}`)));
+    await expect(zeilen(page).nth(1)).toHaveClass(/\bok\b/);
+    await expect(imFenster(page)).toHaveText('Teilaufgabe „b“ wiederhergestellt');
+    expect(checkliste()).toEqual(['- [ ] a', '- [x] b', '- [ ] c']);
+  });
+
+  test.fail('US-6: neben einem Agenten und doppelt geklickt steht b einmal, d bleibt (#12)', async ({ page }) => {
+    await bEntfernen(page);
+    const d = await page.request.post(k.adresse + 'api/aufgaben/1/teilaufgaben', { ...ALS_CL, data: { text: 'd' } });
+    expect(d.ok()).toBe(true);
+    await expect(zeilen(page)).toHaveCount(3);
+    await imFenster(page).getByRole('button', { name: 'rückgängig' }).dblclick();
+    await expect(zeilen(page)).toHaveText(['a', 'b', 'c', 'd'].map(t => new RegExp(`^${t}`)));
+    await expect(zeilen(page).nth(1)).toHaveClass(/\bok\b/);
+    expect(checkliste()).toEqual(['- [ ] a', '- [x] b', '- [ ] c', '- [ ] d']);
+  });
+});
