@@ -494,6 +494,16 @@ function rueckgaengigSenden(methode, pfad, daten, erfolg, ziele) {
   return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg, ziele);
 }
 
+/** Trägt die gemerkte Zeit wieder ein; ist sie schon da, nennt die Ablehnung sie wie die Zeile im Fenster statt mit ihrer Kennung. */
+async function zeitZuruecklegen(z) {
+  try {
+    return await api('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende });
+  } catch (f) {
+    if (f.status !== 409) throw f;
+    throw new Error(`#${z.nummer} hat schon eine ${zeitBeschrieben(z)}`);
+  }
+}
+
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
 function anhangZuruecklegen(z) {
   return rueckgaengigAusfuehren(async () => {
@@ -1155,7 +1165,7 @@ async function act(a, arg, wert) {
           break;
         }
         if (z.art === 'zeit') {
-          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende }, `${zeitBeschrieben(z)} wiederhergestellt`, () => [knopfSelektor('zeit-weg', z.kennung), '#zeit-neu']);
+          await rueckgaengigAusfuehren(() => zeitZuruecklegen(z), () => `${zeitBeschrieben(z)} wiederhergestellt`, () => [knopfSelektor('zeit-weg', z.kennung), '#zeit-neu']);
           break;
         }
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });

@@ -268,7 +268,11 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
     expect(zurueck.status()).toBe(200);
     const commitsVorher = commits(k);
     await imFenster(page).getByRole('button', { name: 'rückgängig' }).click();
-    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('nicht rückgängig: #1 hat schon einen Eintrag st@');
+    // Die Meldung nennt die Zeit, wie das Fenster sie zeigt — nicht die Kennung st@2026-…T09:00+01:00 (ux zu Karte #12)
+    const meldung = page.locator('#fenster .mod-fuss [role="alert"]');
+    await expect(meldung).toContainText('nicht rückgängig: #1 hat schon eine Zeit 09:00–10:00 von Stefan');
+    await expect(meldung).not.toContainText('@');
+    await expect(meldung).not.toContainText('T09:00+01:00');
     expect(await zeitenVon1(page, k)).toHaveLength(1);
     expect(commits(k)).toBe(commitsVorher);
   });
