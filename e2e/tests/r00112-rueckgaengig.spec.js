@@ -316,3 +316,66 @@ test.describe('R00112 Teilaufgabe im Fenster', () => {
     expect(checkliste()).toEqual(['- [ ] a', '- [x] b', '- [ ] c', '- [ ] d']);
   });
 });
+
+// US-8 und US-9: #1 hat den Anhang plan.pdf mit 2048 festen Bytes
+const PLAN = 'aufgaben/0001-eins/plan.pdf';
+const sha256 = puffer => require('crypto').createHash('sha256').update(puffer).digest('hex');
+
+test.describe('R00112 Anhang im Fenster', () => {
+  let k;
+  const platte = rel => require('fs').readFileSync(require('path').join(k.ordner, rel));
+  const daliegt = rel => require('fs').existsSync(require('path').join(k.ordner, rel));
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeitUndAnhang())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+  const anhaenge = page => page.locator('#anhaenge .anh-z a');
+
+  async function fensterAuf(page) {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(anhaenge(page)).toHaveText(['plan.pdf']);
+  }
+
+  test.fail('US-8: entfernter Anhang kommt bytegleich zurück (#12)', async ({ page }) => {
+    const vorher = sha256(platte(PLAN));
+    await fensterAuf(page);
+    await page.getByLabel('Anhang plan.pdf entfernen').click();
+    await expect(imFenster(page)).toContainText('Anhang „plan.pdf“ entfernt');
+    await expect(anhaenge(page)).toHaveCount(0);
+    await page.keyboard.press('Control+z');
+    await expect(anhaenge(page)).toHaveText(['plan.pdf']);
+    await expect(imFenster(page)).toHaveText('Anhang „plan.pdf“ wiederhergestellt');
+    expect(platte(PLAN).length).toBe(2048);
+    expect(sha256(platte(PLAN))).toBe(vorher);
+  });
+
+  test.fail('US-8 Gegenfall: hat ein Agent „plan.pdf“ neu hochgeladen, kommt der alte als plan-2.pdf zurück (#12)', async ({ page }) => {
+    const vorher = sha256(platte(PLAN));
+    await fensterAuf(page);
+    await page.getByLabel('Anhang plan.pdf entfernen').click();
+    await expect(imFenster(page)).toContainText('Anhang „plan.pdf“ entfernt');
+    const fremd = Buffer.alloc(100, 1);
+    const hoch = await page.request.post(k.adresse + 'api/aufgaben/1/anhaenge', { ...ALS_CL, multipart: { datei: { name: 'plan.pdf', mimeType: 'application/pdf', buffer: fremd } } });
+    expect(hoch.status()).toBe(201);
+    await page.keyboard.press('Control+z');
+    await expect(anhaenge(page)).toHaveText(['plan.pdf', 'plan-2.pdf']);
+    await expect(imFenster(page)).toHaveText('Anhang als „plan-2.pdf“ wiederhergestellt');
+    expect(sha256(platte(PLAN))).toBe(sha256(fremd));
+    expect(platte('aufgaben/0001-eins/plan-2.pdf').length).toBe(2048);
+    expect(sha256(platte('aufgaben/0001-eins/plan-2.pdf'))).toBe(vorher);
+  });
+
+  test.fail('US-9: lässt sich der Anhang nicht lesen, wird er nicht gelöscht (#12)', async ({ page }) => {
+    await fensterAuf(page);
+    const geloescht = [];
+    page.on('request', r => { if (r.method() === 'DELETE') geloescht.push(r.url()); });
+    await page.route('**/api/aufgaben/1/anhaenge/plan.pdf', route => route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"fehler":"Platte nicht lesbar"}' }) : route.continue());
+    await page.getByLabel('Anhang plan.pdf entfernen').click();
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('Anhang „plan.pdf“ nicht entfernt: ');
+    await expect(anhaenge(page)).toHaveText(['plan.pdf']);
+    expect(geloescht).toEqual([]);
+    expect(daliegt(PLAN)).toBe(true);
+    await expect(page.locator('.toast').getByRole('button', { name: 'rückgängig' })).toHaveCount(0);
+  });
+});
