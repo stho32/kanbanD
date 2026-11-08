@@ -402,3 +402,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #12 | Zug → Entwicklertest | Director | Auto-Reviews durch (crev, ux, rsr, arev bestanden) | — | — |
 | 2026-11-08 | #12 | Entwicklertest | entwicklertester (frisch, a714ea8df7a6a652b) | gestartet | — | — |
 | 2026-11-08 | #12 | Nachzug Architektur | architekt (fortgesetzt, a1b23f41bdfae094e) | gestartet: ADR-0017 R5 Zuständige/Hilfe, FA-2-Ausnahme, Modell-Drift A00003/4/6/9 | — | — |
+| 2026-11-08 | #12 | Nachzug Architektur | architekt (fortgesetzt, a1b23f41bdfae094e) | bestanden: ADR-0017 N1 (Hinweis unter Zuständige/Hilfe), N2 (Strg+Z im leeren Feld, Fokus-Rangliste), Modell A00003/4/6/9 auf Ist; Kontext 161k → nächstes Mal frisch; 4,09–5,25 $ | 0:05 | dec43b5 (karte/12) |
