@@ -366,7 +366,23 @@ test.describe('R00112 Anhang im Fenster', () => {
     expect(sha256(platte('aufgaben/0001-eins/plan-2.pdf'))).toBe(vorher);
   });
 
-  test.fail('US-9: lässt sich der Anhang nicht lesen, wird er nicht gelöscht (#12)', async ({ page }) => {
+  test('AK 13: während des Lesens zeigt das ✕ den Ladezustand, danach ist der Anhang entfernt (#12)', async ({ page }) => {
+    await fensterAuf(page);
+    let freigeben;
+    const gehalten = new Promise(r => { freigeben = r; });
+    await page.route('**/api/aufgaben/1/anhaenge/plan.pdf', async route => { if (route.request().method() === 'GET') await gehalten; await route.continue(); });
+    const x = page.getByLabel('Anhang plan.pdf entfernen');
+    await x.click();
+    await expect(x).toBeDisabled();
+    await expect(x).toHaveAttribute('aria-busy', 'true');
+    expect(daliegt(PLAN)).toBe(true);
+    freigeben();
+    await expect(anhaenge(page)).toHaveCount(0);
+    await expect(imFenster(page)).toContainText('Anhang „plan.pdf“ entfernt');
+    expect(daliegt(PLAN)).toBe(false);
+  });
+
+  test('US-9: lässt sich der Anhang nicht lesen, wird er nicht gelöscht (#12)', async ({ page }) => {
     await fensterAuf(page);
     const geloescht = [];
     page.on('request', r => { if (r.method() === 'DELETE') geloescht.push(r.url()); });

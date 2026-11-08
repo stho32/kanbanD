@@ -349,6 +349,13 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
   }
 }
 
+/** Inhalt eines Anhangs als Blob; wirft mit dem Grund des Servers. */
+async function anhangLesen(pfad) {
+  const r = await fetch(pfad);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).fehler || r.statusText);
+  return r.blob();
+}
+
 async function anhaengeHochladen(dateien) {
   if (ichNoetig()) { render(); return; }
   for (const d of dateien) {
@@ -1268,7 +1275,18 @@ async function act(a, arg, wert) {
         if (!u.fensterFehler && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
         break;
       }
-      case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
+      case 'anhang-weg': {
+        if (ichNoetig()) break;
+        // Erst lesen, dann löschen (ADR-0017 Regel 3): ohne gelesenen Inhalt gibt es kein Rückgängig, also auch kein Löschen
+        const nummer = u.offen, pfad = `/api/aufgaben/${nummer}/anhaenge/${encodeURIComponent(arg)}`;
+        u.anhangLiest = arg;
+        render();
+        let blob;
+        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`); break; } finally { u.anhangLiest = null; }
+        await schreiben('DELETE', pfad);
+        if (!u.fensterFehler) u.hinweis = { text: `Anhang „${arg}“ entfernt`, undo: { art: 'anhang', nummer, name: arg, blob }, at: Date.now() };
+        break;
+      }
       case 'herkunft-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
