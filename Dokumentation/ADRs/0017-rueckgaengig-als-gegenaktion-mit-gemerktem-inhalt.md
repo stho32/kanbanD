@@ -4,6 +4,7 @@
 **Datum**: 2026-11-08
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #12 „Entfernende Aktionen mit Rückgängig versehen und dauerhaft sichtbar machen“ (UX-Durchsicht 2026-10-31); Anforderung und WBS-Knoten folgen über den planer
+**Nachträge**: 2026-11-08 — Regel 5 unter Zuständige und Hilfe, siehe [Nachtrag N1](#nachtrag-2026-11-08-n1-hinweis-unter-zustaendige-und-hilfe-r00112). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: Probe 2026-11-08 gegen eine eigene Instanz (`target/release/kanbanD <wegwerf-ordner> --port <frei> --kein-browser`, kanbanD `283b94c`, unter `nice -n 19`), nur über die HTTP-API:
 - **Board:** `DELETE /api/boards/{slug}/aufgaben/1`, danach `POST /api/boards/{slug}/aufgaben {nummer:1, spalte}` stellt „Liegt auf“ und die Spalte wieder her. Die Karte landet aber **unten**: vorher Reihenfolge 1, 2, 3, nachher 2, 3, 1. Ein zweites Auflegen ergibt 409.
 - **Teilaufgabe:** `POST …/teilaufgaben {text, position:1, erledigt:true}` ignoriert `position` und `erledigt`. Die Teilaufgabe hängt am Ende und ist offen.
@@ -154,3 +155,29 @@ Vor dem Entfernen merkt sich die Oberfläche, was sie zum Wiederherstellen brauc
 - Code: `web/app.js:416`, `:483`, `:896`, `:963`, `:1014–1030`, `:1208–1252`, `:1710`, `:2275`; `web/ansicht.js:300`, `:312`, `:324`, `:737–740`, `:758`; `web/kd-app.css:486`, `:533–539`; `src/dienst/zuordnung.rs`, `teilaufgaben.rs`, `zeiten.rs`, `anhaenge.rs`; Upload-Grenze `src/web/mod.rs:117`
 - Modell: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md), [A00003 Web-Schicht](../Architektur/A00003-web-schicht.md), [A00004 Dienste](../Architektur/A00004-dienste.md), [X00001](../Architektur/Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md)
 - ADRs: [0002](0002-zugregeln-gemeinsam-vor-der-aktion.md), [0005](0005-zusammengesetzte-aktionen-in-einem-commit.md), [0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md), [0011](0011-farbrollen-in-paaren-kontrast-als-probe.md), [0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [0014](0014-nur-die-neueste-antwort-wird-uebernommen.md), [0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md), [0016](0016-fenster-folgen-dem-sichtbaren-bereich.md)
+
+## Nachtrag 2026-11-08 N1: Hinweis unter Zuständige und Hilfe (R00112)
+
+**Anlass**: Architektur-Review zu Karte #12 (R00112), Befund S1. Regel 5 nennt den „obersten modalen Dialog“. Sie sagt nicht, was gilt, wenn dieser Dialog Zuständige (`#zuweisen`) oder Hilfe (`#hilfe`) ist. Beide liegen im Dialogstapel über Fenster, Neu und Defekt (`web/fokus.js:41–48`). Ein Hinweis kann dort stehen, wenn er vor dem Öffnen entstanden ist; er lebt 8 s. Die Wahl, Option A, gilt unverändert; der Status bleibt `Akzeptiert`.
+
+**Belegt (Code, kanbanD Zweig `karte/12`, `9d246a3`)**:
+- `hinweisDialog()` (`web/ansicht.js:738–742`) nimmt den obersten modalen Dialog aus `ebenen(S.ui)`. Einen Anker zwischen Körper und Fuß bekommen nur Fenster, Neu und Defekt (`dialogMitHinweis`, `:745–751`). Für Zuständige und Hilfe liefert sie `null`, und der Hinweis steht wie ohne Fenster unten über allem in `#over` (`vHinweis`, `:758–760`).
+- Die Ablehnung eines Rückgängig geht nur dann in den Fuß über `fensterMelden`, wenn das Aufgabenfenster oberster Dialog ist. Sonst steht sie im Hinweis (`web/app.js:539–545`, Commit `0cab278`, Test „US-7 Gegenfall unter der Hilfe“ in `e2e/tests/r00112-rueckgaengig.spec.js:280`).
+- Strg+Z: unter der Hilfe erreicht die Taste den Rückgängig-Zweig (`web/app.js:1888`, `:1891–1896`). Unter Zuständige endet sie in `zuweisenTaste` (`:1890`, `:634–637`), Strg+Z wirkt dort nicht. Das ist aus dem Code gelesen und nicht geprobt.
+
+### N1 Regel 5, Ergänzung
+
+**Entschieden**:
+1. „Oberster modaler Dialog“ in Regel 5 heißt: oberster modaler Dialog **mit Hinweis-Anker**. Anker haben Aufgabenfenster, „Neue Aufgabe“ und „Defekte Datei“. Zuständige und Hilfe bekommen keinen Anker.
+2. Ist Zuständige oder Hilfe oberster Dialog, steht der Hinweis unten über allem wie ohne Fenster. Er ist sichtbar und per Maus bedienbar (`#over` ist nicht inert, z-index 70 über `.mod-bg` 40). Er liegt aber außerhalb von `aria-modal`. Das ist der Zustand, den ADR-0017 im Kontext für alle Fenster als Mangel benannt hat; hier wird er bewusst hingenommen.
+3. Die Ablehnung eines Rückgängig steht im Fuß nur, wenn das Aufgabenfenster oberster Dialog ist, sonst im Hinweis. Ein verdeckter Fuß ist kein Meldungsort (ADR-0015 Regel 1).
+4. Unter Zuständige gilt Strg+Z nicht. Das Fenster hat eigene Tasten (Esc, Enter) und ist ein kurzer Auswahlschritt.
+
+**Begründung**: Zuständige und Hilfe lösen selbst kein Entfernen aus. Ein Hinweis darunter ist also immer der Rest einer Aktion vor dem Öffnen und lebt noch höchstens 8 s. Ein Anker in zwei weiteren Dialogen brächte Markup, Abstand und Fokusfreihaltung (`hinweisEinpassen`, `web/app.js:550–553`) für einen seltenen Fall. Schließt man die Hilfe, steht der Hinweis wieder im Fenster darunter.
+
+**In Kauf genommen**: Unter Zuständige und Hilfe ist „rückgängig“ für Screenreader und per Tab nicht erreichbar, solange der Dialog offen ist. Unter Zuständige gibt es auch kein Strg+Z.
+
+**Durchsetzung**:
+- Test „US-7 Gegenfall unter der Hilfe“ (`e2e/tests/r00112-rueckgaengig.spec.js:280`): die Ablehnung steht im Hinweis obenauf, nicht im Fuß.
+- Kippt die Annahme „Zuständige und Hilfe entfernen nichts“, weil eines der beiden eine entfernende Aktion bekommt, braucht es einen Anker. Dann ist das ein Review-Punkt des `architektur-reviewer`: `dialogMitHinweis` gegen jede neue Aktion mit `undo` prüfen.
+
