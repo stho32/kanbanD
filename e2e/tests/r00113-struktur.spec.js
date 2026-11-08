@@ -116,15 +116,15 @@ async function seitenmenuePruefen(page, route) {
 /** Je Stelle, die aria-current setzt, ein Mutant „Eintrag entfernt“: der Aufruf fällt weg, die Probe der Route muss rot werden. */
 const BERICHT = ROUTEN.find(r => r.ansicht === 'Bericht verlauf');
 const OHNE_AKTUELL = [
-  { eintrag: 'Navigation Board', aus: "${aktuellAttribut(u.view === 'board')}", ansicht: 'Board', breite: 1280 },
-  { eintrag: 'Navigation Aufgaben', aus: "${aktuellAttribut(u.view === 'aufgaben')}", ansicht: 'Aufgabenliste', breite: 1280 },
-  { eintrag: 'Navigation Personen', aus: "${aktuellAttribut(u.view === 'personen')}", ansicht: 'Personen', breite: 1280 },
-  { eintrag: 'Navigation Berichte', aus: '${aktuellAttribut(berichte)}', ansicht: BERICHT.ansicht, breite: 1280 },
-  { eintrag: 'Navigation Einrichten', aus: "${aktuellAttribut(u.view === 'einrichten')}", ansicht: 'Einrichten', breite: 1280 },
-  { eintrag: 'Navigation WBS', aus: "${aktuellAttribut(S.ui.view === 'wbs' && k === a.kuerzel)}", ansicht: 'WBS-Sicht', breite: 1280 },
-  { eintrag: 'Seitenmenü Ziel', aus: '${aktuellAttribut(name === titel)}', ansicht: 'Aufgabenliste', breite: 560 },
-  { eintrag: 'Seitenmenü WBS', aus: '${aktuellAttribut(istAktuell)}', ansicht: 'WBS-Sicht', breite: 560 },
-  { eintrag: 'Seitenmenü Berichte', aus: "${aktuellAttribut(name === 'Berichte')}", ansicht: BERICHT.ansicht, breite: 560 },
+  { eintrag: 'Navigation Board', aus: '${board.attribut}', ansicht: 'Board', breite: 1280 },
+  { eintrag: 'Navigation Aufgaben', aus: '${aufgaben.attribut}', ansicht: 'Aufgabenliste', breite: 1280 },
+  { eintrag: 'Navigation Personen', aus: '${personen.attribut}', ansicht: 'Personen', breite: 1280 },
+  { eintrag: 'Navigation Berichte', aus: '${berichte.attribut}', ansicht: BERICHT.ansicht, breite: 1280 },
+  { eintrag: 'Navigation Einrichten', aus: '${einrichten.attribut}', ansicht: 'Einrichten', breite: 1280 },
+  { eintrag: 'Navigation WBS', aus: '${wbsLink.attribut}', ansicht: 'WBS-Sicht', breite: 1280 },
+  { eintrag: 'Seitenmenü Ziel', aus: '${zielEintrag.attribut}', ansicht: 'Aufgabenliste', breite: 560 },
+  { eintrag: 'Seitenmenü WBS', aus: '${wbsEintrag.attribut}', ansicht: 'WBS-Sicht', breite: 560 },
+  { eintrag: 'Seitenmenü Berichte', aus: '${berichteEintrag.attribut}', ansicht: BERICHT.ansicht, breite: 560 },
 ];
 
 let laufende = [];
