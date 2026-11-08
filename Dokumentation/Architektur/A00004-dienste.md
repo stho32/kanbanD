@@ -36,7 +36,7 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 - [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md)
 - [ADR-0005: Zusammengesetzte Aktionen in einem Commit](../ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md)
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `aufgabe_aendern` prüft `cost` über den Modell-Konstruktor, Verstoß → `Fehler::Ungueltig` (400)
-- [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — Soll (#12): `auf_board_legen` legt an `index` ein (fehlt er, unten), Teilaufgabe anlegen an `position` mit `erledigt` — je ein Commit, Prüfungen unverändert (Grenze, Eigentümer, 409 schon liegend)
+- [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — gebaut (#12, R00112, Zweig `karte/12`, `9d246a3`): `auf_board_legen` legt an `index` ein (fehlt er, unten), Teilaufgabe anlegen an `position` mit `erledigt` — je ein Commit, Prüfungen unverändert (Grenze, Eigentümer, 409 schon liegend)
 
 ## Offene Fragen
 
@@ -48,5 +48,11 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
 - Soll nach ADR-0009 (Karte #18): `cost` ersetzt den ganzen Abschnitt, `null` entfernt; Commit „#n geändert: Kosten“, ohne Änderung keiner. Der Dienst rechnet keine Summen.
 - nachgeführt 2026-11-06 nach #18 (ADR-0009)
-- Soll nach ADR-0017 (Karte #12): Wiederherstellen ist kein eigener Anwendungsfall. Es ist ein gewöhnliches Anlegen, mit den Prüfungen nach ADR-0002 und einem Commit nach ADR-0005. Zeiteintrag (`Zeitnachtrag` mit `beginn`/`ende`/`wer`) und Anhang (`anhang_ablegen`, `freier_name`) reichen schon heute (Probe 2026-11-08).
+- Soll nach ADR-0017 (Karte #12, überholt durch das Ist darunter): Wiederherstellen ist kein eigener Anwendungsfall. Es ist ein gewöhnliches Anlegen, mit den Prüfungen nach ADR-0002 und einem Commit nach ADR-0005. Zeiteintrag (`Zeitnachtrag` mit `beginn`/`ende`/`wer`) und Anhang (`anhang_ablegen`, `freier_name`) reichen schon heute (Probe 2026-11-08).
 - nachgeführt 2026-11-08 nach #12 (ADR-0017)
+
+- Ist nach ADR-0017 (Karte #12, R00112, Zweig `karte/12`, `9d246a3`):
+  - `auf_board_legen(wer, slug, nummer, spalte, index)` (`src/dienst/zuordnung.rs:10`) reicht `index` an `Board::aufnehmen` weiter. Prüfungen und Commit sind unverändert. Das Auflegen mehrerer Aufgaben ruft `aufnehmen(…, None)`, also unten.
+  - `teilaufgabe_anlegen(wer, nr, text, position, erledigt)` (`src/dienst/teilaufgaben.rs:31`) legt an `position` ein; außerhalb oder ohne Angabe ans Ende. `erledigt` setzt den Haken. Ein Commit.
+  - Einen eigenen Anwendungsfall „wiederherstellen“ gibt es nicht. Zeiteintrag und Anhang laufen über die bestehenden Wege.
+- nachgeführt 2026-11-08 nach dem Bau von #12 (R00112, ADR-0017)

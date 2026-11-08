@@ -4,7 +4,7 @@
 **Datum**: 2026-11-08
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #12 „Entfernende Aktionen mit Rückgängig versehen und dauerhaft sichtbar machen“ (UX-Durchsicht 2026-10-31); Anforderung und WBS-Knoten folgen über den planer
-**Nachträge**: 2026-11-08 — Regel 5 unter Zuständige und Hilfe, siehe [Nachtrag N1](#nachtrag-2026-11-08-n1-hinweis-unter-zustaendige-und-hilfe-r00112). 2026-11-08 — Strg+Z im leeren Feld des Entfernens und Fokus als Rangliste, siehe [Nachtrag N2](#nachtrag-2026-11-08-n2-strgz-im-leeren-feld-und-fokus-als-rangliste-r00112). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-08 — Regel 5 unter Zuständige und Hilfe, siehe [Nachtrag N1](#nachtrag-2026-11-08-n1-hinweis-unter-zuständige-und-hilfe-r00112). 2026-11-08 — Strg+Z im leeren Feld des Entfernens und Fokus als Rangliste, siehe [Nachtrag N2](#nachtrag-2026-11-08-n2-strgz-im-leeren-feld-und-fokus-als-rangliste-r00112). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: Probe 2026-11-08 gegen eine eigene Instanz (`target/release/kanbanD <wegwerf-ordner> --port <frei> --kein-browser`, kanbanD `283b94c`, unter `nice -n 19`), nur über die HTTP-API:
 - **Board:** `DELETE /api/boards/{slug}/aufgaben/1`, danach `POST /api/boards/{slug}/aufgaben {nummer:1, spalte}` stellt „Liegt auf“ und die Spalte wieder her. Die Karte landet aber **unten**: vorher Reihenfolge 1, 2, 3, nachher 2, 3, 1. Ein zweites Auflegen ergibt 409.
 - **Teilaufgabe:** `POST …/teilaufgaben {text, position:1, erledigt:true}` ignoriert `position` und `erledigt`. Die Teilaufgabe hängt am Ende und ist offen.
