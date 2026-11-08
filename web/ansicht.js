@@ -165,6 +165,14 @@ function vSchnellVorschau(text) {
   return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
 }
 /* ── Dialog „Neue Aufgabe“ — alle Felder sofort, wie in Kanbanflow ── */
+/** id der Meldung im Fuß von „Neue Aufgabe“; bleibt über jedes Neuzeichnen gleich, damit der Titel auf sie verweisen kann. */
+const NEU_MELDUNG = 'neu-meldung';
+/** Solange die Meldung den leeren Titel betrifft, ist der Titel ungültig und verweist auf sie (R00111 AK 5). */
+function titelVerweis(f) {
+  const titelFehlt = f.fehler && f.fehlerFeld === 'titel';
+  if (!titelFehlt) return '';
+  return ` aria-invalid="true" aria-describedby="${NEU_MELDUNG}"`;
+}
 function vNeu() {
   const f = S.ui.neu;
   if (!f) return '';
@@ -173,7 +181,7 @@ function vNeu() {
   const ps = personen().filter(p => p.aktiv);
   const cl = klasse(f.klasse);
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
+  const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"${titelVerweis(f)}><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
 <div class="abs"><h3>BESCHREIBUNG</h3><textarea class="besch" data-nf="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung der neuen Aufgabe">${esc(f.beschreibung)}</textarea></div>
 <div class="abs"><h3>TEILAUFGABEN <span class="mono">${f.teil.length}</span></h3>${f.teil.map((t, j) => `<div class="chk"><i></i><span>${esc(t)}</span><button class="btn btn-sym x" data-act="nf-teil-weg" data-arg="${j}" aria-label="Teilaufgabe ${esc(t)} entfernen">✕</button></div>`).join('')}<input class="inp add" id="neu-teil" placeholder="+ Teilaufgabe · Enter · Liste einfügen" data-enter="nf-teil" data-mehrfach="neu-teil" aria-label="Neue Teilaufgabe der neuen Aufgabe"></div></div>`;
   const seite = `<aside class="mod-side"><div class="felder">
@@ -184,7 +192,7 @@ ${b ? `<span class="k">column</span><span class="w"><select data-nf="spalte" ari
 <span class="k">labels</span><span class="w"><input class="mini-inp full" data-nf="labels" value="${esc(f.labels)}" placeholder="ui, daten" aria-label="Labels der neuen Aufgabe"></span>
 <span class="k">due</span><span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
 <span class="k">origins</span><span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" title="${HERKUNFT_HILFE}" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
-  const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" role="alert">${esc(f.fehler)}</span>` : '<span><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span style="margin-left:auto;display:flex;gap:6px"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
+  const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" id="${NEU_MELDUNG}" role="alert">${esc(f.fehler)}</span>` : '<span class="tastenhinweis"><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span class="nf-knoepfe"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
   return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
 }
 
@@ -253,7 +261,7 @@ function vFenster() {
   const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
   const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
-  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
+  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
   if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${fuss}</div></div>`;
@@ -261,7 +269,7 @@ function vFenster() {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}<span class="k">column</span><span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 <span class="k">class</span><span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"></span>
+<span class="k">origins</span><span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -376,6 +384,16 @@ function herkunftEntwurf(a) {
   const e = S.ui.herkunftEntwurf;
   if (!e || e.nummer !== a.nummer) return '';
   return e.wert;
+}
+/** id der Meldung im Fuß des Aufgabenfensters; bleibt über jedes Neuzeichnen gleich, damit ein Feld auf sie verweisen kann. */
+const FENSTER_MELDUNG = 'fenster-meldung';
+/** Kennung des Felds „Neue Herkunft“ an einer Meldung des Aufgabenfensters (`S.ui.fensterFehlerFeld`). */
+const HERKUNFT_FELD = 'herkunft';
+/** Solange die Meldung eine abgelehnte Herkunft dieser Aufgabe betrifft, ist das Feld ungültig und verweist auf sie (R00111 AK 1). */
+function herkunftVerweis(a) {
+  const abgelehnt = S.ui.fensterFehler && S.ui.fensterFehlerFeld === HERKUNFT_FELD && herkunftEntwurf(a);
+  if (!abgelehnt) return '';
+  return ` aria-invalid="true" aria-describedby="${FENSTER_MELDUNG}"`;
 }
 
 function quelleLink(x) {

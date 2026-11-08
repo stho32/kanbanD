@@ -239,4 +239,20 @@ async function farbPixel(page, farbe) {
   return page.evaluate(f => window.kdKontrast.pixel(f), farbe);
 }
 
-module.exports = { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+/**
+ * Mutantenprobe (Muster aus R00110 „Mutanten“): nennt KD_MUTANTE eine JSON-Datei `{ pfad, alt, neu }`, liefert `ziel` (Seite oder
+ * Kontext) die Datei unter `pfad` mit jedem `alt` durch `neu` ersetzt aus. Greift der Ersatz nicht, wirft die Route — der Mutant liegt
+ * nie im Repository. Ohne KD_MUTANTE geschieht nichts.
+ */
+async function mutanteEinsetzen(ziel) {
+  if (!process.env.KD_MUTANTE) return;
+  const { pfad, alt, neu } = JSON.parse(require('node:fs').readFileSync(process.env.KD_MUTANTE, 'utf8'));
+  await ziel.route(url => url.pathname === pfad, async route => {
+    const antwort = await route.fetch();
+    const text = await antwort.text();
+    if (!text.includes(alt)) throw new Error(`Mutante greift nicht: ${pfad} enthält ${JSON.stringify(alt)} nicht`);
+    await route.fulfill({ response: antwort, body: text.replaceAll(alt, neu) });
+  });
+}
+
+module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };

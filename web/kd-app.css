@@ -240,7 +240,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .menue .e svg{margin-top:2px;color:var(--kd-muted)}
 .menue .k{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);padding:6px var(--kd-s4) 2px;background:var(--kd-bg);border-bottom:1px solid var(--kd-line)}
 /* Modal */
-.mod-bg{position:fixed;left:0;right:0;top:var(--kd-head-h);bottom:0;background:var(--kd-scrim);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+/* Oben und unten folgt das Fenster dem sichtbaren Bereich, wenn die Bildschirmtastatur ihn verdeckt (ADR-0016) */
+.mod-bg{position:fixed;left:0;right:0;top:calc(var(--kd-head-h) + var(--kd-vv-oben,0px));bottom:var(--kd-vv-unten,0px);background:var(--kd-scrim);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
 .mod{width:min(1080px,100%);height:min(780px,100%);background:var(--kd-surface);box-shadow:var(--kd-shadow-mod);display:flex;flex-direction:column;border-top:4px solid var(--cl,var(--kd-line-strong))}
 .mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(36px,var(--kd-ziel));padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
 .mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
@@ -364,7 +365,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .zt .btn-sym{height:22px;width:24px;visibility:hidden}
 .zt tr:hover .btn-sym{visibility:visible}
 .md{margin:0;font:12px/1.6 var(--kd-mono);white-space:pre-wrap;background:var(--kd-bg);border:1px solid var(--kd-line);padding:var(--kd-s4)}
-.mod-fuss{flex:none;min-block-size:max(28px,var(--kd-ziel));display:flex;align-items:center;gap:var(--kd-s4);padding:0 var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden}
+/* Der Fuß bricht um, sobald sein Inhalt nicht in eine Zeile passt, statt abzuschneiden (ADR-0015 Regel 3, Nachtrag N1) */
+.mod-fuss{flex:none;min-block-size:max(28px,var(--kd-ziel));display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s2) var(--kd-s4);padding:var(--kd-s2) var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:normal}
 kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;color:var(--kd-text)}
 /* Board einrichten */
 .setup{flex:1;display:flex;min-height:0}
@@ -657,6 +659,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-muted);font-weight:400}
 .neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}
+/* Die Knöpfe von „Neue Aufgabe“ brechen als Gruppe um, bei Bedarf auch in sich; „Anlegen“ bleibt letzter und rechtsbündig (R00111 AK 7, ADR-0015 N1) */
+.nf-knoepfe{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
 .naechste-ziel{display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer}
 .naechste-box{flex:none;width:13px;height:13px;margin-top:1px;border:1px solid var(--kd-line-strong);background:var(--kd-surface)}
@@ -817,7 +821,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 /* Responsive (R00077): dieselbe Oberfläche auf Tablet (bis 1024 px) und Handy (bis 640 px); der Desktop bleibt, wie er ist. */
 .pop,.kmenue{max-width:calc(100vw - 8px)}
 @media (max-width:1024px){
-  .mod-bg{top:0;padding:0}
+  .mod-bg{top:var(--kd-vv-oben,0px);padding:0}
   .mod{width:100%;height:100%}
   .leiste{flex-wrap:wrap}
 }
@@ -833,8 +837,9 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-main,.mod-side{overflow:visible}
   .mod-main{padding:var(--kd-s4)}
   .mod-side{border-left:0;border-top:1px solid var(--kd-line)}
-  .mod-kopf .pfad,.mod-fuss,.mod-kopf .nav,#vsc{display:none}
-  .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2)}
+  .mod-kopf .pfad,.mod-fuss .tastenhinweis,.mod-kopf .nav,#vsc{display:none}
+  /* Passen die Ziele des Kopfs nicht in eine Zeile (Aufgabenfenster bei 320 px), bricht er um, statt quer zu scrollen (R00111 AK 4, wie PO Z. 132) */
+  .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2);flex-wrap:wrap}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}
   .mod-kopf .cls{display:none}

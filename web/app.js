@@ -355,7 +355,7 @@ async function anhaengeHochladen(dateien) {
     const form = new FormData();
     form.append('datei', d, d.name);
     const r = await fetch(`/api/aufgaben/${S.ui.offen}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
-    if (!r.ok) { S.ui.fensterFehler = (await r.json().catch(() => ({}))).fehler || r.statusText; break; }
+    if (!r.ok) { fensterMelden((await r.json().catch(() => ({}))).fehler || r.statusText); break; }
     S.ui.gespeichert = Date.now();
   }
   await laden();
@@ -377,7 +377,7 @@ async function termineSchreiben(liste, formularLeeren) {
 let schlange = Promise.resolve(), schlangeOffen = 0;
 function warteschlange(anfrage) {
   schlangeOffen++;
-  schlange = schlange.then(anfrage).then(() => { S.ui.gespeichert = Date.now(); }).catch(f => { S.ui.fensterFehler = f.message; }).then(() => {
+  schlange = schlange.then(anfrage).then(() => { S.ui.gespeichert = Date.now(); }).catch(f => { fensterMelden(f.message); }).then(() => {
     if (--schlangeOffen > 0) return;
     marke = takt;
     return laden();
@@ -403,7 +403,8 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
   if (!f || ichNoetig()) { render(); return; }
   const titel = $('#neu-titel') ? $('#neu-titel').value : f.titel;
   const liste = zeilen || [titel];
-  if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; u.fokus = '#neu-titel'; render(); return; }
+  if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; f.fehlerFeld = 'titel'; u.fokus = '#neu-titel'; render(); return; }
+  f.fehlerFeld = null;
   const ziel = f.board ? { board: f.board, spalte: f.spalte } : {};
   try {
     let neu;
@@ -423,18 +424,25 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
 async function schreiben(methode, pfad, daten) {
   try {
     await api(methode, pfad, daten);
-    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
-  } catch (f) { S.ui.fensterFehler = f.message; S.ui.fehler = f.message; }
+    S.ui.gespeichert = Date.now(); fensterMelden(null);
+  } catch (f) { fensterMelden(f.message); S.ui.fehler = f.message; }
   await laden();
 }
 
-async function aufgabeAendern(nummer, aenderung) {
+/** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
+function fensterMelden(text, feld = null) {
+  S.ui.fensterFehler = text;
+  S.ui.fensterFehlerFeld = feld;
+}
+
+/** `feld` nennt das Eingabefeld, aus dem die Änderung kommt; eine Ablehnung macht es ungültig. */
+async function aufgabeAendern(nummer, aenderung, feld = null) {
   if (ichNoetig()) { render(); return false; }
   let gelungen = true;
   try {
     await api('PATCH', '/api/aufgaben/' + nummer, aenderung);
-    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
-  } catch (f) { S.ui.fensterFehler = f.message; gelungen = false; }
+    S.ui.gespeichert = Date.now(); fensterMelden(null);
+  } catch (f) { fensterMelden(f.message, feld); gelungen = false; }
   await laden();
   return gelungen;
 }
@@ -453,7 +461,7 @@ async function mehrereAendern(aenderungen) {
   if (ichNoetig()) { render(); return; }
   try {
     await api('PATCH', '/api/aufgaben/mehrere', { aenderungen });
-    S.ui.gespeichert = Date.now(); S.ui.fensterFehler = null;
+    S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { S.ui.fehler = f.message; }
   await laden();
 }
@@ -891,7 +899,7 @@ async function act(a, arg, wert) {
         if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = []; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = []; await dateiLaden(); break;
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
@@ -902,7 +910,7 @@ async function act(a, arg, wert) {
         if (!reihe.length) break;
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
-        u.gespeichert = null; u.fensterFehler = null; u.herkunftEntwurf = null;
+        u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null;
         // bis die Datei der neuen Aufgabe übernommen ist, zeigt das Fenster nichts von der vorigen (R00110 Nacharbeit 1)
         u.datei = null; u.anhaenge = []; u.eintritt = [];
         await dateiLaden();
@@ -996,7 +1004,7 @@ async function act(a, arg, wert) {
       case 'freigeben': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${arg}/reservierung`); return;
       case 'alle-freigeben': {
         if (ichNoetig()) break;
-        for (const { a } of reservierteDesBoards()) await api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`).catch(f => { u.fensterFehler = f.message; });
+        for (const { a } of reservierteDesBoards()) await api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`).catch(f => { fensterMelden(f.message); });
         await laden();
         return;
       }
@@ -1145,20 +1153,20 @@ async function act(a, arg, wert) {
         if (!f || ichNoetig()) break;
         try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
         catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; break; }
-        u.wirkungNeu = null; u.gespeichert = Date.now(); u.fensterFehler = null;
+        u.wirkungNeu = null; u.gespeichert = Date.now(); fensterMelden(null);
         return laden();
       }
       case 'wirkung-eintritt': {
         if (ichNoetig()) break;
         const [i, an] = arg.split('|');
-        try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); u.fensterFehler = null; }
-        catch (fehler) { u.fensterFehler = fehler.message; }
+        try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); fensterMelden(null); }
+        catch (fehler) { fensterMelden(fehler.message); }
         return laden();
       }
       case 'wirkung-weg': {
         if (ichNoetig()) break;
-        try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); u.fensterFehler = null; }
-        catch (fehler) { u.fensterFehler = fehler.message; }
+        try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); fensterMelden(null); }
+        catch (fehler) { fensterMelden(fehler.message); }
         return laden();
       }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
@@ -1210,7 +1218,7 @@ async function act(a, arg, wert) {
         u.fokus = '#herkunft-neu';
         // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
         u.herkunftEntwurf = { nummer: u.offen, wert };
-        const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] });
+        const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] }, HERKUNFT_FELD);
         if (gelungen) u.herkunftEntwurf = null;
         render();
         return;
@@ -1630,6 +1638,43 @@ document.addEventListener('input', e => {
   }
 });
 window.addEventListener('hashchange', laden);
+
+/**
+ * Das Fenster folgt dem sichtbaren Bereich, wenn die Bildschirmtastatur ihn verdeckt (ADR-0016): zwei Variablen an der Wurzel,
+ * gelesen nur von `.mod-bg`. Gesetzt nur bei verdecktem Bereich ohne Zoom, sonst entfernt; kein Fokus, kein Neuzeichnen.
+ */
+function sichtbarenBereichSetzen() {
+  const versatz = tastaturVersatzInPx(innerHeight, window.visualViewport);
+  const wurzelStil = document.documentElement.style;
+  if (versatz.bereichIstVerdeckt) {
+    wurzelStil.setProperty('--kd-vv-oben', `${versatz.oben}px`);
+    wurzelStil.setProperty('--kd-vv-unten', `${versatz.unten}px`);
+  } else {
+    wurzelStil.removeProperty('--kd-vv-oben');
+    wurzelStil.removeProperty('--kd-vv-unten');
+  }
+}
+/** Wie weit der sichtbare Bereich oben und unten vom Layout-Bereich abweicht; ein Zoom mit zwei Fingern zählt nicht als Verdecken (ADR-0016 Regel 2). */
+function tastaturVersatzInPx(layoutHoeheInPx, bereich) {
+  const ZOOM_TOLERANZ = 0.01;
+  const RUNDUNGS_TOLERANZ_IN_PX = 1;
+  const oben = bereich.offsetTop;
+  const unten = Math.max(0, layoutHoeheInPx - bereich.offsetTop - bereich.height);
+  const bereichIstUngezoomt = Math.abs(bereich.scale - 1) < ZOOM_TOLERANZ;
+  const randIstVerdeckt = unten > RUNDUNGS_TOLERANZ_IN_PX || oben > RUNDUNGS_TOLERANZ_IN_PX;
+  return { bereichIstVerdeckt: bereichIstUngezoomt && randIstVerdeckt, oben, unten };
+}
+let sichtbarerBereichGeplant = false;
+/** Höchstens ein Setzen je Frame, egal wie viele `resize`- und `scroll`-Ereignisse kommen (ADR-0016 Regel 1). */
+function sichtbarenBereichPlanen() {
+  if (sichtbarerBereichGeplant) return;
+  sichtbarerBereichGeplant = true;
+  requestAnimationFrame(() => { sichtbarerBereichGeplant = false; sichtbarenBereichSetzen(); });
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', sichtbarenBereichPlanen);
+  visualViewport.addEventListener('scroll', sichtbarenBereichPlanen);
+}
 window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
   if (stufeGewechselt) render();

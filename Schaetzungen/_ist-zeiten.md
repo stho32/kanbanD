@@ -439,3 +439,16 @@ Nie vom User erfragen.
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 1 N3: Öffnen und Blättern leeren Datei, Anhänge, Eintritt (E2E zwei Wege) | Operation | — | 0,1h | 0,1h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B4: Reparatur rückt zuletztFenster beim Umschalten vor (E2E 0/250/400 ms) | Operation | — | 0,3h | 0,3h | autonom |
 | 2026-11-07 | R00110 Fenster zeigt nur den neuesten Stand | Nacharbeit 2 B5: Wächter „Aufruf vor Übernahme“ je Block (Mutante 4) | Operation | — | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0447 Akzeptanztests Aufgabenfenster schmal | Operation | 0,5-1h | 0,0h | 0,2h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0448 Tastenhinweise markiert, schmal fällt nur der Hinweis weg | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0449 Fuß bricht um, sobald sein Inhalt nicht passt | Operation | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0456 Herkunftsfeld verweist auf seine Meldung | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0450 Akzeptanztests „Neue Aufgabe“ schmal | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0451 Knopfgruppe bricht gemeinsam um, Knöpfe in der Gruppe nach Bedarf | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0457 Titel verweist auf seine Meldung | Operation | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0452 Probe schmal gegen breit über alle Fenster | Operation | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0453 Mutanten M1 bis M3 | Operation | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0454 Akzeptanztest Meldung über der Tastatur | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0455 Fenster folgt dem sichtbaren Bereich | Operation | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 B1: Meldung trägt ihr Feld, „Neue Herkunft“ nur bei eigener Ablehnung ungültig (E2E Titel, Dauer, Gegenprobe; M8 rot) | Operation | — | 0,1h | 0,1h | autonom |
+| 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 S1: Fensterliste gegen das Markup abgeglichen, „Zuständige“ aufgenommen | Operation | — | 0,1h | 0,1h | autonom |
