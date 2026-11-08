@@ -216,7 +216,7 @@ test.describe('R00112 ✕ sichtbar mit Maus', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeitUndAnhang())); await alsPerson(page, 'st'); await mutanteEinsetzen(page); });
   test.afterEach(() => k.stoppen());
 
-  test.fail('US-10: jedes ✕ ist ohne Hover sichtbar (1280 px, feiner Zeiger) (#12)', async ({ page }) => {
+  test('US-10: jedes ✕ ist ohne Hover sichtbar (1280 px, feiner Zeiger)', async ({ page }) => {
     await alleEntfernenKnoepfeSichtbar(page, k);
   });
 });
