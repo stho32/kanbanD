@@ -771,13 +771,30 @@ async fn als_person<T: serde::Serialize + Send + 'static>(app: &App, wer: Option
     post,
     path = "/api/aufgaben/{nr}/teilaufgaben",
     tag = "Aufgaben",
-    description = "Teilaufgabe anlegen {text}",
+    description = "Teilaufgabe anlegen {text, position?, erledigt?} — position legt an diese Stelle (0-basiert, außerhalb = ans Ende, ohne = unten), erledigt setzt den Haken (ohne = offen); position keine ganze Zahl ab 0 oder erledigt kein Wahrheitswert → 400",
     params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = Text,
+    request_body = NeueTeilaufgabe,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.teilaufgabe_anlegen(p, nr, &t.text)).await
+async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<NeueTeilaufgabe>) -> Result<Response, Fehler> {
+    let position = ganze_zahl_ab_null("position", t.position.as_ref())?;
+    let erledigt = match &t.erledigt {
+        None | Some(serde_json::Value::Null) => false,
+        Some(wert) => wert.as_bool().ok_or_else(|| Fehler::Ungueltig(format!("erledigt muss true oder false sein, nicht {wert}")))?,
+    };
+    als_person(&app, wer, move |k, p| k.teilaufgabe_anlegen(p, nr, &t.text, position, erledigt)).await
+}
+
+/// Rumpf von `POST …/teilaufgaben` (R00112); position und erledigt roh, damit ein falscher Typ 400 ergibt statt axum-422.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+struct NeueTeilaufgabe {
+    text: String,
+    /// Stelle in der Liste (0-basiert); außerhalb = ans Ende, ohne = unten
+    #[schema(value_type = Option<usize>)]
+    position: Option<serde_json::Value>,
+    /// Haken der neuen Teilaufgabe; ohne = offen
+    #[schema(value_type = Option<bool>)]
+    erledigt: Option<serde_json::Value>,
 }
 
 #[utoipa::path(
@@ -1233,13 +1250,13 @@ struct Ablage {
 }
 
 /// `index` als Stelle: fehlt er oder ist null, unten; sonst eine ganze Zahl ab 0, alles andere 400.
-fn einfuegestelle(index: Option<&serde_json::Value>) -> Result<Option<usize>, Fehler> {
-    match index {
+fn ganze_zahl_ab_null(feld: &str, wert: Option<&serde_json::Value>) -> Result<Option<usize>, Fehler> {
+    match wert {
         None | Some(serde_json::Value::Null) => Ok(None),
         Some(wert) => wert
             .as_u64()
             .map(|n| Some(n as usize))
-            .ok_or_else(|| Fehler::Ungueltig(format!("index muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
+            .ok_or_else(|| Fehler::Ungueltig(format!("{feld} muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
     }
 }
 
@@ -1253,7 +1270,7 @@ fn einfuegestelle(index: Option<&serde_json::Value>) -> Result<Option<usize>, Fe
     responses((status = 201, description = "Erfolg", body = crate::web::openapi::SpalteAntwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(a): Json<Ablage>) -> Result<Response, Fehler> {
-    let index = einfuegestelle(a.index.as_ref())?;
+    let index = ganze_zahl_ab_null("index", a.index.as_ref())?;
     let spalte = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.auf_board_legen(&p, &slug, a.nummer, a.spalte.as_deref(), index)
