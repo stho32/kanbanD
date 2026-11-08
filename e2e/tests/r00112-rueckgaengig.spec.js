@@ -1,6 +1,6 @@
 // R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe (Karte #12, ADR-0017)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, kontrastAm, mutanteEinsetzen } = require('./hilfen');
 
 const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl' } };
 
@@ -158,5 +158,65 @@ test.describe('R00112 Hinweis breit', () => {
     expect(await hinweis.evaluate(zeilenDesTextes)).toBe(1);
     const [knopf, zeile] = await Promise.all([hinweis.getByRole('button', { name: 'rückgängig' }).boundingBox(), hinweis.boundingBox()]);
     expect(Math.abs((knopf.y + knopf.height / 2) - (zeile.y + zeile.height / 2))).toBeLessThan(2);
+  });
+});
+
+// US-10: #1 mit einem beendeten Zeiteintrag, Teilaufgaben a, b, c und dem Anhang plan.pdf.
+const mitZeitUndAnhang = () => ({
+  ...grundbestand(),
+  'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n- [ ] a\n- [x] b\n- [ ] c\n\n```kanbanD-time\n2026-10-17 09:00 · 2026-10-17 10:00 · st\n```\n',
+  'aufgaben/0001-eins/plan.pdf': Buffer.alloc(2048, 7),
+});
+
+/** Die ✕ zum Entfernen; `.zt .btn-sym` umfasst auch das ✎ derselben Zeile. */
+const ENTFERNEN = { liste: ['.lnk-x'], fenster: ['.zt .btn-sym', '.chk .x', '.anh-z .x'] };
+
+/** Je Selektor die Anzahl und die verschiedenen berechneten opacity-Werte; die Mindestanzahl ist die Selbstprobe der Messung. */
+const deckkraft = (page, selektoren) => page.evaluate(alle => Object.fromEntries(alle.map(s => {
+  const treffer = [...document.querySelectorAll(s)];
+  return [s, { anzahl: treffer.length, opacity: [...new Set(treffer.map(el => getComputedStyle(el).opacity))] }];
+})), selektoren);
+
+const IMMER_SICHTBAR = selektoren => Object.fromEntries(selektoren.map(s => [s, { anzahl: expect.any(Number), opacity: ['1'] }]));
+
+/** Misst ohne Zeigen und ohne Fokus: Maus in der Ecke, kein Element fokussiert. */
+async function ohneZeigen(page) {
+  await page.mouse.move(0, 0);
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+}
+
+async function alleEntfernenKnoepfeSichtbar(page, k) {
+  await page.goto(k.adresse + '#/aufgaben');
+  await expect(page.locator('.lnk-x').first()).toBeAttached();
+  await ohneZeigen(page);
+  const liste = await deckkraft(page, ENTFERNEN.liste);
+  await page.goto(k.adresse);
+  await page.locator('.ka[data-id="1"] .id').click();
+  await expect(page.locator('#anhaenge .anh-z')).toHaveCount(1);
+  await ohneZeigen(page);
+  const fenster = await deckkraft(page, ENTFERNEN.fenster);
+  for (const s of [...ENTFERNEN.liste, ...ENTFERNEN.fenster]) expect({ s, anzahl: { ...liste, ...fenster }[s].anzahl > 0 }).toEqual({ s, anzahl: true });
+  expect({ ...liste, ...fenster }).toEqual(IMMER_SICHTBAR([...ENTFERNEN.liste, ...ENTFERNEN.fenster]));
+  for (const s of ENTFERNEN.fenster) expect(await kontrastAm(page.locator(s).first())).toBeGreaterThanOrEqual(4.5);
+}
+
+test.describe('R00112 ✕ sichtbar bei Touch', () => {
+  let k;
+  test.use({ viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true });
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeitUndAnhang())); await alsPerson(page, 'st'); await mutanteEinsetzen(page); });
+  test.afterEach(() => k.stoppen());
+
+  test('US-10: jedes ✕ ist ohne Zeigen sichtbar (414 px Touch)', async ({ page }) => {
+    await alleEntfernenKnoepfeSichtbar(page, k);
+  });
+});
+
+test.describe('R00112 ✕ sichtbar mit Maus', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeitUndAnhang())); await alsPerson(page, 'st'); await mutanteEinsetzen(page); });
+  test.afterEach(() => k.stoppen());
+
+  test.fail('US-10: jedes ✕ ist ohne Hover sichtbar (1280 px, feiner Zeiger) (#12)', async ({ page }) => {
+    await alleEntfernenKnoepfeSichtbar(page, k);
   });
 });
