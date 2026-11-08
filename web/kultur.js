@@ -53,7 +53,7 @@
   const FELDER = Object.freeze({
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig',
     'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', wbs: 'WBS', requirements: 'Anforderungen',
-    ich: 'Ich', agents: 'Agenten', spalten: 'Spalten', anforderungen: 'Anforderungen',
+    ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
   });
   /** Anzeigetext der Herkunft `thin air` (FA 15); in Datei, API und Filter bleibt `thin air`. */
   const OHNE_HERKUNFT = 'ohne Herkunft';

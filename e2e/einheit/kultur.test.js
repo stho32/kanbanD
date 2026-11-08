@@ -40,11 +40,17 @@ test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel
   assert.deepStrictEqual(FELDER, {
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig',
     'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', wbs: 'WBS', requirements: 'Anforderungen',
-    ich: 'Ich', agents: 'Agenten', spalten: 'Spalten', anforderungen: 'Anforderungen',
+    ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
   });
   const schluessel = Object.keys(FELDER);
   assert.deepStrictEqual(Object.values(FELDER).filter(b => schluessel.includes(b)), []);
   assert.strictEqual(OHNE_HERKUNFT, 'ohne Herkunft');
+});
+
+test('FELDER: „Anforderungen“ steht nur unter requirements — auch der erste Start nennt den Schlüssel der Datei (PO Z. 159)', () => {
+  assert.strictEqual(FELDER.requirements, 'Anforderungen');
+  assert.strictEqual(Object.hasOwn(FELDER, 'anforderungen'), false);
+  assert.deepStrictEqual(Object.keys(FELDER).filter(s => FELDER[s] === 'Anforderungen'), ['requirements']);
 });
 
 test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß-/Kleinschreibung egal (FA 16) — Ähnliches nicht', () => {

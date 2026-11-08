@@ -379,7 +379,7 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als H
     for (const name of ['Board', 'Spalte', 'Herkunft der neuen Aufgabe']) await expect(neu.getByLabel(name, { exact: true }), name).toHaveCount(1);
   });
 
-  test.fail('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel darunter', async ({ page }) => {
+  test('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel darunter', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
     await eins.locator('.felder .k').first().waitFor();
@@ -403,7 +403,7 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als H
     await expect(einrichten.getByRole('heading', { name: 'QUELLEN sources:' })).toBeVisible();
   });
 
-  test.fail('US-8: erster Start in leerer Instanz — Ich, Agenten, Board, Spalten, WBS, Anforderungen mit dem Schlüssel der Datei', async ({ page }) => {
+  test('US-8: erster Start in leerer Instanz — Ich, Agenten, Board, Spalten, WBS, Anforderungen mit dem Schlüssel der Datei', async ({ page }) => {
     k = await kanbanStarten();
     await page.goto(k.adresse);
     await page.getByRole('button', { name: 'Einrichten und committen' }).waitFor();
