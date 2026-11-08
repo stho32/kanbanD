@@ -463,3 +463,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0467 Teilaufgabe an einer Stelle anlegen | Operation | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0469 Akzeptanztests Anhang rückgängig | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0463 Hinweis im obersten Fenster | Operation | 1-2h | 0,8h | 0,8h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0464 Rückgängig-Art zeit | Operation | 0,5-1h | 0,3h | 0,3h | autonom |

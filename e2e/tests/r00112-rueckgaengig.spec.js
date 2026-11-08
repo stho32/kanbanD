@@ -246,7 +246,7 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
     await expect(imFenster(page)).toContainText('Zeit 09:00–10:00 von Stefan gelöscht');
   }
 
-  test.fail('US-7: entfernter Zeiteintrag kommt mit Strg+Z zurück (#12)', async ({ page }) => {
+  test('US-7: entfernter Zeiteintrag kommt mit Strg+Z zurück (#12)', async ({ page }) => {
     const [vorher] = await zeitenVon1(page, k);
     await zeitEntfernen(page);
     const knopf = imFenster(page).getByRole('button', { name: 'rückgängig' });
@@ -262,10 +262,10 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
     expect(k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|#1 Zeit nachgetragen: 1:00 \(Stefan\)$/);
   });
 
-  test.fail('US-7 Gegenfall: hat ein Agent den Eintrag schon wiederhergestellt, meldet der Fuß das (#12)', async ({ page }) => {
+  test('US-7 Gegenfall: hat ein Agent den Eintrag schon wiederhergestellt, meldet der Fuß das (#12)', async ({ page }) => {
     await zeitEntfernen(page);
     const zurueck = await page.request.post(k.adresse + 'api/aufgaben/1/zeiten', { ...ALS_CL, data: { wer: 'st', beginn: `${gestern()} 09:00`, ende: `${gestern()} 10:00` } });
-    expect(zurueck.status()).toBe(201);
+    expect(zurueck.status()).toBe(200);
     const commitsVorher = commits(k);
     await imFenster(page).getByRole('button', { name: 'rückgängig' }).click();
     await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('nicht rückgängig: #1 hat schon einen Eintrag st@');
@@ -443,7 +443,7 @@ test.describe('R00112 Fokus nie verdeckt (320 × 640)', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeit())); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test.fail('nach ✕ an einer Zeit liegt „Spalte“ nach Tab ganz außerhalb des Hinweises (#12)', async ({ page }) => {
+  test('nach ✕ an einer Zeit liegt „Spalte“ nach Tab ganz außerhalb des Hinweises (#12)', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
     await page.getByLabel('Zeit 1 löschen').click();

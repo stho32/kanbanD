@@ -438,6 +438,11 @@ function platzAufBoard(slug, nummer) {
   return { art: 'legen', slug, titel: board.titel, nummer, spalte: spalte.name, index: spalte.aufgaben.indexOf(nummer) };
 }
 
+/** „Zeit 09:00–10:00 von Stefan“ — Uhrzeiten in Ortszeit wie die Zeile im Fenster. */
+function zeitBeschrieben(z) {
+  return `Zeit ${ortszeit(z.beginn).slice(11)}–${ortszeit(z.ende).slice(11)} von ${per(z.wer).name}`;
+}
+
 /** Sendet die Gegenaktion eines Rückgängig; Erfolg und Ablehnung stehen als Hinweis ohne Knopf da (ADR-0017 Regel 6). */
 async function rueckgaengigSenden(methode, pfad, daten, erfolg) {
   try {
@@ -1055,6 +1060,10 @@ async function act(a, arg, wert) {
           await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`);
           break;
         }
+        if (z.art === 'zeit') {
+          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende }, `${zeitBeschrieben(z)} wiederhergestellt`);
+          break;
+        }
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
         u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
@@ -1279,7 +1288,15 @@ async function act(a, arg, wert) {
         await schreiben('PATCH', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`, korrektur);
         return;
       }
-      case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`); return;
+      case 'zeit-weg': {
+        if (ichNoetig()) break;
+        // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): POST …/zeiten vergibt dieselbe Kennung
+        const z = aufgabe(u.offen).zeiten.find(x => x.kennung === arg);
+        const undo = { art: 'zeit', nummer: u.offen, wer: z.wer, beginn: z.beginn, ende: z.ende };
+        await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`);
+        if (!u.fensterFehler) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, at: Date.now() };
+        break;
+      }
       case 'spalte-archivieren': {
         if (ichNoetig()) break;
         const nummern = S.board.spalten.find(sp => sp.name === arg).aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; });
