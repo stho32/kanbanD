@@ -35,6 +35,7 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 - [ADR-0003: Abweisungen mit strukturiertem Rumpf](../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md)
 - [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md)
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `cost` in `Aufgabenaenderung` als rohes JSON, damit jeder Fehler 400 statt 422 ist
+- [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — Soll (#12): `POST /api/boards/{slug}/aufgaben` nimmt optional `index`, `POST /api/aufgaben/{nr}/teilaufgaben` optional `position` und `erledigt`. Beide Parameter sind additiv; ohne sie bleibt das Verhalten gleich
 
 ## Offene Fragen
 
@@ -47,3 +48,5 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2); ergänzt 2026-11-01 um die 403-Formen (R00097 Ist, R00102 Soll, Karte #27)
 - Soll nach ADR-0009 (Karte #18, noch nicht gebaut): `PATCH /api/aufgaben/{nr}` und `/mehrere` nehmen `cost` roh (`serde_json::Value`, entfernbar) an — ein typisiertes Feld gäbe bei Typfehlern axum-422 (`tests/termine.rs:31`). Kein eigener Endpunkt; OpenAPI-Schema per `value_type`.
 - nachgeführt 2026-11-06 nach #18 (ADR-0009)
+- Soll nach ADR-0017 (Karte #12, noch nicht gebaut): die zwei optionalen Felder in den Anfrage-Strukturen und im OpenAPI-Schema. Ein ungültiger Wert ergibt 400, ein zu großer `index` legt unten ab. Ist (Probe 2026-11-08): `position` und `erledigt` beim Anlegen einer Teilaufgabe werden still ignoriert.
+- nachgeführt 2026-11-08 nach #12 (ADR-0017)
