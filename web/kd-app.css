@@ -482,8 +482,17 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .archbar .lnk{margin-left:auto}
 .phasenbar{background:var(--kd-c-amber);border-bottom-color:var(--kd-c-amber-line);flex-wrap:wrap}
 /* Hinweis: bricht um und nutzt dabei die Breite des Bildschirms; passt der Knopf nicht mehr neben den Text, steht er rechtsbündig darunter (R00112, ADR-0015 Regel 1) */
-.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0 14px;align-items:center;box-sizing:border-box;width:max-content;max-width:min(720px,calc(100vw - 32px));box-shadow:var(--kd-shadow);font-size:12.5px}
-.toast .lnk{color:var(--kd-head-link)}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0 14px;align-items:center;box-sizing:border-box;width:max-content;max-width:min(720px,calc(100vw - 32px));box-shadow:var(--kd-shadow);outline:1px solid var(--kd-hinweis-rand);font-size:12.5px;line-height:1.4}
+.toast .txt{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+/* „rückgängig“: Textknopf ohne Unterstreichung mit der Trefferfläche --kd-ziel; passt er nicht neben den Text, rechtsbündig darunter (Artboard D0003 #hinweis-im-fenster) */
+.toast .lnk{flex:none;margin:0 -8px 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:var(--kd-ziel);min-width:var(--kd-ziel);padding:0 8px;font:inherit;font-weight:500;color:var(--kd-head-link);white-space:nowrap}
+.toast .lnk:hover{text-decoration:none;background:var(--kd-head-line)}
+.toast .lnk:focus-visible{outline:2px solid var(--kd-head-link);outline-offset:-2px}
+/* Bei offenem modalem Fenster: Anker von 0 px zwischen Körper und Fuß, der Hinweis liegt 8 px über dem Fuß (ADR-0017 Regel 5).
+   Zeiger fängt nur das Rechteck des Hinweises; solange er steht, scrollt Tab ein Feld über ihn hinaus (PO Z. 162, WCAG 2.4.11) */
+.hinweis-anker{position:relative;height:0;flex:none;pointer-events:none}
+.hinweis-anker .toast{position:absolute;bottom:8px;z-index:2;max-width:min(720px,calc(100% - 32px));pointer-events:auto}
+.mod:has(.hinweis-anker) :is(.mod-body,.mod-main,.mod-side){scroll-padding-bottom:calc(var(--kd-hinweis-h,0px) + 8px)}
 .toast.warn{color:var(--kd-head-text);border-left:4px solid var(--kd-wbs-error)}
 .ausruf{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--kd-wbs-error-bg);color:var(--kd-wbs-error-ink);box-shadow:0 0 0 1px var(--kd-wbs-error);font-weight:600;font-size:11px;line-height:1;flex:none}
 .first{flex:1;display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);min-height:0;background:var(--kd-surface)}

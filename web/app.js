@@ -443,8 +443,19 @@ async function rueckgaengigSenden(methode, pfad, daten, erfolg) {
   try {
     await api(methode, pfad, daten);
     S.ui.hinweis = { text: erfolg, at: Date.now() };
-  } catch (f) { S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() }; }
+    if (S.ui.offen) fensterMelden(null);
+  } catch (f) {
+    // Bei offenem Aufgabenfenster gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis
+    if (S.ui.offen) fensterMelden(`nicht rückgängig: ${f.message}`);
+    else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
+  }
   await laden();
+}
+
+/** Der Hinweis im Fenster deckt den unteren Rand des Körpers; seine Höhe hält dort den Fokus frei (scroll-padding, PO Z. 162). */
+function hinweisEinpassen() {
+  const hinweis = $('.hinweis-anker .toast');
+  if (hinweis) hinweis.closest('.mod').style.setProperty('--kd-hinweis-h', hinweis.offsetHeight + 'px');
 }
 
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
@@ -574,6 +585,7 @@ function render() {
   } finally {
     S.neuzeichnen = false;
   }
+  hinweisEinpassen();
   rollstaendeSetzen(rollen);
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();

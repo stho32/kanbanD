@@ -197,7 +197,7 @@ ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-nf="
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
 ${vBeschriftung('origins')}<span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" title="${HERKUNFT_HILFE}" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
   const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" id="${NEU_MELDUNG}" role="alert">${esc(f.fehler)}</span>` : '<span class="tastenhinweis"><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span class="nf-knoepfe"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
-  return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${vHinweisAnker('neu')}${fuss}</div></div>`;
 }
 
 /* ── Aufgabenfenster (Artboard D0003) ── */
@@ -267,8 +267,8 @@ function vFenster() {
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${fuss}</div></div>`;
-  if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${fuss}</div></div>`;
+  if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+  if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
   const haupt = `<div class="mod-main"><input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel"><div class="abs"><h3>BESCHREIBUNG</h3>${a.beschreibung && !S.ui.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`}</div>${vFensterAbschnitte(a)}</div>`;
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}${vBeschriftung('column')}<span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
@@ -280,7 +280,7 @@ ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.ma
 ${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span></span></div></aside>`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body" ${reiterPanel('inhalt')}>${haupt}${seite}</div>${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body" ${reiterPanel('inhalt')}>${haupt}${seite}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
 }
 /* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
 function vFensterAbschnitte(a) {
@@ -539,7 +539,7 @@ function vDefekt(nr, d) {
 function vDefektFenster() {
   const d = S.ui.defektDatei;
   if (!d) return '';
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="defekt-fenster" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div><div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="defekt-fenster" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div>${vHinweisAnker('defekt')}<div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
 const KUERZEL_BOARD = [['p', 'Zuständige zuweisen (Dialog)'], ['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a · Entf', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · Leertaste', 'eigenen Timer an / aus'], ['m · F2', 'mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Bewegung / Anlage rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Alt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Strg + Klick', 'Karte zur Auswahl hinzu / heraus'], ['Umschalt + Klick · Umschalt + ↑ ↓', 'Reihe auswählen'], ['Esc', 'Auswahl aufheben'], ['Enter', 'Karte öffnen'], ['n', 'Neue Aufgabe in dieser Spalte (Dialog)'], ['Esc', 'Filter leeren'], ['/', 'Filter']];
 const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['← →', 'Reiter wechseln (Fokus auf einem Reiter)'], ['Esc', 'schließen']];
@@ -734,10 +734,29 @@ function vLegende() {
   const knopf = (k, text, n, stil) => `<button class="${jetzt === k ? 'an' : ''}" data-act="legende" data-arg="${esc(k)}" title="filtern: class:${esc(k)}"${stil}><span class="sw${k === 'none' ? ' leer' : ''}"></span>${esc(text)}<span class="n">${n}</span></button>`;
   return `<div class="leg" aria-label="Legende"><span class="tt">LEGENDE</span>${klassen.map(k => knopf(k.schluessel, k.bezeichnung, sichtbar.filter(a => a.klasse === k.schluessel).length, ` style="${cv(k.farbe)}"`)).join('')}${knopf('none', 'ohne Klasse', sichtbar.filter(a => !a.klasse).length, '')}<span class="rechts">Klick filtert · <span class="mono">class:</span></span></div>`;
 }
+/** Der Dialog, in dem der Hinweis steht: der oberste offene modale Dialog mit Fuß (R00112, ADR-0017 Regel 5); null heißt unten über allem. */
+function hinweisDialog() {
+  const u = S.ui;
+  if (u.zuweisen || u.hilfe) return null;
+  if (u.offenDefekt && u.defektDatei) return 'defekt';
+  if (u.neu) return 'neu';
+  if (u.offen && !u.setup && aufgabe(u.offen)) return 'fenster';
+  return null;
+}
+
+/** Anker des Hinweises zwischen Körper und Fuß des Dialogs `art` — leer, wenn der Hinweis nicht dort steht. */
+function vHinweisAnker(art) {
+  return S.ui.hinweis && hinweisDialog() === art ? `<div class="hinweis-anker">${vHinweisInhalt()}</div>` : '';
+}
+
 function vHinweis() {
+  return hinweisDialog() ? '' : vHinweisInhalt();
+}
+
+function vHinweisInhalt() {
   const t = S.ui.hinweis;
   if (t && t.warnungen) return `<div class="toast warn" role="alert" id="pruef-warnung"><span class="ausruf" aria-hidden="true">!</span><span>${esc(t.text)}</span>${t.warnungen.map(w => `<span>${esc(w.text)} ${warnungsKnoten(w).map(k => `<a class="lnk" href="${esc(k.ziel)}" data-act="wbs-zu" data-arg="${esc(k.ziel)}" title="${esc(k.titel)}">${esc(k.text)}</a>`).join(' ')}</span>`).join('')}</div>`;
-  return t ? `<div class="toast" role="status">${esc(t.text)}${t.undo ? `<button class="lnk" data-act="rueckgaengig" title="Strg+Z">rückgängig</button>` : ''}</div>` : '';
+  return t ? `<div class="toast" role="status"><span class="txt">${esc(t.text)}</span>${t.undo ? `<button class="lnk" data-act="rueckgaengig" title="Strg+Z">rückgängig</button>` : ''}</div>` : '';
 }
 
 /* ── Aufgabenliste (Artboard D0004) ── */

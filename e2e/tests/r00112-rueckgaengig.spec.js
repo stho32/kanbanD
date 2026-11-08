@@ -379,3 +379,81 @@ test.describe('R00112 Anhang im Fenster', () => {
     await expect(page.locator('.toast').getByRole('button', { name: 'rückgängig' })).toHaveCount(0);
   });
 });
+
+// B0463 (ADR-0017 Regel 5, Artboard D0003 #hinweis-im-fenster, PO Z. 162–164): bei offenem modalem Fenster steht der
+// Hinweis als Overlay 8 px über dem Fuß im obersten Dialog. „Zurückholen“ im Fenster einer archivierten Aufgabe ist ein
+// Hinweis, der ohne eine der neuen Rückgängig-Arten entsteht.
+test.describe('R00112 Hinweis im obersten Fenster', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+  const hinweis = page => page.locator('.toast[role="status"]');
+  const rechteck = loc => loc.evaluate(e => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, o: r.top, u: r.bottom }; });
+
+  async function zurueckgeholt(page) {
+    k = await kanbanStarten(einrichten({ ...grundbestand(), 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\narchived: 2026-10-01\n---\n' }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.getByRole('link', { name: 'Archiv (1)' }).click();
+    await page.locator('.ka[data-id="1"]').click();
+    await page.getByRole('button', { name: 'Zurückholen', exact: true }).click();
+    await expect(hinweis(page)).toContainText('#1 zurückgeholt');
+  }
+
+  test('liegt im Dialog mit aria-modal, mittig 8 px über dem Fuß', async ({ page }) => {
+    await zurueckgeholt(page);
+    await expect(page.locator('[aria-modal="true"] .toast[role="status"]')).toHaveCount(1);
+    await expect(hinweis(page)).toHaveCount(1);
+    const h = await rechteck(hinweis(page)), fuss = await rechteck(page.locator('#fenster .mod-fuss')), mod = await rechteck(page.locator('#fenster'));
+    expect(Math.abs(fuss.o - 8 - h.u)).toBeLessThanOrEqual(1);
+    expect(Math.abs((h.l + h.r) / 2 - (mod.l + mod.r) / 2)).toBeLessThanOrEqual(1);
+    expect(h.r - h.l).toBeLessThanOrEqual(Math.min(720, mod.r - mod.l - 32) + 0.5);
+  });
+
+  test('ohne Fenster bleibt er unten über allem', async ({ page }) => {
+    await zurueckgeholt(page);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fenster')).toHaveCount(0);
+    await expect(hinweis(page)).toContainText('#1 zurückgeholt');
+    expect(await hinweis(page).evaluate(e => getComputedStyle(e).position)).toBe('fixed');
+  });
+
+  test('Zeiger nur im Rechteck: neben dem Hinweis trifft ein Klick den Körper', async ({ page }) => {
+    await zurueckgeholt(page);
+    await expect(page.locator('[aria-modal="true"] .toast[role="status"]')).toHaveCount(1);
+    const h = await rechteck(hinweis(page)), mod = await rechteck(page.locator('#fenster'));
+    const mitte = (h.o + h.u) / 2;
+    const ziel = (x, y) => page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? (e.closest('.toast') ? 'hinweis' : e.closest('.mod-body') ? 'koerper' : e.className) : null; }, [x, y]);
+    expect(await ziel((h.l + h.r) / 2, mitte)).toBe('hinweis');
+    expect(await ziel(mod.l + 4, mitte)).toBe('koerper');
+    expect(await ziel(h.l - 4, mitte)).toBe('koerper');
+    expect(await ziel(h.r + 4, mitte)).toBe('koerper');
+    expect(await ziel((h.l + h.r) / 2, h.o - 4)).toBe('koerper');
+  });
+
+  test('der Rand --kd-hinweis-rand gilt für jeden Hinweis, ohne Maßänderung', async ({ page }) => {
+    await zurueckgeholt(page);
+    const stil = await hinweis(page).evaluate(e => { const s = getComputedStyle(e); return { outline: s.outlineStyle + ' ' + s.outlineWidth, rand: s.borderTopWidth }; });
+    expect(stil).toEqual({ outline: 'solid 1px', rand: '0px' });
+  });
+});
+
+test.describe('R00112 Fokus nie verdeckt (320 × 640)', () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeit())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  test.fail('nach ✕ an einer Zeit liegt „Spalte“ nach Tab ganz außerhalb des Hinweises (#12)', async ({ page }) => {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByLabel('Zeit 1 löschen').click();
+    const hinweis = page.locator('[aria-modal="true"] .toast[role="status"]');
+    await expect(hinweis).toContainText('Zeit 09:00–10:00 von Stefan gelöscht');
+    const spalte = page.locator('#fenster select[aria-label="Spalte"]');
+    for (let i = 0; i < 120 && !(await spalte.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(spalte).toBeFocused();
+    await expect(hinweis).toBeVisible();
+    const [f, h] = await Promise.all([spalte, hinweis].map(l => l.evaluate(e => { const r = e.getBoundingClientRect(); return { o: r.top, u: r.bottom }; })));
+    expect(f.u <= h.o || f.o >= h.u, `Spalte ${f.o}–${f.u}, Hinweis ${h.o}–${h.u}`).toBe(true);
+  });
+});
