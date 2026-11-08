@@ -377,3 +377,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #74 | Retrospektive | director | Nacharbeit 0:23 gegen Entwicklung 19:42 (Bau größer); zweimal: Fehlermarkierung ohne Ursachenbezug (B1, #96) und lastabhängige Wackler (#89–#92, #98) → 2 Fortbildungsideen (Factory 490063e); Vorschlag Gelesen-Zeile in Wiederholungen offen; keine Projektlehre | 0:05 | — |
 | 2026-11-08 | #88 | Architektur | architekt | bestanden → Entwicklung; kein ADR, Fallstrick leerlaufende Beschriftungsprobe (kultur-hilfen.js:61); Frage für #87 an den PO kommentiert | 0:05 | — |
 | 2026-11-08 | #88 | Entwicklung | entwickler | bestanden; 5 Commits auf karte/88 (bis e119592), Gate 554/0 · 295/0 · 832/2 bekannt; Gelesen-Zeile nachgefordert → 1 Nachbesserung (Schutztests) | 0:38 | e119592 |
+| 2026-11-08 | #88 | Auto-Reviews | code-reviewer | bestanden, keine Befunde; Agent af1ad4abe282c407d · 3,97–5,44 $ | 0:04 | — |
+| 2026-11-08 | #88 | Auto-Reviews | ux-reviewer | bestanden, kein Muss; Sollte Mono/Sans → #99, Vorbestand 320 px erster Start → #100; Agent a611d2c9063256f8d · 4,29–5,71 $ | 0:05 | — |
+| 2026-11-08 | #88 | Auto-Reviews | architektur-reviewer | bestanden, kein Muss; Sollte Modell-Drift X00004/A00009 nach dem Merge; Agent acfd26c6415828257 · 3,28–4,67 $ | 0:04 | — |
