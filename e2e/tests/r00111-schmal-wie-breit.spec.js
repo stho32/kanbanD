@@ -135,6 +135,23 @@ test('Abgleich der Fensterliste: ein ungelistetes Fenster wird mit id und Zeile 
   expect(ungelisteteFenster([{ id: 'neu', zeile: 2 }], [], [])).toEqual(['neu (web/ansicht.js:2)']);
 });
 
+// R00112 B0465: der Hinweis mit „rückgängig“ im Fenster ist auch auf dem kleinsten Gerät ganz zu sehen und deckt den Fuß nicht
+test('Aufgabenfenster #1 mit Hinweis: bei 320 × 640 mit Touch ist „rückgängig“ sichtbar und der Hinweis frei vom Fuß', async ({ browser }) => {
+  k = await kanbanStarten(einrichten(BESTAND));
+  const kontext = await browser.newContext({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  try {
+    await mutanteEinsetzen(kontext);
+    const { oeffnen } = fensterDerAnwendung().find(f => f.fenster === 'Aufgabenfenster #1 mit Hinweis');
+    const fenster = await oeffnen(await seiteOeffnen(kontext));
+    expect((await fensterMessen(fenster, [])).sichtbar, 'im Fenster sichtbar').toContain('Strg+Z'); // Schlüssel des Knopfs ist sein title
+    const rechteck = sel => fenster.locator(sel).evaluate(e => { const r = e.getBoundingClientRect(); return { o: r.top, u: r.bottom, l: r.left, r: r.right }; });
+    const [h, f] = [await rechteck('.toast[role=status]'), await rechteck('.mod-fuss')];
+    expect(h.u <= f.o || h.o >= f.u || h.r <= f.l || h.l >= f.r, `Hinweis ${JSON.stringify(h)}, Fuß ${JSON.stringify(f)}`).toBe(true);
+  } finally {
+    await kontext.close();
+  }
+});
+
 for (const { fenster: name, id, oeffnen } of fensterDerAnwendung()) {
   for (const viewport of SCHMAL_UND_ZWISCHEN) {
     test(`${name}: bei ${viewport.width} × ${viewport.height} mit Touch ist alles sichtbar, was bei 1280 px sichtbar ist`, async ({ browser }) => {

@@ -27,10 +27,12 @@ fn position(a: &Aufgabe, i: usize) -> Result<(), Fehler> {
 }
 
 impl Kanban {
-    pub fn teilaufgabe_anlegen(&self, wer: &Person, nr: u32, text: &str) -> Result<Aufgabe, Fehler> {
+    /// Legt die Teilaufgabe an `position` (0-basiert, außerhalb = ans Ende, ohne = unten) an, mit `erledigt` als Haken (R00112).
+    pub fn teilaufgabe_anlegen(&self, wer: &Person, nr: u32, text: &str, position: Option<usize>, erledigt: bool) -> Result<Aufgabe, Fehler> {
         let text = text_pruefen(text)?;
         self.aufgabe_schreiben(wer, nr, |a| {
-            a.teilaufgaben.push(Teilaufgabe { text: text.clone(), erledigt: false });
+            let stelle = position.unwrap_or(usize::MAX).min(a.teilaufgaben.len());
+            a.teilaufgaben.insert(stelle, Teilaufgabe { text: text.clone(), erledigt });
             Ok(Some(format!("#{nr} Teilaufgabe „{text}“ ergänzt")))
         })
     }

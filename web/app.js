@@ -349,16 +349,30 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
   }
 }
 
+/** Inhalt eines Anhangs als Blob; wirft mit dem Grund des Servers. */
+async function anhangLesen(pfad) {
+  const r = await fetch(pfad);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).fehler || r.statusText);
+  return r.blob();
+}
+
 async function anhaengeHochladen(dateien) {
   if (ichNoetig()) { render(); return; }
   for (const d of dateien) {
-    const form = new FormData();
-    form.append('datei', d, d.name);
-    const r = await fetch(`/api/aufgaben/${S.ui.offen}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
-    if (!r.ok) { fensterMelden((await r.json().catch(() => ({}))).fehler || r.statusText); break; }
+    try { await anhangSenden(S.ui.offen, d, d.name); } catch (f) { fensterMelden(f.message); break; }
     S.ui.gespeichert = Date.now();
   }
   await laden();
+}
+
+/** Lädt `datei` als Multipart unter `name` an Aufgabe `nummer` hoch; liefert den Anhang des Servers, wirft mit seinem Grund. */
+async function anhangSenden(nummer, datei, name) {
+  const form = new FormData();
+  form.append('datei', datei, name);
+  const r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
+  const antwort = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(antwort.fehler || r.statusText);
+  return antwort;
 }
 
 /** Termine des Boards ersetzen; bei Erfolg das Formular leeren (R00047). */
@@ -427,6 +441,115 @@ async function schreiben(methode, pfad, daten) {
     S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { fensterMelden(f.message); S.ui.fehler = f.message; }
   await laden();
+}
+
+/** Platz einer Karte auf einem Board aus dem gezeigten Stand, gemerkt für das Rückgängig (R00112, ADR-0017 Regel 1). */
+function platzAufBoard(slug, nummer) {
+  const board = (S.boards || []).find(b => b.slug === slug);
+  if (!board) return null;
+  const spalte = board.spalten.find(sp => sp.aufgaben.includes(nummer));
+  if (!spalte) return null;
+  return { art: 'legen', slug, titel: board.titel, nummer, spalte: spalte.name, index: spalte.aufgaben.indexOf(nummer) };
+}
+
+/** „Zeit 09:00–10:00 von Stefan“ — Uhrzeiten in Ortszeit wie die Zeile im Fenster. */
+function zeitBeschrieben(z) {
+  return `Zeit ${ortszeit(z.beginn).slice(11)}–${ortszeit(z.ende).slice(11)} von ${per(z.wer).name}`;
+}
+
+/** Selektor des Knopfs mit der Aktion `act` und dem Argument `arg`. */
+function knopfSelektor(act, arg) {
+  return `[data-act="${act}"][data-arg="${CSS.escape(String(arg))}"]`;
+}
+
+/** Argument des Knopfs, der nach dem Entfernen von `arg` an dessen Stelle rückt — in der gezeigten Reihenfolge in `bereich`. */
+function nachbarArgument(bereich, act, arg) {
+  const argumente = [...document.querySelectorAll(`${bereich} [data-act="${act}"]`)].map(knopf => knopf.dataset.arg);
+  const index = argumente.indexOf(arg);
+  if (index < 0) return null;
+  const nachbar = argumente.filter(x => x !== arg)[nachbarNachEntfernen(argumente.length, index)];
+  if (nachbar === undefined) return null;
+  return nachbar;
+}
+
+/** Fokus nach dem Entfernen (R00112 FA 8): das eigene ✕, solange es noch steht (abgelehnt), sonst das des Nachbarn,
+    sonst `ort` — das Eingabefeld bzw. die Zeile des Abschnitts. */
+function fokusNachEntfernen(act, arg, nachbarArg, ort) {
+  const ziele = [knopfSelektor(act, arg)];
+  if (nachbarArg !== null) ziele.push(knopfSelektor(act, nachbarArg));
+  if (ort) ziele.push(ort);
+  S.ui.fokus = ziele;
+}
+
+/** Fokus nach dem Rückgängig einer Teilaufgabe: ihr ✕ an `stelle`, wenn sie wieder da ist, sonst das Eingabefeld. */
+function teilFokus(gelungen, stelle) {
+  const ziele = [];
+  if (gelungen) ziele.push(knopfSelektor('teil-weg', stelle));
+  ziele.push('#teil-neu');
+  return ziele;
+}
+
+/** Das Eingabefeld, auf das das Entfernen den Fokus gesetzt hat, solange es leer ist (R00112 FA 2 und FA 8): dort gibt
+    es nichts Getipptes zurückzunehmen, also gilt Strg+Z dem Entfernen. */
+function leeresFeldDesEntfernens(feld) {
+  const ort = S.ui.hinweis.feld;
+  return Boolean(ort) && feld.matches(ort) && feld.value === '';
+}
+
+/** Sendet die Gegenaktion eines Rückgängig als JSON; `erfolg` ist der Hinweis danach, `ziele` der Fokus. */
+function rueckgaengigSenden(methode, pfad, daten, erfolg, ziele) {
+  return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg, ziele);
+}
+
+/** Trägt die gemerkte Zeit wieder ein; ist sie schon da, nennt die Ablehnung sie wie die Zeile im Fenster statt mit ihrer Kennung. */
+async function zeitZuruecklegen(z) {
+  try {
+    return await api('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende });
+  } catch (f) {
+    if (f.status !== 409) throw f;
+    throw new Error(`#${z.nummer} hat schon eine ${zeitBeschrieben(z)}`);
+  }
+}
+
+/** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
+function anhangZuruecklegen(z) {
+  return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => anhangWiederhergestellt(z.name, antwort.name), (gelungen, antwort) => {
+    let name = z.name;
+    if (gelungen) name = antwort.name;
+    return [knopfSelektor('anhang-weg', name), '#anhaenge [data-act="anhang-weg"]'];
+  });
+}
+
+/** Hinweis nach dem Zurücklegen; nennt den neuen Namen, wenn der Server wegen Belegung einen anderen vergeben hat. */
+function anhangWiederhergestellt(gemerkt, vergeben) {
+  const umbenannt = vergeben !== gemerkt;
+  if (umbenannt) return `Anhang als „${vergeben}“ wiederhergestellt`;
+  return `Anhang „${gemerkt}“ wiederhergestellt`;
+}
+
+/** Führt die Gegenaktion `senden` aus; Erfolg steht als Hinweis ohne Knopf da (ADR-0017 Regel 6), die Ablehnung im Fuß oder im Hinweis.
+    `ziele(gelungen, antwort)` nennt den Fokus danach (R00112 FA 8): das wiederhergestellte Element, sonst den Ort des
+    Entfernens — auch bei der Ablehnung, denn dann steht das Element meist schon wieder da. */
+async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
+  try {
+    const antwort = await senden();
+    S.ui.hinweis = { text: erfolg(antwort), at: Date.now() };
+    S.ui.fokus = ziele(true, antwort);
+    if (S.ui.offen) fensterMelden(null);
+  } catch (f) {
+    S.ui.fokus = ziele(false);
+    // Ist das Aufgabenfenster oberster Dialog, gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis darüber
+    const imFensterFuss = hinweisDialog() === 'fenster';
+    if (imFensterFuss) fensterMelden(`nicht rückgängig: ${f.message}`);
+    else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
+  }
+  await laden();
+}
+
+/** Der Hinweis im Fenster deckt den unteren Rand des Körpers; seine Höhe hält dort den Fokus frei (scroll-padding, PO Z. 162). */
+function hinweisEinpassen() {
+  const hinweis = $('.hinweis-anker .toast');
+  if (hinweis) hinweis.closest('.mod').style.setProperty('--kd-hinweis-h', hinweis.offsetHeight + 'px');
 }
 
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
@@ -556,6 +679,7 @@ function render() {
   } finally {
     S.neuzeichnen = false;
   }
+  hinweisEinpassen();
   rollstaendeSetzen(rollen);
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
@@ -960,7 +1084,20 @@ async function act(a, arg, wert) {
         warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
         return;
       }
-      case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
+      case 'teil-weg': {
+        if (ichNoetig()) break;
+        // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): Text, Haken und Stelle
+        const t = aufgabe(u.offen).teilaufgaben[Number(arg)];
+        const undo = { art: 'teilaufgabe', nummer: u.offen, text: t.text, erledigt: t.erledigt, position: Number(arg) };
+        // Die Teilaufgaben tragen ihre Stelle als Argument: der Nachbar heißt nach dem Entfernen so wie seine neue Stelle
+        let nachbar = null;
+        const stelle = nachbarNachEntfernen(aufgabe(u.offen).teilaufgaben.length, Number(arg));
+        if (stelle >= 0) nachbar = String(stelle);
+        fokusNachEntfernen('teil-weg', arg, nachbar, '#teil-neu');
+        await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`);
+        if (!u.fensterFehler) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, feld: '#teil-neu', at: Date.now() };
+        break;
+      }
       case 'teil-neu': {
         const text = (wert || '').trim();
         if (!text || ichNoetig()) break;
@@ -1021,6 +1158,24 @@ async function act(a, arg, wert) {
         const z = h.undo;
         if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
         if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
+        if (z.art === 'legen') {
+          await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`, () => [knopfSelektor('abnehmen', `${z.slug}|${z.nummer}`), `tr[data-zeile="${z.nummer}"]`]);
+          break;
+        }
+        if (z.art === 'anhang') {
+          await anhangZuruecklegen(z);
+          break;
+        }
+        if (z.art === 'teilaufgabe') {
+          // Der Server legt sie an `position`, hinter dem Ende ans Ende
+          const stelle = Math.min(z.position, aufgabe(z.nummer).teilaufgaben.length);
+          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/teilaufgaben`, { text: z.text, position: z.position, erledigt: z.erledigt }, `Teilaufgabe „${z.text}“ wiederhergestellt`, gelungen => teilFokus(gelungen, stelle));
+          break;
+        }
+        if (z.art === 'zeit') {
+          await rueckgaengigAusfuehren(() => zeitZuruecklegen(z), () => `${zeitBeschrieben(z)} wiederhergestellt`, () => [knopfSelektor('zeit-weg', z.kennung), '#zeit-neu']);
+          break;
+        }
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
         u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
@@ -1208,10 +1363,27 @@ async function act(a, arg, wert) {
       case 'abnehmen': {
         if (ichNoetig()) break;
         const [slug, nr] = arg.split('|');
+        const platz = platzAufBoard(slug, +nr);
+        const zeile = `tr[data-zeile="${nr}"]`;
+        fokusNachEntfernen('abnehmen', arg, nachbarArgument(zeile, 'abnehmen', arg), zeile);
         await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
-        return;
+        if (!u.fensterFehler && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
+        break;
       }
-      case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
+      case 'anhang-weg': {
+        if (ichNoetig()) break;
+        // Erst lesen, dann löschen (ADR-0017 Regel 3): ohne gelesenen Inhalt gibt es kein Rückgängig, also auch kein Löschen
+        const nummer = u.offen, pfad = `/api/aufgaben/${nummer}/anhaenge/${encodeURIComponent(arg)}`;
+        u.anhangLiest = arg;
+        render();
+        let blob;
+        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`); u.fokus = knopfSelektor('anhang-weg', arg); break; } finally { u.anhangLiest = null; }
+        // Ohne Nachbarn bleibt der Fokus beim Fenster: die Dateiwahl ist kein tabbares Feld
+        fokusNachEntfernen('anhang-weg', arg, nachbarArgument('#anhaenge', 'anhang-weg', arg), null);
+        await schreiben('DELETE', pfad);
+        if (!u.fensterFehler) u.hinweis = { text: `Anhang „${arg}“ entfernt`, undo: { art: 'anhang', nummer, name: arg, blob }, at: Date.now() };
+        break;
+      }
       case 'herkunft-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
@@ -1243,7 +1415,16 @@ async function act(a, arg, wert) {
         await schreiben('PATCH', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`, korrektur);
         return;
       }
-      case 'zeit-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`); return;
+      case 'zeit-weg': {
+        if (ichNoetig()) break;
+        // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): POST …/zeiten vergibt dieselbe Kennung
+        const z = aufgabe(u.offen).zeiten.find(x => x.kennung === arg);
+        const undo = { art: 'zeit', nummer: u.offen, kennung: arg, wer: z.wer, beginn: z.beginn, ende: z.ende };
+        fokusNachEntfernen('zeit-weg', arg, nachbarArgument('#fenster .zt', 'zeit-weg', arg), '#zeit-neu');
+        await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`);
+        if (!u.fensterFehler) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, feld: '#zeit-neu', at: Date.now() };
+        break;
+      }
       case 'spalte-archivieren': {
         if (ichNoetig()) break;
         const nummern = S.board.spalten.find(sp => sp.name === arg).aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; });
@@ -1707,7 +1888,8 @@ document.addEventListener('keydown', e => {
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
   if (S.ui.vollbild && e.key === 'Escape') { vollbildSetzen(false); render(); return; }
   if (S.ui.zuweisen) { zuweisenTaste(e, t); return; }
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && S.ui.hinweis && S.ui.hinweis.undo) {
+  const rueckgaengigTaste = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && S.ui.hinweis && S.ui.hinweis.undo;
+  if (rueckgaengigTaste && (!/INPUT|TEXTAREA|SELECT/.test(t.tagName) || leeresFeldDesEntfernens(t))) {
     e.preventDefault();
     act('rueckgaengig');
     return;

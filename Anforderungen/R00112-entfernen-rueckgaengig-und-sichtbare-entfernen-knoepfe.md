@@ -43,10 +43,11 @@ Ein versehentlicher Klick auf ✕ kostet heute Arbeit, die niemand zurückholt: 
    - `teilaufgabe {nummer, text, erledigt, position}` — Hinweis „Teilaufgabe „b“ entfernt“;
    - `zeit {nummer, wer, beginn, ende}` — Hinweis „Zeit 09:00–10:00 von Stefan gelöscht“ (Uhrzeiten in Ortszeit wie die Zeile);
    - `anhang {nummer, name, blob}` — Hinweis „Anhang „plan.pdf“ entfernt“.
-2. Der Knopf und Strg+Z lösen dieselbe Wiederherstellung aus. Strg+Z gilt auch bei offenem Fenster, nicht in Eingabefeldern (Verhalten wie R00031).
+2. Der Knopf und Strg+Z lösen dieselbe Wiederherstellung aus. Strg+Z gilt auch bei offenem Fenster, nicht in Eingabefeldern (Verhalten wie R00031). Ausnahme (ADR-0017 N2): Strg+Z wirkt zusätzlich in genau dem Eingabefeld, auf das das Entfernen den Fokus gesetzt hat (`#teil-neu`, `#zeit-neu`), solange es leer ist und der Hinweis mit „rückgängig“ lebt. In jedem anderen Feld und sobald etwas getippt ist, gehört Strg+Z dem Feld.
 3. Der Hinweis lebt wie heute 8 s ab dem Klick (`web/app.js:2275`, geprüft im Sekundentakt). Danach ist der Knopf weg und Strg+Z wirkungslos. Ein neuer Hinweis ersetzt den alten.
 4. Die Wiederherstellung ist eine neue Aktion über die API. Lehnt der Server ab (409, 404, 400), wird das gemeldet und nichts erzwungen:
    - ohne Fenster als Hinweis „nicht rückgängig: <Text des Servers>“ ohne Knopf;
+   - beim Zeiteintrag nennt die Meldung die Zeit wie das Fenster statt der Kennung des Servers: „nicht rückgängig: #1 hat schon eine Zeit 09:00–10:00 von Stefan“ (der Text der API bleibt mit Kennung);
    - bei offenem Fenster als Meldung im Fuß (`fensterMelden`, ADR-0015 Regel 3).
 5. Der Hinweis wird vor dem Senden geleert. Ein Doppelklick auf „rückgängig“ stellt also genau einmal her.
 6. Das Gemerkte liegt außerhalb der Felder aus ADR-0014 (`S.aufgaben`, `S.board`, `S.zustand`, `S.ui.datei`, `S.ui.defektDatei`). Der Wächter `e2e/einheit/uebernahme.test.js` bleibt ohne neue Ausnahme.
@@ -58,7 +59,9 @@ Ein versehentlicher Klick auf ✕ kostet heute Arbeit, die niemand zurückholt: 
    - „Teilaufgabe „b“ wiederhergestellt“;
    - „Zeit 09:00–10:00 von Stefan wiederhergestellt“;
    - „Anhang „plan.pdf“ wiederhergestellt“, bei vergebenem anderem Namen „Anhang als „plan-2.pdf“ wiederhergestellt“.
-8. Der Fokus folgt nach Erfolg N7a/N7b (ADR-0010): er steht auf dem wiederhergestellten Element oder, wo es keins gibt, auf dem Ort, von dem aus entfernt wurde.
+8. Der Fokus folgt N7a/N7b (ADR-0010) als Rangliste; es gilt das erste vorhandene Ziel (ADR-0017 N2):
+   - nach dem Entfernen: das eigene ✕, solange es noch steht (Entfernen abgelehnt) → das ✕ des Nachbarn (der folgende rückt nach, am Ende der vorige) → der Ort des Abschnitts (`#teil-neu`, `#zeit-neu`, bei „Liegt auf“ die Zeile der Aufgabe); beim Anhang bleibt der Fokus beim Fenster;
+   - nach dem Rückgängig und bei der Ablehnung: das ✕ des wiederhergestellten Elements (beim Anhang unter dem vergebenen Namen, bei der Teilaufgabe an der gekappten Stelle) → sonst der Ort des Entfernens (Eingabefeld, Zeile, beim Anhang das ✕ eines beliebigen Anhangs).
 
 ### Positionstreue (ADR-0017 Regel 4, PO Z. 161)
 
@@ -97,12 +100,12 @@ Ein versehentlicher Klick auf ✕ kostet heute Arbeit, die niemand zurückholt: 
 
 Geprüft mit dem Grundbestand aus `user-stories/R00112.md`.
 
-- [ ] **1. Abnahme-Probe der Karte #12 (wörtlich)**: „Nach ✕ „von Board nehmen“ erscheint `.toast` mit `[data-act=rueckgaengig]`, und Strg+Z stellt „Liegt auf“ wieder her; dasselbe für Teilaufgabe, Anhang, Zeiteintrag; bei emuliertem Touch hat jedes ✕ die berechnete opacity 1."
+- [ ] **1. Abnahme-Probe der Karte #12 (wörtlich)**: „Nach ✕ „von Board nehmen“ erscheint `.toast` mit `[data-act=rueckgaengig]`, und Strg+Z stellt „Liegt auf“ wieder her; dasselbe für Teilaufgabe, Anhang, Zeiteintrag; bei emuliertem Touch hat jedes ✕ die berechnete opacity 1.“
   - Besteht: nach ✕ an „Entwicklung · Zu erledigen“ von #2 steht der Hinweis „#2 von „Entwicklung“ genommen“ mit „rückgängig“; nach Strg+Z zeigt „Liegt auf“ von #2 wieder „Entwicklung · Zu erledigen“.
   - Fällt durch: „Liegt auf“ bleibt leer; Hinweis ohne Knopf; der Knopf wirkt, Strg+Z nicht.
   - Prüfebene: E2E `r00112-rueckgaengig.spec.js` US-1, US-5, US-7, US-8, US-10. Teilaufgabe, Anhang und Zeiteintrag nach AK 5–10, Touch nach AK 12.
-- [ ] **2. Abnahme-Probe Positionstreue, Teil (1) (PO Z. 161, wörtlich)**: „Spalte mit #1, #2, #3 → #2 „von Board nehmen“ → Strg+Z → Reihenfolge wieder #1, #2, #3, in der Datei und auf dem Schirm (heute 1, 3, 2)."
-  - Besteht: `boards/entwicklung.md` listet unter „Zu erledigen“ #1, #2, #3; das Board zeigt die Karten in dieser Reihenfolge; `git log` hat zwei neue Commits, „#2 von „Entwicklung“ genommen“ und „#2 auf „Entwicklung“ gelegt (Stefan)“.
+- [ ] **2. Abnahme-Probe Positionstreue, Teil (1) (PO Z. 161, wörtlich)**: „Spalte mit #1, #2, #3 → #2 „von Board nehmen“ → Strg+Z → Reihenfolge wieder #1, #2, #3, in der Datei und auf dem Schirm (heute 1, 3, 2).“
+  - Besteht: `boards/entwicklung.md` listet unter „Zu erledigen“ #1, #2, #3; das Board zeigt die Karten in dieser Reihenfolge; `git log` hat zwei neue Commits, „#2 von „Entwicklung“ genommen“ und „#2 auf „Entwicklung“ gelegt (Zu erledigen)“, beide mit Autor Stefan (PO Z. 165).
   - Fällt durch: #1, #3, #2 (heutiger Stand); nur die Datei stimmt; ein dritter Commit.
   - Prüfebene: E2E US-1; Server über AK 4.
 - [ ] **3. Ablauf und Wege**: Derselbe Ablauf über das Kontextmenü „Von Board nehmen“ und über den Knopf „rückgängig“. 5 s nach dem Entfernen ist der Knopf da, 12 s danach weg, und Strg+Z ändert nichts mehr.
@@ -113,7 +116,7 @@ Geprüft mit dem Grundbestand aus `user-stories/R00112.md`.
   - Besteht: Hinweis ohne Knopf, keine neue Zeile, kein neuer Commit.
   - Fällt durch: #2 doppelt; Fehler nur in der Konsole; Hinweis bleibt mit Knopf.
   - Prüfebene: E2E US-4; Server-Test 409 unverändert.
-- [ ] **5. Teilaufgabe — Abnahme-Probe Positionstreue, Teil (2) (PO Z. 161, wörtlich)**: „Teilaufgaben a, b, c, b erledigt → b entfernen → Strg+Z → wieder a, b, c, b an Index 1 und erledigt."
+- [ ] **5. Teilaufgabe — Abnahme-Probe Positionstreue, Teil (2) (PO Z. 161, wörtlich)**: „Teilaufgaben a, b, c, b erledigt → b entfernen → Strg+Z → wieder a, b, c, b an Index 1 und erledigt.“
   - Besteht: Datei von #1 hat `- [ ] a`, `- [x] b`, `- [ ] c` in dieser Reihenfolge; das Fenster zeigt b an zweiter Stelle mit Haken; Hinweis „Teilaufgabe „b“ wiederhergestellt“; zwei neue Commits.
   - Fällt durch: b unten; b offen; zwei Commits für die Wiederherstellung (POST plus PATCH).
   - Prüfebene: E2E US-5.
@@ -121,7 +124,7 @@ Geprüft mit dem Grundbestand aus `user-stories/R00112.md`.
   - Besteht: d bleibt am Ende; b einmal.
   - Fällt durch: d verschwindet; b zweimal.
   - Prüfebene: E2E US-6.
-- [ ] **7. Hinweis im Fenster und Zeiteintrag**: Nach ✕ an Zeit 09:00–10:00 von Stefan liegt der Hinweis „Zeit 09:00–10:00 von Stefan gelöscht“ innerhalb `[aria-modal=true]`, und „rückgängig“ ist per Tab erreichbar. Strg+Z bringt den Eintrag mit derselben Kennung zurück. Hat ein Agent ihn zwischendurch wiederhergestellt, steht im Fuß „nicht rückgängig: #1 hat schon einen Eintrag …“, und der Eintrag steht genau einmal in der Datei.
+- [ ] **7. Hinweis im Fenster und Zeiteintrag**: Nach ✕ an Zeit 09:00–10:00 von Stefan liegt der Hinweis „Zeit 09:00–10:00 von Stefan gelöscht“ innerhalb `[aria-modal=true]`, und „rückgängig“ ist per Tab erreichbar. Strg+Z bringt den Eintrag mit derselben Kennung zurück. Hat ein Agent ihn zwischendurch wiederhergestellt, steht im Fuß „nicht rückgängig: #1 hat schon eine Zeit 09:00–10:00 von Stefan“, und der Eintrag steht genau einmal in der Datei.
   - Besteht: Zeile 09:00–10:00 wieder unter „Zeiten“, Commit „#1 Zeit nachgetragen: …“.
   - Fällt durch: Hinweis außerhalb des Fensters (heute: unter dem Fenster inert, `web/app.js:570`); Meldung als Hinweis statt im Fuß; Eintrag doppelt.
   - Prüfebene: E2E US-7.
@@ -131,9 +134,9 @@ Geprüft mit dem Grundbestand aus `user-stories/R00112.md`.
 - [ ] **9. Anhang nicht lesbar**: Scheitert das Lesen vor dem Löschen (GET mit 500), wird kein DELETE gesendet, „plan.pdf“ bleibt, und der Fuß meldet „Anhang „plan.pdf“ nicht entfernt: …“.
   - Fällt durch: DELETE gesendet; Anhang weg ohne Rückweg; stille Nichtwirkung.
   - Prüfebene: E2E US-9 (`page.route`, DELETE-Zähler).
-- [ ] **10. Server — Abnahme-Probe Positionstreue, Teil (3) (PO Z. 161, wörtlich)**: „Je Parameter ein API-Test, dass ein fehlender oder zu großer Wert unten anhängt und alte Aufrufe unverändert bleiben."
+- [ ] **10. Server — Abnahme-Probe Positionstreue, Teil (3) (PO Z. 161, wörtlich)**: „Je Parameter ein API-Test, dass ein fehlender oder zu großer Wert unten anhängt und alte Aufrufe unverändert bleiben.“
   - Besteht: `index` 1 bei [#1, #3] ergibt [#1, #2, #3]; ohne `index` und mit `index` 99 unten; `position` 1 mit `erledigt` true bei [a, c] ergibt [a, b ✓, c]; ohne beides offen am Ende; `position` 99 am Ende; je Aufruf ein Commit mit dem heutigen Text.
-  - Fällt durch: `index` −1, 1.5 oder "eins" ergibt 201 oder 422 statt 400; `erledigt` "ja" ergibt 201 oder 422 statt 400; ein Aufruf ohne Parameter ändert Status, Antwort oder Commit-Text.
+  - Fällt durch: `index` −1, 1.5 oder `"eins"` ergibt 201 oder 422 statt 400; `erledigt` `"ja"` ergibt 201 oder 422 statt 400; ein Aufruf ohne Parameter ändert Status, Antwort oder Commit-Text.
   - Prüfebene: Integration `tests/zuordnung.rs`, `tests/teilaufgaben.rs`.
 - [ ] **11. Hinweis schmal wie breit**: Bei 320 × 640 Touch mit dem Board-Titel „Entwicklung und Betrieb der Plattform“ bricht der Hinweis um, nichts scrollt quer, „rückgängig“ liegt ganz im Bild und hat ≥ 44 × 44 px. Bei 1280 × 800 steht ein kurzer Hinweis in einer Zeile. Im Fenster findet die Probe schmal wie breit den Knopf bei 1280, 414 und den Zwischenbreiten, und sein Rechteck überlappt keine Fußmeldung.
   - Fällt durch: „rückgängig“ abgeschnitten (`overflow` eines Vorfahren); Querscrollen; Hinweis über der Fußmeldung.
@@ -255,6 +258,7 @@ Das Problem hat zwei Ursachen. Erstens kennt der Rückgängig-Mechanismus aus R0
 - `D0003.dc.html` zeigt keinen Hinweis-Zustand (Offene Fragen 1).
 
 ## Notizen
+- **Nachzug 2026-11-08 auf den gebauten Stand** (Zweig `karte/12`): Commit-Text des Wiederauflegens in AK 2 und US-1 „… gelegt (Zu erledigen)“ statt „(Stefan)“, Wer steht im Git-Autor (PO Z. 165); Ausnahme zu Strg+Z im leeren Feld in FA 2 und Fokus als Rangliste in FA 8 (ADR-0017 N2, Commit 20ced77); Ablehnungstext des Zeit-Rückgängig in FA 4, AK 7 und US-7 (Commit 8405a03); typografische Anführungszeichen in AK 1, 2, 5, 10. Keine Änderung am Umfang.
 - **Abnahme der Karte #12**: die Abnahme-Probe steht wörtlich in AK 1, die drei Proben aus PO Z. 161 wörtlich in AK 2, 5 und 10.
 - **Optionen (ADR-0017)**:
   - A, gewählt: Rückgängig als neue Aktion über die API mit gemerktem Inhalt — nutzt den Mechanismus aus R00031, ein Commit je Schritt, keine Sonderwege im Server.

@@ -452,3 +452,28 @@ Nie vom User erfragen.
 | 2026-11-07 | R00111 Meldungen und Knöpfe schmaler Fenster | B0455 Fenster folgt dem sichtbaren Bereich | Operation | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 B1: Meldung trägt ihr Feld, „Neue Herkunft“ nur bei eigener Ablehnung ungültig (E2E Titel, Dauer, Gegenprobe; M8 rot) | Operation | — | 0,1h | 0,1h | autonom |
 | 2026-11-08 | R00111 Meldungen und Knöpfe schmaler Fenster | Nacharbeit 1 S1: Fensterliste gegen das Markup abgeglichen, „Zuständige“ aufgenommen | Operation | — | 0,1h | 0,1h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0458 Akzeptanztests „von Board nehmen“ rückgängig | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0459 Auflegen an einer Stelle | Operation | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0460 Rückgängig-Art legen | Operation | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0461 Hinweis bricht um | Operation | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0472 Akzeptanztest Sichtbarkeit der ✕ | Operation | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0473 ✕ ohne Hover sichtbar | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0462 Akzeptanztests Zeiteintrag rückgängig im Fenster | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0466 Akzeptanztests Teilaufgabe rückgängig | Operation | 1-1,5h | 0,2h | 0,2h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0467 Teilaufgabe an einer Stelle anlegen | Operation | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0469 Akzeptanztests Anhang rückgängig | Operation | 1-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0463 Hinweis im obersten Fenster | Operation | 1-2h | 0,8h | 0,8h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0464 Rückgängig-Art zeit | Operation | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0465 Hinweis in der Probe schmal wie breit | Operation | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0468 Rückgängig-Art teilaufgabe | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0470 Erst lesen, dann löschen | Operation | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0471 Rückgängig-Art anhang | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0474 Fix: Fokus nach Entfernen und Rückgängig (FA 8) | Operation | 2-3 | 1,5 | 1,5 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0475 Ablehnung nennt die Zeit wie das Fenster | Operation | 0,5 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0476 Testlücken US-5 und Hinweis-Anker | Operation | 0,5 | 0,5 | 0,5 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0477 Textkorrekturen | Operation | 0,25 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0478 Helfer anhangSenden | Operation | 0,25 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0479 Ternary in anhangZuruecklegen | Operation | 0,25 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0480 hinweisDialog aus ebenen | Operation | 0,5 | 0,5 | 0,5 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0481 Ablehnung unter höherer Ebene | Operation | 0,5 | 0,5 | 0,5 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0482 Probe Fokus unter dem Hinweis | Operation | 0,5 | 0,5 | 0,5 | autonom |

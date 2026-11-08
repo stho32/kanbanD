@@ -323,8 +323,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .chk .teil-edit{flex:1;height:24px}
 .chk.ok span{color:var(--kd-muted);text-decoration:line-through}
 .chk.ok i{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
-.chk .x{height:22px;width:22px;visibility:hidden}
-.chk:hover .x{visibility:visible}
+.chk .x{height:22px;width:22px}
 .inp.add{width:100%;height:26px;border-style:dashed;margin-top:4px;font-size:12px}
 .inp.add:focus{border-style:solid}
 .km{display:flex;gap:var(--kd-s3);padding:6px 0;border-bottom:1px solid var(--kd-line)}
@@ -366,8 +365,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .zt td{height:26px;border-bottom:1px solid var(--kd-line);padding:0 4px;white-space:nowrap}
 .zt td.r{text-align:right;font-family:var(--kd-mono)}
 .zt td.x{width:26px;padding:0}
-.zt .btn-sym{height:22px;width:24px;visibility:hidden}
-.zt tr:hover .btn-sym{visibility:visible}
+.zt .btn-sym{height:22px;width:24px}
 .md{margin:0;font:12px/1.6 var(--kd-mono);white-space:pre-wrap;background:var(--kd-bg);border:1px solid var(--kd-line);padding:var(--kd-s4)}
 /* Der Fuß bricht um, sobald sein Inhalt nicht in eine Zeile passt, statt abzuschneiden (ADR-0015 Regel 3, Nachtrag N1) */
 .mod-fuss{flex:none;min-block-size:max(28px,var(--kd-ziel));display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s2) var(--kd-s4);padding:var(--kd-s2) var(--kd-s5);border-top:1px solid var(--kd-line);background:var(--kd-sunken);font-size:11.5px;color:var(--kd-muted);white-space:normal}
@@ -483,9 +481,19 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .archbar{flex:none;display:flex;align-items:center;gap:var(--kd-s4);min-height:28px;padding:0 var(--kd-s4);background:var(--kd-c-grey);border-bottom:1px solid var(--kd-c-grey-line);font-size:12px}
 .archbar .lnk{margin-left:auto}
 .phasenbar{background:var(--kd-c-amber);border-bottom-color:var(--kd-c-amber-line);flex-wrap:wrap}
-.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;gap:14px;align-items:center;box-shadow:var(--kd-shadow);font-size:12.5px}
-.toast .lnk{color:var(--kd-head-link)}
-.toast.warn{color:var(--kd-head-text);border-left:4px solid var(--kd-wbs-error);flex-wrap:wrap;max-width:min(720px,calc(100vw - 32px))}
+/* Hinweis: bricht um und nutzt dabei die Breite des Bildschirms; passt der Knopf nicht mehr neben den Text, steht er rechtsbündig darunter (R00112, ADR-0015 Regel 1) */
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:70;background:var(--kd-head);color:var(--kd-head-text);padding:8px 14px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0 14px;align-items:center;box-sizing:border-box;width:max-content;max-width:min(720px,calc(100vw - 32px));box-shadow:var(--kd-shadow);outline:1px solid var(--kd-hinweis-rand);font-size:12.5px;line-height:1.4}
+.toast .txt{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+/* „rückgängig“: Textknopf ohne Unterstreichung mit der Trefferfläche --kd-ziel; passt er nicht neben den Text, rechtsbündig darunter (Artboard D0003 #hinweis-im-fenster) */
+.toast .lnk{flex:none;margin:0 -8px 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:var(--kd-ziel);min-width:var(--kd-ziel);padding:0 8px;font:inherit;font-weight:500;color:var(--kd-head-link);white-space:nowrap}
+.toast .lnk:hover{text-decoration:none;background:var(--kd-head-line)}
+.toast .lnk:focus-visible{outline:2px solid var(--kd-head-link);outline-offset:-2px}
+/* Bei offenem modalem Fenster: Anker von 0 px zwischen Körper und Fuß, der Hinweis liegt 8 px über dem Fuß (ADR-0017 Regel 5).
+   Zeiger fängt nur das Rechteck des Hinweises; solange er steht, scrollt Tab ein Feld über ihn hinaus (PO Z. 162, WCAG 2.4.11) */
+.hinweis-anker{position:relative;height:0;flex:none;pointer-events:none}
+.hinweis-anker .toast{position:absolute;bottom:8px;z-index:2;max-width:min(720px,calc(100% - 32px));pointer-events:auto}
+.mod:has(.hinweis-anker) :is(.mod-body,.mod-main,.mod-side){scroll-padding-bottom:calc(var(--kd-hinweis-h,0px) + 8px)}
+.toast.warn{color:var(--kd-head-text);border-left:4px solid var(--kd-wbs-error)}
 .ausruf{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--kd-wbs-error-bg);color:var(--kd-wbs-error-ink);box-shadow:0 0 0 1px var(--kd-wbs-error);font-weight:600;font-size:11px;line-height:1;flex:none}
 .first{flex:1;display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);min-height:0;background:var(--kd-surface)}
 .first-l{padding:var(--kd-s6);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);border-right:1px solid var(--kd-line-strong)}
@@ -529,14 +537,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .zt tr.edit td{padding:2px 0;display:flex;gap:4px;align-items:center}
 .zt tr.edit .mini-inp{width:130px;border-color:var(--kd-line-strong)}
 .zt td.x{width:52px;white-space:nowrap}
-/* Zeilenknöpfe: unsichtbar bis Zeigen oder Fokus, aber per Tastatur erreichbar */
-.zt .btn-sym,.chk .x{visibility:visible;opacity:0}
-.zt tr:hover .btn-sym,.zt .btn-sym:focus,.chk:hover .x,.chk .x:focus{opacity:1}
+/* Zeilenknöpfe zum Entfernen sind immer sichtbar, in --kd-muted wie jedes .btn-sym (R00112, ADR-0017 Regel 7) */
 .anh-z{display:flex;align-items:center;gap:var(--kd-s3);min-height:26px;border-bottom:1px solid var(--kd-line)}
 .anh-z a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.anh-z .x{opacity:0}.anh-z:hover .x,.anh-z .x:focus{opacity:1}
-/* Ohne Hover (Touch) gäbe es kein Zeigen: ein unsichtbarer Löschknopf neben dem Text löschte beim Tippen (R00108) */
-@media (hover:none){.zt .btn-sym,.chk .x,.anh-z .x{opacity:1}}
 .anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
 .anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}
 .ka .wartet{font-size:11px;color:var(--kd-warn);font-weight:500}

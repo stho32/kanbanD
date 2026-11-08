@@ -83,7 +83,7 @@
       vorher = {stand: 'nichts' (BODY) | 'gehalten' (hängt noch im Dokument) | 'verloren' (mit dem Neuzeichnen ersetzt), selektor, sichtbar} */
   function fokusZiel(lage) {
     const ziele = [];
-    if (lage.ausdruecklich) ziele.push(lage.ausdruecklich);
+    if (lage.ausdruecklich) ziele.push(...[].concat(lage.ausdruecklich));
     if (lage.gesichert && lage.gesichertInOberster) ziele.push(GESICHERT);
     if (lage.geschlossen) ziele.push(...lage.geschlossen.rueckgabe);
     if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(...[].concat(lage.geoeffnet.start));
@@ -107,5 +107,12 @@
     return gehalten && !vorher.sichtbar;
   }
 
-  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, ohneRollen, GESICHERT });
+  /** Stelle des Nachbarn in einer Liste von `anzahl` Einträgen, nachdem der an `index` entfernt ist: der folgende rückt
+      nach, am Ende der vorige; -1, wenn keiner bleibt (R00112 FA 8). */
+  function nachbarNachEntfernen(anzahl, index) {
+    if (anzahl < 2) return -1;
+    return Math.min(index, anzahl - 2);
+  }
+
+  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, nachbarNachEntfernen, ohneRollen, GESICHERT });
 })(typeof module !== 'undefined' ? module.exports : window);
