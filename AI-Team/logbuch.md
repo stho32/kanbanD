@@ -371,3 +371,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #74 | Auto-Reviews | architektur-reviewer (frisch) | bestanden (S1 Fensterliste von Hand; A00009 nach Merge nachführen) → Nacharbeit B1+S1 (entw1 fortgesetzt) | 0:10 | — |
 | 2026-11-08 | #74 | Nacharbeit | entwickler (entw1) | bestanden (B1 111105b, S1 cbaf7d7, Fund #zuweisen; Rust-Flakies → #91) → Auto-Reviews | 0:23 | bea608b |
 | 2026-11-08 | #74 | Auto-Reviews | code-reviewer (fortgesetzt) | bestanden (Wiederholung, keine Befunde; Anmerkungen → #94) → Entwicklertest | 0:15 | — |
+| 2026-11-08 | #74 | Entwicklertest | entwicklertester (frisch) | bestanden (9 Szenarien US-1..US-8 bei 414/320 px, kein Befund; Fotos etst-74/; Hinweise → #95 Doppeltipp „Anlegen“, #96 Titelfeld ohne aria-invalid; echte Telefontastatur → Abnahmezettel; Agent a72fa19a7f66b8d9a, 6,69–8,61 $) | 0:17 | — |
