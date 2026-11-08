@@ -359,13 +359,20 @@ async function anhangLesen(pfad) {
 async function anhaengeHochladen(dateien) {
   if (ichNoetig()) { render(); return; }
   for (const d of dateien) {
-    const form = new FormData();
-    form.append('datei', d, d.name);
-    const r = await fetch(`/api/aufgaben/${S.ui.offen}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
-    if (!r.ok) { fensterMelden((await r.json().catch(() => ({}))).fehler || r.statusText); break; }
+    try { await anhangSenden(S.ui.offen, d, d.name); } catch (f) { fensterMelden(f.message); break; }
     S.ui.gespeichert = Date.now();
   }
   await laden();
+}
+
+/** Lädt `datei` als Multipart unter `name` an Aufgabe `nummer` hoch; liefert den Anhang des Servers, wirft mit seinem Grund. */
+async function anhangSenden(nummer, datei, name) {
+  const form = new FormData();
+  form.append('datei', datei, name);
+  const r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
+  const antwort = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(antwort.fehler || r.statusText);
+  return antwort;
 }
 
 /** Termine des Boards ersetzen; bei Erfolg das Formular leeren (R00047). */
@@ -506,14 +513,7 @@ async function zeitZuruecklegen(z) {
 
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
 function anhangZuruecklegen(z) {
-  return rueckgaengigAusfuehren(async () => {
-    const form = new FormData();
-    form.append('datei', z.blob, z.name);
-    const r = await fetch(`/api/aufgaben/${z.nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
-    const antwort = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(antwort.fehler || r.statusText);
-    return antwort;
-  }, antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`, (gelungen, antwort) => {
+  return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`, (gelungen, antwort) => {
     let name = z.name;
     if (gelungen) name = antwort.name;
     return [knopfSelektor('anhang-weg', name), '#anhaenge [data-act="anhang-weg"]'];
