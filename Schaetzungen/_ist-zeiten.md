@@ -467,3 +467,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0465 Hinweis in der Probe schmal wie breit | Operation | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0468 Rückgängig-Art teilaufgabe | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0470 Erst lesen, dann löschen | Operation | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0471 Rückgängig-Art anhang | Operation | 0,5-1h | 0,2h | 0,2h | autonom |

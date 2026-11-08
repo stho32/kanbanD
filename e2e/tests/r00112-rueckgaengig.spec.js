@@ -337,7 +337,7 @@ test.describe('R00112 Anhang im Fenster', () => {
     await expect(anhaenge(page)).toHaveText(['plan.pdf']);
   }
 
-  test.fail('US-8: entfernter Anhang kommt bytegleich zurück (#12)', async ({ page }) => {
+  test('US-8: entfernter Anhang kommt bytegleich zurück (#12)', async ({ page }) => {
     const vorher = sha256(platte(PLAN));
     await fensterAuf(page);
     await page.getByLabel('Anhang plan.pdf entfernen').click();
@@ -350,7 +350,7 @@ test.describe('R00112 Anhang im Fenster', () => {
     expect(sha256(platte(PLAN))).toBe(vorher);
   });
 
-  test.fail('US-8 Gegenfall: hat ein Agent „plan.pdf“ neu hochgeladen, kommt der alte als plan-2.pdf zurück (#12)', async ({ page }) => {
+  test('US-8 Gegenfall: hat ein Agent „plan.pdf“ neu hochgeladen, kommt der alte als plan-2.pdf zurück (#12)', async ({ page }) => {
     const vorher = sha256(platte(PLAN));
     await fensterAuf(page);
     await page.getByLabel('Anhang plan.pdf entfernen').click();
@@ -359,7 +359,7 @@ test.describe('R00112 Anhang im Fenster', () => {
     const hoch = await page.request.post(k.adresse + 'api/aufgaben/1/anhaenge', { ...ALS_CL, multipart: { datei: { name: 'plan.pdf', mimeType: 'application/pdf', buffer: fremd } } });
     expect(hoch.status()).toBe(201);
     await page.keyboard.press('Control+z');
-    await expect(anhaenge(page)).toHaveText(['plan.pdf', 'plan-2.pdf']);
+    await expect(anhaenge(page)).toHaveText(['plan-2.pdf', 'plan.pdf']); // die Liste ist nach Namen sortiert
     await expect(imFenster(page)).toHaveText('Anhang als „plan-2.pdf“ wiederhergestellt');
     expect(sha256(platte(PLAN))).toBe(sha256(fremd));
     expect(platte('aufgaben/0001-eins/plan-2.pdf').length).toBe(2048);

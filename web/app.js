@@ -450,11 +450,28 @@ function zeitBeschrieben(z) {
   return `Zeit ${ortszeit(z.beginn).slice(11)}–${ortszeit(z.ende).slice(11)} von ${per(z.wer).name}`;
 }
 
-/** Sendet die Gegenaktion eines Rückgängig; Erfolg und Ablehnung stehen als Hinweis ohne Knopf da (ADR-0017 Regel 6). */
-async function rueckgaengigSenden(methode, pfad, daten, erfolg) {
+/** Sendet die Gegenaktion eines Rückgängig als JSON; `erfolg` ist der Hinweis danach. */
+function rueckgaengigSenden(methode, pfad, daten, erfolg) {
+  return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg);
+}
+
+/** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
+function anhangZuruecklegen(z) {
+  return rueckgaengigAusfuehren(async () => {
+    const form = new FormData();
+    form.append('datei', z.blob, z.name);
+    const r = await fetch(`/api/aufgaben/${z.nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
+    const antwort = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(antwort.fehler || r.statusText);
+    return antwort;
+  }, antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`);
+}
+
+/** Führt die Gegenaktion `senden` aus; Erfolg steht als Hinweis ohne Knopf da (ADR-0017 Regel 6), die Ablehnung im Fuß oder im Hinweis. */
+async function rueckgaengigAusfuehren(senden, erfolg) {
   try {
-    await api(methode, pfad, daten);
-    S.ui.hinweis = { text: erfolg, at: Date.now() };
+    const antwort = await senden();
+    S.ui.hinweis = { text: erfolg(antwort), at: Date.now() };
     if (S.ui.offen) fensterMelden(null);
   } catch (f) {
     // Bei offenem Aufgabenfenster gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis
@@ -1073,6 +1090,10 @@ async function act(a, arg, wert) {
         if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
         if (z.art === 'legen') {
           await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`);
+          break;
+        }
+        if (z.art === 'anhang') {
+          await anhangZuruecklegen(z);
           break;
         }
         if (z.art === 'teilaufgabe') {
