@@ -483,3 +483,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0485 Mutante der Routenprobe | Standard | 0,5-1 | 0,5 | 0,5 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0486 Akzeptanztest Abschnitte zweiter Ebene und gleiche Gestaltung | Standard | 1-1,5 | 0,75 | 1 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0487 Spaltenname als verborgene Überschrift | Standard | 0,5-1 | 0,75 | 1 | autonom |
+| 2026-11-08 | R00113 Struktur für Hilfstechnik | B0488 Berichtsabschnitte als zweite Ebene | Standard | 0,5 | 0,25 | 0,5 | autonom |
