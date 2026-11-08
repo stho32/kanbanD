@@ -81,7 +81,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-modus .kz-btn:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
 /* Bahnen */
 .bahnen{flex:1;display:flex;min-height:0;min-width:0;overflow-x:auto;background:var(--kd-surface)}
-.bahn{flex:0 0 var(--bw,272px);display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0}
+.bahn{flex:0 0 var(--bw,272px);display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0;position:relative}
+/* position:relative hält die verborgene Spaltenüberschrift (R00113) im Rollbereich der Bahnen; sonst verbreitert sie auf dem Handy die Seite */
 .bahn-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(30px,var(--kd-ziel));padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);font-weight:600;font-size:12px}
 .bahn-kopf .n{margin-left:auto;font-family:var(--kd-mono);font-weight:400;color:var(--kd-muted)}
 .bahn-kopf .ok{color:var(--kd-mensch)}
