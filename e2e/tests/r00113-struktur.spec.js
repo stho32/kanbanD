@@ -18,6 +18,53 @@ const SPALTEN_VORHER = [
 const [ERSTER_START, EINRICHTUNGSMODUS, DEFEKTES_BOARD] = ZUSTAENDE;
 const WBS_SICHT = ROUTEN.find(r => r.ansicht === 'WBS-Sicht');
 
+const spalte = (page, name) => page.locator(`#main section.bahn[data-col="${name}"]`);
+
+/** Verstöße gegen die Struktur je Spalte (AK 4, AK 6, FA 6): die h2 ist erstes Kind der section.bahn, eine zugeklappte Spalte
+ *  enthält keine list, eine offene genau eine, und jedes Kind ihrer Fläche ist ein listitem — auch „leer“ und „Archiv“. */
+async function spaltenStrukturPruefen(page) {
+  const verstoesse = [];
+  for (const bahn of await page.locator('#main section.bahn').all()) {
+    const name = await bahn.getAttribute('data-col');
+    const erstesKind = await bahn.evaluate(b => b.firstElementChild.tagName);
+    if (erstesKind !== 'H2') verstoesse.push(`${name}: erstes Kind ${erstesKind} statt H2`);
+    const listen = await bahn.getByRole('list').count();
+    const zugeklappt = await bahn.evaluate(b => b.classList.contains('zu'));
+    if (zugeklappt && listen !== 0) verstoesse.push(`${name}: zugeklappt, aber ${listen} × list`);
+    if (!zugeklappt && listen !== 1) verstoesse.push(`${name}: ${listen} × list statt 1`);
+    if (!zugeklappt && listen === 1) verstoesse.push(...await eintraegeOhneRolle(bahn.getByRole('list'), name));
+  }
+  return verstoesse;
+}
+
+/** Kinder der Liste, die kein listitem sind, als Verstoß mit ihrer Klasse. */
+async function eintraegeOhneRolle(liste, name) {
+  const ohneRolle = await liste.evaluate(l => [...l.children].filter(kind => kind.getAttribute('role') !== 'listitem').map(kind => kind.className));
+  return ohneRolle.map(klasse => `${name}: .${klasse} ist kein listitem`);
+}
+
+/** „Erledigt“ ohne sichtbare Karte, aber mit einer archivierten: die Fläche zeigt „leer“ und den Link „Archiv (1)“ (FA 6). */
+const ERLEDIGT_MIT_ARCHIV = {
+  'boards/entwicklung.md': '---\ncolumn-phases:\n  In Arbeit: Entwicklung\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n- [#4](../aufgaben/0004-vier.md)\n- [#9](../aufgaben/0009-neun.md)\n\n## Erledigt\n\n- [#5](../aufgaben/0005-fuenf.md)\n',
+  'aufgaben/0005-fuenf.md': '---\nid: 5\ntitle: fünf\narchived: 2026-10-01\n---\n',
+};
+
+/** Mutanten der Spaltenstruktur: je einer bricht eine Regel aus AK 4, AK 6 oder FA 6, die Probe nennt genau den Verstoß. */
+const SPALTEN_MUTANTEN = [
+  { name: 'zugeklappte Spalte als list', ersetzen: [['class="flaeche zu-streifen"', 'class="flaeche zu-streifen" role="list"']], erwartet: ['In Arbeit: zugeklappt, aber 1 × list'] },
+  {
+    name: 'h2 hinter dem Kopf',
+    ersetzen: [
+      ['${vSpaltenUeberschrift(sp)}<div class="bahn-kopf', '<div class="bahn-kopf'],
+      ['</div><button class="flaeche zu-streifen"', '</div>${vSpaltenUeberschrift(sp)}<button class="flaeche zu-streifen"'],
+      ['</div><div class="flaeche" role="list"', '</div>${vSpaltenUeberschrift(sp)}<div class="flaeche" role="list"'],
+    ],
+    erwartet: ['Zu erledigen: erstes Kind DIV statt H2', 'In Arbeit: erstes Kind DIV statt H2', 'Erledigt: erstes Kind DIV statt H2'],
+  },
+  { name: '„leer“ ohne Rolle', ersetzen: [['<div class="leer" role="listitem">${gefiltert', '<div class="leer">${gefiltert']], erwartet: ['Erledigt: .leer ist kein listitem'] },
+  { name: '„Archiv“ ohne Rolle', ersetzen: [['<div class="nach" role="listitem">', '<div class="nach">']], erwartet: ['Erledigt: .nach ist kein listitem'] },
+];
+
 /** Der Navigationseintrag, der je Route `aria-current="page"` trägt (US-9); `#t-ber` ist der Auslöser des Berichtsmenüs. */
 const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten', 'WBS-Sicht': 'WBS' };
 const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || '#t-ber Berichte';
@@ -198,6 +245,8 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
         expect(spalten.map(s => s.sichtbar)).toEqual([false, false, false]);
         expect(spalten.map(s => s.breite)).toEqual(vorher.bahnen);
         expect(await page.evaluate(() => document.documentElement.scrollWidth), 'Seite scrollt nicht quer').toBe(vorher.breite);
+        expect(await spaltenStrukturPruefen(page), 'h2 erstes Kind, zugeklappte Spalte ohne list').toEqual([]);
+        await expect(spalte(page, 'In Arbeit').getByRole('list')).toHaveCount(0);
       });
     });
   }
@@ -226,7 +275,6 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   });
 
   test.describe('Karten', () => {
-    const spalte = (page, name) => page.locator(`#main section.bahn[data-col="${name}"]`);
     /** Zugänglicher Name je Listeneintrag einer Spalte, wie ihn die Hilfstechnik ansagt (leer ohne Namen). */
     const namenDerSpalte = (page, name) => spalte(page, name).getByRole('list').getByRole('listitem')
       .evaluateAll(eintraege => eintraege.map(e => e.getAttribute('aria-label') || ''));
@@ -248,6 +296,36 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       expect(await eins.ariaSnapshot()).toContain('fällig 28.10.2026');
       expect(namen[0]).not.toMatch(/\d{1,2}\.\d{1,2}\.|bug/);
     });
+
+    test('US-5: „leer“ und „Archiv“ sind Einträge der Liste ihrer Spalte', async ({ page }) => {
+      const k = await starten(page, ERLEDIGT_MIT_ARCHIV);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn .nach');
+      const eintraege = spalte(page, 'Erledigt').getByRole('list').getByRole('listitem');
+      expect(await eintraege.evaluateAll(es => es.map(e => [e.className, e.textContent.trim()]))).toEqual([['leer', 'leer'], ['nach', 'Archiv (1)']]);
+      expect(await spaltenStrukturPruefen(page)).toEqual([]);
+    });
+
+    for (const mutant of SPALTEN_MUTANTEN) {
+      test(`AK 4/AK 6/FA 6: Mutante „${mutant.name}“ macht die Spaltenprobe rot`, async ({ page }) => {
+        await page.route('**/ansicht.js', async route => {
+          const antwort = await route.fetch();
+          const text = await antwort.text();
+          let mutiert = text;
+          for (const [aus, ein] of mutant.ersetzen) {
+            const davor = mutiert;
+            mutiert = mutiert.replaceAll(aus, ein);
+            expect(mutiert, `Mutante „${mutant.name}“ greift nicht bei „${aus}“`).not.toBe(davor);
+          }
+          await route.fulfill({ response: antwort, body: mutiert });
+        });
+        await page.addInitScript(() => localStorage.setItem('kanbanD.spalten-zu.entwicklung', JSON.stringify(['In Arbeit'])));
+        const k = await starten(page, ERLEDIGT_MIT_ARCHIV);
+        await page.goto(k.adresse + '#/board/entwicklung');
+        await gezeichnet(page, '#/board/entwicklung', '.bahn.zu');
+        expect(await spaltenStrukturPruefen(page)).toEqual(mutant.erwartet);
+      });
+    }
 
     test('US-6: die Auswahl wird mit angesagt, ohne aria-selected', async ({ page }) => {
       const k = await starten(page);
