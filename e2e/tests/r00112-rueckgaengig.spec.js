@@ -96,3 +96,67 @@ test.describe('R00112 von Board nehmen', () => {
     expect(k.git('log', '-1', '--format=%an')).toBe('Claude');
   });
 });
+
+/**
+ * Maße des Elements, wenn es samt seinem Text ganz im Bildschirm liegt und kein Vorfahr mit overflow es abschneidet; sonst null.
+ * Der Text zählt mit, weil ein zu schmaler Knopf seine Beschriftung über den Rand hinausschiebt, ohne dass sein Rechteck es zeigt.
+ */
+function ganzSichtbar(el) {
+  const bereich = document.createRange();
+  bereich.selectNodeContents(el);
+  const kasten = el.getBoundingClientRect(), text = bereich.getBoundingClientRect();
+  const r = { left: Math.min(kasten.left, text.left), top: Math.min(kasten.top, text.top), right: Math.max(kasten.right, text.right), bottom: Math.max(kasten.bottom, text.bottom) };
+  if (!el.getClientRects().length || r.left < 0 || r.top < 0 || r.right > innerWidth + 0.5 || r.bottom > innerHeight + 0.5) return null;
+  for (let v = el.parentElement; v; v = v.parentElement) {
+    const s = getComputedStyle(v), b = v.getBoundingClientRect(), schneidet = o => o !== 'visible';
+    const ausserhalb = v.classList.contains('toast') || schneidet(s.overflowX);
+    if (ausserhalb && (r.left < b.left - 0.5 || r.right > b.right + 0.5)) return null;
+    if ((v.classList.contains('toast') || schneidet(s.overflowY)) && (r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5)) return null;
+  }
+  return { breite: kasten.width, hoehe: kasten.height };
+}
+
+/** Anzahl der Zeilen, über die der Text des Hinweises (vor dem Knopf) läuft. */
+function zeilenDesTextes(hinweis) {
+  const bereich = document.createRange();
+  bereich.selectNodeContents(hinweis.firstChild);
+  return new Set([...bereich.getClientRects()].map(r => Math.round(r.top))).size;
+}
+
+test.describe('R00112 Hinweis schmal', () => {
+  let k;
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(grundbestand('Entwicklung und Betrieb der Plattform'))); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  test('US-11: der Hinweis bricht bei 320 px um, „rückgängig“ liegt ganz im Bild', async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.getByLabel('#2 von Entwicklung und Betrieb der Plattform nehmen').tap();
+    const hinweis = page.locator('.toast[role="status"]');
+    await expect(hinweis).toContainText('#2 von „Entwicklung und Betrieb der Plattform“ genommen');
+    expect(await hinweis.evaluate(ganzSichtbar)).not.toBeNull();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    const knopf = await hinweis.getByRole('button', { name: 'rückgängig' }).evaluate(ganzSichtbar);
+    expect(knopf).not.toBeNull();
+    expect(knopf.breite).toBeGreaterThanOrEqual(44);
+    expect(knopf.hoehe).toBeGreaterThanOrEqual(44);
+    // umbrechen heißt: die Breite des Bildschirms nutzen (ADR-0015 Regel 1), nicht den Text in eine schmale Spalte zwängen
+    expect(await hinweis.evaluate(zeilenDesTextes)).toBeLessThanOrEqual(2);
+  });
+});
+
+test.describe('R00112 Hinweis breit', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(grundbestand())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  test('US-11: bei 1280 px steht der kurze Hinweis in einer Zeile', async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.getByLabel('#2 von Entwicklung nehmen').click();
+    const hinweis = page.locator('.toast[role="status"]');
+    await expect(hinweis).toContainText('#2 von „Entwicklung“ genommen');
+    expect(await hinweis.evaluate(zeilenDesTextes)).toBe(1);
+    const [knopf, zeile] = await Promise.all([hinweis.getByRole('button', { name: 'rückgängig' }).boundingBox(), hinweis.boundingBox()]);
+    expect(Math.abs((knopf.y + knopf.height / 2) - (zeile.y + zeile.height / 2))).toBeLessThan(2);
+  });
+});
