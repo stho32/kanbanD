@@ -288,8 +288,6 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   });
 
   test.describe('Klappzustand', () => {
-    test.fail(true, 'Karte #13: der Klappknopf der Spalte trägt noch kein aria-expanded');
-
     test('US-11: der Klappknopf der Spalte sagt, ob sie offen ist', async ({ page }) => {
       const k = await starten(page);
       await page.goto(k.adresse + '#/board/entwicklung');

@@ -490,3 +490,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0493 Akzeptanztest aktuelle Seite breit und schmal | Standard | 0,5-1 | 0,5 | 1 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0494 aria-current wie die Klasse an | Standard | 0,5-1 | 0,5 | 1 | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | B0495 Akzeptanztest Klappzustand | Standard | 0,5 | 0,25 | 1 | autonom |
+| 2026-11-08 | R00113 Struktur für Hilfstechnik | B0496 aria-expanded im Markup der Spalte | Standard | 0,5 | 0,25 | 1 | autonom |
