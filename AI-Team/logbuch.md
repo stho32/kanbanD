@@ -397,3 +397,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #12 | Zug → Nacharbeit | Director | Muss FA 8 aus code-reviewer; Sollte aus crev/ux/rsr/arev mitgenommen | — | — |
 | 2026-11-08 | #12 | Nacharbeit | entwickler entw1 (fortgesetzt, af2cb1818cf8247b5) | erledigt: FA 8 + 8 Sollte, ux-Sollte 1 nur Probe (grün); Gate 884/885 (kultur:194 Sonntag), cargo live rot wegen inotify-Grenze; Gelesen ohne po-entscheidungen/R00112/ADRs; 16,06–19,93 $ | 0:46 | 9d246a3 (karte/12) |
 | 2026-11-08 | #12 | Zug → Auto-Reviews | Director | r00112 46/46 nachgefahren; Wiederholung crev, ux | — | — |
+| 2026-11-08 | #12 | Auto-Review UX (Wdh.) | ux-reviewer (fortgesetzt, ac8e50189b574a43c) | bestanden: Sollte 2/3 behoben; Sollte 1 (Fokus nach Handscrollen teilweise unter Hinweis) und Optional C (Fokus nach letztem Anhang) → Folgekarte; 3,48–4,76 $ | 0:04 | — |
