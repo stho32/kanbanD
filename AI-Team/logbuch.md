@@ -425,3 +425,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #13 | Nacharbeit | entwickler (frisch, a2f81d3d5cd263ca1; Vorgänger bei 150k) | beauftragt: crev B1 + crev A1 + arev B1 | — | — |
 | 2026-11-08 | #13 | Auto-Reviews | product-owner (fortgesetzt, afb87dbc31e35263d) | Folgepunkte entschieden: #110 schmale Breite, #111 Nachzügler R00113, #112 Fenstertitel, Kommentar #100; Z. 177–181 | — | 50a7294 |
 | 2026-11-08 | #13 | Nacharbeit | entwickler (frisch, a2f81d3d5cd263ca1) | bestanden; B1/A1/arev-B1 behoben, Gate grün bis auf bekannte Wackler; 8.15–10.30 $ | — | b62a8b8 (karte/13) |
+| 2026-11-08 | #13 | Auto-Reviews | code-reviewer (fortgesetzt, a1b6947516c80b10d) | Wiederholung bestanden, keine neuen Befunde; gesamt 7.82–10.67 $ | — | — |
+| 2026-11-08 | #13 | Entwicklertest | entwicklertester (frisch, a625df1c119adec95) | beauftragt | — | — |
