@@ -367,3 +367,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-07 | #11 | ADR-Nachzug | architekt (frisch) | bestanden: ADR-0013 Nachtrag N1 Schlüssel unter der Beschriftung, A00009 Entscheidungen | 0:06 | f3e8b12 |
 | 2026-11-08 | #74 | Entwicklung | entwickler | bestanden (Nachprüfung: Gelesen vollständig, B0453 nach J08 getrennt; Gate fd2e0d8 554/294/817, rot nur fremd: kultur:193 sonntags → #89, r00105:192 Wackler → #90; live.rs:57 → #91, r00014-timer:29 → #92) → Auto-Reviews: code-, ux-, architektur-reviewer nacheinander (Nacht) | 19:42 | fd2e0d8 |
 | 2026-11-08 | #74 | Auto-Reviews | code-reviewer (frisch) | befund (B1 Muss herkunftVerweis ohne Ursache; Sollte A1 --kd-vv-*, A2 M8, A3 M9, A6) | 0:08 | — |
+| 2026-11-08 | #74 | Auto-Reviews | ux-reviewer (frisch) | bestanden (kein Muss; B1 Sollte bestätigt + Dauer-Fall; Abnahmefotos ux-74/; Fund außerhalb → #93) | 0:15 | — |
