@@ -18,6 +18,18 @@ const SPALTEN_VORHER = [
 const [ERSTER_START, EINRICHTUNGSMODUS, DEFEKTES_BOARD] = ZUSTAENDE;
 const WBS_SICHT = ROUTEN.find(r => r.ansicht === 'WBS-Sicht');
 
+/** Der Navigationseintrag, der je Route `aria-current="page"` trägt (US-9); `#t-ber` ist der Auslöser des Berichtsmenüs. */
+const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten', 'WBS-Sicht': 'WBS' };
+const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || '#t-ber Berichte';
+
+/** Verstöße gegen „genau ein Link der Navigation trägt aria-current=page, und zwar der der Route“. */
+async function aktuelleSeitePruefen(page, route) {
+  const aktuell = await page.locator('nav a[aria-current="page"]').evaluateAll(links => links.map(a => [a.id && '#' + a.id, a.firstChild.textContent.trim()].filter(Boolean).join(' ')));
+  const erwartet = erwarteterEintrag(route);
+  if (aktuell.length === 1 && aktuell[0] === erwartet) return [];
+  return [`${route.ansicht}: aria-current an „${aktuell.join(', ')}“ statt „${erwartet}“`];
+}
+
 let laufende = [];
 test.afterEach(async () => {
   for (const aufraeumen of laufende.reverse()) await aufraeumen();
@@ -226,6 +238,38 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       const namen = await namenDerSpalte(page, 'Zu erledigen');
       expect(namen).toEqual(['', '', '']);
       expect(namen).not.toEqual(NAMEN_ZU_ERLEDIGEN);
+    });
+  });
+
+  test.describe('Aktuelle Seite', () => {
+    test.fail(true, 'Karte #13: die Navigation trägt noch kein aria-current');
+
+    test('US-9: die Navigation nennt die aktuelle Seite', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const k = await starten(page);
+      const verstoesse = [];
+      for (const route of ROUTEN) {
+        await page.goto(k.adresse + route.adresse);
+        await gezeichnet(page, route.adresse, route.bereit);
+        verstoesse.push(...await aktuelleSeitePruefen(page, route));
+      }
+      expect(verstoesse).toEqual([]);
+    });
+
+    test('US-10: schmal nennt das Seitenmenü die aktuelle Seite', async ({ page }) => {
+      await page.setViewportSize({ width: 560, height: 800 });
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/aufgaben');
+      await gezeichnet(page, '#/aufgaben', '.ziele');
+      await expect(page.getByRole('navigation')).toHaveCount(0);
+      const knopf = page.locator('#t-seite');
+      await expect(knopf).toHaveAccessibleName('Seite: Aufgaben');
+      await knopf.click();
+      const menue = page.getByRole('menu', { name: 'Seite' });
+      const aktuell = menue.locator('[aria-current="page"]');
+      await expect(aktuell).toHaveCount(1);
+      await expect(aktuell).toHaveText('Aufgaben');
+      await expect(aktuell).toHaveClass(/\ban\b/);
     });
   });
 });
