@@ -30,6 +30,47 @@ async function aktuelleSeitePruefen(page, route) {
   return [`${route.ansicht}: aria-current an „${aktuell.join(', ')}“ statt „${erwartet}“`];
 }
 
+/** Name der Seite im Seitenknopf und Eintrag des Seitenmenüs, der je Route `aria-current="page"` trägt (US-10). */
+function erwarteteSeite(route) {
+  const eintrag = AKTUELLER_EINTRAG[route.ansicht];
+  if (eintrag) return eintrag;
+  return 'Berichte';
+}
+
+/** Verstöße gegen „unter 600 px keine navigation, der Seitenknopf nennt die Seite, im Seitenmenü trägt genau ihr Eintrag mit .an aria-current“. */
+async function seitenmenuePruefen(page, route) {
+  const erwartet = erwarteteSeite(route);
+  const verstoesse = [];
+  const navigation = await page.getByRole('navigation').count();
+  if (navigation !== 0) verstoesse.push(`${route.ansicht}: ${navigation} × navigation bei 560 px`);
+  const knopf = page.locator('#t-seite');
+  const name = await knopf.getAttribute('aria-label');
+  if (name !== `Seite: ${erwartet}`) verstoesse.push(`${route.ansicht}: Seitenknopf „${name}“ statt „Seite: ${erwartet}“`);
+  await knopf.click();
+  const menue = page.getByRole('menu', { name: 'Seite' });
+  await menue.waitFor();
+  const aktuell = await menue.locator('[aria-current="page"]').evaluateAll(eintraege => eintraege.map(e => ({ text: e.firstChild.textContent.trim(), an: e.classList.contains('an') })));
+  await knopf.click();
+  await expect(menue).toHaveCount(0);
+  const genauDerEintrag = aktuell.length === 1 && aktuell[0].text === erwartet && aktuell[0].an;
+  if (!genauDerEintrag) verstoesse.push(`${route.ansicht}: aria-current im Seitenmenü an „${aktuell.map(e => e.text).join(', ')}“ statt „${erwartet}“`);
+  return verstoesse;
+}
+
+/** Je Stelle, die aria-current setzt, ein Mutant „Eintrag entfernt“: der Aufruf fällt weg, die Probe der Route muss rot werden. */
+const BERICHT = ROUTEN.find(r => r.ansicht === 'Bericht verlauf');
+const OHNE_AKTUELL = [
+  { eintrag: 'Navigation Board', aus: "${aktuellAttribut(u.view === 'board')}", ansicht: 'Board', breite: 1280 },
+  { eintrag: 'Navigation Aufgaben', aus: "${aktuellAttribut(u.view === 'aufgaben')}", ansicht: 'Aufgabenliste', breite: 1280 },
+  { eintrag: 'Navigation Personen', aus: "${aktuellAttribut(u.view === 'personen')}", ansicht: 'Personen', breite: 1280 },
+  { eintrag: 'Navigation Berichte', aus: '${aktuellAttribut(berichte)}', ansicht: BERICHT.ansicht, breite: 1280 },
+  { eintrag: 'Navigation Einrichten', aus: "${aktuellAttribut(u.view === 'einrichten')}", ansicht: 'Einrichten', breite: 1280 },
+  { eintrag: 'Navigation WBS', aus: "${aktuellAttribut(S.ui.view === 'wbs' && k === a.kuerzel)}", ansicht: 'WBS-Sicht', breite: 1280 },
+  { eintrag: 'Seitenmenü Ziel', aus: '${aktuellAttribut(name === titel)}', ansicht: 'Aufgabenliste', breite: 560 },
+  { eintrag: 'Seitenmenü WBS', aus: '${aktuellAttribut(istAktuell)}', ansicht: 'WBS-Sicht', breite: 560 },
+  { eintrag: 'Seitenmenü Berichte', aus: "${aktuellAttribut(name === 'Berichte')}", ansicht: BERICHT.ansicht, breite: 560 },
+];
+
 let laufende = [];
 test.afterEach(async () => {
   for (const aufraeumen of laufende.reverse()) await aufraeumen();
@@ -273,18 +314,36 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
     test('US-10: schmal nennt das Seitenmenü die aktuelle Seite', async ({ page }) => {
       await page.setViewportSize({ width: 560, height: 800 });
       const k = await starten(page);
-      await page.goto(k.adresse + '#/aufgaben');
-      await gezeichnet(page, '#/aufgaben', '.ziele');
-      await expect(page.getByRole('navigation')).toHaveCount(0);
-      const knopf = page.locator('#t-seite');
-      await expect(knopf).toHaveAccessibleName('Seite: Aufgaben');
-      await knopf.click();
-      const menue = page.getByRole('menu', { name: 'Seite' });
-      const aktuell = menue.locator('[aria-current="page"]');
-      await expect(aktuell).toHaveCount(1);
-      await expect(aktuell).toHaveText('Aufgaben');
-      await expect(aktuell).toHaveClass(/\ban\b/);
+      const verstoesse = [];
+      for (const route of ROUTEN) {
+        await page.goto(k.adresse + route.adresse);
+        await gezeichnet(page, route.adresse, route.bereit);
+        verstoesse.push(...await seitenmenuePruefen(page, route));
+      }
+      expect(verstoesse).toEqual([]);
     });
+
+    for (const mutant of OHNE_AKTUELL) {
+      test(`US-9/US-10: ohne aria-current an „${mutant.eintrag}“ wird die Probe rot`, async ({ page }) => {
+        await page.route('**/ansicht.js', async route => {
+          const antwort = await route.fetch();
+          const text = await antwort.text();
+          const mutiert = text.replace(mutant.aus, '');
+          expect(mutiert, `Mutante „${mutant.eintrag}“ greift nicht`).not.toBe(text);
+          await route.fulfill({ response: antwort, body: mutiert });
+        });
+        await page.setViewportSize({ width: mutant.breite, height: 800 });
+        const k = await starten(page);
+        const ziel = ROUTEN.find(r => r.ansicht === mutant.ansicht);
+        await page.goto(k.adresse + ziel.adresse);
+        await gezeichnet(page, ziel.adresse, ziel.bereit);
+        let verstoesse;
+        if (mutant.breite < 600) verstoesse = await seitenmenuePruefen(page, ziel);
+        else verstoesse = await aktuelleSeitePruefen(page, ziel);
+        expect(verstoesse).toHaveLength(1);
+        expect(verstoesse[0]).toContain(`${ziel.ansicht}: aria-current`);
+      });
+    }
   });
 
   test.describe('Klappzustand', () => {
