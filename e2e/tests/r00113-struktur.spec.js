@@ -5,7 +5,12 @@ const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
 const {
   grundbestand, arbeitMitEinerPhase, ROUTEN, ZUSTAENDE, APP_JS,
   gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
+  ebenenPruefen, GESTALTUNG, gestaltungPruefen,
 } = require('./struktur-hilfen');
+
+// Breite der Spalten vor dem Bau bei 1280 × 800, „In Arbeit“ zugeklappt: gemessen mit getBoundingClientRect am Stand 9e806a7
+// (Spalten unverändert seit f719975) über das Messskript der Karte #13 (bahnbreite.js, 2026-11-08).
+const BAHNBREITEN_VORHER = [272, 34, 272];
 
 const [ERSTER_START, EINRICHTUNGSMODUS, DEFEKTES_BOARD] = ZUSTAENDE;
 const WBS_SICHT = ROUTEN.find(r => r.ansicht === 'WBS-Sicht');
@@ -95,5 +100,47 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
     const mutiert = quelltext.replace("  if (S.ui.view === 'wbs') return vWbs();", "  if (S.ui.view === 'wbs') return vWbs();\n  if (S.ui.view === 'neu') return vNeueSicht();");
     expect(mutiert, 'Mutante M2 greift nicht').not.toBe(quelltext);
     expect(vollstaendigkeitPruefen(mutiert, [...ROUTEN, ...ZUSTAENDE])).toEqual(['Route ohne Prüfung: vNeueSicht() in vHaupt()']);
+  });
+
+  test.describe('Abschnitte', () => {
+    test.fail(true, 'Karte #13: Spalten, Berichte, Einrichten und Aufgabenliste haben noch keine Abschnitte zweiter Ebene');
+
+    test('US-3: jede Spalte ist als Überschrift erreichbar', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.addInitScript(() => localStorage.setItem('kanbanD.spalten-zu.entwicklung', JSON.stringify(['In Arbeit'])));
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn.zu');
+      const spalten = await page.locator('#main section.bahn').evaluateAll(bahnen => bahnen.map(b => {
+        const koepfe = [...b.querySelectorAll('h2')];
+        const flaeche = koepfe.map(h => h.getBoundingClientRect()).map(r => r.width * r.height);
+        return { koepfe: koepfe.map(h => h.textContent.trim()), sichtbar: flaeche.some(f => f > 1), breite: b.getBoundingClientRect().width };
+      }));
+      expect(await page.locator('#main h2').count()).toBe(3);
+      expect(spalten.map(s => s.koepfe)).toEqual([['Zu erledigen'], ['In Arbeit'], ['Erledigt']]);
+      expect(spalten.map(s => s.sichtbar)).toEqual([false, false, false]);
+      expect(spalten.map(s => s.breite)).toEqual(BAHNBREITEN_VORHER);
+    });
+
+    test('US-4: keine Route und kein Zustand springt eine Überschriftenebene', async ({ page }) => {
+      expect(await ueberAlleSeiten(page, ebenenPruefen)).toEqual([]);
+    });
+
+    test('US-4: Abschnitte der Berichte, von Einrichten und der Aufgabenliste sind zweite Ebene und sehen aus wie vorher', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const k = await starten(page);
+      const verstoesse = [];
+      for (const seite of GESTALTUNG.filter(g => g.adresse)) {
+        await page.goto(k.adresse + seite.adresse);
+        await gezeichnet(page, seite.adresse, seite.kopf);
+        verstoesse.push(...await gestaltungPruefen(page, seite));
+      }
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await page.locator('.bahn').first().waitFor();
+      await ausMehr(page, 'Spalten einrichten');
+      await page.locator('.setup').waitFor();
+      verstoesse.push(...await gestaltungPruefen(page, GESTALTUNG.find(g => g.ansicht === 'Einrichtungsmodus')));
+      expect(verstoesse).toEqual([]);
+    });
   });
 });

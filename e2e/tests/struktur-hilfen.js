@@ -67,7 +67,10 @@ function erwarteterSeitenname(route) {
 }
 
 /** Was auf einer Route fertig geladen sein muss, bevor geprüft wird; die WBS-Sicht lädt ihre Datei nach. */
-const BEREIT = { 'WBS-Sicht': '.wbs-titel', Board: '.bahn' };
+const BEREIT = {
+  'WBS-Sicht': '.wbs-titel', Board: '.bahn', Einrichten: '.einr', Aufgabenliste: '.ziele',
+  'Bericht verlauf': '.dtitel', 'Bericht durchlauf': '.dtitel', 'Bericht prognose': '.dtitel', 'Bericht fieber': '.dtitel',
+};
 
 /** Die Sicht aus vHaupt() (web/app.js), die eine Route zeichnet: daran gleicht die Probe ab, ob jede Verzweigung geprüft wird. */
 const SICHTEN = {
@@ -127,6 +130,70 @@ async function landmarkenPruefen(page, { ansicht, ohneNavigation }) {
   return verstoesse;
 }
 
+/** Verstöße gegen „keine Überschrift liegt mehr als eine Stufe tiefer als die vorige“ in #main (US-4), samt h1 der Seite. */
+async function ebenenPruefen(page, { ansicht }) {
+  const folge = await page.evaluate(() => [...document.querySelectorAll('#main :is(h1, h2, h3, h4, h5, h6, [role=heading])')].map(h => ({
+    ebene: Number(h.getAttribute('aria-level') || h.tagName.slice(1)),
+    text: h.textContent.replace(/\s+/g, ' ').trim().slice(0, 40),
+  })));
+  const verstoesse = [];
+  folge.reduce((vorige, h) => {
+    if (h.ebene > vorige + 1) verstoesse.push(`${ansicht}: Ebene ${h.ebene} „${h.text}“ nach Ebene ${vorige}`);
+    return h.ebene;
+  }, 0);
+  return verstoesse;
+}
+
+// Gestaltung der Abschnittsköpfe vor dem Bau, gemessen bei 1280 × 800 mit getComputedStyle am Stand c8f0617 (web/ wie f719975)
+// über das Fotoskript der Karte #13 (messung.json, 2026-11-08). Nach dem Bau müssen h2 statt h3/h4 genauso aussehen (US-4).
+const TEXT = { fontFamily: '"IBM Plex Sans", system-ui, sans-serif', paddingTop: '0px' };
+const DTITEL = {
+  ...TEXT, fontSize: '13px', fontWeight: '600', lineHeight: '18.2px', letterSpacing: 'normal', color: 'oklch(0.24 0.02 255)',
+  marginTop: '12px', marginBottom: '4px', paddingLeft: '0px', borderTopWidth: '0px', borderBottomWidth: '0px', height: 18.1875,
+};
+const EINR_KOPF = {
+  ...TEXT, fontSize: '11px', fontWeight: '600', lineHeight: '15.4px', letterSpacing: '0.55px', color: 'oklch(0.48 0.018 255)',
+  marginTop: '0px', marginBottom: '0px', paddingLeft: '12px', borderTopWidth: '1px', borderBottomWidth: '1px', height: 30,
+};
+const ZIELE_KOPF = {
+  fontFamily: '"IBM Plex Mono", ui-monospace, monospace', paddingTop: '0px', fontSize: '10px', fontWeight: '600', lineHeight: '14px',
+  letterSpacing: '0.6px', color: 'oklch(0.48 0.018 255)', marginTop: '0px', marginBottom: '6px', paddingLeft: '0px',
+  borderTopWidth: '0px', borderBottomWidth: '0px', height: 14,
+};
+const KOPF = ':is(h1, h2, h3, h4, h5, h6)';
+
+/** Je Seite: welche Köpfe, wie viele, welche Gestaltung; `abweichend` je Textanfang (erster Kopf ohne Linie oben, erster Prognose-Kopf ohne Rand). */
+const GESTALTUNG = [
+  { ansicht: 'Bericht verlauf', adresse: '#/berichte/verlauf', kopf: '.dtitel', anzahl: 2, soll: DTITEL },
+  { ansicht: 'Bericht durchlauf', adresse: '#/berichte/durchlauf', kopf: '.dtitel', anzahl: 2, soll: DTITEL },
+  { ansicht: 'Bericht prognose', adresse: '#/berichte/prognose', kopf: '.dtitel', anzahl: 4, soll: DTITEL, abweichend: { 'Noch nicht erreicht': { marginTop: '0px' } } },
+  { ansicht: 'Bericht fieber', adresse: '#/berichte/fieber', kopf: '.dtitel', anzahl: 1, soll: DTITEL },
+  { ansicht: 'Einrichten', adresse: '#/einrichten', kopf: '.einr ' + KOPF, anzahl: 6, soll: EINR_KOPF, abweichend: { PERSONEN: { borderTopWidth: '0px' }, 'KANBAND.MD': { borderTopWidth: '0px' } } },
+  { ansicht: 'Einrichtungsmodus', kopf: '.einr ' + KOPF, anzahl: 2, soll: EINR_KOPF, abweichend: { 'GEBUNDEN AN': { borderTopWidth: '0px' } } },
+  { ansicht: 'Aufgabenliste', adresse: '#/aufgaben', kopf: '.ziele ' + KOPF, anzahl: 1, soll: ZIELE_KOPF },
+];
+
+/** Verstöße gegen die vor dem Bau gemessene Gestaltung der Köpfe einer Seite aus GESTALTUNG. */
+async function gestaltungPruefen(page, { ansicht, kopf, anzahl, soll, abweichend = {} }) {
+  const koepfe = await page.locator('#main ' + kopf).evaluateAll((els, namen) => els.map(e => {
+    const stil = getComputedStyle(e);
+    const ist = { text: e.textContent.replace(/\s+/g, ' ').trim(), tag: e.tagName, height: e.getBoundingClientRect().height };
+    for (const name of namen) ist[name] = stil[name];
+    return ist;
+  }), Object.keys(soll).filter(name => name !== 'height'));
+  if (koepfe.length !== anzahl) return [`${ansicht}: ${koepfe.length} Köpfe ${kopf} statt ${anzahl}`];
+  const verstoesse = [];
+  for (const ist of koepfe) {
+    const anfang = Object.keys(abweichend).find(a => ist.text.startsWith(a));
+    if (ist.tag !== 'H2') verstoesse.push(`${ansicht} „${ist.text.slice(0, 30)}“: ${ist.tag} statt H2`);
+    const erwartet = { ...soll, ...(anfang && abweichend[anfang]) };
+    for (const [name, wert] of Object.entries(erwartet)) {
+      if (ist[name] !== wert) verstoesse.push(`${ansicht} „${ist.text.slice(0, 30)}“: ${name} ${ist[name]} statt ${wert}`);
+    }
+  }
+  return verstoesse;
+}
+
 const APP_JS = path.resolve(__dirname, '../../web/app.js');
 
 /** Die Sichten, die vHaupt() im Quelltext zurückgibt (`return vBoard();` → „vBoard“), in Reihenfolge der Verzweigungen. */
@@ -145,4 +212,5 @@ function vollstaendigkeitPruefen(quelltext, geprueft) {
 module.exports = {
   grundbestand, arbeitMitEinerPhase, BERICHTSNAMEN, ROUTEN, ZUSTAENDE, APP_JS,
   gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
+  ebenenPruefen, GESTALTUNG, gestaltungPruefen,
 };
