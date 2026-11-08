@@ -400,3 +400,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #12 | Auto-Review UX (Wdh.) | ux-reviewer (fortgesetzt, ac8e50189b574a43c) | bestanden: Sollte 2/3 behoben; Sollte 1 (Fokus nach Handscrollen teilweise unter Hinweis) und Optional C (Fokus nach letztem Anhang) → Folgekarte; 3,48–4,76 $ | 0:04 | — |
 | 2026-11-08 | #12 | Auto-Review Code (Wdh.) | code-reviewer (fortgesetzt, a07de9976e5ab6080) | bestanden: FA 8 erfüllt, keine Befunde; Anmerkung FA-2-Ausnahme (Strg+Z im leeren Feld) in Anforderung/ADR nennen; 2,71–3,75 $ | 0:06 | — |
 | 2026-11-08 | #12 | Zug → Entwicklertest | Director | Auto-Reviews durch (crev, ux, rsr, arev bestanden) | — | — |
+| 2026-11-08 | #12 | Entwicklertest | entwicklertester (frisch, a714ea8df7a6a652b) | gestartet | — | — |
+| 2026-11-08 | #12 | Nachzug Architektur | architekt (fortgesetzt, a1b23f41bdfae094e) | gestartet: ADR-0017 R5 Zuständige/Hilfe, FA-2-Ausnahme, Modell-Drift A00003/4/6/9 | — | — |
