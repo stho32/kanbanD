@@ -450,9 +450,48 @@ function zeitBeschrieben(z) {
   return `Zeit ${ortszeit(z.beginn).slice(11)}–${ortszeit(z.ende).slice(11)} von ${per(z.wer).name}`;
 }
 
-/** Sendet die Gegenaktion eines Rückgängig als JSON; `erfolg` ist der Hinweis danach. */
-function rueckgaengigSenden(methode, pfad, daten, erfolg) {
-  return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg);
+/** Selektor des Knopfs mit der Aktion `act` und dem Argument `arg`. */
+function knopfSelektor(act, arg) {
+  return `[data-act="${act}"][data-arg="${CSS.escape(String(arg))}"]`;
+}
+
+/** Argument des Knopfs, der nach dem Entfernen von `arg` an dessen Stelle rückt — in der gezeigten Reihenfolge in `bereich`. */
+function nachbarArgument(bereich, act, arg) {
+  const argumente = [...document.querySelectorAll(`${bereich} [data-act="${act}"]`)].map(knopf => knopf.dataset.arg);
+  const index = argumente.indexOf(arg);
+  if (index < 0) return null;
+  const nachbar = argumente.filter(x => x !== arg)[nachbarNachEntfernen(argumente.length, index)];
+  if (nachbar === undefined) return null;
+  return nachbar;
+}
+
+/** Fokus nach dem Entfernen (R00112 FA 8): das eigene ✕, solange es noch steht (abgelehnt), sonst das des Nachbarn,
+    sonst `ort` — das Eingabefeld bzw. die Zeile des Abschnitts. */
+function fokusNachEntfernen(act, arg, nachbarArg, ort) {
+  const ziele = [knopfSelektor(act, arg)];
+  if (nachbarArg !== null) ziele.push(knopfSelektor(act, nachbarArg));
+  if (ort) ziele.push(ort);
+  S.ui.fokus = ziele;
+}
+
+/** Fokus nach dem Rückgängig einer Teilaufgabe: ihr ✕ an `stelle`, wenn sie wieder da ist, sonst das Eingabefeld. */
+function teilFokus(gelungen, stelle) {
+  const ziele = [];
+  if (gelungen) ziele.push(knopfSelektor('teil-weg', stelle));
+  ziele.push('#teil-neu');
+  return ziele;
+}
+
+/** Das Eingabefeld, auf das das Entfernen den Fokus gesetzt hat, solange es leer ist (R00112 FA 2 und FA 8): dort gibt
+    es nichts Getipptes zurückzunehmen, also gilt Strg+Z dem Entfernen. */
+function leeresFeldDesEntfernens(feld) {
+  const ort = S.ui.hinweis.feld;
+  return Boolean(ort) && feld.matches(ort) && feld.value === '';
+}
+
+/** Sendet die Gegenaktion eines Rückgängig als JSON; `erfolg` ist der Hinweis danach, `ziele` der Fokus. */
+function rueckgaengigSenden(methode, pfad, daten, erfolg, ziele) {
+  return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg, ziele);
 }
 
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
@@ -464,16 +503,24 @@ function anhangZuruecklegen(z) {
     const antwort = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(antwort.fehler || r.statusText);
     return antwort;
-  }, antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`);
+  }, antwort => antwort.name === z.name ? `Anhang „${z.name}“ wiederhergestellt` : `Anhang als „${antwort.name}“ wiederhergestellt`, (gelungen, antwort) => {
+    let name = z.name;
+    if (gelungen) name = antwort.name;
+    return [knopfSelektor('anhang-weg', name), '#anhaenge [data-act="anhang-weg"]'];
+  });
 }
 
-/** Führt die Gegenaktion `senden` aus; Erfolg steht als Hinweis ohne Knopf da (ADR-0017 Regel 6), die Ablehnung im Fuß oder im Hinweis. */
-async function rueckgaengigAusfuehren(senden, erfolg) {
+/** Führt die Gegenaktion `senden` aus; Erfolg steht als Hinweis ohne Knopf da (ADR-0017 Regel 6), die Ablehnung im Fuß oder im Hinweis.
+    `ziele(gelungen, antwort)` nennt den Fokus danach (R00112 FA 8): das wiederhergestellte Element, sonst den Ort des
+    Entfernens — auch bei der Ablehnung, denn dann steht das Element meist schon wieder da. */
+async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
   try {
     const antwort = await senden();
     S.ui.hinweis = { text: erfolg(antwort), at: Date.now() };
+    S.ui.fokus = ziele(true, antwort);
     if (S.ui.offen) fensterMelden(null);
   } catch (f) {
+    S.ui.fokus = ziele(false);
     // Bei offenem Aufgabenfenster gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis
     if (S.ui.offen) fensterMelden(`nicht rückgängig: ${f.message}`);
     else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
@@ -1024,8 +1071,13 @@ async function act(a, arg, wert) {
         // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): Text, Haken und Stelle
         const t = aufgabe(u.offen).teilaufgaben[Number(arg)];
         const undo = { art: 'teilaufgabe', nummer: u.offen, text: t.text, erledigt: t.erledigt, position: Number(arg) };
+        // Die Teilaufgaben tragen ihre Stelle als Argument: der Nachbar heißt nach dem Entfernen so wie seine neue Stelle
+        let nachbar = null;
+        const stelle = nachbarNachEntfernen(aufgabe(u.offen).teilaufgaben.length, Number(arg));
+        if (stelle >= 0) nachbar = String(stelle);
+        fokusNachEntfernen('teil-weg', arg, nachbar, '#teil-neu');
         await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`);
-        if (!u.fensterFehler) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, at: Date.now() };
+        if (!u.fensterFehler) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, feld: '#teil-neu', at: Date.now() };
         break;
       }
       case 'teil-neu': {
@@ -1089,7 +1141,7 @@ async function act(a, arg, wert) {
         if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
         if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
         if (z.art === 'legen') {
-          await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`);
+          await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`, () => [knopfSelektor('abnehmen', `${z.slug}|${z.nummer}`), `tr[data-zeile="${z.nummer}"]`]);
           break;
         }
         if (z.art === 'anhang') {
@@ -1097,11 +1149,13 @@ async function act(a, arg, wert) {
           break;
         }
         if (z.art === 'teilaufgabe') {
-          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/teilaufgaben`, { text: z.text, position: z.position, erledigt: z.erledigt }, `Teilaufgabe „${z.text}“ wiederhergestellt`);
+          // Der Server legt sie an `position`, hinter dem Ende ans Ende
+          const stelle = Math.min(z.position, aufgabe(z.nummer).teilaufgaben.length);
+          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/teilaufgaben`, { text: z.text, position: z.position, erledigt: z.erledigt }, `Teilaufgabe „${z.text}“ wiederhergestellt`, gelungen => teilFokus(gelungen, stelle));
           break;
         }
         if (z.art === 'zeit') {
-          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende }, `${zeitBeschrieben(z)} wiederhergestellt`);
+          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende }, `${zeitBeschrieben(z)} wiederhergestellt`, () => [knopfSelektor('zeit-weg', z.kennung), '#zeit-neu']);
           break;
         }
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
@@ -1292,6 +1346,8 @@ async function act(a, arg, wert) {
         if (ichNoetig()) break;
         const [slug, nr] = arg.split('|');
         const platz = platzAufBoard(slug, +nr);
+        const zeile = `tr[data-zeile="${nr}"]`;
+        fokusNachEntfernen('abnehmen', arg, nachbarArgument(zeile, 'abnehmen', arg), zeile);
         await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
         if (!u.fensterFehler && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
         break;
@@ -1303,7 +1359,9 @@ async function act(a, arg, wert) {
         u.anhangLiest = arg;
         render();
         let blob;
-        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`); break; } finally { u.anhangLiest = null; }
+        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`); u.fokus = knopfSelektor('anhang-weg', arg); break; } finally { u.anhangLiest = null; }
+        // Ohne Nachbarn bleibt der Fokus beim Fenster: die Dateiwahl ist kein tabbares Feld
+        fokusNachEntfernen('anhang-weg', arg, nachbarArgument('#anhaenge', 'anhang-weg', arg), null);
         await schreiben('DELETE', pfad);
         if (!u.fensterFehler) u.hinweis = { text: `Anhang „${arg}“ entfernt`, undo: { art: 'anhang', nummer, name: arg, blob }, at: Date.now() };
         break;
@@ -1343,9 +1401,10 @@ async function act(a, arg, wert) {
         if (ichNoetig()) break;
         // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): POST …/zeiten vergibt dieselbe Kennung
         const z = aufgabe(u.offen).zeiten.find(x => x.kennung === arg);
-        const undo = { art: 'zeit', nummer: u.offen, wer: z.wer, beginn: z.beginn, ende: z.ende };
+        const undo = { art: 'zeit', nummer: u.offen, kennung: arg, wer: z.wer, beginn: z.beginn, ende: z.ende };
+        fokusNachEntfernen('zeit-weg', arg, nachbarArgument('#fenster .zt', 'zeit-weg', arg), '#zeit-neu');
         await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`);
-        if (!u.fensterFehler) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, at: Date.now() };
+        if (!u.fensterFehler) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, feld: '#zeit-neu', at: Date.now() };
         break;
       }
       case 'spalte-archivieren': {
@@ -1811,7 +1870,8 @@ document.addEventListener('keydown', e => {
   if (S.ui.hilfe && (e.key === 'Escape' || e.key === '?')) { S.ui.hilfe = false; render(); return; }
   if (S.ui.vollbild && e.key === 'Escape') { vollbildSetzen(false); render(); return; }
   if (S.ui.zuweisen) { zuweisenTaste(e, t); return; }
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && S.ui.hinweis && S.ui.hinweis.undo) {
+  const rueckgaengigTaste = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && S.ui.hinweis && S.ui.hinweis.undo;
+  if (rueckgaengigTaste && (!/INPUT|TEXTAREA|SELECT/.test(t.tagName) || leeresFeldDesEntfernens(t))) {
     e.preventDefault();
     act('rueckgaengig');
     return;

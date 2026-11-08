@@ -1,7 +1,7 @@
 // Unit-Tests der Fokusführung über Ebenen (R00106, ADR-0010): node --test
 const test = require('node:test');
 const assert = require('node:assert');
-const { ebenen, fallenSchritt, fokusZiel, fensterRand, ohneRollen } = require('../../web/fokus.js');
+const { ebenen, fallenSchritt, fokusZiel, fensterRand, nachbarNachEntfernen, ohneRollen } = require('../../web/fokus.js');
 
 const arten = ui => ebenen(ui).map(ebene => ebene.art);
 
@@ -237,4 +237,13 @@ test('Menüs: jeder role="menu"-Container in web/ansicht.js hat einen zugänglic
   assert.ok(menues.length >= 7, `zu wenige Menüs gefunden: ${menues.length}`);
   const namenlos = menues.filter(m => !/aria-label(ledby)?="/.test(m.tag));
   assert.deepStrictEqual(namenlos.map(m => `ansicht.js:${m.zeile} ${m.tag.slice(0, 70)}`), []);
+});
+
+test('fokusZiel: ein ausdrückliches Ziel als Liste steht in seiner Rangfolge vorn (R00112 FA 8: wiederhergestellt, sonst Ort)', () => {
+  const ziele = fokusZiel({ ausdruecklich: ['[data-act="zeit-weg"][data-arg="st@x"]', '#zeit-neu'], oberste: ebenen({ view: 'board', offen: 1 })[0] });
+  assert.deepStrictEqual(ziele, ['[data-act="zeit-weg"][data-arg="st@x"]', '#zeit-neu', '#fenster']);
+});
+
+test('nachbarNachEntfernen: der folgende Eintrag rückt nach, am Ende der vorige, allein keiner (R00112 FA 8)', () => {
+  assert.deepStrictEqual([[3, 0], [3, 1], [3, 2], [2, 1], [1, 0], [0, 0]].map(([anzahl, index]) => nachbarNachEntfernen(anzahl, index)), [0, 1, 1, 0, -1, -1]);
 });

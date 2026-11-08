@@ -473,3 +473,239 @@ test.describe('R00112 Fokus nie verdeckt (320 × 640)', () => {
     expect(f.u <= h.o || f.o >= h.u, `Spalte ${f.o}–${f.u}, Hinweis ${h.o}–${h.u}`).toBe(true);
   });
 });
+
+// FA 8 (ADR-0010 N7a/N7b, Befund code-reviewer zu Karte #12): nach erfolgreichem Rückgängig steht der Fokus auf dem
+// wiederhergestellten Element, sonst auf dem Ort, von dem aus entfernt wurde; nach dem Entfernen selbst auf dem ✕ des
+// Nachbarn bzw. auf dem Eingabefeld des Abschnitts — nie auf BODY, der Zeile oder dem Fenster als Ganzem.
+/** Was den Fokus hat: Beschriftung, Kennung und Text der Zeile darum. */
+const imFokus = page => page.evaluate(() => {
+  const e = document.activeElement;
+  const zeile = e.closest('tr, .chk, .anh-z');
+  return { tag: e.tagName, id: e.id || null, label: e.getAttribute('aria-label'), zeile: zeile ? zeile.textContent : null };
+});
+const mitZweiZeiten = () => ({
+  ...grundbestand(),
+  'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\n---\n\n\`\`\`kanbanD-time\n${gestern()} 09:00 · ${gestern()} 10:00 · st\n${gestern()} 11:00 · ${gestern()} 12:00 · st\n\`\`\`\n`,
+});
+
+test.describe('R00112 FA 8 Fokus in der Aufgabenliste', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(grundbestand())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+  const hinweis = page => page.locator('.toast[role="status"]');
+  const x2 = page => page.getByLabel('#2 von Entwicklung nehmen');
+
+  async function perEnterGenommen(page) {
+    await page.goto(k.adresse + '#/aufgaben');
+    await x2(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(hinweis(page)).toContainText('#2 von „Entwicklung“ genommen');
+  }
+
+  test('Abnahme-Probe (a): Enter auf ✕, Strg+Z → dieses ✕ hat den Fokus (#12)', async ({ page }) => {
+    await perEnterGenommen(page);
+    await page.keyboard.press('Control+z');
+    await expect(hinweis(page)).toContainText('wieder auf');
+    await expect(x2(page)).toBeFocused();
+  });
+
+  test('Enter auf „rückgängig“ → das ✕ der wieder aufgelegten Karte hat den Fokus (#12)', async ({ page }) => {
+    await perEnterGenommen(page);
+    await hinweis(page).getByRole('button', { name: 'rückgängig' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(hinweis(page)).toContainText('wieder auf');
+    await expect(x2(page)).toBeFocused();
+  });
+
+  test('nach dem Entfernen steht der Fokus auf der Zeile der Aufgabe, nicht auf BODY (#12)', async ({ page }) => {
+    await perEnterGenommen(page);
+    await expect(page.locator('tr[data-zeile="2"]')).toBeFocused();
+  });
+
+  test('abgelehnt, weil ein Agent #2 zurückgelegt hat → Fokus auf dessen ✕ (#12)', async ({ page }) => {
+    await perEnterGenommen(page);
+    expect((await page.request.post(k.adresse + 'api/boards/entwicklung/aufgaben', { ...ALS_CL, data: { nummer: 2 } })).status()).toBe(201);
+    await page.keyboard.press('Control+z');
+    await expect(hinweis(page)).toContainText('nicht rückgängig');
+    await expect(x2(page)).toBeFocused();
+  });
+});
+
+test.describe('R00112 FA 8 Fokus an Zeiten', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+
+  async function fensterMit(page, bestand) {
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.locator('.zt')).toContainText('09:00–10:00');
+  }
+  async function perEnterGeloescht(page, label = 'Zeit 1 löschen') {
+    await page.getByLabel(label).focus();
+    await page.keyboard.press('Enter');
+    await expect(imFenster(page)).toContainText('gelöscht');
+  }
+
+  test('Abnahme-Probe (b): Enter auf „Zeit 1 löschen“, Strg+Z → Fokus auf dem ✕ der Zeile 09:00–10:00 (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeit());
+    await perEnterGeloescht(page);
+    await page.keyboard.press('Control+z');
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    expect(await imFokus(page)).toMatchObject({ label: 'Zeit 1 löschen', zeile: expect.stringContaining('09:00–10:00') });
+  });
+
+  test('Enter auf „rückgängig“ statt Strg+Z → Fokus auf dem ✕ der Zeile 09:00–10:00 (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeit());
+    await perEnterGeloescht(page);
+    const knopf = imFenster(page).getByRole('button', { name: 'rückgängig' });
+    for (let i = 0; i < 80 && !(await knopf.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    expect(await imFokus(page)).toMatchObject({ label: 'Zeit 1 löschen', zeile: expect.stringContaining('09:00–10:00') });
+  });
+
+  test('nach dem Entfernen der einzigen Zeit steht der Fokus auf „Zeit nachtragen“ (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeit());
+    await perEnterGeloescht(page);
+    await expect(page.locator('#zeit-neu')).toBeFocused();
+  });
+
+  test('im Feld „Zeit nachtragen“ mit getipptem Text bleibt Strg+Z beim Feld und nimmt nichts zurück (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeit());
+    await perEnterGeloescht(page);
+    await page.keyboard.type('0:1');
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(500);
+    await expect(imFenster(page)).toContainText('gelöscht');
+    expect(await zeitenVon1(page, k)).toEqual([]);
+  });
+
+  test('nach dem Entfernen einer von zwei Zeiten steht der Fokus auf dem ✕ der Nachbarzeile (#12)', async ({ page }) => {
+    await fensterMit(page, mitZweiZeiten());
+    await perEnterGeloescht(page, 'Zeit 2 löschen');
+    expect(await imFokus(page)).toMatchObject({ label: expect.stringMatching(/^Zeit \d löschen$/), zeile: expect.stringContaining('09:00–10:00') });
+  });
+
+  test('abgelehnt, weil ein Agent die Zeit schon wiederhergestellt hat → Fokus auf deren ✕ (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeit());
+    await perEnterGeloescht(page);
+    expect((await page.request.post(k.adresse + 'api/aufgaben/1/zeiten', { ...ALS_CL, data: { wer: 'st', beginn: `${gestern()} 09:00`, ende: `${gestern()} 10:00` } })).status()).toBe(200);
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('nicht rückgängig');
+    expect(await imFokus(page)).toMatchObject({ label: 'Zeit 1 löschen', zeile: expect.stringContaining('09:00–10:00') });
+  });
+});
+
+test.describe('R00112 FA 8 Fokus an Teilaufgaben', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+
+  async function fensterMit(page, bestand) {
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.locator('#fenster .chk').first()).toBeVisible();
+  }
+  async function perEnterEntfernt(page, text) {
+    await page.getByLabel(`Teilaufgabe ${text} entfernen`).focus();
+    await page.keyboard.press('Enter');
+    await expect(imFenster(page)).toContainText(`Teilaufgabe „${text}“ entfernt`);
+  }
+
+  test('Strg+Z → Fokus auf dem ✕ der wiederhergestellten Teilaufgabe b (#12)', async ({ page }) => {
+    await fensterMit(page, grundbestand());
+    await perEnterEntfernt(page, 'b');
+    await page.keyboard.press('Control+z');
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    await expect(page.getByLabel('Teilaufgabe b entfernen')).toBeFocused();
+  });
+
+  test('Knopf „rückgängig“ → Fokus auf dem ✕ der wiederhergestellten Teilaufgabe b (#12)', async ({ page }) => {
+    await fensterMit(page, grundbestand());
+    await perEnterEntfernt(page, 'b');
+    await imFenster(page).getByRole('button', { name: 'rückgängig' }).click();
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    await expect(page.getByLabel('Teilaufgabe b entfernen')).toBeFocused();
+  });
+
+  test('nach dem Entfernen von b steht der Fokus auf dem ✕ von c, nach dem letzten auf „Neue Teilaufgabe“ (#12)', async ({ page }) => {
+    await fensterMit(page, grundbestand());
+    await perEnterEntfernt(page, 'b');
+    await expect(page.getByLabel('Teilaufgabe c entfernen')).toBeFocused();
+    await perEnterEntfernt(page, 'c');
+    await expect(page.getByLabel('Teilaufgabe a entfernen')).toBeFocused();
+    await perEnterEntfernt(page, 'a');
+    await expect(page.locator('#teil-neu')).toBeFocused();
+  });
+});
+
+test.describe('R00112 FA 8 Fokus an Anhängen', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+  const imFenster = page => page.locator('[aria-modal="true"] .toast[role="status"]');
+  const mitZweiAnhaengen = () => ({ ...mitZeitUndAnhang(), 'aufgaben/0001-eins/notiz.txt': Buffer.from('notiz') });
+
+  async function fensterMit(page, bestand) {
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.locator('#anhaenge .anh-z a').first()).toBeVisible();
+  }
+  async function planPerEnter(page) {
+    await page.getByLabel('Anhang plan.pdf entfernen').focus();
+    await page.keyboard.press('Enter');
+  }
+
+  test('Strg+Z → Fokus auf dem ✕ des wiederhergestellten Anhangs (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeitUndAnhang());
+    await planPerEnter(page);
+    await expect(imFenster(page)).toContainText('entfernt');
+    await page.keyboard.press('Control+z');
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    await expect(page.getByLabel('Anhang plan.pdf entfernen')).toBeFocused();
+  });
+
+  test('Knopf „rückgängig“ → Fokus auf dem ✕ des wiederhergestellten Anhangs (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeitUndAnhang());
+    await planPerEnter(page);
+    await imFenster(page).getByRole('button', { name: 'rückgängig' }).click();
+    await expect(imFenster(page)).toContainText('wiederhergestellt');
+    await expect(page.getByLabel('Anhang plan.pdf entfernen')).toBeFocused();
+  });
+
+  test('unter neuem Namen wiederhergestellt → Fokus auf dem ✕ von plan-2.pdf (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeitUndAnhang());
+    await planPerEnter(page);
+    await expect(imFenster(page)).toContainText('entfernt');
+    await page.request.post(k.adresse + 'api/aufgaben/1/anhaenge', { ...ALS_CL, multipart: { datei: { name: 'plan.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(100, 1) } } });
+    await page.keyboard.press('Control+z');
+    await expect(imFenster(page)).toContainText('„plan-2.pdf“ wiederhergestellt');
+    await expect(page.getByLabel('Anhang plan-2.pdf entfernen')).toBeFocused();
+  });
+
+  test('nach dem Entfernen, auch über den Ladezustand hinweg, steht der Fokus auf dem ✕ des Nachbarn (#12)', async ({ page }) => {
+    await fensterMit(page, mitZweiAnhaengen());
+    let freigeben;
+    const gehalten = new Promise(r => { freigeben = r; });
+    await page.route('**/api/aufgaben/1/anhaenge/plan.pdf', async route => { if (route.request().method() === 'GET') await gehalten; await route.continue(); });
+    await planPerEnter(page);
+    await expect(page.getByLabel('Anhang plan.pdf entfernen')).toBeDisabled();
+    freigeben();
+    await expect(imFenster(page)).toContainText('Anhang „plan.pdf“ entfernt');
+    await expect(page.getByLabel('Anhang notiz.txt entfernen')).toBeFocused();
+  });
+
+  test('lässt sich der Anhang nicht lesen, kehrt der Fokus auf sein ✕ zurück (#12)', async ({ page }) => {
+    await fensterMit(page, mitZeitUndAnhang());
+    await page.route('**/api/aufgaben/1/anhaenge/plan.pdf', route => route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"fehler":"Platte nicht lesbar"}' }) : route.continue());
+    await planPerEnter(page);
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('nicht entfernt');
+    await expect(page.getByLabel('Anhang plan.pdf entfernen')).toBeFocused();
+  });
+});
