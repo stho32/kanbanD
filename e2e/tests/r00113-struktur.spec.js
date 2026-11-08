@@ -286,4 +286,24 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       await expect(aktuell).toHaveClass(/\ban\b/);
     });
   });
+
+  test.describe('Klappzustand', () => {
+    test.fail(true, 'Karte #13: der Klappknopf der Spalte trägt noch kein aria-expanded');
+
+    test('US-11: der Klappknopf der Spalte sagt, ob sie offen ist', async ({ page }) => {
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      const zuklappen = page.getByRole('button', { name: 'Zu erledigen zuklappen', expanded: true });
+      await expect(zuklappen).toHaveCount(1);
+      await zuklappen.click();
+      const aufklappen = page.getByRole('button', { name: 'Zu erledigen aufklappen', expanded: false });
+      await expect(aufklappen).toHaveCount(1);
+      await page.reload();
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      await expect(aufklappen).toHaveCount(1);
+      await aufklappen.click();
+      await expect(zuklappen).toHaveCount(1);
+    });
+  });
 });
