@@ -387,9 +387,11 @@ function herkunftEntwurf(a) {
 }
 /** id der Meldung im Fuß des Aufgabenfensters; bleibt über jedes Neuzeichnen gleich, damit ein Feld auf sie verweisen kann. */
 const FENSTER_MELDUNG = 'fenster-meldung';
+/** Kennung des Felds „Neue Herkunft“ an einer Meldung des Aufgabenfensters (`S.ui.fensterFehlerFeld`). */
+const HERKUNFT_FELD = 'herkunft';
 /** Solange die Meldung eine abgelehnte Herkunft dieser Aufgabe betrifft, ist das Feld ungültig und verweist auf sie (R00111 AK 1). */
 function herkunftVerweis(a) {
-  const abgelehnt = S.ui.fensterFehler && herkunftEntwurf(a);
+  const abgelehnt = S.ui.fensterFehler && S.ui.fensterFehlerFeld === HERKUNFT_FELD && herkunftEntwurf(a);
   if (!abgelehnt) return '';
   return ` aria-invalid="true" aria-describedby="${FENSTER_MELDUNG}"`;
 }

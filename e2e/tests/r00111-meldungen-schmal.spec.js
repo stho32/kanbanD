@@ -169,6 +169,54 @@ test.describe('Handy, 414 px mit Touch', () => {
     expect(await sichtbarkeit(gespeichert)).toEqual([]);
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Abnahme prüfen lassen');
   });
+
+  // Das Feld „Neue Herkunft“ verweist nur auf eine Meldung, die es selbst betrifft; eine andere Meldung im Fuß
+  // macht es nicht ungültig, auch wenn darin ein Entwurf steht.
+  test('US-1: ein abgelehnter Titel macht „Neue Herkunft“ mit Entwurf nicht ungültig', async ({ page }) => {
+    await starten(page);
+    const fenster = await fensterOeffnen(page, 1, true);
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.tap();
+    await page.keyboard.type('I00');
+    const titel = fenster.getByLabel('Titel', { exact: true });
+    await titel.tap();
+    await titel.fill('');
+    await titel.blur();
+    await expect(fenster.locator('[role=alert]')).toHaveCount(1);
+    expect(k.lies(AUFGABE_1), 'der Titel wurde abgelehnt').toContain('title: Abnahme prüfen');
+    await expect(herkunft).toHaveValue('I00');
+    await expect(herkunft).not.toHaveAttribute('aria-invalid');
+    await expect(herkunft).not.toHaveAttribute('aria-describedby');
+  });
+
+  test('US-1: eine abgelehnte Dauer macht „Neue Herkunft“ nach X1 nicht mehr ungültig', async ({ page }) => {
+    await starten(page);
+    const fenster = await fensterOeffnen(page, 1, true);
+    await herkunftEingeben(page, fenster, 'X1', true);
+    const meldung = fenster.locator('[role=alert]');
+    await expect(meldung).toHaveText(new RegExp('^' + MELDUNG_X1));
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.fill('I0001');
+    const dauer = fenster.getByLabel('Zeit nachtragen');
+    await dauer.tap();
+    await page.keyboard.type('abc');
+    await page.keyboard.press('Enter');
+    await expect(meldung).toHaveCount(1);
+    await expect(meldung).not.toHaveText(new RegExp('^' + MELDUNG_X1));
+    await expect(herkunft).toHaveValue('I0001');
+    await expect(herkunft).not.toHaveAttribute('aria-invalid');
+    await expect(herkunft).not.toHaveAttribute('aria-describedby');
+  });
+
+  test('US-1: die abgelehnte Herkunft X1 behält ihren Verweis auf die Meldung', async ({ page }) => {
+    await starten(page);
+    const fenster = await fensterOeffnen(page, 1, true);
+    await herkunftEingeben(page, fenster, 'X1', true);
+    await expect(fenster.locator('[role=alert]')).toHaveText(new RegExp('^' + MELDUNG_X1));
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await expect(herkunft).toHaveAttribute('aria-invalid', 'true');
+    await expect(herkunft).toHaveAttribute('aria-describedby', 'fenster-meldung');
+  });
 });
 
 for (const breite of [320, 375, 414]) {
