@@ -88,11 +88,11 @@ async fn an_einer_stelle_anlegen_lehnt_ab() {
     let a = &lauf.adresse;
     let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
     for (rumpf, teil) in [
-        (json!({"text": "b", "position": -1}), "position"),
-        (json!({"text": "b", "position": 1.5}), "position"),
-        (json!({"text": "b", "position": "1"}), "position"),
-        (json!({"text": "b", "erledigt": "ja"}), "erledigt"),
-        (json!({"text": "b", "erledigt": 1}), "erledigt"),
+        (json!({"text": "b", "position": -1}), "„position“ muss"),
+        (json!({"text": "b", "position": 1.5}), "„position“ muss"),
+        (json!({"text": "b", "position": "1"}), "„position“ muss"),
+        (json!({"text": "b", "erledigt": "ja"}), "„erledigt“ muss"),
+        (json!({"text": "b", "erledigt": 1}), "„erledigt“ muss"),
         (json!({"text": " ", "position": 0}), "Text"),
     ] {
         let (s, r) = senden(Method::POST, a, "api/aufgaben/1/teilaufgaben", "st", rumpf.clone()).await;

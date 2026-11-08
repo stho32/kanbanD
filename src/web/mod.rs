@@ -780,7 +780,7 @@ async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Pa
     let position = ganze_zahl_ab_null("position", t.position.as_ref())?;
     let erledigt = match &t.erledigt {
         None | Some(serde_json::Value::Null) => false,
-        Some(wert) => wert.as_bool().ok_or_else(|| Fehler::Ungueltig(format!("erledigt muss true oder false sein, nicht {wert}")))?,
+        Some(wert) => wert.as_bool().ok_or_else(|| Fehler::Ungueltig(format!("„erledigt“ muss true oder false sein, nicht {wert}")))?,
     };
     als_person(&app, wer, move |k, p| k.teilaufgabe_anlegen(p, nr, &t.text, position, erledigt)).await
 }
@@ -1249,14 +1249,14 @@ struct Ablage {
     index: Option<serde_json::Value>,
 }
 
-/// `index` als Stelle: fehlt er oder ist null, unten; sonst eine ganze Zahl ab 0, alles andere 400.
+/// Der Wert des Felds `feld` als Stelle: fehlt er oder ist er null, unten; sonst eine ganze Zahl ab 0, alles andere 400.
 fn ganze_zahl_ab_null(feld: &str, wert: Option<&serde_json::Value>) -> Result<Option<usize>, Fehler> {
     match wert {
         None | Some(serde_json::Value::Null) => Ok(None),
         Some(wert) => wert
             .as_u64()
             .map(|n| Some(n as usize))
-            .ok_or_else(|| Fehler::Ungueltig(format!("{feld} muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
+            .ok_or_else(|| Fehler::Ungueltig(format!("„{feld}“ muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
     }
 }
 
