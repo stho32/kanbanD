@@ -53,16 +53,64 @@ test.describe('Selbstproben der ISO-Probe', () => {
 });
 
 test.describe('Selbstproben der Beschriftungsprobe', () => {
+  // Zeile ohne Schlüssel: nur die Beschriftung; Zeile mit Schlüssel: Rahmen .kb, darin .k und darunter .sl (ADR-0013 N1)
   const zeile = (beschriftung, feld) => `<span class="k">${beschriftung}</span><span class="w">${feld}</span>`;
+  const rahmen = (innen, feld) => `<span class="kb">${innen}</span><span class="w">${feld}</span>`;
+  const mitSchluessel = (beschriftung, schluessel, feld) => rahmen(`<span class="k">${beschriftung}</span><span class="sl">${schluessel}</span>`, feld);
   const pruefen = async (page, ...zeilen) => {
     await page.setContent(`<div role="dialog" aria-label="probe"><div class="felder">${zeilen.join('')}</div></div>`);
     return beschriftungenPruefen(page.getByRole('dialog'), FELDER);
   };
   const verstoesse = felder => felder.flatMap(f => f.verstoesse.map(v => `${f.beschriftung}: ${v}`));
+  const SPALTE = '<select aria-label="Spalte"></select>';
 
-  test('„Spalte“ mit Feldnamen „Spalte“ besteht und meldet Beschriftung und Namen', async ({ page }) => {
-    expect(await pruefen(page, zeile('Spalte', '<select aria-label="Spalte"></select>')))
+  test('(a) Rahmen mit „Spalte“ und darunter column, Feldname „Spalte“: besteht und meldet Beschriftung und Namen', async ({ page }) => {
+    expect(await pruefen(page, mitSchluessel('Spalte', 'column', SPALTE)))
       .toEqual([{ beschriftung: 'Spalte', name: 'Spalte', verstoesse: [] }]);
+  });
+
+  test('(b) der Schlüssel im Element der Beschriftung fällt (Regel 4), auch als eigenes Kindelement von .k', async ({ page }) => {
+    expect(verstoesse(await pruefen(page, rahmen('<span class="k">Spalte <span class="sl">column</span></span>', '<select aria-label="Spalte column"></select>'))))
+      .toEqual(['Spalte column: Beschriftung enthält den Schlüssel column']);
+    expect(verstoesse(await pruefen(page, zeile('Spalte column', SPALTE))))
+      .toEqual(['Spalte column: Beschriftung enthält den Schlüssel column', 'Spalte column: Name „Spalte“ enthält die Beschriftung nicht']);
+  });
+
+  test('(c) ohne Schlüssel unter der Beschriftung fällt — als Rahmen ohne .sl, als nackte .k und mit dem Schlüssel erst in der Feldzelle', async ({ page }) => {
+    const FEHLT = ['Spalte: Schlüssel column fehlt unter der Beschriftung'];
+    expect(verstoesse(await pruefen(page, rahmen('<span class="k">Spalte</span>', SPALTE)))).toEqual(FEHLT);
+    expect(verstoesse(await pruefen(page, zeile('Spalte', SPALTE)))).toEqual(FEHLT);
+    expect(verstoesse(await pruefen(page, zeile('Spalte', `<span class="mono">column</span>${SPALTE}`)))).toEqual(FEHLT);
+  });
+
+  test('(d) ein falscher Schlüssel unter der Beschriftung fällt; „Anforderungen“ verlangt requirements', async ({ page }) => {
+    expect(verstoesse(await pruefen(page, mitSchluessel('Spalte', 'class', SPALTE))))
+      .toEqual(['Spalte: Schlüssel column fehlt unter der Beschriftung']);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Anforderungen', 'anforderungen', '<input aria-label="Anforderungen">'))))
+      .toEqual(['Anforderungen: Schlüssel requirements fehlt unter der Beschriftung']);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Anforderungen', 'requirements', '<input aria-label="Anforderungen">')))).toEqual([]);
+  });
+
+  test('(e) ein Fenster ohne Feldzeile fällt — eine leere Liste wäre kein Beleg', async ({ page }) => {
+    expect(verstoesse(await pruefen(page))).toEqual([': keine Feldzeile im Fenster']);
+    await page.setContent('<div role="dialog" aria-label="probe"><p>nichts</p></div>');
+    expect(verstoesse(await beschriftungenPruefen(page.getByRole('dialog'), FELDER))).toEqual([': keine Feldzeile im Fenster']);
+  });
+
+  test('(f) eine Zeile ohne Schlüssel bleibt einzeilig und besteht: „Signale“, „wartet auf“; die Schlüsselform „reservation“ fällt', async ({ page }) => {
+    expect(await pruefen(page, zeile('Signale', '<button aria-pressed="false" aria-label="Signal blockiert">blockiert</button>'), zeile('wartet auf', '<a href="#">#2</a>'), zeile('reservation', '<span>Claude</span>')))
+      .toEqual([{ beschriftung: 'Signale', name: null, verstoesse: [] }, { beschriftung: 'wartet auf', name: null, verstoesse: [] },
+        { beschriftung: 'reservation', name: null, verstoesse: ['Beschriftung ist der Schlüssel reservation'] }]);
+  });
+
+  test('(g) Knopfgruppe: ohne Gruppennamen fällt, als Gruppe „Zuständig“ besteht', async ({ page }) => {
+    const knoepfe = '<button>Stefan</button><button>Claude</button>';
+    expect(verstoesse(await pruefen(page, mitSchluessel('Zuständig', 'assignees', knoepfe))))
+      .toEqual(['Zuständig: Knopfgruppe ohne Gruppennamen']);
+    // wie im Aufgabenfenster: die Feldzelle selbst ist die Gruppe
+    const kopf = '<span class="kb"><span class="k">Zuständig</span><span class="sl">assignees</span></span>';
+    expect(verstoesse(await pruefen(page, `${kopf}<span class="w wrap" role="group" aria-label="Zuständig">${knoepfe}</span>`))).toEqual([]);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Zuständig', 'assignees', `<span role="group" aria-label="Zuständig">${knoepfe}</span>`)))).toEqual([]);
   });
 
   test('Beschriftung exakt ein Schlüssel fällt, Groß-/Kleinschreibung beachtet: „column“ und „labels“ fallen, „Labels“ besteht', async ({ page }) => {
@@ -70,40 +118,31 @@ test.describe('Selbstproben der Beschriftungsprobe', () => {
       .toEqual(['column: Beschriftung ist der Schlüssel column']);
     expect(verstoesse(await pruefen(page, zeile('labels', '<input aria-label="labels">'))))
       .toEqual(['labels: Beschriftung ist der Schlüssel labels']);
-    expect(verstoesse(await pruefen(page, zeile('Labels', '<input aria-label="Labels der neuen Aufgabe">')))).toEqual([]);
-  });
-
-  test('„Spalte column“ in einem Element fällt (Regel 4); der Schlüssel als eigenes Element daneben besteht', async ({ page }) => {
-    expect(verstoesse(await pruefen(page, zeile('Spalte column', '<select aria-label="Spalte"></select>'))))
-      .toEqual(['Spalte column: Beschriftung enthält den Schlüssel column', 'Spalte column: Name „Spalte“ enthält die Beschriftung nicht']);
-    expect(verstoesse(await pruefen(page, zeile('Spalte column', '<select aria-label="Spalte column"></select>'))))
-      .toEqual(['Spalte column: Beschriftung enthält den Schlüssel column']);
-    expect(verstoesse(await pruefen(page, zeile('Spalte', '<span class="mono">column</span><select aria-label="Spalte"></select>')))).toEqual([]);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Labels', 'labels', '<input aria-label="Labels der neuen Aufgabe">')))).toEqual([]);
   });
 
   test('der Name muss die Beschriftung enthalten: „Neue Herkunft“ besteht, „origins“ fällt; label for und aria-labelledby zählen', async ({ page }) => {
-    expect(verstoesse(await pruefen(page, zeile('Herkunft', '<input aria-label="Neue Herkunft">')))).toEqual([]);
-    expect(verstoesse(await pruefen(page, zeile('Herkunft', '<input aria-label="origins">'))))
+    expect(verstoesse(await pruefen(page, mitSchluessel('Herkunft', 'origins', '<input aria-label="Neue Herkunft">')))).toEqual([]);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Herkunft', 'origins', '<input aria-label="origins">'))))
       .toEqual(['Herkunft: Name „origins“ enthält die Beschriftung nicht']);
-    expect(verstoesse(await pruefen(page, '<label class="k" for="f">Fällig</label><span class="w"><input id="f" type="date"></span>'))).toEqual([]);
-    expect(verstoesse(await pruefen(page, '<span class="k" id="b">Klasse</span><span class="w"><select aria-labelledby="b"></select></span>'))).toEqual([]);
-    expect(verstoesse(await pruefen(page, zeile('Fällig', '<input type="date">'))))
+    expect(verstoesse(await pruefen(page, '<span class="kb"><label class="k" for="f">Fällig</label><span class="sl">due</span></span><span class="w"><input id="f" type="date"></span>'))).toEqual([]);
+    expect(verstoesse(await pruefen(page, '<span class="kb"><span class="k" id="b">Klasse</span><span class="sl">class</span></span><span class="w"><select aria-labelledby="b"></select></span>'))).toEqual([]);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Fällig', 'due', '<input type="date">'))))
       .toEqual(['Fällig: Name „“ enthält die Beschriftung nicht']);
   });
 
-  test('Knopfgruppe: ohne Gruppennamen fällt, als Gruppe „Zuständig“ besteht', async ({ page }) => {
-    const knoepfe = '<button>Stefan</button><button>Claude</button>';
-    expect(verstoesse(await pruefen(page, zeile('Zuständig', knoepfe))))
-      .toEqual(['Zuständig: Knopfgruppe ohne Gruppennamen']);
-    expect(verstoesse(await pruefen(page, zeile('Zuständig', `<span role="group" aria-label="Zuständig">${knoepfe}</span>`)))).toEqual([]);
+  test('ohne Namensprüfung (Einrichten, erster Start) zählen nur Beschriftung und Schlüssel', async ({ page }) => {
+    await page.setContent(`<div role="dialog" aria-label="probe"><div class="felder">${mitSchluessel('Ich', 'ich', '<input aria-label="Kürzel">')}${zeile('Board', '<input aria-label="Board">')}</div></div>`);
+    expect(verstoesse(await beschriftungenPruefen(page.getByRole('dialog'), FELDER, { namen: false })))
+      .toEqual(['Board: Schlüssel board fehlt unter der Beschriftung']);
   });
 
-  test('eine reine Anzeige ohne Feld hat keinen Namen und besteht, wenn ihre Beschriftung deutsch ist', async ({ page }) => {
-    expect(await pruefen(page, zeile('wartet auf', '<a href="#">#2</a>'), zeile('reservation', '<span>Claude</span>')))
-      .toEqual([{ beschriftung: 'wartet auf', name: null, verstoesse: [] },
-        { beschriftung: 'reservation', name: null, verstoesse: ['Beschriftung ist der Schlüssel reservation'] }]);
+  test('ein eingebettetes Formular mit eigenem Raster (neue Wirkung) ist keine Zeile des äußeren Rasters', async ({ page }) => {
+    const form = `<div class="wirkung-form" role="group" aria-label="Neue Wirkung"><div class="felder">${zeile('Aktion', '<select aria-label="Aktion"></select>')}</div></div>`;
+    expect((await pruefen(page, mitSchluessel('Spalte', 'column', SPALTE), form)).map(f => f.beschriftung)).toEqual(['Spalte', 'Aktion']);
   });
 });
+
 
 test.describe('Selbstprobe der Ausnahmeliste (FA 19)', () => {
   const fund = (element, text) => ({ ansicht: 'X', ort: 'Text', element, text });
