@@ -1,0 +1,80 @@
+---
+id: X00005
+name: Struktur für Hilfstechnik
+art: Aspekt
+geltung: Makro
+befund: Uneinheitlich
+hausantwort: "ADR-0018 (Akzeptiert): Landmarks im Rahmen, eine h1 je Route nur in vHaupt(), Abschnitte h2, Karte listitem in list mit Namen aus kartenName(), aria-current wie die Klasse an, aria-expanded am Klapp-Knopf; Probe über alle Routen"
+betrifft:
+  - A00009
+herkunft: code
+quellen:
+  - web/index.html
+  - web/app.js
+  - web/ansicht.js
+  - web/markdown.js
+  - web/kd-app.css
+  - e2e/tests/ziele.spec.js
+  - e2e/tests/r00065-mehrfachauswahl.spec.js
+  - Anforderungen/R00000-vision.md
+---
+
+# Struktur für Hilfstechnik
+
+## Hausantwort
+
+Soll nach [ADR-0018](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md) (Akzeptiert, Karte #13), aus der Leitplanke „per Tastatur bedienbar und folgt gewohnten Konventionen“ (`Anforderungen/R00000-vision.md:104`):
+
+- **Landmarks im Rahmen:**
+  - `header.kz` (aus `vKopf()`), `main#main` und `footer#stat` gibt es je einmal.
+  - Höchstens eine `nav.kz-nav`. Unter 600 px, im Einrichtungsmodus und im ersten Start gibt es keine.
+  - Fenster, Menüs und Hinweise liegen in `#over` mit eigener Rolle.
+  - Sichten setzen keine weiteren Landmarks.
+- **Überschriften:**
+  - Genau eine `h1` je Route. Sie entsteht nur in `vHaupt()`, ist visuell verborgen und beginnt mit `seitenName()`.
+  - Abschnitte der Route sind `h2`: auf dem Board je Spalte eine, in den Berichten `h2.dtitel`.
+  - Darunter folgt `h3`, ohne Sprung.
+  - Markdown in `#main` erzeugt nie eine `h1`.
+  - Die Gestaltung hängt an Klassen, nicht an Tags.
+- **Karte:**
+  - `.flaeche` ist `role=list`, jede `.ka` ist `role=listitem` (auch defekt und fehlt). `.leer` und `.nach` sind ebenfalls Listeneinträge.
+  - Den Namen bildet die reine Funktion `kartenName`: `#<nr> <Titel>[, <Klasse>][, ausgewählt]`, ohne Datum.
+  - Kein `aria-selected` an der Karte.
+  - Tastatur, Öffnen, Ziehen und Fokusführung bleiben unverändert.
+- **Name aus dem Renderer:** Den Namen schreibt nur das Zeichnen (`vKarte`, `vDefekt`, `vFehlt`). Ein Live-Ereignis erneuert ihn über `render()` nach ADR-0014, es gibt keinen Nachführer.
+- **Zustände:**
+  - `aria-current="page"` steht unter derselben Bedingung wie die Klasse `an`: in der Navigation genau einmal, im Seitenmenü am Eintrag mit `an`.
+  - `aria-expanded` am Klapp-Knopf der Spalte steht statisch im Markup: `.bk-name` true, `.zu-streifen` false.
+
+Durchsetzung:
+- E2E-Probe über alle Routen nach dem Muster von `e2e/tests/ziele.spec.js`, mit Mutante. Die Routenliste wird gegen die Verzweigungen von `vHaupt()` abgeglichen.
+- Unit-Test `kartenName` in `e2e/einheit/`.
+
+## Systemantwort
+
+Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
+
+- **Landmarks:** schon vorhanden. `web/index.html:12` hat `main#main` und `footer#stat`, `vKopf()` liefert `header.kz` (`web/ansicht.js:36–45`), die Navigation ist `nav.kz-nav` (`:76`).
+- **Überschriften:**
+  - In `#main` gibt es keine `h1`.
+  - Das Board hat keine Überschrift.
+  - Die Berichte beginnen mit `h3.dtitel` (`web/ansicht.js:932`, `:1070`, `:1173–1174`, `:1272`).
+  - Eine `h2` haben schon WBS (`:1294`), erster Start (`:1423`) und defektes Board (`:713`).
+- **Karte:** `div.ka` mit `tabindex=0`, ohne Rolle und Namen. Bei Auswahl trägt sie `aria-selected="true"` (`:529`), was eine Rolle voraussetzt. Defekte und fehlende Karten liegen bei `:537` und `:640`.
+- **Zustände:**
+  - `aria-current` fehlt, die aktuelle Seite ist nur die Klasse `an` (`:76`, Seitenmenü `:97–100`).
+  - `aria-expanded` gibt es an Pop-Auslösern (`ausloeserMarkieren`, `web/app.js:707–711`) und an den WBS-Knöpfen (`web/ansicht.js:1310`), nicht am Klapp-Knopf der Spalte (`:693`, `:708`).
+
+## Abweichungen
+
+- Bis zum Bau von #13 weicht jede Route von der Hausantwort ab (siehe Systemantwort).
+
+## Offene Fragen
+
+- Erneute Ansage der fokussierten Karte bei jedem Neuzeichnen (ADR-0018, Offene Fragen; gleiche Klasse wie ADR-0015).
+- `h4` als Kopf in `role=menu` (`web/ansicht.js:103`, `:129`, `:359`). Erlaubt sind dort nur Einträge, Gruppen und Trenner. Das ist ein Vorschlag, nicht Teil von #13.
+
+## Notizen / Quellen
+
+- Probe 2026-11-08 (headless Chromium, nachgebautes Markup): `listitem` mit `aria-label` behält Knopf und Link als Kinder mit Rolle und Namen. Die verborgene `h1`/`h2` zählt als Überschrift, `expanded` ist über `getByRole` prüfbar. Belege stehen in ADR-0018, „Erprobt durch“.
+- angelegt 2026-11-08 nach #13 (ADR-0018)
