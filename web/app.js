@@ -429,6 +429,24 @@ async function schreiben(methode, pfad, daten) {
   await laden();
 }
 
+/** Platz einer Karte auf einem Board aus dem gezeigten Stand, gemerkt für das Rückgängig (R00112, ADR-0017 Regel 1). */
+function platzAufBoard(slug, nummer) {
+  const board = (S.boards || []).find(b => b.slug === slug);
+  if (!board) return null;
+  const spalte = board.spalten.find(sp => sp.aufgaben.includes(nummer));
+  if (!spalte) return null;
+  return { art: 'legen', slug, titel: board.titel, nummer, spalte: spalte.name, index: spalte.aufgaben.indexOf(nummer) };
+}
+
+/** Sendet die Gegenaktion eines Rückgängig; Erfolg und Ablehnung stehen als Hinweis ohne Knopf da (ADR-0017 Regel 6). */
+async function rueckgaengigSenden(methode, pfad, daten, erfolg) {
+  try {
+    await api(methode, pfad, daten);
+    S.ui.hinweis = { text: erfolg, at: Date.now() };
+  } catch (f) { S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() }; }
+  await laden();
+}
+
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
 function fensterMelden(text, feld = null) {
   S.ui.fensterFehler = text;
@@ -1021,6 +1039,10 @@ async function act(a, arg, wert) {
         const z = h.undo;
         if (z.art === 'bewegen') return act('bewegen', JSON.stringify({ nummer: z.nummer, spalte: z.spalte, index: z.index, rueckgaengig: true }));
         if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
+        if (z.art === 'legen') {
+          await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`);
+          break;
+        }
         await schreiben('POST', `/api/aufgaben/${z.art}`, { nummern: z.nummern });
         u.hinweis = { text: z.art === 'archivieren' ? `${z.nummern.length === 1 ? '#' + z.nummern[0] : z.nummern.length + ' Aufgaben'} archiviert` : `#${z.nummern[0]} zurückgeholt`, at: Date.now() };
         break;
@@ -1208,8 +1230,10 @@ async function act(a, arg, wert) {
       case 'abnehmen': {
         if (ichNoetig()) break;
         const [slug, nr] = arg.split('|');
+        const platz = platzAufBoard(slug, +nr);
         await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
-        return;
+        if (!u.fensterFehler && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
+        break;
       }
       case 'anhang-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/anhaenge/${encodeURIComponent(arg)}`); return;
       case 'herkunft-neu': {

@@ -39,7 +39,7 @@ test.describe('R00112 von Board nehmen', () => {
     await expect(page.locator('.bahn[data-col="Zu erledigen"] .ka .id')).toHaveText(['#1', '#2', '#3']);
   }
 
-  test.fail('US-1: Strg+Z nach von Board nehmen legt #2 an die alte Stelle zurück (#12)', async ({ page }) => {
+  test('US-1: Strg+Z nach von Board nehmen legt #2 an die alte Stelle zurück (#12)', async ({ page }) => {
     await page.goto(k.adresse + '#/aufgaben');
     await expect(ort(page)).toContainText('Entwicklung · Zu erledigen');
     const vorher = commits(k);
@@ -51,7 +51,7 @@ test.describe('R00112 von Board nehmen', () => {
     await wiederAnSeinemPlatz(page, vorher);
   });
 
-  test.fail('US-2: Kontextmenü „Von Board nehmen“ und Knopf „rückgängig“ (#12)', async ({ page }) => {
+  test('US-2: Kontextmenü „Von Board nehmen“ und Knopf „rückgängig“ (#12)', async ({ page }) => {
     await page.goto(k.adresse + '#/aufgaben');
     await expect(ort(page)).toContainText('Entwicklung · Zu erledigen');
     const vorher = commits(k);
@@ -63,7 +63,7 @@ test.describe('R00112 von Board nehmen', () => {
     await wiederAnSeinemPlatz(page, vorher);
   });
 
-  test.fail('US-3: der Hinweis läuft ab, danach wirkt Strg+Z nicht mehr (#12)', async ({ page }) => {
+  test('US-3: der Hinweis läuft ab, danach wirkt Strg+Z nicht mehr (#12)', async ({ page }) => {
     await page.clock.install();
     await page.goto(k.adresse + '#/aufgaben');
     await expect(ort(page)).toContainText('Entwicklung · Zu erledigen');
@@ -80,7 +80,7 @@ test.describe('R00112 von Board nehmen', () => {
     expect(commits(k)).toBe(nachDemEntfernen);
   });
 
-  test.fail('US-4: hat ein Agent #2 schon zurückgelegt, meldet rückgängig das und legt nichts doppelt (#12)', async ({ page }) => {
+  test('US-4: hat ein Agent #2 schon zurückgelegt, meldet rückgängig das und legt nichts doppelt (#12)', async ({ page }) => {
     await page.goto(k.adresse + '#/aufgaben');
     await expect(ort(page)).toContainText('Entwicklung · Zu erledigen');
     await page.getByLabel('#2 von Entwicklung nehmen').click();
