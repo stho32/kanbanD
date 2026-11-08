@@ -354,10 +354,10 @@ test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
   }
 });
 
-test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als Hilfstext (B0436, B0437)', () => {
+test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hilfstext außerhalb von .k (B0436, B0437)', () => {
   const verstoesse = felder => felder.flatMap(f => f.verstoesse.map(v => `${f.beschriftung}: ${v}`));
   const beschriftungen = felder => felder.map(f => f.beschriftung);
-  test('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als eigenes Element unter der Beschriftung', async ({ page }) => {
+  test('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als eigenes Element außerhalb der Beschriftung', async ({ page }) => {
     await starten(page);
     const aufgabe = await fensterOeffnen(page, 1);
     // erst wenn die Felder stehen, ist die Probe ein Befund und kein zu früher Blick
@@ -368,6 +368,9 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als H
     await expect(aufgabe.getByRole('group', { name: 'Zuständig', exact: true })).toBeVisible();
     // die vorhandenen Namen bleiben (FA 12)
     for (const name of ['Spalte', 'Klasse', 'Labels', 'Fälligkeit', 'Neue Herkunft']) await expect(aufgabe.getByLabel(name, { exact: true }), name).toHaveCount(1);
+    // Felder ohne Schlüssel bleiben einzeilig: nacktes .k, kein Rahmen, kein Hilfstext (WBS-Notiz B0437, Z. 157)
+    await expect(aufgabe.locator('.felder > .k', { hasText: 'Zählt in Berichten' })).toHaveCount(1);
+    await expect(aufgabe.locator('.felder > .kb', { hasText: 'Zählt in Berichten' })).toHaveCount(0);
     await schliessen(page);
     await page.keyboard.press('n');
     const neu = page.getByRole('dialog', { name: 'Neue Aufgabe' });
@@ -377,9 +380,11 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als H
     expect(beschriftungen(inNeu)).toEqual(expect.arrayContaining(['Board', 'Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
     await expect(neu.getByRole('group', { name: 'Zuständig', exact: true })).toBeVisible();
     for (const name of ['Board', 'Spalte', 'Herkunft der neuen Aufgabe']) await expect(neu.getByLabel(name, { exact: true }), name).toHaveCount(1);
+    // das Herkunftsfeld startet weiter leer (WBS-Notiz B0436, Z. 156)
+    await expect(neu.getByLabel('Herkunft der neuen Aufgabe', { exact: true })).toHaveValue('');
   });
 
-  test('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel darunter', async ({ page }) => {
+  test('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel als eigenes Element', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
     await eins.locator('.felder .k').first().waitFor();
