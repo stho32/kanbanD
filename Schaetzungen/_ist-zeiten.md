@@ -474,3 +474,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0477 Textkorrekturen | Operation | 0,25 | 0,25 | 0,25 | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0478 Helfer anhangSenden | Operation | 0,25 | 0,25 | 0,25 | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0479 Ternary in anhangZuruecklegen | Operation | 0,25 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0480 hinweisDialog aus ebenen | Operation | 0,5 | 0,5 | 0,5 | autonom |

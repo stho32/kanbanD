@@ -736,12 +736,18 @@ function vLegende() {
 }
 /** Der Dialog, in dem der Hinweis steht: der oberste offene modale Dialog mit Fuß (R00112, ADR-0017 Regel 5); null heißt unten über allem. */
 function hinweisDialog() {
+  const oberster = ebenen(S.ui).filter(ebene => ebene.modal).at(-1);
+  if (!oberster || !dialogMitHinweis(oberster.art)) return null;
+  return oberster.art;
+}
+
+/** Dialoge mit Hinweis-Anker, sobald ihr Inhalt gezeichnet ist; Zuweisen und Hilfe haben keinen. */
+function dialogMitHinweis(art) {
   const u = S.ui;
-  if (u.zuweisen || u.hilfe) return null;
-  if (u.offenDefekt && u.defektDatei) return 'defekt';
-  if (u.neu) return 'neu';
-  if (u.offen && !u.setup && aufgabe(u.offen)) return 'fenster';
-  return null;
+  if (art === 'defekt') return !!u.defektDatei;
+  if (art === 'neu') return true;
+  if (art === 'fenster') return !!aufgabe(u.offen);
+  return false;
 }
 
 /** Anker des Hinweises zwischen Körper und Fuß des Dialogs `art` — leer, wenn der Hinweis nicht dort steht. */
