@@ -393,9 +393,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bahn-neu{flex:0 0 210px;display:flex;flex-direction:column;border-right:1px dashed var(--kd-line-strong);background:var(--kd-bg)}
 .bahn-neu .bk-ed{background:none;border-top-color:transparent;border-bottom:1px dashed var(--kd-line-strong)}
 .einr{flex:0 0 400px;border-left:1px solid var(--kd-line-strong);background:var(--kd-surface);display:flex;flex-direction:column;min-height:0;overflow:auto}
-.einr h3{flex:none;margin:0;height:30px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);border-top:1px solid var(--kd-line-strong)}
-.einr h3:first-child{border-top:0}
-.einr h3 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
+.einr-kopf{flex:none;margin:0;height:30px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);border-top:1px solid var(--kd-line-strong)}
+.einr-kopf:first-child{border-top:0}
+.einr-kopf .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
 /* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß */
 .klz{--klz-vorn:max(30px,var(--kd-ziel));--klz-hinten:max(24px,var(--kd-ziel));display:grid;grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px var(--klz-hinten);align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}
@@ -689,7 +689,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
   .pt.liste .btn{white-space:normal;overflow-wrap:anywhere}
 }
 .ziele{flex:none;width:210px;position:sticky;top:0;border:1px solid var(--kd-line);background:var(--kd-surface);padding:8px}
-.ziele h4{margin:0 0 6px;font:600 10px/1.4 var(--kd-mono);letter-spacing:.06em;color:var(--kd-muted)}
+.ziele-kopf{margin:0 0 6px;font:600 10px/1.4 var(--kd-mono);letter-spacing:.06em;color:var(--kd-muted)}
 .ziel-board{margin-bottom:8px}.ziel-board b{display:block;font-size:12px;margin-bottom:3px}
 .ziel{display:flex;justify-content:space-between;padding:5px 8px;margin-bottom:3px;border:1px dashed var(--kd-line-strong);font-size:12px;color:var(--kd-text)}
 .ziel .mono{color:var(--kd-muted)}

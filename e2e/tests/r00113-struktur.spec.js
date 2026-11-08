@@ -129,8 +129,6 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   }
 
   test.describe('Abschnitte', () => {
-    test.fail(true, 'Karte #13: Berichte, Einrichten und Aufgabenliste haben noch keine Abschnitte zweiter Ebene');
-
     test('US-4: keine Route und kein Zustand springt eine Überschriftenebene', async ({ page }) => {
       expect(await ueberAlleSeiten(page, ebenenPruefen)).toEqual([]);
     });
