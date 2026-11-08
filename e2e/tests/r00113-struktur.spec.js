@@ -150,4 +150,65 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       expect(verstoesse).toEqual([]);
     });
   });
+
+  test.describe('Karten', () => {
+    test.fail(true, 'Karte #13: Spalten sind noch keine Liste, Karten haben noch keinen Namen');
+
+    const spalte = (page, name) => page.locator(`#main section.bahn[data-col="${name}"]`);
+
+    test('US-5: Karte #1 wird als „#1 eins, Fehler“ angesagt', async ({ page }) => {
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      const liste = spalte(page, 'Zu erledigen').getByRole('list');
+      await expect(liste).toHaveCount(1);
+      const eintraege = liste.getByRole('listitem');
+      await expect(eintraege).toHaveCount(3);
+      const namen = [];
+      for (const eintrag of await eintraege.all()) namen.push(await eintrag.evaluate(e => e.getAttribute('aria-label')));
+      expect(namen).toEqual(['#1 eins, Fehler', '#2 zwei, Funktion', '#3 Ölwechsel & <Prüfung>']);
+      const eins = liste.getByRole('listitem', { name: '#1 eins, Fehler', exact: true });
+      await expect(eins.getByRole('button', { name: /Neue E-Mail/ })).toHaveCount(1);
+      await expect(eins.getByRole('link').first()).toHaveAccessibleName(/\S/);
+      expect(await eins.ariaSnapshot()).toContain('fällig 28.10.2026');
+      expect(namen[0]).not.toMatch(/\d{1,2}\.\d{1,2}\.|bug/);
+    });
+
+    test('US-6: die Auswahl wird mit angesagt, ohne aria-selected', async ({ page }) => {
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      const eins = page.locator('.ka[data-id="1"]');
+      await eins.click({ modifiers: ['ControlOrMeta'] });
+      await expect(eins).toHaveClass(/gewaehlt/);
+      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, ausgewählt');
+      await expect(page.locator('#main [aria-selected]')).toHaveCount(0);
+      await eins.click({ modifiers: ['ControlOrMeta'] });
+      await expect(eins).not.toHaveClass(/gewaehlt/);
+      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler');
+    });
+
+    test('US-7: defekte und fehlende Karten haben einen Namen', async ({ page }) => {
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      const liste = spalte(page, 'In Arbeit').getByRole('list');
+      await expect(liste.getByRole('listitem', { name: '#4 Datei defekt, nur lesbar', exact: true })).toHaveCount(1);
+      await expect(liste.getByRole('listitem', { name: '#9 Aufgabe fehlt', exact: true })).toHaveCount(1);
+    });
+
+    test('US-8: der Name folgt einer Änderung durch einen Agenten, ohne Neuladen', async ({ page }) => {
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      await page.evaluate(() => { window.ohneNeuladen = true; });
+      const antwort = await page.request.patch(k.adresse + 'api/aufgaben/2', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { titel: 'umbenannt' } });
+      expect(antwort.ok()).toBe(true);
+      await expect.poll(() => page.evaluate(() => window.kdTest.gezeichnet())).toBe(true);
+      const zwei = spalte(page, 'Zu erledigen').getByRole('listitem', { name: '#2 umbenannt, Funktion', exact: true });
+      await expect(zwei).toHaveCount(1);
+      await expect(zwei.locator('.t')).toHaveText('umbenannt');
+      expect(await page.evaluate(() => window.ohneNeuladen)).toBe(true);
+    });
+  });
 });
