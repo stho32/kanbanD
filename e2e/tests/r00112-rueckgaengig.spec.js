@@ -302,11 +302,14 @@ test.describe('R00112 Teilaufgabe im Fenster', () => {
     const knopf = imFenster(page).getByRole('button', { name: 'rückgängig' });
     for (let i = 0; i < 80 && !(await knopf.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
     await expect(knopf).toBeFocused();
+    const commitsVorher = commits(k);
     await page.keyboard.press('Enter');
     await expect(zeilen(page)).toHaveText(['a', 'b', 'c'].map(t => new RegExp(`^✓?${t}✕`)));
     await expect(zeilen(page).nth(1)).toHaveClass(/\bok\b/);
     await expect(imFenster(page)).toHaveText('Teilaufgabe „b“ wiederhergestellt');
     expect(checkliste()).toEqual(['- [ ] a', '- [x] b', '- [ ] c']);
+    // Genau ein Commit: die Gegenaktion legt b in einem Schritt mit Haken an die Stelle (ADR-0017 Regel 4)
+    expect(commits(k)).toBe(commitsVorher + 1);
   });
 
   test('US-6: neben einem Agenten und doppelt geklickt steht b einmal, d bleibt (#12)', async ({ page }) => {
@@ -448,6 +451,41 @@ test.describe('R00112 Hinweis im obersten Fenster', () => {
     expect(await ziel(h.l - 4, mitte)).toBe('koerper');
     expect(await ziel(h.r + 4, mitte)).toBe('koerper');
     expect(await ziel((h.l + h.r) / 2, h.o - 4)).toBe('koerper');
+  });
+
+  test('„Anlegen und weitere“ in „Neue Aufgabe“: der Hinweis steht in diesem Dialog, nicht unten (#12)', async ({ page }) => {
+    k = await kanbanStarten(einrichten(grundbestand()));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
+    await page.keyboard.press('n');
+    const neu = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await neu.waitFor();
+    await page.locator('#neu-titel').fill('vier');
+    await neu.getByRole('button', { name: 'Anlegen und weitere' }).click();
+    await expect(page.locator('[aria-modal="true"] .toast[role="status"]')).toContainText('#4 angelegt');
+    await expect(page.locator('#neu-fenster .hinweis-anker .toast')).toHaveCount(1);
+    await expect(hinweis(page)).toHaveCount(1);
+  });
+
+  test('in „Defekte Datei“: ein Hinweis von vorher steht in diesem Dialog, nicht unten (#12)', async ({ page }) => {
+    k = await kanbanStarten(einrichten({
+      ...grundbestand(),
+      'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #9\n\n## In Arbeit\n\n## Erledigt\n',
+      'aufgaben/0009-kaputt.md': '---\nid: 9\n<<<<<<< HEAD\ntitle: neun\n=======\ntitle: neun anders\n>>>>>>> zweig\n---\n',
+    }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
+    await page.keyboard.press('n');
+    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor();
+    await page.locator('#neu-titel').fill('vier');
+    await page.keyboard.press('Enter');
+    await expect(hinweis(page)).toContainText('angelegt');
+    await page.locator('.ka[data-id="9"]').click();
+    await expect(page.getByRole('dialog', { name: 'Defekte Datei #9' })).toBeVisible();
+    await expect(page.locator('#defekt-fenster .hinweis-anker .toast[role="status"]')).toContainText('angelegt');
+    await expect(hinweis(page)).toHaveCount(1);
   });
 
   test('der Rand --kd-hinweis-rand gilt für jeden Hinweis, ohne Maßänderung', async ({ page }) => {

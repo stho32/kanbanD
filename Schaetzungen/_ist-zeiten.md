@@ -470,3 +470,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0471 Rückgängig-Art anhang | Operation | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0474 Fix: Fokus nach Entfernen und Rückgängig (FA 8) | Operation | 2-3 | 1,5 | 1,5 | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0475 Ablehnung nennt die Zeit wie das Fenster | Operation | 0,5 | 0,25 | 0,25 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0476 Testlücken US-5 und Hinweis-Anker | Operation | 0,5 | 0,5 | 0,5 | autonom |
