@@ -3,7 +3,7 @@ id: D00005
 name: Live-Ereignis
 status: Aktiv
 sprache: de
-verwandt: [D00001, D00006]
+verwandt: [D00001, D00006, D00008]
 gebiet: Live-Aktualisierung
 synonyme: [Ereignis]
 code: [Ereignis, ereignis, /api/ereignisse]
@@ -30,6 +30,7 @@ Die Durchsage „hier hat sich gerade etwas geändert“, die jedes offene Brows
 - entsteht bei jeder Änderung im Ordner, egal ob über Oberfläche, API, Editor oder `git pull` (R00007:11)
 - jedes Live-Ereignis mit geändertem Stand zeichnet die Oberfläche neu, auch das [Aufgabenfenster](D00001-aufgabenfenster.md)
 - darf die [Leseposition](D00006-leseposition.md) nicht verschieben (R00103)
+- entsteht auch bei jedem [Rückgängig](D00008-rueckgaengig.md), denn es schreibt wie jede Aktion einen Commit
 
 ## Wechselwirkungen
 

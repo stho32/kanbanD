@@ -3,7 +3,7 @@ id: D00004
 name: Schmales Layout
 status: Aktiv
 sprache: de
-verwandt: [D00001, D00002, D00003, D00006]
+verwandt: [D00001, D00002, D00003, D00006, D00007]
 gebiet: Oberfläche
 synonyme: [Handy-Layout, schmal]
 code: ["@media (max-width:640px)"]
@@ -36,11 +36,13 @@ So sieht kanbanD auf dem Handy aus: alles untereinander statt nebeneinander.
 
 - [Aufgabenfenster](D00001-aufgabenfenster.md) füllt den Bildschirm und wird als Ganzes gescrollt
 - [Leseposition](D00006-leseposition.md) hängt im Fenster am gemeinsamen Fensterinhalt (`.mod-body`), nicht an Hauptbereich und Seitenleiste
+- [Hinweis](D00007-hinweis.md) bricht um, statt quer zu scrollen; „rückgängig“ bleibt ganz im Bild (R00112 AK 11)
 
 ## Vorkommen in Anforderungen
 
 - [R00077](../../Anforderungen/R00077-responsive-fuer-tablet-und-handy.md) — Stufe „Handy (bis 640 px)“ (Zeilen 14–18)
 - [R00103](../../Anforderungen/R00103-behebung-aufgabenfenster-springt-bei-live-aenderungen.md) — Begriffe (Zeile 19), Beispiel schmal 600 × 700 (Zeile 95)
+- [R00112](../../Anforderungen/R00112-entfernen-rueckgaengig-und-sichtbare-entfernen-knoepfe.md) — Hinweis bei 320 × 640 (AK 11)
 
 ## Notizen / Quellen
 

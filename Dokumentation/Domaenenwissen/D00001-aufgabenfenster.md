@@ -3,7 +3,7 @@ id: D00001
 name: Aufgabenfenster
 status: Aktiv
 sprache: de
-verwandt: [D00002, D00003, D00004, D00005, D00006]
+verwandt: [D00002, D00003, D00004, D00005, D00006, D00007, D00008]
 gebiet: Oberfläche/Aufgabenfenster
 synonyme: [Fenster]
 code: [vFenster, "#over", .mod, .mod-body, S.ui.offen]
@@ -25,6 +25,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 - [Hauptbereich](D00002-hauptbereich.md): Titel, Beschreibung, Abschnitte (Kommentare, Teilaufgaben, Anhänge, Durchläufe)
 - [Seitenleiste](D00003-seitenleiste.md): Spalte, Klasse, Zuständige, Labels, Fälligkeit, laufende Timer, Zeiten
 - Fuß: Speicherhinweis („gespeichert hh:mm“) und Fehlermeldung
+- Hinweis-Anker zwischen Körper und Fuß, in dem der [Hinweis](D00007-hinweis.md) steht, solange das Fenster oberster Dialog ist (R00112 FA 18)
 - in der Ansicht „Datei“ nur der Dateitext, ohne Seitenleiste
 
 ## Beziehungen
@@ -34,12 +35,14 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 - im [schmalen Layout](D00004-schmales-layout.md) füllt es den Bildschirm, die Seitenleiste steht unter dem Hauptbereich
 - wird bei jedem [Live-Ereignis](D00005-live-ereignis.md) mit geändertem Stand neu gezeichnet
 - hält je offener Aufgabe eine eigene [Leseposition](D00006-leseposition.md)
+- zeigt höchstens einen [Hinweis](D00007-hinweis.md), als Überlagerung 8 px über dem Fuß
 
 ## Wechselwirkungen
 
 - [Live-Ereignis](D00005-live-ereignis.md) zeichnet das Aufgabenfenster neu (heute mit Verlust von Leseposition und Fokus, R00103)
 - [Leseposition](D00006-leseposition.md) wird im Aufgabenfenster nur gehalten, solange dieselbe Aufgabe offen bleibt
 - [Schmales Layout](D00004-schmales-layout.md) ordnet Hauptbereich und Seitenleiste untereinander an
+- [Rückgängig](D00008-rueckgaengig.md) gilt auch bei offenem Fenster; seine Ablehnung steht im Fuß („nicht rückgängig: …“, R00112 FA 4)
 
 ## Vorkommen in Anforderungen
 
@@ -47,6 +50,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 - [R00077](../../Anforderungen/R00077-responsive-fuer-tablet-und-handy.md) — füllt auf Tablet und Handy den Bildschirm (Zeilen 13, 17, 33)
 - [R00063](../../Anforderungen/R00063-behebung-scrollposition-beim-kontextmenue.md) — ausdrücklich nicht geprüft (Zeile 72)
 - [R00103](../../Anforderungen/R00103-behebung-aufgabenfenster-springt-bei-live-aenderungen.md) — Leseposition und Eingabe im Aufgabenfenster bei Live-Ereignissen
+- [R00112](../../Anforderungen/R00112-entfernen-rueckgaengig-und-sichtbare-entfernen-knoepfe.md) — Hinweis mit „rückgängig“ im Fenster, Ablehnung im Fuß (FA 4, 18; AK 7)
 
 ## Notizen / Quellen
 
