@@ -2,7 +2,8 @@
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
-const { isoFundstellen, ausnahmenAbgleichen } = require('./kultur-hilfen');
+const { isoFundstellen, beschriftungenPruefen, ausnahmenAbgleichen } = require('./kultur-hilfen');
+const { FELDER } = require('../../web/kultur.js');
 const { ansichtenDerAnwendung } = require('./ansichten');
 
 // „Heute“ ist der Tag des Laufs in Europe/Berlin (playwright.config.js); die erwarteten Texte rechnet der Test aus ihm.
@@ -353,36 +354,66 @@ test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
   }
 });
 
-test.describe('US-7, US-8: Feldbeschriftungen (B0436, B0437 warten auf PO Z. 148)', () => {
-  test.fail('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als Hilfstext', async ({ page }) => {
+test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel darunter als Hilfstext (B0436, B0437)', () => {
+  const verstoesse = felder => felder.flatMap(f => f.verstoesse.map(v => `${f.beschriftung}: ${v}`));
+  const beschriftungen = felder => felder.map(f => f.beschriftung);
+  test('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als eigenes Element unter der Beschriftung', async ({ page }) => {
     await starten(page);
-    await fensterOeffnen(page, 1);
-    // erst wenn die Felder stehen, ist eine leere Liste ein Befund und kein zu früher Blick
-    await page.locator('.felder .k').first().waitFor();
-    const beschriftungen = () => page.locator('.felder .k').allTextContents();
-    const SCHLUESSEL = ['column', 'class', 'origins', 'assignees', 'due', 'thin air'];
-    expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
-    expect(await beschriftungen()).toEqual(expect.arrayContaining(['Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
-    await expect(page.getByRole('group', { name: 'Zuständig' })).toBeVisible();
+    const aufgabe = await fensterOeffnen(page, 1);
+    // erst wenn die Felder stehen, ist die Probe ein Befund und kein zu früher Blick
+    await aufgabe.locator('.felder .k').first().waitFor();
+    const imFenster = await beschriftungenPruefen(aufgabe, FELDER);
+    expect(verstoesse(imFenster)).toEqual([]);
+    expect(beschriftungen(imFenster)).toEqual(expect.arrayContaining(['Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
+    await expect(aufgabe.getByRole('group', { name: 'Zuständig', exact: true })).toBeVisible();
+    // die vorhandenen Namen bleiben (FA 12)
+    for (const name of ['Spalte', 'Klasse', 'Labels', 'Fälligkeit', 'Neue Herkunft']) await expect(aufgabe.getByLabel(name, { exact: true }), name).toHaveCount(1);
     await schliessen(page);
     await page.keyboard.press('n');
-    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).locator('.felder .k').first().waitFor();
-    expect((await beschriftungen()).filter(t => SCHLUESSEL.includes(t.trim()))).toEqual([]);
-    expect(await beschriftungen()).toEqual(expect.arrayContaining(['Board', 'Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
+    const neu = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await neu.locator('.felder .k').first().waitFor();
+    const inNeu = await beschriftungenPruefen(neu, FELDER);
+    expect(verstoesse(inNeu)).toEqual([]);
+    expect(beschriftungen(inNeu)).toEqual(expect.arrayContaining(['Board', 'Spalte', 'Klasse', 'Herkunft', 'Zuständig', 'Labels', 'Fällig']));
+    await expect(neu.getByRole('group', { name: 'Zuständig', exact: true })).toBeVisible();
+    for (const name of ['Board', 'Spalte', 'Herkunft der neuen Aufgabe']) await expect(neu.getByLabel(name, { exact: true }), name).toHaveCount(1);
   });
 
-  test.fail('US-8: Wirkungen, Phasen, Reservierung, WBS, Anforderungen und erster Start deutsch beschriftet', async ({ page }) => {
+  test.fail('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel darunter', async ({ page }) => {
     await starten(page);
-    await fensterOeffnen(page, 1);
-    await page.locator('.felder .k').first().waitFor();
-    expect(await page.locator('.felder .k').allTextContents()).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
+    const eins = await fensterOeffnen(page, 1);
+    await eins.locator('.felder .k').first().waitFor();
+    const inEins = await beschriftungenPruefen(eins, FELDER);
+    expect(verstoesse(inEins)).toEqual([]);
+    expect(beschriftungen(inEins)).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
     await schliessen(page);
-    await fensterOeffnen(page, 2);
-    await page.locator('.felder .k').first().waitFor();
-    expect(await page.locator('.felder .k').allTextContents()).toContain('Reservierung');
+    const zwei = await fensterOeffnen(page, 2);
+    await zwei.locator('#reservierung').waitFor();
+    const inZwei = await beschriftungenPruefen(zwei, FELDER);
+    expect(verstoesse(inZwei)).toEqual([]);
+    expect(beschriftungen(inZwei)).toContain('Reservierung');
+    await schliessen(page);
     await page.goto(k.adresse + '#/einrichten');
-    await expect(page.locator('.k', { hasText: /^WBS$/ }).first()).toBeVisible();
-    await expect(page.locator('.k', { hasText: /^Anforderungen$/ }).first()).toBeVisible();
+    const einrichten = page.locator('.einrichten');
+    await einrichten.locator('.felder .k').first().waitFor();
+    const inEinrichten = await beschriftungenPruefen(einrichten, FELDER, { namen: false });
+    expect(verstoesse(inEinrichten)).toEqual([]);
+    expect(beschriftungen(inEinrichten)).toEqual(expect.arrayContaining(['WBS', 'Anforderungen']));
+    // die Abschnittsköpfe bleiben beim Hausmuster (ADR-0013 N1 Punkt 3)
+    await expect(einrichten.getByRole('heading', { name: 'QUELLEN sources:' })).toBeVisible();
+  });
+
+  test.fail('US-8: erster Start in leerer Instanz — Ich, Agenten, Board, Spalten, WBS, Anforderungen mit dem Schlüssel der Datei', async ({ page }) => {
+    k = await kanbanStarten();
+    await page.goto(k.adresse);
+    await page.getByRole('button', { name: 'Einrichten und committen' }).waitFor();
+    const start = page.locator('.first-l');
+    const felder = await beschriftungenPruefen(start, FELDER, { namen: false });
+    expect(verstoesse(felder)).toEqual([]);
+    expect(beschriftungen(felder)).toEqual(['Ich', 'Agenten', 'Board', 'Spalten', 'WBS', 'Anforderungen']);
+    expect(await start.locator('.felder .sl').allTextContents()).toEqual(['ich', 'agents', 'board', 'spalten', 'wbs', 'requirements']);
+    // die Vorschau zeigt weiter die Datei
+    await expect(page.locator('#vorschau-einstellungen')).toContainText('requirements:');
   });
 });
 
