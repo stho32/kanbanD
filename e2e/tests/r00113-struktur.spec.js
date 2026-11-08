@@ -72,10 +72,29 @@ const OHNE_AKTUELL = [
 ];
 
 let laufende = [];
+let seitenfehler = [];
 test.afterEach(async () => {
   for (const aufraeumen of laufende.reverse()) await aufraeumen();
   laufende = [];
+  const fehler = seitenfehler.filter(f => !erlaubteFehler.some(muster => muster.test(f)));
+  seitenfehler = [];
+  erlaubteFehler = [];
+  expect(fehler, 'Konsole und Netz der Seite').toEqual([]);
 });
+
+/** Das defekte Board antwortet beim Laden mit 423 (Datei defekt, nur lesbar) — die vorgesehene Antwort, kein Befund. */
+let erlaubteFehler = [];
+const DEFEKTES_BOARD_LADEN = [/^Netz: 423 .*\/api\/boards\/entwicklung\b/, /^Konsole: Failed to load resource: .* 423 \(Locked\)$/];
+
+/** Ein Fehler in Konsole oder Netz ist ein Befund (Leitfaden JavaScript, E2E); gesammelt je Test, geprüft in afterEach. */
+const beobachtet = new WeakSet();
+function seiteBeobachten(page) {
+  if (beobachtet.has(page)) return;
+  beobachtet.add(page);
+  page.on('console', m => { if (m.type() === 'error') seitenfehler.push(`Konsole: ${m.text()}`); });
+  page.on('pageerror', e => seitenfehler.push(`Ausnahme: ${e.message}`));
+  page.on('response', r => { if (r.status() >= 400) seitenfehler.push(`Netz: ${r.status()} ${r.url()}`); });
+}
 
 /** kanbanD mit dem Grundbestand der User Story; `mehr` überschreibt Dateien. */
 async function starten(page, mehr = {}) {
@@ -83,6 +102,7 @@ async function starten(page, mehr = {}) {
   laufende.push(async () => arbeit.aufraeumen());
   const k = await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr }));
   laufende.push(() => k.stoppen());
+  seiteBeobachten(page);
   await alsPerson(page, 'st');
   return k;
 }
@@ -104,6 +124,7 @@ async function ueberAlleSeiten(page, pruefen) {
 
   const defekt = await starten(page, { 'boards/entwicklung.md': '# Entwicklung\n- #1\n## A\n', 'boards/test.md': '# Test\n\n## Bereit\n' });
   await page.goto(defekt.adresse + '#/board/entwicklung');
+  erlaubteFehler.push(...DEFEKTES_BOARD_LADEN);
   await page.locator('.defektflaeche').waitFor();
   verstoesse.push(...await pruefen(page, DEFEKTES_BOARD));
 
