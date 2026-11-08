@@ -995,7 +995,15 @@ async function act(a, arg, wert) {
         warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
         return;
       }
-      case 'teil-weg': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`); return;
+      case 'teil-weg': {
+        if (ichNoetig()) break;
+        // Gemerkt vor dem Senden aus dem gezeigten Stand (R00112 AK 1): Text, Haken und Stelle
+        const t = aufgabe(u.offen).teilaufgaben[Number(arg)];
+        const undo = { art: 'teilaufgabe', nummer: u.offen, text: t.text, erledigt: t.erledigt, position: Number(arg) };
+        await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`);
+        if (!u.fensterFehler) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, at: Date.now() };
+        break;
+      }
       case 'teil-neu': {
         const text = (wert || '').trim();
         if (!text || ichNoetig()) break;
@@ -1058,6 +1066,10 @@ async function act(a, arg, wert) {
         if (z.art === 'ziele') return zieleSenden(z.ziele, null, `${z.ziele.length} Karten zurückgelegt`);
         if (z.art === 'legen') {
           await rueckgaengigSenden('POST', `/api/boards/${encodeURIComponent(z.slug)}/aufgaben`, { nummer: z.nummer, spalte: z.spalte, index: z.index }, `#${z.nummer} wieder auf „${z.titel}“ · Spalte ${z.spalte}`);
+          break;
+        }
+        if (z.art === 'teilaufgabe') {
+          await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/teilaufgaben`, { text: z.text, position: z.position, erledigt: z.erledigt }, `Teilaufgabe „${z.text}“ wiederhergestellt`);
           break;
         }
         if (z.art === 'zeit') {
