@@ -23,4 +23,4 @@
   const kartenNameFehlt = nummer => `#${nummer} Aufgabe fehlt`;
 
   Object.assign(ziel, { kartenName, kartenNameDefekt, kartenNameFehlt });
-})(typeof module !== 'undefined' ? module.exports : window);
+})((typeof module !== 'undefined' && module.exports) || window);

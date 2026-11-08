@@ -40,4 +40,4 @@
   }
 
   Object.assign(ziel, { BERICHTSNAMEN, seitenNameVon, seitenUeberschrift });
-})(typeof module !== 'undefined' ? module.exports : window);
+})((typeof module !== 'undefined' && module.exports) || window);

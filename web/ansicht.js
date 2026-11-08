@@ -72,7 +72,10 @@ function kopfElemente() {
 const DREI_PUNKTE = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>';
 
 /** Die aktuelle Seite: Klasse an fürs Auge, aria-current für die Hilfstechnik — immer unter derselben Bedingung (R00113, ADR-0018 Regel 5). */
-const aktuellAttribut = istAktuell => (istAktuell ? ' aria-current="page"' : '');
+function aktuellAttribut(istAktuell) {
+  if (istAktuell) return ' aria-current="page"';
+  return '';
+}
 
 function vNavigation() {
   const u = S.ui;

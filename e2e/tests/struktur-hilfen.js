@@ -126,7 +126,9 @@ async function landmarkenPruefen(page, { ansicht, ohneNavigation }) {
     if (n !== 1) verstoesse.push(`${n} × ${rolle} in ${ansicht}`);
   }
   const navigation = await page.getByRole('navigation').count();
-  if (navigation > (ohneNavigation ? 0 : 1)) verstoesse.push(`${navigation} × navigation in ${ansicht}`);
+  let hoechstens = 1;
+  if (ohneNavigation) hoechstens = 0;
+  if (navigation > hoechstens) verstoesse.push(`${navigation} × navigation in ${ansicht}`);
   return verstoesse;
 }
 
