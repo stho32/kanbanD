@@ -476,3 +476,4 @@ Nie vom User erfragen.
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0479 Ternary in anhangZuruecklegen | Operation | 0,25 | 0,25 | 0,25 | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0480 hinweisDialog aus ebenen | Operation | 0,5 | 0,5 | 0,5 | autonom |
 | 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0481 Ablehnung unter höherer Ebene | Operation | 0,5 | 0,5 | 0,5 | autonom |
+| 2026-11-08 | R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe | B0482 Probe Fokus unter dem Hinweis | Operation | 0,5 | 0,5 | 0,5 | autonom |

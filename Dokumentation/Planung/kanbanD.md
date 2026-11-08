@@ -672,6 +672,7 @@ zuletzt: 2026-11-08
 | B0479 | Bubble | F0065 | Hinweistext des Anhang-Rückgängig ohne Ternary (J11) | gruen | Test gruen | anhangWiederhergestellt(gemerkt, vergeben) mit benannter Bedingung und if → r00112 Anhänge (auch „als plan-2.pdf“) grün | 0,25 |  | B0478 |  | code-reviewer zu Karte #12 (SOLLTE 5) |
 | B0480 | Bubble | F0065 | hinweisDialog aus ebenen(S.ui) ableiten | gruen | Test gruen | oberster modaler Dialog der Ebenen, Anker nur in Fenster, Neu, Defekt mit gezeichnetem Inhalt → 297 Einheitstests und r00112 (41) grün | 0,5 |  | B0479 |  | code-reviewer zu Karte #12 (SOLLTE 7) |
 | B0481 | Bubble | F0065 | Ablehnung des Rückgängig unter einer höheren Ebene sichtbar | gruen | Test gruen | Fuß nur, wenn das Fenster oberster Dialog ist, sonst Hinweis oben → „US-7 Gegenfall unter der Hilfe“ rot (Meldung im verdeckten Fuß), dann grün | 0,5 |  | B0480 |  | code-reviewer zu Karte #12 (SOLLTE 8) |
+| B0482 | Bubble | F0065 | Probe: Fokus nie unter dem Hinweis (320 Touch, 414) | gruen | Test gruen | ✕ der Zeit, Tab bis „Spalte“, kein Fokus-Rechteck schneidet .toast, bei einer und zwei Zeiten → grün mit scroll-padding; Mutant ohne scroll-padding bei 414 rot | 0,5 |  | B0481 |  | code-reviewer/ux zu Karte #12 (SOLLTE 1) |
 
 ## Offene Fragen
 

@@ -770,3 +770,60 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
     await expect(page.getByLabel('Anhang plan.pdf entfernen')).toBeFocused();
   });
 });
+
+// ux zu Karte #12: Der Hinweis im Fenster überdeckt den unteren Rand des Körpers; der Fokus darf nie darunter liegen
+// (scroll-padding-bottom aus --kd-hinweis-h, PO Z. 162).
+async function fokusNieUnterDemHinweis(page, k) {
+  await page.goto(k.adresse);
+  await page.locator('.ka[data-id="1"] .id').click();
+  await expect(page.locator('.zt')).toContainText('09:00–10:00');
+  await page.getByLabel('Zeit 1 löschen').focus();
+  await page.keyboard.press('Enter');
+  const hinweis = page.locator('[aria-modal="true"] .toast[role="status"]');
+  await expect(hinweis).toContainText('gelöscht');
+  const verdeckt = [];
+  for (let i = 0; i < 60; i++) {
+    const lage = await page.evaluate(() => {
+      const e = document.activeElement;
+      const t = document.querySelector('[aria-modal="true"] .toast');
+      const f = e.getBoundingClientRect();
+      const h = t.getBoundingClientRect();
+      const schneidet = f.left < h.right && f.right > h.left && f.top < h.bottom && f.bottom > h.top;
+      return { label: e.getAttribute('aria-label') || e.id || e.textContent.trim().slice(0, 20), schneidet, imHinweis: t.contains(e) };
+    });
+    if (lage.schneidet && !lage.imHinweis) verdeckt.push(lage.label);
+    if (lage.label === 'Spalte') break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(page.getByLabel('Spalte')).toBeFocused();
+  await expect(hinweis).toBeVisible();
+  expect(verdeckt).toEqual([]);
+}
+
+test.describe('R00112 Fokus nie unter dem Hinweis, 320 px Touch', () => {
+  let k;
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  test.afterEach(() => k.stoppen());
+
+  for (const [bestand, zeiten] of [[mitZeit, 'einer Zeit'], [mitZweiZeiten, 'zwei Zeiten']]) {
+    test(`vom ✕ der Zeit bis „Spalte“ schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
+      k = await kanbanStarten(einrichten(bestand()));
+      await alsPerson(page, 'st');
+      await fokusNieUnterDemHinweis(page, k);
+    });
+  }
+});
+
+test.describe('R00112 Fokus nie unter dem Hinweis, 414 px', () => {
+  let k;
+  test.use({ viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true });
+  test.afterEach(() => k.stoppen());
+
+  for (const [bestand, zeiten] of [[mitZeit, 'einer Zeit'], [mitZweiZeiten, 'zwei Zeiten']]) {
+    test(`vom ✕ der Zeit bis „Spalte“ schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
+      k = await kanbanStarten(einrichten(bestand()));
+      await alsPerson(page, 'st');
+      await fokusNieUnterDemHinweis(page, k);
+    });
+  }
+});
