@@ -3,7 +3,7 @@ id: X00004
 name: Kultur der Anzeige
 art: Aspekt
 geltung: Makro
-befund: Uneinheitlich
+befund: Einheitlich
 hausantwort: "ADR-0013 (Akzeptiert): Daten ISO und englische Schlüssel, Anzeige deutsch über das reine Modul web/kultur.js, Probe über alle Ansichten"
 betrifft:
   - A00009
@@ -13,6 +13,12 @@ quellen:
   - web/berichte.js
   - web/zeiten.js
   - web/eingabe.js
+  - web/kultur.js
+  - web/kd-app.css
+  - e2e/tests/kultur-hilfen.js
+  - e2e/tests/kultur.spec.js
+  - e2e/tests/kultur-selbstprobe.spec.js
+  - e2e/einheit/kultur.test.js
   - Anforderungen/R00000-vision.md
 ---
 
@@ -29,9 +35,31 @@ Soll nach [ADR-0013](../../ADRs/0013-deutsche-anzeige-an-der-zeichengrenze.md) (
 
 ## Systemantwort
 
-Ist 2026-11-06 (kanbanD `d056623`): fünf Datumsformer mit drei Ergebnissen — `deTag` (`web/ansicht.js:617`), `vollDatum` (`web/berichte.js:453`), `deDatum` (`web/ansicht.js:1021`) deutsch; `isoD` (`web/ansicht.js:370`, `web/berichte.js:353`) und `ortszeit` (`web/zeiten.js:11`) ISO und trotzdem zur Anzeige benutzt. ISO sichtbar an Karte `:492`, Schnellvorschau `:164`, Archivleiste `:255`, Durchläufe `:282`, Kommentare `:295`, Zeiten `:312`, Reservierungen `:572`, Personen `:761`, Stundenzettel `:820`, Tabellen Burndown `:874`, Wie lange noch `:1104`, Fever-Chart `:1214` (alle `web/ansicht.js`). Englische Beschriftungen in Aufgabenfenster `:262–270`, `:407`, `:414`, `:566` und „Neue Aufgabe“ `:180–186`; „thin air“ im Chip `:385`. Deutsch mit Schlüssel als Hilfstext schon in „Einrichten“ (`:1307`).
+Ist 2026-11-08 nach #88 (R00109, Merge kanbanD `df3409f`):
+
+- **Datum:** gezeichnet wird nur über das reine Modul `web/kultur.js` (`datumLang` … `achsenMarke`, `:11–50`; geladen in `web/index.html:17`, Unit-Test `e2e/einheit/kultur.test.js`). `deTag` und `deDatum` gibt es nicht mehr; `vollDatum` delegiert an `datumAusMs` (`web/berichte.js:455`); `isoD` (`web/ansicht.js:382`, `web/berichte.js:354`) und `ortszeit` (`web/zeiten.js:11`) rechnen nur noch ISO-Werte als Argument („heute“) bzw. für `kultur.js`. Dass keine Ansicht ISO zeigt, belegt die Probe US-6 mit leerer Ausnahmeliste (`AUSNAHMEN`, `e2e/tests/kultur.spec.js:262`, `:329–331`).
+- **Beschriftungen:** einziger Ort ist `vBeschriftung(schluessel)` (`web/ansicht.js:167–170`): Rahmen `.kb`, darin `.k` mit der Beschriftung aus `FELDER` und darunter `.sl` mit dem Schlüssel der Datei (ADR-0013 N1); Gestaltung `.felder>.kb`, `.kb .k`, `.sl` in `web/kd-app.css:336–339`. Aufgerufen in „Neue Aufgabe“ (`:192–198`), Aufgabenfenster (`:274–282`, `:438`, `:445`, `:598`), „Einrichten“ (`:1324`, `:1335`) und erstem Start (`:1400–1405`); Felder ohne Schlüssel bleiben nacktes `.k`. `FELDER` (`web/kultur.js:53–57`) führt `requirements` → „Anforderungen“, den Schlüssel `anforderungen` nicht mehr.
+- **Knopfgruppen** tragen ihren Namen über `role=group` mit `aria-label` gleich der Beschriftung („Zuständig“ `web/ansicht.js:195`, `:280`; „Wirkungen“ `:438`; „Phasen“ `:445`).
+- **Herkunft:** `thin air` wird nur angezeigt als „ohne Herkunft“ (`OHNE_HERKUNFT`, `herkunftAnzeige`, `web/kultur.js:59–69`; Chip `web/ansicht.js:416`).
+- Abschnittsköpfe in „Einrichten“ bleiben beim Hausmuster `QUELLEN sources:` (`web/ansicht.js:1335`, ADR-0013 N1).
 
 Erkennen von Abweichungen (Durchsetzung):
 
-- Soll: E2E-Probe über alle Ansichten und offenen Fenster (Muster `e2e/tests/ziele.spec.js`): kein sichtbarer Textknoten und kein `title` auf `/\d{4}-\d{2}-\d{2}/` außer Reiter „Datei“ und YAML-Vorschau; je Feld der Formulare enthält der Name die Beschriftung aus `FELDER`. Unit-Test `web/kultur.js`. Ausnahmeliste mit Karte je Eintrag.
-- Heute ohne Probe: `grep -nE "esc\((a|s|x|t|pt)\.(faellig|datum|archiviert)\)|ortszeit\(|isoD\(" web/ansicht.js` — jeder Treffer, der in sichtbaren Text geht, ist ein Befund.
+- Die Probe `e2e/tests/kultur-hilfen.js:53–112` (`imBrowserBeschriften`, `beschriftungenPruefen`) prüft je Feldzeile eines `.felder`-Rasters: keine Beschriftung ist oder enthält einen Schlüssel, unter einer Beschriftung aus `FELDER` steht außerhalb von `.k` ein Element mit genau ihrem Schlüssel, und — nur in Aufgabenfenster und „Neue Aufgabe“ (ADR-0013 Regel 5; Aufrufe `e2e/tests/kultur.spec.js:365`, `:378`, `:391`, `:397`) — der zugängliche Name des Felds enthält die Beschriftung; eine Knopfgruppe ohne `role=group` mit Namen fällt. „Einrichten“ und erster Start prüfen ohne Namen (`namen: false`, `:404`, `:416`).
+- Leerlauf-Wächter: ein Fenster ohne Feldzeile ist ein Verstoß („keine Feldzeile im Fenster“, `e2e/tests/kultur-hilfen.js:67`) — eine leere Liste ist kein Beleg.
+- Selbstproben ohne kanbanD, jede Regel positiv und negativ: `e2e/tests/kultur-selbstprobe.spec.js` (ISO-Probe `:12–53`, Beschriftungsprobe `:55ff`, Leerlauf `(e)` `:94–98`).
+- ISO-Probe über alle Ansichten der gemeinsamen Liste mit Vollständigkeitsabgleich und Ausnahmeliste, die nur schrumpft (`e2e/tests/kultur.spec.js:328–355`, `ausnahmenAbgleichen` `e2e/tests/kultur-hilfen.js:118–125`).
+- Die Lage des Schlüssels unter der Beschriftung misst kein Test (ADR-0013 N1).
+
+## Abweichungen
+
+- keine — US-6 ohne Ausnahme, US-7/US-8 ohne Verstoß (nachgefahren 2026-11-08 auf `ecd762c`).
+
+## Offene Fragen
+
+- keine
+
+## Notizen / Quellen
+
+- Ist 2026-11-06 (kanbanD `d056623`, vor dem Bau): fünf Datumsformer, ISO sichtbar an rund 15 Stellen, englische Beschriftungen in Aufgabenfenster und „Neue Aufgabe“, „thin air“ im Chip; Durchsetzung damals nur per `grep`. Durch den Bau von R00109 (#11, #88) überholt.
+- nachgeführt 2026-11-08 nach #88 (R00109, kanbanD `df3409f`)
