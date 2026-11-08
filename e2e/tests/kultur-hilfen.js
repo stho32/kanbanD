@@ -43,11 +43,15 @@ async function isoFundstellen(page, ansicht) {
 }
 
 /**
- * Läuft im Browser: je Zeile `.k` (Beschriftung) + folgendes `.w` (Feld) eines `.felder`-Rasters im Fenster.
+ * Läuft im Browser: je Zeile eines `.felder`-Rasters im Fenster die Beschriftung `.k` und die folgende Feldzelle.
+ * Eine Zeile ist ein direktes Kind des Rasters, das `.k` ist oder `.k` als direktes Kind trägt (Rahmen `.kb`, ADR-0013 N1);
+ * ein eingebettetes Raster (neue Wirkung) bringt seine eigenen Zeilen. Ist die Beschriftung eine aus FELDER, muss der Rahmen
+ * außerhalb von `.k` ein Element mit genau ihrem Schlüssel tragen; kein Raster mit Zeile ist ein Verstoß.
  * Der Name ist eine Näherung der zugänglichen Namensberechnung, die für kanbanDs Felder reicht:
  * aria-labelledby, aria-label, label for, umschließendes label. Eine Knopfgruppe braucht role=group mit Namen.
  */
-function imBrowserBeschriften(fenster, { schluessel }) {
+function imBrowserBeschriften(fenster, { felder, namen }) {
+  const schluessel = Object.keys(felder);
   const text = el => el.textContent.replace(/\s+/g, ' ').trim();
   function name(feld) {
     const verweis = feld.getAttribute('aria-labelledby');
@@ -58,28 +62,53 @@ function imBrowserBeschriften(fenster, { schluessel }) {
     return '';
   }
   const enthaeltWort = (satz, wort) => satz.split(' ').includes(wort);
-  return [...fenster.querySelectorAll('.felder > .k')].map(k => {
-    const beschriftung = text(k);
-    const zelle = k.nextElementSibling;
+  const istZeile = kind => kind.matches('.k') || kind.querySelector(':scope > .k');
+  const zeilen = [...fenster.querySelectorAll('.felder')].flatMap(raster => [...raster.children].filter(istZeile));
+  if (!zeilen.length) return [{ beschriftung: '', name: null, verstoesse: ['keine Feldzeile im Fenster'] }];
+
+  function schluesselVerstoesse(zeile, beschriftung) {
+    const verlangt = schluessel.find(s => felder[s] === beschriftung);
+    if (!verlangt) return [];
+    const gefunden = [...zeile.querySelectorAll('*')].some(el => !el.closest('.k') && text(el) === verlangt);
+    if (gefunden) return [];
+    return [`Schlüssel ${verlangt} fehlt unter der Beschriftung`];
+  }
+  function benanntesFeld(zelle) {
+    if (!zelle) return null;
+    if (zelle.matches('[role=group]')) return zelle;
+    return zelle.querySelector('[role=group], [role=radiogroup]') || zelle.querySelector('select, textarea, input:not([type=hidden])');
+  }
+  function namensVerstoesse(zelle, beschriftung) {
+    const feld = benanntesFeld(zelle);
+    const knopfgruppe = !feld && zelle && zelle.querySelectorAll('button').length > 1;
+    if (knopfgruppe) return { name: null, verstoesse: ['Knopfgruppe ohne Gruppennamen'] };
+    if (!feld) return { name: null, verstoesse: [] };
+    const n = name(feld);
+    const traegtBeschriftung = n.toLowerCase().includes(beschriftung.toLowerCase());
+    if (traegtBeschriftung) return { name: n, verstoesse: [] };
+    return { name: n, verstoesse: [`Name „${n}“ enthält die Beschriftung nicht`] };
+  }
+
+  return zeilen.map(zeile => {
+    const beschriftung = text(zeile.querySelector(':scope > .k') || zeile);
     const verstoesse = [];
     const istSchluessel = schluessel.includes(beschriftung);
     if (istSchluessel) verstoesse.push(`Beschriftung ist der Schlüssel ${beschriftung}`);
     const enthalten = schluessel.find(s => !istSchluessel && enthaeltWort(beschriftung, s));
     if (enthalten) verstoesse.push(`Beschriftung enthält den Schlüssel ${enthalten}`);
-    const gruppe = zelle && zelle.matches('[role=group]') ? zelle : zelle && zelle.querySelector('[role=group], [role=radiogroup]');
-    const feld = gruppe || (zelle && zelle.querySelector('select, textarea, input:not([type=hidden])'));
-    const knopfgruppe = !feld && zelle && zelle.querySelectorAll('button').length > 1;
-    if (knopfgruppe) verstoesse.push('Knopfgruppe ohne Gruppennamen');
-    if (!feld) return { beschriftung, name: null, verstoesse };
-    const n = name(feld);
-    if (!n.toLowerCase().includes(beschriftung.toLowerCase())) verstoesse.push(`Name „${n}“ enthält die Beschriftung nicht`);
-    return { beschriftung, name: n, verstoesse };
+    verstoesse.push(...schluesselVerstoesse(zeile, beschriftung));
+    if (!namen) return { beschriftung, name: null, verstoesse };
+    const benannt = namensVerstoesse(zeile.nextElementSibling, beschriftung);
+    return { beschriftung, name: benannt.name, verstoesse: [...verstoesse, ...benannt.verstoesse] };
   });
 }
 
-/** Je Feld des Fensters {beschriftung, name, verstoesse}; FELDER liefert die Schlüssel, die keine Beschriftung sein dürfen. */
-async function beschriftungenPruefen(fenster, felder) {
-  return fenster.evaluate(imBrowserBeschriften, { schluessel: Object.keys(felder) });
+/**
+ * Je Feld des Fensters {beschriftung, name, verstoesse}; FELDER liefert die Schlüssel, die keine Beschriftung sein dürfen,
+ * und den Schlüssel unter jeder Beschriftung. `namen: false` prüft nur Beschriftung und Schlüssel (Einrichten, erster Start).
+ */
+async function beschriftungenPruefen(fenster, felder, { namen = true } = {}) {
+  return fenster.evaluate(imBrowserBeschriften, { felder, namen });
 }
 
 /**
