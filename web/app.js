@@ -133,6 +133,22 @@ function spalteKlappen(name, zu) {
 /** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
 const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
+/** Die verborgene Überschrift erster Ebene vor jeder Sicht (R00113, ADR-0018 Regel 2): keine Sicht schreibt selbst eine h1. */
+function vSeitenUeberschrift() {
+  const seite = { ansicht: S.ui.view, ersterStart: Boolean(S.ui.first), boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite() };
+  return `<h1 class="vh">${esc(seitenUeberschrift(seite))}</h1>`;
+}
+function boardTitelDerSeite() {
+  if (S.boardDefekt || !S.board) return '';
+  return S.board.titel;
+}
+function anwendungDerSeite() {
+  const anwendung = gebunden().find(a => a.kuerzel === wbsKuerzel());
+  if (!anwendung) return '';
+  return anwendung.name;
+}
+const vMain = () => vSeitenUeberschrift() + vHaupt();
+
 function vHaupt() {
   if (S.ui.first) return vFirst();
   if (S.ui.setup) return vSetup();
@@ -672,7 +688,7 @@ function render() {
   S.neuzeichnen = true;
   try {
     $('#kopf').innerHTML = vKopf();
-    $('#main').innerHTML = vHaupt();
+    $('#main').innerHTML = vMain();
     $('#main').dataset.sicht = sicht;
     $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
     $('#over').dataset.offen = String(S.ui.offen || '');
@@ -1780,7 +1796,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.herkunftEntwurf = { nummer: S.ui.offen, wert: e.target.value }; return; }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
-    $('#main').innerHTML = vHaupt();
+    $('#main').innerHTML = vMain();
     return;
   }
   const sf = e.target.dataset && e.target.dataset.sf;

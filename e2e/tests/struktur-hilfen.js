@@ -66,8 +66,11 @@ function erwarteterSeitenname(route) {
   return route.ansicht;
 }
 
+/** Was auf einer Route fertig geladen sein muss, bevor geprüft wird; die WBS-Sicht lädt ihre Datei nach. */
+const BEREIT = { 'WBS-Sicht': '.wbs-titel', Board: '.bahn' };
+
 /** Die Routen aus ansichtenDerAnwendung mit ihrem Seitennamen. */
-const ROUTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(r => ({ ...r, seitenname: erwarteterSeitenname(r) }));
+const ROUTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(r => ({ ...r, seitenname: erwarteterSeitenname(r), bereit: BEREIT[r.ansicht] }));
 
 /** Die drei Zustände neben den Routen (US-1); der Test stellt jeden selbst her. */
 const ZUSTAENDE = [
@@ -76,10 +79,18 @@ const ZUSTAENDE = [
   { ansicht: 'defektes Board', seitenname: 'Board' },
 ];
 
-/** Wartet, bis die Seite live verbunden und #main gezeichnet ist. */
-async function gezeichnet(page) {
+/** Die Ansicht (S.ui.view) einer Adresse: „#/berichte/verlauf“ → „berichte/verlauf“, „#/board/entwicklung“ → „board“. */
+function ansichtDerAdresse(adresse) {
+  const teile = adresse.slice('#/'.length).split('/');
+  if (teile[0] === 'berichte') return teile.slice(0, 2).join('/');
+  return teile[0];
+}
+
+/** Wartet, bis die Seite live verbunden und #main für `adresse` gezeichnet ist — ein Hash-Wechsel lädt die Seite nicht neu. */
+async function gezeichnet(page, adresse, bereit) {
   await page.locator('html[data-live="verbunden"]').waitFor({ state: 'attached' });
-  await page.waitForFunction(() => document.querySelector('#main') && document.querySelector('#main').children.length > 0);
+  await page.locator(`#main[data-sicht^="${ansichtDerAdresse(adresse)}/"]`).waitFor({ state: 'attached' });
+  if (bereit) await page.locator('#main ' + bereit).first().waitFor({ state: 'attached' });
 }
 
 /** Verstöße gegen „genau eine Überschrift erster Ebene, verborgen, beginnt mit dem Seitennamen“ auf der offenen Seite. */

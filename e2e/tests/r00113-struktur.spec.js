@@ -31,7 +31,7 @@ async function ueberAlleSeiten(page, pruefen) {
   const k = await starten(page);
   for (const route of ROUTEN) {
     await page.goto(k.adresse + route.adresse);
-    await gezeichnet(page);
+    await gezeichnet(page, route.adresse, route.bereit);
     verstoesse.push(...await pruefen(page, route));
   }
   await page.goto(k.adresse + '#/board/entwicklung');
@@ -57,7 +57,6 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
   test.describe.configure({ timeout: 180000 });
 
   test('US-1: jede Route hat genau eine Seitenüberschrift', async ({ page }) => {
-    test.fail(true, 'Karte #13: noch keine h1 je Route (B0484)');
     expect(await ueberAlleSeiten(page, seitenueberschriftPruefen)).toEqual([]);
   });
 
@@ -66,11 +65,12 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
     await page.setViewportSize({ width: 560, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/aufgaben');
-    await gezeichnet(page);
+    await gezeichnet(page, '#/aufgaben');
     expect(await landmarkenPruefen(page, { ansicht: 'Aufgabenliste bei 560 px', ohneNavigation: true })).toEqual([]);
   });
 
   test('US-1: die Probe prüft jede Verzweigung von vHaupt()', () => {
     expect(vollstaendigkeitPruefen(fs.readFileSync(APP_JS, 'utf8'), ROUTEN.length + ZUSTAENDE.length)).toEqual([]);
   });
+
 });
