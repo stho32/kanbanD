@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #15)
 **Kontext-Anforderung**: [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Karte #15 „Vergessene Timer sichtbar machen“, Label `ux`, WBS-Knoten I0103); zum Zeitpunkt der Entscheidung lag noch keine Anforderung vor, nachgetragen mit dem Nachtrag vom 2026-11-10
 **Erprobt durch**: — (getragen von der Systemantwort: reine Module mit Unit-Test, der Sekundentakt als einziger Zeitgeber, der gebaute Sicherer aus ADR-0007 N1; Belege im Kontext)
-**Nachträge**: 2026-11-10 — N1 Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag N1](#nachtrag-2026-11-10-n1-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114); N2 Erinnerungsschlüssel je Lauf (R00114, Bau), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-erinnerungsschlüssel-je-lauf-r00114-bau); N3 zweite Zeile in Pop und Fensterblock unter 640 px (R00114, Nacharbeit M2 / arev M1), siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N1)*, *(→ N2)* und *(→ N3)* zeigen, wo die Nachträge gelten.
+**Nachträge**: 2026-11-10 — N1 Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag N1](#nachtrag-2026-11-10-n1-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114); N2 Erinnerungsschlüssel je Lauf (R00114, Bau), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-erinnerungsschlüssel-je-lauf-r00114-bau); N3 zweite Zeile in Pop und Fensterblock unter 640 px (R00114, Nacharbeit M2 / arev M1), siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2); N4 Kopfzeilen-Umbruch als Rückfall an jeder Karte (Karte #16 „Kartentext lesbar setzen“, 2026-11-10), siehe [Nachtrag N4](#nachtrag-2026-11-10-n4-kopfzeilen-umbruch-als-rückfall-an-jeder-karte-16). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N1)*, *(→ N2)*, *(→ N3)* und *(→ N4)* zeigen, wo die Nachträge gelten.
 
 ## Kontext
 
@@ -174,12 +174,12 @@ Damit trägt die Karte den vollen Satz **und** die laufende Zahl nicht: beides z
    - Der Chip zeigt im vergessenen Zustand „seit 6 Tagen“ (Kurzform aus `web/kultur.js`, ohne laufende Zahl, auf der Karte ohne `2×`-Präfix).
    - Der zugängliche Name des Listeneintrags trägt weiter voll „Timer läuft seit 6 Tagen“, gestellt vor „ausgewählt“; fehlende Teile fallen samt Komma weg.
    - Kein laufender Sekundentext im vergessenen Chip: der Takt schreibt dort denselben Kurztext fort (`[data-since]` mit `data-fmt="seit"`), sodass der Tageswechsel „seit 6 Tagen“ → „seit 7 Tagen“ ohne Neuzeichnen und ohne Zustandswechsel erscheint. Der Kern von Regel 3 bleibt: ein Zeitgeber, ein Neuzeichnen je Übergang.
-2. **Umbruch der Kopfzeile als Rückfall, nur an der vergessenen Karte.**
+2. **Umbruch der Kopfzeile als Rückfall, nur an der vergessenen Karte.** *(→ N4: an jeder Karte mit Platznot)*
    - Reicht der Platz für einen Titel von 90 px nicht, bricht die Kopfzeile der Karte um: der Chip steht in einer eigenen Zeile unter dem Titel. Umgesetzt an der Karte selbst — `.ka.vergessen .r0 { flex-wrap: wrap }` und `.ka.vergessen .r0 .t { min-width: 90px }` (`web/kd-app.css`) —, nicht an `.lauf`, damit die Form des Chips unverändert bleibt.
    - Bedingung: Der Umbruch greift **nur** an Karten mit vergessenem Timer und nur, wenn die Kopfzeile den Titel sonst unter 90 px drückte; eine Karte ohne Signal und ohne Stopp-Knopf bleibt in einer Zeile.
    - Der Titel bleibt vollständig lesbar, der Chip liegt ganz im Kartenrechteck, die Karte bleibt im Rechteck ihrer Spalte; bei 320, 414 und 1280 px kein Querscrollen, mit einem und mit zwei laufenden Timern.
 3. **Grenze.**
-   - Lageänderungen sind genau **zwei** *(→ N3: der Bau hat eine zweite hinzugefügt; hier stand „die einzige“)*: (1) die neue Zeile in der Kopfzeile der **vergessenen Karte** (dieser Nachtrag), (2) die neue Zeile in **Pop „Läuft gerade“ und Fensterblock** unter 640 px (Nachtrag N3, Nacharbeit M2 der Karte #15). Beide sind Umbruch-Rückfälle, keine neuen Formen. Der Chip behält Form und Maße (Höhe, Polster, Schrift, Punkt); die Farbe bleibt ein Token-Paar nach ADR-0011 (Regel 6), die Tokennamen deutsch, die M3-Rolle als Kommentar dabei (R00114 FA 8).
+   - Lageänderungen sind genau **zwei** *(→ N3: der Bau hat eine zweite hinzugefügt; hier stand „die einzige“)* *(→ N4: drei)*: (1) die neue Zeile in der Kopfzeile der **vergessenen Karte** (dieser Nachtrag), (2) die neue Zeile in **Pop „Läuft gerade“ und Fensterblock** unter 640 px (Nachtrag N3, Nacharbeit M2 der Karte #15). Beide sind Umbruch-Rückfälle, keine neuen Formen. Der Chip behält Form und Maße (Höhe, Polster, Schrift, Punkt); die Farbe bleibt ein Token-Paar nach ADR-0011 (Regel 6), die Tokennamen deutsch, die M3-Rolle als Kommentar dabei (R00114 FA 8).
    - Kein Artboard: Die Freigabe der Gestaltung läuft über Bildschirmfotos auf dem Abnahmezettel (1280/414/320 px, hell und dunkel; Board mit einem und zwei Timern, Aufgabenfenster, Pop, Hinweis, Personen-Seite), nicht über eine Zeichnung (PO Z. 184).
    - **Offen und vorzulegen** *(→ N3: für den Umbruch unter 640 px ist die Frage mit der Entscheidung des Directors geschlossen; offen bleibt allein diese Kopfzeile)*: Der Umbruch verschiebt den Chip in dieser Zeile — also eine *Lage*-Änderung, die PO Z. 184 Satz 1 („Form und Lage bleiben unverändert“) nicht vorsieht, während Satz 3 derselben Zeile verlangt, dass die UX-Vorprüfung so etwas vorlegt. Der planer folgt dem Muss-Kriterium M1, das den Umbruch ausdrücklich als Rückfall nennt, und bittet um Gegenlesen. Bleibt es bei „keine neue Lage“, fällt die 90-px-Grenze und mit ihr M1; dann ist der Weg eine neue ADR, die diese ablöst — nicht eine stille Änderung hier.
    - **Risiko und Früh-Indikator:** Der Umbruch greift auf einer Karte, die gar nicht vergessen ist (Indikator: `.ka` ohne `.vergessen` mit zweizeiliger Kopfzeile), oder die Karte wächst über ihre Spalte (Indikator: `ka.right > flaeche.right` bei 320 px). Beides fängt die E2E-Probe aus R00114 AK 12; die Breitenproben aus ADR-0015 und ADR-0012 laufen mit.
@@ -253,3 +253,22 @@ Die Probe `e2e/tests/r00114-vergessene-timer.spec.js:661` („M2: Aufgabenfenste
 ### Stand der Zeilenverweise
 
 Alle Codefundstellen dieser ADR sind auf den Bau `3ef1977` des Zweigs `karte/15` nachgeführt (Strg+Z `web/app.js:1928`, Tor `:2552`, Toast `web/ansicht.js:795–810`, Kartenchip `:558`/`:560`, Hinweisanker `:771–789`, `oeffnen`/`zeit-korrigieren`-Reihenfolge `:580`, `zeit-ok` `:1447–1453`, Takt `:2549–2571`, `laufBeginn` `:399–400`, Zeitrechnung `web/zeiten.js:11–17`/`:25`). **Der Code liegt noch nicht auf `main`** — der Merge der Karte #15 steht aus; die Aussagen des Kontext-Abschnitts beschreiben weiter den Stand der Annahme (`9bc9c21`).
+
+## Nachtrag 2026-11-10 N4: Kopfzeilen-Umbruch als Rückfall an jeder Karte (#16)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag erweitert N1 Regel 2 und richtigstellt N1 Punkt 3; die Form des Chips, seine Maße und sein Token-Paar bleiben unverändert (Regel 6). Anlass ist die Technikfrage der Karte #16 „Kartentext lesbar setzen“ (UX-Durchsicht Material 3 vom 2026-10-31, Schweregrad Optional), Architektur-Phase 2026-11-10; der Director hat entschieden: Nachtrag, kein neues ADR.
+
+### Was der Nachtrag festlegt
+
+1. **Der Umbruch greift an jeder Karte mit Platznot.** Nicht mehr nur an der vergessenen Karte (N1 Regel 2): Passt der Titel nebst Nummer, Signalen und laufendem Timer nicht in eine Zeile, bricht die Kopfzeile **jeder** Karte um — der Chip steht dann in einer eigenen Zeile unter dem Titel.
+2. **Der Titel behält sein längstes Wort.** `overflow-wrap:break-word` in `.ka .t` (`web/kd-app.css`), nicht `anywhere`: Wörter werden nicht auseinandergerissen, der Umbruch fällt zwischen die Wörter — der Titel bleibt lesbar.
+3. **Lageänderungen sind drei** (richtiggestellt gegenüber N1 Punkt 3): (1) die Kopfzeile der **vergessenen Karte** (N1), (2) die Zeile von **Pop „Läuft gerade“ und Fensterblock** unter 640 px (N3), (3) **jede Karte mit laufendem Timer bei Platznot** (dieser Nachtrag).
+
+### Was bleibt
+
+- **Form, Maße und Token-Paar des Chips** bleiben (Regel 6, ADR-0011): keine neue Klasse, kein neuer Zustand, keine neuen Maße — nur die Zeile gibt nach.
+- **Zuordnung wie N1/N3**: ADR-0012 („kein waagrechtes Scrollen“, 24/48-px-Ziele) und ADR-0015 („Umbruch als Antwort“) — dieser Umbruch ist deren vierte Ausprägung, neben dem Fuß (ADR-0015), der Kopfzeile der vergessenen Karte (N1) und dem Telefon-Block (N3).
+
+### Prüfung
+
+Die Breitenproben der Karte #15 ([R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md)) laufen mit — derselbe Wächter misst die Zeile der Karte weiter. Früh-Indikator, falls der Umbruch zu weit greift: eine **zweizeilige Kopfzeile ohne Platznot** (eine Karte, deren Titel samt Chip in eine Zeile passt, bricht trotzdem um).
