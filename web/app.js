@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -2466,11 +2466,29 @@ window.kdTest = {
   kommentare: nr => aufgabe(nr).kommentare.length,
 };
 
+/** Vergessene Timer im Takt (R00114, ADR-0019 Regel 3): er entscheidet keinen Zustand, er merkt nur die Kante und lässt einmal zeichnen. */
+function taktVergessen(jetzt) {
+  const laufend = new Set();
+  for (const { a, z } of alleLaufenden()) {
+    const schluessel = `${a.nummer}|${z.wer}`;
+    laufend.add(schluessel);
+    if (!istVergessen(jetzt - laufBeginn(a, z))) continue;
+    if (S.ui.vergessen.has(schluessel)) continue;
+    S.ui.vergessen.add(schluessel);
+    S.ui.vergessenOffen = true;
+  }
+  // was nicht mehr läuft, ist nicht mehr vergessen: gestoppt, gelöscht, korrigiert, archiviert (FA 18)
+  for (const schluessel of S.ui.vergessen) if (!laufend.has(schluessel)) S.ui.vergessen.delete(schluessel);
+}
+
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
   if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
+  taktVergessen(jetzt);
+  // das Zeichnen unterbleibt hinter einem Zug oder „Neue Aufgabe“ und wird beim nächsten Takt nachgeholt (FA 22)
+  if (S.ui.vergessenOffen && zug == null && !S.ui.neu) { S.ui.vergessenOffen = false; neu = true; }
   document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => {
     const d = jetzt - +el.dataset.since;

@@ -137,7 +137,6 @@ test.describe('R00114', () => {
   });
 
   test('US-2: bei 9:59:59 nichts, nach einer Sekunde Klasse und Satz, genau ein Neuzeichnen', async ({ page }) => {
-    test.fail(true, '#15: die Kante im Sekundentakt fehlt noch');
     const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-07 02:00 · ... · st']) };
     k = await kanbanStarten(einrichten(bestand));
     await alsPerson(page, 'st');
