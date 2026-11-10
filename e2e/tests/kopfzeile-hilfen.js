@@ -57,4 +57,19 @@ async function kopfzeilePruefen(page) {
   return { namen: elemente.map(e => e.name), konflikte: kopfKonflikte(elemente, fenster, kopf) };
 }
 
-module.exports = { kopfKonflikte, kopfzeilePruefen };
+/** Läuft im Browser: das sichtbare Auswahlzeichen eines Eintrags (R00117, AK 4–6) — Inhalt des ::before (ohne Anführungszeichen),
+ *  der sichtbare Text (mit einem aria-verborgenen Zeichenkind) und ob ein solches Zeichenkind vorhanden ist. */
+function auswahlzeichenMessen(el) {
+  const inhalt = getComputedStyle(el, '::before').content;
+  const pseudo = inhalt === 'none' || inhalt === 'normal' ? '' : inhalt.replace(/^["']|["']$/g, '');
+  const text = el.textContent;
+  const verborgen = [...el.querySelectorAll('[aria-hidden="true"]')].some(s => /[✓☑]/.test(s.textContent));
+  return { pseudo, text, verborgen };
+}
+
+/** Das Auswahlzeichen eines Eintrags: `pseudo` ist der Inhalt seines ::before, `text` sein eigener Textknoten. */
+async function auswahlzeichen(locator) {
+  return locator.evaluate(auswahlzeichenMessen);
+}
+
+module.exports = { kopfKonflikte, kopfzeilePruefen, auswahlzeichen };

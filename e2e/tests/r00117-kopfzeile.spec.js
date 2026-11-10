@@ -2,8 +2,8 @@
 // Trägt die Abnahme-Proben der Karte #17 (US-1..US-4); die API-Kopf-Probe liegt in der Kopfzeilen-Layout-Familie
 // (kopfzeile-hilfen.js), die /api nur über die gemeinsame Ansichtenliste kannte.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
-const { kopfzeilePruefen } = require('./kopfzeile-hilfen');
+const { kanbanStarten, einrichten, alsPerson, thema } = require('./hilfen');
+const { kopfzeilePruefen, auswahlzeichen } = require('./kopfzeile-hilfen');
 
 const jetztMinus = min => { const d = new Date(Date.now() - min * 60000); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const aufgabe = (n, zustaendige, timer = '') => [`aufgaben/000${n}-k${n}.md`, `---\nid: ${n}\ntitle: Karte ${n}\nassignees: [${zustaendige.join(', ')}]\n---\n${timer}`];
@@ -47,3 +47,55 @@ test('US-1 (AK 1, 2): /api — Titel und Link in derselben Zeile, Link rechtsbü
     }
   } finally { await k.stoppen(); k = null; }
 });
+
+/* ── US-2: Der gewählte Zustand ist zu sehen (Punkt 2) ── */
+
+const ZEICHEN = /[✓☑]/;
+const hatZeichen = async loc => { const { pseudo, text } = await auswahlzeichen(loc); return ZEICHEN.test(pseudo) || ZEICHEN.test(text); };
+
+test.describe('US-2 (AK 4, 5, 6): der gewählte Zustand trägt ein sichtbares Zeichen, 375 px hell und dunkel', () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+
+  for (const name of ['light', 'dark']) {
+    test(`${name}: Chips tragen ✓ nur am gewählten; „Signale oben“ trägt ☑ nur bei aria-checked=true`, async ({ page }) => {
+      await starten(page);
+      await thema(page, name);
+      const kopf = page.locator('header.kz');
+
+      // AK 4/6: genau ein Chip ist gewählt und trägt das Zeichen, die nicht gewählten tragen keines
+      await expect(kopf.locator('.kz-chip[role=radio]')).toHaveCount(3);
+      const gewaehlt = kopf.locator('.kz-chip[aria-checked="true"]');
+      await expect(gewaehlt).toHaveCount(1);
+      expect(await hatZeichen(gewaehlt), 'gewählter Chip').toBe(true);
+      // das Zeichen ist rein darstellend: der zugängliche Name bleibt die Beschriftung (NFR „aria-checked bleibt die Wahrheit“)
+      expect((await auswahlzeichen(gewaehlt)).verborgen, 'Zeichen ist aria-verborgen').toBe(true);
+      await expect(kopf.getByRole('radio', { name: 'alle', exact: true })).toHaveCount(1);
+      for (const chip of await kopf.locator('.kz-chip[aria-checked="false"]').all()) {
+        expect(await hatZeichen(chip), `nicht gewählter Chip „${await chip.innerText()}“`).toBe(false);
+        expect((await auswahlzeichen(chip)).pseudo, 'kein ::before-Inhalt am nicht gewählten Chip').toBe('');
+      }
+
+      // AK 5: Wechsel „alle“ → „meine“ verschiebt das Zeichen
+      await kopf.locator('.kz-chip[data-arg="meine"]').click();
+      await expect(kopf.locator('.kz-chip[aria-checked="true"]')).toHaveAttribute('data-arg', 'meine');
+      expect(await hatZeichen(kopf.locator('.kz-chip[data-arg="meine"]')), '„meine“ trägt das Zeichen').toBe(true);
+      expect(await hatZeichen(kopf.locator('.kz-chip[data-arg="alle"]')), '„alle“ hat es verloren').toBe(false);
+      await expect(kopf.getByRole('radio', { name: 'meine', exact: true })).toHaveCount(1);
+
+      // AK 4/5/6: „Signale oben“ ein-/ausschalten lässt nur das Kästchen erscheinen/verschwinden
+      await page.locator('#t-mehr').click();
+      const signale = page.locator('#pop[role=menu] #signale-oben');
+      await expect(signale).toHaveAttribute('aria-checked', 'false');
+      expect(await hatZeichen(signale), '„Signale oben“ ohne Kästchen').toBe(false);
+      await signale.click();
+      await expect(signale).toHaveAttribute('aria-checked', 'true');
+      expect(await hatZeichen(signale), '„Signale oben“ mit Kästchen').toBe(true);
+      expect((await auswahlzeichen(signale)).verborgen, 'Kästchen ist aria-verborgen').toBe(true);
+      await expect(page.getByRole('menuitemcheckbox', { name: 'Signale oben', exact: true })).toHaveCount(1);
+      await signale.click();
+      await expect(signale).toHaveAttribute('aria-checked', 'false');
+      expect(await hatZeichen(signale), '„Signale oben“ wieder ohne Kästchen').toBe(false);
+    });
+  }
+});
+
