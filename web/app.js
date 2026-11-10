@@ -577,7 +577,7 @@ function fensterMelden(text, feld = null) {
 /** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
 async function fensterOeffnen(nummer) {
   const u = S.ui;
-  u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false;
+  u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.titelBearbeiten = false;
   u.offen = nummer; u.tab = 'inhalt'; u.gespeichert = null; fensterMelden(null);
   u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
   await dateiLaden();
@@ -1564,6 +1564,7 @@ async function act(a, arg, wert) {
         return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
       }
       case 'beschreibung-bearbeiten': u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
+      case 'titel-bearbeiten': u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
@@ -1706,6 +1707,10 @@ document.addEventListener('focusout', e => {
   if (!S.neuzeichnen) aenderungNachtragen(e.target);
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
   if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
+  // Verlassen des Titelfeldes ohne Änderung: wieder das Lesediv zeigen (R00116, Muster Beschreibung :1708)
+  if (e.target.dataset && e.target.dataset.af === 'titel' && S.ui.titelBearbeiten) setTimeout(() => {
+    if (S.ui.titelBearbeiten && document.activeElement !== document.querySelector('#fenster [data-af="titel"]')) { S.ui.titelBearbeiten = false; render(); }
+  }, 50);
   // Verlassen des Teilaufgaben-Feldes speichert (R00066); nach Enter oder Esc ist teilEdit schon leer
   if (e.target.id === 'teil-edit' && S.ui.teilEdit) { const wert = e.target.value; setTimeout(() => { if (S.ui.teilEdit && document.activeElement !== $('#teil-edit')) act('teil-text', '', wert); }, 0); }
   if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
@@ -1756,6 +1761,7 @@ document.addEventListener('change', e => {
   const v = e.target.value;
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
   if (af === 'beschreibung') S.ui.beschreibungBearbeiten = false;
+  if (af === 'titel') S.ui.titelBearbeiten = false;
   const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
     : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
   aufgabeAendern(S.ui.offen, aenderung);
@@ -1905,6 +1911,8 @@ document.addEventListener('keydown', e => {
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
   if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
+  // Enter auf dem Lesediv des Titels öffnet die Bearbeitung (R00116, Muster besch-lesen)
+  if (e.key === 'Enter' && t.dataset && t.dataset.act === 'titel-bearbeiten') { e.preventDefault(); act('titel-bearbeiten'); return; }
   if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
@@ -2092,7 +2100,7 @@ function fensterTaste(e) {
     case 't': e.preventDefault(); laufende(a).some(z => z.wer === S.ich) ? act('stop', `${nr}|${S.ich}`) : act('start', String(nr)); return true;
     case 'm': e.preventDefault(); act('mich', String(nr)); return true;
     case 'a': e.preventDefault(); act(a.archiviert ? 'zurueckholen' : 'archivieren', String(nr)); return true;
-    case 'e': return fokus('[data-af="titel"]');
+    case 'e': e.preventDefault(); act('titel-bearbeiten'); return true;
     case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
     case 's': return fokus('#teil-neu');
     case 'k': return fokus('#km-inp');

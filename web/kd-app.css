@@ -321,6 +321,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%}
 .titel:hover{border-color:var(--kd-line-strong)}
 .titel:focus{outline:2px solid var(--kd-accent);outline-offset:-1px;background:var(--kd-surface)}
+/* Fenstertitel liest mehrzeilig (R00116, ADR-0007 N2): Umbruch zwischen Wörtern, Einzelwort bricht innerhalb statt zu überlaufen */
+.titel-lesen{overflow-wrap:break-word;white-space:normal;cursor:text}
 .abs h3{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);display:flex;gap:6px}
 .abs h3 .mono{font-weight:400;letter-spacing:0;margin-left:auto}
 .besch{display:block;width:100%;min-height:120px;resize:vertical;border:1px solid var(--kd-line);padding:var(--kd-s3);line-height:1.55;background:var(--kd-surface)}
