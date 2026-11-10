@@ -224,7 +224,6 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .pz2 .id{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
 .pz2 .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pz2 .t small{display:block;color:var(--kd-muted);font-size:11px}
-.pz2 b{font-family:var(--kd-mono);font-weight:500}
 .pz2 .btn{width:28px;padding:0;justify-content:center;height:24px}
 .pz2:hover{background:var(--kd-sunken)}
 .pz2.eigen{background:var(--kd-accent-weak)}
@@ -362,7 +361,6 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .tl{display:flex;flex-direction:column;border:1px solid var(--kd-line);background:var(--kd-surface)}
 .tz{display:grid;grid-template-columns:18px 1fr auto 28px;align-items:center;gap:8px;padding:4px 4px 4px 8px;border-bottom:1px solid var(--kd-line);font-size:12px}
 .tz:last-child{border-bottom:0}
-.tz b{font-family:var(--kd-mono);font-weight:500;font-size:13px}
 .tz .btn{width:28px;padding:0;justify-content:center}
 .tz.eigen{background:var(--kd-accent-weak)}
 .zt{width:100%;border-collapse:collapse;font-size:12px;background:var(--kd-surface)}

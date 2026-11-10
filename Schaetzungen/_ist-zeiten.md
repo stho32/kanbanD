@@ -510,3 +510,4 @@ Nie vom User erfragen.
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0511 Aktion nur beim eigenen Timer | Operation | 0,5 | 0,5h | 0,5h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0515 Erinnerung nach der Identitätswahl | Operation | 0,5-1 | 0,5h | 0,5h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0516 Nie zwei Aktionen im Hinweis | Operation | 0,5-1 | 0,5h | 0,5h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0514 Ein Lauftext für alle Zeichenstellen | Operation | 0,5-1 | 0,75h | 0,75h | autonom |
