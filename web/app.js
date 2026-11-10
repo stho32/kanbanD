@@ -2510,38 +2510,53 @@ function taktVergessen(jetzt) {
     damit ein neuer Lauf derselben Person auf derselben Aufgabe wieder erinnert. */
 const erinnerungsSchluessel = (a, z) => `${a.nummer}|${z.kennung}|${S.ich || ''}`;
 
+/**
+ * Bleibt der stehende Hinweis, statt von einer neuen Erinnerung ersetzt zu werden? Ein Rückgängig bleibt bis zum Ablauf
+ * (FA 17), eine Erinnerung wartet ihre Lebensdauer ab (FA 14: erst der eigene, danach die fremden) — nur eine knopflose
+ * weicht der Erinnerung mit Aktion, weil die Identitätswahl sie nachholt (M4, FA 18).
+ */
+function hinweisBleibtStehen(mitAktion) {
+  const t = S.ui.hinweis;
+  if (!t) return false;
+  if (t.undo) return true;
+  if (!t.erinnerung) return false;
+  return !(mitAktion && !t.aktion);
+}
+
 /** Erinnerung an vergessene Timer (R00114, ADR-0019 Regel 4): ein Hinweis je Tab und Identität, der eigene zuerst. */
 function erinnerungPruefen(jetzt) {
   // im verborgenen Tab entsteht kein Hinweis; der Übergang wird beim Sichtbarwerden nachgeholt (FA 18)
   if (document.visibilityState !== 'visible') return false;
-  // ein laufender Rückgängig-Hinweis bleibt bis zu seinem Ablauf unverändert; die Erinnerung folgt danach (FA 17)
-  if (S.ui.hinweis && S.ui.hinweis.undo) return false;
   const offen = alleLaufenden().filter(({ a, z }) => istVergessen(jetzt - laufBeginn(a, z)));
   const kandidat = offen.sort((x, y) => (x.z.wer === S.ich ? 0 : 1) - (y.z.wer === S.ich ? 0 : 1))
     .find(({ a, z }) => !S.ui.erinnert.has(erinnerungsSchluessel(a, z)));
   if (!kandidat) return false;
+  if (hinweisBleibtStehen(kandidat.z.wer === S.ich)) return false;
   erinnerungZeigen(kandidat);
   return true;
 }
 
 /** Der Hinweis nennt Person, Aufgabe und Dauer; „Zeit korrigieren“ bietet nur der eigene Eintrag an (FA 15, PO Z. 182). */
 function erinnerungZeigen({ a, z }) {
-  S.ui.erinnert.add(erinnerungsSchluessel(a, z));
+  const schluessel = erinnerungsSchluessel(a, z);
+  S.ui.erinnert.add(schluessel);
   let text = `Timer von ${per(z.wer).name} zu #${a.nummer} läuft ${seitText(Date.now() - laufBeginn(a, z))}`;
   if (!S.ich) text += ' — wähle „Ich bin …“';
-  S.ui.hinweis = { text, at: Date.now() };
+  S.ui.hinweis = { text, erinnerung: schluessel, at: Date.now() };
   if (z.wer === S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
 }
 
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
+  const zeichnenMoeglich = zug == null && !S.ui.neu;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
   if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
   taktVergessen(jetzt);
   // das Zeichnen unterbleibt hinter einem Zug oder „Neue Aufgabe“ und wird beim nächsten Takt nachgeholt (FA 22)
-  if (S.ui.vergessenOffen && zug == null && !S.ui.neu) { S.ui.vergessenOffen = false; neu = true; }
-  if (erinnerungPruefen(jetzt)) neu = true;
+  if (S.ui.vergessenOffen && zeichnenMoeglich) { S.ui.vergessenOffen = false; neu = true; }
+  // die Erinnerung entsteht erst, wenn sie auch gezeichnet wird: sonst verfällt sie in ihrer Lebensdauer, ohne je zu stehen (B1)
+  if (zeichnenMoeglich && erinnerungPruefen(jetzt)) neu = true;
   document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => {
     const d = jetzt - +el.dataset.since;
@@ -2550,7 +2565,7 @@ setInterval(() => {
     else el.textContent = hm(d);
   });
   document.querySelectorAll('[data-ext]').forEach(el => { el.textContent = `extern · ${el.dataset.datei} · vor ${Math.round((jetzt - +el.dataset.ext) / 1000)} Sek`; });
-  if (neu && zug == null && !S.ui.neu) render();
+  if (neu && zeichnenMoeglich) render();
   liveWaechter();
 }, 1000);
 

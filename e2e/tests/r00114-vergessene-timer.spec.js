@@ -526,3 +526,80 @@ test.describe('R00114, Touch, 320 px', () => {
     expect(await seiteQuer(page), 'die Seite scrollt nicht waagrecht').toEqual({ Seite: 0, main: 0 });
   });
 });
+
+/** Querscrollen aller Treffer eines Selektors samt Nachfahren, als „tag.klassen scrollWidth>clientWidth“ (leer heißt: passt). */
+const querBefunde = (page, selektor) => page.evaluate(sel => {
+  const name = el => el.localName + [...el.classList].map(k => '.' + k).join('');
+  const wuzeln = [...document.querySelectorAll(sel)];
+  if (!wuzeln.length) return [`${sel} fehlt`];
+  return wuzeln.flatMap(w => [w, ...w.querySelectorAll('*')])
+    .filter(el => el.scrollWidth > el.clientWidth)
+    .map(el => `${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
+}, selektor);
+
+test.describe('R00114 Nacharbeit #15', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  /** #1 mit Stefans laufendem Eintrag ab 2030-01-07 02:00 und die Uhr auf 11:59:54 — der Übergang liegt in 6 s. */
+  const BESTAND = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-07 02:00 · ... · st']) };
+
+  test('B1: Neue Aufgabe vor dem Übergang — nach dem Schließen steht der Hinweis mit Aktion', async ({ page }) => {
+    k = await kanbanStarten(einrichten(BESTAND));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(11, 59, 54));
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"] .lauf')).toHaveText('9:59:54');
+    await page.keyboard.press('n');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
+    // zehn Sekunden über 10:00:00 hinaus: der Hinweis würde in dieser Zeit entstehen und verfallen
+    await uhrVor(page, 16000);
+    await expect(page.locator('.toast'), 'solange „Neue Aufgabe“ offen ist, entsteht kein Hinweis').toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast'), 'binnen einer Sekunde nach dem Schließen').toContainText('Timer von Stefan zu #1 läuft seit 10 Stunden');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]')).toBeVisible();
+  });
+
+  test('B1: während eines Zuges — nach dem Loslassen steht der Hinweis', async ({ page }) => {
+    k = await kanbanStarten(einrichten(BESTAND));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(11, 59, 54));
+    await page.goto(k.adresse);
+    const karte1 = page.locator('.ka[data-id="1"]');
+    await expect(karte1.locator('.lauf')).toHaveText('9:59:54');
+    const box = await karte1.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + 8);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + 30, { steps: 8 });
+    await expect.poll(() => page.evaluate(() => zug != null), 'die Karte wird gezogen').toBe(true);
+    await uhrVor(page, 16000);
+    await expect(page.locator('.toast'), 'während des Zuges entsteht kein Hinweis').toHaveCount(0);
+    // loslassen außerhalb jedes Ablegeziels: der Zug endet, ohne die Karte zu bewegen
+    await page.mouse.move(600, 8);
+    await page.mouse.up();
+    await expect.poll(() => page.evaluate(() => zug == null), 'der Zug ist beendet').toBe(true);
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast')).toContainText('Timer von Stefan zu #1 läuft seit 10 Stunden');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]')).toBeVisible();
+  });
+
+  test('B1: nur ein fremder Timer — der nachgeholte Hinweis ist knopflos', async ({ page }) => {
+    const bestand = { ...BESTAND, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-07 02:00 · ... · cl']) };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(11, 59, 54));
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"] .lauf')).toHaveText('9:59:54');
+    await page.keyboard.press('n');
+    await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
+    await uhrVor(page, 16000);
+    await page.keyboard.press('Escape');
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast')).toContainText('Timer von Claude zu #1 läuft seit 10 Stunden');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]'), 'fremde Zeit bietet keine Aktion').toHaveCount(0);
+  });
+
+});
