@@ -129,12 +129,23 @@ const OHNE_AKTUELL = [
 
 let laufende = [];
 let seitenfehler = [];
+// Wird eine Instanz heruntergefahren, meldet die noch offene Seite die tote Verbindung als
+// „Failed to load resource: net::ERR_CONNECTION_REFUSED“ — das gehört zum Abbau der Umgebung, nicht zum Test (Befund #13).
+let herunterfahren = false;
+
+/** Die Fehlerliste, die afterEach prüft: alles außer den ausdrücklich erlaubten Mustern. */
+function gepruefteFehler() {
+  return seitenfehler.filter(f => !erlaubteFehler.some(muster => muster.test(f)));
+}
+
+test.beforeEach(() => { herunterfahren = false; });
+
 test.afterEach(async () => {
-  for (const aufraeumen of laufende.reverse()) await aufraeumen();
-  laufende = [];
-  const fehler = seitenfehler.filter(f => !erlaubteFehler.some(muster => muster.test(f)));
+  const fehler = gepruefteFehler(); // vor dem Abbau lesen: sein Lärm gehört nicht dem Test
   seitenfehler = [];
   erlaubteFehler = [];
+  for (const aufraeumen of laufende.reverse()) await aufraeumen();
+  laufende = [];
   expect(fehler, 'Konsole und Netz der Seite').toEqual([]);
 });
 
@@ -142,21 +153,30 @@ test.afterEach(async () => {
 let erlaubteFehler = [];
 const DEFEKTES_BOARD_LADEN = [/^Netz: 423 .*\/api\/boards\/entwicklung\b/, /^Konsole: Failed to load resource: .* 423 \(Locked\)$/];
 
-/** Ein Fehler in Konsole oder Netz ist ein Befund (Leitfaden JavaScript, E2E); gesammelt je Test, geprüft in afterEach. */
+/** Ein Fehler in Konsole oder Netz ist ein Befund (Leitfaden JavaScript, E2E); gesammelt je Test, geprüft in afterEach.
+ *  Ab dem Herunterfahren einer Instanz zählt nichts mehr: die offene Seite meldet dann nur die tote Verbindung (Befund #13). */
 const beobachtet = new WeakSet();
 function seiteBeobachten(page) {
   if (beobachtet.has(page)) return;
   beobachtet.add(page);
-  page.on('console', m => { if (m.type() === 'error') seitenfehler.push(`Konsole: ${m.text()}`); });
-  page.on('pageerror', e => seitenfehler.push(`Ausnahme: ${e.message}`));
-  page.on('response', r => { if (r.status() >= 400) seitenfehler.push(`Netz: ${r.status()} ${r.url()}`); });
+  const melden = text => { if (!herunterfahren) seitenfehler.push(text); };
+  page.on('console', m => { if (m.type() === 'error') melden(`Konsole: ${m.text()}`); });
+  page.on('pageerror', e => melden(`Ausnahme: ${e.message}`));
+  page.on('response', r => { if (r.status() >= 400) melden(`Netz: ${r.status()} ${r.url()}`); });
+}
+
+/** Merkt am Herunterfahren an, dass die offene Seite von nun an nur noch die tote Verbindung meldet (Befund #13). */
+function mitAbbau(k) {
+  const stoppen = k.stoppen.bind(k);
+  k.stoppen = async () => { herunterfahren = true; await stoppen(); };
+  return k;
 }
 
 /** kanbanD mit dem Grundbestand der User Story; `mehr` überschreibt Dateien. */
 async function starten(page, mehr = {}) {
   const arbeit = arbeitMitEinerPhase();
   laufende.push(async () => arbeit.aufraeumen());
-  const k = await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr }));
+  const k = mitAbbau(await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr })));
   laufende.push(() => k.stoppen());
   seiteBeobachten(page);
   await alsPerson(page, 'st');
@@ -184,7 +204,7 @@ async function ueberAlleSeiten(page, pruefen) {
   await page.locator('.defektflaeche').waitFor();
   verstoesse.push(...await pruefen(page, DEFEKTES_BOARD));
 
-  const leer = await kanbanStarten();
+  const leer = mitAbbau(await kanbanStarten());
   laufende.push(() => leer.stoppen());
   await page.goto(leer.adresse);
   await page.locator('.first').waitFor();
@@ -480,6 +500,37 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       await expect(aufklappen).toHaveCount(1);
       await aufklappen.click();
       await expect(zuklappen).toHaveCount(1);
+    });
+  });
+
+  test.describe('Befund #13: der Seitenfehler-Guard zählt das eigene Herunterfahren nicht', () => {
+    /** Wartet, bis die offene Seite die tote Instanz gemeldet hat — erst dann wäre eine gezählte Meldung überhaupt möglich. */
+    const bisSeiteTotMeldet = roh => expect.poll(() => roh.some(t => /ERR_CONNECTION_REFUSED/.test(t)), { timeout: 15000 }).toBe(true);
+
+    test('eine gestoppte Instanz mit offener Seite meldet keinen Fehler', async ({ page }) => {
+      const roh = [];
+      page.on('console', m => { if (m.type() === 'error') roh.push(m.text()); });
+      const k = await starten(page);
+      await page.goto(k.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      await k.stoppen();
+      await bisSeiteTotMeldet(roh);
+      expect(gepruefteFehler()).toEqual([]);
+    });
+
+    test('drei Instanzen in einem Test abgebaut — ihre Meldungen bleiben aus der geprüften Liste', async ({ page }) => {
+      const roh = [];
+      page.on('console', m => { if (m.type() === 'error') roh.push(m.text()); });
+      const haupt = await starten(page);
+      const defekt = await starten(page);
+      const leer = await starten(page);
+      await page.goto(haupt.adresse + '#/board/entwicklung');
+      await gezeichnet(page, '#/board/entwicklung', '.bahn');
+      await haupt.stoppen();
+      await defekt.stoppen();
+      await leer.stoppen();
+      await bisSeiteTotMeldet(roh);
+      expect(gepruefteFehler()).toEqual([]);
     });
   });
 });
