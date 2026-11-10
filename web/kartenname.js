@@ -10,11 +10,12 @@
     return gefunden.bezeichnung;
   }
 
-  /** `#<nr> <Titel>[, <Bezeichnung der Klasse>][, ausgewählt]`. */
-  function kartenName({ nummer, titel, klasse }, klassen, gewaehlt) {
+  /** `#<nr> <Titel>[, <Bezeichnung der Klasse>][, <Zusatz>][, ausgewählt]`. */
+  function kartenName({ nummer, titel, klasse }, klassen, gewaehlt, zusatz) {
     const teile = [`#${nummer} ${titel}`];
     const bezeichnung = klassenBezeichnung(klasse, klassen);
     if (bezeichnung) teile.push(bezeichnung);
+    if (zusatz) teile.push(zusatz);
     if (gewaehlt) teile.push('ausgewählt');
     return teile.join(', ');
   }

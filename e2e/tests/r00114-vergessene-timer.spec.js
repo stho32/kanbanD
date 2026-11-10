@@ -83,7 +83,6 @@ test.describe('R00114', () => {
   });
 
   test('US-1: der Name des Listeneintrags nennt „Timer läuft seit 6 Tagen“, der Chip ist kein Bedienelement', async ({ page }) => {
-    test.fail(true, '#15: der Zusatz im zugänglichen Namen fehlt noch');
     k = await kanbanStarten(einrichten(EIN_VERGESSENER));
     await alsPerson(page, 'st');
     await uhrStellen(page, uhr(23, 50, 23));
@@ -91,10 +90,12 @@ test.describe('R00114', () => {
     const eins = page.locator('.ka[data-id="1"]');
     await expect(page.getByRole('listitem', { name: /Timer läuft seit 6 Tagen/ })).toHaveCount(1);
     await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, Timer läuft seit 6 Tagen');
-    await eins.click({ modifiers: ['Control'] });
+    await eins.locator('.t').click({ modifiers: ['ControlOrMeta'] });
     await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, Timer läuft seit 6 Tagen, ausgewählt');
     expect(await eins.locator('.lauf').evaluate(chip => [chip.tabIndex, chip.querySelectorAll('a, button, input, [tabindex]').length])).toEqual([-1, 0]);
-    await page.locator('.ka[data-id="1"] .t').click();
+    await page.locator('.ka[data-id="1"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     const korrigieren = page.getByRole('button', { name: 'Zeit 1 korrigieren' });
     await korrigieren.focus();
     await expect(korrigieren, 'der ✎-Knopf der Zeittabelle bleibt der Tastaturweg').toBeFocused();

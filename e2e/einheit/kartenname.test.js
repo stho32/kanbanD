@@ -40,3 +40,11 @@ test('defekte Datei und fehlende Aufgabe', () => {
   assert.strictEqual(kartenNameDefekt(4), '#4 Datei defekt, nur lesbar');
   assert.strictEqual(kartenNameFehlt(9), '#9 Aufgabe fehlt');
 });
+
+// R00114 FA 9 (ADR-0019 Regel 2, X00005): der Zusatz des vergessenen Timers steht vor „ausgewählt“, fehlende Teile fallen samt Komma weg
+test('Zusatz „Timer läuft seit 6 Tagen“ zwischen Klasse und Auswahl', () => {
+  assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, false, 'Timer läuft seit 6 Tagen'), '#1 eins, Fehler, Timer läuft seit 6 Tagen');
+  assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, true, 'Timer läuft seit 6 Tagen'), '#1 eins, Fehler, Timer läuft seit 6 Tagen, ausgewählt');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, 'Timer läuft seit 1 Tag'), '#3 drei, Timer läuft seit 1 Tag');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, true, ''), '#3 drei, ausgewählt');
+});
