@@ -175,7 +175,7 @@ Nach ADR-0019 (Akzeptiert); Baustein A00009 (Oberfläche) trägt die Soll-Notize
    - 1.3 Auf der Karte zusätzlich der Name über `kartenName(…, zusatz)` mit „Timer läuft “ + `seitText`.
 2. **Im Sekundentakt** (`web/app.js:2469–2480`, jede Sekunde):
    - 2.1 Textfortschreibung wie heute (`[data-since]`); bei `data-fmt="seit"` schreibt sie `seitText` statt der Zahl.
-   - 2.2 Je laufendem Timer das Prädikat; Schlüssel `nr|wer` in der Menge der gesehenen.
+   - 2.2 Je laufendem Timer das Prädikat; Schlüssel `nr|wer@beginn` in der Menge der gesehenen (ein neuer Lauf ist ein neuer Schlüssel, ADR-0019 N2).
    - 2.3 Übergang falsch → wahr: Schlüssel merken; ist der Tab verborgen, nichts weiter (beim Sichtbarwerden nachgeholt); sonst Erinnerung anfordern.
    - 2.4 Erinnerung anfordern heißt: zeigt der Hinweis gerade „rückgängig“, warten, bis er abgelaufen ist (FA 17); sonst Hinweis setzen, eigener Timer zuerst.
 3. **Klick auf „Zeit korrigieren“** (`web/app.js`):
@@ -196,7 +196,7 @@ Nach ADR-0019 (Akzeptiert); Baustein A00009 (Oberfläche) trägt die Soll-Notize
   - `vKarte`: Zusatz für `kartenName` aus derselben Entscheidung; im vergessenen Zustand ohne `2×`-Präfix; die Karte trägt dann die Klasse `vergessen`, damit der Umbruch der Kopfzeile nur dort greift.
   - `vHinweisInhalt`: `t.aktion` nur, wenn `t.undo` leer ist; Knopfloser Text mit „wähle „Ich bin …““.
 - `web/app.js`:
-  - `S.ui` bekommt die Menge der erinnerten Schlüssel `nr|wer|<Identität>` und eine wartende Erinnerung; kein Speicher außerhalb der Sitzung.
+  - `S.ui` bekommt die Menge der erinnerten Schlüssel `nr|wer@beginn|<Identität>` (Lauf und Identität, ADR-0019 N2) und eine wartende Erinnerung; kein Speicher außerhalb der Sitzung.
   - `case 'zeit-korrigieren'`: `arg` als `nr|kennung` zerlegen, Ablauf 3.
   - Sekundentakt: Schritt 2.2–2.4, eigener Timer zuerst.
 - `web/kd-base.css`: `.lauf.vergessen` setzt Fläche, Schrift und Punktfarbe aus dem Paar; `.lauf` behält Maße, Polster, Punktgröße.
