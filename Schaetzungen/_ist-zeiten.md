@@ -506,3 +506,4 @@ Nie vom User erfragen.
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0507 Kante im Sekundentakt | Operation | 0,5-1 | 0,5h | 0,5h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0508 Akzeptanztest Erinnerung und Aktion | Akzeptanztest | 1-1,5 | 1h | 1h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0509 Aktion und Text im Hinweis | Operation | 0,5-1 | 1h | 1h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0510 Erinnerung je Tab und Identität | Operation | 0,5-1 | 1,25h | 1,25h | autonom |

@@ -10,8 +10,27 @@ const vor = minuten => {
 };
 /** Eine Uhrzeit am festen Probentag — die Grenzproben stellen die Uhr des Browsers auf `page.clock`. */
 const uhr = (h, m, s = 0) => new Date(2030, 0, 7, h, m, s);
+/** Stellt die Uhr sekundenweise vor, bis der Hinweis steht; liefert die Zahl der Sekunden, 0 wenn keiner kommt. */
+async function bisHinweis(page, sekunden) {
+  for (let s = 1; s <= sekunden; s++) {
+    await page.clock.runFor(1000);
+    await page.evaluate(() => window.kdTest.herzschlag());
+    if (await page.locator('.toast').count()) return s;
+  }
+  return 0;
+}
 /** Uhr stellen und anhalten: erst dann steht die Laufzeit auf die Sekunde fest (`clock.install` läuft sonst weiter). */
 const uhrStellen = async (page, zeit) => { await page.clock.install({ time: zeit }); await page.clock.pauseAt(zeit); };
+/**
+ * Stellt die Uhr um `ms` vor und hält die Live-Verbindung dabei frisch: der Server meldet sich real alle 15 s, der Wächter
+ * gibt nach 40 s auf — mit gestellter Uhr käme sonst „Wieder verbunden“ statt der Erinnerung.
+ */
+async function uhrVor(page, ms) {
+  for (let rest = ms; rest > 0; rest -= 30000) {
+    await page.clock.runFor(Math.min(30000, rest));
+    await page.evaluate(() => window.kdTest.herzschlag());
+  }
+}
 
 const KOPF = `---
 people:
@@ -231,6 +250,63 @@ test.describe('R00114', () => {
     await expect(page.locator('.mod-fuss .fehl')).toContainText('Der Zeiteintrag ist nicht mehr da.');
     expect(commits()).toBe(vorher);
     expect(seitenfehler).toEqual([]);
+  });
+
+  test('US-9: genau ein Hinweis je Übergang, nach dem Ablauf keiner mehr, Zusehen schreibt nichts (AK 10)', async ({ page }) => {
+    const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(9 * 60 + 50)} · ... · st`]) };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.clock.install();
+    await page.goto(k.adresse);
+    const chip = page.locator('.ka[data-id="1"] .lauf');
+    await expect(chip).not.toHaveClass(/vergessen/);
+    const vorher = commits();
+    await uhrVor(page, 9 * 60e3);
+    await expect(chip, 'neun Minuten später noch unter der Schwelle').not.toHaveClass(/vergessen/);
+    const hinweis = page.locator('.toast');
+    expect(await bisHinweis(page, 120), 'der Übergang kommt').toBeGreaterThan(0);
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 10 Stunden');
+    await uhrVor(page, 5000);
+    await expect(hinweis, 'solange er steht, kein zweiter').toHaveCount(1);
+    await uhrVor(page, 5000);
+    await expect(hinweis, 'nach dem Ablauf kein neuer für denselben Timer').toHaveCount(0);
+    expect(commits(), 'Zusehen schreibt nichts').toBe(vorher);
+    // gestoppt und ein neuer Lauf über die Schwelle erinnert wieder genau einmal (FA 18)
+    expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/stop`, { data: { wer: 'st' }, headers: { 'X-KanbanD-Wer': 'st' } })).ok()).toBe(true);
+    expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/start`, { headers: { 'X-KanbanD-Wer': 'st' } })).ok()).toBe(true);
+    await page.clock.setSystemTime(new Date(Date.now() + 10 * 3600e3 + 60e3));
+    await page.evaluate(() => window.kdTest.herzschlag());
+    expect(await bisHinweis(page, 120), 'der neue Lauf erinnert wieder').toBeGreaterThan(0);
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 10 Stunden');
+  });
+
+  test('US-9: im verborgenen Tab kein Hinweis, beim Sichtbarwerden genau einer, ein frischer Tab erinnert erneut', async ({ page, context }) => {
+    k = await kanbanStarten(einrichten(EIN_VERGESSENER));
+    await alsPerson(page, 'st');
+    // headless führt Chromium jeden Tab als eigenes Fenster: die Sichtbarkeit stellt der Test
+    await page.addInitScript(() => {
+      let sichtbar = false;
+      Object.defineProperty(document, 'visibilityState', { get: () => (sichtbar ? 'visible' : 'hidden'), configurable: true });
+      Object.defineProperty(document, 'hidden', { get: () => !sichtbar, configurable: true });
+      window.kdTabZeigen = () => { sichtbar = true; document.dispatchEvent(new Event('visibilitychange')); };
+    });
+    await uhrStellen(page, uhr(23, 40, 0));
+    await page.goto(k.adresse);
+    // drei Sekunden im verborgenen Tab: ein Hinweis stünde dann noch, er darf gar nicht erst entstehen
+    await uhrVor(page, 3000);
+    await expect(page.locator('.ka[data-id="1"] .lauf.vergessen'), 'die Markierung entsteht auch im verborgenen Tab').toBeVisible();
+    await expect(page.locator('.toast'), 'im verborgenen Tab kein Hinweis').toHaveCount(0);
+    await page.evaluate(() => window.kdTabZeigen());
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast')).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
+    // ein frisch geöffneter Tab erinnert denselben Stand erneut (gewollt, ADR-0019); die gestellte Uhr gilt auch ihm
+    const frisch = await context.newPage();
+    await alsPerson(frisch, 'st');
+    await frisch.goto(k.adresse);
+    await expect(frisch.locator('.ka[data-id="1"] .lauf.vergessen')).toBeVisible();
+    await frisch.clock.runFor(1000);
+    await expect(frisch.locator('.toast')).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
+    await frisch.close();
   });
 
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {

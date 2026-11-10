@@ -2483,6 +2483,8 @@ window.kdTest = {
   renders: () => S.renders || 0,
   /** Wahr, wenn der zuletzt geladene Stand gezeichnet ist — kein Laden steht zwischen Übernahme und Zeichnen (R00103). */
   gezeichnet: () => geladenerStand === serverStand(),
+  /** Der Server meldet sich real alle 15 s; stellt ein Test die Uhr vor, hält er die Verbindung damit frisch. */
+  herzschlag: () => { S.liveZuletzt = Date.now(); },
   /** Zahl der Kommentare einer Aufgabe im geladenen Stand. */
   kommentare: nr => aufgabe(nr).kommentare.length,
 };
@@ -2500,13 +2502,21 @@ function taktVergessen(jetzt) {
   }
   // was nicht mehr läuft, ist nicht mehr vergessen: gestoppt, gelöscht, korrigiert, archiviert (FA 18)
   for (const schluessel of S.ui.vergessen) if (!laufend.has(schluessel)) S.ui.vergessen.delete(schluessel);
+  const erinnert = new Set(alleLaufenden().map(({ a, z }) => erinnerungsSchluessel(a, z)));
+  for (const schluessel of S.ui.erinnert) if (!erinnert.has(schluessel)) S.ui.erinnert.delete(schluessel);
 }
 
-/** Erinnerung an vergessene Timer (R00114, ADR-0019 Regel 4): ein Hinweis je Tab und Timer, der eigene zuerst. */
+/** Erinnerungsschlüssel eines Eintrags (FA 18): je Tab und gewählter Identität einer; die Kennung nennt den Lauf,
+    damit ein neuer Lauf derselben Person auf derselben Aufgabe wieder erinnert. */
+const erinnerungsSchluessel = (a, z) => `${a.nummer}|${z.kennung}|${S.ich || ''}`;
+
+/** Erinnerung an vergessene Timer (R00114, ADR-0019 Regel 4): ein Hinweis je Tab und Identität, der eigene zuerst. */
 function erinnerungPruefen(jetzt) {
+  // im verborgenen Tab entsteht kein Hinweis; der Übergang wird beim Sichtbarwerden nachgeholt (FA 18)
+  if (document.visibilityState !== 'visible') return false;
   const offen = alleLaufenden().filter(({ a, z }) => istVergessen(jetzt - laufBeginn(a, z)));
   const kandidat = offen.sort((x, y) => (x.z.wer === S.ich ? 0 : 1) - (y.z.wer === S.ich ? 0 : 1))
-    .find(({ a, z }) => !S.ui.erinnert.has(`${a.nummer}|${z.wer}`));
+    .find(({ a, z }) => !S.ui.erinnert.has(erinnerungsSchluessel(a, z)));
   if (!kandidat) return false;
   erinnerungZeigen(kandidat);
   return true;
@@ -2514,7 +2524,7 @@ function erinnerungPruefen(jetzt) {
 
 /** Der Hinweis nennt Person, Aufgabe und Dauer; „Zeit korrigieren“ öffnet den vorhandenen Zeit-Editor (ADR-0019 Regel 5). */
 function erinnerungZeigen({ a, z }) {
-  S.ui.erinnert.add(`${a.nummer}|${z.wer}`);
+  S.ui.erinnert.add(erinnerungsSchluessel(a, z));
   S.ui.hinweis = { text: `Timer von ${per(z.wer).name} zu #${a.nummer} läuft ${seitText(Date.now() - laufBeginn(a, z))}`, at: Date.now() };
   if (S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
 }
