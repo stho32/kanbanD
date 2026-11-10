@@ -1,7 +1,8 @@
 // R00114 Vergessene Timer sichtbar machen (Karte #15) — Abnahme-Proben der Karte #15 in US-1 bis US-10.
 // Die Markierung ist eine Aussage der Anzeige (ADR-0019): nichts wird geschrieben, nichts kommt aus der API.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, thema, kontrastAm, kontrastFarben } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, thema, kontrastAm, kontrastFarben, ausMehr } = require('./hilfen');
+const { breiteMessen, ueberlauf } = require('./ziele-hilfen');
 
 /* Die Datei kennt nur Minuten: `vor` legt einen Beginn in Ortszeit vor jetzt, wie die Fixtures der Nachbartests. */
 const vor = minuten => {
@@ -386,6 +387,40 @@ test.describe('R00114', () => {
     await page.clock.runFor(1000);
     expect(commits(), 'Strg+Z löst die Aktion nicht aus').toBe(vorher);
     await expect(page.locator('#z-beginn')).toHaveCount(0);
+  });
+
+  test('US-8: Fensterblock und Zeittabelle tragen dieselbe Markierung, bei 320 px ohne Querscrollen', async ({ page }) => {
+    test.fail(true, '#15: Fensterblock und Zeittabelle sind nicht markiert');
+    const bestand = {
+      'kanbanD.md': KOPF,
+      'boards/entwicklung.md': BOARD,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`, `${vor(30)} · ... · cl`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei'),
+      'aufgaben/0003-drei.md': karte(3, 'drei'),
+      'aufgaben/0004-vier.md': karte(4, 'vier'),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .t').click();
+    const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
+    await expect(fenster.locator('.tl .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await expect(fenster.locator('.tl .lauf:not(.vergessen)'), 'Claudes kurzer Timer ohne Markierung').toHaveCount(1);
+    await expect(fenster.locator('.zt .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await expect(fenster.locator('.zt .lauf:not(.vergessen)')).toHaveCount(1);
+    // der Zähler in der Kopfzeile bleibt ein Zähler
+    const zaehler = await page.locator('#t-lauf').innerText();
+    expect(zaehler).toContain('2');
+    expect(zaehler, 'kein Satz im Zähler').not.toContain('seit');
+    // bei 320 px scrollen Fensterkörper und die Spalte nicht waagrecht, der Chip bleibt ganz sichtbar
+    expect(await ueberlauf(page), 'Fenster und Seite scrollen nicht quer').toEqual({ Seite: true, '#main': true, '.body': true });
+    const m = await fenster.evaluate(f => {
+      const koerper = f.querySelector('.mod-body'), chip = f.querySelector('.tl .lauf.vergessen');
+      return { scroll: koerper.scrollWidth, client: koerper.clientWidth, rechts: chip.getBoundingClientRect().right, rand: koerper.getBoundingClientRect().right };
+    });
+    expect(m.scroll, 'Fensterkörper scrollt quer').toBeLessThanOrEqual(m.client);
+    expect(m.rechts, 'Chip ganz sichtbar').toBeLessThanOrEqual(m.rand + 0.5);
   });
 
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
