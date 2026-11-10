@@ -5,13 +5,13 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #19)
 **Kontext-Anforderung**: — (Bug-Karte #19, Anforderung folgt)
 **Erprobt durch**: headless Probe gegen `target/release/kanbanD` (Stand `6333800`), siehe Kontext
-**Nachträge**: 2026-11-06 — Bereichsregel umgekehrt und `href` als Schlüssel (Karte #8, R00106), siehe [Nachtrag N1](#nachtrag-2026-11-06-bereiche-umgekehrt-und-href-als-schlüssel-r00106). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo der Nachtrag gilt.
+**Nachträge**: 2026-11-06 — Bereichsregel umgekehrt und `href` als Schlüssel (Karte #8, R00106), siehe [Nachtrag N1](#nachtrag-2026-11-06-bereiche-umgekehrt-und-href-als-schlüssel-r00106). 2026-11-10 — Titel des Fensters liest mehrzeilig, bearbeitet einzeilig (Karte #115), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-titel-des-fensters-liest-mehrzeilig-bearbeitet-einzeilig-115). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* und *(→ N2)* zeigen, wo der jeweilige Nachtrag gilt.
 
 ## Kontext
 
 - Belegt (Code): Die Oberfläche zeichnet bei jedem Live-Ereignis, das den Serverstand ändert, **alles** neu — `ereignis()` → `laden({ nurBeiAenderung: true })` → `render()` (`web/app.js:1756–1769`, `153–208`); `render()` ersetzt `#kopf`, `#main` und `#over` per `innerHTML` (`web/app.js:446–452`). Ein Kommentar an **irgendeine** Aufgabe ändert `S.aufgaben` und damit den Vergleichsstand (`web/app.js:150`).
 - Belegt (Code): Was das Neuzeichnen überstehen soll, retten drei Einzelmechanismen: eine feste Selektorliste der Scrollflächen nur in `#main` (`rollpositionen()`, `web/app.js:467–479`), das fokussierte Eingabefeld nur, wenn es eine `id` trägt (`web/app.js:434–460`), der Fokus über einzelne Sonderfälle (`S.ui.fokus`, `fokusKarte`, `fokusZeile`, `web/app.js:462–464`).
-- Belegt (Code): Das Aufgabenfenster liegt in `#over` (`web/ansicht.js:222–237`). Seine Scrollflächen sind im breiten Layout `.mod-main` und `.mod-side` (`web/kd-app.css:226–227`), erst bis 640 px `.mod-body` (`web/kd-app.css:710–714`). Die Felder `input.titel`, Labels, Fälligkeit, Spalte und Klasse tragen `data-af`, aber keine `id` (`web/ansicht.js:225–236`); sie speichern über `change` (`web/app.js:1165–1172`). 37 Eingabeelemente in `web/*.js` haben keine `id`.
+- Belegt (Code): Das Aufgabenfenster liegt in `#over` (`web/ansicht.js:222–237`). Seine Scrollflächen sind im breiten Layout `.mod-main` und `.mod-side` (`web/kd-app.css:226–227`), erst bis 640 px `.mod-body` (`web/kd-app.css:710–714`). Die Felder `input.titel`, Labels, Fälligkeit, Spalte und Klasse tragen `data-af`, aber keine `id` (`web/ansicht.js:225–236`); sie speichern über `change` (`web/app.js:1165–1172`). 37 Eingabeelemente in `web/*.js` haben keine `id`. *(→ N2: Titel liest als `<div data-act>`, bearbeitet als `<input data-af>`)*
 - Beobachtet (Probe, 1400 × 700 und 600 × 700, Aufgabe mit 40 Kommentaren, Kommentar per API): Scrollstand von `.mod-main` bzw. `.mod-body` nach dem Ereignis 0 statt 400, sowohl bei Kommentar an dieselbe wie an eine andere Aufgabe. Beim Tippen im Titel landet der Fokus auf `BODY`, **und der halb getippte Titel wird committet** („#1 geändert: Titel“ direkt nach dem fremden Kommentar). Das Kommentarfeld `#km-inp` (mit `id`) behält Inhalt und Fokus.
 - Vermutung: Der Commit entsteht, weil das fokussierte, geänderte Feld beim Ersetzen seinen Knoten verliert und dabei `change` auslöst. Nicht im Einzelnen nachverfolgt; die Wirkung ist belegt.
 - Ziel aus `AI-Team/umgebung.md` (Lastprofil): Live-Änderung in allen offenen Sichten < 1 s, bis 10 Agenten schreiben gleichzeitig — bei 5 Schreibaufrufen/s zeichnet die Oberfläche also bis zu fünfmal je Sekunde neu. Was ein Mensch gerade liest oder tippt, muss das überstehen, sonst ist das Fenster unter Agentenlast nicht benutzbar.
@@ -45,7 +45,7 @@ Neues Markup in einen losen Baum zeichnen und den lebenden DOM per Abgleich angl
 
 ## Entscheidung
 
-**Gewählt: Option B** — ein allgemeiner Sicherer in `render()`, Schlüsselregel wie oben, gilt für `#main` und `#over`. *(→ N1: gilt für alle Kinder von `#app`; nur `#main` und `#over` hinter Wächtern)*
+**Gewählt: Option B** — ein allgemeiner Sicherer in `render()`, Schlüsselregel wie oben, gilt für `#main` und `#over`. *(→ N1: gilt für alle Kinder von `#app`; nur `#main` und `#over` hinter Wächtern; → N2: Wahl der Elemente des Titelfelds bleibt unter dem Sicherer)*
 
 B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege durch einen, ohne das Zeichenmodell anzufassen. Bewusst in Kauf genommen: Es wird weiter alles neu gezeichnet (C bleibt als spätere Lastmaßnahme möglich und baut auf B auf), und Elemente ohne eindeutigen Schlüssel brauchen `data-halt`. D wird erst wieder Thema, wenn B an Restfällen (Textauswahl, `<details>`) mehrfach scheitert oder das Neuzeichnen unter dem Lastprofil messbar zu teuer wird — dann neue ADR, die diese ablöst.
 
@@ -104,9 +104,26 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 
 **Folgeentscheidung, offen**: keine. Gebaut wird als Nacharbeit 3 auf Karte #8 durch den entwickler.
 
+## Nachtrag 2026-11-10 N2: Titel des Fensters liest mehrzeilig, bearbeitet einzeilig (#115)
+
+**Anlass**: Karte #115 (Board „entwicklung", Folge aus #16/[R00115](../../Anforderungen/R00115-kartentext-lesbar-setzen.md)), Architektur-Phase 2026-11-10. Festgelegt in der Architektur-Phase, Bericht des Architekten; Entscheidung vom Director bestätigt. Der Sicherer aus N1 ändert sich nicht; der Status bleibt `Akzeptiert`. Gewählt wird nur die Elementwahl des Titelfelds.
+
+**Sicherung unverändert (N1)**: Das lesende `<div data-act="titel-bearbeiten">` ist über seinen Aktions-Schlüssel gesichert (`web/sichtzustand.js`, `liste.push([data-act=…])`), das Bearbeitungs-`<input data-af="titel">` über seinen Feldschlüssel (der Sicherer sichert nur Eingabefelder, `EINGABEFELD`-Test) — beide Zustände überstehen das Neuzeichnen.
+
+**Entschieden (Elementwahl)**: Der Titel steht im Lesen als mehrzeiliges `<div>` (`overflow-wrap:break-word`, Bruch zwischen Wörtern nach R00115 FA 1). Klick/Enter wechselt in den Bearbeitungszustand `S.ui.titelBearbeiten` mit einem einzeiligen `<input data-af="titel">` — nach dem Muster `besch-lesen`/`S.ui.beschreibungBearbeiten` (`web/ansicht.js`, `web/app.js`). Bewusst in Kauf genommen: Beim Eingeben scrollt ein langer Titel horizontal (heutiges Verhalten); die Karte verlangt Lesbarkeit, nicht mehrzeiliges Eingeben.
+
+**Verworfen**:
+- (a) `<textarea>` als einziges Element: Der Titel ist im Dateiformat eine Zeile; Enter fügte einen Umbruch ein und bräuchte Sonderregeln, die es im Haus nicht gibt.
+- (b) `contenteditable`: kein Formularfeld, kein `change`; der Sicherer kennt Wert und Auswahl nicht; halb Getipptes fiele beim `innerHTML`-Ersetzen eines Live-Ereignisses — die Fehlerklasse dieser ADR.
+
+**Fenstertasten (R00106)**: `e` öffnet den Bearbeitungszustand statt nur zu fokussieren (heute `fokus('[data-af="titel"]')`; Muster `'b' → act('beschreibung-bearbeiten')`). ↑/↓ blättern im Lesemodus weiter (der Guard greift nur auf Eingabefelder). Esc bleibt wie heute — „Esc im Titelfeld verwirft statt speichert" ist Karte #54, eigene Entscheidung.
+
+**Grenze**: Der Umbruch des Fenstertitels ist die fünfte Ausprägung von „Umbruch als Antwort, kein Querscrollen" ([ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) N1, [ADR-0019](0019-vergessene-timer-sind-anzeige.md) N1/N3/N4); die Breitenproben (r00114, `ziele.spec.js`) laufen mit als Wächter. Form, Maße und Typografie des Titels (`kd-app.css` `.titel`) bleiben Detailplanung/UX.
+
 ## Quellen / Bezüge
 
 - Karte #19 (Betreiber, 2026-10-31); `AI-Team/umgebung.md`, Lastprofil
 - Bausteine [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md), [A00008 Wächter](../Architektur/A00008-waechter.md) (Quelle der Ereignisse, unverändert)
 - R00061 (zeichnet nur bei Änderung), R00033 (Leseposition unter dem Kontextmenü), R00085 (Live-Verbindung)
 - Nachtrag N1: Karte #8 (Kommentare 2026-11-06 06:34 und 06:42), Logbuch `847289a`, [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) N7; `web/app.js:446–474`, `web/index.html:12`, `web/ansicht.js:64`, `:76`, `:681`, `web/sichtzustand.js:14–47`
+- Nachtrag N2: Karte #115 (Board „entwicklung", Folge aus #16), [R00115](../../Anforderungen/R00115-kartentext-lesbar-setzen.md) FA 1, [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) N1, [ADR-0019](0019-vergessene-timer-sind-anzeige.md) N1/N3/N4, Karte #54 (Esc im Titelfeld); `web/sichtzustand.js`, `web/ansicht.js`, `web/app.js`, `web/kd-app.css` `.titel`
