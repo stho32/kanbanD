@@ -99,6 +99,9 @@ fn esc(s: &str) -> String {
 }
 
 /// Die Seite `/api` — Gestaltung nach Artboard D0007, Werte aus dem Token-Sheet.
+/// Die Kopfzeile folgt dem `.kz-reihe`-Muster der SPA (web/ansicht.js): Titel links im `.kz-z1`, Link rechts; das alte
+/// Zwei-Zonen-Markup `.kz-z1`/`.kz-z3` entfällt (R00117, Regression gegen bc22b8c). Das lokale `min-height` gibt der
+/// Titel-Zelle dieselbe Höhe wie dem `a.kz-btn`, damit beide auf einer Höhe stehen.
 pub fn api_seite(adresse: &str) -> String {
     let mut zeilen = String::new();
     let mut thema = "";
@@ -119,8 +122,8 @@ pub fn api_seite(adresse: &str) -> String {
         r#"<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kanbanD · API</title>
 <link rel="stylesheet" href="/web/kd-tokens.css"><link rel="stylesheet" href="/web/kd-base.css"><link rel="stylesheet" href="/web/kd-app.css">
-<style>html,body{{overflow:auto}}main{{padding:24px 32px;max-width:1100px}}.md{{white-space:pre-wrap}}</style></head>
-<body><header class="kz"><div class="kz-z1"><b>kanbanD · API</b> <span class="mono">für Agenten und Skripte</span></div><div class="kz-z3"><a class="kz-btn" href="/">zur Oberfläche</a></div></header>
+<style>html,body{{overflow:auto}}main{{padding:24px 32px;max-width:1100px}}.md{{white-space:pre-wrap}}header.kz .kz-z1{{min-height:26px}}</style></head>
+<body><header class="kz"><div class="kz-reihe"><div class="kz-z1"><b>kanbanD · API</b> <span class="mono">für Agenten und Skripte</span></div><span class="kz-luecke"></span><a class="kz-btn" href="/">zur Oberfläche</a></div></header>
 <main><h1 style="margin:0 0 8px;font-size:18px">Alles, was die Oberfläche kann, kann auch ein Agent.</h1>
 <p class="muted">Jeder schreibende Aufruf nennt im Header <span class="mono">X-KanbanD-Wer: &lt;kürzel&gt;</span> die handelnde Person aus <span class="mono">kanbanD.md</span>; kanbanD committet unter ihrem Namen. Lesen braucht keine Identität. Antworten sind JSON: ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (<span class="mono">{{"aufgaben": […]}}</span>), weil Listen Zusatzangaben tragen; Fehler <span class="mono">{{"fehler": "…"}}</span>. Maschinenlesbar: <b><a href="/api/openapi.json">/api/openapi.json</a></b> (OpenAPI 3.1 mit allen Feldern, Werten und Formaten), knapp: <a href="/api/endpunkte">/api/endpunkte</a>.</p>
 <p class="muted">Mehrere Agenten an einem Board: jede laufende Instanz wählt sich eine Kennung (z.&nbsp;B. eine GUID) und nennt sie im Header <span class="mono">X-KanbanD-Instanz</span>. <span class="mono">POST …/ziehen</span> nimmt atomar die oberste freie Karte einer Spalte, reserviert sie 24&nbsp;h für diese Instanz und zieht sie weiter — zwei Instanzen bekommen nie dieselbe Karte.</p>
@@ -143,5 +146,15 @@ mod tests {
         }
         assert!(s.contains("<title>kanbanD · API</title>"));
         assert!(api_seite("http://<x>/").contains("http://&lt;x&gt;/api/aufgaben"));
+    }
+
+    #[test]
+    fn kopf_steht_in_zeilenstruktur_der_spa() {
+        let s = api_seite("http://h:1/");
+        // Titel links im kz-z1, Link rechts in derselben kz-reihe; das alte Zwei-Zonen-Markup entfällt (R00117).
+        assert!(s.contains(r#"<header class="kz"><div class="kz-reihe">"#));
+        assert!(s.contains(r#"<div class="kz-z1"><b>kanbanD · API</b>"#));
+        assert!(s.contains(r#"<a class="kz-btn" href="/">zur Oberfläche</a></div></header>"#));
+        assert!(!s.contains("kz-z3"));
     }
 }
