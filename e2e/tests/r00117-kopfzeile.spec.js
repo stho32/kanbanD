@@ -99,3 +99,18 @@ test.describe('US-2 (AK 4, 5, 6): der gewählte Zustand trägt ein sichtbares Ze
   }
 });
 
+/* ── US-3: Bereichs-Umschalter im zentralen Touch-Maß (Punkt 3, Optional) ── */
+
+test.describe('US-3 (AK 7): Bereichs-Umschalter im Touch-Maß, 960 px', () => {
+  test.use({ viewport: { width: 960, height: 800 }, isMobile: true, hasTouch: true });
+
+  test('jede Zelle (alle / meine / Agenten) ist mindestens 44 px hoch — der Token --kd-ziel', async ({ page }) => {
+    await starten(page);
+    const zellen = page.locator('header.kz [role=radio][data-act=bereich]');
+    await expect(zellen).toHaveCount(3);
+    const mass = await zellen.evaluateAll(ls => ls.map(e => ({ name: e.textContent.trim(), hoehe: Math.round(e.getBoundingClientRect().height) })));
+    expect(mass.map(z => z.name)).toEqual(['alle', 'meine', 'Agenten']);
+    for (const zelle of mass) expect(zelle.hoehe, `${zelle.name} hoch`).toBeGreaterThanOrEqual(44);
+  });
+});
+
