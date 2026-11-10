@@ -602,4 +602,49 @@ test.describe('R00114 Nacharbeit #15', () => {
     await expect(page.locator('.toast [data-act="zeit-korrigieren"]'), 'fremde Zeit bietet keine Aktion').toHaveCount(0);
   });
 
+  test('B2: der eigene Timer steht zuerst — auch wenn der fremde die kleinere Nummer hat', async ({ page }) => {
+    const bestand = {
+      ...EIN_VERGESSENER,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-02 00:40 · ... · cl']),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', ['2030-01-02 00:40 · ... · st']),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(23, 50, 23));
+    await page.goto(k.adresse);
+    // erst wenn das Board steht, tickt die gestellte Uhr sinnvoll
+    await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await page.clock.runFor(1000);
+    const hinweis = page.locator('.toast');
+    await expect(hinweis, 'zuerst der eigene Timer (FA 14)').toContainText('Timer von Stefan zu #2 läuft seit 6 Tagen');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toBeVisible();
+    // danach der fremde, knopflos — der eigene Hinweis lebt seine acht Sekunden, statt je Takt ersetzt zu werden
+    await page.clock.runFor(9000);
+    await expect(page.locator('.toast')).toContainText('Timer von Claude zu #1 läuft seit 6 Tagen');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]')).toHaveCount(0);
+  });
+
+  test('B2: ohne gewählte Identität ist der erste Hinweis knopflos, nach der Wahl steht der eigene zuerst', async ({ page }) => {
+    const bestand = {
+      ...EIN_VERGESSENER,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-02 00:40 · ... · cl']),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', ['2030-01-02 00:40 · ... · st']),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await uhrStellen(page, uhr(23, 50, 23));
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await page.clock.runFor(1000);
+    // ohne Identität gibt es keinen „eigenen“ Timer: der Hinweis steht ohne Aktion und nennt den nächsten Schritt
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('läuft seit 6 Tagen — wähle „Ich bin …“');
+    await expect(hinweis.locator('[data-act]'), 'ohne Identität keine Aktion').toHaveCount(0);
+    // mit der Wahl holt die Erinnerung den eigenen Timer nach — und der steht zuerst (FA 14)
+    await page.locator('#t-ich').click();
+    await page.getByRole('menuitemradio', { name: /Stefan/ }).click();
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast')).toContainText('Timer von Stefan zu #2 läuft seit 6 Tagen');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]')).toBeVisible();
+  });
 });
+
