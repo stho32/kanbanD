@@ -39,7 +39,7 @@ Soll nach [ADR-0018](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer
 - **Karte:**
   - `.flaeche` ist `role=list`, jede `.ka` ist `role=listitem` (auch defekt und fehlt). `.leer` und `.nach` sind ebenfalls Listeneinträge.
   - Den Namen bildet die reine Funktion `kartenName`: `#<nr> <Titel>[, <Klasse>][, ausgewählt]`, ohne Datum.
-  - Erweitert nach [ADR-0019](../../ADRs/0019-vergessene-timer-sind-anzeige.md) (Karte #15): läuft an der Karte ein Timer über der Schwelle, folgt `, Timer läuft seit <Dauer>` am Ende des Namens. Der Chip im Inneren trägt kein eigenes `aria-label`, weil der Name des `listitem` das Innere ersetzt.
+  - Erweitert nach [ADR-0019](../../ADRs/0019-vergessene-timer-sind-anzeige.md) (Karte #15): läuft an der Karte ein Timer über der Schwelle, steht `, Timer läuft seit <Dauer>` **vor** `, ausgewählt`; die Reihenfolge ist `#<nr> <Titel>[, <Klasse>][, Timer läuft seit <Dauer>][, ausgewählt]`, fehlende Teile fallen samt Komma weg. Belegt: `web/kartenname.js:17–19` und `e2e/einheit/kartenname.test.js:44–50` (Bau `3ef1977` des Zweigs `karte/15`, noch nicht auf `main`). Der Chip im Inneren trägt kein eigenes `aria-label`, weil der Name des `listitem` das Innere ersetzt.
   - Kein `aria-selected` an der Karte.
   - Tastatur, Öffnen, Ziehen und Fokusführung bleiben unverändert.
 - **Name aus dem Renderer:** Den Namen schreibt nur das Zeichnen (`vKarte`, `vDefekt`, `vFehlt`). Ein Live-Ereignis erneuert ihn über `render()` nach ADR-0014, es gibt keinen Nachführer.
@@ -80,3 +80,4 @@ Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
 - Probe 2026-11-08 (headless Chromium, nachgebautes Markup): `listitem` mit `aria-label` behält Knopf und Link als Kinder mit Rolle und Namen. Die verborgene `h1`/`h2` zählt als Überschrift, `expanded` ist über `getByRole` prüfbar. Belege stehen in ADR-0018, „Erprobt durch“.
 - angelegt 2026-11-08 nach #13 (ADR-0018)
 - erweitert 2026-11-10 nach #15 (ADR-0019): vierter Teil des Kartennamens für einen vergessenen Timer; die Durchsetzung ist der E2E der Karte #15 über Rolle und Namen, nicht eine zweite Probe über alle Routen
+- nachgeführt 2026-11-10 (arev Karte #15, S3): der Zusatz steht **vor** „, ausgewählt“ — hier stand „am Ende des Namens“; der Bau folgt ADR-0019 und R00114 FA 9, der Aspekttext war veraltet
