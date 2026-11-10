@@ -17,6 +17,7 @@ test.describe('R00011', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
     await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).fill('eins neu');
     await page.getByLabel('Beschreibung').click();
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('eins neu');

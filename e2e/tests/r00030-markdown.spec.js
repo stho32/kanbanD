@@ -20,7 +20,7 @@ test('US-1 und US-2: formatiert lesen, bearbeiten, zurück', async ({ page }) =>
     await expect(feld).toHaveValue('## Ziel\n\n* schnell\n* **sicher**');
     await feld.press('Control+End');
     await feld.type('\n* günstig');
-    await page.getByLabel('Titel', { exact: true }).click();
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Klick auf das Lesediv verlässt die Beschreibung und öffnet die Titel-Bearbeitung
     await expect(page.locator('.besch-lesen li')).toHaveText(['schnell', 'sicher', 'günstig']);
     expect(k.lies('aufgaben/0001-eins.md')).toContain('* günstig');
   } finally { await k.stoppen(); }

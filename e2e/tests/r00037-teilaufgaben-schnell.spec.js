@@ -28,7 +28,7 @@ test.describe('R00037', () => {
     await page.keyboard.type('halb getipp');
     await liveBereit(page);
     k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins von außen\n---\n');
-    await expect(page.getByLabel('Titel', { exact: true })).toHaveValue('eins von außen');
+    await expect(page.getByLabel('Titel bearbeiten', { exact: true })).toHaveText('eins von außen');
     await expect(page.getByLabel('Neue Teilaufgabe')).toBeFocused();
     await page.keyboard.type('t');
     await expect(page.getByLabel('Neue Teilaufgabe')).toHaveValue('halb getippt');

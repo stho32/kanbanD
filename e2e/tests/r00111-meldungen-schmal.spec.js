@@ -154,6 +154,7 @@ test.describe('Handy, 414 px mit Touch', () => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
     const titel = fenster.getByLabel('Titel', { exact: true });
+    await fenster.getByLabel('Titel bearbeiten', { exact: true }).tap(); // R00116: Bearbeitungszustand öffnen
     await titel.tap();
     await titel.fill('Abnahme prüfen lassen');
     const vorher = new Date();
@@ -179,6 +180,7 @@ test.describe('Handy, 414 px mit Touch', () => {
     await herkunft.tap();
     await page.keyboard.type('I00');
     const titel = fenster.getByLabel('Titel', { exact: true });
+    await fenster.getByLabel('Titel bearbeiten', { exact: true }).tap(); // R00116: Bearbeitungszustand öffnen
     await titel.tap();
     await titel.fill('');
     await titel.blur();

@@ -104,6 +104,7 @@ test('US-1: Enter auf Karte #1 fokussiert den Dialog selbst; d zeigt sofort „D
   await expect(page.getByRole('tab', { name: 'Datei' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
   await perTastaturOeffnen(page, 1);
+  await page.keyboard.press('e'); // R00116: öffnet die Titel-Bearbeitung statt nur zu fokussieren
   await page.locator('[data-af="titel"]').focus();
   await page.keyboard.press('End');
   await page.keyboard.press('d');

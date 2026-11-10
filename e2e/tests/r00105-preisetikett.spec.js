@@ -57,7 +57,7 @@ test.describe('R00105', () => {
     await page.keyboard.press('ArrowRight');
     await expect(inhalt).toBeFocused();
     await expect(inhalt).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByLabel('Titel')).toHaveValue('vier');
+    await expect(page.getByLabel('Titel bearbeiten', { exact: true })).toHaveText('vier');
     await page.keyboard.press('ArrowLeft');
     await expect(datei).toBeFocused();
     await page.keyboard.press('Home');
@@ -76,7 +76,8 @@ test.describe('R00105', () => {
 
   test('US-15 Gegenbeispiel: → im Titelfeld bewegt nur die Schreibmarke, d wechselt weiter', async ({ page }) => {
     await oeffnen(page);
-    const titel = page.getByLabel('Titel');
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
+    const titel = page.getByLabel('Titel', { exact: true });
     await titel.focus();
     await titel.evaluate(el => el.setSelectionRange(0, 0));
     await page.keyboard.press('ArrowRight');
@@ -419,7 +420,7 @@ test.describe('R00105 Reiter Kosten', () => {
 
   for (const [ort, vorbereiten, ziel] of [
     ['Schließen-Knopf im Reiter „Kosten“', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('button', { name: 'Schließen' }).focus(); }, d => d.getByRole('button', { name: 'Schließen' })],
-    ['Titelfeld', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('tab', { name: 'Inhalt' }).click(); await d.getByRole('textbox', { name: 'Titel' }).click(); }, d => d.getByRole('textbox', { name: 'Titel' })],
+    ['Titelfeld', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('tab', { name: 'Inhalt' }).click(); await d.getByRole('button', { name: 'Titel bearbeiten' }).click(); await d.getByRole('textbox', { name: 'Titel' }).click(); }, d => d.getByRole('textbox', { name: 'Titel' })],
   ]) {
     test(`US-16: Live-Ereignis nimmt das Etikett, Fokus im ${ort} bleibt dort`, async ({ page }) => {
       const dialog = await fenster(page, 1);

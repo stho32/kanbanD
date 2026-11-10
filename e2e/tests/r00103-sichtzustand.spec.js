@@ -143,6 +143,8 @@ test.describe('R00103 Tippen', () => {
 
   /** st kürzt den Titel von #1 auf „Abnahme prü“, der Cursor steht dahinter. */
   async function titelGekuerzt(page) {
+    // R00116: das Titelfeld steht erst im Bearbeitungszustand — das Lesediv öffnet ihn
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click();
     const titel = page.getByLabel('Titel', { exact: true });
     await titel.click();
     await page.keyboard.press('End');
@@ -161,6 +163,7 @@ test.describe('R00103 Tippen', () => {
 
   test('Auswahl: markiertes „prüfen“ bleibt markiert', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).click();
     await page.getByLabel('Titel', { exact: true }).evaluate(e => e.setSelectionRange(8, 14));
     const vorher = await renders(page);
@@ -216,6 +219,7 @@ test.describe('R00103 Tippen', () => {
 
   test('US-7 nicht getippt: bot ändert den Titel — das Feld zeigt „Abnahme durchführen“ und behält den Fokus', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).click();
     const vorher = await renders(page);
     const antwort = await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } });
@@ -313,6 +317,7 @@ test.describe('R00103 Nur das Verlassen speichert', () => {
 
   /** st kürzt den Titel von #1 auf „Abnahme prü“, der Cursor steht dahinter. */
   async function titelGekuerzt(page) {
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).click();
     await page.keyboard.press('End');
     for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
@@ -362,6 +367,7 @@ test.describe('R00103 Nur das Verlassen speichert', () => {
 
   test('Leerfall: Fokus im unveränderten Titel, Ereignisse, Verlassen — kein Commit', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).click();
     await zweiFremdeEreignisse(page);
     await page.keyboard.press('Tab');
@@ -390,6 +396,7 @@ test.describe('R00103 Nur das Verlassen speichert', () => {
 
   test('US-7 nicht getippt: das Feld zeigt den fremden Titel, Verlassen speichert nichts', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
+    await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).click();
     const vorher = await renders(page);
     expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_BOT, data: { titel: 'Abnahme durchführen' } })).ok()).toBe(true);
