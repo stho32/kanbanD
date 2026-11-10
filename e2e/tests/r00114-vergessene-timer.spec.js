@@ -57,6 +57,9 @@ const EIN_VERGESSENER = {
   'aufgaben/0004-vier.md': karte(4, 'vier'),
 };
 
+/** Dieselbe Lage in Echtzeit — für Proben ohne gestellte Uhr. */
+const STEFANS_VERGESSENER = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`]) };
+
 /** Vier Karten für die Breitenprobe: eigen, fremd, zwei eigene und fremde, zwei fremde. */
 const BREITEN = {
   'kanbanD.md': KOPF,
@@ -196,10 +199,11 @@ test.describe('R00114', () => {
   });
 
   test('US-6: der eigene vergessene Timer erinnert einmal, die Aktion öffnet genau den Eintrag', async ({ page }) => {
+    const beginn = vor(143 * 60 + 10);
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
-      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`, `${vor(30)} · ... · cl`]),
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${beginn} · ... · st`, `${vor(30)} · ... · cl`]),
       'aufgaben/0002-zwei.md': karte(2, 'zwei'),
       'aufgaben/0003-drei.md': karte(3, 'drei'),
       'aufgaben/0004-vier.md': karte(4, 'vier'),
@@ -215,7 +219,7 @@ test.describe('R00114', () => {
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     await expect(page.locator('.zt tr.edit')).toHaveCount(1);
     await expect(page.locator('#z-beginn')).toBeFocused();
-    await expect(page.locator('#z-beginn')).toHaveValue(vor(143 * 60 + 10));
+    await expect(page.locator('#z-beginn')).toHaveValue(beginn);
     await page.locator('#z-beginn').fill('2026-11-08 08:00');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('2026-11-08 08:00');
@@ -307,6 +311,36 @@ test.describe('R00114', () => {
     await frisch.clock.runFor(1000);
     await expect(frisch.locator('.toast')).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
     await frisch.close();
+  });
+
+  test('US-3: ein fremder vergessener Timer wird markiert, aber nicht zur Korrektur angeboten', async ({ page, context }) => {
+    const bestand = { ...EIN_VERGESSENER, 'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', [`${vor(143 * 60 + 10)} · ... · cl`]) };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Timer von Claude zu #2 läuft seit 6 Tagen');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]'), 'fremde Zeit bietet keine Aktion').toHaveCount(0);
+    // ohne gewählte Identität bleibt die Markierung, der Hinweis kommt ohne Knopf
+    const ohne = await context.newPage();
+    await ohne.goto(k.adresse);
+    await expect(ohne.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await expect(ohne.locator('.toast').locator('[data-act="zeit-korrigieren"]')).toHaveCount(0);
+    await expect(ohne.locator('#z-beginn')).toHaveCount(0);
+    await ohne.close();
+  });
+
+  test('US-4: ohne gewählte Identität wird erinnert, aber nichts angeboten', async ({ page }) => {
+    k = await kanbanStarten(einrichten(STEFANS_VERGESSENER));
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen — wähle „Ich bin …“');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toHaveCount(0);
+    await hinweis.locator('.txt').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('#z-beginn')).toHaveCount(0);
   });
 
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {

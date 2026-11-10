@@ -2522,11 +2522,13 @@ function erinnerungPruefen(jetzt) {
   return true;
 }
 
-/** Der Hinweis nennt Person, Aufgabe und Dauer; „Zeit korrigieren“ öffnet den vorhandenen Zeit-Editor (ADR-0019 Regel 5). */
+/** Der Hinweis nennt Person, Aufgabe und Dauer; „Zeit korrigieren“ bietet nur der eigene Eintrag an (FA 15, PO Z. 182). */
 function erinnerungZeigen({ a, z }) {
   S.ui.erinnert.add(erinnerungsSchluessel(a, z));
-  S.ui.hinweis = { text: `Timer von ${per(z.wer).name} zu #${a.nummer} läuft ${seitText(Date.now() - laufBeginn(a, z))}`, at: Date.now() };
-  if (S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
+  let text = `Timer von ${per(z.wer).name} zu #${a.nummer} läuft ${seitText(Date.now() - laufBeginn(a, z))}`;
+  if (!S.ich) text += ' — wähle „Ich bin …“';
+  S.ui.hinweis = { text, at: Date.now() };
+  if (z.wer === S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
 }
 
 setInterval(() => {
