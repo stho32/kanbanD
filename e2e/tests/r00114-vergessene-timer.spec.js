@@ -458,8 +458,8 @@ test.describe('R00114', () => {
     await alsPerson(page, 'st');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto(k.adresse);
-    // im schmalen Layout steht „Laufende Timer“ im Menü „Mehr“
-    await ausMehr(page, 'Laufende Timer');
+    // im schmalen Layout steht „Läuft gerade“ im Menü „Mehr“
+    await ausMehr(page, 'Läuft gerade');
     const pop = page.locator('#pop[aria-label="Läuft gerade"]');
     await expect(pop.locator('.pz2 .lauf.vergessen')).toHaveText('seit 6 Tagen');
     await expect(pop.locator('.pz2 .lauf'), 'nur der vergessene Timer trägt einen Chip').toHaveCount(1);
@@ -672,7 +672,7 @@ test.describe('R00114 Nacharbeit #15, Telefonbetrieb', () => {
       expect(fensterBefunde, `${breite} px: Aufgabenfenster scrollt quer`).toEqual([]);
       await page.keyboard.press('Escape');
       // Pop „Läuft gerade“ (im schmalen Layout über das Menü „Mehr“)
-      await ausMehr(page, 'Laufende Timer');
+      await ausMehr(page, 'Läuft gerade');
       const pop = page.locator('#pop[aria-label="Läuft gerade"]');
       await expect(pop).toBeVisible();
       const popMass = await pop.evaluate(p => ({ scroll: p.scrollWidth, client: p.clientWidth }));

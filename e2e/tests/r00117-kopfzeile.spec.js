@@ -114,3 +114,23 @@ test.describe('US-3 (AK 7): Bereichs-Umschalter im Touch-Maß, 960 px', () => {
   });
 });
 
+/* ── US-4: Einheitliche Begriffe (Punkt 4) ── */
+
+test.describe('US-4 (AK 8, 9): Menüeintrag „Läuft gerade“ mit Zahl, bei 0 Timern weg', () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+
+  test('mit einem laufenden Timer trägt der Eintrag „Läuft gerade“ die Zahl 1', async ({ page }) => {
+    await starten(page);
+    await page.locator('#t-mehr').click();
+    const lauf = page.locator('#pop[role=menu] #mehr-lauf');
+    await expect(lauf).toHaveText(/Läuft gerade/);
+    await expect(lauf.locator('.muted')).toHaveText('1');
+  });
+
+  test('bei 0 laufenden Timern fehlt der Eintrag im Menü „Mehr“', async ({ page }) => {
+    await starten(page, { timer: false });
+    await page.locator('#t-mehr').click();
+    await expect(page.locator('#pop[role=menu]')).toBeVisible();
+    await expect(page.locator('#mehr-lauf')).toHaveCount(0);
+  });
+});
