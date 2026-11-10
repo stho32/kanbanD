@@ -155,7 +155,7 @@ function vLaufKnopf() {
 
 function vLaufPop() {
   const r = alleLaufenden().sort((x, y) => zeitMs(x.z.beginn) - zeitMs(y.z.beginn));
-  return `<div class="pop" id="pop" data-for="t-lauf" data-al="r" style="width:450px" role="dialog" aria-label="Läuft gerade"><h4>LÄUFT GERADE <span class="mono">${r.length} Timer · ${new Set(r.map(x => x.a.nummer)).size} Aufgaben</span></h4>${r.map(({ a, z }) => `<div class="pz2${z.wer === S.ich ? ' eigen' : ''}" data-act="oeffnen" data-arg="${a.nummer}">${pk(z.wer)}<button type="button" class="id" data-act="oeffnen" data-arg="${a.nummer}" aria-label="#${a.nummer} öffnen">#${a.nummer}</button><span class="t">${esc(a.titel)}<small>${esc(per(z.wer).name)}${z.wer === S.ich ? ' · ich' : ''} · seit ${esc(ortszeit(z.beginn).slice(11))}</small></span>${vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich })}<button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Aufgabe · fremde Timer lassen sich stoppen</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-lauf" data-al="r" style="width:450px" role="dialog" aria-label="Läuft gerade"><h4>LÄUFT GERADE <span class="mono">${r.length} Timer · ${new Set(r.map(x => x.a.nummer)).size} Aufgaben</span></h4>${r.map(({ a, z }) => `<div class="pz2${z.wer === S.ich ? ' eigen' : ''}" data-act="oeffnen" data-arg="${a.nummer}">${pk(z.wer)}<button type="button" class="id" data-act="oeffnen" data-arg="${a.nummer}" aria-label="#${a.nummer} öffnen">#${a.nummer}</button><span class="t">${esc(a.titel)}<small>${esc(per(z.wer).name)}${z.wer === S.ich ? ' · ich' : ''} · seit ${esc(ortszeit(z.beginn).slice(11))}</small></span>${vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich, rahmen: 'b' })}<button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Aufgabe · fremde Timer lassen sich stoppen</div></div>`;
 }
 
 function vIchKnopf() {
@@ -319,7 +319,7 @@ function vTeilaufgaben(a) {
 }
 function vFensterSeite(a) {
   const rs = laufende(a), meins = rs.find(z => z.wer === S.ich), me = ichPerson();
-  return `<div class="abs"><h3>LÄUFT GERADE <span class="mono">${rs.length} Timer</span></h3>${rs.length ? `<div class="tl">${rs.map(z => `<div class="tz${z.wer === S.ich ? ' eigen' : ''}" data-timer="${esc(z.wer)}">${pk(z.wer)}<span>${esc(per(z.wer).name)} <span class="muted">${z.wer === S.ich ? '· ich ' : ''}· seit ${esc(ortszeit(z.beginn).slice(11))}</span></span>${vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich })}<button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="${z.wer === S.ich ? 'meinen Timer' : esc(per(z.wer).name) + 's Timer'} stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}</div>` : ''}${meins ? '' : `<button class="btn btn-haupt start" data-act="start" data-arg="${a.nummer}">▶ ${me ? 'Meinen Timer starten' : 'Timer starten …'}</button>`}</div>` + vZeiten(a);
+  return `<div class="abs"><h3>LÄUFT GERADE <span class="mono">${rs.length} Timer</span></h3>${rs.length ? `<div class="tl">${rs.map(z => `<div class="tz${z.wer === S.ich ? ' eigen' : ''}" data-timer="${esc(z.wer)}">${pk(z.wer)}<span>${esc(per(z.wer).name)} <span class="muted">${z.wer === S.ich ? '· ich ' : ''}· seit ${esc(ortszeit(z.beginn).slice(11))}</span></span>${vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich, rahmen: 'b' })}<button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="${z.wer === S.ich ? 'meinen Timer' : esc(per(z.wer).name) + 's Timer'} stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}</div>` : ''}${meins ? '' : `<button class="btn btn-haupt start" data-act="start" data-arg="${a.nummer}">▶ ${me ? 'Meinen Timer starten' : 'Timer starten …'}</button>`}</div>` + vZeiten(a);
 }
 function vZeiten(a) {
   const jetzt = Date.now(), me = ichPerson(), u = S.ui;
@@ -369,10 +369,17 @@ function vPop() {
 /* zeitMs, ortszeit, anteil, personenZeilen: web/zeiten.js */
 const hm = ms => { const m = Math.max(0, Math.floor(ms / 6e4)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
 const hms = ms => { const s = Math.max(0, Math.floor(ms / 1e3)); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
-/** Laufchip an allen fünf Zeichenstellen (R00114, ADR-0019 Regel 2): im vergessenen Zustand der Satz statt der Zahl. */
-function vLaufChip({ beginn, eigen, anzahl = 1, namen = '', sekunden = true }) {
+/**
+ * Laufchip an allen fünf Zeichenstellen (R00114, ADR-0019 Regel 2): im vergessenen Zustand der Satz statt der Zahl.
+ * `rahmen` ist der Rahmen des Bestands unter der Schwelle: `span` (Karte, Zeittabelle, Personen) oder `b` (Pop, Fensterblock).
+ */
+function vLaufChip({ beginn, eigen, anzahl = 1, namen = '', sekunden = true, rahmen = 'span' }) {
   const laufzeit = Date.now() - beginn;
   const vergessen = istVergessen(laufzeit);
+  let zahl = hm(laufzeit), format = '';
+  if (sekunden) { zahl = hms(laufzeit); format = ' data-fmt="s"'; }
+  // unter der Schwelle bleibt das Markup des Bestands an seiner Stelle (FA 11)
+  if (!vergessen && rahmen === 'b') return `<b data-since="${beginn}"${format}>${zahl}</b>`;
   let klassen = 'lauf';
   if (eigen) klassen += ' eigen';
   if (vergessen) klassen += ' vergessen';
@@ -380,8 +387,7 @@ function vLaufChip({ beginn, eigen, anzahl = 1, namen = '', sekunden = true }) {
   if (vergessen) return `<span class="${klassen}"${titel}><span data-since="${beginn}" data-fmt="seit">${seitText(laufzeit)}</span></span>`;
   let zaehler = '';
   if (anzahl > 1) zaehler = `${anzahl}× `;
-  if (!sekunden) return `<span class="${klassen}"${titel}>${zaehler}<span data-since="${beginn}">${hm(laufzeit)}</span></span>`;
-  return `<span class="${klassen}"${titel}>${zaehler}<span data-since="${beginn}" data-fmt="s">${hms(laufzeit)}</span></span>`;
+  return `<span class="${klassen}"${titel}>${zaehler}<span data-since="${beginn}"${format}>${zahl}</span></span>`;
 }
 /** Auswahl der Klasse; Auswahl und Einträge tragen die Klassenfarbe wie die Karte. Eine unbekannte Klasse bleibt als Eintrag ohne Farbe stehen. */
 function vKlassenWahl(attr, wert) {
@@ -546,8 +552,9 @@ function vKarte(a, fertig) {
   const due = a.faellig ? `<span class="vh">fällig ${esc(datumLang(a.faellig))}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${esc(datumLang(a.faellig))}">${esc(datumKurz(a.faellig, isoD(Date.now())))}</span>` : '';
   const ext = S.extern[a.nummer];
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
-  const vergessen = rs.length > 0 && istVergessen(Date.now() - erster);
-  const zusatz = vergessen ? `Timer läuft ${seitText(Date.now() - erster)}` : '';
+  const laufzeit = rs.length ? Date.now() - erster : 0;
+  const vergessen = istVergessen(laufzeit);
+  const zusatz = vergessen ? `Timer läuft ${seitText(laufzeit)}` : '';
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
   return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusatz))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;

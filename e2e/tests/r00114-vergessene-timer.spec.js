@@ -412,9 +412,10 @@ test.describe('R00114', () => {
     await page.locator('.ka[data-id="1"] .t').click();
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
     await expect(fenster.locator('.tl .lauf.vergessen')).toHaveText('seit 6 Tagen');
-    await expect(fenster.locator('.tl .lauf:not(.vergessen)'), 'Claudes kurzer Timer ohne Markierung').toHaveCount(1);
+    await expect(fenster.locator('.tl .lauf'), 'nur der vergessene Timer trägt einen Chip').toHaveCount(1);
+    await expect(fenster.locator('.tz[data-timer="cl"] b'), 'Claudes kurzer Timer bleibt die Zahl von heute').toHaveText(/^0:3\d:\d\d$/);
     await expect(fenster.locator('.zt .lauf.vergessen')).toHaveText('seit 6 Tagen');
-    await expect(fenster.locator('.zt .lauf:not(.vergessen)')).toHaveCount(1);
+    await expect(fenster.locator('.zt .lauf:not(.vergessen)'), 'in der Zeittabelle bleibt der Chip des Bestands').toHaveCount(1);
     // der Zähler in der Kopfzeile bleibt ein Zähler
     const zaehler = await page.locator('#t-lauf').innerText();
     expect(zaehler).toContain('2');
@@ -446,7 +447,8 @@ test.describe('R00114', () => {
     await ausMehr(page, 'Laufende Timer');
     const pop = page.locator('#pop[aria-label="Läuft gerade"]');
     await expect(pop.locator('.pz2 .lauf.vergessen')).toHaveText('seit 6 Tagen');
-    await expect(pop.locator('.pz2 .lauf:not(.vergessen)'), 'Claudes kurzer Timer ohne Markierung').toHaveCount(1);
+    await expect(pop.locator('.pz2 .lauf'), 'nur der vergessene Timer trägt einen Chip').toHaveCount(1);
+    await expect(pop.locator('.pz2 b'), 'Claudes kurzer Timer bleibt die Zahl von heute').toHaveText(/^0:3\d:\d\d$/);
     const popMass = await pop.evaluate(p => ({ scroll: p.scrollWidth, client: p.clientWidth }));
     expect(popMass.scroll, 'der Pop scrollt quer').toBeLessThanOrEqual(popMass.client);
     // die Seite Personen markiert dieselbe Zeile; die Woche bleibt die Folge des vergessenen Timers, nicht gekappt
