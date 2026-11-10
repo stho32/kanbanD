@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #15)
 **Kontext-Anforderung**: [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Karte #15 „Vergessene Timer sichtbar machen“, Label `ux`, WBS-Knoten I0103); zum Zeitpunkt der Entscheidung lag noch keine Anforderung vor, nachgetragen mit dem Nachtrag vom 2026-11-10
 **Erprobt durch**: — (getragen von der Systemantwort: reine Module mit Unit-Test, der Sekundentakt als einziger Zeitgeber, der gebaute Sicherer aus ADR-0007 N1; Belege im Kontext)
-**Nachträge**: 2026-11-10 — Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag 2026-11-10](#nachtrag-2026-11-10-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N)* zeigen, wo der Nachtrag gilt.
+**Nachträge**: 2026-11-10 — N1 Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag N1](#nachtrag-2026-11-10-n1-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114); N2 Erinnerungsschlüssel je Lauf (R00114, Bau), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-erinnerungsschlüssel-je-lauf-r00114-bau). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N1)* und *(→ N2)* zeigen, wo die Nachträge gelten.
 
 ## Kontext
 
@@ -76,25 +76,25 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
    - Grenz-Unit-Test nach dem Muster von R00068: 9:59:59 falsch, 10:00:00 wahr, weit darüber wahr; unbekannter Beginn zählt als nicht vergessen;
    - kein zweites `10 * 3600e3`, kein zweiter Vergleich in `web/ansicht.js`, `web/berichte.js` oder `web/app.js`.
 2. **Der Zustand wird beim Zeichnen entschieden** — nicht im Takt, nicht am Knoten:
-   - Der Chip der Karte ist `span.lauf.vergessen` (`vergessen` ist frei; nicht `leer`, Projektlehre 2026-11-06) und trägt sichtbar die **Kurzform** „seit 6 Tagen“ — ohne laufende Zahl und ohne `2×`-Präfix; dieselbe Entscheidung gilt für Fenster, Zeittabelle, Pop und Seite Personen, soweit die Karte sie verlangt — der Zähler im Kopf bleibt ein Zähler. *(→ N: der erste Satz dieser ADR sagte „läuft seit 6 Tagen“ und ließ die Zahl daneben stehen; beides trägt die Karte nicht)*
+   - Der Chip der Karte ist `span.lauf.vergessen` (`vergessen` ist frei; nicht `leer`, Projektlehre 2026-11-06) und trägt sichtbar die **Kurzform** „seit 6 Tagen“ — ohne laufende Zahl und ohne `2×`-Präfix; dieselbe Entscheidung gilt für Fenster, Zeittabelle, Pop und Seite Personen, soweit die Karte sie verlangt — der Zähler im Kopf bleibt ein Zähler. *(→ N1: der erste Satz dieser ADR sagte „läuft seit 6 Tagen“ und ließ die Zahl daneben stehen; beides trägt die Karte nicht)*
    - Den Text der Dauer bildet `web/kultur.js` (ADR-0013), nicht `zeiten.js`: „seit 6 Tagen“, „seit 14 Stunden“ sind Anzeigekultur; `zeiten.js` liefert nur ms und Wahr/Falsch.
    - Der Kartenname wächst in `kartenName()` um den **vollen** Zusatz „Timer läuft seit 6 Tagen“ (X00005/ADR-0018: der Name des Listeneintrags ist die eine Stelle). Ein eigenes `aria-label` am Chip ist wirkungslos, weil der Name des `listitem` das Innere ersetzt; der Chip bleibt nicht fokussierbar.
-   - Der laufende Sekundentext bleibt `[data-since]`: unter der Schwelle schreibt er die Zahl fort, über der Schwelle denselben Kurztext (`data-fmt="seit"`), beides ohne Zustandswechsel und ohne Neuzeichnen. *(→ N)*
+   - Der laufende Sekundentext bleibt `[data-since]`: unter der Schwelle schreibt er die Zahl fort, über der Schwelle denselben Kurztext (`data-fmt="seit"`), beides ohne Zustandswechsel und ohne Neuzeichnen. *(→ N1)*
 3. **Der Sekundentakt erkennt die Kante** — er entscheidet keinen Zustand:
    - Der Takt vergleicht je laufendem Timer „vergessen“ mit dem, was er zuletzt gesehen hat; beim Übergang falsch → wahr setzt er genau einmal ein Neuzeichnen an, im vorhandenen Tor (`zug == null && !S.ui.neu`, `web/app.js:2477`).
    - Kein Neuzeichnen je Sekunde; die Zahl beziehungsweise der Kurztext im Chip läuft weiter über `[data-since]`. Läuft bereits ein Zug oder steht „Neue Aufgabe“ offen, unterbleibt das Zeichnen und der Übergang wird beim nächsten Takt nachgeholt (kein Verlust, nur Verzug).
    - Der Übergang wahr → falsch (Timer gestoppt, gelöscht, korrigiert) entsteht durch die Aktion selbst und damit durch ihr eigenes Neuzeichnen; der Takt muss ihn nicht melden.
 4. **Die Erinnerung ist Sichtzustand, kein Bestand**:
-   - `S.ui` führt die Menge der bereits erinnerten Timer (Schlüssel `nr|wer|<Identität des Tabs>`, gepflegt auf die gerade laufenden); sie wird bei Übergang gefüllt und beim Verschwinden des Timers bereinigt. *(→ N: die Identität gehört in den Schlüssel; ein knopfloser Hinweis zählt nicht als endgültig erinnert, und im verborgenen Tab entsteht keiner)*
-   - Der Hinweis ist ein gewöhnlicher Eintrag `S.ui.hinweis` mit einer **benannten Aktion** neben dem vorhandenen `undo`: `{ text, aktion: { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: '<nr>|<kennung>' }, at, dauer }`. Das Zeichnen des Toasts zeigt die Aktion als zweiten `lnk`-Knopf (ADR-0015: bricht um, bleibt in jeder Breite bedienbar; ADR-0017: Ort im obersten modalen Dialog). *(→ N: nie zwei Aktionen — solange `undo` gesetzt ist, wartet die Erinnerung dessen Ablauf ab)*
+   - `S.ui` führt die Menge der bereits erinnerten Timer; der Schlüssel ist `nr|<Kennung>|<Identität des Tabs>`, wobei die Kennung des Eintrags `wer@JJJJ-MM-TTTHH:MM±HH:MM` lautet und damit Person **und Beginn** nennt (`Zeiteintrag::kennung`, R00090). Die Menge wird bei Übergang gefüllt und auf die gerade laufenden Einträge bereinigt. *(→ N1: die Identität gehört in den Schlüssel; ein knopfloser Hinweis zählt nicht als endgültig erinnert, und im verborgenen Tab entsteht keiner. → N2: der Beginn gehört hinein, sonst erinnert ein neuer Lauf nicht)*
+   - Der Hinweis ist ein gewöhnlicher Eintrag `S.ui.hinweis` mit einer **benannten Aktion** neben dem vorhandenen `undo`: `{ text, aktion: { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: '<nr>|<kennung>' }, at, dauer }`. Das Zeichnen des Toasts zeigt die Aktion als zweiten `lnk`-Knopf (ADR-0015: bricht um, bleibt in jeder Breite bedienbar; ADR-0017: Ort im obersten modalen Dialog). *(→ N1: nie zwei Aktionen — solange `undo` gesetzt ist, wartet die Erinnerung dessen Ablauf ab)*
    - **Strg+Z bleibt ausschließlich `undo`** (`web/app.js:1907` prüft `S.ui.hinweis.undo`). Eine Aktion wird nie per Tastenkürzel ausgelöst; sie ist kein Rückgängig und darf nicht so heißen.
    - Nichts wird in `boards/*.md`, `localStorage` oder `sessionStorage` geschrieben; ein Neuladen erinnert erneut (akzeptiert, siehe Konsequenzen).
 5. **Die Aktion knüpft an den vorhandenen Editor an** — kein zweiter Editor, kein neuer Endpunkt:
    - `zeit-korrigieren` setzt `u.offen`, `u.tab = 'inhalt'`, wartet `dateiLaden()` ab, setzt **danach** `u.zeitEdit = kennung` und `u.fokus = '#z-beginn'` (der Fall `oeffnen` löscht `u.zeitEdit`, `web/app.js:1042`; die Reihenfolge ist Teil der Regel).
    - Gezeichnet wird die vorhandene Bearbeitungszeile (`u.zeitEdit === z.kennung`, `web/ansicht.js:329`), gespeichert über den vorhandenen `zeit-ok`/PATCH-Weg (`web/app.js:1430–1432`). Ein Fehler (409/403) erscheint wie heute im Fensterfuß.
-   - Fehlt die Person („Ich bin …“), gilt der vorhandene Weg (`ichNoetig()`), nicht ein Sonderfall. *(→ N: die Aktion bietet nur der eigene Eintrag an; ohne gewählte Identität erscheint der Hinweis ohne Aktion und nennt den nächsten Schritt; ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und meldet es im Fuß)*
+   - Fehlt die Person („Ich bin …“), gilt der vorhandene Weg (`ichNoetig()`), nicht ein Sonderfall. *(→ N1: die Aktion bietet nur der eigene Eintrag an; ohne gewählte Identität erscheint der Hinweis ohne Aktion und nennt den nächsten Schritt; ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und meldet es im Fuß)*
 6. **Farbe nur als Paar** — die Fehlerfläche des Chips ist ein Token-Paar in `web/kd-tokens.css` in beiden Dunkelblöcken (Fläche + On-Farbe, ADR-0011), geprüft von der Kontrastprobe; ob das Paar nach Material 3 `error-container`/`on-error-container` heißt, entscheiden die UX-Rollen, nicht diese ADR. Kein Farbwert außerhalb der Tokens.
-7. **Grenze dieser Entscheidung**: Sie sagt, *wo* der Zustand lebt und *wie* er auf den Schirm kommt. Sie sagt nicht, *wessen* Timer erinnert wird, *wie* der Satz lautet und *ob* Summen gekappt werden — das sind Anforderungs- und PO-Fragen (Offene Fragen). *(→ N: „wessen“ ist mit PO Z. 182 entschieden, der Wortlaut sichtbar/Name mit R00114)*
+7. **Grenze dieser Entscheidung**: Sie sagt, *wo* der Zustand lebt und *wie* er auf den Schirm kommt. Sie sagt nicht, *wessen* Timer erinnert wird, *wie* der Satz lautet und *ob* Summen gekappt werden — das sind Anforderungs- und PO-Fragen (Offene Fragen). *(→ N1: „wessen“ ist mit PO Z. 182 entschieden, der Wortlaut sichtbar/Name mit R00114)*
 
 ### Durchsetzung (Fitness-Funktion)
 
@@ -150,7 +150,7 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
 - Bausteine: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md) (primär); berührt `web/zeiten.js`, `web/kultur.js`, `web/kartenname.js`, `web/ansicht.js`, `web/app.js`, `web/kd-tokens.css`, `web/kd-app.css`.
 - Material 3, „Color roles“ (`error-container`, `on-error-container`): https://m3.material.io/styles/color/roles (Abruf 2026-11-10) — nur als Rollenname, nicht als Farbquelle.
 
-## Nachtrag 2026-11-10: Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114)
+## Nachtrag 2026-11-10 N1: Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114)
 
 **Status bleibt `Akzeptiert`.** Der Nachtrag ändert Regel 2 in zwei Sätzen und präzisiert die Regeln 3–5 um die Fälle, die die Detailplanung belegt hat; Regel 1, 6 und 7 bleiben in der Sache unverändert (Regel 7 trägt nur einen Verweis, Offene Frage 1 ist geschlossen). Anlass ist die Anforderung [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Commits `64dcd6d`, `c152e70`) mit der UX-Vorprüfung M1 und der PO-Entscheidung `AI-Team/po-entscheidungen.md` Z. 182–184 (`ad56896`).
 
@@ -183,3 +183,37 @@ Damit trägt die Karte den vollen Satz **und** die laufende Zahl nicht: beides z
    - **Offen und vorzulegen:** Der Umbruch verschiebt den Chip in dieser Zeile — also eine *Lage*-Änderung, die PO Z. 184 Satz 1 („Form und Lage bleiben unverändert“) nicht vorsieht, während Satz 3 derselben Zeile verlangt, dass die UX-Vorprüfung so etwas vorlegt. Der planer folgt dem Muss-Kriterium M1, das den Umbruch ausdrücklich als Rückfall nennt, und bittet um Gegenlesen. Bleibt es bei „keine neue Lage“, fällt die 90-px-Grenze und mit ihr M1; dann ist der Weg eine neue ADR, die diese ablöst — nicht eine stille Änderung hier.
    - **Risiko und Früh-Indikator:** Der Umbruch greift auf einer Karte, die gar nicht vergessen ist (Indikator: `.ka` ohne `.vergessen` mit zweizeiliger Kopfzeile), oder die Karte wächst über ihre Spalte (Indikator: `ka.right > flaeche.right` bei 320 px). Beides fängt die E2E-Probe aus R00114 AK 12; die Breitenproben aus ADR-0015 und ADR-0012 laufen mit.
 
+
+## Nachtrag 2026-11-10 N2: Erinnerungsschlüssel je Lauf (R00114, Bau)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag ändert einen Satz der Regel 4 und trägt damit die begründete Abweichung des Baus beim Erinnerungsschlüssel nach (Zweig `karte/15`, 22 Commits, Gate 558/0 · 317/0 · 942/0). Er ist eine Verfeinerung, keine Ablösung: „einmal je Tab und Timer“ bleibt der Satz, nur heißt „Timer“ von jetzt an **Lauf**.
+
+### Was der Bau zeigt (belegt)
+
+- Der Schlüssel steht in `web/app.js` neben `erinnerungPruefen`/`erinnerungZeigen`:
+
+  ```js
+  const erinnerungsSchluessel = (a, z) => `${a.nummer}|${z.kennung}|${S.ich || ''}`;
+  ```
+- Die `kennung` eines Eintrags ist `wer@JJJJ-MM-TTTHH:MM±HH:MM` (`Zeiteintrag::kennung`, `src/modell/aufgabe.rs:55–58`, R00090) — Person **und Beginn**. Der Schlüssel ist damit genau `nr|wer@beginn|<Identität>`.
+- Die Bereinigung läuft im Sekundentakt gegen die gerade laufenden Einträge (`web/app.js`, `taktVergessen`: `const erinnert = new Set(alleLaufenden().map(erinnerungsSchluessel)); … if (!erinnert.has(schluessel)) S.ui.erinnert.delete(schluessel)`).
+- Probe: `e2e/tests/r00114-vergessene-timer.spec.js:286–292` — Stopp und Neustart derselben Person auf derselben Aufgabe, Uhr um zehn Stunden vorgestellt, Erwartung „der neue Lauf erinnert wieder“. Gegen den alten Schlüssel fällt sie (Mutante, festgehalten in `Dokumentation/Gelerntes.md`, Zeile 2026-11-10 R00114: „Probe US-9 ‚gestoppt und neuer Lauf' rot gegen den alten Schlüssel“). Die Identität im Schlüssel deckt `US-5` (Identitätswahl holt die Erinnerung mit Aktion nach).
+
+### Warum der Beginn hineinmuss
+
+Die Bereinigung sieht nur, was **jetzt** läuft. Liegen Stopp und Neustart zwischen zwei Takten, war der alte Lauf nie einen Takt lang „verschwunden“ — der Schlüssel `nr|wer|Identität` steht weiter in der Menge, und der neue Lauf gälte als bereits erinnert. Das ist keine Lücke der Bereinigung, sondern eine Grenze jeder Bereinigungsregel: **zwei Läufe derselben Person auf derselben Aufgabe sind mit einem Schlüssel aus Person und Aufgabe nicht unterscheidbar**, gleichgültig wann aufgeräumt wird. Die Lauf-Identität muss deshalb im Schlüssel stehen, und sie steht schon im Modell: die Kennung nennt Person und Beginn. Kein neuer Zustand, keine zweite Quelle.
+
+### Entscheidung
+
+**Der Schlüssel bleibt `nr|wer@beginn|<Identität des Tabs>`.** Bewusst in Kauf genommen: „einmal je Tab und Timer“ heißt jetzt „einmal je Tab, Identität und Lauf“ — ein neu gestarteter Timer ist ein neuer Timer und darf wieder erinnern; das ist die ehrliche Lesart von R00114 FA 18 und deckt den Fall, den die Karte ausgelöst hat (ein Timer, der tagelang läuft, dann gestoppt und neu gestartet wird, soll nicht still bleiben). Verworfen: am alten Schlüssel festhalten und beim Stopp aufräumen (erreicht den Fall nicht, s. o.) und ein zweites Merkmal „Lauf gesehen“ neben der Menge (dieselbe Information, doppelt gehalten).
+
+### Was bleibt, was entfällt
+
+- **Bleibt:** die Bereinigung auf die gerade laufenden Einträge. Sie hält die Menge klein und ist weiterhin richtig — sie trägt nur nicht mehr die Richtigkeit der Erinnerung; das leistet der Schlüssel.
+- **Bleibt:** der Mengensatz für die Kante (`S.ui.vergessen`, Schlüssel `nr|wer`) getrennt vom Erinnerungsschlüssel. Er entscheidet nur, ob ein Neuzeichnen angesetzt wird; ein dort verpasster Stopp-und-Neustart kostet höchstens dieses Zeichnen, und die Erinnerung zieht es mit (`erinnerungPruefen` setzt `neu`).
+- **Bleibt:** nichts wird gespeichert. Ein Neuladen leert die Menge und erinnert denselben Lauf erneut (Regel 4, Konsequenzen). Der knopflose Hinweis merkt sich den Schlüssel mit leerer Identität; die Wahl der Identität ändert den Schlüssel und holt die Erinnerung mit Aktion nach (N1) — dafür braucht es kein zweites Merkmal.
+- **Grenze:** Der Beginn in der Kennung ist minutengenau. Ein Stopp und Neustart **innerhalb derselben Minute** ergibt denselben Lauf-Schlüssel; der neue Lauf erinnert dann nicht erneut. Hingenommen: er braucht ohnehin zehn Stunden bis zur Schwelle, ein Neuladen erinnert wieder, und die Adressierbarkeit zweier Einträge derselben Minute ist eine Eigenschaft der Kennung (R00090), nicht dieser Entscheidung.
+
+### Prüfung
+
+Die Erinnerung ist an drei Stellen geprüft: US-5 (Identität), US-9 „genau ein Hinweis je Übergang“ samt Stopp-und-Neustart und US-9 „im verborgenen Tab kein Hinweis, ein frischer Tab erinnert erneut“ (`e2e/tests/r00114-vergessene-timer.spec.js`). Wer den Schlüssel wieder auf `nr|wer` verkürzt, macht die Stopp-und-Neustart-Stelle rot; wer die Identität herausnimmt, US-5.
