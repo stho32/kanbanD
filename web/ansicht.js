@@ -115,10 +115,12 @@ function vBereich() {
   return `<span class="seg" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<span class="${u.bereich === k ? 'an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</span>`).join('')}</span>`;
 }
 
-/** Unter 840 px steht der Bereich als Filter-Chips (M3) in der Werkzeugzeile; die Tippfläche kommt aus der zentralen Regel für pointer: coarse. */
+/** Unter 840 px steht der Bereich als Filter-Chips (M3) in der Werkzeugzeile; die Tippfläche kommt aus der zentralen Regel für pointer: coarse.
+ *  Der gewählte Zustand trägt ein sichtbares Häkchen (R00117, ADR-0011 Regel 3 + M3); `aria-checked` bleibt die Wahrheit und der
+ *  zugängliche Name bleibt die Beschriftung — das Zeichen ist rein darstellend (aria-hidden). */
 function vBereichChips() {
   const u = S.ui;
-  return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${t}</button>`).join('')}</span>`;
+  return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${u.bereich === k ? '<span class="kz-auswahl-haken" aria-hidden="true">✓</span> ' : ''}${t}</button>`).join('')}</span>`;
 }
 
 /** Menü „Mehr“: was in der Kopfzeile keinen Platz hat; jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
