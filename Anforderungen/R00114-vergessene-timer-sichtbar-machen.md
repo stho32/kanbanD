@@ -30,7 +30,7 @@ Ein vergessener Timer verfälscht die Zeiten und die Berichte: die Wochensumme d
 
 1. Ein laufender Zeiteintrag gilt als vergessen, wenn seine Laufzeit zehn Stunden erreicht. Laufzeit ist der Abstand von `laufBeginn` bis jetzt (Datei-Minute, für in diesem Browser gestartete Timer die gemerkte Startsekunde — dieselbe Basis, die heute den Chip füllt). Ein unbekannter Beginn gilt als nicht vergessen.
 2. Schwelle und Prädikat stehen genau einmal in `web/zeiten.js`; kein zweiter Vergleich in `web/ansicht.js`, `web/berichte.js` oder `web/app.js`. Nach dem Muster von R00068: Konstante und reine Funktion nebeneinander, Grenze als Unit-Test.
-3. Die Dauer im Wort bildet `web/kultur.js` (ADR-0013) als `seitText(ms)` → „seit 6 Tagen“: unter 48 Stunden „seit <n> Stunden“ (abgerundet), ab 48 Stunden „seit <n> Tagen“ (kaufmännisch gerundet), Einzahl „seit 1 Stunde“/„seit 1 Tag“. Rechenbeispiele: 10:00:00 → „seit 10 Stunden“, 47:59:59 → „seit 47 Stunden“, 48:00:00 → „seit 2 Tagen“, 143:10:23 → „seit 6 Tagen“, 30 Tage → „seit 30 Tagen“, 25 h → „seit 1 Tag“.
+3. Die Dauer im Wort bildet `web/kultur.js` (ADR-0013) als `seitText(ms)` → „seit 6 Tagen“, monoton und ohne Sonderfall: unter 48 Stunden abgerundete Stunden („seit <n> Stunden“, bei genau einer Stunde „seit 1 Stunde“), ab 48 Stunden kaufmännisch gerundete Tage („seit <n> Tagen“, 48 h → „seit 2 Tagen“). Die Einzahl „1 Tag“ ist nicht erreichbar, weil Tage erst ab 48 Stunden erscheinen, und gehört nicht zum Vertrag. Rechenbeispiele: 90 min → „seit 1 Stunde“, 10:00:00 → „seit 10 Stunden“, 25 h → „seit 25 Stunden“, 47:59:59 → „seit 47 Stunden“, 48:00:00 → „seit 2 Tagen“, 143:10:23 → „seit 6 Tagen“, 30 Tage → „seit 30 Tagen“.
 4. Der Zustand wird beim Zeichnen aus Zeit und Stand entschieden — nicht am DOM-Knoten, nicht im Server. Dieselbe Entscheidung gilt an allen fünf Zeichenstellen (FA 5).
 
 ### Zeigen (ADR-0019 Regeln 2, 6)
@@ -42,7 +42,7 @@ Ein vergessener Timer verfälscht die Zeiten und die Berichte: die Wochensumme d
 
 ### Karte und Name (ADR-0019 Regel 2; ADR-0018/X00005)
 
-9. Der zugängliche Name des Listeneintrags einer Karte trägt bei vergessenem Timer den Zusatz „Timer läuft seit 6 Tagen“, gestellt vor „ausgewählt“. Reihenfolge: „#<nr> <Titel>[, <Klasse>][, Timer läuft seit <Dauer>][, ausgewählt]“; fehlende Teile fallen samt Komma weg. Die Einzahl steht auch hier richtig („Timer läuft seit 1 Tag“).
+9. Der zugängliche Name des Listeneintrags einer Karte trägt bei vergessenem Timer den Zusatz „Timer läuft seit 6 Tagen“, gestellt vor „ausgewählt“. Reihenfolge: „#<nr> <Titel>[, <Klasse>][, Timer läuft seit <Dauer>][, ausgewählt]“; fehlende Teile fallen samt Komma weg. Die Dauer im Namen ist dieselbe wie am Chip (FA 3), also „Timer läuft seit 25 Stunden“ unter 48 Stunden und „Timer läuft seit 2 Tagen“ ab 48 Stunden; „Timer läuft seit 1 Tag“ gibt es nicht, weil Tage erst ab 48 Stunden erscheinen.
 10. Der Chip selbst ist kein Bedienelement, nicht per Tab erreichbar und trägt keinen eigenen zugänglichen Namen: der Name des Listeneintrags ist die eine Stelle. (Ein `aria-label` an einem `span` ohne benennbare Rolle ist nach ARIA 1.2 wirkungslos und wäre keine Erfüllung.) Der Tastaturweg zur Korrektur bleibt der vorhandene ✎-Knopf der Zeile in der Zeittabelle und der Knopf im Hinweis; am Chip ändert sich nichts.
 11. Unterhalb der Schwelle bleibt das Markup an allen fünf Stellen wie heute (Zahl, `2×`-Präfix, keine Klasse, kein Text, kein Namenszusatz).
 
@@ -86,13 +86,13 @@ Geprüft mit dem Grundbestand aus `user-stories/R00114.md`; „Uhr“ ist `page.
   - Besteht: `.ka[data-id="1"] .lauf.vergessen` mit Text „seit 6 Tagen“; `getByRole('listitem', { name: /Timer läuft seit 6 Tagen/ })` trifft #1; der Hinweis zeigt `[data-act="zeit-korrigieren"]`, und ein Klick öffnet die Zeile des Eintrags in Bearbeitung mit dem Fokus in „Beginn“.
   - Fällt durch: nur eine Farbe ohne Text; Klasse ohne Namen am Listeneintrag; Hinweis ohne Aktion; Aktion öffnet nur das Fenster ohne Editor.
   - Prüfebene: E2E `r00114-vergessene-timer.spec.js` US-1, US-6.
-- [ ] **2. Die Grenze**: Bei 9:59:59 trägt der Chip weder Klasse noch Text, der Name keinen Zusatz, und das Markup ist an allen fünf Stellen wie heute; bei 10:00:00 trägt er beides. Bei 30 Tagen Laufzeit steht „seit 30 Tagen“, bei 25 h „seit 1 Tag“. Ein Eintrag ohne lesbaren Beginn gilt im Unit-Test nicht als vergessen.
+- [ ] **2. Die Grenze**: Bei 9:59:59 trägt der Chip weder Klasse noch Text, der Name keinen Zusatz, und das Markup ist an allen fünf Stellen wie heute; bei 10:00:00 trägt er beides. Bei 30 Tagen Laufzeit steht „seit 30 Tagen“, bei 25 h „seit 25 Stunden“. Ein Eintrag ohne lesbaren Beginn gilt im Unit-Test nicht als vergessen.
   - Besteht: Unit-Test der Grenze mit der Konstante aus `web/zeiten.js` (nicht als Zahl im Test) und dieselben drei Fälle im E2E.
   - Fällt durch: 10:00:00 noch ohne Markierung; 9:59:59 schon markiert; zweite Zahl 3600e3 außerhalb `zeiten.js`.
   - Prüfebene: Unit `e2e/einheit/zeiten.test.js`; E2E US-2.
-- [ ] **3. Dauertext**: 10:00:00 → „seit 10 Stunden“; 47:59:59 → „seit 47 Stunden“; 48:00:00 → „seit 2 Tagen“; 143:10:23 → „seit 6 Tagen“; 30 Tage → „seit 30 Tagen“; 25 h → „seit 1 Tag“; 90 min (Unit-Grenzfall der Funktion) → „seit 1 Stunde“. Im Namen steht davor „Timer läuft “.
+- [ ] **3. Dauertext, monoton ohne Sonderfall**: 90 min (Unit-Grenzfall der Funktion) → „seit 1 Stunde“; 10:00:00 → „seit 10 Stunden“; 25 h → „seit 25 Stunden“; 35 h → „seit 35 Stunden“; 36 h → „seit 36 Stunden“; 47:59:59 → „seit 47 Stunden“; 48:00:00 → „seit 2 Tagen“; 143:10:23 → „seit 6 Tagen“; 30 Tage → „seit 30 Tagen“. Im Namen steht davor „Timer läuft “.
   - Besteht: je Fall die Unit-Erwartung in `web/kultur.js`; im E2E mindestens die beiden Fälle aus der Karte (143:10:23 → „seit 6 Tagen“, 10:00:00 → „seit 10 Stunden“).
-  - Fällt durch: „143 Stunden“; „5 Tagen“ bei 143:10; „1 Stunden“.
+  - Fällt durch: „143 Stunden“; „5 Tagen“ bei 143:10; „1 Stunden“; „seit 1 Tag“ bei 25 oder 35 h; ein Sprung von „1 Tag“ (35 h) auf „36 Stunden“ (36 h), also jede nicht monotone Folge.
   - Prüfebene: Unit `e2e/einheit/kultur.test.js`; E2E US-1, US-2.
 - [ ] **4. Alle fünf Zeichenstellen, Zähler bleibt Zähler**: Derselbe vergessene Timer trägt auf der Karte, im Fensterblock „LÄUFT GERADE“, in der Zeile der Zeittabelle, im Pop „Läuft gerade“ und auf der Seite Personen dieselbe Klasse und denselben Text „seit 6 Tagen“; statt der Zahl steht überall der Satz; der Zähler `#t-lauf` nennt weiter nur die Zahl. Unterhalb der Schwelle zeigt keine der fünf Stellen etwas Neues.
   - Besteht: an jeder der fünf Stellen ein Treffer für `.lauf.vergessen` mit demselben Text und ohne Ziffernfolge der Dauer; `#t-lauf` unverändert; Gegenprobe mit einem Timer bei 9:59 liefert an keiner Stelle einen Treffer.
@@ -188,7 +188,7 @@ Nach ADR-0019 (Akzeptiert); Baustein A00009 (Oberfläche) trägt die Soll-Notize
 - `web/zeiten.js` (reines Modul, `Object.assign` am Ende wie heute):
   - `VERGESSEN_MS` (Konstante, 10 h) und `istVergessen(laufzeitMs)` — `true`, wenn Laufzeit ≥ Konstante; `null`/unbekannt → `false`.
 - `web/kultur.js` (reines Modul):
-  - `seitText(ms)` — „seit 10 Stunden“ / „seit 6 Tagen“ nach FA 3, mit Einzahlformen; die Vollform im Namen entsteht als `Timer läuft ${seitText(ms)}` in `ansicht.js` (keine zweite Kulturregel).
+  - `seitText(ms)` — „seit 10 Stunden“ / „seit 6 Tagen“ nach FA 3, monoton und ohne Sonderfall; Einzahl nur bei Stunden („seit 1 Stunde“), „seit 1 Tag“ ist nicht erreichbar. Die Vollform im Namen entsteht als `Timer läuft ${seitText(ms)}` in `ansicht.js` (keine zweite Kulturregel).
 - `web/kartenname.js`:
   - `kartenName({ nummer, titel, klasse }, klassen, gewaehlt, zusatz)` — `zusatz` leer lässt den Namen wie heute; gesetzt steht er vor „ausgewählt“.
 - `web/ansicht.js`:
@@ -261,7 +261,7 @@ Die Bubbles sind Vorgabe für den Bau, keine Vereinbarung; geprüft wird gegen d
 
 Nach Skill `test-pyramide`. Jede Szene der User Story wird ein Test, jeder Test prüft eine Zustandsänderung auf dem Schirm, in der Datei oder in der Git-Geschichte (Skill `test-ehrlichkeit`).
 
-- **Unit (node --test)**: Grenze und Prädikat (`zeiten.test.js`, Muster der R00068-Grenze), Dauertext mit den Rechenbeispielen inkl. Einzahl (`kultur.test.js`), Name mit Zusatz vor „ausgewählt“ (`kartenname.test.js`), Kontrast von Schrift und Punkt (`kontrast.test.js`).
+- **Unit (node --test)**: Grenze und Prädikat (`zeiten.test.js`, Muster der R00068-Grenze), Dauertext mit den Rechenbeispielen inkl. „seit 1 Stunde“ und der monotonen Folge 35 h/36 h (`kultur.test.js`), Name mit Zusatz vor „ausgewählt“ (`kartenname.test.js`), Kontrast von Schrift und Punkt (`kontrast.test.js`).
 - **E2E (Playwright)**: neu `e2e/tests/r00114-vergessene-timer.spec.js` mit US-1 bis US-10; Muster `r00014-timer.spec.js` (Fixture `kanbanD-time` mit „…“ als laufendem Eintrag, `jetztMinus`), `r00015-zeiten.spec.js` (Editor), `alsPerson(page, 'st')`, `k.git('log', …)`, Uhr über `page.clock`; Breitenproben nach dem Muster von `ziele.spec.js`, Personen im benannten Rahmen (PO Z. 138).
 - **Rot vor dem Bau**: jeder Akzeptanztest beginnt als `test.fail` mit Verweis auf #15 und wird mit seinem Bubble grün; B0501 ist der erste rote Test.
 - **Gegenproben (Mutanten)**: Markierung nur als Farbe ohne Text (AK 1 rot), Zusatz am Chip statt am Listeneintrag (AK 5 rot), voller Satz sichtbar (AK 12 rot), Aktion an fremder Zeit (AK 6 rot), zwei Knöpfe im Hinweis (AK 9 rot), Erinnerung im verborgenen Tab (AK 10 rot), Neuzeichnen je Sekunde (AK 11 rot), zweite Schwelle in `web/app.js` (NFA 5 rot).
