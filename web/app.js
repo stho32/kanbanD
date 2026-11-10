@@ -2514,6 +2514,8 @@ const erinnerungsSchluessel = (a, z) => `${a.nummer}|${z.kennung}|${S.ich || ''}
 function erinnerungPruefen(jetzt) {
   // im verborgenen Tab entsteht kein Hinweis; der Übergang wird beim Sichtbarwerden nachgeholt (FA 18)
   if (document.visibilityState !== 'visible') return false;
+  // ein laufender Rückgängig-Hinweis bleibt bis zu seinem Ablauf unverändert; die Erinnerung folgt danach (FA 17)
+  if (S.ui.hinweis && S.ui.hinweis.undo) return false;
   const offen = alleLaufenden().filter(({ a, z }) => istVergessen(jetzt - laufBeginn(a, z)));
   const kandidat = offen.sort((x, y) => (x.z.wer === S.ich ? 0 : 1) - (y.z.wer === S.ich ? 0 : 1))
     .find(({ a, z }) => !S.ui.erinnert.has(erinnerungsSchluessel(a, z)));

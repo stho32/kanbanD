@@ -364,6 +364,30 @@ test.describe('R00114', () => {
     await expect(page.locator('.toast'), 'kein zweiter Hinweis für denselben Timer').toHaveCount(0);
   });
 
+  test('US-9: neben einem Rückgängig-Hinweis keine zweite Aktion, die Erinnerung folgt nach seinem Ablauf (M3)', async ({ page }) => {
+    const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-07 02:00 · ... · st']) };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(11, 59, 54));
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="3"]').dragTo(page.locator('.bahn[data-col="Erledigt"] .flaeche'));
+    await expect(page.locator('.toast')).toContainText('#3 nach „Erledigt“');
+    // sieben Sekunden später ist der Timer vergessen, der Rückgängig-Hinweis steht noch
+    await page.clock.runFor(7000);
+    await expect(page.locator('.toast'), 'der Rückgängig-Hinweis bleibt').toContainText('#3 nach „Erledigt“');
+    await expect(page.locator('.toast [data-act="rueckgaengig"]')).toBeVisible();
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]'), 'nie zwei Aktionen').toHaveCount(0);
+    // nach seinem Ablauf erscheint die Erinnerung genau einmal
+    await page.clock.runFor(10000);
+    await expect(page.locator('.toast')).toContainText('Timer von Stefan zu #1 läuft seit 10 Stunden');
+    await expect(page.locator('.toast [data-act="zeit-korrigieren"]')).toBeVisible();
+    const vorher = commits();
+    await page.keyboard.press('Control+z');
+    await page.clock.runFor(1000);
+    expect(commits(), 'Strg+Z löst die Aktion nicht aus').toBe(vorher);
+    await expect(page.locator('#z-beginn')).toHaveCount(0);
+  });
+
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
     // 6,5 Tage minus 20 s: nach 30 s rundet die Dauer auf sieben Tage
     const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-01 00:00 · ... · st']) };
