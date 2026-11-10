@@ -70,7 +70,6 @@ test.describe('R00114', () => {
   test.afterEach(() => k.stoppen());
 
   test('US-1: der vergessene eigene Timer trägt an der Karte Klasse und Satz statt der Zahl', async ({ page }) => {
-    test.fail(true, '#15: die Klasse `vergessen` mit dem Satz fehlt noch');
     k = await kanbanStarten(einrichten(EIN_VERGESSENER));
     await alsPerson(page, 'st');
     await uhrStellen(page, uhr(23, 50, 23));
@@ -78,9 +77,9 @@ test.describe('R00114', () => {
     const chip = page.locator('.ka[data-id="1"] .lauf.vergessen');
     await expect(chip).toHaveText('seit 6 Tagen');
     await expect(chip.locator('[data-since]')).toHaveAttribute('data-fmt', 'seit');
-    const text = await page.locator('.ka[data-id="1"]').innerText();
-    expect(text, 'die Zahl weicht dem Satz').not.toContain('143:');
-    expect(text, 'kein Zähler-Präfix auf der Karte').not.toContain('2×');
+    const kopfzeile = await page.locator('.ka[data-id="1"] .r0').innerText();
+    expect(kopfzeile, 'die Zahl weicht dem Satz').not.toContain('143:');
+    expect(kopfzeile, 'kein Zähler-Präfix auf der Karte').not.toContain('2×');
   });
 
   test('US-1: der Name des Listeneintrags nennt „Timer läuft seit 6 Tagen“, der Chip ist kein Bedienelement', async ({ page }) => {
@@ -102,7 +101,6 @@ test.describe('R00114', () => {
   });
 
   test('US-1: der Titel bleibt lesbar, der Chip liegt im Kartenrechteck — 1280/414/320, ein und zwei Timer', async ({ page }) => {
-    test.fail(true, '#15: ohne Markierung keine Breitenprobe der vergessenen Karte');
     k = await kanbanStarten(einrichten(BREITEN));
     await alsPerson(page, 'st');
     await uhrStellen(page, uhr(23, 50, 23));
@@ -145,7 +143,6 @@ test.describe('R00114', () => {
   });
 
   test('US-2: die Dauer im Wort an der Karte — 25 h, 47:59, 30 Tage', async ({ page }) => {
-    test.fail(true, '#15: der Dauertext steht noch nicht im Chip');
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
@@ -164,7 +161,6 @@ test.describe('R00114', () => {
   });
 
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
-    test.fail(true, '#15: der Takt schreibt den Satz noch nicht fort');
     // 6,5 Tage minus 20 s: nach 30 s rundet die Dauer auf sieben Tage
     const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-01 00:00 · ... · st']) };
     k = await kanbanStarten(einrichten(bestand));
