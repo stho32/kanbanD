@@ -80,15 +80,26 @@ test('kein ISO-Tag: datumLang und datumKurz geben den Wert unverändert zurück,
   assert.strictEqual(datumKurz('2026-1x', '2026-11-07'), '2026-1x');
 });
 
-// R00114 FA 3 (ADR-0019 Regel 2): die Dauer im Wort — Rechenbeispiele der Anforderung samt Einzahl
-test('seitText: unter 48 Stunden in Stunden abgerundet, ab 48 Stunden in Tagen kaufmännisch gerundet', () => {
+// R00114 FA 3 (ADR-0019 Regel 2): die Dauer im Wort, monoton und ohne Sonderfall — Rechenbeispiele der Anforderung
+test('seitText: unter 48 Stunden abgerundete Stunden, ab 48 Stunden kaufmännisch gerundete Tage', () => {
   const { seitText } = require('../../web/kultur.js');
   const stunde = 36e5, tag = 864e5;
+  assert.strictEqual(seitText(90 * 6e4), 'seit 1 Stunde');
   assert.strictEqual(seitText(10 * stunde), 'seit 10 Stunden');
+  assert.strictEqual(seitText(25 * stunde), 'seit 25 Stunden');
   assert.strictEqual(seitText(47 * stunde + 59 * 6e4 + 59e3), 'seit 47 Stunden');
   assert.strictEqual(seitText(48 * stunde), 'seit 2 Tagen');
   assert.strictEqual(seitText(143 * stunde + 10 * 6e4 + 23e3), 'seit 6 Tagen');
   assert.strictEqual(seitText(30 * tag), 'seit 30 Tagen');
-  assert.strictEqual(seitText(25 * stunde), 'seit 1 Tag');
-  assert.strictEqual(seitText(90 * 6e4), 'seit 1 Stunde');
+});
+
+test('seitText: kein Sprung zwischen 35 und 36 Stunden — Tage erscheinen erst ab 48 Stunden (AK 3)', () => {
+  const { seitText } = require('../../web/kultur.js');
+  const stunde = 36e5;
+  assert.strictEqual(seitText(35 * stunde), 'seit 35 Stunden');
+  assert.strictEqual(seitText(36 * stunde), 'seit 36 Stunden');
+  assert.strictEqual(seitText(24 * stunde), 'seit 24 Stunden', 'auch über einem Tag bleibt die Stunde');
+  // monoton: die Stundenzahl wächst bis 47,59 h, danach beginnt der Tag bei 2 und steigt
+  const folge = [...Array(48)].map((_, h) => seitText(h * stunde));
+  assert.deepStrictEqual(folge.slice(2, 48).filter(t => t.endsWith('Tag') || t.endsWith('Tagen')), []);
 });

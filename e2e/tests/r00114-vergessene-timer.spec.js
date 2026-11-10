@@ -187,22 +187,37 @@ test.describe('R00114', () => {
     expect(await page.evaluate(() => window.kdTest.renders()), 'kein Neuzeichnen je Sekunde').toBe(vorher + 1);
   });
 
-  test('US-2: die Dauer im Wort an der Karte — 25 h, 47:59, 30 Tage', async ({ page }) => {
+  test('US-2: die Dauer im Wort an der Karte — 25 h, 35 h, 36 h, 47:59, 48 h, 30 Tage', async ({ page }) => {
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
       'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(25 * 60 + 1)} · ... · st`]),
-      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', [`${vor(47 * 60 + 59)} · ... · st`]),
-      'aufgaben/0003-drei.md': karte(3, 'drei', 'bug', [`${vor(30 * 24 * 60 + 60)} · ... · st`]),
-      'aufgaben/0004-vier.md': karte(4, 'vier', 'bug', [`${vor(48 * 60 + 1)} · ... · st`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', [`${vor(35 * 60 + 1)} · ... · st`]),
+      'aufgaben/0003-drei.md': karte(3, 'drei', 'bug', [`${vor(36 * 60 + 1)} · ... · st`]),
+      'aufgaben/0004-vier.md': karte(4, 'vier', 'bug', [`${vor(47 * 60 + 59)} · ... · st`]),
     };
     k = await kanbanStarten(einrichten(bestand));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await expect(page.locator('.ka[data-id="1"] .lauf.vergessen')).toHaveText('seit 1 Tag');
-    await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 47 Stunden');
-    await expect(page.locator('.ka[data-id="3"] .lauf.vergessen')).toHaveText('seit 30 Tagen');
-    await expect(page.locator('.ka[data-id="4"] .lauf.vergessen')).toHaveText('seit 2 Tagen');
+    // kein Sprung auf Tage vor 48 Stunden (AK 3): 25, 35 und 36 Stunden stehen alle in Stunden
+    await expect(page.locator('.ka[data-id="1"] .lauf.vergessen')).toHaveText('seit 25 Stunden');
+    await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 35 Stunden');
+    await expect(page.locator('.ka[data-id="3"] .lauf.vergessen')).toHaveText('seit 36 Stunden');
+    await expect(page.locator('.ka[data-id="4"] .lauf.vergessen')).toHaveText('seit 47 Stunden');
+    // ab 48 Stunden Tage, kaufmännisch gerundet — dieselbe Entscheidung trägt der Name der Karte
+    await expect(page.locator('.ka[data-id="3"]')).toHaveAttribute('aria-label', '#3 drei, Fehler, Timer läuft seit 36 Stunden');
+    const tage = {
+      ...bestand,
+      'aufgaben/0005-fuenf.md': karte(5, 'fünf', 'bug', [`${vor(30 * 24 * 60 + 60)} · ... · st`]),
+      'aufgaben/0006-sechs.md': karte(6, 'sechs', 'bug', [`${vor(48 * 60 + 1)} · ... · st`]),
+      'boards/entwicklung.md': BOARD.replace('- #4\n', '- #4\n- #5\n- #6\n'),
+    };
+    await k.stoppen();
+    k = await kanbanStarten(einrichten(tage));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="5"] .lauf.vergessen')).toHaveText('seit 30 Tagen');
+    await expect(page.locator('.ka[data-id="6"] .lauf.vergessen')).toHaveText('seit 2 Tagen');
   });
 
   test('US-6: der eigene vergessene Timer erinnert einmal, die Aktion öffnet genau den Eintrag', async ({ page }) => {

@@ -52,10 +52,7 @@
   function seitText(ms) {
     const laufzeit = Math.max(0, ms);
     const stunden = Math.floor(laufzeit / 36e5);
-    const tage = Math.round(laufzeit / 864e5);
-    // ein Tag in Worten schon ab der halben Tageszeit: 25 h ergibt nach FA 3 „seit 1 Tag“
-    if (tage === 1) return 'seit 1 Tag';
-    if (stunden >= 48) return `seit ${tage} Tagen`;
+    if (stunden >= 48) return `seit ${Math.round(laufzeit / 864e5)} Tagen`;
     if (stunden === 1) return 'seit 1 Stunde';
     return `seit ${stunden} Stunden`;
   }

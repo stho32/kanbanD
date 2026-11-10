@@ -45,6 +45,6 @@ test('defekte Datei und fehlende Aufgabe', () => {
 test('Zusatz „Timer läuft seit 6 Tagen“ zwischen Klasse und Auswahl', () => {
   assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, false, 'Timer läuft seit 6 Tagen'), '#1 eins, Fehler, Timer läuft seit 6 Tagen');
   assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, true, 'Timer läuft seit 6 Tagen'), '#1 eins, Fehler, Timer läuft seit 6 Tagen, ausgewählt');
-  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, 'Timer läuft seit 1 Tag'), '#3 drei, Timer läuft seit 1 Tag');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, 'Timer läuft seit 36 Stunden'), '#3 drei, Timer läuft seit 36 Stunden');
   assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, true, ''), '#3 drei, ausgewählt');
 });
