@@ -861,6 +861,13 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .bericht{padding:var(--kd-s3)}
   .bfilter{padding:8px var(--kd-s3)}
   .wbs-tabelle table{min-width:860px}
+  /* Nacharbeit #15 (M2, AK 13): die 48-px-Ziele der Zeile sprengen die festen Spalten — die Zeile bricht um,
+     Chip und Stopp-Knopf stehen dann in einer zweiten Zeile (wie die Kopfzeile der Karte) */
+  .pz2,.tz{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+  .pz2>.pk,.pz2>.id,.tz>.pk,.tz .lauf,.tz>b{flex:none}
+  .pz2 .t{flex:1 1 140px;min-width:0;white-space:normal;overflow:visible;text-overflow:clip}
+  .tz>span:not(.lauf):not(.pk){flex:1 1 200px;min-width:0}
+  .pz2 .btn,.tz .btn{margin-left:auto}
 }
 
 /* ── Projekt-Fever-Chart (R00078) ── */

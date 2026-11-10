@@ -648,3 +648,43 @@ test.describe('R00114 Nacharbeit #15', () => {
   });
 });
 
+test.describe('R00114 Nacharbeit #15, Telefonbetrieb', () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  const BESTAND = {
+    ...EIN_VERGESSENER,
+    'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [vor(143 * 60 + 10) + ' · ... · st', vor(30) + ' · ... · cl']),
+  };
+
+  test('M2: Aufgabenfenster und Pop scrollen im Telefonbetrieb nicht waagrecht (AK 13)', async ({ page }) => {
+    k = await kanbanStarten(einrichten(BESTAND));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    for (const [breite, hoehe] of [[320, 640], [375, 812], [414, 896]]) {
+      await page.setViewportSize({ width: breite, height: hoehe });
+      await page.goto(k.adresse);
+      // Aufgabenfenster
+      await page.locator('.ka[data-id="1"] .t').click();
+      await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+      const fensterBefunde = await querBefunde(page, '.mod-body');
+      expect(fensterBefunde, `${breite} px: Aufgabenfenster scrollt quer`).toEqual([]);
+      await page.keyboard.press('Escape');
+      // Pop „Läuft gerade“ (im schmalen Layout über das Menü „Mehr“)
+      await ausMehr(page, 'Laufende Timer');
+      const pop = page.locator('#pop[aria-label="Läuft gerade"]');
+      await expect(pop).toBeVisible();
+      const popMass = await pop.evaluate(p => ({ scroll: p.scrollWidth, client: p.clientWidth }));
+      expect(popMass.scroll, `${breite} px: Pop scrollt quer (${popMass.scroll}>${popMass.client})`).toBe(popMass.client);
+      const draussen = await pop.locator('button').evaluateAll((knoepfe, rand) => knoepfe
+        .map(knopf => ({ name: knopf.getAttribute('aria-label') || knopf.textContent.trim(), rechts: Math.round(knopf.getBoundingClientRect().right) }))
+        .filter(k => k.rechts > rand), breite);
+      expect(draussen, `${breite} px: Knöpfe ragen über den Rand`).toEqual([]);
+      const zeilen = await querBefunde(page, '#pop[aria-label="Läuft gerade"] .pz2 .t');
+      expect(zeilen, `${breite} px: Zeile des Pops scrollt quer`).toEqual([]);
+      await page.keyboard.press('Escape');
+    }
+  });
+});
+
