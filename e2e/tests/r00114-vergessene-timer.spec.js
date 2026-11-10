@@ -476,3 +476,35 @@ test.describe('R00114', () => {
     expect(await page.evaluate(() => window.kdTest.renders()), 'kein Neuzeichnen am Tageswechsel').toBe(vorher);
   });
 });
+
+test.describe('R00114, Touch, 320 px', () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  test('US-10: der Hinweis mit langem Namen liegt ganz im Bild, hat genau einen Knopf und der misst 44 × 44 (AK 14)', async ({ page }) => {
+    const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-02 00:40 · ... · mm']) };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'mm');
+    await uhrStellen(page, uhr(23, 50, 23));
+    await page.goto(k.adresse);
+    await expect(page.locator('.ka[data-id="1"] .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await page.clock.runFor(1000);
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Timer von Maximiliane Mustermann zu #1 läuft seit 6 Tagen');
+    await expect(hinweis.locator('[data-act]'), 'genau eine Aktion').toHaveCount(1);
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toHaveText('Zeit korrigieren');
+    const m = await page.evaluate(() => {
+      const toast = document.querySelector('.toast'), knopf = toast.querySelector('[data-act]');
+      const t = toast.getBoundingClientRect(), k = knopf.getBoundingClientRect();
+      return {
+        imBild: t.left >= 0 && t.top >= 0 && t.right <= innerWidth + 0.5 && t.bottom <= innerHeight + 0.5,
+        kante: Math.min(k.width, k.height), knopfQuer: knopf.scrollWidth - knopf.clientWidth,
+      };
+    });
+    expect(m.imBild, 'der Hinweis liegt ganz im sichtbaren Bereich').toBe(true);
+    expect(m.kante, 'der Knopf misst mindestens 44 × 44').toBeGreaterThanOrEqual(44);
+    expect(m.knopfQuer, 'der Knopf ist vollständig sichtbar').toBeLessThanOrEqual(0);
+    expect(await seiteQuer(page), 'die Seite scrollt nicht waagrecht').toEqual({ Seite: 0, main: 0 });
+  });
+});
