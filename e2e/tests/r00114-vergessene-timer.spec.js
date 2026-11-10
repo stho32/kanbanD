@@ -343,6 +343,27 @@ test.describe('R00114', () => {
     await expect(page.locator('#z-beginn')).toHaveCount(0);
   });
 
+  test('US-5: die Identitätswahl holt die Erinnerung mit Aktion nach (M4)', async ({ page }) => {
+    k = await kanbanStarten(einrichten(STEFANS_VERGESSENER));
+    await page.clock.install();
+    await page.goto(k.adresse);
+    const hinweis = page.locator('.toast');
+    await page.clock.runFor(1000);
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen — wähle „Ich bin …“');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toHaveCount(0);
+    await page.locator('#t-ich').click();
+    await page.getByRole('menuitemradio', { name: /Stefan/ }).click();
+    await page.clock.runFor(1000);
+    await expect(page.locator('.toast'), 'ersetzt, nicht verdoppelt').toHaveCount(1);
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toBeVisible();
+    await hinweis.locator('[data-act="zeit-korrigieren"]').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await expect(page.locator('#z-beginn')).toBeFocused();
+    await page.clock.runFor(10000);
+    await expect(page.locator('.toast'), 'kein zweiter Hinweis für denselben Timer').toHaveCount(0);
+  });
+
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
     // 6,5 Tage minus 20 s: nach 30 s rundet die Dauer auf sieben Tage
     const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-01 00:00 · ... · st']) };
