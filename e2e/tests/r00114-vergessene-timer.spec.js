@@ -177,7 +177,6 @@ test.describe('R00114', () => {
   });
 
   test('US-6: der eigene vergessene Timer erinnert einmal, die Aktion öffnet genau den Eintrag', async ({ page }) => {
-    test.fail(true, '#15: der Hinweis mit „Zeit korrigieren“ fehlt noch');
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
@@ -201,11 +200,11 @@ test.describe('R00114', () => {
     await page.locator('#z-beginn').fill('2026-11-08 08:00');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('2026-11-08 08:00');
+    await expect(page.locator('.mod-fuss .gs')).toContainText('gespeichert');
     expect(commits(), 'genau ein Commit aus der Korrektur').toBe(vorher + 1);
   });
 
   test('US-7: ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und der Fuß sagt es', async ({ page }) => {
-    test.fail(true, '#15: die Aktion fehlt noch');
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
@@ -221,11 +220,11 @@ test.describe('R00114', () => {
     await page.goto(k.adresse);
     const hinweis = page.locator('.toast');
     await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
-    const vorher = commits();
     // ein Agent stoppt und löscht den Eintrag, während der Hinweis steht
-    expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/stop`, { headers: { 'X-KanbanD-Wer': 'cl' } })).ok()).toBe(true);
+    expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/stop`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { wer: 'st' } })).ok()).toBe(true);
     const kennung = encodeURIComponent(await page.evaluate(async () => (await (await fetch('/api/aufgaben/1')).json()).zeiten[0].kennung));
     expect((await page.request.delete(`${k.adresse}api/aufgaben/1/zeiten/${kennung}`, { headers: { 'X-KanbanD-Wer': 'cl' } })).ok()).toBe(true);
+    const vorher = commits();
     await hinweis.locator('[data-act="zeit-korrigieren"]').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     await expect(page.locator('#z-beginn')).toHaveCount(0);

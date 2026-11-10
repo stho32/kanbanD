@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set() } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -574,6 +574,15 @@ function fensterMelden(text, feld = null) {
   S.ui.fensterFehlerFeld = feld;
 }
 
+/** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
+async function fensterOeffnen(nummer) {
+  const u = S.ui;
+  u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false;
+  u.offen = nummer; u.tab = 'inhalt'; u.gespeichert = null; fensterMelden(null);
+  u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
+  await dateiLaden();
+}
+
 /** `feld` nennt das Eingabefeld, aus dem die Änderung kommt; eine Ablehnung macht es ungültig. */
 async function aufgabeAendern(nummer, aenderung, feld = null) {
   if (ichNoetig()) { render(); return false; }
@@ -1039,7 +1048,19 @@ async function act(a, arg, wert) {
         if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         return laden();
       }
-      case 'oeffnen': if (zug != null) break; u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.offen = +arg; u.tab = 'inhalt'; u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = []; await dateiLaden(); break;
+      case 'oeffnen': if (zug != null) break; await fensterOeffnen(+arg); break;
+      case 'zeit-korrigieren': {
+        // arg: `nr|kennung` des Eintrags (R00114 FA 19) — der Editor wird nach dem Öffnen gesetzt, `fensterOeffnen` löscht ihn
+        const [nummer, kennung] = String(arg).split('|');
+        if (zug != null) break;
+        await fensterOeffnen(+nummer);
+        // geprüft wird an der eben geladenen Datei, nicht am vielleicht veralteten Stand des Boards (FA 19)
+        const eintrag = (u.datei || { zeiten: [] }).zeiten.find(z => z.kennung === kennung);
+        if (!eintrag) { fensterMelden('Der Zeiteintrag ist nicht mehr da.'); break; }
+        u.zeitEdit = kennung;
+        u.fokus = '#z-beginn';
+        break;
+      }
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
@@ -2481,6 +2502,23 @@ function taktVergessen(jetzt) {
   for (const schluessel of S.ui.vergessen) if (!laufend.has(schluessel)) S.ui.vergessen.delete(schluessel);
 }
 
+/** Erinnerung an vergessene Timer (R00114, ADR-0019 Regel 4): ein Hinweis je Tab und Timer, der eigene zuerst. */
+function erinnerungPruefen(jetzt) {
+  const offen = alleLaufenden().filter(({ a, z }) => istVergessen(jetzt - laufBeginn(a, z)));
+  const kandidat = offen.sort((x, y) => (x.z.wer === S.ich ? 0 : 1) - (y.z.wer === S.ich ? 0 : 1))
+    .find(({ a, z }) => !S.ui.erinnert.has(`${a.nummer}|${z.wer}`));
+  if (!kandidat) return false;
+  erinnerungZeigen(kandidat);
+  return true;
+}
+
+/** Der Hinweis nennt Person, Aufgabe und Dauer; „Zeit korrigieren“ öffnet den vorhandenen Zeit-Editor (ADR-0019 Regel 5). */
+function erinnerungZeigen({ a, z }) {
+  S.ui.erinnert.add(`${a.nummer}|${z.wer}`);
+  S.ui.hinweis = { text: `Timer von ${per(z.wer).name} zu #${a.nummer} läuft ${seitText(Date.now() - laufBeginn(a, z))}`, at: Date.now() };
+  if (S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
+}
+
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
@@ -2489,6 +2527,7 @@ setInterval(() => {
   taktVergessen(jetzt);
   // das Zeichnen unterbleibt hinter einem Zug oder „Neue Aufgabe“ und wird beim nächsten Takt nachgeholt (FA 22)
   if (S.ui.vergessenOffen && zug == null && !S.ui.neu) { S.ui.vergessenOffen = false; neu = true; }
+  if (erinnerungPruefen(jetzt)) neu = true;
   document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => {
     const d = jetzt - +el.dataset.since;

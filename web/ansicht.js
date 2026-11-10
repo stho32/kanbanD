@@ -787,7 +787,19 @@ function vHinweis() {
 function vHinweisInhalt() {
   const t = S.ui.hinweis;
   if (t && t.warnungen) return `<div class="toast warn" role="alert" id="pruef-warnung"><span class="ausruf" aria-hidden="true">!</span><span>${esc(t.text)}</span>${t.warnungen.map(w => `<span>${esc(w.text)} ${warnungsKnoten(w).map(k => `<a class="lnk" href="${esc(k.ziel)}" data-act="wbs-zu" data-arg="${esc(k.ziel)}" title="${esc(k.titel)}">${esc(k.text)}</a>`).join(' ')}</span>`).join('')}</div>`;
-  return t ? `<div class="toast" role="status"><span class="txt">${esc(t.text)}</span>${t.undo ? `<button class="lnk" data-act="rueckgaengig" title="Strg+Z">rückgängig</button>` : ''}</div>` : '';
+  if (!t) return '';
+  return `<div class="toast" role="status"><span class="txt">${esc(t.text)}</span>${vHinweisUndo(t)}${vHinweisAktion(t)}</div>`;
+}
+
+/** „rückgängig“ nur, wenn der Hinweis eine Gegenaktion gemerkt hat (ADR-0017). */
+function vHinweisUndo(t) {
+  if (!t.undo) return '';
+  return `<button class="lnk" data-act="rueckgaengig" title="Strg+Z">rückgängig</button>`;
+}
+/** Die benannte Aktion eines Hinweises (R00114 FA 16): nie neben einem Rückgängig, nie per Tastenkürzel. */
+function vHinweisAktion(t) {
+  if (!t.aktion || t.undo) return '';
+  return `<button class="lnk" data-act="${esc(t.aktion.act)}" data-arg="${esc(t.aktion.arg)}">${esc(t.aktion.text)}</button>`;
 }
 
 /* ── Aufgabenliste (Artboard D0004) ── */
