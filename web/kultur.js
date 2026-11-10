@@ -48,6 +48,17 @@
     const datum = datumAusMs(ms);
     return [datum.slice(0, 6), datum.slice(6)];
   }
+  /** Dauer in Worten (R00114 FA 3): unter 48 Stunden in Stunden abgerundet, ab 48 Stunden in Tagen kaufmännisch gerundet. */
+  function seitText(ms) {
+    const laufzeit = Math.max(0, ms);
+    const stunden = Math.floor(laufzeit / 36e5);
+    const tage = Math.round(laufzeit / 864e5);
+    // ein Tag in Worten schon ab der halben Tageszeit: 25 h ergibt nach FA 3 „seit 1 Tag“
+    if (tage === 1) return 'seit 1 Tag';
+    if (stunden >= 48) return `seit ${tage} Tagen`;
+    if (stunden === 1) return 'seit 1 Stunde';
+    return `seit ${stunden} Stunden`;
+  }
 
   /** Sichtbare Beschriftung je Schlüssel der Datei; der Schlüssel selbst bleibt Hilfstext (FA 10). */
   const FELDER = Object.freeze({
@@ -74,5 +85,5 @@
     return ['thin air'];
   }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, seitText, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
 })(typeof module !== 'undefined' ? module.exports : window);

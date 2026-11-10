@@ -79,3 +79,16 @@ test('kein ISO-Tag: datumLang und datumKurz geben den Wert unverändert zurück,
   // Jahr wie heute, aber kein Tag: nur der Guard in datumKurz hält ihn vom Zerschneiden ab
   assert.strictEqual(datumKurz('2026-1x', '2026-11-07'), '2026-1x');
 });
+
+// R00114 FA 3 (ADR-0019 Regel 2): die Dauer im Wort — Rechenbeispiele der Anforderung samt Einzahl
+test('seitText: unter 48 Stunden in Stunden abgerundet, ab 48 Stunden in Tagen kaufmännisch gerundet', () => {
+  const { seitText } = require('../../web/kultur.js');
+  const stunde = 36e5, tag = 864e5;
+  assert.strictEqual(seitText(10 * stunde), 'seit 10 Stunden');
+  assert.strictEqual(seitText(47 * stunde + 59 * 6e4 + 59e3), 'seit 47 Stunden');
+  assert.strictEqual(seitText(48 * stunde), 'seit 2 Tagen');
+  assert.strictEqual(seitText(143 * stunde + 10 * 6e4 + 23e3), 'seit 6 Tagen');
+  assert.strictEqual(seitText(30 * tag), 'seit 30 Tagen');
+  assert.strictEqual(seitText(25 * stunde), 'seit 1 Tag');
+  assert.strictEqual(seitText(90 * 6e4), 'seit 1 Stunde');
+});
