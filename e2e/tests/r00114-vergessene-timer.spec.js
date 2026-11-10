@@ -67,6 +67,7 @@ const karteMessen = (page, nummer) => page.evaluate(nr => {
 test.describe('R00114', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
   let k;
+  const commits = () => +k.git('rev-list', '--count', 'HEAD');
   test.afterEach(() => k.stoppen());
 
   test('US-1: der vergessene eigene Timer trägt an der Karte Klasse und Satz statt der Zahl', async ({ page }) => {
@@ -173,6 +174,64 @@ test.describe('R00114', () => {
     await expect(page.locator('.ka[data-id="2"] .lauf.vergessen')).toHaveText('seit 47 Stunden');
     await expect(page.locator('.ka[data-id="3"] .lauf.vergessen')).toHaveText('seit 30 Tagen');
     await expect(page.locator('.ka[data-id="4"] .lauf.vergessen')).toHaveText('seit 2 Tagen');
+  });
+
+  test('US-6: der eigene vergessene Timer erinnert einmal, die Aktion öffnet genau den Eintrag', async ({ page }) => {
+    test.fail(true, '#15: der Hinweis mit „Zeit korrigieren“ fehlt noch');
+    const bestand = {
+      'kanbanD.md': KOPF,
+      'boards/entwicklung.md': BOARD,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`, `${vor(30)} · ... · cl`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei'),
+      'aufgaben/0003-drei.md': karte(3, 'drei'),
+      'aufgaben/0004-vier.md': karte(4, 'vier'),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
+    await expect(hinweis.locator('[data-act="zeit-korrigieren"]')).toHaveText('Zeit korrigieren');
+    const vorher = commits();
+    await hinweis.locator('[data-act="zeit-korrigieren"]').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await expect(page.locator('.zt tr.edit')).toHaveCount(1);
+    await expect(page.locator('#z-beginn')).toBeFocused();
+    await expect(page.locator('#z-beginn')).toHaveValue(vor(143 * 60 + 10));
+    await page.locator('#z-beginn').fill('2026-11-08 08:00');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('2026-11-08 08:00');
+    expect(commits(), 'genau ein Commit aus der Korrektur').toBe(vorher + 1);
+  });
+
+  test('US-7: ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und der Fuß sagt es', async ({ page }) => {
+    test.fail(true, '#15: die Aktion fehlt noch');
+    const bestand = {
+      'kanbanD.md': KOPF,
+      'boards/entwicklung.md': BOARD,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei'),
+      'aufgaben/0003-drei.md': karte(3, 'drei'),
+      'aufgaben/0004-vier.md': karte(4, 'vier'),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    const seitenfehler = [];
+    page.on('pageerror', f => seitenfehler.push(f.message));
+    await page.goto(k.adresse);
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Timer von Stefan zu #1 läuft seit 6 Tagen');
+    const vorher = commits();
+    // ein Agent stoppt und löscht den Eintrag, während der Hinweis steht
+    expect((await page.request.post(`${k.adresse}api/aufgaben/1/timer/stop`, { headers: { 'X-KanbanD-Wer': 'cl' } })).ok()).toBe(true);
+    const kennung = encodeURIComponent(await page.evaluate(async () => (await (await fetch('/api/aufgaben/1')).json()).zeiten[0].kennung));
+    expect((await page.request.delete(`${k.adresse}api/aufgaben/1/zeiten/${kennung}`, { headers: { 'X-KanbanD-Wer': 'cl' } })).ok()).toBe(true);
+    await hinweis.locator('[data-act="zeit-korrigieren"]').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await expect(page.locator('#z-beginn')).toHaveCount(0);
+    await expect(page.locator('.mod-fuss .fehl')).toContainText('Der Zeiteintrag ist nicht mehr da.');
+    expect(commits()).toBe(vorher);
+    expect(seitenfehler).toEqual([]);
   });
 
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
