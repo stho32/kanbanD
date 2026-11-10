@@ -427,3 +427,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-08 | #13 | Nacharbeit | entwickler (frisch, a2f81d3d5cd263ca1) | bestanden; B1/A1/arev-B1 behoben, Gate grün bis auf bekannte Wackler; 8.15–10.30 $ | — | b62a8b8 (karte/13) |
 | 2026-11-08 | #13 | Auto-Reviews | code-reviewer (fortgesetzt, a1b6947516c80b10d) | Wiederholung bestanden, keine neuen Befunde; gesamt 7.82–10.67 $ | — | — |
 | 2026-11-08 | #13 | Entwicklertest | entwicklertester (frisch, a625df1c119adec95) | beauftragt | — | — |
+| 2026-11-10 | — | Umgebung | Director | Betreiber startete das Board neu auf 7422 (PID 287004, `board.pid` aktualisiert); offener etst-Timer aus der abgebrochenen Session (08.11. 13:32) gestoppt und Leereintrag verworfen | — | — |
+| 2026-11-10 | #13 | Entwicklertest | entwicklertester (frisch, general-Subagent) | befund: alle 11 US inhaltlich bestanden; neue Probe r00113:446 in 2 von 4 Vollläufen rot (afterEach liest den Konsole-Wächter nach `k.stoppen()` → ERR_CONNECTION_REFUSED); Abnahme-Probe mitgeliefert; Director bestätigt Mechanik im Code, ein eigener Volllauf 444/0 | 0:10 | — |
+| 2026-11-10 | #13 | Zug → Nacharbeit | Director | Muss-Befund aus Entwicklertest (wackelige neue Probe); Nacharbeit an derselben Karte, danach nur Wiederholung des Entwicklertests | — | — |
