@@ -99,7 +99,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bk-name:hover{color:var(--kd-accent-ink)}
 .bk-name:hover .bk-text{text-decoration:underline}
 .bk-name:hover .bk-klapp{color:var(--kd-accent-ink)}
-.bahn.zu{flex:0 0 34px}
+/* min-width:auto an der zugeklappten Bahn (R00115-Nacharbeit): ihr vertikaler Name ist min-content und hält
+   die Breite 49 px — das min-width:0 der offenen Bahn (gegen lange Kartenwörter) darf ihn nicht schmälern */
+.bahn.zu{flex:0 0 34px;min-width:auto}
 .bahn.zu .bahn-kopf{justify-content:center;padding:0}
 .bahn.zu .bahn-kopf .n{margin:0}
 .bahn.zu .bahn-kopf.ueber .n{color:var(--kd-warn);font-weight:700}
