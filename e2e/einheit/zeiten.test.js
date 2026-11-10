@@ -109,3 +109,13 @@ test('Summe der Zeiten gesamt und je Person', () => {
   assert.deepStrictEqual(summeJePerson(zeiten, jetzt), [{ wer: 'en', ms: 47 * 6e4 }, { wer: 'st', ms: 60 * 6e4 }].sort((a, b) => b.ms - a.ms));
   assert.strictEqual(summeMs([], jetzt), 0);
 });
+
+// R00114 (ADR-0019 Regel 1): Schwelle und Prädikat des vergessenen Timers — die Grenze als Konstante, nicht als Zahl im Test
+test('Vergessen: die Grenze liegt bei zehn Stunden, ein unbekannter Beginn zählt nicht', () => {
+  const { VERGESSEN_MS, istVergessen } = require('../../web/zeiten.js');
+  assert.strictEqual(VERGESSEN_MS, 10 * 60 * 6e4, 'die Schwelle sind zehn Stunden');
+  assert.strictEqual(istVergessen(VERGESSEN_MS - 1000), false, '9:59:59 ist nicht vergessen');
+  assert.strictEqual(istVergessen(VERGESSEN_MS), true, '10:00:00 ist vergessen');
+  assert.strictEqual(istVergessen(30 * 864e5), true, '30 Tage sind vergessen');
+  for (const unbekannt of [null, undefined, NaN, -1]) assert.strictEqual(istVergessen(unbekannt), false, String(unbekannt));
+});

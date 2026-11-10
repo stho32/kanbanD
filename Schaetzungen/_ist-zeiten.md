@@ -497,3 +497,5 @@ Nie vom User erfragen.
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | Nacharbeit 1 B0498 Vollständigkeitsprobe mit Zeile (arev B1) | Operation | 0,5 | 0,25h | 0,25h | autonom |
 | 2026-11-08 | R00113 Struktur für Hilfstechnik | Nacharbeit 1 B0499 an und aria-current aus einem Wert (crev A1) | Operation | 0,5 | 0,25h | 0,25h | autonom |
 | 2026-11-10 | R00113 Struktur für Hilfstechnik | Nacharbeit 1 B0500 Wächter vor dem Abbau lesen (Entwicklertest, Muss) | Operation | 0,25 | 0,25h | 0,25h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0501 Akzeptanztest Karte, Name und Titelbreite | Akzeptanztest | 0,5-1 | 0,75h | 0,75h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0502 Schwelle und Prädikat | Operation | 0,5 | 0,25h | 0,25h | autonom |

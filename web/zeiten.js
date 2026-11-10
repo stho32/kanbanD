@@ -1,5 +1,12 @@
 /* kanbanD — Zeitrechnung: reine Funktionen, im Browser und in Node (Unit-Tests) nutzbar. */
 (function (ziel) {
+  /** Schwelle des vergessenen Timers (R00114, ADR-0019 Regel 1): zehn Stunden Laufzeit. */
+  const VERGESSEN_MS = 10 * 3600e3;
+  /** Vergessen ist eine Laufzeit ab der Schwelle; ein unbekannter Beginn (null, NaN) zählt nicht als vergessen. */
+  function istVergessen(laufzeitMs) {
+    return Number.isFinite(laufzeitMs) && laufzeitMs >= VERGESSEN_MS;
+  }
+
   /** Dateiform `JJJJ-MM-TT HH:MM` mit optionalem Versatz `±HH:MM` oder `Z` (R00084): mit Versatz ein eindeutiger Moment, ohne Ortszeit. */
   function zeitMs(z) {
     const [d, t] = z.split(' '), [j, m, tg] = d.split('-').map(Number), [h, mi] = t.slice(0, 5).split(':').map(Number), versatz = t.slice(5);
@@ -80,5 +87,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { zeitMs, ortszeit, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);
