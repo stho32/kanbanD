@@ -35,13 +35,15 @@ const path = require('node:path');
 const WEB = path.join(__dirname, '../../web');
 /**
  * Erlaubte Übernahmen je Funktion und Ziel: eine zusätzliche Übernahme in einer erlaubten Funktion ist ebenso ein Befund.
- * `offen`/`offenDefekt` in act sind Navigation (der Wert kommt vom Klick: Öffnen, Blättern, Defekt öffnen), keine Antwort.
+ * `offen`/`offenDefekt` in act und fensterOeffnen sind Navigation (der Wert kommt vom Klick: Öffnen, Blättern, Defekt öffnen,
+ * Korrigieren eines Zeiteintrags), keine Antwort.
  */
 const ERLAUBT = new Map([
   ['laden', new Map([['Object.assign(S)', 1]])],
   ['dateiLaden', new Map([['ui.datei', 1]])],
   ['defektLaden', new Map([['ui.offen', 1], ['ui.offenDefekt', 1], ['ui.defektDatei', 1]])],
   ['act', new Map([['ui.offen', 2], ['ui.offenDefekt', 1]])],
+  ['fensterOeffnen', new Map([['ui.offen', 1]])],
 ]);
 /** Ladefunktionen: hier steht jede Übernahme textlich hinter einem Aufruf der Prüfung. */
 const GEPRUEFT = ['laden', 'dateiLaden', 'defektLaden'];
