@@ -232,6 +232,7 @@ test.describe('R00114', () => {
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('2026-11-08 08:00');
     await expect(page.locator('.mod-fuss .gs')).toContainText('gespeichert');
     expect(commits(), 'genau ein Commit aus der Korrektur').toBe(vorher + 1);
+    expect(k.git('log', '-1', '--format=%s'), 'der heutige Text der Korrektur').toBe('#1 Zeit korrigiert (Stefan)');
   });
 
   test('US-7: ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und der Fuß sagt es', async ({ page }) => {
