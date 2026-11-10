@@ -1,7 +1,7 @@
 // R00114 Vergessene Timer sichtbar machen (Karte #15) — Abnahme-Proben der Karte #15 in US-1 bis US-10.
 // Die Markierung ist eine Aussage der Anzeige (ADR-0019): nichts wird geschrieben, nichts kommt aus der API.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, thema, kontrastAm, kontrastFarben } = require('./hilfen');
 
 /* Die Datei kennt nur Minuten: `vor` legt einen Beginn in Ortszeit vor jetzt, wie die Fixtures der Nachbartests. */
 const vor = minuten => {
@@ -118,6 +118,21 @@ test.describe('R00114', () => {
         expect(m.spalteScrolltQuer, `${breite} px, #${nummer}: Spalte scrollt quer`).toBeLessThanOrEqual(0);
         expect(m.ueberlapptTitel, `${breite} px, #${nummer}: Chip überlappt den Titel`).toBe(false);
       }
+    }
+  });
+
+  test('US-1: Schrift und Punkt des vergessenen Chips halten das Maß in Hell und in Dunkel (AK 15)', async ({ page }) => {
+    k = await kanbanStarten(einrichten(EIN_VERGESSENER));
+    await alsPerson(page, 'st');
+    await uhrStellen(page, uhr(23, 50, 23));
+    await page.goto(k.adresse);
+    const chip = page.locator('.ka[data-id="1"] .lauf.vergessen');
+    await expect(chip).toHaveText('seit 6 Tagen');
+    for (const theme of ['light', 'dark']) {
+      await thema(page, theme);
+      expect(await kontrastAm(chip), `${theme}: Schrift`).toBeGreaterThanOrEqual(4.5);
+      const [punkt, flaeche] = await chip.evaluate(e => [getComputedStyle(e, '::before').backgroundColor, getComputedStyle(e).backgroundColor]);
+      expect(await kontrastFarben(page, punkt, flaeche), `${theme}: Punkt`).toBeGreaterThanOrEqual(3);
     }
   });
 

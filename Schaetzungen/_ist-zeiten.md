@@ -502,3 +502,4 @@ Nie vom User erfragen.
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0503 Dauertext in Worten | Operation | 0,5 | 0,25h | 0,25h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0504 Chip mit Satz statt Zahl | Operation | 0,5-1 | 0,75h | 0,75h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0505 Kartenname um den Zusatz | Operation | 0,5 | 0,5h | 0,5h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0506 Farbrolle als Paar und Punkt | Operation | 0,5-1 | 0,5h | 0,5h | autonom |

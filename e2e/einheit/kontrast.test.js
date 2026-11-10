@@ -121,6 +121,9 @@ const PAARE = [
   { name: 'Linie Abschluss Modusleiste', flaechen: kd(['modus', 'sunken']), vorne: kd(['modus-linie']), mass: LINIE },
   { name: 'Linie Fokusring Modusleiste', flaechen: kd(['modus']), vorne: kd(['accent']), mass: LINIE },
   { name: 'Linie Zustand .bf-chip', flaechen: kd(['bg']), vorne: kd(['faint']), mass: LINIE },
+  // R00114 (ADR-0019 Regel 6): Fläche und Schrift des vergessenen Laufchips; der Punkt davor trägt die Schriftfarbe
+  { name: 'Vergessener Laufchip', flaechen: kd(['fehler-flaeche']), vorne: kd(['fehler-text']), mass: SCHRIFT },
+  { name: 'Punkt des vergessenen Laufchips', flaechen: kd(['fehler-flaeche']), vorne: kd(['fehler-text']), mass: LINIE },
 ];
 
 /** Verstöße eines Paares je Thema, je als Satz `Name: --x auf --y, dunkel 1,33 < 4,5`. */
@@ -143,12 +146,14 @@ function verstoesse(paar, werteJeThema) {
 const PAARUNGEN = [
   { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-wbs-error-ink', flaeche: '--kd-wbs-error-bg', ring: '--kd-wbs-error' },
   { datei: 'kd-app.css', selektor: '.toast .lnk', vorne: '--kd-head-link', flaeche: '--kd-head' },
+  { datei: 'kd-base.css', selektor: '.lauf.vergessen', vorne: '--kd-fehler-text', flaeche: '--kd-fehler-flaeche', flaecheImRumpf: true },
 ];
 /** Abweichungen einer Regel von ihrer Paarung: falsche Schrift, falsche Fläche, fehlender Ring. */
 function paarungsFehler(paarung, text) {
   const regel = regeln(text).find(r => r.selektor === paarung.selektor);
   if (!regel) return [`${paarung.selektor} fehlt`];
   const verlangt = [`color:var(${paarung.vorne})`];
+  if (paarung.flaecheImRumpf) verlangt.push(`background:var(${paarung.flaeche})`);
   if (paarung.ring) verlangt.push(`background:var(${paarung.flaeche})`, `box-shadow:0 0 0 1px var(${paarung.ring})`);
   return verlangt.filter(deklaration => !regel.rumpf.split(';').includes(deklaration)).map(deklaration => `${paarung.datei}:${regel.zeile} ${paarung.selektor} ohne ${deklaration}`);
 }
