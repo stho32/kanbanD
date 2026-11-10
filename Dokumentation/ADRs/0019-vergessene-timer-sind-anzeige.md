@@ -11,7 +11,7 @@
 
 Die Karte beschreibt einen Zustand, den die Oberfläche heute zeigt, ohne ihn zu bewerten: Drei Timer laufen seit 143 Stunden; die Karte auf dem Board zeigt den laufenden Chip `143:10:23`, die Seite Personen in derselben Lage „Woche 137:25“. Verlangt ist eine Schwelle (Vorschlag 10 h), ab der der Chip als Störung lesbar wird („läuft seit 6 Tagen“, Fläche/Schrift in einer Fehlerrolle), dazu ein Hinweis mit der Aktion „Zeit korrigieren“.
 
-Belegt im Code (gelesen am Stand `9bc9c21`; die Zeilenverweise sind am 2026-11-10 auf den Bau `3ef1977` des Zweigs `karte/15` nachgeführt, siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2); die **Aussagen** dieses Abschnitts beschreiben den Stand der Annahme, den gebauten Stand beschreiben die Nachträge N1–N3; der Code ist noch nicht auf `main`):
+Belegt im Code (gelesen am Stand `9bc9c21`; die Zeilenverweise sind am 2026-11-10 auf den Bau `3ef1977` nachgeführt und liegen seit demselben Tag auf `main` — Merge-Commit `fec6ba5` —, siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2); die **Aussagen** dieses Abschnitts beschreiben den Stand der Annahme, den gebauten Stand beschreiben die Nachträge N1–N3):
 
 - **Der laufende Timer wird an sechs Stellen gezeichnet**, fünf davon mit eigener Laufzeitrechnung: Karte `span.lauf` mit `data-since`/`data-fmt="s"` (`web/ansicht.js:558`), Fensterblock „LÄUFT GERADE“ (`:322`), Zeile der Zeittabelle samt vorhandenem Korrigieren-Knopf `data-act="zeit-edit"` (`:330`), Zeile der Seite Personen (`:861`), Pop „Läuft gerade“ (`vLaufPop`, `:158`); der Zähler im Kopf `#t-lauf` (`:153`) zählt nur. Die Laufzeitbasis ist überall `laufBeginn(a,z) = max(Datei-Minute, lokale Startsekunde)` (`:399–400`).
 - **Die Datei kennt nur Minuten** (`JJJJ-MM-TT HH:MM`, `web/zeiten.js:11–17`). Die Startsekunde merkt sich der Browser in `localStorage` und wirft sie nach einem Tag weg (`web/app.js:18–24`). Der Server hält eine `Instant` nur im Speicher und nur für Timer, die über ihn gestartet wurden; sie steht nicht in der API und ist nach einem Neustart fort (`src/dienst/timer.rs:7–13`, `:21–30`).
@@ -252,7 +252,7 @@ Die Probe `e2e/tests/r00114-vergessene-timer.spec.js:661` („M2: Aufgabenfenste
 
 ### Stand der Zeilenverweise
 
-Alle Codefundstellen dieser ADR sind auf den Bau `3ef1977` des Zweigs `karte/15` nachgeführt (Strg+Z `web/app.js:1928`, Tor `:2552`, Toast `web/ansicht.js:795–810`, Kartenchip `:558`/`:560`, Hinweisanker `:771–789`, `oeffnen`/`zeit-korrigieren`-Reihenfolge `:580`, `zeit-ok` `:1447–1453`, Takt `:2549–2571`, `laufBeginn` `:399–400`, Zeitrechnung `web/zeiten.js:11–17`/`:25`). **Der Code liegt noch nicht auf `main`** — der Merge der Karte #15 steht aus; die Aussagen des Kontext-Abschnitts beschreiben weiter den Stand der Annahme (`9bc9c21`).
+Alle Codefundstellen dieser ADR sind auf den Bau `3ef1977` nachgeführt (Strg+Z `web/app.js:1928`, Tor `:2552`, Toast `web/ansicht.js:795–810`, Kartenchip `:558`/`:560`, Hinweisanker `:771–789`, `oeffnen`/`zeit-korrigieren`-Reihenfolge `:580`, `zeit-ok` `:1447–1453`, Takt `:2549–2571`, `laufBeginn` `:399–400`, Zeitrechnung `web/zeiten.js:11–17`/`:25`); der Bau liegt seit dem 2026-11-10 auf `main` (Merge-Commit `fec6ba5`), die Zeilenverweise gelten damit für den main-Stand. Die Aussagen des Kontext-Abschnitts beschreiben weiter den Stand der Annahme (`9bc9c21`).
 
 ## Nachtrag 2026-11-10 N4: Kopfzeilen-Umbruch als Rückfall an jeder Karte (#16)
 
