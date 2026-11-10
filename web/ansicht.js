@@ -127,7 +127,7 @@ function vBereichChips() {
 function vMehrPop() {
   const u = S.ui;
   const eintrag = {
-    signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">Signale oben</button>`,
+    signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">${u.signaleOben ? '<span class="kz-auswahl-haken" aria-hidden="true">☑</span>' : ''}Signale oben</button>`,
     spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" tabindex="-1" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
     darstellung: vThemaEintrag,
     lauf: () => `<button type="button" class="iz" id="mehr-lauf" role="menuitem" tabindex="-1" data-act="pop" data-arg="lauf">Laufende Timer<span class="muted">${alleLaufenden().length}</span></button>`,
