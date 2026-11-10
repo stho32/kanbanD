@@ -423,6 +423,39 @@ test.describe('R00114', () => {
     expect(m.rechts, 'Chip ganz sichtbar').toBeLessThanOrEqual(m.rand + 0.5);
   });
 
+  test('US-8: Pop „Läuft gerade“ und Seite Personen tragen dieselbe Markierung, Personen nur im Rahmen quer', async ({ page }) => {
+    test.fail(true, '#15: Pop und Personen-Seite sind nicht markiert');
+    const bestand = {
+      'kanbanD.md': KOPF,
+      'boards/entwicklung.md': BOARD,
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(143 * 60 + 10)} · ... · st`, `${vor(30)} · ... · cl`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei'),
+      'aufgaben/0003-drei.md': karte(3, 'drei'),
+      'aufgaben/0004-vier.md': karte(4, 'vier'),
+    };
+    k = await kanbanStarten(einrichten(bestand));
+    await alsPerson(page, 'st');
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto(k.adresse);
+    // im schmalen Layout steht „Laufende Timer“ im Menü „Mehr“
+    await ausMehr(page, 'Laufende Timer');
+    const pop = page.locator('#pop[aria-label="Läuft gerade"]');
+    await expect(pop.locator('.pz2 .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    await expect(pop.locator('.pz2 .lauf:not(.vergessen)'), 'Claudes kurzer Timer ohne Markierung').toHaveCount(1);
+    const popMass = await pop.evaluate(p => ({ scroll: p.scrollWidth, client: p.clientWidth }));
+    expect(popMass.scroll, 'der Pop scrollt quer').toBeLessThanOrEqual(popMass.client);
+    // die Seite Personen markiert dieselbe Zeile; die Woche bleibt die Folge des vergessenen Timers, nicht gekappt
+    await page.goto(k.adresse + '#/personen');
+    await expect(page.locator('tr[data-person="st"] .akt .lauf.vergessen')).toHaveText('seit 6 Tagen');
+    expect(await breiteMessen(page, 'Personen'), 'die Seite selbst scrollt nicht quer').toEqual([]);
+    expect(await ueberlauf(page), 'Seite, #main und .body ohne Querscrollen').toEqual({ Seite: true, '#main': true, '.body': true });
+    const rahmen = page.getByRole('group', { name: 'Personen', exact: true });
+    await expect(rahmen).toHaveCount(1);
+    const woche = await page.locator('tr[data-person="st"] td.woche').innerText();
+    expect(parseInt(woche, 10), `Woche ${woche} ist nicht auf die Schwelle gekappt`).toBeGreaterThan(10);
+    expect(await page.locator('tr[data-person="st"] td.heute').innerText(), 'heute bleibt die volle Zeit').not.toBe('10:00');
+  });
+
   test('US-2: der Tageswechsel ändert den Satz ohne Neuzeichnen', async ({ page }) => {
     // 6,5 Tage minus 20 s: nach 30 s rundet die Dauer auf sieben Tage
     const bestand = { ...EIN_VERGESSENER, 'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', ['2030-01-01 00:00 · ... · st']) };
