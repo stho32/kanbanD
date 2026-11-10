@@ -513,3 +513,6 @@ Nie vom User erfragen.
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | B0514 Ein Lauftext für alle Zeichenstellen | Operation | 0,5-1 | 0,75h | 0,75h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Lauf R00114 | Konsolidierung | — | — | 0,5h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Korrektur Dauertext monoton (Director-Entscheidung ea9658a) | Operation | 0,25 | 0,25h | 0,25h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 B1 Erinnerung entsteht mit dem Zeichnen | Nacharbeit | 0,5-1 | 0,75h | 0,75h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 B2 Probe „eigener Timer zuerst“ | Nacharbeit | 0,5 | 0,5h | 0,5h | autonom |
+| 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 M2 Zeile bricht im Telefonbetrieb um | Nacharbeit | 0,5-1 | 0,75h | 0,75h | autonom |
