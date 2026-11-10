@@ -81,7 +81,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-modus .kz-btn:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
 /* Bahnen */
 .bahnen{flex:1;display:flex;min-height:0;min-width:0;overflow-x:auto;background:var(--kd-surface)}
-.bahn{flex:0 0 var(--bw,272px);display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0;position:relative}
+.bahn{flex:0 0 var(--bw,272px);min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--kd-line-strong);min-height:0;position:relative}
 /* position:relative hält die verborgene Spaltenüberschrift (R00113) im Rollbereich der Bahnen; sonst verbreitert sie auf dem Handy die Seite */
 .bahn-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(30px,var(--kd-ziel));padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);font-weight:600;font-size:12px}
 .bahn-kopf .n{margin-left:auto;font-family:var(--kd-mono);font-weight:400;color:var(--kd-muted)}
@@ -121,7 +121,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bahn-add{padding:2px}
 .bahn-add .inp{width:100%}
 /* Karte */
-.ka{position:relative;flex:none;min-height:64px;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.ka{position:relative;flex:none;min-width:0;min-height:64px;padding:6px var(--kd-s3) 7px;border:1px solid var(--kd-line);background:var(--kd-surface);display:flex;flex-direction:column;gap:4px;cursor:pointer}
 .ka[data-c]{background:var(--c);border-color:var(--cl)}
 /* R00088: eine Karte mit Signal trägt dessen Farbe — Streifen links und ein leichter Ton, in Hell und Dunkel aus der Fläche gemischt */
 .ka[data-sig]{border-left:4px solid var(--sg);background:color-mix(in srgb,var(--sg) 12%,var(--kd-surface));padding-left:calc(var(--kd-s3) - 3px)}
@@ -135,16 +135,21 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.ins-b::before{top:-3px}
 .ka.ins-a::after{bottom:-3px}
 .ka.fremd{box-shadow:inset 3px 0 0 var(--kd-agent)}
-/* oben links Nummer und Titel, alles andere darunter */
-.ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0;margin-bottom:4px}
-.ka .r0 .t,.ka .r0 .umbenennen{flex:1;min-width:0}
-/* Vergessene Karte (R00114, UX M1): reicht der Platz in der Kopfzeile nicht, bricht sie um und der Chip steht in einer eigenen Zeile unter dem Titel; der Titel behält 90 px */
-.ka.vergessen .r0{flex-wrap:wrap}
-.ka.vergessen .r0 .t,.ka.vergessen .r0 .umbenennen{min-width:90px}
+/* oben links Nummer und Titel, alles andere darunter; Kopfzeilen-Umbruch als Rückfall an jeder Karte mit Platznot
+   (R00115, ADR-0019 Nachtrag N4): passt der Titel nebst Nummer, Signalen und laufendem Timer nicht in eine Zeile,
+   weicht der Chip in die eigene Zeile unter den Titel; der Titel behält 90 px, ohne Platznot bleibt es einzeilig */
+.ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0;margin-bottom:4px;flex-wrap:wrap}
+/* min-width:90px allgemein statt nur an der vergessenen Karte; flex-Basis auto (R00115): der Titel nimmt seine
+   natürliche Breite als Anspruch, sodass der Chip weicht, statt den Titel neben sich umzubrechen (N4 Regel 1) */
+.ka .r0 .t{flex:1 1 auto;min-width:90px}
+.ka .r0 .umbenennen{flex:1;min-width:90px}
 .ka .r0 .wpunkt{align-self:flex-start;margin:5px -2px 0 0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
-.ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:anywhere}
+/* break-word statt anywhere (R00115, ADR-0019 N4): der Umbruch fällt zwischen die Wörter; nur ein Wort, das allein
+   nicht mehr in die Zeile passt, bricht innerhalb — sonst überliefe der Titel seine Karte; das Eingabefeld
+   .umbenennen bricht nie (einzeilig), ihn hält min-width:90px */
+.ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:break-word}
 /* R00108: der Titel antwortet selbst auf Tipp (Hover-Regel), damit Chromiums Touch-Anpassung einen Tipp auf den Titel nicht zum Nachbarknopf zieht */
 .ka .t:hover{cursor:pointer}
 .ka.fertig .t{color:var(--kd-muted)}

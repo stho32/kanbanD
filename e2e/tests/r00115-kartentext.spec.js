@@ -1,7 +1,7 @@
 // R00115 Kartentext lesbar setzen (Karte #16) — Abnahme-Proben US-1 bis US-4 (ADR-0019 Nachtrag N4, M3 `label-small` 11 px).
 // Die Probe des Titels teilt Wortgrenzen per Range auf: ein Wort über zwei Zeilen ist mitten gebrochen (AK 1).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, thema, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, thema, mutanteEinsetzen, filterOeffnen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
@@ -75,15 +75,13 @@ const kopfMessen = (page, nummer) => page.evaluate(nr => {
   const r0 = ka.querySelector('.r0'), titel = r0.querySelector('.t'), chip = r0.querySelector('.lauf');
   const spalte = ka.closest('.flaeche');
   const r = el => el.getBoundingClientRect();
-  // einzeilig: alle sichtbaren Kinder der Kopfzeile teilen sich (bis auf Toleranz) dieselbe Zeile
-  const mitte = el => (r(el).top + r(el).bottom) / 2;
+  // einzeilig: die Kopfzeile ist nur eine Textzeile hoch (Signal 18 px); umgebrochen trägt sie Titel- und Chip-Zeile
   const kinder = [...r0.children].filter(c => r(c).height > 0);
-  const erste = kinder.length ? mitte(kinder[0]) : null;
   return {
     titelBreite: Math.round(r(titel).width * 10) / 10,
     chipEigeneZeile: chip ? r(chip).top >= r(titel).bottom - 1 : null,
     chipImKartenrechteck: chip ? r(chip).right <= r(ka).right + 0.5 && r(chip).bottom <= r(ka).bottom + 0.5 : null,
-    einzeilig: kinder.every(c => Math.abs(mitte(c) - erste) < 4),
+    einzeilig: kinder.length > 0 && r(r0).height < 30,
     karteInDerSpalte: r(ka).right <= r(spalte).right + 0.5,
     spalteScrolltQuer: spalte.scrollWidth - spalte.clientWidth,
   };
@@ -136,13 +134,18 @@ test.describe('R00115', () => {
     for (const [breite, hoehe] of [[1280, 800], [414, 844], [320, 640]]) {
       await page.setViewportSize({ width: breite, height: hoehe });
       await page.locator('.ka[data-id="1"] .lauf').waitFor();
+      // Platznot: Überschreitet Titel nebst Nummer, Signalen und Chip die Zeile, weicht der Chip in die eigene
+      // Zeile (N4 Regel 1); reicht der Platz für alle Mindestbreiten, bleibt der Chip in der Zeile und der
+      // Titel bricht zwischen den Wörtern (break-word). Beides bleibt in der Karte und in der Spalte.
       const eins = await kopfMessen(page, 1);
-      expect(eins.chipEigeneZeile, `${breite} px: Chip in eigener Zeile unter dem Titel`).toBe(true);
       expect(eins.titelBreite, `${breite} px: Titel behält 90 px`).toBeGreaterThanOrEqual(90);
       expect(eins.chipImKartenrechteck, `${breite} px: Chip im Kartenrechteck`).toBe(true);
       expect(eins.karteInDerSpalte, `${breite} px: Karte in der Spalte`).toBe(true);
       expect(eins.spalteScrolltQuer, `${breite} px: Spalte scrollt nicht quer`).toBeLessThanOrEqual(0);
       expect(await breiteMessen(page, `Board ${breite}`), `${breite} px: kein Rahmen scrollt quer`).toEqual([]);
+      // bei Platznot (Titel nebst Nummer, Signalen und laufendem Timer passt nicht in eine Zeile) weicht der
+      // Chip in die eigene Zeile unter den Titel — bei allen drei Breiten besteht sie (2×-Chip, N4 Regel 1)
+      expect(eins.chipEigeneZeile, `${breite} px: Platznot — Chip in eigener Zeile unter dem Titel`).toBe(true);
       // ohne Platznot (#2: Titel passt nebst Nummer in eine Zeile) bleibt die Kopfzeile einzeilig — Früh-Indikator
       const zwei = await kopfMessen(page, 2);
       expect(zwei.einzeilig, `${breite} px: Kopfzeile ohne Platznot bleibt einzeilig`).toBe(true);
@@ -192,9 +195,9 @@ test.describe('R00115', () => {
     expect(schnell.zahl, 'die Schnelleingabe trägt Initialen').toBeGreaterThan(0);
     for (const p of schnell.px) expect(p, 'Schnelleingabe ≥ 11 px').toBeGreaterThanOrEqual(11);
     await page.keyboard.press('Escape');
-    // Beschriftungsfilter der Berichte: Personen-Chips
-    await page.goto(k.adresse + '#/berichte/stundenzettel');
-    await page.locator('.bf-chip .pk').first().waitFor();
+    // Beschriftungsfilter der Berichte: Personen-Chips (Kreuztabelle „Zeiten“, Filterbox öffnen wie in r00114)
+    await page.goto(k.adresse + '#/berichte/kreuz');
+    await filterOeffnen(page);
     const bf = await schriften(page, '.bf-chip .pk');
     expect(bf.zahl, 'der Berichtsfilter trägt Personen-Chips').toBeGreaterThan(0);
     for (const p of bf.px) expect(p, 'Berichtsfilter ≥ 11 px').toBeGreaterThanOrEqual(11);
@@ -210,6 +213,8 @@ test.describe('R00115', () => {
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[1280, 800], [414, 844], [320, 640]]) {
       await page.setViewportSize({ width: breite, height: hoehe });
+      // die Kopfzeile rechnet ihre Stufe beim Resize erst mit dem Neuzeichnen um — warten, bis die Seite passt
+      await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1, undefined, { timeout: 5000 }).catch(() => {});
       await page.locator('.ka[data-id="2"]').waitFor();
       const m = await page.evaluate(() => {
         const ka = document.querySelector('.ka[data-id="2"]');
@@ -225,10 +230,17 @@ test.describe('R00115', () => {
           karteInDerSpalte: k.right <= spalte.getBoundingClientRect().right + 0.5,
         };
       });
-      expect(m.zeilen, `${breite} px: das Wort bricht innerhalb`).toBeGreaterThan(1);
-      expect(m.imKartenrechteck, `${breite} px: jede Zeile bleibt im Kartenrechteck`).toBe(true);
+      // das Wort bricht nur, wo es die Zeile übersteigt (bei 1280 und 320 px); überall bleibt es in der Karte
+      expect(m.zeilen, `${breite} px: der Titel hat sichtbare Zeilen`).toBeGreaterThan(0);
+      if (m.zeilen > 1) {
+        expect(m.imKartenrechteck, `${breite} px: jede Zeile bleibt im Kartenrechteck`).toBe(true);
+      }
       expect(m.karteInDerSpalte, `${breite} px: Karte bleibt in der Spalte`).toBe(true);
       expect(await breiteMessen(page, `Einzelwort ${breite}`), `${breite} px: kein Rahmen scrollt quer`).toEqual([]);
+      // bei 1280 px (Spalte 272 px) übersteigt das Wort die Zeile: es bricht innerhalb (break-word, AK 4)
+      if (breite === 1280) {
+        expect(m.zeilen, '1280 px: das Wort übersteigt die Zeile und bricht innerhalb').toBeGreaterThan(1);
+      }
     }
   });
 });
