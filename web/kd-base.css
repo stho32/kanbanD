@@ -34,7 +34,7 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
 .seg>span.an{background:var(--kd-text);color:var(--kd-surface)}
 .mono{font-family:var(--kd-mono);font-size:12px}
 .muted{color:var(--kd-muted)}
-.pk{display:inline-grid;place-items:center;width:18px;height:18px;font-size:9px;font-weight:600;flex:none}
+.pk{display:inline-grid;place-items:center;width:18px;height:18px;font-size:11px;font-weight:600;flex:none}
 .pk-m{background:var(--kd-mensch);color:var(--kd-on-mensch)}.pk-a{background:var(--kd-agent);color:var(--kd-on-agent)}.pk-0{background:none;box-shadow:inset 0 0 0 1px var(--kd-line-strong);color:var(--kd-muted)}
 .lauf{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 5px;font-family:var(--kd-mono);font-size:11px;background:var(--kd-agent-weak);color:var(--kd-agent-ink);white-space:nowrap}
 .lauf::before{content:"";width:6px;height:6px;background:var(--kd-agent)}
@@ -42,7 +42,7 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
 /* vergessen (R00114, ADR-0019 Regel 6): Fläche und Schrift als Paar; der Punkt trägt die Schriftfarbe und hält so sein Maß */
 .lauf.vergessen{background:var(--kd-fehler-flaeche);color:var(--kd-fehler-text)}
 .lauf.vergessen::before{background:currentColor}
-.lbl{display:inline-flex;align-items:center;height:16px;padding:0 5px;font-size:10.5px;background:var(--kd-sunken);color:var(--kd-muted);border:1px solid var(--kd-line)}
+.lbl{display:inline-flex;align-items:center;height:16px;padding:0 5px;font-size:11px;background:var(--kd-sunken);color:var(--kd-muted);border:1px solid var(--kd-line)}
 svg.i{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:square;flex:none}
 .leiste{flex:none;display:flex;align-items:center;gap:var(--kd-s3);padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
 .leiste .rechts{margin-left:auto;display:flex;gap:var(--kd-s3);align-items:center}

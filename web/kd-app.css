@@ -29,7 +29,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-board-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .kz-z1 .mono{font-size:11px}
 .kz-nav a{cursor:pointer;white-space:nowrap;padding:0 var(--kd-s4)}
-.kz-nav a .dd{font-size:9px;margin-left:5px}
+.kz-nav a .dd{font-size:11px;margin-left:5px}
 .kz-nav a.auf{background:var(--kd-head-line);color:var(--kd-head-text)}
 .kz-mehr{padding:0 var(--kd-s2)}
 .kz-mehr .i{width:16px;height:16px;fill:currentColor;stroke:none}
@@ -64,7 +64,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-btn{white-space:nowrap}
 .kz-btn.auf{background:var(--kd-head-line);border-color:var(--kd-head-muted)}
 .kz-btn.leer{border-style:dashed;color:var(--kd-head-muted)}
-.kz-btn .pk{width:16px;height:16px;font-size:8.5px}
+/* 11 px ist die kleinste Schrift nach M3 label-small (R00115): die kleinen Quadrate wachsen mit (18 px wie .pk) */
+.kz-btn .pk{width:18px;height:18px;font-size:11px}
 /* Modusleiste (R00107 FA 7): Akzent-Container wie M3 primary-container, abgesetzt vom Board durch eine Linie */
 .kz.modus{background:var(--kd-modus);color:var(--kd-modus-text);border-bottom:1px solid var(--kd-modus-linie)}
 .kz.modus .kz-z1{border-color:var(--kd-modus-linie)}
@@ -137,18 +138,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.fremd{box-shadow:inset 3px 0 0 var(--kd-agent)}
 /* oben links Nummer und Titel, alles andere darunter; Kopfzeilen-Umbruch als Rückfall an jeder Karte mit Platznot
    (R00115, ADR-0019 Nachtrag N4): passt der Titel nebst Nummer, Signalen und laufendem Timer nicht in eine Zeile,
-   weicht der Chip in die eigene Zeile unter den Titel; der Titel behält 90 px, ohne Platznot bleibt es einzeilig */
+   steht der Chip in einer eigenen Zeile unter dem Titel; der Titel behält 90 px, ohne Platznot bleibt es einzeilig */
 .ka .r0{display:flex;align-items:baseline;gap:6px;min-width:0;margin-bottom:4px;flex-wrap:wrap}
-/* min-width:90px allgemein statt nur an der vergessenen Karte; flex-Basis auto (R00115): der Titel nimmt seine
-   natürliche Breite als Anspruch, sodass der Chip weicht, statt den Titel neben sich umzubrechen (N4 Regel 1) */
+/* min-width:90px allgemein statt nur an der vergessenen Karte; flex-Basis auto (R00115, ADR-0019 N4): der Titel
+   nimmt seine natürliche Breite als Anspruch — passt er nebst Nummer, Signalen und laufendem Timer nicht in die
+   Zeile, weicht der Chip in die eigene Zeile unter den Titel (N4 Regel 1); die 90 px halten den Umbruch fern von
+   'der Titel wird unter 90 px gedrückt', ohne Platznot passt alles in eine Zeile und nichts bricht um */
 .ka .r0 .t{flex:1 1 auto;min-width:90px}
 .ka .r0 .umbenennen{flex:1;min-width:90px}
 .ka .r0 .wpunkt{align-self:flex-start;margin:5px -2px 0 0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 /* break-word statt anywhere (R00115, ADR-0019 N4): der Umbruch fällt zwischen die Wörter; nur ein Wort, das allein
-   nicht mehr in die Zeile passt, bricht innerhalb — sonst überliefe der Titel seine Karte; das Eingabefeld
-   .umbenennen bricht nie (einzeilig), ihn hält min-width:90px */
+   nicht mehr in die Zeile passt, bricht innerhalb — sonst überliefe der Titel seine Karte; das Eingabefeld .umbenennen
+   bricht nie (einzeilig), ihn hält min-width:90px */
 .ka .t{font-size:13px;line-height:1.35;text-wrap:pretty;overflow-wrap:break-word}
 /* R00108: der Titel antwortet selbst auf Tipp (Hover-Regel), damit Chromiums Touch-Anpassung einen Tipp auf den Titel nicht zum Nachbarknopf zieht */
 .ka .t:hover{cursor:pointer}
@@ -174,10 +177,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .avs .pk+.pk{margin-left:-3px;box-shadow:0 0 0 1px var(--kd-surface)}
 .ka .ein{font-size:11px;color:var(--kd-agent-ink);border-top:1px solid var(--kd-line);padding-top:3px}
 .orgs{display:inline-flex;gap:3px;flex-wrap:wrap}
-.org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);white-space:nowrap}
+.org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:11px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);white-space:nowrap}
 a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-accent)}
 .wchips{display:inline-flex;gap:3px;flex-wrap:wrap}
-.wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
+.wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:11px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
 .wchip:hover{text-decoration:none;border-color:var(--kd-accent);color:var(--kd-accent-ink)}
 .wchip.remove{color:var(--kd-muted)}
 /* Eintritt einer Wirkung (R00071) */
@@ -607,7 +610,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .hilfe td{padding:4px 12px 4px 0;font-size:12.5px}
 .schnell{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:0;padding:2px 2px 0;font-size:11px}
 .schnell:empty{display:none}
-.schnell .pk{width:16px;height:16px;font-size:8.5px}
+.schnell .pk{width:18px;height:18px;font-size:11px}
 /* Kartenleiste */
 /* rechts oben: Laufanzeige und Stoppknopf des eigenen Timers */
 /* Signale (R00076) */
@@ -716,7 +719,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bf-chip:focus-visible{outline:2px solid var(--kd-accent);outline-offset:1px}
 /* Fokusring nach dem vorhandenen Muster, wo er fehlte (R00106): Menüeinträge und Elemente der Pops, Radios; Felder behalten `.inp:focus` (`:where` hält die Spezifität darunter) */
 :where(.pop) :focus-visible,[role="radio"]:focus-visible{outline:2px solid var(--kd-accent);outline-offset:-2px}
-.bf-chip .pk{width:16px;height:16px;font-size:8px}
+.bf-chip .pk{width:18px;height:18px;font-size:11px}
 .bf-farbe{width:10px;height:10px;border:1px solid var(--cl,var(--kd-line-strong));background:var(--c,var(--kd-surface))}
 .bf-leeren{margin-left:auto;height:24px}
 /* Durchlaufzeit (R00045) */
