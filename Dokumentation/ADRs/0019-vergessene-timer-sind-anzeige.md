@@ -3,8 +3,9 @@
 **Status**: Akzeptiert
 **Datum**: 2026-11-10
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #15)
-**Kontext-Anforderung**: Karte #15 „Vergessene Timer sichtbar machen“ (Label `ux`, UX-Durchsicht); Anforderung und WBS-Knoten folgen über den planer
+**Kontext-Anforderung**: [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Karte #15 „Vergessene Timer sichtbar machen“, Label `ux`, WBS-Knoten I0103); zum Zeitpunkt der Entscheidung lag noch keine Anforderung vor, nachgetragen mit dem Nachtrag vom 2026-11-10
 **Erprobt durch**: — (getragen von der Systemantwort: reine Module mit Unit-Test, der Sekundentakt als einziger Zeitgeber, der gebaute Sicherer aus ADR-0007 N1; Belege im Kontext)
+**Nachträge**: 2026-11-10 — Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag 2026-11-10](#nachtrag-2026-11-10-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N)* zeigen, wo der Nachtrag gilt.
 
 ## Kontext
 
@@ -18,7 +19,7 @@ Belegt im Code (gelesen, Stand `9bc9c21`):
 - **Gezeichnet wird aus dem Zustand**: `render()` ersetzt `#kopf`, `#main` und `#over` per `innerHTML` (ADR-0007); was ein Mensch gerade tippt, rettet der Sicherer aus ADR-0007 (Nachtrag N1 gebaut). Ein Live-Ereignis zeichnet nach ADR-0014 nur aus einem übernommenen Stand neu.
 - **Der Hinweis (Toast) kennt heute genau eine Aktion**: `S.ui.hinweis.undo`, gezeichnet als Knopf „rückgängig“ (`web/ansicht.js:772–776`), gebunden an Strg+Z (`web/app.js:1907`) und nach ADR-0017 im obersten modalen Dialog verankert (`web/ansicht.js:747–765`).
 - **Der Kartenname wird an einer Stelle gebildet**: `kartenName()` (`web/kartenname.js:14–20`), Ergebnis am `listitem` (`web/ansicht.js:537`), Aspekt [X00005](../Architektur/Aspekte/X00005-struktur-fuer-hilfstechnik.md)/ADR-0018. Beim Anspringen der Karte zählt dieser Name, nicht der innere Text; ein `aria-label` an einem `span` ohne benennbare Rolle ist nach ARIA 1.2 wirkungslos (Regelwerk, nicht mit echter Hilfstechnik gemessen).
-- **Hausform für Schwellen**: R00068 legt `MINDESTLAUF` als Konstante neben die Regel und prüft die Grenze (19 s/20 s) als Unit-Test (`src/dienst/timer.rs:7–13`, `:54–62`). Der Chip `span.lauf` hat heute **keine** Gestaltung (`grep lauf web/kd-app.css` → nur `#t-lauf .lang`, `#durchlauf`); eine Fehlerfläche braucht ein Token-Paar nach ADR-0011.
+- **Hausform für Schwellen**: R00068 legt `MINDESTLAUF` als Konstante neben die Regel und prüft die Grenze (19 s/20 s) als Unit-Test (`src/dienst/timer.rs:7–13`, `:54–62`). Der Chip `span.lauf` ist heute gestaltet (`web/kd-base.css:39–41`: 18 px hoch, Mono 11 px, Fläche `--kd-agent-weak`, Schrift `--kd-agent-ink`, Punkt 6 × 6 px; `.lauf.eigen` in `--kd-accent`/`--kd-on-accent`); in `web/kd-app.css` steht keine Regel dazu. Eine Fehlerfläche braucht ein Token-Paar nach ADR-0011; die Form bleibt.
 - **Die Wochensumme ist richtig, nicht falsch**: laufende Einträge zählen bis jetzt (`web/zeiten.js:18–20`, `:47–48`; R00021), ein seit Montag laufender Eintrag füllt also die Woche.
 
 Damit ist die Frage der Karte nicht „wie sieht der Chip aus“, sondern: **Wo lebt die Tatsache „dieser Timer ist vergessen“ — in der Anzeige, in der Datei oder im Server?** Sie ist eine Technikfrage, weil die Antwort bestimmt, ob ein passiver Betrachter Commits erzeugt, ob Agenten den Zustand sehen, und ob die Regel an sechs Stellen oder an einer steht.
@@ -75,30 +76,30 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
    - Grenz-Unit-Test nach dem Muster von R00068: 9:59:59 falsch, 10:00:00 wahr, weit darüber wahr; unbekannter Beginn zählt als nicht vergessen;
    - kein zweites `10 * 3600e3`, kein zweiter Vergleich in `web/ansicht.js`, `web/berichte.js` oder `web/app.js`.
 2. **Der Zustand wird beim Zeichnen entschieden** — nicht im Takt, nicht am Knoten:
-   - Der Chip der Karte ist `span.lauf.vergessen` (`vergessen` ist frei; nicht `leer`, Projektlehre 2026-11-06) und trägt den Text „läuft seit 6 Tagen“; dieselbe Entscheidung gilt für Fenster, Zeittabelle, Pop und Seite Personen, soweit die Karte sie verlangt — der Zähler im Kopf bleibt ein Zähler.
-   - Den Text der Dauer bildet `web/kultur.js` (ADR-0013), nicht `zeiten.js`: „6 Tagen“, „14 Stunden“ sind Anzeigekultur; `zeiten.js` liefert nur ms und Wahr/Falsch.
-   - Der Kartenname wächst in `kartenName()` um den Zusatz „Timer läuft seit 6 Tagen“ (X00005/ADR-0018: der Name des Listeneintrags ist die eine Stelle). Ein eigenes `aria-label` am Chip ist wirkungslos, weil der Name des `listitem` das Innere ersetzt; der Chip bleibt nicht fokussierbar.
-   - Der laufende Sekundentext bleibt `[data-since]`; er ändert nur die Zahl, nicht den Zustand.
+   - Der Chip der Karte ist `span.lauf.vergessen` (`vergessen` ist frei; nicht `leer`, Projektlehre 2026-11-06) und trägt sichtbar die **Kurzform** „seit 6 Tagen“ — ohne laufende Zahl und ohne `2×`-Präfix; dieselbe Entscheidung gilt für Fenster, Zeittabelle, Pop und Seite Personen, soweit die Karte sie verlangt — der Zähler im Kopf bleibt ein Zähler. *(→ N: der erste Satz dieser ADR sagte „läuft seit 6 Tagen“ und ließ die Zahl daneben stehen; beides trägt die Karte nicht)*
+   - Den Text der Dauer bildet `web/kultur.js` (ADR-0013), nicht `zeiten.js`: „seit 6 Tagen“, „seit 14 Stunden“ sind Anzeigekultur; `zeiten.js` liefert nur ms und Wahr/Falsch.
+   - Der Kartenname wächst in `kartenName()` um den **vollen** Zusatz „Timer läuft seit 6 Tagen“ (X00005/ADR-0018: der Name des Listeneintrags ist die eine Stelle). Ein eigenes `aria-label` am Chip ist wirkungslos, weil der Name des `listitem` das Innere ersetzt; der Chip bleibt nicht fokussierbar.
+   - Der laufende Sekundentext bleibt `[data-since]`: unter der Schwelle schreibt er die Zahl fort, über der Schwelle denselben Kurztext (`data-fmt="seit"`), beides ohne Zustandswechsel und ohne Neuzeichnen. *(→ N)*
 3. **Der Sekundentakt erkennt die Kante** — er entscheidet keinen Zustand:
    - Der Takt vergleicht je laufendem Timer „vergessen“ mit dem, was er zuletzt gesehen hat; beim Übergang falsch → wahr setzt er genau einmal ein Neuzeichnen an, im vorhandenen Tor (`zug == null && !S.ui.neu`, `web/app.js:2477`).
-   - Kein Neuzeichnen je Sekunde; die Zahl im Chip läuft weiter über `[data-since]`. Läuft bereits ein Zug oder steht „Neue Aufgabe“ offen, unterbleibt das Zeichnen und der Übergang wird beim nächsten Takt nachgeholt (kein Verlust, nur Verzug).
+   - Kein Neuzeichnen je Sekunde; die Zahl beziehungsweise der Kurztext im Chip läuft weiter über `[data-since]`. Läuft bereits ein Zug oder steht „Neue Aufgabe“ offen, unterbleibt das Zeichnen und der Übergang wird beim nächsten Takt nachgeholt (kein Verlust, nur Verzug).
    - Der Übergang wahr → falsch (Timer gestoppt, gelöscht, korrigiert) entsteht durch die Aktion selbst und damit durch ihr eigenes Neuzeichnen; der Takt muss ihn nicht melden.
 4. **Die Erinnerung ist Sichtzustand, kein Bestand**:
-   - `S.ui` führt die Menge der bereits erinnerten Timer (Schlüssel `nr|wer`, gepflegt auf die gerade laufenden); sie wird bei Übergang gefüllt und beim Verschwinden des Timers bereinigt.
-   - Der Hinweis ist ein gewöhnlicher Eintrag `S.ui.hinweis` mit einer **benannten Aktion** neben dem vorhandenen `undo`: `{ text, aktion: { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: '<nr>|<kennung>' }, at, dauer }`. Das Zeichnen des Toasts zeigt die Aktion als zweiten `lnk`-Knopf (ADR-0015: bricht um, bleibt in jeder Breite bedienbar; ADR-0017: Ort im obersten modalen Dialog).
+   - `S.ui` führt die Menge der bereits erinnerten Timer (Schlüssel `nr|wer|<Identität des Tabs>`, gepflegt auf die gerade laufenden); sie wird bei Übergang gefüllt und beim Verschwinden des Timers bereinigt. *(→ N: die Identität gehört in den Schlüssel; ein knopfloser Hinweis zählt nicht als endgültig erinnert, und im verborgenen Tab entsteht keiner)*
+   - Der Hinweis ist ein gewöhnlicher Eintrag `S.ui.hinweis` mit einer **benannten Aktion** neben dem vorhandenen `undo`: `{ text, aktion: { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: '<nr>|<kennung>' }, at, dauer }`. Das Zeichnen des Toasts zeigt die Aktion als zweiten `lnk`-Knopf (ADR-0015: bricht um, bleibt in jeder Breite bedienbar; ADR-0017: Ort im obersten modalen Dialog). *(→ N: nie zwei Aktionen — solange `undo` gesetzt ist, wartet die Erinnerung dessen Ablauf ab)*
    - **Strg+Z bleibt ausschließlich `undo`** (`web/app.js:1907` prüft `S.ui.hinweis.undo`). Eine Aktion wird nie per Tastenkürzel ausgelöst; sie ist kein Rückgängig und darf nicht so heißen.
    - Nichts wird in `boards/*.md`, `localStorage` oder `sessionStorage` geschrieben; ein Neuladen erinnert erneut (akzeptiert, siehe Konsequenzen).
 5. **Die Aktion knüpft an den vorhandenen Editor an** — kein zweiter Editor, kein neuer Endpunkt:
    - `zeit-korrigieren` setzt `u.offen`, `u.tab = 'inhalt'`, wartet `dateiLaden()` ab, setzt **danach** `u.zeitEdit = kennung` und `u.fokus = '#z-beginn'` (der Fall `oeffnen` löscht `u.zeitEdit`, `web/app.js:1042`; die Reihenfolge ist Teil der Regel).
    - Gezeichnet wird die vorhandene Bearbeitungszeile (`u.zeitEdit === z.kennung`, `web/ansicht.js:329`), gespeichert über den vorhandenen `zeit-ok`/PATCH-Weg (`web/app.js:1430–1432`). Ein Fehler (409/403) erscheint wie heute im Fensterfuß.
-   - Fehlt die Person („Ich bin …“), gilt der vorhandene Weg (`ichNoetig()`), nicht ein Sonderfall.
+   - Fehlt die Person („Ich bin …“), gilt der vorhandene Weg (`ichNoetig()`), nicht ein Sonderfall. *(→ N: die Aktion bietet nur der eigene Eintrag an; ohne gewählte Identität erscheint der Hinweis ohne Aktion und nennt den nächsten Schritt; ist der Eintrag inzwischen fort, öffnet die Aktion nur das Fenster und meldet es im Fuß)*
 6. **Farbe nur als Paar** — die Fehlerfläche des Chips ist ein Token-Paar in `web/kd-tokens.css` in beiden Dunkelblöcken (Fläche + On-Farbe, ADR-0011), geprüft von der Kontrastprobe; ob das Paar nach Material 3 `error-container`/`on-error-container` heißt, entscheiden die UX-Rollen, nicht diese ADR. Kein Farbwert außerhalb der Tokens.
-7. **Grenze dieser Entscheidung**: Sie sagt, *wo* der Zustand lebt und *wie* er auf den Schirm kommt. Sie sagt nicht, *wessen* Timer erinnert wird, *wie* der Satz lautet und *ob* Summen gekappt werden — das sind Anforderungs- und PO-Fragen (Offene Fragen).
+7. **Grenze dieser Entscheidung**: Sie sagt, *wo* der Zustand lebt und *wie* er auf den Schirm kommt. Sie sagt nicht, *wessen* Timer erinnert wird, *wie* der Satz lautet und *ob* Summen gekappt werden — das sind Anforderungs- und PO-Fragen (Offene Fragen). *(→ N: „wessen“ ist mit PO Z. 182 entschieden, der Wortlaut sichtbar/Name mit R00114)*
 
 ### Durchsetzung (Fitness-Funktion)
 
 - **Unit-Test der Grenze** in `e2e/einheit/zeiten.test.js`: 9:59:59 / 10:00:00 / 30 Tage; Dauer aus Datei-Minute und aus lokaler Startsekunde; Grenze als `VERGESSEN_MS`, nicht als Zahl im Test dupliziert.
-- **E2E der Abnahme-Probe** nach dem Muster von `e2e/tests/ziele.spec.js`: ein Timer mit altem `beginn` (Fixture/API) zeigt `.lauf.vergessen` mit „läuft seit“, der Name der Karte enthält „läuft seit“, und der Hinweis trägt die Aktion, die den Editor auf **diesem** Eintrag öffnet (`#z-beginn` hat den Fokus, die Zeile ist die des Eintrags). Gegenprobe: ein Timer unter der Schwelle trägt weder Klasse noch Text noch Aktion (Muster „Abnahme-Probe positiv und negativ“).
+- **E2E der Abnahme-Probe** nach dem Muster von `e2e/tests/ziele.spec.js`: ein Timer mit altem `beginn` (Fixture/API) zeigt `.lauf.vergessen` mit „seit 6 Tagen“ (Kurzform, ohne Zahl), der Name der Karte enthält „Timer läuft seit 6 Tagen“, und der Hinweis trägt die Aktion, die den Editor auf **diesem** Eintrag öffnet (`#z-beginn` hat den Fokus, die Zeile ist die des Eintrags). Gegenprobe: ein Timer unter der Schwelle trägt weder Klasse noch Text noch Aktion (Muster „Abnahme-Probe positiv und negativ“).
 - **Wächter gegen das Sekundenzeichnen**: mit laufendem, noch nicht vergessenem Timer steigt `kdTest.renders()` über mehrere Sekunden nicht; mit einer Überschreitung steigt es genau einmal.
 - **Wächter gegen den zweiten Schreibweg**: kein Commit entsteht ohne Aktion; `git log` des Wegwerf-Ordners bleibt während des Zuschauens unverändert.
 - **Wächter gegen die zweite Schwelle**: `grep -n "3600e3\|VERGESSEN" web/*.js` findet die Konstante nur in `zeiten.js`.
@@ -120,7 +121,7 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
   - Das Tor `!S.ui.neu` verschiebt den Hinweis, solange „Neue Aufgabe“ offen ist; das ist gewollt und kein Fehler.
   - `oeffnen` löscht `u.zeitEdit` (`web/app.js:1042`) — die Aktion muss ihn danach setzen, sonst öffnet sie nur das Fenster.
   - `kartenName` ist durch Unit-Test und Aria-Snapshots gedeckt (ADR-0018); der Zusatz ändert beide. Er nennt die Dauer in Worten, kein Datum, keine ISO-Form (Kulturprobe ADR-0013).
-  - Der Chip `span.lauf` ist heute ungestaltet; ohne Token-Paar und Kontrastprobe bliebe „eigene Klasse“ unsichtbar.
+  - Der Chip `span.lauf` ist schon gestaltet (`web/kd-base.css:39–41`); die Fehlerrolle setzt nur Fläche, Schrift und Punkt neu. Ohne Token-Paar und Kontrastprobe bliebe „eigene Klasse“ unsichtbar.
   - Die Wochensumme der Seite Personen bleibt wie sie ist (`web/zeiten.js:18–20`, R00021): „Woche 137:25“ ist die Folge des vergessenen Timers, nicht ein Rechenfehler. Wer sie kappen will, braucht eine eigene Anforderung.
 
 ### Pre-Mortem
@@ -136,7 +137,7 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
 
 ## Offene Fragen
 
-- **Wessen Timer?** Alle laufenden Timer erscheinen heute auf jeder Karte und auf der Seite Personen, auch fremde. Ob der Hinweis nur eigene nennt, und ob fremde Zeit überhaupt korrigiert werden darf (R00097 regelt Eigentümer nur für Zuständige, nicht für Zeiteinträge), ist eine Regel- und PO-Frage. Empfehlung: Hinweis für alle sichtbaren, Aktion für eigene; fremde bleiben bei Stopp und Korrektur wie heute.
+- **Wessen Timer?** Alle laufenden Timer erscheinen heute auf jeder Karte und auf der Seite Personen, auch fremde. Ob der Hinweis nur eigene nennt, und ob fremde Zeit überhaupt korrigiert werden darf (R00097 regelt Eigentümer nur für Zuständige, nicht für Zeiteinträge), ist eine Regel- und PO-Frage. Empfehlung: Hinweis für alle sichtbaren, Aktion für eigene; fremde bleiben bei Stopp und Korrektur wie heute. **Geschlossen** (PO Z. 182/183, 2026-11-10; R00114 FA 7, 15): Markierung für alle, Hinweis für alle, Aktion nur für den eigenen Eintrag, keine Eigentümerregel im Server.
 - **Summen kappen?** Soll ein laufender Eintrag über der Schwelle in Tages-/Wochensummen nur bis zur Schwelle zählen (heute bis jetzt, R00021)? Das ist eine Budget-Entscheidung mit Folgen für Stundenzettel und Berichte — eigene Anforderung, nicht diese ADR.
 - **Schwelle einstellbar?** Als Board-Einstellung berührt sie Dateiformat, API und Anzeige; dann eigene ADR, die additiv auf dieser aufbaut.
 - **Für Agenten sichtbar?** Ein additives Feld in der Aufgabensicht (`seit`, `vergessen`) wäre möglich, ohne diese Entscheidung zu kippen; die Regel bliebe dieselbe, gespiegelt in Rust. Eigene Anforderung, weil sie OpenAPI und Tests nach sich zieht.
@@ -148,3 +149,37 @@ Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.m
 - [ADR-0002](0002-zugregeln-gemeinsam-vor-der-aktion.md) und [ADR-0005](0005-zusammengesetzte-aktionen-in-einem-commit.md) (ein Commit je Aktion), [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md) (Neuzeichnen und Sicherer, N1 gebaut), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md) (Farbrollen als Paare), [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md) (`web/kultur.js`), [ADR-0014](0014-nur-die-neueste-antwort-wird-uebernommen.md) (Übernahme), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) (Hinweis und Aktionen in jeder Breite), [ADR-0017](0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) (Hinweisort, Undo, Strg+Z), [ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md) mit [X00005](../Architektur/Aspekte/X00005-struktur-fuer-hilfstechnik.md) (Kartenname), [X00004](../Architektur/Aspekte/X00004-kultur.md) (deutsche Anzeige).
 - Bausteine: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md) (primär); berührt `web/zeiten.js`, `web/kultur.js`, `web/kartenname.js`, `web/ansicht.js`, `web/app.js`, `web/kd-tokens.css`, `web/kd-app.css`.
 - Material 3, „Color roles“ (`error-container`, `on-error-container`): https://m3.material.io/styles/color/roles (Abruf 2026-11-10) — nur als Rollenname, nicht als Farbquelle.
+
+## Nachtrag 2026-11-10: Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag ändert Regel 2 in zwei Sätzen und präzisiert die Regeln 3–5 um die Fälle, die die Detailplanung belegt hat; Regel 1, 6 und 7 bleiben in der Sache unverändert (Regel 7 trägt nur einen Verweis, Offene Frage 1 ist geschlossen). Anlass ist die Anforderung [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Commits `64dcd6d`, `c152e70`) mit der UX-Vorprüfung M1 und der PO-Entscheidung `AI-Team/po-entscheidungen.md` Z. 182–184 (`ad56896`).
+
+### Anlass: die gemessene Breite
+
+Gemessen in der laufenden Instanz (headless Chromium, Spalte 272 px, Karteninhalt 249 px, Karte mit Signal und eigenem Timer; UX-Vorprüfung, vom planer nachgemessen):
+
+| Chipinhalt | Chip | verbleibender Titel | ≥ 90 px? |
+|---|---|---|---|
+| heute „143:10:23“ (Bestand) | 83 px | 75 px | nein |
+| „läuft seit 6 Tagen“ + laufende Zahl | 216 px | 11 px, Karte wächst auf 336 px in 272 px | nein, Überlauf |
+| „seit 6 Tagen“ (Kurzform) | 104 px | 54 px | nein |
+| „seit 6 Tagen“, Kopfzeile bricht um | 104 px, eigene Zeile | 192/192 px (414 px: 168/196; 320 px: 212/102) | ja |
+
+Damit trägt die Karte den vollen Satz **und** die laufende Zahl nicht: beides zusammen verdrängt den Titel und sprengt die Spalte. Die Zahl weicht dem Satz; der genaue Wert steht daneben in Zeittabelle, Fenster und Pop, und die Zeitrechnung selbst bleibt unverändert.
+
+### Was der Nachtrag festlegt
+
+1. **Sichtbar Kurzform, im Namen Vollform.**
+   - Der Chip zeigt im vergessenen Zustand „seit 6 Tagen“ (Kurzform aus `web/kultur.js`, ohne laufende Zahl, auf der Karte ohne `2×`-Präfix).
+   - Der zugängliche Name des Listeneintrags trägt weiter voll „Timer läuft seit 6 Tagen“, gestellt vor „ausgewählt“; fehlende Teile fallen samt Komma weg.
+   - Kein laufender Sekundentext im vergessenen Chip: der Takt schreibt dort denselben Kurztext fort (`[data-since]` mit `data-fmt="seit"`), sodass der Tageswechsel „seit 6 Tagen“ → „seit 7 Tagen“ ohne Neuzeichnen und ohne Zustandswechsel erscheint. Der Kern von Regel 3 bleibt: ein Zeitgeber, ein Neuzeichnen je Übergang.
+2. **Umbruch der Kopfzeile als Rückfall, nur an der vergessenen Karte.**
+   - Reicht der Platz für einen Titel von 90 px nicht, bricht die Kopfzeile der Karte um: der Chip steht in einer eigenen Zeile unter dem Titel. Umgesetzt an der Karte selbst — `.ka.vergessen .r0 { flex-wrap: wrap }` und `.ka.vergessen .r0 .t { min-width: 90px }` (`web/kd-app.css`) —, nicht an `.lauf`, damit die Form des Chips unverändert bleibt.
+   - Bedingung: Der Umbruch greift **nur** an Karten mit vergessenem Timer und nur, wenn die Kopfzeile den Titel sonst unter 90 px drückte; eine Karte ohne Signal und ohne Stopp-Knopf bleibt in einer Zeile.
+   - Der Titel bleibt vollständig lesbar, der Chip liegt ganz im Kartenrechteck, die Karte bleibt im Rechteck ihrer Spalte; bei 320, 414 und 1280 px kein Querscrollen, mit einem und mit zwei laufenden Timern.
+3. **Grenze.**
+   - Das ist die einzige sichtbare Lageänderung: eine neue Zeile in der Kopfzeile der vergessenen Karte. Der Chip behält Form und Maße (Höhe, Polster, Schrift, Punkt); die Farbe bleibt ein Token-Paar nach ADR-0011 (Regel 6), die Tokennamen deutsch, die M3-Rolle als Kommentar dabei (R00114 FA 8).
+   - Kein Artboard: Die Freigabe der Gestaltung läuft über Bildschirmfotos auf dem Abnahmezettel (1280/414/320 px, hell und dunkel; Board mit einem und zwei Timern, Aufgabenfenster, Pop, Hinweis, Personen-Seite), nicht über eine Zeichnung (PO Z. 184).
+   - **Offen und vorzulegen:** Der Umbruch verschiebt den Chip in dieser Zeile — also eine *Lage*-Änderung, die PO Z. 184 Satz 1 („Form und Lage bleiben unverändert“) nicht vorsieht, während Satz 3 derselben Zeile verlangt, dass die UX-Vorprüfung so etwas vorlegt. Der planer folgt dem Muss-Kriterium M1, das den Umbruch ausdrücklich als Rückfall nennt, und bittet um Gegenlesen. Bleibt es bei „keine neue Lage“, fällt die 90-px-Grenze und mit ihr M1; dann ist der Weg eine neue ADR, die diese ablöst — nicht eine stille Änderung hier.
+   - **Risiko und Früh-Indikator:** Der Umbruch greift auf einer Karte, die gar nicht vergessen ist (Indikator: `.ka` ohne `.vergessen` mit zweizeiliger Kopfzeile), oder die Karte wächst über ihre Spalte (Indikator: `ka.right > flaeche.right` bei 320 px). Beides fängt die E2E-Probe aus R00114 AK 12; die Breitenproben aus ADR-0015 und ADR-0012 laufen mit.
+
