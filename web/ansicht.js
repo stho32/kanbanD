@@ -1163,7 +1163,7 @@ function vDurchsatzFlaeche(d, einheit) {
   const schritt = Math.max(1, Math.ceil(max / 4)), ticks = [];
   for (let v = 0; v <= max; v += schritt) ticks.push(v);
   const t1 = t[t.length - 1].bis;
-  const marken = t.map((x, i) => i).filter(i => i % Math.max(1, Math.ceil((t.length - 1) / 7)) === 0 || i === t.length - 1);
+  const marken = durchsatzMarken(t.length);
   const achse = i => {
     const m = durchsatzMarke(t[i], einheit), x = xs(i).toFixed(1);
     return m.unten

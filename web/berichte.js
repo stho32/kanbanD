@@ -264,6 +264,13 @@
     if (einheit === 'woche') { const w = isoWoche(p.von); return { oben: `KW${w.woche}`, unten: String(w.jahr) }; }
     return { oben: durchsatzName(p, einheit), unten: '' };
   }
+  /** Indizes der Periodenmarken der x-Achse: **garantiert höchstens acht** (Schritt ceil((n−1)/7) statt i % ceil(n/8),
+      das neun liefern kann), die letzte Periode ist immer dabei (M8/S2). */
+  function durchsatzMarken(anzahl) {
+    if (anzahl <= 1) return anzahl === 1 ? [0] : [];
+    const schritt = Math.max(1, Math.ceil((anzahl - 1) / 7));
+    return [...Array(anzahl).keys()].filter(i => i % schritt === 0 || i === anzahl - 1);
+  }
 
   /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte bzw. letzte
       Phase) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
@@ -794,5 +801,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
