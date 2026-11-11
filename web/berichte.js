@@ -60,6 +60,7 @@
     stundenzettel: {},
     zeiten: { zeitraum: true, personen: 'zeit' },
     burndown: { start: true, zeitraum: true, spalten: true, personen: 'zustaendig' },
+    fluss: { start: true, zeitraumBleibt: true, spalten: true, personen: 'zustaendig' },
     durchlaufzeit: { start: true, zeitraum: true, personen: 'zustaendig' },
     wieLangeNoch: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     fieber: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
@@ -71,6 +72,7 @@
   function zuruecksetzenHinweis(teile) {
     const text = 'die gezählten Filter aufheben';
     if (teile.messbasis && teile.start) return `${text} — Messbasis und „Rechnen ab“ bleiben`;
+    if (teile.zeitraumBleibt && teile.start) return `${text} — Zeitraum und „Rechnen ab“ bleiben`;
     if (teile.start) return `${text} — „Rechnen ab“ bleibt`;
     return text;
   }

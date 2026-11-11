@@ -1,6 +1,6 @@
 // Die Ansichten der Anwendung, geteilt von Kontrast- und Zielprobe (ADR-0012 Regel 6): eine Liste, damit keine Probe eine Ansicht auslässt
 
-const BERICHTE = ['stundenzettel', 'kreuz', 'verlauf', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'];
+const BERICHTE = ['stundenzettel', 'kreuz', 'verlauf', 'fluss', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'];
 
 /** Je Ansicht Name und Adresse (Hash); Board und WBS-Sicht tragen den Slug des Testbestands. */
 function ansichtenDerAnwendung({ board, wbs }) {

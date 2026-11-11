@@ -96,7 +96,7 @@ async function api(methode, pfad, daten) {
 
 function ansichtAusAdresse() {
   if (/^#\/wbs\//.test(location.hash)) return 'wbs';
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten|berichte\/bestand)/.exec(location.hash);
+  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/fluss|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten|berichte\/bestand)/.exec(location.hash);
   return m ? m[1] : 'board';
 }
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
@@ -158,6 +158,7 @@ function vHaupt() {
   if (S.ui.view === 'berichte/stundenzettel') return vStundenzettel();
   if (S.ui.view === 'berichte/kreuz') return vKreuz();
   if (S.ui.view === 'berichte/verlauf') return vVerlauf();
+  if (S.ui.view === 'berichte/fluss') return vFluss();
   if (S.ui.view === 'berichte/durchlauf') return vDurchlauf();
   if (S.ui.view === 'berichte/prognose') return vPrognose();
   if (S.ui.view === 'berichte/fieber') return vFieber();
@@ -244,7 +245,7 @@ async function sichtLaden(zustand) {
     api('GET', '/api/boards?archivierte=ja'),
   ]);
   // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
-  const bew = /^berichte\/(verlauf|durchlauf|prognose|fieber)$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
+  const bew = /^berichte\/(verlauf|fluss|durchlauf|prognose|fieber)$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
   // Fever Chart (R00078): der Cache der gerechneten Tage
   const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
@@ -959,7 +960,7 @@ function ersterTabbarer(bereich) {
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
   if (S.ui.view === 'wbs' && S.wbs) return `${prozente(S.wbs.stand).gruen} % · WBS · ${S.wbs.name} — kanbanD`;
-  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart', 'berichte/kosten': 'Kosten', 'berichte/bestand': 'Bestand' };
+  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/fluss': 'Fluss', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart', 'berichte/kosten': 'Kosten', 'berichte/bestand': 'Bestand' };
   const n = alleLaufenden().length;
   return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
 }
