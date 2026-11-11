@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, filterOeffnen, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen, liveBereit, mutanteEinsetzen } = require('./hilfen');
 
 function commitAm(ordner, datum, inhalt, pfad = 'boards/fabrik.md') {
   fs.writeFileSync(ordner + '/' + pfad, inhalt);
@@ -32,6 +32,9 @@ function grundbestand(ordner, filter = FILTER) {
 
 const diagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode' });
 const alsFabrik = page => page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+
+// Mutantenprobe: KD_MUTANTE setzt eine Datei der Oberfläche mit einem Ersatz aus (Muster r00110/r00116).
+test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
 
 test('R00122 B0564: Menüeintrag in VERLAUF, Route, Fenstertitel, Kopfleiste, Kürzel g u und verborgene Überschrift', async ({ page }) => {
   const k = await kanbanStarten(grundbestand);
@@ -332,6 +335,28 @@ for (const breite of [320, 375, 414]) {
     } finally { await k.stoppen(); }
   });
 }
+
+test('R00122 B0645 (M8): je Tag über 16 Perioden → höchstens acht Marken, 320 px ohne Querscrollen', async ({ page }) => {
+  const k = await kanbanStarten(async ordner => {
+    const kopf = '# fabrik\n\n## Eingang\n\n';
+    const p2 = n => String(n).padStart(2, '0');
+    const vor = n => { const d = new Date(Date.now() - n * 864e5); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T09:00:00`; };
+    einrichten({ ...AUFGABEN, 'boards/fabrik.md': board(kopf, [], [], []) })(ordner);
+    commitAm(ordner, vor(30), board(kopf, [1], [], []));
+    commitAm(ordner, vor(29), board(kopf, [], [], [1]));
+  });
+  try {
+    await alsPerson(page, 'st');
+    await alsFabrik(page);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto(k.adresse + '#/berichte/durchsatz');
+    await page.getByRole('radiogroup', { name: 'Auflösung' }).getByRole('radio', { name: 'je Tag' }).click();
+    const anzahl = await diagramm(page).locator('text.achse-x').count();
+    expect(anzahl).toBeGreaterThan(0);
+    expect(anzahl).toBeLessThanOrEqual(8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  } finally { await k.stoppen(); }
+});
 
 test.describe('R00122 B0645 (M6): Zielgrößen bei Touch, 375 px', () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
