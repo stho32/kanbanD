@@ -4,7 +4,7 @@
 //! vor der Grenzprüfung, also 403 vor 409.
 
 use crate::fehler::Fehler;
-use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Grenzverletzungen};
+use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Grenzverletzungen, Person};
 use crate::pruefungen::Warnung;
 use std::collections::BTreeSet;
 
@@ -41,20 +41,20 @@ pub(crate) fn entnahme_und_zug_pruefen(art: Art, vorher: &Board, nachher: &Board
 
 impl super::Kanban {
     /// `entnahme_und_zug_pruefen` mit den Archivierten des Ordners.
-    pub(super) fn entnahme_und_grenzen_pruefen(&self, wer: &crate::modell::Person, vorher: &Board, nachher: &Board, entnommen: &[u32]) -> Result<Vec<Warnung>, Fehler> {
+    pub(super) fn entnahme_und_grenzen_pruefen(&self, wer: &Person, vorher: &Board, nachher: &Board, entnommen: &[u32]) -> Result<Vec<Warnung>, Fehler> {
         entnahme_pruefen(wer.art, vorher, entnommen)?;
         self.grenzen_pruefen(wer, vorher, nachher)
     }
 
     /// `zug_pruefen` mit den Archivierten des Ordners; für Schreibwege, die die Aufgaben nicht ohnehin lesen.
-    pub(super) fn grenzen_pruefen(&self, wer: &crate::modell::Person, vorher: &Board, nachher: &Board) -> Result<Vec<Warnung>, Fehler> {
+    pub(super) fn grenzen_pruefen(&self, wer: &Person, vorher: &Board, nachher: &Board) -> Result<Vec<Warnung>, Fehler> {
         let (aufgaben, _) = self.ordner().aufgaben()?;
         zug_pruefen(wer.art, vorher, nachher, &archivierte(&aufgaben))
     }
 
     /// Archivieren nimmt die Karten von jedem Board, auf dem sie liegen (R00097): geprüft je Board in der Reihenfolge
     /// der Boardliste, darin die Nummern in Anfragereihenfolge — die Abweisung nennt die erste Sperre. Mensch nie gesperrt.
-    pub(super) fn archivieren_pruefen(&self, wer: &crate::modell::Person, nummern: &[u32]) -> Result<(), Fehler> {
+    pub(super) fn archivieren_pruefen(&self, wer: &Person, nummern: &[u32]) -> Result<(), Fehler> {
         if wer.art == Art::Mensch {
             return Ok(());
         }
@@ -64,7 +64,7 @@ impl super::Kanban {
 
     /// Zurückholen ändert kein Board, lässt die Karten aber auf jedem Board, auf dem sie liegen, wieder zählen:
     /// geprüft je Board in der Reihenfolge der Boardliste, also nennt die Abweisung das erste. Mensch ohne Warnung.
-    pub(super) fn zurueckholen_pruefen(&self, wer: &crate::modell::Person, nummern: &[u32]) -> Result<(), Fehler> {
+    pub(super) fn zurueckholen_pruefen(&self, wer: &Person, nummern: &[u32]) -> Result<(), Fehler> {
         let (aufgaben, _) = self.ordner().aufgaben()?;
         let vorher = archivierte(&aufgaben);
         let nachher: BTreeSet<u32> = vorher.iter().copied().filter(|n| !nummern.contains(n)).collect();
