@@ -16,6 +16,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let notizen = yaml::zuordnung(&m, "column-notes");
     let farben = yaml::zuordnung(&m, "column-colors");
     let eigentuemer = yaml::zuordnung(&m, "column-owner");
+    let datums = yaml::zuordnung(&m, "column-dates");
     // Rohfassung jedes `column-owner`-Eintrags (R00120): verwaiste Schlüssel bleiben so erhalten; ein Eintrag zu einer
     // vorhandenen Spalte fällt unten heraus, ein Nicht-Text-Wert wird dort als ungültig vermerkt.
     let mut eigentuemer_roh: Vec<ColumnOwnerEintrag> = match m.get("column-owner") {
@@ -68,7 +69,8 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
                 },
                 None => (None, None),
             };
-            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe, eigentuemer, eigentuemer_unbekannt });
+            let trenner = datums.and_then(|t| t.get(name.as_str())).and_then(Value::as_bool);
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe, eigentuemer, eigentuemer_unbekannt, datums_trenner: trenner });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -295,6 +297,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
+    let daten: Vec<(&str, bool)> = b.spalten.iter().filter_map(|sp| sp.datums_trenner.map(|t| (sp.name.as_str(), t))).collect();
     // `column-owner` (R00097, R00120/B1/B2): Spalten mit gültigem oder unbekanntem Eigentümer in Reihenfolge, dann die
     // rohen Einträge. Ein Rohschlüssel, der auf eine Spalte trifft, erzeugt keinen doppelten YAML-Schlüssel — er löst
     // sich schlüssellos auf. `schluessellos` ist der Wert, der unter dem Ersatzschlüssel `""` steht: ein `column-owner`
@@ -312,7 +315,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -341,6 +344,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
                 for (spalte, wert) in eintraege.iter() {
                     s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(wert)));
                 }
+            }
+        }
+        if !daten.is_empty() {
+            s.push_str("column-dates:\n");
+            for (spalte, wert) in daten {
+                s.push_str(&format!("  {}: {wert}\n", yaml::skalar(spalte)));
             }
         }
         // Ohne jede Zuordnung bleibt der rohe `column-owner`-Wert ein Skalar (keine Zuordnung, unverändert); sobald eine
@@ -539,9 +548,22 @@ mod tests {
         assert_eq!(g.spalten.iter().map(|s| (s.notiz.clone(), s.farbe.clone())).collect::<Vec<_>>(), [(None, None), (None, Some("#00ff00".to_string()))], "leerer Kommentar und ungültige Farbe fallen weg");
     }
 
+    // R00124 B0579: `column-dates` im Frontmatter (Muster column-checks); fehlender Schlüssel heißt „Standard“ (None)
     #[test]
-    fn spalteneigentuemer_im_frontmatter_rundlauf() {
+    fn datums_trenner_im_frontmatter_rundlauf() {
         let mut b = beispiel();
+        b.spalten[0].datums_trenner = Some(true);
+        b.spalten[1].datums_trenner = Some(false);
+        let t = schreiben(&b, datei);
+        assert!(t.contains("column-dates:\n  Zu erledigen: true\n  In Arbeit: false\n---\n"), "in Spaltenreihenfolge: {t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b, "Rundlauf verlustfrei");
+        assert!(!schreiben(&beispiel(), datei).contains("column-dates"), "ohne Eintrag kein Schlüssel");
+        let g = lesen("b", "---\ncolumn-dates: {A: true, B: nein}\n---\n## A\n## B\n").unwrap();
+        assert_eq!(g.spalten.iter().map(|s| s.datums_trenner).collect::<Vec<_>>(), [Some(true), None], "nur ein Wahrheitswert gilt");
+    }
+
+    #[test]
+    fn spalteneigentuemer_im_frontmatter_rundlauf() {        let mut b = beispiel();
         b.spalten[0].eigentuemer = Some(Eigentuemer::Human);
         b.spalten[1].eigentuemer = Some(Eigentuemer::Agent);
         let t = schreiben(&b, datei);

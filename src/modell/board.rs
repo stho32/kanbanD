@@ -26,6 +26,10 @@ pub struct Spalte {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<String>)]
     pub eigentuemer_unbekannt: Option<String>,
+    /// `column-dates` (R00124): Datums-Trenner in dieser Spalte; `None` = Schlüssel fehlt, der wirksame Standard
+    /// (Abschlussspalte an) entscheidet. Der Server rechnet den Standard nicht aus, die Anzeige kennt die Spaltenposition.
+    #[serde(default)]
+    pub datums_trenner: Option<bool>,
 }
 
 impl Spalte {
@@ -458,6 +462,10 @@ pub struct SpaltenAenderung {
     #[serde(default, deserialize_with = "super::aufgabe::entfernbar")]
     #[schema(value_type = Option<String>)]
     pub eigentuemer: Option<Option<String>>,
+    /// `column-dates` (R00124): `true`/`false` setzt, `null` entfernt den Schlüssel, fehlt das Feld, behält sie ihren Wert.
+    #[serde(default, deserialize_with = "super::aufgabe::entfernbar")]
+    #[schema(value_type = Option<bool>)]
+    pub datums_trenner: Option<Option<bool>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -536,6 +544,10 @@ impl Board {
                         None => alt.and_then(|s| s.eigentuemer),
                     },
                     eigentuemer_unbekannt: if n.eigentuemer.is_some() { None } else { alt.and_then(|s| s.eigentuemer_unbekannt.clone()) },
+                    datums_trenner: match &n.datums_trenner {
+                        Some(w) => *w,
+                        None => alt.and_then(|s| s.datums_trenner),
+                    },
                 }
             })
             .collect();
@@ -854,7 +866,7 @@ mod tests {
     }
 
     fn aend(name: &str, alt: Option<&str>, grenze: Option<u32>) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: Some(grenze), pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
+        SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: Some(grenze), pruefungen: None, notiz: None, farbe: None, eigentuemer: None, datums_trenner: None }
     }
 
     #[test]
@@ -874,7 +886,7 @@ mod tests {
     #[test]
     fn ohne_alt_uebernimmt_die_spalte_gleichen_namens() {
         fn zeile(name: &str, alt: Option<&str>) -> SpaltenAenderung {
-            SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: None, pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
+            SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: None, pruefungen: None, notiz: None, farbe: None, eigentuemer: None, datums_trenner: None }
         }
         // A(1,2) mit Grenze und Notiz, Z(3) mit Grenze
         let mit_grenzen = || {
@@ -961,6 +973,22 @@ mod tests {
         let vorher = b.spalten.clone();
         assert_eq!(b.spalten_setzen(&[mit(Some(Some("chef")), "Posteingang", "Posteingang")]), Err(Spaltenfehler::EigentuemerUngueltig("chef".into())));
         assert_eq!(b.spalten, vorher, "Fehler ändern nichts");
+    }
+
+    // R00124 B0579: `datums_trenner` setzen, fehlend behält, null entfernt, Umbenennen nimmt ihn mit
+    #[test]
+    fn datums_trenner_setzen_behalten_entfernen() {
+        let mut b = b();
+        let zwei = |w: Option<Option<bool>>| [SpaltenAenderung { datums_trenner: w, ..aend("A", Some("A"), None) }, aend("Z", Some("Z"), None)];
+        assert_eq!(b.spalten_setzen(&zwei(Some(Some(true)))), Ok(true));
+        assert_eq!(b.spalten[0].datums_trenner, Some(true));
+        assert_eq!(b.spalten_setzen(&zwei(None)), Ok(false), "fehlendes Feld behält");
+        assert_eq!(b.spalten_setzen(&zwei(Some(None))), Ok(true), "null entfernt");
+        assert_eq!(b.spalten[0].datums_trenner, None);
+        assert_eq!(b.spalten_setzen(&zwei(Some(Some(false)))), Ok(true));
+        assert_eq!(b.spalten[0].datums_trenner, Some(false));
+        assert_eq!(b.spalten_setzen(&[aend("Posteingang", Some("A"), None), aend("Z", Some("Z"), None)]), Ok(true), "Umbenennen nimmt den Wert mit");
+        assert_eq!(b.spalten[0].datums_trenner, Some(false));
     }
 
     #[test]
@@ -1188,7 +1216,7 @@ mod tests {
 
     /// Ausgangsboard der Akzeptanzkriterien: Eingang (human), In Arbeit (Grenze 2, leer), Erledigt.
     fn ausgang() -> Board {
-        let spalte = |name: &str, grenze, eigentuemer| Spalte { notiz: None, farbe: None, eigentuemer, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        let spalte = |name: &str, grenze, eigentuemer| Spalte { notiz: None, farbe: None, eigentuemer, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben: vec![], phase: None, pruefungen: vec![], datums_trenner: None };
         Board { spalten: vec![spalte("Eingang", None, Some(Eigentuemer::Human)), spalte("In Arbeit", Some(2), None), spalte("Erledigt", None, None)], ..b() }
     }
 

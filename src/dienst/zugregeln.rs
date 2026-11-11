@@ -172,7 +172,7 @@ mod tests {
     }
 
     fn board_mit_eingang() -> Board {
-        let spalte = |name: &str, eigner, grenze, aufgaben: Vec<u32>| crate::modell::Spalte { notiz: None, farbe: None, eigentuemer: eigner, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben, phase: None, pruefungen: vec![] };
+        let spalte = |name: &str, eigner, grenze, aufgaben: Vec<u32>| crate::modell::Spalte { notiz: None, farbe: None, eigentuemer: eigner, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben, phase: None, pruefungen: vec![], datums_trenner: None };
         Board {
             slug: "b".into(),
             titel: "B".into(),
