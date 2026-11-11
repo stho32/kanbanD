@@ -222,8 +222,6 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   if (nurBeiAenderung && stand === geladenerStand && !nachgetragen) return false;
   geladenerStand = stand;
   render();
-  // Datums-Trenner (R00124): die Bewegungen des Boards erst nach dem ersten Zeichnen holen — der Aufbau wartet nicht auf die Historie
-  if (sicht && sicht.view === 'board' && sicht.slug && !sicht.haupt.boardDefekt) bewegungenNachladen(sicht.slug);
   // `#/wbs/<kürzel>/<id>` zeigt die Zeile einmal — spätere Ereignisse laden neu, ohne erneut zu springen
   const ziel = S.ui.view === 'wbs' && S.wbs && wbsZiel(location.hash);
   if (ziel && S.ui.wbsGesprungen !== location.hash) { S.ui.wbsGesprungen = location.hash; await act('wbs-gehe', ziel); }
@@ -241,17 +239,18 @@ async function sichtLaden(zustand) {
   let boardDefekt = null;
   // 423: Board-Datei defekt (R00025); 400: Dateiname nicht in Board-Form (R00104) — beide als Defektfläche, der Grund aus `defekte`
   const board = slug ? await api('GET', '/api/boards/' + encodeURIComponent(slug) + '?archivierte=ja').catch(f => { if (f.status !== 423 && f.status !== 400) throw f; boardDefekt = { slug, fehler: defekterGrund(slug, zustand) || f.message }; return null; }) : null;
-  const [aufgaben, herkunft, boards] = await Promise.all([
+  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042); die Board-Ansicht braucht sie für die Datums-Trenner (R00124).
+  // Sie laufen in derselben Sammelabfrage wie die übrigen — ein einziger Aufbau, kein zusätzliches Zeichnen. Ein defektes
+  // Board (423) wird gar nicht erst gefragt; in der Board-Ansicht ist ein Fehler kein Grund, die Seite nicht zu zeichnen.
+  const bewegungenPfad = '/api/berichte/bewegungen?board=' + encodeURIComponent(slug || '');
+  const bewegungenNoetig = Boolean(slug) && (view === 'board' ? !boardDefekt : /^berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber)$/.test(view));
+  const [aufgaben, herkunft, boards, bew] = await Promise.all([
     api('GET', '/api/aufgaben'),
     api('GET', '/api/herkunft'),
     // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
     api('GET', '/api/boards?archivierte=ja'),
+    bewegungenNoetig ? (view === 'board' ? api('GET', bewegungenPfad).catch(() => null) : api('GET', bewegungenPfad)) : Promise.resolve(null),
   ]);
-  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042); das Board selbst braucht sie für die Datums-Trenner (R00124).
-  // In der Board-Ansicht wird die Historie **nach** dem Zeichnen nachgeladen (siehe `bewegungenNachladen`): der erste Aufbau
-  // wartet nicht auf sie; ein defektes Board (423) wird gar nicht erst gefragt. Berichte warten wie bisher.
-  const bewegungenPfad = '/api/berichte/bewegungen?board=' + encodeURIComponent(slug || '');
-  const bew = !slug || boardDefekt ? null : /^berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber)$/.test(view) ? await api('GET', bewegungenPfad) : null;
   // Fever Chart (R00078): der Cache der gerechneten Tage
   const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
@@ -263,19 +262,6 @@ async function sichtLaden(zustand) {
   // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
   return { view, slug, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs } };
-}
-
-/** Die Bewegungen des Boards nach dem Zeichnen holen (R00124): der erste Aufbau wartet nicht auf die Git-Historie.
- *  Nur die jüngste Anfrage darf übernehmen, und nur, solange dasselbe Board offen ist; ein Fehler heißt „keine Trenner“. */
-let bewegungenLauf = 0;
-async function bewegungenNachladen(slug) {
-  const lauf = ++bewegungenLauf;
-  try {
-    const b = await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug));
-    if (lauf !== bewegungenLauf || S.ui.view !== 'board' || S.ui.slug !== slug) return;
-    S.bew = b;
-    render();
-  } catch (_) { /* keine Trenner */ }
 }
 
 /** Nach der Übernahme: die gelesene Sicht samt ihrer Folgen für Vollbild, Einrichten und gemerktes Board, dann das offene Fenster. */
