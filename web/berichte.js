@@ -154,23 +154,29 @@
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return { spalten, tage: [] };
     const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1];
+    // je Aufgabe einmal die Wechsel in ms, die Ankunft und das Erreichen der Abschlussspalte — nicht je Tag neu.
+    const beitraege = bew.aufgaben
+      .filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)))
+      .map(a => {
+        const wechsel = a.wechsel.map(w => ({ ms: zeitMs(w.zeitpunkt), spalte: w.spalte }));
+        return { wechsel, ankunft: (wechsel.find(w => w.spalte != null) || {}).ms ?? Infinity, fertig: (wechsel.find(w => w.spalte === abschluss) || {}).ms ?? Infinity };
+      });
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       const jeSpalte = Object.fromEntries(spalten.map(s => [s, 0]));
       let gesamt = 0, offen = 0, angekommen = 0, fertig = 0;
-      for (const a of bew.aufgaben) {
-        if (!zaehltImBericht(a, 'burndown') || !aufgabePasst(f, aufgabeZu(a.nummer))) continue;
-        const s = spalteAm(a.wechsel, ende);
+      for (const b of beitraege) {
+        let s = null;
+        for (const w of b.wechsel) { if (w.ms > ende) break; s = w.spalte; }
         if (s != null && !f.ohneSpalten.includes(s)) {
           jeSpalte[s]++;
           gesamt++;
           if (s !== abschluss) offen++;
         }
-        // „angekommen“: bis zum Tagesende mindestens einmal auf dem Board; eine spätere Abnahme senkt es nicht
-        if (a.wechsel.some(w => w.spalte != null && zeitMs(w.zeitpunkt) <= ende)) angekommen++;
-        // „fertig“: bis zum Tagesende in der Abschlussspalte liegen oder lagen
-        if (a.wechsel.some(w => w.spalte === abschluss && zeitMs(w.zeitpunkt) <= ende)) fertig++;
+        // „angekommen“ und „fertig“ steigen monoton: eine spätere Abnahme senkt sie nicht
+        if (b.ankunft <= ende) angekommen++;
+        if (b.fertig <= ende) fertig++;
       }
       const d = new Date(t), p = n => String(n).padStart(2, '0');
       tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, jeSpalte, gesamt, offen, angekommen, fertig });

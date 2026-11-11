@@ -1056,11 +1056,11 @@ const FLUSS_B = 800, FLUSS_H = 272, FLUSS_L = 44, FLUSS_R = 120, FLUSS_O = 24, F
 function vFlussFlaeche(t, spalten, ton) {
   const max = Math.max(1, ...t.map(x => Math.max(x.gesamt, x.angekommen, x.fertig)));
   const breite = FLUSS_B - FLUSS_L - FLUSS_R, unten = FLUSS_H - FLUSS_U;
-  const sy = v => FLUSS_O + (unten - FLUSS_O) * (1 - v / max);
-  const sx = i => FLUSS_L + (t.length < 2 ? breite / 2 : i * breite / (t.length - 1));
-  const punkte = werte => werte.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`);
-  const linie = werte => `M${punkte(werte).join(' L')}`;
-  const bandPfad = (oben, unter) => `${linie(oben)} L${punkte(unter).reverse().join(' L')} Z`;
+  const sy = v => Math.round(FLUSS_O + (unten - FLUSS_O) * (1 - v / max));
+  const xs = t.map((x, i) => Math.round(FLUSS_L + (t.length < 2 ? breite / 2 : i * breite / (t.length - 1))));
+  const punkte = werte => werte.map((v, i) => `${xs[i]},${sy(v)}`);
+  const linie = werte => `M${punkte(werte).join('L')}`;
+  const bandPfad = (oben, unter) => `${linie(oben)}L${punkte(unter).reverse().join('L')}Z`;
   const stapel = k => t.map(x => spalten.slice(0, k + 1).reduce((s, name) => s + (x.jeSpalte[name] || 0), 0));
   const bänder = spalten.map((name, k) => `<path class="band" fill="${esc(ton(name, k))}" d="${bandPfad(stapel(k), k ? stapel(k - 1) : t.map(() => 0))}"></path>`).join('');
   const schritt = Math.max(1, Math.ceil(max / 4));
@@ -1070,8 +1070,8 @@ function vFlussFlaeche(t, spalten, ton) {
   const letzte = t[t.length - 1];
   const rand = (klasse, wort, v) => `<text class="randtext ${klasse}" x="${FLUSS_L + breite + 8}" y="${sy(v) + 4}">${wort} ${v}</text>`;
   const svg = `<svg class="diagramm cfd" viewBox="0 0 ${FLUSS_B} ${FLUSS_H}" role="img" aria-label="Kumulativer Fluss: Bestand je Spalte je Tag" ${achsAttribut(FLUSS_L, breite, tage[0], tage[tage.length - 1])}>
-${ticks.map(v => `<line class="gitter" x1="${FLUSS_L}" x2="${FLUSS_L + breite}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}"></line><text class="achse achse-y" x="${FLUSS_L - 6}" y="${(sy(v) + 4).toFixed(1)}" text-anchor="end">${v}</text>`).join('')}
-${marken.map(({ i }) => achsDatum(tage[i], sx(i), unten + 18)).join('')}
+${ticks.map(v => `<line class="gitter" x1="${FLUSS_L}" x2="${FLUSS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse achse-y" x="${FLUSS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+${marken.map(({ i }) => achsDatum(tage[i], xs[i], unten + 18)).join('')}
 ${bänder}<path class="ang" d="${linie(t.map(x => x.angekommen))}"></path><path class="fer" d="${linie(t.map(x => x.fertig))}"></path>
 ${rand('a', 'angekommen', letzte.angekommen)}${rand('f', 'fertig', letzte.fertig)}
 ${fadenkreuz(FLUSS_O, unten)}
