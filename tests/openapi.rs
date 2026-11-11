@@ -84,13 +84,15 @@ async fn accept_json_auf_api_leitet_weiter() {
     assert!(seite.text().await.unwrap().contains("<b><a href=\"/api/openapi.json\">"), "die Seite verlinkt die Beschreibung oben");
 }
 
-/// R00096 B0284: die neun Endpunkte, an denen ein Agent an der WIP-Grenze abgewiesen wird; `true` = Zug mit Warnung für Menschen.
-const GRENZE: [(&str, &str, bool); 9] = [
+/// R00096 B0284: die zehn Endpunkte, an denen ein Agent an der WIP-Grenze abgewiesen wird; `true` = Zug mit Warnung für Menschen.
+/// R00142: duplizieren legt an und prüft die Grenze wie das Anlegen — ein Mensch wird ohne Warnung durchgelassen.
+const GRENZE: [(&str, &str, bool); 10] = [
     ("post", "/api/boards/{slug}/ziehen", true),
     ("post", "/api/boards/{slug}/bewegen", true),
     ("post", "/api/boards/{slug}/bewegen-mehrere", true),
     ("post", "/api/aufgaben", false),
     ("post", "/api/aufgaben/mehrere", false),
+    ("post", "/api/aufgaben/{nr}/duplizieren", false),
     ("post", "/api/boards/{slug}/aufgaben", false),
     ("post", "/api/boards/{slug}/aufgaben/mehrere", false),
     ("post", "/api/aufgaben/{nr}/zurueckholen", false),
@@ -116,7 +118,7 @@ async fn neun_endpunkte_nennen_die_grenze() {
         assert!(schema.contains("#/components/schemas/GrenzeErreicht") && schema.contains("#/components/schemas/Fehlerantwort"), "409 {pfad}: {schema}");
     }
     let zaehle = |t: &str| seite.matches(t).count();
-    assert_eq!((zaehle(agent), zaehle("Mensch: Warnung grenze"), zaehle("Mensch: ohne Warnung")), (9, 3, 6), "Seite /api");
+    assert_eq!((zaehle(agent), zaehle("Mensch: Warnung grenze"), zaehle("Mensch: ohne Warnung")), (10, 3, 7), "Seite /api");
     let felder = &d["components"]["schemas"]["GrenzeErreicht"]["properties"];
     assert!(["fehler", "spalte", "grenze", "anzahl"].iter().all(|f| felder[f].is_object()), "{felder}");
 }
