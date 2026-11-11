@@ -5,6 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #9)
 **Kontext-Anforderung**: — (Karte #9 „Kontrast-Tokens in beiden Themen auf 4,5:1 heben“; Anforderung legt der planer an)
 **Erprobt durch**: Nachrechnung der Token-Paare aus `web/kd-tokens.css` ohne Browser (oklch → sRGB → WCAG-Kontrast, Python-Standardbibliothek, 2026-11-06, Stand kanbanD `cf1dbac`): reproduziert alle Dunkel-Werte der Karte auf zwei Stellen (1,33 · 1,52 · 2,61 · 2,55 · 3,81) und die Initiale CL hell (4,08); die beiden Dunkelblöcke sind heute gleich.
+**Nachträge**: 2026-11-11 — N1 Text auf eigenen Nutzerfarben (Karte #50), siehe [Nachtrag N1](#nachtrag-2026-11-11-n1-text-auf-eigenen-nutzerfarben-karte-50). Der Text oberhalb bleibt der Stand der Annahme; die Marke *(→ N1)* zeigt, wo der Nachtrag gilt.
 
 ## Kontext
 
@@ -68,7 +69,7 @@ Regeln:
 4. **`--kd-faint` ist Linie/Verzierung, keine Schrift.** Wo es heute Schrift ist (20 Stellen), wird es `--kd-muted` oder ein Paar mit eigener Prüfung; ob ein Text informationstragend oder entbehrlich ist, entscheidet der planer je Stelle, nicht die Farbe.
 5. **Kein Farbwert außerhalb von `web/kd-tokens.css`** in `color:` oder `background:` der übrigen Stylesheets und in `style=`-Attributen der Vorlagen — außer `var(--…)`, `color-mix(…)` über Tokens und `transparent`/`none`/`inherit`. Bestehende Literale (`#fff` s. o., `oklch(1 0 0 / …)` an Linien `web/kd-app.css:57`, `:62`, `:437`, Diagrammfarben `--wl-*` `:656`) wandern in Tokens oder stehen als Abweichung in `A00009`.
 6. **Ein Dunkelsatz, zwei Selektoren**: die beiden Dunkelblöcke bleiben (keine Umstellung auf `light-dark()` — prozentuale Tokens wie `--kd-klasse-anteil` lassen sich damit nicht umschalten), müssen aber Token für Token gleich sein.
-7. **Eigene Farben der Nutzer** (Klassen, Spalten) liegen außerhalb der Paartabelle. Was für ihre Mischungen gilt, entscheidet Karte #50 bzw. #51; bis dahin misst die E2E-Probe die 16 Farben der Palette.
+7. **Eigene Farben der Nutzer** (Klassen, Spalten) liegen außerhalb der Paartabelle. Was für ihre Mischungen gilt, entscheidet Karte #50 bzw. #51; bis dahin misst die E2E-Probe die 16 Farben der Palette. *(→ N1: für **Text** auf eigenen Farben gilt `--kd-text` (Karte #50); die E2E-Probe wächst um eine eigene Farbe)*
 
 ## Konsequenzen
 
@@ -91,7 +92,7 @@ Regeln:
 - [ ] Anforderung aus Karte #9 nach dieser ADR (planer): Paare nach Regel 2, Umhängen nach 4 und 5, beide Proben.
 - [ ] Fläche der Modusleiste und Ersatz je `--kd-faint`-Stelle (planer mit ux).
 - [ ] Ausweitung der E2E-Probe auf alle Sichten (Liste, WBS, Berichte, Einstellungen) — sobald #50 und #55 durch sind, eigene Karte.
-- [ ] Regel für eigene Nutzerfarben (Karte #50/#51), dann Nachtrag hier.
+- [x] Regel für eigene Nutzerfarben (Karte #50/#51), dann Nachtrag hier. *(→ N1: für Text auf eigenen Farben gilt `--kd-text` (Karte #50); #51 — Farbfeld „ohne Klasse“, Größe und Rand — bleibt offen)*
 
 ## Quellen / Bezuege
 
@@ -100,3 +101,27 @@ Regeln:
 - `AI-Team/po-entscheidungen.md:17`, `:54`, `:99`.
 - [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md) (Neuzeichnen — Grund gegen eine JS-Farbwahl in `render()`), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) (Muster Wächtertest mit Selbstprobe).
 - Baustein [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md).
+
+## Nachtrag 2026-11-11 N1: Text auf eigenen Nutzerfarben (Karte #50)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag füllt Regel 7 aus und schließt die vierte Folgeentscheidung („Regel für eigene Nutzerfarben (Karte #50/#51), dann Nachtrag hier“) für den **Text**; er ändert keine der Regeln 1–6. Eigene Nutzerfarben bleiben außerhalb der Paartabelle, aber ihre **Schriftfarbe** ist nicht mehr frei. Anlass ist die Karte #50 „Σ und Datum auf heller eigener Klassenfarbe im Dunkelthema unter 4,5:1“ (Nebenfund des gestalters bei D0002 für #18, kanbanD `89b9d89`); der Director hat entschieden: Nachtrag, kein neues ADR (Kartenkommentar #50, 2026-11-11; WBS I0096).
+
+### Anlass (#50)
+
+Die Karte beobachtet: Σ-Zeit und Datum in der Zeile r3 der Karte (`.ka .r3`, `web/kd-app.css:161`) tragen `--kd-muted`. Auf einer **hellen eigenen** Klassenfarbe (z. B. `#ffffff`) fällt der Kontrast im Dunkelthema auf 2,57:1; WCAG 2.1 SC 1.4.3 verlangt 4,5:1. Eigene Farben liegen nach Regel 7 außerhalb der Paartabelle, ihre Schrift hat damit bisher kein Versprechen — dieselbe Klasse Fehler wie in der Besprechung der ADR. Das Preisetikett hat genau diesen Fall schon gelöst: `.ka[data-eigen] .preis{color:var(--kd-text)}` (`web/kd-app.css:166`) — auf einer eigenen Farbe trägt der Text `--kd-text` (R00105, PO-Entscheidung `AI-Team/po-entscheidungen.md:99`: „Kontrast mindestens 4,5:1 in Hell und Dunkel, auch auf dem getönten Grund jeder Klassenfarbe“).
+
+### Was der Nachtrag festlegt
+
+1. **Text auf einer eigenen Nutzerfarbe trägt `--kd-text`, nicht `--kd-muted`.** Ist der Grund einer Karte oder Spalte eine **eigene** Farbe der Nutzerin (nicht eine der 16 Paletten- oder 4 WBS-Farben), steht der Text darauf in `--kd-text` — dieselbe Regel, die das Preisetikett auf dem getönten Klassengrund trägt (R00105, PO Z. 99). Der konkrete Fall der Karte ist die r3-Zeile (`.ka .r3`): Σ-Zeit, Datum, Herkunft und Zuständige in `--kd-text`. Der Anker ist das schon vorhandene Merkmal der Karte für eine eigene Farbe (`data-eigen`, `web/ansicht.js:590`), an dem das Preisetikett bereits hängt; für die Paletten- und WBS-Gründe gilt weiter `--kd-muted` als geprüfte Schrift (Regel 2, Paar `--kd-c-*` ↔ `--kd-muted`).
+2. **Grenze bleibt Regel 7.** Eigene Nutzerfarben sind weiter **kein Paar der Tabelle** — ihre Mischungen (`color-mix` über `--sf`, `web/ansicht.js:435`) sind der Rechnung der Unit-Probe nicht zugänglich. Festgelegt ist nur die Schriftfarbe: `--kd-text` ist der gemeinsame, in beiden Themen geprüfte Ton (Paar `--kd-surface` ↔ `--kd-text`, Regel 2). Ob der Kontrast auf einer frei gewählten Farbe tatsächlich trägt, entscheidet die E2E-Probe am gezeichneten Element, nicht die Tabelle.
+3. **Regel 5 bleibt.** `--kd-text` ist ein Token; die Umstellung fügt der Oberfläche keinen Farbwert außerhalb von `web/kd-tokens.css` hinzu.
+
+### Durchsetzung (Abnahme-Probe der Karte #50)
+
+Die **E2E-Probe** aus den Konsequenzen (`e2e/tests/kontrast.spec.js`) wird um **eine eigene Farbe** gemehrt: eine Klasse mit eigener Farbe `#ffffff` im Dunkelthema, eine Karte mit Σ-Zeit und Datum darauf; der berechnete Kontrast von Σ-Zeit und Datum gegen den Kartengrund ist **≥ 4,5:1**. Gegenprobe: eine Standardklasse (Paletten-Farbe) bleibt unverändert. Gegen heute ist die Messung rot (2,57:1). Das ergänzt den Satz in Regel 7 („bis dahin misst die E2E-Probe die 16 Farben der Palette“), es ersetzt ihn nicht: die 16 Palette-Farben bleiben gemessen, dazu kommt die eine eigene Farbe.
+
+Damit entfällt der Eintrag **#50** in der Ausnahmeliste der Probe (Konsequenzen, Durchsetzung: „Bekannte Verstöße außerhalb der Karte (#50, #55) …“) mit dieser Karte; **#51** (Farbfeld „ohne Klasse“, Größe und Rand) und **#55** (Ränder von `.btn` und Select) bleiben.
+
+### Prüfung
+
+Die Probe ist die **Abnahme-Probe der Karte #50** (oben) und zugleich ein Fall der E2E-Probe aus R00107: eine Karte mit eigener Klassenfarbe `#ffffff` im Dunkelthema, Σ-Zeit und Datum ≥ 4,5:1; eine Karte mit Paletten-Klasse misst unverändert. Wer den Text auf eigenen Farben wieder auf `--kd-muted` hängt, macht die Stelle rot; wer `--kd-text` auf Palettengründen erzwingt, verliert die Prüfung des Paares `--kd-c-*` ↔ `--kd-muted`.
