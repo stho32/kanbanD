@@ -580,7 +580,22 @@ async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
 /** Der Hinweis im Fenster deckt den unteren Rand des Körpers; seine Höhe hält dort den Fokus frei (scroll-padding, PO Z. 162). */
 function hinweisEinpassen() {
   const hinweis = $('.hinweis-anker .toast');
-  if (hinweis) hinweis.closest('.mod').style.setProperty('--kd-hinweis-h', hinweis.offsetHeight + 'px');
+  if (!hinweis) return;
+  hinweis.closest('.mod').style.setProperty('--kd-hinweis-h', hinweis.offsetHeight + 'px');
+  fokusAusDemHinweis();
+}
+
+/** Die sequentielle Tab-Navigation holt ein Ziel nicht von selbst unter dem Hinweis hervor — Chromium scrollt nur so weit,
+    dass die Oberkante sichtbar ist, und missachtet dabei `scroll-padding`. Liegt das fokussierte Ziel im Rechteck des
+    Hinweises, wird es über den reservierten Streifen geholt (`scroll-padding-bottom` aus `hinweisEinpassen`). Gilt beim
+    Erscheinen des Hinweises und bei jedem Fokuswechsel (Tab, Klick, Skript) — unabhängig von der Kopfhöhe (R00112,
+    „Fokus nie unter dem Hinweis“). */
+function fokusAusDemHinweis() {
+  const hinweis = $('.hinweis-anker .toast');
+  const ziel = document.activeElement;
+  if (!hinweis || !ziel || ziel === document.body || hinweis.contains(ziel)) return;
+  const f = ziel.getBoundingClientRect(), h = hinweis.getBoundingClientRect();
+  if (f.left < h.right && f.right > h.left && f.top < h.bottom && f.bottom > h.top) ziel.scrollIntoView({ block: 'nearest' });
 }
 
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
@@ -1957,6 +1972,7 @@ function fuehrungNachziehen(element) {
   else if (element.matches('tr[data-zeile]')) S.ui.fokusZeile = +element.dataset.zeile;
 }
 document.addEventListener('focusin', e => fuehrungNachziehen(e.target));
+document.addEventListener('focusin', () => fokusAusDemHinweis());
 document.addEventListener('focusout', e => {
   // Verlassen eines zurückgesetzten Felds meldet den getippten Wert nach (R00103); Ersetzen ist kein Verlassen
   if (!S.neuzeichnen) aenderungNachtragen(e.target);
