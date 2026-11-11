@@ -700,7 +700,7 @@ function render() {
     $('#kopf').innerHTML = vKopf();
     $('#main').innerHTML = vMain();
     $('#main').dataset.sicht = sicht;
-    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
+    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
   } finally {
     S.neuzeichnen = false;
@@ -1036,6 +1036,84 @@ function tippPlatzieren() {
   blase.style.left = Math.max(4, Math.min(r.left, innerWidth - blase.offsetWidth - 4)) + 'px';
 }
 
+/** Der Board-Titel zu einem Slug — aus dem offenen Umschalter oder der vollen Board-Liste; sonst der Slug. */
+function boardName(slug) {
+  const b = (S.zustand.boards || []).find(x => x.slug === slug) || (S.boards || []).find(x => x.slug === slug);
+  return b ? b.titel : slug;
+}
+
+/** Umbenennen (R00128 M10/S3): PATCH {titel}; ein 400 zeigt die Servermeldung als Feldfehler in `popFehler`, das Feld bleibt offen. */
+async function boardUmbenennen(slug, wert) {
+  const titel = (wert || '').trim();
+  try {
+    await api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { titel });
+  } catch (f) {
+    S.ui.popFehler = f.message;
+    S.ui.fokus = '#board-umbenennen';
+    render();
+    return;
+  }
+  S.ui.boardUmbenennen = null;
+  S.ui.popFehler = null;
+  S.ui.hinweis = { text: `Board ‚${titel}‘ umbenannt`, at: Date.now() };
+  await laden();
+  S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
+  render();
+}
+
+/** Abbrechen des Bestätigungsdialogs (M2): Fokus zurück an den Auslöser — den ⋮ der Zeile. */
+function alAbbrechen() {
+  const slug = S.ui.alDialog && S.ui.alDialog.slug;
+  S.ui.alDialog = null;
+  S.ui.fokus = slug ? `[data-act="board-menue"][data-arg="${slug}"]` : null;
+  render();
+}
+
+/** Archivieren oder Löschen bestätigen (R00128/M4): ein Commit, dann neu laden; Fokus auf die nächste Board-Zeile, sonst #t-board (M6). */
+async function alBestaetigen() {
+  const d = S.ui.alDialog;
+  if (!d) return;
+  const reihe = (S.zustand.boards || []).map(b => b.slug);
+  try {
+    if (d.art === 'loeschen') await api('DELETE', `/api/boards/${encodeURIComponent(d.slug)}`);
+    else await api('PATCH', `/api/boards/${encodeURIComponent(d.slug)}`, { archiviert: true });
+  } catch (f) {
+    S.ui.alDialog.fehler = f.message;
+    S.ui.fokus = '#al-abbrechen';
+    render();
+    return;
+  }
+  S.ui.hinweis = { text: d.art === 'loeschen' ? `Board ‚${d.titel}‘ endgültig gelöscht` : `Board ‚${d.titel}‘ archiviert`, at: Date.now() };
+  S.ui.alDialog = null;
+  await laden();
+  S.ui.fokus = naechsteBoardZeile(reihe, d.slug);
+  render();
+}
+
+/** Der Fokus nach dem Verschwinden einer Board-Zeile (M6): die nächste offene Zeile, sonst #t-board — nie BODY. */
+function naechsteBoardZeile(reiheVorher, slug) {
+  const uebrig = (S.zustand.boards || []).map(b => b.slug);
+  const i = reiheVorher.indexOf(slug);
+  const naechster = (i >= 0 ? reiheVorher.slice(i + 1) : reiheVorher).find(s => uebrig.includes(s)) || uebrig[0] || null;
+  return naechster ? `[data-act="board-wahl"][data-arg="${naechster}"]` : '#t-board';
+}
+
+/** Ein archiviertes Board wieder öffnen (M5): PATCH {archiviert:false}; zurück in die offene Liste. */
+async function boardWiederOeffnen(slug) {
+  const titel = boardName(slug);
+  try {
+    await api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { archiviert: false });
+  } catch (f) {
+    S.ui.popFehler = f.message;
+    render();
+    return;
+  }
+  S.ui.hinweis = { text: `Board ‚${titel}‘ wieder geöffnet`, at: Date.now() };
+  await laden();
+  S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
+  render();
+}
+
 async function act(a, arg, wert) {
   const u = S.ui;
   try {
@@ -1054,6 +1132,15 @@ async function act(a, arg, wert) {
           return;
         } catch (f) { u.popFehler = f.message; u.fokus = '#board-neu'; break; }
       }
+      case 'board-menue': u.popFehler = null; u.boardUmbenennen = null; u.boardMenue = u.boardMenue === arg ? null : arg; break;
+      case 'board-umbenennen': u.boardMenue = null; u.boardUmbenennen = arg; u.popFehler = null; u.fokus = '#board-umbenennen'; break;
+      case 'board-umbenennen-ab': u.boardUmbenennen = null; u.popFehler = null; u.fokus = `[data-act="board-wahl"][data-arg="${arg}"]`; break;
+      case 'board-umbenennen-ok': return boardUmbenennen(arg, wert);
+      case 'board-archivieren': u.boardMenue = null; u.fokus = null; u.alDialog = { art: 'archivieren', slug: arg, titel: boardName(arg) }; break;
+      case 'board-loeschen': u.boardMenue = null; u.fokus = null; u.alDialog = { art: 'loeschen', slug: arg, titel: boardName(arg) }; break;
+      case 'al-abbrechen': alAbbrechen(); break;
+      case 'al-bestaetigen': return alBestaetigen();
+      case 'board-wieder-oeffnen': return boardWiederOeffnen(arg);
       case 'ich': ichSetzen(arg); u.pop = null; u.ichNoetig = false; break;
       case 'add': {
         // arg: Spaltenname des aktuellen Boards, '' = erste Spalte, '-' = ohne Board
@@ -1859,7 +1946,7 @@ document.addEventListener('click', e => {
   const aufheben = S.ui.auswahl.length > 0 && !e.target.closest('#over') && !e.target.closest('[data-leiste]');
   if (aufheben) auswahlAufheben();
   const el = e.target.closest('[data-act]');
-  if (S.ui.pop && !e.target.closest('.pop') && !(el && el.dataset.act === 'pop')) {
+  if (S.ui.pop && !e.target.closest('.pop') && !e.target.closest('.al-bg') && !(el && el.dataset.act === 'pop')) {
     S.ui.pop = null; S.ui.ichNoetig = false;
     if (!el) { render(); return; }
   }
@@ -1978,6 +2065,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   // Esc schließt den Erklärtext zuerst — an der Spitze der Kaskade, vor Pop und Fenstern (R00119 FA 8, ADR-0020)
   if (e.key === 'Escape' && S.ui.tooltip) { e.preventDefault(); tippVerbergen(); return; }
+  if (S.ui.alDialog && e.key === 'Escape') { e.preventDefault(); alAbbrechen(); return; }
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;

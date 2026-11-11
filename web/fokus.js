@@ -58,6 +58,7 @@
   function ebenen(ui, gemerkt = {}) {
     const liste = dialogstapel(ui, gemerkt);
     if (ui.pop) liste.push(popEbene(ui, gemerkt));
+    if (ui.alDialog) liste.push(dialog('aldialog', '#al-dialog', '#al-abbrechen', ausloeser(gemerkt, 'aldialog')));
     if (ui.menue) liste.push(menue('kmenue', '#kmenue', kmenueEintrag(ui.menue), ausloeser(gemerkt, 'kmenue')));
     return liste;
   }

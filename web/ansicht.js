@@ -339,10 +339,46 @@ function vZeiten(a) {
 
 /* ── Popover ── */
 const defekteBoards = (zustand = S.zustand) => (zustand.defekte || []).filter(d => /^boards\/[^/]+\.md$/.test(d.pfad)).map(d => d.pfad.slice(7, -3));
+/** Archivierte Boards (R00128): aus der vollen Board-Liste (`?archivierte=ja`) — `zustand.boards` und `S.boards` im Schalter. */
+const archivierteBoards = () => (S.boards || []).filter(b => b.archiviert);
+/** Der ⋮-Aktionsauslöser einer Board-Zeile (M1/M8): eigener Knopf, `aria-haspopup="menu"`, Name mit Boardnamen. */
+function vBoardDrei(titel, slug, auf) {
+  return `<button type="button" class="bdrei${auf ? ' auf' : ''}" data-act="board-menue" data-arg="${esc(slug)}" aria-haspopup="menu" aria-expanded="${auf}" aria-label="Aktionen für Board ‚${esc(titel)}‘">${DREI_PUNKTE}</button>`;
+}
+/** Das Zeilenmenü eines Boards (M1/S1): Umbenennen, Archivieren bzw. „wieder öffnen“, Löschen in `--kd-warn`. */
+function vBoardMenue(titel, slug, archiviert) {
+  const eintrag = (act, text, warn) => `<button type="button" role="menuitem" tabindex="-1"${warn ? ' class="warn"' : ''} data-act="${act}" data-arg="${esc(slug)}">${text}</button>`;
+  const auslagern = archiviert ? eintrag('board-wieder-oeffnen', 'wieder öffnen') : eintrag('board-archivieren', 'Archivieren');
+  return `<div class="bmenue" role="menu" aria-label="Aktionen für Board ‚${esc(titel)}‘">${eintrag('board-umbenennen', 'Umbenennen')}${auslagern}${eintrag('board-loeschen', 'Löschen', true)}</div>`;
+}
 function vBoardPop() {
   const u = S.ui;
-  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => `<button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></button>`).join('')}${defekteBoards().map(s => `<button type="button" class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}">${esc(s)}<span class="muted mono warn">defekt</span></button>`).join('')}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${u.popFehler ? `<div class="warnh" role="alert">${esc(u.popFehler)}</div>` : ''}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
+  const zeile = b => {
+    if (u.boardUmbenennen === b.slug) {
+      return `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(b.titel)}" aria-label="Neuer Name für Board ‚${esc(b.titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(b.slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(b.slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(b.slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
+    }
+    return `<div class="bzeile"><button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></button>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, false) : ''}`;
+  };
+  const defekte = defekteBoards().map(s => `<div class="bzeile"><button type="button" class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}">${esc(s)}<span class="muted mono warn">defekt</span></button>${vBoardDrei(s, s, u.boardMenue === s)}</div>${u.boardMenue === s ? vBoardMenue(s, s, false) : ''}`).join('');
+  const archiv = archivierteBoards();
+  const archivBlock = archiv.length ? `<details class="barch"${u.boardMenue && archiv.some(b => b.slug === u.boardMenue) ? ' open' : ''}><summary>ARCHIVIERT (${archiv.length})</summary>${archiv.map(b => `<div class="barchz"><div class="bz1"><span class="bname">${esc(b.titel)}</span><span class="muted mono">${esc(b.slug)}.md</span>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div><div class="bz2"><span>archiviert am ${esc(datumLang(b.archiviert))}</span><button type="button" class="lnk" data-act="board-wieder-oeffnen" data-arg="${esc(b.slug)}">wieder öffnen</button></div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, true) : ''}</div>`).join('')}</details>` : '';
+  const fehler = u.popFehler ? `<div class="warnh" id="board-fehler" role="alert">${esc(u.popFehler)}</div>` : '';
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(zeile).join('')}${defekte}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${archivBlock}${fehler}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
 }
+
+/** Der geteilte Bestätigungsdialog `alertdialog` (R00128 M2/M3/M8/M9; dieselbe Komponente wie R00141). */
+function vAlDialog() {
+  const d = S.ui.alDialog;
+  if (!d) return '';
+  const loeschen = d.art === 'loeschen';
+  const titel = loeschen ? `${d.titel} endgültig löschen` : `${d.titel} archivieren`;
+  const rumpf = loeschen
+    ? `Die Board-Datei <code>boards/${esc(d.slug)}.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.`
+    : `Das Board <b>${esc(d.titel)}</b> wird archiviert. Es fällt aus der Liste; die Datei <code>boards/${esc(d.slug)}.md</code> bleibt erhalten und lässt sich jederzeit wieder öffnen.`;
+  const fehler = d.fehler ? `<div class="warnh" role="alert">${esc(d.fehler)}</div>` : '';
+  return `<div class="al-bg"><div class="al-dialog${loeschen ? ' al-gefahr' : ''}" id="al-dialog" role="alertdialog" aria-modal="true" aria-labelledby="al-titel" aria-describedby="al-text"><div class="al-kopf" id="al-titel">${esc(titel)}</div><div class="al-text" id="al-text">${rumpf}</div>${fehler}<div class="al-fuss"><button type="button" class="al-knopf" id="al-abbrechen" data-act="al-abbrechen">Abbrechen</button><button type="button" class="al-knopf${loeschen ? ' al-gefahr-knopf' : ''}" data-act="al-bestaetigen">${loeschen ? 'endgültig löschen' : 'Archivieren'}</button></div></div></div>`;
+}
+
 
 function vPop() {
   const u = S.ui;
@@ -784,7 +820,7 @@ const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.au
 function vBoard() {
   const b = S.board;
   if (S.boardDefekt) return `<div class="defektflaeche" role="alert"><h2>boards/${esc(S.boardDefekt.slug)}.md ist defekt</h2><p>${esc(S.boardDefekt.fehler)}</p><p><a href="vscode://file${esc(S.zustand.ordner)}/boards/${esc(S.boardDefekt.slug)}.md">Im Editor reparieren</a> · andere Boards über den Boardnamen oben links.</p></div>`;
-  if (!b) return `<div class="leer">Kein Board im Ordner <span class="mono">boards/</span>.</div>`;
+  if (!b) return `<div class="leer leer-board"><div class="leer-titel">Kein Board · neues anlegen</div><p class="muted">Es gibt kein offenes Board. Ein neues entsteht als Datei <span class="mono">boards/&lt;slug&gt;.md</span>.</p><input class="inp" id="board-neu-leer" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>`;
   const leiste = imArchiv() ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
   return `${S.einstellungenDefekt ? `<div class="archbar warnbar" role="alert">kanbanD.md ist defekt — Personen und Klassen fehlen, bis die Datei repariert ist</div>` : ''}${vBoardHinweise(b)}${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
 }
@@ -872,13 +908,13 @@ function vAufgaben() {
 }
 /** Ablageziele beim Ziehen aus der Liste: jede Spalte jedes Boards, dazu das Archiv. */
 function vZiele() {
-  const boards = (S.boards || []).map(b => `<div class="ziel-board"><b>${esc(b.titel)}</b>${b.spalten.map(sp => `<div class="ziel" data-ziel="${esc(b.slug)}|${esc(sp.name)}" aria-label="Ziel ${esc(b.titel)} · ${esc(sp.name)}">${esc(sp.name)}<span class="mono">${sp.aufgaben.length}</span></div>`).join('')}</div>`).join('');
+  const boards = (S.boards || []).filter(b => !b.archiviert).map(b => `<div class="ziel-board"><b>${esc(b.titel)}</b>${b.spalten.map(sp => `<div class="ziel" data-ziel="${esc(b.slug)}|${esc(sp.name)}" aria-label="Ziel ${esc(b.titel)} · ${esc(sp.name)}">${esc(sp.name)}<span class="mono">${sp.aufgaben.length}</span></div>`).join('')}</div>`).join('');
   return `<aside class="ziele" aria-label="Ziehen auf"><h2 class="ziele-kopf">ZIEHEN AUF</h2>${boards}<div class="ziel ziel-archiv" data-ziel="archiv" aria-label="Ziel Archiv">Archiv</div></aside>`;
 }
 function vLegenPop() {
   const nr = S.ui.legenNr, a = aufgabe(nr);
   if (!a) return '';
-  const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)));
+  const frei = (S.boards || []).filter(b => !b.archiviert && !b.spalten.some(sp => sp.aufgaben.includes(nr)));
   return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu" aria-label="#${nr} auf Board legen"><h4>#${nr} AUF BOARD LEGEN</h4>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem" tabindex="-1">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
 }
 

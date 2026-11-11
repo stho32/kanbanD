@@ -973,3 +973,40 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fluss-leer{display:flex;flex-direction:column;align-items:flex-start;gap:var(--kd-s3);padding:var(--kd-s4) 0}
 .fluss-satz{margin:0;font-size:13px;color:var(--kd-text);overflow-wrap:anywhere}
 @media (pointer:coarse){.fluss-tabs>summary{min-height:var(--kd-ziel)}}
+
+/* ── Board verwalten (R00128): ⋮-Auslöser je Zeile, Zeilenmenü, Umbenennen-Feld, Archiv-Abschnitt, Bestätigungsdialog ──
+   Ort, Form und Zielgrößen nach dem PO-freigegebenen Artboard D0002 `#board-verwalten`; kein neuer Farbwert (ADR-0011). */
+.pop .bzeile{display:flex;align-items:stretch;border-bottom:1px solid var(--kd-line)}
+.pop .bzeile>.iz{flex:1 1 auto;min-width:0;border-bottom:0}
+.pop .bdrei{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:var(--kd-ziel);min-height:var(--kd-ziel);padding:0 var(--kd-s2);border:0;border-left:1px solid var(--kd-line);background:none;color:inherit;cursor:pointer}
+.pop .bdrei:hover,.pop .bdrei.auf,.pop .bdrei:focus-visible{background:var(--kd-accent-weak)}
+.pop .bdrei .i{width:16px;height:16px;fill:currentColor;stroke:none}
+.pop .bmenue{display:flex;flex-direction:column;border-bottom:1px solid var(--kd-line);background:var(--kd-sunken)}
+.pop .bmenue [role="menuitem"]{display:flex;align-items:center;min-height:var(--kd-ziel);padding:0 var(--kd-s5);border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.pop .bmenue [role="menuitem"]:hover,.pop .bmenue [role="menuitem"]:focus-visible{background:var(--kd-accent-weak)}
+.pop .bmenue [role="menuitem"].warn{color:var(--kd-warn)}
+.pop .bzeile.edit{gap:4px;align-items:center;padding:2px var(--kd-s3)}
+.pop .bzeile.edit .inp{flex:1 1 auto;min-width:0}
+.pop .barch{border-top:1px solid var(--kd-line)}
+.pop .barch>summary{display:flex;align-items:center;min-height:var(--kd-ziel);padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);cursor:pointer}
+.pop .barchz{display:flex;flex-direction:column;gap:2px;padding:4px var(--kd-s4);border-top:1px solid var(--kd-line)}
+.pop .barchz .bz1{display:flex;align-items:center;gap:8px}
+.pop .barchz .bz1 .bname{flex:1 1 auto;min-width:0}
+.pop .barchz .bdrei{border-left:0}
+.pop .barchz .bz2{display:flex;align-items:center;gap:var(--kd-s3);font-size:11px;color:var(--kd-muted)}
+.leer-board{display:flex;flex-direction:column;align-items:flex-start;gap:var(--kd-s3);padding:var(--kd-s5)}
+.leer-board .leer-titel{font-weight:600}
+.leer-board p{margin:0}
+
+/* Der geteilte Bestätigungsdialog `alertdialog` (R00128 M2/M3/M8/M9; dieselbe Komponente wie R00141). */
+.al-bg{position:fixed;left:0;right:0;top:calc(var(--kd-head-h) + var(--kd-vv-oben,0px));bottom:var(--kd-vv-unten,0px);background:var(--kd-scrim);display:flex;align-items:center;justify-content:center;z-index:65;padding:16px}
+.al-dialog{width:min(360px,100% - 32px);max-width:calc(100vw - 32px);box-sizing:border-box;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);display:flex;flex-direction:column;overflow-wrap:anywhere}
+.al-dialog.al-gefahr{border-top:4px solid var(--kd-warn)}
+.al-kopf{padding:10px var(--kd-s4);font-weight:600;border-bottom:1px solid var(--kd-line)}
+.al-text{padding:10px var(--kd-s4);font-size:12.5px;line-height:1.5}
+.al-text code{font-family:var(--kd-mono);overflow-wrap:anywhere}
+.al-dialog .warnh{border-bottom:1px solid var(--kd-c-amber-line)}
+.al-fuss{display:flex;flex-wrap:wrap;gap:var(--kd-s2);justify-content:flex-end;padding:var(--kd-s3) var(--kd-s4);border-top:1px solid var(--kd-line)}
+.al-knopf{display:inline-flex;align-items:center;justify-content:center;min-height:var(--kd-ziel);min-width:var(--kd-ziel);padding:0 var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:inherit;font:inherit;cursor:pointer}
+.al-knopf:hover,.al-knopf:focus-visible{background:var(--kd-accent-weak)}
+.al-gefahr-knopf{border-color:var(--kd-warn);color:var(--kd-warn)}
