@@ -50,6 +50,8 @@ test.describe('R00128', () => {
     for (const titel of ['Entwicklung', 'Test']) {
       await expect(ausloeser(page, titel)).toHaveAttribute('aria-haspopup', 'menu');
     }
+    // kein offenes Board traegt die Marke „defekt“ (nur eine defekte Datei bekommt sie)
+    await expect(pop(page).getByText('defekt', { exact: true })).toHaveCount(0);
     await ausloeser(page, 'Test').click();
     const menue = pop(page).getByRole('menu', { name: 'Aktionen für Board ‚Test‘' });
     await expect(menue).toBeVisible();
@@ -170,5 +172,131 @@ test.describe('R00128', () => {
     await page.locator('#board-neu-leer').fill('Release');
     await page.locator('#board-neu-leer').press('Enter');
     await expect(page.locator('#t-board')).toContainText('Release');
+  });
+
+  // B2 (Nacharbeit): Esc im Umbenennen-Feld schliesst nur die Eingabe, nicht den ganzen Umschalter (M10)
+  test('M10/AK11 (Nacharbeit): Esc schliesst nur die Eingabe, der Umschalter bleibt offen', async ({ page }) => {
+    await oeffnenMenue(page, 'entwicklung');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    const feld = page.getByLabel('Neuer Name für Board ‚Entwicklung‘');
+    await feld.fill('Entwicklung 2026');
+    await feld.press('Escape');
+    await expect(feld).toHaveCount(0);
+    await expect(pop(page)).toBeVisible();
+    await expect(pop(page).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toBeVisible();
+    expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung\n');
+  });
+
+  // AK13/M6 (Nacharbeit): nach dem Umbenennen steht der Fokus auf der umbenannten Zeile
+  test('AK13/M6 (Nacharbeit): der Fokus steht nach dem Umbenennen auf der Zeile', async ({ page }) => {
+    await oeffnenMenue(page, 'entwicklung');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    await page.getByLabel('Neuer Name für Board ‚Entwicklung‘').fill('Entwicklung 2026');
+    await page.getByLabel('Neuer Name für Board ‚Entwicklung‘').press('Enter');
+    await expect(pop(page).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toBeFocused();
+    await expect(pop(page).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toContainText('Entwicklung 2026');
+  });
+
+  // AK14/S4 (Nacharbeit): ein defektes Board meldet 423 sichtbar — beim Umbenennen als Feldfehler
+  test('AK14/S4 (Nacharbeit): ein defektes Board meldet 423 sichtbar (Umbenennen)', async ({ page }) => {
+    k.schreib('boards/kaputt.md', '# Kaputt\n- #1\n## A\n');
+    await page.reload();
+    await liveBereit(page);
+    const vorher = k.lies('boards/kaputt.md');
+    await oeffnenMenue(page, 'kaputt');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    const feld = page.getByLabel('Neuer Name für Board ‚kaputt‘');
+    await feld.fill('Neu');
+    await feld.press('Enter');
+    const fehler = pop(page).getByRole('alert');
+    await expect(fehler).toBeVisible();
+    await expect(fehler).not.toBeEmpty();
+    // es sieht nicht so aus, als sei etwas geschehen: die Datei ist unverändert
+    expect(k.lies('boards/kaputt.md')).toBe(vorher);
+    await expect(feld).toBeVisible();
+  });
+
+  // AK14/S4 (Nacharbeit): ein defektes Board meldet 423 sichtbar — beim Archivieren im Dialog
+  test('AK14/S4 (Nacharbeit): ein defektes Board meldet 423 sichtbar (Archivieren)', async ({ page }) => {
+    k.schreib('boards/kaputt.md', '# Kaputt\n- #1\n## A\n');
+    await page.reload();
+    await liveBereit(page);
+    await oeffnenMenue(page, 'kaputt');
+    await pop(page).getByRole('menuitem', { name: 'Archivieren' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Archivieren' }).click();
+    const fehler = page.getByRole('alertdialog').getByRole('alert');
+    await expect(fehler).toBeVisible();
+    await expect(fehler).not.toBeEmpty();
+    await expect(status(page)).toHaveCount(0);
+    expect(k.lies('boards/kaputt.md')).toContain('# Kaputt');
+  });
+
+  // AK15/S6 (Nacharbeit): Archivieren eines anderen Boards laesst die Ansicht stehen
+  test('AK15/S6 (Nacharbeit): ein anderes Board zu archivieren laesst die Ansicht stehen', async ({ page }) => {
+    await archivieren(page, 'test', 'Test');
+    await expect(page.locator('#t-board')).toContainText('Entwicklung');
+    expect(page.url()).toMatch(/#\/board\/entwicklung$/);
+    await expect(page.locator('.ka[data-id="7"]')).toHaveCount(0);
+  });
+});
+
+// B1 (Nacharbeit): ein archiviertes Board ist kein Kartenziel — aus allen vier Quellen gefiltert
+test.describe('R00128 B1 (Nacharbeit): archivierte Boards sind kein Kartenziel', () => {
+  let k;
+  const BESTAND_B1 = {
+    'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
+    'boards/test.md': '# Test\n\n## Bereit\n\n',
+    'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n',
+    'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n',
+  };
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten(BESTAND_B1));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/entwicklung');
+    await liveBereit(page);
+    // Board „Test“ archivieren (über die API)
+    const r = await page.request.patch(k.adresse + 'api/boards/test', { headers: { 'X-KanbanD-Wer': 'st' }, data: { archiviert: true } });
+    expect(r.status()).toBe(200);
+    await page.reload();
+    await liveBereit(page);
+  });
+  test.afterEach(async () => { await k.stoppen(); });
+
+  const unterEintraege = page => page.locator('#kmenue .kmenue.unter .km-e');
+
+  /** Öffnet das Kontextmenü und liest die Board-Ziele unter „Auf Board legen“ (leer, wenn der Eintrag fehlt). */
+  async function zieleDerQuelle(page, oeffnen) {
+    await oeffnen();
+    const eintrag = page.locator('#kmenue').getByRole('menuitem', { name: /Auf Board legen/ });
+    if (await eintrag.count() === 0) return '';
+    await eintrag.first().hover();
+    return (await unterEintraege(page).allTextContents()).join('|');
+  }
+
+  test('archiviertes Board fehlt in allen vier Quellen', async ({ page }) => {
+    // (1) Kontextmenü einer Karte (menueFuerKarte)
+    const karte = await zieleDerQuelle(page, () => page.locator('.ka[data-id="1"]').click({ button: 'right' }));
+    expect(karte).not.toContain('Test');
+    await page.keyboard.press('Escape');
+    // (2) Menü einer Auswahl (menueFuerAuswahl)
+    await page.locator('.ka[data-id="1"]').click({ modifiers: ['ControlOrMeta'] });
+    await page.locator('.ka[data-id="2"]').click({ modifiers: ['ControlOrMeta'] });
+    const auswahl = await zieleDerQuelle(page, () => page.locator('.ka[data-id="1"]').click({ button: 'right' }));
+    expect(auswahl).not.toContain('Test');
+    await page.keyboard.press('Escape');
+    // (3) Zeilenmenü der Aufgabenliste (menueFuerZeile)
+    await page.goto(k.adresse + '#/aufgaben');
+    await liveBereit(page);
+    const zeile = await zieleDerQuelle(page, () => page.locator('tr[data-zeile="1"]').click({ button: 'right' }));
+    expect(zeile).not.toContain('Test');
+    await page.keyboard.press('Escape');
+    // (4) Formular „Neue Aufgabe“ (vNeu)
+    await page.goto(k.adresse + '#/board/entwicklung');
+    await liveBereit(page);
+    await page.keyboard.press('n');
+    await page.getByRole('dialog', { name: 'Neue Aufgabe' }).waitFor();
+    const optionen = await page.locator('select[data-nf="board"] option').allTextContents();
+    expect(optionen).not.toContain('Test');
+    expect(optionen).toContain('Entwicklung');
   });
 });

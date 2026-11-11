@@ -188,7 +188,7 @@ function titelVerweis(f) {
 function vNeu() {
   const f = S.ui.neu;
   if (!f) return '';
-  const boards = S.boards || [];
+  const boards = (S.boards || []).filter(x => !x.archiviert);
   const b = boards.find(x => x.slug === f.board);
   const ps = personen().filter(p => p.aktiv);
   const cl = klasse(f.klasse);
@@ -353,17 +353,18 @@ function vBoardMenue(titel, slug, archiviert) {
 }
 function vBoardPop() {
   const u = S.ui;
-  const zeile = b => {
-    if (u.boardUmbenennen === b.slug) {
-      return `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(b.titel)}" aria-label="Neuer Name für Board ‚${esc(b.titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(b.slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(b.slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(b.slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
-    }
-    return `<div class="bzeile"><button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}<span class="muted mono">${esc(b.slug)}.md</span></button>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, false) : ''}`;
+  const umbenennenZeile = (slug, titel) => `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(titel)}" aria-label="Neuer Name für Board ‚${esc(titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
+  // `defekt` = eine defekte Board-Datei (R00025): derselbe Weg zum Umbenennen, nur mit der Marke „defekt“ statt des Slugs.
+  const zeile = (b, defekt) => {
+    if (u.boardUmbenennen === b.slug) return umbenennenZeile(b.slug, b.titel);
+    const marke = defekt ? '<span class="muted mono warn">defekt</span>' : `<span class="muted mono">${esc(b.slug)}.md</span>`;
+    return `<div class="bzeile"><button type="button" class="iz${b.slug === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(b.slug)}">${esc(b.titel)}${marke}</button>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, false) : ''}`;
   };
-  const defekte = defekteBoards().map(s => `<div class="bzeile"><button type="button" class="iz${s === u.slug ? ' an' : ''}" data-act="board-wahl" data-arg="${esc(s)}">${esc(s)}<span class="muted mono warn">defekt</span></button>${vBoardDrei(s, s, u.boardMenue === s)}</div>${u.boardMenue === s ? vBoardMenue(s, s, false) : ''}`).join('');
+  const defekte = defekteBoards().map(s => zeile({ slug: s, titel: s }, true)).join('');
   const archiv = archivierteBoards();
-  const archivBlock = archiv.length ? `<details class="barch"${u.boardMenue && archiv.some(b => b.slug === u.boardMenue) ? ' open' : ''}><summary>ARCHIVIERT (${archiv.length})</summary>${archiv.map(b => `<div class="barchz"><div class="bz1"><span class="bname">${esc(b.titel)}</span><span class="muted mono">${esc(b.slug)}.md</span>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div><div class="bz2"><span>archiviert am ${esc(datumLang(b.archiviert))}</span><button type="button" class="lnk" data-act="board-wieder-oeffnen" data-arg="${esc(b.slug)}">wieder öffnen</button></div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, true) : ''}</div>`).join('')}</details>` : '';
+  const archivBlock = archiv.length ? `<details class="barch"${u.boardMenue && archiv.some(b => b.slug === u.boardMenue) ? ' open' : ''}><summary>ARCHIVIERT (${archiv.length})</summary>${archiv.map(b => u.boardUmbenennen === b.slug ? umbenennenZeile(b.slug, b.titel) : `<div class="barchz"><div class="bz1"><span class="bname">${esc(b.titel)}</span><span class="muted mono">${esc(b.slug)}.md</span>${vBoardDrei(b.titel, b.slug, u.boardMenue === b.slug)}</div><div class="bz2"><span>archiviert am ${esc(datumLang(b.archiviert))}</span><button type="button" class="lnk" data-act="board-wieder-oeffnen" data-arg="${esc(b.slug)}">wieder öffnen</button></div>${u.boardMenue === b.slug ? vBoardMenue(b.titel, b.slug, true) : ''}</div>`).join('')}</details>` : '';
   const fehler = u.popFehler ? `<div class="warnh" id="board-fehler" role="alert">${esc(u.popFehler)}</div>` : '';
-  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(zeile).join('')}${defekte}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${archivBlock}${fehler}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-board" data-al="l" style="width:300px" role="dialog" aria-label="Boards"><h4>BOARDS <span class="mono">boards/</span></h4>${S.zustand.boards.map(b => zeile(b)).join('')}${defekte}${S.board ? `<button type="button" class="iz" data-act="pop" data-arg="reservierungen" id="reservierungen-zeigen">Alle Aufgabenreservierungen anzeigen<span class="muted mono">${reservierteDesBoards().length}</span></button>` : ''}<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" data-enter="board-neu" aria-label="Name des neuen Boards"></div>${archivBlock}${fehler}<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div></div>`;
 }
 
 /** Der geteilte Bestätigungsdialog `alertdialog` (R00128 M2/M3/M8/M9; **dieselbe Komponente wie R00141**, B6): der

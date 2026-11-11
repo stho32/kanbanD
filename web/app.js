@@ -654,7 +654,7 @@ function auswahlAufheben() { S.ui.auswahl = []; S.ui.anker = null; }
 /** Menü für die ausgewählten Karten, Titel „n Karten“. */
 function menueFuerAuswahl(x, y) {
   const nummern = lesereihenfolge(brettSpalten()).filter(n => S.ui.auswahl.includes(n));
-  const boards = (S.boards || []).filter(b => b.slug !== S.ui.slug && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
+  const boards = (S.boards || []).filter(b => b.slug !== S.ui.slug && !b.archiviert && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
   menueOeffnen(`${nummern.length} Karten`, massenMenue(nummern, { spalten: S.board.spalten.map(sp => sp.name), klassen: S.zustand.einstellungen.klassen, boards }), x, y);
 }
 /** Im Dialog gelten nur Esc und Enter; die Leertaste schaltet das Kästchen selbst um. */
@@ -2152,6 +2152,8 @@ document.addEventListener('keydown', e => {
   // Esc schließt den Erklärtext zuerst — an der Spitze der Kaskade, vor Pop und Fenstern (R00119 FA 8, ADR-0020)
   if (e.key === 'Escape' && S.ui.tooltip) { e.preventDefault(); tippVerbergen(); return; }
   if (S.ui.alDialog && e.key === 'Escape') { e.preventDefault(); alAbbrechen(); return; }
+  // Esc im Umbenennen-Feld des Board-Umschalters schließt nur die Eingabe, nicht den ganzen Umschalter (R00128 M10)
+  if (e.key === 'Escape' && S.ui.boardUmbenennen) { e.preventDefault(); act('board-umbenennen-ab', S.ui.boardUmbenennen); return; }
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
@@ -2215,7 +2217,7 @@ function menueFuerKarte(nr, x, y) {
   if (S.ui.auswahl.length > 1 && S.ui.auswahl.includes(nr)) { menueFuerAuswahl(x, y); return; }
   auswahlAufheben();
   const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
-  const boards = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
+  const boards = (S.boards || []).filter(b => !b.archiviert && !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
   const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
   S.ui.fokusKarte = nr;
   S.ui.pop = null;
@@ -2235,7 +2237,7 @@ function menueFuerSpalte(i, x, y) {
 function menueFuerZeile(nr, x, y) {
   const a = aufgabe(nr);
   const liegtAufBoards = (S.boards || []).flatMap(b => b.spalten.filter(sp => sp.aufgaben.includes(nr)).map(sp => ({ slug: b.slug, titel: b.titel, spalte: sp.name })));
-  const frei = (S.boards || []).filter(b => !b.spalten.some(sp => sp.aufgaben.includes(nr))).map(b => ({ slug: b.slug, titel: b.titel, spalten: b.spalten.map(sp => sp.name) }));
+  const frei = (S.boards || []).filter(b => !b.archiviert && !b.spalten.some(sp => sp.aufgaben.includes(nr))).map(b => ({ slug: b.slug, titel: b.titel, spalten: b.spalten.map(sp => sp.name) }));
   menueOeffnen(`#${nr} ${a.titel}`, listenMenue(a, { liegtAuf: liegtAufBoards, frei }), x, y);
 }
 function menueEinpassen() {
