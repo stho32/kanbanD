@@ -827,3 +827,26 @@ test.describe('R00112 Fokus nie unter dem Hinweis, 414 px', () => {
     });
   }
 });
+
+// Nacharbeit zu Karte #36 (R00141): der beschriftete Kopf-Auslöser (`.el-ausloeser`) darf die Fensterkopfzeile bei
+// 414 px Touch nicht sprengen. Bricht `.mod-kopf .rechts` um, wird der Kopf 123 px hoch, die Körperhöhe sinkt, und
+// „Zeit nachtragen“ landet unter dem Rückgängig-Hinweis (Befund oben). Die Zeile bleibt einzeilig, das ✕ steht in
+// derselben Zeile wie die Kennung; ✕ und ↑↓ bleiben im Bild (PO #104, E1).
+test.describe('R00112/R00141 Fensterkopf einzeilig, 414 px Touch', () => {
+  let k;
+  test.use({ viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true });
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeit())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  test('die Fensterkopfzeile bleibt bei 414 px einzeilig (≈51 px), das ✕ in derselben Zeile', async ({ page }) => {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.locator('#fenster .zt')).toContainText('09:00–10:00');
+    const hoehe = await page.locator('#fenster .mod-kopf').evaluate(e => Math.round(e.getBoundingClientRect().height));
+    expect(hoehe, `Kopfhöhe ${hoehe} px statt einzeilig (≈51)`).toBeGreaterThanOrEqual(46);
+    expect(hoehe, `Kopfhöhe ${hoehe} px statt einzeilig (≈51)`).toBeLessThanOrEqual(56);
+    const mitte = s => page.locator(s).evaluate(e => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); });
+    const [kennung, schliessen] = await Promise.all([mitte('#fenster .mod-kopf .id'), mitte('#fenster .mod-kopf [aria-label="Schließen"]')]);
+    expect(Math.abs(kennung - schliessen), 'das ✕ steht nicht in der ersten Kopfzeile').toBeLessThanOrEqual(2);
+  });
+});

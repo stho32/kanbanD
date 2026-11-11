@@ -882,9 +882,15 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-side{border-left:0;border-top:1px solid var(--kd-line)}
   .mod-kopf .pfad,.mod-fuss .tastenhinweis,.mod-kopf .nav,#vsc{display:none}
   /* Passen die Ziele des Kopfs nicht in eine Zeile (Aufgabenfenster bei 320 px), bricht er um, statt quer zu scrollen (R00111 AK 4, wie PO Z. 132) */
-  .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2);flex-wrap:wrap}
+  .mod-kopf{padding-left:var(--kd-s3);padding-right:var(--kd-s1);gap:var(--kd-s1);flex-wrap:wrap}
   /* Die Knopfleiste bricht am Rand ebenfalls um (R00141: „Endgültig löschen“ kommt dazu) — sonst schiebt ein Ziel mehr das Fenster über die Breite */
-  .mod-kopf .rechts{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+  .mod-kopf .rechts{flex-wrap:wrap;justify-content:flex-end;max-width:100%;gap:0}
+  /* Nacharbeit #36 (R00141, Befund entwicklertest): der beschriftete Kopf-Auslöser darf die Kopfzeile bei 414 px Touch
+     nicht sprengen. Seine Beschriftung bricht an der Wortgrenze um (`width:min-content`), Trenner und Abstände rücken
+     zusammen — die Zeile bleibt einzeilig (51 px statt 123 px), sonst sinkt die Körperhöhe und „Zeit nachtragen“ fällt
+     unter den Rückgängig-Hinweis (R00112). Symbol und „Endgültig löschen“ bleiben vollständig (PO #36, Z. 196). */
+  .el-ausloeser{white-space:normal;width:min-content}
+  .el-trenner{margin:5px var(--kd-s1)}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}
   .mod-kopf .cls{display:none}
