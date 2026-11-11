@@ -57,7 +57,7 @@ function kopfElemente() {
     board: () => `<div class="kz-z1"><button class="kz-btn kz-board${u.pop === 'board' ? ' auf' : ''}" id="t-board" data-act="pop" data-arg="board" aria-haspopup="dialog" title="${esc(S.zustand.ordner)}"><span class="kz-board-name">${esc(b ? b.titel : 'kein Board')}</span> ▾</button></div>`,
     navigation: vNavigation,
     seitenmenue: vSeitenKnopf,
-    filter: () => `<input class="inp" id="flt" placeholder="Filtern: Titel, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
+    filter: () => `<input class="inp" id="flt" placeholder="Filtern: Text, #Nr, @wer, class:bug, origin:I0023, label:ui  ( / )" value="${esc(u.filter)}" aria-label="Filter">`,
     bereich: vBereich,
     bereichChips: vBereichChips,
     listenbereich: vListenbereich,
