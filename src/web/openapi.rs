@@ -1,4 +1,4 @@
-//! OpenAPI-Beschreibung (R00093): erzeugt aus den Rust-Typen und den `#[utoipa::path]` der Handler. Die Typen hier
+//! OpenAPI-Beschreibung (R00093): Erzeugt aus den Rust-Typen und den `#[utoipa::path]` der Handler. Die Typen hier
 //! beschreiben nur Antworten, die ein Handler als `json!` baut — damit auch sie ein Schema haben.
 
 use utoipa::OpenApi;
@@ -46,7 +46,8 @@ pub struct GrenzeErreicht {
 }
 
 /// 403 eines Agenten, der eine Karte aus einer Spalte nähme, die dem Menschen gehört (R00097, ADR-0003): `fehler` zuerst
-/// („Spalte „<Name>“ gehört dem Menschen“), dann die Spalte und die erste gesperrte Karte in Anfragereihenfolge.
+/// („Spalte „<Name>“ gehört dem Menschen“; bei einem ungebundenen `human`-Eintrag der board-weite Text), dann die
+/// Spalte (im board-weiten Fall leer) und die erste gesperrte Karte in Anfragereihenfolge.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Verboten {
     pub fehler: String,
@@ -65,7 +66,7 @@ pub struct EinstellungVerboten {
     pub einstellung: crate::modell::Einstellung,
 }
 
-/// 409 der Endpunkte mit WIP-Grenze (R00096): ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
+/// 409 der Endpunkte mit WIP-Grenze (R00096): Ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
 /// die [`Fehlerantwort`]. Nur für die Beschreibung.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(untagged)]
