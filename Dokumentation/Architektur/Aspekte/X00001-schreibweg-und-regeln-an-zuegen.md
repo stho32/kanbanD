@@ -71,12 +71,19 @@ Pfade nach [ADR-0008](../../ADRs/0008-board-slug-geprueft-vor-jedem-dateizugriff
 
 Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich mit `grep -rn "\.schreib(\|committen(" src/dienst`; jede Fundstelle außer `mod.rs` steht unten oder ist ein Befund. Eine Regel, die erst nach `aktion()` prüft, ist ein Befund (dann ist der Commit schon da).
 
+### Probe „Aufruf vergessen“ (R00118 B0540)
+
+Die Schwäche von ADR-0002 — ein neuer Schreibweg vergisst den Aufruf — prüft `tests/aufruf_vergessen.rs` als `grep`-Wächter. Board-Datei-Schreiber sind die 15 Stellen mit `board_pfad(` unter `src/dienst/`. **Karten bewegende Wege** sind darunter `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs` (`auf_board_legen`, `mehrere_auf_board_legen`), `reservierung.rs`, `erledigen.rs` sowie `archiv.rs` (`zurueckholen_pruefen` schreibt keine Board-Datei, lässt die Karten aber wieder zählen); jeder ruft vor `aktion()` die Grenzprüfung auf (`zug_pruefen`, `zug_mit_rueckkehr_pruefen`, `grenzen_pruefen`, `entnahme_und_zug_pruefen`, `zurueckholen_pruefen`).
+
+**Ausnahmen** (Board-Datei-Schreiber ohne Kartenzug, keine Grenzprüfung nötig): `berichtsfilter.rs`, `bestand.rs`, `bindung.rs`, `board_anlegen.rs`, `einrichten.rs`, `fieber.rs`, `phasen.rs`, `spalten.rs`, `termine.rs`, `verlauf.rs` (liest die Board-Datei nur) sowie `zuordnung.rs::von_board_nehmen` (nimmt eine Karte heraus, nie hinein). Ein neuer Schreiber lässt den Wächter rot werden und ist hier einzuordnen.
+
 ## Abweichungen
 
 | Baustein | Ort | Was anders ist |
 |---|---|---|
 | A00004 | `src/dienst/anhaenge.rs:66`, `:87` | Anhänge (Binärdateien) werden außerhalb von `aktion()` geschrieben und über `committen()` committet — ein Commit je Aktion bleibt erhalten |
 | A00004 | `src/dienst/fieber.rs:115` | Commit mit Systemautor `kanband` statt handelnder Person (Cache verworfen) |
+| A00004 | `src/dienst/zugregeln.rs` (`zurueckholen_pruefen`) | liest `ordner().boards()?` und verwirft die Defekte-Liste: eine defekte Board-Datei wird beim Zurückholen übersprungen, die Karte gilt dort als auf keinem Board — der Weg läuft ohne Sperre durch (R00118 B0537); belegt `tests/wip_grenze.rs::zurueckholen_ueberspringt_defekte_board_dateien` |
 
 ## Offene Fragen
 
@@ -88,3 +95,4 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 - Die Sperre ist prozessweit; ein zweiter kanbanD-Prozess auf demselben Ordner ist nicht abgesichert.
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
 - ergänzt 2026-11-06: Pfadregel nach ADR-0008 (#48)
+- ergänzt 2026-11-11 (R00118 B0541): ADR-0002 Option B nennt die geplante Signatur `zugregeln(wer, vorher, nachher, archiviert)`; gebaut ist `zugregeln(art, &Grenzverletzungen)` (`zugregeln.rs:89`), die Vorher/Nachher-Rechnung liegt in `Board::belegung(archiviert)` → `Belegung::grenzverletzungen(vorher)` (s. oben, Systemantwort). Der Schnitt bleibt unverändert: Zählen im Modell, Entscheiden in `zugregeln.rs` — ADR-0002 in der Sache bestätigt.
