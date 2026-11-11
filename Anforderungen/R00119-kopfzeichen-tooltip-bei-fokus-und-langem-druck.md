@@ -38,8 +38,8 @@ Der Spaltenkopf ist der Ort, an dem sich eine Spalte erklärt. Heute erklärt er
 | Eigentümer Agent | `Spalte gehört den Agenten — kennzeichnet nur, sperrt nichts` (R00097/PO Z. 50) |
 | Eigentümer keiner | kein Zeichen, kein Auslöser, kein Tooltip (R00097) |
 
-2. Der **zugängliche Name am Auslöser** ist **wörtlich** derselbe Text wie der sichtbare Tooltiptext — keine abweichende zweite Formulierung (ADR-0018). Der Tooltip ist über `aria-describedby` am Auslöser verbunden; er ersetzt den Namen nicht und wird keine zweite Namensquelle. Trägt der Name den vollen Erklärtext, ist zu entscheiden, ob `aria-describedby` entfällt, weil Hilfstechnik den Satz sonst zweimal liest (siehe Offene Fragen).
-3. Die fünf Zeichen sind über die Tastatur erreichbar: ⓘ, ✓, Phase und Grenze sind Fokusziel; das Eigentümer-Zeichen kommt in die Tab-Folge (ADR-0012, ADR-0020 „Akzeptierte Schwäche"). Jeder Auslöser erfüllt `--kd-ziel` (≥ 24 px fein, ≥ 44 px Touch) über Zielgröße oder Trefferhof (ADR-0012 Regel 3); die Zeichen werden in die Selektoren/Rollen der Basisregel aufgenommen (`.info`, `.ok`, `.v`, `.v.ph`, `.eig-z`).
+2. Der **zugängliche Name am Auslöser** ist **wörtlich** derselbe Text wie der sichtbare Tooltiptext — keine abweichende zweite Formulierung (ADR-0018). An den fünf Zeichen **entfällt `aria-describedby`**: ihr Name trägt den vollen Erklärtext, eine zusätzliche Beschreibung wäre wörtlich dieselbe und ließe Hilfstechnik den Satz zweimal lesen (Artboard-Freigabe #24, PO Z. 186). Der Tooltip ersetzt den Namen nicht und wird keine zweite Namensquelle. Der **Streifen-Knopf** der zugeklappten Spalte trägt dagegen `aria-describedby`, denn sein Name („<Name> aufklappen, gehört dem Menschen" bzw. „…, gehört den Agenten") trägt den vollen Erklärtext nicht.
+3. Die fünf Zeichen sind über die Tastatur erreichbar: ⓘ, ✓, Phase und Grenze sind Fokusziel; das Eigentümer-Zeichen kommt in die Tab-Folge (ADR-0012, ADR-0020 „Akzeptierte Schwäche"). Es bleibt bei **einem Tab-Halt je Auslöser** — keine Grenze, keine roving-Gruppe (Artboard-Freigabe #24, PO Z. 186). Jeder Auslöser erfüllt `--kd-ziel` (≥ 24 px fein, ≥ 44 px Touch) über Zielgröße oder Trefferhof (ADR-0012 Regel 3); die Zeichen werden in die Selektoren/Rollen der Basisregel aufgenommen (`.info`, `.ok`, `.v`, `.v.ph`, `.eig-z`).
 4. In der zugeklappten Spalte bleiben die Zeichen Schmuck (`aria-hidden`); Auslöser ist der Streifen-Knopf, dessen zugänglicher Name die Erklärung trägt (`<Name> aufklappen, gehört dem Menschen` bzw. `…, gehört den Agenten`). Der Streifen trägt nur das Eigentümer-Zeichen; er erklärt daher allein den Eigentümer (ⓘ, ✓, Phase und Grenze erscheinen in der zugeklappten Spalte nicht).
 
 ### Der Tooltip erscheint auf Anforderung
@@ -55,7 +55,7 @@ Der Spaltenkopf ist der Ort, an dem sich eine Spalte erklärt. Heute erklärt er
 ### Anzeige, Kontrast und Breiten
 
 12. Die Anzeige ist eine **Plain-Fläche nach M3**; sie darf für den Eigentümer-Satz umbrechen (max. Breite 236 px), hat **keinen Titel und keine Aktionen**; Fläche `--kd-head`, Text `--kd-head-text` (ADR-0013). Die Abweichung von „einzeilig/24 dp" ist bewusst: der zentrale Stil des Projekts und der R00097-Wortlaut gehen dem M3-Gedächtnis vor.
-13. Der Erklärtext erreicht **Kontrast ≥ 4,5:1** gegen die Blasenfläche, in Hell und in Dunkel (ADR-0011). Das Paar ist Fläche `--kd-head` / Text `--kd-head-text` (hell 12,78:1, dunkel 12,33:1); `--kd-head-muted` ist als Textfarbe unzulässig (nur 4,39:1 in Hell).
+13. Der Erklärtext erreicht **Kontrast ≥ 4,5:1** gegen die Blasenfläche, in Hell und in Dunkel (ADR-0011). Das Paar ist Fläche `--kd-head` / Text `--kd-head-text` (hell 11,49:1, dunkel 16,02:1; nachgerechnet aus `web/kd-tokens.css`, dieselbe Rechnung wie R00107 — Artboard-Freigabe #24, PO Z. 186).
 14. Bei 320, 375 und 414 px liegt die Blase ganz im Fenster; **nichts scrollt waagrecht** (ADR-0015).
 
 ## Nicht-funktionale Anforderungen
@@ -99,7 +99,7 @@ Gegeben für jede Probe: die laufende Instanz mit dem Board „entwicklung", üb
 ### F: Zugänglicher Name
 
 - [ ] **Abnahme-Probe der Karte #24, wörtlich**: „der zugängliche Name ist wörtlich der Tooltiptext."
-  - Besteht: Am fokussierten Auslöser ist `aria-label` Zeichen für Zeichen gleich dem sichtbaren Tooltiptext (Wortlaut je Zeichen: Tabelle in FA 1); der Tooltip ist per `aria-describedby` verbunden und trägt keinen eigenen Fokus.
+  - Besteht: Am fokussierten Auslöser ist `aria-label` Zeichen für Zeichen gleich dem sichtbaren Tooltiptext (Wortlaut je Zeichen: Tabelle in FA 1); an den fünf Zeichen **fehlt `aria-describedby`** (der Name ist die eine Quelle), der Tooltip trägt keinen eigenen Fokus; der Streifen-Knopf der zugeklappten Spalte **behält** `aria-describedby`.
   - Fällt durch: heute — ✓/Phase/Grenze haben keinen zugänglichen Namen, Eigentümer hat `role="img"` ohne Tab-Halt.
   - Prüfebene: E2E `r00119` (neu), `ariaSnapshot`.
 
@@ -113,7 +113,7 @@ Gegeben für jede Probe: die laufende Instanz mit dem Board „entwicklung", üb
 ### F: Kontrast und Anzeige
 
 - [ ] **Abnahme-Probe der Karte #24, wörtlich**: „Kontrast des Erklärtextes hell und dunkel ≥ 4,5:1."
-  - Besteht: Die Textfarbe der Blase gegen ihre Fläche ist ≥ 4,5:1 in Hell und in Dunkel (ADR-0011); das Paar ist `--kd-head`/`--kd-head-text` (hell 12,78:1, dunkel 12,33:1).
+  - Besteht: Die Textfarbe der Blase gegen ihre Fläche ist ≥ 4,5:1 in Hell und in Dunkel (ADR-0011); das Paar ist `--kd-head`/`--kd-head-text` (hell 11,49:1, dunkel 16,02:1).
   - Prüfebene: E2E/Kontrast-Probe (`kontrast`).
 - [ ] Die Anzeige ist eine Plain-Fläche nach M3; sie darf für den Eigentümer-Satz umbrechen (max. Breite 236 px), hat keinen Titel und keine Aktionen; Fläche `--kd-head`, Text `--kd-head-text`. Die Abweichung von „einzeilig/24 dp" ist bewusst (zentraler Stil und R00097-Wortlaut gehen M3 vor); der Wortlaut ist deutsch (nicht „tooltip", nicht englisch).
 
@@ -131,7 +131,7 @@ Gegeben für jede Probe: die laufende Instanz mit dem Board „entwicklung", üb
 ```
 web/
 ├── ansicht.js     # vLane (:734–747) und vEigentuemerZeichen (:720–726): Auslöser samt Zielgröße,
-│                  #   aria-describedby, title der fünf Zeichen entfallen, Zeichen fokussierbar/Tab-Folge,
+│                  #   aria-describedby entfällt an den fünf Zeichen, title der fünf Zeichen entfallen, Zeichen fokussierbar/Tab-Folge,
 │                  #   zugeklappter Streifen; das Tooltip-Primitiv außerhalb .bahnen zeichnen
 ├── app.js         # popPlatzieren (:978) für die Position, Esc-Kaskade (:1950) um den Tooltip erweitern,
 │                  #   Zustand in S.ui (:2), langer Druck und pointerdown-Außerhalb schließen
@@ -171,7 +171,7 @@ Die Eigentümer-Erklärung ist ein ganzer Satz, M3 **Plain** ist einzeilig/24 dp
 
 ### Ablauf (den Zuschnitt entscheidet der Entwickler)
 
-1. **Erklärtext und Name**: je Kopfzeichen den Erklärtext festlegen (Tabelle „Wortlaut je Zeichen" in FA 1); die `title` der fünf Zeichen entfernen; ⓘ, ✓, Phase, Grenze fokussierbar machen, das Eigentümer-Zeichen in die Tab-Folge; `aria-label` = Tooltiptext, `aria-describedby` auf die Blase; jeden Auslöser auf `--kd-ziel` bringen (Zielgröße oder Trefferhof).
+1. **Erklärtext und Name**: je Kopfzeichen den Erklärtext festlegen (Tabelle „Wortlaut je Zeichen" in FA 1); die `title` der fünf Zeichen entfernen; ⓘ, ✓, Phase, Grenze fokussierbar machen, das Eigentümer-Zeichen in die Tab-Folge; `aria-label` = Tooltiptext, `aria-describedby` entfällt an den fünf Zeichen (der Name ist die eine Quelle), der Streifen-Knopf behält es; jeden Auslöser auf `--kd-ziel` bringen (Zielgröße oder Trefferhof).
 2. **Primitiv**: `role="tooltip"` mit Zustand in `S.ui`; kein `tabindex`; redraw-sicher; Positionierung über `popPlatzieren`; außerhalb des Scrollcontainers `.bahnen` (wie `#pop` in `#over`).
 3. **Auslöser**: Fokus zeigt, langer Druck zeigt, nur eine Blase; Esc in der Kaskade zuerst, auf Touch schließt ein Tippen außerhalb (`pointerdown`).
 4. **Anzeige**: Plain-Fläche `--kd-head`/`--kd-head-text` (max. 236 px, umbruchfähig, ohne Titel/Aktionen); keine Querscrollen bei 320/375/414.
@@ -187,22 +187,22 @@ Nach Skill `test-pyramide`; jede Szene der User Story ein Test, jeder prüft ein
 - **E2E (Playwright)**: neu `r00119` mit US-1 bis US-7; Tastatur (Tab/Umschalt+Tab), Touch (`hasTouch`/`isMobile`, langer Druck), Tippen außerhalb schließt (Touch), Esc (auch mit offenem Pop), Fokus bleibt am Auslöser, Live-Ereignis mit verzögertem Fake, Kontrast hell/dunkel, 320/375/414 px ohne Querscrollen, Tooltip außerhalb `.bahnen` an der Board-Kante nicht abgeschnitten, Zielgröße der fünf Auslöser, zugeklappte Spalte über den Streifen-Knopf.
 - **Angepasst**: `e2e/tests/r00097-eigentuemer.spec.js` (die `title`-Erwartung entfällt; `.eig-z` ist per Tab erreichbar; sein Maß ist ≥ `--kd-ziel`) und die `ziele`-Messung nimmt die neuen Tab-Halte (die fünf Zeichen) auf.
 - **Rot vor dem Bau**: Fokus zeigt nichts (nur `title`), langer Druck löst nicht aus und Tippen außerhalb schließt nicht, ✓/Phase/Grenze sind nicht fokussierbar und ohne zugänglichen Namen, die Auslöser sind kleiner als `--kd-ziel`, der Tooltip wird an der `.bahnen`-Kante abgeschnitten, es gibt kein `role="tooltip"`.
-- **Gegenproben (Mutanten)**: Tooltip nimmt Fokus → AK „Fokus bleibt am Auslöser" rot; zweite Blase zugleich → AK „nur eine Blase" rot; `role`/`aria-describedby` entfernt → AK „zugänglicher Name" rot; Zustand nicht in `S.ui` → AK „Live-Ereignis" rot; Kontrast unter 4,5:1 → Kontrast-Probe rot.
+- **Gegenproben (Mutanten)**: Tooltip nimmt Fokus → AK „Fokus bleibt am Auslöser" rot; zweite Blase zugleich → AK „nur eine Blase" rot; `aria-label` entfernt (oder `aria-describedby` an einem der fünf Zeichen trotz Namensgleichheit gesetzt) → AK „zugänglicher Name" rot; Zustand nicht in `S.ui` → AK „Live-Ereignis" rot; Kontrast unter 4,5:1 → Kontrast-Probe rot.
 - **Mitlaufend grün**: `r00101`, `r00106`, `ziele`, `kontrast`, `kultur`, `node --test e2e/einheit/`.
 
 ## Abhängigkeiten
 
 - **Bindend**: ADR-0020 (die Komponente); ADR-0007 (Sichtzustand übersteht das Neuzeichnen), ADR-0010 (Fokusführung, keine eigene Ebene), ADR-0011 (Kontrast), ADR-0012 (Zielgrößen), ADR-0013 (deutsche Anzeige), ADR-0015 (Breiten), ADR-0018 (zugänglicher Name am Auslöser).
 - **Aufbauend auf**: R00097/I0086/F0015 (Kopfzeichen samt Wortlaut und Streifen), R00074/I0062 (zugeklappte Spalte), R00096 (Grenze), R00101/I0083 und R00117/I0106 (Kopfzeile).
-- **Gestaltung**: der Zustand „Erklärtext auf Anforderung" am Artboard D0002 (Board) muss vor dem Bau durch den product-owner freigegeben werden (prozess.md 2026-11-07). **8 Bubbles warten** darauf: B0546–B0548 und B0552 (F0081) sowie B0549–B0551 und B0553 (F0082) — die sichtbare Blase ist Gestaltung. **Frei baubar** sind B0544 (Tooltiptext) und B0545 (zugänglicher Name/Tab-Folge/Zielgröße): Text und Name sind nicht gezeichnet, die Zielgröße folgt ADR-0012.
+- **Gestaltung**: der Zustand „Erklärtext auf Anforderung" am Artboard D0002 (Board) ist vom product-owner am 2026-11-11 wie gezeichnet freigegeben (Artboard-Freigabe #24, PO Z. 186, Commit `5ca6a20`; prozess.md 2026-11-07). **Damit baubar** sind alle acht Bubbles: B0546–B0548 und B0552 (F0081) sowie B0549–B0551 und B0553 (F0082) — die sichtbare Blase ist Gestaltung. **Frei baubar** sind ohnehin B0544 (Tooltiptext) und B0545 (zugänglicher Name/Tab-Folge/Zielgröße): Text und Name sind nicht gezeichnet, die Zielgröße folgt ADR-0012.
 - **Abgegrenzt, nicht Teil dieser Anforderung**: die Ausweitung auf weitere `title`-Stellen im Projekt (eigene Karte, ADR-0020 „Geltung"); die Kontrast-Paare selbst (I0096/R00107), die Zielgrößen-Probe (I0097/R00108).
 
 ## Offene Fragen
 
 - **Plain↔Rich** (durch die UX-Vorprüfung entschieden): Plain mit Umbruch (max. Breite 236 px, kein Titel, keine Aktionen), der R00097-Wortlaut bleibt wörtlich. FA 12 und das AK „Kontrast und Anzeige" tragen die Fassung; das Artboard D0002 zeichnet sie.
-- **Eigentümer-Zeichen in der Tab-Folge**: Es trägt heute keinen Tab-Halt (`role="img"`). ADR-0020 nimmt es als „ggf." auf; diese Anforderung setzt es (FA 3). Kehrt der ux-Fall das um, ist FA 3/AK nachzuziehen.
-- **Tab-Folge-Verlängerung** (Sollte der UX-Vorprüfung): Das Eigentümer-Zeichen verlängert die Tab-Folge der Spaltenköpfe. Empfehlung: an ADR-0012 Regel 5 prüfen, ob eine Grenze oder eine roving-Gruppe nötig ist, damit die Folge nicht zu lang wird; bis dahin bleibt es ein einzelner Tab-Halt. Der ux-Fall entscheidet mit der Freigabe.
-- **Name = Beschreibung doppelt vorgelesen** (Sollte der UX-Vorprüfung): Der zugängliche Name und der per `aria-describedby` verbundene Tooltiptext sind wörtlich gleich (ADR-0018/ADR-0020); Hilfstechnik liest denselben Satz damit zweimal. Empfehlung: `aria-describedby` entfällt, wo der Name den vollen Erklärtext trägt (der Name ist dann die eine Quelle); andernfalls weicht die Beschreibung ab. Der ux-Fall entscheidet mit der Freigabe; ADR-0020 Z. 77 ist dann nachzuziehen.
+- **Eigentümer-Zeichen in der Tab-Folge** (durch die Artboard-Freigabe #24 entschieden, PO Z. 186): Es trägt heute keinen Tab-Halt (`role="img"`). ADR-0020 nimmt es als „ggf." auf; diese Anforderung setzt es (FA 3) — der ux-Fall hat es nicht umgekehrt, es bleibt in der Tab-Folge.
+- **Tab-Folge-Verlängerung** (durch die Artboard-Freigabe #24 entschieden, PO Z. 186): Es bleibt bei **einem Tab-Halt je Auslöser**, keine Grenze, keine roving-Gruppe. ADR-0012 Regel 5 fordert nichts; jedes Zeichen ist ein eigenständiges, regel-tragendes Ziel (FA 3), und eine roving-Gruppe bräuchte eine neue Geste und würde Auslöser verstecken — erst auf einen Befund. FA 3 trägt die Fassung.
+- **Name = Beschreibung doppelt vorgelesen** (durch die Artboard-Freigabe #24 entschieden, PO Z. 186): `aria-describedby` **entfällt an den fünf Zeichen** — ihr zugänglicher Name ist wörtlich der Tooltiptext, die Beschreibung wäre eine zweite, gleiche Quelle (ADR-0018/ADR-0020); der **Streifen-Knopf** der zugeklappten Spalte **behält** `aria-describedby`, weil sein Name nicht den vollen Erklärtext trägt. FA 2 und das AK „Zugänglicher Name" tragen die Fassung; ADR-0020 Z. 77 zieht der architekt nach.
 - **Ausweitung auf weitere `title`-Stellen**: eigene Karte (ADR-0020 „Geltung"); die Auslösermenge dieser Anforderung ist in FA 1 festgelegt.
 
 ## Manuelle Vorbereitungstätigkeiten
@@ -233,5 +233,6 @@ Auslöser ist, dass sich die Kopfzeichen heute **nur dem Zeiger** erklären: `ti
   - Muss 4 (Touch-Schließen): FA 8 und ein AK („Tippen außerhalb") ergänzt; neue Bubble B0552.
   - Muss 5 (Tooltip außerhalb `.bahnen`): FA 11 und ein AK ergänzt (fest positioniert wie `#pop` in `#over`); neue Bubble B0553.
   - Muss 6 (Testanpassung): NFR „Rückwärtskompatibel" und „Tests" nennen `r00097-eigentuemer.spec.js` (title entfällt, `.eig-z` per Tab, Maß) und die `ziele`-Messung der neuen Tab-Halte.
-  - Sollte: Kontrast-Paar in FA 13/AK genannt (12,78/12,33:1; `--kd-head-muted` unzulässig), Tab-Folge-Verlängerung und das doppelte Vorlesen (Name = Beschreibung) als Offene Fragen mit Empfehlung notiert, das Entfernen der fünf `title` in FA 1/FA 2 ausdrücklich, die Auslösermenge in FA 1 fixiert (`.bahn-kopf`, `.kopf-plus`, Signalzähler ausgenommen, Folgekarte ADR-0020).
+  - Sollte: Kontrast-Paar in FA 13/AK genannt (11,49/16,02:1), Tab-Folge-Verlängerung und das doppelte Vorlesen (Name = Beschreibung) als Offene Fragen mit Empfehlung notiert, das Entfernen der fünf `title` in FA 1/FA 2 ausdrücklich, die Auslösermenge in FA 1 fixiert (`.bahn-kopf`, `.kopf-plus`, Signalzähler ausgenommen, Folgekarte ADR-0020).
+- **Einarbeitung Artboard-Freigabe #24 2026-11-11 (PO Z. 186, Commit `5ca6a20`)**: Der product-owner hat den Zustand „Erklärtext auf Anforderung" am Artboard D0002 wie gezeichnet freigegeben; B0544/B0545 bleiben frei baubar, die acht übrigen Bubbles B0546–B0553 dürfen gebaut werden. Drei Auflagen an diese Anforderung eingearbeitet: (1) FA 13, das AK „Kontrast und Anzeige" und die Sollte-Notiz nennen das Blasen-Paar `--kd-head`/`--kd-head-text` mit **hell 11,49:1 / dunkel 16,02:1** (nachgerechnet aus `web/kd-tokens.css`, dieselbe Rechnung wie R00107); die Klausel zu `--kd-head-muted` entfällt (das aktuelle Token ergibt ≈ 6,82:1). (2) FA 2 und das AK „Zugänglicher Name": `aria-describedby` entfällt an den fünf Kopfzeichen, der Streifen-Knopf behält es. (3) Offene Frage „Tab-Folge-Verlängerung" geschlossen: ein Tab-Halt je Auslöser, keine Grenze, keine roving-Gruppe; damit sind auch „Eigentümer-Zeichen in der Tab-Folge" und „Name = Beschreibung doppelt vorgelesen" geschlossen. Nur die Kontrast-Zahl, der `aria-describedby`-Punkt und die Tab-Folge betroffen — die gezeichnete Blase ist unverändert.
 - **Verworfene Alternativen**: native `title` (A), `#pop`-Erweiterung (C), native Popover-API (D), CSS-only (E) — je ein Satz in ADR-0020 (Optionen).
