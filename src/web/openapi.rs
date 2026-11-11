@@ -36,7 +36,7 @@ pub struct Fehlerantwort {
 /// von links, ihre Grenze und die Anzahl zählender Karten vor dem Zug.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct GrenzeErreicht {
-    /// immer „Grenze erreicht"
+    /// immer „Grenze erreicht“
     pub fehler: String,
     pub spalte: String,
     pub grenze: u32,

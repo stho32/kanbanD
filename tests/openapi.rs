@@ -233,3 +233,35 @@ async fn erledigen_ist_beschrieben() {
     }
     assert!(seite.contains("/api/aufgaben/erledigen") && seite.contains("„schon gemeldet“"), "Seite /api");
 }
+
+/// R00118 B0534–B0536: die Grenze-Texte sind rechtschreiblich rein — deutsches schließendes Anführungszeichen im
+/// Schema `GrenzeErreicht`, keine verschachtelten gleichen Anführungszeichen in der Warnung, „Aufgabe“ statt „Karte“.
+#[tokio::test]
+async fn grenze_texte_sind_rein() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+
+    // B0534: das Feld `fehler` endet mit dem deutschen schließenden Anführungszeichen.
+    let fehler = d["components"]["schemas"]["GrenzeErreicht"]["properties"]["fehler"]["description"].as_str().unwrap();
+    assert!(fehler.contains("immer „Grenze erreicht“"), "B0534: {fehler}");
+    assert!(!fehler.contains("Grenze erreicht\""), "B0534: gerades Anführungszeichen: {fehler}");
+
+    // B0535: die Warnung nennt die Spalte in deutschen Anführungszeichen, ohne sie erneut einzuschließen.
+    for pfad in ["/api/boards/{slug}/bewegen", "/api/boards/{slug}/bewegen-mehrere", "/api/boards/{slug}/ziehen"] {
+        let text = d["paths"][pfad]["post"]["description"].as_str().unwrap();
+        assert!(text.contains("Warnung grenze: Grenze erreicht: „<Spalte>“ hat n von g"), "B0535 {pfad}: {text}");
+        assert!(!text.contains("„Grenze erreicht: „"), "B0535 {pfad}: verschachtelt: {text}");
+    }
+
+    // B0536: auf das Board legen sagt „Aufgabe“.
+    let aufgaben = d["paths"]["/api/boards/{slug}/aufgaben"]["post"]["description"].as_str().unwrap();
+    assert!(aufgaben.contains("eine schon liegende Aufgabe"), "B0536: {aufgaben}");
+    assert!(!aufgaben.contains("schon liegende Karte"), "B0536: {aufgaben}");
+
+    // Dieselben Texte stehen auf der Seite /api (Quelle `endpunkte.rs`); `<Spalte>` ist dort maskiert.
+    assert!(seite.contains("Warnung grenze: Grenze erreicht: „&lt;Spalte&gt;“ hat n von g"), "Seite /api: Warnung");
+    assert!(seite.contains("eine schon liegende Aufgabe"), "Seite /api: Aufgabe");
+    assert!(!seite.contains("„Grenze erreicht: „") && !seite.contains("schon liegende Karte"), "Seite /api rein");
+}
