@@ -97,6 +97,8 @@ test('R00122 B0565 (US-1): zwei Wochenbalken, Ø-Linie, Achsen, Grundlinie, Mark
     // Legende (B1): das Farbfeld trägt denselben Ton wie die Balken, nicht transparent
     const feldFarbe = await page.locator('.fluss-leg .fluss-sw').first().evaluate(e => getComputedStyle(e).backgroundColor);
     expect(feldFarbe).toBe(fuellungBalken);
+    // Legende spricht von „erledigten Aufgaben" (S1), die Tabelle ebenso
+    await expect(page.locator('.fluss-leg')).toContainText('erledigte Aufgaben');
     // Kennzahlenzeile (M4)
     const kz = page.locator('#dus-kennzahl');
     await expect(kz).toContainText('Gesamt 4');
@@ -145,13 +147,14 @@ test('R00122 B0567 (US-1, US-5): Tabelle mit Summe, Tooltip und zeigerlose Bedie
     await page.mouse.move(1, 1);
     await expect(tip).toBeHidden();
     // Tabellenansicht (M5)
+    await expect(page.locator('.fluss-tabs > summary')).toHaveText('Tabellenansicht');
     await page.locator('.fluss-tabs > summary').click();
     const rahmen = page.locator('.bericht-rahmen');
     await expect(rahmen).toHaveAttribute('tabindex', '0');
     await expect(rahmen).toHaveAttribute('role', 'group');
     await expect(rahmen).toHaveAttribute('aria-label', 'Durchsatz je Zeitraum');
     const tabelle = page.locator('.fluss-tab');
-    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Angekommen']);
+    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Erledigt']);
     await expect(tabelle.locator('thead th').first()).toHaveAttribute('scope', 'col');
     await expect(tabelle.locator('tbody tr')).toHaveCount(2);
     await expect(tabelle.locator('tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '2']);

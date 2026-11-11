@@ -1147,7 +1147,7 @@ function vDurchsatzUm(einheit) {
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
 /** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). */
 function vDurchsatzLegende(d, einheit) {
-  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>angekommene Aufgaben</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
+  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
 }
 /** Die Zeichenfläche: je Periode ein Balken in --kd-accent, Grundlinie und eine Marke je Periode (auch bei 0),
     y-Achse bis zum höchsten Wert, gestrichelte Ø-Linie in --kd-warn mit Halo-Beschriftung, x-Achse je Auflösung. */
@@ -1182,7 +1182,7 @@ ${fadenkreuz(DUS_O, unten)}
 /** Die textliche Entsprechung (M5): je Periode eine Zeile, „Summe“ als th scope=row, im tastaturerreichbaren .bericht-rahmen. */
 function vDurchsatzTabelle(d, einheit) {
   const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td><td class="r">${p.anzahl}</td></tr>`).join('');
-  return `<details class="fluss-tabs"><summary>Tabelle</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th><th scope="col" class="r">Angekommen</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th><td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
+  return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th><th scope="col" class="r">Erledigt</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th><td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
 }
 
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
