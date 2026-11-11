@@ -23,7 +23,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 
 - Kopf: Nummer, Klasse, Pfad, Umschalter Inhalt/Datei, Position „n / m“ mit ↑ ↓, „In VS Code öffnen“, ✕ (R00011)
 - [Hauptbereich](D00002-hauptbereich.md): Titel, Beschreibung, Abschnitte (Kommentare, Teilaufgaben, Anhänge, Durchläufe)
-- [Seitenleiste](D00003-seitenleiste.md): Spalte, Klasse, Zuständige, Labels, Fälligkeit, laufende Timer, Zeiten
+- [Seitenleiste](D00003-seitenleiste.md): Spalte, Klasse, Zuständige, Labels, Fälligkeit, Geschätzt (nur lesend, nur wenn `estimate` gesetzt), laufende Timer, Zeiten
 - Fuß: Speicherhinweis („gespeichert hh:mm“) und Fehlermeldung
 - Hinweis-Anker zwischen Körper und Fuß, in dem der [Hinweis](D00007-hinweis.md) steht, solange das Fenster oberster Dialog ist (R00112 FA 18)
 - in der Ansicht „Datei“ nur der Dateitext, ohne Seitenleiste
@@ -51,6 +51,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 - [R00063](../../Anforderungen/R00063-behebung-scrollposition-beim-kontextmenue.md) — ausdrücklich nicht geprüft (Zeile 72)
 - [R00103](../../Anforderungen/R00103-behebung-aufgabenfenster-springt-bei-live-aenderungen.md) — Leseposition und Eingabe im Aufgabenfenster bei Live-Ereignissen
 - [R00112](../../Anforderungen/R00112-entfernen-rueckgaengig-und-sichtbare-entfernen-knoepfe.md) — Hinweis mit „rückgängig“ im Fenster, Ablehnung im Fuß (FA 4, 18; AK 7)
+- [R00129](../../Anforderungen/R00129-geschaetzte-zeit-je-karte.md) — Feldzeile „Geschätzt“ (`estimate`, nur wenn gesetzt, nur lesend; R00129:47)
 
 ## Notizen / Quellen
 

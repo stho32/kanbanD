@@ -20,7 +20,7 @@ Die schmale rechte Spalte im Aufgabenfenster, in der man einstellt, wer zuständ
 
 ## Bestandteile
 
-- Felder: Spalte (Auswahl, bewegt die Karte), Klasse, Zuständige, Labels, Fälligkeit, „wartet auf“, Herkunft
+- Felder: Spalte (Auswahl, bewegt die Karte), Klasse, Zuständige, Labels, Fälligkeit, Geschätzt (nur lesend, nur wenn `estimate` gesetzt; R00129), „wartet auf“, Herkunft
 - Abschnitt „Läuft gerade“ mit den laufenden Timern
 - Zeiten der Aufgabe
 
@@ -40,6 +40,7 @@ Die schmale rechte Spalte im Aufgabenfenster, in der man einstellt, wer zuständ
 - [R00011](../../Anforderungen/R00011-aufgabe-ansehen-und-bearbeiten.md) — Zeile 25; User Story US-2 „Felder in der Seitenleiste“
 - [R00077](../../Anforderungen/R00077-responsive-fuer-tablet-und-handy.md) — „die Felder stehen unter Titel und Beschreibung statt daneben“ (Zeile 17)
 - [R00103](../../Anforderungen/R00103-behebung-aufgabenfenster-springt-bei-live-aenderungen.md) — Begriffe (Zeile 19), Akzeptanzkriterium Seitenleiste (Zeile 94)
+- [R00129](../../Anforderungen/R00129-geschaetzte-zeit-je-karte.md) — Feldzeile „Geschätzt“ (`estimate`, nur wenn gesetzt, nur lesend; Zeile 47)
 
 ## Notizen / Quellen
 
