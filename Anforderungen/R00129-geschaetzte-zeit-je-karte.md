@@ -41,8 +41,10 @@ Ein KI-Werkzeug oder ein Mensch veranschlagt für eine Aufgabe eine Dauer — he
 
 ### Anzeige
 - Karte und Aufgabenfenster zeigen die geschätzte Zeit als `h:mm` über den vorhandenen Helfer `hm`, **nur wenn** der Wert gesetzt ist. Eine Aufgabe ohne `estimate` bekommt weder auf der Karte noch im Fenster ein Element; ihr Markup ist wie heute.
-- Auf der Karte steht die geschätzte Zeit in der unteren Zeile neben der gebuchten Zeit `Σ h:mm` (`.r3`) und ist von ihr unterscheidbar; ihr zugänglicher Name lautet „Geschätzt <h:mm>“. Ort und Form (Zeichen, Label) legt die UX-Vorprüfung fest und der Gestalter zeichnet sie an D0002 (siehe „Gestaltung“).
-- Im Aufgabenfenster steht sie als **Feldzeile** mit der Beschriftung „Geschätzt“ und dem Schlüssel `estimate` als Hilfstext in eigenem Element ([ADR-0013](../Dokumentation/ADRs/0013-deutsche-anzeige-an-der-zeichengrenze.md) N1), Wert `h:mm`. Die Zeile ist **nur lesend** (kein Eingabefeld); Ort nach D0003.
+- Auf der Karte steht die geschätzte Zeit in der unteren Zeile `.r3` **innerhalb von `.rechts` unmittelbar nach `Σ h:mm`** und ist von ihr unterscheidbar. Sie ist ein **eigenes `<span>`**, kein Bedienelement. **Sichtbar** trägt sie das Zeichen `≈` und den Wert `h:mm` (Form A der UX-Vorprüfung #37: `≈ 2:30`); der sichtbare Inhalt ist `aria-hidden="true"`. **Im** Element steht als visuell versteckter Text `<span class="vh">Geschätzt <h:mm></span>`, der den zugänglichen Namen „Geschätzt 2:30“ trägt. Ein `aria-label` an dem rollenlosen `<span>` ist ausgeschlossen (Muster `.preis`/`.due`, R00105). Alternative B (sichtbar „Geschätzt 2:30“) steht unter „Notizen“. Ort und Form sind mit der UX-Vorprüfung #37 festgelegt; der Gestalter zeichnet den Zustand an D0002 (siehe „Gestaltung“).
+- Die Anzeige ist **kein neues Ziel**: das Element trägt keinen `tabindex`, keine Rolle (kein `role`) und kein `data-act`; es ist nicht fokussierbar und nicht bedienbar (ADR-0012 gilt nicht).
+- **Umbruch/Platz**: `.ka .r3 .rechts` **bricht um** (`flex-wrap:wrap; justify-content:flex-end; gap:4px 6px`, wie die freigegebene R00105-Anordnung am Artboard D0002); reicht der Platz nicht, rutscht die Gruppe rechtsbündig in eine eigene Zeile. Auf schmalen Breiten scrollt die Seite nicht quer, und die Karte bleibt im Rechteck ihrer Spalte.
+- Im Aufgabenfenster steht sie als **Feldzeile** über den vorhandenen Baustein `${vBeschriftung('estimate')}`: die Beschriftung „Geschätzt“ (`FELDER.estimate = 'Geschätzt'`) in `.k`, der Schlüssel `estimate` als Hilfstext in `.sl` **außerhalb von `.k`** ([ADR-0013](../Dokumentation/ADRs/0013-deutsche-anzeige-an-der-zeichengrenze.md) N1), der Wert `h:mm` in `.w.mono`. Die Zeile ist **nur lesend**: kein `input`, `select` oder `textarea`, kein `data-af`/`data-nf`; das Element ist nicht fokussierbar und nicht bedienbar. Die Schrift der Beschriftung folgt der PO-Entscheidung aus Karte #104 (R00109-Zeichnung: Sans 500 `--kd-text`, `.felder .kb .k`) — es entsteht keine eigene Schrift. Lage nach D0003.
 - Die Anzeige ist eine Ableitung aus dem gespeicherten Wert und wird **nie gespeichert**.
 
 ### Grenzen (rein informativ)
@@ -51,7 +53,9 @@ Ein KI-Werkzeug oder ein Mensch veranschlagt für eine Aufgabe eine Dauer — he
 
 ## Nicht-funktionale Anforderungen
 - **Verträglichkeit**: kein Fehler zu `estimate` antwortet mit 422 oder 500 (wie `cost`, ADR-0009).
-- **Barrierefreiheit**: die geschätzte Zeit hängt nicht an der Farbe allein; auf der Karte trägt sie einen zugänglichen Namen „Geschätzt <h:mm>“, im Fenster die Beschriftung „Geschätzt“ samt Schlüssel als Hilfstext.
+- **Barrierefreiheit**: die geschätzte Zeit hängt nicht an der Farbe allein; auf der Karte trägt das Element den zugänglichen Namen „Geschätzt <h:mm>“ — sichtbar `≈ <h:mm>` (`aria-hidden="true"`), versteckter Name `<span class="vh">Geschätzt <h:mm></span>` **im** Element, **kein** `aria-label` an einem rollenlosen `<span>` —, im Fenster die Beschriftung „Geschätzt“ samt Schlüssel `estimate` als Hilfstext außerhalb von `.k`. Das Element ist weder fokussierbar noch bedienbar (kein `tabindex`, keine Rolle, kein `data-act`).
+- **Kontrast**: der sichtbare Wert hält in beiden Themen **mindestens 4,5:1** auf jedem Kartengrund (WCAG 1.4.3, ADR-0011); auf einer Karte mit eigener Klassenfarbe (`data-eigen`) trägt er `--kd-text` wie das Preisetikett (`.ka[data-eigen] .preis`, R00105), weil `--kd-muted` auf hellen eigenen Farben unter 4,5:1 fällt; die `kontrast.spec` misst hell und dunkel.
+- **Breite**: bei 320, 375 und 414 px scrollt die Seite nicht quer (ADR-0015); `.ka .r3 .rechts` bricht um wie die R00105-Anordnung, und die Karte bleibt im Rechteck ihrer Spalte.
 - **Bestand**: keine vorhandene Aufgabe ändert sich durch das Lesen; heute trägt keine Aufgabendatei `estimate` als bekannten Wert (`estimate` war bis ADR-0023 ein unbekannter Schlüssel, siehe R00004).
 
 ## Akzeptanzkriterien
@@ -76,14 +80,18 @@ Ein KI-Werkzeug oder ein Mensch veranschlagt für eine Aufgabe eine Dauer — he
 - [ ] Gegeben eine von Hand geschriebene Aufgabe mit `estimate: 3`, wenn der Ordner gelesen wird, dann ist sie lesbar und trägt drei Minuten (angezeigt als `0:03`), und beim Schreiben bleibt `estimate: 3` zeichengleich
 
 ### Anzeige auf der Karte
-- [ ] Gegeben #1 mit `estimate: 150`, wenn das Board angesehen wird, dann zeigt die Karte die geschätzte Zeit „2:30“, ihr zugänglicher Name lautet „Geschätzt 2:30“, und die Datei von #1 ist danach byte-gleich (keine abgeleitete Angabe gespeichert)
-- [ ] Gegeben #1 mit `estimate: 5`, wenn das Board angesehen wird, dann zeigt die Karte „0:05“ (fünf Minuten, nicht fünf Stunden)
-- [ ] Gegeben #1 mit `estimate: 150` und 46 Minuten gebuchter Zeit, wenn das Board angesehen wird, dann stehen die gebuchte Zeit „Σ 0:46“ und die geschätzte Zeit „2:30“ beide auf der Karte mit je ihrem Wert
-- [ ] Leerfall: Gegeben #4 ohne Schätzung, wenn das Board angesehen wird, dann trägt die Karte kein Element für die geschätzte Zeit
+- [ ] **Form, Ort und Name (UX-Vorprüfung #37, Form A)**: Gegeben #1 mit `estimate: 150`, wenn das Board angesehen wird, dann steht in `.r3 .rechts` **unmittelbar nach dem Element `.sum`** ein eigenes `<span>` mit sichtbar `≈ 2:30` (`aria-hidden="true"`) und **im** Element der versteckte Text `<span class="vh">Geschätzt 2:30</span>`; der zugängliche Name des Elements lautet „Geschätzt 2:30“; das Element trägt **kein** `aria-label`, **kein** `tabindex`, **keine** Rolle und **kein** `data-act`; die Datei von #1 ist danach byte-gleich
+- [ ] Gegeben #1 mit `estimate: 5`, wenn das Board angesehen wird, dann zeigt die Karte „≈ 0:05“ (fünf Minuten, nicht fünf Stunden)
+- [ ] Grenzwerte: Gegeben #1 mit `estimate: 100000`, wenn das Board angesehen wird, dann zeigt die Karte „≈ 1666:40“ und der zugängliche Name lautet „Geschätzt 1666:40“; mit `estimate: 1` zeigt sie „≈ 0:01“ und der Name „Geschätzt 0:01“
+- [ ] Gegeben #1 mit `estimate: 150` und 46 Minuten gebuchter Zeit, wenn das Board angesehen wird, dann stehen die gebuchte Zeit „Σ 0:46“ und die geschätzte Zeit „≈ 2:30“ beide auf der Karte mit je ihrem Wert, und die Schätzung steht **nach** der Summe
+- [ ] **Kein neues Ziel**: Gegeben #1 mit `estimate: 150`, wenn ich mit `Tab` durch das Board gehe, dann ist das Element der geschätzten Zeit kein Fokuspunkt und löst bei Klick und Tastendruck nichts aus
+- [ ] Leerfall: Gegeben #4 ohne Schätzung, wenn das Board angesehen wird, dann trägt die Karte kein Element für die geschätzte Zeit, und ihr Markup ist wie heute
+- [ ] **Kontrast und Klassenfarbe**: Gegeben #1 mit `estimate: 150`, wenn die Anzeige hell und dunkel auf Normalgrund und auf einer Karte mit eigener Klassenfarbe (`data-eigen`) gemessen wird, dann hält der sichtbare Wert je **mindestens 4,5:1** und trägt auf `data-eigen` `--kd-text` (ADR-0011)
+- [ ] **Schmales Layout**: Gegeben eine Karte, die zugleich Preisetikett, `Σ`, Schätzung, Fälligkeit, Herkunft und **zwei Zuständige** trägt (Spaltenbreite 236 und 272 px), wenn die Fensterbreite auf 375 (und 320 bzw. 414) px gesetzt wird, dann ist `document.documentElement.scrollWidth ≤ clientWidth`, die Karte bleibt im Rechteck ihrer Spalte (kein Überlauf), die Zeile `.r3 .rechts` bricht um, und die Schätzung liegt unmittelbar nach `Σ` — hell und dunkel
 - [ ] Gegeben #1 mit `estimate: 150`, wenn 60 s zugesehen wird, dann steigt `kdTest.renders()` ohne Ereignis nicht (kein zweiter Takt für die Anzeige)
 
 ### Anzeige im Aufgabenfenster, rein informativ
-- [ ] Gegeben #1 mit `estimate: 150`, wenn das Aufgabenfenster geöffnet wird, dann zeigt die Feldzeile die Beschriftung „Geschätzt“ und im eigenen Element den Schlüssel `estimate` und den Wert „2:30“, und es gibt kein Eingabefeld; Datei und Zahl der Commits bleiben gleich
+- [ ] **Feldzeile nach ADR-0013 N1**: Gegeben #1 mit `estimate: 150`, wenn das Aufgabenfenster geöffnet wird, dann steht eine `.felder`-Zeile `${vBeschriftung('estimate')}` mit der Beschriftung „Geschätzt“ in `.k` und dem Schlüssel `estimate` in `.sl` **außerhalb von `.k`**, der Wert „2:30“ steht in `.w.mono`; die Zeile enthält **kein** `input`, `select` oder `textarea` und **kein** `data-af`/`data-nf`; Datei und Zahl der Commits bleiben gleich
 - [ ] Leerfall: Gegeben #4 ohne Schätzung, wenn das Aufgabenfenster geöffnet wird, dann fehlt die Feldzeile „Geschätzt“ ganz
 - [ ] Gegenbeispiel: Gegeben #1 mit `estimate: 150`, wenn nacheinander Burndown, „Wie lange noch“, „Kosten“ und „Zeiten nach Aufgabe und Person“ geöffnet werden, dann nennt keiner dieser Berichte die geschätzte Zeit, und Board- und Aufgabendatei sind danach byte-gleich
 
@@ -121,8 +129,18 @@ Alle Entscheidungen zur Technik stehen in [ADR-0023](../Dokumentation/ADRs/0023-
 
 Die Anzeige der geschätzten Zeit ist eine **Aussage der Zeichengrenze** (ADR-0013): gespeichert ist eine Zahl in Minuten, sichtbar wird sie erst beim Zeichnen. Die Gestaltung ist ein neuer Zustand und braucht die **UX-Vorprüfung** und ein **Artboard** (der product-owner gibt frei, bevor gebaut wird; B0607–B0610 sind davon frei).
 
-- **Karte (D0002).** Die untere Zeile `.r3 .rechts` trägt bereits Nummer, Preisetikett `≈ 1,10 $` (R00105), gebuchte Zeit `Σ 0:46`, erste Teilaufgabe, Fälligkeit, Herkunft und Zuständige. Empfehlung (Option A): die geschätzte Zeit kompakt wie das Preisetikett mit einem eigenen Zeichen und dem Wert `h:mm` — Vorschlag `≈ 2:30` —, von der gebuchten Zeit durch das Zeichen („Σ 0:46“) und vom Preis durch die Einheit unterscheidbar; der zugängliche Name lautet „Geschätzt 2:30“ (visuell versteckt), das sichtbare Zeichen und der Wert sind `aria-hidden`, kein `aria-label` an einem Element ohne Rolle. Alternativen: (B) das Wort „Geschätzt“ als sichtbares Label vor dem Wert; (C) nur der Wert `h:mm` mit `title`. Der `ux-reviewer` entscheidet und misst (Breite neben `Σ`, `≈` und Labels, 320/375/414 px), der Gestalter zeichnet den Zustand an D0002.
-- **Aufgabenfenster (D0003).** Eine Feldzeile mit der Beschriftung „Geschätzt“ und dem Schlüssel `estimate` als zweite Zeile in eigenem Element (ADR-0013 N1), Wert `h:mm`, nur lesend; Lage unter den übrigen Feldern der Seitenleiste. Der Gestalter zeichnet den Zustand an D0003.
+**UX-Vorprüfung #37 (2026-11-11) eingearbeitet.** Die vier **Muss**-Punkte sind in den funktionalen Anforderungen und Akzeptanzkriterien festgehalten:
+
+- **Karte (D0002) — Form A.** Die geschätzte Zeit steht als eigenes `<span>` in `.r3 .rechts` **unmittelbar nach `Σ h:mm`**; sichtbar `≈ <h:mm>` (`aria-hidden="true"`), zugänglicher Name `<span class="vh">Geschätzt <h:mm></span>` **im** Element, **kein** `aria-label` an einem rollenlosen `<span>`. Form A (sichtbar `≈ 2:30`) ist gewählt, weil sie die freigegebene Preisetikett-Form (`.preis`, R00105) aufnimmt und von `Σ` (Zeichen) und vom Preis (Einheit) unterscheidbar bleibt; **Alternative B** (sichtbar „Geschätzt 2:30“) steht unter „Notizen“. Das Element ist nicht fokussierbar und nicht bedienbar (kein `tabindex`, keine Rolle, kein `data-act`).
+- **Umbruch/Platz.** `.ka .r3 .rechts` **bricht um** (`flex-wrap:wrap; justify-content:flex-end; gap:4px 6px`, wie die R00105-Anordnung am Artboard D0002). Die Breitenprobe misst an einer Karte mit **Preis + `Σ` + Schätzung + Fällig + Herkunft + zwei Zuständigen** (Spalten 236 und 272 px) bei 320/375/414 px, hell und dunkel — kein Überlauf.
+- **Aufgabenfenster (D0003).** Eine `.felder`-Zeile `${vBeschriftung('estimate')}` mit Beschriftung „Geschätzt“ in `.k`, Schlüssel `estimate` in `.sl` außerhalb von `.k` (ADR-0013 N1) und Wert `h:mm` in `.w.mono`, **nur lesend** (kein `input`/`select`/`textarea`, kein `data-af`/`data-nf`); Lage unter den übrigen Feldern der Seitenleiste. Die Schrift der Beschriftung folgt der PO-Entscheidung aus Karte #104 (R00109-Zeichnung: Sans 500 `--kd-text`).
+
+**Bau-Sperre Oberfläche.** Die UX-Vorprüfung beschreibt **zwei** Zustände, die das Bauen der Oberfläche (F0107, B0611–B0613) sperren, bis der product-owner sie freigegeben hat:
+
+- **D0002** Zustand `#geschaetzte-zeit` (das Etikett an der Karte),
+- **D0003** Zustand `#geschaeftzt-im-fenster` (die Feldzeile im Aufgabenfenster).
+
+Der Gestalter zeichnet beide Zustände; der product-owner gibt frei. Der Server-Teil (F0106, B0607–B0610) hängt nicht daran und bleibt frei baubar.
 
 Gilt ein Artboard anders als ein Kriterium, gilt das Kriterium (wie R00105). Die Anzeige ist neutral, ohne neue Farbrolle (ADR-0011) und ohne Warnform.
 
@@ -131,7 +149,8 @@ Gilt ein Artboard anders als ein Kriterium, gilt das Kriterium (wie R00105). Die
 - `Aufgabenaenderung`: neues entfernbares Rohfeld `estimate` (wie `cost`).
 - `src/format/aufgabe.rs`: `estimate` in `BEKANNT` und in die Schreibreihenfolge; der Test `handgeschriebene_datei_ohne_id_mit_sekunden_und_unbekanntem_schluessel` wählt einen anderen unbekannten Schlüssel, weil `estimate` bekannt wird.
 - `web/kultur.js` `FELDER`: Eintrag `estimate: 'Geschätzt'`.
-- `web/ansicht.js` `vKarte`: ein Element mehr je Karte; `vBeschriftung('estimate')` als neue Feldzeile.
+- `web/ansicht.js` `vKarte`: ein Element mehr je Karte (in `.r3 .rechts` unmittelbar nach `vSumme`); `vBeschriftung('estimate')` als neue Feldzeile.
+- `web/kd-app.css`: `.ka .r3 .rechts` bricht um (`flex-wrap:wrap; justify-content:flex-end; gap:4px 6px`); der sichtbare Wert hält ≥ 4,5:1, auf `data-eigen` `--kd-text` (Muster `.ka[data-eigen] .preis`, R00105).
 - OpenAPI/Beschreibung (`src/web/endpunkte.rs`, `src/web/mod.rs`): Feld `estimate` mit Schema und 400.
 
 ### Umfang
@@ -140,11 +159,11 @@ Gilt ein Artboard anders als ein Kriterium, gilt das Kriterium (wie R00105). Die
 ## Tests
 Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
-**Unit (pure Logik):** die Prüffunktion je Regel mit Grenz- und Gegenwert (1, 100.000, 0, -1, 2.5, `"150"`, 150.0, `.inf`, `.nan`, `2:30`); Rundlauf der Minuten 1–100.000 plus Ränder; die Umwandlung des Rohwerts je Fehlfall; die Anzeige-Rechnung `150 → 2:30`, `5 → 0:05` und „ohne Wert kein Feld“.
+**Unit (pure Logik):** die Prüffunktion je Regel mit Grenz- und Gegenwert (1, 100.000, 0, -1, 2.5, `"150"`, 150.0, `.inf`, `.nan`, `2:30`); Rundlauf der Minuten 1–100.000 plus Ränder; die Umwandlung des Rohwerts je Fehlfall; die Anzeige-Rechnung `150 → 2:30`, `5 → 0:05`, `1 → 0:01`, `100000 → 1666:40` und „ohne Wert kein Feld“.
 
 **Integration:** `PATCH` einzeln und `/mehrere` gegen einen echten Ordner mit Git — Commit-Zahl vorher/nachher, Datei neu gelesen, jeder Fehlfall 400 mit Datei byte-gleich; defekte Datei → nur lesbar.
 
-**E2E:** US-4 und US-5 gegen das laufende Programm auf freiem Port; zugänglicher Name aus sichtbarem und verstecktem Text; Prüfsumme der Aufgabendatei vor und nach dem Ansehen; ein Bericht öffnen und belegen, dass er die geschätzte Zeit nicht nennt.
+**E2E:** US-4, US-5 und US-6 gegen das laufende Programm auf freiem Port; zugänglicher Name aus sichtbarem (`aria-hidden`) und verstecktem Text (`.vh`); das Element ist kein Fokuspunkt; die Breitenprobe an der vollen `.r3 .rechts`-Zeile (Preis + `Σ` + Schätzung + Fällig + Herkunft + zwei Zuständige) bei 320/375/414 px hell und dunkel nach `ziele.spec.js`; Prüfsumme der Aufgabendatei vor und nach dem Ansehen; ein Bericht öffnen und belegen, dass er die geschätzte Zeit nicht nennt.
 
 ## Abhängigkeiten
 - ADR-0023 (Akzeptiert, `5a740cb`); ADR-0009 (Zuschnitt: kanonisch in der Datei, eine Prüfung für Datei und API, jeder Fehler 400); ADR-0013 (deutsche Anzeige an der Zeichengrenze).
@@ -157,14 +176,14 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 Keine, die den Bau blockieren. Empfehlungen des planers (Entscheidungen im Bericht); richtungsweisend bleibt die Artboard-Frage (product-owner):
 
 1. **Schlüsselname** `estimate` oder `estimated`? Empfehlung: `estimate` — er läuft heute schon als unbekannter Schlüssel durch die Dateien und die Probe (ADR-0023 Folgeentscheidung). Der product-owner kann den Namen kippen, ohne die Repräsentation zu ändern.
-2. **Artboard?** Ja — die Anzeige ist ein neuer Zustand auf Karte und im Fenster. UX-Vorprüfung, Artboards D0002 (Etikett) und D0003 (Feldzeile), Freigabe durch den product-owner vor dem Bau der Oberfläche; die Vorschläge stehen unter „Gestaltung“. F0106 und die Bubbles B0607–B0610 hängen nicht daran.
+2. **Artboard?** Ja, **zwei** Zustände — mit der UX-Vorprüfung #37 entschieden: D0002 `#geschaetzte-zeit` (Etikett) und D0003 `#geschaeftzt-im-fenster` (Feldzeile). Der Gestalter zeichnet beide, der product-owner gibt frei; sie sind **Bau-Sperre Oberfläche** für F0107 (B0611–B0613). Form A (`≈ 2:30`) ist die Empfehlung der UX-Vorprüfung, Alternative B („Geschätzt 2:30“) steht unter „Notizen“. F0106 und die Bubbles B0607–B0610 hängen nicht daran.
 3. **Setzweg?** In der ersten Ausbaustufe nur über die API (wie `cost`, PO Z. 31); ein Eingabefeld im Fenster ist eine spätere Ausbaustufe (ADR-0023 Folgeentscheidung).
 4. **Darf ein Agent `estimate` setzen?** Ja, uneingeschränkt — der Wert ist rein informativ und gerade für die Schätzungen der KI-Werkzeuge gedacht (Karte #37); kein Schutz wie bei der WIP-Grenze.
 5. **Obergrenze 100.000?** Technischer Schutz gegen Tippfehler, keine Produktregel; er darf angehoben werden, solange die Rundlauf-Probe grün bleibt (ADR-0023 Regel 2).
 
 ## Manuelle Vorbereitungstätigkeiten
 
-Bildschirmfotos für den Abnahmezettel (nach der UX-Vorprüfung): Board mit einer Karte mit geschätzter Zeit (mit und ohne gebuchte Zeit, mit und ohne Preisetikett) und das Aufgabenfenster mit der Feldzeile „Geschätzt“, bei 320, 375, 414 und 1280 px, je hell und dunkel.
+Bildschirmfotos für den Abnahmezettel (nach der UX-Vorprüfung #37 und der Freigabe der Artboards): Board mit einer Karte mit geschätzter Zeit (mit und ohne gebuchte Zeit, mit und ohne Preisetikett; dazu die **volle** untere Zeile mit Preis + `Σ` + Schätzung + Fällig + Herkunft + zwei Zuständigen, Spalten 236 und 272 px) und das Aufgabenfenster mit der Feldzeile „Geschätzt“ samt Schlüssel; bei 320, 375, 414 und 1280 px, je hell und dunkel.
 
 ## Manuelle Nachbereitungstätigkeiten
 - Keine.
@@ -183,6 +202,10 @@ Auslöser ist die Entscheidung des Auftraggebers (Karte #37, 2026-11-03): KI-Wer
 
 **Eigene Interaction unter D0003.** Datenmodell, Tür und Feldzeile hängen am Aufgabenfenster; das Etikett auf dem Board (D0002) ist ein Aspekt derselben Daten — dieselbe Begründung wie bei I0093/R00105 („Preisetikett je Aufgabe auf Karte und im Detail“). Muster: F0038/F0039 (Kosten setzen/anzeigen, I0093).
 
+**UX-Vorprüfung #37 (2026-11-11).** Vier **Muss** und die **Sollte** der Vorprüfung sind in die Anforderungen, die User Story (US-4, US-5, US-6) und die WBS eingearbeitet: (1) Anzeigemechanik und zugänglicher Name an der Karte (eigenes `<span>` in `.r3 .rechts` unmittelbar nach `Σ`, sichtbar `aria-hidden`, Name als `.vh` **im** Element, kein `aria-label` an einem rollenlosen `<span>`); (2) `.ka .r3 .rechts` bricht um (`flex-wrap:wrap; justify-content:flex-end; gap:4px 6px`) mit Breitenprobe an der vollen Zeile (Preis + `Σ` + Schätzung + Fällig + Herkunft + zwei Zuständige; Spalten 236/272 px; 320/375/414 px; hell und dunkel); (3) kein neues Ziel (kein `tabindex`, keine Rolle, kein `data-act`); (4) Feldzeile `${vBeschriftung('estimate')}` mit Wert `h:mm` in `.w.mono`, nur lesend, Schlüssel in `.sl` außerhalb von `.k` (ADR-0013 N1). Sollte: Schätzung **nach** `Σ` (die Komma-Logik des Preises bleibt unberührt — das Komma hängt an `.preis` und bleibt bei vorhandenem `Σ`); längster/kleinster Wert (`1666:40` / `0:01`) als Akzeptanzkriterium; Kontrast ≥ 4,5:1, auf eigener Klassenfarbe `--kd-text`.
+
+**Form A gegen B.** Die UX-Vorprüfung #37 empfiehlt **Form A**: sichtbar `≈ 2:30` (Zeichen `≈` wie das Preisetikett, Wert `h:mm`), sichtbar `aria-hidden`, Name `.vh` „Geschätzt 2:30“. **Alternative B** — sichtbar „Geschätzt 2:30“ (Wort statt Zeichen) — ist dokumentiert und verworfen: sie macht die Zeile breiter (die Breitenprobe der Vorprüfung fällt bei 320 px enger aus) und wiederholt den Namen, während A die freigegebene Preisetikett-Form aufnimmt. **Alternative C** (nur Wert mit `title`) ist verworfen: der Name hinge an einem Tooltip.
+
 **Optionen-Tableau (kurz, Skill `optionen-vor-entscheidung`):**
 - **A — ganze Minuten in der Datei (`estimate: 150`), eine Prüfung für Datei und API, Anzeige `h:mm`** (gewählt, ADR-0023): eindeutig für jeden YAML- und JSON-Leser, keine neue Grammatik, nutzt den vorhandenen `hm`; gleiche Linie wie `cost` in ganzen Cent.
 - **B — Dauertext in der Datei (`estimate: 2:30`)**: ohne Umrechnen lesbar, doch `2:30` liest serde_yaml als Text, PyYAML als 150, Ruby Psych als 9000 — dieselbe Datei bedeutet je Werkzeug etwas anderes; verworfen (ADR-0023 Probe).
@@ -197,3 +220,4 @@ Auslöser ist die Entscheidung des Auftraggebers (Karte #37, 2026-11-03): KI-Wer
 - Karte #37 „Feld „geschätzte Zeit“ je Karte (rein informativ)“ (Herkunft: Entscheidung des Betreibers 2026-11-03 nach Beratung des product-owners; Priorität „nicht superwichtig“).
 - [ADR-0023](../Dokumentation/ADRs/0023-geschaetzte-zeit-als-ganze-minuten-eine-pruefung-fuer-datei-und-api.md) (Akzeptiert, `5a740cb`): `estimate` als ganze Minuten, eine Prüfung für Datei und API (jeder Fehler 400), Anzeige `h:mm`, kein Rechnen, Setzweg API-only erste Ausbaustufe.
 - `AI-Team/po-entscheidungen.md:61` (Auftraggeber, 2026-11-03), `:31`, `:85`; R00089 (gebuchte Zeit auf der Karte), R00105 (Preisetikett je Aufgabe).
+- Karte #104 (PO-Entscheidung `b016dea`): die `.k`-Beschriftung im Aufgabenfenster trägt die R00109-Schrift (Sans 500 `--kd-text`, `.felder .kb .k`) — gilt auch für die Feldzeile „Geschätzt“, es entsteht keine eigene Schrift.
