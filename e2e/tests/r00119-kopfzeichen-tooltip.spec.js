@@ -1,5 +1,4 @@
 // R00119 Kopfzeichen ohne Hover erklären: Tooltip bei Tastaturfokus und langem Druck (ADR-0020, I0109)
-// ERWARTET ROT bis B0544–B0553 gebaut sind (ATDD): ohne das Tooltip-Primitiv und die Auslöser scheitern alle 22 Fälle.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema } = require('./hilfen');
 

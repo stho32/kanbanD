@@ -7,6 +7,9 @@ a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent)
    Ein Link mit eigener Box (Flex-Nachbar in einer Zeile, Zelle mit Etikett) ist ein Ziel; ein Link in einem Satz ist inline,
    dort wirkt min-*-size nicht, er bleibt Zeile. In einer Zelle wird der Link inline-flex, damit er wachsen kann. */
 :where(button,select,input:not([type=hidden]),textarea,label:has(> input:is([hidden],[type=file])),a.btn,a.kz-btn,[role=button],[role=checkbox],[role=radio],[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox],[role=tab],[role=switch],summary,a[href]){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
+/* Die fünf Kopfzeichen des Spaltenkopfs sind Auslöser des Erklärtextes (R00119, ADR-0020) und erfüllen --kd-ziel über
+   die Zielgröße selbst; bei feinem Zeiger trägt ein Trefferhof die Fläche (kd-app.css), hier wachsen sie bei Touch. */
+:where(.bahn-kopf .info,.bahn-kopf .ok,.bahn-kopf .v,.bahn-kopf .v.ph,.bahn-kopf .eig-z){min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel)}
 :where(summary,a[href]){align-content:center}
 /* Abstand nach dem Link: ohne ihn trifft der Rand des Links das folgende Leerzeichen der Zeile statt des Links */
 :where(td>a[href]){display:inline-flex;align-items:center;margin-inline-end:var(--kd-s1)}

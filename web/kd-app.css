@@ -677,7 +677,16 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
   .lnk-x,.kopf-plus,.signal,.sigz,.kl{position:relative;min-block-size:0}
   .lnk-x,.kopf-plus,.signal,.sigz{min-inline-size:0}
   :is(.lnk-x,.kopf-plus,.signal,.sigz,.kl)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
+  /* Kopfzeichen des Spaltenkopfs (R00119): gezeichnet klein, der Trefferhof trägt die Fläche auf --kd-ziel */
+  .bahn-kopf :is(.info,.ok,.v,.v.ph,.eig-z){position:relative;min-block-size:0;min-inline-size:0}
+  .bahn-kopf :is(.info,.ok,.v,.v.ph,.eig-z)::after{content:"";position:absolute;inset:min(0px,(100% - var(--kd-ziel)) / 2)}
 }
+/* Erklärtext auf Anforderung (R00119, ADR-0020): eine nicht-modale Plain-Fläche außerhalb des Scrollcontainers .bahnen
+   (in #over, fest wie #pop), Fläche --kd-head / Text --kd-head-text, umbruchfähig bis 236 px, ohne Titel und Aktionen,
+   nimmt keinen Fokus (kein tabindex) und fängt keinen Zeiger (pointer-events:none). */
+.kd-tipp{position:fixed;z-index:65;max-inline-size:236px;padding:6px 10px;background:var(--kd-head);color:var(--kd-head-text);box-shadow:var(--kd-shadow);font-size:12px;line-height:1.4;overflow-wrap:anywhere;pointer-events:none}
+/* Der lange Druck auf Touch soll die Erklärung zeigen, nicht das Systemmenü der Textauswahl öffnen (R00119 FA 7) */
+.bahn-kopf [data-tip],.zu-streifen[data-tip]{-webkit-touch-callout:none;user-select:none}
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
 .mod.neu .titel::placeholder{color:var(--kd-muted);font-weight:400}

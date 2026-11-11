@@ -371,6 +371,22 @@ function vPop() {
   return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px"><h4 id="ich-titel">ICH BIN … <span class="mono">people:</span></h4>${hinweis}<div role="menu" aria-labelledby="ich-titel"${beschrieben}>${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitemradio" aria-checked="${p.kuerzel === S.ich}" tabindex="-1">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" role="menuitemradio" aria-checked="false" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}</div><div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
+/**
+ * Erklärtext auf Anforderung (R00119, ADR-0020 Option B): genau **eine** nicht-modale Blase `role="tooltip"`,
+ * die der Renderer aus `S.ui.tooltip` zeichnet (ADR-0007) und die außerhalb des Scrollcontainers `.bahnen` liegt
+ * (in `#over`, fest positioniert wie `#pop`). Sie nimmt keinen Fokus. Ohne Auslöser im Dokument oder ohne Text ist
+ * der Kasten verborgen und der Zustand fällt weg — ein Live-Ereignis hinterlässt so keinen verwaisten Tooltip.
+ * Gezeigt wird sie auf Anforderung (Fokus, langer Druck) durch web/app.js; der sichtbare Text ist der zugängliche
+ * Name des Auslösers (`aria-label`) bzw. dessen `data-tip-text` (Streifen-Knopf).
+ */
+function vTipp() {
+  const t = S.ui.tooltip;
+  const el = t && [...document.querySelectorAll('[data-tip]')].find(x => x.dataset.tip === t.fuer);
+  const text = el ? (el.dataset.tipText || el.getAttribute('aria-label') || '') : '';
+  if (!text) { S.ui.tooltip = null; return '<div class="kd-tipp" id="kd-tipp" role="tooltip" hidden></div>'; }
+  return `<div class="kd-tipp" id="kd-tipp" role="tooltip">${esc(text)}</div>`;
+}
+
 /* ── Zeiten ── */
 /* zeitMs, ortszeit, anteil, personenZeilen: web/zeiten.js */
 const hm = ms => { const m = Math.max(0, Math.floor(ms / 6e4)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
@@ -717,19 +733,26 @@ const EIGENTUEMER_SYMBOL = {
   human: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>',
   agent: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M3 12v4M21 12v4"></path><rect x="5" y="7" width="14" height="13"></rect><path d="M9 12v1.5M15 12v1.5" stroke-width="2.6"></path></svg>',
 };
-/** Kopfzeichen des Eigentümers (R00097): ohne Eigentümer nichts; im Kopf benannt (role img, kein Tab-Stopp), im Streifen nur Schmuck. */
-function vEigentuemerZeichen(eigentuemer, imStreifen) {
+/** Kopfzeichen des Eigentümers (R00097): ohne Eigentümer nichts; im Kopf benannt und Auslöser des Erklärtextes (R00119),
+ *  Tab-Stopp, kein `title`; im Streifen nur Schmuck (aria-hidden) — dort trägt der Streifen-Knopf die Erklärung. */
+function vEigentuemerZeichen(eigentuemer, imStreifen, spalte) {
   if (!EIGENTUEMER_SYMBOL[eigentuemer]) return '';
   const klasse = eigentuemer === 'human' ? 'm' : 'a';
-  const benannt = imStreifen ? 'aria-hidden="true"' : `role="img" aria-label="${EIGENTUEMER_TEXT[eigentuemer]}" title="${EIGENTUEMER_TEXT[eigentuemer]}"`;
+  const benannt = imStreifen ? 'aria-hidden="true"' : `role="img" tabindex="0" data-tip="eig:${esc(spalte)}" data-halt="eig:${esc(spalte)}" aria-label="${EIGENTUEMER_TEXT[eigentuemer]}"`;
   return `<span class="eig-z ${klasse}" ${benannt}>${EIGENTUEMER_SYMBOL[eigentuemer]}</span>`;
 }
+/** Erklärtext der Grenze (R00119 FA 1): sichtbarer Text und „höchstens n Karten in dieser Spalte“; der sichtbare Text steht wörtlich davor (WCAG 2.5.3). */
+const grenzeTipp = (n, ueber) => `Grenze ${n}${ueber ? ' · überschritten' : ''} — höchstens ${n} Karten in dieser Spalte`;
 /** Der Spaltenname als verborgene Überschrift zweiter Ebene (R00113, ADR-0018 Regel 2): Hilfstechnik springt damit von Spalte zu Spalte. */
 const vSpaltenUeberschrift = sp => `<h2 class="vh">${esc(sp.name)}</h2>`;
 /** Zugeklappte Spalte (R00074): Kopf nur mit der Zahl, darunter ein Streifen mit dem gedrehten Namen, der aufklappt. */
 function vLaneZu(sp, i, zahl, ueber, farbe) {
   const titel = `${sp.name} · ${zahl} ${zahl === 1 ? 'Aufgabe' : 'Aufgaben'}${sp.grenze ? ` · Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}` : ''} — Klick klappt auf`;
-  return `<section class="bahn zu${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><span class="n">${zahl}</span></div><button class="flaeche zu-streifen" aria-expanded="false" data-act="spalte-auf" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}" aria-label="${esc(sp.name)} aufklappen${EIGENTUEMER_STREIFEN[sp.eigentuemer] ? `, ${EIGENTUEMER_STREIFEN[sp.eigentuemer]}` : ''}" title="${esc(titel)}">${vEigentuemerZeichen(sp.eigentuemer, true)}<span class="zu-name">${esc(sp.name)}</span></button></section>`;
+  // Der Streifen trägt nur das Eigentümer-Zeichen; ist eines gesetzt, ist der Knopf der Auslöser des Erklärtextes
+  // (R00119 FA 4). Sein Name nennt „aufklappen, gehört dem …“ und trägt den vollen Satz nicht, daher aria-describedby.
+  const erklaerung = EIGENTUEMER_SYMBOL[sp.eigentuemer] ? ` data-tip="klapp:${esc(sp.name)}" data-tip-text="${esc(EIGENTUEMER_TEXT[sp.eigentuemer])}" aria-describedby="eig-erklaer-${i}"` : '';
+  const beschreibung = EIGENTUEMER_SYMBOL[sp.eigentuemer] ? `<span class="vh" id="eig-erklaer-${i}">${esc(EIGENTUEMER_TEXT[sp.eigentuemer])}</span>` : '';
+  return `<section class="bahn zu${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><span class="n">${zahl}</span></div><button class="flaeche zu-streifen" aria-expanded="false" data-act="spalte-auf" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}"${erklaerung} aria-label="${esc(sp.name)} aufklappen${EIGENTUEMER_STREIFEN[sp.eigentuemer] ? `, ${EIGENTUEMER_STREIFEN[sp.eigentuemer]}` : ''}" title="${esc(titel)}">${vEigentuemerZeichen(sp.eigentuemer, true)}<span class="zu-name">${esc(sp.name)}</span>${beschreibung}</button></section>`;
 }
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
@@ -744,7 +767,7 @@ function vLane(sp, i, alle) {
   if (spaltenZu().includes(sp.name)) return vLaneZu(sp, i, karten.length, ueber, farbe);
   const boardLeer = i === 0 && !archiv && !gefiltert && S.board.spalten.every(s => !s.aufgaben.length);
   const leerText = boardLeer ? '<div class="leer hilfe-leer" role="listitem">Noch keine Karten.<br>Taste <kbd>n</kbd> oder „+“ im Spaltenkopf öffnet „Neue Aufgabe“ — eine eingefügte Liste legt mehrere an, Kürzel wie <span class="mono">@kürzel</span> oder <span class="mono">due:morgen</span> setzen Felder.</div>' : '';
-  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" aria-expanded="true" data-act="spalte-zu" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${vEigentuemerZeichen(sp.eigentuemer, false)}${sp.notiz ? ` <span class="info" title="${esc(sp.notiz)}" aria-label="Kommentar: ${esc(sp.notiz)}" tabindex="0" data-halt="info:${esc(sp.name)}">ⓘ</span>` : ''}${letzte ? ' <span class="ok" title="Abschlussspalte">✓</span>' : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" title="Phase der Anwendung">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v"${ueber ? ' title="Grenze überschritten"' : ''}>Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}${vKopfSignale(sichtbar, letzte)}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche" role="list" data-halt="spalte:${esc(sp.name)}">${karten.join('') || leerText || `<div class="leer" role="listitem">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach" role="listitem"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
+  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" aria-expanded="true" data-act="spalte-zu" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${vEigentuemerZeichen(sp.eigentuemer, false, sp.name)}${sp.notiz ? ` <span class="info" tabindex="0" data-tip="info:${esc(sp.name)}" data-halt="info:${esc(sp.name)}" aria-label="${esc('Kommentar: ' + sp.notiz)}">ⓘ</span>` : ''}${letzte ? ` <span class="ok" tabindex="0" data-tip="ok:${esc(sp.name)}" data-halt="ok:${esc(sp.name)}" aria-label="Abschlussspalte">✓</span>` : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" tabindex="0" data-tip="ph:${esc(sp.name)}" data-halt="ph:${esc(sp.name)}" aria-label="${esc('Phase: ' + sp.phase)}">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v" tabindex="0" data-tip="grenze:${esc(sp.name)}" data-halt="grenze:${esc(sp.name)}" aria-label="${esc(grenzeTipp(sp.grenze, ueber))}">Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}${vKopfSignale(sichtbar, letzte)}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche" role="list" data-halt="spalte:${esc(sp.name)}">${karten.join('') || leerText || `<div class="leer" role="listitem">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach" role="listitem"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
 }
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {

@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set() } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -699,7 +699,7 @@ function render() {
     $('#kopf').innerHTML = vKopf();
     $('#main').innerHTML = vMain();
     $('#main').dataset.sicht = sicht;
-    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue();
+    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
   } finally {
     S.neuzeichnen = false;
@@ -710,6 +710,7 @@ function render() {
   menueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
+  tippPlatzieren();
   fokusFuehren(aktiv, ausloeser, fokus, aktivWarSichtbar);
 }
 
@@ -993,6 +994,49 @@ function popOben(ausloeserRect, popHoehe, fensterHoehe) {
   const passtDarunter = obenDarunter + popHoehe <= fensterHoehe;
   if (passtDarunter) return obenDarunter;
   return Math.max(4, ausloeserRect.top - 2 - popHoehe);
+}
+
+/* Erklärtext auf Anforderung (R00119, ADR-0020): Zustand in S.ui.tooltip = { fuer: data-tip-Schlüssel }, der eine
+   nicht-modale Tooltip ohne Fokus. Die Blase selbst zeichnet `vTipp()` in `#over` (ADR-0007); hier steht nur die
+   Bedienung — zeigen bei Fokus und langem Druck, verbergen bei Esc und (Touch) Tippen außerhalb — und die Position. */
+
+/** Erklärtext des Auslösers: sichtbarer Text des Tooltips = zugänglicher Name (R00119 FA 2, ADR-0018); der Streifen-Knopf
+ *  überschreibt ihn über `data-tip-text`, weil sein Name nur „aufklappen, gehört dem …“ lautet. */
+const tippText = el => el.dataset.tipText || el.getAttribute('aria-label') || '';
+
+/** Der Auslöser des offenen Tooltips im (nach dem Neuzeichnen neuen) Dokument; null, wenn es ihn nicht mehr gibt. */
+function tippAusloeser() {
+  if (!S.ui.tooltip) return null;
+  return [...document.querySelectorAll('[data-tip]')].find(x => x.dataset.tip === S.ui.tooltip.fuer) || null;
+}
+
+/** Die eine Blase für diesen Auslöser zeigen: Zustand setzen, den von `vTipp()` gezeichneten Kasten füllen und stellen. */
+function tippZeigen(el) {
+  S.ui.tooltip = { fuer: el.dataset.tip };
+  const blase = $('#kd-tipp');
+  if (!blase) return;
+  blase.textContent = tippText(el);
+  blase.hidden = false;
+  tippPlatzieren();
+}
+
+/** Die Blase ausblenden und den Zustand löschen — der nächste Render zeichnet sie verborgen und leer. */
+function tippVerbergen() {
+  if (!S.ui.tooltip) return;
+  S.ui.tooltip = null;
+  const blase = $('#kd-tipp');
+  if (blase) { blase.hidden = true; blase.textContent = ''; }
+}
+
+/** Position über die Logik von `popPlatzieren`: unter dem Auslöser, sonst darüber; an der Fensterkante umgeklappt. */
+function tippPlatzieren() {
+  const blase = $('#kd-tipp');
+  if (!blase || blase.hidden) return;
+  const el = tippAusloeser();
+  if (!el) { tippVerbergen(); return; }
+  const r = el.getBoundingClientRect();
+  blase.style.top = popOben(r, blase.offsetHeight, innerHeight) + 'px';
+  blase.style.left = Math.max(4, Math.min(r.left, innerWidth - blase.offsetWidth - 4)) + 'px';
 }
 
 async function act(a, arg, wert) {
@@ -1716,6 +1760,35 @@ document.addEventListener('focusout', e => {
   if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
 });
 
+/* Erklärtext auf Anforderung (R00119, ADR-0020): Fokus zeigt ihn, Verlassen blendet ihn aus; langer Druck auf Touch
+   zeigt ihn, ein Tippen außerhalb (pointerdown) blendet ihn aus. Hier wird nur gezeigt/verborgen und gestellt — der
+   Zustand liegt in S.ui.tooltip, damit ein Neuzeichnen die Blase reproduziert (ADR-0007, `vTipp()`). */
+document.addEventListener('focusin', e => {
+  const el = e.target.closest && e.target.closest('[data-tip]');
+  if (el) { if (!S.ui.tooltip || S.ui.tooltip.fuer !== el.dataset.tip) tippZeigen(el); }
+  else if (S.ui.tooltip) tippVerbergen();
+});
+document.addEventListener('focusout', e => {
+  // Beim Neuzeichnen wird das fokussierte Element ersetzt; das ist kein Verlassen (ADR-0007)
+  if (S.neuzeichnen) return;
+  if (!e.relatedTarget) tippVerbergen();
+});
+let tippDruck = null;
+const tippDruckAbbrechen = () => { if (tippDruck) { clearTimeout(tippDruck.timer); tippDruck = null; } };
+document.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+  const el = e.target.closest && e.target.closest('[data-tip]');
+  if (!el) { tippVerbergen(); return; }
+  tippDruckAbbrechen();
+  tippDruck = { el, x: e.clientX, y: e.clientY, timer: setTimeout(() => { tippDruck = null; tippZeigen(el); }, 500) };
+});
+document.addEventListener('pointermove', e => {
+  if (tippDruck && (Math.abs(e.clientX - tippDruck.x) > 10 || Math.abs(e.clientY - tippDruck.y) > 10)) tippDruckAbbrechen();
+});
+document.addEventListener('pointerup', tippDruckAbbrechen);
+document.addEventListener('pointercancel', tippDruckAbbrechen);
+document.addEventListener('scroll', tippPlatzieren, true);
+
 document.addEventListener('change', e => {
   if (S.neuzeichnen) return;
   aenderungGemeldet(e.target);
@@ -1902,10 +1975,12 @@ if (window.visualViewport) {
 window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
   if (stufeGewechselt) render();
-  else popPlatzieren();
+  else { popPlatzieren(); tippPlatzieren(); }
 });
 document.addEventListener('keydown', e => {
   const t = e.target;
+  // Esc schließt den Erklärtext zuerst — an der Spitze der Kaskade, vor Pop und Fenstern (R00119 FA 8, ADR-0020)
+  if (e.key === 'Escape' && S.ui.tooltip) { e.preventDefault(); tippVerbergen(); return; }
   if (S.ui.menue) { menueTaste(e); return; }
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
