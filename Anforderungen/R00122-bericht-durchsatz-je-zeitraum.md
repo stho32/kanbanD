@@ -86,7 +86,7 @@ Burndown beantwortet „wie viel ist noch offen“, die Prognose „wann sind wi
 - [ ] Gegenprobe schreiben: Gegeben der Grundbestand, wenn der Bericht geöffnet, ein Balken angeklickt und der Bericht wieder verlassen wird, dann ist `boards/fabrik.md` byte-gleich und `git log` unverändert (der Bericht liest nur)
 
 ### Live
-- [ ] Gegeben der Bericht ist offen und zeigt in KW46 den Wert 2, wenn über die API `POST /api/boards/fabrik/bewegen {nummer: 2, spalte: „Fertig“}` (oder ein Zug) den Stand ändert und das Live-Ereignis eintrifft, dann steht die Zahl der Periode ohne Neuladen spätestens 1 s nach der Antwort der API auf dem neuen Wert (D00005)
+- [ ] Gegeben der Bericht ist offen und zeigt in KW46 den Wert 2, wenn über die API eine weitere Aufgabe nach „Fertig“ bewegt wird (z. B. `POST /api/boards/fabrik/bewegen {nummer: 5, spalte: „Fertig“}`) und das Live-Ereignis eintrifft, dann steht die Zahl der Periode ohne Neuladen spätestens 1 s nach der Antwort der API auf dem neuen Wert (D00005)
 
 ### Nicht-funktional
 - [ ] Gegeben 500 Aufgaben, 90 Tage und 10 Spalten, wenn der Bericht geöffnet wird, dann sind Rechnung und Zeichnen zusammen in unter 200 ms fertig, gemessen von der Rechnung bis die Fläche im Dokument steht (headless Chromium)
