@@ -532,9 +532,10 @@ impl Board {
         if let Some(e) = self.eigentuemer_roh.iter().find(|e| e.meint_human()) {
             return Err(Entnahmesperre { spalte: e.schluessel.clone().unwrap_or_default(), nummer });
         }
-        match self.spalten.iter().find(|s| s.aufgaben.contains(&nummer)) {
-            Some(s) if s.eigentuemer == Some(Eigentuemer::Human) => Err(Entnahmesperre { spalte: s.name.clone(), nummer }),
-            _ => Ok(()),
+        // Alle Spalten zählen (R00120, Punkt 8): liegt die Nummer doppelt und gehört eine davon dem Menschen, ist sie gesperrt.
+        match self.spalten.iter().filter(|s| s.aufgaben.contains(&nummer)).find(|s| s.eigentuemer == Some(Eigentuemer::Human)) {
+            Some(s) => Err(Entnahmesperre { spalte: s.name.clone(), nummer }),
+            None => Ok(()),
         }
     }
 }
@@ -965,6 +966,19 @@ mod tests {
             b.eigentuemer_roh = vec![ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: wert.into() }];
             assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "{wert} sperrt nicht");
         }
+    }
+
+    // R00120 Punkt 8 (AK 7): eine Nummer in zwei Spalten ist gesperrt, sobald eine dem Menschen gehört
+    #[test]
+    fn doppelte_nummer_ueber_alle_spalten_gesperrt() {
+        use super::super::Art;
+        let mut b = b();
+        b.spalten[0].eigentuemer = None;
+        b.spalten[0].aufgaben = vec![1];
+        b.spalten[1].aufgaben = vec![1];
+        b.spalten[1].eigentuemer = Some(Eigentuemer::Human);
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre { spalte: "Z".into(), nummer: 1 }));
+        assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()));
     }
 
     #[test]
