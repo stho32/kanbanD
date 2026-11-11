@@ -536,3 +536,29 @@ test('Hinweis an „Zurücksetzen“ je Leiste (R00105 US-25, PO Z. 118): nennt 
   for (const [leiste, hinweis] of Object.entries(erwartet)) assert.strictEqual(zuruecksetzenHinweis(BERICHTSLEISTEN[leiste]), hinweis, leiste);
   assert.doesNotMatch(zuruecksetzenHinweis(BERICHTSLEISTEN.kosten), /Messbasis|Rechnen ab/, 'Gegenbeispiel Kosten');
 });
+
+/* ── Kumulativer Fluss (R00121) ── */
+const { fluss } = require('../../web/berichte.js');
+
+/** Grundbestand der AK (R00121): drei Spalten, vier Aufgaben, #2 verlässt am 05.11. das Board. */
+const FLUSS = {
+  spalten: ['Eingang', 'In Arbeit', 'Fertig'],
+  jetzt: '2026-11-05 20:00',
+  aufgaben: [
+    { nummer: 1, wechsel: [{ zeitpunkt: '2026-11-01 09:00', spalte: 'Eingang' }, { zeitpunkt: '2026-11-02 09:00', spalte: 'In Arbeit' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'Fertig' }] },
+    { nummer: 2, wechsel: [{ zeitpunkt: '2026-11-02 09:00', spalte: 'Eingang' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'In Arbeit' }, { zeitpunkt: '2026-11-04 09:00', spalte: 'Fertig' }, { zeitpunkt: '2026-11-05 09:00', spalte: null }] },
+    { nummer: 3, wechsel: [{ zeitpunkt: '2026-11-03 09:00', spalte: 'Eingang' }, { zeitpunkt: '2026-11-04 09:00', spalte: 'In Arbeit' }, { zeitpunkt: '2026-11-05 09:00', spalte: 'Fertig' }] },
+    { nummer: 4, wechsel: [{ zeitpunkt: '2026-11-04 09:00', spalte: 'Eingang' }, { zeitpunkt: '2026-11-05 09:00', spalte: 'In Arbeit' }] },
+  ],
+};
+const flussJetzt = new Date(2026, 10, 5, 20, 0).getTime();
+const ohneFilterung = () => ({});
+
+test('Fluss je Tag und Spalte: Bänder, gesamt, offen (R00121 B0554)', () => {
+  const d = fluss(FLUSS, f({}), ohneFilterung, flussJetzt);
+  assert.deepStrictEqual(d.spalten, ['Eingang', 'In Arbeit', 'Fertig']);
+  assert.deepStrictEqual(d.tage.map(x => [x.datum.slice(8), x.jeSpalte.Eingang, x.jeSpalte['In Arbeit'], x.jeSpalte.Fertig, x.gesamt, x.offen]), [
+    ['01', 1, 0, 0, 1, 1], ['02', 1, 1, 0, 2, 2], ['03', 1, 1, 1, 3, 2], ['04', 1, 1, 2, 4, 2], ['05', 0, 1, 2, 3, 1],
+  ], 'Tagesstände; am 05.11. fällt gesamt auf 3, weil #2 das Board verließ');
+  assert.deepStrictEqual(fluss({ spalten: [], aufgaben: [] }, f({}), ohneFilterung, flussJetzt), { spalten: [], tage: [] }, 'kein Stand');
+});

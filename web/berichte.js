@@ -140,6 +140,35 @@
     return tage;
   }
 
+  /* ── Kumulativer Fluss (R00121) ── */
+  /** Je Tag im Zeitraum die gestapelten Bänder je Spalte (Stand am Tagesende, heute jetzt; ab `start`)
+      mit `gesamt` (Summe der Bänder) und `offen` (Aufgaben unterhalb der Abschlussspalte).
+      Zählt wie der Burndown: `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
+      Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten. */
+  function fluss(bew, f, aufgabeZu, jetzt, start = null) {
+    const spalten = bew.spalten;
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    if (erste === Infinity) return { spalten, tage: [] };
+    const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1];
+    const tage = [];
+    for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
+      const ende = Math.min(tag(t, 1) - 1, jetzt);
+      const jeSpalte = Object.fromEntries(spalten.map(s => [s, 0]));
+      let gesamt = 0, offen = 0;
+      for (const a of bew.aufgaben) {
+        if (!zaehltImBericht(a, 'burndown') || !aufgabePasst(f, aufgabeZu(a.nummer))) continue;
+        const s = spalteAm(a.wechsel, ende);
+        if (s == null || f.ohneSpalten.includes(s)) continue;
+        jeSpalte[s]++;
+        gesamt++;
+        if (s !== abschluss) offen++;
+      }
+      const d = new Date(t), p = n => String(n).padStart(2, '0');
+      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, jeSpalte, gesamt, offen });
+    }
+    return { spalten, tage };
+  }
+
   /* ── Durchlaufzeit (R00045) ── */
   /** Erstes Erreichen der Spalte mit Index ≥ i (dort oder rechts davon), in ms; null = nie. */
   function erreicht(wechsel, spalten, i) {
@@ -641,5 +670,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
