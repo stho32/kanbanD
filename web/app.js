@@ -1062,21 +1062,42 @@ async function boardUmbenennen(slug, wert) {
   render();
 }
 
-/** Abbrechen des Bestätigungsdialogs (M2): Fokus zurück an den Auslöser — den ⋮ der Zeile. */
+/** Die Daten des geteilten Bestätigungsdialogs für ein Board (R00128): Name, Rumpf und Bestätigungswort — die
+    Komponente `vAlDialog` rendert sie, das Ausführen hängt an `art`. */
+function boardAlDialog(art, slug) {
+  const titel = boardName(slug);
+  const loeschen = art === 'loeschen';
+  return {
+    art: loeschen ? 'board-loeschen' : 'board-archivieren',
+    slug,
+    titel,
+    name: loeschen ? `${titel} endgültig löschen` : `${titel} archivieren`,
+    rumpf: loeschen
+      ? `Die Board-Datei <code>boards/${esc(slug)}.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.`
+      : `Das Board <b>${esc(titel)}</b> wird archiviert. Es fällt aus der Liste; die Datei <code>boards/${esc(slug)}.md</code> bleibt erhalten und lässt sich jederzeit wieder öffnen.`,
+    bestaetigen: loeschen ? 'endgültig löschen' : 'Archivieren',
+    gefahr: loeschen,
+    ausloeser: `[data-act="board-menue"][data-arg="${slug}"]`,
+  };
+}
+
+/** Abbrechen des Bestätigungsdialogs (M2): Fokus zurück an den gemerkten Auslöser — nie BODY. */
 function alAbbrechen() {
-  const slug = S.ui.alDialog && S.ui.alDialog.slug;
+  const d = S.ui.alDialog;
   S.ui.alDialog = null;
-  S.ui.fokus = slug ? `[data-act="board-menue"][data-arg="${slug}"]` : null;
+  S.ui.fokus = d && d.ausloeser ? d.ausloeser : null;
   render();
 }
 
-/** Archivieren oder Löschen bestätigen (R00128/M4): ein Commit, dann neu laden; Fokus auf die nächste Board-Zeile, sonst #t-board (M6). */
+/** Bestätigen (R00128 M4, R00141): `art` sagt, was zu tun ist; ein Fehler bleibt als `role=alert` **im Dialog** (B3),
+    ohne Erfolgsmeldung und ohne Commit. */
 async function alBestaetigen() {
   const d = S.ui.alDialog;
   if (!d) return;
+  if (d.art === 'aufgabe-loeschen') return aufgabeLoeschenBestaetigen(d);
   const reihe = (S.zustand.boards || []).map(b => b.slug);
   try {
-    if (d.art === 'loeschen') await api('DELETE', `/api/boards/${encodeURIComponent(d.slug)}`);
+    if (d.art === 'board-loeschen') await api('DELETE', `/api/boards/${encodeURIComponent(d.slug)}`);
     else await api('PATCH', `/api/boards/${encodeURIComponent(d.slug)}`, { archiviert: true });
   } catch (f) {
     S.ui.alDialog.fehler = f.message;
@@ -1084,10 +1105,63 @@ async function alBestaetigen() {
     render();
     return;
   }
-  S.ui.hinweis = { text: d.art === 'loeschen' ? `Board ‚${d.titel}‘ endgültig gelöscht` : `Board ‚${d.titel}‘ archiviert`, at: Date.now() };
+  S.ui.hinweis = { text: d.art === 'board-loeschen' ? `Board ‚${d.titel}‘ endgültig gelöscht` : `Board ‚${d.titel}‘ archiviert`, at: Date.now() };
   S.ui.alDialog = null;
   await laden();
   S.ui.fokus = naechsteBoardZeile(reihe, d.slug);
+  render();
+}
+
+/** Auf dem Board sichtbare Karten in Spaltenfolge, ohne archivierte — die Nachbarschaft beim Verschwinden (B4). */
+function kartenReihe() {
+  return S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && !a.archiviert; }) : [];
+}
+
+/** Fokus nach dem Verschwinden einer Karte (B4): die Karte, die ihre Stelle übernimmt, sonst die letzte, sonst ein
+    benanntes Ersatzziel (`#t-board`) — nie BODY. */
+function naechsteKarteNachLoeschen(index) {
+  const jetzt = kartenReihe();
+  if (!jetzt.length) return '#t-board';
+  const stelle = Math.max(0, Math.min(index < 0 ? 0 : index, jetzt.length - 1));
+  return [`.ka[data-id="${jetzt[stelle]}"]`, '#t-board'];
+}
+
+/** Die Rückfrage „endgültig löschen“ öffnen (R00141 B1/B2): dieselbe `alertdialog`-Komponente wie beim Board; Name,
+    Rumpf und Bestätigungswort liefert der Aufrufer. `ausFenster` steuert, ob das Aufgabenfenster danach schließt (B4). */
+function dialogAufgabeLoeschen(nr, ausFenster, ausloeser) {
+  const a = aufgabe(nr);
+  if (!a) return;
+  const reihe = kartenReihe();
+  S.ui.alDialog = {
+    art: 'aufgabe-loeschen',
+    nummer: nr,
+    ausFenster,
+    ausloeser,
+    name: `#${nr} ${a.titel} endgültig löschen`,
+    rumpf: `Aufgabe #${nr} „${esc(a.titel)}“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.`,
+    bestaetigen: 'endgültig löschen',
+    gefahr: true,
+    reiheVorher: reihe,
+    index: reihe.indexOf(nr),
+  };
+}
+
+/** Endgültig löschen bestätigen (R00141): **ein** Commit; Fehler als `role=alert` im Dialog (B3); danach Fokus auf die
+    nächste Karte (B4), aus der Fenster-Ansicht schließt das Fenster; **kein Undo** (B5). */
+async function aufgabeLoeschenBestaetigen(d) {
+  try {
+    await api('DELETE', `/api/aufgaben/${d.nummer}`);
+  } catch (f) {
+    S.ui.alDialog.fehler = f.message;
+    S.ui.fokus = '#al-abbrechen';
+    render();
+    return;
+  }
+  if (d.ausFenster) S.ui.offen = null;
+  S.ui.hinweis = { text: `#${d.nummer} endgültig gelöscht`, at: Date.now() };
+  S.ui.alDialog = null;
+  await laden();
+  S.ui.fokus = naechsteKarteNachLoeschen(d.index);
   render();
 }
 
@@ -1137,8 +1211,18 @@ async function act(a, arg, wert) {
       case 'board-umbenennen': u.boardMenue = null; u.boardUmbenennen = arg; u.popFehler = null; u.fokus = '#board-umbenennen'; break;
       case 'board-umbenennen-ab': u.boardUmbenennen = null; u.popFehler = null; u.fokus = `[data-act="board-wahl"][data-arg="${arg}"]`; break;
       case 'board-umbenennen-ok': return boardUmbenennen(arg, wert);
-      case 'board-archivieren': u.boardMenue = null; u.fokus = null; u.alDialog = { art: 'archivieren', slug: arg, titel: boardName(arg) }; break;
-      case 'board-loeschen': u.boardMenue = null; u.fokus = null; u.alDialog = { art: 'loeschen', slug: arg, titel: boardName(arg) }; break;
+      case 'board-archivieren': u.boardMenue = null; u.fokus = null; u.alDialog = boardAlDialog('archivieren', arg); break;
+      case 'board-loeschen': u.boardMenue = null; u.fokus = null; u.alDialog = boardAlDialog('loeschen', arg); break;
+      case 'endgueltig-loeschen': {
+        // Löschen darf jeder mit Identität — auch Agenten (ADR-0024); nur ohne gewählte Person fragt kanbanD nach.
+        if (!S.ich) { ichNoetig(); break; }
+        const nr = +arg;
+        const ausFenster = u.offen === nr;
+        u.menue = null;
+        u.fokus = null;
+        dialogAufgabeLoeschen(nr, ausFenster, ausFenster ? `[data-act="endgueltig-loeschen"][data-arg="${nr}"]` : `.ka[data-id="${nr}"]`);
+        break;
+      }
       case 'al-abbrechen': alAbbrechen(); break;
       case 'al-bestaetigen': return alBestaetigen();
       case 'board-wieder-oeffnen': return boardWiederOeffnen(arg);

@@ -663,6 +663,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .km-e{position:relative;display:flex;align-items:center;gap:var(--kd-s4);height:26px;padding:0 10px;cursor:default;white-space:nowrap}
 .km-e.an{background:var(--kd-accent);color:var(--kd-on-accent)}
 .km-e.km-aktuell{color:var(--kd-muted)}
+.km-e.km-warn{color:var(--kd-warn)}
+.km-e.km-warn.an{color:var(--kd-on-accent)}
 .km-k{margin-left:auto;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
 .km-e.an .km-k{color:var(--kd-on-accent)}
 .km-tr{height:1px;background:var(--kd-line);margin:3px 0}

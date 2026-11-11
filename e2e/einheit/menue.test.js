@@ -9,8 +9,11 @@ const u = { spalten: ['Zu erledigen', 'In Arbeit', 'Erledigt'], spalte: 'Zu erle
 test('Menü der Karte', () => {
   const m = kartenMenue(a, u);
   const texte = m.map(e => e.trenner ? '—' : e.text);
-  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren']);
+  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren', 'Endgültig löschen']);
   assert.strictEqual(m[2].arg, '3|st');
+  // R00141 B0641/B6: der letzte Eintrag steht hinter „Archivieren“, in --kd-warn abgesetzt (warn)
+  assert.deepStrictEqual([m.at(-1).act, m.at(-1).arg, m.at(-1).warn], ['endgueltig-loeschen', '3', true]);
+  assert.strictEqual(m.findIndex(e => e.text === 'Umbenennen') < m.findIndex(e => e.text === 'Endgültig löschen'), true, 'Endgültig löschen nicht neben Umbenennen');
   assert.deepStrictEqual([m[4].act, m[4].arg, m[4].kuerzel, m[4].unter], ['zuweisen', '3', 'p', undefined], 'Dialog statt Untermenü (R00064)');
   const spalten = m[7].unter;
   assert.deepStrictEqual(spalten.map(s => [s.text, s.kuerzel, !!s.aktuell]), [['Zu erledigen', '1', true], ['In Arbeit', '2', false], ['Erledigt', '3', false]]);

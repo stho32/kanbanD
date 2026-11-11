@@ -1,5 +1,5 @@
 /* kanbanD — Menüs: Modelle und Tastennavigation als reine Funktionen, im Browser und in Node nutzbar.
-   Eintrag: {text, kuerzel?, act, arg, aktuell?} · Untermenü: {text, unter: [...]} · Trenner: {trenner: true} */
+   Eintrag: {text, kuerzel?, act, arg, aktuell?, warn?} · Untermenü: {text, unter: [...]} · Trenner: {trenner: true} */
 (function (ziel) {
   const T = { trenner: true };
 
@@ -21,6 +21,7 @@
       T,
       { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
       { text: 'Archivieren', kuerzel: 'a', act: 'archivieren', arg: String(nr) },
+      { text: 'Endgültig löschen', act: 'endgueltig-loeschen', arg: String(nr), warn: true },
     ];
   }
 
