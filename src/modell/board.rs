@@ -529,11 +529,15 @@ impl Board {
     }
 }
 
-/// Eine Karte, die ein Agent nicht herausnehmen darf: sie liegt in einer Spalte, die dem Menschen gehört (R00097).
+/// Eine Karte, die ein Agent nicht herausnehmen darf: sie liegt in einer Spalte, die dem Menschen gehört (R00097) —
+/// oder ein `human` meinender, an keine Spalte gebundener `column-owner`-Eintrag sperrt das ganze Board (R00120,
+/// PO Z. 187).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Entnahmesperre {
-    pub spalte: String,
-    pub nummer: u32,
+pub enum Entnahmesperre {
+    /// Die Karte liegt in einer Spalte, die dem Menschen gehört; `spalte` ist ihr Name.
+    Spalte { spalte: String, nummer: u32 },
+    /// Ein ungebundener `human`-Eintrag sperrt jeden Agenten auf dem ganzen Board; es gibt keine Spalte zu nennen.
+    Board { nummer: u32 },
 }
 
 impl Board {
@@ -544,12 +548,12 @@ impl Board {
         if art != super::Art::Agent {
             return Ok(());
         }
-        if let Some(e) = self.eigentuemer_roh.iter().find(|e| e.meint_human()) {
-            return Err(Entnahmesperre { spalte: e.schluessel.clone().unwrap_or_default(), nummer });
+        if self.eigentuemer_roh.iter().any(|e| e.meint_human()) {
+            return Err(Entnahmesperre::Board { nummer });
         }
         // Alle Spalten zählen (R00120, Punkt 8): liegt die Nummer doppelt und gehört eine davon dem Menschen, ist sie gesperrt.
         match self.spalten.iter().filter(|s| s.aufgaben.contains(&nummer)).find(|s| s.eigentuemer == Some(Eigentuemer::Human)) {
-            Some(s) => Err(Entnahmesperre { spalte: s.name.clone(), nummer }),
+            Some(s) => Err(Entnahmesperre::Spalte { spalte: s.name.clone(), nummer }),
             None => Ok(()),
         }
     }
@@ -953,7 +957,7 @@ mod tests {
         }
         let mut b = b();
         b.spalten[0].eigentuemer = Some(Eigentuemer::Human);
-        assert_eq!(b.entnahme_erlaubt(Art::Agent, 2), Err(Entnahmesperre { spalte: "A".into(), nummer: 2 }));
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 2), Err(Entnahmesperre::Spalte { spalte: "A".into(), nummer: 2 }));
         assert_eq!(b.entnahme_erlaubt(Art::Agent, 3), Ok(()), "Karte in einer Spalte ohne Eigentümer");
         assert_eq!(b.entnahme_erlaubt(Art::Agent, 99), Ok(()), "Nummer nicht auf dem Board");
         b.spalten[0].eigentuemer_unbekannt = Some("chef".into());
@@ -973,7 +977,7 @@ mod tests {
             let mut b = b();
             b.spalten[0].eigentuemer = None;
             b.eigentuemer_roh = vec![eintrag.clone()];
-            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre { spalte: eintrag.schluessel.clone().unwrap_or_default(), nummer: 1 }), "{eintrag:?}");
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre::Board { nummer: 1 }), "{eintrag:?}");
             assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()), "{eintrag:?}: Mensch frei");
         }
         for wert in ["agent", "chef"] {
@@ -992,7 +996,7 @@ mod tests {
         b.spalten[0].aufgaben = vec![1];
         b.spalten[1].aufgaben = vec![1];
         b.spalten[1].eigentuemer = Some(Eigentuemer::Human);
-        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre { spalte: "Z".into(), nummer: 1 }));
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre::Spalte { spalte: "Z".into(), nummer: 1 }));
         assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()));
     }
 

@@ -151,6 +151,30 @@ fn verboten(nummer: u32) -> Value {
     json!({"fehler": "Spalte „Eingang“ gehört dem Menschen", "spalte": "Eingang", "nummer": nummer})
 }
 
+/// M1 (Rechtschreib-Review #26, Abnahme-Probe): ein `human` meinender, an keine Spalte gebundener
+/// `column-owner`-Eintrag sperrt das ganze Board; die 403 nennt dann keine Spalte, sondern den board-weiten Fall
+/// (R00120, PO Z. 187). Eine existierende Menschen-Spalte behält den Wortlaut aus R00097.
+#[tokio::test]
+async fn board_weite_403_meldung_nennt_keine_spalte() {
+    let board_weit = "Ein Eintrag unter `column-owner` gehört dem Menschen, ist aber keiner Spalte zuzuordnen — Agenten sind auf dem ganzen Board gesperrt";
+    for (name, vorspann) in [("skalar", "---\ncolumn-owner: human\n---\n"), ("verwaister Schlüssel", "---\ncolumn-owner:\n  eingang: human\n---\n")] {
+        let tmp = tempfile::tempdir().unwrap();
+        ordner(tmp.path(), &[("fabrik", &fabrik_mit(vorspann))]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        for (weg_nr, wozu) in [(0usize, "archivieren"), (1, "vom Board nehmen")] {
+            let (s, r) = weg(weg_nr, &lauf.adresse, "fabrik").await;
+            assert_eq!(s, 403, "{name}/{wozu}: {r}");
+            assert_eq!(r["fehler"], json!(board_weit), "{name}/{wozu}: board-weiter Wortlaut: {r}");
+            assert_eq!(r["spalte"], json!(""), "{name}/{wozu}: ohne Spaltenbezug bleibt `spalte` leer: {r}");
+        }
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    ordner(tmp.path(), &[("fabrik", &fabrik_mit("---\ncolumn-owner:\n  Eingang: human\n---\n"))]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, r) = weg(0, &lauf.adresse, "fabrik").await;
+    assert_eq!((s, r.clone()), (403, verboten(1)), "die Menschen-Spalte nennt weiter die Spalte");
+}
+
 /// Kontrollpaar: der Mensch kommt auf jedem Weg durch; P0 als Agent ebenso (die Probe misst).
 #[tokio::test]
 async fn mensch_und_kein_eigentuemer_kommen_durch() {

@@ -4,7 +4,7 @@
 //! vor der Grenzprüfung, also 403 vor 409.
 
 use crate::fehler::Fehler;
-use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Grenzverletzungen, Person};
+use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Entnahmesperre, Grenzverletzungen, Person};
 use crate::pruefungen::Warnung;
 use std::collections::BTreeSet;
 
@@ -24,12 +24,24 @@ pub(crate) fn zug_mit_rueckkehr_pruefen(art: Art, vorher: &Board, nachher: &Boar
     zugregeln(art, &nachher.belegung(archiviert_nachher).grenzverletzungen(&vorher.belegung(archiviert_vorher)))
 }
 
-/// Agent: die erste Karte in Anfragereihenfolge, die in einer Menschen-Spalte von `vorher` liegt, als `Verboten`.
-/// Mensch: nie gesperrt.
+/// Meldung der board-weiten fail-safe Sperre (R00120, PO Z. 187): der `human` meinende Eintrag hängt an keiner
+/// Spalte, deshalb nennt die 403 keine.
+const BOARD_WEIT: &str = "Ein Eintrag unter `column-owner` gehört dem Menschen, ist aber keiner Spalte zuzuordnen — Agenten sind auf dem ganzen Board gesperrt";
+
+/// Agent: die erste Karte in Anfragereihenfolge, die in einer Menschen-Spalte von `vorher` liegt, als `Verboten`;
+/// bei einem board-weiten fail-safe-Eintrag nennt die Meldung keine Spalte (R00120, PO Z. 187). Mensch: nie gesperrt.
 pub(crate) fn entnahme_pruefen(art: Art, vorher: &Board, entnommen: &[u32]) -> Result<(), Fehler> {
     match entnommen.iter().find_map(|n| vorher.entnahme_erlaubt(art, *n).err()) {
-        Some(sperre) => Err(Fehler::Verboten { meldung: format!("Spalte „{}“ gehört dem Menschen", sperre.spalte), spalte: sperre.spalte, nummer: sperre.nummer }),
+        Some(sperre) => Err(verboten(sperre)),
         None => Ok(()),
+    }
+}
+
+/// Die 403 aus einer Entnahmesperre (ADR-0003): eine Menschen-Spalte nennt ihren Namen, der board-weite Fall keinen.
+fn verboten(sperre: Entnahmesperre) -> Fehler {
+    match sperre {
+        Entnahmesperre::Spalte { spalte, nummer } => Fehler::Verboten { meldung: format!("Spalte „{spalte}“ gehört dem Menschen"), spalte, nummer },
+        Entnahmesperre::Board { nummer } => Fehler::Verboten { meldung: BOARD_WEIT.into(), spalte: String::new(), nummer },
     }
 }
 
