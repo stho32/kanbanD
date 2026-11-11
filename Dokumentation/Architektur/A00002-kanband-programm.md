@@ -22,7 +22,6 @@ ausgenommen:
   - src/phasen.rs
   - src/pruefungen.rs
   - src/uhr.rs
-  - src/verlauf.rs
   - src/wbs.rs
   - src/wbs_datei.rs
 verwandt: []
@@ -50,6 +49,7 @@ Ein Rust-Prozess (axum, tokio) bedient je gestartetem Ordner alle Kanäle — Ob
 - [A00007 Git](A00007-git.md)
 - [A00008 Wächter](A00008-waechter.md)
 - [A00009 Oberfläche](A00009-oberflaeche.md)
+- [A00010 Verlauf](A00010-verlauf.md)
 - Crates: axum, tokio, notify, serde/serde_yaml, utoipa, chrono
 
 ## Entscheidungen
@@ -60,5 +60,6 @@ Ein Rust-Prozess (axum, tokio) bedient je gestartetem Ordner alle Kanäle — Ob
 
 ## Notizen / Quellen
 
-- `ausgenommen`: Start (`src/start/`), Ablage (`src/ablage.rs`, Lesen/Schreiben im Ordner), Fehlerarten und die Fachmodule Berichte, Herkunft, Phasen, Prüfungen, Uhr, Verlauf, WBS sind im Startmodell bewusst noch keinem Kind zugeordnet; sie werden Bausteine, sobald eine Karte sie ändert.
+- `ausgenommen`: Start (`src/start/`), Ablage (`src/ablage.rs`, Lesen/Schreiben im Ordner), Fehlerarten und die Fachmodule Berichte, Herkunft, Phasen, Prüfungen, Uhr, WBS sind im Startmodell bewusst noch keinem Kind zugeordnet; sie werden Bausteine, sobald eine Karte sie ändert.
+- nachgeführt 2026-11-12 nach R00123/R00124 (ADR-0021): `src/verlauf.rs` ist kein `ausgenommen`-Eintrag mehr, sondern der neue Baustein [A00010 Verlauf](A00010-verlauf.md) — der Karten-Verlauf (R00123) ändert ihn erheblich (neue Einträge `Kartenart`, `KartenEintrag`, `Kartenverlauf`), damit greift die Regel „Bausteine, sobald eine Karte sie ändert“.
 - Die Oberfläche `web/` ist per `include_bytes!` eingebettet (`src/web/statisch.rs`): eine Änderung an `web/` wird erst nach neuem Build sichtbar.
