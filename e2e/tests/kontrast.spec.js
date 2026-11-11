@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, mutanteEinsetzen } = require('./hilfen');
 const { ansichtenDerAnwendung } = require('./ansichten');
 
 const THEMEN = ['light', 'dark'];
@@ -499,30 +499,39 @@ test.describe('R00107 Kontrast', () => {
 
 /**
  * R00139 (Karte #50, ADR-0011 Nachtrag N1): Text auf einer eigenen Nutzerfarbe trägt `--kd-text`, nicht `--kd-muted` — dieselbe Regel,
- * die das Preisetikett schon trägt. Gemessen wird die Zeile r3 der Karte (Σ-Zeit, Datum, Herkunft): eine eigene Klassenfarbe `#ffffff`
- * gegen ein Gegenstück der Palettenklasse `bug`, beide Themen. Eigene Farben liegen außerhalb der Paartabelle (Regel 7); geprüft wird
- * nur die Schriftfarbe am gezeichneten Element (Weiß 30 % über `--kd-surface` im Dunkelthema: `--kd-muted` 2,571, `--kd-text` 4,677).
+ * die das Preisetikett schon trägt. Gemessen wird die Zeile r3 der Karte (Σ-Zeit, Datum, Herkunft), dazu Kartennummer und der Titel
+ * einer fertigen Karte: eine eigene Klassenfarbe `#ffffff` gegen ein Gegenstück der Palettenklasse `bug`, beide Themen. Eigene Farben
+ * liegen außerhalb der Paartabelle (Regel 7); geprüft wird nur die Schriftfarbe am gezeichneten Element (Weiß 30 % über
+ * `--kd-surface` im Dunkelthema: `--kd-muted` 2,571, `--kd-text` 4,677).
+ * Nacharbeit #50n: die Herkunft trägt in der Karte eine auflösbare Quelle (`origins: [I0005]`, `sources.wbs`) und ist damit ein `a.org`
+ * — gemessen wird auch ihr Zeige-Zustand (`--kd-accent` mit `--kd-on-accent`): die Ruhe-Regel dieses Blocks (Spezifität 0,5,0) schlug
+ * vorher `a.org:hover` und stellte `--kd-text` auf `--kd-accent` (2,706 hell / 3,707 dunkel).
  */
 test.describe('R00139 Text auf eigener Klassenfarbe', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
   let k;
-  /** Grundbestand: #1 mit eigener Klassenfarbe `#ffffff` (getönter Grund), #2 als Palettenklasse `bug`, sonst gleich; je 46 Minuten gebucht. */
+  /** Grundbestand: #1 mit eigener Klassenfarbe `#ffffff`, 46 Minuten gebucht und auflösbarer Herkunft I0005; #2 als Palettenklasse `bug`
+      ohne Herkunft; #3 mit eigener Farbe in „Erledigt“ (fertig); #4 mit eigener Farbe und Herkunft „ohne Herkunft“ (`.org.leer`). */
   const EIGEN = () => ({
     'kanbanD.md': `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses:\n  bug: {label: Fehler, color: red}\n  eigen: {label: Eigen, color: '#ffffff'}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n---\n`,
-    'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
-    'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\nclass: eigen\ndue: ${inTagen(3)}\n---\n\`\`\`kanbanD-time\n2026-10-17 09:00 · 2026-10-17 09:46 · st\n\`\`\`\n`,
+    'plan/wbs.md': '# WBS\n\n| ID | Ebene | Eltern | Name | Status | Braucht |\n|---|---|---|---|---|---|\n| I0005 | Interaction | D0001 | Anlegen | gruen | |\n',
+    'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n- #4\n\n## In Arbeit\n\n## Erledigt\n\n- #3\n',
+    'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\nclass: eigen\norigins: [I0005]\ndue: ${inTagen(3)}\n---\n\`\`\`kanbanD-time\n2026-10-17 09:00 · 2026-10-17 09:46 · st\n\`\`\`\n`,
     'aufgaben/0002-zwei.md': `---\nid: 2\ntitle: zwei\nclass: bug\ndue: ${inTagen(3)}\n---\n\`\`\`kanbanD-time\n2026-10-17 09:00 · 2026-10-17 09:46 · st\n\`\`\`\n`,
+    'aufgaben/0003-drei.md': `---\nid: 3\ntitle: drei\nclass: eigen\ndue: ${inTagen(3)}\n---\n`,
+    'aufgaben/0004-vier.md': `---\nid: 4\ntitle: vier\nclass: eigen\ndue: ${inTagen(3)}\n---\n`,
   });
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
+    await mutanteEinsetzen(context);
     k = await kanbanStarten(einrichten(EIGEN()));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await liveBereit(page);
-    await expect(page.locator('.ka')).toHaveCount(2);
+    await expect(page.locator('.ka')).toHaveCount(4);
   });
   test.afterEach(() => k.stoppen());
 
-  /** Die gemessenen Elemente der Zeile r3: Σ-Zeit, Datum und Herkunft („ohne Herkunft“). */
+  /** Die gemessenen Elemente der Zeile r3: Σ-Zeit, Datum und Herkunft (Knoten I0005). */
   const r3Texte = karte => [
     ['Σ-Zeit', karte.locator('.r3 .sum')],
     ['Datum', karte.locator('.r3 .due')],
@@ -544,15 +553,80 @@ test.describe('R00139 Text auf eigener Klassenfarbe', () => {
   }
 
   test('US-1/US-2: Σ-Zeit, Datum und Herkunft auf eigener Klassenfarbe #ffffff tragen --kd-text und halten 4,5:1, beide Themen', async ({ page }) => {
-    const eigen = page.locator('.ka[data-eigen]');
+    const eigen = page.locator('.ka[data-eigen][data-id="1"]');
     await expect(eigen).toHaveCount(1);
     await expect(eigen.locator('.r3 .sum')).toHaveText('Σ 0:46');
-    await expect(eigen.locator('.r3 .org')).toHaveText('ohne Herkunft');
+    await expect(eigen.locator('.r3 .org')).toHaveText('I0005');
     const gemessen = await r3InBeidenThemen(page, eigen, '--kd-text');
     // Zuerst der Grund der Nutzerin: mindestens 4,5:1 (WCAG 2.1 SC 1.4.3), heute dunkel 2,571
     for (const m of gemessen) expect(m.wert, `${m.beschriftung}: Kontrast ${komma(m.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
     // Dann die festgelegte Schriftfarbe auf eigener Farbe (ADR-0011 Nachtrag N1)
     for (const m of gemessen) expect(m.farbe, `${m.beschriftung}: Schriftfarbe ist --kd-text`).toEqual(m.verlangt);
+    // Die Herkunft ohne Quelle (`.org.leer`, „ohne Herkunft“) bleibt als eigener Fall gemessen — sie trug vor der Nacharbeit die Probe der Karte.
+    const leer = page.locator('.ka[data-eigen][data-id="4"] .r3 .org');
+    await expect(leer).toHaveText('ohne Herkunft');
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const wert = await kontrastAm(leer);
+      expect(wert, `${t} Herkunft ohne Quelle: Kontrast ${komma(wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
+      expect(await pixelVon(page, leer, 'color'), `${t} Herkunft ohne Quelle: Schriftfarbe ist --kd-text`)
+        .toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-text')));
+    }
+  });
+
+  test('Zeige-Zustand der Herkunft: Grund --kd-accent, Schrift --kd-on-accent, mindestens 4,5, danach wieder --kd-text, beide Themen', async ({ page }) => {
+    const org = page.locator('.ka[data-eigen][data-id="1"] a.org');
+    await expect(org).toHaveCount(1);
+    await expect(org).toHaveText('I0005');
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const ruhe = {
+        schrift: await pixelVon(page, org, 'color'),
+        verlangt: await farbPixel(page, await tokenFarbe(page, '--kd-text')),
+        wert: await kontrastAm(org),
+      };
+      expect(ruhe.wert, `${t} Ruhe: Kontrast ${komma(ruhe.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
+      expect(ruhe.schrift, `${t} Ruhe: Schrift ist --kd-text`).toEqual(ruhe.verlangt);
+      await org.hover();
+      await farbuebergaengeAbwarten(page);
+      const zeige = {
+        grund: await pixelVon(page, org, 'backgroundColor'),
+        grundVerlangt: await farbPixel(page, await tokenFarbe(page, '--kd-accent')),
+        schrift: await pixelVon(page, org, 'color'),
+        schriftVerlangt: await farbPixel(page, await tokenFarbe(page, '--kd-on-accent')),
+        wert: await kontrastAm(org),
+      };
+      expect(zeige.wert, `${t} Zeigen: Kontrast ${komma(zeige.wert)} auf --kd-accent`).toBeGreaterThanOrEqual(MASS);
+      expect(zeige.grund, `${t} Zeigen: Grund ist --kd-accent`).toEqual(zeige.grundVerlangt);
+      expect(zeige.schrift, `${t} Zeigen: Schrift ist --kd-on-accent`).toEqual(zeige.schriftVerlangt);
+      await page.mouse.move(0, 0);
+      await farbuebergaengeAbwarten(page);
+      const nach = { schrift: await pixelVon(page, org, 'color'), wert: await kontrastAm(org) };
+      expect(nach.wert, `${t} nach dem Zeigen: Kontrast ${komma(nach.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
+      expect(nach.schrift, `${t} nach dem Zeigen: Schrift ist wieder --kd-text`).toEqual(ruhe.verlangt);
+    }
+  });
+
+  test('Kartennummer und Titel der fertigen Karte auf eigener Farbe tragen --kd-text und halten 4,5:1, beide Themen', async ({ page }) => {
+    const orte = [
+      ['Kartennummer', page.locator('.ka[data-eigen][data-id="1"] .id')],
+      ['Titel der fertigen Karte', page.locator('.ka.fertig[data-eigen] .t')],
+    ];
+    await expect(orte[0][1]).toHaveText('#1');
+    await expect(orte[1][1]).toHaveText('drei');
+    // dunkel zuerst: dort liegt der Befund (--kd-muted auf eigener heller Farbe 2,585)
+    for (const t of ['dark', 'light']) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const verlangt = await farbPixel(page, await tokenFarbe(page, '--kd-text'));
+      for (const [name, ort] of orte) {
+        const wert = await kontrastAm(ort);
+        expect(wert, `${t} ${name}: Kontrast ${komma(wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
+        expect(await pixelVon(page, ort, 'color'), `${t} ${name}: Schriftfarbe ist --kd-text`).toEqual(verlangt);
+      }
+    }
   });
 
   test('Gegenprobe US-3: die Karte der Palettenklasse bug behält --kd-muted, beide Themen', async ({ page }) => {
@@ -562,6 +636,11 @@ test.describe('R00139 Text auf eigener Klassenfarbe', () => {
     const gemessen = await r3InBeidenThemen(page, palette, '--kd-muted');
     for (const m of gemessen) expect(m.wert, `${m.beschriftung}: Kontrast ${komma(m.wert)}`).toBeGreaterThanOrEqual(MASS);
     for (const m of gemessen) expect(m.farbe, `${m.beschriftung}: Schriftfarbe bleibt --kd-muted`).toEqual(m.verlangt);
+    // Kartennummer bleibt in der Palettenfarbe bei der geprüften Schrift (Paar --kd-c-* ↔ --kd-muted); der Titel trägt den geerbten Textton
+    const muted = await farbPixel(page, await tokenFarbe(page, '--kd-muted'));
+    const text = await farbPixel(page, await tokenFarbe(page, '--kd-text'));
+    expect(await pixelVon(page, palette.locator('.id'), 'color'), 'Kartennummer der Palettenkarte bleibt --kd-muted').toEqual(muted);
+    expect(await pixelVon(page, palette.locator('.t'), 'color'), 'Titel der Palettenkarte trägt den geerbten Textton').toEqual(text);
   });
 });
 
