@@ -547,6 +547,93 @@ body{height:auto;overflow:visible}
 .kt-tab th,.kt-tab td{border:1px solid var(--kd-line);padding:3px 8px;text-align:left;vertical-align:top}
 .kt-tab th{background:var(--kd-sunken);font-weight:600}
 .kt-tab td.z{font-family:var(--kd-mono);text-align:right;white-space:nowrap}
+
+/* ── Zustand „Board verwalten“ (R00128, I0119, ADR-0022) — Werte aus kd-tokens.css, Umschalter/Pop/Liste/Zeile aus web/kd-app.css, Dialog als wiederverwendbares alertdialog-Primitiv (#36/R00141) ── */
+.bv-zustand{width:1440px;padding:48px 0 32px;background:var(--kd-bg)}
+.bv-cap{padding:0 24px 16px;font:600 22px/1.2 var(--kd-font);color:var(--kd-text)}
+.bv-cap small{display:block;font:400 14px/1.45 var(--kd-font);color:var(--kd-muted);margin-top:4px;max-width:1330px}
+.bv-thema{background:var(--kd-bg);color:var(--kd-text);padding:12px 0 20px;box-shadow:0 0 0 1px var(--kd-line-strong);margin-bottom:32px;font-size:13px;line-height:1.4;--kd-warn:oklch(0.52 0.16 30)}
+.bv-thema.dunkel{color-scheme:dark;--kd-bg:oklch(0.2 0.012 255);--kd-surface:oklch(0.25 0.014 255);--kd-sunken:oklch(0.17 0.01 255);--kd-line:oklch(0.33 0.016 255);--kd-line-strong:oklch(0.42 0.018 255);--kd-text:oklch(0.92 0.008 250);--kd-muted:oklch(0.74 0.014 250);--kd-faint:oklch(0.62 0.014 250);--kd-head:oklch(0.15 0.015 255);--kd-head-line:oklch(0.3 0.02 255);--kd-accent:oklch(0.56 0.13 255);--kd-accent-weak:oklch(0.32 0.06 255);--kd-accent-ink:oklch(0.84 0.08 255);--kd-warn:oklch(0.72 0.16 30);--kd-c-amber:oklch(0.31 0.045 75);--kd-c-grey:oklch(0.3 0.006 250);--kd-c-grey-line:oklch(0.66 0.012 250);--kd-c-red:oklch(0.31 0.045 27);--kd-c-red-line:oklch(0.72 0.14 27);--kd-shadow:0 2px 8px oklch(0 0 0 / .5);--kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6);--kd-scrim:oklch(0 0 0 / .55)}
+.bv-titel{padding:0 16px 6px;font:600 16px/1.3 var(--kd-font)}
+.bv-teil{padding:12px 16px 0;font-size:12px;color:var(--kd-muted);max-width:1330px}
+.bv-teil b,.bv-teil .mono{color:var(--kd-text)}
+.bv-zeile{display:flex;gap:16px;padding:10px 16px 0;align-items:flex-start;flex-wrap:wrap}
+.bv-panel{position:relative;background:var(--kd-surface);border:1px solid var(--kd-line-strong);padding-bottom:10px}
+.bv-pcap{padding:6px 8px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.bv-pcap b{color:var(--kd-text)}
+/* Umschalter in der Kopfzeile (Kontext, Form aus web/kd-app.css) */
+.bv-kopf{display:flex;align-items:center;height:40px;background:var(--kd-head);color:var(--kd-head-text);padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-head-line)}
+.bv-kopf .kz-btn{background:var(--kd-head-line);border-color:var(--kd-head-muted)}
+/* Popover „BOARDS“ statisch gezeichnet; im Bau .pop#pop (fixed, web/ansicht.js) */
+.bv-buehne{position:relative;padding:8px}
+.bv-pop{position:relative;z-index:2;width:300px;max-height:none;overflow:visible}
+.bv-zeileb{display:flex;align-items:stretch;border-bottom:1px solid var(--kd-line)}
+.bv-zeileb .iz{flex:1;min-width:0;border-bottom:0}
+.bv-drei{flex:none;width:30px;display:grid;place-items:center;border:0;border-left:1px solid var(--kd-line);background:none;color:var(--kd-muted);cursor:pointer}
+.bv-drei:hover{background:var(--kd-accent-weak);color:var(--kd-text)}
+.bv-drei.auf{background:var(--kd-accent-weak);color:var(--kd-text);box-shadow:inset 3px 0 0 var(--kd-accent)}
+.bv-drei.fokus{outline:2px solid var(--kd-accent);outline-offset:-2px}
+/* Zeilenmenü (role=menu) */
+.bv-menue{position:absolute;left:280px;top:52px;z-index:3;width:196px;max-height:none;overflow:visible;padding:0}
+.bv-menue.rechts{left:auto;right:8px}
+.bv-e{display:flex;align-items:center;gap:8px;width:100%;height:30px;padding:0 var(--kd-s4);border:0;background:none;font:inherit;color:var(--kd-text);text-align:left;cursor:pointer}
+.bv-e+.bv-e{border-top:1px solid var(--kd-line)}
+.bv-e:hover,.bv-e.fokus{background:var(--kd-accent-weak)}
+.bv-e.fokus{outline:2px solid var(--kd-accent);outline-offset:-2px}
+.bv-gefahr{color:var(--kd-warn)}
+/* Umbenennen inline */
+.bv-inp{flex:1;min-width:0;height:30px;font-weight:600}
+.bv-inp.fokus{outline:2px solid var(--kd-accent);outline-offset:-1px}
+.bv-edit .btn-sym{height:30px;width:30px;border-color:transparent}
+.bv-luecke{font-style:italic;color:var(--kd-muted)}
+.bv-hinweis{padding:6px var(--kd-s4) 8px;font-size:11px;line-height:1.4;color:var(--kd-muted)}
+/* Archiv-Abschnitt (M5) */
+.bv-arch{border-top:1px solid var(--kd-line);background:var(--kd-bg)}
+.bv-arch>summary{display:flex;align-items:center;height:28px;padding:0 var(--kd-s4);font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);cursor:pointer;list-style:none}
+.bv-arch>summary::-webkit-details-marker{display:none}
+.bv-arch>summary::before{content:"▸";margin-right:6px;color:var(--kd-faint)}
+.bv-arch[open]>summary::before{content:"▾"}
+.bv-archz{display:flex;flex-direction:column;gap:2px;padding:5px var(--kd-s4);background:var(--kd-c-grey);border-top:1px solid var(--kd-c-grey-line);font-size:12px}
+.bv-archz .l1{display:flex;align-items:center;gap:6px;min-height:20px}
+.bv-archz .l1 .mono{font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.bv-archz .l1 .bv-drei{margin-left:auto;border-left:0;height:22px}
+.bv-archz .l2{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--kd-muted)}
+.bv-archz .l2 .lnk{margin-left:auto;white-space:nowrap}
+/* alertdialog-Primitiv: Aufrufer-Name, -Rumpf, -Bestätigungswort; wiederverwendbar für #36/R00141 */
+.bv-scrim{padding:14px;background:var(--kd-scrim);display:flex;justify-content:center;align-items:flex-start;min-height:150px}
+.al-dialog{width:min(360px,100% - 32px);background:var(--kd-surface);border:1px solid var(--kd-line-strong);border-top:4px solid var(--kd-line-strong);box-shadow:var(--kd-shadow-mod);display:flex;flex-direction:column}
+.al-dialog.al-gefahr{border-top-color:var(--kd-warn)}
+.al-kopf{padding:12px var(--kd-s5) 0;font:600 14px/1.35 var(--kd-font);color:var(--kd-text)}
+.al-text{padding:6px var(--kd-s5) 12px;font-size:12.5px;line-height:1.5;color:var(--kd-text)}
+.al-text code{font-family:var(--kd-mono);font-size:11.5px;background:var(--kd-bg);padding:0 3px}
+.al-fuss{display:flex;gap:var(--kd-s3);justify-content:flex-end;padding:0 var(--kd-s5) var(--kd-s5);flex-wrap:wrap}
+.al-knopf{display:inline-flex;align-items:center;justify-content:center;min-block-size:var(--kd-ziel);padding:5px var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-surface);font:inherit;font-weight:500;color:var(--kd-text);cursor:pointer;white-space:nowrap}
+.al-knopf:hover{background:var(--kd-sunken)}
+.al-knopf.fokus{outline:2px solid var(--kd-accent);outline-offset:1px}
+.al-gefahr-knopf{color:var(--kd-warn);border-color:var(--kd-warn)}
+/* Leerer Zustand (M7) */
+.bv-leer .bv-kopf{border-bottom:0}
+.bv-leer-flaeche{min-height:158px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;background:var(--kd-sunken);border-top:1px solid var(--kd-line-strong)}
+.bv-leer-titel{font:600 15px/1.3 var(--kd-font);color:var(--kd-text)}
+.bv-leer-text{font-size:12px;color:var(--kd-muted);text-align:center;max-width:380px}
+/* Zielgröße: --kd-hof ist der geforderte Mindesttreffer (ADR-0012 Regel 3); der Rahmen ist der Trefferhof selbst */
+.bv-zielreihe{display:flex;gap:20px;padding:12px 12px 2px;align-items:center;flex-wrap:wrap}
+.bv-zielbox{display:inline-flex;align-items:center;justify-content:center;min-width:var(--kd-hof);min-height:var(--kd-hof);outline:1px dashed var(--kd-accent-ink)}
+.bv-ziel-lbl{font-size:10.5px;color:var(--kd-muted)}
+/* Meldungen */
+.bv-toast{position:static;left:auto;bottom:auto;transform:none;display:inline-flex;box-shadow:var(--kd-shadow)}
+/* Telefone */
+.bv-tels{display:flex;gap:24px;padding:10px 16px 0;align-items:flex-start;flex-wrap:wrap}
+.bv-tel{border:1px solid var(--kd-line-strong);background:var(--kd-bg);overflow:hidden}
+.bv-tel-kopf{height:28px;display:flex;align-items:center;padding:0 10px;background:var(--kd-head);color:var(--kd-head-text);font-weight:600;font-size:11.5px}
+.bv-tel-flaeche{padding:8px;background:var(--kd-surface)}
+.bv-noten{font-size:12.5px;line-height:1.5;color:var(--kd-text);max-width:1330px;padding:16px 24px 0}
+.bv-noten h3{margin:12px 0 4px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.bv-noten ul{margin:0;padding-left:18px}
+.bv-tab{border-collapse:collapse;font-size:12px;margin:4px 0 8px}
+.bv-tab th,.bv-tab td{border:1px solid var(--kd-line);padding:3px 8px;text-align:left;vertical-align:top}
+.bv-tab th{background:var(--kd-sunken);font-weight:600}
+.bv-tab td.z{font-family:var(--kd-mono);text-align:right;white-space:nowrap}
 </style>
 </helmet>
 </head>
@@ -856,5 +943,373 @@ limits:
 <li>Freigabe dieses Zustands durch den Betreiber (R00107 „Gestaltung“); B0393 wartet darauf.</li>
 <li>Hover und offener Ich-Knopf (<span class="mono">.kz-btn:hover</span>, <span class="mono">.kz-btn.auf</span> → <span class="mono">--kd-head-line</span>) sind nicht Teil von R00107; auf der hellen Leiste läge die Schrift dann auf einer dunklen Fläche.</li>
 </ul></div></section>
+<section class="bv-zustand" id="board-verwalten">
+<div class="bv-cap">Zustand „Board verwalten“<small>R00128 · I0119 (ADR-0022, Option A: Umbenennen ändert nur den Titel, der Slug bleibt; Archivieren setzt <span class="mono">archived: &lt;Datum&gt;</span>, die Datei bleibt; Löschen entfernt die Board-Datei samt Berichte-Cache, die Aufgaben bleiben). Der Board-Umschalter der Kopfzeile bekommt <b>je Zeile einen eigenen ⋮-Aktionsauslöser</b> (<span class="mono">aria-haspopup="menu"</span>, Name „Aktionen für Board ‚&lt;Titel&gt;‘“, kein Knopf im Knopf); Umbenennen geschieht <b>inline</b> im Umschalter, Archivieren und Löschen über eine gemeinsame <b><span class="mono">alertdialog</span></b>-Rückfrage (Aufrufer-Name, -Rumpf, -Bestätigungswort), die #36/R00141 unverändert wiederverwendet. Gezeigt in Hell und Dunkel: offener Umschalter mit Zeilenmenü, Umbenennen vorbefüllt (Fokusring) und Feldfehler, Archiv-Abschnitt, Lösch- und Archivdialog, leerer Zustand, Fokus- und Zielgrößen-Beleg, Rückmeldungen sowie 414 und 320 px ohne Querscrollen. Daten aus dem Grundbestand von R00128/AK: Boards „Entwicklung“ (<span class="mono">entwicklung.md</span>, offen) und „Test“ (<span class="mono">test.md</span>, <span class="mono">archived: 2026-11-11</span>); heute der 11.11.2026.</small></div>
+
+<div class="bv-thema hell">
+<div class="bv-titel">Hell</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:660px">
+<div class="bv-pcap"><b>a)</b> Offener Umschalter „BOARDS“ — je Zeile Name/Wechsel (bleibt <span class="mono">board-wahl</span>) und eigener ⋮; Zeilenmenü von „Entwicklung“ (dem offenen Board) offen</div>
+<div class="bv-kopf"><button class="kz-btn kz-board auf" id="t-board" data-act="pop" data-arg="board" aria-haspopup="dialog" aria-expanded="true" title="/Users/stefan/boards"><span class="kz-board-name">Entwicklung</span> ▾</button></div>
+<div class="bv-buehne">
+<div class="pop bv-pop" id="pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an" data-act="board-wahl" data-arg="entwicklung">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-expanded="true" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz" data-act="board-wahl" data-arg="test">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-expanded="false" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" id="board-neu" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div>
+</div>
+<div class="pop bv-menue" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘">
+<button type="button" class="bv-e" role="menuitem">Umbenennen</button>
+<button type="button" class="bv-e" role="menuitem">Archivieren</button>
+<button type="button" class="bv-e bv-gefahr" role="menuitem">Löschen</button>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>b)</b> Umbenennen inline — mit „Entwicklung“ vorbefüllt, Fokusring <span class="mono">--kd-accent</span>; Enter bestätigt, Esc verwirft ohne Schreiben</div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb bv-edit"><input class="inp bv-inp fokus" value="Entwicklung" aria-label="Neuer Name für Board ‚Entwicklung‘"><button type="button" class="btn btn-sym" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" aria-label="Verwerfen (Esc)">✕</button></div>
+<div class="bv-zeileb"><button type="button" class="iz" data-act="board-wahl" data-arg="test">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-expanded="false" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+</div>
+<div class="bv-hinweis">Enter bestätigt, <kbd>Esc</kbd> verwirft; die Datei heißt weiter <span class="mono">boards/entwicklung.md</span> — der Slug bleibt (ADR-0022).</div>
+</div>
+</div>
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>b2)</b> Feldfehler (400, leerer Titel) — Meldung des Servers in <span class="mono">popFehler</span> (<span class="mono">role="alert"</span>), das Feld bleibt offen</div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb bv-edit"><input class="inp bv-inp fokus" value="" aria-label="Neuer Name für Board ‚Entwicklung‘" aria-invalid="true" aria-describedby="bv-fehler-400"><button type="button" class="btn btn-sym" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" aria-label="Verwerfen (Esc)">✕</button></div>
+<div class="warnh" id="bv-fehler-400" role="alert">Der Titel darf nicht leer sein. <span class="bv-luecke">(Wortlaut aus der Serverantwort, 400)</span></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:520px">
+<div class="bv-pcap"><b>c)</b> Archiv-Abschnitt „ARCHIVIERT (1)“ — Datum, Slug als Hilfstext und „wieder öffnen“ (M5)</div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an" data-act="board-wahl" data-arg="entwicklung">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<details class="bv-arch" open>
+<summary>ARCHIVIERT (1)</summary>
+<div class="bv-archz"><div class="l1"><span class="bv-archname">Test</span><span class="muted mono">test.md</span><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div><div class="l2"><span>archiviert am 11.11.2026</span><button type="button" class="lnk" data-act="wieder-oeffnen" data-arg="test">wieder öffnen</button></div></div>
+</details>
+</div>
+</div>
+</div>
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>d)</b> Bestätigungsdialog Löschen („Test“) — <span class="mono">role="alertdialog" aria-modal</span>, Name „Test endgültig löschen“, Startfokus „Abbrechen“</div>
+<div class="bv-scrim">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="al-loesch-titel" aria-describedby="al-loesch-text">
+<div class="al-kopf" id="al-loesch-titel">Test endgültig löschen</div>
+<div class="al-text" id="al-loesch-text">Die Board-Datei <code>boards/test.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>e)</b> Bestätigungsdialog Archivieren („Test“) — dieselbe Form und Komponente, ungefährlicher Wortlaut</div>
+<div class="bv-scrim">
+<div class="al-dialog" role="alertdialog" aria-modal="true" aria-labelledby="al-arch-titel" aria-describedby="al-arch-text">
+<div class="al-kopf" id="al-arch-titel">Test archivieren</div>
+<div class="al-text" id="al-arch-text">Das Board <b>Test</b> wird archiviert. Es fällt aus der Liste; die Datei <code>boards/test.md</code> bleibt erhalten und lässt sich jederzeit wieder öffnen.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf">Archivieren</button></div>
+</div>
+</div>
+</div>
+<div class="bv-panel bv-leer" style="width:520px">
+<div class="bv-pcap"><b>f)</b> Leerer Zustand nach dem letzten Board — „Kein Board · neues anlegen“; das letzte Board darf weg (M7)</div>
+<div class="bv-kopf"><button class="kz-btn kz-board" data-act="pop" data-arg="board" aria-haspopup="dialog" aria-expanded="false"><span class="kz-board-name">kein Board</span> ▾</button></div>
+<div class="bv-leer-flaeche">
+<div class="bv-leer-titel">Kein Board · neues anlegen</div>
+<div class="bv-leer-text">Es gibt kein offenes Board. Ein neues entsteht als Datei <span class="mono">boards/&lt;slug&gt;.md</span>.</div>
+<input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards" style="width:280px">
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:660px">
+<div class="bv-pcap"><b>g)</b> Fokus- und Zielgrößen-Beleg — ⋮, Menüeintrag und Dialogknopf je ≥ <span class="mono">--kd-ziel</span> (fein 24 / Touch 48, ADR-0012 Regel 3); gestrichelt der geforderte Mindesttreffer</div>
+<div class="bv-teil">Fokusring 2 px <span class="mono">--kd-accent</span> am ⋮, am Menüeintrag und am Dialogknopf; die Fläche färbt sich beim Überfahren mit <span class="mono">--kd-accent-weak</span>.</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="bv-drei fokus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></span></span><span class="bv-ziel-lbl">⋮ fein · <span class="mono">--kd-ziel</span> 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="bv-drei"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></span></span><span class="bv-ziel-lbl">⋮ Touch · <span class="mono">--kd-ziel</span> 48 (≥ 44)</span>
+</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="bv-e fokus" style="width:auto">Umbenennen</span></span><span class="bv-ziel-lbl">Menüeintrag fein · 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="bv-e" style="width:auto">Löschen</span></span><span class="bv-ziel-lbl">Menüeintrag Touch · 48</span>
+</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="al-knopf fokus">Abbrechen</span></span><span class="bv-ziel-lbl">Dialogknopf fein · ≥ 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="al-knopf al-gefahr-knopf">endgültig löschen</span></span><span class="bv-ziel-lbl">Dialogknopf Touch · 48</span>
+</div>
+</div>
+<div class="bv-panel" style="width:420px">
+<div class="bv-pcap"><b>h)</b> Rückmeldung — Erfolg als Toast <span class="mono">role="status"</span> im Commit-Wortlaut (S2); Agent-Sperre 403 sichtbar, kein stiller Fehlschlag</div>
+<div class="bv-buehne">
+<div class="toast bv-toast" role="status">Board ‚Test‘ archiviert</div>
+<div class="pop bv-pop" style="width:100%;margin-top:10px">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="warnh" role="alert">Agenten dürfen dieses Board nicht löschen: Aufgabe #7 liegt in der Menschen-Spalte „Prüfen“. <span class="bv-luecke">(Wortlaut aus der Serverantwort, 403)</span></div>
+<div class="bv-hinweis" style="padding-top:8px">Dieselbe sichtbare Meldung erscheint bei einem defekten Board als 423 (S4).</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-tels">
+<div class="bv-tel" style="width:414px">
+<div class="bv-tel-kopf">414 px</div>
+<div class="bv-tel-flaeche">
+<div class="bv-kopf"><button class="kz-btn kz-board auf" aria-haspopup="dialog" aria-expanded="true"><span class="kz-board-name">Entwicklung</span> ▾</button></div>
+<div class="bv-buehne" style="padding:0">
+<div class="pop bv-pop" role="dialog" aria-label="Boards" style="width:100%">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+</div>
+<div class="pop bv-menue rechts" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><button type="button" class="bv-e">Umbenennen</button><button type="button" class="bv-e">Archivieren</button><button type="button" class="bv-e bv-gefahr">Löschen</button></div>
+</div>
+</div>
+</div>
+<div class="bv-tel" style="width:320px">
+<div class="bv-tel-kopf">320 px · Umschalter + Menü</div>
+<div class="bv-tel-flaeche">
+<div class="bv-buehne" style="padding:0">
+<div class="pop bv-pop" role="dialog" aria-label="Boards" style="width:288px">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<details class="bv-arch" open><summary>ARCHIVIERT (1)</summary><div class="bv-archz"><div class="l1"><span class="bv-archname">Test</span><span class="muted mono">test.md</span></div><div class="l2"><span>archiviert am 11.11.2026</span><button type="button" class="lnk">wieder öffnen</button></div></div></details>
+</div>
+<div class="pop bv-menue rechts" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><button type="button" class="bv-e">Umbenennen</button><button type="button" class="bv-e">Archivieren</button><button type="button" class="bv-e bv-gefahr">Löschen</button></div>
+</div>
+</div>
+</div>
+<div class="bv-tel" style="width:320px">
+<div class="bv-tel-kopf">320 px · Löschdialog</div>
+<div class="bv-tel-flaeche">
+<div class="bv-scrim" style="min-height:180px;padding:0">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="al-320-h-titel">
+<div class="al-kopf" id="al-320-h-titel">Test endgültig löschen</div>
+<div class="al-text">Die Board-Datei <code>boards/test.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="bv-thema dunkel">
+<div class="bv-titel">Dunkel</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:660px">
+<div class="bv-pcap"><b>a)</b> Offener Umschalter „BOARDS“ mit Zeilenmenü von „Entwicklung“ — dieselben Formen und Wortlaute wie in Hell</div>
+<div class="bv-kopf"><button class="kz-btn kz-board auf" aria-haspopup="dialog" aria-expanded="true"><span class="kz-board-name">Entwicklung</span> ▾</button></div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-expanded="true" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<div class="fuss">Alle Boards zeigen denselben Aufgabenbestand.</div>
+</div>
+<div class="pop bv-menue" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><button type="button" class="bv-e">Umbenennen</button><button type="button" class="bv-e">Archivieren</button><button type="button" class="bv-e bv-gefahr">Löschen</button></div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>b)</b> Umbenennen inline — vorbefüllt „Entwicklung“, Fokusring <span class="mono">--kd-accent</span></div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb bv-edit"><input class="inp bv-inp fokus" value="Entwicklung" aria-label="Neuer Name für Board ‚Entwicklung‘"><button type="button" class="btn btn-sym" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" aria-label="Verwerfen (Esc)">✕</button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+</div>
+</div>
+</div>
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>b2)</b> Feldfehler (400) in <span class="mono">popFehler</span> — <span class="mono">role="alert"</span>, das Feld bleibt offen</div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb bv-edit"><input class="inp bv-inp fokus" value="" aria-label="Neuer Name für Board ‚Entwicklung‘" aria-invalid="true" aria-describedby="bv-fehler-400-d"><button type="button" class="btn btn-sym" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" aria-label="Verwerfen (Esc)">✕</button></div>
+<div class="warnh" id="bv-fehler-400-d" role="alert">Der Titel darf nicht leer sein. <span class="bv-luecke">(Wortlaut aus der Serverantwort, 400)</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:520px">
+<div class="bv-pcap"><b>c)</b> Archiv-Abschnitt „ARCHIVIERT (1)“ — Datum und „wieder öffnen“ (M5)</div>
+<div class="bv-buehne">
+<div class="pop bv-pop" role="dialog" aria-label="Boards">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<details class="bv-arch" open>
+<summary>ARCHIVIERT (1)</summary>
+<div class="bv-archz"><div class="l1"><span class="bv-archname">Test</span><span class="muted mono">test.md</span><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div><div class="l2"><span>archiviert am 11.11.2026</span><button type="button" class="lnk">wieder öffnen</button></div></div>
+</details>
+</div>
+</div>
+</div>
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>d)</b> Bestätigungsdialog Löschen („Test“) — <span class="mono">role="alertdialog" aria-modal</span>, Startfokus „Abbrechen“</div>
+<div class="bv-scrim">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="al-loesch-d-titel" aria-describedby="al-loesch-d-text">
+<div class="al-kopf" id="al-loesch-d-titel">Test endgültig löschen</div>
+<div class="al-text" id="al-loesch-d-text">Die Board-Datei <code>boards/test.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:400px">
+<div class="bv-pcap"><b>e)</b> Bestätigungsdialog Archivieren („Test“) — gleiche Form, ungefährlicher Wortlaut</div>
+<div class="bv-scrim">
+<div class="al-dialog" role="alertdialog" aria-modal="true" aria-labelledby="al-arch-d-titel" aria-describedby="al-arch-d-text">
+<div class="al-kopf" id="al-arch-d-titel">Test archivieren</div>
+<div class="al-text" id="al-arch-d-text">Das Board <b>Test</b> wird archiviert. Es fällt aus der Liste; die Datei <code>boards/test.md</code> bleibt erhalten und lässt sich jederzeit wieder öffnen.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf">Archivieren</button></div>
+</div>
+</div>
+</div>
+<div class="bv-panel bv-leer" style="width:520px">
+<div class="bv-pcap"><b>f)</b> Leerer Zustand nach dem letzten Board — „Kein Board · neues anlegen“ (M7)</div>
+<div class="bv-kopf"><button class="kz-btn kz-board" aria-haspopup="dialog" aria-expanded="false"><span class="kz-board-name">kein Board</span> ▾</button></div>
+<div class="bv-leer-flaeche">
+<div class="bv-leer-titel">Kein Board · neues anlegen</div>
+<div class="bv-leer-text">Es gibt kein offenes Board. Ein neues entsteht als Datei <span class="mono">boards/&lt;slug&gt;.md</span>.</div>
+<input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards" style="width:280px">
+</div>
+</div>
+</div>
+<div class="bv-zeile">
+<div class="bv-panel" style="width:660px">
+<div class="bv-pcap"><b>g)</b> Fokus- und Zielgrößen-Beleg — ⋮, Menüeintrag und Dialogknopf je ≥ <span class="mono">--kd-ziel</span> (fein 24 / Touch 48)</div>
+<div class="bv-teil">Fokusring 2 px <span class="mono">--kd-accent</span>; die Fläche färbt sich beim Überfahren mit <span class="mono">--kd-accent-weak</span>.</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="bv-drei fokus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></span></span><span class="bv-ziel-lbl">⋮ fein · <span class="mono">--kd-ziel</span> 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="bv-drei"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></span></span><span class="bv-ziel-lbl">⋮ Touch · <span class="mono">--kd-ziel</span> 48</span>
+</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="bv-e fokus" style="width:auto">Umbenennen</span></span><span class="bv-ziel-lbl">Menüeintrag fein · 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="bv-e" style="width:auto">Löschen</span></span><span class="bv-ziel-lbl">Menüeintrag Touch · 48</span>
+</div>
+<div class="bv-zielreihe">
+<span class="bv-zielbox" style="--kd-hof:24px"><span class="al-knopf fokus">Abbrechen</span></span><span class="bv-ziel-lbl">Dialogknopf fein · ≥ 24</span>
+<span class="bv-zielbox" style="--kd-hof:48px"><span class="al-knopf al-gefahr-knopf">endgültig löschen</span></span><span class="bv-ziel-lbl">Dialogknopf Touch · 48</span>
+</div>
+</div>
+<div class="bv-panel" style="width:420px">
+<div class="bv-pcap"><b>h)</b> Erfolg als Toast <span class="mono">role="status"</span> (S2); Agent-Sperre 403 sichtbar</div>
+<div class="bv-buehne">
+<div class="toast bv-toast" role="status">Board ‚Test‘ archiviert</div>
+<div class="pop bv-pop" style="width:100%;margin-top:10px">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="warnh" role="alert">Agenten dürfen dieses Board nicht löschen: Aufgabe #7 liegt in der Menschen-Spalte „Prüfen“. <span class="bv-luecke">(Wortlaut aus der Serverantwort, 403)</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bv-tels">
+<div class="bv-tel" style="width:414px">
+<div class="bv-tel-kopf">414 px</div>
+<div class="bv-tel-flaeche">
+<div class="bv-kopf"><button class="kz-btn kz-board auf" aria-haspopup="dialog" aria-expanded="true"><span class="kz-board-name">Entwicklung</span> ▾</button></div>
+<div class="bv-buehne" style="padding:0">
+<div class="pop bv-pop" role="dialog" aria-label="Boards" style="width:100%">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+</div>
+<div class="pop bv-menue rechts" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><button type="button" class="bv-e">Umbenennen</button><button type="button" class="bv-e">Archivieren</button><button type="button" class="bv-e bv-gefahr">Löschen</button></div>
+</div>
+</div>
+</div>
+<div class="bv-tel" style="width:320px">
+<div class="bv-tel-kopf">320 px · Umschalter + Menü</div>
+<div class="bv-tel-flaeche">
+<div class="bv-buehne" style="padding:0">
+<div class="pop bv-pop" role="dialog" aria-label="Boards" style="width:288px">
+<h4>BOARDS <span class="mono">boards/</span></h4>
+<div class="bv-zeileb"><button type="button" class="iz an">Entwicklung<span class="muted mono">entwicklung.md</span></button><button type="button" class="bv-drei auf" aria-haspopup="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="bv-zeileb"><button type="button" class="iz">Test<span class="muted mono">test.md</span></button><button type="button" class="bv-drei" aria-haspopup="menu" aria-label="Aktionen für Board ‚Test‘"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg></button></div>
+<div class="iz neu"><input class="inp" placeholder="Neues Board · Enter" aria-label="Name des neuen Boards"></div>
+<details class="bv-arch" open><summary>ARCHIVIERT (1)</summary><div class="bv-archz"><div class="l1"><span class="bv-archname">Test</span><span class="muted mono">test.md</span></div><div class="l2"><span>archiviert am 11.11.2026</span><button type="button" class="lnk">wieder öffnen</button></div></div></details>
+</div>
+<div class="pop bv-menue rechts" role="menu" aria-label="Aktionen für Board ‚Entwicklung‘"><button type="button" class="bv-e">Umbenennen</button><button type="button" class="bv-e">Archivieren</button><button type="button" class="bv-e bv-gefahr">Löschen</button></div>
+</div>
+</div>
+</div>
+<div class="bv-tel" style="width:320px">
+<div class="bv-tel-kopf">320 px · Löschdialog</div>
+<div class="bv-tel-flaeche">
+<div class="bv-scrim" style="min-height:180px;padding:0">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="al-320-d-titel">
+<div class="al-kopf" id="al-320-d-titel">Test endgültig löschen</div>
+<div class="al-text">Die Board-Datei <code>boards/test.md</code> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="bv-noten"><h3>FÜR DEN BAU</h3><ul>
+<li><b>Umschalter (<span class="mono">vBoardPop</span>, web/ansicht.js:342)</b>: je Board-Zeile ein flex-Kasten <span class="mono">.bv-zeileb</span> aus Wechselknopf (<span class="mono">.iz</span>, <span class="mono">data-act="board-wahl"</span> — bleibt unverändert) und eigenem ⋮-Auslöser <span class="mono">.bv-drei</span> (<span class="mono">button</span>, <span class="mono">aria-haspopup="menu"</span>, <span class="mono">aria-expanded</span>, Name „Aktionen für Board ‚&lt;Titel&gt;‘“, SVG <span class="mono">DREI_PUNKTE</span>). Kein Knopf im Knopf: Wechsel und Menü sind Geschwister.</li>
+<li><b>Zeilenmenü</b>: <span class="mono">role="menu"</span> je Zeile mit <span class="mono">role="menuitem"</span> „Umbenennen“, „Archivieren“ (in der Archivzeile „wieder öffnen“) und „Löschen“; „Löschen“ in <span class="mono">--kd-warn</span> (S1). Pfeiltasten, <span class="mono">Esc</span> gibt den Fokus an den ⋮-Auslöser zurück (M10); das ganze Muster wie <span class="mono">vMehrPop</span>/<span class="mono">menue.js</span>.</li>
+<li><b>Umbenennen (M10/S3)</b>: inline, mit dem heutigen Titel vorbefüllt (<span class="mono">.bv-inp</span>, Fokusring 2 px <span class="mono">--kd-accent</span>); <span class="mono">Enter</span> bestätigt (<span class="mono">PATCH {titel}</span>), <span class="mono">Esc</span> verwirft ohne Schreiben. Ein 400 erscheint als Feldfehler im vorhandenen <span class="mono">popFehler</span>-Kasten (<span class="mono">role="alert"</span>), das Feld bleibt offen. Der Slug bleibt — Datei, <span class="mono">#/board/&lt;slug&gt;</span> und <span class="mono">berichte/&lt;slug&gt;-fieber.md</span> unverändert (ADR-0022).</li>
+<li><b>Archiv-Abschnitt (M5)</b>: <span class="mono">&lt;details open&gt;</span> „ARCHIVIERT (n)“ unter der offenen Liste; je Eintrag Name, Slug als Hilfstext, „archiviert am &lt;Datum&gt;“ und die Aktion „wieder öffnen“ (<span class="mono">PATCH {archiviert:false}</span>); der Eintrag trägt zusätzlich einen ⋮-Auslöser (M1, in der Archivzeile „wieder öffnen“). Die Zeile nimmt das Aussehen der Karten-Archivleiste <span class="mono">.archbar</span> (<span class="mono">--kd-c-grey</span> / <span class="mono">--kd-c-grey-line</span>). Im 300 px breiten Umschalter steht der Eintrag <b>zweizeilig</b> (Name · Slug oben, Datum und „wieder öffnen“ unten), damit die Zeile ohne Querscrollen auskommt (gemessen bei 320 px).</li>
+<li><b><span class="mono">alertdialog</span>-Primitiv (<span class="mono">.al-dialog</span> …)</b>: gemeinsame Komponente mit <b>#36/R00141</b>; sie erhält <b>Aufrufer-Name</b> (zugänglicher Name „&lt;Titel&gt; archivieren“ / „&lt;Titel&gt; endgültig löschen“, M8), <b>-Rumpf</b> und <b>-Bestätigungswort</b>. <span class="mono">role="alertdialog" aria-modal="true"</span>, höchstens zwei Aktionen, Startfokus „Abbrechen“ (links), Rückgabe an den Auslöser, <span class="mono">Esc</span> = Abbrechen (M2/M3). Breite <span class="mono">min(360px, 100% − 32px)</span>, Text und Knöpfe brechen um (M9). Die Löschfassung trägt 4 px <span class="mono">--kd-warn</span> oben und den Bestätigungsknopf in <span class="mono">--kd-warn</span> (S1); die Archivfassung bleibt <span class="mono">--kd-line-strong</span>.</li>
+<li><b>Lösch-Wortlaut (M3, wörtlich)</b>: „Die Board-Datei <span class="mono">boards/&lt;slug&gt;.md</span> wird entfernt. Die Aufgaben bleiben erhalten; wiederherstellbar nur über die Git-Geschichte.“ Bestätigung „endgültig löschen“ — dieselbe Bezeichnung wie R00141. <b>Kein Undo</b> für das Löschen (M4); das Archiv hat „wieder öffnen“.</li>
+<li><b>Leerzustand und letztes Board (M7)</b>: fällt das offene Board aus der Liste, wechselt die Ansicht auf die erste verbleibende Zeile; gibt es keine, steht „Kein Board · neues anlegen“ mit dem Feld „Neues Board · Enter“; das letzte Board darf weg.</li>
+<li><b>Fokus (M6)</b>: nach dem Umbenennen oder wenn die Zeile verschwindet, fällt der Fokus nie auf <span class="mono">BODY</span> — auf die nächste Board-Zeile, sonst auf <span class="mono">#t-board</span>. <b>Rückmeldung (S2)</b>: jede Aktion bestätigt sich mit einem Toast <span class="mono">role="status"</span> im Commit-Wortlaut („Board ‚Test‘ archiviert“, „Board ‚Test‘ endgültig gelöscht“).</li>
+<li><b>Fehlerwege</b>: 403 <span class="mono">{fehler, spalte, nummer}</span> (Agent, Karte in einer Menschen-Spalte) und 423 (defektes Board) werden sichtbar gemeldet — kein stiller Fehlschlag (S4); ihr Wortlaut stammt aus der Serverantwort (im Bild als Lücke markiert).</li>
+<li><b>Zielgröße (S5)</b>: ⋮, jeder Menüeintrag und jeder Dialogknopf erreichen <span class="mono">--kd-ziel</span> (fein 24, Touch 48; ADR-0012 Regel 3) über eigene Höhe oder einen Trefferhof; der Fokusring liegt ringförmig am Element.</li>
+</ul>
+<h3>KONTRAST (WCAG, GERECHNET AUS DEN TOKENS, OKLCH → SRGB)</h3>
+<table class="bv-tab"><thead><tr><th>Paar</th><th>Maß</th><th>Hell</th><th>Dunkel</th></tr></thead><tbody>
+<tr><td>Zeilenname, Menüeintrag, Dialogkopf und -rumpf: <span class="mono">--kd-text</span> auf <span class="mono">--kd-surface</span></td><td>4,5</td><td class="z">16,21</td><td class="z">12,63</td></tr>
+<tr><td>Slug-Hilfstext, <span class="mono">.pop h4</span>, Hinweis: <span class="mono">--kd-muted</span> auf <span class="mono">--kd-surface</span></td><td>4,5</td><td class="z">6,44</td><td class="z">6,94</td></tr>
+<tr><td>Offene/gewählte Zeile: <span class="mono">--kd-text</span> auf <span class="mono">--kd-accent-weak</span></td><td>4,5</td><td class="z">13,40</td><td class="z">10,02</td></tr>
+<tr><td>Menüeintrag „Löschen“: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-surface</span></td><td>4,5</td><td class="z">5,88</td><td class="z">6,03</td></tr>
+<tr><td>„Löschen“ beim Überfahren: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-accent-weak</span></td><td>3</td><td class="z">4,86</td><td class="z">4,79</td></tr>
+<tr><td>Dialogknopf „endgültig löschen“: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-surface</span></td><td>4,5</td><td class="z">5,88</td><td class="z">6,03</td></tr>
+<tr><td>Feld- und Agentenmeldung: <span class="mono">--kd-text</span> auf <span class="mono">--kd-c-amber</span></td><td>4,5</td><td class="z">14,29</td><td class="z">10,45</td></tr>
+<tr><td>Archivzeile: <span class="mono">--kd-text</span> auf <span class="mono">--kd-c-grey</span></td><td>4,5</td><td class="z">13,59</td><td class="z">10,76</td></tr>
+<tr><td>Archivzeile Hilfstext: <span class="mono">--kd-muted</span> auf <span class="mono">--kd-c-grey</span></td><td>4,5</td><td class="z">5,40</td><td class="z">5,92</td></tr>
+<tr><td>„wieder öffnen“: <span class="mono">--kd-accent-ink</span> auf <span class="mono">--kd-c-grey</span></td><td>4,5</td><td class="z">8,36</td><td class="z">8,36</td></tr>
+<tr><td>⋮-Zeichen, Symbol: <span class="mono">--kd-muted</span> auf <span class="mono">--kd-surface</span></td><td>3</td><td class="z">6,44</td><td class="z">6,94</td></tr>
+<tr><td>Fokusring: <span class="mono">--kd-accent</span> gegen <span class="mono">--kd-surface</span></td><td>3</td><td class="z">5,95</td><td class="z">3,42</td></tr>
+<tr><td>Toast: <span class="mono">--kd-head-text</span> auf <span class="mono">--kd-head</span></td><td>4,5</td><td class="z">11,49</td><td class="z">16,02</td></tr>
+</tbody></table>
+<ul><li>Alle neuen Paare stammen unverändert aus <span class="mono">web/kd-tokens.css</span> (kein neuer Farbwert, ADR-0011); die Zahlen sind aus den Tokens gerechnet (oklch → sRGB → WCAG).</li><li>Grenze: der Fokusring <span class="mono">--kd-accent</span> auf einer <b>gewählten</b> Zeile (<span class="mono">--kd-accent-weak</span>) ergibt dunkel nur 2,72:1 — deshalb wird der ⋮-Fokus am nicht gewählten Eintrag gezeigt; in der gewählten Zeile trägt die Auswahl die Marke <span class="mono">inset 3px --kd-accent</span> und der Ring bleibt am Auslöser auf <span class="mono">--kd-surface</span>.</li></ul>
+<h3>OFFEN</h3><ul>
+<li><b>Bestätigungswort im Dialog.</b> Der Auftrag nennt den Löschknopf „Löschen“; R00128 (FA 12, AK 8, M3) und die geteilte Komponente mit R00141 fordern wörtlich <b>„endgültig löschen“</b>. Gezeichnet ist der Anforderungswortlaut; der Menüeintrag bleibt „Löschen“.</li>
+<li><b>Direkter „wieder öffnen“-Link und ⋮ am Archiv-Eintrag.</b> R00128 M5 verlangt die Aktion „wieder öffnen“ am Eintrag, M1 den ⋮-Auslöser je Zeile (in der Archivzeile „wieder öffnen“ im Menü). Gezeichnet sind beide; ob der direkte Link genügt, entscheidet die Freigabe.</li>
+<li><b>Wortlaute der Fehlermeldungen (400/403/423)</b> stammen aus der Serverantwort und sind im Bild als Lücke markiert; sie sind nicht Teil dieser Anforderung.</li>
+<li><b>Freigabe</b> dieses Zustands durch den product-owner vor dem Bau der Oberflächen-Bubbles (F0104/F0105); der Server-Teil (F0103) ist frei baubar.</li>
+</ul></div>
+</section>
 </body>
 </html>
