@@ -207,6 +207,8 @@ Der Auslöser ist der Beratungshinweis des product-owners vom 2026-11-03 (Karte 
 
 ## Notizen
 
+**Geteilte Dialogkomponente (nur Notiz, kein Umbau):** Die Rückfrage „endgültig löschen" ist eine **gemeinsame `role="alertdialog"`-Komponente**, die auch **R00128** (Board umbenennen, archivieren, löschen) für das Löschen eines Boards benutzt. Das Primitiv erhält Aufrufer-Titel, -rumpf und -bestätigungswort; R00141 setzt den Aufgaben-Wortlaut (unumkehrbar, wiederherstellbar nur über die Git-Historie), R00128 den Board-Wortlaut (Board-Datei entfernt, Aufgaben bleiben). Beide benutzen die Bezeichnung **„endgültig löschen"** (UX-Vorprüfung #35, Entscheidung 2026-11-11: Wortlaut vereinheitlicht). Kein eigener Umbau in R00141 nötig.
+
 **Verworfene Alternativen (Optionen-Tableau der ADR-0024):**
 
 - **B — eigene Abweichung nach Muster `anhaenge.rs`:** zwei Wege zum Schreiben von Board-Dateien; der Wächter (an `aktion()` gebunden) müsste von Hand nachgebaut werden.
