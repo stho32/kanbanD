@@ -563,7 +563,8 @@ mod tests {
     }
 
     #[test]
-    fn spalteneigentuemer_im_frontmatter_rundlauf() {        let mut b = beispiel();
+    fn spalteneigentuemer_im_frontmatter_rundlauf() {
+        let mut b = beispiel();
         b.spalten[0].eigentuemer = Some(Eigentuemer::Human);
         b.spalten[1].eigentuemer = Some(Eigentuemer::Agent);
         let t = schreiben(&b, datei);
