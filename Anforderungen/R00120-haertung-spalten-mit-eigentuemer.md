@@ -12,7 +12,7 @@ Die Reviews der abgenommenen Karte #3 (R00097, Spalten mit Eigentümer) ließen 
 
 Die Befunde sind teils Muss-nahe Fehler (Punkt 1 und 2 sind Sicherheitsbefunde), teils Beschreibungs-, Doku- und Oberflächenpflege:
 
-1. **Verwaister oder ungültiger Eintrag unter `column-owner` (Sollte, Code- und Security-Review).** Passt der Schlüssel auf keine Spalte (z. B. `eingang` neben Spalte `Eingang`), ist der Wert keine Zeichenkette (z. B. `Eingang: [human]`), oder ist `column-owner` selbst keine Zuordnung (z. B. `column-owner: human`), dann gibt es keinen Hinweis, die Sperre gilt nicht, und beim nächsten Schreiben ist der Eintrag weg. Soll: Hinweis wie bei unbekanntem Wert, Rohwert bleibt erhalten (PO Z. 52). Ort: `src/format/board.rs` :18/:44 (lesen), :280/:284 (schreiben).
+1. **Verwaister oder ungültiger Eintrag unter `column-owner` (Sollte, Code- und Security-Review).** Passt der Schlüssel auf keine Spalte (z. B. `eingang` neben Spalte `Eingang`), ist der Wert keine Zeichenkette (z. B. `Eingang: [human]`), oder ist `column-owner` selbst keine Zuordnung (z. B. `column-owner: human`), dann gibt es keinen Hinweis, die Sperre gilt nicht, und beim nächsten Schreiben ist der Eintrag weg. Soll: Hinweis wie bei unbekanntem Wert, Rohwert bleibt erhalten (PO Z. 52); **meint der Eintrag den Menschen (`human`)**, sperrt er einen Agenten fail-safe (403) — bei nicht bestimmbarer Spalte das ganze Board (PO Z. 187). Ort: `src/format/board.rs` :18/:44 (lesen), :280/:284 (schreiben).
 2. **Archivieren überspringt Boards mit Formatfehler (Sollte, Security-Review).** `archivieren_pruefen` liest `ordner().boards()?` und verwirft die Defekte-Liste (`src/dienst/zugregeln.rs`:57): ein Agent kann eine Karte archivieren, die auf einem defekten Board in einer Menschen-Spalte liegt.
 3. **Architektur-Modell nachziehen (Sollte, Architektur-Review).** `X00001` (:48 „Eigentümer ist gebaut“, :50 „Soll … noch nicht gebaut“, Zeilenverweise), `A00004` (Entnahme-Helfer), `A00006` (`Eigentuemer`, `entnahme_erlaubt`).
 4. **Rechtschreibung (Sollte, Rechtschreib-Review).** `src/web/openapi.rs`:13 — Großschreibung nach Doppelpunkt als Hausregel entscheiden; `Dokumentation/Gelerntes.md`:49 — Infinitiv nach „für“ groß.
@@ -33,16 +33,16 @@ Die Eigentümer-Spalte ist die einzige Stelle, an der kanbanD die Freigabe des M
 
 ### Format: verwaiste und ungültige `column-owner`-Einträge (Punkt 1, 10, 11)
 
-1. Ein `column-owner`-Eintrag, dessen Schlüssel auf keine Spalte der Board-Datei passt (z. B. `eingang` neben Spalte `Eingang`), erzeugt einen Hinweis in `hinweise` und bleibt beim nächsten Schreiben erhalten (verlustfreier Rundlauf).
-2. Ein `column-owner`-Eintrag mit einem Wert, der keine Zeichenkette ist (z. B. `Eingang: [human]`, eine Zuordnung), erzeugt einen Hinweis und bleibt erhalten.
-3. Steht `column-owner` selbst nicht als Zuordnung (z. B. `column-owner: human`), erzeugt das einen Hinweis und der Eintrag bleibt erhalten.
-4. Das bestehende Verhalten für einen unbekannten Wert (`chef`) bleibt: Hinweis, Rohwert erhalten, gilt nicht als Eigentümer.
+1. Ein `column-owner`-Eintrag, dessen Schlüssel auf keine Spalte der Board-Datei passt (z. B. `eingang` neben Spalte `Eingang`), erzeugt einen Hinweis in `hinweise` und bleibt beim nächsten Schreiben erhalten (verlustfreier Rundlauf). Meint sein Wert den Menschen (`human`), sperrt der Eintrag einen Agenten fail-safe (403): die gemeinte Spalte ist nicht bestimmbar, deshalb sperrt er das **ganze Board** (PO Z. 187).
+2. Ein `column-owner`-Eintrag mit einem Wert, der keine Zeichenkette ist (z. B. `Eingang: [human]`, eine Zuordnung), erzeugt einen Hinweis und bleibt erhalten; meint der Wert den Menschen, gilt dieselbe fail-safe Sperre über das ganze Board (403).
+3. Steht `column-owner` selbst nicht als Zuordnung (z. B. `column-owner: human`), erzeugt das einen Hinweis und der Eintrag bleibt erhalten; meint der Wert den Menschen, gilt dieselbe fail-safe Sperre über das ganze Board (403).
+4. Das bestehende Verhalten für einen unbekannten Wert (`chef`) bleibt: Hinweis, Rohwert erhalten, gilt nicht als Eigentümer — **keine** Sperre. Ein `agent`-Wert bleibt ebenso ohne Sperre (Hinweis, Rohwert erhalten, PO Z. 187).
 5. Der Hinweis für einen unbekannten Eigentümer nennt die bekannten Werte: „Spalte „<Name>“: unbekannter Eigentümer „<Rohwert>“ — bekannt sind human, agent“ (`src/pruefungen.rs`:41).
 6. `eigentuemer: ""` und leere `farbe`/`notiz` werden einheitlich behandelt (entscheiden und festhalten, siehe Offene Fragen).
 
 ### Die Entnahmesperre greift überall (Punkt 2, 8, Leerzug)
 
-7. Kann ein Board-Datei des Ordners nicht gelesen werden (Formatfehler), gilt die Archiv-Prüfung für einen Agenten als nicht bestanden: er bekommt eine Abweisung, es wird nichts geschrieben; ein Mensch wird nicht abgewiesen.
+7. Kann eine Board-Datei des Ordners nicht gelesen werden (Formatfehler), gilt die Archiv-Prüfung für einen Agenten als nicht bestanden: er bekommt **423** (`Fehler::Defekt`, Meldung „`boards/<slug>.md: <Grund> — nur lesbar, bis die Datei repariert ist`“; bei mehreren defekten Boards das erste der Boardliste), es wird nichts geschrieben; ein Mensch wird nicht abgewiesen (PO Z. 188).
 8. `entnahme_erlaubt` prüft **alle** Spalten: Liegt eine Nummer in zwei Spalten und gehört eine davon dem Menschen, ist sie gesperrt (`src/modell/board.rs`:505, `find` → `any`).
 9. Ein Leerzug eines Agenten in einer Menschen-Spalte (Karte an ihre eigene Stelle, `bewegt: false`) verhält sich wie in der API-Beschreibung: entweder 403 „auch beim Umsortieren“, oder die Beschreibung wird präzisiert (entscheiden, siehe Offene Fragen).
 
@@ -73,7 +73,7 @@ Die Eigentümer-Spalte ist die einzige Stelle, an der kanbanD die Freigabe des M
 
 ## Nicht-funktionale Anforderungen
 
-- **Sicherheit (prüfpflichtig):** Punkt 1 (ungültiger Rohwert entfernt still den Schutz und geht beim Rundlauf verloren) und Punkt 2 (Archivieren umgeht die Sperre auf einem defekten Board) sind Sicherheitsbefunde. Der `security-reviewer` prüft den gebauten Stand mit einer Angriffsmatrix (Archivieren, vom Board nehmen, bewegen, ziehen — je mit defektem Board und mit verwaistem oder ungültigem `column-owner`) vor der Abnahme. Full-Trust bleibt: die Regel schützt vor Versehen, nicht vor Absicht.
+- **Sicherheit (prüfpflichtig):** Punkt 1 (ungültiger `human`-Rohwert hebt den Schutz still auf und geht beim Rundlauf verloren) und Punkt 2 (Archivieren umgeht die Sperre auf einem defekten Board) sind Sicherheitsbefunde. Der Schutz ist fail-safe (PO Z. 187/188): ein `human` meinender, aber nicht an eine Spalte gebundener Eintrag sperrt einen Agenten auf dem ganzen Board (403), ein defektes Board liefert auf allen Wegen einheitlich 423. Der `security-reviewer` prüft den gebauten Stand mit einer Angriffsmatrix (Archivieren, vom Board nehmen, bewegen, ziehen — je mit defektem Board und mit verwaistem oder ungültigem `column-owner`) vor der Abnahme. Full-Trust bleibt: die Regel schützt vor Versehen, nicht vor Absicht.
 - **Barrierefreiheit:** Kontrast ≥ 4,5:1 (Punkt 13 und 16 sind Regressionswächter — durch R00107 erfüllt, kein Token-Eingriff); der Rohwert ist auch ohne Farbe erkennbar (der Text „(unbekannt)“ an der Option und der Rohwert selbst tragen den Zustand, nicht allein `--kd-warn`); der Satz „unbekannter Eigentümer — bleibt erhalten“ ist als Beschreibung der Auswahl hörbar (Punkt 15, `aria-describedby`).
 - **Rückwärtskompatibel:** die Antwortform der 403/Read (`{fehler, spalte, nummer}`, `eigentuemer`, `eigentuemer_unbekannt`, `hinweise`) bleibt; die Härtung ergänzt nur Hinweise, Schemafelder und Oberflächen-Details.
 
@@ -83,18 +83,18 @@ Gegeben für jede Probe: ein Wegwerf-Ordner mit einem Board „fabrik“, die Sp
 
 ### Format (Punkt 1, 10, 11)
 
-- [ ] **1. Rundlauf verwaister Schlüssel (wörtlich aus #26)**: Board-Datei mit `column-owner:\n  eingang: human` (Spalte heißt `Eingang`) → `GET /api/boards/{slug}` liest das Board ohne Formatfehler, `hinweise` nennt den verwaisten Eintrag, und ein `PUT …/spalten` ohne `eigentuemer` lässt den Eintrag `eingang: human` in der Datei stehen (Rundlauf byte-gleich für diesen Eintrag).
-  - Fällt durch: heute — kein Hinweis, Eintrag beim Schreiben weg.
+- [ ] **1. Rundlauf verwaister Schlüssel (wörtlich aus #26)**: Board-Datei mit `column-owner:\n  eingang: human` (Spalte heißt `Eingang`) → `GET /api/boards/{slug}` liest das Board ohne Formatfehler, `hinweise` nennt den verwaisten Eintrag, und ein `PUT …/spalten` ohne `eigentuemer` lässt den Eintrag `eingang: human` in der Datei stehen (Rundlauf byte-gleich für diesen Eintrag). **Fail-safe:** ein Agent wird auf dem ganzen Board gesperrt — Archivieren, vom Board nehmen, bewegen und ziehen (Weg W1–W4) ergeben **403** (PO Z. 187).
+  - Fällt durch: heute — kein Hinweis, Eintrag beim Schreiben weg, Sperre gilt nicht (200).
   - Prüfebene: Unit (Format-Rundlauf) + Integration (`tests/spalten.rs`).
-- [ ] **2. Nicht-Text-Wert**: Board-Datei mit `column-owner:\n  Eingang: [human]` → Hinweis in `hinweise`, Eintrag bleibt nach einem `PUT …/spalten` ohne `eigentuemer` erhalten.
-- [ ] **3. Keine Zuordnung**: Board-Datei mit `column-owner: human` → Hinweis, Eintrag bleibt erhalten.
+- [ ] **2. Nicht-Text-Wert**: Board-Datei mit `column-owner:\n  Eingang: [human]` → Hinweis in `hinweise`, Eintrag bleibt nach einem `PUT …/spalten` ohne `eigentuemer` erhalten; der Wert meint den Menschen, deshalb sind W1–W4 als Agent **403** (PO Z. 187).
+- [ ] **3. Keine Zuordnung**: Board-Datei mit `column-owner: human` → Hinweis, Eintrag bleibt erhalten; der Wert meint den Menschen, deshalb sind W1–W4 als Agent **403** (PO Z. 187).
 - [ ] **4. Unbekannter Wert (Regression)**: `column-owner: {Eingang: chef}` → Hinweis, Rohwert erhalten, Eingang ohne Eigentümer (bestehendes AK aus R00097 bleibt grün).
 - [ ] **5. Hinweistext (Punkt 11)**: der Hinweis lautet „Spalte „Eingang“: unbekannter Eigentümer „chef“ — bekannt sind human, agent“; `grep` auf „bekannt sind human, agent“ trifft `src/pruefungen.rs`.
   - Prüfebene: Unit (`src/pruefungen.rs`) + `tests/openapi.rs`/Integration.
 
 ### Sperre (Punkt 2, 8, 9)
 
-- [ ] **6. Archivieren bei defektem Board (Sicherheitsbefund)**: Board-Datei mit Formatfehler im Ordner, Karte auf einem anderen Board in einer Menschen-Spalte → `POST /api/aufgaben/{nr}/archivieren` als Agent ergibt **kein** 200 (Abweisung), kein Commit; als Mensch wie heute erlaubt.
+- [ ] **6. Archivieren bei defektem Board (Sicherheitsbefund)**: Board-Datei mit Formatfehler im Ordner, Karte auf einem anderen Board in einer Menschen-Spalte → `POST /api/aufgaben/{nr}/archivieren` als Agent ergibt **423** `Fehler::Defekt` (Meldung „`boards/<slug>.md: <Grund> — nur lesbar, bis die Datei repariert ist`“; bei mehreren defekten Boards das erste der Boardliste), kein Commit; als Mensch wie heute erlaubt (PO Z. 188).
   - Prüfebene: Integration (neuer Test `tests/spalteneinstellungen.rs` oder `tests/wip_grenze.rs`).
 - [ ] **7. Doppelte Nummer (Punkt 8)**: dieselbe Nummer in zwei Spalten, die erste ohne Eigentümer, die zweite `human` → ein Agent wird beim Herausnehmen abgewiesen (403).
   - Prüfebene: Unit (`Board::entnahme_erlaubt`).
@@ -185,12 +185,12 @@ tests/
 | Nutzen | kein Archivieren solange ein Board defekt ist | Agent kann weiterarbeiten | still |
 | Risiko | ein defektes Board blockiert alle Archiv-Züge | die Karte kann genau auf dem defekten Board liegen | Umgehung der Sperre |
 
-**Entscheidung: A (fail-safe).** Solange die Lage einer Karte auf einem defekten Board nicht feststellbar ist, darf ein Agent sie nicht archivieren; der Mensch bleibt frei. B lässt genau die Lücke offen, die der Security-Review genannt hat. Die genaue Fehlerart (Empfehlung: 409 „Board „<slug>“ ist defekt“) entscheidet der Entwickler; die Antwortform bleibt nach ADR-0003.
+**Entscheidung: A (fail-safe).** Solange die Lage einer Karte auf einem defekten Board nicht feststellbar ist, darf ein Agent sie nicht archivieren; der Mensch bleibt frei. B lässt genau die Lücke offen, die der Security-Review genannt hat. Die Fehlerart ist entschieden: einheitlich **423** `Fehler::Defekt` (`boards/<slug>.md: <Grund> — nur lesbar, bis die Datei repariert ist`; bei mehreren defekten Boards das erste der Boardliste) auf allen Wegen — nicht 403 (der Rumpf `{spalte, nummer}` ließe sich ohne bekannte Spalte nicht füllen) und nicht 409 (machte dieselbe Ursache auf dem Archivweg zu einem anderen Code als auf den Wegen, die einen Slug nennen) (PO Z. 188); die Antwortform bleibt nach ADR-0003.
 
 ### Ablauf (den Zuschnitt entscheidet der Entwickler)
 
 1. **Format (Punkt 1)**: beim Lesen verwaiste Schlüssel, Nicht-Text-Werte und eine fehlende Zuordnung als Rohwert festhalten und melden; beim Schreiben erhalten.
-2. **Sperre (Punkt 2, 8, 9)**: `archivieren_pruefen` fail-safe bei Defekten; `entnahme_erlaubt` über alle Spalten; Leerzug-Antwort/Beschreibung angleichen.
+2. **Sperre (Punkt 2, 8, 9)**: `archivieren_pruefen` fail-safe bei Defekten (423); ein `human` meinender verwaister/ungültiger `column-owner` sperrt das ganze Board (403); `entnahme_erlaubt` über alle Spalten; Leerzug-Antwort/Beschreibung angleichen.
 3. **Beschreibung (Punkt 4)**: Hausregel entscheiden, `openapi.rs` und `Gelerntes.md` angleichen; `eigentuemer_unbekannt` ins Schema.
 4. **Oberfläche (Punkt 5)**: `.eig-roh`-Kontrast und Modusleiste als Regressionswächter (durch R00107 erfüllt, kein Token-Eingriff), Rohwert-Option samt Hinweistext (`EIGENTUEMER_TEXT.roh`) und Sende-Vertrag, `aria-describedby` statt `span`-`title`, Kommentarstellen, „Namensknopf“.
 5. **Modell/Aufräumen (Punkt 3, Optional)**: X00001/A00004/A00006 nachziehen; Prüfer zusammenlegen; Spalten-Konstruktor; Kommentar zur Trennung.
@@ -203,7 +203,7 @@ tests/
   - `fn entnahme_erlaubt(&self, art: Art, nummer: u32) -> Result<(), Entnahmesperre>` — prüft **alle** Spalten.
 - `ColumnOwnerEintrag` (DTO) — ein `column-owner`-Eintrag, wie er in der Datei steht (Schlüssel, Rohwert, Grund: verwaist / kein Text / keine Zuordnung), für Hinweis und Rundlauf.
 - `Hinweis` (vorhanden) — je verwaistem oder ungültigem Eintrag einer, Wortlaut nach Punkt 5.
-- `archivieren_pruefen` (vorhanden) — fail-safe: bei defektem Board Abweisung statt Überspringen.
+- `archivieren_pruefen` (vorhanden) — fail-safe: bei defektem Board **423** `Datei defekt` statt Überspringen.
 - `Spalte` (vorhanden) — Konstruktor/`Default` statt der Struktur-Literale.
 
 ### Änderungen an bestehenden Klassen
@@ -227,7 +227,7 @@ Nach Skill `test-pyramide`; jede Szene der User Story ein Test, jeder prüft ein
 - **E2E**: neu `r00120` — Rohwert-Option vorausgewählt mit Text `„chef“ (unbekannt)`, Hinweistext `EIGENTUEMER_TEXT.roh` an `.eig-hin`, Sende-Vertrag (ohne Änderung byte-gleich, „— keiner —“ entfernt), Beschreibung der Auswahl (`aria-describedby`); `.eig-roh`- und `.kz.modus`-Kontrast als Regressionswächter (heute grün); Muster `r00097-eigentuemer.spec.js`, `kontrast.spec.js`.
   - **Wächter-Umstellung**: `e2e/tests/r00097-eigentuemer.spec.js:45–61` erwartet heute `toHaveValue('')` und `toHaveAccessibleDescription(KEINER)` beim unbekannten Rohwert; nach Punkt 14 zeigt die Combobox die vorausgewählte Rohwert-Option (`toHaveValue` auf den Rohwert-Sentinel) und die Beschreibung des unbekannten Eigentümers — der Test wird im selben Zug umgestellt (weiterhin grün).
 - **Security-Review (Prüfpunkt, ausdrücklich)**: Angriffsmatrix für Punkt 1 und 2 vor der Abnahme — Archivieren, vom Board nehmen, bewegen, ziehen, je mit defektem Board und mit verwaistem bzw. ungültigem `column-owner`.
-- **Rot vor dem Bau**: Punkt 1 (kein Hinweis, Eintrag weg), Punkt 2 (kein 200 → Archivieren geht durch), Punkt 7 (nur die erste Spalte geprüft), Punkt 9 (Schemafeld fehlt), Punkt 13 (der Rohwert ist keine eigene vorausgewählte Option: „— keiner —“ steht vorausgewählt, die Entfernung braucht den Umweg Mensch/Agent, `.eig-hin` kennt den Rohwert nicht), Punkt 14 (der Satz steht im `title` eines `span`, nicht als Beschreibung der Auswahl), Punkt 16 (`Namen-Knopf` vorhanden), Punkt 20/22 (Kommentar fehlt) sind heute rot. **Nicht rot** (durch R00107 erfüllt, daher nur Regressionswächter): Punkt 12 (`.eig-roh`) und Punkt 15 (Modusleiste).
+- **Rot vor dem Bau**: Punkt 1 (kein Hinweis, Eintrag weg, keine fail-safe Sperre — ein Agent kommt mit verwaistem/ungültigem `human`-Eintrag durch, 200), Punkt 2 (heute 200 → nach dem Fix 423), Punkt 7 (nur die erste Spalte geprüft), Punkt 9 (Schemafeld fehlt), Punkt 13 (der Rohwert ist keine eigene vorausgewählte Option: „— keiner —“ steht vorausgewählt, die Entfernung braucht den Umweg Mensch/Agent, `.eig-hin` kennt den Rohwert nicht), Punkt 14 (der Satz steht im `title` eines `span`, nicht als Beschreibung der Auswahl), Punkt 16 (`Namen-Knopf` vorhanden), Punkt 20/22 (Kommentar fehlt) sind heute rot. **Nicht rot** (durch R00107 erfüllt, daher nur Regressionswächter): Punkt 12 (`.eig-roh`) und Punkt 15 (Modusleiste).
 - **Gegenproben (Mutanten)**: verwaisten Eintrag beim Schreiben verwerfen → AK 1 rot; `boards()`-Defekte ignorieren → AK 6 rot; `find` statt `any` → AK 7 rot; Schemafeld wieder `skip` → AK 9 rot; `.eig-roh`-Option entfernen → AK 13 rot; `EIGENTUEMER_TEXT.roh` entfernen → `.eig-hin` zeigt „undefined“ → AK 13 rot; `.eig-roh` heller ohne Kontrast → AK 12 rot und `.kz.modus`-Text heller → AK 15 rot (Regressionswächter).
 - **Mitlaufend grün**: `tests/spalten.rs`, `tests/spalteneinstellungen.rs`, `tests/wip_grenze.rs`, `tests/openapi.rs`, `node --test e2e/einheit/`, `npx playwright test r00097 kontrast kultur ziele`.
 
@@ -238,7 +238,7 @@ Nach Skill `test-pyramide`; jede Szene der User Story ein Test, jeder prüft ein
 
 ## Offene Fragen
 
-- Keine blockierende. Zwei Wortlaut-/Verhaltensfragen entscheidet der Entwickler mit Empfehlung: (a) `eigentuemer: ""` — Empfehlung, es wie `farbe`/`notiz: ""` als „entfernt“ zu behandeln (einheitlich), statt wie heute 400; (b) Leerzug — Empfehlung, die API-Beschreibung auf „200 `{bewegt:false}` beim Umsortieren an dieselbe Stelle“ zu präzisieren, statt einen 403 zu erzwingen (die Karte wird nicht entnommen). Die Fehlerart bei defektem Board (Punkt 7): Empfehlung 409 „Board „<slug>“ ist defekt“. Punkt 4 (Großschreibung nach Doppelpunkt) entscheidet der rechtschreib-reviewer; Empfehlung: groß.
+- Keine blockierende. Zwei Wortlaut-/Verhaltensfragen entscheidet der Entwickler mit Empfehlung: (a) `eigentuemer: ""` — Empfehlung, es wie `farbe`/`notiz: ""` als „entfernt“ zu behandeln (einheitlich), statt wie heute 400; (b) Leerzug — Empfehlung, die API-Beschreibung auf „200 `{bewegt:false}` beim Umsortieren an dieselbe Stelle“ zu präzisieren, statt einen 403 zu erzwingen (die Karte wird nicht entnommen). Die Fehlerart bei defektem Board (Punkt 7) ist entschieden: einheitlich **423** `Fehler::Defekt` (PO Z. 188, „Offene Fragen“ dieses Punkts entfallen); ebenso entschieden ist die fail-safe Sperre bei einem `human` meinenden verwaisten/ungültigen `column-owner` (**403**, ganzes Board; PO Z. 187). Punkt 4 (Großschreibung nach Doppelpunkt) entscheidet der rechtschreib-reviewer; Empfehlung: groß.
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -269,4 +269,7 @@ Auslöser sind die stehen gebliebenen Sollte-/Optional-Befunde aus den Reviews v
   - **D0002-Notiz (Sollte Doku):** der Artboard-Vermerk in `Dokumentation/Wireframes/D0002.dc.html`:626 (Auswahl zeige „— keiner —“) widerspricht AK 13. R00120 vermerkt: der Zustand „Spalten mit Eigentümer“ ist **nach der Freigabe** auf die vorausgewählte Rohwert-Option nachzuziehen (den gestalter/ die Freigabe regelt der Director); die Artboards selbst ändert der planer nicht.
   - **Optional:** Begriff „Titelleiste“ durch „Modusleiste“ vereinheitlicht (die Leiste heißt `header.kz.modus`, R00107); der Zustand „unbekannt“ steht nicht allein auf der Farbe `--kd-warn`, sondern auf dem Text „(unbekannt)“ und dem Rohwert selbst.
 - **Einarbeitung Architektur (2026-11-11, bestanden, kein ADR)**: keine Technikfrage; Präzedenz B0537/PO Z. 52; eigene Interaction/Anforderung; Security-Review nötig; die Zeilenverweise der Karte sind teils veraltet und wurden hier nachgezogen (`src/format/board.rs` :18/:44/:280/:284 statt :18/:43/:265; `entnahme_erlaubt` `src/modell/board.rs`:505 statt :451; `zugregeln.rs`:57 statt :55).
+- **PO-Entscheidungen 2026-11-11 (PO Z. 187/188, Commit 037cb24), eingearbeitet**:
+  - **(1) Fail-safe — ungültiger `human`-Eintrag sperrt:** Ein `column-owner`-Eintrag, der den Menschen meint (`human`), aber nicht an eine Spalte gebunden werden kann (verwaister Schlüssel `eingang: human`, Nicht-Text `Eingang: [human]`, keine Zuordnung `column-owner: human`), sperrt einen Agenten (**403**); da die Spalte nicht sicher bestimmbar ist, sperrt er das **ganze Board**. `agent`-Werte und unbekannte Werte (`chef`) bleiben wie PO Z. 52: Hinweis, Rohwert erhalten, **keine** Sperre. Nachgezogen: FA 1–4, AK 1–3, NFR Sicherheit, die Angriffsmatrix P1/P2/P2b × W1–W4 (heute 200 → 403; W5 „erledigen“ wird wie in K/P4 „Melden“, die Karte bleibt). Ein Detail bleibt dem Entwickler nach ADR-0003: welchen `spalte`-Wert der Rumpf der board-weiten 403 trägt, wenn kein Schlüssel vorhanden ist (Empfehlung: den Rohschlüssel nennen, sonst leer).
+  - **(2) Defektes Board — einheitlich 423:** eine Board-Datei mit Formatfehler liefert dem Agenten auf allen Wegen **423** `Fehler::Defekt` (Meldung „`boards/<slug>.md: <Grund> — nur lesbar, bis die Datei repariert ist`“; bei mehreren defekten Boards das erste der Boardliste), der **Mensch wird durchgelassen**. Die frühere 409-Empfehlung (R00120 Offene Fragen, Optionstext Punkt 2) ist damit ersetzt; Archivieren liefert heute 200, der Fix kommt im Bau. Nachgezogen: FA 7, AK 6, Offene Fragen, Optionstext (2), Angriffsmatrix P5 × W1 (heute 200 → 423).
 - **Herkunft**: `kd:I0086` (Karte #26 als Härtung nach #3/R00097); die Karte trägt als Herkunft die neue Interaction `kd:I0110`.
