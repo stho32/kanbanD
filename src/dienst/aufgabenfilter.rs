@@ -42,7 +42,7 @@ impl Aufgabenfilter {
                 "zustaendig" => f.zustaendige.push(v.clone()),
                 "reserviert" => f.reserviert.push(v.clone()),
                 "label" => f.labels.push(v.clone()),
-                "key" => f.schluessel.push(v.clone()),
+                "key" => f.schluessel.push(v.trim().to_string()),
                 "archivierte" => {
                     f.archivierte = match v.as_str() {
                         "ja" => Archivierte::Mit,
@@ -262,5 +262,20 @@ mod tests {
         let mut alt = a.clone();
         alt.archiviert = Some("2026-10-01".into());
         assert!(!trifft(&[("key", "k4")], &alt) && trifft(&[("key", "k4"), ("archivierte", "ja")], &alt), "Archivregel R00092");
+    }
+
+    // R00132: der key-Filter trimmt beim Lesen wie `Fremdschluessel::pruefen` beim Anlegen.
+    #[test]
+    fn schluessel_filter_trimmt_wie_das_anlegen() {
+        let mut a = aufgabe(7, None, false);
+        a.schluessel = Some(crate::modell::Fremdschluessel::pruefen("k1").unwrap());
+        let trifft = |q: &[(&str, &str)]| Aufgabenfilter::aus_paaren(&paare(q)).unwrap().passt(&a, None, "");
+        assert!(trifft(&[("key", "  k1  ")]), "Leerraum davor und dahinter wird getrimmt");
+        assert!(trifft(&[("key", "\tk1\n")]), "Tabulator davor, Umbruch dahinter");
+        assert!(trifft(&[("key", "k1")]), "ohne Leerraum unverändert");
+        assert!(!trifft(&[("key", "   ")]), "nur Leerraum trifft nichts, kein Fehler");
+        assert!(!trifft(&[("key", "")]), "leer trifft nichts");
+        assert!(!trifft(&[("key", " K1 ")]), "nach dem Trimmen zählt Groß/Klein weiter");
+        assert!(!trifft(&[("key", " k")]), "kein Teilstück");
     }
 }
