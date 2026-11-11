@@ -32,14 +32,20 @@ impl Pruefung {
     }
 }
 
-/// Je Spalte und unbekanntem Prüfungsnamen ein Hinweis, dazu je unbekanntem Eigentümer (R00097); die Datei bleibt lesbar und schreibbar.
+/// Je Spalte und unbekanntem Prüfungsnamen ein Hinweis, dazu je unbekanntem Eigentümer (R00097) und je verwaistem
+/// oder ungültigem `column-owner`-Eintrag (R00120); die Datei bleibt lesbar und schreibbar.
 pub fn unbekannte(board: &Board) -> Vec<String> {
     let pruefungen = board
         .spalten
         .iter()
         .flat_map(|s| s.pruefungen.iter().filter(|n| Pruefung::aus(n).is_none()).map(move |n| format!("Spalte „{}“: unbekannte Prüfung „{n}“ — bekannt sind {}", s.name, Pruefung::ALLE.map(Pruefung::name).join(", "))));
-    let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| format!("Spalte „{}“: unbekannter Eigentümer „{e}“", s.name)));
-    pruefungen.chain(eigentuemer).collect()
+    let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| format!("Spalte „{}“: unbekannter Eigentümer „{e}“ — bekannt sind human, agent", s.name)));
+    let roh = board.eigentuemer_roh.iter().map(|e| match &e.schluessel {
+        None => format!("column-owner ist keine Zuordnung — „{}“ bleibt erhalten", e.wert),
+        Some(k) if board.spalten.iter().any(|s| &s.name == k) => format!("column-owner: „{k}“ hat keinen Textwert — „{k}: {}“ bleibt erhalten", e.wert),
+        Some(k) => format!("column-owner: „{k}: {}“ passt auf keine Spalte — der Eintrag bleibt erhalten", e.wert),
+    });
+    pruefungen.chain(eigentuemer).chain(roh).collect()
 }
 
 /// Rang einer Spalte für „nach rechts“: mit Phasen wie `phasenRang` in `web/berichte.js` (Abschlussspalte hinter allen
@@ -184,7 +190,7 @@ mod tests {
 
     fn brett(spalten: &[(&str, Option<&str>, &[&str])]) -> Board {
         let spalten = spalten.iter().map(|(n, ph, p)| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: n.to_string(), grenze: None, aufgaben: vec![], phase: ph.map(String::from), pruefungen: p.iter().map(|x| x.to_string()).collect() }).collect();
-        Board { slug: "b".into(), titel: "B".into(), spalten, termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None }
+        Board { slug: "b".into(), titel: "B".into(), spalten, termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] }
     }
     const G: &[&str] = &["wbs-effects-green"];
 
@@ -216,14 +222,44 @@ mod tests {
     #[test]
     fn unbekannte_pruefungen_werden_je_spalte_genannt() {
         let spalte = |name: &str, p: &[&str]| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect() };
-        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Entwicklung", &["wbs-effects-green", "xyz"]), spalte("Erledigt", &[])], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None };
+        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Entwicklung", &["wbs-effects-green", "xyz"]), spalte("Erledigt", &[])], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
         assert_eq!(unbekannte(&b), ["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"]);
     }
 
     #[test]
     fn unbekannter_eigentuemer_wird_je_spalte_genannt() {
         let spalte = |name: &str, roh: Option<&str>| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] };
-        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", Some("chef")), spalte("Erledigt", None)], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None };
-        assert_eq!(unbekannte(&b), ["Spalte „Eingang“: unbekannter Eigentümer „chef“"]);
+        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", Some("chef")), spalte("Erledigt", None)], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
+        assert_eq!(unbekannte(&b), ["Spalte „Eingang“: unbekannter Eigentümer „chef“ — bekannt sind human, agent"]);
+    }
+
+    // R00120 AK 5 und US-1: je verwaistem oder ungültigem Eintrag ein Hinweis
+    #[test]
+    fn verwaiste_und_ungueltige_column_owner_werden_gemeldet() {
+        let spalte = |name: &str| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        let b = Board {
+            slug: "b".into(),
+            titel: "B".into(),
+            spalten: vec![spalte("Eingang"), spalte("Erledigt")],
+            termine: vec![],
+            anwendungen: None,
+            start: None,
+            fieber: Default::default(),
+            berichtsfilter: Default::default(),
+            bestand: None,
+            eigentuemer_roh: vec![
+                crate::modell::ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: "human".into() },
+                crate::modell::ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: "[human]".into() },
+                crate::modell::ColumnOwnerEintrag { schluessel: None, wert: "human".into() },
+            ],
+        };
+        assert_eq!(
+            unbekannte(&b),
+            [
+                "column-owner: „eingang: human“ passt auf keine Spalte — der Eintrag bleibt erhalten",
+                "column-owner: „Eingang“ hat keinen Textwert — „Eingang: [human]“ bleibt erhalten",
+                "column-owner ist keine Zuordnung — „human“ bleibt erhalten",
+            ]
+        );
     }
 }

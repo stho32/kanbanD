@@ -54,6 +54,24 @@ impl Eigentuemer {
     }
 }
 
+/// Ein `column-owner`-Eintrag, der sich keiner Spalte als gültiger Eigentümer zuordnen lässt (R00120): ein Schlüssel
+/// ohne Spalte, ein Wert ohne Text oder `column-owner` selbst keine Zuordnung. Er wird gemeldet und roh erhalten;
+/// meint er den Menschen, sperrt er einen Agenten fail-safe (PO Z. 187).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ColumnOwnerEintrag {
+    /// Der Schlüssel unter `column-owner`; `None`, wenn `column-owner` selbst keine Zuordnung ist.
+    pub schluessel: Option<String>,
+    /// Der Wert in seiner YAML-Form (ein Nicht-Text-Wert etwa als `[human]`), damit die Datei ihn zurückbekommt.
+    pub wert: String,
+}
+
+impl ColumnOwnerEintrag {
+    /// Meint der Eintrag den Menschen? Ein `human`-Wort im Rohwert zählt (auch `[human]`); nur dann sperrt er (PO Z. 187).
+    pub fn meint_human(&self) -> bool {
+        self.wert.split(|c: char| !c.is_alphanumeric()).any(|t| t == "human")
+    }
+}
+
 /// `#rrggbb` — die einzige Form, in der eine Spaltenfarbe gilt.
 pub fn ist_hexfarbe(s: &str) -> bool {
     s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
@@ -286,6 +304,9 @@ pub struct Board {
     /// Achsen des Berichts „Bestand nach Labels“ (R00100); `None` = keine gespeichert, der Bericht schlägt vor.
     #[serde(default)]
     pub bestand: Option<Bestandseinstellung>,
+    /// Verwaiste oder ungültige `column-owner`-Einträge, roh erhalten (R00120); nicht im JSON, nur für Hinweis und Rundlauf.
+    #[serde(skip)]
+    pub eigentuemer_roh: Vec<ColumnOwnerEintrag>,
 }
 
 impl Board {
@@ -501,10 +522,15 @@ pub struct Entnahmesperre {
 }
 
 impl Board {
-    /// Darf `art` die Karte `nummer` aus ihrer Spalte nehmen? Gesperrt ist nur ein Agent aus einer Menschen-Spalte; eine Nummer, die nicht auf dem Board liegt, ist frei.
+    /// Darf `art` die Karte `nummer` aus ihrer Spalte nehmen? Gesperrt ist ein Agent, wenn die Karte in einer
+    /// Menschen-Spalte liegt, oder — fail-safe — ein `human` meinender, aber nicht an eine Spalte gebundener
+    /// `column-owner`-Eintrag das ganze Board sperrt (R00120, PO Z. 187). Sonst frei.
     pub fn entnahme_erlaubt(&self, art: super::Art, nummer: u32) -> Result<(), Entnahmesperre> {
         if art != super::Art::Agent {
             return Ok(());
+        }
+        if let Some(e) = self.eigentuemer_roh.iter().find(|e| e.meint_human()) {
+            return Err(Entnahmesperre { spalte: e.schluessel.clone().unwrap_or_default(), nummer });
         }
         match self.spalten.iter().find(|s| s.aufgaben.contains(&nummer)) {
             Some(s) if s.eigentuemer == Some(Eigentuemer::Human) => Err(Entnahmesperre { spalte: s.name.clone(), nummer }),
@@ -719,6 +745,7 @@ mod tests {
             anwendungen: None,
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
+            eigentuemer_roh: vec![],
         }
     }
 
@@ -918,6 +945,28 @@ mod tests {
         assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "ein unbekannter Wert gilt nicht");
     }
 
+    // R00120 PO Z. 187: ein `human` meinender, ungebundener Eintrag sperrt einen Agenten fail-safe (ganzes Board)
+    #[test]
+    fn ungebundener_human_eintrag_sperrt_das_ganze_board() {
+        use super::super::Art;
+        for eintrag in [
+            ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: "human".into() },
+            ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: "[human]".into() },
+            ColumnOwnerEintrag { schluessel: None, wert: "human".into() },
+        ] {
+            let mut b = b();
+            b.spalten[0].eigentuemer = None;
+            b.eigentuemer_roh = vec![eintrag.clone()];
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre { spalte: eintrag.schluessel.clone().unwrap_or_default(), nummer: 1 }), "{eintrag:?}");
+            assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()), "{eintrag:?}: Mensch frei");
+        }
+        for wert in ["agent", "chef"] {
+            let mut b = b();
+            b.eigentuemer_roh = vec![ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: wert.into() }];
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "{wert} sperrt nicht");
+        }
+    }
+
     #[test]
     fn unbekannter_rohwert_bleibt_ohne_feld_auch_beim_umbenennen() {
         let mut b = b();
@@ -973,7 +1022,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
         assert_eq!(leer.aufnehmen(1, None, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

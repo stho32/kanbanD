@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintrag, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -16,6 +16,16 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let notizen = yaml::zuordnung(&m, "column-notes");
     let farben = yaml::zuordnung(&m, "column-colors");
     let eigentuemer = yaml::zuordnung(&m, "column-owner");
+    // Rohfassung jedes `column-owner`-Eintrags (R00120): verwaiste Schlüssel bleiben so erhalten; ein Eintrag zu einer
+    // vorhandenen Spalte fällt unten heraus, ein Nicht-Text-Wert wird dort als ungültig vermerkt.
+    let mut eigentuemer_roh: Vec<ColumnOwnerEintrag> = match m.get("column-owner") {
+        None => vec![],
+        Some(v) => match v.as_mapping() {
+            Some(map) => map.iter().map(|(k, w)| ColumnOwnerEintrag { schluessel: Some(wert_text(k)), wert: wert_text(w) }).collect(),
+            None => vec![ColumnOwnerEintrag { schluessel: None, wert: wert_text(v) }],
+        },
+    };
+    let mut roh_ungueltig: Vec<ColumnOwnerEintrag> = vec![];
     let termine = termine_lesen(m.get("milestones"))?;
     let start = match yaml::text(&m, "start") {
         Some(d) if !ist_datum(&d) => return Err(Formatfehler(format!("start „{d}“ ist nicht JJJJ-MM-TT"))),
@@ -41,10 +51,17 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             let pruefungen = pruefungen.and_then(|p| p.get(name.as_str())).map(pruefungsnamen).unwrap_or_default();
             let notiz = notizen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
             let farbe = farben.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|f| ist_hexfarbe(f));
-            let wert = eigentuemer.and_then(|e| e.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
-            let (eigentuemer, eigentuemer_unbekannt) = match wert.as_deref().map(|w| (Eigentuemer::aus(w), w)) {
-                Some((Some(e), _)) => (Some(e), None),
-                Some((None, w)) => (None, Some(w.to_string())),
+            let (eigentuemer, eigentuemer_unbekannt) = match eigentuemer.and_then(|e| e.get(name.as_str())) {
+                Some(v) => match yaml::wert_als_text(v).map(|t| t.trim().to_string()).filter(|t| !t.is_empty()) {
+                    Some(t) => match Eigentuemer::aus(&t) {
+                        Some(e) => (Some(e), None),
+                        None => (None, Some(t)),
+                    },
+                    None => {
+                        roh_ungueltig.push(ColumnOwnerEintrag { schluessel: Some(name.clone()), wert: wert_text(v) });
+                        (None, None)
+                    }
+                },
                 None => (None, None),
             };
             spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, pruefungen, notiz, farbe, eigentuemer, eigentuemer_unbekannt });
@@ -55,12 +72,28 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
             spalte.aufgaben.push(nr);
         }
     }
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand })
+    // Nur Einträge ohne eigene Spalte bleiben roh; die ungültigen Nicht-Text-Werte treten dazu (R00120).
+    eigentuemer_roh.retain(|e| e.schluessel.as_ref().is_none_or(|k| !spalten.iter().any(|s| &s.name == k)));
+    eigentuemer_roh.extend(roh_ungueltig);
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand, eigentuemer_roh })
+}
+
+/// Ein YAML-Wert in einer Zeile für den Rundlauf (R00120): Text roh, Listen und Zuordnungen in Flussform
+/// (`[human]`, `{a: b}`), damit ein ungültiger `column-owner`-Wert beim Schreiben nicht verloren geht.
+fn wert_text(v: &Value) -> String {
+    match v {
+        Value::Sequence(s) => format!("[{}]", s.iter().map(wert_text).collect::<Vec<_>>().join(", ")),
+        Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", wert_text(k), wert_text(w))).collect::<Vec<_>>().join(", ")),
+        Value::String(t) => t.clone(),
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => n.to_string(),
+        Value::Null => "null".into(),
+        _ => String::new(),
+    }
 }
 
 /// `[wbs-effects-green]` oder ein einzelner Name → Namen ohne leere.
-fn pruefungsnamen(v: &Value) -> Vec<String> {
-    let namen: Vec<String> = match v {
+fn pruefungsnamen(v: &Value) -> Vec<String> {    let namen: Vec<String> = match v {
         Value::Sequence(l) => l.iter().filter_map(yaml::wert_als_text).collect(),
         v => yaml::wert_als_text(v).into_iter().collect(),
     };
@@ -251,10 +284,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
     let eigentuemer: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.as_str(), e))).collect();
+    let roh_keyed: Vec<(&str, &str)> = b.eigentuemer_roh.iter().filter_map(|e| e.schluessel.as_deref().map(|k| (k, e.wert.as_str()))).collect();
+    let roh_scalar: Option<&str> = b.eigentuemer_roh.iter().find(|e| e.schluessel.is_none()).map(|e| e.wert.as_str());
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || roh_scalar.is_some() || !roh_keyed.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -277,13 +312,28 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), yaml::liste(&sp.pruefungen)));
             }
         }
-        for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben), ("column-owner", &eigentuemer)] {
+        for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben)] {
             if !eintraege.is_empty() {
                 s.push_str(&format!("{schluessel}:\n"));
                 for (spalte, wert) in eintraege.iter() {
                     s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(wert)));
                 }
             }
+        }
+        let hat_eigner = !eigentuemer.is_empty() || !roh_keyed.is_empty();
+        match (roh_scalar, hat_eigner) {
+            // `column-owner: human` (keine Zuordnung) und keine Zuordnung dazu: die rohe Zeile bleibt.
+            (Some(wert), false) => s.push_str(&format!("column-owner: {wert}\n")),
+            (_, true) => {
+                s.push_str("column-owner:\n");
+                for (spalte, wert) in &eigentuemer {
+                    s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(wert)));
+                }
+                for (spalte, wert) in &roh_keyed {
+                    s.push_str(&format!("  {}: {wert}\n", yaml::skalar(spalte)));
+                }
+            }
+            (None, false) => {}
         }
         if !b.termine.is_empty() {
             s.push_str("milestones:\n");
@@ -338,6 +388,7 @@ mod tests {
             anwendungen: None,
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
+            eigentuemer_roh: vec![],
         }
     }
 
@@ -478,8 +529,41 @@ mod tests {
     fn unbekannter_eigentuemer_gilt_nicht_und_bleibt_in_der_datei() {
         let g = lesen("b", "---\ncolumn-owner: {Eingang: chef, B: agent, Fehlt: human}\n---\n## Eingang\n## B\n").unwrap();
         let gelesen: Vec<(Option<Eigentuemer>, Option<&str>)> = g.spalten.iter().map(|s| (s.eigentuemer, s.eigentuemer_unbekannt.as_deref())).collect();
-        assert_eq!(gelesen, [(None, Some("chef")), (Some(Eigentuemer::Agent), None)], "chef gilt nicht, Eintrag ohne Spalte fällt weg");
-        assert!(schreiben(&g, |_| None).contains("column-owner:\n  Eingang: chef\n  B: agent\n"), "die Datei verliert den Wert nicht");
+        assert_eq!(gelesen, [(None, Some("chef")), (Some(Eigentuemer::Agent), None)], "chef gilt nicht, agent gilt");
+        assert!(schreiben(&g, |_| None).contains("column-owner:\n  Eingang: chef\n  B: agent\n  Fehlt: human\n"), "die Datei verliert nichts: {}", schreiben(&g, |_| None));
+        assert_eq!(g.eigentuemer_roh, [ColumnOwnerEintrag { schluessel: Some("Fehlt".into()), wert: "human".into() }], "der verwaiste Schlüssel bleibt roh erhalten");
+    }
+
+    // R00120 AK 1–3: verwaister Schlüssel, Nicht-Text-Wert und `column-owner` ohne Zuordnung bleiben roh erhalten
+    #[test]
+    fn verwaiste_und_ungueltige_column_owner_bleiben_im_rundlauf() {
+        for (name, text, erwartet_roh, erwartet_datei) in [
+            ("verwaister Schlüssel", "---\ncolumn-owner:\n  eingang: human\n---\n", ("eingang", "human"), "column-owner:\n  eingang: human\n"),
+            ("Nicht-Text-Wert", "---\ncolumn-owner:\n  Eingang: [human]\n---\n", ("Eingang", "[human]"), "column-owner:\n  Eingang: [human]\n"),
+            ("keine Zuordnung", "---\ncolumn-owner: human\n---\n", ("", "human"), "column-owner: human\n"),
+        ] {
+            let g = lesen("b", text).unwrap();
+            assert!(g.spalten.iter().all(|s| s.eigentuemer.is_none()), "{name}: kein gültiger Eigentümer");
+            let roh = &g.eigentuemer_roh;
+            assert_eq!(roh.len(), 1, "{name}: {roh:?}");
+            let (schluessel, wert) = erwartet_roh;
+            assert_eq!((roh[0].schluessel.as_deref().unwrap_or(""), roh[0].wert.as_str()), (schluessel, wert), "{name}");
+            assert!(roh[0].meint_human(), "{name}: meint den Menschen, sperrt fail-safe");
+            let t = schreiben(&g, |_| None);
+            assert!(t.contains(erwartet_datei), "{name}: {t}");
+            assert_eq!(lesen("b", &t).unwrap().eigentuemer_roh, g.eigentuemer_roh, "{name}: Rundlauf");
+        }
+    }
+
+    // R00120: ein `agent`- oder unbekannter Rohwert verwaist bleibt erhalten, sperrt aber nicht.
+    #[test]
+    fn verwaister_agent_und_unbekannter_wert_sperren_nicht() {
+        for (text, wert) in [("---\ncolumn-owner: {eingang: agent}\n---\n", "agent"), ("---\ncolumn-owner: {Fehlt: chef}\n---\n", "chef")] {
+            let g = lesen("b", text).unwrap();
+            assert_eq!(g.eigentuemer_roh.len(), 1, "{text}");
+            assert_eq!(g.eigentuemer_roh[0].wert, wert);
+            assert!(!g.eigentuemer_roh[0].meint_human(), "{wert} sperrt nicht");
+        }
     }
 
     #[test]

@@ -21,7 +21,7 @@ async fn eigentuemer_und_hinweis_im_board() {
     let roh: Vec<_> = r["spalten"].as_array().unwrap().iter().map(|s| s.get("eigentuemer_unbekannt").cloned()).collect();
     assert_eq!(roh, [Some(json!("chef")), None, None]);
     let hinweise = r["hinweise"].as_array().unwrap();
-    assert!(hinweise.iter().any(|h| h == "Spalte „Eingang“: unbekannter Eigentümer „chef“"), "{hinweise:?}");
+    assert!(hinweise.iter().any(|h| h == "Spalte „Eingang“: unbekannter Eigentümer „chef“ — bekannt sind human, agent"), "{hinweise:?}");
     let (s, l) = senden(Method::GET, &lauf.adresse, "api/boards", "st", json!(null)).await;
     assert_eq!(s, 200);
     let board = l.as_array().unwrap().iter().find(|x| x["slug"] == "entwicklung").expect("Board in der Liste");
