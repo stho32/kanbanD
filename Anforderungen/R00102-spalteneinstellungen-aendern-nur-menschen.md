@@ -77,7 +77,7 @@ Ausgangsboard jeder Prüfung: Board `entwicklung` mit den Spalten Eingang (`colu
 - [ ] `[In Arbeit grenze 3, Eingang eigentuemer "agent", Erledigt]` (umsortiert) → `spalte: "In Arbeit"`, `einstellung: "grenze"`
 - [ ] `[Eingang, In Arbeit grenze 3 eigentuemer "agent", Erledigt]` → `spalte: "In Arbeit"`, `einstellung: "grenze"`
 - [ ] `[Erledigt eigentuemer "human", In Arbeit]` (Eingang entfernt) → `spalte: "Erledigt"`, die entfernte Spalte kommt zuletzt
-- [ ] `bot` entfernt die Spalte Eingang, während sie Karte #1 enthält, und setzt dabei In Arbeit auf `grenze: 3` → `409` „Spalte „Eingang“ enthält 1 Aufgaben — erst leeren“, nicht `403`
+- [ ] `bot` entfernt die Spalte Eingang, während sie Karte #1 enthält, und setzt dabei In Arbeit auf `grenze: 3` → `409` „Spalte „Eingang“ enthält 1 Aufgabe — erst leeren“, nicht `403`
 
 ### Umbenennen und Tauschen (Vergleich nach Namen)
 - [ ] `bot` benennt Eingang → Posteingang und In Arbeit → Bau um (mit `alt`, In Arbeit mit `grenze: 2`) → `403` `{spalte: "Posteingang", einstellung: "eigentuemer"}`, Board-Datei unverändert, kein Commit

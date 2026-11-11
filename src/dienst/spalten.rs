@@ -16,7 +16,7 @@ impl Kanban {
             Spaltenfehler::NameDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ ist doppelt")),
             Spaltenfehler::AltUnbekannt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ gibt es nicht")),
             Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
-            Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {z} Aufgaben — erst leeren")),
+            Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {} — erst leeren", aufgaben_anzahl(z))),
             Spaltenfehler::FarbeUngueltig(f) => Fehler::Ungueltig(format!("Farbe „{f}“ ist kein #rrggbb")),
             Spaltenfehler::EigentuemerUngueltig(e) => Fehler::Ungueltig(format!("Eigentümer „{e}“ ist nicht human, agent oder null")),
         })?;
@@ -26,6 +26,15 @@ impl Kanban {
             self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[(board_pfad(&b.slug), text)])?;
         }
         Ok(geaendert)
+    }
+}
+
+/// „1 Aufgabe“ bei genau einer, sonst „n Aufgaben“ (R00009, Karte #22).
+fn aufgaben_anzahl(z: usize) -> String {
+    if z == 1 {
+        "1 Aufgabe".into()
+    } else {
+        format!("{z} Aufgaben")
     }
 }
 

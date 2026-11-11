@@ -142,10 +142,12 @@ async fn mensch_aendert_jede_grenze() {
 #[tokio::test]
 async fn enthaelt_aufgaben_geht_vor_der_einstellungsregel() {
     let anfrage = json!([{"name": "In Arbeit", "alt": "In Arbeit", "grenze": 3}, {"name": "Erledigt", "alt": "Erledigt"}]);
-    let w = setzen_mit(VORSPANN, &[1], "bot", anfrage).await;
+    let w = setzen_mit(VORSPANN, &[1], "bot", anfrage.clone()).await;
     assert_eq!(w.status, 409, "{}", w.roh);
-    assert_eq!(w.rumpf(), json!({"fehler": "Spalte „Eingang“ enthält 1 Aufgaben — erst leeren"}));
+    assert_eq!(w.rumpf(), json!({"fehler": "Spalte „Eingang“ enthält 1 Aufgabe — erst leeren"}));
     assert_eq!(w.neue_commits, 0);
+    let w = setzen_mit(VORSPANN, &[1, 2, 3], "bot", anfrage).await;
+    assert_eq!(w.rumpf(), json!({"fehler": "Spalte „Eingang“ enthält 3 Aufgaben — erst leeren"}), "{}", w.roh);
 }
 
 // ---- F0018 Eigentümer und Reihenfolge (B0304)
