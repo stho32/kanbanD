@@ -72,6 +72,9 @@ pub struct Kanban {
     /// Testnaht (R00098 B0319): läuft beim Anlegen einmal zwischen Suche und Schreiben, unter der Sperre
     #[cfg(test)]
     zwischen_suche_und_schreiben: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Testnaht (R00118 B0538): läuft beim Ziehen einmal zwischen Grenzprüfung und `aktion()`, unter der Sperre
+    #[cfg(test)]
+    zwischen_grenzpruefung_und_aktion: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -96,6 +99,8 @@ impl Kanban {
         Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(),
             #[cfg(test)]
             zwischen_suche_und_schreiben: Mutex::default(),
+            #[cfg(test)]
+            zwischen_grenzpruefung_und_aktion: Mutex::default(),
         }
     }
 

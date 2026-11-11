@@ -113,6 +113,9 @@ async fn mensch_zieht_in_die_volle_spalte_mit_warnung() {
 
 #[tokio::test]
 async fn zwei_gleichzeitige_ziehen_um_den_letzten_platz() {
+    // Das Ergebnis (genau ein 200, ein 409) prüft diese Integration; die Sperre selbst belegt deterministisch
+    // `src/dienst/reservierung.rs::ziehen_haelt_die_sperre_zwischen_pruefung_und_aktion` (Halter zwischen Prüfung
+    // und Handlung, R00118 B0538) — zwei Threads treffen die Lücke nur zufällig.
     let tmp = tempfile::tempdir().unwrap();
     fluss(tmp.path(), 3, &[7, 8], &[5, 6]);
     let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
@@ -175,6 +178,23 @@ async fn mehrere_bewegen_zaehlt_den_stand_nach_allen_zuegen() {
     let (s, r) = mehrere(a, "cl", &[(7, "In Arbeit"), (5, "Fertig")]).await;
     assert_eq!(s, 200, "eine hinein, eine heraus: {r}");
     assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![7]);
+}
+
+// R00118 B0542 (Anmerkung 9): der 409 von `bewegen-mehrere` nennt die Belegung **vor** dem Zug (`anzahl`), nicht den
+// Stand nach allen Zügen. Ein Agent sieht damit nicht, um wie viel er überzieht; die Anforderung belässt es so, der
+// Test hält den Vertrag fest (R00118 AK 9: anzahl vor dem Zug).
+#[tokio::test]
+async fn bewegen_mehrere_nennt_die_anzahl_vor_dem_zug() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 3, &[7, 8], &[5, 6]);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let vorher = stand(tmp.path());
+    let (s, r) = mehrere(&lauf.adresse, "cl", &[(7, "In Arbeit"), (8, "In Arbeit")]).await;
+    assert_eq!(s, 409, "{r}");
+    assert_eq!(r["anzahl"].as_u64(), Some(2), "anzahl ist die Belegung vor dem Zug, nicht der Stand danach (4): {r}");
+    assert_eq!(r["spalte"], "In Arbeit");
+    assert_eq!(r["grenze"].as_u64(), Some(3));
+    unveraendert(tmp.path(), &vorher, "keine der beiden bewegt");
 }
 
 #[tokio::test]
@@ -375,6 +395,27 @@ async fn zurueckholen_ohne_board_und_auf_jedem_board() {
     let (s, r) = als(Method::POST, a, "api/aufgaben/10/zurueckholen", "cl", None, json!(null)).await;
     assert_eq!((s, r), (409, grenze_erreicht("Doing", 1, 1)), "nur das zweite Board voll");
     unveraendert(tmp.path(), &vorher, "zurückholen auf dem zweiten Board");
+}
+
+// R00118 B0537: `Zurückholen` liest die lesbaren Board-Dateien (`ordner().boards()?`) und verwirft die Defekte-Liste.
+// Eine defekte Board-Datei wird deshalb übersprungen: die Karte gilt dort als auf keinem Board, der Weg läuft durch
+// (X00001, Abweichungen). Der Test hält diese bewusst hingenommene Grenze fest.
+#[tokio::test]
+async fn zurueckholen_ueberspringt_defekte_board_dateien() {
+    let tmp = tempfile::tempdir().unwrap();
+    fluss(tmp.path(), 2, &[7], &[5, 6]);
+    lose(tmp.path(), &[10]);
+    // Defekte Board-Datei: dieselbe Spalte zweimal — `boards()` verwirft sie als defekt (Formatfehler).
+    std::fs::write(tmp.path().join("boards/kaputt.md"), "---\nlimits:\n  Doing: 1\n---\n\n# Kaputt\n\n## Doing\n\n- #10\n\n## Doing\n\n").unwrap();
+    git(tmp.path(), &["add", "-A"]);
+    git(tmp.path(), &["commit", "-q", "-m", "defektes Board"]);
+    archivieren(tmp.path(), 10);
+    let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
+    let zustand: Value = reqwest::get(&format!("{}api/zustand", lauf.adresse)).await.unwrap().json().await.unwrap();
+    assert!(zustand["defekte"].as_array().unwrap().iter().any(|d| d["pfad"] == "boards/kaputt.md"), "der Ordner meldet die defekte Datei: {zustand}");
+    let (s, r) = als(Method::POST, &lauf.adresse, "api/aufgaben/10/zurueckholen", "cl", None, json!(null)).await;
+    assert_eq!((s, r["nummer"].as_u64()), (200, Some(10)), "die defekte Board-Datei ist übersprungen: {r}");
+    assert!(!lies(tmp.path(), "aufgaben/0010-k.md").contains("archived:"), "#10 ist wieder geöffnet");
 }
 
 #[tokio::test]

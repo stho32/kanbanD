@@ -92,6 +92,13 @@ impl Kanban {
         let vorher = b.clone();
         b.bewegen(nr, &nach, Some(0)).map_err(|_| Fehler::Intern(format!("#{nr} ließ sich nicht nach „{nach}“ bewegen")))?;
         let grenzwarnungen = entnahme_und_zug_pruefen(wer.art, &vorher, &b, &[nr], &archivierte(&aufgaben))?;
+        #[cfg(test)]
+        {
+            let haken = self.zwischen_grenzpruefung_und_aktion.lock().unwrap().take();
+            if let Some(haken) = haken {
+                haken();
+            }
+        }
         let nachricht = format!("#{nr} gezogen: „{}“ → „{nach}“ ({}, {})", zug.von, self.inhaber(a.reservierung.as_ref().expect("gesetzt")), b.titel);
         let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
         self.aktion(wer, &nachricht, &dateien)?;
@@ -131,5 +138,66 @@ mod tests {
         assert_eq!(erste_freie(&[5, 7], &alle, "A"), None, "archiviert und fremd");
         assert_eq!(erste_freie(&[42, 8], &alle, "A"), Some(8), "eine fehlende Datei wird übergangen");
         assert_eq!(erste_freie(&[], &alle, "A"), None);
+    }
+
+    fn git(pfad: &std::path::Path, args: &[&str]) -> String {
+        let aus = std::process::Command::new("git").args(args).current_dir(pfad).output().unwrap();
+        String::from_utf8_lossy(&aus.stdout).trim().to_string()
+    }
+
+    /// Board „Fluss“: „Bereit“ = [7, 8], „In Arbeit“ Grenze 3 mit [5, 6], „Fertig“ leer; je Nummer eine Aufgabe.
+    fn fluss(pfad: &std::path::Path) {
+        std::fs::create_dir_all(pfad.join("boards")).unwrap();
+        std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+        std::fs::write(pfad.join("kanbanD.md"), "---\npeople:\n  cl: {name: Claude, kind: agent}\n---\n").unwrap();
+        std::fs::write(pfad.join("boards/fluss.md"), "---\nlimits:\n  In Arbeit: 3\n---\n\n# Fluss\n\n## Bereit\n\n- #7\n- #8\n\n## In Arbeit\n\n- #5\n- #6\n\n## Fertig\n").unwrap();
+        for nr in [5, 6, 7, 8] {
+            std::fs::write(pfad.join(format!("aufgaben/{nr:04}-k.md")), format!("---\nid: {nr}\ntitle: k{nr}\n---\n")).unwrap();
+        }
+        git(pfad, &["init", "-q"]);
+        git(pfad, &["add", "-A"]);
+        git(pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Fluss"]);
+    }
+
+    // R00118 B0538: der Halter zwischen Grenzprüfung und aktion() — die Sperre steht dort, der zweite Zug läuft erst
+    // nach dem ersten und sieht die volle Spalte. Ohne die Sperre könnte er die Belegung vor dem ersten Zug lesen.
+    #[test]
+    fn ziehen_haelt_die_sperre_zwischen_pruefung_und_aktion() {
+        use std::sync::{Arc, mpsc};
+        use std::time::Duration;
+        let tmp = tempfile::tempdir().unwrap();
+        fluss(tmp.path());
+        let k = Arc::new(Kanban::neu(tmp.path().to_path_buf()));
+        let cl = k.handelnder(Some("cl")).unwrap();
+        let zug = Zug { von: "Bereit".into(), nach: None };
+
+        let (zweiter_tx, zweiter_rx) = mpsc::channel();
+        let (k2, cl2, zug2) = (Arc::clone(&k), cl.clone(), zug.clone());
+        *k.zwischen_grenzpruefung_und_aktion.lock().unwrap() = Some(Box::new(move || {
+            let gehalten = matches!(k2.sperre.try_lock(), Err(std::sync::TryLockError::WouldBlock));
+            let (fertig_tx, fertig_rx) = mpsc::channel();
+            let k3 = Arc::clone(&k2);
+            let lauf = std::thread::spawn(move || {
+                let r = k3.ziehen(&cl2, "B", "fluss", &zug2);
+                fertig_tx.send(()).ok();
+                r
+            });
+            let durchgelaufen = fertig_rx.recv_timeout(Duration::from_secs(2)).is_ok();
+            zweiter_tx.send((gehalten, durchgelaufen, lauf)).unwrap();
+        }));
+        let vorher: usize = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+
+        let erster = k.ziehen(&cl, "A", "fluss", &zug);
+        let (gehalten, durchgelaufen, lauf) = zweiter_rx.recv().unwrap();
+
+        assert!(gehalten, "die Sperre ist zwischen Grenzprüfung und aktion() gehalten");
+        assert!(!durchgelaufen, "der zweite Zug kam durch, während der erste zwischen Prüfung und Handlung stand");
+        assert_eq!(erster.map(|g| g.aufgabe.nummer), Ok(7), "der erste Zug zieht #7");
+        assert_eq!(
+            lauf.join().unwrap().err(),
+            Some(Fehler::GrenzeErreicht { spalte: "In Arbeit".into(), grenze: 3, anzahl: 3 }),
+            "der zweite sieht die volle Spalte nach dem ersten"
+        );
+        assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap(), vorher + 1, "nur der erste committet");
     }
 }
