@@ -1,14 +1,14 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
 pub const DURCHLAEUFE: &str = "kanbanD-runs";
-const BEKANNT: [&str; 15] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, KOSTEN, "archived", RESERVIERUNG];
+const BEKANNT: [&str; 16] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, KOSTEN, GESCHAETZT, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
 pub const RESERVIERUNG: &str = "reservation";
@@ -19,6 +19,8 @@ pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
 /// Preisetikett (R00105, ADR-0009)
 pub const KOSTEN: &str = "cost";
+/// Geschätzte Zeit in ganzen Minuten (R00129, ADR-0023)
+pub const GESCHAETZT: &str = "estimate";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
 const BERICHTSSCHLUESSEL: [&str; 2] = ["burndown", "forecast"];
 /// Die Schlüssel einer Wirkung, die kanbanD kennt; andere bleiben erhalten.
@@ -71,6 +73,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     if let Some(k) = m.get(KOSTEN).filter(|k| !k.is_null()) {
         a.kosten = Some(Kosten::lesen(k).map_err(Formatfehler)?);
+    }
+    if let Some(e) = m.get(GESCHAETZT) {
+        a.geschaetzte_minuten = geschaetzte_minuten_pruefen(Some(e)).map_err(Formatfehler)?;
     }
     if let Some(r) = m.get(RESERVIERUNG) {
         a.reservierung = reservierung_lesen(r)?;
@@ -382,6 +387,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     if let Some(d) = &a.faellig {
         s.push_str(&format!("due: {}\n", yaml::skalar(d)));
     }
+    if let Some(m) = &a.geschaetzte_minuten {
+        s.push_str(&format!("{GESCHAETZT}: {m}\n"));
+    }
     if !a.herkunft.is_empty() {
         s.push_str(&format!("origins: {}\n", yaml::liste(&a.herkunft)));
     }
@@ -555,7 +563,8 @@ mod tests {
 
     #[test]
     fn handgeschriebene_datei_ohne_id_mit_sekunden_und_unbekanntem_schluessel() {
-        let t = "---\ntitle: Hand\nestimate: 3\nnotes:\n  - a\n  - b\n---\nText\n- [X] fertig\n* [ ] offen\n\n```kanbanD-time\n\n2026-10-18 09:00:59 · … · mi\n```\n";
+        // `estimate` ist seit R00129 ein bekannter Schlüssel; der unbekannte ist hier jetzt `schaetzung`.
+        let t = "---\ntitle: Hand\nschaetzung: 3\nnotes:\n  - a\n  - b\n---\nText\n- [X] fertig\n* [ ] offen\n\n```kanbanD-time\n\n2026-10-18 09:00:59 · … · mi\n```\n";
         let a = lesen("0042-hand.md", t).unwrap();
         assert_eq!(a.nummer, 42);
         assert_eq!(a.zeiten[0].beginn, "2026-10-18 09:00");
@@ -564,8 +573,28 @@ mod tests {
         assert!(a.teilaufgaben[0].erledigt);
         assert_eq!(a.beschreibung, "Text");
         let neu = schreiben(&a);
-        assert!(neu.contains("estimate: 3\nnotes:\n  - a\n  - b\n---"), "{neu}");
+        assert!(neu.contains("schaetzung: 3\nnotes:\n  - a\n  - b\n---"), "{neu}");
         assert_eq!(lesen("0042-hand.md", &neu).unwrap().weitere.len(), 2);
+    }
+
+    // R00129 B0608: `estimate` in BEKANNT und in der Schreibreihenfolge; ganze Minuten 1..=100.000 zeichengleich,
+    // ein von Hand geschriebenes `estimate: 3` gilt als drei Minuten, formwidrige Werte machen die Aufgabe defekt.
+    #[test]
+    fn geschaetzte_zeit_im_rundlauf() {
+        let mit = |kopf: &str| lesen("0001-x.md", &format!("---\nid: 1\ntitle: X\n{kopf}---\n"));
+        for m in [1_u32, 3, 150, 100_000] {
+            let a = mit(&format!("estimate: {m}\n")).unwrap();
+            assert_eq!(a.geschaetzte_minuten, Some(m), "{m}");
+            assert!(a.weitere.is_empty(), "estimate ist kein unbekannter Schlüssel mehr: {m}");
+            assert_eq!(schreiben(&a), format!("---\nid: 1\ntitle: X\nestimate: {m}\n---\n"), "{m}");
+        }
+        assert!(!schreiben(&Aufgabe::neu(1, "0001-x.md".into(), "X".into())).contains("estimate"), "ohne Schätzung keine Zeile");
+        // unbekannte Schlüssel daneben bleiben (Rundlauf)
+        assert_eq!(schreiben(&mit("estimate: 3\nnote: n\n").unwrap()), "---\nid: 1\ntitle: X\nestimate: 3\nnote: n\n---\n");
+        for falsch in ["2:30", "\"150\"", "150.0", "2.5", "0", "-1", "100001", ".inf", ".nan", "true"] {
+            assert_eq!(mit(&format!("estimate: {falsch}\n")).unwrap_err().0, crate::modell::GESCHAETZT_MELDUNG, "{falsch}");
+        }
+        assert_eq!(mit("estimate:\n").unwrap().geschaetzte_minuten, None, "leer heißt keine Schätzung");
     }
 
     #[test]
