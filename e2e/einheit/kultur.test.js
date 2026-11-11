@@ -93,6 +93,15 @@ test('seitText: unter 48 Stunden abgerundete Stunden, ab 48 Stunden kaufmännisc
   assert.strictEqual(seitText(30 * tag), 'seit 30 Tagen');
 });
 
+// R00134: die eine Zählwort-Hilfe zieht nach web/kultur.js (ADR-0013) — 1 → Einzahl, sonst Mehrzahl (PO Z. 117)
+test('zaehlwort: nach der Zahl 1 die Einzahl, sonst die Mehrzahl', () => {
+  const { zaehlwort } = require('../../web/kultur.js');
+  assert.strictEqual(zaehlwort(1, 'Tag', 'Tagen'), 'Tag');
+  assert.strictEqual(zaehlwort(0, 'Tag', 'Tagen'), 'Tagen', '0 von 0 Tagen');
+  assert.strictEqual(zaehlwort(2, 'Tag', 'Tagen'), 'Tagen');
+  assert.strictEqual(zaehlwort(11, 'Tag', 'Tagen'), 'Tagen', 'nur die Zahl 1, nicht die Endziffer');
+});
+
 test('seitText: kein Sprung zwischen 35 und 36 Stunden — Tage erscheinen erst ab 48 Stunden (AK 3)', () => {
   const { seitText } = require('../../web/kultur.js');
   const stunde = 36e5;

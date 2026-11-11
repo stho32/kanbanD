@@ -199,10 +199,16 @@ test('Reiter-Rückfall: ohne Etikett gilt „Inhalt“; Fokus nur von Reiterleis
   assert.strictEqual(reiterRueckfall({ tab: 'datei', etikett: false, fokusBeiKosten: true }), null, 'nur „Kosten“ fällt weg');
 });
 
-test('Zählwort (R00105 US-24, PO Z. 117): nach der Zahl 1 Einzahl, sonst Mehrzahl', () => {
-  const { zaehlwort } = require('../../web/kosten.js');
+test('Zählwort (R00105 US-24, PO Z. 117; R00134): nach der Zahl 1 Einzahl, sonst Mehrzahl — die Hilfe liegt in web/kultur.js', () => {
+  const { zaehlwort } = require('../../web/kultur.js');
   assert.strictEqual(zaehlwort(1, 'Aufgabe', 'Aufgaben'), 'Aufgabe');
   assert.strictEqual(zaehlwort(0, 'Aufgabe', 'Aufgaben'), 'Aufgaben', '0 von 0 Aufgaben');
   assert.strictEqual(zaehlwort(2, 'Aufgabe', 'Aufgaben'), 'Aufgaben');
   assert.strictEqual(zaehlwort(11, 'Aufgabe', 'Aufgaben'), 'Aufgaben', 'nur die Zahl 1, nicht die Endziffer');
+});
+
+test('R00134: web/kosten.js exportiert zaehlwort nicht mehr — eine Zählwort-Hilfe an einer Stelle', () => {
+  const kosten = require('../../web/kosten.js');
+  assert.strictEqual(Object.hasOwn(kosten, 'zaehlwort'), false, 'keine zweite Definition in web/kosten.js');
+  assert.strictEqual(typeof require('../../web/kultur.js').zaehlwort, 'function');
 });

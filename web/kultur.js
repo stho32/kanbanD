@@ -56,6 +56,11 @@
     if (stunden === 1) return 'seit 1 Stunde';
     return `seit ${stunden} Stunden`;
   }
+  /** Zählwort (PO Z. 117, R00105/R00134): das Wort richtet sich nach der Zahl unmittelbar davor — 1 → Einzahl, sonst Mehrzahl („0 von 0 Aufgaben“). */
+  function zaehlwort(zahl, einzahl, mehrzahl) {
+    if (zahl === 1) return einzahl;
+    return mehrzahl;
+  }
 
   /** Sichtbare Beschriftung je Schlüssel der Datei; der Schlüssel selbst bleibt Hilfstext (FA 10). */
   const FELDER = Object.freeze({
@@ -82,5 +87,5 @@
     return ['thin air'];
   }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, seitText, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, seitText, zaehlwort, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
 })(typeof module !== 'undefined' ? module.exports : window);

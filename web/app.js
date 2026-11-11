@@ -277,7 +277,8 @@ async function sichtFolgen({ view, slug, fbFehler }, start) {
 }
 
 /** Fever Chart (R00078): rechnet die Tage vom Start bis gestern, die im Cache fehlen, in Häppchen (die Seite bleibt bedienbar)
-    und gibt sie dem Server; der committet sie als „kanbanD“. Läuft je Schlüssel einmal; wechselt Ansicht oder Filter, bricht es ab. */
+    und gibt sie dem Server; der committet sie als „kanbanD“. Läuft je Schlüssel einmal; wechselt Ansicht oder Filter, bricht es ab.
+    Die erste Meldung erscheint schon beim ersten fehlenden Tag (R00134), damit auch „von 1 Tag“ sichtbar ist. */
 async function fieberNachtragen() {
   const st = S.ui.view === 'berichte/fieber' && fieberStand();
   if (!st || !st.start || (S.ui.fieberLauf && S.ui.fieberLauf.schluessel === st.schluessel)) return;
@@ -288,10 +289,10 @@ async function fieberNachtragen() {
   const weiter = () => { const jetzt = S.ui.fieberLauf === lauf && S.ui.view === 'berichte/fieber' && fieberStand(); return !!jetzt && jetzt.schluessel === st.schluessel; };
   for (const [i, datum] of fehlt.entries()) {
     neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, S.bew.phasen, st.start, st.block && st.block.schluessel);
-    if (i % 4 === 3) {
+    if (i === 0 || i % 4 === 3) {
       lauf.n = i + 1;
       const el = $('#fieber-lauf');
-      if (el && el.firstChild) el.firstChild.textContent = `rechnet ${lauf.n} von ${lauf.von} Tagen … `;
+      if (el && el.firstChild) el.firstChild.textContent = `rechnet ${lauf.n} von ${lauf.von} ${zaehlwort(lauf.von, 'Tag', 'Tagen')} … `;
       await new Promise(r => setTimeout(r, 0));
       if (!weiter()) { if (S.ui.fieberLauf === lauf) S.ui.fieberLauf = null; return; }
     }
