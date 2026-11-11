@@ -31,21 +31,21 @@ Der Auslöser ist eine Beobachtung des Betreibers: Aufgaben, Personen, WBS und E
 
 ### Die vier Ziele liegen im Menü „…“
 
-4. Das Menü „…“ (`#t-mehr`, `role=menu`) ist bei **jeder** Breite vorhanden (heute schon, R00101) und trägt zusätzlich die vier Ziele in dieser Reihenfolge: **Aufgaben, Personen, WBS, Einrichten**. Die heutigen Einträge („Signale oben“, „Spalten einrichten“, „Darstellung“, „Läuft gerade“, „Ich bin …“) bleiben erhalten.
-5. Der WBS-Eintrag erscheint je gebundener Anwendung (wie heute in der Leiste, `vWbsMenue`): ohne gebundene Anwendung kein Eintrag, bei mehreren je Anwendung mit Kürzel („WBS · kc“, „WBS · kd“).
+4. Das Menü „…“ (`#t-mehr`, `role=menu`) ist bei **jeder** Breite vorhanden (heute schon, R00101) und trägt zusätzlich die vier Ziele in dieser Reihenfolge: **Aufgaben, Personen, WBS, Einrichten**. Die Werkzeuge, die `kopfPlaetze` je Breite in dieses Menü führt, bleiben erhalten — heute ab 600 px „Signale oben“, „Spalten einrichten“, „Darstellung“, unter 600 px zusätzlich „Läuft gerade“ (bei laufendem Timer) und „Ich bin …“. „Läuft gerade“ und „Ich bin …“ erscheinen dort also **je Breite**; oberhalb 600 px führt `kopfPlaetze` sie in der Werkzeug- bzw. Statuszeile der Kopfzeile (`web/kopfzeile.js`).
+5. Jeder Eintrag des Menü „…“ — auch der WBS-Eintrag — ist ein `menuitem` mit `tabindex="-1"`; die vier Ziele sind Links mit `data-act="seite"` in der Form von `vSeitenPop` (nicht der bloße Leistenlink). Der WBS-Eintrag erscheint je gebundener Anwendung: ohne gebundene Anwendung kein Eintrag, bei mehreren je Anwendung mit Kürzel („WBS · kc“, „WBS · kd“).
 6. Jeder Eintrag führt zur selben Ansicht wie heute der Leistenlink (`#/aufgaben`, `#/personen`, `#/wbs/<kürzel>`, `#/einrichten`); er schließt das Menü und zeigt die Zielansicht.
-7. Die Reihenfolge und Gruppierung innerhalb des Menü „…“ (die vier Ziele zuerst, dann die Werkzeuge; mit oder ohne Abschnittskopf) legt die UX-Vorprüfung fest.
+7. Die Reihenfolge und Gruppierung innerhalb des Menü „…“ folgt der UX-Vorprüfung: die vier Ziele stehen als **erste Gruppe** oben, darunter trennt genau **ein** `role="separator"` sie von den Werkzeugen; ein zweiter Abschnittskopf entsteht nicht (der heutige `<h4>MEHR</h4>` bleibt, seine Ablösung ist Karte #109/R00136).
 
 ### Die aktuelle Seite bleibt erkennbar
 
 8. Die aktuelle Ansicht ist in der Kopfzeile weiterhin als aktuell markiert: Wo der Eintrag heute in der Leiste lag und jetzt im Menü „…“ liegt, trägt sein Eintrag die Klasse `an` **und** `aria-current="page"` — gesetzt unter derselben Bedingung wie bisher (derselbe Helfer `aktuelleSeite`, ADR-0018 Regel 5, geweitet: „der Eintrag mit `an` trägt `aria-current`, in der Leiste oder im Menü“).
 9. Die Regel gilt für die drei Stellen, die heute `an`/`aria-current` setzen: `vNavigation` (Leiste: Board, Berichte), `vSeitenPop` (compact: Board, Berichte) und der neue Eintrag im Menü „…“ (die vier Ziele).
 10. Der Seitenknopf unter 600 px nennt weiterhin die aktuelle Seite („Seite: Aufgaben“), unverändert.
-11. Ob der Auslöser „…“ selbst die aktuelle Sekundärseite sichtbar kennzeichnet (Punkt, Unterstrich oder nichts), entscheidet die UX-Vorprüfung; mindestens aber trägt der Menüeintrag `aria-current`.
+11. Der Auslöser „…“ kennzeichnet die aktuelle Sekundärseite **nicht** (kein Punkt, kein Unterstrich am Zeichen); gekennzeichnet ist allein der Menüeintrag (FA 8/9). So bleibt es bei höchstens **einem** `an` mit `aria-current` (NFA „Barrierefreiheit“, ADR-0018 Regel 5 geweitet). *(Entscheidung der UX-Vorprüfung #105.)*
 
 ### Das Menü bleibt bedienbar
 
-12. Das Menü „…“ folgt weiter dem Muster von R00106: `role=menu`, `aria-haspopup="menu"` und `aria-expanded` am Auslöser, Öffnen per Klick/Enter/Leertaste, Pfeile durch die Einträge, Esc schließt und gibt den Fokus an `#t-mehr` zurück, die Einträge sind `menuitem`.
+12. Das Menü „…“ folgt weiter dem Muster von R00106: `role=menu`, `aria-haspopup="menu"` und `aria-expanded` am Auslöser, Öffnen per Klick/Enter/Leertaste, Pfeile durch die Einträge, Esc schließt und gibt den Fokus an `#t-mehr` zurück; **jeder** Eintrag ist `menuitem` mit `tabindex="-1"`, auch der WBS-Eintrag — im offenen Menü `#pop[role=menu]` steht kein `a` ohne Rolle.
 
 ## Nicht-funktionale Anforderungen
 
@@ -71,7 +71,8 @@ Der Auslöser ist eine Beobachtung des Betreibers: Aufgaben, Personen, WBS und E
   - Prüfebene: E2E US-3, US-5; geweitete R00113-Probe.
 - [ ] **5. Aktuelle Seite schmal:** Gegeben bei 560 px in der Aufgabenliste, wenn ich den Seitenknopf ansehe, dann heißt er „Seite: Aufgaben“, es gibt keine `navigation`, und im Menü „…“ trägt genau der Eintrag „Aufgaben“ `an` und `aria-current="page"`.
   - Prüfebene: E2E US-5; US-10 der R00113 in geweiteter Form.
-- [ ] **6. Werkzeuge bleiben:** Gegeben bei 1280 px, wenn ich das Menü „…“ öffne, dann stehen darin die vier Ziele **und** „Signale oben“, „Spalten einrichten“, „Darstellung“, „Läuft gerade“ (bei laufendem Timer) und „Ich bin …“; „Neue Aufgabe“ und der Bereichsfilter stehen weiterhin ohne Menü in der Kopfzeile.
+- [ ] **6. Werkzeuge bleiben (je Breite):** Gegeben bei 1280 px, wenn ich das Menü „…“ öffne, dann stehen darin die vier Ziele **und** die Werkzeuge, die die Kopfzeile dort führt: „Signale oben“, „Spalten einrichten“, „Darstellung“; „Läuft gerade“ (bei laufendem Timer) und „Ich bin …“ stehen bei 1280 px **in der Werkzeugzeile** (nicht im Menü), bei 560 px im Menü „…“. „Neue Aufgabe“ und der Bereichsfilter stehen weiterhin ohne Menü in der Kopfzeile.
+  - Fällt durch: ein Werkzeug fehlt ganz; „Läuft gerade“/„Ich bin …“ wird bei 1280 px im Menü erwartet oder fehlt bei 560 px.
   - Prüfebene: E2E US-4.
 - [ ] **7. Kein Ziel geht verloren:** Gegeben jede Breite aus AK 3, wenn ich vom Board aus jedes der sechs Ziele erreiche, dann gelingt das über die Leiste bzw. das Menü „…“ in höchstens zwei Klicks, und es ist in der Kopfzeile mindestens einmal vorhanden.
   - Prüfebene: E2E US-6.
@@ -81,6 +82,12 @@ Der Auslöser ist eine Beobachtung des Betreibers: Aufgaben, Personen, WBS und E
   - Prüfebene: E2E US-5; `e2e/tests/r00113-struktur.spec.js` (geweitet).
 - [ ] **10. Nichts sonst geändert:** Server, Dateiformat und API unverändert; `cargo test`, `node --test e2e/einheit/` und `npx playwright test` sind grün, mit den nachgezogenen Kopfzeilen-Proben (NFA „Rückwärtsverträglich“) als einziger Teständerung.
   - Prüfebene: gesamte Suite.
+- [ ] **11. Jeder Menüeintrag per Pfeil erreichbar (M1):** Gegeben bei 1280 px, das Menü „…“ ist offen, wenn ich mit ↓ durch die Einträge gehe, dann erreiche ich jeden Eintrag einschließlich „WBS“, und im offenen Menü `#pop[role=menu]` gibt es kein `a` ohne `role` (kein `a:not([role])`).
+  - Fällt durch: der WBS-Eintrag wird beim Pfeilen übersprungen; ein Menüeintrag ist ein Link ohne `menuitem`/`tabindex`.
+  - Prüfebene: E2E US-8; neuer Teil in `r00140-navigation.spec.js`.
+- [ ] **12. Vier Ziele zuerst, ein Trenner, dann die Werkzeuge (S1):** Gegeben bei 1280 px, das Menü „…“ ist offen, dann stehen die vier Ziele als erste Gruppe, darunter genau **ein** `role="separator"` und danach die Werkzeuge; es gibt keinen zweiten Abschnittskopf.
+  - Fällt durch: kein oder mehr als ein `separator`; ein Werkzeug zwischen den vier Zielen; ein zweiter Abschnittskopf.
+  - Prüfebene: E2E US-4, US-9.
 
 ## Betroffene Verzeichnisstruktur
 
@@ -92,7 +99,7 @@ web/
 └── kd-app.css        # Kopfzeilen-Regeln (Breite/Platz) — nur nachziehen, was die Kürzung freigibt
 e2e/
 ├── tests/
-│   ├── r00140-navigation.spec.js     # neu: AK 1–8 (Leiste, Seitenmenü, Menü „…“, jede Breite)
+│   ├── r00140-navigation.spec.js     # neu: AK 1–8, 11, 12 (Leiste, Seitenmenü, Menü „…“, jede Breite)
 │   ├── r00113-struktur.spec.js       # geweitet: „Eintrag mit an trägt aria-current“ (AK 9)
 │   ├── r00101-kopfzeile.spec.js      # compact-Menü-Aufzählung (AK 2), Menü „Mehr“-Einträge
 │   ├── r00054-wbs-sicht.spec.js      # WBS-Link jetzt im Menü „…“
@@ -107,22 +114,22 @@ Nach dem Architektur-Durchgang vom 2026-11-11 (bestanden): keine Technikfrage, k
 
 ### Ablauf (Vorplanung, den Zuschnitt entscheidet der Entwickler)
 
-1. **Leiste kürzen** (`vNavigation`, `web/ansicht.js:81`): nur noch `aktuelleSeite(u.view === 'board')` (Board) und `aktuelleSeite(u.view.startsWith('berichte'))` (`#t-ber`); Aufgaben, Personen `vWbsMenue` und Einrichten entfallen.
+1. **Leiste kürzen** (`vNavigation`, `web/ansicht.js:81`): nur noch `aktuelleSeite(u.view === 'board')` (Board) und `aktuelleSeite(u.view.startsWith('berichte'))` (`#t-ber`); Aufgaben, Personen, der WBS-Block (`vWbsMenue`) und Einrichten entfallen.
 2. **Seitenmenü kürzen** (`vSeitenPop`, `:96–110`): dieselben zwei Ziele; die vier `ziel(…)`-Aufrufe und der WBS-Block entfallen.
-3. **Menü „…“ erweitern** (`vMehrPop`, `:127–138`): die vier Ziele als `menuitem`-Links mit den heutigen Hash-Zielen, vor den heutigen Einträgen (Reihenfolge nach UX-Vorprüfung). Jeder Eintrag trägt `an` + `aria-current` über `aktuelleSeite(…)`, wenn seine Ansicht die aktuelle ist.
-4. **Proben** (Schritt 5): neue Probe `r00140`, geweitete `r00113`, nachgezogene Kopfzeilen-Proben.
+3. **Menü „…“ erweitern** (`vMehrPop`, `:127–138`): die vier Ziele in der Form von `vSeitenPop` (`<a class="iz" … role="menuitem" tabindex="-1" data-act="seite">`, WBS je gebundener Anwendung) als erste Gruppe, danach genau ein `role="separator"`, dann die heutigen Werkzeug-Einträge (Reihenfolge nach UX-Vorprüfung). Jeder Eintrag trägt `an` + `aria-current` über `aktuelleSeite(…)`, wenn seine Ansicht die aktuelle ist. Der Auslöser „…“ bleibt unmarkiert (FA 11).
+4. **Proben** (Schritt 5): neue Probe `r00140` (AK 1–8, 11, 12), geweitete `r00113`, nachgezogene Kopfzeilen-Proben.
 
 ### Grobentwurf (JS, reine Module und Renderer wie heute)
 
 - `web/ansicht.js`:
   - `vNavigation()` — Leiste auf Board + `#t-ber`.
   - `vSeitenPop()` — Seitenmenü auf Board + Berichte.
-  - `vMehrPop()` — ein Eintragsblock `ziel` (Aufgaben, Personen, WBS, Einrichten) über den vorhandenen Helfer `aktuelleSeite`; WBS je gebundener Anwendung über `vWbsMenue` oder einen gleichartigen Block.
+  - `vMehrPop()` — ein Eintragsblock `ziel` (Aufgaben, Personen, WBS, Einrichten) in derselben Form wie `vSeitenPop` (`role="menuitem" tabindex="-1" data-act="seite"`) über den vorhandenen Helfer `aktuelleSeite`; WBS je gebundener Anwendung wie in `vSeitenPop`, **nicht** über den bloßen Leistenlink `vWbsMenue`. Zwischen dem Zielblock und den Werkzeugen genau ein `<div role="separator">`; kein zweiter Abschnittskopf.
   - kein neuer Zustand: es gibt keine „Navigation eingeklappt“-Flagge; die Zusammensetzung ist statisch.
 
 ### Änderungen an bestehenden Klassen
 
-- `web/ansicht.js`: `vNavigation`, `vSeitenPop`, `vMehrPop`; `vWbsMenue` liefert nicht mehr die Leiste, sondern den Menüblock (oder eine Schwesterfunktion für das Menü).
+- `web/ansicht.js`: `vNavigation`, `vSeitenPop`, `vMehrPop`; `vWbsMenue` wird aus der Leiste entfernt; der WBS-Eintrag des Menü „…“ entsteht in der `vSeitenPop`-Form (M1).
 - `web/kd-app.css`: nur, falls die kürzere Leiste eine Breitenregel freigibt (Filterfeld/Werkzeugzeile); keine neue Form.
 - Kein Server-Code (`src/`), kein Dateiformat, keine Migration.
 
@@ -142,14 +149,16 @@ Nach dem Architektur-Durchgang vom 2026-11-11 (bestanden): keine Technikfrage, k
 
 Die kürzere Leiste und das Menü „…“ mit den vier Zielen sind ein **neuer Kopfzeilen-Zustand**: Nach der Vision-Leitplanke „Keine Gestaltung geht in den Bau, die niemand angesehen hat“ entscheidet die **UX-Vorprüfung** über Reihenfolge, Gruppierung und eine etwaige Kennzeichnung des Auslösers, und der **product-owner gibt den Zustand an Artboard [D0002](../Dokumentation/Wireframes/D0002.dc.html)** (Board) frei (hell/dunkel, 375/560/1280/1440 px) — wie bei I0119/R00128 und I0114/R00124. Das Artboard D0002 legt die Anordnung nach Breite heute nicht fest; die Änderung ist eine Umordnung des Vorhandenen (Material 3 „Menu“, `gemeinsam/regeln.md` „Gestaltung“).
 
+Die **UX-Vorprüfung #105** (2026-11-11) hat entschieden und ist übernommen: die vier Ziele als erste Gruppe mit genau einem `role="separator"`-Trenner vor den Werkzeugen (S1), **keine** Markierung am „…“-Auslöser (FA 11), der Seitenknopf/-pop unter 600 px bleibt **neben** dem Menü „…“ (Frage 1), „Signale oben“ bleibt `menuitemcheckbox`. Die Vorgaben des Auslösers und des WBS-Eintrags sind in FA 5/7/11/12 eingearbeitet.
+
 ## Tests
 
 Nach Skill `test-pyramide`. Jede Szene der User Story wird ein Test, der eine beobachtbare Eigenschaft der Kopfzeile prüft (Skill `test-ehrlichkeit`).
 
-- **E2E (Playwright)**: neu `e2e/tests/r00140-navigation.spec.js` mit AK 1–8: Leiste (1280 px), Seitenmenü (375/560 px), Menü „…“ (alle Breiten), die vier Ziele in beiden Zuständen, der frei gebliebene Platz. Muster `e2e/tests/r00101-kopfzeile.spec.js` (Start, Ansichtenliste, `kopfzeile-hilfen.js`).
+- **E2E (Playwright)**: neu `e2e/tests/r00140-navigation.spec.js` mit AK 1–8, 11, 12: Leiste (1280 px), Seitenmenü (375/560 px), Menü „…“ (alle Breiten), die vier Ziele in beiden Zuständen, jeder Eintrag als `menuitem` mit ↓ erreichbar und genau ein `separator` (AK 11, 12), der frei gebliebene Platz. Muster `e2e/tests/r00101-kopfzeile.spec.js` (Start, Ansichtenliste, `kopfzeile-hilfen.js`).
 - **Geweitete Probe**: `e2e/tests/r00113-struktur.spec.js` — statt `nav a[aria-current="page"]` prüft `aktuelleSeitePruefen` „der Eintrag mit `an` in der Kopfzeile“; die Menu-Öffnung ersetzt die reine `nav`-Abfrage; `OHNE_AKTUELL` (Mutanten) wächst um den Menüeintrag.
 - **Rot vor dem Bau**: Jeder Akzeptanztest beginnt als `test.fail` mit Verweis auf #105.
-- **Gegenproben (Mutanten)**: aria-current am Menüeintrag entfernt (AK 9 M1), zweiter Eintrag zusätzlich markiert (AK 9 M2), ein Ziel aus dem Menü entfernt (AK 6), „Neue Aufgabe“ ins Menü geschoben (AK 6).
+- **Gegenproben (Mutanten)**: aria-current am Menüeintrag entfernt (AK 9 M1), zweiter Eintrag zusätzlich markiert (AK 9 M2), ein Ziel aus dem Menü entfernt (AK 6), „Neue Aufgabe“ ins Menü geschoben (AK 6), der WBS-Eintrag als bloßer Link ohne `role` (AK 11), kein `separator` und zwei Trenner (AK 12).
 - **Mitlaufend grün**: `r00101-kopfzeile.spec.js` (nachgezogen), `r00106-fokus.spec.js`, `r00054-wbs-sicht.spec.js`, `r00062-bindung.spec.js`, `r00077-responsive.spec.js`, `ziele.spec.js`, `kontrast.spec.js`, `kultur.spec.js`, `r00111-meldungen-schmal.spec.js`, `e2e/einheit/`.
 
 ## Abhängigkeiten
@@ -161,11 +170,11 @@ Nach Skill `test-pyramide`. Jede Szene der User Story wird ein Test, der eine be
 
 ## Offene Fragen
 
-Keine, die den Bau blockieren; die Empfehlungen des planers stehen im Bericht, richtungsweisend bleibt allein die Artboard-Freigabe (product-owner).
+Keine, die den Bau blockieren. Die richtungsweisenden Fragen der Vorlage hat die **UX-Vorprüfung #105** beantwortet; ihre Empfehlungen sind übernommen, richtungsweisend bleibt allein die Artboard-Freigabe (product-owner).
 
-1. **Dopplung unter 600 px:** Bleibt der Seitenknopf/-Pop (Board + Berichte) **neben** dem Menü „…“? Empfehlung: **ja** — in compact ist der Seitenknopf die Navigation und trägt dieselben zwei Ziele; die vier liegen ausschließlich im Menü „…“, also keine Dopplung. Die UX-Vorprüfung bestätigt oder verwirft.
-2. **Kennzeichnung des Auslösers „…“:** Punkt/Unterstrich am Zeichen, wenn die aktuelle Seite eine der vier ist, oder nichts? Empfehlung: **nichts am Auslöser** — der Menüeintrag trägt `aria-current`, der Seitenknopf nennt die Seite (compact); die UX-Vorprüfung entscheidet.
-3. **Menüform:** die vier Ziele als erste Gruppe, dann die Werkzeuge, mit oder ohne Abschnittskopf (heute steht `h4>MEHR`)? Die UX-Vorprüfung entscheidet (Artboard D0002), `h4` in `role=menu` ist als Karte #109/R00136 unterwegs.
+1. **Dopplung unter 600 px (entschieden, UX #105):** Der Seitenknopf/-pop (Board + Berichte) bleibt **neben** dem Menü „…“ — in compact ist der Seitenknopf die Navigation und trägt dieselben zwei Ziele; die vier liegen ausschließlich im Menü „…“.
+2. **Kennzeichnung des Auslösers „…“ (entschieden, UX #105):** **nichts am Auslöser** — der Menüeintrag trägt `aria-current`, der Seitenknopf nennt die Seite (compact); der „…“-Auslöser bleibt unmarkiert (FA 11).
+3. **Menüform (entschieden, UX #105):** die vier Ziele als erste Gruppe, darunter genau ein `role="separator"`, dann die Werkzeuge; **kein** zweiter Abschnittskopf (der heutige `<h4>MEHR</h4>` bleibt, #109/R00136) (FA 7, S1).
 4. **ADR-0018 Regel 5:** Der Text „genau ein `nav a[aria-current="page"]`“ stimmt nach der Umordnung nicht mehr. Er wird geweitet auf „der Eintrag mit `an` trägt `aria-current` (Leiste oder Menü)“. Fortschreibung durch den Architekten (Nachtrag) oder Nachzug im Aspekt `X00005`; die Anforderung trägt die geweitete Regel, die Probe `r00113` wird mitgebaut.
 5. **Platzgewinn:** Nennt die Abnahme eine Zahl für den frei gewordenen Filter-Platz, oder genügt „nicht schmaler als vorher“ (NFA „Platz“)? Empfehlung: die Messung vor dem Bau (Stand e93ad66) festhalten und als Untergrenze in die Probe schreiben, statt eine absolute Zahl zu versprechen.
 
@@ -199,5 +208,7 @@ Der Auslöser ist die Beobachtung des Betreibers, dass vier selten gebrauchte Zi
 **Bewusst außerhalb:** eine Navigation Bar unten für compact (R00101 Notizen: M3 erlaubt 3–5 Ziele, kanbanD hat sechs); ein Suchfeld im Menü; das Ändern von „Neue Aufgabe“ oder des Bereichsfilters (R00101: bleiben ohne Menü).
 
 **ADR-0018 Bezug:** Regel 5 der ADR nennt „genau ein `nav a[aria-current=page]`“. Nach dieser Anforderung liegt die aktuelle Seite für Aufgaben, Personen, WBS und Einrichten in einem Menü, nicht in der Leiste. Die Regel wird geweitet; die Probe `r00113-struktur.spec.js` (AK 11/12 der R00113) wird mitgebaut, damit sie den Eintrag mit `an` prüft, nicht nur `nav a`.
+
+**Einarbeitung UX-Vorprüfung #105 (2026-11-11):** M1 (Muss) — der WBS-Eintrag war als bloßer Leistenlink `vWbsMenue` (ohne `role`) geplant und wäre per Pfeil unerreichbar; er wird jetzt wie `vSeitenPop` als `menuitem` gebaut (FA 5/12, AK 11, B0622/B0623). M2 (Muss, Klarstellung) — FA 4 und AK 6 nannten „Läuft gerade“/„Ich bin …“ als Menüeinträge, obwohl `kopfPlaetze` sie ab 600 px in der Werkzeug- bzw. Statuszeile führt; beide beziehen sich jetzt auf die je Breite tatsächlich geführten Werkzeuge (ein heute nicht erfüllbares Fertig-Kriterium). S1 (Sollte) — die vier Ziele als erste Gruppe, ein `role="separator"`, dann die Werkzeuge, kein zweiter Abschnittskopf (FA 7, AK 12, B0649). Entscheidungen der UX übernommen: keine Markierung am „…“-Auslöser (FA 11), Seitenknopf/-pop unter 600 px bleibt, „Signale oben“ bleibt `menuitemcheckbox`.
 
 **Abgelöst in R00101:** R00101 (I0083, grün) legt in FA 30 und im compact-Akzeptanzkriterium fest, dass das Navigationsmenü unter 600 px **sechs** Ziele öffnet („Board, Aufgaben, Personen, Berichte, WBS, Einrichten“, `e2e/tests/r00101-kopfzeile.spec.js:109–121`). Diese Aufzählung wird durch R00140 auf **zwei** Ziele (Board, Berichte) gekürzt; die Probe wird in B0624 nachgezogen. Der Kopfzeilen-Breiten-Teil der R00101 (kein Überlappen, „Neue Aufgabe“ und Bereich ohne Menü) bleibt unverändert gültig. R00101 selbst wird nicht fortgeschrieben — I0083 ist abgenommen; die Änderung lebt in dieser Interaction (Muster I0106/R00117).
