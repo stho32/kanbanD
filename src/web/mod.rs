@@ -93,7 +93,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(zeiten_csv))
         .routes(routes!(verlauf))
         .routes(routes!(bewegungen))
-        .routes(routes!(aufgabe_lesen, aufgabe_aendern))
+        .routes(routes!(aufgabe_lesen, aufgabe_aendern, aufgabe_loeschen))
         .routes(routes!(aufgaben_anlegen, mehrere_aendern))
         .routes(routes!(mehrere_archivieren))
         .routes(routes!(mehrere_zurueckholen))
@@ -753,6 +753,23 @@ async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u
     })
     .await?;
     Ok(Json(a).into_response())
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/aufgaben/{nr}",
+    tag = "Aufgaben",
+    description = "Aufgabe endgültig löschen — entfernt die Aufgabendatei, ihre Zeile aus allen Board-Dateien und ihren Anhangsordner in genau einem Commit (Git ist der Papierkorb, ADR-0024); laufende Timer und eine Reservierung verschwinden mit der Datei. Antwort {nummer}. Unbekannte Nummer 404 (nichts geändert); eine defekte Aufgabendatei lässt sich löschen (der Löschweg braucht nur den Pfad); Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (R00097/R00120; ein defektes Board des Ordners ist 423), nichts wird geändert.",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Nummer), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn aufgabe_loeschen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    let nummer = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.endgueltig_loeschen(&p, nr)
+    })
+    .await?;
+    Ok(Json(json!({ "nummer": nummer })).into_response())
 }
 
 #[utoipa::path(

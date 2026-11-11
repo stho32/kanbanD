@@ -82,6 +82,12 @@ pub struct Geaendert {
     pub geaendert: bool,
 }
 
+/// Antwort der endgültigen Löschung: die Nummer der entfernten Aufgabe.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Nummer {
+    pub nummer: u32,
+}
+
 /// Slug des angelegten Boards.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct BoardAngelegt {
