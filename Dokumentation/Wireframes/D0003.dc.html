@@ -596,6 +596,74 @@ body{height:auto;overflow:visible}
 .gs-tel-kopf{height:28px;display:flex;align-items:center;padding:0 10px;background:var(--kd-head);color:var(--kd-head-text);font-weight:600;font-size:12px}
 .gs-tel .felder{border-top:0}
 /* ==/GS-CSS== */
+/* ==EL-CSS== */
+/* ── Zustand „Aufgabe endgültig löschen bestätigen“ (R00141, I0129, Karte #36; B1–B6, ADR-0024) — Werte aus kd-tokens.css,
+   Kopf und Grundformen aus web/kd-app.css. Zwei Auslöser desselben Zustands: der Aufgabenfenster-Kopf (`.el-ausloeser` in
+   --kd-warn, per 1-px-Trenner von „Archivieren“ abgesetzt) und das Kartenmenü (`menue.js`/`kartenMenue`, letzte Gruppe
+   nach Trenner). Beide öffnen dieselbe `.al-dialog`-Komponente wie D0002 #board-verwalten (R00128, Befund B6):
+   role="alertdialog" aria-modal="true", höchstens zwei Aktionen, Startfokus „Abbrechen“ links, Bestätigung rechts in
+   --kd-warn; Abbrechen steht links und wird nie deaktiviert (M3). ── */
+.el-zustand{--kd-scrim:oklch(0.24 0.02 255 / .45);--kd-shadow-mod:0 12px 40px oklch(0.24 0.02 255 / .35);--kd-ziel:24px}
+.el-zustand .ko-thema.dunkel{--kd-scrim:oklch(0 0 0 / .55);--kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6)}
+.el-zustand .grob{--kd-ziel:48px}
+/* Aufgabenfenster-Kopf: der Auslöser steht in --kd-warn, per Trenner von „Archivieren“ abgesetzt (nicht daneben) */
+.el-zustand .ko-fenster .mod-kopf{padding-right:var(--kd-s2)}
+.el-ausloeser{display:inline-flex;align-items:center;gap:6px;height:var(--kd-row);padding:0 var(--kd-s3);border:1px solid transparent;background:none;font:inherit;font-size:12px;font-weight:500;color:var(--kd-warn);cursor:pointer;white-space:nowrap}
+.el-ausloeser:hover{background:var(--kd-sunken);border-color:var(--kd-line)}
+.el-ausloeser.fokus{outline:2px solid var(--kd-accent);outline-offset:-2px}
+.el-trenner{flex:none;width:1px;align-self:stretch;margin:5px 4px;background:var(--kd-line)}
+/* alertdialog-Primitiv — dieselbe Komponente wie D0002 #board-verwalten (R00128/B6); Aufrufer-Name, -rumpf, -bestätigungswort */
+.al-dialog{width:min(360px,100% - 32px);background:var(--kd-surface);border:1px solid var(--kd-line-strong);border-top:4px solid var(--kd-line-strong);box-shadow:var(--kd-shadow-mod);display:flex;flex-direction:column}
+.al-dialog.al-gefahr{border-top-color:var(--kd-warn)}
+.al-kopf{padding:12px var(--kd-s5) 0;font:600 14px/1.35 var(--kd-font);color:var(--kd-text)}
+.al-text{padding:6px var(--kd-s5) 12px;font-size:12.5px;line-height:1.5;color:var(--kd-text)}
+.al-fehler{padding:0 var(--kd-s5) 10px;font-size:12px;line-height:1.45;color:var(--kd-warn)}
+.el-mit-fehler .al-text{padding-bottom:4px}
+.al-fuss{display:flex;gap:var(--kd-s3);justify-content:flex-end;padding:0 var(--kd-s5) var(--kd-s5);flex-wrap:wrap}
+.al-knopf{display:inline-flex;align-items:center;justify-content:center;min-block-size:var(--kd-ziel);padding:5px var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-surface);font:inherit;font-weight:500;color:var(--kd-text);cursor:pointer;white-space:nowrap}
+.al-knopf:hover{background:var(--kd-sunken)}
+.al-knopf.fokus{outline:2px solid var(--kd-accent);outline-offset:1px}
+.al-gefahr-knopf{color:var(--kd-warn);border-color:var(--kd-warn)}
+.el-luecke{font-style:italic;color:var(--kd-muted)}
+/* Bühne: Aufgabenfenster hinter dem Scrim, Dialog mittig darüber — Lage wie .mod-bg (unter der Kopfleiste) */
+.el-vp{flex:none;width:1280px;max-width:100%;height:600px;display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--kd-line-strong);background:var(--kd-bg)}
+.el-vp-kopf{flex:none;height:40px;display:flex;align-items:center;padding:0 16px;background:var(--kd-head);color:var(--kd-head-text);font-weight:600;font-size:14px}
+.el-buehne{flex:1;min-height:0;position:relative;display:flex;align-items:flex-start;justify-content:center;padding:16px;background:var(--kd-sunken)}
+.el-buehne>.ko-fenster{width:1080px;max-width:100%;height:100%}
+.el-buehne>.ko-fenster>.mod{height:100%}
+.el-scrim{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--kd-scrim)}
+.el-feld{flex:none;width:400px;padding:14px;background:var(--kd-scrim);display:flex;justify-content:center;align-items:flex-start;min-height:172px;box-shadow:0 0 0 1px var(--kd-line-strong)}
+/* Kartenmenü (zweite Ansicht): „Endgültig löschen“ als letzte Gruppe nach Trenner, in --kd-warn */
+.el-kmenue{position:relative;min-width:224px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);padding:3px 0;font-size:12.5px}
+.el-kmenue .km-titel{padding:3px 10px 5px;font-size:11px;color:var(--kd-muted);border-bottom:1px solid var(--kd-line);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.el-kmenue .km-e{position:relative;display:flex;align-items:center;gap:var(--kd-s4);min-block-size:var(--kd-ziel);padding:0 10px;white-space:nowrap;color:var(--kd-text)}
+.el-kmenue .km-e.an{background:var(--kd-accent);color:var(--kd-on-accent)}
+.el-kmenue .km-k{margin-left:auto;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
+.el-kmenue .km-e.an .km-k{color:var(--kd-on-accent)}
+.el-kmenue .km-tr{height:1px;background:var(--kd-line);margin:3px 0}
+.el-kmenue .km-e.gefahr{color:var(--kd-warn)}
+.el-kmenue .km-e.gefahr.an{color:#fff;background:var(--kd-warn)}
+/* Zustand nach dem Bestätigen (B4/B5): Nachbarkarte mit Fokus, Statusmeldung ohne „rückgängig“ */
+.el-nach{flex:none;width:460px;height:236px;display:flex;box-shadow:0 0 0 1px var(--kd-line-strong)}
+.el-fokusring{outline:2px solid var(--kd-accent);outline-offset:-1px}
+.el-toast{position:static;left:auto;bottom:auto;transform:none;display:inline-flex;box-shadow:var(--kd-shadow)}
+.el-ziel{display:flex;gap:20px;padding:10px 0 0;align-items:flex-end;flex-wrap:wrap}
+.el-zielbox{display:inline-flex;align-items:center;justify-content:center;min-width:var(--kd-hof,24px);min-height:var(--kd-hof,24px);outline:1px dashed var(--kd-accent-ink)}
+.el-ziel-lbl{font-size:10.5px;color:var(--kd-muted);display:block;padding-top:4px}
+/* Schmale Breiten (E1, ADR-0015): der Kopf bricht um, nichts scrollt quer */
+.el-zustand .ko-fenster.schmal .mod-kopf{flex-wrap:wrap;row-gap:4px;padding-block:2px;height:auto;min-height:max(36px,var(--kd-ziel))}
+.el-zustand .ko-fenster.schmal .mod-kopf .rechts{flex-wrap:wrap;justify-content:flex-end;min-width:0;row-gap:2px}
+.el-zustand .ko-fenster.schmal .ko-reiter{display:flex;flex-wrap:wrap;row-gap:2px;flex:0 1 100%;min-width:0}
+.el-zustand .ko-fenster.schmal .ko-reiter [role=tab]{height:auto;min-height:24px}
+.el-zustand .ko-fenster.grob .ko-reiter [role=tab]{min-width:44px;min-height:44px}
+.el-zustand .ko-fenster.grob .mod-kopf .btn-sym{width:44px;height:44px}
+.el-zustand .ko-fenster.grob .el-ausloeser{min-height:var(--kd-ziel)}
+.el-tels{display:flex;gap:24px;padding:0 16px;align-items:flex-start;flex-wrap:wrap}
+.el-tel{border:1px solid var(--kd-line-strong);background:var(--kd-bg)}
+.el-tel-kopf{height:28px;display:flex;align-items:center;padding:0 10px;background:var(--kd-head);color:var(--kd-head-text);font-weight:600;font-size:12px}
+.el-tel-flaeche{padding:0;background:var(--kd-sunken)}
+.el-tel-flaeche .ko-fenster{height:auto}
+/* ==/EL-CSS== */
 </style>
 </helmet>
 </head>
@@ -708,6 +776,233 @@ Beim Stopp wird genau diese Zeile ersetzt, nicht angehängt.</textarea></div><di
 </ul>
 <h3>GEMESSEN (HEADLESS CHROMIUM)</h3><ul><li>320/375/414 px: <span class="mono">felder.scrollWidth ≤ felder.clientWidth</span> an jeder gezeichneten Feldzeile (auch mit dem breitesten Wert 1666:40), nichts scrollt quer; Hell und Dunkel gleich. Die Reiterleiste bei diesen Breiten bleibt wie in <span class="mono">#reiter-mehrere</span> (R00127).</li></ul>
 <h3>OFFEN / ZUR FREIGABE</h3><ul><li><b>Freigabe.</b> Dieser Zustand wartet auf die Freigabe des product-owner (Oberflächen-Bubbles B0611–B0613 zu F0107); der Server-Teil F0106/B0607–B0610 ist davon frei baubar.</li><li><b>Platz der Feldzeile.</b> Gezeichnet unmittelbar nach „Schlüssel“ in der Details-Liste; R00129 lässt den genauen Platz offen („Lage nach D0003“, R00127 ordnet die Felder ein). Zu bestätigen mit der Freigabe.</li></ul>
+</div></section>
+
+<section class="ko-zustand el-zustand" id="endgueltig-loeschen"><div class="ko-cap">Zustand „Aufgabe endgültig löschen bestätigen“<small>R00141 · I0129 · Karte #36 (UX-Vorprüfung #36, B1–B6; ADR-0024, Option A: Datei, Board-Zeilen und Anhänge in <b>einem</b> Commit) — der Auslöser „Endgültig löschen“ steht an <b>zwei</b> Stellen: im <b>Aufgabenfenster-Kopf</b> in <span class="mono">--kd-warn</span>, per Trenner von „Archivieren“ abgesetzt, und im <b>Kartenmenü</b> (<span class="mono">menue.js</span> · <span class="mono">kartenMenue</span>) als letzte Gruppe nach Trenner. Beide öffnen <b>dieselbe</b> <span class="mono">alertdialog</span>-Komponente wie D0002 <span class="mono">#board-verwalten</span> (R00128, Befund B6): <span class="mono">role="alertdialog" aria-modal="true"</span>, höchstens zwei Aktionen, Startfokus „Abbrechen“, Name „#1 &lt;Titel&gt; endgültig löschen“, Bestätigung rechts in <span class="mono">--kd-warn</span>. Gezeigt hell und dunkel, 1280 / 414 / 320 px, mit Fehlerpfad (423/Netz als <span class="mono">role="alert"</span> im Dialog) und dem Zustand nach dem Bestätigen (Karte weg, Fokus auf der Nachbarkarte, Statusmeldung <b>ohne</b> „rückgängig“). Daten aus dem Grundbestand von R00141: #1 „Telemetrie der Agentenläufe bündeln“ liegt auf zwei der drei Boards („Entwicklung“, „Test“), mit einem Anhang, einem laufenden Timer und einer Reservierung; heute der 11.11.2026.</small></div>
+
+<div class="ko-thema">
+<div class="ko-titel">Hell</div>
+<div class="ko-teil"><b>1.</b> Auslöser im Aufgabenfenster-Kopf und <b>3.</b> im Kartenmenü — beide führen denselben Zustand herbei</div>
+<div class="ko-reihe">
+<div>
+<div class="ko-rt">Aufgabenfenster #1 · Kopf (Auslöser rechts, in <span class="mono">--kd-warn</span>, Trenner vor „Archivieren“)</div>
+<div class="ko-fenster" style="width:1080px" data-mess="el-kopf-hell"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><span class="cls">Weiterentwicklung</span><span class="pfad">aufgaben/0001-telemetrie-der-agentenlaeufe-buendeln.md</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0" class="fokus">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><span class="nav">1 / 4</span><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-expanded="false" aria-label="Endgültig löschen" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div></div></div>
+</div>
+<div>
+<div class="ko-rt">Kartenmenü #1 (Rechtsklick · Umschalt+F10) — „Endgültig löschen“ letzte Gruppe nach Trenner</div>
+<div class="el-kmenue" role="menu" aria-label="#1 Telemetrie der Agentenläufe bündeln">
+<div class="km-titel">#1 Telemetrie der Agentenläufe bündeln</div>
+<div class="km-e" role="menuitem">Öffnen<span class="km-k">Enter</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Timer stoppen<span class="km-k">t</span></div>
+<div class="km-e" role="menuitem">Mir zuweisen<span class="km-k">m</span></div>
+<div class="km-e" role="menuitem">Zuständige zuweisen …<span class="km-k">p</span></div>
+<div class="km-e" role="menuitem">Umbenennen<span class="km-k">F2</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Verschieben nach<span class="km-k">1 ▸</span></div>
+<div class="km-e" role="menuitem">Klasse<span class="km-k">▸</span></div>
+<div class="km-e" role="menuitem">Fälligkeit<span class="km-k">▸</span></div>
+<div class="km-e" role="menuitem">Auf Board legen<span class="km-k">▸</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Verweis kopieren<span class="km-k">c</span></div>
+<div class="km-e" role="menuitem">Archivieren<span class="km-k">a</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e gefahr" role="menuitem">Endgültig löschen<span class="km-k"></span></div>
+</div>
+</div>
+</div>
+
+<div class="ko-teil"><b>2.</b> Offener Dialog über dem Fenster im Scrim — dieselbe <span class="mono">.al-dialog</span>-Komponente wie D0002 <span class="mono">#board-verwalten</span> (R00128); dieselbe Komponente für beide Auslöser</div>
+<div class="ko-reihe">
+<div class="el-vp" data-mess="el-vp-hell">
+<div class="el-vp-kopf">kanbanD</div>
+<div class="el-buehne">
+<div class="ko-fenster" style="width:1080px" data-mess="el-vp-fenster-hell"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><span class="cls">Weiterentwicklung</span><span class="pfad">aufgaben/0001-telemetrie-der-agentenlaeufe-buendeln.md</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><span class="nav">1 / 4</span><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-expanded="true" aria-label="Endgültig löschen" title="Endgültig löschen"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div><div class="mod-body voll" role="tabpanel" aria-label="Inhalt"><div class="mod-main"><div class="titel titel-lesen" tabindex="0" role="button" aria-label="Titel bearbeiten">Telemetrie der Agentenläufe bündeln</div><p class="muted">Der übrige Fensterinhalt wie in <span class="mono">#reiter-mehrere</span> (R00127); hinter dem Scrim gesperrt, bis der Dialog beantwortet ist.</p></div></div></div></div>
+<div class="el-scrim">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="el-h-titel" aria-describedby="el-h-text" data-mess="el-dialog-hell">
+<div class="al-kopf" id="el-h-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div>
+<div class="al-text" id="el-h-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus" data-mess="el-abbrechen">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="ko-teil"><b>4.</b> Fehlerpfad (423/Netz) und <b>5.</b> Zustand nach dem Bestätigen</div>
+<div class="ko-reihe">
+<div>
+<div class="ko-rt">4. Fehler <span class="mono">role="alert"</span> über den Knöpfen — Dialog bleibt offen, nichts geändert (B3)</div>
+<div class="el-feld" data-mess="el-fehlerfeld-hell">
+<div class="al-dialog al-gefahr el-mit-fehler" role="alertdialog" aria-modal="true" aria-labelledby="el-f-titel" aria-describedby="el-f-text">
+<div class="al-kopf" id="el-f-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div>
+<div class="al-text" id="el-f-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fehler" role="alert">Die Aufgabe ist nicht gelöscht: Eine Board-Datei ist unlesbar. <span class="el-luecke">(Wortlaut aus der Serverantwort, 423)</span></div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+<div>
+<div class="ko-rt">5. Nach dem Bestätigen — Karte #1 weg, Fokus auf der Nachbarkarte #2 (nicht <span class="mono">BODY</span>, B4); Statusmeldung ohne „rückgängig“ (B5)</div>
+<div class="el-nach" data-mess="el-nach-hell">
+<div class="bahnen">
+<section class="bahn" style="--bw:100%"><div class="bahn-kopf">In Arbeit<span class="n">2</span></div><div class="flaeche">
+<div class="ka el-fokusring" data-id="2" data-c="1" style="--c:var(--kd-c-blue);--cl:var(--kd-c-blue-line)"><div class="r1"><span class="id">#2</span></div><div class="t">Board umbenennen, archivieren, löschen</div><div class="r3"><span class="avs"></span><span class="cls">Weiterentwicklung</span></div></div>
+<div class="ka" data-id="4" data-c="1" style="--c:var(--kd-c-amber);--cl:var(--kd-c-amber-line)"><div class="r1"><span class="id">#4</span></div><div class="t">Datums-Trenner in den Spalten</div></div>
+</div></section>
+</div>
+</div>
+<div style="padding-top:10px"><div class="toast el-toast" role="status">#1 gelöscht, 1 Anhang (2 Boards)</div></div>
+</div>
+</div>
+
+<div class="ko-teil">Zielgrößen — jeder Auslöser und jeder Dialogknopf erreichen <span class="mono">--kd-ziel</span> (fein 24, Touch 48; ADR-0012 Regel 3), „Abbrechen“ steht links und wird nie deaktiviert</div>
+<div class="ko-reihe"><div class="el-ziel">
+<span><span class="el-zielbox"><span class="al-knopf fokus">Abbrechen</span></span><span class="el-ziel-lbl">Dialogknopf fein · ≥ <span class="mono">--kd-ziel</span> 24</span></span>
+<span><span class="el-zielbox" style="--kd-hof:48px"><span class="al-knopf al-gefahr-knopf">endgültig löschen</span></span><span class="el-ziel-lbl">Dialogknopf Touch · 48</span></span>
+<span><span class="el-zielbox"><span class="el-ausloeser"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</span></span><span class="el-ziel-lbl">Kopf-Auslöser fein · ≥ 24</span></span>
+<span><span class="el-zielbox" style="--kd-hof:48px"><span class="el-kmenue" style="min-width:0"><div class="km-e gefahr" role="menuitem">Endgültig löschen</div></span></span><span class="el-ziel-lbl">Menüeintrag Touch · 48</span></span>
+</div></div>
+</div>
+
+<div class="ko-thema dunkel">
+<div class="ko-titel">Dunkel</div>
+<div class="ko-teil"><b>1.</b> Auslöser im Aufgabenfenster-Kopf und <b>3.</b> im Kartenmenü — dieselben Formen und Wortlaute wie in Hell</div>
+<div class="ko-reihe">
+<div>
+<div class="ko-rt">Aufgabenfenster #1 · Kopf (Auslöser rechts, in <span class="mono">--kd-warn</span>, Trenner vor „Archivieren“)</div>
+<div class="ko-fenster" style="width:1080px" data-mess="el-kopf-dunkel"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><span class="cls">Weiterentwicklung</span><span class="pfad">aufgaben/0001-telemetrie-der-agentenlaeufe-buendeln.md</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0" class="fokus">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><span class="nav">1 / 4</span><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-expanded="false" aria-label="Endgültig löschen" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div></div></div>
+</div>
+<div>
+<div class="ko-rt">Kartenmenü #1 — „Endgültig löschen“ letzte Gruppe nach Trenner</div>
+<div class="el-kmenue" role="menu" aria-label="#1 Telemetrie der Agentenläufe bündeln">
+<div class="km-titel">#1 Telemetrie der Agentenläufe bündeln</div>
+<div class="km-e" role="menuitem">Öffnen<span class="km-k">Enter</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Timer stoppen<span class="km-k">t</span></div>
+<div class="km-e" role="menuitem">Mir zuweisen<span class="km-k">m</span></div>
+<div class="km-e" role="menuitem">Zuständige zuweisen …<span class="km-k">p</span></div>
+<div class="km-e" role="menuitem">Umbenennen<span class="km-k">F2</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Verschieben nach<span class="km-k">1 ▸</span></div>
+<div class="km-e" role="menuitem">Klasse<span class="km-k">▸</span></div>
+<div class="km-e" role="menuitem">Fälligkeit<span class="km-k">▸</span></div>
+<div class="km-e" role="menuitem">Auf Board legen<span class="km-k">▸</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e" role="menuitem">Verweis kopieren<span class="km-k">c</span></div>
+<div class="km-e" role="menuitem">Archivieren<span class="km-k">a</span></div>
+<div class="km-tr" role="separator"></div>
+<div class="km-e gefahr" role="menuitem">Endgültig löschen<span class="km-k"></span></div>
+</div>
+</div>
+</div>
+
+<div class="ko-teil"><b>2.</b> Offener Dialog über dem Fenster im Scrim — dieselbe Komponente</div>
+<div class="ko-reihe">
+<div class="el-vp" data-mess="el-vp-dunkel">
+<div class="el-vp-kopf">kanbanD</div>
+<div class="el-buehne">
+<div class="ko-fenster" style="width:1080px"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><span class="cls">Weiterentwicklung</span><span class="pfad">aufgaben/0001-telemetrie-der-agentenlaeufe-buendeln.md</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><span class="nav">1 / 4</span><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-expanded="true" aria-label="Endgültig löschen" title="Endgültig löschen"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div><div class="mod-body voll" role="tabpanel" aria-label="Inhalt"><div class="mod-main"><div class="titel titel-lesen" tabindex="0" role="button" aria-label="Titel bearbeiten">Telemetrie der Agentenläufe bündeln</div><p class="muted">Der übrige Fensterinhalt wie in <span class="mono">#reiter-mehrere</span> (R00127); hinter dem Scrim gesperrt, bis der Dialog beantwortet ist.</p></div></div></div></div>
+<div class="el-scrim">
+<div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="el-d-titel" aria-describedby="el-d-text">
+<div class="al-kopf" id="el-d-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div>
+<div class="al-text" id="el-d-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="ko-teil"><b>4.</b> Fehlerpfad und <b>5.</b> Zustand nach dem Bestätigen</div>
+<div class="ko-reihe">
+<div>
+<div class="ko-rt">4. Fehler <span class="mono">role="alert"</span> über den Knöpfen — Dialog bleibt offen, nichts geändert (B3)</div>
+<div class="el-feld">
+<div class="al-dialog al-gefahr el-mit-fehler" role="alertdialog" aria-modal="true" aria-labelledby="el-fd-titel" aria-describedby="el-fd-text">
+<div class="al-kopf" id="el-fd-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div>
+<div class="al-text" id="el-fd-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div>
+<div class="al-fehler" role="alert">Die Aufgabe ist nicht gelöscht: Eine Board-Datei ist unlesbar. <span class="el-luecke">(Wortlaut aus der Serverantwort, 423)</span></div>
+<div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div>
+</div>
+</div>
+</div>
+<div>
+<div class="ko-rt">5. Nach dem Bestätigen — Karte #1 weg, Fokus auf der Nachbarkarte #2 (B4); Statusmeldung ohne „rückgängig“ (B5)</div>
+<div class="el-nach">
+<div class="bahnen">
+<section class="bahn" style="--bw:100%"><div class="bahn-kopf">In Arbeit<span class="n">2</span></div><div class="flaeche">
+<div class="ka el-fokusring" data-id="2" data-c="1" style="--c:var(--kd-c-blue);--cl:var(--kd-c-blue-line)"><div class="r1"><span class="id">#2</span></div><div class="t">Board umbenennen, archivieren, löschen</div><div class="r3"><span class="avs"></span><span class="cls">Weiterentwicklung</span></div></div>
+<div class="ka" data-id="4" data-c="1" style="--c:var(--kd-c-amber);--cl:var(--kd-c-amber-line)"><div class="r1"><span class="id">#4</span></div><div class="t">Datums-Trenner in den Spalten</div></div>
+</div></section>
+</div>
+</div>
+<div style="padding-top:10px"><div class="toast el-toast" role="status">#1 gelöscht, 1 Anhang (2 Boards)</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="el-tels">
+<div class="el-tel" style="width:414px" data-mess="el-tel-414">
+<div class="el-tel-kopf">414 px · Kopf bricht um, Dialog min(360 px, 100 % − 32 px)</div>
+<div class="el-tel-flaeche">
+<div class="ko-fenster schmal" style="margin:8px 8px 0"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><span class="pfad">aufgaben/0001-telemetrie-…md</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0" class="fokus">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><span class="nav">1 / 4</span><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-label="Endgültig löschen" title="Endgültig löschen"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div></div></div>
+<div class="el-feld" style="width:auto;min-height:0;padding:12px 0"><div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="el-414-titel" aria-describedby="el-414-text"><div class="al-kopf" id="el-414-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div><div class="al-text" id="el-414-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div><div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div></div></div>
+</div>
+</div>
+<div class="el-tel" style="width:320px" data-mess="el-tel-320">
+<div class="el-tel-kopf">320 px · Touch — nichts scrollt quer</div>
+<div class="el-tel-flaeche">
+<div class="ko-fenster schmal grob" style="margin:8px 8px 0"><div class="mod" role="dialog" aria-modal="true" aria-label="Aufgabe #1"><div class="mod-kopf"><span class="id">#1</span><div class="rechts"><div class="seg ko-reiter" role="tablist" aria-label="Ansicht der Aufgabe"><button role="tab" aria-selected="true" tabindex="0" class="fokus">Inhalt</button><button role="tab" aria-selected="false" tabindex="-1">Zeiten</button><button role="tab" aria-selected="false" tabindex="-1">Anhänge</button><button role="tab" aria-selected="false" tabindex="-1">Details</button><button role="tab" aria-selected="false" tabindex="-1">Datei</button><button role="tab" aria-selected="false" tabindex="-1">Verlauf</button></div><button class="btn btn-sym" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" href="#" title="In VS Code öffnen" aria-label="In VS Code öffnen">↗</a><button class="btn btn-sym" title="Archivieren" aria-label="Archivieren">▭</button><span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" aria-haspopup="dialog" aria-label="Endgültig löschen" title="Endgültig löschen"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M10 7V5h4v2M8 7l1 12h6l1-12"></path></svg>Endgültig löschen</button><button class="btn btn-sym" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div></div></div>
+<div class="el-feld" style="width:auto;min-height:0;padding:12px 0"><div class="al-dialog al-gefahr" role="alertdialog" aria-modal="true" aria-labelledby="el-320-titel" aria-describedby="el-320-text"><div class="al-kopf" id="el-320-titel">#1 Telemetrie der Agentenläufe bündeln endgültig löschen</div><div class="al-text" id="el-320-text">Aufgabe #1 „Telemetrie der Agentenläufe bündeln“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.</div><div class="al-fuss"><button type="button" class="al-knopf fokus">Abbrechen</button><button type="button" class="al-knopf al-gefahr-knopf">endgültig löschen</button></div></div></div>
+<div style="padding:8px"><div class="el-kmenue" role="menu" aria-label="#1 Telemetrie der Agentenläufe bündeln"><div class="km-titel">#1 Telemetrie der Agentenläufe bündeln</div><div class="km-e" role="menuitem">Verweis kopieren<span class="km-k">c</span></div><div class="km-e" role="menuitem">Archivieren<span class="km-k">a</span></div><div class="km-tr" role="separator"></div><div class="km-e gefahr" role="menuitem">Endgültig löschen</div></div></div>
+</div>
+</div>
+</div>
+
+<div class="ko-noten">
+<h3>WAS DER ZUSTAND ZEIGT</h3>
+<ul>
+<li><b>Zwei Auslöser, ein Zustand.</b> Der Weg führt über die API (<span class="mono">DELETE /api/aufgaben/{nr}</span>); aus der Oberfläche ist der Auslöser <b>einmal</b> im Aufgabenfenster-Kopf (FA 10, R00141) und <b>einmal</b> im Kartenmenü. Beide sind <b>zwei Ansichten desselben Zustands</b> an diesem Artboard (R00141 FA 10) und öffnen <b>dieselbe</b> Rückfrage; es gibt kein zweites Artboard und keinen zweiten Dialog.</li>
+<li><b>Auslöser im Fenster-Kopf</b> in <span class="mono">--kd-warn</span>, per 1 px <span class="mono">.el-trenner</span> von „Archivieren“ abgesetzt — er steht <b>nicht daneben</b> im selben Block (FA 10: „die Schärfe trägt die Warnfarbe“). Beschriftung „Endgültig löschen“ mit Papierkorb-Symbol; zugänglicher Name = Beschriftung; <span class="mono">title</span> nennt die Wirkung (Datei, Zeile in allen Boards, Anhänge).</li>
+<li><b>Kartenmenü</b> (Muster <span class="mono">menue.js</span>/<span class="mono">kartenMenue</span>, ohne Hover erreichbar): „Endgültig löschen“ ist die <b>letzte Gruppe nach einem Trenner</b> (FA 10/R00141; die Anforderung sagt „neben Archivieren“, die Schärfe trägt die Warnfarbe). Der Eintrag ist in <span class="mono">--kd-warn</span> und bleibt ohne Maus erreichbar (Touch, Sollte).</li>
+<li><b>Rückfrage (B1/B2):</b> <span class="mono">role="alertdialog" aria-modal="true"</span>, zugänglicher Name „#1 &lt;Titel&gt; endgültig löschen“, Rumpf <b>wörtlich</b> „Aufgabe #1 „&lt;Titel&gt;“ wird endgültig gelöscht: ihre Datei, ihre Zeile in allen Boards und ihre Anhänge verschwinden. Das ist nicht rückgängig zu machen; wiederherstellbar nur über die Git-Geschichte.“ Zwei Knöpfe: <b>Abbrechen</b> (links, Startfokus) und <b>endgültig löschen</b> (rechts, <span class="mono">--kd-warn</span>). <span class="mono">Esc</span> ist Abbrechen; beim Schließen kehrt der Fokus an den <b>Auslöser</b> zurück.</li>
+<li><b>Fehlerpfad (B3):</b> Antwortet der Server <b>423</b> (bzw. 403/404) oder schlägt das Netz fehl, steht die Meldung als <span class="mono">role="alert"</span> <b>im Dialog über den Knöpfen</b>; der Dialog bleibt offen, nichts ist geändert, es erscheint <b>keine Erfolgsmeldung vor der Antwort</b>. Der Wortlaut stammt aus der Serverantwort (im Bild als Lücke markiert).</li>
+<li><b>Nach dem Verschwinden (B4/B5):</b> der Fokus fällt <b>nie auf <span class="mono">BODY</span></b> — aus dem Kartenmenü auf die <b>nächste Karte</b> (hier #2, sichtbar umrandet), aus dem Aufgabenfenster schließt das Fenster. Es gibt <b>kein Undo</b>: kein „rückgängig“ an der Meldung, <span class="mono">Strg+Z</span> greift nicht; die Statusmeldung (<span class="mono">role="status"</span>) nennt nur den Commit-Wortlaut.</li>
+</ul>
+<h3>FÜR DEN BAU</h3>
+<ul>
+<li><b><span class="mono">.al-dialog</span> ist geteilt mit #35/R00128.</b> Es ist <b>dieselbe</b> <span class="mono">alertdialog</span>-Komponente wie D0002 <span class="mono">#board-verwalten</span> (Befund B6, R00128 FA 12 / R00141 FA 16) — ein Primitiv, das Aufrufer-<b>Name</b>, -<b>rumpf</b> und -<b>bestätigungswort</b> erhält. R00141 setzt den Aufgaben-Wortlaut (unumkehrbar, wiederherstellbar nur über die Git-Geschichte), R00128 den Board-Wortlaut; beide benutzen die Bezeichnung <b>„endgültig löschen“</b> (PO-Entscheidungen 2026-11-11, Z. 191). Hier eigenständig neu gezeichnet, damit der Zustand für sich steht — kein Umbau.</li>
+<li><b>Kopf-Auslöser:</b> <span class="mono">web/ansicht.js</span> <span class="mono">vFenster()</span> (<span class="mono">:274</span>) ergänzt rechts nach der Archivieren-Schaltfläche (<span class="mono">▭</span>, <span class="mono">data-act="archivieren"</span>) einen Trenner und einen Knopf <span class="mono">.el-ausloeser</span> (<span class="mono">data-act="endgueltig-loeschen"</span>, <span class="mono">--kd-warn</span>); das Muster ist die bestehende <span class="mono">btn-sym</span>-Reihe des Kopfes, der Trenner ist <span class="mono">aria-hidden</span>.</li>
+<li><b>Kartenmenü:</b> <span class="mono">web/menue.js</span> <span class="mono">kartenMenue</span> (<span class="mono">:23</span>) hängt nach <span class="mono">Archivieren</span> einen Trenner (<span class="mono">T</span>) und den Eintrag <span class="mono">{text:'Endgültig löschen', act:'endgueltig-loeschen'}</span> an; <span class="mono">web/ansicht.js</span> <span class="mono">vMenueEintraege</span> färbt ihn in <span class="mono">--kd-warn</span>.</li>
+<li><b>Rückfrage:</b> <span class="mono">web/ansicht.js</span> (geteiltes Primitiv mit R00128), <span class="mono">web/app.js</span> (Aktion <span class="mono">endgueltig-loeschen</span>, <span class="mono">DELETE</span>, Erfolg/Fehler, Fokus), <span class="mono">web/kd-app.css</span> (Rückfrage-Gestaltung). Der Fehlertext ist der der Serverantwort; die Meldung erscheint als <span class="mono">role="alert"</span> über den Knöpfen.</li>
+<li><b>Keine neuen Farbwerte:</b> nur <span class="mono">--kd-warn</span>, <span class="mono">--kd-surface</span>, <span class="mono">--kd-line-strong</span>, <span class="mono">--kd-sunken</span>, <span class="mono">--kd-scrim</span> (ADR-0011). Die Bezeichnung „endgültig löschen“ ist in beiden Anforderungen gleich; der Menüeintrag heißt „Endgültig löschen“.</li>
+</ul>
+<h3>MATERIAL 3 — BELEGE</h3>
+<ul>
+<li><b>Basic dialog (alertdialog):</b> M3-Dialoge tragen <b>höchstens zwei Aktionen</b> in der Fußzeile; die <b>abweisende</b> Aktion („Abbrechen“) steht links und wird <b>nie deaktiviert</b>, die bestätigende rechts (m3.material.io/components/dialogs/guidelines). Der Dialog nennt die Folge in der Überschrift („… endgültig löschen“), nicht nur im Rumpf. Startfokus liegt auf der abweisenden Aktion.</li>
+<li><b>Destruktive Aktion:</b> die Bestätigung trägt die Warnfarbe <span class="mono">--kd-warn</span> (4 px Oberkante + Knopfrand) — kein gefüllter Warnknopf, damit die dichte Richtung (eckig, ohne Füllung) erhalten bleibt; das ist die im Projekt gezeichnete Ausprägung (PO-Entscheidungen Z. 191).</li>
+<li><b>Kein Snackbar-Undo:</b> M3-Snackbars bieten eine Aktion; hier <b>keine</b>, weil das Löschen unumkehrbar ist (B5, Abgrenzung ADR-0017) — die Meldung ist eine reine Statusmeldung.</li>
+</ul>
+<h3>KONTRAST (WCAG, GERECHNET AUS <span class="mono">web/kd-tokens.css</span>: OKLCH → SRGB → WCAG), HELL / DUNKEL</h3>
+<ul>
+<li>Rumpf, Dialogkopf: <span class="mono">--kd-text</span> auf <span class="mono">--kd-surface</span> — <b>16,21:1 / 12,63:1</b>.</li>
+<li>Auslöser und Bestätigungsknopf: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-surface</span> — <b>5,88:1 / 6,03:1</b>.</li>
+<li>Auslöser beim Überfahren: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-sunken</span> — <b>5,00:1 / 7,21:1</b> (dasselbe Paar wie die Meldung in R00112).</li>
+<li>Fehlerzeile: <span class="mono">--kd-warn</span> auf <span class="mono">--kd-surface</span> — <b>5,88:1 / 6,03:1</b>.</li>
+<li>Statusmeldung: <span class="mono">--kd-head-text</span> auf <span class="mono">--kd-head</span> — <b>11,49:1 / 16,02:1</b>; Fokusring <span class="mono">--kd-accent</span> gegen <span class="mono">--kd-surface</span> <b>5,95:1 / 3,42:1</b> (&gt; 3:1).</li>
+<li>Alle Paare stammen unverändert aus <span class="mono">web/kd-tokens.css</span> (kein neuer Farbwert, ADR-0011); dieselben Zahlen wie in D0002 <span class="mono">#board-verwalten</span>.</li>
+</ul>
+<h3>GEMESSEN (HEADLESS CHROMIUM)</h3>
+<ul><li>Kopf ohne Querscrollen: <span class="mono">scrollWidth ≤ clientWidth</span> an jedem gezeichneten Kopf — 1080/1080 (1280er Bild, der Pfad kürzt sich mit <span class="mono">text-overflow:ellipsis</span> statt zu schieben), 396/396 (414), 302/302 (320, Touch). Der Dialog ist <span class="mono">min(360 px, 100 % − 32 px)</span> breit: <b>360 px</b> bei 1280 und 414, bei <b>320 px</b> 100 % − 32 px (= 288 px am Gerät; im gezeichneten Rahmen 286 px durch dessen 1-px-Rand, 231 px hoch). <span class="mono">scrollWidth ≤ clientWidth</span> auch an der Telefon-Fläche (412/412, 318/318). Hell und Dunkel gleich.</li>
+<li>Die Telefonbilder zeigen den Umbruch: bei 320 px bricht der Kopf in mehrere Zeilen (Reiterleiste <span class="mono">flex-wrap</span>, danach ↑ ↓ ↗ ▭, dann der Auslöser „Endgültig löschen“ und ✕), nichts scrollt quer; Rumpf und Knöpfe des Dialogs brechen um.</li></ul>
+<h3>OFFEN / ZUR FREIGABE</h3>
+<ul>
+<li><b>Freigabe.</b> Dieser Zustand wartet auf die Freigabe des product-owner (Oberflächen-Bubble F0111); der Server-Teil (Endpoint, Dienst, <span class="mono">aktion()</span>; F0110) ist davon <b>frei baubar</b>.</li>
+<li><b>Wortlaut der Fehlermeldungen (403/404/423).</b> Er stammt aus der Serverantwort und ist im Bild als Lücke markiert; 403 bleibt API-Kriterium (AK 5), die Oberfläche deckt denselben Fehlerpfad und 423 sichtbar ab.</li>
+<li><b>Bezeichnung des Auslösers im Kopf.</b> Gezeichnet ist „Endgültig löschen“ als Beschriftung des Kopf-Knopfes; der Menüeintrag heißt „Endgültig löschen“. Zu bestätigen mit der Freigabe, ob der Kopf-Auslöser beschriftet bleibt (gezeichnet) oder nur das Symbol trägt (wie ↗, ▭, ✕).</li>
+</ul>
 </div></section>
 </body>
 </html>
