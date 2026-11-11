@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { filterWoerter, passt, archivGefiltert, klasseUmschalten } = require('../../web/filter.js');
 
-const A = (nummer, titel, o = {}) => ({ nummer, titel, klasse: o.klasse || null, zustaendige: o.z || [], herkunft: o.h || [], labels: o.l || [] });
+const A = (nummer, titel, o = {}) => ({ nummer, titel, beschreibung: o.b || '', kommentare: o.k || [], teilaufgaben: o.t || [], klasse: o.klasse || null, zustaendige: o.z || [], herkunft: o.h || [], labels: o.l || [] });
 const zwoelf = A(12, 'Kopfzeile verdichten', { klasse: 'feature', z: ['st', 'cl'], h: ['I0027'], l: ['ui'] });
 const dreizehn = A(13, 'Kopfzeile', { klasse: 'bug' });
 const vierzehn = A(14, 'Ohne alles');
@@ -29,11 +29,33 @@ test('Nummer, Person, Herkunft, Klasse none, Label', () => {
   assert.ok(passt(zwoelf, '# @ class: origin: label:'), 'leere Werte filtern nicht');
 });
 
-test('unbekannter Schlüssel sucht im Titel, is:archived filtert nicht', () => {
+test('unbekannter Schlüssel sucht im ganzen Text, is:archived filtert nicht', () => {
   assert.ok(passt(A(1, 'Termin 10:30 klären'), '10:30'));
+  assert.ok(passt(A(2, 'Kopfzeile', { b: 'Bezug 10:30' }), '10:30'), 'das Wort steht nur in der Beschreibung');
   assert.ok(!passt(zwoelf, 'x:y'));
   assert.ok(passt(zwoelf, 'is:archived'));
   assert.ok(archivGefiltert('kopf is:Archived') && !archivGefiltert('kopf'));
+});
+
+// R00019 Karte #31: ein freies Wort sucht auch in Beschreibung, Kommentaren und Teilaufgaben
+test('freies Wort trifft Beschreibung, Kommentar und Teilaufgabe (Felder ODER)', () => {
+  assert.ok(passt(A(21, 'Kopfzeile', { b: 'Die Wartung läuft.' }), 'wartung'), 'nur die Beschreibung nennt es');
+  assert.ok(passt(A(22, 'Kopfzeile', { k: [{ text: 'Wartung erledigt' }] }), 'wartung'), 'nur ein Kommentar nennt es');
+  assert.ok(passt(A(23, 'Kopfzeile', { t: [{ text: 'Wartung abhaken', erledigt: false }] }), 'wartung'), 'nur eine Teilaufgabe nennt es');
+  assert.ok(!passt(A(24, 'Kopfzeile', { b: 'ohne das Wort' }), 'wartung'), 'kein Feld nennt es');
+});
+
+test('Wörter UND über die Felder verteilt, fehlt eines trifft nichts', () => {
+  const a = A(25, 'Kopfzeile', { b: 'Die Wartung', t: [{ text: 'Schieber justieren' }] });
+  assert.ok(passt(a, 'wartung schieber'), 'das eine Wort in der Beschreibung, das andere in der Teilaufgabe');
+  assert.ok(passt(a, 'schieber wartung'), 'die Reihenfolge zählt nicht');
+  assert.ok(!passt(a, 'wartung spindel'), 'ein fehlendes Wort im ganzen Text trifft nicht');
+});
+
+test('ohne Groß/Klein in allen Feldern', () => {
+  assert.ok(passt(A(26, 'Kopfzeile', { t: [{ text: 'wartung prüfen' }] }), 'WARTUNG'), 'in der Teilaufgabe');
+  assert.ok(passt(A(27, 'Kopfzeile', { b: 'Die WARTUNG' }), 'wartung'), 'in der Beschreibung');
+  assert.ok(passt(A(28, 'Kopfzeile', { k: [{ text: 'Wartung' }] }), 'wArTuNg'), 'im Kommentar');
 });
 
 test('Bereiche meine und Agenten', () => {

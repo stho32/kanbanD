@@ -37,6 +37,13 @@
     return [...nummern.filter(mit), ...nummern.filter(n => !mit(n))];
   }
 
+  /** Der ganze Text der Aufgabe ohne Groß/Klein: Titel, Beschreibung, Kommentartexte und Teilaufgabentexte (Karte #31). */
+  function aufgabenText(a) {
+    const kommentare = (a.kommentare || []).map(k => k.text);
+    const teilaufgaben = (a.teilaufgaben || []).map(t => t.text);
+    return [a.titel, a.beschreibung || '', ...kommentare, ...teilaufgaben].join('\n').toLowerCase();
+  }
+
   /** Trifft der Filter die Aufgabe? Alle Wörter müssen passen. */
   function passt(a, text, umfeld) {
     const u = umfeld || {};
@@ -47,7 +54,7 @@
       if (k === '') {
         if (l.startsWith('#')) { if (l.length > 1 && String(a.nummer) !== l.slice(1)) return false; }
         else if (l.startsWith('@')) { if (l.length > 1 && !a.zustaendige.includes(l.slice(1))) return false; }
-        else if (!a.titel.toLowerCase().includes(l)) return false;
+        else if (!aufgabenText(a).includes(l)) return false;
       } else if (k === 'origin') {
         const o = a.herkunft.length ? a.herkunft : ['thin air'];
         if (l && !o.some(x => x.toLowerCase() === l)) return false;
@@ -60,7 +67,7 @@
         if (l && (l === 'any' ? !s.length : !s.includes(l))) return false;
       } else if (k === 'is') {
         // is:archived schaltet die Archivansicht; sonst keine Wirkung
-      } else if (!a.titel.toLowerCase().includes((k + ':' + v).toLowerCase())) return false;
+      } else if (!aufgabenText(a).includes((k + ':' + v).toLowerCase())) return false;
     }
     return true;
   }
