@@ -734,8 +734,11 @@ const EIGENTUEMER_TEXT = {
   human: 'Spalte gehört dem Menschen — Agenten können Karten hineinlegen, aber nicht herausnehmen',
   agent: 'Spalte gehört den Agenten — kennzeichnet nur, sperrt nichts',
   '': 'Kein Eigentümer — Menschen und Agenten nehmen Karten frei heraus',
+  roh: 'Unbekannter Eigentümer „<Rohwert>“ — bleibt erhalten',
 };
-/** Gesendet wird `eigentuemer` nur bei Änderung — sonst bleibt auch ein unbekannter Rohwert in der Datei. */
+/** Der Hinweissatz der Auswahl: bei gewähltem Rohwert der Rohwert-Satz, sonst der Satz der Wahl (R00120). */
+const eigentuemerText = sp => sp.eigentuemer === 'roh' ? EIGENTUEMER_TEXT.roh.replace('<Rohwert>', sp.roh) : EIGENTUEMER_TEXT[sp.eigentuemer || ''];
+/** Zusatz im aria-label des zugeklappten Streifens (R00097). */
 const EIGENTUEMER_STREIFEN = { human: 'gehört dem Menschen', agent: 'gehört den Agenten' };
 const EIGENTUEMER_SYMBOL = {
   human: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>',
@@ -1456,9 +1459,9 @@ function vSignaleEinrichten(d) {
 }
 
 /* ── Spalten einrichten ── */
-/** Bei einem unbekannten Rohwert zählt jede aktive Wahl als Änderung — auch „— keiner —“, das sonst gleich dem Ausgangswert wäre. */
-const eigentuemerGeaendert = sp => Boolean(sp.roh && sp.beruehrt) || (sp.eigentuemer || '') !== (sp.eigentuemerAlt || '');
-const eigentuemerInDatei = sp => eigentuemerGeaendert(sp) ? sp.eigentuemer : (sp.eigentuemer || sp.roh || '');
+/** Gesendet wird `eigentuemer` nur bei Änderung — sonst bleibt auch ein unbekannter Rohwert in der Datei (R00120). */
+const eigentuemerGeaendert = sp => (sp.eigentuemer || '') !== (sp.eigentuemerAlt || '');
+const eigentuemerInDatei = sp => sp.eigentuemer === 'roh' ? sp.roh : (sp.eigentuemer || '');
 function setupText(d) {
   const grenzen = d.spalten.filter(s => +s.grenze > 0);
   const pruefend = d.spalten.filter(s => (s.pruefungen || []).length);
@@ -1479,12 +1482,13 @@ function vBindungFeld(d) {
   const schalter = (k, text, ein, titel) => `<button class="as${ein ? ' an' : ''}" data-act="bind" data-arg="${esc(k)}" aria-pressed="${ein}" aria-label="Bindung ${esc(text)}" title="${esc(titel)}">${esc(text)}</button>`;
   return `<h2 class="einr-kopf">GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h2><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `WBS-Sicht, Phasen-Spalten und Prüfungen aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen, keine WBS-Sicht; vorhandene Spalten bleiben')}</div>`;
 }
-/** Auswahl „Eigentümer“ mit Hinweissatz (aria-describedby); ein unbekannter Rohwert steht wie eine unbekannte Prüfung daneben, bis jemand wählt. */
+/** Auswahl „Eigentümer“ mit Hinweissatz (aria-describedby, R00120); ein unbekannter Rohwert ist als eigene Option vorausgewählt. */
 function vEigentuemerWahl(sp, i) {
   const wahl = sp.eigentuemer || '';
-  const optionen = [['', '— keiner —'], ['human', 'Mensch'], ['agent', 'Agent']].map(([w, text]) => `<option value="${w}"${w === wahl ? ' selected' : ''}>${text}</option>`).join('');
-  const roh = sp.roh ? `<span class="mono eig-roh" title="unbekannter Eigentümer — bleibt erhalten"${eigentuemerGeaendert(sp) ? ' hidden' : ''}>${esc(sp.roh)}</span>` : '';
-  return `<div class="r2 eig-zeile"><label for="eig-${i}">Eigentümer</label><select class="inp eig-wahl" id="eig-${i}" data-sf="eigentuemer" data-i="${i}" aria-label="Eigentümer ${esc(sp.name)}" aria-describedby="eig-hin-${i}">${optionen}</select>${roh}</div><div class="eig-hin" id="eig-hin-${i}">${esc(EIGENTUEMER_TEXT[wahl])}</div>`;
+  const basis = [['', '— keiner —'], ['human', 'Mensch'], ['agent', 'Agent']].map(([w, text]) => `<option value="${w}"${w === wahl ? ' selected' : ''}>${text}</option>`).join('');
+  const rohOption = sp.roh ? `<option value="roh"${wahl === 'roh' ? ' selected' : ''}>„${esc(sp.roh)}“ (unbekannt)</option>` : '';
+  const roh = sp.roh ? `<span class="mono eig-roh"${eigentuemerGeaendert(sp) ? ' hidden' : ''}>${esc(sp.roh)}</span>` : '';
+  return `<div class="r2 eig-zeile"><label for="eig-${i}">Eigentümer</label><select class="inp eig-wahl" id="eig-${i}" data-sf="eigentuemer" data-i="${i}" aria-label="Eigentümer ${esc(sp.name)}" aria-describedby="eig-hin-${i}">${basis}${rohOption}</select>${roh}</div><div class="eig-hin" id="eig-hin-${i}">${esc(eigentuemerText(sp))}</div>`;
 }
 function vSetup() {
   const d = S.ui.setup;

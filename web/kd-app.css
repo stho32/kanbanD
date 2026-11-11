@@ -108,7 +108,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .zu-streifen{align-items:center;padding:var(--kd-s3) 0;border:0;font:inherit;color:var(--kd-text);cursor:pointer}
 .zu-streifen:hover{background:var(--kd-accent-weak)}
 .zu-name{writing-mode:vertical-rl;font-weight:600;font-size:12px;white-space:nowrap}
-/* Kopfzeichen des Eigentümers (R00097): 14×14 hinter dem Namen-Knopf, vor ⓘ; im Streifen über dem gedrehten Namen */
+/* Kopfzeichen des Eigentümers (R00097): 14×14 hinter dem Namensknopf, vor ⓘ; im Streifen über dem gedrehten Namen */
 .eig-z{display:inline-flex;flex:none;width:14px;height:14px}
 .eig-z svg{display:block;width:14px;height:14px}
 .eig-z.m{color:var(--kd-mensch)}

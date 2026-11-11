@@ -48,10 +48,11 @@ test.describe('R00097', () => {
     await page.goto(k.adresse);
     await ausMehr(page, 'Spalten einrichten');
     const wahl = page.getByRole('combobox', { name: 'Eigentümer In Arbeit' });
-    await expect(wahl).toHaveValue('');
-    await expect(wahl).toHaveAccessibleDescription(KEINER);
-    const roh = page.locator('[title="unbekannter Eigentümer — bleibt erhalten"]');
-    await expect(roh).toHaveText('chef');
+    // R00120: die Rohwert-Option ist vorausgewählt und trägt den Hinweissatz als Beschreibung
+    await expect(wahl).toHaveValue('roh');
+    await expect(wahl.locator('option')).toHaveText(['— keiner —', 'Mensch', 'Agent', '„chef“ (unbekannt)']);
+    await expect(wahl).toHaveAccessibleDescription('Unbekannter Eigentümer „chef“ — bleibt erhalten');
+    await expect(page.locator('.eig-roh')).toHaveText('chef');
     await expect(page.locator('#setup-vorschau')).toContainText('column-owner:\n  In Arbeit: chef');
     await page.getByLabel('Kommentar In Arbeit').fill('nur zwei');
     await page.getByLabel('Spaltenname 2').fill('Laufend');
@@ -66,11 +67,10 @@ test.describe('R00097', () => {
     await page.goto(k.adresse);
     await ausMehr(page, 'Spalten einrichten');
     const wahl = page.getByRole('combobox', { name: 'Eigentümer In Arbeit' });
-    const roh = page.locator('[title="unbekannter Eigentümer — bleibt erhalten"]');
-    await expect(roh).toHaveText('chef');
+    await expect(page.locator('.eig-roh')).toHaveText('chef');
     await wahl.selectOption({ label: 'Mensch' });
     await wahl.selectOption({ label: '— keiner —' });
-    await expect(roh).toBeHidden();
+    await expect(page.locator('.eig-roh')).toBeHidden();
     await expect(page.locator('#setup-vorschau')).not.toContainText('column-owner');
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect.poll(() => k.lies('boards/entwicklung.md')).not.toContain('column-owner');
