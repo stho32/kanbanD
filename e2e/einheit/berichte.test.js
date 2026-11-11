@@ -579,3 +579,33 @@ test('Fluss: Ränder, Tooltip und Name (R00121 B0558)', () => {
   assert.deepStrictEqual(flussRand(d.tage, 'Fertig'), [0, 0, 1, 2, 2], 'ein Band wird über seinen Spaltennamen gelesen');
   assert.strictEqual(flussName(d.tage[3].datum, d.tage[3], d.spalten), '04.11.2026 · Eingang 1 · In Arbeit 1 · Fertig 2 · offen 2 · gesamt 4 · angekommen 4 · fertig 2');
 });
+
+const ZU_FLUSS = {
+  1: { klasse: 'bug', zustaendige: ['st'], labels: ['ui'] },
+  2: { klasse: 'ux', zustaendige: ['mi'], labels: [] },
+  3: { klasse: 'bug', zustaendige: [], labels: ['daten'] },
+  4: { klasse: 'ux', zustaendige: ['st'], labels: [] },
+};
+const zuFluss = nr => ZU_FLUSS[nr];
+
+test('Fluss: ausgeschlossene Spalten, Zeitraum, Klassen und „Rechnen ab“ (R00121 B0560)', () => {
+  const lauf = x => fluss(FLUSS, f(x), ohneFilterung, flussJetzt);
+  const band = d => d.tage[2].jeSpalte; // 03.11.
+  const ohneArbeit = lauf({ ohneSpalten: ['In Arbeit'] });
+  assert.deepStrictEqual([band(ohneArbeit).Eingang, band(ohneArbeit)['In Arbeit'], band(ohneArbeit).Fertig, ohneArbeit.tage[2].gesamt], [1, 0, 1, 2], '03.11. ohne „In Arbeit“: Eingang 1 · Fertig 1 (gesamt 2)');
+  assert.strictEqual(lauf({ ohneSpalten: ['In Arbeit'] }).tage[4].gesamt, 2, '05.11. ebenfalls 2');
+  const zwei = lauf({ zeitraum: 'eigen', von: '2026-11-03', bis: '2026-11-04' });
+  assert.deepStrictEqual(zwei.tage.map(x => x.datum.slice(8)), ['03', '04'], 'genau zwei Stützpunkte');
+  assert.deepStrictEqual(zwei.tage.map(x => x.angekommen), [3, 4], 'die vor dem Zeitraum angekommenen #1/#2 zählen in „angekommen“ mit');
+  assert.deepStrictEqual(fluss(FLUSS, f({}), ohneFilterung, flussJetzt, '2026-11-03').tage.map(x => x.datum.slice(8)), ['03', '04', '05'], '„Rechnen ab“ schneidet den Anfang ab');
+  assert.deepStrictEqual(lauf({ messbasisTage: 90 }).tage, lauf({ messbasisTage: 30 }).tage, 'die Messbasis wirkt nicht');
+  assert.strictEqual(fluss(FLUSS, f({ ohneFarben: ['ux'] }), zuFluss, flussJetzt).tage[2].gesamt, 2, 'ausgeschlossene Klasse „ux“ nimmt #2 und #4 heraus');
+  assert.strictEqual(fluss(FLUSS, f({ personen: ['st'] }), zuFluss, flussJetzt).tage[2].gesamt, 1, 'nur Aufgaben der Person zählen');
+});
+
+test('Fluss: reporting.burndown false nimmt die Aufgabe aus dem Bericht (R00121 B0560)', () => {
+  const ohne3 = { ...FLUSS, aufgaben: FLUSS.aufgaben.map(a => a.nummer === 3 ? { ...a, reporting: { burndown: false } } : a) };
+  const d = fluss(ohne3, f({}), ohneFilterung, flussJetzt);
+  assert.deepStrictEqual([d.tage[2].jeSpalte.Eingang, d.tage[2].jeSpalte['In Arbeit'], d.tage[2].jeSpalte.Fertig, d.tage[2].gesamt], [0, 1, 1, 2], '03.11. ohne #3: Eingang 0 · In Arbeit 1 · Fertig 1 (gesamt 2)');
+  assert.strictEqual(d.tage[2].angekommen, 2, 'auch „angekommen“ nimmt #3 heraus');
+});
