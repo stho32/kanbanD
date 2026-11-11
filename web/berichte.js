@@ -801,5 +801,39 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  /* ── Datums-Trenner in den Spalten (R00124) ── */
+  /** Der Ankunftstag einer Aufgabe in einer Spalte: der letzte Wechsel in diese Spalte, sonst der Tag ihres ersten Erscheinens. */
+  function ankunftsTag(wechsel, spalte) {
+    if (!wechsel || !wechsel.length) return null;
+    let letzter = null;
+    for (const w of wechsel) if (w.spalte === spalte) letzter = w.zeitpunkt;
+    return (letzter || wechsel[0].zeitpunkt).slice(0, 10);
+  }
+
+  /** Beschriftung eines Datums-Trenners (R00124): „Heute“, „Gestern“ oder `dd.MM.yyyy` (ADR-0013). */
+  function trennerText(tag, heute) {
+    if (tag === heute) return 'Heute';
+    const gesternTag = new Date(isoTag(heute) - TAG);
+    const gestern = `${gesternTag.getFullYear()}-${String(gesternTag.getMonth() + 1).padStart(2, '0')}-${String(gesternTag.getDate()).padStart(2, '0')}`;
+    if (tag === gestern) return 'Gestern';
+    return datumLang(tag);
+  }
+
+  /** Je sichtbarer Aufgabe der Text des Datums-Trenners **vor** ihr (R00124); `null`, wo keine Tagesgrenze ist.
+      `reihe` ist die gezeichnete Reihenfolge der sichtbaren Karten; im Archiv leer. */
+  function datumsTrenner(spalte, reihe, bewegungen, heute, archiv) {
+    const texte = new Map();
+    if (archiv) return texte;
+    const je = new Map(((bewegungen && bewegungen.aufgaben) || []).map(a => [a.nummer, a.wechsel]));
+    let vorigerTag = null;
+    for (const nr of reihe) {
+      const tag = ankunftsTag(je.get(nr), spalte);
+      if (tag && tag !== vorigerTag) texte.set(nr, trennerText(tag, heute));
+      else texte.set(nr, null);
+      if (tag) vorigerTag = tag;
+    }
+    return texte;
+  }
+
+  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
