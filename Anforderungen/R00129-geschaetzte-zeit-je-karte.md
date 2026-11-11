@@ -179,6 +179,8 @@ Auslöser ist die Entscheidung des Auftraggebers (Karte #37, 2026-11-03): KI-Wer
 
 ## Notizen
 
+**Detailplanung:** WBS **I0120** (Interaction unter D0003, R00129) mit F0106 (B0607–B0610, Server) und F0107 (B0611–B0613, Anzeige), 2 Features, 7 Bubbles, 4–8 h; alles `rot` (Stand 2026-11-11). Herkunft der Karte #37: `kd:I0120`, `kd:R00129`.
+
 **Eigene Interaction unter D0003.** Datenmodell, Tür und Feldzeile hängen am Aufgabenfenster; das Etikett auf dem Board (D0002) ist ein Aspekt derselben Daten — dieselbe Begründung wie bei I0093/R00105 („Preisetikett je Aufgabe auf Karte und im Detail“). Muster: F0038/F0039 (Kosten setzen/anzeigen, I0093).
 
 **Optionen-Tableau (kurz, Skill `optionen-vor-entscheidung`):**
