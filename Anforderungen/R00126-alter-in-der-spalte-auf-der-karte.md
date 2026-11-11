@@ -38,9 +38,9 @@ Ein Board zeigt den Stand, aber nicht die Verweildauer. Wer das Board überblick
 
 ### Zeigen (ADR-0019 N5 Punkte 2, 3)
 
-7. Das Alter steht **sichtbar** an der Karte als Kurzform (FA 5) — neutral, ohne Warnfarbe, ohne Symbol, das „alt“ bedeutet, ohne Schwelle. Ort und Form der Kurzform auf der Karte (eigene kleine Zeile, Chip oder Text) legt die UX-Vorprüfung fest; die Anforderung fixiert nur: sichtbar, kurz nach FA 6 und die Breitenregeln nach FA 9.
-8. Der zugängliche Name des Listeneintrags trägt die Vollform, gestellt vor „ausgewählt“ und **nach** einem etwaigen Timer-Zusatz (R00114): „#<nr> <Titel>[, <Klasse>][, Timer läuft seit …][, seit <Dauer> in <Spalte>][, ausgewählt]“; fehlende Teile fallen samt Komma weg. Beide Zusätze können nebeneinander stehen.
-9. Auf schmalen Breiten (320, 375, 414 px) scrollt die Seite nicht quer, die Karte bleibt im Rechteck ihrer Spalte, und der Titel bleibt lesbar (mindestens 90 px, Rückfall-Vorgabe aus R00114/R00115). Reicht der Platz in der Kopfzeile nicht, gilt der vorhandene Kopfzeilen-Umbruch (ADR-0019 N4) — es entsteht keine neue Form.
+7. Das Alter steht **sichtbar** an der Karte als Kurzform (FA 5) — neutral, ohne Warnfarbe, ohne Symbol, das „alt“ bedeutet, ohne Schwelle. **Ort und Form sind mit der UX-Vorprüfung #30 (2026-11-11) festgelegt:** Die Kurzform ist ein eigener **nackter Text** in der untersten Kartenzeile `.r3`, innerhalb von `.r3 .rechts`, **direkt nach der Zeitsumme Σ und vor dem Teilaufgaben-Zähler ☑**. Ihre Form gleicht `.sum`/`.preis` (Muster D0002 „Preisetikett“): 11 px IBM Plex Mono, Farbe `--kd-muted`, ohne Rahmen, ohne Grund, ohne Symbol, `white-space:nowrap`, kein `tabindex`, keine Rolle (kein Bedienelement, ADR-0012 gilt nicht). Ein **Chip** oder ein Platz in der **Kopfzeile** (`.r0`) ist ausgeschlossen — er kollidierte mit Laufchip und Signalen. Sichtbarer Text ist `seitText(Dauer)` wörtlich (FA 5, „seit 6 Tagen“); auf einer Karte mit eigener Klassenfarbe (`data-eigen`) trägt der Text `--kd-text` wie das Preisetikett (NFA Barrierefreiheit).
+8. Der zugängliche Name des Listeneintrags trägt die Vollform, gestellt vor „ausgewählt“ und **nach** einem etwaigen Timer-Zusatz (R00114): „#<nr> <Titel>[, <Klasse>][, Timer läuft seit …][, seit <Dauer> in <Spalte>][, ausgewählt]“; fehlende Teile fallen samt Komma weg. Beide Zusätze können nebeneinander stehen. Die **sichtbare** Kurzform trägt `aria-hidden="true"` und **keinen** `.vh`-Doppeltext (Muster `.due`/`.preis`); die Dauer wird so genau einmal vorgelesen — die Vollform steht allein im Namen des `listitem`.
+9. Auf schmalen Breiten (320, 375, 414 px) scrollt die Seite nicht quer, die Karte bleibt im Rechteck ihrer Spalte, und der Titel bleibt lesbar (mindestens 90 px, Rückfall-Vorgabe aus R00114/R00115) — geprüft an einer Karte, die **zugleich Laufchip, Σ, Fälligkeit, Preisetikett und Labels** trägt (AK 8). Reicht der Platz in der untersten Zeile nicht, bricht sie um wie die Preisetikett-Anordnung (D0002 „Preisetikett“, `_wireframes.md` 2026-11-06: `.r3 .rechts` mit `flex-wrap` bei 375 und 320 px) — es entsteht keine neue Form. Der Kopfzeilen-Umbruch (ADR-0019 N4) ist mit dem Ort `.r3` für das Alter nicht der tragende Rückfall.
 
 ### Grenzen (ADR-0019 N5)
 
@@ -51,8 +51,8 @@ Ein Board zeigt den Stand, aber nicht die Verweildauer. Wer das Board überblick
 ## Nicht-funktionale Anforderungen
 
 - **Performance**: die Board-Ansicht lädt beim Zeichnen zusätzlich `GET /api/berichte/bewegungen?board=<slug>` (ein `git log` der Board-Datei je Ladevorgang und je Live-Ereignis, ADR-0019 N5 Konsequenzen). Die Bewegungen werden einmal je Ladevorgang geholt, nicht je Karte; kein zusätzlicher Endpunkt, kein Cache.
-- **Barrierefreiheit**: der Zustand hängt nicht an der Farbe allein — der zugängliche Name nennt Alter und Spalte (FA 8). Die Kurzform ist Text.
-- **Breite**: bei 320 px scrollt die Seite nicht quer (ADR-0015); die Kurzform bricht um oder nutzt den vorhandenen Kopfzeilen-Umbruch (FA 9).
+- **Barrierefreiheit**: der Zustand hängt nicht an der Farbe allein — der zugängliche Name nennt Alter und Spalte (FA 8), die sichtbare Kurzform ist Text und `aria-hidden`. Der Text hält in beiden Themen **mindestens 4,5:1** auf jedem Kartengrund (WCAG 1.4.3, ADR-0011); auf einer Karte mit eigener Klassenfarbe trägt die Kurzform `--kd-text` wie das Preisetikett (`.ka[data-eigen] .seit{color:var(--kd-text)}`), weil `--kd-muted` auf hellen eigenen Farben unter 4,5:1 fällt; die `kontrast.spec` misst hell und dunkel.
+- **Breite**: bei 320 px scrollt die Seite nicht quer (ADR-0015); reicht der Platz nicht, bricht die unterste Zeile um wie die Preisetikett-Anordnung (FA 9).
 - **Rückwärtskompatibel**: keine Änderung an API, Dateiformat, Commit-Texten, Berichten, Summen oder der Belegung im Spaltenkopf; das Alter erscheint in keinem Bericht.
 
 ## Akzeptanzkriterien
@@ -64,14 +64,14 @@ Ein Board zeigt den Stand, aber nicht die Verweildauer. Wer das Board überblick
 - #3: 01.10.2026 in „Eingang“ angelegt, seither unverändert → 41 Tage.
 - #4: 01.10.2026 in „Eingang“ angelegt, 08.11.2026 vom Board genommen → kein Alter.
 
-- [ ] **1. Sichtbar kurz, im Namen voll**: Gegeben der Grundbestand, wenn ich das Board ansehe, dann zeigt #1 sichtbar „seit 6 Tagen“ und heißt als Listeneintrag „#1 … , seit 6 Tagen in In Arbeit“; #3 zeigt „seit 41 Tagen“ und heißt „… seit 41 Tagen in Eingang“.
+- [ ] **1. Sichtbar kurz, im Namen voll, an festem Ort**: Gegeben der Grundbestand, wenn ich das Board ansehe, dann zeigt #1 sichtbar „seit 6 Tagen“ und heißt als Listeneintrag „#1 … , seit 6 Tagen in In Arbeit“; #3 zeigt „seit 41 Tagen“ und heißt „… seit 41 Tagen in Eingang“. Die sichtbare Kurzform ist ein Element in `.r3 .rechts` **hinter** `.sum` und vor `☑`, in der Form von `.sum`/`.preis` (11 px, Plex Mono, `--kd-muted`, kein Rahmen, kein Grund, kein `tabindex`, keine Rolle), ihr Text ist `seitText(Dauer)` wörtlich, sie trägt `aria-hidden="true"` ohne `.vh`-Doppeltext, und der Listeneintrag nennt „seit … in <Spalte>“ genau einmal.
 - [ ] **2. Der letzte Eintritt zählt**: Gegeben eine Aufgabe, die am 02.10. nach „In Arbeit“, am 03.10. nach „Fertig“ und am 04.10. zurück nach „In Arbeit“ kam (heute 11.11.), wenn ich sie ansehe, dann zeigt sie „seit 38 Tagen in In Arbeit“ — das Alter des **letzten** Eintritts (der erste, 02.10., wäre 40 Tage).
 - [ ] **3. Dauertext, Grenzfälle**: Gegeben der Grundbestand, wenn ich das Board ansehe, dann zeigt #2 „seit 0 Stunden“ und der Name nennt „seit 0 Stunden in Fertig“; bei einem Eintritt von 5 Stunden steht „seit 5 Stunden“, bei 47:59:59 „seit 47 Stunden“, ab 48:00:00 „seit 2 Tagen“, bei 41 Tagen „seit 41 Tagen“.
 - [ ] **4. Abschlussspalte zählt**: Gegeben der Grundbestand, wenn ich die Abschlussspalte „Fertig“ ansehe, dann trägt #2 dort ein Alter („seit 0 Stunden“) — die Abschlussspalte ist eine Spalte wie jede andere; „Fertig“ bedeutet nicht „kein Alter“.
 - [ ] **5. Kein Alter ohne Eintritt (Gegenprobe)**: Gegeben #4 (vom Board genommen) und eine Aufgabe ohne jeden Spaltenwechsel, wenn ich sie ansehe, dann tragen sie weder Kurzform noch Namenszusatz, und ihr Markup ist byte-gleich wie heute; im Unit-Test liefert die Ableitung ohne Eintritt `null`.
 - [ ] **6. Keine Warnung, keine Schwelle**: Gegeben #3 mit 41 Tagen, wenn ich das Board ansehe, dann hat die Anzeige von #3 dieselbe Form wie die von #2 (keine Warnfarbe, kein „alt“, kein Ausrufezeichen, kein Umbruch in eine Warnrolle), und es gibt keinen Zahlenwert, ab dem die Anzeige umschlägt.
 - [ ] **7. Nur gelesen, kein zweiter Takt**: Gegeben der Grundbestand, wenn ich 60 s zusehe, dann ist `boards/fabrik.md` byte-gleich, `git log` unverändert und `kdTest.renders()` steigt nicht ohne Ereignis; eine Board-Bewegung (Live-Ereignis) zeichnet ohne Neuladen neu, und das Alter der bewegten Karte stimmt danach.
-- [ ] **8. Schmales Layout**: Gegeben der Grundbestand, wenn die Fensterbreite auf 375 (und 320 bzw. 414) px gesetzt wird, dann ist `document.documentElement.scrollWidth ≤ clientWidth`, jede Karte bleibt im Rechteck ihrer Spalte (`ka.right ≤ flaeche.right`), und der Titel bleibt mindestens 90 px breit.
+- [ ] **8. Schmales Layout (volle unterste Zeile)**: Gegeben der Grundbestand und eine Karte, die **zugleich Laufchip, Σ, Fälligkeit, Preisetikett und Labels** trägt, wenn die Fensterbreite auf 375 (und 320 bzw. 414) px gesetzt wird, dann ist `document.documentElement.scrollWidth ≤ clientWidth`, jede Karte bleibt im Rechteck ihrer Spalte (`ka.right ≤ flaeche.right`), die Kurzform liegt in `.r3 .rechts` hinter `.sum`, und der Titel bleibt mindestens 90 px breit — hell und dunkel.
 - [ ] **9. Belegung und Berichte unberührt**: Gegeben der Grundbestand, wenn ich das Alter ansehe, dann ist die Belegungszahl im Spaltenkopf unverändert (Eingang 3, In Arbeit 1, Fertig 0 vor #2), und Burndown, Durchlaufzeit und Durchsatz liefern dieselben Zahlen wie ohne die Anzeige.
 
 ## Betroffene Verzeichnisstruktur
@@ -86,7 +86,7 @@ web/
 └── kd-app.css       # Kurzform an der Karte (Ort/Form nach UX-Vorprüfung)
 e2e/
 ├── einheit/         # berichte.test.js (Eintritt), kultur.test.js, kartenname.test.js
-└── tests/           # r00125-alter-in-der-spalte.spec.js (neu); r00089, r00114, r00115, ziele, kontrast, kultur laufen mit
+└── tests/           # r00126-alter-in-der-spalte.spec.js (neu); r00089, r00114, r00115, ziele, kontrast, kultur laufen mit
 ```
 
 Kein Server, kein Format, keine Migration, kein Commit.
@@ -127,14 +127,18 @@ Nach ADR-0019 Nachtrag N5 (Acceptiert, Commit `ccdfe60`); keine neue Architektur
 
 ### Gestaltung
 
-Der **Ort und die Form der Kurzform** an der Karte sind offen (die Karte ist eng — sie trägt bereits Nummer, Signale, Timer-Chip, Σ, erste Teilaufgabe, Fälligkeit und Labels). Die **UX-Vorprüfung** (Karte eng, Breiten/Umbruch) entscheidet und misst: (a) wo die Kurzform steht (eigene kleine Zeile, Text neben Σ in `.r3`, oder Chip in der Kopfzeile), (b) ob die Kopfzeile bei Platznot umbricht (vorhandener Rückfall, ADR-0019 N4) und (c) ob Titel und Breiten (320/375/414, mit Timer, Σ und Labels) halten. Neutral, ohne neue Farbrolle (ADR-0011) und ohne neue Form gegen Material 3. Empfehlung nach dem Muster von R00114: **kein Artboard, Bildschirmfotos** auf den Abnahmezettel (1280/414/320 px, hell und dunkel, mit und ohne laufenden Timer); die Entscheidung trifft der product-owner.
+**Ort und Form sind mit der UX-Vorprüfung #30 (2026-11-11) festgelegt** (FA 7): Die Kurzform steht als nackter Text in `.r3 .rechts` direkt nach Σ, in der Form von `.sum`/`.preis` (Plex Mono 11 px, `--kd-muted`, ohne Rahmen/Grund/Symbol) — damit wendet sie die gezeichnete Preisetikett-Anordnung an, es entsteht nichts Neues. Die Prüfung misst die **volle unterste Zeile** (Laufchip, Σ, Fälligkeit, Preisetikett und Labels zugleich) bei 320/375/414 px, hell und dunkel; die Kurzform bleibt neutral, ohne neue Farbrolle (ADR-0011) und ohne neue Form gegen Material 3.
+
+**Zweimal „seit 6 Tagen“ ist geduldet**: Trägt eine Karte einen vergessenen Timer (Chip „seit 6 Tagen“ oben rechts) und zugleich ein Alter, stehen beide Dauer-Aussagen auf dem Schirm; die Form unterscheidet sie (Chip mit Punkt und Farbfläche in der Kopfzeile, nackter Text in `.r3`). Eine schärfere Unterscheidung (eigenes Wort oder Zeichen) ist eine Richtungsfrage und keine Vorgabe dieser Anforderung.
+
+**Artboard: keins — Bildschirmfotos** auf den Abnahmezettel (Muster R00114, PO `po-entscheidungen.md` Z. 153 Fall (b), Z. 184): Die Kurzform wendet die freigegebene Preisetikett-Anordnung an (kein neues Element, keine neue Lage), deshalb genügen Fotos bei 1280/414/320 px, hell und dunkel, mit Karten verschiedenen Alters, mit laufendem und mit vergessenem Timer, mit voller unterster Zeile und mit eigener Klassenfarbe. Ein Artboard-Zustand an D0002 wäre nur nötig, wünschte der PO statt Text einen **Chip** oder eine eigene Stelle in der **Kopfzeile**; beides schließt FA 7 aus.
 
 ## Tests
 
 Nach Skill `test-pyramide`. Jede Szene der User Story wird ein Test, der eine Zustandsänderung auf dem Schirm oder in der Git-Geschichte beobachtet (Skill `test-ehrlichkeit`).
 
 - **Unit (node --test)**: `eintrittAm` (letzter Wechsel, nicht der erste; ohne Wechsel `null`; Wechsel in der Zukunft zählt nicht) in `e2e/einheit/berichte.test.js` nach dem Muster von `spalteAm`; `seitText`-Beispiele (0 h, 5 h, 47 h, 48 h) in `e2e/einheit/kultur.test.js`; `kartenName` mit zwei Zusätzen (Timer + Alter) in `e2e/einheit/kartenname.test.js`.
-- **E2E (Playwright)**: neu `e2e/tests/r00125-alter-in-der-spalte.spec.js` mit dem Grundbestand (Board mit `GIT_AUTHOR_DATE`-Commits, Muster `r00123-karten-verlauf.spec.js` und `r00114`); Breitenproben nach `ziele.spec.js`.
+- **E2E (Playwright)**: neu `e2e/tests/r00126-alter-in-der-spalte.spec.js` mit dem Grundbestand (Board mit `GIT_AUTHOR_DATE`-Commits, Muster `r00123-karten-verlauf.spec.js` und `r00114`); Breitenproben nach `ziele.spec.js` an einer Karte mit **voller unterster Zeile** (Laufchip, Σ, Fälligkeit, Preisetikett und Labels zugleich), 320/375/414 px, hell und dunkel (UX-Vorprüfung #30, M2).
 - **Rot vor dem Bau**: jeder Akzeptanztest beginnt als `test.fail` mit Verweis auf #30.
 - **Gegenproben (Mutanten)**: Eintritt aus dem **ersten** statt letzten Wechsel (`#2` rot), Warnfarbe ab einer Zahl (AK 6 rot), zweiter Sekundentakt für das Alter (AK 7 rot), Alter an einer Karte ohne Eintritt (AK 5 rot), Querscrollen bei 320 px (AK 8 rot).
 - **Mitlaufend grün**: `r00089-gesamtzeit-auf-der-karte.spec.js`, `r00114-vergessene-timer.spec.js`, `r00115-kartentext.spec.js`, `ziele.spec.js`, `kontrast.spec.js`, `kultur.spec.js`, `e2e/einheit/`.
@@ -143,22 +147,22 @@ Nach Skill `test-pyramide`. Jede Szene der User Story wird ein Test, der eine Zu
 
 - ADR-0019 Nachtrag N5 (Acceptiert, `ccdfe60`); ADR-0021 (ableiten statt speichern), ADR-0013 (Anzeigekultur), ADR-0015/ADR-0012 (Breite und Ziele), ADR-0018/X00005 (Kartenname, R00113).
 - Abhängig von (grün): I0042 Bewegungen (R00042, `GET /api/berichte/bewegungen`), I0102 Kartenname (R00113), I0103 Vergessene Timer (R00114, `seitText` und der Namenszusatz), I0104 Kartentext (R00115, `overflow-wrap`/Umbruch).
-- Gestaltung: **ux-Vorprüfung** (Karte eng; Ort/Form und Breiten) und **Artboard-Entscheidung** des product-owner vor dem Bau der Oberfläche; Empfehlung nach R00114: kein Artboard, Bildschirmfotos.
+- Gestaltung: **ux-Vorprüfung #30** (2026-11-11) eingearbeitet — Ort/Form festgelegt (FA 7); **kein Artboard**, Bildschirmfotos auf den Abnahmezettel (Muster R00114, PO `po-entscheidungen.md` Z. 153 Fall (b)); eine PO-Freigabe wäre nur bei Chip oder eigener Kopfzeilen-Stelle nötig und entfällt mit FA 7.
 - Blockiert: —
 
 ## Offene Fragen
 
-Keine, die den Bau blockieren. Empfehlungen des planers (Entscheidungen im Bericht); richtungsweisend bleibt allein die Artboard-Frage (product-owner):
+Keine, die den Bau blockieren. Empfehlungen des planers (Entscheidungen im Bericht); richtungsweisend bleibt die Artboard-Bestätigung des product-owner (Punkt 5; Empfehlung: kein Artboard):
 
 1. **Welche Spalte zählt?** Jede sichtbare Spalte, **einschließlich der Abschlussspalte**: das Alter ist die Verweildauer in der aktuellen Spalte; in „Fertig“ ist es die Zeit seit dem Abschluss (Vorbild Jira „Tage in Spalte“). Keine Spalte wird ausgenommen.
 2. **Seit wann?** Seit dem **letzten** Eintritt in die heutige Spalte (`spalteAm`-Zeitpunkt), nicht seit Erstellung, Fälligkeit oder Board-Aufnahme; mehrfach bewegte Karten zeigen den letzten Eintritt (ADR-0019 N5 „Mutante“, R00124).
 3. **Anzeigeform — Schwelle oder Warnfarbe?** **Keine Schwelle, keine Warnfarbe** (ADR-0019 N5 „Keine Schwelle“): gleiche Form für 0 Stunden und 41 Tage. Ein „zu alt“ ist eine PO-Frage und eine eigene Anforderung.
 4. **Sekundentakt oder Neuzeichnen?** **Kein zweiter Zeitgeber**: das Alter wird beim Zeichnen entschieden und altert zwischen zwei Zeichnungen nicht fort (Tagesgenauigkeit). Ein Live-Ereignis aktualisiert es; ein Sekundentakt für das Alter entsteht nicht.
-5. **Artboard?** Empfehlung wie R00114: **kein Artboard, Bildschirmfotos** auf den Abnahmezettel. Entscheidung beim product-owner, sobald die UX-Vorprüfung Ort und Form festlegt.
+5. **Artboard?** Mit der UX-Vorprüfung #30 entschieden: **kein Artboard, Bildschirmfotos** auf den Abnahmezettel (Muster R00114) — die Kurzform wendet die freigegebene Preisetikett-Anordnung an (PO `po-entscheidungen.md` Z. 153 Fall (b)). Eine Artboard-Freigabe wäre nur nötig, wünschte der PO einen **Chip** oder eine eigene Kopfzeilen-Stelle statt des Textes in `.r3`; beides schließt FA 7 aus. Der PO bestätigt die Form mit den Fotos (oder verlangt das Artboard).
 
 ## Manuelle Vorbereitungstätigkeiten
 
-Bildschirmfotos für den Abnahmezettel (nach der UX-Vorprüfung): Board mit Karten verschiedenen Alters und einer Karte ohne Alter bei 1280, 414 und 320 px; zusätzlich mit laufendem Timer auf derselben Karte; je hell und dunkel.
+Bildschirmfotos für den Abnahmezettel (nach der UX-Vorprüfung #30): Board mit Karten verschiedenen Alters und einer Karte ohne Alter bei 1280, 414 und 320 px; zusätzlich eine Karte mit **laufendem** und eine mit **vergessenem** Timer, eine Karte mit **voller unterster Zeile** (Laufchip, Σ, Fälligkeit, Preisetikett, Labels zugleich) und eine mit **eigener Klassenfarbe**; je hell und dunkel.
 
 ## Manuelle Nachbereitungstätigkeiten
 
