@@ -1,8 +1,9 @@
 # ADR-0024: Aufgabe endgültig löschen — Datei und Board-Zeilen entfernen, ein Commit; Git bleibt das Gedächtnis
 
-**Status**: Vorgeschlagen
+**Status**: Akzeptiert
 **Datum**: 2026-11-11
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #36)
+**Betreiber-Entscheidung**: 2026-11-11 — echte Löschung, auch für Agenten (Kartenkommentar #36)
 **Kontext-Anforderung**: Karte #36 „Aufgabe endgültig löschen“ (Vorprüfung architekt 2026-11-11, Kartenkommentar #36); Anforderung und WBS-Knoten folgen über den planer
 **Erprobt durch**: — (getragen von der bestehenden Systemantwort: Archivieren/Zurückholen unter `gesperrt()` → `archivieren_pruefen` → `aufgabe_schreiben` (`src/dienst/archiv.rs:9–37`); Anhänge werden entfernt und über `committen()` committet (`src/dienst/anhaenge.rs:78–89`); `git::committen` staged auch gelöschte Pfade (`src/git.rs:31–56`); `Board::abnehmen` nimmt eine Zeile heraus (`src/modell/board.rs:370–376`); ADR-0021 „Git ist das Gedächtnis“)
 **Nachträge**: keine
@@ -70,6 +71,15 @@ Begründung: „endgültig“ soll heißen, was es sagt — die Aufgabe ist aus 
 - **Rückwirkende Berichte ändern sich.** Liegt die Karte auf einem Board, verschwindet ihre Zeile; Auswertungen, die den aktuellen Stand lesen, zählen sie ab der Löschung nicht mehr. Die Bewegungshistorie davor bleibt in Git erhalten.
 - **Signaturänderung von `aktion()`.** Das mechanische Refactoring (Schreiben/Entfernen) ist ein eigener Commit **vor** dem Feature; die bestehenden Tests der umgebauten Wege müssen grün bleiben.
 
+### Betreiber-Entscheidung (2026-11-11, Kartenkommentar #36)
+
+Der Betreiber hat die beiden zuletzt offenen Punkte entschieden:
+
+- **Echte Löschung — ja.** „Endgültig“ heißt wörtlich: die Aufgabendatei, ihre Zeile aus **allen** Board-Dateien und ihr Anhangsordner verschwinden; nur die **Git-Historie** behält sie. **Git ist der Papierkorb** — wiederherstellen geht ausschließlich über `git checkout`/`git show`. Option C (weiches Löschen) und Option D (Papierkorb-Ordner) sind damit endgültig verworfen.
+- **Auch Agenten dürfen löschen.** Die Löschung ist kein Menschen-Vorbehalt. Sie läuft unter der **bestehenden Spalten-Sperre** R00097/R00120: Ein Agent darf keine Karte aus einer **Menschen-Spalte** entfernen — die Prüfung vor jedem Schreiben weist ihn mit **403** `{fehler, spalte, nummer}` ab (R00097, ADR-0003); eine unlesbare Board-Datei des Ordners ist **423** (`Fehler::Defekt`, R00120). Für Menschen bleibt alles frei.
+
+Damit ist der frühere Betreiber-Vorbehalt entfallen (die Offene Frage „darf ein Agent endgültig löschen?“); maßgeblich ist die Vision (Full-Trust) mit der Spalten-Sperre als durchsetzender Grenze.
+
 ## Konsequenzen
 
 **Positiv:**
@@ -118,11 +128,11 @@ Begründung: „endgültig“ soll heißen, was es sagt — die Aufgabe ist aus 
 - **Nummer/Slug-Wiederverwendung:** `naechste_nummer` rechnet aus den vorhandenen Dateinamen (`src/ablage.rs:118–122`); wird die höchste Nummer gelöscht, bekäme die nächste Aufgabe dieselbe. Sollen gelöschte Nummern nie wiederverwendet werden?
 - **Schlüssel (`key`):** nach dem Löschen ist der Fremdschlüssel frei; ein späteres `POST /api/aufgaben` mit demselben `key` legt dann eine **neue** Karte an, statt wiederzuöffnen. So gewollt?
 - **Sammel-Löschen** (`POST /api/aufgaben/loeschen {nummern}`) und die **Oberfläche** (Ort der Rückfrage, „endgültig“ bestätigen, Undo nur über Git): eigene Planung.
-- **Voll-Trust und Destruktion:** darf ein Agent eine Aufgabe endgültig löschen (mit der 403-Regel), oder bleibt das dem Menschen vorbehalten? Die Vision ist Full-Trust, aber die Wirkung ist irreversibel — Betreiber-Frage.
 
 ## Quellen / Bezüge
 
-- Karte #36 „Aufgabe endgültig löschen“ (Vorprüfung architekt 2026-11-11); Herkunft Beratung product-owner 2026-11-03
+- Karte #36 „Aufgabe endgültig löschen“ (Vorprüfung architekt 2026-11-11; **Betreiber-Entscheidung 2026-11-11, Kartenkommentar #36**: echte Löschung, auch für Agenten); Herkunft Beratung product-owner 2026-11-03
+- `Anforderungen/R00097-spalten-mit-eigentuemer.md` (Entnahme-Sperre, Agent 403) und `Anforderungen/R00120-haertung-spalten-mit-eigentuemer.md` (defektes Board 423)
 - Vision `Anforderungen/R00000-vision.md`: Z. 51–53, 55–59, 61–66, 150–160
 - `Anforderungen/R00017-archivieren-und-zurueckholen.md` (archivieren/zurückholen, umkehrbar)
 - [ADR-0005](0005-zusammengesetzte-aktionen-in-einem-commit.md) (eine Methode = eine Sperre = ein `aktion()`), [ADR-0008](0008-board-slug-geprueft-vor-jedem-dateizugriff.md) (Pfadprüfung, zweite Linie), [ADR-0003](0003-abweisungen-mit-strukturiertem-rumpf.md) (403-Rumpf), [ADR-0021](0021-karten-verlauf-aus-der-git-geschichte.md) (Git ist das Gedächtnis; `git::staende` überspringt Lösch-Commits)
