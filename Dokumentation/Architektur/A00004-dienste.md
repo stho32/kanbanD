@@ -44,7 +44,8 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
 
 - `src/dienst/mod.rs`: `Kanban`, `gesperrt()` (eine `Mutex` je Ordner, eigene Sperren je WBS-Datei), `aktion()` (schreiben, `Eigene` merken, committen).
 - Je Anwendungsfall eine Datei (`bewegen.rs`, `reservierung.rs`, `aufgabe_anlegen.rs`, …).
-- Daneben gemeinsame Regeldateien, die mehrere Anwendungsfälle aufrufen: `zugregeln.rs` (R00096, [ADR-0002](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)) mit `zug_pruefen`, `zugregeln` und den Lesehelfern `grenzen_pruefen`/`zurueckholen_pruefen` — aufgerufen von `reservierung.rs`, `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs`, `archiv.rs`; Einzelheiten in [X00001](Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md).
+- Daneben gemeinsame Regeldateien, die mehrere Anwendungsfälle aufrufen: `zugregeln.rs` (R00096, [ADR-0002](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)) mit `zug_pruefen`, `zugregeln`, den Lesehelfern `grenzen_pruefen`/`zurueckholen_pruefen` und den Entnahme-Helfern (`entnahme_pruefen`, `entnahme_und_zug_pruefen`, `entnahme_und_grenzen_pruefen`, `archivieren_pruefen`, R00097/R00120) — aufgerufen von `reservierung.rs`, `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs`, `archiv.rs`; Einzelheiten in [X00001](Aspekte/X00001-schreibweg-und-regeln-an-zuegen.md).
+- Entnahme-Helfer (R00097/R00120): `entnahme_pruefen(art, board, entnommen)` nennt die erste Sperre als `Fehler::Verboten` (403); `entnahme_und_zug_pruefen` bzw. `Kanban::entnahme_und_grenzen_pruefen` stellen die Entnahmeregel vor die Grenzprüfung; `Kanban::archivieren_pruefen` prüft je Board der Boardliste und liefert einem Agenten 423 `Fehler::Defekt`, sobald eine Board-Datei des Ordners unlesbar ist.
 - nachgeführt 2026-11-01 nach R00096 (Architektur-Review #2)
 - Soll nach ADR-0009 (Karte #18): `cost` ersetzt den ganzen Abschnitt, `null` entfernt; Commit „#n geändert: Kosten“, ohne Änderung keiner. Der Dienst rechnet keine Summen.
 - nachgeführt 2026-11-06 nach #18 (ADR-0009)
@@ -56,3 +57,4 @@ Die Dienste führen jede Aktion als Anwendungsfall auf dem Weg Sperre → Prüfu
   - `teilaufgabe_anlegen(wer, nr, text, position, erledigt)` (`src/dienst/teilaufgaben.rs:31`) legt an `position` ein; außerhalb oder ohne Angabe ans Ende. `erledigt` setzt den Haken. Ein Commit.
   - Einen eigenen Anwendungsfall „wiederherstellen“ gibt es nicht. Zeiteintrag und Anhang laufen über die bestehenden Wege.
 - nachgeführt 2026-11-08 nach dem Bau von #12 (R00112, ADR-0017)
+- nachgeführt 2026-11-11 nach R00120 (Härtung Spalten mit Eigentümer): Entnahme-Helfer `entnahme_pruefen`, `entnahme_und_zug_pruefen`, `entnahme_und_grenzen_pruefen`, `archivieren_pruefen` (`src/dienst/zugregeln.rs`); `archivieren_pruefen` fail-safe 423 bei defektem Board (PO Z. 188).

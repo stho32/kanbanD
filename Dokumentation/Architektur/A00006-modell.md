@@ -24,6 +24,7 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 
 - eingehend: Typen `Aufgabe`, `Board`, `Spalte`, `Einstellungen`, `Person` (mit Art human/agent), Operationen wie `Board::bewegen`
 - eingehend (R00096, Zählen der WIP-Grenze): `Board::belegung(archiviert)` → `Belegung` (je Spalte eine `Spaltenbelegung` mit Name, Grenze und zählenden Nummern, archivierte ausgenommen), `Belegung::grenzverletzungen(vorher)` → `Grenzverletzungen` (Liste von `Grenzverletzung { spalte, grenze, vorher, nachher }`, Spalten von links nach rechts; Umsortieren ist kein Zugang); rein, ohne Dateien, re-exportiert in `src/modell/mod.rs`, definiert in `board.rs`
+- eingehend (R00097/R00120, Eigentümer): `Spalte.eigentuemer: Option<Eigentuemer>` (`human`/`agent`) und `Spalte.eigentuemer_unbekannt: Option<String>` (unbekannter Rohwert), dazu `Board.eigentuemer_roh: Vec<ColumnOwnerEintrag>` für verwaiste/ungültige `column-owner`-Einträge; `Board::entnahme_erlaubt(art, nummer)` → `Result<(), Entnahmesperre>` sperrt einen Agenten aus einer Menschen-Spalte, über **alle** Spalten einer Nummer, oder fail-safe, wenn ein `human` meinender, ungebundener Eintrag das ganze Board sperrt (PO Z. 187); `Eigentuemer` (wem die Spalte gehört) ist von `Art` (wer handelt) bewusst getrennt
 - ausgehend: keine
 
 ## Abhaengigkeiten
@@ -49,3 +50,4 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 
 - Ist nach ADR-0017 (Karte #12, R00112, Zweig `karte/12`, `9d246a3`): `Board::aufnehmen(nummer, spalte, index: Option<usize>)` (`src/modell/board.rs:307`) fügt an `index.min(len)` ein, ohne Angabe unten. `SchonAufDemBoard` und `SpalteUnbekannt` sind unverändert. Test `aufnehmen_an_einer_stelle_gekappt_auf_die_laenge` (`board.rs:913`).
 - nachgeführt 2026-11-08 nach dem Bau von #12 (R00112, ADR-0017)
+- nachgeführt 2026-11-11 nach R00120: `Eigentuemer`/`Entnahmesperre`/`ColumnOwnerEintrag` und `Board::entnahme_erlaubt` (`src/modell/board.rs:529`), `Board.eigentuemer_roh` (`board.rs:310`) ergänzt; `entnahme_erlaubt` über alle Spalten und fail-safe (PO Z. 187).
