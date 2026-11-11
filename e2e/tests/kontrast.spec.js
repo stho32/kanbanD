@@ -181,6 +181,12 @@ test.describe('R00107 Kontrast', () => {
     expect(verstoesse).toEqual([]);
   });
 
+  test('US-1: der Erklärtext der Kopfzeichen (.kd-tipp) ist hell und dunkel lesbar (R00119, Nacharbeit O1)', async ({ page }) => {
+    const ok = page.locator('.bahn[data-col="Erledigt"] .bahn-kopf .ok');
+    const verstoesse = await verstoesseInBeidenThemen(page, ['#kd-tipp'], async () => { await ok.focus(); });
+    expect(verstoesse).toEqual([]);
+  });
+
   test('US-1: die Initialen tragen die On-Farbe ihrer Fläche, im Dunkelthema dunkel', async ({ page }) => {
     const farben = () => page.evaluate(() => {
       const probe = wert => { const p = document.createElement('p'); p.style.color = wert; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; };
