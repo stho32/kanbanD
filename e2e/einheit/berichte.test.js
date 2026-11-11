@@ -562,3 +562,11 @@ test('Fluss je Tag und Spalte: Bänder, gesamt, offen (R00121 B0554)', () => {
   ], 'Tagesstände; am 05.11. fällt gesamt auf 3, weil #2 das Board verließ');
   assert.deepStrictEqual(fluss({ spalten: [], aufgaben: [] }, f({}), ohneFilterung, flussJetzt), { spalten: [], tage: [] }, 'kein Stand');
 });
+
+test('Fluss: kumulierte Ränder „angekommen“ und „fertig“ (R00121 B0555)', () => {
+  const d = fluss(FLUSS, f({}), ohneFilterung, flussJetzt);
+  assert.deepStrictEqual(d.tage.map(x => [x.datum.slice(8), x.angekommen, x.fertig]), [
+    ['01', 1, 0], ['02', 2, 0], ['03', 3, 1], ['04', 4, 2], ['05', 4, 3],
+  ], 'angekommen steigt monoton; fertig zählt auch #2, das am 05.11. das Board verließ');
+  assert.strictEqual(d.tage[4].gesamt, 3, 'das Verlassen senkt nur den Stapel (gesamt), nicht „angekommen“/„fertig“');
+});

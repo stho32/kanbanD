@@ -154,17 +154,22 @@
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       const jeSpalte = Object.fromEntries(spalten.map(s => [s, 0]));
-      let gesamt = 0, offen = 0;
+      let gesamt = 0, offen = 0, angekommen = 0, fertig = 0;
       for (const a of bew.aufgaben) {
         if (!zaehltImBericht(a, 'burndown') || !aufgabePasst(f, aufgabeZu(a.nummer))) continue;
         const s = spalteAm(a.wechsel, ende);
-        if (s == null || f.ohneSpalten.includes(s)) continue;
-        jeSpalte[s]++;
-        gesamt++;
-        if (s !== abschluss) offen++;
+        if (s != null && !f.ohneSpalten.includes(s)) {
+          jeSpalte[s]++;
+          gesamt++;
+          if (s !== abschluss) offen++;
+        }
+        // „angekommen“: bis zum Tagesende mindestens einmal auf dem Board; eine spätere Abnahme senkt es nicht
+        if (a.wechsel.some(w => w.spalte != null && zeitMs(w.zeitpunkt) <= ende)) angekommen++;
+        // „fertig“: bis zum Tagesende in der Abschlussspalte liegen oder lagen
+        if (a.wechsel.some(w => w.spalte === abschluss && zeitMs(w.zeitpunkt) <= ende)) fertig++;
       }
       const d = new Date(t), p = n => String(n).padStart(2, '0');
-      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, jeSpalte, gesamt, offen });
+      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, jeSpalte, gesamt, offen, angekommen, fertig });
     }
     return { spalten, tage };
   }
