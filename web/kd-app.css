@@ -877,6 +877,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-kopf .pfad,.mod-fuss .tastenhinweis,.mod-kopf .nav,#vsc{display:none}
   /* Passen die Ziele des Kopfs nicht in eine Zeile (Aufgabenfenster bei 320 px), bricht er um, statt quer zu scrollen (R00111 AK 4, wie PO Z. 132) */
   .mod-kopf{padding-left:var(--kd-s3);gap:var(--kd-s2);flex-wrap:wrap}
+  /* Die Knopfleiste bricht am Rand ebenfalls um (R00141: „Endgültig löschen“ kommt dazu) — sonst schiebt ein Ziel mehr das Fenster über die Breite */
+  .mod-kopf .rechts{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
   .mod-kopf>*{white-space:nowrap}
   .mod-kopf .seg{margin-right:0}
   .mod-kopf .cls{display:none}
