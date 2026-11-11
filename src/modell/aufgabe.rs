@@ -355,6 +355,22 @@ pub struct Berichtszaehlung {
 }
 
 /// Eine Aufgabe: unabhängige Datei, weiß nichts von Boards.
+/// Höchste geschätzte Zeit in ganzen Minuten (ADR-0023 Regel 2) — technischer Schutzwert gegen Tippfehler, keine Produktregel.
+pub const GESCHAETZTE_MINUTEN_MAX: u32 = 100_000;
+
+/// Meldung eines formwidrigen `estimate` (ADR-0023): die Datei meldet sie als Formatfehler mit diesem Pfad, die API als 400.
+pub const GESCHAETZT_MELDUNG: &str = "estimate: ganze Zahl von Minuten ≥ 1 erwartet";
+
+/// Prüft einen rohen `estimate`-Wert als YAML-Wert — Datei und API rufen dieselbe Prüfung (ADR-0023 Regeln 3 und 4).
+/// `None`/`null` heißt „keine Schätzung"; gültig ist die ganze Zahl 1..=100.000, jede andere Form ist ein Fehler mit Pfad.
+pub fn geschaetzte_minuten_pruefen(wert: Option<&serde_yaml::Value>) -> Result<Option<u32>, String> {
+    match wert {
+        None | Some(serde_yaml::Value::Null) => Ok(None),
+        Some(serde_yaml::Value::Number(n)) => n.as_u64().and_then(|m| u32::try_from(m).ok()).filter(|m| (1..=GESCHAETZTE_MINUTEN_MAX).contains(m)).map(Some).ok_or_else(|| GESCHAETZT_MELDUNG.to_string()),
+        Some(_) => Err(GESCHAETZT_MELDUNG.to_string()),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Aufgabe {
     pub nummer: u32,
@@ -391,6 +407,9 @@ pub struct Aufgabe {
     /// `cost` (R00105): Preisetikett, geschätzte API-Kosten; null ohne Etikett
     #[serde(rename = "cost")]
     pub kosten: Option<Kosten>,
+    /// `estimate` (R00129): geschätzte Zeit in ganzen Minuten, ≥ 1 und ≤ 100.000; null/fehlend heißt „keine Schätzung“
+    #[serde(rename = "estimate")]
+    pub geschaetzte_minuten: Option<u32>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -421,6 +440,7 @@ impl Aufgabe {
             phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),
             kosten: None,
+            geschaetzte_minuten: None,
             weitere: vec![],
         }
     }
@@ -451,6 +471,10 @@ pub struct Aufgabenaenderung {
     #[serde(default, deserialize_with = "entfernbar")]
     #[schema(value_type = Option<Kosten>)]
     pub cost: Option<Option<serde_json::Value>>,
+    /// `estimate` (R00129) roh, damit jeder Fehler 400 wird und nie 422; ein Wert ersetzt, `null` entfernt, fehlend lässt unverändert
+    #[serde(default, deserialize_with = "entfernbar")]
+    #[schema(value_type = Option<u32>)]
+    pub estimate: Option<Option<serde_json::Value>>,
     /// Ob `key` mitgeschickt wurde, mit welchem Wert auch immer — der Schlüssel wird nur beim Anlegen gesetzt (R00098).
     #[serde(default, rename = "key", deserialize_with = "mitgeschickt")]
     #[schema(ignore)]
@@ -593,6 +617,11 @@ impl Aufgabe {
         if let Some(k) = &a.cost {
             neu.kosten = k.as_ref().map(Kosten::aus_anfrage).transpose()?;
         }
+        if let Some(wert) = &a.estimate {
+            // `estimate` kommt roh an und geht durch dieselbe Prüfung wie das Frontmatter (ADR-0023 Regel 4): jeder Fehler 400.
+            let yaml = wert.as_ref().map(serde_yaml::to_value).transpose().map_err(|_| GESCHAETZT_MELDUNG.to_string())?;
+            neu.geschaetzte_minuten = geschaetzte_minuten_pruefen(yaml.as_ref())?;
+        }
         let mut felder = vec![];
         for (name, geaendert) in [
             ("Titel", neu.titel != self.titel),
@@ -606,6 +635,7 @@ impl Aufgabe {
             ("Phasen", neu.phasen != self.phasen),
             ("Zählen in Berichten", neu.zaehlung != self.zaehlung),
             ("Kosten", neu.kosten != self.kosten),
+            ("Geschätzte Zeit", neu.geschaetzte_minuten != self.geschaetzte_minuten),
         ] {
             if geaendert {
                 felder.push(name);
@@ -790,6 +820,42 @@ mod tests {
         assert_eq!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap(), vec!["Kosten"]);
         assert_eq!(a.kosten, None);
         assert!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap().is_empty());
+    }
+
+    // R00129 B0607: eine Prüfung für Datei und API — ganze Minuten 1..=100.000, sonst der Pfadfehler (ADR-0023 Regeln 2, 3)
+    #[test]
+    fn geschaetzte_minuten_pruefen_je_form() {
+        let p = |t: &str| super::geschaetzte_minuten_pruefen(Some(&serde_yaml::from_str::<serde_yaml::Value>(t).unwrap()));
+        for (t, m) in [("1", 1_u32), ("5", 5), ("150", 150), ("100000", super::GESCHAETZTE_MINUTEN_MAX)] {
+            assert_eq!(p(t), Ok(Some(m)), "{t}");
+        }
+        assert_eq!(p("null"), Ok(None), "null heißt keine Schätzung");
+        assert_eq!(super::geschaetzte_minuten_pruefen(None), Ok(None), "fehlend heißt keine Schätzung");
+        for t in ["0", "-1", "100001", "2.5", "150.0", "\"150\"", "2:30", ".inf", "-.inf", ".nan", "true", "[1]", "{a: 1}"] {
+            assert_eq!(p(t), Err(super::GESCHAETZT_MELDUNG.to_string()), "{t}");
+        }
+    }
+
+    // R00129 B0609: estimate roh — setzen, ersetzen, null entfernt, fehlend lässt unverändert; jeder Fehlfall eine Meldung, kein serde-Fehler
+    #[test]
+    fn geschaetzte_zeit_setzen_ersetzen_entfernen() {
+        let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
+        assert_eq!(a.aendern(&aend(r#"{"estimate":150}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.geschaetzte_minuten, Some(150));
+        assert!(a.aendern(&aend(r#"{"estimate":150}"#), &e()).unwrap().is_empty(), "derselbe Wert ändert nichts");
+        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e()).unwrap(), vec!["Titel"]);
+        assert_eq!(a.geschaetzte_minuten, Some(150), "ohne estimate bleibt der Wert");
+        assert_eq!(a.aendern(&aend(r#"{"estimate":90}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.geschaetzte_minuten, Some(90));
+        assert_eq!(a.aendern(&aend(r#"{"estimate":null}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.geschaetzte_minuten, None);
+        assert!(a.aendern(&aend(r#"{"estimate":null}"#), &e()).unwrap().is_empty(), "nichts zu entfernen");
+        for falsch in [r#""2:30""#, r#""150""#, r#"150.0"#, r#"2.5"#, r#"0"#, r#"-1"#, r#"100001"#, r#"true"#] {
+            a.geschaetzte_minuten = Some(150);
+            let vorher = a.clone();
+            assert_eq!(a.aendern(&aend(&format!(r#"{{"estimate":{falsch}}}"#)), &e()).unwrap_err(), super::GESCHAETZT_MELDUNG, "{falsch}");
+            assert_eq!(a, vorher, "{falsch}: nichts geändert");
+        }
     }
 
     #[test]

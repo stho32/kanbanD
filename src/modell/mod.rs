@@ -7,7 +7,7 @@ mod einstellungen;
 mod kosten;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
-pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Dublette, Durchlauf, Ergebnis, Fremdschluessel, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Schluesseltreffer, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, doppelte_schluessel, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
+pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Dublette, Durchlauf, Ergebnis, Fremdschluessel, GESCHAETZTE_MINUTEN_MAX, GESCHAETZT_MELDUNG, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Schluesseltreffer, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, doppelte_schluessel, geschaetzte_minuten_pruefen, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
 pub use board::{Belegung, Berichtsfilter, Bestandseinstellung, Bewegfehler, Board, ColumnOwnerEintrag, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert, slug_gueltig};
 pub use kosten::{Gesamt, HOECHSTWERT_CENT, HOECHSTZAHL_POSITIONEN, Kosten, Position, Rohkosten, Rohposition, Wert};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
