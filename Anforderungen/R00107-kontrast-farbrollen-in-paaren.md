@@ -34,7 +34,7 @@ Der Betreiber arbeitet abends im Dunkelthema. Heute muss er dort raten, welche P
 1. Die Paartabelle ist Daten im Unit-Test und hat genau diese Zeilen:
    - **neutrale Flächen** `--kd-bg`, `--kd-surface`, `--kd-sunken` ↔ Schrift `--kd-text`, `--kd-muted`, `--kd-warn`, `--kd-accent-ink`, `--kd-mensch`, `--kd-agent-ink`;
    - **Container** `--kd-accent-weak` ↔ `--kd-accent-ink`, `--kd-text`, `--kd-muted`, `--kd-warn`; `--kd-agent-weak` ↔ `--kd-agent-ink`, `--kd-text`, `--kd-muted`; `--kd-mensch-weak` ↔ `--kd-text`, `--kd-muted`;
-   - **Füllung** `--kd-accent` ↔ `--kd-on-accent`, `--kd-mensch` ↔ `--kd-on-mensch`, `--kd-agent` ↔ `--kd-on-agent` (neu); Zustand **Hover** `--kd-accent-hover` ↔ `--kd-on-accent` (`.btn-haupt:hover`, `web/kd-base.css:17`);
+   - **Füllung** `--kd-accent` ↔ `--kd-on-accent`, `--kd-mensch` ↔ `--kd-on-mensch`, `--kd-agent` ↔ `--kd-on-agent` (neu); Zustand **Hover** `--kd-accent-hover` ↔ `--kd-on-accent` (`.btn-haupt:hover`, `web/kd-base.css:17`) — nachgezogen 2026-11-11 (R00135, Karte #67) auch an den beiden Hauptknöpfen `.kz-modus .kz-btn.haupt:hover` (`web/kd-app.css:81`) und `.kz-btn.neu-btn:hover` (`:691`);
    - **Kopf** `--kd-head` ↔ `--kd-head-text`, `--kd-head-muted`, `--kd-head-link` (neu);
    - **Modusleiste** `--kd-modus` ↔ `--kd-modus-text`, `--kd-muted`, `--kd-warn` (neu, siehe unten);
    - **Klassengründe** `--kd-c-<farbe>` (16 Paletten-Farben) ↔ `--kd-text`, `--kd-muted`, `--kd-warn`;
@@ -372,3 +372,4 @@ Die Befunde der Karte #9 haben eine gemeinsame Ursache: Schrift steht auf einer 
   - „in Hell und Dunkel“ einheitlich (FA 8 zweimal, Unit-Kriterium „Linien der Modusleiste“); Aufzählung in FA 8 klein; FA 17 zweiter Helfer als eigener Satz.
   - Initiale CL und Untertitel hell einheitlich 4,08 (vorher stand in der Beschreibung und der E2E-Tabelle der um 0,01 höhere Browserwert); Herleitung unter „Messung“.
   - Kein Akzeptanzkriterium neu oder gestrichen.
+- **Kriterium nachgezogen 2026-11-11** (R00135, Karte #67): Der Zustand **Hover** des Paares `--kd-accent-hover` ↔ `--kd-on-accent` gilt auch an den beiden Hauptknöpfen `.kz-modus .kz-btn.haupt` („Fertig“ in der Modusleiste, `web/kd-app.css:81`) und `.kz-btn.neu-btn` („+ Neue Aufgabe“ in der Kopfzeile, `:691`). Beide waren spezifischer als `.kz-btn:hover` bzw. standen später in der Kaskade und behielten im Hover die Ruhefläche `--kd-accent` (UX-Review der Karte #9). Ausgeführt in R00135 (eigene Interaction unter D0002, Härtungsregel `AI-Team/gelerntes.md` 2026-11-11). Die Paartabelle und die Probe ändern sich nicht — der Ton war korrekt, nur nicht angewandt.
