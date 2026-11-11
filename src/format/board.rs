@@ -380,9 +380,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] },
+                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![], ..Default::default() },
+                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, pruefungen: vec![], ..Default::default() },
+                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() },
             ],
             termine: vec![],
             anwendungen: None,
@@ -479,7 +479,7 @@ mod tests {
     fn spaltenphasen_im_frontmatter_rundlauf() {
         let mut b = beispiel();
         b.spalten[1].phase = Some("Entwicklung".into());
-        b.spalten.insert(2, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![], ..Default::default() });
         let t = schreiben(&b, datei);
         assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);

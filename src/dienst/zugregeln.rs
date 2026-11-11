@@ -40,10 +40,10 @@ pub(crate) fn entnahme_und_zug_pruefen(art: Art, vorher: &Board, nachher: &Board
 }
 
 impl super::Kanban {
-    /// `entnahme_und_zug_pruefen` mit den Archivierten des Ordners.
+    /// `entnahme_und_zug_pruefen` mit den Archivierten des Ordners — ein gemeinsamer Kern (R00120, Aufräumen).
     pub(super) fn entnahme_und_grenzen_pruefen(&self, wer: &Person, vorher: &Board, nachher: &Board, entnommen: &[u32]) -> Result<Vec<Warnung>, Fehler> {
-        entnahme_pruefen(wer.art, vorher, entnommen)?;
-        self.grenzen_pruefen(wer, vorher, nachher)
+        let (aufgaben, _) = self.ordner().aufgaben()?;
+        entnahme_und_zug_pruefen(wer.art, vorher, nachher, entnommen, &archivierte(&aufgaben))
     }
 
     /// `zug_pruefen` mit den Archivierten des Ordners; für Schreibwege, die die Aufgaben nicht ohnehin lesen.

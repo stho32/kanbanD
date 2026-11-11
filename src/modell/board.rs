@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]
 pub struct Spalte {
     pub name: String,
     pub grenze: Option<u32>,
@@ -28,7 +28,16 @@ pub struct Spalte {
     pub eigentuemer_unbekannt: Option<String>,
 }
 
+impl Spalte {
+    /// Eine leere Spalte mit diesem Namen (R00120, Aufräumen): ersetzt die vielen Struktur-Literale.
+    pub fn neu(name: impl Into<String>) -> Spalte {
+        Spalte { name: name.into(), ..Default::default() }
+    }
+}
+
 /// Eigentümer einer Spalte (R00097): aus einer Spalte des Menschen nimmt kein Agent eine Karte heraus.
+/// Bewusst getrennt von [`super::Art`] (wer handelt, `einstellungen.rs`): beide tragen `human`/`agent`, meinen aber
+/// Verschiedenes — die handelnde Person gegen den Besitzer der Spalte (R00120, Aufräumen).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum Eigentuemer {
     #[serde(rename = "human")]
@@ -740,8 +749,8 @@ mod tests {
             slug: "b".into(),
             titel: "B".into(),
             spalten: vec![
-                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![] },
-                Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![] },
+                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, pruefungen: vec![], ..Default::default() },
+                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![], ..Default::default() },
             ],
             termine: vec![],
             anwendungen: None,
@@ -825,7 +834,7 @@ mod tests {
     #[test]
     fn spalten_umbenennen_ergaenzen_begrenzen() {
         let mut b = b();
-        b.spalten.insert(1, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() });
         let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
@@ -890,7 +899,7 @@ mod tests {
     fn umbenennen_nimmt_die_phase_mit_entfernen_nimmt_sie_weg() {
         let mut b = b();
         b.spalten[0].phase = Some("Entwicklung".into());
-        b.spalten.insert(1, Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![] });
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), pruefungen: vec![], ..Default::default() });
         assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None), aend("Z", Some("Z"), None)]), Ok(true));
         assert_eq!(b.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None, None]);
     }
@@ -1066,8 +1075,8 @@ mod tests {
     fn mit_grenze() -> Board {
         let mut b = b();
         b.spalten = vec![
-            Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, pruefungen: vec![] },
-            Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, pruefungen: vec![] },
+            Spalte { name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, pruefungen: vec![], ..Default::default() },
+            Spalte { name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, pruefungen: vec![], ..Default::default() },
         ];
         b
     }

@@ -189,7 +189,7 @@ mod tests {
     }
 
     fn brett(spalten: &[(&str, Option<&str>, &[&str])]) -> Board {
-        let spalten = spalten.iter().map(|(n, ph, p)| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: n.to_string(), grenze: None, aufgaben: vec![], phase: ph.map(String::from), pruefungen: p.iter().map(|x| x.to_string()).collect() }).collect();
+        let spalten = spalten.iter().map(|(n, ph, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: ph.map(String::from), pruefungen: p.iter().map(|x| x.to_string()).collect(), ..Default::default() }).collect();
         Board { slug: "b".into(), titel: "B".into(), spalten, termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] }
     }
     const G: &[&str] = &["wbs-effects-green"];
@@ -221,14 +221,14 @@ mod tests {
 
     #[test]
     fn unbekannte_pruefungen_werden_je_spalte_genannt() {
-        let spalte = |name: &str, p: &[&str]| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect() };
+        let spalte = |name: &str, p: &[&str]| Spalte { name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: p.iter().map(|x| x.to_string()).collect(), ..Default::default() };
         let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Entwicklung", &["wbs-effects-green", "xyz"]), spalte("Erledigt", &[])], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
         assert_eq!(unbekannte(&b), ["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"]);
     }
 
     #[test]
     fn unbekannter_eigentuemer_wird_je_spalte_genannt() {
-        let spalte = |name: &str, roh: Option<&str>| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        let spalte = |name: &str, roh: Option<&str>| Spalte { eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() };
         let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", Some("chef")), spalte("Erledigt", None)], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
         assert_eq!(unbekannte(&b), ["Spalte „Eingang“: unbekannter Eigentümer „chef“ — bekannt sind human, agent"]);
     }
@@ -236,7 +236,7 @@ mod tests {
     // R00120 AK 5 und US-1: je verwaistem oder ungültigem Eintrag ein Hinweis
     #[test]
     fn verwaiste_und_ungueltige_column_owner_werden_gemeldet() {
-        let spalte = |name: &str| Spalte { notiz: None, farbe: None, eigentuemer: None, eigentuemer_unbekannt: None, name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![] };
+        let spalte = |name: &str| Spalte { name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() };
         let b = Board {
             slug: "b".into(),
             titel: "B".into(),
