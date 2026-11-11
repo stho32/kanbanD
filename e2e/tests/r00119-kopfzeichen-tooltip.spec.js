@@ -157,12 +157,18 @@ test.describe('R00119', () => {
   test('US-3/Gegenbeispiel Fokus-Ebene: der Tooltip hat keinen Tab-Halt, Tab führt weiter', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(k.adresse);
+    await liveBereit(page);
     const info = kopf(page, 'Eingang').locator('.info');
     await fokussiere(page, info, INFO);
+    // Ein Neuzeichnen reproduziert die Blase aus S.ui.tooltip (ADR-0007) — auch dann ohne Tab-Halt
+    const vorher = await page.evaluate(() => window.kdTest.renders());
+    k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins neu\n---\n');
+    await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+    await expect(blase(page)).toHaveText(INFO);
     await expect(blase(page)).not.toHaveAttribute('tabindex', /.+/);
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement.id)).not.toBe('kd-tipp');
-    const fokus = await page.evaluate(() => ({ klassen: document.activeElement.className, inKopf: Boolean(document.activeElement.closest('.bahn-kopf')) }));
+    const fokus = await page.evaluate(() => ({ inKopf: Boolean(document.activeElement.closest('.bahn-kopf')) }));
     expect(fokus.inKopf, 'der Fokus steht auf dem nächsten Kopfzeichen').toBe(true);
   });
 
@@ -289,6 +295,21 @@ test.describe('R00119 Touch (hasTouch/isMobile)', () => {
     await expect(sichtbar(page)).toHaveCount(1);
     await page.locator('.flaeche').first().dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 9, isPrimary: true, bubbles: true });
     await expect(sichtbar(page)).toHaveCount(0);
+  });
+
+  test('US-6: eine per langem Druck geöffnete Blase übersteht ein Live-Ereignis (Zustand in S.ui)', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const info = kopf(page, 'Eingang').locator('.info');
+    await langerDruck(page, info);
+    await info.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 7, isPrimary: true });
+    await expect(sichtbar(page)).toHaveCount(1);
+    const vorher = await page.evaluate(() => window.kdTest.renders());
+    k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins neu\n---\n');
+    await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+    await expect(kopf(page, 'Eingang').locator('.info')).toHaveCount(1);
+    await expect(blase(page)).toHaveText(INFO);
+    await expect(sichtbar(page)).toHaveCount(1);
   });
 });
 
