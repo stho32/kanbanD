@@ -1023,7 +1023,7 @@ ${fadenkreuz(O, H - U)}
 const flussTon = (farbe, i) => farbe || `var(--kd-c-${PAL[i % PAL.length]}-line)`;
 function vFluss() {
   const kopf = `<div class="leiste"><b>Kumulativer Fluss</b> <span class="muted" style="font-size:12px">· liest nur · Bestand je Spalte über die Zeit</span></div>`;
-  if (!S.bew) return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"></div>`;
+  if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div>${vFlussTabelle([], S.board ? S.board.spalten.map(sp => sp.name) : [])}</div>`;
   const jetzt = Date.now();
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="fl-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
@@ -1031,8 +1031,12 @@ function vFluss() {
   const spalten = d.spalten, t = d.tage;
   const ton = (name, i) => flussTon((S.board.spalten.find(sp => sp.name === name) || {}).farbe, i);
   S.diagrammTip = tg => { const stand = t.find(x => isoTag(x.datum) === tg); if (!stand) return ''; const [datum, ...rest] = flussName(stand.datum, stand, spalten).split(' · '); return `<b>${esc(datum)}</b> · ${rest.map(esc).join(' · ')}`; };
-  const inhalt = t.length ? vFlussFlaeche(t, spalten, ton) + vFlussLegende(spalten, ton) + vFlussTabelle(t, spalten) : '';
-  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${inhalt}${nicht}</div>`;
+  // leer, wenn kein Tag einen Stapel trägt (keine Aufgabe im Zeitraum) — kein Stand, wenn das Board keine Bewegung hat
+  if (!t.length || t.every(x => !x.gesamt)) {
+    const satz = S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.';
+    return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p></div>${vFlussTabelle(t, spalten)}${nicht}</div>`;
+  }
+  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${vFlussFlaeche(t, spalten, ton)}${vFlussLegende(spalten, ton)}${vFlussTabelle(t, spalten)}${nicht}</div>`;
 }
 /** Legende: je Spalte ein Farbfeld in ihrem Bandton und der Name, dann „angekommen“/„fertig“; nur Text, kein Knopf. */
 function vFlussLegende(spalten, ton) {

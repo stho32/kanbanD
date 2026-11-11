@@ -2,14 +2,14 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen, liveBereit } = require('./hilfen');
 
 function commitAm(ordner, datum, inhalt) {
   fs.writeFileSync(ordner + '/boards/fabrik.md', inhalt);
   execFileSync('git', ['-C', ordner, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'stand'], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum } });
 }
 
-const KOPF = '---\nreport-filter: {period: eigen, from: 2026-11-01, to: 2026-11-05}\n---\n# fabrik\n\n## Eingang\n\n';
+const FILTER = '---\nreport-filter: {period: eigen, from: 2026-11-01, to: 2026-11-05}\n---\n';
 const AUFGABEN = {
   'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n',
   'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n',
@@ -18,15 +18,19 @@ const AUFGABEN = {
 };
 
 /** Grundbestand der AK: Board „fabrik“ (Eingang/In Arbeit/Fertig), Bewegungen 01.11.–05.11.2026; #2 verlässt am 05.11.
-    Der Zeitraum 01.11.–05.11. steht im `report-filter` der Board-Datei (AK). */
-function grundbestand(ordner) {
-  einrichten({ ...AUFGABEN, 'boards/fabrik.md': `${KOPF}\n\n## In Arbeit\n\n## Fertig\n` })(ordner);
-  commitAm(ordner, '2026-11-01T09:00:00', `${KOPF}- #1\n\n## In Arbeit\n\n## Fertig\n`);
-  commitAm(ordner, '2026-11-02T09:00:00', `${KOPF}- #2\n\n## In Arbeit\n\n- #1\n\n## Fertig\n`);
-  commitAm(ordner, '2026-11-03T09:00:00', `${KOPF}- #3\n\n## In Arbeit\n\n- #2\n\n## Fertig\n\n- #1\n`);
-  commitAm(ordner, '2026-11-04T09:00:00', `${KOPF}- #4\n\n## In Arbeit\n\n- #3\n\n## Fertig\n\n- #2\n- #1\n`);
-  commitAm(ordner, '2026-11-05T09:00:00', `${KOPF}\n\n## In Arbeit\n\n- #4\n\n## Fertig\n\n- #3\n- #1\n`);
+    `filter` ist der `report-filter` der Board-Datei („“ für den offenen Zeitraum, z. B. in der Live-Probe). */
+function grundbestand(ordner, filter = FILTER) {
+  const kopf = `${filter}# fabrik\n\n## Eingang\n\n`;
+  einrichten({ ...AUFGABEN, 'boards/fabrik.md': `${kopf}\n\n## In Arbeit\n\n## Fertig\n` })(ordner);
+  commitAm(ordner, '2026-11-01T09:00:00', `${kopf}- #1\n\n## In Arbeit\n\n## Fertig\n`);
+  commitAm(ordner, '2026-11-02T09:00:00', `${kopf}- #2\n\n## In Arbeit\n\n- #1\n\n## Fertig\n`);
+  commitAm(ordner, '2026-11-03T09:00:00', `${kopf}- #3\n\n## In Arbeit\n\n- #2\n\n## Fertig\n\n- #1\n`);
+  commitAm(ordner, '2026-11-04T09:00:00', `${kopf}- #4\n\n## In Arbeit\n\n- #3\n\n## Fertig\n\n- #2\n- #1\n`);
+  commitAm(ordner, '2026-11-05T09:00:00', `${kopf}\n\n## In Arbeit\n\n- #4\n\n## Fertig\n\n- #3\n- #1\n`);
 }
+
+const p2 = x => String(x).padStart(2, '0');
+const heuteLang = () => { const d = new Date(); return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()}`; };
 
 const CFD = 'svg.cfd';
 const diagramm = page => page.getByRole('img', { name: 'Kumulativer Fluss: Bestand je Spalte je Tag' });
@@ -153,5 +157,49 @@ test('R00121 B0558: Legende, Tooltip, Tabellenansicht und zugänglicher Name', a
     await expect(page.locator('.fluss-tab tbody tr').nth(3).locator('td')).toHaveText(['04.11.2026', '1', '1', '2', '2', '4', '4', '2']);
     await rahmen.focus();
     expect(await rahmen.evaluate(el => el === document.activeElement)).toBe(true);
+  } finally { await k.stoppen(); }
+});
+
+test('R00121 B0559: Leerzustand — Board ohne Bewegung, Rahmen bleibt vorhanden', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/berichte/fluss');
+    await expect(page.locator('.fluss-leer .fluss-satz')).toHaveText('Noch kein Stand dieses Boards.');
+    await expect(page.locator('.bericht-rahmen')).toHaveCount(1);
+  } finally { await k.stoppen(); }
+});
+
+test('R00121 B0559: Leerzustand — leerer Zeitraum (alle Spalten ausgeschlossen), Rahmen bleibt', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    await expect(diagramm(page)).toBeVisible();
+    await filterOeffnen(page);
+    const filter = page.getByRole('group', { name: 'Berichtsfilter' });
+    for (const spalte of ['Eingang', 'In Arbeit', 'Fertig']) await filter.getByRole('button', { name: spalte }).click();
+    await expect(page.locator('.fluss-leer .fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
+    await expect(diagramm(page)).toHaveCount(0);
+    await expect(page.locator('.bericht-rahmen')).toHaveCount(1);
+  } finally { await k.stoppen(); }
+});
+
+test('R00121 B0559: Live — eine Verschiebung ändert das Band ohne Neuladen', async ({ page }) => {
+  const k = await kanbanStarten(ordner => grundbestand(ordner, ''));
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    await liveBereit(page);
+    await page.getByText('Tabellenansicht').click();
+    const letzte = page.locator('.fluss-tab tbody tr').last();
+    await expect(letzte.locator('td').first()).toHaveText(heuteLang());
+    await expect(letzte.locator('td').nth(1)).toHaveText('0'); // heute: Eingang 0, In Arbeit 1, Fertig 2
+    await expect(letzte.locator('td').nth(3)).toHaveText('2');
+    await page.request.post(k.adresse + 'api/boards/fabrik/bewegen', { headers: { 'X-KanbanD-Wer': 'st' }, data: { nummer: 1, spalte: 'Eingang', index: 0 } });
+    await expect(letzte.locator('td').nth(1)).toHaveText('1', { timeout: 1500 });
+    await expect(letzte.locator('td').nth(3)).toHaveText('1', { timeout: 1500 });
   } finally { await k.stoppen(); }
 });
