@@ -53,7 +53,7 @@ const grundbestand = arbeit => ({
 
 /** Namen der Berichte wie im Menü „Berichte“ (web/ansicht.js, vBerichtePop). */
 const BERICHTSNAMEN = {
-  stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchlauf: 'Durchlaufzeit',
+  stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchsatz: 'Durchsatz', durchlauf: 'Durchlaufzeit',
   prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels',
 };
 
@@ -69,13 +69,13 @@ function erwarteterSeitenname(route) {
 /** Was auf einer Route fertig geladen sein muss, bevor geprüft wird; die WBS-Sicht lädt ihre Datei nach. */
 const BEREIT = {
   'WBS-Sicht': '.wbs-titel', Board: '.bahn', Einrichten: '.einr', Aufgabenliste: '.ziele',
-  'Bericht verlauf': '.dtitel', 'Bericht fluss': '.bericht-rahmen', 'Bericht durchlauf': '.dtitel', 'Bericht prognose': '.dtitel', 'Bericht fieber': '.dtitel',
+  'Bericht verlauf': '.dtitel', 'Bericht fluss': '.bericht-rahmen', 'Bericht durchsatz': '.leiste', 'Bericht durchlauf': '.dtitel', 'Bericht prognose': '.dtitel', 'Bericht fieber': '.dtitel',
 };
 
 /** Die Sicht aus vHaupt() (web/app.js), die eine Route zeichnet: daran gleicht die Probe ab, ob jede Verzweigung geprüft wird. */
 const SICHTEN = {
   Board: 'vBoard', Aufgabenliste: 'vAufgaben', Personen: 'vPersonen', Einrichten: 'vEinrichten', 'WBS-Sicht': 'vWbs',
-  'Bericht stundenzettel': 'vStundenzettel', 'Bericht kreuz': 'vKreuz', 'Bericht verlauf': 'vVerlauf', 'Bericht fluss': 'vFluss', 'Bericht durchlauf': 'vDurchlauf',
+  'Bericht stundenzettel': 'vStundenzettel', 'Bericht kreuz': 'vKreuz', 'Bericht verlauf': 'vVerlauf', 'Bericht fluss': 'vFluss', 'Bericht durchsatz': 'vDurchsatz', 'Bericht durchlauf': 'vDurchlauf',
   'Bericht prognose': 'vPrognose', 'Bericht fieber': 'vFieber', 'Bericht kosten': 'vKosten', 'Bericht bestand': 'vBestand',
 };
 

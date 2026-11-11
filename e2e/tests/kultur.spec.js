@@ -262,7 +262,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
 const AUSNAHMEN = [];
 
 /** Titel der Berichte: erst wenn er steht, hat der Bericht das Bild des vorigen ersetzt. */
-const BERICHTSTITEL = { stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchlauf: 'Durchlaufzeit',
+const BERICHTSTITEL = { stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchsatz: 'Durchsatz je Zeitraum', durchlauf: 'Durchlaufzeit',
   prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels' };
 /** Klappt alles Zugeklappte auf, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl. */
 async function allesAufklappen(page) {

@@ -21,8 +21,9 @@ test('Bericht mit dem Namen aus dem Menü Berichte', () => {
   assert.strictEqual(seitenUeberschrift({ ansicht: 'berichte/verlauf' }), 'Berichte · Burndown');
   assert.strictEqual(seitenUeberschrift({ ansicht: 'berichte/kreuz' }), 'Berichte · Zeiten nach Aufgabe und Person');
   assert.strictEqual(seitenUeberschrift({ ansicht: 'berichte/fluss' }), 'Berichte · Kumulativer Fluss');
+  assert.strictEqual(seitenUeberschrift({ ansicht: 'berichte/durchsatz' }), 'Berichte · Durchsatz');
   assert.strictEqual(seitenUeberschrift({ ansicht: 'berichte/unbekannt' }), 'Berichte');
-  assert.strictEqual(Object.keys(BERICHTSNAMEN).length, 9);
+  assert.strictEqual(Object.keys(BERICHTSNAMEN).length, 10);
 });
 
 test('WBS mit dem Namen der Anwendung', () => {

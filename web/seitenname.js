@@ -8,6 +8,7 @@
     kreuz: 'Zeiten nach Aufgabe und Person',
     verlauf: 'Burndown',
     fluss: 'Kumulativer Fluss',
+    durchsatz: 'Durchsatz',
     prognose: 'Wie lange noch',
     fieber: 'Projekt-Fever-Chart',
     durchlauf: 'Durchlaufzeit',

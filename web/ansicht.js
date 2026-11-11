@@ -953,7 +953,7 @@ function berichteAusloeser() {
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem" tabindex="-1"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, BERICHTSNAMEN.stundenzettel, 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, BERICHTSNAMEN.kreuz, 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', BERICHTSNAMEN.verlauf, 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/fluss', '<path d="M4 20h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 15h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 10h6l4-1 6-2v3l-6 2-4 1H4z"></path>', BERICHTSNAMEN.fluss, 'Bestand je Spalte über die Zeit – gestapelte Bänder aus der Git-Geschichte dieses Boards.', v === 'berichte/fluss')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', BERICHTSNAMEN.prognose, 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', BERICHTSNAMEN.fieber, 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', BERICHTSNAMEN.durchlauf, 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/bestand', SVG.tabelle, BERICHTSNAMEN.bestand, 'Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse – Klick öffnet das Board.', v === 'berichte/bestand')}${e('#/berichte/kosten', SVG.etikett, BERICHTSNAMEN.kosten, 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, BERICHTSNAMEN.stundenzettel, 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, BERICHTSNAMEN.kreuz, 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', BERICHTSNAMEN.verlauf, 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/fluss', '<path d="M4 20h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 15h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 10h6l4-1 6-2v3l-6 2-4 1H4z"></path>', BERICHTSNAMEN.fluss, 'Bestand je Spalte über die Zeit – gestapelte Bänder aus der Git-Geschichte dieses Boards.', v === 'berichte/fluss')}${e('#/berichte/durchsatz', '<path d="M4 20h16"></path><path d="M7 20V12M12 20V6M17 20V15"></path>', BERICHTSNAMEN.durchsatz, 'Erledigte Aufgaben je Zeitraum – Balken aus der Git-Geschichte dieses Boards.', v === 'berichte/durchsatz')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', BERICHTSNAMEN.prognose, 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', BERICHTSNAMEN.fieber, 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', BERICHTSNAMEN.durchlauf, 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/bestand', SVG.tabelle, BERICHTSNAMEN.bestand, 'Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse – Klick öffnet das Board.', v === 'berichte/bestand')}${e('#/berichte/kosten', SVG.etikett, BERICHTSNAMEN.kosten, 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `leiste`: Schlüssel in BERICHTSLEISTEN (web/berichte.js), dort stehen die Gruppen je Bericht. */
 function vBerichtsfilter(leiste) {
@@ -1113,6 +1113,79 @@ ${rand('a', 'angekommen', letzte.angekommen)}${rand('f', 'fertig', letzte.fertig
 ${fadenkreuz(FLUSS_O, unten)}
 </svg>`;
   return vDiagrammFlaeche(svg);
+}
+
+/* Durchsatz je Zeitraum (R00122, Artboard D0006 „Durchsatz“): Balken je Kalenderperiode der Aufgaben, die das Ziel
+   erreicht haben, mit gestrichelter Ø-Linie — liest nur. Rechnung: durchsatz() in web/berichte.js. */
+const DUS_B = 800, DUS_H = 272, DUS_L = 44, DUS_R = 120, DUS_O = 24, DUS_U = 44;
+/** Einheitenwort („je Woche“) der Auflösung. */
+const dusWort = e => (DURCHSATZ_EINHEITEN.find(([k]) => k === e) || [null, ''])[1];
+function vDurchsatz() {
+  const u = S.ui;
+  const kopf = `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· liest nur · erledigte Aufgaben je Periode</span></div>`;
+  if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
+  const einheit = DURCHSATZ_EINHEITEN.some(([k]) => k === u.dusEinheit) ? u.dusEinheit : DURCHSATZ_STANDARD;
+  const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit);
+  const zurueck = leistenAnzahl(u.bf, BERICHTSLEISTEN.durchsatz) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="durchsatz">Zurücksetzen</button>' : '';
+  const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
+  if (!S.bew.aufgaben.length) return zustand('Noch kein Stand dieses Boards.');
+  if (d.zielAusgeschlossen) return zustand(`Die Zielspalte „${esc(d.ziel.name)}“ ist ausgeschlossen.`);
+  if (!d.gesamt) return zustand('Keine Aufgabe im Zeitraum.');
+  return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">
+${vDurchsatzKennzahlen(d)}
+${vDurchsatzUm(einheit)}
+${vDurchsatzFlaeche(d, einheit)}${vDurchsatzLegende(d, einheit)}
+${vDurchsatzTabelle(d, einheit)}
+${d.ausgenommen ? vDurchsatzNicht(d.ausgenommen) : ''}</div>`;
+}
+/** Kennzahlenzeile (M4): Gesamt, Ø je Periode und Zahl der Perioden folgen der Auflösung. */
+function vDurchsatzKennzahlen(d) {
+  const n = d.perioden.length;
+  return `<div class="kennzahlen" id="dus-kennzahl"><span>Gesamt <b>${d.gesamt}</b></span><span>Ø <b>${zahl1(d.durchschnitt)}</b> ${dusWort(d.einheit)}</span><span><b>${n}</b> ${n === 1 ? 'Periode' : 'Perioden'}</span></div>`;
+}
+/** Auflösungs-Umschalter (M3): .seg-Radiogruppe mit zugänglichem Namen, sichtbarem Auswahlzustand, per Tastatur bedienbar. */
+function vDurchsatzUm(einheit) {
+  return `<div class="dus-um"><span class="bf-k">Auflösung</span><span class="seg" role="radiogroup" aria-label="Auflösung">${DURCHSATZ_EINHEITEN.map(([k, t]) => `<span class="${k === einheit ? 'an' : ''}" role="radio" aria-checked="${k === einheit}" data-act="dus-einheit" data-arg="${k}">${t}</span>`).join('')}</span></div>`;
+}
+const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
+/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). */
+function vDurchsatzLegende(d, einheit) {
+  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>angekommene Aufgaben</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
+}
+/** Die Zeichenfläche: je Periode ein Balken in --kd-accent, Grundlinie und eine Marke je Periode (auch bei 0),
+    y-Achse bis zum höchsten Wert, gestrichelte Ø-Linie in --kd-warn mit Halo-Beschriftung, x-Achse je Auflösung. */
+function vDurchsatzFlaeche(d, einheit) {
+  const t = d.perioden, max = Math.max(1, ...t.map(x => x.anzahl));
+  const breite = DUS_B - DUS_L - DUS_R, unten = DUS_H - DUS_U;
+  const sy = v => Math.round(DUS_O + (unten - DUS_O) * (1 - v / max));
+  const slot = breite / t.length, bw = Math.min(64, slot * 0.62);
+  const xs = i => DUS_L + slot * (i + 0.5);
+  const schritt = Math.max(1, Math.ceil(max / 4)), ticks = [];
+  for (let v = 0; v <= max; v += schritt) ticks.push(v);
+  const t1 = t[t.length - 1].bis;
+  const marken = t.map((x, i) => i).filter(i => i % Math.max(1, Math.ceil((t.length - 1) / 7)) === 0 || i === t.length - 1);
+  const achse = i => {
+    const m = durchsatzMarke(t[i], einheit), x = xs(i).toFixed(1);
+    return m.unten
+      ? `<text class="achse achse-x" x="${x}" y="${unten + 18}" text-anchor="middle"><tspan x="${x}">${esc(m.oben)}</tspan><tspan x="${x}" dy="12">${esc(m.unten)}</tspan></text>`
+      : `<text class="achse achse-x" x="${x}" y="${unten + 22}" text-anchor="middle">${esc(m.oben)}</text>`;
+  };
+  S.diagrammTip = tg => { const p = t.find(x => tg >= x.von && tg < x.bis); return p ? `<b>${esc(durchsatzTip(p, einheit))}</b> · ${p.anzahl}` : ''; };
+  const svg = `<svg class="diagramm dus" viewBox="0 0 ${DUS_B} ${DUS_H}" role="img" aria-label="Durchsatz je Zeitraum: erledigte Aufgaben je Periode" ${achsAttribut(DUS_L, breite, t[0].von, t1)}>
+${ticks.map(v => `<line class="gitter" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse" x="${DUS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+<line class="grund" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${unten}" y2="${unten}"></line>
+${t.map((x, i) => x.anzahl ? `<rect class="balken" x="${(xs(i) - bw / 2).toFixed(1)}" y="${sy(x.anzahl)}" width="${bw.toFixed(1)}" height="${(unten - sy(x.anzahl)).toFixed(1)}"></rect>` : '').join('')}
+${marken.map(i => `<line class="marke" x1="${xs(i).toFixed(1)}" x2="${xs(i).toFixed(1)}" y1="${unten}" y2="${unten + 5}"></line>`).join('')}
+<line class="rate" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(d.durchschnitt)}" y2="${sy(d.durchschnitt)}"></line><text class="ratetext" x="${DUS_L + breite + 8}" y="${sy(d.durchschnitt) + 4}">Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</text>
+${marken.map(achse).join('')}
+${fadenkreuz(DUS_O, unten)}
+</svg>`;
+  return vDiagrammFlaeche(svg);
+}
+/** Die textliche Entsprechung (M5): je Periode eine Zeile, „Summe“ als th scope=row, im tastaturerreichbaren .bericht-rahmen. */
+function vDurchsatzTabelle(d, einheit) {
+  const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td><td class="r">${p.anzahl}</td></tr>`).join('');
+  return `<details class="fluss-tabs"><summary>Tabelle</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th><th scope="col" class="r">Angekommen</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th><td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
 }
 
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */

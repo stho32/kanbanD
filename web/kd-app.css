@@ -1010,3 +1010,9 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .al-knopf{display:inline-flex;align-items:center;justify-content:center;min-height:var(--kd-ziel);min-width:var(--kd-ziel);padding:0 var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:inherit;font:inherit;cursor:pointer}
 .al-knopf:hover,.al-knopf:focus-visible{background:var(--kd-accent-weak)}
 .al-gefahr-knopf{border-color:var(--kd-warn);color:var(--kd-warn)}
+/* ── Durchsatz je Zeitraum (R00122): Balken, Grundlinie, Marken und Ø-Linie; Auflösungs-Umschalter ── */
+.dus-um{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);margin:var(--kd-s2) 0 0;font-size:12px;color:var(--kd-muted)}
+.dflaeche .dus .grund,.dflaeche .dus .marke{stroke:var(--kd-line-strong);stroke-width:1}
+.dflaeche .dus .balken{fill:var(--kd-accent)}
+.dflaeche .dus .rate{stroke:var(--kd-warn);stroke-width:2;stroke-dasharray:6 4}
+.dflaeche .dus .ratetext{font-family:var(--kd-font);font-size:12px;font-weight:600;fill:var(--kd-warn);paint-order:stroke;stroke:var(--kd-surface);stroke-width:3.5;stroke-linejoin:round}
