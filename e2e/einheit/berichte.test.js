@@ -540,7 +540,7 @@ test('Hinweis an „Zurücksetzen“ je Leiste (R00105 US-25, PO Z. 118): nennt 
 });
 
 /* ── Kumulativer Fluss (R00121) ── */
-const { fluss } = require('../../web/berichte.js');
+const { fluss, flussRand, flussName } = require('../../web/berichte.js');
 
 /** Grundbestand der AK (R00121): drei Spalten, vier Aufgaben, #2 verlässt am 05.11. das Board. */
 const FLUSS = {
@@ -571,4 +571,11 @@ test('Fluss: kumulierte Ränder „angekommen“ und „fertig“ (R00121 B0555)
     ['01', 1, 0], ['02', 2, 0], ['03', 3, 1], ['04', 4, 2], ['05', 4, 3],
   ], 'angekommen steigt monoton; fertig zählt auch #2, das am 05.11. das Board verließ');
   assert.strictEqual(d.tage[4].gesamt, 3, 'das Verlassen senkt nur den Stapel (gesamt), nicht „angekommen“/„fertig“');
+});
+
+test('Fluss: Ränder, Tooltip und Name (R00121 B0558)', () => {
+  const d = fluss(FLUSS, f({}), ohneFilterung, flussJetzt);
+  assert.deepStrictEqual(flussRand(d.tage, 'angekommen'), [1, 2, 3, 4, 4]);
+  assert.deepStrictEqual(flussRand(d.tage, 'Fertig'), [0, 0, 1, 2, 2], 'ein Band wird über seinen Spaltennamen gelesen');
+  assert.strictEqual(flussName(d.tage[3].datum, d.tage[3], d.spalten), '04.11.2026 · Eingang 1 · In Arbeit 1 · Fertig 2 · offen 2 · gesamt 4 · angekommen 4 · fertig 2');
 });

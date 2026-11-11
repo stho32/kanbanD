@@ -1,6 +1,6 @@
 /* kanbanD — Berichte: Zeitraum, Filter und Rechnungen über Bewegungen; rein, im Browser und in Node nutzbar. */
 (function (ziel) {
-  const { datumAusMs } = typeof module !== 'undefined' ? require('./kultur.js') : window;
+  const { datumAusMs, datumLang } = typeof module !== 'undefined' ? require('./kultur.js') : window;
   const TAG = 864e5;
 
   /* ── Zeitraum und Filter (R00043) ── */
@@ -174,6 +174,15 @@
       tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, jeSpalte, gesamt, offen, angekommen, fertig });
     }
     return { spalten, tage };
+  }
+
+  /** Tageswerte eines Bandes (Spaltenname) oder eines Randes (`gesamt`, `offen`, `angekommen`, `fertig`). */
+  function flussRand(tage, schluessel) {
+    return tage.map(t => t.jeSpalte && schluessel in t.jeSpalte ? t.jeSpalte[schluessel] : t[schluessel]);
+  }
+  /** Tooltiptext eines Tages: „04.11.2026 · Eingang 1 · … · offen 2 · gesamt 4 · angekommen 4 · fertig 2“. */
+  function flussName(datum, stand, spalten) {
+    return [datumLang(datum), ...spalten.map(s => `${s} ${stand.jeSpalte[s] || 0}`), `offen ${stand.offen}`, `gesamt ${stand.gesamt}`, `angekommen ${stand.angekommen}`, `fertig ${stand.fertig}`].join(' · ');
   }
 
   /* ── Durchlaufzeit (R00045) ── */
@@ -677,5 +686,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { fluss, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, flussRand, flussName, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

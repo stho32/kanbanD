@@ -959,7 +959,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fluss-sw{width:14px;height:12px;border:1px solid var(--kd-line);flex:none}
 .fluss-linie{width:16px;height:0;border-top:2px solid var(--kd-accent);flex:none}
 .fluss-linie.f{border-top-style:dashed;border-top-color:var(--kd-warn)}
-.fluss-leg .rechts{margin-left:auto;color:var(--kd-faint);font-size:11px}
+.fluss-leg .rechts{margin-left:auto;color:var(--kd-muted);font-size:11px}
 .fluss-tabs{margin:var(--kd-s3) 0;font-size:12px}
 .fluss-tabs>summary{cursor:pointer;color:var(--kd-accent-ink);min-height:24px;box-sizing:border-box}
 .fluss-tab{width:100%;border-collapse:collapse;font-size:12px}
@@ -969,4 +969,4 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fluss-tab tbody tr:last-child td{border-bottom:0}
 .fluss-leer{display:flex;flex-direction:column;align-items:flex-start;gap:var(--kd-s3);padding:var(--kd-s4) 0}
 .fluss-satz{margin:0;font-size:13px;color:var(--kd-text);overflow-wrap:anywhere}
-@media (pointer:coarse){.fluss-tabs>summary{min-height:44px}}
+@media (pointer:coarse){.fluss-tabs>summary{min-height:var(--kd-ziel)}}

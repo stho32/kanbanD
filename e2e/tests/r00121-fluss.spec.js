@@ -108,3 +108,50 @@ test('R00121 B0557: gestapelte Bänder, Achsen und die beiden kumulierten Rände
     await expect(svg.locator('text.randtext.f')).toHaveText('fertig 3');
   } finally { await k.stoppen(); }
 });
+
+/** Fährt mit der Maus auf eine Stelle eines Diagramms, angegeben in Koordinaten seiner viewBox. */
+async function zeigeAuf(page, svg, x, y) {
+  const [vb, kasten] = await Promise.all([svg.getAttribute('viewBox'), svg.boundingBox()]);
+  const [, , w, h] = vb.split(' ').map(Number), s = Math.min(kasten.width / w, kasten.height / h);
+  await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + y * s);
+}
+
+test('R00121 B0558: Legende, Tooltip, Tabellenansicht und zugänglicher Name', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    const svg = diagramm(page);
+    await expect(svg).toHaveAttribute('role', 'img');
+    await expect(svg).toHaveAttribute('aria-label', 'Kumulativer Fluss: Bestand je Spalte je Tag');
+    // Legende: fünf Einträge (Spalten, dann die Ränder), nicht klickbar, bricht um
+    const leg = page.locator('.fluss-leg');
+    await expect(leg.locator('.fluss-le')).toHaveCount(5);
+    await expect(leg.locator('.fluss-le')).toHaveText([/Eingang/, /In Arbeit/, /Fertig/, /angekommen/, /fertig/]);
+    await expect(leg).toHaveCSS('flex-wrap', 'wrap');
+    expect(await leg.locator('button, a[href], [role=button]').count()).toBe(0);
+    await leg.locator('.fluss-le').first().click();
+    await expect(svg).toBeVisible();
+    await expect(page.locator('.bf-zusammen')).toContainText('Filter · keine');
+    // Tooltip auf dem 04.11. nennt alle Zahlen aus der AK
+    await zeigeAuf(page, svg, 521, 150);
+    const tip = page.locator('#tooltip');
+    await expect(tip).toBeVisible();
+    for (const stück of ['04.11.2026', 'Eingang 1', 'In Arbeit 1', 'Fertig 2', 'offen 2', 'gesamt 4', 'angekommen 4', 'fertig 2']) await expect(tip).toContainText(stück);
+    await page.mouse.move(1, 1);
+    await expect(tip).toBeHidden();
+    // Tabellenansicht: th scope=col, je Tag eine Zeile im tastaturerreichbaren .bericht-rahmen
+    await page.getByText('Tabellenansicht').click();
+    const rahmen = page.locator('.bericht-rahmen');
+    await expect(rahmen).toHaveAttribute('tabindex', '0');
+    await expect(rahmen).toHaveAttribute('role', 'group');
+    const kopf = page.locator('.fluss-tab thead th');
+    await expect(kopf).toHaveText(['Tag', 'Eingang', 'In Arbeit', 'Fertig', 'offen', 'gesamt', 'angekommen', 'fertig']);
+    await expect(kopf.first()).toHaveAttribute('scope', 'col');
+    await expect(page.locator('.fluss-tab tbody tr')).toHaveCount(5);
+    await expect(page.locator('.fluss-tab tbody tr').nth(3).locator('td')).toHaveText(['04.11.2026', '1', '1', '2', '2', '4', '4', '2']);
+    await rahmen.focus();
+    expect(await rahmen.evaluate(el => el === document.activeElement)).toBe(true);
+  } finally { await k.stoppen(); }
+});

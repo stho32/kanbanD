@@ -1028,8 +1028,23 @@ function vFluss() {
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="fl-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const d = fluss(S.bew, S.ui.bf, aufgabe, jetzt, S.board && S.board.start);
+  const spalten = d.spalten, t = d.tage;
   const ton = (name, i) => flussTon((S.board.spalten.find(sp => sp.name === name) || {}).farbe, i);
-  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${d.tage.length ? vFlussFlaeche(d.tage, d.spalten, ton) : ''}${nicht}</div>`;
+  S.diagrammTip = tg => { const stand = t.find(x => isoTag(x.datum) === tg); if (!stand) return ''; const [datum, ...rest] = flussName(stand.datum, stand, spalten).split(' · '); return `<b>${esc(datum)}</b> · ${rest.map(esc).join(' · ')}`; };
+  const inhalt = t.length ? vFlussFlaeche(t, spalten, ton) + vFlussLegende(spalten, ton) + vFlussTabelle(t, spalten) : '';
+  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${inhalt}${nicht}</div>`;
+}
+/** Legende: je Spalte ein Farbfeld in ihrem Bandton und der Name, dann „angekommen“/„fertig“; nur Text, kein Knopf. */
+function vFlussLegende(spalten, ton) {
+  const le = (inner, wort) => `<span class="fluss-le">${inner}${esc(wort)}</span>`;
+  return `<div class="fluss-leg" aria-label="Legende">${spalten.map((name, i) => le(`<span class="fluss-sw" style="background:${esc(ton(name, i))}"></span>`, name)).join('')}${le('<span class="fluss-linie"></span>', 'angekommen')}${le('<span class="fluss-linie f"></span>', 'fertig')}<span class="rechts">zeigt nur, filtert nicht</span></div>`;
+}
+/** Die textliche Entsprechung der Fläche: je Tag eine Zeile mit jeder Spalte und den kumulierten Rändern, in
+    einem tastaturerreichbaren Querscroll-Rahmen (`.bericht-rahmen`, in jedem Zustand vorhanden). */
+function vFlussTabelle(t, spalten) {
+  const kopf = `<tr><th scope="col">Tag</th>${spalten.map(s => `<th scope="col">${esc(s)}</th>`).join('')}<th scope="col">offen</th><th scope="col">gesamt</th><th scope="col">angekommen</th><th scope="col">fertig</th></tr>`;
+  const zeilen = t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td>${spalten.map(s => `<td>${x.jeSpalte[s] || 0}</td>`).join('')}<td>${x.offen}</td><td>${x.gesamt}</td><td>${x.angekommen}</td><td>${x.fertig}</td></tr>`).join('');
+  return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Kumulativer Fluss je Tag')}<table class="fluss-tab"><thead>${kopf}</thead><tbody>${zeilen}</tbody></table></div></details>`;
 }
 const FLUSS_B = 800, FLUSS_H = 272, FLUSS_L = 44, FLUSS_R = 120, FLUSS_O = 24, FLUSS_U = 44;
 /** Die Zeichenfläche: gestapelte Bänder (unten erste Spalte, oben letzte), y-Achse bis `max(gesamt, angekommen, fertig)`. */
