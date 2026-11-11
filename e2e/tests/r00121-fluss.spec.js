@@ -4,8 +4,8 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const { kanbanStarten, einrichten, alsPerson, filterOeffnen, liveBereit } = require('./hilfen');
 
-function commitAm(ordner, datum, inhalt) {
-  fs.writeFileSync(ordner + '/boards/fabrik.md', inhalt);
+function commitAm(ordner, datum, inhalt, pfad = 'boards/fabrik.md') {
+  fs.writeFileSync(ordner + '/' + pfad, inhalt);
   execFileSync('git', ['-C', ordner, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'stand'], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum } });
 }
 
@@ -226,5 +226,68 @@ test('R00121 B0561: Leerzustand mit „Zurücksetzen“ — der Zeitraum bleibt 
     expect(datei).toContain('from: 2026-11-01');
     expect(datei).toContain('to: 2026-11-05');
     expect(datei).not.toContain('exclude-columns');
+  } finally { await k.stoppen(); }
+});
+
+/** Board mit 10 Spalten und je einer Aufgabe, ohne `column-colors`, eine Bewegung. */
+function zehnSpalten(ordner) {
+  const namen = [...Array(10)].map((_, i) => `Spalte ${i + 1}`);
+  const dateien = Object.fromEntries(namen.map((_, i) => [`aufgaben/${String(i + 1).padStart(4, '0')}-a.md`, `---\nid: ${i + 1}\ntitle: a${i + 1}\n---\n`]));
+  einrichten({ ...dateien, 'boards/zehn.md': `# zehn\n\n${namen.map(s => `## ${s}\n\n`).join('')}` })(ordner);
+  commitAm(ordner, '2026-11-01T09:00:00', `# zehn\n\n${namen.map((s, i) => `## ${s}\n\n- #${i + 1}\n\n`).join('')}`, 'boards/zehn.md');
+}
+
+test('R00121 B0557: Bandton je Position (10 Spalten ohne column-colors) und 1-px-Trenner', async ({ page }) => {
+  const k = await kanbanStarten(zehnSpalten);
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'zehn'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    const svg = diagramm(page);
+    await expect(svg.locator('path.band')).toHaveCount(10);
+    const palette = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue'].map(f => `var(--kd-c-${f}-line)`);
+    expect(await svg.locator('path.band').evaluateAll(ps => ps.map(p => p.getAttribute('fill')))).toEqual(palette);
+    const striche = await svg.locator('path.band').evaluateAll(ps => ps.map(p => [getComputedStyle(p).stroke, getComputedStyle(p).strokeWidth]));
+    for (const [strich, breite] of striche) { expect(strich).not.toBe('none'); expect(breite).toBe('1px'); }
+  } finally { await k.stoppen(); }
+});
+
+test('R00121 B0557: zwei benachbarte Spalten mit gleicher column-colors bleiben durch den Trenner unterscheidbar', async ({ page }) => {
+  const k = await kanbanStarten(async ordner => {
+    const dateien = { 'aufgaben/0001-a.md': '---\nid: 1\ntitle: a\n---\n', 'aufgaben/0002-b.md': '---\nid: 2\ntitle: b\n---\n' };
+    const front = '---\ncolumn-colors: {A: "#2f6f9f", B: "#2f6f9f", C: "#335577"}\n---\n';
+    einrichten({ ...dateien, 'boards/gleich.md': `${front}# gleich\n\n## A\n\n## B\n\n## C\n` })(ordner);
+    commitAm(ordner, '2026-11-01T09:00:00', `${front}# gleich\n\n## A\n\n- #1\n\n## B\n\n- #2\n\n## C\n`, 'boards/gleich.md');
+  });
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'gleich'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    const svg = diagramm(page);
+    await expect(svg.locator('path.band')).toHaveCount(3);
+    expect(await svg.locator('path.band').evaluateAll(ps => ps.map(p => p.getAttribute('fill')))).toEqual(['#2f6f9f', '#2f6f9f', '#335577']);
+    const striche = await svg.locator('path.band').evaluateAll(ps => ps.map(p => getComputedStyle(p).strokeWidth));
+    expect(striche).toEqual(['1px', '1px', '1px']);
+  } finally { await k.stoppen(); }
+});
+
+test('R00121: schmales Layout (höchstens acht x-Marken, kein Querscrollen) und die Lese-Gegenprobe', async ({ page }) => {
+  const k = await kanbanStarten(ordner => grundbestand(ordner, ''));
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    const datei = k.lies('boards/fabrik.md'), log = k.git('log', '--oneline');
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto(k.adresse + '#/berichte/fluss');
+    const svg = diagramm(page);
+    await expect(svg).toBeVisible();
+    expect(await svg.locator('text.achse-x').count()).toBeLessThanOrEqual(8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    expect((await page.locator('.fluss-tabs > summary').boundingBox()).height).toBeGreaterThanOrEqual(24);
+    // verlassen: die Board-Datei bleibt byte-gleich, `git log` unverändert (der Bericht liest nur)
+    await page.goto(k.adresse + '#/berichte/verlauf');
+    await expect(page.locator('.endwert').first()).toBeVisible();
+    expect(k.lies('boards/fabrik.md')).toBe(datei);
+    expect(k.git('log', '--oneline')).toBe(log);
   } finally { await k.stoppen(); }
 });
