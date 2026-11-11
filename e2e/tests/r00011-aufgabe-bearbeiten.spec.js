@@ -43,7 +43,7 @@ test.describe('R00011', () => {
     await page.getByLabel('Fälligkeit').fill('2026-12-24');
     await page.getByLabel('Labels').click();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('due: 2026-12-24');
-    await page.getByLabel('Spalte').selectOption('Erledigt');
+    await page.getByLabel('Spalte', { exact: true }).selectOption('Erledigt');
     await expect(page.locator('.bahn[data-col="Erledigt"] .ka[data-id="1"]')).toBeVisible();
   });
 

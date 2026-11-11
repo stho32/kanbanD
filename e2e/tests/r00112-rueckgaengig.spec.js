@@ -795,7 +795,7 @@ async function fokusNieUnterDemHinweis(page, k) {
     if (lage.label === 'Spalte') break;
     await page.keyboard.press('Tab');
   }
-  await expect(page.getByLabel('Spalte')).toBeFocused();
+  await expect(page.getByLabel('Spalte', { exact: true })).toBeFocused();
   await expect(hinweis).toBeVisible();
   expect(verdeckt).toEqual([]);
 }
