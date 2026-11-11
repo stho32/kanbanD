@@ -371,6 +371,14 @@ function vPop() {
   return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px"><h4 id="ich-titel">ICH BIN … <span class="mono">people:</span></h4>${hinweis}<div role="menu" aria-labelledby="ich-titel"${beschrieben}>${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitemradio" aria-checked="${p.kuerzel === S.ich}" tabindex="-1">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" role="menuitemradio" aria-checked="false" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}</div><div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
+/** Die **eine** Textregel der Blase (R00119, ADR-0020 Nachtrag N1): der Wortlaut je Auslöser — sichtbarer Text =
+ *  zugänglicher Name (`aria-label`, FA 2, ADR-0018); der Streifen-Knopf der zugeklappten Spalte überschreibt ihn über
+ *  `data-tip-text`, weil sein Name nur „… aufklappen, gehört dem …“ lautet. Beide Wege benutzen sie: `vTipp()` hier und
+ *  das unmittelbare Stellen in web/app.js. */
+function tippText(el) {
+  return el.dataset.tipText || el.getAttribute('aria-label') || '';
+}
+
 /**
  * Erklärtext auf Anforderung (R00119, ADR-0020 Option B): genau **eine** nicht-modale Blase `role="tooltip"`,
  * die der Renderer aus `S.ui.tooltip` zeichnet (ADR-0007) und die außerhalb des Scrollcontainers `.bahnen` liegt
@@ -382,7 +390,7 @@ function vPop() {
 function vTipp() {
   const t = S.ui.tooltip;
   const el = t && [...document.querySelectorAll('[data-tip]')].find(x => x.dataset.tip === t.fuer);
-  const text = el ? (el.dataset.tipText || el.getAttribute('aria-label') || '') : '';
+  const text = el ? tippText(el) : '';
   if (!text) { S.ui.tooltip = null; return '<div class="kd-tipp" id="kd-tipp" role="tooltip" hidden></div>'; }
   return `<div class="kd-tipp" id="kd-tipp" role="tooltip">${esc(text)}</div>`;
 }

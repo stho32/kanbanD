@@ -1000,10 +1000,6 @@ function popOben(ausloeserRect, popHoehe, fensterHoehe) {
    nicht-modale Tooltip ohne Fokus. Die Blase selbst zeichnet `vTipp()` in `#over` (ADR-0007); hier steht nur die
    Bedienung — zeigen bei Fokus und langem Druck, verbergen bei Esc und (Touch) Tippen außerhalb — und die Position. */
 
-/** Erklärtext des Auslösers: sichtbarer Text des Tooltips = zugänglicher Name (R00119 FA 2, ADR-0018); der Streifen-Knopf
- *  überschreibt ihn über `data-tip-text`, weil sein Name nur „aufklappen, gehört dem …“ lautet. */
-const tippText = el => el.dataset.tipText || el.getAttribute('aria-label') || '';
-
 /** Der Auslöser des offenen Tooltips im (nach dem Neuzeichnen neuen) Dokument; null, wenn es ihn nicht mehr gibt. */
 function tippAusloeser() {
   if (!S.ui.tooltip) return null;
