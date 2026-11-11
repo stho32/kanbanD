@@ -33,7 +33,7 @@ Ein KI-Werkzeug oder ein Mensch veranschlagt für eine Aufgabe eine Dauer — he
 - **Kein eigener Endpunkt**: `PATCH /api/aufgaben/{nr}` und `PATCH /api/aufgaben/mehrere` bekommen das Feld `estimate`. Ein Wert ersetzt den Wert, `null` entfernt ihn, ein fehlendes Feld lässt ihn unverändert.
 - Jede Änderung ist ein Commit „#n geändert: Geschätzte Zeit“; ohne Änderung entsteht kein Commit.
 - `GET` liefert `estimate` als **JSON-Zahl**; die OpenAPI beschreibt das Feld in derselben `Aufgabenaenderung` wie `cost`, samt 400.
-- Die `estimate` kommt in `BEKANNT` (`src/format/aufgabe.rs`) und in die Schreibreihenfolge, damit der Wert nicht mehr als unbekannter Schlüssel durch `weitere` läuft.
+- Der Schlüssel `estimate` kommt in `BEKANNT` (`src/format/aufgabe.rs`) und in die Schreibreihenfolge, damit der Wert nicht mehr als unbekannter Schlüssel durch `weitere` läuft.
 
 ### Fehlerwege
 - **Datei und API rufen dieselbe Prüfung.** Ein ungültiger Wert in der Datei macht die Aufgabe **defekt und nur lesbar** (423); die Meldung nennt den Pfad: `estimate: ganze Zahl von Minuten ≥ 1 erwartet`.
@@ -138,7 +138,7 @@ Die Anzeige der geschätzten Zeit ist eine **Aussage der Zeichengrenze** (ADR-00
 **Bau-Sperre Oberfläche.** Die UX-Vorprüfung beschreibt **zwei** Zustände, die das Bauen der Oberfläche (F0107, B0611–B0613) sperren, bis der product-owner sie freigegeben hat:
 
 - **D0002** Zustand `#geschaetzte-zeit` (das Etikett an der Karte),
-- **D0003** Zustand `#geschaeftzt-im-fenster` (die Feldzeile im Aufgabenfenster).
+- **D0003** Zustand `#geschaetzt-im-fenster` (die Feldzeile im Aufgabenfenster).
 
 Der Gestalter zeichnet beide Zustände; der product-owner gibt frei. Der Server-Teil (F0106, B0607–B0610) hängt nicht daran und bleibt frei baubar.
 
@@ -176,7 +176,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 Keine, die den Bau blockieren. Empfehlungen des planers (Entscheidungen im Bericht); richtungsweisend bleibt die Artboard-Frage (product-owner):
 
 1. **Schlüsselname** `estimate` oder `estimated`? Empfehlung: `estimate` — er läuft heute schon als unbekannter Schlüssel durch die Dateien und die Probe (ADR-0023 Folgeentscheidung). Der product-owner kann den Namen kippen, ohne die Repräsentation zu ändern.
-2. **Artboard?** Ja, **zwei** Zustände — mit der UX-Vorprüfung #37 entschieden: D0002 `#geschaetzte-zeit` (Etikett) und D0003 `#geschaeftzt-im-fenster` (Feldzeile). Der Gestalter zeichnet beide, der product-owner gibt frei; sie sind **Bau-Sperre Oberfläche** für F0107 (B0611–B0613). Form A (`≈ 2:30`) ist die Empfehlung der UX-Vorprüfung, Alternative B („Geschätzt 2:30“) steht unter „Notizen“. F0106 und die Bubbles B0607–B0610 hängen nicht daran.
+2. **Artboard?** Ja, **zwei** Zustände — mit der UX-Vorprüfung #37 entschieden: D0002 `#geschaetzte-zeit` (Etikett) und D0003 `#geschaetzt-im-fenster` (Feldzeile). Der Gestalter zeichnet beide, der product-owner gibt frei; sie sind **Bau-Sperre Oberfläche** für F0107 (B0611–B0613). Form A (`≈ 2:30`) ist die Empfehlung der UX-Vorprüfung, Alternative B („Geschätzt 2:30“) steht unter „Notizen“. F0106 und die Bubbles B0607–B0610 hängen nicht daran.
 3. **Setzweg?** In der ersten Ausbaustufe nur über die API (wie `cost`, PO Z. 31); ein Eingabefeld im Fenster ist eine spätere Ausbaustufe (ADR-0023 Folgeentscheidung).
 4. **Darf ein Agent `estimate` setzen?** Ja, uneingeschränkt — der Wert ist rein informativ und gerade für die Schätzungen der KI-Werkzeuge gedacht (Karte #37); kein Schutz wie bei der WIP-Grenze.
 5. **Obergrenze 100.000?** Technischer Schutz gegen Tippfehler, keine Produktregel; er darf angehoben werden, solange die Rundlauf-Probe grün bleibt (ADR-0023 Regel 2).
