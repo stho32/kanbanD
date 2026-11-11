@@ -11,6 +11,8 @@ const MASS = 4.5;
 const AUSNAHMEN = [];
 
 const gestern = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); };
+/** Ein Fälligkeitstag n Tage in der Zukunft: nicht heute und nicht morgen, sonst trüge `.due` den Warnzustand (`--kd-warn`) statt der geprüften r3-Schrift. */
+const inTagen = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const GRUNDBESTAND = () => ({
   'boards/entwicklung.md': '---\nlimits:\n  In Arbeit: 1\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n- #5\n\n## Erledigt\n',
   'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\nclass: bug\nassignees: [st]\ndue: ${gestern()}\n---\n`,
@@ -492,6 +494,74 @@ test.describe('R00107 Kontrast', () => {
   test('Ausnahmeliste: leer, jeder Eintrag mit Kartennummer #50 oder #55', () => {
     for (const a of AUSNAHMEN) expect(['#50', '#55']).toContain(a.karte);
     expect(AUSNAHMEN).toEqual([]);
+  });
+});
+
+/**
+ * R00139 (Karte #50, ADR-0011 Nachtrag N1): Text auf einer eigenen Nutzerfarbe trägt `--kd-text`, nicht `--kd-muted` — dieselbe Regel,
+ * die das Preisetikett schon trägt. Gemessen wird die Zeile r3 der Karte (Σ-Zeit, Datum, Herkunft): eine eigene Klassenfarbe `#ffffff`
+ * gegen ein Gegenstück der Palettenklasse `bug`, beide Themen. Eigene Farben liegen außerhalb der Paartabelle (Regel 7); geprüft wird
+ * nur die Schriftfarbe am gezeichneten Element (Weiß 30 % über `--kd-surface` im Dunkelthema: `--kd-muted` 2,571, `--kd-text` 4,677).
+ */
+test.describe('R00139 Text auf eigener Klassenfarbe', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  let k;
+  /** Grundbestand: #1 mit eigener Klassenfarbe `#ffffff` (getönter Grund), #2 als Palettenklasse `bug`, sonst gleich; je 46 Minuten gebucht. */
+  const EIGEN = () => ({
+    'kanbanD.md': `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses:\n  bug: {label: Fehler, color: red}\n  eigen: {label: Eigen, color: '#ffffff'}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n---\n`,
+    'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
+    'aufgaben/0001-eins.md': `---\nid: 1\ntitle: eins\nclass: eigen\ndue: ${inTagen(3)}\n---\n\`\`\`kanbanD-time\n2026-10-17 09:00 · 2026-10-17 09:46 · st\n\`\`\`\n`,
+    'aufgaben/0002-zwei.md': `---\nid: 2\ntitle: zwei\nclass: bug\ndue: ${inTagen(3)}\n---\n\`\`\`kanbanD-time\n2026-10-17 09:00 · 2026-10-17 09:46 · st\n\`\`\`\n`,
+  });
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten(EIGEN()));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await expect(page.locator('.ka')).toHaveCount(2);
+  });
+  test.afterEach(() => k.stoppen());
+
+  /** Die gemessenen Elemente der Zeile r3: Σ-Zeit, Datum und Herkunft („ohne Herkunft“). */
+  const r3Texte = karte => [
+    ['Σ-Zeit', karte.locator('.r3 .sum')],
+    ['Datum', karte.locator('.r3 .due')],
+    ['Herkunft', karte.locator('.r3 .org')],
+  ];
+
+  /** Misst Σ-Zeit, Datum und Herkunft einer Karte in beiden Themen: Kontrast und berechnete Schriftfarbe als Pixel, dazu der verlangte Token je Thema. */
+  async function r3InBeidenThemen(page, karte, token) {
+    const gemessen = [];
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const verlangt = await farbPixel(page, await tokenFarbe(page, token));
+      for (const [name, ort] of r3Texte(karte)) {
+        gemessen.push({ beschriftung: `${t} ${name}`, wert: await kontrastAm(ort), farbe: await pixelVon(page, ort, 'color'), verlangt });
+      }
+    }
+    return gemessen;
+  }
+
+  test('US-1/US-2: Σ-Zeit, Datum und Herkunft auf eigener Klassenfarbe #ffffff tragen --kd-text und halten 4,5:1, beide Themen', async ({ page }) => {
+    const eigen = page.locator('.ka[data-eigen]');
+    await expect(eigen).toHaveCount(1);
+    await expect(eigen.locator('.r3 .sum')).toHaveText('Σ 0:46');
+    await expect(eigen.locator('.r3 .org')).toHaveText('ohne Herkunft');
+    const gemessen = await r3InBeidenThemen(page, eigen, '--kd-text');
+    // Zuerst der Grund der Nutzerin: mindestens 4,5:1 (WCAG 2.1 SC 1.4.3), heute dunkel 2,571
+    for (const m of gemessen) expect(m.wert, `${m.beschriftung}: Kontrast ${komma(m.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
+    // Dann die festgelegte Schriftfarbe auf eigener Farbe (ADR-0011 Nachtrag N1)
+    for (const m of gemessen) expect(m.farbe, `${m.beschriftung}: Schriftfarbe ist --kd-text`).toEqual(m.verlangt);
+  });
+
+  test('Gegenprobe US-3: die Karte der Palettenklasse bug behält --kd-muted, beide Themen', async ({ page }) => {
+    const palette = page.locator('.ka[data-id="2"]');
+    await expect(palette).toHaveAttribute('data-c', 'bug');
+    expect(await palette.getAttribute('data-eigen'), 'die Palettenkarte ist keine eigene Farbe').toBeNull();
+    const gemessen = await r3InBeidenThemen(page, palette, '--kd-muted');
+    for (const m of gemessen) expect(m.wert, `${m.beschriftung}: Kontrast ${komma(m.wert)}`).toBeGreaterThanOrEqual(MASS);
+    for (const m of gemessen) expect(m.farbe, `${m.beschriftung}: Schriftfarbe bleibt --kd-muted`).toEqual(m.verlangt);
   });
 });
 
