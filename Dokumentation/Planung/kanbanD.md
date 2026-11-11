@@ -14,9 +14,9 @@ zuletzt: 2026-11-11
 
 | ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A0001 | Application | — | kanbanD | gruen | alle Dialogs gruen |  |  |  |  |  |  |
+| A0001 | Application | — | kanbanD | gelb | alle Dialogs gruen |  |  |  |  |  |  |
 | D0001 | Dialog | A0001 | Start und Einrichtung | gruen | alle Interactions gruen |  |  |  |  | R00001 |  |
-| D0002 | Dialog | A0001 | Board | gruen | alle Interactions gruen |  |  |  |  | R00004 |  |
+| D0002 | Dialog | A0001 | Board | gelb | alle Interactions gruen |  |  |  |  | R00004 |  |
 | D0003 | Dialog | A0001 | Aufgabe | gruen | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
@@ -737,6 +737,11 @@ zuletzt: 2026-11-11
 | F0079 | Feature | I0106 | Begriffe und Doku einheitlich | gruen | grep -n "Laufende Timer" web/ansicht.js = 0; der Menüeintrag fehlt bei 0 Timern; R00101/US-3 nennt Spalten einrichten; Dokumentation/Gelerntes.md:46 beginnt nach dem Doppelpunkt mit Ein Knopf |  |  |  |  | R00117 | Punkt 4 der Karte #17 (rechtschreib Sollte, ux): Menüeintrag Laufende Timer öffnet den Überblick Läuft gerade (web/ansicht.js:131); in compact steht der Eintrag auch bei 0 Timern und öffnet nichts -> ausblenden; Spalten in R00101/US-3 gegen Spalten einrichten angleichen; Dokumentation/Gelerntes.md:46 nach Doppelpunkt groß. |
 | B0528 | Bubble | F0079 | Menüeintrag Läuft gerade, bei 0 Timern weg | gruen | Test gruen | alleLaufenden().length > 0 -> Eintrag Läuft gerade mit Zahl; 0 -> kein Eintrag; web/ansicht.js:131 | 0,5-1 |  |  |  | Laufende Timer -> Läuft gerade; Pop-Aria-Label ist schon Läuft gerade (:158). |
 | B0529 | Bubble | F0079 | Begriffe und Doku angleichen | gruen | Test gruen | R00101/US-3 Spalten -> Spalten einrichten; Dokumentation/Gelerntes.md:46 schwach: ein Knopf -> schwach: Ein Knopf | 0,4-1 |  |  |  | reine Textänderung; grep-Proben. |
+| I0107 | Interaction | D0002 | Spalten ohne alt bei gleichem Namen behalten | rot | Akzeptanzkriterien der fortgeschriebenen R00009 zum toleranten Rückfall erfüllt: PUT /api/boards/{slug}/spalten ohne alt bei belegter namensgleicher Spalte → 200, Aufgaben und Einstellungen bleiben; neue Spalte ohne alt bleibt leer; Umbenennen ohne bekanntes alt → 400; Wächter tests/spalten.rs, tests/spalteneinstellungen.rs, e2e/tests/r00009-spalten.spec.js und tests/openapi.rs grün |  |  |  | I0009 | R00009 | Karte #22 (kd:I0085 war falsch, hierher korrigiert). Bug: PUT …/spalten ohne alt antwortet 409 bei belegter Spalte, obwohl der Name gleich bleibt. PO-Entscheidung po-entscheidungen.md Z. 185 (0cac078): Contract tolerant — fehlt alt, gilt die Spalte gleichen Namens als übernommen; sonst neu und leer; alt bleibt für Umbenennen/Tauschen Pflicht. Eigene Interaction statt Bubbles an I0009: I0009 ist grün, ein neuer roter Nachfahre öffnet seine Abnahme wieder (Vorbild I0063, I0087; AI-Team/gelerntes.md 2026-11-11). |
+| B0530 | Bubble | I0107 | Rückfall im Modell spalten_setzen | rot | Test gruen | Board + Spaltenliste (Name, alt?) → Board oder Fehler; Zeile ohne alt mit vorhandenem Namen übernimmt; beansprucht ein alt denselben Namen, entfällt der Rückfall | 0,5-1 |  |  |  | src/modell/board.rs:428 spalten_setzen — die Menge der übernommenen Namen (alte) um den Namensrückfall ergänzen; Unit in src/modell/board.rs mod tests; Wächter tests/spalten.rs |
+| B0531 | Bubble | I0107 | Spalten speichern über die API | rot | Test gruen | PUT /api/boards/{slug}/spalten ohne alt → 200 bei namensgleicher Spalte (Aufgaben und grenze/eigentuemer/pruefungen/notiz/farbe bleiben); wirklich neue Spalte bleibt leer | 0,5-1 |  |  |  | Integration tests/spalteneinstellungen.rs und tests/spalten.rs; E2E e2e/tests/r00009-spalten.spec.js; Wächter R00102 (tests/spalteneinstellungen.rs) |
+| B0532 | Bubble | I0107 | alt-Semantik in der Beschreibung | rot | Test gruen | Beschreibung von PUT …/spalten und OpenAPI → nennt das Verhalten ohne alt | 0,4-1 |  |  |  | src/web/endpunkte.rs:37 und src/web/mod.rs:415 (utoipa); Wächter tests/openapi.rs vergleicht /api/endpunkte ↔ OpenAPI |
+| B0533 | Bubble | I0107 | Grammatik 1 Aufgabe und n Aufgaben | rot | Test gruen | Spaltenfehler EnthaeltAufgaben → „1 Aufgabe“ bzw. „n Aufgaben“ | 0,4-1 |  |  |  | src/dienst/spalten.rs:19; tests/spalteneinstellungen.rs:147 und Anforderungen/R00102:80 nachziehen |
 
 ## Offene Fragen
 
