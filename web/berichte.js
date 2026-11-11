@@ -810,13 +810,14 @@
     return (letzter || wechsel[0].zeitpunkt).slice(0, 10);
   }
 
-  /** Beschriftung eines Datums-Trenners (R00124): „Heute“, „Gestern“ oder `dd.MM.yyyy` (ADR-0013). */
-  function trennerText(tag, heute) {
-    if (tag === heute) return 'Heute';
-    const gesternTag = new Date(isoTag(heute) - TAG);
+  /** Beschriftung eines Datums-Trenners (R00124): „Heute“, „Gestern“ oder `dd.MM.yyyy` (ADR-0013). „Gestern“ ist der
+      Kalendertag vor `heute` — über `tag` gerechnet, nicht über feste 24 Stunden (sonst an den Umstellungstagen ein Tag daneben). */
+  function trennerText(datum, heute) {
+    if (datum === heute) return 'Heute';
+    const gesternTag = new Date(tag(isoTag(heute), -1));
     const gestern = `${gesternTag.getFullYear()}-${String(gesternTag.getMonth() + 1).padStart(2, '0')}-${String(gesternTag.getDate()).padStart(2, '0')}`;
-    if (tag === gestern) return 'Gestern';
-    return datumLang(tag);
+    if (datum === gestern) return 'Gestern';
+    return datumLang(datum);
   }
 
   /** Je sichtbarer Aufgabe der Text des Datums-Trenners **vor** ihr (R00124); `null`, wo keine Tagesgrenze ist.

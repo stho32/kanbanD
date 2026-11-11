@@ -1,4 +1,5 @@
 // Unit-Tests der Datums-Trenner (R00124 B0578, node --test)
+process.env.TZ = 'Europe/Berlin'; // „Gestern“ rechnet in Ortszeit; die Umstellungstage unten sind nur in einer Sommerzeit-Zone eindeutig
 const test = require('node:test');
 const assert = require('node:assert');
 const { datumsTrenner, trennerText, ankunftsTag } = require('../../web/berichte.js');
@@ -54,6 +55,16 @@ test('trennerText: Heute, Gestern (auch über den Jahreswechsel), sonst das Datu
   assert.strictEqual(trennerText('2025-12-31', '2026-01-01'), 'Gestern');
   assert.strictEqual(trennerText('2026-11-04', '2026-11-06'), '04.11.2026');
   assert.strictEqual(trennerText('2025-11-04', '2026-11-06'), '04.11.2025');
+});
+
+test('trennerText rechnet „Gestern“ als Kalendertag, nicht als feste 24 Stunden (Zeitumstellung)', () => {
+  // Frühjahrsumstellung 2026 (29.03., 02:00 → 03:00): der 29.03. ist der 30.03. minus ein Kalendertag, auch wenn der
+  // Kalendertag nur 23 Stunden hat — feste 864e5 landeten auf dem 28.03.
+  assert.strictEqual(trennerText('2026-03-29', '2026-03-30'), 'Gestern');
+  assert.strictEqual(trennerText('2026-03-28', '2026-03-30'), '28.03.2026', 'zwei Kalendertage davor ist nicht „Gestern“');
+  // Herbstumstellung 2026 (25.10., 03:00 → 02:00): der Kalendertag hat 25 Stunden, der 25.10. bleibt „Gestern“ des 26.10.
+  assert.strictEqual(trennerText('2026-10-25', '2026-10-26'), 'Gestern');
+  assert.strictEqual(trennerText('2026-10-24', '2026-10-26'), '24.10.2026');
 });
 
 test('ohne eine einzige Karte keine Trenner', () => {
