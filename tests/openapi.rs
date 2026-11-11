@@ -192,6 +192,21 @@ async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
     assert!(d["info"]["description"].as_str().unwrap().contains("Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch"), "openapi info");
 }
 
+/// R00009 Karte #22: die Beschreibung von PUT …/spalten nennt die `alt`-Semantik samt Verhalten ohne `alt`.
+#[tokio::test]
+async fn spalten_nennen_die_alt_semantik() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    let zweck = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "PUT" && e.pfad == "/api/boards/{slug}/spalten").unwrap().zweck;
+    let put = d["paths"]["/api/boards/{slug}/spalten"]["put"]["description"].as_str().unwrap();
+    let satz = "fehlt `alt`, übernimmt die Zeile die Spalte gleichen Namens, sonst bleibt sie neu und leer";
+    assert!(zweck.contains(satz), "/api/endpunkte: {zweck}");
+    assert!(put.contains(satz), "openapi: {put}");
+    assert!(seite.contains(satz), "Seite /api");
+}
+
 /// R00099 B0338: POST /api/aufgaben/erledigen ist vollständig beschrieben — Felder, vier Ergebnisse, warnungen, 409 mit Grenze.
 #[tokio::test]
 async fn erledigen_ist_beschrieben() {
