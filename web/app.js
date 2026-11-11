@@ -245,8 +245,10 @@ async function sichtLaden(zustand) {
     // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
     api('GET', '/api/boards?archivierte=ja'),
   ]);
-  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042); das Board selbst braucht sie für die Datums-Trenner (R00124)
-  const bew = /^(board|berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber))$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
+  // In der Board-Ansicht ist ein Fehler kein Grund, die Seite nicht zu zeichnen — dann keine Trenner. Ein defektes Board
+  // wird gar nicht erst nach Bewegungen gefragt (der 423 bliebe sonst als unnötiger Netzfehler in der Strukturprobe).
+  const bewegungenPfad = '/api/berichte/bewegungen?board=' + encodeURIComponent(slug || '');
+  const bew = !slug || boardDefekt ? null : view === 'board' ? await api('GET', bewegungenPfad).catch(() => null) : /^berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber)$/.test(view) ? await api('GET', bewegungenPfad) : null;
   // Fever Chart (R00078): der Cache der gerechneten Tage
   const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
@@ -1910,7 +1912,11 @@ async function act(a, arg, wert) {
       case 'setup-ok': {
         if (ichNoetig()) break;
         try {
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, datums_trenner: sp.datumsTrenner, ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
+          // Datums-Trenner (R00124): nur senden, wenn mindestens eine Spalte vom Positions-Standard abweicht —
+          // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-checks/column-colors)
+          const letzteSpalte = u.setup.spalten.length - 1;
+          const trennerAbweichend = u.setup.spalten.some((sp, i) => sp.datumsTrenner !== (i === letzteSpalte));
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
           if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
           u.setup = null;
           return laden();
