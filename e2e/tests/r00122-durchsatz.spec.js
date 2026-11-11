@@ -94,6 +94,9 @@ test('R00122 B0565 (US-1): zwei Wochenbalken, Ø-Linie, Achsen, Grundlinie, Mark
     await expect(svg.locator('text.ratetext')).toHaveText('Ø 2,0 je Woche');
     const [strichRate, fuellungBalken] = await Promise.all([rate.evaluate(e => getComputedStyle(e).stroke), balken.first().evaluate(e => getComputedStyle(e).fill)]);
     expect(strichRate).not.toBe(fuellungBalken);
+    // Legende (B1): das Farbfeld trägt denselben Ton wie die Balken, nicht transparent
+    const feldFarbe = await page.locator('.fluss-leg .fluss-sw').first().evaluate(e => getComputedStyle(e).backgroundColor);
+    expect(feldFarbe).toBe(fuellungBalken);
     // Kennzahlenzeile (M4)
     const kz = page.locator('#dus-kennzahl');
     await expect(kz).toContainText('Gesamt 4');

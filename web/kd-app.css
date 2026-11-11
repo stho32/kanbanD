@@ -963,7 +963,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .dflaeche .cfd .randtext.f{fill:var(--kd-warn)}
 .fluss-leg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 var(--kd-s3);font-size:12px}
 .fluss-le{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.fluss-sw{width:14px;height:12px;border:1px solid var(--kd-line);flex:none}
+.fluss-sw{width:14px;height:12px;background:var(--kd-accent);border:1px solid var(--kd-line);flex:none}
 .fluss-linie{width:16px;height:0;border-top:2px solid var(--kd-accent);flex:none}
 .fluss-linie.f{border-top-style:dashed;border-top-color:var(--kd-warn)}
 .fluss-leg .rechts{margin-left:auto;color:var(--kd-muted);font-size:11px}
