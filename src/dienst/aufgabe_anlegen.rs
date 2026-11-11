@@ -53,6 +53,13 @@ pub struct NeueAufgaben {
     pub spalte: Option<String>,
 }
 
+/// Zielort einer Kopie (R00142): Board und Spalte oder keines von beiden.
+#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
+pub struct Zielort {
+    pub board: Option<String>,
+    pub spalte: Option<String>,
+}
+
 /// Eine Karte der Antwort beim Anlegen: die Aufgabe und ob sie neu ist (R00098).
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct Angelegt {
@@ -86,8 +93,27 @@ impl Kanban {
         self.aufgaben_anlegen_gesperrt(&self.gesperrt(), wer, neu)
     }
 
+    /// Legt aus der Aufgabe `nr` eine Kopie an (R00142): neue Nummer und Datei, Titel mit Zusatz „(Kopie)“, die
+    /// Grundfelder der Quelle ohne `key`. Den Rest — Nummernvergabe, Board-Zeile, WIP-Grenze, ein Commit — kann der
+    /// Anlegeweg; die Kopie ist deshalb eine gewöhnliche Anlage mit einer anderen Commit-Nachricht.
+    pub fn aufgabe_duplizieren(&self, wer: &Person, nr: u32, zielort: &Zielort) -> Result<Angelegt, Fehler> {
+        let sperre = self.gesperrt();
+        let quelle = self.ordner().aufgabe(nr)?;
+        let kopie = NeueAufgaben {
+            titel: vec![Eintrag::MitAngaben { titel: format!("{} (Kopie)", quelle.titel), angaben: angaben_der_quelle(&quelle) }],
+            board: zielort.board.clone(),
+            spalte: zielort.spalte.clone(),
+        };
+        Ok(self.anlegen_gesperrt(&sperre, wer, &kopie, Some(nr))?.remove(0))
+    }
+
     /// Suchen und Schreiben unter derselben Sperre (ADR-0004): wer sie hält, sieht jede Karte, die ein früherer Aufruf anlegte.
     pub(super) fn aufgaben_anlegen_gesperrt(&self, _sperre: &MutexGuard<'_, ()>, wer: &Person, neu: &NeueAufgaben) -> Result<Vec<Angelegt>, Fehler> {
+        self.anlegen_gesperrt(_sperre, wer, neu, None)
+    }
+
+    /// `aus`: Nummer der Quelle, wenn die Einträge Kopien sind (R00142) — sie ändert nur die Commit-Nachricht.
+    fn anlegen_gesperrt(&self, _sperre: &MutexGuard<'_, ()>, wer: &Person, neu: &NeueAufgaben, aus: Option<u32>) -> Result<Vec<Angelegt>, Fehler> {
         let eintraege: Vec<(&str, Option<&Angaben>)> = neu.titel.iter().map(Eintrag::teile).collect();
         if eintraege.is_empty() || eintraege.iter().any(|(t, _)| t.is_empty()) {
             return Err(Fehler::Ungueltig("Jede Aufgabe braucht einen Titel".into()));
@@ -146,18 +172,21 @@ impl Kanban {
             }
         }
         if !aufgaben.is_empty() || !wieder.is_empty() {
-            self.schreiben(wer, neu, &aufgaben, &wieder, &vorhanden)?;
+            self.schreiben(wer, neu, &aufgaben, &wieder, &vorhanden, aus)?;
         }
         let karte = |nr: u32| aufgaben.iter().chain(&wieder).chain(&vorhanden).find(|a| a.nummer == nr).cloned().expect("geplante Karte ist bekannt");
         Ok(plan.into_iter().map(|(nr, neu)| Angelegt { aufgabe: karte(nr), neu }).collect())
     }
 
     /// Neue und wieder geöffnete Karten, mit Board: neue unten, wieder geöffnete oben in die Spalte — ein Commit.
-    fn schreiben(&self, wer: &Person, neu: &NeueAufgaben, aufgaben: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe]) -> Result<(), Fehler> {
+    fn schreiben(&self, wer: &Person, neu: &NeueAufgaben, aufgaben: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe], aus: Option<u32>) -> Result<(), Fehler> {
         let mut dateien: Vec<Schritt> = aufgaben.iter().chain(wieder).map(|a| Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
         let mut angelegt = match aufgaben {
             [] => None,
-            [a] => Some(format!("#{} „{}“ angelegt", a.nummer, a.titel)),
+            [a] => Some(match aus {
+                Some(quelle) => format!("#{} dupliziert (aus #{quelle})", a.nummer),
+                None => format!("#{} „{}“ angelegt", a.nummer, a.titel),
+            }),
             alle => Some(format!("#{}–#{} angelegt ({} Aufgaben)", alle[0].nummer, alle[0].nummer + alle.len() as u32 - 1, alle.len())),
         };
         let archiviert_vorher = archivierte(vorhanden);
@@ -178,7 +207,9 @@ impl Kanban {
             // Agent: 409 über der Grenze; Mensch: durchgelassen ohne Warnung, die Antwort bleibt die Aufgabe (R00096)
             zug_mit_rueckkehr_pruefen(wer.art, &vorher, &b, &archiviert_vorher, &archiviert_nachher)?;
             if let Some(n) = &mut angelegt {
-                n.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
+                // Der Anlegeweg nennt das Board mit seinem Titel; eine Kopie nennt es mit seinem Slug (R00142 AK 9).
+                let board = if aus.is_some() { &b.slug } else { &b.titel };
+                n.push_str(&format!(" in „{spaltenname}“ ({board})"));
             }
             let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
             dateien.push(Schritt::schreiben(board_pfad(&b.slug), text));
@@ -197,6 +228,22 @@ impl Kanban {
         let (boards, _) = self.ordner().boards()?;
         let betroffen = boards.iter().filter(|b| Some(b.slug.as_str()) != ziel && wieder.iter().any(|a| b.spalte_von(a.nummer).is_some()));
         betroffen.map(|b| zug_mit_rueckkehr_pruefen(wer.art, b, b, vorher, nachher)).collect::<Result<Vec<_>, _>>().map(drop)
+    }
+}
+
+/// Die Angaben, die eine Kopie von ihrer Quelle übernimmt (R00142): `key` bleibt leer, die Teilaufgaben kommen als
+/// Texte ohne Haken. Verlauf, Zeiten, Kommentare, Durchläufe, Anhänge, Archivstand, Reservierung, Preisetikett,
+/// Signale, WBS-Wirkungen, Phasen-Übersprung und Berichts-Zählung hängen an der Quelle und stehen deshalb nicht hier.
+fn angaben_der_quelle(quelle: &Aufgabe) -> Angaben {
+    Angaben {
+        key: None,
+        klasse: quelle.klasse.clone(),
+        zustaendige: Some(quelle.zustaendige.clone()),
+        labels: Some(quelle.labels.clone()),
+        faellig: quelle.faellig.clone(),
+        herkunft: Some(quelle.herkunft.clone()),
+        beschreibung: Some(quelle.beschreibung.clone()),
+        teilaufgaben: Some(quelle.teilaufgaben.iter().map(|t| t.text.clone()).collect()),
     }
 }
 
