@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, liveBereit, kontrastAm } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, kontrastAm, mehrOeffnen, ausMehr } = require('./hilfen');
 
 const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -108,6 +108,22 @@ test.describe('R00124', () => {
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
   });
 
+  test('Wächter: Speichern ohne Änderung lässt die Board-Datei byte-gleich (kein column-dates ohne Abweichung)', async ({ page }) => {
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    const datei = k.lies('boards/fabrik.md');
+    const vorher = +k.git('rev-list', '--count', 'HEAD');
+    await page.locator('#t-mehr').click();
+    await page.locator('#mehr-spalten').click();
+    await page.locator('.setup').waitFor();
+    await page.locator('[data-act="setup-ok"]').click();
+    await expect(page.locator('.setup')).toHaveCount(0);
+    await page.waitForTimeout(300);
+    expect(k.lies('boards/fabrik.md')).toBe(datei, 'ohne Änderung byte-gleich');
+    expect(k.lies('boards/fabrik.md')).not.toMatch(/column-dates/, 'kein Spalten-Schluessel ohne Abweichung');
+    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher, 'kein Commit ohne Änderung');
+  });
+
   test('AK Standard im Schalter: die Vorschau führt column-dates, die Abschlussspalte steht an', async ({ page }) => {
     await page.goto(k.adresse + '#/board/fabrik');
     await liveBereit(page);
@@ -140,5 +156,68 @@ test.describe('R00124', () => {
       expect(quer, `Querscrollen bei ${breite}`).toBeLessThanOrEqual(0);
       await expect(trenner(page).first().locator('.dtrenn-t')).toBeVisible();
     }
+  });
+});
+
+/** Grundbestand für die Reihenfolge-Proben: #1 vor zwei Tagen, #2/#3 gestern, #4 heute in „Fertig“ (Datei-Reihenfolge 4·3·2·1);
+    #3 trägt das Signal „review“. */
+function reihenfolgeBestand(ordner) {
+  fs.mkdirSync(path.join(ordner, 'boards'), { recursive: true });
+  fs.mkdirSync(path.join(ordner, 'aufgaben'), { recursive: true });
+  const schreib = (rel, inhalt) => fs.writeFileSync(path.join(ordner, rel), inhalt);
+  const commit = (datum, nachricht) => {
+    spawnSync('git', ['-C', ordner, 'add', '-A'], { encoding: 'utf8' });
+    const r = spawnSync('git', ['-C', ordner, 'commit', '-q', '-m', nachricht], {
+      encoding: 'utf8',
+      env: { ...process.env, GIT_AUTHOR_DATE: `${datum}T09:00:00`, GIT_COMMITTER_DATE: `${datum}T09:00:00`, GIT_AUTHOR_NAME: 'sh', GIT_AUTHOR_EMAIL: 'sh@kanbanD', GIT_COMMITTER_NAME: 'sh', GIT_COMMITTER_EMAIL: 'sh@kanbanD' },
+    });
+    if (r.status !== 0) throw new Error(`Commit ${nachricht}: ${r.stderr}`);
+  };
+  const fertig = (...nummern) => `# fabrik\n\n## Eingang\n\n## In Arbeit\n\n## Fertig\n\n${nummern.map(n => `- #${n}`).join('\n')}\n`;
+  schreib('kanbanD.md', '---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses: {}\nsignals:\n  review: {label: Review nötig, color: red}\n---\n');
+  schreib('boards/fabrik.md', fertig());
+  schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: alpha eins\n---\n');
+  schreib('aufgaben/0002-zwei.md', '---\nid: 2\ntitle: zwei\n---\n');
+  schreib('aufgaben/0003-drei.md', '---\nid: 3\ntitle: drei\nsignals: [review]\n---\n');
+  schreib('aufgaben/0004-vier.md', '---\nid: 4\ntitle: alpha vier\n---\n');
+  spawnSync('git', ['-C', ordner, 'init', '-q'], { encoding: 'utf8' });
+  commit('2020-01-01', 'eingerichtet');
+  schreib('boards/fabrik.md', fertig(1));
+  commit(tag(-2), '#1 in Fertig');
+  schreib('boards/fabrik.md', fertig(3, 2, 1));
+  commit(tag(-1), '#2 und #3 in Fertig');
+  schreib('boards/fabrik.md', fertig(4, 3, 2, 1));
+  commit(tag(0), '#4 in Fertig');
+}
+
+test.describe('R00124 Reihenfolge bei „Signale oben“ und Filter', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(reihenfolgeBestand); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const folge = page => page.locator('[data-col="Fertig"] .flaeche > *').evaluateAll(els => els.map(e => e.classList.contains('dtrenn') ? 'T' : e.dataset.id));
+
+  test('AK Reihenfolge: „Signale oben“ rückt Karte und Trenner mit (gezeichnete Reihe, nicht sp.aufgaben)', async ({ page }) => {
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    // ohne „Signale oben“: die Trenner folgen der Datei-Reihenfolge 4·3·2·1
+    expect(await folge(page)).toEqual(['T', '4', 'T', '3', '2', 'T', '1']);
+    await ausMehr(page, 'Signale oben');
+    // #3 (gestern) rückt nach oben: seine Tagesgruppe wandert mit, die Trenner folgen der gezeichneten Reihe
+    await expect.poll(() => folge(page)).toEqual(['T', '3', 'T', '4', 'T', '2', 'T', '1']);
+    const texte = (await page.locator('[data-col="Fertig"] .dtrenn').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+    expect(texte).toEqual(['— Gestern —', '— Heute —', '— Gestern —', `— ${tag(-2).split('-').reverse().join('.')} —`]);
+    // die Board-Datei bleibt unverändert (nur die Anzeige ändert sich)
+    expect(k.lies('boards/fabrik.md')).toMatch(/- #4\n- #3\n- #2\n- #1/);
+  });
+
+  test('AK Filter: die Trenner richten sich nach den sichtbaren Karten', async ({ page }) => {
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    await page.locator('#flt').fill('alpha');
+    // nur #1 und #4 sichtbar (Titel „alpha …“) — zwei Tagesgruppen, die Trenner der verdeckten Karten entfallen
+    await expect.poll(() => folge(page)).toEqual(['T', '4', 'T', '1']);
+    const texte = (await page.locator('[data-col="Fertig"] .dtrenn').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+    expect(texte).toEqual(['— Heute —', `— ${tag(-2).split('-').reverse().join('.')} —`]);
   });
 });
