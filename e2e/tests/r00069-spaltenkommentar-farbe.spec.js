@@ -14,7 +14,7 @@ test.describe('R00069', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test('US-1: Kommentar als ⓘ mit Tooltip', async ({ page }) => {
+  test('US-1: Kommentar als ⓘ mit zugänglichem Namen (Tooltiptext, R00119)', async ({ page }) => {
     await page.goto(k.adresse);
     const kopf = page.locator('.bahn[data-col="In Arbeit"] .bahn-kopf');
     await expect(kopf.locator('.info')).toHaveCount(0);
@@ -24,7 +24,9 @@ test.describe('R00069', () => {
     await page.getByRole('button', { name: 'Fertig' }).click();
     const info = kopf.locator('.info');
     await expect(info).toHaveText('ⓘ');
-    await expect(info).toHaveAttribute('title', 'höchstens zwei gleichzeitig');
+    // R00119: die title der fünf Zeichen entfallen; der Erklärtext steht am Auslöser als zugänglicher Name
+    await expect(info).toHaveAttribute('aria-label', 'Kommentar: höchstens zwei gleichzeitig');
+    await expect(info).not.toHaveAttribute('title', /.+/);
     await expect(page.locator('.bahn[data-col="Erledigt"] .info')).toHaveCount(0);
     expect(k.lies('boards/entwicklung.md')).toContain('column-notes:\n  In Arbeit: höchstens zwei gleichzeitig\n');
   });

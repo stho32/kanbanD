@@ -23,7 +23,7 @@ const QUER_ERLAUBT = '.bahnen, .leg, .wbs-tabelle, .best-scroll, .ko-scroll, .re
  * und ein Diagrammpunkt (der besteht über ein gleichwertiges Ziel, siehe gleichwertigBesteht).
  */
 const ZIELE = 'button, select, input:not([type=hidden]), textarea, a.btn, summary, [role=button], [role=checkbox], [role=radio], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=tab], [role=switch], a[href], '
-  + 'label:has(> input:is([hidden], [type=file])), [data-act]';
+  + 'label:has(> input:is([hidden], [type=file])), [data-act], [data-tip]';
 
 function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   const oberste = [...document.querySelectorAll('[role=dialog], [role=menu], #pop')].filter(e => !e.closest('[inert]')).at(-1);

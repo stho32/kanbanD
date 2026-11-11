@@ -85,15 +85,22 @@ test.describe('R00097', () => {
     const zeichen = spalte => page.locator(`.bahn[data-col="${spalte}"] .bahn-kopf [role="img"]`);
     for (const runde of ['geladen', 'neu geladen']) {
       await expect(zeichen('Eingang'), runde).toHaveAttribute('aria-label', MENSCH);
-      await expect(zeichen('Eingang')).toHaveAttribute('title', MENSCH);
       await expect(zeichen('In Arbeit')).toHaveAttribute('aria-label', AGENT);
-      await expect(zeichen('In Arbeit')).toHaveAttribute('title', AGENT);
       await expect(zeichen('Erledigt')).toHaveCount(0);
       if (runde === 'geladen') await page.reload();
     }
     await expect(page.getByRole('img', { name: MENSCH })).toBeVisible();
-    expect(await zeichen('Eingang').evaluate(e => [e.tabIndex, e.hasAttribute('tabindex')])).toEqual([-1, false]);
-    expect(await zeichen('Eingang').boundingBox()).toMatchObject({ width: 14, height: 14 });
+    // R00119: das Eigentümer-Zeichen ist jetzt Auslöser des Erklärtextes und darum in der Tab-Folge; sein Maß erreicht --kd-ziel
+    expect(await zeichen('Eingang').evaluate(e => [e.tabIndex, e.hasAttribute('tabindex')])).toEqual([0, true]);
+    await expect(zeichen('Eingang')).not.toHaveAttribute('title', /.+/);
+    // Die Trefferfläche zählt (ADR-0012 Regel 3): das gezeichnet kleine Zeichen trägt bei feinem Zeiger einen Trefferhof.
+    const zielmass = await zeichen('Eingang').evaluate(el => {
+      const r = el.getBoundingClientRect(), nach = getComputedStyle(el, '::after'), px = w => Number.parseFloat(w) || 0;
+      const hof = nach.content === '""' && nach.position === 'absolute';
+      return { breite: r.width - (hof ? px(nach.left) + px(nach.right) : 0), hoehe: r.height - (hof ? px(nach.top) + px(nach.bottom) : 0) };
+    });
+    expect(zielmass.breite, 'Zielgröße fein').toBeGreaterThanOrEqual(24);
+    expect(zielmass.hoehe, 'Zielgröße fein').toBeGreaterThanOrEqual(24);
     // Kontrast gegen den Kopf (--kd-sunken) und den Kopf über der Grenze, in beiden Themen
     const kontrast = async () => {
       const sunken = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--kd-sunken'));
