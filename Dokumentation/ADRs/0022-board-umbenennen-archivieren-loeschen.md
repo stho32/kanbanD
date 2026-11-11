@@ -116,7 +116,7 @@ Archivierte Boards wandern nach `boards/archiv/<slug>.md`; Zurückholen verschie
 
 - [ ] Anforderung aus Karte #35 nach dieser ADR (Vorschlag im Bericht an den Director).
 - [ ] WBS: neue Interaction unter D0002 (über den planner).
-- [ ] ADR-0022 an den Bausteinen A00003/A00004/A00005/A00006/A00007 und am Aspekt X00001 verlinken (Section `Entscheidungen`).
+- [x] ADR-0022 an den Bausteinen A00003/A00004/A00005/A00006/A00007 und am Aspekt X00001 verlinken (Section `Entscheidungen`). *(erledigt 2026-11-11, [DOC]: A00003–A00007 unter `Entscheidungen`; am Aspekt X00001 im Löschweg-Absatz verlinkt — Aspekte führen die fünf Sections Hausantwort/Systemantwort/Abweichungen/Offene Fragen/Notizen, keine `Entscheidungen`-Section)*
 
 ## Offene Fragen
 

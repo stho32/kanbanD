@@ -38,6 +38,7 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 - [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md) — Soll: `Einstellung { Grenze, Eigentuemer }` liegt im Modell, `Fehler::EinstellungVerboten` verweist darauf
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): Typ `Kosten { waehrung, basis, wert: Betrag | Spanne | Positionen }` in ganzen Cent mit einem prüfenden Konstruktor für Format und API
 - [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — gebaut (#12, R00112, Zweig `karte/12`, `9d246a3`): `Board::aufnehmen(nummer, spalte, index)` legt an `index` ein, gekappt auf die Länge der Spalte, ohne `index` unten
+- [ADR-0022: Board umbenennen, archivieren, löschen](../ADRs/0022-board-umbenennen-archivieren-loeschen.md) — gebaut (#35, R00128, `a318c3b`): `Board` bekommt `archiviert: Option<String>`; der Slug bleibt die Identität (Dateiname, URL, Cache-Schlüssel), nur der Titel ändert sich; `Board::abnehmen` nimmt eine Zeile aus allen Spalten heraus
 
 ## Offene Fragen
 

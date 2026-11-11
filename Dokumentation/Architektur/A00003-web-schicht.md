@@ -36,6 +36,7 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 - [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md)
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `cost` in `Aufgabenaenderung` als rohes JSON, damit jeder Fehler 400 statt 422 ist
 - [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — gebaut (#12, R00112, Zweig `karte/12`, `9d246a3`): `POST /api/boards/{slug}/aufgaben` nimmt optional `index`, `POST /api/aufgaben/{nr}/teilaufgaben` optional `position` und `erledigt`. Beide Parameter sind additiv; ohne sie bleibt das Verhalten gleich
+- [ADR-0022: Board umbenennen, archivieren, löschen](../ADRs/0022-board-umbenennen-archivieren-loeschen.md) — gebaut (#35, R00128, `4549a12`): `PATCH /api/boards/{slug}` ändert Titel und/oder Archiv, `DELETE /api/boards/{slug}` entfernt Board-Datei und Berichte-Cache; `GET /api/boards` und `zustand.boards` lassen Archivierte weg, `?archivierte=ja` nimmt sie auf; Agent bei Archivieren/Löschen 403 (R00097/R00120), defektes Board 423
 
 ## Offene Fragen
 

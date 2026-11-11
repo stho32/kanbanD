@@ -32,6 +32,8 @@ Das Format wandelt Markdown mit YAML-Frontmatter rein in Modelldaten um, in beid
 ## Entscheidungen
 
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `cost` liest Geldwerte streng aus dem Zahltext in Cent und schreibt sie kanonisch mit zwei Nachkommastellen
+- [ADR-0022: Board umbenennen, archivieren, löschen](../ADRs/0022-board-umbenennen-archivieren-loeschen.md) — gebaut (#35, R00128, `a318c3b`): das Board-Frontmatter liest und schreibt `archived: <JJJJ-MM-TT>`; ein ungültiges Datum ist ein `Formatfehler` (wie `start`), der `---`-Block erscheint auch, wenn nur `archived` gesetzt ist
+- [ADR-0024: Aufgabe endgültig löschen](../ADRs/0024-aufgabe-endgueltig-loeschen-datei-entfernen-ein-commit.md) — gebaut (#36, R00141, `2bf636e`): **kein Formatwechsel** — die Aufgabendatei entfällt ganz, jede betroffene Board-Datei verliert eine Zeile, sonst bleibt die Board-Form (das unbeteiligte Board byte-gleich)
 
 ## Offene Fragen
 
