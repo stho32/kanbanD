@@ -8,7 +8,7 @@ datum: 2026-11-11
 
 ## Beschreibung
 
-Ein neuer Bericht im Menü „Berichte“ zeigt den **Durchsatz** eines Boards als **Balkendiagramm**: je Kalenderperiode (Tag, Woche oder Monat) ein Balken, dessen Höhe die Zahl der Aufgaben ist, die in dieser Periode das **Ziel** erreicht haben. Ziel ist die **Abschlussspalte** (bei einem an eine Anwendung gebundenen Board: die **letzte Phase**) — dieselbe Bedeutung von „erledigt“, die auch die Prognose („Wie lange noch“) und das Fever Chart ohne eigene Zielwahl verwenden. Eine gestrichelte **Durchsatz-Rate** (Ø je Periode) macht das Niveau lesbar, statt es aus vielen Balken abzulesen. So beantwortet der Bericht die Frage „**wie viel geht durch**“ für einen Zeitraum, die bisher nur als eine Zahl in der Prognose verrechnet wird (`web/berichte.js:311`, „Durchsatz Ø … je Kalendertag“).
+Ein neuer Bericht im Menü „Berichte“ zeigt den **Durchsatz** eines Boards als **Balkendiagramm**: je Kalenderperiode (Tag, Woche oder Monat) ein Balken, dessen Höhe die Zahl der Aufgaben ist, die in dieser Periode das **Ziel** erreicht haben. Ziel ist die **Abschlussspalte** (bei einem an eine Anwendung gebundenen Board: die **letzte Phase**) — dieselbe Bedeutung von „erledigt“, die auch die Prognose („Wie lange noch“) und das Fever Chart ohne eigene Zielwahl verwenden. Eine gestrichelte **Durchsatz-Rate** (Ø je Periode) macht das Niveau lesbar, statt es aus vielen Balken abzulesen. So beantwortet der Bericht die Frage „**wie viel geht durch**“ für einen Zeitraum; der Durchsatz stand bisher nur als eine Zahl in der Prognose (`web/berichte.js:311`, „Durchsatz Ø … je Kalendertag“).
 
 Der Bericht rechnet im **Browser** aus den Bewegungen des Boards (`GET /api/berichte/bewegungen`, R00042), wie Burndown, Durchlaufzeit und Bestand; die gemeinsame Filterleiste der Berichte (R00081) gilt. Er schreibt nichts und braucht keine neue Ablage und keinen neuen Endpunkt.
 
@@ -66,7 +66,7 @@ Burndown beantwortet „wie viel ist noch offen“, die Prognose „wann sind wi
 
 ## Akzeptanzkriterien
 
-**Grundbestand für die Beispiele** (über die API herstellbar): Board „fabrik“ mit den Spalten „Eingang“, „In Arbeit“, „Fertig“ (letzte Spalte = Abschlussspalte). Bewegungen aus Commits: 2026-11-02 (Mo) #1 in „Eingang“ angelegt; 2026-11-03 #2 in „Eingang“ angelegt, #1 nach „In Arbeit“; 2026-11-04 #1 nach „Fertig“, #3 in „Eingang“ angelegt; 2026-11-05 #2 nach „Fertig“; 2026-11-06 #3 nach „In Arbeit“; 2026-11-09 (Mo) #4 in „Eingang“ angelegt, #3 nach „Fertig“; 2026-11-10 #2 vom Board genommen; 2026-11-11 #4 nach „Fertig“. In der Filterleiste steht der Zeitraum 02.11.–11.11.2026 (Auf­lösung Woche, Ziel Abschlussspalte).
+**Grundbestand für die Beispiele** (über die API herstellbar): Board „fabrik“ mit den Spalten „Eingang“, „In Arbeit“, „Fertig“ (letzte Spalte = Abschlussspalte). Bewegungen aus Commits: 2026-11-02 (Mo) #1 in „Eingang“ angelegt; 2026-11-03 #2 in „Eingang“ angelegt, #1 nach „In Arbeit“; 2026-11-04 #1 nach „Fertig“, #3 in „Eingang“ angelegt; 2026-11-05 #2 nach „Fertig“; 2026-11-06 #3 nach „In Arbeit“; 2026-11-09 (Mo) #4 in „Eingang“ angelegt, #3 nach „Fertig“; 2026-11-10 #2 vom Board genommen; 2026-11-11 #4 nach „Fertig“. In der Filterleiste steht der Zeitraum 02.11.–11.11.2026 (Auflösung Woche, Ziel Abschlussspalte).
 
 ### Rechnung
 - [ ] Gegeben der Grundbestand, wenn der Bericht mit der Auflösung „je Woche“ geöffnet wird, dann hat er genau zwei Perioden (KW45 02.–08.11, KW46 09.–15.11.) mit den Zahlen 2 und 2, „Gesamt 4“, „Ø 2,0 je Woche“ und „2 Perioden“ (#1 am 04.11., #2 am 05.11., #3 am 09.11., #4 am 11.11.)
