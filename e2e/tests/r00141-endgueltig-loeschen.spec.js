@@ -1,7 +1,7 @@
 // R00141 Aufgabe endgültig löschen (I0129, #36, ADR-0024); Artboard D0003 #endgueltig-loeschen (PO-freigegeben).
 // Der Server-Teil ist in tests/aufgabe_loeschen.rs geprüft; die Rückfrage ist die geteilte alertdialog-Komponente aus R00128.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, thema } = require('./hilfen');
 
 const grundbestand = (zusatz = {}) => ({
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n## Erledigt\n',
@@ -137,6 +137,26 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
     const warn = await page.evaluate(() => { const s = getComputedStyle(document.documentElement).getPropertyValue('--kd-warn').trim(); const d = document.createElement('span'); d.style.color = s; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
     expect(farbe).toBe(warn);
     await expect(page.getByRole('menuitem', { name: 'Umbenennen' })).toHaveCount(1, 'Umbenennen bleibt in der vorderen Gruppe');
+  });
+
+  test('US-3/D0003: Kopf-Auslöser beschriftet, per aria-hidden-Trenner abgesetzt, in --kd-warn (1280/414/320, hell/dunkel)', async ({ page }) => {
+    // Artboard D0003 #endgueltig-loeschen + PO #36 (Z. 196): beschriftet (Symbol + Text, `.btn`), 1-px-`.el-trenner`
+    // vor „Archivieren“ abgesetzt, Warnfarbe `--kd-warn`, Titel nennt die Wirkung.
+    await oeffneFenster(page, 1);
+    const knopf = page.locator('#fenster [data-act="endgueltig-loeschen"]');
+    for (const t of ['light', 'dark']) {
+      await thema(page, t);
+      const warn = await page.evaluate(() => { const d = document.createElement('span'); d.style.color = 'var(--kd-warn)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
+      for (const breite of [1280, 414, 320]) {
+        await page.setViewportSize({ width: breite, height: 800 });
+        await expect(knopf, `${breite}/${t}: sichtbar`).toBeVisible();
+        await expect(knopf, `${breite}/${t}: beschriftet`).toContainText('Endgültig löschen');
+        expect(await knopf.evaluate(el => getComputedStyle(el).color), `${breite}/${t}: --kd-warn`).toBe(warn);
+        const trenner = await knopf.evaluate(el => { const v = el.previousElementSibling; return v && { klasse: v.classList.contains('el-trenner'), aria: v.getAttribute('aria-hidden'), breite: parseFloat(getComputedStyle(v).width), sichtbar: v.getClientRects().length > 0 }; });
+        expect(trenner, `${breite}/${t}: Trenner`).toBeTruthy();
+        expect(trenner.klasse && trenner.aria === 'true' && trenner.breite === 1 && trenner.sichtbar, `${breite}/${t}: 1-px-Trenner aria-hidden unmittelbar davor`).toBe(true);
+      }
+    }
   });
 });
 
