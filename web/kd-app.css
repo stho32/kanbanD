@@ -299,6 +299,17 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .ko-tab tr.ko-summe>*{border-top:2px solid var(--kd-line-strong);border-bottom:0;background:var(--kd-bg);font-weight:600;color:var(--kd-text)}
 .ko-basis{margin:8px 0 0;font-size:12px;color:var(--kd-text)}
 .ko-hin{margin:2px 0 0;font-size:12px;color:var(--kd-muted)}
+/* Karten-Verlauf (R00123, Artboard D0003 #reiter-verlauf): Tabelle nur lesend, Zeit mit Jahr; Querscroll-Rahmen tastaturerreichbar */
+.vh-panel{gap:0;min-width:0}
+.vh-tab th:first-child,.vh-tab td:first-child{white-space:nowrap}
+.vh-hin{margin:8px 0 0;font-size:12px;color:var(--kd-muted)}
+.vh-laedt{margin:0;font-size:13px;color:var(--kd-muted)}
+.vh-leer{margin:0 0 8px;font-size:13px;color:var(--kd-text)}
+/* Datums-Trenner in den Spalten (R00124): dünne Linie mit Beschriftung; die Linie ist Verzierung (--kd-line), die Information trägt die Beschriftung (--kd-text) */
+.dtrenn{flex:none;display:flex;align-items:center;gap:var(--kd-s2);padding:3px 4px;color:var(--kd-text);font-size:11px;font-weight:600;letter-spacing:.04em}
+.dtrenn-l{flex:1;height:1px;background:var(--kd-line)}
+.dtrenn-t{white-space:nowrap}
+.as.dates{height:auto;min-height:var(--kd-ziel);padding:0 var(--kd-s3)}
 /* Kostenbericht (R00105, Artboard D0006 „Kostenbericht“) */
 .kost-summen{display:flex;flex-direction:column;gap:10px;padding:16px var(--kd-s6) 18px}
 .kost-zeile{margin:0;min-width:0;font-size:13px;line-height:1.5;color:var(--kd-text)}

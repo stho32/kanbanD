@@ -245,8 +245,8 @@ async function sichtLaden(zustand) {
     // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
     api('GET', '/api/boards?archivierte=ja'),
   ]);
-  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042)
-  const bew = /^berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber)$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
+  // Board-Berichte rechnen im Browser aus den Spaltenwechseln (R00042); das Board selbst braucht sie für die Datums-Trenner (R00124)
+  const bew = /^(board|berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber))$/.test(view) && slug ? await api('GET', '/api/berichte/bewegungen?board=' + encodeURIComponent(slug)) : null;
   // Fever Chart (R00078): der Cache der gerechneten Tage
   const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
@@ -357,14 +357,22 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
     const datei = await api('GET', '/api/aufgaben/' + nummer);
     const anhaenge = await api('GET', `/api/aufgaben/${nummer}/anhaenge`);
     const eintritt = await api('GET', `/api/aufgaben/${nummer}/wbs-effects`).catch(() => []);
+    // Der Reiter „Verlauf“ (R00123) rechnet bei jeder Änderung neu; ein Fehler trifft nur den Reiter, nicht die Datei
+    let verlauf = null, verlaufFehler = null;
+    if (S.ui.tab === 'verlauf') {
+      try { verlauf = await api('GET', `/api/aufgaben/${nummer}/verlauf`); }
+      catch (g) { verlaufFehler = g.message; }
+    }
     if (!aktuell()) return;
     zuletztFenster = start;
     S.ui.datei = datei; S.ui.anhaenge = anhaenge; S.ui.eintritt = eintritt;
+    S.ui.verlauf = verlauf; S.ui.verlaufFehler = verlaufFehler;
   } catch (f) {
     if (!aktuell()) return;
     zuletztFenster = start;
     if (f.status === 404) S.ui.offen = null;
     S.ui.datei = null; S.ui.anhaenge = []; S.ui.eintritt = [];
+    S.ui.verlauf = null; S.ui.verlaufFehler = null;
   }
 }
 
@@ -1279,15 +1287,23 @@ async function act(a, arg, wert) {
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
-      case 'tab': u.tab = arg; break;
+      case 'tab':
+        u.tab = arg;
+        // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
+        if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
+        break;
       case 'blaettern': {
         const reihe = sichtbareReihe();
         if (!reihe.length) break;
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
         u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null;
-        // bis die Datei der neuen Aufgabe übernommen ist, zeigt das Fenster nichts von der vorigen (R00110 Nacharbeit 1)
+        // bis die Datei der neuen Aufgabe übernommen ist, zeigt das Fenster nichts von der vorigen (R00110 Nacharbeit 1);
+        // bei gewähltem Verlauf-Reiter ebenso die Tabelle (R00123)
         u.datei = null; u.anhaenge = []; u.eintritt = [];
+        u.verlauf = null; u.verlaufFehler = null;
+        // R00123 (M1): bei gewähltem Verlauf-Reiter zuerst die leere Tabelle zeichnen — nie Zeilen der vorigen Aufgabe
+        if (u.tab === 'verlauf') render();
         await dateiLaden();
         break;
       }
@@ -1808,9 +1824,10 @@ async function act(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '' })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
       case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
+      case 'col-dates': { const sp = u.setup.spalten[+arg]; sp.datumsTrenner = !sp.datumsTrenner; break; }
       case 'setup-weg': u.setup = null; break;
       case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
       case 'p-still': { const p = u.einr.personen[+arg]; p.aktiv = !p.aktiv; break; }
@@ -1886,14 +1903,14 @@ async function act(a, arg, wert) {
         const name = (wert || '').trim();
         if (!name) break;
         const d = u.setup.spalten;
-        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [], notiz: '', farbe: '' });
+        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [], notiz: '', farbe: '', datumsTrenner: false });
         u.fokus = '#col-new';
         break;
       }
       case 'setup-ok': {
         if (ichNoetig()) break;
         try {
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
+          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map(sp => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, datums_trenner: sp.datumsTrenner, ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
           if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
           u.setup = null;
           return laden();

@@ -221,8 +221,8 @@ function sichtbareReihe() {
 
 /* Reiterleiste des Aufgabenfensters (R00105, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
    Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. */
-const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei'], ['kosten', 'Kosten']];
-/** Reiter einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105). */
+const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['verlauf', 'Verlauf']];
+/** Reiter einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105); „Verlauf“ ist immer sichtbar (R00123). */
 const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || a.cost);
 const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
 function vReiterleiste(a, gewaehlt) {
@@ -279,6 +279,7 @@ function vFenster() {
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
   if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+  if (u.tab === 'verlauf') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('verlauf')}>${vVerlaufPanel()}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
   // Titel liest mehrzeilig (ADR-0007 N2): Lesediv nach Muster besch-lesen, Bearbeiten einzeilig im Zustand titelBearbeiten
   const titelFeld = u.titelBearbeiten
     ? `<input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel">`
@@ -309,8 +310,30 @@ function vDurchlaeufe(a) {
   const zeilen = ds.map(d => `<tr><td class="mono">${esc(zeitpunktKurz(d.zeitpunkt, isoD(Date.now())))}</td><td>${esc(d.phase)}</td><td><span class="erg ${esc(d.ergebnis)}">${esc(d.ergebnis)}</span></td><td>${pk(d.wer)}${esc(per(d.wer).name)}</td><td class="r mono">${d.dauer_minuten == null ? '–' : hm(d.dauer_minuten * 6e4)}</td><td>${esc(d.text)}</td></tr>`).join('');
   return `<div class="abs" id="durchlaeufe"><h3>DURCHLÄUFE <span class="mono">kanbanD-runs · ${ds.length}</span></h3><table class="pt dicht dl-tab"><thead><tr><th>Zeit</th><th>Phase</th><th>Ergebnis</th><th>Wer</th><th class="r">Dauer</th><th>Text</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
 }
-const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
-function vAnhaenge(a) {
+/** Der Karten-Verlauf (R00123): nur lesend, aus der Git-Geschichte gerechnet; Tabelle neueste oben, Zeit mit Jahr. */
+const VERLAUF_ART = { erstellt: 'erstellt', bewegt: 'bewegt', archiviert: 'archiviert', zurueckgeholt: 'zurückgeholt', geloescht: 'gelöscht' };
+function vVerlaufWeg(e) {
+  if (e.art !== 'bewegt') return '—';
+  const von = e.von == null ? 'auf das Board gelegt' : esc(e.von);
+  const nach = e.nach == null ? 'vom Board genommen' : esc(e.nach);
+  return `${von} → ${nach}`;
+}
+/** „Wer“: Kürzel und Name wie die Durchläufe-Tabelle; ein fremder Autor (keine Person) erscheint mit seinem Git-Namen. */
+function vVerlaufWer(wer) {
+  const p = personen().find(p => p.kuerzel === wer);
+  return p ? `${pk(wer)}${esc(p.name)}` : esc(wer);
+}
+function vVerlaufPanel() {
+  const u = S.ui;
+  if (u.verlaufFehler) return `<div class="mod-main vh-panel"><p class="fehl" role="alert">${esc(u.verlaufFehler)}</p><p class="vh-hin">liest nur · gerechnet aus der Git-Geschichte</p></div>`;
+  if (!u.verlauf) return `<div class="mod-main vh-panel"><p class="vh-laedt" role="status">lädt …</p></div>`;
+  const ds = u.verlauf.eintraege || [];
+  const hin = '<p class="vh-hin">liest nur · gerechnet aus der Git-Geschichte</p>';
+  if (!ds.length) return `<div class="mod-main vh-panel"><p class="vh-leer">Kein Verlauf — diese Aufgabe steht noch in keiner Fassung.</p>${hin}</div>`;
+  const zeilen = ds.map(e => `<tr><td class="mono">${esc(zeitpunktLang(e.zeitpunkt))}</td><td>${esc(VERLAUF_ART[e.art] || e.art)}</td><td>${vVerlaufWeg(e)}</td><td>${e.art === 'bewegt' && e.board ? esc(e.board) : '—'}</td><td>${vVerlaufWer(e.wer)}</td></tr>`).join('');
+  return `<div class="mod-main vh-panel"><div class="bericht-rahmen" tabindex="0" role="group" aria-label="Verlauf"><table class="pt dicht vh-tab"><thead><tr><th scope="col">Zeit</th><th scope="col">Art</th><th scope="col">von → nach</th><th scope="col">Board</th><th scope="col">Wer</th></tr></thead><tbody>${zeilen}</tbody></table></div>${hin}</div>`;
+}
+const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';function vAnhaenge(a) {
   const liste = S.ui.anhaenge || [];
   return `<div class="abs anh" id="anhaenge"><h3>ANHÄNGE <span class="mono">${esc(a.datei.replace(/\.md$/, ''))}/ · ${liste.length}</span></h3>${liste.map(x => `<div class="anh-z"><a href="/api/aufgaben/${a.nummer}/anhaenge/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${esc(x.name)}</a><span class="mono muted">${groesse(x.groesse)}</span><button class="btn btn-sym x" data-act="anhang-weg" data-arg="${esc(x.name)}" aria-label="Anhang ${esc(x.name)} entfernen"${S.ui.anhangLiest === x.name ? ' disabled aria-busy="true"' : ''}>✕</button></div>`).join('')}<label class="inp add anh-wahl">+ Datei wählen oder hierher ziehen<input type="file" id="anhang-datei" multiple hidden aria-label="Anhang hinzufügen"></label></div>`;
 }
@@ -807,20 +830,34 @@ function vLaneZu(sp, i, zahl, ueber, farbe) {
   const beschreibung = EIGENTUEMER_SYMBOL[sp.eigentuemer] ? `<span class="vh" id="eig-erklaer-${i}">${esc(EIGENTUEMER_TEXT[sp.eigentuemer])}</span>` : '';
   return `<section class="bahn zu${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><span class="n">${zahl}</span></div><button class="flaeche zu-streifen" aria-expanded="false" data-act="spalte-auf" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}"${erklaerung} aria-label="${esc(sp.name)} aufklappen${EIGENTUEMER_STREIFEN[sp.eigentuemer] ? `, ${EIGENTUEMER_STREIFEN[sp.eigentuemer]}` : ''}" title="${esc(titel)}">${vEigentuemerZeichen(sp.eigentuemer, true)}<span class="zu-name">${esc(sp.name)}</span>${beschreibung}</button></section>`;
 }
+/** Der Datums-Trenner (R00124): dünne Linie mit Beschriftung, `role="listitem"` in der Liste der Spalte, nicht bedienbar. */
+const vDatumsTrenner = text => `<div class="dtrenn" role="listitem"><span class="dtrenn-l" aria-hidden="true"></span><span class="dtrenn-t">— ${esc(text)} —</span><span class="dtrenn-l" aria-hidden="true"></span></div>`;
 function vLane(sp, i, alle) {
   const letzte = i === alle.length - 1;
   const archiv = imArchiv(), gefiltert = S.ui.filter.trim() !== '' && !(archiv && S.ui.filter.trim() === 'is:archived') || S.ui.bereich !== 'alle';
-  const sichtbar = [], um = umfeld();
+  const um = umfeld();
   // „Signale oben“ (R00088) ändert nur die Anzeige; die Board-Datei behält ihre Reihenfolge
   const reihe = S.ui.signaleOben ? signaleOben(sp.aufgaben, aufgabe) : sp.aufgaben;
-  const karten = reihe.map(nr => { const a = aufgabe(nr); return a ? (!!a.archiviert === archiv && passt(a, S.ui.filter, um) ? (sichtbar.push(a), vKarte(a, letzte)) : '') : archiv || gefiltert ? '' : defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr); }).filter(Boolean);
+  // Sichtbare Karten in gezeichneter Reihenfolge — Grundlage der Tagesgruppen der Datums-Trenner (R00124)
+  const sichtbar = reihe.map(nr => { const a = aufgabe(nr); return a && !!a.archiviert === archiv && passt(a, S.ui.filter, um) ? a : null; }).filter(Boolean);
+  // `column-dates`: der wirksame Standard ist die Abschlussspalte an, sonst aus (R00124); im Archiv keine Trenner
+  const trennerAn = sp.datums_trenner == null ? letzte : sp.datums_trenner;
+  const trenner = trennerAn && !archiv ? datumsTrenner(sp.name, sichtbar.map(a => a.nummer), S.bew, um.heute) : new Map();
+  const karten = reihe.map(nr => {
+    const a = aufgabe(nr);
+    if (!a) return archiv || gefiltert ? null : { nr, html: defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr) };
+    if (!!a.archiviert !== archiv || !passt(a, S.ui.filter, um)) return null;
+    return { nr, html: vKarte(a, letzte) };
+  }).filter(Boolean);
+  // Tagesgruppen-Trenner (R00124) vor der ersten sichtbaren Karte ihrer Gruppe; der Trenner zählt nicht als Karte
+  const inhalt = karten.map(k => (k.nr != null && trenner.get(k.nr) ? vDatumsTrenner(trenner.get(k.nr)) : '') + k.html).join('');
   const archivZahl = letzte && !archiv ? archivierteDesBoards().length : 0;
   const ueber = sp.grenze && karten.length > sp.grenze;
   const farbe = sp.farbe ? ` style="--sf:${esc(sp.farbe)}"` : '';
   if (spaltenZu().includes(sp.name)) return vLaneZu(sp, i, karten.length, ueber, farbe);
   const boardLeer = i === 0 && !archiv && !gefiltert && S.board.spalten.every(s => !s.aufgaben.length);
   const leerText = boardLeer ? '<div class="leer hilfe-leer" role="listitem">Noch keine Karten.<br>Taste <kbd>n</kbd> oder „+“ im Spaltenkopf öffnet „Neue Aufgabe“ — eine eingefügte Liste legt mehrere an, Kürzel wie <span class="mono">@kürzel</span> oder <span class="mono">due:morgen</span> setzen Felder.</div>' : '';
-  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" aria-expanded="true" data-act="spalte-zu" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${vEigentuemerZeichen(sp.eigentuemer, false, sp.name)}${sp.notiz ? ` <span class="info" tabindex="0" data-tip="info:${esc(sp.name)}" data-halt="info:${esc(sp.name)}" aria-label="${esc('Kommentar: ' + sp.notiz)}">ⓘ</span>` : ''}${letzte ? ` <span class="ok" tabindex="0" data-tip="ok:${esc(sp.name)}" data-halt="ok:${esc(sp.name)}" aria-label="Abschlussspalte">✓</span>` : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" tabindex="0" data-tip="ph:${esc(sp.name)}" data-halt="ph:${esc(sp.name)}" aria-label="${esc('Phase: ' + sp.phase)}">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v" tabindex="0" data-tip="grenze:${esc(sp.name)}" data-halt="grenze:${esc(sp.name)}" aria-label="${esc(grenzeTipp(sp.grenze, ueber))}">Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}${vKopfSignale(sichtbar, letzte)}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche" role="list" data-halt="spalte:${esc(sp.name)}">${karten.join('') || leerText || `<div class="leer" role="listitem">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach" role="listitem"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
+  return `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" data-col="${esc(sp.name)}"${farbe}>${vSpaltenUeberschrift(sp)}<div class="bahn-kopf${ueber ? ' ueber' : ''}" tabindex="0" data-kopf="${i}" data-halt="kopf:${esc(sp.name)}" title="Rechtsklick: Menü der Spalte"><button class="bk-name" aria-expanded="true" data-act="spalte-zu" data-arg="${esc(sp.name)}" data-halt="klapp:${esc(sp.name)}" aria-label="${esc(sp.name)} zuklappen" title="Klick klappt die Spalte zusammen"><span class="bk-text">${esc(sp.name)}</span><svg class="i bk-klapp" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"></path></svg></button>${vEigentuemerZeichen(sp.eigentuemer, false, sp.name)}${sp.notiz ? ` <span class="info" tabindex="0" data-tip="info:${esc(sp.name)}" data-halt="info:${esc(sp.name)}" aria-label="${esc('Kommentar: ' + sp.notiz)}">ⓘ</span>` : ''}${letzte ? ` <span class="ok" tabindex="0" data-tip="ok:${esc(sp.name)}" data-halt="ok:${esc(sp.name)}" aria-label="Abschlussspalte">✓</span>` : ''}${sp.phase && sp.phase !== sp.name ? ` <span class="v ph" tabindex="0" data-tip="ph:${esc(sp.name)}" data-halt="ph:${esc(sp.name)}" aria-label="${esc('Phase: ' + sp.phase)}">${esc(sp.phase)}</span>` : ''}${sp.grenze ? ` <span class="v" tabindex="0" data-tip="grenze:${esc(sp.name)}" data-halt="grenze:${esc(sp.name)}" aria-label="${esc(grenzeTipp(sp.grenze, ueber))}">Grenze ${sp.grenze}${ueber ? ' · überschritten' : ''}</span>` : ''}${vKopfSignale(sichtbar, letzte)}<span class="n">${karten.length}</span>${archiv ? '' : `<button class="kopf-plus" data-act="add" data-arg="${esc(sp.name)}" title="Neue Aufgabe in „${esc(sp.name)}“ (n)" aria-label="Neue Aufgabe in ${esc(sp.name)}">+</button>`}</div><div class="flaeche" role="list" data-halt="spalte:${esc(sp.name)}">${inhalt || leerText || `<div class="leer" role="listitem">${gefiltert ? 'keine Treffer' : 'leer'}</div>`}${archivZahl ? `<div class="nach" role="listitem"><a href="#" data-act="archiv-an">Archiv (${archivZahl})</a></div>` : ''}</div></section>`;
 }
 const archivierteDesBoards = () => S.board ? S.board.spalten.flatMap(sp => sp.aufgaben).filter(n => { const a = aufgabe(n); return a && a.archiviert; }) : [];
 function vBoard() {
@@ -1644,7 +1681,9 @@ function setupText(d) {
   const pruefend = d.spalten.filter(s => (s.pruefungen || []).length);
   const kopf = (grenzen.length ? 'limits:\n' + grenzen.map(s => `  ${yamlSkalar(s.name)}: ${+s.grenze}`).join('\n') + '\n' : '')
     + (pruefend.length ? 'column-checks:\n' + pruefend.map(s => `  ${yamlSkalar(s.name)}: [${s.pruefungen.map(yamlSkalar).join(', ')}]`).join('\n') + '\n' : '')
-    + [['column-notes', 'notiz'], ['column-colors', 'farbe']].map(([k, f]) => (m => m.length ? `${k}:\n` + m.map(s => `  ${yamlSkalar(s.name)}: ${yamlSkalar(s[f].trim())}`).join('\n') + '\n' : '')(d.spalten.filter(s => (s[f] || '').trim()))).join('');
+    + [['column-notes', 'notiz'], ['column-colors', 'farbe']].map(([k, f]) => (m => m.length ? `${k}:\n` + m.map(s => `  ${yamlSkalar(s.name)}: ${yamlSkalar(s[f].trim())}`).join('\n') + '\n' : '')(d.spalten.filter(s => (s[f] || '').trim()))).join('')
+    // Datums-Trenner (R00124): die Vorschau führt `column-dates` mit, das Geschriebene stimmt damit überein
+    + 'column-dates:\n' + d.spalten.map(s => `  ${yamlSkalar(s.name)}: ${s.datumsTrenner}`).join('\n') + '\n';
   const eigner = d.spalten.filter(eigentuemerInDatei);
   const besitz = eigner.length ? 'column-owner:\n' + eigner.map(s => `  ${yamlSkalar(s.name)}: ${yamlSkalar(eigentuemerInDatei(s))}`).join('\n') + '\n' : '';
   const bindung = Array.isArray(d.anwendungen) ? `applications: [${d.anwendungen.map(yamlSkalar).join(', ')}]\n` : '';
@@ -1669,7 +1708,7 @@ function vEigentuemerWahl(sp, i) {
 }
 function vSetup() {
   const d = S.ui.setup;
-  const bahnen = d.spalten.map((sp, i) => `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" style="--bw:236px${sp.farbe ? `;--sf:${esc(sp.farbe)}` : ''}"><div class="bk-ed"><div class="r"><input class="inp" data-sf="name" data-i="${i}" value="${esc(sp.name)}" aria-label="Spaltenname ${i + 1}"><button class="btn btn-sym" data-act="col-l" data-arg="${i}"${i === 0 ? ' disabled' : ''} title="nach links">←</button><button class="btn btn-sym" data-act="col-r" data-arg="${i}"${i === d.spalten.length - 1 ? ' disabled' : ''} title="nach rechts">→</button><button class="btn btn-sym" data-act="col-del" data-arg="${i}"${sp.n ? ` disabled title="enthält ${sp.n} Karten – erst leeren"` : ' title="entfernen"'} aria-label="Spalte ${esc(sp.name)} entfernen">✕</button></div><div class="r2"><span>${sp.n} Karten</span>${sp.alt && sp.alt !== sp.name ? `<span class="mono">war: ${esc(sp.alt)}</span>` : ''}${!sp.alt ? '<span class="mono">neu</span>' : ''}<span style="margin-left:auto">Grenze <input class="inp" data-sf="grenze" data-i="${i}" value="${sp.grenze || ''}" aria-label="Grenze ${esc(sp.name)}" inputmode="numeric"></span></div><div class="r2">${(an => `<button class="as${an ? ' an' : ''}" data-act="col-pruef" data-arg="${i}" aria-pressed="${an}" aria-label="Prüfung wbs-effects-green ${esc(sp.name)}" title="Beim Weiterziehen nach rechts warnen, wenn nicht alle Knoten der Wirkungen grün sind — sperrt nicht">prüft: WBS grün</button>`)((sp.pruefungen || []).includes('wbs-effects-green'))}${(sp.pruefungen || []).filter(n => n !== 'wbs-effects-green').map(n => `<span class="mono" title="unbekannte Prüfung — bleibt erhalten">${esc(n)}</span>`).join('')}</div><div class="r2"><input class="inp kommentar" data-sf="notiz" data-i="${i}" value="${esc(sp.notiz || '')}" placeholder="Kommentar (ⓘ im Kopf)" aria-label="Kommentar ${esc(sp.name)}"></div><div class="r2">Farbe <input type="color" class="farbwahl" data-sf="farbe" data-i="${i}" value="${esc(sp.farbe || '#ffffff')}" aria-label="Farbe ${esc(sp.name)}"><span class="mono">${sp.farbe ? esc(sp.farbe) : 'keine'}</span>${sp.farbe ? `<button class="btn btn-sym" data-act="col-farbe-weg" data-arg="${i}" title="Farbe entfernen" aria-label="Farbe ${esc(sp.name)} entfernen">✕</button>` : ''}</div>${vEigentuemerWahl(sp, i)}</div><div class="flaeche ruhig"></div></section>`).join('');
+  const bahnen = d.spalten.map((sp, i) => `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" style="--bw:236px${sp.farbe ? `;--sf:${esc(sp.farbe)}` : ''}"><div class="bk-ed"><div class="r"><input class="inp" data-sf="name" data-i="${i}" value="${esc(sp.name)}" aria-label="Spaltenname ${i + 1}"><button class="btn btn-sym" data-act="col-l" data-arg="${i}"${i === 0 ? ' disabled' : ''} title="nach links">←</button><button class="btn btn-sym" data-act="col-r" data-arg="${i}"${i === d.spalten.length - 1 ? ' disabled' : ''} title="nach rechts">→</button><button class="btn btn-sym" data-act="col-del" data-arg="${i}"${sp.n ? ` disabled title="enthält ${sp.n} Karten – erst leeren"` : ' title="entfernen"'} aria-label="Spalte ${esc(sp.name)} entfernen">✕</button></div><div class="r2"><span>${sp.n} Karten</span>${sp.alt && sp.alt !== sp.name ? `<span class="mono">war: ${esc(sp.alt)}</span>` : ''}${!sp.alt ? '<span class="mono">neu</span>' : ''}<span style="margin-left:auto">Grenze <input class="inp" data-sf="grenze" data-i="${i}" value="${sp.grenze || ''}" aria-label="Grenze ${esc(sp.name)}" inputmode="numeric"></span></div><div class="r2">${(an => `<button class="as${an ? ' an' : ''}" data-act="col-pruef" data-arg="${i}" aria-pressed="${an}" aria-label="Prüfung wbs-effects-green ${esc(sp.name)}" title="Beim Weiterziehen nach rechts warnen, wenn nicht alle Knoten der Wirkungen grün sind — sperrt nicht">prüft: WBS grün</button>`)((sp.pruefungen || []).includes('wbs-effects-green'))}${(sp.pruefungen || []).filter(n => n !== 'wbs-effects-green').map(n => `<span class="mono" title="unbekannte Prüfung — bleibt erhalten">${esc(n)}</span>`).join('')}</div><div class="r2">${(an => `<button class="as dates${an ? ' an' : ''}" data-act="col-dates" data-arg="${i}" aria-pressed="${an}" aria-label="Datums-Trenner ${esc(sp.name)}" title="Dünne beschriftete Datums-Trenner zwischen den Aufgaben dieser Spalte — nach dem Tag, an dem die Karte in die Spalte kam">Datums-Trenner</button>`)(sp.datumsTrenner)}</div><div class="r2"><input class="inp kommentar" data-sf="notiz" data-i="${i}" value="${esc(sp.notiz || '')}" placeholder="Kommentar (ⓘ im Kopf)" aria-label="Kommentar ${esc(sp.name)}"></div><div class="r2">Farbe <input type="color" class="farbwahl" data-sf="farbe" data-i="${i}" value="${esc(sp.farbe || '#ffffff')}" aria-label="Farbe ${esc(sp.name)}"><span class="mono">${sp.farbe ? esc(sp.farbe) : 'keine'}</span>${sp.farbe ? `<button class="btn btn-sym" data-act="col-farbe-weg" data-arg="${i}" title="Farbe entfernen" aria-label="Farbe ${esc(sp.name)} entfernen">✕</button>` : ''}</div>${vEigentuemerWahl(sp, i)}</div><div class="flaeche ruhig"></div></section>`).join('');
   const neu = `<section class="bahn-neu"><div class="bk-ed"><div class="r"><input class="inp" id="col-new" placeholder="neue Spalte · Enter" data-enter="col-add" aria-label="Neue Spalte"></div><div class="r2">wird vor der Abschlussspalte eingefügt</div></div></section>`;
   return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr">${vBindungFeld(d)}<h2 class="einr-kopf">BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
 }

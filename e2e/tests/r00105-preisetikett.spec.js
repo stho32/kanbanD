@@ -33,12 +33,13 @@ test.describe('R00105', () => {
   test('US-15: Reiterleiste ist eine tablist mit roving tabindex', async ({ page }) => {
     await oeffnen(page);
     const leiste = page.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
-    await expect(leiste.getByRole('tab')).toHaveCount(2);
+    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Verlauf']);
     const inhalt = leiste.getByRole('tab', { name: 'Inhalt' }), datei = leiste.getByRole('tab', { name: 'Datei' });
     await expect(inhalt).toHaveAttribute('aria-selected', 'true');
     await expect(datei).toHaveAttribute('aria-selected', 'false');
     await expect(inhalt).toHaveAttribute('tabindex', '0');
     await expect(datei).toHaveAttribute('tabindex', '-1');
+    await expect(leiste.getByRole('tab', { name: 'Verlauf' })).toHaveAttribute('aria-selected', 'false');
     const panel = await inhalt.getAttribute('aria-controls');
     await expect(page.locator(`#${panel}`)).toHaveAttribute('role', 'tabpanel');
     await expect(page.getByRole('tabpanel')).toHaveCount(1);
@@ -54,23 +55,27 @@ test.describe('R00105', () => {
     await expect(datei).toHaveAttribute('tabindex', '0');
     await expect(inhalt).toHaveAttribute('tabindex', '-1');
     await expect(page.locator('#dateitext')).toContainText('title: vier');
+    const verlauf = page.getByRole('tab', { name: 'Verlauf' });
+    await page.keyboard.press('ArrowRight');
+    await expect(verlauf).toBeFocused();
+    await expect(verlauf).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('ArrowRight');
     await expect(inhalt).toBeFocused();
     await expect(inhalt).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByLabel('Titel bearbeiten', { exact: true })).toHaveText('vier');
     await page.keyboard.press('ArrowLeft');
-    await expect(datei).toBeFocused();
+    await expect(verlauf).toBeFocused();
     await page.keyboard.press('Home');
     await expect(inhalt).toBeFocused();
     await page.keyboard.press('End');
-    await expect(datei).toBeFocused();
-    await expect(datei).toHaveAttribute('aria-selected', 'true');
+    await expect(verlauf).toBeFocused();
+    await expect(verlauf).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('Enter');
-    await expect(datei).toBeFocused();
-    await expect(page.locator('#dateitext')).toBeVisible();
+    await expect(verlauf).toBeFocused();
+    await expect(page.locator('#reiterpanel-verlauf')).toBeVisible();
     await page.keyboard.press(' ');
-    await expect(datei).toBeFocused();
-    await expect(page.locator('#dateitext')).toBeVisible();
+    await expect(verlauf).toBeFocused();
+    await expect(page.locator('#reiterpanel-verlauf')).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #4' })).toBeVisible();
   });
 
@@ -296,7 +301,7 @@ test.describe('R00105 Reiter Kosten', () => {
     const dialog = await fenster(page, 1);
     const datei = k.lies('aufgaben/0001-eins.md'), commits = k.git('rev-list', '--count', 'HEAD');
     const leiste = dialog.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
-    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Kosten']);
+    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Kosten', 'Verlauf']);
     await leiste.getByRole('tab', { name: 'Kosten' }).click();
     await expect(leiste.getByRole('tab', { name: 'Kosten' })).toHaveAttribute('aria-selected', 'true');
     const panel = page.locator('#' + await leiste.getByRole('tab', { name: 'Kosten' }).getAttribute('aria-controls'));
@@ -338,11 +343,11 @@ test.describe('R00105 Reiter Kosten', () => {
 
   test('US-5: ohne Etikett genau zwei Reiter', async ({ page }) => {
     const dialog = await fenster(page, 4);
-    await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei']);
+    await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Verlauf']);
     await expect(dialog.getByText('Kein Preisetikett')).toHaveCount(0);
   });
 
-  test('US-15: drei Reiter per Tastatur mit Umlauf, d führt aus Kosten zu Datei', async ({ page }) => {
+  test('US-15: vier Reiter per Tastatur mit Umlauf, d führt aus Kosten zu Datei', async ({ page }) => {
     const dialog = await fenster(page, 1, SPANNE);
     const tab = n => dialog.getByRole('tab', { name: n });
     await tab('Inhalt').focus();
@@ -352,18 +357,21 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect(tab('Kosten')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#reiterpanel-kosten table')).toBeVisible();
     const tabindizes = () => dialog.getByRole('tab').evaluateAll(t => t.map(x => x.getAttribute('tabindex')));
-    expect(await tabindizes()).toEqual(['-1', '-1', '0']);
+    expect(await tabindizes()).toEqual(['-1', '-1', '0', '-1']);
+    await page.keyboard.press('ArrowRight');
+    await expect(tab('Verlauf')).toBeFocused();
+    await expect(tab('Verlauf')).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('ArrowRight');
     await expect(tab('Inhalt')).toBeFocused();
     await expect(page.getByLabel('Titel')).toBeVisible();
     await page.keyboard.press('ArrowLeft');
-    await expect(tab('Kosten')).toBeFocused();
+    await expect(tab('Verlauf')).toBeFocused();
     await page.keyboard.press('Home');
     await expect(tab('Inhalt')).toBeFocused();
-    expect(await tabindizes()).toEqual(['0', '-1', '-1']);
+    expect(await tabindizes()).toEqual(['0', '-1', '-1', '-1']);
     await page.keyboard.press('End');
-    await expect(tab('Kosten')).toBeFocused();
-    await expect(tab('Kosten')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab('Verlauf')).toBeFocused();
+    await expect(tab('Verlauf')).toHaveAttribute('aria-selected', 'true');
     await page.locator('.mod-kopf .id').click();
     await page.keyboard.press('d');
     await expect(tab('Datei')).toHaveAttribute('aria-selected', 'true');
@@ -397,7 +405,7 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect(dialog.getByRole('tab', { name: 'Kosten' })).toBeFocused();
     await page.keyboard.press('ArrowDown');
     const vier = page.getByRole('dialog', { name: 'Aufgabe #4' });
-    await expect(vier.getByRole('tab')).toHaveText(['Inhalt', 'Datei']);
+    await expect(vier.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Verlauf']);
     await expect(vier.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
     await expect(vier.getByRole('tab', { name: 'Inhalt' })).toBeFocused();
@@ -412,7 +420,7 @@ test.describe('R00105 Reiter Kosten', () => {
       await dialog.getByRole('tab', { name: 'Kosten' }).click();
       await fokussieren(dialog);
       expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
-      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei'], { timeout: 1000 });
+      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Verlauf'], { timeout: 1000 });
       await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
       await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toBeFocused({ timeout: 1000 });
     });
@@ -437,7 +445,7 @@ test.describe('R00105 Reiter Kosten', () => {
       const vorher = await auswahl();
       if (imTitel) expect(vorher, 'Schreibmarke mitten im Titel, ein Zeichen markiert').toEqual([2, 3]);
       expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
-      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei'], { timeout: 1000 });
+      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Datei', 'Verlauf'], { timeout: 1000 });
       await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
       await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
       await expect(ziel(dialog)).toBeFocused();
