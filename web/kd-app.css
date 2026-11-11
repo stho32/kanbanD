@@ -352,6 +352,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .felder>.kb{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding-block:4px;min-width:0;background:var(--kd-bg)}
 .felder .kb .k{font:500 12px/16px var(--kd-font);color:var(--kd-text);background:none}
 .felder .sl{font:400 10.5px/14px var(--kd-mono);color:var(--kd-muted)}
+/* Wertspalte bricht an beliebiger Stelle um (R00131, ADR-0012/0015 N1/0019 N4): min-width:0 lässt die Zelle schrumpfen,
+   overflow-wrap:anywhere verkleinert die Mindestbreite des anonymen Flex-Textkindes — break-word täte das hier nicht */
+.felder .w{min-width:0;overflow-wrap:anywhere}
 .felder .w.wrap{flex-wrap:wrap;padding-block:4px}
 .felder select,.mini-inp{height:24px;border:1px solid transparent;background:none;min-width:0;padding:0 4px}
 .felder select{width:100%}
