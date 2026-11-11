@@ -540,8 +540,10 @@ test('US-4: Board-Fenster: Enter → role=dialog „Boards“ ohne aria-modal un
   await expect(fenster).toBeVisible();
   await expect(fenster).not.toHaveAttribute('aria-modal', /.*/);
   await expect(page.locator('[inert]')).toHaveCount(0);
-  await expect(fenster.getByRole('button', { name: /fabrik/ })).toBeFocused();
+  await expect(fenster.locator('[data-act="board-wahl"][data-arg="fabrik"]')).toBeFocused();
   await expect(page.locator('#board-neu')).not.toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(fenster.locator('[data-act="board-menue"][data-arg="fabrik"]')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(fenster.getByRole('button', { name: /Alle Aufgabenreservierungen anzeigen/ })).toBeFocused();
   await page.keyboard.press('Tab');
@@ -572,7 +574,7 @@ test('US-4: Board-Fenster: ↓ und → lassen Fokus und Fenster; im Feld bewegen
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.locator('#t-board').focus();
   await page.keyboard.press('Enter');
-  const fabrik = page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /fabrik/ });
+  const fabrik = page.getByRole('dialog', { name: 'Boards' }).locator('[data-act="board-wahl"][data-arg="fabrik"]');
   await expect(fabrik).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
@@ -590,6 +592,7 @@ test('US-4: Board-Fenster: ↓ und → lassen Fokus und Fenster; im Feld bewegen
 test('US-5: Board-Fenster offen, Live-Ereignis: Fokus bleibt auf „Alle Aufgabenreservierungen anzeigen“', async ({ page }) => {
   await page.locator('#t-board').focus();
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   const knopf = page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Alle Aufgabenreservierungen anzeigen/ });
   await expect(knopf).toBeFocused();
@@ -724,8 +727,10 @@ test('Sichtbarer Fokus: fokussierte Elemente der Pop-Fenster (Boards, Läuft ger
     await page.locator('#t-board').focus();
     await page.keyboard.press('Enter');
     const boards = page.getByRole('dialog', { name: 'Boards' });
-    await expect(boards.getByRole('button', { name: /fabrik/ })).toBeFocused();
+    await expect(boards.locator('[data-act="board-wahl"][data-arg="fabrik"]')).toBeFocused();
     await ringErwarten(page, `${thema} Boards, „fabrik“`);
+    await page.keyboard.press('Tab');
+    await ringErwarten(page, `${thema} Boards, ⋮ „fabrik“`);
     await page.keyboard.press('Tab');
     await ringErwarten(page, `${thema} Boards, Reservierungen`);
     await page.keyboard.press('Tab');

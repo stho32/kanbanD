@@ -27,7 +27,7 @@ test.describe('R00035', () => {
     await page.keyboard.press('b');
     await expect(page.locator('.bahn')).toHaveCount(3);
     await page.keyboard.press('b');
-    await expect(page.getByRole('dialog', { name: 'Boards' }).getByRole('button', { name: /Entwicklung/ })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Boards' }).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toBeVisible();
     await page.keyboard.press('Escape');
     await page.keyboard.press('i');
     await expect(page.getByRole('menuitemradio', { name: /Stefan/ })).toBeVisible();
