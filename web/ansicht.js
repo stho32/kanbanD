@@ -430,7 +430,7 @@ function vTipp() {
 
 /* ── Zeiten ── */
 /* zeitMs, ortszeit, anteil, personenZeilen: web/zeiten.js */
-const hm = ms => { const m = Math.max(0, Math.floor(ms / 6e4)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+// `hm` (Dauer als h:mm) steht in web/zeiten.js und ist dort auch gegen die geschätzte Zeit (R00129) getestet.
 const hms = ms => { const s = Math.max(0, Math.floor(ms / 1e3)); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 /**
  * Laufchip an allen fünf Zeichenstellen (R00114, ADR-0019 Regel 2): im vergessenen Zustand der Satz statt der Zahl.
@@ -608,6 +608,12 @@ function vPreisetikett(a, vorSumme) {
   if (vorSumme) sichtbar += ',';
   return `<span class="preis" title="${esc(texte.hinweis)}"><span class="vh">${esc(texte.name)}</span><span aria-hidden="true">${esc(sichtbar)}</span></span>`;
 }
+/** Geschätzte Zeit (R00129, ADR-0023): eigenes `<span>`, sichtbar `≈ h:mm` (aria-hidden), Name als `.vh` im Element, kein Bedienziel. */
+function vSchaetzung(a) {
+  if (!a.estimate) return '';
+  const wert = hm(a.estimate * 6e4);
+  return `<span class="schaetzung"><span class="vh">Geschätzt ${wert}</span><span aria-hidden="true">≈ ${wert}</span></span>`;
+}
 function vKarte(a, fertig) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
@@ -620,7 +626,7 @@ function vKarte(a, fertig) {
   const zusatz = vergessen ? `Timer läuft ${seitText(laufzeit)}` : '';
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusatz))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusatz))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */

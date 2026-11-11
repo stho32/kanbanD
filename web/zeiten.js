@@ -20,6 +20,12 @@
     const o = new Date(zeitMs(z)), p = n => String(n).padStart(2, '0');
     return `${o.getFullYear()}-${p(o.getMonth() + 1)}-${p(o.getDate())} ${p(o.getHours())}:${p(o.getMinutes())}`;
   }
+  /** Eine Dauer in ms als `h:mm` (R00089) — die eine Zeitform der Karte: gebuchte Zeit (`Σ`) und geschätzte Zeit (R00129). */
+  function hm(ms) {
+    const minuten = Math.max(0, Math.floor(ms / 6e4));
+    return Math.floor(minuten / 60) + ':' + String(minuten % 60).padStart(2, '0');
+  }
+
   /** Gebuchte Zeit in ms (R00089): abgeschlossene Einträge ganz, laufende bis `jetzt`; `beginnVon` liefert den Beginn
       eines laufenden Eintrags (die Oberfläche kennt die Startsekunde genauer als die Datei). */
   function summeMs(zeiten, jetzt, beginnVon = z => zeitMs(z.beginn)) {
@@ -87,5 +93,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);
