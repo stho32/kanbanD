@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #19)
 **Kontext-Anforderung**: — (Bug-Karte #19, Anforderung folgt)
 **Erprobt durch**: headless Probe gegen `target/release/kanbanD` (Stand `6333800`), siehe Kontext
-**Nachträge**: 2026-11-06 — Bereichsregel umgekehrt und `href` als Schlüssel (Karte #8, R00106), siehe [Nachtrag N1](#nachtrag-2026-11-06-bereiche-umgekehrt-und-href-als-schlüssel-r00106). 2026-11-10 — Titel des Fensters liest mehrzeilig, bearbeitet einzeilig (Karte #115), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-titel-des-fensters-liest-mehrzeilig-bearbeitet-einzeilig-115). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* und *(→ N2)* zeigen, wo der jeweilige Nachtrag gilt.
+**Nachträge**: 2026-11-06 — Bereichsregel umgekehrt und `href` als Schlüssel (Karte #8, R00106), siehe [Nachtrag N1](#nachtrag-2026-11-06-bereiche-umgekehrt-und-href-als-schlüssel-r00106). 2026-11-10 — Titel des Fensters liest mehrzeilig, bearbeitet einzeilig (Karte #115), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-titel-des-fensters-liest-mehrzeilig-bearbeitet-einzeilig-115). 2026-11-11 — Listenzeilen und zerstörende Knöpfe tragen `data-halt` statt der Listenposition (Karte #40), siehe [Nachtrag N3](#nachtrag-2026-11-11-n3-listenzeilen-tragen-data-halt-statt-der-listenposition-karte-40). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)*, *(→ N2)* und *(→ N3)* zeigen, wo der jeweilige Nachtrag gilt.
 
 ## Kontext
 
@@ -28,7 +28,7 @@ Die Klasse des Fehlers ist damit nicht „ein Selektor fehlt“, sondern „jede
 ### Option B: allgemeiner Sicherer in `render()` über stabile Schlüssel
 `render()` sichert vor dem Ersetzen **alle** Zustände in `#main` und `#over` und stellt sie danach über einen Schlüssel wieder her, statt Listen zu führen:
 - Scrollstand jedes Elements mit `scrollTop`/`scrollLeft` ≠ 0, Fokus des aktiven Elements, Wert und Cursor eines fokussierten Feldes.
-- Schlüssel eines Elements: `id`; sonst `data-halt="<name>"`; sonst ein Feldschlüssel (`data-af`, `data-nf`, `data-wf`, `data-wn`, `data-tf`, `data-fb`, `data-bf`, `data-dl`, `data-ef`, `data-sf`, `data-fr` samt Wert, bei Listenzeilen mit `data-i`); sonst `data-act` + `data-arg`; sonst die Klasse, wenn sie im Bereich eindeutig ist *(→ N1: `href` vor den Klassen)*. Ohne eindeutigen Schlüssel wird nichts zurückgesetzt (kein Raten an der falschen Stelle).
+- Schlüssel eines Elements: `id`; sonst `data-halt="<name>"`; sonst ein Feldschlüssel (`data-af`, `data-nf`, `data-wf`, `data-wn`, `data-tf`, `data-fb`, `data-bf`, `data-dl`, `data-ef`, `data-sf`, `data-fr` samt Wert, bei Listenzeilen mit `data-i`); sonst `data-act` + `data-arg`; sonst die Klasse, wenn sie im Bereich eindeutig ist *(→ N1: `href` vor den Klassen)*. Ohne eindeutigen Schlüssel wird nichts zurückgesetzt (kein Raten an der falschen Stelle). *(→ N3: für Listenzeilen und zerstörende Knöpfe kommt der Schlüssel aus dem Inhalt — `data-halt` —, nie aus der Stelle)*
 - Ein Element, das nur durch das Neuzeichnen seinen Knoten verliert, löst keine Speicheraktion aus (ein Merker um das Ersetzen verwirft das `change`, das währenddessen feuert — das Feld hängt dann noch im Dokument; beim Verlassen wird es genau einmal nachgetragen).
 - Vorteile: deckt die Klasse ab, auch für künftige Flächen und Felder, ohne dass jemand eine Liste pflegt; ersetzt drei Einzelmechanismen durch einen; bleibt beim heutigen Zeichenmodell (Vorlagen als Zeichenketten, kein Build-Schritt, `A00009`).
 - Nachteile: zeichnet weiter alles neu (Kosten je Ereignis unverändert); der Schlüssel aus Klasse oder `data-act` kann bei gleichartigen Elementen mehrdeutig sein — dann gilt die Regel „nichts zurücksetzen“, und es braucht `data-halt`. Restfälle (Textauswahl in Lesetext, aufgeklappte `<details>`) deckt er nicht.
@@ -47,7 +47,7 @@ Neues Markup in einen losen Baum zeichnen und den lebenden DOM per Abgleich angl
 
 **Gewählt: Option B** — ein allgemeiner Sicherer in `render()`, Schlüsselregel wie oben, gilt für `#main` und `#over`. *(→ N1: gilt für alle Kinder von `#app`; nur `#main` und `#over` hinter Wächtern; → N2: Wahl der Elemente des Titelfelds bleibt unter dem Sicherer)*
 
-B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege durch einen, ohne das Zeichenmodell anzufassen. Bewusst in Kauf genommen: Es wird weiter alles neu gezeichnet (C bleibt als spätere Lastmaßnahme möglich und baut auf B auf), und Elemente ohne eindeutigen Schlüssel brauchen `data-halt`. D wird erst wieder Thema, wenn B an Restfällen (Textauswahl, `<details>`) mehrfach scheitert oder das Neuzeichnen unter dem Lastprofil messbar zu teuer wird — dann neue ADR, die diese ablöst.
+B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege durch einen, ohne das Zeichenmodell anzufassen. Bewusst in Kauf genommen: Es wird weiter alles neu gezeichnet (C bleibt als spätere Lastmaßnahme möglich und baut auf B auf), und Elemente ohne eindeutigen Schlüssel brauchen `data-halt`. *(→ N3: die Stelle `data-arg`/`data-i` ist kein Schlüssel einer Liste; Listenzeilen und zerstörende Knöpfe tragen `data-halt` aus dem Inhalt)* D wird erst wieder Thema, wenn B an Restfällen (Textauswahl, `<details>`) mehrfach scheitert oder das Neuzeichnen unter dem Lastprofil messbar zu teuer wird — dann neue ADR, die diese ablöst.
 
 ## Konsequenzen
 
@@ -58,7 +58,7 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 
 **Negativ / In Kauf zu nehmen:**
 - Rechenaufwand je Ereignis bleibt (volles Neuzeichnen).
-- Gleichartige Elemente ohne eindeutigen Schlüssel werden nicht wiederhergestellt; das muss im Markup mit `data-halt` gelöst werden.
+- Gleichartige Elemente ohne eindeutigen Schlüssel werden nicht wiederhergestellt; das muss im Markup mit `data-halt` gelöst werden. *(→ N3: Listenzeilen und zerstörende Knöpfe tragen `data-halt` aus dem Inhalt; ein zerstörender Knopf wird nie über seine Stelle gehalten)*
 
 **Durchsetzung** (Regel gilt für die ganze Oberfläche):
 - E2E-Test „Live-Ereignis bei offenem Fenster“ (Abnahme-Probe der Karte #19) in breitem **und** schmalem Layout: misst `.mod-main` bzw. `.mod-body`, Fokus und Wert des Titelfelds, und dass kein Commit „geändert: Titel“ entsteht.
@@ -120,6 +120,56 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 
 **Grenze**: Der Umbruch des Fenstertitels ist die fünfte Ausprägung von „Umbruch als Antwort, kein Querscrollen" ([ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) N1, [ADR-0019](0019-vergessene-timer-sind-anzeige.md) N1/N3/N4); die Breitenproben (r00114, `ziele.spec.js`) laufen mit als Wächter. Form, Maße und Typografie des Titels (`kd-app.css` `.titel`) bleiben Detailplanung/UX.
 
+## Nachtrag 2026-11-11 N3: Listenzeilen tragen `data-halt` statt der Listenposition (Karte #40)
+
+**Anlass**: Karte #40 „Fokus nach Entfernen springt auf den nächsten Eintrag" (Board „entwicklung", aus Code-Review #19 A2). Die PO-Entscheidung vom 2026-11-08 (`AI-Team/po-entscheidungen.md:166`) nennt dieselbe Ursache für drei Karten — #40 (Fokus springt auf den Nachfolger), #65 (Doppeltipp hakt zwei ab) und #106 (Doppelklick auf ✕ löscht die nachgerückte): die **Adressierung über den Listenindex**. Sie gibt dem architekt auf, eine Lösung für alle drei zu wählen, und hält fest, dass #40 ein Fokus-Thema mit eigener Abnahme bleibt. Die Wahl dieser ADR — Option B, ein allgemeiner Sicherer über stabile Schlüssel — gilt unverändert; der Status bleibt `Akzeptiert`. Geändert wird nur, **womit** der Sicherer ein Listenelement wiederfindet. Die eigentliche DELETE-Adressierung (welche Stelle der Aufruf trifft) bleibt ein eigener Strang (#106/#65, ADR-0017 Konsequenz „Teilaufgaben-Index").
+
+**Belegt (Code)**:
+- Teilaufgaben: Die Zeile und ihre Bedienelemente tragen die Stelle `j` als `data-teil` bzw. `data-arg`; das zerstörende ✕ ist `data-act="teil-weg" data-arg="${j}"`, die Textbearbeitung `data-act="teil-bearbeiten" data-arg="${j}"` (`web/ansicht.js:324`).
+- Herkunft: Das ✕ ist `data-act="herkunft-weg" data-arg="${j}"` (`web/ansicht.js:288`).
+- Die Schlüsselregel findet ein Element über `id` → `data-halt` → Feldschlüssel (samt `data-i`) → `data-act`(+`data-arg`) → `href` → Klassen (`web/sichtzustand.js:20–34`). Ein ✕ ohne `id` und ohne `data-halt` fällt auf `[data-act="teil-weg"][data-arg="j"]` zurück — auf die Stelle, nicht auf den Inhalt.
+- Der gezeigte Index verschiebt sich unter fremder Änderung: Entfernt ein Agent „Teilaufgabe eins" über die API, zeichnet `render()` die Liste neu; „zwei" steht jetzt an Stelle 0. Der gehaltene Schlüssel `[data-act="teil-weg"][data-arg="1"]` trifft danach „Teilaufgabe drei" — der Fokus steht auf einem fremden ✕, und der nächste Tastendruck löscht es. Genau die Abnahme-Probe der Karte #40 (heute rot).
+- `nachbarArgument` (`web/app.js:482–489`) rechnet den Nachbarn aus der **gezeigten** Reihenfolge und den Stellen-Argumenten. Das trägt innerhalb der eigenen Aktion (R00112 FA 8, `fokusNachEntfernen` `web/app.js:493–498`), nicht bei fremder Änderung: es kennt den Inhalt nicht.
+- Der Bestand kennt inhaltsbezogene `data-halt` schon: `kopf:<spalte>`, `klapp:<spalte>`, `info:<spalte>` (ADR-0010 N6, `web/ansicht.js:766`, `:781`). Der Sicherer findet Gegenstücke darüber, ohne neuen Mechanismus.
+
+### Entschieden
+
+1. **Eine Listenposition ist kein stabiler Schlüssel.** `data-arg` bzw. `data-i` einer Listenzeile ist ein **Aufrufargument** — an welcher Stelle zu wirken ist —, kein Identitätsmerkmal. Als Schlüssel des Sicherers taugt es nicht: Nach jeder fremden Listenänderung bezeichnet dieselbe Stelle ein anderes Element.
+2. **Listenzeilen und zerstörende Knöpfe tragen `data-halt` aus dem Inhalt.** Jedes fokussierbare Element einer Listenzeile (Teilaufgabe, Herkunft und jede künftige Liste) bekommt einen inhaltsbezogenen, stabilen `data-halt`, z. B. `data-halt="teil:<text>"` aus dem Teilaufgabentext. Er steht in der Schlüsselregel vor `data-act`+`data-arg` (`web/sichtzustand.js:24` vor `:29`) und wird dort ohne Änderung gefunden.
+3. **Eigener `data-halt` je fokussierbarem Teil, damit er eindeutig bleibt.** Tragen Zeile und ihr ✕ denselben Wert, zählt die Schlüsselregel den Selektor zweimal und verwirft ihn („genau einmal im Bereich", `web/sichtzustand.js:38–42`). Darum je Teil ein eigener, inhaltsbezogener Wert mit eigenem Präfix (`teil:<text>` für den Text, `teil-weg:<text>` für das ✕; sinngemäß für die anderen Listen).
+4. **Ein zerstörender Knopf wird nie über seine Stelle gehalten.** Ist der `data-halt` eines ✕ im Bereich nicht eindeutig (derselbe Text zweimal), weicht der Sicherer für ein Element, das eine **entfernende** Aktion auslöst, **nicht** auf `[data-act][data-arg]` aus. Dann hält er nichts, und der Fokus fällt nach ADR-0010 N7a/N7b auf den Ort des Abschnitts (`#teil-neu`, `#zeit-neu`, das Fenster) — nie auf das ✕ eines fremden Eintrags. Begründung: der nächste Tastendruck löschte sonst den falschen Eintrag; ein Fokus, der auf den Abschnitt fällt, ist harmlos gegen Datenverlust. Den Schnitt (eigene Marke am zerstörenden Knopf oder Regel im Schlüsselmodul) wählt der `entwickler`.
+5. **`data-arg` bleibt.** Der ✕-Knopf behält `data-arg` (die Stelle), damit die Aktion sie weiter adressiert (`web/app.js:1174`, `:1478`). Der Schlüssel des Sicherers kommt aus `data-halt`; der Aufrufweg selbst gehört nicht zu dieser ADR (siehe Grenze).
+
+### Verworfen
+
+- **Die Position als Schlüssel behalten und nur die Anzeige verbessern**: behebt den Einzelfall nicht — der Fokus folgt weiter dem Index, und jede fremde Löschung verschiebt ihn.
+- **Zerstörende ✕ ganz aus dem Sichern nehmen** (über dem ✕ wird nie wiederhergestellt): verliert den R00112-Weg („✕ des Nachbarn", `web/app.js:493–498`) und die Rückgabe nach dem eigenen Entfernen. Der inhaltliche Schlüssel erhält beides: denselben Eintrag nach fremder Änderung und den Nachbarn nach eigener Aktion.
+- **Den Fensterinhalt bei fremder Änderung nicht neu zeichnen** (Option C aus ADR-0007): löst den Fall „Änderung an derselben Aufgabe" nicht und braucht den Schlüssel ohnehin.
+- **Ein Ordinal unter Gleichnamigen** (`teil-weg:2:<text>`): die Zahl ist wieder eine Stelle; ändert sich die Zahl der Gleichen, trifft sie ein anderes Element. Wenn der Inhalt nicht eindeutig ist, wird bewusst nicht gehalten (Regel 4).
+
+### Pre-Mortem
+
+| Gescheitert, weil … | Gegenmaßnahme |
+|---|---|
+| Zwei Teilaufgaben heißen gleich, ein Agent entfernt eine, der Fokus treibt auf das andere ✕ | Regel 4: nicht eindeutig ⇒ nichts halten, Fokus auf den Abschnitt; die Abnahme-Probe deckt den Doppeltext ab |
+| Ein künftiger Listeneintrag bekommt `data-halt` nur auf der Zeile, nicht auf dem fokussierbaren ✕ | Review-Punkt unten: jedes fokussierbare Element der Zeile braucht einen eigenen stabilen `data-halt` |
+| Ein Text ändert sich unter dem Menschen (ein Agent bearbeitet ihn) | Dann ist es inhaltlich ein anderes Element und wird nicht mehr gefunden — gewollt; der Fokus fällt auf den Abschnitt, nie auf ein fremdes ✕ |
+
+### Testbarkeit (erster Test)
+
+- **Node-Unit `web/sichtzustand.js`** (rein, kein DOM): Eingabe ein Element `{ id: '', daten: { halt: 'teil-weg:zwei', act: 'teil-weg', arg: '1' } }` und eine Zählfunktion, die `[data-halt="teil-weg:zwei"]` einmal und `[data-act="teil-weg"][data-arg="1"]` einmal zählt; Ausgabe ist `[data-halt="teil-weg:zwei"]`. Zählt die Funktion den `data-halt` **zweimal**, ist die Ausgabe `''` — nicht `[data-act…][data-arg…]` (Regel 4).
+- **E2E-Abnahme (Karte #40)**: Fokus auf „Teilaufgabe zwei entfernen"; ein Agent entfernt „eins" über die API (`DELETE …/teilaufgaben/0`); danach steht der Fokus weiterhin auf dem ✕ **derselben** Teilaufgabe (heute Stelle 1), nicht auf „Teilaufgabe drei entfernen". Zweiter Fall (Doppeltext): zwei gleich benannte Teilaufgaben, ein Agent entfernt eine → Fokus auf `#teil-neu`, nie auf das ✕ der anderen. Dritter Fall: die eigene Aktion bleibt wie R00112 FA 8 (✕ des Nachbarn).
+
+### Durchsetzung
+
+- Review-Punkt für `architektur-reviewer` und `code-reviewer`: Ein fokussierbares Element in einer Liste, dessen einziger stabiler Schlüssel die Stelle (`data-arg`/`data-i`) ist, ist ein Befund. Jedes trägt einen inhaltsbezogenen `data-halt` — oder wird bewusst nicht gehalten (zerstörend und nicht eindeutig).
+- Wächter: der Node-Unit-Test oben hält die Reihenfolge `data-halt` vor `data-act`+`data-arg` fest und das „nichts halten statt Stelle" für zerstörende Knöpfe.
+- Die vorhandenen R00112-Fokusproben (`e2e/tests/r00112-rueckgaengig.spec.js`) bleiben grün (eigene Aktion); die Karte ergänzt den Fall der fremden Änderung.
+
+### Grenze
+
+Diese ADR regelt **nur, worüber der Sicherer ein Element wiederfindet** — die Oberfläche. Die **Adressierung des Löschens selbst** (welche Stelle der DELETE trifft, der Doppelklick-Fall) berührt den Schreibweg und die API und ist der eigene Strang #106 (Vorrang) und #65; ADR-0017 führt die Teilaufgaben-Indizierung ausdrücklich als in Kauf genommene Schwäche („Teilaufgaben-Index: Die Adressierung per Index bleibt"). Eine dort beschlossene stabile Adressierung baut auf dieser Regel auf, ersetzt sie aber nicht.
+
 ## Quellen / Bezüge
 
 - Karte #19 (Betreiber, 2026-10-31); `AI-Team/umgebung.md`, Lastprofil
@@ -127,3 +177,4 @@ B schließt die Fehlerklasse statt des Einzelfalls und ersetzt drei Sonderwege d
 - R00061 (zeichnet nur bei Änderung), R00033 (Leseposition unter dem Kontextmenü), R00085 (Live-Verbindung)
 - Nachtrag N1: Karte #8 (Kommentare 2026-11-06 06:34 und 06:42), Logbuch `847289a`, [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) N7; `web/app.js:446–474`, `web/index.html:12`, `web/ansicht.js:64`, `:76`, `:681`, `web/sichtzustand.js:14–47`
 - Nachtrag N2: Karte #115 (Board „entwicklung", Folge aus #16), [R00115](../../Anforderungen/R00115-kartentext-lesbar-setzen.md) FA 1, [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) N1, [ADR-0019](0019-vergessene-timer-sind-anzeige.md) N1/N3/N4, Karte #54 (Esc im Titelfeld); `web/sichtzustand.js`, `web/ansicht.js`, `web/app.js`, `web/kd-app.css` `.titel`
+- Nachtrag N3: Karte #40 (Kommentare 2026-11-08 09:12, 09:31, 2026-11-11 11:47), Karten #65, #106; PO-Entscheidung `AI-Team/po-entscheidungen.md:166`; [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) N6 (`data-halt`), N7a/N7b (Rückfall); [ADR-0017](0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) (Teilaufgaben-Index, in Kauf genommen); `web/ansicht.js:288`, `:324`, `web/app.js:482–489`, `:493–498`, `:1164–1176`, `:1475–1478`, `web/sichtzustand.js:20–34`, `:38–42`
