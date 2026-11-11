@@ -206,6 +206,49 @@ async fn fehlerfaelle_kein_leerer_commit() {
     assert_eq!(kopf(tmp.path()), vorher, "ohne Änderung kein Commit");
 }
 
+// M1 (security, Befund): ein Board-Titel mit Zeilenumbruch oder über 200 Zeichen ergibt 400 —
+// Datei byte-gleich, kein Commit; die Klasse gilt für PATCH und POST (R00128, Regel wie Fremdschluessel).
+#[tokio::test]
+async fn titel_mit_umbruch_oder_zu_lang_400() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let datei = lies(tmp.path(), "boards/entwicklung.md");
+    let vorher = kopf(tmp.path());
+    let zu_lang = "A".repeat(201);
+    let varianten = vec![
+        "X\n## Prüfen".to_string(),
+        "X\r## Prüfen".to_string(),
+        "X\r\n## Prüfen".to_string(),
+        "X\u{2028}## Prüfen".to_string(),
+        "\n".to_string(),
+        zu_lang.clone(),
+    ];
+    for titel in &varianten {
+        let (s, _) = senden(Method::PATCH, a, "api/boards/entwicklung", "st", json!({ "titel": titel })).await;
+        assert_eq!(s, 400, "PATCH {titel:?} muss 400 sein");
+        assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), datei, "PATCH {titel:?}: Datei byte-gleich");
+        assert_eq!(kopf(tmp.path()), vorher, "PATCH {titel:?}: kein Commit");
+    }
+    for titel in ["X\n## Prüfen".to_string(), zu_lang.clone()] {
+        let (s, _) = senden(Method::POST, a, "api/boards", "st", json!({ "titel": titel })).await;
+        assert_eq!(s, 400, "POST {titel:?} muss 400 sein");
+    }
+    assert_eq!(kopf(tmp.path()), vorher, "POST: kein Commit");
+    // Grenze: 200 Zeichen ohne Umbruch sind erlaubt (Triangulation — die Probe prüft die Spanne, nicht nur die Obergrenze)
+    let rand = "B".repeat(200);
+    let (s, b) = senden(Method::PATCH, a, "api/boards/entwicklung", "st", json!({ "titel": rand })).await;
+    assert_eq!(s, 200, "200 Zeichen sind erlaubt");
+    assert_eq!(b["titel"].as_str(), Some("B".repeat(200).as_str()));
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with(&format!("# {}\n", "B".repeat(200))));
+    // ein Umbruch nur am Rand wird getrimmt und ist gültig (Regel wie Fremdschluessel; file bleibt lesbar)
+    let (s, b) = senden(Method::PATCH, a, "api/boards/entwicklung", "st", json!({ "titel": "Sommer\n" })).await;
+    assert_eq!(s, 200, "ein Umbruch nur am Rand wird getrimmt");
+    assert_eq!(b["titel"].as_str(), Some("Sommer"));
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("# Sommer\n"));
+}
+
 // AK 14/S4: ein defektes Board bleibt schreibgeschützt — 423 für Umbenennen, Archivieren, Löschen
 #[tokio::test]
 async fn defektes_board_423() {

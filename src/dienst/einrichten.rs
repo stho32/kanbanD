@@ -71,7 +71,14 @@ impl Einrichtung {
     }
 }
 
+/// Der Board-Titel wird als `# `-Überschrift der Board-Datei geschrieben — ein Zeilenumbruch macht die Datei kaputt
+/// (R00128 M1). Dieselbe Regel wie `Fremdschluessel`: 1–200 Zeichen ohne Zeilenumbruch (jede Unicode-Zeilengrenze).
 pub(crate) fn boardname_pruefen(titel: &str) -> Result<(), Fehler> {
+    let titel = titel.trim();
+    let umbruch = |c: char| matches!(c, '\n' | '\r' | '\u{0B}' | '\u{0C}' | '\u{85}' | '\u{2028}' | '\u{2029}');
+    if !(1..=200).contains(&titel.chars().count()) || titel.contains(umbruch) {
+        return Err(Fehler::Ungueltig("Der Board-Titel braucht 1–200 Zeichen ohne Zeilenumbruch".into()));
+    }
     if slug(titel).is_empty() {
         return Err(Fehler::Ungueltig("Das Board braucht einen Namen aus Buchstaben oder Ziffern".into()));
     }
