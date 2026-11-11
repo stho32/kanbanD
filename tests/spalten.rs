@@ -95,6 +95,67 @@ async fn eigentuemer_setzen_behalten_umbenennen_und_ungueltig() {
     assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), vorher, "400 schreibt nichts");
 }
 
+// R00009 (Karte #22): ohne `alt` übernimmt eine Zeile mit dem Namen einer vorhandenen Spalte diese samt Aufgaben und
+// Einstellungen; eine wirklich neue Spalte bleibt leer; Umbenennen ohne `alt` bleibt 409, unbekanntes `alt` 400.
+#[tokio::test]
+async fn ohne_alt_haelt_aufgaben_und_einstellungen() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let pfad = "api/boards/entwicklung/spalten";
+    let (s, _) = senden(Method::PUT, a, pfad, "st", json!([
+        {"name": "Zu erledigen", "alt": "Zu erledigen", "grenze": 5, "pruefungen": ["wbs-effects-green"], "notiz": "höchstens zwei", "farbe": "#ffe8b0", "eigentuemer": "human"},
+        {"name": "In Arbeit", "alt": "In Arbeit", "grenze": 2},
+        {"name": "Erledigt", "alt": "Erledigt"}
+    ])).await;
+    assert_eq!(s, 200);
+    let vorher = lies(tmp.path(), "boards/entwicklung.md");
+    // ohne alt, Name gleich → Aufgaben und Einstellungen bleiben; Review ist neu und leer
+    let (s, r) = senden(Method::PUT, a, pfad, "st", json!([
+        {"name": "Zu erledigen"},
+        {"name": "Review"},
+        {"name": "In Arbeit"},
+        {"name": "Erledigt"}
+    ])).await;
+    assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)), "{r}");
+    let t = lies(tmp.path(), "boards/entwicklung.md");
+    assert_eq!(
+        t,
+        "---\nlimits:\n  Zu erledigen: 5\n  In Arbeit: 2\ncolumn-checks:\n  Zu erledigen: [wbs-effects-green]\ncolumn-notes:\n  Zu erledigen: höchstens zwei\ncolumn-colors:\n  Zu erledigen: \"#ffe8b0\"\ncolumn-owner:\n  Zu erledigen: human\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## Review\n\n## In Arbeit\n\n## Erledigt\n",
+        "Aufgaben und Einstellungen bleiben, Review ist neu"
+    );
+    assert!(vorher.contains("Zu erledigen: 5"), "Vorbedingung: Einstellungen standen vorher in der Datei");
+    // Umbenennen ohne alt (A nicht übernommen) → 409
+    let (s, f) = senden(Method::PUT, a, pfad, "st", json!([{"name": "Posteingang"}, {"name": "In Arbeit"}, {"name": "Erledigt"}])).await;
+    assert_eq!(s, 409);
+    assert!(f["fehler"].as_str().unwrap().contains("Zu erledigen"), "{f}");
+    // unbekanntes alt → 400
+    let (s, _) = senden(Method::PUT, a, pfad, "st", json!([{"name": "Zu erledigen", "alt": "Gibtsnicht"}])).await;
+    assert_eq!(s, 400, "unbekanntes alt bleibt 400");
+}
+
+// R00009 (Karte #22) Randfall: beansprucht das `alt` einer anderen Zeile den Namen, entfällt der Rückfall — keine
+// Aufgabe wird doppelt übernommen, Umbenennen-und-neu-Anlegen bleibt möglich.
+#[tokio::test]
+async fn ohne_alt_randfall_bei_beanspruchtem_namen() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, _) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/spalten", "st", json!([
+        {"name": "Posteingang", "alt": "Zu erledigen"},
+        {"name": "Zu erledigen"},
+        {"name": "In Arbeit", "alt": "In Arbeit"},
+        {"name": "Erledigt", "alt": "Erledigt"}
+    ])).await;
+    assert_eq!(s, 200);
+    assert_eq!(
+        lies(tmp.path(), "boards/entwicklung.md"),
+        "# Entwicklung\n\n## Posteingang\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n",
+        "Posteingang übernimmt die Aufgaben, die neue Zu erledigen bleibt leer"
+    );
+}
+
 // PO-Entscheidung: ein unbekannter Rohwert in column-owner geht durch PUT …/spalten ohne Feld nicht verloren, auch beim Umbenennen nicht
 #[tokio::test]
 async fn unbekannter_eigentuemer_bleibt_beim_umbenennen_in_der_datei() {

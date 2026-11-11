@@ -37,6 +37,19 @@ test.describe('R00009', () => {
     await expect(page.locator('.bahn')).toHaveCount(3);
   });
 
+  test('Karte #22: ohne alt gilt die belegte Spalte gleichen Namens als übernommen', async ({ page }) => {
+    // In Arbeit ist belegt (2 Karten); ohne alt antwortete der Aufruf vorher mit 409 „enthält 2 Aufgaben“
+    const antwort = await page.request.put(k.adresse + 'api/boards/entwicklung/spalten', {
+      headers: { 'X-KanbanD-Wer': 'st' },
+      data: [{ name: 'Zu erledigen' }, { name: 'In Arbeit' }, { name: 'Review' }, { name: 'Erledigt' }],
+    });
+    expect(antwort.ok(), await antwort.text()).toBe(true);
+    await page.goto(k.adresse);
+    await expect(page.locator('.bahn')).toHaveCount(4);
+    await expect(page.locator('.bahn[data-col="In Arbeit"] .ka')).toHaveCount(2);
+    await expect(page.locator('.bahn[data-col="Review"] .ka')).toHaveCount(0);
+  });
+
   test('US-3: Grenze überschritten', async ({ page }) => {
     await page.goto(k.adresse);
     await ausMehr(page, 'Spalten einrichten');
