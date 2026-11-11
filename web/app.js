@@ -1702,6 +1702,21 @@ async function act(a, arg, wert) {
         const d = new Date(); d.setDate(d.getDate() + (+n || 0));
         return aufgabeAendern(+nr, { faellig: n === '' ? null : isoD(d) });
       }
+      case 'duplizieren': {
+        // Kopie der Karte in derselben Spalte (R00142); kein Zwischendialog, die Kopie ist die Quelle plus Zusatz
+        if (ichNoetig()) break;
+        const nr = +arg;
+        const spalte = S.board && (S.board.spalten.find(sp => sp.aufgaben.includes(nr)) || {}).name;
+        const ziel = S.board && spalte ? { board: S.board.slug, spalte } : {};
+        // der Fokus bleibt auf der Quellkarte, auch wenn die Kopie unten in der Spalte erscheint (S2)
+        u.fokusKarte = nr;
+        u.fokus = `.ka[data-id="${nr}"]`;
+        try {
+          const kopie = await api('POST', `/api/aufgaben/${nr}/duplizieren`, ziel);
+          u.hinweis = { text: `#${kopie.nummer} „${kopie.titel}“ angelegt`, undo: { art: 'archivieren', nummern: [kopie.nummer] }, at: Date.now() };
+        } catch (f) { u.hinweis = { text: f.message, at: Date.now() }; }
+        return laden();
+      }
       case 'kopieren': {
         const a = aufgabe(+arg), text = `#${a.nummer} ${a.titel}`;
         try { await navigator.clipboard.writeText(text); u.hinweis = { text: `„${text}“ kopiert`, at: Date.now() }; }
