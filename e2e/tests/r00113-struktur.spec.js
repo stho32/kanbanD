@@ -230,7 +230,7 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
 
   test('US-1: die Probe prüft jede Verzweigung von vHaupt()', () => {
     const quelltext = fs.readFileSync(APP_JS, 'utf8');
-    expect(sichtenVonVHaupt(quelltext)).toHaveLength(15);
+    expect(sichtenVonVHaupt(quelltext)).toHaveLength(16);
     expect(vollstaendigkeitPruefen(quelltext, [...ROUTEN, ...ZUSTAENDE])).toEqual([]);
   });
 
