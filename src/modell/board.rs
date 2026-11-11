@@ -78,8 +78,13 @@ pub struct ColumnOwnerEintrag {
 impl ColumnOwnerEintrag {
     /// Meint der Eintrag den Menschen? Ein `human`-Wort im Rohwert zählt (auch `[human]`); nur dann sperrt er (PO Z. 187).
     pub fn meint_human(&self) -> bool {
-        self.wert.split(|c: char| !c.is_alphanumeric()).any(|t| t == "human")
+        meint_human_wert(&self.wert)
     }
+}
+
+/// Meint ein `column-owner`-Rohwert den Menschen? (fail-safe, PO Z. 187): ein `human`-Wort als eigenes Wort zählt.
+pub fn meint_human_wert(wert: &str) -> bool {
+    wert.split(|c: char| !c.is_alphanumeric()).any(|t| t == "human")
 }
 
 /// `#rrggbb` — die einzige Form, in der eine Spaltenfarbe gilt.

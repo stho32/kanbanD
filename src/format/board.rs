@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintrag, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
+use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintrag, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -21,7 +21,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let mut eigentuemer_roh: Vec<ColumnOwnerEintrag> = match m.get("column-owner") {
         None => vec![],
         Some(v) => match v.as_mapping() {
-            Some(map) => map.iter().map(|(k, w)| ColumnOwnerEintrag { schluessel: Some(wert_text(k)), wert: wert_text(w) }).collect(),
+            Some(map) => map.iter().map(|(k, w)| ColumnOwnerEintrag { schluessel: Some(wert_text(k)).filter(|k| !k.is_empty()), wert: wert_text(w) }).collect(),
             None => vec![ColumnOwnerEintrag { schluessel: None, wert: wert_text(v) }],
         },
     };
@@ -89,6 +89,14 @@ fn wert_text(v: &Value) -> String {
         Value::Number(n) => n.to_string(),
         Value::Null => "null".into(),
         _ => String::new(),
+    }
+}
+
+/// Den schlüssellosen `column-owner`-Wert im Ersatzschlüssel-Slot merken (B1/B2): der erste bleibt, ein human-Wert
+/// verdrängt einen anderen (fail-safe, PO Z. 187), damit ein Board seine Sperre beim Schreiben nicht verliert.
+fn merke_schluessellos(slot: &mut Option<String>, wert: &str) {
+    if slot.is_none() || (meint_human_wert(wert) && !slot.as_deref().is_some_and(meint_human_wert)) {
+        *slot = Some(wert.to_string());
     }
 }
 
@@ -283,13 +291,24 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let pruefungen: Vec<&Spalte> = b.spalten.iter().filter(|sp| !sp.pruefungen.is_empty()).collect();
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
-    let eigentuemer: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.as_str(), e))).collect();
-    let roh_keyed: Vec<(&str, &str)> = b.eigentuemer_roh.iter().filter_map(|e| e.schluessel.as_deref().map(|k| (k, e.wert.as_str()))).collect();
-    let roh_scalar: Option<&str> = b.eigentuemer_roh.iter().find(|e| e.schluessel.is_none()).map(|e| e.wert.as_str());
+    // `column-owner` (R00097, R00120/B1/B2): Spalten mit gültigem oder unbekanntem Eigentümer in Reihenfolge, dann die
+    // rohen Einträge. Ein Rohschlüssel, der auf eine Spalte trifft, erzeugt keinen doppelten YAML-Schlüssel — er löst
+    // sich schlüssellos auf. `schluessellos` ist der Wert, der unter dem Ersatzschlüssel `""` steht: ein `column-owner`
+    // ohne Zuordnung (`None`) wandert dorthin, sobald eine Zuordnung daneben steht (der Skalar kann sie sonst nicht
+    // tragen, B1); ein human-Wert hat dabei Vorrang (fail-safe, PO Z. 187).
+    let mut besitzer: Vec<(String, String)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.clone(), yaml::skalar(e)))).collect();
+    let mut schluessellos: Option<String> = None;
+    for e in &b.eigentuemer_roh {
+        match &e.schluessel {
+            None => merke_schluessellos(&mut schluessellos, &e.wert),
+            Some(k) if besitzer.iter().any(|(n, _)| n == k) => merke_schluessellos(&mut schluessellos, &e.wert),
+            Some(k) => besitzer.push((k.clone(), e.wert.clone())),
+        }
+    }
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !eigentuemer.is_empty() || roh_scalar.is_some() || !roh_keyed.is_empty() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -320,20 +339,19 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
                 }
             }
         }
-        let hat_eigner = !eigentuemer.is_empty() || !roh_keyed.is_empty();
-        match (roh_scalar, hat_eigner) {
-            // `column-owner: human` (keine Zuordnung) und keine Zuordnung dazu: die rohe Zeile bleibt.
-            (Some(wert), false) => s.push_str(&format!("column-owner: {wert}\n")),
-            (_, true) => {
-                s.push_str("column-owner:\n");
-                for (spalte, wert) in &eigentuemer {
-                    s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(wert)));
-                }
-                for (spalte, wert) in &roh_keyed {
-                    s.push_str(&format!("  {}: {wert}\n", yaml::skalar(spalte)));
-                }
+        // Ohne jede Zuordnung bleibt der rohe `column-owner`-Wert ein Skalar (keine Zuordnung, unverändert); sobald eine
+        // Zuordnung daneben steht, wandert der schlüssellose Wert unter den Ersatzschlüssel `""` (kein Doppelschlüssel,
+        // B1/B2). Der Ersatzschlüssel liest sich als „keine Zuordnung“ zurück.
+        if besitzer.is_empty() && let Some(wert) = &schluessellos {
+            s.push_str(&format!("column-owner: {wert}\n"));
+        } else if !besitzer.is_empty() || schluessellos.is_some() {
+            s.push_str("column-owner:\n");
+            for (spalte, wert) in &besitzer {
+                s.push_str(&format!("  {}: {wert}\n", yaml::skalar(spalte)));
             }
-            (None, false) => {}
+            if let Some(wert) = &schluessellos {
+                s.push_str(&format!("  {}: {wert}\n", yaml::skalar("")));
+            }
         }
         if !b.termine.is_empty() {
             s.push_str("milestones:\n");
@@ -564,6 +582,33 @@ mod tests {
             assert_eq!(g.eigentuemer_roh[0].wert, wert);
             assert!(!g.eigentuemer_roh[0].meint_human(), "{wert} sperrt nicht");
         }
+    }
+
+    // B1 (Code-Review #26): der schlüssellose `column-owner: human` (das ganze Board meinend) bleibt erhalten,
+    // auch wenn eine Spalte zugleich einen gültigen Eigentümer bekommt — er wandert schlüssellos in die Zuordnung,
+    // die fail-sichere Sperre steht.
+    #[test]
+    fn schluesselloser_human_bleibt_neben_einem_gueltigen_eigentuemer() {
+        let mut b = lesen("b", "---\ncolumn-owner: human\n---\n## Eingang\n## Erledigt\n").unwrap();
+        b.spalten[1].eigentuemer = Some(Eigentuemer::Agent);
+        let t = schreiben(&b, |_| None);
+        assert!(t.contains("Erledigt: agent"), "{t}");
+        let g = lesen("b", &t).unwrap();
+        assert_eq!(g.spalten[1].eigentuemer, Some(Eigentuemer::Agent), "{t}");
+        assert!(g.eigentuemer_roh.iter().any(|e| e.meint_human()), "der human-Wert bleibt und sperrt: {t}");
+    }
+
+    // B2 (Code-Review #26): ein Rohschlüssel, der nach einem Umbenennen auf eine Spalte trifft, erzeugt keinen
+    // doppelten YAML-Schlüssel — das Board bleibt lesbar.
+    #[test]
+    fn rohschluessel_trifft_spalte_ohne_doppelschluessel() {
+        let mut b = lesen("b", "---\ncolumn-owner:\n  A: chef\n  B: human\n---\n## A\n## Z\n").unwrap();
+        // A heißt jetzt B (der verwaiste Rohschlüssel B trifft die Spalte)
+        b.spalten[0].name = "B".into();
+        let t = schreiben(&b, |_| None);
+        let g = lesen("b", &t).unwrap_or_else(|e| panic!("Doppelschlüssel: {e:?}\n{t}"));
+        assert_eq!(g.spalten[0].eigentuemer_unbekannt.as_deref(), Some("chef"), "{t}");
+        assert!(g.eigentuemer_roh.iter().any(|e| e.meint_human()), "der verwaiste human bleibt: {t}");
     }
 
     #[test]

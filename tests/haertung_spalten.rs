@@ -203,9 +203,58 @@ async fn rohwert_bleibt_beim_spalten_speichern() {
         let (s, r) = senden(Method::GET, &lauf.adresse, "api/boards/fabrik", "st", json!(null)).await;
         assert_eq!(s, 200, "{name}: {r}");
         assert!(r["hinweise"].as_array().unwrap().iter().any(|h| h.as_str().unwrap().contains("column-owner")), "{name}: Hinweis fehlt: {r}");
-        let neu = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}]);
+        // Eine echte Änderung (Notiz an „Erledigt"), damit die Probe den schreibenden Weg wirklich prüft.
+        let neu = json!([
+            {"name": "Eingang", "alt": "Eingang"},
+            {"name": "In Arbeit", "alt": "In Arbeit"},
+            {"name": "Erledigt", "alt": "Erledigt", "notiz": "geprüft"}
+        ]);
         let (s, r) = senden(Method::PUT, &lauf.adresse, "api/boards/fabrik/spalten", "st", neu).await;
         assert_eq!(s, 200, "{name}: {r}");
+        assert_eq!(r["geaendert"], json!(true), "{name}: die Probe schreibt wirklich: {r}");
         assert!(lies(tmp.path(), "boards/fabrik.md").contains(erwartet), "{name}: Rohwert verloren:\n{}", lies(tmp.path(), "boards/fabrik.md"));
     }
+}
+
+/// B1 (Code-Review #26, Abnahme-Probe): der skalare `column-owner: human` (das ganze Board meinend) darf nicht
+/// verschwinden, wenn dieselbe `PUT …/spalten` einen gültigen Eigentümer an eine Spalte setzt — der Hinweis bleibt,
+/// und ein Agent bleibt gesperrt (fail-safe, PO Z. 187).
+#[tokio::test]
+async fn skalarer_human_bleibt_bei_einem_gueltigen_eigentuemer() {
+    let tmp = tempfile::tempdir().unwrap();
+    ordner(tmp.path(), &[("fabrik", &fabrik_mit("---\ncolumn-owner: human\n---\n"))]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let neu = json!([
+        {"name": "Eingang", "alt": "Eingang"},
+        {"name": "In Arbeit", "alt": "In Arbeit"},
+        {"name": "Erledigt", "alt": "Erledigt", "eigentuemer": "agent"}
+    ]);
+    let (s, r) = senden(Method::PUT, &lauf.adresse, "api/boards/fabrik/spalten", "st", neu).await;
+    assert_eq!(s, 200, "{r}");
+    let (s, r) = senden(Method::GET, &lauf.adresse, "api/boards/fabrik", "st", json!(null)).await;
+    assert_eq!(s, 200, "Board bleibt lesbar: {r}");
+    assert_eq!(r["spalten"][2]["eigentuemer"], json!("agent"), "der gültige Eigentümer steht: {r}");
+    assert!(r["hinweise"].as_array().unwrap().iter().any(|h| h.as_str().unwrap().contains("human")), "der Hinweis für den human-Rohwert bleibt: {r}");
+    let vorher = stand(tmp.path());
+    let (s, r) = weg(1, &lauf.adresse, "fabrik").await; // vom Board nehmen
+    assert_eq!(s, 403, "der Agent bleibt gesperrt: {r}");
+    assert_eq!(stand(tmp.path()), vorher, "kein Commit");
+}
+
+/// B2 (Code-Review #26, Abnahme-Probe): eine Spalte auf den Namen eines verwaisten `column-owner`-Schlüssels
+/// umbenennen darf keinen doppelten YAML-Schlüssel erzeugen — das Board bleibt lesbar (GET 200).
+#[tokio::test]
+async fn umbenennen_auf_verwaisten_rohschluessel_bleibt_lesbar() {
+    let tmp = tempfile::tempdir().unwrap();
+    let vorspann = "---\ncolumn-owner:\n  A: chef\n  B: human\n---\n";
+    ordner(tmp.path(), &[("fabrik", &format!("{vorspann}\n# Fabrik\n\n## A\n\n## Z\n"))]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let neu = json!([{"name": "B", "alt": "A"}, {"name": "Z", "alt": "Z"}]);
+    let (s, r) = senden(Method::PUT, &lauf.adresse, "api/boards/fabrik/spalten", "st", neu).await;
+    assert_eq!(s, 200, "{r}");
+    let (s, r) = senden(Method::GET, &lauf.adresse, "api/boards/fabrik", "st", json!(null)).await;
+    assert_eq!(s, 200, "kein Doppelschlüssel: {r}");
+    let datei = lies(tmp.path(), "boards/fabrik.md");
+    assert_eq!(datei.matches("\n  B:").count(), 1, "der Schlüssel B steht einmal:\n{datei}");
+    assert!(r["hinweise"].as_array().unwrap().iter().any(|h| h.as_str().unwrap().contains("human")), "der verwaiste human bleibt gemeldet: {r}");
 }
