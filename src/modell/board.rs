@@ -92,6 +92,15 @@ pub fn ist_hexfarbe(s: &str) -> bool {
     s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
+/// Der Spaltenname wird als `## `-Überschrift der Board-Datei geschrieben — ein Zeilenumbruch macht die Datei kaputt
+/// (R00128 N2). Die eine Regel, die jeder Weg prüft (PUT …/spalten, POST /api/boards, POST /api/einrichten): außen
+/// getrimmt 1–200 Zeichen ohne Zeilenumbruch (jede Unicode-Zeilengrenze), wie beim Board-Titel und `Fremdschluessel`.
+pub fn spaltenname_gueltig(name: &str) -> bool {
+    let name = name.trim();
+    let umbruch = |c: char| matches!(c, '\n' | '\r' | '\u{0B}' | '\u{0C}' | '\u{85}' | '\u{2028}' | '\u{2029}');
+    (1..=200).contains(&name.chars().count()) && !name.contains(umbruch)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Linie {
@@ -454,6 +463,7 @@ pub struct SpaltenAenderung {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Spaltenfehler {
     NameLeer,
+    NameUngueltig(String),
     NameDoppelt(String),
     AltUnbekannt(String),
     AltDoppelt(String),
@@ -473,6 +483,9 @@ impl Board {
             let name = n.name.trim();
             if name.is_empty() {
                 return Err(Spaltenfehler::NameLeer);
+            }
+            if !spaltenname_gueltig(name) {
+                return Err(Spaltenfehler::NameUngueltig(name.into()));
             }
             if namen.contains(&name) {
                 return Err(Spaltenfehler::NameDoppelt(name.into()));

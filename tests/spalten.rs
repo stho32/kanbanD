@@ -169,3 +169,76 @@ async fn unbekannter_eigentuemer_bleibt_beim_umbenennen_in_der_datei() {
     assert_eq!(s, 200);
     assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("---\ncolumn-owner:\n  Eingang: chef\n---\n"));
 }
+
+// R00128 N2 (security, Befund): ein Spaltenname wird als `## `-Überschrift der Board-Datei geschrieben — ein
+// Zeilenumbruch oder ein Name über 200 Zeichen ergibt 400; die Datei bleibt byte-gleich, kein Commit. Dieselbe
+// Regel wie beim Board-Titel gilt für alle drei Wege: PUT …/spalten, POST /api/boards und POST /api/einrichten.
+#[tokio::test]
+async fn spaltenname_mit_umbruch_oder_zu_lang_400() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let a = &lauf.adresse;
+    let datei = lies(tmp.path(), "boards/entwicklung.md");
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let zu_lang = "A".repeat(201);
+    let ungueltig: [&str; 8] = [
+        "X\n## Prüfen",
+        "X\r## Prüfen",
+        "X\r\n## Prüfen",
+        "X\u{2028}## Prüfen",
+        "X\u{0B}## Prüfen",
+        "X\u{85}## Prüfen",
+        "\n",
+        zu_lang.as_str(),
+    ];
+    // Weg 1: PUT /api/boards/{slug}/spalten — die neue Zeile trägt den Namen
+    for name in ungueltig {
+        let neu = json!([
+            {"name": "Zu erledigen", "alt": "Zu erledigen"},
+            {"name": name, "alt": "In Arbeit"},
+            {"name": "Erledigt", "alt": "Erledigt"}
+        ]);
+        let (s, f) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", neu).await;
+        assert_eq!(s, 400, "PUT {name:?} muss 400 sein: {f}");
+        assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), datei, "PUT {name:?}: Datei byte-gleich");
+        assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "PUT {name:?}: kein Commit");
+    }
+    // Weg 2: POST /api/boards mit eigener Spaltenliste
+    for name in ungueltig {
+        let (s, _) = senden(Method::POST, a, "api/boards", "st", json!({"titel": "Neu", "spalten": [name]})).await;
+        assert_eq!(s, 400, "POST /api/boards {name:?} muss 400 sein");
+    }
+    assert!(!tmp.path().join("boards/neu.md").exists(), "kein Board angelegt");
+    // Weg 3: POST /api/einrichten
+    for name in ungueltig {
+        let e = json!({
+            "ich": {"kuerzel": "st", "name": "Stefan"},
+            "agenten": [],
+            "board": "Zweites",
+            "spalten": [name],
+            "quellen": {"wbs": "", "anforderungen": ""}
+        });
+        let (s, _) = senden(Method::POST, a, "api/einrichten", "st", e).await;
+        assert_eq!(s, 400, "POST /api/einrichten {name:?} muss 400 sein");
+    }
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "nach allen Varianten kein Commit");
+    // ein Umbruch nur am Rand wird getrimmt und ist gültig (Regel wie Board-Titel)
+    let (s, _) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([
+        {"name": "Zu erledigen", "alt": "Zu erledigen"},
+        {"name": "Sommer\n", "alt": "In Arbeit"},
+        {"name": "Erledigt", "alt": "Erledigt"}
+    ])).await;
+    assert_eq!(s, 200, "ein Umbruch nur am Rand wird getrimmt");
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("\n## Sommer\n"));
+    // Grenze (Triangulation): 200 Zeichen sind erlaubt
+    let rand = "B".repeat(200);
+    let neu = json!([
+        {"name": "Zu erledigen", "alt": "Zu erledigen"},
+        {"name": rand, "alt": "Sommer"},
+        {"name": "Erledigt", "alt": "Erledigt"}
+    ]);
+    let (s, r) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", neu).await;
+    assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)), "200 Zeichen sind erlaubt: {r}");
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains(&format!("\n## {}\n", "B".repeat(200))));
+}

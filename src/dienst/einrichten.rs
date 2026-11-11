@@ -2,7 +2,7 @@ use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::{board, einstellungen};
-use crate::modell::{Art, Board, Einstellungen, Person, Quellen, Spalte, kuerzel_gueltig, slug};
+use crate::modell::{Art, Board, Einstellungen, Person, Quellen, Spalte, kuerzel_gueltig, slug, spaltenname_gueltig};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -89,6 +89,9 @@ pub(crate) fn spalten_pruefen(spalten: &[String]) -> Result<(), Fehler> {
     let spalten: Vec<&str> = spalten.iter().map(|s| s.trim()).collect();
     if spalten.is_empty() || spalten.iter().any(|s| s.is_empty()) {
         return Err(Fehler::Ungueltig("Mindestens eine Spalte, keine ohne Namen".into()));
+    }
+    if spalten.iter().any(|s| !spaltenname_gueltig(s)) {
+        return Err(Fehler::Ungueltig("Ein Spaltenname braucht 1–200 Zeichen ohne Zeilenumbruch".into()));
     }
     if let Some(d) = spalten.iter().enumerate().find(|(i, s)| spalten[..*i].contains(s)) {
         return Err(Fehler::Ungueltig(format!("Spalte „{}“ ist doppelt", d.1)));

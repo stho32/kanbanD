@@ -13,6 +13,7 @@ impl Kanban {
         let vorher = b.clone();
         let geaendert = b.spalten_setzen(neu).map_err(|f| match f {
             Spaltenfehler::NameLeer => Fehler::Ungueltig("Eine Spalte braucht einen Namen".into()),
+            Spaltenfehler::NameUngueltig(n) => Fehler::Ungueltig(format!("Spalte „{n}“ braucht 1–200 Zeichen ohne Zeilenumbruch")),
             Spaltenfehler::NameDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ ist doppelt")),
             Spaltenfehler::AltUnbekannt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ gibt es nicht")),
             Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
@@ -78,7 +79,10 @@ mod tests {
     #[test]
     fn namen_ohne_rundlauf_sind_nie_still_ohne_aenderung() {
         let vorher = board::lesen("entwicklung", AUSGANG).unwrap();
-        for name in ["In Arbeit\nx", "0x10", "0o17", "0b101"] {
+        // R00128 N2: ein Name mit Zeilenumbruch wird jetzt schon von `spalten_setzen` abgewiesen
+        // (`Spaltenfehler::NameUngueltig`, Integrationstest tests/spalten.rs) — hier bleiben die Namen,
+        // die die Prüfung passieren, im Rundlauf aber nicht wieder ankommen.
+        for name in ["0x10", "0o17", "0b101"] {
             for (i, spalte) in [(1, "In Arbeit"), (0, "Eingang")] {
                 let mut neu = drei().to_vec();
                 neu[i] = aend(name, spalte);
