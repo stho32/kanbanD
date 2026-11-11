@@ -246,10 +246,12 @@ test.describe('R00128 B1 (Nacharbeit): archivierte Boards sind kein Kartenziel',
   const BESTAND_B1 = {
     'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
     'boards/test.md': '# Test\n\n## Bereit\n\n',
+    'boards/zweit.md': '# Zweit\n\n## Offen\n\n',
     'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n',
     'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\n---\n',
   };
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
+    await mutanteEinsetzen(context);
     k = await kanbanStarten(einrichten(BESTAND_B1));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -273,22 +275,25 @@ test.describe('R00128 B1 (Nacharbeit): archivierte Boards sind kein Kartenziel',
     return (await unterEintraege(page).allTextContents()).join('|');
   }
 
-  test('archiviertes Board fehlt in allen vier Quellen', async ({ page }) => {
+  test('archiviertes Board fehlt in allen vier Quellen, ein zweites offenes bleibt Ziel', async ({ page }) => {
     // (1) Kontextmenü einer Karte (menueFuerKarte)
     const karte = await zieleDerQuelle(page, () => page.locator('.ka[data-id="1"]').click({ button: 'right' }));
     expect(karte).not.toContain('Test');
+    expect(karte).toContain('Zweit');
     await page.keyboard.press('Escape');
     // (2) Menü einer Auswahl (menueFuerAuswahl)
     await page.locator('.ka[data-id="1"]').click({ modifiers: ['ControlOrMeta'] });
     await page.locator('.ka[data-id="2"]').click({ modifiers: ['ControlOrMeta'] });
     const auswahl = await zieleDerQuelle(page, () => page.locator('.ka[data-id="1"]').click({ button: 'right' }));
     expect(auswahl).not.toContain('Test');
+    expect(auswahl).toContain('Zweit');
     await page.keyboard.press('Escape');
     // (3) Zeilenmenü der Aufgabenliste (menueFuerZeile)
     await page.goto(k.adresse + '#/aufgaben');
     await liveBereit(page);
     const zeile = await zieleDerQuelle(page, () => page.locator('tr[data-zeile="1"]').click({ button: 'right' }));
     expect(zeile).not.toContain('Test');
+    expect(zeile).toContain('Zweit');
     await page.keyboard.press('Escape');
     // (4) Formular „Neue Aufgabe“ (vNeu)
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -298,6 +303,7 @@ test.describe('R00128 B1 (Nacharbeit): archivierte Boards sind kein Kartenziel',
     const optionen = await page.locator('select[data-nf="board"] option').allTextContents();
     expect(optionen).not.toContain('Test');
     expect(optionen).toContain('Entwicklung');
+    expect(optionen).toContain('Zweit');
   });
 });
 
