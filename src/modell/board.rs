@@ -23,7 +23,8 @@ pub struct Spalte {
     pub eigentuemer: Option<Eigentuemer>,
     /// Ein Wert unter `column-owner`, der weder `human` noch `agent` ist: gilt nicht, bleibt in der Datei und wird als Hinweis gemeldet;
     /// im JSON nur, wo es ihn gibt, damit „Spalten einrichten“ ihn zeigt (B0296).
-    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>)]
     pub eigentuemer_unbekannt: Option<String>,
 }
 

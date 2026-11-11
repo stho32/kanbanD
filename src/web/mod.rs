@@ -1301,7 +1301,7 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)
     get,
     path = "/api/boards",
     tag = "Boards",
-    description = "alle Boards mit Spalten und Aufgabennummern — ohne archivierte Karten, mit ?archivierte=ja mit ihnen",
+    description = "alle Boards mit Spalten und Aufgabennummern — je Spalte auch `eigentuemer_unbekannt` (column-owner: human | agent | null; ein unbekannter Wert gilt nicht) — ohne archivierte Karten, mit ?archivierte=ja mit ihnen",
     params(("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf")),
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Board>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]

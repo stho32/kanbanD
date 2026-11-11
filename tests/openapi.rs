@@ -31,7 +31,7 @@ async fn openapi_31_vollstaendig_und_aufloesbar() {
     let d = beschreibung(&lauf.adresse).await;
     assert!(d["openapi"].as_str().unwrap().starts_with("3.1"));
     assert_eq!(d["info"]["version"], env!("CARGO_PKG_VERSION"));
-    assert!(d["info"]["description"].as_str().unwrap().contains("ein Objekt kommt direkt, eine Liste verpackt"));
+    assert!(d["info"]["description"].as_str().unwrap().contains("Ein Objekt kommt direkt, eine Liste verpackt"));
     let mut fehlend = vec![];
     alle_verweise(&d, &d, &mut fehlend);
     assert!(fehlend.is_empty(), "nicht auflösbar: {fehlend:?}");
@@ -264,4 +264,21 @@ async fn grenze_texte_sind_rein() {
     assert!(seite.contains("Warnung grenze: Grenze erreicht: „&lt;Spalte&gt;“ hat n von g"), "Seite /api: Warnung");
     assert!(seite.contains("eine schon liegende Aufgabe"), "Seite /api: Aufgabe");
     assert!(!seite.contains("„Grenze erreicht: „") && !seite.contains("schon liegende Karte"), "Seite /api rein");
+}
+
+/// R00120 AK 9/10: das OpenAPI-Schema `Spalte` und die Beschreibungen nennen `eigentuemer_unbekannt`; die
+/// Hausregel zur Großschreibung nach dem Doppelpunkt ist angewandt.
+#[tokio::test]
+async fn spalte_schema_und_beschreibung_nennen_eigentuemer_unbekannt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    assert!(d["components"]["schemas"]["Spalte"]["properties"]["eigentuemer_unbekannt"].is_object(), "AK 9: Schemafeld Spalte.eigentuemer_unbekannt");
+    let zweck = |pfad: &str| kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "GET" && e.pfad == pfad).unwrap().zweck;
+    assert!(zweck("/api/boards").contains("eigentuemer_unbekannt"), "GET /api/boards: {}", zweck("/api/boards"));
+    assert!(zweck("/api/boards/{slug}").contains("eigentuemer_unbekannt"), "GET /api/boards/{{slug}}");
+    assert!(d["paths"]["/api/boards"]["get"]["description"].as_str().unwrap().contains("eigentuemer_unbekannt"), "openapi GET /api/boards");
+    let info = d["info"]["description"].as_str().unwrap();
+    assert!(info.contains("): Aus einer Spalte, die dem Menschen gehört"), "Hausregel Doppelpunkt: {info}");
+    assert!(info.contains("Antwortregel: Ein Objekt kommt direkt"), "Hausregel Doppelpunkt Antwortregel: {info}");
 }
