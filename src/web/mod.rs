@@ -4,7 +4,7 @@ pub mod endpunkte;
 pub mod openapi;
 mod statisch;
 
-use crate::dienst::{Angelegt, Bewegung, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
+use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -65,6 +65,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(einrichten))
         .routes(routes!(boards, board_anlegen))
         .routes(routes!(board))
+        .routes(routes!(board_aendern, board_loeschen))
         .routes(routes!(bewegen))
         .routes(routes!(mehrere_bewegen))
         .routes(routes!(mehrere_auf_board_legen))
@@ -267,7 +268,7 @@ fn ohne_archivierte(k: &Kanban, boards: &mut [&mut crate::modell::Board]) -> Res
     get,
     path = "/api/boards/{slug}",
     tag = "Boards",
-    description = "ein Board {slug, titel, spalten: [{name, grenze, aufgaben (ohne archivierte; ?archivierte=ja nimmt sie auf — die Board-Datei behält ihren Platz), phase, pruefungen: column-checks, notiz: column-notes, farbe: column-colors, eigentuemer: column-owner — human | agent | null; ein unbekannter Wert gilt nicht, steht unter hinweise und als eigentuemer_unbekannt}], termine (je {name, datum, farbe, linie, staerke, ziel}), anwendungen, start: Projektstart JJJJ-MM-TT | null, fieber: {puffer, perzentil, woche, gelb: [bei 0 %, bei 100 %], rot, zielspalte, aufloesung}, berichtsfilter: {zeitraum, von, bis, ohneFarben, ohneSpalten, personen, labels, messbasisTage}, bestand: Achsen des Berichts Bestand nach Labels {zeilen, spalten} | null, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}, hinweise: [unbekannte Prüfung …]}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“)",
+    description = "ein Board {slug, titel, spalten: [{name, grenze, aufgaben (ohne archivierte; ?archivierte=ja nimmt sie auf — die Board-Datei behält ihren Platz), phase, pruefungen: column-checks, notiz: column-notes, farbe: column-colors, eigentuemer: column-owner — human | agent | null; ein unbekannter Wert gilt nicht, steht unter hinweise und als eigentuemer_unbekannt}], termine (je {name, datum, farbe, linie, staerke, ziel}), anwendungen, start: Projektstart JJJJ-MM-TT | null, fieber: {puffer, perzentil, woche, gelb: [bei 0 %, bei 100 %], rot, zielspalte, aufloesung}, berichtsfilter: {zeitraum, von, bis, ohneFarben, ohneSpalten, personen, labels, messbasisTage}, bestand: Achsen des Berichts Bestand nach Labels {zeilen, spalten} | null, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}, hinweise: [unbekannte Prüfung …], archiviert: <JJJJ-MM-TT> | null (R00128, ein archiviertes Board bleibt lesbar)}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“)",
     params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf")),
     responses((status = 200, description = "Erfolg", body = crate::dienst::BoardMitPhasen), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
@@ -281,6 +282,41 @@ async fn board(State(app): State<App>, Path(slug): Path<String>, Query(q): Query
     })
     .await?;
     Ok(Json(b).into_response())
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/boards/{slug}",
+    tag = "Boards",
+    description = "Board umbenennen oder archivieren {titel?, archiviert?} — `{titel}` schreibt nur die `# `-Überschrift neu (der Slug bleibt Dateiname, Adresse `#/board/<slug>` und Schlüssel des Berichte-Caches); `{archiviert: true}` setzt `archived: <heute>` ins Board-Frontmatter, `{archiviert: false}` nimmt den Schlüssel weg. Leerer Titel oder Titel ohne Buchstaben/Ziffern → 400; unbekanntes Board 404, ungültige Slug-Form 400, defektes Board 423; Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (Archivieren board-weit, R00097/R00120 — Umbenennen ist frei); ohne tatsächliche Änderung kein Commit. Antwort das Board mit `archiviert: <JJJJ-MM-TT> | null`.",
+    params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::BoardVerwalten,
+    responses((status = 200, description = "Erfolg", body = crate::modell::Board), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent archiviert ein Board mit einer Karte in einer Menschen-Spalte", body = crate::web::openapi::Verboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn board_aendern(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(neu): Json<BoardVerwalten>) -> Result<Response, Fehler> {
+    let b = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.board_aendern(&p, &slug, &neu)
+    })
+    .await?;
+    Ok(Json(b).into_response())
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/boards/{slug}",
+    tag = "Boards",
+    description = "Board löschen — entfernt `boards/<slug>.md` und den verwaisten Cache `berichte/<slug>-fieber.md` in genau einem Commit (Git ist der Papierkorb, ADR-0022); die Aufgaben bleiben erhalten und sind danach auf keinem Board mehr. Unbekanntes Board 404, ungültige Slug-Form 400, defektes Board 423; Agent aus einer Menschen-Spalte → 403 {fehler, spalte, nummer} (board-weit, R00097/R00120). Antwort {entfernt: true}.",
+    params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Entfernt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent löscht ein Board mit einer Karte in einer Menschen-Spalte", body = crate::web::openapi::Verboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn board_loeschen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>) -> Result<Response, Fehler> {
+    blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.board_loeschen(&p, &slug)
+    })
+    .await?;
+    Ok(Json(json!({ "entfernt": true })).into_response())
 }
 
 #[utoipa::path(
@@ -1301,14 +1337,16 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Path((slug, nr)
     get,
     path = "/api/boards",
     tag = "Boards",
-    description = "alle Boards mit Spalten und Aufgabennummern — je Spalte auch `eigentuemer_unbekannt` (column-owner: human | agent | null; ein unbekannter Wert gilt nicht) — ohne archivierte Karten, mit ?archivierte=ja mit ihnen",
-    params(("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf")),
+    description = "alle offenen Boards mit Spalten und Aufgabennummern (archivierte Boards nur mit ?archivierte=ja, R00128) — je Spalte auch `eigentuemer_unbekannt` (column-owner: human | agent | null; ein unbekannter Wert gilt nicht) — ohne archivierte Karten, mit ?archivierte=ja mit ihnen",
+    params(("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf — und archivierte Boards in die Liste")),
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Board>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn boards(State(app): State<App>, Query(q): Query<MitArchivierten>) -> Result<Response, Fehler> {
     let boards = blockierend(&app, move |k| {
         let (mut boards, _) = k.ordner().boards()?;
         if !q.gewuenscht() {
+            // Archivierte Boards fallen aus der Liste (R00128, dieselbe Sprache wie das Kartenarchiv); ?archivierte=ja nimmt sie auf.
+            boards.retain(|b| b.archiviert.is_none());
             ohne_archivierte(k, &mut boards.iter_mut().collect::<Vec<_>>())?;
         }
         Ok(boards)

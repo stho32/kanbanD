@@ -4,7 +4,7 @@ name: Schreibweg und Regeln an Zügen
 art: Aspekt
 geltung: Makro
 befund: Uneinheitlich
-hausantwort: "Kanban-Methode unter gesperrt() → Prüfung → aktion() (src/dienst/mod.rs)"
+hausantwort: "Kanban-Methode unter gesperrt() → Prüfung → aktion() (Schreiben) bzw. entfernen() (Löschen; src/dienst/mod.rs)"
 betrifft:
   - A00004
   - A00007
@@ -22,6 +22,7 @@ quellen:
   - src/dienst/zugregeln.rs
   - src/dienst/zuordnung.rs
   - src/dienst/archiv.rs
+  - src/dienst/board_verwalten.rs
   - src/ablage.rs
 ---
 
@@ -64,6 +65,9 @@ Zusammengesetzte Aktionen nach [ADR-0005](../../ADRs/0005-zusammengesetzte-aktio
 | Zurückholen (einzeln, mehrere) | `archiv.rs` | ja, auf jedem Board | nein | nein |
 | Wiederöffnen über `key` | `aufgabe_anlegen.rs`, R00098 | ja | offen (R00098) | nein |
 | Erledigen | `erledigen.rs` (geplant), R00099 | ja (Abschlussspalte) | offen (R00099) | eigener Ablauf: Agent in Menschen-Spalte ⇒ Signal statt Zug |
+| Umbenennen (Umbenennen) | `board_verwalten.rs`, R00128 | nein | — | nein (bewegt keine Karte) |
+| Archivieren eines Boards | `board_verwalten.rs`, R00128 | nein | — | ja, board-weit (alle Spalten) |
+| Löschen eines Boards | `board_verwalten.rs`, R00128 | nein | — | ja, board-weit (alle Spalten) |
 
 Schlüsselsuche (R00098, R00099) nach [ADR-0004](../../ADRs/0004-schluesselsuche-unter-der-sperre.md): unter derselben Sperre über `ordner().aufgaben()`, einmal je Anfrage.
 
@@ -73,9 +77,11 @@ Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich
 
 ### Probe „Aufruf vergessen“ (R00118 B0540)
 
-Die Schwäche von ADR-0002 — ein neuer Schreibweg vergisst den Aufruf — prüft `tests/aufruf_vergessen.rs` als `grep`-Wächter. Board-Datei-Schreiber sind die 15 Stellen mit `board_pfad(` unter `src/dienst/`. **Karten bewegende Wege** sind darunter `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs` (`auf_board_legen`, `mehrere_auf_board_legen`), `reservierung.rs`, `erledigen.rs` sowie `archiv.rs` (`zurueckholen_pruefen` schreibt keine Board-Datei, lässt die Karten aber wieder zählen); jeder ruft vor `aktion()` die Grenzprüfung auf (`zug_pruefen`, `zug_mit_rueckkehr_pruefen`, `grenzen_pruefen`, `entnahme_und_zug_pruefen`, `zurueckholen_pruefen`).
+Die Schwäche von ADR-0002 — ein neuer Schreibweg vergisst den Aufruf — prüft `tests/aufruf_vergessen.rs` als `grep`-Wächter. Board-Datei-Schreiber sind die 16 Stellen mit `board_pfad(` unter `src/dienst/`. **Karten bewegende Wege** sind darunter `bewegen.rs`, `aufgabe_anlegen.rs`, `zuordnung.rs` (`auf_board_legen`, `mehrere_auf_board_legen`), `reservierung.rs`, `erledigen.rs` sowie `archiv.rs` (`zurueckholen_pruefen` schreibt keine Board-Datei, lässt die Karten aber wieder zählen); jeder ruft vor `aktion()` die Grenzprüfung auf (`zug_pruefen`, `zug_mit_rueckkehr_pruefen`, `grenzen_pruefen`, `entnahme_und_zug_pruefen`, `zurueckholen_pruefen`).
 
-**Ausnahmen** (Board-Datei-Schreiber ohne Kartenzug, keine Grenzprüfung nötig): `berichtsfilter.rs`, `bestand.rs`, `bindung.rs`, `board_anlegen.rs`, `einrichten.rs`, `fieber.rs`, `phasen.rs`, `spalten.rs`, `termine.rs`, `verlauf.rs` (liest die Board-Datei nur) sowie `zuordnung.rs::von_board_nehmen` (nimmt eine Karte heraus, nie hinein). Ein neuer Schreiber lässt den Wächter rot werden und ist hier einzuordnen.
+**Ausnahmen** (Board-Datei-Schreiber ohne Kartenzug, keine Grenzprüfung nötig): `berichtsfilter.rs`, `bestand.rs`, `bindung.rs`, `board_anlegen.rs`, `board_verwalten.rs` (umbenennen/archivieren/löschen — prüft die Eigentümer-Sperre board-weit, bewegt aber keine Karte), `einrichten.rs`, `fieber.rs`, `phasen.rs`, `spalten.rs`, `termine.rs`, `verlauf.rs` (liest die Board-Datei nur) sowie `zuordnung.rs::von_board_nehmen` (nimmt eine Karte heraus, nie hinein). Ein neuer Schreiber lässt den Wächter rot werden und ist hier einzuordnen.
+
+**Löschweg (R00128, A00007):** `board_verwalten.rs::board_loeschen` entfernt Dateien statt sie zu schreiben — der Weg `Kanban::entfernen` (in `mod.rs`, `eigene_merken` + `remove_file` + `committen`) neben `aktion()`; alle Pfade werden vor dem ersten Entfernen geprüft (ADR-0008, zweite Linie), ein Commit je Aktion bleibt erhalten.
 
 ## Abweichungen
 

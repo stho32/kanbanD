@@ -11,6 +11,7 @@ mod aufgabe_anlegen;
 mod bewegen;
 mod bindung;
 mod board_anlegen;
+mod board_verwalten;
 mod durchlaeufe;
 mod einrichten;
 mod einstellungen;
@@ -45,6 +46,7 @@ pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
 pub use wirkungen::{WirkungEingabe, Wirkungsstand};
 pub use zeiten::{Zeitkorrektur, Zeitnachtrag};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
+pub use board_verwalten::BoardVerwalten;
 pub use einrichten::{Einrichtung, NeuePerson};
 pub use herkunft::Quelle;
 pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
@@ -131,7 +133,7 @@ impl Kanban {
             ordner: self.ordner.wurzel().to_string_lossy().into(),
             eingerichtet: self.ordner.existiert(crate::format::einstellungen::DATEI),
             einstellungen,
-            boards: boards.into_iter().map(|b| BoardKopf { slug: b.slug, titel: b.titel }).collect(),
+            boards: boards.into_iter().filter(|b| b.archiviert.is_none()).map(|b| BoardKopf { slug: b.slug, titel: b.titel }).collect(),
             defekte,
             dubletten: crate::modell::doppelte_schluessel(&aufgaben),
         })
@@ -169,6 +171,24 @@ impl Kanban {
         }
         let pfade: Vec<String> = dateien.iter().map(|(p, _)| p.clone()).collect();
         git::committen(self.ordner.wurzel(), &pfade, autor, nachricht)?;
+        Ok(())
+    }
+
+    /// Entfernt Dateien und committet sie als **eine** Aktion — der Löschweg neben `aktion` (R00128, ADR-0022/A00007).
+    /// Alle Pfade werden vor dem ersten Entfernen geprüft (ADR-0008, zweite Linie); fehlende Pfade zählen nicht. Ändert
+    /// sich nichts, entsteht kein Commit.
+    fn entfernen(&self, autor: &Person, nachricht: &str, pfade: &[String]) -> Result<(), Fehler> {
+        let alle: Vec<&str> = pfade.iter().map(|p| p.as_str()).collect();
+        crate::ablage::pfade_pruefen(&alle).map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts entfernt: {grund}")))?;
+        let mut entfernt = vec![];
+        for rel in pfade {
+            if self.ordner().existiert(rel) {
+                self.eigene_merken(rel);
+                std::fs::remove_file(self.ordner().wurzel().join(rel))?;
+                entfernt.push(rel.clone());
+            }
+        }
+        self.committen(autor, nachricht, &entfernt)?;
         Ok(())
     }
 

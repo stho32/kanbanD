@@ -16,15 +16,17 @@ const BEWEGEND: [(&str, &str); 6] = [
     ("src/dienst/archiv.rs", "zurueckholen_pruefen"),
 ];
 
-/// Alle Dienst-Dateien, die `board_pfad(` führen — die 15 Board-Datei-Schreiber aus X00001. `verlauf.rs` liest die
-/// Board-Datei nur; ein neuer Eintrag hier ist ein neuer Schreiber, den X00001 und diese Liste einordnen müssen.
-const SCHREIBER: [&str; 15] = [
+/// Alle Dienst-Dateien, die `board_pfad(` führen — die 16 Board-Datei-Schreiber aus X00001 (R00128: `board_verwalten.rs`
+/// für Umbenennen/Archivieren und den Löschweg). `verlauf.rs` liest die Board-Datei nur; ein neuer Eintrag hier ist ein
+/// neuer Schreiber, den X00001 und diese Liste einordnen müssen.
+const SCHREIBER: [&str; 16] = [
     "aufgabe_anlegen.rs",
     "berichtsfilter.rs",
     "bestand.rs",
     "bewegen.rs",
     "bindung.rs",
     "board_anlegen.rs",
+    "board_verwalten.rs",
     "einrichten.rs",
     "erledigen.rs",
     "fieber.rs",

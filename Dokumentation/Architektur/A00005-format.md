@@ -40,3 +40,4 @@ Das Format wandelt Markdown mit YAML-Frontmatter rein in Modelldaten um, in beid
 - `src/format/frontmatter.rs`, `yaml.rs` gemeinsame Bausteine; eine Datei je Dateiart.
 - Soll nach ADR-0009 (Karte #18): `cost` kommt in `BEKANNT`; Verstoß gegen Form oder Modellregel ist `Formatfehler` mit Pfad (Aufgabe defekt, wie `reporting`). Rundlauf-Test über alle Cent-Werte 0–100.000 plus Ränder; `basis`/`text` über `yaml::skalar`.
 - nachgeführt 2026-11-06 nach #18 (ADR-0009)
+- nachgeführt 2026-11-11 nach R00128 (#35): das Board-Frontmatter liest/schreibt `archived: <JJJJ-MM-TT>` (`board::lesen`/`board::schreiben`); ein ungültiges Datum ist ein `Formatfehler` (wie `start`), der `---`-Block erscheint auch, wenn nur `archived` gesetzt ist; Rundlauf-Test `archiviert_im_frontmatter_rundlauf`.

@@ -66,7 +66,6 @@ fn kopf(pfad: &std::path::Path) -> String {
 
 // AK 1 + US-1: Umbenennen ändert nur die Überschrift; Slug, Adresse und Berichte-Cache bleiben
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn umbenennen_aendert_nur_den_titel_der_slug_bleibt() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
@@ -95,7 +94,6 @@ async fn umbenennen_aendert_nur_den_titel_der_slug_bleibt() {
 
 // AK 2/3 + US-2/US-3: Archivieren setzt `archived: <heute>`, nimmt aus der Liste; `?archivierte=ja` und Reaktivieren
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn archivieren_und_reaktivieren() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
@@ -138,7 +136,6 @@ async fn archivieren_und_reaktivieren() {
 
 // AK 4 + US-4: Löschen entfernt Board-Datei und Cache in einem Commit; die Karten bleiben
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn loeschen_entfernt_datei_und_cache_die_karten_bleiben() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
@@ -164,7 +161,6 @@ async fn loeschen_entfernt_datei_und_cache_die_karten_bleiben() {
 
 // AK 5 + US-5: Agent gesperrt (Archivieren und Löschen), Mensch frei, Umbenennen frei
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn agent_gesperrt_mensch_frei_umbenennen_frei() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
@@ -190,7 +186,6 @@ async fn agent_gesperrt_mensch_frei_umbenennen_frei() {
 
 // AK 6 + US-6: leerer Titel 400 (Datei byte-gleich), unbekannt 404, PATCH ohne Änderung kein Commit
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn fehlerfaelle_kein_leerer_commit() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
@@ -213,7 +208,6 @@ async fn fehlerfaelle_kein_leerer_commit() {
 
 // AK 14/S4: ein defektes Board bleibt schreibgeschützt — 423 für Umbenennen, Archivieren, Löschen
 #[tokio::test]
-#[ignore = "erwartet rot #35 — Server F0103"]
 async fn defektes_board_423() {
     let tmp = tempfile::tempdir().unwrap();
     grundbestand(tmp.path());
