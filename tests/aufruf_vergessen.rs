@@ -5,15 +5,20 @@
 // `board_pfad(`) müssen vollständig aufgezählt sein, und jeder Karten bewegende Weg muss vor `aktion()` prüfen.
 // Zusätzlich: `Person` in `zugregeln.rs` wird kurz geschrieben, nicht voll qualifiziert (B0539).
 
-/// Die Karten bewegenden Dienst-Dateien und die Grenzprüfung, die sie vor der Board-Schreibung aufrufen müssen.
-/// `zurueckholen_pruefen` (archiv.rs) schreibt keine Board-Datei, lässt die Karten aber wieder zählen.
-const BEWEGEND: [(&str, &str); 6] = [
-    ("src/dienst/bewegen.rs", "entnahme_und_grenzen_pruefen"),
-    ("src/dienst/aufgabe_anlegen.rs", "zug_mit_rueckkehr_pruefen"),
-    ("src/dienst/zuordnung.rs", "grenzen_pruefen"),
-    ("src/dienst/reservierung.rs", "entnahme_und_zug_pruefen"),
-    ("src/dienst/erledigen.rs", "zug_pruefen"),
-    ("src/dienst/archiv.rs", "zurueckholen_pruefen"),
+/// Die Karten bewegenden Wege (ADR-0002): je Eintrag (Datei, Weg-Marke, Grenzprüfung). Die Grenzprüfung muss **nach**
+/// der Marke und **vor** der ersten Board-Schreibung der Datei stehen. `archiv.rs` führt zwei Wege: `zurueckholen`
+/// (Marke leer; schreibt keine Board-Datei, lässt die Karten aber wieder zählen) und den Löschweg `endgueltig_loeschen`
+/// (R00141). Der Löschweg schreibt als erster in `archiv.rs` eine Board-Datei; weil `archivieren_pruefen` auch im
+/// früheren `archivieren` steht, grenzt die Marke `fn endgueltig_loeschen` die Nadel auf die Entnahme-Sperre des
+/// Löschwegs ein — sonst bliebe deren Entfernen unentdeckt.
+const BEWEGEND: [(&str, &str, &str); 7] = [
+    ("src/dienst/bewegen.rs", "", "entnahme_und_grenzen_pruefen"),
+    ("src/dienst/aufgabe_anlegen.rs", "", "zug_mit_rueckkehr_pruefen"),
+    ("src/dienst/zuordnung.rs", "", "grenzen_pruefen"),
+    ("src/dienst/reservierung.rs", "", "entnahme_und_zug_pruefen"),
+    ("src/dienst/erledigen.rs", "", "zug_pruefen"),
+    ("src/dienst/archiv.rs", "fn endgueltig_loeschen", "archivieren_pruefen"),
+    ("src/dienst/archiv.rs", "", "zurueckholen_pruefen"),
 ];
 
 /// Alle Dienst-Dateien, die `board_pfad(` führen — die 17 Board-Datei-Schreiber aus X00001 (R00128: `board_verwalten.rs`
@@ -64,11 +69,14 @@ fn board_datei_schreiber_liste_ist_vollstaendig() {
 
 #[test]
 fn jeder_karten_bewegende_weg_prueft_die_grenze_vor_der_aktion() {
-    for (datei, pruefung) in BEWEGEND {
+    for (datei, marke, pruefung) in BEWEGEND {
         let text = quelle(datei);
-        let p = stelle(&text, &format!("{pruefung}("));
-        // Die Grenzprüfung steht vor der ersten Board-Schreibung; `archiv.rs` schreibt keine Board-Datei.
+        let von = if marke.is_empty() { 0 } else { stelle(&text, marke) };
+        // Die Grenzprüfung steht nach der Weg-Marke und vor der ersten Board-Schreibung; `archiv.rs::zurueckholen`
+        // schreibt keine Board-Datei (Fallback `self.aktion(`), der Löschweg schreibt die Zeilen.
         let grenze = text.find("board_pfad(").unwrap_or_else(|| stelle(&text, "self.aktion("));
+        let nadel = format!("{pruefung}(");
+        let p = von + text[von..].find(&nadel).unwrap_or_else(|| panic!("{datei}: ab der Marke nicht gefunden: {nadel}"));
         assert!(p < grenze, "{datei}: {pruefung} steht nach dem Schreiben");
     }
 }
