@@ -121,9 +121,9 @@ async fn neun_endpunkte_nennen_die_grenze() {
     assert!(["fehler", "spalte", "grenze", "anzahl"].iter().all(|f| felder[f].is_object()), "{felder}");
 }
 
-/// R00097 B0298/R00128: die acht Endpunkte, an denen ein Agent keine Karte aus einer Menschen-Spalte nimmt bzw. ein
-/// ganzes Board nicht archiviert oder löscht.
-const SPERRE: [(&str, &str); 8] = [
+/// R00097 B0298/R00128/R00141: die neun Endpunkte, an denen ein Agent keine Karte aus einer Menschen-Spalte nimmt,
+/// ein ganzes Board nicht archiviert oder löscht bzw. eine Aufgabe nicht endgültig löscht.
+const SPERRE: [(&str, &str); 9] = [
     ("post", "/api/boards/{slug}/ziehen"),
     ("post", "/api/boards/{slug}/bewegen"),
     ("post", "/api/boards/{slug}/bewegen-mehrere"),
@@ -132,10 +132,11 @@ const SPERRE: [(&str, &str); 8] = [
     ("post", "/api/aufgaben/archivieren"),
     ("patch", "/api/boards/{slug}"),
     ("delete", "/api/boards/{slug}"),
+    ("delete", "/api/aufgaben/{nr}"),
 ];
 
 #[tokio::test]
-async fn acht_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
+async fn neun_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
     let d = beschreibung(&lauf.adresse).await;
@@ -148,7 +149,7 @@ async fn acht_endpunkte_nennen_den_eigentuemer_und_spalten_das_feld() {
         assert!(op["description"].as_str().unwrap().contains(agent), "openapi {pfad}");
         assert_eq!(op["responses"]["403"]["content"]["application/json"]["schema"]["$ref"], "#/components/schemas/Verboten", "403 {pfad}");
     }
-    assert_eq!(seite.matches(agent).count(), 8, "Seite /api");
+    assert_eq!(seite.matches(agent).count(), 9, "Seite /api");
     let felder = &d["components"]["schemas"]["Verboten"]["properties"];
     assert!(["fehler", "spalte", "nummer"].iter().all(|f| felder[f].is_object()), "{felder}");
     let spalten = "eigentuemer: human, agent oder null";
