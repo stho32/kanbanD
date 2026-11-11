@@ -37,7 +37,7 @@ Der `title` bleibt der Erklärtext, `aria-label` der zugängliche Name.
 Eine Komponente `role="tooltip"`, die den Erklärtext zu einem Auslöser zeigt:
 
 - **kein Fokus**: Das Primitiv nimmt keinen Fokus und fängt keinen; der Fokus bleibt auf dem Auslöser.
-- **`aria-describedby` am Auslöser** verbindet den sichtbaren Text mit dem Auslöser, sodass Hilfstechnik ihn als Beschreibung liest.
+- **Der sichtbare Text trägt den zugänglichen Namen, nicht eine Beschreibung**: An den fünf Kopfzeichen entfällt `aria-describedby` — ihr Name liest den Text schon vor, eine Beschreibung ergäbe dieselbe Ansage zweimal. Nur der **Streifen-Knopf** der zugeklappten Spalte hält eine `aria-describedby`-Verbindung, weil sein Name den vollen Erklärtext nicht trägt.
 - **Auslöser**: Fokus auf dem Auslöser (Tastatur) und **langer Druck** (Touch). Überfahren mit der Maus ist möglich, aber nicht die Bedingung.
 - **Esc in der Kaskade** schließt ihn **zuerst** (höchste Priorität, vor Pop und Fenstern; die Kaskade `web/app.js:1950`).
 - **Positionierung** über die vorhandene `popPlatzieren`-Logik (`web/app.js:978`), die schon Unter-dem-Auslöser/Über-dem-Auslöser und die Fensterkante kennt.
@@ -74,7 +74,7 @@ Begründung: B trifft die Aufgabe der Karte („Erklärtext auf Anforderung bei 
 
 1. **Der Tooltip ist keine Ebene der Fokusführung** ([ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) bleibt unberührt). Er nimmt keinen Fokus, fängt keinen und zählt nicht in `ebenen(ui)`. Der Fokus bleibt auf dem Auslöser.
 2. **Gezeichnet wird aus dem Renderer** ([ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md)): Der Zustand liegt in `S.ui` und übersteht das Neuzeichnen; es gibt keinen zweiten Schreibweg neben `render()`.
-3. **Der zugängliche Name bleibt am Auslöser** ([ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)). Der Tooltip selbst ist mit `aria-describedby` am Auslöser verbunden; er ersetzt den Namen nicht und wird nicht zu einer zweiten Namensquelle.
+3. **Der zugängliche Name bleibt am Auslöser** ([ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)). Der Tooltip ersetzt den Namen nicht und wird nicht zu einer zweiten Namensquelle: Sein zugänglicher Name ist wörtlich der Tooltiptext, die **Beschreibung ist die sichtbare Ausprägung desselben Textes**. An den **fünf Kopfzeichen** (ⓘ, ✓, Phase, Grenze, Eigentümer) entfällt deshalb `aria-describedby` — der Name trägt den Text schon, eine Beschreibung würde denselben Satz doppelt vorlesen. Der **Streifen-Knopf** der zugeklappten Spalte **behält `aria-describedby`**, weil sein Name den vollen Erklärtext nicht trägt (PO `AI-Team/po-entscheidungen.md:186`).
 4. **Esc schließt ihn zuerst** — an der Spitze der Kaskade (`web/app.js:1950`), vor Pop und Fenstern.
 5. **Maße, Kontrast und Anzeige** folgen [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Zielgröße des Auslösers), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md) (Kontrast des Textes in beiden Themen) und [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md) (deutscher Wortlaut, zugänglicher Name zählt als sichtbarer Text).
 
@@ -116,6 +116,7 @@ C, D und E scheiden aus: C verwischt die Ebenen-Einordnung von `#pop`, D trägt 
 
 - Karte #24 „Kopfzeichen-Tooltip bei Fokus und langem Druck“; Vision `Anforderungen/R00000-vision.md:104`
 - `AI-Team/po-entscheidungen.md:53` (zugänglicher Name = Tooltiptext, Hinweissatz im Spalten-Dialog, Tooltip als eigene Karte)
+- `AI-Team/po-entscheidungen.md:186` (Artboard-Freigabe #24: `aria-describedby` entfällt an den fünf Kopfzeichen, bleibt am Streifen-Knopf der zugeklappten Spalte)
 - `R00097`/`F0015` (schließt den Tooltip ausdrücklich aus), `R00106` Z. 407 (bewusst außerhalb)
 - `web/ansicht.js:734–747` (`vLane`), `:720–726` (`vEigentuemerZeichen`), `:950` (`#tooltip` der Diagramme); `web/app.js:978` (`popPlatzieren`), `:1950` (Esc-Kaskade), `:2` (`S.ui`), `:2307` (Fieber-Daten-Tooltip)
 - Factory-Gedächtnis Material 3 (`rollen/ux-reviewer/spezialisierungen/material3/notizen.md:175`, Plain tooltip)
