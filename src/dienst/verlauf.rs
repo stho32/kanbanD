@@ -4,13 +4,50 @@ use crate::fehler::Fehler;
 use crate::format::board;
 use crate::git;
 use crate::modell::Board;
-use crate::verlauf::{Bewegungen, Phasenkarte, Verlauf, bewegungen, verlauf};
+use crate::verlauf::{Aufgabenstand, Bewegungen, Kartenverlauf, Phasenkarte, Verlauf, bewegungen, kartenverlauf, verlauf};
 
 impl Kanban {
     /// Verlauf eines Boards aus den committeten Ständen seiner Datei, dazu der aktuelle Stand, falls er abweicht.
     pub fn verlauf(&self, slug: &str) -> Result<Verlauf, Fehler> {
         let (staende, jetzt) = self.staende(slug)?;
         Ok(verlauf(&staende, jetzt.date()))
+    }
+
+    /// Der Verlauf einer Aufgabe aus der Git-Geschichte (R00123, ADR-0021): die Historie ihrer Datei (Erstellung,
+    /// `archived`) und jeder Board-Datei, die die Nummer je führte (Bewegungen), zeitlich zusammengeführt.
+    /// „wer“ ist der Commit-Autor. Rein lesend; unbekannte Nummer → 404.
+    pub fn karten_verlauf(&self, nummer: u32) -> Result<Kartenverlauf, Fehler> {
+        let w = self.ordner().wurzel();
+        // Pfad der Aufgabendatei: die vorhandene Datei oder der jüngste gelöschte Pfad mit dieser Nummer (B0573).
+        let pfad = match self.ordner().aufgabenpfad(nummer) {
+            Ok(p) => p,
+            Err(Fehler::NichtGefunden(_)) => match git::pfad_zu_nummer(w, crate::format::aufgabe::ORDNER, nummer)? {
+                Some(p) => p,
+                None => return Err(Fehler::NichtGefunden(format!("Aufgabe #{nummer} gibt es nicht"))),
+            },
+            Err(e) => return Err(e),
+        };
+        let datei = pfad.rsplit('/').next().unwrap_or_default().to_string();
+        let aufgabe: Vec<Aufgabenstand> = git::staende(w, &pfad)?
+            .into_iter()
+            .map(|stand| {
+                let archiviert = crate::format::aufgabe::lesen(&datei, &stand.inhalt).ok().and_then(|a| a.archiviert);
+                Aufgabenstand { zeitpunkt: stand.zeitpunkt, archiviert, autor: stand.autor }
+            })
+            .collect();
+        let loeschung = if w.join(&pfad).exists() { None } else { git::loeschung(w, &pfad)?.map(|s| (s.zeitpunkt, s.autor)) };
+        let (boards, _) = self.ordner().boards()?;
+        let brett: Vec<(String, Vec<(chrono::NaiveDateTime, Board, git::Autor)>)> = boards
+            .iter()
+            .map(|b| {
+                let staende = git::staende(w, &board_pfad(&b.slug))?
+                    .into_iter()
+                    .filter_map(|s| board::lesen(&b.slug, &s.inhalt).ok().map(|bd| (s.zeitpunkt, bd, s.autor)))
+                    .collect();
+                Ok((b.slug.clone(), staende))
+            })
+            .collect::<Result<_, Fehler>>()?;
+        Ok(kartenverlauf(nummer, &aufgabe, &brett, loeschung))
     }
 
     /// Spaltenwechsel je Aufgabe aus denselben Ständen; Spalten in heutiger Reihenfolge. Bei einem gebundenen Board dazu
@@ -40,7 +77,7 @@ impl Kanban {
     fn staende(&self, slug: &str) -> Result<(Vec<(chrono::NaiveDateTime, Board)>, chrono::NaiveDateTime), Fehler> {
         let aktuell = self.ordner().board(slug)?;
         let rel = board_pfad(&aktuell.slug);
-        let mut staende: Vec<_> = git::staende(self.ordner().wurzel(), &rel)?.into_iter().filter_map(|(zp, text)| board::lesen(slug, &text).ok().map(|b| (zp, b))).collect();
+        let mut staende: Vec<_> = git::staende(self.ordner().wurzel(), &rel)?.into_iter().filter_map(|stand| board::lesen(slug, &stand.inhalt).ok().map(|b| (stand.zeitpunkt, b))).collect();
         // Nach Zeitpunkt ordnen: die Commit-Folge muss nicht der Datumsfolge entsprechen (Rebase, gesetzte Daten).
         staende.sort_by_key(|(zp, _)| *zp);
         let jetzt = chrono::Local::now().naive_local();

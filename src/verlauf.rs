@@ -35,6 +35,16 @@ pub struct Wechsel {
     pub spalte: Option<String>,
 }
 
+/// Ein einzelner Zug zwischen zwei aufeinanderfolgenden Ständen: `von`/`nach` sind Spaltennamen, `None` heißt
+/// „nicht auf dem Board“ (auf das Board gelegt bzw. vom Board genommen, R00123).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Zug {
+    pub nummer: u32,
+    pub zeitpunkt: NaiveDateTime,
+    pub von: Option<String>,
+    pub nach: Option<String>,
+}
+
 /// Je Aufgabe die Wechsel; dazu, was die Rechnung je Phase braucht: Labels (`im-pair` für „Eingebettet in“) und `phases.skipped`,
 /// und ob sie in den Berichten zählt.
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
@@ -67,8 +77,19 @@ pub struct Bewegungen {
 /// Je Aufgabe die Wechsel zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge.
 pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetzt: NaiveDateTime) -> Bewegungen {
     let fmt = |z: &NaiveDateTime| z.format(crate::format::aufgabe::ZEITFORMAT).to_string();
-    let mut vorher: BTreeMap<u32, String> = BTreeMap::new();
     let mut je: BTreeMap<u32, Vec<Wechsel>> = BTreeMap::new();
+    for zug in zuege(staende) {
+        je.entry(zug.nummer).or_default().push(Wechsel { zeitpunkt: fmt(&zug.zeitpunkt), spalte: zug.nach });
+    }
+    let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![], reporting: Default::default() }).collect();
+    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben, phasen: None }
+}
+
+/// Je Aufgabe die Züge zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge. Ein Zug nennt `von` und
+/// `nach` (R00123); dieselbe Quelle wie [`bewegungen`], damit der Karten-Verlauf die Logik nicht verdoppelt.
+pub fn zuege(staende: &[(NaiveDateTime, Board)]) -> Vec<Zug> {
+    let mut vorher: BTreeMap<u32, String> = BTreeMap::new();
+    let mut zuege = vec![];
     for (zp, b) in staende {
         let mut jetzt_da: BTreeMap<u32, String> = BTreeMap::new();
         for s in &b.spalten {
@@ -77,17 +98,117 @@ pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetz
             }
         }
         for (n, sp) in &jetzt_da {
-            if vorher.get(n) != Some(sp) {
-                je.entry(*n).or_default().push(Wechsel { zeitpunkt: fmt(zp), spalte: Some(sp.clone()) });
+            match vorher.get(n) {
+                Some(v) if v == sp => {}
+                Some(v) => zuege.push(Zug { nummer: *n, zeitpunkt: *zp, von: Some(v.clone()), nach: Some(sp.clone()) }),
+                None => zuege.push(Zug { nummer: *n, zeitpunkt: *zp, von: None, nach: Some(sp.clone()) }),
             }
         }
-        for n in vorher.keys().filter(|n| !jetzt_da.contains_key(n)) {
-            je.entry(*n).or_default().push(Wechsel { zeitpunkt: fmt(zp), spalte: None });
+        for (n, sp) in vorher.iter().filter(|(n, _)| !jetzt_da.contains_key(n)) {
+            zuege.push(Zug { nummer: *n, zeitpunkt: *zp, von: Some(sp.clone()), nach: None });
         }
         vorher = jetzt_da;
     }
-    let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![], reporting: Default::default() }).collect();
-    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben, phasen: None }
+    zuege
+}
+
+/// Die Art eines Verlaufs-Eintrags (R00123); in der API klein geschrieben.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Kartenart {
+    Erstellt,
+    Bewegt,
+    Archiviert,
+    Zurueckgeholt,
+    Geloescht,
+}
+
+/// Ein Eintrag des Karten-Verlaufs (R00123, ADR-0021): aus der Git-Geschichte gerechnet, kein zweiter Speicher.
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+pub struct KartenEintrag {
+    /// Zeitpunkt `JJJJ-MM-TT HH:MM` (Ortszeit)
+    pub zeitpunkt: String,
+    pub art: Kartenart,
+    /// Der Commit-Autor: Kürzel einer kanbanD-Person oder Git-Name eines fremden Autors
+    pub wer: String,
+    /// Slug des Boards; nur bei Bewegung (und bei der Erstellung, wenn sie mit der Aufnahme geschah)
+    pub board: Option<String>,
+    /// Spalte, aus der bewegt wurde; null = auf das Board gelegt oder kein Wechsel
+    pub von: Option<String>,
+    /// Spalte, in die bewegt wurde; null = vom Board genommen
+    pub nach: Option<String>,
+}
+
+/// Die Einträge des Karten-Verlaufs, neueste zuerst.
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+pub struct Kartenverlauf {
+    pub eintraege: Vec<KartenEintrag>,
+}
+
+impl Kartenverlauf {
+    pub fn leer() -> Kartenverlauf {
+        Kartenverlauf { eintraege: vec![] }
+    }
+}
+
+/// Ein Stand der Aufgabendatei, soweit der Verlauf ihn braucht: Zeitpunkt, `archived` und Autor (R00123/B0571–B0573).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Aufgabenstand {
+    pub zeitpunkt: NaiveDateTime,
+    pub archiviert: Option<String>,
+    pub autor: crate::git::Autor,
+}
+
+/// Führt die Git-Geschichte der Aufgabendatei und jeder Board-Datei zu einem Karten-Verlauf zusammen (ADR-0021).
+/// Ein Commit je Aktion ist ein Eintrag; die Aufnahme auf ein Board im selben Commit wie die Erstellung geht in
+/// `erstellt` auf (kein zweiter `bewegt`). Zeitlich gemischt über alle Boards, neueste zuerst.
+pub fn kartenverlauf(
+    nummer: u32,
+    aufgabe: &[Aufgabenstand],
+    boards: &[(String, Vec<(NaiveDateTime, Board, crate::git::Autor)>)],
+    loeschung: Option<(NaiveDateTime, crate::git::Autor)>,
+) -> Kartenverlauf {
+    let fmt = |z: &NaiveDateTime| z.format(crate::format::aufgabe::ZEITFORMAT).to_string();
+    let mut selbst: Vec<KartenEintrag> = vec![];
+    for (slug, staende) in boards {
+        let paare: Vec<(NaiveDateTime, Board)> = staende.iter().map(|(z, b, _)| (*z, b.clone())).collect();
+        for zug in zuege(&paare).into_iter().filter(|z| z.nummer == nummer) {
+            let wer = staende.iter().find(|(z, _, _)| *z == zug.zeitpunkt).map(|(_, _, a)| a.wer()).unwrap_or_default();
+            selbst.push(KartenEintrag { zeitpunkt: fmt(&zug.zeitpunkt), art: Kartenart::Bewegt, wer, board: Some(slug.clone()), von: zug.von, nach: zug.nach });
+        }
+    }
+    let mut eintraege: Vec<KartenEintrag> = vec![];
+    // Erstellt: der erste Commit der Aufgabendatei; die Aufnahme auf ein Board im selben Commit verschmilzt hierher.
+    if let Some((erst, _)) = aufgabe.split_first() {
+        let passend = selbst.iter().position(|z| z.zeitpunkt == fmt(&erst.zeitpunkt) && z.von.is_none());
+        let (board, nach) = match passend {
+            Some(i) => {
+                let z = selbst.remove(i);
+                (z.board, z.nach)
+            }
+            None => (None, None),
+        };
+        eintraege.push(KartenEintrag { zeitpunkt: fmt(&erst.zeitpunkt), art: Kartenart::Erstellt, wer: erst.autor.wer(), board, von: None, nach });
+    }
+    // Archiviert / Zurückgeholt aus dem Wechsel des `archived`-Feldes.
+    for fenster in aufgabe.windows(2) {
+        let (vor, nach) = (&fenster[0], &fenster[1]);
+        let art = match (vor.archiviert.is_some(), nach.archiviert.is_some()) {
+            (false, true) => Some(Kartenart::Archiviert),
+            (true, false) => Some(Kartenart::Zurueckgeholt),
+            _ => None,
+        };
+        if let Some(art) = art {
+            eintraege.push(KartenEintrag { zeitpunkt: fmt(&nach.zeitpunkt), art, wer: nach.autor.wer(), board: None, von: None, nach: None });
+        }
+    }
+    eintraege.extend(selbst);
+    if let Some((zeitpunkt, autor)) = loeschung {
+        eintraege.push(KartenEintrag { zeitpunkt: fmt(&zeitpunkt), art: Kartenart::Geloescht, wer: autor.wer(), board: None, von: None, nach: None });
+    }
+    // neueste zuerst; der Zeitpunkt `JJJJ-MM-TT HH:MM` sortiert als Text wie chronologisch
+    eintraege.sort_by(|a, b| b.zeitpunkt.cmp(&a.zeitpunkt));
+    Kartenverlauf { eintraege }
 }
 
 fn zaehlen(b: &Board) -> (usize, usize) {
@@ -206,5 +327,89 @@ mod tests {
         let v = verlauf(&staende, NaiveDate::from_ymd_opt(2026, 10, 5).unwrap());
         assert_eq!(v.median, Some(2.5));
         assert_eq!(v.mittel, Some(2.5));
+    }
+
+    // R00123 B0571: der Commit-Autor — Kürzel aus `<kürzel>@kanbanD`, sonst der Git-Name unverändert
+    fn autor(wer: &str) -> crate::git::Autor {
+        match wer {
+            "Extern" => crate::git::Autor { name: "Extern".into(), email: "extern@example.org".into() },
+            k => crate::git::Autor { name: format!("Name {k}"), email: format!("{k}@kanbanD") },
+        }
+    }
+
+    fn board3(e: &[u32], a: &[u32], f: &[u32]) -> Board {
+        let s = |name: &str, aufgaben: &[u32]| Spalte { name: name.into(), aufgaben: aufgaben.to_vec(), ..Default::default() };
+        Board { slug: "fabrik".into(), titel: "fabrik".into(), spalten: vec![s("Eingang", e), s("In Arbeit", a), s("Fertig", f)], ..Board { slug: String::new(), titel: String::new(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None } }
+    }
+
+    fn auf(zp_str: &str, archiviert: Option<&str>, wer: &str) -> Aufgabenstand {
+        Aufgabenstand { zeitpunkt: zp(zp_str), archiviert: archiviert.map(Into::into), autor: autor(wer) }
+    }
+
+    // R00123 B0572: das Rechenbeispiel der AK (sechs Commits, zwei Autoren, vom Board genommen, Erstellung verschmilzt)
+    #[test]
+    fn kartenverlauf_rechnet_das_rechenbeispiel() {
+        let aufgabe = [auf("2026-10-01 09:00", None, "sh"), auf("2026-10-04 09:00", Some("2026-10-04"), "sh"), auf("2026-10-05 09:00", None, "sh")];
+        let fabrik = vec![
+            (zp("2026-10-01 09:00"), board3(&[1], &[], &[]), autor("sh")),
+            (zp("2026-10-02 09:00"), board3(&[], &[1], &[]), autor("cl")),
+            (zp("2026-10-03 09:00"), board3(&[], &[], &[1]), autor("cl")),
+            (zp("2026-10-06 09:00"), board3(&[], &[], &[]), autor("sh")),
+        ];
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], None);
+        let kurz: Vec<(&str, Kartenart, Option<&str>, Option<&str>, Option<&str>, &str)> = v.eintraege.iter().map(|e| (e.zeitpunkt.as_str(), e.art, e.board.as_deref(), e.von.as_deref(), e.nach.as_deref(), e.wer.as_str())).collect();
+        assert_eq!(
+            kurz,
+            vec![
+                ("2026-10-06 09:00", Kartenart::Bewegt, Some("fabrik"), Some("Fertig"), None, "sh"),
+                ("2026-10-05 09:00", Kartenart::Zurueckgeholt, None, None, None, "sh"),
+                ("2026-10-04 09:00", Kartenart::Archiviert, None, None, None, "sh"),
+                ("2026-10-03 09:00", Kartenart::Bewegt, Some("fabrik"), Some("In Arbeit"), Some("Fertig"), "cl"),
+                ("2026-10-02 09:00", Kartenart::Bewegt, Some("fabrik"), Some("Eingang"), Some("In Arbeit"), "cl"),
+                ("2026-10-01 09:00", Kartenart::Erstellt, Some("fabrik"), None, Some("Eingang"), "sh"),
+            ],
+            "sechs Einträge, neueste zuerst, die Aufnahme bei der Erstellung verschmilzt"
+        );
+    }
+
+    // R00123 B0573: die gelöschte Aufgabendatei ergibt einen eigenen Eintrag, die früheren bleiben
+    #[test]
+    fn kartenverlauf_mit_loeschung_und_fremdem_autor() {
+        let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
+        let fabrik = vec![(zp("2026-10-01 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-07 09:00"), board3(&[], &[1], &[]), autor("Extern"))];
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], Some((zp("2026-10-09 09:00"), autor("sh"))));
+        assert_eq!(v.eintraege.first().map(|e| (e.art, e.zeitpunkt.as_str(), e.wer.as_str())), Some((Kartenart::Geloescht, "2026-10-09 09:00", "sh")), "geloescht zuoberst");
+        assert_eq!(v.eintraege.len(), 3, "Erstellung, Bewegung des fremden Autors, Löschung");
+        assert_eq!(v.eintraege[1].wer, "Extern", "fremder Autor unverändert");
+        assert_eq!(v.eintraege[2].art, Kartenart::Erstellt);
+    }
+
+    // R00123 B0572: mehrere Boards — je Bewegung das Board genannt, zeitlich gemischt
+    #[test]
+    fn kartenverlauf_ueber_mehrere_boards() {
+        let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
+        let fabrik = vec![(zp("2026-10-01 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-02 09:00"), board3(&[], &[1], &[]), autor("cl"))];
+        let privat = vec![(zp("2026-10-07 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-08 09:00"), board3(&[], &[1], &[]), autor("sh"))];
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik), ("privat".into(), privat)], None);
+        let boards: Vec<&str> = v.eintraege.iter().filter(|e| e.art == Kartenart::Bewegt).map(|e| e.board.as_deref().unwrap_or("")).collect();
+        assert_eq!(boards, vec!["privat", "privat", "fabrik"], "beide Bewegungsfolgen, zeitlich gemischt");
+        let aufnahme = v.eintraege.iter().find(|e| e.board.as_deref() == Some("privat") && e.von.is_none());
+        assert_eq!(aufnahme.map(|e| (e.zeitpunkt.as_str(), e.nach.as_deref())), Some(("2026-10-07 09:00", Some("Eingang"))), "auf das Board gelegt");
+        assert_eq!(v.eintraege.last().map(|e| e.art), Some(Kartenart::Erstellt));
+    }
+
+    // R00123: keine Nummer — kein Eintrag
+    #[test]
+    fn kartenverlauf_ohne_spur_ist_leer() {
+        let v = kartenverlauf(99, &[], &[], None);
+        assert!(v.eintraege.is_empty());
+    }
+
+    #[test]
+    fn zuege_nennen_von_und_nach() {
+        let staende = vec![(zp("2026-10-01 09:00"), b(&[1], &[])), (zp("2026-10-02 09:00"), b(&[], &[1])), (zp("2026-10-03 09:00"), b(&[], &[]))];
+        let z = zuege(&staende);
+        let kurz: Vec<(u32, Option<&str>, Option<&str>)> = z.iter().map(|x| (x.nummer, x.von.as_deref(), x.nach.as_deref())).collect();
+        assert_eq!(kurz, vec![(1, None, Some("A")), (1, Some("A"), Some("Z")), (1, Some("Z"), None)]);
     }
 }

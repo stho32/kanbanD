@@ -94,3 +94,109 @@ async fn bewegungen_aus_echten_commits() {
     assert_eq!(v["aufgaben"][1]["wechsel"][1]["spalte"], "Erledigt");
     assert_eq!(senden(Method::GET, &lauf.adresse, "api/berichte/bewegungen?board=gibtsnicht", "st", json!(null)).await.0, 404);
 }
+
+/* R00123 Karten-Verlauf: der Endpunkt gegen einen echten Ordner mit Git (B0572–B0574). */
+
+/// Eine Dateiänderung als ein Commit mit festem Autor und fester Zeit (ADR-0021: ein Commit je Aktion).
+fn verfassen(pfad: &std::path::Path, datum: &str, wer: &str, nachricht: &str) {
+    let email = if wer.contains('@') { wer.to_string() } else { format!("{wer}@kanbanD") };
+    let name = if wer.contains('@') { "Extern".to_string() } else { format!("Name {wer}") };
+    gemeinsam::git(pfad, &["add", "-A"]);
+    let st = Command::new("git")
+        .arg("-C")
+        .arg(pfad)
+        .args(["commit", "-q", "-m", nachricht])
+        .env("GIT_AUTHOR_NAME", &name)
+        .env("GIT_AUTHOR_EMAIL", &email)
+        .env("GIT_COMMITTER_NAME", &name)
+        .env("GIT_COMMITTER_EMAIL", &email)
+        .env("GIT_AUTHOR_DATE", datum)
+        .env("GIT_COMMITTER_DATE", datum)
+        .status()
+        .unwrap();
+    assert!(st.success(), "Commit {nachricht} scheiterte");
+}
+
+const BOARD_KOPF: &str = "# fabrik\n\n## Eingang\n\n";
+
+fn grundbestand(pfad: &std::path::Path) {
+    std::fs::create_dir_all(pfad.join("boards")).unwrap();
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    std::fs::write(pfad.join("kanbanD.md"), gemeinsam::EINSTELLUNGEN).unwrap();
+    std::fs::write(pfad.join("boards/fabrik.md"), "# fabrik\n\n## Eingang\n\n## In Arbeit\n\n## Fertig\n").unwrap();
+    gemeinsam::git(pfad, &["init", "-q"]);
+    gemeinsam::git(pfad, &["add", "-A"]);
+    gemeinsam::git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    // 01.10. angelegt und in „Eingang“ gelegt — ein Commit, zwei Dateien
+    std::fs::write(pfad.join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\n---\n").unwrap();
+    std::fs::write(pfad.join("boards/fabrik.md"), format!("{BOARD_KOPF}- #1\n\n## In Arbeit\n\n## Fertig\n")).unwrap();
+    verfassen(pfad, "2026-10-01T09:00:00", "sh", "#1 angelegt");
+    // 02.10. nach „In Arbeit“
+    std::fs::write(pfad.join("boards/fabrik.md"), format!("{BOARD_KOPF}## In Arbeit\n\n- #1\n\n## Fertig\n")).unwrap();
+    verfassen(pfad, "2026-10-02T09:00:00", "cl", "#1 bewegt");
+    // 03.10. nach „Fertig“
+    std::fs::write(pfad.join("boards/fabrik.md"), format!("{BOARD_KOPF}## In Arbeit\n\n## Fertig\n\n- #1\n")).unwrap();
+    verfassen(pfad, "2026-10-03T09:00:00", "cl", "#1 bewegt");
+    // 04.10. archiviert
+    std::fs::write(pfad.join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\narchived: 2026-10-04\n---\n").unwrap();
+    verfassen(pfad, "2026-10-04T09:00:00", "sh", "#1 archiviert");
+    // 05.10. zurückgeholt
+    std::fs::write(pfad.join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\n---\n").unwrap();
+    verfassen(pfad, "2026-10-05T09:00:00", "sh", "#1 zurückgeholt");
+    // 06.10. vom Board genommen
+    std::fs::write(pfad.join("boards/fabrik.md"), format!("{BOARD_KOPF}## In Arbeit\n\n## Fertig\n")).unwrap();
+    verfassen(pfad, "2026-10-06T09:00:00", "sh", "#1 vom Board genommen");
+}
+
+#[tokio::test]
+async fn karten_verlauf_liest_die_git_geschichte() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = (gemeinsam::git(tmp.path(), &["log", "--oneline"]), gemeinsam::lies(tmp.path(), "aufgaben/0001-eins.md"), gemeinsam::lies(tmp.path(), "boards/fabrik.md"));
+    let (s, v) = senden(Method::GET, &lauf.adresse, "api/aufgaben/1/verlauf", "st", json!(null)).await;
+    assert_eq!(s, 200);
+    let e = v["eintraege"].as_array().unwrap();
+    assert_eq!(e.len(), 6, "sechs Einträge, neueste zuerst: {v}");
+    let kurz: Vec<(&str, &str, Option<&str>, Option<&str>, Option<&str>, &str)> = e.iter().map(|x| (x["zeitpunkt"].as_str().unwrap(), x["art"].as_str().unwrap(), x["board"].as_str(), x["von"].as_str(), x["nach"].as_str(), x["wer"].as_str().unwrap())).collect();
+    assert_eq!(
+        kurz,
+        vec![
+            ("2026-10-06 09:00", "bewegt", Some("fabrik"), Some("Fertig"), None, "sh"),
+            ("2026-10-05 09:00", "zurueckgeholt", None, None, None, "sh"),
+            ("2026-10-04 09:00", "archiviert", None, None, None, "sh"),
+            ("2026-10-03 09:00", "bewegt", Some("fabrik"), Some("In Arbeit"), Some("Fertig"), "cl"),
+            ("2026-10-02 09:00", "bewegt", Some("fabrik"), Some("Eingang"), Some("In Arbeit"), "cl"),
+            ("2026-10-01 09:00", "erstellt", Some("fabrik"), None, Some("Eingang"), "sh"),
+        ],
+        "{v}"
+    );
+    // nur gelesen: Dateien und Git-Geschichte unverändert
+    assert_eq!((gemeinsam::git(tmp.path(), &["log", "--oneline"]), gemeinsam::lies(tmp.path(), "aufgaben/0001-eins.md"), gemeinsam::lies(tmp.path(), "boards/fabrik.md")), vorher, "das Lesen ändert nichts");
+    // unbekannte Nummer
+    assert_eq!(senden(Method::GET, &lauf.adresse, "api/aufgaben/99/verlauf", "st", json!(null)).await.0, 404);
+    // Register: /api/endpunkte nennt den Pfad
+    let (_, endpunkte) = senden(Method::GET, &lauf.adresse, "api/endpunkte", "st", json!(null)).await;
+    assert!(endpunkte.as_array().unwrap().iter().any(|x| x["pfad"] == "/api/aufgaben/{nr}/verlauf"), "{endpunkte}");
+}
+
+#[tokio::test]
+async fn karten_verlauf_zeigt_geloeschte_datei_und_fremden_autor() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path());
+    // fremder Autor bewegt die Board-Zeile am 07.10. von Hand
+    std::fs::write(tmp.path().join("boards/fabrik.md"), format!("{BOARD_KOPF}- #1\n\n## In Arbeit\n\n## Fertig\n")).unwrap();
+    verfassen(tmp.path(), "2026-10-07T09:00:00", "extern@example.org", "extern bewegt");
+    // die Aufgabendatei am 09.10. entfernt
+    std::fs::remove_file(tmp.path().join("aufgaben/0001-eins.md")).unwrap();
+    verfassen(tmp.path(), "2026-10-09T09:00:00", "sh", "#1 gelöscht");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, v) = senden(Method::GET, &lauf.adresse, "api/aufgaben/1/verlauf", "st", json!(null)).await;
+    assert_eq!(s, 200, "{v}");
+    let e = v["eintraege"].as_array().unwrap();
+    assert_eq!(e[0]["art"], "geloescht");
+    assert_eq!(e[0]["zeitpunkt"], "2026-10-09 09:00");
+    assert_eq!(e[0]["wer"], "sh");
+    assert!(e.iter().any(|x| x["wer"] == "Extern" && x["art"] == "bewegt"), "fremder Autor unverändert: {v}");
+    assert!(e.len() >= 7, "frühere Einträge bleiben: {v}");
+}

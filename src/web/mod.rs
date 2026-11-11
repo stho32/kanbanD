@@ -95,6 +95,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(bewegungen))
         .routes(routes!(aufgabe_lesen, aufgabe_aendern, aufgabe_loeschen))
         .routes(routes!(aufgabe_duplizieren))
+        .routes(routes!(aufgabe_verlauf))
         .routes(routes!(aufgaben_anlegen, mehrere_aendern))
         .routes(routes!(mehrere_archivieren))
         .routes(routes!(mehrere_zurueckholen))
@@ -755,6 +756,19 @@ async fn aufgabe_lesen(State(app): State<App>, Path(nr): Path<u32>) -> Result<Re
         })
     })
     .await
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/verlauf",
+    tag = "Aufgaben",
+    description = "den Verlauf einer Aufgabe aus der Git-Geschichte gerechnet (ADR-0021, rein lesend, kein Datenblock): Einträge, neueste zuerst — {zeitpunkt: JJJJ-MM-TT HH:MM, art: erstellt|bewegt|archiviert|zurueckgeholt|geloescht, wer: Commit-Autor (Kürzel oder Git-Name), board?: Slug, von?/nach?: Spaltenname (nach null = vom Board genommen)}; unbekannte Nummer 404; jeder Eintrag steht höchstens einmal je Commit",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
+    responses((status = 200, description = "Erfolg", body = crate::verlauf::Kartenverlauf), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn aufgabe_verlauf(State(app): State<App>, Path(nr): Path<u32>) -> Result<Response, Fehler> {
+    let v = blockierend(&app, move |k| k.karten_verlauf(nr)).await?;
+    Ok(Json(v).into_response())
 }
 
 #[utoipa::path(

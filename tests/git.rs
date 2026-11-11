@@ -114,3 +114,33 @@ fn staende_einer_datei_im_unterordner_eines_fremden_repositorys_auch_geloeschte_
     assert!(kanband::git::staende_der_datei(&ohne.path().join("w.md")).is_empty(), "ohne Repository keine Stände");
     assert!(kanband::git::staende_der_datei(std::path::Path::new("/gibt/es/nicht.md")).is_empty());
 }
+
+// R00123 B0571: `staende` liefert je Stand den Commit-Autor; `<kürzel>@kanbanD` wird zum Kürzel, ein fremder Autor bleibt sein Git-Name
+#[test]
+fn staende_tragen_den_commit_autor() {
+    let t = repo();
+    let datei = t.path().join("a.md");
+    let c = |wer: &str, inhalt: &str| {
+        std::fs::write(&datei, inhalt).unwrap();
+        git(t.path(), &["add", "-A"]);
+        git(t.path(), &["-c", &format!("user.name={wer}"), "-c", &format!("user.email={wer}@kanbanD"), "commit", "-q", "-m", wer]);
+    };
+    c("sh", "eins");
+    c("cl", "zwei");
+    let staende = kanband::git::staende(t.path(), "a.md").unwrap();
+    let kurz: Vec<(&str, String)> = staende.iter().map(|s| (s.inhalt.as_str(), s.autor.wer())).collect();
+    assert_eq!(kurz, vec![("eins", "sh".to_string()), ("zwei", "cl".to_string())]);
+    assert_eq!(staende[0].autor.email, "sh@kanbanD");
+    // fremder Autor: E-Mail ohne @kanbanD → Git-Name
+    std::fs::write(&datei, "drei").unwrap();
+    git(t.path(), &["add", "-A"]);
+    let st = std::process::Command::new("git")
+        .arg("-C").arg(t.path())
+        .args(["commit", "-q", "-m", "extern"])
+        .env("GIT_AUTHOR_NAME", "Extern").env("GIT_AUTHOR_EMAIL", "extern@example.org")
+        .env("GIT_COMMITTER_NAME", "Extern").env("GIT_COMMITTER_EMAIL", "extern@example.org")
+        .status().unwrap();
+    assert!(st.success());
+    let staende = kanband::git::staende(t.path(), "a.md").unwrap();
+    assert_eq!(staende[2].autor.wer(), "Extern");
+}

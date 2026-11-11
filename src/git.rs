@@ -56,16 +56,50 @@ fn relevante_pfade(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<Ve
     Ok(pfade.iter().filter(|p| wurzel.join(p).exists() || bekannt.contains(&p.as_bytes())).cloned().collect())
 }
 
+/// Der Autor eines Commits, wie Git ihn festhält (R00123/B0571).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Autor {
+    pub name: String,
+    pub email: String,
+}
+
+impl Autor {
+    /// Das Kürzel einer kanbanD-Person (`<kürzel>@kanbanD`) oder der Git-Name eines fremden Autors (R00123).
+    pub fn wer(&self) -> String {
+        self.email.strip_suffix("@kanbanD").map(str::to_string).unwrap_or_else(|| self.name.clone())
+    }
+}
+
+/// Ein committeter Stand einer Datei (R00123/B0571): Zeitpunkt in Ortszeit, Inhalt und Autor des Commits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Stand {
+    pub zeitpunkt: chrono::NaiveDateTime,
+    pub inhalt: String,
+    pub autor: Autor,
+}
+
+/// Ein Commit je Zeile: Hash, Autor und Zeitpunkt. Die Felder trennt `\x1f` (Autor-Namen dürfen Leerzeichen tragen).
+const LOG_FORMAT: &str = "%H%x1f%an%x1f%ae%x1f%at";
+
+fn autor_zeit_zeile(z: &str) -> Option<(String, Autor, i64)> {
+    let mut t = z.split('\u{1f}');
+    let hash = t.next()?.to_string();
+    let autor = Autor { name: t.next()?.to_string(), email: t.next()?.to_string() };
+    let zeit: i64 = t.next()?.parse().ok()?;
+    Some((hash, autor, zeit))
+}
+
 /// Alle committeten Stände einer Datei (relativ zur Wurzel) in zeitlicher Folge, mit Autor-Zeitpunkt in Ortszeit.
 /// Commits, in denen die Datei gelöscht ist, fehlen.
-pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<(chrono::NaiveDateTime, String)>, Fehler> {
+pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<Stand>, Fehler> {
     let lesen = |args: &[&str]| -> Result<String, Fehler> {
         let a = Command::new("git").arg("-C").arg(wurzel).args(args).output().map_err(|e| Fehler::Intern(format!("git: {e}")))?;
         Ok(String::from_utf8_lossy(&a.stdout).into_owned())
     };
     let praefix = lesen(&["rev-parse", "--show-prefix"])?.trim().to_string();
-    let log = lesen(&["log", "--reverse", "--format=%H %at", "--", rel])?;
-    let commits: Vec<(&str, i64)> = log.lines().filter_map(|z| z.split_once(' ')).filter_map(|(h, t)| Some((h, t.parse().ok()?))).collect();
+    let format = format!("--format={LOG_FORMAT}");
+    let log = lesen(&["log", "--reverse", &format, "--", rel])?;
+    let commits: Vec<(String, Autor, i64)> = log.lines().filter_map(autor_zeit_zeile).collect();
     if commits.is_empty() {
         return Ok(vec![]);
     }
@@ -77,14 +111,14 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<(chrono::NaiveDateTime, S
         .stdout(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| Fehler::Intern(format!("git cat-file: {e}")))?;
-    let anfrage: String = commits.iter().map(|(h, _)| format!("{h}:{praefix}{rel}\n")).collect();
+    let anfrage: String = commits.iter().map(|(h, _, _)| format!("{h}:{praefix}{rel}\n")).collect();
     let mut eingabe = kind.stdin.take().expect("stdin");
     let schreiber = std::thread::spawn(move || std::io::Write::write_all(&mut eingabe, anfrage.as_bytes()));
     let ausgabe = kind.wait_with_output().map_err(|e| Fehler::Intern(format!("git cat-file: {e}")))?.stdout;
     let _ = schreiber.join();
     let mut staende = vec![];
     let mut pos = 0;
-    for (_, zeit) in &commits {
+    for (_, autor, zeit) in &commits {
         let Some(ende) = ausgabe[pos..].iter().position(|b| *b == b'\n') else { break };
         let kopf = String::from_utf8_lossy(&ausgabe[pos..pos + ende]).into_owned();
         pos += ende + 1;
@@ -94,11 +128,39 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<(chrono::NaiveDateTime, S
             let inhalt = String::from_utf8_lossy(&ausgabe[pos..pos + groesse]).into_owned();
             pos += groesse + 1;
             if let Some(zp) = chrono::DateTime::from_timestamp(*zeit, 0) {
-                staende.push((zp.with_timezone(&chrono::Local).naive_local(), inhalt));
+                staende.push(Stand { zeitpunkt: zp.with_timezone(&chrono::Local).naive_local(), inhalt, autor: autor.clone() });
             }
         }
     }
     Ok(staende)
+}
+
+/// Der jüngste Commit, der `rel` gelöscht hat, samt Zeitpunkt und Autor — oder keiner (R00123/B0573).
+pub fn loeschung(wurzel: &Path, rel: &str) -> Result<Option<Stand>, Fehler> {
+    let format = format!("--format={LOG_FORMAT}");
+    let a = Command::new("git").arg("-C").arg(wurzel).args(["log", "--diff-filter=D", &format, "--", rel]).output().map_err(|e| Fehler::Intern(format!("git: {e}")))?;
+    let text = String::from_utf8_lossy(&a.stdout);
+    let Some(zeile) = text.lines().find(|z| !z.trim().is_empty()) else { return Ok(None) };
+    let mut t = zeile.split('\u{1f}');
+    let _hash = t.next();
+    let autor = Autor { name: t.next().unwrap_or_default().to_string(), email: t.next().unwrap_or_default().to_string() };
+    let zeit: i64 = t.next().and_then(|s| s.parse().ok()).ok_or_else(|| Fehler::Intern("git log: Zeitpunkt fehlt".into()))?;
+    let zeitpunkt = chrono::DateTime::from_timestamp(zeit, 0).ok_or_else(|| Fehler::Intern("git log: Zeitpunkt unlesbar".into()))?.with_timezone(&chrono::Local).naive_local();
+    Ok(Some(Stand { zeitpunkt, inhalt: String::new(), autor }))
+}
+
+/// Der jüngste Pfad unter `ordner/`, den Git als gelöscht führt und dessen Dateiname die Nummer `NNNN-` trägt (R00123).
+/// Findet eine gelöschte Aufgabendatei, deren Nummer noch über die Git-Geschichte identifiziert.
+pub fn pfad_zu_nummer(wurzel: &Path, ordner: &str, nummer: u32) -> Result<Option<String>, Fehler> {
+    let praefix = format!("{nummer:04}-");
+    let a = Command::new("git").arg("-C").arg(wurzel).args(["log", "--all", "--diff-filter=D", "--pretty=format:", "--name-only", "--", &format!("{ordner}/")]).output().map_err(|e| Fehler::Intern(format!("git: {e}")))?;
+    let text = String::from_utf8_lossy(&a.stdout);
+    Ok(text
+        .lines()
+        .map(str::trim)
+        .filter(|z| !z.is_empty())
+        .find(|pfad| pfad.rsplit('/').next().is_some_and(|n| n.starts_with(&praefix) && n.ends_with(".md")))
+        .map(str::to_string))
 }
 
 /// Alle committeten Stände einer Datei mit vollem Pfad, auch in einem fremden Repository (dem Arbeits-Repository einer Anwendung);
@@ -108,7 +170,7 @@ pub fn staende_der_datei(datei: &Path) -> Vec<String> {
     if git_verzeichnis(ordner).is_none() {
         return vec![];
     }
-    staende(ordner, &name.to_string_lossy()).map(|s| s.into_iter().map(|(_, text)| text).collect()).unwrap_or_default()
+    staende(ordner, &name.to_string_lossy()).map(|s| s.into_iter().map(|stand| stand.inhalt).collect()).unwrap_or_default()
 }
 
 /// Hat die Datei Änderungen, die nicht committet sind (ungestagt, gestagt oder unversioniert)?
