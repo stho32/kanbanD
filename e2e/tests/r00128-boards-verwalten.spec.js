@@ -1,7 +1,7 @@
 // R00128 Board umbenennen, archivieren und löschen in der Oberfläche (I0119, #35)
 // Artboard D0002 #board-verwalten (PO-freigegeben); Server F0103 in tests/boards.rs.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, mutanteEinsetzen } = require('./hilfen');
 
 // Boards „Entwicklung“ (aus einrichten) und „Test“ mit der Karte #7.
 const BESTAND = {
@@ -298,5 +298,42 @@ test.describe('R00128 B1 (Nacharbeit): archivierte Boards sind kein Kartenziel',
     const optionen = await page.locator('select[data-nf="board"] option').allTextContents();
     expect(optionen).not.toContain('Test');
     expect(optionen).toContain('Entwicklung');
+  });
+});
+
+// AK13/M6 (Nacharbeit, N1): nach dem Archivieren des *offenen* Boards landet der Fokus auf der nächsten Board-Zeile
+// (`naechsteBoardZeile`) — nicht nur „nicht BODY“. Drei Boards a/b/c, b offen: der Fokus muss auf c stehen, nicht auf a.
+test.describe('R00128 AK13/M6 (Nacharbeit N1): Fokus auf der naechsten Board-Zeile', () => {
+  let k;
+  const BESTAND_N1 = {
+    'boards/a.md': '# A\n\n## Offen\n',
+    'boards/b.md': '# B\n\n## Offen\n',
+    'boards/c.md': '# C\n\n## Offen\n',
+  };
+  test.beforeEach(async ({ page, context }) => {
+    await mutanteEinsetzen(context);
+    k = await kanbanStarten(einrichten(BESTAND_N1));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/b');
+    await liveBereit(page);
+  });
+  test.afterEach(async () => { await k.stoppen(); });
+
+  test('archivieren des offenen Boards setzt den Fokus auf die naechste Zeile c', async ({ page }) => {
+    const pop = page.locator('#pop[aria-label="Boards"]');
+    // `einrichten` legt zusätzlich „Entwicklung“ an (Slug `entwicklung` sortiert hinter `c`): Reihenfolge a, b, c, entwicklung;
+    // b ist offen. „Die nächste Zeile“ ist damit eindeutig c — nicht der Anfang der Liste.
+    await page.locator('#t-board').click();
+    await expect(pop.locator('[data-act="board-wahl"]')).toHaveText(['Aa.md', 'Bb.md', 'Cc.md', 'Entwicklungentwicklung.md']);
+    await expect(page.locator('#t-board')).toContainText('B');
+    // b archivieren (b ist das offene Board)
+    await pop.locator('[data-act="board-menue"][data-arg="b"]').click();
+    await pop.getByRole('menuitem', { name: 'Archivieren' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Archivieren' }).click();
+    await expect(page.locator('.toast[role="status"]')).toContainText('Board ‚B‘ archiviert');
+    // der Fokus steht auf der nächsten offenen Zeile c — weder auf a (Anfang) noch auf BODY
+    await expect(pop.locator('[data-act="board-wahl"][data-arg="c"]')).toBeFocused();
+    await expect(pop.locator('[data-act="board-wahl"][data-arg="a"]')).not.toBeFocused();
+    await expect(page.locator('#t-board')).toContainText('A');
   });
 });
