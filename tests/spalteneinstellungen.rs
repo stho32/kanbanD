@@ -404,7 +404,10 @@ async fn agent_verdoppelt_und_ersetzt_keine_geschuetzte_spalte() {
 async fn agent_schleust_keine_spalte_ueber_einen_zeilenumbruch_ein() {
     let u6a = json!([{"name": "Eingang", "alt": "Eingang"}, {"name": "In Arbeit", "alt": "In Arbeit"}, {"name": "Erledigt", "alt": "Erledigt"}, {"name": "Foo\n## Eingang"}]);
     let w = setzen("bot", u6a).await;
-    assert_eq!(w.status, 403, "U6a: {}", w.roh);
+    // R00128 N2: der Name mit Zeilenumbruch wird jetzt schon an der Namensregel abgewiesen (400), bevor die
+    // Spalteneinstellungs-Regel greift; vor dem Fix fing erst die späte Agentensperre (403) den Schmuggel.
+    assert_eq!(w.status, 400, "U6a: {}", w.roh);
+    assert!(w.rumpf()["fehler"].as_str().unwrap().contains("Zeilenumbruch"), "U6a: {}", w.roh);
     assert_eq!((w.board.as_str(), w.neue_commits), (w.board_vorher.as_str(), 0), "U6a: byte-gleich, kein Commit");
 }
 
