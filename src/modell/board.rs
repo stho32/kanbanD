@@ -424,10 +424,12 @@ pub enum Spaltenfehler {
 }
 
 impl Board {
-    /// Setzt die Spalten neu. Bisherige Spalten mit Aufgaben müssen als `alt` vorkommen.
+    /// Setzt die Spalten neu. Eine Zeile übernimmt die Spalte, die ihr `alt` nennt — Pflicht, sobald der Name wechselt.
+    /// Fehlt `alt`, übernimmt sie die Spalte gleichen Namens, sofern keine andere Zeile sie über ihr `alt` beansprucht;
+    /// sonst ist sie neu und leer. Bisherige Spalten mit Aufgaben müssen so übernommen werden.
     pub fn spalten_setzen(&mut self, neu: &[SpaltenAenderung]) -> Result<bool, Spaltenfehler> {
         let mut namen: Vec<&str> = vec![];
-        let mut alte: Vec<&str> = vec![];
+        let mut beansprucht: Vec<&str> = vec![];
         for n in neu {
             let name = n.name.trim();
             if name.is_empty() {
@@ -447,19 +449,33 @@ impl Board {
                 if !self.spalten.iter().any(|s| s.name == alt) {
                     return Err(Spaltenfehler::AltUnbekannt(alt.into()));
                 }
-                if alte.contains(&alt) {
+                if beansprucht.contains(&alt) {
                     return Err(Spaltenfehler::AltDoppelt(alt.into()));
                 }
-                alte.push(alt);
+                beansprucht.push(alt);
             }
         }
+        // Je Zeile die übernommene Spalte: das genannte `alt`, sonst der Namensrückfall. Der Rückfall entfällt, wenn das
+        // `alt` einer anderen Zeile denselben Namen beansprucht (sonst würden Aufgaben doppelt übernommen).
+        let mut alte = beansprucht.clone();
+        let zuordnung: Vec<Option<&Spalte>> = neu
+            .iter()
+            .map(|n| match n.alt.as_deref() {
+                Some(alt) => self.spalten.iter().find(|s| s.name == alt),
+                None => {
+                    let name = n.name.trim();
+                    self.spalten.iter().find(|s| s.name == name && !beansprucht.contains(&name)).inspect(|_| alte.push(name))
+                }
+            })
+            .collect();
         if let Some(voll) = self.spalten.iter().find(|s| !s.aufgaben.is_empty() && !alte.contains(&s.name.as_str())) {
             return Err(Spaltenfehler::EnthaeltAufgaben(voll.name.clone(), voll.aufgaben.len()));
         }
         let spalten: Vec<Spalte> = neu
             .iter()
-            .map(|n| {
-                let alt = n.alt.as_deref().and_then(|a| self.spalten.iter().find(|s| s.name == a));
+            .zip(&zuordnung)
+            .map(|(n, gefunden)| {
+                let alt = *gefunden;
                 Spalte { name: n.name.trim().into(), grenze: match n.grenze {
                         Some(g) => g.filter(|g| *g > 0),
                         None => alt.and_then(|s| s.grenze),
@@ -787,6 +803,58 @@ mod tests {
         assert_eq!(namen, vec![("Offen", vec![1, 2], None), ("Neu", vec![], None), ("Z", vec![3], Some(2))]);
         let gleich = [aend("Offen", Some("Offen"), None), aend("Neu", Some("Neu"), None), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&gleich), Ok(false));
+    }
+
+    /// R00009 (Karte #22): fehlt `alt`, übernimmt die Zeile die Spalte gleichen Namens samt Aufgaben und Einstellungen;
+    /// eine wirklich neue Spalte bleibt leer; das `alt` einer anderen Zeile nimmt ihr den Rückfall.
+    #[test]
+    fn ohne_alt_uebernimmt_die_spalte_gleichen_namens() {
+        fn zeile(name: &str, alt: Option<&str>) -> SpaltenAenderung {
+            SpaltenAenderung { name: name.into(), alt: alt.map(Into::into), grenze: None, pruefungen: None, notiz: None, farbe: None, eigentuemer: None }
+        }
+        // A(1,2) mit Grenze und Notiz, Z(3) mit Grenze
+        let mit_grenzen = || {
+            let mut board = b();
+            board.spalten[0].grenze = Some(5);
+            board.spalten[0].notiz = Some("nur Neues".into());
+            board.spalten[1].grenze = Some(2);
+            board
+        };
+        // (a) Name gleich, kein `alt`: A bleibt A(1,2) samt Grenze und Notiz; Neu ist wirklich neu und leer
+        let mut board = mit_grenzen();
+        assert_eq!(board.spalten_setzen(&[zeile("A", None), zeile("Neu", None), zeile("Z", None)]), Ok(true));
+        let stand: Vec<(&str, Vec<u32>, Option<u32>)> = board.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
+        assert_eq!(stand, vec![("A", vec![1, 2], Some(5)), ("Neu", vec![], None), ("Z", vec![3], Some(2))]);
+        assert_eq!(board.spalten[0].notiz.as_deref(), Some("nur Neues"), "Einstellungen bleiben");
+
+        // (f) mit und ohne `alt` dasselbe Ergebnis
+        let mut mit = mit_grenzen();
+        mit.spalten_setzen(&[zeile("A", Some("A")), zeile("Z", Some("Z"))]).unwrap();
+        let mut ohne = mit_grenzen();
+        ohne.spalten_setzen(&[zeile("A", None), zeile("Z", None)]).unwrap();
+        assert_eq!(mit.spalten, ohne.spalten, "mit und ohne `alt` dasselbe Ergebnis");
+
+        // (c) Umbenennen ohne `alt`: A wird nicht übernommen → 409
+        let mut board = mit_grenzen();
+        assert_eq!(board.spalten_setzen(&[zeile("Posteingang", None), zeile("Z", None)]), Err(Spaltenfehler::EnthaeltAufgaben("A".into(), 2)));
+
+        // (c) unbekanntes `alt` → 400
+        let mut board = mit_grenzen();
+        assert_eq!(board.spalten_setzen(&[zeile("A", Some("Gibtsnicht"))]), Err(Spaltenfehler::AltUnbekannt("Gibtsnicht".into())));
+
+        // (d) Randfall: das `alt` einer anderen Zeile beansprucht A — der Rückfall der zweiten Zeile entfällt, die neue A bleibt leer
+        let mut board = mit_grenzen();
+        assert_eq!(board.spalten_setzen(&[zeile("Posteingang", Some("A")), zeile("A", None), zeile("Z", None)]), Ok(true));
+        let stand: Vec<(&str, Vec<u32>)> = board.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone())).collect();
+        assert_eq!(stand, vec![("Posteingang", vec![1, 2]), ("A", vec![]), ("Z", vec![3])], "Posteingang übernimmt, die neue A bleibt leer");
+
+        // (b) Board aus leeren Spalten: eine neue Spalte ohne `alt` ist kein Fehler
+        let mut leer = b();
+        leer.spalten[0].aufgaben.clear();
+        leer.spalten[1].aufgaben.clear();
+        assert_eq!(leer.spalten_setzen(&[zeile("A", None), zeile("Neu", None)]), Ok(true));
+        let stand: Vec<(&str, Vec<u32>)> = leer.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone())).collect();
+        assert_eq!(stand, vec![("A", vec![]), ("Neu", vec![])]);
     }
 
     #[test]
