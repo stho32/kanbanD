@@ -398,6 +398,27 @@ mod tests {
         assert_eq!(v.eintraege.last().map(|e| e.art), Some(Kartenart::Erstellt));
     }
 
+    // R00123: Leistung — 100 Einträge über 5 Boards in unter 200 ms gerechnet (AK `< 200 ms`)
+    #[test]
+    fn kartenverlauf_leistung_100_eintraege() {
+        let mut boards: Vec<(String, Vec<(NaiveDateTime, Board, crate::git::Autor)>)> = vec![];
+        for b in 0..5 {
+            let staende = (0..20)
+                .map(|k| {
+                    let board = if k % 2 == 0 { board3(&[1], &[], &[]) } else { board3(&[], &[1], &[]) };
+                    (zp(&format!("2026-10-{:02} 09:00", 1 + k)), board, autor("sh"))
+                })
+                .collect();
+            boards.push((format!("b{b}"), staende));
+        }
+        let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
+        let start = std::time::Instant::now();
+        let v = kartenverlauf(1, &aufgabe, &boards, None);
+        let dauer = start.elapsed();
+        assert!(v.eintraege.len() >= 100, "{} Einträge", v.eintraege.len());
+        assert!(dauer.as_millis() < 200, "{dauer:?}");
+    }
+
     // R00123: keine Nummer — kein Eintrag
     #[test]
     fn kartenverlauf_ohne_spur_ist_leer() {
