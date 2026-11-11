@@ -437,7 +437,7 @@ pub struct SpaltenAenderung {
     /// `column-colors` als `#rrggbb`; fehlt das Feld, behält sie die der alten Spalte, ein leerer Text entfernt sie.
     #[serde(default)]
     pub farbe: Option<String>,
-    /// `column-owner`: `human` oder `agent` setzt, `null` entfernt, fehlt das Feld, behält sie den der alten Spalte.
+    /// `column-owner`: `human` oder `agent` setzt, `null` oder ein leerer Text entfernt, fehlt das Feld, behält sie den der alten Spalte.
     #[serde(default, deserialize_with = "super::aufgabe::entfernbar")]
     #[schema(value_type = Option<String>)]
     pub eigentuemer: Option<Option<String>>,
@@ -473,7 +473,7 @@ impl Board {
             if let Some(f) = n.farbe.as_deref().map(str::trim).filter(|f| !f.is_empty() && !ist_hexfarbe(f)) {
                 return Err(Spaltenfehler::FarbeUngueltig(f.into()));
             }
-            if let Some(e) = n.eigentuemer.as_ref().and_then(|e| e.as_deref()).map(str::trim).filter(|e| Eigentuemer::aus(e).is_none()) {
+            if let Some(e) = n.eigentuemer.as_ref().and_then(|e| e.as_deref()).map(str::trim).filter(|e| !e.is_empty() && Eigentuemer::aus(e).is_none()) {
                 return Err(Spaltenfehler::EigentuemerUngueltig(e.into()));
             }
             if let Some(alt) = n.alt.as_deref() {
@@ -989,6 +989,17 @@ mod tests {
         b.spalten[1].eigentuemer = Some(Eigentuemer::Human);
         assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre { spalte: "Z".into(), nummer: 1 }));
         assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()));
+    }
+
+    // R00120 FA 6: ein leerer Text entfernt den Eigentümer wie null (einheitlich zu farbe/notiz)
+    #[test]
+    fn leerer_text_entfernt_den_eigentuemer_wie_null() {
+        let mut b = b();
+        let mit = |e: Option<Option<&str>>| SpaltenAenderung { eigentuemer: e.map(|x| x.map(String::from)), ..aend("A", Some("A"), None) };
+        assert_eq!(b.spalten_setzen(&[mit(Some(Some("human"))), aend("Z", Some("Z"), None)]), Ok(true));
+        assert_eq!(b.spalten[0].eigentuemer, Some(Eigentuemer::Human), "Vorbedingung");
+        assert_eq!(b.spalten_setzen(&[mit(Some(Some("  "))), aend("Z", Some("Z"), None)]), Ok(true));
+        assert_eq!(b.spalten[0].eigentuemer, None, "leerer Text entfernt wie null");
     }
 
     #[test]
