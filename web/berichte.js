@@ -192,6 +192,8 @@
   function flussName(datum, stand, spalten) {
     return [datumLang(datum), ...spalten.map(s => `${s} ${stand.jeSpalte[s] || 0}`), `offen ${stand.offen}`, `gesamt ${stand.gesamt}`, `angekommen ${stand.angekommen}`, `fertig ${stand.fertig}`].join(' · ');
   }
+  /** Höchster Wert der Bänder und der beiden kumulierten Ränder über alle Tage — die y-Achse reicht bis dahin. */
+  const flussMax = tage => Math.max(1, ...tage.map(x => Math.max(x.gesamt, x.angekommen, x.fertig)));
 
   /* ── Durchlaufzeit (R00045) ── */
   /** Erstes Erreichen der Spalte mit Index ≥ i (dort oder rechts davon), in ms; null = nie. */
@@ -694,5 +696,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

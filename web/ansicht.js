@@ -1054,7 +1054,7 @@ function vFlussTabelle(t, spalten) {
 const FLUSS_B = 800, FLUSS_H = 272, FLUSS_L = 44, FLUSS_R = 120, FLUSS_O = 24, FLUSS_U = 44;
 /** Die Zeichenfläche: gestapelte Bänder (unten erste Spalte, oben letzte), y-Achse bis `max(gesamt, angekommen, fertig)`. */
 function vFlussFlaeche(t, spalten, ton) {
-  const max = Math.max(1, ...t.map(x => Math.max(x.gesamt, x.angekommen, x.fertig)));
+  const max = flussMax(t);
   const breite = FLUSS_B - FLUSS_L - FLUSS_R, unten = FLUSS_H - FLUSS_U;
   const sy = v => Math.round(FLUSS_O + (unten - FLUSS_O) * (1 - v / max));
   const xs = t.map((x, i) => Math.round(FLUSS_L + (t.length < 2 ? breite / 2 : i * breite / (t.length - 1))));

@@ -609,3 +609,14 @@ test('Fluss: reporting.burndown false nimmt die Aufgabe aus dem Bericht (R00121 
   assert.deepStrictEqual([d.tage[2].jeSpalte.Eingang, d.tage[2].jeSpalte['In Arbeit'], d.tage[2].jeSpalte.Fertig, d.tage[2].gesamt], [0, 1, 1, 2], '03.11. ohne #3: Eingang 0 · In Arbeit 1 · Fertig 1 (gesamt 2)');
   assert.strictEqual(d.tage[2].angekommen, 2, 'auch „angekommen“ nimmt #3 heraus');
 });
+
+test('Fluss: die y-Achse reicht bis zum höchsten Wert der Bänder und Ränder (R00121 B0557)', () => {
+  const { flussMax } = require('../../web/berichte.js');
+  const tage = [
+    { gesamt: 1, angekommen: 1, fertig: 0 },
+    { gesamt: 0, angekommen: 1, fertig: 0 },
+    { gesamt: 3, angekommen: 4, fertig: 2 },
+  ];
+  assert.strictEqual(flussMax(tage), 4, '„angekommen“ 4 schlägt den höchsten Stapel 3');
+  assert.strictEqual(flussMax([{ gesamt: 0, angekommen: 0, fertig: 0 }]), 1, 'nie unter 1, damit die Achse nicht bei 0 steht');
+});
