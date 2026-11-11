@@ -241,6 +241,23 @@ test.describe('R00119', () => {
     await expect(sichtbar(page)).toHaveCount(0);
   });
 
+  test('M1/P1: der Blasentext nach Fokus und nach erzwungenem Neuzeichnen ist identisch — auch am data-tip-text-Überläufer des Streifen-Knopfs', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.getByRole('button', { name: 'Eingang zuklappen' }).click();
+    const streifen = page.getByRole('button', { name: 'Eingang aufklappen, gehört dem Menschen' });
+    await streifen.focus();
+    const nachFokus = await blase(page).textContent();
+    expect(nachFokus).toBe(MENSCH);
+    const vorher = await page.evaluate(() => window.kdTest.renders());
+    k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins neu\n---\n');
+    await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+    // Nach dem Neuzeichnen reproduziert `vTipp()` die Blase aus S.ui.tooltip — derselbe Wortlaut wie beim direkten Stellen
+    await expect(sichtbar(page)).toHaveCount(1);
+    expect(await blase(page).textContent()).toBe(nachFokus);
+  });
+
   test('US-7: auf Touch schließt ein Tippen außerhalb, der Fokus bleibt am Auslöser', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(k.adresse);
