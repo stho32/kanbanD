@@ -945,7 +945,7 @@ function vBerichtsfilter(leiste) {
   const leute = teile.personen ? personenListe.map(p => chip('bf-person', p.kuerzel, f.personen.includes(p.kuerzel), `${pk(p.kuerzel)}${esc(p.name)}`, teile.personen === 'zeit' ? 'nur Zeiten dieser Person' : 'nur Aufgaben, für die die Person zuständig ist')).join('') : '';
   const alleLabels = [...new Set(S.aufgaben.flatMap(a => a.labels))].sort();
   const labels = alleLabels.map(l => chip('bf-label', l, f.labels.includes(l), esc(l), 'nur Aufgaben mit diesem Label')).join('');
-  const n = filterAnzahl(teile.zeitraum ? f : { ...f, zeitraum: 'alles' });
+  const n = leistenAnzahl(f, teile);
   // Zusammenfassung der zugeklappten Box: wie viele wirken, ab wann gerechnet wird, ob gespeichert
   const lokal = S.ui.bfLokal && S.ui.bfLokal.ungespeichert;
   const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${datumAusMs(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
@@ -1034,7 +1034,8 @@ function vFluss() {
   // leer, wenn kein Tag einen Stapel trägt (keine Aufgabe im Zeitraum) — kein Stand, wenn das Board keine Bewegung hat
   if (!t.length || t.every(x => !x.gesamt)) {
     const satz = S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.';
-    return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p></div>${vFlussTabelle(t, spalten)}${nicht}</div>`;
+    const knopf = leistenAnzahl(S.ui.bf, BERICHTSLEISTEN.fluss) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="fluss">Zurücksetzen</button>' : '';
+    return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p>${knopf}</div>${vFlussTabelle(t, spalten)}${nicht}</div>`;
   }
   return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${vFlussFlaeche(t, spalten, ton)}${vFlussLegende(spalten, ton)}${vFlussTabelle(t, spalten)}${nicht}</div>`;
 }

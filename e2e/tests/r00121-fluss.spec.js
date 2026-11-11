@@ -203,3 +203,28 @@ test('R00121 B0559: Live — eine Verschiebung ändert das Band ohne Neuladen', 
     await expect(letzte.locator('td').nth(3)).toHaveText('1', { timeout: 1500 });
   } finally { await k.stoppen(); }
 });
+
+test('R00121 B0561: Leerzustand mit „Zurücksetzen“ — der Zeitraum bleibt in der Board-Datei', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await alsPerson(page, 'st');
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    await page.goto(k.adresse + '#/berichte/fluss');
+    await filterOeffnen(page);
+    const filter = page.getByRole('group', { name: 'Berichtsfilter' });
+    for (const spalte of ['Eingang', 'In Arbeit', 'Fertig']) await filter.getByRole('button', { name: spalte }).click();
+    const leer = page.locator('.fluss-leer');
+    await expect(leer.locator('.fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
+    const knopf = leer.getByRole('button', { name: 'Zurücksetzen' });
+    await expect(knopf).toBeVisible();
+    await knopf.click();
+    await expect(diagramm(page)).toBeVisible();
+    await expect(page.locator('.fluss-tab tbody tr')).toHaveCount(5); // wieder die Tage aus US-1
+    const datei = k.lies('boards/fabrik.md');
+    expect(datei).toContain('report-filter');
+    expect(datei).toContain('period: eigen');
+    expect(datei).toContain('from: 2026-11-01');
+    expect(datei).toContain('to: 2026-11-05');
+    expect(datei).not.toContain('exclude-columns');
+  } finally { await k.stoppen(); }
+});
