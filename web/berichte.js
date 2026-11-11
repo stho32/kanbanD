@@ -1,6 +1,6 @@
 /* kanbanD — Berichte: Zeitraum, Filter und Rechnungen über Bewegungen; rein, im Browser und in Node nutzbar. */
 (function (ziel) {
-  const { datumAusMs, datumLang } = typeof module !== 'undefined' ? require('./kultur.js') : window;
+  const { datumAusMs, datumLang, achsenMarke } = typeof module !== 'undefined' ? require('./kultur.js') : window;
   const TAG = 864e5;
 
   /* ── Zeitraum und Filter (R00043) ── */
@@ -64,6 +64,7 @@
     burndown: { start: true, zeitraum: true, spalten: true, personen: 'zustaendig' },
     fluss: { start: true, zeitraumBleibt: true, spalten: true, personen: 'zustaendig' },
     durchlaufzeit: { start: true, zeitraum: true, personen: 'zustaendig' },
+    durchsatz: { start: true, zeitraumBleibt: true, spalten: true, personen: 'zustaendig' },
     wieLangeNoch: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     fieber: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     kosten: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
@@ -194,6 +195,103 @@
   }
   /** Höchster Wert der Bänder und der beiden kumulierten Ränder über alle Tage — die y-Achse reicht bis dahin. */
   const flussMax = tage => Math.max(1, ...tage.map(x => Math.max(x.gesamt, x.angekommen, x.fertig)));
+
+  /* ── Durchsatz je Zeitraum (R00122) ── */
+  /** Auflösungen des Durchsatzes in Anzeigereihenfolge: Schlüssel und Einheitenwort; Standard ist die Woche. */
+  const DURCHSATZ_EINHEITEN = [['tag', 'je Tag'], ['woche', 'je Woche'], ['monat', 'je Monat']];
+  const DURCHSATZ_STANDARD = 'woche';
+  const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+  /** Montag der Woche, in der `ms` liegt (Mo–So, wie `wochenbeginn`, web/zeiten.js:39). */
+  const montag = ms => { const d = new Date(tag(ms)); return tag(ms, -((d.getDay() + 6) % 7)); };
+  const monatsbeginn = ms => { const d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+  /** Beginn der Kalenderperiode, in der `ms` liegt. */
+  const periodeStart = (ms, einheit) => einheit === 'woche' ? montag(ms) : einheit === 'monat' ? monatsbeginn(ms) : tag(ms);
+  /** Beginn der nächsten Kalenderperiode. */
+  const periodeEnde = (ms, einheit) => einheit === 'woche' ? tag(ms, 7)
+    : einheit === 'monat' ? new Date(new Date(ms).getFullYear(), new Date(ms).getMonth() + 1, 1).getTime() : tag(ms, 1);
+
+  /** ISO-Kalenderwoche (Mo–So) des Tages: { jahr, woche }. */
+  function isoWoche(ms) {
+    const d = new Date(ms), donnerstag = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    donnerstag.setDate(donnerstag.getDate() + 3 - ((donnerstag.getDay() + 6) % 7));
+    const jahr = donnerstag.getFullYear(), erster = new Date(jahr, 0, 4);
+    erster.setDate(erster.getDate() + 3 - ((erster.getDay() + 6) % 7));
+    return { jahr, woche: 1 + Math.round((donnerstag - erster) / (7 * TAG)) };
+  }
+
+  /** Ziel des Durchsatzes: die Abschlussspalte (Index und Name) oder bei gebundenem Board die letzte Phase samt Stufe. */
+  function durchsatzZiel(bew, phasen) {
+    if (phasen && phasen.folge && phasen.folge.length) {
+      const stufen = phasenStufen(phasen, bew.spalten), letzte = stufen[stufen.length - 1];
+      return { art: 'phase', name: letzte.phase, i: -1, stufe: letzte };
+    }
+    const i = bew.spalten.length - 1;
+    return { art: 'spalte', name: bew.spalten[i], i, stufe: null };
+  }
+
+  /** Die Spalten, die das Ziel ausmachen: seine Spalte oder alle Spalten der letzten Phase (samt Abschlussspalte). */
+  function zielSpalten(bew, ziel) {
+    if (ziel.art === 'spalte') return [ziel.name];
+    const letzte = bew.spalten[bew.spalten.length - 1];
+    return bew.spalten.filter(s => s === letzte || bew.phasen.spaltenphasen[s] === ziel.name);
+  }
+
+  /** Ankunft einer Aufgabe im Ziel: erstes Erreichen der Zielspalte bzw. erstes Durchlaufen der letzten Phase. */
+  const ankunftIm = (a, bew, ziel) => ziel.art === 'phase' ? ersterDurchlauf(a, ziel.stufe) : erreicht(a.wechsel, bew.spalten, ziel.i);
+
+  /** Datumsbereich einer Periode: `TT.MM.–TT.MM.JJJJ` (gleicher Monat) bzw. `TT.MM.JJJJ–TT.MM.JJJJ`. */
+  function periodeSpanne(von, bis) {
+    const a = new Date(von), b = new Date(bis - 1);
+    if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return `${String(a.getDate()).padStart(2, '0')}.–${datumAusMs(bis - 1)}`;
+    return `${datumAusMs(von)}–${datumAusMs(bis - 1)}`;
+  }
+  /** Kurzname einer Periode: `KW45 02.–08.11.2026`, `04.11.2026`, `November 2026` (Tabelle und Zugänglichkeit). */
+  function durchsatzName(p, einheit) {
+    if (einheit === 'tag') return datumAusMs(p.von);
+    if (einheit === 'woche') return `KW${isoWoche(p.von).woche} ${periodeSpanne(p.von, p.bis)}`;
+    const d = new Date(p.von);
+    return `${MONATE[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  /** Tooltiptext einer Periode: `Woche 09.–15.11.2026`, `04.11.2026`, `November 2026`. */
+  function durchsatzTip(p, einheit) {
+    if (einheit === 'woche') return `Woche ${periodeSpanne(p.von, p.bis)}`;
+    return durchsatzName(p, einheit);
+  }
+  /** Achsenmarke einer Periode, zweizeilig: { oben, unten } (`04.11.`/`2026`, `KW45`/`2026`, `November 2026`/„“). */
+  function durchsatzMarke(p, einheit) {
+    if (einheit === 'tag') { const [oben, unten] = achsenMarke(p.von); return { oben, unten }; }
+    if (einheit === 'woche') { const w = isoWoche(p.von); return { oben: `KW${w.woche}`, unten: String(w.jahr) }; }
+    return { oben: durchsatzName(p, einheit), unten: '' };
+  }
+
+  /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte bzw. letzte
+      Phase) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
+      [von, bis) des Filters — „Rechnen ab“ schneidet den Anfang, die Messbasis wirkt nicht, die angebrochene letzte
+      Periode zählt bis heute. `reporting.forecast: false` nimmt aus (zählt in `ausgenommen`); ist das Ziel ganz
+      ausgeschlossen, gibt es keine Aussage (`zielAusgeschlossen`, keine Perioden). Ø = Gesamt ÷ dargestellte Perioden. */
+  function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD) {
+    const ziel = durchsatzZiel(bew, bew.phasen);
+    const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
+    if (!bew.spalten.length) return leer;
+    if (zielSpalten(bew, ziel).every(s => f.ohneSpalten.includes(s))) return { ...leer, zielAusgeschlossen: true };
+    const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
+    if (erste === Infinity) return leer;
+    const g = grenzenAb(f, jetzt, start);
+    const von = Math.max(tag(erste), g.von), bis = Math.min(g.bis, tag(jetzt, 1));
+    if (!(bis > von)) return leer;
+    const perioden = [];
+    for (let p = periodeStart(von, einheit); p < bis; p = periodeEnde(p, einheit)) perioden.push({ von: p, bis: periodeEnde(p, einheit), anzahl: 0 });
+    let gesamt = 0, ausgenommen = 0;
+    for (const a of bew.aufgaben) {
+      const t = ankunftIm(a, bew, ziel);
+      if (t == null || t < von || t >= bis || !aufgabePasst(f, aufgabeZu(a.nummer))) continue;
+      if (!zaehltImBericht(a, 'forecast')) { ausgenommen++; continue; }
+      const p = perioden.find(x => t >= x.von && t < x.bis);
+      if (p) { p.anzahl++; gesamt++; }
+    }
+    return { einheit, perioden, gesamt, durchschnitt: perioden.length ? gesamt / perioden.length : null, ausgenommen, zielAusgeschlossen: false, ziel };
+  }
 
   /* ── Durchlaufzeit (R00045) ── */
   /** Erstes Erreichen der Spalte mit Index ≥ i (dort oder rechts davon), in ms; null = nie. */
@@ -696,5 +794,5 @@
     return woerter.join(' ');
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

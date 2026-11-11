@@ -506,6 +506,7 @@ test('Zurücksetzen je Leiste (R00105 US-19, PO Z. 106/116): Klassen, Spalten, Z
     zeiten: ohneZeitraum,
     burndown: ohneZeitraum,
     fluss: ohneGruppen,
+    durchsatz: ohneGruppen,
     durchlaufzeit: ohneZeitraum,
     wieLangeNoch: ohneGruppen,
     fieber: ohneGruppen,
@@ -530,6 +531,7 @@ test('Hinweis an „Zurücksetzen“ je Leiste (R00105 US-25, PO Z. 118): nennt 
     bestand: nur,
     burndown: `${nur} — „Rechnen ab“ bleibt`,
     fluss: `${nur} — Zeitraum und „Rechnen ab“ bleiben`,
+    durchsatz: `${nur} — Zeitraum und „Rechnen ab“ bleiben`,
     durchlaufzeit: `${nur} — „Rechnen ab“ bleibt`,
     wieLangeNoch: `${nur} — Messbasis und „Rechnen ab“ bleiben`,
     fieber: `${nur} — Messbasis und „Rechnen ab“ bleiben`,
@@ -619,4 +621,100 @@ test('Fluss: die y-Achse reicht bis zum höchsten Wert der Bänder und Ränder (
   ];
   assert.strictEqual(flussMax(tage), 4, '„angekommen“ 4 schlägt den höchsten Stapel 3');
   assert.strictEqual(flussMax([{ gesamt: 0, angekommen: 0, fertig: 0 }]), 1, 'nie unter 1, damit die Achse nicht bei 0 steht');
+});
+
+/* ── Durchsatz je Zeitraum (R00122) ── */
+const { durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke } = require('../../web/berichte.js');
+
+/** Grundbestand der AK (R00122): Board „fabrik“ (Eingang/In Arbeit/Fertig), Bewegungen 02.–11.11.2026. */
+const DURCH = {
+  spalten: ['Eingang', 'In Arbeit', 'Fertig'],
+  aufgaben: [
+    { nummer: 1, wechsel: [['2026-11-02 09:00', 'Eingang'], ['2026-11-03 09:00', 'In Arbeit'], ['2026-11-04 09:00', 'Fertig']] },
+    { nummer: 2, wechsel: [['2026-11-03 09:00', 'Eingang'], ['2026-11-05 09:00', 'Fertig'], ['2026-11-10 09:00', null]] },
+    { nummer: 3, wechsel: [['2026-11-04 09:00', 'Eingang'], ['2026-11-06 09:00', 'In Arbeit'], ['2026-11-09 09:00', 'Fertig']] },
+    { nummer: 4, wechsel: [['2026-11-09 09:00', 'Eingang'], ['2026-11-11 09:00', 'Fertig']] },
+  ].map(a => ({ ...a, wechsel: a.wechsel.map(([zeitpunkt, spalte]) => ({ zeitpunkt, spalte })) })),
+};
+const DURCH_JETZT = new Date(2026, 10, 11, 20, 0).getTime(); // 11.11.2026, 20 Uhr
+const zuDurch = () => ({ klasse: '', zustaendige: [], labels: [] });
+const AK_FILTER = f({ zeitraum: 'eigen', von: '2026-11-02', bis: '2026-11-11' });
+const durch = (einheit, filter = AK_FILTER) => durchsatz(DURCH, filter, zuDurch, DURCH_JETZT, null, einheit);
+
+test('Durchsatz je Periode: Woche, Tag, Monat und Rate wie das Rechenbeispiel (R00122 B0562)', () => {
+  const woche = durch('woche');
+  assert.deepStrictEqual(woche.perioden.map(p => p.anzahl), [2, 2], 'KW45 2 · KW46 2');
+  assert.deepStrictEqual([woche.gesamt, woche.durchschnitt, woche.einheit], [4, 2, 'woche'], 'Gesamt 4, Ø 2,0 je Woche, zwei Perioden');
+  assert.deepStrictEqual(woche.perioden.map(p => durchsatzName(p, 'woche')), ['KW45 02.–08.11.2026', 'KW46 09.–15.11.2026']);
+  const tag = durch('tag');
+  assert.strictEqual(tag.perioden.length, 10, 'zehn Tage 02.–11.11.');
+  assert.deepStrictEqual(tag.perioden.map(p => p.anzahl), [0, 0, 1, 1, 0, 0, 0, 1, 0, 1], '04./05./09./11.11. je 1, sonst 0');
+  assert.strictEqual(tag.durchschnitt, 0.4, 'Ø 0,4 je Tag');
+  const monat = durch('monat');
+  assert.deepStrictEqual([monat.perioden.map(p => p.anzahl), monat.perioden.length, monat.durchschnitt], [[4], 1, 4], 'November 2026: 4, Ø 4,0, eine Periode');
+  assert.strictEqual(durchsatzName(monat.perioden[0], 'monat'), 'November 2026');
+});
+
+test('Durchsatz: das erste Erreichen des Ziels zählt (R00122 B0562)', () => {
+  assert.deepStrictEqual(durch('woche').perioden.map(p => p.anzahl), [2, 2], '#3 zählt am 09.11. (Fertig), nicht am 06.11. (In Arbeit)');
+});
+
+test('Durchsatz-Ziel: Abschlussspalte, bei gebundenem Board die letzte Phase (R00122 B0562)', () => {
+  const ohne = durchsatzZiel(DURCH, null);
+  assert.deepStrictEqual([ohne.art, ohne.name, ohne.i], ['spalte', 'Fertig', 2]);
+  const phasen = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Auslieferung' }], spaltenphasen: { Eingang: 'Entwicklung', 'In Arbeit': 'Entwicklung', Fertig: 'Auslieferung' } };
+  const mitPhasen = { ...DURCH, phasen };
+  assert.deepStrictEqual([durchsatzZiel(mitPhasen, phasen).art, durchsatzZiel(mitPhasen, phasen).name], ['phase', 'Auslieferung']);
+  assert.deepStrictEqual(durchsatz(mitPhasen, AK_FILTER, zuDurch, DURCH_JETZT, null, 'woche').perioden.map(p => p.anzahl), [2, 2], 'dieselbe Bedeutung je letzter Phase');
+});
+
+test('Durchsatz je letzter Phase: „durchlaufen“ heißt über die letzte Phase hinaus (R00122 B0562)', () => {
+  const phasen = { anwendung: 'kd', folge: [{ nr: 1, name: 'P1' }, { nr: 2, name: 'P2' }], spaltenphasen: { Bau: 'P1', Test: 'P2' } };
+  const bew = { spalten: ['Bau', 'Test', 'Erledigt'], phasen, aufgaben: [
+    { nummer: 1, wechsel: [{ zeitpunkt: '2026-11-02 09:00', spalte: 'Bau' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'Test' }, { zeitpunkt: '2026-11-05 09:00', spalte: 'Erledigt' }] },
+    { nummer: 2, wechsel: [{ zeitpunkt: '2026-11-02 09:00', spalte: 'Bau' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'Test' }] },
+  ] };
+  const d = durchsatz(bew, AK_FILTER, zuDurch, DURCH_JETZT, null, 'tag');
+  assert.deepStrictEqual([d.gesamt, d.perioden[3].anzahl], [1, 1], '#1 zählt beim Verlassen der letzten Phase (05.11.); #2 bleibt in ihr und zählt nicht');
+});
+
+test('Durchsatz: Zeitraum, Ausschlüsse und Messbasis (R00122 B0569)', () => {
+  const lauf = (x, bew = DURCH) => durchsatz(bew, f(x), zuDurch, DURCH_JETZT, null, 'woche').perioden.map(p => p.anzahl);
+  assert.deepStrictEqual(lauf({}), [2, 2], 'ohne Zeitraum bis heute');
+  assert.deepStrictEqual(lauf({ zeitraum: 'eigen', von: '2026-11-05', bis: '2026-11-11' }), [1, 2], 'Zeitraum 05.–11.11.: KW45 nur #2 (05.11.), KW46 #3/#4');
+  assert.deepStrictEqual(lauf({ ohneSpalten: ['Eingang'] }), [2, 2], 'eine ausgeschlossene Spalte links vom Ziel ändert die Ankünfte nicht');
+  assert.deepStrictEqual(lauf({ ohneSpalten: ['Fertig'] }), [], 'ausgeschlossene Zielspalte: keine Perioden (Hinweis statt Balken)');
+  assert.strictEqual(durchsatz(DURCH, f({ ohneSpalten: ['Fertig'] }), zuDurch, DURCH_JETZT, null, 'woche').zielAusgeschlossen, true);
+  assert.deepStrictEqual(lauf({ messbasisTage: 1 }), lauf({ messbasisTage: 90 }), 'die Messbasis wirkt nicht');
+  assert.deepStrictEqual(durchsatz(DURCH, f({}), zuDurch, DURCH_JETZT, '2026-11-05', 'woche').perioden.map(p => p.anzahl), [1, 2], '„Rechnen ab“ schneidet den Anfang ab');
+});
+
+test('Durchsatz: Klasse, Zuständige und Labels schränken die gezählten Aufgaben ein (R00122 B0569)', () => {
+  const ZU = { 1: { klasse: 'bug', zustaendige: ['st'], labels: ['ui'] }, 2: { klasse: 'ux', zustaendige: ['mi'], labels: [] }, 3: { klasse: 'bug', zustaendige: [], labels: ['daten'] }, 4: { klasse: 'ux', zustaendige: ['st'], labels: [] } };
+  const zu = nr => ZU[nr];
+  const lauf = x => durchsatz(DURCH, f(x), zu, DURCH_JETZT, null, 'woche').perioden.map(p => p.anzahl);
+  assert.deepStrictEqual(lauf({ ohneFarben: ['ux'] }), [1, 1], 'ohne Klasse „ux“ bleiben #1 (04.11.) und #3 (09.11.)');
+  assert.deepStrictEqual(lauf({ personen: ['st'] }), [1, 1], 'zuständig st: #1 und #4');
+  assert.deepStrictEqual(lauf({ labels: ['ui'] }), [1, 0], 'Label ui: nur #1');
+});
+
+test('Durchsatz: reporting.forecast false nimmt die Aufgabe aus (R00122 B0563)', () => {
+  const ohne3 = { ...DURCH, aufgaben: DURCH.aufgaben.map(a => a.nummer === 3 ? { ...a, reporting: { forecast: false } } : a) };
+  const d = durchsatz(ohne3, AK_FILTER, zuDurch, DURCH_JETZT, null, 'woche');
+  assert.deepStrictEqual(d.perioden.map(p => p.anzahl), [2, 1], 'KW45 2 · KW46 1 (#4)');
+  assert.deepStrictEqual([d.gesamt, d.ausgenommen], [3, 1], 'Gesamt 3, ausgenommen 1');
+});
+
+test('Durchsatz: leerer Zeitraum und Board ohne Bewegung ergeben keine Perioden (R00122 B0562)', () => {
+  assert.deepStrictEqual(durchsatz(DURCH, f({ zeitraum: 'eigen', von: '2026-01-01', bis: '2026-01-31' }), zuDurch, DURCH_JETZT, null, 'tag').perioden, [], 'Zeitraum vor der ersten Bewegung');
+  assert.deepStrictEqual(durchsatz({ spalten: ['A', 'B'], aufgaben: [] }, AK_FILTER, zuDurch, DURCH_JETZT, null, 'woche').perioden, [], 'kein Stand');
+});
+
+test('Durchsatz: Tooltiptext und Achsenmarke je Auflösung (R00122 M1)', () => {
+  const woche = durch('woche'), tag = durch('tag'), monat = durch('monat');
+  assert.strictEqual(durchsatzTip(woche.perioden[1], 'woche'), 'Woche 09.–15.11.2026');
+  assert.deepStrictEqual(durchsatzMarke(woche.perioden[0], 'woche'), { oben: 'KW45', unten: '2026' }, 'zwei unterscheidbare Wochenmarken, nicht zwei gleiche Tagesdaten');
+  assert.strictEqual(durchsatzTip(tag.perioden[2], 'tag'), '04.11.2026');
+  assert.deepStrictEqual(durchsatzMarke(tag.perioden[2], 'tag'), { oben: '04.11.', unten: '2026' });
+  assert.deepStrictEqual(durchsatzMarke(monat.perioden[0], 'monat'), { oben: 'November 2026', unten: '' });
 });
