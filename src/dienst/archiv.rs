@@ -38,6 +38,71 @@ impl Kanban {
 }
 
 impl Kanban {
+    /// Endgültig löschen (R00141, ADR-0024): die **dritte Bewegung** der Archiv-Familie neben archivieren/zurückholen.
+    /// Entfernt die Aufgabendatei, ihre Zeile aus **allen** Board-Dateien und ihren Anhangsordner in **einem** Commit
+    /// unter derselben Sperre `gesperrt()` wie ihre Geschwister; nur die Git-Geschichte behält die Karte. Ein Agent wird
+    /// aus einer Menschen-Spalte **403** abgewiesen (R00097), ein defektes Board des Ordners ist **423** (R00120);
+    /// nichts geändert, kein Commit. Der Löschweg braucht nur den Pfad (`aufgabenpfad`), nicht das Modell — eine defekte
+    /// Aufgabendatei lässt sich damit entfernen. Rückgabe ist die Nummer (Antwort `{nummer}`).
+    pub fn endgueltig_loeschen(&self, wer: &Person, nr: u32) -> Result<u32, Fehler> {
+        let _sperre = self.gesperrt();
+        let pfad = self.ordner().aufgabenpfad(nr)?;
+        // Prüfung vor jedem Schreiben: Agent aus einer Menschen-Spalte 403, defektes Board des Ordners 423.
+        self.archivieren_pruefen(wer, &[nr])?;
+        let mut schritte = vec![];
+        let mut boardzahl = 0;
+        let (boards, _) = self.ordner().boards()?;
+        for b in boards.iter().filter(|b| b.spalte_von(nr).is_some()) {
+            let mut b = b.clone();
+            b.abnehmen(nr);
+            boardzahl += 1;
+            schritte.push(Schritt::schreiben(crate::ablage::board_pfad(&b.slug), self.board_text(&b, None)?));
+        }
+        let anhaenge = self.anhangdateien(&pfad);
+        let anzahl = anhaenge.len();
+        schritte.push(Schritt::entfernen(pfad.clone()));
+        schritte.extend(anhaenge.into_iter().map(Schritt::entfernen));
+        let nachricht = loeschnachricht(nr, anzahl, boardzahl);
+        self.aktion(wer, &nachricht, &schritte)?;
+        let _ = std::fs::remove_dir(self.ordner().wurzel().join(pfad.strip_suffix(".md").unwrap_or(&pfad)));
+        self.timer_beginn.lock().unwrap_or_else(|e| e.into_inner()).retain(|(n, _), _| *n != nr);
+        Ok(nr)
+    }
+
+    /// Die Dateien des Anhangsordners `aufgaben/<nr>-<slug>/` (relativ, sortiert); ohne Ordner keine. Die halbfertigen
+    /// `.kanbanD-tmp`-Dateien des Schreibwegs zählen nicht.
+    fn anhangdateien(&self, aufgabenpfad: &str) -> Vec<String> {
+        let ordner = aufgabenpfad.strip_suffix(".md").unwrap_or(aufgabenpfad).to_string();
+        let mut dateien = vec![];
+        if let Ok(eintraege) = std::fs::read_dir(self.ordner().wurzel().join(&ordner)) {
+            for e in eintraege.flatten() {
+                let name = e.file_name().to_string_lossy().to_string();
+                if !name.ends_with(".kanbanD-tmp") && e.file_type().map(|t| t.is_file()).unwrap_or(false) {
+                    dateien.push(format!("{ordner}/{name}"));
+                }
+            }
+        }
+        dateien.sort();
+        dateien
+    }
+}
+
+/// Die Commit-Nachricht der Löschung (R00141): `#<nr> gelöscht`, bei Anhängen `, k Anhänge`, bei mehreren Boards
+/// ` (m Boards)` — Muster `#<nr> archiviert`.
+fn loeschnachricht(nr: u32, anhaenge: usize, boards: usize) -> String {
+    let mut text = format!("#{nr} gelöscht");
+    match anhaenge {
+        0 => {}
+        1 => text.push_str(", 1 Anhang"),
+        n => text.push_str(&format!(", {n} Anhänge")),
+    }
+    if boards > 1 {
+        text.push_str(&format!(" ({boards} Boards)"));
+    }
+    text
+}
+
+impl Kanban {
     /// Archiviert bzw. holt mehrere Aufgaben in einem Commit zurück; eine unbekannte Nummer ändert nichts.
     pub fn mehrere_archivieren(&self, wer: &Person, nummern: &[u32], archivieren: bool) -> Result<Vec<u32>, Fehler> {
         if nummern.is_empty() {
@@ -95,7 +160,7 @@ pub(super) fn zurueckgeholt(a: &mut Aufgabe) -> Result<(), Fehler> {
 
 #[cfg(test)]
 mod tests {
-    use super::zurueckgeholt;
+    use super::{loeschnachricht, zurueckgeholt};
     use crate::fehler::Fehler;
     use crate::modell::Aufgabe;
 
@@ -109,5 +174,46 @@ mod tests {
             Err(Fehler::Konflikt(t)) => assert_eq!(t, "#7 ist nicht archiviert"),
             anders => panic!("{anders:?}"),
         }
+    }
+
+    // B0636 (R00141, FA 3): die Lösch-Nachricht — Muster `#<nr> archiviert`, Anhänge und mehrere Boards.
+    #[test]
+    fn loeschen_nachricht() {
+        assert_eq!(loeschnachricht(1, 0, 0), "#1 gelöscht");
+        assert_eq!(loeschnachricht(1, 0, 1), "#1 gelöscht");
+        assert_eq!(loeschnachricht(1, 1, 1), "#1 gelöscht, 1 Anhang");
+        assert_eq!(loeschnachricht(1, 2, 2), "#1 gelöscht, 2 Anhänge (2 Boards)");
+        assert_eq!(loeschnachricht(7, 0, 3), "#7 gelöscht (3 Boards)");
+    }
+
+    // B0636 (R00141, Ablauf 2.4): ein laufender Timer der Nummer endet mit der Datei — der Startzeitpunkt wird verworfen.
+    #[test]
+    fn loeschen_verwirft_den_laufenden_timer() {
+        use super::Kanban;
+        use std::path::Path;
+        use std::process::Command;
+
+        fn git(p: &Path, a: &[&str]) -> String {
+            let o = Command::new("git").args(a).current_dir(p).output().unwrap();
+            String::from_utf8_lossy(&o.stdout).trim().to_string()
+        }
+
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("boards")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("kanbanD.md"), "---\npeople:\n  cl: {name: Claude, kind: agent}\n  st: {name: Stefan, kind: human}\n---\n").unwrap();
+        std::fs::write(tmp.path().join("boards/a.md"), "# A\n\n## Bereit\n\n- #1\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0001-eins.md"), "---\nid: 1\ntitle: eins\n---\n").unwrap();
+        git(tmp.path(), &["init", "-q"]);
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "a"]);
+        let k = Kanban::neu(tmp.path().to_path_buf());
+        let cl = k.handelnder(Some("cl")).unwrap();
+        let st = k.handelnder(Some("st")).unwrap();
+        k.timer_starten(&cl, 1).unwrap();
+        assert!(k.timer_beginn.lock().unwrap().contains_key(&(1, "cl".to_string())), "der Timer läuft");
+        assert_eq!(k.endgueltig_loeschen(&st, 1).unwrap(), 1);
+        assert!(!k.timer_beginn.lock().unwrap().contains_key(&(1, "cl".to_string())), "der Startzeitpunkt ist verworfen");
+        assert!(!tmp.path().join("aufgaben/0001-eins.md").exists());
     }
 }
