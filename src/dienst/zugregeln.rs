@@ -45,6 +45,23 @@ fn verboten(sperre: Entnahmesperre) -> Fehler {
     }
 }
 
+/// Steht einem Agenten das **ganze** Board im Weg (Archivieren/Löschen, R00128)? Geprüft werden alle Karten des Boards in
+/// Spaltenreihenfolge (die erste Sperre nennt ihre Spalte und Nummer); ein `human` meinender, ungebundener Eintrag sperrt
+/// das Board auch ohne Karte (fail-safe, R00120 PO Z. 187) — dann ist die Spalte leer, die Nummer 0. Mensch nie gesperrt.
+pub(crate) fn board_entnahme_pruefen(art: Art, board: &Board) -> Result<(), Fehler> {
+    if art != Art::Agent {
+        return Ok(());
+    }
+    let nummern: Vec<u32> = board.spalten.iter().flat_map(|s| s.aufgaben.iter().copied()).collect();
+    if let Some(sperre) = nummern.iter().find_map(|n| board.entnahme_erlaubt(art, *n).err()) {
+        return Err(verboten(sperre));
+    }
+    if board.eigentuemer_roh.iter().any(|e| e.meint_human()) {
+        return Err(verboten(Entnahmesperre::Board { nummer: 0 }));
+    }
+    Ok(())
+}
+
 /// Erst die Entnahmeregel, dann die Grenzen (ADR-0002) — für Züge, die Karten aus ihrer Spalte nehmen.
 pub(crate) fn entnahme_und_zug_pruefen(art: Art, vorher: &Board, nachher: &Board, entnommen: &[u32], archiviert: &BTreeSet<u32>) -> Result<Vec<Warnung>, Fehler> {
     entnahme_pruefen(art, vorher, entnommen)?;
@@ -166,6 +183,7 @@ mod tests {
             fieber: Default::default(),
             berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
+            archiviert: None,
         }
     }
 
@@ -178,6 +196,20 @@ mod tests {
         assert_eq!(entnahme_pruefen(Art::Agent, &b, &[1, 2]), verboten(1));
         assert_eq!(entnahme_pruefen(Art::Agent, &b, &[9, 5]), Ok(()));
         assert_eq!(entnahme_pruefen(Art::Mensch, &b, &[1, 2]), Ok(()));
+    }
+
+    // R00128 B0599: Archivieren/Löschen sperrt einen Agenten board-weit — die erste Karte einer Menschen-Spalte; ohne
+    // Karte sperrt ein ungebundener human-Eintrag trotzdem (fail-safe, PO Z. 187); der Mensch ist frei.
+    #[test]
+    fn board_entnahme_sperrt_agenten_board_weit() {
+        let b = board_mit_eingang();
+        assert_eq!(board_entnahme_pruefen(Art::Agent, &b), Err(Fehler::Verboten { meldung: "Spalte „Eingang“ gehört dem Menschen".into(), spalte: "Eingang".into(), nummer: 1 }));
+        assert_eq!(board_entnahme_pruefen(Art::Mensch, &b), Ok(()));
+        let mut leer = b.clone();
+        leer.spalten.iter_mut().for_each(|s| s.aufgaben.clear());
+        assert_eq!(board_entnahme_pruefen(Art::Agent, &leer), Ok(()), "ohne Karte und ohne fail-safe-Eintrag frei");
+        leer.eigentuemer_roh.push(crate::modell::ColumnOwnerEintrag { schluessel: None, wert: "human".into() });
+        assert!(matches!(board_entnahme_pruefen(Art::Agent, &leer), Err(Fehler::Verboten { spalte, nummer: 0, .. }) if spalte.is_empty()), "fail-safe auch ohne Karte");
     }
 
     // ADR-0002: die Entnahmeregel läuft vor der Grenzprüfung — 403 vor 409

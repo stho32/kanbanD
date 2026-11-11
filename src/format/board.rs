@@ -31,6 +31,10 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
         Some(d) if !ist_datum(&d) => return Err(Formatfehler(format!("start „{d}“ ist nicht JJJJ-MM-TT"))),
         d => d,
     };
+    let archiviert = match yaml::text(&m, "archived") {
+        Some(d) if !ist_datum(&d) => return Err(Formatfehler(format!("archived „{d}“ ist nicht JJJJ-MM-TT"))),
+        d => d,
+    };
     let fieber = fieber_lesen(m.get("fever"))?;
     let berichtsfilter = berichtsfilter_lesen(m.get("report-filter"))?;
     let bestand = bestand_lesen(m.get("report-labels"))?;
@@ -75,7 +79,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     // Nur Einträge ohne eigene Spalte bleiben roh; die ungültigen Nicht-Text-Werte treten dazu (R00120).
     eigentuemer_roh.retain(|e| e.schluessel.as_ref().is_none_or(|k| !spalten.iter().any(|s| &s.name == k)));
     eigentuemer_roh.extend(roh_ungueltig);
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand, eigentuemer_roh })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert })
 }
 
 /// Ein YAML-Wert in einer Zeile für den Rundlauf (R00120): Text roh, Listen und Zuordnungen in Flussform
@@ -308,7 +312,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
@@ -362,6 +366,9 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
         if let Some(start) = &b.start {
             s.push_str(&format!("start: {start}\n"));
         }
+        if let Some(datum) = &b.archiviert {
+            s.push_str(&format!("archived: {datum}\n"));
+        }
         if let Some(f) = fieber {
             s.push_str(&f);
         }
@@ -407,6 +414,7 @@ mod tests {
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
+            archiviert: None,
         }
     }
 
@@ -617,6 +625,28 @@ mod tests {
         assert!(lesen("x", "## A\n## A\n").unwrap_err().0.contains("doppelt"));
     }
 
+    // R00128 B0595: `archived` im Rundlauf (Board-Frontmatter); ohne Schlüssel kein `archived`; ungültiges Datum ist ein Formatfehler
+    #[test]
+    fn archiviert_im_frontmatter_rundlauf() {
+        let ohne = schreiben(&beispiel(), datei);
+        assert!(!ohne.contains("archived"), "{ohne}");
+        assert_eq!(lesen("entwicklung", &ohne).unwrap().archiviert, None);
+        let mut b = beispiel();
+        b.archiviert = Some("2026-11-11".into());
+        let t = schreiben(&b, datei);
+        assert!(t.contains("\narchived: 2026-11-11\n"), "{t}");
+        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
+        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
+        let mut nur_archiv = beispiel();
+        nur_archiv.spalten[1].grenze = None;
+        nur_archiv.archiviert = Some("2026-11-11".into());
+        assert!(schreiben(&nur_archiv, datei).starts_with("---\narchived: 2026-11-11\n---\n\n# Entwicklung\n"), "der Block erscheint auch, wenn nur archived gesetzt ist");
+        for zeile in ["archived: 11.11.2026", "archived: 2026-13-01", "archived: heute"] {
+            let e = lesen("b", &format!("---\n{zeile}\n---\n## A\n")).unwrap_err();
+            assert!(e.0.contains("archived"), "{zeile}: {e:?}");
+        }
+    }
+
     #[test]
     fn start_fieber_und_zieltermin_rundlauf() {
         let mut b = beispiel();
@@ -690,6 +720,15 @@ mod tests {
         assert!(mit("report-labels: {columns: [a]}").unwrap_err().0.contains("rows"));
         assert_eq!(mit("report-labels: {rows: 304, columns: true}").unwrap().bestand, Some(Bestandseinstellung { zeilen: "304".into(), spalten: "true".into() }), "von Hand ohne Anführungszeichen: als Text");
         assert_eq!(mit("report-labels: ~").unwrap().bestand, None);
+    }
+
+    // R00128 B0596: das Board-JSON trägt `archiviert: <JJJJ-MM-TT> | null`
+    #[test]
+    fn archiviert_im_json_des_boards() {
+        let mut b = beispiel();
+        assert_eq!(serde_json::to_value(&b).unwrap()["archiviert"], serde_json::Value::Null);
+        b.archiviert = Some("2026-11-11".into());
+        assert_eq!(serde_json::to_value(&b).unwrap()["archiviert"], serde_json::json!("2026-11-11"));
     }
 
     #[test]

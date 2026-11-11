@@ -322,6 +322,9 @@ pub struct Board {
     /// Verwaiste oder ungültige `column-owner`-Einträge, roh erhalten (R00120); nicht im JSON, nur für Hinweis und Rundlauf.
     #[serde(skip)]
     pub eigentuemer_roh: Vec<ColumnOwnerEintrag>,
+    /// Datum der Archivierung (`archived` im Frontmatter, R00128); `None` = offen.
+    #[serde(default)]
+    pub archiviert: Option<String>,
 }
 
 impl Board {
@@ -766,6 +769,7 @@ mod tests {
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
+            archiviert: None,
         }
     }
 
@@ -1066,7 +1070,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None };
         assert_eq!(leer.aufnehmen(1, None, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

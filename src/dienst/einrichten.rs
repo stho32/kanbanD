@@ -66,6 +66,7 @@ impl Einrichtung {
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
+            archiviert: None,
         }
     }
 }

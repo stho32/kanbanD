@@ -155,7 +155,7 @@ mod tests {
     use crate::modell::Spalte;
 
     fn b(a: &[u32], z: &[u32]) -> Board {
-        Board { slug: "b".into(), titel: "B".into(), spalten: vec![Spalte { name: "A".into(), grenze: None, aufgaben: a.to_vec(), phase: None, pruefungen: vec![], ..Default::default() }, Spalte { name: "Z".into(), grenze: None, aufgaben: z.to_vec(), phase: None, pruefungen: vec![], ..Default::default() }], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![] }
+        Board { slug: "b".into(), titel: "B".into(), spalten: vec![Spalte { name: "A".into(), grenze: None, aufgaben: a.to_vec(), phase: None, pruefungen: vec![], ..Default::default() }, Spalte { name: "Z".into(), grenze: None, aufgaben: z.to_vec(), phase: None, pruefungen: vec![], ..Default::default() }], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None }
     }
 
     fn zp(s: &str) -> NaiveDateTime {
