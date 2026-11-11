@@ -19,6 +19,8 @@
       { text: 'Fälligkeit', unter: [{ text: 'heute', act: 'faellig-karte', arg: `${nr}|0` }, { text: 'morgen', act: 'faellig-karte', arg: `${nr}|1` }, { text: '+1 Woche', act: 'faellig-karte', arg: `${nr}|7` }, ...(a.faellig ? [T, { text: 'entfernen', act: 'faellig-karte', arg: `${nr}|` }] : [])] },
       ...((u.boards || []).length ? [{ text: 'Auf Board legen', unter: u.boards.map(b => ({ text: `${b.titel} · ${b.spalte}`, act: 'legen', arg: `${b.slug}|${nr}|${b.spalte}` })) }] : []),
       T,
+      { text: 'Duplizieren', act: 'duplizieren', arg: String(nr) },
+      T,
       { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
       { text: 'Archivieren', kuerzel: 'a', act: 'archivieren', arg: String(nr) },
       { text: 'Endgültig löschen', act: 'endgueltig-loeschen', arg: String(nr), warn: true },

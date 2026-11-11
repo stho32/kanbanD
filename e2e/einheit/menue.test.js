@@ -9,7 +9,10 @@ const u = { spalten: ['Zu erledigen', 'In Arbeit', 'Erledigt'], spalte: 'Zu erle
 test('Menü der Karte', () => {
   const m = kartenMenue(a, u);
   const texte = m.map(e => e.trenner ? '—' : e.text);
-  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Verweis kopieren', 'Archivieren', 'Endgültig löschen']);
+  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Duplizieren', '—', 'Verweis kopieren', 'Archivieren', 'Endgültig löschen']);
+  // R00142 M1: „Duplizieren“ in eigener Gruppe nach „Auf Board legen“, vor „Verweis kopieren“, nicht destruktiv
+  const dup = m.findIndex(e => e.text === 'Duplizieren');
+  assert.deepStrictEqual([m[dup - 1].trenner, m[dup + 1].trenner, !!m[dup].warn, m[dup].act, m[dup].arg], [true, true, false, 'duplizieren', '3']);
   assert.strictEqual(m[2].arg, '3|st');
   // R00141 B0641/B6: der letzte Eintrag steht hinter „Archivieren“, in --kd-warn abgesetzt (warn)
   assert.deepStrictEqual([m.at(-1).act, m.at(-1).arg, m.at(-1).warn], ['endgueltig-loeschen', '3', true]);
