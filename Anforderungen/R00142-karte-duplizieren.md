@@ -33,22 +33,28 @@ Wiederkehrende Arbeit — die wöchentliche Durchsicht, dieselbe Prüfung für e
 7. Der Commit nennt `#<neu> dupliziert (aus #<nr>)`, mit Zielspalte wie beim Anlegen (` in „<Spalte>" (<Board>)`).
 8. Der Weg läuft **atomar unter derselben Sperre** (`gesperrt()`) und schreibt **einen** Commit. Die Kopie wird an **einem Ort** gebildet, indem die Angaben der Quelle (ohne `key`) samt Titelzusatz durch den vorhandenen Anlegeweg gehen; die `key`-Falle entfällt, weil `key` nie gesetzt wird.
 
-### Oberfläche (Kartenmenü)
+### Oberfläche (nach UX-Vorprüfung #124)
 
-9. Das Kartenmenü (R00033/I0033) bietet einen Eintrag **„Duplizieren"**; der Vorgang ist ein Aufruf ohne Zwischendialog (die Kopie ist die Quelle plus Zusatz, es ist nichts einzugeben).
+Die **UX-Vorprüfung #124 (2026-11-11, Kartenkommentar #124; drei Muss M1–M3 und Sollte S1–S3)** legt Wortlaut, Lage, Hinweis und Fokus fest; die Anforderung fixt nur das Nachprüfbare. Alle Elementnamen mit „M"/„S" sind die Befund-Kürzel des Berichts; die Einzelheiten stehen unter Notizen.
+
+9. **Der Eintrag und seine Lage (M1).** Das Kartenmenü (R00033/I0033) bietet einen Eintrag **„Duplizieren"**; der Vorgang ist ein Aufruf ohne Zwischendialog (die Kopie ist die Quelle plus Zusatz, es ist nichts einzugeben). **Lage:** „Duplizieren" steht in einer **eigenen Gruppe** unmittelbar **nach** „Auf Board legen" und **vor** der Gruppe mit „Verweis kopieren"/„Archivieren"/„Endgültig löschen" (R00141); zwischen „Duplizieren" und „Archivieren"/„Endgültig löschen" liegt **mindestens ein Trenner** — „Duplizieren" ist kein destruktiver Eintrag in seiner Gruppe. Die bestehende Kartenmenü-Zeichnung an D0003 `#endgueltig-loeschen` (R00141) wird auf dieselbe Reihenfolge angeglichen.
 10. Das Kartenmenü sendet das angezeigte Board und die Spalte der Quelle mit, sodass die Kopie **in derselben Spalte** erscheint.
-11. Nach dem Erfolg steht der [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md) „#<neu> „<Titel> (Kopie)" angelegt" mit [Rückgängig](../Dokumentation/Domaenenwissen/D00008-rueckgaengig.md); „rückgängig" **archiviert die Kopie** (wie beim Anlegen, R00031/I0031).
-12. Bei Fehler (404/409/423/Netz) erscheint die Meldung, nichts ist geändert, und es erscheint **keine Erfolgsmeldung vor der Antwort**.
-13. Der Eintrag ist mit Maus und Tastatur erreichbar (wie jeder Eintrag des Kartenmenüs).
+11. **Hinweis-Wortlaut (M2).** Nach dem Erfolg steht der [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md) **wörtlich** „#<neu> „<Titel> (Kopie)" angelegt" — die Nummer der Kopie und der Titel **mit** dem Zusatz „(Kopie)" in Anführungszeichen; das Anlegen-Muster „#<nr> angelegt" (R00005/I0005) wird hier **nicht** wiederverwendet.
+12. **Rückgängig (M3).** Der Hinweis bietet [„rückgängig"](../Dokumentation/Domaenenwissen/D00008-rueckgaengig.md); es **archiviert die Kopie** (Gegenaktion `{art:'archivieren', nummern:[<neu>]}`, wie beim Anlegen R00031/I0031), und **`Strg+Z` greift, solange der Hinweis steht** (Muster R00112/I0101).
+13. **Fehler als Live-Region (S1).** Bei Fehler (404/409/423/Netz) erscheint die Meldung als **Live-Region `role="status"`** (Muster: die Fehlermeldung als Hinweis, `web/app.js:561`), nichts ist geändert, und es erscheint **keine Erfolgsmeldung vor der Antwort**.
+14. **Fokus nach der Aktion (S2).** Nach der Aktion steht der Fokus auf der **Quellkarte** — nie auf `BODY` (Muster R00112/I0101).
+15. **Schmale Breiten (S3).** Der Eintrag und der Hinweis überstehen **320/375/414 px ohne Querscrollen** (ADR-0015).
+16. Der Eintrag ist mit Maus und Tastatur erreichbar (wie jeder Eintrag des Kartenmenüs).
 
-Wortlaut, Lage, Hinweis und Fokus bestimmt die **UX-Vorprüfung**; die Oberfläche wartet auf ihre Freigabe, der Server-Teil ist frei baubar (siehe „Gestaltung").
+Die **UX-Vorprüfung #124 liegt vor** (2026-11-11, Kartenkommentar #124); ihre Muss M1–M3 und die Sollte S1–S3 sind oben und in den Akzeptanzkriterien eingearbeitet. Die Oberfläche wartet auf die Freigabe des Artboards, der Server-Teil ist frei baubar (siehe „Gestaltung").
 
 ## Nicht-funktionale Anforderungen
 
 - **Atomarität:** ein Duplizieren ist **ein** Commit; eine Abweisung (404/409/423) committet nicht.
 - **Rückwärtsverträglich:** kein Formatwechsel; eine nie duplizierte Aufgabe bleibt byte-gleich.
 - **Gleichberechtigung:** Mensch und Agent duplizieren über denselben Weg; der Commit trägt den Namen der handelnden Person.
-- **Barrierefreiheit:** der Menüeintrag ist wie die übrigen per Maus und Tastatur erreichbar (ADR-0010); der Hinweis und seine Aktion überstehen 320/375/414 px ohne Querscrollen (ADR-0015).
+- **Hinweis und Rückgängig:** nach dem Duplizieren steht der Hinweis wörtlich „#<neu> „<Titel> (Kopie)" angelegt" mit „rückgängig"; „rückgängig" archiviert die Kopie (R00031), und `Strg+Z` greift, solange der Hinweis steht (M2/M3, R00112).
+- **Barrierefreiheit:** der Menüeintrag ist wie die übrigen per Maus und Tastatur erreichbar (ADR-0010); der Fehler erscheint als Live-Region `role="status"` (S1), der Fokus steht nach der Aktion auf der Quellkarte und **nie auf `BODY`** (S2, ADR-0010); der Hinweis und seine Aktion überstehen 320/375/414 px ohne Querscrollen (S3, ADR-0015).
 
 ## Akzeptanzkriterien
 
@@ -73,13 +79,19 @@ Wortlaut, Lage, Hinweis und Fokus bestimmt die **UX-Vorprüfung**; die Oberfläc
 - [ ] **8. Unbekannt und defekt:** Gegeben eine Nummer, die es nicht gibt, wenn ich dupliziere, dann **404**, nichts geändert; gegeben eine unlesbare Aufgabendatei der Quelle, dann **423**, nichts geändert.
 - [ ] **9. Wortlaut:** Gegeben #1 in „In Arbeit" auf „entwicklung", wenn ich dupliziere, dann lautet die Commit-Nachricht `#2 dupliziert (aus #1) in „In Arbeit" (entwicklung)`.
 
-### Oberfläche
+### Oberfläche (nach UX-Vorprüfung #124)
 
-- [ ] **10. Aus dem Kartenmenü:** Gegeben die Karte #1 auf dem Board bei 1280 px, wenn ich im Kartenmenü „Duplizieren" wähle, dann erscheint #2 unten in derselben Spalte, es steht der Hinweis „#2 „Rechnung prüfen (Kopie)" angelegt" mit „rückgängig", und „rückgängig" **archiviert** #2.
+- [ ] **10. Lage im Kartenmenü (M1):** Gegeben die Karte #1 auf dem Board bei 1280 px, wenn ich das Kartenmenü öffne, dann steht „Duplizieren" in einer **eigenen Gruppe** unmittelbar **nach** „Auf Board legen" und **vor** der Gruppe mit „Verweis kopieren"/„Archivieren" (und „Endgültig löschen", R00141); zwischen „Duplizieren" und „Archivieren"/„Endgültig löschen" liegt **mindestens ein Trenner**, und „Duplizieren" ist kein destruktiver Eintrag in seiner Gruppe.
+  - Prüfebene: E2E US-1, US-9.
+- [ ] **11. Kopie, Hinweis und Rückgängig (M2/M3):** Gegeben #1 in „In Arbeit" bei 1280 px, wenn ich im Kartenmenü „Duplizieren" wähle, dann erscheint #2 unten in derselben Spalte; es steht der Hinweis **wörtlich** „#2 „Rechnung prüfen (Kopie)" angelegt" (nicht „#2 angelegt") mit „rückgängig"; „rückgängig" **archiviert** #2 (`{art:'archivieren', nummern:[2]}`), und **`Strg+Z`** tut dasselbe, solange der Hinweis steht.
   - Prüfebene: E2E US-1, US-7.
-- [ ] **11. Tastatur und Fehler:** Gegeben das Kartenmenü über die Tastatur geöffnet, wenn ich „Duplizieren" per Enter auslöse, dann wirkt es wie der Mausweg; antwortet der Server mit 409/423 oder schlägt das Netz fehl, steht die Meldung sichtbar, und es erschien keine Erfolgsmeldung vor der Antwort.
+- [ ] **12. Tastatur und Fehler als Live-Region (S1):** Gegeben das Kartenmenü über die Tastatur geöffnet, wenn ich „Duplizieren" per Enter auslöse, dann wirkt es wie der Mausweg; antwortet der Server mit 409/423 oder schlägt das Netz fehl, erscheint die Meldung als Live-Region **`role="status"`**, nichts ist geändert, und es erschien **keine Erfolgsmeldung vor der Antwort**.
   - Prüfebene: E2E US-8.
-- [ ] **12. Nachbarn unberührt:** Anlegen (R00005), Umbenennen, Archivieren (R00017) und `POST /api/aufgaben` verhalten sich unverändert; `cargo test`, `node --test e2e/einheit/` und die betroffenen Playwright-Proben sind grün.
+- [ ] **13. Fokus auf der Quellkarte (S2):** Gegeben ich habe dupliziert, wenn die Kopie erscheint, dann steht der Fokus auf der **Quellkarte #1** — nie auf `BODY`.
+  - Prüfebene: E2E US-10.
+- [ ] **14. Schmale Breiten (S3):** Gegeben der Eintrag im Kartenmenü und der Hinweis, wenn das Fenster 320, 375 oder 414 px breit ist, dann scrollt nichts quer.
+  - Prüfebene: E2E US-11.
+- [ ] **15. Nachbarn unberührt:** Anlegen (R00005), Umbenennen, Archivieren (R00017) und `POST /api/aufgaben` verhalten sich unverändert; `cargo test`, `node --test e2e/einheit/` und die betroffenen Playwright-Proben sind grün.
 
 ## Betroffene Verzeichnisstruktur
 
@@ -113,7 +125,7 @@ Bindende Technik: **keine eigene ADR** — Architektur-Urteil zum Kartenkommenta
    - 2.2 **Angaben der Kopie bilden** (`key: None`): `Angaben { key: None, klasse, zustaendige, labels, faellig, herkunft, beschreibung, teilaufgaben: <Texte ohne Haken> }`; Titel `format!("{} (Kopie)", quelle.titel)`.
    - 2.3 **Über den vorhandenen Anlegeweg schreiben:** `aufgaben_anlegen_gesperrt(&_sperre, wer, &NeueAufgaben { titel: [Eintrag::MitAngaben { … }], board, spalte })` — Nummernvergabe, Board-Zeile, WIP-Grenze und **ein** Commit sind dort schon richtig.
 3. **Antwort:** 201 mit der neuen Aufgabe.
-4. **Oberfläche:** Kartenmenü → „Duplizieren" → `POST …/duplizieren {board, spalte}` → Hinweis mit „rückgängig".
+4. **Oberfläche:** Kartenmenü → „Duplizieren" → `POST …/duplizieren {board, spalte}` → Hinweis **wörtlich** „#<neu> „<Titel> (Kopie)" angelegt" mit „rückgängig" (`Strg+Z` greift, solange der Hinweis steht); Fehler als Live-Region `role="status"`, der Fokus bleibt auf der Quellkarte (M1–M3/S1–S3).
 
 ### Grobentwurf (Klassen-Entwurf ohne Implementierungen)
 
@@ -141,7 +153,7 @@ Die öffentliche API wächst um **eine** Methode; alles andere ist vorhanden (`a
 
 ### Gestaltung
 
-Der Eintrag „Duplizieren" im Kartenmenü und der Hinweis sind eine **kleine Ergänzung** bestehender Ansichten (Kartenmenü I0033, [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md)). Nach der Vision-Leitplanke „Jede Gestaltung wird freigegeben, bevor sie gebaut wird" **liegt die UX-Vorprüfung noch nicht vor**: sie bestimmt Wortlaut („Duplizieren"), Lage im Menü, Hinweistext und Rückgängig-Verhalten (`Strg+Z`); der Kartenmenü-Zustand am Artboard D0002 wird um die Zeile ergänzt und vom product-owner freigegeben. Bis dahin ist der **Server-Teil** (Endpunkt, Dienst; F0110) frei baubar; die Oberflächen-Bubbles (F0111) warten.
+Der Eintrag „Duplizieren" im Kartenmenü und der Hinweis sind eine **kleine Ergänzung** bestehender Ansichten (Kartenmenü I0033, [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md)). Die **UX-Vorprüfung #124 (2026-11-11, Kartenkommentar #124) liegt vor** und ist oben (M1–M3, S1–S3) und in den Akzeptanzkriterien eingearbeitet; sie bestimmt Wortlaut („Duplizieren"), Lage im Menü (eigene Gruppe nach „Auf Board legen"), Hinweistext („#<neu> „<Titel> (Kopie)" angelegt") und Rückgängig-Verhalten („rückgängig" archiviert die Kopie, `Strg+Z`). Nach der Vision-Leitplanke „Jede Gestaltung wird freigegeben, bevor sie gebaut wird" ist das Artboard die **Bau-Sperre der Oberfläche**: an [D0002](../Dokumentation/Wireframes/D0002.dc.html) entsteht der neue Zustand **`#karte-duplizieren`** (Kartenmenü + Brett-Hinweis), und die bestehende Kartenmenü-Zeichnung an D0003 `#endgueltig-loeschen` (R00141) wird auf dieselbe Reihenfolge angeglichen; den Zustand gibt der **product-owner** frei (hell/dunkel, 320/375/414/1280 px). Bis dahin ist der **Server-Teil** (Endpunkt, Dienst; F0113) frei baubar; die Oberflächen-Bubbles (F0114, B0656–B0658) warten.
 
 ## Tests
 
@@ -149,29 +161,36 @@ Nach Skill `test-pyramide`.
 
 - **Unit:** keiner — die Logik hängt an Dateien und Boards; das prüft die Integration.
 - **Integration:** neu `tests/aufgabe_duplizieren.rs`: AK 1–9 samt Git-Prüfung (`git rev-list --count`, `git show`, `git status`), Felder ja/nein, zweimal duplizieren, ohne Board, WIP-Grenze, Menschen-Spalte, 404/423, Wortlaut. Muster `tests/aufgabe_anlegen.rs`.
-- **E2E (Playwright):** neu `e2e/tests/r00142-karte-duplizieren.spec.js`: AK 10–12 (Kartenmenü, gleiche Spalte, Hinweis/rückgängig, Tastatur, Fehlerpfad). Muster `e2e/tests/r00033-kontextmenue.spec.js`.
+- **E2E (Playwright):** neu `e2e/tests/r00142-karte-duplizieren.spec.js`: AK 10–14 (Kartenmenü und Lage, gleiche Spalte, Hinweis/rückgängig/`Strg+Z`, Tastatur, Fehler als `role="status"`, Fokus, Breiten 320/375/414 px). Muster `e2e/tests/r00033-kontextmenue.spec.js`.
 - **Rot vor dem Bau:** die Akzeptanztests beginnen als `test.fail` mit Verweis auf #124.
 - **Gegenproben (Mutanten):** `key` mitkopiert; Zeiten oder Kommentare mitkopiert; zweiter Commit; Kopie ohne Board-Zeile; Haken der Teilaufgaben mitkopiert.
+- **Abnahme-Proben je UX-Befund #124 (heute rot, nach dem Fix je grün):**
+  - **M1 Lage:** das Kartenmenü zeigt „Duplizieren" in **eigener Gruppe** nach „Auf Board legen", vor „Verweis kopieren"/„Archivieren"; **mindestens ein Trenner** zwischen „Duplizieren" und „Archivieren"/„Endgültig löschen"; „Duplizieren" ist kein destruktiver Eintrag in seiner Gruppe.
+  - **M2 Wortlaut:** der Hinweis lautet wörtlich „#<neu> „<Titel> (Kopie)" angelegt" — **nicht** das Anlegen-Muster „#<nr> angelegt".
+  - **M3 Rückgängig:** „rückgängig" archiviert die Kopie (`{art:'archivieren', nummern:[<neu>]}`); `Strg+Z` greift, solange der Hinweis steht.
+  - **S1 Fehler:** 404/409/423/Netz erscheinen als Live-Region `role="status"`; keine Erfolgsmeldung vor der Antwort.
+  - **S2 Fokus:** nach der Aktion auf der Quellkarte, nie `BODY`.
+  - **S3 Breiten:** Kartenmenü-Eintrag und Hinweis bei 320/375/414 px ohne Querscrollen.
 
 ## Abhängigkeiten
 
 - **Abhängig von (grün):** I0005 Aufgabe anlegen (R00005, `POST /api/aufgaben`, `aufgaben_anlegen`), I0033 Kontextmenü der Karte (R00033), I0011 Aufgabenfenster (R00011, Beschreibung/Teilaufgaben), I0086 Spalten mit Eigentümer (R00097, Sperre), I0031 Rückgängig (R00031, Hinweis).
 - **Blockiert:** — .
 - **Kein ADR** (keine Technikfrage, Architektur-Urteil Kartenkommentar #124).
-- **Gestaltung:** UX-Vorprüfung für den Menüeintrag und den Hinweis vor dem Bau der Oberfläche (F0111); der Server-Teil (F0110) ist frei baubar.
+- **Gestaltung:** UX-Vorprüfung #124 liegt vor (2026-11-11, M1–M3/S1–S3 eingearbeitet); **Bau-Sperre Oberfläche**: Artboard D0002 `#karte-duplizieren` (Kartenmenü + Brett-Hinweis) durch den product-owner, dazu die Angleichung der Kartenmenü-Zeichnung an D0003 `#endgueltig-loeschen`; der Server-Teil (F0113) ist frei baubar, die Oberflächen-Bubbles (F0114, B0656–B0658) warten.
 
 ## Offene Fragen
 
 1. **Nummernverbrauch:** Eine Kopie verbraucht eine neue Nummer. Empfehlung: so lassen — eine Kopie ist eine eigenständige Aufgabe, kein Sonderzustand.
 2. **Ort der Kopie:** Die Kopie landet unten in derselben Spalte (AK 5). Alternative: unmittelbar hinter der Quelle (Index Quelle+1). Empfehlung: unten wie beim Anlegen — der vorhandene Anlegeweg kann es, und die Kopie ist eine neue Karte, kein Nachbar.
 3. **Haken der Teilaufgaben:** Die Kopie bekommt alle Teilaufgaben **offen** (AK 2). Alternative: den Erledigt-Stand mitkopieren. Empfehlung: offen — eine Kopie ist eine neue Aufgabe, kein Zwilling.
-4. **Rückgängig:** „rückgängig" archiviert die Kopie (AK 10). Empfehlung: wie beim Anlegen (R00031). Bestätigt die UX-Vorprüfung.
+4. **Rückgängig:** „rückgängig" archiviert die Kopie (AK 11). Empfehlung: wie beim Anlegen (R00031). Bestätigt die UX-Vorprüfung #124 (M3), die zusätzlich `Strg+Z` verlangt.
 5. **Duplizieren aus der Aufgabenliste:** Der Eintrag steht im Kartenmenü (D0002). Soll die Aufgabenliste (D0004) denselben Eintrag bekommen? Empfehlung: eigener kleiner Auftrag, nicht hier.
 6. **Herkunft der Kopie:** Die Kopie erbt die Herkunft der Quelle (AK 2), obwohl sie ein eigener Vorgang ist. Empfehlung: ja — dieselbe Quelle hat dieselbe Herkunft.
 
 ## Manuelle Vorbereitungstätigkeiten
 
-- Bildschirmfotos des Kartenmenü-Eintrags „Duplizieren" und des Hinweises mit „rückgängig" bei 320, 414 und 1280 px, je hell und dunkel, nach der UX-Vorprüfung auf den Abnahmezettel.
+- Bildschirmfotos des Kartenmenü-Eintrags „Duplizieren" (Lage in eigener Gruppe) und des Hinweises mit „rückgängig" bei 320, 375, 414 und 1280 px, je hell und dunkel, nach der UX-Vorprüfung #124 auf den Abnahmezettel.
 
 ## Manuelle Nachbereitungstätigkeiten
 
@@ -186,6 +205,8 @@ Der Auslöser ist Karte #32, gesplittet in #124: kanbanD hat „übliche Kanban-
 - Das Domänenwissen kennt „Kartenmenü" und „duplizieren" nicht. Vorschlag: eigener Eintrag „Karte duplizieren" mit der Abgrenzung zur Ablage (Kopie = eigene Aufgabe mit eigener Nummer, kein Zwilling; ohne Fremdschlüssel, ohne Verlauf/Zeiten).
 
 ## Notizen
+
+**Einarbeitung UX-Vorprüfung #124 (2026-11-11, Kartenkommentar #124; drei Muss M1–M3 + Sollte S1–S3):** M1 **Lage im Kartenmenü** — „Duplizieren" in **eigener Gruppe** nach „Auf Board legen", vor der Gruppe mit „Verweis kopieren"/„Archivieren"/„Endgültig löschen", **mindestens ein Trenner** dazwischen, „Duplizieren" kein destruktiver Eintrag in seiner Gruppe; die bestehende Kartenmenü-Zeichnung an D0003 `#endgueltig-loeschen` (R00141) wird auf dieselbe Reihenfolge angeglichen. M2 **Hinweis-Wortlaut mit Titel** — wörtlich „#<neu> „<Titel> (Kopie)" angelegt"; das Anlegen-Muster „#<nr> angelegt" wird hier **nicht** wiederverwendet. M3 **Rückgängig** — „rückgängig" archiviert die Kopie (Gegenaktion `{art:'archivieren', nummern:[<neu>]}`, R00031/I0031); `Strg+Z` greift, solange der Hinweis steht. S1 **Fehler als Live-Region** `role="status"` (Muster `web/app.js:561`), keine Erfolgsmeldung vor der Antwort. S2 **Fokus** nach der Aktion auf der Quellkarte, nie `BODY`. S3 **320/375/414 px** ohne Querscrollen. Eingearbeitet in FA 9–16, NFA „Hinweis und Rückgängig"/„Barrierefreiheit", AK 10–15, Ablauf, Gestaltung, Tests, Abhängigkeiten und US-1/US-7/US-8/US-9/US-10/US-11. **Bau-Sperre Oberfläche:** Artboard D0002 `#karte-duplizieren` (Kartenmenü + Brett-Hinweis) durch den product-owner; **der Server-Teil F0113 bleibt frei baubar.**
 
 **Verworfene Alternativen (Optionen-Tableau):**
 
