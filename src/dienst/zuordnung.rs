@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::zugregeln::entnahme_pruefen;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
@@ -17,7 +17,7 @@ impl Kanban {
             _ => Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", spalte.unwrap_or("—"), b.titel)),
         })?;
         self.grenzen_pruefen(wer, &vorher, &b)?;
-        self.aktion(wer, &format!("#{nummer} auf „{}“ gelegt ({name})", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, Some(&a))?)])?;
+        self.aktion(wer, &format!("#{nummer} auf „{}“ gelegt ({name})", b.titel), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, Some(&a))?)])?;
         Ok(name)
     }
 
@@ -47,7 +47,7 @@ impl Kanban {
         if !gelegt.is_empty() {
             self.grenzen_pruefen(wer, &vorher, &b)?;
             let liste = gelegt.iter().map(|n| format!("#{n}")).collect::<Vec<_>>().join(", ");
-            self.aktion(wer, &format!("{liste} auf „{}“ gelegt ({name})", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+            self.aktion(wer, &format!("{liste} auf „{}“ gelegt ({name})", b.titel), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         }
         Ok(gelegt)
     }
@@ -60,7 +60,7 @@ impl Kanban {
         if !b.abnehmen(nummer) {
             return Err(Fehler::NichtGefunden(format!("#{nummer} liegt nicht auf „{}“", b.titel)));
         }
-        self.aktion(wer, &format!("#{nummer} von „{}“ genommen", b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &format!("#{nummer} von „{}“ genommen", b.titel), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(())
     }
 }

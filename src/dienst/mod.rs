@@ -96,6 +96,31 @@ pub struct Zustand {
     pub dubletten: Vec<crate::modell::Dublette>,
 }
 
+/// Ein Schritt einer [`Kanban::aktion`] (R00141, ADR-0024): eine Datei **schreiben** oder **entfernen**. Der Entfernen-
+/// Schritt ersetzt den bisher eigenen Löschweg `entfernen()` — **ein** Weg, **ein** Commit (ADR-0005).
+pub(crate) enum Schritt {
+    Schreiben { pfad: String, text: String },
+    Entfernen { pfad: String },
+}
+
+impl Schritt {
+    /// Eine Datei mit `text` schreiben.
+    pub(crate) fn schreiben(pfad: impl Into<String>, text: impl Into<String>) -> Schritt {
+        Schritt::Schreiben { pfad: pfad.into(), text: text.into() }
+    }
+
+    /// Eine Datei entfernen; ein fehlender Pfad zählt in `aktion` nicht.
+    pub(crate) fn entfernen(pfad: impl Into<String>) -> Schritt {
+        Schritt::Entfernen { pfad: pfad.into() }
+    }
+
+    fn pfad(&self) -> &str {
+        match self {
+            Schritt::Schreiben { pfad, .. } | Schritt::Entfernen { pfad } => pfad,
+        }
+    }
+}
+
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
         Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(),
@@ -159,36 +184,31 @@ impl Kanban {
         Ok(())
     }
 
-    /// Schreibt Dateien und committet sie als eine Aktion. Scheitert der Commit, bleibt der
-    /// geschriebene Stand stehen und der Fehler wird gemeldet. Vorher prüft sie alle Pfade (ADR-0008, zweite Linie):
-    /// ein Pfad außerhalb des Ordners oder doppelt ⇒ `Fehler::Intern`, ohne dass etwas geschrieben ist.
-    fn aktion(&self, autor: &Person, nachricht: &str, dateien: &[(String, String)]) -> Result<(), Fehler> {
-        let alle: Vec<&str> = dateien.iter().map(|(p, _)| p.as_str()).collect();
-        crate::ablage::pfade_pruefen(&alle).map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts geschrieben: {grund}")))?;
-        for (rel, text) in dateien {
-            self.eigene.merken(rel);
-            self.ordner.schreib(rel, text)?;
-        }
-        let pfade: Vec<String> = dateien.iter().map(|(p, _)| p.clone()).collect();
-        git::committen(self.ordner.wurzel(), &pfade, autor, nachricht)?;
-        Ok(())
-    }
-
-    /// Entfernt Dateien und committet sie als **eine** Aktion — der Löschweg neben `aktion` (R00128, ADR-0022/A00007).
-    /// Alle Pfade werden vor dem ersten Entfernen geprüft (ADR-0008, zweite Linie); fehlende Pfade zählen nicht. Ändert
-    /// sich nichts, entsteht kein Commit.
-    fn entfernen(&self, autor: &Person, nachricht: &str, pfade: &[String]) -> Result<(), Fehler> {
-        let alle: Vec<&str> = pfade.iter().map(|p| p.as_str()).collect();
-        crate::ablage::pfade_pruefen(&alle).map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts entfernt: {grund}")))?;
-        let mut entfernt = vec![];
-        for rel in pfade {
-            if self.ordner().existiert(rel) {
-                self.eigene_merken(rel);
-                std::fs::remove_file(self.ordner().wurzel().join(rel))?;
-                entfernt.push(rel.clone());
+    /// Führt die Schritte einer Aktion aus und committet sie als **eine** Aktion (ADR-0005, ADR-0024). Jeder Schritt
+    /// **schreibt** oder **entfernt** eine Datei; vor dem ersten Schritt prüft sie alle Pfade beider Arten (ADR-0008,
+    /// zweite Linie): ein Pfad außerhalb des Ordners oder doppelt ⇒ `Fehler::Intern`, ohne dass etwas geschrieben oder
+    /// entfernt ist. Ein Entfernen-Schritt auf einen fehlenden Pfad zählt nicht. Ändert sich nichts, entsteht kein Commit.
+    fn aktion(&self, autor: &Person, nachricht: &str, schritte: &[Schritt]) -> Result<(), Fehler> {
+        let alle: Vec<&str> = schritte.iter().map(Schritt::pfad).collect();
+        crate::ablage::pfade_pruefen(&alle).map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts geschrieben oder entfernt: {grund}")))?;
+        let mut geaendert = vec![];
+        for schritt in schritte {
+            match schritt {
+                Schritt::Schreiben { pfad, text } => {
+                    self.eigene.merken(pfad);
+                    self.ordner.schreib(pfad, text)?;
+                    geaendert.push(pfad.clone());
+                }
+                Schritt::Entfernen { pfad } => {
+                    if self.ordner().existiert(pfad) {
+                        self.eigene_merken(pfad);
+                        std::fs::remove_file(self.ordner().wurzel().join(pfad))?;
+                        geaendert.push(pfad.clone());
+                    }
+                }
             }
         }
-        self.committen(autor, nachricht, &entfernt)?;
+        git::committen(self.ordner.wurzel(), &geaendert, autor, nachricht)?;
         Ok(())
     }
 
@@ -217,7 +237,7 @@ pub(crate) fn ohne_doppelte(nummern: impl IntoIterator<Item = u32>) -> Result<()
 
 #[cfg(test)]
 mod tests {
-    use super::Kanban;
+    use super::{Kanban, Schritt};
     use crate::fehler::Fehler;
     use std::path::Path;
     use std::process::Command;
@@ -227,14 +247,15 @@ mod tests {
         String::from_utf8_lossy(&aus.stdout).trim().to_string()
     }
 
-    // B0342: aktion() prüft alle Pfade vor dem ersten Schreiben (ADR-0008 Option D)
+    // B0342/B0635: aktion() prüft alle Pfade **beider Arten** (Schreiben und Entfernen) vor dem ersten Schritt (ADR-0008 Option D)
     #[test]
     fn aktion_bricht_vor_dem_ersten_schreiben_ab() {
         let eltern = tempfile::tempdir().unwrap();
         let w = eltern.path().join("w");
-        std::fs::create_dir_all(w.join("aufgaben")).unwrap();
+        std::fs::create_dir_all(w.join("aufgaben/0001-a")).unwrap();
         std::fs::write(w.join("kanbanD.md"), "---\npeople:\n  cl: {name: Claude, kind: agent}\n---\n").unwrap();
         std::fs::write(w.join("aufgaben/0001-a.md"), "---\nid: 1\ntitle: a\n---\n").unwrap();
+        std::fs::write(w.join("aufgaben/0001-a/bild.png"), "png").unwrap();
         git(&w, &["init", "-q"]);
         git(&w, &["add", "-A"]);
         git(&w, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "a"]);
@@ -243,12 +264,20 @@ mod tests {
         let vorher = (git(&w, &["rev-list", "--count", "HEAD"]), std::fs::read(w.join("aufgaben/0001-a.md")).unwrap());
         let absolut = eltern.path().join("abs.md").to_string_lossy().into_owned();
         for zweiter in ["../x.md", absolut.as_str(), "aufgaben/x\0.md", "aufgaben/0001-a.md"] {
-            let dateien = [("aufgaben/0001-a.md".to_string(), "überschrieben".to_string()), (zweiter.to_string(), "x".to_string())];
-            let e = k.aktion(&cl, "Probe", &dateien);
-            assert!(matches!(e, Err(Fehler::Intern(_))), "{zweiter:?}: {e:?}");
-            assert_eq!((git(&w, &["rev-list", "--count", "HEAD"]), std::fs::read(w.join("aufgaben/0001-a.md")).unwrap()), vorher, "{zweiter:?}: nichts geschrieben, kein Commit");
+            // Schreiben: eine Datei überschreiben, dazu ein ungültiger Pfad — nichts wird geschrieben
+            let schreiben = [Schritt::schreiben("aufgaben/0001-a.md", "überschrieben"), Schritt::schreiben(zweiter, "x")];
+            let e = k.aktion(&cl, "Probe", &schreiben);
+            assert!(matches!(e, Err(Fehler::Intern(_))), "Schreiben {zweiter:?}: {e:?}");
+            assert_eq!((git(&w, &["rev-list", "--count", "HEAD"]), std::fs::read(w.join("aufgaben/0001-a.md")).unwrap()), vorher, "Schreiben {zweiter:?}: nichts geschrieben, kein Commit");
+            // Entfernen: eine Datei entfernen, dazu ein ungültiger Pfad — nichts wird entfernt
+            let entfernen = [Schritt::entfernen("aufgaben/0001-a.md"), Schritt::entfernen(zweiter)];
+            let e = k.aktion(&cl, "Probe", &entfernen);
+            assert!(matches!(e, Err(Fehler::Intern(_))), "Entfernen {zweiter:?}: {e:?}");
+            assert!(w.join("aufgaben/0001-a.md").exists(), "Entfernen {zweiter:?}: die Datei ist noch da");
+            assert_eq!(git(&w, &["rev-list", "--count", "HEAD"]), vorher.0.to_string(), "Entfernen {zweiter:?}: kein Commit");
         }
         assert!(!eltern.path().join("x.md").exists() && !eltern.path().join("abs.md").exists(), "nichts neben dem Ordner");
+        assert!(w.join("aufgaben/0001-a/bild.png").exists(), "der Anhang bleibt");
         assert_eq!(git(&w, &["status", "--porcelain"]), "");
     }
 

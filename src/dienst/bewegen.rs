@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Bewegfehler, Board, Person};
@@ -42,7 +42,7 @@ impl Kanban {
         } else {
             format!("#{} nach „{}“ ({})", bw.nummer, bw.spalte, b.titel)
         };
-        self.aktion(wer, &nachricht, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &nachricht, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         let warnungen = [grenzwarnungen, von.map(|v| self.warnungen(&b, bw.nummer, &v, &bw.spalte)).unwrap_or_default()].concat();
         Ok(Bewegt { bewegt: true, warnungen })
     }
@@ -73,7 +73,7 @@ impl Kanban {
             true => format!("nach „{}“", ziele[0].spalte),
             false => "bewegt".to_string(),
         };
-        self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), b.titel), &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), b.titel), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         let spaltenwarnungen = ziele.iter().zip(von).filter_map(|(z, v)| v.map(|v| self.warnungen(&b, z.nummer, &v, &z.spalte))).flatten();
         let warnungen = grenzwarnungen.into_iter().chain(spaltenwarnungen).collect();
         Ok(Bewegt { bewegt: true, warnungen })

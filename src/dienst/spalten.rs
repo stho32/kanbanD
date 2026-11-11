@@ -1,4 +1,4 @@
-use super::{Kanban, zugregeln};
+use super::{Kanban, Schritt, zugregeln};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::board;
@@ -23,7 +23,7 @@ impl Kanban {
         let text = self.board_text(&b, None)?;
         zugregeln::einstellungen_pruefen(wer.art, &einstellungsaenderungen(&vorher, &b, &text, neu))?;
         if geaendert {
-            self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[(board_pfad(&b.slug), text)])?;
+            self.aktion(wer, &format!("Spalten von „{}“ geändert", b.titel), &[Schritt::schreiben(board_pfad(&b.slug), text)])?;
         }
         Ok(geaendert)
     }

@@ -2,7 +2,7 @@
 //! ändern — der Slug bleibt Dateiname, Adresse und Berichte-Cache-Schlüssel; Löschen entfernt die Board-Datei samt Cache
 //! in einem Commit (Git ist der Papierkorb).
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::einrichten::boardname_pruefen;
 use super::zugregeln::board_entnahme_pruefen;
 use crate::ablage::board_pfad;
@@ -47,7 +47,7 @@ impl Kanban {
             }
         }
         if let Some(text) = nachricht {
-            self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+            self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         }
         Ok(b)
     }
@@ -58,12 +58,12 @@ impl Kanban {
         let _sperre = self.gesperrt();
         let b = self.ordner().board(slug)?;
         board_entnahme_pruefen(wer.art, &b)?;
-        let mut pfade = vec![board_pfad(&b.slug)];
+        let mut schritte = vec![Schritt::entfernen(board_pfad(&b.slug))];
         let cache = crate::format::fieber::pfad(&b.slug);
         if self.ordner().existiert(&cache) {
-            pfade.push(cache);
+            schritte.push(Schritt::entfernen(cache));
         }
-        self.entfernen(wer, &format!("Board „{}“ endgültig gelöscht", b.titel), &pfade)
+        self.aktion(wer, &format!("Board „{}“ endgültig gelöscht", b.titel), &schritte)
     }
 }
 

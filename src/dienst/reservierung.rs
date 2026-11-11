@@ -1,6 +1,6 @@
 //! Reservierungen (R00087): eine Instanz hält eine Karte für sich, andere lassen sie beim Reservieren und Ziehen aus.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::zugregeln::{archivierte, entnahme_und_zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
@@ -100,7 +100,7 @@ impl Kanban {
             }
         }
         let nachricht = format!("#{nr} gezogen: „{}“ → „{nach}“ ({}, {})", zug.von, self.inhaber(a.reservierung.as_ref().expect("gesetzt")), b.titel);
-        let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
+        let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)];
         self.aktion(wer, &nachricht, &dateien)?;
         let warnungen = [grenzwarnungen, self.warnungen(&b, nr, &zug.von, &nach)].concat();
         Ok(Gezogen { aufgabe: a, von: zug.von.clone(), nach, warnungen })

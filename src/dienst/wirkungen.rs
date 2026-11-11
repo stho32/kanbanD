@@ -1,6 +1,6 @@
 //! Wirkungen von Aufgaben auf die WBS (R00057, R00071): prüfen, an der Aufgabe vermerken, in der WBS eintreten lassen.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Aktion, Anwendungen, Aufgabe, Ausfuehrung, Person, Wirkung, id_gueltig};
@@ -91,7 +91,7 @@ impl Kanban {
         if !schon_da {
             let nachricht = format!("#{nr} Wirkung auf {} vermerkt", beschreibung(&wirkung));
             a.wirkungen.push(wirkung);
-            self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
+            self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         }
         Ok(a)
     }
@@ -138,7 +138,7 @@ impl Kanban {
         let neu = Wirkung { ausgefuehrt: if an { Ausfuehrung::Am(crate::uhr::heute()) } else { Ausfuehrung::Offen }, ..neu };
         let nachricht = format!("#{nr} Wirkung auf {} {}", beschreibung(&neu), if an { "eingetreten" } else { "zurückgenommen" });
         a.wirkungen[i] = neu;
-        self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
+        self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         Ok(a)
     }
 

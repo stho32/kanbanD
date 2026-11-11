@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::archiv::zurueckgeholt;
 use super::kommentare::kommentiert;
 use super::zugregeln::{archivierte, zug_mit_rueckkehr_pruefen};
@@ -154,7 +154,7 @@ impl Kanban {
 
     /// Neue und wieder geöffnete Karten, mit Board: neue unten, wieder geöffnete oben in die Spalte — ein Commit.
     fn schreiben(&self, wer: &Person, neu: &NeueAufgaben, aufgaben: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe]) -> Result<(), Fehler> {
-        let mut dateien: Vec<(String, String)> = aufgaben.iter().chain(wieder).map(|a| (format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
+        let mut dateien: Vec<Schritt> = aufgaben.iter().chain(wieder).map(|a| Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(a))).collect();
         let mut angelegt = match aufgaben {
             [] => None,
             [a] => Some(format!("#{} „{}“ angelegt", a.nummer, a.titel)),
@@ -181,7 +181,7 @@ impl Kanban {
                 n.push_str(&format!(" in „{spaltenname}“ ({})", b.titel));
             }
             let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
-            dateien.push((board_pfad(&b.slug), text));
+            dateien.push(Schritt::schreiben(board_pfad(&b.slug), text));
         }
         let geoeffnet = (!wieder.is_empty()).then(|| format!("{} erneut gefunden: wieder geöffnet", nummernliste(wieder.iter().map(|a| a.nummer))));
         let nachricht = [angelegt, geoeffnet].into_iter().flatten().collect::<Vec<_>>().join("; ");

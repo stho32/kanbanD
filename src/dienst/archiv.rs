@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabe, Person};
 use crate::uhr;
@@ -63,7 +63,7 @@ impl Kanban {
                 zurueckgeholt(&mut a)?;
             }
             geaendert.push(*nr);
-            dateien.push((format!("{}/{}", crate::format::aufgabe::ORDNER, a.datei), crate::format::aufgabe::schreiben(&a)));
+            dateien.push(Schritt::schreiben(format!("{}/{}", crate::format::aufgabe::ORDNER, a.datei), crate::format::aufgabe::schreiben(&a)));
         }
         if archivieren && !geaendert.is_empty() {
             self.archivieren_pruefen(wer, &geaendert)?;

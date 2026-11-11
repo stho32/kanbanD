@@ -1,6 +1,6 @@
 //! Achsen des Berichts „Bestand nach Labels“ am Board (R00100): für alle, die das Board ansehen.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Bestandseinstellung, Person};
@@ -17,7 +17,7 @@ impl Kanban {
         }
         let text = format!("Achsen des Bestands von „{}“: {} × {}", b.titel, neu.zeilen, neu.spalten);
         b.bestand = Some(neu);
-        self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
     }
 }

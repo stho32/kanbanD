@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Aufgabe, Aufgabenaenderung, Person};
@@ -10,7 +10,7 @@ impl Kanban {
         let _sperre = self.gesperrt();
         let mut a = self.ordner().aufgabe(nummer)?;
         if let Some(nachricht) = veraendern(&mut a)? {
-            self.aktion(wer, &nachricht, &[(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
+            self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         }
         Ok(a)
     }
@@ -45,7 +45,7 @@ impl Kanban {
                         felder_alle.push(f);
                     }
                 }
-                dateien.push((format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)));
+                dateien.push(Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)));
             }
             ergebnis.push(a);
         }

@@ -1,6 +1,6 @@
 //! Berichtsfilter am Board (R00081): für alle Berichte und alle, die das Board ansehen.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Berichtsfilter, Person};
@@ -24,7 +24,7 @@ impl Kanban {
         }
         let text = format!("Berichtsfilter von „{}“ geändert", b.titel);
         b.berichtsfilter = neu;
-        self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
     }
 }

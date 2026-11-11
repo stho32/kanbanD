@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::{board, einstellungen};
@@ -99,8 +99,8 @@ impl Kanban {
         }
         let b = e.board();
         let dateien = vec![
-            (einstellungen::DATEI.to_string(), einstellungen::schreiben(&e.einstellungen())),
-            (board_pfad(&b.slug), board::schreiben(&b, |_| None)),
+            Schritt::schreiben(einstellungen::DATEI, einstellungen::schreiben(&e.einstellungen())),
+            Schritt::schreiben(board_pfad(&b.slug), board::schreiben(&b, |_| None)),
         ];
         self.aktion(&e.ich(), &format!("kanbanD eingerichtet: Board „{}“", b.titel), &dateien)?;
         Ok(b.slug)

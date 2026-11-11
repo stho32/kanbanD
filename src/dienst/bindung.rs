@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::Person;
@@ -24,7 +24,7 @@ impl Kanban {
         }
         let text = format!("Anwendungen von „{}“: {}", b.titel, if neu.is_empty() { "keine".to_string() } else { neu.join(", ") });
         b.anwendungen = Some(neu);
-        self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
     }
 }

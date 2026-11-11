@@ -1,6 +1,6 @@
 //! Projekt-Fever-Chart (R00078): Projektstart und Einstellungen am Board, Cache der Tage in `berichte/<slug>-fieber.md`.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::fieber::{self, Fieberabschnitt, Fiebertag};
@@ -33,7 +33,7 @@ impl Kanban {
             None => format!("Projektstart von „{}“ entfernt", b.titel),
         };
         b.start = start;
-        self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
     }
 
@@ -52,7 +52,7 @@ impl Kanban {
         let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{z}“")).unwrap_or_default();
         let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}", b.titel, neu.perzentil);
         b.fieber = neu;
-        self.aktion(wer, &text, &[(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
     }
 
@@ -98,7 +98,7 @@ impl Kanban {
         }
         a.tage.sort_by(|x, y| x.datum.cmp(&y.datum));
         let text = format!("Fever Chart „{}“: {neu} {} ergänzt", b.titel, if neu == 1 { "Tag" } else { "Tage" });
-        self.aktion(&kanband(), &text, &[(fieber::pfad(slug), fieber::schreiben(&b.titel, &abschnitte))])?;
+        self.aktion(&kanband(), &text, &[Schritt::schreiben(fieber::pfad(slug), fieber::schreiben(&b.titel, &abschnitte))])?;
         Ok(neu)
     }
 

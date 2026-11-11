@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
 use crate::modell::{Anwendung, Art, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
@@ -163,7 +163,7 @@ impl Kanban {
         if neu == alt {
             return Ok((false, ergebnis));
         }
-        self.aktion(wer, &nachricht, &[(einstellungen::DATEI.into(), einstellungen::schreiben(&neu))])?;
+        self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, einstellungen::schreiben(&neu))])?;
         Ok((true, ergebnis))
     }
 

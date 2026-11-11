@@ -4,7 +4,7 @@ name: Schreibweg und Regeln an Zügen
 art: Aspekt
 geltung: Makro
 befund: Uneinheitlich
-hausantwort: "Kanban-Methode unter gesperrt() → Prüfung → aktion() (Schreiben) bzw. entfernen() (Löschen; src/dienst/mod.rs)"
+hausantwort: "Kanban-Methode unter gesperrt() → Prüfung → aktion() (Schreiben oder Entfernen; src/dienst/mod.rs)"
 betrifft:
   - A00004
   - A00007
@@ -34,7 +34,7 @@ Jede schreibende Aktion ist eine Methode von `Kanban` in [A00004 Dienste](../A00
 
 1. **Sperre** — `let _sperre = self.gesperrt();` (eine `Mutex` je Ordner; WBS-Dateien fremder Repos haben eigene Sperren in `wbs_sperren`).
 2. **Prüfung** — Stand frisch aus dem Ordner lesen, fachliche Regel am [Modell](../A00006-modell.md) anwenden, bei Verstoß `Fehler::{Ungueltig, Konflikt, GrenzeErreicht, Verboten, NichtGefunden}` (→ 400/409/409/403/404; Soll R00102: `EinstellungVerboten` → 403) zurückgeben, **bevor** etwas geschrieben ist.
-3. **`aktion(autor, nachricht, dateien)`** — Dateien schreiben, Pfade als eigen merken ([A00008 Wächter](../A00008-waechter.md)), genau ein Commit über [A00007 Git](../A00007-git.md).
+3. **`aktion(autor, nachricht, schritte)`** — Dateien schreiben oder entfernen (`Schritt::Schreiben` / `Schritt::Entfernen`), Pfade als eigen merken ([A00008 Wächter](../A00008-waechter.md)), genau ein Commit über [A00007 Git](../A00007-git.md).
 
 Nach dem Commit kommen nur noch Warnungen (z. B. Spaltenprüfungen `column-checks` in `bewegen.rs::warnungen`), nie Abweisungen. Die Warnung `grenze` entsteht dagegen schon in Schritt 2 und wird nur angehängt.
 
@@ -71,7 +71,7 @@ Zusammengesetzte Aktionen nach [ADR-0005](../../ADRs/0005-zusammengesetzte-aktio
 
 Schlüsselsuche (R00098, R00099) nach [ADR-0004](../../ADRs/0004-schluesselsuche-unter-der-sperre.md): unter derselben Sperre über `ordner().aufgaben()`, einmal je Anfrage.
 
-Pfade nach [ADR-0008](../../ADRs/0008-board-slug-geprueft-vor-jedem-dateizugriff.md): ein Board-Slug aus Body, Pfad oder Query erreicht die Platte nur über `Ordner::board`, das die Form (`board::slug_gueltig`, 1–40 Zeichen `[a-z0-9-]`) **vor** jedem Lesen prüft — ungültig ⇒ `Fehler::Ungueltig` (400), gültig und fehlend ⇒ 404; `board_pfad` bekommt nur `b.slug` eines so gelesenen Boards. Zweite Linie: `aktion()` prüft alle Pfade vor dem ersten Schreiben (relativ, ohne `..`, eindeutig) und `Ordner::schreib` den Einschluss — Treffer ⇒ `Fehler::Intern`, nichts geschrieben. Soll (#48, noch nicht gebaut). Erkennen: `grep -rn "board_pfad(" src` — jedes Argument außer `&b.slug`/`&board.slug` eines über `Ordner::board` gelesenen Boards ist ein Befund.
+Pfade nach [ADR-0008](../../ADRs/0008-board-slug-geprueft-vor-jedem-dateizugriff.md): ein Board-Slug aus Body, Pfad oder Query erreicht die Platte nur über `Ordner::board`, das die Form (`board::slug_gueltig`, 1–40 Zeichen `[a-z0-9-]`) **vor** jedem Lesen prüft — ungültig ⇒ `Fehler::Ungueltig` (400), gültig und fehlend ⇒ 404; `board_pfad` bekommt nur `b.slug` eines so gelesenen Boards. Zweite Linie: `aktion()` prüft alle Pfade beider Arten (Schreiben und Entfernen) vor dem ersten Schritt (relativ, ohne `..`, eindeutig) und `Ordner::schreib` den Einschluss — Treffer ⇒ `Fehler::Intern`, nichts geschrieben oder entfernt. Soll (#48, noch nicht gebaut). Erkennen: `grep -rn "board_pfad(" src` — jedes Argument außer `&b.slug`/`&board.slug` eines über `Ordner::board` gelesenen Boards ist ein Befund.
 
 Erkennen von Abweichungen: Schreibzugriffe außerhalb von `aktion()` finden sich mit `grep -rn "\.schreib(\|committen(" src/dienst`; jede Fundstelle außer `mod.rs` steht unten oder ist ein Befund. Eine Regel, die erst nach `aktion()` prüft, ist ein Befund (dann ist der Commit schon da).
 
@@ -81,7 +81,7 @@ Die Schwäche von ADR-0002 — ein neuer Schreibweg vergisst den Aufruf — prü
 
 **Ausnahmen** (Board-Datei-Schreiber ohne Kartenzug, keine Grenzprüfung nötig): `berichtsfilter.rs`, `bestand.rs`, `bindung.rs`, `board_anlegen.rs`, `board_verwalten.rs` (umbenennen/archivieren/löschen — prüft die Eigentümer-Sperre board-weit, bewegt aber keine Karte), `einrichten.rs`, `fieber.rs`, `phasen.rs`, `spalten.rs`, `termine.rs`, `verlauf.rs` (liest die Board-Datei nur) sowie `zuordnung.rs::von_board_nehmen` (nimmt eine Karte heraus, nie hinein). Ein neuer Schreiber lässt den Wächter rot werden und ist hier einzuordnen.
 
-**Löschweg (R00128, A00007):** `board_verwalten.rs::board_loeschen` entfernt Dateien statt sie zu schreiben — der Weg `Kanban::entfernen` (in `mod.rs`, `eigene_merken` + `remove_file` + `committen`) neben `aktion()`; alle Pfade werden vor dem ersten Entfernen geprüft (ADR-0008, zweite Linie), ein Commit je Aktion bleibt erhalten.
+**Löschweg (R00128/R00141, A00007):** `board_verwalten.rs::board_loeschen` entfernt Dateien statt sie zu schreiben — als **Entfernen-Schritt** (`Schritt::Entfernen`) desselben `Kanban::aktion` (`mod.rs`), nicht mehr als eigener Weg `entfernen()`; alle Pfade beider Arten (Schreiben und Entfernen) werden vor dem ersten Schritt geprüft (ADR-0008, zweite Linie), ein Commit je Aktion bleibt erhalten (ADR-0024).
 
 ## Abweichungen
 

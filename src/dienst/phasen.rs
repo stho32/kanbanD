@@ -1,4 +1,4 @@
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::herkunft::absolut;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
@@ -43,7 +43,7 @@ impl Kanban {
         if ergaenzt.is_empty() {
             return Ok(BoardMitPhasen { board, phasen: Some(stand), hinweise });
         }
-        self.aktion(&kanband_selbst(), &format!("Phasen-Spalten von „{}“ ergänzt: {}", board.titel, ergaenzt.join(", ")), &[(board_pfad(&board.slug), self.board_text(&board, None)?)])?;
+        self.aktion(&kanband_selbst(), &format!("Phasen-Spalten von „{}“ ergänzt: {}", board.titel, ergaenzt.join(", ")), &[Schritt::schreiben(board_pfad(&board.slug), self.board_text(&board, None)?)])?;
         let phasen = self.phasenstand(&board);
         Ok(BoardMitPhasen { board, phasen, hinweise })
     }

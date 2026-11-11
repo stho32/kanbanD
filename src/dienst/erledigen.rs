@@ -1,7 +1,7 @@
 //! Befund erledigt sich (R00099, ADR-0005): ein Sensor meldet über seinen Schlüssel, dass er einen Befund nicht mehr
 //! findet. Suche, Prüfung und Schreiben laufen unter einer Sperre und enden in höchstens einem Commit.
 
-use super::Kanban;
+use super::{Kanban, Schritt};
 use super::aufgabe_anlegen::nummernliste;
 use super::kommentare::kommentiert;
 use super::signale::signal_geschaltet;
@@ -110,7 +110,7 @@ impl Kanban {
             Erledigungslage::Melden => {
                 kommentiert(&mut a, wer, &befund_weg(&g.text));
                 signal_geschaltet(&mut a, &g.signal, true);
-                let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))];
+                let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))];
                 self.aktion(wer, &format!("#{nr} Befund nicht mehr gefunden — gemeldet ({})", b.titel), &dateien)?;
                 fertig(a, Erledigungsergebnis::Gemeldet)
             }
@@ -120,7 +120,7 @@ impl Kanban {
                 let warnungen = zug_pruefen(wer.art, &vorher, &b, &archiviert)?;
                 kommentiert(&mut a, wer, &befund_weg(&g.text));
                 a.reservierung = None;
-                let dateien = [(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), (board_pfad(&b.slug), self.board_text(&b, None)?)];
+                let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)];
                 self.aktion(wer, &format!("#{nr} erledigt sich: „{von}“ → „{nach}“ ({})", b.titel), &dateien)?;
                 Ok(Erledigt { aufgabe: a, ergebnis: Erledigungsergebnis::Erledigt, warnungen })
             }
