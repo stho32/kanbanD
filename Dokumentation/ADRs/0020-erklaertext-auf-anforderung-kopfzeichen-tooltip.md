@@ -5,6 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #24)
 **Kontext-Anforderung**: Karte #24 „Kopfzeichen-Tooltip bei Fokus und langem Druck“; Anforderung und WBS-Knoten folgen über den planer
 **Erprobt durch**: — (getragen von der Systemantwort: der Renderer zeichnet alles neu, [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md); die Fokusführung über Ebenen, [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md); der zugängliche Name am Auslöser, [ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md); `popPlatzieren` als vorhandene Positionierungslogik, `web/app.js:978`)
+**Nachträge**: 2026-11-11 — N1 Darstellung unmittelbar gestellt, Zustand und Textregel an einem Ort (R00119, Karte #24, Nacharbeit M1), siehe [Nachtrag N1](#nachtrag-2026-11-11-n1-darstellung-unmittelbar-gestellt-zustand-und-textregel-an-einem-ort-r00119-karte-24-nacharbeit-m1). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marke *(→ N1)* zeigt, wo der Nachtrag gilt.
 
 ## Kontext
 
@@ -73,7 +74,7 @@ Der Erklärtext ist im Markup und wird per CSS an `:focus-visible` bzw. `:active
 Begründung: B trifft die Aufgabe der Karte („Erklärtext auf Anforderung bei Fokus und langem Druck“) für alle Kopfzeichen gleich und hält sich an die vorhandenen Invarianten:
 
 1. **Der Tooltip ist keine Ebene der Fokusführung** ([ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) bleibt unberührt). Er nimmt keinen Fokus, fängt keinen und zählt nicht in `ebenen(ui)`. Der Fokus bleibt auf dem Auslöser.
-2. **Gezeichnet wird aus dem Renderer** ([ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md)): Der Zustand liegt in `S.ui` und übersteht das Neuzeichnen; es gibt keinen zweiten Schreibweg neben `render()`.
+2. **Gezeichnet wird aus dem Renderer** ([ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md)): Der Zustand liegt in `S.ui` und übersteht das Neuzeichnen; es gibt keinen zweiten Schreibweg neben `render()`. *(→ N1: die **Darstellung** der Blase darf unmittelbar gestellt werden — gemeint ist der Schreibweg des **Zustands**)*
 3. **Der zugängliche Name bleibt am Auslöser** ([ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)). Der Tooltip ersetzt den Namen nicht und wird nicht zu einer zweiten Namensquelle: Sein zugänglicher Name ist wörtlich der Tooltiptext, die **Beschreibung ist die sichtbare Ausprägung desselben Textes**. An den **fünf Kopfzeichen** (ⓘ, ✓, Phase, Grenze, Eigentümer) entfällt deshalb `aria-describedby` — der Name trägt den Text schon, eine Beschreibung würde denselben Satz doppelt vorlesen. Der **Streifen-Knopf** der zugeklappten Spalte **behält `aria-describedby`**, weil sein Name den vollen Erklärtext nicht trägt (PO `AI-Team/po-entscheidungen.md:186`).
 4. **Esc schließt ihn zuerst** — an der Spitze der Kaskade (`web/app.js:1950`), vor Pop und Fenstern.
 5. **Maße, Kontrast und Anzeige** folgen [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Zielgröße des Auslösers), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md) (Kontrast des Textes in beiden Themen) und [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md) (deutscher Wortlaut, zugänglicher Name zählt als sichtbarer Text).
@@ -112,6 +113,42 @@ C, D und E scheiden aus: C verwischt die Ebenen-Einordnung von `#pop`, D trägt 
 - [ ] Ob das Eigentümer-Zeichen in die Tab-Folge aufgenommen wird (Detail aus [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md)/[ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md)).
 - [ ] Ausweitung auf weitere `title`-Stellen: eigene Karte.
 
+## Nachtrag 2026-11-11 N1: Darstellung unmittelbar gestellt, Zustand und Textregel an einem Ort (R00119, Karte #24, Nacharbeit M1)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag schärft Regel 2 der Entscheidung („Gezeichnet wird aus dem Renderer … kein zweiter Schreibweg neben `render()`“); die Wahl — Option B, ein nicht-modales Primitiv `role="tooltip"` ohne eigene Ebene — gilt unverändert. Anlass ist das Muss des Architektur-Reviews zur Karte #24 vom 2026-11-11 (M1): Der Bau schreibt den Blasentext neben `render()` auch direkt (`web/app.js` `tippZeigen`/`tippVerbergen`), was Regel 2 **wörtlich** verletzt; ein `render()` im `focusin`-Pfad bräche zudem den Abtastwächter `r00106-fokus-raster` (Befund der wiederholten Fokusprobe, Gelerntes `R00119`, Commit `f862509`). Der Director hat entschieden: **Nachtrag, kein neues ADR.**
+
+### Was der Nachtrag festlegt
+
+1. **Die Darstellung der Blase darf unmittelbar gestellt werden** — ihr Text und ihre Sichtbarkeit —, so wie `popPlatzieren` die Position von `#pop` stellt (`web/app.js:979`). Regel 2 meint den **Schreibweg des Zustands**, nicht das Stellen des gezeichneten Elements: `tippZeigen`/`tippVerbergen` (`web/app.js:1014`, `:1024`) setzen `S.ui.tooltip`, füllen die von `render()` gezeichnete Blase `#kd-tipp` (`web/app.js:1016–1019`) und rufen in diesem Pfad **kein `render()`** — die Karte bleibt in der Fokusfalle unberührt. Der `focusin`-Weg (`web/app.js:1766–1770`) ist damit kein zweites Zeichnen.
+2. **Der Zustand bleibt in `S.ui.tooltip` und übersteht das Neuzeichnen.** `render()` zeichnet die Blase weiterhin aus dem Zustand (`vTipp()` in `#over`, `web/app.js:702`, `web/ansicht.js:382–388`, [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md)); „zeichnen aus Zustand“ bleibt die tragende Regel. Ist der Zustand gesetzt, stellt der nächste Render die Blase sichtbar wieder her.
+3. **Die Textregel lebt an genau einer Stelle.** Der Wortlaut je Kopfzeichen (sichtbarer Text = zugänglicher Name) entsteht in **einer** Funktion, die **beide** Wege benutzen: `render()` für das Neuzeichnen und das unmittelbare Stellen. Heute steht die Regel doppelt — `tippText` (`web/app.js:1005`) und die gleiche Ableitung in `vTipp` (`web/ansicht.js:385`); diese **Doppelung ist ein Befund** und in der Nacharbeit zu entfernen (eine Quelle, beide Aufrufer).
+
+### Grenze
+
+- **Nur die Darstellungs-Schreibung ist erlaubt.** Erlaubt sind das Setzen von `S.ui.tooltip` und das Füllen/Stellen/Verbergen der von `render()` gezeichneten Blase. Ein **zweiter Erklärmechanismus** — ein weiteres `role="tooltip"` oder ein `title` an den fünf Kopfzeichen (ⓘ, ✓, Phase, Grenze, Eigentümer) — bleibt ein **Befund** (Durchsetzung der Entscheidung; [ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)).
+- **Esc zuerst**, **keine Fokus-Ebene**, **Zielgröße und Kontrast**: unverändert aus der Entscheidung (Punkte 1, 4, 5; [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md)). Der Nachtrag berührt keine Ebene der Fokusführung: Der Tooltip zählt nicht in `ebenen(ui)`, der Fokus bleibt auf dem Auslöser.
+
+### Belegt (Code)
+
+- `web/app.js:1014` `tippZeigen` und `:1024` `tippVerbergen`: schreiben Text und Sichtbarkeit der Blase `#kd-tipp` direkt; kein `render()`.
+- `web/app.js:702`: `render()` hängt `vTipp()` in `#over` — der Zeichenweg aus dem Zustand.
+- `web/ansicht.js:382–388` `vTipp`: zeichnet die Blase aus `S.ui.tooltip`; `:385` leitet den Text erneut ab (zweite Ausprägung von `tippText`, `web/app.js:1005`).
+- `web/app.js:979` `popPlatzieren`: das Vorbild — stellt die Position des von `render()` gezeichneten `#pop`, ohne neu zu zeichnen.
+- `web/app.js:1983`: Esc schließt den Tooltip zuerst (Spitze der Kaskade).
+
+### Durchsetzung (ergänzt)
+
+- **Review-Punkt `architektur-reviewer` und `code-reviewer`**: Ein **`render()` im `focusin`/`focusout`-Pfad des Tooltips** ist ein Befund — er hängt das gerade fokussierte Element ab, der Wächter `r00106-fokus-raster` wird rot (Gelerntes `R00119`, Commit `f862509`). Die Blase wird gezeigt/verborgen, indem `S.ui.tooltip` gesetzt und das von `render()` gezeichnete Element gestellt wird.
+- **Review-Punkt**: Die **Textregel doppelt** zu führen (Ableitung des Wortlauts an zwei Orten) ist ein Befund; sie gehört in eine Funktion, die `render()` und das unmittelbare Stellen gemeinsam nutzen.
+- Die Abnahme der Karte #24 (E2E) bleibt: Tab zeigt die Erklärung, langer Druck ebenso, Esc schließt, der zugängliche Name ist wörtlich der Tooltiptext, ein Live-Ereignis hinterlässt keinen verwaisten Tooltip. Der Abtastwächter `r00106-fokus-raster` bleibt grün — er ist die Probe, die ein `render()` im `focusin`-Pfad fängt.
+
+### Verworfen
+
+- **`render()` im `focusin`-Pfad**: hielte Regel 2 wörtlich ein (ein Zeichenweg), hängt aber das gerade fokussierte Element ab und lässt den Fokuswächter fehlschlagen (Gelerntes `R00119`, Commit `f862509`). Der Schaden ist größer als die Worttreue.
+- **Ein zweiter Schreibweg für den Zustand** (Text in einer zweiten Struktur neben `S.ui.tooltip`): bräche die Redraw-Sicherheit aus [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md); der Zustand bleibt bei `S.ui.tooltip`.
+
+**Folgeentscheidung, offen**: keine. Die Doppelung der Textregel (`tippText` / `vTipp`) beseitigt der `entwickler` als Nacharbeit M1 auf Karte #24.
+
 ## Quellen / Bezüge
 
 - Karte #24 „Kopfzeichen-Tooltip bei Fokus und langem Druck“; Vision `Anforderungen/R00000-vision.md:104`
@@ -122,3 +159,4 @@ C, D und E scheiden aus: C verwischt die Ebenen-Einordnung von `#pop`, D trägt 
 - Factory-Gedächtnis Material 3 (`rollen/ux-reviewer/spezialisierungen/material3/notizen.md:175`, Plain tooltip)
 - [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) (N4), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md), [ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)
 - Baustein [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md)
+- Nachtrag N1: Karte #24, Architektur-Review 2026-11-11 (M1); Gelerntes `R00119` (Commit `f862509`); `web/app.js:702`, `:979`, `:1005`, `:1014`, `:1024`, `:1766–1770`, `:1983`, `web/ansicht.js:382–388`; [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md), [ADR-0011](0011-farbrollen-in-paaren-kontrast-als-probe.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0018](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)
