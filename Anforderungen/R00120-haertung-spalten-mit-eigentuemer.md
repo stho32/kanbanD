@@ -16,7 +16,7 @@ Die Befunde sind teils Muss-nahe Fehler (Punkt 1 und 2 sind Sicherheitsbefunde),
 2. **Archivieren überspringt Boards mit Formatfehler (Sollte, Security-Review).** `archivieren_pruefen` liest `ordner().boards()?` und verwirft die Defekte-Liste (`src/dienst/zugregeln.rs`:57): ein Agent kann eine Karte archivieren, die auf einem defekten Board in einer Menschen-Spalte liegt.
 3. **Architektur-Modell nachziehen (Sollte, Architektur-Review).** `X00001` (:48 „Eigentümer ist gebaut“, :50 „Soll … noch nicht gebaut“, Zeilenverweise), `A00004` (Entnahme-Helfer), `A00006` (`Eigentuemer`, `entnahme_erlaubt`).
 4. **Rechtschreibung (Sollte, Rechtschreib-Review).** `src/web/openapi.rs`:13 — Großschreibung nach Doppelpunkt als Hausregel entscheiden; `Dokumentation/Gelerntes.md`:49 — Infinitiv nach „für“ groß.
-5. **Oberfläche und Schema (Sollte/Optional, UX- und Code-Review, siehe Kommentare).** `.eig-roh` (unbekannter Rohwert) hat im Hellthema nur 4,27:1 gegen den Dialoggrund (WCAG 1.4.3 verlangt 4,5:1); der unbekannte Rohwert lässt sich nur über den Umweg Mensch/Agent → „— keiner —“ entfernen; im Dunkelthema ist die Titelleiste des Spalten-Dialogs kontrastschwach; im OpenAPI-Schema `Spalte` fehlt `eigentuemer_unbekannt`; dazu Kommentarstellen und Wortlaut.
+5. **Oberfläche und Schema (Sollte/Optional, UX- und Code-Review, siehe Kommentare).** Die beiden Kontrastbefunde sind veraltet: R00107 hat `--kd-warn` nachgedunkelt und die Modusleiste „Spalten einrichten“ als Akzent-Container gebaut, damit ist `.eig-roh` (hell 4,86:1 / dunkel 4,79:1, früher hell 4,27:1) und die dunkle Modusleiste (8,24:1 / 8,96:1, früher Titel dunkel 1,33:1) bereits erfüllt — beide bleiben hier nur als Regressionswächter (Punkt 13, 16), ohne Token-Eingriff. Offen sind die Oberflächenpflege: der unbekannte Rohwert ist keine eigene vorausgewählte Option („— keiner —“ steht vorausgewählt, die Entfernung braucht den Umweg Mensch/Agent → „— keiner —“), die Textsammlung `EIGENTUEMER_TEXT` hat keinen Schlüssel für den unbekannten Wert (mit vorausgewähltem Rohwert stünde `.eig-hin` auf „undefined“), der Satz „unbekannter Eigentümer — bleibt erhalten“ steht im `title` eines nicht fokussierbaren `span` statt als Beschreibung der Auswahl, und der Sende-/Rundlauf-Vertrag ist nicht festgeschrieben; dazu der veraltete Artboard-Vermerk (Punkt 5 Doku) und im OpenAPI-Schema `Spalte` fehlt `eigentuemer_unbekannt`; dazu Kommentarstellen und Wortlaut.
 
 Optional (mitgeführt, Punkt 6–11): `entnahme_und_zug_pruefen`/`entnahme_und_grenzen_pruefen` zusammenlegen; Konstruktor/Default für `Spalte` statt 15 Struktur-Literalen; `entnahme_erlaubt` über **alle** Spalten (`any`) statt nur die erste; `Art` und `Eigentuemer` bewusst getrennt im Code festhalten; `eigentuemer: ""` gegen `farbe`/`notiz: ""` einheitlich entscheiden; Hinweis „unbekannter Eigentümer“ um „— bekannt sind human, agent“ ergänzen.
 
@@ -52,12 +52,12 @@ Die Eigentümer-Spalte ist die einzige Stelle, an der kanbanD die Freigabe des M
 11. Die Hausregel „Großschreibung nach dem Doppelpunkt“ wird entschieden und in `src/web/openapi.rs` (Karte nennt :13) angewandt.
 12. `Dokumentation/Gelerntes.md` (Lehre R00097, Karte nennt :49) schreibt Infinitive nach „für“ groß.
 
-### Oberfläche: Rohwert und dunkle Titelleiste (Punkt 5)
+### Oberfläche: Rohwert und Modusleiste (Punkt 5)
 
-13. Der unbekannte Rohwert (`.eig-roh`) erreicht im Hell- **und** Dunkelthema mindestens 4,5:1 gegen den Dialoggrund (WCAG 1.4.3), oder die unbekannte Prüfung wird anders dargestellt.
-14. Bei unbekanntem Rohwert ist eine eigene Option vorausgewählt (z. B. „chef (unbekannt)“); „— keiner —“ ist dann eine echte Änderung und entfernt den Eintrag in einem Schritt.
-15. Der Titel „unbekannter Eigentümer — bleibt erhalten“ wird von Bildschirmlesern ausgegeben (verborgener Text oder `aria-describedby`).
-16. Im Dunkelthema ist die Titelleiste des Spalten-Dialogs kontraststark: Titel, Board-Name und „Verwerfen“ erreichen ≥ 4,5:1 gegen die Titelleisten-Fläche.
+13. **Regressionswächter (durch R00107 erfüllt, kein Token-Eingriff):** die Schrift von `.eig-roh` (Farbrolle `--kd-warn`) erreicht gegen den Grund der Spaltenkarte (`.bk-ed`, Fläche `--kd-accent-weak`) im Hell- **und** Dunkelthema mindestens 4,5:1 (WCAG 1.4.3). R00107 hat `--kd-warn` nachgedunkelt; gemessen hell 4,86:1 / dunkel 4,79:1 (die frühere Hellzahl 4,27:1 stammt aus der Zeit vor R00107). Die Probe ist elementgebunden (berechnete `color` von `.eig-roh` gegen berechnetes `background` von `.bk-ed`), nicht tokengebunden.
+14. Bei unbekanntem Rohwert ist eine eigene Option vorausgewählt; ihr Text lautet `„<Rohwert>“ (unbekannt)` (z. B. `„chef“ (unbekannt)`), und „— keiner —“ ist dann eine echte Änderung, die den Eintrag in einem Schritt entfernt. Die Textsammlung `EIGENTUEMER_TEXT` trägt dazu einen Schlüssel für den unbekannten Wert: `EIGENTUEMER_TEXT.roh = 'Unbekannter Eigentümer „<Rohwert>“ — bleibt erhalten'`; `.eig-hin` liest damit nie „undefined“. **Sende- und Rundlauf-Vertrag:** (a) ist die Rohwert-Option vorausgewählt und wird ohne Änderung „Fertig“ gewählt, bleibt die Board-Datei byte-gleich (der Eintrag `column-owner: chef` steht unverändert); (b) „— keiner —“ und „Fertig“ entfernen den Eintrag; `eigentuemer` wird auch weiterhin nur bei Änderung gesendet.
+15. Der Satz „unbekannter Eigentümer — bleibt erhalten“ ist die zugängliche **Beschreibung** der Auswahl `<select class="inp eig-wahl">`: er liegt in `.eig-hin`, auf das die bereits verdrahtete `aria-describedby` zeigt — nicht im `title` eines nicht fokussierbaren `span`.
+16. **Regressionswächter (durch R00107 erfüllt, kein Token-Eingriff):** in der Modusleiste „Spalten einrichten“ (`.kz.modus`) erreichen Titel, Board-Name und „Verwerfen“ gegen die Leistenfläche mindestens 4,5:1 (WCAG 1.4.3). R00107 hat die Fläche `--kd-modus` und die Schrift `--kd-modus-text` gesetzt; gemessen hell 8,24:1 / dunkel 8,96:1 (früher Titel dunkel 1,33:1). Probe elementgebunden: berechnete `color` gegen berechnetes `background-color` von `.kz.modus`.
 17. Der Kommentar „Gesendet wird `eigentuemer` nur bei Änderung …“ steht über den Funktionen, die er beschreibt; über `EIGENTUEMER_STREIFEN` steht „Zusatz im aria-label des zugeklappten Streifens (R00097).“ (`web/ansicht.js`:738 f., :1460 f.).
 18. In `web/kd-app.css` heißt es „Namensknopf“ statt „Namen-Knopf“ (:111).
 
@@ -74,7 +74,7 @@ Die Eigentümer-Spalte ist die einzige Stelle, an der kanbanD die Freigabe des M
 ## Nicht-funktionale Anforderungen
 
 - **Sicherheit (prüfpflichtig):** Punkt 1 (ungültiger Rohwert entfernt still den Schutz und geht beim Rundlauf verloren) und Punkt 2 (Archivieren umgeht die Sperre auf einem defekten Board) sind Sicherheitsbefunde. Der `security-reviewer` prüft den gebauten Stand mit einer Angriffsmatrix (Archivieren, vom Board nehmen, bewegen, ziehen — je mit defektem Board und mit verwaistem oder ungültigem `column-owner`) vor der Abnahme. Full-Trust bleibt: die Regel schützt vor Versehen, nicht vor Absicht.
-- **Barrierefreiheit:** Kontrast ≥ 4,5:1 (Punkt 13, 16); der Rohwert ist auch ohne Farbe erkennbar; der Titel ist für Hilfstechnik hörbar (Punkt 15).
+- **Barrierefreiheit:** Kontrast ≥ 4,5:1 (Punkt 13 und 16 sind Regressionswächter — durch R00107 erfüllt, kein Token-Eingriff); der Rohwert ist auch ohne Farbe erkennbar (der Text „(unbekannt)“ an der Option und der Rohwert selbst tragen den Zustand, nicht allein `--kd-warn`); der Satz „unbekannter Eigentümer — bleibt erhalten“ ist als Beschreibung der Auswahl hörbar (Punkt 15, `aria-describedby`).
 - **Rückwärtskompatibel:** die Antwortform der 403/Read (`{fehler, spalte, nummer}`, `eigentuemer`, `eigentuemer_unbekannt`, `hinweise`) bleibt; die Härtung ergänzt nur Hinweise, Schemafelder und Oberflächen-Details.
 
 ## Akzeptanzkriterien
@@ -112,14 +112,14 @@ Gegeben für jede Probe: ein Wegwerf-Ordner mit einem Board „fabrik“, die Sp
 
 ### Oberfläche (Punkt 5)
 
-- [ ] **12. `.eig-roh`-Kontrast (wörtlich aus #26)**: „Abnahme: Kontrast ≥ 4,5 in Hell und Dunkel“ — unbekannter Rohwert gegen den Dialoggrund; Probe wie `e2e/einheit/kontrast.test.js` (sRGB-Auflösung, WCAG-Formel) bzw. E2E.
-  - Fällt durch: heute — hell 4,27:1.
-- [ ] **13. Rohwert-Entfernung**: Board-Datei mit unbekanntem Rohwert `chef` → Spalten-Dialog zeigt eine vorausgewählte Rohwert-Option; „— keiner —“ wählen und speichern entfernt den Eintrag in einem Schritt (Datei enthält kein `column-owner` für die Spalte).
-  - Prüfebene: E2E (neu `r00120`).
-- [ ] **14. Titel für Hilfstechnik**: der Text „unbekannter Eigentümer — bleibt erhalten“ ist im zugänglichen Namen oder der Beschreibung des Rohwert-Elements enthalten.
-  - Prüfebene: E2E (Accessible Name/Description).
-- [ ] **15. Dunkle Titelleiste**: bei dunklem Thema erreichen Titel, Board-Name und „Verwerfen“ im Spalten-Dialog ≥ 4,5:1 gegen die Titelleisten-Fläche.
-  - Prüfebene: E2E/Kontrastprobe.
+- [ ] **12. `.eig-roh`-Kontrast (Regressionswächter, durch R00107 erfüllt)**: die berechnete `color` von `.eig-roh` gegen das berechnete `background` von `.bk-ed` ist in Hell- und Dunkelthema ≥ 4,5:1 (gemessen hell 4,86, dunkel 4,79; die alte Hellzahl 4,27 stammt aus der Zeit vor R00107). Kein Token-Eingriff; die Probe hält das Maß, sie ist heute grün.
+  - Prüfebene: E2E (Kontrastprobe wie `e2e/einheit/kontrast.test.js`/`e2e/tests/hilfen.js`, sRGB-Auflösung, WCAG-Formel), beide Themen.
+- [ ] **13. Rohwert-Option, Hinweistext und Sende-Vertrag**: Board-Datei mit unbekanntem Rohwert `chef` → Spalten-Dialog zeigt `„chef“ (unbekannt)` als vorausgewählte Option, der `.eig-hin`-Satz lautet „Unbekannter Eigentümer „chef“ — bleibt erhalten“ und steht nie auf „undefined“. (a) „Fertig“ ohne Änderung → Board-Datei byte-gleich, `column-owner:\n  In Arbeit: chef` bleibt (kein `eigentuemer` gesendet); (b) „— keiner —“ wählen und „Fertig“ → der `column-owner`-Eintrag der Spalte ist entfernt (Datei enthält kein `column-owner` für die Spalte).
+  - Prüfebene: E2E (neu `r00120`); Rundlauf zusätzlich Unit/Integration (`tests/spalten.rs`, Muster `r00097-eigentuemer.spec.js:45–61`).
+- [ ] **14. Beschreibung für Hilfstechnik**: bei unbekanntem Rohwert ist „Unbekannter Eigentümer „<Rohwert>“ — bleibt erhalten“ die Accessible Description der `<select class="inp eig-wahl">` (`toHaveAccessibleDescription`), getragen von `.eig-hin`/`aria-describedby`; der Rohwert-`span` trägt kein `title` mehr.
+  - Prüfebene: E2E (Accessible Description der Combobox).
+- [ ] **15. Modusleiste (Regressionswächter, durch R00107 erfüllt)**: bei dunklem Thema erreicht die berechnete `color` in `.kz.modus` (Titel, Board-Name, „Verwerfen“) gegen das berechnete `background-color` von `.kz.modus` ≥ 4,5:1 (gemessen hell 8,24, dunkel 8,96). Kein Token-Eingriff; die Probe ist heute grün.
+  - Prüfebene: E2E/Kontrastprobe, beide Themen.
 - [ ] **16. Kommentarstellen und Wortlaut**: `grep -n 'Namen-Knopf' web/kd-app.css` = 0 („Namensknopf“); der Kommentar „Gesendet wird `eigentuemer` nur bei Änderung …“ steht über `eigentuemerGeaendert`/`eigentuemerInDatei`, über `EIGENTUEMER_STREIFEN` steht der Streifen-Kommentar (`web/ansicht.js`).
   - Prüfebene: `grep` + Sichtprüfung.
 
@@ -144,11 +144,12 @@ src/
     ├── openapi.rs         # :13 Hausregel Doppelpunkt, :29 f. Schema Spalte (eigentuemer_unbekannt)
     └── endpunkte.rs       # :34 GET /api/boards nennt eigentuemer_unbekannt
 web/
-├── ansicht.js             # :738 f. Kommentar/EIGENTUEMER_STREIFEN, :1460 f. Funktionen, :1486 .eig-roh-Titel
-├── app.js                 # :1621/:1706/:1903 Rohwert-Vorauswahl und Senden
-└── kd-app.css             # :111 „Namensknopf“, :401 .eig-roh-Kontrast
+├── ansicht.js             # :733 `EIGENTUEMER_TEXT` (Schlüssel `roh`), :1460 f. `eigentuemerGeaendert`/`eigentuemerInDatei`, :1486 f. `.eig-wahl`-Optionen, `.eig-hin` als `aria-describedby` (kein `span`-`title`)
+├── app.js                 # :1621/:1706/:1903 Rohwert-Vorauswahl und Senden (nur bei Änderung)
+└── kd-app.css             # :111 „Namensknopf“; :401 `.eig-roh`-Kontrast und :70 `.kz.modus`-Kontrast nur Regressionswächter (R00107, kein Token-Eingriff)
 Dokumentation/
 ├── Gelerntes.md           # :49 Infinitiv nach „für“
+├── Wireframes/D0002.dc.html  # :626 („— keiner —“) nach Freigabe auf die Rohwert-Option nachziehen
 └── Architektur/
     ├── Aspekte/X00001-…   # gebauter Stand, Zeilenverweise
     ├── A00004-dienste.md  # Entnahme-Helfer
@@ -156,7 +157,7 @@ Dokumentation/
 Anforderungen/
 └── user-stories/R00120.md # US-1..US-6
 e2e/
-├── tests/                 # r00120 (Rohwert, Kontrast, dunkle Titelleiste)
+├── tests/                 # r00120 (Rohwert-Option, Sende-Vertrag, Beschreibung); r00097-eigentuemer.spec.js:45–61 auf die Rohwert-Option umstellen
 └── einheit/               # kontrast.test.js läuft mit
 tests/
 ├── spalten.rs / spalteneinstellungen.rs / wip_grenze.rs   # Rundlauf, Archivsperre, doppelte Nummer
@@ -191,7 +192,7 @@ tests/
 1. **Format (Punkt 1)**: beim Lesen verwaiste Schlüssel, Nicht-Text-Werte und eine fehlende Zuordnung als Rohwert festhalten und melden; beim Schreiben erhalten.
 2. **Sperre (Punkt 2, 8, 9)**: `archivieren_pruefen` fail-safe bei Defekten; `entnahme_erlaubt` über alle Spalten; Leerzug-Antwort/Beschreibung angleichen.
 3. **Beschreibung (Punkt 4)**: Hausregel entscheiden, `openapi.rs` und `Gelerntes.md` angleichen; `eigentuemer_unbekannt` ins Schema.
-4. **Oberfläche (Punkt 5)**: `.eig-roh`-Kontrast (hell/dunkel), Rohwert-Vorauswahl, Titelleiste dunkel, Kommentarstellen, „Namensknopf“.
+4. **Oberfläche (Punkt 5)**: `.eig-roh`-Kontrast und Modusleiste als Regressionswächter (durch R00107 erfüllt, kein Token-Eingriff), Rohwert-Option samt Hinweistext (`EIGENTUEMER_TEXT.roh`) und Sende-Vertrag, `aria-describedby` statt `span`-`title`, Kommentarstellen, „Namensknopf“.
 5. **Modell/Aufräumen (Punkt 3, Optional)**: X00001/A00004/A00006 nachziehen; Prüfer zusammenlegen; Spalten-Konstruktor; Kommentar zur Trennung.
 
 ### Grobentwurf
@@ -215,7 +216,7 @@ tests/
 
 ### Wächter
 
-`tests/spalten.rs`, `tests/spalteneinstellungen.rs`, `tests/wip_grenze.rs`, `tests/openapi.rs`, `e2e/einheit/kontrast.test.js`, `e2e/tests/r00097-spalten.spec.js`, dazu neu `e2e/tests/r00120-*.spec.js`.
+`tests/spalten.rs`, `tests/spalteneinstellungen.rs`, `tests/wip_grenze.rs`, `tests/openapi.rs`, `e2e/einheit/kontrast.test.js`, `e2e/tests/r00097-eigentuemer.spec.js` (auf die Rohwert-Option umgestellt, :45–61), dazu neu `e2e/tests/r00120-*.spec.js`.
 
 ## Tests
 
@@ -223,10 +224,11 @@ Nach Skill `test-pyramide`; jede Szene der User Story ein Test, jeder prüft ein
 
 - **Unit**: Format-Rundlauf mit verwaistem Schlüssel, Nicht-Text-Wert und fehlender Zuordnung (`src/format/board.rs`); `Board::entnahme_erlaubt` mit derselben Nummer in zwei Spalten (`src/modell/board.rs`); Hinweistext (`src/pruefungen.rs`); Schemafeld (`tests/openapi.rs`).
 - **Integration**: `tests/spalten.rs`/`spalteneinstellungen.rs` (verwaister Eintrag überlebt `PUT …/spalten`), `tests/wip_grenze.rs` (Archivieren bei defektem Board, Leerzug).
-- **E2E**: neu `r00120` — Rohwert-Vorauswahl und Entfernen in einem Schritt, `.eig-roh`-Kontrast hell/dunkel, dunkle Titelleiste, Titel für Hilfstechnik; Muster `r00097-spalten.spec.js`, `kontrast.spec.js`.
+- **E2E**: neu `r00120` — Rohwert-Option vorausgewählt mit Text `„chef“ (unbekannt)`, Hinweistext `EIGENTUEMER_TEXT.roh` an `.eig-hin`, Sende-Vertrag (ohne Änderung byte-gleich, „— keiner —“ entfernt), Beschreibung der Auswahl (`aria-describedby`); `.eig-roh`- und `.kz.modus`-Kontrast als Regressionswächter (heute grün); Muster `r00097-eigentuemer.spec.js`, `kontrast.spec.js`.
+  - **Wächter-Umstellung**: `e2e/tests/r00097-eigentuemer.spec.js:45–61` erwartet heute `toHaveValue('')` und `toHaveAccessibleDescription(KEINER)` beim unbekannten Rohwert; nach Punkt 14 zeigt die Combobox die vorausgewählte Rohwert-Option (`toHaveValue` auf den Rohwert-Sentinel) und die Beschreibung des unbekannten Eigentümers — der Test wird im selben Zug umgestellt (weiterhin grün).
 - **Security-Review (Prüfpunkt, ausdrücklich)**: Angriffsmatrix für Punkt 1 und 2 vor der Abnahme — Archivieren, vom Board nehmen, bewegen, ziehen, je mit defektem Board und mit verwaistem bzw. ungültigem `column-owner`.
-- **Rot vor dem Bau**: Punkt 1 (kein Hinweis, Eintrag weg), Punkt 2 (kein 200 → Archivieren geht durch), Punkt 7 (nur die erste Spalte geprüft), Punkt 9 (Schemafeld fehlt), Punkt 12 (hell 4,27:1), Punkt 13 (Umweg nötig), Punkt 15 (dunkle Titelleiste schwach), Punkt 16 (`Namen-Knopf` vorhanden), Punkt 20/22 (Kommentar fehlt) sind heute rot.
-- **Gegenproben (Mutanten)**: verwaisten Eintrag beim Schreiben verwerfen → AK 1 rot; `boards()`-Defekte ignorieren → AK 6 rot; `find` statt `any` → AK 7 rot; Schemafeld wieder `skip` → AK 9 rot; `.eig-roh` dunkler ohne Kontrast → AK 12/15 rot.
+- **Rot vor dem Bau**: Punkt 1 (kein Hinweis, Eintrag weg), Punkt 2 (kein 200 → Archivieren geht durch), Punkt 7 (nur die erste Spalte geprüft), Punkt 9 (Schemafeld fehlt), Punkt 13 (der Rohwert ist keine eigene vorausgewählte Option: „— keiner —“ steht vorausgewählt, die Entfernung braucht den Umweg Mensch/Agent, `.eig-hin` kennt den Rohwert nicht), Punkt 14 (der Satz steht im `title` eines `span`, nicht als Beschreibung der Auswahl), Punkt 16 (`Namen-Knopf` vorhanden), Punkt 20/22 (Kommentar fehlt) sind heute rot. **Nicht rot** (durch R00107 erfüllt, daher nur Regressionswächter): Punkt 12 (`.eig-roh`) und Punkt 15 (Modusleiste).
+- **Gegenproben (Mutanten)**: verwaisten Eintrag beim Schreiben verwerfen → AK 1 rot; `boards()`-Defekte ignorieren → AK 6 rot; `find` statt `any` → AK 7 rot; Schemafeld wieder `skip` → AK 9 rot; `.eig-roh`-Option entfernen → AK 13 rot; `EIGENTUEMER_TEXT.roh` entfernen → `.eig-hin` zeigt „undefined“ → AK 13 rot; `.eig-roh` heller ohne Kontrast → AK 12 rot und `.kz.modus`-Text heller → AK 15 rot (Regressionswächter).
 - **Mitlaufend grün**: `tests/spalten.rs`, `tests/spalteneinstellungen.rs`, `tests/wip_grenze.rs`, `tests/openapi.rs`, `node --test e2e/einheit/`, `npx playwright test r00097 kontrast kultur ziele`.
 
 ## Abhängigkeiten
@@ -248,7 +250,7 @@ Keine — `web/` ist per `include_bytes!` eingebettet, Änderungen werden erst n
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
-Auslöser sind die stehen gebliebenen Sollte-/Optional-Befunde aus den Reviews von R00097. Zwei davon sind mehr als Kosmetik: Ein verwaister oder ungültiger `column-owner`-Eintrag hebt den Schutz still auf und verschwindet beim nächsten Schreiben (Datenverlust in einer Datei, die auch von Hand gepflegt wird), und ein defektes Board wird beim Archivieren übersprungen, sodass ein Agent eine Karte aus einer Menschen-Spalte nehmen kann — genau die Umgehung, gegen die R00097 gebaut ist. Beide Befunde sind bisher durch keine Probe gehalten worden (der Rundlauf-Test kennt nur gültige und unbekannte Werte, der Archiv-Test nur lesbare Boards). Indem jeder Befund eine wörtlich gefasste Probe bekommt (Rundlauf byte-gleich für den Eintrag, kein 200 beim Archivieren auf defektem Board, `any` über alle Spalten, Schemafeld, Kontrast ≥ 4,5:1), fällt dieselbe Lücke künftig durch einen Lauf, nicht erst durch die nächste Durchsicht — dieselbe Wirkungskette wie bei den Vorbildkarten #17 (I0106/R00117) und #23 (I0108/R00118): ein Befund wird zur Probe, die Probe zum Wächter.
+Auslöser sind die stehen gebliebenen Sollte-/Optional-Befunde aus den Reviews von R00097. Zwei davon sind mehr als Kosmetik: Ein verwaister oder ungültiger `column-owner`-Eintrag hebt den Schutz still auf und verschwindet beim nächsten Schreiben (Datenverlust in einer Datei, die auch von Hand gepflegt wird), und ein defektes Board wird beim Archivieren übersprungen, sodass ein Agent eine Karte aus einer Menschen-Spalte nehmen kann — genau die Umgehung, gegen die R00097 gebaut ist. Beide Befunde sind bisher durch keine Probe gehalten worden (der Rundlauf-Test kennt nur gültige und unbekannte Werte, der Archiv-Test nur lesbare Boards). Indem jeder offene Befund eine wörtlich gefasste Probe bekommt (Rundlauf byte-gleich für den Eintrag, kein 200 beim Archivieren auf defektem Board, `any` über alle Spalten, Schemafeld, Rohwert-Option samt Beschreibung), fällt dieselbe Lücke künftig durch einen Lauf, nicht erst durch die nächste Durchsicht; die beiden Kontrastbefunde sind durch R00107 bereits erledigt und bleiben als Regressionswächter — dieselbe Wirkungskette wie bei den Vorbildkarten #17 (I0106/R00117) und #23 (I0108/R00118): ein Befund wird zur Probe, die Probe zum Wächter. Die UX-Vorprüfung 2026-11-11 hat genau diesen Stand bestätigt (bestanden, kein Muss).
 
 ## Missing-Docs
 
@@ -259,6 +261,12 @@ Auslöser sind die stehen gebliebenen Sollte-/Optional-Befunde aus den Reviews v
 - **WBS-Heimat (Detailplanung 2026-11-11)**: eigene Interaction I0110 unter D0002 mit eigener Anforderung R00120. Muster: I0106 (Härtung der Kopfzeile), I0107, I0108 (Härtung der WIP-Grenze), I0109 — alle unter D0002. Verworfen: Bubbles/Features an I0086 (R00097) hängen — I0086 ist abgenommen (gruen), ein neuer roter Nachfahre öffnete seine Abnahme wieder (Härtungsregel `AI-Team/gelerntes.md`, 2026-11-11). Der Eigentümer ist eine Spalteneigenschaft des Boards; die Durchsetzung (Punkt 2) liegt in D0007, die Abweichung wird hier genannt (wie I0108).
 - **Elterndialog D0002**: Format, Sperre, Hinweise und Oberfläche sind Board-Begriffe; `/api`-Beschreibung und Schema stehen in D0007, die Befunde sind aber Board-Begriffe (Spalte, Eigentümer).
 - **Sicherheit**: Punkt 1 und 2 sind Sicherheitsbefunde (Architektur-Kartenkommentar); der `security-reviewer` prüft mit einer Angriffsmatrix vor der Abnahme (siehe Tests).
-- **UX-Vorprüfung (folgt)**: die Oberfläche prüft `.eig-roh`-Kontrast (hell/dunkel ≥ 4,5:1), die Rohwert-Entfernung (eigene vorausgewählte Option, „— keiner —“ als echte Änderung) und die dunkle Titelleiste (Titel, Board-Name, „Verwerfen“ ≥ 4,5:1).
+- **UX-Vorprüfung 2026-11-11 (bestanden — kein Muss, fünf Sollte)**, eingearbeitet:
+  - **Veralteter Rot-Vermerk (Sollte):** `.eig-roh`-Kontrast (hell 4,27:1) und die dunkle „Titelleiste“ (Titel dunkel 1,33:1) waren als „rot vor dem Bau“ geführt; R00107 hat beide erfüllt (`--kd-warn` nachgedunkelt, Modusleiste als Akzent-Container). AK 12 und 15 sind jetzt **Regressionswächter** (elementgebunden: `.eig-roh`-`color` gegen `.bk-ed`-`background`, `.kz.modus`-`color` gegen `.kz.modus`-`background`, je ≥ 4,5 hell/dunkel; gemessen 4,86/4,79 bzw. 8,24/8,96). Kein Token-Eingriff; die „Rot vor dem Bau“-Zeile und die alten Zahlen sind korrigiert.
+  - **Rohwert-Hinweistext (Sollte):** `EIGENTUEMER_TEXT` bekommt einen Schlüssel für den unbekannten Wert (`EIGENTUEMER_TEXT.roh = 'Unbekannter Eigentümer „<Rohwert>“ — bleibt erhalten'`); sonst stünde `.eig-hin` bei vorausgewähltem Rohwert auf „undefined“. Optionstext `„<Rohwert>“ (unbekannt)`. (FA 14, AK 13)
+  - **`aria-describedby` statt `span`-`title` (Sollte):** der Satz „unbekannter Eigentümer — bleibt erhalten“ ist die Accessible Description der `<select class="inp eig-wahl">` (Ziel `.eig-hin`, `aria-describedby` ist verdrahtet), nicht der `title` eines nicht fokussierbaren `span`. (FA 15, AK 14)
+  - **Sende-/Rundlauf-Vertrag (Sollte):** (a) Rohwert-Option vorausgewählt, ohne Änderung „Fertig“ → Board-Datei byte-gleich (`column-owner: chef` bleibt); (b) „— keiner —“ + „Fertig“ → Eintrag entfernt. (FA 14, AK 13)
+  - **D0002-Notiz (Sollte Doku):** der Artboard-Vermerk in `Dokumentation/Wireframes/D0002.dc.html`:626 (Auswahl zeige „— keiner —“) widerspricht AK 13. R00120 vermerkt: der Zustand „Spalten mit Eigentümer“ ist **nach der Freigabe** auf die vorausgewählte Rohwert-Option nachzuziehen (den gestalter/ die Freigabe regelt der Director); die Artboards selbst ändert der planer nicht.
+  - **Optional:** Begriff „Titelleiste“ durch „Modusleiste“ vereinheitlicht (die Leiste heißt `header.kz.modus`, R00107); der Zustand „unbekannt“ steht nicht allein auf der Farbe `--kd-warn`, sondern auf dem Text „(unbekannt)“ und dem Rohwert selbst.
 - **Einarbeitung Architektur (2026-11-11, bestanden, kein ADR)**: keine Technikfrage; Präzedenz B0537/PO Z. 52; eigene Interaction/Anforderung; Security-Review nötig; die Zeilenverweise der Karte sind teils veraltet und wurden hier nachgezogen (`src/format/board.rs` :18/:44/:280/:284 statt :18/:43/:265; `entnahme_erlaubt` `src/modell/board.rs`:505 statt :451; `zugregeln.rs`:57 statt :55).
 - **Herkunft**: `kd:I0086` (Karte #26 als Härtung nach #3/R00097); die Karte trägt als Herkunft die neue Interaction `kd:I0110`.
