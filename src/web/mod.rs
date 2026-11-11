@@ -4,7 +4,7 @@ pub mod endpunkte;
 pub mod openapi;
 mod statisch;
 
-use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur};
+use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur, Zielort};
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
@@ -94,6 +94,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         .routes(routes!(verlauf))
         .routes(routes!(bewegungen))
         .routes(routes!(aufgabe_lesen, aufgabe_aendern, aufgabe_loeschen))
+        .routes(routes!(aufgabe_duplizieren))
         .routes(routes!(aufgaben_anlegen, mehrere_aendern))
         .routes(routes!(mehrere_archivieren))
         .routes(routes!(mehrere_zurueckholen))
@@ -708,6 +709,25 @@ async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): 
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/aufgaben/{nr}/duplizieren",
+    tag = "Aufgaben",
+    description = "Karte duplizieren: legt aus der Aufgabe {nr} eine neue Aufgabe an — neue Nummer und Datei, Titel „<Titel> (Kopie)“, Beschreibung, Teilaufgaben (nur ihre Texte, alle offen), Klasse, Zuständige, Labels, Fälligkeit und Herkunft; die Kopie trägt nicht: key, Verlauf, Zeiten, Kommentare, Durchläufe, Anhänge, archived, reservation, cost, signals, wbs-effects, phases und reporting; Rumpf optional {board?, spalte?} (beide oder keines) — mit beiden liegt die Kopie unten in dieser Spalte, ohne beide entsteht nur die Aufgabendatei; ein Commit „#<neu> dupliziert (aus #<nr>) in „<Spalte>“ (<Board>)“; Agent über der WIP-Grenze → 409 {fehler: \"Grenze erreicht\", spalte, grenze, anzahl}, nichts wird geschrieben; Mensch: ohne Warnung; die Eigentümer-Regel sperrt nicht — Hineinlegen ist erlaubt (R00097)",
+    params(("nr" = u32, Path, description = "Nummer der Quelle"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Zielort,
+    responses((status = 201, description = "die Kopie", body = crate::dienst::Angelegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn aufgabe_duplizieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, rumpf: Option<Json<Zielort>>) -> Result<Response, Fehler> {
+    let zielort = rumpf.map(|Json(z)| z).unwrap_or_default();
+    let a = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.aufgabe_duplizieren(&p, nr, &zielort)
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(a)).into_response())
 }
 
 /// Aufgabe mit Pfad und Dateitext; eine defekte Datei kommt mit Fehler und Status 423.
