@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #15)
 **Kontext-Anforderung**: [R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md) (Karte #15 „Vergessene Timer sichtbar machen“, Label `ux`, WBS-Knoten I0103); zum Zeitpunkt der Entscheidung lag noch keine Anforderung vor, nachgetragen mit dem Nachtrag vom 2026-11-10
 **Erprobt durch**: — (getragen von der Systemantwort: reine Module mit Unit-Test, der Sekundentakt als einziger Zeitgeber, der gebaute Sicherer aus ADR-0007 N1; Belege im Kontext)
-**Nachträge**: 2026-11-10 — N1 Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag N1](#nachtrag-2026-11-10-n1-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114); N2 Erinnerungsschlüssel je Lauf (R00114, Bau), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-erinnerungsschlüssel-je-lauf-r00114-bau); N3 zweite Zeile in Pop und Fensterblock unter 640 px (R00114, Nacharbeit M2 / arev M1), siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2); N4 Kopfzeilen-Umbruch als Rückfall an jeder Karte (Karte #16 „Kartentext lesbar setzen“, 2026-11-10), siehe [Nachtrag N4](#nachtrag-2026-11-10-n4-kopfzeilen-umbruch-als-rückfall-an-jeder-karte-16). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N1)*, *(→ N2)*, *(→ N3)* und *(→ N4)* zeigen, wo die Nachträge gelten.
+**Nachträge**: 2026-11-10 — N1 Kurzform sichtbar, Vollform im Namen, Umbruch der Kopfzeile (R00114), siehe [Nachtrag N1](#nachtrag-2026-11-10-n1-kurzform-sichtbar-vollform-im-namen-umbruch-der-kopfzeile-r00114); N2 Erinnerungsschlüssel je Lauf (R00114, Bau), siehe [Nachtrag N2](#nachtrag-2026-11-10-n2-erinnerungsschlüssel-je-lauf-r00114-bau); N3 zweite Zeile in Pop und Fensterblock unter 640 px (R00114, Nacharbeit M2 / arev M1), siehe [Nachtrag N3](#nachtrag-2026-11-10-n3-zweite-zeile-in-pop-und-fensterblock-unter-640-px-r00114-nacharbeit-m2); N4 Kopfzeilen-Umbruch als Rückfall an jeder Karte (Karte #16 „Kartentext lesbar setzen“, 2026-11-10), siehe [Nachtrag N4](#nachtrag-2026-11-10-n4-kopfzeilen-umbruch-als-rückfall-an-jeder-karte-16); N5 Alter in der Spalte ist Anzeige, kein Bestand (Karte #30 „Alter einer Karte in ihrer Spalte auf der Karte zeigen“, 2026-11-11), siehe [Nachtrag N5](#nachtrag-2026-11-11-n5-alter-in-der-spalte-ist-anzeige-kein-bestand-30). Der Text oberhalb bleibt der Stand der Annahme; Marken *(→ N1)*, *(→ N2)*, *(→ N3)*, *(→ N4)* und *(→ N5)* zeigen, wo die Nachträge gelten.
 
 ## Kontext
 
@@ -64,7 +64,7 @@ Der Renderer zeichnet den Chip immer, mit der Schwelle als Datenattribut; der Se
 
 ## Entscheidung
 
-**Gewählt: Option A.** „Vergessen“ ist eine Aussage über die Anzeige, abgeleitet aus Zeit und Zustand — kein Bestand. Sie wird an einer Stelle gerechnet, an einer Stelle entschieden und an einer Kante gezeichnet. Bewusst in Kauf genommen: Die Erinnerung ist flüchtig (je Tab, überlebt kein Neuladen), Agenten sehen den Zustand nicht, und die Schwelle ist bis auf Weiteres eine Konstante.
+**Gewählt: Option A.** „Vergessen“ ist eine Aussage über die Anzeige, abgeleitet aus Zeit und Zustand — kein Bestand. Sie wird an einer Stelle gerechnet, an einer Stelle entschieden und an einer Kante gezeichnet. *(→ N5: dasselbe gilt für das Alter einer Karte in ihrer Spalte, abgeleitet aus der Git-Geschichte)* Bewusst in Kauf genommen: Die Erinnerung ist flüchtig (je Tab, überlebt kein Neuladen), Agenten sehen den Zustand nicht, und die Schwelle ist bis auf Weiteres eine Konstante.
 
 Nicht betroffen: Dateiformat und Modell ([A00006](../Architektur/A00006-modell.md)), HTTP-Schicht und OpenAPI ([A00003](../Architektur/A00003-web-schicht.md)), Dienste ([A00004](../Architektur/A00004-dienste.md)).
 
@@ -272,3 +272,45 @@ Alle Codefundstellen dieser ADR sind auf den Bau `3ef1977` nachgeführt (Strg+Z 
 ### Prüfung
 
 Die Breitenproben der Karte #15 ([R00114](../../Anforderungen/R00114-vergessene-timer-sichtbar-machen.md)) laufen mit — derselbe Wächter misst die Zeile der Karte weiter. Früh-Indikator, falls der Umbruch zu weit greift: eine **zweizeilige Kopfzeile ohne Platznot** (eine Karte, deren Titel samt Chip in eine Zeile passt, bricht trotzdem um).
+
+## Nachtrag 2026-11-11 N5: Alter in der Spalte ist Anzeige, kein Bestand (#30)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag nimmt eine **zweite** Aussage unter dieselbe Entscheidung auf: „Alter in der Spalte“ ist wie „vergessen“ ein Wert der **Anzeige**, gerechnet beim Zeichnen, nicht gehalten. Keine der Regeln 1–7 wird geändert; die Grenze der Entscheidung (Regel 7) trägt fortan auch dieser Wert. Anlass ist die Technikfrage der Karte #30 „Alter einer Karte in ihrer Spalte auf der Karte zeigen“ (Vorprüfung 2026-11-11, Kartenkommentar #30, Rolle `architekt`); der Auftrag hat den Browser-Weg zum Transport erklärt, deshalb **Nachtrag, kein neues ADR** (Begründung im Abschnitt „Warum Nachtrag, kein neues ADR“).
+
+### Anlass (#30)
+
+Die Karte verlangt, an der Karte zu zeigen, wie lange sie schon in ihrer heutigen Spalte liegt („Tage in Spalte“, Vorbilder Jira, Kanbanize, GitHub Projects; Kartenkommentar #30). Die Vorprüfung ergab: **Der Spalteneintritt ist nur aus der Git-Geschichte rekonstruierbar.** Die Board-Datei nennt die heutige Spalte, nicht den Zeitpunkt, an dem die Karte in sie kam. Transport offen: Browser lädt die Bewegungssicht vs. ein Serverfeld.
+
+### Was der Nachtrag festlegt
+
+1. **Das Alter ist eine Aussage der Anzeige, kein Bestand** — dieselbe Entscheidung wie oben für „vergessen“ (Option A). Es wird nichts in `boards/*.md`, `localStorage` oder `sessionStorage` geschrieben, kein Feld an der Aufgabendatei, kein neuer Schreibweg. Wer nur zusieht, erzeugt keinen Commit.
+2. **Der Wert kommt aus der vorhandenen Bewegungssicht, im Browser abgeleitet** — kein neues Serverfeld, keine neue API-Zusage (das ist der Grund, warum es kein neues ADR braucht):
+   - Die Board-Ansicht lädt die schon vorhandene Sicht `GET /api/berichte/bewegungen?board=<slug>` (R00042). Heute liest sie `web/app.js:247` nur für `berichte/(verlauf|durchlauf|prognose|fieber)`; künftig auch für die Ansicht `board`.
+   - Der Eintritt in die **heutige** Spalte ist der letzte Wechsel dieser Sicht mit genau dieser Spalte. Den liest dieselbe reine Funktion, die Burndown, Durchlaufzeit und Prognose schon nutzen: `spalteAm(wechsel, t)` (`web/berichte.js:101–105`); für den Zeitpunkt des Eintritts tritt eine Schwester derselben Regel daneben, die statt des Spaltennamens den `zeitpunkt` dieses Wechsels gibt. Keine zweite Quelle, keine zweite Rechnung.
+   - Die Dauer (jetzt − Eintritt) formt `web/kultur.js` `seitText` (ADR-0019 N1, `web/kultur.js:51–58`) → „seit 6 Tagen“. Zeitrechnung und Form sind getrennt (`zeiten.js`/`berichte.js` liefern ms, die Form gehört dem Kulturmodul, ADR-0013).
+   - Eine Aufgabe **ohne** Wechsel (nicht auf dem Board, `spalteAm` → `null`) zeigt kein Alter.
+3. **Kurzform sichtbar, Vollform im zugänglichen Namen** — wie beim Timer (Regel 2, N1): sichtbar die kurze Dauer („seit 6 Tagen“), im Namen des `listitem` die volle Aussage samt Spalte, gestellt über `kartenName()` (`web/kartenname.js:14–21`, ADR-0018, [X00005](../Architektur/Aspekte/X00005-struktur-fuer-hilfstechnik.md)). Beide Formen kommen aus derselben abgeleiteten Dauer. Der genaue Wortlaut und die Form-/Farbfrage sind Anforderung und PO, nicht diese ADR (Regel 7).
+
+### Warum Nachtrag, kein neues ADR
+
+Die Frage der Karte ist **dieselbe** wie die dieser ADR: „wo lebt die Tatsache — in der Anzeige, in der Datei oder im Server?“ (Kontext oben). ADR-0019 hat sie für einen abgeleiteten Anzeigewert entschieden (Option A) und die Optionen B (Datei) und C (Server) verworfen. Für das Alter in der Spalte liegt die Antwort ebenso: Anzeige, kein Bestand. Ein eigenes ADR wäre die zweite Ausfertigung derselben Entscheidung — der Transport ist **nicht eigenständig tragend**, weil er **kein neues Serverfeld und keine neue API-Zusage** braucht: die Sicht `GET /api/berichte/bewegungen` (R00042) und `spalteAm` bestehen, `seitText` besteht (N1). Ein neues ADR (Nr. 0023, `Vorgeschlagen`) wäre nur dann richtig, müsste der Server ein Feld liefern oder die Oberfläche eine API-Zusage machen (ADR-0002/0003) — dann hinge die Entscheidung an einer Probe, die es heute nicht gibt. Die Git-Geschichte als Quelle trägt bereits [ADR-0021](0021-karten-verlauf-aus-der-git-geschichte.md) („ableiten statt speichern“); dieser Nachtrag wendet sie auf einen einzelnen Wert an und wiederholt sie nicht.
+
+### Grenze
+
+- **So genau wie die Git-Geschichte.** Der Eintritt ist minutengenau, aus dem Commit-Zeitpunkt (Versatz R00084). Eine Umsortierung **innerhalb** einer Spalte ist kein Spaltenwechsel und ändert das Alter nicht — dieselbe Grenze, die [ADR-0021](0021-karten-verlauf-aus-der-git-geschichte.md) „Reorder ist unsichtbar“ nennt. Der Wert gilt rückwirkend für die ganze Vergangenheit und für an kanbanD vorbei bewegte Karten.
+- **„Wer“ ist nicht Teil dieser Karte.** Das Alter beantwortet „wie lange“, nicht „wer hat bewegt“; der Autor einer Bewegung ist das Thema von ADR-0021.
+- **Die Spalte zählt, nicht die Phase.** Die Sicht nennt Spalten (R00042); ein Zug in eine andere Spalte desselben `column-phases`-Bands setzt den Eintritt neu. Der Burndown rechnet je Phase, diese Anzeige je Spalte — die Unterscheidung ist gewollt.
+- **Keine Schwelle.** Wann ein Alter „alt“ ist, ist eine PO-Frage (wie die 10-h-Schwelle des Timers); dieser Nachtrag kennt keine Konstante und kein Neuzeichnen an einer Kante (Tagesgenauigkeit genügt, kein Zeitgeber).
+
+### Konsequenzen
+
+- **Positiv:** kein Dateiformat, kein neues Feld, kein neuer Endpunkt, kein neuer Schreibweg. Die Ableitung liegt in bereits geprüften reinen Modulen (`web/berichte.js`, `web/kultur.js`); die Entscheidung ist damit dieselbe wie oben und berührt weder Modell (A00006) noch HTTP-Schicht (A00003).
+- **Negativ / in Kauf zu nehmen:** Die Board-Ansicht lädt künftig eine Git-abgeleitete Sicht, die sie heute nicht liest — ein `git log` über die Board-Datei (`src/git.rs:61` `staende`, `src/dienst/verlauf.rs:18–38`) je Laden und je Live-Ereignis (anders als der Timer oben, der auf Datei-Minute und lokaler Startsekunde rechnet und nichts nachlädt). Die Anzeige ist so frisch wie ihr letzter Ladevorgang, nicht sekundengenau; zwischen zwei Ladevorgängen altert der Text nicht fort — hingenommen, weil die Aussage in Tagen zählt.
+- **Probe (Abnahme):** Eine Karte, die seit n Tagen in Spalte X liegt (Fixture: Board-Commits mit gesetztem `--date`), zeigt auf dem Board die Kurzform („seit n Tagen“) und trägt im zugänglichen Namen die Vollform samt Spalte; eine Karte ohne Bewegung zeigt kein Alter. **Mutante:** Nimmt man den Eintritt nicht aus dem letzten Wechsel mit der heutigen Spalte, sondern aus dem ersten Wechsel überhaupt, zeigt eine mehrfach bewegte Karte das Alter der falschen (ersten) Spalte — die Probe fällt.
+- **Wächter:** kein Commit im Wegwerf-Ordner beim bloßen Zusehen (Regel 1); die Dauerform steht an einer Stelle — kein zweites „seit …“ neben `seitText`.
+
+### Prüfung
+
+- **Unit-Test der Ableitung** in `e2e/einheit/berichte.test.js` nach dem Muster von `spalteAm`: bei mehreren Wechseln liefert die Ableitung den letzten Wechsel vor `t` mit der heutigen Spalte; ohne Wechsel `null`.
+- **Kultur- und Namensprobe** wie R00114: die `seitText`-Form ist sichtbar, der Zusatz aus `kartenName` steht im Namen (ADR-0018/X00005), gedeckt von `e2e/einheit/kultur.test.js` und dem Aria-Muster der Karte; die Breitenproben aus ADR-0015/ADR-0012 laufen mit (neuer Karteninhalt).
+- **E2E der Abnahme-Probe** nach dem Muster von `e2e/tests/ziele.spec.js`, positiv (Alter sichtbar) und negativ (kein Alter ohne Bewegung).
