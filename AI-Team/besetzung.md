@@ -19,5 +19,6 @@ Rollen dieses Projekts aus der Kollektion der Factory (`/factory rollen`). Das K
 | legacy-reviewer | leg | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
 | observability-reviewer | obs | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
 | fachspezialist | fach | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
+| gestalter | ges | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
 
-Nicht besetzt: `gestalter`, `dokumentar`, `abnahmetest-schreiber`, `performance-reviewer` (erst mit Lastprofil-Zielen). Auf Abruf: `testability-consultant` bei wackligen Tests. Beratung über `/factory fragen`: keine nötig.
+Nicht besetzt: `dokumentar`, `abnahmetest-schreiber`, `performance-reviewer` (erst mit Lastprofil-Zielen). Auf Abruf: `testability-consultant` bei wackligen Tests. Beratung über `/factory fragen`: keine nötig.
