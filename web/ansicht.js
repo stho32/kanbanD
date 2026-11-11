@@ -1017,14 +1017,46 @@ ${fadenkreuz(O, H - U)}
 <div class="body bericht"><h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
 
-/* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und die kumulierten Ränder je Tag — liest nur.
-   Rahmen der Ansicht; die Fläche zeichnet B0557, Legende/Tabelle B0558. */
+/* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit — liest nur. */
+/** Bandton einer Spalte: ihre eingestellte Spaltenfarbe, sonst der Ton ihrer Position aus der Klassenpalette
+    (`PAL`) in Board-Reihenfolge, als `-line`-Fassung für ein Diagramm. */
+const flussTon = (farbe, i) => farbe || `var(--kd-c-${PAL[i % PAL.length]}-line)`;
 function vFluss() {
   const kopf = `<div class="leiste"><b>Kumulativer Fluss</b> <span class="muted" style="font-size:12px">· liest nur · Bestand je Spalte über die Zeit</span></div>`;
   if (!S.bew) return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"></div>`;
-  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
+  const jetzt = Date.now();
+  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="fl-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
-  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${nicht}</div>`;
+  const d = fluss(S.bew, S.ui.bf, aufgabe, jetzt, S.board && S.board.start);
+  const ton = (name, i) => flussTon((S.board.spalten.find(sp => sp.name === name) || {}).farbe, i);
+  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${d.tage.length ? vFlussFlaeche(d.tage, d.spalten, ton) : ''}${nicht}</div>`;
+}
+const FLUSS_B = 800, FLUSS_H = 272, FLUSS_L = 44, FLUSS_R = 120, FLUSS_O = 24, FLUSS_U = 44;
+/** Die Zeichenfläche: gestapelte Bänder (unten erste Spalte, oben letzte), y-Achse bis `max(gesamt, angekommen, fertig)`. */
+function vFlussFlaeche(t, spalten, ton) {
+  const max = Math.max(1, ...t.map(x => Math.max(x.gesamt, x.angekommen, x.fertig)));
+  const breite = FLUSS_B - FLUSS_L - FLUSS_R, unten = FLUSS_H - FLUSS_U;
+  const sy = v => FLUSS_O + (unten - FLUSS_O) * (1 - v / max);
+  const sx = i => FLUSS_L + (t.length < 2 ? breite / 2 : i * breite / (t.length - 1));
+  const punkte = werte => werte.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`);
+  const linie = werte => `M${punkte(werte).join(' L')}`;
+  const bandPfad = (oben, unter) => `${linie(oben)} L${punkte(unter).reverse().join(' L')} Z`;
+  const stapel = k => t.map(x => spalten.slice(0, k + 1).reduce((s, name) => s + (x.jeSpalte[name] || 0), 0));
+  const bänder = spalten.map((name, k) => `<path class="band" fill="${esc(ton(name, k))}" d="${bandPfad(stapel(k), k ? stapel(k - 1) : t.map(() => 0))}"></path>`).join('');
+  const schritt = Math.max(1, Math.ceil(max / 4));
+  const ticks = []; for (let y = 0; y <= max; y += schritt) ticks.push(y);
+  const tage = t.map(x => isoTag(x.datum));
+  const marken = t.map((x, i) => ({ i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
+  const letzte = t[t.length - 1];
+  const rand = (klasse, wort, v) => `<text class="randtext ${klasse}" x="${FLUSS_L + breite + 8}" y="${sy(v) + 4}">${wort} ${v}</text>`;
+  const svg = `<svg class="diagramm cfd" viewBox="0 0 ${FLUSS_B} ${FLUSS_H}" role="img" aria-label="Kumulativer Fluss: Bestand je Spalte je Tag" ${achsAttribut(FLUSS_L, breite, tage[0], tage[tage.length - 1])}>
+${ticks.map(v => `<line class="gitter" x1="${FLUSS_L}" x2="${FLUSS_L + breite}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}"></line><text class="achse achse-y" x="${FLUSS_L - 6}" y="${(sy(v) + 4).toFixed(1)}" text-anchor="end">${v}</text>`).join('')}
+${marken.map(({ i }) => achsDatum(tage[i], sx(i), unten + 18)).join('')}
+${bänder}<path class="ang" d="${linie(t.map(x => x.angekommen))}"></path><path class="fer" d="${linie(t.map(x => x.fertig))}"></path>
+${rand('a', 'angekommen', letzte.angekommen)}${rand('f', 'fertig', letzte.fertig)}
+${fadenkreuz(FLUSS_O, unten)}
+</svg>`;
+  return vDiagrammFlaeche(svg);
 }
 
 /** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
