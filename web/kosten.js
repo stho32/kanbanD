@@ -85,13 +85,12 @@
     return filterAnzahl(filterOhneZeitraum(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
   }
 
-  /** Rückfall (R00105 US-16): trägt die offene Aufgabe kein Etikett mehr, gilt statt „Kosten“ der Reiter „Inhalt“.
-   *  Den Fokus bekommt „Inhalt“ nur, wenn er auf der Reiterleiste oder im Panel „Kosten“ lag — sonst bleibt er, wo er ist (ADR-0010). */
+  /** Rückfall (R00105 B0376, generisch R00127 S3): führt die offene Aufgabe den gemerkten Reiter nicht
+   *  (`tab ∉ schluessel`), gilt „Inhalt“ — gleich, ob „Kosten“ fehlt oder ein später gebauter Reiter. Den Fokus bekommt
+   *  „Inhalt“ nur, wenn er auf der Reiterleiste oder im Panel des weggefallenen Reiters lag — sonst bleibt er, wo er ist (ADR-0010). */
   function reiterRueckfall(lage) {
-    if (lage.tab !== 'kosten' || lage.etikett) return null;
-    let fokus = null;
-    if (lage.fokusBeiKosten) fokus = '#reiter-inhalt';
-    return { tab: 'inhalt', fokus };
+    if (lage.schluessel.includes(lage.tab)) return null;
+    return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#reiter-inhalt' : null };
   }
 
   Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });

@@ -219,12 +219,9 @@ function sichtbareReihe() {
   return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => sichtbar(aufgabe(n))));
 }
 
-/* Reiterleiste des Aufgabenfensters (R00105, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
-   Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. */
-const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['verlauf', 'Verlauf']];
-/** Reiter einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105); „Verlauf“ ist immer sichtbar (R00123). */
-const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || a.cost);
-const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
+/* Reiterleiste des Aufgabenfensters (R00105, R00127, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
+   Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. Die Reiter-Liste (REITER,
+   reiterDerAufgabe, reiterSchluessel) liegt rein in web/reiter.js, die Tastenwahl in web/tastatur.js. */
 function vReiterleiste(a, gewaehlt) {
   return `<span class="seg" role="tablist" aria-label="Ansicht der Aufgabe">${reiterDerAufgabe(a).map(([k, t]) => `<span class="${gewaehlt === k ? 'an' : ''}" id="reiter-${k}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${gewaehlt === k}" aria-controls="reiterpanel-${k}" tabindex="${gewaehlt === k ? 0 : -1}">${t}</span>`).join('')}</span>`;
 }
