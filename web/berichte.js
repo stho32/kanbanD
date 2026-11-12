@@ -1,6 +1,6 @@
 /* kanbanD — Berichte: Zeitraum, Filter und Rechnungen über Bewegungen; rein, im Browser und in Node nutzbar. */
 (function (ziel) {
-  const { datumAusMs, datumLang, achsenMarke } = typeof module !== 'undefined' ? require('./kultur.js') : window;
+  const { datumAusMs, datumLang, achsenMarke, seitText } = typeof module !== 'undefined' ? require('./kultur.js') : window;
   const TAG = 864e5;
 
   /* ── Zeitraum und Filter (R00043) ── */
@@ -107,6 +107,24 @@
     let s = null;
     for (const w of wechsel) { if (zeitMs(w.zeitpunkt) > t) break; s = w.spalte; }
     return s;
+  }
+
+  /** Eintritt in die heutige Spalte (R00126, ADR-0019 N5): der letzte Wechsel mit einer Spalte bis `t` — Schwester von `spalteAm`,
+      liefert statt des Spaltennamens den `zeitpunkt`. `null`, wenn die Aufgabe nie auf dem Board war oder zuletzt davon genommen wurde. */
+  function eintrittAm(wechsel, t) {
+    let spalte = null, zeitpunkt = null;
+    for (const w of wechsel || []) { if (zeitMs(w.zeitpunkt) > t) break; spalte = w.spalte; zeitpunkt = w.zeitpunkt; }
+    if (spalte == null) return null;
+    return zeitpunkt;
+  }
+
+  /** Alter in der heutigen Spalte (R00126 FA 5/6, ADR-0019 N5): Kurzform und Vollform aus **einer** Dauer — `null` ohne Eintritt.
+      Die Dauer bildet `seitText` (ADR-0013), es entsteht keine zweite „seit …“-Regel. */
+  function alterText(wechsel, spalte, jetzt) {
+    const eintritt = eintrittAm(wechsel, jetzt);
+    if (eintritt == null || !spalte) return null;
+    const wort = seitText(jetzt - zeitMs(eintritt));
+    return { kurz: wort, voll: `${wort} in ${spalte}` };
   }
 
   /** Zählt eine Aufgabe in dieser Spalte? Filter nach Spalte, Farbe, Person, Label. */
@@ -836,5 +854,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
