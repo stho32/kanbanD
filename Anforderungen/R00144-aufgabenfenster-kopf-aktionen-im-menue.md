@@ -30,17 +30,20 @@ Wer eine Aufgabe ansieht, trifft im Kopf auf ↑, ↓, ↗, ▭, „Endgültig l
 ### Kopf des Aufgabenfensters
 
 1. Der Kopf trägt rechts, von links nach rechts: den **Ansichts-Auslöser** (aus R00145, er nennt die aktuelle Ansicht als Text), **„In VS Code öffnen"** (↗, unverändert), den **Aktions-Auslöser** (⋮) und — mit sichtbarem Abstand zum ⋮ — **✕**. Zähler, Blätterknöpfe, Archiv-Knopf, 1-px-Trenner und der beschriftete Lösch-Auslöser entfallen.
+   **Geometrie** (ux-Vorprüfung 2026-11-12, übernommen): links stehen `#nr`, Klasse und Pfad, rechts die Gruppe der Ziele; zwischen allen Zielen liegen 8 px (`--kd-s3`), es gibt **keinen** Trenner. Jedes Ziel ist quadratisch in `max(--kd-row, --kd-ziel)` (28 px fein, 48 px Touch) mit einem Glyph von 14–16 px. Der Ansichts-Auslöser ist ein Textknopf mit Caret `▾` (`aria-hidden`), Höhe `--kd-ziel`, Innenabstand 0 8 px, Schrift 12 px, Name `aria-label="Ansicht: <Name>"` (R00145 FA 4). Mit dem Wegfall des Trenners und der Blätterknöpfe geht der frei werdende Platz an den **Pfad**.
 2. Der Aktions-Auslöser ist ein **Symbolknopf** (⋮, Muster `DREI_PUNKTE` aus R00128) mit `aria-haspopup="menu"`, `aria-expanded` und dem zugänglichen Namen **„Weitere Aktionen für Aufgabe #<nr>"**; sein `title` lautet „Weitere Aktionen". Er trägt keinen sichtbaren Text.
 3. Das Menü führt in dieser Ausbaustufe **genau zwei Einträge**: **„Archivieren"** (bei einer archivierten Aufgabe **„Zurückholen"**) und **„Endgültig löschen"**. Jeder Eintrag trägt sein Symbol (Archiv bzw. Papierkorb) **und** seinen Text. „Endgültig löschen" ist der **letzte** Eintrag, in `--kd-warn` abgesetzt, mit genau einem Trenner davor. „Duplizieren" und „Verweis kopieren" sind **nicht** Teil dieser Anforderung (spätere Ergänzung, je ein Menüeintrag).
+   **Form** (ux-Vorprüfung 2026-11-12, übernommen): Das Menü trägt **keinen Titel** und **keinen Trenner am Anfang**; der einzige Trenner (`role="separator"`, 1 px `--kd-line`) steht zwischen „Archivieren" und „Endgültig löschen". Beide Einträge beginnen an derselben Textkante: eine Ikonspalte von 16 px trägt das Symbol, danach 8 px Lücke. Ein Eintrag ist `max(28px, --kd-ziel)` hoch, einzeilig, ohne Kürzel; das Menü ist `min(280px, 100vw − 16px)` breit (mindestens 200 px), hängt an der Unterkante des Kopfes, seine Endkante an der Endkante seines Auslösers und liegt ganz im sichtbaren Bereich. „Archivieren" trägt das Archiv-Zeichen, „Zurückholen" dasselbe Zeichen mit Pfeil nach oben, beide `aria-hidden`; die Archivleiste unter dem Kopf bleibt als zweiter Weg und trägt denselben Wortlaut „Zurückholen".
 4. **Symbol statt Beschriftung im Kopf.** Der Kopf führt keinen beschrifteten Lösch-Auslöser und keinen eigenen Archiv-Knopf mehr; das Papierkorb-Symbol steht am Menüeintrag, wo der Text hingehört. *(Aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): die Festlegung „Kopf-Auslöser bleibt beschriftet" aus `AI-Team/po-entscheidungen.md:196` gilt nicht mehr.)*
 5. **Wirkung unverändert.** „Archivieren" setzt `archived` und nimmt die Karte vom Board (R00017); „Zurückholen" holt sie zurück. „Endgültig löschen" öffnet **dieselbe** Rückfrage wie heute (`role="alertdialog" aria-modal="true"`, R00141 FA 11/12, B1/B2); Bestätigen löscht in einem Commit und schließt das Fenster (R00141 B4), Abbrechen ändert nichts.
-6. **Menü-Verhalten.** Das Menü ist `role="menu"` mit dem Namen „Weitere Aktionen für Aufgabe #<nr>"; die Einträge sind `role="menuitem"` mit `tabindex="-1"`. Beim Öffnen steht der Fokus auf dem ersten Eintrag. `↑`/`↓` (mit Umlauf), `Pos1`/`Ende`, `Enter`/`Leertaste` und ein Klick bedienen es; `Esc` und `Tab` schließen es und geben den Fokus an den ⋮-Auslöser zurück. Solange das Menü offen ist, greifen die Fenster-Kürzel nicht. Die Rückfrage liegt als `alertdialog` **über** dem Menü.
+6. **Menü-Verhalten.** Das Menü ist `role="menu"` mit dem Namen „Weitere Aktionen für Aufgabe #<nr>"; die Einträge sind `role="menuitem"` ohne Kürzel, mit `tabindex="-1"`. Beim Öffnen steht der Fokus auf dem ersten Eintrag. `↑`/`↓` (mit Umlauf), `Pos1`/`Ende`, `Enter`/`Leertaste` und ein Klick bedienen es; `Esc` und `Tab` schließen es und geben den Fokus an den ⋮-Auslöser zurück. Das Menü ist eine eigene Ebene der Fokusführung (`fenstermenue` zwischen `fenster` und `pop`), die Rückfrage liegt als `alertdialog` **darüber**. Solange das Menü offen ist, greifen die Fenster-Kürzel nicht. **Im Kopf ist höchstens ein Menü offen**: das Öffnen des Aktionsmenüs schließt ein offenes Ansichtsmenü (R00145) und umgekehrt — mit Rückgabe des Fokus an das neue Menü. **Kein Titel im Menü**: erlaubte Kinder eines `role="menu"` sind Einträge, Gruppen und Trenner (ADR-0018, Offene Fragen; R00136 hat die vier `h4`-Köpfe genau deshalb entfernt) — ein Name steht nur als `aria-label` und `title` am Auslöser. **Fokus auf dem Gefahreintrag** bleibt auf der Akzentfläche mit `--kd-on-accent`-Text (Haus: `.km-e.km-warn.an`); weißer Text auf `--kd-warn` ist verboten (dunkel 2,65:1).
 7. **Fokus nach der Rückfrage.** Bricht der Mensch die Rückfrage ab, kehrt der Fokus an den **⋮-Auslöser** (der Menüeintrag ist mit dem Menü fort); nach dem Bestätigen schließt das Fenster mit dem Fokusweg aus R00141 B4. Der Fokus fällt nie auf `BODY`.
 8. **Live-Ereignis.** Trifft bei offenem Menü ein Live-Ereignis ein, bleibt das Menü offen und der Fokus in ihm (R00106); die Einträge richten sich nach dem neu gezeichneten Stand („Archivieren" ↔ „Zurückholen").
 
 ### Blättern entfällt
 
 9. **Die Aktion „Blättern" entfällt vollständig**: keine Knöpfe ↑/↓ im Kopf, keine Tasten `↑`/`↓`, kein Zähler „i / n", kein Fußhinweis „↑ ↓ Karte wechseln", kein Eintrag in der Kürzelhilfe des Fensters. *(Funktionsstreichung durch Betreiber-Entscheidung 2026-11-12 (#144).)*
+   Der Fuß des Fensters nennt danach nur noch `Esc schließen`; `KUERZEL_FENSTER` führt weder `↑ ↓` noch — mit R00145 — `← →`.
 10. Eine andere Aufgabe erscheint danach **nur noch durch Öffnen** (Karte, Aufgabenliste, Personen-Seite, Link); `S.ui.offen` wechselt ausschließlich dort.
 11. `#t-mehr` der Kopfzeile und der Fenstertitel (R00116) bleiben **unberührt**.
 
@@ -51,8 +54,8 @@ Wer eine Aufgabe ansieht, trifft im Kopf auf ↑, ↓, ↗, ▭, „Endgültig l
 ## Nicht-funktionale Anforderungen
 
 - **Barrierefreiheit**: Der Aktions-Auslöser folgt dem APG-Muster „Menu Button" (`aria-haspopup="menu"`, `aria-expanded`), das Menü dem Muster „Menu" (Pfeile, `Pos1`/`Ende`, `Enter`, `Esc`); jeder Auslöser und jeder Eintrag hat einen zugänglichen Namen (WCAG 2.1 SC 4.1.2), der Fokus ist immer sichtbar (SC 2.4.7). Zielgrößen nach ADR-0012 (≥ 24 px fein, ≥ 44 px Touch); der Trefferhof darf den sichtbaren Rand überragen.
-- **Schmale Breiten**: Bei 320, 375 und 414 px bleibt der Kopf **einzeilig**; `scrollWidth ≤ clientWidth` für den Kopf und für die Seite. Das Menü liegt ganz im sichtbaren Bereich und scrollt nicht quer (ADR-0015).
-- **Farbe**: „Endgültig löschen" nutzt das vorhandene `--kd-warn`; kein neuer Farbwert (ADR-0011).
+- **Schmale Breiten**: Bei 320, 375 und 414 px bleibt der Kopf **einzeilig** und trägt **drei** Ziele — Ansicht, ⋮ und ✕. Vier 48-px-Ziele mit 3 × 8 px Lücke belegen bei 320 px 288 von 299 verfügbaren Pixeln (11 px Rest, mit dem Label „Verlauf" 5 px); jede Metrik-Abweichung kippt den Kopf in die zweite Zeile. **↗ bleibt deshalb bis 640 px versteckt** — wie heute gebaut (`web/kd-app.css:919`) und als einzige Ausnahme in `e2e/tests/r00111-schmal-wie-breit.spec.js:27` festgeschrieben; es erscheint ab 641 px. Einzeilig heißt: `#fenster .mod-kopf` ist höchstens `max(36px, --kd-ziel) + 2` hoch und die Ziele stehen auf derselben Oberkante (±1 px) — `scrollWidth ≤ clientWidth` allein beweist es nicht, ein umgebrochener Kopf erfüllt es auch (dreimal aufgetreten: `r00112`, `web/kd-app.css:920–927`). Für Kopf und Seite gilt zusätzlich `scrollWidth ≤ clientWidth`; das Menü liegt ganz im sichtbaren Bereich und scrollt nicht quer (ADR-0015).
+- **Farbe**: „Endgültig löschen" nutzt das vorhandene `--kd-warn`; kein neuer Farbwert (ADR-0011). Der Kontrast des Texts zum Hintergrund liegt auch **im Fokuszustand** bei ≥ 4,5:1, hell wie dunkel (`--kd-warn` auf `--kd-surface` 5,88:1 / 6,03:1; weiß auf `--kd-warn` nur 5,96:1 / 2,65:1 und damit verboten).
 
 ## Akzeptanzkriterien
 
@@ -60,9 +63,12 @@ Grundbestand (über die API herstellbar): Board „fabrik" mit den Spalten „Ei
 
 ### Kopf und Menü
 
-- [ ] Gegeben #1, wenn das Aufgabenfenster geöffnet wird, dann trägt der Kopf rechts die Auslöser **Ansicht**, **↗**, **⋮**, **✕** in dieser Reihenfolge; der ⋮ trägt `aria-haspopup="menu"`, `aria-expanded="false"` und den Namen „Weitere Aktionen für Aufgabe #1"; im Kopf steht kein beschrifteter Lösch-Auslöser, kein Archiv-Knopf, kein ↑, kein ↓, kein „i / n" und kein Trenner
-- [ ] Gegeben #1, wenn der ⋮-Auslöser betätigt wird, dann öffnet ein `role="menu"` mit dem Namen „Weitere Aktionen für Aufgabe #1" und genau zwei Einträgen „Archivieren" und „Endgültig löschen" in dieser Reihenfolge; der letzte trägt `--kd-warn` und hat genau einen Trenner davor; der Fokus steht auf „Archivieren"; `aria-expanded` ist `true`
-- [ ] Gegeben #1 ist archiviert, wenn das Menü geöffnet wird, dann lautet der erste Eintrag „Zurückholen", und seine Wahl holt #1 zurück (ein Commit)
+- [ ] Gegeben #1, wenn das Aufgabenfenster geöffnet wird, dann trägt der Kopf rechts die Auslöser **Ansicht**, **↗**, **⋮**, **✕** in dieser Reihenfolge, ohne Trenner dazwischen und mit 8 px Lücke; der Ansichts-Auslöser steht ganz links in der Gruppe und trägt seinen Caret `▾` (`aria-hidden`); der ⋮ trägt `aria-haspopup="menu"`, `aria-expanded="false"` und den Namen „Weitere Aktionen für Aufgabe #1"; im Kopf steht kein beschrifteter Lösch-Auslöser, kein Archiv-Knopf, kein ↑, kein ↓, kein „i / n" und kein Trenner
+- [ ] Gegeben #1, wenn der ⋮-Auslöser betätigt wird, dann öffnet ein `role="menu"` mit dem Namen „Weitere Aktionen für Aufgabe #1" und genau zwei Einträgen „Archivieren" und „Endgültig löschen" in dieser Reihenfolge; der letzte trägt `--kd-warn` und hat genau einen Trenner davor; das Menü trägt keinen Titel und keinen Trenner am Anfang; beide Einträge tragen ein Symbol in einer 16-px-Ikonspalte (danach 8 px) und beginnen an derselben Textkante; an keinem Eintrag steht ein Tastenkürzel; der Fokus steht auf „Archivieren"; `aria-expanded` ist `true`
+- [ ] Gegeben #1, wenn das Aufgabenfenster geöffnet ist, dann trägt der Pfad den frei gewordenen Platz (seine rechte Kante endet an der Zielgruppe, statt vor einem Zähler oder Trenner abzubrechen), und der Fuß des Fensters nennt nur `Esc schließen`
+- [ ] Gegeben #1 ist archiviert, wenn das Menü geöffnet wird, dann lautet der erste Eintrag „Zurückholen", trägt das Archiv-Zeichen mit Pfeil nach oben (`aria-hidden`), und seine Wahl holt #1 zurück (ein Commit); die Archivleiste unter dem Kopf bietet denselben Weg mit genau dem Wortlaut „Zurückholen"
+- [ ] Gegeben das offene ⋮-Menü mit Fokus auf „Endgültig löschen", wenn Text- und Flächenfarbe des fokussierten Eintrags gemessen werden, dann liegt der Kontrast bei mindestens 4,5:1 in Hell und in Dunkel; der Text steht auf der Akzentfläche mit `--kd-on-accent`, nicht auf `--kd-warn`
+- [ ] Gegeben das offene Ansichtsmenü von #1 (R00145), wenn der ⋮-Auslöser betätigt wird, dann ist genau **ein** `[role="menu"]` im Fenster offen, `aria-expanded` steht am Ansichts-Auslöser auf `false` und am ⋮ auf `true`, und der Fokus steht im neuen Menü; dasselbe umgekehrt vom offenen ⋮-Menü aus
 - [ ] Gegeben das offene Menü von #1, wenn „Archivieren" gewählt wird, dann ist das Menü zu, #1 ist vom Board genommen, ein Commit „#1 archiviert" ist entstanden, und der Fokus steht wieder auf dem ⋮-Auslöser
 - [ ] Gegenbeispiel: Gegeben #1, wenn der ⋮-Auslöser zweimal betätigt wird, dann ist das Menü beim zweiten Mal zu, `aria-expanded` ist `false`, und nichts ist geschrieben
 
@@ -74,7 +80,7 @@ Grundbestand (über die API herstellbar): Board „fabrik" mit den Spalten „Ei
 ### Blättern entfällt
 
 - [ ] Gegeben #1 ist offen und #2 steht in derselben Spalte, wenn das Fenster bedient wird, dann gibt es **keinen** Weg, mit dem eine Taste ohne Eingabefeld zur nächsten oder vorigen Aufgabe wechselt: `↓` und `↑` lösen keine Aktion aus, und das Fenster zeigt weiter #1
-- [ ] Gegeben das Aufgabenfenster ist offen, wenn die Kürzelhilfe geöffnet wird, dann enthält sie **keinen** Eintrag „↑ ↓" mit „vorige / nächste Karte" und keinen anderen Eintrag, den es nicht mehr gibt
+- [ ] Gegeben das Aufgabenfenster ist offen, wenn die Kürzelhilfe geöffnet wird, dann enthält sie **keinen** Eintrag „↑ ↓" mit „vorige / nächste Karte", keinen Eintrag „← →" und keinen anderen Eintrag, den es nicht mehr gibt; der Fuß des Fensters nennt statt „↑ ↓ Karte wechseln" nur noch `Esc schließen`
 - [ ] Gegeben #1 ist offen, wenn es geschlossen und danach #2 geöffnet wird, dann zeigt das Fenster #2 (der einzige Weg zu einer anderen Aufgabe)
 
 ### Tastatur, Fokus, Live
@@ -86,12 +92,12 @@ Grundbestand (über die API herstellbar): Board „fabrik" mit den Spalten „Ei
 
 ### Schmale Breiten
 
-- [ ] Gegeben #1, wenn das Aufgabenfenster bei 320, 375 und 414 px Breite jeweils in Hell und in Dunkel geöffnet wird, dann steht der Kopf einzeilig, alle vier Auslöser liegen ganz im sichtbaren Bereich und sind per Klick wie per Tastatur bedienbar, und für Kopf und Seite gilt `scrollWidth ≤ clientWidth`
+- [ ] Gegeben #1, wenn das Aufgabenfenster bei 320, 375 und 414 px Breite jeweils in Hell und in Dunkel geöffnet wird, dann steht der Kopf **einzeilig**: `#fenster .mod-kopf` ist höchstens `max(36px, --kd-ziel) + 2` hoch, und Ansicht, ⋮ und ✕ stehen auf derselben Oberkante (±1 px); die drei Ziele liegen ganz im sichtbaren Bereich und sind per Klick wie per Tastatur bedienbar; **↗ ist unter 641 px nicht sichtbar** (die Ausnahme in `r00111` bleibt unverändert) und ab 641 px sichtbar; für Kopf und Seite gilt `scrollWidth ≤ clientWidth`
 - [ ] Gegeben dieselben Breiten, wenn das Menü geöffnet wird, dann liegt es ganz im sichtbaren Bereich, „Endgültig löschen" bricht nicht ab, und die Seite scrollt nicht quer
 
 ## Betroffene Verzeichnisstruktur
 
-- Oberfläche: `web/ansicht.js` (`vFenster`: Kopf; neuer Renderer für das Aktionsmenü, Muster `vBoardMenue`/`vMenue`), `web/app.js` (`act`-Zweige `archivieren`, `zurueckholen`, `endgueltig-loeschen` aus dem Menü; neuer Zweig für das offene Kopf-Menü; `case 'blaettern'` und der `↑`/`↓`-Hörer entfallen; `sichtbareReihe` verliert den letzten Aufrufer), `web/menue.js`/`web/fokus.js` (Ebene `fenstermenue`), `web/kd-app.css` (Kopf, Menü, Abstand zum ✕), `KUERZEL_FENSTER` in `web/ansicht.js`.
+- Oberfläche: `web/ansicht.js` (`vFenster`: Kopf; neuer Renderer für das Aktionsmenü nach dem Muster `vBoardMenue` — **nicht** `vMenue`, das zeichnet `.km-titel` in ein `role="menu"`), `web/app.js` (`act`-Zweige `archivieren`, `zurueckholen`, `endgueltig-loeschen` aus dem Menü; neuer Zweig für das offene Kopf-Menü; `case 'blaettern'` und der `↑`/`↓`-Hörer entfallen; `sichtbareReihe` verliert den letzten Aufrufer), `web/menue.js`/`web/fokus.js` (Ebene `fenstermenue`), `web/kd-app.css` (Kopf: 8-px-Lücken, Ziele `max(--kd-row, --kd-ziel)`, `flex-wrap:nowrap`, das alte `width:44px` entfällt; Menü: Ikonspalte, Trenner, Warn-/Fokuszustand), `KUERZEL_FENSTER` in `web/ansicht.js`.
 - Tests: `e2e/tests/r00144-kopf-aktionen.spec.js` neu; `e2e/tests/r00141-endgueltig-loeschen.spec.js` (Auslöser im Fenster), `r00116-titel-*`, `r00105-preisetikett.spec.js`, `r00111-schmal-wie-breit.spec.js`, `r00112-rueckgaengig.spec.js` und `e2e/tests/ziele.spec.js` ziehen nach.
 
 ## Technische Überlegungen
@@ -100,10 +106,10 @@ Grundbestand (über die API herstellbar): Board „fabrik" mit den Spalten „Ei
 
 1. **Menü-Ebene und Auslöser** (F0115, Walking Slice)
    - 1.1 Ebene `fenstermenue` in `web/fokus.js` zwischen `fenster` und `pop`; Selektor aus dem offenen Menü im Zustand, Startziel erster Eintrag, `Esc`/`Tab` schließen mit Rückgabe an den Auslöser (B0659)
-   - 1.2 Kopf umbauen: ⋮ statt ▭/Trenner/beschriftetem Papierkorb; Einträge „Archivieren"/„Zurückholen" und „Endgültig löschen" (warn, letzter, ein Trenner davor, je mit Symbol) (B0660)
+   - 1.2 Kopf umbauen: ⋮ statt ▭/Trenner/beschriftetem Papierkorb, Lücken 8 px, Ziele in `max(--kd-row, --kd-ziel)`; Menü ohne Titel, mit Ikonspalte 16 + 8 px und genau einem Trenner vor „Endgültig löschen" (warn, letzter, je mit Symbol); unter 641 px drei Ziele, ↗ versteckt (B0660)
    - 1.3 Fokus, Kürzel-Sperre und Live-Verhalten des offenen Menüs (B0661)
 2. **Blättern streichen** (F0116)
-   - 2.1 Aktion, Tasten, Zähler, Fußhinweis, `sichtbareReihe` und Kürzelzeile entfernen (B0663)
+   - 2.1 Aktion, Tasten, Zähler, Fußhinweis, `sichtbareReihe` und Kürzelzeile entfernen; der frei werdende Platz geht an den Pfad, der Fuß nennt nur `Esc schließen` (B0663)
    - 2.2 Proben umstellen: R00105/R00110/R00116/R00123/R00127 prüfen statt „blättern" das Öffnen einer anderen Aufgabe (B0664)
 3. **Nachzug der Festlegungen** (F0117)
    - 3.1 R00141 FA/AK, R00128-Notiz, D00001/D00006, `KUERZEL_FENSTER` und Handbuch (B0665)
@@ -130,7 +136,8 @@ Grundbestand (über die API herstellbar): Board „fabrik" mit den Spalten „Ei
 
 ### Gestaltung
 
-- **ux-Vorprüfung** vor dem Bau der Oberfläche: neue Zustände am **Artboard D0003** — „Kopf mit ⋮" (hell und dunkel, 1280 · 414 · 320 px), offenes Aktionsmenü („Archivieren", „Endgültig löschen" warn/letzter/Trenner davor, je mit Symbol), Zustand einer archivierten Aufgabe („Zurückholen"). Der **product-owner gibt frei**, bevor die Oberflächen-Bubbles bauen. B0659 (reine Ebenen-Ergänzung mit Unit-Probe) ist frei baubar.
+- **ux-Vorprüfung: liegt vor** (2026-11-12, Detailblatt der ux-Vorprüfung #144/#145). Festgelegt und hier übernommen: Menüform `role="menu"` mit `menuitem`; Kopf-Geometrie mit 8-px-Lücken, ohne Trenner, Zielen in `max(--kd-row, --kd-ziel)` und Glyph 14–16 px; bei 320/375/414 px drei Ziele mit verstecktem ↗; Menü ohne Titel, Ikonspalte 16 + 8 px, genau ein Trenner; Fokus auf dem Gefahreintrag auf der Akzentfläche; „Zurückholen" mit Archiv-Zeichen plus Pfeil.
+- **Noch zu zeichnen** sind die Zustände am **Artboard D0003** je hell und dunkel: Kopf mit ⋮ (1280 · 414 · 320 px), offenes Aktionsmenü (Einträge, Ikonspalte, ein Trenner, Warnfarbe), Fokus auf „Endgültig löschen" (Kontrastbeleg), archivierte Aufgabe („Zurückholen", Archivleiste), dazu die Mess-/Kontrasttabelle und die Zielgrößen (Ansicht · ⋮ · ✕ · Menüeintrag). Der **product-owner gibt frei**, bevor die Oberflächen-Bubbles bauen. Frei baubar bleibt B0659 (reine Ebenen-Ergänzung mit Unit-Probe) sowie alles, was nicht Oberfläche ist.
 
 ## Tests
 
@@ -138,7 +145,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
 **Unit (pure Logik):** `ebenen(ui)` mit offenem Kopf-Menü über offenem Fenster in der Reihenfolge `fenster` < `fenstermenue`; Startziel und Rückgabe; `reiterSchluessel`/`sichtbareReihe`-Wegfall (kein Aufrufer mehr); Menüzustand nach Neuzeichnen.
 
-**E2E:** `e2e/tests/r00144-kopf-aktionen.spec.js` — US-1 bis US-6: Kopf ohne Blätterknöpfe/Zähler/beschrifteten Papierkorb; Menü öffnen, Einträge und Warnklasse, Tastatur, `Esc`-Kaskade, Kürzel-Sperre im offenen Menü; Archivieren und Zurückholen; Rückfrage aus dem Menü samt Abbruch-Fokus am ⋮; Live-Ereignis bei offenem Menü; 320/375/414 px hell und dunkel ohne Querscrollen. Bestehende Proben, die `↓`/`↑` oder `getByRole('button', {name: 'Endgültig löschen'})` im Kopf nutzen, werden umgestellt. Gegenprobe: nach dem Ansehen ohne Aktion sind Aufgabendatei und `git log` unverändert.
+**E2E:** `e2e/tests/r00144-kopf-aktionen.spec.js` — US-1 bis US-6: Kopf ohne Blätterknöpfe/Zähler/beschrifteten Papierkorb (drei Ziele bei 320/375/414 px, vier ab 641 px); Menü öffnen, Einträge, Ikonspalte, genau ein Trenner, kein Titel, Warnklasse, Tastatur, `Esc`-Kaskade, Kürzel-Sperre im offenen Menü; Archivieren und Zurückholen (Archivleiste mit demselben Wortlaut); Rückfrage aus dem Menü samt Abbruch-Fokus am ⋮; Live-Ereignis bei offenem Menü; höchstens ein offenes Kopf-Menü (mit R00145); Kontrast des fokussierten Warn-Eintrags; 320/375/414 px hell und dunkel **mit Höhen- und Oberkantenmessung** (`clientHeight ≤ max(36px, --kd-ziel) + 2`, gleicher `top` ±1 px) statt nur `scrollWidth`. Bestehende Proben, die `↓`/`↑` oder `getByRole('button', {name: 'Endgültig löschen'})` im Kopf nutzen, werden umgestellt. Gegenprobe: nach dem Ansehen ohne Aktion sind Aufgabendatei und `git log` unverändert.
 
 ## Abhängigkeiten
 
@@ -154,7 +161,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 
 ## Manuelle Vorbereitungstätigkeiten
 
-- **ux-Vorprüfung** mit den Zuständen „Kopf mit ⋮", „Aktionsmenü offen", „archivierte Aufgabe (Zurückholen)" an **D0003**, hell/dunkel, 1280 · 414 · 320 px; **Freigabe durch den product-owner** vor dem Bau der Oberflächen-Bubbles (B0660, B0661). B0659 ist frei baubar.
+- **ux-Vorprüfung: erledigt** (2026-11-12, Detailblatt der ux-Vorprüfung #144/#145). Offen ist das **Zeichnen** der Zustände „Kopf mit ⋮", „Aktionsmenü offen", „Fokus auf Endgültig löschen", „archivierte Aufgabe (Zurückholen)" an **D0003**, hell/dunkel, 1280 · 414 · 320 px, samt Mess-/Kontrasttabelle; **Freigabe durch den product-owner** vor dem Bau der Oberflächen-Bubbles (B0660, B0661, B0662). B0659 ist frei baubar.
 
 ## Manuelle Nachbereitungstätigkeiten
 
@@ -174,3 +181,4 @@ Auslöser ist der Betreiber-Eindruck, der Kopf sei „zu voll und falsch gewicht
 - **Blättern — Optionen:** (A, **gewählt**) vollständig streichen (Knöpfe, Tasten, Zähler, Kürzel). (B) nur die Knöpfe streichen, Tasten behalten — unsichtbare Bedienung, die niemand entdeckt, und die Tests blieben an einer Funktion hängen, die keiner braucht. (C) Blättern in die Kopfzeile verlegen — neuer Ort für eine gestrichene Funktion; verworfen.
 - **Verworfene Alternativen:** ein „…"-Menü zusätzlich zum ⋮ (zwei Auslöser für eine Aufgabe, ADR-0018 N2 erlaubt höchstens zwei **Menüs** im Kopf, davon eines die Ansicht); ein `<select>` für die Aktionen (Aktionen sind keine Auswahl, sondern Befehle).
 - **Abgrenzung:** Die Ansichtsumschaltung ist **nicht** Teil dieser Anforderung (R00145); der Fenstertitel und `#t-mehr` bleiben unberührt (R00116, R00140).
+- **ux-Vorprüfung (2026-11-12) übernommen, nicht neu entschieden:** Menüform `role="menu"` mit `menuitem` (nicht `<select>`, nicht `tablist`); Kopf mit 8-px-Lücken ohne Trenner und Zielen in `max(--kd-row, --kd-ziel)`; bei 320/375/414 px **drei** Ziele mit verstecktem ↗; Menü ohne Titel und ohne Trenner am Anfang, Ikonspalte 16 + 8 px, Eintrag `max(28px, --kd-ziel)`, keine Kürzel; Fokus auf dem Gefahreintrag auf der Akzentfläche (M4); Höhen-/Oberkantenmessung statt `scrollWidth` allein (M3); höchstens ein offenes Kopf-Menü (S4); „Zurückholen" mit Archiv-Zeichen plus Pfeil (S8). Die AK „alle vier Auslöser" ist damit auf drei gezogen (M1).
