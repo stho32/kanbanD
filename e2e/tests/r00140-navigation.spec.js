@@ -221,7 +221,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-5/AK 4: auf jeder Route trägt genau ein Bedienelement `an` + aria-current — im Menü bei Sekundärrouten', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     for (const route of ROUTEN) {
@@ -241,7 +240,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-5/AK 5: bei 560 px in der Aufgabenliste ist „Aufgaben“ im Menü „…“ markiert, der Seitenknopf nennt die Seite', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 560, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/aufgaben');
@@ -254,7 +252,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('AK 6: ein Ziel aus dem Menü entfernt macht die Probe rot', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     let griff = false;
     await page.route('**/ansicht.js', async route => {
       const antwort = await route.fetch();
@@ -273,7 +270,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('AK 11: der WBS-Eintrag als bloßer Link ohne Rolle macht die Probe rot', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     let griff = false;
     await page.route('**/ansicht.js', async route => {
       const antwort = await route.fetch();

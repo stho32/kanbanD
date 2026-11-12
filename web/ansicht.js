@@ -125,10 +125,16 @@ function vBereichChips() {
  *  Trenner, dann die Werkzeuge. Jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
 function vMehrPop() {
   const u = S.ui;
-  /** Ein Ziel in der Form von vSeitenPop: menuitem-Link mit tabindex="-1", Ziel im Hash. */
-  const mehrZiel = (titel, hash) => `<a class="iz" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
-  const wbs = gebunden().map(a => mehrZiel(gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS', '#/wbs/' + esc(encodeURIComponent(a.kuerzel)))).join('');
-  const ziele = `${mehrZiel('Aufgaben', '#/aufgaben')}${mehrZiel('Personen', '#/personen')}${wbs}${mehrZiel('Einrichten', '#/einrichten')}`;
+  /** Ein Ziel in der Form von vSeitenPop: menuitem-Link mit tabindex="-1", Ziel im Hash, Markierung über aktuelleSeite. */
+  const mehrZiel = (titel, istAktuell, hash) => {
+    const eintrag = aktuelleSeite(istAktuell);
+    return `<a class="${cssKlassen('iz', eintrag.klasse)}"${eintrag.attribut} href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
+  };
+  const wbs = gebunden().map(a => {
+    const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
+    return mehrZiel(titel, u.view === 'wbs' && wbsKuerzel() === a.kuerzel, '#/wbs/' + esc(encodeURIComponent(a.kuerzel)));
+  }).join('');
+  const ziele = `${mehrZiel('Aufgaben', u.view === 'aufgaben', '#/aufgaben')}${mehrZiel('Personen', u.view === 'personen', '#/personen')}${wbs}${mehrZiel('Einrichten', u.view === 'einrichten', '#/einrichten')}`;
   const eintrag = {
     signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">${u.signaleOben ? '<span class="kz-auswahl-haken" aria-hidden="true">☑</span>' : ''}Signale oben</button>`,
     spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" tabindex="-1" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
