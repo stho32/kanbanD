@@ -92,7 +92,6 @@ test.describe('R00136 Menüköpfe in role=menu ohne Überschrift', () => {
   test.describe.configure({ timeout: 120000 });
 
   test('US-1: kein Menü führt eine Überschrift', async ({ page }) => {
-    test.fail(true, 'Karte #109: heute vier h4 in role=menu (B0618/B0619)');
     const k = await starten(page);
     const treffer = [];
     await jeMenue(page, k, async m => { treffer.push(...await ueberschriftenInMenues(page)); });
@@ -100,7 +99,6 @@ test.describe('R00136 Menüköpfe in role=menu ohne Überschrift', () => {
   });
 
   test('US-2: Name und Kopftext bleiben', async ({ page }) => {
-    test.fail(true, 'Karte #109: die vier Köpfe sind heute h4 (B0618/B0619)');
     const k = await starten(page);
     const verstoesse = [];
     await jeMenue(page, k, async m => {
@@ -146,7 +144,6 @@ test.describe('R00136 Menüköpfe in role=menu ohne Überschrift', () => {
   });
 
   test('AK 4: „h4 zurück ins Menü“ macht die Probe rot und nennt das Menü', async ({ page }) => {
-    test.fail(true, 'Karte #109: ohne den Bau greift die Mutante nicht (B0618)');
     let mutanteGriff = false;
     await page.route('**/ansicht.js', async route => {
       const antwort = await route.fetch();

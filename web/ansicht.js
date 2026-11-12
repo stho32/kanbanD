@@ -108,7 +108,7 @@ function vSeitenPop() {
   }).join('');
   const berichteEintrag = aktuelleSeite(name === 'Berichte');
   const berichte = `<button type="button" class="${cssKlassen('iz', berichteEintrag.klasse)}"${berichteEintrag.attribut} data-act="pop" data-arg="ber" role="menuitem" tabindex="-1" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
-  return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><h4>SEITE</h4>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><div class="pop-kopf">SEITE</div>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
 }
 
 const BEREICHE = [['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']];
@@ -136,7 +136,7 @@ function vMehrPop() {
     ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" tabindex="-1" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
   };
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
-  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><h4>MEHR</h4>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><div class="pop-kopf">MEHR</div>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
 }
 
 function ichNameOderLeer() {
@@ -989,7 +989,7 @@ function vLegenPop() {
   const nr = S.ui.legenNr, a = aufgabe(nr);
   if (!a) return '';
   const frei = (S.boards || []).filter(b => !b.archiviert && !b.spalten.some(sp => sp.aufgaben.includes(nr)));
-  return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu" aria-label="#${nr} auf Board legen"><h4>#${nr} AUF BOARD LEGEN</h4>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem" tabindex="-1">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
+  return `<div class="pop" id="pop" data-for="leg-${nr}" data-al="r" style="width:300px" role="menu" aria-label="#${nr} auf Board legen"><div class="pop-kopf">#${nr} AUF BOARD LEGEN</div>${frei.length ? frei.map(b => b.spalten.map(sp => `<div class="iz" data-act="legen" data-arg="${esc(b.slug)}|${nr}|${esc(sp.name)}" role="menuitem" tabindex="-1">${esc(b.titel)} · ${esc(sp.name)}</div>`).join('')).join('') : '<div class="fuss">liegt schon auf allen Boards</div>'}</div>`;
 }
 
 /* ── Personen (Artboard D0005) ── */
@@ -1651,7 +1651,7 @@ function vWbsTabelle(w) {
 function vWbsStatusPop() {
   const id = S.ui.wbsKnoten, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
   if (!k) return '';
-  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><h4>STATUS <span class="mono">${esc(id)}</span></h4>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem" tabindex="-1"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
+  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><div class="pop-kopf">STATUS <span class="mono">${esc(id)}</span></div>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem" tabindex="-1"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
 }
 
 /** Neuer Knoten unter einem Eltern-Knoten: Ebene, Name, Fertig-Kriterium; Bubbles dazu Eingabe → Ausgabe und Aufwand. */
