@@ -74,26 +74,40 @@ const RUECKGABE_MUTANTEN = [
   { name: 'return ohne v-Präfix', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return wbsSicht();" },
 ];
 
-/** Der Navigationseintrag, der je Route `aria-current="page"` trägt (US-9); `#t-ber` ist der Auslöser des Berichtsmenüs. */
+/** Der Eintrag, der je Route `an` + `aria-current="page"` trägt (US-9): in der Leiste (Board, Berichte) oder im Menü „…“ (R00140). */
 const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten', 'WBS-Sicht': 'WBS' };
-const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || '#t-ber Berichte';
+const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || 'Berichte';
+/** Die Sekundärrouten: ihre aktuelle Seite liegt im Menü „…“ und ist nur bei geöffnetem Menü im Dokument (R00140). */
+const IM_MEHR = new Set(['Aufgabenliste', 'Personen', 'WBS-Sicht', 'Einrichten']);
 
-/** Verstöße gegen „genau ein Link der Navigation trägt aria-current=page, und zwar der der Route“. */
+/** Öffnet das Menü „…“ (Mehr), falls es zu ist. */
+async function mehrOeffnen(page) {
+  if (await page.locator('#pop[aria-label="Mehr"]').count() === 0) await page.locator('#t-mehr').click();
+  await page.locator('#pop[aria-label="Mehr"]').waitFor();
+}
+
+/** Verstöße gegen „genau ein Bedienelement der Kopfzeile trägt `an` + `aria-current="page"` — der Eintrag mit `an`,
+ *  in der Leiste oder im Menü „…“ (ADR-0018 Regel 5 geweitet)“. Das Menü „…“ ist dabei offen, damit auch der Menüeintrag zählt. */
 async function aktuelleSeitePruefen(page, route) {
-  const aktuell = await page.locator('nav a[aria-current="page"]').evaluateAll(links => links.map(a => [a.id && '#' + a.id, a.firstChild.textContent.trim()].filter(Boolean).join(' ')));
+  await mehrOeffnen(page);
+  const orte = 'header.kz [aria-current="page"], #pop[role="menu"] [aria-current="page"]';
+  const markiert = await page.locator(orte).evaluateAll(es => es.map(e => ({ text: e.textContent.replace(/[▾▸◐\s]/g, '').trim(), an: e.classList.contains('an') })));
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pop')).toHaveCount(0);
   const erwartet = erwarteterEintrag(route);
-  if (aktuell.length === 1 && aktuell[0] === erwartet) return [];
-  return [`${route.ansicht}: aria-current an „${aktuell.join(', ')}“ statt „${erwartet}“`];
+  const verstoesse = [];
+  if (markiert.length !== 1 || markiert[0].text !== erwartet) verstoesse.push(`${route.ansicht}: aria-current an „${markiert.map(m => m.text).join(', ')}“ statt „${erwartet}“`);
+  else if (!markiert[0].an) verstoesse.push(`${route.ansicht}: der Eintrag mit aria-current trägt kein an`);
+  // Der „…“-Auslöser kennzeichnet die Sekundärseite nie (R00140 FA 11).
+  if (await page.locator('header.kz #t-mehr.an, header.kz #t-mehr[aria-current="page"]').count()) verstoesse.push(`${route.ansicht}: der „…“-Auslöser ist markiert`);
+  return verstoesse;
 }
 
-/** Name der Seite im Seitenknopf und Eintrag des Seitenmenüs, der je Route `aria-current="page"` trägt (US-10). */
-function erwarteteSeite(route) {
-  const eintrag = AKTUELLER_EINTRAG[route.ansicht];
-  if (eintrag) return eintrag;
-  return 'Berichte';
-}
+/** Name der Seite im Seitenknopf (US-10). */
+const erwarteteSeite = route => erwarteterEintrag(route);
 
-/** Verstöße gegen „unter 600 px keine navigation, der Seitenknopf nennt die Seite, im Seitenmenü trägt genau ihr Eintrag mit .an aria-current“. */
+/** Verstöße gegen „unter 600 px keine navigation, der Seitenknopf nennt die Seite, und in dem Menü, das ihre Seite führt,
+ *  trägt genau ihr Eintrag mit `an` aria-current“ (Seitenmenü für Board/Berichte, Menü „…“ für die vier Sekundärziele). */
 async function seitenmenuePruefen(page, route) {
   const erwartet = erwarteteSeite(route);
   const verstoesse = [];
@@ -102,14 +116,14 @@ async function seitenmenuePruefen(page, route) {
   const knopf = page.locator('#t-seite');
   const name = await knopf.getAttribute('aria-label');
   if (name !== `Seite: ${erwartet}`) verstoesse.push(`${route.ansicht}: Seitenknopf „${name}“ statt „Seite: ${erwartet}“`);
-  await knopf.click();
-  const menue = page.getByRole('menu', { name: 'Seite' });
+  await page.locator(IM_MEHR.has(route.ansicht) ? '#t-mehr' : '#t-seite').click();
+  const menue = page.locator('#pop[role="menu"]');
   await menue.waitFor();
-  const aktuell = await menue.locator('[aria-current="page"]').evaluateAll(eintraege => eintraege.map(e => ({ text: e.firstChild.textContent.trim(), an: e.classList.contains('an') })));
-  await knopf.click();
+  const markiert = await menue.locator('[aria-current="page"]').evaluateAll(es => es.map(e => ({ text: e.textContent.replace(/[▾▸◐\s]/g, '').trim(), an: e.classList.contains('an') })));
+  await page.keyboard.press('Escape');
   await expect(menue).toHaveCount(0);
-  const genauDerEintrag = aktuell.length === 1 && aktuell[0].text === erwartet && aktuell[0].an;
-  if (!genauDerEintrag) verstoesse.push(`${route.ansicht}: aria-current im Seitenmenü an „${aktuell.map(e => e.text).join(', ')}“ statt „${erwartet}“`);
+  const genauDerEintrag = markiert.length === 1 && markiert[0].text === erwartet && markiert[0].an;
+  if (!genauDerEintrag) verstoesse.push(`${route.ansicht}: aria-current im offenen Menü an „${markiert.map(e => e.text).join(', ')}“ statt „${erwartet}“`);
   return verstoesse;
 }
 
@@ -117,14 +131,10 @@ async function seitenmenuePruefen(page, route) {
 const BERICHT = ROUTEN.find(r => r.ansicht === 'Bericht verlauf');
 const OHNE_AKTUELL = [
   { eintrag: 'Navigation Board', aus: '${board.attribut}', ansicht: 'Board', breite: 1280 },
-  { eintrag: 'Navigation Aufgaben', aus: '${aufgaben.attribut}', ansicht: 'Aufgabenliste', breite: 1280 },
-  { eintrag: 'Navigation Personen', aus: '${personen.attribut}', ansicht: 'Personen', breite: 1280 },
   { eintrag: 'Navigation Berichte', aus: '${berichte.attribut}', ansicht: BERICHT.ansicht, breite: 1280 },
-  { eintrag: 'Navigation Einrichten', aus: '${einrichten.attribut}', ansicht: 'Einrichten', breite: 1280 },
-  { eintrag: 'Navigation WBS', aus: '${wbsLink.attribut}', ansicht: 'WBS-Sicht', breite: 1280 },
-  { eintrag: 'Seitenmenü Ziel', aus: '${zielEintrag.attribut}', ansicht: 'Aufgabenliste', breite: 560 },
-  { eintrag: 'Seitenmenü WBS', aus: '${wbsEintrag.attribut}', ansicht: 'WBS-Sicht', breite: 560 },
+  { eintrag: 'Seitenmenü Ziel', aus: '${zielEintrag.attribut}', ansicht: 'Board', breite: 560 },
   { eintrag: 'Seitenmenü Berichte', aus: '${berichteEintrag.attribut}', ansicht: BERICHT.ansicht, breite: 560 },
+  { eintrag: 'Menü Mehr Ziel', aus: '${eintrag.attribut}', ansicht: 'Aufgabenliste', breite: 1280 },
 ];
 
 let laufende = [];
@@ -434,12 +444,12 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       expect(verstoesse).toEqual([]);
     });
 
-    test('US-9: M4 — ein zweites aria-current an „Aufgaben“ macht die Probe rot', async ({ page }) => {
+    test('US-9: M2 — ein zweiter Menüeintrag zusätzlich markiert macht die Probe rot', async ({ page }) => {
       await page.route('**/ansicht.js', async route => {
         const antwort = await route.fetch();
         const text = await antwort.text();
-        const mutiert = text.replace('<a href="#/aufgaben" class="', '<a href="#/aufgaben" aria-current="page" class="');
-        expect(mutiert, 'Mutante M4 greift nicht').not.toBe(text);
+        const mutiert = text.replace("mehrZiel('Personen', u.view === 'personen', '#/personen')", "mehrZiel('Personen', true, '#/personen')");
+        expect(mutiert, 'Mutante M2 greift nicht').not.toBe(text);
         await route.fulfill({ response: antwort, body: mutiert });
       });
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -447,7 +457,7 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       const board = ROUTEN.find(r => r.ansicht === 'Board');
       await page.goto(k.adresse + board.adresse);
       await gezeichnet(page, board.adresse, board.bereit);
-      expect(await aktuelleSeitePruefen(page, board)).toEqual(['Board: aria-current an „Board, Aufgaben“ statt „Board“']);
+      expect(await aktuelleSeitePruefen(page, board)).toEqual(['Board: aria-current an „Board, Personen“ statt „Board“']);
     });
 
     test('US-10: schmal nennt das Seitenmenü die aktuelle Seite', async ({ page }) => {
