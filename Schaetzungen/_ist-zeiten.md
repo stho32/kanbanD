@@ -529,3 +529,12 @@ Nie vom User erfragen.
 | 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0619 Gestaltung des Pop-Kopfes an der Klasse | Standard | 0,25-0,5 | 0,25h | 0,25h | autonom |
 | 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0620 X00005-Systemantwort nachführen | Standard | 0,25-0,5 | 0,25h | 0,25h | autonom |
 | 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | Lauf R00136 | Konsolidierung | — | — | 0,75h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0621 Leiste und Seitenmenü auf zwei Ziele kürzen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0622 Die vier Ziele ins Menü „Mehr“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0649 Ein Trenner zwischen Zielen und Werkzeugen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0625 Aktive Seite im Menü „Mehr“ markieren | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0627 ADR-0018 Regel 5 und X00005 nachziehen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0623 Akzeptanzprobe „Ziele wandern“ | Akzeptanztest | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0626 R00113-Probe weiten und Mutanten | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | B0624 Bestehende Kopfzeilen-Proben nachziehen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | Lauf R00140 | Konsolidierung | — | — | 0,3h | autonom |
