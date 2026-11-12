@@ -44,7 +44,7 @@ Soll nach [ADR-0018](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer
   - Tastatur, Öffnen, Ziehen und Fokusführung bleiben unverändert.
 - **Name aus dem Renderer:** Den Namen schreibt nur das Zeichnen (`vKarte`, `vDefekt`, `vFehlt`). Ein Live-Ereignis erneuert ihn über `render()` nach ADR-0014, es gibt keinen Nachführer.
 - **Zustände:**
-  - `aria-current="page"` steht unter derselben Bedingung wie die Klasse `an`: in der Navigation genau einmal, im Seitenmenü am Eintrag mit `an`.
+  - `aria-current="page"` steht unter derselben Bedingung wie die Klasse `an` (Helfer `aktuelleSeite`): in der Kopfzeile genau einmal — in der Leiste (Board, Berichte) bzw. im Seitenmenü unter 600 px; seit R00140 (I0126) auch am Eintrag im Menü „…“ (Aufgaben, Personen, WBS, Einrichten), der Auslöser „…“ bleibt unmarkiert.
   - `aria-expanded` am Klapp-Knopf der Spalte steht statisch im Markup: `.bk-name` true, `.zu-streifen` false.
 - **Menüs:** In keinem Element mit `role="menu"` steht ein `h1`–`h6`; die vier Menüköpfe „SEITE" (`vSeitenPop`), „MEHR" (`vMehrPop`), „#n AUF BOARD LEGEN" (`vLegenPop`) und „STATUS <Knoten>" (`vWbsStatusPop`) sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung hängt an der Klasse. Erweitert nach I0125/R00136 (Karte #109): `web/ansicht.js` (die vier Renderer, dazu tragen die `h4` der Pop-Fenster dieselbe Klasse) und `web/kd-app.css:244–245`; Probe `e2e/tests/r00136-menuekoepfe.spec.js` (kein `h1`–`h6` in `[role=menu]`, Name und Kopftext, berechnete Werte, Mutante „h4 zurück ins Menü").
 

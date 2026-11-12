@@ -137,9 +137,10 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
    - Ein Live-Ereignis erneuert den Namen über `laden()` → `uebernehmen()` → `render()` (ADR-0014). Ein verworfenes Laden zeichnet nicht und ändert daher auch den Namen nicht.
    - `kartenName` liegt in einem Modul, das im Browser und in Node lädt (Muster `web/uebernahme.js`), damit ein Unit-Test es ohne Browser prüft.
 5. **Aktuelle Seite**:
-   - Genau ein `nav a[aria-current="page"]`, gesetzt unter derselben Bedingung wie die Klasse `an` in `vNavigation()`.
-   - Auf einer Berichtsroute trägt es der Auslöser `a#t-ber`, auf der WBS der Link des aktiven Kürzels.
+   - Der Eintrag mit `an` trägt `aria-current="page"` — genau einmal in der Kopfzeile, gesetzt unter derselben Bedingung wie die Klasse `an` (Helfer `aktuelleSeite`).
+   - Auf einer Berichtsroute trägt es der Auslöser `a#t-ber`, auf dem Board der Leistenlink „Board“.
    - Im Seitenmenü unter 600 px trägt der Eintrag mit `an` ebenfalls `aria-current="page"`. Der Seitenknopf nennt die Seite schon („Seite: …“).
+   - Geweitet nach I0126/R00140 (Karte #105): Liegt die aktuelle Seite in einem Menü, trägt **der Menüeintrag** `an` + `aria-current` (im offenen Menü „…“ für Aufgaben, Personen, WBS und Einrichten; `web/ansicht.js`, `vMehrPop`). Der Auslöser „…“ bleibt unmarkiert.
 6. **Klapp-Knopf**:
    - `.bk-name` trägt `aria-expanded="true"`, `.zu-streifen` trägt `aria-expanded="false"`, beide statisch im Markup. Der Zustand steht im Renderer (`spaltenZu()`), nicht in `ausloeserMarkieren()`, das nur Pop-Auslöser führt.
    - Die Namen „<Spalte> zuklappen“ und „<Spalte> aufklappen“ bleiben.
@@ -151,7 +152,7 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
   - auf jeder Route genau eine `h1`;
   - auf dem Board je `section.bahn` genau eine `h2` mit dem Spaltennamen, offen und zugeklappt;
   - jede `.ka` mit Rolle `listitem` und einem Namen, der mit `#<nr>` beginnt;
-  - bei ≥ 600 px genau ein `nav a[aria-current=page]`, unter 600 px keine `nav` und der Seitenknopf mit dem Seitennamen;
+  - in der Kopfzeile genau ein Bedienelement mit `an` trägt `aria-current=page` (Leiste oder offenes Menü „…“), unter 600 px keine `nav` und der Seitenknopf mit dem Seitennamen;
   - Klapp-Knopf mit `aria-expanded` passend zu `spaltenZu()`;
   - je Landmark höchstens eine Fundstelle.
   - Nach der Lehre „Abnahme-Probe positiv und negativ“: Die Probe läuft einmal gegen eine Mutante (z. B. eine zweite `h1` in einer Sicht, eine Karte ohne Namen) und muss dort rot werden.
