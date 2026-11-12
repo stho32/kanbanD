@@ -1314,7 +1314,18 @@ async function act(a, arg, wert) {
           S.board.spalten.find(sp => sp.name === bw.spalte).aufgaben.splice(bw.index, 0, bw.nummer);
           render();
         }
-        const r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+        let r;
+        try {
+          r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+        } catch (f) {
+          // Aus dem offenen Aufgabenfenster gemeldet, steht die Ablehnung im Fuß des Fensters (R00146 FA 9, 403/409);
+          // vom Board gezogen bleibt sie wie bisher in der Statuszeile. Das Laden nimmt die vorschnelle Bewegung zurück.
+          if (!u.offen) throw f;
+          fensterMelden(f.message);
+          await laden();
+          return;
+        }
+        if (u.offen && u.fensterFehler) fensterMelden(null);
         if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
         if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
         // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen

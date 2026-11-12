@@ -172,4 +172,154 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     expect(await spalte(page).locator('.kb .k').allInnerTexts()).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig']);
   });
 
+  /* ── US-2: die vier Felder ändern und sofort committen (B0676) ── */
+
+  test('US-2: Klasse, Labels, Fällig setzen und leeren — je genau ein Commit', async ({ page }) => {
+    await oeffnen(page);
+    const anzahl = () => Number(k.git('rev-list', '--count', 'HEAD'));
+    const datei = () => k.lies('aufgaben/0001-telemetrie.md');
+
+    let vorher = anzahl();
+    await feld(page, 'klasse').selectOption('bug');
+    await expect.poll(datei).toContain('class: bug');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Klasse');
+    expect(anzahl() - vorher, 'genau ein Commit').toBe(1);
+
+    vorher = anzahl();
+    await feld(page, 'labels').fill('ui, daten, board');
+    await page.locator('#fenster .mod-main .titel').click();
+    await expect.poll(datei).toContain('labels: [ui, daten, board]');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Labels');
+    expect(anzahl() - vorher).toBe(1);
+
+    vorher = anzahl();
+    await feld(page, 'faellig').fill('2026-12-31');
+    await page.locator('#fenster .mod-main .titel').click();
+    await expect.poll(datei).toContain('due: 2026-12-31');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Fälligkeit');
+    expect(anzahl() - vorher).toBe(1);
+
+    vorher = anzahl();
+    await feld(page, 'faellig').fill('');
+    await page.locator('#fenster .mod-main .titel').click();
+    await expect.poll(datei).not.toContain('due:');
+    expect(anzahl() - vorher, 'Leeren ist ein eigener Commit').toBe(1);
+  });
+
+  test('US-2: Spalte ändern — die Karte wandert, ein Commit, das Feld zeigt die neue Spalte', async ({ page }) => {
+    await oeffnen(page);
+    const vorher = Number(k.git('rev-list', '--count', 'HEAD'));
+    await feld(page, 'spalte').selectOption('In Arbeit');
+    await expect(page.locator('.bahn[data-col="In Arbeit"] .ka[data-id="1"]')).toBeVisible();
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 nach „In Arbeit“ (fabrik)');
+    expect(Number(k.git('rev-list', '--count', 'HEAD')) - vorher).toBe(1);
+    await expect(feld(page, 'spalte')).toHaveValue('In Arbeit');
+  });
+
+  test('US-2: derselbe Wert erzeugt keinen Commit', async ({ page }) => {
+    await oeffnen(page);
+    const stand = k.git('log', '-1', '--format=%H');
+    await feld(page, 'labels').fill('ui, daten ');
+    await page.locator('#fenster .mod-main .titel').click();
+    await page.waitForTimeout(300);
+    expect(k.git('log', '-1', '--format=%H')).toBe(stand);
+  });
+
+  test('US-2: nach eigener Änderung bleibt der Fokus im Feld, nie auf BODY — dasselbe Feld bei Spalte/Klasse/Fällig', async ({ page }) => {
+    await oeffnen(page);
+    // Auswahl und Datumsfeld melden ihre Änderung im Feld: der Fokus bleibt dort
+    await feld(page, 'klasse').focus();
+    await feld(page, 'klasse').selectOption('bug');
+    await expect.poll(() => fokusFeld(page)).toBe('klasse');
+    await expect(feld(page, 'klasse')).toHaveValue('bug');
+
+    await feld(page, 'faellig').fill('2027-01-02');
+    await expect.poll(() => fokusFeld(page)).toBe('faellig');
+    await expect(feld(page, 'faellig')).toHaveValue('2027-01-02');
+
+    // Ein Textfeld meldet die Änderung beim Verlassen: der Fokus bleibt beim Feld, in das der Mensch gegangen ist
+    await feld(page, 'labels').fill('ui, board');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => fokusFeld(page)).toBe('faellig');
+    await expect(feld(page, 'labels')).toHaveValue('ui, board');
+
+    await feld(page, 'spalte').focus();
+    await feld(page, 'spalte').selectOption('In Arbeit');
+    await expect.poll(() => fokusFeld(page)).toBe('spalte');
+    expect(await fokusFeld(page)).not.toBe('BODY');
+  });
+
+  test('US-5: der Fokus im Feld Labels übersteht ein Live-Ereignis an #2; halb Getipptes wird nicht committet', async ({ page }) => {
+    await oeffnen(page);
+    await liveBereit(page);
+    await feld(page, 'labels').click();
+    await feld(page, 'labels').type('board');
+    const antwort = await page.request.patch(k.adresse + 'api/aufgaben/1', { headers: { 'X-KanbanD-Wer': 'ag' }, data: { titel: 'Telemetrie gebündelt' } });
+    expect(antwort.ok()).toBe(true);
+    await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Telemetrie gebündelt');
+    expect(await fokusFeld(page)).toBe('labels');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Titel');
+    expect(k.lies('aufgaben/0001-telemetrie.md')).toContain('labels: [ui, daten]');
+  });
+
+  test('US-5: nur angesehen — Aufgabendatei und git log bleiben unverändert', async ({ page }) => {
+    const datei = k.lies('aufgaben/0001-telemetrie.md');
+    const stand = k.git('log', '-1', '--format=%H');
+    await oeffnen(page);
+    await expect(spalte(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    expect(k.lies('aufgaben/0001-telemetrie.md')).toBe(datei);
+    expect(k.git('log', '-1', '--format=%H')).toBe(stand);
+  });
+
+  /* ── Fehler und Grenzen ── */
+
+  test('423 Board: nur „Spalte“ degradiert, die übrigen Felder bleiben bedienbar', async ({ page }) => {
+    await k.stoppen().catch(() => {});
+    k = await kanbanStarten(einrichten({ ...GRUND, 'boards/fabrik.md': BOARD_KAPUTT }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.locator('tr[data-zeile="1"] a').click();
+    const s = spalte(page);
+    await expect(s).toContainText('nicht auf diesem Board');
+    await expect(s.locator('[data-af="spalte"]')).toHaveCount(0);
+    await expect(s.locator('[data-af="klasse"]')).toBeEditable();
+    await expect(s.locator('[data-af="labels"]')).toBeEditable();
+    await expect(s.locator('[data-af="faellig"]')).toBeEditable();
+  });
+
+  test('423 Board unter Live: fällt das Feld „Spalte“ weg, steht der Fokus auf #inhalt-spalte, nie auf BODY', async ({ page }) => {
+    await oeffnen(page);
+    await liveBereit(page);
+    await feld(page, 'spalte').focus();
+    k.schreib('boards/fabrik.md', BOARD_KAPUTT);
+    await expect(spalte(page)).toContainText('nicht auf diesem Board');
+    await expect.poll(() => fokusFeld(page)).toBe('inhalt-spalte');
+  });
+
+  // Die 403 der Menschen-Spalte kommt aus dem Server (R00097); die Oberfläche verlangt für „bewegen“ eine Menschen-Identität,
+  // deshalb stellt die Probe die Ablehnung an der Naht (Muster kontrast.spec.js, 409). Geprüft wird der Fehlerpfad der Spalte:
+  // Meldung im Fuß, gespeicherter Wert im Feld, kein Commit, keine eigene Live-Region.
+  test('403: die Ablehnung steht im Fuß, das Feld zeigt wieder den gespeicherten Wert', async ({ page }) => {
+    await oeffnen(page);
+    const stand = k.git('log', '-1', '--format=%H');
+    await page.route('**/api/boards/fabrik/bewegen', route => route.request().method() === 'POST'
+      ? route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ fehler: 'Spalte „Fertig“ gehört dem Menschen', spalte: 'Fertig', nummer: 1 }) })
+      : route.continue());
+    await feld(page, 'spalte').selectOption('Fertig');
+    await expect(page.locator('#fenster .mod-fuss [role="alert"]')).toContainText('gehört dem Menschen');
+    await expect(feld(page, 'spalte')).toHaveValue('Eingang');
+    expect(k.git('log', '-1', '--format=%H')).toBe(stand);
+    await expect(page.locator('#inhalt-spalte [role="alert"]')).toHaveCount(0);
+    await expect(page.locator('#inhalt-spalte [aria-live]')).toHaveCount(0);
+  });
+
+  test('423 Aufgabendatei: die Defektfläche ersetzt das Fenster, keine Spalte mit Eingabefeldern', async ({ page }) => {
+    await page.goto(k.adresse + '#/board/fabrik');
+    await page.locator('.ka.defekt[data-id="3"]').click();
+    await expect(page.getByRole('dialog', { name: 'Defekte Datei #3' })).toBeVisible();
+    await expect(page.locator('#inhalt-spalte')).toHaveCount(0);
+    await expect(page.locator('#fenster')).toHaveCount(0);
+  });
+
 });
