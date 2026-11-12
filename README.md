@@ -50,6 +50,20 @@ Eine Aufgabe zu bewegen ändert nur die Board-Datei. Ein Zug über die API ohne 
 
 Mehrere Agenten an einem Board: jede laufende Instanz nennt im Header `X-KanbanD-Instanz` eine selbst gewählte Kennung. `POST /api/boards/{slug}/ziehen {von, nach?}` nimmt atomar die oberste freie Karte einer Spalte, reserviert sie 24 h für diese Instanz (`reservation` im Frontmatter), macht die Person zuständig und zieht sie oben in die Folgespalte — zwei Instanzen bekommen nie dieselbe Karte. Menschen sehen Reservierungen als Schloss auf der Karte und unter „Alle Aufgabenreservierungen anzeigen“ im Board-Menü und können sie dort freigeben.
 
+## Vorlagen
+
+Eine Vorlage ist eine gewöhnliche Karte oder ein gewöhnliches Board, das als Kopiervorlage dient — es gibt kein eigenes Format, keinen `vorlagen/`-Ordner, kein `template:`-Feld, keine Format-Versionierung und keine Aktion „Als Vorlage speichern“.
+
+**Kartenvorlage.** Die Vorlagenkarte steht offen in der Spalte, in der die Arbeit beginnt, etwa „Eingang“ oder „Backlog“ — dann liegt die Kopie gleich am richtigen Ort; auf dieser Spalte keine WIP-Grenze, sonst weist kanbanD einen Agenten mit 409 ab. Im Kartenmenü „Duplizieren“ entsteht die Kopie in derselben Spalte, mit dem Titelzusatz „(Kopie)“. Sie trägt Beschreibung, Teilaufgaben (alle offen), Klasse, Zuständige, Labels, Fälligkeit und Herkunft, aber keinen Fremdschlüssel (`key`), keine Zeiten, Kommentare, Anhänge und keinen Verlauf; danach Titel kürzen und Felder anpassen.
+
+**Boardvorlage über die Datei.** `boards/<vorlage>.md` kopieren, den Dateinamen neu setzen (er ist Slug und Adresse `#/board/<slug>`) und die `# `-Überschrift anpassen, die Aufgabenzeilen `- [#nr](../aufgaben/…)` entfernen und ein `archived:` aus dem Frontmatter streichen. Die übrigen Schlüssel bleiben und tragen die Struktur mit: `limits`, `column-phases`, `column-checks`, `column-notes`, `column-colors`, `column-owner`, `column-dates`, `milestones`, `start`, `fever`, `report-filter`, `report-labels` und `applications`. Die kopierte Datei committet der Mensch selbst; das neue Board erscheint im Board-Umschalter.
+
+**Boardvorlage ohne Datei.** Im Board-Umschalter „Neues Board · Enter“ anlegen — die drei Standardspalten „Zu erledigen“, „In Arbeit“ und „Erledigt“ kommen mit —, dann die Struktur im Spalten-Dialog (`PUT /api/boards/{slug}/spalten`) einrichten und Termine (R00047), Berichtsfilter (R00043) und „Rechnen ab“ in den Berichten nachziehen.
+
+**Karten ins neue Board.** Der Mensch dupliziert die Karte auf der Vorlagen-Seite (die Kopie bleibt in der Quellspalte), legt sie im Kartenmenü „Auf Board legen“ und nimmt sie in der Aufgabenliste „Von Board nehmen“. Ein Agent ruft `POST /api/aufgaben/{nr}/duplizieren {board, spalte}` und bekommt die Kopie direkt in der Zielspalte.
+
+**Grenzen.** Keine Automatik — beim Anlegen wird keine Vorlage angeboten. Keine Wahl von Zielboard und Zielspalte im Kartenmenü — die Kopie bleibt in der Spalte der Quelle. kanbanD kopiert keine Board-Struktur. Vorlagen zählen nur auf ihrem Board in den Berichten; Berichte und Berichtsfilter gelten je Board.
+
 ## Für Agenten
 
 `GET /api` beschreibt alle Endpunkte, `GET /api/openapi.json` vollständig als OpenAPI 3.1 mit Feldern, erlaubten Werten und Formaten (erzeugt aus den Rust-Typen; `GET /api` mit `Accept: application/json` leitet dorthin), `GET /api/endpunkte` knapp als JSON. Ein Objekt kommt direkt, eine Liste verpackt (`{aufgaben: […]}`); `GET /api/aufgaben` filtert über `board`, `spalte`, `klasse`, `signal`, `zustaendig`, `reserviert`, `archivierte`. Schreibende Aufrufe nennen `X-KanbanD-Wer: <kürzel>`:
