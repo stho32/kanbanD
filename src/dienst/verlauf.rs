@@ -4,7 +4,7 @@ use crate::fehler::Fehler;
 use crate::format::board;
 use crate::git;
 use crate::modell::Board;
-use crate::verlauf::{Aufgabenstand, Bewegungen, Kartenverlauf, Phasenkarte, Verlauf, bewegungen, kartenverlauf, verlauf};
+use crate::verlauf::{Aufgabenstand, Bewegungen, Kartenverlauf, Phasenkarte, Verlauf, bewegungen, kartenverlauf, spuren_wechsel, verlauf};
 
 impl Kanban {
     /// Verlauf eines Boards aus den committeten Ständen seiner Datei, dazu der aktuelle Stand, falls er abweicht.
@@ -37,16 +37,18 @@ impl Kanban {
             .collect();
         let loeschung = if w.join(&pfad).exists() { None } else { git::loeschung(w, &pfad)?.map(|s| (s.zeitpunkt, s.autor)) };
         let (boards, _) = self.ordner().boards()?;
+        // Alle Board-Stände in einem Zug lesen, dann nur die behalten, in denen sich die Lage der Karte ändert (#131):
+        // die Kosten hängen an der Karte, nicht an der Gesamt-Historie aller Boards.
+        let pfade: Vec<String> = boards.iter().map(|b| board_pfad(&b.slug)).collect();
+        let stands = git::staende_mehrerer(w, &pfade)?;
         let brett: Vec<(String, Vec<(chrono::NaiveDateTime, Board, git::Autor)>)> = boards
             .iter()
-            .map(|b| {
-                let staende = git::staende(w, &board_pfad(&b.slug))?
-                    .into_iter()
-                    .filter_map(|s| board::lesen(&b.slug, &s.inhalt).ok().map(|bd| (s.zeitpunkt, bd, s.autor)))
-                    .collect();
-                Ok((b.slug.clone(), staende))
+            .zip(stands)
+            .map(|(b, staende)| {
+                let staende = spuren_wechsel(&staende, nummer).into_iter().filter_map(|s| board::lesen(&b.slug, &s.inhalt).ok().map(|bd| (s.zeitpunkt, bd, s.autor.clone()))).collect();
+                (b.slug.clone(), staende)
             })
-            .collect::<Result<_, Fehler>>()?;
+            .collect();
         Ok(kartenverlauf(nummer, &aufgabe, &brett, loeschung))
     }
 

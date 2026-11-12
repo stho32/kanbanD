@@ -95,7 +95,26 @@ impl Ordner {
     }
 
     /// Pfad der Aufgabendatei zur Nummer (erste Datei mit dieser Nummer im Namen oder als `id`).
+    /// Der Pfad der Aufgabendatei mit dieser Nummer: die erste nach Dateinamen sortierte nummerierte Datei, die sich
+    /// lesen lässt; findet keine nummerierte Datei, entscheidet wie bisher der Inhalt (eine von Hand benannte Datei
+    /// trägt die Nummer nur in `id`), und eine defekte nummerierte Datei bleibt auffindbar (R00123/B0573).
+    /// Der Normalfall liest nur die Dateinamen des Ordners und eine Datei — nicht alle 5000 Aufgaben je Aufruf (#131).
     pub fn aufgabenpfad(&self, nummer: u32) -> Result<String, Fehler> {
+        let nummeriert: Vec<String> = self
+            .markdown_dateien(aufgabe::ORDNER)?
+            .into_iter()
+            .filter(|(stamm, _)| aufgabe::nummer_aus_dateiname(stamm) == Some(nummer))
+            .map(|(_, rel)| rel)
+            .collect();
+        for pfad in &nummeriert {
+            let text = self.lies(pfad)?.unwrap_or_default();
+            if aufgabe::lesen(pfad.rsplit('/').next().unwrap_or_default(), &text).is_ok() {
+                return Ok(pfad.clone());
+            }
+        }
+        if let Some(erster) = nummeriert.first() {
+            return Ok(erster.clone());
+        }
         let (gut, defekt) = self.aufgaben()?;
         if let Some(a) = gut.iter().find(|a| a.nummer == nummer) {
             return Ok(format!("{}/{}", aufgabe::ORDNER, a.datei));
@@ -263,6 +282,21 @@ mod tests {
             assert!(e.contains(grund), "{pfade:?}: {e}");
             assert!(!e.contains('\0'), "kein NUL in der Meldung");
         }
+    }
+
+    // #131: der Pfad je Karte — nummerierte Datei (Normalfall), defekte nummerierte Datei bleibt auffindbar,
+    // eine von Hand benannte Datei trägt die Nummer nur im Inhalt (`id`), unbekannt ist 404
+    #[test]
+    fn aufgabenpfad_findet_nummerierte_und_von_hand_benannte_dateien() {
+        let (tmp, o) = ordner_mit_fabrik();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0007-sieben.md"), "---\nid: 7\ntitle: sieben\n---\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0008-kaputt.md"), "---\ntitle: kaputt\n---\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/von-hand.md"), "---\nid: 9\ntitle: neun\n---\n").unwrap();
+        assert_eq!(o.aufgabenpfad(7).unwrap(), "aufgaben/0007-sieben.md");
+        assert_eq!(o.aufgabenpfad(8).unwrap(), "aufgaben/0008-kaputt.md", "die defekte Datei bleibt über den Dateinamen auffindbar");
+        assert_eq!(o.aufgabenpfad(9).unwrap(), "aufgaben/von-hand.md", "der Inhalt entscheidet, wenn kein Dateiname die Nummer trägt");
+        assert!(matches!(o.aufgabenpfad(99), Err(Fehler::NichtGefunden(_))));
     }
 
     #[test]

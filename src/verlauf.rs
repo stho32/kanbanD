@@ -112,6 +112,41 @@ pub fn zuege(staende: &[(NaiveDateTime, Board)]) -> Vec<Zug> {
     zuege
 }
 
+/// Die Stände, in denen sich die Lage der Karte ändert — ihre Spalte oder „nicht auf dem Board“; nur sie können einen
+/// Bewegungseintrag ergeben. Der erste Stand bleibt, damit die erste Lage bekannt ist. Ein Commit, der die Karte nicht
+/// bewegt, kann ihre Spalte nicht ändern; eine umbenannte Spalte ändert die Spur und bleibt so sichtbar (#131).
+pub fn spuren_wechsel(staende: &[crate::git::Stand], nummer: u32) -> Vec<&crate::git::Stand> {
+    let marke = format!("#{nummer}");
+    let mut behalten = vec![];
+    let mut vorher: Option<Option<&str>> = None;
+    for stand in staende {
+        // Ohne `#<nummer>` im Text kann die Karte nicht darauf stehen — der billige Vorfilter für die vielen fremden Stände.
+        let spur = if stand.inhalt.contains(&marke) { kartenspur(&stand.inhalt, nummer) } else { None };
+        if vorher != Some(spur) {
+            behalten.push(stand);
+            vorher = Some(spur);
+        }
+    }
+    behalten
+}
+
+/// Die Spalte, in der die Karte in diesem Board-Text steht: die `## `-Überschrift über ihrer Zeile; `None` heißt
+/// „nicht auf dem Board“. Rein textlich und billig — der Filter, der die Auswertung auf die Stände der Karte begrenzt
+/// (#131); Überschrift und Aufgabenzeile werden nach denselben Regeln erkannt wie beim Lesen der Board-Datei.
+pub fn kartenspur(text: &str, nummer: u32) -> Option<&str> {
+    let (_, koerper) = crate::format::frontmatter::trennen(text).ok()?;
+    let mut spalte: Option<&str> = None;
+    for zeile in koerper.lines() {
+        let z = zeile.trim_end();
+        if let Some(name) = z.strip_prefix("## ") {
+            spalte = Some(name.trim());
+        } else if crate::format::board::aufgabennummer(z) == Some(nummer) {
+            return spalte;
+        }
+    }
+    None
+}
+
 /// Die Art eines Verlaufs-Eintrags (R00123); in der API klein geschrieben.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -432,5 +467,29 @@ mod tests {
         let z = zuege(&staende);
         let kurz: Vec<(u32, Option<&str>, Option<&str>)> = z.iter().map(|x| (x.nummer, x.von.as_deref(), x.nach.as_deref())).collect();
         assert_eq!(kurz, vec![(1, None, Some("A")), (1, Some("A"), Some("Z")), (1, Some("Z"), None)]);
+    }
+
+    // #131: die textliche Spur der Karte — Überschrift über ihrer Zeile, `#10` trifft `#1` nicht, Frontmatter zählt nicht
+    #[test]
+    fn kartenspur_liest_die_spalte_der_karte() {
+        let text = "---\nid: 1\ncolumn-notes:\n  A: siehe #1\n---\n\n# Board\n\n## Eingang\n\n- #10\n\n## Arbeit\n\n- #1\n- #2\n";
+        assert_eq!(kartenspur(text, 1), Some("Arbeit"));
+        assert_eq!(kartenspur(text, 10), Some("Eingang"));
+        assert_eq!(kartenspur(text, 99), None, "nicht auf dem Board");
+        assert_eq!(kartenspur("# Board\n\n## A\n\n- #1\n", 1), Some("A"), "auch ohne Frontmatter");
+    }
+
+    // #131: nur die Stände mit geänderter Lage bleiben — die Umbenennung der Spalte zählt, ein fremder Zug nicht
+    #[test]
+    fn spuren_wechsel_behaelt_nur_geaenderte_lagen() {
+        let stand = |zeit: &str, text: &str| crate::git::Stand { zeitpunkt: zp(zeit), inhalt: text.into(), autor: autor("sh") };
+        let a = stand("2026-10-01 09:00", "# B\n\n## Eingang\n\n- #1\n\n## Arbeit\n");
+        let fremd = stand("2026-10-02 09:00", "# B\n\n## Eingang\n\n- #1\n- #2\n\n## Arbeit\n");
+        let umbenannt = stand("2026-10-03 09:00", "# B\n\n## Todo\n\n- #1\n- #2\n\n## Arbeit\n");
+        let gleich = stand("2026-10-04 09:00", "# B\n\n## Todo\n\n- #2\n- #1\n\n## Arbeit\n");
+        let weg = stand("2026-10-05 09:00", "# B\n\n## Todo\n\n- #2\n\n## Arbeit\n");
+        let staende = vec![a, fremd, umbenannt, gleich, weg];
+        let behalten: Vec<String> = spuren_wechsel(&staende, 1).iter().map(|s| s.zeitpunkt.format("%Y-%m-%d").to_string()).collect();
+        assert_eq!(behalten, vec!["2026-10-01", "2026-10-03", "2026-10-05"], "fremder Zug und bloßes Umsortieren ändern die Lage nicht");
     }
 }

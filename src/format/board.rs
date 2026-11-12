@@ -282,7 +282,7 @@ fn termin_zeile(t: &Termin) -> String {
 }
 
 /// `- [#12](…)`, `- #12 Text`, `* #12` → 12
-fn aufgabennummer(zeile: &str) -> Option<u32> {
+pub(crate) fn aufgabennummer(zeile: &str) -> Option<u32> {
     let rest = zeile.trim_start().strip_prefix("- ").or_else(|| zeile.trim_start().strip_prefix("* "))?;
     let rest = rest.trim_start().strip_prefix('[').unwrap_or(rest.trim_start());
     let ziffern: String = rest.strip_prefix('#')?.chars().take_while(char::is_ascii_digit).collect();

@@ -100,25 +100,80 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<Stand>, Fehler> {
     let format = format!("--format={LOG_FORMAT}");
     let log = lesen(&["log", "--reverse", &format, "--", rel])?;
     let commits: Vec<(String, Autor, i64)> = log.lines().filter_map(autor_zeit_zeile).collect();
-    if commits.is_empty() {
+    let anfragen: Vec<String> = commits.iter().map(|(h, _, _)| format!("{h}:{praefix}{rel}")).collect();
+    Ok(staende_aus(&commits, blob_inhalte(wurzel, &anfragen)?))
+}
+
+/// Je Datei alle committeten Stände in Commit-Folge — ein `git log --name-only` für alle Pfade und ein
+/// `cat-file --batch` für alle Blobs (#131). Was davon den Verlauf einer Karte betrifft, wählt `verlauf` aus.
+pub fn staende_mehrerer(wurzel: &Path, rels: &[String]) -> Result<Vec<Vec<Stand>>, Fehler> {
+    if rels.is_empty() {
         return Ok(vec![]);
     }
-    let mut kind = Command::new("git")
-        .arg("-C")
-        .arg(wurzel)
-        .args(["cat-file", "--batch"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| Fehler::Intern(format!("git cat-file: {e}")))?;
-    let anfrage: String = commits.iter().map(|(h, _, _)| format!("{h}:{praefix}{rel}\n")).collect();
+    let lesen = |args: &[&str]| -> Result<String, Fehler> {
+        let a = Command::new("git").arg("-C").arg(wurzel).args(args).output().map_err(|e| Fehler::Intern(format!("git: {e}")))?;
+        Ok(String::from_utf8_lossy(&a.stdout).into_owned())
+    };
+    let praefix = lesen(&["rev-parse", "--show-prefix"])?.trim().to_string();
+    // `-z` hält Pfade unverändert; der Commit-Kopf trägt `\x1f` als Trenner.
+    let format = format!("--format={LOG_FORMAT}");
+    let mut args: Vec<&str> = vec!["log", "--reverse", "-z", "--name-only", &format, "--"];
+    args.extend(rels.iter().map(String::as_str));
+    let log = lesen(&args)?;
+    let index: std::collections::HashMap<String, usize> = rels.iter().enumerate().map(|(i, rel)| (format!("{praefix}{rel}"), i)).collect();
+    let mut anfragen: Vec<(usize, String, Autor, i64)> = vec![];
+    let mut kopf: Option<(String, Autor, i64)> = None;
+    for stueck in log.split('\0') {
+        let stueck = stueck.trim_start_matches('\n');
+        if stueck.is_empty() {
+            continue;
+        }
+        if let Some((hash, autor, zeit)) = autor_zeit_zeile(stueck) {
+            kopf = Some((hash, autor, zeit));
+            continue;
+        }
+        let Some((hash, autor, zeit)) = &kopf else { continue };
+        // Eine Datei des Commits, die nicht zu `rels` gehört (ein Commit berührt mehrere Dateien), bleibt außen vor.
+        if let Some(&i) = index.get(stueck) {
+            anfragen.push((i, format!("{hash}:{stueck}"), autor.clone(), *zeit));
+        }
+    }
+    let inhalte = blob_inhalte(wurzel, &anfragen.iter().map(|(_, a, _, _)| a.clone()).collect::<Vec<_>>())?;
+    let mut je: Vec<Vec<Stand>> = vec![vec![]; rels.len()];
+    for ((i, _, autor, zeit), inhalt) in anfragen.into_iter().zip(inhalte) {
+        if let (Some(inhalt), Some(zp)) = (inhalt, chrono::DateTime::from_timestamp(zeit, 0)) {
+            je[i].push(Stand { zeitpunkt: zp.with_timezone(&chrono::Local).naive_local(), inhalt, autor });
+        }
+    }
+    Ok(je)
+}
+
+/// Commits und ihre Blob-Inhalte zu Ständen zusammensetzen; `inhalte` in der Reihenfolge von `commits`.
+fn staende_aus(commits: &[(String, Autor, i64)], inhalte: Vec<Option<String>>) -> Vec<Stand> {
+    let mut staende = vec![];
+    for ((_, autor, zeit), inhalt) in commits.iter().zip(inhalte) {
+        if let (Some(inhalt), Some(zp)) = (inhalt, chrono::DateTime::from_timestamp(*zeit, 0)) {
+            staende.push(Stand { zeitpunkt: zp.with_timezone(&chrono::Local).naive_local(), inhalt, autor: autor.clone() });
+        }
+    }
+    staende
+}
+
+/// Die Inhalte zu Anfragen `<hash>:<pfad>` in derselben Reihenfolge; `None`, wo es keinen Blob gibt (etwa in einem
+/// Commit, der die Datei löscht). Ein `cat-file --batch` für alle — der Grund, warum die Historie je Datei billig ist.
+fn blob_inhalte(wurzel: &Path, anfragen: &[String]) -> Result<Vec<Option<String>>, Fehler> {
+    if anfragen.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut kind = Command::new("git").arg("-C").arg(wurzel).args(["cat-file", "--batch"]).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().map_err(|e| Fehler::Intern(format!("git cat-file: {e}")))?;
+    let anfrage: String = anfragen.iter().map(|a| format!("{a}\n")).collect();
     let mut eingabe = kind.stdin.take().expect("stdin");
     let schreiber = std::thread::spawn(move || std::io::Write::write_all(&mut eingabe, anfrage.as_bytes()));
     let ausgabe = kind.wait_with_output().map_err(|e| Fehler::Intern(format!("git cat-file: {e}")))?.stdout;
     let _ = schreiber.join();
-    let mut staende = vec![];
+    let mut inhalte: Vec<Option<String>> = Vec::with_capacity(anfragen.len());
     let mut pos = 0;
-    for (_, autor, zeit) in &commits {
+    for _ in anfragen {
         let Some(ende) = ausgabe[pos..].iter().position(|b| *b == b'\n') else { break };
         let kopf = String::from_utf8_lossy(&ausgabe[pos..pos + ende]).into_owned();
         pos += ende + 1;
@@ -127,12 +182,13 @@ pub fn staende(wurzel: &Path, rel: &str) -> Result<Vec<Stand>, Fehler> {
             let groesse: usize = teile[2].parse().unwrap_or(0);
             let inhalt = String::from_utf8_lossy(&ausgabe[pos..pos + groesse]).into_owned();
             pos += groesse + 1;
-            if let Some(zp) = chrono::DateTime::from_timestamp(*zeit, 0) {
-                staende.push(Stand { zeitpunkt: zp.with_timezone(&chrono::Local).naive_local(), inhalt, autor: autor.clone() });
-            }
+            inhalte.push(Some(inhalt));
+        } else {
+            inhalte.push(None);
         }
     }
-    Ok(staende)
+    inhalte.resize(anfragen.len(), None);
+    Ok(inhalte)
 }
 
 /// Der jüngste Commit, der `rel` gelöscht hat, samt Zeitpunkt und Autor — oder keiner (R00123/B0573).
