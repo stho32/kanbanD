@@ -48,7 +48,7 @@ Sieben Reiter nebeneinander brauchen im Kopf die Breite, die Pfad, Nummer und Ak
     **Abschnitt** (ux-Vorprüfung 2026-11-12, übernommen): Die Überschrift lautet `ANHÄNGE <n>` mit der Zahl in `span.mono` — **ohne Dateinamen** (der steht im Kopf unter `.pfad` und bricht bei 320 px). Der Leerfall ist „ANHÄNGE 0“ mit der vorhandenen Zeile „+ Datei wählen oder hierher ziehen“, kein leerer Kasten und keine Fehlermeldung.
 12. **Ablegen einer Datei.** In der Ansicht „Inhalt“ ist die Fläche des Inhalts Ablageziel; `dragover` und `drop` außerhalb des Anhang-Abschnitts werden abgefangen (`preventDefault`), damit der Browser nicht auf die abgelegte Datei wechselt — abgelegt wird entweder als Anhang oder gar nicht, `location.href` bleibt unverändert. Bisher hing beides allein an `#anhaenge` (`web/app.js:2691–2700`), was als eigene Ansicht genügte, als Zeile in einem langen Inhalt aber nicht mehr.
 13. Der Eintrag **„Anhänge“ entfällt** aus `REITER`; ein gemerkter Stand `S.ui.tab = 'anhaenge'` fällt über den Rückfall aus Punkt 2 auf „Inhalt“ — ohne Datenformat-, Endpunkt- oder Aktionsänderung.
-14. **Kein Abschnitt doppelt**: Was im Inhalt steht, fehlt in jeder anderen Ansicht; die Anhänge stehen genau einmal.
+14. **Kein Abschnitt doppelt**: Was im Inhalt steht, fehlt in jeder anderen Ansicht; die Anhänge stehen genau einmal. **Ausnahme R00146, Betreiber-Entscheidung 2026-11-12:** Spalte, Klasse, Labels, Fälligkeit erscheinen zusätzlich im Inhalt (bearbeitbar) und die **gewählten** Zuständigen dort nur lesend; alles andere bleibt je Ansicht genau einmal.
 
 ## Nicht-funktionale Anforderungen
 
@@ -68,7 +68,7 @@ Grundbestand (über die API herstellbar): Board „fabrik“ mit den Spalten „
 - [ ] Gegeben #3 mit Preisetikett, wenn das Menü geöffnet wird, dann steht „Kosten“ direkt hinter „Datei“ und „Verlauf“ ist der letzte Eintrag
 - [ ] Gegeben das Menü mit „Details“ gewählt, wenn „Details“ gewählt wird — per Klick und per `Enter` —, dann ist das Menü zu, der Auslöser nennt „Details“, `document.activeElement` **ist der Ansichts-Auslöser** und heißt „Ansicht: Details“ (nicht `BODY`), und im Fenster stehen die Felder Schlüssel, Spalte, Klasse, Herkunft, Zuständig, Labels, Fällig, Geschätzt, Wirkungen, Phasen, Signale, Zählung, Reservierung und „wartet auf“ — in keiner anderen Ansicht
 - [ ] Gegeben das offene Ansichtsmenü von #1, wenn der ⋮-Auslöser (R00144) betätigt wird, dann ist genau **ein** `[role="menu"]` im Fenster offen, `aria-expanded` steht am Ansichts-Auslöser auf `false` und am ⋮ auf `true`, und der Fokus steht im neuen Menü; dasselbe umgekehrt vom offenen ⋮-Menü aus
-- [ ] Gegenbeispiel: Gegeben #1, wenn jede Ansicht geöffnet und ihr sichtbarer Text gelesen wird, dann kommt kein Abschnitt (Teilaufgaben, Anhänge, Kommentare, Durchläufe, Zeiten, Felder) in zwei Ansichten zugleich vor
+- [ ] Gegenbeispiel: Gegeben #1, wenn jede Ansicht geöffnet und ihr sichtbarer Text gelesen wird, dann kommt kein Abschnitt (Teilaufgaben, Anhänge, Kommentare, Durchläufe, Zeiten, Felder) in zwei Ansichten zugleich vor — **Ausnahme R00146, Betreiber-Entscheidung 2026-11-12:** Spalte, Klasse, Labels, Fälligkeit erscheinen zusätzlich im Inhalt (bearbeitbar) und die **gewählten** Zuständigen dort nur lesend; alles andere bleibt je Ansicht genau einmal.
 
 ### Anhänge im Inhalt
 

@@ -40,7 +40,7 @@ Wer eine Aufgabe ansieht, sieht heute auf einer Seite Titel, Beschreibung, Teila
 - **„Anhänge“** zeigt die Anhänge der Aufgabe samt Hochladen und Entfernen. *(**Aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#145):** „Anhänge“ ist keine Ansicht mehr; Liste, Hochladen und ✕ stehen im Inhalt — R00145 FA 11–13.)*
 - **„Details“** zeigt die Felder der bisherigen Seitenleiste: **Schlüssel** (Fremdschlüssel `key`, R00098 — nur lesend, nur wenn gesetzt), Spalte, Klasse, Herkunft, Zuständige, Labels, Fälligkeit, „wartet auf“, Wirkungen, Phasen, Signale, Zählung, Reservierung. Das Feld „Spalte“ bewegt die Karte weiter wie heute (R00006). Die Felder sehen aus wie in **R00109** freigegeben (die nackte `.k`-Beschriftung in Plex Sans 500 `--kd-text`, `web/kd-app.css:353`); sie stehen nur an einem anderen Ort.
 - **„Datei“**, **„Kosten“** (nur mit Etikett, R00105) und **„Verlauf“** (immer, R00123) bleiben in Inhalt und Verhalten unverändert; in „Kosten“ und „Verlauf“ ändert diese Anforderung nichts.
-- Jeder Abschnitt steht **genau einmal**: was in einen Reiter gezogen ist, fehlt in „Inhalt“ und in jedem anderen Reiter.
+- Jeder Abschnitt steht **genau einmal**: was in einen Reiter gezogen ist, fehlt in „Inhalt“ und in jedem anderen Reiter. *(**Ausnahme R00146, Betreiber-Entscheidung 2026-11-12:** Spalte, Klasse, Labels, Fälligkeit erscheinen zusätzlich im Inhalt (bearbeitbar) und die **gewählten** Zuständigen dort nur lesend; alles andere bleibt je Ansicht genau einmal.)*
 - Das Fenster wird damit **einspaltig**; die Seitenleiste (`aside.mod-side`) entfällt als eigene Spalte. Im [schmalen Layout](../Dokumentation/Domaenenwissen/D00004-schmales-layout.md) entfällt das bisherige Untereinander-Stapeln von Hauptbereich und Seitenleiste.
 
 ### Verhalten
