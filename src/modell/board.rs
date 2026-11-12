@@ -99,10 +99,12 @@ pub fn ist_hexfarbe(s: &str) -> bool {
 /// Der Spaltenname wird als `## `-Überschrift der Board-Datei geschrieben — ein Zeilenumbruch macht die Datei kaputt
 /// (R00128 N2). Die eine Regel, die jeder Weg prüft (PUT …/spalten, POST /api/boards, POST /api/einrichten): außen
 /// getrimmt 1–200 Zeichen ohne Zeilenumbruch (jede Unicode-Zeilengrenze), wie beim Board-Titel und `Fremdschluessel`.
+/// Dazu abgewiesen wird jedes Steuerzeichen der Kategorie Cc — NUL, ESC, DEL und der Tabulator (#131): im Namen
+/// unsichtbar und als YAML-Schlüssel (`column-owner`) nicht darstellbar; am Rand trimmt die Regel sie wie einen Umbruch.
 pub fn spaltenname_gueltig(name: &str) -> bool {
     let name = name.trim();
-    let umbruch = |c: char| matches!(c, '\n' | '\r' | '\u{0B}' | '\u{0C}' | '\u{85}' | '\u{2028}' | '\u{2029}');
-    (1..=200).contains(&name.chars().count()) && !name.contains(umbruch)
+    let unzulaessig = |c: char| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}');
+    (1..=200).contains(&name.chars().count()) && !name.contains(unzulaessig)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]

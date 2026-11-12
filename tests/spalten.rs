@@ -182,13 +182,18 @@ async fn spaltenname_mit_umbruch_oder_zu_lang_400() {
     let datei = lies(tmp.path(), "boards/entwicklung.md");
     let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
     let zu_lang = "A".repeat(201);
-    let ungueltig: [&str; 8] = [
+    let ungueltig: [&str; 12] = [
         "X\n## Prüfen",
         "X\r## Prüfen",
         "X\r\n## Prüfen",
         "X\u{2028}## Prüfen",
         "X\u{0B}## Prüfen",
         "X\u{85}## Prüfen",
+        // #131 (Optional 2): Steuerzeichen der Kategorie Cc ohne Umbruch — NUL, ESC, DEL, Tabulator mitten im Namen
+        "X\u{0}## Prüfen",
+        "X\u{1B}## Prüfen",
+        "X\u{7F}## Prüfen",
+        "X\t## Prüfen",
         "\n",
         zu_lang.as_str(),
     ];
@@ -230,6 +235,14 @@ async fn spaltenname_mit_umbruch_oder_zu_lang_400() {
         {"name": "Erledigt", "alt": "Erledigt"}
     ])).await;
     assert_eq!(s, 200, "ein Umbruch nur am Rand wird getrimmt");
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("\n## Sommer\n"));
+    // dasselbe für den Tabulator: am Rand getrimmt (#131), im Namen abgewiesen (oben)
+    let (s, _) = senden(Method::PUT, a, "api/boards/entwicklung/spalten", "st", json!([
+        {"name": "Zu erledigen", "alt": "Zu erledigen"},
+        {"name": "Sommer\t", "alt": "Sommer"},
+        {"name": "Erledigt", "alt": "Erledigt"}
+    ])).await;
+    assert_eq!(s, 200, "ein Tabulator nur am Rand wird getrimmt");
     assert!(lies(tmp.path(), "boards/entwicklung.md").contains("\n## Sommer\n"));
     // Grenze (Triangulation): 200 Zeichen sind erlaubt
     let rand = "B".repeat(200);
