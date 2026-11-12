@@ -90,7 +90,8 @@ test.describe('R00127 Kartendetails mit mehreren Ansichten', () => {
 
   test('US-1/M1: jede Ansicht zeichnet nur ihren Abschnitt', async ({ page }) => {
     await oeffnen(page);
-    const teile = { Inhalt: '.titel', Zeiten: '.zt', Details: '.felder', Datei: '#dateitext', Verlauf: '.vh-tab' };
+    // R00146: die Spalte im Inhalt trägt selbst `.felder` — „Details“ wird über seine Auslage unterschieden
+    const teile = { Inhalt: '.mod-main .titel', Zeiten: '.zt', Details: '.felder.felder-details', Datei: '#dateitext', Verlauf: '.vh-tab' };
     for (const [name, selektor] of Object.entries(teile)) {
       await reiter(page, name);
       await expect(page.locator(selektor)).toBeVisible();
@@ -173,9 +174,11 @@ test.describe('R00127 Kartendetails mit mehreren Ansichten', () => {
     await expect(inhalt.locator('#durchlaeufe')).toBeVisible();
     await expect(inhalt.locator('.zt')).toHaveCount(0);
     await expect(inhalt.locator('h3', { hasText: 'LÄUFT GERADE' })).toHaveCount(0);
-    await expect(inhalt.locator('.felder')).toHaveCount(0);
-    await expect(inhalt.getByLabel('Spalte')).toHaveCount(0);
-    await expect(inhalt.getByLabel('Klasse')).toHaveCount(0);
+    // R00146: die vier Felder stehen zusätzlich in der schmalen Spalte rechts, nicht im Inhaltsfluss
+    await expect(inhalt.locator('.mod-main .felder')).toHaveCount(0);
+    await expect(inhalt.locator('.mod-main').getByLabel('Spalte')).toHaveCount(0);
+    await expect(inhalt.locator('.mod-main').getByLabel('Klasse')).toHaveCount(0);
+    await expect(inhalt.locator('#inhalt-spalte').getByLabel('Spalte')).toHaveCount(1);
   });
 
   /* ── US-2/B0583: Zeiten und Timer ── */
@@ -261,8 +264,9 @@ test.describe('R00127 Kartendetails mit mehreren Ansichten', () => {
       const schluessel = { Inhalt: 'inhalt', Zeiten: 'zeiten', Details: 'details', Datei: 'datei', Verlauf: 'verlauf' }[name];
       if (name === 'Zeiten') { await expect(panel(page, schluessel).locator('.zt')).toHaveCount(1); continue; }
       await expect(panel(page, schluessel).locator('.zt')).toHaveCount(0, `keine Zeiten-Tabelle in „${name}“`);
-      if (name === 'Details') { await expect(panel(page, schluessel).locator('.felder')).toHaveCount(1); continue; }
-      await expect(panel(page, schluessel).locator('.felder')).toHaveCount(0, `keine Felder in „${name}“`);
+      if (name === 'Details') { await expect(panel(page, schluessel).locator('.felder.felder-details')).toHaveCount(1); continue; }
+      // R00146: im Inhalt steht die schmale Spalte (.felder.felder-schmal), nie die Auslage von „Details“
+      await expect(panel(page, schluessel).locator('.felder:not(.felder-schmal)')).toHaveCount(0, `keine Felder in „${name}“`);
     }
   });
 

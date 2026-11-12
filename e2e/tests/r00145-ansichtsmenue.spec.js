@@ -197,7 +197,7 @@ test.describe('R00145 Ansichtsmenü', () => {
     const teile = {
       Inhalt: ['#fenster .titel', '#fenster h3:has-text("TEILAUFGABEN")', '#fenster #anhaenge', '#fenster h3:has-text("KOMMENTARE")', '#fenster #durchlaeufe'],
       Zeiten: ['#fenster .zt'],
-      Details: ['#fenster .felder'],
+      Details: ['#fenster .felder.felder-details'], // R00146: die Spalte im Inhalt trägt `.felder.felder-schmal`
       Datei: ['#fenster #dateitext'],
       Verlauf: ['#fenster .vh-tab'],
     };

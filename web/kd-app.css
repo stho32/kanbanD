@@ -305,6 +305,11 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .fm-tr{height:1px;margin:4px 0;background:var(--kd-line)}
 .mod-body{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 350px;min-height:0}
 .mod-body.voll{grid-template-columns:minmax(0,1fr)}
+/* R00146 (Artboard D0003 #inhalt-spalte): der Inhalt bekommt rechts eine feste 200-px-Spur. Die Trennlinie ist eine
+   Innenkante (box-shadow), damit die Wertfläche 176 px behält (12 px Innenabstand je Seite). Unter 641 px greift die
+   bestehende 640er-Regel `.mod-body{display:block}` — `.mit-spalte` setzt kein `display` und verliert sie nicht. */
+.mod-body.mit-spalte{grid-template-columns:minmax(0,1fr) 200px}
+.mod-spalte{min-width:0;overflow:auto;padding:var(--kd-s4);background:var(--kd-surface);box-shadow:inset 1px 0 0 var(--kd-line)}
 .mod-main{overflow:auto;padding:var(--kd-s5) var(--kd-s6);display:flex;flex-direction:column;gap:var(--kd-s5)}
 /* R00105 Reiter „Kosten“ (D0003): Tabelle nur lesend; Positionsnamen trennen nach Silben mit Strich, nie mitten im Wort ohne Strich —
    ein Name ohne Silbengrenze lässt die Tabelle im Scrollbereich quer scrollen, nicht den Kopf und nicht die Seite */
@@ -404,6 +409,17 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 /* Feldzeile mit Schlüssel (ADR-0013 N1): Rahmen .kb, oben die Beschriftung, darunter der Schlüssel der Datei; ohne Schlüssel bleibt .k nackt */
 .felder>.kb{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding-block:4px;min-width:0;background:var(--kd-bg)}
 .felder .sl{font:400 10.5px/14px var(--kd-mono);color:var(--kd-muted)}
+/* Schmale Auslage derselben Feldzeile (R00146 FA 12): Beschriftung über dem Wert — die 84-px-Beschriftungsspalte des
+   Hauses würde bei 176 px Wertfläche das Datumsfeld schneiden. */
+.felder.felder-schmal{grid-template-columns:minmax(0,1fr);border-top:0;background:none}
+.felder.felder-schmal>*{min-height:0;border-bottom:0;padding:0}
+.felder.felder-schmal>.kb{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;min-width:0;padding:6px 0 2px;background:none}
+.felder.felder-schmal>.kb .k,.felder.felder-schmal>.kb .sl{display:block;padding:0 4px}
+.felder.felder-schmal>.w{display:flex;align-items:center;gap:4px;min-width:0;padding:0 0 7px;border-bottom:1px solid var(--kd-line);overflow-wrap:anywhere}
+.felder.felder-schmal>.w:last-child{border-bottom:0}
+.felder.felder-schmal select,.felder.felder-schmal .mini-inp{width:100%;height:var(--kd-ziel);min-height:var(--kd-ziel)}
+.felder.felder-schmal .mini-inp{padding:0 6px}
+.felder.felder-schmal select{border-left:1px solid var(--kd-line)}
 /* Wertspalte bricht an beliebiger Stelle um (R00131, ADR-0012/0015 N1/0019 N4): min-width:0 lässt die Zelle schrumpfen,
    overflow-wrap:anywhere verkleinert die Mindestbreite des anonymen Flex-Textkindes — break-word täte das hier nicht */
 .felder .w{min-width:0;overflow-wrap:anywhere}

@@ -313,6 +313,13 @@ function vFensterAktionen(a) {
   const loeschen = `<button type="button" role="menuitem" tabindex="-1" class="fm-e warn" data-act="endgueltig-loeschen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${PAPIERKORB}</span><span class="fm-text">Endgültig löschen</span></button>`;
   return `<span class="fm-anker">${knopf}<div class="fm" role="menu" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" data-art="aktionen">${archivieren}<div class="fm-tr" role="separator"></div>${loeschen}</div></span>`;
 }
+/** Die schmale Spalte im Inhalt (R00146 FA 1–5, 12–14): die vier bearbeitbaren Feldzeilen aus demselben Zeichner wie
+    „Details“, Beschriftung über dem Wert, ohne sichtbare Überschrift als benannte Gruppe. `#inhalt-spalte` ist der
+    Fokusrückfall, wenn ein Feld unter einem Live-Ereignis wegfällt (FA 14, ADR-0010 N7). */
+const SPALTE_FELDER = ['spalte', 'klasse', 'labels', 'faellig'];
+function vInhaltSpalte(a) {
+  return `<aside class="mod-spalte" id="inhalt-spalte" role="group" aria-label="Angaben zur Aufgabe" tabindex="-1"><div class="felder felder-schmal">${SPALTE_FELDER.map(feld => vFeldZeile(feld, a, true)).join('')}</div></aside>`;
+}
 function vFenster() {
   const a = aufgabe(S.ui.offen);
   if (!a) return '';
@@ -331,8 +338,8 @@ function vFenster() {
     : tab === 'verlauf' ? vVerlaufPanel()
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
-    : `<div class="mod-main">${vFensterInhalt(a)}</div>`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" data-ansicht="${tab}" role="group" aria-label="Ansicht: ${esc((reiterDerAufgabe(a).find(([k]) => k === tab) || [null, 'Inhalt'])[1])}">${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+    : `<div class="mod-main">${vFensterInhalt(a)}</div>${vInhaltSpalte(a)}`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body ${tab === 'inhalt' ? 'mit-spalte' : 'voll'}" data-ansicht="${tab}" role="group" aria-label="Ansicht: ${esc((reiterDerAufgabe(a).find(([k]) => k === tab) || [null, 'Inhalt'])[1])}">${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
 }
 /** Der Reiter „Inhalt“ (R00127): die Arbeit an der Aufgabe — Titel, Beschreibung, Teilaufgaben, Kommentare, Durchläufe, sonst nichts. */
 function vFensterInhalt(a) {
