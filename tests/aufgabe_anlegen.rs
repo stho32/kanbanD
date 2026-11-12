@@ -48,6 +48,28 @@ async fn falsche_angaben_legen_nichts_an() {
     assert!(!tmp.path().join("aufgaben").exists());
 }
 
+/// Karte #130 (S3 aus #124): eine Spalte ohne Board ist ungültig — der gemeinsame Anlegeweg antwortet auf allen
+/// drei Wegen mit 400 und schreibt nichts; Board und Spalte zusammen bleiben gültig.
+#[tokio::test]
+async fn spalte_ohne_board_ist_400_und_legt_nichts_an() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+    for (pfad, daten) in [
+        ("api/aufgaben", json!({"titel": "y", "spalte": "In Arbeit"})),
+        ("api/aufgaben/mehrere", json!({"titel": ["y"], "spalte": "In Arbeit"})),
+        ("api/aufgaben", json!({"titel": "y", "spalte": "Nirgends"})),
+    ] {
+        let (s, f) = senden(Method::POST, &lauf.adresse, pfad, "st", daten.clone()).await;
+        assert_eq!(s, 400, "{pfad} {daten}: {f}");
+        assert!(f["fehler"].as_str().unwrap().contains("Board"), "{pfad} {daten}: {f}");
+        assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "{pfad} {daten}: kein Commit");
+        assert!(!tmp.path().join("aufgaben").exists(), "{pfad} {daten}: keine Datei");
+    }
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "mit Board", "board": "entwicklung", "spalte": "In Arbeit"})).await;
+    assert_eq!(s, 201, "Board und Spalte zusammen bleiben gültig: {a}");
+}
+
 #[tokio::test]
 async fn board_ohne_spalten_ist_ungueltig() {
     let tmp = tempfile::tempdir().unwrap();

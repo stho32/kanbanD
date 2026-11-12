@@ -150,6 +150,27 @@ async fn ohne_board_entsteht_nur_die_aufgabendatei() {
     assert_eq!(commits(tmp.path()), vorher + 2);
 }
 
+/// Karte #130 (S3 aus #124): `spalte` ohne `board` wird nicht still ignoriert — 400 wie beim Anlegen, Datei und
+/// Board bleiben byte-gleich, kein Commit; Board und Spalte zusammen bleiben gültig.
+#[tokio::test]
+async fn spalte_ohne_board_ist_400_und_aendert_nichts() {
+    let tmp = tempfile::tempdir().unwrap();
+    eingerichtet(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let board = lies(tmp.path(), "boards/entwicklung.md");
+    let vorher = (git(tmp.path(), &["rev-parse", "HEAD"]), dateien(tmp.path()));
+    for rumpf in [json!({"spalte": "In Arbeit"}), json!({"spalte": "Nirgends"})] {
+        let (s, f) = duplizieren(&lauf.adresse, "st", 1, Some(rumpf.clone())).await;
+        assert_eq!(s, 400, "{rumpf}: {f}");
+        assert!(f["fehler"].as_str().unwrap().contains("Board"), "{rumpf}: {f}");
+        assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), board, "{rumpf}: Board byte-gleich");
+        assert_eq!((git(tmp.path(), &["rev-parse", "HEAD"]), dateien(tmp.path())), vorher, "{rumpf}: nichts geschrieben");
+        assert_eq!(git(tmp.path(), &["status", "--short"]), "", "{rumpf}: Arbeitsbaum sauber");
+    }
+    let (s, a) = duplizieren(&lauf.adresse, "st", 1, Some(json!({"board": "entwicklung", "spalte": "In Arbeit"}))).await;
+    assert_eq!((s, a["nummer"].as_u64()), (201, Some(2)), "Board und Spalte zusammen bleiben gültig: {a}");
+}
+
 #[tokio::test]
 async fn wip_grenze_weist_den_agenten_ab_und_laesst_den_menschen_durch() {
     let tmp = tempfile::tempdir().unwrap();

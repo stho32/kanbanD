@@ -71,6 +71,19 @@ async fn ziehen_person_und_header() {
     assert!(d["components"]["schemas"]["Zeiteintrag"]["properties"]["kennung"].is_object(), "berechnetes Feld beschrieben");
 }
 
+/// Karte #130 (S2 aus #124): duplizieren nimmt den Rumpf freiwillig — der Handler liest `Option<Json<Zielort>>`,
+/// POST ohne Rumpf antwortet 201. Die Beschreibung darf ihn deshalb nicht als Pflicht deklarieren (OpenAPI-Standard:
+/// fehlt `required`, ist der Rumpf freiwillig).
+#[tokio::test]
+async fn duplizieren_hat_einen_freiwilligen_rumpf() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let rumpf = &d["paths"]["/api/aufgaben/{nr}/duplizieren"]["post"]["requestBody"];
+    assert!(rumpf["content"]["application/json"]["schema"].is_object(), "Rumpf-Schema fehlt: {rumpf}");
+    assert!(!rumpf["required"].as_bool().unwrap_or(false), "Rumpf ist freiwillig: {rumpf}");
+}
+
 #[tokio::test]
 async fn accept_json_auf_api_leitet_weiter() {
     let tmp = tempfile::tempdir().unwrap();
@@ -100,7 +113,7 @@ const GRENZE: [(&str, &str, bool); 10] = [
 ];
 
 #[tokio::test]
-async fn neun_endpunkte_nennen_die_grenze() {
+async fn zehn_endpunkte_nennen_die_grenze() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
     let d = beschreibung(&lauf.adresse).await;

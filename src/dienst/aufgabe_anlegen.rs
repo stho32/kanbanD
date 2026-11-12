@@ -113,10 +113,18 @@ impl Kanban {
     }
 
     /// `aus`: Nummer der Quelle, wenn die Einträge Kopien sind (R00142) — sie ändert nur die Commit-Nachricht.
+    ///
+    /// Diese Zwischenstufe ist privat, weil Wege, die die Sperre schon halten (`aufgabe_duplizieren`), nicht
+    /// `aufgaben_anlegen` rufen dürfen: `std::sync::Mutex` ist nicht reentrant, ein zweites `gesperrt()` brächte den
+    /// Aufruf zum Stehen. Mit dem gehaltenen Guard nimmt die Kopie denselben Weg — samt Prüfungen, Nummernvergabe,
+    /// Board-Zeile, WIP-Grenze und einem Commit —, und `aus` ändert daran nur den Wortlaut der Nachricht.
     fn anlegen_gesperrt(&self, _sperre: &MutexGuard<'_, ()>, wer: &Person, neu: &NeueAufgaben, aus: Option<u32>) -> Result<Vec<Angelegt>, Fehler> {
         let eintraege: Vec<(&str, Option<&Angaben>)> = neu.titel.iter().map(Eintrag::teile).collect();
         if eintraege.is_empty() || eintraege.iter().any(|(t, _)| t.is_empty()) {
             return Err(Fehler::Ungueltig("Jede Aufgabe braucht einen Titel".into()));
+        }
+        if neu.spalte.is_some() && neu.board.is_none() {
+            return Err(Fehler::Ungueltig("Eine Spalte braucht ein Board".into()));
         }
         let schluessel = eintraege.iter().map(|(_, g)| g.and_then(|g| g.key.as_deref()).map(Fremdschluessel::pruefen).transpose()).collect::<Result<Vec<_>, _>>().map_err(Fehler::Ungueltig)?;
         let e = self.ordner().einstellungen()?.unwrap_or_default();
