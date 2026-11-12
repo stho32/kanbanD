@@ -155,6 +155,28 @@ test.describe('R00145 Ansichtsmenü', () => {
     await expect(ausloeser(page)).toBeFocused();
   });
 
+  test('Wahl-Fokus: war das ⋮-Menü vorher offen, landet der Fokus trotzdem am Ansichts-Auslöser', async ({ page }) => {
+    await oeffnen(page);
+    // Weg 2 (Befund B1): erst das Aktionsmenü, dann das Ansichtsmenü — beide sind dieselbe Fokus-Ebene,
+    // deshalb darf der Wechsel den gemerkten Auslöser nicht beim ⋮ stehen lassen.
+    await page.locator(AKTIONEN).click();
+    await expect(page.locator(`${MENUE} [role="menuitem"]`).first()).toBeFocused();
+    await ausloeser(page).click();
+    await expect(menue(page)).toHaveCount(1);
+    await expect(menue(page).getByRole('menuitemradio', { checked: true })).toBeFocused();
+    await menue(page).getByRole('menuitemradio', { name: 'Details', exact: true }).click();
+    await expect(menue(page)).toHaveCount(0);
+    await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Details');
+    await expect(ausloeser(page)).toBeFocused();
+    // Die Gegenrichtung derselben Klasse: Ansichtsmenü offen, dann ⋮ — Esc gibt den Fokus an den ⋮ zurück.
+    await ausloeser(page).click();
+    await expect(menue(page)).toHaveCount(1);
+    await page.locator(AKTIONEN).click();
+    await page.keyboard.press('Escape');
+    await expect(menue(page)).toHaveCount(0);
+    await expect(page.locator(AKTIONEN)).toBeFocused();
+  });
+
   test('US-6: höchstens ein Kopf-Menü offen — ⋮ schließt das Ansichtsmenü und umgekehrt', async ({ page }) => {
     await oeffnen(page);
     await menueOeffnen(page);

@@ -1340,7 +1340,10 @@ async function act(a, arg, wert) {
       case 'fenster-menue': {
         // Höchstens ein Kopf-Menü offen (R00145 FA 7, R00144 FA 6): das andere schließt, der Fokus folgt dem neuen Menü.
         u.fensterMenue = u.fensterMenue === arg ? null : arg;
-        if (!u.fensterMenue) u.fokus = `#fenster [data-act="fenster-menue"][data-arg="${arg}"]`;
+        // Beide Menüs sind dieselbe Fokus-Ebene (`fenstermenue`): ein Wechsel gilt der Ebene nicht als neues Öffnen,
+        // deshalb merkt sie ihren Auslöser hier. Sonst gäbe sie den Fokus später an das zuerst geöffnete Menü zurück (B1).
+        if (u.fensterMenue) gemerkteAusloeser.fenstermenue = `#fenster [data-act="fenster-menue"][data-arg="${arg}"]`;
+        else u.fokus = `#fenster [data-act="fenster-menue"][data-arg="${arg}"]`;
         break;
       }
       case 'fenster-ansicht': {
