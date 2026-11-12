@@ -48,11 +48,11 @@ R00096 setzt die WIP-Grenze für Agenten durch, R00097 die Freigabe durch den Me
 
 ### Beschreibung
 - `/api`, `/api/endpunkte` und `/api/openapi.json` nennen an `PUT /api/boards/{slug}/spalten` die Regel samt Vergleich nach Namen (Umbenennen und Tauschen einer Spalte mit Grenze oder Eigentümer zählen als Änderung), die `403` mit Rumpf und Reihenfolge sowie das Verhalten von fehlendem `grenze`, `null` und `0`.
-- `/api` nennt die bekannte Grenze: Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch. Die Regel schützt vor Versehen, nicht vor Absicht.
+- `/api` nennt die bekannte Grenze: Wer `X-KanbanD-Wer` eines Menschen nennt, kommt durch; die `art` einer Person setzen dagegen nur Menschen (`403 {fehler, kuerzel}` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}` und `PUT /api/einstellungen`, Karte #127). Die Regeln schützen vor Versehen, nicht vor Absicht.
 
 ## Nicht-funktionale Anforderungen
 
-- Sicherheit: Wie R00096 und R00097 beruht die Regel auf `X-KanbanD-Wer` (Full-Trust). Ein Agent, der sich als Mensch ausgibt oder seine Art über `PATCH /api/personen/{kuerzel}` auf `human` setzt, kommt durch. Das ist gewollt und steht in der Beschreibung.
+- Sicherheit: Wie R00096 und R00097 beruht die Regel auf `X-KanbanD-Wer` (Full-Trust). Ein Agent, der `X-KanbanD-Wer` eines Menschen nennt, kommt durch; das ist gewollt und steht in der Beschreibung. Seine eigene `art` setzt er dagegen nicht: der eine Schreibweg `einstellungen_aendern` weist jede Änderung der `art` durch einen Agenten mit `403 {fehler, kuerzel}` ab (Karte #127, R00097 NFR Sicherheit).
 - Atomarität: Die Prüfung läuft unter derselben Sperre wie das Schreiben (`gesperrt()` vor `aktion()`, ADR-0002). Abgewiesen wird immer die ganze Anfrage, nie ein Teil.
 
 ## Akzeptanzkriterien
@@ -108,7 +108,7 @@ Ausgangsboard jeder Prüfung: Board `entwicklung` mit den Spalten Eingang (`colu
 ### Beschreibung
 - [ ] Eintrag `PUT /api/boards/{slug}/spalten` in `/api/endpunkte` nennt „Grenze und Eigentümer ändern nur Menschen“, den Vergleich nach Namen (Umbenennen und Tauschen zählen), `403 {fehler, spalte, einstellung}`, die Reihenfolge und „`grenze` fehlt → behält, `null` oder `0` → entfernt“
 - [ ] `/api/openapi.json` führt an `PUT /api/boards/{slug}/spalten` die Antwort `403` mit einem Schema, das `fehler`, `spalte` und `einstellung` enthält
-- [ ] `/api` enthält den Satz zur bekannten Grenze mit `PATCH /api/personen`
+- [ ] `/api` enthält den Satz zur bekannten Grenze (`X-KanbanD-Wer` eines Menschen kommt durch) und die Art-Regel: die `art` einer Person setzen nur Menschen, `403 {fehler, kuerzel}` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}` und `PUT /api/einstellungen`
 
 ## Betroffene Verzeichnisstruktur
 

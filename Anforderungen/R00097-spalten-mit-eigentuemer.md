@@ -44,7 +44,8 @@ In der Wartungsfabrik ist die Freigabe die Stelle, an der ein Mensch entscheidet
 
 ## Nicht-funktionale Anforderungen
 
-- Sicherheit: Die Durchsetzung beruht auf dem Header `X-KanbanD-Wer` (Full-Trust, Vision). Ein Agent, der sich als Mensch ausgibt, kommt durch. Das ist hier gewollt, denn die Regel schützt vor Versehen und nicht vor Angriffen. Die API-Beschreibung sagt das.
+- Sicherheit: Die Durchsetzung beruht auf dem Header `X-KanbanD-Wer` (Full-Trust, Vision). Ein Agent, der `X-KanbanD-Wer` eines Menschen nennt, kommt durch. Das ist hier gewollt, denn die Regel schützt vor Versehen und nicht vor Angriffen. Die API-Beschreibung sagt das.
+- Sicherheit: **Die `art` einer Person setzen nur Menschen** (Karte #127). Der eine Schreibweg `einstellungen_aendern` — `POST /api/personen`, `PATCH /api/personen/{kuerzel}` und `PUT /api/einstellungen` — weist jede Änderung der `art` durch einen Agenten mit `403 {fehler, kuerzel}` ab, ohne Commit, die Einstellungsdatei bleibt byte-gleich; ein Agent legt nur Personen der Art `agent` an. Sonst höbe ein Agent diese Sperre mit einem Aufruf dauerhaft auf. Die API-Beschreibung nennt die Regel samt `PersonenartVerboten`.
 
 ## Akzeptanzkriterien
 
@@ -60,6 +61,10 @@ In der Wartungsfabrik ist die Freigabe die Stelle, an der ein Mensch entscheidet
 - [ ] `bot` archiviert #1 → `403`; `bot` nimmt #1 vom Board → `403`
 - [ ] `bot` legt eine neue Aufgabe in Eingang an → `201`; `bot` kommentiert #1 → erfolgreich; `bot` bucht 0:30 auf #1 → erfolgreich; `bot` setzt Signal `review` auf #1 → erfolgreich
 - [ ] `bot` bewegt #9 aus „In Arbeit“ nach „Verstehen & Freigabe“ (`human`) → `200`
+- [ ] `bot` schickt `PATCH /api/personen/bot {art: "human"}` → `403` `{fehler: "Die Art der Person „bot“ ändern nur Menschen", kuerzel: "bot"}`, `fehler` als erstes Feld, `kanbanD.md` byte-gleich, kein Commit; danach `DELETE /api/aufgaben/1` aus Eingang (`human`) → `403` (die Sperre hält)
+- [ ] `bot` schickt `PATCH /api/personen/st {art: "agent"}` → `403`, `kuerzel: "st"`; auch Zurückstufen ändert niemand außer Menschen
+- [ ] `bot` schickt `PATCH /api/personen/bot {art: "agent"}` (unverändert) oder nur `{name: "…"}` → `200`, ohne Änderung kein Commit; `POST /api/personen` mit `art: "agent"` → `201`, mit `art: "human"` → `403` `{fehler: "Eine neue Person der Art „human“ legen nur Menschen an", kuerzel: "mi"}`; `PUT /api/einstellungen` mit eigener `art: "human"` → `403`, mit unveränderter Art → `200`
+- [ ] `st` setzt `PATCH /api/personen/bot {art: "human"}` → `200`, ein Commit, die Datei trägt `kind: human`
 
 ### Mensch
 - [ ] `st` bewegt #1 von Eingang nach Freigegeben → `200`, ein Commit
