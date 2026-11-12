@@ -193,19 +193,19 @@ async fn spalten_nennen_die_einstellungsregel_und_nur_dort_ihr_403() {
         .map(|(wo, _)| wo)
         .collect();
     assert_eq!(mit_schema, ["put /api/boards/{slug}/spalten"], "403 EinstellungVerboten nur an PUT …/spalten");
-    let satz = "Die Art einer Person (<span class=\"mono\">art</span>) setzen nur Menschen (403 <span class=\"mono\">{fehler, kuerzel}</span>";
-    assert!(seite.contains(satz), "Seite /api nennt die Personenart-Regel");
-    assert!(d["info"]["description"].as_str().unwrap().contains("Die Art einer Person (`art`) setzen nur Menschen (403 `PersonenartVerboten`"), "openapi info");
+    let satz = "Die Art einer Person (<span class=\"mono\">art</span>) und den Zustand (<span class=\"mono\">aktiv</span>: stilllegen, reaktivieren) einer Person der Art <span class=\"mono\">human</span> setzen nur Menschen (403 <span class=\"mono\">{fehler, kuerzel}</span>";
+    assert!(seite.contains(satz), "Seite /api nennt die Personenart- und Zustandsregel");
+    assert!(d["info"]["description"].as_str().unwrap().contains("Die Art einer Person (`art`) und den Zustand (`aktiv`: stilllegen, reaktivieren) einer Person der Art `human` setzen nur Menschen (403 `PersonenartVerboten`"), "openapi info");
 }
 
-/// Karte #127: `art` setzen nur Menschen — eigene 403-Form `PersonenartVerboten` an den drei Wegen, die `art` schreiben;
-/// `DELETE …/personen/{kürzel}` (stilllegen) trägt keine.
+/// Karte #127/#137: `art` und `aktiv` eines Menschen setzen nur Menschen — dieselbe 403-Form `PersonenartVerboten` an den
+/// vier Wegen, die sie schreiben.
 #[tokio::test]
 async fn personenart_verboten_ist_eine_eigene_403_form() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
     let d = beschreibung(&lauf.adresse).await;
-    for (methode, pfad) in [("post", "/api/personen"), ("patch", "/api/personen/{kuerzel}"), ("put", "/api/einstellungen")] {
+    for (methode, pfad) in [("post", "/api/personen"), ("patch", "/api/personen/{kuerzel}"), ("delete", "/api/personen/{kuerzel}"), ("put", "/api/einstellungen")] {
         let op = &d["paths"][pfad][methode];
         assert_eq!(op["responses"]["403"]["content"]["application/json"]["schema"]["$ref"], "#/components/schemas/PersonenartVerboten", "{methode} {pfad}");
         let text = op["description"].as_str().unwrap();
@@ -224,8 +224,7 @@ async fn personenart_verboten_ist_eine_eigene_403_form() {
         .map(|(wo, _)| wo)
         .collect();
     mit_schema.sort();
-    assert_eq!(mit_schema, ["patch /api/personen/{kuerzel}", "post /api/personen", "put /api/einstellungen"], "403 PersonenartVerboten nur an den Wegen, die art schreiben");
-    assert!(d["paths"]["/api/personen/{kuerzel}"]["delete"]["responses"].get("403").is_none(), "Stilllegen ändert keine Art");
+    assert_eq!(mit_schema, ["delete /api/personen/{kuerzel}", "patch /api/personen/{kuerzel}", "post /api/personen", "put /api/einstellungen"], "403 PersonenartVerboten nur an den Wegen, die art und aktiv schreiben");
 }
 
 /// R00009 Karte #22: die Beschreibung von PUT …/spalten nennt die `alt`-Semantik samt Verhalten ohne `alt`.

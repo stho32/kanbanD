@@ -119,11 +119,12 @@ pub(crate) fn einstellungen_pruefen(art: Art, aenderungen: &Einstellungsaenderun
     }
 }
 
-/// Agent: die erste Person, deren `art` sich ändert oder die als Mensch neu dazukommt, als `PersonenartVerboten`
-/// (Karte #127) — `art` entscheidet, wer handeln darf; ein Agent, der sich zum Menschen macht, hebt die Spalten-Sperre
-/// (R00097) dauerhaft auf. Eine unveränderte Art ist keine Änderung (wie R00102), einen Agenten anzulegen bleibt frei.
-/// Mensch: nie gesperrt.
-pub(crate) fn personenarten_pruefen(art: Art, alt: &[Person], neu: &[Person]) -> Result<(), Fehler> {
+/// Agent: die erste Person, deren `art` sich ändert, die als Mensch neu dazukommt oder deren `aktiv` sich bei einem
+/// Menschen ändert — als `PersonenartVerboten` (Karte #127) bzw. mit dem Zustand-Wortlaut (Karte #137). `art` und
+/// `aktiv` entscheiden, wer handeln darf: ein Agent, der sich zum Menschen macht, hebt die Spalten-Sperre (R00097)
+/// dauerhaft auf; einer, der einen Menschen stilllegt, nimmt ihm die Handlungsfähigkeit. Eine unveränderte Angabe ist
+/// keine Änderung (wie R00102), einen Agenten anzulegen oder stillzulegen bleibt frei. Mensch: nie gesperrt.
+pub(crate) fn personen_pruefen(art: Art, alt: &[Person], neu: &[Person]) -> Result<(), Fehler> {
     if art == Art::Mensch {
         return Ok(());
     }
@@ -135,6 +136,9 @@ pub(crate) fn personenarten_pruefen(art: Art, alt: &[Person], neu: &[Person]) ->
         };
         if !erlaubt {
             return Err(Fehler::personenart_verboten(&p.kuerzel, bisher.is_none()));
+        }
+        if let Some(a) = bisher.filter(|a| a.art == Art::Mensch && a.aktiv != p.aktiv) {
+            return Err(Fehler::personenstatus_verboten(&a.kuerzel));
         }
     }
     Ok(())
@@ -258,12 +262,13 @@ mod tests {
         assert_eq!(einstellungen_pruefen(Art::Agent, &Einstellungsaenderungen::default()), Ok(()), "ohne Änderung frei");
     }
 
-    // Karte #127: die Art einer Person setzen nur Menschen — ein Agent macht sich nicht zum Menschen, legt keinen an und
-    // stuft keinen Menschen zurück; eine unveränderte Art ist keine Änderung, der Mensch darf alles.
+    // Karte #127/#137: die Art und den Zustand (`aktiv`) einer Person setzen nur Menschen — ein Agent macht sich nicht zum
+    // Menschen, legt keinen an, stuft keinen Menschen zurück und legt keinen Menschen still; eine unveränderte Angabe ist
+    // keine Änderung, der Mensch darf alles.
     #[test]
-    fn die_art_einer_person_setzen_nur_menschen() {
-        let person = |kuerzel: &str, art| Person { kuerzel: kuerzel.into(), name: kuerzel.into(), art, aktiv: true };
-        let alt = vec![person("st", Art::Mensch), person("cl", Art::Agent)];
+    fn die_art_und_den_zustand_einer_person_setzen_nur_menschen() {
+        let person = |kuerzel: &str, art, aktiv| Person { kuerzel: kuerzel.into(), name: kuerzel.into(), art, aktiv };
+        let alt = vec![person("st", Art::Mensch, true), person("ab", Art::Mensch, false), person("cl", Art::Agent, true)];
         let mit = |aenderung: Person| {
             let mut neu = alt.clone();
             if let Some(p) = neu.iter_mut().find(|p| p.kuerzel == aenderung.kuerzel) {
@@ -273,16 +278,23 @@ mod tests {
             }
             neu
         };
-        let selbst_mensch = mit(person("cl", Art::Mensch));
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &selbst_mensch), Err(Fehler::personenart_verboten("cl", false)));
-        let mensch_zurueck = mit(person("st", Art::Agent));
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mensch_zurueck), Err(Fehler::personenart_verboten("st", false)), "auch das Zurückstufen");
-        let neuer_mensch = mit(person("mi", Art::Mensch));
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &neuer_mensch), Err(Fehler::personenart_verboten("mi", true)));
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mit(person("ag2", Art::Agent))), Ok(()), "einen Agenten anlegen bleibt frei");
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mit(person("cl", Art::Agent))), Ok(()), "gleiche Art ist keine Änderung");
-        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &alt), Ok(()), "unverändert frei");
-        assert_eq!(personenarten_pruefen(Art::Mensch, &alt, &selbst_mensch), Ok(()), "Mensch nie gesperrt");
+        let selbst_mensch = mit(person("cl", Art::Mensch, true));
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &selbst_mensch), Err(Fehler::personenart_verboten("cl", false)));
+        let mensch_zurueck = mit(person("st", Art::Agent, true));
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mensch_zurueck), Err(Fehler::personenart_verboten("st", false)), "auch das Zurückstufen");
+        let neuer_mensch = mit(person("mi", Art::Mensch, true));
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &neuer_mensch), Err(Fehler::personenart_verboten("mi", true)));
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("ag2", Art::Agent, true))), Ok(()), "einen Agenten anlegen bleibt frei");
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("cl", Art::Agent, true))), Ok(()), "gleiche Art ist keine Änderung");
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &alt), Ok(()), "unverändert frei");
+        assert_eq!(personen_pruefen(Art::Mensch, &alt, &selbst_mensch), Ok(()), "Mensch nie gesperrt");
+        // Karte #137: `aktiv` eines Menschen — stilllegen und reaktivieren, auch das eigene.
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("st", Art::Mensch, false))), Err(Fehler::personenstatus_verboten("st")));
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("ab", Art::Mensch, true))), Err(Fehler::personenstatus_verboten("ab")), "auch reaktivieren");
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("ab", Art::Mensch, false))), Ok(()), "unverändert stillgelegt");
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("cl", Art::Agent, false))), Ok(()), "einen Agenten stilllegen bleibt frei");
+        assert_eq!(personen_pruefen(Art::Agent, &alt, &mit(person("ag2", Art::Agent, false))), Ok(()), "einen stillgelegten Agenten anlegen bleibt frei");
+        assert_eq!(personen_pruefen(Art::Mensch, &alt, &mit(person("st", Art::Mensch, false))), Ok(()), "der Mensch stilllegt sich selbst");
     }
 
     #[test]

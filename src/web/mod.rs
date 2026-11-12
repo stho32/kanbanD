@@ -657,7 +657,7 @@ async fn personen(State(app): State<App>) -> Result<Response, Fehler> {
     post,
     path = "/api/personen",
     tag = "Personen",
-    description = "Person anlegen {kuerzel, name, art: human|agent, aktiv?} → 201 mit der Person; Kürzel 1–8 Kleinbuchstaben oder Ziffern, Name nicht leer; Kürzel vorhanden → 409; die Art human setzen nur Menschen → 403 {fehler, kuerzel}; ein Commit der kanbanD.md",
+    description = "Person anlegen {kuerzel, name, art: human|agent, aktiv?} → 201 mit der Person; Kürzel 1–8 Kleinbuchstaben oder Ziffern, Name nicht leer; Kürzel vorhanden → 409; die Art einer Person und den Zustand einer Person der Art human setzen nur Menschen → 403 {fehler, kuerzel}; ein Commit der kanbanD.md",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::dienst::Personenangabe,
     responses((status = 201, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art human setzen nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
@@ -675,10 +675,10 @@ async fn person_anlegen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<cra
     patch,
     path = "/api/personen/{kuerzel}",
     tag = "Personen",
-    description = "Person ändern {name?, art?, aktiv?} → die Person; andere Personen, Klassen und Signale bleiben; unbekannt → 404; die Art einer Person ändern nur Menschen → 403 {fehler, kuerzel}; ohne Änderung kein Commit",
+    description = "Person ändern {name?, art?, aktiv?} → die Person; andere Personen, Klassen und Signale bleiben; unbekannt → 404; die Art einer Person und den Zustand einer Person der Art human ändern nur Menschen → 403 {fehler, kuerzel}; ohne Änderung kein Commit",
     params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::dienst::PersonAenderung,
-    responses((status = 200, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn person_aendern(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, Json(a): Json<crate::dienst::PersonAenderung>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.person_aendern(p, &kuerzel, &a)).await
@@ -689,9 +689,9 @@ async fn person_aendern(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Pa
     delete,
     path = "/api/personen/{kuerzel}",
     tag = "Personen",
-    description = "Person stilllegen (aktiv: false) — Personen werden nie entfernt; Antwort die Person",
+    description = "Person stilllegen (aktiv: false) — Personen werden nie entfernt; einen Menschen stilllegen nur Menschen → 403 {fehler, kuerzel}; Antwort die Person",
     params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    responses((status = 200, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "einen Menschen stilllegen nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn person_stilllegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>) -> Result<Response, Fehler> {
     let stilllegen = crate::dienst::PersonAenderung { aktiv: Some(false), ..Default::default() };
@@ -702,10 +702,10 @@ async fn person_stilllegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel):
     put,
     path = "/api/einstellungen",
     tag = "Ordner",
-    description = "Personen, Klassen, Signale, Quellen und Register der Anwendungen ersetzen (Personen nur stilllegen); die Art einer Person ändern nur Menschen → 403 {fehler, kuerzel}; signale: [{schluessel, bezeichnung, farbe}] — Schlüssel wie Klassen, „due“ vergeben",
+    description = "Personen, Klassen, Signale, Quellen und Register der Anwendungen ersetzen (Personen nur stilllegen); die Art einer Person und den Zustand einer Person der Art human ändern nur Menschen → 403 {fehler, kuerzel}; signale: [{schluessel, bezeichnung, farbe}] — Schlüssel wie Klassen, „due“ vergeben",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::modell::Einstellungen,
-    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Einstellungen>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {

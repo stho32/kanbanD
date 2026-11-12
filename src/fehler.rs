@@ -20,8 +20,9 @@ pub enum Fehler {
     /// Ein Agent änderte Grenze oder Eigentümer einer Spalte (403, R00102, ADR-0006); nur über `einstellung_verboten`
     /// anlegen, damit Meldung und Einstellung zusammenpassen.
     EinstellungVerboten { meldung: String, spalte: String, einstellung: Einstellung },
-    /// Ein Agent ändert die Art einer Person oder legt einen Menschen an (403, Karte #127, ADR-0003); nur über
-    /// `personenart_verboten` anlegen, damit Meldung und Kürzel zusammenpassen.
+    /// Ein Agent ändert die Art oder den Zustand (`aktiv`) einer Person bzw. legt einen Menschen an (403, Karte #127 und
+    /// #137, ADR-0003); nur über `personenart_verboten`/`personenstatus_verboten` anlegen, damit Meldung und Kürzel
+    /// zusammenpassen. Beide Wege tragen denselben Rumpf `{fehler, kuerzel}` — je Endpunkt bleibt es eine 403-Form.
     PersonenartVerboten { meldung: String, kuerzel: String },
 }
 
@@ -52,6 +53,12 @@ impl Fehler {
             format!("Die Art der Person „{kuerzel}“ ändern nur Menschen")
         };
         Fehler::PersonenartVerboten { meldung, kuerzel: kuerzel.into() }
+    }
+
+    /// „Den Zustand der Person „<Kürzel>“ ändern nur Menschen“ (Karte #137, stilllegen und reaktivieren) — der eine Ort
+    /// für den Wortlaut; derselbe Rumpf `{fehler, kuerzel}` wie die Art.
+    pub fn personenstatus_verboten(kuerzel: &str) -> Fehler {
+        Fehler::PersonenartVerboten { meldung: format!("Den Zustand der Person „{kuerzel}“ ändern nur Menschen"), kuerzel: kuerzel.into() }
     }
 }
 

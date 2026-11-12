@@ -15,7 +15,7 @@ Mehrere Agenten an einem Board nennen zusätzlich `X-KanbanD-Instanz` (eigene Ke
 Spalten mit Eigentümer (`column-owner`: `human` | `agent`): Aus einer Spalte, die dem Menschen gehört, nimmt ein Agent keine Karte (403 `Verboten`); \
 die Sperre beruht auf `X-KanbanD-Wer` und schützt vor Versehen, nicht vor Angriffen. \
 Grenze und Eigentümer einer Spalte ändern über `PUT …/spalten` nur Menschen (403 `EinstellungVerboten`). \
-Die Art einer Person (`art`) setzen nur Menschen (403 `PersonenartVerboten` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}` und `PUT /api/einstellungen`). \
+Die Art einer Person (`art`) und den Zustand (`aktiv`: stilllegen, reaktivieren) einer Person der Art `human` setzen nur Menschen (403 `PersonenartVerboten` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}`, `DELETE /api/personen/{kuerzel}` und `PUT /api/einstellungen`). \
 Bekannte Grenze: Wer `X-KanbanD-Wer` eines Menschen nennt, kommt durch — die Regeln schützen vor Versehen, nicht vor Absicht.\n\n\
 Antwortregel: Ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (`{\"aufgaben\": […]}`), weil Listen Zusatzangaben tragen; \
 ältere Listen-Endpunkte liefern ein Array. Statusantworten wie `{geaendert}` bleiben. Fehler: `{\"fehler\": \"…\"}`.\n\n\
@@ -67,9 +67,10 @@ pub struct EinstellungVerboten {
     pub einstellung: crate::modell::Einstellung,
 }
 
-/// 403 eines Agenten, der die Art einer Person setzt (Karte #127, ADR-0003): `fehler` zuerst („Die Art der Person „<Kürzel>“
-/// ändern nur Menschen“; für eine neue Person „Eine neue Person der Art „human“ legen nur Menschen an“), dann das Kürzel
-/// der Person, deren `art` gesetzt würde.
+/// 403 eines Agenten, der die Art oder den Zustand (`aktiv`) einer Person setzt (Karte #127 und #137, ADR-0003): `fehler`
+/// zuerst („Die Art der Person „<Kürzel>“ ändern nur Menschen“; für eine neue Person „Eine neue Person der Art „human“
+/// legen nur Menschen an“; „Den Zustand der Person „<Kürzel>“ ändern nur Menschen“), dann das Kürzel der Person, deren
+/// `art` oder `aktiv` gesetzt würde.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct PersonenartVerboten {
     pub fehler: String,
