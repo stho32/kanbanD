@@ -146,7 +146,7 @@ Nach Skill `test-pyramide`, jede User-Story-Szene wird ein Test.
 ## Abhängigkeiten
 
 - Abhängig von: R00105 Preisetikett (I0093, grün — „Kosten"), R00127 Kartenabschnitte auf Reitern (I0115, grün — die Ansichten), R00123 Karten-Verlauf (I0113, grün — „Verlauf"), R00103/R00110 (Live ohne Fokusverlust, grün), R00141 (I0129, grün — der `alertdialog` liegt über dem Menü).
-- **Braucht** aus R00144: die Fokus-Ebene `fenstermenue` (B0659) und die Kopf-Regel „höchstens zwei Menü-Auslöser" (ADR-0018 N2).
+- **Teilt mit R00144:** die Fokus-Ebene `fenstermenue` (B0659) und die Kopf-Regel „höchstens zwei Menü-Auslöser" (ADR-0018 N2). Die Ebene legt an, wer zuerst baut; deshalb ist #144 keine Vorbedingung (WBS: I0132 `Braucht` ohne I0131).
 - Berührt: R00127 (Reiter-AK, „genau ein Panel", E1-Umbruch), R00123 („Verlauf ist der letzte Reiter", Wechsel der Aufgabe), R00105 (Reiter-Asserts, Rückfall), R00103/R00110 (Proben ohne Blättern), R00106 (Menüliste), D00001.
 - Blockiert: **R00146** („Inhalt: schmale rechte Spalte je Spalte") — sie baut auf dem Inhalt als einziger gezeichneter Ansicht auf und kommt **nach** dieser Anforderung.
 
