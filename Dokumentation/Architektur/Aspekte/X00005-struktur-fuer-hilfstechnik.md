@@ -12,10 +12,14 @@ quellen:
   - web/index.html
   - web/app.js
   - web/ansicht.js
+  - web/reiter.js
+  - web/fokus.js
   - web/markdown.js
   - web/kd-app.css
   - e2e/tests/ziele.spec.js
   - e2e/tests/r00065-mehrfachauswahl.spec.js
+  - e2e/tests/r00144-kopf-aktionen.spec.js
+  - e2e/tests/r00145-ansichtsmenue.spec.js
   - Anforderungen/R00000-vision.md
 ---
 
@@ -85,13 +89,24 @@ Gebaut 2026-11-12 (kanbanD `d0fa547`, gebaut): Die Hausantwort (ADR-0018) ist ge
 - **Markierung:** `aria-current="page"` setzt derselbe Helfer `aktuelleSeite` (`:77–80`) wie die Klasse `an`; für die vier seltenen Ziele liegt sie am Menüeintrag. Der Trenner ist gestaltet in `web/kd-app.css:52`.
 - Der Ist-Stand vom 2026-11-08 oben („vor dem Bau“) ist damit überholt; Karte, Überschriften, Landmarks und `aria-expanded` sind nach #13 gebaut (Beleg `e2e/tests/r00113-struktur.spec.js`), die Kopfzeile nach #105/R00140 geweitet.
 
-Ist 2026-11-12 (kanbanD `99b6acc`, gelesen, vor dem Bau von #145/#144):
+Ist 2026-11-12 **vor dem Bau** von #145/#144 (kanbanD `99b6acc`, gelesen; durch den gebauten Stand unten überholt):
 
 - **Ansichtswechsel:** Die sechs Ansichten stehen als Reiterleiste `span.seg` mit `role="tablist"` „Ansicht der Aufgabe“ im Fensterkopf (`vReiterleiste`, `web/ansicht.js:232–235`; je Reiter `role="tab"`, `aria-selected`, `aria-controls="reiterpanel-<k>"`, roving `tabindex`), genau ein `role="tabpanel"` wird gezeichnet (`:285–293`). Die Liste ist `REITER` (`web/reiter.js:7`), „kosten“ bedingt (`:9`), der Rückfall `tab ∉ reiterSchluessel(a)` → `inhalt` steht in `vFenster` (`web/ansicht.js:280`) und `reiterRueckfall` (`web/app.js:893`). Tasten `←`/`→`/`Pos1`/`Ende`/`Enter`/`d` über `naechsterReiter` (`web/tastatur.js:47`, `web/app.js:2424–2450`).
 - **Kopf:** zusätzlich Zähler `i / n` (`:281`), Blätterknöpfe ↑/↓ (`data-act="blaettern"`), `↗`, Archiv `▭`, Trenner und **beschrifteter** Lösch-Auslöser (`el-ausloeser`), ✕.
 - **Anhänge:** eigener Reiter (`:290`, `vAnhaenge` `:355–358`).
 - **Menüs:** `vBoardDrei`/`vBoardMenue` (`:390–398`, R00128 M1) sind das gebaute Muster für einen ⋮-Auslöser mit `role="menu"`; Ebenen und Fokus in `web/fokus.js:52–63` und `web/app.js:768–777`, `:858`.
-- Soll nach ADR-0018 Nachtrag N2: Ansichtsmenü statt `tablist`, Aktionsmenü im Kopf, Anhänge im Inhalt; der Ist-Stand oben ist damit der Ausgangspunkt, nicht mehr die Hausantwort.
+- Soll nach ADR-0018 Nachtrag N2: Ansichtsmenü statt `tablist`, Aktionsmenü im Kopf, Anhänge im Inhalt; der Ist-Stand oben war der Ausgangspunkt der Karten und ist durch den gebauten Stand unten überholt.
+
+Gebaut 2026-11-12 (Karten #145, #144; #145 `ef4249e`, #144 `ffdcb91`, Bau-Commits `3aca0e5`/`585e6f1`, auf `main` bis `b58a497`): die Hausantwort aus ADR-0018 Nachtrag N2 steht.
+
+- **Ansichtswechsel:** `vAnsichtWahl` (`web/ansicht.js:232–242`) — Textknopf „Ansicht: <Name>“ mit `▾`, `aria-haspopup="menu"` und `aria-expanded`, bei offenem Menü `role="menu"` „Ansicht der Aufgabe“ mit je `role="menuitemradio"`/`aria-checked` und ✓ im festen Gutter. Im Fenster gibt es kein `role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `role="tabpanel"` und keinen roving `tabindex` mehr (`grep` über `web/*.js`: nur der Kommentar an `web/ansicht.js:305` nennt sie).
+- **Eine Liste, ein Zustand:** `REITER`/`reiterDerAufgabe`/`reiterSchluessel` (`web/reiter.js:7–11`, ohne „Anhänge“), Auswahl aus `S.ui.tab`; Rückfall `ansichtDerAufgabe` (`web/ansicht.js:227–229`) und `reiterRueckfall` (`web/kosten.js:92–95`).
+- **Genau eine Ansicht:** der Inhaltsbereich ist `role="group"` mit `aria-label="Ansicht: …"` (`web/ansicht.js:312`), kein `tabpanel`, kein `aria-current` im Fenster.
+- **Kopf** (`:301`): rechts Ansicht · ↗ `#vsc` · ⋮ · ✕; keine Blätterknöpfe, kein Zähler „i / n“, kein beschrifteter Lösch-Auslöser und kein Trenner. `case 'blaettern'` und die Tasten ↑/↓ entfallen (kein `blaettern` in `web/*.js`).
+- **Aktionsmenü ⋮:** `vFensterAktionen` (`:283–292`) — Symbolknopf mit Namen „Weitere Aktionen für Aufgabe #n“, Einträge Archivieren bzw. Zurückholen, genau ein `role="separator"`, „Endgültig löschen“ in `warn`.
+- **Anhänge:** die Liste `vAnhaenge` (`:377`) steht im Inhalt nach den Teilaufgaben (`vFensterInhalt`, `:341`).
+- **Kopf-Menü als eigene Ebene:** `fenstermenue` (`web/fokus.js:63`, nach dem Dialogstapel, vor `pop`), Zustand `S.ui.fensterMenue` (`web/app.js:2`), Tasten `fensterMenueTaste` (`:2464–2472`), höchstens ein Kopf-Menü offen (`:1342`, `:1465–1466`, `:1502`); der `alertdialog` bleibt darüber.
+- **Durchsetzung:** `e2e/tests/r00145-ansichtsmenue.spec.js`, `e2e/tests/r00144-kopf-aktionen.spec.js`.
 
 ## Abweichungen
 
@@ -109,4 +124,5 @@ Ist 2026-11-12 (kanbanD `99b6acc`, gelesen, vor dem Bau von #145/#144):
 - nachgeführt 2026-11-10 (arev Karte #15, S3): der Zusatz steht **vor** „, ausgewählt“ — hier stand „am Ende des Namens“; der Bau folgt ADR-0019 und R00114 FA 9, der Aspekttext war veraltet
 - erweitert 2026-11-12 nach I0125/R00136 (Karte #109): kein `h1`–`h6` in `role=menu`; die vier Menüköpfe sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung an der Klasse; die „Offene Fragen"-Zeile ist damit geschlossen
 - nachgeführt 2026-11-12 nach R00140 (Karte #105, ADR-0018 Nachtrag N1): die Hausantwort ist gebaut (`85dbc2e`); die Kopfzeile trägt in der Leiste zwei Ziele (Board, Berichte ▾) und im Menü „…“ die vier seltenen Ziele (Aufgaben, Personen, WBS je gebundener Anwendung, Einrichten) als erste Gruppe, darunter ein Trenner, dann die Werkzeuge; die Systemantwort ist auf den gebauten Stand gezogen (`d0fa547`, `web/ansicht.js:84–147`, `web/kd-app.css:52`)
-- nachgeführt 2026-11-12 nach ADR-0018 Nachtrag N2 (Karten #145, #144; **Soll, vor dem Bau**): der Ansichtswechsel des Aufgabenfensters ist ein Menü (`aria-checked` am `menuitemradio`) statt `tablist`, die Anhänge stehen im Inhalt, das Fenstermenü ist eine eigene Ebene `fenstermenue` in `web/fokus.js`; `aria-current` bleibt der Kopfzeile (Regel 5). Die frühere Entscheidung „bleibt `tablist`“ (R00127 Offene Frage 1) ist vom Betreiber aufgehoben; der Ist-Stand vom 2026-11-12 (`99b6acc`) steht als Ausgangspunkt in der Systemantwort.
+- nachgeführt 2026-11-12 nach ADR-0018 Nachtrag N2 (Karten #145, #144; **Soll, vor dem Bau**, Stand `99b6acc`): der Ansichtswechsel des Aufgabenfensters ist ein Menü (`aria-checked` am `menuitemradio`) statt `tablist`, die Anhänge stehen im Inhalt, das Fenstermenü ist eine eigene Ebene `fenstermenue` in `web/fokus.js`; `aria-current` bleibt der Kopfzeile (Regel 5). Die frühere Entscheidung „bleibt `tablist`“ (R00127 Offene Frage 1) ist vom Betreiber aufgehoben; der Ist-Stand vom 2026-11-12 (`99b6acc`) steht als Ausgangspunkt in der Systemantwort.
+- nachgeführt 2026-11-12 nach R00144/R00145 (ADR-0018 Nachtrag N2, gebaut): die Hausantwort steht — Ansichtsmenü `vAnsichtWahl` (`web/ansicht.js:232–242`), Aktionsmenü `vFensterAktionen` (`:283–292`), Kopf mit zwei Menü-Auslösern (`:301`), Anhänge im Inhalt (`:341`, `:377`), Ebene `fenstermenue` (`web/fokus.js:63`); die Systemantwort ist auf den gebauten Stand gezogen, die vorige Notiz beschreibt den Stand vor dem Bau

@@ -52,7 +52,7 @@ Bereits in ADR-0007 verworfen (fremde Bibliothek oder eigener Abgleich ohne Buil
 
 **Option B.** Neues reines Modul `web/fokus.js` (UMD wie `web/menue.js`, eingebunden vor `ansicht.js`) mit:
 
-- `ebenen(ui)` *(→ N1)* → Liste der offenen Ebenen von unten nach oben, je Ebene `{ art, selektor, rueckgabe }` (Arten: `fenster`, `defekt`, `neu`, `hilfe`, `zuweisen`, `pop`, `kmenue`);
+- `ebenen(ui)` *(→ N1)* → Liste der offenen Ebenen von unten nach oben, je Ebene `{ art, selektor, rueckgabe }` (Arten: `fenster`, `defekt`, `neu`, `hilfe`, `zuweisen`, `pop`, `kmenue`) *(→ N8: dazu `fenstermenue` und `aldialog`)*;
 - `fallenSchritt(anzahl, index, rueckwaerts)` → Index des nächsten tabbaren Elements mit Umlauf;
 - `fokusZiel(lage)` → das eine Ziel nach `render()` aus `{ ausdruecklich, gesichert, gesichertInOberster, geschlossen, geoeffnet }`.
 
@@ -217,9 +217,30 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 
 **Durchsetzung** (ersetzt den Review-Punkt in N7a): Aufruf von `ersterTabbarer` ohne oberste offene Ebene ist ein Befund, außer mit `#main` im Leerfall (`ohneAusloeserGeschlossen`). Ein Pop-Zustand ohne gezeichneten Pop ist ein Befund.
 
+## Nachtrag 2026-11-12 N8: die Artenliste der Ebenen ist gewachsen (`fenstermenue`, `aldialog`)
+
+**Anlass**: Modell-Nachzug aus dem Architektur-Review #144/#145 (S1/O3, 2026-11-12). Die Entscheidung oben zählt die Arten der Fokusebenen auf; zwei Arten sind seither dazugekommen, ohne dass es hier stand: `fenstermenue` mit dem Menü des Aufgabenfenster-Kopfes (R00144/R00145, [ADR-0018 N2](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md)) und `aldialog` mit dem geteilten Bestätigungsfenster für Board und Aufgabe (R00128/R00141). Die Wahl dieser ADR — Ebenen mit Startziel und Rückgabe, ein Modul `web/fokus.js` — gilt unverändert, der Status bleibt `Akzeptiert`. Der Text oben wird nicht umgeschrieben (Skill `adr-vorlage`); er trägt bei der Artenliste die Marke *(→ N8)*.
+
+**Belegt (Code)**, kanbanD `b58a497` (gelesen 2026-11-12):
+- `ebenen(ui, gemerkt)` baut den Stapel in `web/fokus.js:61–68`: zuerst der Dialogstapel `dialogstapel` (`:43–51`) mit `fenster`, `neu`, `defekt`, `zuweisen`, `hilfe`, danach `fenstermenue` (`:63`), `pop` (`:64`), `aldialog` (`:65`) und `kmenue` (`:66`). Von unten nach oben sind das neun Arten.
+- `fenstermenue` steht nur, solange ein Kopf-Menü offen und das Fenster offen ist (`ui.fensterMenue && ui.offen && !ui.setup`); Selektor `#fenster [role="menu"]`, Startziel der gewählte Eintrag (`GEWAEHLTER_MENUEEINTRAG`), Rückgabe über `ausloeser(gemerkt, 'fenstermenue')`. Zustand `S.ui.fensterMenue` (`web/app.js:2`), gesetzt im Zweig `case 'fenster-menue'` und gelöst in `case 'fenster-ansicht'` (`:1340–1350`), Tasten in `fensterMenueTaste` (`:2464–2472`).
+- `aldialog` ist das geteilte Bestätigungsfenster vor dem Archivieren bzw. endgültigen Löschen (`#al-dialog`, `role="alertdialog"`, `aria-modal`, `web/ansicht.js:444–448`; Startziel `#al-abbrechen`), für das Board (`boardAlDialog`, `web/app.js:1121–1136`) und das Aufgabenfenster (`dialogAufgabeLoeschen`, `:1188–1200`). Er liegt über `pop` und unter `kmenue`.
+- N1 (`:107`) und N7 beschreiben den Stapel vom Stand 2026-11-06 und sind damit unvollständig, nicht falsch.
+
+**Entschieden (festgehalten, nicht neu entschieden)**:
+
+1. **Die Artenliste gilt fortgeschrieben**: `fenster`, `neu`, `defekt`, `zuweisen`, `hilfe`, `fenstermenue`, `pop`, `aldialog`, `kmenue` — in dieser Reihenfolge von unten nach oben, wie `ebenen()` sie baut. Maßgeblich bleibt der Code; diese Liste ist seine Lesefassung.
+2. **`fenstermenue` ist ein Menü im Fenster, kein `#pop`.** Das ist [ADR-0018 N2](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md) Punkt 5; hier steht nur, wo die Art im Stapel liegt. Ein Kopf-Menü als `#pop` neben dem Dialog bleibt eine Abweichung.
+3. **`aldialog` bleibt eine eigene Art** und keine Form von `fenster`: er ist modal, hat ein Bestätigungswort und liegt über dem Pop.
+
+**Durchsetzung** (ergänzt): Review-Punkt für `architektur-reviewer` und `code-reviewer` — eine Art in `ebenen()` (`web/fokus.js`), die in dieser Liste fehlt, ist ein Befund; ebenso ein Kopf-Menü, das als `pop` statt als `fenstermenue` geführt wird. Die Probe der Karte #8 (`e2e/einheit/fokus.test.js`) zählt die Ebenen je Zustand; neue Proben der Karten #144/#145: `e2e/tests/r00144-kopf-aktionen.spec.js`, `e2e/tests/r00145-ansichtsmenue.spec.js`.
+
+**Grenze**: Dieser Nachtrag hält nur den gebauten Stapel und die zwei gewachsenen Arten fest. Form, Beschriftung und Tasten der beiden Kopf-Menüs sind Sache der Anforderungen R00144/R00145; `aldialog` selbst ist mit R00128/R00141 gebaut und hier nur als Art benannt.
+
 ## Quellen / Bezüge
 
 - [ADR-0007: Sichtzustand übersteht das Neuzeichnen](0007-sichtzustand-uebersteht-das-neuzeichnen.md)
 - Modell: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md)
 - WAI-ARIA Authoring Practices: Dialog (Modal), Menu Button, Radio Group, Tabs
+- Nachtrag N8: Karten #144/#145 ([R00144](../../Anforderungen/R00144-aufgabenfenster-kopf-aktionen-im-menue.md), [R00145](../../Anforderungen/R00145-aufgabenfenster-ansichtsmenue-anhaenge-im-inhalt.md), gebaut `ef4249e`/`ffdcb91`), [ADR-0018 N2](0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md), R00128/R00141 (Bestätigungsfenster `aldialog`); `web/fokus.js:43–51`, `:61–68`, `web/app.js:1121–1136`, `:1340–1350`, `:2464–2472`, `web/ansicht.js:444–448`; Proben `e2e/tests/r00144-kopf-aktionen.spec.js`, `r00145-ansichtsmenue.spec.js`, `e2e/einheit/fokus.test.js`
 - `web/app.js:431–498`, `:514`, `:1079–1080`, `:1281–1400`, `:1456–1463`; `web/ansicht.js` wie im Kontext; `web/menue.js` (`menueSchritt`); `web/tastatur.js` (`naechsterReiter`); `web/sichtzustand.js`
