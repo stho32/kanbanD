@@ -516,3 +516,11 @@ Nie vom User erfragen.
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 B1 Erinnerung entsteht mit dem Zeichnen | Nacharbeit | 0,5-1 | 0,75h | 0,75h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 B2 Probe „eigener Timer zuerst“ | Nacharbeit | 0,5 | 0,5h | 0,5h | autonom |
 | 2026-11-10 | R00114 Vergessene Timer sichtbar machen | Nacharbeit #15 M2 Zeile bricht im Telefonbetrieb um | Nacharbeit | 0,5-1 | 0,75h | 0,75h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0580 Reiter und nächster Reiter (rein) | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0581 Reiter-Panels im Fenster | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0582 Reiterleiste bei schmalen Breiten | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0583 Reiter „Zeiten“ | Standard | 1-2 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0584 Reiter „Anhänge“ | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0585 Reiter „Details“ (Felder), Seitenleiste entfällt | Standard | 1-2 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0586 „Inhalt“ bleibt schlank | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | Lauf R00127 | Konsolidierung | — | — | 1,75h | autonom |
