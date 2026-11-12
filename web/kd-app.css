@@ -241,8 +241,8 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .leg .x{width:22px;justify-content:center;padding:0;color:var(--kd-muted)}
 /* Popover */
 .pop{position:fixed;z-index:60;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12.5px;max-height:70vh;overflow:auto}
-.pop h4{margin:0;height:28px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line)}
-.pop h4 .mono{margin-left:auto;font-weight:400;letter-spacing:0}
+.pop .pop-kopf{margin:0;height:28px;display:flex;align-items:center;padding:0 var(--kd-s4);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line)}
+.pop .pop-kopf .mono{margin-left:auto;font-weight:400;letter-spacing:0}
 .pop .fuss{padding:6px var(--kd-s4);font-size:11px;color:var(--kd-muted)}
 /* Knöpfe in Pop-Fenstern sehen aus wie die Zeilen vorher (R00106: neu sind nur Rolle und Fokus) */
 .pop :where(button).iz{width:100%;border:0;border-bottom:1px solid var(--kd-line);background:none;font:inherit;color:inherit;text-align:left}

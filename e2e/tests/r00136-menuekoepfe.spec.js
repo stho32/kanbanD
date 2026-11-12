@@ -119,7 +119,6 @@ test.describe('R00136 Menüköpfe in role=menu ohne Überschrift', () => {
   });
 
   test('US-3: die vier Köpfe sehen aus wie vorher', async ({ page }) => {
-    test.fail(true, 'Karte #109: heute keine Kopfklasse, gemessen am Tag (B0619)');
     const k = await starten(page);
     const verstoesse = [];
     await jeMenue(page, k, async m => {
