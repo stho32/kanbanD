@@ -953,6 +953,7 @@ zuletzt: 2026-11-12
 
 ## Notizen / Quellen
 
+- Karten- und Board-Vorlagen (R00143, Karte #125) — Stand 2026-11-12: **kein WBS-Knoten, keine Interaction, keine Bubble.** Betreiber-Entscheidung 2026-11-12 (Kartenkommentar #125): eine Vorlage ist eine Konvention über vorhandenen Dateien — eine gewöhnliche Karte bzw. ein gewöhnliches Board dient als Kopiervorlage, kopiert mit `Duplizieren` (R00142/I0130) bzw. durch Kopieren der Board-Datei; kein Format, kein Ordner, kein Feld, keine Automatik, keine Vision-Fortschreibung, kein ADR. Der Bau ist ein Abschnitt „Vorlagen" in `README.md`: kein sichtbares Verhalten, also auch keine User Story und keine Bubble. Die vorhandenen Wege bleiben unberührt (I0130 Karte duplizieren, I0008 Board anlegen, I0009 Spalten einrichten, I0043 Berichtsfilter, I0047 Termine). **Entfallen mit der Entscheidung:** Vorlagen-Ordner, `template:`-Feld samt Format-Versionierung, Oberflächen-Aktion „Als Vorlage speichern", jede Automatik, ADR-0024/0025-Anschluss.
 - Zielbild: Anforderungen/R00000-vision.md (Stand 2026-10-18)
 - Gestaltung: Dokumentation/Wireframes/ (Prototyp und Token-Sheet)
 - Angelegt im Lauf `/anwendung` ohne Interview (Anmerkungen in kanbanD-anmerkungen.md)
