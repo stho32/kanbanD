@@ -119,9 +119,9 @@ test.describe('R00114', () => {
     await page.goto(k.adresse);
     const eins = page.locator('.ka[data-id="1"]');
     await expect(page.getByRole('listitem', { name: /Timer läuft seit 6 Tagen/ })).toHaveCount(1);
-    await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, Timer läuft seit 6 Tagen');
+    await expect(eins).toHaveAttribute('aria-label', /^#1 eins, Fehler, Timer läuft seit 6 Tagen, seit \d+ \w+ in Zu erledigen$/);
     await eins.locator('.t').click({ modifiers: ['ControlOrMeta'] });
-    await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, Timer läuft seit 6 Tagen, ausgewählt');
+    await expect(eins).toHaveAttribute('aria-label', /^#1 eins, Fehler, Timer läuft seit 6 Tagen, seit \d+ \w+ in Zu erledigen, ausgewählt$/);
     expect(await eins.locator('.lauf').evaluate(chip => [chip.tabIndex, chip.querySelectorAll('a, button, input, [tabindex]').length])).toEqual([-1, 0]);
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press('Enter');
@@ -175,12 +175,12 @@ test.describe('R00114', () => {
     const chip = page.locator('.ka[data-id="1"] .lauf');
     await expect(chip, 'unter der Schwelle die laufende Zahl wie heute').toHaveText('9:59:59');
     await expect(chip).not.toHaveClass(/vergessen/);
-    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('aria-label', '#1 eins, Fehler');
+    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('aria-label', /^#1 eins, Fehler, seit \d+ \w+ in Zu erledigen$/);
     const vorher = await page.evaluate(() => window.kdTest.renders());
     await page.clock.runFor(1000);
     await expect(chip).toHaveText('seit 10 Stunden');
     await expect(chip).toHaveClass(/vergessen/);
-    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('aria-label', '#1 eins, Fehler, Timer läuft seit 10 Stunden');
+    await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('aria-label', /^#1 eins, Fehler, Timer läuft seit 10 Stunden, seit \d+ \w+ in Zu erledigen$/);
     expect(await page.evaluate(() => window.kdTest.renders()), 'ein Neuzeichnen an der Kante').toBe(vorher + 1);
     await page.clock.runFor(5000);
     await expect(chip).toHaveText('seit 10 Stunden');
@@ -205,7 +205,7 @@ test.describe('R00114', () => {
     await expect(page.locator('.ka[data-id="3"] .lauf.vergessen')).toHaveText('seit 36 Stunden');
     await expect(page.locator('.ka[data-id="4"] .lauf.vergessen')).toHaveText('seit 47 Stunden');
     // ab 48 Stunden Tage, kaufmännisch gerundet — dieselbe Entscheidung trägt der Name der Karte
-    await expect(page.locator('.ka[data-id="3"]')).toHaveAttribute('aria-label', '#3 drei, Fehler, Timer läuft seit 36 Stunden');
+    await expect(page.locator('.ka[data-id="3"]')).toHaveAttribute('aria-label', '#3 drei, Fehler, Timer läuft seit 36 Stunden, seit 0 Stunden in Zu erledigen');
     const tage = {
       ...bestand,
       'aufgaben/0005-fuenf.md': karte(5, 'fünf', 'bug', [`${vor(30 * 24 * 60 + 60)} · ... · st`]),

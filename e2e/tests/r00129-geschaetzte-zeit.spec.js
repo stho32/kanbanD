@@ -1,5 +1,5 @@
 // R00129 Geschätzte Zeit je Karte — Karte (D0002) und Aufgabenfenster (D0003), rein informativ.
-// ADR-0023: Anzeige h:mm nur wenn gesetzt; eigenes `<span>` in `.r3 .rechts` unmittelbar nach Σ; Feldzeile nur lesend.
+// ADR-0023: Anzeige h:mm nur wenn gesetzt; eigenes `<span>` in `.r3 .rechts` hinter Σ (seit R00126 steht das Alter direkt nach Σ dazwischen); Feldzeile nur lesend.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema } = require('./hilfen');
 
@@ -34,7 +34,7 @@ test.describe('R00129 Karte', () => {
     await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
   }
 
-  test('US-4: Form, Ort und Name — sichtbar „≈ 2:30“ (aria-hidden) unmittelbar nach Σ, Name „Geschätzt 2:30“, kein Bedienziel, Datei byte-gleich', async ({ page }) => {
+  test('US-4: Form, Ort und Name — sichtbar „≈ 2:30“ (aria-hidden) in .r3 .rechts hinter Σ, Name „Geschätzt 2:30“, kein Bedienziel, Datei byte-gleich', async ({ page }) => {
     await board(page, fabrik('estimate: 150\n', ZEIT_46));
     const vorher = k.lies('aufgaben/0001-eins.md');
     const karte = page.locator('.ka[data-id="1"]');
@@ -47,9 +47,10 @@ test.describe('R00129 Karte', () => {
     for (const attribut of ['aria-label', 'tabindex', 'role', 'data-act']) {
       expect(await schaetzung.getAttribute(attribut), attribut).toBeNull();
     }
-    // unmittelbar nach dem Element .sum
-    expect(await schaetzung.evaluate(el => el.previousElementSibling && el.previousElementSibling.classList.contains('sum'))).toBe(true);
-    expect(await karte.locator('.r3 .rechts .sum + .schaetzung').count()).toBe(1);
+    // in .r3 .rechts hinter dem Element .sum — seit R00126 steht das Alter direkt nach Σ dazwischen
+    expect(await schaetzung.evaluate(el => el.parentElement.classList.contains('rechts'))).toBe(true);
+    expect(await schaetzung.evaluate(el => (el.parentElement.querySelector('.sum').compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)).toBe(true);
+    expect(await karte.locator('.r3 .rechts .sum ~ .schaetzung').count()).toBe(1);
     // Leerfall: #4 ohne Schätzung trägt kein Element, ihr Markup ist wie heute
     await expect(page.locator('.ka[data-id="4"] .schaetzung')).toHaveCount(0);
     expect(k.lies('aufgaben/0001-eins.md')).toBe(vorher);
@@ -177,7 +178,7 @@ test.describe('R00129 Breite und Kontrast', () => {
         });
         expect(karte.imRechteck, `${spaltenbreite}/${breite}: Karte in der Spalte`).toBe(true);
         expect(karte.rechtsPasst, `${spaltenbreite}/${breite}: .rechts ohne Überlauf`).toBe(true);
-        await expect(page.locator('.ka[data-id="1"] .r3 .rechts .sum + .schaetzung')).toHaveCount(1);
+        await expect(page.locator('.ka[data-id="1"] .r3 .rechts .sum ~ .schaetzung')).toHaveCount(1);
       }
     }
   });
