@@ -381,12 +381,11 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .km .mono{color:var(--kd-muted);font-size:11px}
 .felder{display:grid;grid-template-columns:84px minmax(0,1fr);border-top:1px solid var(--kd-line);background:var(--kd-surface)}
 .felder>*{min-height:30px;display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--kd-line);padding:0 var(--kd-s2)}
-.felder .k{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);background:var(--kd-bg)}
+/* Beschriftung einer Feldzeile (R00109 Z. 183, PO #104): Plex Sans 500, 12/16, --kd-text — nackt („Schlüssel“,
+   „Zählt in Berichten“) wie mit Schlüssel. Der Schlüssel steht als Mono-Hilfstext in `.sl` darunter, nie in `.k`. */
+.felder .k{font:500 12px/16px var(--kd-font);color:var(--kd-text);background:var(--kd-bg)}
 /* Feldzeile mit Schlüssel (ADR-0013 N1): Rahmen .kb, oben die Beschriftung, darunter der Schlüssel der Datei; ohne Schlüssel bleibt .k nackt */
 .felder>.kb{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding-block:4px;min-width:0;background:var(--kd-bg)}
-.felder .kb .k{font:500 12px/16px var(--kd-font);color:var(--kd-text);background:none}
-/* R00127 (PO #104): auch die nackte `.k`-Beschriftung des Reiters „Details“ folgt der R00109-Zeichnung (Sans 500, --kd-text). */
-.felder-details .k{font:500 12px/16px var(--kd-font);color:var(--kd-text)}
 .felder .sl{font:400 10.5px/14px var(--kd-mono);color:var(--kd-muted)}
 /* Wertspalte bricht an beliebiger Stelle um (R00131, ADR-0012/0015 N1/0019 N4): min-width:0 lässt die Zelle schrumpfen,
    overflow-wrap:anywhere verkleinert die Mindestbreite des anonymen Flex-Textkindes — break-word täte das hier nicht */
