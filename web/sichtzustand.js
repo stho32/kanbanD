@@ -133,7 +133,7 @@
     ungemeldet.delete(feld);
   }
 
-  /** Beim Verlassen: ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
+  /** Beim Verlassen und auf Enter: ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
   function aenderungNachtragen(feld) {
     if (!ungemeldet.has(feld)) return;
     ungemeldet.delete(feld);

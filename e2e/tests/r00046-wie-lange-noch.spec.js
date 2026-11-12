@@ -51,6 +51,25 @@ test.describe('R00046', () => {
     await expect(erledigt).toContainText('keine Prognose unter 3 Läufen');
   });
 
+  // R00083 Messbasis: ein getippter Wert, den ein Neuzeichnen in ein neues Feld rettet, gilt mit Enter.
+  test('US-4: Messbasis überlebt ein Neuzeichnen und gilt mit Enter', async ({ page }) => {
+    await page.goto(k.adresse + '#/berichte/prognose');
+    await expect(page.locator('#wl-kopf')).toContainText('3 von 6 fertig');
+    await liveBereit(page);
+    await filterOeffnen(page);
+    const feld = page.getByLabel('Messbasis in Tagen');
+    await feld.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type('1');
+    // Ein Live-Ereignis von außen zeichnet neu, während der Fokus im Feld steht und der Wert noch nicht übernommen ist
+    await page.request.post(k.adresse + 'api/aufgaben', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { titel: 'neu', board: 'entwicklung' } });
+    await expect(page.locator('#wl-kopf')).toContainText('3 von 7 fertig');
+    await expect(feld).toHaveValue('1');
+    await feld.press('Enter');
+    await expect(page.locator('.wl-phase[data-spalte="Erledigt"]')).toContainText('keine Prognose unter 3 Läufen');
+    expect(k.lies('boards/entwicklung.md')).toContain('window-days: 1');
+  });
+
   test('US-3: live — bewegen, anlegen, archivieren ohne Neuladen', async ({ page }) => {
     await page.goto(k.adresse + '#/berichte/prognose');
     await expect(page.locator('#wl-kopf')).toContainText('3 von 6 fertig');

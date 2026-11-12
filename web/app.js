@@ -2223,6 +2223,9 @@ document.addEventListener('keydown', e => {
   // Enter auf dem Lesediv des Titels öffnet die Bearbeitung (R00116, Muster besch-lesen)
   if (e.key === 'Enter' && t.dataset && t.dataset.act === 'titel-bearbeiten') { e.preventDefault(); act('titel-bearbeiten'); return; }
   if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
+  // Enter in einem Feld der Berichtsfilter nimmt den Wert an wie ein „change“: hat ein Neuzeichnen den getippten Wert in
+  // ein neues Feld gerettet, meldet der Browser dafür kein „change“ — ohne Enter bliebe er ungespeichert.
+  if (e.key === 'Enter' && t.dataset && t.dataset.bf) { aenderungNachtragen(t); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     act(t.dataset.enter, t.dataset.arg, t.value);
