@@ -105,7 +105,7 @@ const kd = namen => namen.map(name => `--kd-${name}`);
 const KLASSEN = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal', 'green', 'lime', 'grey'];
 const AMPEL = ['ok', 'warn', 'error', 'neutral'];
 const PAARE = [
-  { name: 'Neutrale Flächen', flaechen: kd(['bg', 'surface', 'sunken']), vorne: kd(['text', 'muted', 'warn', 'accent-ink', 'mensch', 'agent-ink']), mass: SCHRIFT },
+  { name: 'Neutrale Flächen', flaechen: kd(['bg', 'surface', 'sunken']), vorne: kd(['text', 'muted', 'warn', 'accent-ink', 'link-hover', 'mensch', 'agent-ink']), mass: SCHRIFT },
   { name: 'Akzent-Container', flaechen: kd(['accent-weak']), vorne: kd(['accent-ink', 'text', 'muted', 'warn']), mass: SCHRIFT },
   { name: 'Agent-Container', flaechen: kd(['agent-weak']), vorne: kd(['agent-ink', 'text', 'muted']), mass: SCHRIFT },
   { name: 'Mensch-Container', flaechen: kd(['mensch-weak']), vorne: kd(['text', 'muted']), mass: SCHRIFT },
@@ -147,6 +147,8 @@ const PAARUNGEN = [
   { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-wbs-error-ink', flaeche: '--kd-wbs-error-bg', ring: '--kd-wbs-error' },
   { datei: 'kd-app.css', selektor: '.toast .lnk', vorne: '--kd-head-link', flaeche: '--kd-head' },
   { datei: 'kd-base.css', selektor: '.lauf.vergessen', vorne: '--kd-fehler-text', flaeche: '--kd-fehler-flaeche', flaecheImRumpf: true },
+  // Link beim Zeigen (R00145-Nacharbeit): die Regel nimmt den eigenen Token, nicht den rohen Akzent (dunkel 3,41:1).
+  { datei: 'kd-base.css', selektor: 'a:hover', vorne: '--kd-link-hover', flaeche: '--kd-surface' },
 ];
 /** Abweichungen einer Regel von ihrer Paarung: falsche Schrift, falsche Fläche, fehlender Ring. */
 function paarungsFehler(paarung, text) {

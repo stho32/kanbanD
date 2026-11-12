@@ -1,7 +1,7 @@
 /* kanbanD — gemeinsame Grundformen der Entwürfe. Werte nur aus kd-tokens.css. */
 *{box-sizing:border-box;border-radius:0}
 body{margin:0;font-family:var(--kd-font);color:var(--kd-text)}
-a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-accent);text-decoration:underline}
+a{color:var(--kd-accent-ink);text-decoration:none}a:hover{color:var(--kd-link-hover);text-decoration:underline}
 /* Zielgröße (R00108, ADR-0012 Regel 2): jedes Bedienelement mindestens --kd-ziel, ohne Spezifität, damit Klassen die Zeichnung behalten.
    Textfelder und ein Label, das für sein verstecktes Feld angetippt wird, sind Ziele wie Knöpfe.
    Ein Link mit eigener Box (Flex-Nachbar in einer Zeile, Zelle mit Etikett) ist ein Ziel; ein Link in einem Satz ist inline,

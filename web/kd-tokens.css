@@ -12,6 +12,9 @@
 /* Rand jedes Hinweises (.toast): hell unsichtbar, dunkel hebt er die Fläche vom Grund ab (R00112, PO 2026-11-08) */
 --kd-hinweis-rand:var(--kd-head);
 --kd-accent:oklch(0.5 0.13 255);--kd-accent-hover:oklch(0.44 0.13 255);--kd-accent-weak:oklch(0.93 0.035 255);--kd-accent-ink:oklch(0.38 0.12 255);--kd-on-accent:oklch(1 0 0);
+/* Link beim Zeigen (R00145-Nacharbeit, Kontrast): eigener Token, damit der Hover in beiden Themen ≥ 4,5:1 hält;
+   hell reicht der Akzent, dunkel ist er auf --kd-surface zu schwach (3,41:1) — dort trägt die Ruhefarbe. */
+--kd-link-hover:var(--kd-accent);
 --kd-modus:var(--kd-accent-weak);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.55 0.1 255);
 --kd-mensch:oklch(0.52 0.07 215);--kd-mensch-weak:oklch(0.93 0.025 215);--kd-on-mensch:oklch(1 0 0);
 --kd-agent:oklch(0.55 0.13 65);--kd-agent-weak:oklch(0.94 0.045 75);--kd-agent-ink:oklch(0.42 0.1 60);--kd-on-agent:oklch(1 0 0);
@@ -59,6 +62,7 @@ color-scheme:dark;
 --kd-text:oklch(0.92 0.008 250);--kd-muted:oklch(0.74 0.014 250);--kd-faint:oklch(0.62 0.014 250);
 --kd-head:oklch(0.15 0.015 255);--kd-head-line:oklch(0.3 0.02 255);--kd-head-link:oklch(0.85 0.06 255);--kd-hinweis-rand:var(--kd-faint);
 --kd-accent:oklch(0.56 0.13 255);--kd-accent-hover:oklch(0.52 0.13 255);--kd-accent-weak:oklch(0.32 0.06 255);--kd-accent-ink:oklch(0.84 0.08 255);--kd-on-accent:oklch(1 0 0);
+--kd-link-hover:var(--kd-accent-ink);
 --kd-modus:oklch(0.28 0.06 255);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.65 0.1 255);
 --kd-mensch:oklch(0.7 0.07 215);--kd-mensch-weak:oklch(0.32 0.03 215);--kd-on-mensch:oklch(0.15 0.015 255);
 --kd-agent:oklch(0.72 0.13 65);--kd-agent-weak:oklch(0.33 0.05 75);--kd-agent-ink:oklch(0.86 0.1 70);--kd-on-agent:oklch(0.15 0.015 255);
@@ -93,6 +97,7 @@ color-scheme:dark;
 --kd-text:oklch(0.92 0.008 250);--kd-muted:oklch(0.74 0.014 250);--kd-faint:oklch(0.62 0.014 250);
 --kd-head:oklch(0.15 0.015 255);--kd-head-line:oklch(0.3 0.02 255);--kd-head-link:oklch(0.85 0.06 255);--kd-hinweis-rand:var(--kd-faint);
 --kd-accent:oklch(0.56 0.13 255);--kd-accent-hover:oklch(0.52 0.13 255);--kd-accent-weak:oklch(0.32 0.06 255);--kd-accent-ink:oklch(0.84 0.08 255);--kd-on-accent:oklch(1 0 0);
+--kd-link-hover:var(--kd-accent-ink);
 --kd-modus:oklch(0.28 0.06 255);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.65 0.1 255);
 --kd-mensch:oklch(0.7 0.07 215);--kd-mensch-weak:oklch(0.32 0.03 215);--kd-on-mensch:oklch(0.15 0.015 255);
 --kd-agent:oklch(0.72 0.13 65);--kd-agent-weak:oklch(0.33 0.05 75);--kd-agent-ink:oklch(0.86 0.1 70);--kd-on-agent:oklch(0.15 0.015 255);
