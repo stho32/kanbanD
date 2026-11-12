@@ -106,7 +106,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-3/US-4/AK 3+4: das Menü „…“ trägt die vier Ziele bei jeder Breite; jeder Eintrag zeigt seine Ansicht', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     const k = await starten(page);
     for (const breite of [375, 560, 900, 1280, 1440]) {
       await page.goto(k.adresse + '#/board/entwicklung');
@@ -144,7 +143,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-8/AK 11: jeder Menüeintrag ist per ↓ erreichbar, auch WBS; im Menü steht kein a ohne Rolle', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -189,7 +187,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-4/AK 6: die Werkzeuge stehen je Breite; „Neue Aufgabe“ und der Bereich bleiben in der Kopfzeile', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -214,7 +211,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-6/AK 7: kein Ziel geht verloren — alle sechs sind über die Kopfzeile erreichbar', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');

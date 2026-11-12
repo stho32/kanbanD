@@ -121,9 +121,14 @@ function vBereichChips() {
   return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${u.bereich === k ? '<span class="kz-auswahl-haken" aria-hidden="true">✓</span> ' : ''}${t}</button>`).join('')}</span>`;
 }
 
-/** Menü „Mehr“: was in der Kopfzeile keinen Platz hat; jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
+/** Menü „Mehr“ (R00140, UX-Vorprüfung #105): die vier seltenen Ziele als erste Gruppe, darunter die Werkzeuge.
+ *  Jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
 function vMehrPop() {
   const u = S.ui;
+  /** Ein Ziel in der Form von vSeitenPop: menuitem-Link mit tabindex="-1", Ziel im Hash. */
+  const mehrZiel = (titel, hash) => `<a class="iz" href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
+  const wbs = gebunden().map(a => mehrZiel(gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS', '#/wbs/' + esc(encodeURIComponent(a.kuerzel)))).join('');
+  const ziele = `${mehrZiel('Aufgaben', '#/aufgaben')}${mehrZiel('Personen', '#/personen')}${wbs}${mehrZiel('Einrichten', '#/einrichten')}`;
   const eintrag = {
     signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">${u.signaleOben ? '<span class="kz-auswahl-haken" aria-hidden="true">☑</span>' : ''}Signale oben</button>`,
     spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" tabindex="-1" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
@@ -132,7 +137,7 @@ function vMehrPop() {
     ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" tabindex="-1" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
   };
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
-  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><div class="pop-kopf">MEHR</div>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><div class="pop-kopf">MEHR</div>${ziele}${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
 }
 
 function ichNameOderLeer() {
@@ -1599,14 +1604,6 @@ function vFieberMethodik() {
 }
 
 /* ── WBS-Sicht (R00054): Tabelle nach /planung karte, Stand im Kopf, live aus dem Arbeits-Repository ── */
-/** Ein Menüpunkt je gebundener Anwendung; bei mehreren mit Kürzel. */
-function vWbsMenue() {
-  const g = gebunden(), k = wbsKuerzel();
-  return g.map(a => {
-    const wbsLink = aktuelleSeite(S.ui.view === 'wbs' && k === a.kuerzel);
-    return `<a href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" class="${wbsLink.klasse}"${wbsLink.attribut} title="WBS von ${esc(a.name)} (g k)">${g.length > 1 ? 'WBS · ' + esc(a.kuerzel) : 'WBS'}</a>`;
-  }).join('');
-}
 function vWbs() {
   if (!wbsKuerzel()) return `<div class="body bericht"><p class="muted">Dieses Board ist an keine Anwendung gebunden. Anwendungen registrierst du unter <a href="#/einrichten">Einrichten</a>; ein Board bindet sie mit <span class="mono">applications: [kd]</span>.</p></div>`;
   if (S.wbsFehler) return `<div class="body bericht"><div class="warnh" role="alert">${esc(S.wbsFehler)}</div></div>`;
