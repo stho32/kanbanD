@@ -896,7 +896,9 @@ function fallenTaste(ereignis) {
     war das Ansichtsmenü offen, schließt es und der Fokus steht am Auslöser. */
 function reiterRueckfallImFenster(aktiv) {
   const offen = S.ui.offen && aufgabe(S.ui.offen);
-  const fokusBeiAnsicht = Boolean(aktiv && aktiv.closest && aktiv.closest(`${ANSICHT_KNOPF}, #fenster [role="menu"][data-art="ansicht"]`));
+  // Auch der Fokus im Panel zählt: mit der verschwindenden Ansicht wird der gezeichnete Inhalt ersetzt, der Fokus
+  // hätte kein Ziel mehr — er gehört an den Auslöser, der die neue Ansicht ansagt (R00145 FA 9 letzter Satz, B2).
+  const fokusBeiAnsicht = Boolean(aktiv && aktiv.closest && aktiv.closest(`${ANSICHT_KNOPF}, #fenster [role="menu"][data-art="ansicht"], #fenster .mod-body`));
   // ohne offene Aufgabe gibt es nichts zu prüfen: der gemerkte Stand bleibt für das nächste Fenster (R00145 FA 9)
   const rueckfall = offen ? reiterRueckfall({ tab: S.ui.tab, schluessel: reiterSchluessel(offen), fokusBeiReiter: fokusBeiAnsicht }) : null;
   if (!rueckfall) return;

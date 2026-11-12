@@ -291,6 +291,22 @@ test.describe('R00145 Ansichtsmenü', () => {
     await expect(menue(page).getByRole('menuitemradio', { name: 'Kosten', exact: true })).toHaveCount(0);
   });
 
+  test('Rückfall live mit Fokus im Panel: cost: null → Fokus am Auslöser, nie am Fenster (Befund B2)', async ({ page }) => {
+    expect((await page.request.patch(k.adresse + 'api/aufgaben/1', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: { currency: 'USD', amount: 1.63 } } })).ok()).toBe(true);
+    await oeffnen(page);
+    await liveBereit(page);
+    await ausloeser(page).click();
+    await menue(page).getByRole('menuitemradio', { name: 'Kosten', exact: true }).click();
+    await expect(page.locator('#fenster .mod-body')).toHaveAttribute('aria-label', 'Ansicht: Kosten');
+    // Der Fokus steht im Panel (Kostentabelle, scrollbarer Bereich), nicht am Auslöser und nicht im Menü.
+    await page.locator('#fenster .ko-scroll').focus();
+    await expect(page.locator('#fenster .ko-scroll')).toBeFocused();
+    expect((await page.request.patch(k.adresse + 'api/aufgaben/1', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
+    await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Inhalt', { timeout: 1000 });
+    await expect(ausloeser(page)).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.id)).not.toBe('fenster');
+  });
+
   test('Live: „Details“ bleibt gewählt, Fokus bleibt im Feld „Labels“', async ({ page }) => {
     await oeffnen(page);
     await liveBereit(page);
