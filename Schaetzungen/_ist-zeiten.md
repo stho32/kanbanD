@@ -540,3 +540,7 @@ Nie vom User erfragen.
 | 2026-11-12 | R00140 Navigation: seltene Ziele im Menü „…“ | Lauf R00140 | Konsolidierung | — | — | 0,3h | autonom |
 | 2026-11-12 | Karte #127 Härtung nach #36 (Personen-art, Netz-Meldung) | Befund srev Sollte 1: `art` einer Person setzen nur Menschen | Standard | 0,25-0,5h | 0,3h | 0,3h | autonom |
 | 2026-11-12 | Karte #127 Härtung nach #36 (Personen-art, Netz-Meldung) | Befund rsr S4: Netz-Meldung deutsch aus dem geteilten `api()` | Standard | 0,1-0,25h | 0,15h | 0,15h | autonom |
+| 2026-11-12 | Karte #131 Härtung nach #119 (Verlauf-Performance, 423, Steuerzeichen) | Befund srev Sollte 1: Verlauf lädt die Historie aller Boards | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-12 | Karte #131 Härtung nach #119 (Verlauf-Performance, 423, Steuerzeichen) | Befund srev Optional 1: defektes Board als sichtbare Lücke statt 423 | Standard | 0,1-0,25h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | Karte #131 Härtung nach #119 (Verlauf-Performance, 423, Steuerzeichen) | Befund srev Optional 2: Steuerzeichen im Spaltennamen abweisen | Standard | 0,1-0,25h | 0,1h | 0,1h | autonom |
+| 2026-11-12 | Karte #131 Härtung nach #119 (Verlauf-Performance, 423, Steuerzeichen) | Lauf #131 | Konsolidierung | — | — | 0,1h | autonom |
