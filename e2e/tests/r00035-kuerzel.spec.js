@@ -1,6 +1,6 @@
 // R00035 Tastenkürzel überall
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mehrOeffnen } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
@@ -19,7 +19,11 @@ test.describe('R00035', () => {
     await page.keyboard.press('g');
     await page.keyboard.press('p');
     await expect(page).toHaveURL(/#\/personen$/);
-    await expect(page.getByRole('link', { name: 'Personen' })).toHaveClass(/an/);
+    await mehrOeffnen(page);
+    const personenZiel = page.locator('#pop[aria-label="Mehr"] [data-act="seite"][data-arg="#/personen"]');
+    await expect(personenZiel).toHaveClass(/\ban\b/);
+    await expect(personenZiel).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Escape');
     await page.keyboard.press('g');
     await page.keyboard.press('a');
     await expect(page.locator('tr[data-zeile]')).toHaveCount(2);

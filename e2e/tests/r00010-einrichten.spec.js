@@ -1,6 +1,6 @@
 // R00010 Personen und Klassen pflegen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mehrOeffnen } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
@@ -45,7 +45,8 @@ test.describe('R00010', () => {
   test('US-3: Klassenfarbe ändern', async ({ page }) => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('style', /kd-c-red/);
-    await page.getByRole('link', { name: 'Einrichten' }).click();
+    await mehrOeffnen(page);
+    await page.getByRole('menuitem', { name: 'Einrichten', exact: true }).click();
     await page.getByLabel('Farbe bug').click();
     await page.getByLabel('orange', { exact: true }).click();
     await page.getByRole('button', { name: 'Speichern' }).click();
