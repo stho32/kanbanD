@@ -41,7 +41,10 @@ test.describe('R00020', () => {
     await expect(page.locator('tr[data-zeile] .tt')).toContainText(['vier ohne Board', 'Idee für später']);
     await page.getByRole('radio', { name: /archiviert/ }).click();
     await expect(page.locator('tr[data-zeile]')).toHaveCount(1);
-    await page.getByRole('button', { name: 'zurückholen' }).click();
+    // S9: eine Schreibweise — der Zeilenknopf heißt „Zurückholen“ wie Menü und Archivleiste (exakt, groß).
+    const zurueck = page.getByRole('button', { name: 'Zurückholen', exact: true });
+    await expect(zurueck).toBeVisible();
+    await zurueck.click();
     await expect(page.locator('tr[data-zeile]')).toHaveCount(0);
   });
 });
