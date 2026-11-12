@@ -48,3 +48,15 @@ test('Zusatz „Timer läuft seit 6 Tagen“ zwischen Klasse und Auswahl', () =>
   assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, 'Timer läuft seit 36 Stunden'), '#3 drei, Timer läuft seit 36 Stunden');
   assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, true, ''), '#3 drei, ausgewählt');
 });
+
+// R00126 FA 8 (ADR-0018, X00005): der vierte Parameter ist eine Liste von Zusätzen in fester Reihenfolge — Timer, dann Alter, dann „ausgewählt“
+test('R00126: mehrere Zusätze in fester Reihenfolge, leere Teile weg', () => {
+  assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, false, ['Timer läuft seit 6 Tagen', 'seit 6 Tagen in In Arbeit']),
+    '#1 eins, Fehler, Timer läuft seit 6 Tagen, seit 6 Tagen in In Arbeit');
+  assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, true, ['seit 6 Tagen in In Arbeit']),
+    '#1 eins, Fehler, seit 6 Tagen in In Arbeit, ausgewählt');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, []), '#3 drei');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, ['', '']), '#3 drei');
+  assert.strictEqual(kartenName({ nummer: 3, titel: 'drei' }, KLASSEN, false, ['', 'seit 41 Tagen in Eingang']), '#3 drei, seit 41 Tagen in Eingang');
+});
+
