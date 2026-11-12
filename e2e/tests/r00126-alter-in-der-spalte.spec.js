@@ -229,6 +229,7 @@ test.describe('R00126 volle unterste Zeile, 320/375/414 px, hell und dunkel', ()
           ka.scrollIntoView({ block: 'nearest', inline: 'nearest' });
           const seit = ka.querySelector('.r3 .seit'), sum = ka.querySelector('.r3 .sum'), titel = ka.querySelector('.r0 .t'), spalte = ka.closest('.flaeche');
           const r = el => el.getBoundingClientRect();
+          const rechts = ka.querySelector('.r3 .rechts');
           return {
             quer: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             karteInSpalte: r(ka).right <= r(spalte).right + 0.5,
@@ -236,10 +237,12 @@ test.describe('R00126 volle unterste Zeile, 320/375/414 px, hell und dunkel', ()
             seitInRechts: seit.parentElement.classList.contains('rechts'),
             seitNachSum: (seit.compareDocumentPosition(sum) & Node.DOCUMENT_POSITION_PRECEDING) !== 0,
             seitSichtbar: seit.getClientRects().length > 0,
+            untersteZeileImKartenrechteck: [...rechts.children].every(k => r(k).right <= r(ka).right + 0.5),
           };
         });
         expect(m.quer, `${breite} ${themenName}: Querscrollen`).toBeLessThanOrEqual(0);
         expect(m.karteInSpalte, `${breite} ${themenName}: Karte im Spaltenrechteck`).toBe(true);
+        expect(m.untersteZeileImKartenrechteck, `${breite} ${themenName}: unterste Zeile im Kartenrechteck`).toBe(true);
         expect(m.titelBreite, `${breite} ${themenName}: Titel ≥ 90 px`).toBeGreaterThanOrEqual(90);
         expect(m.seitInRechts, `${breite} ${themenName}: Kurzform in .r3 .rechts`).toBe(true);
         expect(m.seitNachSum, `${breite} ${themenName}: Kurzform hinter Σ`).toBe(true);
