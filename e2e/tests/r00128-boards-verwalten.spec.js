@@ -24,7 +24,7 @@ test.describe('R00128', () => {
   test.afterEach(async () => { await k.stoppen(); });
 
   const pop = page => page.locator('#pop[aria-label="Boards"]');
-  const ausloeser = (page, titel) => pop(page).getByRole('button', { name: `Aktionen für Board ‚${titel}‘` });
+  const ausloeser = (page, titel) => pop(page).getByRole('button', { name: `Aktionen für Board „${titel}“` });
   const oeffnenMenue = async (page, slug) => {
     if (await pop(page).count() === 0) await page.locator('#t-board').click();
     await pop(page).locator(`[data-act="board-menue"][data-arg="${slug}"]`).click();
@@ -37,12 +37,12 @@ test.describe('R00128', () => {
   const archivieren = async (page, slug, titel) => {
     await oeffnenMenue(page, slug);
     await pop(page).getByRole('menuitem', { name: 'Archivieren' }).click();
-    await bestaetigen(page, 'Archivieren', `Board ‚${titel}‘ archiviert`);
+    await bestaetigen(page, 'Archivieren', `Board „${titel}“ archiviert`);
   };
   const loeschen = async (page, slug, titel) => {
     await oeffnenMenue(page, slug);
     await pop(page).getByRole('menuitem', { name: 'Löschen' }).click();
-    await bestaetigen(page, 'endgültig löschen', `Board ‚${titel}‘ endgültig gelöscht`);
+    await bestaetigen(page, 'endgültig löschen', `Board „${titel}“ endgültig gelöscht`);
   };
 
   test('US-9/AK10: jede Board-Zeile traegt einen eigenen ⋮-Ausloeser mit Menue', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('R00128', () => {
     // kein offenes Board traegt die Marke „defekt“ (nur eine defekte Datei bekommt sie)
     await expect(pop(page).getByText('defekt', { exact: true })).toHaveCount(0);
     await ausloeser(page, 'Test').click();
-    const menue = pop(page).getByRole('menu', { name: 'Aktionen für Board ‚Test‘' });
+    const menue = pop(page).getByRole('menu', { name: 'Aktionen für Board „Test“' });
     await expect(menue).toBeVisible();
     await expect(menue.getByRole('menuitem')).toHaveText(['Umbenennen', 'Archivieren', 'Löschen']);
     // „Löschen“ ist in --kd-warn abgesetzt (S1)
@@ -68,7 +68,7 @@ test.describe('R00128', () => {
   test('US-1/AK1: Umbenennen aendert den Titel, der Slug bleibt', async ({ page }) => {
     await oeffnenMenue(page, 'entwicklung');
     await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
-    const feld = page.getByLabel('Neuer Name für Board ‚Entwicklung‘');
+    const feld = page.getByLabel('Neuer Name für Board „Entwicklung“');
     await expect(feld).toHaveValue('Entwicklung');
     await expect(feld).toBeFocused();
     await feld.fill('Entwicklung 2026');
@@ -84,14 +84,14 @@ test.describe('R00128', () => {
   test('US-11/AK11: leerer Titel zeigt den Feldfehler, das Feld bleibt offen', async ({ page }) => {
     await oeffnenMenue(page, 'entwicklung');
     await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
-    const feld = page.getByLabel('Neuer Name für Board ‚Entwicklung‘');
+    const feld = page.getByLabel('Neuer Name für Board „Entwicklung“');
     await feld.fill('');
     await feld.press('Enter');
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(feld).toBeVisible();
     // Esc verwirft ohne Schreiben
     await feld.press('Escape');
-    await expect(page.getByLabel('Neuer Name für Board ‚Entwicklung‘')).toHaveCount(0);
+    await expect(page.getByLabel('Neuer Name für Board „Entwicklung“')).toHaveCount(0);
     expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung\n');
   });
 
@@ -140,6 +140,23 @@ test.describe('R00128', () => {
     expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung 2026\n');
   });
 
+  // Härtung #129/2 (rsr): der Toast ist der Commit-Wortlaut (FA 17/AK 13) — zeichengleich, also auch mit „…“.
+  test('H129/2: der Toast steht zeichengleich im Commit-Betreff, mit deutschen Anfuehrungszeichen', async ({ page }) => {
+    await oeffnenMenue(page, 'entwicklung');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    const feld = pop(page).locator('#board-umbenennen');
+    await feld.fill('Entwicklung 2026');
+    await feld.press('Enter');
+    await expect(status(page)).toHaveText('Board „Entwicklung 2026“ umbenannt');
+    expect(await status(page).locator('.txt').textContent()).toBe(k.git('log', '-1', '--format=%s'));
+    // dieselbe Form an den zugänglichen Namen des Umschalters: ⋮-Auslöser und Umbenennen-Feld
+    await expect(pop(page).locator('[data-act="board-menue"][data-arg="entwicklung"]')).toHaveAttribute('aria-label', 'Aktionen für Board „Entwicklung 2026“');
+    await pop(page).locator('[data-act="board-menue"][data-arg="entwicklung"]').click();
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    await expect(pop(page).locator('#board-umbenennen')).toHaveAttribute('aria-label', 'Neuer Name für Board „Entwicklung 2026“');
+    await pop(page).locator('#board-umbenennen').press('Escape');
+  });
+
   test('US-2/US-10/AK12: Archivieren nimmt aus der Liste in den Abschnitt ARCHIVIERT', async ({ page }) => {
     // der Dialog fragt nach (Name, Startfokus Abbrechen)
     await oeffnenMenue(page, 'test');
@@ -149,7 +166,7 @@ test.describe('R00128', () => {
     await expect(dialog).toHaveAttribute('aria-modal', 'true');
     await expect(dialog.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
     await dialog.getByRole('button', { name: 'Archivieren' }).click();
-    await expect(status(page)).toContainText('Board ‚Test‘ archiviert');
+    await expect(status(page)).toContainText('Board „Test“ archiviert');
     // aus der offenen Liste, im Abschnitt
     await expect(pop(page).locator('[data-act="board-wahl"][data-arg="test"]')).toHaveCount(0);
     await expect(pop(page).locator('details.barch summary')).toHaveText(/ARCHIVIERT \(1\)/);
@@ -164,7 +181,7 @@ test.describe('R00128', () => {
     await archivieren(page, 'test', 'Test');
     await pop(page).locator('details.barch summary').click();
     await pop(page).getByRole('button', { name: 'wieder öffnen' }).click();
-    await expect(status(page)).toContainText('Board ‚Test‘ wieder geöffnet');
+    await expect(status(page)).toContainText('Board „Test“ wieder geöffnet');
     await expect(pop(page).locator('[data-act="board-wahl"][data-arg="test"]')).toHaveCount(1);
     expect(k.lies('boards/test.md')).not.toContain('archived');
   });
@@ -223,7 +240,7 @@ test.describe('R00128', () => {
   test('M10/AK11 (Nacharbeit): Esc schliesst nur die Eingabe, der Umschalter bleibt offen', async ({ page }) => {
     await oeffnenMenue(page, 'entwicklung');
     await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
-    const feld = page.getByLabel('Neuer Name für Board ‚Entwicklung‘');
+    const feld = page.getByLabel('Neuer Name für Board „Entwicklung“');
     await feld.fill('Entwicklung 2026');
     await feld.press('Escape');
     await expect(feld).toHaveCount(0);
@@ -236,8 +253,8 @@ test.describe('R00128', () => {
   test('AK13/M6 (Nacharbeit): der Fokus steht nach dem Umbenennen auf der Zeile', async ({ page }) => {
     await oeffnenMenue(page, 'entwicklung');
     await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
-    await page.getByLabel('Neuer Name für Board ‚Entwicklung‘').fill('Entwicklung 2026');
-    await page.getByLabel('Neuer Name für Board ‚Entwicklung‘').press('Enter');
+    await page.getByLabel('Neuer Name für Board „Entwicklung“').fill('Entwicklung 2026');
+    await page.getByLabel('Neuer Name für Board „Entwicklung“').press('Enter');
     await expect(pop(page).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toBeFocused();
     await expect(pop(page).locator('[data-act="board-wahl"][data-arg="entwicklung"]')).toContainText('Entwicklung 2026');
   });
@@ -250,7 +267,7 @@ test.describe('R00128', () => {
     const vorher = k.lies('boards/kaputt.md');
     await oeffnenMenue(page, 'kaputt');
     await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
-    const feld = page.getByLabel('Neuer Name für Board ‚kaputt‘');
+    const feld = page.getByLabel('Neuer Name für Board „kaputt“');
     await feld.fill('Neu');
     await feld.press('Enter');
     const fehler = pop(page).getByRole('alert');
@@ -381,7 +398,7 @@ test.describe('R00128 AK13/M6 (Nacharbeit N1): Fokus auf der naechsten Board-Zei
     await pop.locator('[data-act="board-menue"][data-arg="b"]').click();
     await pop.getByRole('menuitem', { name: 'Archivieren' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Archivieren' }).click();
-    await expect(page.locator('.toast[role="status"]')).toContainText('Board ‚B‘ archiviert');
+    await expect(page.locator('.toast[role="status"]')).toContainText('Board „B“ archiviert');
     // der Fokus steht auf der nächsten offenen Zeile c — weder auf a (Anfang) noch auf BODY
     await expect(pop.locator('[data-act="board-wahl"][data-arg="c"]')).toBeFocused();
     await expect(pop.locator('[data-act="board-wahl"][data-arg="a"]')).not.toBeFocused();

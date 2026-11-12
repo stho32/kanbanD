@@ -388,13 +388,13 @@ const defekteBoards = (zustand = S.zustand) => (zustand.defekte || []).filter(d 
 const archivierteBoards = () => (S.boards || []).filter(b => b.archiviert);
 /** Der ⋮-Aktionsauslöser einer Board-Zeile (M1/M8): eigener Knopf, `aria-haspopup="menu"`, Name mit Boardnamen. */
 function vBoardDrei(titel, slug, auf) {
-  return `<button type="button" class="bdrei${auf ? ' auf' : ''}" data-act="board-menue" data-arg="${esc(slug)}" aria-haspopup="menu" aria-expanded="${auf}" aria-label="Aktionen für Board ‚${esc(titel)}‘">${DREI_PUNKTE}</button>`;
+  return `<button type="button" class="bdrei${auf ? ' auf' : ''}" data-act="board-menue" data-arg="${esc(slug)}" aria-haspopup="menu" aria-expanded="${auf}" aria-label="Aktionen für Board „${esc(titel)}“">${DREI_PUNKTE}</button>`;
 }
 /** Das Zeilenmenü eines Boards (M1/S1): Umbenennen, Archivieren bzw. „wieder öffnen“, Löschen in `--kd-warn`. */
 function vBoardMenue(titel, slug, archiviert) {
   const eintrag = (act, text, warn) => `<button type="button" role="menuitem" tabindex="-1"${warn ? ' class="warn"' : ''} data-act="${act}" data-arg="${esc(slug)}">${text}</button>`;
   const auslagern = archiviert ? eintrag('board-wieder-oeffnen', 'wieder öffnen') : eintrag('board-archivieren', 'Archivieren');
-  return `<div class="bmenue" role="menu" aria-label="Aktionen für Board ‚${esc(titel)}‘">${eintrag('board-umbenennen', 'Umbenennen')}${auslagern}${eintrag('board-loeschen', 'Löschen', true)}</div>`;
+  return `<div class="bmenue" role="menu" aria-label="Aktionen für Board „${esc(titel)}“">${eintrag('board-umbenennen', 'Umbenennen')}${auslagern}${eintrag('board-loeschen', 'Löschen', true)}</div>`;
 }
 function vBoardPop() {
   const u = S.ui;
@@ -402,7 +402,7 @@ function vBoardPop() {
   // der Sitzung und im `input`-Ereignis) und wird im Feld gezeichnet — nach einem 400 zeigt das Feld die abgelehnte
   // Eingabe samt Feldfehler (Artboard D0002), nicht wieder den Titel des Boards.
   const umbenennenZeile = (slug, titel) => {
-    return `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(u.boardUmbenennenWert)}" aria-label="Neuer Name für Board ‚${esc(titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
+    return `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(u.boardUmbenennenWert)}" aria-label="Neuer Name für Board „${esc(titel)}“" data-enter="board-umbenennen-ok" data-arg="${esc(slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
   };
   // `defekt` = eine defekte Board-Datei (R00025): derselbe Weg zum Umbenennen, nur mit der Marke „defekt“ statt des Slugs.
   const zeile = (b, defekt) => {

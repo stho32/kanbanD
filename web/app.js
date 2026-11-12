@@ -1100,7 +1100,7 @@ async function boardUmbenennen(slug, eingegebenerWert) {
   }
   S.ui.boardUmbenennen = null;
   S.ui.popFehler = null;
-  S.ui.hinweis = { text: `Board ‚${titel}‘ umbenannt`, at: Date.now() };
+  S.ui.hinweis = { text: `Board „${titel}“ umbenannt`, at: Date.now() };
   await laden();
   S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
   render();
@@ -1149,7 +1149,7 @@ async function alBestaetigen() {
     render();
     return;
   }
-  S.ui.hinweis = { text: d.art === 'board-loeschen' ? `Board ‚${d.titel}‘ endgültig gelöscht` : `Board ‚${d.titel}‘ archiviert`, at: Date.now() };
+  S.ui.hinweis = { text: d.art === 'board-loeschen' ? `Board „${d.titel}“ endgültig gelöscht` : `Board „${d.titel}“ archiviert`, at: Date.now() };
   S.ui.alDialog = null;
   await laden();
   S.ui.fokus = naechsteBoardZeile(reihe, d.slug);
@@ -1227,7 +1227,7 @@ async function boardWiederOeffnen(slug) {
     render();
     return;
   }
-  S.ui.hinweis = { text: `Board ‚${titel}‘ wieder geöffnet`, at: Date.now() };
+  S.ui.hinweis = { text: `Board „${titel}“ wieder geöffnet`, at: Date.now() };
   await laden();
   S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
   render();
