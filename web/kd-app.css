@@ -278,12 +278,12 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .mod{width:min(1080px,100%);height:min(780px,100%);background:var(--kd-surface);box-shadow:var(--kd-shadow-mod);display:flex;flex-direction:column;border-top:4px solid var(--cl,var(--kd-line-strong))}
 .mod-kopf{flex:none;display:flex;align-items:center;gap:var(--kd-s3);min-block-size:max(36px,var(--kd-ziel));padding:0 var(--kd-s2) 0 var(--kd-s5);border-bottom:1px solid var(--kd-line);background:var(--c,var(--kd-sunken))}
 .mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
-.mod-kopf .pfad{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.mod-kopf .rechts{margin-left:auto;display:flex;gap:2px;align-items:center}
-.mod-kopf .nav{font-size:11.5px;color:var(--kd-muted);margin-right:var(--kd-s2);font-family:var(--kd-mono)}
-.el-ausloeser{display:inline-flex;align-items:center;gap:6px;height:var(--kd-row);padding:0 var(--kd-s3);border:1px solid transparent;background:none;font:inherit;font-size:12px;font-weight:500;color:var(--kd-warn);cursor:pointer;white-space:nowrap}
-.el-ausloeser:hover{background:var(--kd-sunken);border-color:var(--kd-line)}
-.el-trenner{flex:none;width:1px;align-self:stretch;margin:5px 4px;background:var(--kd-line)}
+.mod-kopf .pfad{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.mod-kopf .rechts{margin-left:auto;display:flex;gap:var(--kd-s3);align-items:center}
+/* Kopfziele (R00144 FA 1): quadratisch in max(--kd-row, --kd-ziel), Glyph 14–16 px; der Ansichts-Textknopf so hoch wie die Ziele. */
+#fenster .mod-kopf .btn-sym{inline-size:max(var(--kd-row),var(--kd-ziel));block-size:max(var(--kd-row),var(--kd-ziel))}
+#fenster .mod-kopf .btn-sym .i{width:15px;height:15px;fill:currentColor;stroke:none}
+#fenster .mod-kopf .fm-aus{block-size:max(var(--kd-row),var(--kd-ziel))}
 /* Kopf-Auslöser „Endgültig löschen“ (R00141, D0003): beschriftet in --kd-warn, per 1-px-Trenner von „Archivieren“ abgesetzt */
 /* Ansichts-Auslöser und Kopf-Menü des Aufgabenfensters (R00145, Artboard D0003): Textknopf mit Caret, Menü als Ebene im Fenster
    (ADR-0018 N2); kein Titel, Einträge als menuitemradio mit ✓ im festen Gutter, Warnfarbe nur am ungeförderten Eintrag. */
@@ -942,7 +942,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-kopf .cls{display:none}
   #fenster .mod-kopf{flex-wrap:nowrap;gap:var(--kd-s1);padding-left:4px;padding-right:0}
   #fenster .mod-kopf>.id{flex:none}
-  #fenster .mod-kopf .rechts{gap:0;flex-wrap:nowrap;min-width:0}
+  #fenster .mod-kopf .rechts{gap:var(--kd-s3);flex-wrap:nowrap;min-width:0}
   #fenster .mod-kopf .fm-aus{padding:0 var(--kd-s3)}
   .ko-tab td,.ko-tab th{padding:0 6px}
   .leg .rechts,.stat>.mono{display:none}

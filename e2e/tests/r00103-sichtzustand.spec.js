@@ -124,10 +124,11 @@ test.describe('R00103 Leseposition', () => {
     expect(await rollstand(page, '.mod-main')).toBe(0);
   });
 
-  test('US-5: Blättern zu #2 beginnt oben', async ({ page }) => {
+  test('US-5: #1 schließen und #2 öffnen beginnt oben (Blättern entfällt, R00144 FA 9)', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
     expect(await rollen(page, '.mod-main', 400)).toBe(400);
-    await page.locator('.mod-kopf [data-act="blaettern"][data-arg="1"]').click();
+    await page.keyboard.press('Escape');
+    await page.locator('.ka[data-id="2"] .id').click();
     await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
     expect(await rollstand(page, '.mod-main')).toBe(0);
   });
@@ -235,10 +236,9 @@ test.describe('R00103 Fokus auf Knöpfen', () => {
   test.afterEach(() => k.stoppen());
 
   const ZIELE = [
-    '.mod-kopf [data-act="blaettern"][data-arg="1"]',
-    '.mod-kopf [data-act="blaettern"][data-arg="-1"]',
+    '.mod-kopf [data-act="fenster-menue"][data-arg="aktionen"]',
+    '.mod-kopf [data-act="fenster-menue"][data-arg="ansicht"]',
     '.mod-kopf [data-act="schliessen"]',
-    '.mod-kopf [data-act="archivieren"]',
     '.mod-main .besch-lesen',
   ];
   /** Wahr, wenn das aktive Element genau das eine Element zum Selektor ist. */
@@ -269,27 +269,27 @@ test.describe('R00103 Fokus auf Knöpfen', () => {
     });
   }
 
-  test('„nächste Karte“, Ereignis, Enter blättert zu #2', async ({ page }) => {
+  test('⋮-Auslöser, Ereignis, Enter öffnet das Aktionsmenü', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
     await page.locator(ZIELE[0]).focus();
     await fremdesEreignis(page);
     await page.keyboard.press('Enter');
-    await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
+    await expect(page.locator('#fenster [role="menu"][data-art="aktionen"]')).toBeVisible();
   });
 
-  test('Tab-Folge ab „vorige Karte“ ist mit Ereignissen dieselbe wie ohne', async ({ page }) => {
+  test('Tab-Folge ab dem Auslöser ist mit Ereignissen dieselbe wie ohne', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
-    await page.locator(ZIELE[1]).focus();
+    await page.locator(ZIELE[0]).focus();
     const ohne = [];
     for (let i = 0; i < 4; i++) { await page.keyboard.press('Tab'); ohne.push(await aktivesElement(page)); }
-    await page.locator(ZIELE[1]).focus();
+    await page.locator(ZIELE[0]).focus();
     const mit = [];
     for (let i = 0; i < 4; i++) { await fremdesEreignis(page); await page.keyboard.press('Tab'); mit.push(await aktivesElement(page)); }
     expect(ohne.every(e => !e.startsWith('BODY')), ohne.join(' · ')).toBe(true);
     expect(mit).toEqual(ohne);
   });
 
-  test('zwei Ereignisse kurz hintereinander: der Fokus bleibt auf „nächste Karte“', async ({ page }) => {
+  test('zwei Ereignisse kurz hintereinander: der Fokus bleibt am ⋮-Auslöser', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
     await page.locator(ZIELE[0]).focus();
     const vorher = await renders(page);

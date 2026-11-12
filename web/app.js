@@ -1277,7 +1277,8 @@ async function act(a, arg, wert) {
         u.menue = null;
         u.fensterMenue = null;
         u.fokus = null;
-        dialogAufgabeLoeschen(nr, ausFenster, ausFenster ? `[data-act="endgueltig-loeschen"][data-arg="${nr}"]` : `.ka[data-id="${nr}"]`);
+        // Aus dem Kopf-Menü kommt die Rückfrage über dem ⋮-Auslöser; Abbrechen gibt den Fokus dorthin zurück (R00144 FA 7).
+        dialogAufgabeLoeschen(nr, ausFenster, ausFenster ? `[data-act="fenster-menue"][data-arg="aktionen"]` : `.ka[data-id="${nr}"]`);
         break;
       }
       case 'al-abbrechen': alAbbrechen(); break;
@@ -1350,18 +1351,6 @@ async function act(a, arg, wert) {
         // `geschlossen.rueckgabe` trägt den Auslöser, der das Menü geöffnet hat (ADR-0010, R00145 FA 7).
         // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
         if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
-        break;
-      }
-      case 'blaettern': {
-        const reihe = sichtbareReihe();
-        if (!reihe.length) break;
-        const i = reihe.indexOf(u.offen);
-        u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
-        u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null;
-        u.datei = null; u.anhaenge = []; u.eintritt = [];
-        u.verlauf = null; u.verlaufFehler = null;
-        if (u.tab === 'verlauf') render();
-        await dateiLaden();
         break;
       }
       case 'teil-karte': {
@@ -1472,9 +1461,11 @@ async function act(a, arg, wert) {
       }
       case 'archivieren': {
         if (ichNoetig()) break;
-        u.fensterMenue = null;
+        // Aus dem ⋮-Menü bleibt das Fenster offen (R00144 AK: Fokus zurück am ⋮) und zeigt die Archivleiste; sonst schließt es wie heute.
+        const ausKopfMenue = Boolean(u.fensterMenue);
+        if (ausKopfMenue) { u.fensterMenue = null; u.fokus = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]'; }
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
-        if (!u.fensterFehler) { if (!imArchiv()) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
+        if (!u.fensterFehler) { if (!imArchiv() && !ausKopfMenue) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
         break;
       }
       case 'rueckgaengig': {
@@ -1508,7 +1499,7 @@ async function act(a, arg, wert) {
       }
       case 'zurueckholen': {
         if (ichNoetig()) break;
-        u.fensterMenue = null;
+        if (u.fensterMenue) { u.fensterMenue = null; u.fokus = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]'; }
         await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
         if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
         break;
@@ -2309,10 +2300,6 @@ document.addEventListener('keydown', e => {
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.herkunftEntwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
-  }
-  if (S.ui.offen && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-    e.preventDefault();
-    act('blaettern', e.key === 'ArrowDown' ? '1' : '-1');
   }
 });
 

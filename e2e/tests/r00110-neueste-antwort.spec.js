@@ -294,12 +294,12 @@ const fremdeDatei = async (page, fenster, text) => (await protokoll(page)).datei
  * F3 (Probe F): das Laden aus einem Kommentar an #1 hält die neue Datei von #1, das Blättern zu #2 die Datei von #2. Wird die alte
  * zuerst frei, ist sie neuer als alles, was das Fenster übernommen hat — nur der Vergleich mit der offenen Aufgabe verwirft sie.
  */
-test('F3: nach dem Blättern zeigt der Reiter „Datei“ die Datei der offenen Aufgabe, nie die der vorigen', async ({ page }) => {
+test('F3: nach dem Öffnen einer anderen Aufgabe zeigt die Ansicht „Datei“ deren Datei, nie die der vorigen', async ({ page }) => {
   await mitKanban(page, async k => {
     const dateiVonEins = await antwortHalten(page, '/api/aufgaben/1');
     const dateiVonZwei = await antwortHalten(page, '/api/aufgaben/2');
     await fensterOeffnen(page, k, 1);
-    await page.locator('#reiter-datei').click();
+    await reiter(page, 'Datei');
     await expect(page.locator('#dateitext')).toContainText('Abnahme prüfen');
     await protokollStarten(page);
     dateiVonEins.scharf();
@@ -307,7 +307,8 @@ test('F3: nach dem Blättern zeigt der Reiter „Datei“ die Datei der offenen 
     await dateiVonEins.angekommen();
     expect(k.lies('aufgaben/0001-abnahme-pruefen.md'), 'die gehaltene Datei von #1 trägt den Kommentar').toContain('ein Laden');
     dateiVonZwei.scharf();
-    await page.locator('[data-act="blaettern"][data-arg="1"]').click();
+    await page.locator('#fenster [data-act="schliessen"]').click();
+    await page.locator('.ka[data-id="2"] .t').click();
     await dateiVonZwei.angekommen();
     await dateiVonEins.freigeben();
     await ruhig(page, { gehalten: 1, nachLaden: false });
@@ -321,7 +322,7 @@ test('F3: nach dem Blättern zeigt der Reiter „Datei“ die Datei der offenen 
     await page.reload();
     await liveBereit(page);
     await page.locator('.ka[data-id="2"] .t').click();
-    await page.locator('#reiter-datei').click();
+    await reiter(page, 'Datei');
     await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
   });
 });
@@ -506,7 +507,6 @@ const fremderAnhang = async (page, fenster, name) => (await protokoll(page)).anh
  */
 const MIT_ANHANG = { ...DATEIEN, 'aufgaben/0001-abnahme-pruefen/protokoll.txt': 'Inhalt des Protokolls' };
 const WECHSEL = {
-  blaettern: page => page.locator('[data-act="blaettern"][data-arg="1"]').click(),
   'schließen und öffnen': async page => {
     await page.locator('#fenster [data-act="schliessen"]').click();
     await page.locator('.ka[data-id="2"] .t').click();
@@ -517,10 +517,8 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
     await mitKanban(page, async k => {
       const anlegen = await anfrageHalten(page, 'POST', '/api/aufgaben/1/teilaufgaben');
       await fensterOeffnen(page, k, 1);
-      await reiter(page, 'Anhänge');
       await expect(page.getByRole('link', { name: 'protokoll.txt' })).toBeVisible();
       await protokollStarten(page);
-      await reiter(page, 'Inhalt');
       anlegen.scharf();
       await page.getByLabel('Neue Teilaufgabe').fill('neu');
       await page.getByLabel('Neue Teilaufgabe').press('Enter');
@@ -529,13 +527,13 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
       await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
       await ruhig(page, { gehalten: 1, nachLaden: false });
       expect(await fremderAnhang(page, '#2', 'protokoll.txt'), 'das Fenster von #2 zeigte den Anhang von #1').toEqual([]);
-      await page.locator('#reiter-datei').click();
+      await reiter(page, 'Datei');
       expect(await fremdeDatei(page, '#2', 'Abnahme prüfen'), 'das Fenster von #2 zeigte die Datei von #1').toEqual([]);
       await anlegen.freigeben();
       await ruhig(page);
       await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
-      await page.locator('#reiter-anhaenge').click();
-      await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
+      await reiter(page, 'Inhalt');
+      await expect(page.locator('#fenster #anhaenge .anh-z')).toHaveCount(0);
       expect(await fremderAnhang(page, '#2', 'protokoll.txt'), 'das Fenster von #2 zeigte den Anhang von #1').toEqual([]);
       expect(await fremdeDatei(page, '#2', 'Abnahme prüfen'), 'das Fenster von #2 zeigte die Datei von #1').toEqual([]);
       expect(k.lies('aufgaben/0001-abnahme-pruefen.md'), 'die Teilaufgabe ist gespeichert').toContain('- [ ] neu\n');
@@ -543,9 +541,8 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
       await page.reload();
       await liveBereit(page);
       await page.locator('.ka[data-id="2"] .t').click();
-      await reiter(page, 'Anhänge');
-      await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
-      await page.locator('#reiter-datei').click();
+      await expect(page.locator('#fenster #anhaenge .anh-z')).toHaveCount(0);
+      await reiter(page, 'Datei');
       await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
     }, MIT_ANHANG);
   });
@@ -587,6 +584,6 @@ for (const verzoegerungMs of [0, 250, 400]) {
 async function repariertSichtbar(page) {
   await expect(page.locator('#defekt-fenster')).toHaveCount(0);
   await expect(page.locator('.mod-kopf .id')).toHaveText('#3');
-  await page.locator('#reiter-datei').click();
+  await reiter(page, 'Datei');
   await expect(page.locator('#dateitext')).toContainText('drei repariert');
 }

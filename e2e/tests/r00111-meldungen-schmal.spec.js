@@ -134,7 +134,7 @@ test.describe('Handy, 414 px mit Touch', () => {
     expect(await alertImSnapshot(fenster, MELDUNG_X1)).toHaveLength(1);
     expect(await page.evaluate(() => [document.activeElement.id, document.activeElement.value])).toEqual(['herkunft-neu', 'X1']);
     expect(k.lies(AUFGABE_1)).not.toContain('X1');
-    expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' })), 'Tastenhinweise schmal nicht gezeichnet').toEqual(['keine Client-Rects']);
+    expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'schließen' })), 'Tastenhinweise schmal nicht gezeichnet').toEqual(['keine Client-Rects']);
 
     const feld = fenster.getByLabel('Neue Herkunft');
     const id = await meldung.getAttribute('id');
@@ -246,7 +246,7 @@ for (const breite of [320, 375, 414]) {
       expect(dokument[0], 'Seite höchstens so breit wie der Bildschirm').toBeLessThanOrEqual(breite);
       expect(imFenster[0], 'Fenster scrollt nicht quer').toBeLessThanOrEqual(imFenster[1]);
       expect(inMeldung[0], 'Meldung nicht abgeschnitten').toBeLessThanOrEqual(inMeldung[1]);
-      expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'Karte wechseln' }))).toEqual(['keine Client-Rects']);
+      expect(await sichtbarkeit(fenster.locator('.mod-fuss span', { hasText: 'schließen' }))).toEqual(['keine Client-Rects']);
     });
   });
 }
@@ -372,7 +372,7 @@ test.describe('Desktop, 1280 px mit Maus', () => {
     const mitten = await fuss.evaluate(f => [...f.children].map(kind => { const r = kind.getBoundingClientRect(); return r.top + r.height / 2; }));
     expect(Math.max(...mitten) - Math.min(...mitten), 'alle Teile des Fußes in einer Zeile').toBeLessThanOrEqual(2);
     const tastenhinweis = fuss.locator('span', { hasText: 'schließen' });
-    await expect(tastenhinweis).toContainText('Karte wechseln');
+    await expect(tastenhinweis).toContainText('schließen');
     expect(await sichtbarkeit(tastenhinweis)).toEqual([]);
   });
 

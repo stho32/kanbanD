@@ -16,7 +16,8 @@ test.describe('R00017', () => {
   test('US-1 und US-2: archivieren und rückgängig', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
-    await page.getByRole('button', { name: 'Archivieren' }).click();
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+    await page.locator('#fenster [role="menu"][data-art="aktionen"]').getByRole('menuitem', { name: 'Archivieren' }).click();
     await expect(page.locator('.ka[data-id="1"]')).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Archiv (1)' })).toBeVisible();
     expect(k.lies('aufgaben/0001-eins.md')).toMatch(/archived: \d{4}-\d\d-\d\d/);
@@ -33,7 +34,8 @@ test.describe('R00017', () => {
     await expect(page.locator('.ka')).toHaveCount(1);
     await page.locator('.ka[data-id="1"]').click();
     await expect(page.locator('.mod .archbar')).toContainText('Archiviert am 01.10.2026');
-    await page.getByRole('button', { name: 'Zurückholen', exact: true }).click();
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+    await page.locator('#fenster [role="menu"][data-art="aktionen"]').getByRole('menuitem', { name: 'Zurückholen' }).click();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Archiv verlassen' }).click();
     await expect(page.locator('.bahn[data-col="Erledigt"] .ka[data-id="1"]')).toBeVisible();

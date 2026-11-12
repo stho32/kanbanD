@@ -35,6 +35,11 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
     await page.locator(`.ka[data-id="${nr}"]`).click();
     await expect(page.locator('#fenster')).toBeVisible();
   };
+  /** Endgültig löschen steht seit R00144 nur im ⋮-Menü des Kopfes (Karte #144). */
+  const loeschenImKopf = async page => {
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+    await page.locator('#fenster [role="menu"][data-art="aktionen"]').getByRole('menuitem', { name: 'Endgültig löschen' }).click();
+  };
   const bestaetigen = async (page, nr) => {
     await dialog(page).getByRole('button', { name: 'endgültig löschen' }).click();
     await expect(dialog(page)).toHaveCount(0);
@@ -82,7 +87,7 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
     // bei 320/375/414 px kein Querscrollen, Startfokus Abbrechen, Esc zurück an den Auslöser (Fenster bleibt offen)
     for (const breite of [320, 375, 414]) {
       await page.setViewportSize({ width: breite, height: 760 });
-      await page.locator('#fenster').getByRole('button', { name: 'Endgültig löschen' }).click();
+      await loeschenImKopf(page);
       const d = dialog(page);
       await expect(d.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
       const quer = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -90,11 +95,11 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
       await page.keyboard.press('Escape');
       await expect(dialog(page)).toHaveCount(0);
       await expect(page.locator('#fenster')).toBeVisible();
-      await expect(page.locator('#fenster').getByRole('button', { name: 'Endgültig löschen' })).toBeFocused();
+      await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]')).toBeFocused();
     }
     const vorher = commits(k);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.locator('#fenster').getByRole('button', { name: 'Endgültig löschen' }).click();
+    await loeschenImKopf(page);
     await bestaetigen(page, 1);
     await expect(page.locator('#fenster')).toHaveCount(0, 'das Fenster schließt');
     const rolle = await page.evaluate(() => document.activeElement && document.activeElement.tagName);
@@ -139,22 +144,23 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
     await expect(page.getByRole('menuitem', { name: 'Umbenennen' })).toHaveCount(1, 'Umbenennen bleibt in der vorderen Gruppe');
   });
 
-  test('US-3/D0003: Kopf-Auslöser beschriftet, per aria-hidden-Trenner abgesetzt, in --kd-warn (1280/414/320, hell/dunkel)', async ({ page }) => {
-    // Artboard D0003 #endgueltig-loeschen + PO #36 (Z. 196): beschriftet (Symbol + Text, `.btn`), 1-px-`.el-trenner`
-    // vor „Archivieren“ abgesetzt, Warnfarbe `--kd-warn`, Titel nennt die Wirkung.
+  test('US-3/D0003 (aufgehoben durch #144): der Kopf trägt keinen Lösch-Auslöser, der Papierkorb steht am Menüeintrag in --kd-warn', async ({ page }) => {
+    // R00144 FA 4: „Symbol statt Beschriftung im Kopf“; die Festlegung „Kopf-Auslöser bleibt beschriftet“ (PO Z. 196) ist aufgehoben.
     await oeffneFenster(page, 1);
-    const knopf = page.locator('#fenster [data-act="endgueltig-loeschen"]');
+    await expect(page.locator('#fenster [data-act="endgueltig-loeschen"]')).toHaveCount(0);
+    await expect(page.locator('#fenster .mod-kopf')).not.toContainText('Endgültig löschen');
     for (const t of ['light', 'dark']) {
       await thema(page, t);
       const warn = await page.evaluate(() => { const d = document.createElement('span'); d.style.color = 'var(--kd-warn)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
       for (const breite of [1280, 414, 320]) {
         await page.setViewportSize({ width: breite, height: 800 });
-        await expect(knopf, `${breite}/${t}: sichtbar`).toBeVisible();
-        await expect(knopf, `${breite}/${t}: beschriftet`).toContainText('Endgültig löschen');
-        expect(await knopf.evaluate(el => getComputedStyle(el).color), `${breite}/${t}: --kd-warn`).toBe(warn);
-        const trenner = await knopf.evaluate(el => { const v = el.previousElementSibling; return v && { klasse: v.classList.contains('el-trenner'), aria: v.getAttribute('aria-hidden'), breite: parseFloat(getComputedStyle(v).width), sichtbar: v.getClientRects().length > 0 }; });
-        expect(trenner, `${breite}/${t}: Trenner`).toBeTruthy();
-        expect(trenner.klasse && trenner.aria === 'true' && trenner.breite === 1 && trenner.sichtbar, `${breite}/${t}: 1-px-Trenner aria-hidden unmittelbar davor`).toBe(true);
+        await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+        const eintrag = page.locator('#fenster [role="menu"][data-art="aktionen"]').getByRole('menuitem', { name: 'Endgültig löschen' });
+        await expect(eintrag, `${breite}/${t}: sichtbar`).toBeVisible();
+        expect(await eintrag.evaluate(el => getComputedStyle(el).color), `${breite}/${t}: --kd-warn`).toBe(warn);
+        await expect(eintrag.locator('.fm-ikon svg')).toHaveCount(1);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toHaveCount(0);
       }
     }
   });

@@ -192,23 +192,20 @@ test.describe('R00116', () => {
     await feldPruefen(page, neu);
   });
 
-  test('US-5: ↑/↓ blättern mit Fokus auf dem Lesediv; im Bearbeitungszustand wie heute aus (AK 5)', async ({ page }) => {
+  test('US-5 (aufgehoben durch Betreiber-Entscheidung #144): ↑/↓ wechseln die Aufgabe nicht mehr', async ({ page }) => {
     k = await kanbanStarten(einrichten(GRUNDBESTAND));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await fensterOeffnen(page, 1);
     await page.locator(LESE).focus();
-    // ↑ blättert zur vorigen Karte (Guard greift nur Eingabefelder — das Lesediv nicht)
+    // R00144 FA 9: das Blättern samt ↑/↓ ist gestrichen — das Fenster bleibt bei #1, auch im Lesediv
     await page.keyboard.press('ArrowUp');
-    await expect(page.locator('#fenster')).toHaveAttribute('aria-label', 'Aufgabe #2');
+    await expect(page.locator('#fenster')).toHaveAttribute('aria-label', 'Aufgabe #1');
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('#fenster')).toHaveAttribute('aria-label', 'Aufgabe #1');
-    // im Bearbeitungszustand (Fokus im Eingabefeld) ist das Blättern wie heute aus
     await page.keyboard.press('e');
     await feldPruefen(page, TITEL_EINS);
     await page.keyboard.press('ArrowDown');
-    await expect(page.locator('#fenster')).toHaveAttribute('aria-label', 'Aufgabe #1');
-    await page.keyboard.press('ArrowUp');
     await expect(page.locator('#fenster')).toHaveAttribute('aria-label', 'Aufgabe #1');
   });
 

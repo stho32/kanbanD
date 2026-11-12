@@ -219,12 +219,8 @@ ${vBeschriftung('origins')}<span class="w"><input class="mini-inp full" data-nf=
 
 /* ── Aufgabenfenster (Artboard D0003) ── */
 const uhr = t => new Date(t).toTimeString().slice(0, 8);
-/** Nummern der sichtbaren Karten in Board-Reihenfolge — zum Blättern. */
-function sichtbareReihe() {
-  const sichtbar = a => a && !!a.archiviert === imArchiv() && passt(a, S.ui.filter, umfeld());
-  if (!S.board) return S.aufgaben.filter(sichtbar).map(a => a.nummer);
-  return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => sichtbar(aufgabe(n))));
-}
+const ARCHIV = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4"></rect><path d="M5 8v11h14V8M9 12h6"></path></svg>';
+const ARCHIV_HOCH = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4"></rect><path d="M5 8v11h14V8M12 16v-5M9 13l3-3 3 3"></path></svg>';
 /** Der Ansichts-Auslöser im Fensterkopf (R00145 FA 4/5): Textknopf mit Caret, `aria-haspopup`/`aria-expanded`, Name „Ansicht: <Name>“. */
 const ANSICHT_KNOPF = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
 /** Die gewählte Ansicht einer Aufgabe: der gemerkte Schlüssel, wenn die Aufgabe ihn führt, sonst „Inhalt“ (R00145 FA 2, generisch). */
@@ -282,16 +278,29 @@ function vKostenBasis(basis) {
   return `<p class="ko-basis">Basis: ${esc(basis)}</p>`;
 }
 
+/** Der Aktions-Auslöser (⋮) und sein Menü (R00144 FA 2/3/6): Symbol-only, `aria-haspopup`/`aria-expanded`, Name mit der Nummer.
+    Einträge mit Symbol in einer 16-px-Ikonspalte (danach 8 px), genau ein Trenner vor dem letzten; kein Titel, keine Kürzel. */
+function vFensterAktionen(a) {
+  const offen = S.ui.fensterMenue === 'aktionen';
+  const knopf = `<button type="button" class="btn btn-sym" data-act="fenster-menue" data-arg="aktionen" aria-haspopup="menu" aria-expanded="${offen}" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" title="Weitere Aktionen">${DREI_PUNKTE}</button>`;
+  if (!offen) return `<span class="fm-anker">${knopf}</span>`;
+  const archivieren = a.archiviert
+    ? `<button type="button" role="menuitem" tabindex="-1" class="fm-e" data-act="zurueckholen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${ARCHIV_HOCH}</span><span class="fm-text">Zurückholen</span></button>`
+    : `<button type="button" role="menuitem" tabindex="-1" class="fm-e" data-act="archivieren" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${ARCHIV}</span><span class="fm-text">Archivieren</span></button>`;
+  const loeschen = `<button type="button" role="menuitem" tabindex="-1" class="fm-e warn" data-act="endgueltig-loeschen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${PAPIERKORB}</span><span class="fm-text">Endgültig löschen</span></button>`;
+  return `<span class="fm-anker">${knopf}<div class="fm" role="menu" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" data-art="aktionen">${archivieren}<div class="fm-tr" role="separator"></div>${loeschen}</div></span>`;
+}
 function vFenster() {
   const a = aufgabe(S.ui.offen);
   if (!a) return '';
-  const u = S.ui, cl = klasse(a.klasse), reihe = sichtbareReihe(), i = reihe.indexOf(a.nummer);
+  const u = S.ui, cl = klasse(a.klasse);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
   // Genau eine Ansicht ist gewählt (R00145 FA 2/6): der gemerkte Schlüssel, sonst „Inhalt“ — generisch für jede entfallende Ansicht.
   const tab = ansichtDerAufgabe(a);
-  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vAnsichtWahl(a, tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" data-act="endgueltig-loeschen" data-arg="${a.nummer}" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden" aria-label="Endgültig löschen">${PAPIERKORB}Endgültig löschen</button><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
-  const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
-  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
+  // Kopf rechts (R00144 FA 1): Ansicht, ↗, ⋮, ✕ — Lücken 8 px, kein Trenner, keine Blätterknöpfe, kein Zähler, kein beschrifteter Lösch-Auslöser.
+  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vAnsichtWahl(a, tab)}<a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${vFensterAktionen(a)}<button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">Zurückholen</button></div>` : '';
+  const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   // Genau eine gezeichnete Ansicht (R00145 FA 6): role=group mit dem Namen der Ansicht, kein tabpanel, kein aria-current.
   const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
@@ -724,7 +733,7 @@ function vDefektFenster() {
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="defekt-fenster" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div>${vHinweisAnker('defekt')}<div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
 const KUERZEL_BOARD = [['p', 'Zuständige zuweisen (Dialog)'], ['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a · Entf', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · Leertaste', 'eigenen Timer an / aus'], ['m · F2', 'mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Aktion rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Alt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Strg + Klick', 'Karte zur Auswahl hinzu / heraus'], ['Umschalt + Klick · Umschalt + ↑ ↓', 'Reihe auswählen'], ['Esc', 'Auswahl aufheben'], ['Enter', 'Karte öffnen'], ['n', 'Neue Aufgabe in dieser Spalte (Dialog)'], ['Esc', 'Filter leeren'], ['/', 'Filter']];
-const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
+const KUERZEL_FENSTER = [['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
 const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['n', 'Neue Aufgabe ohne Board'], ['a · Entf', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['Ziehen', 'Zeile auf eine Spalte oder ins Archiv'], ['/', 'Filter']];
 const KUERZEL_NEU = [['Enter (im Titel) · Strg + Enter', 'anlegen'], ['Umschalt + Strg + Enter', 'anlegen und weitere'], ['Enter (Teilaufgabe)', 'Teilaufgabe anfügen'], ['Esc', 'abbrechen']];
 const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g w', 'Wie lange noch'], ['g f', 'Projekt-Fever-Chart'], ['g k', 'WBS der gebundenen Anwendung'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
