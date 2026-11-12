@@ -163,7 +163,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-9/AK 12: die vier Ziele zuerst, genau ein Trenner, dann die Werkzeuge; kein zweiter Abschnittskopf', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -293,7 +292,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('AK 12: kein Trenner und zwei Trenner machen die Probe rot', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     for (const [name, ersatz, erwartet] of [['kein Trenner', '', 0], ['zwei Trenner', '<div role="separator"></div><div role="separator"></div>', 2]]) {
       let griff = false;
       await page.route('**/ansicht.js', async route => {

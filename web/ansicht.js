@@ -121,8 +121,8 @@ function vBereichChips() {
   return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${u.bereich === k ? '<span class="kz-auswahl-haken" aria-hidden="true">✓</span> ' : ''}${t}</button>`).join('')}</span>`;
 }
 
-/** Menü „Mehr“ (R00140, UX-Vorprüfung #105): die vier seltenen Ziele als erste Gruppe, darunter die Werkzeuge.
- *  Jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
+/** Menü „Mehr“ (R00140, UX-Vorprüfung #105): die vier seltenen Ziele als erste Gruppe, darunter genau ein
+ *  Trenner, dann die Werkzeuge. Jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
 function vMehrPop() {
   const u = S.ui;
   /** Ein Ziel in der Form von vSeitenPop: menuitem-Link mit tabindex="-1", Ziel im Hash. */
@@ -137,7 +137,7 @@ function vMehrPop() {
     ich: () => `<button type="button" class="iz" id="mehr-ich" role="menuitem" tabindex="-1" data-act="pop" data-arg="ich">Ich bin …<span class="muted">${esc(ichNameOderLeer())}</span></button>`,
   };
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
-  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><div class="pop-kopf">MEHR</div>${ziele}${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-mehr" data-al="r" role="menu" aria-label="Mehr"><div class="pop-kopf">MEHR</div>${ziele}<div role="separator"></div>${plaetze.mehr.map(schluessel => eintrag[schluessel]()).join('')}</div>`;
 }
 
 function ichNameOderLeer() {
