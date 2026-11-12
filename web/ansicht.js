@@ -225,14 +225,25 @@ function sichtbareReihe() {
   if (!S.board) return S.aufgaben.filter(sichtbar).map(a => a.nummer);
   return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => sichtbar(aufgabe(n))));
 }
-
-/* Reiterleiste des Aufgabenfensters (R00105, R00127, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
-   Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. Die Reiter-Liste (REITER,
-   reiterDerAufgabe, reiterSchluessel) liegt rein in web/reiter.js, die Tastenwahl in web/tastatur.js. */
-function vReiterleiste(a, gewaehlt) {
-  return `<span class="seg" role="tablist" aria-label="Ansicht der Aufgabe">${reiterDerAufgabe(a).map(([k, t]) => `<span class="${gewaehlt === k ? 'an' : ''}" id="reiter-${k}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${gewaehlt === k}" aria-controls="reiterpanel-${k}" tabindex="${gewaehlt === k ? 0 : -1}">${t}</span>`).join('')}</span>`;
+/** Der Ansichts-Auslöser im Fensterkopf (R00145 FA 4/5): Textknopf mit Caret, `aria-haspopup`/`aria-expanded`, Name „Ansicht: <Name>“. */
+const ANSICHT_KNOPF = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
+/** Die gewählte Ansicht einer Aufgabe: der gemerkte Schlüssel, wenn die Aufgabe ihn führt, sonst „Inhalt“ (R00145 FA 2, generisch). */
+function ansichtDerAufgabe(a) {
+  return reiterSchluessel(a).includes(S.ui.tab) ? S.ui.tab : 'inhalt';
 }
-const reiterPanel = k => `id="reiterpanel-${k}" role="tabpanel" aria-labelledby="reiter-${k}"`;
+/** Auslöser und Menü des Ansichtswechsels (R00145): eine Liste, ein Zustand (`S.ui.tab`), Menüform `menuitemradio` mit `aria-checked`.
+    Die Markierung trägt `aria-checked` am Eintrag und ein sichtbares ✓ im festen Gutter (`.fm-haken`), damit alle Texte gleich beginnen. */
+function vAnsichtWahl(a, gewaehlt) {
+  const offen = S.ui.fensterMenue === 'ansicht';
+  const name = (reiterDerAufgabe(a).find(([k]) => k === gewaehlt) || [null, 'Inhalt'])[1];
+  const knopf = `<button type="button" class="fm-aus" data-act="fenster-menue" data-arg="ansicht" aria-haspopup="menu" aria-expanded="${offen}" aria-label="Ansicht: ${esc(name)}">${esc(name)}<span class="fm-caret" aria-hidden="true">▾</span></button>`;
+  const eintraege = reiterDerAufgabe(a).map(([k, t]) => {
+    const an = k === gewaehlt;
+    return `<button type="button" role="menuitemradio" aria-checked="${an}" tabindex="-1" class="fm-e${an ? ' an' : ''}" data-act="fenster-ansicht" data-arg="${k}"><span class="fm-haken" aria-hidden="true">${an ? '✓' : ''}</span><span class="fm-text">${esc(t)}</span></button>`;
+  }).join('');
+  const menue = offen ? `<div class="fm" role="menu" aria-label="Ansicht der Aufgabe" data-art="ansicht">${eintraege}</div>` : '';
+  return `<span class="fm-anker">${knopf}${menue}</span>`;
+}
 
 /** Panel „Kosten“ (R00105): Tabelle aus dem Preisetikett, nur lesend; ein Name ohne Silbengrenze scrollt in .ko-scroll quer. */
 function vKostenPanel(a) {
@@ -276,21 +287,20 @@ function vFenster() {
   if (!a) return '';
   const u = S.ui, cl = klasse(a.klasse), reihe = sichtbareReihe(), i = reihe.indexOf(a.nummer);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
-  // Nur ein Reiter ist gewählt; führt die Aufgabe den gemerkten Schlüssel nicht, zeichnet „Inhalt“ (R00127 S3, generisch).
-  const tab = reiterSchluessel(a).includes(u.tab) ? u.tab : 'inhalt';
-  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" data-act="endgueltig-loeschen" data-arg="${a.nummer}" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden" aria-label="Endgültig löschen">${PAPIERKORB}Endgültig löschen</button><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  // Genau eine Ansicht ist gewählt (R00145 FA 2/6): der gemerkte Schlüssel, sonst „Inhalt“ — generisch für jede entfallende Ansicht.
+  const tab = ansichtDerAufgabe(a);
+  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vAnsichtWahl(a, tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" data-act="endgueltig-loeschen" data-arg="${a.nummer}" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden" aria-label="Endgültig löschen">${PAPIERKORB}Endgültig löschen</button><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  // Genau ein gezeichnetes Panel — das des gewählten Reiters; die übrigen Reiter tragen ihren aria-controls-Verweis ohne Inhalt (R00127 M1).
+  // Genau eine gezeichnete Ansicht (R00145 FA 6): role=group mit dem Namen der Ansicht, kein tabpanel, kein aria-current.
   const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
     : tab === 'kosten' ? vKostenPanel(a)
     : tab === 'verlauf' ? vVerlaufPanel()
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
-    : tab === 'anhaenge' ? `<div class="mod-main">${vAnhaenge(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
     : `<div class="mod-main">${vFensterInhalt(a)}</div>`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel(tab)}>${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" data-ansicht="${tab}" role="group" aria-label="Ansicht: ${esc((reiterDerAufgabe(a).find(([k]) => k === tab) || [null, 'Inhalt'])[1])}">${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
 }
 /** Der Reiter „Inhalt“ (R00127): die Arbeit an der Aufgabe — Titel, Beschreibung, Teilaufgaben, Kommentare, Durchläufe, sonst nichts. */
 function vFensterInhalt(a) {
@@ -317,9 +327,9 @@ ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-af="
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span></span>
 ${a.estimate ? `${vBeschriftung('estimate')}<span class="w mono">${hm(a.estimate * 6e4)}</span>` : ''}</div>`;
 }
-/* Abschnitte des Reiters „Inhalt“ (R00127 S2): Teilaufgaben, Kommentare, Durchläufe — Zeiten, Anhänge und Felder stehen in eigenen Reitern. */
+/* Abschnitte des Inhalts (R00127 S2, R00145 FA 11): Teilaufgaben, Anhänge, Kommentare, Durchläufe — Zeiten und Felder stehen in eigenen Ansichten. */
 function vFensterAbschnitte(a) {
-  return vTeilaufgaben(a) + vKommentare(a) + vDurchlaeufe(a);
+  return vTeilaufgaben(a) + vAnhaenge(a) + vKommentare(a) + vDurchlaeufe(a);
 }
 /** Durchläufe (R00094) als Tabelle, neueste oben; ohne Durchläufe kein Abschnitt. */
 function vDurchlaeufe(a) {
@@ -352,9 +362,12 @@ function vVerlaufPanel() {
   const zeilen = ds.map(e => `<tr><td class="mono">${esc(zeitpunktLang(e.zeitpunkt))}</td><td>${esc(VERLAUF_ART[e.art] || e.art)}</td><td>${vVerlaufWeg(e)}</td><td>${e.art === 'bewegt' && e.board ? esc(e.board) : '—'}</td><td>${vVerlaufWer(e.wer)}</td></tr>`).join('');
   return `<div class="mod-main vh-panel"><div class="bericht-rahmen" tabindex="0" role="group" aria-label="Verlauf"><table class="pt dicht vh-tab"><thead><tr><th scope="col">Zeit</th><th scope="col">Art</th><th scope="col">von → nach</th><th scope="col">Board</th><th scope="col">Wer</th></tr></thead><tbody>${zeilen}</tbody></table></div>${hin}</div>`;
 }
-const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';function vAnhaenge(a) {
+const groesse = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1).replace('.', ',') + ' KB' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
+/** Anhänge im Inhalt (R00145 FA 11/12): Überschrift `ANHÄNGE <n>` ohne Dateinamen, Zeile mit Name, Größe und ✕; der Leerfall zeigt
+    die Zeile „+ Datei wählen oder hierher ziehen“, keinen leeren Kasten. Die Fläche ist Ablageziel (app.js, `dragover`/`drop`). */
+function vAnhaenge(a) {
   const liste = S.ui.anhaenge || [];
-  return `<div class="abs anh" id="anhaenge"><h3>ANHÄNGE <span class="mono">${esc(a.datei.replace(/\.md$/, ''))}/ · ${liste.length}</span></h3>${liste.map(x => `<div class="anh-z"><a href="/api/aufgaben/${a.nummer}/anhaenge/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${esc(x.name)}</a><span class="mono muted">${groesse(x.groesse)}</span><button class="btn btn-sym x" data-act="anhang-weg" data-arg="${esc(x.name)}" aria-label="Anhang ${esc(x.name)} entfernen"${S.ui.anhangLiest === x.name ? ' disabled aria-busy="true"' : ''}>✕</button></div>`).join('')}<label class="inp add anh-wahl">+ Datei wählen oder hierher ziehen<input type="file" id="anhang-datei" multiple hidden aria-label="Anhang hinzufügen"></label></div>`;
+  return `<div class="abs anh" id="anhaenge"><h3>ANHÄNGE <span class="mono">${liste.length}</span></h3>${liste.map(x => `<div class="anh-z"><a href="/api/aufgaben/${a.nummer}/anhaenge/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${esc(x.name)}</a><span class="mono muted">${groesse(x.groesse)}</span><button class="btn btn-sym x" data-act="anhang-weg" data-arg="${esc(x.name)}" aria-label="Anhang ${esc(x.name)} entfernen"${S.ui.anhangLiest === x.name ? ' disabled aria-busy="true"' : ''}>✕</button></div>`).join('')}<label class="inp add anh-wahl">+ Datei wählen oder hierher ziehen<input type="file" id="anhang-datei" multiple hidden aria-label="Anhang hinzufügen"></label></div>`;
 }
 function ichPerson() {
   return S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
@@ -711,7 +724,7 @@ function vDefektFenster() {
   return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="defekt-fenster" role="dialog" aria-label="Defekte Datei #${S.ui.offenDefekt}" style="--cl:var(--kd-warn)"><div class="mod-kopf"><span class="id">#${S.ui.offenDefekt}</span><span class="lbl warn">defekt · nur lesbar</span><span class="pfad">${esc(d.pfad)}</span><div class="rechts"><a class="btn btn-sym" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}" title="Im Editor reparieren">↗</a><button class="btn btn-sym" data-act="schliessen" aria-label="Schließen">✕</button></div></div><div class="archbar warnbar" role="alert">${esc(d.fehler)}</div><div class="mod-body voll"><div class="mod-main"><pre class="md" id="defekttext">${esc(d.text)}</pre></div></div>${vHinweisAnker('defekt')}<div class="mod-fuss"><span>Die Datei ist nur lesbar, bis sie im Editor repariert ist; danach erscheint die Aufgabe ohne Neuladen.</span></div></div></div>`;
 }
 const KUERZEL_BOARD = [['p', 'Zuständige zuweisen (Dialog)'], ['Rechtsklick · Menütaste · Umschalt + F10', 'Menü der Karte'], ['a · Entf', 'Karte archivieren'], ['1 … 9', 'Karte in Spalte 1 … 9'], ['c', 'Verweis „#n Titel“ kopieren'], ['t · Leertaste', 'eigenen Timer an / aus'], ['m · F2', 'mir zuweisen · umbenennen'], ['Strg + Z', 'letzte Aktion rückgängig'], ['← → ↑ ↓', 'Karte wählen'], ['Umschalt + ← →', 'Karte in die Nachbarspalte'], ['Alt + ↑ ↓', 'Karte in der Spalte verschieben'], ['Strg + Klick', 'Karte zur Auswahl hinzu / heraus'], ['Umschalt + Klick · Umschalt + ↑ ↓', 'Reihe auswählen'], ['Esc', 'Auswahl aufheben'], ['Enter', 'Karte öffnen'], ['n', 'Neue Aufgabe in dieser Spalte (Dialog)'], ['Esc', 'Filter leeren'], ['/', 'Filter']];
-const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['← →', 'Reiter wechseln (Fokus auf einem Reiter)'], ['Esc', 'schließen']];
+const KUERZEL_FENSTER = [['↑ ↓', 'vorige / nächste Karte'], ['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'schließen']];
 const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['n', 'Neue Aufgabe ohne Board'], ['a · Entf', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['Ziehen', 'Zeile auf eine Spalte oder ins Archiv'], ['/', 'Filter']];
 const KUERZEL_NEU = [['Enter (im Titel) · Strg + Enter', 'anlegen'], ['Umschalt + Strg + Enter', 'anlegen und weitere'], ['Enter (Teilaufgabe)', 'Teilaufgabe anfügen'], ['Esc', 'abbrechen']];
 const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g w', 'Wie lange noch'], ['g f', 'Projekt-Fever-Chart'], ['g k', 'WBS der gebundenen Anwendung'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];

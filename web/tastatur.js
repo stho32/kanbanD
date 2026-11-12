@@ -42,21 +42,6 @@
     return { ziel: null, warte: taste === 'g' && vorher !== 'g' };
   }
 
-  /** Reiterleiste (R00105, APG Tabs mit automatischer Aktivierung): reiter = Schlüssel in Anzeigereihenfolge, aktuell =
-      fokussierter Reiter. Liefert den Reiter, der Fokus und Auswahl bekommt, oder null, wenn die Taste nicht der Leiste gehört. */
-  function naechsterReiter(reiter, aktuell, taste) {
-    const i = reiter.indexOf(aktuell), n = reiter.length;
-    if (i < 0) return null;
-    switch (taste) {
-      case 'ArrowRight': return reiter[(i + 1) % n];
-      case 'ArrowLeft': return reiter[(i - 1 + n) % n];
-      case 'Home': return reiter[0];
-      case 'End': return reiter[n - 1];
-      case 'Enter': case ' ': return aktuell;
-      default: return null;
-    }
-  }
-
   const RADIO_RICHTUNG = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
   /** Radiogruppe (R00106, APG Radio Group): Index des Radios, das Fokus und Wahl bekommt, mit Umlauf;
@@ -69,5 +54,5 @@
     return (index + richtung + anzahl) % anzahl;
   }
 
-  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, naechsterReiter, radioSchritt });
+  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, radioSchritt });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -1,6 +1,6 @@
 // R00112 Entfernen rückgängig und sichtbare Entfernen-Knöpfe (Karte #12, ADR-0017)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, kontrastAm, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, kontrastAm, mutanteEinsetzen, reiter } = require('./hilfen');
 
 const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl' } };
 
@@ -190,7 +190,7 @@ async function alleEntfernenKnoepfeSichtbar(page, k) {
   const messen = async (tab, selektoren) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: tab }).click();
+    await reiter(page, tab === 'Anhänge' ? 'Inhalt' : tab);
     for (const s of selektoren) {
       await expect(page.locator(s).first()).toBeAttached();
       expect(await kontrastAm(page.locator(s).first())).toBeGreaterThanOrEqual(4.5);
@@ -202,7 +202,7 @@ async function alleEntfernenKnoepfeSichtbar(page, k) {
   await expect(page.locator('.lnk-x').first()).toBeAttached();
   await ohneZeigen(page);
   const liste = await deckkraft(page, ENTFERNEN.liste);
-  const fenster = { ...(await messen('Inhalt', ['.chk .x'])), ...(await messen('Zeiten', ['.zt .btn-sym'])), ...(await messen('Anhänge', ['.anh-z .x'])) };
+  const fenster = { ...(await messen('Inhalt', ['.chk .x'])), ...(await messen('Zeiten', ['.zt .btn-sym'])), ...(await messen('Inhalt', ['.anh-z .x'])) };
   for (const s of [...ENTFERNEN.liste, ...ENTFERNEN.fenster]) expect({ s, anzahl: { ...liste, ...fenster }[s].anzahl > 0 }).toEqual({ s, anzahl: true });
   expect({ ...liste, ...fenster }).toEqual(IMMER_SICHTBAR([...ENTFERNEN.liste, ...ENTFERNEN.fenster]));
 }
@@ -247,7 +247,7 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
   async function zeitEntfernen(page) {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: 'Zeiten' }).click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('.zt')).toContainText('09:00–10:00');
     await page.getByLabel('Zeit 1 löschen').click();
     await expect(page.locator('.zt')).not.toContainText('09:00–10:00');
@@ -368,7 +368,7 @@ test.describe('R00112 Anhang im Fenster', () => {
   async function fensterAuf(page) {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: 'Anhänge' }).click();
+    await reiter(page, 'Inhalt');
     await expect(anhaenge(page)).toHaveText(['plan.pdf']);
   }
 
@@ -470,7 +470,8 @@ test.describe('R00112 Hinweis im obersten Fenster', () => {
     await page.goto(k.adresse);
     await page.getByRole('link', { name: 'Archiv (1)' }).click();
     await page.locator('.ka[data-id="1"]').click();
-    await page.getByRole('button', { name: 'Zurückholen', exact: true }).click();
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+    await page.locator('#fenster [role="menu"][data-art="aktionen"]').getByRole('menuitem', { name: 'Zurückholen' }).click();
     await expect(hinweis(page)).toContainText('#1 zurückgeholt');
   }
 
@@ -556,12 +557,12 @@ test.describe('R00112 Fokus nie verdeckt (320 × 640)', () => {
   test('nach ✕ an einer Zeit liegt „Spalte“ nach Tab ganz außerhalb des Hinweises (#12)', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: 'Zeiten' }).click();
+    await reiter(page, 'Zeiten');
     await page.getByLabel('Zeit 1 löschen').click();
     const hinweis = page.locator('[aria-modal="true"] .toast[role="status"]');
     await expect(hinweis).toContainText('Zeit 09:00–10:00 von Stefan gelöscht');
     // „Spalte“ steht im Reiter „Details“ (R00127): dorthin wechseln, dann per Tab dorthin laufen.
-    await page.getByRole('tab', { name: 'Details' }).click();
+    await reiter(page, 'Details');
     const spalte = page.locator('#fenster select[aria-label="Spalte"]');
     for (let i = 0; i < 120 && !(await spalte.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
     await expect(spalte).toBeFocused();
@@ -638,7 +639,7 @@ test.describe('R00112 FA 8 Fokus an Zeiten', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: 'Zeiten' }).click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('.zt')).toContainText('09:00–10:00');
   }
   async function perEnterGeloescht(page, label = 'Zeit 1 löschen') {
@@ -753,7 +754,7 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await page.getByRole('tab', { name: 'Anhänge' }).click();
+    await reiter(page, 'Inhalt');
     await expect(page.locator('#anhaenge .anh-z a').first()).toBeVisible();
   }
   async function planPerEnter(page) {
@@ -816,7 +817,7 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
 async function fokusNieUnterDemHinweis(page, k) {
   await page.goto(k.adresse);
   await page.locator('.ka[data-id="1"] .id').click();
-  await page.getByRole('tab', { name: 'Zeiten' }).click();
+  await reiter(page, 'Zeiten');
   await expect(page.locator('.zt')).toContainText('09:00–10:00');
   await page.getByLabel('Zeit 1 löschen').focus();
   await page.keyboard.press('Enter');
@@ -891,10 +892,10 @@ test.describe('R00112/R00141 Fensterkopf bricht bei 414 px Touch um (R00127 E1)'
       expect(box.x, s).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width, s).toBeLessThanOrEqual(414);
     }
-    for (const n of ['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf']) {
-      const box = await page.getByRole('tab', { name: n }).boundingBox();
-      expect(box.height, `${n} hoch`).toBeGreaterThanOrEqual(44);
-      expect(box.x + box.width, `${n} im Bild`).toBeLessThanOrEqual(414);
+    for (const s of ['#fenster [data-act="fenster-menue"][data-arg="ansicht"]', '#fenster [data-act="fenster-menue"][data-arg="aktionen"]']) {
+      const box = await page.locator(s).boundingBox();
+      expect(box.height, `${s} hoch`).toBeGreaterThanOrEqual(44);
+      expect(box.x + box.width, `${s} im Bild`).toBeLessThanOrEqual(414);
     }
   });
 });

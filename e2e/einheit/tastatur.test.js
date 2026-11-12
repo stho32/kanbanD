@@ -1,7 +1,7 @@
 // Unit-Tests der Tastaturziele (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { nachbar, verschiebeziel, naechsterReiter, radioSchritt } = require('../../web/tastatur.js');
+const { nachbar, verschiebeziel, radioSchritt } = require('../../web/tastatur.js');
 
 const sp = [{ name: 'A', karten: [1, 2, 3] }, { name: 'B', karten: [] }, { name: 'C', karten: [4] }];
 
@@ -43,47 +43,6 @@ test('g-Folgen', () => {
   assert.deepStrictEqual(gFolge('g', 'x'), { ziel: null, warte: false });
   assert.deepStrictEqual(gFolge(null, 'a'), { ziel: null, warte: false });
   assert.deepStrictEqual(gFolge('g', 'g'), { ziel: null, warte: false });
-});
-
-/* ── Reiterleiste des Aufgabenfensters (R00105 B0375, APG Tabs mit automatischer Aktivierung) ── */
-const ZWEI = ['inhalt', 'datei'], DREI = ['inhalt', 'datei', 'kosten'];
-const SECHS = ['inhalt', 'zeiten', 'anhaenge', 'details', 'datei', 'verlauf'];
-
-test('Reiter: fünf Abschnitts-Reiter plus Verlauf (R00127) — Pfeile mit Umlauf, Pos1, Ende', () => {
-  assert.strictEqual(naechsterReiter(SECHS, 'inhalt', 'ArrowRight'), 'zeiten');
-  assert.strictEqual(naechsterReiter(SECHS, 'zeiten', 'ArrowRight'), 'anhaenge', 'kein Umlaufproblem über die neuen Reiter');
-  assert.strictEqual(naechsterReiter(SECHS, 'anhaenge', 'ArrowRight'), 'details');
-  assert.strictEqual(naechsterReiter(SECHS, 'verlauf', 'ArrowRight'), 'inhalt', 'Umlauf am rechten Rand');
-  assert.strictEqual(naechsterReiter(SECHS, 'inhalt', 'ArrowLeft'), 'verlauf', 'Umlauf am linken Rand');
-  assert.strictEqual(naechsterReiter(SECHS, 'details', 'Home'), 'inhalt');
-  assert.strictEqual(naechsterReiter(SECHS, 'details', 'End'), 'verlauf');
-  assert.strictEqual(naechsterReiter(SECHS, 'anhaenge', 'Enter'), 'anhaenge');
-});
-
-test('Reiter: Pfeile mit Umlauf, Pos1 und Ende — zwei Reiter', () => {
-  assert.strictEqual(naechsterReiter(ZWEI, 'inhalt', 'ArrowRight'), 'datei');
-  assert.strictEqual(naechsterReiter(ZWEI, 'datei', 'ArrowRight'), 'inhalt', 'Umlauf am rechten Rand');
-  assert.strictEqual(naechsterReiter(ZWEI, 'inhalt', 'ArrowLeft'), 'datei', 'Umlauf am linken Rand');
-  assert.strictEqual(naechsterReiter(ZWEI, 'datei', 'ArrowLeft'), 'inhalt');
-  assert.strictEqual(naechsterReiter(ZWEI, 'datei', 'Home'), 'inhalt');
-  assert.strictEqual(naechsterReiter(ZWEI, 'inhalt', 'End'), 'datei');
-});
-
-test('Reiter: drei Reiter — Probe PO Z. 88: → zweimal → „Kosten“, noch einmal → „Inhalt“', () => {
-  const zweimal = naechsterReiter(DREI, naechsterReiter(DREI, 'inhalt', 'ArrowRight'), 'ArrowRight');
-  assert.strictEqual(zweimal, 'kosten');
-  assert.strictEqual(naechsterReiter(DREI, zweimal, 'ArrowRight'), 'inhalt');
-  assert.strictEqual(naechsterReiter(DREI, 'inhalt', 'ArrowLeft'), 'kosten');
-  assert.strictEqual(naechsterReiter(DREI, 'kosten', 'ArrowLeft'), 'datei');
-  assert.strictEqual(naechsterReiter(DREI, 'datei', 'End'), 'kosten');
-  assert.strictEqual(naechsterReiter(DREI, 'kosten', 'Home'), 'inhalt');
-});
-
-test('Reiter: Enter und Leertaste zeigen den fokussierten Reiter, andere Tasten gehören nicht der Leiste', () => {
-  assert.strictEqual(naechsterReiter(DREI, 'datei', 'Enter'), 'datei');
-  assert.strictEqual(naechsterReiter(DREI, 'kosten', ' '), 'kosten');
-  for (const taste of ['ArrowUp', 'ArrowDown', 'd', 'Tab', 'Escape']) assert.strictEqual(naechsterReiter(DREI, 'inhalt', taste), null, taste);
-  assert.strictEqual(naechsterReiter(DREI, 'unbekannt', 'ArrowRight'), null, 'Fehlfall: Reiter nicht in der Liste');
 });
 
 test('radioSchritt(3, 0, ArrowLeft) → 2: Pfeile mit Umlauf, andere Tasten gehören nicht der Gruppe (R00106)', () => {

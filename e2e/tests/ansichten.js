@@ -15,11 +15,14 @@ function ansichtenDerAnwendung({ board, wbs }) {
 }
 
 /** Öffnet das Aufgabenfenster einer Karte des geladenen Boards und wartet auf den Dialog. */
-async function aufgabenfenster(page, nummer, reiter) {
+async function aufgabenfenster(page, nummer, ansicht) {
   await page.locator(`.ka[data-id="${nummer}"] .t`).click();
   const fenster = page.getByRole('dialog', { name: `Aufgabe #${nummer}` });
   await fenster.waitFor();
-  if (reiter) await fenster.getByRole('tab', { name: reiter }).click();
+  if (ansicht) {
+    await fenster.locator('[data-act="fenster-menue"][data-arg="ansicht"]').click();
+    await fenster.locator('[role="menu"][data-art="ansicht"]').getByRole('menuitemradio', { name: ansicht, exact: true }).click();
+  }
   return fenster;
 }
 
@@ -51,8 +54,8 @@ async function aufgabenfensterMitHinweis(page) {
  */
 function fensterDerAnwendung() {
   return [
-    { fenster: 'Aufgabenfenster #1, Reiter Inhalt', id: 'fenster', oeffnen: page => aufgabenfenster(page, 1) },
-    { fenster: 'Aufgabenfenster #1, Reiter Datei', id: 'fenster', oeffnen: page => aufgabenfenster(page, 1, 'Datei') },
+    { fenster: 'Aufgabenfenster #1, Ansicht Inhalt', id: 'fenster', oeffnen: page => aufgabenfenster(page, 1) },
+    { fenster: 'Aufgabenfenster #1, Ansicht Datei', id: 'fenster', oeffnen: page => aufgabenfenster(page, 1, 'Datei') },
     {
       fenster: 'Aufgabenfenster #1 mit Meldung',
       id: 'fenster',
@@ -65,7 +68,7 @@ function fensterDerAnwendung() {
       },
     },
     { fenster: 'Aufgabenfenster #1 mit Hinweis', id: 'fenster', oeffnen: aufgabenfensterMitHinweis },
-    { fenster: 'Aufgabenfenster #2, Reiter Kosten', id: 'fenster', oeffnen: page => aufgabenfenster(page, 2, 'Kosten') },
+    { fenster: 'Aufgabenfenster #2, Ansicht Kosten', id: 'fenster', oeffnen: page => aufgabenfenster(page, 2, 'Kosten') },
     {
       fenster: 'Aufgabenfenster #3 (archiviert)',
       id: 'fenster',

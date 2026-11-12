@@ -85,8 +85,13 @@ async function alsPerson(page, kuerzel) {
   await page.addInitScript(k => sessionStorage.setItem('kanbanD.ich', k), kuerzel);
 }
 
-/** Öffnet im Aufgabenfenster den Reiter `name` (R00127): Zeiten, Anhänge und Details liegen nicht mehr auf der Seite „Inhalt“. */
-async function reiter(page, name) { await page.getByRole('tab', { name }).click(); }
+/** Wählt im Aufgabenfenster die Ansicht `name` (R00145: ein Menü am Fensterkopf statt der Reiterleiste — der Name des
+ *  Helfers stammt aus der Reiterzeit und bleibt die eine Stelle für alle Suiten). */
+async function reiter(page, name) {
+  const menue = page.locator('#fenster [role="menu"][data-art="ansicht"]');
+  if (await menue.count() === 0) await page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]').click();
+  await menue.getByRole('menuitemradio', { name, exact: true }).click();
+}
 
 /** Wartet, bis die Seite live verbunden ist — erst dann kommt eine Änderung von außen sicher an (R00050). */
 async function liveBereit(page) {

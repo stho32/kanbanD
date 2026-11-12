@@ -280,12 +280,29 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .mod-kopf .id{font-family:var(--kd-mono);font-size:13px;font-weight:500}
 .mod-kopf .pfad{font-family:var(--kd-mono);font-size:11.5px;color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mod-kopf .rechts{margin-left:auto;display:flex;gap:2px;align-items:center}
-.mod-kopf .seg{margin-right:var(--kd-s3)}
 .mod-kopf .nav{font-size:11.5px;color:var(--kd-muted);margin-right:var(--kd-s2);font-family:var(--kd-mono)}
-/* Kopf-Auslöser „Endgültig löschen“ (R00141, D0003): beschriftet in --kd-warn, per 1-px-Trenner von „Archivieren“ abgesetzt */
 .el-ausloeser{display:inline-flex;align-items:center;gap:6px;height:var(--kd-row);padding:0 var(--kd-s3);border:1px solid transparent;background:none;font:inherit;font-size:12px;font-weight:500;color:var(--kd-warn);cursor:pointer;white-space:nowrap}
 .el-ausloeser:hover{background:var(--kd-sunken);border-color:var(--kd-line)}
 .el-trenner{flex:none;width:1px;align-self:stretch;margin:5px 4px;background:var(--kd-line)}
+/* Kopf-Auslöser „Endgültig löschen“ (R00141, D0003): beschriftet in --kd-warn, per 1-px-Trenner von „Archivieren“ abgesetzt */
+/* Ansichts-Auslöser und Kopf-Menü des Aufgabenfensters (R00145, Artboard D0003): Textknopf mit Caret, Menü als Ebene im Fenster
+   (ADR-0018 N2); kein Titel, Einträge als menuitemradio mit ✓ im festen Gutter, Warnfarbe nur am ungeförderten Eintrag. */
+.fm-anker{position:relative;display:inline-flex;flex:none}
+.fm-aus{display:inline-flex;align-items:center;gap:4px;height:var(--kd-ziel);padding:0 8px;border:1px solid transparent;background:none;color:var(--kd-text);font:500 12px/1 var(--kd-font);white-space:nowrap;cursor:pointer}
+.fm-aus:hover,.fm-aus[aria-expanded="true"]{background:var(--kd-sunken);border-color:var(--kd-line)}
+.fm-aus:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+.fm-caret{font-size:9px;line-height:1;color:var(--kd-muted)}
+.fm{position:absolute;top:calc(100% + 2px);right:0;z-index:6;inline-size:max-content;min-inline-size:200px;max-inline-size:min(280px,calc(100vw - 16px));padding:3px 0;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12.5px;text-align:left;white-space:normal}
+.fm-e{display:flex;align-items:center;gap:8px;inline-size:100%;min-block-size:max(28px,var(--kd-ziel));padding:0 12px;border:0;background:none;color:var(--kd-text);font:inherit;text-align:left;white-space:nowrap;cursor:default}
+.fm-e:hover{background:var(--kd-accent-weak)}
+.fm-e.an,.fm-e:focus{background:var(--kd-accent);color:var(--kd-on-accent)}
+.fm-e.warn{color:var(--kd-warn)}
+.fm-e.warn.an,.fm-e.warn:focus{color:var(--kd-on-accent)}
+.fm-e:focus-visible{outline:2px solid var(--kd-on-accent);outline-offset:-4px}
+.fm-haken{flex:none;display:inline-block;inline-size:1.1em;text-align:center;font-size:12px;line-height:1}
+.fm-ikon{flex:none;display:inline-flex;align-items:center;justify-content:center;inline-size:16px;block-size:16px;color:currentColor}
+.fm-ikon svg{inline-size:16px;block-size:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:square}
+.fm-tr{height:1px;margin:4px 0;background:var(--kd-line)}
 .mod-body{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 350px;min-height:0}
 .mod-body.voll{grid-template-columns:minmax(0,1fr)}
 .mod-main{overflow:auto;padding:var(--kd-s5) var(--kd-s6);display:flex;flex-direction:column;gap:var(--kd-s5)}
@@ -599,7 +616,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .zt td.x{width:52px;white-space:nowrap}
 /* Zeilenknöpfe zum Entfernen sind immer sichtbar, in --kd-muted wie jedes .btn-sym (R00112, ADR-0017 Regel 7) */
 .anh-z{display:flex;align-items:center;gap:var(--kd-s3);min-height:26px;border-bottom:1px solid var(--kd-line)}
-.anh-z a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anh-z a{flex:1;min-width:0;overflow-wrap:anywhere}
 .anh-wahl{display:flex;align-items:center;cursor:pointer;color:var(--kd-muted)}
 .anh.ziel{outline:2px dashed var(--kd-accent);outline-offset:2px}
 .ka .wartet{font-size:11px;color:var(--kd-warn);font-weight:500}
@@ -916,34 +933,17 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .mod-main,.mod-side{overflow:visible}
   .mod-main{padding:var(--kd-s4)}
   .mod-side{border-left:0;border-top:1px solid var(--kd-line)}
-  .mod-kopf .pfad,.mod-fuss .tastenhinweis,.mod-kopf .nav,#vsc{display:none}
-  /* Passen die Ziele des Kopfs nicht in eine Zeile (Aufgabenfenster bei 320 px), bricht er um, statt quer zu scrollen (R00111 AK 4, wie PO Z. 132) */
+  .mod-kopf .pfad,.mod-fuss .tastenhinweis,#vsc{display:none}
+  /* Bei 320/375/414 px bleibt der Aufgabenfenster-Kopf einzeilig (R00144/R00145 FA 9/M3): drei Ziele (Ansicht, ⋮, ✕),
+     ↗ ist bis 640 px versteckt; die Ziele rücken enger, jedes bleibt auf max(--kd-row, --kd-ziel). */
   .mod-kopf{padding-left:var(--kd-s3);padding-right:var(--kd-s1);gap:var(--kd-s1);flex-wrap:wrap}
-  /* Die Knopfleiste bricht am Rand ebenfalls um (R00141: „Endgültig löschen“ kommt dazu) — sonst schiebt ein Ziel mehr das Fenster über die Breite */
-  .mod-kopf .rechts{flex-wrap:wrap;justify-content:flex-end;max-width:100%;gap:0}
-  /* Nacharbeit #36 (R00141, Befund entwicklertest): der beschriftete Kopf-Auslöser darf die Kopfzeile bei 414 px Touch
-     nicht sprengen. Seine Beschriftung bricht an der Wortgrenze um (`width:min-content`), Trenner und Abstände rücken
-     zusammen — die Zeile bleibt einzeilig (51 px statt 123 px), sonst sinkt die Körperhöhe und „Zeit nachtragen“ fällt
-     unter den Rückgängig-Hinweis (R00112). Symbol und „Endgültig löschen“ bleiben vollständig (PO #36, Z. 196). */
-  .el-ausloeser{white-space:normal;width:min-content}
-  .el-trenner{margin:5px var(--kd-s1)}
+  .mod-kopf .rechts{justify-content:flex-end;max-width:100%}
   .mod-kopf>*{white-space:nowrap}
-  .mod-kopf .seg{margin-right:0}
   .mod-kopf .cls{display:none}
-  .mod-kopf .seg>span{padding:0 6px}
-  /* Der 4. Reiter „Verlauf“ (R00123) darf den Aufgabenfenster-Kopf bei 414 px Touch nicht sprengen: das Fenster hält
-     seine Kopfzeile einzeilig („R00112 Fensterkopf einzeilig, 414 px“), und die Reiterleiste bleibt im Kopf (R00123/E1).
-     Reiter und Knöpfe rücken dafür enger zusammen; jedes Ziel bleibt ≥ 44 px (ADR-0012, Touch), der Kopf-Auslöser behält
-     Symbol und Volltext (PO #36, Z. 196). Unterhalb 414 px bricht die Leiste weiterhin um (E1). */
-  #fenster .mod-kopf{flex-wrap:nowrap;gap:0;padding-left:4px;padding-right:0}
+  #fenster .mod-kopf{flex-wrap:nowrap;gap:var(--kd-s1);padding-left:4px;padding-right:0}
   #fenster .mod-kopf>.id{flex:none}
-  #fenster .mod-kopf .btn-sym{min-inline-size:44px;width:44px}
-  #fenster .mod-kopf .seg>span{padding:0 2px;min-inline-size:44px;font-size:11.5px}
-  #fenster .mod-kopf .el-ausloeser{padding:0 2px;gap:2px;font-size:11px}
-  #fenster .mod-kopf .el-trenner{margin:2px 1px}
-  /* R00127 (E1): die Reiterleiste trägt bis zu sieben Reiter und bricht dann in weitere Zeilen um (flex-wrap) — sie
-     scrollt nicht quer und schrumpft nicht unter die Zielgröße; der Kopf bleibt einzeilig (R00112, Nacharbeit #119). */
-  #fenster .mod-kopf .seg{flex-wrap:wrap;min-width:0}
+  #fenster .mod-kopf .rechts{gap:0;flex-wrap:nowrap;min-width:0}
+  #fenster .mod-kopf .fm-aus{padding:0 var(--kd-s3)}
   .ko-tab td,.ko-tab th{padding:0 6px}
   .leg .rechts,.stat>.mono{display:none}
   .leg{overflow-x:auto}

@@ -46,7 +46,7 @@ const wertMessen = page => page.evaluate(() => {
   const s = document.querySelector('#schluessel');
   if (!s) return null;
   const felder = s.closest('.felder');
-  const side = s.closest('#reiterpanel-details');
+  const side = s.closest('.mod-body[data-ansicht="details"]');
   const koerper = s.closest('.mod-body');
   const range = document.createRange();
   range.selectNodeContents(s);
@@ -138,7 +138,7 @@ test.describe('R00131', () => {
     // #1: Feldzeile „Schlüssel" mit dem Wert, .mono 12 px, der Pfad der Kopfzeile kürzt weiter mit Auslassungszeichen
     await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
-    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
+    await expect(page.locator('.mod-body[data-ansicht="details"] .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
     const s = page.locator('#schluessel');
     await expect(s).toHaveClass(/mono/);
     expect(await s.evaluate(e => getComputedStyle(e).fontSize), 'der Schlüssel liest als .mono 12 px').toBe('12px');
@@ -152,8 +152,8 @@ test.describe('R00131', () => {
     // #2 ohne Schlüssel: die Feldzeile „Schlüssel" fehlt ganz
     await fensterOeffnen(page, 2);
     await reiter(page, 'Details');
-    await expect(page.locator('#reiterpanel-details .felder')).toBeVisible();
-    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
+    await expect(page.locator('.mod-body[data-ansicht="details"] .felder')).toBeVisible();
+    await expect(page.locator('.mod-body[data-ansicht="details"] .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
     await expect(page.locator('#schluessel')).toHaveCount(0);
   });
 });

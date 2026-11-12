@@ -169,7 +169,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(fenster(page).locator('.km').first()).toContainText('Claude · 17.10.2026 09:00');
     await reiter(page, 'Details');
     await expect(page.getByLabel('Fälligkeit', { exact: true })).toHaveValue(HEUTE);
-    await page.getByRole('tab', { name: 'Datei' }).click();
+    await reiter(page, 'Datei');
     await expect(page.locator('#dateitext')).toContainText(`due: ${HEUTE}`);
     await schliessen(page);
     await fensterOeffnen(page, 2);

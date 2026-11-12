@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null, fensterMenue: null } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -619,8 +619,13 @@ function fensterMelden(text, feld = null) {
 async function fensterOeffnen(nummer) {
   const u = S.ui;
   u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.titelBearbeiten = false;
-  u.offen = nummer; u.tab = 'inhalt'; u.gespeichert = null; fensterMelden(null);
+  // Die gewählte Ansicht bleibt beim Öffnen einer anderen Aufgabe (R00145 FA 9); führt die Aufgabe sie nicht, fällt sie
+  // in vFenster über reiterSchluessel auf „Inhalt“. Die Inhalte der vorigen Aufgabe fallen sofort weg (R00110/R00123).
+  u.offen = nummer; u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
   u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
+  u.verlauf = null; u.verlaufFehler = null;
+  // bei gewähltem Verlauf zuerst die leere Tabelle zeichnen — nie Zeilen der vorigen Aufgabe (R00123)
+  if (u.tab === 'verlauf') render();
   await dateiLaden();
 }
 
@@ -755,6 +760,7 @@ function render() {
   rollstaendeSetzen(rollen);
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
+  fensterMenueEinpassen();
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   tippPlatzieren();
@@ -886,13 +892,16 @@ function fallenTaste(ereignis) {
   return true;
 }
 
-/** Fällt der gemerkte Reiter weg (Blättern, Live-Ereignis, fehlendes Etikett), zeigt das Fenster „Inhalt“ (R00127 S3, generisch). */
+/** Fällt die gemerkte Ansicht weg (Live-Ereignis, fehlendes Etikett), zeigt das Fenster „Inhalt“ (R00145 FA 2/9, generisch);
+    war das Ansichtsmenü offen, schließt es und der Fokus steht am Auslöser. */
 function reiterRueckfallImFenster(aktiv) {
   const offen = S.ui.offen && aufgabe(S.ui.offen);
-  const fokusBeiReiter = Boolean(aktiv && aktiv.closest && aktiv.closest(`#fenster [role=tablist], #reiterpanel-${S.ui.tab}`));
-  const rueckfall = reiterRueckfall({ tab: S.ui.tab, schluessel: offen ? reiterSchluessel(offen) : [], fokusBeiReiter });
+  const fokusBeiAnsicht = Boolean(aktiv && aktiv.closest && aktiv.closest(`${ANSICHT_KNOPF}, #fenster [role="menu"][data-art="ansicht"]`));
+  // ohne offene Aufgabe gibt es nichts zu prüfen: der gemerkte Stand bleibt für das nächste Fenster (R00145 FA 9)
+  const rueckfall = offen ? reiterRueckfall({ tab: S.ui.tab, schluessel: reiterSchluessel(offen), fokusBeiReiter: fokusBeiAnsicht }) : null;
   if (!rueckfall) return;
   S.ui.tab = rueckfall.tab;
+  if (S.ui.fensterMenue === 'ansicht') S.ui.fensterMenue = null;
   if (rueckfall.fokus) S.ui.fokus = rueckfall.fokus;
 }
 
@@ -1266,6 +1275,7 @@ async function act(a, arg, wert) {
         const nr = +arg;
         const ausFenster = u.offen === nr;
         u.menue = null;
+        u.fensterMenue = null;
         u.fokus = null;
         dialogAufgabeLoeschen(nr, ausFenster, ausFenster ? `[data-act="endgueltig-loeschen"][data-arg="${nr}"]` : `.ka[data-id="${nr}"]`);
         break;
@@ -1322,26 +1332,34 @@ async function act(a, arg, wert) {
         u.fokus = '#z-beginn';
         break;
       }
-      case 'schliessen': case 'schliessen-bg': u.offen = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.fensterMenue = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
-      case 'tab':
+      case 'fenster-menue': {
+        // Höchstens ein Kopf-Menü offen (R00145 FA 7, R00144 FA 6): das andere schließt, der Fokus folgt dem neuen Menü.
+        u.fensterMenue = u.fensterMenue === arg ? null : arg;
+        if (!u.fensterMenue) u.fokus = `#fenster [data-act="fenster-menue"][data-arg="${arg}"]`;
+        break;
+      }
+      case 'fenster-ansicht': {
+        // Wahl aus dem Menü (R00145 FA 7): Menü zu, Fokus am Auslöser, der die neue Ansicht nennt.
         u.tab = arg;
+        u.fensterMenue = null;
+        // Der Fokus geht über die Ebene zurück an den Auslöser: der gewählte Eintrag verschwindet mit dem Menü, und
+        // `geschlossen.rueckgabe` trägt den Auslöser, der das Menü geöffnet hat (ADR-0010, R00145 FA 7).
         // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
         if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
         break;
+      }
       case 'blaettern': {
         const reihe = sichtbareReihe();
         if (!reihe.length) break;
         const i = reihe.indexOf(u.offen);
         u.offen = reihe[((i < 0 ? 0 : i) + +arg + reihe.length) % reihe.length];
         u.gespeichert = null; fensterMelden(null); u.herkunftEntwurf = null;
-        // bis die Datei der neuen Aufgabe übernommen ist, zeigt das Fenster nichts von der vorigen (R00110 Nacharbeit 1);
-        // bei gewähltem Verlauf-Reiter ebenso die Tabelle (R00123)
         u.datei = null; u.anhaenge = []; u.eintritt = [];
         u.verlauf = null; u.verlaufFehler = null;
-        // R00123 (M1): bei gewähltem Verlauf-Reiter zuerst die leere Tabelle zeichnen — nie Zeilen der vorigen Aufgabe
         if (u.tab === 'verlauf') render();
         await dateiLaden();
         break;
@@ -1454,6 +1472,7 @@ async function act(a, arg, wert) {
       }
       case 'archivieren': {
         if (ichNoetig()) break;
+        u.fensterMenue = null;
         await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
         if (!u.fensterFehler) { if (!imArchiv()) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
         break;
@@ -1489,6 +1508,7 @@ async function act(a, arg, wert) {
       }
       case 'zurueckholen': {
         if (ichNoetig()) break;
+        u.fensterMenue = null;
         await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
         if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
         break;
@@ -2237,6 +2257,7 @@ document.addEventListener('keydown', e => {
   // Esc im Umbenennen-Feld des Board-Umschalters schließt nur die Eingabe, nicht den ganzen Umschalter (R00128 M10)
   if (e.key === 'Escape' && S.ui.boardUmbenennen) { e.preventDefault(); act('board-umbenennen-ab', S.ui.boardUmbenennen); return; }
   if (S.ui.menue) { menueTaste(e); return; }
+  if (S.ui.fensterMenue && fensterMenueTaste(e)) return;
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
@@ -2333,6 +2354,14 @@ function menueEinpassen() {
   if (r.bottom > innerHeight - 4) el.style.top = Math.max(4, innerHeight - r.height - 4) + 'px';
   el.querySelectorAll('.kmenue.unter').forEach(u => { const ur = u.getBoundingClientRect(); if (ur.right > innerWidth - 4) u.classList.add('links'); });
 }
+/** Das Kopf-Menü endet an der Endkante seines Auslösers; passt es dort nicht ins Bild, rückt es an den Rand (ADR-0015 vor Ausrichtung). */
+function fensterMenueEinpassen() {
+  const el = $('#fenster [role="menu"]');
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const versatz = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8));
+  if (versatz) el.style.transform = `translateX(${versatz}px)`;
+}
 function menueZu() { S.ui.menue = null; render(); }
 function menueAusfuehren(e) {
   if (!e || e.trenner || e.aktuell) return;
@@ -2424,11 +2453,6 @@ function ueberallTaste(e, t) {
 function fensterTaste(e) {
   const nr = S.ui.offen, a = aufgabe(nr);
   if (!a) return false;
-  const fokus = sel => { const el = $(sel); if (el) { e.preventDefault(); el.focus(); } return true; };
-  // Auf einem Reiter: Pfeile, Pos1, Ende, Enter und Leertaste wählen und fokussieren (R00105); nur dort, nie im Titelfeld
-  const reiter = e.target.closest && e.target.closest('[role="tab"][data-act="tab"]');
-  const zielReiter = reiter && naechsterReiter(reiterSchluessel(aufgabe(S.ui.offen)), reiter.dataset.arg, e.key);
-  if (zielReiter) { e.preventDefault(); S.ui.fokus = '#reiter-' + zielReiter; act('tab', zielReiter); return true; }
   switch (e.key) {
     case 't': e.preventDefault(); laufende(a).some(z => z.wer === S.ich) ? act('stop', `${nr}|${S.ich}`) : act('start', String(nr)); return true;
     case 'm': e.preventDefault(); act('mich', String(nr)); return true;
@@ -2437,16 +2461,40 @@ function fensterTaste(e) {
     case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
     case 's': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#teil-neu'; render(); return true;
     case 'k': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#km-inp'; render(); return true;
-    case 'd': e.preventDefault(); dateiReiterUmschalten(reiter); return true;
+    case 'd': e.preventDefault(); ansichtUmschalten(); return true;
     default: return false;
   }
 }
-/** d wechselt zu Datei, aus Datei zu Inhalt; stand der Fokus auf einem Reiter, folgt er dem gewählten (R00105:48). */
-function dateiReiterUmschalten(reiterImFokus) {
-  let ziel = 'datei';
-  if (S.ui.tab === 'datei') ziel = 'inhalt';
-  if (reiterImFokus) S.ui.fokus = '#reiter-' + ziel;
-  act('tab', ziel);
+/** `d` wechselt Inhalt ↔ Datei (R00145 FA 8) und lässt den Fokus am Auslöser, dessen Name die neue Ansicht ansagt. */
+function ansichtUmschalten() {
+  const ziel = S.ui.tab === 'datei' ? 'inhalt' : 'datei';
+  S.ui.tab = ziel;
+  S.ui.fokus = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
+  render();
+}
+/** Im offenen Kopf-Menü (R00144 FA 6, R00145 FA 7): Pfeile/Pos1/Ende führen über die Einträge, Enter und Leertaste wählen,
+ *  Esc und Tab schließen mit Rückgabe an den Auslöser. Solange es offen ist, greifen die Fenster-Kürzel nicht. */
+function fensterMenueTaste(e) {
+  const menue = $('#fenster [role="menu"]');
+  if (!menue) return false;
+  const art = menue.dataset.art;
+  const schliessen = () => {
+    S.ui.fensterMenue = null;
+    S.ui.fokus = `#fenster [data-act="fenster-menue"][data-arg="${art}"]`;
+    render();
+  };
+  if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); schliessen(); return true; }
+  const eintraege = [...menue.querySelectorAll('[role^="menuitem"]')];
+  if (eintragAusloesen(e, eintraege)) return true;
+  if (Object.hasOwn(MENUE_RICHTUNG, e.key)) {
+    e.preventDefault();
+    const modell = eintraege.map(() => ({ aktuell: false }));
+    const ziel = menueSchritt(modell, eintraege.indexOf(document.activeElement), MENUE_RICHTUNG[e.key]);
+    if (ziel >= 0) eintraege[ziel].focus();
+    return true;
+  }
+  // alles Übrige ist gesperrt: kein `a`, `t`, `d`, kein Tippen im Fenster hinter dem Menü
+  return true;
 }
 function listenTaste(e, t) {
   const zeilen = [...document.querySelectorAll('tr[data-zeile]')];
@@ -2687,16 +2735,22 @@ document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && S.ui.vollbild) { S.ui.vollbild = false; render(); }
 });
 
-/* Dateien aus dem Rechner auf „Anhänge“ ziehen */
+/* Dateien aus dem Rechner auf „Anhänge“ ziehen (R00116) bzw. in der Ansicht „Inhalt“ auf deren Fläche ablegen (R00145 FA 12):
+   außerhalb des Anhang-Abschnitts wird der Browser-Wechsel auf die Datei abgefangen, abgelegt wird nur im Abschnitt. */
+const dateiZug = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+const inhaltFlaeche = e => Boolean(S.ui.offen) && ansichtDerAufgabe(aufgabe(S.ui.offen)) === 'inhalt' && Boolean(e.target.closest && e.target.closest('#fenster .mod-body'));
 document.addEventListener('dragover', e => {
-  if (zug == null && e.target.closest && e.target.closest('#anhaenge') && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
-    e.preventDefault();
-    e.target.closest('#anhaenge').classList.add('ziel');
-  }
+  if (zug != null || !dateiZug(e)) return;
+  const abschnitt = e.target.closest && e.target.closest('#anhaenge');
+  if (abschnitt) { e.preventDefault(); abschnitt.classList.add('ziel'); return; }
+  if (inhaltFlaeche(e)) e.preventDefault();
 });
 document.addEventListener('drop', e => {
-  const ziel = zug == null && e.target.closest && e.target.closest('#anhaenge');
-  if (ziel && e.dataTransfer.files.length) { e.preventDefault(); anhaengeHochladen([...e.dataTransfer.files]); }
+  if (zug != null || !dateiZug(e)) return;
+  const abschnitt = e.target.closest && e.target.closest('#anhaenge');
+  document.querySelectorAll('#anhaenge.ziel').forEach(x => x.classList.remove('ziel'));
+  if (abschnitt && e.dataTransfer.files.length) { e.preventDefault(); anhaengeHochladen([...e.dataTransfer.files]); return; }
+  if (inhaltFlaeche(e)) e.preventDefault();
 });
 document.addEventListener('dragover', e => {
   if (zug == null) return;

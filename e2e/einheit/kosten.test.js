@@ -191,14 +191,16 @@ test('Preisetikett: Betrag und Positionen mit gleichen Grenzen nennen einen Betr
   assert.strictEqual(preisetikett(kostenInCent(usd({ min: 1000, max: 2000 }))).hinweis, `1.000,00–2.000,00${NBSP}$ · geschätzte API-Kosten`, 'Tausenderpunkt in beiden Grenzen');
 });
 
-test('Reiter-Rückfall (R00127 S3, generisch): tab ∉ reiterSchluessel(a) → inhalt; Fokus nur von Reiterleiste oder Panel', () => {
+test('Ansichts-Rückfall (R00145 FA 2, generisch): tab ∉ Ansichten(a) → inhalt; Fokus nur vom Auslöser oder aus dem Menü', () => {
   const { reiterRueckfall } = require('../../web/kosten.js');
-  const ohneKosten = ['inhalt', 'zeiten', 'anhaenge', 'details', 'datei', 'verlauf'];
-  assert.deepStrictEqual(reiterRueckfall({ tab: 'kosten', schluessel: ohneKosten, fokusBeiReiter: true }), { tab: 'inhalt', fokus: '#reiter-inhalt' });
+  const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
+  const ohneKosten = ['inhalt', 'zeiten', 'details', 'datei', 'verlauf'];
+  assert.deepStrictEqual(reiterRueckfall({ tab: 'kosten', schluessel: ohneKosten, fokusBeiReiter: true }), { tab: 'inhalt', fokus: AUSLOESER });
   assert.deepStrictEqual(reiterRueckfall({ tab: 'kosten', schluessel: ohneKosten, fokusBeiReiter: false }), { tab: 'inhalt', fokus: null }, 'Fokus anderswo bleibt dort');
-  assert.strictEqual(reiterRueckfall({ tab: 'datei', schluessel: ohneKosten, fokusBeiReiter: true }), null, 'ein vorhandener Reiter bleibt');
-  const ohneVerlauf = ['inhalt', 'zeiten', 'anhaenge', 'details', 'datei'];
-  assert.deepStrictEqual(reiterRueckfall({ tab: 'verlauf', schluessel: ohneVerlauf, fokusBeiReiter: true }), { tab: 'inhalt', fokus: '#reiter-inhalt' }, 'generisch für jeden fehlenden Reiter (auch „Verlauf“, nicht nur „Kosten“)');
+  assert.strictEqual(reiterRueckfall({ tab: 'datei', schluessel: ohneKosten, fokusBeiReiter: true }), null, 'eine vorhandene Ansicht bleibt');
+  const ohneVerlauf = ['inhalt', 'zeiten', 'details', 'datei'];
+  assert.deepStrictEqual(reiterRueckfall({ tab: 'verlauf', schluessel: ohneVerlauf, fokusBeiReiter: true }), { tab: 'inhalt', fokus: AUSLOESER }, 'generisch für jede fehlende Ansicht („Verlauf“, nicht nur „Kosten“)');
+  assert.deepStrictEqual(reiterRueckfall({ tab: 'anhaenge', schluessel: ohneVerlauf, fokusBeiReiter: true }), { tab: 'inhalt', fokus: AUSLOESER }, 'der entfallene Stand „Anhänge“ fällt auf „Inhalt“');
 });
 
 test('Zählwort (R00105 US-24, PO Z. 117; R00134): nach der Zahl 1 Einzahl, sonst Mehrzahl — die Hilfe liegt in web/kultur.js', () => {

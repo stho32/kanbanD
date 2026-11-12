@@ -115,7 +115,7 @@ const WEB = path.join(__dirname, '../../web');
 /** Erlaubte Anzahl .focus()-Aufrufe je Funktion (PO-Entscheidung Z. 109): ein zusätzlicher Aufruf in einer erlaubten Funktion ist ebenso ein Befund. */
 const ERLAUBT = new Map([
   ['fokusSetzen', 1], ['fokusVersuchen', 1], ['ersterTabbarer', 1], ['fallenTaste', 1], ['popMenueTaste', 1], ['gewaehltesRadioFokussieren', 1],
-  ['fensterTaste', 1], ['listenTaste', 1], ['brettTaste', 1], ['keydown', 1],
+  ['fensterTaste', 1], ['fensterMenueTaste', 1], ['listenTaste', 1], ['brettTaste', 1], ['keydown', 1],
 ]);
 const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'|^(?:const|let|var) (\w+) = (?:async )?(?:\([^)]*\)|\w+) =>/;
 /** Eine andere Zeile auf oberster Ebene beendet die umgebende Funktion — außer schließende Klammer, Kommentar und Fortsetzung. */
@@ -257,4 +257,25 @@ test('fokusZiel: ein ausdrückliches Ziel als Liste steht in seiner Rangfolge vo
 
 test('nachbarNachEntfernen: der folgende Eintrag rückt nach, am Ende der vorige, allein keiner (R00112 FA 8)', () => {
   assert.deepStrictEqual([[3, 0], [3, 1], [3, 2], [2, 1], [1, 0], [0, 0]].map(([anzahl, index]) => nachbarNachEntfernen(anzahl, index)), [0, 1, 1, 0, -1, -1]);
+});
+
+test('Kopf-Menü des Fensters (R00144/R00145): eigene Ebene `fenstermenue` zwischen fenster und pop, Startziel gewählter Eintrag', () => {
+  const ohneMenue = arten({ view: 'board', offen: 1 });
+  const mitMenue = arten({ view: 'board', offen: 1, fensterMenue: 'ansicht', pop: 'mehr' });
+  assert.deepStrictEqual(ohneMenue, ['fenster'], 'ohne Menü nur das Aufgabenfenster');
+  assert.deepStrictEqual(mitMenue, ['fenster', 'fenstermenue', 'pop'], 'Menü über dem Fenster, unter dem Pop');
+  const ebene = ebenen({ offen: 1, fensterMenue: 'ansicht' })[1];
+  assert.strictEqual(ebene.art, 'fenstermenue');
+  assert.strictEqual(ebene.selektor, '#fenster [role="menu"]');
+  assert.strictEqual(ebene.modal, false, 'ein Menü ist nicht modal');
+  assert.deepStrictEqual(ebene.start, [
+    '#fenster [role="menu"] [role="menuitemradio"][aria-checked="true"]',
+    '#fenster [role="menu"] [role^="menuitem"]:not([aria-disabled="true"])',
+  ], 'zuerst der gewählte Eintrag, sonst der erste (Aktionen)');
+  assert.deepStrictEqual(ebenen({ offen: 1, fensterMenue: 'aktionen' }, { fenstermenue: '[data-act="fenster-menue"][data-arg="aktionen"]' })[1].rueckgabe,
+    ['[data-act="fenster-menue"][data-arg="aktionen"]'], 'Rückgabe an den Auslöser');
+});
+
+test('Kopf-Menü: kein fenstermenue ohne offenes Aufgabenfenster', () => {
+  assert.deepStrictEqual(arten({ view: 'board', fensterMenue: 'ansicht' }), [], 'ohne Fenster kein Menü im Stapel');
 });

@@ -56,7 +56,8 @@ test.describe('Handy', () => {
     expect([f.x, f.y, f.width, f.height]).toEqual([0, 0, 390, 844]);
     // R00127: das Fenster ist einspaltig (keine .mod-side); die Felder stehen im Reiter „Details“.
     await expect(fenster.locator('.mod-side')).toHaveCount(0);
-    await fenster.getByRole('tab', { name: 'Details' }).click();
+    await fenster.locator('[data-act="fenster-menue"][data-arg="ansicht"]').click();
+    await page.locator('#fenster [role="menu"][data-art="ansicht"]').getByRole('menuitemradio', { name: 'Details', exact: true }).click();
     const spalte = await box(fenster.locator('select[data-af="spalte"]'));
     expect(spalte.width).toBeGreaterThan(150);
     await fenster.locator('select[data-af="spalte"]').selectOption('In Arbeit');

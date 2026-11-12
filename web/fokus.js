@@ -30,6 +30,8 @@
   const POP_FENSTER = new Set(['board', 'lauf', 'defekt']);
   /** Das Ich-Menü öffnet auf dem gewählten Menschen, ohne Wahl auf dem ersten wählbaren. */
   const GEWAEHLTER_MENSCH = '#pop [role="menuitemradio"][aria-checked="true"]';
+  /** Kopf-Menü des Fensters: Startziel ist der gewählte Eintrag (Ansichten), sonst der erste (Aktionen); die Rangfolge deckt beides. */
+  const GEWAEHLTER_MENUEEINTRAG = ['#fenster [role="menu"] [role="menuitemradio"][aria-checked="true"]', `#fenster [role="menu"] ${ERSTER_MENUEEINTRAG}`];
 
   function popEbene(ui, gemerkt) {
     if (POP_FENSTER.has(ui.pop)) return { art: 'pop', selektor: '#pop', start: null, rueckgabe: ausloeser(gemerkt, 'pop'), modal: false, fenster: true };
@@ -54,9 +56,11 @@
     return `#kmenue [data-mp="${menue.index}"]`;
   }
 
-  /** Offene Ebenen von unten nach oben; gemerkt = {art: Selektor des Auslösers beim Öffnen}. */
+  /** Offene Ebenen von unten nach oben; gemerkt = {art: Selektor des Auslösers beim Öffnen}.
+      Das Kopf-Menü des Aufgabenfensters (R00144/R00145) liegt im Fenster: über `fenster`, unter `pop` (ADR-0018 N2). */
   function ebenen(ui, gemerkt = {}) {
     const liste = dialogstapel(ui, gemerkt);
+    if (ui.fensterMenue && ui.offen && !ui.setup) liste.push(menue('fenstermenue', '#fenster [role="menu"]', GEWAEHLTER_MENUEEINTRAG, ausloeser(gemerkt, 'fenstermenue')));
     if (ui.pop) liste.push(popEbene(ui, gemerkt));
     if (ui.alDialog) liste.push(dialog('aldialog', '#al-dialog', '#al-abbrechen', ausloeser(gemerkt, 'aldialog')));
     if (ui.menue) liste.push(menue('kmenue', '#kmenue', kmenueEintrag(ui.menue), ausloeser(gemerkt, 'kmenue')));

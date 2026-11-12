@@ -51,17 +51,18 @@ test.describe('R00011', () => {
   test('US-3: Datei ansehen', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
-    await page.getByRole('tab', { name: 'Datei' }).click();
+    await reiter(page, 'Datei');
     await expect(page.locator('#dateitext')).toHaveText('---\nid: 1\ntitle: eins\n---\nAlte Beschreibung\n');
   });
 
-  test('US-4: blättern und schließen', async ({ page }) => {
+  test('US-4 (Blättern aufgehoben durch #144): schließen und eine andere Aufgabe öffnen', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
     await expect(page.locator('.mod-kopf .id')).toHaveText('#1');
-    await page.keyboard.press('ArrowDown');
-    await expect(page.locator('.mod-kopf .id')).toHaveText('#2');
-    await expect(page.locator('.mod-kopf .nav')).toHaveText('2 / 2');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.locator('.ka[data-id="2"]').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });

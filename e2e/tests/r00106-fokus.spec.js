@@ -101,7 +101,7 @@ test('US-1: Enter auf Karte #1 fokussiert den Dialog selbst; d zeigt sofort „D
   expect(f.rolle).toBe('dialog');
   expect(f.dialog).toBe('Aufgabe #1');
   await page.keyboard.press('d');
-  await expect(page.getByRole('tab', { name: 'Datei' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toHaveAttribute('aria-label', 'Ansicht: Datei');
   await page.keyboard.press('Escape');
   await perTastaturOeffnen(page, 1);
   await page.keyboard.press('e'); // R00116: öffnet die Titel-Bearbeitung statt nur zu fokussieren
@@ -119,9 +119,16 @@ test('US-1: Esc → Fokus auf Karte #1, nichts mehr inert', async ({ page }) => 
   await expect(page.locator('[inert]')).toHaveCount(0);
 });
 
-test('US-2: ↓ blättert zu #2, Esc → Fokus auf Karte #2', async ({ page }) => {
+test('US-2 (Blättern aufgehoben durch #144): eine andere Aufgabe öffnet nur ein Klick; Esc gibt den Fokus an ihre Karte', async ({ page }) => {
   await perTastaturOeffnen(page, 1);
+  // ↓ blättert nicht mehr (R00144 FA 9) — das Fenster bleibt bei #1
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
+  expect((await fokus(page)).karte).toBe('1');
+  await page.locator('.ka[data-id="2"]').focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);

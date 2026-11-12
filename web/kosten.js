@@ -85,12 +85,13 @@
     return filterAnzahl(filterOhneZeitraum(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
   }
 
-  /** Rückfall (R00105 B0376, generisch R00127 S3): führt die offene Aufgabe den gemerkten Reiter nicht
-   *  (`tab ∉ schluessel`), gilt „Inhalt“ — gleich, ob „Kosten“ fehlt oder ein später gebauter Reiter. Den Fokus bekommt
-   *  „Inhalt“ nur, wenn er auf der Reiterleiste oder im Panel des weggefallenen Reiters lag — sonst bleibt er, wo er ist (ADR-0010). */
+  /** Rückfall (R00105 B0376, generisch R00145 FA 2): führt die offene Aufgabe den gemerkten Anzeigeschlüssel nicht
+   *  (`tab ∉ schluessel`), gilt „Inhalt“ — gleich, ob „Kosten“ fehlt oder ein später gebauter Schlüssel (auch das entfallene
+   *  „Anhänge“). Den Fokus bekommt der Ansichts-Auslöser nur, wenn er auf dem Auslöser oder im Ansichtsmenü lag — sonst
+   *  bleibt er, wo er ist (ADR-0010). */
   function reiterRueckfall(lage) {
     if (lage.schluessel.includes(lage.tab)) return null;
-    return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#reiter-inhalt' : null };
+    return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
   Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });

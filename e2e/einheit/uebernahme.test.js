@@ -193,7 +193,7 @@ test('Wächter: in den Ladefunktionen steht jede Übernahme hinter einem Aufruf 
 });
 
 test('Wächter erkennt eine Übernahme über den Alias u = S.ui und nennt Datei, Zeile und Funktion', () => {
-  const quellen = appMit("        u.datei = await api('GET','/api/aufgaben/1');\n", "case 'tab':");
+  const quellen = appMit("        u.datei = await api('GET','/api/aufgaben/1');\n", "case 'fenster-ansicht':");
   const zeile = quellen[0].text.split('\n').findIndex(z => z.includes("u.datei = await api('GET'")) + 1;
   assert.deepStrictEqual(fremdeUebernahmen(quellen), [`app.js:${zeile} in act`]);
 });

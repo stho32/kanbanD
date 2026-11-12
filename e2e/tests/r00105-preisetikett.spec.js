@@ -30,57 +30,37 @@ test.describe('R00105', () => {
     expect(fehler).toEqual([]);
   });
 
-  test('US-15: Reiterleiste ist eine tablist mit roving tabindex', async ({ page }) => {
+  test('US-15: das Ansichtsmenü nennt die Ansichten in Reihenfolge (ohne „Anhänge“) und die gewählte als aria-checked', async ({ page }) => {
     await oeffnen(page);
-    const leiste = page.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
-    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf']);
-    const inhalt = leiste.getByRole('tab', { name: 'Inhalt' }), datei = leiste.getByRole('tab', { name: 'Datei' });
-    await expect(inhalt).toHaveAttribute('aria-selected', 'true');
-    await expect(datei).toHaveAttribute('aria-selected', 'false');
-    await expect(inhalt).toHaveAttribute('tabindex', '0');
-    await expect(datei).toHaveAttribute('tabindex', '-1');
-    await expect(leiste.getByRole('tab', { name: 'Verlauf' })).toHaveAttribute('aria-selected', 'false');
-    const panel = await inhalt.getAttribute('aria-controls');
-    await expect(page.locator(`#${panel}`)).toHaveAttribute('role', 'tabpanel');
-    await expect(page.getByRole('tabpanel')).toHaveCount(1);
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]').click();
+    const menue = page.locator('#fenster [role="menu"][data-art="ansicht"]');
+    const namen = await menue.getByRole('menuitemradio').evaluateAll(alle => alle.map(e => e.querySelector('.fm-text').textContent));
+    expect(namen).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf']);
+    await expect(menue.getByRole('menuitemradio', { checked: true })).toHaveText('✓Inhalt');
+    await expect(menue.getByRole('menuitemradio', { name: 'Datei', exact: true })).toHaveAttribute('aria-checked', 'false');
   });
 
-  test('US-15: Pfeile, Pos1, Ende, Enter und Leertaste auf den Reitern', async ({ page }) => {
+  test('US-15: Pfeile, Pos1, Ende und Enter führen und wählen im Ansichtsmenü', async ({ page }) => {
     await oeffnen(page);
-    const inhalt = page.getByRole('tab', { name: 'Inhalt' }), datei = page.getByRole('tab', { name: 'Datei' });
-    await inhalt.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tab', { name: 'Zeiten' })).toBeFocused();
-    await expect(page.getByRole('tab', { name: 'Zeiten' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tab', { name: 'Zeiten' })).toHaveAttribute('tabindex', '0');
-    await expect(inhalt).toHaveAttribute('tabindex', '-1');
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowRight');
-    await expect(datei).toBeFocused();
-    await expect(page.locator('#dateitext')).toContainText('title: vier');
-    const verlauf = page.getByRole('tab', { name: 'Verlauf' });
-    await page.keyboard.press('ArrowRight');
-    await expect(verlauf).toBeFocused();
-    await expect(verlauf).toHaveAttribute('aria-selected', 'true');
-    await page.keyboard.press('ArrowRight');
-    await expect(inhalt).toBeFocused();
-    await expect(inhalt).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByLabel('Titel bearbeiten', { exact: true })).toHaveText('vier');
-    await page.keyboard.press('ArrowLeft');
-    await expect(verlauf).toBeFocused();
-    await page.keyboard.press('Home');
-    await expect(inhalt).toBeFocused();
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]').click();
+    const menue = page.locator('#fenster [role="menu"][data-art="ansicht"]');
+    const eintrag = name => menue.getByRole('menuitemradio', { name, exact: true });
+    await expect(eintrag('Inhalt')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(eintrag('Zeiten')).toBeFocused();
     await page.keyboard.press('End');
-    await expect(verlauf).toBeFocused();
-    await expect(verlauf).toHaveAttribute('aria-selected', 'true');
+    await expect(eintrag('Verlauf')).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(eintrag('Inhalt')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(eintrag('Datei')).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(verlauf).toBeFocused();
-    await expect(page.locator('#reiterpanel-verlauf')).toBeVisible();
-    await page.keyboard.press(' ');
-    await expect(verlauf).toBeFocused();
-    await expect(page.locator('#reiterpanel-verlauf')).toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'Aufgabe #4' })).toBeVisible();
+    await expect(page.locator('#dateitext')).toContainText('title: vier');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#dateitext')).toBeVisible();
+    await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toHaveAttribute('aria-label', 'Ansicht: Datei');
   });
 
   test('US-15 Gegenbeispiel: → im Titelfeld bewegt nur die Schreibmarke, d wechselt weiter', async ({ page }) => {
@@ -92,23 +72,24 @@ test.describe('R00105', () => {
     await page.keyboard.press('ArrowRight');
     await expect(titel).toBeFocused();
     expect(await titel.evaluate(el => el.selectionStart)).toBe(1);
-    await expect(page.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+    const ausloeser = page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]');
+    await expect(ausloeser).toHaveAttribute('aria-label', 'Ansicht: Inhalt');
     await titel.blur();
     await page.locator('.mod-kopf .pfad').click();
     await page.keyboard.press('d');
     await expect(page.locator('#dateitext')).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Datei' })).toHaveAttribute('aria-selected', 'true');
+    await expect(ausloeser).toHaveAttribute('aria-label', 'Ansicht: Datei');
     await page.keyboard.press('d');
-    await expect(page.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+    await expect(ausloeser).toHaveAttribute('aria-label', 'Ansicht: Inhalt');
   });
 
-  test('US-15: Kürzelhilfe des Fensters nennt ← →', async ({ page }) => {
+  test('US-15: die Kürzelhilfe des Fensters nennt keinen Reiter-Wechsel mehr', async ({ page }) => {
     await oeffnen(page);
     await page.locator('.mod-kopf .pfad').click();
     await page.keyboard.press('?');
     const hilfe = page.getByRole('dialog', { name: 'Tastaturkürzel' });
-    await expect(hilfe.locator('tr', { hasText: 'Reiter wechseln (Fokus auf einem Reiter)' })).toContainText('←');
-    await expect(hilfe.locator('tr', { hasText: 'Reiter wechseln (Fokus auf einem Reiter)' })).toContainText('→');
+    await expect(hilfe).not.toContainText('Reiter wechseln');
+    await expect(hilfe).not.toContainText('←');
   });
 });
 
@@ -256,7 +237,7 @@ const MIT_EIN_VOKAL = POSITIONEN.replace('  basis:', `    - text: ${EIN_VOKAL}\n
  *  per TreeWalker, auch die im span.ganz. Zeile je Zeichen aus dem letzten Kasten: am Trennstrich trägt das Zeichen
  *  danach auch den Kasten des Strichs am Zeilenende. */
 const umbrueche = (page, name) => page.evaluate(gesucht => {
-  const zelle = [...document.querySelectorAll('#reiterpanel-kosten th[scope="row"]')].find(th => th.textContent.trim() === gesucht);
+  const zelle = [...document.querySelectorAll('#fenster .mod-body[data-ansicht="kosten"] th[scope="row"]')].find(th => th.textContent.trim() === gesucht);
   if (!zelle) throw new Error(`kein Zeilenkopf „${gesucht}“`);
   const gaenger = document.createTreeWalker(zelle, NodeFilter.SHOW_TEXT), oben = [];
   for (let knoten = gaenger.nextNode(); knoten; knoten = gaenger.nextNode()) {
@@ -280,8 +261,9 @@ async function breiteSetzen(page, breite, hoehe) {
 
 /** Reiter „Kosten“ zeigen und warten, bis die Schriften für die neue Tabelle geladen sind. */
 async function kostenZeigen(page, dialog) {
-  await dialog.getByRole('tab', { name: 'Kosten' }).click();
-  await expect(page.locator('#reiterpanel-kosten table')).toBeVisible();
+  await dialog.locator('[data-act="fenster-menue"][data-arg="ansicht"]').click();
+  await page.locator('#fenster [role="menu"][data-art="ansicht"]').getByRole('menuitemradio', { name: 'Kosten', exact: true }).click();
+  await expect(page.locator('#fenster .mod-body[data-ansicht="kosten"] table')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -301,24 +283,37 @@ test.describe('R00105 Reiter Kosten', () => {
   }
   const zeilen = panel => panel.locator('tbody tr, tfoot tr').evaluateAll(trs => trs.map(tr => [...tr.children].map(c => c.textContent.replace(/\s+/g, ' ').trim()).join(' · ')));
 
+  const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
+  const ansichtsMenue = page => page.locator('#fenster [role="menu"][data-art="ansicht"]');
+  const ansicht = async (page, name) => {
+    if (await ansichtsMenue(page).count() === 0) await page.locator(AUSLOESER).click();
+    await ansichtsMenue(page).getByRole('menuitemradio', { name, exact: true }).click();
+  };
+  const ansichtsNamen = async page => {
+    await page.locator(AUSLOESER).click();
+    const namen = await ansichtsMenue(page).locator('.fm-text').allInnerTexts();
+    await page.keyboard.press('Escape');
+    return namen;
+  };
+  const panel = (page, schluessel) => page.locator(`#fenster .mod-body[data-ansicht="${schluessel}"]`);
+
   test('US-3: Tabelle mit Beschriftung, Spalten- und Zeilenköpfen, Summe und Basis, nur lesend', async ({ page }) => {
     const dialog = await fenster(page, 1);
     const datei = k.lies('aufgaben/0001-eins.md'), commits = k.git('rev-list', '--count', 'HEAD');
-    const leiste = dialog.getByRole('tablist', { name: 'Ansicht der Aufgabe' });
-    await expect(leiste.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Kosten', 'Verlauf']);
-    await leiste.getByRole('tab', { name: 'Kosten' }).click();
-    await expect(leiste.getByRole('tab', { name: 'Kosten' })).toHaveAttribute('aria-selected', 'true');
-    const panel = page.locator('#' + await leiste.getByRole('tab', { name: 'Kosten' }).getAttribute('aria-controls'));
-    await expect(panel).toHaveAttribute('role', 'tabpanel');
-    await expect(panel).toHaveAttribute('aria-labelledby', 'reiter-kosten');
-    const tabelle = panel.locator('table');
+    expect(await ansichtsNamen(page)).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Kosten', 'Verlauf']);
+    await ansicht(page, 'Kosten');
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Kosten');
+    const kosten = panel(page, 'kosten');
+    await expect(kosten).toHaveAttribute('role', 'group');
+    await expect(kosten).toHaveAttribute('aria-label', 'Ansicht: Kosten');
+    const tabelle = kosten.locator('table');
     await expect(tabelle.locator('caption')).toHaveText('Geschätzte API-Kosten (USD)');
     await expect(tabelle.locator('th[scope="col"]')).toHaveText(['Position', 'Tokens', 'niedrig', 'hoch']);
     await expect(tabelle.locator('th[scope="row"]')).toHaveText(['Planung', 'Bau', 'Gemeinkostenanteil', 'Summe']);
-    expect(await zeilen(panel)).toEqual(['Planung · 12.000 · 0,10 $ · 0,20 $', 'Bau · — · 0,20 $ · 0,40 $', 'Gemeinkostenanteil · — · 0,30 $ · 0,30 $', 'Summe · 12.000 · 0,60 $ · 0,90 $']);
-    await expect(panel.locator('.ko-basis')).toContainText('Schätzung planer');
-    expect((await panel.innerText()).match(/geschätzte API-Kosten/gi)).toHaveLength(1);
-    await expect(panel.locator('input, textarea, select, [contenteditable]')).toHaveCount(0);
+    expect(await zeilen(kosten)).toEqual(['Planung · 12.000 · 0,10 $ · 0,20 $', 'Bau · — · 0,20 $ · 0,40 $', 'Gemeinkostenanteil · — · 0,30 $ · 0,30 $', 'Summe · 12.000 · 0,60 $ · 0,90 $']);
+    await expect(kosten.locator('.ko-basis')).toContainText('Schätzung planer');
+    expect((await kosten.innerText()).match(/geschätzte API-Kosten/gi)).toHaveLength(1);
+    await expect(kosten.locator('input, textarea, select, [contenteditable]')).toHaveCount(0);
     const rechts = await tabelle.locator('td').evaluateAll(tds => tds.map(td => getComputedStyle(td).textAlign));
     expect(new Set(rechts)).toEqual(new Set(['right']));
     expect(k.lies('aufgaben/0001-eins.md')).toBe(datei);
@@ -328,115 +323,100 @@ test.describe('R00105 Reiter Kosten', () => {
   test('US-4: ohne Positionen eine Zeile „Gesamt“ ohne Spalte Tokens, Betrag in beiden Spalten, Euro', async ({ page }) => {
     const dialog = await fenster(page, 1, SPANNE);
     const commits = k.git('rev-list', '--count', 'HEAD');
-    await dialog.getByRole('tab', { name: 'Kosten' }).click();
-    const panel = page.locator('#reiterpanel-kosten');
-    await expect(panel.locator('th[scope="col"]')).toHaveText(['Position', 'niedrig', 'hoch']);
-    expect(await zeilen(panel)).toEqual(['Gesamt · 0,60 $ · 1,60 $']);
-    await expect(panel.locator('th[scope="row"]')).toHaveText(['Gesamt']);
+    await ansicht(page, 'Kosten');
+    const kosten = panel(page, 'kosten');
+    await expect(kosten.locator('th[scope="col"]')).toHaveText(['Position', 'niedrig', 'hoch']);
+    expect(await zeilen(kosten)).toEqual(['Gesamt · 0,60 $ · 1,60 $']);
+    await expect(kosten.locator('th[scope="row"]')).toHaveText(['Gesamt']);
     await page.keyboard.press('Escape');
     await page.locator('.ka[data-id="2"]').click();
-    await page.getByRole('dialog', { name: 'Aufgabe #2' }).getByRole('tab', { name: 'Kosten' }).click();
-    expect(await zeilen(page.locator('#reiterpanel-kosten'))).toEqual(['Gesamt · 1,63 $ · 1,63 $']);
+    await ansicht(page, 'Kosten');
+    expect(await zeilen(panel(page, 'kosten'))).toEqual(['Gesamt · 1,63 $ · 1,63 $']);
     expect(k.git('rev-list', '--count', 'HEAD')).toBe(commits);
     await k.stoppen();
     const euro = await fenster(page, 1, 'cost:\n  currency: EUR\n  amount: 25.55\n');
-    await euro.getByRole('tab', { name: 'Kosten' }).click();
-    await expect(page.locator('#reiterpanel-kosten caption')).toHaveText('Geschätzte API-Kosten (EUR)');
-    expect(await zeilen(page.locator('#reiterpanel-kosten'))).toEqual(['Gesamt · 25,55 € · 25,55 €']);
+    await page.locator(AUSLOESER).click();
+    await ansichtsMenue(page).getByRole('menuitemradio', { name: 'Kosten', exact: true }).click();
+    await expect(panel(page, 'kosten').locator('caption')).toHaveText('Geschätzte API-Kosten (EUR)');
+    expect(await zeilen(panel(page, 'kosten'))).toEqual(['Gesamt · 25,55 € · 25,55 €']);
   });
 
-  test('US-5: ohne Etikett genau zwei Reiter', async ({ page }) => {
-    const dialog = await fenster(page, 4);
-    await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf']);
-    await expect(dialog.getByText('Kein Preisetikett')).toHaveCount(0);
+  test('US-5: ohne Etikett führt das Menü kein „Kosten“', async ({ page }) => {
+    await fenster(page, 4);
+    expect(await ansichtsNamen(page)).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf']);
+    await expect(page.getByText('Kein Preisetikett')).toHaveCount(0);
   });
 
-  test('US-15: sieben Reiter per Tastatur mit Umlauf, d führt aus Kosten zu Datei', async ({ page }) => {
-    const dialog = await fenster(page, 1, SPANNE);
-    const tab = n => dialog.getByRole('tab', { name: n });
-    await tab('Inhalt').focus();
-    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
-    await expect(tab('Kosten')).toBeFocused();
-    await expect(tab('Kosten')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#reiterpanel-kosten table')).toBeVisible();
-    const tabindizes = () => dialog.getByRole('tab').evaluateAll(t => t.map(x => x.getAttribute('tabindex')));
-    expect(await tabindizes()).toEqual(['-1', '-1', '-1', '-1', '-1', '0', '-1']);
-    await page.keyboard.press('ArrowRight');
-    await expect(tab('Verlauf')).toBeFocused();
-    await expect(tab('Verlauf')).toHaveAttribute('aria-selected', 'true');
-    await page.keyboard.press('ArrowRight');
-    await expect(tab('Inhalt')).toBeFocused();
-    await expect(page.getByLabel('Titel')).toBeVisible();
-    await page.keyboard.press('ArrowLeft');
-    await expect(tab('Verlauf')).toBeFocused();
-    await page.keyboard.press('Home');
-    await expect(tab('Inhalt')).toBeFocused();
-    expect(await tabindizes()).toEqual(['0', '-1', '-1', '-1', '-1', '-1', '-1']);
+  test('US-15: das Menü führt per Tastatur (Pfeile, Pos1, Ende, Enter), d wechselt Inhalt ↔ Datei', async ({ page }) => {
+    await fenster(page, 1, SPANNE);
+    await page.locator(AUSLOESER).click();
+    const eintrag = name => ansichtsMenue(page).getByRole('menuitemradio', { name, exact: true });
+    await expect(eintrag('Inhalt')).toBeFocused();
     await page.keyboard.press('End');
-    await expect(tab('Verlauf')).toBeFocused();
-    await expect(tab('Verlauf')).toHaveAttribute('aria-selected', 'true');
-    await page.locator('.mod-kopf .id').click();
+    await expect(eintrag('Verlauf')).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(eintrag('Inhalt')).toBeFocused();
+    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+    await expect(eintrag('Kosten')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Kosten');
+    await expect(panel(page, 'kosten').locator('table')).toBeVisible();
     await page.keyboard.press('d');
-    await expect(tab('Datei')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Datei');
     await expect(page.locator('#dateitext')).toBeVisible();
+    await expect(page.locator(AUSLOESER)).toBeFocused();
   });
 
-  for (const [start, folge] of [['Kosten', ['datei', 'inhalt']], ['Inhalt', ['datei', 'inhalt']]]) {
-    test(`Nacharbeit S1: d mit Fokus auf dem Reiter „${start}“ — der Fokus folgt dem gewählten Reiter`, async ({ page }) => {
-      const dialog = await fenster(page, 1, SPANNE);
-      await dialog.getByRole('tab', { name: start }).click();
-      await expect(dialog.getByRole('tab', { name: start })).toBeFocused();
-      for (const ziel of folge) {
-        await page.keyboard.press('d');
-        await expect(page.locator(`#reiter-${ziel}`)).toHaveAttribute('aria-selected', 'true');
-        await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe(`reiter-${ziel}`);
-      }
-    });
-  }
+  test('Nacharbeit S1: d lässt den Fokus am Auslöser, dessen Name die neue Ansicht sagt', async ({ page }) => {
+    await fenster(page, 1, SPANNE);
+    await ansicht(page, 'Kosten');
+    for (const ziel of ['Datei', 'Inhalt']) {
+      await page.keyboard.press('d');
+      await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', `Ansicht: ${ziel}`);
+      await expect(page.locator(AUSLOESER)).toBeFocused();
+    }
+  });
 
-  test('Nacharbeit S1 Gegenbeispiel: d mit Fokus außerhalb der Reiter lässt den Fokus dort', async ({ page }) => {
+  test('Nacharbeit S1 Gegenbeispiel: d mit Fokus außerhalb führt ihn an den Auslöser (R00145 FA 8)', async ({ page }) => {
     const dialog = await fenster(page, 1, SPANNE);
     await dialog.getByRole('button', { name: 'Schließen' }).focus();
     await page.keyboard.press('d');
-    await expect(page.locator('#reiter-datei')).toHaveAttribute('aria-selected', 'true');
-    await expect(dialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Datei');
+    await expect(page.locator(AUSLOESER)).toBeFocused();
   });
 
-  test('US-16: ↓ zu einer Aufgabe ohne Etikett zeigt „Inhalt“, zurück zu #1 bleibt „Inhalt“', async ({ page }) => {
-    const dialog = await fenster(page, 1);
-    await dialog.getByRole('tab', { name: 'Kosten' }).click();
-    await expect(dialog.getByRole('tab', { name: 'Kosten' })).toBeFocused();
-    await page.keyboard.press('ArrowDown');
+  test('US-16: eine andere Aufgabe öffnen zeigt bei fehlendem Etikett „Inhalt“; die Ansicht fällt auf „Inhalt“', async ({ page }) => {
+    await fenster(page, 1);
+    await ansicht(page, 'Kosten');
+    await page.keyboard.press('Escape');
+    await page.locator('.ka[data-id="4"]').click();
     const vier = page.getByRole('dialog', { name: 'Aufgabe #4' });
-    await expect(vier.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf']);
-    await expect(vier.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
-    await expect(vier.getByRole('tab', { name: 'Inhalt' })).toBeFocused();
-    await page.keyboard.press('ArrowUp');
-    await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Inhalt');
+    expect(await ansichtsNamen(page)).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf']);
+    await expect(vier).toBeVisible();
+    await expect(panel(page, 'inhalt')).toBeVisible();
   });
 
-  for (const [ort, fokussieren] of [['Reiter „Kosten“', d => d.getByRole('tab', { name: 'Kosten' }).focus()], ['Panel „Kosten“', d => d.locator('#reiterpanel-kosten .ko-scroll').focus()]]) {
-    test(`US-16: Live-Ereignis nimmt das Etikett, Fokus auf ${ort} → Fokus auf „Inhalt“ in 1 s`, async ({ page }) => {
-      const dialog = await fenster(page, 1);
-      await liveBereit(page);
-      await dialog.getByRole('tab', { name: 'Kosten' }).click();
-      await fokussieren(dialog);
-      expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
-      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf'], { timeout: 1000 });
-      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
-      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toBeFocused({ timeout: 1000 });
-    });
-  }
+  test('US-16: Live-Ereignis nimmt das Etikett — Menü zu, Ansicht „Inhalt“, Fokus am Auslöser (1 s)', async ({ page }) => {
+    await fenster(page, 1);
+    await liveBereit(page);
+    await ansicht(page, 'Kosten');
+    await page.locator(AUSLOESER).click();
+    expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
+    await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Inhalt', { timeout: 1000 });
+    await expect(page.locator('#fenster [role="menu"]')).toHaveCount(0);
+    await expect(page.locator(AUSLOESER)).toBeFocused({ timeout: 1000 });
+    expect(await ansichtsNamen(page)).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf']);
+  });
 
   for (const [ort, vorbereiten, ziel] of [
-    ['Schließen-Knopf im Reiter „Kosten“', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('button', { name: 'Schließen' }).focus(); }, d => d.getByRole('button', { name: 'Schließen' })],
-    ['Titelfeld', async d => { await d.getByRole('tab', { name: 'Kosten' }).click(); await d.getByRole('tab', { name: 'Inhalt' }).click(); await d.getByRole('button', { name: 'Titel bearbeiten' }).click(); await d.getByRole('textbox', { name: 'Titel' }).click(); }, d => d.getByRole('textbox', { name: 'Titel' })],
+    ['Schließen-Knopf', async (page, d) => { await ansicht(page, 'Kosten'); await d.getByRole('button', { name: 'Schließen' }).focus(); }, d => d.getByRole('button', { name: 'Schließen' })],
+    ['Titelfeld', async (page, d) => { await d.getByRole('button', { name: 'Titel bearbeiten' }).click(); await d.getByRole('textbox', { name: 'Titel' }).click(); }, d => d.getByRole('textbox', { name: 'Titel' })],
   ]) {
     test(`US-16: Live-Ereignis nimmt das Etikett, Fokus im ${ort} bleibt dort`, async ({ page }) => {
       const dialog = await fenster(page, 1);
       await liveBereit(page);
-      await vorbereiten(dialog);
+      await vorbereiten(page, dialog);
       await expect(ziel(dialog)).toBeFocused();
       const auswahl = () => page.evaluate(() => [document.activeElement.selectionStart, document.activeElement.selectionEnd]);
       const imTitel = ort === 'Titelfeld';
@@ -448,15 +428,14 @@ test.describe('R00105 Reiter Kosten', () => {
       const vorher = await auswahl();
       if (imTitel) expect(vorher, 'Schreibmarke mitten im Titel, ein Zeichen markiert').toEqual([2, 3]);
       expect((await page.request.patch(`${k.adresse}api/aufgaben/1`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: null } })).ok()).toBe(true);
-      await expect(dialog.getByRole('tab')).toHaveText(['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf'], { timeout: 1000 });
-      await expect(dialog.getByRole('tab', { name: 'Inhalt' })).toHaveAttribute('aria-selected', 'true');
-      await expect(page.locator('#reiterpanel-inhalt')).toBeVisible();
+      await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', 'Ansicht: Inhalt', { timeout: 1000 });
+      await expect(panel(page, 'inhalt')).toBeVisible();
       await expect(ziel(dialog)).toBeFocused();
       expect(await auswahl(), 'Schreibmarke unverändert').toEqual(vorher);
     });
   }
 
-  test('US-17: Kopf mit drei Reitern bei 320, 375 und 414 px in Hell und Dunkel ohne waagrechtes Scrollen', async ({ page }) => {
+  test('US-17: Kopf bei 320, 375 und 414 px in Hell und Dunkel einzeilig und ohne waagrechtes Scrollen', async ({ page }) => {
     await fenster(page, 1, `class: feature\n${SPANNE}`);
     await expect(page.locator('#fenster .mod-kopf .cls')).toHaveText('Funktion');
     for (const breite of [320, 375, 414]) {
@@ -465,17 +444,17 @@ test.describe('R00105 Reiter Kosten', () => {
         await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
         if (!await page.locator('#fenster').count()) await page.locator('.ka[data-id="1"]').click();
         const kopf = page.locator('#fenster .mod-kopf');
-        const masse = await kopf.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+        const masse = await kopf.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, h: el.clientHeight, ziel: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kd-ziel')) || 0 }));
         expect(masse.sw, `${breite} px ${thema}`).toBeLessThanOrEqual(masse.cw);
-        const ziele = [...['Inhalt', 'Datei', 'Kosten'].map(n => page.getByRole('tab', { name: n })), page.getByRole('button', { name: 'Schließen' })];
-        for (const ziel of ziele) {
+        expect(masse.h, `${breite} px ${thema}: einzeilig`).toBeLessThanOrEqual(Math.max(36, masse.ziel) + 2);
+        for (const ziel of [page.locator(AUSLOESER), page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]'), page.getByRole('button', { name: 'Schließen' })]) {
           const box = await ziel.boundingBox();
           expect(box.x, `${breite} px ${thema}`).toBeGreaterThanOrEqual(0);
           expect(box.x + box.width, `${breite} px ${thema}`).toBeLessThanOrEqual(breite);
         }
         for (const n of ['Kosten', 'Datei', 'Inhalt']) {
-          await page.getByRole('tab', { name: n }).click();
-          await expect(page.getByRole('tab', { name: n })).toHaveAttribute('aria-selected', 'true');
+          await ansicht(page, n);
+          await expect(page.locator(AUSLOESER)).toHaveAttribute('aria-label', `Ansicht: ${n}`);
         }
         await page.getByRole('button', { name: 'Schließen' }).click();
         await expect(page.locator('#fenster')).toHaveCount(0);
@@ -487,15 +466,15 @@ test.describe('R00105 Reiter Kosten', () => {
     await breiteSetzen(page, 320, 700);
     const dialog = await fenster(page, 1, MIT_KOMPOSITUM);
     await kostenZeigen(page, dialog);
-    const koepfe = page.locator('#reiterpanel-kosten th[scope="row"]');
+    const koepfe = panel(page, 'kosten').locator('th[scope="row"]');
     const stile = await koepfe.evaluateAll(ths => ths.map(th => { const s = getComputedStyle(th); return [s.hyphens, s.overflowWrap, s.wordBreak, th.closest('[lang]').getAttribute('lang')].join(' '); }));
     expect(new Set(stile)).toEqual(new Set(['auto normal normal de']));
     for (const [wort, silben] of [['Gemeinkostenanteil', [2, 6, 9, 12, 14]], [KOMPOSITUM, [2, 6, 9, 12, 14, 19, 21, 25]]]) {
       for (const i of await umbrueche(page, wort)) expect(silben, `Umbruch nach „${wort.slice(0, i)}“`).toContain(i);
     }
     expect((await umbrueche(page, KOMPOSITUM)).length, 'zu schmal für das ganze Wort').toBeGreaterThan(0);
-    const panel = await page.locator('#reiterpanel-kosten').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
-    expect(panel.sw).toBeLessThanOrEqual(panel.cw);
+    const masse = await panel(page, 'kosten').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+    expect(masse.sw).toBeLessThanOrEqual(masse.cw);
     await breiteSetzen(page, 1280, 800);
     expect(await umbrueche(page, 'Gemeinkostenanteil')).toEqual([]);
     expect(await umbrueche(page, KOMPOSITUM)).toEqual([]);
@@ -506,7 +485,7 @@ test.describe('R00105 Reiter Kosten', () => {
     await breiteSetzen(page, 320, 700);
     const dialog = await fenster(page, 1, MIT_EIN_VOKAL);
     await kostenZeigen(page, dialog);
-    await expect(page.locator('#reiterpanel-kosten th[scope="row"] span.ganz', { hasText: EIN_VOKAL })).toHaveText(EIN_VOKAL);
+    await expect(panel(page, 'kosten').locator('th[scope="row"] span.ganz', { hasText: EIN_VOKAL })).toHaveText(EIN_VOKAL);
     expect(await umbrueche(page, EIN_VOKAL)).toEqual([]);
   });
 
@@ -515,9 +494,9 @@ test.describe('R00105 Reiter Kosten', () => {
     const dialog = await fenster(page, 1, MIT_LANG);
     await kostenZeigen(page, dialog);
     expect(await umbrueche(page, LANG)).toEqual([]);
-    const stile = await page.locator('#reiterpanel-kosten th[scope="row"]').evaluateAll(ths => ths.map(th => getComputedStyle(th).overflowWrap + ' ' + getComputedStyle(th).wordBreak));
+    const stile = await panel(page, 'kosten').locator('th[scope="row"]').evaluateAll(ths => ths.map(th => getComputedStyle(th).overflowWrap + ' ' + getComputedStyle(th).wordBreak));
     expect(new Set(stile)).toEqual(new Set(['normal normal']));
-    const scroll = page.locator('#reiterpanel-kosten .ko-scroll');
+    const scroll = panel(page, 'kosten').locator('.ko-scroll');
     const vorher = await scroll.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, links: el.scrollLeft }));
     expect(vorher.sw).toBeGreaterThan(vorher.cw);
     await page.getByRole('button', { name: 'Schließen' }).focus();
@@ -527,7 +506,7 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect.poll(() => scroll.evaluate(el => el.scrollLeft)).toBeGreaterThan(vorher.links);
     const kopf = await page.locator('#fenster .mod-kopf').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth }));
     expect(kopf.sw).toBeLessThanOrEqual(kopf.cw);
-    for (const ziel of [...['Inhalt', 'Datei', 'Kosten'].map(n => page.getByRole('tab', { name: n })), page.getByRole('button', { name: 'Schließen' })]) {
+    for (const ziel of [page.locator(AUSLOESER), page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]'), page.getByRole('button', { name: 'Schließen' })]) {
       const box = await ziel.boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(320);

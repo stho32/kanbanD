@@ -18,15 +18,15 @@ test.describe('R00098', () => {
     await page.locator('.ka[data-id="7"]').click();
     await reiter(page, 'Details');
     const feld = page.locator('#schluessel');
-    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
+    await expect(page.locator('.mod-body[data-ansicht="details"] .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
     await expect(feld).toHaveText('k4');
     await expect(feld.locator('input, select, textarea, [contenteditable]')).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     await page.locator('.ka[data-id="8"]').click();
     await reiter(page, 'Details');
-    await expect(page.locator('#reiterpanel-details .felder')).toBeVisible();
-    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
+    await expect(page.locator('.mod-body[data-ansicht="details"] .felder')).toBeVisible();
+    await expect(page.locator('.mod-body[data-ansicht="details"] .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
     await expect(page.locator('#schluessel')).toHaveCount(0);
   });
 });
