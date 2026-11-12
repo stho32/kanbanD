@@ -20,6 +20,9 @@ pub enum Fehler {
     /// Ein Agent änderte Grenze oder Eigentümer einer Spalte (403, R00102, ADR-0006); nur über `einstellung_verboten`
     /// anlegen, damit Meldung und Einstellung zusammenpassen.
     EinstellungVerboten { meldung: String, spalte: String, einstellung: Einstellung },
+    /// Ein Agent ändert die Art einer Person oder legt einen Menschen an (403, Karte #127, ADR-0003); nur über
+    /// `personenart_verboten` anlegen, damit Meldung und Kürzel zusammenpassen.
+    PersonenartVerboten { meldung: String, kuerzel: String },
 }
 
 impl Fehler {
@@ -27,7 +30,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } => meldung,
         }
     }
 
@@ -38,6 +41,17 @@ impl Fehler {
             Einstellung::Eigentuemer => "Eigentümer",
         };
         Fehler::EinstellungVerboten { meldung: format!("{was} der Spalte „{spalte}“ ändern nur Menschen"), spalte: spalte.into(), einstellung }
+    }
+
+    /// „Die Art der Person „<Kürzel>“ ändern nur Menschen“ bzw. für eine neue Person „Eine neue Person der Art „human“
+    /// legen nur Menschen an“ (Karte #127) — der eine Ort für den Wortlaut.
+    pub fn personenart_verboten(kuerzel: &str, neu: bool) -> Fehler {
+        let meldung = if neu {
+            "Eine neue Person der Art „human“ legen nur Menschen an".to_string()
+        } else {
+            format!("Die Art der Person „{kuerzel}“ ändern nur Menschen")
+        };
+        Fehler::PersonenartVerboten { meldung, kuerzel: kuerzel.into() }
     }
 }
 

@@ -15,7 +15,8 @@ Mehrere Agenten an einem Board nennen zusätzlich `X-KanbanD-Instanz` (eigene Ke
 Spalten mit Eigentümer (`column-owner`: `human` | `agent`): Aus einer Spalte, die dem Menschen gehört, nimmt ein Agent keine Karte (403 `Verboten`); \
 die Sperre beruht auf `X-KanbanD-Wer` und schützt vor Versehen, nicht vor Angriffen. \
 Grenze und Eigentümer einer Spalte ändern über `PUT …/spalten` nur Menschen (403 `EinstellungVerboten`). \
-Bekannte Grenze: Wer sich per `PATCH /api/personen/{kuerzel}` zum Menschen macht, kommt durch — die Regel schützt vor Versehen, nicht vor Absicht.\n\n\
+Die Art einer Person (`art`) setzen nur Menschen (403 `PersonenartVerboten` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}` und `PUT /api/einstellungen`). \
+Bekannte Grenze: Wer `X-KanbanD-Wer` eines Menschen nennt, kommt durch — die Regeln schützen vor Versehen, nicht vor Absicht.\n\n\
 Antwortregel: Ein Objekt kommt direkt, eine Liste verpackt unter ihrem Sammlungsnamen (`{\"aufgaben\": […]}`), weil Listen Zusatzangaben tragen; \
 ältere Listen-Endpunkte liefern ein Array. Statusantworten wie `{geaendert}` bleiben. Fehler: `{\"fehler\": \"…\"}`.\n\n\
 Zeitpunkte: `JJJJ-MM-TT HH:MM±HH:MM` (Ortszeit mit Versatz); Eingaben auch als ISO mit `T`, mit `Z` oder ohne Versatz (dann Ortszeit). \
@@ -64,6 +65,15 @@ pub struct EinstellungVerboten {
     pub fehler: String,
     pub spalte: String,
     pub einstellung: crate::modell::Einstellung,
+}
+
+/// 403 eines Agenten, der die Art einer Person setzt (Karte #127, ADR-0003): `fehler` zuerst („Die Art der Person „<Kürzel>“
+/// ändern nur Menschen“; für eine neue Person „Eine neue Person der Art „human“ legen nur Menschen an“), dann das Kürzel
+/// der Person, deren `art` gesetzt würde.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct PersonenartVerboten {
+    pub fehler: String,
+    pub kuerzel: String,
 }
 
 /// 409 der Endpunkte mit WIP-Grenze (R00096): Ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt

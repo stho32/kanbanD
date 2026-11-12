@@ -1,4 +1,5 @@
 use super::{Kanban, Schritt};
+use super::zugregeln::personenarten_pruefen;
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
 use crate::modell::{Anwendung, Art, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
@@ -160,6 +161,7 @@ impl Kanban {
         let (nachricht, ergebnis) = aendern(&mut neu)?;
         normalisieren(&mut neu);
         einstellungen_pruefen(&alt, &neu)?;
+        personenarten_pruefen(wer.art, &alt.personen, &neu.personen)?;
         if neu == alt {
             return Ok((false, ergebnis));
         }

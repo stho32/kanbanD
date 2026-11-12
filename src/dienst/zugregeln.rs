@@ -119,6 +119,27 @@ pub(crate) fn einstellungen_pruefen(art: Art, aenderungen: &Einstellungsaenderun
     }
 }
 
+/// Agent: die erste Person, deren `art` sich ändert oder die als Mensch neu dazukommt, als `PersonenartVerboten`
+/// (Karte #127) — `art` entscheidet, wer handeln darf; ein Agent, der sich zum Menschen macht, hebt die Spalten-Sperre
+/// (R00097) dauerhaft auf. Eine unveränderte Art ist keine Änderung (wie R00102), einen Agenten anzulegen bleibt frei.
+/// Mensch: nie gesperrt.
+pub(crate) fn personenarten_pruefen(art: Art, alt: &[Person], neu: &[Person]) -> Result<(), Fehler> {
+    if art == Art::Mensch {
+        return Ok(());
+    }
+    for p in neu {
+        let bisher = alt.iter().find(|a| a.kuerzel == p.kuerzel);
+        let erlaubt = match bisher {
+            Some(a) => a.art == p.art,
+            None => p.art == Art::Agent,
+        };
+        if !erlaubt {
+            return Err(Fehler::personenart_verboten(&p.kuerzel, bisher.is_none()));
+        }
+    }
+    Ok(())
+}
+
 /// Agent: die erste Verletzung von links als `GrenzeErreicht` mit der Belegung vor dem Zug.
 /// Mensch: je Verletzung eine Warnung `grenze`; der Text nennt die Anzahl nach dem Zug.
 pub(crate) fn zugregeln(art: Art, verletzungen: &Grenzverletzungen) -> Result<Vec<Warnung>, Fehler> {
@@ -235,6 +256,33 @@ mod tests {
         assert_eq!(einstellungen_pruefen(Art::Agent, &eine), Err(Fehler::einstellung_verboten("In Arbeit", Einstellung::Grenze)));
         assert_eq!(einstellungen_pruefen(Art::Mensch, &zwei), Ok(()), "Mensch nie gesperrt");
         assert_eq!(einstellungen_pruefen(Art::Agent, &Einstellungsaenderungen::default()), Ok(()), "ohne Änderung frei");
+    }
+
+    // Karte #127: die Art einer Person setzen nur Menschen — ein Agent macht sich nicht zum Menschen, legt keinen an und
+    // stuft keinen Menschen zurück; eine unveränderte Art ist keine Änderung, der Mensch darf alles.
+    #[test]
+    fn die_art_einer_person_setzen_nur_menschen() {
+        let person = |kuerzel: &str, art| Person { kuerzel: kuerzel.into(), name: kuerzel.into(), art, aktiv: true };
+        let alt = vec![person("st", Art::Mensch), person("cl", Art::Agent)];
+        let mit = |aenderung: Person| {
+            let mut neu = alt.clone();
+            if let Some(p) = neu.iter_mut().find(|p| p.kuerzel == aenderung.kuerzel) {
+                *p = aenderung.clone();
+            } else {
+                neu.push(aenderung.clone());
+            }
+            neu
+        };
+        let selbst_mensch = mit(person("cl", Art::Mensch));
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &selbst_mensch), Err(Fehler::personenart_verboten("cl", false)));
+        let mensch_zurueck = mit(person("st", Art::Agent));
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mensch_zurueck), Err(Fehler::personenart_verboten("st", false)), "auch das Zurückstufen");
+        let neuer_mensch = mit(person("mi", Art::Mensch));
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &neuer_mensch), Err(Fehler::personenart_verboten("mi", true)));
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mit(person("ag2", Art::Agent))), Ok(()), "einen Agenten anlegen bleibt frei");
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &mit(person("cl", Art::Agent))), Ok(()), "gleiche Art ist keine Änderung");
+        assert_eq!(personenarten_pruefen(Art::Agent, &alt, &alt), Ok(()), "unverändert frei");
+        assert_eq!(personenarten_pruefen(Art::Mensch, &alt, &selbst_mensch), Ok(()), "Mensch nie gesperrt");
     }
 
     #[test]
