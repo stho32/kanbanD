@@ -524,3 +524,8 @@ Nie vom User erfragen.
 | 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0585 Reiter „Details“ (Felder), Seitenleiste entfällt | Standard | 1-2 | 0,25h | 0,25h | autonom |
 | 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | B0586 „Inhalt“ bleibt schlank | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
 | 2026-11-12 | R00127 Kartendetails mit mehreren Reitern | Lauf R00127 | Konsolidierung | — | — | 1,75h | autonom |
+| 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0617 Akzeptanztest kein h1–h6 in role=menu | Akzeptanztest | 0,5-1 | 0,5h | 0,5h | autonom |
+| 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0618 Vier Menüköpfe ohne Überschrift | Standard | 0,5-1 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0619 Gestaltung des Pop-Kopfes an der Klasse | Standard | 0,25-0,5 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | B0620 X00005-Systemantwort nachführen | Standard | 0,25-0,5 | 0,25h | 0,25h | autonom |
+| 2026-11-12 | R00136 Menüköpfe in role=menu ohne Überschrift | Lauf R00136 | Konsolidierung | — | — | 0,75h | autonom |
