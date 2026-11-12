@@ -78,7 +78,7 @@ test('large: Filter, Bereich und „Neue Aufgabe“ direkt in der Kopfzeile; Sig
   await expect(mehr(page)).toHaveAttribute('aria-haspopup', 'menu');
   await mehr(page).click();
   await expect(menue(page).getByRole('menuitemcheckbox')).toHaveText(['Signale oben']);
-  await expect(menue(page).getByRole('menuitem')).toHaveText(['Spalten einrichten', /Darstellung: System/]);
+  await expect(menue(page).getByRole('menuitem')).toHaveText(['Aufgaben', 'Personen', 'WBS', 'Einrichten', 'Spalten einrichten', /Darstellung: System/]);
   await menue(page).getByRole('menuitem', { name: 'Spalten einrichten' }).click();
   await expect(page.locator('header.kz.modus')).toContainText('Spalten einrichten');
 });
@@ -87,6 +87,9 @@ test('Menü „Mehr“: ein Eintrag löst dieselbe Aktion aus wie vorher der Kno
   await starten(page);
   await mehr(page).focus();
   await page.keyboard.press('Enter');
+  // die vier seltenen Ziele stehen als erste Gruppe; ↓ führt von dort zum ersten Werkzeug
+  await expect(menue(page).getByRole('menuitem', { name: 'Aufgaben' })).toBeFocused();
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
   const signale = menue(page).getByRole('menuitemcheckbox', { name: 'Signale oben' });
   await expect(signale).toBeFocused();
   await page.keyboard.press('Enter');
@@ -106,13 +109,15 @@ test.describe('compact, 375 px', () => {
   test.use({ viewport: { width: 375, height: 800 } });
   const seite = page => kopf(page).getByRole('button', { name: /Seite/ });
 
-  test('der Navigationsknopf öffnet Board, Aufgaben, Personen, Berichte, WBS, Einrichten; „Aufgaben“ zeigt die Aufgabenliste', async ({ page }) => {
+  test('der Seitenknopf öffnet Board und Berichte; „Aufgaben“ im Menü „…“ zeigt die Aufgabenliste', async ({ page }) => {
     await starten(page);
     await expect(kopf(page).locator('.kz-nav')).toHaveCount(0);
     await expect(seite(page)).toHaveText(/Board/);
     await expect(seite(page)).toHaveAttribute('aria-haspopup', 'menu');
     await seite(page).click();
-    await expect(menue(page).getByRole('menuitem')).toHaveText(['Board', 'Aufgaben', 'Personen', /Berichte/, 'WBS', 'Einrichten']);
+    await expect(menue(page).getByRole('menuitem')).toHaveText(['Board', /Berichte/]);
+    await page.keyboard.press('Escape');
+    await mehr(page).click();
     await menue(page).getByRole('menuitem', { name: 'Aufgaben' }).click();
     await expect(page).toHaveURL(/#\/aufgaben$/);
     await expect(page.locator('.leiste')).toContainText('Aufgaben');

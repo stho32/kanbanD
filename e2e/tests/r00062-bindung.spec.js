@@ -1,6 +1,6 @@
 // R00062 Leere Anwendungsliste löst die Bindung
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, ausMehr } = require('./hilfen');
+const { kanbanStarten, alsPerson, ausMehr, mehrOeffnen } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 const WBS = wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]);
@@ -14,12 +14,15 @@ test.describe('R00062', () => {
   });
   test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
   const spalten = page => page.locator('.bahn[data-col]');
-  const wbsMenue = page => page.locator('.kz-nav a', { hasText: 'WBS' });
+  /** Der WBS-Eintrag liegt seit R00140 im Menü „…“ — das Menü muss geöffnet sein. */
+  const wbsMenue = page => page.locator('#pop[aria-label="Mehr"] a', { hasText: 'WBS' });
 
   test('US-2: Standard bleibt bequem — ohne Angabe an die einzige Anwendung gebunden, mit ihren Phasen-Spalten', async ({ page }) => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
+    await mehrOeffnen(page);
     await expect(wbsMenue(page)).toHaveAttribute('href', '#/wbs/kd');
+    await page.keyboard.press('Escape');
     await expect(spalten(page)).toHaveCount(5);
     expect(k.git('log', '-1', '--format=%s')).toContain('Phasen-Spalten von „Entwicklung“ ergänzt');
   });
@@ -38,7 +41,9 @@ test.describe('R00062', () => {
     await page.getByRole('button', { name: 'Fertig' }).click();
     await expect(page.locator('#setup-vorschau')).toHaveCount(0);
     await expect(page.locator('.kz-nav a', { hasText: 'Board' })).toBeVisible();
+    await mehrOeffnen(page);
     await expect(wbsMenue(page)).toHaveCount(0);
+    await page.keyboard.press('Escape');
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(commits + 1);
     expect(k.git('log', '-1', '--format=%s')).toBe('Anwendungen von „Entwicklung“: keine');
     expect(k.lies('boards/entwicklung.md')).toMatch(/^---\napplications: \[\]\n/);
@@ -49,7 +54,9 @@ test.describe('R00062', () => {
     await page.reload();
     await expect(spalten(page)).toHaveCount(2);
     await expect(page.locator('.kz-nav a', { hasText: 'Board' })).toBeVisible();
+    await mehrOeffnen(page);
     await expect(wbsMenue(page)).toHaveCount(0);
+    await page.keyboard.press('Escape');
     expect(k.git('log', '-1', '--format=%s')).toBe('leere Spalten weg');
   });
 });

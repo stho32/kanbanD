@@ -1,7 +1,7 @@
 // R00054 WBS-Sicht — das Arbeits-Repository ist ein eigenes Git-Repository neben dem kanbanD-Ordner.
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
-const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, mehrOeffnen } = require('./hilfen');
 const { KOPF, zeile, arbeitsRepository: repository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = '---\napplication: kanbanD\n---\n\n# WBS\n\n' + KOPF
@@ -30,13 +30,16 @@ test.describe('R00054', () => {
 
   test('US-1: g k öffnet die WBS der gebundenen Anwendung', async ({ page }) => {
     await page.goto(k.adresse);
-    await expect(page.locator('.kz-nav a', { hasText: 'WBS' })).toHaveAttribute('href', '#/wbs/kd');
+    await mehrOeffnen(page);
+    await expect(page.locator('#pop[aria-label="Mehr"] a', { hasText: 'WBS' })).toHaveAttribute('href', '#/wbs/kd');
+    await page.keyboard.press('Escape');
     await page.locator('.ka, .bahn').first().waitFor();
     await page.keyboard.press('g');
     await page.keyboard.press('k');
     await expect(page).toHaveURL(/#\/wbs\/kd$/);
     await expect(page.locator('.wbs-titel')).toContainText('WBS · kanbanD');
-    await expect(page.locator('.kz-nav a.an')).toHaveText('WBS');
+    await mehrOeffnen(page);
+    await expect(page.locator('#pop[aria-label="Mehr"] [aria-current="page"]')).toHaveText('WBS');
   });
 
   test('Tabelle: Einrückung, Ampel, Widerspruch, Ausbaustufe, Braucht, Anforderung', async ({ page }) => {
@@ -138,13 +141,16 @@ test.describe('R00054', () => {
       k.schreib('kanbanD.md', '---\n' + text);
       await page.goto(k.adresse);
       await page.locator('.bahn').first().waitFor();
-      await expect(page.locator('.kz-nav a', { hasText: 'WBS' })).toHaveCount(0);
+      await mehrOeffnen(page);
+      await expect(page.locator('#pop[aria-label="Mehr"] a', { hasText: 'WBS' })).toHaveCount(0);
+      await page.keyboard.press('Escape');
       await page.keyboard.press('g');
       await page.keyboard.press('k');
       await expect(page.locator('.body.bericht')).toContainText('Dieses Board ist an keine Anwendung gebunden');
       k.schreib('boards/entwicklung.md', '---\napplications: [kc, kd]\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n');
-      await expect(page.locator('.kz-nav a', { hasText: 'WBS · kc' })).toHaveAttribute('href', '#/wbs/kc');
-      await expect(page.locator('.kz-nav a', { hasText: 'WBS · kd' })).toBeVisible();
+      await mehrOeffnen(page);
+      await expect(page.locator('#pop[aria-label="Mehr"] a', { hasText: 'WBS · kc' })).toHaveAttribute('href', '#/wbs/kc');
+      await expect(page.locator('#pop[aria-label="Mehr"] a', { hasText: 'WBS · kd' })).toBeVisible();
     } finally { fs.rmSync(zweite.wurzel, { recursive: true, force: true }); }
   });
 });

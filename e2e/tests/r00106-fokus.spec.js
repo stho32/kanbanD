@@ -250,14 +250,14 @@ test('US-6: Enter auf „Mehr“ → aria-expanded, Fokus auf dem ersten Eintrag
   expect(await menueIndex(page)).toBe(letzter);
 });
 
-test('US-6: 375 px: Enter auf „Seite“ → Fokus auf „Board“, ↓ → „Aufgaben“', async ({ page }) => {
+test('US-6: 375 px: Enter auf „Seite“ → Fokus auf „Board“, ↓ → „Berichte“', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.locator('#t-seite').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#t-seite')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Board$/ })).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Aufgaben$/ })).toBeFocused();
+  await expect(page.locator('#pop [role="menuitem"]', { hasText: /^Berichte/ })).toBeFocused();
 });
 
 test('US-6: Enter auf „Berichte“ → aria-haspopup=menu, aria-expanded, Fokus auf „Stundenzettel“, ↓ → zweiter Eintrag', async ({ page }) => {
@@ -318,7 +318,7 @@ test('US-6: 375 px: Seite-Menü Esc → Fokus auf #t-seite mit aria-expanded=fal
 test('US-6: ein Eintrag mit Aktion („Signale oben“ in „Mehr“) lässt den Fokus nie auf BODY', async ({ page }) => {
   await page.locator('#t-mehr').focus();
   await page.keyboard.press('Enter');
-  await page.locator('#pop [role^="menuitem"]').first().focus();
+  await page.locator('#pop [role="menuitemcheckbox"]').first().focus();
   await page.keyboard.press('Enter');
   expect((await fokus(page)).tag).not.toBe('BODY');
 });
