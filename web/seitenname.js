@@ -41,5 +41,13 @@
     return teile.join(' · ');
   }
 
-  Object.assign(ziel, { BERICHTSNAMEN, seitenNameVon, seitenUeberschrift });
+  /** Fenstertitel aus derselben Namensquelle wie die Seitenüberschrift: Zähler laufender Timer vorn, „ — kanbanD“ hinten; die WBS-Sicht als Sonderform. */
+  function fenstertitelName(seite, { zaehler = 0, wbsStand, wbsName } = {}) {
+    if (seite.ansicht === 'wbs' && wbsName) return `${wbsStand} % · WBS · ${wbsName} — kanbanD`;
+    const ueberschrift = seitenUeberschrift(seite);
+    if (zaehler) return `(${zaehler} ▶) ${ueberschrift} — kanbanD`;
+    return `${ueberschrift} — kanbanD`;
+  }
+
+  Object.assign(ziel, { BERICHTSNAMEN, seitenNameVon, seitenUeberschrift, fenstertitelName });
 })((typeof module !== 'undefined' && module.exports) || window);

@@ -988,10 +988,8 @@ function ersterTabbarer(bereich) {
 
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
-  if (S.ui.view === 'wbs' && S.wbs) return `${prozente(S.wbs.stand).gruen} % · WBS · ${S.wbs.name} — kanbanD`;
-  const seiten = { aufgaben: 'Aufgaben', personen: 'Personen', einrichten: 'Einrichten', 'berichte/stundenzettel': 'Stundenzettel', 'berichte/kreuz': 'Zeiten', 'berichte/verlauf': 'Burndown', 'berichte/fluss': 'Fluss', 'berichte/durchsatz': 'Durchsatz', 'berichte/durchlauf': 'Durchlaufzeit', 'berichte/prognose': 'Wie lange noch', 'berichte/fieber': 'Fever Chart', 'berichte/kosten': 'Kosten', 'berichte/bestand': 'Bestand' };
-  const n = alleLaufenden().length;
-  return `${n ? `(${n} ▶) ` : ''}${seiten[S.ui.view] || (S.board ? S.board.titel : 'Board')} — kanbanD`;
+  const seite = { ansicht: S.ui.view, boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite() };
+  return fenstertitelName(seite, { zaehler: alleLaufenden().length, wbsStand: S.wbs && prozente(S.wbs.stand).gruen, wbsName: S.wbs && S.wbs.name });
 }
 
 /** Selektor des Texts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück. */
