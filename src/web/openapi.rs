@@ -29,7 +29,7 @@ Dauern: `0:45`, `1,5` (Stunden), `90 min`."
 )]
 pub struct ApiDoc;
 
-/// Fehlerantwort jedes Endpunkts: 400 ungültig, 404 nicht gefunden, 409 Konflikt, 423 Datei defekt, 500 Git oder Dateisystem.
+/// Fehlerantwort der Endpunkte: 400 ungültig, 404 nicht gefunden, 409 Konflikt, 423 Datei defekt, 500 Git oder Dateisystem.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Fehlerantwort {
     pub fehler: String,

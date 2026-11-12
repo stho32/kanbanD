@@ -36,11 +36,19 @@ impl Kanban {
             })
             .collect();
         let loeschung = if w.join(&pfad).exists() { None } else { git::loeschung(w, &pfad)?.map(|s| (s.zeitpunkt, s.autor)) };
-        let (boards, _) = self.ordner().boards()?;
+        let (boards, defekte) = self.ordner().boards()?;
         // Alle Board-Stände in einem Zug lesen, dann nur die behalten, in denen sich die Lage der Karte ändert (#131):
         // die Kosten hängen an der Karte, nicht an der Gesamt-Historie aller Boards.
         let pfade: Vec<String> = boards.iter().map(|b| board_pfad(&b.slug)).collect();
         let stands = git::staende_mehrerer(w, &pfade)?;
+        // R00120: ein defektes Board weist den Lesenden nicht ab; die Lücke steht sichtbar in der Antwort (#131).
+        let luecke: Vec<String> = defekte
+            .iter()
+            .filter_map(|d| d.pfad.strip_prefix(crate::format::board::ORDNER)?.strip_prefix('/'))
+            .filter_map(|name| name.strip_suffix(".md"))
+            .filter(|slug| crate::modell::slug_gueltig(slug))
+            .map(str::to_string)
+            .collect();
         let brett: Vec<(String, Vec<(chrono::NaiveDateTime, Board, git::Autor)>)> = boards
             .iter()
             .zip(stands)
@@ -49,7 +57,7 @@ impl Kanban {
                 (b.slug.clone(), staende)
             })
             .collect();
-        Ok(kartenverlauf(nummer, &aufgabe, &brett, loeschung))
+        Ok(kartenverlauf(nummer, &aufgabe, &brett, loeschung, luecke))
     }
 
     /// Spaltenwechsel je Aufgabe aus denselben Ständen; Spalten in heutiger Reihenfolge. Bei einem gebundenen Board dazu

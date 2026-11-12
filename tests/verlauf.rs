@@ -427,3 +427,41 @@ async fn karten_verlauf_sieht_die_umbenannte_spalte() {
         "{v}"
     );
 }
+
+/// R00131 (Optional 1, R00120): ein defektes Board wird nicht still übergangen — der Verlauf der gesunden Boards
+/// bleibt lesbar (200, kein 423; ein Mensch wird nicht abgewiesen), die Antwort nennt die Lücke als `defekt`.
+#[tokio::test]
+async fn karten_verlauf_nennt_defektes_board_als_luecke() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path());
+    std::fs::write(
+        tmp.path().join("boards/kaputt.md"),
+        "# kaputt\n\n## Doppelt\n\n## Doppelt\n",
+    )
+    .unwrap();
+    verfassen(tmp.path(), "2026-10-02T10:00:00", "sh", "kaputtes Board");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (s, v) = senden(
+        Method::GET,
+        &lauf.adresse,
+        "api/aufgaben/1/verlauf",
+        "st",
+        json!(null),
+    )
+    .await;
+    assert_eq!(
+        s, 200,
+        "ein defektes Board weist den Lesenden nicht ab: {v}"
+    );
+    assert_eq!(
+        v["defekt"],
+        json!(["kaputt"]),
+        "die Lücke steht sichtbar in der Antwort: {v}"
+    );
+    assert_eq!(
+        v["eintraege"].as_array().unwrap().len(),
+        6,
+        "die Einträge des gesunden Boards bleiben: {v}"
+    );
+}
+

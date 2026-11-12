@@ -178,11 +178,15 @@ pub struct KartenEintrag {
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Kartenverlauf {
     pub eintraege: Vec<KartenEintrag>,
+    /// Slugs der Boards, deren Datei nicht lesbar war: ihre Einträge können fehlen (R00120: der Lesende wird nicht
+    /// abgewiesen, die Lücke steht sichtbar in der Antwort; #131). Leer heißt vollständig.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub defekt: Vec<String>,
 }
 
 impl Kartenverlauf {
     pub fn leer() -> Kartenverlauf {
-        Kartenverlauf { eintraege: vec![] }
+        Kartenverlauf { eintraege: vec![], defekt: vec![] }
     }
 }
 
@@ -196,12 +200,14 @@ pub struct Aufgabenstand {
 
 /// Führt die Git-Geschichte der Aufgabendatei und jeder Board-Datei zu einem Karten-Verlauf zusammen (ADR-0021).
 /// Ein Commit je Aktion ist ein Eintrag; die Aufnahme auf ein Board im selben Commit wie die Erstellung geht in
-/// `erstellt` auf (kein zweiter `bewegt`). Zeitlich gemischt über alle Boards, neueste zuerst.
+/// `erstellt` auf (kein zweiter `bewegt`). Zeitlich gemischt über alle Boards, neueste zuerst. `defekt` sind die
+/// Boards ohne lesbare Datei — sie erscheinen als Lücke in der Antwort, nicht als Abbruch (#131).
 pub fn kartenverlauf(
     nummer: u32,
     aufgabe: &[Aufgabenstand],
     boards: &[(String, Vec<(NaiveDateTime, Board, crate::git::Autor)>)],
     loeschung: Option<(NaiveDateTime, crate::git::Autor)>,
+    defekt: Vec<String>,
 ) -> Kartenverlauf {
     let fmt = |z: &NaiveDateTime| z.format(crate::format::aufgabe::ZEITFORMAT).to_string();
     let mut selbst: Vec<KartenEintrag> = vec![];
@@ -243,7 +249,7 @@ pub fn kartenverlauf(
     }
     // neueste zuerst; der Zeitpunkt `JJJJ-MM-TT HH:MM` sortiert als Text wie chronologisch
     eintraege.sort_by(|a, b| b.zeitpunkt.cmp(&a.zeitpunkt));
-    Kartenverlauf { eintraege }
+    Kartenverlauf { eintraege, defekt }
 }
 
 fn zaehlen(b: &Board) -> (usize, usize) {
@@ -391,7 +397,7 @@ mod tests {
             (zp("2026-10-03 09:00"), board3(&[], &[], &[1]), autor("cl")),
             (zp("2026-10-06 09:00"), board3(&[], &[], &[]), autor("sh")),
         ];
-        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], None);
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], None, vec![]);
         let kurz: Vec<(&str, Kartenart, Option<&str>, Option<&str>, Option<&str>, &str)> = v.eintraege.iter().map(|e| (e.zeitpunkt.as_str(), e.art, e.board.as_deref(), e.von.as_deref(), e.nach.as_deref(), e.wer.as_str())).collect();
         assert_eq!(
             kurz,
@@ -412,7 +418,7 @@ mod tests {
     fn kartenverlauf_mit_loeschung_und_fremdem_autor() {
         let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
         let fabrik = vec![(zp("2026-10-01 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-07 09:00"), board3(&[], &[1], &[]), autor("Extern"))];
-        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], Some((zp("2026-10-09 09:00"), autor("sh"))));
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik)], Some((zp("2026-10-09 09:00"), autor("sh"))), vec![]);
         assert_eq!(v.eintraege.first().map(|e| (e.art, e.zeitpunkt.as_str(), e.wer.as_str())), Some((Kartenart::Geloescht, "2026-10-09 09:00", "sh")), "geloescht zuoberst");
         assert_eq!(v.eintraege.len(), 3, "Erstellung, Bewegung des fremden Autors, Löschung");
         assert_eq!(v.eintraege[1].wer, "Extern", "fremder Autor unverändert");
@@ -425,7 +431,7 @@ mod tests {
         let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
         let fabrik = vec![(zp("2026-10-01 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-02 09:00"), board3(&[], &[1], &[]), autor("cl"))];
         let privat = vec![(zp("2026-10-07 09:00"), board3(&[1], &[], &[]), autor("sh")), (zp("2026-10-08 09:00"), board3(&[], &[1], &[]), autor("sh"))];
-        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik), ("privat".into(), privat)], None);
+        let v = kartenverlauf(1, &aufgabe, &[("fabrik".into(), fabrik), ("privat".into(), privat)], None, vec![]);
         let boards: Vec<&str> = v.eintraege.iter().filter(|e| e.art == Kartenart::Bewegt).map(|e| e.board.as_deref().unwrap_or("")).collect();
         assert_eq!(boards, vec!["privat", "privat", "fabrik"], "beide Bewegungsfolgen, zeitlich gemischt");
         let aufnahme = v.eintraege.iter().find(|e| e.board.as_deref() == Some("privat") && e.von.is_none());
@@ -448,7 +454,7 @@ mod tests {
         }
         let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
         let start = std::time::Instant::now();
-        let v = kartenverlauf(1, &aufgabe, &boards, None);
+        let v = kartenverlauf(1, &aufgabe, &boards, None, vec![]);
         let dauer = start.elapsed();
         assert!(v.eintraege.len() >= 100, "{} Einträge", v.eintraege.len());
         assert!(dauer.as_millis() < 200, "{dauer:?}");
@@ -457,7 +463,7 @@ mod tests {
     // R00123: keine Nummer — kein Eintrag
     #[test]
     fn kartenverlauf_ohne_spur_ist_leer() {
-        let v = kartenverlauf(99, &[], &[], None);
+        let v = kartenverlauf(99, &[], &[], None, vec![]);
         assert!(v.eintraege.is_empty());
     }
 
