@@ -46,6 +46,7 @@ Soll nach [ADR-0018](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer
 - **Zustände:**
   - `aria-current="page"` steht unter derselben Bedingung wie die Klasse `an`: in der Navigation genau einmal, im Seitenmenü am Eintrag mit `an`.
   - `aria-expanded` am Klapp-Knopf der Spalte steht statisch im Markup: `.bk-name` true, `.zu-streifen` false.
+- **Menüs:** In keinem Element mit `role="menu"` steht ein `h1`–`h6`; die vier Menüköpfe „SEITE" (`vSeitenPop`), „MEHR" (`vMehrPop`), „#n AUF BOARD LEGEN" (`vLegenPop`) und „STATUS <Knoten>" (`vWbsStatusPop`) sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung hängt an der Klasse. Erweitert nach I0125/R00136 (Karte #109): `web/ansicht.js` (die vier Renderer, dazu tragen die `h4` der Pop-Fenster dieselbe Klasse) und `web/kd-app.css:244–245`; Probe `e2e/tests/r00136-menuekoepfe.spec.js` (kein `h1`–`h6` in `[role=menu]`, Name und Kopftext, berechnete Werte, Mutante „h4 zurück ins Menü").
 
 Durchsetzung:
 - E2E-Probe über alle Routen nach dem Muster von `e2e/tests/ziele.spec.js`, mit Mutante. Die Routenliste wird gegen die Verzweigungen von `vHaupt()` abgeglichen.
@@ -73,7 +74,6 @@ Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
 ## Offene Fragen
 
 - Erneute Ansage der fokussierten Karte bei jedem Neuzeichnen (ADR-0018, Offene Fragen; gleiche Klasse wie ADR-0015).
-- `h4` als Kopf in `role=menu` (`web/ansicht.js:103`, `:129`, `:359`). Erlaubt sind dort nur Einträge, Gruppen und Trenner. Das ist ein Vorschlag, nicht Teil von #13.
 
 ## Notizen / Quellen
 
@@ -81,3 +81,4 @@ Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
 - angelegt 2026-11-08 nach #13 (ADR-0018)
 - erweitert 2026-11-10 nach #15 (ADR-0019): vierter Teil des Kartennamens für einen vergessenen Timer; die Durchsetzung ist der E2E der Karte #15 über Rolle und Namen, nicht eine zweite Probe über alle Routen
 - nachgeführt 2026-11-10 (arev Karte #15, S3): der Zusatz steht **vor** „, ausgewählt“ — hier stand „am Ende des Namens“; der Bau folgt ADR-0019 und R00114 FA 9, der Aspekttext war veraltet
+- erweitert 2026-11-12 nach I0125/R00136 (Karte #109): kein `h1`–`h6` in `role=menu`; die vier Menüköpfe sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung an der Klasse; die „Offene Fragen"-Zeile ist damit geschlossen

@@ -193,7 +193,7 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
 ## Offene Fragen
 
 - Sagt ein Screenreader die fokussierte Karte bei jedem Live-Ereignis neu an, weil `render()` den Knoten ersetzt und der Fokus zurückgesetzt wird? Das ist dieselbe Klasse wie die offene Frage zu `role=alert` in ADR-0015 (kein stabiler Knoten). Sie ist nur mit echter Hilfstechnik messbar und nicht Teil von #13.
-- Menüs (`role=menu`) enthalten heute eine `h4` als Kopf (`web/ansicht.js:103`, `:129`, `:359`). Erlaubte Kinder eines Menüs sind nur Einträge, Gruppen und Trenner. Den Namen tragen sie schon über `aria-label`. Die Bereinigung ist ein Vorschlag, nicht Teil von #13.
+- Menüs (`role=menu`) enthielten eine `h4` als Kopf (`web/ansicht.js:103`, `:129`, `:359`). Erlaubte Kinder eines Menüs sind nur Einträge, Gruppen und Trenner. Den Namen tragen sie schon über `aria-label`. **Erledigt** mit I0125/R00136 (Karte #109, 2026-11-12): die vier Köpfe sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung hängt an der Klasse; belegt durch `e2e/tests/r00136-menuekoepfe.spec.js`. Die Bereinigung war ein Vorschlag, nicht Teil von #13.
 
 ## Quellen / Bezüge
 
