@@ -8,7 +8,7 @@ datum: 2026-10-18
 
 ## Beschreibung
 
-Ein Klick auf eine Karte öffnet das Aufgabenfenster (Artboard D0003): Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit und Spalte lassen sich dort bearbeiten; jede Änderung wird sofort in die Aufgabendatei geschrieben und committet. Der Reiter „Datei“ zeigt die Datei so, wie sie im Ordner liegt. Mit ↑/↓ blättert man zur vorigen/nächsten Karte, Esc schließt.
+Ein Klick auf eine Karte öffnet das Aufgabenfenster (Artboard D0003): Titel, Beschreibung, Klasse, Zuständige, Labels, Fälligkeit und Spalte lassen sich dort bearbeiten; jede Änderung wird sofort in die Aufgabendatei geschrieben und committet. Der Reiter „Datei“ zeigt die Datei so, wie sie im Ordner liegt. Mit ↑/↓ blättert man zur vorigen/nächsten Karte, Esc schließt. *(Aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern mit ↑/↓ ist gestrichen; Esc schließt weiter — R00144 FA 9.)*
 
 Zahlt ein auf: [Vision](R00000-vision.md) — „Aufgaben sind unabhängige Daten“, „Ein Commit je Aktion“.
 
@@ -22,7 +22,7 @@ Alles Wesentliche einer Aufgabe an einem Ort, ohne dass jemand das Dateiformat k
 - `PATCH /api/aufgaben/<nr>` ändert nur die genannten Felder: `titel`, `beschreibung`, `klasse` (`null` entfernt), `zustaendige`, `labels`, `faellig` (`null` entfernt). Der Dateiname bleibt.
 - Regeln: Titel nicht leer; Klasse muss in `kanbanD.md` stehen; Zuständige müssen dort stehen; Fälligkeit `JJJJ-MM-TT`; Labels ohne Leereinträge. Verstoß → 400, unbekannte Nummer → 404, defekte Datei → 423.
 - Ohne Änderung kein Commit; Nachricht `#<nr> geändert: <Felder>`.
-- Das Fenster zeigt Kopf (Nummer, Klasse, Pfad, Inhalt/Datei, Position „n / m“, ↑ ↓, „In VS Code öffnen“, ✕), Hauptteil (Titel, Beschreibung) und Seitenleiste (Spalte, Klasse, Zuständige, Labels, Fälligkeit); die Spalte zu ändern bewegt die Karte (R00006).
+- Das Fenster zeigt Kopf (Nummer, Klasse, Pfad, Inhalt/Datei, Position „n / m“, ↑ ↓, „In VS Code öffnen“, ✕), Hauptteil (Titel, Beschreibung) und Seitenleiste (Spalte, Klasse, Zuständige, Labels, Fälligkeit); die Spalte zu ändern bewegt die Karte (R00006). *(Aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): der Kopf trägt statt Reiter-Umschalter, Zähler „n / m“ und ↑ ↓ einen Ansichts-Auslöser und ein ⋮-Menü; R00144/R00145.)*
 - Titel, Beschreibung und Labels werden beim Verlassen des Feldes gespeichert, Auswahlfelder sofort.
 
 ## Akzeptanzkriterien
@@ -32,7 +32,7 @@ Alles Wesentliche einer Aufgabe an einem Ort, ohne dass jemand das Dateiformat k
 - [x] Gleiche Werte → kein Commit
 - [x] Defekte Datei: `GET` → 423 mit Text; `PATCH` → 423
 - [x] Oberfläche: Karte öffnen, Titel ändern, Tab verlassen → Karte zeigt neuen Titel, Datei geändert
-- [x] Oberfläche: Reiter „Datei“ zeigt den Dateitext; ↓ wechselt zur nächsten Karte; Esc schließt
+- [x] Oberfläche: Reiter „Datei“ zeigt den Dateitext; ↓ wechselt zur nächsten Karte; Esc schließt — *(↓ aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern ist gestrichen; „Datei“ ist eine Ansicht im Ansichtsmenü; R00144/R00145.)*
 
 ## Betroffene Verzeichnisstruktur
 
@@ -49,7 +49,7 @@ Alles Wesentliche einer Aufgabe an einem Ort, ohne dass jemand das Dateiformat k
 ## Tests
 - Unit: alle Regeln von `Aufgabe::aendern`
 - Integration: GET/PATCH mit Git-Prüfung, defekt
-- E2E: Titel, Datei-Reiter, Blättern, Esc
+- E2E: Titel, Datei-Reiter, Blättern, Esc — *(Blättern aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144); die Probe prüft stattdessen das Öffnen einer anderen Aufgabe, R00144 FA 9.)*
 
 ## Abhängigkeiten
 - Abhängig von: R00005

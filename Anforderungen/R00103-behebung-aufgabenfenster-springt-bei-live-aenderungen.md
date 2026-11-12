@@ -102,7 +102,7 @@ Gegeben jeder Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen“ mi
 - [ ] Beispiel schmal: Gegeben 600 × 700 und der Fensterinhalt auf 400 gescrollt, wenn `bot` #1 bzw. #2 kommentiert, dann steht er je auf 400 — heute 0
 - [ ] Grenzwert: Gegeben der Hauptbereich steht ganz unten, wenn `bot` #1 kommentiert (der Inhalt wird länger), dann bleibt der bisherige Scrollstand stehen; er rutscht nicht ans neue Ende
 - [ ] Leerfall: Gegeben nichts ist gescrollt (0), wenn `bot` #2 kommentiert, dann steht alles weiter auf 0
-- [ ] Gegenbeispiel: Gegeben der Hauptbereich von #1 steht auf 400, wenn `st` im Fenster zu #2 blättert, dann beginnt #2 oben (0) — die Leseposition wandert nicht in eine andere Aufgabe mit
+- [ ] Gegenbeispiel: Gegeben der Hauptbereich von #1 steht auf 400, wenn `st` das Fenster schließt und #2 öffnet, dann beginnt #2 oben (0) — die Leseposition wandert nicht in eine andere Aufgabe mit *(Blättern aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): der Fall prüft das Öffnen einer anderen Aufgabe, R00144 FA 9)*
 - [ ] Fehlfall (Einheitstest der Schlüsselregel): Gegeben zwei Flächen derselben Klasse ohne `id`, `data-halt`, Feld- oder Aktionsschlüssel im selben Bereich, dann hat keine einen Schlüssel und keine wird zurückgesetzt; Gegeben eine Fläche mit `data-halt="x"` und eine mit nur dieser Klasse, dann ist `data-halt` der Schlüssel (Vorrang `id` > `data-halt` > Feldschlüssel > Aktion > eindeutige Klasse)
 - [ ] Regression: die Leseposition in Board, Aufgabenliste und WBS-Sicht bleibt wie bisher (`r00033-kontextmenue.spec.js:94–103`, `r00054-wbs-sicht.spec.js:106–115` grün)
 

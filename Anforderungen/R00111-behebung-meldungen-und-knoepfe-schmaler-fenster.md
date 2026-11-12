@@ -131,7 +131,7 @@ Je Mutant wird die ausgelieferte Datei per `page.route` ersetzt (`**/kd-app.css`
 
 ## Implementierungshinweise
 
-- Hinweis sind nur die Tastenhinweise: in `:256` die Spanne `Esc schließen · ↑↓ Karte wechseln`, in `:187` die Spanne mit `Enter im Titel …` (sie steht dort nur, wenn keine Meldung da ist). „gespeichert“ (`.gs`) und der Erklärsatz des Defektfensters (`:520`) sind Inhalt und bleiben schmal sichtbar.
+- Hinweis sind nur die Tastenhinweise: in `:256` die Spanne `Esc schließen · ↑↓ Karte wechseln` *(der Teil `↑↓ Karte wechseln` ist durch Betreiber-Entscheidung 2026-11-12 (#144) gestrichen; der Fuß zeigt danach nur `Esc schließen` — R00144 FA 9)*, in `:187` die Spanne mit `Enter im Titel …` (sie steht dort nur, wenn keine Meldung da ist). „gespeichert“ (`.gs`) und der Erklärsatz des Defektfensters (`:520`) sind Inhalt und bleiben schmal sichtbar.
 - Die Knopfgruppe in `:187` trägt heute ein Inline-`style` (`margin-left:auto;display:flex;gap:6px`); ob sie für den Umbruch eine Klasse bekommt, entscheidet der Bau.
 - `.mod-kopf .nav`, `.mod-kopf .cls` und `.mod-kopf .pfad` bleiben schmal ausgeblendet; sie sind weder Bedienelement noch Meldung und brauchen keinen Eintrag in `AUSNAHMEN` (ADR-0015, Durchsetzung). Auch `.leg .rechts` und `.stat>.mono` außerhalb der Fenster tragen nur Hinweise und bleiben, wie sie sind.
 - Muster der Ausnahmeliste: `NICHT_GEMESSEN` in `e2e/tests/ziele.spec.js` (ADR-0012 Regel 6); die Fensterliste gehört neben `e2e/tests/ansichten.js`, nicht als zweite Kopie der Fixtures.

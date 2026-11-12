@@ -39,7 +39,7 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
   - Das Aufgabenfenster bekommt beim Öffnen den Fokus auf dem Fenster selbst (`role=dialog`, `tabindex="-1"`, zugänglicher Name über `aria-labelledby`), nicht im Titelfeld. Die Fensterkürzel (`d`, `e`, `s`, `k`, ↑ ↓) greifen also sofort.
   - Die übrigen Fenster setzen den Fokus auf ihr erstes tabbares Element, oder wie heute auf ein ausdrücklich gewähltes Ziel (Zuweisen: die erste Wahl).
 - **Rückgabe beim Schließen** (Esc, ✕ oder Klick auf den Hintergrund):
-  - Aufgaben- und Defekt-Fenster geben den Fokus an die Karte bzw. Zeile der zuletzt gezeigten Aufgabe zurück, auch nach dem Blättern.
+  - Aufgaben- und Defekt-Fenster geben den Fokus an die Karte bzw. Zeile der zuletzt gezeigten Aufgabe zurück, auch nach dem Öffnen einer anderen Aufgabe *(Blättern durch Betreiber-Entscheidung 2026-11-12 (#144) gestrichen, R00144 FA 9)*.
   - Die übrigen Fenster geben ihn an das Element zurück, das beim Öffnen fokussiert war.
   - Gibt es dieses Element nicht mehr, gilt die Regel aus „Fokus nach Aktionen“, Punkt „Ohne offene Ebene“ (PO Z. 113): Bleibt eine Ebene offen, das erste tabbare Element der obersten offenen Ebene; wird die letzte Ebene geschlossen, die zuletzt geführte Karte bzw. Zeile, sonst `BODY`. `#main` ist nur Ziel, wenn die Ebene nie einen Auslöser hatte.
 - **Stapel**: Hilfe und Zuweisen öffnen wie heute über dem Aufgabenfenster.
@@ -53,7 +53,7 @@ Der Betreiber arbeitet mit der Tastatur: Kürzel auf dem Board, im Fenster und i
 - Reservierungen, „WBS neu“ und „WBS verwerfen“ sind schon heute `role=dialog` im `#pop` und bleiben außerhalb dieser Anforderung.
 
 ### Menüs
-- **Gilt für diese Menüs** (`role=menu`): „Mehr“ (`#t-mehr`), „Seite“ (`#t-seite`), „Berichte“ (`#t-ber`), „Auf Board legen“, „Status“ der WBS-Sicht, das Kontextmenü (`#kmenue`, Karte, Spaltenkopf, Zeile der Aufgabenliste) und das Ich-Menü (`#t-ich`). Nicht für die drei Pop-Fenster.
+- **Gilt für diese Menüs** (`role=menu`): „Mehr“ (`#t-mehr`), „Seite“ (`#t-seite`), „Berichte“ (`#t-ber`), „Auf Board legen“, „Status“ der WBS-Sicht, das Kontextmenü (`#kmenue`, Karte, Spaltenkopf, Zeile der Aufgabenliste) und das Ich-Menü (`#t-ich`). Seit der Betreiber-Entscheidung 2026-11-12 (#144/#145) gelten die Menü-Regeln zusätzlich für die **beiden Menüs des Aufgabenfenster-Kopfes** (Ansichten und Aktionen; R00145/R00144); sie sind eine eigene Ebene `fenstermenue` zwischen `fenster` und `pop` (ADR-0018 Nachtrag N2) und **keine** Pop-Fenster. Nicht für die drei Pop-Fenster.
 - **Öffnen**: Beim Öffnen (Klick, Enter, Leertaste, Umschalt+F10 bzw. Menütaste) steht der echte DOM-Fokus auf dem ersten wählbaren Eintrag (`role=menuitem`, im Ich-Menü `role=menuitemradio`).
 - **Pfeiltasten**:
   - ↓ und ↑ gehen zum nächsten bzw. vorigen wählbaren Eintrag, mit Umlauf.
@@ -133,7 +133,7 @@ Breite 1280 px und Thema hell, sofern nicht anders genannt. „Fokus auf X“ he
 - [ ] Gegeben Aufgabenfenster #1 offen mit Fokus auf dem Fenster, wenn 30-mal Tab gedrückt wird, dann liegt `document.activeElement` nach jedem Druck innerhalb des Fensters und ist nie `BODY`. Dasselbe gilt für 30-mal Umschalt+Tab.
 - [ ] Grenzwert: Gegeben Aufgabenfenster #1 offen mit Fokus auf dem letzten tabbaren Element des Fensters, wenn Tab gedrückt wird, dann steht der Fokus auf dem ersten tabbaren Element des Fensters. Umgekehrt führt Umschalt+Tab vom ersten zum letzten.
 - [ ] Gegeben Aufgabenfenster #1 per Enter geöffnet, wenn Esc gedrückt wird, dann ist kein `role=dialog` mehr offen, `document.activeElement.dataset.id` ist „1“, und nichts trägt mehr `inert`.
-- [ ] Gegeben Aufgabenfenster #1 offen, wenn mit ↓ zu #2 geblättert und dann Esc gedrückt wird, dann steht der Fokus auf Karte #2.
+- [ ] Gegeben Aufgabenfenster #1 offen, wenn es geschlossen, #2 geöffnet und dann Esc gedrückt wird, dann steht der Fokus auf Karte #2 *(Blättern aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144))*.
 - [ ] Gegeben die Aufgabenliste (`#/aufgaben`) mit Fokus auf der Zeile #3, wenn Enter und danach Esc gedrückt wird, dann steht der Fokus auf `tr[data-zeile="3"]`.
 - [ ] Gegeben Fokus auf dem Knopf „Neue Aufgabe“, wenn Enter gedrückt wird, dann liegt der Fokus im Fenster „Neue Aufgabe“. 30-mal Tab und 30-mal Umschalt+Tab bleiben im Fenster. Esc schließt es, und der Fokus steht auf dem Knopf „Neue Aufgabe“.
 - [ ] Gegeben Fokus auf Karte #1, wenn `p` gedrückt wird, dann liegt der Fokus im Fenster „Zuständige für …“ auf der ersten Wahl. 30-mal Tab bleibt im Fenster. Esc schließt es, und der Fokus steht auf Karte #1.

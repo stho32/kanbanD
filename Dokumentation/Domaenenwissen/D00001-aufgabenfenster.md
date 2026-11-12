@@ -21,7 +21,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 
 ## Bestandteile
 
-- Kopf: Nummer, Klasse, Pfad, Umschalter Inhalt/Datei, Position „n / m“ mit ↑ ↓, „In VS Code öffnen“, ✕ (R00011)
+- Kopf: Nummer, Klasse, Pfad, Ansichts-Auslöser (nennt die Ansicht), „In VS Code öffnen“ (↗), Aktionsmenü (⋮), ✕ (R00011; R00144/R00145) — *aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144/#145): Reiter-Umschalter, Position „n / m“ mit ↑ ↓, Archiv-Knopf und der beschriftete Lösch-Auslöser entfallen; „Archivieren“/„Zurückholen“ und „Endgültig löschen“ stehen im ⋮-Menü, die Ansichten im Ansichtsmenü.*
 - [Hauptbereich](D00002-hauptbereich.md): Titel, Beschreibung, Abschnitte (Kommentare, Teilaufgaben, Anhänge, Durchläufe)
 - [Seitenleiste](D00003-seitenleiste.md): Spalte, Klasse, Zuständige, Labels, Fälligkeit, Geschätzt (nur lesend, nur wenn `estimate` gesetzt), laufende Timer, Zeiten
 - Fuß: Speicherhinweis („gespeichert hh:mm“) und Fehlermeldung
@@ -30,7 +30,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 
 ## Beziehungen
 
-- zeigt genau eine Aufgabe; Blättern mit ↑ ↓ wechselt zur nächsten Aufgabe der sichtbaren Reihe
+- zeigt genau eine Aufgabe; Blättern mit ↑ ↓ wechselt zur nächsten Aufgabe der sichtbaren Reihe — *aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern ist gestrichen; eine andere Aufgabe erscheint nur durch Öffnen (R00144 FA 9/10).*
 - besteht aus genau einem [Hauptbereich](D00002-hauptbereich.md) und genau einer [Seitenleiste](D00003-seitenleiste.md)
 - im [schmalen Layout](D00004-schmales-layout.md) füllt es den Bildschirm, die Seitenleiste steht unter dem Hauptbereich
 - wird bei jedem [Live-Ereignis](D00005-live-ereignis.md) mit geändertem Stand neu gezeichnet

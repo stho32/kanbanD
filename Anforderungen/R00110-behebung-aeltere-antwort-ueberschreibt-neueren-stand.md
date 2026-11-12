@@ -30,7 +30,7 @@ Die technische Entscheidung steht in [ADR-0014](../Dokumentation/ADRs/0014-nur-d
 Belegt im Code (ADR-0014, Kontext; Stand `52bb8d4`):
 
 - Die Oberfläche hält ihren Stand in einem Objekt `S` (`web/app.js:2`). `laden()` (`web/app.js:175`) holt ihn in mehreren Anfragen und übernimmt ihn seit R00061 auf einmal (`Object.assign(S, …)`, `web/app.js:215`).
-- Neu geladen wird von vielen Stellen, ohne dass eine von der anderen weiß: das Live-Ereignis `ereignis()` (`web/app.js:2082`), die Warteschlange, sobald sie leer ist (`web/app.js:326`), Aktionen nach dem Schreiben samt Fehlerpfad (`web/app.js:1402`), das Wiederverbinden (`web/app.js:2118`) und das Fenster beim Öffnen und Blättern (`oeffnen` `:837`, `blaettern` `:843` rufen `dateiLaden()` direkt).
+- Neu geladen wird von vielen Stellen, ohne dass eine von der anderen weiß: das Live-Ereignis `ereignis()` (`web/app.js:2082`), die Warteschlange, sobald sie leer ist (`web/app.js:326`), Aktionen nach dem Schreiben samt Fehlerpfad (`web/app.js:1402`), das Wiederverbinden (`web/app.js:2118`) und das Fenster beim Öffnen (`oeffnen` `:837` ruft `dateiLaden()` direkt) — das Blättern ist durch Betreiber-Entscheidung 2026-11-12 (#144) gestrichen (R00144 FA 9).
 - Nirgends wird geprüft, ob eine Antwort noch die neueste ist. **Es gewinnt, wer zuletzt ankommt, nicht wer zuletzt gefragt hat.** Ungeschützt übernommen wird an vier Stellen:
   1. `S.zustand` sofort beim Eintreffen (`web/app.js:176`), noch vor dem Rest und außerhalb der Übernahme auf einmal
   2. der Hauptblock (`web/app.js:215`)
@@ -143,8 +143,10 @@ Gegeben jeder E2E-Prüfung: Board `entwicklung`, Aufgabe #1 „Abnahme prüfen�
 ### F2 — Alte Antwort vor dem Laden der Warteschlange (Regel 3)
 - [ ] Beispiel: Gegeben dasselbe Vorher wie F1; wenn das `GET /api/aufgaben` des Ereignis-Ladens gehalten wird, `st` „neu“ + Enter eingibt, das erste `GET /api/zustand` nach der Antwort auf den `POST …/teilaufgaben` (das Laden der Warteschlange) ebenfalls gehalten wird und zuerst die alte Antwort, danach das Laden der Warteschlange freigegeben wird, dann fällt die Anzahl `.chk` nie (MutationObserver), und am Ende gelten Datei, Liste, „TEILAUFGABEN 0/1“ und die Gegenprobe nach Neuladen wie in F1
 
-### F3 — Blättern (Regel 6)
-- [ ] Beispiel: Gegeben das Fenster von #1 ist offen und der Reiter „Datei“ zeigt die Datei von #1; wenn `GET /api/aufgaben/1` eines erneuten Ladens gehalten wird, `st` im Fenster zu #2 blättert und danach die Antwort für #1 freigegeben wird, dann zeigt der Reiter „Datei“ die Datei von #2 (`id: 2`, „Board aufräumen“) — nicht die von #1
+### F3 — Fensterwechsel (Regel 6)
+
+*(Auslöser nachgezogen: Betreiber-Entscheidung 2026-11-12 (#144) streicht das Blättern; der Fall prüft das Schließen und Öffnen einer anderen Aufgabe — R00144 FA 9, ADR-0018 Nachtrag N2 Grenze.)*
+- [ ] Beispiel: Gegeben das Fenster von #1 ist offen und der Reiter „Datei“ zeigt die Datei von #1; wenn `GET /api/aufgaben/1` eines erneuten Ladens gehalten wird, `st` das Fenster von #1 schließt und #2 öffnet und danach die Antwort für #1 freigegeben wird, dann zeigt die Ansicht „Datei“ die Datei von #2 (`id: 2`, „Board aufräumen“) — nicht die von #1
 - [ ] Gegenprobe nach Neuladen: Nach `page.reload()` und Öffnen von #2 zeigt der Reiter „Datei“ dieselbe Datei von #2
 
 ### F4 — Markierung „extern“ (Regel 7)
@@ -182,7 +184,7 @@ Je Fall wird die Stelle per `page.route` auf die ausgelieferte Datei, die sie en
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 
-Auslöser ist, dass jede Antwort übernommen wird, sobald sie ankommt, egal wann sie gefragt wurde. Bekommt jedes Laden beim Start eine Nummer und darf nur übernehmen, wer neuer ist als das Gezeigte, kann eine alte Antwort einen neueren Stand nicht mehr überschreiben (F1). Weil eine Antwort, die vor der eigenen Eingabe gelesen wurde, durch die Marke der Warteschlange als veraltet gilt, verschwindet auch eine optimistisch gezeigte Teilaufgabe nicht mehr zwischen Eingabe und Speichern (F2). Prüft das Fenster zusätzlich, ob es noch die Aufgabe zeigt, für die es geladen hat, zeigt es nach schnellem Blättern nie die Datei der vorigen Aufgabe (F3), und das Merken der Pfade erhält den Hinweis auf fremde Änderungen, wenn ein Laden verworfen wird (F4). Weil alles aus einem Laden zusammen oder gar nicht übernommen wird, kommen Liste, Abschnittskopf und Reiter „Datei“ aus demselben Stand — das Fenster widerspricht sich nicht mehr. Der Hebel sitzt im Browser, weil der Fehler dort entsteht; Server und API bleiben unverändert. Der Wächter verhindert, dass die nächste Übernahmestelle die Regel still umgeht, und die Mutanten belegen, dass jeder Fall seine Regel tatsächlich prüft.
+Auslöser ist, dass jede Antwort übernommen wird, sobald sie ankommt, egal wann sie gefragt wurde. Bekommt jedes Laden beim Start eine Nummer und darf nur übernehmen, wer neuer ist als das Gezeigte, kann eine alte Antwort einen neueren Stand nicht mehr überschreiben (F1). Weil eine Antwort, die vor der eigenen Eingabe gelesen wurde, durch die Marke der Warteschlange als veraltet gilt, verschwindet auch eine optimistisch gezeigte Teilaufgabe nicht mehr zwischen Eingabe und Speichern (F2). Prüft das Fenster zusätzlich, ob es noch die Aufgabe zeigt, für die es geladen hat, zeigt es nach schnellem Schließen und Öffnen einer anderen Aufgabe nie die Datei der vorigen (F3), und das Merken der Pfade erhält den Hinweis auf fremde Änderungen, wenn ein Laden verworfen wird (F4). Weil alles aus einem Laden zusammen oder gar nicht übernommen wird, kommen Liste, Abschnittskopf und Reiter „Datei“ aus demselben Stand — das Fenster widerspricht sich nicht mehr. Der Hebel sitzt im Browser, weil der Fehler dort entsteht; Server und API bleiben unverändert. Der Wächter verhindert, dass die nächste Übernahmestelle die Regel still umgeht, und die Mutanten belegen, dass jeder Fall seine Regel tatsächlich prüft.
 
 ## Notizen
 

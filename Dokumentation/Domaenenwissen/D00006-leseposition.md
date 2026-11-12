@@ -33,7 +33,7 @@ Die Stelle, an der du gerade liest — sie soll stehen bleiben, auch wenn sich i
 ## Wechselwirkungen
 
 - [Live-Ereignis](D00005-live-ereignis.md) setzt die Leseposition des Aufgabenfensters heute auf 0 (R00103:15)
-- Blättern zu einer anderen Aufgabe setzt die Leseposition bewusst auf Anfang (R00103:98)
+- Blättern zu einer anderen Aufgabe setzt die Leseposition bewusst auf Anfang (R00103:98) — *aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern ist gestrichen, der Satz gilt für das Öffnen einer anderen Aufgabe (R00103 AK „Leseposition“, R00144 FA 9).*
 
 ## Vorkommen in Anforderungen
 
