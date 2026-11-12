@@ -11,6 +11,8 @@
 - Landmarks aus `header`/`nav`/`main`/`footer`: je genau eine Fundstelle `banner`, `navigation`, `main`, `contentinfo`.
 - Gegenprobe Option B: Unter einer `option` zeigt Chromium die Kinder ebenfalls. Die Spezifikation (ARIA 1.2, „Children Presentational: True“) und Screenreader behandeln sie dagegen als Text. Dieses Screenreader-Verhalten ist nicht gemessen.
 
+**Nachträge**: 2026-11-12 — Leiste auf zwei Ziele, die vier seltenen Ziele im Menü „…“, daraus geweitete Regel 5 (R00140/I0126, Karte #105), siehe [Nachtrag N1](#nachtrag-2026-11-12-n1-leiste-auf-zwei-ziele-vier-seltene-ziele-im-menü-geweitete-regel-5-r00140). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo der Nachtrag gilt.
+
 Ist im Code (gelesen, kanbanD `b17c412`):
 - Die Karte ist `div.ka` mit `tabindex=0`, ohne Rolle und Namen, mit `aria-selected="true"` bei Auswahl (`web/ansicht.js:529`). Defekte und fehlende Karten liegen bei `:537` und `:640`.
 - Der Spaltenname ist ein Knopf `.bk-name` „<Spalte> zuklappen“ (`:708`) bzw. `.zu-streifen` „<Spalte> aufklappen“ (`:693`), beide ohne `aria-expanded`.
@@ -137,10 +139,9 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
    - Ein Live-Ereignis erneuert den Namen über `laden()` → `uebernehmen()` → `render()` (ADR-0014). Ein verworfenes Laden zeichnet nicht und ändert daher auch den Namen nicht.
    - `kartenName` liegt in einem Modul, das im Browser und in Node lädt (Muster `web/uebernahme.js`), damit ein Unit-Test es ohne Browser prüft.
 5. **Aktuelle Seite**:
-   - Der Eintrag mit `an` trägt `aria-current="page"` — genau einmal in der Kopfzeile, gesetzt unter derselben Bedingung wie die Klasse `an` (Helfer `aktuelleSeite`).
-   - Auf einer Berichtsroute trägt es der Auslöser `a#t-ber`, auf dem Board der Leistenlink „Board“.
-   - Im Seitenmenü unter 600 px trägt der Eintrag mit `an` ebenfalls `aria-current="page"`. Der Seitenknopf nennt die Seite schon („Seite: …“).
-   - Geweitet nach I0126/R00140 (Karte #105): Liegt die aktuelle Seite in einem Menü, trägt **der Menüeintrag** `an` + `aria-current` (im offenen Menü „…“ für Aufgaben, Personen, WBS und Einrichten; `web/ansicht.js`, `vMehrPop`). Der Auslöser „…“ bleibt unmarkiert.
+   - Genau ein `nav a[aria-current="page"]`, gesetzt unter derselben Bedingung wie die Klasse `an` in `vNavigation()`. *(→ N1: höchstens ein `aria-current` in der Kopfzeile — der Eintrag der aktiven Seite in der Leiste oder im offenen Menü „…“)*
+   - Auf einer Berichtsroute trägt es der Auslöser `a#t-ber`, auf der WBS der Link des aktiven Kürzels. *(→ N1: die WBS liegt jetzt als Menüeintrag im Menü „…“)*
+   - Im Seitenmenü unter 600 px trägt der Eintrag mit `an` ebenfalls `aria-current="page"`. Der Seitenknopf nennt die Seite schon („Seite: …“). *(→ N1)*
 6. **Klapp-Knopf**:
    - `.bk-name` trägt `aria-expanded="true"`, `.zu-streifen` trägt `aria-expanded="false"`, beide statisch im Markup. Der Zustand steht im Renderer (`spaltenZu()`), nicht in `ausloeserMarkieren()`, das nur Pop-Auslöser führt.
    - Die Namen „<Spalte> zuklappen“ und „<Spalte> aufklappen“ bleiben.
@@ -152,7 +153,7 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
   - auf jeder Route genau eine `h1`;
   - auf dem Board je `section.bahn` genau eine `h2` mit dem Spaltennamen, offen und zugeklappt;
   - jede `.ka` mit Rolle `listitem` und einem Namen, der mit `#<nr>` beginnt;
-  - in der Kopfzeile genau ein Bedienelement mit `an` trägt `aria-current=page` (Leiste oder offenes Menü „…“), unter 600 px keine `nav` und der Seitenknopf mit dem Seitennamen;
+  - bei ≥ 600 px genau ein `nav a[aria-current=page]`, unter 600 px keine `nav` und der Seitenknopf mit dem Seitennamen; *(→ N1: höchstens ein `aria-current` in der Kopfzeile — der Eintrag der aktiven Seite in der Leiste oder im offenen Menü „…“)*
   - Klapp-Knopf mit `aria-expanded` passend zu `spaltenZu()`;
   - je Landmark höchstens eine Fundstelle.
   - Nach der Lehre „Abnahme-Probe positiv und negativ“: Die Probe läuft einmal gegen eine Mutante (z. B. eine zweite `h1` in einer Sicht, eine Karte ohne Namen) und muss dort rot werden.
@@ -196,8 +197,42 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
 - Sagt ein Screenreader die fokussierte Karte bei jedem Live-Ereignis neu an, weil `render()` den Knoten ersetzt und der Fokus zurückgesetzt wird? Das ist dieselbe Klasse wie die offene Frage zu `role=alert` in ADR-0015 (kein stabiler Knoten). Sie ist nur mit echter Hilfstechnik messbar und nicht Teil von #13.
 - Menüs (`role=menu`) enthielten eine `h4` als Kopf (`web/ansicht.js:103`, `:129`, `:359`). Erlaubte Kinder eines Menüs sind nur Einträge, Gruppen und Trenner. Den Namen tragen sie schon über `aria-label`. **Erledigt** mit I0125/R00136 (Karte #109, 2026-11-12): die vier Köpfe sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung hängt an der Klasse; belegt durch `e2e/tests/r00136-menuekoepfe.spec.js`. Die Bereinigung war ein Vorschlag, nicht Teil von #13.
 
+## Nachtrag 2026-11-12 N1: Leiste auf zwei Ziele, vier seltene Ziele im Menü, geweitete Regel 5 (R00140)
+
+**Anlass**: Karte #105 (Betreiber, Board „entwicklung“), [R00140](../../Anforderungen/R00140-navigation-seltene-ziele-im-mehr-menue.md) (I0126). Der Architektur-Durchgang #105 vom 2026-11-11 hatte „keine Technikfrage“ ergeben; der Modell-Nachzug aus dem Architektur-Review #105 (S1/S2/O1/O2) holt die Modelle nach. Die Wahl dieser ADR — Struktur im Renderer, eine Stelle je Regel — gilt unverändert, der Status bleibt `Akzeptiert`. Geändert gegenüber dem Text oben werden die Zusammensetzung der Kopfzeile (Leiste und Menü „…“) und die Fassung von Regel 5 (der Eintrag mit `an`), beides am gebauten Code belegt. Gebaut und am 2026-11-12 auf `main` (Bau-Zweig `karte/105`, Karten-Nacharbeit „Wächter r00035 und r00010 auf das Menü „…“ ziehen“, `d0fa547`).
+
+**Belegt (Code)**:
+- `vNavigation()` (`web/ansicht.js:84–88`) trägt ab 600 px genau zwei Ziele: „Board“ (Leistenlink) und „Berichte ▾“ (`#t-ber`). Aufgaben, Personen, WBS und Einrichten stehen nicht mehr in der Leiste; der frühere WBS-Block `vWbsMenue` ist entfallen.
+- `vSeitenPop()` (`:99–108`) trägt unter 600 px dieselben zwei Ziele; der Seitenknopf `#t-seite` (`:91–94`) nennt weiter die Seite („Seite: …“).
+- `vMehrPop()` (`:126–147`) trägt als **erste Gruppe** die vier seltenen Ziele — Aufgaben, Personen, WBS (je gebundener Anwendung, `:133–136`) und Einrichten —, darunter genau ein `<div role="separator">` (`:146`), dann die Werkzeuge aus `kopfPlaetze(u.stufe, kopfAnsicht()).mehr` (`web/kopfzeile.js`). Jeder Eintrag entsteht in der Form von `vSeitenPop`: `<a class="iz" role="menuitem" tabindex="-1" data-act="seite">` (`:129–132`); der Trenner ist gestaltet in `web/kd-app.css:52`.
+- Der Auslöser „…“ (`#t-mehr`, `kopfElemente().mehr`, `:69`) bleibt unmarkiert. Die Markierung (`an` + `aria-current="page"`) setzt derselbe Helfer `aktuelleSeite` (`:77–80`); für die vier seltenen Ziele liegt sie am Menüeintrag.
+- Der Ist-Stand „Ist im Code (gelesen, kanbanD `b17c412`)“ oben beschreibt die Zeit **vor** dem Bau von #13. #13 ist gebaut und am 2026-11-10 auf `main` gemergt (`85dbc2e`, Probe `e2e/tests/r00113-struktur.spec.js`); die dortige Ist-Liste ist damit überholt, nicht falsch.
+
+### Entschieden
+
+1. **Die Leiste trägt zwei häufige Ziele** (Board, Berichte ▾); die vier seltenen Aufgaben, Personen, WBS und Einrichten liegen im bei jeder Breite vorhandenen Menü „…“. Der Auslöser „…“ bleibt unmarkiert.
+2. **Regel 5 geweitet**: „Der Eintrag mit `an` trägt `aria-current="page"` — **höchstens ein** in der Kopfzeile, genau der Eintrag der aktiven Seite, sobald sein Menü offen ist.“ Sie umfasst die Leiste (Board, Berichte), das Seitenmenü unter 600 px und den Eintrag im Menü „…“ (Aufgaben, Personen, WBS, Einrichten), gesetzt unter derselben Bedingung wie die Klasse `an` (Helfer `aktuelleSeite`). Gewählt statt der engeren Fassung „genau ein `nav a[aria-current=page]`“, weil die aktuelle Seite bei vier der sechs Ansichten in einem Menü liegt, das erst beim Öffnen im DOM steht (NFA R00140 „höchstens ein“).
+3. **Durchsetzung** (geweitete Probe): in der Kopfzeile **höchstens ein** Bedienelement mit `an` trägt `aria-current=page` — genau der Eintrag der aktiven Seite, sobald sein Menü offen ist (Leiste oder offenes Menü „…“); unter 600 px keine `nav` und der Seitenknopf mit dem Seitennamen. Geweitet in `e2e/tests/r00113-struktur.spec.js` (`aktuelleSeitePruefen`, Mutanten `OHNE_AKTUELL`), neue Probe `e2e/tests/r00140-navigation.spec.js` (AK 1–8, 11, 12).
+
+**Verworfen**:
+- Die in-place geänderte Fassung von Regel 5 stehen lassen: Eine akzeptierte ADR wird nicht umgeschrieben; die Weitung gehört als datierter Nachtrag hierher (Skill `adr-vorlage`; Hausbrauch ADR-0007 N1/ADR-0010 N1).
+- Die Leiste weiter mit allen sechs Zielen führen (Status quo): die vier seltenen belegen bei jeder Breite Platz, der dem Filter fehlt — der Anlass der Karte.
+- Ein neuer Zustand „Navigation eingeklappt“ (R00140, Option C): merkt einen Schalter, statt die Gewichtung der Ziele festzulegen; die Karte will es per Default weniger.
+
+**Pre-Mortem**:
+| Gescheitert, weil … | Gegenmaßnahme |
+|---|---|
+| Eine zweite Stelle markiert die Kopfzeile (etwa ein sichtbarer Punkt am „…“-Auslöser) | Regel 5 zählt die Markierung; die Mutante „zweiter Eintrag zusätzlich markiert“ (R00140 AK 9 M2) wird rot |
+| Die aktuelle Seite im Menü bleibt unmarkiert, weil die Probe nur `nav a` prüft | die geweitete `r00113`-Probe prüft „der Eintrag mit `an`“, nicht `nav a` |
+| Eine künftige Kopfzeilen-Sicht vergisst die Markierung | alle drei Stellen (`vNavigation`, `vSeitenPop`, `vMehrPop`) setzen sie über denselben Helfer `aktuelleSeite`; Probe über alle Routen |
+
+**Durchsetzung** (ergänzt): Review-Punkt für `architektur-reviewer` und `code-reviewer`: eine Markierung der aktuellen Seite außerhalb von `aktuelleSeite` (ein zweiter `an`-Träger, ein Punkt am Auslöser) ist ein Befund. Jeder `role=menu`-Eintrag der Kopfzeile trägt `an` + `aria-current` über `aktuelleSeite`.
+
+**Grenze**: Form, Reihenfolge, Beschriftung und Gestaltung des Menü „…“ (Material 3 „Menu“, Divider, Artboard D0002) sind Sache von UX und product-owner (R00140); dieser Nachtrag regelt nur die Markierung (Regel 5) und hält die gebaute Zusammensetzung fest.
+
 ## Quellen / Bezüge
 
 - Karte #13; Material 3 „Structure“ (https://m3.material.io/foundations/designing/structure); WAI-ARIA 1.2 (`listitem`, `option` und `button` mit „Children Presentational“, `aria-selected`, `aria-current`, `aria-expanded`)
 - [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md), [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md), [ADR-0014](0014-nur-die-neueste-antwort-wird-uebernommen.md), [ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md)
 - Baustein [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md), Aspekt [X00005 Struktur für Hilfstechnik](../Architektur/Aspekte/X00005-struktur-fuer-hilfstechnik.md)
+- Nachtrag N1: Karte #105 (Betreiber), [R00140](../../Anforderungen/R00140-navigation-seltene-ziele-im-mehr-menue.md) (I0126, gebaut `d0fa547`); `web/ansicht.js:69`, `:77–88`, `:91–94`, `:99–108`, `:126–147`, `web/kd-app.css:52`, `web/kopfzeile.js` (kopfPlaetze); Proben `e2e/tests/r00113-struktur.spec.js`, `e2e/tests/r00140-navigation.spec.js`

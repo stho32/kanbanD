@@ -3,8 +3,8 @@ id: X00005
 name: Struktur für Hilfstechnik
 art: Aspekt
 geltung: Makro
-befund: Uneinheitlich
-hausantwort: "ADR-0018 (Akzeptiert): Landmarks im Rahmen, eine h1 je Route nur in vHaupt(), Abschnitte h2, Karte listitem in list mit Namen aus kartenName(), aria-current wie die Klasse an, aria-expanded am Klapp-Knopf; Probe über alle Routen"
+befund: Einheitlich
+hausantwort: "ADR-0018 (Akzeptiert): Landmarks im Rahmen, eine h1 je Route nur in vHaupt(), Abschnitte h2, Karte listitem in list mit Namen aus kartenName(), aria-current wie die Klasse an (Leiste oder offenes Menü „…“, Nachtrag N1), aria-expanded am Klapp-Knopf; Probe über alle Routen"
 betrifft:
   - A00009
 herkunft: code
@@ -67,9 +67,17 @@ Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
   - `aria-current` fehlt, die aktuelle Seite ist nur die Klasse `an` (`:76`, Seitenmenü `:97–100`).
   - `aria-expanded` gibt es an Pop-Auslösern (`ausloeserMarkieren`, `web/app.js:707–711`) und an den WBS-Knöpfen (`web/ansicht.js:1310`), nicht am Klapp-Knopf der Spalte (`:693`, `:708`).
 
+Gebaut 2026-11-12 (kanbanD `d0fa547`, gebaut): Die Hausantwort (ADR-0018) ist gebaut und mit #13 am 2026-11-10 auf `main` gemergt (`85dbc2e`, Probe `e2e/tests/r00113-struktur.spec.js`). Im Umfang von R00140/#105 trägt die Kopfzeile:
+
+- **Leiste** (`vNavigation`, `web/ansicht.js:84–88`) ab 600 px genau zwei Ziele: „Board“ und „Berichte ▾“ (`#t-ber`); Aufgaben, Personen, WBS und Einrichten stehen dort nicht mehr (der frühere Block `vWbsMenue` ist entfallen).
+- **Seitenmenü** unter 600 px (`vSeitenPop`, `:99–108`) dieselben zwei Ziele; der Seitenknopf `#t-seite` (`:91–94`) nennt weiter die Seite („Seite: …“).
+- **Menü „…“** (`vMehrPop`, `:126–147`): als **erste Gruppe** die vier seltenen Ziele Aufgaben, Personen, WBS (je gebundener Anwendung, `:133–136`) und Einrichten, darunter genau ein `role="separator"` (`:146`), dann die Werkzeuge aus `kopfPlaetze(...).mehr` (`web/kopfzeile.js`). Jeder Eintrag in der Form von `vSeitenPop` (`role="menuitem" tabindex="-1" data-act="seite"`, `:129–132`); der Auslöser „…“ (`#t-mehr`, `:69`) bleibt unmarkiert.
+- **Markierung:** `aria-current="page"` setzt derselbe Helfer `aktuelleSeite` (`:77–80`) wie die Klasse `an`; für die vier seltenen Ziele liegt sie am Menüeintrag. Der Trenner ist gestaltet in `web/kd-app.css:52`.
+- Der Ist-Stand vom 2026-11-08 oben („vor dem Bau“) ist damit überholt; Karte, Überschriften, Landmarks und `aria-expanded` sind nach #13 gebaut (Beleg `e2e/tests/r00113-struktur.spec.js`), die Kopfzeile nach #105/R00140 geweitet.
+
 ## Abweichungen
 
-- Bis zum Bau von #13 weicht jede Route von der Hausantwort ab (siehe Systemantwort).
+- keine — die Hausantwort ist gebaut; die frühere Abweichung (Ist 2026-11-08, „vor dem Bau“) ist geschlossen. Die Weitung von Regel 5 im Umfang R00140/#105 (die aktuelle Seite kann im Menü „…“ liegen) steht in [ADR-0018 Nachtrag N1](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer.md) und ist Hausantwort, keine Abweichung.
 
 ## Offene Fragen
 
@@ -82,3 +90,4 @@ Ist 2026-11-08 (kanbanD `b17c412`, gelesen, vor dem Bau):
 - erweitert 2026-11-10 nach #15 (ADR-0019): vierter Teil des Kartennamens für einen vergessenen Timer; die Durchsetzung ist der E2E der Karte #15 über Rolle und Namen, nicht eine zweite Probe über alle Routen
 - nachgeführt 2026-11-10 (arev Karte #15, S3): der Zusatz steht **vor** „, ausgewählt“ — hier stand „am Ende des Namens“; der Bau folgt ADR-0019 und R00114 FA 9, der Aspekttext war veraltet
 - erweitert 2026-11-12 nach I0125/R00136 (Karte #109): kein `h1`–`h6` in `role=menu`; die vier Menüköpfe sind klassen-gestaltete Nicht-Überschrift-Elemente (`.pop-kopf`), die Gestaltung an der Klasse; die „Offene Fragen"-Zeile ist damit geschlossen
+- nachgeführt 2026-11-12 nach R00140 (Karte #105, ADR-0018 Nachtrag N1): die Hausantwort ist gebaut (`85dbc2e`); die Kopfzeile trägt in der Leiste zwei Ziele (Board, Berichte ▾) und im Menü „…“ die vier seltenen Ziele (Aufgaben, Personen, WBS je gebundener Anwendung, Einrichten) als erste Gruppe, darunter ein Trenner, dann die Werkzeuge; die Systemantwort ist auf den gebauten Stand gezogen (`d0fa547`, `web/ansicht.js:84–147`, `web/kd-app.css:52`)
