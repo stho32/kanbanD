@@ -771,8 +771,10 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
   });
 });
 
-// ux zu Karte #12: Der Hinweis im Fenster überdeckt den unteren Rand des Körpers; der Fokus darf nie darunter liegen
-// (scroll-padding-bottom aus --kd-hinweis-h, PO Z. 162).
+// ux zu Karte #12 (Nacharbeit #119): Der Hinweis im Fenster überdeckt den unteren Rand des Körpers; der Fokus darf nie
+// darunter liegen (scroll-padding-bottom aus --kd-hinweis-h, PO Z. 162) — auch nicht an den letzten Feldern hinter
+// „Spalte“ (Fälligkeit, „heute“/„morgen“/„+1 Woche“). Darum: vom Auslöser tabben, bis der Rundlauf zurück in die
+// Kopfzeile führt; über den ganzen Weg darf kein Fokus-Rechteck den Hinweis schneiden.
 async function fokusNieUnterDemHinweis(page, k) {
   await page.goto(k.adresse);
   await page.locator('.ka[data-id="1"] .id').click();
@@ -782,20 +784,21 @@ async function fokusNieUnterDemHinweis(page, k) {
   const hinweis = page.locator('[aria-modal="true"] .toast[role="status"]');
   await expect(hinweis).toContainText('gelöscht');
   const verdeckt = [];
-  for (let i = 0; i < 60; i++) {
+  let kopfErreicht = false;
+  for (let i = 0; i < 120; i++) {
     const lage = await page.evaluate(() => {
       const e = document.activeElement;
       const t = document.querySelector('[aria-modal="true"] .toast');
       const f = e.getBoundingClientRect();
       const h = t.getBoundingClientRect();
       const schneidet = f.left < h.right && f.right > h.left && f.top < h.bottom && f.bottom > h.top;
-      return { label: e.getAttribute('aria-label') || e.id || e.textContent.trim().slice(0, 20), schneidet, imHinweis: t.contains(e) };
+      return { label: e.getAttribute('aria-label') || e.id || e.textContent.trim().slice(0, 20), schneidet, imHinweis: t.contains(e), imKopf: Boolean(e.closest('#fenster .mod-kopf')) };
     });
     if (lage.schneidet && !lage.imHinweis) verdeckt.push(lage.label);
-    if (lage.label === 'Spalte') break;
+    if (lage.imKopf) { kopfErreicht = true; break; }
     await page.keyboard.press('Tab');
   }
-  await expect(page.getByLabel('Spalte', { exact: true })).toBeFocused();
+  expect(kopfErreicht, 'Tab erreichte die Kopfzeile des Fensters nicht — der Rundlauf ist zu kurz oder der Fokus verließ das Fenster').toBe(true);
   await expect(hinweis).toBeVisible();
   expect(verdeckt).toEqual([]);
 }
@@ -806,7 +809,7 @@ test.describe('R00112 Fokus nie unter dem Hinweis, 320 px Touch', () => {
   test.afterEach(() => k.stoppen());
 
   for (const [bestand, zeiten] of [[mitZeit, 'einer Zeit'], [mitZweiZeiten, 'zwei Zeiten']]) {
-    test(`vom ✕ der Zeit bis „Spalte“ schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
+    test(`vom ✕ der Zeit bis zurück in die Kopfzeile schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
       k = await kanbanStarten(einrichten(bestand()));
       await alsPerson(page, 'st');
       await fokusNieUnterDemHinweis(page, k);
@@ -820,7 +823,7 @@ test.describe('R00112 Fokus nie unter dem Hinweis, 414 px', () => {
   test.afterEach(() => k.stoppen());
 
   for (const [bestand, zeiten] of [[mitZeit, 'einer Zeit'], [mitZweiZeiten, 'zwei Zeiten']]) {
-    test(`vom ✕ der Zeit bis „Spalte“ schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
+    test(`vom ✕ der Zeit bis zurück in die Kopfzeile schneidet kein Fokus-Rechteck den Hinweis, bei ${zeiten} (#12)`, async ({ page }) => {
       k = await kanbanStarten(einrichten(bestand()));
       await alsPerson(page, 'st');
       await fokusNieUnterDemHinweis(page, k);
