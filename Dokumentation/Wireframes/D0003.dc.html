@@ -1129,7 +1129,6 @@ Beim Stopp wird genau diese Zeile ersetzt, nicht angehängt.</textarea></div><di
 <ul>
 <li><b>Freigabe.</b> Der Zustand wartet auf die Freigabe des product-owner (Oberflächen-Bubbles B0660–B0662); B0659 (Fokus-Ebene) ist frei baubar.</li>
 <li><b>Menübreite bei 320 px.</b> Gezeichnet sind 200 px (Mindestbreite), damit die Endkante am ⋮ bleibt und das Menü ganz im Fenster liegt; 280 px liefen links aus dem 320er Fenster. Die Anforderung nennt <span class="mono">min(280px, 100vw − 16px)</span> als Obergrenze, nicht als feste Breite. Beim Bau zu bestätigen: klemmt das Menü am Fensterrand (Endkante ≠ Auslöser) oder schrumpft es auf die Mindestbreite?</li>
-<li><b>Wortlaut „Zurückholen“ in der Archivleiste.</b> Die gebaute Leiste schreibt heute „zurückholen“ (klein); R00144 AK 4 fordert denselben Wortlaut wie der Menüeintrag, also „Zurückholen“. Gezeichnet ist die Forderung.</li>
 </ul>
 </div>
 </section>
@@ -1244,9 +1243,9 @@ Beim Stopp wird genau diese Zeile ersetzt, nicht angehängt.</textarea></div><di
 <h3>WAS DIE ZAHLEN BELEGEN</h3>
 <ul>
 <li><b>Kopfhöhe (M3).</b> Bei 320 px Touch sinkt der Kopf von 51 px auf 48 px clientHeight (49 px mit Rahmen); das ist <span class="mono">max(36, --kd-ziel) + 2 = 50</span> oder darunter, und die drei Ziele stehen auf derselben Oberkante. Bei 414 px fein und 1280 px bleibt er 35 px clientHeight (36 px mit Rahmen) hoch. Die Seite scrollt in keiner gezeichneten Breite quer.</li>
-<li><b>Gefahreintrag (M4).</b> Der fokussierte Eintrag ist weiß auf der Akzentfläche (6,04:1 / 4,67:1). Weiß auf <span class="mono">--kd-warn</span> wäre dunkel 2,65:1 und ist ausdrücklich nicht gezeichnet; die Warnfarbe trägt nur der ungeförderte Eintrag (5,88:1 / 6,03:1).</li>
+<li><b>Gefahreintrag (M4).</b> Der fokussierte Eintrag ist weiß auf der Akzentfläche (6,04:1 / 4,67:1). Weiß auf <span class="mono">--kd-warn</span> wäre dunkel 2,65:1 und ist ausdrücklich nicht gezeichnet; die Warnfarbe trägt nur der ungefährdete Eintrag (5,88:1 / 6,03:1).</li>
 <li><b>Fokusring.</b> <span class="mono">--kd-accent-ink</span> liegt auf beiden Flächen deutlich über 3:1 (hell 8,48–9,97, dunkel 9,81–11,73); der Ring ist 2 px mit 2 px Abstand, wie im Haus.</li>
-<li><b>Ziele.</b> Ansicht, ⋮, ✕, Menüeintrag und Anhang-✕ erreichen <span class="mono">--kd-ziel</span> über ihre eigene Fläche (fein 28 ≥ 24, Touch 48 ≥ 44, ADR-0012 Regel 3). Der Trefferhof ist im Bild gestrichelt eingezeichnet.</li>
+<li><b>Ziele.</b> Ansicht, ⋮, ✕, Menüeintrag und Anhang-✕ sind <b>28 × 28 px</b> fein und <b>48 × 48 px</b> bei Touch — die gebauten Werte: Auslöser <span class="mono">.fm-aus</span> und Menüeintrag <span class="mono">.fm-e</span> <span class="mono">max(28px, --kd-ziel)</span> (<span class="mono">web/kd-app.css:286/296</span>), Anhang-✕ <span class="mono">.btn-sym</span> <span class="mono">--kd-row</span> 28 px, Touch 48 (<span class="mono">web/kd-base.css:29</span>); ADR-0012 Regel 3 fordert fein ≥ 24, Touch ≥ 44. Der Trefferhof ist im Bild gestrichelt eingezeichnet.</li>
 </ul>
 </div>
 </section>
