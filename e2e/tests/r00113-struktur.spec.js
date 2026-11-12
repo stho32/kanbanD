@@ -318,7 +318,7 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
     /** Zugänglicher Name je Listeneintrag einer Spalte, wie ihn die Hilfstechnik ansagt (leer ohne Namen). */
     const namenDerSpalte = (page, name) => spalte(page, name).getByRole('list').getByRole('listitem')
       .evaluateAll(eintraege => eintraege.map(e => e.getAttribute('aria-label') || ''));
-    const NAMEN_ZU_ERLEDIGEN = ['#1 eins, Fehler', '#2 zwei, Funktion', '#3 Ölwechsel & <Prüfung>'];
+    const NAMEN_ZU_ERLEDIGEN = ['#1 eins, Fehler, seit 0 Stunden in Zu erledigen', '#2 zwei, Funktion, seit 0 Stunden in Zu erledigen', '#3 Ölwechsel & <Prüfung>, seit 0 Stunden in Zu erledigen'];
 
     test('US-5: Karte #1 wird als „#1 eins, Fehler“ angesagt', async ({ page }) => {
       const k = await starten(page);
@@ -330,7 +330,7 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       await expect(eintraege).toHaveCount(3);
       const namen = await namenDerSpalte(page, 'Zu erledigen');
       expect(namen).toEqual(NAMEN_ZU_ERLEDIGEN);
-      const eins = liste.getByRole('listitem', { name: '#1 eins, Fehler', exact: true });
+      const eins = liste.getByRole('listitem', { name: '#1 eins, Fehler, seit 0 Stunden in Zu erledigen', exact: true });
       await expect(eins.getByRole('button', { name: /Neue E-Mail/ })).toHaveCount(1);
       await expect(eins.getByRole('link').first()).toHaveAccessibleName(/\S/);
       expect(await eins.ariaSnapshot()).toContain('fällig 28.10.2026');
@@ -374,11 +374,11 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       const eins = page.locator('.ka[data-id="1"]');
       await eins.click({ modifiers: ['ControlOrMeta'] });
       await expect(eins).toHaveClass(/gewaehlt/);
-      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, ausgewählt');
+      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, seit 0 Stunden in Zu erledigen, ausgewählt');
       await expect(page.locator('#main [aria-selected]')).toHaveCount(0);
       await eins.click({ modifiers: ['ControlOrMeta'] });
       await expect(eins).not.toHaveClass(/gewaehlt/);
-      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler');
+      await expect(eins).toHaveAttribute('aria-label', '#1 eins, Fehler, seit 0 Stunden in Zu erledigen');
     });
 
     test('US-7: defekte und fehlende Karten haben einen Namen', async ({ page }) => {
@@ -398,7 +398,7 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       const antwort = await page.request.patch(k.adresse + 'api/aufgaben/2', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { titel: 'umbenannt' } });
       expect(antwort.ok()).toBe(true);
       await expect.poll(() => page.evaluate(() => window.kdTest.gezeichnet())).toBe(true);
-      const zwei = spalte(page, 'Zu erledigen').getByRole('listitem', { name: '#2 umbenannt, Funktion', exact: true });
+      const zwei = spalte(page, 'Zu erledigen').getByRole('listitem', { name: '#2 umbenannt, Funktion, seit 0 Stunden in Zu erledigen', exact: true });
       await expect(zwei).toHaveCount(1);
       await expect(zwei.locator('.t')).toHaveText('umbenannt');
       expect(await page.evaluate(() => window.ohneNeuladen)).toBe(true);

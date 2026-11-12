@@ -93,6 +93,16 @@ test('seitText: unter 48 Stunden abgerundete Stunden, ab 48 Stunden kaufmännisc
   assert.strictEqual(seitText(30 * tag), 'seit 30 Tagen');
 });
 
+// R00126 FA 5: dieselben Rechenbeispiele trägt das Alter in der Spalte — 0 h, 5 h, 41 Tage (ADR-0013, keine zweite „seit …“-Regel)
+test('R00126 seitText: 0 Stunden, 5 Stunden, 41 Tage', () => {
+  const { seitText } = require('../../web/kultur.js');
+  const stunde = 36e5, tag = 864e5;
+  assert.strictEqual(seitText(0), 'seit 0 Stunden');
+  assert.strictEqual(seitText(5 * stunde), 'seit 5 Stunden');
+  assert.strictEqual(seitText(41 * tag), 'seit 41 Tagen');
+  assert.strictEqual(seitText(-1), 'seit 0 Stunden', 'ein Eintritt nach jetzt zählt als 0');
+});
+
 // R00134: die eine Zählwort-Hilfe zieht nach web/kultur.js (ADR-0013) — 1 → Einzahl, sonst Mehrzahl (PO Z. 117)
 test('zaehlwort: nach der Zahl 1 die Einzahl, sonst die Mehrzahl', () => {
   const { zaehlwort } = require('../../web/kultur.js');

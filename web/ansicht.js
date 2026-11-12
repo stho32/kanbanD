@@ -640,7 +640,17 @@ function vSchaetzung(a) {
   const wert = hm(a.estimate * 6e4);
   return `<span class="schaetzung"><span class="vh">Geschätzt ${wert}</span><span aria-hidden="true">≈ ${wert}</span></span>`;
 }
-function vKarte(a, fertig) {
+/** Die Spaltenwechsel einer Aufgabe aus den geladenen Bewegungen des Boards (`S.bew`, R00126); ohne Bewegungen leer.
+    Der Blick ist gemerkt: ein Zeichnen ohne neues Laden baut die Zuordnung nicht neu. */
+let wechselStand = null, wechselJeAufgabe = new Map();
+function wechselDerAufgabe(nr) {
+  if (wechselStand !== S.bew) {
+    wechselStand = S.bew;
+    wechselJeAufgabe = new Map(((S.bew && S.bew.aufgaben) || []).map(x => [x.nummer, x.wechsel]));
+  }
+  return wechselJeAufgabe.get(nr);
+}
+function vKarte(a, fertig, spalte) {
   const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
   // vorgelesen wird „fällig“ mit Jahr, die sichtbare Kurzform bleibt stumm
@@ -649,10 +659,17 @@ function vKarte(a, fertig) {
   const rs = laufende(a), eigen = rs.some(z => z.wer === S.ich), erster = rs.map(z => laufBeginn(a, z)).sort((x, y) => x - y)[0];
   const laufzeit = rs.length ? Date.now() - erster : 0;
   const vergessen = istVergessen(laufzeit);
-  const zusatz = vergessen ? `Timer läuft ${seitText(laufzeit)}` : '';
+  const alter = alterText(wechselDerAufgabe(a.nummer), spalte, Date.now());
+  let seit = '', alterVoll = '';
+  if (alter) {
+    seit = `<span class="seit" aria-hidden="true">${esc(alter.kurz)}</span>`;
+    alterVoll = alter.voll;
+  }
+  const zusaetze = [vergessen ? `Timer läuft ${seitText(laufzeit)}` : ''];
+  if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusatz))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -847,7 +864,7 @@ function vLane(sp, i, alle) {
     const a = aufgabe(nr);
     if (!a) return archiv || gefiltert ? null : { nr, html: defektZuNummer(nr) ? vDefekt(nr, defektZuNummer(nr)) : vFehlt(nr) };
     if (!!a.archiviert !== archiv || !passt(a, S.ui.filter, um)) return null;
-    return { nr, html: vKarte(a, letzte) };
+    return { nr, html: vKarte(a, letzte, sp.name) };
   }).filter(Boolean);
   // Tagesgruppen-Trenner (R00124) vor der ersten sichtbaren Karte ihrer Gruppe; der Trenner zählt nicht als Karte
   const inhalt = karten.map(k => (k.nr != null && trenner.get(k.nr) ? vDatumsTrenner(trenner.get(k.nr)) : '') + k.html).join('');

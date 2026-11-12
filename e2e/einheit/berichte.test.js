@@ -44,7 +44,7 @@ test('Zeiten nach Person, Anzahl, Lesen', () => {
   assert.deepStrictEqual(filterAus('kaputt'), FILTER_LEER);
 });
 
-const { burndown, spalteAm } = require('../../web/berichte.js');
+const { burndown, spalteAm, eintrittAm, alterText } = require('../../web/berichte.js');
 
 const BEW = {
   spalten: ['A', 'B', 'Z'], jetzt: '2026-10-21 12:00',
@@ -62,6 +62,40 @@ test('Spalte zu einem Zeitpunkt', () => {
   assert.strictEqual(spalteAm(w, new Date(2026, 9, 17).getTime()), null);
   assert.strictEqual(spalteAm(w, new Date(2026, 9, 20, 10, 0).getTime()), 'B');
   assert.strictEqual(spalteAm(BEW.aufgaben[2].wechsel, jetzt), null);
+});
+
+// R00126: Eintritt in die heutige Spalte — Schwester von spalteAm, liefert statt des Namens den Zeitpunkt (ADR-0019 N5)
+test('R00126 Eintritt: der letzte Wechsel in die heutige Spalte, nicht der erste', () => {
+  const w = [{ zeitpunkt: '2026-10-02 09:00', spalte: 'x' }, { zeitpunkt: '2026-10-03 09:00', spalte: 'y' }, { zeitpunkt: '2026-10-04 09:00', spalte: 'x' }];
+  assert.strictEqual(eintrittAm(w, new Date(2026, 9, 11).getTime()), '2026-10-04 09:00', 'der letzte Eintritt, nicht der erste (02.10.)');
+  const b = BEW.aufgaben[1].wechsel;
+  assert.strictEqual(eintrittAm(b, new Date(2026, 9, 21, 12, 0).getTime()), '2026-10-21 11:00');
+});
+
+test('R00126 Eintritt: ein Wechsel in der Zukunft zählt nicht', () => {
+  const w = [{ zeitpunkt: '2026-10-18 09:00', spalte: 'A' }, { zeitpunkt: '2026-10-20 10:00', spalte: 'B' }];
+  assert.strictEqual(eintrittAm(w, new Date(2026, 9, 19).getTime()), '2026-10-18 09:00');
+  assert.strictEqual(eintrittAm(w, new Date(2026, 9, 17).getTime()), null, 'vor dem ersten Wechsel kein Eintritt');
+});
+
+test('R00126 Eintritt: ohne Wechsel oder vom Board genommen kein Eintritt (null)', () => {
+  assert.strictEqual(eintrittAm([], jetzt), null);
+  assert.strictEqual(spalteAm(BEW.aufgaben[2].wechsel, jetzt), null);
+  assert.strictEqual(eintrittAm(BEW.aufgaben[2].wechsel, jetzt), null, 'der letzte Wechsel nimmt die Aufgabe vom Board');
+});
+
+test('R00126 Alter: Kurzform und Vollform aus einer Dauer (seitText)', () => {
+  const sechs = [{ zeitpunkt: '2026-10-05 09:00', spalte: 'In Arbeit' }];
+  assert.deepStrictEqual(alterText(sechs, 'In Arbeit', new Date(2026, 9, 11, 9, 0).getTime()), { kurz: 'seit 6 Tagen', voll: 'seit 6 Tagen in In Arbeit' });
+  const heute = [{ zeitpunkt: '2026-10-11 04:00', spalte: 'In Arbeit' }];
+  assert.strictEqual(alterText(heute, 'In Arbeit', new Date(2026, 9, 11, 9, 0).getTime()).kurz, 'seit 5 Stunden');
+  assert.strictEqual(alterText(heute, 'In Arbeit', new Date(2026, 9, 11, 4, 0).getTime()).kurz, 'seit 0 Stunden');
+});
+
+test('R00126 Alter: ohne Eintritt kein Wert (null)', () => {
+  assert.strictEqual(alterText([], 'Eingang', jetzt), null);
+  assert.strictEqual(alterText(BEW.aufgaben[2].wechsel, 'A', jetzt), null);
+  assert.strictEqual(alterText([{ zeitpunkt: '2026-10-18 09:00', spalte: 'A' }], null, jetzt), null, 'ohne heutige Spalte kein Wert');
 });
 
 test('Burndown je Tag, Zeitraum, Ausschlüsse', () => {

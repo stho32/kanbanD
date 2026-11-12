@@ -10,12 +10,17 @@
     return gefunden.bezeichnung;
   }
 
-  /** `#<nr> <Titel>[, <Bezeichnung der Klasse>][, <Zusatz>][, ausgewählt]`. */
-  function kartenName({ nummer, titel, klasse }, klassen, gewaehlt, zusatz) {
+  /** `#<nr> <Titel>[, <Bezeichnung der Klasse>][, <Zusatz>…][, ausgewählt]`. `zusaetze` ist eine Liste von Zusätzen in fester
+      Reihenfolge (Timer, dann Alter); eine Zeichenkette gilt als deren einziges Element, leere Teile fallen samt Komma weg. */
+  function kartenName({ nummer, titel, klasse }, klassen, gewaehlt, zusaetze) {
     const teile = [`#${nummer} ${titel}`];
     const bezeichnung = klassenBezeichnung(klasse, klassen);
     if (bezeichnung) teile.push(bezeichnung);
-    if (zusatz) teile.push(zusatz);
+    if (zusaetze) {
+      let liste = zusaetze;
+      if (!Array.isArray(zusaetze)) liste = [zusaetze];
+      for (const zusatz of liste) if (zusatz) teile.push(zusatz);
+    }
     if (gewaehlt) teile.push('ausgewählt');
     return teile.join(', ');
   }

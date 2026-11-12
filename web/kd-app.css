@@ -162,6 +162,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka .r3>*{white-space:nowrap;flex:none}
 .ka .r3 .due{font-family:var(--kd-mono)}
 .ka .r3 .sum{font-family:var(--kd-mono)}
+.ka .r3 .seit{font-family:var(--kd-mono);white-space:nowrap}
+.ka[data-eigen] .seit{color:var(--kd-text)}
 .ka .r3 .preis{position:relative;font-family:var(--kd-mono);white-space:nowrap}
 .ka[data-eigen] .preis{color:var(--kd-text)}
 /* R00139 (ADR-0011 Nachtrag N1): Text auf einer eigenen Nutzerfarbe trägt `--kd-text` wie das Preisetikett — die Zeile r3 mit Σ-Zeit,
