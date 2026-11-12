@@ -284,6 +284,30 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     await expect(zeile.locator('[aria-hidden="true"]')).toHaveCount(3); // zwei Initialen, ein Trenner
   });
 
+  test('US-3: Zuständige ändern sich allein in „Details“; der Rückwechsel zeigt den neuen Stand', async ({ page }) => {
+    await oeffnen(page);
+    await reiter(page, 'Details');
+    await page.locator('#fenster .mod-main [data-act="zustaendig"][data-arg="pl"]').click();
+    await expect.poll(() => k.lies('aufgaben/0001-telemetrie.md')).toContain('assignees: [st, ag, pl]');
+    await reiter(page, 'Inhalt');
+    await expect(page.locator('#inhalt-spalte [role="group"][aria-label="Zuständig"]')).toContainText('Paula');
+  });
+
+  test('US-3: Leerfall — Aufgabe ohne Board und ohne Zuständige zeigt „niemand“ ohne Bedienelement', async ({ page }) => {
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.locator('tr[data-zeile="2"] a').click();
+    const s = spalte(page);
+    await expect(s).toBeVisible();
+    await expect(s.locator('[role="group"][aria-label="Zuständig"]')).toHaveText('niemand');
+    await expect(s.locator('[role="group"][aria-label="Zuständig"] button, [role="group"][aria-label="Zuständig"] input, [role="group"][aria-label="Zuständig"] [tabindex]')).toHaveCount(0);
+    await expect(s.locator('[data-af="spalte"]')).toHaveCount(0);
+    await expect(s).toContainText('nicht auf diesem Board');
+    await expect(s.locator('[data-af="klasse"]')).toHaveValue('');
+    await expect(s.locator('[data-af="labels"]')).toHaveValue('');
+    await expect(s.locator('[data-af="labels"]')).toHaveAttribute('placeholder', 'ui, daten');
+    await expect(s.locator('[data-af="faellig"]')).toHaveValue('');
+  });
+
   /* ── Fehler und Grenzen ── */
 
   test('423 Board: nur „Spalte“ degradiert, die übrigen Felder bleiben bedienbar', async ({ page }) => {
