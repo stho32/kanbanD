@@ -97,6 +97,8 @@ test.describe('R00142', () => {
     await page.locator('.ka[data-id="1"]').click({ button: 'right' });
     await page.locator('#kmenue .km-e', { hasText: 'Duplizieren' }).click();
     await expect(hinweis(page)).toBeVisible();
+    await expect(hinweis(page)).toContainText('Keine Verbindung zum Server — nichts geändert.');
+    await expect(hinweis(page)).not.toContainText('Failed to fetch');
     await expect(hinweis(page)).not.toContainText('angelegt');
     await expect(page.locator('.ka[data-id="2"]')).toHaveCount(0);
   });

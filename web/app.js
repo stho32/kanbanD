@@ -83,11 +83,20 @@ function ichSetzen(k) {
   try { sessionStorage.setItem('kanbanD.ich', k); } catch (_) { }
 }
 
+/** Der deutsche Satz für einen abgebrochenen Netzweg (Karte #127): `fetch` wirft dann einen TypeError mit englischem Text
+    („Failed to fetch“), angezeigt wird aber überall `f.message`. */
+const NETZ_FEHLER = 'Keine Verbindung zum Server — nichts geändert.';
+
 async function api(methode, pfad, daten) {
   const headers = {};
   if (daten) headers['Content-Type'] = 'application/json';
   if (S.ich) headers['X-KanbanD-Wer'] = S.ich;
-  const r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined });
+  let r;
+  try {
+    r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined });
+  } catch (_) {
+    throw Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
+  }
   const text = await r.text();
   const json = text ? JSON.parse(text) : null;
   if (!r.ok) throw Object.assign(new Error(json && json.fehler || r.statusText), { status: r.status, daten: json });
@@ -382,7 +391,8 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
 
 /** Inhalt eines Anhangs als Blob; wirft mit dem Grund des Servers. */
 async function anhangLesen(pfad) {
-  const r = await fetch(pfad);
+  let r;
+  try { r = await fetch(pfad); } catch (_) { throw new Error(NETZ_FEHLER); }
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).fehler || r.statusText);
   return r.blob();
 }
@@ -400,7 +410,8 @@ async function anhaengeHochladen(dateien) {
 async function anhangSenden(nummer, datei, name) {
   const form = new FormData();
   form.append('datei', datei, name);
-  const r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form });
+  let r;
+  try { r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form }); } catch (_) { throw new Error(NETZ_FEHLER); }
   const antwort = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(antwort.fehler || r.statusText);
   return antwort;

@@ -193,6 +193,8 @@ test.describe('R00141 Fehlerpfad', () => {
     await page.getByRole('menuitem', { name: 'Endgültig löschen' }).click();
     await dialog(page).getByRole('button', { name: 'endgültig löschen' }).click();
     await expect(dialog(page).getByRole('alert')).toBeVisible();
+    await expect(dialog(page).getByRole('alert')).toHaveText('Keine Verbindung zum Server — nichts geändert.');
+    await expect(dialog(page)).not.toContainText('Failed to fetch');
     expect(k.lies('aufgaben/0001-eins.md')).toContain('id: 1');
     expect(commits(k)).toBe(vorher);
   });

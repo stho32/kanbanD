@@ -429,6 +429,30 @@ test.describe('R00112 Anhang im Fenster', () => {
     expect(daliegt(PLAN)).toBe(true);
     await expect(page.locator('.toast').getByRole('button', { name: 'rückgängig' })).toHaveCount(0);
   });
+
+  test('US-9: abgebrochene Verbindung beim Lesen — deutscher Satz, nichts gelöscht (Karte #127)', async ({ page }) => {
+    await fensterAuf(page);
+    const geloescht = [];
+    page.on('request', r => { if (r.method() === 'DELETE') geloescht.push(r.url()); });
+    await page.route('**/api/aufgaben/1/anhaenge/plan.pdf', route => route.abort());
+    await page.getByLabel('Anhang plan.pdf entfernen').click();
+    const meldung = page.locator('#fenster .mod-fuss [role="alert"]');
+    await expect(meldung).toContainText('Anhang „plan.pdf“ nicht entfernt: Keine Verbindung zum Server — nichts geändert.');
+    await expect(meldung).not.toContainText('Failed to fetch');
+    await expect(anhaenge(page)).toHaveText(['plan.pdf']);
+    expect(geloescht).toEqual([]);
+    expect(daliegt(PLAN)).toBe(true);
+  });
+
+  test('US-9: abgebrochene Verbindung beim Hochladen — deutscher Satz, nichts angelegt (Karte #127)', async ({ page }) => {
+    await fensterAuf(page);
+    await page.route('**/api/aufgaben/1/anhaenge', route => route.request().method() === 'POST' ? route.abort() : route.continue());
+    await page.getByLabel('Anhang hinzufügen').setInputFiles({ name: 'neu.txt', mimeType: 'text/plain', buffer: Buffer.from('neu') });
+    const meldung = page.locator('#fenster .mod-fuss [role="alert"]');
+    await expect(meldung).toHaveText('Keine Verbindung zum Server — nichts geändert.');
+    await expect(anhaenge(page)).toHaveText(['plan.pdf']);
+    expect(daliegt('aufgaben/0001-eins/neu.txt')).toBe(false);
+  });
 });
 
 // B0463 (ADR-0017 Regel 5, Artboard D0003 #hinweis-im-fenster, PO Z. 162–164): bei offenem modalem Fenster steht der
