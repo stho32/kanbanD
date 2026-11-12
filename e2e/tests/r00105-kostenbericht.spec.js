@@ -61,7 +61,7 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(eintrag).toHaveAttribute('href', '#/berichte/kosten');
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/kosten$/);
-    await expect(page).toHaveTitle('Kosten — kanbanD');
+    await expect(page).toHaveTitle('Berichte · Kosten — kanbanD');
     await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · geschätzte API-Kosten · liest nur');
     await expect(zeilen(page)).toHaveText([`Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte`]);
     await expect(page.locator('#kosten')).not.toContainText('≈');

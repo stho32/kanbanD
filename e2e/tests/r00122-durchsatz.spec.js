@@ -53,7 +53,7 @@ test('R00122 B0564: Menüeintrag in VERLAUF, Route, Fenstertitel, Kopfleiste, K�
     await expect(eintrag).toContainText('Erledigte Aufgaben je Zeitraum – Balken aus der Git-Geschichte dieses Boards.');
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/durchsatz$/);
-    await expect(page).toHaveTitle('Durchsatz — kanbanD');
+    await expect(page).toHaveTitle('Berichte · Durchsatz — kanbanD');
     await expect(page.locator('h1.vh')).toHaveText('Berichte · Durchsatz');
     await expect(page.locator('#main .leiste').first()).toContainText('Durchsatz je Zeitraum · liest nur · erledigte Aufgaben je Periode');
     // g u öffnet den Bericht

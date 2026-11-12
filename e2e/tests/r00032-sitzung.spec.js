@@ -18,10 +18,10 @@ test.describe('R00032', () => {
 
   test('US-1 und US-2: letztes Board, Titel mit Timer', async ({ page }) => {
     await page.goto(k.adresse);
-    await expect(page).toHaveTitle('(1 ▶) Entwicklung — kanbanD');
+    await expect(page).toHaveTitle('(1 ▶) Board · Entwicklung — kanbanD');
     await page.locator('#t-board').click();
     await page.getByRole('dialog', { name: 'Boards' }).locator('[data-act="board-wahl"][data-arg="test"]').click();
-    await expect(page).toHaveTitle('(1 ▶) Test — kanbanD');
+    await expect(page).toHaveTitle('(1 ▶) Board · Test — kanbanD');
     await page.goto(k.adresse);
     await expect(page.locator('#t-board')).toContainText('Test');
   });

@@ -76,7 +76,7 @@ test.describe('R00100 Bestand nach Labels', () => {
     if (person) await alsPerson(page, person);
     await page.goto(k.adresse + '#/board/fabrik');
     await liveBereit(page);
-    await expect(page).toHaveTitle('fabrik — kanbanD'); // das Board ist gewählt und gemerkt; die Berichte gelten dem gemerkten Board
+    await expect(page).toHaveTitle('Board · fabrik — kanbanD'); // das Board ist gewählt und gemerkt; die Berichte gelten dem gemerkten Board
     await page.goto(k.adresse + '#/berichte/bestand');
     await expect(page.locator('#bestand')).toBeVisible();
   }
@@ -97,7 +97,7 @@ test.describe('R00100 Bestand nach Labels', () => {
     await expect(eintrag).toHaveAttribute('href', '#/berichte/bestand');
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/bestand$/);
-    await expect(page).toHaveTitle('Bestand — kanbanD');
+    await expect(page).toHaveTitle('Berichte · Bestand nach Labels — kanbanD');
   });
 
   test('US-1 / Darstellung: Kopfleiste, Eckzelle, Köpfe, Zahlen und Summen des Grundbestands, — in --kd-muted, kein Wort „Karte“', async ({ page }) => {
