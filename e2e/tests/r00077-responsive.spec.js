@@ -45,15 +45,17 @@ test.describe('Handy', () => {
     expect(await tabelle.evaluate(e => e.scrollWidth > e.clientWidth), 'die WBS-Tabelle scrollt in sich').toBe(true);
   });
 
-  test('US-2: das Aufgabenfenster füllt den Bildschirm, Felder unter dem Text, Verschieben über „Spalte“', async ({ page }) => {
+  test('US-2: das Aufgabenfenster füllt den Bildschirm, einspaltig; Verschieben über „Spalte“ (R00127)', async ({ page }) => {
     await starten(page);
     await page.locator('.ka[data-id="1"] .t').tap();
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
     const f = await box(fenster);
     expect([f.x, f.y, f.width, f.height]).toEqual([0, 0, 390, 844]);
-    const [haupt, seite] = await Promise.all([box(fenster.locator('.mod-main')), box(fenster.locator('.mod-side'))]);
-    expect(seite.y).toBeGreaterThanOrEqual(haupt.y + haupt.height - 1);
-    expect(seite.width).toBeGreaterThan(350);
+    // R00127: das Fenster ist einspaltig (keine .mod-side); die Felder stehen im Reiter „Details“.
+    await expect(fenster.locator('.mod-side')).toHaveCount(0);
+    await fenster.getByRole('tab', { name: 'Details' }).click();
+    const spalte = await box(fenster.locator('select[data-af="spalte"]'));
+    expect(spalte.width).toBeGreaterThan(150);
     await fenster.locator('select[data-af="spalte"]').selectOption('In Arbeit');
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('## In Arbeit\n\n- [#3](../aufgaben/0003-a3.md)\n- [#1]');
   });

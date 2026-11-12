@@ -219,12 +219,9 @@ function sichtbareReihe() {
   return S.board.spalten.flatMap(sp => sp.aufgaben.filter(n => sichtbar(aufgabe(n))));
 }
 
-/* Reiterleiste des Aufgabenfensters (R00105, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
-   Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. */
-const REITER = [['inhalt', 'Inhalt'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['verlauf', 'Verlauf']];
-/** Reiter einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105); „Verlauf“ ist immer sichtbar (R00123). */
-const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || a.cost);
-const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
+/* Reiterleiste des Aufgabenfensters (R00105, R00127, APG Tabs mit automatischer Aktivierung): das Aussehen der .seg-Leiste bleibt,
+   Rolle, roving tabindex und Tasten (app.js, naechsterReiter) machen sie per Tastatur bedienbar. Die Reiter-Liste (REITER,
+   reiterDerAufgabe, reiterSchluessel) liegt rein in web/reiter.js, die Tastenwahl in web/tastatur.js. */
 function vReiterleiste(a, gewaehlt) {
   return `<span class="seg" role="tablist" aria-label="Ansicht der Aufgabe">${reiterDerAufgabe(a).map(([k, t]) => `<span class="${gewaehlt === k ? 'an' : ''}" id="reiter-${k}" data-act="tab" data-arg="${k}" role="tab" aria-selected="${gewaehlt === k}" aria-controls="reiterpanel-${k}" tabindex="${gewaehlt === k ? 0 : -1}">${t}</span>`).join('')}</span>`;
 }
@@ -272,21 +269,37 @@ function vFenster() {
   if (!a) return '';
   const u = S.ui, cl = klasse(a.klasse), reihe = sichtbareReihe(), i = reihe.indexOf(a.nummer);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
-  const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
-  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, u.tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" data-act="endgueltig-loeschen" data-arg="${a.nummer}" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden" aria-label="Endgültig löschen">${PAPIERKORB}Endgültig löschen</button><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
+  // Nur ein Reiter ist gewählt; führt die Aufgabe den gemerkten Schlüssel nicht, zeichnet „Inhalt“ (R00127 S3, generisch).
+  const tab = reiterSchluessel(a).includes(u.tab) ? u.tab : 'inhalt';
+  const kopf = `<div class="mod-kopf"><span class="id">#${a.nummer}</span>${cl ? `<span class="cls">${esc(cl.bezeichnung)}</span>` : ''}<span class="pfad">${esc(pfad)}</span><div class="rechts">${vReiterleiste(a, tab)}<span class="nav">${i + 1} / ${reihe.length}</span><button class="btn btn-sym" data-act="blaettern" data-arg="-1" title="vorige Karte (↑)" aria-label="vorige Karte">↑</button><button class="btn btn-sym" data-act="blaettern" data-arg="1" title="nächste Karte (↓)" aria-label="nächste Karte">↓</button><a class="btn btn-sym" id="vsc" href="vscode://file${esc(wurzel)}/${esc(pfad)}" title="In VS Code öffnen">↗</a>${a.archiviert ? `<button class="btn btn-sym" data-act="zurueckholen" data-arg="${a.nummer}" title="Aus dem Archiv zurückholen" aria-label="Zurückholen">↺</button>` : `<button class="btn btn-sym" data-act="archivieren" data-arg="${a.nummer}" title="Archivieren – verschwindet vom Board, Datei bleibt" aria-label="Archivieren">▭</button>`}<span class="el-trenner" aria-hidden="true"></span><button class="btn el-ausloeser" data-act="endgueltig-loeschen" data-arg="${a.nummer}" title="Endgültig löschen – Datei, Zeile in allen Boards und Anhänge verschwinden" aria-label="Endgültig löschen">${PAPIERKORB}Endgültig löschen</button><button class="btn btn-sym" data-act="schliessen" title="Schließen (Esc)" aria-label="Schließen">✕</button></div></div>`;
   const archivLeiste = a.archiviert ? `<div class="archbar">Archiviert am ${esc(datumLang(a.archiviert))} · nicht auf dem Board, Datei und Zeiten bleiben<button class="lnk" data-act="zurueckholen" data-arg="${a.nummer}">zurückholen</button></div>` : '';
   const fuss = `<div class="mod-fuss"><span class="gs">${u.gespeichert ? 'gespeichert ' + uhr(u.gespeichert) : 'jede Änderung geht sofort in die Datei'}</span>${u.fensterFehler ? `<span class="fehl" id="${FENSTER_MELDUNG}" role="alert">${esc(u.fensterFehler)}</span>` : ''}<span class="tastenhinweis" style="margin-left:auto"><kbd>Esc</kbd> schließen · <kbd>↑</kbd><kbd>↓</kbd> Karte wechseln</span></div>`;
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
-  if (u.tab === 'datei') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('datei')}><div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div></div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
-  if (u.tab === 'kosten' && a.cost) return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('kosten')}>${vKostenPanel(a)}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
-  if (u.tab === 'verlauf') return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel('verlauf')}>${vVerlaufPanel()}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+  // Genau ein gezeichnetes Panel — das des gewählten Reiters; die übrigen Reiter tragen ihren aria-controls-Verweis ohne Inhalt (R00127 M1).
+  const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
+    : tab === 'kosten' ? vKostenPanel(a)
+    : tab === 'verlauf' ? vVerlaufPanel()
+    : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
+    : tab === 'anhaenge' ? `<div class="mod-main">${vAnhaenge(a)}</div>`
+    : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
+    : `<div class="mod-main">${vFensterInhalt(a)}</div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body voll" ${reiterPanel(tab)}>${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+}
+/** Der Reiter „Inhalt“ (R00127): die Arbeit an der Aufgabe — Titel, Beschreibung, Teilaufgaben, Kommentare, Durchläufe, sonst nichts. */
+function vFensterInhalt(a) {
+  const u = S.ui;
   // Titel liest mehrzeilig (ADR-0007 N2): Lesediv nach Muster besch-lesen, Bearbeiten einzeilig im Zustand titelBearbeiten
   const titelFeld = u.titelBearbeiten
     ? `<input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel">`
     : `<div class="titel titel-lesen" data-act="titel-bearbeiten" tabindex="0" role="button" aria-label="Titel bearbeiten" title="Klick bearbeitet">${esc(a.titel)}</div>`;
-  const haupt = `<div class="mod-main">${titelFeld}<div class="abs"><h3>BESCHREIBUNG</h3>${a.beschreibung && !S.ui.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`}</div>${vFensterAbschnitte(a)}</div>`;
+  const beschreibung = a.beschreibung && !u.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`;
+  return `${titelFeld}<div class="abs"><h3>BESCHREIBUNG</h3>${beschreibung}</div>${vFensterAbschnitte(a)}`;
+}
+/** Der Reiter „Details“ (R00127): die Felder der bisherigen Seitenleiste (R00011/R00109); „Spalte“ bewegt die Karte (R00006). Einspaltig, ohne .mod-side. */
+function vFensterDetails(a) {
+  const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
-  const seite = `<aside class="mod-side">${vFensterSeite(a)}<div class="felder">${vSchluesselFeld(a)}${vBeschriftung('column')}<span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
+  return `<div class="felder felder-details">${vSchluesselFeld(a)}${vBeschriftung('column')}<span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 ${vBeschriftung('class')}<span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
 ${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
 ${vWirkungenFeld(a)}
@@ -295,12 +308,11 @@ ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.ma
 ${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span></span>
-${a.estimate ? `${vBeschriftung('estimate')}<span class="w mono">${hm(a.estimate * 6e4)}</span>` : ''}</div></aside>`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body" ${reiterPanel('inhalt')}>${haupt}${seite}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+${a.estimate ? `${vBeschriftung('estimate')}<span class="w mono">${hm(a.estimate * 6e4)}</span>` : ''}</div>`;
 }
-/* Abschnitte, die spätere Ausbaustufen füllen (Teilaufgaben, Kommentare, Timer, Zeiten, Anhänge). */
+/* Abschnitte des Reiters „Inhalt“ (R00127 S2): Teilaufgaben, Kommentare, Durchläufe — Zeiten, Anhänge und Felder stehen in eigenen Reitern. */
 function vFensterAbschnitte(a) {
-  return vTeilaufgaben(a) + vAnhaenge(a) + vDurchlaeufe(a) + vKommentare(a);
+  return vTeilaufgaben(a) + vKommentare(a) + vDurchlaeufe(a);
 }
 /** Durchläufe (R00094) als Tabelle, neueste oben; ohne Durchläufe kein Abschnitt. */
 function vDurchlaeufe(a) {

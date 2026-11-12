@@ -2,7 +2,7 @@
 // Der Fremdschlüssel steht als Textkind im Flex-Rahmen .felder .w (#schluessel); sein anonymes Flex-Element trägt die
 // Mindestbreite des längsten Wortes. Ohne Umbruch wächst der Wert über die Grid-Spur, und .mod-side scrollt quer.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 const SCHLUESSEL = 'K'.repeat(200); // 200 Zeichen ohne Leerzeichen — ein einziges Wort
@@ -46,7 +46,7 @@ const wertMessen = page => page.evaluate(() => {
   const s = document.querySelector('#schluessel');
   if (!s) return null;
   const felder = s.closest('.felder');
-  const side = s.closest('.mod-side');
+  const side = s.closest('#reiterpanel-details');
   const koerper = s.closest('.mod-body');
   const range = document.createRange();
   range.selectNodeContents(s);
@@ -81,6 +81,7 @@ test.describe('R00131', () => {
     await page.goto(k.adresse);
     await page.setViewportSize({ width: 1400, height: 800 });
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     const m = await wertMessen(page);
     expect(m.laenge, 'der ganze Schlüssel steht im Wert (keine Kürzung)').toBe(200);
     expect(m.zeilen, '1400 px: der Schlüssel bricht über mehrere Zeilen um').toBeGreaterThan(1);
@@ -99,6 +100,7 @@ test.describe('R00131', () => {
     await page.goto(k.adresse);
     await page.setViewportSize({ width: 1400, height: 800 });
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     const m = await wertMessen(page);
     expect(m.text, 'der ganze Schlüssel steht, nichts mit Auslassungszeichen gekürzt').toBe(SCHLUESSEL);
     expect(m.zeilen, 'das eine Wort bricht an beliebiger Stelle in mehrere Zeilen').toBeGreaterThan(1);
@@ -114,6 +116,7 @@ test.describe('R00131', () => {
       await page.setViewportSize({ width: breite, height: hoehe });
       await page.locator('.ka[data-id="1"]').waitFor();
       await fensterOeffnen(page, 1);
+      await reiter(page, 'Details');
       const m = await wertMessen(page);
       expect(m.laenge, `${breite} px: der ganze Schlüssel steht`).toBe(200);
       expect(m.seiteQuer, `${breite} px: die Seite scrollt nicht quer`).toBeLessThanOrEqual(1);
@@ -134,7 +137,8 @@ test.describe('R00131', () => {
     await page.setViewportSize({ width: 1400, height: 800 });
     // #1: Feldzeile „Schlüssel" mit dem Wert, .mono 12 px, der Pfad der Kopfzeile kürzt weiter mit Auslassungszeichen
     await fensterOeffnen(page, 1);
-    await expect(page.locator('.mod-side .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
+    await reiter(page, 'Details');
+    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
     const s = page.locator('#schluessel');
     await expect(s).toHaveClass(/mono/);
     expect(await s.evaluate(e => getComputedStyle(e).fontSize), 'der Schlüssel liest als .mono 12 px').toBe('12px');
@@ -147,8 +151,9 @@ test.describe('R00131', () => {
     await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
     // #2 ohne Schlüssel: die Feldzeile „Schlüssel" fehlt ganz
     await fensterOeffnen(page, 2);
-    await expect(page.locator('.mod-side .felder')).toBeVisible();
-    await expect(page.locator('.mod-side .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
+    await reiter(page, 'Details');
+    await expect(page.locator('#reiterpanel-details .felder')).toBeVisible();
+    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
     await expect(page.locator('#schluessel')).toHaveCount(0);
   });
 });

@@ -1,7 +1,7 @@
 // R00129 Geschätzte Zeit je Karte — Karte (D0002) und Aufgabenfenster (D0003), rein informativ.
 // ADR-0023: Anzeige h:mm nur wenn gesetzt; eigenes `<span>` in `.r3 .rechts` hinter Σ (seit R00126 steht das Alter direkt nach Σ dazwischen); Feldzeile nur lesend.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter, liveBereit, kontrastAm, thema } = require('./hilfen');
 
 const ZEIT_46 = '```kanbanD-time\n2026-10-18 09:00 · 2026-10-18 09:46 · st\n```\n';
 const aufgabeMd = (nr, titel, kopf = '', rumpf = '') => `---\nid: ${nr}\ntitle: ${titel}\n${kopf}---\n${rumpf}`;
@@ -110,6 +110,7 @@ test.describe('R00129 Aufgabenfenster', () => {
     await page.locator('.ka[data-id="1"]').click();
     const dialog = page.getByRole('dialog', { name: 'Aufgabe #1' });
     await expect(dialog).toBeVisible();
+    await reiter(page, 'Details');
     return dialog;
   }
 

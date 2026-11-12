@@ -186,18 +186,25 @@ async function ohneZeigen(page) {
 }
 
 async function alleEntfernenKnoepfeSichtbar(page, k) {
+  // Jeder Abschnitt steht in seinem Reiter (R00127): je Reiter die eigenen ✕ ohne Zeigen messen und den Kontrast prüfen.
+  const messen = async (tab, selektoren) => {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: tab }).click();
+    for (const s of selektoren) {
+      await expect(page.locator(s).first()).toBeAttached();
+      expect(await kontrastAm(page.locator(s).first())).toBeGreaterThanOrEqual(4.5);
+    }
+    await ohneZeigen(page);
+    return deckkraft(page, selektoren);
+  };
   await page.goto(k.adresse + '#/aufgaben');
   await expect(page.locator('.lnk-x').first()).toBeAttached();
   await ohneZeigen(page);
   const liste = await deckkraft(page, ENTFERNEN.liste);
-  await page.goto(k.adresse);
-  await page.locator('.ka[data-id="1"] .id').click();
-  await expect(page.locator('#anhaenge .anh-z')).toHaveCount(1);
-  await ohneZeigen(page);
-  const fenster = await deckkraft(page, ENTFERNEN.fenster);
+  const fenster = { ...(await messen('Inhalt', ['.chk .x'])), ...(await messen('Zeiten', ['.zt .btn-sym'])), ...(await messen('Anhänge', ['.anh-z .x'])) };
   for (const s of [...ENTFERNEN.liste, ...ENTFERNEN.fenster]) expect({ s, anzahl: { ...liste, ...fenster }[s].anzahl > 0 }).toEqual({ s, anzahl: true });
   expect({ ...liste, ...fenster }).toEqual(IMMER_SICHTBAR([...ENTFERNEN.liste, ...ENTFERNEN.fenster]));
-  for (const s of ENTFERNEN.fenster) expect(await kontrastAm(page.locator(s).first())).toBeGreaterThanOrEqual(4.5);
 }
 
 test.describe('R00112 ✕ sichtbar bei Touch', () => {
@@ -240,6 +247,7 @@ test.describe('R00112 Zeiteintrag im Fenster', () => {
   async function zeitEntfernen(page) {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: 'Zeiten' }).click();
     await expect(page.locator('.zt')).toContainText('09:00–10:00');
     await page.getByLabel('Zeit 1 löschen').click();
     await expect(page.locator('.zt')).not.toContainText('09:00–10:00');
@@ -360,6 +368,7 @@ test.describe('R00112 Anhang im Fenster', () => {
   async function fensterAuf(page) {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: 'Anhänge' }).click();
     await expect(anhaenge(page)).toHaveText(['plan.pdf']);
   }
 
@@ -523,9 +532,12 @@ test.describe('R00112 Fokus nie verdeckt (320 × 640)', () => {
   test('nach ✕ an einer Zeit liegt „Spalte“ nach Tab ganz außerhalb des Hinweises (#12)', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: 'Zeiten' }).click();
     await page.getByLabel('Zeit 1 löschen').click();
     const hinweis = page.locator('[aria-modal="true"] .toast[role="status"]');
     await expect(hinweis).toContainText('Zeit 09:00–10:00 von Stefan gelöscht');
+    // „Spalte“ steht im Reiter „Details“ (R00127): dorthin wechseln, dann per Tab dorthin laufen.
+    await page.getByRole('tab', { name: 'Details' }).click();
     const spalte = page.locator('#fenster select[aria-label="Spalte"]');
     for (let i = 0; i < 120 && !(await spalte.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
     await expect(spalte).toBeFocused();
@@ -602,6 +614,7 @@ test.describe('R00112 FA 8 Fokus an Zeiten', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: 'Zeiten' }).click();
     await expect(page.locator('.zt')).toContainText('09:00–10:00');
   }
   async function perEnterGeloescht(page, label = 'Zeit 1 löschen') {
@@ -716,6 +729,7 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
+    await page.getByRole('tab', { name: 'Anhänge' }).click();
     await expect(page.locator('#anhaenge .anh-z a').first()).toBeVisible();
   }
   async function planPerEnter(page) {
@@ -778,6 +792,7 @@ test.describe('R00112 FA 8 Fokus an Anhängen', () => {
 async function fokusNieUnterDemHinweis(page, k) {
   await page.goto(k.adresse);
   await page.locator('.ka[data-id="1"] .id').click();
+  await page.getByRole('tab', { name: 'Zeiten' }).click();
   await expect(page.locator('.zt')).toContainText('09:00–10:00');
   await page.getByLabel('Zeit 1 löschen').focus();
   await page.keyboard.press('Enter');
@@ -831,25 +846,31 @@ test.describe('R00112 Fokus nie unter dem Hinweis, 414 px', () => {
   }
 });
 
-// Nacharbeit zu Karte #36 (R00141): der beschriftete Kopf-Auslöser (`.el-ausloeser`) darf die Fensterkopfzeile bei
-// 414 px Touch nicht sprengen. Bricht `.mod-kopf .rechts` um, wird der Kopf 123 px hoch, die Körperhöhe sinkt, und
-// „Zeit nachtragen“ landet unter dem Rückgängig-Hinweis (Befund oben). Die Zeile bleibt einzeilig, das ✕ steht in
-// derselben Zeile wie die Kennung; ✕ und ↑↓ bleiben im Bild (PO #104, E1).
-test.describe('R00112/R00141 Fensterkopf einzeilig, 414 px Touch', () => {
+// R00127 (E1) löst die Ein-Zeilen-Vorgabe aus R00141 ab: sieben Reiter passen bei 414 px Touch nicht mehr in eine
+// Zeile. Der Kopf bricht darum um (flex-wrap), scrollt aber nicht quer; ✕ und Reiter bleiben im Bild und erreichbar.
+test.describe('R00112/R00141 Fensterkopf bricht bei 414 px Touch um (R00127 E1)', () => {
   let k;
   test.use({ viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true });
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(mitZeit())); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test('die Fensterkopfzeile bleibt bei 414 px einzeilig (≈51 px), das ✕ in derselben Zeile', async ({ page }) => {
+  test('die Kopfzeile bricht um, statt quer zu scrollen; ✕ und Reiter bleiben im Bild', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
-    await expect(page.locator('#fenster .zt')).toContainText('09:00–10:00');
-    const hoehe = await page.locator('#fenster .mod-kopf').evaluate(e => Math.round(e.getBoundingClientRect().height));
-    expect(hoehe, `Kopfhöhe ${hoehe} px statt einzeilig (≈51)`).toBeGreaterThanOrEqual(46);
-    expect(hoehe, `Kopfhöhe ${hoehe} px statt einzeilig (≈51)`).toBeLessThanOrEqual(56);
-    const mitte = s => page.locator(s).evaluate(e => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); });
-    const [kennung, schliessen] = await Promise.all([mitte('#fenster .mod-kopf .id'), mitte('#fenster .mod-kopf [aria-label="Schließen"]')]);
-    expect(Math.abs(kennung - schliessen), 'das ✕ steht nicht in der ersten Kopfzeile').toBeLessThanOrEqual(2);
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    const kopf = await page.locator('#fenster .mod-kopf').evaluate(e => ({ sw: e.scrollWidth, cw: e.clientWidth }));
+    expect(kopf.sw, 'der Kopf scrollt nicht quer').toBeLessThanOrEqual(kopf.cw);
+    const seite = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+    expect(seite.sw).toBeLessThanOrEqual(seite.cw);
+    for (const s of ['#fenster .mod-kopf .id', '#fenster .mod-kopf [aria-label="Schließen"]']) {
+      const box = await page.locator(s).boundingBox();
+      expect(box.x, s).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, s).toBeLessThanOrEqual(414);
+    }
+    for (const n of ['Inhalt', 'Zeiten', 'Anhänge', 'Details', 'Datei', 'Verlauf']) {
+      const box = await page.getByRole('tab', { name: n }).boundingBox();
+      expect(box.height, `${n} hoch`).toBeGreaterThanOrEqual(44);
+      expect(box.x + box.width, `${n} im Bild`).toBeLessThanOrEqual(414);
+    }
   });
 });

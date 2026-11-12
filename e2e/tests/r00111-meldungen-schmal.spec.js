@@ -1,6 +1,6 @@
 // R00111 Meldungen und Knöpfe der Fenster auf schmalen Bildschirmen (Karte #74, ADR-0015, ADR-0016)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen, reiter } = require('./hilfen');
 
 const HANDY = { viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true };
 const DESKTOP = { viewport: { width: 1280, height: 800 } };
@@ -125,6 +125,7 @@ test.describe('Handy, 414 px mit Touch', () => {
   test('US-1: abgelehnte Herkunft X1 wird bei 414 px als alert gemeldet, Fokus bleibt im Feld (#74)', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
+    await reiter(page, 'Details');
     await herkunftEingeben(page, fenster, 'X1', true);
     const meldung = fenster.locator('[role=alert]');
     await expect(meldung).toHaveCount(1);
@@ -176,16 +177,19 @@ test.describe('Handy, 414 px mit Touch', () => {
   test('US-1: ein abgelehnter Titel macht „Neue Herkunft“ mit Entwurf nicht ungültig', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
+    await reiter(page, 'Details');
     const herkunft = fenster.getByLabel('Neue Herkunft');
     await herkunft.tap();
     await page.keyboard.type('I00');
     const titel = fenster.getByLabel('Titel', { exact: true });
+    await reiter(page, 'Inhalt');
     await fenster.getByLabel('Titel bearbeiten', { exact: true }).tap(); // R00116: Bearbeitungszustand öffnen
     await titel.tap();
     await titel.fill('');
     await titel.blur();
     await expect(fenster.locator('[role=alert]')).toHaveCount(1);
     expect(k.lies(AUFGABE_1), 'der Titel wurde abgelehnt').toContain('title: Abnahme prüfen');
+    await reiter(page, 'Details');
     await expect(herkunft).toHaveValue('I00');
     await expect(herkunft).not.toHaveAttribute('aria-invalid');
     await expect(herkunft).not.toHaveAttribute('aria-describedby');
@@ -194,17 +198,20 @@ test.describe('Handy, 414 px mit Touch', () => {
   test('US-1: eine abgelehnte Dauer macht „Neue Herkunft“ nach X1 nicht mehr ungültig', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
+    await reiter(page, 'Details');
     await herkunftEingeben(page, fenster, 'X1', true);
     const meldung = fenster.locator('[role=alert]');
     await expect(meldung).toHaveText(new RegExp('^' + MELDUNG_X1));
     const herkunft = fenster.getByLabel('Neue Herkunft');
     await herkunft.fill('I0001');
+    await reiter(page, 'Zeiten');
     const dauer = fenster.getByLabel('Zeit nachtragen');
     await dauer.tap();
     await page.keyboard.type('abc');
     await page.keyboard.press('Enter');
     await expect(meldung).toHaveCount(1);
     await expect(meldung).not.toHaveText(new RegExp('^' + MELDUNG_X1));
+    await reiter(page, 'Details');
     await expect(herkunft).toHaveValue('I0001');
     await expect(herkunft).not.toHaveAttribute('aria-invalid');
     await expect(herkunft).not.toHaveAttribute('aria-describedby');
@@ -213,6 +220,7 @@ test.describe('Handy, 414 px mit Touch', () => {
   test('US-1: die abgelehnte Herkunft X1 behält ihren Verweis auf die Meldung', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, true);
+    await reiter(page, 'Details');
     await herkunftEingeben(page, fenster, 'X1', true);
     await expect(fenster.locator('[role=alert]')).toHaveText(new RegExp('^' + MELDUNG_X1));
     const herkunft = fenster.getByLabel('Neue Herkunft');
@@ -228,6 +236,7 @@ for (const breite of [320, 375, 414]) {
     test(`AK 4: die Meldung aus US-1 bricht bei ${breite} px um, ist ganz lesbar, nichts scrollt quer`, async ({ page }) => {
       await starten(page);
       const fenster = await fensterOeffnen(page, 1, true);
+      await reiter(page, 'Details');
       await herkunftEingeben(page, fenster, 'X1', true);
       const meldung = fenster.locator('[role=alert]');
       await expect(meldung).toHaveText(new RegExp('^' + MELDUNG_X1));
@@ -350,6 +359,7 @@ test.describe('Desktop, 1280 px mit Maus', () => {
   test('US-3: Meldung im einzeiligen Fuß neben den Tastenhinweisen, Fokus bleibt im Feld', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, false);
+    await reiter(page, 'Details');
     await herkunftEingeben(page, fenster, 'X1', false);
     const meldung = fenster.locator('[role=alert]');
     await expect(meldung).toHaveCount(1);
@@ -369,6 +379,7 @@ test.describe('Desktop, 1280 px mit Maus', () => {
   test('AK 3: eine Meldung, breiter als der Fuß, bricht im Fuß um und ist ganz lesbar (#84)', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1, false);
+    await reiter(page, 'Details');
     await herkunftEingeben(page, fenster, LANGE_HERKUNFT, false);
     const meldung = fenster.locator('[role=alert]');
     await expect(meldung).toContainText('ist keine Herkunft');

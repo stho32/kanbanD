@@ -1,6 +1,6 @@
 // R00087 Reservierungen und Ziehen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 
 const karte = (nr, extra = '') => `---\nid: ${nr}\ntitle: k${nr}\n${extra}---\n`;
 const DATEIEN = {
@@ -34,6 +34,7 @@ test.describe('R00087', () => {
     await expect(page.locator('.ka[data-id="7"] .schloss')).toContainText('cl');
     await expect(page.locator('.ka[data-id="9"] .schloss')).toHaveCount(0, { timeout: 1000 });
     await page.locator('.ka[data-id="7"]').click();
+    await reiter(page, 'Details');
     await expect(page.locator('#reservierung')).toContainText('Claude · Instanz A');
     await page.locator('#reservierung').getByRole('button', { name: 'freigeben' }).click();
     await expect(page.locator('#reservierung')).toHaveCount(0);

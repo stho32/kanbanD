@@ -701,7 +701,7 @@ function render() {
   // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
   const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
-  kostenReiterRueckfall(aktiv);
+  reiterRueckfallImFenster(aktiv);
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
@@ -869,11 +869,11 @@ function fallenTaste(ereignis) {
   return true;
 }
 
-/** Fällt der Reiter „Kosten“ weg (Blättern, Live-Ereignis), zeigt das Fenster „Inhalt“ (R00105 B0376). */
-function kostenReiterRueckfall(aktiv) {
+/** Fällt der gemerkte Reiter weg (Blättern, Live-Ereignis, fehlendes Etikett), zeigt das Fenster „Inhalt“ (R00127 S3, generisch). */
+function reiterRueckfallImFenster(aktiv) {
   const offen = S.ui.offen && aufgabe(S.ui.offen);
-  const fokusBeiKosten = Boolean(aktiv && aktiv.closest && aktiv.closest('#fenster [role=tablist], #reiterpanel-kosten'));
-  const rueckfall = reiterRueckfall({ tab: S.ui.tab, etikett: Boolean(offen && offen.cost), fokusBeiKosten });
+  const fokusBeiReiter = Boolean(aktiv && aktiv.closest && aktiv.closest(`#fenster [role=tablist], #reiterpanel-${S.ui.tab}`));
+  const rueckfall = reiterRueckfall({ tab: S.ui.tab, schluessel: offen ? reiterSchluessel(offen) : [], fokusBeiReiter });
   if (!rueckfall) return;
   S.ui.tab = rueckfall.tab;
   if (rueckfall.fokus) S.ui.fokus = rueckfall.fokus;
@@ -1296,6 +1296,7 @@ async function act(a, arg, wert) {
         // geprüft wird an der eben geladenen Datei, nicht am vielleicht veralteten Stand des Boards (FA 19)
         const eintrag = (u.datei || { zeiten: [] }).zeiten.find(z => z.kennung === kennung);
         if (!eintrag) { fensterMelden('Der Zeiteintrag ist nicht mehr da.'); break; }
+        u.tab = 'zeiten';
         u.zeitEdit = kennung;
         u.fokus = '#z-beginn';
         break;
@@ -1401,9 +1402,10 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${u.offen}/kommentare`, { text: wert });
         return;
       }
-      case 'start': if (ichNoetig()) break; timerStartMerken(`${arg}|${S.ich}`, Date.now()); await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
+      case 'start': if (ichNoetig()) break; u.tab = 'zeiten'; timerStartMerken(`${arg}|${S.ich}`, Date.now()); await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
       case 'stop': {
         if (ichNoetig()) break;
+        u.tab = 'zeiten';
         const [nr, wer] = arg.split('|');
         await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
@@ -1687,11 +1689,11 @@ async function act(a, arg, wert) {
       }
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
-        u.fokus = '#zeit-neu';
+        u.tab = 'zeiten'; u.fokus = '#zeit-neu';
         await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert });
         return;
       }
-      case 'zeit-edit': u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
+      case 'zeit-edit': u.tab = 'zeiten'; u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
       case 'zeit-ok': {
         if (ichNoetig()) break;
         const ende = $('#z-ende');
@@ -1812,6 +1814,7 @@ async function act(a, arg, wert) {
       case 'mich': {
         if (ichNoetig()) break;
         const a = aufgabe(+arg), z = a.zustaendige.includes(S.ich) ? a.zustaendige.filter(k => k !== S.ich) : [...a.zustaendige, S.ich];
+        u.tab = 'details';
         u.fokusKarte = +arg;
         return aufgabeAendern(+arg, { zustaendige: z });
       }
@@ -1826,8 +1829,8 @@ async function act(a, arg, wert) {
         const d = new Date(); d.setDate(d.getDate() + (+arg || 0));
         return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
       }
-      case 'beschreibung-bearbeiten': u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
-      case 'titel-bearbeiten': u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
+      case 'beschreibung-bearbeiten': u.tab = 'inhalt'; u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
+      case 'titel-bearbeiten': u.tab = 'inhalt'; u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
@@ -2405,8 +2408,8 @@ function fensterTaste(e) {
     case 'a': e.preventDefault(); act(a.archiviert ? 'zurueckholen' : 'archivieren', String(nr)); return true;
     case 'e': e.preventDefault(); act('titel-bearbeiten'); return true;
     case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
-    case 's': return fokus('#teil-neu');
-    case 'k': return fokus('#km-inp');
+    case 's': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#teil-neu'; render(); return true;
+    case 'k': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#km-inp'; render(); return true;
     case 'd': e.preventDefault(); dateiReiterUmschalten(reiter); return true;
     default: return false;
   }

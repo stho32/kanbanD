@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, alsPerson } = require('./hilfen');
+const { kanbanStarten, alsPerson, reiter } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 const vorTagen = n => { const d = new Date(); d.setDate(d.getDate() - n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T10:00:00`; };
@@ -76,6 +76,7 @@ test.describe('R00058 entfällt', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .t').click();
+    await reiter(page, 'Details');
     const feld = page.locator('#phasen-entfallen');
     await expect(feld.getByRole('button')).toHaveText(['Entwicklertest entfällt', 'Abnahme entfällt']);
     await feld.getByRole('button', { name: 'Abnahme entfällt' }).click();

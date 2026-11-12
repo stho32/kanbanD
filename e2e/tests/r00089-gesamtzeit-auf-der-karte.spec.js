@@ -1,6 +1,6 @@
 // R00089 Gesamtzeit auf der Karte
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 /** Ortszeit vor `minuten` Minuten als Dateiform ohne Versatz — der Browser rechnet in derselben Zone (Europe/Berlin). */
 const vor = minuten => { const d = new Date(Date.now() - minuten * 6e4), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -22,6 +22,7 @@ test.describe('R00089', () => {
     await expect(sum).toHaveAttribute('title', 'Stefan 1:00 · Claude 0:42');
     await expect(page.locator('.ka[data-id="2"] .sum')).toHaveCount(0);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('#zeitsumme')).toContainText('1:42');
   });
 

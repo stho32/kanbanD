@@ -1,6 +1,6 @@
 // R00018 Herkunft und Abhängigkeiten
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const WBS = '# WBS\n\n| ID | Ebene | Eltern | Name | Status | Braucht |\n|---|---|---|---|---|---|\n| I0005 | Interaction | D0001 | Anlegen | gruen | |\n| I0007 | Interaction | D0001 | Bewegen | rot | I0005 |\n';
 const DATEIEN = {
@@ -18,6 +18,7 @@ test.describe('R00018', () => {
   test('US-1 bis US-3: Herkunft setzen, Link, wartet auf', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="2"]').click();
+    await reiter(page, 'Details');
     await page.getByLabel('Neue Herkunft').fill('I0007');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0002-zwei.md')).toContain('origins: [I0007]');
@@ -46,6 +47,7 @@ test.describe('R00018', () => {
   test('ungültige Herkunft wird gemeldet', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="2"]').click();
+    await reiter(page, 'Details');
     await page.getByLabel('Neue Herkunft').fill('X1');
     await page.keyboard.press('Enter');
     await expect(page.locator('.mod-fuss .fehl')).toContainText('„X1“ ist keine Herkunft');

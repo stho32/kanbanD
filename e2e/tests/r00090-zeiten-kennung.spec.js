@@ -1,6 +1,6 @@
 // R00090 Zeiten-API mit Beginn, Ende und Kennung
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
@@ -15,6 +15,7 @@ test.describe('R00090', () => {
   test('US-3: im Detail den zweiten Eintrag korrigieren — der erste bleibt', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('tr[data-kennung="cl@2026-10-18T08:00+02:00"]')).toBeVisible();
     await page.getByLabel('Zeit 2 korrigieren').click();
     await page.getByLabel('Ende', { exact: true }).fill('2026-10-18 08:30');
@@ -28,6 +29,7 @@ test.describe('R00090', () => {
   test('löschen über die Kennung trifft den gewählten Eintrag', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await page.getByLabel('Zeit 1 löschen').click();
     await expect(page.locator('#zeitsumme')).toContainText('1:00');
     expect(k.lies('aufgaben/0001-eins.md')).not.toContain('· st\n');

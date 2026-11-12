@@ -1,6 +1,6 @@
 // R00076 Signale
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -49,6 +49,7 @@ test.describe('R00076', () => {
     expect(k.lies('aufgaben/0001-a1.md')).not.toContain('signals');
     expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|#1 Signal „Coding-Agent hat Fragen“ zurückgenommen');
     await karte(page, 1).locator('.t').click();
+    await reiter(page, 'Details');
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
     const schalter = fenster.getByRole('button', { name: 'Signal Coding-Agent hat Fragen' });
     await expect(schalter).toHaveAttribute('aria-pressed', 'false');

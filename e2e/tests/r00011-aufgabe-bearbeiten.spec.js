@@ -1,6 +1,6 @@
 // R00011 Aufgabe ansehen und bearbeiten
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
@@ -28,6 +28,7 @@ test.describe('R00011', () => {
   test('US-2: Felder in der Seitenleiste', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Details');
     await page.getByLabel('Klasse').selectOption('bug');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('class: bug');
     // Auswahl und Eintrag tragen die Farbe der Klasse wie die Karte

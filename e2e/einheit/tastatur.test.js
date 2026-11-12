@@ -47,6 +47,18 @@ test('g-Folgen', () => {
 
 /* ── Reiterleiste des Aufgabenfensters (R00105 B0375, APG Tabs mit automatischer Aktivierung) ── */
 const ZWEI = ['inhalt', 'datei'], DREI = ['inhalt', 'datei', 'kosten'];
+const SECHS = ['inhalt', 'zeiten', 'anhaenge', 'details', 'datei', 'verlauf'];
+
+test('Reiter: fünf Abschnitts-Reiter plus Verlauf (R00127) — Pfeile mit Umlauf, Pos1, Ende', () => {
+  assert.strictEqual(naechsterReiter(SECHS, 'inhalt', 'ArrowRight'), 'zeiten');
+  assert.strictEqual(naechsterReiter(SECHS, 'zeiten', 'ArrowRight'), 'anhaenge', 'kein Umlaufproblem über die neuen Reiter');
+  assert.strictEqual(naechsterReiter(SECHS, 'anhaenge', 'ArrowRight'), 'details');
+  assert.strictEqual(naechsterReiter(SECHS, 'verlauf', 'ArrowRight'), 'inhalt', 'Umlauf am rechten Rand');
+  assert.strictEqual(naechsterReiter(SECHS, 'inhalt', 'ArrowLeft'), 'verlauf', 'Umlauf am linken Rand');
+  assert.strictEqual(naechsterReiter(SECHS, 'details', 'Home'), 'inhalt');
+  assert.strictEqual(naechsterReiter(SECHS, 'details', 'End'), 'verlauf');
+  assert.strictEqual(naechsterReiter(SECHS, 'anhaenge', 'Enter'), 'anhaenge');
+});
 
 test('Reiter: Pfeile mit Umlauf, Pos1 und Ende — zwei Reiter', () => {
   assert.strictEqual(naechsterReiter(ZWEI, 'inhalt', 'ArrowRight'), 'datei');
