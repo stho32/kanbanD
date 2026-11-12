@@ -1298,6 +1298,7 @@ async function act(a, arg, wert) {
         // geprüft wird an der eben geladenen Datei, nicht am vielleicht veralteten Stand des Boards (FA 19)
         const eintrag = (u.datei || { zeiten: [] }).zeiten.find(z => z.kennung === kennung);
         if (!eintrag) { fensterMelden('Der Zeiteintrag ist nicht mehr da.'); break; }
+        u.tab = 'zeiten';
         u.zeitEdit = kennung;
         u.fokus = '#z-beginn';
         break;
@@ -1403,9 +1404,10 @@ async function act(a, arg, wert) {
         await schreiben('POST', `/api/aufgaben/${u.offen}/kommentare`, { text: wert });
         return;
       }
-      case 'start': if (ichNoetig()) break; timerStartMerken(`${arg}|${S.ich}`, Date.now()); await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
+      case 'start': if (ichNoetig()) break; u.tab = 'zeiten'; timerStartMerken(`${arg}|${S.ich}`, Date.now()); await schreiben('POST', `/api/aufgaben/${arg}/timer/start`); return;
       case 'stop': {
         if (ichNoetig()) break;
+        u.tab = 'zeiten';
         const [nr, wer] = arg.split('|');
         await schreiben('POST', `/api/aufgaben/${nr}/timer/stop`, { wer });
         return;
@@ -1689,11 +1691,11 @@ async function act(a, arg, wert) {
       }
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
-        u.fokus = '#zeit-neu';
+        u.tab = 'zeiten'; u.fokus = '#zeit-neu';
         await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert });
         return;
       }
-      case 'zeit-edit': u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
+      case 'zeit-edit': u.tab = 'zeiten'; u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
       case 'zeit-ok': {
         if (ichNoetig()) break;
         const ende = $('#z-ende');
@@ -1814,6 +1816,7 @@ async function act(a, arg, wert) {
       case 'mich': {
         if (ichNoetig()) break;
         const a = aufgabe(+arg), z = a.zustaendige.includes(S.ich) ? a.zustaendige.filter(k => k !== S.ich) : [...a.zustaendige, S.ich];
+        u.tab = 'details';
         u.fokusKarte = +arg;
         return aufgabeAendern(+arg, { zustaendige: z });
       }
@@ -1828,8 +1831,8 @@ async function act(a, arg, wert) {
         const d = new Date(); d.setDate(d.getDate() + (+arg || 0));
         return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
       }
-      case 'beschreibung-bearbeiten': u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
-      case 'titel-bearbeiten': u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
+      case 'beschreibung-bearbeiten': u.tab = 'inhalt'; u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
+      case 'titel-bearbeiten': u.tab = 'inhalt'; u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
         return aufgabeAendern(u.offen, { zustaendige: z });
@@ -2407,8 +2410,8 @@ function fensterTaste(e) {
     case 'a': e.preventDefault(); act(a.archiviert ? 'zurueckholen' : 'archivieren', String(nr)); return true;
     case 'e': e.preventDefault(); act('titel-bearbeiten'); return true;
     case 'b': e.preventDefault(); act('beschreibung-bearbeiten'); return true;
-    case 's': return fokus('#teil-neu');
-    case 'k': return fokus('#km-inp');
+    case 's': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#teil-neu'; render(); return true;
+    case 'k': e.preventDefault(); S.ui.tab = 'inhalt'; S.ui.fokus = '#km-inp'; render(); return true;
     case 'd': e.preventDefault(); dateiReiterUmschalten(reiter); return true;
     default: return false;
   }
