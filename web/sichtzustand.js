@@ -6,6 +6,8 @@
   // Aufgabe, Neu, Wirkung, WBS-Knoten, Termin, Fieber-Chart, Berichtsfilter, Durchlaufzeit, Einrichtung, Spalten, Erststart
   const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf', 'fb', 'bf', 'dl', 'ef', 'sf', 'fr'];
   const EINFACHE_KLASSE = /^[A-Za-z_][\w-]*$/;
+  // Entfernende Aktionen (teil-weg, herkunft-weg, zeit-weg, anhang-weg …): eine Stelle ist kein Schlüssel (ADR-0007 N3 Regel 4).
+  const ZERSTOERENDE_AKTION = /-weg$/;
   // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
   // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
   const ungemeldet = new WeakSet();
@@ -22,6 +24,10 @@
     const liste = [];
     if (element.id) liste.push(`[id=${zitiert(element.id)}]`);
     if (daten.halt) liste.push(`[data-halt=${zitiert(daten.halt)}]`);
+    // Zerstörender Knopf mit inhaltsbezogenem data-halt: ist er im Bereich nicht eindeutig, hält der Sicherer nichts,
+    // statt auf data-act+data-arg (die Stelle) oder eine Klasse auszuweichen — sonst träfe der nächste Tastendruck ein
+    // fremdes ✕ (R00138, ADR-0007 N3 Regel 4).
+    if (daten.halt && ZERSTOERENDE_AKTION.test(daten.act || '')) return liste;
     const feld = FELDSCHLUESSEL.find(name => daten[name]);
     // In Listen (Spalten, Personen, Klassen) steht dasselbe Feld je Zeile; data-i nennt die Zeile
     const zeile = daten.i !== undefined ? `[data-i=${zitiert(daten.i)}]` : '';

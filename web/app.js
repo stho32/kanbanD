@@ -716,6 +716,9 @@ function render() {
   // Karten und Zeilen führt die Tastatur über fokusKarte und fokusZeile — dort ist das Ziel ausdrücklich
   const zielGefuehrt = Boolean(aktiv && aktiv.matches && aktiv.matches('.ka[data-id], tr[data-zeile]'));
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
+  // Ein zerstörender Knopf ohne eindeutigen data-halt hält nichts: der Fokus fällt auf den Ort seines Abschnitts
+  // (#teil-neu bzw. das Herkunftsfeld), nie auf ein fremdes ✕ (R00138, ADR-0007 N3 Regel 4, ADR-0010 N7).
+  if (!S.ui.fokus && !fokus && aktiv && aktiv.dataset && aktiv.dataset.ort) S.ui.fokus = aktiv.dataset.ort;
   // Vor dem Ersetzen merken, solange der Auslöser noch im Dokument hängt
   const ausloeser = ausloeserSelektor(aktiv);
   const aktivWarSichtbar = imSichtbereich(aktiv);

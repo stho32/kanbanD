@@ -301,7 +301,7 @@ function vFensterDetails(a) {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   return `<div class="felder felder-details">${vSchluesselFeld(a)}${vBeschriftung('column')}<span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
 ${vBeschriftung('class')}<span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
-${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
+${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" data-halt="herkunft-weg:${esc(x)}" data-ort="#herkunft-neu" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -359,7 +359,7 @@ function vKommentare(a) {
 /** Kästchen hakt ab, Klick auf den Text bearbeitet ihn (R00066), Ziehen ordnet um (R00067). */
 function vTeilaufgaben(a) {
   const ok = a.teilaufgaben.filter(t => t.erledigt).length;
-  return `<div class="abs"><h3>TEILAUFGABEN <span class="mono">${ok}/${a.teilaufgaben.length}</span></h3>${a.teilaufgaben.map((t, j) => `<div class="chk${t.erledigt ? ' ok' : ''}" data-teil="${j}" draggable="${!((S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j)}"><i data-act="teil" data-arg="${j}" role="checkbox" aria-checked="${t.erledigt}" aria-label="${esc(t.text)}">${t.erledigt ? '✓' : ''}</i>${(S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j ? `<input class="inp teil-edit" id="teil-edit" value="${esc(t.text)}" data-enter="teil-text" data-arg="${j}" aria-label="Teilaufgabe bearbeiten">` : `<span data-act="teil-bearbeiten" data-arg="${j}" role="button" tabindex="0" title="Text bearbeiten">${esc(t.text)}</span>`}<button class="btn btn-sym x" data-act="teil-weg" data-arg="${j}" title="entfernen" aria-label="Teilaufgabe ${esc(t.text)} entfernen">✕</button></div>`).join('')}<input class="inp add" placeholder="+ Teilaufgabe · Enter" data-enter="teil-neu" id="teil-neu" data-mehrfach="teil" aria-label="Neue Teilaufgabe"></div>`;
+  return `<div class="abs"><h3>TEILAUFGABEN <span class="mono">${ok}/${a.teilaufgaben.length}</span></h3>${a.teilaufgaben.map((t, j) => `<div class="chk${t.erledigt ? ' ok' : ''}" data-teil="${j}" draggable="${!((S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j)}"><i data-act="teil" data-arg="${j}" data-halt="teil-haken:${esc(t.text)}" role="checkbox" aria-checked="${t.erledigt}" aria-label="${esc(t.text)}">${t.erledigt ? '✓' : ''}</i>${(S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j ? `<input class="inp teil-edit" id="teil-edit" value="${esc(t.text)}" data-enter="teil-text" data-arg="${j}" aria-label="Teilaufgabe bearbeiten">` : `<span data-act="teil-bearbeiten" data-arg="${j}" data-halt="teil:${esc(t.text)}" role="button" tabindex="0" title="Text bearbeiten">${esc(t.text)}</span>`}<button class="btn btn-sym x" data-act="teil-weg" data-arg="${j}" data-halt="teil-weg:${esc(t.text)}" data-ort="#teil-neu" title="entfernen" aria-label="Teilaufgabe ${esc(t.text)} entfernen">✕</button></div>`).join('')}<input class="inp add" placeholder="+ Teilaufgabe · Enter" data-enter="teil-neu" id="teil-neu" data-mehrfach="teil" aria-label="Neue Teilaufgabe"></div>`;
 }
 function vFensterSeite(a) {
   const rs = laufende(a), meins = rs.find(z => z.wer === S.ich), me = ichPerson();
@@ -542,9 +542,11 @@ function anwendungenZahl() {
 const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenZahl() > 1;
 function vHerkunftChip(x) {
   const q = S.herkunft[x], h = quelleLink(x);
-  if (x === 'thin air') return `<span class="org leer" title="${OHNE_HERKUNFT}">${OHNE_HERKUNFT}</span>`;
-  if (mehrdeutig(x)) return `<span class="org mehrdeutig" title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
-  return h ? `<a class="org" href="${esc(h)}" title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org" title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
+  // Der inhaltliche Schlüssel des Sicherers (R00138, ADR-0007 N3 Regel 2): die Stelle (Reihenfolge) überlebt eine fremde Liste nicht.
+  const halt = ` data-halt="herkunft:${esc(x)}"`;
+  if (x === 'thin air') return `<span class="org leer"${halt} title="${OHNE_HERKUNFT}">${OHNE_HERKUNFT}</span>`;
+  if (mehrdeutig(x)) return `<span class="org mehrdeutig"${halt} title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
+  return h ? `<a class="org" href="${esc(h)}"${halt} title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org"${halt} title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
 }
 /** Wirkungen einer Aufgabe auf die WBS als Chips + / ↻ / − mit Link zur Zeile in der WBS-Sicht (R00057). */
 function vWirkungChip(w) {

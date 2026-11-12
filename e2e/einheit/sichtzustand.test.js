@@ -46,6 +46,15 @@ test('Aktion mit Argument, sonst Aktion allein', () => {
   assert.strictEqual(schluessel(element({ daten: { act: 'schliessen' }, klassen: ['btn'] }), bereichMit({ '.btn': 5 })), '[data-act="schliessen"]');
 });
 
+test('Zerstörender Knopf hält über data-halt, nie über die Stelle (R00138 AK 5, ADR-0007 N3 Regel 4)', () => {
+  // eindeutiger Inhalt: der data-halt ist der Schlüssel
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil-weg:zwei', act: 'teil-weg', arg: '1' } }), bereichMit({})), '[data-halt="teil-weg:zwei"]');
+  // doppelter Inhalt: der Sicherer hält nichts — nicht die Stelle ([data-act][data-arg]) und nicht die Klasse
+  const doppelt = bereichMit({ '[data-halt="teil-weg:zwei"]': 2 });
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil-weg:zwei', act: 'teil-weg', arg: '1' } }), doppelt), '');
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil-weg:zwei', act: 'teil-weg', arg: '1' }, klassen: ['x'] }), doppelt), '');
+});
+
 test('eine im Bereich eindeutige Klasse, die erste eindeutige gewinnt', () => {
   assert.strictEqual(schluessel(element({ klassen: ['mod-main'] }), bereichMit({})), '.mod-main');
   assert.strictEqual(schluessel(element({ klassen: ['flaeche', 'wbs-tabelle'] }), bereichMit({ '.flaeche': 3 })), '.wbs-tabelle');
