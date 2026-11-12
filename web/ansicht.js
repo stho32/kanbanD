@@ -185,6 +185,29 @@ function vSchnellVorschau(text) {
 function vBeschriftung(schluessel) {
   return `<span class="kb"><span class="k">${esc(FELDER[schluessel])}</span><span class="sl">${esc(schluessel)}</span></span>`;
 }
+/** Die vier Feldzeilen der Seitenleiste und ihre Beschriftungsschlüssel in `FELDER` (R00146 FA 4/12). */
+const FELD_BESCHRIFTUNG = { spalte: 'column', klasse: 'class', labels: 'labels', faellig: 'due' };
+/** Eine Feldzeile (Spalte, Klasse, Labels, Fällig) mit Beschriftung und Wert — die eine Stelle für „Details“ und die schmale
+    Spalte im Inhalt (R00146 FA 4/12). Der Wert trägt denselben Schlüssel `data-af` wie sein Gegenstück; `schmal` (Spalte)
+    stellt die Beschriftung über den Wert und lässt die Schnellknöpfe am Datumsfeld weg (S3). */
+function vFeldZeile(feld, a, schmal) {
+  const umbruch = feld === 'faellig' && !schmal ? ' wrap' : '';
+  return `${vBeschriftung(FELD_BESCHRIFTUNG[feld])}<span class="w${umbruch}">${vFeldWert(feld, a, schmal)}</span>`;
+}
+/** Der Wert einer Feldzeile; „Spalte“ kennt drei Fälle: bewegen (Board), „nicht auf diesem Board“ (kein Board) und, schmal,
+    den Fokusrückfall `#inhalt-spalte`, wenn das Feld unter einem Live-Ereignis wegfällt (R00146 FA 14, ADR-0010 N7). */
+function vFeldWert(feld, a, schmal) {
+  if (feld === 'spalte') {
+    const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
+    if (!spalte) return '<span class="muted">nicht auf diesem Board</span>';
+    const ort = schmal ? ' data-ort="#inhalt-spalte"' : '';
+    return `<select data-af="spalte" aria-label="Spalte"${ort}>${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>`;
+  }
+  if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse);
+  if (feld === 'labels') return `<input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels">`;
+  const knoepfe = schmal ? '' : `<span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span>`;
+  return `<input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit">${knoepfe}`;
+}
 /* ── Dialog „Neue Aufgabe“ — alle Felder sofort, wie in Kanbanflow ── */
 /** id der Meldung im Fuß von „Neue Aufgabe“; bleibt über jedes Neuzeichnen gleich, damit der Titel auf sie verweisen kann. */
 const NEU_MELDUNG = 'neu-meldung';
@@ -323,17 +346,16 @@ function vFensterInhalt(a) {
 }
 /** Der Reiter „Details“ (R00127): die Felder der bisherigen Seitenleiste (R00011/R00109); „Spalte“ bewegt die Karte (R00006). Einspaltig, ohne .mod-side. */
 function vFensterDetails(a) {
-  const spalte = S.board && S.board.spalten.find(sp => sp.aufgaben.includes(a.nummer));
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
-  return `<div class="felder felder-details">${vSchluesselFeld(a)}${vBeschriftung('column')}<span class="w">${spalte ? `<select data-af="spalte" aria-label="Spalte">${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>` : '<span class="muted">nicht auf diesem Board</span>'}</span>
-${vBeschriftung('class')}<span class="w">${vKlassenWahl('data-af', a.klasse)}</span>
+  return `<div class="felder felder-details">${vSchluesselFeld(a)}${vFeldZeile('spalte', a)}
+${vFeldZeile('klasse', a)}
 ${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" data-halt="herkunft-weg:${esc(x)}" data-ort="#herkunft-neu" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 ${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
-${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels"></span>
-${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span></span>
+${vFeldZeile('labels', a)}
+${vFeldZeile('faellig', a)}
 ${a.estimate ? `${vBeschriftung('estimate')}<span class="w mono">${hm(a.estimate * 6e4)}</span>` : ''}</div>`;
 }
 /* Abschnitte des Inhalts (R00127 S2, R00145 FA 11): Teilaufgaben, Anhänge, Kommentare, Durchläufe — Zeiten und Felder stehen in eigenen Ansichten. */
