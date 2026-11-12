@@ -38,3 +38,12 @@ test('Rückfall-Grundlage (R00145 FA 2): ein gemerkter Stand „anhaenge“ ist 
   assert.strictEqual(reiterSchluessel({}).includes('anhaenge'), false);
   assert.strictEqual(reiterSchluessel({}).includes('inhalt'), true);
 });
+
+test('rueckfallAnsicht: die eine Rückfallregel (R00145 FA 2) — vorhandener Schlüssel bleibt, fehlender fällt auf „Inhalt“', () => {
+  const { rueckfallAnsicht } = require('../../web/reiter.js');
+  const ohneKosten = reiterSchluessel({});
+  assert.strictEqual(rueckfallAnsicht(ohneKosten, 'details'), 'details', 'vorhandene Ansicht bleibt');
+  assert.strictEqual(rueckfallAnsicht(ohneKosten, 'kosten'), 'inhalt', 'fehlendes Etikett fällt auf Inhalt');
+  assert.strictEqual(rueckfallAnsicht(ohneKosten, 'anhaenge'), 'inhalt', 'entfallene Ansicht fällt auf Inhalt');
+  assert.strictEqual(rueckfallAnsicht(ohneKosten, 'unbekannt'), 'inhalt', 'unbekannter Schlüssel fällt auf Inhalt');
+});

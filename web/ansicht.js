@@ -225,7 +225,7 @@ const ARCHIV_HOCH = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect
 const ANSICHT_KNOPF = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
 /** Die gewählte Ansicht einer Aufgabe: der gemerkte Schlüssel, wenn die Aufgabe ihn führt, sonst „Inhalt“ (R00145 FA 2, generisch). */
 function ansichtDerAufgabe(a) {
-  return reiterSchluessel(a).includes(S.ui.tab) ? S.ui.tab : 'inhalt';
+  return rueckfallAnsicht(reiterSchluessel(a), S.ui.tab);
 }
 /** Auslöser und Menü des Ansichtswechsels (R00145): eine Liste, ein Zustand (`S.ui.tab`), Menüform `menuitemradio` mit `aria-checked`.
     Die Markierung trägt `aria-checked` am Eintrag und ein sichtbares ✓ im festen Gutter (`.fm-haken`), damit alle Texte gleich beginnen. */
