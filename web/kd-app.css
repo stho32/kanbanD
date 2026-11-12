@@ -79,6 +79,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Zeigen und offenes Menü als M3-Zustandsebene: 8 % der Schrift über der Fläche */
 .kz-modus .kz-btn:not(.haupt):hover,.kz-modus .kz-btn.auf{background:color-mix(in oklch, var(--kd-modus-text) 8%, var(--kd-modus));border-color:var(--kd-modus-linie)}
 .kz-modus .kz-btn.haupt{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent);font-weight:600}
+.kz-modus .kz-btn.haupt:hover{background:var(--kd-accent-hover)}
 .kz-modus .kz-btn:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
 /* Bahnen */
 .bahnen{flex:1;display:flex;min-height:0;min-width:0;overflow-x:auto;background:var(--kd-surface)}
@@ -733,6 +734,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .bahn-kopf [data-tip],.zu-streifen[data-tip]{-webkit-touch-callout:none;user-select:none}
 .kopf-plus:hover,.kopf-plus:focus{border-color:var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-accent-ink)}
 .kz-btn.neu-btn{background:var(--kd-accent);border-color:var(--kd-accent);color:var(--kd-on-accent)}
+.kz-btn.neu-btn:hover{background:var(--kd-accent-hover)}
 .mod.neu .titel::placeholder{color:var(--kd-muted);font-weight:400}
 .neu-fuss{height:auto;min-height:40px;padding-top:4px;padding-bottom:4px}
 /* Die Knöpfe von „Neue Aufgabe“ brechen als Gruppe um, bei Bedarf auch in sich; „Anlegen“ bleibt letzter und rechtsbündig (R00111 AK 7, ADR-0015 N1) */
