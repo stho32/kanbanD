@@ -55,6 +55,17 @@ test('Zerstörender Knopf hält über data-halt, nie über die Stelle (R00138 AK
   assert.strictEqual(schluessel(element({ daten: { halt: 'teil-weg:zwei', act: 'teil-weg', arg: '1' }, klassen: ['x'] }), doppelt), '');
 });
 
+test('auch ein nicht zerstörender Inhaltsträger hält nie über die Stelle (R00134, ADR-0007 N3 Regel 4)', () => {
+  // die bearbeitbare Zeile mit eindeutigem Text: der data-halt ist der Schlüssel
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil:zwei', act: 'teil-bearbeiten', arg: '1' } }), bereichMit({})), '[data-halt="teil:zwei"]');
+  // doppelter Text: hält nichts — nicht die Stelle ([data-act][data-arg]) und nicht die Klasse
+  const doppelt = bereichMit({ '[data-halt="teil:zwei"]': 2 });
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil:zwei', act: 'teil-bearbeiten', arg: '1' } }), doppelt), '');
+  assert.strictEqual(schluessel(element({ daten: { halt: 'teil:zwei', act: 'teil-bearbeiten', arg: '1' }, klassen: ['abs'] }), doppelt), '');
+  // dasselbe für einen Inhaltsträger ohne Aktion: das mehrdeutige href wird nicht zum Schlüssel
+  assert.strictEqual(schluessel(element({ daten: { halt: 'herkunft:I0001' }, href: '/pfad' }), bereichMit({ '[data-halt="herkunft:I0001"]': 2 })), '');
+});
+
 test('eine im Bereich eindeutige Klasse, die erste eindeutige gewinnt', () => {
   assert.strictEqual(schluessel(element({ klassen: ['mod-main'] }), bereichMit({})), '.mod-main');
   assert.strictEqual(schluessel(element({ klassen: ['flaeche', 'wbs-tabelle'] }), bereichMit({ '.flaeche': 3 })), '.wbs-tabelle');

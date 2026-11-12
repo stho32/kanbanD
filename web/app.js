@@ -727,9 +727,12 @@ function render() {
   // Karten und Zeilen führt die Tastatur über fokusKarte und fokusZeile — dort ist das Ziel ausdrücklich
   const zielGefuehrt = Boolean(aktiv && aktiv.matches && aktiv.matches('.ka[data-id], tr[data-zeile]'));
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
-  // Ein zerstörender Knopf ohne eindeutigen data-halt hält nichts: der Fokus fällt auf den Ort seines Abschnitts
-  // (#teil-neu bzw. das Herkunftsfeld), nie auf ein fremdes ✕ (R00138, ADR-0007 N3 Regel 4, ADR-0010 N7).
-  if (!S.ui.fokus && !fokus && aktiv && aktiv.dataset && aktiv.dataset.ort) S.ui.fokus = aktiv.dataset.ort;
+  // Ein Element mit inhaltsbezogenem data-halt hält nie über die Stelle: ist sein Inhalt mehrdeutig (derselbe Text
+  // zweimal) oder verschwindet er unter dem Menschen (fremder Textwechsel), hält der Sicherer nichts, und der Fokus
+  // fällt auf den Ort seines Abschnitts (#teil-neu, #herkunft-neu, „+ Wirkung“) — nie auf ein fremdes ✕ oder eine
+  // fremde Zeile und nicht eigens ins Fenster (R00138, R00134, ADR-0007 N3 Regel 4, ADR-0010 N7).
+  let ortDesFokus = null;
+  if (!S.ui.fokus && aktiv && aktiv.dataset && aktiv.dataset.ort) ortDesFokus = aktiv.dataset.ort;
   // Vor dem Ersetzen merken, solange der Auslöser noch im Dokument hängt
   const ausloeser = ausloeserSelektor(aktiv);
   const aktivWarSichtbar = imSichtbereich(aktiv);
@@ -755,7 +758,7 @@ function render() {
   $('#stat').innerHTML = vStatus();
   popPlatzieren();
   tippPlatzieren();
-  fokusFuehren(aktiv, ausloeser, fokus, aktivWarSichtbar);
+  fokusFuehren(aktiv, ausloeser, fokus, aktivWarSichtbar, ortDesFokus);
 }
 
 /* Fokusführung über Ebenen (R00106, ADR-0010): die Entscheidungen rechnet web/fokus.js, hier wird nur angewendet. */
@@ -919,7 +922,7 @@ function ausloeserSelektor(aktiv) {
 }
 
 /** Nach dem Neuzeichnen: Ebenen abschirmen, dann das erste Fokusziel der Rangfolge aus web/fokus.js setzen. */
-function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar) {
+function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar, ort) {
   const vorher = vorigeEbenen;
   const arten = liste => liste.map(ebene => ebene.art);
   const geoeffnet = ebenen(S.ui).filter(ebene => !arten(vorher).includes(ebene.art));
@@ -935,7 +938,7 @@ function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar) {
   radiogruppenFuehren();
   const oberste = jetzt.at(-1) || null;
   const fokusVorher = { stand: fokusStandVorher(aktiv), selektor: ausloeser, sichtbar: aktivWarSichtbar };
-  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
+  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, ort, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
   S.ui.fokus = null;
   const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste, fokusVorher));
   // Rückfall (R00106 Z. 102–104, PO Z. 111/113): das erste tabbare Element nur in einer nach dem Neuzeichnen offenen Ebene.

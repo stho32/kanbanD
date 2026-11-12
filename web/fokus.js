@@ -80,12 +80,15 @@
   }
 
   /** Fokusziele nach dem Neuzeichnen in Rangfolge; das erste, das sich setzen lässt, gilt. 'gesichert' steht für den Sicherer.
-      lage = {ausdruecklich, gesichert, gesichertInOberster, geschlossen, geoeffnet, oberste, fuehrung, vorher}
-      vorher = {stand: 'nichts' (BODY) | 'gehalten' (hängt noch im Dokument) | 'verloren' (mit dem Neuzeichnen ersetzt), selektor, sichtbar} */
+      lage = {ausdruecklich, gesichert, gesichertInOberster, ort, geschlossen, geoeffnet, oberste, fuehrung, vorher}
+      vorher = {stand: 'nichts' (BODY) | 'gehalten' (hängt noch im Dokument) | 'verloren' (mit dem Neuzeichnen ersetzt), selektor, sichtbar}
+      ort = der Ort des Abschnitts (data-ort) des zuletzt fokussierten Elements: dorthin, wenn der Sicherer es nicht wiederfindet
+      (mehrdeutiger Inhalt oder fremd geändert) — nie auf ein fremdes Element, aber auch nicht eigens ins Fenster. */
   function fokusZiel(lage) {
     const ziele = [];
     if (lage.ausdruecklich) ziele.push(...[].concat(lage.ausdruecklich));
     if (lage.gesichert && lage.gesichertInOberster) ziele.push(GESICHERT);
+    if (lage.ort) ziele.push(lage.ort);
     if (lage.geschlossen) ziele.push(...lage.geschlossen.rueckgabe);
     if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(...[].concat(lage.geoeffnet.start));
     if (lage.oberste && lage.oberste.start) ziele.push(...[].concat(lage.oberste.start));

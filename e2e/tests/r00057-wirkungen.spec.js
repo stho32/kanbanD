@@ -1,7 +1,7 @@
 // R00057 Wirkungen von Aufgaben auf die WBS — Chips an Karte und Fenster, Gegenanzeige in der WBS-Sicht;
 // seit R00071 vermerkt „+ Wirkung“ nur, der Schalter „eingetreten“ ändert die WBS.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit, reiter } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, reiter, mutanteEinsetzen } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = wbsText([
@@ -20,6 +20,7 @@ test.describe('R00057', () => {
     arbeit = arbeitsRepository(WBS);
     k = await kanbanStarten(mitRegister(arbeit, { 'boards/entwicklung.md': BOARD, ...aufgaben }));
     await alsPerson(page, 'st');
+    await mutanteEinsetzen(page);
     await page.goto(k.adresse);
     await liveBereit(page);
   };
@@ -134,5 +135,28 @@ test.describe('R00057', () => {
     await expect(fenster.locator('#wirkungen .wchip')).toHaveCount(0);
     expect(k.lies('aufgaben/0008-ziehen-ueberarbeiten.md')).not.toContain('wbs-effects');
     expect(arbeit.lies()).toBe(plan);
+  });
+
+  // #134 A2: das ✕ einer Wirkung trug nur die Stelle (data-arg) als Schlüssel; nach einer fremden Listenänderung
+  // traf dieselbe Stelle eine andere Wirkung. Es hält jetzt über den Inhalt (data-halt) und fällt bei Mehrdeutigkeit
+  // auf den Ort des Abschnitts („+ Wirkung“), nie auf ein fremdes ✕.
+  test('#134: nach fremder Löschung hält das ✕ einer Wirkung den Inhalt, bei doppeltem Inhalt nichts', async ({ page }) => {
+    await starten(page, {
+      'aufgaben/0007-dialog-export-bauen.md': aufgabe(7, 'Dialog Export bauen', 'wbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n'),
+      'aufgaben/0008-ziehen-ueberarbeiten.md': aufgabe(8, 'Ziehen überarbeiten'),
+    });
+    await karte(page, 7).locator('.t').click();
+    await reiter(page, 'Details');
+    const fenster = page.getByRole('dialog', { name: 'Aufgabe #7' });
+    await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['↻ kd:D0002', '↻ kd:D0002', '− kd:I0014']);
+    await fenster.locator('#wirkungen button[data-act="wirkung-weg"]').nth(1).focus();
+
+    // Ein Agent entfernt die erste Wirkung: die beiden gleichen „↻ kd:D0002“ bleiben mehrdeutig, die Stelle 1 träfe jetzt das ✕ von „− kd:I0014“.
+    const entfernt = await page.request.delete(k.adresse + 'api/aufgaben/7/wbs-effects/0', { headers: { 'X-KanbanD-Wer': 'st' } });
+    expect(entfernt.status()).toBe(200);
+    await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['↻ kd:D0002', '− kd:I0014']);
+
+    await expect(fenster.locator('[data-act="wirkung-neu"]')).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.matches('[data-act="wirkung-weg"]'))).toBe(false);
   });
 });

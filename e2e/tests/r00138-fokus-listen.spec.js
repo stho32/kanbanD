@@ -2,7 +2,7 @@
 // Grundbestand: Aufgabe #1 offen im Aufgabenfenster, Teilaufgaben „eins“, „zwei“, „drei“; eine zweite Karte mit denselben
 // Verweisen; Menschen und ein Agent. „Dasselbe Element“ heißt: derselbe Inhalt, auch wenn er an einer anderen Stelle steht.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, mutanteEinsetzen } = require('./hilfen');
 
 const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl' } };
 
@@ -25,6 +25,7 @@ test.describe('R00138 fremde Listenänderung', () => {
   async function fensterAuf(page, dateien) {
     k = await kanbanStarten(einrichten(dateien));
     await alsPerson(page, 'st');
+    await mutanteEinsetzen(page);
     await page.goto(k.adresse);
     await liveBereit(page);
     await page.locator('.ka[data-id="1"] .id').click();
@@ -79,6 +80,49 @@ test.describe('R00138 fremde Listenänderung', () => {
     expect(teilaufgabenDerDatei(k)).toEqual(['gleich', 'dritte']);
   });
 
+  test('US-2 (#134): bei doppeltem Inhalt hält auch die bearbeitbare Zeile nichts — der Fokus fällt auf #teil-neu, nie auf „dritte“', async ({ page }) => {
+    await fensterAuf(page, bestand({ teilaufgaben: ['gleich', 'gleich', 'dritte'] }));
+    const zweiteGleich = page.locator('#fenster .chk [data-act="teil-bearbeiten"]').nth(1);
+    await zweiteGleich.focus();
+    await expect(zweiteGleich).toBeFocused();
+
+    const entfernt = await page.request.delete(k.adresse + 'api/aufgaben/1/teilaufgaben/0', ALS_CL); // der Bot entfernt die erste „gleich“
+    expect(entfernt.status()).toBe(200);
+
+    // Nicht über die Stelle gehalten: sonst stünde der Fokus auf der Zeile von „dritte“, und die nächste Eingabe bearbeitete sie.
+    await expect(page.getByRole('button', { name: 'dritte', exact: true })).not.toBeFocused();
+    await expect(page.locator('#teil-neu')).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.matches('#fenster .chk [data-act="teil-bearbeiten"]'))).toBe(false);
+    expect(teilaufgabenDerDatei(k)).toEqual(['gleich', 'dritte']);
+  });
+
+  test('US-1 (#134 A1): ein fremd geänderter Text lässt den Fokus in den Abschnitt fallen, nicht ins Fenster', async ({ page }) => {
+    await fensterAuf(page, bestand());
+    const zwei = page.getByLabel('Teilaufgabe zwei entfernen');
+    await zwei.focus();
+    await expect(zwei).toBeFocused();
+
+    const geaendert = await page.request.patch(k.adresse + 'api/aufgaben/1/teilaufgaben/1', { ...ALS_CL, data: { text: 'zweix' } });
+    expect(geaendert.status()).toBe(200);
+
+    await expect(page.locator('#fenster .chk [data-act="teil-bearbeiten"]')).toHaveText(['eins', 'zweix', 'drei']);
+    // Der Inhalt ist ein anderer geworden (ADR-0007 N3 Pre-Mortem): der Fokus fällt in den Abschnitt, nicht auf das Fenster.
+    await expect(page.locator('#teil-neu')).toBeFocused();
+  });
+
+  test('US-1 (#134 A1): auch die bearbeitbare Zeile fällt bei fremdem Textwechsel in den Abschnitt', async ({ page }) => {
+    await fensterAuf(page, bestand());
+    const zweiZeile = page.getByRole('button', { name: 'zwei', exact: true });
+    await zweiZeile.focus();
+    await expect(zweiZeile).toBeFocused();
+
+    const geaendert = await page.request.patch(k.adresse + 'api/aufgaben/1/teilaufgaben/1', { ...ALS_CL, data: { text: 'zweix' } });
+    expect(geaendert.status()).toBe(200);
+
+    await expect(page.getByRole('button', { name: 'zweix', exact: true })).toBeVisible();
+    await expect(page.locator('#teil-neu')).toBeFocused();
+  });
+
   test('US-3: eine fremde Herkunftslöschung lässt den Fokus auf dem ✕ derselben Herkunft (#40)', async ({ page }) => {
     await fensterAuf(page, bestand({ herkunft: ['I0001', 'I0002', 'I0003'] }));
     await reiter(page, 'Details');
@@ -114,5 +158,56 @@ test.describe('R00138 fremde Listenänderung', () => {
     await page.keyboard.press('Enter');
     await expect(page.locator('[aria-modal="true"] .toast[role="status"]')).toContainText('Teilaufgabe „zwei“ entfernt');
     await expect(page.getByLabel('Teilaufgabe drei entfernen')).toBeFocused();
+  });
+});
+
+/** Fügt Text ein wie aus der Zwischenablage (R00027). */
+async function einfuegen(page, selektor, text) {
+  await page.locator(selektor).evaluate((el, t) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', t);
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, text);
+}
+
+test.describe('R00134 Härtung: auch nicht zerstörende Inhaltsträger halten nie über die Stelle', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  let k;
+  test.afterEach(() => k && k.stoppen());
+
+  /** Board mit neutralen Teilaufgaben; das Fenster „Neue Aufgabe“ trägt die geprüften Zeilen. */
+  async function neueAufgabe(page, teilaufgaben) {
+    k = await kanbanStarten(einrichten(bestand()));
+    await alsPerson(page, 'st');
+    await mutanteEinsetzen(page);
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    await einfuegen(page, '#neu-teil', teilaufgaben.map(t => `- ${t}`).join('\n'));
+    await expect(page.locator('#neu-fenster .chk .x')).toHaveCount(teilaufgaben.length);
+  }
+
+  test('US-2: bei doppeltem Inhalt hält das ✕ „nf-teil-weg“ nichts — der Fokus fällt auf #neu-teil', async ({ page }) => {
+    await neueAufgabe(page, ['gleich', 'gleich', 'dritte']);
+    await page.locator('#neu-fenster .chk .x').nth(1).focus();
+
+    const geaendert = await page.request.patch(k.adresse + 'api/aufgaben/2', { ...ALS_CL, data: { titel: 'zwei neu' } });
+    expect(geaendert.status()).toBe(200);
+    await expect(page.locator('.ka[data-id="2"] .t')).toHaveText('zwei neu'); // das Neuzeichnen ist durch
+
+    await expect(page.locator('#neu-teil')).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.matches('#neu-fenster .chk .x'))).toBe(false);
+  });
+
+  test('US-1: ein eindeutiger Text hält das ✕ „nf-teil-weg“ über ein fremdes Ereignis', async ({ page }) => {
+    await neueAufgabe(page, ['eins', 'zwei', 'drei']);
+    const zwei = page.locator('#neu-fenster .chk .x').nth(1);
+    await zwei.focus();
+
+    const geaendert = await page.request.patch(k.adresse + 'api/aufgaben/2', { ...ALS_CL, data: { titel: 'zwei neu' } });
+    expect(geaendert.status()).toBe(200);
+    await expect(page.locator('.ka[data-id="2"] .t')).toHaveText('zwei neu');
+
+    await expect(page.locator('#neu-fenster .chk .x').nth(1)).toBeFocused();
   });
 });

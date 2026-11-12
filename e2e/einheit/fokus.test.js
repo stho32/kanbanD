@@ -54,6 +54,17 @@ test('fokusZiel: Rückgabe beim Schließen gilt auch, wenn vorher nichts fokussi
   assert.deepStrictEqual(fokusZiel({ geschlossen, fuehrung: '.ka[data-id="2"]', vorher: { stand: 'nichts' } }), ['.ka[data-id="1"]']);
 });
 
+test('fokusZiel: der Ort des Abschnitts (data-ort) steht vor dem Startziel der Ebene — ins Fenster nur, wenn es keinen gibt (R00134 A1)', () => {
+  const fenster = ebenen({ view: 'board', offen: 1 })[0];
+  const mitOrt = fokusZiel({ gesichert: true, gesichertInOberster: true, ort: '#teil-neu', oberste: fenster });
+  assert.deepStrictEqual(mitOrt.slice(0, 2), ['gesichert', '#teil-neu'], 'erst der Sicherer, dann der Abschnitt');
+  assert.ok(mitOrt.indexOf('#teil-neu') < mitOrt.indexOf('#fenster'), 'der Abschnitt vor dem Fenster');
+  const ohneOrt = fokusZiel({ gesichert: true, gesichertInOberster: true, oberste: fenster });
+  assert.deepStrictEqual(ohneOrt, ['gesichert', '#fenster'], 'ohne Ort bleibt es beim Startziel der Ebene');
+  // Ein ausdrückliches Ziel (etwa der Nachbar eines ✕, R00112 FA 8) gilt weiterhin vor dem Ort des Abschnitts
+  assert.strictEqual(fokusZiel({ ausdruecklich: '[data-act="teil-weg"][data-arg="2"]', ort: '#teil-neu', oberste: fenster })[0], '[data-act="teil-weg"][data-arg="2"]');
+});
+
 test('ohneRollen: der Dialog selbst nie; dasselbe Element nur, wenn es vorher außer Sicht lag', () => {
   const karte = '.ka[data-id="1"]';
   assert.strictEqual(ohneRollen('#fenster', { stand: 'nichts' }), true, 'Startziel des Aufgabenfensters');
