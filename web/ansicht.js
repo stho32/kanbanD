@@ -80,11 +80,11 @@ function aktuelleSeite(istAktuell) {
 }
 const cssKlassen = (...namen) => namen.filter(Boolean).join(' ');
 
+/** Die Leiste ab 600 px trägt nur die zwei häufigen Ziele Board und Berichte ▾ (R00140); die vier seltenen stehen im Menü „…“. */
 function vNavigation() {
   const u = S.ui;
-  const board = aktuelleSeite(u.view === 'board'), aufgaben = aktuelleSeite(u.view === 'aufgaben'), personen = aktuelleSeite(u.view === 'personen');
-  const berichte = aktuelleSeite(u.view.startsWith('berichte')), einrichten = aktuelleSeite(u.view === 'einrichten');
-  return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${board.klasse}"${board.attribut}>Board</a><a href="#/aufgaben" class="${aufgaben.klasse}"${aufgaben.attribut}>Aufgaben</a><a href="#/personen" class="${personen.klasse}"${personen.attribut}>Personen</a><a href="#" id="t-ber" class="${berichte.klasse}${u.pop === 'ber' ? ' auf' : ''}"${berichte.attribut} data-act="pop" data-arg="ber" aria-haspopup="menu">Berichte<span class="dd">▾</span></a>${vWbsMenue()}<a href="#/einrichten" class="${einrichten.klasse}"${einrichten.attribut}>Einrichten</a></nav>`;
+  const board = aktuelleSeite(u.view === 'board'), berichte = aktuelleSeite(u.view.startsWith('berichte'));
+  return `<nav class="kz-nav"><a href="#/board/${esc(u.slug || '')}" class="${board.klasse}"${board.attribut}>Board</a><a href="#" id="t-ber" class="${berichte.klasse}${u.pop === 'ber' ? ' auf' : ''}"${berichte.attribut} data-act="pop" data-arg="ber" aria-haspopup="menu">Berichte<span class="dd">▾</span></a></nav>`;
 }
 
 /** Unter 600 px ersetzt ein Knopf mit dem Namen der aktuellen Seite die Navigationsleiste (R00101, PO 2026-10-31). */
@@ -95,20 +95,16 @@ function vSeitenKnopf() {
 
 const seitenName = () => seitenNameVon(S.ui.view);
 
+/** Unter 600 px trägt das Seitenmenü dieselben zwei Ziele wie die Leiste (R00140); die vier seltenen liegen im Menü „…“. */
 function vSeitenPop() {
   const u = S.ui, name = seitenName();
   const ziel = (titel, hash) => {
     const zielEintrag = aktuelleSeite(name === titel);
     return `<a class="${cssKlassen('iz', zielEintrag.klasse)}"${zielEintrag.attribut} href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   };
-  const wbs = gebunden().map(a => {
-    const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
-    const wbsEintrag = aktuelleSeite(u.view === 'wbs' && wbsKuerzel() === a.kuerzel);
-    return `<a class="${cssKlassen('iz', wbsEintrag.klasse)}"${wbsEintrag.attribut} href="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" data-act="seite" data-arg="#/wbs/${esc(encodeURIComponent(a.kuerzel))}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
-  }).join('');
   const berichteEintrag = aktuelleSeite(name === 'Berichte');
   const berichte = `<button type="button" class="${cssKlassen('iz', berichteEintrag.klasse)}"${berichteEintrag.attribut} data-act="pop" data-arg="ber" role="menuitem" tabindex="-1" aria-haspopup="menu">Berichte<span class="muted">▸</span></button>`;
-  return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><div class="pop-kopf">SEITE</div>${ziel('Board', '#/board/' + esc(u.slug || ''))}${ziel('Aufgaben', '#/aufgaben')}${ziel('Personen', '#/personen')}${berichte}${wbs}${ziel('Einrichten', '#/einrichten')}</div>`;
+  return `<div class="pop kz-menue" id="pop" data-for="t-seite" data-al="l" role="menu" aria-label="Seite"><div class="pop-kopf">SEITE</div>${ziel('Board', '#/board/' + esc(u.slug || ''))}${berichte}</div>`;
 }
 
 const BEREICHE = [['alle', 'alle'], ['meine', 'meine'], ['agenten', 'Agenten']];

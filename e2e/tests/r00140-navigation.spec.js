@@ -73,7 +73,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   test.describe.configure({ timeout: 180000 });
 
   test('US-1/AK 1: die Leiste trägt nur Board und Berichte; die vier Ziele kommen darin nicht vor', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -86,7 +85,6 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
   });
 
   test('US-2/AK 2: unter 600 px trägt das Seitenmenü dieselben zwei Ziele — die vier nicht', async ({ page }) => {
-    test.fail(true, 'Karte #105 (R00140): erwartet rot bis B0621, B0622, B0649, B0625 gebaut sind');
     const k = await starten(page);
     await page.goto(k.adresse);
     await expect(page.locator('.ka')).toHaveCount(1);
