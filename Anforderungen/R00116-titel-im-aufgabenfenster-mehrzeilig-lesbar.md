@@ -41,7 +41,7 @@ Das Aufgabenfenster ist der Ort, an dem eine Karte gelesen und entschieden wird;
 
 ### Umfeld unverändert
 
-6. ↑/↓ blättern im Fenster weiter, solange der Fokus nicht in einem Eingabefeld steht — der Guard (`web/app.js:1951`, `!/INPUT|TEXTAREA|SELECT/`) greift auf dem Lesediv nicht; die Blättertasten bleiben bedienbar, im Lese- wie im Bearbeitungszustand wie heute. *(Aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern mit ↑/↓ ist gestrichen — R00144 FA 9. Der Titel bleibt mehrzeilig lesbar, `e` und Klick bearbeiten ihn; die Aussage dieser Anforderung hängt nicht mehr am Blättern.)*
+6. **Kein Blättern** *(aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144/#145))*: ↑/↓ wechseln im Aufgabenfenster keine Aufgabe mehr — R00144 FA 9 hat den Blätter-Hörer samt Guard (`!/INPUT|TEXTAREA|SELECT/`) gestrichen, das Lesediv braucht damit keine Sonderregel, im Lese- wie im Bearbeitungszustand. Bis dahin galt: „↑/↓ blättern im Fenster weiter, solange der Fokus nicht in einem Eingabefeld steht; die Blättertasten bleiben bedienbar.“ Der Titel bleibt mehrzeilig lesbar, `e` und Klick bearbeiten ihn.
 7. Esc schließt das Fenster wie heute; das Verhalten des Titelfelds unter Esc (speichern/verwerfen) ist **#54** und bleibt hier unberührt.
 8. Der Sicherer aus ADR-0007 N1 ändert sich nicht: das Lesediv ist über seinen Aktions-Schlüssel `data-act="titel-bearbeiten"` gesichert, das Eingabefeld über `data-af="titel"` (Feldschlüssel) — beide Zustände überstehen das Neuzeichnen durch ein Live-Ereignis.
 
@@ -56,7 +56,7 @@ Das Aufgabenfenster ist der Ort, an dem eine Karte gelesen und entschieden wird;
 
 Geprüft mit dem Grundbestand aus `user-stories/R00116.md` (Muster `r00115-kartentext.spec.js`).
 
-- [ ] **1. Abnahme-Probe der Karte #115 (wörtlich)**: „Karte mit sehr langem Titel im Aufgabenfenster bei 1280 und 320 px: Der Titel ist vollständig sichtbar, ohne horizontales Scrollen; kein Wort endet mitten gebrochen, wo es in die Zeile passt (Range-Sonde wie r00115); Bearbeiten (Klick/Enter/`e`) bleibt bedienbar (Blättern ist durch Betreiber-Entscheidung 2026-11-12 (#144) gestrichen, R00144 FA 9); bei fokussiertem Lesediv übersteht der Fokus ein Live-Ereignis (ADR-0007 N1); `e` öffnet die Bearbeitung auch nach dem Neuzeichnen.“
+- [ ] **1. Abnahme-Probe der Karte #115 (wörtlich)**: „Karte mit sehr langem Titel im Aufgabenfenster bei 1280 und 320 px: Der Titel ist vollständig sichtbar, ohne horizontales Scrollen; kein Wort endet mitten gebrochen, wo es in die Zeile passt (Range-Sonde wie r00115); Bearbeiten (Klick/Enter/`e`) und Blättern (↑/↓) bleiben bedienbar; bei fokussiertem Lesediv übersteht der Fokus ein Live-Ereignis (ADR-0007 N1); `e` öffnet die Bearbeitung auch nach dem Neuzeichnen.“ *(Blättern ist aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144/#145), R00144 FA 9 — das Kriterium gilt ohne diesen Teil; „Bearbeiten“ steht unverändert.)*
   - Besteht: Fenster der Karte „Volltextsuche über alle Boards und Aufgaben“ bei 1280 und 320 px — jede sichtbare Zeile des Titels endet an einer Wortgrenze (Range-Sonde: kein Wort mit `getClientRects().length > 1`, wo die Zeile es fassen könnte), alle Zeilen liegen im sichtbaren Fensterkörper, `scrollWidth` des Körpers ≤ `clientWidth` + 1.
   - Fällt durch: heute — Titel im einzeiligen `input`, langer Titel nur mit horizontem Scrollen lesbar.
   - Prüfebene: E2E `r00116-fenstertitel.spec.js` US-1.
@@ -66,7 +66,7 @@ Geprüft mit dem Grundbestand aus `user-stories/R00116.md` (Muster `r00115-karte
   - Prüfebene: E2E US-3.
 - [ ] **4. Live-Ereignis bei fokussiertem Lesediv**: Fremder Schreibaufruf (Titeländerung über die API) bei fokussiertem Lesediv — nach dem Neuzeichnen steht der Fokus wieder auf dem Lesediv (gleicher Schlüssel `titel-bearbeiten`, Sicherer N1/FA 8), und `e` öffnet danach die Bearbeitung (FA 5).
   - Prüfebene: E2E US-4.
-- [ ] **5. Kein Blättern mehr (aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144))**: ↑/↓ mit Fokus auf dem Lesediv wechseln die Aufgabe nicht mehr (FA 6 gilt nicht mehr, R00144 FA 9); die Wächter `r00106` (Fokus in Fenstern und Menüs), `r00115`, `r00114`, `ziele`, `kontrast` laufen mit und bleiben grün.
+- [ ] **5. Kein Blättern mehr (aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144/#145))**: ↑/↓ mit Fokus auf dem Lesediv wechseln die Aufgabe nicht mehr (FA 6 in der Fassung nach #144, R00144 FA 9); die Wächter `r00106` (Fokus in Fenstern und Menüs), `r00115`, `r00114`, `ziele`, `kontrast` laufen mit und bleiben grün.
   - Prüfebene: E2E US-5; `npx playwright test r00106 r00115 r00114 ziele kontrast` grün.
 - [ ] **6. Grenzfall langes Einzelwort**: Titel „Donaudampfschifffahrtskapitänsanwärterunterricht“ (ein Wort, länger als die Zeile) — es bricht innerhalb des Wortes, bleibt ganz im sichtbaren Fensterkörper, kein horizontales Scrollen bei 1280 und 320 px.
   - Prüfebene: E2E US-6 (`ziele.spec.js`-Muster).
@@ -113,7 +113,7 @@ Nach Skill `test-pyramide`; jede Szene der User Story ein Test, jeder prüft ein
 
 ## Offene Fragen
 
-Keine — die Elementwahl ist durch ADR-0007 N2 entschieden (Architektur bestanden, `75c7853`); Form, Maße und Typografie des Lesedivs legt FA 3 fest (konsistent mit `.titel` heute, im Rahmen des ADR: „Form, Maße und Typografie bleiben Detailplanung/UX").
+Keine — die Elementwahl ist durch ADR-0007 N2 entschieden (Architektur bestanden, `75c7853`); Form, Maße und Typografie des Lesedivs legt FA 3 fest (konsistent mit `.titel` heute, im Rahmen des ADR: „Form, Maße und Typografie bleiben Detailplanung/UX“).
 
 ## Manuelle Vorbereitungstätigkeiten
 
