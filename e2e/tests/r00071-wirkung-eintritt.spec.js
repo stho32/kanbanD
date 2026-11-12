@@ -1,6 +1,6 @@
 // R00071 Wirkungen vermerken und eintreten lassen — anbinden ohne Änderung, Ampel aus der WBS, Schalter hin und zurück.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, reiter } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = wbsText([
@@ -25,6 +25,7 @@ test.describe('R00071', () => {
 
   const vermerken = async (page, aktion, knoten) => {
     await page.locator('.ka[data-id="8"] .t').click();
+    await reiter(page, 'Details');
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #8' });
     await fenster.getByRole('button', { name: '+ Wirkung' }).click();
     const form = fenster.getByRole('group', { name: 'Neue Wirkung' });

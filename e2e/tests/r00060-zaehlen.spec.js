@@ -1,6 +1,6 @@
 // R00060 Zählen in Berichten je Aufgabe
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## In Arbeit\n\n## Erledigt\n',
@@ -23,6 +23,7 @@ test.describe('R00060', () => {
     await alsPerson(board, 'st');
     await board.goto(k.adresse + '#/board/entwicklung');
     await board.locator('.ka[data-id="2"]').click();
+    await reiter(board, 'Details');
     const schalter = board.getByRole('button', { name: 'zählt in Wie lange noch' });
     await expect(schalter).toHaveAttribute('aria-pressed', 'true');
     await expect(schalter).toContainText('(Standard)');

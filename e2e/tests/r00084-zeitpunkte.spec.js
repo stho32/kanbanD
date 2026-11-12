@@ -1,6 +1,6 @@
 // R00084 Zeitpunkte mit Zeitzone
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## Erledigt\n',
@@ -16,6 +16,7 @@ test.describe('R00084', () => {
   test('US-1: Eintrag über die Zeitumstellung', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('tr[data-zeit="0"]')).toContainText('02:33–02:10');
     await expect(page.locator('tr[data-zeit="0"]')).not.toContainText('+0');
     await expect(page.locator('#zeitsumme')).toContainText('0:37');
@@ -24,6 +25,7 @@ test.describe('R00084', () => {
   test('US-2: neuer Timer trägt den Versatz', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="2"]').click();
+    await reiter(page, 'Zeiten');
     await page.getByRole('button', { name: '▶ Meinen Timer starten' }).click();
     await expect.poll(() => k.lies('aufgaben/0002-alt.md')).toMatch(/\n\d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · \.\.\. · st\n/);
     await expect(page.locator('.tz[data-timer="st"] b')).toHaveText(/^0:00:0\d$/);
@@ -33,6 +35,7 @@ test.describe('R00084', () => {
   test('US-3: Altbestand bleibt lesbar', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="2"]').click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('tr[data-zeit="0"]')).toContainText('09:00–10:42');
     await expect(page.locator('#zeitsumme')).toContainText('1:42');
     expect(k.lies('aufgaben/0002-alt.md')).toContain('2026-10-18 09:00 · 2026-10-18 10:42 · st\n');

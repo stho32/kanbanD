@@ -1,6 +1,6 @@
 // R00029 Karte direkt bedienen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const iso = n => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 const DATEIEN = { 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n', 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\n---\n' };
@@ -63,6 +63,7 @@ test.describe('R00029', () => {
   test('US-3: Fälligkeit per Knopf', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .t').click();
+    await reiter(page, 'Details');
     await page.getByRole('button', { name: 'morgen' }).click();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain(`due: ${iso(1)}`);
     await page.getByRole('button', { name: '+1 Woche' }).click();

@@ -1,6 +1,6 @@
 // R00098 Idempotentes Anlegen über einen Fremdschlüssel — der Schlüssel im Aufgabenfenster
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #7\n- #8\n\n## Erledigt\n',
@@ -16,15 +16,17 @@ test.describe('R00098', () => {
   test('AK Aufgabenfenster: Schlüssel sichtbar, nicht änderbar', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="7"]').click();
+    await reiter(page, 'Details');
     const feld = page.locator('#schluessel');
-    await expect(page.locator('.mod-side .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
+    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(1);
     await expect(feld).toHaveText('k4');
     await expect(feld.locator('input, select, textarea, [contenteditable]')).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     await page.locator('.ka[data-id="8"]').click();
-    await expect(page.locator('.mod-side .felder')).toBeVisible();
-    await expect(page.locator('.mod-side .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
+    await reiter(page, 'Details');
+    await expect(page.locator('#reiterpanel-details .felder')).toBeVisible();
+    await expect(page.locator('#reiterpanel-details .k', { hasText: /^Schlüssel$/ })).toHaveCount(0);
     await expect(page.locator('#schluessel')).toHaveCount(0);
   });
 });

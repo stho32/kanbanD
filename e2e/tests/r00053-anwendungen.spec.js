@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const WBS = name => `# WBS\n\n| ID | Ebene | Eltern | Name | Status | Braucht |\n|---|---|---|---|---|---|\n| I0005 | Interaction | D0001 | Anlegen | gruen | |\n| I0007 | Interaction | D0001 | ${name} | rot | I0005 |\n`;
 
@@ -73,6 +73,7 @@ test.describe('R00053', () => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka[data-id="3"] .org.mehrdeutig')).toHaveText('I0007 · mehrdeutig');
     await page.locator('.ka[data-id="2"]').click();
+    await reiter(page, 'Details');
     await page.getByLabel('Neue Herkunft').fill('kd:I0007');
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0002-zwei.md')).toContain('origins: [kd:I0007]');

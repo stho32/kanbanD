@@ -70,11 +70,16 @@ test.describe('Touch, 390 px', () => {
     await starten(page);
     await fensterOeffnen(page, 1);
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
-    const knoepfe = fenster.locator('.chk .x, .zt .btn-sym, .anh-z .x');
-    await expect(knoepfe.first()).toBeAttached();
-    const art = await knoepfe.evaluateAll(liste => liste.map(e => e.closest('.chk, .zt, .anh-z').className.split(' ')[0]));
+    // Jeder Abschnitt steht in seinem Reiter (R00127): dort die eigenen ✕ ohne Hover prüfen.
+    const art = [], deckkraft = [];
+    for (const [tab, selektor] of [['Inhalt', '.chk .x'], ['Zeiten', '.zt .btn-sym'], ['Anhänge', '.anh-z .x']]) {
+      await fenster.getByRole('tab', { name: tab }).click();
+      const knoepfe = fenster.locator(selektor);
+      await expect(knoepfe.first()).toBeAttached();
+      art.push(...await knoepfe.evaluateAll(liste => liste.map(e => e.closest('.chk, .zt, .anh-z').className.split(' ')[0])));
+      deckkraft.push(...await knoepfe.evaluateAll(liste => liste.map(e => getComputedStyle(e).opacity)));
+    }
     expect(new Set(art)).toEqual(new Set(['chk', 'zt', 'anh-z']));
-    const deckkraft = await knoepfe.evaluateAll(liste => liste.map(e => getComputedStyle(e).opacity));
     expect(deckkraft.every(wert => wert === '1'), deckkraft.join(' ')).toBe(true);
   });
 });
@@ -238,6 +243,7 @@ test.describe('Basisregel: Bedienelemente mindestens --kd-ziel', () => {
     test('Anhang „notiz.txt“ im Aufgabenfenster #1 und „API für Agenten“ in der Fußzeile mindestens 44', async ({ page }) => {
       await starten(page);
       await fensterOeffnen(page, 1);
+      await page.getByRole('tab', { name: 'Anhänge' }).click();
       await mindestens44(page.locator('.anh-z a', { hasText: 'notiz.txt' }));
       await page.keyboard.press('Escape');
       await mindestens44(page.locator('#stat a', { hasText: 'API für Agenten' }));

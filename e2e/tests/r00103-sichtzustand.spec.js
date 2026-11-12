@@ -1,6 +1,6 @@
 // R00103 Aufgabenfenster übersteht Live-Änderungen (ADR-0007: Sichtzustand übersteht das Neuzeichnen)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -97,16 +97,13 @@ test.describe('R00103 Leseposition', () => {
     nahe(await rollstand(page, '.mod-body'), 400);
   });
 
-  test('zwei Ereignisse kurz hintereinander: Hauptbereich und Seitenleiste bleiben stehen', async ({ page }) => {
+  test('zwei Ereignisse kurz hintereinander: der Hauptbereich bleibt stehen (einspaltig, R00127)', async ({ page }) => {
     await fensterOeffnen(page, k, { width: 1400, height: 420 });
     expect(await rollen(page, '.mod-main', 400)).toBe(400);
-    const seite = await rollen(page, '.mod-side', 120);
-    expect(seite, 'die Seitenleiste scrollt bei 420 px Höhe').toBeGreaterThan(0);
     const vorher = await renders(page);
     await Promise.all([kommentiert(page, k, 2, 'an zwei'), kommentiert(page, k, 1, 'an eins')]);
     await neuGezeichnetMit(page, vorher, 'an eins');
     nahe(await rollstand(page, '.mod-main'), 400);
-    nahe(await rollstand(page, '.mod-side'), seite);
   });
 
   test('ganz unten bleibt der Hauptbereich, wo er war', async ({ page }) => {
@@ -174,6 +171,7 @@ test.describe('R00103 Tippen', () => {
 
   test('Labels: angefangenes „ux, bu“ bleibt mit Fokus und Cursor', async ({ page }) => {
     await fensterOeffnen(page, k, BREIT);
+    await reiter(page, 'Details');
     await page.getByLabel('Labels').click();
     await page.keyboard.press('End');
     await page.keyboard.type(', bu');

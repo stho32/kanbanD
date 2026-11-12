@@ -1,7 +1,7 @@
 // R00057 Wirkungen von Aufgaben auf die WBS — Chips an Karte und Fenster, Gegenanzeige in der WBS-Sicht;
 // seit R00071 vermerkt „+ Wirkung“ nur, der Schalter „eingetreten“ ändert die WBS.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, reiter } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = wbsText([
@@ -38,6 +38,7 @@ test.describe('R00057', () => {
     await expect(punkt).toHaveAttribute('title', 'WBS-Wirkungen: noch nicht alle im Zielzustand\n+ kd:I0047 anlegen — Knoten gruen\n↻ kd:D0002 überarbeiten — Knoten gruen\n− kd:I0014 verwerfen — noch aktiv');
     await expect(karte(page, 8).locator('.wpunkt')).toHaveCount(0);
     await karte(page, 7).locator('.t').click();
+    await reiter(page, 'Details');
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #7' });
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0047', '↻ kd:D0002', '− kd:I0014']);
     await fenster.getByRole('link', { name: '↻ kd:D0002' }).click();
@@ -47,13 +48,14 @@ test.describe('R00057', () => {
     await expect(z(page, 'D0002')).toHaveClass(/\bziel\b/);
     await page.goBack();
     await karte(page, 7).locator('.t').click();
+    await reiter(page, 'Details');
     await page.getByRole('dialog', { name: 'Aufgabe #7' }).getByRole('link', { name: '+ kd:I0047' }).click();
     await expect(z(page, 'I0047')).toBeVisible();
     await expect(z(page, 'I0047')).toHaveClass(/\bziel\b/);
   });
 
   const zweiAufgaben = () => ({ 'aufgaben/0007-dialog-export-bauen.md': aufgabe(7, 'Dialog Export bauen'), 'aufgaben/0008-ziehen-ueberarbeiten.md': aufgabe(8, 'Ziehen überarbeiten') });
-  const oeffnen = async (page, nr) => { await karte(page, nr).locator('.t').click(); return page.getByRole('dialog', { name: `Aufgabe #${nr}` }); };
+  const oeffnen = async (page, nr) => { await karte(page, nr).locator('.t').click(); await reiter(page, 'Details'); return page.getByRole('dialog', { name: `Aufgabe #${nr}` }); };
 
   test('US-1: Wirkung „anlegen“ im Aufgabenfenster — neuer roter Knoten, die Karte zeigt seine ID, Commit nur im Board-Repository', async ({ page }) => {
     await starten(page, zweiAufgaben());
@@ -84,6 +86,7 @@ test.describe('R00057', () => {
     expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
     // Gegenanzeige: die WBS-Sicht zeigt an I0048 die Aufgabe, Klick öffnet sie
     await karte(page, 7).locator('.t').click();
+    await reiter(page, 'Details');
     await page.getByRole('dialog', { name: 'Aufgabe #7' }).getByRole('link', { name: '+ kd:I0048' }).click();
     await expect(z(page, 'I0048')).toHaveClass(/\brot\b/);
     await expect(z(page, 'I0048').locator('.wbs-aufgabe')).toHaveText(['#7']);

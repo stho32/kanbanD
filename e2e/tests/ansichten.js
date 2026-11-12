@@ -37,7 +37,7 @@ async function aufgabenfensterMitHinweis(page) {
   if (![200, 409].includes(angelegt.status())) throw new Error(`Zeiteintrag für #1 nicht angelegt: ${angelegt.status()} ${await angelegt.text()}`);
   await page.clock.install();
   await page.reload();
-  const fenster = await aufgabenfenster(page, 1);
+  const fenster = await aufgabenfenster(page, 1, 'Zeiten');
   await fenster.getByLabel('Zeit 1 löschen').click();
   await fenster.locator('.toast[role=status] [data-act=rueckgaengig]').waitFor({ state: 'attached' });
   await page.clock.pauseAt(Date.now() + 1000);
@@ -57,7 +57,7 @@ function fensterDerAnwendung() {
       fenster: 'Aufgabenfenster #1 mit Meldung',
       id: 'fenster',
       oeffnen: async page => {
-        const fenster = await aufgabenfenster(page, 1);
+        const fenster = await aufgabenfenster(page, 1, 'Details');
         await fenster.getByLabel('Neue Herkunft').fill('X1');
         await fenster.getByLabel('Neue Herkunft').press('Enter');
         await fenster.locator('[role=alert]').waitFor({ state: 'attached' });

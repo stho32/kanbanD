@@ -1,6 +1,6 @@
 // R00015 Zeiten nachtragen und korrigieren
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
@@ -15,6 +15,7 @@ test.describe('R00015', () => {
   test('US-1: nachtragen', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await expect(page.locator('#zeitsumme')).toContainText('2:00');
     await page.getByLabel('Zeit nachtragen').fill('0:45');
     await page.keyboard.press('Enter');
@@ -25,6 +26,7 @@ test.describe('R00015', () => {
   test('US-2: korrigieren', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await page.getByLabel('Zeit 1 korrigieren').click();
     await page.getByLabel('Ende', { exact: true }).fill('2026-10-17 10:00');
     await page.keyboard.press('Enter');
@@ -35,6 +37,7 @@ test.describe('R00015', () => {
   test('US-3: löschen', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await page.getByLabel('Zeit 1 löschen').click();
     await expect(page.locator('#zeitsumme')).toContainText('0:00');
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).not.toContain('kanbanD-time');

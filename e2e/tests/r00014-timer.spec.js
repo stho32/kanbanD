@@ -1,6 +1,6 @@
 // R00014 Timer starten und stoppen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const jetztMinus = min => { const d = new Date(Date.now() - min * 60000); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 
@@ -16,6 +16,7 @@ test.describe('R00014', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Zeiten');
     await page.getByRole('button', { name: '▶ Meinen Timer starten' }).click();
     await expect(page.locator('.tz.eigen')).toContainText('Stefan');
     await expect(page.getByRole('button', { name: '▶ Meinen Timer starten' })).toHaveCount(0);

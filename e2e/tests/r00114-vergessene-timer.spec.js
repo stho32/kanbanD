@@ -1,7 +1,7 @@
 // R00114 Vergessene Timer sichtbar machen (Karte #15) — Abnahme-Proben der Karte #15 in US-1 bis US-10.
 // Die Markierung ist eine Aussage der Anzeige (ADR-0019): nichts wird geschrieben, nichts kommt aus der API.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, thema, kontrastAm, kontrastFarben, ausMehr } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter, thema, kontrastAm, kontrastFarben, ausMehr } = require('./hilfen');
 const { breiteMessen, ueberlauf } = require('./ziele-hilfen');
 
 /* Die Datei kennt nur Minuten: `vor` legt einen Beginn in Ortszeit vor jetzt, wie die Fixtures der Nachbartests. */
@@ -126,6 +126,7 @@ test.describe('R00114', () => {
     await page.locator('.ka[data-id="1"]').focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await reiter(page, 'Zeiten');
     const korrigieren = page.getByRole('button', { name: 'Zeit 1 korrigieren' });
     await korrigieren.focus();
     await expect(korrigieren, 'der ✎-Knopf der Zeittabelle bleibt der Tastaturweg').toBeFocused();
@@ -426,6 +427,7 @@ test.describe('R00114', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .t').click();
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
+    await reiter(page, 'Zeiten');
     await expect(fenster.locator('.tl .lauf.vergessen')).toHaveText('seit 6 Tagen');
     await expect(fenster.locator('.tl .lauf'), 'nur der vergessene Timer trägt einen Chip').toHaveCount(1);
     await expect(fenster.locator('.tz[data-timer="cl"] b'), 'Claudes kurzer Timer bleibt die Zahl von heute').toHaveText(/^0:3\d:\d\d$/);

@@ -1,6 +1,6 @@
 // R00109 Datumsangaben und Feldbeschriftungen deutsch (ADR-0013, Aspekt X00004)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
 const { isoFundstellen, beschriftungenPruefen, ausnahmenAbgleichen } = require('./kultur-hilfen');
 const { FELDER } = require('../../web/kultur.js');
@@ -167,11 +167,13 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(fenster(page).locator('.km').first()).toContainText('Claude · 17.10.2026 09:00');
+    await reiter(page, 'Details');
     await expect(page.getByLabel('Fälligkeit', { exact: true })).toHaveValue(HEUTE);
     await page.getByRole('tab', { name: 'Datei' }).click();
     await expect(page.locator('#dateitext')).toContainText(`due: ${HEUTE}`);
     await schliessen(page);
     await fensterOeffnen(page, 2);
+    await reiter(page, 'Details');
     await expect(page.locator('#reservierung')).toContainText(/seit \d\d:\d\d ·/);
     await expect(page.locator('#reservierung')).not.toContainText(ISO);
     await schliessen(page);
@@ -188,6 +190,7 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(page.locator('#durchlaeufe tbody tr td:first-child')).toHaveText([`${kurz(HEUTE)} 14:05`, `${lang(VORJAHR_3012)} 14:05`]);
+    await reiter(page, 'Zeiten');
     await expect(page.locator('table.zt tr[data-zeit] td:first-child')).toHaveText([kurz(HEUTE), lang(VORJAHR_3012)]);
   });
 
@@ -360,6 +363,7 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
   test('US-7: Beschriftungen im Aufgabenfenster und in „Neue Aufgabe“ deutsch, Schlüssel als eigenes Element außerhalb der Beschriftung', async ({ page }) => {
     await starten(page);
     const aufgabe = await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     // erst wenn die Felder stehen, ist die Probe ein Befund und kein zu früher Blick
     await aufgabe.locator('.felder .k').first().waitFor();
     const imFenster = await beschriftungenPruefen(aufgabe, FELDER);
@@ -387,12 +391,14 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
   test('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel als eigenes Element', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     await eins.locator('.felder .k').first().waitFor();
     const inEins = await beschriftungenPruefen(eins, FELDER);
     expect(verstoesse(inEins)).toEqual([]);
     expect(beschriftungen(inEins)).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
     await schliessen(page);
     const zwei = await fensterOeffnen(page, 2);
+    await reiter(page, 'Details');
     await zwei.locator('#reservierung').waitFor();
     const inZwei = await beschriftungenPruefen(zwei, FELDER);
     expect(verstoesse(inZwei)).toEqual([]);
@@ -428,11 +434,13 @@ test.describe('US-9: ohne Herkunft', () => {
     await brett(page);
     await expect(page.locator('.ka[data-id="2"] .org')).toHaveText('ohne Herkunft');
     await fensterOeffnen(page, 2);
+    await reiter(page, 'Details');
     await expect(fenster(page).locator('.org.leer')).toHaveText('ohne Herkunft');
     await expect(page.getByLabel('Neue Herkunft')).toHaveAttribute('title', /ohne Herkunft/);
     await expect(page.getByLabel('Neue Herkunft')).not.toHaveAttribute('title', /thin air/);
     await schliessen(page);
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     expect(await k.lies('aufgaben/0001-eins.md')).toContain('origins: [I0001, R00014]');
     await page.getByLabel('Neue Herkunft').fill('  Ohne Herkunft ');
     await page.keyboard.press('Enter');
@@ -444,6 +452,7 @@ test.describe('US-9: ohne Herkunft', () => {
     await page.request.patch(k.adresse + 'api/aufgaben/1', { ...ALS_ST, data: { herkunft: ['I0001'] } });
     await expect(page.locator('.ka[data-id="1"] .org')).toHaveText('I0001');
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     // .ochip tragen auch die WBS-Wirkungen; je Herkunft gibt es genau einen Entfernen-Knopf
     await expect(fenster(page).getByRole('button', { name: /^Herkunft .* entfernen$/ })).toHaveCount(1);
     await page.getByLabel('Neue Herkunft').fill('THIN AIR');
@@ -463,6 +472,7 @@ test.describe('US-9: ohne Herkunft', () => {
   test('US-9, Gegenbeispiel: „ohne Herkunftx“ wird nicht als „ohne Herkunft“ erkannt, der Server lehnt es ab, die Datei bleibt [I0001, R00014]', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     const anfrage = page.waitForRequest(r => r.method() === 'PATCH' && r.url().endsWith('/api/aufgaben/1'));
     await page.getByLabel('Neue Herkunft').fill('ohne Herkunftx');
     await page.keyboard.press('Enter');
@@ -479,6 +489,7 @@ test.describe('US-9: ohne Herkunft', () => {
     const ablehnen = async page => {
       await starten(page);
       await fensterOeffnen(page, 2);
+      await reiter(page, 'Details');
       await feld(page).fill('X1');
       await page.keyboard.press('Enter');
       await expect(page.locator('.mod-fuss .fehl')).toHaveCount(1);
@@ -495,6 +506,7 @@ test.describe('US-9: ohne Herkunft', () => {
       await ablehnen(page);
       await schliessen(page);
       await page.locator('.ka[data-id="2"] .t').click();
+      await reiter(page, 'Details');
       await expect(feld(page)).toHaveValue('');
       await expect(page.locator('.mod-fuss .fehl')).toHaveCount(0);
     });
@@ -519,9 +531,11 @@ test.describe('US-9: ohne Herkunft', () => {
       await ablehnen(page);
       await schliessen(page);
       await page.locator('.ka[data-id="1"] .t').click();
+      await reiter(page, 'Details');
       await expect(feld(page)).toHaveValue('');
       await schliessen(page);
       await page.locator('.ka[data-id="2"] .t').click();
+      await reiter(page, 'Details');
       await expect(feld(page)).toHaveValue('');
     });
 
@@ -538,6 +552,7 @@ test.describe('US-9: ohne Herkunft', () => {
   test('US-9, Hilfstext: beide Herkunftsfelder nennen „ohne Herkunft“ in Anführungszeichen, nicht thin air', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
     await expect(page.getByLabel('Neue Herkunft')).toHaveAttribute('title', HERKUNFT_HILFE);
     await schliessen(page);
     await page.keyboard.press('n');

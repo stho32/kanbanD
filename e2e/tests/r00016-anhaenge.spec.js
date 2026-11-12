@@ -1,6 +1,6 @@
 // R00016 Anhänge verwalten
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
@@ -15,6 +15,7 @@ test.describe('R00016', () => {
   test('US-1 und US-2: hinzufügen, öffnen, entfernen', async ({ page }) => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"]').click();
+    await reiter(page, 'Anhänge');
     await page.getByLabel('Anhang hinzufügen').setInputFiles({ name: 'protokoll.txt', mimeType: 'text/plain', buffer: Buffer.from('Inhalt des Protokolls') });
     const link = page.getByRole('link', { name: 'protokoll.txt' });
     await expect(link).toBeVisible();

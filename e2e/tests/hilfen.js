@@ -85,6 +85,9 @@ async function alsPerson(page, kuerzel) {
   await page.addInitScript(k => sessionStorage.setItem('kanbanD.ich', k), kuerzel);
 }
 
+/** Öffnet im Aufgabenfenster den Reiter `name` (R00127): Zeiten, Anhänge und Details liegen nicht mehr auf der Seite „Inhalt“. */
+async function reiter(page, name) { await page.getByRole('tab', { name }).click(); }
+
 /** Wartet, bis die Seite live verbunden ist — erst dann kommt eine Änderung von außen sicher an (R00050). */
 async function liveBereit(page) {
   await page.locator('html[data-live="verbunden"]').waitFor({ state: 'attached' });
@@ -255,4 +258,4 @@ async function mutanteEinsetzen(ziel) {
   });
 }
 
-module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };

@@ -1,6 +1,6 @@
 // R00111 US-9, AK 11: Meldung und Feld über der Bildschirmtastatur (Karte #74, ADR-0016)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen, reiter } = require('./hilfen');
 
 const HANDY = { viewport: { width: 414, height: 896 }, isMobile: true, hasTouch: true };
 const HANDY_QUER = { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true };
@@ -74,6 +74,7 @@ async function starten(page) {
 async function herkunftMitTastatur(page, sichtbar) {
   await page.locator('.ka[data-id="1"] .t').tap();
   const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
+  await reiter(page, 'Details');
   const feld = fenster.getByLabel('Neue Herkunft');
   await feld.tap();
   await expect(feld).toBeFocused();

@@ -1,6 +1,6 @@
 // R00110 Fenster zeigt nur den neuesten Stand (Befundkarte #76, ADR-0014): eine ältere Antwort überschreibt nie einen neueren Stand
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
 
 const DATEIEN = {
   'kanbanD.md': '---\npeople:\n  st: {name: Stefan, kind: human}\n  bot: {name: Bot, kind: agent}\n---\n',
@@ -517,8 +517,10 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
     await mitKanban(page, async k => {
       const anlegen = await anfrageHalten(page, 'POST', '/api/aufgaben/1/teilaufgaben');
       await fensterOeffnen(page, k, 1);
+      await reiter(page, 'Anhänge');
       await expect(page.getByRole('link', { name: 'protokoll.txt' })).toBeVisible();
       await protokollStarten(page);
+      await reiter(page, 'Inhalt');
       anlegen.scharf();
       await page.getByLabel('Neue Teilaufgabe').fill('neu');
       await page.getByLabel('Neue Teilaufgabe').press('Enter');
@@ -532,7 +534,7 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
       await anlegen.freigeben();
       await ruhig(page);
       await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
-      await page.locator('#reiter-inhalt').click();
+      await page.locator('#reiter-anhaenge').click();
       await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
       expect(await fremderAnhang(page, '#2', 'protokoll.txt'), 'das Fenster von #2 zeigte den Anhang von #1').toEqual([]);
       expect(await fremdeDatei(page, '#2', 'Abnahme prüfen'), 'das Fenster von #2 zeigte die Datei von #1').toEqual([]);
@@ -541,6 +543,7 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
       await page.reload();
       await liveBereit(page);
       await page.locator('.ka[data-id="2"] .t').click();
+      await reiter(page, 'Anhänge');
       await expect(page.locator('#anhaenge .anh-z')).toHaveCount(0);
       await page.locator('#reiter-datei').click();
       await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
