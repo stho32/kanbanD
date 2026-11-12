@@ -398,7 +398,12 @@ function vBoardMenue(titel, slug, archiviert) {
 }
 function vBoardPop() {
   const u = S.ui;
-  const umbenennenZeile = (slug, titel) => `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(titel)}" aria-label="Neuer Name für Board ‚${esc(titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
+  // Härtung #129/1 (ux): die getippte Zeichenkette steht im Zustand (`S.ui.boardUmbenennenWert`, gesetzt beim Beginn
+  // der Sitzung und im `input`-Ereignis) und wird im Feld gezeichnet — nach einem 400 zeigt das Feld die abgelehnte
+  // Eingabe samt Feldfehler (Artboard D0002), nicht wieder den Titel des Boards.
+  const umbenennenZeile = (slug, titel) => {
+    return `<div class="bzeile edit"><input class="inp" id="board-umbenennen" value="${esc(u.boardUmbenennenWert)}" aria-label="Neuer Name für Board ‚${esc(titel)}‘" data-enter="board-umbenennen-ok" data-arg="${esc(slug)}"${u.popFehler ? ' aria-invalid="true" aria-describedby="board-fehler"' : ''}><button type="button" class="btn btn-sym" data-act="board-umbenennen-ok" data-arg="${esc(slug)}" aria-label="Umbenennen bestätigen (Enter)">✓</button><button type="button" class="btn btn-sym" data-act="board-umbenennen-ab" data-arg="${esc(slug)}" aria-label="Verwerfen (Esc)">✕</button></div>`;
+  };
   // `defekt` = eine defekte Board-Datei (R00025): derselbe Weg zum Umbenennen, nur mit der Marke „defekt“ statt des Slugs.
   const zeile = (b, defekt) => {
     if (u.boardUmbenennen === b.slug) return umbenennenZeile(b.slug, b.titel);

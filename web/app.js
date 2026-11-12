@@ -1083,9 +1083,13 @@ function boardName(slug) {
   return b ? b.titel : slug;
 }
 
-/** Umbenennen (R00128 M10/S3): PATCH {titel}; ein 400 zeigt die Servermeldung als Feldfehler in `popFehler`, das Feld bleibt offen. */
-async function boardUmbenennen(slug, wert) {
-  const titel = (wert || '').trim();
+/** Umbenennen (R00128 M10/S3): PATCH {titel}; ein 400 zeigt die Servermeldung als Feldfehler in `popFehler`, das Feld bleibt offen.
+    Die getippte Zeichenkette hält `S.ui.boardUmbenennenWert` (Härtung #129/1) — gesetzt beim Beginn der Sitzung und im Feld. */
+async function boardUmbenennen(slug, eingegebenerWert) {
+  // Der ✓-Knopf trägt keinen Wert mit: dann gilt die im Feld gehaltene Eingabe.
+  let eingabe = eingegebenerWert;
+  if (eingabe === undefined) eingabe = S.ui.boardUmbenennenWert;
+  const titel = eingabe.trim();
   try {
     await api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { titel });
   } catch (f) {
@@ -1248,7 +1252,7 @@ async function act(a, arg, wert) {
         } catch (f) { u.popFehler = f.message; u.fokus = '#board-neu'; break; }
       }
       case 'board-menue': u.popFehler = null; u.boardUmbenennen = null; u.boardMenue = u.boardMenue === arg ? null : arg; break;
-      case 'board-umbenennen': u.boardMenue = null; u.boardUmbenennen = arg; u.popFehler = null; u.fokus = '#board-umbenennen'; break;
+      case 'board-umbenennen': u.boardMenue = null; u.boardUmbenennen = arg; u.boardUmbenennenWert = boardName(arg); u.popFehler = null; u.fokus = '#board-umbenennen'; break;
       case 'board-umbenennen-ab': u.boardUmbenennen = null; u.popFehler = null; u.fokus = `[data-act="board-wahl"][data-arg="${arg}"]`; break;
       case 'board-umbenennen-ok': return boardUmbenennen(arg, wert);
       case 'board-archivieren': u.boardMenue = null; u.fokus = null; u.alDialog = boardAlDialog('archivieren', arg); break;
@@ -2134,6 +2138,9 @@ document.addEventListener('input', e => {
     if (nf === 'titel') { const v = $('#neu-vorschau'); if (v) v.innerHTML = e.target.value.trim() ? vSchnellVorschau(e.target.value) : ''; }
     return;
   }
+  // Die getippte Zeichenkette des Board-Umbenennens hält der Zustand (Härtung #129/1): der nächste Render zeichnet sie
+  // weiter, auch nach einem Feldfehler — und der ✓-Knopf (Klick trägt keinen Wert mit) bestätigt dieselbe Eingabe.
+  if (e.target.id === 'board-umbenennen') { S.ui.boardUmbenennenWert = e.target.value; return; }
   // der Entwurf folgt dem Feld, damit ein Neuzeichnen die eigene Berichtigung stehen lässt
   if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.herkunftEntwurf = { nummer: S.ui.offen, wert: e.target.value }; return; }
   if (e.target.id === 'flt') {

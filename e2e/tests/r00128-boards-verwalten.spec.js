@@ -95,6 +95,51 @@ test.describe('R00128', () => {
     expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung\n');
   });
 
+  // Härtung #129/1 (ux): die abgelehnte Eingabe übersteht den Feldfehler. Das Artboard D0002 (#board-verwalten) zeichnet
+  // das Feld mit der abgelehnten Zeichenkette samt Feldfehler; heute setzt jeder Render den Board-Titel wieder ein.
+  test('H129/1: nach dem 400 stehen die getippten 201 Zeichen im Feld, aria-invalid, kein Commit', async ({ page }) => {
+    const vorher = k.lies('boards/entwicklung.md');
+    const vorherCommit = k.git('log', '-1', '--format=%s');
+    await oeffnenMenue(page, 'entwicklung');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    const feld = pop(page).locator('#board-umbenennen');
+    const zuLang = 'X'.repeat(201);
+    await feld.fill(zuLang);
+    await feld.press('Enter');
+    await expect(pop(page).getByRole('alert')).toBeVisible();
+    // das Feld bleibt offen und trägt die abgelehnte Eingabe — nicht wieder den Titel des Boards
+    await expect(feld).toBeVisible();
+    await expect(feld).toHaveValue(zuLang);
+    await expect(feld).toHaveAttribute('aria-invalid', 'true');
+    await expect(feld).toHaveAttribute('aria-describedby', 'board-fehler');
+    // kein Schreiben, kein Commit
+    expect(k.lies('boards/entwicklung.md')).toBe(vorher);
+    expect(k.git('log', '-1', '--format=%s')).toBe(vorherCommit);
+    // Gegenprobe: der berichtigte Titel geht durch — Feld zu, Toast, ein Commit
+    await feld.fill('Entwicklung 2026');
+    await feld.press('Enter');
+    await expect(feld).toHaveCount(0);
+    await expect(status(page)).toContainText('Entwicklung 2026');
+    expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung 2026\n');
+    expect(k.git('log', '-1', '--format=%s')).not.toBe(vorherCommit);
+    // der gemerkte Wert ist danach weg: ein Umbenennen auf einem anderen Board beginnt mit dessen Titel
+    await pop(page).locator('[data-act="board-menue"][data-arg="test"]').click();
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    await expect(pop(page).locator('#board-umbenennen')).toHaveValue('Test');
+    await pop(page).locator('#board-umbenennen').press('Escape');
+  });
+
+  // H129/1 (Variante derselben Klasse): der ✓-Knopf neben dem Feld nimmt den getippten Wert, nicht ein leeres Feld.
+  test('H129/1b: der ✓-Knopf bestaetigt den getippten Namen', async ({ page }) => {
+    await oeffnenMenue(page, 'entwicklung');
+    await pop(page).getByRole('menuitem', { name: 'Umbenennen' }).click();
+    await pop(page).locator('#board-umbenennen').fill('Entwicklung 2026');
+    await pop(page).getByRole('button', { name: 'Umbenennen bestätigen (Enter)' }).click();
+    await expect(pop(page).locator('#board-umbenennen')).toHaveCount(0);
+    await expect(status(page)).toContainText('Entwicklung 2026');
+    expect(k.lies('boards/entwicklung.md')).toContain('# Entwicklung 2026\n');
+  });
+
   test('US-2/US-10/AK12: Archivieren nimmt aus der Liste in den Abschnitt ARCHIVIERT', async ({ page }) => {
     // der Dialog fragt nach (Name, Startfokus Abbrechen)
     await oeffnenMenue(page, 'test');
