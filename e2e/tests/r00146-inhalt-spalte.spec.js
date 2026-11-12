@@ -125,7 +125,7 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
       const w = kb.nextElementSibling.getBoundingClientRect(), b = kb.getBoundingClientRect();
       return { text: kb.querySelector('.k').textContent, ueber: b.bottom <= w.top + 0.5 };
     }));
-    expect(paare.map(p => p.text).slice(0, 4)).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig']);
+    expect(paare.map(p => p.text)).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig', 'Zuständig']);
     expect(paare.filter(p => !p.ueber), 'Beschriftung über dem Wert').toEqual([]);
 
     // links steht der Inhalt unverändert
@@ -169,7 +169,7 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     // die Schnellknöpfe am Fällig-Feld bleiben in „Details“
     await expect(page.locator('#fenster .mod-main [data-act="faellig"]')).toHaveCount(4);
     await reiter(page, 'Inhalt');
-    expect(await spalte(page).locator('.kb .k').allInnerTexts()).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig']);
+    expect(await spalte(page).locator('.kb .k').allInnerTexts()).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig', 'Zuständig']);
   });
 
   /* ── US-2: die vier Felder ändern und sofort committen (B0676) ── */
@@ -270,6 +270,18 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     await page.keyboard.press('Escape');
     expect(k.lies('aufgaben/0001-telemetrie.md')).toBe(datei);
     expect(k.git('log', '-1', '--format=%H')).toBe(stand);
+  });
+
+  /* ── US-3: die Zuständigen nur lesen (B0677/B0678) ── */
+
+  test('US-3: Zuständig nennt nur die gewählten, Initiale aria-hidden, kein Bedienelement, Gruppe „Zuständig“', async ({ page }) => {
+    await oeffnen(page);
+    const zeile = page.locator('#inhalt-spalte [role="group"][aria-label="Zuständig"]');
+    await expect(zeile).toHaveCount(1);
+    expect((await zeile.innerText()).replace(/\s+/g, ' ').trim()).toBe('ST Stefan · AG Agent');
+    await expect(zeile).not.toContainText('Paula');
+    await expect(zeile.locator('button, input, select, [data-act], [aria-pressed], [tabindex]')).toHaveCount(0);
+    await expect(zeile.locator('[aria-hidden="true"]')).toHaveCount(3); // zwei Initialen, ein Trenner
   });
 
   /* ── Fehler und Grenzen ── */

@@ -420,6 +420,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .felder.felder-schmal select,.felder.felder-schmal .mini-inp{width:100%;height:var(--kd-ziel);min-height:var(--kd-ziel)}
 .felder.felder-schmal .mini-inp{padding:0 6px}
 .felder.felder-schmal select{border-left:1px solid var(--kd-line)}
+/* Nur lesende Zeile „Zuständig“ (R00146 FA 3): Initiale als Verzierung, Name als Text, Trenner ohne Bedeutung */
+.felder-schmal .zz{display:inline-flex;align-items:center;gap:4px}
+.felder-schmal .zz-tr{color:var(--kd-muted)}
 /* Wertspalte bricht an beliebiger Stelle um (R00131, ADR-0012/0015 N1/0019 N4): min-width:0 lässt die Zelle schrumpfen,
    overflow-wrap:anywhere verkleinert die Mindestbreite des anonymen Flex-Textkindes — break-word täte das hier nicht */
 .felder .w{min-width:0;overflow-wrap:anywhere}

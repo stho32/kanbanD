@@ -313,12 +313,22 @@ function vFensterAktionen(a) {
   const loeschen = `<button type="button" role="menuitem" tabindex="-1" class="fm-e warn" data-act="endgueltig-loeschen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${PAPIERKORB}</span><span class="fm-text">Endgültig löschen</span></button>`;
   return `<span class="fm-anker">${knopf}<div class="fm" role="menu" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" data-art="aktionen">${archivieren}<div class="fm-tr" role="separator"></div>${loeschen}</div></span>`;
 }
+/** Die Zeile „Zuständig“ der Spalte ist nur lesend (R00146 FA 3): nur die gewählten Zuständigen, je Initiale als Verzierung
+    (`aria-hidden`) plus Name als Text, in einer Gruppe „Zuständig“; kein Bedienelement, kein Chip, Leerfall „niemand“.
+    Geändert werden sie allein in „Details“ (R00039) — es gibt keinen zweiten Schreibweg. */
+function vZustaendigLesen(a) {
+  const namen = a.zustaendige.map(k => ({ k, name: per(k).name }));
+  const inhalt = namen.length
+    ? namen.map(({ k, name }) => `<span class="zz"><span aria-hidden="true">${pk(k)}</span> ${esc(name)}</span>`).join('<span class="zz-tr" aria-hidden="true">·</span>')
+    : '<span class="muted">niemand</span>';
+  return `${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${inhalt}</span>`;
+}
 /** Die schmale Spalte im Inhalt (R00146 FA 1–5, 12–14): die vier bearbeitbaren Feldzeilen aus demselben Zeichner wie
-    „Details“, Beschriftung über dem Wert, ohne sichtbare Überschrift als benannte Gruppe. `#inhalt-spalte` ist der
-    Fokusrückfall, wenn ein Feld unter einem Live-Ereignis wegfällt (FA 14, ADR-0010 N7). */
+    „Details“ und darunter die nur lesende Zeile „Zuständig“, Beschriftung über dem Wert, ohne sichtbare Überschrift als
+    benannte Gruppe. `#inhalt-spalte` ist der Fokusrückfall, wenn ein Feld unter einem Live-Ereignis wegfällt (FA 14, ADR-0010 N7). */
 const SPALTE_FELDER = ['spalte', 'klasse', 'labels', 'faellig'];
 function vInhaltSpalte(a) {
-  return `<aside class="mod-spalte" id="inhalt-spalte" role="group" aria-label="Angaben zur Aufgabe" tabindex="-1"><div class="felder felder-schmal">${SPALTE_FELDER.map(feld => vFeldZeile(feld, a, true)).join('')}</div></aside>`;
+  return `<aside class="mod-spalte" id="inhalt-spalte" role="group" aria-label="Angaben zur Aufgabe" tabindex="-1"><div class="felder felder-schmal">${SPALTE_FELDER.map(feld => vFeldZeile(feld, a, true)).join('')}${vZustaendigLesen(a)}</div></aside>`;
 }
 function vFenster() {
   const a = aufgabe(S.ui.offen);
