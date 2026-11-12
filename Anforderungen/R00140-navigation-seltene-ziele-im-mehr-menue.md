@@ -12,7 +12,7 @@ Die Hauptnavigation führt heute sechs Ziele gleichberechtigt (Board, Aufgaben, 
 
 Zahlt ein auf: [Vision](R00000-vision.md) — Leitplanke „Ein eigenes Design, früh vom Menschen gesehen. Es ist per Tastatur bedienbar und folgt gewohnten Konventionen.“
 
-**Nicht Teil:** ein neues Tastenkürzel für die vier Ziele, eine Suchfunktion im Menü, das Ändern der Filterlogik oder des Filterfelds, das Zusammenfassen der acht Berichte, das Verschieben von „Neue Aufgabe“ oder des Bereichsfilters ins Menü (beide bleiben ohne Menü bedienbar, R00101), eine Navigation Bar unten (compact-Ziel, R00101 Notizen), der Ausbau der Menüköpfe in `role=menu` (eigene Karte #109/R00136).
+**Nicht Teil:** ein neues Tastenkürzel für die vier Ziele, eine Suchfunktion im Menü, das Ändern der Filterlogik oder des Filterfelds, das Zusammenfassen der acht Berichte, das Verschieben von „Neue Aufgabe“ oder des Bereichsfilters ins Menü (beide bleiben ohne Menü bedienbar, R00101), eine Navigation Bar unten (compact-Ziel, R00101 Notizen).
 
 ### Domänenbezug
 - [Schmales Layout](../Dokumentation/Domaenenwissen/D00004-schmales-layout.md) — unter 640 px ersetzt der Seitenknopf die Leiste
@@ -34,7 +34,7 @@ Der Auslöser ist eine Beobachtung des Betreibers: Aufgaben, Personen, WBS und E
 4. Das Menü „…“ (`#t-mehr`, `role=menu`) ist bei **jeder** Breite vorhanden (heute schon, R00101) und trägt zusätzlich die vier Ziele in dieser Reihenfolge: **Aufgaben, Personen, WBS, Einrichten**. Die Werkzeuge, die `kopfPlaetze` je Breite in dieses Menü führt, bleiben erhalten — heute ab 600 px „Signale oben“, „Spalten einrichten“, „Darstellung“, unter 600 px zusätzlich „Läuft gerade“ (bei laufendem Timer) und „Ich bin …“. „Läuft gerade“ und „Ich bin …“ erscheinen dort also **je Breite**; oberhalb 600 px führt `kopfPlaetze` sie in der Werkzeug- bzw. Statuszeile der Kopfzeile (`web/kopfzeile.js`).
 5. Jeder Eintrag des Menü „…“ — auch der WBS-Eintrag — ist ein `menuitem` mit `tabindex="-1"`; die vier Ziele sind Links mit `data-act="seite"` in der Form von `vSeitenPop` (nicht der bloße Leistenlink). Der WBS-Eintrag erscheint je gebundener Anwendung: ohne gebundene Anwendung kein Eintrag, bei mehreren je Anwendung mit Kürzel („WBS · kc“, „WBS · kd“).
 6. Jeder Eintrag führt zur selben Ansicht wie heute der Leistenlink (`#/aufgaben`, `#/personen`, `#/wbs/<kürzel>`, `#/einrichten`); er schließt das Menü und zeigt die Zielansicht.
-7. Die Reihenfolge und Gruppierung innerhalb des Menü „…“ folgt der UX-Vorprüfung: die vier Ziele stehen als **erste Gruppe** oben, darunter trennt genau **ein** `role="separator"` sie von den Werkzeugen; ein zweiter Abschnittskopf entsteht nicht (der heutige `<h4>MEHR</h4>` bleibt, seine Ablösung ist Karte #109/R00136).
+7. Die Reihenfolge und Gruppierung innerhalb des Menü „…“ folgt der UX-Vorprüfung: die vier Ziele stehen als **erste Gruppe** oben, darunter trennt genau **ein** `role="separator"` sie von den Werkzeugen; ein zweiter Abschnittskopf entsteht nicht (der heutige Kopf `div.pop-kopf` bleibt).
 
 ### Die aktuelle Seite bleibt erkennbar
 
@@ -174,7 +174,7 @@ Keine, die den Bau blockieren. Die richtungsweisenden Fragen der Vorlage hat die
 
 1. **Dopplung unter 600 px (entschieden, UX #105):** Der Seitenknopf/-pop (Board + Berichte) bleibt **neben** dem Menü „…“ — in compact ist der Seitenknopf die Navigation und trägt dieselben zwei Ziele; die vier liegen ausschließlich im Menü „…“.
 2. **Kennzeichnung des Auslösers „…“ (entschieden, UX #105):** **nichts am Auslöser** — der Menüeintrag trägt `aria-current`, der Seitenknopf nennt die Seite (compact); der „…“-Auslöser bleibt unmarkiert (FA 11).
-3. **Menüform (entschieden, UX #105):** die vier Ziele als erste Gruppe, darunter genau ein `role="separator"`, dann die Werkzeuge; **kein** zweiter Abschnittskopf (der heutige `<h4>MEHR</h4>` bleibt, #109/R00136) (FA 7, S1).
+3. **Menüform (entschieden, UX #105):** die vier Ziele als erste Gruppe, darunter genau ein `role="separator"`, dann die Werkzeuge; **kein** zweiter Abschnittskopf (der heutige Kopf `div.pop-kopf` bleibt) (FA 7, S1).
 4. **ADR-0018 Regel 5:** Der Text „genau ein `nav a[aria-current="page"]`“ stimmt nach der Umordnung nicht mehr. Er wird geweitet auf „der Eintrag mit `an` trägt `aria-current` (Leiste oder Menü)“. Fortschreibung durch den Architekten (Nachtrag) oder Nachzug im Aspekt `X00005`; die Anforderung trägt die geweitete Regel, die Probe `r00113` wird mitgebaut.
 5. **Platzgewinn:** Nennt die Abnahme eine Zahl für den frei gewordenen Filter-Platz, oder genügt „nicht schmaler als vorher“ (NFA „Platz“)? Empfehlung: die Messung vor dem Bau (Stand e93ad66) festhalten und als Untergrenze in die Probe schreiben, statt eine absolute Zahl zu versprechen.
 
