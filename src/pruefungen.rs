@@ -1,5 +1,6 @@
 //! Plausibilitätsprüfungen je Spalte (`column-checks`, R00059) — rein, ohne Dateizugriff. Sie warnen, sie sperren nicht.
 
+use crate::format::yaml;
 use crate::modell::{Aktion, Aufgabe, Board};
 use crate::phasen::Phasenfolge;
 use serde::Serialize;
@@ -40,10 +41,13 @@ pub fn unbekannte(board: &Board) -> Vec<String> {
         .iter()
         .flat_map(|s| s.pruefungen.iter().filter(|n| Pruefung::aus(n).is_none()).map(move |n| format!("Spalte „{}“: unbekannte Prüfung „{n}“ — bekannt sind {}", s.name, Pruefung::ALLE.map(Pruefung::name).join(", "))));
     let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| format!("Spalte „{}“: unbekannter Eigentümer „{e}“ — bekannt sind human, agent", s.name)));
-    let roh = board.eigentuemer_roh.iter().map(|e| match &e.schluessel {
-        None => format!("column-owner ist keine Zuordnung — „{}“ bleibt erhalten", e.wert),
-        Some(k) if board.spalten.iter().any(|s| &s.name == k) => format!("column-owner: „{k}“ hat keinen Textwert — „{k}: {}“ bleibt erhalten", e.wert),
-        Some(k) => format!("column-owner: „{k}: {}“ passt auf keine Spalte — der Eintrag bleibt erhalten", e.wert),
+    let roh = board.eigentuemer_roh.iter().map(|e| {
+        let wert = yaml::anzeige(&e.wert);
+        match &e.schluessel {
+            None => format!("column-owner ist keine Zuordnung — „{wert}“ bleibt erhalten"),
+            Some(k) if board.spalten.iter().any(|s| &s.name == k) => format!("column-owner: „{k}“ hat keinen Textwert — „{k}: {wert}“ bleibt erhalten"),
+            Some(k) => format!("column-owner: „{k}: {wert}“ passt auf keine Spalte — der Eintrag bleibt erhalten"),
+        }
     });
     pruefungen.chain(eigentuemer).chain(roh).collect()
 }
@@ -249,7 +253,7 @@ mod tests {
             bestand: None,
             eigentuemer_roh: vec![
                 crate::modell::ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: "human".into() },
-                crate::modell::ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: "[human]".into() },
+                crate::modell::ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: serde_yaml::Value::Sequence(vec!["human".into()]) },
                 crate::modell::ColumnOwnerEintrag { schluessel: None, wert: "human".into() },
             ],
             archiviert: None,

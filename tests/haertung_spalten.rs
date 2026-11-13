@@ -240,6 +240,66 @@ async fn rohwert_bleibt_beim_spalten_speichern() {
     }
 }
 
+/// „Fabrik“ mit einer zweiten Karte (#2 in „In Arbeit“), damit der Mensch eine andere Karte bewegen kann.
+fn fabrik_mit_zwei(vorspann: &str) -> String {
+    format!("{vorspann}\n# Fabrik\n\n## Eingang\n\n- #1\n\n## In Arbeit\n\n- #2\n\n## Erledigt\n")
+}
+
+/// Karte #142 (Abnahme-Probe): ein handgeschriebener `column-owner`-Rohwert, der den Menschen meint, verfälscht beim
+/// Schreiben nicht die Datei und sperrt danach weiter — der Mensch bewegt eine andere Karte, danach ist das Board
+/// lesbar (200) und jeder Agenten-Weg nimmt #1 nicht aus dem Eingang (403). Vorher: die Datei wurde verfälscht bzw.
+/// defekt und die Sperre fiel (200).
+#[tokio::test]
+async fn handgeschriebener_human_rohwert_ueberlebt_das_schreiben_und_sperrt() {
+    for (name, wert, erwartet) in [
+        ("Liste mit ] #human", "[\"a] #human\"]", "  Eingang: [\"a] #human\"]\n"),
+        ("nur #human", "[\"#human\"]", "  Eingang: [\"#human\"]\n"),
+        ("Anführungszeichen", "\"human\"", "  Eingang: human\n"),
+        ("Bindestrichform", "human-owner", "  Eingang: human-owner\n"),
+        ("Großschreibung", "Human", "  Eingang: Human\n"),
+        ("Liste", "[human]", "  Eingang: [human]\n"),
+        ("Zuordnung", "{a: b}", "  Eingang: {a: b}\n"),
+        ("Tag", "!foo human", "  Eingang: !foo human\n"),
+        ("Text mit ] #human", "\"a] #human\"", "  Eingang: \"a] #human\"\n"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        ordner(tmp.path(), &[("fabrik", &fabrik_mit_zwei(&format!("---\ncolumn-owner:\n  Eingang: {wert}\n---\n")))]);
+        std::fs::write(tmp.path().join("aufgaben/0002-k2.md"), "---\nid: 2\ntitle: k2\n---\n").unwrap();
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "k2"]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let (s, r) = senden(Method::POST, &lauf.adresse, "api/boards/fabrik/bewegen", "st", json!({"nummer": 2, "spalte": "Erledigt"})).await;
+        assert_eq!(s, 200, "{name}: der Mensch bewegt eine andere Karte: {r}");
+        let (s, r) = senden(Method::GET, &lauf.adresse, "api/boards/fabrik", "st", json!(null)).await;
+        assert_eq!(s, 200, "{name}: Board nach dem Schreiben lesbar: {r}");
+        assert!(lies(tmp.path(), "boards/fabrik.md").contains(erwartet), "{name}: Wert verfälscht:\n{}", lies(tmp.path(), "boards/fabrik.md"));
+        for (i, wozu) in ["archivieren", "vom Board nehmen", "bewegen", "ziehen"].iter().enumerate() {
+            let (s, r) = weg(i, &lauf.adresse, "fabrik").await;
+            assert_eq!(s, 403, "{name}: {wozu} als Agent nimmt #1 aus dem Eingang: {r}");
+        }
+    }
+}
+
+/// Karte #142, Kontrollpaar: ein lesbarer Wert, der den Menschen nicht nennt (`chef`, `agent`), bleibt ohne Sperre
+/// (R00120 Punkt 4) — er überlebt das Schreiben zeichengleich und ein Agent nimmt die Karte heraus.
+#[tokio::test]
+async fn unbekannter_und_agent_rohwert_sperren_nicht() {
+    for (name, wert, erwartet) in [("unbekannt", "chef", "  Eingang: chef\n"), ("agent", "agent", "  Eingang: agent\n"), ("Großschreibung", "Agent", "  Eingang: Agent\n")] {
+        let tmp = tempfile::tempdir().unwrap();
+        ordner(tmp.path(), &[("fabrik", &fabrik_mit_zwei(&format!("---\ncolumn-owner:\n  Eingang: {wert}\n---\n")))]);
+        std::fs::write(tmp.path().join("aufgaben/0002-k2.md"), "---\nid: 2\ntitle: k2\n---\n").unwrap();
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "k2"]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let (s, r) = senden(Method::POST, &lauf.adresse, "api/boards/fabrik/bewegen", "st", json!({"nummer": 2, "spalte": "Erledigt"})).await;
+        assert_eq!(s, 200, "{name}: der Mensch bewegt eine andere Karte: {r}");
+        assert!(lies(tmp.path(), "boards/fabrik.md").contains(erwartet), "{name}: Wert verfälscht:\n{}", lies(tmp.path(), "boards/fabrik.md"));
+        let (s, r) = weg(1, &lauf.adresse, "fabrik").await;
+        assert_eq!(s, 200, "{name}: der Agent nimmt #1 vom Board: {r}");
+    }
+}
+
+
 /// B1 (Code-Review #26, Abnahme-Probe): der skalare `column-owner: human` (das ganze Board meinend) darf nicht
 /// verschwinden, wenn dieselbe `PUT …/spalten` einen gültigen Eigentümer an eine Spalte setzt — der Hinweis bleibt,
 /// und ein Agent bleibt gesperrt (fail-safe, PO Z. 187).

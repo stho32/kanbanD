@@ -43,6 +43,35 @@ pub fn liste(werte: &[String]) -> String {
     format!("[{}]", werte.iter().map(|w| skalar(w)).collect::<Vec<_>>().join(", "))
 }
 
+/// Ein beliebiger YAML-Wert in einer Zeile (Flussform), sicher geschrieben: jeder Text über [`skalar`], Listen als
+/// `[...]`, Zuordnungen als `{...}`, ein Tag als `!tag …`. So bleibt ein handgeschriebener Wert wie
+/// `column-owner: {Eingang: ["a] #human"]}` beim Schreiben heil und zeichengleich (Karte #142).
+pub fn wert(v: &Value) -> String {
+    match v {
+        Value::String(s) => skalar(s),
+        Value::Sequence(s) => format!("[{}]", s.iter().map(wert).collect::<Vec<_>>().join(", ")),
+        Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", wert(k), wert(w))).collect::<Vec<_>>().join(", ")),
+        Value::Tagged(t) => format!("{} {}", t.tag, wert(&t.value)),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Null => "null".into(),
+    }
+}
+
+/// Derselbe Wert als Text für eine Meldung: ein Text roh, Listen und Zuordnungen in Flussform ohne zusätzliche
+/// Anführungszeichen (`[human]`, `{a: b}`), ein Tag mit `!tag`.
+pub fn anzeige(v: &Value) -> String {
+    match v {
+        Value::String(s) => s.clone(),
+        Value::Sequence(s) => format!("[{}]", s.iter().map(anzeige).collect::<Vec<_>>().join(", ")),
+        Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", anzeige(k), anzeige(w))).collect::<Vec<_>>().join(", ")),
+        Value::Tagged(t) => format!("{} {}", t.tag, anzeige(&t.value)),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Null => "null".into(),
+    }
+}
+
 pub fn lesen(yaml: &str) -> Result<Mapping, Formatfehler> {
     if yaml.trim().is_empty() {
         return Ok(Mapping::new());
@@ -126,6 +155,31 @@ pub(crate) mod tests {
         assert_eq!(textliste(&lesen("o: [kd:I0007, R00014]\n").unwrap(), "o"), vec!["kd:I0007", "R00014"]);
         for s in ["a:", ":a", "a: b", "a:b c", "12:30"] {
             assert_ne!(skalar(s), s, "{s}");
+        }
+    }
+
+    // Karte #142: ein beliebiger YAML-Wert in einer Zeile liest sich als derselbe Wert zurück — auch mit `]`, `#`
+    // und Zeilenumbrüchen im Text; das Blatt trägt den Schutz von `skalar`, die Datei bleibt heil.
+    #[test]
+    fn werte_in_einer_zeile_bleiben_dieselben() {
+        for text in ["human", "a] #human", "#human", "a\n---\nb", "Mensch", "0x11", "a: b", "\"q\""] {
+            for v in [Value::String(text.into()), Value::Sequence(vec![text.into()]), Value::Mapping([(text.into(), Value::from("x"))].into_iter().collect())] {
+                let zeile = format!("k: {}\n", wert(&v));
+                let gelesen = lesen(&zeile).unwrap_or_else(|e| panic!("{v:?} → {zeile:?}: {e:?}")).get("k").cloned();
+                assert_eq!(gelesen, Some(v.clone()), "{v:?} → {zeile:?}");
+            }
+        }
+        assert_eq!(wert(&Value::Sequence(vec!["human".into()])), "[human]");
+        assert_eq!(wert(&Value::Sequence(vec!["a] #human".into()])), "[\"a] #human\"]");
+        assert_eq!(wert(&Value::from("a: b")), "\"a: b\"");
+        assert_eq!(anzeige(&Value::Sequence(vec!["a] #human".into()])), "[a] #human]");
+        // Auch verschachtelte Formen und ein Tag lesen sich als derselbe Wert zurück (jedes Blatt über `skalar`).
+        let schief = Value::Mapping([(Value::Sequence(vec!["a".into()]), Value::from("b"))].into_iter().collect());
+        let getaggt: Value = serde_yaml::from_str("!foo human").unwrap();
+        let geschachtelt = Value::Sequence(vec![Value::Mapping([("a".into(), Value::from(1))].into_iter().collect())]);
+        for v in [schief, getaggt, geschachtelt] {
+            let zeile = format!("k: {}\n", wert(&v));
+            assert_eq!(lesen(&zeile).unwrap_or_else(|e| panic!("{v:?} → {zeile:?}: {e:?}")).get("k").cloned(), Some(v.clone()), "{zeile:?}");
         }
     }
 

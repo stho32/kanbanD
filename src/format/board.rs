@@ -1,7 +1,7 @@
 //! `boards/<slug>.md` — Titel, Spalten als Überschriften, je Aufgabe eine Zeile.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintrag, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert};
+use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintrag, Eigentuemer, FIEBER_AUFLOESUNGEN, Fieber, Linie, Spalte, Staerke, Termin, ist_datum, ist_hexfarbe};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
@@ -22,8 +22,8 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let mut eigentuemer_roh: Vec<ColumnOwnerEintrag> = match m.get("column-owner") {
         None => vec![],
         Some(v) => match v.as_mapping() {
-            Some(map) => map.iter().map(|(k, w)| ColumnOwnerEintrag { schluessel: Some(wert_text(k)).filter(|k| !k.is_empty()), wert: wert_text(w) }).collect(),
-            None => vec![ColumnOwnerEintrag { schluessel: None, wert: wert_text(v) }],
+            Some(map) => map.iter().map(|(k, w)| ColumnOwnerEintrag { schluessel: Some(schluessel_text(k)).filter(|k| !k.is_empty()), wert: w.clone() }).collect(),
+            None => vec![ColumnOwnerEintrag { schluessel: None, wert: v.clone() }],
         },
     };
     let mut roh_ungueltig: Vec<ColumnOwnerEintrag> = vec![];
@@ -63,7 +63,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
                         None => (None, Some(t)),
                     },
                     None => {
-                        roh_ungueltig.push(ColumnOwnerEintrag { schluessel: Some(name.clone()), wert: wert_text(v) });
+                        roh_ungueltig.push(ColumnOwnerEintrag { schluessel: Some(name.clone()), wert: v.clone() });
                         (None, None)
                     }
                 },
@@ -84,25 +84,18 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert })
 }
 
-/// Ein YAML-Wert in einer Zeile für den Rundlauf (R00120): Text roh, Listen und Zuordnungen in Flussform
-/// (`[human]`, `{a: b}`), damit ein ungültiger `column-owner`-Wert beim Schreiben nicht verloren geht.
-fn wert_text(v: &Value) -> String {
-    match v {
-        Value::Sequence(s) => format!("[{}]", s.iter().map(wert_text).collect::<Vec<_>>().join(", ")),
-        Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", wert_text(k), wert_text(w))).collect::<Vec<_>>().join(", ")),
-        Value::String(t) => t.clone(),
-        Value::Bool(b) => b.to_string(),
-        Value::Number(n) => n.to_string(),
-        Value::Null => "null".into(),
-        _ => String::new(),
-    }
+/// Ein Schlüssel unter `column-owner` als Text: ein Skalar roh, ein Nicht-Text-Schlüssel (`[a, b]: human`) in
+/// YAML-Flussform, damit der Eintrag als verwaister Schlüssel gemeldet und erhalten bleibt (R00120).
+fn schluessel_text(v: &Value) -> String {
+    yaml::wert_als_text(v).unwrap_or_else(|| yaml::anzeige(v))
 }
 
 /// Den schlüssellosen `column-owner`-Wert im Ersatzschlüssel-Slot merken (B1/B2): der erste bleibt, ein human-Wert
 /// verdrängt einen anderen (fail-safe, PO Z. 187), damit ein Board seine Sperre beim Schreiben nicht verliert.
-fn merke_schluessellos(slot: &mut Option<String>, wert: &str) {
-    if slot.is_none() || (meint_human_wert(wert) && !slot.as_deref().is_some_and(meint_human_wert)) {
-        *slot = Some(wert.to_string());
+fn merke_schluessellos(slot: &mut Option<(String, bool)>, eintrag: &ColumnOwnerEintrag) {
+    let meint_human = eintrag.meint_human();
+    if slot.is_none() || (meint_human && !slot.as_ref().is_some_and(|(_, human)| *human)) {
+        *slot = Some((yaml::wert(&eintrag.wert), meint_human));
     }
 }
 
@@ -304,12 +297,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     // ohne Zuordnung (`None`) wandert dorthin, sobald eine Zuordnung daneben steht (der Skalar kann sie sonst nicht
     // tragen, B1); ein human-Wert hat dabei Vorrang (fail-safe, PO Z. 187).
     let mut besitzer: Vec<(String, String)> = b.spalten.iter().filter_map(|sp| sp.eigentuemer.map(Eigentuemer::name).or(sp.eigentuemer_unbekannt.as_deref()).map(|e| (sp.name.clone(), yaml::skalar(e)))).collect();
-    let mut schluessellos: Option<String> = None;
+    let mut schluessellos: Option<(String, bool)> = None;
     for e in &b.eigentuemer_roh {
         match &e.schluessel {
-            None => merke_schluessellos(&mut schluessellos, &e.wert),
-            Some(k) if besitzer.iter().any(|(n, _)| n == k) => merke_schluessellos(&mut schluessellos, &e.wert),
-            Some(k) => besitzer.push((k.clone(), e.wert.clone())),
+            None => merke_schluessellos(&mut schluessellos, e),
+            Some(k) if besitzer.iter().any(|(n, _)| n == k) => merke_schluessellos(&mut schluessellos, e),
+            Some(k) => besitzer.push((k.clone(), yaml::wert(&e.wert))),
         }
     }
     let fieber = fieber_zeile(&b.fieber);
@@ -355,14 +348,14 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
         // Ohne jede Zuordnung bleibt der rohe `column-owner`-Wert ein Skalar (keine Zuordnung, unverändert); sobald eine
         // Zuordnung daneben steht, wandert der schlüssellose Wert unter den Ersatzschlüssel `""` (kein Doppelschlüssel,
         // B1/B2). Der Ersatzschlüssel liest sich als „keine Zuordnung“ zurück.
-        if besitzer.is_empty() && let Some(wert) = &schluessellos {
+        if besitzer.is_empty() && let Some((wert, _)) = &schluessellos {
             s.push_str(&format!("column-owner: {wert}\n"));
         } else if !besitzer.is_empty() || schluessellos.is_some() {
             s.push_str("column-owner:\n");
             for (spalte, wert) in &besitzer {
                 s.push_str(&format!("  {}: {wert}\n", yaml::skalar(spalte)));
             }
-            if let Some(wert) = &schluessellos {
+            if let Some((wert, _)) = &schluessellos {
                 s.push_str(&format!("  {}: {wert}\n", yaml::skalar("")));
             }
         }
@@ -596,7 +589,7 @@ mod tests {
             let roh = &g.eigentuemer_roh;
             assert_eq!(roh.len(), 1, "{name}: {roh:?}");
             let (schluessel, wert) = erwartet_roh;
-            assert_eq!((roh[0].schluessel.as_deref().unwrap_or(""), roh[0].wert.as_str()), (schluessel, wert), "{name}");
+            assert_eq!((roh[0].schluessel.as_deref().unwrap_or(""), yaml::anzeige(&roh[0].wert).as_str()), (schluessel, wert), "{name}");
             assert!(roh[0].meint_human(), "{name}: meint den Menschen, sperrt fail-safe");
             let t = schreiben(&g, |_| None);
             assert!(t.contains(erwartet_datei), "{name}: {t}");
@@ -612,6 +605,21 @@ mod tests {
             assert_eq!(g.eigentuemer_roh.len(), 1, "{text}");
             assert_eq!(g.eigentuemer_roh[0].wert, wert);
             assert!(!g.eigentuemer_roh[0].meint_human(), "{wert} sperrt nicht");
+        }
+    }
+
+    // Karte #142: ein handgeschriebener `column-owner`-Rohwert mit YAML-Sonderzeichen bricht die Board-Datei beim
+    // Schreiben nicht und bleibt zeichengleich erhalten (A00005, verlustfrei) — vorher wurde `[a] #human]` roh
+    // ausgegeben und las sich danach als `[a]`, der Wert war verfälscht und die Sperre fiel.
+    #[test]
+    fn kaputte_column_owner_rohwerte_bleiben_heil() {
+        for wert in ["[\"a] #human\"]", "[\"#human\"]", "\"a\\n---\\nb\"", "\"human\"", "human-owner", "\"human #x\""] {
+            let text = format!("---\ncolumn-owner:\n  Eingang: {wert}\n---\n\n# B\n\n## Eingang\n\n- #1\n");
+            let gelesen = lesen("b", &text).unwrap_or_else(|e| panic!("{wert}: nicht lesbar: {e:?}"));
+            let geschrieben = schreiben(&gelesen, |_| None);
+            let wieder = lesen("b", &geschrieben).unwrap_or_else(|e| panic!("{wert}: Datei nach dem Schreiben defekt: {e:?}\n{geschrieben}"));
+            assert_eq!(wieder, gelesen, "{wert}: der Rundlauf verliert den Wert:\n{geschrieben}");
+            assert_eq!(schreiben(&wieder, |_| None), geschrieben, "{wert}: der Rundlauf ist nicht stabil");
         }
     }
 

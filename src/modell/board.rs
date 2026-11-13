@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default, utoipa::ToSchema)]
@@ -71,24 +72,35 @@ impl Eigentuemer {
 /// Ein `column-owner`-Eintrag, der sich keiner Spalte als gültiger Eigentümer zuordnen lässt (R00120): ein Schlüssel
 /// ohne Spalte, ein Wert ohne Text oder `column-owner` selbst keine Zuordnung. Er wird gemeldet und roh erhalten;
 /// meint er den Menschen, sperrt er einen Agenten fail-safe (PO Z. 187).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnOwnerEintrag {
     /// Der Schlüssel unter `column-owner`; `None`, wenn `column-owner` selbst keine Zuordnung ist.
     pub schluessel: Option<String>,
-    /// Der Wert in seiner YAML-Form (ein Nicht-Text-Wert etwa als `[human]`), damit die Datei ihn zurückbekommt.
-    pub wert: String,
+    /// Der Wert, wie YAML ihn liest (Text, Liste, Zahl …), damit die Datei ihn beim Schreiben unverfälscht zurückbekommt.
+    pub wert: Value,
 }
 
 impl ColumnOwnerEintrag {
-    /// Meint der Eintrag den Menschen? Ein `human`-Wort im Rohwert zählt (auch `[human]`); nur dann sperrt er (PO Z. 187).
+    /// Meint der Eintrag den Menschen? Fail-safe (PO Z. 187, R00120, Karte #142): jedes `human`/`mensch` in beliebiger
+    /// Schreibweise (`Human`, `[human]`, `human-owner`) zählt — und jeder Wert, der kein lesbarer Text ist (Liste,
+    /// Zuordnung, Tag), denn der ist kein gültiger Eigentümer und damit nicht „eindeutig kein Mensch“ (R00120 Punkt 4).
+    /// Nur ein Skalar, der den Menschen nicht nennt (`agent`, `chef`, `42`), bleibt ohne Sperre; ein leerer Wert
+    /// nennt niemanden und sperrt nicht.
     pub fn meint_human(&self) -> bool {
-        meint_human_wert(&self.wert)
+        match &self.wert {
+            Value::String(s) => meint_human_wert(s),
+            Value::Number(n) => meint_human_wert(&n.to_string()),
+            Value::Bool(b) => meint_human_wert(&b.to_string()),
+            Value::Null => false,
+            Value::Sequence(_) | Value::Mapping(_) | Value::Tagged(_) => true,
+        }
     }
 }
 
-/// Meint ein `column-owner`-Rohwert den Menschen? (fail-safe, PO Z. 187): ein `human`-Wort als eigenes Wort zählt.
+/// Nennt der Wert den Menschen? Jede Schreibweise und jedes eigene Wort zählt (`human`, `Human`, `HUMAN`,
+/// `human-owner`, `[human]`, `„Mensch“`); nur was ihn nicht nennt, gilt als eindeutig kein Mensch (R00120 Punkt 4).
 pub fn meint_human_wert(wert: &str) -> bool {
-    wert.split(|c: char| !c.is_alphanumeric()).any(|t| t == "human")
+    wert.split(|c: char| !c.is_alphanumeric()).any(|t| t.eq_ignore_ascii_case("human") || t.eq_ignore_ascii_case("mensch"))
 }
 
 /// `#rrggbb` — die einzige Form, in der eine Spaltenfarbe gilt.
@@ -573,7 +585,8 @@ pub enum Entnahmesperre {
 impl Board {
     /// Darf `art` die Karte `nummer` aus ihrer Spalte nehmen? Gesperrt ist ein Agent, wenn die Karte in einer
     /// Menschen-Spalte liegt, oder — fail-safe — ein `human` meinender, aber nicht an eine Spalte gebundener
-    /// `column-owner`-Eintrag das ganze Board sperrt (R00120, PO Z. 187). Sonst frei.
+    /// `column-owner`-Eintrag das ganze Board sperrt (R00120, PO Z. 187). Auch ein an die Spalte gebundener, aber
+    /// unbekannter Wert, der den Menschen nennt (`Human`, `human-owner`), sperrt sie (Karte #142). Sonst frei.
     pub fn entnahme_erlaubt(&self, art: super::Art, nummer: u32) -> Result<(), Entnahmesperre> {
         if art != super::Art::Agent {
             return Ok(());
@@ -582,7 +595,7 @@ impl Board {
             return Err(Entnahmesperre::Board { nummer });
         }
         // Alle Spalten zählen (R00120, Punkt 8): liegt die Nummer doppelt und gehört eine davon dem Menschen, ist sie gesperrt.
-        match self.spalten.iter().filter(|s| s.aufgaben.contains(&nummer)).find(|s| s.eigentuemer == Some(Eigentuemer::Human)) {
+        match self.spalten.iter().filter(|s| s.aufgaben.contains(&nummer)).find(|s| s.eigentuemer == Some(Eigentuemer::Human) || s.eigentuemer_unbekannt.as_deref().is_some_and(meint_human_wert)) {
             Some(s) => Err(Entnahmesperre::Spalte { spalte: s.name.clone(), nummer }),
             None => Ok(()),
         }
@@ -1018,7 +1031,7 @@ mod tests {
         use super::super::Art;
         for eintrag in [
             ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: "human".into() },
-            ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: "[human]".into() },
+            ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: Value::Sequence(vec!["human".into()]) },
             ColumnOwnerEintrag { schluessel: None, wert: "human".into() },
         ] {
             let mut b = b();
@@ -1030,6 +1043,45 @@ mod tests {
         for wert in ["agent", "chef"] {
             let mut b = b();
             b.eigentuemer_roh = vec![ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: wert.into() }];
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "{wert} sperrt nicht");
+        }
+    }
+
+    // Karte #142: fail-safe erkennt den Menschen in jeder Schreibweise und in Struktur-Werten (`Human`, `[human]`,
+    // `human-owner`, `Mensch`); nur ein lesbarer Skalar, der ihn nicht nennt (`agent`, `chef`, `42`), bleibt frei
+    // (R00120 Punkt 4). Vorher zählte allein das exakte Wort `human` — `Human` und `human-owner` sperrten nicht.
+    #[test]
+    fn fail_safe_erkennt_den_menschen_in_jeder_schreibweise() {
+        use super::super::Art;
+        let eintrag = |text: &str| ColumnOwnerEintrag { schluessel: Some("eingang".into()), wert: serde_yaml::from_str(text).unwrap() };
+        for text in ["human", "Human", "HUMAN", "\"human\"", "human-owner", "mensch", "Mensch", "[human]", "[\"x] #human\"]", "{a: b}", "[agent]", "!foo human", "!foo agent", "\"a] #human\""] {
+            let mut b = b();
+            b.spalten[0].eigentuemer = None;
+            b.eigentuemer_roh = vec![eintrag(text)];
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre::Board { nummer: 1 }), "{text}");
+            assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()), "{text}: Mensch frei");
+        }
+        for text in ["agent", "Agent", "chef", "42"] {
+            let mut b = b();
+            b.eigentuemer_roh = vec![eintrag(text)];
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "{text} sperrt nicht");
+        }
+    }
+
+    // Karte #142: ein an die Spalte gebundener, unbekannter Wert, der den Menschen nennt, sperrt diese Spalte (nicht
+    // das Board); `chef` bleibt dort wie bisher ohne Sperre (R00120 Punkt 4).
+    #[test]
+    fn gebundener_unbekannter_human_wert_sperrt_die_spalte() {
+        use super::super::Art;
+        for wert in ["Human", "human-owner", "MENSCH"] {
+            let mut b = b();
+            b.spalten[0].eigentuemer_unbekannt = Some(wert.into());
+            assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Err(Entnahmesperre::Spalte { spalte: "A".into(), nummer: 1 }), "{wert}");
+            assert_eq!(b.entnahme_erlaubt(Art::Mensch, 1), Ok(()), "{wert}: Mensch frei");
+        }
+        for wert in ["chef", "agent"] {
+            let mut b = b();
+            b.spalten[0].eigentuemer_unbekannt = Some(wert.into());
             assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "{wert} sperrt nicht");
         }
     }
