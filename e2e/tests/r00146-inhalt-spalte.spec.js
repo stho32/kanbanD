@@ -2,7 +2,7 @@
 // Rechts im Inhalt stehen Spalte, Klasse, Labels und Fällig bearbeitbar (dieselben `data-af`-Schlüssel wie „Details“,
 // ein Zeichner, ein Commit je Änderung) und die gewählten Zuständigen nur lesend. „Details“ bleibt vollständig.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, thema, kontrastMessen, kontrastFarben } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, thema, kontrastMessen, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -75,7 +75,7 @@ const FELDER = ['spalte', 'klasse', 'labels', 'faellig'];
 
 test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
   let k;
-  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(GRUND)); await alsPerson(page, 'st'); });
+  test.beforeEach(async ({ page }) => { await mutanteEinsetzen(page); k = await kanbanStarten(einrichten(GRUND)); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
   async function oeffnen(page, nr = 1) {
