@@ -230,8 +230,12 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     await oeffnen(page);
     const stand = k.git('log', '-1', '--format=%H');
     await feld(page, 'labels').fill('ui, daten ');
-    await page.locator('#fenster .mod-main .titel').click();
-    await page.waitForTimeout(300);
+    // Auf die Antwort warten statt auf eine Frist: der PATCH geht immer, der Server verwirft den gleichen Wert.
+    const [antwort] = await Promise.all([
+      page.waitForResponse(r => r.request().method() === 'PATCH' && new URL(r.url()).pathname === '/api/aufgaben/1'),
+      page.locator('#fenster .mod-main .titel').click(),
+    ]);
+    expect(antwort.ok(), 'die Antwort ist da').toBe(true);
     expect(k.git('log', '-1', '--format=%H')).toBe(stand);
   });
 
