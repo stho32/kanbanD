@@ -216,6 +216,10 @@ def karte(k):
             vorpruefung = ux_reviewer.wenn(oberflaeche).pruefe(k)
             if vorpruefung.bestanden:
                 break
+            # sichtbare Gestaltung: der gestalter zeichnet, der product-owner gibt frei, dann arbeitet der
+            # planer die Befunde samt Freigabe in die Anforderung ein (Betreiber 2026-11-13, #138)
+            gestalter.wenn(oberflaeche).arbeite(k, vorpruefung.muss)
+            product_owner.wenn(oberflaeche).arbeite(k, vorpruefung.muss)
             planer.arbeite_ein(k, vorpruefung.muss)
         else:
             return mensch(k, "Schleifenbremse in der Detailplanung", vorpruefung.muss, vorschlag_von=realist_consultant)
