@@ -468,6 +468,12 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
       await page.locator('#anhaenge [data-act="anhang-weg"]').click();
       await expect(page.locator('.toast[role="status"]')).toBeVisible();
       await feld(page, 'faellig').focus();
+      // Mit dem Fokus im letzten Feld muss dieses über dem Hinweis stehen (scroll-padding der Spalte)
+      const fokusFrei = await feld(page, 'faellig').evaluate(e => {
+        const r = e.getBoundingClientRect(), h = document.querySelector('.toast[role="status"]').getBoundingClientRect();
+        return r.bottom <= h.top + 0.5;
+      });
+      expect(fokusFrei, 'das fokussierte Feld steht über dem Hinweis').toBe(true);
       const verdeckt = await page.evaluate(() => {
         const hinweis = document.querySelector('.toast[role="status"]').getBoundingClientRect();
         return [...document.querySelectorAll('#inhalt-spalte .w')].map(w => {
