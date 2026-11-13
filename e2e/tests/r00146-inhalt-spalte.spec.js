@@ -412,23 +412,37 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     });
   }
 
-  test('US-6: kurzes Fenster 844 × 390 (Touch) — jede der fünf Zeilen erreichbar', async ({ browser }) => {
-    const kontext = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
-    try {
-      const page = await kontext.newPage();
-      await alsPerson(page, 'st');
-      await oeffnen(page);
-      const s = spalte(page);
-      for (const wert of await s.locator('.w').all()) {
-        await wert.scrollIntoViewIfNeeded();
-        const drin = await wert.evaluate(e => {
-          const r = e.getBoundingClientRect(), rahmen = document.querySelector('#inhalt-spalte').getBoundingClientRect();
-          return r.top >= rahmen.top - 0.5 && r.bottom <= rahmen.bottom + 0.5 && r.width > 0;
-        });
-        expect(drin, 'Zeile ganz im Rahmen').toBe(true);
+  test('US-6: kurzes Fenster 844 × 390 und 740 × 360 (Touch) — Spalte 200/176, fünf Zeilen erreichbar, Ziele 48 px', async ({ browser }) => {
+    for (const [breite, hoehe] of [[844, 390], [740, 360]]) {
+      const kontext = await browser.newContext({ viewport: { width: breite, height: hoehe }, isMobile: true, hasTouch: true });
+      try {
+        const page = await kontext.newPage();
+        await alsPerson(page, 'st');
+        await oeffnen(page);
+        const s = spalte(page);
+        const m = await masse(page);
+        expect(Math.abs(m.spalte.breite - 200), `${breite}: Spur ${m.spalte.breite}`).toBeLessThanOrEqual(1);
+        expect(await s.locator('.w').count(), `${breite}: fünf Zeilen`).toBe(5);
+        // 176 px Wertfläche (200 − 2 × 12 px Innenabstand)
+        const flaeche = await s.locator('.w').first().boundingBox();
+        expect(Math.abs(flaeche.width - 176), `${breite}: Wertfläche ${flaeche.width}`).toBeLessThanOrEqual(1);
+        // jede der fünf Zeilen ist erreichbar, ganz im Rahmen und nicht abgeschnitten
+        for (const wert of await s.locator('.w').all()) {
+          await wert.scrollIntoViewIfNeeded();
+          const drin = await wert.evaluate(e => {
+            const r = e.getBoundingClientRect(), rahmen = document.querySelector('#inhalt-spalte').getBoundingClientRect();
+            return r.top >= rahmen.top - 0.5 && r.bottom <= rahmen.bottom + 0.5 && r.width > 0 && e.scrollWidth <= e.clientWidth + 1;
+          });
+          expect(drin, `${breite}: Zeile ganz im Rahmen`).toBe(true);
+        }
+        // Ziele bei Touch 48 px (Haus; ADR-0012: ≥ 44)
+        for (const name of FELDER) {
+          const ziel = await feld(page, name).boundingBox();
+          expect(Math.abs(ziel.height - 48), `${breite}: ${name} ${ziel.height} px`).toBeLessThanOrEqual(0.5);
+        }
+      } finally {
+        await kontext.close();
       }
-    } finally {
-      await kontext.close();
     }
   });
 
