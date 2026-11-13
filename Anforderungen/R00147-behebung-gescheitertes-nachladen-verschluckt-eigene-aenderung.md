@@ -68,7 +68,7 @@ Ausgeschlossen: der **hängende** Fall. Antwortet der Server nie (`api()` setzt 
 Option A aus ADR-0025 Regel 3 und deren Nachtrag N1, wörtlich:
 
 1. **Die Schlange endet immer erfüllt.** `warteschlange()` gibt eine Kette zurück, die nach jedem Fehler erfüllt ist; auch ein geworfenes `laden()` hinterlässt keine unbehandelte Ablehnung. `schlangeOffen` wird in **jedem** Fall heruntergezählt, nicht nur im Erfolgszweig.
-2. **Je Fehlschlag genau eine Meldung, und sie nennt den richtigen Vorgang.** Ein gescheitertes **Nachladen** darf nicht „nichts geändert" heißen — die eigene Änderung ist gespeichert. Sie ist von der Meldung einer gescheiterten **eigenen Anfrage** unterscheidbar (Vorschlag: „Änderung gespeichert — Ansicht nicht neu geladen (keine Verbindung)").
+2. **Je Fehlschlag genau eine Meldung, und sie nennt den richtigen Vorgang.** Ein gescheitertes **Nachladen** darf nicht „nichts geändert" heißen — die eigene Änderung ist gespeichert. Sie ist von der Meldung einer gescheiterten **eigenen Anfrage** unterscheidbar (Vorschlag: „Änderung gespeichert — Ansicht nicht neu geladen (keine Verbindung)"). Scheitern im selben Schritt die eigene Anfrage **und** das Nachladen, nennt die eine Meldung die gescheiterte eigene Änderung („nichts geändert", AK 8), nicht das Nachladen.
 3. **Die Meldung erreicht den Auslöser.** Wer auf dem Board abhakt, sieht den Fuß des Aufgabenfensters nicht: die Meldung erscheint dort, wo ausgelöst wurde. Vorschlag: der vorhandene Hinweis (D00007, `web/ansicht.js:1024`, `role="status"`, knopflos) — ohne offenes Fenster liegt er unten auf dem Board, bei offenem Fenster in dessen Hinweis-Anker; kein neues Element, kein zweiter Meldungsort. Der Fensterfuß (`fensterMelden`) bleibt der Ort für eine gescheiterte **eigene** Anfrage.
 4. **Eine Stelle.** Ablehnungspfad, Zähler und Meldung liegen in `warteschlange()` (`web/app.js`), nicht bei den Aufrufern (ADR-0025 Regel 6); ein Auslöser, der eine Anfrage direkt ruft, ist ein Befund (Review-Punkt). Ein Fehlschlag wird **nicht** zweimal gemeldet.
 
@@ -130,29 +130,31 @@ Grundbestand: Board `entwicklung`, Karte #1 „Abnahme prüfen" mit drei offenen
 - [ ] **1.** Gegeben das Board zeigt Karte #1 mit drei offenen Teilaufgaben; **wenn** die erste Teilaufgabe über den Kartenknopf abgehakt wird und das dadurch ausgelöste Nachladen hart scheitert; **dann** steht `- [x]` in der Datei von #1, es gibt genau einen neuen Commit von `st`, und es erscheint **keine** unbehandelte Ablehnung (`pageerror`)
 - [ ] **2. (heute rot)** Gegeben die Lage nach 1.; **wenn** die zweite Teilaufgabe abgehakt wird; **dann** ist `PATCH /api/aufgaben/1/teilaufgaben/1` mit `{ "erledigt": true }` gesendet worden (Netzprotokoll), die Datei enthält zwei Haken, und es entstand genau ein weiterer Commit von `st` — heute wird kein `PATCH` gesendet und kein Commit erzeugt
 - [ ] **3.** Gegeben die Lage nach 2.; **wenn** die dritte Teilaufgabe abgehakt wird; **dann** kommt auch sie an (drei Haken in der Datei, drei Commits), und die Ansicht zeigt den neuen Stand ohne Neuladen der Seite
-- [ ] **4.** `schlangeOffen` endet in **jedem** Schritt bei 0 (Unit, AK 9–11). *Mitlaufend, heute schon grün* (Nachtrag N1 hat den Kontext berichtigt): ändert `bot` nach dem letzten Schritt über die API den Titel von #2, zeigt die Ansicht die Änderung ohne Zutun (`data-live="verbunden"` bleibt) — der Stillstand durch **hängende** Anfragen ist Karte #148 und wird hier nicht geprüft
+- [ ] **4.** `schlangeOffen` endet in **jedem** Schritt bei 0 (Unit, AK 10–12). *Mitlaufend, heute schon grün* (Nachtrag N1 hat den Kontext berichtigt): ändert `bot` nach dem letzten Schritt über die API den Titel von #2, zeigt die Ansicht die Änderung ohne Zutun (`data-live="verbunden"` bleibt) — der Stillstand durch **hängende** Anfragen ist Karte #148 und wird hier nicht geprüft
 
 ### Meldung (ADR-0025 Regel 3, Nachtrag N1 Punkte 2–3)
 
 - [ ] **5.** Gegeben die Lage nach der ersten gescheiterten Ladung (AK 1); **wenn** die Meldung erscheint; **dann** ist sie **auf dem Board** sichtbar (nicht allein im Fuß eines offenen Aufgabenfensters), sagt, dass die Änderung gespeichert ist, enthält nicht den Wortlaut „nichts geändert" und ist für Hilfstechnik erreichbar (`role="status"` oder `role="alert"`)
 - [ ] **6.** Genau **eine** Meldung je Fehlschlag: es steht kein zweiter Text mit demselben Anlass (der Fensterfuß zeigt die Meldung des Nachladens nicht zusätzlich)
-- [ ] **7.** Eine gescheiterte **eigene** Anfrage (der `PATCH` scheitert) meldet unverändert über den vorhandenen Weg („Keine Verbindung zum Server — nichts geändert." im Fensterfuß); die beiden Meldungen sind unterscheidbar
-- [ ] **8.** Ein stehender Hinweis mit „rückgängig" (R00112) wird von der Meldung nicht verdrängt: sein Knopf bleibt, solange seine 8 s laufen, bedienbar (`e2e/tests/r00112-rueckgaengig.spec.js` bleibt grün)
+- [ ] **7.** Eine gescheiterte **eigene** Anfrage (der `PATCH` scheitert) meldet unverändert mit ihrem heutigen Text („Keine Verbindung zum Server — nichts geändert."); die beiden Meldungen sind unterscheidbar. **Ort:** dort, wo ausgelöst wurde — im offenen Aufgabenfenster wie heute in dessen Fuß, auf dem Board im Hinweis (dieselbe Ortsregel wie AK 5, ADR-0025 Nachtrag N1 Punkt 3)
+- [ ] **8. (heute rot) Zwei Fehlschläge in einem Schritt.** Gegeben `st` hakt an Karte #1 die erste Teilaufgabe über den Kartenknopf `.naechste-ziel` ab; **wenn** die eigene Anfrage `PATCH /api/aufgaben/1/teilaufgaben/0` **und** der folgende `GET /api/zustand` hart scheitern (`page.route`, Server weg); **dann** steht am Auslöser genau **eine** Meldung, und sie nennt den richtigen Vorgang: „nichts geändert" — der Server hat die eigene Änderung nicht angenommen. Der Text „Änderung gespeichert — Ansicht nicht neu geladen" erscheint **nur**, wenn die eigene Änderung gespeichert wurde. Heute rot: keine Meldung auf dem Board, und der nächste `PATCH` wird nicht gesendet (ADR-0025 Nachtrag N1 Pflicht 2, „nennt den richtigen Vorgang")
+- [ ] **9.** Ein stehender Hinweis mit „rückgängig" (R00112) wird von der Meldung nicht verdrängt: sein Knopf bleibt, solange seine 8 s laufen, bedienbar (`e2e/tests/r00112-rueckgaengig.spec.js` bleibt grün)
 
 ### Kette (Unit)
 
-- [ ] **9.** `laden` wirft beim ersten Aufruf, zwei Anfragen sind eingereiht → die zweite Anfrage läuft, `schlangeOffen` steht 0, das zurückgegebene Versprechen ist erfüllt, die Nachlade-Meldung wurde genau einmal gerufen
-- [ ] **10.** Gelingt das Nachladen, verhält sich die Kette wie heute: die Anfragen laufen in Reihenfolge, die Marke wird vor dem Laden gesetzt, es wird einmal neu geladen
-- [ ] **11.** Der Zähler geht auch herunter, wenn das **Nachladen** wirft (nicht nur, wenn die eigene Anfrage scheitert)
+- [ ] **10.** `laden` wirft beim ersten Aufruf, zwei Anfragen sind eingereiht → die zweite Anfrage läuft, `schlangeOffen` steht 0, das zurückgegebene Versprechen ist erfüllt, die Nachlade-Meldung wurde genau einmal gerufen
+- [ ] **11.** Gelingt das Nachladen, verhält sich die Kette wie heute: die Anfragen laufen in Reihenfolge, die Marke wird vor dem Laden gesetzt, es wird einmal neu geladen
+- [ ] **12.** Der Zähler geht auch herunter, wenn das **Nachladen** wirft (nicht nur, wenn die eigene Anfrage scheitert)
 
 ### Mutanten (test-ehrlichkeit)
 
 Die Stelle wird per `page.route` auf die ausgelieferte Datei ersetzt (`**/web/app.js` bzw. das Modul der Kette); greift der Ersatz nicht, wirft die Route. Kein Mutant wird ins Repository geschrieben.
 
-- [ ] M1 „Kettenende ohne Ablehnungspfad" (der heutige Zustand) → AK 2, 5, 9 rot
-- [ ] M2 „`schlangeOffen` nur im Erfolgszweig herunterzählen" → AK 9, 11 rot
+- [ ] M1 „Kettenende ohne Ablehnungspfad" (der heutige Zustand) → AK 2, 5, 10 rot
+- [ ] M2 „`schlangeOffen` nur im Erfolgszweig herunterzählen" → AK 10, 12 rot
 - [ ] M3 „Meldung lautet wieder ‚nichts geändert'" → AK 5 rot
 - [ ] M4 „Meldung nur in `S.ui.fensterFehler` (Fensterfuß)" → AK 5 rot
+- [ ] M5 „Erfolgstext des Nachladens auch dann, wenn die eigene Anfrage gescheitert ist" → AK 8 rot
 - [ ] Das Ergebnis jeder Mutantenprobe (Mutante, Fall, rot ja/nein) steht im Bericht des Baus
 
 ## Implementierungshinweise
@@ -160,13 +162,13 @@ Die Stelle wird per `page.route` auf die ausgelieferte Datei ersetzt (`**/web/ap
 - Herstellung der Probe wörtlich nach ADR-0025 Nachtrag N1 (Tabelle Schritt 1–3); Treiber `e2e/tests/hilfen.js` (`kanbanStarten`, `alsPerson`, `liveBereit`), Muster `e2e/tests/r00050-live-waehrend-anfragen.spec.js`.
 - `web/`-Dateien sind per `include_bytes!` eingebettet — sichtbar erst nach `cargo build` und Neustart.
 - `NETZ_FEHLER` (`web/app.js:88`) bleibt der Text der gescheiterten **eigenen** Anfrage, damit er nicht seine Bedeutung verliert; die Meldung des Nachladens ist ein eigener Text.
-- Der Hinweis lebt 8 s (`web/app.js:2952`, `dauer`); ein knopfloser Hinweis weicht einer Timer-Erinnerung (`hinweisBleibtStehen`, `:2916`). Die Meldung darf nicht unbemerkt verfallen — Lebensdauer und Form entscheidet die ux-Vorprüfung, die Abnahme prüft das Vorhandensein nach dem Fehlschlag.
+- Der Hinweis lebt 8 s (`web/app.js:2952`, `dauer`); ein knopfloser Hinweis weicht einer Timer-Erinnerung (`hinweisBleibtStehen`, `:2916`). Die Meldung darf nicht unbemerkt verfallen. **Vorprüfung des `ux-reviewer` (2026-11-13, eingearbeitet):** Ort und Form = der vorhandene Hinweis (D00007, `web/ansicht.js:1024`, `role="status"`, knopflos, kein neues Element, kein neuer Meldungsort); Lebensdauer **20 s** (`dauer: 20000`) statt der 8 s — Empfehlung (Sollte), weil die Meldung das einzige Zeichen der veralteten Ansicht ist. Die Abnahme prüft das Vorhandensein der Meldung nach dem Fehlschlag, nicht ihre Dauer.
 - Die Meldung ist Sichtzustand (`S.ui`) und übersteht das Neuzeichnen (ADR-0007); Lastprofil: bis zu zehn Agenten schreiben gleichzeitig.
 - **Abgrenzung:** #82 (`zuletztFenster - 1` in `dateiLaden`, `web/app.js:368`) bleibt eigene Karte (ADR-0014 Nachtrag N2); sie berührt `web/uebernahme.js`, nicht das Kettenende.
 
 ## Offene Fragen
 
-- Keine an den Auftraggeber. Die Technikfrage ist mit ADR-0025 Regel 3 und Nachtrag N1 entschieden. Ort, Form, Lebensdauer und Wortlaut der Meldung bestätigt oder schärft die Vorprüfung des `ux-reviewer` (Label `oberflaeche`) bzw. der `rechtschreib-reviewer` (Label `text`) — ohne die Zusage dieser Anforderung zu ändern (AK 5–8).
+- Keine an den Auftraggeber. Die Technikfrage ist mit ADR-0025 Regel 3 und Nachtrag N1 entschieden. Die Vorprüfung des `ux-reviewer` (Label `oberflaeche`, 2026-11-13) ist eingearbeitet: Ort und Form der Meldung (der vorhandene Hinweis D00007, `role="status"`, knopflos), die Empfehlung 20 s Lebensdauer und das Kriterium für zwei Fehlschläge in einem Schritt (AK 8). Den Wortlaut der Meldung bestätigt noch der `rechtschreib-reviewer` (Label `text`) — ohne die Zusage dieser Anforderung zu ändern (AK 5–9).
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -185,6 +187,8 @@ Auslöser ist der Code-Review #76 (A3, begründet, nicht geprobt): Nach einem ge
 - **WBS-Heimat (Detailplanung 2026-11-13)**: eigene kleine Interaction **I0134** unter D0002 (Board), Bubbles B0682 (Abnahme-Probe, erwartet rot), B0683 (Kettenende) und B0684 (Meldung) mit eigener Anforderung R00147. Die Härtungsregel (`AI-Team/gelerntes.md` 2026-11-11; Vorbilder I0106/R00117, I0122/R00132, I0127/R00138) verlangt das: I0037 (R00037/R00050) und I0099 (R00110) sind **grün/abgenommen** — eine rote Folge-Bubble daran öffnete deren Abnahme. Elterndialog D0002, weil die Warteschlange jede schreibende Ansicht bedient und die Meldung dem Board-Auslöser gilt (ADR-0025 Regel 3 „Fuß/Toast").
 - **Weiche (`befunde-einplanen`)**: **falsch gebaut** — die Zusage aus R00037 FA 1/FA 2 („strikt nacheinander sendet", der Fehler wird benannt) hält der Slice nicht; deshalb `/anforderung aus-bug` mit eigener Interaction. Kein Befund an einer Befundbehebung (die Ursache ist älter als #76), kein Rückschritt eines Fixes.
 - **Architektur (Karte #80, bestanden 2026-11-13, `architekt`)**: Technikfrage bereits entschieden → ADR-0025 Regel 3, Nachtrag N1 (`4f14ef8`) mit Probe, Kontext-Berichtigung und geschärften Meldungspflichten; kein neuer ADR.
+- **ux-Vorprüfung (Karte #80, 2026-11-13, `ux-reviewer`)**: Ort und Form der Meldung entschieden (der vorhandene Hinweis D00007, `role="status"`, knopflos), Empfehlung 20 s Lebensdauer, und das Kriterium AK 8 für zwei Fehlschläge in einem Schritt nachgetragen (Label `oberflaeche` war gesetzt, der Review lief).
+- **Überlappung mit #149**: AK 7 legt den Ort der Meldung einer gescheiterten **eigenen** Anfrage als „dort, wo ausgelöst wurde" fest (ADR-0025 Nachtrag N1 Punkt 3). Damit ist auch der Einzelfall „eigene Anfrage scheitert, Nachladen gelingt, auf dem Board ausgelöst" abgedeckt — das ist der Gegenstand von Karte **#149** (Backlog, aus derselben Vorprüfung). Diese Anforderung nimmt #149 nicht in ihren Umfang auf; ob #149 nach dem Bau noch gebraucht wird, entscheidet der Koordinator bei der Abnahme.
 - **Priorität**: Hoch — eine gespeicherte Änderung erscheint als verloren; unter Agentenlast und in der Neustartpause des Servers wiederkehrend.
 - **Betroffene Nutzer/Systeme**: jeder Mensch, der auf Board oder im Aufgabenfenster schreibt, während ein Nachladen scheitert; mittelbar jede Sicht, die `laden()` zeichnet.
 - **Workaround**: Seite neu laden (heilt die Kette) oder die Änderung ein zweites Mal auslösen.
