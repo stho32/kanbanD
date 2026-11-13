@@ -295,6 +295,8 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     expect((await zeile.innerText()).replace(/\s+/g, ' ').trim()).toBe('ST Stefan · AG Agent');
     await expect(zeile).not.toContainText('Paula');
     await expect(zeile.locator('button, input, select, [data-act], [aria-pressed], [tabindex]')).toHaveCount(0);
+    // Kein Chip: auch die nicht-interaktiven Chip-Klassen dürfen hier nicht erscheinen (R00146 FA 3).
+    await expect(zeile.locator('.ochip, .lbl')).toHaveCount(0);
     await expect(zeile.locator('[aria-hidden="true"]')).toHaveCount(3); // zwei Initialen, ein Trenner
   });
 
