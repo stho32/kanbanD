@@ -106,3 +106,27 @@ Zwei Karten mit derselben Wurzel: der Weg vom Auslöser über die Warteschlange 
 - [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md) (Sichtzustand, N3 `data-halt`), [ADR-0010](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md) (Fokus, „nie `BODY`"), [ADR-0014](0014-nur-die-neueste-antwort-wird-uebernommen.md) (Marke der Schlange), [ADR-0017](0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) (Index, in Kauf genommen)
 - [R00138](../../Anforderungen/R00138-fokus-trifft-nach-fremder-aenderung-dasselbe-element.md) (Abgrenzung der Löschadressierung), R00098 (`key`, `neu: false`)
 - Baustein [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md)
+
+## Nachtrag N1 2026-11-13: Probe zu #80 — der Ist-Zustand, geschärft; Kontext berichtigt
+
+Nachgetragen nach der Probe, die Karte #80 vor dem Bau verlangt (Karte #80, Architektur-Durchgang 2026-11-13). Die Entscheidung (Option A, Regeln 1–6) bleibt **unverändert**; berichtigt wird eine Ist-Aussage im Kontext, und die Meldungspflicht aus Regel 3 wird geschärft.
+
+**Probe.** E2E gegen `target/debug/kanbanD` mit Wegwerf-Ordner: eine Karte mit drei offenen Teilaufgaben, abgehakt über den Kartenknopf `.naechste-ziel` (`data-act="teil-karte"` → `warteschlange()`, `web/app.js:1372–1383`); der **nächste** `GET /api/zustand` wird hart abgelehnt (`fetch` wirft `TypeError: Failed to fetch`), sodass das Nachladen der Schlange scheitert. Ergebnis, in drei Läufen gleich:
+
+| Schritt | heutiges Verhalten |
+|---|---|
+| 1. Abhaken; das Nachladen der Schlange scheitert | `PATCH …/teilaufgaben/0` geht raus und wird gespeichert. Danach ist die Kette `schlange` rejected. **Keine sichtbare Meldung** (die Meldung des `catch` liegt nur im Zustand `S.ui.fensterFehler`, den nur der Fuß eines offenen Aufgabenfensters zeichnet, `web/ansicht.js:343`); eine unbehandelte Ablehnung erscheint als `pageerror` in der Konsole |
+| 2. Abhaken | `PATCH …/teilaufgaben/1` wird **nicht** gesendet — die eigene Änderung geht still verloren. Erst jetzt setzt der `catch` `S.ui.fensterFehler` auf „Keine Verbindung zum Server — nichts geändert." — eine Meldung, die zum gescheiterten **Nachladen** gehört, nicht zum Klick, und im Aufgabenfenster neben der gespeicherten Änderung stünde |
+| 3. Abhaken | wird wieder gesendet: das Nachladen aus Schritt 2 ist gelungen und hat die Kette geheilt |
+
+Zwischen Schritt 1 und 3 fällt kein weiterer eigener Schritt aus; verliert das Nachladen wiederholt (Server in der Neustartpause, ein Endpunkt der Sammelabfrage antwortet mit Fehler), verliert sich je Nachladen genau der nächste eigene Schritt.
+
+**Berichtigung des Kontexts.** Der Kontext (Abschnitt „Die Kette bleibt rejected (#80)") sagt, `schlangeOffen` werde „nicht mehr heruntergezählt" und `ereignis()` überspringe deshalb jedes Live-Ereignis, die Ansicht bleibe bis zum Neuladen stehen. Für den hier geprüften Fall — das Nachladen **wirft** — trifft das nicht zu: `--schlangeOffen` steht im letzten `.then` **vor** `return laden()` (`web/app.js:437–439`) und läuft bei einer Ablehnung mit; gemessen steht `schlangeOffen` direkt nach dem gescheiterten Nachladen auf `0`. Der Schaden des **geworfenen** Falls ist damit eng: genau die nächste eigene Änderung geht still verloren, und der gezeichnete Stand bleibt der alte, bis ein nächster Anlass neu lädt. Die Kontext-Aussage gilt für den **hängenden** Fall: bleibt die Anfrage selbst unbeantwortet (`api()` setzt keine Frist, `web/app.js:90–104`), läuft das letzte `.then` nie, `schlangeOffen` bleibt dauerhaft > 0, und `ereignis()` (`:2804`) überspringt fortan jedes Live-Ereignis — derselbe sichtbare Stillstand, andere Ursache. Das ist eine eigene Restlücke (unten), nicht Teil dieser Entscheidung.
+
+**Geschärfte Pflichten für den Bau (aus Regel 3 abgeleitet).**
+1. Das Kettenende fängt in **jedem** Fall; auch ein geworfenes `laden()` hinterlässt keine unbehandelte Ablehnung. Eine Ablehnung, die nur als Konsolenfehler (`pageerror`) erscheint, ist der von Regel 3 genannte Befund.
+2. Je Fehlschlag genau **eine** Meldung, und sie nennt den richtigen Vorgang: Ein gescheitertes **Nachladen** darf nicht „nichts geändert" heißen — die eigene Änderung ist gespeichert. Sie ist von der Meldung einer gescheiterten eigenen Anfrage unterscheidbar.
+3. Die Meldung erreicht den Auslöser: Wer auf dem **Board** abhakt, sieht den Fuß des Aufgabenfensters nicht. Die Meldung gehört dorthin, wo ausgelöst wurde (Regel 3, „Fuß/Toast").
+4. Die Abnahme deckt **beide** Schritte ab: nach dem gescheiterten Nachladen kommt die **nächste** eigene Änderung an (heute rot, siehe Probe), und `schlangeOffen` endet bei 0.
+
+**Benannte Restlücke (Vorschlag für eine eigene Karte).** Eine hängende Anfrage — der Server antwortet nie — hält Kette und Zähler dauerhaft offen und legt Aktionen **und** Live-Ereignisse still, ohne jede Meldung. Regel 3 (Kette endet erfüllt) heilt das nicht, weil ein hängendes Glied weder erfüllt noch abgelehnt wird. Abhilfe wäre eine Frist je Anfrage (`AbortController`, Option B aus ADR-0014) mit definiertem Fehlerpfad; sie berührt alle Aufrufer von `api()` und ist eine eigene Entscheidung.
