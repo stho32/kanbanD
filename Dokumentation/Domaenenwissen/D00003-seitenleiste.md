@@ -12,17 +12,17 @@ code: [.mod-side, .mod-spalte, "#inhalt-spalte", vInhaltSpalte, vFensterDetails,
 
 ## Definition
 
-Die Seitenleiste ist der Teil des [Aufgabenfensters](D00001-aufgabenfenster.md), der alle Felder der Aufgabe zum Ändern trägt: Spalte, Klasse, Zuständige, Labels, Fälligkeit, dazu laufende Timer und Zeiten. Sie ist heute die Ansicht „Details“ (einspaltig, `.mod-main`) — der frühere feste Platz rechts neben dem [Hauptbereich](D00002-hauptbereich.md) entfällt seit R00127/R00145 (bestätigt, R00011; geändert R00127, R00145).
+Die Seitenleiste ist der Teil des [Aufgabenfensters](D00001-aufgabenfenster.md), der alle Felder der Aufgabe zum Ändern trägt: Spalte, Klasse, Zuständige, Labels, Fällig, dazu laufende Timer und Zeiten. Sie ist heute die Ansicht „Details“ (einspaltig, `.mod-main`) — der frühere feste Platz rechts neben dem [Hauptbereich](D00002-hauptbereich.md) entfällt seit R00127/R00145 (bestätigt, R00011; geändert R00127, R00145).
 
 Im **Inhalt** steht seit R00146 rechts eine **schmale Spalte** (`.mod-spalte`, `#inhalt-spalte`): die vier bearbeitbaren Zeilen Spalte, Klasse, Labels, Fällig und darunter die **nur lesenden** gewählten Zuständigen. Sie ist 200 px breit (Wertfläche 176 px), zeigt die Beschriftung über dem Wert und hat keine sichtbare Überschrift; für Hilfstechnik ist sie die Gruppe „Angaben zur Aufgabe“. Ab **641 px** steht sie rechts neben dem Hauptbereich, bei **640 px und weniger** im Fluss **nach** DURCHLÄUFE. Die Felder tragen dieselben `data-af`-Schlüssel wie ihre Gegenstücke in „Details“ und schreiben über denselben Weg — ein Feldwert, ein Schreibweg, ein Commit je Änderung. Das ist die ausdrückliche, eng gefasste **Ausnahme (#146, Betreiber-Entscheidung 2026-11-12)** von „jeder Abschnitt genau einmal“: alles andere bleibt je Ansicht genau einmal.
 
 ## ELI14
 
-Die schmale rechte Spalte im Aufgabenfenster, in der man sieht und einstellt, in welcher Spalte die Karte steht, welche Klasse und Labels sie trägt und wann sie fällig ist — und in der die Zuständigen nur zu lesen sind.
+Der Ort im Aufgabenfenster, an dem alle Felder einer Aufgabe stehen und geändert werden — heute die Ansicht „Details“, im Inhalt die wichtigsten davon in einer schmalen Spalte rechts, die Zuständigen dort nur zum Lesen.
 
 ## Bestandteile
 
-- Felder: Spalte (Auswahl, bewegt die Karte), Klasse, Zuständige, Labels, Fälligkeit, Geschätzt (nur lesend, nur wenn `estimate` gesetzt; R00129), „wartet auf“, Herkunft
+- Felder: Spalte (Auswahl, bewegt die Karte), Klasse, Zuständige, Labels, Fällig, Geschätzt (nur lesend, nur wenn `estimate` gesetzt; R00129), „wartet auf“, Herkunft
 - im Inhalt die schmale Spalte: Spalte, Klasse, Labels, Fällig (bearbeitbar, ohne Schnellknöpfe am Datumsfeld) und die gewählten Zuständigen (nur lesend: Initiale `aria-hidden`, Name als Text, kein Chip; Leerfall „niemand“)
 - Abschnitt „Läuft gerade“ mit den laufenden Timern
 - Zeiten der Aufgabe

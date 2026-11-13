@@ -23,7 +23,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 
 - Kopf: Nummer, Klasse, Pfad, Ansichts-Auslöser (nennt die Ansicht), „In VS Code öffnen“ (↗), Aktionsmenü (⋮), ✕ (R00011; R00144/R00145) — *aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144/#145): Reiter-Umschalter, Position „n / m“ mit ↑ ↓, Archiv-Knopf und der beschriftete Lösch-Auslöser entfallen; „Archivieren“/„Zurückholen“ und „Endgültig löschen“ stehen im ⋮-Menü, die Ansichten im Ansichtsmenü.*
 - [Hauptbereich](D00002-hauptbereich.md): Titel, Beschreibung, Abschnitte (Kommentare, Teilaufgaben, Anhänge, Durchläufe)
-- [Seitenleiste](D00003-seitenleiste.md) „Details“: Spalte, Klasse, Zuständige, Labels, Fälligkeit, Geschätzt (nur lesend, nur wenn `estimate` gesetzt), laufende Timer, Zeiten
+- [Seitenleiste](D00003-seitenleiste.md) „Details“: Spalte, Klasse, Zuständige, Labels, Fällig, Geschätzt (nur lesend, nur wenn `estimate` gesetzt), laufende Timer, Zeiten
 - schmale Spalte im **Inhalt** (R00146, `#inhalt-spalte`): Spalte, Klasse, Labels, Fällig (dieselben `data-af`-Schlüssel, ohne Schnellknöpfe) und die gewählten Zuständigen (nur lesend, Leerfall „niemand“)
 - Fuß: Speicherhinweis („gespeichert hh:mm“) und Fehlermeldung
 - Hinweis-Anker zwischen Körper und Fuß, in dem der [Hinweis](D00007-hinweis.md) steht, solange das Fenster oberster Dialog ist (R00112 FA 18)
@@ -33,7 +33,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 
 - zeigt genau eine Aufgabe; Blättern mit ↑ ↓ wechselt zur nächsten Aufgabe der sichtbaren Reihe — *aufgehoben durch Betreiber-Entscheidung 2026-11-12 (#144): das Blättern ist gestrichen; eine andere Aufgabe erscheint nur durch Öffnen (R00144 FA 9/10).*
 - zeigt genau eine Ansicht (R00145): „Inhalt“ besteht aus dem [Hauptbereich](D00002-hauptbereich.md) und der schmalen Spalte, „Details“ aus der Feldansicht der [Seitenleiste](D00003-seitenleiste.md)
-- **Ausnahme (#146, Betreiber-Entscheidung 2026-11-12):** Spalte, Klasse, Labels, Fälligkeit und die gewählten Zuständigen stehen in „Inhalt“ **und** in „Details“ — ein Feldwert, ein Schreibweg, ein Commit je Änderung; alles andere bleibt je Ansicht genau einmal
+- **Ausnahme (#146, Betreiber-Entscheidung 2026-11-12):** Spalte, Klasse, Labels, Fällig und die gewählten Zuständigen stehen in „Inhalt“ **und** in „Details“ — ein Feldwert, ein Schreibweg, ein Commit je Änderung; alles andere bleibt je Ansicht genau einmal
 - im [schmalen Layout](D00004-schmales-layout.md) füllt es den Bildschirm; die schmale Spalte steht im Fluss nach DURCHLÄUFE, die Feldansicht „Details“ unter dem Hauptbereich
 - wird bei jedem [Live-Ereignis](D00005-live-ereignis.md) mit geändertem Stand neu gezeichnet
 - hält je offener Aufgabe eine eigene [Leseposition](D00006-leseposition.md)
