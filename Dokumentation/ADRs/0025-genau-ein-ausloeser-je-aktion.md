@@ -130,3 +130,21 @@ Zwischen Schritt 1 und 3 fällt kein weiterer eigener Schritt aus; verliert das 
 4. Die Abnahme deckt **beide** Schritte ab: nach dem gescheiterten Nachladen kommt die **nächste** eigene Änderung an (heute rot, siehe Probe), und `schlangeOffen` endet bei 0.
 
 **Benannte Restlücke (Vorschlag für eine eigene Karte).** Eine hängende Anfrage — der Server antwortet nie — hält Kette und Zähler dauerhaft offen und legt Aktionen **und** Live-Ereignisse still, ohne jede Meldung. Regel 3 (Kette endet erfüllt) heilt das nicht, weil ein hängendes Glied weder erfüllt noch abgelehnt wird. Abhilfe wäre eine Frist je Anfrage (`AbortController`, Option B aus ADR-0014) mit definiertem Fehlerpfad; sie berührt alle Aufrufer von `api()` und ist eine eigene Entscheidung.
+
+## Nachtrag N2 2026-11-13: Reichweite aus dem Härtungsdurchgang (2026-11-12) — drei weitere Fälle; Regel 4 berichtigt, Regel 6 geschärft
+
+Nachgetragen nach dem Härtungsdurchgang des Betreibers (#55, #134; Kartenkommentare zu #138 vom 2026-11-12). Die Entscheidung (Option A, Regeln 1–6) bleibt **unverändert**. Drei weitere Fälle derselben Klasse kommen in die Reichweite; zwei Regeln werden berichtigt bzw. geschärft.
+
+**Die drei Fälle.**
+
+1. **„⇄ Achsen tauschen“** (Bericht „Bestand nach Labels“): `bestand-tauschen` (`web/app.js:1603`) → `bestandAchsenSetzen('tauschen')` (`:49–61`). Der zweite Klick rechnet aus dem **schon getauschten** Zustand (`S.ui.bestandLokal`, gelesen in `bestandAchsen`, `web/ansicht.js:1403–1405`) und tauscht zurück — zwei `PUT …/bestand` (`web/app.js:58`), zwei Commits, netto keine Änderung. Ein **Schreib-Auslöser** → Regel 1. Probe: Doppelklick → höchstens ein Commit.
+2. **`wirkung-weg`** (`web/app.js:1681–1686`, Knopf `web/ansicht.js:642`): über den **Index** adressiert (`data-arg="${j}"`), die Anfrage ruft `api` direkt.
+3. **`nf-teil-weg`** (`web/app.js:1327`, Knopf `web/ansicht.js:230`): entfernt eine **Entwurfs**-Zeile **lokal** (`u.neu.teil`), ohne Anfrage; der zweite Klick trifft die nachgerückte Zeile.
+
+**Regel 6 geschärft (die eine Stelle).** Die Stelle, an der die Sperre „Anfrage in Arbeit“ beobachtet, ist der **Schreibweg**, durch den **jede** schreibende Anfrage läuft — die Warteschlange (`warteschlange`, `web/app.js:442`), nicht allein der Verteiler `act` (`:1275`). Heute gehen Anfragen daran vorbei: `schreiben` (`:482`), `bestandAchsenSetzen` (`:58`), `wirkung-weg` (`:1683`), `bewegen` (`:1344`), `nf-anlegen` (`:1330`), `wbs-status` (`:1622`) und weitere. Sie sind auf die eine Stelle zu ziehen; ein Schreib-Auslöser, dessen Anfrage daran vorbeigeht, ist ein Befund (Regel 6, Review-Punkt). Ohne diese Bündelung deckt Regel 1 die Fälle 1 und 2 nicht.
+
+**Regel 4 berichtigt.** Der Satz „das Aufgabendatei-Format trägt keine Kennungen“ gilt nur für die **Teilaufgabe** (Markdown-Kästchen). **Wirkungen** tragen `application:node` (`Wirkung::schluessel()`, `src/modell/aufgabe.rs:326–331`), **Herkünfte** einen Verweis. Beide Kennungen sind aber **nicht garantiert eindeutig** (zwei gleiche Verweise; dieselbe Wirkung zweimal; ein `create` vor der Ausführung hat noch keinen Knoten — `schluessel()` ist dann `None`). Deshalb bleibt die **Stelle** (`data-arg`) für Teilaufgabe, Herkunft und Wirkung — aber aus dem Grund „die Kennung ist nicht eindeutig“, **nicht** „es gibt keine“. Sie ist nur unter Regel 1 tragbar (unverändert).
+
+**Fälle ohne Anfrage (neu).** Regel 1 greift nur, solange eine **Anfrage** läuft. Ein Auslöser ohne Anfrage, der eine **lokale** Liste ändert (`nf-teil-weg`, Entwurfs-Teilaufgaben in `u.neu.teil`), wird über eine **stabile Kennung der Zeile** adressiert (im Zustand vergeben; kein Serverformat, keine Anfrage); der zweite Klick auf dasselbe ✕ ist ein No-op. Sonst trifft er die nachgerückte Zeile (dieselbe Klasse wie #106, ohne Commit).
+
+**Proben (ergänzt zur Durchsetzung).** Doppelklick „⇄ Achsen tauschen“ → höchstens ein Commit; Doppelklick auf ein Wirkungs-✕ → höchstens ein Commit; Doppelklick auf ein Entwurfs-✕ → nur die gemeinte Zeile entfernt.
