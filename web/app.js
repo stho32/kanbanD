@@ -214,7 +214,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   const einstellungenDefekt = zustand.eingerichtet && !zustand.einstellungen;
   if (einstellungenDefekt) zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
   const sicht = zustand.eingerichtet ? await sichtLaden(zustand) : null;
-  if (!uebernehmen({ start, zuletzt: zuletztStand, marke, schlangeOffen })) {
+  if (!uebernehmen({ start, zuletzt: zuletztStand, marke, schlangeOffen: schlangeOffen() })) {
     wennVerworfen(zuletztStand > start);
     return false;
   }
@@ -344,7 +344,7 @@ function ichNoetig() {
     schaltet nicht zurück (Nacharbeit 2) —, und das folgende `dateiLaden` übernimmt unter derselben Nummer (`gleicherTakt`). */
 async function defektLaden(start = naechsterTakt()) {
   const nummer = S.ui.offenDefekt;
-  const aktuell = () => (S.ui.offenDefekt === nummer || S.ui.offen === nummer) && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen });
+  const aktuell = () => (S.ui.offenDefekt === nummer || S.ui.offen === nummer) && uebernehmen({ start, zuletzt: zuletztFenster, marke, schlangeOffen: schlangeOffen() });
   try {
     await api('GET', '/api/aufgaben/' + nummer);
     if (!aktuell()) return;
@@ -365,7 +365,7 @@ async function defektLaden(start = naechsterTakt()) {
     Umschalten aus der Reparatur hat das Fenster unter derselben Nummer schon übernommen — sie gilt dann als nicht überholt. */
 async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}) {
   const nummer = S.ui.offen;
-  const aktuell = () => S.ui.offen === nummer && uebernehmen({ start, zuletzt: gleicherTakt ? zuletztFenster - 1 : zuletztFenster, marke, schlangeOffen });
+  const aktuell = () => S.ui.offen === nummer && uebernehmen({ start, zuletzt: gleicherTakt ? zuletztFenster - 1 : zuletztFenster, marke, schlangeOffen: schlangeOffen() });
   try {
     const datei = await api('GET', '/api/aufgaben/' + nummer);
     const anhaenge = await api('GET', `/api/aufgaben/${nummer}/anhaenge`);
@@ -429,16 +429,18 @@ async function termineSchreiben(liste, formularLeeren) {
 }
 
 /** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. Vor diesem Laden setzt sie die Marke: was davor
-    gestartet ist, las womöglich einen Stand ohne die eigenen Änderungen und wird verworfen (R00110, ADR-0014 Regel 3). */
-let schlange = Promise.resolve(), schlangeOffen = 0;
+    gestartet ist, las womöglich einen Stand ohne die eigenen Änderungen und wird verworfen (R00110, ADR-0014 Regel 3).
+    Das Kettenende endet in jedem Fall erfüllt und meldet je Fehlschlag einmal am Auslöser (R00147, ADR-0025 Regel 3). */
+const eigene = warteschlangeFuehren({
+  laden: () => laden(),
+  vorLaden: () => { marke = takt; },
+  gespeichert: () => { S.ui.gespeichert = Date.now(); },
+  melden: schlangeMelden,
+});
+/** Wie viele eigene Anfragen gerade laufen; solange welche warten, wird kein geladener Stand übernommen (R00110). */
+const schlangeOffen = () => eigene.offen();
 function warteschlange(anfrage) {
-  schlangeOffen++;
-  schlange = schlange.then(anfrage).then(() => { S.ui.gespeichert = Date.now(); }).catch(f => { fensterMelden(f.message); }).then(() => {
-    if (--schlangeOffen > 0) return;
-    marke = takt;
-    return laden();
-  });
-  return schlange;
+  return eigene.einreihen(anfrage, S.ui.offen ? 'fenster' : 'board');
 }
 
 /** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
@@ -613,6 +615,29 @@ function fokusAusDemHinweis() {
 function fensterMelden(text, feld = null) {
   S.ui.fensterFehler = text;
   S.ui.fensterFehlerFeld = feld;
+}
+
+/** Zeigt eine Meldung im Hinweis (D00007, R00147): knopflos, `role="status"`, auf dem Board unten und im offenen Fenster
+    an dessen Hinweis-Anker. Steht ein Rückgängig-Hinweis, wartet sie dessen Ablauf ab, statt ihn zu verdrängen (AK 9). */
+function hinweisZeigen(text, dauer) {
+  const neu = { text, at: Date.now() };
+  if (dauer) neu.dauer = dauer;
+  if (S.ui.hinweis && S.ui.hinweis.undo) { S.ui.hinweisWarten = neu; return; }
+  S.ui.hinweis = neu;
+}
+
+/** Die Meldung des gescheiterten Nachladens (R00147 AK 5): die eigene Änderung ist gespeichert — „nichts geändert" wäre falsch. */
+const NACH_LADE_FEHLER = 'Änderung gespeichert — Ansicht nicht neu geladen.';
+
+/** Meldet einen Fehlschlag der Warteschlange dort, wo ausgelöst wurde (R00147 AK 5–8, ADR-0025 Nachtrag N1): im
+    Aufgabenfenster in dessen Fuß (gescheiterte eigene Änderung) bzw. an seinem Hinweis-Anker (gescheitertes Nachladen),
+    auf dem Board im Hinweis (D00007). 20 s Lebensdauer, weil die Meldung das einzige Zeichen der veralteten Ansicht ist. */
+function schlangeMelden(art, fehler, ausloeser) {
+  const text = art === 'laden' ? NACH_LADE_FEHLER : fehler.message;
+  if (art === 'anfrage' && ausloeser === 'fenster' && S.ui.offen) fensterMelden(text);
+  else hinweisZeigen(text, 20000);
+  // der Fehlschlag kann der letzte Schritt sein (auch das Nachladen scheiterte) — ohne Zeichnen bliebe die Meldung unsichtbar
+  render();
 }
 
 /** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
@@ -2801,7 +2826,7 @@ function spaltenJeAufgabe() {
 }
 
 async function ereignis(e) {
-  if (schlangeOffen > 0) return; // eigene Anfragen laufen noch; danach wird ohnehin neu geladen
+  if (schlangeOffen() > 0) return; // eigene Anfragen laufen noch; danach wird ohnehin neu geladen
   const vorher = spaltenJeAufgabe();
   // Verworfen ist nicht „unverändert“: die Pfade gehen ans nächste übernommene Laden, sonst fehlte die Markierung (R00110 Regel 7).
   // Ist schon ein neueres übernommen, kommt keins mehr nach — dann markiert der Stand, der das verworfene überholt hat.
@@ -2950,6 +2975,8 @@ setInterval(() => {
   const zeichnenMoeglich = zug == null && !S.ui.neu;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
   if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
+  // Ein Fehlschlag, der hinter einem Rückgängig-Hinweis gewartet hat, erscheint nach dessen Ablauf (R00147 AK 9)
+  if (!S.ui.hinweis && S.ui.hinweisWarten) { S.ui.hinweis = S.ui.hinweisWarten; S.ui.hinweisWarten = null; neu = true; }
   taktVergessen(jetzt);
   // das Zeichnen unterbleibt hinter einem Zug oder „Neue Aufgabe“ und wird beim nächsten Takt nachgeholt (FA 22)
   if (S.ui.vergessenOffen && zeichnenMoeglich) { S.ui.vergessenOffen = false; neu = true; }
