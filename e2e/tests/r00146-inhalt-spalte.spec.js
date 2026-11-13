@@ -397,6 +397,26 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     });
   }
 
+  test('US-6: kurzes Fenster 844 × 390 (Touch) — jede der fünf Zeilen erreichbar', async ({ browser }) => {
+    const kontext = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+    try {
+      const page = await kontext.newPage();
+      await alsPerson(page, 'st');
+      await oeffnen(page);
+      const s = spalte(page);
+      for (const wert of await s.locator('.w').all()) {
+        await wert.scrollIntoViewIfNeeded();
+        const drin = await wert.evaluate(e => {
+          const r = e.getBoundingClientRect(), rahmen = document.querySelector('#inhalt-spalte').getBoundingClientRect();
+          return r.top >= rahmen.top - 0.5 && r.bottom <= rahmen.bottom + 0.5 && r.width > 0;
+        });
+        expect(drin, 'Zeile ganz im Rahmen').toBe(true);
+      }
+    } finally {
+      await kontext.close();
+    }
+  });
+
   test('US-6: DOM-Reihenfolge und Tab — DURCHLÄUFE → Spalte → Klasse → Labels → Fällig, kein order', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await oeffnen(page);
@@ -405,6 +425,23 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     for (let i = 0; i < 4; i++) { await page.keyboard.press('Tab'); folge.push(await fokusFeld(page)); }
     expect(folge).toEqual(['spalte', 'klasse', 'labels', 'faellig']);
     expect((await masse(page)).order).toBe('0');
+  });
+
+  test('US-6: Kontrast aller Spaltentexte ≥ 4,5:1 in beiden Themen, Fokusring ≥ 3:1', async ({ page }) => {
+    await oeffnen(page);
+    for (const themaName of ['light', 'dark']) {
+      await thema(page, themaName);
+      const verstoesse = (await kontrastMessen(page, ['#inhalt-spalte'])).filter(m => m.wert < 4.5);
+      expect(verstoesse, `${themaName}: ${JSON.stringify(verstoesse)}`).toEqual([]);
+      const ring = await page.locator('#inhalt-spalte [data-af="klasse"]').evaluate(e => {
+        e.focus();
+        const s = getComputedStyle(e);
+        return { farbe: s.outlineColor, breite: s.outlineWidth, abstand: s.outlineOffset, grund: getComputedStyle(document.querySelector('#inhalt-spalte')).backgroundColor };
+      });
+      expect(ring.breite).toBe('2px');
+      expect(ring.abstand).toBe('-1px');
+      expect(await kontrastFarben(page, ring.farbe, ring.grund), `${themaName}: Fokusring`).toBeGreaterThanOrEqual(3);
+    }
   });
 
   test('US-6: die DURCHLÄUFE-Tabelle scrollt in sich — das Fenster scrollt bei 320/375/414/640 nicht quer', async ({ page }) => {
@@ -422,4 +459,26 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     }
   });
 
+  /* ── US-8: der Rückgängig-Hinweis verdeckt keine Feldzeile ── */
+
+  for (const [breite, hoehe] of [[1280, 800], [414, 800], [320, 800], [844, 390]]) {
+    test(`US-8: Rückgängig-Hinweis verdeckt keine Zeile der Spalte (${breite} × ${hoehe})`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: hoehe });
+      await oeffnen(page);
+      await page.locator('#anhaenge [data-act="anhang-weg"]').click();
+      await expect(page.locator('.toast[role="status"]')).toBeVisible();
+      await feld(page, 'faellig').focus();
+      const verdeckt = await page.evaluate(() => {
+        const hinweis = document.querySelector('.toast[role="status"]').getBoundingClientRect();
+        return [...document.querySelectorAll('#inhalt-spalte .w')].map(w => {
+          w.scrollIntoView({ block: 'nearest' });
+          const r = w.getBoundingClientRect();
+          const ueberlappt = Math.min(r.right, hinweis.right) - Math.max(r.left, hinweis.left) > 0.5 && Math.min(r.bottom, hinweis.bottom) - Math.max(r.top, hinweis.top) > 0.5;
+          const treffer = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return { text: w.textContent.trim().slice(0, 20), ueberlappt, getroffen: Boolean(treffer && w.contains(treffer)) };
+        });
+      });
+      expect(verdeckt.filter(z => z.ueberlappt || !z.getroffen), JSON.stringify(verdeckt)).toEqual([]);
+    });
+  }
 });
