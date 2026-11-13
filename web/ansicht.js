@@ -385,7 +385,9 @@ function vDurchlaeufe(a) {
   const ds = (a.durchlaeufe || []).map((d, i) => ({ d, i })).sort((x, y) => zeitMs(y.d.zeitpunkt) - zeitMs(x.d.zeitpunkt) || y.i - x.i).map(x => x.d);
   if (!ds.length) return '';
   const zeilen = ds.map(d => `<tr><td class="mono">${esc(zeitpunktKurz(d.zeitpunkt, isoD(Date.now())))}</td><td>${esc(d.phase)}</td><td><span class="erg ${esc(d.ergebnis)}">${esc(d.ergebnis)}</span></td><td>${pk(d.wer)}${esc(per(d.wer).name)}</td><td class="r mono">${d.dauer_minuten == null ? '–' : hm(d.dauer_minuten * 6e4)}</td><td>${esc(d.text)}</td></tr>`).join('');
-  return `<div class="abs" id="durchlaeufe"><h3>DURCHLÄUFE <span class="mono">kanbanD-runs · ${ds.length}</span></h3><table class="pt dicht dl-tab"><thead><tr><th>Zeit</th><th>Phase</th><th>Ergebnis</th><th>Wer</th><th class="r">Dauer</th><th>Text</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
+  // Eigene Querscroll-Fläche je Tabelle (R00123-Muster, PO #146): die sechs Spalten scrollen im Rahmen, nie das Fenster;
+  // per Tastatur erreichbar, damit die Tabelle auch auf dem Telefon ganz zugänglich bleibt.
+  return `<div class="abs" id="durchlaeufe"><h3>DURCHLÄUFE <span class="mono">kanbanD-runs · ${ds.length}</span></h3><div class="bericht-rahmen" tabindex="0" role="group" aria-label="Durchläufe der Aufgabe #${a.nummer}"><table class="pt dicht dl-tab"><thead><tr><th>Zeit</th><th>Phase</th><th>Ergebnis</th><th>Wer</th><th class="r">Dauer</th><th>Text</th></tr></thead><tbody>${zeilen}</tbody></table></div></div>`;
 }
 /** Der Karten-Verlauf (R00123): nur lesend, aus der Git-Geschichte gerechnet; Tabelle neueste oben, Zeit mit Jahr. */
 const VERLAUF_ART = { erstellt: 'erstellt', bewegt: 'bewegt', archiviert: 'archiviert', zurueckgeholt: 'zurückgeholt', geloescht: 'gelöscht' };

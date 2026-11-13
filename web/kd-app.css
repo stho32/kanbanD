@@ -582,13 +582,18 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
    Zeiger fängt nur das Rechteck des Hinweises; solange er steht, scrollt Tab ein Feld über ihn hinaus (PO Z. 162, WCAG 2.4.11) */
 .hinweis-anker{position:relative;height:0;flex:none;pointer-events:none}
 .hinweis-anker .toast{position:absolute;bottom:8px;z-index:2;max-width:min(720px,calc(100% - 32px));pointer-events:auto}
-.mod:has(.hinweis-anker) :is(.mod-body,.mod-main,.mod-side){scroll-padding-bottom:calc(var(--kd-hinweis-h,0px) + 8px)}
+.mod:has(.hinweis-anker) :is(.mod-body,.mod-main,.mod-side,.mod-spalte){scroll-padding-bottom:calc(var(--kd-hinweis-h,0px) + 8px)}
 /* `scroll-padding` lässt nur den Fokus-Streifen frei, schafft aber keinen Scrollraum: am Körper-Ende blieben die letzten
    Felder (Fälligkeit samt „heute“/„morgen“/„+1 Woche“) unter dem Hinweis stehen (R00112, PO Z. 162, Nacharbeit #119).
    Schmal scrollt allein .mod-body — er bekommt darum zusätzlich echten unteren Freiraum in Hinweis-Höhe, über den die
    letzten Felder scrollbar werden. Breit scrollen .mod-main/.mod-side; dort reicht das scroll-padding, weil .mod-body
    selbst nicht scrollt und ein Polster an ihm nur die Körperspalten verkürzte. */
 @media (max-width:640px){.mod:has(.hinweis-anker) .mod-body{padding-bottom:var(--kd-hinweis-h,0px)}}
+/* R00146: schmal steht die Spalte im Fluss nach dem Inhalt — ein Scrollbereich (.mod-body), Trennlinie oben statt links. */
+@media (max-width:640px){.mod-spalte{overflow:visible;box-shadow:inset 0 1px 0 var(--kd-line)}}
+/* Breit und kurz scrollt die Spalte in sich; solange der Rückgängig-Hinweis steht, bekommt sie echten unteren Freiraum in
+   Hinweis-Höhe — `scroll-padding` allein schafft keinen Scrollraum (R00112, R00146 FA 15). */
+@media (min-width:641px){.mod:has(.hinweis-anker) .mod-spalte{padding-bottom:calc(var(--kd-s4) + var(--kd-hinweis-h,0px))}}
 .toast.warn{color:var(--kd-head-text);border-left:4px solid var(--kd-wbs-error)}
 .ausruf{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--kd-wbs-error-bg);color:var(--kd-wbs-error-ink);box-shadow:0 0 0 1px var(--kd-wbs-error);font-weight:600;font-size:11px;line-height:1;flex:none}
 .first{flex:1;display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);min-height:0;background:var(--kd-surface)}

@@ -80,6 +80,7 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
 
   async function oeffnen(page, nr = 1) {
     await page.goto(k.adresse + '#/board/fabrik');
+    if (await page.locator('#fenster').count()) await page.keyboard.press('Escape');
     await page.locator(`.ka[data-id="${nr}"] .id`).click();
     await expect(page.getByRole('dialog', { name: `Aufgabe #${nr}` })).toBeVisible();
   }
@@ -356,6 +357,69 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     await expect(page.getByRole('dialog', { name: 'Defekte Datei #3' })).toBeVisible();
     await expect(page.locator('#inhalt-spalte')).toHaveCount(0);
     await expect(page.locator('#fenster')).toHaveCount(0);
+  });
+
+  /* ── US-6: schmale Breiten, Höhe, Reihenfolge (B0679/B0680) ── */
+
+  test('US-6: bei 641 px rechts und 200 ± 1; bei 640 px unter dem Inhalt, volle Fensterbreite', async ({ page }) => {
+    await page.setViewportSize({ width: 641, height: 896 });
+    await oeffnen(page);
+    let m = await masse(page);
+    expect(Math.abs(m.spalte.breite - 200), `641 px: Spalte ${m.spalte.breite}`).toBeLessThanOrEqual(1);
+    expect(m.spalte.x, 'rechts neben dem Inhalt').toBeGreaterThanOrEqual(m.main.rechts - 0.5);
+    expect(m.order).toBe('0');
+
+    await page.setViewportSize({ width: 640, height: 896 });
+    await expect.poll(async () => (await masse(page)).spalte.hoehe).toBeGreaterThan(0);
+    m = await masse(page);
+    expect(m.spalte.y, '640 px: unter dem Inhalt').toBeGreaterThanOrEqual(m.main.unten - 0.5);
+    expect(Math.abs(m.spalte.breite - m.body.breite), 'volle Fensterbreite').toBeLessThanOrEqual(1);
+    expect(m.order).toBe('0');
+  });
+
+  for (const breite of [320, 375, 414, 640, 641]) {
+    test(`US-6: ${breite} px, hell und dunkel — kein Querscrollen, nichts abgeschnitten`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 844 });
+      await oeffnen(page);
+      for (const themaName of ['light', 'dark']) {
+        await thema(page, themaName);
+        const m = await masse(page);
+        expect(m.seite[0], `${breite}/${themaName}: Seite`).toBeLessThanOrEqual(m.seite[1]);
+        expect(m.fensterScroll[0], `${breite}/${themaName}: Fenster`).toBeLessThanOrEqual(m.fensterScroll[1]);
+        expect(m.bodyScroll[0], `${breite}/${themaName}: Körper`).toBeLessThanOrEqual(m.bodyScroll[1]);
+        // jede Feldzeile ist bedienbar und zeigt ihren Wert ganz
+        for (const name of FELDER) {
+          await feld(page, name).scrollIntoViewIfNeeded();
+          const ganz = await feld(page, name).evaluate(e => e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().width > 0);
+          expect(ganz, `${breite}/${themaName}: ${name} ganz`).toBe(true);
+        }
+      }
+    });
+  }
+
+  test('US-6: DOM-Reihenfolge und Tab — DURCHLÄUFE → Spalte → Klasse → Labels → Fällig, kein order', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await oeffnen(page);
+    await page.locator('#durchlaeufe').getByRole('group', { name: 'Durchläufe der Aufgabe #1' }).focus();
+    const folge = [];
+    for (let i = 0; i < 4; i++) { await page.keyboard.press('Tab'); folge.push(await fokusFeld(page)); }
+    expect(folge).toEqual(['spalte', 'klasse', 'labels', 'faellig']);
+    expect((await masse(page)).order).toBe('0');
+  });
+
+  test('US-6: die DURCHLÄUFE-Tabelle scrollt in sich — das Fenster scrollt bei 320/375/414/640 nicht quer', async ({ page }) => {
+    for (const breite of [320, 375, 414, 640]) {
+      await page.setViewportSize({ width: breite, height: 844 });
+      await oeffnen(page);
+      const rahmen = page.locator('#durchlaeufe').getByRole('group', { name: 'Durchläufe der Aufgabe #1' });
+      await expect(rahmen, `${breite} px`).toHaveCount(1);
+      await expect(rahmen).toHaveAttribute('tabindex', '0');
+      await rahmen.focus();
+      await expect(rahmen).toBeFocused();
+      const m = await masse(page);
+      expect(m.fensterScroll[0], `${breite} px: Fenster`).toBeLessThanOrEqual(m.fensterScroll[1]);
+      expect(m.seite[0], `${breite} px: Seite`).toBeLessThanOrEqual(m.seite[1]);
+    }
   });
 
 });
