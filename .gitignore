@@ -8,3 +8,6 @@
 /e2e/test-results/
 /e2e/playwright-report/
 .claude/factory/
+
+# Protokolle der Factory je Karte (factory_start.py)
+.factory/
