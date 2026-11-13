@@ -9,7 +9,7 @@ Je Spalte des Boards: Art (`Team` bearbeitet der Director mit der Rolle, `Manuel
 | Architektur | Team | architekt | — | prüfen, ob die Karte eine Technikfrage aufwirft; wenn ja entscheiden und als ADR festhalten, sonst sofort weiter; die erste Karte bringt das Architektur-Modell |
 | Detailplanung | Team | planer, ux-reviewer | — | WBS-Knoten anlegen bzw. Interaction bis Bubble verfeinern, Anforderung schreiben oder abgleichen; ux-reviewer nur als Vorprüfung bei Oberfläche; fachspezialist auf Abruf bei neuen Begriffen |
 | Entwicklung | Team | entwickler | Entwicklung | bauen, Test zuerst, Gate (`cargo test`, `node --test e2e/einheit/`, betroffene Playwright-Specs; volle Suite am Kartenende) |
-| Nacharbeit | Team | entwickler | — | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben (`entw2`, Worktree `kanbanD-entw2`, Zweig `nacharbeit/<nr>`), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
+| Nacharbeit | Team | entwickler | — | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben, Sollte/Optional entscheiden (beheben oder verwerfen, siehe „Befunde aus Reviews und Tests“) (`entw2`, Worktree `kanbanD-entw2`, Zweig `nacharbeit/<nr>`), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
 | Auto-Reviews | Team | code-reviewer, security-reviewer, ux-reviewer, rechtschreib-reviewer, architektur-reviewer, legacy-reviewer, observability-reviewer | — | Reviews parallel am selben Stand, je Rolle eine Teilaufgabe; code-reviewer immer, die übrigen nur, wenn die Karte ihr Thema berührt (Auswahl im Kommentar des Directors beim Zug) |
 | Entwicklertest | Team | entwicklertester | Entwicklertest | User Story wörtlich im echten Programm auf einer Wegwerf-Instanz |
 | Erledigt | Manuell | — | — | fertig: nach bestandenem Entwicklertest direkt hierher, ohne Abnahme-Spalte; beim Zug installiert der Director kanbanD neu und startet das Board neu (siehe „Auslieferung“); letzte Spalte, Abschlussspalte der Berichte |
@@ -21,10 +21,24 @@ Schleifen an den Menschen: Ohne Mensch nicht lösbar
 Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **ganz** fertigzustellen, bevor es greift, denn was begonnen und nicht abgeschlossen ist, bleibt bis zum Reset offen.
 
 - **Nacheinander**: Es ist höchstens eine Karte zwischen „Architektur“ und „Entwicklertest“ unterwegs. Die nächste Karte wird erst freigegeben und gezogen, wenn die vorige in „Erledigt“ oder „Ohne Mensch nicht lösbar“ liegt. Es gibt keinen Vorlauf und keinen Puffer, und `entw2` baut nur, während `entw1` nicht baut.
-- **Sparsam prüfen**: In den Auto-Reviews läuft `code-reviewer` immer, jede andere Rolle nur, wenn die Karte ihr Thema nachweislich berührt. Eine Wiederholung gibt es nur für Rollen mit Befund. Befunde, die nur über künstliche Fehlerinjektion erreichbar sind, gelten als `Sollte` und gehen auf eine Härtungskarte, nicht in die Nacharbeit.
+- **Sparsam prüfen**: In den Auto-Reviews läuft `code-reviewer` immer, jede andere Rolle nur, wenn die Karte ihr Thema nachweislich berührt. Eine Wiederholung gibt es nur für Rollen mit Befund. Befunde, die nur über künstliche Fehlerinjektion erreichbar sind, gelten als `Sollte`; was mit `Sollte` und `Optional` geschieht, regelt „Befunde aus Reviews und Tests“.
 - **Knappe Aufträge**: Der Director nennt jeder Rolle die Dateien und Abschnitte, die sie braucht, statt sie suchen zu lassen. Die Berichte bleiben im Berichtsformat, ohne Wiederholungen.
 - **Rollen fortsetzen statt neu starten** (Betreiber 2026-10-31): planer, architekt, product-owner und entwickler werden für die nächste verwandte Karte bzw. für Nachträge per SendMessage fortgesetzt, solange ihr Kontext unter etwa 150.000 Tokens liegt (Wert aus der letzten Abschlussmeldung); darüber und bei fremdem Codebereich frisch starten. Prüfende Rollen (Reviews, Entwicklertest) starten je Karte frisch — der unabhängige Blick ist gewollt; nur ihre Wiederholung nach Nacharbeit an derselben Karte wird fortgesetzt. Die Agent-ID je Rolle hält der Director in der Logbuchzeile fest.
 - **Reihenfolge der Karten** (Betreiber 2026-10-31, nach der UX-Durchsicht): erst #7/#14 (R00101), dann R00095 → R00096 → R00097 → R00098 → R00099 → R00100, danach die übrigen UX-Karten (#8–#13, #15, #16); Features der Wartungsfabrik bringen den größten Nutzen je Token.
+
+## Befunde aus Reviews und Tests (Betreiber 2026-11-12)
+
+Anlass: Der Backlog war auf 66 Karten gewachsen, rund die Hälfte davon Härtungskarten, Wackler und Dubletten; bei der Durchsicht am 2026-11-12 blieben 30. Die Regeln verhindern, dass Befunde ohne Nutzerwirkung wieder geparkt werden.
+
+- **Muss** geht wie bisher in die Nacharbeit derselben Karte.
+- **Sollte und Optional** entscheidet die Nacharbeit derselben Karte: beheben oder verwerfen, mit einem Satz Grund im Kartenkommentar. Es gibt keine Härtungskarten mehr.
+- **Akzeptanzkriterium ohne Probe**: Meldet eine Rolle, dass ein Akzeptanzkriterium der Karte keine Probe hat, ist das ein Muss derselben Karte, kein Sollte.
+- **Neue Karte nur mit Nutzerwirkung**: Ein Befund außerhalb des Pakets (Vorbestand) wird nur dann Karte, wenn er für Mensch oder Agent beobachtbar ist — sichtbarer Fehler, Datenverlust, Bruch des API-Kontrakts, Sicherheit. Vorher gleicht der Director mit dem Backlog ab: Passt der Befund zu einer offenen Karte, wird er dort ein Kommentar.
+  - #138 doppelte Auslösung · #139 E2E-Wackler · #140 schmale Breite · #141 Tastatur und Fokus · #55 kleine sichtbare Mängel · #143 Akzeptanzkriterien ohne Probe
+- **Nie eine Karte** (verwerfen, im Bericht genügt eine Zeile): überlebende Mutanten und Lücken in Wächtern ohne beobachtbaren Fehler, Stil und Benennung, Zeilen- und SHA-Verweise in Doku, Rechtschreibung in Anforderungen, WBS und `Gelerntes.md`, Drift in Architektur-Modell und ADRs (die nimmt `/architektur pruefen` mit).
+- **Keine Härtung der Härtung**: Reviews einer Karte, die selbst aus Befunden entstanden ist, melden nur Muss.
+- **Wackler**: ein neuer Wackler wird Kommentar an #139, keine eigene Karte. Ein Test, der unter einer benennbaren Bedingung immer scheitert (Wochentag, Uhrzeit), ist kein Wackler, sondern ein Bug.
+- **Prüfende Rollen** bekommen im Auftrag die Liste oben mit. Was dort schon steht oder hier verworfen ist, melden sie nicht erneut.
 
 ## Auslieferung bei „Erledigt“ (Betreiber 2026-10-31)
 
