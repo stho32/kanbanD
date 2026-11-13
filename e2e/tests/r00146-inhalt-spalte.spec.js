@@ -473,6 +473,25 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     }
   });
 
+  test('US-6: „niemand“, „nicht auf diesem Board“ und der Labels-Platzhalter halten ≥ 4,5:1 in beiden Themen', async ({ page }) => {
+    // #2 hat weder Board noch Zuständige und ein leeres Labels-Feld: alle drei Sondertexte stehen zusammen.
+    await page.goto(k.adresse + '#/aufgaben');
+    await page.locator('tr[data-zeile="2"] a').click();
+    const s = spalte(page);
+    await expect(s).toContainText('nicht auf diesem Board');
+    await expect(s.locator('[role="group"][aria-label="Zuständig"]')).toHaveText('niemand');
+    for (const themaName of ['light', 'dark']) {
+      await thema(page, themaName);
+      const messungen = await kontrastMessen(page, ['#inhalt-spalte']);
+      const texte = messungen.map(m => m.text);
+      expect(texte, `${themaName}: „niemand“ gemessen`).toContain('niemand');
+      expect(texte, `${themaName}: „nicht auf diesem Board“ gemessen`).toContain('nicht auf diesem Board');
+      expect(messungen.filter(m => m.element.endsWith('::placeholder')).map(m => m.text), `${themaName}: Platzhalter gemessen`).toContain('ui, daten');
+      const verstoesse = messungen.filter(m => m.wert < 4.5);
+      expect(verstoesse, `${themaName}: ${JSON.stringify(verstoesse)}`).toEqual([]);
+    }
+  });
+
   test('US-6: die DURCHLÄUFE-Tabelle scrollt in sich — das Fenster scrollt bei 320/375/414/640 nicht quer', async ({ page }) => {
     for (const breite of [320, 375, 414, 640]) {
       await page.setViewportSize({ width: breite, height: 844 });
