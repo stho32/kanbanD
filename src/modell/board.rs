@@ -22,7 +22,7 @@ pub struct Spalte {
     /// Wem die Spalte gehört (`column-owner`, R00097); keiner heißt heutiges Verhalten.
     #[serde(default)]
     pub eigentuemer: Option<Eigentuemer>,
-    /// Ein Wert unter `column-owner`, der weder `human` noch `agent` ist: gilt nicht, bleibt in der Datei und wird als Hinweis gemeldet;
+    /// Ein Wert unter `column-owner`, der weder `human` noch `agent` ist: kein gültiger Eigentümer, bleibt in der Datei und wird als Hinweis gemeldet;
     /// im JSON nur, wo es ihn gibt, damit „Spalten einrichten“ ihn zeigt (B0296).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<String>)]
@@ -1022,7 +1022,7 @@ mod tests {
         assert_eq!(b.entnahme_erlaubt(Art::Agent, 99), Ok(()), "Nummer nicht auf dem Board");
         b.spalten[0].eigentuemer_unbekannt = Some("chef".into());
         b.spalten[0].eigentuemer = None;
-        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "ein unbekannter Wert gilt nicht");
+        assert_eq!(b.entnahme_erlaubt(Art::Agent, 1), Ok(()), "ein unbekannter Wert ist kein Eigentümer");
     }
 
     // R00120 PO Z. 187: ein `human` meinender, ungebundener Eintrag sperrt einen Agenten fail-safe (ganzes Board)

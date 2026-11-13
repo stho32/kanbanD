@@ -571,7 +571,7 @@ mod tests {
     fn unbekannter_eigentuemer_gilt_nicht_und_bleibt_in_der_datei() {
         let g = lesen("b", "---\ncolumn-owner: {Eingang: chef, B: agent, Fehlt: human}\n---\n## Eingang\n## B\n").unwrap();
         let gelesen: Vec<(Option<Eigentuemer>, Option<&str>)> = g.spalten.iter().map(|s| (s.eigentuemer, s.eigentuemer_unbekannt.as_deref())).collect();
-        assert_eq!(gelesen, [(None, Some("chef")), (Some(Eigentuemer::Agent), None)], "chef gilt nicht, agent gilt");
+        assert_eq!(gelesen, [(None, Some("chef")), (Some(Eigentuemer::Agent), None)], "chef ist kein Eigentümer, agent gilt");
         assert!(schreiben(&g, |_| None).contains("column-owner:\n  Eingang: chef\n  B: agent\n  Fehlt: human\n"), "die Datei verliert nichts: {}", schreiben(&g, |_| None));
         assert_eq!(g.eigentuemer_roh, [ColumnOwnerEintrag { schluessel: Some("Fehlt".into()), wert: "human".into() }], "der verwaiste Schlüssel bleibt roh erhalten");
     }

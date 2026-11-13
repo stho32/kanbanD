@@ -4,7 +4,7 @@ use gemeinsam::{git, lies, senden};
 use reqwest::Method;
 use serde_json::json;
 
-// R00097 B0287: eigentuemer je Spalte in GET Board und Boardliste; ein unbekannter Wert gilt nicht und steht als Hinweis da
+// R00097 B0287: eigentuemer je Spalte in GET Board und Boardliste; ein unbekannter Wert ist kein Eigentümer und steht als Hinweis da
 #[tokio::test]
 async fn eigentuemer_und_hinweis_im_board() {
     let tmp = tempfile::tempdir().unwrap();

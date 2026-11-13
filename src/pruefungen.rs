@@ -40,13 +40,19 @@ pub fn unbekannte(board: &Board) -> Vec<String> {
         .spalten
         .iter()
         .flat_map(|s| s.pruefungen.iter().filter(|n| Pruefung::aus(n).is_none()).map(move |n| format!("Spalte „{}“: unbekannte Prüfung „{n}“ — bekannt sind {}", s.name, Pruefung::ALLE.map(Pruefung::name).join(", "))));
-    let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| format!("Spalte „{}“: unbekannter Eigentümer „{e}“ — bekannt sind human, agent", s.name)));
+    // Karte #142 Nacharbeit B2: ein Wert, der den Menschen meint, sperrt — der Hinweis sagt das, statt ihn als
+    // bloß „unbekannt“ stehen zu lassen; ein Wert, der ihn nicht nennt (`chef`), behält den Wortlaut aus R00120 AK 5.
+    let eigentuemer = board.spalten.iter().filter_map(|s| s.eigentuemer_unbekannt.as_ref().map(|e| {
+        let sperre = if crate::modell::meint_human_wert(e) { " — meint den Menschen, sperrt Agenten fail-safe" } else { "" };
+        format!("Spalte „{}“: unbekannter Eigentümer „{e}“ — bekannt sind human, agent{sperre}", s.name)
+    }));
     let roh = board.eigentuemer_roh.iter().map(|e| {
         let wert = yaml::anzeige(&e.wert);
+        let sperre = if e.meint_human() { " — meint den Menschen, sperrt Agenten fail-safe über das ganze Board" } else { "" };
         match &e.schluessel {
-            None => format!("column-owner ist keine Zuordnung — „{wert}“ bleibt erhalten"),
-            Some(k) if board.spalten.iter().any(|s| &s.name == k) => format!("column-owner: „{k}“ hat keinen Textwert — „{k}: {wert}“ bleibt erhalten"),
-            Some(k) => format!("column-owner: „{k}: {wert}“ passt auf keine Spalte — der Eintrag bleibt erhalten"),
+            None => format!("column-owner ist keine Zuordnung — „{wert}“ bleibt erhalten{sperre}"),
+            Some(k) if board.spalten.iter().any(|s| &s.name == k) => format!("column-owner: „{k}“ hat keinen Textwert — „{k}: {wert}“ bleibt erhalten{sperre}"),
+            Some(k) => format!("column-owner: „{k}: {wert}“ passt auf keine Spalte — der Eintrag bleibt erhalten{sperre}"),
         }
     });
     pruefungen.chain(eigentuemer).chain(roh).collect()
@@ -230,6 +236,20 @@ mod tests {
         assert_eq!(unbekannte(&b), ["Spalte „Entwicklung“: unbekannte Prüfung „xyz“ — bekannt sind wbs-effects-green"]);
     }
 
+    // Karte #142 Nacharbeit B2: der Hinweis für einen Wert, der den Menschen meint, nennt die fail-safe Sperre.
+    #[test]
+    fn unbekannter_eigentuemer_der_den_menschen_meint_nennt_die_sperre() {
+        let spalte = |name: &str, roh: &str| Spalte { eigentuemer_unbekannt: Some(roh.into()), name: name.into(), ..Default::default() };
+        let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", "Human"), spalte("Erledigt", "chef")], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None };
+        assert_eq!(
+            unbekannte(&b),
+            [
+                "Spalte „Eingang“: unbekannter Eigentümer „Human“ — bekannt sind human, agent — meint den Menschen, sperrt Agenten fail-safe",
+                "Spalte „Erledigt“: unbekannter Eigentümer „chef“ — bekannt sind human, agent",
+            ]
+        );
+    }
+
     #[test]
     fn unbekannter_eigentuemer_wird_je_spalte_genannt() {
         let spalte = |name: &str, roh: Option<&str>| Spalte { eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() };
@@ -261,9 +281,9 @@ mod tests {
         assert_eq!(
             unbekannte(&b),
             [
-                "column-owner: „eingang: human“ passt auf keine Spalte — der Eintrag bleibt erhalten",
-                "column-owner: „Eingang“ hat keinen Textwert — „Eingang: [human]“ bleibt erhalten",
-                "column-owner ist keine Zuordnung — „human“ bleibt erhalten",
+                "column-owner: „eingang: human“ passt auf keine Spalte — der Eintrag bleibt erhalten — meint den Menschen, sperrt Agenten fail-safe über das ganze Board",
+                "column-owner: „Eingang“ hat keinen Textwert — „Eingang: [human]“ bleibt erhalten — meint den Menschen, sperrt Agenten fail-safe über das ganze Board",
+                "column-owner ist keine Zuordnung — „human“ bleibt erhalten — meint den Menschen, sperrt Agenten fail-safe über das ganze Board",
             ]
         );
     }

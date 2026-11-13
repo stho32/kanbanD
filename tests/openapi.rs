@@ -51,6 +51,31 @@ async fn openapi_31_vollstaendig_und_aufloesbar() {
     }
 }
 
+/// Karte #142 Nacharbeit B2: die Beschreibungen nennen die gebaute Fail-safe-Sperre — jeder Nicht-Skalar und jede
+/// Schreibweise von `human`/`mensch` unter `column-owner` sperrt Agenten über das ganze Board. Vorher stand dort
+/// „ein unbekannter Wert gilt nicht“ und verschwieg die Sperre — heute nennt der Text die fail-safe Sperre.
+#[tokio::test]
+async fn beschreibung_nennt_die_fail_safe_sperre() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let satz = "ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403)";
+    let info = d["info"]["description"].as_str().unwrap();
+    assert!(info.contains(satz), "info: {info}");
+    for pfad in ["/api/boards", "/api/boards/{slug}"] {
+        let text = d["paths"][pfad]["get"]["description"].as_str().unwrap();
+        assert!(text.contains(satz), "{pfad}: {text}");
+        assert!(!text.contains("gilt nicht"), "{pfad} verschweigt die Sperre: {text}");
+    }
+    let liste: Vec<&str> = kanband::web::endpunkte::ENDPUNKTE.iter().filter(|e| e.methode == "GET" && (e.pfad == "/api/boards" || e.pfad == "/api/boards/{slug}")).map(|e| e.zweck).collect();
+    assert_eq!(liste.len(), 2);
+    for zweck in liste {
+        assert!(zweck.contains(satz), "/api/endpunkte: {zweck}");
+    }
+    let seite = kanband::web::endpunkte::api_seite("http://h:1/");
+    assert!(seite.contains("fail-safe"), "die API-Seite nennt die fail-safe Sperre nicht");
+}
+
 #[tokio::test]
 async fn ziehen_person_und_header() {
     let tmp = tempfile::tempdir().unwrap();

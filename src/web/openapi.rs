@@ -13,6 +13,7 @@ use utoipa::OpenApi;
 Jeder schreibende Aufruf nennt im Header `X-KanbanD-Wer` die handelnde Person (Kürzel aus `kanbanD.md`); kanbanD committet unter ihrem Namen. \
 Mehrere Agenten an einem Board nennen zusätzlich `X-KanbanD-Instanz` (eigene Kennung je laufender Instanz) für Reservieren und Ziehen.\n\n\
 Spalten mit Eigentümer (`column-owner`: `human` | `agent`): Aus einer Spalte, die dem Menschen gehört, nimmt ein Agent keine Karte (403 `Verboten`); \
+ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403) — gebunden seine Spalte, ungebunden das ganze Board; \
 die Sperre beruht auf `X-KanbanD-Wer` und schützt vor Versehen, nicht vor Angriffen. \
 Grenze und Eigentümer einer Spalte ändern über `PUT …/spalten` nur Menschen (403 `EinstellungVerboten`). \
 Die Art einer Person (`art`) und den Zustand (`aktiv`: stilllegen, reaktivieren) einer Person der Art `human` setzen nur Menschen (403 `PersonenartVerboten` an `POST /api/personen`, `PATCH /api/personen/{kuerzel}`, `DELETE /api/personen/{kuerzel}` und `PUT /api/einstellungen`). \
