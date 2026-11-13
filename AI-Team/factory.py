@@ -12,6 +12,7 @@ kanband(
     board="entwicklung",
     ordner="/home/shoff/Projekte/Kanban-Boards/kanbanD-Kanbanboard",
 )
+chat("http://127.0.0.1:7430/#/c/factory")  # Verlauf jedes Laufs in den localchatA-Kanal (Betreiber 2026-11-13)
 auftrag(
     projekt="/home/shoff/Projekte/kanbanD",
     empfaenger="betreiber",
