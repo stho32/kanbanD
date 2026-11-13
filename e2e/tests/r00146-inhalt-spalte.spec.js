@@ -173,6 +173,15 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     expect(await spalte(page).locator('.kb .k').allInnerTexts()).toEqual(['Spalte', 'Klasse', 'Labels', 'Fällig', 'Zuständig']);
   });
 
+  test('US-4: der Schlüssel .sl trägt in der Spalte denselben --kd-bg-Streifen wie in „Details“', async ({ page }) => {
+    await oeffnen(page);
+    const grund = ort => page.locator(ort).first().evaluate(e => getComputedStyle(e).backgroundColor);
+    const spalteGrund = await grund('#inhalt-spalte .sl');
+    expect(spalteGrund, 'Schlüssel in der Spalte nicht transparent').not.toBe('rgba(0, 0, 0, 0)');
+    await reiter(page, 'Details');
+    expect(await grund('#fenster .mod-main .sl'), 'derselbe Streifen wie in „Details“').toBe(spalteGrund);
+  });
+
   /* ── US-2: die vier Felder ändern und sofort committen (B0676) ── */
 
   test('US-2: Klasse, Labels, Fällig setzen und leeren — je genau ein Commit', async ({ page }) => {

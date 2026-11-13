@@ -408,7 +408,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .felder .k{font:500 12px/16px var(--kd-font);color:var(--kd-text);background:var(--kd-bg)}
 /* Feldzeile mit Schlüssel (ADR-0013 N1): Rahmen .kb, oben die Beschriftung, darunter der Schlüssel der Datei; ohne Schlüssel bleibt .k nackt */
 .felder>.kb{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding-block:4px;min-width:0;background:var(--kd-bg)}
-.felder .sl{font:400 10.5px/14px var(--kd-mono);color:var(--kd-muted)}
+.felder .sl{font:400 10.5px/14px var(--kd-mono);color:var(--kd-muted);background:var(--kd-bg)}
 /* Schmale Auslage derselben Feldzeile (R00146 FA 12): Beschriftung über dem Wert — die 84-px-Beschriftungsspalte des
    Hauses würde bei 176 px Wertfläche das Datumsfeld schneiden. */
 .felder.felder-schmal{grid-template-columns:minmax(0,1fr);border-top:0;background:none}
