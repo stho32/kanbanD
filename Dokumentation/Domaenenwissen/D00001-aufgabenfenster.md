@@ -54,7 +54,7 @@ Das Fenster, das aufgeht, wenn man auf eine Karte klickt, und in dem man alles �
 - [R00103](../../Anforderungen/R00103-behebung-aufgabenfenster-springt-bei-live-aenderungen.md) — Leseposition und Eingabe im Aufgabenfenster bei Live-Ereignissen
 - [R00112](../../Anforderungen/R00112-entfernen-rueckgaengig-und-sichtbare-entfernen-knoepfe.md) — Hinweis mit „rückgängig“ im Fenster, Ablehnung im Fuß (FA 4, 18; AK 7)
 - [R00129](../../Anforderungen/R00129-geschaetzte-zeit-je-karte.md) — Feldzeile „Geschätzt“ (`estimate`, nur wenn gesetzt, nur lesend; R00129:47)
-- [R00146](../../Anforderungen/R00146-inhalt-schmale-rechte-spalte-mit-feldern.md) — schmale rechte Spalte im Inhalt: 200 px, Brechpunkt 641 px, nur lesende Zuständige, Ausnahme von „jeder Abschnitt genau einmal“
+- [R00146](../../Anforderungen/R00146-inhalt-schmale-rechte-spalte-mit-feldern.md) — schmale rechte Spalte im Inhalt: 200 px, Umbruch 641 px, nur lesende Zuständige, Ausnahme von „jeder Abschnitt genau einmal“
 
 ## Notizen / Quellen
 

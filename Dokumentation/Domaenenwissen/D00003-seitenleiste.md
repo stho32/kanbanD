@@ -52,6 +52,6 @@ Der Ort im Aufgabenfenster, an dem alle Felder einer Aufgabe stehen und geänder
 
 - Definition nach R00011:25 — bestätigt.
 - Code (beobachtet, Stand Karte #146): die Feldansicht „Details“ zeichnet `vFensterDetails()` in `.mod-main` (einspaltig, `vFeldZeile` je Zeile); die schmale Spalte zeichnet `vInhaltSpalte()` als `<aside class="mod-spalte" id="inhalt-spalte" role="group" aria-label="Angaben zur Aufgabe">` (`web/ansicht.js`), gestaltet in `web/kd-app.css` (`.mod-body.mit-spalte`, `.mod-spalte`, `.felder.felder-schmal`).
-- Oberfläche (de): kein sichtbarer Name. Die Feldbeschriftungen darin sind die Schlüssel der Aufgabendatei auf Englisch (`column`, `class`, `assignees`, `labels`, `due`, `origins`), daneben deutsch „wartet auf“ (`web/ansicht.js:213–221`) — beobachtet, nicht geprüft, ob gewollt.
+- Oberfläche (de): kein sichtbarer Name. Die Feldbeschriftungen darin sind **deutsch** („Spalte“, „Klasse“, „Labels“, „Fällig“ aus `FELDER`, `web/kultur.js:67`); darunter steht der Schlüssel der Aufgabendatei klein in Mono in `.sl` (`column`, `class`, `labels`, `due`, `web/ansicht.js:185–189`), nie in `.k`. Die volle Feldansicht „Details“ zeigt auch „wartet auf“ deutsch (`web/ansicht.js:372`) — beobachtet.
 - R00077 nennt die Seitenleiste nicht beim Namen, sondern „die Felder“ (Zeilen 17, 33).
 - Nicht zu verwechseln mit dem Seiten-Knopf und -Menü der Kopfzeile (`vSeitenKnopf`, `vSeitenPop`, `web/ansicht.js:80–106`).
