@@ -32,7 +32,7 @@ Die Web-Schicht übersetzt HTTP-Anfragen in Aufrufe der Dienste samt Fehlerabbil
 
 ## Entscheidungen
 
-- [ADR-0003: Abweisungen mit strukturiertem Rumpf](../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md)
+- [ADR-0003: Abweisungen mit strukturiertem Rumpf](../ADRs/0003-abweisungen-mit-strukturiertem-rumpf.md) — Nachtrag N1 (#39): Formfehler des Rahmens (kaputtes JSON, falscher Typ, fehlendes Pflichtfeld; auch `Path`/`Query`) laufen über einen eigenen Extraktor und enden als 400 mit `{"fehler": …}` samt Feldpfad — heute liefert Axum 422, `text/plain`
 - [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md)
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): `cost` in `Aufgabenaenderung` als rohes JSON, damit jeder Fehler 400 statt 422 ist
 - [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — gebaut (#12, R00112, Zweig `karte/12`, `9d246a3`): `POST /api/boards/{slug}/aufgaben` nimmt optional `index`, `POST /api/aufgaben/{nr}/teilaufgaben` optional `position` und `erledigt`. Beide Parameter sind additiv; ohne sie bleibt das Verhalten gleich
