@@ -546,3 +546,7 @@ Nie vom User erfragen.
 | 2026-11-12 | Karte #131 Härtung nach #119 (Verlauf-Performance, 423, Steuerzeichen) | Lauf #131 | Konsolidierung | — | — | 0,1h | autonom |
 | 2026-11-12 | Karte #123 Härtung nach #104 (Schrift der `.k`-Beschriftung) | Befund PO/gestalter: nackte `.k` in der R00109-Zeichnung statt Mono/--kd-muted | Standard | 0,1-0,5h | 0,7h | 0,7h | autonom |
 | 2026-11-12 | Karte #144/#145 Nacharbeit (B1/B2/S2/S9/UX-Hover) | Nacharbeit Befund-Bündel (eine Runde für beide Karten) | Nacharbeit | 1-2h | 1,5h | 1,5h | autonom |
+| 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | B0682 Abnahme-Probe: Netzfehler beim Nachladen | Standard | 1-2h | 0,15h | 0,15h | autonom |
+| 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | B0683 Kettenende endet erfüllt | Standard | 1-2h | 0,15h | 0,15h | autonom |
+| 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | B0684 Meldung des gescheiterten Nachladens am Auslöser | Standard | 0,5-1h | 0,15h | 0,15h | autonom |
+| 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | Lauf #80 (Mutanten M1–M5, volles Gate) | Konsolidierung | — | — | 0,1h | autonom |
