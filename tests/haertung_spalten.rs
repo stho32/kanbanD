@@ -175,6 +175,33 @@ async fn board_weite_403_meldung_nennt_keine_spalte() {
     assert_eq!((s, r.clone()), (403, verboten(1)), "die Menschen-Spalte nennt weiter die Spalte");
 }
 
+/// Karte #142 Nacharbeit B3: der 403-Rumpf widerspricht dem Hinweis nicht. Bei `Eingang: [human]` ist die Spalte
+/// bekannt, der Eintrag ist dort nur kein Text — die 403 nennt „Eingang“ und behauptet nicht, er sei keiner Spalte
+/// zuzuordnen. Bei `Eingang: Human` behauptet der Text kein Eigentum, sondern nennt den unbekannten Wert.
+#[tokio::test]
+async fn verboten_nennt_die_spalte_wo_sie_bekannt_ist() {
+    for (name, vorspann) in [
+        ("Nicht-Text-Wert", "---\ncolumn-owner:\n  Eingang: [human]\n---\n"),
+        ("Großschreibung", "---\ncolumn-owner:\n  Eingang: Human\n---\n"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        ordner(tmp.path(), &[("fabrik", &fabrik_mit(vorspann))]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        for (i, wozu) in ["archivieren", "vom Board nehmen", "bewegen", "ziehen"].iter().enumerate() {
+            let (s, r) = weg(i, &lauf.adresse, "fabrik").await;
+            assert_eq!(s, 403, "{name}/{wozu}: {r}");
+            assert_eq!(r["spalte"], json!("Eingang"), "{name}/{wozu}: die bekannte Spalte steht im Rumpf: {r}");
+            let meldung = r["fehler"].as_str().unwrap();
+            assert!(meldung.contains("Eingang"), "{name}/{wozu}: die Meldung nennt die Spalte: {r}");
+            assert!(!meldung.contains("keiner Spalte zuzuordnen"), "{name}/{wozu}: falsche Behauptung: {r}");
+            if name == "Großschreibung" {
+                assert!(!meldung.contains("gehört dem Menschen"), "{name}/{wozu}: der Wert ist unbekannt, kein Eigentum: {r}");
+                assert!(meldung.contains("Human") && meldung.contains("unbekannt"), "{name}/{wozu}: der unbekannte Wert wird genannt: {r}");
+            }
+        }
+    }
+}
+
 /// Kontrollpaar: der Mensch kommt auf jedem Weg durch; P0 als Agent ebenso (die Probe misst).
 #[tokio::test]
 async fn mensch_und_kein_eigentuemer_kommen_durch() {

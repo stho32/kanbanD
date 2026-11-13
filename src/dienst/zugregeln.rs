@@ -37,11 +37,25 @@ pub(crate) fn entnahme_pruefen(art: Art, vorher: &Board, entnommen: &[u32]) -> R
     }
 }
 
-/// Die 403 aus einer Entnahmesperre (ADR-0003): eine Menschen-Spalte nennt ihren Namen, der board-weite Fall keinen.
+/// Die 403 aus einer Entnahmesperre (ADR-0003): eine Menschen-Spalte nennt ihren Namen; ein unbekannter Wert, der den
+/// Menschen meint (`Human`), nennt Spalte und Rohwert, ohne Eigentum zu behaupten; der board-weite Fall nennt die
+/// Spalte, in der der Eintrag bekannt ist (`Eingang: [human]`), sonst keine (Karte #142/B3).
 fn verboten(sperre: Entnahmesperre) -> Fehler {
     match sperre {
-        Entnahmesperre::Spalte { spalte, nummer } => Fehler::Verboten { meldung: format!("Spalte „{spalte}“ gehört dem Menschen"), spalte, nummer },
-        Entnahmesperre::Board { nummer } => Fehler::Verboten { meldung: BOARD_WEIT.into(), spalte: String::new(), nummer },
+        Entnahmesperre::Spalte { spalte, nummer, unbekannt } => {
+            let meldung = match unbekannt {
+                Some(wert) => format!("Spalte „{spalte}“ ist für Agenten gesperrt: der unbekannte Eigentümer „{wert}“ meint den Menschen (fail-safe)"),
+                None => format!("Spalte „{spalte}“ gehört dem Menschen"),
+            };
+            Fehler::Verboten { meldung, spalte, nummer }
+        }
+        Entnahmesperre::Board { nummer, spalte } => {
+            let (meldung, spalte) = match spalte {
+                Some(s) => (format!("Spalte „{s}“: ein Eintrag unter `column-owner` meint den Menschen, ist aber kein lesbarer Eigentümer — Agenten sind auf dem ganzen Board gesperrt"), s),
+                None => (BOARD_WEIT.to_string(), String::new()),
+            };
+            Fehler::Verboten { meldung, spalte, nummer }
+        }
     }
 }
 
@@ -57,7 +71,7 @@ pub(crate) fn board_entnahme_pruefen(art: Art, board: &Board) -> Result<(), Fehl
         return Err(verboten(sperre));
     }
     if board.eigentuemer_roh.iter().any(|e| e.meint_human()) {
-        return Err(verboten(Entnahmesperre::Board { nummer: 0 }));
+        return Err(verboten(Entnahmesperre::Board { nummer: 0, spalte: board.roh_human_spalte() }));
     }
     Ok(())
 }
@@ -235,6 +249,33 @@ mod tests {
         assert_eq!(board_entnahme_pruefen(Art::Agent, &leer), Ok(()), "ohne Karte und ohne fail-safe-Eintrag frei");
         leer.eigentuemer_roh.push(crate::modell::ColumnOwnerEintrag { schluessel: None, wert: "human".into() });
         assert!(matches!(board_entnahme_pruefen(Art::Agent, &leer), Err(Fehler::Verboten { spalte, nummer: 0, .. }) if spalte.is_empty()), "fail-safe auch ohne Karte");
+    }
+
+    // Karte #142 Nacharbeit B3: der 403-Rumpf nennt die Spalte, wo sie bekannt ist (`Eingang: [human]`), und
+    // behauptet kein Eigentum, wo der Wert unbekannt ist (`Eingang: Human`).
+    #[test]
+    fn verboten_nennt_die_bekannte_spalte_und_kein_falsches_eigentum() {
+        let mut b = board_mit_eingang();
+        b.eigentuemer_roh.push(crate::modell::ColumnOwnerEintrag { schluessel: Some("Eingang".into()), wert: serde_yaml::from_str("[human]").unwrap() });
+        match entnahme_pruefen(Art::Agent, &b, &[9]) {
+            Err(Fehler::Verboten { meldung, spalte, nummer }) => {
+                assert_eq!((spalte.as_str(), nummer), ("Eingang", 9), "die bekannte Spalte steht im Rumpf");
+                assert!(meldung.contains("Spalte „Eingang“"), "{meldung}");
+                assert!(!meldung.contains("keiner Spalte zuzuordnen"), "{meldung}");
+            }
+            other => panic!("{other:?}"),
+        }
+        let mut b = board_mit_eingang();
+        b.spalten[0].eigentuemer = None;
+        b.spalten[0].eigentuemer_unbekannt = Some("Human".into());
+        match entnahme_pruefen(Art::Agent, &b, &[1]) {
+            Err(Fehler::Verboten { meldung, spalte, nummer }) => {
+                assert_eq!((spalte.as_str(), nummer), ("Eingang", 1));
+                assert!(meldung.contains("unbekannte Eigentümer „Human“"), "{meldung}");
+                assert!(!meldung.contains("gehört dem Menschen"), "der Wert ist unbekannt, kein Eigentum: {meldung}");
+            }
+            other => panic!("{other:?}"),
+        }
     }
 
     // ADR-0002: die Entnahmeregel läuft vor der Grenzprüfung — 403 vor 409
