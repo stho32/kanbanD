@@ -623,6 +623,26 @@ mod tests {
         }
     }
 
+    // Karte #142 Nacharbeit B1: der namenlose Tag `!` bleibt beim Schreiben lesbar (`! human`, nicht `!! human`) —
+    // sonst ist die Board-Datei nach jedem Schreibweg defekt (423). Vier Formen: gebunden, Liste, Zuordnung, ungebunden.
+    #[test]
+    fn namenloser_tag_bleibt_lesbar() {
+        for (name, text) in [
+            ("gebunden", "---\ncolumn-owner:\n  Eingang: ! human\n---\n\n# B\n\n## Eingang\n\n- #1\n"),
+            ("Liste", "---\ncolumn-owner:\n  Eingang: [! human]\n---\n\n# B\n\n## Eingang\n\n- #1\n"),
+            ("Zuordnung", "---\ncolumn-owner:\n  Eingang: {a: ! human}\n---\n\n# B\n\n## Eingang\n\n- #1\n"),
+            ("ungebunden", "---\ncolumn-owner: ! human\n---\n\n# B\n\n## Eingang\n\n- #1\n"),
+        ] {
+            let gelesen = lesen("b", text).unwrap_or_else(|e| panic!("{name}: nicht lesbar: {e:?}"));
+            assert!(gelesen.eigentuemer_roh.iter().any(|e| e.meint_human()), "{name}: der Tag meint den Menschen");
+            let geschrieben = schreiben(&gelesen, |_| None);
+            assert!(geschrieben.contains("! human") && !geschrieben.contains("!! human"), "{name}: Tag verfälscht:\n{geschrieben}");
+            let wieder = lesen("b", &geschrieben).unwrap_or_else(|e| panic!("{name}: Datei nach dem Schreiben defekt: {e:?}\n{geschrieben}"));
+            assert_eq!(wieder, gelesen, "{name}: der Rundlauf verliert den Wert:\n{geschrieben}");
+            assert_eq!(schreiben(&wieder, |_| None), geschrieben, "{name}: der Rundlauf ist nicht stabil");
+        }
+    }
+
     // B1 (Code-Review #26): der schlüssellose `column-owner: human` (das ganze Board meinend) bleibt erhalten,
     // auch wenn eine Spalte zugleich einen gültigen Eigentümer bekommt — er wandert schlüssellos in die Zuordnung,
     // die fail-sichere Sperre steht.

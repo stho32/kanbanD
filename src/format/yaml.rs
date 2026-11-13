@@ -43,6 +43,14 @@ pub fn liste(werte: &[String]) -> String {
     format!("[{}]", werte.iter().map(|w| skalar(w)).collect::<Vec<_>>().join(", "))
 }
 
+/// Ein Tag so, wie YAML ihn zurückliest: `!tag` mit einem `!`. Der **namenlose** Tag `!` (non-specific tag) ist
+/// dabei der Sonderfall: `Display` gäbe `!!`, und `!! human` ist kein gültiger Tag — die Datei wäre nach dem
+/// Schreiben unlesbar (Karte #142/B1). Die Gleichheit `== "!"` erkennt ihn; ein Tag `!!` entsteht beim Lesen nicht,
+/// `!! human` ist bereits als Eingabe ein Formatfehler.
+fn tag(t: &serde_yaml::value::Tag) -> String {
+    if *t == "!" { "!".to_string() } else { t.to_string() }
+}
+
 /// Ein beliebiger YAML-Wert in einer Zeile (Flussform), sicher geschrieben: jeder Text über [`skalar`], Listen als
 /// `[...]`, Zuordnungen als `{...}`, ein Tag als `!tag …`. So bleibt ein handgeschriebener Wert wie
 /// `column-owner: {Eingang: ["a] #human"]}` beim Schreiben heil und zeichengleich (Karte #142).
@@ -51,7 +59,7 @@ pub fn wert(v: &Value) -> String {
         Value::String(s) => skalar(s),
         Value::Sequence(s) => format!("[{}]", s.iter().map(wert).collect::<Vec<_>>().join(", ")),
         Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", wert(k), wert(w))).collect::<Vec<_>>().join(", ")),
-        Value::Tagged(t) => format!("{} {}", t.tag, wert(&t.value)),
+        Value::Tagged(t) => format!("{} {}", tag(&t.tag), wert(&t.value)),
         Value::Number(n) => n.to_string(),
         Value::Bool(b) => b.to_string(),
         Value::Null => "null".into(),
@@ -65,7 +73,7 @@ pub fn anzeige(v: &Value) -> String {
         Value::String(s) => s.clone(),
         Value::Sequence(s) => format!("[{}]", s.iter().map(anzeige).collect::<Vec<_>>().join(", ")),
         Value::Mapping(m) => format!("{{{}}}", m.iter().map(|(k, w)| format!("{}: {}", anzeige(k), anzeige(w))).collect::<Vec<_>>().join(", ")),
-        Value::Tagged(t) => format!("{} {}", t.tag, anzeige(&t.value)),
+        Value::Tagged(t) => format!("{} {}", tag(&t.tag), anzeige(&t.value)),
         Value::Number(n) => n.to_string(),
         Value::Bool(b) => b.to_string(),
         Value::Null => "null".into(),
@@ -176,8 +184,10 @@ pub(crate) mod tests {
         // Auch verschachtelte Formen und ein Tag lesen sich als derselbe Wert zurück (jedes Blatt über `skalar`).
         let schief = Value::Mapping([(Value::Sequence(vec!["a".into()]), Value::from("b"))].into_iter().collect());
         let getaggt: Value = serde_yaml::from_str("!foo human").unwrap();
+        // Karte #142 Nacharbeit B1: der namenlose Tag `!` (non-specific tag) las sich als `!!` — die Datei war defekt.
+        let namenlos: Value = serde_yaml::from_str("! human").unwrap();
         let geschachtelt = Value::Sequence(vec![Value::Mapping([("a".into(), Value::from(1))].into_iter().collect())]);
-        for v in [schief, getaggt, geschachtelt] {
+        for v in [schief, getaggt, namenlos, geschachtelt] {
             let zeile = format!("k: {}\n", wert(&v));
             assert_eq!(lesen(&zeile).unwrap_or_else(|e| panic!("{v:?} → {zeile:?}: {e:?}")).get("k").cloned(), Some(v.clone()), "{zeile:?}");
         }

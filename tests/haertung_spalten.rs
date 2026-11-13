@@ -219,6 +219,7 @@ async fn rohwert_bleibt_beim_spalten_speichern() {
         ("P1 verwaister Schlüssel", "---\ncolumn-owner:\n  eingang: human\n---\n", "  eingang: human\n"),
         ("P2 Nicht-Text-Wert", "---\ncolumn-owner:\n  Eingang: [human]\n---\n", "  Eingang: [human]\n"),
         ("P2b keine Zuordnung", "---\ncolumn-owner: human\n---\n", "column-owner: human\n"),
+        ("P2c Tag ohne Namen ungebunden", "---\ncolumn-owner: ! human\n---\n", "column-owner: ! human\n"),
     ];
     for (name, vorspann, erwartet) in faelle {
         let tmp = tempfile::tempdir().unwrap();
@@ -260,6 +261,9 @@ async fn handgeschriebener_human_rohwert_ueberlebt_das_schreiben_und_sperrt() {
         ("Liste", "[human]", "  Eingang: [human]\n"),
         ("Zuordnung", "{a: b}", "  Eingang: {a: b}\n"),
         ("Tag", "!foo human", "  Eingang: !foo human\n"),
+        ("Tag ohne Namen", "! human", "  Eingang: ! human\n"),
+        ("Liste mit Tag ohne Namen", "[! human]", "  Eingang: [! human]\n"),
+        ("Zuordnung mit Tag ohne Namen", "{a: ! human}", "  Eingang: {a: ! human}\n"),
         ("Text mit ] #human", "\"a] #human\"", "  Eingang: \"a] #human\"\n"),
     ] {
         let tmp = tempfile::tempdir().unwrap();
