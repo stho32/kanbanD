@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, filterSchalten } = require('./hilfen');
 
 const vorTagen = n => { const d = new Date(); d.setDate(d.getDate() - n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T10:00:00`; };
 function commitAm(ordner, datum, board) {
@@ -39,11 +39,11 @@ test.describe('R00046', () => {
     await expect(page.getByRole('img', { name: /Prognose/ }).locator('.wl-p85')).toHaveCount(2);
     await filterOeffnen(page);
     const filter = page.getByRole('group', { name: 'Berichtsfilter' });
-    await filter.getByRole('button', { name: 'In Arbeit' }).click();
+    await filterSchalten(page, filter.getByRole('button', { name: 'In Arbeit' }));
     await expect(page.locator('.wl-phase')).toHaveCount(1);
     await expect(page.locator('#wl-kopf')).toHaveText('3 von 5 fertig');
-    await filter.getByRole('button', { name: 'In Arbeit' }).click();
-    await filter.getByRole('button', { name: 'Fehler' }).click();
+    await filterSchalten(page, filter.getByRole('button', { name: 'In Arbeit' }));
+    await filterSchalten(page, filter.getByRole('button', { name: 'Fehler' }));
     await expect(page.locator('#wl-kopf')).toContainText('3 von 5 fertig');
     // seit R00083: Messbasis der letzten N Tage statt Kalenderzeitraum
     await page.getByLabel('Messbasis in Tagen').fill('1');

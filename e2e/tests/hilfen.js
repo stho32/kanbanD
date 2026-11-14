@@ -16,6 +16,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { expect } = require('@playwright/test');
 
 const PROGRAMM = path.resolve(__dirname, '../../target/debug/kanbanD');
 
@@ -138,6 +139,24 @@ async function filterOeffnen(page) {
   await bereit(page, box.locator('summary'));
   if (await box.getAttribute('open') === null) await box.locator('summary').click();
   await page.getByRole('group', { name: 'Berichtsfilter' }).waitFor();
+}
+
+/**
+ * Schaltet einen Knopf der Berichtsfilter und wartet, bis die Aktion vollständig durch ist (ADR-0026 Regel 3): der Knopf zeigt
+ * den neuen Zustand (das Zeichnen nach dem Speichern), das Nachladen danach (`/api/berichte/bewegungen` ist seine letzte Anfrage)
+ * ist übernommen und gezeichnet. Erst danach ist die Ansicht ruhig — bis dahin ersetzt ein Neuzeichnen jedes Feld unter der Hand
+ * eines Tippens (ein `fill` zwischen Auswählen und Einfügen setzte „1“ vor „90“ statt an dessen Stelle).
+ * Der Kopfzeilentext taugt nicht als Zeichen: „3 von 5 fertig“ steht vor und nach dem Schalten da.
+ */
+async function filterSchalten(page, knopf) {
+  const vorher = await knopf.getAttribute('aria-pressed');
+  const nachgeladen = page.waitForResponse(antwort => antwort.request().method() === 'GET' && antwort.url().includes('/api/berichte/bewegungen'));
+  await knopf.click();
+  await expect(knopf).not.toHaveAttribute('aria-pressed', vorher);
+  await (await nachgeladen).finished();
+  await bereit(page);
+  // die Übernahme der letzten Antwort läuft in der Seite noch im selben Zug: zwei Frames, dann steht auch ihr Zeichnen
+  await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
 }
 
 /** Öffnet das Menü „Mehr“ der Kopfzeile (R00101), falls es zu ist. */
@@ -298,4 +317,4 @@ async function mutanteEinsetzen(ziel) {
   });
 }
 
-module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
