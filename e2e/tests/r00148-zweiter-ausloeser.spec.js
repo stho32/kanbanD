@@ -308,6 +308,25 @@ test.describe('R00148 Doppelter Auslöser im Aufgabenfenster', () => {
     expect(schreibend, 'kein Serveraufruf').toEqual([]);
     expect(commits(k), 'kein Commit').toBe(vorher);
   });
+
+  test('AK 11: das ✕ einer Entwurfszeile trägt eine im Zustand vergebene Kennung (Mutant M5)', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Probe');
+    for (const text of ['eins', 'zwei', 'drei']) {
+      await page.locator('#neu-teil').fill(text);
+      await page.locator('#neu-teil').press('Enter');
+    }
+    const kennungen = () => page.locator('#neu-fenster .chk .x').evaluateAll(x => x.map(e => e.dataset.arg));
+    const vorher = await kennungen();
+    expect(new Set(vorher).size, 'jede Zeile trägt eine eigene Kennung').toBe(3);
+
+    // „eins“ entfernen: „zwei“ rückt auf Platz 0 nach — seine Kennung bleibt dieselbe (die Stelle wäre jetzt „0“)
+    await page.locator('#neu-fenster .chk .x').nth(0).click();
+    await expect(page.locator('#neu-fenster .chk span')).toHaveText(['zwei', 'drei']);
+    expect(await kennungen()).toEqual([vorher[1], vorher[2]], 'die Kennung führt die Zeile, nicht die Stelle');
+  });
 });
 
 test.describe('R00148 Doppeltipp auf die Kartenleiste (Touch 390)', () => {

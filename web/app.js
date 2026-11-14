@@ -480,6 +480,14 @@ function anlegeSchluessel() {
   return `neu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/** Kennung einer Entwurfszeile im Fenster „Neue Aufgabe" (R00148 AK 11, ADR-0025 Nachtrag N2): im Zustand vergeben,
+    keine Stelle — nach dem Entfernen rücken die Zeilen nach, und die Stelle träfe dann die falsche (Mutant M5). */
+let entwurfsNummer = 0;
+function entwurfsKennung() {
+  entwurfsNummer++;
+  return `entwurf-${entwurfsNummer}`;
+}
+
 async function neueAufgabeAnlegen(weitere, zeilen) {
   const u = S.ui, f = u.neu;
   if (!f || ichNoetig()) { render(); return; }
@@ -492,7 +500,7 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
     try {
       let neu;
       if (liste.length === 1) {
-        neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), key: f.schluessel, beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
+        neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), key: f.schluessel, beschreibung: f.beschreibung, teilaufgaben: f.teil.map(t => t.text), ...ziel })];
       } else {
         neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map((t, i) => ({ ...neuEintrag(t, f), key: `${f.schluessel}-${i}` })), ...ziel });
       }
@@ -1411,8 +1419,8 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'nf-zu': case 'nf-zu-bg': u.neu = null; break;
-      case 'nf-teil': { const t = (wert || '').trim(); if (t) u.neu.teil.push(t); u.fokus = '#neu-teil'; break; }
-      case 'nf-teil-weg': u.neu.teil.splice(+arg, 1); u.fokus = '#neu-teil'; break;
+      case 'nf-teil': { const t = (wert || '').trim(); if (t) u.neu.teil.push({ kennung: entwurfsKennung(), text: t }); u.fokus = '#neu-teil'; break; }
+      case 'nf-teil-weg': u.neu.teil = u.neu.teil.filter(t => t.kennung !== arg); u.fokus = '#neu-teil'; break;
       case 'nf-zust': { const z = u.neu.zust; u.neu.zust = z.includes(arg) ? z.filter(k => k !== arg) : [...z, arg]; u.neu.zustGewaehlt = true; break; }
       case 'nf-faellig': { const d = new Date(); d.setDate(d.getDate() + +arg); u.neu.faellig = isoD(d); break; }
       case 'nf-anlegen': return neueAufgabeAnlegen(arg === 'weitere');
@@ -2793,7 +2801,7 @@ document.addEventListener('paste', async e => {
   if (ichNoetig()) { render(); return; }
   const u = S.ui;
   if (art === 'neu') { await neueAufgabeAnlegen(true, zeilen); return; }
-  if (art === 'neu-teil') { u.neu.teil.push(...zeilen); u.fokus = '#neu-teil'; render(); return; }
+  if (art === 'neu-teil') { u.neu.teil.push(...zeilen.map(text => ({ kennung: entwurfsKennung(), text }))); u.fokus = '#neu-teil'; render(); return; }
   if (art === 'teil') {
     u.fokus = '#teil-neu';
     await schreiben('POST', `/api/aufgaben/${u.offen}/teilaufgaben/mehrere`, { texte: zeilen });
