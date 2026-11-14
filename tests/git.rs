@@ -1,6 +1,7 @@
 mod gemeinsam;
 
 use gemeinsam::git;
+use kanband::fehler::Fehler;
 use kanband::git::committen;
 use kanband::modell::{Art, Person};
 
@@ -82,6 +83,27 @@ fn gescheiterter_commit_nimmt_seine_pfade_zurueck() {
     assert!(!t.path().join("neu.md").exists(), "die neue Datei ist weg");
     assert_eq!(std::fs::read_to_string(t.path().join("bleibt.md")).unwrap(), "alt", "die geänderte steht wieder auf HEAD");
     assert_eq!(std::fs::read_to_string(t.path().join("geht.md")).unwrap(), "alt", "die gelöschte ist wieder da");
+    assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "1", "kein Commit");
+}
+
+/// ADR-0005 N2 Punkt 3, ADR-0008 zweite Linie: `committen` prüft seine Pfade, bevor es etwas anfasst — die
+/// direkten Aufrufer (`anhaenge`, `fieber`) gehen nicht durch `aktion()`. Ein Pfad außerhalb der Wurzel oder
+/// ein doppelter Pfad ist ein Programmierfehler und endet intern, ohne Index oder Arbeitsbaum zu berühren.
+#[test]
+fn pfad_ausserhalb_der_wurzel_und_doppelter_pfad_werden_abgewiesen() {
+    let t = repo();
+    std::fs::write(t.path().join("a.md"), "a").unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    let vorher = git(t.path(), &["status", "--porcelain"]);
+    for (pfad, grund) in [("../x.md", "verlässt den Ordner"), ("/etc/passwd", "verlässt den Ordner"), ("a\u{0}b.md", "NUL")] {
+        let fehler = committen(t.path(), &[pfad.into()], &stefan(), "raus").unwrap_err();
+        assert!(matches!(fehler, Fehler::Intern(_)) && fehler.meldung().contains(grund), "„{pfad}“ weist die eigene Prüfung ab: {fehler:?}");
+        assert_eq!(git(t.path(), &["status", "--porcelain"]), vorher, "Index und Arbeitsbaum unberührt");
+    }
+    let doppelt = ["a.md".to_string(), "a.md".to_string()];
+    let fehler = committen(t.path(), &doppelt, &stefan(), "doppelt").unwrap_err();
+    assert!(fehler.meldung().contains("doppelt"), "doppelter Pfad weist die eigene Prüfung ab: {fehler:?}");
     assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "1", "kein Commit");
 }
 

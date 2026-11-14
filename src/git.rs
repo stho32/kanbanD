@@ -36,7 +36,13 @@ fn ausfuehren(mut c: Command, was: &str) -> Result<std::process::Output, Fehler>
 /// Die Nachricht ist abgeleiteter Text: [`crate::nachricht::fertig`] entfernt Steuerzeichen und begrenzt die
 /// Länge, bevor Git sie als Argument sieht — kein Schreibweg kann einen Commit an einem NUL-Byte oder einer
 /// übergroßen Nachricht scheitern lassen.
+///
+/// Die zweite Linie aus ADR-0008 gilt auch hier (ADR-0005 N2): die Pfade werden **vor** `git add` und vor jedem
+/// Zugriff der Rücknahme geprüft, weil die direkten Aufrufer (`anhaenge`, `fieber`) nicht durch `aktion()` gehen.
+/// Ein Verstoß endet intern; Index und Arbeitsbaum bleiben unberührt.
 pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &str) -> Result<bool, Fehler> {
+    crate::ablage::pfade_pruefen(&pfade.iter().map(String::as_str).collect::<Vec<_>>())
+        .map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts committet: {grund}")))?;
     let pfade = &relevante_pfade(wurzel, pfade, autor)?;
     if pfade.is_empty() {
         return Ok(false);
