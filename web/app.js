@@ -310,7 +310,7 @@ async function fieberNachtragen() {
   }
   const senden = Object.values(neu.tage).filter(t => !imCache.has(t.datum) && t.datum < isoD(Date.now()));
   if (senden.length) {
-    try { await api('POST', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`, { schluessel: st.schluessel, tage: senden }); }
+    try { await durchDieSchlange(() => api('POST', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber/cache`, { schluessel: st.schluessel, tage: senden })); }
     catch (f) { S.ui.fbFehler = 'Cache nicht gespeichert: ' + f.message; }
   }
   if (S.ui.fieberLauf !== lauf) return;
@@ -324,7 +324,7 @@ async function fieberNachtragen() {
 
 /** Einstellungen des Fever Charts setzen; ein Fehler steht am Formular. */
 async function fieberEinstellen(f) {
-  try { await api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber`, f); S.ui.fbFehler = null; }
+  try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber`, f)); S.ui.fbFehler = null; }
   catch (x) { S.ui.fbFehler = x.message; }
   return laden();
 }
@@ -405,21 +405,24 @@ async function anhaengeHochladen(dateien) {
 }
 
 /** Lädt `datei` als Multipart unter `name` an Aufgabe `nummer` hoch; liefert den Anhang des Servers, wirft mit seinem Grund. */
-async function anhangSenden(nummer, datei, name) {
-  const form = new FormData();
-  form.append('datei', datei, name);
-  let r;
-  try { r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form }); } catch (_) { throw new Error(NETZ_FEHLER); }
-  const antwort = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(antwort.fehler || r.statusText);
-  return antwort;
+/** Ein Anhang geht als Multipart hoch — der eine Netzaufruf für Dateien, durch dieselbe Stelle wie jeder andere Schreibweg. */
+function anhangSenden(nummer, datei, name) {
+  return durchDieSchlange(async () => {
+    const form = new FormData();
+    form.append('datei', datei, name);
+    let r;
+    try { r = await fetch(`/api/aufgaben/${nummer}/anhaenge`, { method: 'POST', headers: { 'X-KanbanD-Wer': S.ich }, body: form }); } catch (_) { throw new Error(NETZ_FEHLER); }
+    const antwort = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(antwort.fehler || r.statusText);
+    return antwort;
+  });
 }
 
 /** Termine des Boards ersetzen; bei Erfolg das Formular leeren (R00047). */
 async function termineSchreiben(liste, formularLeeren) {
   const u = S.ui;
   try {
-    await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/termine`, liste);
+    await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/termine`, liste));
     u.tfFehler = null;
     if (formularLeeren) u.tf = { ...TERMIN_LEER };
   } catch (f) { u.tfFehler = f.message; }
@@ -457,8 +460,11 @@ function sperreFreigeben(laufender) {
     Reihenfolge und Kettenende, damit zwei Schreib-Auslöser nie überlappen. Die Ablehnung geht an den Aufrufer weiter,
     damit seine Meldung die einzige bleibt (R00147) — die Schlange meldet diesen Fehlschlag dann nicht. */
 function durchDieSchlange(anfrage) {
-  let fehler = null;
-  return warteschlange(() => anfrage().catch(f => { fehler = f; })).then(() => { if (fehler) throw fehler; });
+  let ergebnis = null, fehler = null;
+  return warteschlange(() => Promise.resolve(anfrage()).then(r => { ergebnis = r; }, f => { fehler = f; })).then(() => {
+    if (fehler) throw fehler;
+    return ergebnis;
+  });
 }
 
 /** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
@@ -579,13 +585,13 @@ function leeresFeldDesEntfernens(feld) {
 
 /** Sendet die Gegenaktion eines Rückgängig als JSON; `erfolg` ist der Hinweis danach, `ziele` der Fokus. */
 function rueckgaengigSenden(methode, pfad, daten, erfolg, ziele) {
-  return rueckgaengigAusfuehren(() => api(methode, pfad, daten), () => erfolg, ziele);
+  return rueckgaengigAusfuehren(() => durchDieSchlange(() => api(methode, pfad, daten)), () => erfolg, ziele);
 }
 
 /** Trägt die gemerkte Zeit wieder ein; ist sie schon da, nennt die Ablehnung sie wie die Zeile im Fenster statt mit ihrer Kennung. */
 async function zeitZuruecklegen(z) {
   try {
-    return await api('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende });
+    return await durchDieSchlange(() => api('POST', `/api/aufgaben/${z.nummer}/zeiten`, { wer: z.wer, beginn: z.beginn, ende: z.ende }));
   } catch (f) {
     if (f.status !== 409) throw f;
     throw new Error(`#${z.nummer} hat schon eine ${zeitBeschrieben(z)}`);
@@ -696,7 +702,7 @@ async function aufgabeAendern(nummer, aenderung, feld = null) {
   if (ichNoetig()) { render(); return false; }
   let gelungen = true;
   try {
-    await api('PATCH', '/api/aufgaben/' + nummer, aenderung);
+    await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, aenderung));
     S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { fensterMelden(f.message, feld); gelungen = false; }
   await laden();
@@ -716,7 +722,7 @@ const nummernAus = l => String(l).split(',').map(Number);
 async function mehrereAendern(aenderungen) {
   if (ichNoetig()) { render(); return; }
   try {
-    await api('PATCH', '/api/aufgaben/mehrere', { aenderungen });
+    await durchDieSchlange(() => api('PATCH', '/api/aufgaben/mehrere', { aenderungen }));
     S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { S.ui.fehler = f.message; }
   await laden();
@@ -735,7 +741,7 @@ async function zieleSenden(ziele, zurueck, text) {
   spaltenNach(brettSpalten(), ziele).forEach((s, i) => { S.board.spalten[i].aufgaben = s.karten; });
   render();
   try {
-    const r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen-mehrere`, { ziele });
+    const r = await durchDieSchlange(() => api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen-mehrere`, { ziele }));
     if (r.bewegt) u.hinweis = { text, at: Date.now(), ...(zurueck ? { undo: { art: 'ziele', ziele: zurueck } } : {}), ...(r.warnungen && r.warnungen.length ? { warnungen: r.warnungen, dauer: 20000 } : {}) };
   } catch (f) { u.fehler = f.message; }
   return laden();
@@ -1168,7 +1174,7 @@ async function boardUmbenennen(slug, eingegebenerWert) {
   if (eingabe === undefined) eingabe = S.ui.boardUmbenennenWert;
   const titel = eingabe.trim();
   try {
-    await api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { titel });
+    await durchDieSchlange(() => api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { titel }));
   } catch (f) {
     S.ui.popFehler = f.message;
     S.ui.fokus = '#board-umbenennen';
@@ -1218,8 +1224,8 @@ async function alBestaetigen() {
   if (d.art === 'aufgabe-loeschen') return aufgabeLoeschenBestaetigen(d);
   const reihe = (S.zustand.boards || []).map(b => b.slug);
   try {
-    if (d.art === 'board-loeschen') await api('DELETE', `/api/boards/${encodeURIComponent(d.slug)}`);
-    else await api('PATCH', `/api/boards/${encodeURIComponent(d.slug)}`, { archiviert: true });
+    if (d.art === 'board-loeschen') await durchDieSchlange(() => api('DELETE', `/api/boards/${encodeURIComponent(d.slug)}`));
+    else await durchDieSchlange(() => api('PATCH', `/api/boards/${encodeURIComponent(d.slug)}`, { archiviert: true }));
   } catch (f) {
     S.ui.alDialog.fehler = f.message;
     S.ui.fokus = '#al-abbrechen';
@@ -1271,7 +1277,7 @@ function dialogAufgabeLoeschen(nr, ausFenster, ausloeser) {
     nächste Karte (B4), aus der Fenster-Ansicht schließt das Fenster; **kein Undo** (B5). */
 async function aufgabeLoeschenBestaetigen(d) {
   try {
-    await api('DELETE', `/api/aufgaben/${d.nummer}`);
+    await durchDieSchlange(() => api('DELETE', `/api/aufgaben/${d.nummer}`));
   } catch (f) {
     S.ui.alDialog.fehler = f.message;
     S.ui.fokus = '#al-abbrechen';
@@ -1298,7 +1304,7 @@ function naechsteBoardZeile(reiheVorher, slug) {
 async function boardWiederOeffnen(slug) {
   const titel = boardName(slug);
   try {
-    await api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { archiviert: false });
+    await durchDieSchlange(() => api('PATCH', `/api/boards/${encodeURIComponent(slug)}`, { archiviert: false }));
   } catch (f) {
     S.ui.popFehler = f.message;
     render();
@@ -1382,7 +1388,7 @@ async function aktion(a, arg, wert) {
         if (!titel) break;
         if (ichNoetig()) break;
         try {
-          const r = await api('POST', '/api/boards', { titel });
+          const r = await durchDieSchlange(() => api('POST', '/api/boards', { titel }));
           u.pop = null;
           location.hash = '#/board/' + r.board;
           return;
@@ -1594,7 +1600,7 @@ async function aktion(a, arg, wert) {
       case 'freigeben': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${arg}/reservierung`); return;
       case 'alle-freigeben': {
         if (ichNoetig()) break;
-        for (const { a } of reservierteDesBoards()) await api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`).catch(f => { fensterMelden(f.message); });
+        for (const { a } of reservierteDesBoards()) await durchDieSchlange(() => api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`)).catch(f => { fensterMelden(f.message); });
         await laden();
         return;
       }
@@ -1661,7 +1667,7 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const b = S.board;
         if (arg === 'start') {
-          try { await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/start`, { start: wert || null }); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
+          try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/start`, { start: wert || null })); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
           return laden();
         }
         if (arg === 'ziel') return termineSchreiben(b.termine.map((t, i) => ({ ...t, ziel: wert !== '' && i === +wert })));
@@ -1679,7 +1685,7 @@ async function aktion(a, arg, wert) {
         return fieberEinstellen({ ...S.board.fieber, puffer: pufferVorschlag(dauerIn(S.board.fieber.woche, st.start, st.e.ziel)) });
       }
       case 'fb-verwerfen': {
-        try { await api('DELETE', `/api/boards/${encodeURIComponent(u.slug)}/fieber/cache`); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
+        try { await durchDieSchlange(() => api('DELETE', `/api/boards/${encodeURIComponent(u.slug)}/fieber/cache`)); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
         u.fieberNeu = null; u.fieberLauf = null;
         return laden();
       }
@@ -1735,7 +1741,7 @@ async function aktion(a, arg, wert) {
         if (!f || ichNoetig()) break;
         const bubble = f.ebene === 'Bubble';
         try {
-          const r = await api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten`, { ebene: f.ebene, eltern: f.eltern, name: f.name, fertig_kriterium: f.fertig_kriterium, eingabe_ausgabe: bubble ? f.eingabe_ausgabe : '', aufwand: bubble ? f.aufwand : '' });
+          const r = await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten`, { ebene: f.ebene, eltern: f.eltern, name: f.name, fertig_kriterium: f.fertig_kriterium, eingabe_ausgabe: bubble ? f.eingabe_ausgabe : '', aufwand: bubble ? f.aufwand : '' }));
           u.pop = null; u.wbsNeu = null;
           u.hinweis = { text: `${r.id} angelegt · WBS-Datei nicht committet`, at: Date.now() };
           await laden();
@@ -1749,7 +1755,7 @@ async function aktion(a, arg, wert) {
         const feld = $('#wbs-verwerfen-grund'), grund = wert != null ? wert : (feld ? feld.value : '');
         u.pop = null; u.wbsVerwerfen = null;
         try {
-          await api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund });
+          await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund }));
           u.hinweis = { text: `${arg} verworfen · WBS-Datei nicht committet`, at: Date.now() };
         } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
         return laden();
@@ -1891,7 +1897,7 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const nummern = S.board.spalten.find(sp => sp.name === arg).aufgaben.filter(n => { const a = aufgabe(n); return a && !a.archiviert; });
         try {
-          const geaendert = await api('POST', '/api/aufgaben/archivieren', { nummern });
+          const geaendert = await durchDieSchlange(() => api('POST', '/api/aufgaben/archivieren', { nummern }));
           u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} aus „${arg}“ archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
         } catch (f) { u.fehler = f.message; }
         return laden();
@@ -1901,7 +1907,7 @@ async function aktion(a, arg, wert) {
         const [i, d] = arg.split('|').map(Number);
         const neu = S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || null }));
         [neu[i], neu[i + d]] = [neu[i + d], neu[i]];
-        try { await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, neu); } catch (f) { u.fehler = f.message; }
+        try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, neu)); } catch (f) { u.fehler = f.message; }
         return laden();
       }
       case 'verschieben': { const [nr, spalte] = arg.split('|'); u.fokusKarte = +nr; return act('bewegen', JSON.stringify({ nummer: +nr, spalte, index: 9999 })); }
@@ -1922,7 +1928,7 @@ async function aktion(a, arg, wert) {
         u.fokusKarte = nr;
         u.fokus = `.ka[data-id="${nr}"]`;
         try {
-          const kopie = await api('POST', `/api/aufgaben/${nr}/duplizieren`, ziel);
+          const kopie = await durchDieSchlange(() => api('POST', `/api/aufgaben/${nr}/duplizieren`, ziel));
           u.hinweis = { text: `#${kopie.nummer} „${kopie.titel}“ angelegt`, undo: { art: 'archivieren', nummern: [kopie.nummer] }, at: Date.now() };
         } catch (f) { u.hinweis = { text: f.message, at: Date.now() }; }
         return laden();
@@ -1980,7 +1986,7 @@ async function aktion(a, arg, wert) {
       case 'm-archivieren': {
         if (ichNoetig()) break;
         try {
-          const geaendert = await api('POST', '/api/aufgaben/archivieren', { nummern: nummernAus(arg) });
+          const geaendert = await durchDieSchlange(() => api('POST', '/api/aufgaben/archivieren', { nummern: nummernAus(arg) }));
           u.auswahl = [];
           u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
         } catch (f) { u.fehler = f.message; }
@@ -2071,7 +2077,7 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const { fehler, gespeichert, ...daten } = u.einr;
         try {
-          await api('PUT', '/api/einstellungen', daten);
+          await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
           u.einr = null; u.palFuer = null;
           await laden();
           u.einr.gespeichert = true;
@@ -2119,11 +2125,11 @@ async function aktion(a, arg, wert) {
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {
         const f = u.first, e = ersteEinstellungen(f);
-        const antwort = await api('POST', '/api/einrichten', {
+        const antwort = await durchDieSchlange(() => api('POST', '/api/einrichten', {
           ich: { kuerzel: e.personen[0].kuerzel, name: e.personen[0].name },
           agenten: e.personen.slice(1).map(p => ({ kuerzel: p.kuerzel, name: p.name })),
           board: f.board.trim(), spalten: spaltenListe(f), quellen: e.quellen,
-        });
+        }));
         ichSetzen(e.personen[0].kuerzel);
         location.hash = '#/board/' + antwort.board;
         return laden();
