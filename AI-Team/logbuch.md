@@ -644,3 +644,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-13 | #80 | Auto-Reviews | code-reviewer | json_kaputt | — | Ergebnisblock ungültig (opencode · openrouter/deepseek/deepseek-v4.1-flash · Sitzung: ses_e2a5a32b9ffeqFOAamtoduAYAL) |
 | 2026-11-13 | #80 | Auto-Reviews | code-reviewer | json_kaputt | — | Ergebnisblock ungültig (opencode · openrouter/deepseek/deepseek-v4.1-flash · Sitzung: ses_e2a4ac774ffeJKTDJrUOeXpYwD) |
 | 2026-11-14 | #43 | Architektur | architekt | bestanden | 4 min | ADR-0005 Nachtrag N2; Bauversuch übernehmen mit Anpassungen · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 43-architekt-1 · 0,069 $ · Karte gesamt 0,070 $ |
+| 2026-11-14 | #43 | Detailplanung | planer | bestanden | 3 min | R00149 und WBS I0136 mit B0691–B0696 · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 43-planer-1 · 0,14 $ · Karte gesamt 0,21 $ |
