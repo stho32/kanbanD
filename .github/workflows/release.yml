@@ -38,7 +38,7 @@ jobs:
   # Kein Release ohne grüne Pyramide: dasselbe Gate, das /implementierung abschluss
   # lokal vor jedem Push fährt — Build warnungsfrei, Rust-Tests, JS-Unit-Tests, E2E.
   pruefen:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 unterstützt den Runner ubuntu-26.04 (ubuntu-latest seit 2026-11) nicht
     env:
       RUSTFLAGS: "-D warnings"
     steps:
