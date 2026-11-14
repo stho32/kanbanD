@@ -7,6 +7,23 @@ button,input,select,textarea{font:inherit;color:inherit}
 #main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .btn-sym:disabled:hover{background:none;border-color:transparent}
+/* Sichtbare Sperrform (R00148 AK 19/20, ADR-0025 Regel 2; freigegeben 2026-11-14, D0002/D0003 `#sperrform`): der gesperrte
+   Auslöser dämpft seine Bestandteile, nicht den Knoten — Schrift und Symbol auf --kd-faint, die Kontur auf --kd-line,
+   eine gefüllte Fläche auf --kd-sunken. Kein `opacity` am Knoten (es dimmt den Fokusring mit, WCAG 1.4.11); der Ring
+   bleibt 2 px --kd-accent mit 2 px Abstand und ungedämpft. `aria-busy` steht nur an einer sichtbaren Warte-Anzeige, die es heute nicht gibt. */
+.btn[aria-disabled="true"]{color:var(--kd-faint);border-color:var(--kd-line);background:var(--kd-surface);cursor:default}
+.btn[aria-disabled="true"]:hover{color:var(--kd-faint);border-color:var(--kd-line);background:var(--kd-surface)}
+.btn-haupt[aria-disabled="true"]{color:var(--kd-faint);background:var(--kd-sunken);border-color:var(--kd-line)}
+.btn-haupt[aria-disabled="true"]:hover{color:var(--kd-faint);background:var(--kd-sunken);border-color:var(--kd-line)}
+.btn-sym[aria-disabled="true"]{color:var(--kd-faint);border-color:transparent;background:none;cursor:default}
+.btn-sym[aria-disabled="true"]:hover{color:var(--kd-faint);border-color:transparent;background:none}
+.naechste-ziel[aria-disabled="true"]{color:var(--kd-faint);cursor:default}
+.naechste-ziel[aria-disabled="true"]:hover{color:var(--kd-faint)}
+.naechste-ziel[aria-disabled="true"] .naechste-box,.naechste-ziel[aria-disabled="true"]:hover .naechste-box{border-color:var(--kd-line);background:var(--kd-surface)}
+.chk i[aria-disabled="true"]{border-color:var(--kd-line);background:var(--kd-sunken);color:var(--kd-surface);cursor:default}
+.chk.ok i[aria-disabled="true"]{border-color:var(--kd-faint);background:var(--kd-faint);color:var(--kd-surface)}
+.ochip button[aria-disabled="true"],.ochip button[aria-disabled="true"]:hover{background:var(--kd-sunken);color:var(--kd-faint);cursor:default}
+[data-act][aria-disabled="true"]:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
 /* Kopfzeile (R00101): Zeilen und Plätze je M3-Stufe aus web/kopfzeile.js, die Stufe steht in data-stufe */
 .kz{height:auto;flex-direction:column}
 .kz-reihe{display:flex;align-items:center;gap:var(--kd-s3);min-height:var(--kd-head-h);padding:0 var(--kd-s3) 0 0;min-width:0}

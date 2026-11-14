@@ -27,6 +27,7 @@ dateien! {
     "kultur.js" => "text/javascript; charset=utf-8",
     "verbindung.js" => "text/javascript; charset=utf-8",
     "uebernahme.js" => "text/javascript; charset=utf-8",
+    "sperre.js" => "text/javascript; charset=utf-8",
     "warteschlange.js" => "text/javascript; charset=utf-8",
     "tastatur.js" => "text/javascript; charset=utf-8",
     "eingabe.js" => "text/javascript; charset=utf-8",

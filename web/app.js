@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null, fensterMenue: null } };
+const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null, fensterMenue: null, laufend: new Set() } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -39,7 +39,7 @@ function berichtsfilterSetzen(aenderung) {
   const ich = S.ich && personen().some(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
   const lokal = S.ui.bfLokal = { slug: S.ui.slug, filter: S.ui.bf, ungespeichert: !ich };
   if (!ich || !S.ui.slug) return;
-  api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/berichtsfilter`, S.ui.bf)
+  return api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/berichtsfilter`, S.ui.bf)
     .then(() => { if (S.ui.bfLokal === lokal) S.ui.bfLokal = null; }, f => { S.ui.fehler = 'Berichtsfilter nicht gespeichert: ' + f.message; lokal.ungespeichert = true; })
     .then(() => laden());
 }
@@ -55,7 +55,7 @@ function bestandAchsenSetzen(feld, praefix) {
   const lokal = S.ui.bestandLokal = { slug: S.ui.slug, achsen: neu, ungespeichert: !ich, fehler: null };
   render();
   if (!ich || !S.ui.slug) return;
-  api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/bestand`, neu)
+  return api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/bestand`, neu)
     .then(() => { if (S.ui.bestandLokal === lokal) S.ui.bestandLokal = null; }, f => { lokal.fehler = f.message; })
     .then(() => laden());
 }
@@ -783,6 +783,7 @@ function render() {
   }
   hinweisEinpassen();
   rollstaendeSetzen(rollen);
+  sperrenMarkieren();
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
   fensterMenueEinpassen();
@@ -1272,7 +1273,63 @@ async function boardWiederOeffnen(slug) {
   render();
 }
 
-async function act(a, arg, wert) {
+/** Die Sperre der laufenden Auslöser (ADR-0025 Regel 1). Der Zustand liegt im Sichtzustand (`S.ui.laufend`) und
+    übersteht das Neuzeichnen; er hängt nicht am DOM-Knoten. */
+const sperre = sperreFuehren(S.ui.laufend);
+
+/** Der Anker eines Auslösers: der nächste Knoten mit stabiler Kennung (Karte, Zeile, Teilaufgabe, Fenster) — sonst die Seite. */
+function ankerVon(el) {
+  for (let k = el; k && k !== document.body; k = k.parentElement) {
+    const d = k.dataset || {};
+    if (d.id || d.zeile != null || d.teil != null || k.id) return k;
+  }
+  return document.body;
+}
+
+/** Kennung des Ankers: Karte, Zeile und Teilaufgabe über ihre Nummer, sonst die id des Knotens. */
+function ankerKennung(anker) {
+  const d = anker.dataset || {};
+  if (d.id) return `ka-${d.id}`;
+  if (d.zeile != null) return `zeile-${d.zeile}`;
+  if (d.teil != null) return `teil-${d.teil}`;
+  return anker.id ? `#${anker.id}` : '#seite';
+}
+
+/** Kennung eines Auslösers aus dem getroffenen Element: Aktion und Ort in der gezeichneten Fläche (ADR-0025 Regel 1).
+    Der Ort zählt den wievielten Auslöser derselben Aktion sein Anker trägt — das Argument zählt nicht mit. */
+function ausloeserVon(el) {
+  const anker = ankerVon(el);
+  const gleichartige = [...anker.querySelectorAll(`[data-act="${CSS.escape(el.dataset.act)}"]`)];
+  return ausloeserName({ aktion: el.dataset.act, anker: ankerKennung(anker), argument: el.dataset.arg }, gleichartige.indexOf(el));
+}
+
+/** Zeigt den Sperrzustand am Knoten (ADR-0025 Regel 2): höchstens `aria-disabled="true"`, nie natives `disabled` —
+    das nähme den Knoten aus der Tabreihenfolge und der Fokus fiele auf BODY (ADR-0010). Kein Neuzeichnen: ein Zeichnen
+    hier verbrauchte das Fokusziel der Aktion (R00112 FA 8). */
+function sperrenMarkieren() {
+  for (const el of document.querySelectorAll('[data-act][aria-disabled]')) el.removeAttribute('aria-disabled');
+  for (const el of document.querySelectorAll('[data-act]')) {
+    if (sperre.laeuft(ausloeserVon(el))) el.setAttribute('aria-disabled', 'true');
+  }
+}
+
+async function act(a, arg, wert, el, detail) {
+  // Ein Doppelklick ist eine Handlung: der zweite Klick derselben Geste trifft einen anderen Knoten, weil das
+  // Neuzeichnen die Stelle nachrücken ließ — er hat auf einem Auslöser keine Wirkung (R00148 AK 6/11).
+  if (detail > 1) return;
+  // Genau ein Auslöser je Aktion (ADR-0025 Regel 1): solange seine Anfrage läuft, hat derselbe Auslöser keine Wirkung.
+  const name = el ? ausloeserVon(el) : null;
+  if (name && sperre.laeuft(name)) return;
+  if (name) { sperre.starten(name); sperrenMarkieren(); }
+  try {
+    await aktion(a, arg, wert);
+  } finally {
+    if (name) { sperre.beenden(name); sperrenMarkieren(); }
+  }
+}
+
+/** Der Rumpf der Aktion; Sperre und Freigabe umschließt `act`. */
+async function aktion(a, arg, wert) {
   const u = S.ui;
   try {
     switch (a) {
@@ -1404,8 +1461,7 @@ async function act(a, arg, wert) {
         const fokusAufNaechsterTeilaufgabe = Boolean(document.activeElement && document.activeElement.matches('.naechste-ziel'));
         if (fokusAufNaechsterTeilaufgabe) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
         render();
-        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
-        return;
+        return warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
       }
       case 'teil': {
         if (ichNoetig()) break;
@@ -1424,8 +1480,7 @@ async function act(a, arg, wert) {
         // sofort zeigen, geordnet im Hintergrund senden (R00037)
         t.text = text;
         render();
-        warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
-        return;
+        return warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
       }
       case 'teil-ordnen': {
         if (ichNoetig()) break;
@@ -1435,8 +1490,7 @@ async function act(a, arg, wert) {
         const liste = aufgabe(nr).teilaufgaben;
         liste.splice(position, 0, liste.splice(von, 1)[0]);
         render();
-        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
-        return;
+        return warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
       }
       case 'teil-weg': {
         if (ichNoetig()) break;
@@ -1462,8 +1516,7 @@ async function act(a, arg, wert) {
         if (feld) feld.value = '';
         u.fokus = '#teil-neu';
         render();
-        warteschlange(() => api('POST', `/api/aufgaben/${nr}/teilaufgaben`, { text }));
-        return;
+        return warteschlange(() => api('POST', `/api/aufgaben/${nr}/teilaufgaben`, { text }));
       }
       case 'kommentar': {
         if (!(wert || '').trim() || ichNoetig()) break;
@@ -1549,10 +1602,10 @@ async function act(a, arg, wert) {
       case 'sp': u.sp = arg; break;
       case 'dus-einheit': u.dusEinheit = arg; break;
       case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
-      case 'bf-farbe': berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) }); break;
-      case 'bf-spalte': berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
-      case 'bf-person': berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) }); break;
-      case 'bf-label': berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) }); break;
+      case 'bf-farbe': return berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) });
+      case 'bf-spalte': return berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) });
+      case 'bf-person': return berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) });
+      case 'bf-label': return berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) });
       case 'tf-bearbeiten': { const t = S.board.termine[+arg]; u.tf = { i: +arg, ...t }; u.tfFehler = null; u.fokus = '[data-tf="name"]'; break; }
       case 'tf-abbrechen': u.tf = { ...TERMIN_LEER }; u.tfFehler = null; break;
       case 'tf-ziel': {
@@ -1598,9 +1651,9 @@ async function act(a, arg, wert) {
         if (f.i == null) liste.push(neu); else liste[f.i] = neu;
         return termineSchreiben(liste, true);
       }
-      case 'bf-leeren': berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); u.fokus = '.bf-zusammen'; break; // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
+      case 'bf-leeren': u.fokus = '.bf-zusammen'; return berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
-      case 'bestand-tauschen': bestandAchsenSetzen('tauschen'); return;
+      case 'bestand-tauschen': return bestandAchsenSetzen('tauschen');
       case 'bestand-zelle': filterSetzen(arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'wbs-klapp': {
@@ -2178,7 +2231,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (el.tagName === 'A') e.preventDefault();
-  act(el.dataset.act, el.dataset.arg);
+  act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });
 document.addEventListener('input', e => {
   const wf = e.target.dataset && e.target.dataset.wf;
