@@ -1,7 +1,7 @@
 // E2E R00105 Kostenbericht (I0094): Summe niedrig–hoch je Währung über alle Spalten und das Archiv, nur lesend
 const { test, expect } = require('@playwright/test');
 const crypto = require('crypto');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen } = require('./hilfen');
 
 const NBSP = ' ';
 const SPANNE = 'cost:\n  currency: USD\n  min: 0.60\n  max: 1.60\n';
@@ -39,7 +39,8 @@ test.describe('R00105 Kostenbericht', () => {
     k = await kanbanStarten(einrichten(dateien));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
+    // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
+    await bereit(page, page.locator('.bahn').first());
     await page.locator('#t-ber').click();
     await page.getByRole('menuitem', { name: /^Kosten/ }).click();
     await expect(page.locator('#kosten')).toBeVisible();
@@ -49,7 +50,8 @@ test.describe('R00105 Kostenbericht', () => {
     k = await kanbanStarten(einrichten(grundbestand()));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
+    // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
+    await bereit(page, page.locator('.bahn').first());
     await page.locator('#t-ber').click();
     const menue = page.getByRole('menu', { name: 'Berichte' });
     const gruppen = await menue.evaluate(m => [...m.children].map(e => (e.classList.contains('k') ? `[${e.textContent}]` : e.querySelector('b').textContent)));
@@ -95,7 +97,8 @@ test.describe('R00105 Kostenbericht', () => {
     const vorher = k.git('rev-list', '--count', 'HEAD');
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
+    // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
+    await bereit(page, page.locator('.bahn').first());
     await page.goto(k.adresse + '#/berichte/kosten');
     const leer = page.locator('#kosten .kost-leer');
     await expect(leer.locator('.kost-satz')).toHaveText('Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, alle Spalten, auch archivierte');
@@ -138,7 +141,8 @@ test.describe('R00105 Kostenbericht', () => {
     k = await kanbanStarten(einrichten(dateien));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
+    // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
+    await bereit(page, page.locator('.bahn').first());
     await page.goto(k.adresse + '#/berichte/kosten');
     await expect(page.locator('#kosten')).toBeVisible();
   }
@@ -217,7 +221,8 @@ test.describe('R00105 Kostenbericht', () => {
     const vorher = pruefsumme(k.lies('boards/fabrik.md'));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
+    // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
+    await bereit(page, page.locator('.bahn').first());
     await page.goto(k.adresse + '#/berichte/kosten');
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
     await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Zeitraum gilt hier nicht');

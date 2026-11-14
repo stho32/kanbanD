@@ -134,6 +134,8 @@ async function breiteSetzen(page, breite, hoehe = page.viewportSize().height) {
 /** Öffnet die zugeklappte Filterbox der Berichte (R00081); offen bleibt sie für den Rest des Tests. */
 async function filterOeffnen(page) {
   const box = page.locator('details.bfilter-box');
+  // erst wenn die Ansicht steht: ein Neuzeichnen danach nähme dem Knopf „Zurücksetzen“ und dem Zustand der Box den Boden (ADR-0026 Regel 3)
+  await bereit(page, box.locator('summary'));
   if (await box.getAttribute('open') === null) await box.locator('summary').click();
   await page.getByRole('group', { name: 'Berichtsfilter' }).waitFor();
 }
