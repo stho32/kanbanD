@@ -4,7 +4,7 @@
 **Datum**: 2026-10-31
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00098 (Wiederöffnen), R00099 (Befund erledigt sich)
-**Nachträge**: 2026-11-13 — eine gescheiterte Aktion hinterlässt nichts, und die Commit-Nachricht ist abgeleiteter Text (Karte #43), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-eine-gescheiterte-aktion-hinterlässt-nichts-die-nachricht-ist-abgeleiteter-text-karte-43). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-13 — eine gescheiterte Aktion hinterlässt nichts, und die Commit-Nachricht ist abgeleiteter Text (Karte #43), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-eine-gescheiterte-aktion-hinterlässt-nichts-die-nachricht-ist-abgeleiteter-text-karte-43); 2026-11-14 — die Rücknahme stellt den Stand von HEAD her, die Pfadprüfung gilt auch in `committen` (Karte #43, Bauversuch), siehe [Nachtrag N2](#nachtrag-2026-11-14-n2-rücknahme-auf-den-stand-von-head-die-pfadprüfung-gilt-auch-in-committen-karte-43-bauversuch). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: —
 
 ## Kontext
@@ -74,8 +74,39 @@ Nur der Server kann Suche, Fallunterscheidung und Schreiben unter einer Sperre h
 
 **Grenze**: Länge und Wortlaut der gekürzten Nachricht, die Zahl der Zeichen und die Form der Rücknahme (Git-Befehle gegen gemerkten Vorher-Inhalt) sind Sache des `entwickler`. Ob eine gescheiterte Aktion zusätzlich protokolliert wird, regelt ADR-0001.
 
+## Nachtrag 2026-11-14 N2: Rücknahme auf den Stand von HEAD, die Pfadprüfung gilt auch in `committen` (Karte #43, Bauversuch)
+
+**Anlass**: Karte #43 kommt als Befundkarte zur Architektur-Vorprüfung. N1 entscheidet, **dass** eine gescheiterte Aktion nichts hinterlässt; der uncommittete Bauversuch im Zweig `karte/43` zeigt, **wie** die Rücknahme aussieht, und legt eine Lücke in N1 offen: der Satz „Danach ist `git status --porcelain` so wie vor der Aktion" ist für Pfade nicht erreichbar, die **vor** der Aktion schon uncommittete Änderungen trugen. Der Status bleibt `Akzeptiert`; N2 schärft N1 Punkt 2 und 3 und lässt Punkt 1 (Nachricht) und Punkt 4 (eine Stelle) unberührt.
+
+**Belegt (Code, Bauversuch uncommittet, Zeilenstand 2026-11-14)**:
+- `src/git.rs:39–51` `committen` ruft `committen_und_pruefen`; bei Fehler `zuruecknehmen` (`:85–102`): `git reset -q -- <pfade>`, je Pfad `git checkout -q HEAD -- <pfad>`, für Pfade, die `in_head` (`:71–83`, `git ls-tree -r --name-only -z HEAD -- <pfade>`) nicht kennt, `std::fs::remove_file(wurzel.join(pfad))` (`:95`).
+- **Probe** (2026-11-14, Wegwerf-Repo): Datei mit uncommitteter Änderung (` M bleibt.md`), dann `git add -A --` → `reset -q --` → `checkout -q HEAD --` wie in `zuruecknehmen` ⇒ `git status --porcelain` leer, Inhalt `alt`. Die Änderung ist weg.
+- Die Rücknahme löscht in `src/git.rs`, also außerhalb `src/dienst/`; `Kanban::committen` (`src/dienst/mod.rs:183`) — der Weg von `anhaenge.rs:66`/`:87` und `fieber.rs:115` — prüft keine Pfade. Die zweite Linie aus ADR-0008 sitzt heute allein in `aktion()` (`src/dienst/mod.rs:193`).
+
+### Entschieden
+
+1. **Die Rücknahme stellt den Stand von HEAD her**, für genau die Pfade der Aktion. Ein Pfad, den HEAD nicht kennt, gilt als von dieser Aktion angelegt und verschwindet.
+2. **Ein Pfad, der vor der Aktion uncommittete Änderungen trug, verliert sie.** Das ist bewusst: (a) auch im Erfolgsfall gilt Last-Writer-Wins — eine Änderung von außen zwischen Lesen und Schreiben überlebt keine Aktion, die Rücknahme ist nicht der einzige Ort, an dem sie verloren geht; (b) „gemerkter Vorher-Inhalt" (N1, Grenze) verlangt Lesen jeder Datei vor jedem Schreiben und eine zusätzliche Übergabe durch alle Aufrufer (`aktion`, `anhaenge`, `fieber`); (c) uncommittete Reste im Ordner sind **heute** der Rest einer gescheiterten Aktion (genau dieser Mangel), sie zu entfernen ist gewollt. Wer Handarbeit schützt, committet sie vorher.
+3. **Die Pfadprüfung der zweiten Linie (ADR-0008) gilt auch in `committen`.** Die Rücknahme ist eine Löschstelle; `git::committen` prüft seine Pfade (`ablage::pfade_pruefen`, `src/ablage.rs:185`) vor `add` und vor jedem Zugriff der Rücknahme, weil direkte Aufrufer nicht durch `aktion()` gehen. Verstoß ⇒ `Fehler::Intern`, Index und Arbeitsbaum unberührt.
+4. **Die Meldung sagt, was geschah.** `Fehler::Intern` nennt die Pfade (N1 Punkt 3); die Rücknahme meldet ihren eigenen Fehlschlag (Datei ließ sich nicht entfernen oder wiederherstellen), statt „zurückgenommen" zu behaupten, wenn sie es nicht ist.
+
+**Verworfen**:
+- **Vorher-Inhalt merken und byte-genau zurücklegen**: hält N1 wörtlich, kostet aber Lesen jeder Datei vor jedem Schreiben und eine Übergabe an `committen`; der Gewinn tritt nur bei Änderungen ein, die außerhalb kanbanD uncommittet entstehen — die akzeptierte Schwäche oben.
+- **Rücknahme in `aktion()` statt in `committen`**: ließe die direkten Commit-Wege (`anhaenge.rs`, `fieber.rs`) halb; N1 legt sie bewusst in `committen`.
+- **Nur die Nachricht bereinigen, die Halbaktion lassen**: in N1 verworfen, bleibt verworfen.
+
+### Durchsetzung (Fitness-Funktion)
+
+- Die drei Proben aus N1 bleiben (NUL, Überlänge, gescheiterter Commit mit leerem Status und `key` → 201).
+- **Vorher schmutzig**: Datei mit uncommitteter Änderung, Commit scheitert (Hook) ⇒ die Datei hat den Stand von HEAD, `git status --porcelain` ist leer — der Test hält die akzeptierte Schwäche fest, damit sie nicht unbemerkt kippt.
+- **Pfad außerhalb**: `committen` mit `../x.md` ⇒ `Fehler::Intern`, Index und Arbeitsbaum unberührt (zweite Linie in `committen`).
+- **Review-Punkt** (`code-reviewer`): eine Rücknahme, die einen Pfad außerhalb von `pfade` anfasst, oder eine Meldung, die „zurückgenommen" ohne Prüfung behauptet, ist ein Befund.
+
+**Grenze**: ob `committen` die Prüfung selbst ruft oder ein gemeinsamer Helfer sie für `aktion` und `committen` bereitstellt, ist Sache des `entwickler`; Länge und Wortlaut der Nachricht bleiben bei N1.
+
 ## Quellen / Bezuege
 
 - `src/dienst/archiv.rs` (`zurueckholen`), `src/dienst/mod.rs` (`aktion`, `gesperrt`)
 - ADR-0002, ADR-0004
 - Nachtrag N1: Karte #43 (Review #4); `src/dienst/mod.rs:191–213`, `src/git.rs:31–48`, `src/dienst/aufgabe_anlegen.rs` (Nachricht aus dem Titel); R00098 (`key`, `neu: false`); ADR-0001, ADR-0008, ADR-0015
+- Nachtrag N2: Karte #43 (Architektur-Vorprüfung 2026-11-14, uncommitteter Bauversuch `karte/43`); `src/git.rs:39–51, 71–102`, `src/dienst/mod.rs:183/193`, `src/ablage.rs:185`, `src/dienst/anhaenge.rs:66/87`, `src/dienst/fieber.rs:115`; Probe 2026-11-14 (Wegwerf-Repo); ADR-0008, ADR-0015
