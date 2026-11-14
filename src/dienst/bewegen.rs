@@ -38,9 +38,9 @@ impl Kanban {
         }
         let grenzwarnungen = self.entnahme_und_grenzen_pruefen(wer, &vorher, &b, &[bw.nummer])?;
         let nachricht = if von.as_deref() == Some(bw.spalte.as_str()) {
-            format!("#{} in „{}“ umsortiert ({})", bw.nummer, bw.spalte, b.titel)
+            format!("#{} in „{}“ umsortiert ({})", bw.nummer, crate::nachricht::wert(&bw.spalte), crate::nachricht::wert(&b.titel))
         } else {
-            format!("#{} nach „{}“ ({})", bw.nummer, bw.spalte, b.titel)
+            format!("#{} nach „{}“ ({})", bw.nummer, crate::nachricht::wert(&bw.spalte), crate::nachricht::wert(&b.titel))
         };
         self.aktion(wer, &nachricht, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         let warnungen = [grenzwarnungen, von.map(|v| self.warnungen(&b, bw.nummer, &v, &bw.spalte)).unwrap_or_default()].concat();
@@ -70,10 +70,10 @@ impl Kanban {
         let grenzwarnungen = self.entnahme_und_grenzen_pruefen(wer, &vorher, &b, &entnommen)?;
         let nummern = ziele.iter().map(|z| format!("#{}", z.nummer)).collect::<Vec<_>>().join(", ");
         let wohin = match ziele.iter().all(|z| z.spalte == ziele[0].spalte) {
-            true => format!("nach „{}“", ziele[0].spalte),
+            true => format!("nach „{}“", crate::nachricht::wert(&ziele[0].spalte)),
             false => "bewegt".to_string(),
         };
-        self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), b.titel), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
+        self.aktion(wer, &format!("{nummern} {wohin} ({} Aufgaben, {})", ziele.len(), crate::nachricht::wert(&b.titel)), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         let spaltenwarnungen = ziele.iter().zip(von).filter_map(|(z, v)| v.map(|v| self.warnungen(&b, z.nummer, &v, &z.spalte))).flatten();
         let warnungen = grenzwarnungen.into_iter().chain(spaltenwarnungen).collect();
         Ok(Bewegt { bewegt: true, warnungen })

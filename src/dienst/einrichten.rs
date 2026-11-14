@@ -112,7 +112,7 @@ impl Kanban {
             Schritt::schreiben(einstellungen::DATEI, einstellungen::schreiben(&e.einstellungen())),
             Schritt::schreiben(board_pfad(&b.slug), board::schreiben(&b, |_| None)),
         ];
-        self.aktion(&e.ich(), &format!("kanbanD eingerichtet: Board „{}“", b.titel), &dateien)?;
+        self.aktion(&e.ich(), &format!("kanbanD eingerichtet: Board „{}“", crate::nachricht::wert(&b.titel)), &dateien)?;
         Ok(b.slug)
     }
 }

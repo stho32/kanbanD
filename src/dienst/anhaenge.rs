@@ -63,7 +63,7 @@ impl Kanban {
         let ziel = self.ordner().wurzel().join(&rel);
         std::fs::create_dir_all(ziel.parent().expect("hat Eltern"))?;
         std::fs::write(&ziel, inhalt)?;
-        self.committen(wer, &format!("#{nr} Anhang „{name}“ hinzugefügt"), &[rel])?;
+        self.committen(wer, &format!("#{nr} Anhang „{}“ hinzugefügt", crate::nachricht::wert(&name)), &[rel])?;
         Ok(Anhang { name, groesse: inhalt.len() as u64 })
     }
 
@@ -84,7 +84,7 @@ impl Kanban {
         if let Some(dir) = pfad.parent() {
             let _ = std::fs::remove_dir(dir); // nur, wenn leer
         }
-        self.committen(wer, &format!("#{nr} Anhang „{name}“ entfernt"), &[rel])?;
+        self.committen(wer, &format!("#{nr} Anhang „{}“ entfernt", crate::nachricht::wert(name)), &[rel])?;
         Ok(())
     }
 }

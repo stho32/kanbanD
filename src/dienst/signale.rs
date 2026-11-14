@@ -18,7 +18,7 @@ impl Kanban {
             if !signal_geschaltet(a, schluessel, an) {
                 return Ok(None);
             }
-            Ok(Some(format!("#{nummer} Signal „{name}“ {}", if an { "gesetzt" } else { "zurückgenommen" })))
+            Ok(Some(format!("#{nummer} Signal „{}“ {}", crate::nachricht::wert(&name), if an { "gesetzt" } else { "zurückgenommen" })))
         })
     }
 }

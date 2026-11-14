@@ -22,7 +22,7 @@ impl Kanban {
         if b.anwendungen.as_ref() == Some(&neu) {
             return Ok(false);
         }
-        let text = format!("Anwendungen von „{}“: {}", b.titel, if neu.is_empty() { "keine".to_string() } else { neu.join(", ") });
+        let text = format!("Anwendungen von „{}“: {}", crate::nachricht::wert(&b.titel), crate::nachricht::wert(&if neu.is_empty() { "keine".to_string() } else { neu.join(", ") }));
         b.anwendungen = Some(neu);
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)

@@ -15,7 +15,7 @@ impl Kanban {
         if b.bestand.as_ref() == Some(&neu) {
             return Ok(false);
         }
-        let text = format!("Achsen des Bestands von „{}“: {} × {}", b.titel, neu.zeilen, neu.spalten);
+        let text = format!("Achsen des Bestands von „{}“: {} × {}", crate::nachricht::wert(&b.titel), neu.zeilen, neu.spalten);
         b.bestand = Some(neu);
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)

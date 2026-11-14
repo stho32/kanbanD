@@ -33,7 +33,7 @@ impl Kanban {
         self.aufgabe_schreiben(wer, nr, |a| {
             let stelle = position.unwrap_or(usize::MAX).min(a.teilaufgaben.len());
             a.teilaufgaben.insert(stelle, Teilaufgabe { text: text.clone(), erledigt });
-            Ok(Some(format!("#{nr} Teilaufgabe „{text}“ ergänzt")))
+            Ok(Some(format!("#{nr} Teilaufgabe „{}“ ergänzt", crate::nachricht::wert(&text))))
         })
     }
 
@@ -45,7 +45,7 @@ impl Kanban {
         self.aufgabe_schreiben(wer, nr, |a| {
             a.teilaufgaben.extend(texte.iter().map(|t| Teilaufgabe { text: t.clone(), erledigt: false }));
             Ok(Some(match texte.as_slice() {
-                [t] => format!("#{nr} Teilaufgabe „{t}“ ergänzt"),
+                [t] => format!("#{nr} Teilaufgabe „{}“ ergänzt", crate::nachricht::wert(t)),
                 alle => format!("#{nr} {} Teilaufgaben ergänzt", alle.len()),
             }))
         })
@@ -70,10 +70,10 @@ impl Kanban {
                 a.teilaufgaben.insert(z, weg);
             }
             Ok(match (vorher.erledigt != t.erledigt, vorher.text != t.text, ziel) {
-                (_, true, _) => Some(format!("#{nr} Teilaufgabe „{}“ geändert", t.text)),
-                (_, false, Some(z)) => Some(format!("#{nr} Teilaufgabe „{}“ an Position {} verschoben", t.text, z + 1)),
-                (true, false, None) if t.erledigt => Some(format!("#{nr} Teilaufgabe „{}“ erledigt", t.text)),
-                (true, false, None) => Some(format!("#{nr} Teilaufgabe „{}“ wieder offen", t.text)),
+                (_, true, _) => Some(format!("#{nr} Teilaufgabe „{}“ geändert", crate::nachricht::wert(&t.text))),
+                (_, false, Some(z)) => Some(format!("#{nr} Teilaufgabe „{}“ an Position {} verschoben", crate::nachricht::wert(&t.text), z + 1)),
+                (true, false, None) if t.erledigt => Some(format!("#{nr} Teilaufgabe „{}“ erledigt", crate::nachricht::wert(&t.text))),
+                (true, false, None) => Some(format!("#{nr} Teilaufgabe „{}“ wieder offen", crate::nachricht::wert(&t.text))),
                 (false, false, None) => None,
             })
         })
@@ -83,7 +83,7 @@ impl Kanban {
         self.aufgabe_schreiben(wer, nr, |a| {
             position(a, i)?;
             let t = a.teilaufgaben.remove(i);
-            Ok(Some(format!("#{nr} Teilaufgabe „{}“ entfernt", t.text)))
+            Ok(Some(format!("#{nr} Teilaufgabe „{}“ entfernt", crate::nachricht::wert(&t.text))))
         })
     }
 }

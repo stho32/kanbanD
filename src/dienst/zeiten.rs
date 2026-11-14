@@ -59,7 +59,7 @@ impl Kanban {
                 return Err(Fehler::Konflikt(format!("#{nr} hat schon einen Eintrag {}", neu.kennung())));
             }
             a.zeiten.push(neu);
-            Ok(Some(format!("#{nr} Zeit nachgetragen: {} ({})", uhr::hm(minuten), fuer.name)))
+            Ok(Some(format!("#{nr} Zeit nachgetragen: {} ({})", uhr::hm(minuten), crate::nachricht::wert(&fuer.name))))
         })
     }
 
@@ -88,7 +88,7 @@ impl Kanban {
             {
                 return Err(Fehler::Ungueltig("Das Ende liegt vor dem Beginn".into()));
             }
-            Ok((*z != vorher).then(|| format!("#{nr} Zeit korrigiert ({})", name(self, &z.wer))))
+            Ok((*z != vorher).then(|| format!("#{nr} Zeit korrigiert ({})", crate::nachricht::wert(&name(self, &z.wer)))))
         })
     }
 
@@ -99,7 +99,7 @@ impl Kanban {
                 return Err(Fehler::Konflikt("Der Eintrag läuft noch — erst stoppen".into()));
             };
             a.zeiten.retain(|x| x != &z);
-            Ok(Some(format!("#{nr} Zeit gelöscht ({}, {})", name(self, &z.wer), uhr::hm(uhr::minuten(&z.beginn, ende).unwrap_or(0)))))
+            Ok(Some(format!("#{nr} Zeit gelöscht ({}, {})", crate::nachricht::wert(&name(self, &z.wer)), uhr::hm(uhr::minuten(&z.beginn, ende).unwrap_or(0)))))
         })
     }
 }

@@ -111,7 +111,7 @@ impl Kanban {
                 kommentiert(&mut a, wer, &befund_weg(&g.text));
                 signal_geschaltet(&mut a, &g.signal, true);
                 let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))];
-                self.aktion(wer, &format!("#{nr} Befund nicht mehr gefunden — gemeldet ({})", b.titel), &dateien)?;
+                self.aktion(wer, &format!("#{nr} Befund nicht mehr gefunden — gemeldet ({})", crate::nachricht::wert(&b.titel)), &dateien)?;
                 fertig(a, Erledigungsergebnis::Gemeldet)
             }
             Erledigungslage::Erledigen { von, nach } => {
@@ -121,7 +121,7 @@ impl Kanban {
                 kommentiert(&mut a, wer, &befund_weg(&g.text));
                 a.reservierung = None;
                 let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)];
-                self.aktion(wer, &format!("#{nr} erledigt sich: „{von}“ → „{nach}“ ({})", b.titel), &dateien)?;
+                self.aktion(wer, &format!("#{nr} erledigt sich: „{}“ → „{}“ ({})", crate::nachricht::wert(&von), crate::nachricht::wert(&nach), crate::nachricht::wert(&b.titel)), &dateien)?;
                 Ok(Erledigt { aufgabe: a, ergebnis: Erledigungsergebnis::Erledigt, warnungen })
             }
         }

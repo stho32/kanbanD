@@ -29,8 +29,8 @@ impl Kanban {
             return Ok(false);
         }
         let text = match &start {
-            Some(s) => format!("Projektstart von „{}“: {}", b.titel, tt_mm_jjjj(s)),
-            None => format!("Projektstart von „{}“ entfernt", b.titel),
+            Some(s) => format!("Projektstart von „{}“: {}", crate::nachricht::wert(&b.titel), tt_mm_jjjj(s)),
+            None => format!("Projektstart von „{}“ entfernt", crate::nachricht::wert(&b.titel)),
         };
         b.start = start;
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
@@ -49,8 +49,8 @@ impl Kanban {
         }
         let einheit = if neu.woche == 5 { "Arbeitstage" } else { "Kalendertage" };
         let puffer = neu.puffer.map(|p| format!("Puffer {p} {einheit}")).unwrap_or_else(|| "ohne Puffer".into());
-        let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{z}“")).unwrap_or_default();
-        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}", b.titel, neu.perzentil);
+        let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{}“", crate::nachricht::wert(z))).unwrap_or_default();
+        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}", crate::nachricht::wert(&b.titel), neu.perzentil);
         b.fieber = neu;
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
@@ -97,7 +97,7 @@ impl Kanban {
             return Ok(0);
         }
         a.tage.sort_by(|x, y| x.datum.cmp(&y.datum));
-        let text = format!("Fever Chart „{}“: {neu} {} ergänzt", b.titel, if neu == 1 { "Tag" } else { "Tage" });
+        let text = format!("Fever Chart „{}“: {neu} {} ergänzt", crate::nachricht::wert(&b.titel), if neu == 1 { "Tag" } else { "Tage" });
         self.aktion(&kanband(), &text, &[Schritt::schreiben(fieber::pfad(slug), fieber::schreiben(&b.titel, &abschnitte))])?;
         Ok(neu)
     }
@@ -112,7 +112,7 @@ impl Kanban {
         }
         self.eigene_merken(&rel);
         std::fs::remove_file(self.ordner().wurzel().join(&rel))?;
-        self.committen(&kanband(), &format!("Fever Chart „{}“: Cache verworfen", b.titel), &[rel])?;
+        self.committen(&kanband(), &format!("Fever Chart „{}“: Cache verworfen", crate::nachricht::wert(&b.titel)), &[rel])?;
         Ok(true)
     }
 }

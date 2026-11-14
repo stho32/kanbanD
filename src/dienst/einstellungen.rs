@@ -185,7 +185,7 @@ impl Kanban {
                 return Err(Fehler::Konflikt(format!("Kürzel „{}“ gibt es schon", p.kuerzel)));
             }
             e.personen.push(p.clone());
-            Ok((format!("Person „{}“ ({}) angelegt", p.name, p.kuerzel), p))
+            Ok((format!("Person „{}“ ({}) angelegt", crate::nachricht::wert(&p.name), crate::nachricht::wert(&p.kuerzel)), p))
         })?;
         Ok(p)
     }
@@ -196,7 +196,7 @@ impl Kanban {
             let p = e.personen.iter_mut().find(|p| p.kuerzel == kuerzel).ok_or_else(|| Fehler::NichtGefunden(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
             let tat = if a.aktiv == Some(false) && p.aktiv { "stillgelegt" } else { "geändert" };
             a.anwenden(p);
-            Ok((format!("Person „{}“ ({kuerzel}) {tat}", p.name), p.clone()))
+            Ok((format!("Person „{}“ ({}) {}", crate::nachricht::wert(&p.name), crate::nachricht::wert(kuerzel), tat), p.clone()))
         })?;
         Ok(p)
     }

@@ -13,16 +13,16 @@ fn nachricht(alt: &[Termin], neu: &[Termin], board: &str) -> String {
     let ohne_ziel = |l: &[Termin]| l.iter().map(|t| Termin { ziel: false, ..t.clone() }).collect::<Vec<_>>();
     if alt.len() == neu.len() && ohne_ziel(alt) == ohne_ziel(neu) {
         return match neu.iter().find(|t| t.ziel) {
-            Some(t) => format!("Zieltermin von „{board}“: „{}“ ({})", t.name, tt_mm_jjjj(&t.datum)),
-            None => format!("Zieltermin von „{board}“ entfernt"),
+            Some(t) => format!("Zieltermin von „{}“: „{}“ ({})", crate::nachricht::wert(board), crate::nachricht::wert(&t.name), tt_mm_jjjj(&t.datum)),
+            None => format!("Zieltermin von „{}“ entfernt", crate::nachricht::wert(board)),
         };
     }
     let dazu: Vec<&Termin> = neu.iter().filter(|t| !alt.contains(t)).collect();
     let weg: Vec<&Termin> = alt.iter().filter(|t| !neu.contains(t)).collect();
     match (dazu.as_slice(), weg.as_slice()) {
-        ([t], []) => format!("Termin „{}“ ({}) angelegt in „{board}“", t.name, tt_mm_jjjj(&t.datum)),
-        ([], [t]) => format!("Termin „{}“ ({}) entfernt aus „{board}“", t.name, tt_mm_jjjj(&t.datum)),
-        _ => format!("Termine von „{board}“ geändert"),
+        ([t], []) => format!("Termin „{}“ ({}) angelegt in „{}“", crate::nachricht::wert(&t.name), tt_mm_jjjj(&t.datum), crate::nachricht::wert(board)),
+        ([], [t]) => format!("Termin „{}“ ({}) entfernt aus „{}“", crate::nachricht::wert(&t.name), tt_mm_jjjj(&t.datum), crate::nachricht::wert(board)),
+        _ => format!("Termine von „{}“ geändert", crate::nachricht::wert(board)),
     }
 }
 

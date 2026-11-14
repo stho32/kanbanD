@@ -63,8 +63,8 @@ impl Kanban {
             let verlaengert = a.reservierung.is_some();
             let neu = Reservierung { wer: wer.kuerzel.clone(), instanz: instanz.to_string(), seit: uhr::jetzt() };
             let nachricht = match verlaengert {
-                true => format!("#{nr} Reservierung verlängert ({})", self.inhaber(&neu)),
-                false => format!("#{nr} reserviert ({})", self.inhaber(&neu)),
+                true => format!("#{nr} Reservierung verlängert ({})", crate::nachricht::wert(&self.inhaber(&neu))),
+                false => format!("#{nr} reserviert ({})", crate::nachricht::wert(&self.inhaber(&neu))),
             };
             a.reservierung = Some(neu);
             Ok(Some(nachricht))
@@ -99,7 +99,7 @@ impl Kanban {
                 haken();
             }
         }
-        let nachricht = format!("#{nr} gezogen: „{}“ → „{nach}“ ({}, {})", zug.von, self.inhaber(a.reservierung.as_ref().expect("gesetzt")), b.titel);
+        let nachricht = format!("#{nr} gezogen: „{}“ → „{}“ ({}, {})", crate::nachricht::wert(&zug.von), crate::nachricht::wert(&nach), crate::nachricht::wert(&self.inhaber(a.reservierung.as_ref().expect("gesetzt"))), crate::nachricht::wert(&b.titel));
         let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)];
         self.aktion(wer, &nachricht, &dateien)?;
         let warnungen = [grenzwarnungen, self.warnungen(&b, nr, &zug.von, &nach)].concat();
@@ -114,7 +114,7 @@ impl Kanban {
             if !darf {
                 return Err(Fehler::Konflikt(format!("#{nr} ist reserviert von {} — freigeben darf nur diese Instanz oder ein Mensch", self.inhaber(&r))));
             }
-            Ok(Some(format!("#{nr} freigegeben (war {})", self.inhaber(&r))))
+            Ok(Some(format!("#{nr} freigegeben (war {})", crate::nachricht::wert(&self.inhaber(&r)))))
         })
     }
 }

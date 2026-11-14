@@ -50,7 +50,7 @@ impl Kanban {
         let d = Durchlauf { zeitpunkt: jetzt.clone(), phase: phase.into(), ergebnis, wer: fuer.kuerzel.clone(), dauer_minuten, text };
         self.aufgabe_schreiben(wer, nr, |a| {
             a.kommentare.push(Kommentar { wer: wer.kuerzel.clone(), zeitpunkt: jetzt, text: kommentartext(&d) });
-            let nachricht = format!("#{nr} Durchlauf: {} {} ({})", d.phase, d.ergebnis.text(), fuer.name);
+            let nachricht = format!("#{nr} Durchlauf: {} {} ({})", crate::nachricht::wert(&d.phase), d.ergebnis.text(), crate::nachricht::wert(&fuer.name));
             a.durchlaeufe.push(d);
             Ok(Some(nachricht))
         })

@@ -89,7 +89,7 @@ impl Kanban {
         }
         let schon_da = wirkung.knoten.is_some() && a.wirkungen.iter().any(|w| w.aktion == wirkung.aktion && w.schluessel() == wirkung.schluessel());
         if !schon_da {
-            let nachricht = format!("#{nr} Wirkung auf {} vermerkt", beschreibung(&wirkung));
+            let nachricht = format!("#{nr} Wirkung auf {} vermerkt", crate::nachricht::wert(&beschreibung(&wirkung)));
             a.wirkungen.push(wirkung);
             self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         }
@@ -136,7 +136,7 @@ impl Kanban {
             (Aktion::Ueberarbeiten, false) => w.clone(),
         };
         let neu = Wirkung { ausgefuehrt: if an { Ausfuehrung::Am(crate::uhr::heute()) } else { Ausfuehrung::Offen }, ..neu };
-        let nachricht = format!("#{nr} Wirkung auf {} {}", beschreibung(&neu), if an { "eingetreten" } else { "zurückgenommen" });
+        let nachricht = format!("#{nr} Wirkung auf {} {}", crate::nachricht::wert(&beschreibung(&neu)), if an { "eingetreten" } else { "zurückgenommen" });
         a.wirkungen[i] = neu;
         self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         Ok(a)

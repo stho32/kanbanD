@@ -22,7 +22,7 @@ impl Kanban {
         if b.berichtsfilter == neu {
             return Ok(false);
         }
-        let text = format!("Berichtsfilter von „{}“ geändert", b.titel);
+        let text = format!("Berichtsfilter von „{}“ geändert", crate::nachricht::wert(&b.titel));
         b.berichtsfilter = neu;
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
