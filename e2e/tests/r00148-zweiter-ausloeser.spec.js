@@ -367,6 +367,10 @@ test.describe('R00148 Doppelter Auslöser im Aufgabenfenster', () => {
     await page.locator('#neu-fenster .chk .x').nth(0).click();
     await expect(page.locator('#neu-fenster .chk span')).toHaveText(['zwei', 'drei']);
     expect(await kennungen()).toEqual([vorher[1], vorher[2]], 'die Kennung führt die Zeile, nicht die Stelle');
+
+    // und das ✕ trifft die Zeile, die es nennt — nicht die Stelle (die Stelle 1 wäre jetzt „drei“)
+    await page.locator('#neu-fenster .chk .x').nth(1).click();
+    await expect(page.locator('#neu-fenster .chk span')).toHaveText(['zwei']);
   });
 });
 
