@@ -42,7 +42,8 @@ const ERLAUBT = new Map([
   ['laden', new Map([['Object.assign(S)', 1]])],
   ['dateiLaden', new Map([['ui.datei', 1]])],
   ['defektLaden', new Map([['ui.offen', 1], ['ui.offenDefekt', 1], ['ui.defektDatei', 1]])],
-  ['act', new Map([['ui.offen', 2], ['ui.offenDefekt', 1]])],
+  // Der Verteiler heißt seit R00148 `act`; sein Rumpf (der Schalter mit den Übernahmen) liegt in `aktion`.
+  ['aktion', new Map([['ui.offen', 2], ['ui.offenDefekt', 1]])],
   ['fensterOeffnen', new Map([['ui.offen', 1]])],
 ]);
 /** Ladefunktionen: hier steht jede Übernahme textlich hinter einem Aufruf der Prüfung. */
@@ -195,7 +196,7 @@ test('Wächter: in den Ladefunktionen steht jede Übernahme hinter einem Aufruf 
 test('Wächter erkennt eine Übernahme über den Alias u = S.ui und nennt Datei, Zeile und Funktion', () => {
   const quellen = appMit("        u.datei = await api('GET','/api/aufgaben/1');\n", "case 'fenster-ansicht':");
   const zeile = quellen[0].text.split('\n').findIndex(z => z.includes("u.datei = await api('GET'")) + 1;
-  assert.deepStrictEqual(fremdeUebernahmen(quellen), [`app.js:${zeile} in act`]);
+  assert.deepStrictEqual(fremdeUebernahmen(quellen), [`app.js:${zeile} in aktion`]);
 });
 
 test('Wächter erkennt Object.assign(S.ui, …) und offen/offenDefekt mit einem Wert als Übernahme', () => {

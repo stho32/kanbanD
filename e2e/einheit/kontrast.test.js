@@ -196,8 +196,15 @@ function literalZeilen(datei, text) {
 }
 const gepruefteDateien = () => ['kd-app.css', 'kd-base.css', ...fs.readdirSync(WEB).filter(name => name.endsWith('.js')).sort()];
 
-/** Verzierung, Linie oder inaktives Bedienelement (R00107 FA 11). */
-const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz', '.bf-chip', '.wbs-zeile .trenner'];
+/** Verzierung, Linie oder inaktives Bedienelement (R00107 FA 11) — und die sichtbare Sperrform (R00148 AK 19,
+    freigegeben 2026-11-14): der gesperrte Auslöser dämpft Schrift und Symbol auf --kd-faint. */
+const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz', '.bf-chip', '.wbs-zeile .trenner',
+  '.btn[aria-disabled="true"]', '.btn[aria-disabled="true"]:hover',
+  '.btn-haupt[aria-disabled="true"]', '.btn-haupt[aria-disabled="true"]:hover',
+  '.btn-sym[aria-disabled="true"]', '.btn-sym[aria-disabled="true"]:hover',
+  '.naechste-ziel[aria-disabled="true"]', '.naechste-ziel[aria-disabled="true"]:hover',
+  '.chk.ok i[aria-disabled="true"]',
+  '.ochip button[aria-disabled="true"],.ochip button[aria-disabled="true"]:hover'];
 /** Regeln mit --kd-faint außerhalb der Erlaubt-Liste, als `datei:zeile selektor`. */
 function faintStellen(datei, text) {
   return regeln(text).filter(regel => regel.rumpf.includes('var(--kd-faint)') && !FAINT_ERLAUBT.includes(regel.selektor)).map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);
@@ -453,7 +460,7 @@ test('Selbstprobe Literal: Farbnamen in Token-Namen, Schlüsselwörter und Nicht
 
 /* ── faint ── */
 
-test('faint: --kd-faint nur an den 5 erlaubten Selektoren', () => {
+test('faint: --kd-faint nur an den erlaubten Selektoren (Verzierung, inaktives Bedienelement, Sperrform)', () => {
   const funde = ['kd-app.css', 'kd-base.css'].flatMap(datei => faintStellen(datei, lies(datei)));
   assert.deepStrictEqual(funde, []);
 });

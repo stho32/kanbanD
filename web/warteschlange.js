@@ -16,7 +16,7 @@
   function warteschlangeFuehren({ laden, melden, gespeichert = () => { }, vorLaden = () => { } }) {
     let kette = Promise.resolve(), offen = 0;
 
-    function einreihen(anfrage, ausloeser) {
+    function einreihen(anfrage, ausloeser, nachAnfrage = () => { }) {
       offen++;
       let eigeneGescheitert = false;
       kette = kette
@@ -24,6 +24,9 @@
         .then(ergebnis => { gespeichert(ergebnis, ausloeser); return ergebnis; })
         .catch(fehler => { eigeneGescheitert = true; melden('anfrage', fehler, ausloeser); })
         .then(() => {
+          // Die Anfrage ist beantwortet (auch mit Fehlschlag) — wer daran etwas aufhängt (die Sperre, R00148), erfährt es hier,
+          // bevor das Nachladen beginnt.
+          nachAnfrage();
           offen--;
           if (offen > 0) return;
           vorLaden(ausloeser);

@@ -142,6 +142,9 @@ test.describe('Teilaufgabe auf der Karte: Text gehört zum Ziel', () => {
     await page.keyboard.press('Space');
     await expect(page.getByRole('checkbox', { name: 'c abhaken' })).toBeFocused();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] b');
+    // Genau ein Auslöser je Aktion (R00148): solange die Antwort der ersten Berührung läuft, nimmt dieselbe Karte keinen
+    // zweiten an. Die Probe wartet, bis die Sperre mit der Antwort endet — dann ist der nächste Tastendruck eine neue Handlung.
+    await expect(page.getByRole('checkbox', { name: 'c abhaken' })).not.toHaveAttribute('aria-disabled', 'true');
     await page.keyboard.press('Enter');
     await expect(page.locator('.ka[data-id="1"]')).toBeFocused();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] c');

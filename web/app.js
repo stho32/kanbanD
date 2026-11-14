@@ -39,9 +39,8 @@ function berichtsfilterSetzen(aenderung) {
   const ich = S.ich && personen().some(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
   const lokal = S.ui.bfLokal = { slug: S.ui.slug, filter: S.ui.bf, ungespeichert: !ich };
   if (!ich || !S.ui.slug) return;
-  return api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/berichtsfilter`, S.ui.bf)
-    .then(() => { if (S.ui.bfLokal === lokal) S.ui.bfLokal = null; }, f => { S.ui.fehler = 'Berichtsfilter nicht gespeichert: ' + f.message; lokal.ungespeichert = true; })
-    .then(() => laden());
+  return durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/berichtsfilter`, S.ui.bf)
+    .then(() => { if (S.ui.bfLokal === lokal) S.ui.bfLokal = null; }, f => { S.ui.fehler = 'Berichtsfilter nicht gespeichert: ' + f.message; lokal.ungespeichert = true; }));
 }
 /** Neue Achsen für „Bestand nach Labels“ nach einer Wahl (Feld „zeilen“, „spalten“ oder „tauschen“): genau ein PUT …/bestand;
     ohne gewählte Person oder bei einem Fehler gilt die Wahl nur in dieser Ansicht. Ändert die Wahl nichts oder gibt es
@@ -55,9 +54,8 @@ function bestandAchsenSetzen(feld, praefix) {
   const lokal = S.ui.bestandLokal = { slug: S.ui.slug, achsen: neu, ungespeichert: !ich, fehler: null };
   render();
   if (!ich || !S.ui.slug) return;
-  return api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/bestand`, neu)
-    .then(() => { if (S.ui.bestandLokal === lokal) S.ui.bestandLokal = null; }, f => { lokal.fehler = f.message; })
-    .then(() => laden());
+  return durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/bestand`, neu)
+    .then(() => { if (S.ui.bestandLokal === lokal) S.ui.bestandLokal = null; }, f => { lokal.fehler = f.message; }));
 }
 /** Der Filter des gewählten Boards — oder der lokale, solange er nicht gespeichert ist. */
 function berichtsfilterAusBoard() {
@@ -439,8 +437,28 @@ const eigene = warteschlangeFuehren({
 });
 /** Wie viele eigene Anfragen gerade laufen; solange welche warten, wird kein geladener Stand übernommen (R00110). */
 const schlangeOffen = () => eigene.offen();
+/** Der Auslöser, dessen Aktion gerade läuft — der Schreibweg ordnet seine Anfrage ihm zu (ADR-0025 Regel 6). */
+let laufenderAusloeser = null;
+
 function warteschlange(anfrage) {
-  return eigene.einreihen(anfrage, S.ui.offen ? 'fenster' : 'board');
+  const laufender = laufenderAusloeser;
+  if (laufender) laufender.anfrage = true;
+  return eigene.einreihen(anfrage, S.ui.offen ? 'fenster' : 'board', () => sperreFreigeben(laufender));
+}
+
+/** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
+function sperreFreigeben(laufender) {
+  if (!laufender || !laufender.name) return;
+  sperre.beenden(laufender.name);
+  sperrenMarkieren();
+}
+
+/** Jede schreibende Anfrage läuft durch die eine Stelle (ADR-0025 Regel 6, R00148 AK 17): die Warteschlange hält
+    Reihenfolge und Kettenende, damit zwei Schreib-Auslöser nie überlappen. Die Ablehnung geht an den Aufrufer weiter,
+    damit seine Meldung die einzige bleibt (R00147) — die Schlange meldet diesen Fehlschlag dann nicht. */
+function durchDieSchlange(anfrage) {
+  let fehler = null;
+  return warteschlange(() => anfrage().catch(f => { fehler = f; })).then(() => { if (fehler) throw fehler; });
 }
 
 /** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
@@ -464,27 +482,30 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
   if (!liste.some(t => t.trim())) { f.fehler = 'Die Aufgabe braucht einen Titel'; f.fehlerFeld = 'titel'; u.fokus = '#neu-titel'; render(); return; }
   f.fehlerFeld = null;
   const ziel = f.board ? { board: f.board, spalte: f.spalte } : {};
-  try {
-    let neu;
-    if (liste.length === 1) {
-      neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
-    } else {
-      neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map(t => neuEintrag(t, f)), ...ziel });
-    }
-    u.hinweis = { text: neu.length === 1 ? `#${neu[0].nummer} angelegt` : `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
-    if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null }); u.fokus = '#neu-titel'; }
-    else u.neu = null;
-  } catch (x) { f.fehler = x.message; }
-  return laden();
+  return durchDieSchlange(async () => {
+    try {
+      let neu;
+      if (liste.length === 1) {
+        neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
+      } else {
+        neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map(t => neuEintrag(t, f)), ...ziel });
+      }
+      u.hinweis = { text: neu.length === 1 ? `#${neu[0].nummer} angelegt` : `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
+      if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null }); u.fokus = '#neu-titel'; }
+      else u.neu = null;
+    } catch (x) { f.fehler = x.message; }
+  });
 }
 
-/** Schreibender Aufruf aus dem Aufgabenfenster: Fehler erscheinen im Fuß, danach wird neu geladen. */
-async function schreiben(methode, pfad, daten) {
-  try {
-    await api(methode, pfad, daten);
-    S.ui.gespeichert = Date.now(); fensterMelden(null);
-  } catch (f) { fensterMelden(f.message); S.ui.fehler = f.message; }
-  await laden();
+/** Schreibender Aufruf aus dem Aufgabenfenster: läuft durch die eine Stelle (ADR-0025 Regel 6, R00148 AK 17) und
+    meldet einen Fehlschlag im Fuß; neu geladen wird, sobald die Schlange leer ist (R00110). */
+function schreiben(methode, pfad, daten) {
+  return durchDieSchlange(async () => {
+    try {
+      await api(methode, pfad, daten);
+      S.ui.gespeichert = Date.now(); fensterMelden(null);
+    } catch (f) { fensterMelden(f.message); S.ui.fehler = f.message; }
+  });
 }
 
 /** Platz einer Karte auf einem Board aus dem gezeigten Stand, gemerkt für das Rückgängig (R00112, ADR-0017 Regel 1). */
@@ -1320,11 +1341,15 @@ async function act(a, arg, wert, el, detail) {
   // Genau ein Auslöser je Aktion (ADR-0025 Regel 1): solange seine Anfrage läuft, hat derselbe Auslöser keine Wirkung.
   const name = el ? ausloeserVon(el) : null;
   if (name && sperre.laeuft(name)) return;
+  const voriger = laufenderAusloeser;
+  const laufender = laufenderAusloeser = { name, anfrage: false };
   if (name) { sperre.starten(name); sperrenMarkieren(); }
   try {
     await aktion(a, arg, wert);
   } finally {
-    if (name) { sperre.beenden(name); sperrenMarkieren(); }
+    laufenderAusloeser = voriger;
+    // Eine Aktion ohne Anfrage endet mit dem Klick; hat sie eine, endet die Sperre mit deren Antwort (ADR-0025 Regel 2).
+    if (name && !laufender.anfrage) { sperre.beenden(name); sperrenMarkieren(); }
   }
 }
 
@@ -1396,23 +1421,23 @@ async function aktion(a, arg, wert) {
           S.board.spalten.find(sp => sp.name === bw.spalte).aufgaben.splice(bw.index, 0, bw.nummer);
           render();
         }
-        let r;
-        try {
-          r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
-        } catch (f) {
-          // Aus dem offenen Aufgabenfenster gemeldet, steht die Ablehnung im Fuß des Fensters (R00146 FA 9, 403/409);
-          // vom Board gezogen bleibt sie wie bisher in der Statuszeile. Das Laden nimmt die vorschnelle Bewegung zurück.
-          if (!u.offen) throw f;
-          fensterMelden(f.message);
-          await laden();
-          return;
-        }
-        if (u.offen && u.fensterFehler) fensterMelden(null);
-        if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
-        if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
-        // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
-        if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
-        return laden();
+        return durchDieSchlange(async () => {
+          let r;
+          try {
+            r = await api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen`, bw);
+          } catch (f) {
+            // Aus dem offenen Aufgabenfenster gemeldet, steht die Ablehnung im Fuß des Fensters (R00146 FA 9, 403/409);
+            // vom Board gezogen bleibt sie wie bisher in der Statuszeile. Das Laden nimmt die vorschnelle Bewegung zurück.
+            if (!u.offen) { u.fehler = f.message; return; }
+            fensterMelden(f.message);
+            return;
+          }
+          if (u.offen && u.fensterFehler) fensterMelden(null);
+          if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
+          if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
+          // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
+          if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
+        });
       }
       case 'oeffnen': if (zug != null) break; await fensterOeffnen(+arg); break;
       case 'zeit-korrigieren': {
@@ -1461,7 +1486,8 @@ async function aktion(a, arg, wert) {
         const fokusAufNaechsterTeilaufgabe = Boolean(document.activeElement && document.activeElement.matches('.naechste-ziel'));
         if (fokusAufNaechsterTeilaufgabe) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
         render();
-        return warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
+        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
+        return;
       }
       case 'teil': {
         if (ichNoetig()) break;
@@ -1480,7 +1506,8 @@ async function aktion(a, arg, wert) {
         // sofort zeigen, geordnet im Hintergrund senden (R00037)
         t.text = text;
         render();
-        return warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
+        warteschlange(() => api('PATCH', `/api/aufgaben/${e.nr}/teilaufgaben/${e.i}`, { text }));
+        return;
       }
       case 'teil-ordnen': {
         if (ichNoetig()) break;
@@ -1490,7 +1517,8 @@ async function aktion(a, arg, wert) {
         const liste = aufgabe(nr).teilaufgaben;
         liste.splice(position, 0, liste.splice(von, 1)[0]);
         render();
-        return warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
+        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${von}`, { position }));
+        return;
       }
       case 'teil-weg': {
         if (ichNoetig()) break;
@@ -1516,7 +1544,8 @@ async function aktion(a, arg, wert) {
         if (feld) feld.value = '';
         u.fokus = '#teil-neu';
         render();
-        return warteschlange(() => api('POST', `/api/aufgaben/${nr}/teilaufgaben`, { text }));
+        warteschlange(() => api('POST', `/api/aufgaben/${nr}/teilaufgaben`, { text }));
+        return;
       }
       case 'kommentar': {
         if (!(wert || '').trim() || ichNoetig()) break;
@@ -1602,10 +1631,10 @@ async function aktion(a, arg, wert) {
       case 'sp': u.sp = arg; break;
       case 'dus-einheit': u.dusEinheit = arg; break;
       case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
-      case 'bf-farbe': return berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) });
-      case 'bf-spalte': return berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) });
-      case 'bf-person': return berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) });
-      case 'bf-label': return berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) });
+      case 'bf-farbe': await berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) }); break;
+      case 'bf-spalte': await berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
+      case 'bf-person': await berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) }); break;
+      case 'bf-label': await berichtsfilterSetzen({ labels: umschalten(u.bf.labels, arg) }); break;
       case 'tf-bearbeiten': { const t = S.board.termine[+arg]; u.tf = { i: +arg, ...t }; u.tfFehler = null; u.fokus = '[data-tf="name"]'; break; }
       case 'tf-abbrechen': u.tf = { ...TERMIN_LEER }; u.tfFehler = null; break;
       case 'tf-ziel': {
@@ -1651,7 +1680,7 @@ async function aktion(a, arg, wert) {
         if (f.i == null) liste.push(neu); else liste[f.i] = neu;
         return termineSchreiben(liste, true);
       }
-      case 'bf-leeren': u.fokus = '.bf-zusammen'; return berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
+      case 'bf-leeren': u.fokus = '.bf-zusammen'; await berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); break; // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'bestand-tauschen': return bestandAchsenSetzen('tauschen');
       case 'bestand-zelle': filterSetzen(arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
@@ -1672,10 +1701,11 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const [id, status] = arg.split('|');
         u.pop = null;
-        try { await api('PATCH', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(id)}`, { status }); }
-        catch (f) { u.hinweis = { text: `${id} nicht gesetzt: ${f.message}`, at: Date.now() }; }
-        u.fokus = `#wbs-st-${id}`;
-        return laden();
+        return durchDieSchlange(async () => {
+          try { await api('PATCH', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(id)}`, { status }); }
+          catch (f) { u.hinweis = { text: `${id} nicht gesetzt: ${f.message}`, at: Date.now() }; }
+          u.fokus = `#wbs-st-${id}`;
+        });
       }
       case 'wbs-neu-pop': {
         if (ichNoetig()) break;
@@ -1719,23 +1749,26 @@ async function aktion(a, arg, wert) {
       case 'wirkung-setzen': {
         const f = u.wirkungNeu;
         if (!f || ichNoetig()) break;
-        try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
-        catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; break; }
-        u.wirkungNeu = null; u.gespeichert = Date.now(); fensterMelden(null);
-        return laden();
+        return durchDieSchlange(async () => {
+          try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
+          catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; return; }
+          u.wirkungNeu = null; u.gespeichert = Date.now(); fensterMelden(null);
+        });
       }
       case 'wirkung-eintritt': {
         if (ichNoetig()) break;
         const [i, an] = arg.split('|');
-        try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); fensterMelden(null); }
-        catch (fehler) { fensterMelden(fehler.message); }
-        return laden();
+        return durchDieSchlange(async () => {
+          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); fensterMelden(null); }
+          catch (fehler) { fensterMelden(fehler.message); }
+        });
       }
       case 'wirkung-weg': {
         if (ichNoetig()) break;
-        try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); fensterMelden(null); }
-        catch (fehler) { fensterMelden(fehler.message); }
-        return laden();
+        return durchDieSchlange(async () => {
+          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); fensterMelden(null); }
+          catch (fehler) { fensterMelden(fehler.message); }
+        });
       }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
       case 'wbs-gehe': {
@@ -2055,16 +2088,17 @@ async function aktion(a, arg, wert) {
       }
       case 'setup-ok': {
         if (ichNoetig()) break;
-        try {
-          // Datums-Trenner (R00124): nur senden, wenn mindestens eine Spalte vom Positions-Standard abweicht —
-          // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-checks/column-colors)
-          const letzteSpalte = u.setup.spalten.length - 1;
-          const trennerAbweichend = u.setup.spalten.some((sp, i) => sp.datumsTrenner !== (i === letzteSpalte));
-          await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
-          if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
-          u.setup = null;
-          return laden();
-        } catch (f) { u.setup.fehler = f.message; break; }
+        return durchDieSchlange(async () => {
+          try {
+            // Datums-Trenner (R00124): nur senden, wenn mindestens eine Spalte vom Positions-Standard abweicht —
+            // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-checks/column-colors)
+            const letzteSpalte = u.setup.spalten.length - 1;
+            const trennerAbweichend = u.setup.spalten.some((sp, i) => sp.datumsTrenner !== (i === letzteSpalte));
+            await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
+            if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
+            u.setup = null;
+          } catch (f) { u.setup.fehler = f.message; }
+        });
       }
       case 'fr-agent': u.first.agenten[arg] = !u.first.agenten[arg]; break;
       case 'first-ok': {

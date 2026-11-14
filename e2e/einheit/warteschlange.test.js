@@ -83,3 +83,16 @@ test('der Auslöser wird an die Meldung durchgereicht', async () => {
   await assert.doesNotReject(kette.einreihen(() => { }, 'fenster'));
   assert.deepStrictEqual(meldungen, [{ art: 'laden', ausloeser: 'fenster' }]);
 });
+test('R00148: `nachAnfrage` läuft, sobald die Anfrage beantwortet ist — vor dem Nachladen, auch bei einem Fehlschlag', async () => {
+  const reihe = [];
+  const kette = warteschlangeFuehren({
+    laden: async () => { reihe.push('laden'); },
+    melden: () => { },
+  });
+  await kette.einreihen(async () => { reihe.push('anfrage'); }, 'board', () => reihe.push('antwort'));
+  assert.deepStrictEqual(reihe, ['anfrage', 'antwort', 'laden']);
+  const mitFehler = [];
+  const zweite = warteschlangeFuehren({ laden: async () => { mitFehler.push('laden'); }, melden: () => { } });
+  await assert.doesNotReject(zweite.einreihen(async () => { mitFehler.push('anfrage'); throw new Error('weg'); }, 'board', () => mitFehler.push('antwort')));
+  assert.deepStrictEqual(mitFehler, ['anfrage', 'antwort', 'laden'], 'die Sperre endet auch bei einem Fehlschlag mit der Antwort');
+});
