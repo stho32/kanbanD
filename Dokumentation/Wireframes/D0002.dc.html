@@ -846,6 +846,53 @@ body{height:auto;overflow:visible}
 .mn-tab th{background:var(--kd-sunken);font-weight:600}
 .mn-tab td.z{font-family:var(--kd-mono);text-align:right;white-space:nowrap}
 /* ==/MN-CSS== */
+
+/* ==SP-CSS== */
+/* ── Zustand „Sichtbare Sperrform“ (R00148, I0135/F0125, Karte #138; ADR-0025 Regel 2, ux-Vorprüfung 2026-11-13) —
+   EINE Dämpfungsregel für alle Auslöser-Familien, kein opacity am Knoten: gedämpft werden Schrift und Symbol auf
+   --kd-faint, die Kontur auf --kd-line, eine gefüllte Fläche auf --kd-sunken; die neutrale Ruhefläche --kd-surface
+   bleibt dort, wo --kd-sunken das Zeigen (:hover) ist. Der Fokusring bleibt 2 px --kd-accent mit Abstand 2 px,
+   ungedämpft. Werte nur aus web/kd-tokens.css / web/kd-base.css. ── */
+.sp-zustand{width:1440px;padding:48px 0 32px;background:var(--kd-bg);--kd-ziel:24px;--kd-on-accent:oklch(1 0 0)}
+.sp-cap{padding:0 24px 16px;font:600 22px/1.2 var(--kd-font);color:var(--kd-text)}
+.sp-cap small{display:block;font:400 14px/1.45 var(--kd-font);color:var(--kd-muted);margin-top:4px;max-width:1220px}
+.sp-thema{background:var(--kd-bg);color:var(--kd-text);padding:12px 0 20px;box-shadow:0 0 0 1px var(--kd-line-strong);margin-bottom:32px;font-size:13px;line-height:1.4}
+.sp-thema.dunkel{color-scheme:dark;--kd-bg:oklch(0.2 0.012 255);--kd-surface:oklch(0.25 0.014 255);--kd-sunken:oklch(0.17 0.01 255);--kd-line:oklch(0.33 0.016 255);--kd-line-strong:oklch(0.42 0.018 255);--kd-text:oklch(0.92 0.008 250);--kd-muted:oklch(0.74 0.014 250);--kd-faint:oklch(0.62 0.014 250);--kd-head:oklch(0.15 0.015 255);--kd-head-line:oklch(0.3 0.02 255);--kd-accent:oklch(0.56 0.13 255);--kd-accent-hover:oklch(0.62 0.13 255);--kd-accent-weak:oklch(0.32 0.06 255);--kd-accent-ink:oklch(0.84 0.08 255);--kd-mensch:oklch(0.7 0.07 215);--kd-mensch-weak:oklch(0.32 0.03 215);--kd-agent:oklch(0.72 0.13 65);--kd-agent-weak:oklch(0.33 0.05 75);--kd-agent-ink:oklch(0.86 0.1 70);--kd-warn:oklch(0.72 0.16 30);--kd-c-yellow:oklch(0.31 0.045 98);--kd-c-yellow-line:oklch(0.72 0.14 98);--kd-c-amber:oklch(0.31 0.045 75);--kd-c-amber-line:oklch(0.72 0.14 75);--kd-c-orange:oklch(0.31 0.045 52);--kd-c-orange-line:oklch(0.72 0.14 52);--kd-c-red:oklch(0.31 0.045 27);--kd-c-red-line:oklch(0.72 0.14 27);--kd-c-rose:oklch(0.31 0.045 5);--kd-c-rose-line:oklch(0.72 0.14 5);--kd-c-pink:oklch(0.31 0.045 345);--kd-c-pink-line:oklch(0.72 0.14 345);--kd-c-magenta:oklch(0.31 0.045 325);--kd-c-magenta-line:oklch(0.72 0.14 325);--kd-c-violet:oklch(0.31 0.045 300);--kd-c-violet-line:oklch(0.72 0.14 300);--kd-c-indigo:oklch(0.31 0.045 275);--kd-c-indigo-line:oklch(0.72 0.14 275);--kd-c-blue:oklch(0.31 0.045 250);--kd-c-blue-line:oklch(0.72 0.14 250);--kd-c-sky:oklch(0.31 0.045 230);--kd-c-sky-line:oklch(0.72 0.14 230);--kd-c-cyan:oklch(0.31 0.045 205);--kd-c-cyan-line:oklch(0.72 0.14 205);--kd-c-teal:oklch(0.31 0.045 180);--kd-c-teal-line:oklch(0.72 0.14 180);--kd-c-green:oklch(0.31 0.045 150);--kd-c-green-line:oklch(0.72 0.14 150);--kd-c-lime:oklch(0.31 0.045 125);--kd-c-lime-line:oklch(0.72 0.14 125);--kd-c-grey:oklch(0.3 0.006 250);--kd-c-grey-line:oklch(0.66 0.012 250);--kd-wbs-ok-ink:oklch(0.86 0.1 150);--kd-wbs-warn-ink:oklch(0.87 0.11 75);--kd-wbs-error-ink:oklch(0.84 0.1 27);--kd-wbs-neutral-ink:oklch(0.84 0.012 250);--kd-shadow:0 2px 8px oklch(0 0 0 / .5);--kd-spalte-anteil:28%;--kd-klasse-anteil:30%;}
+.sp-titel{padding:0 16px 6px;font:600 16px/1.3 var(--kd-font)}
+.sp-teil{padding:12px 16px 6px;font-size:12px;color:var(--kd-muted);max-width:1330px}
+.sp-buehne{display:flex;gap:28px;padding:12px 16px 4px;align-items:flex-end;flex-wrap:wrap}
+.sp-fall{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.sp-lbl{font-size:10.5px;line-height:1.35;color:var(--kd-muted);max-width:320px}
+.sp-feld{display:flex;align-items:center;gap:10px;background:var(--kd-surface);box-shadow:0 0 0 1px var(--kd-line);padding:10px 12px;min-height:54px}
+.sp-feld.sunken{background:var(--kd-sunken)}
+.sp-feld .ka{width:272px;cursor:default}
+.sp-zustand .chk .x{visibility:visible}
+.sp-zustand .ka{cursor:default}
+/* Der gezeichnete Fokus: Ring 2 px --kd-accent, Abstand 2 px — auch im Sperrzustand ungedämpft */
+.sp-fokus{outline:2px solid var(--kd-accent);outline-offset:2px}
+/* ---- die eine Dämpfungsregel, je Familie: Schrift/Symbol --kd-faint, Kontur --kd-line, gefüllte Fläche --kd-sunken ---- */
+.sp-zustand .btn[aria-disabled="true"]{color:var(--kd-faint);border-color:var(--kd-line);background:var(--kd-surface);cursor:default}
+.sp-zustand .btn[aria-disabled="true"]:hover{color:var(--kd-faint);border-color:var(--kd-line);background:var(--kd-surface)}
+.sp-zustand .btn-haupt[aria-disabled="true"]{color:var(--kd-faint);background:var(--kd-sunken);border-color:var(--kd-line)}
+.sp-zustand .btn-haupt[aria-disabled="true"]:hover{color:var(--kd-faint);background:var(--kd-sunken);border-color:var(--kd-line)}
+.sp-zustand .btn-sym[aria-disabled="true"]{color:var(--kd-faint);border-color:transparent;background:none;cursor:default}
+.sp-zustand .btn-sym[aria-disabled="true"]:hover{color:var(--kd-faint);border-color:transparent;background:none}
+/* Kartenleiste (button.naechste-ziel) — Grundform aus web/kd-app.css:785–787, hier inlined, weil das Artboard sie nicht führt */
+.sp-zustand .ka .naechste{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--kd-text);line-height:1.35}
+.sp-zustand .naechste-ziel{display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer}
+.sp-zustand .naechste-box{flex:none;width:13px;height:13px;margin-top:1px;border:1px solid var(--kd-line-strong);background:var(--kd-surface)}
+.sp-zustand .naechste-ziel[aria-disabled="true"]{color:var(--kd-faint);cursor:default}
+.sp-zustand .naechste-ziel[aria-disabled="true"]:hover{color:var(--kd-faint)}
+.sp-zustand .naechste-ziel[aria-disabled="true"] .naechste-box{border-color:var(--kd-line);background:var(--kd-surface)}
+.sp-zustand .naechste-ziel[aria-disabled="true"]:hover .naechste-box{border-color:var(--kd-line);background:var(--kd-surface)}
+.sp-noten{font-size:12.5px;line-height:1.5;color:var(--kd-text);max-width:1330px;padding:16px 24px 0}
+.sp-noten h3{margin:12px 0 4px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.sp-noten ul{margin:0;padding-left:18px}
+.sp-tab{border-collapse:collapse;font-size:12px;margin:4px 0 8px}
+.sp-tab th,.sp-tab td{border:1px solid var(--kd-line);padding:3px 8px;text-align:left;vertical-align:top}
+.sp-tab th{background:var(--kd-sunken);font-weight:600}
+.sp-tab td.z{font-family:var(--kd-mono);text-align:right;white-space:nowrap}
+/* ==/SP-CSS== */
 </style>
 </helmet>
 </head>
@@ -1901,6 +1948,77 @@ erreicht dunkel 2,72:1 (hell 4,92:1) — die bestehende <span class="mono">.iz.a
 über die Fläche <span class="mono">--kd-accent-weak</span>, den 500er-Schnitt und <span class="mono">aria-current</span> markiert. Zur Kenntnis.</li>
 <li><b>Ich-Name.</b> Der Grundbestand nennt die Person nur über das Kürzel „EM“; gezeichnet ist das Kürzel im Zeichen und als Name
 (<span class="mono">ichNameOderLeer()</span>).</li>
+</ul>
+</div>
+</section>
+<section class="sp-zustand" id="sperrform"><div class="sp-cap">Zustand „Sichtbare Sperrform — Textknopf, Symbolknopf/✕ und Kartenleiste“<small>R00148 · I0135 / F0125 · Karte #138 — die sichtbare Sperrform eines Schreib-Auslösers, dessen Anfrage läuft (ADR-0025 Regel 2; ux-Vorprüfung 2026-11-13). Der Auslöser trägt <span class="mono">aria-disabled="true"</span> und <span class="mono">aria-busy="true"</span>, nie natives <span class="mono">disabled</span> — er bleibt fokussierbar, der Fokus fällt nie auf <span class="mono">BODY</span> (ADR-0010). Es ist <b>eine Dämpfungsregel für alle Familien</b>: gedämpft werden <b>Schrift und Symbol</b> auf <span class="mono">--kd-faint</span>, die <b>Kontur</b> auf <span class="mono">--kd-line</span> und eine <b>gefüllte Fläche</b> auf <span class="mono">--kd-sunken</span>; die neutrale Ruhefläche <span class="mono">--kd-surface</span> bleibt dort, wo <span class="mono">--kd-sunken</span> das Zeigen ist. Der <b>Fokusring</b> bleibt 2 px <span class="mono">--kd-accent</span> mit Abstand 2 px und wird nie gedämpft (<b>kein</b> <span class="mono">opacity</span> am Knoten). Gezeigt hell und dunkel je Familie: <b>Ruhe</b>, <b>gesperrt</b>, <b>gesperrt · fokussiert</b> — ohne Hover, ohne Druck; ein Cursorwechsel ist <b>kein</b> Zeichen. D0002: Textknopf (<span class="mono">button.btn</span>, hier „Abbrechen“ und „Anlegen“ aus der Neuen Aufgabe), Symbolknopf/✕ (<span class="mono">button.btn.btn-sym</span>, hier Teilaufgabe entfernen) und Kartenleiste (<span class="mono">button.naechste-ziel</span>). Kästchen (<span class="mono">i[role=checkbox]</span>) und Chip-✕ (<span class="mono">.ochip button</span>) folgen am Artboard D0003 <span class="mono">#sperrform</span>. Kein neues Artboard.</small></div>
+<div class="sp-thema"><div class="sp-titel">Hell</div>
+<div class="sp-teil"><b>1.</b> Textknopf <span class="mono">button.btn</span> — der Fuß der „Neuen Aufgabe“ (<span class="mono">web/ansicht.js:239</span>): „Abbrechen“ (<span class="mono">.btn</span>, Kontur) und „Anlegen“ (<span class="mono">.btn.btn-haupt</span>, gefüllte Akzentfläche, der Fall #95). Die Sperre dämpft beim gedrückten Knopf Schrift und Symbol auf <span class="mono">--kd-faint</span>, die Kontur auf <span class="mono">--kd-line</span> und die Akzentfläche auf <span class="mono">--kd-sunken</span>; „Abbrechen“ bleibt ungedämpft.</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn">Anlegen und weitere</button><button type="button" class="btn btn-haupt">Anlegen</button></span><span class="sp-lbl">Ruhe — ungedämpft · „Anlegen“ auf <span class="mono">--kd-accent</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn" aria-disabled="true" aria-busy="true">Anlegen und weitere</button><button type="button" class="btn btn-haupt" aria-disabled="true" aria-busy="true">Anlegen</button></span><span class="sp-lbl">gesperrt — Schrift/Symbol <span class="mono">--kd-faint</span>, Kontur <span class="mono">--kd-line</span>, Akzentfläche <span class="mono">--kd-sunken</span>; kein Hover, kein Cursorwechsel</span></div>
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn btn-haupt sp-fokus" aria-disabled="true" aria-busy="true">Anlegen</button></span><span class="sp-lbl">gesperrt · fokussiert — Ring 2 px <span class="mono">--kd-accent</span>, Abstand 2 px, <b>ungedämpft</b> (≥ 3:1)</span></div>
+</div>
+<div class="sp-teil"><b>2.</b> Symbolknopf/✕ <span class="mono">button.btn.btn-sym</span> — das ✕ an der Teilaufgabe „zwei“ (<span class="mono">web/ansicht.js:432</span>, <span class="mono">data-act="teil-weg"</span>, der Fall #106). Das ✕ liegt hier sichtbar vor (im Bestand erscheint es unter dem Zeiger); die Sperre dämpft nur das <b>Symbol</b> auf <span class="mono">--kd-faint</span> — die Ruhefarbe des Symbols ist <span class="mono">--kd-muted</span>, es gibt keinen Grund und keinen Rand. Das Kästchen daneben ist <b>nicht</b> der Auslöser und bleibt unverändert.</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">Ruhe — ✕ in <span class="mono">--kd-muted</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x" aria-disabled="true" aria-busy="true" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">gesperrt — Symbol <span class="mono">--kd-faint</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x sp-fokus" aria-disabled="true" aria-busy="true" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">gesperrt · fokussiert — Ring ungedämpft</span></div>
+</div>
+<div class="sp-teil"><b>3.</b> Kartenleiste <span class="mono">button.naechste-ziel</span> — die erste offene Teilaufgabe auf der Karte (<span class="mono">web/ansicht.js:849</span>, <span class="mono">data-act="teil-karte"</span>, <span class="mono">role="checkbox"</span>, der Fall #65). Die Sperre dämpft <b>Schrift und Symbol</b> auf <span class="mono">--kd-faint</span> und die <b>Kontur des Kästchens</b> auf <span class="mono">--kd-line</span>; <span class="mono">aria-checked</span> bleibt unverändert (kein Umschalten).</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel" role="checkbox" aria-checked="false" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">Ruhe — Text <span class="mono">--kd-text</span>, Kästchenrand <span class="mono">--kd-line-strong</span></span></div>
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel" role="checkbox" aria-checked="false" aria-busy="true" aria-disabled="true" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">gesperrt — Schrift/Symbol <span class="mono">--kd-faint</span>, Kästchenrand <span class="mono">--kd-line</span>, <span class="mono">aria-checked="false"</span> unverändert</span></div>
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel sp-fokus" role="checkbox" aria-checked="false" aria-busy="true" aria-disabled="true" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">gesperrt · fokussiert — Ring <span class="mono">--kd-accent</span> auf <span class="mono">--kd-sunken</span> (≥ 3:1)</span></div>
+</div>
+</div>
+<div class="sp-thema dunkel"><div class="sp-titel">Dunkel</div>
+<div class="sp-teil"><b>1.</b> Textknopf <span class="mono">button.btn</span> — derselbe Fuß der „Neuen Aufgabe“: „Abbrechen“ (<span class="mono">.btn</span>) und „Anlegen“ (<span class="mono">.btn.btn-haupt</span>). Bei der Sperre sinkt die Akzentfläche auf <span class="mono">--kd-sunken</span>, Schrift und Symbol auf <span class="mono">--kd-faint</span>; der Ring bleibt.</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn">Anlegen und weitere</button><button type="button" class="btn btn-haupt">Anlegen</button></span><span class="sp-lbl">Ruhe — ungedämpft</span></div>
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn" aria-disabled="true" aria-busy="true">Anlegen und weitere</button><button type="button" class="btn btn-haupt" aria-disabled="true" aria-busy="true">Anlegen</button></span><span class="sp-lbl">gesperrt — Schrift/Symbol <span class="mono">--kd-faint</span>, Kontur <span class="mono">--kd-line</span>, Akzentfläche <span class="mono">--kd-sunken</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><button type="button" class="btn">Abbrechen</button><button type="button" class="btn btn-haupt sp-fokus" aria-disabled="true" aria-busy="true">Anlegen</button></span><span class="sp-lbl">gesperrt · fokussiert — Ring 2 px <span class="mono">--kd-accent</span>, ungedämpft (3,42:1)</span></div>
+</div>
+<div class="sp-teil"><b>2.</b> Symbolknopf/✕ <span class="mono">button.btn.btn-sym</span> — das ✕ an der Teilaufgabe „zwei“.</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">Ruhe — ✕ in <span class="mono">--kd-muted</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x" aria-disabled="true" aria-busy="true" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">gesperrt — Symbol <span class="mono">--kd-faint</span></span></div>
+<div class="sp-fall"><span class="sp-feld"><div class="chk"><i role="checkbox" aria-checked="false" aria-label="zwei"></i><span>zwei</span><button type="button" class="btn btn-sym x sp-fokus" aria-disabled="true" aria-busy="true" aria-label="Teilaufgabe zwei entfernen">✕</button></div></span><span class="sp-lbl">gesperrt · fokussiert — Ring ungedämpft</span></div>
+</div>
+<div class="sp-teil"><b>3.</b> Kartenleiste <span class="mono">button.naechste-ziel</span> — die erste offene Teilaufgabe auf der Karte.</div>
+<div class="sp-buehne">
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel" role="checkbox" aria-checked="false" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">Ruhe — Text <span class="mono">--kd-text</span>, Kästchenrand <span class="mono">--kd-line-strong</span></span></div>
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel" role="checkbox" aria-checked="false" aria-busy="true" aria-disabled="true" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">gesperrt — Schrift/Symbol <span class="mono">--kd-faint</span>, Kästchenrand <span class="mono">--kd-line</span></span></div>
+<div class="sp-fall"><span class="sp-feld sunken"><div class="ka"><div class="r1"><span class="id">#1</span></div><div class="t">Abnahme prüfen</div><div class="naechste"><button type="button" class="naechste-ziel sp-fokus" role="checkbox" aria-checked="false" aria-busy="true" aria-disabled="true" aria-label="zwei abhaken"><i class="naechste-box" aria-hidden="true"></i><span>zwei</span></button></div></div></span><span class="sp-lbl">gesperrt · fokussiert — Ring <span class="mono">--kd-accent</span> auf <span class="mono">--kd-sunken</span> (4,09:1)</span></div>
+</div>
+</div>
+<div class="sp-noten">
+<h3>DIE DÄMPFUNGSREGEL (EIN SATZ)</h3>
+<ul>
+<li>Der gesperrte Auslöser (<span class="mono">aria-disabled="true"</span>, <span class="mono">aria-busy="true"</span>) dämpft seine <b>Bestandteile</b>, nicht den Knoten: <b>Schrift und Symbol</b> auf <span class="mono">--kd-faint</span>, die <b>Kontur</b> auf <span class="mono">--kd-line</span>, eine <b>gefüllte Fläche</b> auf <span class="mono">--kd-sunken</span>.</li>
+<li><b>Zwei benannte Ausnahmen:</b> (a) die neutrale Ruhefläche <span class="mono">--kd-surface</span> bleibt beim <b>Textknopf</b> — sie ist schon die Ruhe, und <span class="mono">--kd-sunken</span> ist dort die Zeigefläche (<span class="mono">.btn:hover</span>), sonst fielen Ruhe und Zeigen zusammen; (b) beim <b>angehakten</b> Kästchen bleibt der Zustand sichtbar (eigene Form am Artboard D0003).</li>
+<li><b>Nie</b> <span class="mono">opacity</span> am Knoten (die bestehende Regel <span class="mono">.btn:disabled</span>, <span class="mono">web/kd-app.css:8</span>), weil sie den Fokusring mitdimmt; ebenso <b>kein</b> natives <span class="mono">disabled</span> (Fokus fiele auf <span class="mono">BODY</span>). <span class="mono">cursor:default</span> und neutralisiertes <span class="mono">:hover</span> sind Teil der Regel — ein Cursorwechsel ist kein Zeichen der Sperre.</li>
+<li><b>Der Fokusring bleibt</b> 2 px <span class="mono">--kd-accent</span> mit Abstand 2 px, ungedämpft.</li>
+</ul>
+<h3>KONTRAST (WCAG, GERECHNET AUS <span class="mono">web/kd-tokens.css</span>: OKLCH → SRGB → WCAG), HELL / DUNKEL</h3>
+<table class="sp-tab"><thead><tr><th>Paar</th><th>Rolle</th><th class="z">hell</th><th class="z">dunkel</th></tr></thead><tbody>
+<tr><td>Ruhe-Schrift <span class="mono">--kd-text</span> auf <span class="mono">--kd-surface</span></td><td>Textknopf, ungedämpft</td><td class="z">16,21</td><td class="z">12,63</td></tr>
+<tr><td>Ruhe-Symbol <span class="mono">--kd-muted</span> auf <span class="mono">--kd-surface</span></td><td>Symbolknopf, ungedämpft</td><td class="z">6,44</td><td class="z">6,94</td></tr>
+<tr><td><b>gedämpft <span class="mono">--kd-faint</span> auf <span class="mono">--kd-surface</span></b></td><td>Schrift/Symbol gesperrt — Textknopf, Symbolknopf</td><td class="z">3,59</td><td class="z">4,40</td></tr>
+<tr><td><b>gedämpft <span class="mono">--kd-faint</span> auf <span class="mono">--kd-sunken</span></b></td><td>Schrift/Symbol gesperrt — Kartenleiste, gedämpfte Fläche</td><td class="z">3,05</td><td class="z">5,26</td></tr>
+<tr><td>gedämpft <span class="mono">--kd-faint</span> auf <span class="mono">--kd-bg</span></td><td>Schrift/Symbol gesperrt auf dem Fenstergrund</td><td class="z">3,29</td><td class="z">4,98</td></tr>
+<tr><td>Kontur <span class="mono">--kd-line</span> auf <span class="mono">--kd-surface</span></td><td>gedämpfte Kontur (Ruhe <span class="mono">--kd-line-strong</span> 2,11 / 1,89)</td><td class="z">1,46</td><td class="z">1,31</td></tr>
+<tr><td><b>Fokusring <span class="mono">--kd-accent</span> auf <span class="mono">--kd-surface</span></b></td><td>gesperrt · fokussiert (≥ 3:1, AK 20)</td><td class="z">5,95</td><td class="z">3,42</td></tr>
+<tr><td>Fokusring <span class="mono">--kd-accent</span> auf <span class="mono">--kd-sunken</span></td><td>gesperrt · fokussiert auf dem Board</td><td class="z">5,07</td><td class="z">4,09</td></tr>
+<tr><td>Fokusring <span class="mono">--kd-accent</span> auf <span class="mono">--kd-bg</span></td><td>gesperrt · fokussiert im Fenster</td><td class="z">5,46</td><td class="z">3,87</td></tr>
+</tbody></table>
+<ul><li>Der Fokusring hält <b>in beiden Themen ≥ 3:1</b> (hell 5,95 · dunkel 3,42 gegen <span class="mono">--kd-surface</span>; auf <span class="mono">--kd-sunken</span> 5,07 / 4,09). Die gedämpfte Schrift/das Symbol hält ebenfalls ≥ 3:1 (hell 3,59, dunkel 4,40 auf <span class="mono">--kd-surface</span>; 3,05 / 5,26 auf <span class="mono">--kd-sunken</span>). Die <b>Kontur</b> ist eine Trennlinie (1,46 / 1,31), wie in den Nachbarzuständen.</li></ul>
+<h3>GEMESSEN (HEADLESS CHROMIUM, PROBE AUS DER ABLAGE)</h3>
+<ul><li>Die Zustandsfläche misst <b>1440/1440</b> (<span class="mono">scrollWidth = clientWidth</span>) — kein Querscrollen. Die Dämpfung ist an den <b>berechneten</b> Farben belegt: <span class="mono">.btn</span> Ruhe <span class="mono">--kd-text</span> (0,24 0,02 255) → gesperrt <span class="mono">--kd-faint</span> (0,62 0,014 255); <span class="mono">.btn-haupt</span> Fläche <span class="mono">--kd-accent</span> (0,5 0,13 255) → <span class="mono">--kd-sunken</span> (0,94 0,007 250); <span class="mono">.btn-sym</span> Ruhe <span class="mono">--kd-muted</span> (0,48) → <span class="mono">--kd-faint</span>; <span class="mono">.naechste-ziel</span> <span class="mono">--kd-text</span> → <span class="mono">--kd-faint</span>; der <b>Fokusring</b> bleibt <span class="mono">--kd-accent</span> (0,5 0,13 255) — ungedämpft. Gezeichnet sind 14 gesperrte Auslöser und 6 Fokusringe.</li></ul>
+<h3>OFFEN / ZUR FREIGABE</h3>
+<ul>
+<li><b>Freigabe.</b> Dieser Zustand ist dem product-owner zur Freigabe vorzulegen (Leitplanke „Jede Gestaltung wird freigegeben, bevor sie gebaut wird“, R00148 Offene Fragen). Freizugeben ist: die Dämpfungsregel in einem Satz (oben), die Werte je Thema (Schrift/Symbol <span class="mono">--kd-faint</span>, Kontur <span class="mono">--kd-line</span>, gefüllte Fläche <span class="mono">--kd-sunken</span>, Ring 2 px <span class="mono">--kd-accent</span>) und die Stelle im Artboard (Zustand <span class="mono">#sperrform</span>). Frei baubar bleibt die Technik (ADR-0025 Option A, Regel 1/2/4/5/6, Nachtrag N2).</li>
+<li><b>Härtung #151 nicht hier.</b> Die Dämpfung „erst ab etwa 200 ms“ (Karte #151) ist <b>nicht</b> gezeichnet — diese Zeichnung zeigt den Sperrzustand selbst, nicht seine Anlaufverzögerung.</li>
 </ul>
 </div>
 </section>
