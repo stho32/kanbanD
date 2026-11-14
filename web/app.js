@@ -401,7 +401,7 @@ async function anhaengeHochladen(dateien) {
     try { await anhangSenden(S.ui.offen, d, d.name); } catch (f) { fensterMelden(f.message); break; }
     S.ui.gespeichert = Date.now();
   }
-  await laden();
+  render();
 }
 
 /** Lädt `datei` als Multipart unter `name` an Aufgabe `nummer` hoch; liefert den Anhang des Servers, wirft mit seinem Grund. */
@@ -426,7 +426,7 @@ async function termineSchreiben(liste, formularLeeren) {
     u.tfFehler = null;
     if (formularLeeren) u.tf = { ...TERMIN_LEER };
   } catch (f) { u.tfFehler = f.message; }
-  return laden();
+  render();
 }
 
 /** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. Vor diesem Laden setzt sie die Marke: was davor
@@ -630,7 +630,7 @@ async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
     if (imFensterFuss) fensterMelden(`nicht rückgängig: ${f.message}`);
     else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
   }
-  await laden();
+  render();
 }
 
 /** Der Hinweis im Fenster deckt den unteren Rand des Körpers; seine Höhe hält dort den Fokus frei (scroll-padding, PO Z. 162). */
@@ -705,7 +705,7 @@ async function aufgabeAendern(nummer, aenderung, feld = null) {
     await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, aenderung));
     S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { fensterMelden(f.message, feld); gelungen = false; }
-  await laden();
+  render();
   return gelungen;
 }
 
@@ -725,7 +725,7 @@ async function mehrereAendern(aenderungen) {
     await durchDieSchlange(() => api('PATCH', '/api/aufgaben/mehrere', { aenderungen }));
     S.ui.gespeichert = Date.now(); fensterMelden(null);
   } catch (f) { S.ui.fehler = f.message; }
-  await laden();
+  render();
 }
 
 /** Mehrere Karten an `index` der Spalte, in Lesereihenfolge; rückgängig legt jede an ihren alten Platz. */
@@ -744,7 +744,7 @@ async function zieleSenden(ziele, zurueck, text) {
     const r = await durchDieSchlange(() => api('POST', `/api/boards/${encodeURIComponent(u.slug)}/bewegen-mehrere`, { ziele }));
     if (r.bewegt) u.hinweis = { text, at: Date.now(), ...(zurueck ? { undo: { art: 'ziele', ziele: zurueck } } : {}), ...(r.warnungen && r.warnungen.length ? { warnungen: r.warnungen, dauer: 20000 } : {}) };
   } catch (f) { u.fehler = f.message; }
-  return laden();
+  render();
 }
 
 /** Strg + Klick schaltet eine Karte um, Umschalt + Klick wählt die Reihe vom Anker (R00065). */
@@ -1184,8 +1184,8 @@ async function boardUmbenennen(slug, eingegebenerWert) {
   S.ui.boardUmbenennen = null;
   S.ui.popFehler = null;
   S.ui.hinweis = { text: `Board „${titel}“ umbenannt`, at: Date.now() };
-  await laden();
   S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
+  render();
   render();
 }
 
@@ -1234,8 +1234,8 @@ async function alBestaetigen() {
   }
   S.ui.hinweis = { text: d.art === 'board-loeschen' ? `Board „${d.titel}“ endgültig gelöscht` : `Board „${d.titel}“ archiviert`, at: Date.now() };
   S.ui.alDialog = null;
-  await laden();
   S.ui.fokus = naechsteBoardZeile(reihe, d.slug);
+  render();
   render();
 }
 
@@ -1287,8 +1287,8 @@ async function aufgabeLoeschenBestaetigen(d) {
   if (d.ausFenster) S.ui.offen = null;
   S.ui.hinweis = { text: `#${d.nummer} endgültig gelöscht`, at: Date.now() };
   S.ui.alDialog = null;
-  await laden();
   S.ui.fokus = naechsteKarteNachLoeschen(d.index);
+  render();
   render();
 }
 
@@ -1311,8 +1311,8 @@ async function boardWiederOeffnen(slug) {
     return;
   }
   S.ui.hinweis = { text: `Board „${titel}“ wieder geöffnet`, at: Date.now() };
-  await laden();
   S.ui.fokus = `[data-act="board-wahl"][data-arg="${slug}"]`;
+  render();
   render();
 }
 
@@ -1601,7 +1601,7 @@ async function aktion(a, arg, wert) {
       case 'alle-freigeben': {
         if (ichNoetig()) break;
         for (const { a } of reservierteDesBoards()) await durchDieSchlange(() => api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`)).catch(f => { fensterMelden(f.message); });
-        await laden();
+        render();
         return;
       }
       case 'archivieren': {
@@ -1668,7 +1668,8 @@ async function aktion(a, arg, wert) {
         const b = S.board;
         if (arg === 'start') {
           try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/start`, { start: wert || null })); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
-          return laden();
+          render();
+          return;
         }
         if (arg === 'ziel') return termineSchreiben(b.termine.map((t, i) => ({ ...t, ziel: wert !== '' && i === +wert })));
         const f = { ...b.fieber, gelb: [...b.fieber.gelb], rot: [...b.fieber.rot] };
@@ -1687,7 +1688,8 @@ async function aktion(a, arg, wert) {
       case 'fb-verwerfen': {
         try { await durchDieSchlange(() => api('DELETE', `/api/boards/${encodeURIComponent(u.slug)}/fieber/cache`)); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
         u.fieberNeu = null; u.fieberLauf = null;
-        return laden();
+        render();
+        return;
       }
       case 'tf-entfernen': {
         if (ichNoetig()) break;
@@ -1744,7 +1746,6 @@ async function aktion(a, arg, wert) {
           const r = await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten`, { ebene: f.ebene, eltern: f.eltern, name: f.name, fertig_kriterium: f.fertig_kriterium, eingabe_ausgabe: bubble ? f.eingabe_ausgabe : '', aufwand: bubble ? f.aufwand : '' }));
           u.pop = null; u.wbsNeu = null;
           u.hinweis = { text: `${r.id} angelegt · WBS-Datei nicht committet`, at: Date.now() };
-          await laden();
           return act('wbs-gehe', r.id);
         } catch (fehler) { f.fehler = fehler.message; u.fokus = '#wbs-neu-name'; break; }
       }
@@ -1758,7 +1759,8 @@ async function aktion(a, arg, wert) {
           await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund }));
           u.hinweis = { text: `${arg} verworfen · WBS-Datei nicht committet`, at: Date.now() };
         } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
-        return laden();
+        render();
+        return;
       }
       case 'wirkung-neu': {
         if (ichNoetig()) break;
@@ -1900,7 +1902,8 @@ async function aktion(a, arg, wert) {
           const geaendert = await durchDieSchlange(() => api('POST', '/api/aufgaben/archivieren', { nummern }));
           u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} aus „${arg}“ archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
         } catch (f) { u.fehler = f.message; }
-        return laden();
+        render();
+        return;
       }
       case 'spalte-schieben': {
         if (ichNoetig()) break;
@@ -1908,7 +1911,8 @@ async function aktion(a, arg, wert) {
         const neu = S.board.spalten.map(sp => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || null }));
         [neu[i], neu[i + d]] = [neu[i + d], neu[i]];
         try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, neu)); } catch (f) { u.fehler = f.message; }
-        return laden();
+        render();
+        return;
       }
       case 'verschieben': { const [nr, spalte] = arg.split('|'); u.fokusKarte = +nr; return act('bewegen', JSON.stringify({ nummer: +nr, spalte, index: 9999 })); }
       case 'klasse-setzen': { const [nr, k] = arg.split('|'); if (ichNoetig()) break; return aufgabeAendern(+nr, { klasse: k || null }); }
@@ -1931,7 +1935,8 @@ async function aktion(a, arg, wert) {
           const kopie = await durchDieSchlange(() => api('POST', `/api/aufgaben/${nr}/duplizieren`, ziel));
           u.hinweis = { text: `#${kopie.nummer} „${kopie.titel}“ angelegt`, undo: { art: 'archivieren', nummern: [kopie.nummer] }, at: Date.now() };
         } catch (f) { u.hinweis = { text: f.message, at: Date.now() }; }
-        return laden();
+        render();
+        return;
       }
       case 'kopieren': {
         const a = aufgabe(+arg), text = `#${a.nummer} ${a.titel}`;
@@ -1990,7 +1995,8 @@ async function aktion(a, arg, wert) {
           u.auswahl = [];
           u.hinweis = { text: `${geaendert.length} ${geaendert.length === 1 ? 'Karte' : 'Karten'} archiviert`, undo: { art: 'zurueckholen', nummern: geaendert }, at: Date.now() };
         } catch (f) { u.fehler = f.message; }
-        return laden();
+        render();
+        return;
       }
       case 'mich': {
         if (ichNoetig()) break;
@@ -2079,8 +2085,10 @@ async function aktion(a, arg, wert) {
         try {
           await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
           u.einr = null; u.palFuer = null;
+          // Das Neuladen legt die Einrichtungsansicht neu an (sichtFolgen) — erst danach trägt sie „gespeichert“.
           await laden();
           u.einr.gespeichert = true;
+          render();
           break;
         } catch (f) { u.einr.fehler = f.message; break; }
       }
@@ -2132,7 +2140,7 @@ async function aktion(a, arg, wert) {
         }));
         ichSetzen(e.personen[0].kuerzel);
         location.hash = '#/board/' + antwort.board;
-        return laden();
+        return;
       }
       default: return;
     }
