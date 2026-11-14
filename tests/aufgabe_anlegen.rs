@@ -70,6 +70,74 @@ async fn spalte_ohne_board_ist_400_und_legt_nichts_an() {
     assert_eq!(s, 201, "Board und Spalte zusammen bleiben gültig: {a}");
 }
 
+/// Eine Commit-Nachricht ist abgeleiteter Text (ADR-0005 N1): ein Titel mit NUL-Byte bleibt in der Datei,
+/// die Nachricht trägt kein Steuerzeichen, und die Karte ist committet — kein halber Zustand.
+#[tokio::test]
+async fn titel_mit_nul_wird_committet_und_die_nachricht_traegt_kein_steuerzeichen() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let vorher: usize = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "a\u{0}b", "key": "nul-1"})).await;
+    assert_eq!(s, 201, "nie 500: {a}");
+    assert_eq!(a["neu"], true);
+    let datei = format!("aufgaben/{}", a["datei"].as_str().unwrap());
+    assert!(tmp.path().join(&datei).exists(), "die Datei bleibt: {datei}");
+    assert!(lies(tmp.path(), &datei).contains("title: \"a\\u0000b\""), "die Fachdaten tragen den Titel: {}", lies(tmp.path(), &datei));
+    assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap(), vorher + 1, "genau ein Commit");
+    let nachricht = git(tmp.path(), &["log", "-1", "--format=%s"]);
+    assert_eq!(nachricht.lines().count(), 1, "eine Zeile: {nachricht:?}");
+    assert!(!nachricht.chars().any(char::is_control), "kein Steuerzeichen: {nachricht:?}");
+    assert!(nachricht.contains("angelegt"), "{nachricht:?}");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "kein Git-Rest");
+    let (s, b) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "a\u{0}b", "key": "nul-1"})).await;
+    assert_eq!((s, &b["neu"], &b["nummer"]), (200, &json!(false), &a["nummer"]), "der Schlüssel findet die committete Karte: {b}");
+}
+
+/// Derselbe Weg mit einem Titel über der Argumentgrenze: die Datei trägt ihn ganz, die Nachricht bleibt kurz.
+#[tokio::test]
+async fn titel_ueber_der_argumentgrenze_wird_committet_und_die_nachricht_bleibt_kurz() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let titel = "x".repeat(1_000_000);
+    let vorher: usize = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": titel, "key": "lang-1"})).await;
+    assert_eq!(s, 201, "nie 500");
+    assert_eq!(a["neu"], true);
+    let datei = format!("aufgaben/{}", a["datei"].as_str().unwrap());
+    assert!(lies(tmp.path(), &datei).contains(&titel), "die Fachdaten tragen den Titel ganz");
+    assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap(), vorher + 1, "genau ein Commit");
+    let nachricht = git(tmp.path(), &["log", "-1", "--format=%s"]);
+    assert_eq!(nachricht.lines().count(), 1, "eine Zeile");
+    assert!(nachricht.chars().count() <= 120, "die Nachricht ist kurz: {} Zeichen", nachricht.chars().count());
+    assert!(nachricht.ends_with("angelegt"), "die Nachricht behält ihre Aussage: {nachricht:?}");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "kein Git-Rest");
+    let (s, b) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": titel, "key": "lang-1"})).await;
+    assert_eq!((s, &b["neu"], &b["nummer"]), (200, &json!(false), &a["nummer"]), "der Schlüssel findet die committete Karte: {b}");
+}
+
+/// Eine gescheiterte Aktion hinterlässt nichts (ADR-0005 N1): scheitert der Commit, ist die Datei weg und der
+/// Index so wie vorher; derselbe Schlüssel legt danach neu an, statt eine nie committete Karte zu melden.
+#[tokio::test]
+async fn gescheiterter_commit_laesst_keine_datei_und_keinen_git_rest() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::eingerichtet(tmp.path());
+    let haken = tmp.path().join(".git/hooks/pre-commit");
+    std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let kopf = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let (s, f) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "halb", "key": "halb-1"})).await;
+    assert_eq!(s, 500, "{f}");
+    assert!(f["fehler"].as_str().unwrap().contains("aufgaben/0001-halb.md"), "die Meldung nennt den Pfad: {f}");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "kein Git-Rest");
+    assert!(!tmp.path().join("aufgaben/0001-halb.md").exists(), "keine halbe Karte");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), kopf, "kein Commit");
+    std::fs::remove_file(&haken).unwrap();
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "halb", "key": "halb-1"})).await;
+    assert_eq!((s, &a["neu"]), (201, &json!(true)), "derselbe Schlüssel legt neu an: {a}");
+}
+
 #[tokio::test]
 async fn board_ohne_spalten_ist_ungueltig() {
     let tmp = tempfile::tempdir().unwrap();
