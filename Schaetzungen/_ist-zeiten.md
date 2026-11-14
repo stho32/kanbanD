@@ -557,3 +557,9 @@ Nie vom User erfragen.
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0689 Anlegen trägt den Schlüssel | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0690 Entwurfs-✕ über eine stabile Kennung | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | Nacharbeit Auto-Reviews B1–B4, S1/S3/S4 (B0687, B0688, B0689) | Bug | - | 0,6h | 0,6h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0697 Hilfen breiteSetzen und bereit samt Regelsatz | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0698 kultur US-6 wartet auf den fertigen Bericht | Standard | 1-2h | 0,7h | 0,7h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0699 r00126 AK 7 nach bereit und auf gestellter Uhr | Standard | 2-3h | 0,8h | 0,8h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0700 r00105-kostenbericht wartet auf Board und Bericht | Standard | 1-2h | 0,8h | 0,8h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0701 r00145 US-9 nach breiteSetzen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | Lauf #139 (Abnahme-Probe: 3 Volläufe, 4×10 Wiederholungen, Gate) | Konsolidierung | — | — | 1,0h | autonom |
