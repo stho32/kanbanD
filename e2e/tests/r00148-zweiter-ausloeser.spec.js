@@ -42,15 +42,20 @@ const commits = k => +k.git('rev-list', '--count', 'HEAD');
  * `anzahl` zählt die gehaltenen Anfragen: ohne Sperre sind es beim Doppelklick zwei.
  */
 async function anfragenHalten(page, passt, methode) {
-  let scharf = true, anzahl = 0, oeffnen;
+  let scharf = true, anzahl = 0, gesamt = 0, oeffnen, ausgang = 'durch';
   const tor = new Promise(ok => { oeffnen = ok; });
   await page.route(url => passt(url.pathname), async route => {
+    if (route.request().method() === methode) gesamt++;
     if (!scharf || route.request().method() !== methode) return route.fallback();
     anzahl++;
     await tor;
+    // `freigeben('abbrechen')` reißt die Anfrage ab (Netzfehler), `freigeben('500')` beantwortet sie mit einem Serverfehler
+    if (ausgang === 'abbrechen') return route.abort();
+    if (ausgang === '500') return route.fulfill({ status: 500, json: { fehler: 'Probe: Serverfehler' } });
     await route.continue();
   });
-  return { anzahl: () => anzahl, freigeben: () => { scharf = false; oeffnen(); } };
+  // `gesamt` zählt auch, was nach der Freigabe kommt: eine zweite Anfrage, die in der Schlange hinter der ersten wartete
+  return { anzahl: () => anzahl, gesamt: () => gesamt, freigeben: (wie = 'durch') => { ausgang = wie; scharf = false; oeffnen(); } };
 }
 
 /** Wartet, bis die erste gehaltene Anfrage draußen ist (die Aktion „läuft“). */
@@ -530,4 +535,215 @@ test.describe('R00148 Nacharbeit: Schreibwirkung entscheidet, jeder Weg ist gesp
     await expect.poll(() => k.lies(KARTE)).toContain('archived:');
     expect(halte.anzahl()).toBe(1);
   });
+});
+
+/** Karte #1 mit drei Teilaufgaben und zwei Wirkungen — die Familien ✕, Kästchen und Chip-✕ an einem Fenster. */
+const MIT_WIRKUNGEN = 'wbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n';
+
+test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16, 19, 20)', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN, MIT_WIRKUNGEN))); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const fensterOeffnen = async (page) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('.ka[data-id="1"] .t').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  };
+
+  /** Zweimal Enter auf dem fokussierten Auslöser (Klick mit detail 0): nur die Sperre hält den zweiten auf, nicht der
+      Wächter gegen den zweiten Klick einer Geste. Der Auslöser behält dazwischen den Fokus (AK 14). Danach wartet die
+      Probe, bis die Schlange leer ist — eine zweite Anfrage stünde sonst noch hinter der ersten (`halte.gesamt()`). */
+  async function zweimalEnter(page, ausloeser, halte) {
+    const seitenfehler = [];
+    page.on('pageerror', f => seitenfehler.push(f.message));
+    await ausloeser.focus();
+    await page.keyboard.press('Enter');
+    await bisAnfrageLaeuft(halte);
+    await expect(ausloeser, 'der Auslöser behält den Fokus').toBeFocused();
+    await expect(ausloeser).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Enter');
+    expect(halte.anzahl(), 'die zweite Betätigung sendet nicht').toBe(1);
+    halte.freigeben();
+    await expect.poll(() => page.evaluate(() => schlangeOffen()), { message: 'die Schlange ist leer' }).toBe(0);
+    expect(halte.gesamt(), 'auch nach der Antwort keine zweite Anfrage').toBe(1);
+    expect(seitenfehler, 'keine zweite Ausführung ins Leere').toEqual([]);
+  }
+
+  for (const ausgang of ['abbrechen', '500']) {
+    test(`AK 16: scheitert die Anfrage (${ausgang}), ist derselbe Auslöser wieder bedienbar`, async ({ page }) => {
+      await fensterOeffnen(page);
+      const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/1', 'DELETE');
+      const knopf = page.getByLabel('Teilaufgabe zwei entfernen');
+      await knopf.click();
+      await bisAnfrageLaeuft(halte);
+      await expect(knopf).toHaveAttribute('aria-disabled', 'true');
+      halte.freigeben(ausgang);
+
+      await expect(knopf, 'die Sperre endet mit der Ablehnung').not.toHaveAttribute('aria-disabled', 'true');
+      expect(k.lies(KARTE), 'nichts wurde entfernt').toContain('- [ ] zwei');
+      const zweite = page.waitForRequest(r => r.method() === 'DELETE' && new URL(r.url()).pathname === '/api/aufgaben/1/teilaufgaben/1');
+      await knopf.click();
+      await zweite;
+      await expect.poll(() => k.lies(KARTE)).toContain('- [ ] eins\n- [ ] drei');
+    });
+  }
+
+  test('AK 12 (nf-anlegen): zweimal Enter auf „Anlegen“ und zweimal Enter im Titel senden je genau einen POST', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const vorher = commits(k);
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await dialog.getByLabel('Titel der neuen Aufgabe').fill('per Knopf');
+    let halte = await anfragenHalten(page, p => p === '/api/aufgaben', 'POST');
+    await zweimalEnter(page, dialog.getByRole('button', { name: 'Anlegen', exact: true }), halte);
+    await expect(page.locator('.ka', { hasText: 'per Knopf' })).toHaveCount(1);
+    await expect.poll(() => commits(k)).toBe(vorher + 1);
+    expect(halte.anzahl()).toBe(1);
+    await page.unrouteAll({ behavior: 'wait' });
+
+    // Enter im Titel ist derselbe Auslöser „Anlegen“
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    const titel = page.getByRole('dialog', { name: 'Neue Aufgabe' }).getByLabel('Titel der neuen Aufgabe');
+    await titel.fill('per Enter');
+    halte = await anfragenHalten(page, p => p === '/api/aufgaben', 'POST');
+    await titel.press('Enter');
+    await bisAnfrageLaeuft(halte);
+    await titel.press('Enter');
+    expect(halte.anzahl(), 'Enter im Titel sendet kein zweites Mal').toBe(1);
+    halte.freigeben();
+    await expect(page.locator('.ka', { hasText: 'per Enter' })).toHaveCount(1);
+    await expect.poll(() => commits(k)).toBe(vorher + 2);
+    expect(halte.anzahl()).toBe(1);
+  });
+
+  test('AK 12 (Fertig im Spalten-Dialog): zweimal Enter auf „Fertig“ sendet genau einen PUT', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const vorher = commits(k);
+    await ausMehr(page, 'Spalten einrichten');
+    await page.getByLabel('Kommentar Zu erledigen').fill('nur einmal');
+    const halte = await anfragenHalten(page, p => p === '/api/boards/entwicklung/spalten', 'PUT');
+    await zweimalEnter(page, page.getByRole('button', { name: 'Fertig', exact: true }), halte);
+    await expect(page.locator('.kz-modus')).toHaveCount(0);
+    await expect.poll(() => commits(k)).toBe(vorher + 1);
+    expect(halte.anzahl(), 'genau ein PUT …/spalten').toBe(1);
+    expect(k.lies(BOARD).match(/nur einmal/g) || []).toHaveLength(1);
+  });
+
+  test('AK 12 (bestand-tauschen): zweimal Enter auf „⇄ Achsen tauschen“ sendet genau einen PUT', async ({ page }) => {
+    await k.stoppen();
+    const mitLabels = bestandMit(DREI_OFFEN);
+    mitLabels[BOARD] = '---\nreport-labels: {rows: repo, columns: nc}\n---\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-abnahme-pruefen.md)\n- [#2](../aufgaben/0002-shop.md)\n\n## In Arbeit\n\n## Erledigt\n';
+    mitLabels['aufgaben/0002-shop.md'] = '---\nid: 2\ntitle: shop\nlabels: ["repo:shop", "nc:304"]\n---\n';
+    k = await kanbanStarten(einrichten(mitLabels));
+    await page.goto(k.adresse + '#/berichte/bestand');
+    await filterOeffnen(page);
+    const vorher = commits(k);
+    const halte = await anfragenHalten(page, p => p === '/api/boards/entwicklung/bestand', 'PUT');
+    await zweimalEnter(page, page.getByRole('button', { name: '⇄ Achsen tauschen' }), halte);
+    await expect.poll(() => k.lies(BOARD)).toContain('report-labels: {rows: nc, columns: repo}');
+    expect(halte.anzahl(), 'genau ein PUT …/bestand').toBe(1);
+    expect(commits(k)).toBe(vorher + 1);
+  });
+
+  test('AK 12 (wirkung-weg): zweimal Enter auf dem ✕ der ersten Wirkung sendet genau ein DELETE', async ({ page }) => {
+    await fensterOeffnen(page);
+    const vorher = commits(k);
+    await reiter(page, 'Details');
+    const halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/wbs-effects/'), 'DELETE');
+    await zweimalEnter(page, page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0), halte);
+    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(1);
+    await expect.poll(() => commits(k)).toBe(vorher + 1);
+    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
+    expect(k.lies(KARTE)).toContain('node: I0014');
+    expect(k.lies(KARTE)).not.toContain('node: D0002');
+  });
+
+  test('AK 14: der gesperrte Auslöser bleibt per Tab erreichbar', async ({ page }) => {
+    await fensterOeffnen(page);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/1', 'DELETE');
+    const knopf = page.getByLabel('Teilaufgabe zwei entfernen');
+    await knopf.focus();
+    await page.keyboard.press('Enter');
+    await bisAnfrageLaeuft(halte);
+    await expect(knopf).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Shift+Tab');
+    await expect(knopf, 'der Fokus hat den Auslöser verlassen').not.toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(knopf, 'Tab erreicht den gesperrten Auslöser').toBeFocused();
+    expect(await knopf.evaluate(e => e.disabled), 'kein natives disabled').toBe(false);
+    halte.freigeben();
+    await expect.poll(() => k.lies(KARTE)).toContain('- [ ] eins\n- [ ] drei');
+  });
+
+  /** Sichtbare Sperrform am Knoten: kein opacity, im Fokus ein ungedämpfter Ring mit mindestens 3:1 zur Fläche. */
+  async function sperrformPruefen(page, ausloeser, familie, fokussierbar = true) {
+    await expect(ausloeser, familie).toHaveAttribute('aria-disabled', 'true');
+    expect(await ausloeser.evaluate(e => getComputedStyle(e).opacity), `${familie}: kein opacity am Knoten`).toBe('1');
+    if (!fokussierbar) return;
+    await page.keyboard.press('Shift'); // die letzte Eingabe war die Tastatur: der Fokus zeigt seinen Ring (:focus-visible)
+    await ausloeser.focus();
+    const ring = await ausloeser.evaluate(e => { const s = getComputedStyle(e); return { stil: s.outlineStyle, breite: s.outlineWidth, farbe: s.outlineColor }; });
+    expect(ring.stil, `${familie}: Fokusring`).toBe('solid');
+    expect(ring.breite, `${familie}: Fokusring 2 px`).toBe('2px');
+    await page.evaluate(() => window.kdKontrast || null);
+    const kontrast = await ausloeser.evaluate((e, farbe) => window.kdKontrast.schriftGegenGrund(e.parentElement, farbe), ring.farbe);
+    expect(kontrast, `${familie}: Fokusring ${ring.farbe} ≥ 3:1`).toBeGreaterThanOrEqual(3);
+  }
+
+  for (const name of ['light', 'dark']) {
+    test(`AK 19/20 (${name}): gesperrte Auslöser je Familie — kein opacity, Fokusring ≥ 3:1, Kästchen behält aria-checked`, async ({ page }) => {
+      await page.goto(k.adresse);
+      await thema(page, name);
+      await liveBereit(page);
+      await kontrastFarben(page, '#000', '#fff'); // baut das Messwerkzeug ein
+
+      // Kartenleiste (D0002)
+      let halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'PATCH');
+      const leiste = page.locator('.ka[data-id="1"] .naechste-ziel');
+      await leiste.click();
+      await bisAnfrageLaeuft(halte);
+      await sperrformPruefen(page, leiste, 'Kartenleiste');
+      halte.freigeben();
+      await expect(leiste).not.toHaveAttribute('aria-disabled', 'true');
+      await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins');
+      await page.unrouteAll({ behavior: 'wait' });
+
+      // Textknopf (D0002): „Anlegen“ im Fenster „Neue Aufgabe“
+      await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+      await dialog.getByLabel('Titel der neuen Aufgabe').fill('Sperrform');
+      halte = await anfragenHalten(page, p => p === '/api/aufgaben', 'POST');
+      const anlegen = dialog.getByRole('button', { name: 'Anlegen', exact: true });
+      await anlegen.click();
+      await bisAnfrageLaeuft(halte);
+      await sperrformPruefen(page, anlegen, 'Textknopf');
+      halte.freigeben();
+      await expect(page.locator('.ka', { hasText: 'Sperrform' })).toHaveCount(1);
+      await page.unrouteAll({ behavior: 'wait' });
+
+      // Symbolknopf ✕, Kästchen und Chip-✕ (D0003) im Aufgabenfenster — alle drei zugleich gesperrt (die Schlange hält sie)
+      await page.locator('.ka[data-id="1"] .t').click();
+      await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+      await reiter(page, 'Details');
+      halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'DELETE');
+      const chip = page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0);
+      await chip.click();
+      await bisAnfrageLaeuft(halte);
+      await sperrformPruefen(page, chip, 'Chip-✕');
+      await reiter(page, 'Inhalt');
+      const kreuz = page.getByLabel('Teilaufgabe drei entfernen');
+      await kreuz.click();
+      await sperrformPruefen(page, kreuz, 'Symbolknopf ✕');
+      const kaestchen = page.locator('#fenster .chk i[role="checkbox"][aria-label="zwei"]');
+      const vorher = await kaestchen.getAttribute('aria-checked');
+      await kaestchen.click();
+      await sperrformPruefen(page, kaestchen, 'Kästchen', false);
+      await expect(kaestchen, 'das Kästchen wechselt seinen Zustand nicht').toHaveAttribute('aria-checked', vorher);
+      halte.freigeben();
+    });
+  }
 });
