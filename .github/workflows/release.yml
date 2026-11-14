@@ -80,7 +80,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-          npx playwright test
+          npx playwright test --workers=2  # der Runner hat 4 Kerne; mit 4 Workern wackelten je Lauf 1–4 Specs an Zeitgrenzen (#139)
 
       - name: E2E-Befunde sichern
         if: failure()
