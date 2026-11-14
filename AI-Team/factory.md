@@ -86,6 +86,15 @@ Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **gan
 - **Rollen fortsetzen statt neu starten** (Betreiber 2026-10-31): planer, architekt, product-owner und entwickler werden für die nächste verwandte Karte bzw. für Nachträge per SendMessage fortgesetzt, solange ihr Kontext unter etwa 150.000 Tokens liegt (Wert aus der letzten Abschlussmeldung); darüber und bei fremdem Codebereich frisch starten. Prüfende Rollen (Reviews, Entwicklertest) starten je Karte frisch — der unabhängige Blick ist gewollt; nur ihre Wiederholung nach Nacharbeit an derselben Karte wird fortgesetzt. Die Agent-ID je Rolle hält der Director in der Logbuchzeile fest.
 - **Reihenfolge der Karten** (Betreiber 2026-10-31, nach der UX-Durchsicht): erst #7/#14 (R00101), dann R00095 → R00096 → R00097 → R00098 → R00099 → R00100, danach die übrigen UX-Karten (#8–#13, #15, #16); Features der Wartungsfabrik bringen den größten Nutzen je Token.
 
+### Modellverteilung (Betreiber 2026-11-14)
+
+DeepSeek ist der Standard für alle Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
+
+- **Fest auf Claude Sonnet**: `code-reviewer` (läuft bei jeder Karte, letztes Tor vor dem Entwicklertest, anderes Modell als der Erbauer) und `security-reviewer` (selten, ein übersehener Fehler ist teuer). Der Director bleibt Claude.
+- **Eskalation je Karte auf Claude** — `entwickler`: ab der zweiten Nacharbeit einer Karte oder wenn die Karte Datenformat, Zugriffsgrenzen, Nebenläufigkeit oder einen Bug mit unklarer Ursache betrifft; `planer` und `architekt`: bei Karten mit Label `architektur`, `sicherheit` oder `datenformat`. Die Entscheidung steht im Zugkommentar. **Noch nicht schaltbar**: `board.py beginne` kennt je Lauf nur `--modell`, keinen Treiber — bis die Factory das kann (Vorschlag vom 2026-11-14), laufen diese Rollen weiter über opencode, und der Director nennt dem Betreiber jede Karte, die die Eskalation gebraucht hätte.
+- **Alle übrigen Rollen** bleiben auf DeepSeek.
+- **Messen**: nach etwa zehn Karten Nacharbeiten je Karte und Kosten je Karte aus dem Logbuch vergleichen, vorher gegen nachher.
+
 ### Befunde aus Reviews und Tests (Betreiber 2026-11-12)
 
 Anlass: Der Backlog war auf 66 Karten gewachsen, rund die Hälfte davon Härtungskarten, Wackler und Dubletten; bei der Durchsicht am 2026-11-12 blieben 30. Die Regeln verhindern, dass Befunde ohne Nutzerwirkung wieder geparkt werden.
@@ -147,8 +156,8 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
 | architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
 | entwickler | entw1 | opencode | openrouter/deepseek/deepseek-v4.1-flash | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
-| code-reviewer | crev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Korrektheit, Tests, Wartbarkeit je Paket |
-| security-reviewer | srev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
+| code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
+| security-reviewer | srev | claude | sonnet | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
 | entwicklertester | etst | opencode | openrouter/deepseek/deepseek-v4.1-flash | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
 | ux-reviewer | ux | opencode | openrouter/deepseek/deepseek-v4.1-flash | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
 | rechtschreib-reviewer | rsr | opencode | openrouter/deepseek/deepseek-v4.1-flash | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
