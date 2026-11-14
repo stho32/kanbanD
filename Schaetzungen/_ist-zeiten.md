@@ -556,3 +556,4 @@ Nie vom User erfragen.
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0688 Alle schreibenden Anfragen laufen durch die eine Stelle | Standard | 2-4h | 1,75h | 1,75h | autonom |
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0689 Anlegen trägt den Schlüssel | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
 | 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0690 Entwurfs-✕ über eine stabile Kennung | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | Nacharbeit Auto-Reviews B1–B4, S1/S3/S4 (B0687, B0688, B0689) | Bug | - | 0,6h | 0,6h | autonom |
