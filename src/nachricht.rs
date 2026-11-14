@@ -76,6 +76,17 @@ mod tests {
         assert!(lang.ends_with('…'), "{lang:?}");
     }
 
+    /// R00149 (ADR-0005 N1): auch die Unicode-Zeilentrenner U+2028 und U+2029 werden zu einem Leerzeichen —
+    /// ein Feld mit ihnen ergibt eine einzeilige Nachricht mit einem Leerzeichen an der Stelle.
+    #[test]
+    fn unicode_zeilentrenner_werden_zu_einem_leerzeichen() {
+        assert_eq!(wert("a\u{2028}b"), "a b");
+        assert_eq!(wert("a\u{2029}b"), "a b");
+        let nachricht = fertig(&format!("#1 „{}“ angelegt", "a\u{2028}b\u{2029}c"));
+        assert_eq!(nachricht, "#1 „a b c“ angelegt");
+        assert!(!nachricht.chars().any(|c| matches!(c, '\u{2028}' | '\u{2029}')), "keine Zeilentrenner mehr: {nachricht:?}");
+    }
+
     #[test]
     fn die_ganze_nachricht_bleibt_eine_kurze_zeile() {
         let nachricht = fertig(&format!("#1 „{}“ angelegt", "x".repeat(200)));
