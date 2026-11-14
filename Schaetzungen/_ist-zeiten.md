@@ -550,3 +550,9 @@ Nie vom User erfragen.
 | 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | B0683 Kettenende endet erfüllt | Standard | 1-2h | 0,15h | 0,15h | autonom |
 | 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | B0684 Meldung des gescheiterten Nachladens am Auslöser | Standard | 0,5-1h | 0,15h | 0,15h | autonom |
 | 2026-11-13 | Karte #80 R00147 (Warteschlange endet erfüllt) | Lauf #80 (Mutanten M1–M5, volles Gate) | Konsolidierung | — | — | 0,1h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0685 Akzeptanztest: zweiter Auslöser auf dem Board | Standard | 1-2h | 0,25h | 0,25h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0686 Akzeptanztest: zweiter Auslöser im Aufgabenfenster | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0687 Sperrzustand je Auslöser, der das Neuzeichnen übersteht | Standard | 2-3h | 0,25h | 0,25h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0688 Alle schreibenden Anfragen laufen durch die eine Stelle | Standard | 2-4h | 0,55h | 0,55h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0689 Anlegen trägt den Schlüssel | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
+| 2026-11-14 | Karte #138 R00148 (ein Auslöser je Aktion) | B0690 Entwurfs-✕ über eine stabile Kennung | Standard | 1-2h | 0,1h | 0,1h | autonom |
