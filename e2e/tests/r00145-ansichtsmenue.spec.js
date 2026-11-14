@@ -1,7 +1,7 @@
 // R00145 Ansichtswechsel als Menü, Anhänge im Inhalt (Karte #145, I0132) — US-1..US-8 im echten Programm.
 // Die Reiterleiste ist ein Menü am Fensterkopf; „Anhänge“ ist keine Ansicht mehr, sondern ein Abschnitt im Inhalt.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, kontrastAm, thema, mutanteEinsetzen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -433,7 +433,7 @@ test.describe('R00145 schmale Breiten', () => {
     await page.locator('.ka[data-id="1"] .id').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 700 });
+      await breiteSetzen(page, breite, 700);
       for (const name of ['light', 'dark']) {
         await thema(page, name);
         const m = await kopfMessen(page);
@@ -447,6 +447,7 @@ test.describe('R00145 schmale Breiten', () => {
         await expect(page.locator('#fenster #vsc')).toBeHidden();
         // Menü ganz im sichtbaren Bereich
         await page.locator(AUSLOESER).click();
+        await expect(page.locator(MENUE)).toBeVisible();
         const box = await page.locator(MENUE).boundingBox();
         expect(box.x, `${breite} px ${name}: Menü links im Bild`).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width, `${breite} px ${name}: Menü rechts im Bild`).toBeLessThanOrEqual(breite);
