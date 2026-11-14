@@ -793,3 +793,44 @@ test.describe('R00148 Nacharbeit: Fenster-Schlüssel in „Details“ (AK 21, US
     await expect(page.locator('#schluessel')).toHaveText('shop/nc-304/lodash');
   });
 });
+
+test.describe('R00148 Nacharbeit: ein Auslöser mit mehreren Anfragen (S3)', () => {
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  test('S3: „alle freigeben“ bleibt gesperrt, bis die letzte seiner Anfragen beantwortet ist', async ({ page }) => {
+    const karte = nr => `---\nid: ${nr}\ntitle: k${nr}\n---\n`;
+    k = await kanbanStarten(einrichten({
+      'kanbanD.md': EINSTELLUNGEN,
+      [BOARD]: '# Entwicklung\n\n## Zu erledigen\n\n- [#7](../aufgaben/0007-k.md)\n- [#8](../aufgaben/0008-k.md)\n\n## Erledigt\n',
+      'aufgaben/0007-k.md': karte(7), 'aufgaben/0008-k.md': karte(8),
+    }));
+    await alsPerson(page, 'st');
+    for (const [nr, instanz] of [[7, 'A'], [8, 'B']]) await page.request.post(k.adresse + `api/aufgaben/${nr}/reservierung`, { headers: { 'X-KanbanD-Wer': 'cl', 'X-KanbanD-Instanz': instanz } });
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('#t-board').click();
+    await page.locator('#reservierungen-zeigen').click();
+    await expect(page.locator('#reservierungen tbody tr')).toHaveCount(2);
+
+    // jede Anfrage wartet an ihrem eigenen Tor
+    const gesehen = [], tore = [];
+    await page.route(url => /^\/api\/aufgaben\/\d+\/reservierung$/.test(url.pathname), async route => {
+      if (route.request().method() !== 'DELETE') return route.fallback();
+      gesehen.push(new URL(route.request().url()).pathname);
+      await new Promise(ok => tore.push(ok));
+      await route.continue();
+    });
+    const knopf = page.getByRole('button', { name: 'alle freigeben' });
+    await knopf.click();
+    await expect.poll(() => gesehen.length).toBe(1);
+    tore[0]();
+    await expect.poll(() => gesehen.length, { message: 'die zweite Anfrage läuft' }).toBe(2);
+    await expect(knopf, 'nach der ersten Antwort noch gesperrt').toHaveAttribute('aria-disabled', 'true');
+    await knopf.click({ force: true });
+    tore[1]();
+    await expect(page.locator('#reservierungen')).toHaveCount(0);
+    await expect.poll(() => k.lies('aufgaben/0008-k.md')).not.toContain('reservation');
+    expect(gesehen, 'kein zweiter Durchlauf').toHaveLength(2);
+  });
+});

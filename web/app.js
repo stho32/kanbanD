@@ -1634,7 +1634,10 @@ async function aktion(a, arg, wert) {
       case 'freigeben': if (ichNoetig()) break; await schreiben('DELETE', `/api/aufgaben/${arg}/reservierung`); return;
       case 'alle-freigeben': {
         if (ichNoetig()) break;
-        for (const { a } of reservierteDesBoards()) await durchDieSchlange(() => api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`)).catch(f => { fensterMelden(f.message); });
+        // Ein Auslöser, eine Aktion: alle Anfragen in einem Glied der Schlange — die Sperre endet erst mit der letzten Antwort
+        await durchDieSchlange(async () => {
+          for (const { a } of reservierteDesBoards()) await api('DELETE', `/api/aufgaben/${a.nummer}/reservierung`).catch(f => { fensterMelden(f.message); });
+        });
         render();
         return;
       }
