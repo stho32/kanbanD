@@ -29,14 +29,29 @@ fn ausfuehren(mut c: Command, was: &str) -> Result<std::process::Output, Fehler>
 /// Committet genau die genannten Pfade (relativ zur Wurzel, auch gelöschte). Andere Änderungen im
 /// Arbeitsbaum oder im Index bleiben unberührt. Ändert sich nichts, entsteht kein Commit.
 ///
-/// Die Nachricht ist abgeleiteter Text (ADR-0005 N1): [`crate::nachricht::fertig`] entfernt Steuerzeichen und
-/// begrenzt die Länge, bevor Git sie als Argument sieht — kein Schreibweg kann einen Commit an einem NUL-Byte
-/// oder einer übergroßen Nachricht scheitern lassen.
+/// Eine Aktion ist ganz oder gar nicht (ADR-0005 N1): scheitert das Committen, nimmt diese Funktion ihre
+/// Pfade wieder zurück — neue Dateien verschwinden, geänderte und gelöschte stehen wieder auf HEAD, der
+/// Index ist so wie vorher. Danach ist der Ordner in dem Zustand, in dem die Aktion ihn vorfand.
+///
+/// Die Nachricht ist abgeleiteter Text: [`crate::nachricht::fertig`] entfernt Steuerzeichen und begrenzt die
+/// Länge, bevor Git sie als Argument sieht — kein Schreibweg kann einen Commit an einem NUL-Byte oder einer
+/// übergroßen Nachricht scheitern lassen.
 pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &str) -> Result<bool, Fehler> {
     let pfade = &relevante_pfade(wurzel, pfade, autor)?;
     if pfade.is_empty() {
         return Ok(false);
     }
+    let bekannt = in_head(wurzel, pfade, autor)?;
+    match committen_und_pruefen(wurzel, pfade, autor, &crate::nachricht::fertig(nachricht)) {
+        Ok(committet) => Ok(committet),
+        Err(fehler) => {
+            zuruecknehmen(wurzel, pfade, &bekannt, autor);
+            Err(Fehler::Intern(format!("{}; zurückgenommen: {}", fehler.meldung(), pfade.join(", "))))
+        }
+    }
+}
+
+fn committen_und_pruefen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &str) -> Result<bool, Fehler> {
     let mut add = git(wurzel, autor);
     add.args(["add", "-A", "--"]).args(pfade);
     ausfuehren(add, "add")?;
@@ -45,11 +60,45 @@ pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &st
     if diff.status().map_err(|e| Fehler::Intern(format!("git diff: {e}")))?.success() {
         return Ok(false);
     }
-    let nachricht = crate::nachricht::fertig(nachricht);
     let mut commit = git(wurzel, autor);
-    commit.args(["commit", "-q", "-m", &nachricht, "--"]).args(pfade);
+    commit.args(["commit", "-q", "-m", nachricht, "--"]).args(pfade);
     ausfuehren(commit, "commit")?;
     Ok(true)
+}
+
+/// Die Pfade, die HEAD kennt — nur für sie gibt es einen Stand, den eine Rücknahme wiederherstellen kann.
+/// Ohne HEAD (ein Ordner ohne ersten Commit) kennt es keinen.
+fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::collections::HashSet<String>, Fehler> {
+    let mut ls = git(wurzel, autor);
+    ls.args(["ls-tree", "-r", "--name-only", "-z", "HEAD", "--"]).args(pfade);
+    let Ok(a) = ls.output() else { return Ok(Default::default()) };
+    if !a.status.success() {
+        return Ok(Default::default());
+    }
+    Ok(a.stdout.split(|b| *b == 0).filter(|p| !p.is_empty()).map(|p| String::from_utf8_lossy(p).into_owned()).collect())
+}
+
+/// Rücknahme (ADR-0005 N1): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus HEAD
+/// wiederherstellen, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade bleiben
+/// unberührt. Ein Fehler beim Zurücknehmen wird gemeldet, aber nicht zum zweiten Fehler: der Aufrufer trägt
+/// den Commit-Fehler samt Pfaden, und mehr als dieser bestmögliche Versuch bleibt in diesem Zustand nicht.
+fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::HashSet<String>, autor: &Person) {
+    let mut reset = git(wurzel, autor);
+    reset.args(["reset", "-q", "--"]).args(pfade);
+    let _ = reset.status();
+    for pfad in pfade {
+        if bekannt.contains(pfad) {
+            let mut her = git(wurzel, autor);
+            her.args(["checkout", "-q", "HEAD", "--"]).arg(pfad);
+            let _ = her.status();
+        } else {
+            match std::fs::remove_file(wurzel.join(pfad)) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => eprintln!("Rücknahme: {pfad} ließ sich nicht entfernen: {e}"),
+            }
+        }
+    }
 }
 
 /// Pfade, die Git kennt oder die es auf der Platte gibt — nur über diese spricht ein Commit.

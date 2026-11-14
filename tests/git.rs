@@ -58,6 +58,33 @@ fn die_nachricht_wird_vor_dem_commit_abgeleitet() {
     assert_eq!(git(t.path(), &["log", "-1", "--format=%s"]), "a b zweite");
 }
 
+/// ADR-0005 N1: scheitert der Commit, nimmt `committen` seine Pfade zurück — eine neue Datei ist weg, eine
+/// geänderte steht wieder auf HEAD, eine gelöschte ist wieder da, der Index ist so wie vorher.
+#[test]
+fn gescheiterter_commit_nimmt_seine_pfade_zurueck() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    std::fs::write(t.path().join("bleibt.md"), "alt").unwrap();
+    std::fs::write(t.path().join("geht.md"), "alt").unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    let haken = t.path().join(".git/hooks/pre-commit");
+    std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let vorher = git(t.path(), &["status", "--porcelain"]);
+    std::fs::write(t.path().join("neu.md"), "neu").unwrap();
+    std::fs::write(t.path().join("bleibt.md"), "geändert").unwrap();
+    std::fs::remove_file(t.path().join("geht.md")).unwrap();
+    let pfade = ["neu.md".to_string(), "bleibt.md".to_string(), "geht.md".to_string()];
+    let fehler = committen(t.path(), &pfade, &stefan(), "scheitert").unwrap_err();
+    assert!(fehler.meldung().contains("neu.md"), "die Meldung nennt den Pfad: {fehler:?}");
+    assert_eq!(git(t.path(), &["status", "--porcelain"]), vorher, "kein Git-Rest");
+    assert!(!t.path().join("neu.md").exists(), "die neue Datei ist weg");
+    assert_eq!(std::fs::read_to_string(t.path().join("bleibt.md")).unwrap(), "alt", "die geänderte steht wieder auf HEAD");
+    assert_eq!(std::fs::read_to_string(t.path().join("geht.md")).unwrap(), "alt", "die gelöschte ist wieder da");
+    assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "1", "kein Commit");
+}
+
 #[test]
 fn unterordner_eines_repositories_committet_relativ_zum_unterordner() {
     let t = repo();
