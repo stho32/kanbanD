@@ -166,6 +166,47 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
     expect(commits(k), 'beide Änderungen sind gespeichert').toBe(vorher + 2);
   });
 
+  test('US-8 (AK 13–16): die Sperre übersteht das Neuzeichnen, lässt anderes frei und endet mit der Antwort', async ({ page }) => {
+    const dateien = bestand();
+    dateien['boards/entwicklung.md'] = '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-abnahme-pruefen.md)\n- [#2](../aufgaben/0002-zweite.md)\n\n## In Arbeit\n\n## Erledigt\n';
+    dateien['aufgaben/0002-zweite.md'] = '---\nid: 2\ntitle: zweite\n---\n';
+    k = await kanbanStarten(einrichten(dateien));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/0', 'PATCH');
+    const ziel = page.locator('.ka[data-id="1"] .naechste-ziel');
+
+    await ziel.click();
+    await bisAnfrageLaeuft(halte);
+    // AK 14: aria-disabled, nie natives disabled, der Fokus bleibt am Auslöser
+    await expect(ziel).toHaveAttribute('aria-disabled', 'true');
+    expect(await ziel.evaluate(e => e.disabled), 'kein natives disabled').toBe(false);
+    await expect(ziel).toBeFocused();
+
+    // AK 15: ein Auslöser ohne Schreibwirkung bleibt frei — das Aufgabenfenster öffnet normal und zeichnet die Seite neu
+    // (die Kartenleiste ist danach ein neuer Knoten; R00110 überspringt Live-Ereignisse, solange eine eigene Anfrage läuft)
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    expect(halte.anzahl(), 'das Öffnen ist keine Anfrage').toBe(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fenster')).toHaveCount(0);
+
+    // AK 13: die Sperre hängt nicht am Knoten — nach dem Neuzeichnen trägt derselbe Platz sie weiter
+    await expect(ziel).toHaveAttribute('aria-disabled', 'true');
+    await ziel.click({ force: true }); // aria-disabled hält Playwrights Zielprüfung auf — der Klick geht trotzdem an den Verteiler
+    await page.waitForTimeout(150);
+    expect(halte.anzahl(), 'auch nach dem Neuzeichnen keine zweite Anfrage').toBe(1);
+
+    // AK 16: die Sperre endet mit der Antwort — derselbe Auslöser ist wieder bedienbar
+    halte.freigeben();
+    await expect(ziel).not.toHaveAttribute('aria-disabled', 'true');
+    const zweite = page.waitForRequest(r => r.method() === 'PATCH' && new URL(r.url()).pathname === '/api/aufgaben/1/teilaufgaben/1');
+    await ziel.click();
+    await zweite;
+    await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins\n- [x] zwei');
+  });
+
   test('AK 18: Anlegen trägt den Schlüssel; derselbe Aufruf ein zweites Mal schreibt nichts', async ({ page }) => {
     k = await kanbanStarten(einrichten(bestand()));
     await alsPerson(page, 'st');
