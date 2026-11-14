@@ -505,7 +505,9 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
         neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map((t, i) => ({ ...neuEintrag(t, f), key: `${f.schluessel}-${i}` })), ...ziel });
       }
       u.hinweis = { text: neu.length === 1 ? `#${neu[0].nummer} angelegt` : `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
-      if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null }); u.fokus = '#neu-titel'; }
+      // „Anlegen und weitere“ leert das Formular: die nächste Füllung ist eine neue Aufgabe und bekommt einen neuen Schlüssel
+      // (R00148 AK 18), sonst antwortete der zweite POST mit „neu: false“ und legte nichts an.
+      if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null, schluessel: anlegeSchluessel() }); u.fokus = '#neu-titel'; }
       else u.neu = null;
     } catch (x) { f.fehler = x.message; }
   });

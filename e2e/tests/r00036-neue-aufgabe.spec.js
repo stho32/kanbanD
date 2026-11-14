@@ -33,7 +33,10 @@ test.describe('R00036', () => {
     const karte = page.locator('.ka[data-id="2"]');
     await expect(karte).toBeVisible();
     await expect(page.locator('.bahn[data-col="In Arbeit"] .ka[data-id="2"]')).toBeVisible();
-    expect(k.lies('aufgaben/0002-login-reparieren.md')).toBe('---\nid: 2\ntitle: Login reparieren\nclass: bug\nassignees: [mi]\n---\n\nNach dem Abmelden\n\n- [ ] Fall nachstellen\n- [ ] Test schreiben\n');
+    // Das Fenster „Neue Aufgabe“ schickt seit R00148 AK 18 einen Schlüssel mit; der Server legt ihn als Fremdschlüssel ab (R00098).
+    const datei = k.lies('aufgaben/0002-login-reparieren.md');
+    expect(datei, 'der Fremdschlüssel steht in der Datei').toMatch(/^key: neu-[\w-]+$/m);
+    expect(datei.replace(/^key: .*\n/m, '')).toBe('---\nid: 2\ntitle: Login reparieren\nclass: bug\nassignees: [mi]\n---\n\nNach dem Abmelden\n\n- [ ] Fall nachstellen\n- [ ] Test schreiben\n');
     expect(k.git('log', '-1', '--format=%s')).toBe('#2 „Login reparieren“ angelegt in „In Arbeit“ (Entwicklung)');
   });
 
