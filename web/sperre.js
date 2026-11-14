@@ -13,6 +13,8 @@
       starten: name => { laufend.add(name); },
       beenden: name => { laufend.delete(name); },
       namen: () => [...laufend],
+      /** Läuft die Aktion `name` (aus `aktionsName` ohne Wert) — mit oder ohne Wert aus einem Feld? */
+      laeuftAktion: name => [...laufend].some(n => n === name || n.startsWith(name + WERT)),
     };
   }
 
@@ -26,5 +28,19 @@
     return `${element.aktion}|${element.anker}|${platz}`;
   }
 
-  Object.assign(ziel, { sperreFuehren, ausloeserName });
+  /** Trennt den Wert eines Felds von Aktion und Argument; kommt in keinem `data-arg` vor. */
+  const WERT = '\u0000';
+
+  /**
+   * Kennung einer Aktion mit ihrem Argument — die Kennung eines Auslösers, der kein Element hat (Tastenkürzel), und die
+   * zweite Kennung jedes Knopfs: so sind Taste „a“ und Menüpunkt „Archivieren“ derselbe Auslöser (R00148 AK 12). Ein
+   * fehlendes Argument gilt als leeres (Knopf „Anlegen“ trägt `data-arg=""`). Enter im Feld trägt den Wert des Felds
+   * mit: derselbe Eintrag zweimal ist derselbe Auslöser, ein neuer Eintrag eine neue Aktion (schnelles Tippen, R00037).
+   */
+  function aktionsName(aktion, argument, wert) {
+    const name = `aktion:${aktion}|${argument == null ? '' : argument}`;
+    return wert === undefined ? name : name + WERT + wert;
+  }
+
+  Object.assign(ziel, { sperreFuehren, ausloeserName, aktionsName });
 })(typeof module !== 'undefined' ? module.exports : window);

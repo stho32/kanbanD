@@ -457,8 +457,8 @@ function entwurfGeaendert() {
 
 /** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
 function sperreFreigeben(laufender) {
-  if (!laufender || !laufender.name) return;
-  sperre.beenden(laufender.name);
+  if (!laufender) return;
+  laufender.namen.forEach(sperre.beenden);
   sperrenMarkieren();
 }
 
@@ -1352,13 +1352,31 @@ function ausloeserVon(el) {
   return ausloeserName({ aktion: el.dataset.act, anker: ankerKennung(anker), argument: el.dataset.arg }, gleichartige.indexOf(el));
 }
 
+/** Die Kennungen, unter denen ein Auslöser läuft (ADR-0025 Regel 1): die Aktion mit ihrem Argument — so fallen Knopf
+    und Tastenkürzel derselben Aktion zusammen (Taste „a“ und Menüpunkt „Archivieren“, R00148 AK 12) — und, mit Element,
+    sein Ort: die Kartenleiste schreibt ihr Argument beim Neuzeichnen um, ihr Ort bleibt (AK 5/6). Enter im Feld läuft
+    unter Aktion, Argument und Wert. */
+function ausloeserNamen(a, arg, el, wert) {
+  if (wert !== undefined) return [aktionsName(a, arg, wert)];
+  return el ? [aktionsName(a, arg), ausloeserVon(el)] : [aktionsName(a, arg)];
+}
+
+/** Läuft derselbe Auslöser schon? Knopf und Taste treffen jede laufende Füllung ihrer Aktion; Enter im Feld trifft den
+    laufenden Knopf derselben Aktion und denselben Wert — nicht einen neuen Eintrag (R00148 AK 12, R00037). */
+function ausloeserGesperrt(a, arg, el, wert) {
+  const aktionOhneWert = aktionsName(a, arg);
+  if (wert !== undefined) return sperre.laeuft(aktionOhneWert) || sperre.laeuft(aktionsName(a, arg, wert));
+  return sperre.laeuftAktion(aktionOhneWert) || (el != null && sperre.laeuft(ausloeserVon(el)));
+}
+
 /** Zeigt den Sperrzustand am Knoten (ADR-0025 Regel 2): höchstens `aria-disabled="true"`, nie natives `disabled` —
     das nähme den Knoten aus der Tabreihenfolge und der Fokus fiele auf BODY (ADR-0010). Kein Neuzeichnen: ein Zeichnen
     hier verbrauchte das Fokusziel der Aktion (R00112 FA 8). */
 function sperrenMarkieren() {
   for (const el of document.querySelectorAll('[data-act][aria-disabled]')) el.removeAttribute('aria-disabled');
+  if (!sperre.namen().length) return;
   for (const el of document.querySelectorAll('[data-act]')) {
-    if (sperre.laeuft(ausloeserVon(el))) el.setAttribute('aria-disabled', 'true');
+    if (ausloeserGesperrt(el.dataset.act, el.dataset.arg, el)) el.setAttribute('aria-disabled', 'true');
   }
 }
 
@@ -1373,19 +1391,21 @@ async function act(a, arg, wert, el, detail) {
   // einen Entwurf geändert (`entwurfGeaendert`) — keine Liste von Aktionen; ein Auslöser ohne Schreibwirkung (Blättern,
   // Aufklappen, Menü) nimmt jeden Klick an (AK 15).
   if (detail > 1 && letzterKlick && letzterKlick.schreibt) return;
-  // Genau ein Auslöser je Aktion (ADR-0025 Regel 1): solange seine Anfrage läuft, hat derselbe Auslöser keine Wirkung.
-  const name = el ? ausloeserVon(el) : null;
-  if (name && sperre.laeuft(name)) return;
+  // Genau ein Auslöser je Aktion (ADR-0025 Regel 1): solange seine Anfrage läuft, hat derselbe Auslöser keine Wirkung —
+  // auf jedem Weg: Klick, Enter im Feld, Tastenkürzel (AK 12).
+  if (ausloeserGesperrt(a, arg, el, wert)) return;
+  const namen = ausloeserNamen(a, arg, el, wert);
   const voriger = laufenderAusloeser;
-  const laufender = laufenderAusloeser = { name, anfrage: false, schreibt: false };
+  const laufender = laufenderAusloeser = { namen, anfrage: false, schreibt: false };
   if (detail > 0) letzterKlick = laufender;
-  if (name) { sperre.starten(name); sperrenMarkieren(); }
+  namen.forEach(sperre.starten);
+  sperrenMarkieren();
   try {
     await aktion(a, arg, wert);
   } finally {
     laufenderAusloeser = voriger;
     // Eine Aktion ohne Anfrage endet mit dem Klick; hat sie eine, endet die Sperre mit deren Antwort (ADR-0025 Regel 2).
-    if (name && !laufender.anfrage) { sperre.beenden(name); sperrenMarkieren(); }
+    if (!laufender.anfrage) sperreFreigeben(laufender);
   }
 }
 
@@ -2438,8 +2458,9 @@ document.addEventListener('keydown', e => {
   }
   if (S.ui.neu) {
     if (e.key === 'Escape') { e.preventDefault(); S.ui.neu = null; render(); return; }
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); neueAufgabeAnlegen(e.shiftKey); return; }
-    if (e.key === 'Enter' && t.id === 'neu-titel') { e.preventDefault(); neueAufgabeAnlegen(e.shiftKey); return; }
+    // Enter im Titel und Strg+Enter sind der Auslöser „Anlegen“ bzw. „Anlegen und weitere“ — über den Verteiler, damit die
+    // Sperre auch hier gilt (R00148 AK 12)
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || t.id === 'neu-titel')) { e.preventDefault(); act('nf-anlegen', e.shiftKey ? 'weitere' : ''); return; }
     if (!(e.key === 'Enter' && t.dataset && t.dataset.enter)) return;
   }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && t.id === 'beschreibung') { e.preventDefault(); t.blur(); return; }

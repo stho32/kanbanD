@@ -4,7 +4,7 @@
 // ist sie vor dem zweiten Auslöser beendet und der Fall prüft nichts (R00148, „Zeitfenster“).
 // ERWARTET ROT bis die Sperre (B0687) und der eine Schreibweg (B0688) stehen.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter, thema, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
 
 // Mutantenprobe (KD_MUTANTE, Muster R00110): jeder Test dieser Datei lädt auf Wunsch eine veränderte Oberfläche.
 test.beforeEach(({ page }) => mutanteEinsetzen(page));
@@ -473,5 +473,61 @@ test.describe('R00148 Nacharbeit: Schreibwirkung entscheidet, jeder Weg ist gesp
     await page.getByLabel('Spalte In Arbeit entfernen').dblclick();
     await expect(page.getByLabel('Spalte In Arbeit entfernen')).toHaveCount(0);
     await expect(page.getByLabel('Spalte Erledigt entfernen'), 'die nachgerückte Spalte bleibt').toHaveCount(1);
+  });
+
+  test('B2 (AK 12): zweimal Enter im Kommentarfeld ergibt genau einen Kommentar', async ({ page }) => {
+    await fensterPerTaste(page);
+    const vorher = commits(k);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/kommentare', 'POST');
+    const feld = page.getByLabel('Neuer Kommentar');
+    await feld.fill('Hallo');
+    await feld.press('Enter');
+    await bisAnfrageLaeuft(halte);
+    await page.waitForTimeout(80); // der Abstand der Probe, keine Wartezeit auf einen Zustand
+    await feld.press('Enter');
+    expect(halte.anzahl(), 'genau ein POST …/kommentare, solange die Antwort aussteht').toBe(1);
+    halte.freigeben();
+
+    await expect(page.locator('#fenster .km p', { hasText: 'Hallo' })).toHaveCount(1);
+    await expect.poll(() => commits(k), { message: 'genau ein Commit' }).toBe(vorher + 1);
+    expect(halte.anzahl(), 'genau ein POST').toBe(1);
+    expect(k.lies(KARTE).match(/Hallo/g) || [], 'die Datei trägt „Hallo“ einmal').toHaveLength(1);
+  });
+
+  test('B2 (AK 12): Taste „t“ zweimal startet den Timer einmal, nach der Antwort wirkt sie wieder', async ({ page }) => {
+    await fensterPerTaste(page);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/timer/start', 'POST');
+    await page.keyboard.press('t');
+    await bisAnfrageLaeuft(halte);
+    await page.keyboard.press('t');
+    expect(halte.anzahl(), 'genau ein POST …/timer/start').toBe(1);
+    halte.freigeben();
+    await expect(page.locator('.tz.eigen')).toBeVisible();
+    expect(halte.anzahl()).toBe(1);
+
+    // nach der Antwort ist die Taste wieder wirksam: jetzt stoppt sie den laufenden Timer
+    const stopp = page.waitForRequest(r => r.method() === 'POST' && /\/api\/aufgaben\/1\/timer\/stop/.test(new URL(r.url()).pathname));
+    await page.keyboard.press('t');
+    await stopp;
+  });
+
+  test('B2 (AK 12): Taste „a“ zweimal archiviert einmal — Taste und Menüpunkt „Archivieren“ sind ein Auslöser', async ({ page }) => {
+    await fensterPerTaste(page);
+    const vorher = commits(k);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/archivieren', 'POST');
+    await page.keyboard.press('a');
+    await bisAnfrageLaeuft(halte);
+    await page.keyboard.press('a');
+    expect(halte.anzahl(), 'genau ein POST …/archivieren').toBe(1);
+    // derselbe Auslöser als Menüpunkt im ⋮-Menü des Fensters: gesperrt, solange die Anfrage der Taste läuft
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="aktionen"]').click();
+    const menuepunkt = page.locator('#fenster [data-act="archivieren"][data-arg="1"]');
+    await expect(menuepunkt).toHaveAttribute('aria-disabled', 'true');
+    await menuepunkt.click({ force: true });
+    expect(halte.anzahl(), 'auch der Menüpunkt sendet nicht').toBe(1);
+    halte.freigeben();
+    await expect.poll(() => commits(k), { message: 'genau ein Commit' }).toBe(vorher + 1);
+    await expect.poll(() => k.lies(KARTE)).toContain('archived:');
+    expect(halte.anzahl()).toBe(1);
   });
 });

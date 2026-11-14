@@ -2,7 +2,7 @@
 // der Sperrzustand liegt im Sichtzustand, zwei Auslöser sind unabhängig, die Kennung trägt den Ort und nicht das Argument.
 const test = require('node:test');
 const assert = require('node:assert');
-const { sperreFuehren, ausloeserName } = require('../../web/sperre.js');
+const { sperreFuehren, ausloeserName, aktionsName } = require('../../web/sperre.js');
 
 const TEIL_WEG = ausloeserName({ aktion: 'teil-weg', anker: 'teil-1', argument: '1' }, 0);
 const TEIL_KARTE = ausloeserName({ aktion: 'teil-karte', anker: 'ka-1', argument: '1|0' }, 0);
@@ -58,4 +58,33 @@ test('die Kennung unterscheidet den Ort: zwei Plätze und zwei Anker sind zwei A
   assert.notStrictEqual(eins, zwei);
   assert.notStrictEqual(ausloeserName({ aktion: 'teil-karte', anker: 'ka-1', argument: '1|0' }, 0), andereKarte);
   assert.notStrictEqual(ausloeserName({ aktion: 'nf-teil-weg', anker: '#neu-fenster', argument: '0' }, 0), ausloeserName({ aktion: 'nf-teil-weg', anker: '#neu-fenster', argument: '1' }, 1));
+});
+
+test('B2: Taste und Knopf derselben Aktion tragen dieselbe Kennung — auch ohne Element (AK 12)', () => {
+  // Taste „a“ im Fenster ruft act('archivieren', String(nr)), der Menüpunkt trägt data-act="archivieren" data-arg="1"
+  assert.strictEqual(aktionsName('archivieren', String(1)), aktionsName('archivieren', '1'));
+  // Enter im Titel und der Knopf „Anlegen“ (data-arg="") sind ein Auslöser; ein fehlendes Argument ist das leere
+  assert.strictEqual(aktionsName('nf-anlegen', undefined), aktionsName('nf-anlegen', ''));
+});
+
+test('B2: die Aktionskennung unterscheidet Argument und Aktion und fällt nie mit einer Ortskennung zusammen', () => {
+  assert.notStrictEqual(aktionsName('archivieren', '1'), aktionsName('archivieren', '2'));
+  assert.notStrictEqual(aktionsName('archivieren', '1'), aktionsName('zurueckholen', '1'));
+  assert.notStrictEqual(aktionsName('teil-weg', '0'), ausloeserName({ aktion: 'teil-weg', anker: '#fenster', argument: '0' }, 0));
+});
+
+test('B2: Enter im Feld trägt den Wert — derselbe Eintrag ist derselbe Auslöser, ein neuer nicht (R00037)', () => {
+  assert.strictEqual(aktionsName('kommentar', undefined, 'Hallo'), aktionsName('kommentar', '', 'Hallo'));
+  assert.notStrictEqual(aktionsName('teil-neu', undefined, 'a'), aktionsName('teil-neu', undefined, 'b'));
+  assert.notStrictEqual(aktionsName('teil-neu', undefined, ''), aktionsName('teil-neu', undefined), 'ein leerer Wert ist ein Wert');
+});
+
+test('B2: laeuftAktion trifft die Aktion mit und ohne Feldwert, nicht ein anderes Argument', () => {
+  const sperre = sperreFuehren();
+  sperre.starten(aktionsName('zeit-ok', 'z1', '9:00'));
+  assert.strictEqual(sperre.laeuftAktion(aktionsName('zeit-ok', 'z1')), true, 'der Knopf ✓ trifft das laufende Enter im Feld');
+  assert.strictEqual(sperre.laeuftAktion(aktionsName('zeit-ok', 'z2')), false);
+  sperre.starten(aktionsName('stop', '1|st'));
+  assert.strictEqual(sperre.laeuftAktion(aktionsName('stop', '1')), false, 'ein Argument ist kein Präfix eines anderen');
+  assert.strictEqual(sperre.laeuftAktion(aktionsName('stop', '1|st')), true);
 });
