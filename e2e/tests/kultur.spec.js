@@ -247,11 +247,9 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
       prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels' };
     for (const [bericht, titel] of Object.entries(TITEL)) {
       await page.goto(k.adresse + '#/berichte/' + bericht);
-      await expect(page.locator('.leiste > b').first()).toHaveText(titel);
+      await berichtSteht(page, bericht, titel);
       // alles Zugeklappte aufklappen, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl
-      const zu = page.locator('details:not([open]) > summary');
-      for (let n = 0; n < 20 && await zu.count(); n++) await zu.first().click();
-      await expect(zu).toHaveCount(0);
+      await allesAufklappen(page);
       const texte = await page.locator('main, body').first().evaluate(b => [b.innerText, ...[...b.querySelectorAll('[title],[aria-label]')].flatMap(x => [x.title, x.getAttribute('aria-label') || ''])]);
       expect(texte.filter(t => ISO.test(t)).map(t => t.match(ISO)[0]), bericht).toEqual([]);
     }
@@ -267,11 +265,26 @@ const AUSNAHMEN = [];
 /** Titel der Berichte: erst wenn er steht, hat der Bericht das Bild des vorigen ersetzt. */
 const BERICHTSTITEL = { stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchsatz: 'Durchsatz je Zeitraum', durchlauf: 'Durchlaufzeit',
   prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart', kosten: 'Kosten', bestand: 'Bestand nach Labels' };
-/** Klappt alles Zugeklappte auf, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl. */
+/**
+ * Der Bericht ist fertig gezeichnet: sein Titel steht, und beim Fever-Chart hat der Lauf, der die fehlenden Tage nachrechnet, geendet
+ * (`#fieber-lauf` nennt dann den Cache statt „rechnet“) — bis dahin kommen Zeichnungen nach, die aufgeklappte Teile wieder schließen.
+ */
+async function berichtSteht(page, bericht, titel) {
+  await expect(page.locator('.leiste > b').first()).toHaveText(titel);
+  if (bericht === 'fieber') await expect(page.locator('#fieber-lauf')).toContainText('aus dem Cache');
+}
+/**
+ * Klappt alles Zugeklappte auf, eins nach dem anderen — ein aufgeklapptes fällt aus der Auswahl. Der Bericht zeichnet noch, während
+ * gezählt wird (Fieber: das Diagramm kommt nach der Leiste): eine feste Zahl Klicks liest `zu.count()` mitten im Zeichnen. Darum
+ * erst warten, bis der Stand gezeichnet ist, und den ganzen Durchgang wiederholen, solange danach noch etwas zu ist (ADR-0026 Regel 1, 3).
+ */
 async function allesAufklappen(page) {
+  await page.waitForFunction(() => window.kdTest.gezeichnet());
   const zu = page.locator('details:not([open]) > summary');
-  for (let n = 0; n < 20 && await zu.count(); n++) await zu.first().click();
-  await expect(zu).toHaveCount(0);
+  await expect(async () => {
+    for (let n = 0; n < 50 && await zu.count(); n++) await zu.first().click();
+    await expect(zu).toHaveCount(0, { timeout: 1000 });
+  }).toPass({ timeout: 15000 });
 }
 /** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihr Inhalt steht. */
 function nachDemLaden(ansicht) {
@@ -281,7 +294,7 @@ function nachDemLaden(ansicht) {
   if (ansicht === 'Aufgabenliste') return page => page.locator('main').getByText('eins').first().waitFor();
   if (ansicht === 'Einrichten') return page => page.locator('pre.yaml').first().waitFor();
   const bericht = ansicht.startsWith('Bericht ') && ansicht.slice(8);
-  if (bericht && BERICHTSTITEL[bericht]) return page => expect(page.locator('.leiste > b').first()).toHaveText(BERICHTSTITEL[bericht]);
+  if (bericht && BERICHTSTITEL[bericht]) return page => berichtSteht(page, bericht, BERICHTSTITEL[bericht]);
   throw new Error(`nachDemLaden kennt „${ansicht}“ nicht — ohne Wartebedingung läse die Probe eine leere Seite`);
 }
 const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
