@@ -445,8 +445,14 @@ let laufenderAusloeser = null;
 
 function warteschlange(anfrage) {
   const laufender = laufenderAusloeser;
-  if (laufender) laufender.anfrage = true;
+  if (laufender) laufender.anfrage = laufender.schreibt = true;
   return eigene.einreihen(anfrage, S.ui.offen ? 'fenster' : 'board', () => sperreFreigeben(laufender));
+}
+
+/** Eine Aktion ohne Anfrage, die einen Entwurf ändert (eine Zeile einer Liste, die erst später geschrieben wird), hat
+    Schreibwirkung wie eine Anfrage: der zweite Klick ihrer Geste träfe die nachgerückte Zeile (R00148 AK 11, ADR-0025 N2). */
+function entwurfGeaendert() {
+  if (laufenderAusloeser) laufenderAusloeser.schreibt = true;
 }
 
 /** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
@@ -1356,15 +1362,23 @@ function sperrenMarkieren() {
   }
 }
 
+/** Der zuletzt angenommene Klick: hat seine Aktion Schreibwirkung (`schreibt`), ist ein weiterer Klick derselben
+    Geste (`detail > 1`) keine neue Handlung (R00148 AK 12/15). */
+let letzterKlick = null;
+
 async function act(a, arg, wert, el, detail) {
-  // Ein Doppelklick ist eine Handlung: der zweite Klick derselben Geste trifft einen anderen Knoten, weil das
-  // Neuzeichnen die Stelle nachrücken ließ — er hat auf einem Auslöser keine Wirkung (R00148 AK 6/11).
-  if (detail > 1) return;
+  // Ein Doppelklick auf einen Schreib-Auslöser ist eine Handlung: der zweite Klick derselben Geste trifft einen anderen
+  // Knoten, wenn die schnelle Antwort die Stelle nachrücken ließ — er hat keine Wirkung (R00148 AK 6/11). Schreibwirkung
+  // heißt: die Aktion des ersten Klicks hat eine Anfrage durch den Schreibweg gestellt (gesetzt in `warteschlange`) oder
+  // einen Entwurf geändert (`entwurfGeaendert`) — keine Liste von Aktionen; ein Auslöser ohne Schreibwirkung (Blättern,
+  // Aufklappen, Menü) nimmt jeden Klick an (AK 15).
+  if (detail > 1 && letzterKlick && letzterKlick.schreibt) return;
   // Genau ein Auslöser je Aktion (ADR-0025 Regel 1): solange seine Anfrage läuft, hat derselbe Auslöser keine Wirkung.
   const name = el ? ausloeserVon(el) : null;
   if (name && sperre.laeuft(name)) return;
   const voriger = laufenderAusloeser;
-  const laufender = laufenderAusloeser = { name, anfrage: false };
+  const laufender = laufenderAusloeser = { name, anfrage: false, schreibt: false };
+  if (detail > 0) letzterKlick = laufender;
   if (name) { sperre.starten(name); sperrenMarkieren(); }
   try {
     await aktion(a, arg, wert);
@@ -1428,7 +1442,7 @@ async function aktion(a, arg, wert) {
       }
       case 'nf-zu': case 'nf-zu-bg': u.neu = null; break;
       case 'nf-teil': { const t = (wert || '').trim(); if (t) u.neu.teil.push({ kennung: entwurfsKennung(), text: t }); u.fokus = '#neu-teil'; break; }
-      case 'nf-teil-weg': u.neu.teil = u.neu.teil.filter(t => t.kennung !== arg); u.fokus = '#neu-teil'; break;
+      case 'nf-teil-weg': u.neu.teil = u.neu.teil.filter(t => t.kennung !== arg); entwurfGeaendert(); u.fokus = '#neu-teil'; break;
       case 'nf-zust': { const z = u.neu.zust; u.neu.zust = z.includes(arg) ? z.filter(k => k !== arg) : [...z, arg]; u.neu.zustGewaehlt = true; break; }
       case 'nf-faellig': { const d = new Date(); d.setDate(d.getDate() + +arg); u.neu.faellig = isoD(d); break; }
       case 'nf-anlegen': return neueAufgabeAnlegen(arg === 'weitere');
@@ -2053,10 +2067,10 @@ async function aktion(a, arg, wert) {
         u.fokus = `[data-ef="awbs"][data-i="${u.einr.quellen.anwendungen.length - 1}"]`;
         break;
       }
-      case 'a-del': u.einr.quellen.anwendungen.splice(+arg, 1); break;
+      case 'a-del': u.einr.quellen.anwendungen.splice(+arg, 1); entwurfGeaendert(); break;
       case 'k-pal': u.palFuer = u.palFuer === +arg ? null : +arg; break;
       case 'k-farbe': { const [i, f] = arg.split('|'); u.einr.klassen[+i].farbe = f; break; }
-      case 'k-del': u.einr.klassen.splice(+arg, 1); u.palFuer = null; break;
+      case 'k-del': u.einr.klassen.splice(+arg, 1); entwurfGeaendert(); u.palFuer = null; break;
       case 'k-add': {
         const schluessel = ($('#nck').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
         if (!schluessel || !bezeichnung) { u.einr.fehler = 'Schlüssel und Bezeichnung nötig'; break; }
@@ -2067,7 +2081,7 @@ async function aktion(a, arg, wert) {
       }
       case 's-pal': u.sPalFuer = u.sPalFuer === +arg ? null : +arg; break;
       case 's-farbe': { const [i, f] = arg.split('|'); u.einr.signale[+i].farbe = f; break; }
-      case 's-del': u.einr.signale.splice(+arg, 1); u.sPalFuer = null; break;
+      case 's-del': u.einr.signale.splice(+arg, 1); entwurfGeaendert(); u.sPalFuer = null; break;
       case 's-add': {
         const schluessel = ($('#nsk').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
         if (!schluessel || !bezeichnung) { u.einr.fehler = 'Schlüssel und Bedeutung nötig'; break; }
@@ -2097,7 +2111,7 @@ async function aktion(a, arg, wert) {
         if (j >= 0 && j < d.length) [d[i], d[j]] = [d[j], d[i]];
         break;
       }
-      case 'col-del': u.setup.spalten.splice(+arg, 1); break;
+      case 'col-del': u.setup.spalten.splice(+arg, 1); entwurfGeaendert(); break;
       case 'thema': {
         S.thema = THEMEN[(THEMEN.indexOf(S.thema) + 1) % THEMEN.length];
         themaAnwenden(S.thema);

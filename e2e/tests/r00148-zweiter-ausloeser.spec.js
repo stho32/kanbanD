@@ -4,7 +4,10 @@
 // ist sie vor dem zweiten Auslöser beendet und der Fall prüft nichts (R00148, „Zeitfenster“).
 // ERWARTET ROT bis die Sperre (B0687) und der eine Schreibweg (B0688) stehen.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter, mutanteEinsetzen } = require('./hilfen');
+
+// Mutantenprobe (KD_MUTANTE, Muster R00110): jeder Test dieser Datei lädt auf Wunsch eine veränderte Oberfläche.
+test.beforeEach(({ page }) => mutanteEinsetzen(page));
 
 const EINSTELLUNGEN = `---
 people:
@@ -425,5 +428,50 @@ test.describe('R00148 Doppeltipp auf die Kartenleiste (Touch 390)', () => {
     expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
     await expect(page.locator('[role="dialog"]'), 'kein Fenster offen').toHaveCount(0);
     await expect(page.locator('#fenster')).toHaveCount(0);
+  });
+});
+
+test.describe('R00148 Nacharbeit: Schreibwirkung entscheidet, jeder Weg ist gesperrt', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestand())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  /** Öffnet #1 wie ein Mensch mit der Tastatur (Karte fokussieren, Enter) — danach wirken die Fensterkürzel. */
+  const fensterPerTaste = async (page) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('.ka[data-id="1"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  };
+
+  test('B1 (AK 12/15): Doppelklick auf „nächste Woche“ blättert zwei Wochen weiter', async ({ page }) => {
+    await page.goto(k.adresse + '#/berichte/stundenzettel');
+    const woche = page.locator('#woche');
+    await expect(woche).toBeVisible();
+    const heute = await woche.textContent();
+    await page.getByLabel('nächste Woche').click();
+    await expect(woche).not.toHaveText(heute);
+    const eineWeiter = await woche.textContent();
+    await page.getByLabel('vorige Woche').click();
+    await expect(woche).toHaveText(heute);
+
+    await page.getByLabel('nächste Woche').dblclick();
+    // zwei Wochen weiter: eine Woche zurück steht genau eine Woche weiter (nicht heute, nicht zwei zurück)
+    await expect(woche).not.toHaveText(eineWeiter);
+    await expect(woche).not.toHaveText(heute);
+    await page.getByLabel('vorige Woche').click();
+    await expect(woche).toHaveText(eineWeiter);
+  });
+
+  test('B1 (AK 11, Klasse): Doppelklick auf das ✕ einer Entwurfsspalte entfernt nur diese Spalte', async ({ page }) => {
+    // Eine Entwurfsliste ohne Anfrage hat Schreibwirkung wie eine Anfrage: der zweite Klick der Geste träfe die nachgerückte Zeile.
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await ausMehr(page, 'Spalten einrichten');
+    await expect(page.getByLabel('Spalte In Arbeit entfernen')).toBeVisible();
+    await page.getByLabel('Spalte In Arbeit entfernen').dblclick();
+    await expect(page.getByLabel('Spalte In Arbeit entfernen')).toHaveCount(0);
+    await expect(page.getByLabel('Spalte Erledigt entfernen'), 'die nachgerückte Spalte bleibt').toHaveCount(1);
   });
 });
