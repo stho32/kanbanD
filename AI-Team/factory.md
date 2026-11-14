@@ -12,6 +12,8 @@ director: dir
 empfaenger: betreiber
 anwendung: kd
 realist: vorschlagen
+last:
+  grenze_prozent: 75
 angelegt: 2026-10-31
 ---
 
@@ -144,7 +146,7 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | planer | plan | opencode | openrouter/deepseek/deepseek-v4.1-flash | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
 | architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
 | architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
-| entwickler | entw1 | opencode | openrouter/deepseek/deepseek-v4.1-flash | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree `kanbanD-entw2`; im Sparbetrieb nur, wenn entw1 nicht baut |
+| entwickler | entw1 | opencode | openrouter/deepseek/deepseek-v4.1-flash | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
 | code-reviewer | crev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Korrektheit, Tests, Wartbarkeit je Paket |
 | security-reviewer | srev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
 | entwicklertester | etst | opencode | openrouter/deepseek/deepseek-v4.1-flash | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
@@ -164,7 +166,7 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | Architektur | Team | prüfen, ob die Karte eine Technikfrage aufwirft; wenn ja entscheiden und als ADR festhalten, sonst sofort weiter; die erste Karte bringt das Architektur-Modell |
 | Detailplanung | Team | WBS-Knoten anlegen bzw. Interaction bis Bubble verfeinern, Anforderung schreiben oder abgleichen; ux-reviewer nur als Vorprüfung bei Oberfläche; fachspezialist auf Abruf bei neuen Begriffen; der planer setzt die zutreffenden Labels der Karte: „oberflaeche“ (sichtbare Änderung der Oberfläche → ux-reviewer), „text“ (neuer oder geänderter sichtbarer Text, API-Beschreibung → rechtschreib-reviewer), „sicherheit“ (Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen → security-reviewer), „fehlerpfad“ (neue Fehlerpfade oder Protokollzeilen → observability-reviewer), „architektur“ (Schreibweg oder Modell → architektur-reviewer), „datenformat“ (Dateiformat des Board-Ordners oder API → legacy-reviewer), „begriffe“ (neue Fachbegriffe → fachspezialist) — nur danach laufen die Prüfer dieser Themen |
 | Entwicklung | Team | bauen, Test zuerst, Gate (`cargo test`, `node --test e2e/einheit/`, betroffene Playwright-Specs; volle Suite am Kartenende) |
-| Nacharbeit | Team | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben, Sollte/Optional entscheiden (beheben oder verwerfen, siehe „Befunde aus Reviews und Tests“) (`entw2`, Worktree `kanbanD-entw2`, Zweig `nacharbeit/<nr>`), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
+| Nacharbeit | Team | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben, Sollte/Optional entscheiden (beheben oder verwerfen, siehe „Befunde aus Reviews und Tests“) (`entw2`, im Worktree der Karte), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
 | Auto-Reviews | Team | Reviews parallel am selben Stand, je Rolle eine Teilaufgabe; code-reviewer immer, die übrigen nur, wenn die Karte ihr Thema berührt (Auswahl im Kommentar des Directors beim Zug) |
 | Entwicklertest | Team | User Story wörtlich im echten Programm auf einer Wegwerf-Instanz |
 | Erledigt | Mensch | fertig: nach bestandenem Entwicklertest direkt hierher, ohne Abnahme-Spalte; beim Zug installiert der Director kanbanD neu und startet das Board neu (siehe „Auslieferung“); letzte Spalte, Abschlussspalte der Berichte |
@@ -175,7 +177,9 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
 
 - **Frage einer Rolle** → product-owner entscheidet (höchstens 2 Runden, blockiert die Karte so lange); nur Richtungsweisendes und danach noch Offenes → „Ohne Mensch nicht lösbar“ mit Signal `frage`.
 - **Schleifenbremse**: steht bei einer Entscheidung „höchstens n×“, geht die Karte danach nach „Ohne Mensch nicht lösbar“ — vorher ein Vorschlag des realist-consultant auf die Karte.
-- **Zusammenführen** heißt immer: Merge-Wache des Directors (Rebase, Gate, Diff-Prüfung, Fast-Forward, Gate auf main).
+- **Ein Worktree je Karte** für alle Phasen (R00013): `board.py beginne` legt ihn an (`~/Projekte/.worktrees/<projekt>/karte-<nr>`, Zweig `karte/<nr>`) und nennt ihn im Auftragskopf; Worktrees je Rolle und die Zweige `vorlauf/…`, `nacharbeit/…` gibt es nicht mehr.
+- **Zusammenführen** heißt immer: Merge-Wache des Directors — Dokumente nach bestandener Detailplanung ohne Gate (`board.py dokumente`), der Code **einmal am Ende**, bevor die Karte die Team-Spalten verlässt: Rebase, Diff-Prüfung, Stand von `main` festhalten, Fast-Forward, volles Gate auf `main`; grün → Worktree und Zweig löschen, rot → `main` zurück auf den festgehaltenen Stand und Nacharbeit.
+- **Rechnerlast**: über der Grenze (`last.grenze_prozent`) beginnt kein Lauf; die Karte trägt dann „Wartet auf Systemressourcen“, die Wartezeit wird aufgezeichnet (`board.py wartezeit`).
 - **Störung des Treibers** (Anmeldung, Kontingent, Dienst) ist kein Ergebnis der Rolle: der Lauf hält an, die Karte bleibt, wo sie ist.
 - **Labels der Karte** setzt der planer in der Detailplanung: `oberflaeche`, `text`, `sicherheit`, `fehlerpfad`, `architektur`, `datenformat`, `begriffe`. Nur danach laufen die Rollen dieser Themen (Sparbetrieb).
 
@@ -195,19 +199,19 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
   - Muss der Vorprüfung → bei sichtbarer Gestaltung zeichnet der gestalter, der product-owner gibt frei (Betreiber 2026-11-13, #138); dann arbeitet der planer die Befunde samt Freigabe ein, danach prüft nur der ux-reviewer nach; höchstens 2×
 
 ### Entwicklung
-- **Betritt die Karte die Spalte**: entwickler baut auf dem Zweig `karte/<nr>` im eigenen Worktree, Test zuerst.
+- **Betritt die Karte die Spalte**: entwickler baut im Worktree der Karte (Zweig `karte/<nr>`), Test zuerst, und fährt dort das volle Gate.
 - **Entscheidung**
-  - bestanden → Zusammenführen; grün → Auto-Reviews
-  - Bau nicht bestanden, Gate rot oder Rebase-Konflikt beim Zusammenführen → Nacharbeit; höchstens 2× („Gate bleibt rot nach zwei Nacharbeiten“)
+  - bestanden (Gate im Worktree grün, Zahlen im Bericht) → Auto-Reviews
+  - Bau nicht bestanden oder Gate im Worktree rot → Nacharbeit; höchstens 2× („Gate bleibt rot nach zwei Nacharbeiten“)
 
 ### Nacharbeit
-- **Betritt die Karte die Spalte**: entwickler behebt nur die Muss-Befunde, die wörtlich auf der Karte stehen, auf dem Zweig `nacharbeit/<nr>`. Wissen im Auftrag: Befunde aus Reviews und Tests.
+- **Betritt die Karte die Spalte**: entwickler behebt nur die Muss-Befunde, die wörtlich auf der Karte stehen, im Worktree der Karte. Wissen im Auftrag: Befunde aus Reviews und Tests.
 - **Entscheidung**
-  - bestanden → Zusammenführen; grün → zurück in die Spalte, aus der die Karte kam — dort wiederholen nur die Rollen mit Befund
+  - bestanden → zurück in die Spalte, aus der die Karte kam — dort wiederholen nur die Rollen mit Befund
   - Gate nach der Nacharbeit rot → Ohne Mensch nicht lösbar
 
 ### Auto-Reviews
-- **Betritt die Karte die Spalte**: parallel am selben Stand, je Rolle eine Teilaufgabe, abgehakt, wenn sie bestanden hat. Wissen im Auftrag: Befunde aus Reviews und Tests.
+- **Betritt die Karte die Spalte**: parallel am Stand des Kartenzweigs (Diff `main...karte/<nr>`, im Worktree nur lesend), je Rolle eine Teilaufgabe, abgehakt, wenn sie bestanden hat. Wissen im Auftrag: Befunde aus Reviews und Tests.
   - code-reviewer immer
   - security-reviewer, wenn Label `sicherheit`
   - ux-reviewer, wenn Label `oberflaeche`
@@ -222,8 +226,8 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
   - Sollte und Optionales → gesammelt auf die Härtungskarte der Karte, hält nichts auf
 
 ### Entwicklertest
-- **Betritt die Karte die Spalte**: entwicklertester fährt die User Story wörtlich im echten Programm, am reviewten Stand. Wissen im Auftrag: Befunde aus Reviews und Tests.
+- **Betritt die Karte die Spalte**: entwicklertester fährt die User Story wörtlich im echten Programm, am reviewten Stand des Kartenzweigs. Wissen im Auftrag: Befunde aus Reviews und Tests.
 - **Entscheidung**
-  - bestanden → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Erledigt; schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
+  - bestanden → Zusammenführen (Gate auf `main`; rot → Nacharbeit); grün → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Erledigt; schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
   - Muss → Nacharbeit; höchstens 2×
   - `anforderung_falsch` oder `kriterium_fehlt` → Detailplanung
