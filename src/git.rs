@@ -40,6 +40,10 @@ fn ausfuehren(mut c: Command, was: &str) -> Result<std::process::Output, Fehler>
 /// Die zweite Linie aus ADR-0008 gilt auch hier (ADR-0005 N2): die Pfade werden **vor** `git add` und vor jedem
 /// Zugriff der Rücknahme geprüft, weil die direkten Aufrufer (`anhaenge`, `fieber`) nicht durch `aktion()` gehen.
 /// Ein Verstoß endet intern; Index und Arbeitsbaum bleiben unberührt.
+///
+/// Ist HEAD nicht lesbar (kein erster Commit oder `ls-tree` scheitert), ist unbekannt, was diese Aktion angelegt
+/// hat — dann wird **nichts gelöscht** (ADR-0005 N2, Leitlinie); der Index wird zurückgesetzt, soweit möglich,
+/// und die Meldung nennt den Grund statt „zurückgenommen“ zu behaupten.
 pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &str) -> Result<bool, Fehler> {
     crate::ablage::pfade_pruefen(&pfade.iter().map(String::as_str).collect::<Vec<_>>())
         .map_err(|grund| Fehler::Intern(format!("Programmfehler, nichts committet: {grund}")))?;
@@ -47,13 +51,36 @@ pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &st
     if pfade.is_empty() {
         return Ok(false);
     }
-    let bekannt = in_head(wurzel, pfade, autor)?;
+    // Den Vorher-Stand **vor** dem Commit lesen: kennt HEAD die Pfade? Ohne lesbares HEAD bleibt die Antwort
+    // „unbekannt“ und die Rücknahme löscht nichts.
+    let bekannt = in_head(wurzel, pfade, autor);
     match committen_und_pruefen(wurzel, pfade, autor, &crate::nachricht::fertig(nachricht)) {
         Ok(committet) => Ok(committet),
-        Err(fehler) => match zuruecknehmen(wurzel, pfade, &bekannt, autor) {
-            Ok(()) => Err(Fehler::Intern(format!("{}; zurückgenommen: {}", fehler.meldung(), pfade.join(", ")))),
-            Err(grund) => Err(Fehler::Intern(format!("{}; Rücknahme unvollständig: {grund}", fehler.meldung()))),
+        Err(fehler) => Err(nach_gescheitertem_commit(wurzel, pfade, &bekannt, autor, fehler)),
+    }
+}
+
+/// Nach einem gescheiterten Commit: mit lesbarem HEAD die Pfade zurücknehmen; ohne lesbares HEAD nichts löschen,
+/// nur den Index zurücksetzen, soweit möglich — und melden, dass nicht zurückgenommen werden konnte und warum.
+fn nach_gescheitertem_commit(
+    wurzel: &Path,
+    pfade: &[String],
+    bekannt: &Result<std::collections::HashSet<String>, String>,
+    autor: &Person,
+    fehler: Fehler,
+) -> Fehler {
+    match bekannt {
+        Ok(bekannt) => match zuruecknehmen(wurzel, pfade, bekannt, autor) {
+            Ok(()) => Fehler::Intern(format!("{}; zurückgenommen: {}", fehler.meldung(), pfade.join(", "))),
+            Err(grund) => Fehler::Intern(format!("{}; Rücknahme unvollständig: {grund}", fehler.meldung())),
         },
+        Err(grund) => {
+            let index = match index_zuruecksetzen(wurzel, pfade, autor) {
+                Ok(()) => String::new(),
+                Err(grund) => format!("; Index nicht zurückgesetzt: {grund}"),
+            };
+            Fehler::Intern(format!("{}; nicht zurückgenommen ({grund}): {}{index}", fehler.meldung(), pfade.join(", ")))
+        }
     }
 }
 
@@ -73,31 +100,48 @@ fn committen_und_pruefen(wurzel: &Path, pfade: &[String], autor: &Person, nachri
 }
 
 /// Die Pfade, die HEAD kennt — nur für sie gibt es einen Stand, den eine Rücknahme wiederherstellen kann.
-/// Ohne HEAD (ein Ordner ohne ersten Commit) kennt es keinen.
-fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::collections::HashSet<String>, Fehler> {
+/// `Err(grund)`, wenn HEAD nicht lesbar ist: ohne ersten Commit („HEAD fehlt“) oder wenn `ls-tree` scheitert.
+/// Dann ist unbekannt, was die Aktion angelegt hat, und der Aufrufer löscht nichts (ADR-0005 N2).
+fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::collections::HashSet<String>, String> {
+    let mut pruefen = git(wurzel, autor);
+    pruefen.args(["rev-parse", "--verify", "--quiet", "HEAD"]);
+    match pruefen.output() {
+        Ok(a) if a.status.success() => {}
+        Ok(_) => return Err("HEAD fehlt".into()),
+        Err(e) => return Err(format!("HEAD nicht lesbar: {e}")),
+    }
     let mut ls = git(wurzel, autor);
     ls.args(["ls-tree", "-r", "--name-only", "-z", "HEAD", "--"]).args(pfade);
-    let Ok(a) = ls.output() else { return Ok(Default::default()) };
-    if !a.status.success() {
-        return Ok(Default::default());
+    match ls.output() {
+        Ok(a) if a.status.success() => Ok(a.stdout.split(|b| *b == 0).filter(|p| !p.is_empty()).map(|p| String::from_utf8_lossy(p).into_owned()).collect()),
+        Ok(a) => Err(format!("HEAD nicht lesbar: {}", String::from_utf8_lossy(&a.stderr).trim())),
+        Err(e) => Err(format!("HEAD nicht lesbar: {e}")),
     }
-    Ok(a.stdout.split(|b| *b == 0).filter(|p| !p.is_empty()).map(|p| String::from_utf8_lossy(p).into_owned()).collect())
+}
+
+/// Die Pfade aus dem Index zurück auf HEAD; `Err(grund)`, wenn der Reset scheitert. Ohne HEAD scheitert er nicht —
+/// `git reset -- <pfade>` entfernt die Vormerkung auch dort.
+fn index_zuruecksetzen(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<(), String> {
+    let mut reset = git(wurzel, autor);
+    reset.args(["reset", "-q", "--"]).args(pfade);
+    match reset.output() {
+        Ok(a) if a.status.success() => Ok(()),
+        Ok(a) => Err(String::from_utf8_lossy(&a.stderr).trim().to_string()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 /// Rücknahme (ADR-0005 N1): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus HEAD
 /// wiederherstellen, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade bleiben
-/// unberührt.
+/// unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Menge); ist er nicht lesbar, löscht
+/// `committen` nichts.
 ///
 /// Was sich nicht zurücknehmen ließ, kommt als `Err` zurück (ADR-0005 N2 Punkt 4) — der Aufrufer trägt es in
 /// die Meldung, statt „zurückgenommen“ zu behaupten. Ein Pfad, der schon fehlt, ist kein Fehlschlag.
 fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::HashSet<String>, autor: &Person) -> Result<(), String> {
     let mut fehler = vec![];
-    let mut reset = git(wurzel, autor);
-    reset.args(["reset", "-q", "--"]).args(pfade);
-    match reset.output() {
-        Ok(a) if a.status.success() => {}
-        Ok(a) => fehler.push(format!("Index nicht zurückgesetzt: {}", String::from_utf8_lossy(&a.stderr).trim())),
-        Err(e) => fehler.push(format!("Index nicht zurückgesetzt: {e}")),
+    if let Err(grund) = index_zuruecksetzen(wurzel, pfade, autor) {
+        fehler.push(format!("Index nicht zurückgesetzt: {grund}"));
     }
     for pfad in pfade {
         if bekannt.contains(pfad) {

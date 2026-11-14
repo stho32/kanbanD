@@ -170,6 +170,45 @@ fn pfad_ausserhalb_der_wurzel_bleibt_ohne_wirkung() {
     assert_eq!(std::fs::read_to_string(aussen.path().join("x.md")).unwrap(), "draußen", "die Datei draußen bleibt");
 }
 
+/// ADR-0005 N2 Punkt 4 / Leitlinie: ohne lesbares HEAD ist unbekannt, was die Aktion angelegt hat — dann wird
+/// nichts gelöscht. Eine vor der Aktion vorhandene Datei bleibt liegen, der Index wird zurückgesetzt, soweit
+/// möglich, und die Meldung nennt den Grund, statt „zurückgenommen“ zu behaupten.
+#[test]
+fn ohne_head_loescht_die_ruecknahme_nichts() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    std::fs::create_dir_all(t.path().join("boards")).unwrap();
+    std::fs::create_dir_all(t.path().join("aufgaben")).unwrap();
+    std::fs::write(t.path().join("boards/fabrik.md"), "# fabrik").unwrap();
+    std::fs::write(t.path().join("kanbanD.md"), "---\nst: st\n---\n").unwrap();
+    std::fs::write(t.path().join("aufgaben/0001-neu.md"), "neu").unwrap();
+    let haken = t.path().join(".git/hooks/pre-commit");
+    std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let fehler = committen(t.path(), &["boards/fabrik.md".into(), "aufgaben/0001-neu.md".into()], &stefan(), "scheitert").unwrap_err();
+    assert!(t.path().join("boards/fabrik.md").exists(), "die vorher vorhandene Datei bleibt liegen: {fehler:?}");
+    assert!(fehler.meldung().contains("HEAD fehlt"), "der Grund steht in der Meldung: {fehler:?}");
+    assert!(!fehler.meldung().contains("zurückgenommen:"), "kein Erfolg behauptet: {fehler:?}");
+}
+
+/// Variante: HEAD ist lesbar (`rev-parse` findet es), aber `git ls-tree` scheitert (exit 128) — auch dann wird
+/// nichts gelöscht, der Grund steht im Text.
+#[test]
+fn ls_tree_scheitert_trotz_head_laesst_die_datei_stehen() {
+    let t = repo();
+    std::fs::write(t.path().join("bleibt.md"), "alt").unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    let tree = git(t.path(), &["rev-parse", "HEAD^{tree}"]);
+    let objekt = t.path().join(format!(".git/objects/{}/{}", &tree[..2], &tree[2..]));
+    std::fs::remove_file(&objekt).unwrap();
+    std::fs::write(t.path().join("neu.md"), "neu").unwrap();
+    let fehler = committen(t.path(), &["neu.md".into()], &stefan(), "scheitert").unwrap_err();
+    assert!(t.path().join("neu.md").exists(), "die Datei bleibt liegen: {fehler:?}");
+    assert!(fehler.meldung().contains("nicht zurückgenommen"), "der Grund steht in der Meldung: {fehler:?}");
+    assert!(!fehler.meldung().contains("zurückgenommen:"), "kein Erfolg behauptet: {fehler:?}");
+}
+
 #[test]
 fn unterordner_eines_repositories_committet_relativ_zum_unterordner() {
     let t = repo();
