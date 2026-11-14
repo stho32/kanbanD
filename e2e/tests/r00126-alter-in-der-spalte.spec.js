@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, liveBereit, thema, kontrastAm, farbPixel } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, bereit, thema, kontrastAm, farbPixel } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 const p = n => String(n).padStart(2, '0');
@@ -182,11 +182,18 @@ test.describe('R00126 Grundbestand', () => {
   });
 
   test('US-5/AK 7: nur gelesen, kein zweiter Takt — 60 s Zusehen ohne Commit, ohne zusätzliches renders()', async ({ page }) => {
-    test.setTimeout(120000);
+    // Die 60 s laufen auf gestellter Uhr: unter Last kann der Tab den Herzschlag nicht verspätet sehen und der Wächter (40 s stille Leitung,
+    // web/app.js liveWaechter) nicht neu verbinden und zeichnen. Der Server meldet sich real alle 15 s — hier alle 10 s (kdTest.herzschlag).
+    await page.clock.install();
+    await page.reload();
+    await bereit(page, page.locator('.ka[data-id="1"]'));
     const datei = k.lies('boards/fabrik.md');
     const vorher = +k.git('rev-list', '--count', 'HEAD');
     const vorherRenders = await page.evaluate(() => window.kdTest.renders());
-    await page.waitForTimeout(60000);
+    for (let n = 0; n < 6; n++) {
+      await page.clock.runFor(10000);
+      await page.evaluate(() => window.kdTest.herzschlag());
+    }
     expect(k.lies('boards/fabrik.md')).toBe(datei);
     expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher);
     expect(await page.evaluate(() => window.kdTest.renders()), 'kein Neuzeichnen ohne Ereignis').toBe(vorherRenders);
