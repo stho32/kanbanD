@@ -1,6 +1,6 @@
 // R00105 Preisetikett je Aufgabe — Reiterleiste des Aufgabenfensters per Tastatur (US-15, F0043)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, kontrastAm } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Eingang\n\n- #4\n\n## In Arbeit\n\n## Fertig\n',
@@ -184,8 +184,8 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     await board(page, fabrik(SPANNE, ZEIT_46));
     const r3 = page.locator('.ka[data-id="1"] .r3');
     for (const breite of [1280, 320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 800 });
-      expect((await r3.innerText()).replace(/\s+/g, ' ')).toContain('≈ 1,10 $, Σ 0:46');
+      await breiteSetzen(page, breite, 800);
+      await expect.poll(async () => (await r3.innerText()).replace(/\s+/g, ' '), `Zeile bei ${breite} px`).toContain('≈ 1,10 $, Σ 0:46');
       const zeilen = await r3.locator('.preis [aria-hidden="true"]').evaluate(el => el.getClientRects().length);
       expect(zeilen, `Betrag und Komma in einer Zeile bei ${breite} px`).toBe(1);
       const zeilenanfang = await r3.evaluate(el => el.innerText.split('\n').some(z => z.trim().startsWith(',')));
@@ -252,12 +252,6 @@ const umbrueche = (page, name) => page.evaluate(gesucht => {
   if (oben.length !== gesucht.length) throw new Error(`„${gesucht}“: ${oben.length} statt ${gesucht.length} Zeichen gemessen`);
   return oben.map((y, i) => (i > 0 && y > oben[i - 1] ? i : -1)).filter(i => i > 0);
 }, name);
-
-/** Breite setzen und warten, bis der resize-Hörer neu gezeichnet und das Layout gerechnet hat (zwei Frames). */
-async function breiteSetzen(page, breite, hoehe) {
-  await page.setViewportSize({ width: breite, height: hoehe });
-  await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
-}
 
 /** Reiter „Kosten“ zeigen und warten, bis die Schriften für die neue Tabelle geladen sind. */
 async function kostenZeigen(page, dialog) {

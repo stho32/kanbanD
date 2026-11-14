@@ -1,4 +1,17 @@
 // Startet kanbanD gegen einen frischen Ordner und räumt danach auf.
+//
+// Warten (ADR-0026, R00150): Proben warten auf den Zielzustand, nie auf Zeit. Fünf Regeln:
+//  1. Nach einer Aktion keine nackte Lesung (`innerText`, `getBoundingClientRect`, `page.evaluate`, `k.lies`, `k.git`):
+//     der Zielzustand wird mit einer Locator-Zusicherung oder `await expect.poll(() => …)` geprüft.
+//  2. Nach `setViewportSize` erst das Layout stehen lassen: `breiteSetzen(page, breite, hoehe)`, dann messen; ebenso nach dem
+//     ersten Sichtbarwerden eines neu geöffneten Elements.
+//  3. Vor jeder Messung, Zählung oder dem Renderzähler steht die Ansicht: `await bereit(page, anker)` (live verbunden, Anker
+//     der Ansicht sichtbar, `kdTest.gezeichnet()`); `liveBereit` allein bestätigt nur die Leitung, nicht den gezeichneten Stand.
+//  4. Nach einem Dateischreiben auf Commit und Zustand warten (`expect.poll(() => k.lies(rel))`, `k.git(…)`); auf ein
+//     Live-Ereignis über `bereit`, nie mit `page.waitForTimeout`.
+//  5. Eine Frist ist nur für das Ausbleiben eines Ereignisses erlaubt; `waitForTimeout` als Synchronisierung ist untersagt.
+//     Wird eine Dauer beobachtet, steht die Messgrundlage erst nach `bereit()`, und die Zeit läuft über `page.clock`.
+//     `imFokus` misst nur und ist kein Wartemittel.
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -96,6 +109,26 @@ async function reiter(page, name) {
 /** Wartet, bis die Seite live verbunden ist — erst dann kommt eine Änderung von außen sicher an (R00050). */
 async function liveBereit(page) {
   await page.locator('html[data-live="verbunden"]').waitFor({ state: 'attached' });
+}
+
+/**
+ * Die Ansicht steht (ADR-0026 Regel 3): live verbunden, der Anker der Ansicht sichtbar und der geladene Stand gezeichnet
+ * (`kdTest.gezeichnet()`, R00103). `anker` ist ein Locator oder ein Selektor — ein Element, das erst mit dem fertigen Zeichnen entsteht.
+ */
+async function bereit(page, anker) {
+  await liveBereit(page);
+  if (anker) await (typeof anker === 'string' ? page.locator(anker).first() : anker).waitFor({ state: 'visible' });
+  await page.waitForFunction(() => window.kdTest.gezeichnet());
+}
+
+/**
+ * Setzt die Fenstergröße und wartet, bis sie im Fenster steht, der resize-Hörer neu gezeichnet und das Layout gerechnet hat
+ * (zwei Frames; ADR-0026 Regel 2). Erst danach wird gemessen. Ohne `hoehe` bleibt die Höhe des Fensters.
+ */
+async function breiteSetzen(page, breite, hoehe = page.viewportSize().height) {
+  await page.setViewportSize({ width: breite, height: hoehe });
+  await page.waitForFunction(([b, h]) => innerWidth === b && innerHeight === h, [breite, hoehe]);
+  await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
 }
 
 /** Öffnet die zugeklappte Filterbox der Berichte (R00081); offen bleibt sie für den Rest des Tests. */
@@ -263,4 +296,4 @@ async function mutanteEinsetzen(ziel) {
   });
 }
 
-module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
