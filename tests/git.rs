@@ -131,6 +131,45 @@ fn eine_gescheiterte_ruecknahme_steht_in_der_meldung() {
     assert!(fehler.meldung().contains("Rücknahme"), "die gescheiterte Rücknahme steht in der Meldung: {fehler:?}");
 }
 
+/// ADR-0005 N2 Punkt 2 (akzeptierte Schwäche, festgehalten): trägt ein Pfad vor der Aktion eine uncommittete
+/// Änderung, verliert er sie — die Rücknahme stellt den Stand von HEAD her und lässt `git status` leer. Der Test
+/// hält die bewusst in Kauf genommene Schwäche fest, damit sie nicht unbemerkt kippt.
+#[test]
+fn vorher_schmutziger_pfad_steht_nach_dem_fehlschlag_auf_head() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    std::fs::write(t.path().join("schmutzig.md"), "alt").unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    std::fs::write(t.path().join("schmutzig.md"), "uncommittete Handarbeit").unwrap();
+    assert!(!git(t.path(), &["status", "--porcelain"]).is_empty(), "vorher schmutzig");
+    let haken = t.path().join(".git/hooks/pre-commit");
+    std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+    committen(t.path(), &["schmutzig.md".into()], &stefan(), "scheitert").unwrap_err();
+    assert_eq!(std::fs::read_to_string(t.path().join("schmutzig.md")).unwrap(), "alt", "der Stand von HEAD");
+    assert_eq!(git(t.path(), &["status", "--porcelain"]), "", "kein Git-Rest");
+}
+
+/// ADR-0005 N2 Durchsetzung „Pfad außerhalb“: existiert die Datei außerhalb der Wurzel, ist das der gefährliche
+/// Fall — die Prüfung weist ihn ab, ohne die Datei draußen anzufassen.
+#[test]
+fn pfad_ausserhalb_der_wurzel_bleibt_ohne_wirkung() {
+    let aussen = tempfile::tempdir().unwrap();
+    let t = aussen.path().join("repo");
+    std::fs::create_dir(&t).unwrap();
+    git(&t, &["init", "-q"]);
+    std::fs::write(t.join("a.md"), "a").unwrap();
+    git(&t, &["add", "-A"]);
+    git(&t, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    std::fs::write(aussen.path().join("x.md"), "draußen").unwrap();
+    let vorher = git(&t, &["status", "--porcelain"]);
+    let fehler = committen(&t, &["../x.md".into()], &stefan(), "raus").unwrap_err();
+    assert!(matches!(fehler, Fehler::Intern(_)), "ein Pfad außerhalb ist ein Programmierfehler: {fehler:?}");
+    assert_eq!(git(&t, &["status", "--porcelain"]), vorher, "Index und Arbeitsbaum unberührt");
+    assert_eq!(std::fs::read_to_string(aussen.path().join("x.md")).unwrap(), "draußen", "die Datei draußen bleibt");
+}
+
 #[test]
 fn unterordner_eines_repositories_committet_relativ_zum_unterordner() {
     let t = repo();
