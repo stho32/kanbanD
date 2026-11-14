@@ -50,10 +50,10 @@ pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &st
     let bekannt = in_head(wurzel, pfade, autor)?;
     match committen_und_pruefen(wurzel, pfade, autor, &crate::nachricht::fertig(nachricht)) {
         Ok(committet) => Ok(committet),
-        Err(fehler) => {
-            zuruecknehmen(wurzel, pfade, &bekannt, autor);
-            Err(Fehler::Intern(format!("{}; zurückgenommen: {}", fehler.meldung(), pfade.join(", "))))
-        }
+        Err(fehler) => match zuruecknehmen(wurzel, pfade, &bekannt, autor) {
+            Ok(()) => Err(Fehler::Intern(format!("{}; zurückgenommen: {}", fehler.meldung(), pfade.join(", ")))),
+            Err(grund) => Err(Fehler::Intern(format!("{}; Rücknahme unvollständig: {grund}", fehler.meldung()))),
+        },
     }
 }
 
@@ -86,24 +86,40 @@ fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::colle
 
 /// Rücknahme (ADR-0005 N1): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus HEAD
 /// wiederherstellen, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade bleiben
-/// unberührt. Ein Fehler beim Zurücknehmen wird gemeldet, aber nicht zum zweiten Fehler: der Aufrufer trägt
-/// den Commit-Fehler samt Pfaden, und mehr als dieser bestmögliche Versuch bleibt in diesem Zustand nicht.
-fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::HashSet<String>, autor: &Person) {
+/// unberührt.
+///
+/// Was sich nicht zurücknehmen ließ, kommt als `Err` zurück (ADR-0005 N2 Punkt 4) — der Aufrufer trägt es in
+/// die Meldung, statt „zurückgenommen“ zu behaupten. Ein Pfad, der schon fehlt, ist kein Fehlschlag.
+fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::HashSet<String>, autor: &Person) -> Result<(), String> {
+    let mut fehler = vec![];
     let mut reset = git(wurzel, autor);
     reset.args(["reset", "-q", "--"]).args(pfade);
-    let _ = reset.status();
+    match reset.output() {
+        Ok(a) if a.status.success() => {}
+        Ok(a) => fehler.push(format!("Index nicht zurückgesetzt: {}", String::from_utf8_lossy(&a.stderr).trim())),
+        Err(e) => fehler.push(format!("Index nicht zurückgesetzt: {e}")),
+    }
     for pfad in pfade {
         if bekannt.contains(pfad) {
             let mut her = git(wurzel, autor);
             her.args(["checkout", "-q", "HEAD", "--"]).arg(pfad);
-            let _ = her.status();
+            match her.output() {
+                Ok(a) if a.status.success() => {}
+                Ok(a) => fehler.push(format!("{pfad} ließ sich nicht wiederherstellen: {}", String::from_utf8_lossy(&a.stderr).trim())),
+                Err(e) => fehler.push(format!("{pfad} ließ sich nicht wiederherstellen: {e}")),
+            }
         } else {
             match std::fs::remove_file(wurzel.join(pfad)) {
                 Ok(()) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => eprintln!("Rücknahme: {pfad} ließ sich nicht entfernen: {e}"),
+                Err(e) => fehler.push(format!("{pfad} ließ sich nicht entfernen: {e}")),
             }
         }
+    }
+    if fehler.is_empty() {
+        Ok(())
+    } else {
+        Err(fehler.join("; "))
     }
 }
 

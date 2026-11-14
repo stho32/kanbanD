@@ -107,6 +107,30 @@ fn pfad_ausserhalb_der_wurzel_und_doppelter_pfad_werden_abgewiesen() {
     assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "1", "kein Commit");
 }
 
+/// ADR-0005 N2 Punkt 4: die Meldung sagt „zurückgenommen“ nur, wenn es stimmt. Lässt sich ein Pfad nicht
+/// zurücknehmen (hier: eine neue Datei in einem schreibgeschützten Ordner), nennt der Fehler den Pfad und den
+/// Grund — er behauptet keinen Erfolg und verschweigt den Fehlschlag nicht auf `stderr`.
+#[test]
+fn eine_gescheiterte_ruecknahme_steht_in_der_meldung() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    std::fs::write(t.path().join("bleibt.md"), "alt").unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    let haken = t.path().join(".git/hooks/pre-commit");
+    std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let unter = t.path().join("unter");
+    std::fs::create_dir(&unter).unwrap();
+    std::fs::write(unter.join("neu.md"), "neu").unwrap();
+    std::fs::set_permissions(&unter, std::fs::Permissions::from_mode(0o555)).unwrap();
+    let fehler = committen(t.path(), &["unter/neu.md".into()], &stefan(), "scheitert").unwrap_err();
+    std::fs::set_permissions(&unter, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(!fehler.meldung().contains("zurückgenommen:"), "kein Erfolg behauptet: {fehler:?}");
+    assert!(fehler.meldung().contains("unter/neu.md"), "der Pfad steht in der Meldung: {fehler:?}");
+    assert!(fehler.meldung().contains("Rücknahme"), "die gescheiterte Rücknahme steht in der Meldung: {fehler:?}");
+}
+
 #[test]
 fn unterordner_eines_repositories_committet_relativ_zum_unterordner() {
     let t = repo();
