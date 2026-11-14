@@ -85,7 +85,7 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
     await expect.poll(() => commits(k)).toBe(vorher + 1);
     const dateien = k.git('ls-files', 'aufgaben').split('\n').filter(p => p.includes('nur-einmal'));
     expect(dateien, 'genau eine neue Datei').toHaveLength(1);
-    expect(k.lies(BOARD).match(/- #2\b/g) || [], 'eine Board-Zeile').toHaveLength(1);
+    expect(k.lies(BOARD).match(/#2\]/g) || [], 'eine Board-Zeile').toHaveLength(1);
     expect(halte.anzahl(), 'genau ein POST /api/aufgaben').toBe(1);
     // der Hinweis nennt genau eine Nummer
     const hinweis = page.locator('.toast[role="status"]');
@@ -117,7 +117,11 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
   });
 
   test('AK 9 (#55): Doppelklick auf „⇄ Achsen tauschen“ tauscht genau einmal', async ({ page }) => {
-    k = await kanbanStarten(einrichten(bestand('report-labels: {rows: repo, columns: nc}\n')));
+    // der Bericht braucht Aufgaben mit zwei Label-Präfixen (sonst gibt es keine Achsen zu tauschen)
+    const mitLabels = bestand('report-labels: {rows: repo, columns: nc}\n');
+    mitLabels['boards/entwicklung.md'] = '---\nreport-labels: {rows: repo, columns: nc}\n---\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-abnahme-pruefen.md)\n- [#2](../aufgaben/0002-shop.md)\n\n## In Arbeit\n\n## Erledigt\n';
+    mitLabels['aufgaben/0002-shop.md'] = '---\nid: 2\ntitle: shop\nlabels: ["repo:shop", "nc:304"]\n---\n';
+    k = await kanbanStarten(einrichten(mitLabels));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/berichte/bestand');
     await filterOeffnen(page);
@@ -128,6 +132,7 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
     await bisAnfrageLaeuft(halte);
     halte.freigeben();
 
+    await expect.poll(() => k.lies(BOARD)).toContain('report-labels: {rows: nc, columns: repo}');
     expect(halte.anzahl(), 'genau ein PUT …/bestand').toBe(1);
     expect(commits(k), 'höchstens ein Commit').toBeLessThanOrEqual(vorher + 1);
     expect(k.lies(BOARD), 'die Achsen sind genau einmal getauscht').toContain('report-labels: {rows: nc, columns: repo}');
@@ -232,7 +237,7 @@ test.describe('R00148 Doppelter Auslöser im Aufgabenfenster', () => {
     halte.freigeben();
 
     expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
-    expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
+    await expect.poll(() => commits(k), { message: 'genau ein Commit' }).toBe(vorher + 1);
     await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(1);
     const datei = k.lies(KARTE);
     expect(datei.match(/node: D0002/g) || [], 'die erste Wirkung ist weg').toHaveLength(0);
