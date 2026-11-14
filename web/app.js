@@ -474,6 +474,12 @@ function neuEintrag(titel, f) {
   if (s.faellig || f.faellig) e.faellig = s.faellig || f.faellig;
   return e;
 }
+/** Ein Schlüssel je geöffnetem Fenster „Neue Aufgabe" (R00148 AK 18, ADR-0025 Regel 5): derselbe Formularstand schickt
+    ihn bei jedem Anlegen mit, sodass ein wiederholter Aufruf keine zweite Karte erzeugt (R00098). */
+function anlegeSchluessel() {
+  return `neu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function neueAufgabeAnlegen(weitere, zeilen) {
   const u = S.ui, f = u.neu;
   if (!f || ichNoetig()) { render(); return; }
@@ -486,9 +492,9 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
     try {
       let neu;
       if (liste.length === 1) {
-        neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
+        neu = [await api('POST', '/api/aufgaben', { ...neuEintrag(liste[0], f), key: f.schluessel, beschreibung: f.beschreibung, teilaufgaben: f.teil, ...ziel })];
       } else {
-        neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map(t => neuEintrag(t, f)), ...ziel });
+        neu = await api('POST', '/api/aufgaben/mehrere', { titel: liste.map((t, i) => ({ ...neuEintrag(t, f), key: `${f.schluessel}-${i}` })), ...ziel });
       }
       u.hinweis = { text: neu.length === 1 ? `#${neu[0].nummer} angelegt` : `${neu.length} Aufgaben angelegt`, undo: { art: 'archivieren', nummern: neu.map(a => a.nummer) }, at: Date.now() };
       if (weitere) { Object.assign(f, { titel: '', beschreibung: '', teil: [], fehler: null }); u.fokus = '#neu-titel'; }
@@ -1400,7 +1406,7 @@ async function aktion(a, arg, wert) {
         const ohne = arg === '-' || !S.board || u.view !== 'board';
         const spalte = ohne ? '' : (arg || (S.board.spalten[0] || {}).name || '');
         u.offen = null; u.pop = null; u.menue = null;
-        u.neu = { board: ohne ? '' : u.slug, spalte, titel: '', beschreibung: '', teil: [], klasse: '', zust: S.ich && per(S.ich).art === 'human' ? [S.ich] : [], labels: '', faellig: '', herkunft: '', fehler: null };
+        u.neu = { board: ohne ? '' : u.slug, spalte, schluessel: anlegeSchluessel(), titel: '', beschreibung: '', teil: [], klasse: '', zust: S.ich && per(S.ich).art === 'human' ? [S.ich] : [], labels: '', faellig: '', herkunft: '', fehler: null };
         u.fokus = '#neu-titel';
         break;
       }

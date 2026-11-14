@@ -165,6 +165,50 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
     expect(reihe.indexOf(an[1]), `Protokoll: ${reihe.join(' | ')}`).toBeGreaterThan(reihe.indexOf(`aus ${an[0].slice(3)}`));
     expect(commits(k), 'beide Änderungen sind gespeichert').toBe(vorher + 2);
   });
+
+  test('AK 18: Anlegen trägt den Schlüssel; derselbe Aufruf ein zweites Mal schreibt nichts', async ({ page }) => {
+    k = await kanbanStarten(einrichten(bestand()));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const vorher = commits(k);
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    // derselbe Formularstand trägt denselben Schlüssel
+    const schluesselVorher = await page.evaluate(() => S.ui.neu.schluessel);
+    await dialog.getByLabel('Titel der neuen Aufgabe').fill('nur einmal');
+    expect(await page.evaluate(() => S.ui.neu.schluessel), 'der Schlüssel bleibt über die Formularfüllung stabil').toBe(schluesselVorher);
+
+    const [anfrage] = await Promise.all([
+      page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/aufgaben'),
+      dialog.getByRole('button', { name: 'Anlegen', exact: true }).click(),
+    ]);
+    const key = anfrage.postDataJSON().key;
+    expect(typeof key, 'der POST /api/aufgaben trägt einen Schlüssel').toBe('string');
+    expect(key.length).toBeGreaterThan(0);
+    await expect.poll(() => commits(k)).toBe(vorher + 1);
+    expect(k.git('ls-files', 'aufgaben').split('\n').filter(p => p.includes('nur-einmal')), 'genau eine neue Datei').toHaveLength(1);
+
+    // derselbe POST ein zweites Mal (aus der Seite heraus): 200 mit neu: false, keine zweite Datei, kein zweiter Commit
+    const zweite = await page.evaluate(async (k) => {
+      const r = await fetch('/api/aufgaben', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-KanbanD-Wer': 'st' }, body: JSON.stringify({ titel: 'nur einmal', key: k }) });
+      return { status: r.status, antwort: await r.json() };
+    }, key);
+    expect(zweite.status, 'die Wiederholung antwortet 200').toBe(200);
+    expect(zweite.antwort.neu, 'nichts wird geschrieben').toBe(false);
+    expect(k.git('ls-files', 'aufgaben').split('\n').filter(p => p.includes('nur-einmal'))).toHaveLength(1);
+    expect(commits(k), 'kein zweiter Commit').toBe(vorher + 1);
+
+    // ein neu geöffnetes Fenster trägt einen anderen Schlüssel
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    const zweitesFenster = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await zweitesFenster.getByLabel('Titel der neuen Aufgabe').fill('noch eine');
+    const [zweiteAnfrage] = await Promise.all([
+      page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/aufgaben'),
+      zweitesFenster.getByRole('button', { name: 'Anlegen', exact: true }).click(),
+    ]);
+    expect(zweiteAnfrage.postDataJSON().key, 'ein neues Fenster, ein neuer Schlüssel').not.toBe(key);
+  });
 });
 
 /** Karte #1 mit den genannten Teilaufgaben (Haken laut `erledigt`). */
