@@ -8,6 +8,7 @@ pub mod format;
 pub mod git;
 pub mod herkunft;
 pub mod modell;
+pub mod nachricht;
 pub mod phasen;
 pub mod pruefungen;
 pub mod start;

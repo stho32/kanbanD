@@ -34,7 +34,7 @@ impl Kanban {
         if self.ordner().existiert(&board_pfad(&b.slug)) {
             return Err(Fehler::Konflikt(format!("Es gibt schon ein Board unter boards/{}.md", b.slug)));
         }
-        self.aktion(wer, &format!("Board „{}“ angelegt", b.titel), &[Schritt::schreiben(board_pfad(&b.slug), board::schreiben(&b, |_| None))])?;
+        self.aktion(wer, &format!("Board „{}“ angelegt", crate::nachricht::wert(&b.titel)), &[Schritt::schreiben(board_pfad(&b.slug), board::schreiben(&b, |_| None))])?;
         Ok(b.slug)
     }
 }

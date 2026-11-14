@@ -9,7 +9,7 @@ impl Kanban {
         if text.is_empty() {
             return Err(Fehler::Ungueltig("Der Kommentar ist leer".into()));
         }
-        let kurz: String = text.replace('\n', " ").chars().take(50).collect();
+        let kurz = crate::nachricht::wert(&text);
         self.aufgabe_schreiben(wer, nr, |a| {
             kommentiert(a, wer, &text);
             Ok(Some(format!("#{nr} kommentiert: {kurz}")))

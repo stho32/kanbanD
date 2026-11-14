@@ -31,7 +31,7 @@ impl Kanban {
             boardname_pruefen(&titel)?;
             if titel != b.titel {
                 b.titel = titel.clone();
-                nachricht = Some(format!("Board „{titel}“ umbenannt"));
+                nachricht = Some(format!("Board „{}“ umbenannt", crate::nachricht::wert(&titel)));
             }
         }
         if let Some(archivieren) = neu.archiviert {
@@ -39,9 +39,9 @@ impl Kanban {
             if b.archiviert != ziel {
                 board_entnahme_pruefen(wer.art, &b)?;
                 nachricht = Some(if archivieren {
-                    format!("Board „{}“ archiviert", b.titel)
+                    format!("Board „{}“ archiviert", crate::nachricht::wert(&b.titel))
                 } else {
-                    format!("Board „{}“ wieder geöffnet", b.titel)
+                    format!("Board „{}“ wieder geöffnet", crate::nachricht::wert(&b.titel))
                 });
                 b.archiviert = ziel;
             }
@@ -63,7 +63,7 @@ impl Kanban {
         if self.ordner().existiert(&cache) {
             schritte.push(Schritt::entfernen(cache));
         }
-        self.aktion(wer, &format!("Board „{}“ endgültig gelöscht", b.titel), &schritte)
+        self.aktion(wer, &format!("Board „{}“ endgültig gelöscht", crate::nachricht::wert(&b.titel)), &schritte)
     }
 }
 

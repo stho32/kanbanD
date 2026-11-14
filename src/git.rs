@@ -28,6 +28,10 @@ fn ausfuehren(mut c: Command, was: &str) -> Result<std::process::Output, Fehler>
 
 /// Committet genau die genannten Pfade (relativ zur Wurzel, auch gelöschte). Andere Änderungen im
 /// Arbeitsbaum oder im Index bleiben unberührt. Ändert sich nichts, entsteht kein Commit.
+///
+/// Die Nachricht ist abgeleiteter Text (ADR-0005 N1): [`crate::nachricht::fertig`] entfernt Steuerzeichen und
+/// begrenzt die Länge, bevor Git sie als Argument sieht — kein Schreibweg kann einen Commit an einem NUL-Byte
+/// oder einer übergroßen Nachricht scheitern lassen.
 pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &str) -> Result<bool, Fehler> {
     let pfade = &relevante_pfade(wurzel, pfade, autor)?;
     if pfade.is_empty() {
@@ -41,8 +45,9 @@ pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &st
     if diff.status().map_err(|e| Fehler::Intern(format!("git diff: {e}")))?.success() {
         return Ok(false);
     }
+    let nachricht = crate::nachricht::fertig(nachricht);
     let mut commit = git(wurzel, autor);
-    commit.args(["commit", "-q", "-m", nachricht, "--"]).args(pfade);
+    commit.args(["commit", "-q", "-m", &nachricht, "--"]).args(pfade);
     ausfuehren(commit, "commit")?;
     Ok(true)
 }

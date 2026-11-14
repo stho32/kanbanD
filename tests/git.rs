@@ -48,6 +48,16 @@ fn geloeschte_datei_wird_als_loeschung_committet_und_ohne_aenderung_entsteht_kei
     assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "2");
 }
 
+/// ADR-0005 N1: die Nachricht ist abgeleiteter Text — `committen` entfernt Steuerzeichen und Zeilenumbrüche,
+/// bevor Git sie als Argument sieht; so kann kein Schreibweg an einem Feld mit NUL scheitern.
+#[test]
+fn die_nachricht_wird_vor_dem_commit_abgeleitet() {
+    let t = repo();
+    std::fs::write(t.path().join("a.md"), "a").unwrap();
+    assert!(committen(t.path(), &["a.md".into()], &stefan(), "a\u{0}b\nzweite").unwrap());
+    assert_eq!(git(t.path(), &["log", "-1", "--format=%s"]), "a b zweite");
+}
+
 #[test]
 fn unterordner_eines_repositories_committet_relativ_zum_unterordner() {
     let t = repo();

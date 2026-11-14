@@ -6,6 +6,7 @@ use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Fremdschluessel, Person, Schluesseltreffer};
+use crate::nachricht;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::MutexGuard;
@@ -193,7 +194,7 @@ impl Kanban {
             [] => None,
             [a] => Some(match aus {
                 Some(quelle) => format!("#{} dupliziert (aus #{quelle})", a.nummer),
-                None => format!("#{} „{}“ angelegt", a.nummer, a.titel),
+                None => format!("#{} „{}“ angelegt", a.nummer, nachricht::wert(&a.titel)),
             }),
             alle => Some(format!("#{}–#{} angelegt ({} Aufgaben)", alle[0].nummer, alle[0].nummer + alle.len() as u32 - 1, alle.len())),
         };
@@ -216,8 +217,8 @@ impl Kanban {
             zug_mit_rueckkehr_pruefen(wer.art, &vorher, &b, &archiviert_vorher, &archiviert_nachher)?;
             if let Some(n) = &mut angelegt {
                 // Der Anlegeweg nennt das Board mit seinem Titel; eine Kopie nennt es mit seinem Slug (R00142 AK 9).
-                let board = if aus.is_some() { &b.slug } else { &b.titel };
-                n.push_str(&format!(" in „{spaltenname}“ ({board})"));
+                let board = if aus.is_some() { b.slug.clone() } else { b.titel.clone() };
+                n.push_str(&format!(" in „{}“ ({})", nachricht::wert(&spaltenname), nachricht::wert(&board)));
             }
             let text = crate::format::board::schreiben(&b, |nr| aufgaben.iter().chain(vorhanden).find(|a| a.nummer == nr).map(|a| a.datei.clone()));
             dateien.push(Schritt::schreiben(board_pfad(&b.slug), text));
