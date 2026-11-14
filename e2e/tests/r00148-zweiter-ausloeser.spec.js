@@ -4,7 +4,7 @@
 // ist sie vor dem zweiten Auslöser beendet und der Fall prüft nichts (R00148, „Zeitfenster“).
 // ERWARTET ROT bis die Sperre (B0687) und der eine Schreibweg (B0688) stehen.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -159,5 +159,158 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
     const an = reihe.filter(z => z.startsWith('an '));
     expect(reihe.indexOf(an[1]), `Protokoll: ${reihe.join(' | ')}`).toBeGreaterThan(reihe.indexOf(`aus ${an[0].slice(3)}`));
     expect(commits(k), 'beide Änderungen sind gespeichert').toBe(vorher + 2);
+  });
+});
+
+/** Karte #1 mit den genannten Teilaufgaben (Haken laut `erledigt`). */
+const karteMit = (teilaufgaben, mehr = '') =>
+  `---\nid: 1\ntitle: Abnahme prüfen\n${mehr}---\n` + teilaufgaben.map(([text, erledigt]) => `- [${erledigt ? 'x' : ' '}] ${text}\n`).join('');
+const DREI_OFFEN = [['eins', false], ['zwei', false], ['drei', false]];
+const ZWEI_OFFEN = [['eins', true], ['zwei', false], ['drei', false]];
+const LETZTE_OFFEN = [['eins', true], ['zwei', true], ['drei', false]];
+
+const bestandMit = (teilaufgaben, mehr = '') => ({
+  'kanbanD.md': EINSTELLUNGEN,
+  [BOARD]: `# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-abnahme-pruefen.md)\n\n## In Arbeit\n\n## Erledigt\n`,
+  [KARTE]: karteMit(teilaufgaben, mehr),
+});
+
+test.describe('R00148 Doppelter Auslöser im Aufgabenfenster', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN))); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const fensterOeffnen = async (page) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.locator('.ka[data-id="1"] .t').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+  };
+
+  test('AK 4 (#106): Doppelklick auf das ✕ an „zwei“ löscht nur „zwei“', async ({ page }) => {
+    await fensterOeffnen(page);
+    const vorher = commits(k);
+    const halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/teilaufgaben/'), 'DELETE');
+    await page.getByLabel('Teilaufgabe zwei entfernen').dblclick();
+    await bisAnfrageLaeuft(halte);
+    halte.freigeben();
+
+    await expect(page.locator('#fenster .chk span')).toHaveText(['eins', 'drei']);
+    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
+    expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
+    expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
+    expect(k.lies(KARTE), 'die Datei trägt eins und drei').toContain('- [ ] eins\n- [ ] drei');
+    // der Hinweis bietet „Teilaufgabe „zwei“ entfernt“ mit rückgängig an
+    const hinweis = page.locator('.toast');
+    await expect(hinweis).toContainText('Teilaufgabe „zwei“ entfernt');
+    await expect(hinweis.getByRole('button', { name: 'rückgängig' })).toHaveCount(1);
+  });
+
+  test('AK 4 (#106): zweimal Enter auf dem fokussierten ✕ löscht nur „zwei“', async ({ page }) => {
+    await fensterOeffnen(page);
+    const halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/teilaufgaben/'), 'DELETE');
+    await page.getByLabel('Teilaufgabe zwei entfernen').focus();
+    await page.keyboard.press('Enter');
+    await bisAnfrageLaeuft(halte);
+    await page.keyboard.press('Enter');
+    halte.freigeben();
+
+    await expect(page.locator('#fenster .chk span')).toHaveText(['eins', 'drei']);
+    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
+  });
+
+  test('AK 10 (#134 a): Doppelklick auf das ✕ einer Wirkung entfernt genau eine', async ({ page }) => {
+    await k.stoppen();
+    k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN, 'wbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n')));
+    await fensterOeffnen(page);
+    const vorher = commits(k);
+    await reiter(page, 'Details');
+    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(2);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/wbs-effects/0', 'DELETE');
+    await page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0).dblclick();
+    await bisAnfrageLaeuft(halte);
+    halte.freigeben();
+
+    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
+    expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
+    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(1);
+    const datei = k.lies(KARTE);
+    expect(datei.match(/node: D0002/g) || [], 'die erste Wirkung ist weg').toHaveLength(0);
+    expect(datei.match(/node: I0014/g) || [], 'die zweite Wirkung steht noch').toHaveLength(1);
+  });
+
+  test('AK 11 (#134 b): Doppelklick auf das ✕ einer Entwurfs-Teilaufgabe lässt „zwei“ stehen', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const vorher = commits(k);
+    const schreibend = [];
+    page.on('request', r => { if (r.method() !== 'GET') schreibend.push(`${r.method()} ${new URL(r.url()).pathname}`); });
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    await page.getByLabel('Titel der neuen Aufgabe').fill('Probe');
+    await page.locator('#neu-teil').fill('eins');
+    await page.locator('#neu-teil').press('Enter');
+    await page.locator('#neu-teil').fill('zwei');
+    await page.locator('#neu-teil').press('Enter');
+    await expect(page.locator('#neu-fenster .chk span')).toHaveText(['eins', 'zwei']);
+
+    await page.locator('#neu-fenster .chk .x').nth(0).dblclick();
+
+    await expect(page.locator('#neu-fenster .chk span'), 'nur „eins“ ist weg, „zwei“ steht noch').toHaveText(['zwei']);
+    expect(schreibend, 'kein Serveraufruf').toEqual([]);
+    expect(commits(k), 'kein Commit').toBe(vorher);
+  });
+});
+
+test.describe('R00148 Doppeltipp auf die Kartenleiste (Touch 390)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  let k;
+  test.afterEach(() => k.stoppen());
+
+  const leiste = page => page.locator('.ka[data-id="1"] .naechste-ziel');
+  /** Zwei Berührungen desselben Ziels im Abstand `abstand` ms; die Antwort der ersten wird gehalten. */
+  async function doppeltipp(page, halte, abstand) {
+    const box = await leiste(page).boundingBox();
+    const mitte = [box.x + box.width / 2, box.y + box.height / 2];
+    await page.touchscreen.tap(...mitte);
+    await bisAnfrageLaeuft(halte);
+    await page.waitForTimeout(abstand);
+    await page.touchscreen.tap(...mitte);
+  }
+
+  for (const abstand of [120, 600]) {
+    test(`AK 5 (#65): Doppeltipp in ${abstand} ms hakt nur „zwei“ ab`, async ({ page }) => {
+      k = await kanbanStarten(einrichten(bestandMit(ZWEI_OFFEN)));
+      await alsPerson(page, 'st');
+      await page.goto(k.adresse);
+      await liveBereit(page);
+      await expect(leiste(page)).toHaveText('zwei');
+      const vorher = commits(k);
+      const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/1', 'PATCH');
+      await doppeltipp(page, halte, abstand);
+      halte.freigeben();
+
+      await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins\n- [x] zwei\n- [ ] drei');
+      expect(halte.anzahl(), 'genau ein PATCH').toBe(1);
+      expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
+      expect(k.lies(KARTE), '„drei“ bleibt offen').toContain('- [ ] drei');
+    });
+  }
+
+  test('AK 6 (#65 c): Doppeltipp auf der letzten offenen Teilaufgabe öffnet kein Fenster', async ({ page }) => {
+    k = await kanbanStarten(einrichten(bestandMit(LETZTE_OFFEN)));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await expect(leiste(page)).toHaveText('drei');
+    const vorher = commits(k);
+    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/2', 'PATCH');
+    await doppeltipp(page, halte, 120);
+    halte.freigeben();
+
+    await expect.poll(() => k.lies(KARTE)).toContain('- [x] drei');
+    expect(halte.anzahl(), 'genau ein PATCH').toBe(1);
+    expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
+    await expect(page.locator('[role="dialog"]'), 'kein Fenster offen').toHaveCount(0);
+    await expect(page.locator('#fenster')).toHaveCount(0);
   });
 });
