@@ -25,8 +25,9 @@
         .catch(fehler => { eigeneGescheitert = true; melden('anfrage', fehler, ausloeser); })
         .then(() => {
           // Die Anfrage ist beantwortet (auch mit Fehlschlag) — wer daran etwas aufhängt (die Sperre, R00148), erfährt es hier,
-          // bevor das Nachladen beginnt.
-          nachAnfrage();
+          // bevor das Nachladen beginnt. Ein Fehler des Hakens bricht die Kette nicht (sonst sprängen alle folgenden Glieder
+          // über die Ablehnung, und `offen` ginge nie herunter) und bleibt in der Konsole sichtbar.
+          try { nachAnfrage(); } catch (fehler) { console.error('Warteschlange: nachAnfrage', fehler); }
           offen--;
           if (offen > 0) return;
           vorLaden(ausloeser);

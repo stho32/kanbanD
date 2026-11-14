@@ -96,3 +96,19 @@ test('R00148: `nachAnfrage` läuft, sobald die Anfrage beantwortet ist — vor d
   await assert.doesNotReject(zweite.einreihen(async () => { mitFehler.push('anfrage'); throw new Error('weg'); }, 'board', () => mitFehler.push('antwort')));
   assert.deepStrictEqual(mitFehler, ['anfrage', 'antwort', 'laden'], 'die Sperre endet auch bei einem Fehlschlag mit der Antwort');
 });
+
+test('R00148 S1: wirft der Haken `nachAnfrage`, bleibt die Kette offen — beide Anfragen laufen, einmal geladen, offen 0', async () => {
+  const reihe = [], konsole = [];
+  const vorher = console.error;
+  console.error = (...teile) => konsole.push(teile.join(' '));
+  try {
+    const kette = warteschlangeFuehren({ laden: async () => { reihe.push('laden'); }, melden: () => { } });
+    const erste = kette.einreihen(async () => { reihe.push('a1'); }, 'board', () => { throw new Error('Haken kaputt'); });
+    const zweite = kette.einreihen(async () => { reihe.push('a2'); }, 'board');
+    await assert.doesNotReject(erste);
+    await assert.doesNotReject(zweite);
+    assert.deepStrictEqual(reihe, ['a1', 'a2', 'laden']);
+    assert.strictEqual(kette.offen(), 0);
+    assert.strictEqual(konsole.length, 1, 'der Fehler des Hakens bleibt sichtbar');
+  } finally { console.error = vorher; }
+});
