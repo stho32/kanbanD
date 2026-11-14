@@ -489,7 +489,7 @@ function neuEintrag(titel, f) {
 /** Ein Schlüssel je geöffnetem Fenster „Neue Aufgabe" (R00148 AK 18, ADR-0025 Regel 5): derselbe Formularstand schickt
     ihn bei jedem Anlegen mit, sodass ein wiederholter Aufruf keine zweite Karte erzeugt (R00098). */
 function anlegeSchluessel() {
-  return `neu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${FENSTER_SCHLUESSEL}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /** Kennung einer Entwurfszeile im Fenster „Neue Aufgabe" (R00148 AK 11, ADR-0025 Nachtrag N2): im Zustand vergeben,

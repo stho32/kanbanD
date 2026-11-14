@@ -819,9 +819,13 @@ function vSchloss(a) {
   const r = gueltigeReservierung(a);
   return r ? `<span class="schloss" title="${esc(reservierungText(r))}" aria-label="${esc(reservierungText(r))}">${SCHLOSS}${esc(r.wer)}</span>` : '';
 }
-/** Der Fremdschlüssel wird nur beim Anlegen gesetzt (R00098) — hier nur lesbar. */
+/** Präfix der Schlüssel, die das Fenster „Neue Aufgabe“ vergibt (R00148 AK 18/21) — reserviert: Sensoren und Agenten
+    bilden ihre Schlüssel aus Repository, Bedingung und Fundstelle (R00098). */
+const FENSTER_SCHLUESSEL = 'neu-';
+/** Der Fremdschlüssel wird nur beim Anlegen gesetzt (R00098) — hier nur lesbar. Ein Fenster-Schlüssel bleibt in der
+    Datei, ist aber kein Fremdschlüssel und steht nicht in „Details“ (R00148 AK 21). */
 function vSchluesselFeld(a) {
-  if (!a.key) return '';
+  if (!a.key || a.key.startsWith(FENSTER_SCHLUESSEL)) return '';
   return `<span class="k">Schlüssel</span><span class="w mono" id="schluessel">${esc(a.key)}</span>`;
 }
 function vReservierungFeld(a) {

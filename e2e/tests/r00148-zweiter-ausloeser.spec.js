@@ -747,3 +747,49 @@ test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16,
     });
   }
 });
+
+test.describe('R00148 Nacharbeit: Fenster-Schlüssel in „Details“ (AK 21, US-10)', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestand())); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const schluesselZeile = page => page.locator('.mod-body[data-ansicht="details"] .k', { hasText: /^Schlüssel$/ });
+
+  test('AK 21: der Fenster-Schlüssel steht in der Datei, „Details“ verbirgt ihn, „Datei“ zeigt ihn roh', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await page.getByRole('button', { name: 'Neue Aufgabe in Zu erledigen' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await dialog.getByLabel('Titel der neuen Aufgabe').fill('mit Fensterschlüssel');
+    await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+    const karte = page.locator('.ka', { hasText: 'mit Fensterschlüssel' });
+    await expect(karte).toHaveCount(1);
+    const pfad = k.git('ls-files', 'aufgaben').split('\n').find(p => p.includes('mit-fensterschluessel') || p.includes('mit-fensterschlussel'));
+    expect(pfad, 'die neue Datei').toBeTruthy();
+    expect(k.lies(pfad), 'die Datei trägt den Schlüssel unverändert').toMatch(/^key: neu-[0-9a-z]+-[0-9a-z]+$/m);
+
+    await karte.locator('.t').click();
+    await reiter(page, 'Details');
+    await expect(page.locator('.mod-body[data-ansicht="details"] .felder')).toBeVisible();
+    await expect(schluesselZeile(page), '„Details“ zeigt keine Zeile „Schlüssel“').toHaveCount(0);
+    await expect(page.locator('#schluessel')).toHaveCount(0);
+
+    await reiter(page, 'Datei');
+    await expect(page.locator('#dateitext'), '„Datei“ zeigt die rohe Datei samt key:').toContainText('key: neu-');
+  });
+
+  test('AK 21 Gegenprobe: ein Schlüssel ohne Fenster-Präfix steht in „Details“', async ({ page }) => {
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    const antwort = await page.evaluate(async () => {
+      const r = await fetch('/api/aufgaben', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-KanbanD-Wer': 'st' }, body: JSON.stringify({ titel: 'lodash anheben', key: 'shop/nc-304/lodash', board: 'entwicklung', spalte: 'Zu erledigen' }) });
+      return r.json();
+    });
+    const karte = page.locator(`.ka[data-id="${antwort.nummer}"]`);
+    await expect(karte).toHaveCount(1);
+    await karte.locator('.t').click();
+    await reiter(page, 'Details');
+    await expect(schluesselZeile(page)).toHaveCount(1);
+    await expect(page.locator('#schluessel')).toHaveText('shop/nc-304/lodash');
+  });
+});
