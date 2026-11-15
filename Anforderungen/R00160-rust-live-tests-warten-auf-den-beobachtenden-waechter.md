@@ -1,6 +1,6 @@
 ---
 id: R00160
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-15
 ---
 
@@ -20,11 +20,11 @@ Zahlt ein auf: [Vision](R00000-vision.md) — Leitplanke „Getestet wird mit `c
 
 Wortlaut der Architektur.
 
-- [ ] **AK 1:** Ein Live-Test löst erst aus, wenn das Bereitzeichen vorliegt: keine Zeile „nicht beobachtet“ nach der ersten Antwort bzw. `Ok` vom Wächterstart.
-- [ ] **AK 2:** Fehlt das Bereitzeichen bis zur Obergrenze, scheitert der Test mit einer Meldung, die die inotify-Grenze nennt — nicht mit „kein passendes Ereignis“.
-- [ ] **AK 3:** Abnahme-Probe: vier gleichzeitige Läufe der gebauten Testdatei `live`, fünf Runden, 20 von 20 grün (rund 30–60 s). Nur fahren, wenn kein anderes Gate läuft — die Grenze ist rechnerweit.
-- [ ] **AK 4:** `git diff --stat` zeigt nur `tests/`; die 3-s-Frist ist nicht erhöht.
-- [ ] **AK 5:** Der Commit nennt die Ursache.
+- [x] **AK 1:** Ein Live-Test löst erst aus, wenn das Bereitzeichen vorliegt: keine Zeile „nicht beobachtet“ nach der ersten Antwort bzw. `Ok` vom Wächterstart.
+- [x] **AK 2:** Fehlt das Bereitzeichen bis zur Obergrenze, scheitert der Test mit einer Meldung, die die inotify-Grenze nennt — nicht mit „kein passendes Ereignis“.
+- [x] **AK 3:** Abnahme-Probe: vier gleichzeitige Läufe der gebauten Testdatei `live`, fünf Runden, 20 von 20 grün (rund 30–60 s). Nur fahren, wenn kein anderes Gate läuft — die Grenze ist rechnerweit.
+- [x] **AK 4:** `git diff --stat` zeigt nur `tests/`; die 3-s-Frist ist nicht erhöht.
+- [x] **AK 5:** Der Commit nennt die Ursache.
 
 Lesart zu AK 4: gemeint ist der Bau gegen den Stand der Planung; Dokumente der Karte (`Anforderungen/`, `Dokumentation/`) zählen nicht.
 
