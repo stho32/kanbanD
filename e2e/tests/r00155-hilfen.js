@@ -91,4 +91,9 @@ function verweise(fenster) {
   });
 }
 
-module.exports = { GRUNDBESTAND, DATEI_1, DATEI_2, ALS_BOT, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, zweiFrames, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise };
+/** Was Hilfstechnik angesagt bekäme: die Texte aller Live-Bereiche der Seite (`role="status"`, `role="alert"`, `aria-live`). */
+function ansagen(page) {
+  return page.evaluate(() => [...document.querySelectorAll('[role=status], [role=alert], [aria-live]')].map(bereich => bereich.textContent));
+}
+
+module.exports = { ansagen,  GRUNDBESTAND, DATEI_1, DATEI_2, ALS_BOT, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, zweiFrames, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise };
