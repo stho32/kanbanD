@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #8)
 **Kontext-Anforderung**: — (Karte #8 „Fokus in Fenstern und Menüs führen und nach jeder Aktion halten“, Anforderung folgt über den planer)
 **Erprobt durch**: headless Chromium-Probe 2026-11-06 (Scratchpad, nicht versioniert): `inert` gegen natives `<dialog>.showModal()` unter `innerHTML`-Neuzeichnen, siehe Kontext
-**Nachträge**: 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). N7b: gebauter Stand (`f8e16e4`) — Leerfall ohne Auslöser, Pop ohne Element ist zu. Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
+**Nachträge**: 2026-11-15 — [N9](#nachtrag-2026-11-15-n9-esc-im-bearbeitungsmodus-eines-fensterfelds-verwirft-und-schreibt-nie): Esc im Titelfeld des Aufgabenfensters verwirft, schreibt nie und schließt erst beim zweiten Druck (Karte #54). 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). N7b: gebauter Stand (`f8e16e4`) — Leerfall ohne Auslöser, Pop ohne Element ist zu. Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
 
 ## Kontext
 
@@ -236,6 +236,21 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 **Durchsetzung** (ergänzt): Review-Punkt für `architektur-reviewer` und `code-reviewer` — eine Art in `ebenen()` (`web/fokus.js`), die in dieser Liste fehlt, ist ein Befund; ebenso ein Kopf-Menü, das als `pop` statt als `fenstermenue` geführt wird. Die Probe der Karte #8 (`e2e/einheit/fokus.test.js`) zählt die Ebenen je Zustand; neue Proben der Karten #144/#145: `e2e/tests/r00144-kopf-aktionen.spec.js`, `e2e/tests/r00145-ansichtsmenue.spec.js`.
 
 **Grenze**: Dieser Nachtrag hält nur den gebauten Stapel und die zwei gewachsenen Arten fest. Form, Beschriftung und Tasten der beiden Kopf-Menüs sind Sache der Anforderungen R00144/R00145; `aldialog` selbst ist mit R00128/R00141 gebaut und hier nur als Art benannt.
+
+## Nachtrag 2026-11-15 N9: Esc im Bearbeitungsmodus eines Fensterfelds verwirft und schreibt nie
+
+**Anlass**: Karte #54 (Paket „Aufgabenfenster: Felder und Fenstermeldung“), Entscheidung des Betreibers vom 2026-11-13: Esc verwirft die laufende Eingabe im Titelfeld, Enter speichert weiter.
+
+**Belegt (Code, kanbanD `0f495c9`)**: Die Esc-Kaskade endet bei offenem Aufgabenfenster in `if (S.ui.offen) { … t.blur(); S.ui.offen = null; … }` (`web/app.js:2496`). `blur()` löst im geänderten Feld synchron `change` aus, der `change`-Hörer ruft `aufgabeAendern` (`web/app.js:2287–2296`), dazu trägt `focusout` einen zurückgesetzten Wert nach (`aenderungNachtragen`, `web/app.js:2206`, `web/sichtzustand.js:139–143`). Esc speichert also den Titel **und** schließt das Fenster. Die Stelle ist das Aufgabenfenster (`[data-af="titel"]` im Zustand `titelBearbeiten`, `web/ansicht.js:358–360`); das Umbenennen auf der Karte verwirft schon (`web/app.js:2493`, ohne `blur`). Vorbild im selben Fenster: die Teilaufgabe im Bearbeiten (`teilEdit`, `web/app.js:2494`) — Esc beendet nur den Modus und gibt den Fokus an den Text zurück. Nicht erprobt, nur gelesen.
+
+**Entschieden**:
+
+1. **Der Bearbeitungsmodus des Titels ist für Esc die innerste Sache.** Esc im Titelfeld beendet `titelBearbeiten`, das Fenster bleibt offen, der Fokus geht an den Auslöser `[data-act="titel-bearbeiten"]` (Rang 1, `S.ui.fokus`). Erst ein zweites Esc schließt das Fenster. Der Zweig steht in der Kaskade vor `S.ui.offen`, wie `teilEdit`.
+2. **Esc löst keinen Schreibweg aus.** Vor dem Verlassen wird der Feldwert auf den gezeichneten Stand zurückgesetzt und das Feld als gemeldet abgehakt (`aenderungGemeldet`), sodass weder das native `change` noch `aenderungNachtragen` feuert. Kein `PATCH`, kein Commit, „gespeichert …“ im Fuß bleibt, wie es war.
+3. **Esc räumt den Entwurf des Felds** ([ADR-0015 N2](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md)): ein abgelehnter Titel und die an ihn gebundene Fenstermeldung verschwinden mit dem Verwerfen.
+4. **Grenze**: Entschieden ist nur das Titelfeld. Die übrigen Felder des Fensters (Beschreibung, Labels, Fällig, Geschätzt) speichern bei Esc heute über dasselbe `blur()` und schließen das Fenster; ob sie ebenfalls verwerfen, ist eine Produktfrage (eine verworfene lange Beschreibung ist ein Verlust) und steht beim product-owner. Die Technik aus Ziffer 2 trägt sie ohne Umbau.
+
+**Durchsetzung**: E2E am Aufgabenfenster — Titel ändern, Esc: Fenster offen, alter Titel sichtbar, Fokus auf „Titel bearbeiten“, Datei und `git log` unverändert, kein `PATCH` im Netzwerkprotokoll; zweites Esc schließt und gibt an die Karte zurück (Rang 3). Gegenprobe Enter speichert. Mutanten, die rot werden müssen: Zweig ohne Zurücksetzen des Werts (Esc speichert wieder); Zweig hinter `S.ui.offen` (Fenster schließt beim ersten Esc).
 
 ## Quellen / Bezüge
 

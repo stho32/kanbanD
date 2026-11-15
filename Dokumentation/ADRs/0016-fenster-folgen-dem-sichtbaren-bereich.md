@@ -4,6 +4,7 @@
 **Datum**: 2026-11-07
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #74, [R00111](../../Anforderungen/R00111-behebung-meldungen-und-knoepfe-schmaler-fenster.md) Lösung 5, AK 11, US-9; WBS I0100 Meldungen und Knöpfe der Fenster auf schmalen Bildschirmen, F0062 Meldung bleibt über der Bildschirmtastatur (B0454, B0455)
+**Nachträge**: 2026-11-15 — [N1](#nachtrag-2026-11-15-n1-einmal-beim-start-rechnen): einmal beim Start rechnen, zweiter Test mit Tastatur vor dem Laden (Karte #97).
 **Erprobt durch**: Probe in eigenem Headless-Chromium gegen das echte Programm (`~/.cargo/bin/kanbanD`, Kopie-Board auf freiem Port, Web-Stand kanbanD `791509c`, ausgeliefertes `kd-app.css` gleich dem Arbeitsbaum geprüft). Der Fuß-Fix aus ADR-0015 lag in beiden Läufen als Zusatz-CSS an, der Entwurf unten nur im Lauf „mit“. Die Tastatur war nachgebildet wie in R00111 (Layout 414 × 896 Touch, `visualViewport.height` 500, `offsetTop` 0, `resize` auf `visualViewport`). Ergebnis siehe [Probe](#probe).
 
 ## Kontext
@@ -107,6 +108,19 @@ Chromium headless, 414 × 896 Touch, sichtbarer Bereich 500, mit Fuß-Fix aus AD
 | Das fokussierte Feld liegt nach dem Verkleinern außerhalb des Körpers. | In der Probe nicht aufgetreten (Feld 209–257 bzw. 230–278); AK 11 misst das Feld mit. |
 | Die echte Tastatur verhält sich anders als die Nachbildung (Android mit `resizes-visual`, Tastaturen von Drittanbietern). | Zettelzeile von AK 11 am echten iOS Safari und Android Chrome. |
 | Tablet quer über 1024 px mit Tastatur. | Basisregel rechnet `--kd-head-h` + `--kd-vv-oben`. |
+
+## Nachtrag 2026-11-15 N1: einmal beim Start rechnen
+
+**Anlass**: Karte #97 (Paket der Karte #54). Regel 5 meldet den Hörer beim Start nur an; gerechnet wird erst mit dem ersten `resize` oder `scroll` (`web/app.js:2429–2432`). Ist der sichtbare Bereich beim Laden schon verkleinert (Neuladen mit offener Bildschirmtastatur, Aufgabe über die Adresse geöffnet), bleibt die Fenstermeldung bis zum nächsten Ereignis verdeckt.
+
+**Entschieden**:
+
+1. **Regel 5 ergänzt**: Nach dem Anmelden des Hörers wird einmal gesetzt (`sichtbarenBereichSetzen()`, dieselbe Funktion, dieselben zwei Maße). Regel 1 bis 4 gelten unverändert — kein Fokus, kein Neuzeichnen, Wurzel erst im Setzen gelesen, ohne `window.visualViewport` nichts.
+2. **Die Regel „Tastatur nach dem Fokus öffnen“ bleibt** und bekommt ein Gegenstück, keinen Ersatz: ein zweiter Test bildet die Tastatur **vor** dem Laden nach (Init-Skript) und misst ohne weiteres Ereignis.
+
+**Durchsetzung**, ergänzt: beide Tests nebeneinander. Mutanten, die rot werden müssen: „liest nur beim Start, ohne Hörer“ (wie bisher, gefangen vom Test „nach dem Fokus“); neu „rechnet nicht beim Start“ (gefangen vom Test „vor dem Laden“). Desktop 1280 × 800 ohne Nachbildung: nach dem Start ist `--kd-vv-oben` nicht gesetzt.
+
+**Akzeptierte Schwäche**: Die Nachbildung vor dem Laden ist künstlich; ob echte Geräte beim Laden schon einen verkleinerten Bereich melden, zeigt nur die Zettelzeile am Gerät.
 
 ## Offene Fragen
 
