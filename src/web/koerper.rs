@@ -707,4 +707,11 @@ mod parameter_tests {
             assert_eq!(meldung(rahmen), "Die Abfrageparameter haben nicht die erwartete Form", "{rahmen}");
         }
     }
+
+    // R00154 AK 16 (ADR-0003 N4 Punkt 4): hält auch `GET /api/aufgaben` (freie Paare), den keine Anfrage zur Abweisung bringt
+    #[test]
+    fn kein_handler_nimmt_pfad_oder_abfrage_ueber_den_extraktor_des_rahmens() {
+        let treffer: Vec<String> = include_str!("mod.rs").lines().enumerate().filter(|(_, zeile)| zeile.contains("Path<") || zeile.contains("Query<")).map(|(nr, zeile)| format!("{}: {}", nr + 1, zeile.trim().chars().take(100).collect::<String>())).collect();
+        assert!(treffer.is_empty(), "Pfad<T> bzw. Abfrage<T> statt Path<T> bzw. Query<T> in src/web/mod.rs:\n{}", treffer.join("\n"));
+    }
 }
