@@ -2,7 +2,7 @@
 
 use crate::fehler::Fehler;
 use crate::format::{self, aufgabe, board, einstellungen};
-use crate::modell::{Aufgabe, Board, Einstellungen};
+use crate::modell::{Aufgabe, Board, Einstellungen, Fremdschluessel};
 use serde::Serialize;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -11,6 +11,17 @@ use std::path::{Path, PathBuf};
 pub struct DefekteDatei {
     pub pfad: String,
     pub fehler: String,
+    /// Die Schlüssel, die eine defekte Aufgabendatei lesbar trägt (R00157, ADR-0004 N1) — nur im Speicher, für die
+    /// Schlüsselsuche beim Anlegen; kein Feld der API.
+    #[serde(skip)]
+    #[schema(ignore)]
+    pub schluessel: Vec<Fremdschluessel>,
+}
+
+impl DefekteDatei {
+    pub fn neu(pfad: impl Into<String>, fehler: impl Into<String>) -> DefekteDatei {
+        DefekteDatei { pfad: pfad.into(), fehler: fehler.into(), schluessel: vec![] }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -65,19 +76,20 @@ impl Ordner {
         let mut defekt = vec![];
         for (slug, rel) in self.markdown_dateien(board::ORDNER)? {
             if !crate::modell::slug_gueltig(&slug) {
-                defekt.push(DefekteDatei { pfad: rel, fehler: "Dateiname ist kein gültiger Board-Name — umbenennen".into() });
+                defekt.push(DefekteDatei::neu(rel, "Dateiname ist kein gültiger Board-Name — umbenennen"));
                 continue;
             }
             let text = self.lies(&rel)?.unwrap_or_default();
             match board::lesen(&slug, &text) {
                 Ok(b) => gut.push(b),
-                Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string() }),
+                Err(e) => defekt.push(DefekteDatei::neu(rel, e.to_string())),
             }
         }
         Ok((gut, defekt))
     }
 
-    /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare und doppelt nummerierte kommen als defekt zurück.
+    /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare und doppelt nummerierte kommen als defekt zurück — mit den
+    /// Schlüsseln, die sie lesbar tragen (R00157): unlesbare nachsichtig gelesen, doppelt nummerierte streng.
     pub fn aufgaben(&self) -> Result<(Vec<Aufgabe>, Vec<DefekteDatei>), Fehler> {
         let mut gut: Vec<Aufgabe> = vec![];
         let mut defekt = vec![];
@@ -85,10 +97,13 @@ impl Ordner {
             let text = self.lies(&rel)?.unwrap_or_default();
             match aufgabe::lesen(&format!("{stamm}.md"), &text).map(ohne_abgelaufene) {
                 Ok(a) => match gut.iter().find(|g| g.nummer == a.nummer) {
-                    Some(erste) => defekt.push(DefekteDatei { pfad: rel, fehler: format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, erste.datei) }),
+                    Some(erste) => {
+                        let fehler = format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, erste.datei);
+                        defekt.push(DefekteDatei { pfad: rel, fehler, schluessel: a.schluessel.into_iter().collect() });
+                    }
                     None => gut.push(a),
                 },
-                Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string() }),
+                Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string(), schluessel: aufgabe::schluessel_nachsichtig(&text) }),
             }
         }
         Ok((gut, defekt))
@@ -253,6 +268,31 @@ mod tests {
         assert_eq!(o.board("fabrik").unwrap().titel, "fabrik");
     }
 
+    // R00157 B0742: die defekte Aufgabendatei trägt ihre lesbaren Schlüssel im Speicher, in der Reihenfolge des Lesens
+    #[test]
+    fn defekte_aufgabendatei_traegt_ihren_schluessel() {
+        let (tmp, o) = ordner_mit_fabrik();
+        let a = tmp.path().join("aufgaben");
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::write(a.join("0009-marker.md"), "---\nid: 9\n<<<<<<< HEAD\nkey: k1\n=======\nkey: k2\n>>>>>>> sensor\n---\n").unwrap();
+        std::fs::write(a.join("0007-fund.md"), "---\nid: 7\ntitle: Fund\nkey: k1\nestimate: abc\n---\n").unwrap();
+        std::fs::write(a.join("0003-alt.md"), "---\nid: 3\ntitle: Alt\nkey: k3\n---\n").unwrap();
+        std::fs::write(a.join("0003-doppelt.md"), "---\nid: 3\ntitle: Doppelt\nkey: k4\n---\n").unwrap();
+        std::fs::write(a.join("0008-ohne.md"), "---\nid: 8\nestimate: abc\n---\n").unwrap();
+        std::fs::write(a.join("0008-leer.md"), "---\nid: 8\nkey: \"\"\n---\n").unwrap();
+        let (gut, defekt) = o.aufgaben().unwrap();
+        assert_eq!(gut.iter().map(|a| a.nummer).collect::<Vec<_>>(), [3]);
+        let gelesen: Vec<(&str, Vec<&str>)> = defekt.iter().map(|d| (d.pfad.as_str(), d.schluessel.iter().map(|k| k.text()).collect())).collect();
+        let erwartet: Vec<(&str, Vec<&str>)> = vec![
+            ("aufgaben/0003-doppelt.md", vec!["k4"]),
+            ("aufgaben/0007-fund.md", vec!["k1"]),
+            ("aufgaben/0008-leer.md", vec![]),
+            ("aufgaben/0008-ohne.md", vec![]),
+            ("aufgaben/0009-marker.md", vec!["k1", "k2"]),
+        ];
+        assert_eq!(gelesen, erwartet);
+    }
+
     // B0341: Liste und Eingangstür sagen dasselbe — ein Dateistamm außerhalb der Form ist defekt, nichts wird umbenannt
     #[test]
     fn boards_meldet_handbenannte_datei_als_defekt() {
@@ -260,7 +300,7 @@ mod tests {
         std::fs::write(tmp.path().join("boards/Alt_Board.md"), "# Alt\n\n## Offen\n").unwrap();
         let (gut, defekt) = o.boards().unwrap();
         assert_eq!(gut.iter().map(|b| b.slug.as_str()).collect::<Vec<_>>(), ["fabrik"]);
-        assert_eq!(defekt, [super::DefekteDatei { pfad: "boards/Alt_Board.md".into(), fehler: "Dateiname ist kein gültiger Board-Name — umbenennen".into() }]);
+        assert_eq!(defekt, [super::DefekteDatei::neu("boards/Alt_Board.md", "Dateiname ist kein gültiger Board-Name — umbenennen")]);
         assert_eq!(std::fs::read_to_string(tmp.path().join("boards/Alt_Board.md")).unwrap(), "# Alt\n\n## Offen\n");
     }
 

@@ -126,3 +126,19 @@ async fn defekte_datei_geht_der_dublette_vor() {
     let meldung = format!("aufgaben/0007-fund.md: estimate: ganze Zahl von Minuten ≥ 1 erwartet{FOLGE}");
     abgewiesen(tmp.path(), &lauf.adresse, "api/aufgaben", "cl", json!({"titel": "Fund", "key": "k1"}), &meldung).await;
 }
+
+// B0742, ADR-0004 N1 Punkt 6: kein neues Feld in der API — `defekte` trägt je Eintrag genau die Felder von heute
+#[tokio::test]
+async fn defekte_tragen_in_der_api_kein_neues_feld() {
+    let tmp = tempfile::tempdir().unwrap();
+    bestand(tmp.path(), &[("0007-fund.md", FUND)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let eintrag = json!([{"pfad": "aufgaben/0007-fund.md", "fehler": "estimate: ganze Zahl von Minuten ≥ 1 erwartet"}]);
+    for pfad in ["api/zustand", "api/aufgaben"] {
+        let r: Value = reqwest::get(format!("{}{pfad}", lauf.adresse)).await.unwrap().json().await.unwrap();
+        assert_eq!(r["defekte"], eintrag, "{pfad}");
+    }
+    let d: Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let felder: Vec<&String> = d["components"]["schemas"]["DefekteDatei"]["properties"].as_object().unwrap().keys().collect();
+    assert_eq!(felder, ["fehler", "pfad"]);
+}

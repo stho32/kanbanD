@@ -145,7 +145,7 @@ impl Kanban {
         let einstellungen = match self.ordner.einstellungen() {
             Ok(e) => e,
             Err(Fehler::Defekt(f)) => {
-                defekte.push(DefekteDatei { pfad: crate::format::einstellungen::DATEI.into(), fehler: f });
+                defekte.push(DefekteDatei::neu(crate::format::einstellungen::DATEI, f));
                 None
             }
             Err(f) => return Err(f),
