@@ -123,19 +123,21 @@ Zwei Abweisungen mit fester Form rechtfertigen zwei Varianten; der Typ bleibt fr
 **Status bleibt `Akzeptiert`.** N1 entscheidet die eine Stelle (`JsonKoerper<T>`) und nennt drei Abweisungen des Inhalts. Offen blieb, was mit den beiden Abweisungen des Transports geschieht, und die Zahl „20 Stellen“ in N1 stimmt nicht mehr. N3 ändert nichts an N1, es füllt diese zwei Lücken.
 
 **Belegt (Code)**, kanbanD `e89e1a1` (gelesen 2026-11-15):
-- `axum 0.8.9` (`Cargo.lock:36`); `JsonRejection` kennt vier Arten: `JsonDataError` (heute 422, Klartext), `JsonSyntaxError` (heute 400, Klartext), `MissingJsonContentType` (415, Klartext), `BytesRejection` (413 bei überschrittener Grenze, Klartext). Die Grenze ist 50 MiB (`src/web/mod.rs:120`).
+- `axum 0.8.9` (`Cargo.lock:36`); `JsonRejection` kennt vier Arten: `JsonDataError` (heute 422, Klartext), `JsonSyntaxError` (heute 400, Klartext), `MissingJsonContentType` (415, Klartext), `BytesRejection` (413 bei überschrittener Grenze, Klartext). Die 50 MiB aus `src/web/mod.rs:120` gelten **nur** für die Routen `anhaenge`/`anhang_ablegen` (Multipart); für die 36 JSON-Handler ist keine Grenze gesetzt, dort gilt die Standardgrenze des Rahmens (laut dessen Dokumentation 2 MiB, **ungeprobt**).
 - **36 Handler** nehmen `Json<T>` (`src/web/mod.rs:244`–`:1639`), nicht 20. Fünf weitere lesen den Rumpf als `Bytes`: `ziehen` (`:1197`) antwortet bei Formfehlern schon mit 400 `{fehler}`; `timer_stoppen` (`:1025`), `wbs_verwerfen` (`:1330`), `reservieren` und `freigeben` (`:215`) behandeln einen fehlenden oder unlesbaren Rumpf mit Absicht als „nichts angegeben“.
-- `tests/termine.rs:31` hält das alte Verhalten fest (`assert_eq!(…, 422)` für den unbekannten Schlüssel `linie`).
+- `tests/termine.rs:31` hält das alte Verhalten fest (`assert_eq!(…, 422)` für den unbekannten **Aufzählungswert** `linie: "wellig"`, `src/modell/board.rs:147`). `deny_unknown_fields` kommt in `src/` nicht vor: unbekannte Schlüssel werden heute überlesen.
 - OpenAPI nennt an jedem Endpunkt 400 mit `Fehlerantwort` und nirgends 422 (`src/web/mod.rs:229` ff.); 415 und 413 sind nicht beschrieben.
 - Kein Client wertet 422 aus: die Oberfläche liest `json.fehler`, sonst `statusText` (`web/app.js:100`), und unterscheidet nur 400, 404, 409, 423; das Factory-Werkzeug `kanband.py` reicht Code und Text nur in die Fehlermeldung durch.
 
 ### Entschieden
 
-1. **Inhalt ist 400.** `JsonDataError` (falscher Typ, fehlendes Pflichtfeld, unbekannter Schlüssel bei `deny_unknown_fields`) und `JsonSyntaxError` werden `Fehler::Ungueltig` → 400 mit Feldpfad, wie N1.
+1. **Inhalt ist 400.** `JsonDataError` (falscher Typ, fehlendes Pflichtfeld, unbekannter Aufzählungswert) und `JsonSyntaxError` werden `Fehler::Ungueltig` → 400 mit Feldpfad, wie N1.
 2. **Transport behält seinen Code, bekommt aber die Form.** Fehlender oder falscher `Content-Type` bleibt **415**, ein Rumpf über der Grenze bleibt **413** — beide mit `Content-Type: application/json` und `{"fehler": "…"}` auf Deutsch. Ein Agent reagiert darauf anders als auf ein falsches Feld (Kopfzeile setzen, Anhang verkleinern); 400 würde das verdecken. Ein Lesefehler des Rumpfs ohne Grenzbezug ist 400.
 3. **`Fehler` bleibt frei von Transport.** 415 und 413 werden keine Varianten von `Fehler` (`src/fehler.rs`); die Abweisung des Extraktors ist ein Typ der Web-Schicht und baut den Rumpf mit derselben Funktion wie `IntoResponse for Fehler`. **In Kauf genommen**: zwei Statuscodes entstehen außerhalb von `Fehler`; das ist vertretbar, weil kein Dienst sie je erzeugen kann.
 4. **Umfang der Karte**: alle 36 `Json<T>`-Handler wechseln auf `JsonKoerper<T>`. Die roh angenommenen Felder (`cost`, `estimate`, `index`, `position`, `erledigt`, `datums_trenner` — ADR-0009, ADR-0017, ADR-0023) bleiben roh: ihre Meldungen sind fachlich und schon 400. Die fünf `Bytes`-Handler bleiben, wie sie sind. `tests/termine.rs:31` wird auf 400 umgestellt — das ist die Regression, die das neue Verhalten festhält.
-5. **Der beschriebene Kontrakt ändert sich nicht.** 400 mit `Fehlerantwort` steht schon an jedem Endpunkt; der Code holt die Beschreibung ein. 415 und 413 müssen nicht in OpenAPI nachgetragen werden.
+5. **Unbekannte Schlüssel bleiben erlaubt.** Sie sind heute kein Fehler und werden durch diese Karte keiner; ein Festhalte-Test hält das fest. Strenge an dieser Stelle wäre eine eigene Entscheidung, weil sie Clients bricht, die Zusatzfelder senden.
+6. **Für JSON-Rümpfe bleibt die Standardgrenze des Rahmens.** Die Web-Schicht setzt keine eigene Grenze. Grund aus dem Lastprofil (bis 10 Agenten, 5 schreibende Aufrufe/s): JSON-Rümpfe sind Text von wenigen Kilobyte, große Inhalte gehen über den Anhang-Weg mit eigener Grenze; 2 MiB je Anfrage begrenzen den Speicher auch bei 10 gleichzeitigen Anfragen auf rund 20 MiB. **In Kauf genommen**: der Wert steht nicht im eigenen Code und ist ungeprobt; die Probe „3 MiB → 413“ (R00153 AK 11) hält ihn fest und wird rot, wenn ein Rahmen-Upgrade die Grenze über 3 MiB hebt — dann wird eine benannte Grenze fällig.
+7. **Der beschriebene Kontrakt ändert sich nicht.** 400 mit `Fehlerantwort` steht schon an jedem Endpunkt; der Code holt die Beschreibung ein. 415 und 413 müssen nicht in OpenAPI nachgetragen werden.
 
 **Verworfen**:
 - **Alles 400** (auch 415/413): eine Abbildung, eine Variante — aber „zu groß“ und „Feld falsch“ wären nicht mehr unterscheidbar, und ein bisher richtiger Code würde ohne Anlass geändert.
@@ -143,7 +145,9 @@ Zwei Abweisungen mit fester Form rechtfertigen zwei Varianten; der Typ bleibt fr
 
 ### Durchsetzung
 
-Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am Extraktor): `POST` ohne `Content-Type` → 415 `{fehler}`; die Unit-Probe des Extraktors mit einer kleinen Grenze → 413 `{fehler}`. Der Abgleich „Methode ≠ GET in `src/web/endpunkte.rs`“ (57 Einträge) gegen die 36 Handler mit Rumpf benennt die 21 ohne JSON-Rumpf ausdrücklich, sonst ist die Mutante aus N1 nicht prüfbar.
+Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am Extraktor): `POST` ohne `Content-Type` → 415 `{fehler}`; ein JSON-Rumpf von 3 MiB an einer JSON-Route → 413 `{fehler}` (R00153 AK 11). Der Abgleich „Methode ≠ GET in `src/web/endpunkte.rs`“ (57 Einträge) gegen die 36 Handler mit Rumpf benennt die 21 ohne JSON-Rumpf ausdrücklich, sonst ist die Mutante aus N1 nicht prüfbar.
+
+**Berichtigt 2026-11-15** (Hinweis des planers aus R00153, am Code nachgeprüft): Die erste Fassung von N3 nannte „unbekannter Schlüssel bei `deny_unknown_fields`“ als Fall und 50 MiB als Grenze der JSON-Rümpfe; beides war falsch gelesen und ist oben ersetzt, Punkte 5 und 6 sind dabei neu.
 
 **Grenze**: `Path`/`Query` (N1 Punkt 3, 59 Verwendungen) bleibt Soll; ob es in dieselbe Karte gehört, entscheidet der product-owner — die Abnahme-Probe der Karte nennt nur den Rumpf.
 
@@ -153,4 +157,4 @@ Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am
 - ADR-0002
 - Nachtrag N1: Karte #39 (Anmerkung A1 aus #27); `src/web/mod.rs:20`, `:152–181`, `:302`, `:374`, `:392`; `src/web/endpunkte.rs`; `Cargo.lock:945` (`serde_path_to_error` über `axum 0.8`)
 - Nachtrag N2: Karte #121 (Betreiber-Entscheidung 2026-11-13 im Kartenkommentar, arev B3); R00120 AK 6; `AI-Team/po-entscheidungen.md:187–188`; `src/dienst/zugregeln.rs:66–69`, `:88–96`, `:240–249`; `src/dienst/archiv.rs:12`, `:14`, `:51`, `:134`; `src/dienst/board_verwalten.rs:27`, `:59`; `src/web/mod.rs:158`
-- Nachtrag N3: Karte #39; `Cargo.lock:36` (`axum 0.8.9`); `src/web/mod.rs:120`, `:215`, `:244`–`:1639`, `:1025`, `:1197`, `:1330`; `src/web/endpunkte.rs`; `tests/termine.rs:31`; `web/app.js:100`
+- Nachtrag N3: Karte #39; `Cargo.lock:36` (`axum 0.8.9`); `src/web/mod.rs:120`, `:215`, `:244`–`:1639`, `:1025`, `:1197`, `:1330`; `src/web/endpunkte.rs`; `tests/termine.rs:31`; `src/modell/board.rs:147`; `web/app.js:100`; R00153 AK 6, AK 11, AK 15
