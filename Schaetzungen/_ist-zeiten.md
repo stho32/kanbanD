@@ -569,3 +569,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0705 Burndown liest den Bestand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0706 Kumulativer Fluss liest den Bestand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0707 „Wie lange noch“ liest dieselbe Funktion, Test „gleiche Zahl offen“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0708 Zeile „Ausgenommen“ zählt keine verworfene Aufgabe | Standard | 0,25-0,5h | 0,1h | 0,1h | autonom |

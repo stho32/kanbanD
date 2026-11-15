@@ -160,16 +160,14 @@
     return { kurz: wort, voll: `${wort} in ${spalte}` };
   }
 
-  /** Zählt eine Aufgabe in dieser Spalte? Filter nach Spalte, Farbe, Person, Label. */
-  const zaehltMit = (f, aufgabeZu) => (nr, spalte) => spalte != null && !f.ohneSpalten.includes(spalte) && aufgabePasst(f, aufgabeZu(nr));
-
   /* ── Zählen in Berichten je Aufgabe (R00060) ── */
   /** Zählt die Aufgabe (Eintrag aus bew.aufgaben) im Bericht `burndown` oder `forecast`? Nur `false` nimmt sie aus. */
   const zaehltImBericht = (a, bericht) => !(a.reporting && a.reporting[bericht] === false);
-  /** Aufgaben, die jetzt in einer gezählten Spalte liegen und zum Filter passen, aber per `reporting` ausgenommen sind. */
+  /** Aufgaben, die jetzt zum Bestand gehören (da, in einer gezählten Spalte) und zum Filter passen, aber per `reporting`
+      ausgenommen sind — eine verworfene Aufgabe steht hier nicht (R00152). */
   function ausgenommen(bew, bericht, f, aufgabeZu, jetzt) {
-    const zaehlt = zaehltMit(f, aufgabeZu);
-    return bew.aufgaben.filter(a => !zaehltImBericht(a, bericht) && zaehlt(a.nummer, spalteAm(a.wechsel, jetzt))).length;
+    const bestand = bestandLeser(bew, aufgabeZu);
+    return bew.aufgaben.filter(a => !zaehltImBericht(a, bericht) && aufgabePasst(f, aufgabeZu(a.nummer)) && imBestand(f, bestand(a)(jetzt))).length;
   }
 
   /* ── Burndown (R00044) ── */

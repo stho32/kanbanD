@@ -17,17 +17,18 @@ const BOARD = 'boards/fabrik.md';
 const zeilen = nummern => nummern.map(n => `- #${n}\n`).join('');
 const board = (eingang, arbeit, fertig, kopf = '') => `${kopf}# fabrik\n\n## Eingang\n\n${zeilen(eingang)}\n## In Arbeit\n\n${zeilen(arbeit)}\n## Fertig\n\n${zeilen(fertig)}`;
 const datei = n => `aufgaben/${String(n).padStart(4, '0')}-a${n}.md`;
-const aufgabe = (n, archiviertAm) => `---\nid: ${n}\ntitle: a${n}\nassignees: [st]\n${archiviertAm ? `archived: ${archiviertAm}\n` : ''}---\n`;
+const aufgabe = (n, archiviertAm, zusatz = '') => `---\nid: ${n}\ntitle: a${n}\nassignees: [st]\n${archiviertAm ? `archived: ${archiviertAm}\n` : ''}${zusatz}---\n`;
 const aufgaben = anzahl => Object.fromEntries([...Array(anzahl).keys()].map(i => [datei(i + 1), aufgabe(i + 1)]));
 
 /* ── Testsprache: die zwei Grundbestände der Anforderung ── */
 /** Grundbestand A: 02.11. #1–#7 in „Eingang“; 03.11. #2, #4, #6 nach „Fertig“; 06.11. #3 archiviert (in „Eingang“), #4 archiviert
-    (in „Fertig“), #5 und #6 endgültig gelöscht, #7 vom Board genommen. `archivtag3: null` heißt: #3 ist zurückgeholt. */
-const grundbestandA = ({ archivtag3 = '2026-11-06', kopf = '' } = {}) => ordner => {
+    (in „Fertig“), #5 und #6 endgültig gelöscht, #7 vom Board genommen. `archivtag3: null` heißt: #3 ist zurückgeholt;
+    `zusatz3` ergänzt die Kopfdaten von #3. */
+const grundbestandA = ({ archivtag3 = '2026-11-06', kopf = '', zusatz3 = '' } = {}) => ordner => {
   einrichten({ ...aufgaben(7), [BOARD]: board([], [], [], kopf) })(ordner);
   standAm(ordner, '2026-11-02T09:00:00', { [BOARD]: board([1, 2, 3, 4, 5, 6, 7], [], [], kopf) });
   standAm(ordner, '2026-11-03T09:00:00', { [BOARD]: board([1, 3, 5, 7], [], [2, 4, 6], kopf) });
-  standAm(ordner, '2026-11-06T09:00:00', { [BOARD]: board([1, 3], [], [2, 4], kopf), [datei(3)]: aufgabe(3, archivtag3), [datei(4)]: aufgabe(4, '2026-11-06') }, [datei(5), datei(6)]);
+  standAm(ordner, '2026-11-06T09:00:00', { [BOARD]: board([1, 3], [], [2, 4], kopf), [datei(3)]: aufgabe(3, archivtag3, zusatz3), [datei(4)]: aufgabe(4, '2026-11-06') }, [datei(5), datei(6)]);
 };
 /** Grundbestand B: 02.11. #1–#10 in „Eingang“; 03.11. #1–#5 nach „Fertig“; 05.11. #6 archiviert (in „Eingang“). */
 const grundbestandB = ordner => {
@@ -163,5 +164,16 @@ test('R00152 US-7 (AK 12): unter „nur Person st“ fehlen die endgültig gelö
     await erwarteZeilen(await burndownTabelle(page), reihe(2, [[5, 5], ...Array(3).fill([3, 5]), ...Array(5).fill([1, 3])]));
     await page.goto(`${k.adresse}#/berichte/durchsatz`);
     await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 2');
+  } finally { await k.stoppen(); }
+});
+
+test('R00152 AK 7: die verworfene, per reporting ausgenommene Aufgabe steht in Burndown und Kumulativem Fluss nicht unter „Ausgenommen“', async ({ page }) => {
+  const k = await kanbanStarten(grundbestandA({ zusatz3: 'reporting: {burndown: false}\n' }));
+  try {
+    await berichtAm(page, k, '2026-11-10', 'verlauf');
+    await erwarteZeilen(await burndownTabelle(page), reihe(2, [[6, 6], ...Array(3).fill([3, 6]), ...Array(5).fill([1, 3])]));
+    await expect(page.locator('#bd-nicht')).toHaveText('Ausgenommen (reporting.burndown: false): 0.');
+    await page.goto(`${k.adresse}#/berichte/fluss`);
+    await expect(page.locator('#fl-nicht')).toHaveText('Ausgenommen (reporting.burndown: false): 0.');
   } finally { await k.stoppen(); }
 });

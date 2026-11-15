@@ -177,3 +177,25 @@ test('R00152 B0707: unter ausgeschlossener Spalte und Personenfilter bleiben die
   assert.deepStrictEqual(ohneEingang.burndown, neunTage('0/0', '0/3', '0/2'));
   assert.deepStrictEqual(ohneEingang.fluss, ohneEingang.burndown);
 });
+
+/* ── B0708 Zeile „Ausgenommen“ zählt keine verworfene Aufgabe ── */
+const ausgenommenA = (f = {}, heute = ms(10), archivtag3) => B.ausgenommen(bewegungenA({ ohne3: true }), 'burndown', filter(f), aufgabenA(archivtag3), heute);
+
+test('R00152 B0708 (AK 7): die verworfene #3 mit reporting.burndown false steht nicht unter „Ausgenommen“ — 0, und der Burndown nennt 6/6, 3/6, 1/3', () => {
+  assert.strictEqual(ausgenommenA(), 0);
+  assert.deepStrictEqual(kurz(burndownA({ ohne3: true })), neunTage('6/6', '3/6', '1/3'));
+  assert.deepStrictEqual(offenGesamt(flussA({ ohne3: true })), neunTage('6/6', '3/6', '1/3'));
+});
+
+test('R00152 B0708: „Ausgenommen“ zählt weiter, was da ist — am Vortag des Archivtags und zurückgeholt 1, in ausgeschlossener Spalte 0', () => {
+  assert.strictEqual(ausgenommenA({}, ms(5)), 1, 'am 05.11. ist #3 noch da');
+  assert.strictEqual(ausgenommenA({}, ms(10), null), 1, 'zurückgeholt: #3 ist wieder da');
+  assert.strictEqual(ausgenommenA({ ohneSpalten: ['Eingang'] }, ms(10), null), 0);
+  assert.strictEqual(ausgenommenA({ personen: ['mi'] }, ms(10), null), 0, 'der Personenfilter wirkt zusätzlich');
+});
+
+test('R00152 B0708: eine ausgenommene Aufgabe, die vom Board genommen ist, steht nicht unter „Ausgenommen“', () => {
+  const bew = { spalten: SPALTEN, aufgaben: [{ nummer: 7, wechsel: [z(2, 'Eingang'), z(6, null)], reporting: { burndown: false } }] };
+  assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), aufgabenA(), ms(5)), 1);
+  assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), aufgabenA(), ms(10)), 0);
+});
