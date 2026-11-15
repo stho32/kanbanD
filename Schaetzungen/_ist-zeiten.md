@@ -616,3 +616,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #121 R00159 (Agent archiviert bei defektem Board: 423 statt 403) | B0753 Abnahme-Probe rot am heutigen Stand: Archivieren einzeln und mehrere, endgültig löschen, ungültiger Dateiname | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #121 R00159 (Agent archiviert bei defektem Board: 423 statt 403) | B0754 Dienst: `archivieren_pruefen` prüft den Defekt vor der Entnahmesperre | Standard | 0,4-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #121 R00159 (Agent archiviert bei defektem Board: 423 statt 403) | B0755 Beschreibung der drei Endpunkte nennt die 423 und ihren Vorrang | Standard | 0,4-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #121 R00159 (Agent archiviert bei defektem Board: 423 statt 403) | B0756 Gegenproben, Mutanten und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |

@@ -237,6 +237,75 @@ async fn r00159_ak4_ungueltiger_dateiname_zaehlt_als_defekt_423() {
     assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
 }
 
+/// Die drei Wege der Archiv-Familie: Archivieren einzeln (#1), mehrere ([2, 1]), endgültig löschen (#1).
+async fn archiv_weg(nummer: usize, adresse: &str, wer: &str) -> (u16, Value) {
+    match nummer {
+        0 => senden(Method::POST, adresse, "api/aufgaben/1/archivieren", wer, json!(null)).await,
+        1 => senden(Method::POST, adresse, "api/aufgaben/archivieren", wer, json!({"nummern": [2, 1]})).await,
+        _ => senden(Method::DELETE, adresse, "api/aufgaben/1", wer, json!(null)).await,
+    }
+}
+
+fn commits(pfad: &Path) -> usize {
+    git(pfad, &["rev-list", "--count", "HEAD"]).trim().parse().unwrap()
+}
+
+/// R00159 AK 5: nur der Agent wird angehalten — der Mensch bekommt bei defektem Board auf allen drei Wegen 200
+/// und schreibt genau einen Commit.
+#[tokio::test]
+async fn r00159_ak5_mensch_wird_bei_defektem_board_nie_angehalten() {
+    for i in 0..3 {
+        let tmp = tempfile::tempdir().unwrap();
+        grundbestand(tmp.path(), &[("kaputt", KAPUTT)]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let vorher = commits(tmp.path());
+        let (s, r) = archiv_weg(i, &lauf.adresse, "st").await;
+        assert_eq!(s, 200, "Weg {i}: {r}");
+        assert_eq!(commits(tmp.path()), vorher + 1, "Weg {i}: genau ein Commit");
+        let (eins, zwei) = (lies(tmp.path(), "aufgaben/0001-k.md"), lies(tmp.path(), "aufgaben/0002-k.md"));
+        match i {
+            0 => assert!(eins.contains("archived") && !zwei.contains("archived"), "#1 archiviert, #2 nicht"),
+            1 => assert!(eins.contains("archived") && zwei.contains("archived"), "#2 und #1 archiviert"),
+            _ => assert!(!tmp.path().join("aufgaben/0001-k.md").exists() && !lies(tmp.path(), "boards/fabrik.md").contains("- #1"), "#1 gelöscht"),
+        }
+    }
+}
+
+/// R00159 AK 6: ohne defekte Datei (der reparierte Ordner) bleibt die 403 der Menschen-Spalte auf allen drei Wegen.
+#[tokio::test]
+async fn r00159_ak6_ohne_defekt_bleibt_die_403_der_menschen_spalte() {
+    for i in 0..3 {
+        let tmp = tempfile::tempdir().unwrap();
+        grundbestand(tmp.path(), &[]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let vorher = bestand(tmp.path());
+        let (s, r) = archiv_weg(i, &lauf.adresse, "cl").await;
+        assert_eq!((s, r), (403, verboten(1)), "Weg {i}");
+        assert_eq!(bestand(tmp.path()), vorher, "Weg {i}: nichts geschrieben");
+    }
+}
+
+/// R00159 AK 7: was vor der Sperre steht, bleibt vorn — 409 „schon archiviert“, die leere 200 bei lauter schon
+/// archivierten Nummern und 404; die Karte in der freien Spalte bekommt bei defektem Board 423 wie bisher.
+#[tokio::test]
+async fn r00159_ak7_vor_der_sperre_bleibt_vorn() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path(), &[("kaputt", KAPUTT)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = bestand(tmp.path());
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/3/archivieren", "cl", json!(null)).await;
+    assert_eq!((s, r), (409, json!({"fehler": "#3 ist schon archiviert"})));
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/archivieren", "cl", json!({"nummern": [3]})).await;
+    assert_eq!((s, r), (200, json!([])), "lauter schon archivierte Nummern");
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/aufgaben/999/archivieren", "cl", json!(null)).await;
+    assert_eq!(s, 404, "archivieren, unbekannte Nummer");
+    let (s, _) = senden(Method::DELETE, &lauf.adresse, "api/aufgaben/999", "cl", json!(null)).await;
+    assert_eq!(s, 404, "löschen, unbekannte Nummer");
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/2/archivieren", "cl", json!(null)).await;
+    defekt_in_der_form(&lauf.adresse, s, &r, "boards/kaputt.md").await;
+    assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
+}
+
 fn verboten(nummer: u32) -> Value {
     json!({"fehler": "Spalte „Eingang“ gehört dem Menschen", "spalte": "Eingang", "nummer": nummer})
 }
