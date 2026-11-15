@@ -34,7 +34,7 @@ Das Modell hält die Begriffe von kanbanD als Daten mit ihren fachlichen Regeln,
 ## Entscheidungen
 
 - [ADR-0002: Zugregeln gemeinsam vor der Aktion](../ADRs/0002-zugregeln-gemeinsam-vor-der-aktion.md)
-- [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md) — Nachtrag N1 (#44, Vorgeschlagen): die Suche sieht auch defekte Aufgabendateien — Soll: `Schluesseltreffer::suchen`, `doppelte_schluessel` und der Filter `?key=` bleiben Funktionen über lesbare Aufgaben; die strenge Prüfung `Fremdschluessel::pruefen` gilt weiter für Datei und API
+- [ADR-0004: Schlüsselsuche unter der Sperre](../ADRs/0004-schluesselsuche-unter-der-sperre.md) — Nachtrag N1 (#44, Akzeptiert): die Suche sieht auch defekte Aufgabendateien — Soll: `Schluesseltreffer::suchen`, `doppelte_schluessel` und der Filter `?key=` bleiben Funktionen über lesbare Aufgaben; die strenge Prüfung `Fremdschluessel::pruefen` gilt weiter für Datei und API
 - [ADR-0006: Einstellung verboten als dritte Abweisung](../ADRs/0006-einstellung-verboten-als-dritte-abweisung.md) — Soll: `Einstellung { Grenze, Eigentuemer }` liegt im Modell, `Fehler::EinstellungVerboten` verweist darauf
 - [ADR-0009: Kosten als ganze Cent, eine Prüfung für Datei und API](../ADRs/0009-kosten-als-ganze-cent-eine-pruefung-fuer-datei-und-api.md) — Soll (#18): Typ `Kosten { waehrung, basis, wert: Betrag | Spanne | Positionen }` in ganzen Cent mit einem prüfenden Konstruktor für Format und API
 - [ADR-0017: Rückgängig als Gegenaktion mit gemerktem Inhalt](../ADRs/0017-rueckgaengig-als-gegenaktion-mit-gemerktem-inhalt.md) — gebaut (#12, R00112, Zweig `karte/12`, `9d246a3`): `Board::aufnehmen(nummer, spalte, index)` legt an `index` ein, gekappt auf die Länge der Spalte, ohne `index` unten
