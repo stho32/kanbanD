@@ -89,6 +89,28 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     Ok(a)
 }
 
+/// Der eine nachsichtige Leser (R00157, ADR-0004 N1): die Schlüssel, die eine **defekte** Aufgabendatei lesbar trägt.
+/// Leer heißt „keiner“ — auch für einen `key`, der kein gültiger einzeiliger Text ist; mehrere gibt es nur bei
+/// Konfliktmarkern mit zwei Seiten. Lässt sich das Frontmatter als YAML lesen, entscheidet der Wert, sonst die
+/// Zeilen `key:` am Zeilenanfang bis zum Ende des Frontmatters.
+pub fn schluessel_nachsichtig(text: &str) -> Vec<Fremdschluessel> {
+    let gueltig = |v: &Value| yaml::wert_als_text(v).and_then(|t| Fremdschluessel::pruefen(&t).ok());
+    if let Ok(m) = frontmatter::trennen(text).and_then(|(y, _)| yaml::lesen(y)) {
+        return m.get(SCHLUESSEL).and_then(gueltig).into_iter().collect();
+    }
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let mut zeilen = text.lines();
+    if zeilen.next().map(str::trim_end) != Some("---") {
+        return vec![];
+    }
+    let mut gefunden: Vec<Fremdschluessel> = vec![];
+    for wert in zeilen.take_while(|z| z.trim_end() != "---").filter_map(|z| z.strip_prefix("key:")) {
+        let schluessel = serde_yaml::from_str::<Value>(wert).ok().as_ref().and_then(gueltig);
+        gefunden.extend(schluessel.filter(|k| !gefunden.contains(k)));
+    }
+    gefunden
+}
+
 /// `reservation: {who: cl, instance: agent-1, since: 2026-10-25 07:41+01:00}` (R00087); leer heißt keine.
 fn reservierung_lesen(v: &Value) -> Result<Option<Reservierung>, Formatfehler> {
     let falsch = || Formatfehler("reservation braucht who, instance und since (JJJJ-MM-TT HH:MM±HH:MM)".into());
@@ -522,6 +544,52 @@ mod tests {
         for falsch in ["key: \"\"\n", "key: \"a\\nb\"\n", "key: [a, b]\n"] {
             let fehler = lesen("0007-s.md", &format!("---\nid: 7\ntitle: S\n{falsch}---\n")).unwrap_err();
             assert!(fehler.0.contains("Schlüssel"), "{falsch}: {}", fehler.0);
+        }
+    }
+
+    // R00157 B0741: der Schlüssel einer defekten Datei, nachsichtig gelesen (Tabelle aus ADR-0004 N1 „Durchsetzung“)
+    #[test]
+    fn schluessel_einer_defekten_datei_nachsichtig() {
+        let lang = "x".repeat(201);
+        let grenze = "x".repeat(200);
+        let tabelle: Vec<(String, Vec<&str>)> = vec![
+            ("---\nid: 7\ntitle: Fund\nkey: k1\nestimate: abc\n---\n".into(), vec!["k1"]),
+            ("---\nid: 7\ntitle: Fund\nestimate: abc\n---\n".into(), vec![]),
+            ("---\nid: 7\nkey: \"\"\nestimate: abc\n---\n".into(), vec![]),
+            ("---\nid: 7\nkey: [a, b]\n---\n".into(), vec![]),
+            ("---\nid: 7\nkey:\n---\n".into(), vec![]),
+            ("---\nid: 7\nkey: {a: b}\n---\n".into(), vec![]),
+            ("---\nid: 7\nkey: \"a\\nb\"\n---\n".into(), vec![]),
+            (format!("---\nid: 7\nkey: {lang}\n---\n"), vec![]),
+            (format!("---\nid: 7\nkey: {grenze}\nestimate: abc\n---\n"), vec![grenze.as_str()]),
+            // Konfliktmarker: das Frontmatter ist kein YAML mehr, es entscheiden die Zeilen `key:` am Zeilenanfang
+            ("---\nid: 7\ntitle: Fund\nkey: k1\n<<<<<<< HEAD\nclass: eilig\n=======\nclass: normal\n>>>>>>> sensor\n---\n".into(), vec!["k1"]),
+            ("---\nid: 7\n<<<<<<< HEAD\nkey: k1\n=======\nkey: k2\n>>>>>>> sensor\n---\n".into(), vec!["k1", "k2"]),
+            ("---\nid: 7\n<<<<<<< HEAD\nkey: k1\n=======\nkey: k1\nclass: x\n>>>>>>> sensor\n---\n".into(), vec!["k1"]),
+            ("---\nid: 7\n<<<<<<< HEAD\nclass: eilig\n=======\nclass: normal\n>>>>>>> sensor\n---\n".into(), vec![]),
+            ("---\nid: 7\n<<<<<<< HEAD\nkey: \"\"\n=======\nkey: [a, b]\n>>>>>>> sensor\n---\n".into(), vec![]),
+            // unlesbares Frontmatter: Anführungszeichen und Leerraum wie YAML, `key:` im Körper zählt nicht
+            ("---\nid: [\nkey: \"a: b\"\n---\n".into(), vec!["a: b"]),
+            ("---\nid: [\nkey:   k1  \n---\n".into(), vec!["k1"]),
+            ("---\nid: [\nkey: \"offen\n---\n".into(), vec![]),
+            ("---\nid: [\n  key: k1\n---\n".into(), vec![]),
+            ("---\nid: [\n---\nkey: k1\n".into(), vec![]),
+            ("---\nid: 7\nkey: k1\n".into(), vec!["k1"]),
+            ("key: k1\n<<<<<<< HEAD\n".into(), vec![]),
+        ];
+        for (text, erwartet) in &tabelle {
+            let gelesen = schluessel_nachsichtig(text);
+            assert_eq!(gelesen.iter().map(|k| k.text()).collect::<Vec<_>>(), *erwartet, "{text}");
+        }
+    }
+
+    // R00157 B0741: Gleichlauf — für jede Datei, die `lesen` annimmt, liefert der nachsichtige Leser denselben Schlüssel
+    #[test]
+    fn nachsichtig_laeuft_mit_dem_strengen_lesen_gleich() {
+        for zeile in ["key: \"a: b\"\n", "key: shop/nc-304/lodash\n", "key: \"304\"\n", "key: 304\n", "key:  k1 \n", ""] {
+            let t = format!("---\nid: 7\ntitle: S\n{zeile}---\n\nkey: koerper\n");
+            let streng = lesen("0007-s.md", &t).unwrap().schluessel;
+            assert_eq!(schluessel_nachsichtig(&t), streng.into_iter().collect::<Vec<_>>(), "{zeile}");
         }
     }
 
