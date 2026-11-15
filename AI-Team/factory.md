@@ -41,11 +41,12 @@ Vom Betreiber beim Start festgelegt (2026-10-31), ergänzt `realist: vorschlagen
 
 Wie die Dienste des Projekts starten und geprüft werden. Gilt für den Director und jede Rolle.
 
-- **Gate**: `cargo test && node --test e2e/einheit/ && (cd e2e && npx playwright test)`
+- **Gate**: `cargo test && node --test "e2e/einheit/*.js" && (cd e2e && npx playwright test)`
 - **Installieren**: `cargo build --release`; E2E: `cd e2e && npm install && npx playwright install chromium`
 - **Dienste starten**: `target/release/kanbanD <wegwerf-ordner> --port <frei> --kein-browser` (Skill `freier-port`); nie die Board-Instanz auf Port 7422
+- **Rechner seit 2026-11-15** (Ubuntu 26.04, Node 22, Rust 1.100): Node 22 nimmt für `--test` keinen Ordner an, deshalb das Muster `"e2e/einheit/*.js"`. Playwright 1.57 kennt Ubuntu 26.04 nicht: jeder Playwright-Aufruf braucht `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64` in der Umgebung, bis die Karte „Playwright anheben“ zusammengeführt ist; der Director nennt das in jedem Auftrag, der E2E-Tests fährt.
 - **Health-Check**: `GET http://127.0.0.1:<port>/api/zustand` antwortet mit JSON
-- **Zum Gate**: `cargo test` · `node --test e2e/einheit/` · `cd e2e && npx playwright test`
+- **Zum Gate**: `cargo test` · `node --test "e2e/einheit/*.js"` · `cd e2e && npx playwright test`
 - **Pfade**: `~/.cargo/bin`; Node für E2E unter `e2e/`; Board der Factory `http://127.0.0.1:7422`, Ordner `/home/shoff/Projekte/Kanban-Boards/kanbanD-Kanbanboard`; Auslieferung `cargo install --path . --locked` (siehe `prozess.md`)
 
 ## Rechnerlast
@@ -91,6 +92,7 @@ Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **gan
 
 DeepSeek ist der Standard für die übrigen Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
 
+- **Alle Rollen auf Claude Fable 5.2** (Betreiber 2026-11-15, nach der Verlegung auf den neuen Rechner; ersetzt die folgenden Zeilen zu Sonnet, DeepSeek und opencode): jede Rolle läuft als Claude-Subagent mit dem Modell `fable`, auch `code-reviewer`, `security-reviewer` und die bisher über opencode besetzten Rollen. Der Vergleich unter „Messen“ ruht so lange.
 - **Fest auf Claude Sonnet**: `code-reviewer` (läuft bei jeder Karte, letztes Tor vor dem Entwicklertest, anderes Modell als der Erbauer) und `security-reviewer` (selten, ein übersehener Fehler ist teuer). Der Director bleibt Claude.
 - **Fest auf Claude Fable 5.2** (Betreiber 2026-11-15): `planer`, `architekt` und `entwickler`, Bau und Nacharbeit (`entw1`, `entw2`). Anlass: Am 2026-11-14 rissen zwei DeepSeek-Bauläufe die Zeitgrenze und einer lief 85 Minuten in einer Leseschleife ohne Änderung.
 - **Umschalten je Lauf**: Soll ein einzelner Lauf über den anderen Treiber oder ein anderes Modell laufen, `board.py beginne <nr> --rolle <r> --treiber claude|opencode [--modell <m>]` (Factory seit 2026-11-14); die Entscheidung steht im Zugkommentar.
@@ -152,21 +154,21 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 
 | Rolle | Kürzel | Treiber | Modell | Einsatz |
 |---|---|---|---|---|
-| product-owner | po | opencode | openrouter/deepseek/deepseek-v4.1-flash | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
-| realist-consultant | real | opencode | openrouter/deepseek/deepseek-v4.1-flash | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
+| product-owner | po | claude | fable | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
+| realist-consultant | real | claude | fable | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
 | planer | plan | claude | fable | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
 | architekt | arch | claude | fable | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
-| architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
+| architektur-reviewer | arev | claude | fable | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
 | entwickler | entw1 | claude | fable | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
-| code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
-| security-reviewer | srev | claude | sonnet | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
-| entwicklertester | etst | opencode | openrouter/deepseek/deepseek-v4.1-flash | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
-| ux-reviewer | ux | opencode | openrouter/deepseek/deepseek-v4.1-flash | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
-| rechtschreib-reviewer | rsr | opencode | openrouter/deepseek/deepseek-v4.1-flash | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
-| legacy-reviewer | leg | opencode | openrouter/deepseek/deepseek-v4.1-flash | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
-| observability-reviewer | obs | opencode | openrouter/deepseek/deepseek-v4.1-flash | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
-| fachspezialist | fach | opencode | openrouter/deepseek/deepseek-v4.1-flash | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
-| gestalter | ges | opencode | openrouter/deepseek/deepseek-v4.1-flash | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
+| code-reviewer | crev | claude | fable | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
+| security-reviewer | srev | claude | fable | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
+| entwicklertester | etst | claude | fable | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
+| ux-reviewer | ux | claude | fable | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
+| rechtschreib-reviewer | rsr | claude | fable | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
+| legacy-reviewer | leg | claude | fable | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
+| observability-reviewer | obs | claude | fable | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
+| fachspezialist | fach | claude | fable | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
+| gestalter | ges | claude | fable | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
 
 ## Spalten
 
@@ -176,7 +178,7 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | Backlog | Mensch | Sammlung; der Betreiber gibt frei, indem er Karten nach „Architektur“ legt; hier liegen auch die Karten „Besprechen: …“ aus PO und realist-consultant |
 | Architektur | Team | prüfen, ob die Karte eine Technikfrage aufwirft; wenn ja entscheiden und als ADR festhalten, sonst sofort weiter; die erste Karte bringt das Architektur-Modell |
 | Detailplanung | Team | WBS-Knoten anlegen bzw. Interaction bis Bubble verfeinern, Anforderung schreiben oder abgleichen; ux-reviewer nur als Vorprüfung bei Oberfläche; fachspezialist auf Abruf bei neuen Begriffen; der planer setzt die zutreffenden Labels der Karte: „oberflaeche“ (sichtbare Änderung der Oberfläche → ux-reviewer), „text“ (neuer oder geänderter sichtbarer Text, API-Beschreibung → rechtschreib-reviewer), „sicherheit“ (Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen → security-reviewer), „fehlerpfad“ (neue Fehlerpfade oder Protokollzeilen → observability-reviewer), „architektur“ (Schreibweg oder Modell → architektur-reviewer), „datenformat“ (Dateiformat des Board-Ordners oder API → legacy-reviewer), „begriffe“ (neue Fachbegriffe → fachspezialist) — nur danach laufen die Prüfer dieser Themen |
-| Entwicklung | Team | bauen, Test zuerst, Gate (`cargo test`, `node --test e2e/einheit/`, betroffene Playwright-Specs; volle Suite am Kartenende) |
+| Entwicklung | Team | bauen, Test zuerst, Gate (`cargo test`, `node --test "e2e/einheit/*.js"`, betroffene Playwright-Specs; volle Suite am Kartenende) |
 | Nacharbeit | Team | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben, Sollte/Optional entscheiden (beheben oder verwerfen, siehe „Befunde aus Reviews und Tests“) (`entw2`, im Worktree der Karte), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
 | Auto-Reviews | Team | Reviews parallel am selben Stand, je Rolle eine Teilaufgabe; code-reviewer immer, die übrigen nur, wenn die Karte ihr Thema berührt (Auswahl im Kommentar des Directors beim Zug) |
 | Entwicklertest | Team | User Story wörtlich im echten Programm auf einer Wegwerf-Instanz |
