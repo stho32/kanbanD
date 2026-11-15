@@ -355,3 +355,25 @@ async fn spalte_schema_und_beschreibung_nennen_eigentuemer_unbekannt() {
     assert!(info.contains("): Aus einer Spalte, die dem Menschen gehört"), "Hausregel Doppelpunkt: {info}");
     assert!(info.contains("Antwortregel: Ein Objekt kommt direkt"), "Hausregel Doppelpunkt Antwortregel: {info}");
 }
+
+/// R00159 AK 8: die drei Wege der Archiv-Familie nennen die 423 des defekten Ordners und ihren Vorrang vor der 403 —
+/// in `/api/openapi.json`, in `/api/endpunkte` und auf der Seite `/api`; bei DELETE entfällt der alte Klammerzusatz.
+#[tokio::test]
+async fn archiv_familie_nennt_die_423_und_ihren_vorrang() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let satz = "Agent bei einer defekten Board-Datei im Ordner → 423 {fehler}, geht der 403 vor";
+    let d = beschreibung(&lauf.adresse).await;
+    let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
+    for (methode, pfad) in [("POST", "/api/aufgaben/{nr}/archivieren"), ("POST", "/api/aufgaben/archivieren"), ("DELETE", "/api/aufgaben/{nr}")] {
+        let openapi = d["paths"][pfad][methode.to_lowercase()]["description"].as_str().unwrap().to_string();
+        let zweck = liste.as_array().unwrap().iter().find(|e| e["methode"] == methode && e["pfad"] == pfad).unwrap()["zweck"].as_str().unwrap().to_string();
+        for (wo, text) in [("openapi.json", openapi), ("endpunkte", zweck)] {
+            assert!(text.contains(satz), "{wo} {methode} {pfad}: {text}");
+            assert!(!text.contains("defektes Board 423") && !text.contains("ein defektes Board des Ordners ist 423"), "{wo} {methode} {pfad} trägt noch den alten Zusatz: {text}");
+        }
+    }
+    let seite = reqwest::get(format!("{}api", lauf.adresse)).await.unwrap().text().await.unwrap();
+    assert_eq!(seite.matches(satz).count(), 3, "Seite /api nennt den Satz an genau den drei Endpunkten");
+    assert!(!seite.contains("R00097/R00120; defektes Board 423"), "Seite /api trägt bei DELETE noch den alten Klammerzusatz");
+}
