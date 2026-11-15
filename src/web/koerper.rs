@@ -1,10 +1,10 @@
-//! Der JSON-Rumpf einer Anfrage — die eine Stelle, an der ein Formfehler abgewiesen wird (ADR-0003 N1/N3).
+//! JSON-Rumpf, Pfad und Abfrage einer Anfrage — die eine Stelle, an der ein Formfehler abgewiesen wird (ADR-0003 N1/N3/N4).
 
 use crate::fehler::Fehler;
 use axum::body::Bytes;
 use axum::extract::path::ErrorKind;
 use axum::extract::rejection::PathRejection;
-use axum::extract::{FromRequest, FromRequestParts, OptionalFromRequest, RawPathParams, Request};
+use axum::extract::{FromRequest, FromRequestParts, OptionalFromRequest, Query, RawPathParams, Request};
 use axum::http::request::Parts;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::{HeaderMap, StatusCode};
@@ -18,10 +18,10 @@ use serde_path_to_error::{Path, Segment};
 /// dessen Abweisung als englischer Klartext mit 422 am Antwortweg von `Fehler` vorbeigeht.
 pub struct JsonKoerper<T>(pub T);
 
-/// Warum der Extraktor einen Rumpf abweist — ein Typ der Web-Schicht, kein Dienst kann ihn erzeugen.
+/// Warum ein Extraktor dieser Stelle eine Anfrage abweist — ein Typ der Web-Schicht, kein Dienst kann ihn erzeugen.
 #[derive(Debug)]
 pub enum Abweisung {
-    /// Kein JSON oder JSON in falscher Form: 400 wie jede ungültige Eingabe.
+    /// Rumpf, Pfad oder Abfrage in falscher Form: 400 wie jede ungültige Eingabe.
     Inhalt(Fehler),
     /// `Content-Type` fehlt oder nennt kein JSON: 415.
     KeinJson,
@@ -260,6 +260,36 @@ const FALSCHE_FORM: &str = "Wert hat nicht die erwartete Form";
 /// Die Route nennt in ihrer Schablone andere Parameter, als ihr Handler liest — ein Fehler im Programm, kein Fehler der Anfrage (500 wie beim Rahmen).
 fn pfad_falsch_gelesen() -> Fehler {
     Fehler::Intern("Die Route liest ihre Pfadparameter nicht so, wie ihre Schablone sie nennt".to_string())
+}
+
+/// Die Abfrageparameter als `T`. Jeder Handler nimmt sie so — nie als `axum::extract::Query<T>`, dessen Abweisung
+/// als englischer Klartext am Antwortweg von `Fehler` vorbeigeht (ADR-0003 N4).
+pub struct Abfrage<T>(pub T);
+
+impl<T: DeserializeOwned, S: Send + Sync> FromRequestParts<S> for Abfrage<T> {
+    type Rejection = Abweisung;
+
+    async fn from_request_parts(teile: &mut Parts, _zustand: &S) -> Result<Self, Abweisung> {
+        match Query::<T>::try_from_uri(&teile.uri) {
+            Ok(Query(wert)) => Ok(Abfrage(wert)),
+            Err(abweisung) => Err(Abweisung::Inhalt(abfragefehler(&abweisung.body_text()))),
+        }
+    }
+}
+
+/// Deutsche Meldung `Abfrageparameter <Name>: <was nicht stimmt>` aus dem Text des Rahmens. Übernommen wird nur der Feldname
+/// eines fehlenden oder doppelten Felds, und nur, wenn der Text nichts weiter trägt — er stammt dann aus dem Programm.
+/// Jeder andere Text kann gesendete Werte enthalten und geht nicht in die Meldung.
+fn abfragefehler(rahmen: &str) -> Fehler {
+    let rahmen = rahmen.strip_prefix("Failed to deserialize query string: ").unwrap_or_default();
+    let feldname = |art: &str| rahmen.strip_prefix(art)?.strip_prefix('`')?.strip_suffix('`').filter(|name| !name.is_empty() && name.chars().all(|z| z.is_alphanumeric() || z == '_' || z == '-'));
+    Fehler::Ungueltig(if let Some(name) = feldname("missing field ") {
+        format!("Abfrageparameter {name}: fehlt")
+    } else if let Some(name) = feldname("duplicate field ") {
+        format!("Abfrageparameter {name}: mehrfach genannt")
+    } else {
+        "Die Abfrageparameter haben nicht die erwartete Form".to_string()
+    })
 }
 
 #[cfg(test)]
@@ -514,6 +544,26 @@ mod parameter_tests {
         art: Art,
     }
 
+    #[derive(Debug, Deserialize)]
+    struct Wahl {
+        #[allow(dead_code)]
+        board: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Mit {
+        #[allow(dead_code)]
+        archivierte: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Seite {
+        #[allow(dead_code)]
+        nummer: u32,
+        #[allow(dead_code)]
+        art: Option<Art>,
+    }
+
     /// Ein Dienst mit Routen je Form der Parameter; jede antwortet mit dem gelesenen Wert.
     async fn dienst() -> String {
         let router = Router::new()
@@ -523,6 +573,10 @@ mod parameter_tests {
             .route("/benannt/{nr}/{name}", get(async |Pfad(b): Pfad<Benannt>| format!("{b:?}")))
             .route("/art/{art}", get(async |Pfad(art): Pfad<Art>| format!("{art:?}")))
             .route("/gewaehlt/{nr}/{art}", get(async |Pfad(g): Pfad<Gewaehlt>| format!("{g:?}")))
+            .route("/bericht", get(async |Abfrage(w): Abfrage<Wahl>| format!("{w:?}")))
+            .route("/liste", get(async |Abfrage(m): Abfrage<Mit>| format!("{m:?}")))
+            .route("/paare", get(async |Abfrage(p): Abfrage<Vec<(String, String)>>| format!("{p:?}")))
+            .route("/seite/{slug}", get(async |Pfad(slug): Pfad<String>, Abfrage(s): Abfrage<Seite>| format!("{slug} {s:?}")))
             .route("/verzaehlt/{a}/{b}", get(async |Pfad(nr): Pfad<u32>| format!("{nr:?}")));
         let horcher = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let adresse = format!("http://{}", horcher.local_addr().unwrap());
@@ -589,5 +643,68 @@ mod parameter_tests {
     async fn eine_route_die_ihre_parameter_falsch_zaehlt_antwortet_mit_500_in_der_form() {
         let adresse = dienst().await;
         assert_eq!(antwort(&adresse, "/verzaehlt/1/2").await, abgewiesen(500, "Die Route liest ihre Pfadparameter nicht so, wie ihre Schablone sie nennt"));
+    }
+
+    #[tokio::test]
+    async fn gueltige_abfrageparameter_werden_gelesen_und_unbekannte_ueberlesen() {
+        let adresse = dienst().await;
+        for (pfad, gelesen) in [
+            ("/bericht?board=a", "Wahl { board: \"a\" }"),
+            ("/bericht?board=a&quatsch=1&quatsch=2", "Wahl { board: \"a\" }"),
+            ("/bericht?board=", "Wahl { board: \"\" }"),
+            ("/bericht?board=%FF", "Wahl { board: \"\u{FFFD}\" }"),
+            ("/liste", "Mit { archivierte: None }"),
+            ("/liste?archivierte=ja", "Mit { archivierte: Some(\"ja\") }"),
+            ("/paare?a=1&a=2&%FF=3", "[(\"a\", \"1\"), (\"a\", \"2\"), (\"\u{FFFD}\", \"3\")]"),
+            ("/seite/x?nummer=7&art=fein", "x Seite { nummer: 7, art: Some(Fein) }"),
+        ] {
+            assert_eq!(antwort(&adresse, pfad).await, (200, "text/plain; charset=utf-8".to_string(), gelesen.to_string()), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ein_fehlendes_pflichtfeld_der_abfrage_nennt_das_feld() {
+        let adresse = dienst().await;
+        for pfad in ["/bericht", "/bericht?", "/bericht?quatsch=1", "/bericht?Board=a"] {
+            assert_eq!(antwort(&adresse, pfad).await, abgewiesen(400, "Abfrageparameter board: fehlt"), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ein_doppeltes_feld_der_abfrage_nennt_das_feld_und_keinen_der_werte() {
+        let adresse = dienst().await;
+        assert_eq!(antwort(&adresse, "/bericht?board=zx9a&board=zx9b").await, abgewiesen(400, "Abfrageparameter board: mehrfach genannt"));
+        assert_eq!(antwort(&adresse, "/liste?archivierte=ja&archivierte=ja").await, abgewiesen(400, "Abfrageparameter archivierte: mehrfach genannt"));
+    }
+
+    #[tokio::test]
+    async fn ein_abfragewert_in_falscher_form_wird_ohne_den_wert_und_ohne_text_des_rahmens_abgewiesen() {
+        let adresse = dienst().await;
+        for pfad in ["/seite/x?nummer=Zx9-Inhalt", "/seite/x?nummer=7&art=Zx9-Inhalt", "/seite/x?nummer=7&art=missing%20field%20%60slug%60"] {
+            assert_eq!(antwort(&adresse, pfad).await, abgewiesen(400, "Die Abfrageparameter haben nicht die erwartete Form"), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn der_pfad_antwortet_vor_der_abfrage() {
+        let adresse = dienst().await;
+        assert_eq!(antwort(&adresse, "/seite/%FF").await, abgewiesen(400, "Pfadparameter slug: kein gültiges UTF-8"));
+    }
+
+    #[test]
+    fn nur_der_feldname_aus_dem_programm_geht_in_die_meldung() {
+        let meldung = |rahmen: &str| abfragefehler(rahmen).meldung().to_string();
+        assert_eq!(meldung("Failed to deserialize query string: missing field `board`"), "Abfrageparameter board: fehlt");
+        assert_eq!(meldung("Failed to deserialize query string: duplicate field `messbasis-tage_2`"), "Abfrageparameter messbasis-tage_2: mehrfach genannt");
+        for rahmen in [
+            "Failed to deserialize query string: art: unknown variant `missing field `slug``, expected `fein`",
+            "Failed to deserialize query string: missing field `x`, expected `y`",
+            "Failed to deserialize query string: missing field ``",
+            "Failed to deserialize query string: missing field `a b`",
+            "missing field `board`",
+            "",
+        ] {
+            assert_eq!(meldung(rahmen), "Die Abfrageparameter haben nicht die erwartete Form", "{rahmen}");
+        }
     }
 }
