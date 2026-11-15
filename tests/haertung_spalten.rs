@@ -70,7 +70,7 @@ fn faelle() -> Vec<Fall> {
         Fall { name: "P2b keine Zuordnung", vorspann: "---\ncolumn-owner: human\n---\n", status: [403, 403, 403, 403, 200] },
         Fall { name: "P3 unbekannter Wert", vorspann: "---\ncolumn-owner:\n  Eingang: chef\n---\n", status: [200, 200, 200, 200, 200] },
         Fall { name: "P4 doppelte Nummer", vorspann: "---\ncolumn-owner:\n  In Arbeit: human\n---\n\n# Fabrik\n\n## Eingang\n\n- #1\n\n## In Arbeit\n\n- #1\n\n## Erledigt\n", status: [403, 403, 403, 403, 200] },
-        Fall { name: "P6 gesund + defektes Board", vorspann: "---\ncolumn-owner:\n  Eingang: human\n---\n", status: [403, 403, 403, 403, 200] },
+        Fall { name: "P6 gesund + defektes Board", vorspann: "---\ncolumn-owner:\n  Eingang: human\n---\n", status: [423, 403, 403, 403, 200] },
     ]
 }
 
@@ -135,16 +135,106 @@ async fn p5_defektes_board_auf_allen_wegen_423() {
     }
 }
 
-/// P6: eine Sperre des gesunden Boards verdeckt das defekte Board nicht (403, nicht 423), auch auf W1.
+/// P6 (R00159 AK 9, ADR-0003 N2 — umgekehrt): das defekte Board geht der Sperre des gesunden vor (423, nicht 403),
+/// auch auf W1; die 423 trägt weder `spalte` noch `nummer`, nichts wird geschrieben.
 #[tokio::test]
-async fn p6_gesundes_board_sperrt_vor_dem_defekten() {
+async fn p6_defektes_board_geht_der_sperre_des_gesunden_vor() {
     let tmp = tempfile::tempdir().unwrap();
-    ordner(tmp.path(), &[("fabrik", &fabrik_mit("---\ncolumn-owner:\n  Eingang: human\n---\n")), ("kaputt", "---\nstart: kaputt\n---\n\n# Kaputt\n\n## Eingang\n")]);
+    ordner(tmp.path(), &[("fabrik", &fabrik_mit("---\ncolumn-owner:\n  Eingang: human\n---\n")), ("kaputt", KAPUTT)]);
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
-    let vorher = stand(tmp.path());
+    let vorher = bestand(tmp.path());
     let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/archivieren", "cl", json!(null)).await;
-    assert_eq!((s, r), (403, verboten(1)), "die Menschen-Spalte des gesunden Boards sperrt");
-    assert_eq!(stand(tmp.path()), vorher);
+    defekt_in_der_form(&lauf.adresse, s, &r, "boards/kaputt.md").await;
+    assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
+}
+
+/// Defekte Board-Datei (Formatfehler im Frontmatter); keine Karte steht darin.
+const KAPUTT: &str = "---\nstart: kaputt\n---\n\n# Kaputt\n\n## Eingang\n";
+const MENSCHEN_SPALTE: &str = "---\ncolumn-owner:\n  Eingang: human\n---\n";
+
+/// Grundbestand aus R00159: „fabrik“ mit Menschen-Spalte „Eingang“; #1 in „Eingang“, #2 in „In Arbeit“ (frei),
+/// #3 in „Erledigt“ und archiviert; daneben die genannten weiteren Board-Dateien (Dateistamm → Inhalt).
+fn grundbestand(pfad: &Path, daneben: &[(&str, &str)]) {
+    std::fs::create_dir_all(pfad.join("aufgaben")).unwrap();
+    std::fs::write(pfad.join("aufgaben/0002-k.md"), "---\nid: 2\ntitle: k2\n---\n").unwrap();
+    std::fs::write(pfad.join("aufgaben/0003-k.md"), "---\nid: 3\ntitle: k3\narchived: 2026-11-01\n---\n").unwrap();
+    let fabrik = format!("{MENSCHEN_SPALTE}\n# Fabrik\n\n## Eingang\n\n- #1\n\n## In Arbeit\n\n- #2\n\n## Erledigt\n\n- #3\n");
+    let mut boards = vec![("fabrik", fabrik.as_str())];
+    boards.extend_from_slice(daneben);
+    ordner(pfad, &boards);
+}
+
+/// „Nichts geschrieben“: HEAD, `git status --porcelain`, boards/fabrik.md und die drei Aufgabendateien.
+fn bestand(pfad: &Path) -> Vec<String> {
+    let mut b = vec![git(pfad, &["rev-parse", "HEAD"]), git(pfad, &["status", "--porcelain"]), lies(pfad, "boards/fabrik.md")];
+    b.extend(["0001-k.md", "0002-k.md", "0003-k.md"].map(|d| lies(pfad, &format!("aufgaben/{d}"))));
+    b
+}
+
+/// „423 in der Form“ (R00159): Status 423, genau das Feld `fehler` — weder `spalte` noch `nummer`; die Meldung ist
+/// der bestehende Satz für defekte Dateien mit dem Grund, den `GET /api/zustand` unter `defekte` für `datei` nennt.
+async fn defekt_in_der_form(adresse: &str, status: u16, rumpf: &Value, datei: &str) {
+    assert_eq!(status, 423, "423 erwartet: {rumpf}");
+    let felder: Vec<&String> = rumpf.as_object().unwrap().keys().collect();
+    assert_eq!(felder, ["fehler"], "genau `fehler`, weder `spalte` noch `nummer`: {rumpf}");
+    let zustand: Value = reqwest::get(format!("{adresse}api/zustand")).await.unwrap().json().await.unwrap();
+    let grund = zustand["defekte"].as_array().unwrap().iter().find(|d| d["pfad"] == datei).unwrap_or_else(|| panic!("{datei} fehlt unter defekte: {zustand}"))["fehler"].as_str().unwrap().to_string();
+    assert_eq!(rumpf["fehler"], json!(format!("{datei}: {grund} — nur lesbar, bis die Datei repariert ist")));
+}
+
+/// R00159 AK 1 (Abnahme-Probe der Karte #121, ADR-0003 N2): defekte Board-Datei im Ordner, #1 in der Menschen-Spalte
+/// eines lesbaren Boards → der Agent bekommt beim Archivieren 423 mit der Meldung der defekten Datei, kein Commit.
+/// Bei zwei defekten Dateien nennt die Meldung die erste der Boardliste (nach Dateiname).
+#[tokio::test]
+async fn r00159_ak1_agent_archiviert_bei_defektem_board_423() {
+    for daneben in [vec![("kaputt", KAPUTT)], vec![("zerbrochen", KAPUTT), ("kaputt", KAPUTT)]] {
+        let tmp = tempfile::tempdir().unwrap();
+        grundbestand(tmp.path(), &daneben);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let vorher = bestand(tmp.path());
+        let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/archivieren", "cl", json!(null)).await;
+        defekt_in_der_form(&lauf.adresse, s, &r, "boards/kaputt.md").await;
+        assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
+        assert!(!lies(tmp.path(), "aufgaben/0001-k.md").contains("archived"), "#1 trägt kein archived");
+    }
+}
+
+/// R00159 AK 2: mehrere archivieren — 423 für die ganze Anfrage, auch #2 aus der freien Spalte bleibt offen.
+#[tokio::test]
+async fn r00159_ak2_agent_archiviert_mehrere_bei_defektem_board_423() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path(), &[("kaputt", KAPUTT)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = bestand(tmp.path());
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/archivieren", "cl", json!({"nummern": [2, 1]})).await;
+    defekt_in_der_form(&lauf.adresse, s, &r, "boards/kaputt.md").await;
+    assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
+    assert!(!lies(tmp.path(), "aufgaben/0002-k.md").contains("archived"), "#2 ist nicht archiviert");
+}
+
+/// R00159 AK 3: endgültig löschen — 423, Aufgabendatei und Board-Zeile von #1 stehen noch.
+#[tokio::test]
+async fn r00159_ak3_agent_loescht_endgueltig_bei_defektem_board_423() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path(), &[("kaputt", KAPUTT)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = bestand(tmp.path());
+    let (s, r) = senden(Method::DELETE, &lauf.adresse, "api/aufgaben/1", "cl", json!(null)).await;
+    defekt_in_der_form(&lauf.adresse, s, &r, "boards/kaputt.md").await;
+    assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
+    assert!(tmp.path().join("aufgaben/0001-k.md").exists() && lies(tmp.path(), "boards/fabrik.md").contains("- #1"), "Datei und Zeile von #1 stehen noch");
+}
+
+/// R00159 AK 4: auch eine Board-Datei mit ungültigem Namen zählt als defekt und hält den Agenten an.
+#[tokio::test]
+async fn r00159_ak4_ungueltiger_dateiname_zaehlt_als_defekt_423() {
+    let tmp = tempfile::tempdir().unwrap();
+    grundbestand(tmp.path(), &[("Kaputt_Board", "# Kaputt\n\n## Eingang\n")]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = bestand(tmp.path());
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/archivieren", "cl", json!(null)).await;
+    defekt_in_der_form(&lauf.adresse, s, &r, "boards/Kaputt_Board.md").await;
+    assert_eq!(bestand(tmp.path()), vorher, "nichts geschrieben");
 }
 
 fn verboten(nummer: u32) -> Value {
