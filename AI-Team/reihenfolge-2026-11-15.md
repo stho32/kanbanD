@@ -21,9 +21,10 @@ jedes Mitglied trägt „wird mit #<nr> gebaut“.
 | Nr | führende Karte | Mitglieder | Titel (Arbeitstitel) | Kurzgrund (verbindet Dateien/Ansicht) |
 |---|---|---|---|---|
 | 1 | #39 | — | Typfehler im Rumpf ergeben 422 statt 400 | Einzelkarte: läuft bereits allein in der Architektur (architekt), Auftrag: nicht bündeln |
+| 1a | #168 | — | Typfehler in Pfad- und Abfrageparametern ergeben Klartext statt 400 {fehler} | Einzelkarte, unmittelbar nach #39 (product-owner 2026-11-15): derselbe Kontraktbruch, andere Mechanik; braucht #39 |
 | 2 | **#54** | #96, #93, #87, #97 | **Aufgabenfenster: Felder und Fenstermeldung** | Alle im Aufgabenfenster D0003: Titelfeld (Esc #54, `aria-invalid` #96), Feld „Zeit nachtragen“ (#93), Dateischlüssel als Hilfstext (#87), Fenstermeldung/Bildschirmtastatur (#97). Dateien: `web/app.js`, `web/ansicht.js`, `web/zeiten.js` |
 | 3 | #44 | — | Ungültiger Schlüssel fällt aus der Suche | Einzelkarte: eigene Technikfrage (`Fremdschluessel::pruefen`, Suchindex, Rust) ohne Partner in der Spalte |
-| 4 | #45 | — | Wiederöffnen auf anderem Board lässt Karte im alten „Fertig“ | Einzelkarte: „Besprechen“-Entscheidung (Verhalten), kein Bau mit anderem |
+| 4 | #45 | — | Wiederöffnen auf anderem Board lässt Karte im alten „Fertig“ | Einzelkarte, wird gebaut: Der Betreiber hat am 2026-11-13 entschieden, dass beim Wiederöffnen die alte Board-Zeile entfernt wird (berichtigt 2026-11-15, product-owner) |
 | 5 | #121 | — | Besprechen: 403 oder 423 bei defektem Board | Einzelkarte: Zugriffsgrenze (Protokoll Z. 228: 423 einheitlich); Zugriffsgrenzen werden nicht gebündelt |
 | 6 | **#140** | #57, #68, #55 | **Oberfläche: schmale Breite, Kontrast, kleine sichtbare Mängel** | Alles sichtbare Optik derselben Dateien: kein Querscrollen 320–414 px (#140), gedämpfte Elemente ≥ 4,5:1 (#57), gekürzte Fehlerzeile im Einrichtungsmodus (#68), gesammelte kleine Funde aus #6/#8/#18 (#55). Dateien: `web/kd-app.css`, `web/ansicht.js`, `web/app.js` |
 | 7 | #163 | — | tests/live.rs:57 Frist des Datei-Watchers härten | Einzelkarte: eigene Technikfrage (Rust-Test, anderer Ort und andere Abhilfe) |
@@ -48,7 +49,7 @@ jedes Mitglied trägt „wird mit #<nr> gebaut“.
 
 - **#39** — läuft bereits allein (Auftrag: nicht bündeln).
 - **#44** — eigene Rust-Technikfrage (Suchindex/Fremdschlüssel), kein passender Partner.
-- **#45** — „Besprechen“-Entscheidung (Verhalten), kein Bau.
+- **#45** — wird gebaut (Entscheidung des Betreibers vom 2026-11-13), nur nicht gebündelt.
 - **#121** — Zugriffsgrenze (bereits entschieden Z. 228); Zugriffsgrenzen werden nie gebündelt.
 - **#147** — neuer Endpunkt (eigene Technikfrage).
 - **#153** — neues Feature (eigener Umfang).
