@@ -135,3 +135,22 @@ async fn defekte_tragen_in_der_api_kein_neues_feld() {
     let felder: Vec<&String> = d["components"]["schemas"]["DefekteDatei"]["properties"].as_object().unwrap().keys().collect();
     assert_eq!(felder, ["fehler", "pfad"]);
 }
+
+// AK 9 (B0744): Seite, Endpunktliste und OpenAPI nennen an beiden Anlegewegen den neuen Anlass der 423 wörtlich
+#[tokio::test]
+async fn beschreibung_nennt_den_anlass_der_423() {
+    const SATZ: &str = "423: Eine defekte Aufgabendatei trägt den Schlüssel der Anfrage; angelegt wird nichts, bis die Datei repariert ist.";
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let holen = |pfad: &'static str| reqwest::get(format!("{}{pfad}", lauf.adresse));
+    let endpunkte: Value = holen("api/endpunkte").await.unwrap().json().await.unwrap();
+    let openapi: Value = holen("api/openapi.json").await.unwrap().json().await.unwrap();
+    let seite = holen("api").await.unwrap().text().await.unwrap();
+    for pfad in ["/api/aufgaben", "/api/aufgaben/mehrere"] {
+        let eintrag = endpunkte.as_array().unwrap().iter().find(|e| e["methode"] == "POST" && e["pfad"] == pfad).unwrap();
+        assert!(eintrag["zweck"].as_str().unwrap().contains(SATZ), "/api/endpunkte {pfad}: {eintrag}");
+        let text = openapi["paths"][pfad]["post"]["description"].as_str().unwrap();
+        assert!(text.contains(SATZ), "OpenAPI {pfad}: {text}");
+    }
+    assert_eq!(seite.matches(SATZ).count(), 2, "Seite /api: je einmal bei beiden Anlegewegen");
+}
