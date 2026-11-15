@@ -183,7 +183,6 @@ async fn tabelle_fahren(adresse: &str, wert: &str, auswahl: impl Fn(&[&str], &'s
 
 // AK 1, AK 2, AK 7, AK 9 (68 Antworten) · US-4
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn jede_route_weist_ungueltiges_utf8_an_jedem_pfadparameter_mit_400_und_dem_parameternamen_ab() {
     let (tmp, lauf) = grundbestand();
     let vorher = stand(tmp.path());
@@ -195,7 +194,6 @@ async fn jede_route_weist_ungueltiges_utf8_an_jedem_pfadparameter_mit_400_und_de
 
 // AK 1, AK 4, AK 7, AK 9 (35 Antworten) · US-1, US-2
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn jeder_zahlenparameter_weist_einen_text_mit_400_und_dem_parameternamen_ab() {
     let (tmp, lauf) = grundbestand();
     let vorher = stand(tmp.path());
@@ -227,7 +225,6 @@ async fn die_tabelle_nennt_jede_route_der_beschreibung_mit_pfadparameter_genau_e
 
 // AK 5
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn grenzen_der_zahl_und_zwei_typfehler_zugleich_nennen_den_ersten_falschen_parameter() {
     let (_tmp, lauf) = grundbestand();
     for wert in ["-1", "99999999999", "4294967296"] {
@@ -240,7 +237,6 @@ async fn grenzen_der_zahl_und_zwei_typfehler_zugleich_nennen_den_ersten_falschen
 
 // AK 1, AK 6, AK 7, AK 9 (6 Antworten) · US-3
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn ein_fehlender_oder_doppelter_abfrageparameter_wird_mit_400_und_dem_feldnamen_abgewiesen() {
     let (_tmp, lauf) = grundbestand();
     let mut rot = Vec::new();
@@ -255,7 +251,6 @@ async fn ein_fehlender_oder_doppelter_abfrageparameter_wird_mit_400_und_dem_feld
 
 // AK 7
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn die_meldung_wiederholt_den_gesendeten_wert_nicht() {
     let (_tmp, lauf) = grundbestand();
     let fehler = abgewiesen(&lauf.adresse, Method::GET, "api/aufgaben/Zx9-Inhalt", "nr", &[]).await;
@@ -266,7 +261,6 @@ async fn die_meldung_wiederholt_den_gesendeten_wert_nicht() {
 
 // AK 8
 #[tokio::test]
-#[ignore = "erwartet rot bis B0718"]
 async fn der_pfad_antwortet_vor_dem_rumpf() {
     let (tmp, lauf) = grundbestand();
     let aufgabe = lies(tmp.path(), "aufgaben/0001-eins.md");
