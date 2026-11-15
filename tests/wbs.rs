@@ -90,7 +90,7 @@ async fn wbs_im_arbeits_repository_aendert_sich_ereignis_mit_kuerzel_auch_nach_n
     let (_a, arbeit) = arbeits_repository();
     let tmp = tempfile::tempdir().unwrap();
     mit_register(tmp.path(), &arbeit);
-    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let lauf = gemeinsam::beobachtet_starten(tmp.path(), &["--port", "0"]);
     let plan = arbeit.join("Dokumentation/Planung/kasse.md");
     let e = gemeinsam::ereignis_abwarten(&lauf.adresse, || std::fs::write(&plan, WBS.replace("| Summe rechnen | rot |", "| Summe rechnen | gruen |")).unwrap(), |v| v["wbs"] == json!(["kc"])).await;
     assert_eq!((e["pfade"].clone(), e["extern"].clone()), (json!([plan.to_string_lossy()]), json!(true)));

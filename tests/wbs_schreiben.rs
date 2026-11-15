@@ -108,7 +108,7 @@ async fn eigener_schreibzugriff_meldet_ereignis_mit_kuerzel_nicht_extern() {
     let (_a, arbeit) = arbeits_repository(&ak_schreiben());
     let tmp = tempfile::tempdir().unwrap();
     mit_register(tmp.path(), &arbeit);
-    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let lauf = gemeinsam::beobachtet_starten(tmp.path(), &["--port", "0"]);
     let adresse = lauf.adresse.clone();
     let e = gemeinsam::ereignis_abwarten(
         &lauf.adresse,

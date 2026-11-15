@@ -7,12 +7,42 @@ use std::time::Duration;
 fn beobachten(pfad: &std::path::Path) -> (notify::RecommendedWatcher, mpsc::Receiver<Ereignis>, Eigene) {
     let (tx, rx) = mpsc::channel();
     let eigene = Eigene::default();
-    let w = starten(pfad.canonicalize().unwrap(), eigene.clone(), move |e| {
-        let _ = tx.send(e);
-    })
-    .unwrap();
+    let w = gemeinsam::bis_beobachtet(gemeinsam::WAECHTER_OBERGRENZE, || {
+        let tx = tx.clone();
+        starten(pfad.canonicalize().unwrap(), eigene.clone(), move |e| {
+            let _ = tx.send(e);
+        })
+    });
     std::thread::sleep(Duration::from_millis(100));
     (w, rx, eigene)
+}
+
+fn fremde_beobachten(eigene: Eigene) -> (kanband::waechter::FremderWaechter, mpsc::Receiver<Ereignis>) {
+    let (tx, rx) = mpsc::channel();
+    let w = gemeinsam::bis_beobachtet(gemeinsam::WAECHTER_OBERGRENZE, || {
+        let tx = tx.clone();
+        kanband::waechter::fremde_starten(eigene.clone(), move |e| {
+            let _ = tx.send(e);
+        })
+    });
+    (w, rx)
+}
+
+// R00160: inotify-Instanzen sind je Benutzer begrenzt; ohne Instanz gibt es keinen Wächter und nie ein Ereignis.
+#[test]
+fn wartet_bis_der_waechter_beobachtet() {
+    let mut versuche = 0;
+    let wert = gemeinsam::bis_beobachtet(Duration::from_secs(5), || {
+        versuche += 1;
+        if versuche < 3 { Err("Too many open files") } else { Ok("beobachtet") }
+    });
+    assert_eq!((wert, versuche), ("beobachtet", 3));
+}
+
+#[test]
+#[should_panic(expected = "inotify-Grenze der Umgebung: nach 300ms kein beobachtender Wächter (Too many open files)")]
+fn ohne_waechter_scheitert_der_test_mit_der_inotify_grenze() {
+    gemeinsam::bis_beobachtet(Duration::from_millis(300), || Err::<(), _>("Too many open files"));
 }
 
 #[test]
@@ -56,7 +86,7 @@ fn git_und_zwischendateien_erzeugen_kein_ereignis() {
 #[tokio::test]
 async fn ereignisstrom_meldet_editor_aenderung_als_extern() {
     let tmp = tempfile::tempdir().unwrap();
-    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let lauf = gemeinsam::eingerichtet_beobachtet_starten(tmp.path());
     let pfad = tmp.path().join("boards/entwicklung.md");
     let e = gemeinsam::ereignis_abwarten(&lauf.adresse, || std::fs::write(&pfad, "# Entwicklung\n\n## A\n").unwrap(), |v| v["pfade"][0] == "boards/entwicklung.md").await;
     assert_eq!(e["extern"], true);
@@ -65,7 +95,7 @@ async fn ereignisstrom_meldet_editor_aenderung_als_extern() {
 #[tokio::test]
 async fn ereignisstrom_meldet_eigenes_anlegen_nicht_als_extern() {
     let tmp = tempfile::tempdir().unwrap();
-    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let lauf = gemeinsam::eingerichtet_beobachtet_starten(tmp.path());
     let adresse = lauf.adresse.clone();
     let e = gemeinsam::ereignis_abwarten(
         &lauf.adresse,
@@ -105,11 +135,7 @@ fn fremde_wbs_datei_und_commit_melden_ihr_kuerzel() {
     std::fs::create_dir_all(wurzel.join("plan")).unwrap();
     std::fs::write(wurzel.join("plan/wbs.md"), "a").unwrap();
     gemeinsam::git(&wurzel, &["init", "-q"]);
-    let (tx, rx) = mpsc::channel();
-    let w = kanband::waechter::fremde_starten(kanband::waechter::Eigene::default(), move |e| {
-        let _ = tx.send(e);
-    })
-    .unwrap();
+    let (w, rx) = fremde_beobachten(Eigene::default());
     let datei = wurzel.join("plan/wbs.md");
     w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: Some(wurzel.join(".git")) }]);
     std::thread::sleep(Duration::from_millis(100));
@@ -134,11 +160,7 @@ fn eigener_schreibzugriff_auf_fremde_wbs_ist_nicht_extern() {
     let datei = wurzel.join("wbs.md");
     std::fs::write(&datei, "a").unwrap();
     let eigene = kanband::waechter::Eigene::default();
-    let (tx, rx) = mpsc::channel();
-    let w = kanband::waechter::fremde_starten(eigene.clone(), move |e| {
-        let _ = tx.send(e);
-    })
-    .unwrap();
+    let (w, rx) = fremde_beobachten(eigene.clone());
     w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: None }]);
     std::thread::sleep(Duration::from_millis(100));
     std::fs::write(&datei, "b").unwrap();

@@ -4,15 +4,21 @@
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
+use std::time::{Duration, Instant};
 
 pub struct Laufendes {
     pub kind: Child,
     pub adresse: String,
+    /// stderr der Instanz, wenn `beobachtet_starten` es mitschneidet; erscheint beim Beenden in der Testausgabe.
+    mitschnitt: Option<tempfile::NamedTempFile>,
 }
 
 impl Drop for Laufendes {
     fn drop(&mut self) {
         geordnet_beenden(&mut self.kind);
+        if let Some(mitschnitt) = &self.mitschnitt {
+            eprint!("{}", std::fs::read_to_string(mitschnitt.path()).unwrap_or_default());
+        }
     }
 }
 
@@ -39,19 +45,66 @@ pub fn starten_in_berlin(ordner: &Path, zusatz: &[&str]) -> Laufendes {
 }
 
 pub fn starten_mit(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)]) -> Laufendes {
+    gestartet(ordner, zusatz, umgebung, Stdio::inherit())
+}
+
+/// Obergrenze für das Warten auf einen beobachtenden Wächter, ab dem ersten Startversuch (ADR-0026, Regel 7).
+pub const WAECHTER_OBERGRENZE: Duration = Duration::from_secs(30);
+
+/// Wie `starten`, für Tests, die ein Live-Ereignis erwarten: liefert die Instanz erst, wenn ihr Wächter beobachtet.
+/// Bereitzeichen: nach der ersten HTTP-Antwort (Router und Wächter sind dann gebaut) steht auf ihrem stderr keine
+/// Zeile „… nicht beobachtet“. Sonst wird sie beendet und neu gestartet, siehe `bis_beobachtet`.
+pub fn beobachtet_starten(ordner: &Path, zusatz: &[&str]) -> Laufendes {
+    bis_beobachtet(WAECHTER_OBERGRENZE, || {
+        let mitschnitt = tempfile::NamedTempFile::new().unwrap();
+        let mut lauf = gestartet(ordner, zusatz, &[], Stdio::from(mitschnitt.reopen().unwrap()));
+        erste_antwort_abwarten(&lauf.adresse);
+        let stderr = std::fs::read_to_string(mitschnitt.path()).unwrap_or_default();
+        if stderr.contains("nicht beobachtet") {
+            return Err(stderr.trim().to_string());
+        }
+        lauf.mitschnitt = Some(mitschnitt);
+        Ok(lauf)
+    })
+}
+
+/// Wiederholt `versuch`, bis er einen beobachtenden Wächter liefert. inotify-Instanzen sind je Benutzer über alle
+/// Prozesse begrenzt (`max_user_instances`); sind sie belegt, startet kein Wächter, und kein Ereignis käme je an.
+/// Nach `obergrenze` scheitert der Test deshalb mit dieser Ursache statt später mit „kein passendes Ereignis“.
+pub fn bis_beobachtet<T, E: std::fmt::Display>(obergrenze: Duration, mut versuch: impl FnMut() -> Result<T, E>) -> T {
+    let ende = Instant::now() + obergrenze;
+    loop {
+        match versuch() {
+            Ok(wert) => return wert,
+            Err(grund) if Instant::now() >= ende => panic!("inotify-Grenze der Umgebung: nach {obergrenze:?} kein beobachtender Wächter ({grund})"),
+            Err(_) => std::thread::sleep(Duration::from_millis(250)),
+        }
+    }
+}
+
+fn erste_antwort_abwarten(adresse: &str) {
+    use std::io::{Read, Write};
+    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
+    let mut leitung = std::net::TcpStream::connect(ziel).expect("Instanz nimmt Verbindungen an");
+    leitung.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    leitung.write_all(b"GET / HTTP/1.0\r\n\r\n").unwrap();
+    leitung.read_exact(&mut [0u8; 1]).expect("erste HTTP-Antwort der Instanz");
+}
+
+fn gestartet(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)], stderr: Stdio) -> Laufendes {
     let mut kind = Command::new(env!("CARGO_BIN_EXE_kanbanD"))
         .envs(umgebung.iter().copied())
         .arg(ordner)
         .args(["--kein-browser", "--host", "127.0.0.1"])
         .args(zusatz)
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(stderr)
         .spawn()
         .expect("kanbanD startet");
     let mut zeile = String::new();
     BufReader::new(kind.stdout.take().unwrap()).read_line(&mut zeile).unwrap();
     let adresse = zeile.split_whitespace().last().expect("Adresse in der Startzeile").to_string();
-    Laufendes { kind, adresse }
+    Laufendes { kind, adresse, mitschnitt: None }
 }
 
 pub fn git(pfad: &Path, args: &[&str]) -> String {
@@ -74,6 +127,11 @@ pub fn eingerichtet(pfad: &Path) {
 pub fn eingerichtet_starten(pfad: &Path) -> Laufendes {
     eingerichtet(pfad);
     starten(pfad, &["--port", "0"])
+}
+
+pub fn eingerichtet_beobachtet_starten(pfad: &Path) -> Laufendes {
+    eingerichtet(pfad);
+    beobachtet_starten(pfad, &["--port", "0"])
 }
 
 /// Schreibender Aufruf als Person.
