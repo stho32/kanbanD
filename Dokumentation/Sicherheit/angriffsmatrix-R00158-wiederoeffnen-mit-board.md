@@ -1,5 +1,7 @@
 # Angriffsmatrix #45 / R00158 — Wiederöffnen mit `board` nimmt eine archivierte Karte ohne 403 von Boards, die die Anfrage nicht nennt
 
+> **Vermerk des Directors (2026-11-15): Die Karte #45 wird nicht gebaut.** Der Betreiber hat entschieden, dass „archiviert“ für die Karte auf allen Boards gilt und das Wiederöffnen mit `board` die Karte zusätzlich auf das genannte Board legt (heutiges Verhalten). R00158 und ADR-0005 Nachtrag N3 sind zurückgezogen; die Spalten „erwartet“ dieser Matrix sind damit kein Soll mehr. Die Datei bleibt als Beleg: die Einträge „heute“ mit Kennzeichen P sind am Programm `ec3ab76` geprobt und beschreiben das geltende Verhalten.
+
 Stand: 2026-11-15, vor dem Bau (I0145, B0746–B0752). Geschrieben vom security-reviewer als Abnahme, gegen die Test zuerst gebaut wird.
 Vorgaben: R00158 (AK 1–16), ADR-0005 N3, ADR-0003 N2, X00001, R00097, R00098, R00120, `AI-Team/po-entscheidungen.md` #45 A1–A6.
 
