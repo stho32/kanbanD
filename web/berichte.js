@@ -112,6 +112,8 @@
 
   /* ── Bestand (R00152, ADR-0027): die eine Regel „zählt am Tag“ für Burndown, Kumulativen Fluss und „Wie lange noch“ ── */
   const NICHT_DA = Object.freeze({ art: 'nichtDa', spalte: null, erledigt: false });
+  /** Beginn des Archivtags (ms): ab hier gilt `archiviert` — die eine Stelle, die den Archivtag in einen Zeitpunkt übersetzt. */
+  const archivBeginn = archiviert => isoTag(archiviert);
   /** Zustand einer Aufgabe zum Zeitpunkt t — { art, spalte, erledigt }:
       `nichtDa`  in keiner Spalte (nie auf dem Board, vom Board genommen, endgültig gelöscht);
       `entfernt` verworfen: Archivtag (`archiviert`, JJJJ-MM-TT, gilt ab 0 Uhr) erreicht und die Spalte liegt nicht in `erledigtSpalten`;
@@ -122,7 +124,7 @@
     if (spalte == null) return NICHT_DA;
     const erledigt = erledigtSpalten.includes(spalte);
     // der Archivtag wird nur gelesen, wo er entscheidet: erledigte archivierte Aufgaben (die Masse im Archiv) kosten kein Datum
-    if (archiviert && !erledigt && t >= isoTag(archiviert)) return { art: 'entfernt', spalte, erledigt: false };
+    if (archiviert && !erledigt && t >= archivBeginn(archiviert)) return { art: 'entfernt', spalte, erledigt: false };
     return { art: 'da', spalte, erledigt };
   }
   /** Was „erledigt“ heißt: heute die Abschlussspalte (die letzte Spalte) des Boards. */
@@ -136,8 +138,20 @@
     const erledigt = erledigtSpalten(bew);
     return a => {
       const x = aufgabeZu(a.nummer), archiviert = x && x.archiviert, wechsel = wechselInMs(a.wechsel);
-      return t => bestandAm(wechsel, archiviert, t, erledigt);
+      const zustandAm = t => bestandAm(wechsel, archiviert, t, erledigt);
+      zustandAm.folge = () => zustandsfolge(wechsel, archiviert, erledigt);
+      return zustandAm;
     };
+  }
+  /** Zustandsfolge einer Aufgabe (ADR-0027 N1): je Änderungspunkt — jeder Wechsel und der Beginn des Archivtags — `{ ms, zustand }`
+      in zeitlicher Reihenfolge, der Zustand aus `bestandAm`. Wechsel derselben Minute bleiben einzelne Schritte; der Archivtag
+      steht vor den Wechseln ab 0 Uhr. `wechsel` trägt `ms` (`wechselInMs`). */
+  function zustandsfolge(wechsel, archiviert, erledigt) {
+    const nach = w => ({ ms: w.ms, zustand: bestandAm([w], archiviert, w.ms, erledigt) });
+    if (!archiviert) return wechsel.map(nach);
+    const archivtag = archivBeginn(archiviert), davor = wechsel.filter(w => w.ms < archivtag), danach = wechsel.slice(davor.length);
+    const amArchivtag = { ms: archivtag, zustand: bestandAm(davor.slice(-1), archiviert, archivtag, erledigt) };
+    return [...davor.map(nach), amArchivtag, ...danach.map(nach)];
   }
   /** Die Aufgabenliste mit Gedächtnis: je Nummer wird `aufgabeZu` einmal gefragt — die Liste des Clients sucht linear, und
       ein Bericht fragt je Aufgabe mehrfach (Filter, Archivtag). */
@@ -177,12 +191,18 @@
   }
 
   /* ── Burndown (R00044) ── */
-  /** Je Tag im Zeitraum: offen (im Bestand und nicht erledigt) und Umfang (im Bestand), Stand am Tagesende, heute jetzt; ab `start`. */
+  /** Offen: im Bestand des Berichts und nicht erledigt. */
+  const istOffen = (f, zustand) => imBestand(f, zustand) && !zustand.erledigt;
+
+  /** Je Tag im Zeitraum: offen und Umfang (im Bestand) als Stand am Tagesende, heute jetzt; ab `start`. Dazu die Ereignisse
+      des Tages (R00164): `hinzugekommen`, `erledigt`, `entfernt` — an jedem Tag gilt
+      offen = offen(Vortag) + hinzugekommen − erledigt − entfernt. */
   function burndown(bew, f, aufgabeListe, jetzt, start = null) {
     const g = grenzenAb(f, jetzt, start), aufgabeZu = einmalJeAufgabe(aufgabeListe), bestand = bestandLeser(bew, aufgabeZu);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
     const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer))).map(bestand);
+    const ereignisse = ereignisseJeTag(f, gezaehlt, jetzt);
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
@@ -191,12 +211,40 @@
         const zustand = zustandAm(ende);
         if (!imBestand(f, zustand)) continue;
         umfang++;
-        if (!zustand.erledigt) offen++;
+        if (istOffen(f, zustand)) offen++;
       }
       const d = new Date(t), p = n => String(n).padStart(2, '0');
-      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, offen, umfang });
+      tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, offen, umfang, ...KEIN_EREIGNIS, ...ereignisse.get(t) });
     }
     return tage;
+  }
+
+  const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0 });
+  /** Ereignisse bis `jetzt` je Tagesbeginn (ms): die Wechsel von „offen“ entlang der Zustandsfolge jeder gezählten Aufgabe. */
+  function ereignisseJeTag(f, gezaehlt, jetzt) {
+    const jeTag = new Map();
+    for (const zustandAm of gezaehlt) {
+      let vorher = NICHT_DA;
+      for (const { ms, zustand } of zustandAm.folge()) {
+        if (ms > jetzt) break;
+        const art = ereignisArt(f, vorher, zustand);
+        vorher = zustand;
+        if (art == null) continue;
+        const t = tag(ms);
+        if (!jeTag.has(t)) jeTag.set(t, { ...KEIN_EREIGNIS });
+        jeTag.get(t)[art]++;
+      }
+    }
+    return jeTag;
+  }
+  /** Einordnung eines Übergangs (ADR-0027 N1 Punkt 2): nicht offen → offen ist `hinzugekommen`; offen → da und erledigt ist
+      `erledigt`; offen → alles andere (verworfen, nicht da, ausgeschlossene Spalte) ist `entfernt`; sonst kein Ereignis (`null`). */
+  function ereignisArt(f, vorher, nachher) {
+    const warOffen = istOffen(f, vorher);
+    if (warOffen === istOffen(f, nachher)) return null;
+    if (!warOffen) return 'hinzugekommen';
+    if (nachher.art === 'da' && nachher.erledigt) return 'erledigt';
+    return 'entfernt';
   }
 
   /* ── Kumulativer Fluss (R00121) ── */
