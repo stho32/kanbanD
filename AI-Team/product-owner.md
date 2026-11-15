@@ -20,4 +20,4 @@ IDs aus `AI-Team/quellen.md`, die diese Rolle besonders braucht.
 
 ## Gelerntes
 
-- noch keine
+- 2026-11-15 (Betreiber, „Schlank arbeiten“ in `factory.md`): **Wer entscheidet, schreibt auf** — die eigene Entscheidung selbst in Anforderung und User Story einarbeiten (`/anforderung abschliessen` im Worktree der Karte), höchstens etwa zehn beobachtbare Kriterien je Anforderung, keine Mutantenlisten. **Nicht abschließen, sondern an den Betreiber geben**: Karten mit „Besprechen:“ im Titel, jede Auslegung einer Betreiber-Entscheidung, jeder Widerspruch zur Vision, jede Lesart mit stillem Verlust für den Nutzer (Lehre aus #45 und #54).
