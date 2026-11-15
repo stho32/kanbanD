@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #155)
 **Kontext-Anforderung**: — (Karte #155 „Bug: Burndown und Kumulativer Fluss zählen außerhalb der Abschlussspalte archivierte Aufgaben weiter als offen“; Anforderung und WBS-Knoten folgen über den planer). Bezug: R00023, R00044, R00046, R00121, R00122, R00081
 **Erprobt durch**: Probe 2026-11-15 gegen `web/berichte.js` (Stand `karte/155`, 7 Aufgaben, Skript in der Ablage des Auftrags, nicht committet) — Ergebnis unter „Probe“; getragen von der bestehenden Systemantwort `web/berichte.js:475` („Wie lange noch“)
-**Nachträge**: keine
+**Nachträge**: N1 (2026-11-15, Karte #154) Zugang und Abgang je Tag als Zustandsübergänge
 
 ## Kontext
 
@@ -107,3 +107,16 @@ Verlangt eine Anforderung geschichtstreue Abgänge (z. B. #154 soll den Abgang e
 - `src/dienst/archiv.rs:7–28`, `src/verlauf.rs:50–110`, `src/dienst/verlauf.rs:65–76`
 - ADR-0021 (Karten-Verlauf aus der Git-Geschichte), ADR-0024 (Aufgabe endgültig löschen)
 - R00121 Zeile 37 („Zählen wie im Burndown … fällt ab diesem Tag aus dem Stapel“), R00046, R00023
+
+## Nachträge
+
+### N1 (2026-11-15, Karte #154): Zugang und Abgang je Tag sind Übergänge derselben Bestandsfunktion
+
+Anlass: #154 zeigt im Burndown je Tag „+ hinzugekommen“, „− erledigt“, „− entfernt“; Abnahme ist die Bilanz offen(Tag) = offen(Vortag) + hinzugekommen − erledigt − entfernt (Entscheidung des product-owner, `AI-Team/po-entscheidungen.md` Z. 207, 211).
+
+1. **Keine zweite Regel**: „offen“ einer Aufgabe zum Zeitpunkt `t` bleibt `imBestand(f, bestandAm(…, t))` und nicht erledigt. Ein Ereignis ist ein **Wechsel dieses Wertes** an einem Änderungspunkt der Aufgabe — den Zeitpunkten ihrer `wechsel` und dem Beginn ihres Archivtags —, nicht der Vergleich zweier Tagesenden. Damit zählt eine am selben Tag angelegte und erledigte Aufgabe in „+“ und in „− erledigt“, und die Bilanz geht an jedem Tag auf, weil Stand und Ereignisse aus derselben Funktion kommen.
+2. **Einordnung des Übergangs**: nicht offen → offen ist „+“ (neu auf dem Board, aus einer ausgeschlossenen Spalte in eine gezählte, aus der Abschlussspalte zurück); offen → da und erledigt ist „− erledigt“; offen → alles andere (`entfernt`, `nichtDa`, ausgeschlossene Spalte) ist „− entfernt“. Übergänge zwischen zwei nicht offenen Zuständen (erledigt archiviert, erledigt vom Board genommen) sind kein Ereignis.
+3. **Abgrenzung zu Regel 3**: Diese Tagesgrößen sind Übergänge des Bestands und dürfen bei Nacharbeit mehrfach zählen; Durchsatz, Durchlaufzeit und Fluss-Ränder bleiben beim ersten Erreichen. Die Summe „− erledigt“ kann deshalb über dem Durchsatz liegen (Legende).
+4. **Filter und Quelle unverändert**: `aufgabePasst` und `reporting` wählen die Aufgaben, `ohneSpalten` wirkt über `imBestand`; `erledigtSpalten` bleibt Parameter (#156). Kein Eingriff in Server, API (`GET /api/berichte/bewegungen`) oder Dateiformat; es wird nichts gespeichert.
+5. **Geerbte Schwächen** (aus „Akzeptierte Schwächen“): eine zurückgeholte Aufgabe verliert ihr „− entfernt“ rückwirkend; „− entfernt“ durch Archivieren steht am Archivtag ab 0 Uhr; eine am Archivtag erst angelegte oder direkt in der Abschlussspalte angelegte Aufgabe war nie offen und erzeugt kein Ereignis. Die zweite offene Frage unten ist damit für #154 mit „genügt“ beantwortet, bis eine Anforderung geschichtstreue Abgänge verlangt (Umkehrpunkt).
+6. **Durchsetzung**: ein Unit-Test rechnet für einen Datensatz mit allen Übergängen aus Punkt 2 die Bilanz an jedem Tag nach; Review-Punkt wie oben — die Ereigniszählung liest `archiviert` und `spalte` nur über `bestandAm`.
