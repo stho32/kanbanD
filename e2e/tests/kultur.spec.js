@@ -1,6 +1,6 @@
 // R00109 Datumsangaben und Feldbeschriftungen deutsch (ADR-0013, Aspekt X00004)
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, bereit, reiter } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
 const { isoFundstellen, beschriftungenPruefen, ausnahmenAbgleichen } = require('./kultur-hilfen');
 const { FELDER } = require('../../web/kultur.js');
@@ -258,6 +258,9 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
       // eine Marke ist ein text.achse mit zwei Zeilen (tspan, R00073): TT.MM. über JJJJ
       const marke = svg.locator('text.achse', { has: page.locator('tspan', { hasText: /^\d{4}$/ }) }).first();
       await expect(marke.locator('tspan')).toHaveText([/^\d\d\.\d\d\.$/, /^\d{4}$/]);
+      // erst wenn der Bericht steht: ein Neuzeichnen nach dem Zeigerzug nähme die Blase mit, und der Zeiger bewegt sich nur einmal (ADR-0026 Regel 3)
+      await berichtSteht(page, bericht, BERICHTSTITEL[bericht]);
+      await bereit(page, svg);
       const box = await svg.boundingBox();
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await expect(page.locator('#tooltip'), bericht).toContainText(kopf);

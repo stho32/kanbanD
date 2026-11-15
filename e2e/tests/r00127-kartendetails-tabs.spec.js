@@ -57,6 +57,8 @@ const GRUND = {
 const ANSICHTEN = ['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf'];
 const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
 const ANSICHTSMENUE = '#fenster [role="menu"][data-art="ansicht"]';
+/** Lage und Größe in einem Zug in der Seite gelesen: `boundingBox()` fragt zweimal und meldet null, wenn ein Neuzeichnen den Knoten dazwischen ersetzt. */
+const rechteck = ort => ort.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
 const panel = (page, schluessel) => page.locator(`#fenster .mod-body[data-ansicht="${schluessel}"]`);
 
 test.describe('R00127 Kartendetails mit mehreren Ansichten', () => {
@@ -313,7 +315,9 @@ test.describe('R00127 schmale Breiten', () => {
         const seite = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
         expect(seite.sw, `${breite} px ${thema}: die Seite scrollt nicht quer`).toBeLessThanOrEqual(seite.cw);
         await page.locator(AUSLOESER).click();
-        const box = await page.locator(ANSICHTSMENUE).boundingBox();
+        // erst wenn das Menü steht: gleich nach dem Klick ist es noch nicht gezeichnet (ADR-0026 Regel 2)
+        await expect(page.locator(ANSICHTSMENUE)).toBeVisible();
+        const box = await rechteck(page.locator(ANSICHTSMENUE));
         expect(box.x, `${breite} px ${thema}: Menü links im Bild`).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width, `${breite} px ${thema}: Menü rechts im Bild`).toBeLessThanOrEqual(breite);
         await page.keyboard.press('Escape');
@@ -330,7 +334,11 @@ test.describe('R00127 schmale Breiten', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
-    const box = await page.locator(AUSLOESER).boundingBox();
+    // erst wenn die Leitung steht und der Auslöser sichtbar ist (ADR-0026 Regel 3; `bereit` taugt bei offenem Fenster nicht:
+    // `kdTest.gezeichnet()` wird dort nie wahr) — ein Neuzeichnen kurz nach dem Öffnen ersetzt den Knoten
+    await liveBereit(page);
+    await expect(page.locator(AUSLOESER)).toBeVisible();
+    const box = await rechteck(page.locator(AUSLOESER));
     expect(Math.round(Math.min(box.width, box.height))).toBeGreaterThanOrEqual(24);
   });
 });
@@ -350,7 +358,11 @@ test.describe('R00127 schmale Breiten (Touch)', () => {
     await page.goto(k.adresse);
     await page.locator('.ka[data-id="1"] .id').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
-    const box = await page.locator(AUSLOESER).boundingBox();
+    // erst wenn die Leitung steht und der Auslöser sichtbar ist (ADR-0026 Regel 3; `bereit` taugt bei offenem Fenster nicht:
+    // `kdTest.gezeichnet()` wird dort nie wahr) — ein Neuzeichnen kurz nach dem Öffnen ersetzt den Knoten
+    await liveBereit(page);
+    await expect(page.locator(AUSLOESER)).toBeVisible();
+    const box = await rechteck(page.locator(AUSLOESER));
     expect(Math.round(Math.min(box.width, box.height))).toBeGreaterThanOrEqual(44);
     await page.locator(AUSLOESER).click();
     for (const n of ['Inhalt', 'Zeiten', 'Details', 'Datei', 'Kosten', 'Verlauf']) {
