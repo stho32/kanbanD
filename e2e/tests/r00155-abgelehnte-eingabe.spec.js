@@ -347,4 +347,70 @@ test.describe('R00155 #96 und #93 gemeinsam: Meldung und abgelehnte Eingabe geh�
     await expect(zeit).toHaveValue('');
     await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_ENDE);
   });
+
+  // Ausgang (e) (Betreiber 2026-11-15): ein abgeschicktes anderes Entwurfsfeld nimmt den einen Platz des Fensters — die
+  // frühere abgelehnte Eingabe geht samt Meldung schon beim Abschicken, auch wenn die neue Eingabe angenommen wird.
+  /** Der Kern von G-3: nie ein ungültiges Feld ohne Meldung, nie eine Meldung ohne ihr Feld — gelesen in der Ansicht, die das Feld zeigt. */
+  const kernGilt = async fenster => {
+    const stand = await verweise(fenster);
+    expect(stand.ungueltig.length, `ungültige Felder ${JSON.stringify(stand.ungueltig)} und Meldungen (${stand.meldungen}) gehören zusammen`).toBe(stand.meldungen);
+    expect(stand.verweist, 'jedes ungültige Feld verweist auf die Meldung').toEqual(stand.ungueltig);
+  };
+
+  test('G-3 (e-1): Lage nach 93-1, danach der Titel auf „Abnahme geprüft“ geändert, mit Enter gespeichert und zu „Zeiten“ zurückgewechselt → Titel gespeichert (ein Commit), „Zeit nachtragen“ leer ohne aria-invalid und aria-describedby, keine Meldung, der Fuß zeigt „gespeichert hh:mm:ss“', async ({ page }) => {
+    k = await starten(page);
+    const { fenster, zeit } = await dauerAbgelehnt(page);
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await kernGilt(fenster);
+    await reiter(page, 'Inhalt');
+    await page.locator(TITEL_LESEN).click();
+    await page.locator(TITELFELD).fill('Abnahme geprüft');
+    await page.keyboard.press('Enter');
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme geprüft');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('title: Abnahme geprüft\n');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    await expect(fenster.locator('.mod-fuss .gs')).toHaveText(/^gespeichert \d\d:\d\d:\d\d$/);
+    await expect(fenster.locator('[role=alert]')).toHaveCount(0);
+    expect(await verweise(fenster)).toEqual(KEINES);
+    await reiter(page, 'Zeiten');
+    await expect(zeit).toHaveValue('');
+    await expect(zeit).not.toHaveAttribute('aria-invalid');
+    await expect(zeit).not.toHaveAttribute('aria-describedby');
+    await expect(fenster.locator('[role=alert]')).toHaveCount(0);
+    await expect(fenster.locator('.mod-fuss .gs')).toHaveText(/^gespeichert \d\d:\d\d:\d\d$/);
+    expect(await verweise(fenster)).toEqual(KEINES);
+    await kernGilt(fenster);
+    expect(k.lies(DATEI_1), 'keine Zeit eingetragen').not.toContain('kanbanD-time');
+    expect(Number(k.git('rev-list', '--count', 'HEAD')), 'genau ein Commit').toBe(commits + 1);
+  });
+
+  test('G-3 (e-2): Lage nach 96-1, danach 0:45 in „Zeit nachtragen“ mit Enter eingetragen und zu „Inhalt“ zurückgewechselt → Zeit eingetragen (ein Commit), Titel im Lesezustand „Abnahme prüfen“, keine Meldung, kein Feld des Fensters ist ungültig', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await page.locator(TITEL_LESEN).click();
+    await page.locator(TITELFELD).fill('');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_TITEL);
+    await expect(page.locator(TITELFELD)).toHaveAttribute('aria-invalid', 'true');
+    await kernGilt(fenster);
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await reiter(page, 'Zeiten');
+    const zeit = fenster.getByLabel('Zeit nachtragen');
+    await zeit.fill('0:45');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.zt tr')).toHaveCount(1);
+    await expect.poll(() => k.lies(DATEI_1)).toContain('kanbanD-time');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    await expect(zeit).toHaveValue('');
+    await expect(fenster.locator('[role=alert]')).toHaveCount(0);
+    expect(await verweise(fenster)).toEqual(KEINES);
+    await reiter(page, 'Inhalt');
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme prüfen');
+    await expect(page.locator(TITELFELD), 'kein Titelfeld ohne abgelehnte Eingabe').toHaveCount(0);
+    await expect(fenster.locator('[role=alert]')).toHaveCount(0);
+    expect(await verweise(fenster)).toEqual(KEINES);
+    await kernGilt(fenster);
+    expect(k.lies(DATEI_1)).toContain('title: Abnahme prüfen\n');
+    expect(Number(k.git('rev-list', '--count', 'HEAD')), 'genau ein Commit').toBe(commits + 1);
+  });
 });
