@@ -141,9 +141,9 @@ Der Extraktor ist für sich testbar (Unit): je Abweisungsart ein Fall, dazu ein 
 
 ## Implementierungshinweise
 
-- **Abgrenzung (gilt, bis der product-owner anders entscheidet):** Falsche **Pfad- und Abfrageparameter** (`Path`/`Query`, z. B. `{nr}` = `abc`, 59 Verwendungen; ADR-0003 N1 Punkt 3) gehören **nicht** in diese Anforderung. Die Abnahme-Probe der Karte nennt nur den Rumpf.
+- **Abgrenzung (entschieden, product-owner 2026-11-15):** Falsche **Pfad- und Abfrageparameter** (`Path`/`Query`, z. B. `{nr}` = `abc`, 59 Verwendungen; ADR-0003 N1 Punkt 3) gehören **nicht** in diese Anforderung, sondern in die Folgekarte **#168** „Typfehler in Pfad- und Abfrageparametern ergeben Klartext statt 400 {fehler}“, unmittelbar nach #39. Die Abnahme-Probe der Karte #39 nennt nur den Rumpf.
 - **Nicht geprobt (Planung ohne Build):** die Rümpfe der Tabelle sind aus den Rumpftypen gelesen, nicht gegen das Programm gefahren. Verbindlich sind Status, Form und „kein Commit“. Liefert `serde_path_to_error` für eine Zeile den Feldnamen nicht, meldet der Entwickler das, statt die Erwartung still zu ändern.
-- **Eingebettete Teile:** `NeueAufgabe.angaben`, `Eintrag::MitAngaben` und `EineAenderung.aenderung` sind `#[serde(flatten)]` bzw. eine Aufzählung ohne Kennzeichen; für Felder darin (`POST /api/aufgaben` mit `{"titel": "x", "labels": 7}`) liefert serde den Feldnamen voraussichtlich nicht. Verlangt ist dort 400 in der Form; der Feldname nur, soweit der Pfad ihn trägt (offene Frage unten).
+- **Eingebettete Teile (entschiedene Grenze, product-owner 2026-11-15):** `NeueAufgabe.angaben`, `Eintrag::MitAngaben` und `EineAenderung.aenderung` sind `#[serde(flatten)]` bzw. eine Aufzählung ohne Kennzeichen; für Felder darin (`POST /api/aufgaben` mit `{"titel": "x", "labels": 7}`) liefert serde den Feldnamen voraussichtlich nicht. Entscheidung wörtlich (`AI-Team/po-entscheidungen.md`): „Einverstanden: 400 in der Form ohne Pflicht zum Feldnamen; der Feldname ist Pflicht, wo der Pfad ihn trägt. Die Abnahme-Probe je Endpunkt nutzt deshalb ein direkt gelesenes Feld (AK 2, AK 7); bei eingebetteten Teilen nennt die Meldung den umgebenden Teil (`labels`, `aenderungen`) und trägt keinen Text des Rahmens.“ Für die Meldung gelten dort also „Form einer Abweisung“ und „Meldung“ von oben ohne den Satz zum Feldnamen; kein Akzeptanzkriterium ändert sich.
 - **Fehlendes Feld:** `serde_path_to_error` nennt beim fehlenden Feld den Pfad des umgebenden Objekts; der Feldname steht nur im Text des Rahmens und muss von dort in die deutsche Meldung übernommen werden (AK 5).
 - **Grenze des Rumpfs:** ADR-0003 N3 nennt 50 MiB (`src/web/mod.rs:120`); diese Zeile gilt nur für die Routen `anhaenge`/`anhang_ablegen` (Multipart). Für die 36 JSON-Handler ist keine Grenze gesetzt, es gilt die Standardgrenze des Rahmens (2 MiB laut dessen Dokumentation, ungeprobt). AK 11 misst sie.
 - **Reihenfolge:** Der Formfehler entsteht vor dem Handler; `PUT /api/boards/gibtsnicht/termine` mit falschem Rumpf ergibt 400, nicht 404 (ADR-0003 N2 „400 bleibt vorn“).
@@ -152,10 +152,10 @@ Der Extraktor ist für sich testbar (Unit): je Abweisungsart ein Fall, dazu ein 
 
 ## Offene Fragen
 
-Keine, die den Bau aufhält. An den product-owner:
+Keine. Entschieden vom product-owner am 2026-11-15 (`AI-Team/po-entscheidungen.md`):
 
-1. `Path`/`Query` in derselben Form (ADR-0003 N1 Punkt 3) — eigene Karte oder hier? Geplant: nicht hier (Abgrenzung oben).
-2. Feldname bei eingebetteten Teilen (`labels` in `POST /api/aufgaben`, Felder in `aenderungen[i]`): geplant ist 400 in der Form ohne Pflicht zum Feldnamen. Empfehlung des planers: so lassen — der Feldname dort verlangt eigene Leseroutinen für drei Rumpftypen.
+1. `Path`/`Query` in derselben Form (ADR-0003 N1 Punkt 3): eigene Karte #168, unmittelbar nach #39; nicht in dieser Anforderung.
+2. Feldname bei eingebetteten Teilen: 400 in der Form ohne Pflicht zum Feldnamen; Pflicht, wo der Pfad ihn trägt (Implementierungshinweise, „Eingebettete Teile“).
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -175,5 +175,5 @@ Auslöser: `grenze: "3"` an `PUT …/spalten` ergibt 422 Klartext, weil der Rahm
 - **Herkunft:** Karte #39; Technik: ADR-0003 Nachträge N1 (2026-11-13) und N3 (2026-11-15, `93cb6a2`). Bezug: R00096, R00097, R00102.
 - **Heimat:** eigene Interaction `I0140` unter D0007.
 - **Zählungen (planer, 2026-11-15, gezählt am Stand `93cb6a2`):** 57 Einträge mit Methode ≠ GET in `src/web/endpunkte.rs`; 57 schreibende Routen in `src/web/mod.rs`, davon 36 mit `Json<T>`, 5 mit `Bytes`, 16 ohne Rumpf oder Multipart.
-- **Abweichungen vom Text der ADR-0003 N3, an den architekt gemeldet:** (1) „unbekannter Schlüssel bei `deny_unknown_fields`“ — kein Typ in `src/` trägt das Attribut; der Fall in `tests/termine.rs:31` ist ein unbekannter Aufzählungswert (AK 6, AK 15). (2) „Die Grenze ist 50 MiB“ gilt nur für Anhänge (AK 11).
+- **Abweichungen vom ersten Text der ADR-0003 N3 — vom architekt berichtigt (`c1caf3b`, N3 Punkte 5 und 6):** (1) „unbekannter Schlüssel bei `deny_unknown_fields`“ — kein Typ in `src/` trägt das Attribut; der Fall in `tests/termine.rs:31` ist ein unbekannter Aufzählungswert (AK 6, AK 15). (2) „Die Grenze ist 50 MiB“ gilt nur für Anhänge (AK 11).
 - Labels der Karte: `sicherheit`, `text`, `fehlerpfad`.
