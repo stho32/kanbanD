@@ -526,13 +526,15 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
 }
 
 /** Schreibender Aufruf aus dem Aufgabenfenster: läuft durch die eine Stelle (ADR-0025 Regel 6, R00148 AK 17) und
-    meldet einen Fehlschlag im Fuß; neu geladen wird, sobald die Schlange leer ist (R00110). */
-function schreiben(methode, pfad, daten) {
+    meldet einen Fehlschlag im Fuß; neu geladen wird, sobald die Schlange leer ist (R00110). `feld` nennt das Eingabefeld,
+    aus dem der Aufruf kommt: eine Ablehnung macht es ungültig, die angenommene Eingabe ist kein Entwurf mehr (ADR-0015 N2). */
+function schreiben(methode, pfad, daten, feld = null) {
   return durchDieSchlange(async () => {
     try {
       await api(methode, pfad, daten);
       S.ui.gespeichert = Date.now(); fensterMelden(null);
-    } catch (f) { fensterMelden(f.message); S.ui.fehler = f.message; }
+      if (feld) S.ui.entwurf = null;
+    } catch (f) { fensterMelden(f.message, feld); S.ui.fehler = f.message; }
   });
 }
 
@@ -1924,7 +1926,9 @@ async function aktion(a, arg, wert) {
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.tab = 'zeiten'; u.fokus = '#zeit-neu';
-        await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert });
+        // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
+        u.entwurf = { nummer: u.offen, feld: ZEIT_FELD, wert };
+        await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert }, ZEIT_FELD);
         return;
       }
       case 'zeit-edit': u.tab = 'zeiten'; u.zeitEdit = arg; u.fokus = '#z-beginn'; break;
@@ -2366,7 +2370,7 @@ document.addEventListener('input', e => {
   // weiter, auch nach einem Feldfehler — und der ✓-Knopf (Klick trägt keinen Wert mit) bestätigt dieselbe Eingabe.
   if (e.target.id === 'board-umbenennen') { S.ui.boardUmbenennenWert = e.target.value; return; }
   // der Entwurf folgt dem Feld, damit ein Neuzeichnen die eigene Berichtigung stehen lässt
-  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.entwurf = { nummer: S.ui.offen, feld: HERKUNFT_FELD, wert: e.target.value }; return; }
+  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.entwurf = entwurfNachTippen(S.ui.entwurf, S.ui.offen, HERKUNFT_FELD, e.target.value); return; }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
     $('#main').innerHTML = vMain();

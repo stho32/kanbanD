@@ -2,7 +2,7 @@
 // `{ nummer, feld, wert }` und der Verweis des Felds auf die Fenstermeldung.
 const test = require('node:test');
 const assert = require('node:assert');
-const { entwurfswert, meldungsverweis } = require('../../web/sichtzustand.js');
+const { entwurfswert, meldungsverweis, entwurfNachTippen } = require('../../web/sichtzustand.js');
 
 const VERWEIS = ' aria-invalid="true" aria-describedby="fenster-meldung"';
 const verweis = (entwurf, meldung, nummer, feld) => meldungsverweis(entwurf, meldung, nummer, feld, 'fenster-meldung');
@@ -32,4 +32,18 @@ test('meldungsverweis: kein Verweis ohne Meldung, bei Meldung ohne Feld oder fü
   assert.strictEqual(verweis(entwurf, { text: '„X1“ ist keine Herkunft', feld: 'herkunft' }, 2, 'herkunft'), '', 'andere Aufgabe offen');
   assert.strictEqual(verweis(entwurf, { text: 'Dauer „abc“', feld: 'zeit' }, 1, 'zeit'), '', 'der eine Entwurf nennt ein anderes Feld');
   assert.strictEqual(verweis(null, { text: '„X1“ ist keine Herkunft', feld: 'herkunft' }, 1, 'herkunft'), '', 'kein Entwurf');
+});
+
+test('entwurfNachTippen: Getipptes hält den einen Platz — ohne Entwurf, über dem eigenen Entwurf und über dem einer anderen Aufgabe', () => {
+  const getippt = { nummer: 1, feld: 'herkunft', wert: 'I00' };
+  assert.deepStrictEqual(entwurfNachTippen(null, 1, 'herkunft', 'I00'), getippt);
+  assert.deepStrictEqual(entwurfNachTippen({ nummer: 1, feld: 'herkunft', wert: 'X1' }, 1, 'herkunft', 'I00'), getippt, 'eigene Berichtigung');
+  assert.deepStrictEqual(entwurfNachTippen({ nummer: 2, feld: 'zeit', wert: 'abc' }, 1, 'herkunft', 'I00'), getippt, 'Entwurf einer anderen Aufgabe');
+});
+
+test('entwurfNachTippen: Getipptes verdrängt nie die Eingabe eines anderen Felds derselben Aufgabe (R00155 G-2)', () => {
+  const abgelehnteDauer = { nummer: 1, feld: 'zeit', wert: 'abc' };
+  assert.strictEqual(entwurfNachTippen(abgelehnteDauer, 1, 'herkunft', 'I00'), abgelehnteDauer);
+  const leererTitel = { nummer: 1, feld: 'titel', wert: '' };
+  assert.strictEqual(entwurfNachTippen(leererTitel, 1, 'herkunft', 'I00'), leererTitel, 'leer ist auch eine Eingabe');
 });

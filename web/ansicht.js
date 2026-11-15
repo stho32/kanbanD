@@ -442,7 +442,7 @@ function vZeiten(a) {
   const zeilen = a.zeiten.map((z, i) => ({ z, i })).sort((x, y) => zeitMs(y.z.beginn) - zeitMs(x.z.beginn)).map(({ z, i }) => u.zeitEdit === z.kennung
     ? `<tr class="edit"><td colspan="5"><input class="mini-inp" id="z-beginn" value="${esc(z.beginn)}" aria-label="Beginn" data-enter="zeit-ok" data-arg="${esc(z.kennung)}">${z.ende ? `<input class="mini-inp" id="z-ende" value="${esc(z.ende)}" aria-label="Ende" data-enter="zeit-ok" data-arg="${esc(z.kennung)}">` : ' <span class="muted">läuft</span>'}<button class="btn btn-sym" data-act="zeit-ok" data-arg="${esc(z.kennung)}" aria-label="Korrektur speichern">✓</button></td></tr>`
     : `<tr data-zeit="${i}" data-kennung="${esc(z.kennung)}"><td class="mono">${esc(datumKurz(ortszeit(z.beginn), isoD(Date.now())))}</td><td class="mono">${esc(ortszeit(z.beginn).slice(11))}–${z.ende ? esc(ortszeit(z.ende).slice(11)) : '…'}</td><td>${pk(z.wer)}</td><td class="r">${z.ende ? hm(dauer(z)) : vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich, sekunden: false })}</td><td class="x"><button class="btn btn-sym" data-act="zeit-edit" data-arg="${esc(z.kennung)}" title="korrigieren" aria-label="Zeit ${i + 1} korrigieren">✎</button>${z.ende ? `<button class="btn btn-sym" data-act="zeit-weg" data-arg="${esc(z.kennung)}" title="Eintrag löschen" aria-label="Zeit ${i + 1} löschen">✕</button>` : ''}</td></tr>`).join('');
-  return `<div class="abs"><h3>ZEITEN <span class="mono" id="zeitsumme">kanbanD-time · ${hm(summe)}</span></h3><table class="zt">${zeilen}</table><input class="inp add" id="zeit-neu" placeholder="${me ? '+ Zeit nachtragen, z. B. 0:45 · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="zeit-neu" aria-label="Zeit nachtragen"${me ? '' : ' disabled'}></div>`;
+  return `<div class="abs"><h3>ZEITEN <span class="mono" id="zeitsumme">kanbanD-time · ${hm(summe)}</span></h3><table class="zt">${zeilen}</table><input class="inp add" id="zeit-neu"${vEntwurf(a, ZEIT_FELD)} placeholder="${me ? '+ Zeit nachtragen, z. B. 0:45 · Enter' : 'erst „Ich bin …“ wählen'}" data-enter="zeit-neu" aria-label="Zeit nachtragen"${me ? '' : ' disabled'}></div>`;
 }
 
 /* ── Popover ── */
@@ -593,6 +593,8 @@ const FENSTER_MELDUNG = 'fenster-meldung';
 const HERKUNFT_FELD = 'herkunft';
 /** Kennung des Titelfelds an Meldung und Entwurf (R00155 #96). */
 const TITEL_FELD = 'titel';
+/** Kennung des Felds „Zeit nachtragen“ an Meldung und Entwurf (R00155 #93). */
+const ZEIT_FELD = 'zeit';
 /** Wert und Verweis eines Entwurfsfelds — die eine Stelle für alle Felder (ADR-0015 N2, R00155 G-1): die abgelehnte Eingabe
     dieser Aufgabe statt `gezeichnet`, und solange die Meldung das Feld nennt, ungültig mit Verweis auf sie (R00111 AK 1). */
 function vEntwurf(a, feld, gezeichnet = '') {

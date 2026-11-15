@@ -151,6 +151,16 @@
     return entwurf.wert;
   }
 
+  /**
+   * Der Entwurf, nachdem in `feld` getippt wurde (R00155 G-2): Getipptes hält den einen Platz, verdrängt aber nie die
+   * Eingabe eines anderen Felds derselben Aufgabe — die steht dort nur, wenn sie abgelehnt wurde oder gerade geschrieben wird.
+   */
+  function entwurfNachTippen(entwurf, nummer, feld, wert) {
+    const anderesFeldHaeltDenPlatz = Boolean(entwurf) && entwurf.nummer === nummer && entwurf.feld !== feld;
+    if (anderesFeldHaeltDenPlatz) return entwurf;
+    return { nummer, feld, wert };
+  }
+
   /** Attribute, mit denen ein Feld als ungültig auf die Fenstermeldung verweist — nur solange die Meldung dieses Feld nennt und der Entwurf zu ihm gehört. */
   function meldungsverweis(entwurf, meldung, nummer, feld, meldungsId) {
     const feldIstAbgelehnt = Boolean(meldung.text) && meldung.feld === feld && entwurfswert(entwurf, nummer, feld) !== null;
@@ -158,5 +168,5 @@
     return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, meldungsverweis });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, entwurfNachTippen, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);

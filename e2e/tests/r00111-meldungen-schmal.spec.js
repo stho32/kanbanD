@@ -213,7 +213,8 @@ test.describe('Handy, 414 px mit Touch', () => {
     await expect(meldung).toHaveCount(1);
     await expect(meldung).not.toHaveText(new RegExp('^' + MELDUNG_X1));
     await reiter(page, 'Details');
-    await expect(herkunft).toHaveValue('I0001');
+    // R00155 G-2 (a): die Ablehnung der Dauer nimmt den einen Entwurf des Fensters ein — die Berichtigung ohne Enter steht nicht mehr da
+    await expect(herkunft).toHaveValue('');
     await expect(herkunft).not.toHaveAttribute('aria-invalid');
     await expect(herkunft).not.toHaveAttribute('aria-describedby');
   });

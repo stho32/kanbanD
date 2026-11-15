@@ -110,7 +110,6 @@ test.describe('R00155 #93: „Zeit nachtragen“ behält die abgelehnte Eingabe'
   };
 
   test('93-1/US-7: abc + Enter → Meldung als alert, das Feld zeigt abc, hat den Fokus, ist ungültig und verweist auf die Meldung; keine Zeit eingetragen', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0728');
     const { fenster, feld } = await dauerAbgelehnt(page);
     await feldIstUngueltig(fenster, feld);
     await expect(feld).toBeFocused();
@@ -133,14 +132,12 @@ test.describe('R00155 #93: „Zeit nachtragen“ behält die abgelehnte Eingabe'
   });
 
   test('93-3: die abgelehnte Eingabe übersteht das Neuzeichnen — bot ändert #2, das Feld zeigt weiter abc und ist ungültig, die Meldung steht', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0728');
     const { fenster, feld } = await dauerAbgelehnt(page);
     await fremdesNeuzeichnen(page, k);
     await feldIstUngueltig(fenster, feld);
   });
 
   test('93-4: ein ungültiges Feld — nach X1 in „Neue Herkunft“ und abc in „Zeit nachtragen“ nennt die eine Meldung die Dauer, „Neue Herkunft“ ist nicht mehr ungültig', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0728');
     k = await starten(page);
     const fenster = await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
@@ -186,5 +183,62 @@ test.describe('R00155 #93: „Zeit nachtragen“ behält die abgelehnte Eingabe'
     await expect(neu.getByLabel('Zeit nachtragen')).toHaveValue('');
     await expect(neu.locator('[role=alert]')).toHaveCount(0);
     expect(await verweise(neu)).toEqual(KEINES);
+  });
+});
+
+test.describe('R00155 #96 und #93 gemeinsam: wer den einen Entwurf hält (G-2)', () => {
+  const HERKUNFT_FREI = { ungueltig: [], verweist: [], meldungen: 1 };
+
+  test('G-2 (b)/US-7: Getipptes verdrängt keine abgelehnte Eingabe — nach abgelehntem abc in „Neue Herkunft“ I00 tippen, zu „Zeiten“ wechseln: abc steht weiter, ungültig, die Meldung zur Dauer steht', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await reiter(page, 'Zeiten');
+    const zeit = fenster.getByLabel('Zeit nachtragen');
+    await zeit.fill('abc');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_DAUER);
+    await reiter(page, 'Details');
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.click();
+    await page.keyboard.type('I00');
+    expect(await verweise(fenster), '„Neue Herkunft“ trägt weder aria-invalid noch aria-describedby').toEqual(HERKUNFT_FREI);
+    await reiter(page, 'Zeiten');
+    await expect(zeit).toHaveValue('abc');
+    await expect(zeit).toHaveAttribute('aria-invalid', 'true');
+    await expect(zeit).toHaveAttribute('aria-describedby', 'fenster-meldung');
+    await expect(fenster.locator('#fenster-meldung')).toHaveText(MELDUNG_DAUER);
+    expect(await verweise(fenster)).toEqual(NUR('#zeit-neu'));
+    // In Kauf genommen (R00155 Notizen): solange die abgelehnte Dauer dasteht, hält das Fenster das in „Neue Herkunft“ Getippte nicht
+    await reiter(page, 'Details');
+    await expect(herkunft).toHaveValue('');
+    expect(await verweise(fenster)).toEqual(HERKUNFT_FREI);
+  });
+
+  test('G-2 (c): Gegenprobe — ohne abgelehnte Eingabe eines anderen Felds übersteht in „Neue Herkunft“ Getipptes den Wechsel der Ansicht', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.click();
+    await page.keyboard.type('I00');
+    await reiter(page, 'Inhalt');
+    await expect(herkunft).toHaveCount(0);
+    await reiter(page, 'Details');
+    await expect(herkunft).toHaveValue('I00');
+    expect(await verweise(fenster)).toEqual(KEINES);
+  });
+
+  test('G-2 (c): Gegenprobe — nach abgelehntem X1 bleibt die eigene Berichtigung über ein Neuzeichnen stehen', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.fill('X1');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('[role=alert]')).toContainText(MELDUNG_X1);
+    await herkunft.fill('I0001');
+    await fremdesNeuzeichnen(page, k);
+    await expect(herkunft).toHaveValue('I0001');
+    await expect(fenster.locator('[role=alert]')).toContainText(MELDUNG_X1);
   });
 });
