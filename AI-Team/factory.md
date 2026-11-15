@@ -51,7 +51,7 @@ Wie die Dienste des Projekts starten und geprüft werden. Gilt für den Director
 ## Rechnerlast
 
 - Höchstens etwa 75 % Systemlast, immer; vor jedem Start einer Rolle, eines Builds oder des Gates prüfen.
-- Rollen gleichzeitig: 1
+- Rollen gleichzeitig: 1 entwickler; daneben 1 Vorlauf-Rolle (architekt oder planer) und die prüfenden Rollen des Betriebs, solange die Lastgrenze hält
 - **Tagbetrieb**: zeit: 8–21 Uhr; entwickler: 1; pruefende rollen: bis 3 parallel (Auto-Reviews); job grenze: 2; nice: 10; test worker: Standard; lasttests: auf Ansage
 - **Nachtbetrieb**: zeit: 21–8 Uhr; entwickler: 1; pruefende rollen: 1; job grenze: 1; nice: 19; test worker: 2; lasttests: nie
 - Tagbetrieb 8–21 Uhr, Nachtbetrieb 21–8 Uhr; Last- und Dauerproben nur auf ausdrücklichen Auftrag des Betreibers, nie nachts.
@@ -80,7 +80,7 @@ Gilt für Director und Rollen (Regeln: `rollen/director/regeln.md`, „Rechnerla
 
 Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **ganz** fertigzustellen, bevor es greift, denn was begonnen und nicht abgeschlossen ist, bleibt bis zum Reset offen.
 
-- **Nacheinander**: Es ist höchstens eine Karte zwischen „Architektur“ und „Entwicklertest“ unterwegs. Die nächste Karte wird erst freigegeben und gezogen, wenn die vorige in „Erledigt“ oder „Ohne Mensch nicht lösbar“ liegt. Es gibt keinen Vorlauf und keinen Puffer, und `entw2` baut nur, während `entw1` nicht baut.
+- **Vorlauf** (Betreiber 2026-11-15, ersetzt „Nacheinander“ vom 2026-10-31): Der entwickler bleibt der Engpass mit WIP 1. Während er baut, bereiten architekt und planer die nächsten Karten vor; in „Detailplanung“ liegt ein Puffer von höchstens 2 baufertigen Karten, in den Puffer kommt nur, was kein offenes `braucht:` hat oder dessen Vorgängerin mindestens in der Entwicklung ist. Die nächste Karte geht in die Entwicklung, sobald die vorige in die Auto-Reviews gezogen ist. Nacharbeit einer Karte geht vor dem Bau der nächsten. Zusammengeführt wird in der Reihenfolge, in der die Karten den Entwicklertest bestehen, nie zwei Merge-Wachen zugleich; nach jedem Zusammenführen bringen laufende Karten ihren Zweig auf den Stand von `main`. Neue Nummern (R, I, B, ADR) vergibt je Karte nur, wer vorher den Stand von `main` geholt hat.
 - **Sparsam prüfen**: In den Auto-Reviews läuft `code-reviewer` immer, jede andere Rolle nur, wenn die Karte ihr Thema nachweislich berührt. Eine Wiederholung gibt es nur für Rollen mit Befund. Befunde, die nur über künstliche Fehlerinjektion erreichbar sind, gelten als `Sollte`; was mit `Sollte` und `Optional` geschieht, regelt „Befunde aus Reviews und Tests“.
 - **Knappe Aufträge**: Der Director nennt jeder Rolle die Dateien und Abschnitte, die sie braucht, statt sie suchen zu lassen. Die Berichte bleiben im Berichtsformat, ohne Wiederholungen.
 - **Rollen fortsetzen statt neu starten** (Betreiber 2026-10-31): planer, architekt, product-owner und entwickler werden für die nächste verwandte Karte bzw. für Nachträge per SendMessage fortgesetzt, solange ihr Kontext unter etwa 150.000 Tokens liegt (Wert aus der letzten Abschlussmeldung); darüber und bei fremdem Codebereich frisch starten. Prüfende Rollen (Reviews, Entwicklertest) starten je Karte frisch — der unabhängige Blick ist gewollt; nur ihre Wiederholung nach Nacharbeit an derselben Karte wird fortgesetzt. Die Agent-ID je Rolle hält der Director in der Logbuchzeile fest.
