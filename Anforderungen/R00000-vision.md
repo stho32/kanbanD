@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-11-07
+zuletzt-ergaenzt: 2026-11-15
 ---
 
 # R00000: Vision — kanbanD
@@ -75,6 +75,13 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
   Boardverzeichnisses und wechselt zwischen ihnen. Dieselbe Aufgabe darf auf mehreren
   Boards liegen; eine Aufgabe auf keinem Board bleibt in der Aufgabenliste sichtbar.
   Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm.
+  Archiviert ist eine Eigenschaft der Aufgabe, nicht eines Boards: sie gilt mit Blick
+  auf alle Boards, auf denen die Aufgabe liegt. Aus dem Archiv geholt, liegt sie wieder
+  auf allen Boards, auf denen sie vorher lag; nennt ein Wiederöffnen ein weiteres
+  Board, liegt sie zusätzlich dort. Im Wortlaut des Betreibers: „Archiviert bedeutet
+  archiviert, mit Blick auf alle Boards auf denen sie ist, ist die Karte im Archiv.
+  Wird sie aus dem Archiv geholt, dann ist sie wieder auf allen Boards auf denen sie
+  vorher auch war.“
 
 - **Live überall, egal woher die Änderung kommt.** Ob der Browser, die API, ein
   Editor oder ein `git pull` eine Datei ändert: alle offenen Sichten zeigen es
@@ -209,3 +216,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-10-18 | Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ mit Register der Anwendungen (Kürzel, volle Pfade) und qualifizierter Herkunft ergänzt |
 | 2026-10-18 | Nicht-Ziele „Kein Ersatz für Vision, Anforderungen und WBS“ und „Kein Git-Client“ geschärft — Grund: kanbanD schreibt die WBS im Arbeits-Repository ohne dortigen Commit, `gruen` nie aus einer Bewegung; ersetzt „Es fließt nichts in die WBS zurück“ |
 | 2026-11-07 | Leitplanke „Der Mensch sieht jede Gestaltung, bevor sie gebaut wird“ ersetzt durch „Jede Gestaltung wird freigegeben, bevor sie gebaut wird“, vom Auftraggeber oder vom product-owner — Grund: der Auftraggeber überträgt die Artboard-Freigabe dem product-owner (Anlass po-entscheidungen Z. 76, 148, 153) |
+| 2026-11-15 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ um die Regel zum Archiv ergänzt: Archiviert ist eine Eigenschaft der Aufgabe und gilt für alle Boards, auf denen sie liegt; aus dem Archiv geholt, liegt sie wieder auf allen diesen Boards, ein beim Wiederöffnen genanntes weiteres Board kommt hinzu — Entscheidung des Betreibers vom 2026-11-15 im Wortlaut (Anlass Karte #45; hebt seine Entscheidung vom 2026-11-13 „eine Karte liegt auf genau einem Board“ auf, die nie im Zielbild stand) |
