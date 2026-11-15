@@ -4,7 +4,7 @@
 **Datum**: 2026-10-31
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00096, R00097
-**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121). · 2026-11-15 — Status je Abweisungsart des Rahmens: Inhalt **400**, fehlender Content-Type **415**, zu großer Rumpf **413**, alle mit `{fehler}`; Zählung 36 Handler (Karte #39), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-status-je-abweisungsart-des-rahmens-und-umfang-karte-39). · 2026-11-15 — Pfad- und Abfrageparameter: eigene Extraktoren `Pfad<T>`/`Abfrage<T>` an der Stelle von `JsonKoerper<T>`, Status bleibt **400**, Parametername aus der Routenschablone; 404/405 des Routers ausdrücklich außerhalb (Karte #168), siehe [Nachtrag N4](#nachtrag-2026-11-15-n4-pfad--und-abfrageparameter-karte-168). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121); am 2026-11-15 vom product-owner bestätigt, am Programm geprobt und um die Wege der Archiv-Familie mit Urteil ergänzt (Abschnitt „Nachgeführt 2026-11-15“ in N2). · 2026-11-15 — Status je Abweisungsart des Rahmens: Inhalt **400**, fehlender Content-Type **415**, zu großer Rumpf **413**, alle mit `{fehler}`; Zählung 36 Handler (Karte #39), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-status-je-abweisungsart-des-rahmens-und-umfang-karte-39). · 2026-11-15 — Pfad- und Abfrageparameter: eigene Extraktoren `Pfad<T>`/`Abfrage<T>` an der Stelle von `JsonKoerper<T>`, Status bleibt **400**, Parametername aus der Routenschablone; 404/405 des Routers ausdrücklich außerhalb (Karte #168), siehe [Nachtrag N4](#nachtrag-2026-11-15-n4-pfad--und-abfrageparameter-karte-168). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: —
 **Ergänzt durch**: [ADR-0006](0006-einstellung-verboten-als-dritte-abweisung.md) (dritte Variante `EinstellungVerboten`, 403, R00102)
 
@@ -118,6 +118,50 @@ Zwei Abweisungen mit fester Form rechtfertigen zwei Varianten; der Typ bleibt fr
 - **Der `spalte`-Wert der board-weiten 403** bleibt wie in R00120 notiert (Rohschlüssel, sonst leer; gebaut: leer, `zugregeln.rs:44`); die 423 trägt kein `spalte`.
 - **Der Bau ist nicht Teil des Nachtrags** (Welle 2, Zug 2c, `src/dienst/zugregeln.rs`/`archiv.rs`, Kartenkommentar #121; hängt mit #142 zusammen).
 
+### Nachgeführt 2026-11-15: bestätigt, geprobt, Wege mit Urteil (Karte #121)
+
+Die Punkte 1–5 oben gelten unverändert; dieser Abschnitt ändert keine Entscheidung. Er hält fest, dass die Ordnung jetzt auch vom product-owner entschieden ist, führt die Fundstellen auf den Stand von heute nach und nennt je Weg, was der Bau anfasst.
+
+**Entschieden (product-owner 2026-11-15, `AI-Team/po-entscheidungen.md:228`)**: „423 einheitlich (Option 1): der defekte Ordner hat Vorrang“. Die Ordnung gilt **ausdrücklich für das Archivieren** — einzeln, mehrere und endgültig löschen. Die Karte ist damit ein Abweichen des Codes von diesem ADR und von R00120 AK 6/US-2, kein neuer Umfang.
+
+**Warum gerade das Archivieren den ganzen Ordner braucht** (passt zur Regel „‚Archiviert‘ ist eine Eigenschaft der Karte“, [ADR-0005](0005-zusammengesetzte-aktionen-in-einem-commit.md), Betreiber 2026-11-15): Archivieren schreibt keine Board-Zeile, gilt aber für **alle** Boards, auf denen die Karte liegt. Die Zusage „kein Agent nimmt eine Karte aus einer Menschen-Spalte“ ist deshalb eine Aussage über alle Board-Dateien des Ordners und nur prüfbar, wenn alle lesbar sind — eine unlesbare Board-Datei irgendwo im Ordner hält den Agenten an, bevor die lesbaren befragt werden. Die Wege mit Slug (vom Board nehmen, bewegen, ziehen) ändern nur ihr eines Board und lesen nur dieses; für sie genügt, dass dieses Board lesbar ist.
+
+**Belegt (Code)**, kanbanD `5c2eb38` (gelesen 2026-11-15; die Zeilen oben stammen von `ad8ee18`):
+- `Kanban::archivieren_pruefen` steht jetzt in `src/dienst/zugregeln.rs:102–112`: Mensch sofort frei (`:103–105`), dann die Entnahmesperre der lesbaren Boards (`:107`, 403), **danach** der Defekt (`:108–111`, 423). Der Kommentar `:100–101` nennt die falsche Ordnung als Absicht („eine Sperre der lesbaren Boards (403) geht vor“).
+- Aufrufer unverändert drei: `src/dienst/archiv.rs:14` (einzeln), `:51` (endgültig löschen), `:134` (mehrere). `Fehler::Defekt` → 423 in `src/web/mod.rs:160`.
+- **Ein Test hält die falsche Ordnung fest**: `tests/haertung_spalten.rs:138–148` (`p6_gesundes_board_sperrt_vor_dem_defekten`) erwartet 403. Er ist der Gegenbeleg zu AK 6 und wird mit dem Bau **umgekehrt**, nicht ergänzt. `p5_…` (`:111–136`) und `tests/aufgabe_loeschen.rs:135` (`ak6_defektes_board_423`) prüfen nur den Fall ohne Menschen-Spalte und bleiben grün.
+- `Ordner::boards` (`src/ablage.rs:63–78`) meldet als defekt auch eine Datei, deren **Name** kein gültiger Board-Name ist (ADR-0008) — auch sie hält den Agenten an.
+
+**Belegt (Probe)**, fertiges Programm vom Stand main `5c2eb38`, Wegwerf-Ordner (lesbares Board mit `column-owner: Eingang: human`, daneben `boards/kaputt.md` mit `start: kaputt`), 2026-11-15, Agent `cl`:
+
+| Anfrage | heute | Soll |
+|---|---|---|
+| `POST /api/aufgaben/1/archivieren`, #1 in „Eingang“ | 403 `{fehler, spalte, nummer}` | **423** |
+| `POST /api/aufgaben/archivieren` `{nummern: [3, 2]}`, #2 in „Eingang“ | 403 | **423** |
+| `DELETE /api/aufgaben/5`, #5 in „Eingang“ | 403 | **423** |
+| `POST /api/aufgaben/3/archivieren`, #3 in einer freien Spalte | 423 | 423 |
+| `POST /api/aufgaben/6/archivieren`, #6 schon archiviert | 409 | 409 (keine Sperre, Grenze oben) |
+| `POST /api/aufgaben/999/archivieren` | 404 | 404 |
+| `POST /api/aufgaben/6/zurueckholen` | 200 | 200 (Abweichung B0537, nicht diese Karte) |
+| Mensch `st` archiviert #1 und #4 | 200 | 200 |
+
+Die Menge der abgewiesenen Anfragen ändert sich nicht: jede Anfrage, die heute 403 bekommt, bekommt bei defektem Ordner künftig 423; keine bisher abgewiesene wird erlaubt, keine erlaubte abgewiesen. Es ändern sich Status und Rumpf (`{fehler}` statt `{fehler, spalte, nummer}`).
+
+**Wege mit Urteil**:
+
+| Weg | Ort | Urteil |
+|---|---|---|
+| Archivieren, einzeln | `archiv.rs:9–28` | **hinein** — erbt aus `archivieren_pruefen` |
+| Archivieren, mehrere | `archiv.rs:107–149` | **hinein** — erbt; sind alle genannten Nummern schon archiviert, bleibt es bei 200 `[]` ohne Prüfung |
+| Endgültig löschen | `archiv.rs:47–70` | **hinein** — erbt; 404 der unbekannten Nummer bleibt vorn (`:49`) |
+| Zurückholen, einzeln und mehrere | `archiv.rs:31–37`, `:136–138` | **nicht hinein** — nimmt keine Karte heraus (keine 403), verwirft die Defekte-Liste (`zugregeln.rs:120`, Abweichung B0537 in X00001) |
+| Vom Board nehmen, bewegen, ziehen, erledigen | Wege mit Slug | **nicht hinein** — lesen ihr eines Board zuerst (defekt → 423), die Ordnung gilt dort durch die Bauart; `p5_…` hält es fest |
+| Board archivieren, löschen, umbenennen | `board_verwalten.rs` | **nicht hinein** — Ordnung schon gebaut (oben), `tests/boards.rs:254` |
+| „schon archiviert“ (409) vor der Sperre | `archiv.rs:11–13` | **nicht hinein** — keine Sperre (Grenze oben) |
+| Mensch löscht endgültig bei defektem Board: die Zeile im defekten Board bleibt stehen | `archiv.rs:54–60` | **nicht hinein** — der Mensch wird nie gesperrt (Punkt 4), eigener Befund nur auf Beobachtung |
+
+**Kleinster Bau — eine Stelle**: in `archivieren_pruefen` die beiden Prüfungen tauschen (erst `defekt.first()` → 423, dann `entnahme_pruefen` je Board), der frühe Ausstieg für den Menschen bleibt die erste Zeile. Dazu der Kommentar `zugregeln.rs:100–101`, die Kommentare `archiv.rs:8`, `:44`, `:50`, und die Beschreibungen der drei Endpunkte (`src/web/endpunkte.rs:58`, `:63`, `:77` und die gleichlautenden `description` in `src/web/mod.rs`): „defektes Board im Ordner → 423, geht der 403 vor“. Die Antwortliste in OpenAPI nennt 423 an allen drei Routen schon. Kein neuer Wortlaut einer Meldung, keine neue Fehlerart, kein Eingriff in `archiv.rs` außer Kommentaren. Punkt 5 oben nannte „Welle 2, Zug 2c“ als Ort des Baus; er liegt jetzt auf der Karte #121 selbst.
+
 ## Nachtrag 2026-11-15 N3: Status je Abweisungsart des Rahmens und Umfang (Karte #39)
 
 **Status bleibt `Akzeptiert`.** N1 entscheidet die eine Stelle (`JsonKoerper<T>`) und nennt drei Abweisungen des Inhalts. Offen blieb, was mit den beiden Abweisungen des Transports geschieht, und die Zahl „20 Stellen“ in N1 stimmt nicht mehr. N3 ändert nichts an N1, es füllt diese zwei Lücken.
@@ -194,5 +238,6 @@ Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am
 - ADR-0002
 - Nachtrag N1: Karte #39 (Anmerkung A1 aus #27); `src/web/mod.rs:20`, `:152–181`, `:302`, `:374`, `:392`; `src/web/endpunkte.rs`; `Cargo.lock:945` (`serde_path_to_error` über `axum 0.8`)
 - Nachtrag N2: Karte #121 (Betreiber-Entscheidung 2026-11-13 im Kartenkommentar, arev B3); R00120 AK 6; `AI-Team/po-entscheidungen.md:187–188`; `src/dienst/zugregeln.rs:66–69`, `:88–96`, `:240–249`; `src/dienst/archiv.rs:12`, `:14`, `:51`, `:134`; `src/dienst/board_verwalten.rs:27`, `:59`; `src/web/mod.rs:158`
+- Nachtrag N2, nachgeführt 2026-11-15: `AI-Team/po-entscheidungen.md:228`; R00120 FA 7, AK 6, US-2; ADR-0005 „Geltende Regel“; Probe am fertigen Programm vom Stand `5c2eb38`; `src/dienst/zugregeln.rs:100–112`, `:120`; `src/dienst/archiv.rs:8–14`, `:44–51`, `:107–149`; `src/ablage.rs:63–78`; `src/web/mod.rs:160`; `src/web/endpunkte.rs:58`, `:63`, `:77`; `tests/haertung_spalten.rs:111–148`; `tests/aufgabe_loeschen.rs:135`; `tests/boards.rs:254`
 - Nachtrag N3: Karte #39; `Cargo.lock:36` (`axum 0.8.9`); `src/web/mod.rs:120`, `:215`, `:244`–`:1639`, `:1025`, `:1197`, `:1330`; `src/web/endpunkte.rs`; `tests/termine.rs:31`; `src/modell/board.rs:147`; `web/app.js:100`; R00153 AK 6, AK 11, AK 15
 - Nachtrag N4: Karte #168 (product-owner 2026-11-15, `AI-Team/po-entscheidungen.md`); Probe am fertigen Programm vom Stand `8df2028`; `src/web/mod.rs:16`, `:128`, `:350`, `:1431`; `src/web/statisch.rs:62`; `web/app.js:100`; `axum 0.8.9` `extract/path` (`ErrorKind`, `RawPathParams`)
