@@ -66,7 +66,7 @@ test('verwerfung: Labels — geändert geht auf den gezeichneten Stand zurück, 
 });
 
 test('verwerfung: Felder, die erst mit Enter schreiben — Getipptes und die abgelehnte Eingabe werden geleert; leer nichts zu verwerfen', () => {
-  for (const id of ['herkunft-neu', 'teil-neu', 'zeit-neu']) {
+  for (const id of ['herkunft-neu', 'teil-neu', 'zeit-neu', 'km-inp']) {
     assert.deepStrictEqual(verwerfung(feld({ id, wert: 'Entwurf' })), { wert: '', verlaesstModus: false, hatEntwurf: true }, id);
     assert.strictEqual(verwerfung(feld({ id, wert: '' })), null, id);
   }

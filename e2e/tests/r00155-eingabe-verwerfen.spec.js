@@ -129,6 +129,23 @@ test.describe('R00155 #54: Knopf „Eingabe verwerfen“, 414 px mit Touch', () 
     await expect(herkunft).toHaveValue('');
   });
 
+  test('54-15/54-12 „Fälle mit Entwurf“: „Neuer Kommentar“ mit getipptem Notiz → nach dem Tipp ist das Feld leer, der Fokus im Feld, Fenster offen, nichts geschrieben (kein POST); auch neu gezeichnet steht Notiz nicht wieder da', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Inhalt');
+    const kommentar = fenster.getByLabel('Neuer Kommentar', { exact: true });
+    await kommentar.tap();
+    await page.keyboard.type('Notiz');
+    await expect(kommentar).toHaveValue('Notiz');
+    const vorher = await standMerken(page, k);
+    await knopfIm(fenster).tap();
+    await expect(kommentar).toHaveValue('');
+    await expect(kommentar).toBeFocused();
+    await expect(fenster).toBeVisible();
+    await nichtsGeschrieben(page, k, vorher, '54-15 Knopf');
+    await ansichtNeuZeichnen(page, 'Inhalt');
+    await expect(kommentar).toHaveValue('');
+    expect(k.lies(DATEI_1)).not.toContain('Notiz');
+  });
+
   test('54-12: Titel nach abgelehnter Eingabe (Lage nach 96-1) → nach dem Tipp liest der Titel „Abnahme prüfen“, Meldung fort, Fokus auf „Titel bearbeiten“ (wie 96-5)', async ({ page }) => {
     const fenster = await titelAbgelehnt(page);
     const vorher = await standMerken(page, k);

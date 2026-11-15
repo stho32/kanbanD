@@ -171,8 +171,8 @@
     return { nummer, feld, wert };
   }
 
-  // „Neue Herkunft“, neue Teilaufgabe, „Zeit nachtragen“: schreiben erst mit Enter
-  const ENTER_FELDER = ['herkunft-neu', 'teil-neu', 'zeit-neu'];
+  // „Neue Herkunft“, neue Teilaufgabe, „Zeit nachtragen“, „Neuer Kommentar“: schreiben erst mit Enter
+  const ENTER_FELDER = ['herkunft-neu', 'teil-neu', 'zeit-neu', 'km-inp'];
 
   /**
    * Die Esc-Regel des Aufgabenfensters (ADR-0010 N9 Ziffer 4): was das fokussierte Feld zu verwerfen hat. Das Feld kommt als

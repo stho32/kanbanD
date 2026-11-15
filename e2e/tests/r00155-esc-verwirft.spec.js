@@ -197,7 +197,7 @@ test.describe('R00155 #54: Enter speichert auch nach einem fremden Neuzeichnen (
 });
 
 test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', () => {
-  for (const [ansicht, name, getippt] of [['Details', 'Neue Herkunft', 'I00'], ['Inhalt', 'Neue Teilaufgabe', 'Entwurf'], ['Zeiten', 'Zeit nachtragen', '0:4']]) {
+  for (const [ansicht, name, getippt] of [['Details', 'Neue Herkunft', 'I00'], ['Inhalt', 'Neue Teilaufgabe', 'Entwurf'], ['Zeiten', 'Zeit nachtragen', '0:4'], ['Inhalt', 'Neuer Kommentar', 'Notiz']]) {
     test(`54-6/US-3: „${name}“ — ${getippt} tippen, Esc → Feld leer, Fokus im Feld, Fenster offen, nichts geschrieben; auch nach dem Neuzeichnen leer; ein weiteres Esc im leeren Feld schließt`, async ({ page }) => {
       const fenster = await fensterIn(page, ansicht);
       const feld = fenster.getByLabel(name, { exact: true });
@@ -222,6 +222,21 @@ test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', ()
       expect(k.schreibend.slice(vorher.anfragen), '54-6, zweites Esc: keine schreibende Anfrage').toEqual([]);
     });
   }
+
+  test('54-15/US-3: Gegenprobe — „Notiz“ in „Neuer Kommentar“ und Enter speichert den Kommentar wie bisher, ein Commit von st', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Inhalt');
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    const kommentar = fenster.getByLabel('Neuer Kommentar', { exact: true });
+    await kommentar.click();
+    await page.keyboard.type('Notiz');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('Notiz');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
+    await expect(fenster.locator('.km p')).toHaveText(['Notiz']);
+    await expect(kommentar).toHaveValue('');
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('POST')), 'genau ein POST').toEqual(['POST /api/aufgaben/1/kommentare']);
+  });
 
   test('54-7: abgelehnte Herkunft X1, Esc → Feld leer, Meldung fort, weder aria-invalid noch aria-describedby, Fokus bleibt, Fenster offen; nach dem Neuzeichnen steht X1 nicht wieder da', async ({ page }) => {
     const { fenster, herkunft } = await herkunftAbgelehnt(page);
