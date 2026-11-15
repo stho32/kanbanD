@@ -403,9 +403,9 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     await expect(aufgabe.getByRole('group', { name: 'Zuständig', exact: true })).toBeVisible();
     // die vorhandenen Namen bleiben (FA 12)
     for (const name of ['Spalte', 'Klasse', 'Labels', 'Fälligkeit', 'Neue Herkunft']) await expect(aufgabe.getByLabel(name, { exact: true }), name).toHaveCount(1);
-    // Felder ohne Schlüssel bleiben einzeilig: nacktes .k, kein Rahmen, kein Hilfstext (WBS-Notiz B0437, Z. 157)
-    await expect(aufgabe.locator('.felder > .k', { hasText: 'Zählt in Berichten' })).toHaveCount(1);
-    await expect(aufgabe.locator('.felder > .kb', { hasText: 'Zählt in Berichten' })).toHaveCount(0);
+    // R00155 #87 (Betreiber 2026-11-13): „Zählt in Berichten“ nennt den Schlüssel reporting — Rahmen .kb statt nacktem .k
+    await expect(aufgabe.locator('.felder > .k', { hasText: 'Zählt in Berichten' })).toHaveCount(0);
+    await expect(aufgabe.locator('.felder > .kb', { hasText: 'Zählt in Berichten' }).locator('.sl')).toHaveText('reporting');
     await schliessen(page);
     await page.keyboard.press('n');
     const neu = page.getByRole('dialog', { name: 'Neue Aufgabe' });

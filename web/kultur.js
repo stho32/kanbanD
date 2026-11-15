@@ -67,6 +67,7 @@
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig', estimate: 'Geschätzt',
     'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', wbs: 'WBS', requirements: 'Anforderungen',
     ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
+    reporting: 'Zählt in Berichten', signals: 'Signale', key: 'Schlüssel',
   });
   /** Anzeigetext der Herkunft `thin air` (FA 15); in Datei, API und Filter bleibt `thin air`. */
   const OHNE_HERKUNFT = 'ohne Herkunft';

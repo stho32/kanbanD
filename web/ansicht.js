@@ -658,7 +658,7 @@ function vSignalFeld(a) {
     const an = (a.signale || []).includes(s), g = signalDef(s), name = g ? g.bezeichnung : s;
     return `<button class="as sig${an ? ' an' : ''}" data-act="signal-fenster" data-arg="${esc(s)}" aria-pressed="${an}" aria-label="Signal ${esc(name)}" style="--sg:${esc(signalFarbe(s))}" title="${an ? 'gesetzt — Klick nimmt es zurück' : 'Klick setzt das Signal'} (signals: ${esc(s)})">${FACKEL}${esc(name)}</button>`;
   };
-  return `<span class="k">Signale</span><span class="w wrap" id="signale" role="group" aria-label="Signale">${alle.map(schalter).join('')}</span>`;
+  return `${vBeschriftung('signals')}<span class="w wrap" id="signale" role="group" aria-label="Signale">${alle.map(schalter).join('')}</span>`;
 }
 /** Feld „Zählt in Berichten“ (R00060): je Bericht ein Schalter; „(Standard)“, solange der Schlüssel fehlt. Klick nimmt aus bzw. setzt zurück. */
 function vZaehlungFeld(a) {
@@ -667,7 +667,7 @@ function vZaehlungFeld(a) {
     const zaehlt = r[bericht] !== false, standard = !(bericht in r);
     return `<button class="as${zaehlt ? ' an' : ''}" data-act="zaehlung" data-arg="${bericht}" aria-pressed="${zaehlt}" aria-label="zählt in ${name}" title="${zaehlt ? `zählt in ${name} — Klick nimmt die Aufgabe aus (reporting.${bericht}: false)` : `zählt nicht in ${name} — Klick setzt auf den Standard zurück`}">${name}${standard ? ' <span class="muted">(Standard)</span>' : ''}</button>`;
   };
-  return `<span class="k">Zählt in Berichten</span><span class="w wrap" id="zaehlung" role="group" aria-label="Zählt in Berichten">${schalter('burndown', 'Burndown')}${schalter('forecast', 'Wie lange noch')}</span>`;
+  return `${vBeschriftung('reporting')}<span class="w wrap" id="zaehlung" role="group" aria-label="Zählt in Berichten">${schalter('burndown', 'Burndown')}${schalter('forecast', 'Wie lange noch')}</span>`;
 }
 /** Formular einer neuen Wirkung — „vermerken“ ändert die WBS nicht, eintreten lässt sie der Schalter am Chip (R00071). */
 function vWirkungForm(register) {
@@ -826,7 +826,7 @@ const FENSTER_SCHLUESSEL = 'neu-';
     Datei, ist aber kein Fremdschlüssel und steht nicht in „Details“ (R00148 AK 21). */
 function vSchluesselFeld(a) {
   if (!a.key || a.key.startsWith(FENSTER_SCHLUESSEL)) return '';
-  return `<span class="k">Schlüssel</span><span class="w mono" id="schluessel">${esc(a.key)}</span>`;
+  return `${vBeschriftung('key')}<span class="w mono" id="schluessel">${esc(a.key)}</span>`;
 }
 function vReservierungFeld(a) {
   const r = gueltigeReservierung(a);

@@ -63,17 +63,18 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
     return dialog;
   }
 
-  test('Härtung #123: jede .k-Beschriftung trägt Plex Sans 500 12/16 --kd-text — nackt („Schlüssel“, „Zählt in Berichten“) wie mit Schlüssel, hell und dunkel', async ({ page }) => {
+  test('Härtung #123: jede .k-Beschriftung trägt Plex Sans 500 12/16 --kd-text — auch „Schlüssel“ und „Zählt in Berichten“, seit R00155 #87 mit Schlüssel; hell und dunkel', async ({ page }) => {
     await details(page);
     for (const t of THEMEN) {
       await thema(page, t);
       const textfarbe = await tokenFarbe(page, '--kd-text');
       const zeilen = await beschriftungen(page, '.felder-details > .k, .felder-details > .kb > .k');
       zeichnungPruefen(zeilen, textfarbe, t);
-      // beide Fassungen der Zeichnung sind im Reiter „Details“ vertreten: die nackte Beschriftung und die mit Schlüssel
-      const nackt = zeilen.filter(z => z.nackt).map(z => z.text);
-      expect(nackt, `${t}: die nackte .k-Beschriftung ist da`).toEqual(expect.arrayContaining(['Schlüssel', 'Zählt in Berichten']));
-      expect(zeilen.filter(z => !z.nackt).length, `${t}: Feldzeilen mit Schlüssel`).toBeGreaterThanOrEqual(7);
+      // R00155 #87: „Schlüssel“ und „Zählt in Berichten“ tragen jetzt den Schlüssel der Datei; die nackte Fassung der
+      // Zeichnung prüft der Block „außerhalb von Details“ (WBS „Neuer Knoten“)
+      const mitSchluessel = zeilen.filter(z => !z.nackt).map(z => z.text);
+      expect(mitSchluessel, `${t}: beide Beschriftungen sind da, mit Schlüssel`).toEqual(expect.arrayContaining(['Schlüssel', 'Zählt in Berichten']));
+      expect(mitSchluessel.length, `${t}: Feldzeilen mit Schlüssel`).toBeGreaterThanOrEqual(9);
     }
   });
 
@@ -82,7 +83,7 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
     for (const t of THEMEN) {
       await thema(page, t);
       const muted = await tokenFarbe(page, '--kd-muted');
-      const schluessel = await dialog.locator('.felder-details > .kb > .sl').first().evaluate(el => {
+      const schluessel = await dialog.locator('.felder-details > .kb > .sl', { hasText: /^column$/ }).evaluate(el => {
         const s = getComputedStyle(el);
         return { text: el.textContent.trim(), familie: s.fontFamily, groesse: s.fontSize, hoehe: s.lineHeight, farbe: s.color, inK: el.closest('.k') !== null };
       });
@@ -120,7 +121,6 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
       const wert = [...felder.querySelectorAll('.w.mono')].find(el => el.textContent.trim() === '2:30');
       const schlicht = felder.querySelector('.w:not(.mono)');
       const mitSchluessel = felder.querySelector('.kb');
-      const nackt = [...felder.children].find(el => el.classList.contains('k'));
       const stil = el => { const s = getComputedStyle(el); return { familie: s.fontFamily, groesse: s.fontSize, hoehe: s.lineHeight }; };
       return {
         spalten: getComputedStyle(felder).gridTemplateColumns,
@@ -128,7 +128,6 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
         w: stil(schlicht),
         zeile: mitSchluessel.getBoundingClientRect().height,
         polster: getComputedStyle(mitSchluessel).paddingTop + '/' + getComputedStyle(mitSchluessel).paddingBottom,
-        nackt: { hoehe: nackt.getBoundingClientRect().height, min: getComputedStyle(nackt).minHeight },
       };
     });
     // die Spalte der Beschriftung und die Werte bleiben, wie D0003 sie zeichnet
@@ -138,8 +137,6 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
     expect(masse.w.familie, '.w bleibt Sans').toContain('IBM Plex Sans');
     expect(masse.zeile, 'Zeile mit Schlüssel mindestens 38 px').toBeGreaterThanOrEqual(MASSE.zeileMitSchluessel);
     expect(masse.polster, '.kb bleibt 4 px oben und unten').toBe('4px/4px');
-    expect(masse.nackt.hoehe, 'nackte Zeile bleibt 30 px hoch').toBe(30);
-    expect(masse.nackt.min, 'nackte Zeile mindestens 30 px').toBe('30px');
   });
 });
 
@@ -162,6 +159,10 @@ test.describe('R00109/Härtung #123 die Basisregel `.felder .k` außerhalb von �
       const zeilen = await beschriftungen(page, '#pop[role="dialog"] .felder > .k');
       expect(zeilen.map(z => z.text), `${t}: nackte Beschriftungen`).toEqual(expect.arrayContaining(['Ebene', 'Name', 'Fertig']));
       zeichnungPruefen(zeilen, textfarbe, `${t} WBS „Neuer Knoten“`);
+      // die nackte Zeile behält ihr Maß (bis R00155 #87 an „Schlüssel“ in den Details gemessen; dort gibt es keine nackte Zeile mehr)
+      const nackt = await pop.locator('.felder > .k').first().evaluate(el => ({ hoehe: el.getBoundingClientRect().height, min: getComputedStyle(el).minHeight }));
+      expect(nackt.hoehe, `${t}: nackte Zeile bleibt 30 px hoch`).toBe(30);
+      expect(nackt.min, `${t}: nackte Zeile mindestens 30 px`).toBe('30px');
       const gemessen = await kontrastMessen(page, ['#pop[role="dialog"] .felder']);
       const verstoesse = gemessen.filter(m => m.wert < 4.5).map(m => `${m.element} „${m.text}“ ${m.wert.toFixed(2)}:1`);
       expect(verstoesse, `${t}: unter 4,5:1`).toEqual([]);

@@ -97,9 +97,9 @@ test.describe('Selbstproben der Beschriftungsprobe', () => {
     expect(verstoesse(await beschriftungenPruefen(page.getByRole('dialog'), FELDER))).toEqual([': keine Feldzeile im Fenster']);
   });
 
-  test('(f) eine Zeile ohne Schlüssel bleibt einzeilig und besteht: „Signale“, „wartet auf“; die Schlüsselform „reservation“ fällt', async ({ page }) => {
-    expect(await pruefen(page, zeile('Signale', '<button aria-pressed="false" aria-label="Signal blockiert">blockiert</button>'), zeile('wartet auf', '<a href="#">#2</a>'), zeile('reservation', '<span>Claude</span>')))
-      .toEqual([{ beschriftung: 'Signale', name: null, verstoesse: [] }, { beschriftung: 'wartet auf', name: null, verstoesse: [] },
+  test('(f) eine Zeile ohne Schlüssel bleibt einzeilig und besteht: „Ebene“, „wartet auf“; die Schlüsselform „reservation“ fällt (R00155 #87: „Signale“ trägt jetzt den Schlüssel signals)', async ({ page }) => {
+    expect(await pruefen(page, zeile('Ebene', '<button aria-pressed="false" aria-label="Ebene Dialog">Dialog</button>'), zeile('wartet auf', '<a href="#">#2</a>'), zeile('reservation', '<span>Claude</span>')))
+      .toEqual([{ beschriftung: 'Ebene', name: null, verstoesse: [] }, { beschriftung: 'wartet auf', name: null, verstoesse: [] },
         { beschriftung: 'reservation', name: null, verstoesse: ['Beschriftung ist der Schlüssel reservation'] }]);
   });
 

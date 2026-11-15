@@ -41,6 +41,7 @@ test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig', estimate: 'Geschätzt',
     'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', wbs: 'WBS', requirements: 'Anforderungen',
     ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
+    reporting: 'Zählt in Berichten', signals: 'Signale', key: 'Schlüssel',
   });
   const schluessel = Object.keys(FELDER);
   assert.deepStrictEqual(Object.values(FELDER).filter(b => schluessel.includes(b)), []);
