@@ -3,7 +3,7 @@
 // bleibt offen; sonst schließt Esc. Enter und das Verlassen speichern weiter.
 const { test, expect } = require('@playwright/test');
 const { reiter } = require('./hilfen');
-const { DATEI_1, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansagen, ansichtNeuZeichnen } = require('./r00155-hilfen');
+const { DATEI_1, DATEI_2, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansagen, ansichtNeuZeichnen } = require('./r00155-hilfen');
 
 const TITELFELD = '#fenster [data-af="titel"]';
 const TITEL_LESEN = '#fenster [data-act="titel-bearbeiten"]';
@@ -203,6 +203,82 @@ test.describe('R00155 #54: Felder ohne Entwurf', () => {
       await page.keyboard.press('Escape');
       await fensterIstZu(page);
       await nichtsGeschrieben(page, k, vorher, '54-9');
+    });
+  }
+});
+
+// Herauslösbarer Block 54B (US-5): nimmt der Betreiber die Regel für die Beschreibung zurück, entfällt genau dieser Block.
+test.describe('R00155 #54, Block Beschreibung (54B): Esc verwirft den Entwurf der Beschreibung', () => {
+  const BESCHREIBUNG = '#fenster #beschreibung';
+  const BESCHREIBUNG_LESEN = '#fenster [data-act="beschreibung-bearbeiten"]';
+
+  /** Beschreibung von #1 („Erster Absatz“) im Bearbeiten, Schreibmarke am Ende. */
+  async function beschreibungBearbeiten(page) {
+    const fenster = await fensterIn(page, 'Inhalt');
+    await page.locator(BESCHREIBUNG_LESEN).click();
+    await expect(page.locator(BESCHREIBUNG)).toBeFocused();
+    await page.keyboard.press('Control+End');
+    return fenster;
+  }
+
+  test('54B-1/US-5: „ und mehr“ anhängen, Esc → die Beschreibung liest „Erster Absatz“, Fokus auf „Beschreibung bearbeiten“, Fenster offen, nichts geschrieben; ein zweites Esc schließt', async ({ page }) => {
+    const fenster = await beschreibungBearbeiten(page);
+    await page.keyboard.type(' und mehr');
+    await expect(page.locator(BESCHREIBUNG)).toHaveValue('Erster Absatz und mehr');
+    const vorher = await standMerken(page, k);
+    const angesagt = await ansagen(page);
+    await page.keyboard.press('Escape');
+    await expect(fenster).toBeVisible();
+    await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz');
+    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await expect(page.locator(BESCHREIBUNG)).toHaveCount(0);
+    await nichtsGeschrieben(page, k, vorher, '54B-1');
+    expect(await ansagen(page), 'stumm').toEqual(angesagt);
+    await page.keyboard.press('Escape');
+    await fensterIstZu(page);
+    await nichtsGeschrieben(page, k, vorher, '54B-1, zweites Esc');
+  });
+
+  test('54B-2: Beschreibung im Bearbeiten und unverändert, Esc → Bearbeitungsmodus beendet, Fenster offen', async ({ page }) => {
+    const fenster = await beschreibungBearbeiten(page);
+    const vorher = await standMerken(page, k);
+    await page.keyboard.press('Escape');
+    await expect(fenster).toBeVisible();
+    await expect(page.locator(BESCHREIBUNG)).toHaveCount(0);
+    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await nichtsGeschrieben(page, k, vorher, '54B-2');
+  });
+
+  for (const einstieg of ['Klick ins Feld', 'Taste b']) {
+    test(`54B-3/US-5: leere Beschreibung von #2 (${einstieg}) — „Notiz“ tippen, Esc → Feld leer, Fokus im Feld, Fenster offen, nichts geschrieben; ein weiteres Esc im leeren Feld schließt`, async ({ page }) => {
+      k = await starten(page);
+      const fenster = await fensterOeffnen(page, 2);
+      const feld = page.locator(BESCHREIBUNG);
+      if (einstieg === 'Taste b') await page.keyboard.press('b'); else await feld.click();
+      await expect(feld).toBeFocused();
+      await page.keyboard.type('Notiz');
+      const vorher = await standMerken(page, k);
+      await page.keyboard.press('Escape');
+      await expect(fenster).toBeVisible();
+      await expect(feld).toHaveValue('');
+      await expect(feld).toBeFocused();
+      await nichtsGeschrieben(page, k, vorher, '54B-3');
+      await page.keyboard.press('Escape');
+      await fensterIstZu(page);
+      await nichtsGeschrieben(page, k, vorher, '54B-3, zweites Esc');
+    });
+  }
+
+  for (const [weg, taste] of [['Strg+Enter', 'Control+Enter'], ['Verlassen des Felds', 'Tab']]) {
+    test(`54B-4: Gegenprobe — ${weg} speichert die Beschreibung wie bisher, ein Commit`, async ({ page }) => {
+      await beschreibungBearbeiten(page);
+      const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+      await page.keyboard.type(' und mehr');
+      await page.keyboard.press(taste);
+      await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz und mehr');
+      await expect.poll(() => k.lies(DATEI_1)).toContain('Erster Absatz und mehr');
+      await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+      expect(k.lies(DATEI_2)).toBe('---\nid: 2\ntitle: Zweite Aufgabe\n---\n');
     });
   }
 });

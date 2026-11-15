@@ -80,3 +80,16 @@ test('verwerfung: andere Eingabefelder des Fensters fallen nicht unter die Regel
   assert.strictEqual(verwerfung(feld({ id: 'z-beginn', wert: '09:00', gezeichnet: '08:00' })), null);
   assert.strictEqual(verwerfung(feld({ id: 'flt', wert: 'x' })), null);
 });
+
+test('verwerfung: Beschreibung mit Text im Bearbeiten verlässt den Modus — geändert wie unverändert (R00155 54B)', () => {
+  const zurueckInsLesen = { wert: 'Erster Absatz', verlaesstModus: true };
+  assert.deepStrictEqual(verwerfung(feld({ af: 'beschreibung', id: 'beschreibung', wert: 'Erster Absatz und mehr', gezeichnet: 'Erster Absatz', imModus: true })), zurueckInsLesen);
+  assert.deepStrictEqual(verwerfung(feld({ af: 'beschreibung', id: 'beschreibung', wert: 'Erster Absatz', gezeichnet: 'Erster Absatz', imModus: true })), zurueckInsLesen);
+});
+
+test('verwerfung: leere Beschreibung hat keinen Lesezustand — Getipptes wird geleert, der Fokus bleibt; leer nichts zu verwerfen, auch nach der Taste b', () => {
+  for (const imModus of [false, true]) {
+    assert.deepStrictEqual(verwerfung(feld({ af: 'beschreibung', id: 'beschreibung', wert: 'Notiz', imModus })), { wert: '', verlaesstModus: false });
+    assert.strictEqual(verwerfung(feld({ af: 'beschreibung', id: 'beschreibung', wert: '', imModus })), null);
+  }
+});

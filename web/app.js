@@ -739,6 +739,12 @@ function entwurfskennung(feld) {
   return null;
 }
 
+/** Felder mit Lesezustand: der Zustand, der ihr Bearbeiten hält, und der Auslöser, an den der Fokus zurückgeht (ADR-0010 N9 Ziffer 1). */
+const BEARBEITUNGSMODUS = {
+  titel: { zustand: 'titelBearbeiten', ausloeser: '[data-act="titel-bearbeiten"]' },
+  beschreibung: { zustand: 'beschreibungBearbeiten', ausloeser: '[data-act="beschreibung-bearbeiten"]' },
+};
+
 /** Verwirft, was das Feld des Aufgabenfensters an Entwurf oder Bearbeitungsmodus hat — ohne Schreibweg (ADR-0010 N9):
     der Wert geht auf den gezeichneten Stand zurück, bevor das Feld verlassen wird, sein Entwurf und die Meldung dazu
     verschwinden. Falsch, wenn es nichts zu verwerfen gab. */
@@ -747,13 +753,15 @@ function eingabeVerwerfen(feld) {
   if (!feld.dataset) return false;
   const kennung = entwurfskennung(feld);
   const haeltEntwurf = kennung !== null && entwurfswert(u.entwurf, u.offen, kennung) !== null;
-  const verworfen = verwerfung({ af: feld.dataset.af, id: feld.id, wert: feld.value, gezeichnet: feld.defaultValue, imModus: u.titelBearbeiten, haeltEntwurf });
+  const modus = BEARBEITUNGSMODUS[feld.dataset.af];
+  const imModus = Boolean(modus) && u[modus.zustand];
+  const verworfen = verwerfung({ af: feld.dataset.af, id: feld.id, wert: feld.value, gezeichnet: feld.defaultValue, imModus, haeltEntwurf });
   if (!verworfen) return false;
   feld.value = verworfen.wert;
   aenderungGemeldet(feld);
   if (haeltEntwurf) u.entwurf = null;
   if (kennung !== null && u.fensterFehlerFeld === kennung) fensterMelden(null);
-  if (verworfen.verlaesstModus) { u.titelBearbeiten = false; u.fokus = '[data-act="titel-bearbeiten"]'; }
+  if (verworfen.verlaesstModus) { u[modus.zustand] = false; u.fokus = modus.ausloeser; }
   render();
   return true;
 }

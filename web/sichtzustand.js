@@ -170,9 +170,12 @@
    * Bearbeitungsmodus endet — oder null: nichts zu verwerfen, Esc schließt das Fenster.
    */
   function verwerfung(feld) {
-    if (feld.af === 'titel') return { wert: feld.gezeichnet, verlaesstModus: true };
+    // Titel und Beschreibung mit Text haben einen Lesezustand; die leere Beschreibung steht immer als Feld da
+    const hatLesezustand = feld.af === 'titel' || (feld.af === 'beschreibung' && feld.gezeichnet !== '');
+    if (hatLesezustand && feld.imModus) return { wert: feld.gezeichnet, verlaesstModus: true };
     const schreibtAufEnter = ENTER_FELDER.includes(feld.id);
-    if (feld.af !== 'labels' && !schreibtAufEnter) return null;
+    const schreibtBeimVerlassen = feld.af === 'labels' || feld.af === 'beschreibung';
+    if (!schreibtBeimVerlassen && !schreibtAufEnter) return null;
     // der Stand eines Enter-Felds ist leer, auch wenn die abgelehnte Eingabe darin gezeichnet ist
     let stand = feld.gezeichnet;
     if (schreibtAufEnter) stand = '';
