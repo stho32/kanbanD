@@ -2,7 +2,7 @@
 // hat das fokussierte Textfeld einen Entwurf oder einen Bearbeitungsmodus, verwirft Esc ihn ohne Schreibweg und das Fenster
 // bleibt offen; sonst schließt Esc. Enter und das Verlassen speichern weiter.
 const { test, expect } = require('@playwright/test');
-const { reiter } = require('./hilfen');
+const { reiter, breiteSetzen } = require('./hilfen');
 const { DATEI_1, DATEI_2, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansagen, ansichtNeuZeichnen } = require('./r00155-hilfen');
 
 const TITELFELD = '#fenster [data-af="titel"]';
@@ -205,6 +205,28 @@ test.describe('R00155 #54: Felder ohne Entwurf', () => {
       await nichtsGeschrieben(page, k, vorher, '54-9');
     });
   }
+});
+
+test.describe('R00155 #54: Fußhinweis und Kürzelhilfe nennen das Verwerfen', () => {
+  test('54-11: bei 1280 px lautet der Tastenhinweis im Fuß „Esc Eingabe verwerfen · erneut schließen“ (Esc als Taste); die Kürzelhilfe führt „Esc — Eingabe verwerfen; ohne Eingabe schließen“; bis 640 px ist der Hinweis ausgeblendet', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Inhalt');
+    const hinweis = fenster.locator('.mod-fuss .tastenhinweis');
+    await expect(hinweis).toBeVisible();
+    await expect(hinweis).toHaveText('Esc Eingabe verwerfen · erneut schließen');
+    await expect(hinweis.locator('kbd')).toHaveText(['Esc']);
+    await page.keyboard.press('?');
+    const hilfe = page.getByRole('dialog', { name: 'Tastaturkürzel' });
+    await expect(hilfe.locator('h3').first()).toHaveText('HIER: AUFGABENFENSTER');
+    const zeile = hilfe.locator('table').first().locator('tr', { has: page.locator('kbd', { hasText: /^Esc$/ }) });
+    await expect(zeile.locator('td')).toHaveText(['Esc', 'Eingabe verwerfen; ohne Eingabe schließen']);
+    await page.keyboard.press('Escape');
+    await expect(hilfe).toHaveCount(0);
+    await expect(fenster).toBeVisible();
+    await breiteSetzen(page, 640);
+    await expect(hinweis).toBeHidden();
+    await breiteSetzen(page, 641);
+    await expect(hinweis).toBeVisible();
+  });
 });
 
 // Herauslösbarer Block 54B (US-5): nimmt der Betreiber die Regel für die Beschreibung zurück, entfällt genau dieser Block.
