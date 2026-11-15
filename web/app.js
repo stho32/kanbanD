@@ -532,7 +532,7 @@ function schreiben(methode, pfad, daten, feld = null) {
   return durchDieSchlange(async () => {
     try {
       await api(methode, pfad, daten);
-      S.ui.gespeichert = Date.now(); fensterMelden(null);
+      gespeichertMelden(feld);
       if (feld) S.ui.entwurf = null;
     } catch (f) { fensterMelden(f.message, feld); S.ui.fehler = f.message; }
   });
@@ -630,7 +630,7 @@ async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
     const antwort = await senden();
     S.ui.hinweis = { text: erfolg(antwort), at: Date.now() };
     S.ui.fokus = ziele(true, antwort);
-    if (S.ui.offen) fensterMelden(null);
+    if (S.ui.offen) meldungNachErfolgRaeumen();
   } catch (f) {
     S.ui.fokus = ziele(false);
     // Ist das Aufgabenfenster oberster Dialog, gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis darüber
@@ -662,10 +662,46 @@ function fokusAusDemHinweis() {
   if (f.left < h.right && f.right > h.left && f.top < h.bottom && f.bottom > h.top) ziel.scrollIntoView({ block: 'nearest' });
 }
 
-/** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig. */
+/** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig.
+    Eine neue Meldung nimmt den Platz: die abgelehnte Eingabe eines anderen Felds geht mit ihrer Meldung (R00155 G-3 c). */
 function fensterMelden(text, feld = null) {
+  if (text) abgelehnteEingabeRaeumen(feld);
   S.ui.fensterFehler = text;
   S.ui.fensterFehlerFeld = feld;
+}
+
+/** Meldung und abgelehnte Eingabe des Fensters stehen und gehen nur gemeinsam (R00155 G-3). Räumt beide, wenn die abgelehnte
+    Eingabe nicht zu `feld` gehört — ihr Feld zeigt wieder den Stand der Datei, der Titel den Lesezustand. Wahr, wenn geräumt wurde. */
+function abgelehnteEingabeRaeumen(feld = null) {
+  const u = S.ui;
+  const abgelehnt = abgelehntesFeld(u.entwurf, { text: u.fensterFehler, feld: u.fensterFehlerFeld }, u.offen);
+  if (abgelehnt === null || abgelehnt === feld) return false;
+  u.entwurf = null;
+  u.fensterFehler = null;
+  u.fensterFehlerFeld = null;
+  if (abgelehnt === TITEL_FELD) u.titelBearbeiten = false;
+  return true;
+}
+
+/** Ein Schreibweg des Aufgabenfensters ist angenommen; `feld` nennt das Eingabefeld, aus dem er kam. Die Meldung geht — außer
+    sie erklärt die abgelehnte Eingabe eines anderen Felds: dann bleiben beide stehen (R00155 G-3). */
+function meldungNachErfolgRaeumen(feld = null) {
+  const u = S.ui;
+  const abgelehnt = abgelehntesFeld(u.entwurf, { text: u.fensterFehler, feld: u.fensterFehlerFeld }, u.offen);
+  if (abgelehnt !== null && abgelehnt !== feld) return;
+  fensterMelden(null);
+}
+/** Wie `meldungNachErfolgRaeumen`, dazu „gespeichert hh:mm:ss“ im Fuß. */
+function gespeichertMelden(feld = null) {
+  S.ui.gespeichert = Date.now();
+  meldungNachErfolgRaeumen(feld);
+}
+
+/** Die abgeschickte Eingabe eines Felds nimmt den einen Platz des Fensters (G-1, G-2); sie bleibt stehen, wenn der Server
+    sie ablehnt. Die abgelehnte Eingabe eines anderen Felds weicht samt ihrer Meldung (G-3). */
+function entwurfAbschicken(feld, wert) {
+  abgelehnteEingabeRaeumen(feld);
+  S.ui.entwurf = { nummer: S.ui.offen, feld, wert };
 }
 
 /** Zeigt eine Meldung im Hinweis (D00007, R00147): knopflos, `role="status"`, auf dem Board unten und im offenen Fenster
@@ -711,7 +747,7 @@ async function aufgabeAendern(nummer, aenderung, feld = null) {
   let gelungen = true;
   try {
     await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, aenderung));
-    S.ui.gespeichert = Date.now(); fensterMelden(null);
+    gespeichertMelden(feld);
   } catch (f) { fensterMelden(f.message, feld); gelungen = false; }
   render();
   return gelungen;
@@ -723,7 +759,7 @@ async function titelSpeichern(wert) {
   const u = S.ui;
   const nummer = u.offen;
   if (ichNoetig()) { u.titelBearbeiten = false; render(); return; }
-  u.entwurf = { nummer, feld: TITEL_FELD, wert };
+  entwurfAbschicken(TITEL_FELD, wert);
   const gelungen = await aufgabeAendern(nummer, { titel: wert }, TITEL_FELD);
   if (u.offen !== nummer) return;
   if (gelungen) { u.entwurf = null; u.titelBearbeiten = false; }
@@ -816,19 +852,13 @@ function verlassenNachholen() {
     Entwurf, wie Esc im selben Feld; hat der Knopf selbst den Fokus, ist es das Feld unmittelbar davor (54-13); (2) sonst die abgelehnte Eingabe des Fensters, der Fokus bleibt, wo er war; (3) sonst
     nichts. Er schließt das Fenster nie. */
 function eingabeVerwerfenPerKnopf() {
-  const u = S.ui;
   const vorDemKnopf = feldVorDemVerwerfen;
   feldVorDemVerwerfen = null;
   if (vorDemKnopf && vorDemKnopf.isConnected && eingabeVerwerfen(vorDemKnopf, true)) return;
   const aktiv = document.activeElement;
   const fokusImFenster = Boolean(aktiv) && Boolean(aktiv.closest('#fenster'));
   if (fokusImFenster && eingabeVerwerfen(aktiv, true)) return;
-  const abgelehnt = abgelehntesFeld(u.entwurf, { text: u.fensterFehler, feld: u.fensterFehlerFeld }, u.offen);
-  if (abgelehnt === null) return;
-  u.entwurf = null;
-  fensterMelden(null);
-  if (abgelehnt === TITEL_FELD) u.titelBearbeiten = false;
-  render();
+  if (abgelehnteEingabeRaeumen()) render();
 }
 
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
@@ -845,7 +875,7 @@ async function mehrereAendern(aenderungen) {
   if (ichNoetig()) { render(); return; }
   try {
     await durchDieSchlange(() => api('PATCH', '/api/aufgaben/mehrere', { aenderungen }));
-    S.ui.gespeichert = Date.now(); fensterMelden(null);
+    gespeichertMelden();
   } catch (f) { S.ui.fehler = f.message; }
   render();
 }
@@ -1606,7 +1636,7 @@ async function aktion(a, arg, wert) {
             fensterMelden(f.message);
             return;
           }
-          if (u.offen && u.fensterFehler) fensterMelden(null);
+          if (u.offen && u.fensterFehler) meldungNachErfolgRaeumen();
           if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
           if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
           // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
@@ -1931,21 +1961,21 @@ async function aktion(a, arg, wert) {
         return durchDieSchlange(async () => {
           try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
           catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; return; }
-          u.wirkungNeu = null; u.gespeichert = Date.now(); fensterMelden(null);
+          u.wirkungNeu = null; gespeichertMelden();
         });
       }
       case 'wirkung-eintritt': {
         if (ichNoetig()) break;
         const [i, an] = arg.split('|');
         return durchDieSchlange(async () => {
-          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); u.gespeichert = Date.now(); fensterMelden(null); }
+          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); gespeichertMelden(); }
           catch (fehler) { fensterMelden(fehler.message); }
         });
       }
       case 'wirkung-weg': {
         if (ichNoetig()) break;
         return durchDieSchlange(async () => {
-          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); u.gespeichert = Date.now(); fensterMelden(null); }
+          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); gespeichertMelden(); }
           catch (fehler) { fensterMelden(fehler.message); }
         });
       }
@@ -2014,7 +2044,7 @@ async function aktion(a, arg, wert) {
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
         u.fokus = '#herkunft-neu';
         // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
-        u.entwurf = { nummer: u.offen, feld: HERKUNFT_FELD, wert };
+        entwurfAbschicken(HERKUNFT_FELD, wert);
         const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] }, HERKUNFT_FELD);
         if (gelungen) u.entwurf = null;
         render();
@@ -2029,7 +2059,7 @@ async function aktion(a, arg, wert) {
         if (!(wert || '').trim() || ichNoetig()) break;
         u.tab = 'zeiten'; u.fokus = '#zeit-neu';
         // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
-        u.entwurf = { nummer: u.offen, feld: ZEIT_FELD, wert };
+        entwurfAbschicken(ZEIT_FELD, wert);
         await schreiben('POST', `/api/aufgaben/${u.offen}/zeiten`, { dauer: wert }, ZEIT_FELD);
         return;
       }

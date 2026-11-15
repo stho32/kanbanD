@@ -244,3 +244,107 @@ test.describe('R00155 #96 und #93 gemeinsam: wer den einen Entwurf hält (G-2)',
     await expect(fenster.locator('[role=alert]')).toContainText(MELDUNG_X1);
   });
 });
+
+// G-3 (Muss B1 des code-reviewer, product-owner 2026-11-15): Meldung und abgelehnte Eingabe stehen und gehen nur gemeinsam.
+// Die Probe des code-reviewer (Titel) liegt in r00155-titel-nach-fremdem-erfolg.spec.js; hier die vier weiteren Proben.
+test.describe('R00155 #96 und #93 gemeinsam: Meldung und abgelehnte Eingabe gehören zusammen (G-3)', () => {
+  const MELDUNG_ENDE = 'Das Ende liegt vor dem Beginn';
+
+  /** Aufgabenfenster von #1 in „Zeiten“, `abc` in „Zeit nachtragen“ mit Enter abgelehnt (Lage nach 93-1). */
+  async function dauerAbgelehnt(page) {
+    const fenster = await fensterOeffnen(page, 1);
+    await reiter(page, 'Zeiten');
+    const zeit = fenster.getByLabel('Zeit nachtragen');
+    await zeit.fill('abc');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_DAUER);
+    await expect(zeit).toHaveAttribute('aria-invalid', 'true');
+    return { fenster, zeit };
+  }
+
+  test('G-3 Variante Dauer: Lage nach 93-1, danach Kommentar „Notiz“ + Enter gespeichert → in „Zeiten“ steht abc, ungültig, die Meldung zur Dauer steht neben „gespeichert“', async ({ page }) => {
+    k = await starten(page);
+    const { fenster, zeit } = await dauerAbgelehnt(page);
+    await reiter(page, 'Inhalt');
+    const kommentar = fenster.getByLabel('Neuer Kommentar');
+    await kommentar.fill('Notiz');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('Notiz');
+    await expect(fenster.locator('.mod-fuss .gs')).toHaveText(/^gespeichert \d\d:\d\d:\d\d$/);
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_DAUER);
+    await reiter(page, 'Zeiten');
+    await expect(zeit).toHaveValue('abc');
+    await expect(zeit).toHaveAttribute('aria-invalid', 'true');
+    await expect(zeit).toHaveAttribute('aria-describedby', 'fenster-meldung');
+    await expect(fenster.locator('#fenster-meldung')).toHaveText(MELDUNG_DAUER);
+    expect(await verweise(fenster)).toEqual(NUR('#zeit-neu'));
+  });
+
+  test('G-3 Variante Herkunft: X1 in „Neue Herkunft“ abgelehnt, danach Labels + Tab gespeichert → X1 steht, ungültig, die Meldung steht neben „gespeichert“', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await reiter(page, 'Details');
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.fill('X1');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('[role=alert]')).toContainText(MELDUNG_X1);
+    await fenster.getByLabel('Labels').fill('ui, daten, neu');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+    await expect(fenster.locator('.mod-fuss .gs')).toHaveText(/^gespeichert \d\d:\d\d:\d\d$/);
+    await expect(fenster.locator('[role=alert]')).toContainText(MELDUNG_X1);
+    await expect(herkunft).toHaveValue('X1');
+    await expect(herkunft).toHaveAttribute('aria-invalid', 'true');
+    await expect(herkunft).toHaveAttribute('aria-describedby', 'fenster-meldung');
+    expect(await verweise(fenster)).toEqual(NUR('#herkunft-neu'));
+    // auch neu gezeichnet ohne Fokus im Feld
+    await ansichtNeuZeichnen(page, 'Details');
+    await expect(herkunft).toHaveValue('X1');
+    expect(await verweise(fenster)).toEqual(NUR('#herkunft-neu'));
+  });
+
+  test('G-3 Variante Verdrängung, Feld: Titel abgelehnt, danach abc in „Zeit nachtragen“ abgelehnt, zurück zu „Inhalt“ → Titel im Lesezustand „Abnahme prüfen“, die Meldung nennt die Dauer, nur „Zeit nachtragen“ ist ungültig', async ({ page }) => {
+    k = await starten(page);
+    const fenster = await fensterOeffnen(page, 1);
+    await page.locator(TITEL_LESEN).click();
+    await page.locator(TITELFELD).fill('');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_TITEL);
+    await reiter(page, 'Zeiten');
+    const zeit = fenster.getByLabel('Zeit nachtragen');
+    await zeit.fill('abc');
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_DAUER);
+    expect(await verweise(fenster)).toEqual(NUR('#zeit-neu'));
+    await reiter(page, 'Inhalt');
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme prüfen');
+    await expect(page.locator(TITELFELD), 'kein Titelfeld ohne abgelehnte Eingabe').toHaveCount(0);
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_DAUER);
+    expect(await verweise(fenster), 'in „Inhalt“ ist kein Feld ungültig').toEqual({ ungueltig: [], verweist: [], meldungen: 1 });
+    await reiter(page, 'Zeiten');
+    await expect(zeit).toHaveValue('abc');
+    expect(await verweise(fenster)).toEqual(NUR('#zeit-neu'));
+    expect(k.lies(DATEI_1)).toContain('title: Abnahme prüfen\n');
+  });
+
+  test('G-3 Variante Verdrängung, Meldung ohne Feld: Lage nach 93-1, danach lehnt der Server eine Zeitkorrektur ab (Ende vor Beginn) → „Zeit nachtragen“ leer und nicht ungültig, die neue Meldung steht', async ({ page }) => {
+    k = await starten(page);
+    const angelegt = await page.request.post(k.adresse + 'api/aufgaben/1/zeiten', { headers: { 'X-KanbanD-Wer': 'st' }, data: { wer: 'st', beginn: '2026-01-05 09:00', ende: '2026-01-05 10:00' } });
+    expect(angelegt.status(), await angelegt.text()).toBe(200);
+    const { fenster, zeit } = await dauerAbgelehnt(page);
+    await fenster.getByRole('button', { name: 'Zeit 1 korrigieren' }).click();
+    const [beginn, ende] = [fenster.getByLabel('Beginn', { exact: true }), fenster.getByLabel('Ende', { exact: true })];
+    const [von, bis] = [await beginn.inputValue(), await ende.inputValue()];
+    await expect(zeit, 'bis zur neuen Meldung steht die abgelehnte Eingabe').toHaveValue('abc');
+    await beginn.fill(bis);
+    await ende.fill(von);
+    await page.keyboard.press('Enter');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_ENDE);
+    await expect(zeit).toHaveValue('');
+    expect(await verweise(fenster), 'kein Feld ist ungültig, die neue Meldung steht').toEqual({ ungueltig: [], verweist: [], meldungen: 1 });
+    // auch neu gezeichnet steht abc nicht wieder da
+    await ansichtNeuZeichnen(page, 'Zeiten');
+    await expect(zeit).toHaveValue('');
+    await expect(fenster.locator('.mod-fuss [role=alert]')).toHaveText(MELDUNG_ENDE);
+  });
+});
