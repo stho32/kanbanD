@@ -4,9 +4,10 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, reiter, thema, kontrastAm, kontrastFarben, ausMehr } = require('./hilfen');
 const { breiteMessen, ueberlauf } = require('./ziele-hilfen');
 
-/* Die Datei kennt nur Minuten: `vor` legt einen Beginn in Ortszeit vor jetzt, wie die Fixtures der Nachbartests. */
-const vor = minuten => {
-  const d = new Date(Date.now() - minuten * 6e4), p = n => String(n).padStart(2, '0');
+/* Die Datei kennt nur Minuten: `vor` legt einen Beginn in Ortszeit vor jetzt, wie die Fixtures der Nachbartests.
+   Eine Probe an einer Stundengrenze nennt `jetzt` selbst und stellt die Uhr des Browsers auf denselben Zeitpunkt. */
+const vor = (minuten, jetzt = Date.now()) => {
+  const d = new Date(jetzt - minuten * 6e4), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 /** Eine Uhrzeit am festen Probentag — die Grenzproben stellen die Uhr des Browsers auf `page.clock`. */
@@ -189,16 +190,20 @@ test.describe('R00114', () => {
   });
 
   test('US-2: die Dauer im Wort an der Karte — 25 h, 35 h, 36 h, 47:59, 48 h, 30 Tage', async ({ page }) => {
+    // Beginne und Uhr des Browsers aus demselben Zeitpunkt (ADR-0026 Regel 5): ein Beginn ist auf die Minute gekürzt, also bis
+    // zu 59 s älter als gesagt — mit laufender Wanduhr käme die Laufzeit des Tests dazu, und „47:59“ stünde als 48 Stunden da.
+    const jetzt = Date.now();
     const bestand = {
       'kanbanD.md': KOPF,
       'boards/entwicklung.md': BOARD,
-      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(25 * 60 + 1)} · ... · st`]),
-      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', [`${vor(35 * 60 + 1)} · ... · st`]),
-      'aufgaben/0003-drei.md': karte(3, 'drei', 'bug', [`${vor(36 * 60 + 1)} · ... · st`]),
-      'aufgaben/0004-vier.md': karte(4, 'vier', 'bug', [`${vor(47 * 60 + 59)} · ... · st`]),
+      'aufgaben/0001-eins.md': karte(1, 'eins', 'bug', [`${vor(25 * 60 + 1, jetzt)} · ... · st`]),
+      'aufgaben/0002-zwei.md': karte(2, 'zwei', 'bug', [`${vor(35 * 60 + 1, jetzt)} · ... · st`]),
+      'aufgaben/0003-drei.md': karte(3, 'drei', 'bug', [`${vor(36 * 60 + 1, jetzt)} · ... · st`]),
+      'aufgaben/0004-vier.md': karte(4, 'vier', 'bug', [`${vor(47 * 60 + 59, jetzt)} · ... · st`]),
     };
     k = await kanbanStarten(einrichten(bestand));
     await alsPerson(page, 'st');
+    await uhrStellen(page, new Date(jetzt));
     await page.goto(k.adresse);
     // kein Sprung auf Tage vor 48 Stunden (AK 3): 25, 35 und 36 Stunden stehen alle in Stunden
     await expect(page.locator('.ka[data-id="1"] .lauf.vergessen')).toHaveText('seit 25 Stunden');
@@ -209,8 +214,8 @@ test.describe('R00114', () => {
     await expect(page.locator('.ka[data-id="3"]')).toHaveAttribute('aria-label', '#3 drei, Fehler, Timer läuft seit 36 Stunden, seit 0 Stunden in Zu erledigen');
     const tage = {
       ...bestand,
-      'aufgaben/0005-fuenf.md': karte(5, 'fünf', 'bug', [`${vor(30 * 24 * 60 + 60)} · ... · st`]),
-      'aufgaben/0006-sechs.md': karte(6, 'sechs', 'bug', [`${vor(48 * 60 + 1)} · ... · st`]),
+      'aufgaben/0005-fuenf.md': karte(5, 'fünf', 'bug', [`${vor(30 * 24 * 60 + 60, jetzt)} · ... · st`]),
+      'aufgaben/0006-sechs.md': karte(6, 'sechs', 'bug', [`${vor(48 * 60 + 1, jetzt)} · ... · st`]),
       'boards/entwicklung.md': BOARD.replace('- #4\n', '- #4\n- #5\n- #6\n'),
     };
     await k.stoppen();

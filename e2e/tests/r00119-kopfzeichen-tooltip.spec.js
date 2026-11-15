@@ -231,6 +231,9 @@ test.describe('R00119', () => {
     await zweiter.getByRole('button', { name: 'Neue Aufgabe in In Arbeit' }).click();
     await zweiter.getByLabel('Titel der neuen Aufgabe').fill('von Mia');
     await zweiter.keyboard.press('Enter');
+    // das Ergebnis der fremden Aktion abwarten, bevor geurteilt wird (ADR-0026 Regel 4): steht Mias Karte auf der ersten Seite,
+    // ist das Live-Ereignis angekommen und gezeichnet — sonst träfe es irgendwann vor, in oder nach den Zusicherungen ein
+    await expect(page.locator('.ka', { hasText: 'von Mia' })).toBeVisible();
     await zweiter.close();
     await expect(blase(page)).toHaveText(INFO);
     await expect(sichtbar(page)).toHaveCount(1);
