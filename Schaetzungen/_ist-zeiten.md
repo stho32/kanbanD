@@ -571,3 +571,8 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0707 „Wie lange noch“ liest dieselbe Funktion, Test „gleiche Zahl offen“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0708 Zeile „Ausgenommen“ zählt keine verworfene Aufgabe | Standard | 0,25-0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0709 Festhalte-Tests, Grundbestand B, Abnahme-Probe im echten Programm | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0710 Abnahme-Probe: Tabelle über die 36 Endpunkte und Abgleich | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0711 Extraktor JsonKoerper<T>: Inhalt wird 400 mit Feldpfad | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0712 Transport: 415 und 413 mit {fehler} | Unklar | 0,5-2h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0713 36 Handler lesen über JsonKoerper<T> | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0714 Gegenproben, Mutanten und Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
