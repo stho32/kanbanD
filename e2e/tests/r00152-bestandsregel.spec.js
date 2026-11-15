@@ -68,7 +68,6 @@ async function zeigeAuf(page, svg, x, y) {
   await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + y * s);
 }
 
-// „erwartet rot“ (test.fail) trägt, was noch nicht gebaut ist — die Markierung fällt mit der Bubble, die den Test grün macht.
 test('R00152 US-1 (AK 4): im Burndown zählt die verworfene Aufgabe ab dem Archivtag nicht mehr — 05.11. und 06.11. offen 4, Umfang 9', async ({ page }) => {
   const k = await kanbanStarten(grundbestandB);
   try {
@@ -103,7 +102,7 @@ async function zeilenTextNach(page, tabelleOeffnen) {
   return zeilenText(zeilenOrt);
 }
 
-test.fail('R00152 US-3 (AK 2): im Kumulativen Fluss fällt die verworfene Aufgabe am Archivtag aus dem Stapel, der Vortag bleibt', async ({ page }) => {
+test('R00152 US-3 (AK 2): im Kumulativen Fluss fällt die verworfene Aufgabe am Archivtag aus dem Stapel, der Vortag bleibt', async ({ page }) => {
   const k = await kanbanStarten(grundbestandA());
   try {
     await berichtAm(page, k, '2026-11-10', 'fluss');

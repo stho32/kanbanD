@@ -97,3 +97,30 @@ test('R00152 B0705: die verworfene Aufgabe fällt auch aus einem Burndown mit Ze
   const ab = B.burndown(bewegungenA(), filter({}), aufgabenA(), ms(10), '2026-11-05');
   assert.deepStrictEqual(kurz(ab), ['4/7', '1/3', '1/3', '1/3', '1/3', '1/3']);
 });
+
+/* ── B0706 Kumulativer Fluss liest den Bestand ── */
+const baender = tage => tage.map(x => SPALTEN.map(s => x.jeSpalte[s]).join('·'));
+const offenGesamt = tage => tage.map(x => `${x.offen}/${x.gesamt}`);
+const flussA = (optionen = {}, f = {}, heute = ms(10), archivtag3) => B.fluss(bewegungenA(optionen), filter(f), aufgabenA(archivtag3), heute).tage;
+
+test('R00152 B0706 (AK 2): Fluss im Grundbestand A — Bänder 7·0·0, 4·0·3 und ab dem Archivtag 1·0·2; offen und gesamt wie der Burndown', () => {
+  const tage = flussA();
+  assert.deepStrictEqual(baender(tage), neunTage('7·0·0', '4·0·3', '1·0·2'));
+  assert.deepStrictEqual(offenGesamt(tage), neunTage('7/7', '4/7', '1/3'));
+});
+
+test('R00152 B0706 (AK 2): „angekommen“ und „fertig“ sinken nicht — an jedem Tag 7, fertig 0 am 02.11. und 3 ab dem 03.11.', () => {
+  const tage = flussA();
+  assert.deepStrictEqual(tage.map(x => x.angekommen), Array(9).fill(7));
+  assert.deepStrictEqual(tage.map(x => x.fertig), [0, 3, 3, 3, 3, 3, 3, 3, 3]);
+});
+
+test('R00152 B0706 (AK 6): die in der Abschlussspalte archivierte #4 bleibt im Band „Fertig“ — ohne sie stünde dort nur #2', () => {
+  assert.strictEqual(flussA()[8].jeSpalte.Fertig, 2, '#2 und #4');
+  const ohne4 = B.fluss({ spalten: SPALTEN, aufgaben: bewegungenA().aufgaben.filter(a => a.nummer !== 4) }, filter({}), aufgabenA(), ms(10)).tage;
+  assert.strictEqual(ohne4[8].jeSpalte.Fertig, 1);
+});
+
+test('R00152 B0706 (AK 5): Fluss am Stand 06.11., 12:00 Uhr — Vortag 4·0·3, Archivtag 1·0·2', () => {
+  assert.deepStrictEqual(baender(flussA({}, {}, ms(6, 12, 0))), ['7·0·0', '4·0·3', '4·0·3', '4·0·3', '1·0·2']);
+});

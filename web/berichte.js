@@ -102,10 +102,11 @@
   /* ── Bewegungen (R00042) ── */
   const zeitMs = z => { const [d, t] = z.split(' '); const [j, m, tg] = d.split('-').map(Number); const [h, mi] = t.split(':').map(Number); return new Date(j, m - 1, tg, h, mi).getTime(); };
 
-  /** Spalte einer Aufgabe zum Zeitpunkt t (null = nicht auf dem Board). */
+  /** Spalte einer Aufgabe zum Zeitpunkt t (null = nicht auf dem Board). Ein Wechsel darf seinen Zeitpunkt schon gerechnet
+      mitbringen (`ms`, siehe `wechselInMs`) — dann liest die Schleife je Tag kein Datum mehr. */
   function spalteAm(wechsel, t) {
     let s = null;
-    for (const w of wechsel) { if (zeitMs(w.zeitpunkt) > t) break; s = w.spalte; }
+    for (const w of wechsel) { if ((w.ms ?? zeitMs(w.zeitpunkt)) > t) break; s = w.spalte; }
     return s;
   }
 
@@ -126,11 +127,17 @@
   }
   /** Was „erledigt“ heißt: heute die Abschlussspalte (die letzte Spalte) des Boards. */
   const erledigtSpalten = bew => bew.spalten.slice(-1);
-  /** Bestand der Aufgaben eines Boards (Einträge aus bew.aufgaben): der Archivtag kommt aus der Aufgabenliste des Clients
-      (`aufgabeZu`; ohne Datei kein Archivtag), „erledigt“ aus dem Board. */
+  /** Die Wechsel einer Aufgabe mit gerechnetem Zeitpunkt — einmal je Aufgabe, nicht je Tag (Lastprofil, ADR-0027). */
+  const wechselInMs = wechsel => wechsel.map(w => ({ ms: zeitMs(w.zeitpunkt), spalte: w.spalte }));
+  /** Bestand der Aufgaben eines Boards: zu einer Aufgabe (Eintrag aus bew.aufgaben) die Funktion `t → Zustand` (`bestandAm`).
+      Der Archivtag kommt aus der Aufgabenliste des Clients (`aufgabeZu`; ohne Datei kein Archivtag), „erledigt“ aus dem Board;
+      beides und die Zeitpunkte der Wechsel werden je Aufgabe einmal gelesen. */
   function bestandLeser(bew, aufgabeZu) {
     const erledigt = erledigtSpalten(bew);
-    return (a, t) => { const x = aufgabeZu(a.nummer); return bestandAm(a.wechsel, x && x.archiviert, t, erledigt); };
+    return a => {
+      const x = aufgabeZu(a.nummer), archiviert = x && x.archiviert, wechsel = wechselInMs(a.wechsel);
+      return t => bestandAm(wechsel, archiviert, t, erledigt);
+    };
   }
   /** Zählt dieser Zustand zum Bestand des Berichts? „Da“ und nicht in einer ausgeschlossenen Spalte. */
   const imBestand = (f, zustand) => zustand.art === 'da' && !f.ohneSpalten.includes(zustand.spalte);
@@ -171,13 +178,13 @@
     const g = grenzenAb(f, jetzt, start), bestand = bestandLeser(bew, aufgabeZu);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
-    const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)));
+    const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer))).map(bestand);
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       let offen = 0, umfang = 0;
-      for (const a of gezaehlt) {
-        const zustand = bestand(a, ende);
+      for (const zustandAm of gezaehlt) {
+        const zustand = zustandAm(ende);
         if (!imBestand(f, zustand)) continue;
         umfang++;
         if (!zustand.erledigt) offen++;
@@ -190,33 +197,31 @@
 
   /* ── Kumulativer Fluss (R00121) ── */
   /** Je Tag im Zeitraum die gestapelten Bänder je Spalte (Stand am Tagesende, heute jetzt; ab `start`)
-      mit `gesamt` (Summe der Bänder) und `offen` (Aufgaben unterhalb der Abschlussspalte).
-      Zählt wie der Burndown: `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
+      mit `gesamt` (Summe der Bänder) und `offen` (im Bestand und nicht erledigt).
+      Zählt wie der Burndown: Bänder, `gesamt` und `offen` aus dem Bestand (`bestandAm`), `angekommen` und `fertig` aus dem
+      ersten Erreichen (sinken nicht); `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
       Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten. */
   function fluss(bew, f, aufgabeZu, jetzt, start = null) {
     const spalten = bew.spalten;
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return { spalten, tage: [] };
-    const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1];
-    // je Aufgabe einmal die Wechsel in ms, die Ankunft und das Erreichen der Abschlussspalte — nicht je Tag neu.
+    const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1], bestand = bestandLeser(bew, aufgabeZu);
+    // je Aufgabe einmal: der Bestand über die Zeit, die Ankunft und das Erreichen der Abschlussspalte — nicht je Tag neu.
+    const erstesMal = (a, trifft) => { const w = a.wechsel.find(trifft); return w ? zeitMs(w.zeitpunkt) : Infinity; };
     const beitraege = bew.aufgaben
       .filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)))
-      .map(a => {
-        const wechsel = a.wechsel.map(w => ({ ms: zeitMs(w.zeitpunkt), spalte: w.spalte }));
-        return { wechsel, ankunft: (wechsel.find(w => w.spalte != null) || {}).ms ?? Infinity, fertig: (wechsel.find(w => w.spalte === abschluss) || {}).ms ?? Infinity };
-      });
+      .map(a => ({ zustandAm: bestand(a), ankunft: erstesMal(a, w => w.spalte != null), fertig: erstesMal(a, w => w.spalte === abschluss) }));
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       const jeSpalte = Object.fromEntries(spalten.map(s => [s, 0]));
       let gesamt = 0, offen = 0, angekommen = 0, fertig = 0;
       for (const b of beitraege) {
-        let s = null;
-        for (const w of b.wechsel) { if (w.ms > ende) break; s = w.spalte; }
-        if (s != null && !f.ohneSpalten.includes(s)) {
-          jeSpalte[s]++;
+        const zustand = b.zustandAm(ende);
+        if (imBestand(f, zustand)) {
+          jeSpalte[zustand.spalte]++;
           gesamt++;
-          if (s !== abschluss) offen++;
+          if (!zustand.erledigt) offen++;
         }
         // „angekommen“ und „fertig“ steigen monoton: eine spätere Abnahme senkt sie nicht
         if (b.ankunft <= ende) angekommen++;
