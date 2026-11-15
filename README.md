@@ -79,7 +79,7 @@ curl -X POST http://localhost:7420/api/aufgaben -H 'X-KanbanD-Wer: cl' \
 
 ```bash
 cargo test                       # Unit und Integration (gegen das echte Programm und echtes Git)
-node --test e2e/einheit/         # Unit-Tests der reinen JavaScript-Funktionen
+node --test "e2e/einheit/*.js"  # Unit-Tests der reinen JavaScript-Funktionen
 cd e2e && npm install && npx playwright install chromium && npx playwright test   # E2E im Browser
 cargo llvm-cov --summary-only    # Abdeckung
 ```
