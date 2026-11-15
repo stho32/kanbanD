@@ -5,7 +5,7 @@
 // der Tipp dem Feld den Fokus lässt (das Verlassen speicherte sonst den Entwurf).
 const { test, expect } = require('@playwright/test');
 const { reiter, thema } = require('./hilfen');
-const { DATEI_1, MELDUNG_TITEL, MELDUNG_DAUER, starten, fensterOeffnen, standMerken, nichtsGeschrieben, verweise, ansagen, ansichtNeuZeichnen } = require('./r00155-hilfen');
+const { DATEI_1, MELDUNG_TITEL, MELDUNG_DAUER, starten, fensterOeffnen, standMerken, nichtsGeschrieben, verweise, ansagen, ansichtNeuZeichnen, fremdesNeuzeichnen } = require('./r00155-hilfen');
 
 const TOUCH = breite => ({ viewport: { width: breite, height: 896 }, isMobile: true, hasTouch: true });
 const TITELFELD = '#fenster [data-af="titel"]';
@@ -214,6 +214,147 @@ test.describe('R00155 #54: Knopf „Eingabe verwerfen“, 414 px mit Touch', () 
       await expect(fenster).toBeVisible();
       await nichtsGeschrieben(page, k, vorher, '54B-5, leer');
     });
+  });
+});
+
+// 54-13 (Muss M-A des ux-reviewer, US-10 drittes Szenario): Hilfstechnik löst den Knopf ohne Zeiger aus — der Fokus wandert
+// zuerst auf den Knopf, erst dann kommt der Klick. Das Feld „unmittelbar vor dem Knopf“ gilt als noch nicht verlassen.
+test.describe('R00155 #54: Knopf „Eingabe verwerfen“ ohne Zeiger ausgelöst (54-13), 414 px mit Touch', () => {
+  test.use(TOUCH(414));
+
+  /** Der Knopf bekommt den Fokus und wird in einem Zug ausgelöst — ohne Zeigerereignis davor. */
+  const ohneZeigerAusloesen = knopf => knopf.evaluate(element => { element.focus(); element.click(); });
+
+  /** Labels von #1 mit getipptem `ui, daten, neu`, Fokus im Feld. */
+  async function labelsMitEntwurf(page) {
+    const fenster = await fensterIn(page, 'Details');
+    const labels = fenster.getByLabel('Labels');
+    await labels.tap();
+    await page.keyboard.press('End');
+    await page.keyboard.type(', neu');
+    await expect(labels).toHaveValue('ui, daten, neu');
+    return { fenster, labels };
+  }
+
+  test('54-13/US-10 (Abnahme-Probe des ux-reviewer, wörtlich): im Labels-Feld ist „ui, daten, neu“ getippt, knopf.focus(); knopf.click() → Labels zeigt „ui, daten“, das Fenster ist offen, kein PATCH, Datei und Zahl der Commits unverändert; der Fokus steht wieder im Feld', async ({ page }) => {
+    const { fenster, labels } = await labelsMitEntwurf(page);
+    const vorher = await standMerken(page, k);
+    const angesagt = await ansagen(page);
+    await ohneZeigerAusloesen(knopfIm(fenster));
+    await expect(labels).toHaveValue('ui, daten');
+    await expect(labels).toBeFocused();
+    await expect(fenster).toBeVisible();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Labels');
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('PATCH')), 'kein PATCH').toEqual([]);
+    expect(k.lies(DATEI_1)).toContain('labels: [ui, daten]\n');
+    expect(await ansagen(page), 'stumm').toEqual(angesagt);
+    // verlassen ohne neue Eingabe: auch danach ist nichts geschrieben
+    await fenster.getByLabel('Neue Herkunft').tap();
+    await expect(labels).not.toBeFocused();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Labels, nach dem Verlassen');
+  });
+
+  test('54-13 Variante Titel: im Bearbeiten „Abnahme geprüft“ getippt, knopf.focus(); knopf.click() → der Titel liest „Abnahme prüfen“, Fokus auf „Titel bearbeiten“, Fenster offen, nichts geschrieben', async ({ page }) => {
+    const fenster = await titelBearbeiten(page);
+    await page.locator(TITELFELD).fill('Abnahme geprüft');
+    const vorher = await standMerken(page, k);
+    await ohneZeigerAusloesen(knopfIm(fenster));
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme prüfen');
+    await expect(page.locator(TITEL_LESEN)).toBeFocused();
+    await expect(page.locator(TITELFELD)).toHaveCount(0);
+    await expect(fenster).toBeVisible();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Titel');
+    expect(k.lies(DATEI_1)).toContain('title: Abnahme prüfen\n');
+  });
+
+  // Herauslösbar mit dem Block 54B (US-5): fällt er heraus, entfällt dieser Test.
+  test('54-13 Variante Beschreibung: „ und mehr“ angehängt, knopf.focus(); knopf.click() → die Beschreibung liest „Erster Absatz“, Fokus auf „Beschreibung bearbeiten“, Fenster offen, nichts geschrieben', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Inhalt');
+    await page.locator(BESCHREIBUNG_LESEN).tap();
+    await expect(page.locator(BESCHREIBUNG)).toBeFocused();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type(' und mehr');
+    await expect(page.locator(BESCHREIBUNG)).toHaveValue('Erster Absatz und mehr');
+    const vorher = await standMerken(page, k);
+    await ohneZeigerAusloesen(knopfIm(fenster));
+    await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz');
+    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await expect(fenster).toBeVisible();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Beschreibung');
+  });
+
+  test('54-13 Klarstellung (iii), Enter-Feld: in „Neue Herkunft“ ist I00 getippt, knopf.focus(); knopf.click() → Feld leer, Fokus im Feld, nichts geschrieben', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Details');
+    const herkunft = fenster.getByLabel('Neue Herkunft');
+    await herkunft.tap();
+    await page.keyboard.type('I00');
+    const vorher = await standMerken(page, k);
+    await ohneZeigerAusloesen(knopfIm(fenster));
+    await expect(herkunft).toHaveValue('');
+    await expect(herkunft).toBeFocused();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Herkunft');
+  });
+
+  test('54-13: der Fokus ruht erst auf dem Knopf (eigener Schritt, Titel über die 50 ms des Verlassens hinaus), dann wird ausgelöst → der Titel liest „Abnahme prüfen“, nichts geschrieben', async ({ page }) => {
+    const fenster = await titelBearbeiten(page);
+    await page.locator(TITELFELD).fill('Abnahme geprüft');
+    const vorher = await standMerken(page, k);
+    const knopf = knopfIm(fenster);
+    await knopf.focus();
+    await expect(knopf).toBeFocused();
+    // Die Pause ist der Reiz, keine Synchronisation: der Zeitgeber, der einen verlassenen Titel nach 50 ms in den Lesezustand stellt, ist abgelaufen
+    await page.evaluate(() => new Promise(fertig => setTimeout(fertig, 80)));
+    await expect(page.locator(TITELFELD), 'der Entwurf steht noch im Feld').toHaveValue('Abnahme geprüft');
+    await nichtsGeschrieben(page, k, vorher, '54-13 Titel, Fokus ruht auf dem Knopf');
+    await knopf.evaluate(element => element.click());
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme prüfen');
+    await expect(page.locator(TITEL_LESEN)).toBeFocused();
+    await nichtsGeschrieben(page, k, vorher, '54-13 Titel, danach ausgelöst');
+  });
+
+  test('54-13 Gegenprobe: Tab aus Labels nach „Fällig“ speichert weiter (54-10), ein Commit', async ({ page }) => {
+    const { fenster, labels } = await labelsMitEntwurf(page);
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await page.keyboard.press('Tab');
+    await expect(fenster.getByLabel('Fälligkeit', { exact: true })).toBeFocused();
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    await expect(labels).toHaveValue('ui, daten, neu');
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('PATCH')), 'genau ein PATCH').toHaveLength(1);
+  });
+
+  test('54-13 Gegenprobe: Fokus auf den Knopf und ohne Auslösen weiter → solange der Fokus auf dem Knopf steht, steht der Entwurf im Feld; geht er weiter, ist er gespeichert — nie still verloren', async ({ page }) => {
+    const { fenster, labels } = await labelsMitEntwurf(page);
+    const vorher = await standMerken(page, k);
+    const knopf = knopfIm(fenster);
+    await knopf.focus();
+    await expect(knopf).toBeFocused();
+    await expect(labels).toHaveValue('ui, daten, neu');
+    await nichtsGeschrieben(page, k, vorher, '54-13 Fokus auf dem Knopf');
+    await fenster.getByLabel('Neue Herkunft').focus();
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+    await expect.poll(() => k.git('rev-list', '--count', 'HEAD')).toBe(String(Number(vorher.commits) + 1));
+    await expect(labels).toHaveValue('ui, daten, neu');
+  });
+
+  test('54-13 Gegenprobe: der Fokus steht auf dem Knopf, und das Fenster zeichnet neu (bot ändert #2) → der Entwurf ist gespeichert, nie still verloren', async ({ page }) => {
+    const { fenster, labels } = await labelsMitEntwurf(page);
+    const knopf = knopfIm(fenster);
+    await knopf.focus();
+    await expect(knopf).toBeFocused();
+    await fremdesNeuzeichnen(page, k);
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+    await expect(labels).toHaveValue('ui, daten, neu');
+  });
+
+  test('54-13 Gegenprobe: der Fokus steht auf dem Knopf, Esc schließt das Fenster → der Entwurf ist gespeichert wie beim Verlassen, nie still verloren', async ({ page }) => {
+    const { fenster } = await labelsMitEntwurf(page);
+    const knopf = knopfIm(fenster);
+    await knopf.focus();
+    await expect(knopf).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(fenster).toHaveCount(0);
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
   });
 });
 

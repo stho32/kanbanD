@@ -9,6 +9,8 @@
   // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
   // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.
   const ungemeldet = new WeakSet();
+  // Felder, deren „change“ der Browser gemeldet hat, das aber erst mit dem Verlassen wirken soll.
+  const aufgeschoben = new WeakSet();
 
   /** Attributwert für einen Selektor in Anführungszeichen. */
   function zitiert(wert) {
@@ -133,13 +135,19 @@
   /** Ein „change“ des Felds ist angekommen: nichts mehr nachzutragen. */
   function aenderungGemeldet(feld) {
     ungemeldet.delete(feld);
+    aufgeschoben.delete(feld);
   }
 
-  /** Beim Verlassen und auf Enter: ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
+  /** Der Browser hat „change“ gemeldet, es hat aber noch nicht gewirkt (beim Verlassen ist das Ziel des Fokus offen): es bleibt nachzutragen. */
+  function aenderungAufschieben(feld) {
+    aufgeschoben.add(feld);
+  }
+
+  /** Beim Verlassen und auf Enter: ein aufgeschobenes „change“ oder ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
   function aenderungNachtragen(feld) {
-    if (!ungemeldet.has(feld)) return;
-    ungemeldet.delete(feld);
-    if (geaendert(feld)) feld.dispatchEvent(new Event('change', { bubbles: true }));
+    const warAufgeschoben = aufgeschoben.delete(feld);
+    const warZurueckgesetzt = ungemeldet.delete(feld);
+    if (warAufgeschoben || (warZurueckgesetzt && geaendert(feld))) feld.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /**
@@ -198,5 +206,5 @@
     return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungAufschieben, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);

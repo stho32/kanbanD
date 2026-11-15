@@ -762,27 +762,64 @@ const BEARBEITUNGSMODUS = {
     verschwinden. `nurEntwurf` lässt einen unveränderten Bearbeitungsmodus stehen. Falsch, wenn es nichts zu verwerfen gab. */
 function eingabeVerwerfen(feld, nurEntwurf = false) {
   const u = S.ui;
-  if (!feld.dataset || abgeschickteFelder.has(feldname(feld))) return false;
+  const verworfen = verwerfbares(feld);
+  if (!verworfen || (nurEntwurf && !verworfen.hatEntwurf)) return false;
+  feld.value = verworfen.wert;
+  aenderungGemeldet(feld);
+  if (verworfen.haeltEntwurf) u.entwurf = null;
+  if (verworfen.kennung !== null && u.fensterFehlerFeld === verworfen.kennung) fensterMelden(null);
+  if (verworfen.verlaesstModus) { u[verworfen.modus.zustand] = false; u.fokus = verworfen.modus.ausloeser; }
+  // der Knopf hatte den Fokus: nach dem Verwerfen steht er wie nach Esc im Feld (R00155 54-13)
+  else if (document.activeElement !== feld) u.fokus = feldSelektor(feld);
+  render();
+  return true;
+}
+const feldSelektor = feld => feld.id ? '#' + feld.id : `#fenster [data-af="${feld.dataset.af}"]`;
+
+/** Was das Feld des Aufgabenfensters nach der Esc-Regel zu verwerfen hat (`verwerfung`), dazu seine Entwurfskennung und sein
+    Bearbeitungsmodus; null, wenn es nichts zu verwerfen gibt. */
+function verwerfbares(feld) {
+  const u = S.ui;
+  if (!feld.dataset || abgeschickteFelder.has(feldname(feld))) return null;
   const kennung = entwurfskennung(feld);
   const haeltEntwurf = kennung !== null && entwurfswert(u.entwurf, u.offen, kennung) !== null;
   const modus = BEARBEITUNGSMODUS[feld.dataset.af];
   const imModus = Boolean(modus) && u[modus.zustand];
   const verworfen = verwerfung({ af: feld.dataset.af, id: feld.id, wert: feld.value, gezeichnet: feld.defaultValue, imModus, haeltEntwurf });
-  if (!verworfen || (nurEntwurf && !verworfen.hatEntwurf)) return false;
-  feld.value = verworfen.wert;
-  aenderungGemeldet(feld);
-  if (haeltEntwurf) u.entwurf = null;
-  if (kennung !== null && u.fensterFehlerFeld === kennung) fensterMelden(null);
-  if (verworfen.verlaesstModus) { u[modus.zustand] = false; u.fokus = modus.ausloeser; }
-  render();
+  if (!verworfen) return null;
+  return { ...verworfen, kennung, haeltEntwurf, modus };
+}
+
+/** Das Textfeld des Aufgabenfensters, von dem der Fokus unmittelbar auf „Eingabe verwerfen“ ging (R00155 54-13) — so löst
+    Hilfstechnik den Knopf aus. Solange der Fokus auf dem Knopf steht, gilt das Feld als nicht verlassen: sein Entwurf ist
+    weder gespeichert noch verworfen. Der Knopf verwirft ihn; gibt er den Fokus weiter, wird das Verlassen nachgeholt. */
+let feldVorDemVerwerfen = null;
+const istVerwerfenKnopf = element => Boolean(element) && Boolean(element.dataset) && element.dataset.act === 'eingabe-verwerfen';
+
+/** Wahr, wenn der Fokus von einem Feld mit Entwurf auf „Eingabe verwerfen“ geht; das Feld ist dann gemerkt. */
+function wartetAufVerwerfen(feld, fokusziel) {
+  if (!S.ui.offen || !istVerwerfenKnopf(fokusziel)) return false;
+  const verworfen = verwerfbares(feld);
+  if (!verworfen || !verworfen.hatEntwurf) return false;
+  feldVorDemVerwerfen = feld;
   return true;
 }
 
+/** Holt das Verlassen des Felds nach, das auf „Eingabe verwerfen“ wartete: sein Entwurf wird gespeichert wie beim Verlassen. */
+function verlassenNachholen() {
+  const feld = feldVorDemVerwerfen;
+  feldVorDemVerwerfen = null;
+  if (feld) feldVerlassen(feld);
+}
+
 /** Der Knopf „Eingabe verwerfen“ im Fensterfuß (R00155 54-12): je Tipp genau eines, das Feld mit Fokus zuerst — (1) sein
-    Entwurf, wie Esc im selben Feld; (2) sonst die abgelehnte Eingabe des Fensters, der Fokus bleibt, wo er war; (3) sonst
+    Entwurf, wie Esc im selben Feld; hat der Knopf selbst den Fokus, ist es das Feld unmittelbar davor (54-13); (2) sonst die abgelehnte Eingabe des Fensters, der Fokus bleibt, wo er war; (3) sonst
     nichts. Er schließt das Fenster nie. */
 function eingabeVerwerfenPerKnopf() {
   const u = S.ui;
+  const vorDemKnopf = feldVorDemVerwerfen;
+  feldVorDemVerwerfen = null;
+  if (vorDemKnopf && vorDemKnopf.isConnected && eingabeVerwerfen(vorDemKnopf, true)) return;
   const aktiv = document.activeElement;
   const fokusImFenster = Boolean(aktiv) && Boolean(aktiv.closest('#fenster'));
   if (fokusImFenster && eingabeVerwerfen(aktiv, true)) return;
@@ -863,6 +900,8 @@ function zuweisenTaste(e, t) {
 function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
+  // Ein Feld, das auf „Eingabe verwerfen“ wartet, übersteht das Ersetzen nicht: vorher verlassen, damit sein Entwurf nicht still verloren geht
+  verlassenNachholen();
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
   S.ui.stufe = stufeAusBreite(innerWidth);
@@ -2284,19 +2323,30 @@ function fuehrungNachziehen(element) {
 document.addEventListener('focusin', e => fuehrungNachziehen(e.target));
 document.addEventListener('focusin', () => fokusAusDemHinweis());
 document.addEventListener('focusout', e => {
-  // Verlassen eines zurückgesetzten Felds meldet den getippten Wert nach (R00103); Ersetzen ist kein Verlassen
-  if (!S.neuzeichnen) aenderungNachtragen(e.target);
+  // Ersetzen ist kein Verlassen; ein Feld mit Entwurf, dessen Fokus auf „Eingabe verwerfen“ geht, ist noch nicht verlassen (R00155 54-13)
+  if (!S.neuzeichnen && wartetAufVerwerfen(e.target, e.relatedTarget)) return;
+  if (!S.neuzeichnen && istVerwerfenKnopf(e.target) && feldVorDemVerwerfen) {
+    // zurück ins selbe Feld: es wurde nie verlassen
+    if (e.relatedTarget === feldVorDemVerwerfen) feldVorDemVerwerfen = null;
+    else verlassenNachholen();
+    return;
+  }
+  feldVerlassen(e.target);
+});
+function feldVerlassen(feld) {
+  // Verlassen eines Felds meldet den getippten Wert nach, für den noch kein „change“ gewirkt hat (R00103, R00155 54-13)
+  if (!S.neuzeichnen) aenderungNachtragen(feld);
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
-  if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
+  if (feld.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
   // Verlassen des Titelfeldes ohne Änderung: wieder das Lesediv zeigen (R00116, Muster Beschreibung :1708)
-  if (e.target.dataset && e.target.dataset.af === 'titel' && S.ui.titelBearbeiten) setTimeout(() => {
+  if (feld.dataset && feld.dataset.af === 'titel' && S.ui.titelBearbeiten) setTimeout(() => {
     const titelWartetAufBerichtigung = entwurfswert(S.ui.entwurf, S.ui.offen, TITEL_FELD) !== null;
     if (S.ui.titelBearbeiten && !titelWartetAufBerichtigung && document.activeElement !== document.querySelector('#fenster [data-af="titel"]')) { S.ui.titelBearbeiten = false; render(); }
   }, 50);
   // Verlassen des Teilaufgaben-Feldes speichert (R00066); nach Enter oder Esc ist teilEdit schon leer
-  if (e.target.id === 'teil-edit' && S.ui.teilEdit) { const wert = e.target.value; setTimeout(() => { if (S.ui.teilEdit && document.activeElement !== $('#teil-edit')) act('teil-text', '', wert); }, 0); }
-  if (e.target.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
-});
+  if (feld.id === 'teil-edit' && S.ui.teilEdit) { const wert = feld.value; setTimeout(() => { if (S.ui.teilEdit && document.activeElement !== $('#teil-edit')) act('teil-text', '', wert); }, 0); }
+  if (feld.id === 'umbenennen' && S.ui.umbenennen) setTimeout(() => { if (S.ui.umbenennen && document.activeElement !== $('#umbenennen')) { S.ui.umbenennen = null; render(); } }, 0);
+}
 
 /* Erklärtext auf Anforderung (R00119, ADR-0020): Fokus zeigt ihn, Verlassen blendet ihn aus; langer Druck auf Touch
    zeigt ihn, ein Tippen außerhalb (pointerdown) blendet ihn aus. Hier wird nur gezeigt/verborgen und gestellt — der
@@ -2327,8 +2377,17 @@ document.addEventListener('pointerup', tippDruckAbbrechen);
 document.addEventListener('pointercancel', tippDruckAbbrechen);
 document.addEventListener('scroll', tippPlatzieren, true);
 
+/** Ein „change“, das der Browser beim Verlassen eines Textfelds des Aufgabenfensters meldet. Es kommt vor dem „focusout“ und
+    weiß nicht, wohin der Fokus geht — auf „Eingabe verwerfen“ darf es nicht speichern (R00155 54-13). */
+function meldetBeimVerlassen(ereignis) {
+  const feld = ereignis.target;
+  const istTextfeld = feld.tagName === 'TEXTAREA' || (feld.tagName === 'INPUT' && feld.type === 'text');
+  return ereignis.isTrusted && istTextfeld && Boolean(feld.dataset.af) && Boolean(S.ui.offen) && document.activeElement !== feld;
+}
 document.addEventListener('change', e => {
   if (S.neuzeichnen) return;
+  // das „focusout“ gleich danach kennt das Ziel des Fokus und trägt die Änderung nach
+  if (meldetBeimVerlassen(e)) { aenderungAufschieben(e.target); return; }
   aenderungGemeldet(e.target);
   // Aktion und Ebene einer Wirkung ändern, welche Felder das Formular zeigt
   if (e.target.dataset && e.target.dataset.wf && e.target.tagName === 'SELECT' && S.ui.wirkungNeu) { S.ui.wirkungNeu[e.target.dataset.wf] = e.target.value; S.ui.wirkungNeu.fehler = null; render(); return; }
@@ -2583,7 +2642,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen && eingabeVerwerfen(t)) { e.preventDefault(); return; }
-    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }
+    if (S.ui.offen) { verlassenNachholen(); if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
   }
