@@ -576,3 +576,8 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0712 Transport: 415 und 413 mit {fehler} | Unklar | 0,5-2h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0713 36 Handler lesen über JsonKoerper<T> | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #39 R00153 (Formfehler im Rumpf ergeben 400 mit {fehler}) | B0714 Gegenproben, Mutanten und Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-15 | Karte #168 R00154 (Falsche Pfad- und Abfrageparameter ergeben 400 mit {fehler}) | B0715 Abnahme-Probe: Tabelle über 55 Routen, 6 Abfrage-Fälle, Abgleich | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #168 R00154 (Falsche Pfad- und Abfrageparameter ergeben 400 mit {fehler}) | B0716 Extraktor Pfad<T>: Name aus der Routenschablone | Unklar | 1-3h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #168 R00154 (Falsche Pfad- und Abfrageparameter ergeben 400 mit {fehler}) | B0717 Extraktor Abfrage<T>: fehlendes oder doppeltes Feld | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #168 R00154 (Falsche Pfad- und Abfrageparameter ergeben 400 mit {fehler}) | B0718 59 Handler lesen über Pfad<T> und Abfrage<T> | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #168 R00154 (Falsche Pfad- und Abfrageparameter ergeben 400 mit {fehler}) | B0719 Gegenproben, Mutanten und Gate | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
