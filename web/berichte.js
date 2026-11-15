@@ -139,6 +139,12 @@
       return t => bestandAm(wechsel, archiviert, t, erledigt);
     };
   }
+  /** Die Aufgabenliste mit Gedächtnis: je Nummer wird `aufgabeZu` einmal gefragt — die Liste des Clients sucht linear, und
+      ein Bericht fragt je Aufgabe mehrfach (Filter, Archivtag). */
+  function einmalJeAufgabe(aufgabeZu) {
+    const antworten = new Map();
+    return nr => { if (!antworten.has(nr)) antworten.set(nr, aufgabeZu(nr)); return antworten.get(nr); };
+  }
   /** Zählt dieser Zustand zum Bestand des Berichts? „Da“ und nicht in einer ausgeschlossenen Spalte. */
   const imBestand = (f, zustand) => zustand.art === 'da' && !f.ohneSpalten.includes(zustand.spalte);
 
@@ -172,8 +178,8 @@
 
   /* ── Burndown (R00044) ── */
   /** Je Tag im Zeitraum: offen (im Bestand und nicht erledigt) und Umfang (im Bestand), Stand am Tagesende, heute jetzt; ab `start`. */
-  function burndown(bew, f, aufgabeZu, jetzt, start = null) {
-    const g = grenzenAb(f, jetzt, start), bestand = bestandLeser(bew, aufgabeZu);
+  function burndown(bew, f, aufgabeListe, jetzt, start = null) {
+    const g = grenzenAb(f, jetzt, start), aufgabeZu = einmalJeAufgabe(aufgabeListe), bestand = bestandLeser(bew, aufgabeZu);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
     const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer))).map(bestand);
@@ -199,8 +205,8 @@
       Zählt wie der Burndown: Bänder, `gesamt` und `offen` aus dem Bestand (`bestandAm`), `angekommen` und `fertig` aus dem
       ersten Erreichen (sinken nicht); `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
       Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten. */
-  function fluss(bew, f, aufgabeZu, jetzt, start = null) {
-    const spalten = bew.spalten;
+  function fluss(bew, f, aufgabeListe, jetzt, start = null) {
+    const spalten = bew.spalten, aufgabeZu = einmalJeAufgabe(aufgabeListe);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return { spalten, tage: [] };
     const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1], bestand = bestandLeser(bew, aufgabeZu);
@@ -488,8 +494,9 @@
     return gemerkt.get(schluessel);
   }
   const gemerkt = new Map();
-  function prognoseRechnen(bew, f, aufgabeZu, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
+  function prognoseRechnen(bew, f, aufgabeListe, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
     if (block) nurLetzter = true;
+    const aufgabeZu = einmalJeAufgabe(aufgabeListe);
     const heute = tag(jetzt), morgen = tag(jetzt, 1);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     const ab = Math.max(start ? isoTag(start) : 0, erste === Infinity ? 0 : tag(erste));

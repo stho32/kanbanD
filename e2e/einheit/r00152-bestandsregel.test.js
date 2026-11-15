@@ -257,7 +257,8 @@ test('R00152 B0709 (Lastprofil, ADR-0027): die Aufgabenliste wird je Aufgabe gel
     ['prognose', zu => B.prognose(bewegungenA(), filter({ messbasisTage: 77 }), zu, ms(10))],
   ]) {
     const aufrufe = gezaehlt(rechne);
-    assert.ok(aufrufe >= anzahl && aufrufe <= 3 * anzahl, `${name}: ${aufrufe} Aufrufe für ${anzahl} Aufgaben über neun Tage`);
+    // Burndown und Fluss fragen je Aufgabe einmal, die Prognose zweimal (Schlüssel des Gedächtnisses und Rechnung)
+    assert.strictEqual(aufrufe, name === 'prognose' ? 2 * anzahl : anzahl, `${name}: ${aufrufe} Aufrufe für ${anzahl} Aufgaben über neun Tage`);
   }
 });
 
