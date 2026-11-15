@@ -48,6 +48,9 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 36] = [
     ("POST", "/api/aufgaben/zurueckholen", r#"{"nummern": "alle"}"#, "nummern"),
 ];
 
+/// R00153 AK 3 und AK 19: nimmt einen wahlfreien JSON-Rumpf — ohne `Content-Type` fehlt er.
+const MIT_WAHLFREIEM_JSON_RUMPF: [(&str, &str); 1] = [("POST", "/api/aufgaben/{nr}/duplizieren")];
+
 /// R00153 AK 3: lesen den Rumpf als `Bytes` und bleiben, wie sie sind.
 const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
     ("POST", "/api/boards/{slug}/ziehen"),
@@ -58,11 +61,10 @@ const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
 ];
 
 /// R00153 AK 3: ohne Rumpf oder Multipart.
-const OHNE_JSON_RUMPF: [(&str, &str); 16] = [
+const OHNE_JSON_RUMPF: [(&str, &str); 15] = [
     ("DELETE", "/api/boards/{slug}"),
     ("DELETE", "/api/boards/{slug}/fieber/cache"),
     ("DELETE", "/api/personen/{kuerzel}"),
-    ("POST", "/api/aufgaben/{nr}/duplizieren"),
     ("DELETE", "/api/aufgaben/{nr}"),
     ("PUT", "/api/aufgaben/{nr}/signale/{signal}"),
     ("DELETE", "/api/aufgaben/{nr}/signale/{signal}"),
@@ -159,11 +161,11 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let (_tmp, lauf) = grundbestand();
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
-    let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (57, 57), "57 = 36 + 5 + 16");
+    let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
+    assert_eq!((beschrieben.len(), benannt.len()), (57, 57), "57 = 36 + 1 + 5 + 15");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
     assert_eq!(benannt.len(), 57, "kein Endpunkt steht in zwei Listen");
-    assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der drei Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
+    assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
 
@@ -341,19 +343,19 @@ async fn ein_rumpf_von_genau_2_mib_wird_angenommen() {
     assert!(lies(tmp.path(), "aufgaben/0001-eins.md").len() > 2 * 1024 * 1024 - 12, "der Kommentar ist geschrieben");
 }
 
-// Content-Type-Formen, die der Rahmen als JSON annimmt, bleiben angenommen
+// AK 20: application/json und application/<name>+json werden wie vor dem Fix angenommen, mit Parametern und in beliebiger Großschreibung
 #[tokio::test]
 async fn json_mit_parameter_grossschreibung_oder_json_suffix_wird_angenommen() {
     let (_tmp, lauf) = grundbestand();
-    for art in ["application/json; charset=utf-8", "APPLICATION/JSON", "application/vnd.api+json"] {
+    for art in ["application/json; charset=utf-8", "APPLICATION/JSON", "application/vnd.api+json", "Application/Vnd.Api+JSON; charset=UTF-8"] {
         let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben", "st", Some(art), r#"{"titel": "x"}"#).await;
         assert_eq!(antwort.status, 201, "{art}: {}", antwort.text);
     }
 }
 
-// ---- Dieselbe Klasse an Stellen, die die Tabelle nicht nennt ----
+// ---- Dieselbe Klasse an Stellen, die die Tabelle nicht nennt (R00153 AK 14 berichtigt, AK 19, AK 20) ----
 
-// AK 14 nennt datums_trenner als roh angenommen; gemessen vor dem Fix: getypt, 422 text/plain wie jedes andere Feld — mit dem Fix 400 in der Form
+// AK 14 (berichtigt): datums_trenner ist getypt, nicht roh — vor dem Fix 422 text/plain, jetzt 400 in der Form wie jedes Feld unter AK 1
 #[tokio::test]
 async fn ein_datums_trenner_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_das_feld() {
     let (tmp, lauf) = grundbestand();
@@ -362,22 +364,23 @@ async fn ein_datums_trenner_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_d
     assert!(fehler.contains("datums_trenner"), "{fehler}");
 }
 
-// Der wahlfreie Rumpf von POST …/duplizieren (Option<Json<Zielort>>, nicht unter den 36) geht durch denselben Extraktor
+// AK 19: der wahlfreie Rumpf von POST …/duplizieren geht durch denselben Extraktor; ohne Rumpf und Content-Type bleibt es bei 201
 #[tokio::test]
 async fn der_wahlfreie_rumpf_von_duplizieren_wird_bei_falscher_form_in_der_form_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/duplizieren", JSON, r#"{"board": 7}"#, 400).await;
     assert!(fehler.contains("board"), "{fehler}");
     abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/duplizieren", Some("text/plain"), "{}", 415).await;
+    assert_eq!(std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().count(), 3, "in beiden Fällen keine Aufgabe angelegt");
     let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben/1/duplizieren", "st", None, "").await;
     assert_eq!((antwort.status, antwort.json()["nummer"].as_u64()), (201, Some(4)), "ohne Rumpf und Content-Type wie bisher: {}", antwort.text);
 }
 
-// Eigene Varianten zu AK 10: nur application/json und application/…+json gelten als JSON
+// AK 20 (und eigene Varianten zu AK 10): alles außer application/json und application/<name>+json ist 415 — application/json+xml nahm der Rahmen vor dem Fix an
 #[tokio::test]
 async fn ein_content_type_der_nur_aehnlich_heisst_wird_mit_415_abgewiesen() {
     let (tmp, lauf) = grundbestand();
-    for art in ["application/jsonx", "text/json", "application/x-www-form-urlencoded", "json", "application/json+xml"] {
+    for art in ["application/jsonx", "text/json", "json", "application/x-www-form-urlencoded", "application/json+xml"] {
         abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben", Some(art), r#"{"titel": "x"}"#, 415).await;
     }
 }
