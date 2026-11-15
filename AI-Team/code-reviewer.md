@@ -4,7 +4,7 @@ Ergänzt die Rolle `code-reviewer` der Factory für dieses Projekt. Gilt für Pr
 
 ## Projektregeln
 
-- Gate: `cargo test`, `node --test e2e/einheit/`, `cd e2e && npx playwright test` (betroffene Specs je Bubble, volle Suite am Kartenende); Build `cargo build --release`.
+- Gate: `cargo test`, `node --test "e2e/einheit/*.js"`, `cd e2e && npx playwright test` (betroffene Specs je Bubble, volle Suite am Kartenende); Build `cargo build --release`.
 - Prüfen: ein Commit je Aktion, Sperre um Prüfen-dann-Handeln, API-Beschreibung aktuell.
 - Sparbetrieb (`AI-Team/prozess.md`): knapp arbeiten, nur lesen, was der Auftrag nennt.
 
