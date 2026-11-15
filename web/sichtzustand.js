@@ -166,13 +166,14 @@
 
   /**
    * Die Esc-Regel des Aufgabenfensters (ADR-0010 N9 Ziffer 4): was das fokussierte Feld zu verwerfen hat. Das Feld kommt als
-   * `{ af, id, wert, gezeichnet, imModus, haeltEntwurf }`. Liefert den Stand, auf den der Wert zurückgeht, und ob der
-   * Bearbeitungsmodus endet — oder null: nichts zu verwerfen, Esc schließt das Fenster.
+   * `{ af, id, wert, gezeichnet, imModus, haeltEntwurf }`. Liefert den Stand, auf den der Wert zurückgeht, ob der
+   * Bearbeitungsmodus endet und ob das Feld einen Entwurf hat (ein unveränderter Titel im Bearbeiten hat keinen: Esc
+   * verlässt den Modus, der Knopf „Eingabe verwerfen“ tut nichts) — oder null: nichts zu verwerfen, Esc schließt das Fenster.
    */
   function verwerfung(feld) {
     // Titel und Beschreibung mit Text haben einen Lesezustand; die leere Beschreibung steht immer als Feld da
     const hatLesezustand = feld.af === 'titel' || (feld.af === 'beschreibung' && feld.gezeichnet !== '');
-    if (hatLesezustand && feld.imModus) return { wert: feld.gezeichnet, verlaesstModus: true };
+    if (hatLesezustand && feld.imModus) return { wert: feld.gezeichnet, verlaesstModus: true, hatEntwurf: feld.wert !== feld.gezeichnet || feld.haeltEntwurf };
     const schreibtAufEnter = ENTER_FELDER.includes(feld.id);
     const schreibtBeimVerlassen = feld.af === 'labels' || feld.af === 'beschreibung';
     if (!schreibtBeimVerlassen && !schreibtAufEnter) return null;
@@ -180,7 +181,14 @@
     let stand = feld.gezeichnet;
     if (schreibtAufEnter) stand = '';
     if (feld.wert === stand && !feld.haeltEntwurf) return null;
-    return { wert: stand, verlaesstModus: false };
+    return { wert: stand, verlaesstModus: false, hatEntwurf: true };
+  }
+
+  /** Das Feld der abgelehnten Eingabe des Fensters: der eine Entwurf der offenen Aufgabe, solange die Meldung sein Feld nennt; sonst null. */
+  function abgelehntesFeld(entwurf, meldung, nummer) {
+    if (!entwurf || entwurf.nummer !== nummer) return null;
+    if (!meldung.text || meldung.feld !== entwurf.feld) return null;
+    return entwurf.feld;
   }
 
   /** Attribute, mit denen ein Feld als ungültig auf die Fenstermeldung verweist — nur solange die Meldung dieses Feld nennt und der Entwurf zu ihm gehört. */
@@ -190,5 +198,5 @@
     return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, meldungsverweis });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);

@@ -747,8 +747,8 @@ const BEARBEITUNGSMODUS = {
 
 /** Verwirft, was das Feld des Aufgabenfensters an Entwurf oder Bearbeitungsmodus hat — ohne Schreibweg (ADR-0010 N9):
     der Wert geht auf den gezeichneten Stand zurück, bevor das Feld verlassen wird, sein Entwurf und die Meldung dazu
-    verschwinden. Falsch, wenn es nichts zu verwerfen gab. */
-function eingabeVerwerfen(feld) {
+    verschwinden. `nurEntwurf` lässt einen unveränderten Bearbeitungsmodus stehen. Falsch, wenn es nichts zu verwerfen gab. */
+function eingabeVerwerfen(feld, nurEntwurf = false) {
   const u = S.ui;
   if (!feld.dataset) return false;
   const kennung = entwurfskennung(feld);
@@ -756,7 +756,7 @@ function eingabeVerwerfen(feld) {
   const modus = BEARBEITUNGSMODUS[feld.dataset.af];
   const imModus = Boolean(modus) && u[modus.zustand];
   const verworfen = verwerfung({ af: feld.dataset.af, id: feld.id, wert: feld.value, gezeichnet: feld.defaultValue, imModus, haeltEntwurf });
-  if (!verworfen) return false;
+  if (!verworfen || (nurEntwurf && !verworfen.hatEntwurf)) return false;
   feld.value = verworfen.wert;
   aenderungGemeldet(feld);
   if (haeltEntwurf) u.entwurf = null;
@@ -764,6 +764,22 @@ function eingabeVerwerfen(feld) {
   if (verworfen.verlaesstModus) { u[modus.zustand] = false; u.fokus = modus.ausloeser; }
   render();
   return true;
+}
+
+/** Der Knopf „Eingabe verwerfen“ im Fensterfuß (R00155 54-12): je Tipp genau eines, das Feld mit Fokus zuerst — (1) sein
+    Entwurf, wie Esc im selben Feld; (2) sonst die abgelehnte Eingabe des Fensters, der Fokus bleibt, wo er war; (3) sonst
+    nichts. Er schließt das Fenster nie. */
+function eingabeVerwerfenPerKnopf() {
+  const u = S.ui;
+  const aktiv = document.activeElement;
+  const fokusImFenster = Boolean(aktiv) && Boolean(aktiv.closest('#fenster'));
+  if (fokusImFenster && eingabeVerwerfen(aktiv, true)) return;
+  const abgelehnt = abgelehntesFeld(u.entwurf, { text: u.fensterFehler, feld: u.fensterFehlerFeld }, u.offen);
+  if (abgelehnt === null) return;
+  u.entwurf = null;
+  fensterMelden(null);
+  if (abgelehnt === TITEL_FELD) u.titelBearbeiten = false;
+  render();
 }
 
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
@@ -2107,6 +2123,7 @@ async function aktion(a, arg, wert) {
         return aufgabeAendern(u.offen, { faellig: arg === '' ? null : isoD(d) });
       }
       case 'beschreibung-bearbeiten': u.tab = 'inhalt'; u.beschreibungBearbeiten = true; u.fokus = '#beschreibung'; break;
+      case 'eingabe-verwerfen': eingabeVerwerfenPerKnopf(); return;
       case 'titel-bearbeiten': u.tab = 'inhalt'; u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; break;
       case 'zustaendig': {
         const a = aufgabe(u.offen), z = a.zustaendige.includes(arg) ? a.zustaendige.filter(k => k !== arg) : [...a.zustaendige, arg];
@@ -2352,6 +2369,10 @@ document.addEventListener('change', e => {
 // Umschalt/Strg + Klick auf eine Karte markiert keinen Text
 document.addEventListener('mousedown', e => {
   if ((e.shiftKey || e.ctrlKey || e.metaKey) && e.target.closest && e.target.closest('.ka[data-id]')) e.preventDefault();
+});
+// Der Knopf „Eingabe verwerfen“ nimmt dem Feld den Fokus nicht: das Verlassen speicherte sonst, was er verwerfen soll (R00155 54-12)
+document.addEventListener('mousedown', e => {
+  if (e.target.closest && e.target.closest('[data-act="eingabe-verwerfen"]')) e.preventDefault();
 });
 document.addEventListener('click', e => {
   if (S.ui.menue) {

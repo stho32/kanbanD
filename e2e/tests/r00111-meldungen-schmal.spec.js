@@ -371,7 +371,8 @@ test.describe('Desktop, 1280 px mit Maus', () => {
     expect(await page.evaluate(() => document.activeElement.id)).toBe('herkunft-neu');
     const fuss = fenster.locator('.mod-fuss');
     expect((await fuss.boundingBox()).height).toBe(FUSS_HOEHE_VOR_DEM_FIX);
-    const mitten = await fuss.evaluate(f => [...f.children].map(kind => { const r = kind.getBoundingClientRect(); return r.top + r.height / 2; }));
+    // nur gezeichnete Teile: der Knopf „Eingabe verwerfen“ (R00155 54-12) steht im Fuß, ist bei 1280 px mit Maus aber nicht sichtbar
+    const mitten = await fuss.evaluate(f => [...f.children].filter(kind => kind.getClientRects().length > 0).map(kind => { const r = kind.getBoundingClientRect(); return r.top + r.height / 2; }));
     expect(Math.max(...mitten) - Math.min(...mitten), 'alle Teile des Fußes in einer Zeile').toBeLessThanOrEqual(2);
     const tastenhinweis = fuss.locator('span', { hasText: 'schließen' });
     await expect(tastenhinweis).toContainText('schließen');
