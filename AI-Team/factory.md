@@ -91,8 +91,8 @@ Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **gan
 DeepSeek ist der Standard für die übrigen Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
 
 - **Fest auf Claude Sonnet**: `code-reviewer` (läuft bei jeder Karte, letztes Tor vor dem Entwicklertest, anderes Modell als der Erbauer) und `security-reviewer` (selten, ein übersehener Fehler ist teuer). Der Director bleibt Claude.
-- **Fest auf Claude Fable 5.2** (Betreiber 2026-11-15): `entwickler`, Bau und Nacharbeit (`entw1`, `entw2`). Anlass: Am 2026-11-14 rissen zwei DeepSeek-Bauläufe die Zeitgrenze und einer lief 85 Minuten in einer Leseschleife ohne Änderung.
-- **Eskalation je Karte auf Claude** — `planer` und `architekt`: bei Karten mit Label `architektur`, `sicherheit` oder `datenformat`. Die Entscheidung steht im Zugkommentar. Geschaltet je Lauf mit `board.py beginne <nr> --rolle <r> --treiber claude [--modell sonnet|opus]` (Factory seit 2026-11-14); der Director startet die Rolle dann als Subagent und gibt ihr das Modell mit — Sonnet im Regelfall, Opus bei Datenformat, Zugriffsgrenzen oder Nebenläufigkeit.
+- **Fest auf Claude Fable 5.2** (Betreiber 2026-11-15): `planer`, `architekt` und `entwickler`, Bau und Nacharbeit (`entw1`, `entw2`). Anlass: Am 2026-11-14 rissen zwei DeepSeek-Bauläufe die Zeitgrenze und einer lief 85 Minuten in einer Leseschleife ohne Änderung.
+- **Umschalten je Lauf**: Soll ein einzelner Lauf über den anderen Treiber oder ein anderes Modell laufen, `board.py beginne <nr> --rolle <r> --treiber claude|opencode [--modell <m>]` (Factory seit 2026-11-14); die Entscheidung steht im Zugkommentar.
 - **Alle übrigen Rollen** bleiben auf DeepSeek.
 - **Messen**: nach etwa zehn Karten Nacharbeiten je Karte und Kosten je Karte aus dem Logbuch vergleichen, vorher gegen nachher.
 
@@ -153,8 +153,8 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 |---|---|---|---|---|
 | product-owner | po | opencode | openrouter/deepseek/deepseek-v4.1-flash | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
 | realist-consultant | real | opencode | openrouter/deepseek/deepseek-v4.1-flash | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
-| planer | plan | opencode | openrouter/deepseek/deepseek-v4.1-flash | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
-| architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
+| planer | plan | claude | fable | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
+| architekt | arch | claude | fable | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
 | architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
 | entwickler | entw1 | claude | fable | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
 | code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
