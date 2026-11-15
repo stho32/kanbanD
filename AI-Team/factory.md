@@ -44,7 +44,7 @@ Wie die Dienste des Projekts starten und geprüft werden. Gilt für den Director
 - **Gate**: `cargo test && node --test "e2e/einheit/*.js" && (cd e2e && npx playwright test)`
 - **Installieren**: `cargo build --release`; E2E: `cd e2e && npm install && npx playwright install chromium`
 - **Dienste starten**: `target/release/kanbanD <wegwerf-ordner> --port <frei> --kein-browser` (Skill `freier-port`); nie die Board-Instanz auf Port 7422
-- **Rechner seit 2026-11-15** (Ubuntu 26.04, Node 22, Rust 1.100): Node 22 nimmt für `--test` keinen Ordner an, deshalb das Muster `"e2e/einheit/*.js"`. Playwright 1.57 kennt Ubuntu 26.04 nicht: jeder Playwright-Aufruf braucht `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64` in der Umgebung, bis die Karte „Playwright anheben“ zusammengeführt ist; der Director nennt das in jedem Auftrag, der E2E-Tests fährt.
+- **Rechner seit 2026-11-15** (Ubuntu 26.04, Node 22, Rust 1.100, Playwright 1.65.1 seit #170): Node 22 nimmt für `--test` keinen Ordner an, deshalb das Muster `"e2e/einheit/*.js"`. Ein Override für Playwright ist nicht mehr nötig und darf in keinem Auftrag stehen. Die volle Playwright-Suite treibt die Last mit 4 Workern allein auf etwa 10: volle Läufe allein und nacheinander fahren.
 - **Health-Check**: `GET http://127.0.0.1:<port>/api/zustand` antwortet mit JSON
 - **Zum Gate**: `cargo test` · `node --test "e2e/einheit/*.js"` · `cd e2e && npx playwright test`
 - **Pfade**: `~/.cargo/bin`; Node für E2E unter `e2e/`; Board der Factory `http://127.0.0.1:7422`, Ordner `/home/shoff/Projekte/Kanban-Boards/kanbanD-Kanbanboard`; Auslieferung `cargo install --path . --locked` (siehe `prozess.md`)
