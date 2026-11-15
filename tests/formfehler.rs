@@ -1,0 +1,265 @@
+// R00153 (I0140, Karte #39): Ein Rumpf mit falscher Form wird an jedem schreibenden Endpunkt mit 400 und {fehler} abgewiesen (ADR-0003 N1/N3)
+mod gemeinsam;
+
+use gemeinsam::{Antwort, git, lies, mit_drei_aufgaben, senden_roh};
+use reqwest::Method;
+use std::collections::BTreeSet;
+use std::path::Path;
+
+const JSON: Option<&str> = Some("application/json");
+
+/// R00153 AK 2: Methode, Pfad der Beschreibung, Rumpf mit falschem Typ, Feldname in `fehler`.
+const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 36] = [
+    ("POST", "/api/einrichten", r#"{"ich": 7}"#, "ich"),
+    ("PATCH", "/api/boards/{slug}", r#"{"archiviert": "ja"}"#, "archiviert"),
+    ("POST", "/api/aufgaben", r#"{"titel": 7}"#, "titel"),
+    ("POST", "/api/boards/{slug}/bewegen", r#"{"nummer": "eins", "spalte": "Zu erledigen"}"#, "nummer"),
+    ("POST", "/api/boards", r#"{"titel": 7}"#, "titel"),
+    ("PUT", "/api/boards/{slug}/spalten", r#"[{"name": "Zu erledigen", "grenze": "3"}]"#, "grenze"),
+    ("PUT", "/api/boards/{slug}/termine", r#"[{"name": "X", "datum": "2027-10-31", "farbe": "red", "ziel": "ja"}]"#, "ziel"),
+    ("PUT", "/api/boards/{slug}/start", r#"{"start": 7}"#, "start"),
+    ("PUT", "/api/boards/{slug}/berichtsfilter", r#"{"messbasisTage": "viele"}"#, "messbasisTage"),
+    ("PUT", "/api/boards/{slug}/bestand", r#"{"zeilen": 7, "spalten": "x"}"#, "zeilen"),
+    ("PUT", "/api/boards/{slug}/fieber", r#"{"perzentil": "hoch"}"#, "perzentil"),
+    ("POST", "/api/boards/{slug}/fieber/cache", r#"{"schluessel": 7, "tage": []}"#, "schluessel"),
+    ("PUT", "/api/boards/{slug}/anwendungen", "[7]", "0"),
+    ("POST", "/api/personen", r#"{"kuerzel": 7, "name": "X"}"#, "kuerzel"),
+    ("PATCH", "/api/personen/{kuerzel}", r#"{"aktiv": "ja"}"#, "aktiv"),
+    ("PUT", "/api/einstellungen", r#"{"personen": 7}"#, "personen"),
+    ("PATCH", "/api/aufgaben/{nr}", r#"{"titel": 7}"#, "titel"),
+    ("POST", "/api/aufgaben/{nr}/teilaufgaben", r#"{"text": 7}"#, "text"),
+    ("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", r#"{"text": 7}"#, "text"),
+    ("POST", "/api/aufgaben/{nr}/kommentare", r#"{"text": 7}"#, "text"),
+    ("POST", "/api/aufgaben/erledigen", r#"{"key": 7}"#, "key"),
+    ("PATCH", "/api/aufgaben/{nr}/wbs-effects", r#"{"application": 7}"#, "application"),
+    ("POST", "/api/aufgaben/{nr}/wbs-effects/{i}/eintritt", r#"{"an": "ja"}"#, "an"),
+    ("POST", "/api/aufgaben/{nr}/zeiten", r#"{"dauer": 30}"#, "dauer"),
+    ("PATCH", "/api/aufgaben/{nr}/zeiten/{kennung}", r#"{"beginn": 7}"#, "beginn"),
+    ("POST", "/api/aufgaben/{nr}/durchlaeufe", r#"{"phase": 7, "ergebnis": "ok"}"#, "phase"),
+    ("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", r#"{"status": 7}"#, "status"),
+    ("POST", "/api/wbs/{kuerzel}/knoten", r#"{"name": 7}"#, "name"),
+    ("POST", "/api/boards/{slug}/aufgaben", r#"{"nummer": "eins"}"#, "nummer"),
+    ("POST", "/api/aufgaben/mehrere", r#"{"titel": 7}"#, "titel"),
+    ("POST", "/api/aufgaben/{nr}/teilaufgaben/mehrere", r#"{"texte": [7]}"#, "texte"),
+    ("POST", "/api/boards/{slug}/bewegen-mehrere", r#"{"ziele": [{"nummer": "eins", "spalte": "Zu erledigen"}]}"#, "nummer"),
+    ("POST", "/api/boards/{slug}/aufgaben/mehrere", r#"{"nummern": ["eins"]}"#, "nummern"),
+    ("PATCH", "/api/aufgaben/mehrere", r#"{"aenderungen": 7}"#, "aenderungen"),
+    ("POST", "/api/aufgaben/archivieren", r#"{"nummern": "alle"}"#, "nummern"),
+    ("POST", "/api/aufgaben/zurueckholen", r#"{"nummern": "alle"}"#, "nummern"),
+];
+
+/// R00153 AK 3: lesen den Rumpf als `Bytes` und bleiben, wie sie sind.
+const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
+    ("POST", "/api/boards/{slug}/ziehen"),
+    ("POST", "/api/aufgaben/{nr}/timer/stop"),
+    ("POST", "/api/wbs/{kuerzel}/knoten/{id}/verwerfen"),
+    ("POST", "/api/aufgaben/{nr}/reservierung"),
+    ("DELETE", "/api/aufgaben/{nr}/reservierung"),
+];
+
+/// R00153 AK 3: ohne Rumpf oder Multipart.
+const OHNE_JSON_RUMPF: [(&str, &str); 16] = [
+    ("DELETE", "/api/boards/{slug}"),
+    ("DELETE", "/api/boards/{slug}/fieber/cache"),
+    ("DELETE", "/api/personen/{kuerzel}"),
+    ("POST", "/api/aufgaben/{nr}/duplizieren"),
+    ("DELETE", "/api/aufgaben/{nr}"),
+    ("PUT", "/api/aufgaben/{nr}/signale/{signal}"),
+    ("DELETE", "/api/aufgaben/{nr}/signale/{signal}"),
+    ("DELETE", "/api/aufgaben/{nr}/teilaufgaben/{i}"),
+    ("DELETE", "/api/aufgaben/{nr}/wbs-effects/{i}"),
+    ("POST", "/api/aufgaben/{nr}/timer/start"),
+    ("DELETE", "/api/aufgaben/{nr}/zeiten/{kennung}"),
+    ("POST", "/api/aufgaben/{nr}/anhaenge"),
+    ("DELETE", "/api/aufgaben/{nr}/anhaenge/{name}"),
+    ("POST", "/api/aufgaben/{nr}/archivieren"),
+    ("POST", "/api/aufgaben/{nr}/zurueckholen"),
+    ("DELETE", "/api/boards/{slug}/aufgaben/{nr}"),
+];
+
+/// R00153 „Meldung“: Text des Rahmens, der in keiner Meldung stehen darf.
+const RAHMENTEXT: [&str; 6] = ["invalid type", "invalid value", "expected", "missing field", "unknown variant", "Failed to"];
+
+/// Der Pfad der Beschreibung mit den Werten des Grundbestands, ohne führenden Schrägstrich.
+fn gesendeter_pfad(pfad: &str) -> String {
+    let kuerzel = if pfad.starts_with("/api/wbs/") { "kd" } else { "st" };
+    pfad[1..].replace("{slug}", "entwicklung").replace("{nr}", "1").replace("{kuerzel}", kuerzel).replace("{id}", "I0001").replace("{i}", "0").replace("{kennung}", "x")
+}
+
+/// Git-Stand des Board-Ordners: letzter Commit und offene Änderungen.
+fn stand(ordner: &Path) -> (String, String) {
+    (git(ordner, &["rev-parse", "HEAD"]), git(ordner, &["status", "--porcelain"]))
+}
+
+/// R00153 „Form einer Abweisung“ ohne den Git-Stand: Status, `application/json`, Objekt mit nicht leerem `fehler` — sonst der Grund.
+fn form(antwort: &Antwort, status: u16) -> Result<String, String> {
+    let gesehen = format!("{} {} {:?}", antwort.status, antwort.art, antwort.text.chars().take(160).collect::<String>());
+    if antwort.status != status {
+        return Err(format!("Status {status} erwartet: {gesehen}"));
+    }
+    if antwort.art != "application/json" {
+        return Err(format!("Content-Type application/json erwartet: {gesehen}"));
+    }
+    match antwort.json()["fehler"].as_str() {
+        Some(fehler) if !fehler.is_empty() => Ok(fehler.to_string()),
+        _ => Err(format!("Objekt mit nicht leerem Feld fehler erwartet: {gesehen}")),
+    }
+}
+
+/// Die Meldung trägt keinen Text des Rahmens.
+fn ohne_rahmentext(fehler: &str) -> Result<(), String> {
+    match RAHMENTEXT.iter().find(|wort| fehler.contains(**wort)) {
+        Some(wort) => Err(format!("Text des Rahmens „{wort}“ in der Meldung: {fehler}")),
+        None => Ok(()),
+    }
+}
+
+/// Sendet einen JSON-Rumpf und verlangt die Abweisung in der Form ohne Commit; liefert die Meldung.
+async fn abgewiesen(ordner: &Path, adresse: &str, methode: Method, pfad: &str, art: Option<&str>, rumpf: impl Into<reqwest::Body>, status: u16) -> String {
+    let vorher = stand(ordner);
+    let antwort = senden_roh(methode, adresse, pfad, "st", art, rumpf).await;
+    let fehler = form(&antwort, status).unwrap_or_else(|grund| panic!("{pfad}: {grund}"));
+    ohne_rahmentext(&fehler).unwrap_or_else(|grund| panic!("{pfad}: {grund}"));
+    assert_eq!(stand(ordner), vorher, "{pfad}: kein Commit, keine offene Änderung");
+    fehler
+}
+
+fn grundbestand() -> (tempfile::TempDir, gemeinsam::Laufendes) {
+    let tmp = tempfile::tempdir().unwrap();
+    mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    (tmp, lauf)
+}
+
+// AK 1, AK 2, AK 9 (36 Antworten), AK 12 · US-3
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 36-mal 422 text/plain"]
+async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feldnamen_ab() {
+    let (tmp, lauf) = grundbestand();
+    let mut rot = Vec::new();
+    for (nr, (methode, pfad, rumpf, feld)) in MIT_JSON_RUMPF.iter().enumerate() {
+        let vorher = stand(tmp.path());
+        let antwort = senden_roh(methode.parse().unwrap(), &lauf.adresse, &gesendeter_pfad(pfad), "st", JSON, *rumpf).await;
+        let urteil = form(&antwort, 400).and_then(|fehler| {
+            ohne_rahmentext(&fehler)?;
+            if fehler.contains(feld) { Ok(()) } else { Err(format!("Feldname „{feld}“ fehlt in der Meldung: {fehler}")) }
+        });
+        if let Err(grund) = urteil {
+            rot.push(format!("Zeile {} {methode} {pfad}: {grund}", nr + 1));
+        }
+        if stand(tmp.path()) != vorher {
+            rot.push(format!("Zeile {} {methode} {pfad}: Git-Stand des Ordners geändert", nr + 1));
+        }
+    }
+    assert!(rot.is_empty(), "{} von 36 Zeilen rot:\n{}", rot.len(), rot.join("\n"));
+}
+
+// AK 3
+#[tokio::test]
+async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_einmal() {
+    let (_tmp, lauf) = grundbestand();
+    let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
+    let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
+    assert_eq!((beschrieben.len(), benannt.len()), (57, 57), "57 = 36 + 5 + 16");
+    let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
+    assert_eq!(benannt.len(), 57, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der drei Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
+    assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
+}
+
+// AK 4 · US-1
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn eine_grenze_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_grenze() {
+    let (tmp, lauf) = grundbestand();
+    let board = lies(tmp.path(), "boards/entwicklung.md");
+    for grenze in ["-1", "\"3\"", "2.0"] {
+        let rumpf = format!(r#"[{{"name": "Zu erledigen", "grenze": {grenze}}}]"#);
+        let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/entwicklung/spalten", JSON, rumpf, 400).await;
+        assert!(fehler.contains("grenze"), "grenze {grenze}: {fehler}");
+        assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), board, "grenze {grenze}: Board unverändert");
+    }
+}
+
+// AK 5 · US-2
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn ein_fehlendes_pflichtfeld_wird_mit_400_abgewiesen_und_nennt_das_feld() {
+    let (tmp, lauf) = grundbestand();
+    let aufgabe = lies(tmp.path(), "aufgaben/0001-eins.md");
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/teilaufgaben", JSON, "{}", 400).await;
+    assert!(fehler.contains("text"), "{fehler}");
+    assert_eq!(lies(tmp.path(), "aufgaben/0001-eins.md"), aufgabe, "keine neue Teilaufgabe");
+}
+
+// AK 6
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn ein_unbekannter_wert_einer_aufzaehlung_wird_mit_400_abgewiesen_und_nennt_das_feld() {
+    let (tmp, lauf) = grundbestand();
+    let rumpf = r#"[{"name": "X", "datum": "2027-10-31", "farbe": "red", "linie": "wellig"}]"#;
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/entwicklung/termine", JSON, rumpf, 400).await;
+    assert!(fehler.contains("linie"), "{fehler}");
+    assert!(!fehler.contains("wellig"), "der gesendete Wert steht nicht in der Meldung: {fehler}");
+}
+
+// AK 7
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn ein_falscher_typ_im_zweiten_element_nennt_feld_und_stelle_und_bewegt_nichts() {
+    let (tmp, lauf) = grundbestand();
+    let board = lies(tmp.path(), "boards/entwicklung.md");
+    let rumpf = r#"{"ziele": [{"nummer": 1, "spalte": "Zu erledigen"}, {"nummer": "zwei", "spalte": "Zu erledigen"}]}"#;
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/boards/entwicklung/bewegen-mehrere", JSON, rumpf, 400).await;
+    assert!(fehler.contains("ziele[1].nummer"), "Feld und Stelle 1: {fehler}");
+    assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), board, "keine der beiden Aufgaben ist bewegt");
+}
+
+// AK 8 · US-4
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 400 text/plain"]
+async fn kaputtes_json_und_ein_leerer_rumpf_werden_mit_400_und_deutscher_meldung_abgewiesen() {
+    let (tmp, lauf) = grundbestand();
+    for rumpf in [r#"{"titel": "#, ""] {
+        let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben", JSON, rumpf, 400).await;
+        assert!(fehler.contains("kein gültiges JSON"), "Rumpf {rumpf:?}: {fehler}");
+        assert_eq!(std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().count(), 3, "Rumpf {rumpf:?}: keine Aufgabe angelegt");
+    }
+}
+
+// AK 9
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain mit dem gesendeten Wert"]
+async fn die_meldung_wiederholt_den_gesendeten_wert_nicht() {
+    let (tmp, lauf) = grundbestand();
+    let rumpf = r#"[{"name": "Zu erledigen", "grenze": "Zx9-Inhalt"}]"#;
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/entwicklung/spalten", JSON, rumpf, 400).await;
+    assert!(!fehler.contains("Zx9-Inhalt"), "{fehler}");
+    assert!(fehler.contains("grenze"), "{fehler}");
+}
+
+// AK 10 · US-4
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 415 text/plain"]
+async fn ein_fehlender_oder_falscher_content_type_wird_mit_415_und_deutscher_meldung_abgewiesen() {
+    let (tmp, lauf) = grundbestand();
+    for art in [None, Some("text/plain")] {
+        let rumpf = r#"{"titel": "x", "board": "entwicklung"}"#;
+        let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben", art, rumpf, 415).await;
+        assert!(fehler.contains("Content-Type") && fehler.contains("application/json"), "Content-Type {art:?}: {fehler}");
+        assert_eq!(std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().count(), 3, "Content-Type {art:?}: keine Aufgabe angelegt");
+    }
+}
+
+// AK 11 · US-4 — hält zugleich die Standardgrenze des Rahmens für JSON-Rümpfe fest (ADR-0003 N3 Punkt 6): 2 MiB gehen durch den Extraktor, 3 MiB nicht
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 413 text/plain"]
+async fn ein_rumpf_von_3_mib_wird_mit_413_und_deutscher_meldung_abgewiesen() {
+    let (tmp, lauf) = grundbestand();
+    let aufgabe = lies(tmp.path(), "aufgaben/0001-eins.md");
+    let rumpf = format!(r#"{{"text": "{}"}}"#, "a".repeat(3 * 1024 * 1024));
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/kommentare", JSON, rumpf, 413).await;
+    assert!(fehler.contains("zu groß"), "{fehler}");
+    assert_eq!(lies(tmp.path(), "aufgaben/0001-eins.md"), aufgabe, "kein Kommentar geschrieben");
+}

@@ -143,3 +143,29 @@ pub fn mit_register(ordner: &Path, arbeit: &Path) {
     std::fs::write(ordner.join("kanbanD.md"), kanban).unwrap();
     git(ordner, &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-am", "Register"]);
 }
+
+/// Antwort eines rohen Aufrufs: Status, `Content-Type` und Rumpf, wie sie über die Leitung kamen.
+pub struct Antwort {
+    pub status: u16,
+    pub art: String,
+    pub text: String,
+}
+
+impl Antwort {
+    /// Der Rumpf als JSON; `Null`, wenn er keines ist.
+    pub fn json(&self) -> serde_json::Value {
+        serde_json::from_str(&self.text).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+/// Schreibender Aufruf mit rohem Rumpf; `art` ist der `Content-Type` der Anfrage, `None` sendet keinen (R00153).
+pub async fn senden_roh(methode: reqwest::Method, adresse: &str, pfad: &str, wer: &str, art: Option<&str>, rumpf: impl Into<reqwest::Body>) -> Antwort {
+    let mut anfrage = reqwest::Client::new().request(methode, format!("{adresse}{pfad}")).header("X-KanbanD-Wer", wer).body(rumpf);
+    if let Some(art) = art {
+        anfrage = anfrage.header("Content-Type", art);
+    }
+    let r = anfrage.send().await.unwrap();
+    let status = r.status().as_u16();
+    let art = r.headers().get("content-type").and_then(|w| w.to_str().ok()).unwrap_or_default().to_string();
+    Antwort { status, art, text: r.text().await.unwrap() }
+}
