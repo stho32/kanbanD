@@ -4,7 +4,7 @@
 **Datum**: 2026-10-31
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00096, R00097
-**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121). · 2026-11-15 — Status je Abweisungsart des Rahmens: Inhalt **400**, fehlender Content-Type **415**, zu großer Rumpf **413**, alle mit `{fehler}`; Zählung 36 Handler (Karte #39), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-status-je-abweisungsart-des-rahmens-und-umfang-karte-39). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: —
 **Ergänzt durch**: [ADR-0006](0006-einstellung-verboten-als-dritte-abweisung.md) (dritte Variante `EinstellungVerboten`, 403, R00102)
 
@@ -118,9 +118,39 @@ Zwei Abweisungen mit fester Form rechtfertigen zwei Varianten; der Typ bleibt fr
 - **Der `spalte`-Wert der board-weiten 403** bleibt wie in R00120 notiert (Rohschlüssel, sonst leer; gebaut: leer, `zugregeln.rs:44`); die 423 trägt kein `spalte`.
 - **Der Bau ist nicht Teil des Nachtrags** (Welle 2, Zug 2c, `src/dienst/zugregeln.rs`/`archiv.rs`, Kartenkommentar #121; hängt mit #142 zusammen).
 
+## Nachtrag 2026-11-15 N3: Status je Abweisungsart des Rahmens und Umfang (Karte #39)
+
+**Status bleibt `Akzeptiert`.** N1 entscheidet die eine Stelle (`JsonKoerper<T>`) und nennt drei Abweisungen des Inhalts. Offen blieb, was mit den beiden Abweisungen des Transports geschieht, und die Zahl „20 Stellen“ in N1 stimmt nicht mehr. N3 ändert nichts an N1, es füllt diese zwei Lücken.
+
+**Belegt (Code)**, kanbanD `e89e1a1` (gelesen 2026-11-15):
+- `axum 0.8.9` (`Cargo.lock:36`); `JsonRejection` kennt vier Arten: `JsonDataError` (heute 422, Klartext), `JsonSyntaxError` (heute 400, Klartext), `MissingJsonContentType` (415, Klartext), `BytesRejection` (413 bei überschrittener Grenze, Klartext). Die Grenze ist 50 MiB (`src/web/mod.rs:120`).
+- **36 Handler** nehmen `Json<T>` (`src/web/mod.rs:244`–`:1639`), nicht 20. Fünf weitere lesen den Rumpf als `Bytes`: `ziehen` (`:1197`) antwortet bei Formfehlern schon mit 400 `{fehler}`; `timer_stoppen` (`:1025`), `wbs_verwerfen` (`:1330`), `reservieren` und `freigeben` (`:215`) behandeln einen fehlenden oder unlesbaren Rumpf mit Absicht als „nichts angegeben“.
+- `tests/termine.rs:31` hält das alte Verhalten fest (`assert_eq!(…, 422)` für den unbekannten Schlüssel `linie`).
+- OpenAPI nennt an jedem Endpunkt 400 mit `Fehlerantwort` und nirgends 422 (`src/web/mod.rs:229` ff.); 415 und 413 sind nicht beschrieben.
+- Kein Client wertet 422 aus: die Oberfläche liest `json.fehler`, sonst `statusText` (`web/app.js:100`), und unterscheidet nur 400, 404, 409, 423; das Factory-Werkzeug `kanband.py` reicht Code und Text nur in die Fehlermeldung durch.
+
+### Entschieden
+
+1. **Inhalt ist 400.** `JsonDataError` (falscher Typ, fehlendes Pflichtfeld, unbekannter Schlüssel bei `deny_unknown_fields`) und `JsonSyntaxError` werden `Fehler::Ungueltig` → 400 mit Feldpfad, wie N1.
+2. **Transport behält seinen Code, bekommt aber die Form.** Fehlender oder falscher `Content-Type` bleibt **415**, ein Rumpf über der Grenze bleibt **413** — beide mit `Content-Type: application/json` und `{"fehler": "…"}` auf Deutsch. Ein Agent reagiert darauf anders als auf ein falsches Feld (Kopfzeile setzen, Anhang verkleinern); 400 würde das verdecken. Ein Lesefehler des Rumpfs ohne Grenzbezug ist 400.
+3. **`Fehler` bleibt frei von Transport.** 415 und 413 werden keine Varianten von `Fehler` (`src/fehler.rs`); die Abweisung des Extraktors ist ein Typ der Web-Schicht und baut den Rumpf mit derselben Funktion wie `IntoResponse for Fehler`. **In Kauf genommen**: zwei Statuscodes entstehen außerhalb von `Fehler`; das ist vertretbar, weil kein Dienst sie je erzeugen kann.
+4. **Umfang der Karte**: alle 36 `Json<T>`-Handler wechseln auf `JsonKoerper<T>`. Die roh angenommenen Felder (`cost`, `estimate`, `index`, `position`, `erledigt`, `datums_trenner` — ADR-0009, ADR-0017, ADR-0023) bleiben roh: ihre Meldungen sind fachlich und schon 400. Die fünf `Bytes`-Handler bleiben, wie sie sind. `tests/termine.rs:31` wird auf 400 umgestellt — das ist die Regression, die das neue Verhalten festhält.
+5. **Der beschriebene Kontrakt ändert sich nicht.** 400 mit `Fehlerantwort` steht schon an jedem Endpunkt; der Code holt die Beschreibung ein. 415 und 413 müssen nicht in OpenAPI nachgetragen werden.
+
+**Verworfen**:
+- **Alles 400** (auch 415/413): eine Abbildung, eine Variante — aber „zu groß“ und „Feld falsch“ wären nicht mehr unterscheidbar, und ein bisher richtiger Code würde ohne Anlass geändert.
+- **`Fehler::NichtUnterstuetzt` / `Fehler::ZuGross`**: einheitlicher Antwortweg, aber jede erschöpfende `match`-Stelle der Dienste müsste zwei Arten behandeln, die dort nie vorkommen.
+
+### Durchsetzung
+
+Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am Extraktor): `POST` ohne `Content-Type` → 415 `{fehler}`; die Unit-Probe des Extraktors mit einer kleinen Grenze → 413 `{fehler}`. Der Abgleich „Methode ≠ GET in `src/web/endpunkte.rs`“ (57 Einträge) gegen die 36 Handler mit Rumpf benennt die 21 ohne JSON-Rumpf ausdrücklich, sonst ist die Mutante aus N1 nicht prüfbar.
+
+**Grenze**: `Path`/`Query` (N1 Punkt 3, 59 Verwendungen) bleibt Soll; ob es in dieselbe Karte gehört, entscheidet der product-owner — die Abnahme-Probe der Karte nennt nur den Rumpf.
+
 ## Quellen / Bezuege
 
 - `src/fehler.rs`, `src/web/mod.rs` (`impl IntoResponse for Fehler`)
 - ADR-0002
 - Nachtrag N1: Karte #39 (Anmerkung A1 aus #27); `src/web/mod.rs:20`, `:152–181`, `:302`, `:374`, `:392`; `src/web/endpunkte.rs`; `Cargo.lock:945` (`serde_path_to_error` über `axum 0.8`)
 - Nachtrag N2: Karte #121 (Betreiber-Entscheidung 2026-11-13 im Kartenkommentar, arev B3); R00120 AK 6; `AI-Team/po-entscheidungen.md:187–188`; `src/dienst/zugregeln.rs:66–69`, `:88–96`, `:240–249`; `src/dienst/archiv.rs:12`, `:14`, `:51`, `:134`; `src/dienst/board_verwalten.rs:27`, `:59`; `src/web/mod.rs:158`
+- Nachtrag N3: Karte #39; `Cargo.lock:36` (`axum 0.8.9`); `src/web/mod.rs:120`, `:215`, `:244`–`:1639`, `:1025`, `:1197`, `:1330`; `src/web/endpunkte.rs`; `tests/termine.rs:31`; `web/app.js:100`
