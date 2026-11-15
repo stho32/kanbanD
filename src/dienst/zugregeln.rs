@@ -98,17 +98,17 @@ impl super::Kanban {
     /// Archivieren nimmt die Karten von jedem Board, auf dem sie liegen (R00097): geprüft je Board in der Reihenfolge
     /// der Boardliste, darin die Nummern in Anfragereihenfolge — die Abweisung nennt die erste Sperre. Mensch nie gesperrt.
     /// Ist eine Board-Datei des Ordners unlesbar, ist die Lage der Karte nicht bestimmbar: ein Agent bekommt 423 statt
-    /// der stillen Umgehung (R00120, PO Z. 188); eine Sperre der lesbaren Boards (403) geht vor.
+    /// der stillen Umgehung (R00120, PO Z. 188) — und zwar **vor** jeder Sperre der lesbaren Boards (403): solange der
+    /// Ordner nicht ganz lesbar ist, ist auch die Aussage über die lesbaren Boards unsicher (R00159, ADR-0003 N2).
     pub(super) fn archivieren_pruefen(&self, wer: &Person, nummern: &[u32]) -> Result<(), Fehler> {
         if wer.art == Art::Mensch {
             return Ok(());
         }
         let (boards, defekt) = self.ordner().boards()?;
-        boards.iter().try_for_each(|b| entnahme_pruefen(wer.art, b, nummern))?;
-        match defekt.first() {
-            Some(d) => Err(Fehler::Defekt(format!("{}: {} — nur lesbar, bis die Datei repariert ist", d.pfad, d.fehler))),
-            None => Ok(()),
+        if let Some(d) = defekt.first() {
+            return Err(Fehler::Defekt(format!("{}: {} — nur lesbar, bis die Datei repariert ist", d.pfad, d.fehler)));
         }
+        boards.iter().try_for_each(|b| entnahme_pruefen(wer.art, b, nummern))
     }
 
     /// Zurückholen ändert kein Board, lässt die Karten aber auf jedem Board, auf dem sie liegen, wieder zählen:

@@ -5,7 +5,8 @@ use crate::uhr;
 
 impl Kanban {
     /// Setzt `archived` auf heute und beendet laufende Timer; Datei und Board-Zeile bleiben.
-    /// Ein Agent nicht, wenn die Karte auf einem Board in einer Menschen-Spalte liegt (403, R00097).
+    /// Ein Agent nicht, wenn eine Board-Datei des Ordners defekt ist (423, R00120) oder — bei lesbarem Ordner — die Karte
+    /// auf einem Board in einer Menschen-Spalte liegt (403, R00097); die 423 geht der 403 vor (R00159, ADR-0003 N2).
     pub fn archivieren(&self, wer: &Person, nr: u32) -> Result<Aufgabe, Fehler> {
         self.aufgabe_schreiben(wer, nr, |a| {
             if a.archiviert.is_some() {
@@ -41,13 +42,13 @@ impl Kanban {
     /// Endgültig löschen (R00141, ADR-0024): die **dritte Bewegung** der Archiv-Familie neben archivieren/zurückholen.
     /// Entfernt die Aufgabendatei, ihre Zeile aus **allen** Board-Dateien und ihren Anhangsordner in **einem** Commit
     /// unter derselben Sperre `gesperrt()` wie ihre Geschwister; nur die Git-Geschichte behält die Karte. Ein Agent wird
-    /// aus einer Menschen-Spalte **403** abgewiesen (R00097), ein defektes Board des Ordners ist **423** (R00120);
-    /// nichts geändert, kein Commit. Der Löschweg braucht nur den Pfad (`aufgabenpfad`), nicht das Modell — eine defekte
+    /// bei einem defekten Board des Ordners **423** abgewiesen (R00120), sonst aus einer Menschen-Spalte **403** (R00097)
+    /// — die 423 geht der 403 vor (R00159, ADR-0003 N2); nichts geändert, kein Commit. Der Löschweg braucht nur den Pfad (`aufgabenpfad`), nicht das Modell — eine defekte
     /// Aufgabendatei lässt sich damit entfernen. Rückgabe ist die Nummer (Antwort `{nummer}`).
     pub fn endgueltig_loeschen(&self, wer: &Person, nr: u32) -> Result<u32, Fehler> {
         let _sperre = self.gesperrt();
         let pfad = self.ordner().aufgabenpfad(nr)?;
-        // Prüfung vor jedem Schreiben: Agent aus einer Menschen-Spalte 403, defektes Board des Ordners 423.
+        // Prüfung vor jedem Schreiben: Agent bei defektem Board des Ordners 423, erst danach aus einer Menschen-Spalte 403.
         self.archivieren_pruefen(wer, &[nr])?;
         let mut schritte = vec![];
         let mut boardzahl = 0;
