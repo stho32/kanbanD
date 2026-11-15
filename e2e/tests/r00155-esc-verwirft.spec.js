@@ -3,7 +3,7 @@
 // bleibt offen; sonst schließt Esc. Enter und das Verlassen speichern weiter.
 const { test, expect } = require('@playwright/test');
 const { reiter } = require('./hilfen');
-const { DATEI_1, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansagen } = require('./r00155-hilfen');
+const { DATEI_1, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansagen, ansichtNeuZeichnen } = require('./r00155-hilfen');
 
 const TITELFELD = '#fenster [data-af="titel"]';
 const TITEL_LESEN = '#fenster [data-act="titel-bearbeiten"]';
@@ -88,7 +88,6 @@ test.describe('R00155 #54: Esc im Titelfeld', () => {
 
 test.describe('R00155 #54: Esc in Labels', () => {
   test('54-4/US-2: ui, daten, neu tippen, Esc → das Feld zeigt ui, daten, Fokus im Feld, Fenster offen, nichts geschrieben, stumm; ein weiteres Esc im unveränderten Feld schließt', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0722');
     const fenster = await fensterIn(page, 'Details');
     const labels = fenster.getByLabel('Labels');
     await labels.fill('ui, daten, neu');
@@ -106,7 +105,6 @@ test.describe('R00155 #54: Esc in Labels', () => {
   });
 
   test('54-5: Labels nach einem Live-Ereignis — getippt, bot ändert #2 (das Fenster zeichnet neu), Esc und Tab → nichts geschrieben, die Datei trägt weiter ui, daten', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0722');
     const fenster = await fensterIn(page, 'Details');
     const labels = fenster.getByLabel('Labels');
     await labels.fill('ui, daten, neu');
@@ -136,7 +134,6 @@ test.describe('R00155 #54: Esc in Labels', () => {
 test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', () => {
   for (const [ansicht, name, getippt] of [['Details', 'Neue Herkunft', 'I00'], ['Inhalt', 'Neue Teilaufgabe', 'Entwurf'], ['Zeiten', 'Zeit nachtragen', '0:4']]) {
     test(`54-6/US-3: „${name}“ — ${getippt} tippen, Esc → Feld leer, Fokus im Feld, Fenster offen, nichts geschrieben; auch nach dem Neuzeichnen leer; ein weiteres Esc im leeren Feld schließt`, async ({ page }) => {
-      test.fail(true, 'erwartet rot bis B0722');
       const fenster = await fensterIn(page, ansicht);
       const feld = fenster.getByLabel(name, { exact: true });
       await feld.click();
@@ -152,6 +149,9 @@ test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', ()
       await fremdesNeuzeichnen(page, k);
       await expect(feld).toHaveValue('');
       await expect(feld).toBeFocused();
+      await ansichtNeuZeichnen(page, ansicht);
+      await expect(feld, 'auch ohne Fokus neu gezeichnet steht der verworfene Text nicht wieder da').toHaveValue('');
+      await feld.focus();
       await page.keyboard.press('Escape');
       await fensterIstZu(page);
       expect(k.schreibend.slice(vorher.anfragen), '54-6, zweites Esc: keine schreibende Anfrage').toEqual([]);
@@ -159,7 +159,6 @@ test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', ()
   }
 
   test('54-7: abgelehnte Herkunft X1, Esc → Feld leer, Meldung fort, weder aria-invalid noch aria-describedby, Fokus bleibt, Fenster offen; nach dem Neuzeichnen steht X1 nicht wieder da', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0722');
     const { fenster, herkunft } = await herkunftAbgelehnt(page);
     const vorher = await standMerken(page, k);
     await page.keyboard.press('Escape');
@@ -172,10 +171,12 @@ test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', ()
     await fremdesNeuzeichnen(page, k);
     await expect(herkunft).toHaveValue('');
     expect(await verweise(fenster)).toEqual(KEINES);
+    await ansichtNeuZeichnen(page, 'Details');
+    await expect(herkunft, 'auch ohne Fokus neu gezeichnet steht X1 nicht wieder da').toHaveValue('');
+    expect(await verweise(fenster)).toEqual(KEINES);
   });
 
   test('54-8: die Meldung eines anderen Felds bleibt — X1 abgelehnt, in Labels neu tippen, Esc → Labels zeigt ui, daten, die Meldung zu X1 samt ungültigem Herkunftsfeld steht weiter', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0722');
     const { fenster, herkunft } = await herkunftAbgelehnt(page);
     const labels = fenster.getByLabel('Labels');
     await labels.fill('neu');

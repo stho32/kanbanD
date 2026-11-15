@@ -161,6 +161,9 @@
     return { nummer, feld, wert };
   }
 
+  // „Neue Herkunft“, neue Teilaufgabe, „Zeit nachtragen“: schreiben erst mit Enter
+  const ENTER_FELDER = ['herkunft-neu', 'teil-neu', 'zeit-neu'];
+
   /**
    * Die Esc-Regel des Aufgabenfensters (ADR-0010 N9 Ziffer 4): was das fokussierte Feld zu verwerfen hat. Das Feld kommt als
    * `{ af, id, wert, gezeichnet, imModus, haeltEntwurf }`. Liefert den Stand, auf den der Wert zurückgeht, und ob der
@@ -168,7 +171,13 @@
    */
   function verwerfung(feld) {
     if (feld.af === 'titel') return { wert: feld.gezeichnet, verlaesstModus: true };
-    return null;
+    const schreibtAufEnter = ENTER_FELDER.includes(feld.id);
+    if (feld.af !== 'labels' && !schreibtAufEnter) return null;
+    // der Stand eines Enter-Felds ist leer, auch wenn die abgelehnte Eingabe darin gezeichnet ist
+    let stand = feld.gezeichnet;
+    if (schreibtAufEnter) stand = '';
+    if (feld.wert === stand && !feld.haeltEntwurf) return null;
+    return { wert: stand, verlaesstModus: false };
   }
 
   /** Attribute, mit denen ein Feld als ungültig auf die Fenstermeldung verweist — nur solange die Meldung dieses Feld nennt und der Entwurf zu ihm gehört. */

@@ -734,6 +734,8 @@ async function titelSpeichern(wert) {
 /** Kennung, unter der ein Feld des Aufgabenfensters den einen Entwurf und seine Meldung führt; null für Felder ohne. */
 function entwurfskennung(feld) {
   if (feld.dataset.af === 'titel') return TITEL_FELD;
+  if (feld.id === 'herkunft-neu') return HERKUNFT_FELD;
+  if (feld.id === 'zeit-neu') return ZEIT_FELD;
   return null;
 }
 

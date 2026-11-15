@@ -59,3 +59,24 @@ test('verwerfung: der Titel im Bearbeiten verlässt den Modus — geändert wie 
 test('verwerfung: Felder ohne Entwurf haben nichts zu verwerfen — Spalte, Klasse, Fällig', () => {
   for (const af of ['spalte', 'klasse', 'faellig']) assert.strictEqual(verwerfung(feld({ af, wert: 'x', gezeichnet: 'y' })), null, af);
 });
+
+test('verwerfung: Labels — geändert geht auf den gezeichneten Stand zurück, der Fokus bleibt; unverändert nichts zu verwerfen', () => {
+  assert.deepStrictEqual(verwerfung(feld({ af: 'labels', wert: 'ui, daten, neu', gezeichnet: 'ui, daten' })), { wert: 'ui, daten', verlaesstModus: false });
+  assert.strictEqual(verwerfung(feld({ af: 'labels', wert: 'ui, daten', gezeichnet: 'ui, daten' })), null);
+});
+
+test('verwerfung: Felder, die erst mit Enter schreiben — Getipptes und die abgelehnte Eingabe werden geleert; leer nichts zu verwerfen', () => {
+  for (const id of ['herkunft-neu', 'teil-neu', 'zeit-neu']) {
+    assert.deepStrictEqual(verwerfung(feld({ id, wert: 'Entwurf' })), { wert: '', verlaesstModus: false }, id);
+    assert.strictEqual(verwerfung(feld({ id, wert: '' })), null, id);
+  }
+  // die abgelehnte Eingabe ist als Stand gezeichnet — der Stand eines Enter-Felds ist trotzdem leer
+  assert.deepStrictEqual(verwerfung(feld({ id: 'zeit-neu', wert: 'abc', gezeichnet: 'abc', haeltEntwurf: true })), { wert: '', verlaesstModus: false });
+  // von Hand geleert, die Meldung steht noch: der Entwurf ist zu räumen
+  assert.deepStrictEqual(verwerfung(feld({ id: 'herkunft-neu', wert: '', gezeichnet: 'X1', haeltEntwurf: true })), { wert: '', verlaesstModus: false });
+});
+
+test('verwerfung: andere Eingabefelder des Fensters fallen nicht unter die Regel, auch nicht geändert', () => {
+  assert.strictEqual(verwerfung(feld({ id: 'z-beginn', wert: '09:00', gezeichnet: '08:00' })), null);
+  assert.strictEqual(verwerfung(feld({ id: 'flt', wert: 'x' })), null);
+});

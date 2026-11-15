@@ -1,6 +1,6 @@
 // R00155 (Karte #54, I0142): gemeinsamer Grundbestand und die eine Messung „nichts geschrieben“ für die Specs des Pakets.
 const { expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, mutanteEinsetzen, reiter } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -79,6 +79,19 @@ async function fremdesNeuzeichnen(page, k, titel = 'Zweite Aufgabe, von bot geä
   await expect(page.locator('.ka[data-id="2"] .t')).toHaveText(titel);
 }
 
+/**
+ * Zeichnet die Ansicht ohne Fokus im Feld neu: einmal in eine andere Ansicht und zurück. Ein fokussiertes Feld behält über
+ * ein Neuzeichnen seinen Wert (ADR-0007) — ob ein verworfener Entwurf wirklich fort ist, zeigt erst dieser Weg.
+ */
+async function ansichtNeuZeichnen(page, ansicht) {
+  let andere = 'Details';
+  if (ansicht === 'Details') andere = 'Inhalt';
+  await reiter(page, andere);
+  await expect(page.locator('#fenster .mod-body')).toHaveAttribute('aria-label', `Ansicht: ${andere}`);
+  await reiter(page, ansicht);
+  await expect(page.locator('#fenster .mod-body')).toHaveAttribute('aria-label', `Ansicht: ${ansicht}`);
+}
+
 /** Ungültige Felder des Fensters und Felder, die auf die Fenstermeldung verweisen — je als Liste lesbarer Namen. */
 function verweise(fenster) {
   return fenster.evaluate(wurzel => {
@@ -96,4 +109,4 @@ function ansagen(page) {
   return page.evaluate(() => [...document.querySelectorAll('[role=status], [role=alert], [aria-live]')].map(bereich => bereich.textContent));
 }
 
-module.exports = { ansagen,  GRUNDBESTAND, DATEI_1, DATEI_2, ALS_BOT, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, zweiFrames, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise };
+module.exports = { ansagen, ansichtNeuZeichnen,  GRUNDBESTAND, DATEI_1, DATEI_2, ALS_BOT, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, zweiFrames, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise };

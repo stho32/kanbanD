@@ -3,7 +3,7 @@
 // Je Mitglied ein eigener Block, damit eines ohne das andere herausgeht. 96-5 und 93-5 (Esc) gelten, solange #54 im Paket ist.
 const { test, expect } = require('@playwright/test');
 const { reiter } = require('./hilfen');
-const { DATEI_1, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise } = require('./r00155-hilfen');
+const { DATEI_1, MELDUNG_TITEL, MELDUNG_DAUER, MELDUNG_X1, starten, fensterOeffnen, standMerken, nichtsGeschrieben, fremdesNeuzeichnen, verweise, ansichtNeuZeichnen } = require('./r00155-hilfen');
 
 const TITELFELD = '#fenster [data-af="titel"]';
 const TITEL_LESEN = '#fenster [data-act="titel-bearbeiten"]';
@@ -159,7 +159,6 @@ test.describe('R00155 #93: „Zeit nachtragen“ behält die abgelehnte Eingabe'
   });
 
   test('93-5 (#54): Esc nach der Ablehnung — Feld leer, Meldung fort, kein aria-invalid, Fokus bleibt, Fenster offen; nach dem Neuzeichnen steht abc nicht wieder da', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0722 (#54)');
     const { fenster, feld } = await dauerAbgelehnt(page);
     const vorher = await standMerken(page, k);
     await page.keyboard.press('Escape');
@@ -168,10 +167,14 @@ test.describe('R00155 #93: „Zeit nachtragen“ behält die abgelehnte Eingabe'
     await expect(feld).toBeFocused();
     await expect(fenster.locator('[role=alert]')).toHaveCount(0);
     expect(await verweise(fenster)).toEqual(KEINES);
+    // gemessen vor dem fremden Neuzeichnen: bot schreibt dabei selbst in die Datei von #2
+    await nichtsGeschrieben(page, k, vorher, '93-5');
     await fremdesNeuzeichnen(page, k);
     await expect(feld).toHaveValue('');
     expect(await verweise(fenster)).toEqual(KEINES);
-    await nichtsGeschrieben(page, k, vorher, '93-5');
+    await ansichtNeuZeichnen(page, 'Zeiten');
+    await expect(feld, 'auch ohne Fokus neu gezeichnet steht abc nicht wieder da').toHaveValue('');
+    expect(await verweise(fenster)).toEqual(KEINES);
   });
 
   test('93-6: der Entwurf gehört zur offenen Aufgabe — Fenster schließen, #2 öffnen: „Zeit nachtragen“ leer, keine Meldung, kein ungültiges Feld', async ({ page }) => {
