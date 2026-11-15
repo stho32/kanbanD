@@ -128,3 +128,15 @@ Jede der ~20 bekannten Fundstellen einzeln mit `expect.poll`/`waitFor` versehen.
 **Durchsetzung**: Review-Punkt wie oben — eine Erwartung aus `heute ± n`, die eine Woche, einen Monat oder ein Jahr benennt, ohne gestellte Uhr, ist ein Befund.
 
 **Probe**: `kultur.spec.js` US-4 besteht mit auf Sonntag, Montag und Samstag gestellter Uhr des Browsers; gegen den Stand `e38f2f9` ist die Sonntags-Variante rot.
+
+## Nachtrag 2026-11-15: Rust-Live-Tests warten auf den beobachtenden Wächter (Karte #163)
+
+Schließt die offene Frage zu `tests/live.rs:57`. **Belegt (Code, Ist; nicht gefahren)**: Jede gestartete Programminstanz öffnet zwei inotify-Instanzen (`src/web/mod.rs:48` Ordner, `:135` fremde WBS). Gibt der Kern keine mehr her (Grenze je Benutzer `max_user_instances=128`; auf dem Entwicklungsrechner belegt der Desktop im Leerlauf rund 80), läuft das Programm **ohne** Wächter weiter und meldet das nur mit einer Zeile auf stderr (`src/web/mod.rs:56`, `:140`). Dann kommt nie ein Ereignis — die 3-s-Frist in `gemeinsam::ereignis_abwarten` (`tests/gemeinsam/mod.rs:112`) läuft unabhängig von ihrer Länge ab. Die Grenze gilt über alle Prozesse des Benutzers; die Testdatei selbst braucht parallel höchstens rund 13 Instanzen.
+
+**Regel 7 (sinngemäß Regel 1 und 5 für `tests/*.rs`)**: Ein Test, der ein Live-Ereignis erwartet, löst erst aus, wenn der Wächter nachweislich beobachtet. Bereitzeichen ohne Produktivcode: nach der ersten HTTP-Antwort (der Router und damit der Wächter sind dann gebaut) steht auf dem mitgeschnittenen stderr der Instanz **keine** Zeile „… nicht beobachtet“; direkt gestartete Wächter (`waechter::starten`, `fremde_starten`) liefern `Ok`. Fehlt das Bereitzeichen, wiederholt die Hilfe in `tests/gemeinsam/mod.rs` den Start begrenzt und scheitert danach mit der benannten Ursache (inotify-Grenze der Umgebung), nicht mit „kein passendes Ereignis“. Die 3-s-Frist bleibt und misst danach nur noch das Programm.
+
+**Verworfen**: Tests der Datei serialisieren — senkt den Eigenbedarf von rund 13 auf 2, die Grenze erschöpfen aber fremde Prozesse; längere Frist — ohne Wächter kommt nie ein Ereignis; Wächter in den übrigen Tests abschalten — verlangt einen Schalter im Programm.
+
+**Nicht entschieden**: Dass das Programm den Ausfall des Wächters nur auf stderr meldet (keine Wiederholung, kein Zeichen in API oder Oberfläche), ist ein Betriebsthema und eine eigene Karte; ein Zustandsfeld dort wäre das bessere Bereitzeichen.
+
+**Probe**: vier gleichzeitige Läufe der Testdatei `live`, fünf Runden, 20 von 20 grün; mit dauerhaft belegter Grenze scheitert ein Lauf mit der benannten Ursache.
