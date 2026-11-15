@@ -366,7 +366,7 @@ function vFensterDetails(a) {
   const ps = personen().filter(p => p.aktiv || a.zustaendige.includes(p.kuerzel));
   return `<div class="felder felder-details">${vSchluesselFeld(a)}${vFeldZeile('spalte', a)}
 ${vFeldZeile('klasse', a)}
-${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" data-halt="herkunft-weg:${esc(x)}" data-ort="#herkunft-neu" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu" value="${esc(herkunftEntwurf(a))}" placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"${herkunftVerweis(a)}></span>
+${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" data-halt="herkunft-weg:${esc(x)}" data-ort="#herkunft-neu" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu"${vEntwurf(a, HERKUNFT_FELD)} placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
 ${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
@@ -587,21 +587,16 @@ const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String
 
 /** Hilfstext der Herkunftsfelder: was man eingeben kann, der Eingabewert „ohne Herkunft“ in Anführungszeichen. */
 const HERKUNFT_HILFE = `WBS-Knoten I0001, Anforderung R00014, mit Kürzel der Anwendung kd:I0001, oder „${OHNE_HERKUNFT}“ · Enter`;
-/** Abgelehnte Eingabe im Feld „Neue Herkunft“ dieser Aufgabe, sonst leer. */
-function herkunftEntwurf(a) {
-  const e = S.ui.herkunftEntwurf;
-  if (!e || e.nummer !== a.nummer) return '';
-  return e.wert;
-}
 /** id der Meldung im Fuß des Aufgabenfensters; bleibt über jedes Neuzeichnen gleich, damit ein Feld auf sie verweisen kann. */
 const FENSTER_MELDUNG = 'fenster-meldung';
-/** Kennung des Felds „Neue Herkunft“ an einer Meldung des Aufgabenfensters (`S.ui.fensterFehlerFeld`). */
+/** Kennung des Felds „Neue Herkunft“ an einer Meldung des Aufgabenfensters (`S.ui.fensterFehlerFeld`) und am einen Entwurf (`S.ui.entwurf`). */
 const HERKUNFT_FELD = 'herkunft';
-/** Solange die Meldung eine abgelehnte Herkunft dieser Aufgabe betrifft, ist das Feld ungültig und verweist auf sie (R00111 AK 1). */
-function herkunftVerweis(a) {
-  const abgelehnt = S.ui.fensterFehler && S.ui.fensterFehlerFeld === HERKUNFT_FELD && herkunftEntwurf(a);
-  if (!abgelehnt) return '';
-  return ` aria-invalid="true" aria-describedby="${FENSTER_MELDUNG}"`;
+/** Wert und Verweis eines Entwurfsfelds — die eine Stelle für alle Felder (ADR-0015 N2, R00155 G-1): die abgelehnte Eingabe
+    dieser Aufgabe statt `gezeichnet`, und solange die Meldung das Feld nennt, ungültig mit Verweis auf sie (R00111 AK 1). */
+function vEntwurf(a, feld, gezeichnet = '') {
+  const abgelehnt = entwurfswert(S.ui.entwurf, a.nummer, feld);
+  const wert = abgelehnt === null ? gezeichnet : abgelehnt;
+  return ` value="${esc(wert)}"${meldungsverweis(S.ui.entwurf, { text: S.ui.fensterFehler, feld: S.ui.fensterFehlerFeld }, a.nummer, feld, FENSTER_MELDUNG)}`;
 }
 
 function quelleLink(x) {

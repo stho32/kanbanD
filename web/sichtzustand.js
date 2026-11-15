@@ -142,5 +142,21 @@
     if (geaendert(feld)) feld.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen });
+  /**
+   * Der eine Entwurf je Aufgabenfenster (ADR-0015 N2): die abgelehnte Eingabe `{ nummer, feld, wert }` — reiner Sichtzustand,
+   * nie Datei. Liefert die Eingabe, wenn der Entwurf dieses Feld dieser Aufgabe nennt, sonst null; leer ist auch eine Eingabe.
+   */
+  function entwurfswert(entwurf, nummer, feld) {
+    if (!entwurf || entwurf.nummer !== nummer || entwurf.feld !== feld) return null;
+    return entwurf.wert;
+  }
+
+  /** Attribute, mit denen ein Feld als ungültig auf die Fenstermeldung verweist — nur solange die Meldung dieses Feld nennt und der Entwurf zu ihm gehört. */
+  function meldungsverweis(entwurf, meldung, nummer, feld, meldungsId) {
+    const feldIstAbgelehnt = Boolean(meldung.text) && meldung.feld === feld && entwurfswert(entwurf, nummer, feld) !== null;
+    if (!feldIstAbgelehnt) return '';
+    return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
+  }
+
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungNachtragen, entwurfswert, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);

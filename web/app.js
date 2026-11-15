@@ -696,7 +696,7 @@ async function fensterOeffnen(nummer) {
   // Die gewählte Ansicht bleibt beim Öffnen einer anderen Aufgabe (R00145 FA 9); führt die Aufgabe sie nicht, fällt sie
   // in vFenster über reiterSchluessel auf „Inhalt“. Die Inhalte der vorigen Aufgabe fallen sofort weg (R00110/R00123).
   u.offen = nummer; u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
-  u.herkunftEntwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
+  u.entwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
   u.verlauf = null; u.verlaufFehler = null;
   // bei gewähltem Verlauf zuerst die leere Tabelle zeichnen — nie Zeilen der vorigen Aufgabe (R00123)
   if (u.tab === 'verlauf') render();
@@ -1509,7 +1509,7 @@ async function aktion(a, arg, wert) {
         u.fokus = '#z-beginn';
         break;
       }
-      case 'schliessen': case 'schliessen-bg': u.offen = null; u.fensterMenue = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.herkunftEntwurf = null; break;
+      case 'schliessen': case 'schliessen-bg': u.offen = null; u.fensterMenue = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.entwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
       case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
@@ -1896,9 +1896,9 @@ async function aktion(a, arg, wert) {
         const a = aufgabe(u.offen), alt = a.herkunft.filter(x => x !== 'thin air');
         u.fokus = '#herkunft-neu';
         // eine abgelehnte Eingabe bleibt im Feld stehen, damit man sie berichtigen kann
-        u.herkunftEntwurf = { nummer: u.offen, wert };
+        u.entwurf = { nummer: u.offen, feld: HERKUNFT_FELD, wert };
         const gelungen = await aufgabeAendern(u.offen, { herkunft: istOhneHerkunft(wert) ? ['thin air'] : [...alt, wert.trim()] }, HERKUNFT_FELD);
-        if (gelungen) u.herkunftEntwurf = null;
+        if (gelungen) u.entwurf = null;
         render();
         return;
       }
@@ -2351,7 +2351,7 @@ document.addEventListener('input', e => {
   // weiter, auch nach einem Feldfehler — und der ✓-Knopf (Klick trägt keinen Wert mit) bestätigt dieselbe Eingabe.
   if (e.target.id === 'board-umbenennen') { S.ui.boardUmbenennenWert = e.target.value; return; }
   // der Entwurf folgt dem Feld, damit ein Neuzeichnen die eigene Berichtigung stehen lässt
-  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.herkunftEntwurf = { nummer: S.ui.offen, wert: e.target.value }; return; }
+  if (e.target.id === 'herkunft-neu' && S.ui.offen) { S.ui.entwurf = { nummer: S.ui.offen, feld: HERKUNFT_FELD, wert: e.target.value }; return; }
   if (e.target.id === 'flt') {
     filterSetzen(e.target.value);
     $('#main').innerHTML = vMain();
@@ -2495,7 +2495,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
-    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.herkunftEntwurf = null; render(); return; }
+    if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
   }
