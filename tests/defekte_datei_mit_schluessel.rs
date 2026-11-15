@@ -154,3 +154,53 @@ async fn beschreibung_nennt_den_anlass_der_423() {
     }
     assert_eq!(seite.matches(SATZ).count(), 2, "Seite /api: je einmal bei beiden Anlegewegen");
 }
+
+// AK 5, US-3 (B0745): andere Schlüssel und Anlegen ohne Schlüssel laufen weiter — je eine Datei, je ein Commit
+#[tokio::test]
+async fn andere_schluessel_und_anlegen_ohne_schluessel_laufen_weiter() {
+    let tmp = tempfile::tempdir().unwrap();
+    bestand(tmp.path(), &[("0007-fund.md", FUND)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let commits = || git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<usize>().unwrap();
+    let mut erwartet = vec!["0007-fund.md".to_string()];
+    for (daten, datei) in [(json!({"titel": "Anderer", "key": "k2"}), "0008-anderer.md"), (json!({"titel": "Lose"}), "0009-lose.md")] {
+        let vorher = commits();
+        let (status, _, a) = anlegen(&lauf.adresse, "api/aufgaben", "cl", daten).await;
+        assert_eq!((status, &a["neu"], &a["datei"]), (201, &json!(true), &json!(datei)));
+        erwartet.push(datei.to_string());
+        assert_eq!((stand(tmp.path()).0, commits()), (erwartet.clone(), vorher + 1), "genau eine neue Datei, genau ein Commit");
+    }
+}
+
+// AK 6 (B0745): 400 vor 423 — ein ungültiger Schlüssel der Anfrage geht der defekten Datei vor
+#[tokio::test]
+async fn ungueltiger_schluessel_der_anfrage_geht_vor() {
+    let tmp = tempfile::tempdir().unwrap();
+    bestand(tmp.path(), &[("0007-fund.md", FUND)]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let vorher = stand(tmp.path());
+    let einzeln = ("api/aufgaben", json!({"titel": "Fund", "key": ""}));
+    let mehrere = ("api/aufgaben/mehrere", json!({"titel": [{"titel": "Fund", "key": "k1"}, {"titel": "leer", "key": ""}]}));
+    for (pfad, daten) in [einzeln, mehrere] {
+        let (status, _, rumpf) = anlegen(&lauf.adresse, pfad, "cl", daten).await;
+        assert_eq!((status, &rumpf), (400, &json!({"fehler": "Schlüssel: 1–200 Zeichen ohne Zeilenumbruch"})), "{pfad}");
+    }
+    assert_eq!(stand(tmp.path()), vorher, "nichts angelegt");
+}
+
+// AK 8, US-5 (B0745): Grenze der schmalen Fassung — ein `key`, der kein gültiger einzeiliger Text ist, hält nichts an
+#[tokio::test]
+async fn schluessel_ohne_gueltigen_text_haelt_nichts_an() {
+    for (zeile, anfragen) in [("key: \"\"", vec!["k1"]), ("key: [a, b]", vec!["k1", "[a, b]"])] {
+        let tmp = tempfile::tempdir().unwrap();
+        bestand(tmp.path(), &[("0007-fund.md", &format!("---\nid: 7\ntitle: Fund\n{zeile}\n---\n"))]);
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let z: Value = reqwest::get(format!("{}api/zustand", lauf.adresse)).await.unwrap().json().await.unwrap();
+        assert_eq!(z["defekte"][0]["pfad"], "aufgaben/0007-fund.md", "{zeile}: die Datei ist defekt");
+        for (i, key) in anfragen.iter().enumerate() {
+            let (status, _, a) = anlegen(&lauf.adresse, "api/aufgaben", "cl", json!({"titel": "Fund", "key": key})).await;
+            assert_eq!((status, &a["neu"], &a["nummer"], &a["key"]), (201, &json!(true), &json!(8 + i), &json!(key)), "{zeile} mit {key}");
+        }
+        assert_eq!(lies(tmp.path(), "aufgaben/0008-fund.md"), "---\nid: 8\ntitle: Fund\nkey: k1\n---\n", "{zeile}");
+    }
+}
