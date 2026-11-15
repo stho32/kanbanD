@@ -278,3 +278,120 @@ async fn der_pfad_antwortet_vor_dem_rumpf() {
     }
     assert_eq!((lies(tmp.path(), "aufgaben/0001-eins.md"), stand(tmp.path())), (aufgabe, vorher), "Aufgabe #1 unverändert, kein Commit");
 }
+
+// ---- Gegenproben: am Stand vor dem Fix gemessen und festgeschrieben (R00154 AK 10–15) ----
+
+/// Sendet und liefert die Antwort samt der Kopfzeile `allow`.
+async fn roh_mit_allow(adresse: &str, methode: Method, pfad: &str) -> (u16, String, String, String) {
+    let r = reqwest::Client::new().request(methode, format!("{adresse}{pfad}")).header("X-KanbanD-Wer", "st").send().await.unwrap();
+    let kopf = |name: &str| r.headers().get(name).and_then(|w| w.to_str().ok()).unwrap_or_default().to_string();
+    (r.status().as_u16(), kopf("content-type"), kopf("allow"), r.text().await.unwrap())
+}
+
+// AK 10 · US-5: lesend, je Extraktor-Art — eine Zahl, Text und Abfrage, Pflichtfeld der Abfrage
+#[tokio::test]
+async fn gueltige_parameter_lesen_wie_vor_dem_fix_und_ohne_commit() {
+    let (tmp, lauf) = grundbestand();
+    let vorher = stand(tmp.path());
+    let aufgabe = senden_roh(Method::GET, &lauf.adresse, "api/aufgaben/1", "st", None, "").await;
+    assert_eq!((aufgabe.status, aufgabe.art.as_str()), (200, "application/json"));
+    assert_eq!((aufgabe.json()["nummer"].as_u64(), aufgabe.json()["titel"].as_str(), aufgabe.json()["pfad"].as_str()), (Some(1), Some("eins"), Some("aufgaben/0001-eins.md")));
+    let board = senden_roh(Method::GET, &lauf.adresse, "api/boards/entwicklung?archivierte=ja", "st", None, "").await;
+    assert_eq!((board.status, board.json()["slug"].as_str(), &board.json()["spalten"][0]["aufgaben"]), (200, Some("entwicklung"), &serde_json::json!([1, 2, 3])));
+    let boards = senden_roh(Method::GET, &lauf.adresse, "api/boards?archivierte=ja", "st", None, "").await;
+    assert_eq!((boards.status, boards.json()[0]["slug"].as_str(), boards.json().as_array().map(Vec::len)), (200, Some("entwicklung"), Some(1)));
+    let verlauf = senden_roh(Method::GET, &lauf.adresse, "api/berichte/verlauf?board=entwicklung", "st", None, "").await;
+    assert_eq!((verlauf.status, verlauf.json()["tage"][0]["offen"].as_u64(), verlauf.json()["tage"][0]["umfang"].as_u64()), (200, Some(3), Some(3)));
+    let bewegungen = senden_roh(Method::GET, &lauf.adresse, "api/berichte/bewegungen?board=entwicklung", "st", None, "").await;
+    assert_eq!((bewegungen.status, &bewegungen.json()["spalten"]), (200, &serde_json::json!(["Zu erledigen", "In Arbeit", "Erledigt"])));
+    let filter = senden_roh(Method::GET, &lauf.adresse, "api/aufgaben?board=entwicklung&spalte=Zu%20erledigen", "st", None, "").await;
+    assert_eq!((filter.status, filter.json()["aufgaben"].as_array().map(Vec::len)), (200, Some(3)), "freie Paare der Abfrage");
+    assert_eq!(stand(tmp.path()), vorher, "lesend: kein Commit");
+}
+
+// AK 10: schreibend mit zwei Zahlen im Pfad — Erfolg und genau ein Commit je Anfrage
+#[tokio::test]
+async fn zwei_gueltige_zahlen_im_pfad_schreiben_mit_genau_einem_commit_je_anfrage() {
+    let (tmp, lauf) = grundbestand();
+    let commits = || git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap();
+    let vorher = commits();
+    let angelegt = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben/1/teilaufgaben", "st", Some("application/json"), r#"{"text": "x"}"#).await;
+    assert_eq!((angelegt.status, &angelegt.json()["teilaufgaben"], commits()), (200, &serde_json::json!([{"text": "x", "erledigt": false}]), vorher + 1));
+    let abgehakt = senden_roh(Method::PATCH, &lauf.adresse, "api/aufgaben/1/teilaufgaben/0", "st", Some("application/json"), r#"{"erledigt": true}"#).await;
+    assert_eq!((abgehakt.status, &abgehakt.json()["teilaufgaben"], commits()), (200, &serde_json::json!([{"text": "x", "erledigt": true}]), vorher + 2));
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "keine offene Änderung");
+}
+
+// AK 11, AK 12 · US-5: Fachantworten wörtlich; %FF im Abfragewert weist der Rahmen nicht ab
+#[tokio::test]
+async fn fachantworten_und_ungueltiges_utf8_im_abfragewert_antworten_woertlich_wie_vor_dem_fix() {
+    let (_tmp, lauf) = grundbestand();
+    for (pfad, status, rumpf) in [
+        ("api/aufgaben/999", 404, r#"{"fehler":"Aufgabe #999 gibt es nicht"}"#),
+        ("api/berichte/verlauf?board=gibtsnicht", 404, r#"{"fehler":"Board „gibtsnicht“ gibt es nicht"}"#),
+        ("api/aufgaben?unsinn=1", 400, r#"{"fehler":"Unbekannter Filter „unsinn“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte"}"#),
+        ("api/aufgaben?board=%FF", 400, "{\"fehler\":\"Board-Name „\u{FFFD}“ ungültig: 1–40 Zeichen aus a–z, 0–9, -\"}"),
+        ("api/berichte/verlauf?board=%FF", 400, "{\"fehler\":\"Board-Name „\u{FFFD}“ ungültig: 1–40 Zeichen aus a–z, 0–9, -\"}"),
+        ("api/aufgaben?%FF=1", 400, "{\"fehler\":\"Unbekannter Filter „\u{FFFD}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte\"}"),
+        ("api/boards/x?archivierte=%FF", 404, r#"{"fehler":"Board „x“ gibt es nicht"}"#),
+        ("api/aufgaben/1/anhaenge/x.txt", 404, r##"{"fehler":"#1 hat keinen Anhang „x.txt“"}"##),
+    ] {
+        let antwort = senden_roh(Method::GET, &lauf.adresse, pfad, "st", None, "").await;
+        assert_eq!((antwort.status, antwort.art.as_str(), antwort.text.as_str()), (status, "application/json", rumpf), "{pfad}");
+    }
+}
+
+// AK 13 · US-5: 404 und 405 entstehen im Router, nicht in einem Extraktor (ADR-0003 N4 Punkt 6) — leerer Rumpf, kein Content-Type
+#[tokio::test]
+async fn unbekannte_route_und_falsche_methode_antworten_mit_leerem_rumpf_wie_vor_dem_fix() {
+    let (_tmp, lauf) = grundbestand();
+    for (methode, pfad, status, allow) in [
+        (Method::GET, "api/gibtsnicht", 404, ""),
+        (Method::GET, "gibtsnicht", 404, ""),
+        (Method::PUT, "api/aufgaben/1", 405, "GET,HEAD,PATCH,DELETE"),
+        (Method::DELETE, "api/zustand", 405, "GET,HEAD"),
+        (Method::GET, "api/aufgaben/abc/teilaufgaben/0", 405, "PATCH,DELETE"),
+    ] {
+        assert_eq!(roh_mit_allow(&lauf.adresse, methode.clone(), pfad).await, (status, String::new(), allow.to_string(), String::new()), "{methode} {pfad}");
+    }
+}
+
+// AK 14: /web/{*name} ist keine API-Route und bleibt beim Extraktor des Rahmens
+#[tokio::test]
+async fn statische_dateien_antworten_wie_vor_dem_fix() {
+    let (_tmp, lauf) = grundbestand();
+    let fehlt = senden_roh(Method::GET, &lauf.adresse, "web/gibtsnicht.js", "st", None, "").await;
+    assert_eq!((fehlt.status, fehlt.art.as_str(), fehlt.text.as_str()), (404, "text/plain; charset=utf-8", "nicht gefunden"));
+    let kaputt = senden_roh(Method::GET, &lauf.adresse, "web/%FF", "st", None, "").await;
+    assert_eq!((kaputt.status, kaputt.art.as_str(), kaputt.text.as_str()), (400, "text/plain; charset=utf-8", "Invalid URL: Invalid UTF-8 in `name`"));
+}
+
+// AK 15: die Beschreibung nennt an jeder Route die Pfadparameter der Schablone und an fünf Routen die Abfrageparameter
+#[tokio::test]
+async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
+    let (_tmp, lauf) = grundbestand();
+    let api: serde_json::Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let (mut routen, mut mit_pfad, mut abfragen) = (0, BTreeSet::new(), Vec::new());
+    for (pfad, methoden) in api["paths"].as_object().unwrap() {
+        for (methode, beschreibung) in methoden.as_object().unwrap() {
+            routen += 1;
+            let genannt = |ort: &str| -> Vec<String> { beschreibung["parameters"].as_array().into_iter().flatten().filter(|p| p["in"] == ort).map(|p| p["name"].as_str().unwrap().to_string()).collect() };
+            assert_eq!(genannt("path"), parameter(pfad), "{methode} {pfad}");
+            if !genannt("path").is_empty() {
+                mit_pfad.insert(format!("{} {pfad}", methode.to_uppercase()));
+            }
+            if !genannt("query").is_empty() {
+                abfragen.push(format!("{methode} {pfad}: {}", genannt("query").join(", ")));
+            }
+        }
+    }
+    assert_eq!(routen, 80);
+    assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 55 Routen der Tabelle");
+    assert_eq!(abfragen, [
+        "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte",
+        "get /api/berichte/bewegungen: board",
+        "get /api/berichte/verlauf: board",
+        "get /api/boards: archivierte",
+        "get /api/boards/{slug}: archivierte",
+    ]);
+}
