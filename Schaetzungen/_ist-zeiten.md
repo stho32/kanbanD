@@ -619,3 +619,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #121 R00159 (Agent archiviert bei defektem Board: 423 statt 403) | B0756 Gegenproben, Mutanten und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-15 | Karte #171 R00161 (Nicht-UTF-8-Datei in aufgaben/ wird als defekt geführt) | B0766 Abnahme-Probe rot am heutigen Stand | Standard | 0,3-0,8h | 0,2h | 0,2h | autonom |
 | 2026-11-15 | Karte #171 R00161 (Nicht-UTF-8-Datei in aufgaben/ wird als defekt geführt) | B0767 Ablage: Ordner::aufgaben führt die Nicht-UTF-8-Datei als defekt | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #171 R00161 (Nicht-UTF-8-Datei in aufgaben/ wird als defekt geführt) | B0768 Schlüssel der Nicht-UTF-8-Datei und Gegenproben | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |

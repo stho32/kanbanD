@@ -109,8 +109,9 @@ impl Ordner {
         for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
             let text = match self.lies_bytes(&rel)? {
                 Ok(text) => text,
-                Err(_bytes) => {
-                    defekt.push(DefekteDatei::neu(rel, KEIN_UTF8));
+                Err(bytes) => {
+                    let schluessel = aufgabe::schluessel_nachsichtig(&String::from_utf8_lossy(&bytes));
+                    defekt.push(DefekteDatei { pfad: rel, fehler: KEIN_UTF8.into(), schluessel });
                     continue;
                 }
             };
