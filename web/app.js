@@ -731,6 +731,18 @@ async function titelSpeichern(wert) {
   render();
 }
 
+/** Felder, deren Eingabe abgeschickt und noch nicht beantwortet ist. Der Text steht dann noch im Feld, ist aber kein
+    Entwurf mehr: Esc nimmt ihn nicht zurück und schließt das Fenster wie ohne Eingabe (R00155 54-10). */
+const abgeschickteFelder = new Set();
+const feldname = feld => feld.id || feld.dataset.af;
+
+/** Führt den Schreibweg eines Felds aus; bis er endet — Antwort gezeichnet —, gilt die Eingabe als abgeschickt. */
+function abschicken(feld, schreibweg) {
+  const name = feldname(feld);
+  abgeschickteFelder.add(name);
+  return Promise.resolve(schreibweg()).finally(() => abgeschickteFelder.delete(name));
+}
+
 /** Kennung, unter der ein Feld des Aufgabenfensters den einen Entwurf und seine Meldung führt; null für Felder ohne. */
 function entwurfskennung(feld) {
   if (feld.dataset.af === 'titel') return TITEL_FELD;
@@ -750,7 +762,7 @@ const BEARBEITUNGSMODUS = {
     verschwinden. `nurEntwurf` lässt einen unveränderten Bearbeitungsmodus stehen. Falsch, wenn es nichts zu verwerfen gab. */
 function eingabeVerwerfen(feld, nurEntwurf = false) {
   const u = S.ui;
-  if (!feld.dataset) return false;
+  if (!feld.dataset || abgeschickteFelder.has(feldname(feld))) return false;
   const kennung = entwurfskennung(feld);
   const haeltEntwurf = kennung !== null && entwurfswert(u.entwurf, u.offen, kennung) !== null;
   const modus = BEARBEITUNGSMODUS[feld.dataset.af];
@@ -2360,10 +2372,10 @@ document.addEventListener('change', e => {
   const v = e.target.value;
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
   if (af === 'beschreibung') S.ui.beschreibungBearbeiten = false;
-  if (af === 'titel') { titelSpeichern(v); return; }
+  if (af === 'titel') { abschicken(e.target, () => titelSpeichern(v)); return; }
   const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
     : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
-  aufgabeAendern(S.ui.offen, aenderung);
+  abschicken(e.target, () => aufgabeAendern(S.ui.offen, aenderung));
 });
 
 // Umschalt/Strg + Klick auf eine Karte markiert keinen Text
@@ -2533,7 +2545,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && t.dataset && t.dataset.bf) { aenderungNachtragen(t); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
-    act(t.dataset.enter, t.dataset.arg, t.value);
+    abschicken(t, () => act(t.dataset.enter, t.dataset.arg, t.value));
     return;
   }
   if (S.ui.neu) {

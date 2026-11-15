@@ -207,6 +207,43 @@ test.describe('R00155 #54: Felder ohne Entwurf', () => {
   }
 });
 
+// Mit Enter Abgeschicktes ist kein Entwurf mehr: solange die Antwort aussteht, steht der Text noch im Feld — Esc schließt
+// trotzdem wie bisher beim ersten Druck und nimmt die Eingabe nicht zurück. Die Antwort wird gehalten, damit das Fenster sicher offen ist.
+test.describe('R00155 #54: eine abgeschickte Eingabe ist kein Entwurf', () => {
+  const FAELLE = [
+    ['„Neue Herkunft“', 'Details', fenster => fenster.getByLabel('Neue Herkunft'), 'ohne Herkunft', 'origins: [thin air]'],
+    ['Labels', 'Details', fenster => fenster.getByLabel('Labels'), 'ui, daten, neu', 'labels: [ui, daten, neu]'],
+    ['Titel', 'Inhalt', () => null, 'Abnahme geprüft', 'title: Abnahme geprüft'],
+    ['neue Teilaufgabe', 'Inhalt', fenster => fenster.getByLabel('Neue Teilaufgabe', { exact: true }), 'Entwurf', '- [ ] Entwurf'],
+  ];
+  for (const [name, ansicht, feldIn, eingabe, inDerDatei] of FAELLE) {
+    test(`54-10 unter Verzögerung: ${name} — Enter und sofort Esc, die Antwort steht noch aus → das Fenster ist beim ersten Esc zu, die Eingabe ist gespeichert, genau ein Commit`, async ({ page }) => {
+      const fenster = await fensterIn(page, ansicht);
+      let feld = feldIn(fenster);
+      if (!feld) { await page.locator(TITEL_LESEN).click(); feld = page.locator(TITELFELD); }
+      let freigeben;
+      const gehalten = new Promise(fertig => { freigeben = fertig; });
+      let unterwegs = 0;
+      await page.route(url => url.pathname.startsWith('/api/aufgaben/1'), async (route, anfrage) => {
+        if (anfrage.method() === 'GET') { await route.continue(); return; }
+        unterwegs++;
+        await gehalten;
+        await route.continue();
+      });
+      const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+      await feld.fill(eingabe);
+      await page.keyboard.press('Enter');
+      await expect.poll(() => unterwegs, 'die schreibende Anfrage ist gestellt und wird gehalten').toBe(1);
+      await page.keyboard.press('Escape');
+      await fensterIstZu(page);
+      freigeben();
+      await expect.poll(() => k.lies(DATEI_1)).toContain(inDerDatei + '\n');
+      await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+      expect(unterwegs, 'genau eine schreibende Anfrage').toBe(1);
+    });
+  }
+});
+
 test.describe('R00155 #54: Fußhinweis und Kürzelhilfe nennen das Verwerfen', () => {
   test('54-11: bei 1280 px lautet der Tastenhinweis im Fuß „Esc Eingabe verwerfen · erneut schließen“ (Esc als Taste); die Kürzelhilfe führt „Esc — Eingabe verwerfen; ohne Eingabe schließen“; bis 640 px ist der Hinweis ausgeblendet', async ({ page }) => {
     const fenster = await fensterIn(page, 'Inhalt');
