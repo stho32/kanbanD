@@ -1,6 +1,7 @@
 //! HTTP: Oberfläche und API in einem Router.
 
 pub mod endpunkte;
+mod koerper;
 pub mod openapi;
 mod statisch;
 
