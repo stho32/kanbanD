@@ -120,6 +120,8 @@ async function fensterOeffnen(page, nummer) {
 }
 const fenster = page => page.locator('#fenster');
 const schliessen = page => page.keyboard.press('Escape');
+/** Schließt über ✕: Esc im Feld mit abgelehnter Eingabe verwirft zuerst die Eingabe und lässt das Fenster offen (R00155 54-7). */
+const schliessenUeberKnopf = page => fenster(page).getByRole('button', { name: 'Schließen', exact: true }).click();
 
 test.describe('US-1 bis US-5: Datumsangaben', () => {
   test('US-1: Fälligkeit auf der Karte kurz im laufenden Jahr, sonst lang, Name und title mit Jahr', async ({ page }) => {
@@ -533,9 +535,9 @@ test.describe('US-9: ohne Herkunft', () => {
       await expect.poll(() => page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
     };
 
-    test('(a) Escape und erneut öffnen: Feld leer, keine Meldung', async ({ page }) => {
+    test('(a) Schließen (✕) und erneut öffnen: Feld leer, keine Meldung', async ({ page }) => {
       await ablehnen(page);
-      await schliessen(page);
+      await schliessenUeberKnopf(page);
       await page.locator('.ka[data-id="2"] .t').click();
       await reiter(page, 'Details');
       await expect(feld(page)).toHaveValue('');
@@ -558,9 +560,9 @@ test.describe('US-9: ohne Herkunft', () => {
       await expect(feld(page)).toHaveValue('I0003');
     });
 
-    test('(d) Escape, eine andere Aufgabe öffnen, Escape, #2 öffnen: Feld leer', async ({ page }) => {
+    test('(d) Schließen (✕), eine andere Aufgabe öffnen, Escape, #2 öffnen: Feld leer', async ({ page }) => {
       await ablehnen(page);
-      await schliessen(page);
+      await schliessenUeberKnopf(page);
       await page.locator('.ka[data-id="1"] .t').click();
       await reiter(page, 'Details');
       await expect(feld(page)).toHaveValue('');
