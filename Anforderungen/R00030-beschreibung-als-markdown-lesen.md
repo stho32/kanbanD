@@ -6,6 +6,8 @@ datum: 2026-10-18
 
 # R00030: Beschreibung als Markdown lesen
 
+> **Eine Festlegung dieser Anforderung ist aufgehoben durch R00162 (Betreiber-Auftrag 2026-11-14, Karte #161):** der Einstieg „ein Klick (oder Enter auf dem Bereich) wechselt ins Textfeld“ — die Lesefläche ist reiner Text, Bearbeiten beginnt über das Stift-Symbol oder `b`. Alles andere gilt weiter.
+
 ## Beschreibung
 
 Die Beschreibung einer Aufgabe ist Markdown. Im Aufgabenfenster erscheint sie formatiert — Überschriften, Listen, Hervorhebungen, Code, Links, Zitate —; ein Klick (oder Enter auf dem Bereich) wechselt ins Textfeld, Verlassen speichert und zeigt sie wieder formatiert. Links öffnen in einem neuen Fenster; nichts aus der Beschreibung wird als HTML ausgeführt.
