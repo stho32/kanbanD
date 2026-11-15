@@ -624,3 +624,7 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #163 R00160 (Rust-Live-Tests warten auf den beobachtenden Wächter) | B0763 Probe am heutigen Stand: Live-Test unter belegter inotify-Grenze ist rot | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-15 | Karte #163 R00160 (Rust-Live-Tests warten auf den beobachtenden Wächter) | B0764 Bereitzeichen und begrenzte Wiederholung in `tests/gemeinsam/mod.rs`, Live-Tests darauf umgestellt | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-15 | Karte #163 R00160 (Rust-Live-Tests warten auf den beobachtenden Wächter) | B0765 Abnahme-Probe 4×5 und Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-15 | Karte #162 R00163 (E2E-Wackler Teil 2a: Gate-Brecher warten auf den Zielzustand) | B0775 Messung direkt nach Größenänderung: breiteSetzen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #162 R00163 (E2E-Wackler Teil 2a: Gate-Brecher warten auf den Zielzustand) | B0776 Geometrie vor dem Zeichnen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-15 | Karte #162 R00163 (E2E-Wackler Teil 2a: Gate-Brecher warten auf den Zielzustand) | B0777 Zeit statt Zustand | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-15 | Karte #162 R00163 (E2E-Wackler Teil 2a: Gate-Brecher warten auf den Zielzustand) | B0778 Abnahme-Probe Block 1 | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
