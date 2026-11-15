@@ -131,6 +131,71 @@ test.describe('R00155 #54: Esc in Labels', () => {
   });
 });
 
+// 54-14 (US-1 zweites Szenario): nach einem fremden Neuzeichnen steht der getippte Wert in einem neuen Feld — der Browser
+// meldet dafür auf Enter kein „change“. Enter speichert trotzdem; sonst verwürfe das folgende Esc, was Enter speichern sollte.
+test.describe('R00155 #54: Enter speichert auch nach einem fremden Neuzeichnen (54-14)', () => {
+  test('54-14/US-1: Titel — „Abnahme geprüft“ getippt, bot ändert #2 (das Fenster zeichnet neu), Enter → title: Abnahme geprüft in der Datei, genau ein neuer Commit von st, Titel im Lesezustand; ein Esc danach verwirft nichts und schließt', async ({ page }) => {
+    await titelBearbeiten(page);
+    await page.locator(TITELFELD).fill('Abnahme geprüft');
+    await fremdesNeuzeichnen(page, k);
+    await expect(page.locator(TITELFELD), 'der getippte Wert übersteht das Neuzeichnen').toHaveValue('Abnahme geprüft');
+    await expect(page.locator(TITELFELD)).toBeFocused();
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await page.keyboard.press('Enter');
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme geprüft');
+    await expect(page.locator(TITELFELD)).toHaveCount(0);
+    await expect.poll(() => k.lies(DATEI_1)).toContain('title: Abnahme geprüft\n');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('PATCH')), 'genau ein PATCH').toEqual(['PATCH /api/aufgaben/1']);
+    // Folgeprobe: Esc verwirft nichts und schließt
+    const vorher = await standMerken(page, k);
+    await page.keyboard.press('Escape');
+    await fensterIstZu(page);
+    await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Abnahme geprüft');
+    await nichtsGeschrieben(page, k, vorher, '54-14 Titel, Esc danach');
+    expect(k.lies(DATEI_1)).toContain('title: Abnahme geprüft\n');
+  });
+
+  test('54-14 Variante Labels: ui, daten, neu getippt, bot ändert #2, Enter → gespeichert, genau ein Commit von st — wie Enter ohne Neuzeichnen; ein Esc danach verwirft nichts und schließt', async ({ page }) => {
+    const fenster = await fensterIn(page, 'Details');
+    const labels = fenster.getByLabel('Labels');
+    await labels.fill('ui, daten, neu');
+    await fremdesNeuzeichnen(page, k);
+    await expect(labels, 'der getippte Wert übersteht das Neuzeichnen').toHaveValue('ui, daten, neu');
+    await expect(labels).toBeFocused();
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await page.keyboard.press('Enter');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+    await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+    expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
+    await expect(fenster.locator('.mod-fuss .gs')).toHaveText(/^gespeichert \d\d:\d\d:\d\d$/);
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('PATCH')), 'genau ein PATCH').toEqual(['PATCH /api/aufgaben/1']);
+    await expect(labels).toHaveValue('ui, daten, neu');
+    const vorher = await standMerken(page, k);
+    await page.keyboard.press('Escape');
+    await fensterIstZu(page);
+    await nichtsGeschrieben(page, k, vorher, '54-14 Labels, Esc danach');
+    expect(k.lies(DATEI_1)).toContain('labels: [ui, daten, neu]\n');
+  });
+
+  test('54-14: nach dem Neuzeichnen weitergetippt, Enter → einmal gespeichert (ein PATCH, ein Commit), nicht doppelt', async ({ page }) => {
+    await titelBearbeiten(page);
+    await page.locator(TITELFELD).fill('Abnahme');
+    await fremdesNeuzeichnen(page, k);
+    await expect(page.locator(TITELFELD)).toBeFocused();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' geprüft');
+    const commits = Number(k.git('rev-list', '--count', 'HEAD'));
+    await page.keyboard.press('Enter');
+    await expect(page.locator(TITEL_LESEN)).toHaveText('Abnahme geprüft');
+    await expect.poll(() => k.lies(DATEI_1)).toContain('title: Abnahme geprüft\n');
+    await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('Abnahme geprüft');
+    expect(k.schreibend.filter(anfrage => anfrage.startsWith('PATCH')), 'genau ein PATCH').toEqual(['PATCH /api/aufgaben/1']);
+    expect(Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
+  });
+});
+
 test.describe('R00155 #54: Esc in den Feldern, die erst mit Enter schreiben', () => {
   for (const [ansicht, name, getippt] of [['Details', 'Neue Herkunft', 'I00'], ['Inhalt', 'Neue Teilaufgabe', 'Entwurf'], ['Zeiten', 'Zeit nachtragen', '0:4']]) {
     test(`54-6/US-3: „${name}“ — ${getippt} tippen, Esc → Feld leer, Fokus im Feld, Fenster offen, nichts geschrieben; auch nach dem Neuzeichnen leer; ein weiteres Esc im leeren Feld schließt`, async ({ page }) => {

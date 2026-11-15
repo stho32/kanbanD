@@ -2632,6 +2632,8 @@ document.addEventListener('keydown', e => {
   // Enter in einem Feld der Berichtsfilter nimmt den Wert an wie ein „change“: hat ein Neuzeichnen den getippten Wert in
   // ein neues Feld gerettet, meldet der Browser dafür kein „change“ — ohne Enter bliebe er ungespeichert.
   if (e.key === 'Enter' && t.dataset && t.dataset.bf) { aenderungNachtragen(t); return; }
+  // Ebenso Titel und Labels des Aufgabenfensters (R00155 54-14). Das eigene „change“ des Browsers entfällt dann — sonst speicherte Enter zweimal.
+  if (e.key === 'Enter' && t.tagName === 'INPUT' && t.dataset && t.dataset.af && aenderungNachtragen(t)) { e.preventDefault(); return; }
   if (e.key === 'Enter' && t.dataset && t.dataset.enter && !e.shiftKey) {
     e.preventDefault();
     abschicken(t, () => act(t.dataset.enter, t.dataset.arg, t.value));

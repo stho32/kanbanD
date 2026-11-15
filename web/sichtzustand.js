@@ -143,11 +143,13 @@
     aufgeschoben.add(feld);
   }
 
-  /** Beim Verlassen und auf Enter: ein aufgeschobenes „change“ oder ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. */
+  /** Beim Verlassen und auf Enter: ein aufgeschobenes „change“ oder ein zurückgesetzter, noch abweichender Wert wird als „change“ nachgetragen — genau einmal. Wahr, wenn nachgetragen wurde. */
   function aenderungNachtragen(feld) {
     const warAufgeschoben = aufgeschoben.delete(feld);
     const warZurueckgesetzt = ungemeldet.delete(feld);
-    if (warAufgeschoben || (warZurueckgesetzt && geaendert(feld))) feld.dispatchEvent(new Event('change', { bubbles: true }));
+    const nachzutragen = warAufgeschoben || (warZurueckgesetzt && geaendert(feld));
+    if (nachzutragen) feld.dispatchEvent(new Event('change', { bubbles: true }));
+    return nachzutragen;
   }
 
   /**
