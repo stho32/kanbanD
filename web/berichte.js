@@ -109,6 +109,24 @@
     return s;
   }
 
+  /* ── Bestand (R00152, ADR-0027): die eine Regel „zählt am Tag“ für Burndown, Kumulativen Fluss und „Wie lange noch“ ── */
+  const NICHT_DA = Object.freeze({ art: 'nichtDa', spalte: null, erledigt: false });
+  /** Zustand einer Aufgabe zum Zeitpunkt t — { art, spalte, erledigt }:
+      `nichtDa`  in keiner Spalte (nie auf dem Board, vom Board genommen, endgültig gelöscht);
+      `entfernt` verworfen: Archivtag (`archiviert`, JJJJ-MM-TT, gilt ab 0 Uhr) erreicht und die Spalte liegt nicht in `erledigtSpalten`;
+      `da`       sonst, `erledigt` genau dann, wenn die Spalte in `erledigtSpalten` liegt — archiviert in einer Erledigt-Spalte bleibt erledigt.
+      Nur „da“ zählt zum Bestand (offen, Umfang, gesamt, Bänder). Filter (Spalten, Farbe, Person, Label, `reporting`) wirken außerhalb. */
+  function bestandAm(wechsel, archiviert, t, erledigtSpalten) {
+    const spalte = spalteAm(wechsel, t);
+    if (spalte == null) return NICHT_DA;
+    const erledigt = erledigtSpalten.includes(spalte);
+    // der Archivtag wird nur gelesen, wo er entscheidet: erledigte archivierte Aufgaben (die Masse im Archiv) kosten kein Datum
+    if (archiviert && !erledigt && t >= isoTag(archiviert)) return { art: 'entfernt', spalte, erledigt: false };
+    return { art: 'da', spalte, erledigt };
+  }
+  /** Was „erledigt“ heißt: heute die Abschlussspalte (die letzte Spalte) des Boards. */
+  const erledigtSpalten = bew => bew.spalten.slice(-1);
+
   /** Eintritt in die heutige Spalte (R00126, ADR-0019 N5): der letzte Wechsel mit einer Spalte bis `t` — Schwester von `spalteAm`,
       liefert statt des Spaltennamens den `zeitpunkt`. `null`, wenn die Aufgabe nie auf dem Board war oder zuletzt davon genommen wurde. */
   function eintrittAm(wechsel, t) {
@@ -854,5 +872,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
