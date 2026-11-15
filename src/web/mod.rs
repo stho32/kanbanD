@@ -178,9 +178,14 @@ impl IntoResponse for Fehler {
                 let rumpf = openapi::PersonenartVerboten { fehler: meldung.clone(), kuerzel: kuerzel.clone() };
                 (status, Json(rumpf)).into_response()
             }
-            _ => (status, Json(json!({ "fehler": self.meldung() }))).into_response(),
+            _ => fehlerantwort(status, self.meldung()),
         }
     }
+}
+
+/// Die Abweisung ohne weitere Felder: Status und Rumpf `{"fehler": …}` — für `Fehler` und für den Extraktor des Rumpfs (ADR-0003 N3).
+fn fehlerantwort(status: StatusCode, meldung: &str) -> Response {
+    (status, Json(json!({ "fehler": meldung }))).into_response()
 }
 
 /// Das Kürzel aus dem Header `X-KanbanD-Wer`, falls genannt.

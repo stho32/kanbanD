@@ -2,7 +2,9 @@
 
 use crate::fehler::Fehler;
 use axum::body::Bytes;
-use axum::extract::{FromRequest, Request};
+use axum::extract::{FromRequest, OptionalFromRequest, Request};
+use axum::http::header::CONTENT_TYPE;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use serde::de::{DeserializeOwned, IgnoredAny};
 use serde_json::Value;
@@ -18,12 +20,18 @@ pub struct JsonKoerper<T>(pub T);
 pub enum Abweisung {
     /// Kein JSON oder JSON in falscher Form: 400 wie jede ungültige Eingabe.
     Inhalt(Fehler),
+    /// `Content-Type` fehlt oder nennt kein JSON: 415.
+    KeinJson,
+    /// Der Rumpf überschreitet die Grenze des Rahmens: 413.
+    ZuGross,
 }
 
 impl IntoResponse for Abweisung {
     fn into_response(self) -> Response {
         match self {
             Abweisung::Inhalt(fehler) => fehler.into_response(),
+            Abweisung::KeinJson => super::fehlerantwort(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Content-Type fehlt oder ist nicht application/json — der Rumpf wird nur als JSON gelesen"),
+            Abweisung::ZuGross => super::fehlerantwort(StatusCode::PAYLOAD_TOO_LARGE, "Der Rumpf ist zu groß für eine JSON-Anfrage"),
         }
     }
 }
@@ -32,8 +40,39 @@ impl<T: DeserializeOwned, S: Send + Sync> FromRequest<S> for JsonKoerper<T> {
     type Rejection = Abweisung;
 
     async fn from_request(anfrage: Request, zustand: &S) -> Result<Self, Abweisung> {
-        let rumpf = Bytes::from_request(anfrage, zustand).await.map_err(|_| Abweisung::Inhalt(Fehler::Ungueltig("Der Rumpf konnte nicht gelesen werden".to_string())))?;
+        if !nennt_json(anfrage.headers()) {
+            return Err(Abweisung::KeinJson);
+        }
+        let rumpf = Bytes::from_request(anfrage, zustand).await.map_err(|e| match e.status() {
+            StatusCode::PAYLOAD_TOO_LARGE => Abweisung::ZuGross,
+            _ => Abweisung::Inhalt(Fehler::Ungueltig("Der Rumpf konnte nicht gelesen werden".to_string())),
+        })?;
         lesen(&rumpf).map(JsonKoerper).map_err(Abweisung::Inhalt)
+    }
+}
+
+/// Ein wahlfreier Rumpf (`Option<JsonKoerper<T>>`) fehlt, wenn die Anfrage keinen `Content-Type` trägt — wie beim Rahmen.
+impl<T: DeserializeOwned, S: Send + Sync> OptionalFromRequest<S> for JsonKoerper<T> {
+    type Rejection = Abweisung;
+
+    async fn from_request(anfrage: Request, zustand: &S) -> Result<Option<Self>, Abweisung> {
+        if !anfrage.headers().contains_key(CONTENT_TYPE) {
+            return Ok(None);
+        }
+        <Self as FromRequest<S>>::from_request(anfrage, zustand).await.map(Some)
+    }
+}
+
+/// Nennt der `Content-Type` JSON? Genau `application/json` oder `application/<name>+json`, Parameter und Großschreibung sind frei.
+fn nennt_json(kopf: &HeaderMap) -> bool {
+    let Some(art) = kopf.get(CONTENT_TYPE).and_then(|wert| wert.to_str().ok()) else {
+        return false;
+    };
+    let art = art.split(';').next().unwrap_or_default().trim().to_ascii_lowercase();
+    match art.split_once('/') {
+        Some(("application", "json")) => true,
+        Some(("application", unterart)) => unterart.rsplit_once('+').is_some_and(|(name, suffix)| !name.is_empty() && suffix == "json"),
+        _ => false,
     }
 }
 
@@ -196,9 +235,17 @@ mod tests {
         angaben: Angaben,
     }
 
+    async fn pflicht(anfrage: Request) -> Result<JsonKoerper<Rumpf>, Abweisung> {
+        <JsonKoerper<Rumpf> as FromRequest<()>>::from_request(anfrage, &()).await
+    }
+
+    async fn wahlfrei(anfrage: Request) -> Result<Option<JsonKoerper<Rumpf>>, Abweisung> {
+        <JsonKoerper<Rumpf> as OptionalFromRequest<()>>::from_request(anfrage, &()).await
+    }
+
     /// Die Antwort des Extraktors auf eine Anfrage mit diesem Rumpf: Status, `Content-Type`, Rumpf als JSON.
     async fn antwort(anfrage: axum::http::request::Builder, rumpf: impl Into<axum::body::Body>) -> (u16, String, Value) {
-        let abweisung = match JsonKoerper::<Rumpf>::from_request(anfrage.body(rumpf.into()).unwrap(), &()).await {
+        let abweisung = match pflicht(anfrage.body(rumpf.into()).unwrap()).await {
             Err(abweisung) => abweisung,
             Ok(JsonKoerper(rumpf)) => panic!("Abweisung erwartet: {rumpf:?}"),
         };
@@ -214,7 +261,7 @@ mod tests {
 
     #[tokio::test]
     async fn der_extraktor_liest_einen_gueltigen_rumpf() {
-        let JsonKoerper(rumpf) = JsonKoerper::<Rumpf>::from_request(json_anfrage().body(r#"{"text": "a"}"#.into()).unwrap(), &()).await.unwrap();
+        let JsonKoerper(rumpf) = pflicht(json_anfrage().body(r#"{"text": "a"}"#.into()).unwrap()).await.unwrap();
         assert_eq!(rumpf.text, "a");
     }
 
@@ -223,6 +270,47 @@ mod tests {
         for (rumpf, meldung) in [(r#"{"text": 7}"#, "text: Text erwartet, nicht Zahl"), ("{", "Der Rumpf ist kein gültiges JSON (Zeile 1, Spalte 1)"), ("", "Der Rumpf ist leer — kein gültiges JSON")] {
             assert_eq!(antwort(json_anfrage(), rumpf).await, (400, "application/json".to_string(), serde_json::json!({"fehler": meldung})), "{rumpf}");
         }
+    }
+
+    const KEIN_JSON: &str = "Content-Type fehlt oder ist nicht application/json — der Rumpf wird nur als JSON gelesen";
+
+    #[tokio::test]
+    async fn ohne_oder_mit_fremdem_content_type_weist_der_extraktor_mit_415_und_fehler_als_json_ab() {
+        let gueltig = r#"{"text": "a"}"#;
+        assert_eq!(antwort(Request::post("/"), gueltig).await, (415, "application/json".to_string(), serde_json::json!({"fehler": KEIN_JSON})));
+        for art in ["text/plain", "application/jsonx", "text/json", "json", "application/", "application/+json", "application/json+xml", "application/x-www-form-urlencoded", "multipart/form-data; boundary=application/json"] {
+            assert_eq!(antwort(Request::post("/").header("content-type", art), gueltig).await, (415, "application/json".to_string(), serde_json::json!({"fehler": KEIN_JSON})), "{art}");
+        }
+    }
+
+    #[tokio::test]
+    async fn json_mit_parameter_in_grossschreibung_oder_als_suffix_gilt_als_json() {
+        for art in ["application/json", "application/json; charset=utf-8", "application/json;charset=utf-8", "APPLICATION/JSON", "Application/Json ; charset=UTF-8", "application/vnd.api+json", "application/problem+json; charset=utf-8"] {
+            let gelesen = pflicht(Request::post("/").header("content-type", art).body(r#"{"text": "a"}"#.into()).unwrap()).await;
+            assert!(gelesen.is_ok(), "{art}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ein_rumpf_ueber_der_grenze_des_rahmens_wird_mit_413_und_fehler_als_json_abgewiesen() {
+        let rumpf = |bytes: usize| format!(r#"{{"text": "{}"}}"#, "a".repeat(bytes - 12));
+        let zu_gross = serde_json::json!({"fehler": "Der Rumpf ist zu groß für eine JSON-Anfrage"});
+        assert_eq!(antwort(json_anfrage(), rumpf(3 * 1024 * 1024)).await, (413, "application/json".to_string(), zu_gross.clone()));
+        assert_eq!(antwort(json_anfrage(), rumpf(2 * 1024 * 1024 + 1)).await, (413, "application/json".to_string(), zu_gross));
+        let gelesen = pflicht(json_anfrage().body(rumpf(2 * 1024 * 1024).into()).unwrap()).await;
+        assert!(gelesen.is_ok(), "genau 2 MiB gehen durch");
+    }
+
+    #[tokio::test]
+    async fn ein_wahlfreier_rumpf_fehlt_nur_ohne_content_type() {
+        let ohne = wahlfrei(Request::post("/").body("".into()).unwrap()).await;
+        assert!(matches!(ohne, Ok(None)));
+        let mit = wahlfrei(json_anfrage().body(r#"{"text": "a"}"#.into()).unwrap()).await;
+        assert!(matches!(mit, Ok(Some(JsonKoerper(Rumpf { text, .. }))) if text == "a"));
+        let falsch = wahlfrei(json_anfrage().body(r#"{"text": 7}"#.into()).unwrap()).await;
+        assert!(matches!(falsch, Err(Abweisung::Inhalt(Fehler::Ungueltig(meldung))) if meldung == "text: Text erwartet, nicht Zahl"));
+        let fremd = wahlfrei(Request::post("/").header("content-type", "text/plain").body("{}".into()).unwrap()).await;
+        assert!(matches!(fremd, Err(Abweisung::KeinJson)));
     }
 
     /// Die Meldung, mit der `rumpf` als `Rumpf` abgewiesen wird.
