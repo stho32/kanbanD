@@ -6,6 +6,12 @@ ursprung: Bug-Report
 ursprungslauf: R00098
 ---
 
+> **Zurückgezogen am 2026-11-15 durch den Betreiber — nicht gebaut, kein Soll.**
+> Wortlaut: „Archiviert bedeutet archiviert, mit Blick auf alle Boards auf denen sie ist, ist die Karte im Archiv. Wird sie aus dem Archiv geholt, dann ist sie wieder auf allen Boards auf denen sie vorher auch war.“
+> Öffnet ein Agent eine archivierte Karte über ihren Schlüssel wieder und nennt ein Board, auf dem sie vorher nicht lag, liegt sie **zusätzlich** dort; die Zeilen der übrigen Boards bleiben. Das ist das heutige Verhalten ([R00098](R00098-idempotentes-anlegen-ueber-fremdschluessel.md)) und kein Fehler; Karte #45 wird ohne Bau geschlossen. Die Entscheidung vom 2026-11-13 („alte Board-Zeile entfernen; eine Karte liegt auf genau einem Board“) ist aufgehoben.
+> Geltende Regel: [ADR-0005](../Dokumentation/ADRs/0005-zusammengesetzte-aktionen-in-einem-commit.md), Abschnitt „Geltende Regel: ‚Archiviert‘ ist eine Eigenschaft der Karte“ (Nachtrag N3 ist zurückgezogen), und [Vision](R00000-vision.md), Zielbild „Mehrere Boards über einem Aufgabenbestand“. In der WBS tragen I0145 und B0746–B0752 `verworfen`.
+> Der Text darunter ist der Stand vor dem Zurückziehen und bleibt nur als Beleg stehen: kein Kriterium daraus wird gebaut, geprüft oder abgenommen. `status: Neu` bleibt, weil die Statuswerte (`Neu`, `In Arbeit`, `Erledigt`) keinen Wert für Zurückgezogenes kennen.
+
 # R00158: Behebung — Wiederöffnen mit `board` lässt die Karte auf dem alten Board liegen
 
 ## Beschreibung
@@ -219,6 +225,8 @@ Keine. Bestehende Doppellagen im Bestand räumt diese Anforderung nicht auf (Abg
 Auslöser: ein Befund, dessen Karte #7 archiviert in „Fertig“ von `fabrik` steht, kehrt zurück, und der Sensor legt ihn mit `key` und `board: "zweit"` wieder an. Heute schreibt `schreiben` nur das Board der Anfrage, also steht #7 danach offen auf `zweit` und offen in „Fertig“ von `fabrik`, zählt dort gegen die Grenze und sieht für den Menschen wie erledigt und offen zugleich aus. Nimmt `schreiben` die Karte im selben `aktion()` von jedem anderen Board (X), dann trägt der eine Commit die Aufgabendatei, das Zielboard und jedes verlassene Board (Y), und die Karte liegt nach dem Wiederöffnen an genau dem Ort, den der Sensor genannt hat, sichtbar in beiden offenen Sichten ohne Neuladen (Z). Der Hebel sitzt im Schreibweg des Wiederöffnens und nicht beim Client: zwei Aufrufe (erst vom Board nehmen, dann anlegen) wären zwei Commits mit einem Fenster für einen fremden Zug dazwischen, und die Entnahme bekäme für einen Agenten 403. Weil die Zusage „auf keinem anderen Board“ bei einer unlesbaren Board-Datei nicht prüfbar ist, endet genau dieser Weg dann mit 423 — alle anderen Wege des Anlegens laufen weiter.
 
 ## Notizen
+
+**Zurückgezogen am 2026-11-15 durch den Betreiber — nicht gebaut, kein Soll.** „Archiviert bedeutet archiviert, mit Blick auf alle Boards auf denen sie ist, ist die Karte im Archiv. Wird sie aus dem Archiv geholt, dann ist sie wieder auf allen Boards auf denen sie vorher auch war.“ Für den Fall dieser Anforderung hat er aus drei Optionen gewählt: Die Karte liegt zusätzlich auf dem genannten Board — das heutige Verhalten; #45 ist kein Fehler, Anforderung und ADR-0005 Nachtrag N3 sind zurückgezogen. Verworfen hat er ausdrücklich auch die Fassung „archiviert als Eigenschaft der Karte gegenüber einem Board“. Die folgenden Notizen sind der Stand davor.
 
 - Priorität: Mittel — sichtbarer Fehlzustand (Karte offen in „Fertig“ des alten Boards), erreichbar, sobald ein Sensor beim Wiederöffnen ein anderes Board nennt; kein Datenverlust.
 - Betroffene Nutzer/Systeme: Agenten und Sensoren, die über `POST /api/aufgaben` oder `…/mehrere` mit `key` und `board` wieder öffnen; Menschen, die das alte Board ansehen.
