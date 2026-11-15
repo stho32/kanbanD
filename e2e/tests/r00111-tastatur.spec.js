@@ -124,6 +124,32 @@ test.describe('Bildschirmtastatur, 414 px mit Touch', () => {
     expect(await rechteck(page.locator('#kopf'))).toEqual(kopf);
   });
 
+  test('R00155 97-1/US-9 (#97, ADR-0016 N1): Tastatur vor dem Laden nachgebildet, kein Ereignis danach — Meldung und Feld im sichtbaren Bereich', async ({ page }) => {
+    // der sichtbare Bereich ist schon beim Laden verkleinert; gezählt wird, dass nach dem Start der Anwendung kein resize und
+    // kein scroll mehr kommt (beim Laden selbst meldet Chromium mit `isMobile` einmal resize, bevor app.js seine Hörer hat)
+    await page.addInitScript(hoehe => {
+      Object.assign(window.__kdTastatur, { height: hoehe, offsetTop: 0 });
+      window.__kdEreignisse = 0;
+      for (const name of ['resize', 'scroll']) visualViewport.addEventListener(name, () => { window.__kdEreignisse += 1; });
+    }, TASTATUR_HOCH);
+    await starten(page);
+    expect(await page.evaluate(() => visualViewport.height), 'Selbstprobe: die Nachbildung wirkt schon beim Laden').toBe(TASTATUR_HOCH);
+    await page.evaluate(() => { window.__kdEreignisse = 0; });
+    await page.locator('.ka[data-id="1"] .t').tap();
+    const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
+    await reiter(page, 'Details');
+    const feld = fenster.getByLabel('Neue Herkunft');
+    await feld.tap();
+    await expect(feld).toBeFocused();
+    await page.keyboard.type('X1');
+    await page.keyboard.press('Enter');
+    const meldung = fenster.locator('[role=alert]');
+    await expect(meldung).toContainText(MELDUNG_X1);
+    await expect(feld).toBeFocused();
+    await expect.poll(() => imSichtbarenBereich(page, meldung, feld)).toEqual([]);
+    expect(await page.evaluate(() => window.__kdEreignisse), 'Selbstprobe: seit dem Start kam kein resize und kein scroll des sichtbaren Bereichs').toBe(0);
+  });
+
   test('Zoom mit zwei Fingern: bei scale ≠ 1 folgt das Fenster dem sichtbaren Bereich nicht (ADR-0016 Regel 2)', async ({ page }) => {
     await starten(page);
     await page.locator('.ka[data-id="1"] .t').tap();
@@ -163,5 +189,23 @@ test.describe('Desktop 1280 × 800 ohne Tastatur', () => {
       return hoehe;
     });
     expect(await rechteck(page.locator('.mod-bg'))).toEqual({ oben: kopfHoehe, unten: 800 });
+  });
+});
+
+test.describe('R00155 #97: Browser ohne window.visualViewport', () => {
+  test.use(DESKTOP);
+
+  test('97-4: die Seite lädt ohne Fehler in der Konsole, und nichts wird gesetzt', async ({ page }) => {
+    const fehler = [];
+    page.on('pageerror', e => fehler.push(String(e)));
+    page.on('console', m => { if (m.type() === 'error') fehler.push(m.text()); });
+    await page.addInitScript(() => Object.defineProperty(window, 'visualViewport', { configurable: true, get() { return undefined; } }));
+    await starten(page);
+    expect(await page.evaluate(() => window.visualViewport), 'Selbstprobe: die Schnittstelle fehlt').toBeUndefined();
+    await page.locator('.ka[data-id="1"] .t').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
+    expect(await page.evaluate(() => ['--kd-vv-oben', '--kd-vv-unten'].map(n => document.documentElement.style.getPropertyValue(n)))).toEqual(['', '']);
+    expect(fehler).toEqual([]);
   });
 });

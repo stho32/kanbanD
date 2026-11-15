@@ -2429,6 +2429,8 @@ function sichtbarenBereichPlanen() {
 if (window.visualViewport) {
   visualViewport.addEventListener('resize', sichtbarenBereichPlanen);
   visualViewport.addEventListener('scroll', sichtbarenBereichPlanen);
+  // einmal beim Start (ADR-0016 N1): ist der Bereich schon beim Laden verdeckt, kommt womöglich kein Ereignis mehr
+  sichtbarenBereichSetzen();
 }
 window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
