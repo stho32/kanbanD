@@ -112,3 +112,19 @@ Jede der ~20 bekannten Fundstellen einzeln mit `expect.poll`/`waitFor` versehen.
 - [ADR-0014](0014-nur-die-neueste-antwort-wird-uebernommen.md) (nur die neueste Antwort wird übernommen — „kein Laden zwischen Übernahme und Zeichnen“, `kdTest.gezeichnet`), [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md) (Neuzeichnen), [ADR-0012](0012-zielgroessen-als-zentrales-mass-mit-messprobe.md) (Messprobe über alle Ansichten — Vorbild für „eine Probe je Klasse“), [ADR-0013](0013-deutsche-anzeige-an-der-zeichengrenze.md)/[ADR-0015](0015-meldungen-und-aktionen-ueberstehen-jede-breite.md) (Proben als Hausform).
 - `gemeinsam/gelerntes.md`, Abschnitt „Proben“ („Timing- und Flake-Fehler am beobachtbaren Urteil festmachen, nicht an Wartezeiten“; „Konfiguration/Timing nur mit Kontrollpaar“); `Dokumentation/Gelerntes.md` R00089 (`page.clock` statt Warten), R00079 (`git log -1` als Zwischenzustand), R00109 („Warten vor jeder Lesung“), R00050 (Frist unter dem Test-Timeout).
 - Bausteine: [A00009 Oberfläche](../Architektur/A00009-oberflaeche.md) (primär — die E2E-Proben der Oberfläche); berührt `e2e/tests/*.spec.js`, `e2e/tests/hilfen.js`; **nicht** betroffen: Produktivcode, `e2e/playwright.config.js`, `src/`, `web/`.
+
+## Nachtrag 2026-11-15: Erwartung und Seite rechnen vom selben Tag (Karte #164)
+
+**Anlass**: Der Release-Workflow war am Sonntag 2026-11-15 rot (Commit `e38f2f9`): `e2e/tests/kultur.spec.js:205` bildet die erwartete Woche aus `tag(1)` (morgen), die Seite steht nach `page.clock.setSystemTime(new Date())` (`:203`) auf heute — sonntags sind das zwei Wochen. Dieselbe Klasse wie Karte #73 und #89 (`0fca756`, „Fieber in Kalendertagen“): eine Erwartung, die still annimmt, dass ein Nachbartag in derselben Woche liegt. Fehler der Probe, nicht des Programms.
+
+**Belegt (Code, Ist)**: Die Uhr des Browsers lässt sich stellen (`page.clock.install({ time })`, `setFixedTime` — Vorbild `e2e/tests/r00122-durchsatz.spec.js:200`, festes Datum samt festen Testdaten). Die Uhr des Servers nicht (`src/uhr.rs:101–108`, `Local::now()`); Server, Knoten und Browser laufen in `Europe/Berlin` (`e2e/tests/hilfen.js:28`, `e2e/playwright.config.js:9`, `.github/workflows/release.yml:79`). Rund 30 Dateien in `e2e/tests/` leiten Testdaten und Erwartungen über eigene Helfer (`tag`, `vorTagen`, `heute`, `gestern`, `morgen`, `vor`) aus der Wanduhr ab; eine Erwartung über eine Kalendergrenze trägt davon heute nur `kultur.spec.js:205–211`.
+
+### N1 Regel 6: Kalendergrenzen
+
+6. **Die Erwartung wird aus demselben Zeitpunkt gerechnet, auf dem die Seite steht — nie aus einem Nachbartag.** Gilt für alles, was an einer Kalendergrenze kippt: Woche (Montag bis Sonntag), Monat, Jahr, Werktag gegen Wochenende. Hängt die Zusage selbst an einer Grenze, stellt die Probe die Uhr des Browsers auf ein **festes** Datum (`page.clock.install({ time })` bzw. `setFixedTime`) und rechnet die Erwartung aus genau diesem Datum; den Grenzfall deckt sie mit festen Daten ab (Sonntag, Montag, Samstag; Monatserster; 31.12./01.01.), nicht durch Warten auf den passenden Wochentag. Testdaten, die der Server gegen seine eigene Uhr prüft (z. B. „Ende nicht in der Zukunft“), bleiben relativ zu heute — dann darf die Zusage nicht davon abhängen, in welcher Woche oder welchem Monat heute liegt.
+
+**Nicht entschieden**: keine stellbare Uhr im Server (Produktivcode, für diese Klasse nicht nötig — Woche und Datumsform rechnet die Oberfläche); kein gemeinsamer Datumshelfer für alle Specs (die rund 30 lokalen Helfer bleiben, bis eine Karte sie anfasst).
+
+**Durchsetzung**: Review-Punkt wie oben — eine Erwartung aus `heute ± n`, die eine Woche, einen Monat oder ein Jahr benennt, ohne gestellte Uhr, ist ein Befund.
+
+**Probe**: `kultur.spec.js` US-4 besteht mit auf Sonntag, Montag und Samstag gestellter Uhr des Browsers; gegen den Stand `e38f2f9` ist die Sonntags-Variante rot.
