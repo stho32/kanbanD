@@ -45,7 +45,6 @@ async function fensterIstZu(page) {
 
 test.describe('R00155 #54: Esc im Titelfeld', () => {
   test('54-1/54-2/US-1: Titel ändern, Esc → Datei und git unverändert, alter Titel sichtbar, Fokus auf „Titel bearbeiten“, Fenster offen, stumm; das zweite Esc schließt und gibt den Fokus an Karte #1', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0721');
     const fenster = await titelBearbeiten(page);
     await page.locator(TITELFELD).fill('Abnahme geprüft');
     const vorher = await standMerken(page, k);
@@ -64,7 +63,6 @@ test.describe('R00155 #54: Esc im Titelfeld', () => {
   });
 
   test('54-3: Titel im Bearbeiten und unverändert, Esc → Bearbeitungsmodus beendet, Fenster offen, Fokus auf „Titel bearbeiten“; ein zweites Esc schließt', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0721');
     const fenster = await titelBearbeiten(page);
     const vorher = await standMerken(page, k);
     await page.keyboard.press('Escape');

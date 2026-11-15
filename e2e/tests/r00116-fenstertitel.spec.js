@@ -144,6 +144,13 @@ test.describe('R00116', () => {
     expect(await perTabErreicht(page, les), 'das Lesediv ist per Tab erreichbar').toBeGreaterThan(0);
   });
 
+  /** R00155 54-1/54-3: das erste Esc verlässt nur den Bearbeitungsmodus des Titels, erst das zweite schließt das Fenster. */
+  async function zweimalEsc(page) {
+    await page.keyboard.press('Escape');
+    await expect(page.locator(LESE)).toBeFocused();
+    await page.keyboard.press('Escape');
+  }
+
   test('US-3: Klick, Enter auf dem Lesediv und Taste e öffnen die Bearbeitung; erneutes Öffnen zeigt das Lesediv (AK 3)', async ({ page }) => {
     k = await kanbanStarten(einrichten(GRUNDBESTAND));
     await alsPerson(page, 'st');
@@ -152,7 +159,7 @@ test.describe('R00116', () => {
     // 1. Klick auf das Lesediv
     await page.locator(LESE).click();
     await feldPruefen(page, TITEL_EINS);
-    await page.keyboard.press('Escape');
+    await zweimalEsc(page);
     await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
     // 2. Enter bei fokussiertem Lesediv — nach Schließen und erneutem Öffnen (titelBearbeiten zurückgesetzt)
     await fensterOeffnen(page, 1);
@@ -160,13 +167,13 @@ test.describe('R00116', () => {
     await page.locator(LESE).focus();
     await page.keyboard.press('Enter');
     await feldPruefen(page, TITEL_EINS);
-    await page.keyboard.press('Escape');
+    await zweimalEsc(page);
     await expect(page.locator('#over [role="dialog"]')).toHaveCount(0);
     // 3. Taste e im Fenster
     await fensterOeffnen(page, 1);
     await page.keyboard.press('e');
     await feldPruefen(page, TITEL_EINS);
-    await page.keyboard.press('Escape');
+    await zweimalEsc(page);
     // Schließen und erneutes Öffnen zeigt wieder das Lesediv (FA 4: oeffnen setzt titelBearbeiten zurück)
     await fensterOeffnen(page, 1);
     await expect(page.locator(LESE)).toHaveCount(1);

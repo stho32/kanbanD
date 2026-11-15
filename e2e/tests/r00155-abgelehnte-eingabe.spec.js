@@ -63,7 +63,6 @@ test.describe('R00155 #96: der abgelehnte Titel bleibt im Feld', () => {
   });
 
   test('96-5 (#54): Esc nach der Ablehnung — Titel liest „Abnahme prüfen“, Meldung fort, Fokus auf „Titel bearbeiten“, Fenster offen', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0721/B0722 (#54)');
     const fenster = await titelAbgelehnt(page);
     const vorher = await standMerken(page, k);
     await page.keyboard.press('Escape');

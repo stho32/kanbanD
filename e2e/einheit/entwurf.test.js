@@ -2,7 +2,7 @@
 // `{ nummer, feld, wert }` und der Verweis des Felds auf die Fenstermeldung.
 const test = require('node:test');
 const assert = require('node:assert');
-const { entwurfswert, meldungsverweis, entwurfNachTippen } = require('../../web/sichtzustand.js');
+const { entwurfswert, meldungsverweis, entwurfNachTippen, verwerfung } = require('../../web/sichtzustand.js');
 
 const VERWEIS = ' aria-invalid="true" aria-describedby="fenster-meldung"';
 const verweis = (entwurf, meldung, nummer, feld) => meldungsverweis(entwurf, meldung, nummer, feld, 'fenster-meldung');
@@ -46,4 +46,16 @@ test('entwurfNachTippen: Getipptes verdrängt nie die Eingabe eines anderen Feld
   assert.strictEqual(entwurfNachTippen(abgelehnteDauer, 1, 'herkunft', 'I00'), abgelehnteDauer);
   const leererTitel = { nummer: 1, feld: 'titel', wert: '' };
   assert.strictEqual(entwurfNachTippen(leererTitel, 1, 'herkunft', 'I00'), leererTitel, 'leer ist auch eine Eingabe');
+});
+
+// Esc-Regel des Aufgabenfensters (R00155 #54, ADR-0010 N9): was das fokussierte Feld zu verwerfen hat
+const feld = angaben => ({ af: undefined, id: '', wert: '', gezeichnet: '', imModus: false, haeltEntwurf: false, ...angaben });
+
+test('verwerfung: der Titel im Bearbeiten verlässt den Modus — geändert wie unverändert — und nimmt den gezeichneten Stand an', () => {
+  assert.deepStrictEqual(verwerfung(feld({ af: 'titel', wert: 'Abnahme geprüft', gezeichnet: 'Abnahme prüfen', imModus: true })), { wert: 'Abnahme prüfen', verlaesstModus: true });
+  assert.deepStrictEqual(verwerfung(feld({ af: 'titel', wert: 'Abnahme prüfen', gezeichnet: 'Abnahme prüfen', imModus: true })), { wert: 'Abnahme prüfen', verlaesstModus: true });
+});
+
+test('verwerfung: Felder ohne Entwurf haben nichts zu verwerfen — Spalte, Klasse, Fällig', () => {
+  for (const af of ['spalte', 'klasse', 'faellig']) assert.strictEqual(verwerfung(feld({ af, wert: 'x', gezeichnet: 'y' })), null, af);
 });

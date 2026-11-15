@@ -731,6 +731,31 @@ async function titelSpeichern(wert) {
   render();
 }
 
+/** Kennung, unter der ein Feld des Aufgabenfensters den einen Entwurf und seine Meldung führt; null für Felder ohne. */
+function entwurfskennung(feld) {
+  if (feld.dataset.af === 'titel') return TITEL_FELD;
+  return null;
+}
+
+/** Verwirft, was das Feld des Aufgabenfensters an Entwurf oder Bearbeitungsmodus hat — ohne Schreibweg (ADR-0010 N9):
+    der Wert geht auf den gezeichneten Stand zurück, bevor das Feld verlassen wird, sein Entwurf und die Meldung dazu
+    verschwinden. Falsch, wenn es nichts zu verwerfen gab. */
+function eingabeVerwerfen(feld) {
+  const u = S.ui;
+  if (!feld.dataset) return false;
+  const kennung = entwurfskennung(feld);
+  const haeltEntwurf = kennung !== null && entwurfswert(u.entwurf, u.offen, kennung) !== null;
+  const verworfen = verwerfung({ af: feld.dataset.af, id: feld.id, wert: feld.value, gezeichnet: feld.defaultValue, imModus: u.titelBearbeiten, haeltEntwurf });
+  if (!verworfen) return false;
+  feld.value = verworfen.wert;
+  aenderungGemeldet(feld);
+  if (haeltEntwurf) u.entwurf = null;
+  if (kennung !== null && u.fensterFehlerFeld === kennung) fensterMelden(null);
+  if (verworfen.verlaesstModus) { u.titelBearbeiten = false; u.fokus = '[data-act="titel-bearbeiten"]'; }
+  render();
+  return true;
+}
+
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
 function zuweisenSchliessen() {
   const z = S.ui.zuweisen;
@@ -2514,6 +2539,7 @@ document.addEventListener('keydown', e => {
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
+    if (S.ui.offen && eingabeVerwerfen(t)) { e.preventDefault(); return; }
     if (S.ui.offen) { if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }
     if (S.ui.offenDefekt) { S.ui.offenDefekt = null; S.ui.defektDatei = null; render(); return; }
     if (S.ui.auswahl.length) { auswahlAufheben(); render(); return; }
