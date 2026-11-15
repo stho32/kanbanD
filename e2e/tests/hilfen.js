@@ -1,6 +1,6 @@
 // Startet kanbanD gegen einen frischen Ordner und räumt danach auf.
 //
-// Warten (ADR-0026, R00150): Proben warten auf den Zielzustand, nie auf Zeit. Fünf Regeln:
+// Warten (ADR-0026, R00150): Proben warten auf den Zielzustand, nie auf Zeit. Sechs Regeln:
 //  1. Nach einer Aktion keine nackte Lesung (`innerText`, `getBoundingClientRect`, `page.evaluate`, `k.lies`, `k.git`):
 //     der Zielzustand wird mit einer Locator-Zusicherung oder `await expect.poll(() => …)` geprüft.
 //  2. Nach `setViewportSize` erst das Layout stehen lassen: `breiteSetzen(page, breite, hoehe)`, dann messen; ebenso nach dem
@@ -12,6 +12,11 @@
 //  5. Eine Frist ist nur für das Ausbleiben eines Ereignisses erlaubt; `waitForTimeout` als Synchronisierung ist untersagt.
 //     Wird eine Dauer beobachtet, steht die Messgrundlage erst nach `bereit()`, und die Zeit läuft über `page.clock`.
 //     `imFokus` misst nur und ist kein Wartemittel.
+//  6. Kalendergrenzen (Nachtrag 2026-11-15, R00151): Die Erwartung rechnet aus demselben Zeitpunkt, auf dem die Seite steht —
+//     nie aus einem Nachbartag (`heute ± n`). Hängt die Zusage an Woche, Monat, Jahr oder Wochenende, stellt die Probe die Uhr
+//     des Browsers auf ein festes Datum (`page.clock.setFixedTime` bzw. `install({ time })`), rechnet daraus und deckt den
+//     Grenzfall mit festen Daten (Sonntag, Montag, Samstag; Monatserster; 31.12./01.01.). Die Uhr des Servers bleibt echt:
+//     Testdaten, die er gegen sie prüft, bleiben relativ zu heute, und die Zusage hängt dann nicht an ihnen.
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
