@@ -263,3 +263,142 @@ async fn ein_rumpf_von_3_mib_wird_mit_413_und_deutscher_meldung_abgewiesen() {
     assert!(fehler.contains("zu groß"), "{fehler}");
     assert_eq!(lies(tmp.path(), "aufgaben/0001-eins.md"), aufgabe, "kein Kommentar geschrieben");
 }
+
+// ---- Gegenproben: am Stand vor dem Fix gemessen und festgeschrieben (R00153 AK 13–17) ----
+
+// AK 13 · US-5
+#[tokio::test]
+async fn ein_gueltiger_rumpf_legt_die_aufgabe_mit_genau_einem_commit_an() {
+    let (tmp, lauf) = grundbestand();
+    let commits = || git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap();
+    let vorher = commits();
+    let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben", "st", JSON, r#"{"titel": "x", "board": "entwicklung"}"#).await;
+    assert_eq!((antwort.status, antwort.json()["nummer"].as_u64()), (201, Some(4)), "{}", antwort.text);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").contains("- [#4](../aufgaben/0004-x.md)"), "die Aufgabe liegt auf dem Board");
+    assert_eq!((commits(), git(tmp.path(), &["status", "--porcelain"])), (vorher + 1, String::new()), "genau ein Commit");
+}
+
+// AK 14: roh angenommene Felder behalten ihre fachliche Meldung
+#[tokio::test]
+async fn roh_angenommene_felder_antworten_mit_status_und_meldung_wie_vor_dem_fix() {
+    let (tmp, lauf) = grundbestand();
+    for (methode, pfad, rumpf, meldung) in [
+        (Method::PATCH, "api/aufgaben/1", r#"{"cost": "teuer"}"#, "cost: keine Zuordnung"),
+        (Method::PATCH, "api/aufgaben/1", r#"{"cost": {"x": 1}}"#, "cost: unbekannter Schlüssel „x“"),
+        (Method::PATCH, "api/aufgaben/1", r#"{"estimate": "viel"}"#, "estimate: ganze Zahl von Minuten ≥ 1 erwartet"),
+        (Method::POST, "api/aufgaben/1/teilaufgaben", r#"{"text": "a", "position": "x"}"#, "„position“ muss eine ganze Zahl ab 0 sein, nicht \"x\""),
+        (Method::POST, "api/aufgaben/1/teilaufgaben", r#"{"text": "a", "erledigt": "ja"}"#, "„erledigt“ muss true oder false sein, nicht \"ja\""),
+    ] {
+        let vorher = stand(tmp.path());
+        let antwort = senden_roh(methode, &lauf.adresse, pfad, "st", JSON, rumpf).await;
+        assert_eq!((antwort.status, antwort.art.as_str(), antwort.json()["fehler"].as_str()), (400, "application/json", Some(meldung)), "{rumpf}");
+        assert_eq!(stand(tmp.path()), vorher, "{rumpf}: kein Commit");
+    }
+}
+
+// AK 15: unbekannte Schlüssel bleiben erlaubt (ADR-0003 N3 Punkt 5)
+#[tokio::test]
+async fn ein_unbekannter_schluessel_wird_ueberlesen() {
+    let (tmp, lauf) = grundbestand();
+    let vorher = stand(tmp.path());
+    let antwort = senden_roh(Method::PATCH, &lauf.adresse, "api/boards/entwicklung", "st", JSON, r#"{"titel": "Entwicklung", "quatsch": 1}"#).await;
+    assert_eq!((antwort.status, antwort.json()["titel"].as_str()), (200, Some("Entwicklung")), "{}", antwort.text);
+    assert_eq!(stand(tmp.path()), vorher, "gleicher Titel: kein Commit");
+    let antwort = senden_roh(Method::PATCH, &lauf.adresse, "api/boards/entwicklung", "st", JSON, r#"{"titel": "Werkstatt", "quatsch": 1}"#).await;
+    assert_eq!((antwort.status, antwort.json()["titel"].as_str()), (200, Some("Werkstatt")), "{}", antwort.text);
+    assert!(lies(tmp.path(), "boards/entwicklung.md").starts_with("# Werkstatt\n"), "der bekannte Schlüssel wirkt");
+}
+
+// AK 16: Handler, die den Rumpf als Bytes lesen, verlangen weder Rumpf noch Content-Type
+#[tokio::test]
+async fn timer_stop_und_reservierung_ohne_rumpf_und_content_type_antworten_fachlich() {
+    let (_tmp, lauf) = grundbestand();
+    for (pfad, status, meldung) in [("api/aufgaben/1/timer/stop", 409, "An #1 läuft kein Timer von Stefan"), ("api/aufgaben/1/reservierung", 400, "Welche Instanz? Header X-KanbanD-Instanz oder Feld instanz fehlt")] {
+        let antwort = senden_roh(Method::POST, &lauf.adresse, pfad, "st", None, "").await;
+        assert_eq!((antwort.status, antwort.json()["fehler"].as_str()), (status, Some(meldung)), "{pfad}");
+    }
+}
+
+// AK 17: der beschriebene Kontrakt nennt an jedem schreibenden Endpunkt 400 mit Fehlerantwort und weder 415, 413 noch 422 (ADR-0003 N3 Punkt 7)
+#[tokio::test]
+async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transports() {
+    let (_tmp, lauf) = grundbestand();
+    let api: serde_json::Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let mut schreibend = 0;
+    let mut codes = BTreeSet::new();
+    for (pfad, methoden) in api["paths"].as_object().unwrap() {
+        for (methode, beschreibung) in methoden.as_object().unwrap() {
+            codes.extend(beschreibung["responses"].as_object().unwrap().keys().cloned());
+            if methode != "get" {
+                schreibend += 1;
+                assert_eq!(beschreibung["responses"]["400"]["content"]["application/json"]["schema"]["$ref"], "#/components/schemas/Fehlerantwort", "{methode} {pfad}");
+            }
+        }
+    }
+    assert_eq!(schreibend, 57);
+    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "400", "403", "404", "409", "423", "500"]);
+}
+
+// ADR-0003 N3 Punkt 6: die Standardgrenze des Rahmens bleibt — ein JSON-Rumpf von genau 2 MiB geht durch
+#[tokio::test]
+async fn ein_rumpf_von_genau_2_mib_wird_angenommen() {
+    let (tmp, lauf) = grundbestand();
+    let rumpf = format!(r#"{{"text": "{}"}}"#, "a".repeat(2 * 1024 * 1024 - 12));
+    assert_eq!(rumpf.len(), 2 * 1024 * 1024);
+    let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben/1/kommentare", "st", JSON, rumpf).await;
+    assert_eq!(antwort.status, 200, "{}", antwort.text.chars().take(160).collect::<String>());
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").len() > 2 * 1024 * 1024 - 12, "der Kommentar ist geschrieben");
+}
+
+// Content-Type-Formen, die der Rahmen als JSON annimmt, bleiben angenommen
+#[tokio::test]
+async fn json_mit_parameter_grossschreibung_oder_json_suffix_wird_angenommen() {
+    let (_tmp, lauf) = grundbestand();
+    for art in ["application/json; charset=utf-8", "APPLICATION/JSON", "application/vnd.api+json"] {
+        let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben", "st", Some(art), r#"{"titel": "x"}"#).await;
+        assert_eq!(antwort.status, 201, "{art}: {}", antwort.text);
+    }
+}
+
+// ---- Dieselbe Klasse an Stellen, die die Tabelle nicht nennt ----
+
+// AK 14 nennt datums_trenner als roh angenommen; gemessen vor dem Fix: getypt, 422 text/plain wie jedes andere Feld — mit dem Fix 400 in der Form
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn ein_datums_trenner_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_das_feld() {
+    let (tmp, lauf) = grundbestand();
+    let rumpf = r#"[{"name": "Zu erledigen", "datums_trenner": "ja"}]"#;
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/entwicklung/spalten", JSON, rumpf, 400).await;
+    assert!(fehler.contains("datums_trenner"), "{fehler}");
+}
+
+// Der wahlfreie Rumpf von POST …/duplizieren (Option<Json<Zielort>>, nicht unter den 36) geht durch denselben Extraktor
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 und 415 text/plain"]
+async fn der_wahlfreie_rumpf_von_duplizieren_wird_bei_falscher_form_in_der_form_abgewiesen() {
+    let (tmp, lauf) = grundbestand();
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/duplizieren", JSON, r#"{"board": 7}"#, 400).await;
+    assert!(fehler.contains("board"), "{fehler}");
+    abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/duplizieren", Some("text/plain"), "{}", 415).await;
+    let antwort = senden_roh(Method::POST, &lauf.adresse, "api/aufgaben/1/duplizieren", "st", None, "").await;
+    assert_eq!((antwort.status, antwort.json()["nummer"].as_u64()), (201, Some(4)), "ohne Rumpf und Content-Type wie bisher: {}", antwort.text);
+}
+
+// Eigene Varianten zu AK 10: nur application/json und application/…+json gelten als JSON
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 415 text/plain"]
+async fn ein_content_type_der_nur_aehnlich_heisst_wird_mit_415_abgewiesen() {
+    let (tmp, lauf) = grundbestand();
+    for art in ["application/jsonx", "text/json", "application/x-www-form-urlencoded", "json", "application/json+xml"] {
+        abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben", Some(art), r#"{"titel": "x"}"#, 415).await;
+    }
+}
+
+// ADR-0003 N2 „400 bleibt vorn“: der Formfehler entsteht vor dem Handler, auch wenn es das Board nicht gibt
+#[tokio::test]
+#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
+async fn der_formfehler_geht_dem_unbekannten_board_vor() {
+    let (tmp, lauf) = grundbestand();
+    let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/gibtsnicht/termine", JSON, r#"[{"name": 7}]"#, 400).await;
+    assert!(fehler.contains("name"), "{fehler}");
+}
