@@ -194,22 +194,40 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     await expect(page.locator('table.zt tr[data-zeit] td:first-child')).toHaveText([kurz(HEUTE), lang(VORJAHR_3012)]);
   });
 
-  test('US-4: Personen „zuletzt“ und Wochenleiste lang, Tagesköpfe kurz im laufenden Jahr', async ({ page }) => {
-    await starten(page);
-    // Stefans letzte Zeit liegt heute; einen Tag später zeigt „zuletzt“ ein Datum statt der Uhrzeit
-    await page.clock.install({ time: new Date(Date.now() + 864e5) });
-    await page.goto(k.adresse + '#/personen');
-    await expect(page.locator('tr[data-person="st"]')).toContainText(`zuletzt ${lang(HEUTE)}`);
-    await page.clock.setSystemTime(new Date());
-    await page.goto(k.adresse + '#/berichte/stundenzettel');
-    const tage = woche(tag(1));
-    await expect(page.locator('#woche')).toHaveText(`${lang(tage[0])} – ${lang(tage[6])}`);
-    await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(tage.map(kurz));
-    const neujahr = woche(`${JAHR}-01-01`);
-    for (let w = 0; w < (utc(tage[0]) - utc(neujahr[0])) / (7 * 864e5); w++) await page.getByRole('button', { name: 'vorige Woche' }).click();
-    await expect(page.locator('#woche')).toHaveText(`${lang(neujahr[0])} – ${lang(neujahr[6])}`);
-    await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(neujahr.map(kurz));
-  });
+  // Regel 6 (ADR-0026, R00151): Die Uhr des Browsers steht auf einem festen Tag, und Woche, laufendes Jahr und der Weg zur
+  // Neujahrswoche rechnen aus genau diesem Tag — Sonntag, Montag und Samstag decken die Wochengrenze an jedem Tag des Laufs.
+  // `leiste` und `zurueck` sind die Zusagen aus R00151 AK 1–4; an ihnen wird zuerst die Rechnung der Probe geprüft.
+  const GESTELLT = [
+    { wochentag: 'Sonntag', datum: '2026-11-15', leiste: '09.11.2026 – 15.11.2026', zurueck: 45 },
+    { wochentag: 'Montag', datum: '2026-11-16', leiste: '16.11.2026 – 22.11.2026', zurueck: 46 },
+    { wochentag: 'Samstag', datum: '2026-11-21', leiste: '16.11.2026 – 22.11.2026', zurueck: 46 },
+  ];
+  const leiste = tage => `${lang(tage[0])} – ${lang(tage[6])}`;
+  for (const gestellt of GESTELLT) {
+    test(`US-4: Personen „zuletzt“ und Wochenleiste lang, Tagesköpfe kurz im laufenden Jahr — Uhr auf ${gestellt.wochentag}, ${lang(gestellt.datum)}`, async ({ page }) => {
+      const jahr = gestellt.datum.slice(0, 4);
+      const kurzImJahr = iso => iso.startsWith(`${jahr}-`) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : lang(iso);
+      const tage = woche(gestellt.datum);
+      const neujahr = woche(`${jahr}-01-01`);
+      const wochenZurueck = (utc(tage[0]) - utc(neujahr[0])) / (7 * 864e5);
+      expect([leiste(tage), wochenZurueck, leiste(neujahr)]).toEqual([gestellt.leiste, gestellt.zurueck, '29.12.2025 – 04.01.2026']);
+      expect(neujahr.map(kurzImJahr)).toEqual(['29.12.2025', '30.12.2025', '31.12.2025', '01.01.', '02.01.', '03.01.', '04.01.']);
+
+      await starten(page);
+      // Stefans letzte Zeit liegt heute; einen Tag später zeigt „zuletzt“ ein Datum statt der Uhrzeit
+      await page.clock.install({ time: new Date(Date.now() + 864e5) });
+      await page.goto(k.adresse + '#/personen');
+      await expect(page.locator('tr[data-person="st"]')).toContainText(`zuletzt ${lang(HEUTE)}`);
+      // mittags in Europe/Berlin (im November UTC+1), fern der Tagesgrenze
+      await page.clock.setFixedTime(new Date(`${gestellt.datum}T12:00:00+01:00`));
+      await page.goto(k.adresse + '#/berichte/stundenzettel');
+      await expect(page.locator('#woche')).toHaveText(leiste(tage));
+      await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(tage.map(kurzImJahr));
+      for (let w = 0; w < wochenZurueck; w++) await page.getByRole('button', { name: 'vorige Woche' }).click();
+      await expect(page.locator('#woche')).toHaveText(leiste(neujahr));
+      await expect(page.locator('#stundenzettel thead th .mono')).toHaveText(neujahr.map(kurzImJahr));
+    });
+  }
 
   test('US-5: Tabellenansichten lang, Achsenmarken TT.MM. über JJJJ, Tooltips mit Wochentag', async ({ page }) => {
     await starten(page);

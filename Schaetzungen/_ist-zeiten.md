@@ -563,3 +563,4 @@ Nie vom User erfragen.
 | 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0700 r00105-kostenbericht wartet auf Board und Bericht | Standard | 1-2h | 0,8h | 0,8h | autonom |
 | 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | B0701 r00145 US-9 nach breiteSetzen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-14 | Karte #139 R00150 (E2E-Tests warten auf den Zielzustand) | Lauf #139 (Abnahme-Probe: 3 Volläufe, 4×10 Wiederholungen, Gate) | Konsolidierung | — | — | 1,0h | autonom |
+| 2026-11-15 | Karte #164 R00151 (Wochenleisten-Probe unabhängig vom Wochentag) | B0702 kultur US-4 auf gestellter Uhr (Sonntag, Montag, Samstag) | Standard | 1-2h | 0,2h | 0,2h | autonom |
