@@ -160,6 +160,8 @@ test.describe('R00078', () => {
     await liveBereit(page);
     await expect.poll(kanbandCommits).toEqual(['Fever Chart „Entwicklung“: 10 Tage ergänzt']);
     const zeilen = page.locator('#fb-tabelle tbody tr td:first-child');
+    // der Commit steht, bevor die Ansicht die nachgetragenen Tage gezeichnet hat — erst den Zielzustand abwarten, dann lesen (ADR-0026 Regel 1)
+    await expect(zeilen).toHaveText([-6, -5, -4, -3, -2, -1, 0].map(tagLang));
     const taeglich = await zeilen.allTextContents();
     expect(taeglich.length).toBeGreaterThan(3);
     await page.getByLabel('Auflösung').selectOption({ label: 'Woche (alle 7 T)' });
