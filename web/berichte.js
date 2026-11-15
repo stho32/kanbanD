@@ -497,13 +497,16 @@
     const ab = Math.max(start ? isoTag(start) : 0, erste === Infinity ? 0 : tag(erste));
     const fenster = Math.max(tag(heute, 1 - (f.messbasisTage || FILTER_LEER.messbasisTage)), ab);
     const spalten = bew.spalten.filter(s => !f.ohneSpalten.includes(s));
-    const imFilter = a => aufgabePasst(f, aufgabeZu(a.nummer));
+    // je Aufgabe einmal: der Bestand über die Zeit (verworfen heißt dort „entfernt“ — ab dem Archivtag kein Umfang mehr)
+    const bestand = bestandLeser(bew, aufgabeZu);
+    const passend = bew.aufgaben.filter(a => aufgabePasst(f, aufgabeZu(a.nummer))).map(a => ({ a, zustandAm: bestand(a) }));
     // reporting.forecast: false (R00060) nimmt die Aufgabe ganz aus der Prognose, zusätzlich zum Filter
-    const passt = a => imFilter(a) && zaehltImBericht(a, 'forecast');
-    // archiviert außerhalb der Abschlussspalte heißt verworfen: ab dem Archivtag kein Umfang mehr
-    const letzte = bew.spalten[bew.spalten.length - 1];
-    const zaehlt = (a, s, t) => { const x = aufgabeZu(a.nummer); return s != null && spalten.includes(s) && !(x && x.archiviert && s !== letzte && t >= isoTag(x.archiviert)); };
-    const jetztDa = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, jetzt) })).filter(x => zaehlt(x.a, x.s, jetzt));
+    const gezaehlt = passend.filter(x => zaehltImBericht(x.a, 'forecast')), nichtGezaehlt = passend.filter(x => !zaehltImBericht(x.a, 'forecast'));
+    const inSpalten = zustand => spalten.includes(zustand.spalte);
+    const imUmfang = zustand => zustand.art === 'da' && inSpalten(zustand);
+    /** Die gezählten Aufgaben, die zum Zeitpunkt t zum Umfang gehören, mit ihrer Spalte. */
+    const daAm = t => gezaehlt.map(x => ({ a: x.a, zustand: x.zustandAm(t) })).filter(x => imUmfang(x.zustand)).map(x => ({ a: x.a, s: x.zustand.spalte }));
+    const jetztDa = daAm(jetzt);
     const umfang = jetztDa.length;
     let vorige = null;
     const alle = prognoseStufen(bew, spalten, phasen), gewaehlt = alle.filter(st => st.schluessel === block);
@@ -541,11 +544,11 @@
     const tage = [];
     if (erste !== Infinity && !nurLetzter) for (let t = ab; t < morgen; t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
-      const da = bew.aufgaben.filter(passt).map(a => ({ a, s: spalteAm(a.wechsel, ende) })).filter(x => zaehlt(x.a, x.s, ende));
+      const da = daAm(ende);
       tage.push({ t, umfang: da.length, offen: Object.fromEntries(stufen.map(st => [st.schluessel, da.filter(x => !st.entfaellt(x.a) && !st.durch(x.a, x.s)).length])) });
     }
-    const verworfen = bew.aufgaben.filter(a => { const s = spalteAm(a.wechsel, jetzt), x = aufgabeZu(a.nummer); return passt(a) && s != null && spalten.includes(s) && !zaehlt(a, s, jetzt) && x; }).length;
-    const weg = bew.aufgaben.filter(a => imFilter(a) && !zaehltImBericht(a, 'forecast') && zaehlt(a, spalteAm(a.wechsel, jetzt), jetzt)).length;
+    const verworfen = gezaehlt.map(x => x.zustandAm(jetzt)).filter(zustand => zustand.art === 'entfernt' && inSpalten(zustand)).length;
+    const weg = nichtGezaehlt.filter(x => imUmfang(x.zustandAm(jetzt))).length;
     return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 

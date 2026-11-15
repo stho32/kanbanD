@@ -124,3 +124,56 @@ test('R00152 B0706 (AK 6): die in der Abschlussspalte archivierte #4 bleibt im B
 test('R00152 B0706 (AK 5): Fluss am Stand 06.11., 12:00 Uhr — Vortag 4·0·3, Archivtag 1·0·2', () => {
   assert.deepStrictEqual(baender(flussA({}, {}, ms(6, 12, 0))), ['7·0·0', '4·0·3', '4·0·3', '4·0·3', '1·0·2']);
 });
+
+/* ── B0707 „Wie lange noch“ liest dieselbe Funktion; eine Zahl je Tag in allen drei Berichten ── */
+const prognoseA = (optionen = {}, f = {}, heute = ms(10), archivtag3) => B.prognose(bewegungenA(optionen), filter(f), aufgabenA(archivtag3), heute);
+/** Verlauf von „Wie lange noch“ als offen/Umfang; offen = noch nicht in der Abschlussspalte (letzter Block). */
+const verlauf = p => p.tage.map(x => `${x.offen.Fertig}/${x.umfang}`);
+/** offen/Umfang je Tag aus Burndown, Kumulativem Fluss und „Wie lange noch“ am selben Datensatz. */
+const dreiBerichte = (optionen, f, heute, archivtag3) => ({
+  burndown: kurz(burndownA(optionen, f, heute, archivtag3)),
+  fluss: offenGesamt(flussA(optionen, f, heute, archivtag3)),
+  wieLangeNoch: verlauf(prognoseA(optionen, f, heute, archivtag3)),
+});
+const alleDrei = reihe => ({ burndown: reihe, fluss: reihe, wieLangeNoch: reihe });
+
+test('R00152 B0707 (AK 3): Burndown, Kumulativer Fluss und „Wie lange noch“ nennen an jedem der neun Tage dieselbe Zahl offen und denselben Umfang', () => {
+  assert.deepStrictEqual(dreiBerichte(), alleDrei(neunTage('7/7', '4/7', '1/3')));
+});
+
+test('R00152 B0707 (AK 9): „Wie lange noch“ im Grundbestand A am 10.11. — Umfang 3, offen 1, verworfen 1, ausgenommen 0', () => {
+  const p = prognoseA();
+  assert.strictEqual(p.umfang, 3);
+  assert.deepStrictEqual(p.phasen.map(ph => [ph.schluessel, ph.nenner, ph.offen]), [['In Arbeit', 3, 1], ['Fertig', 3, 1]]);
+  assert.strictEqual(p.verworfen, 1);
+  assert.strictEqual(p.ausgenommen, 0);
+  assert.deepStrictEqual(p.gezaehlt, [1, 2, 4]);
+});
+
+test('R00152 B0707 (AK 13): zurückgeholt — #3 ohne Archivtag zählt an allen Tagen wieder, alle drei Berichte 2/4 am 06.–10.11.', () => {
+  assert.deepStrictEqual(dreiBerichte({}, {}, ms(10), null), alleDrei(neunTage('7/7', '4/7', '2/4')));
+  assert.strictEqual(prognoseA({}, {}, ms(10), null).verworfen, 0);
+});
+
+test('R00152 B0707 (AK 14): mehrfach archiviert — nur der letzte Archivtag (09.11.) wirkt: 2/4 am 06.–08.11., 1/3 am 09.–10.11.', () => {
+  assert.deepStrictEqual(dreiBerichte({}, {}, ms(10), '2026-11-09'), alleDrei(['7/7', '4/7', '4/7', '4/7', '2/4', '2/4', '2/4', '1/3', '1/3']));
+});
+
+test('R00152 B0707 (AK 15): zurückgelaufen — #2 am 08.11. aus „Fertig“ nach „In Arbeit“: ab dann 2/3, Bänder 1·1·1, „fertig“ bleibt 3, Durchsatz 3', () => {
+  assert.deepStrictEqual(dreiBerichte({ ruecklauf2: true }), alleDrei(['7/7', '4/7', '4/7', '4/7', '1/3', '1/3', '2/3', '2/3', '2/3']));
+  const tage = flussA({ ruecklauf2: true });
+  assert.deepStrictEqual(baender(tage).slice(6), ['1·1·1', '1·1·1', '1·1·1']);
+  assert.deepStrictEqual(tage.map(x => x.fertig), [0, 3, 3, 3, 3, 3, 3, 3, 3]);
+  assert.strictEqual(B.durchsatz(bewegungenA({ ruecklauf2: true }), filter({}), aufgabenA(), ms(10), null, 'tag').gesamt, 3);
+});
+
+test('R00152 B0707 (AK 5): am Stand 06.11., 12:00 Uhr nennen alle drei am Vortag 4/7 und am Archivtag 1/3', () => {
+  assert.deepStrictEqual(dreiBerichte({}, {}, ms(6, 12, 0)), alleDrei(['7/7', '4/7', '4/7', '4/7', '1/3']));
+});
+
+test('R00152 B0707: unter ausgeschlossener Spalte und Personenfilter bleiben die drei Berichte je Tag gleich', () => {
+  assert.deepStrictEqual(dreiBerichte({}, { personen: ['st'] }), alleDrei(neunTage('5/5', '3/5', '1/3')));
+  const ohneEingang = dreiBerichte({}, { ohneSpalten: ['Eingang'] });
+  assert.deepStrictEqual(ohneEingang.burndown, neunTage('0/0', '0/3', '0/2'));
+  assert.deepStrictEqual(ohneEingang.fluss, ohneEingang.burndown);
+});
