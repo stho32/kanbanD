@@ -79,7 +79,7 @@ test('R00152 US-1 (AK 4): im Burndown zählt die verworfene Aufgabe ab dem Archi
   } finally { await k.stoppen(); }
 });
 
-test('R00152 US-2 (AK 4): Burndown und „Wie lange noch“ nennen am selben Tag dieselbe Zahl offener Aufgaben', async ({ page }) => {
+test('R00152 US-2 (AK 4): Burndown, „Wie lange noch“ und Kumulativer Fluss nennen am selben Tag dieselbe Zahl offener Aufgaben', async ({ page }) => {
   const k = await kanbanStarten(grundbestandB);
   try {
     await berichtAm(page, k, '2026-11-06', 'verlauf');
@@ -94,6 +94,9 @@ test('R00152 US-2 (AK 4): Burndown und „Wie lange noch“ nennen am selben Tag
     // dieselbe Zahl je Tag: Burndown „Tag offen Umfang“ gegen Prognose „Tag Umfang … noch nicht in „Fertig““
     expect(burndown.map(z => z.split(' '))).toEqual(prognose.map(z => z.split(' ')).map(([t, umfang, , offen]) => [t, offen, umfang]));
     expect(burndown[4]).toBe('06.11.2026 4 9');
+    // der Kumulative Fluss am selben Bestand: Eingang, In Arbeit, Fertig, offen, gesamt, angekommen, fertig
+    await page.goto(`${k.adresse}#/berichte/fluss`);
+    await erwarteZeilen(await flussTabelle(page), reihe(2, [[10, 0, 0, 10, 10, 10, 0], [5, 0, 5, 5, 10, 10, 5], [5, 0, 5, 5, 10, 10, 5], [4, 0, 5, 4, 9, 10, 5], [4, 0, 5, 4, 9, 10, 5]]));
   } finally { await k.stoppen(); }
 });
 /** Die Zeilen einer Tabellenansicht, sobald alle fünf Tage des Grundbestands B dastehen. */

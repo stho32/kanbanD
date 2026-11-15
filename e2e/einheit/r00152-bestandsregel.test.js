@@ -199,3 +199,78 @@ test('R00152 B0708: eine ausgenommene Aufgabe, die vom Board genommen ist, steht
   assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), aufgabenA(), ms(5)), 1);
   assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), aufgabenA(), ms(10)), 0);
 });
+
+/* ── B0709 Zählweise festgehalten (heute schon so, bleibt) und Grundbestand B ── */
+const durchsatzA = (f = {}) => B.durchsatz(bewegungenA(), filter(f), aufgabenA(), ms(10), null, 'tag');
+
+test('R00152 B0709 (AK 10): der Durchsatz zählt weiter, was erreicht war — gesamt 3 am 03.11., auch die später archivierte #4 und die gelöschte #6', () => {
+  const d = durchsatzA();
+  assert.strictEqual(d.gesamt, 3);
+  assert.deepStrictEqual(d.perioden.map(p => p.anzahl), [0, 3, 0, 0, 0, 0, 0, 0, 0]);
+});
+
+test('R00152 B0709 (AK 11): vom Board genommen und endgültig gelöscht — #5, #6, #7 zählen bis zum 05.11. im Bestand und ab dem 06.11. nicht mehr', () => {
+  for (const nr of [5, 6, 7]) {
+    assert.strictEqual(bestandA(nr, ms(5, 23, 59)).art, 'da', `#${nr} am 05.11.`);
+    assert.strictEqual(bestandA(nr, ms(6, 23, 59)).art, 'nichtDa', `#${nr} am 06.11.`);
+  }
+  // ohne die drei: Umfang an den Tagen davor 4 statt 7 — sie tragen bis zum 05.11. genau drei zum Umfang bei
+  const ohne = { spalten: SPALTEN, aufgaben: bewegungenA().aufgaben.filter(a => a.nummer < 5) };
+  assert.deepStrictEqual(B.burndown(ohne, filter({}), aufgabenA(), ms(10)).map(x => x.umfang), neunTage(4, 4, 3));
+  assert.deepStrictEqual(burndownA().map(x => x.umfang), neunTage(7, 7, 3));
+});
+
+test('R00152 B0709 (AK 12): gelöscht unter dem Filter „nur Person st“ — Burndown 5/5, 3/5, 1/3; „angekommen“ 5, „fertig“ 2, Durchsatz gesamt 2', () => {
+  const nurSt = { personen: ['st'] };
+  assert.deepStrictEqual(kurz(burndownA({}, nurSt)), neunTage('5/5', '3/5', '1/3'));
+  const tage = flussA({}, nurSt);
+  assert.deepStrictEqual(tage.map(x => x.angekommen), Array(9).fill(5));
+  assert.deepStrictEqual(tage.map(x => x.fertig), [0, 2, 2, 2, 2, 2, 2, 2, 2]);
+  assert.strictEqual(durchsatzA(nurSt).gesamt, 2);
+});
+
+/** Grundbestand B (R00152): 02.11. #1–#10 in „Eingang“; 03.11. #1–#5 nach „Fertig“; 05.11. #6 archiviert (in „Eingang“). Stand 06.11. */
+const bewegungenB = { spalten: SPALTEN, aufgaben: [...Array(10).keys()].map(i => ({ nummer: i + 1, wechsel: i < 5 ? [z(2, 'Eingang'), z(3, 'Fertig')] : [z(2, 'Eingang')] })) };
+const dreiBerichteB = aufgabeZu => ({
+  burndown: kurz(B.burndown(bewegungenB, filter({}), aufgabeZu, ms(6))),
+  fluss: offenGesamt(B.fluss(bewegungenB, filter({}), aufgabeZu, ms(6)).tage),
+  wieLangeNoch: verlauf(B.prognose(bewegungenB, filter({}), aufgabeZu, ms(6))),
+});
+
+test('R00152 B0709 (AK 4): Grundbestand B — alle drei Berichte 10/10, 5/10, 5/10 und ab dem Archivtag 4/9; „Wie lange noch“ 5 von 9 fertig', () => {
+  const aufgabeZu = nr => mitDatei(nr === 6 ? { archiviert: '2026-11-05' } : {});
+  assert.deepStrictEqual(dreiBerichteB(aufgabeZu), alleDrei(['10/10', '5/10', '5/10', '4/9', '4/9']));
+  const fertig = B.prognose(bewegungenB, filter({}), aufgabeZu, ms(6)).phasen.at(-1);
+  assert.deepStrictEqual([fertig.erreicht, fertig.nenner, fertig.offen], [5, 9, 4]);
+});
+
+test('R00152 B0709 (AK 17): Leerfall — ohne archivierte Aufgabe nennen alle drei Berichte 10/10, danach 5/10, wie vor dem Fix', () => {
+  assert.deepStrictEqual(dreiBerichteB(() => mitDatei({})), alleDrei(['10/10', '5/10', '5/10', '5/10', '5/10']));
+});
+
+test('R00152 B0709 (Lastprofil, ADR-0027): die Aufgabenliste wird je Aufgabe gelesen, nicht je Aufgabe und Tag', () => {
+  const anzahl = bewegungenA().aufgaben.length;
+  const gezaehlt = rechne => { let aufrufe = 0; rechne(nr => { aufrufe++; return aufgabenA()(nr); }); return aufrufe; };
+  for (const [name, rechne] of [
+    ['burndown', zu => B.burndown(bewegungenA(), filter({}), zu, ms(10))],
+    ['fluss', zu => B.fluss(bewegungenA(), filter({}), zu, ms(10))],
+    ['prognose', zu => B.prognose(bewegungenA(), filter({ messbasisTage: 77 }), zu, ms(10))],
+  ]) {
+    const aufrufe = gezaehlt(rechne);
+    assert.ok(aufrufe >= anzahl && aufrufe <= 3 * anzahl, `${name}: ${aufrufe} Aufrufe für ${anzahl} Aufgaben über neun Tage`);
+  }
+});
+
+/* ── AK 18 Bauart: eine Stelle ── */
+test('R00152 B0709 (AK 18): in web/berichte.js fragt nur bestandAm nach der Spalte am Tag und nach dem Archivtag', () => {
+  const quelle = require('node:fs').readFileSync(require.resolve('../../web/berichte.js'), 'utf8');
+  const code = quelle.split('\n').map((zeile, i) => ({ nr: i + 1, text: zeile })).filter(z => !/^\s*(\/\/|\/\*|\*|[`a-zäöü„(])/.test(z.text) || /^\s*(const|function|return|if|for|let) /.test(z.text));
+  const stellen = muster => code.filter(z => muster.test(z.text)).map(z => z.text.trim().slice(0, 60));
+  // „liegt in einer Spalte“: spalteAm wird außer in seiner Definition nur von bestandAm gerufen
+  assert.deepStrictEqual(stellen(/spalteAm\(/), ['function spalteAm(wechsel, t) {', 'const spalte = spalteAm(wechsel, t);']);
+  // der Archivtag wird nur in bestandAm ausgewertet …
+  assert.strictEqual(stellen(/isoTag\([^)]*archiviert/).length, 1);
+  // … und `archiviert` einer Aufgabe nur gelesen, um ihn dorthin zu reichen (bestandLeser), als Merkmal des Prognose-Schlüssels
+  // und im ausgegrenzten „Bestand nach Labels“ (offeneAufgaben, R00100)
+  assert.deepStrictEqual(stellen(/\.archiviert/).map(text => text.slice(0, 22)), ['const x = aufgabeZu(a.', 'const merkmale = bew.a', 'return nachNummer(aufg']);
+});
