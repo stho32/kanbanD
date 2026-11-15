@@ -49,7 +49,6 @@ async fn abgewiesen(ordner: &Path, adresse: &str, pfad: &str, wer: &str, daten: 
 
 // AK 1, US-1: die Abnahme-Probe der Karte — formwidrige Schätzung; Agent wie Mensch
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn schluessel_einer_defekten_datei_haelt_das_anlegen_an() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-fund.md", FUND)]);
@@ -62,7 +61,6 @@ async fn schluessel_einer_defekten_datei_haelt_das_anlegen_an() {
 
 // AK 1, Variante: bei mehreren Treffern nennt die Meldung die erste defekte Datei in der Reihenfolge des Lesens
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn mehrere_treffer_nennen_die_erste_defekte_datei() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0009-fund.md", &FUND.replace("id: 7", "id: 9")), ("0007-fund.md", FUND)]);
@@ -73,7 +71,6 @@ async fn mehrere_treffer_nennen_die_erste_defekte_datei() {
 
 // AK 2: Merge-Konfliktmarker neben einer Zeile `key: k1`
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn konfliktmarker_mit_schluessel_haelt_an() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-fund.md", "---\nid: 7\ntitle: Fund\nkey: k1\n<<<<<<< HEAD\nclass: eilig\n=======\nclass: normal\n>>>>>>> sensor\n---\n")]);
@@ -84,7 +81,6 @@ async fn konfliktmarker_mit_schluessel_haelt_an() {
 
 // AK 3: die zweite Datei mit der Nummer 7 ist defekt und trägt den Schlüssel
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn doppelte_nummer_mit_schluessel_haelt_an() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-alt.md", "---\nid: 7\ntitle: Alt\n---\n"), ("0007-fund.md", &lesbar(7))]);
@@ -95,7 +91,6 @@ async fn doppelte_nummer_mit_schluessel_haelt_an() {
 
 // AK 4, US-2: `…/mehrere` als Ganzes — auch die Aufgabe mit `k9` wird nicht angelegt
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn mehrere_werden_als_ganzes_abgewiesen() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-fund.md", FUND)]);
@@ -107,7 +102,6 @@ async fn mehrere_werden_als_ganzes_abgewiesen() {
 
 // AK 7, US-4: die defekte Datei geht einer lesbaren Karte vor — nicht 200
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn defekte_datei_geht_einer_lesbaren_karte_vor() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-fund.md", FUND), ("0008-fund.md", &lesbar(8))]);
@@ -118,7 +112,6 @@ async fn defekte_datei_geht_einer_lesbaren_karte_vor() {
 
 // AK 7: … und zwei lesbaren Karten mit demselben Schlüssel — nicht 409
 #[tokio::test]
-#[ignore = "erwartet rot bis B0743 (R00157)"]
 async fn defekte_datei_geht_der_dublette_vor() {
     let tmp = tempfile::tempdir().unwrap();
     bestand(tmp.path(), &[("0007-fund.md", FUND), ("0008-fund.md", &lesbar(8)), ("0009-fund.md", &lesbar(9))]);

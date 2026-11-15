@@ -2,7 +2,7 @@ use super::{Kanban, Schritt};
 use super::archiv::zurueckgeholt;
 use super::kommentare::kommentiert;
 use super::zugregeln::{archivierte, zug_mit_rueckkehr_pruefen};
-use crate::ablage::board_pfad;
+use crate::ablage::{DefekteDatei, board_pfad};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Fremdschluessel, Person, Schluesseltreffer};
@@ -129,7 +129,8 @@ impl Kanban {
         }
         let schluessel = eintraege.iter().map(|(_, g)| g.and_then(|g| g.key.as_deref()).map(Fremdschluessel::pruefen).transpose()).collect::<Result<Vec<_>, _>>().map_err(Fehler::Ungueltig)?;
         let e = self.ordner().einstellungen()?.unwrap_or_default();
-        let (vorhanden, _) = if neu.board.is_some() || schluessel.iter().any(Option::is_some) { self.ordner().aufgaben()? } else { Default::default() };
+        let (vorhanden, defekt) = if neu.board.is_some() || schluessel.iter().any(Option::is_some) { self.ordner().aufgaben()? } else { Default::default() };
+        schluessel_in_defekter_datei_pruefen(&defekt, &schluessel)?;
         let erste = self.ordner().naechste_nummer()?;
         let mut aufgaben: Vec<Aufgabe> = vec![];
         let mut wieder: Vec<Aufgabe> = vec![];
@@ -278,6 +279,17 @@ fn schon_da(neue: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fre
         Schluesseltreffer::Offen(nr) => Ok(Vorhanden::Offen(nr)),
         Schluesseltreffer::Archiviert(nr) => Ok(Vorhanden::Archiviert(nr)),
         Schluesseltreffer::Mehrfach(nummern) => Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", k.text(), nummernliste(nummern.into_iter())))),
+    }
+}
+
+/// Vor der Suche unter den lesbaren Karten (ADR-0004 N1, R00157): trägt eine defekte Aufgabendatei lesbar einen
+/// Schlüssel der Anfrage, weiß kanbanD nicht, ob es die Karte schon gibt — 423 für die ganze Anfrage statt einer
+/// zweiten Karte. Genannt wird die erste defekte Datei in der Reihenfolge des Lesens.
+fn schluessel_in_defekter_datei_pruefen(defekt: &[DefekteDatei], angefragt: &[Option<Fremdschluessel>]) -> Result<(), Fehler> {
+    let treffer = defekt.iter().find_map(|d| d.schluessel.iter().find(|k| angefragt.iter().flatten().any(|a| a == *k)).map(|k| (d, k)));
+    match treffer {
+        Some((d, k)) => Err(Fehler::Defekt(format!("{}: {} — nur lesbar, bis die Datei repariert ist; sie trägt den Schlüssel „{}“, angelegt wurde nichts", d.pfad, d.fehler, k.text()))),
+        None => Ok(()),
     }
 }
 

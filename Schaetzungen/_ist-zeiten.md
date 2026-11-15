@@ -610,3 +610,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #44 R00157 (Defekte Aufgabendatei mit Schlüssel erzeugt keine zweite Karte) | B0740 Abnahme-Probe rot am heutigen Stand: defekte Datei mit `k1`, Anlegen mit `k1` | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #44 R00157 (Defekte Aufgabendatei mit Schlüssel erzeugt keine zweite Karte) | B0741 Format: Schlüssel einer defekten Aufgabendatei nachsichtig lesen (keiner / lesbar) | Unklar | 1-3h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #44 R00157 (Defekte Aufgabendatei mit Schlüssel erzeugt keine zweite Karte) | B0742 Ablage: die defekte Datei trägt ihren Rohschlüssel im Speicher | Standard | 0,5-1,5h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #44 R00157 (Defekte Aufgabendatei mit Schlüssel erzeugt keine zweite Karte) | B0743 Dienst: Anlegen mit dem Schlüssel einer defekten Datei wird mit 423 abgewiesen | Standard | 1-2h | 0,1h | 0,1h | autonom |
