@@ -1,68 +1,68 @@
-# Reihenfolge der 39 Karten in „Architektur“ — product-owner, Lauf 155-product-owner-1 (2026-11-15)
+# Reihung der Karten in „Architektur“ nach Bündelung — product-owner (2026-11-15)
 
-Auftrag des Betreibers 2026-11-15: alle Karten der Spalte „Architektur“ nacheinander bis
-„Erledigt“, Sparbetrieb, immer eine Karte. #155 läuft. Unten die Reihenfolge der übrigen 39;
-die Karten der Gruppe (d) stehen getrennt am Ende (sie zieht der Director nach
-„Ohne Mensch nicht lösbar“, der Betreiber entscheidet).
+Auftrag des Betreibers 2026-11-15: **kleine Karten bündeln** (neue Regel der Fabrik,
+`AI-Team/factory.md`, „Kleine Karten bündeln“). Kleine Karten, die dieselben Dateien
+oder dieselbe Ansicht berühren, werden zu Paketen von höchstens fünf zusammengelegt;
+geplant, gebaut, geprüft und zusammengeführt wird einmal am Worktree der führenden
+Karte. **Nicht** gebündelt wird, was Datenformat, Zugriffsgrenzen oder eine eigene
+Technik-/Gestaltungsfrage berührt.
 
-Maßstab: (1) Fehler gegen eine abgenommene Zusage und Karten, die der Betreiber schon
-entschieden hat, zuerst (Z. 217); (2) „braucht:<nr>“ vorher; (3) der Auftrag des Betreibers
-#161 vor der Berichtskette #154 → #156 → #157 (Z. 217, relativer Ablauf bleibt); (4) ein
-rotes oder wackliges Gate vor weiterem Bau (gemeinsam/gelerntes.md „Wacklige E2E-Tests …“);
-(5) Karten ohne Nutzerwirkung ans Ende (Auftrag Betreiber 2026-11-15).
+Maßstab der Priorität bleibt meine Reihenfolge vom 2026-11-15
+(`AI-Team/reihenfolge-2026-11-15.md`). Ein Paket steht an der Stelle seines
+dringendsten Mitglieds. Seither: #164 und #89 erledigt; #155 in den Auto-Reviews;
+#39 (422 statt 400) läuft bereits allein — nicht gebündelt; #143, #69, #152 gelöscht,
+#160 im Backlog; die Kostenkette #166 → #165 → #167 direkt nach #158 (Protokoll
+`po-entscheidungen.md`, Z. 236/246).
 
-| # | Karte | Kurzgrund |
-|---|---|---|
-| 1 | #39 | Bruch des API-Kontrakts: 422 statt 400 `{fehler}` (ADR-0003), klein |
-| 2 | #54 | sichtbarer Bedienfehler: Esc im Titelfeld speichert |
-| 3 | #44 | ungültiger Schlüssel: Karte fällt aus der Suche, Dubletten möglich |
-| 4 | #45 | Betreiber hat am 13.11. entschieden (alte Board-Zeile entfernen); Karte läge auf zwei Boards |
-| 5 | #121 | entschieden (Z. 188: 423 einheitlich); heute antwortet der Code 403 — Fehler gegen R00120 AK 6 |
-| 6 | #57 | Betreiber hat am 13.11. entschieden: gedämpfte Namen lesbar (≥ 4,5:1) |
-| 7 | #87 | Betreiber hat am 13.11. entschieden: nur `reporting`, `signals`, `key` mit Dateischlüssel |
-| 8 | #89 | Testfehler: `kultur.spec.js:193` ist jeden Sonntag rot, klein |
-| 9 | #163 | Wackler `tests/live.rs:57` (Frist des Datei-Watchers), klein (Rust, kein Produktivcode) |
-| 10 | #161 | Betreiber-Auftrag, tägliche Reibung; von hier an bleibt #161 vor #154 (Z. 217) |
-| 11 | #162 | E2E-Wackler Teil 2; enthält `r00044-burndown:12/:37` — dieselbe Spec, die #154 anfasst (Z. 88), also vorher |
-| 12 | #154 | Berichtskette, Kern des Betreiber-Auftrags (braucht #155, läuft) |
-| 13 | #156 | Zielspalte „Erledigt heißt“ je Board (braucht #154) |
-| 14 | #157 | Durchsatz: Von-Spalte + Zugangsbalken (braucht #154, #156) |
-| 15 | #159 | Durchlaufzeit/CFD folgen der Zielspalte (braucht #156) — sonst bleibt der Widerspruch stehen, den #156 erzeugt |
-| 16 | #158 | „Wie lange noch“: Hinweis Zugang ≥ Abgang (braucht #154) |
-| 17 | #147 | Betreiber-Auftrag 13.11.: `GET /api/instanz`; die Factory wartet darauf, klein |
-| 18 | #153 | Betreiber-Wunsch (Direktlinks auf Aufgaben), klein |
-| 19 | #148 | sichtbarer Stillstand ohne Meldung: eine hängende Anfrage legt Aktionen und Live still |
-| 20 | #149 | sichtbarer Fehler: gescheiterte eigene Anfrage vom Board meldet nichts, Haken bleibt |
-| 21 | #150 | sichtbare Falschaussage „nichts geändert“, obwohl gespeichert (Fensterfall) |
-| 22 | #141 | Tastatur: Fokus beim Öffnen, jedes Bedienelement erreichbar (Sammelkarte) |
-| 23 | #140 | 320–414 px ohne Querscrollen, nichts abgeschnitten (Sammelkarte) |
-| 24 | #59 | Fokusring im Kopf hell und dunkel sichtbar |
-| 25 | #68 | Fehlerzeile im Bearbeitungsmodus wird gekürzt |
-| 26 | #96 | Titelfeld ohne `aria-invalid` bei abgelehntem Titel |
-| 27 | #93 | „Zeit nachtragen“ verliert die abgelehnte Eingabe |
-| 28 | #97 | Bildschirmtastatur beim Laden verdeckt die Fenstermeldung |
-| 29 | #102 | Herkunft entfernen mit Rückgängig (braucht #12, gebaut) |
-| 30 | #108 | Rückgängig auf gelöschte Aufgabe, fremde Fußmeldung gelöscht |
-| 31 | #111 | Barrierefreiheit: Nachzügler aus R00113 |
-| 32 | #114 | vergessene Timer: Hinweis bei mehreren Timern, veraltetes `aria-label` |
-| 33 | #55 | kleine sichtbare Mängel aus #6/#8/#18; rein optionale Punkte fallen nach dem Auftrag vom 15.11. weg |
-| 34 | #151 | Sperrform: Fokusverlust am Anhang-✕ (ADR-0010) bleibt; Flackern/`aria-busy` sind Feinschliff |
-| 35 | #86 | Wiederansage der Fenstermeldung prüfen (kleine Probe mit festgelegtem Ausgang) |
+Worterklärung: „Mitglieder“ sind die Karten, die mit der führenden Karte an deren
+Worktree gebaut werden. Die führende Karte trägt den Kommentar mit den Mitgliedern;
+jedes Mitglied trägt „wird mit #<nr> gebaut“.
 
-## Gruppe (d) — dem Betreiber zum Archivieren bzw. Besprechen (getrennt, mit Grund)
+| Nr | führende Karte | Mitglieder | Titel (Arbeitstitel) | Kurzgrund (verbindet Dateien/Ansicht) |
+|---|---|---|---|---|
+| 1 | #39 | — | Typfehler im Rumpf ergeben 422 statt 400 | Einzelkarte: läuft bereits allein in der Architektur (architekt), Auftrag: nicht bündeln |
+| 2 | **#54** | #96, #93, #87, #97 | **Aufgabenfenster: Felder und Fenstermeldung** | Alle im Aufgabenfenster D0003: Titelfeld (Esc #54, `aria-invalid` #96), Feld „Zeit nachtragen“ (#93), Dateischlüssel als Hilfstext (#87), Fenstermeldung/Bildschirmtastatur (#97). Dateien: `web/app.js`, `web/ansicht.js`, `web/zeiten.js` |
+| 3 | #44 | — | Ungültiger Schlüssel fällt aus der Suche | Einzelkarte: eigene Technikfrage (`Fremdschluessel::pruefen`, Suchindex, Rust) ohne Partner in der Spalte |
+| 4 | #45 | — | Wiederöffnen auf anderem Board lässt Karte im alten „Fertig“ | Einzelkarte: „Besprechen“-Entscheidung (Verhalten), kein Bau mit anderem |
+| 5 | #121 | — | Besprechen: 403 oder 423 bei defektem Board | Einzelkarte: Zugriffsgrenze (Protokoll Z. 228: 423 einheitlich); Zugriffsgrenzen werden nicht gebündelt |
+| 6 | **#140** | #57, #68, #55 | **Oberfläche: schmale Breite, Kontrast, kleine sichtbare Mängel** | Alles sichtbare Optik derselben Dateien: kein Querscrollen 320–414 px (#140), gedämpfte Elemente ≥ 4,5:1 (#57), gekürzte Fehlerzeile im Einrichtungsmodus (#68), gesammelte kleine Funde aus #6/#8/#18 (#55). Dateien: `web/kd-app.css`, `web/ansicht.js`, `web/app.js` |
+| 7 | #163 | — | tests/live.rs:57 Frist des Datei-Watchers härten | Einzelkarte: eigene Technikfrage (Rust-Test, anderer Ort und andere Abhilfe) |
+| 8 | #161 | — | Beschreibung: Bearbeiten über Stift-Symbol, Text kopierbar | Einzelkarte: Betreiber-Auftrag, eigene Gestaltungsfrage (`web/ansicht.js`) |
+| 9 | #162 | — | E2E-Wackler Teil 2 nach ADR-0026 | Einzelkarte: eigene Technikfrage (Testharness über viele Specs) |
+| 10 | #154 | — | Burndown: Zugang/Abgang je Tag, Zielspalte wählbar | Einzelkarte der Berichtskette (Kern des Betreiber-Auftrags) |
+| 11 | #156 | — | Zielspalte „Erledigt heißt“ je Board | Einzelkarte der Berichtskette (Board-Einstellung, `web/berichte.js`) |
+| 12 | #157 | — | Durchsatz: Von-Spalte wählbar, Zugangsbalken | Einzelkarte der Berichtskette, Label `datenformat` (neuer Board-Schlüssel) |
+| 13 | #159 | — | Durchlaufzeit und Kumulativer Fluss folgen der Zielspalte | Einzelkarte der Berichtskette (`web/berichte.js`) |
+| 14 | #158 | — | „Wie lange noch“: Hinweis Zugang ≥ Abgang | Einzelkarte der Berichtskette (`web/berichte.js`) |
+| 15 | #166 | — | Kosteneinträge mit Zeitstempel, Rolle, Spalte | Einzelkarte: Label `datenformat` (Datengrundlage) — wird nie gebündelt |
+| 16 | #165 | — | Kosten-Bericht: Zeitraum von–bis, Aufgabenliste | Einzelkarte: eigener Bericht (`web/berichte.js`); baut auf #166 |
+| 17 | #167 | — | Kosten-Bericht: Kosten je Rolle aufklappen | Einzelkarte: eigener Bericht (`web/berichte.js`); baut auf #166/#165 |
+| 18 | #147 | — | Instanz verrät ihren Ordner: GET /api/instanz | Einzelkarte: eigene Technikfrage (neuer Endpunkt/API-Vertrag); Betreiber-Auftrag |
+| 19 | #153 | — | Direktlinks auf Aufgaben | Einzelkarte: neues Feature (Routing/Ansicht), eigener Umfang |
+| 20 | **#149** | #148, #150 | **Warteschlange: Frist und Meldung bei gescheiterter Anfrage** | Alle am Schreibweg `web/app.js`/`web/warteschlange.js` (aus #80): Frist für `api()` (#148), Meldung der gescheiterten eigenen Anfrage vom Board (#149), Fensterfall als Probe (#150) |
+| 21 | **#141** | #59, #151, #111 | **Barrierefreiheit: Tastatur, Fokus und Struktur** | Alle a11y derselben Ansichten: Fokus beim Öffnen/Erreichbarkeit (#141), Fokusring im Kopf (#59), Sperrform der Auslöser mit Fokus (#151), `aria-current`/Überschriften (#111). Dateien: `web/fokus.js`, `web/tastatur.js`, `web/sperre.js`, `web/ansicht.js`, `web/kd-app.css` |
+| 22 | **#102** | #108, #114 | **Rückgängig, Fußmeldung und Timer-Hinweise** | Alle Meldungs-/Hinweiswege in `web/app.js`: Herkunft entfernen mit Rückgängig (#102), stille Fehler aus #12 (#108), vergessene Timer/`aria-label` (#114) |
+| 23 | #86 | — | Wiederansage der Fenstermeldung prüfen | Einzelkarte: eigene Technikfrage (stabiler Meldungsknoten, ADR-Nachtrag ADR-0007/0015) |
 
-| # | Karte | Vorschlag und Grund |
-|---|---|---|
-| (d) | #160 | Geparkt; wartet auf #154 und braucht vor jedem Bau eine neue Entscheidung. Vorschlag: geparkt lassen und nach #154 neu entscheiden |
-| (d) | #152 | in #162 aufgegangen (Kommentar des Directors). Vorschlag: archivieren |
-| (d) | #69 | optionaler Randabstand 2,99 → 3:1; der Zustand ist schon durch „!“ und Text getragen, kein erkanntes WCAG-Maß. Vorschlag: archivieren |
-| (d) | #143 | „kein beobachteter Fehler“ — nur unbelegte Kriterien/Testabdeckung. Vorschlag: archivieren |
+## Allein stehende Karten (Kurzgrund)
 
-## Nicht in der Liste, aber auf dem Board in „Architektur“
+- **#39** — läuft bereits allein (Auftrag: nicht bündeln).
+- **#44** — eigene Rust-Technikfrage (Suchindex/Fremdschlüssel), kein passender Partner.
+- **#45** — „Besprechen“-Entscheidung (Verhalten), kein Bau.
+- **#121** — Zugriffsgrenze (bereits entschieden Z. 228); Zugriffsgrenzen werden nie gebündelt.
+- **#147** — neuer Endpunkt (eigene Technikfrage).
+- **#153** — neues Feature (eigener Umfang).
+- **#161** — eigene Gestaltungsfrage (Betreiber-Auftrag).
+- **#162** — eigene Technikfrage (Testharness).
+- **#163** — eigene Technikfrage (Rust-Test).
+- **#86** — eigene Technikfrage (stabiler Meldungsknoten, ADR-Nachtrag).
+- **#154, #156, #157, #159, #158** — Berichtskette, je eigene Technik-/Gestaltungsfrage.
+- **#166, #165, #167** — Kostenkette: Datenformat bzw. eigener Bericht.
 
-- **#33** (Verlauf je Karte in der Oberfläche, `archived: 2026-11-11`) und **#77**
-  (ohne gewählte Identität geht beim schnellen Tippen die erste Teilaufgabe verloren,
-  `archived: 2026-11-13`) stehen in `boards/entwicklung.md` noch unter „## Architektur“,
-  tragen aber ein Archivdatum. Der Auftrag nennt 39 Karten, die Liste des Boards 41.
-  Beide sind nicht Teil meiner Reihenfolge; der Director klärt, ob die Board-Zeilen
+## Nicht in dieser Liste
+
+- **#33** und **#77** stehen in `boards/entwicklung.md` unter „Architektur“, tragen aber
+  ein Archivdatum (`archived: 2026-11-11` bzw. `2026-11-13`) und waren schon in meiner
+  Reihenfolge vom 2026-11-15 nicht enthalten. Der Director klärt, ob die Board-Zeilen
   veraltet sind.
+- **#160** liegt im Backlog (geparkt).
