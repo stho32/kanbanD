@@ -88,10 +88,11 @@ Ein Wochenlimit für Tokens steht bevor. Ziel ist, möglichst viele Karten **gan
 
 ### Modellverteilung (Betreiber 2026-11-14)
 
-DeepSeek ist der Standard für alle Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
+DeepSeek ist der Standard für die übrigen Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
 
 - **Fest auf Claude Sonnet**: `code-reviewer` (läuft bei jeder Karte, letztes Tor vor dem Entwicklertest, anderes Modell als der Erbauer) und `security-reviewer` (selten, ein übersehener Fehler ist teuer). Der Director bleibt Claude.
-- **Eskalation je Karte auf Claude** — `entwickler`: ab der zweiten Nacharbeit einer Karte oder wenn die Karte Datenformat, Zugriffsgrenzen, Nebenläufigkeit oder einen Bug mit unklarer Ursache betrifft; `planer` und `architekt`: bei Karten mit Label `architektur`, `sicherheit` oder `datenformat`. Die Entscheidung steht im Zugkommentar. Geschaltet je Lauf mit `board.py beginne <nr> --rolle <r> --treiber claude [--modell sonnet|opus]` (Factory seit 2026-11-14); der Director startet die Rolle dann als Subagent und gibt ihr das Modell mit — Sonnet im Regelfall, Opus bei Datenformat, Zugriffsgrenzen oder Nebenläufigkeit.
+- **Fest auf Claude Fable 5.2** (Betreiber 2026-11-15): `entwickler`, Bau und Nacharbeit (`entw1`, `entw2`). Anlass: Am 2026-11-14 rissen zwei DeepSeek-Bauläufe die Zeitgrenze und einer lief 85 Minuten in einer Leseschleife ohne Änderung.
+- **Eskalation je Karte auf Claude** — `planer` und `architekt`: bei Karten mit Label `architektur`, `sicherheit` oder `datenformat`. Die Entscheidung steht im Zugkommentar. Geschaltet je Lauf mit `board.py beginne <nr> --rolle <r> --treiber claude [--modell sonnet|opus]` (Factory seit 2026-11-14); der Director startet die Rolle dann als Subagent und gibt ihr das Modell mit — Sonnet im Regelfall, Opus bei Datenformat, Zugriffsgrenzen oder Nebenläufigkeit.
 - **Alle übrigen Rollen** bleiben auf DeepSeek.
 - **Messen**: nach etwa zehn Karten Nacharbeiten je Karte und Kosten je Karte aus dem Logbuch vergleichen, vorher gegen nachher.
 
@@ -155,7 +156,7 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | planer | plan | opencode | openrouter/deepseek/deepseek-v4.1-flash | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
 | architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
 | architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
-| entwickler | entw1 | opencode | openrouter/deepseek/deepseek-v4.1-flash | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
+| entwickler | entw1 | claude | fable | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
 | code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
 | security-reviewer | srev | claude | sonnet | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
 | entwicklertester | etst | opencode | openrouter/deepseek/deepseek-v4.1-flash | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
