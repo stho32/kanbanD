@@ -4,7 +4,7 @@
 **Datum**: 2026-11-07
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #74 „Fehlermeldung des Aufgabenfensters auf schmalen Bildschirmen unsichtbar“; Anforderung und WBS-Knoten folgen über den planer
-**Nachträge**: 2026-11-07 — Umbruch nach Bedarf statt „ab 641 px unverändert“, Uhrzeit mit Sekunden (Karte #74, R00111), siehe [Nachtrag N1](#nachtrag-2026-11-07-umbruch-nach-bedarf-r00111). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo der Nachtrag gilt.
+**Nachträge**: 2026-11-07 — Umbruch nach Bedarf statt „ab 641 px unverändert“, Uhrzeit mit Sekunden (Karte #74, R00111), siehe [Nachtrag N1](#nachtrag-2026-11-07-umbruch-nach-bedarf-r00111). 2026-11-15 — abgelehnte Eingabe bleibt stehen und das Feld verweist auf die Meldung, eine Regel für jedes Feld des Aufgabenfensters (Karten #54/#96/#93), siehe [Nachtrag N2](#nachtrag-2026-11-15-abgelehnte-eingabe-bleibt-stehen-das-feld-verweist-auf-die-meldung). Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo der Nachtrag gilt.
 **Erprobt durch**: isolierte Probe in Headless-Chromium mit den echten Stilen `web/kd-tokens.css`, `kd-base.css`, `kd-app.css` auf kanbanD `6636db3` und dem Markup der Füße aus `web/ansicht.js:187` und `:256`. Ist: bei 414 und 640 px haben die Meldung des Aufgabenfensters, die Meldung von „Neue Aufgabe“ und der Knopf „Anlegen“ 0 Client-Rects, und der Accessibility-Snapshot enthält keinen der drei Einträge. Bei 641 und 1280 px sind alle drei sichtbar. Mit der gewählten Regel als Zusatz-CSS haben bei 320 und 414 px (Touch und fein) und bei 1280 px alle drei Einträge Client-Rects. Die lange Meldung bricht im Fenster um, nichts scrollt quer, und „Anlegen“ ist bei Touch 48 px hoch. Die Probe lief nicht im laufenden Fenster; das leistet die Abnahme.
 
 ## Kontext
@@ -121,3 +121,28 @@ Unit-Ebene entfällt mit Grund: Es gibt keine reine Logik, nur CSS und Markup. I
   - `overflow:hidden` am Fuß ab 641 px.
 
 **Bezug**: Wie das Fenster mit offener Bildschirmtastatur dem sichtbaren Bereich folgt (R00111 Lösung 5), steht in einer eigenen Entscheidung, [ADR-0016](0016-fenster-folgen-dem-sichtbaren-bereich.md). Sie ist eine neue Frage mit eigenen Optionen, nicht die Fortschreibung einer Regel dieser ADR.
+
+## Nachtrag 2026-11-15: abgelehnte Eingabe bleibt stehen, das Feld verweist auf die Meldung
+
+**Anlass**: Karten #96 und #93 im Paket der Karte #54 („Aufgabenfenster: Felder und Fenstermeldung“). R00111 AK 1 hat das Verhalten für „Neue Herkunft“ gebaut; Titel und „Zeit nachtragen“ sind der zweite und dritte Fall derselben Regel.
+
+**Belegt (Code)**:
+- Einziger Schreibweg der Meldung ist `fensterMelden(text, feld = null)` (`web/app.js:664–667`); die Feldkennung trägt heute nur die Herkunft (`HERKUNFT_FELD`, `herkunftVerweis`, `web/ansicht.js:598–605`), ihr Entwurf liegt in `S.ui.herkunftEntwurf` (`web/app.js:1899–1901`, `:2354`).
+- Titel: der `change`-Hörer setzt `titelBearbeiten = false` und ruft `aufgabeAendern` **ohne** Feldkennung (`web/app.js:2292–2295`). Nach einer Ablehnung zeichnet `render()` das Lesediv mit dem alten Titel (`web/ansicht.js:358–360`) — es gibt kein Eingabefeld mehr, das `aria-invalid` tragen könnte, und die Eingabe ist fort.
+- Zeit nachtragen: `zeit-neu` ruft `schreiben(…)` (`web/app.js:1910–1915`), das die Meldung ohne Feldkennung setzt (`:535`); `#zeit-neu` wird leer neu gezeichnet (`web/ansicht.js:445`).
+
+### N2 Eine Regel für jedes Eingabefeld des Aufgabenfensters
+
+**Entschieden**:
+
+1. **Jede Ablehnung aus einem Eingabefeld nennt ihr Feld.** Der Aufruf, der aus einem Feld schreibt, gibt `fensterMelden` die Feldkennung mit; `schreiben` bekommt dafür denselben optionalen Parameter wie `aufgabeAendern`. Meldungen ohne Feld (Anhang, Rückgängig, Nachladen) bleiben ohne Kennung.
+2. **Ein Entwurf je Fenster statt je Feld.** Die abgelehnte Eingabe liegt in einem Zustand der Form `{ nummer, feld, wert }`; `herkunftEntwurf` geht darin auf. Gesetzt vor dem Schreiben, geleert bei Erfolg, beim Öffnen einer anderen Aufgabe, beim Schließen und bei Esc ([ADR-0010 N9](0010-fokusfuehrung-ueber-ebenen-mit-rueckgabe.md)). Er ist reiner Sichtzustand (ADR-0007), nie Datei.
+3. **Das Feld bleibt Eingabefeld mit dem abgelehnten Wert.** Solange die Meldung sein Feld nennt und der Entwurf zur offenen Aufgabe gehört, zeichnet der Renderer das Feld mit dem Entwurf, `aria-invalid="true"` und `aria-describedby="fenster-meldung"` — über **eine** Funktion für alle Felder, nicht je Feld eine Kopie von `herkunftVerweis`. Für den Titel heißt das: nach einer Ablehnung bleibt `titelBearbeiten` an. Der Fokus bleibt im Feld (Regel 4).
+4. **Die Kennung `fenster-meldung` bleibt stabil.** Felder verweisen auf sie; wer den Meldungsknoten umbaut (offene Frage oben, Karte #86), behält die `id`.
+5. **Aufgehoben** wird der Zustand „ungültig“ mit der Meldung: der nächste angenommene Schreibweg löscht sie (`fensterMelden(null)`), eine Meldung eines anderen Felds ersetzt sie.
+
+**Verworfen**: je Feld ein eigener Entwurf und ein eigener Verweis (heutiges Muster, dreifach) — einfacher zu lesen, aber jeder neue Fall vergisst eine der vier Stellen (Setzen, Leeren, Zeichnen, Esc), wie #96 und #93 zeigen. Verworfen auch: nur `aria-invalid` ohne stehende Eingabe — das Feld zeigte dann den alten Wert als ungültig.
+
+**Akzeptierte Schwäche**: Ein Entwurf je Fenster hält nur die zuletzt abgelehnte Eingabe; zwei gleichzeitig ungültige Felder gibt es nicht, weil es nur eine Fenstermeldung gibt (Datenhoheit oben).
+
+**Durchsetzung**, ergänzt zur Fitness-Funktion: je Feld (Herkunft „X1“, Titel leer, Zeit „abc“) — nach der Ablehnung steht die Eingabe im Feld, das Feld hat den Fokus, `aria-invalid="true"`, `aria-describedby` zeigt auf ein vorhandenes `#fenster-meldung`; nach der Berichtigung sind beide Attribute fort. Mutanten, die rot werden müssen: Aufruf ohne Feldkennung; Entwurf nach Erfolg nicht geleert (alter Wert steht im Feld). Review-Punkt für architektur-reviewer und code-reviewer: ein zweiter Entwurfszustand neben dem einen ist ein Befund.
