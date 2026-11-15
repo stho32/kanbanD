@@ -232,7 +232,7 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
   - alle bestanden → Entwicklertest
   - Muss → Nacharbeit; höchstens 2×
   - `anforderung_falsch` oder `kriterium_fehlt` → Detailplanung
-  - Sollte und Optionales → gesammelt auf die Härtungskarte der Karte, hält nichts auf
+  - Sollte und Optionales → nie Karte, hält nichts auf; die Nacharbeit derselben Karte entscheidet: beheben oder verwerfen, mit Grund (siehe „Befunde aus Reviews und Tests“)
 
 ### Entwicklertest
 - **Betritt die Karte die Spalte**: entwicklertester fährt die User Story wörtlich im echten Programm, am reviewten Stand des Kartenzweigs. Wissen im Auftrag: Befunde aus Reviews und Tests.
