@@ -4,7 +4,7 @@
 **Datum**: 2026-10-31
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00096, R00097
-**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121). · 2026-11-15 — Status je Abweisungsart des Rahmens: Inhalt **400**, fehlender Content-Type **415**, zu großer Rumpf **413**, alle mit `{fehler}`; Zählung 36 Handler (Karte #39), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-status-je-abweisungsart-des-rahmens-und-umfang-karte-39). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-13 — Abweisungen des Rahmens in derselben Form: ein eigener Extraktor statt 422-Klartext (Karte #39), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-formfehler-des-rahmens-in-derselben-form-karte-39) · 2026-11-13 — Ordnung der Abweisungen, wenn mehrere zugleich zutreffen: **423 vor 403 vor 409**, einheitlich für Board und Aufgabe (Karte #121), siehe [Nachtrag N2](#nachtrag-2026-11-13-n2-ordnung-der-abweisungen--423-vor-403-vor-409-karte-121). · 2026-11-15 — Status je Abweisungsart des Rahmens: Inhalt **400**, fehlender Content-Type **415**, zu großer Rumpf **413**, alle mit `{fehler}`; Zählung 36 Handler (Karte #39), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-status-je-abweisungsart-des-rahmens-und-umfang-karte-39). · 2026-11-15 — Pfad- und Abfrageparameter: eigene Extraktoren `Pfad<T>`/`Abfrage<T>` an der Stelle von `JsonKoerper<T>`, Status bleibt **400**, Parametername aus der Routenschablone; 404/405 des Routers ausdrücklich außerhalb (Karte #168), siehe [Nachtrag N4](#nachtrag-2026-11-15-n4-pfad--und-abfrageparameter-karte-168). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: —
 **Ergänzt durch**: [ADR-0006](0006-einstellung-verboten-als-dritte-abweisung.md) (dritte Variante `EinstellungVerboten`, 403, R00102)
 
@@ -151,6 +151,43 @@ Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am
 
 **Grenze**: `Path`/`Query` (N1 Punkt 3, 59 Verwendungen) bleibt Soll; ob es in dieselbe Karte gehört, entscheidet der product-owner — die Abnahme-Probe der Karte nennt nur den Rumpf.
 
+## Nachtrag 2026-11-15 N4: Pfad- und Abfrageparameter (Karte #168)
+
+**Status bleibt `Akzeptiert`.** N1 Punkt 3 entscheidet, dass `Path`/`Query` dieselbe Form tragen und „über dieselbe Stelle“ laufen. Offen blieb, was „dieselbe Stelle“ für zwei andere Extraktoren heißt, woher der Parametername kommt, und wo die Regel endet (404/405 des Routers). N4 ändert nichts an N1–N3.
+
+**Belegt (Probe)**, fertiges Programm vom Stand main `8df2028`, Wegwerf-Ordner, 2026-11-15 — jeweils Status, `Content-Type`, Rumpf:
+- `GET /api/aufgaben/abc` → 400, `text/plain; charset=utf-8`, ``Invalid URL: Cannot parse `abc` to a `u32` `` (ebenso `-1`, `99999999999`). Der Status aus der Karte („400, ungeprobt“) ist damit geprobt.
+- `DELETE /api/aufgaben/1/teilaufgaben/abc` → 400, Klartext, ``Invalid URL: Cannot parse value at index 1 with value `abc` to a `u64` ``.
+- `GET /api/boards/%FF` → 400, Klartext, ``Invalid URL: Invalid UTF-8 in `slug` `` — die einzige Abweisung, die ein `Path<String>` auslösen kann.
+- `GET /api/berichte/verlauf` → 400, Klartext, ``Failed to deserialize query string: missing field `board` ``; `?board=a&board=b` → 400 ``… duplicate field `board` ``; `GET /api/boards/x?archivierte=ja&archivierte=ja` → 400 ``… duplicate field `archivierte` ``. `%FF` in einem Abfragewert wird nicht abgewiesen (verlustbehaftet gelesen, danach Fachprüfung).
+- `GET /api/aufgaben?unsinn=1` → 400, `application/json`, `{"fehler":"Unbekannter Filter „unsinn“ — …"}`: `Query<Vec<(String, String)>>` weist der Rahmen praktisch nie ab, die Fachprüfung antwortet schon in der Form.
+- `GET /api/gibtsnicht` → 404, kein `Content-Type`, leerer Rumpf; `PUT /api/aufgaben/1` → 405, leerer Rumpf, `allow`-Kopfzeile. Ein Fallback ist nicht gesetzt (`src/web/mod.rs:128`).
+- Sind Pfad und Rumpf zugleich falsch (`PATCH /api/aufgaben/abc` mit `{"titel": 5}`), antwortet der Pfad (400), nicht der Rumpf.
+
+**Belegt (Code)**: 60 Verwendungen in 59 Handlern in `src/web/mod.rs` (`Path<String>` 22, `Path<u32>` 20, `Path<(u32, String)>` 6, `Path<(u32, usize)>` 4, `Path<(String, String)>` 2, `Path<(String, u32)>` 1, `Query<MitArchivierten>` 2, `Query<BoardWahl>` 2, `Query<Vec<(String, String)>>` 1; der Handler `board` trägt `Path` und `Query`), dazu `Path<String>` in `src/web/statisch.rs:62`. `axum 0.8.9`: die Abweisung von `Path` trägt den Namen nur bei ungültigem UTF-8; bei einem Typfehler nennt sie den Index (`ErrorKind::ParseErrorAtIndex`) oder nichts (`ErrorKind::ParseError`). Die Namen stehen in `RawPathParams` in der Reihenfolge der Routenschablone.
+
+### Entschieden
+
+1. **Zwei eigene Extraktoren an der Stelle von `JsonKoerper<T>`.** `Pfad<T>` und `Abfrage<T>` liegen im selben Modul und antworten mit demselben Abweisungstyp der Web-Schicht (N3 Punkt 3), hier immer **400**, `application/json`, `{"fehler": "…"}`. Kein Handler behandelt die Abweisung selbst; `Fehler` bekommt keine neue Variante. Die Karte baut auf dem Stand nach #39 (Abweisungstyp und Rumpf-Funktion entstehen dort) und legt sie nicht ein zweites Mal an.
+2. **Der Status bleibt 400, auch für `/api/aufgaben/abc`.** Eine Nummer, die keine ist, ist ein Formfehler (N1 Punkt 3), kein „gibt es nicht“: 404 sagt einem Agenten „andere Nummer versuchen“, 400 sagt „die Anfrage ist falsch gebaut“. 404 bleibt der Fachantwort vorbehalten (`#999 gibt es nicht`).
+3. **Der Parametername kommt aus der Routenschablone, nicht aus dem Handler.** `Pfad<T>` liest bei einer Abweisung `RawPathParams` und nennt den Namen am gemeldeten Index (bei einem einzelnen Wert den einzigen): `nr`, `i`, `slug`. Damit nennt jede Route ihren Parameter ohne Angabe je Route. `Abfrage<T>` nennt das Feld über denselben Weg, auf dem `JsonKoerper<T>` ein fehlendes Pflichtfeld benennt. Die Meldung ist deutsch und wiederholt weder den Text des Rahmens noch den gesendeten Wert (heute steht er im Rumpf).
+4. **Alle 60 Verwendungen wechseln**, auch `Path<String>` und `Query<Vec<(String, String)>>`, die kaum scheitern können — sonst ist „eine Stelle“ nicht prüfbar. `statisch.rs:62` bleibt `Path` (keine API-Route, liefert Dateien, steht nicht in OpenAPI).
+5. **Pfad vor Abfrage vor Rumpf.** Sind mehrere falsch, antwortet der erste Extraktor der Signatur; das ist heute so und bleibt so. Es wird nicht gesammelt.
+6. **404 und 405 des Routers gehören nicht hierher.** Sie entstehen im Router, nicht in einem Extraktor, tragen keinen Parameter und haben einen leeren Rumpf, keinen Klartext; der Client fällt dort auf `statusText` zurück (`web/app.js:100`). Ob sie `{fehler}` bekommen sollen, ist eine eigene Entscheidung (Fallback am Router, eigener Antwortweg) und wird von dieser Karte weder gebaut noch ausgeschlossen.
+
+**Verworfen**:
+- **Eine gemeinsame Schicht für alle Abweisungen des Rahmens** (Layer über dem Router, der Klartext-Antworten umschreibt): erfasste 404/405 gleich mit, kennt aber weder Parameter noch Feld und müsste den Rahmen-Text lesen — in N1 schon verworfen.
+- **`WithRejection<Path<T>, …>` je Route**: keine eigene Extraktor-Logik, aber der Name fehlt bei Typfehlern, und die Angabe steht an 60 Stellen.
+- **404 für eine nicht-numerische Nummer**: „passt zu REST“, ändert aber einen richtigen Status ohne Anlass und macht Formfehler und fehlende Aufgabe ununterscheidbar.
+
+### Durchsetzung
+
+- **Probe je Route mit Pfad**: ein Abschnitt `%FF` an jedem Parameter → 400, `application/json`, `fehler` nennt den Namen aus der Schablone; das trifft auch `Path<String>`. Eine Route zurück auf `Path<T>` ist die Mutante. Dazu je Zahlenparameter ein Typfehler (`abc`), der Rumpf enthält `abc` nicht.
+- **Abfrage**: `Query<BoardWahl>` ohne und mit doppeltem `board`, `Query<MitArchivierten>` mit doppeltem `archivierte`. `Query<Vec<(String, String)>>` ist durch keine Anfrage zur Abweisung zu bringen — dort hält nur der **Review-Punkt** (`code-reviewer`): `Path<`/`Query<` in `src/web/mod.rs` ist ein Befund.
+- **Festhalte-Proben**: `GET /api/gibtsnicht` → 404 und falsche Methode → 405 bleiben unverändert (Punkt 6); `GET /api/aufgaben/999` → 404 `{fehler}` bleibt.
+
+**Grenze**: Wortlaut der Meldungen ist Sache des `entwickler`. Die Liste der Routen je Typ ist Arbeitsmaterial der Planung, nicht Teil des ADR.
+
 ## Quellen / Bezuege
 
 - `src/fehler.rs`, `src/web/mod.rs` (`impl IntoResponse for Fehler`)
@@ -158,3 +195,4 @@ Zur Probe aus N1 kommen zwei Fälle je einmal (nicht je Endpunkt, sie hängen am
 - Nachtrag N1: Karte #39 (Anmerkung A1 aus #27); `src/web/mod.rs:20`, `:152–181`, `:302`, `:374`, `:392`; `src/web/endpunkte.rs`; `Cargo.lock:945` (`serde_path_to_error` über `axum 0.8`)
 - Nachtrag N2: Karte #121 (Betreiber-Entscheidung 2026-11-13 im Kartenkommentar, arev B3); R00120 AK 6; `AI-Team/po-entscheidungen.md:187–188`; `src/dienst/zugregeln.rs:66–69`, `:88–96`, `:240–249`; `src/dienst/archiv.rs:12`, `:14`, `:51`, `:134`; `src/dienst/board_verwalten.rs:27`, `:59`; `src/web/mod.rs:158`
 - Nachtrag N3: Karte #39; `Cargo.lock:36` (`axum 0.8.9`); `src/web/mod.rs:120`, `:215`, `:244`–`:1639`, `:1025`, `:1197`, `:1330`; `src/web/endpunkte.rs`; `tests/termine.rs:31`; `src/modell/board.rs:147`; `web/app.js:100`; R00153 AK 6, AK 11, AK 15
+- Nachtrag N4: Karte #168 (product-owner 2026-11-15, `AI-Team/po-entscheidungen.md`); Probe am fertigen Programm vom Stand `8df2028`; `src/web/mod.rs:16`, `:128`, `:350`, `:1431`; `src/web/statisch.rs:62`; `web/app.js:100`; `axum 0.8.9` `extract/path` (`ErrorKind`, `RawPathParams`)
