@@ -4,7 +4,7 @@
 **Datum**: 2026-10-31
 **Entscheider**: architekt (Software-Factory)
 **Kontext-Anforderung**: R00098 (Wiederöffnen), R00099 (Befund erledigt sich)
-**Nachträge**: 2026-11-13 — eine gescheiterte Aktion hinterlässt nichts, und die Commit-Nachricht ist abgeleiteter Text (Karte #43), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-eine-gescheiterte-aktion-hinterlässt-nichts-die-nachricht-ist-abgeleiteter-text-karte-43); 2026-11-14 — die Rücknahme stellt den Stand von HEAD her, die Pfadprüfung gilt auch in `committen` (Karte #43, Bauversuch), siehe [Nachtrag N2](#nachtrag-2026-11-14-n2-rücknahme-auf-den-stand-von-head-die-pfadprüfung-gilt-auch-in-committen-karte-43-bauversuch). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
+**Nachträge**: 2026-11-13 — eine gescheiterte Aktion hinterlässt nichts, und die Commit-Nachricht ist abgeleiteter Text (Karte #43), siehe [Nachtrag N1](#nachtrag-2026-11-13-n1-eine-gescheiterte-aktion-hinterlässt-nichts-die-nachricht-ist-abgeleiteter-text-karte-43); 2026-11-14 — die Rücknahme stellt den Stand von HEAD her, die Pfadprüfung gilt auch in `committen` (Karte #43, Bauversuch), siehe [Nachtrag N2](#nachtrag-2026-11-14-n2-rücknahme-auf-den-stand-von-head-die-pfadprüfung-gilt-auch-in-committen-karte-43-bauversuch); 2026-11-15 — Wiederöffnen mit `board` ist ein Umzug: die Zeilen der anderen Boards gehen im selben Commit (Karte #45), siehe [Nachtrag N3](#nachtrag-2026-11-15-n3-wiederöffnen-mit-board-ist-ein-umzug--die-zeilen-der-anderen-boards-gehen-im-selben-commit-karte-45). Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert.
 **Erprobt durch**: —
 
 ## Kontext
@@ -104,9 +104,54 @@ Nur der Server kann Suche, Fallunterscheidung und Schreiben unter einer Sperre h
 
 **Grenze**: ob `committen` die Prüfung selbst ruft oder ein gemeinsamer Helfer sie für `aktion` und `committen` bereitstellt, ist Sache des `entwickler`; Länge und Wortlaut der Nachricht bleiben bei N1.
 
+## Nachtrag 2026-11-15 N3: Wiederöffnen mit `board` ist ein Umzug — die Zeilen der anderen Boards gehen im selben Commit (Karte #45)
+
+**Anlass**: Karte #45 („Wiederöffnen auf anderem Board lässt Karte im alten ‚Fertig‘“, aus Code-Review #4). Betreiber-Entscheidung 2026-11-13 (Kartenkommentar): die alte Board-Zeile wird entfernt, im selben Commit wie die neue. Der Status bleibt `Akzeptiert`; der Nachtrag sagt, **wie** der Schritt in die Entscheidung oben passt und welche Regeln an den verlassenen Boards gelten. **Entscheider**: Claude (autonom, architekt, Auftrag des Directors).
+
+**Belegt (Code)**, kanbanD `54cbe00` (gelesen 2026-11-15):
+- Wiederöffnen läuft im Anlegeweg: `anlegen_gesperrt` (`src/dienst/aufgabe_anlegen.rs:122`) findet den Schlüssel an einer archivierten Karte (`:145`), `wieder_geoeffnet` (`:285`) nimmt `archived` zurück und kommentiert; `schreiben` (`:191`) liest **nur** das Board der Anfrage (`:205`), legt die Karte dort mit `Board::oben_einordnen` oben ein (`:214`) und ruft einmal `aktion()` (`:228`).
+- `oben_einordnen` (`src/modell/board.rs:388`) nimmt die Karte aus jeder anderen Spalte **dieses** Boards (`abnehmen`, `:400`); die Dateien der übrigen Boards fasst niemand an. Dort steht die Zeile weiter — archivierte Karten bleiben in der Board-Datei stehen und zählen nur nicht (`archivieren`, `src/dienst/archiv.rs:7`; `zugregeln.rs:11`). Hier entsteht „auf zwei Boards zugleich“.
+- Der Bestand weiß das: `rueckkehr_pruefen` (`aufgabe_anlegen.rs:233`) zählt die Karte auf den übrigen Boards wieder mit (409 für Agenten), `tests/fremdschluessel.rs:477` hält es fest.
+- **Mehrere Boards sind gewollt**: Vision Z. 74–76 („Dieselbe Aufgabe darf auf mehreren Boards liegen“), `README.md:49`, R00020, R00123 (Verlauf je Board), `zuordnung.rs::auf_board_legen`. Eine Invariante „eine Karte liegt auf genau einem Board“ gibt es im Modell nicht und darf es ohne Fortschreibung der Vision nicht geben.
+- Das Muster „Zeile aus mehreren Board-Dateien in einem `aktion()`“ ist gebaut: `endgueltig_loeschen` (`src/dienst/archiv.rs:54–60`, ADR-0024). `von_board_nehmen` (`src/dienst/zuordnung.rs:56`) sperrt und committet selbst und ist deshalb nicht schachtelbar (Kontext oben).
+- R00098 FA (Z. 37): „Das Wiederöffnen ist kein Herausnehmen im Sinne von R00097 … auch mit `board`“; `schreiben` prüft entsprechend nur die Grenze (`zug_mit_rueckkehr_pruefen`, `:217`), keine Entnahmesperre.
+
+### Optionen
+
+| | Weg | Stärke | Schwäche |
+|---|---|---|---|
+| A | `schreiben` nimmt die Karte im Speicher von jedem anderen Board (`Board::abnehmen`) und hängt je Board einen Schreib-Schritt an dasselbe `aktion()` | ein Commit, eine Sperre, kein neuer Schreibweg; Kern und Muster vorhanden (ADR-0024) | der Anlegeweg liest die ganze Boardliste; ein unlesbares Board macht die Zusage unprüfbar (siehe 4) |
+| B | `von_board_nehmen` wiederverwenden (Kern + Hülle oder zwei Aufrufe) | ein Name für „vom Board nehmen“, 403-Regel inklusive | zwei Commits oder Umbau einer Hülle, deren Kern (`abnehmen`) schon frei liegt; die 403 widerspräche R00098 FA Z. 37 |
+| C | Abweisen mit 409, solange die Karte auf einem anderen Board liegt | nichts verschwindet still von einem fremden Board | widerspricht der Betreiber-Entscheidung; jeder Sensor müsste erst aufräumen (Option A des ADR, verworfen) |
+
+### Entschieden (Option A)
+
+1. **Wiederöffnen mit `board` ist ein Umzug.** Nach der Aktion liegt die wieder geöffnete Karte auf **genau dem Board der Anfrage**; ihre Zeile verschwindet aus **jedem** anderen Board des Ordners (auch aus einem archivierten Board, auch wenn sie dort mehrfach steht — `abnehmen` nimmt alle Vorkommen). Ohne `board` bleibt alles wie bisher: die Karte kehrt dorthin zurück, wo sie liegt, auch auf mehreren Boards.
+2. **Die Regel gilt für diesen Weg, nicht für das Modell.** „Dieselbe Aufgabe darf auf mehreren Boards liegen“ (Vision) bleibt; Auflegen, Bewegen, Archivieren, Zurückholen ändern sich nicht. Wer die allgemeine Invariante will, schreibt zuerst die Vision fort.
+3. **Ein Commit, ein `aktion()`**: Aufgabendatei, Zielboard und jedes verlassene Board sind Schritte derselben Aktion; jede Board-Datei kommt **genau einmal** vor (das Zielboard nie zusätzlich als verlassenes — `aktion()` weist doppelte Pfade ab, `mod.rs:193`), auch bei `mehrere` mit Karten von verschiedenen Boards. Scheitert der Commit, stellt die Rücknahme (N1/N2) alle Dateien her.
+4. **Unlesbares Board ⇒ 423, nichts geschrieben.** Ist beim Wiederöffnen mit `board` eine Board-Datei des Ordners defekt, ist nicht bestimmbar, ob die Karte dort liegt; die Zusage aus 1 wäre unprüfbar. Die Aktion endet mit `Fehler::Defekt` (Meldung nennt die Datei) — für **jede** Art, weil der Grund die Zusage ist, nicht eine Sperre. Ordnung nach ADR-0003 N2: 423 vor 409.
+5. **Keine Entnahmesperre an den verlassenen Boards.** Wie im selben Board (R00098 FA Z. 37, AK „Eigentümer“) ist das Wiederöffnen kein Herausnehmen: ein Agent bekommt keine 403, auch wenn die archivierte Karte auf dem anderen Board in einer Menschen-Spalte liegt. Die Karte ist dort archiviert, zählt nicht und geht nicht verloren — sie liegt offen auf dem Zielboard.
+6. **Grenzen**: geprüft wird das Zielboard wie bisher (`zug_mit_rueckkehr_pruefen`, Agent 409, Mensch ohne Warnung). Die verlassenen Boards verlieren die Karte und brauchen keine Grenzprüfung; `rueckkehr_pruefen` gilt nur noch ohne `board`. Der bisherige Fall „volle alte Spalte auf dem anderen Board ⇒ 409“ (`tests/fremdschluessel.rs:477`) kehrt sich um: die Karte zieht um, 200.
+
+**Akzeptierte Schwäche**: Eine Karte, die ein Mensch bewusst auf zwei Boards gelegt hat, liegt nach einem Wiederöffnen mit `board` nur noch auf einem — still, sichtbar nur im Verlauf (ADR-0021) und im Commit. Und ein defektes Board, das mit der Karte nichts zu tun hat, hält das Wiederöffnen mit `board` auf, bis es repariert ist.
+
+**Verworfen**: B und C (Tabelle); **clientseitig** erst `DELETE …/boards/{slug}/aufgaben/{nr}`, dann anlegen — zwei Commits, dazwischen ein fremder Zug (Option A des ADR).
+
+### Durchsetzung (Fitness-Funktion)
+
+- **Umzug**: #7 archiviert in „Fertig“ auf `fabrik`, `POST /api/aufgaben {key, board: "zweit", spalte: "Eingang"}` ⇒ 200, #7 oben in „Eingang“ von `zweit`, in **keiner** Spalte von `fabrik`, genau ein Commit mit Aufgabendatei und beiden Board-Dateien, `git status --porcelain` leer.
+- **Drei Boards / mehrfach**: #7 auf `fabrik` in zwei Spalten und auf `privat` ⇒ danach nur auf `zweit`; drittes, unbeteiligtes Board byteweise unverändert.
+- **Gleiches Board, ohne `board`**: Verhalten wie R00098 (ein Board-Schritt bzw. keiner); mit `board` = Board der Karte bleibt die Zeile auf weiteren Boards **nicht** stehen, ohne `board` bleibt sie.
+- **Defekt**: defekte Board-Datei im Ordner, Wiederöffnen mit `board` ⇒ 423, #7 bleibt archiviert, kein Commit; ohne `board` wie bisher.
+- **Grenze am Ziel**: Agent über der Grenze der Zielspalte ⇒ 409, auch die Zeile auf dem alten Board steht noch.
+- **Review-Punkt** (`architektur-reviewer`, `code-reviewer`): ein zweites `aktion()`/`committen` im Wiederöffnen, ein Aufruf einer öffentlichen, selbst sperrenden Methode aus `schreiben`, oder das Entfernen der Zeile auch **ohne** `board` ist ein Befund.
+
+**Grenze**: Wortlaut der Commit-Nachricht (heute „#7 erneut gefunden: wieder geöffnet“, R00098) und ob sie die verlassenen Boards nennt, ist Sache von `planer`/`entwickler` — gebaut wird sie über die gemeinsame Funktion (N1 Punkt 4). Ob Punkt 5 für den board-weiten fail-safe (R00120) gelten soll, liegt als Frage beim `product-owner`; bis zu seiner Antwort gilt Punkt 5 wie geschrieben.
+
 ## Quellen / Bezuege
 
 - `src/dienst/archiv.rs` (`zurueckholen`), `src/dienst/mod.rs` (`aktion`, `gesperrt`)
 - ADR-0002, ADR-0004
 - Nachtrag N1: Karte #43 (Review #4); `src/dienst/mod.rs:191–213`, `src/git.rs:31–48`, `src/dienst/aufgabe_anlegen.rs` (Nachricht aus dem Titel); R00098 (`key`, `neu: false`); ADR-0001, ADR-0008, ADR-0015
 - Nachtrag N2: Karte #43 (Architektur-Vorprüfung 2026-11-14, uncommitteter Bauversuch `karte/43`); `src/git.rs:39–51, 71–102`, `src/dienst/mod.rs:183/193`, `src/ablage.rs:185`, `src/dienst/anhaenge.rs:66/87`, `src/dienst/fieber.rs:115`; Probe 2026-11-14 (Wegwerf-Repo); ADR-0008, ADR-0015
+- Nachtrag N3: Karte #45 (Code-Review #4, Betreiber-Entscheidung 2026-11-13); `src/dienst/aufgabe_anlegen.rs:122/145/191–229/233/285`, `src/modell/board.rs:388/400`, `src/dienst/archiv.rs:7/54–60`, `src/dienst/zuordnung.rs:56`, `src/dienst/zugregeln.rs:11/102`, `src/dienst/mod.rs:193`, `tests/fremdschluessel.rs:477`; Vision Z. 74–76, R00098 FA Z. 37, R00120; ADR-0003 N2, ADR-0021, ADR-0024
