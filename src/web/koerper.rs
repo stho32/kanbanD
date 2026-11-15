@@ -2,7 +2,10 @@
 
 use crate::fehler::Fehler;
 use axum::body::Bytes;
-use axum::extract::{FromRequest, OptionalFromRequest, Request};
+use axum::extract::path::ErrorKind;
+use axum::extract::rejection::PathRejection;
+use axum::extract::{FromRequest, FromRequestParts, OptionalFromRequest, RawPathParams, Request};
+use axum::http::request::Parts;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -195,6 +198,68 @@ fn art_am_pfad(rumpf: &[u8], pfad: &Path) -> Option<&'static str> {
         Value::Array(_) => "Liste",
         Value::Object(_) => "Objekt",
     })
+}
+
+/// Die Parameter des Pfads als `T`. Jeder Handler nimmt sie so — nie als `axum::extract::Path<T>`, dessen Abweisung
+/// als englischer Klartext mit dem gesendeten Wert am Antwortweg von `Fehler` vorbeigeht (ADR-0003 N4).
+pub struct Pfad<T>(pub T);
+
+impl<T: DeserializeOwned + Send, S: Send + Sync> FromRequestParts<S> for Pfad<T> {
+    type Rejection = Abweisung;
+
+    async fn from_request_parts(teile: &mut Parts, zustand: &S) -> Result<Self, Abweisung> {
+        let abweisung = match axum::extract::Path::<T>::from_request_parts(teile, zustand).await {
+            Ok(axum::extract::Path(wert)) => return Ok(Pfad(wert)),
+            Err(abweisung) => abweisung,
+        };
+        let PathRejection::FailedToDeserializePathParams(abweisung) = abweisung else {
+            return Err(Abweisung::Inhalt(pfad_falsch_gelesen()));
+        };
+        // Die Namen stehen nur bei lesbaren Werten bereit; bei ungültigem UTF-8 trägt die Abweisung den Namen selbst
+        let namen: Vec<String> = RawPathParams::from_request_parts(teile, zustand).await.map(|werte| werte.iter().map(|(name, _wert)| name.to_string()).collect()).unwrap_or_default();
+        Err(Abweisung::Inhalt(pfadfehler(abweisung.kind(), &namen)))
+    }
+}
+
+/// Deutsche Meldung `Pfadparameter <Name>: <was erwartet wird>`. Der Rahmen nennt bei einem Typfehler nur die Stelle —
+/// der Name kommt aus der Routenschablone (`namen`, in ihrer Reihenfolge). Der gesendete Wert und der Wortlaut des Rahmens bleiben weg.
+fn pfadfehler(art: &ErrorKind, namen: &[String]) -> Fehler {
+    let einziger = namen.first().filter(|_| namen.len() == 1);
+    let (name, aussage) = match art {
+        ErrorKind::InvalidUtf8InPathParam { key } => (Some(key), "kein gültiges UTF-8".to_string()),
+        ErrorKind::ParseErrorAtIndex { index, expected_type, .. } => (namen.get(*index), zahl_im_pfad(expected_type)),
+        ErrorKind::ParseError { expected_type, .. } => (einziger, zahl_im_pfad(expected_type)),
+        ErrorKind::ParseErrorAtKey { key, expected_type, .. } => (Some(key), zahl_im_pfad(expected_type)),
+        ErrorKind::DeserializeError { key, .. } => (Some(key), FALSCHE_FORM.to_string()),
+        ErrorKind::Message(_) => (einziger, FALSCHE_FORM.to_string()),
+        _ => return pfad_falsch_gelesen(),
+    };
+    match name {
+        Some(name) => Fehler::Ungueltig(format!("Pfadparameter {name}: {aussage}")),
+        None => Fehler::Ungueltig(format!("Pfadparameter: {aussage}")),
+    }
+}
+
+/// Was an der Stelle erwartet wird; bis `u32` mit der oberen Grenze, weil auch eine zu große Zahl eine ganze Zahl ab 0 ist.
+fn zahl_im_pfad(typ: &str) -> String {
+    let groesste = match typ {
+        "u8" => Some(u64::from(u8::MAX)),
+        "u16" => Some(u64::from(u16::MAX)),
+        "u32" => Some(u64::from(u32::MAX)),
+        _ => None,
+    };
+    match (groesste, erwartung(typ)) {
+        (Some(groesste), _) => format!("ganze Zahl von 0 bis {groesste} erwartet"),
+        (None, Some(erwartet)) => format!("{erwartet} erwartet"),
+        (None, None) => FALSCHE_FORM.to_string(),
+    }
+}
+
+const FALSCHE_FORM: &str = "Wert hat nicht die erwartete Form";
+
+/// Die Route nennt in ihrer Schablone andere Parameter, als ihr Handler liest — ein Fehler im Programm, kein Fehler der Anfrage (500 wie beim Rahmen).
+fn pfad_falsch_gelesen() -> Fehler {
+    Fehler::Intern("Die Route liest ihre Pfadparameter nicht so, wie ihre Schablone sie nennt".to_string())
 }
 
 #[cfg(test)]
@@ -416,5 +481,113 @@ mod tests {
         let meldung = meldung(&rumpf);
         assert!(meldung.starts_with("stunden.kkk") && meldung.ends_with("…: Zahl erwartet, nicht Text"), "{meldung}");
         assert!(meldung.chars().count() < 200, "{}", meldung.chars().count());
+    }
+}
+
+#[cfg(test)]
+mod parameter_tests {
+    use super::*;
+    use axum::Router;
+    use axum::routing::get;
+    use serde::Deserialize;
+    use serde_json::json;
+
+    #[derive(Debug, Deserialize)]
+    struct Benannt {
+        #[allow(dead_code)] // nur über Debug gelesen
+        nr: u32,
+        #[allow(dead_code)]
+        name: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    enum Art {
+        Fein,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Gewaehlt {
+        #[allow(dead_code)]
+        nr: u32,
+        #[allow(dead_code)]
+        art: Art,
+    }
+
+    /// Ein Dienst mit Routen je Form der Parameter; jede antwortet mit dem gelesenen Wert.
+    async fn dienst() -> String {
+        let router = Router::new()
+            .route("/eine/{nr}", get(async |Pfad(nr): Pfad<u32>| format!("{nr:?}")))
+            .route("/zwei/{nr}/teil/{i}", get(async |Pfad(beide): Pfad<(u32, usize)>| format!("{beide:?}")))
+            .route("/text/{slug}/{nr}", get(async |Pfad(beide): Pfad<(String, u32)>| format!("{beide:?}")))
+            .route("/benannt/{nr}/{name}", get(async |Pfad(b): Pfad<Benannt>| format!("{b:?}")))
+            .route("/art/{art}", get(async |Pfad(art): Pfad<Art>| format!("{art:?}")))
+            .route("/gewaehlt/{nr}/{art}", get(async |Pfad(g): Pfad<Gewaehlt>| format!("{g:?}")))
+            .route("/verzaehlt/{a}/{b}", get(async |Pfad(nr): Pfad<u32>| format!("{nr:?}")));
+        let horcher = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let adresse = format!("http://{}", horcher.local_addr().unwrap());
+        tokio::spawn(async move { axum::serve(horcher, router).await.unwrap() });
+        adresse
+    }
+
+    /// Status, `Content-Type` und Rumpf der Antwort auf `GET <pfad>`.
+    async fn antwort(adresse: &str, pfad: &str) -> (u16, String, String) {
+        let antwort = reqwest::get(format!("{adresse}{pfad}")).await.unwrap();
+        let art = antwort.headers().get("content-type").and_then(|w| w.to_str().ok()).unwrap_or_default().to_string();
+        (antwort.status().as_u16(), art, antwort.text().await.unwrap())
+    }
+
+    fn abgewiesen(status: u16, meldung: &str) -> (u16, String, String) {
+        (status, "application/json".to_string(), json!({"fehler": meldung}).to_string())
+    }
+
+    const NR: &str = "Pfadparameter nr: ganze Zahl von 0 bis 4294967295 erwartet";
+    const I: &str = "Pfadparameter i: ganze Zahl ab 0 erwartet";
+
+    #[tokio::test]
+    async fn gueltige_pfadparameter_werden_gelesen() {
+        let adresse = dienst().await;
+        for (pfad, gelesen) in [("/eine/7", "7"), ("/eine/4294967295", "4294967295"), ("/zwei/7/teil/3", "(7, 3)"), ("/text/b%C3%A4r/1", "(\"bär\", 1)"), ("/benannt/7/x", "Benannt { nr: 7, name: \"x\" }")] {
+            assert_eq!(antwort(&adresse, pfad).await, (200, "text/plain; charset=utf-8".to_string(), gelesen.to_string()), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ein_einzelner_parameter_mit_falschem_typ_nennt_den_namen_der_schablone() {
+        let adresse = dienst().await;
+        for wert in ["abc", "-1", "99999999999", "4294967296", "1.0", "Zx9-Inhalt", "%20"] {
+            assert_eq!(antwort(&adresse, &format!("/eine/{wert}")).await, abgewiesen(400, NR), "{wert}");
+        }
+    }
+
+    #[tokio::test]
+    async fn bei_zwei_parametern_nennt_die_meldung_den_ersten_falschen() {
+        let adresse = dienst().await;
+        for (pfad, meldung) in [("/zwei/1/teil/abc", I), ("/zwei/1/teil/-1", I), ("/zwei/abc/teil/0", NR), ("/zwei/abc/teil/abc", NR), ("/text/x/abc", NR), ("/benannt/abc/x", NR)] {
+            assert_eq!(antwort(&adresse, pfad).await, abgewiesen(400, meldung), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ungueltiges_utf8_nennt_den_parameter_auch_wenn_er_text_ist_und_geht_dem_typfehler_vor() {
+        let adresse = dienst().await;
+        for (pfad, name) in [("/eine/%FF", "nr"), ("/zwei/%FF/teil/0", "nr"), ("/zwei/1/teil/%FF", "i"), ("/text/%FF/1", "slug"), ("/text/x/%FF", "nr"), ("/zwei/abc/teil/%FF", "i"), ("/benannt/1/%FF", "name")] {
+            assert_eq!(antwort(&adresse, pfad).await, abgewiesen(400, &format!("Pfadparameter {name}: kein gültiges UTF-8")), "{pfad}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ein_unbekannter_wert_einer_aufzaehlung_im_pfad_wird_mit_400_abgewiesen_ohne_den_wert() {
+        let adresse = dienst().await;
+        assert_eq!(antwort(&adresse, "/art/fein").await.0, 200);
+        assert_eq!(antwort(&adresse, "/art/Zx9-Inhalt").await, abgewiesen(400, "Pfadparameter art: Wert hat nicht die erwartete Form"));
+        // Bei mehreren Parametern nennt der Rahmen hier weder Stelle noch Namen — die Meldung rät nicht
+        assert_eq!(antwort(&adresse, "/gewaehlt/1/Zx9-Inhalt").await, abgewiesen(400, "Pfadparameter: Wert hat nicht die erwartete Form"));
+    }
+
+    #[tokio::test]
+    async fn eine_route_die_ihre_parameter_falsch_zaehlt_antwortet_mit_500_in_der_form() {
+        let adresse = dienst().await;
+        assert_eq!(antwort(&adresse, "/verzaehlt/1/2").await, abgewiesen(500, "Die Route liest ihre Pfadparameter nicht so, wie ihre Schablone sie nennt"));
     }
 }
