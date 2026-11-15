@@ -70,3 +70,30 @@ test('R00152 B0704: die Erledigt-Spalten eines Boards sind heute die letzte Spal
   assert.deepStrictEqual(B.erledigtSpalten({ spalten: SPALTEN }), ['Fertig']);
   assert.deepStrictEqual(B.erledigtSpalten({ spalten: [] }), []);
 });
+
+/* ── B0705 Burndown liest den Bestand ── */
+const kurz = tage => tage.map(x => `${x.offen}/${x.umfang}`);
+/** Erwartete Reihe über die neun Tage 02.–10.11.: der 02.11., dreimal 03.–05.11., fünfmal 06.–10.11. */
+const neunTage = (erster, mitte, ende) => [erster, mitte, mitte, mitte, ende, ende, ende, ende, ende];
+const burndownA = (optionen = {}, f = {}, heute = ms(10), archivtag3) => B.burndown(bewegungenA(optionen), filter(f), aufgabenA(archivtag3), heute);
+
+test('R00152 B0705 (AK 1): Burndown im Grundbestand A — 7/7, dreimal 4/7, fünfmal 1/3; die verworfene #3 zählt ab dem Archivtag nicht mehr', () => {
+  const tage = burndownA();
+  assert.deepStrictEqual(tage.map(x => x.datum), ['02', '03', '04', '05', '06', '07', '08', '09', '10'].map(t => `2026-11-${t}`));
+  assert.deepStrictEqual(kurz(tage), neunTage('7/7', '4/7', '1/3'));
+});
+
+test('R00152 B0705 (AK 5): Stand 06.11., 12:00 Uhr — der Vortag zählt #3 noch (4/7), der Archivtag nicht mehr (1/3)', () => {
+  assert.deepStrictEqual(kurz(burndownA({}, {}, ms(6, 12, 0))), ['7/7', '4/7', '4/7', '4/7', '1/3']);
+});
+
+test('R00152 B0705 (AK 16): ausgeschlossene Spalte „Eingang“ — 0/0, 0/3 und ab dem 06.11. 0/2, wie vor dem Fix', () => {
+  assert.deepStrictEqual(kurz(burndownA({}, { ohneSpalten: ['Eingang'] })), neunTage('0/0', '0/3', '0/2'));
+});
+
+test('R00152 B0705: die verworfene Aufgabe fällt auch aus einem Burndown mit Zeitraum und „Rechnen ab“', () => {
+  const zeitraum = B.burndown(bewegungenA(), filter({ zeitraum: 'eigen', von: '2026-11-05', bis: '2026-11-07' }), aufgabenA(), ms(10));
+  assert.deepStrictEqual(kurz(zeitraum), ['4/7', '1/3', '1/3']);
+  const ab = B.burndown(bewegungenA(), filter({}), aufgabenA(), ms(10), '2026-11-05');
+  assert.deepStrictEqual(kurz(ab), ['4/7', '1/3', '1/3', '1/3', '1/3', '1/3']);
+});

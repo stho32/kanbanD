@@ -126,6 +126,14 @@
   }
   /** Was „erledigt“ heißt: heute die Abschlussspalte (die letzte Spalte) des Boards. */
   const erledigtSpalten = bew => bew.spalten.slice(-1);
+  /** Bestand der Aufgaben eines Boards (Einträge aus bew.aufgaben): der Archivtag kommt aus der Aufgabenliste des Clients
+      (`aufgabeZu`; ohne Datei kein Archivtag), „erledigt“ aus dem Board. */
+  function bestandLeser(bew, aufgabeZu) {
+    const erledigt = erledigtSpalten(bew);
+    return (a, t) => { const x = aufgabeZu(a.nummer); return bestandAm(a.wechsel, x && x.archiviert, t, erledigt); };
+  }
+  /** Zählt dieser Zustand zum Bestand des Berichts? „Da“ und nicht in einer ausgeschlossenen Spalte. */
+  const imBestand = (f, zustand) => zustand.art === 'da' && !f.ohneSpalten.includes(zustand.spalte);
 
   /** Eintritt in die heutige Spalte (R00126, ADR-0019 N5): der letzte Wechsel mit einer Spalte bis `t` — Schwester von `spalteAm`,
       liefert statt des Spaltennamens den `zeitpunkt`. `null`, wenn die Aufgabe nie auf dem Board war oder zuletzt davon genommen wurde. */
@@ -158,22 +166,21 @@
   }
 
   /* ── Burndown (R00044) ── */
-  /** Je Tag im Zeitraum: offen (nicht in der Abschlussspalte) und Umfang, Stand am Tagesende, heute jetzt; ab `start`. */
+  /** Je Tag im Zeitraum: offen (im Bestand und nicht erledigt) und Umfang (im Bestand), Stand am Tagesende, heute jetzt; ab `start`. */
   function burndown(bew, f, aufgabeZu, jetzt, start = null) {
-    const g = grenzenAb(f, jetzt, start), zaehlt = zaehltMit(f, aufgabeZu);
+    const g = grenzenAb(f, jetzt, start), bestand = bestandLeser(bew, aufgabeZu);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
-    const abschluss = bew.spalten[bew.spalten.length - 1];
+    const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)));
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
       let offen = 0, umfang = 0;
-      for (const a of bew.aufgaben) {
-        if (!zaehltImBericht(a, 'burndown')) continue;
-        const s = spalteAm(a.wechsel, ende);
-        if (!zaehlt(a.nummer, s)) continue;
+      for (const a of gezaehlt) {
+        const zustand = bestand(a, ende);
+        if (!imBestand(f, zustand)) continue;
         umfang++;
-        if (s !== abschluss) offen++;
+        if (!zustand.erledigt) offen++;
       }
       const d = new Date(t), p = n => String(n).padStart(2, '0');
       tage.push({ datum: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, offen, umfang });

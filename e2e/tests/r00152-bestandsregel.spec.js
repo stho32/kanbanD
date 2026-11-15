@@ -68,8 +68,8 @@ async function zeigeAuf(page, svg, x, y) {
   await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + y * s);
 }
 
-// „erwartet rot“ (test.fail): rote Spezifikation vor dem Bau — die Markierung fällt mit der Bubble, die den Test grün macht.
-test.fail('R00152 US-1 (AK 4): im Burndown zählt die verworfene Aufgabe ab dem Archivtag nicht mehr — 05.11. und 06.11. offen 4, Umfang 9', async ({ page }) => {
+// „erwartet rot“ (test.fail) trägt, was noch nicht gebaut ist — die Markierung fällt mit der Bubble, die den Test grün macht.
+test('R00152 US-1 (AK 4): im Burndown zählt die verworfene Aufgabe ab dem Archivtag nicht mehr — 05.11. und 06.11. offen 4, Umfang 9', async ({ page }) => {
   const k = await kanbanStarten(grundbestandB);
   try {
     await berichtAm(page, k, '2026-11-06', 'verlauf');
@@ -79,7 +79,7 @@ test.fail('R00152 US-1 (AK 4): im Burndown zählt die verworfene Aufgabe ab dem 
   } finally { await k.stoppen(); }
 });
 
-test.fail('R00152 US-2 (AK 4): Burndown und „Wie lange noch“ nennen am selben Tag dieselbe Zahl offener Aufgaben', async ({ page }) => {
+test('R00152 US-2 (AK 4): Burndown und „Wie lange noch“ nennen am selben Tag dieselbe Zahl offener Aufgaben', async ({ page }) => {
   const k = await kanbanStarten(grundbestandB);
   try {
     await berichtAm(page, k, '2026-11-06', 'verlauf');
@@ -120,7 +120,7 @@ test.fail('R00152 US-3 (AK 2): im Kumulativen Fluss fällt die verworfene Aufgab
   } finally { await k.stoppen(); }
 });
 
-test.fail('R00152 US-4 (AK 1, AK 6): die erledigte, archivierte Aufgabe bleibt im Umfang — Burndown am 10.11. offen 1, Umfang 3', async ({ page }) => {
+test('R00152 US-4 (AK 1, AK 6): die erledigte, archivierte Aufgabe bleibt im Umfang — Burndown am 10.11. offen 1, Umfang 3', async ({ page }) => {
   const k = await kanbanStarten(grundbestandA());
   try {
     await berichtAm(page, k, '2026-11-10', 'verlauf');
@@ -157,7 +157,7 @@ test('R00152 US-6 (AK 13): zurückgeholt zählt an allen Tagen wieder — Burndo
   } finally { await k.stoppen(); }
 });
 
-test.fail('R00152 US-7 (AK 12): unter „nur Person st“ fehlen die endgültig gelöschten Aufgaben an allen Tagen — Burndown 5 / 5, Durchsatz gesamt 2', async ({ page }) => {
+test('R00152 US-7 (AK 12): unter „nur Person st“ fehlen die endgültig gelöschten Aufgaben an allen Tagen — Burndown 5 / 5, Durchsatz gesamt 2', async ({ page }) => {
   const k = await kanbanStarten(grundbestandA({ kopf: NUR_ST }));
   try {
     await berichtAm(page, k, '2026-11-10', 'verlauf');

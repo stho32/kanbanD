@@ -566,3 +566,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #164 R00151 (Wochenleisten-Probe unabhängig vom Wochentag) | B0702 kultur US-4 auf gestellter Uhr (Sonntag, Montag, Samstag) | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-15 | Karte #164 R00151 (Wochenleisten-Probe unabhängig vom Wochentag) | B0703 Regel 6 in hilfen.js und Sichtung der Specs | Standard | 0,25-0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0704 Bestandsfunktion: nicht da / entfernt / da | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-15 | Karte #155 R00152 (eine Bestandsregel für alle Berichte) | B0705 Burndown liest den Bestand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
