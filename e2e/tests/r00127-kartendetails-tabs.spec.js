@@ -2,7 +2,7 @@
 // Der Ansichtswechsel ist seit R00145 ein Menü am Fensterkopf (Karte #145); diese Probe prüft die Ansichten selbst:
 // welche es gibt, was jede zeigt, dass genau eine gezeichnet wird und dass Live und Rückfall sie erhalten.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, reiter } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -305,7 +305,7 @@ test.describe('R00127 schmale Breiten', () => {
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     for (const breite of [320, 375, 414]) {
       for (const thema of ['light', 'dark']) {
-        await page.setViewportSize({ width: breite, height: 700 });
+        await breiteSetzen(page, breite, 700);
         await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
         const kopf = await page.locator('#fenster .mod-kopf').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, h: el.clientHeight, ziel: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kd-ziel')) || 0 }));
         expect(kopf.sw, `${breite} px ${thema}: Kopf scrollt nicht quer`).toBeLessThanOrEqual(kopf.cw);

@@ -1,7 +1,7 @@
 // R00115 Kartentext lesbar setzen (Karte #16) — Abnahme-Proben US-1 bis US-4 (ADR-0019 Nachtrag N4, M3 `label-small` 11 px).
 // Die Probe des Titels teilt Wortgrenzen per Range auf: ein Wort über zwei Zeilen ist mitten gebrochen (AK 1).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, thema, mutanteEinsetzen, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, breiteSetzen, thema, mutanteEinsetzen, filterOeffnen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
@@ -132,7 +132,7 @@ test.describe('R00115', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[1280, 800], [414, 844], [320, 640]]) {
-      await page.setViewportSize({ width: breite, height: hoehe });
+      await breiteSetzen(page, breite, hoehe);
       await page.locator('.ka[data-id="1"] .lauf').waitFor();
       // Platznot: Überschreitet Titel nebst Nummer, Signalen und Chip die Zeile, weicht der Chip in die eigene
       // Zeile (N4 Regel 1); reicht der Platz für alle Mindestbreiten, bleibt der Chip in der Zeile und der

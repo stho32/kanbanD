@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, liveBereit, kontrastAm, mehrOeffnen, ausMehr } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, breiteSetzen, kontrastAm, mehrOeffnen, ausMehr } = require('./hilfen');
 
 const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -151,7 +151,7 @@ test.describe('R00124', () => {
     await page.goto(k.adresse + '#/board/fabrik');
     await liveBereit(page);
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 800 });
+      await breiteSetzen(page, breite, 800);
       const quer = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(quer, `Querscrollen bei ${breite}`).toBeLessThanOrEqual(0);
       await expect(trenner(page).first().locator('.dtrenn-t')).toBeVisible();
