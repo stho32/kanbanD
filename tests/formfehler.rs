@@ -133,7 +133,6 @@ fn grundbestand() -> (tempfile::TempDir, gemeinsam::Laufendes) {
 
 // AK 1, AK 2, AK 9 (36 Antworten), AK 12 · US-3
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 36-mal 422 text/plain"]
 async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feldnamen_ab() {
     let (tmp, lauf) = grundbestand();
     let mut rot = Vec::new();
@@ -170,7 +169,6 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
 
 // AK 4 · US-1
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn eine_grenze_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_grenze() {
     let (tmp, lauf) = grundbestand();
     let board = lies(tmp.path(), "boards/entwicklung.md");
@@ -184,7 +182,6 @@ async fn eine_grenze_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_grenze()
 
 // AK 5 · US-2
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn ein_fehlendes_pflichtfeld_wird_mit_400_abgewiesen_und_nennt_das_feld() {
     let (tmp, lauf) = grundbestand();
     let aufgabe = lies(tmp.path(), "aufgaben/0001-eins.md");
@@ -195,7 +192,6 @@ async fn ein_fehlendes_pflichtfeld_wird_mit_400_abgewiesen_und_nennt_das_feld() 
 
 // AK 6
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn ein_unbekannter_wert_einer_aufzaehlung_wird_mit_400_abgewiesen_und_nennt_das_feld() {
     let (tmp, lauf) = grundbestand();
     let rumpf = r#"[{"name": "X", "datum": "2027-10-31", "farbe": "red", "linie": "wellig"}]"#;
@@ -206,7 +202,6 @@ async fn ein_unbekannter_wert_einer_aufzaehlung_wird_mit_400_abgewiesen_und_nenn
 
 // AK 7
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn ein_falscher_typ_im_zweiten_element_nennt_feld_und_stelle_und_bewegt_nichts() {
     let (tmp, lauf) = grundbestand();
     let board = lies(tmp.path(), "boards/entwicklung.md");
@@ -218,7 +213,6 @@ async fn ein_falscher_typ_im_zweiten_element_nennt_feld_und_stelle_und_bewegt_ni
 
 // AK 8 · US-4
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 400 text/plain"]
 async fn kaputtes_json_und_ein_leerer_rumpf_werden_mit_400_und_deutscher_meldung_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     for rumpf in [r#"{"titel": "#, ""] {
@@ -230,7 +224,6 @@ async fn kaputtes_json_und_ein_leerer_rumpf_werden_mit_400_und_deutscher_meldung
 
 // AK 9
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain mit dem gesendeten Wert"]
 async fn die_meldung_wiederholt_den_gesendeten_wert_nicht() {
     let (tmp, lauf) = grundbestand();
     let rumpf = r#"[{"name": "Zu erledigen", "grenze": "Zx9-Inhalt"}]"#;
@@ -241,7 +234,6 @@ async fn die_meldung_wiederholt_den_gesendeten_wert_nicht() {
 
 // AK 10 · US-4
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 415 text/plain"]
 async fn ein_fehlender_oder_falscher_content_type_wird_mit_415_und_deutscher_meldung_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     for art in [None, Some("text/plain")] {
@@ -254,7 +246,6 @@ async fn ein_fehlender_oder_falscher_content_type_wird_mit_415_und_deutscher_mel
 
 // AK 11 · US-4 — hält zugleich die Standardgrenze des Rahmens für JSON-Rümpfe fest (ADR-0003 N3 Punkt 6): 2 MiB gehen durch den Extraktor, 3 MiB nicht
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 413 text/plain"]
 async fn ein_rumpf_von_3_mib_wird_mit_413_und_deutscher_meldung_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     let aufgabe = lies(tmp.path(), "aufgaben/0001-eins.md");
@@ -364,7 +355,6 @@ async fn json_mit_parameter_grossschreibung_oder_json_suffix_wird_angenommen() {
 
 // AK 14 nennt datums_trenner als roh angenommen; gemessen vor dem Fix: getypt, 422 text/plain wie jedes andere Feld — mit dem Fix 400 in der Form
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn ein_datums_trenner_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_das_feld() {
     let (tmp, lauf) = grundbestand();
     let rumpf = r#"[{"name": "Zu erledigen", "datums_trenner": "ja"}]"#;
@@ -374,7 +364,6 @@ async fn ein_datums_trenner_mit_falschem_typ_wird_mit_400_abgewiesen_und_nennt_d
 
 // Der wahlfreie Rumpf von POST …/duplizieren (Option<Json<Zielort>>, nicht unter den 36) geht durch denselben Extraktor
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 und 415 text/plain"]
 async fn der_wahlfreie_rumpf_von_duplizieren_wird_bei_falscher_form_in_der_form_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::POST, "api/aufgaben/1/duplizieren", JSON, r#"{"board": 7}"#, 400).await;
@@ -386,7 +375,6 @@ async fn der_wahlfreie_rumpf_von_duplizieren_wird_bei_falscher_form_in_der_form_
 
 // Eigene Varianten zu AK 10: nur application/json und application/…+json gelten als JSON
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 415 text/plain"]
 async fn ein_content_type_der_nur_aehnlich_heisst_wird_mit_415_abgewiesen() {
     let (tmp, lauf) = grundbestand();
     for art in ["application/jsonx", "text/json", "application/x-www-form-urlencoded", "json", "application/json+xml"] {
@@ -396,7 +384,6 @@ async fn ein_content_type_der_nur_aehnlich_heisst_wird_mit_415_abgewiesen() {
 
 // ADR-0003 N2 „400 bleibt vorn“: der Formfehler entsteht vor dem Handler, auch wenn es das Board nicht gibt
 #[tokio::test]
-#[ignore = "erwartet rot bis B0713: heute 422 text/plain"]
 async fn der_formfehler_geht_dem_unbekannten_board_vor() {
     let (tmp, lauf) = grundbestand();
     let fehler = abgewiesen(tmp.path(), &lauf.adresse, Method::PUT, "api/boards/gibtsnicht/termine", JSON, r#"[{"name": 7}]"#, 400).await;

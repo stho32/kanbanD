@@ -28,6 +28,6 @@ async fn termine_setzen_entfernen_und_beim_bewegen_erhalten() {
     for falsch in [json!([{"name": " ", "datum": "2027-10-31", "farbe": "red"}]), json!([{"name": "X", "datum": "31.10.2027", "farbe": "red"}]), json!([{"name": "X", "datum": "2027-10-31", "farbe": "Rot!"}])] {
         assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/termine", "st", falsch).await.0, 400);
     }
-    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/termine", "st", json!([{"name": "X", "datum": "2027-10-31", "farbe": "red", "linie": "wellig"}])).await.0, 422);
+    assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/termine", "st", json!([{"name": "X", "datum": "2027-10-31", "farbe": "red", "linie": "wellig"}])).await.0, 400);
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/gibtsnicht/termine", "st", json!([])).await.0, 404);
 }

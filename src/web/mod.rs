@@ -9,6 +9,7 @@ use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, Neu
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
+use koerper::JsonKoerper;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
 use tokio::sync::{broadcast, watch};
@@ -247,7 +248,7 @@ async fn zustand(State(app): State<App>) -> Result<Response, Fehler> {
     request_body = crate::dienst::Einrichtung,
     responses((status = 201, description = "Erfolg", body = crate::web::openapi::BoardAngelegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn einrichten(State(app): State<App>, Json(e): Json<Einrichtung>) -> Result<Response, Fehler> {
+async fn einrichten(State(app): State<App>, JsonKoerper(e): JsonKoerper<Einrichtung>) -> Result<Response, Fehler> {
     let slug = blockierend(&app, move |k| k.einrichten(&e)).await?;
     Ok((StatusCode::CREATED, Json(json!({ "board": slug }))).into_response())
 }
@@ -305,7 +306,7 @@ async fn board(State(app): State<App>, Path(slug): Path<String>, Query(q): Query
     request_body = crate::dienst::BoardVerwalten,
     responses((status = 200, description = "Erfolg", body = crate::modell::Board), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent archiviert ein Board mit einer Karte in einer Menschen-Spalte", body = crate::web::openapi::Verboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn board_aendern(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(neu): Json<BoardVerwalten>) -> Result<Response, Fehler> {
+async fn board_aendern(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(neu): JsonKoerper<BoardVerwalten>) -> Result<Response, Fehler> {
     let b = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.board_aendern(&p, &slug, &neu)
@@ -377,7 +378,7 @@ async fn aufgaben(State(app): State<App>, Query(paare): Query<Vec<(String, Strin
     request_body = crate::dienst::NeueAufgabe,
     responses((status = 201, description = "neu angelegt (neu: true)", body = crate::dienst::Angelegt), (status = 200, description = "Karte mit dem Schlüssel gab es schon — vorhanden oder wieder geöffnet (neu: false)", body = crate::dienst::Angelegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn aufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<NeueAufgabe>) -> Result<Response, Fehler> {
+async fn aufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<NeueAufgabe>) -> Result<Response, Fehler> {
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgabe_anlegen(&p, &neu)
@@ -395,7 +396,7 @@ async fn aufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<
     request_body = crate::dienst::Bewegung,
     responses((status = 200, description = "Erfolg", body = crate::dienst::Bewegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
 )]
-async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(bw): Json<Bewegung>) -> Result<Response, Fehler> {
+async fn bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(bw): JsonKoerper<Bewegung>) -> Result<Response, Fehler> {
     let bewegt = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.bewegen(&p, &slug, &bw)
@@ -447,7 +448,7 @@ async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<
     request_body = crate::dienst::NeuesBoard,
     responses((status = 201, description = "Erfolg", body = crate::web::openapi::BoardAngelegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn board_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<NeuesBoard>) -> Result<Response, Fehler> {
+async fn board_anlegen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<NeuesBoard>) -> Result<Response, Fehler> {
     let slug = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.board_anlegen(&p, &neu)
@@ -465,7 +466,7 @@ async fn board_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Ne
     request_body = Vec<crate::modell::SpaltenAenderung>,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Grenze oder Eigentümer geändert — nur Menschen", body = crate::web::openapi::EinstellungVerboten), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn spalten_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(neu): Json<Vec<SpaltenAenderung>>) -> Result<Response, Fehler> {
+async fn spalten_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(neu): JsonKoerper<Vec<SpaltenAenderung>>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.spalten_setzen(&p, &slug, &neu)
@@ -483,7 +484,7 @@ async fn spalten_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     request_body = Vec<crate::modell::Termin>,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn termine_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(neu): Json<Vec<crate::modell::Termin>>) -> Result<Response, Fehler> {
+async fn termine_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(neu): JsonKoerper<Vec<crate::modell::Termin>>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.termine_setzen(&p, &slug, neu)
@@ -506,7 +507,7 @@ struct Start {
     request_body = Start,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn start_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(s): Json<Start>) -> Result<Response, Fehler> {
+async fn start_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(s): JsonKoerper<Start>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.start_setzen(&p, &slug, s.start)
@@ -524,7 +525,7 @@ async fn start_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<St
     request_body = crate::modell::Berichtsfilter,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn berichtsfilter_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(f): Json<crate::modell::Berichtsfilter>) -> Result<Response, Fehler> {
+async fn berichtsfilter_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(f): JsonKoerper<crate::modell::Berichtsfilter>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.berichtsfilter_setzen(&p, &slug, f)
@@ -542,7 +543,7 @@ async fn berichtsfilter_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug)
     request_body = crate::modell::Bestandseinstellung,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn bestand_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(e): Json<crate::modell::Bestandseinstellung>) -> Result<Response, Fehler> {
+async fn bestand_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(e): JsonKoerper<crate::modell::Bestandseinstellung>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.bestand_setzen(&p, &slug, e)
@@ -560,7 +561,7 @@ async fn bestand_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<
     request_body = crate::modell::Fieber,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn fieber_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(f): Json<crate::modell::Fieber>) -> Result<Response, Fehler> {
+async fn fieber_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(f): JsonKoerper<crate::modell::Fieber>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.fieber_setzen(&p, &slug, f)
@@ -598,7 +599,7 @@ struct Fiebernachtrag {
     request_body = Fiebernachtrag,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Neu), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn fieber_ergaenzen(State(app): State<App>, Path(slug): Path<String>, Json(n): Json<Fiebernachtrag>) -> Result<Response, Fehler> {
+async fn fieber_ergaenzen(State(app): State<App>, Path(slug): Path<String>, JsonKoerper(n): JsonKoerper<Fiebernachtrag>) -> Result<Response, Fehler> {
     let neu = blockierend(&app, move |k| k.fieber_ergaenzen(&slug, &n.schluessel, n.tage, &crate::uhr::heute())).await?;
     Ok(Json(json!({ "neu": neu })).into_response())
 }
@@ -625,7 +626,7 @@ async fn fieber_verwerfen(State(app): State<App>, Path(slug): Path<String>) -> R
     request_body = Vec<String>,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(kuerzel): Json<Vec<String>>) -> Result<Response, Fehler> {
+async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(kuerzel): JsonKoerper<Vec<String>>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.bindung_setzen(&p, &slug, &kuerzel)
@@ -668,7 +669,7 @@ async fn personen(State(app): State<App>) -> Result<Response, Fehler> {
     request_body = crate::dienst::Personenangabe,
     responses((status = 201, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art human setzen nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn person_anlegen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<crate::dienst::Personenangabe>) -> Result<Response, Fehler> {
+async fn person_anlegen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(n): JsonKoerper<crate::dienst::Personenangabe>) -> Result<Response, Fehler> {
     let p = blockierend(&app, move |k| {
         let wer = k.handelnder(wer.as_deref())?;
         k.person_anlegen(&wer, &n)
@@ -686,7 +687,7 @@ async fn person_anlegen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<cra
     request_body = crate::dienst::PersonAenderung,
     responses((status = 200, description = "Erfolg", body = crate::modell::Person), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn person_aendern(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, Json(a): Json<crate::dienst::PersonAenderung>) -> Result<Response, Fehler> {
+async fn person_aendern(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, JsonKoerper(a): JsonKoerper<crate::dienst::PersonAenderung>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.person_aendern(p, &kuerzel, &a)).await
 }
 
@@ -713,7 +714,7 @@ async fn person_stilllegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel):
     request_body = crate::modell::Einstellungen,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<Einstellungen>) -> Result<Response, Fehler> {
+async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<Einstellungen>) -> Result<Response, Fehler> {
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.einstellungen_setzen(&p, neu)
@@ -731,8 +732,8 @@ async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, Json(neu): 
     request_body = Option<crate::dienst::Zielort>,
     responses((status = 201, description = "die Kopie", body = crate::dienst::Angelegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn aufgabe_duplizieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, rumpf: Option<Json<Zielort>>) -> Result<Response, Fehler> {
-    let zielort = rumpf.map(|Json(z)| z).unwrap_or_default();
+async fn aufgabe_duplizieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, rumpf: Option<JsonKoerper<Zielort>>) -> Result<Response, Fehler> {
+    let zielort = rumpf.map(|JsonKoerper(z)| z).unwrap_or_default();
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgabe_duplizieren(&p, nr, &zielort)
@@ -790,7 +791,7 @@ async fn aufgabe_verlauf(State(app): State<App>, Path(nr): Path<u32>) -> Result<
     request_body = crate::modell::Aufgabenaenderung,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(aenderung): Json<Aufgabenaenderung>) -> Result<Response, Fehler> {
+async fn aufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(aenderung): JsonKoerper<Aufgabenaenderung>) -> Result<Response, Fehler> {
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgabe_aendern(&p, nr, &aenderung)
@@ -873,7 +874,7 @@ async fn als_person<T: serde::Serialize + Send + 'static>(app: &App, wer: Option
     request_body = NeueTeilaufgabe,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<NeueTeilaufgabe>) -> Result<Response, Fehler> {
+async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(t): JsonKoerper<NeueTeilaufgabe>) -> Result<Response, Fehler> {
     let position = ganze_zahl_ab_null("position", t.position.as_ref())?;
     let erledigt = match &t.erledigt {
         None | Some(serde_json::Value::Null) => false,
@@ -903,7 +904,7 @@ struct NeueTeilaufgabe {
     request_body = crate::dienst::Teilaufgabenaenderung,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn teilaufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(a): Json<Teilaufgabenaenderung>) -> Result<Response, Fehler> {
+async fn teilaufgabe_aendern(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, JsonKoerper(a): JsonKoerper<Teilaufgabenaenderung>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.teilaufgabe_aendern(p, nr, i, &a)).await
 }
 
@@ -928,7 +929,7 @@ async fn teilaufgabe_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, 
     request_body = Text,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Text>) -> Result<Response, Fehler> {
+async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(t): JsonKoerper<Text>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kommentieren(p, nr, &t.text)).await
 }
 
@@ -941,7 +942,7 @@ async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>
     request_body = crate::dienst::Erledigung,
     responses((status = 200, description = "Erfolg", body = crate::dienst::Erledigt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Schlüssel mehrfach vergeben; ein Agent über der Grenze der letzten Spalte bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn erledigen(State(app): State<App>, Wer(wer): Wer, Json(e): Json<crate::dienst::Erledigung>) -> Result<Response, Fehler> {
+async fn erledigen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(e): JsonKoerper<crate::dienst::Erledigung>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.erledigen(p, &e)).await
 }
 
@@ -954,7 +955,7 @@ async fn erledigen(State(app): State<App>, Wer(wer): Wer, Json(e): Json<crate::d
     request_body = crate::dienst::WirkungEingabe,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn wirkung_setzen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(w): Json<crate::dienst::WirkungEingabe>) -> Result<Response, Fehler> {
+async fn wirkung_setzen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(w): JsonKoerper<crate::dienst::WirkungEingabe>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.wirkung_setzen(p, nr, &w)).await
 }
 
@@ -984,7 +985,7 @@ struct Eintritt {
     request_body = Eintritt,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn wirkung_eintritt(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, Json(e): Json<Eintritt>) -> Result<Response, Fehler> {
+async fn wirkung_eintritt(State(app): State<App>, Wer(wer): Wer, Path((nr, i)): Path<(u32, usize)>, JsonKoerper(e): JsonKoerper<Eintritt>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.wirkung_eintritt(p, nr, i, e.an)).await
 }
 
@@ -1041,7 +1042,7 @@ async fn timer_stoppen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32
     request_body = crate::dienst::Zeitnachtrag,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(n): Json<crate::dienst::Zeitnachtrag>) -> Result<Response, Fehler> {
+async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(n): JsonKoerper<crate::dienst::Zeitnachtrag>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zeit_nachtragen(p, nr, &n)).await
 }
 
@@ -1054,7 +1055,7 @@ async fn zeit_nachtragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u
     request_body = crate::dienst::Zeitkorrektur,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, kennung)): Path<(u32, String)>, Json(z): Json<Zeitkorrektur>) -> Result<Response, Fehler> {
+async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Path((nr, kennung)): Path<(u32, String)>, JsonKoerper(z): JsonKoerper<Zeitkorrektur>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zeit_korrigieren(p, nr, &kennung, &z)).await
 }
 
@@ -1171,7 +1172,7 @@ async fn anhang_entfernen(State(app): State<App>, Wer(wer): Wer, Path((nr, name)
     request_body = crate::dienst::NeuerDurchlauf,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn durchlauf_eintragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(n): Json<crate::dienst::NeuerDurchlauf>) -> Result<Response, Fehler> {
+async fn durchlauf_eintragen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(n): JsonKoerper<crate::dienst::NeuerDurchlauf>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.durchlauf_eintragen(p, nr, &n)).await
 }
 
@@ -1294,7 +1295,7 @@ struct StatusWahl {
     request_body = StatusWahl,
     responses((status = 200, description = "Erfolg", body = crate::dienst::WbsGeaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, Json(w): Json<StatusWahl>) -> Result<Response, Fehler> {
+async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): Path<(String, String)>, JsonKoerper(w): JsonKoerper<StatusWahl>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, _| k.wbs_status_setzen(&kuerzel, &id, &w.status)).await
 }
 
@@ -1307,7 +1308,7 @@ async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Path((kuerzel, id)): 
     request_body = crate::wbs_datei::NeuerKnoten,
     responses((status = 201, description = "Erfolg", body = crate::dienst::WbsNeu), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn wbs_knoten_anlegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, Json(neu): Json<crate::wbs_datei::NeuerKnoten>) -> Result<Response, Fehler> {
+async fn wbs_knoten_anlegen(State(app): State<App>, Wer(wer): Wer, Path(kuerzel): Path<String>, JsonKoerper(neu): JsonKoerper<crate::wbs_datei::NeuerKnoten>) -> Result<Response, Fehler> {
     let r = blockierend(&app, move |k| {
         k.handelnder(wer.as_deref())?;
         k.wbs_knoten_anlegen(&kuerzel, &neu)
@@ -1366,7 +1367,7 @@ fn ganze_zahl_ab_null(feld: &str, wert: Option<&serde_json::Value>) -> Result<Op
     request_body = Ablage,
     responses((status = 201, description = "Erfolg", body = crate::web::openapi::SpalteAntwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(a): Json<Ablage>) -> Result<Response, Fehler> {
+async fn auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(a): JsonKoerper<Ablage>) -> Result<Response, Fehler> {
     let index = ganze_zahl_ab_null("index", a.index.as_ref())?;
     let spalte = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
@@ -1520,7 +1521,7 @@ async fn openapi_json() -> Response {
     request_body = crate::dienst::NeueAufgaben,
     responses((status = 201, description = "mindestens ein Eintrag neu", body = Vec<crate::dienst::Angelegt>), (status = 200, description = "alle Einträge gab es schon (neu: false)", body = Vec<crate::dienst::Angelegt>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Json(neu): Json<NeueAufgaben>) -> Result<Response, Fehler> {
+async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<NeueAufgaben>) -> Result<Response, Fehler> {
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgaben_anlegen(&p, &neu)
@@ -1548,7 +1549,7 @@ struct Texte {
     request_body = Texte,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, Json(t): Json<Texte>) -> Result<Response, Fehler> {
+async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Path(nr): Path<u32>, JsonKoerper(t): JsonKoerper<Texte>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.teilaufgaben_anlegen(p, nr, &t.texte)).await
 }
 
@@ -1571,7 +1572,7 @@ struct Ziele {
     request_body = Ziele,
     responses((status = 200, description = "Erfolg", body = crate::dienst::Bewegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
 )]
-async fn mehrere_bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(z): Json<Ziele>) -> Result<Response, Fehler> {
+async fn mehrere_bewegen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(z): JsonKoerper<Ziele>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.mehrere_bewegen(p, &slug, &z.ziele)).await
 }
 
@@ -1590,7 +1591,7 @@ struct Legen {
     request_body = Legen,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, Json(l): Json<Legen>) -> Result<Response, Fehler> {
+async fn mehrere_auf_board_legen(State(app): State<App>, Wer(wer): Wer, Path(slug): Path<String>, JsonKoerper(l): JsonKoerper<Legen>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.mehrere_auf_board_legen(p, &slug, &l.nummern, l.spalte.as_deref())).await
 }
 
@@ -1615,7 +1616,7 @@ struct Aenderungen {
     request_body = Aenderungen,
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Aufgabe>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, Json(a): Json<Aenderungen>) -> Result<Response, Fehler> {
+async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, JsonKoerper(a): JsonKoerper<Aenderungen>) -> Result<Response, Fehler> {
     let liste: Vec<_> = a.aenderungen.into_iter().map(|e| (e.nummer, e.aenderung)).collect();
     als_person(&app, wer, move |k, p| k.mehrere_aendern(p, &liste)).await
 }
@@ -1629,7 +1630,7 @@ async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, Json(a): Json<Ae
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
 )]
-async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {
+async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, true)).await
 }
 
@@ -1642,7 +1643,7 @@ async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, Json(n): Jso
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, Json(n): Json<Nummern>) -> Result<Response, Fehler> {
+async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, false)).await
 }
 
