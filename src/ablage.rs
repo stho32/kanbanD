@@ -24,6 +24,9 @@ impl DefekteDatei {
     }
 }
 
+/// Der Grund einer Aufgabendatei, die kein gültiges UTF-8 ist (R00161) — sie wird nie gelesen, als wäre sie Text.
+const KEIN_UTF8: &str = "Datei ist kein gültiges UTF-8 — als UTF-8 speichern";
+
 #[derive(Debug, Clone)]
 pub struct Ordner {
     wurzel: PathBuf,
@@ -42,6 +45,16 @@ impl Ordner {
         match std::fs::read_to_string(self.wurzel.join(rel)) {
             Ok(t) => Ok(Some(t)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Wie `lies`, nur ohne UTF-8 vorauszusetzen: `Err` trägt die Bytes einer Datei, die kein gültiges UTF-8 ist (R00161).
+    /// „Nicht gefunden“ ist leerer Text, jeder andere Zugriffsfehler bleibt einer.
+    fn lies_bytes(&self, rel: &str) -> io::Result<Result<String, Vec<u8>>> {
+        match std::fs::read(self.wurzel.join(rel)) {
+            Ok(bytes) => Ok(String::from_utf8(bytes).map_err(|e| e.into_bytes())),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Ok(String::new())),
             Err(e) => Err(e),
         }
     }
@@ -88,13 +101,19 @@ impl Ordner {
         Ok((gut, defekt))
     }
 
-    /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare und doppelt nummerierte kommen als defekt zurück — mit den
-    /// Schlüsseln, die sie lesbar tragen (R00157): unlesbare nachsichtig gelesen, doppelt nummerierte streng.
+    /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare, doppelt nummerierte und solche ohne gültiges UTF-8 (R00161)
+    /// kommen als defekt zurück — mit den Schlüsseln, die sie lesbar tragen (R00157): unlesbare nachsichtig gelesen, doppelt nummerierte streng.
     pub fn aufgaben(&self) -> Result<(Vec<Aufgabe>, Vec<DefekteDatei>), Fehler> {
         let mut gut: Vec<Aufgabe> = vec![];
         let mut defekt = vec![];
         for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
-            let text = self.lies(&rel)?.unwrap_or_default();
+            let text = match self.lies_bytes(&rel)? {
+                Ok(text) => text,
+                Err(_bytes) => {
+                    defekt.push(DefekteDatei::neu(rel, KEIN_UTF8));
+                    continue;
+                }
+            };
             match aufgabe::lesen(&format!("{stamm}.md"), &text).map(ohne_abgelaufene) {
                 Ok(a) => match gut.iter().find(|g| g.nummer == a.nummer) {
                     Some(erste) => {

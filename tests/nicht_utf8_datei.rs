@@ -86,7 +86,9 @@ async fn lesbare_karten_bleiben_neben_der_nicht_utf8_datei_bedienbar() {
 
     let (status, r) = senden(Method::POST, &lauf.adresse, "api/boards/fabrik/bewegen", "cl", json!({"nummer": 1, "spalte": "Fertig"})).await;
     assert_eq!(status, 200, "{r}");
-    assert!(gemeinsam::lies(tmp.path(), "boards/fabrik.md").contains("## Fertig\n\n- #1"), "der Zug steht in der Board-Datei");
+    let board = gemeinsam::lies(tmp.path(), "boards/fabrik.md");
+    let (eingang, fertig) = board.split_once("## Fertig").unwrap();
+    assert!(!eingang.contains("#1") && fertig.contains("#1"), "der Zug steht in der Board-Datei: {board}");
     assert_eq!(std::fs::read(tmp.path().join(DATEI)).unwrap(), KAPUTT, "bytegleich");
 }
 
