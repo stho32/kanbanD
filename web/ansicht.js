@@ -356,7 +356,7 @@ function vFensterInhalt(a) {
   const u = S.ui;
   // Titel liest mehrzeilig (ADR-0007 N2): Lesediv nach Muster besch-lesen, Bearbeiten einzeilig im Zustand titelBearbeiten
   const titelFeld = u.titelBearbeiten
-    ? `<input class="titel" data-af="titel" value="${esc(a.titel)}" aria-label="Titel">`
+    ? `<input class="titel" data-af="titel"${vEntwurf(a, TITEL_FELD, a.titel)} aria-label="Titel">`
     : `<div class="titel titel-lesen" data-act="titel-bearbeiten" tabindex="0" role="button" aria-label="Titel bearbeiten" title="Klick bearbeitet">${esc(a.titel)}</div>`;
   const beschreibung = a.beschreibung && !u.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`;
   return `${titelFeld}<div class="abs"><h3>BESCHREIBUNG</h3>${beschreibung}</div>${vFensterAbschnitte(a)}`;
@@ -591,6 +591,8 @@ const HERKUNFT_HILFE = `WBS-Knoten I0001, Anforderung R00014, mit Kürzel der An
 const FENSTER_MELDUNG = 'fenster-meldung';
 /** Kennung des Felds „Neue Herkunft“ an einer Meldung des Aufgabenfensters (`S.ui.fensterFehlerFeld`) und am einen Entwurf (`S.ui.entwurf`). */
 const HERKUNFT_FELD = 'herkunft';
+/** Kennung des Titelfelds an Meldung und Entwurf (R00155 #96). */
+const TITEL_FELD = 'titel';
 /** Wert und Verweis eines Entwurfsfelds — die eine Stelle für alle Felder (ADR-0015 N2, R00155 G-1): die abgelehnte Eingabe
     dieser Aufgabe statt `gezeichnet`, und solange die Meldung das Feld nennt, ungültig mit Verweis auf sie (R00111 AK 1). */
 function vEntwurf(a, feld, gezeichnet = '') {

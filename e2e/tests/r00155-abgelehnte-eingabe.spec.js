@@ -29,7 +29,6 @@ test.describe('R00155 #96: der abgelehnte Titel bleibt im Feld', () => {
 
   for (const [kriterium, taste] of [['96-1/US-6: Titel leeren und speichern (Enter)', 'Enter'], ['96-3: Titel leeren und mit Tab verlassen', 'Tab']]) {
     test(`${kriterium} → das Titelfeld bleibt Eingabefeld, leer, mit Fokus, aria-invalid, describedby verweist auf die vorhandene Meldung; die Datei behält den Titel`, async ({ page }) => {
-      test.fail(true, 'erwartet rot bis B0727');
       const fenster = await titelAbgelehnt(page, taste);
       const feld = page.locator(TITELFELD);
       await expect(feld, 'weiter Eingabefeld').toHaveCount(1);
@@ -51,7 +50,6 @@ test.describe('R00155 #96: der abgelehnte Titel bleibt im Feld', () => {
   }
 
   test('96-2/US-6: Berichtigung — „Abnahme geprüft“ und Enter speichert (ein Commit), Meldung fort, kein Feld mehr ungültig', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0727');
     const fenster = await titelAbgelehnt(page);
     const commits = Number(k.git('rev-list', '--count', 'HEAD'));
     await page.keyboard.type('Abnahme geprüft');

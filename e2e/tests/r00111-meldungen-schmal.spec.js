@@ -190,7 +190,8 @@ test.describe('Handy, 414 px mit Touch', () => {
     await expect(fenster.locator('[role=alert]')).toHaveCount(1);
     expect(k.lies(AUFGABE_1), 'der Titel wurde abgelehnt').toContain('title: Abnahme prüfen');
     await reiter(page, 'Details');
-    await expect(herkunft).toHaveValue('I00');
+    // R00155 G-2 (a): die Ablehnung des Titels nimmt den einen Entwurf des Fensters ein — das nur Getippte steht nicht mehr da
+    await expect(herkunft).toHaveValue('');
     await expect(herkunft).not.toHaveAttribute('aria-invalid');
     await expect(herkunft).not.toHaveAttribute('aria-describedby');
   });

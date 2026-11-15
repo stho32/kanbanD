@@ -715,6 +715,20 @@ async function aufgabeAendern(nummer, aenderung, feld = null) {
   return gelungen;
 }
 
+/** Speichert den Titel der offenen Aufgabe. Eine abgelehnte Eingabe bleibt als der eine Entwurf im Titelfeld stehen:
+    das Feld bleibt Eingabefeld, behält den Fokus und verweist auf die Meldung (ADR-0015 N2, R00155 #96). */
+async function titelSpeichern(wert) {
+  const u = S.ui;
+  const nummer = u.offen;
+  if (ichNoetig()) { u.titelBearbeiten = false; render(); return; }
+  u.entwurf = { nummer, feld: TITEL_FELD, wert };
+  const gelungen = await aufgabeAendern(nummer, { titel: wert }, TITEL_FELD);
+  if (u.offen !== nummer) return;
+  if (gelungen) { u.entwurf = null; u.titelBearbeiten = false; }
+  else { u.titelBearbeiten = true; u.fokus = '[data-af="titel"]'; }
+  render();
+}
+
 /** Schließt den Dialog „Zuständige zuweisen“; Karte bzw. Zeile bekommt den Fokus zurück. */
 function zuweisenSchliessen() {
   const z = S.ui.zuweisen;
@@ -2208,7 +2222,8 @@ document.addEventListener('focusout', e => {
   if (e.target.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
   // Verlassen des Titelfeldes ohne Änderung: wieder das Lesediv zeigen (R00116, Muster Beschreibung :1708)
   if (e.target.dataset && e.target.dataset.af === 'titel' && S.ui.titelBearbeiten) setTimeout(() => {
-    if (S.ui.titelBearbeiten && document.activeElement !== document.querySelector('#fenster [data-af="titel"]')) { S.ui.titelBearbeiten = false; render(); }
+    const titelWartetAufBerichtigung = entwurfswert(S.ui.entwurf, S.ui.offen, TITEL_FELD) !== null;
+    if (S.ui.titelBearbeiten && !titelWartetAufBerichtigung && document.activeElement !== document.querySelector('#fenster [data-af="titel"]')) { S.ui.titelBearbeiten = false; render(); }
   }, 50);
   // Verlassen des Teilaufgaben-Feldes speichert (R00066); nach Enter oder Esc ist teilEdit schon leer
   if (e.target.id === 'teil-edit' && S.ui.teilEdit) { const wert = e.target.value; setTimeout(() => { if (S.ui.teilEdit && document.activeElement !== $('#teil-edit')) act('teil-text', '', wert); }, 0); }
@@ -2289,7 +2304,7 @@ document.addEventListener('change', e => {
   const v = e.target.value;
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
   if (af === 'beschreibung') S.ui.beschreibungBearbeiten = false;
-  if (af === 'titel') S.ui.titelBearbeiten = false;
+  if (af === 'titel') { titelSpeichern(v); return; }
   const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
     : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
   aufgabeAendern(S.ui.offen, aenderung);
