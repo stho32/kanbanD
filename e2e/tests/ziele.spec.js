@@ -152,38 +152,40 @@ test.describe('Teilaufgabe auf der Karte: Text gehört zum Ziel', () => {
 });
 
 test.describe('Klickflächen ohne Knopf tragen eine Rolle und gehen mit der Tastatur', () => {
-  test('Aufgabenfenster #1: Enter auf dem Text der Teilaufgabe „b“ öffnet die Bearbeitung', async ({ page }) => {
+  // R00177: der Text einer Teilaufgabe ist kein Knopf mehr (ein Link darin stünde sonst in einem Knopf) — der
+  // Tastaturweg zum Bearbeiten ist der Stift der Zeile.
+  test('Aufgabenfenster #1: Enter auf dem Stift der Teilaufgabe „b“ öffnet die Bearbeitung', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
-    const text = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true });
-    await text.focus();
+    const stift = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'Teilaufgabe bearbeiten: b', exact: true });
+    await stift.focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#teil-edit')).toHaveValue('b');
     await expect(page.locator('#teil-edit')).toBeFocused();
   });
 
-  test('Aufgabenfenster #1: Leertaste auf dem Text der Teilaufgabe „b“ öffnet die Bearbeitung wie bei jedem Knopf', async ({ page }) => {
+  test('Aufgabenfenster #1: Leertaste auf dem Stift der Teilaufgabe „b“ öffnet die Bearbeitung wie bei jedem Knopf', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(page.locator('#teil-edit')).toHaveCount(0);
-    const text = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true });
-    await text.focus();
+    const stift = page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'Teilaufgabe bearbeiten: b', exact: true });
+    await stift.focus();
     await page.keyboard.press('Space');
     await expect(page.locator('#teil-edit')).toHaveValue('b');
     await expect(page.locator('#teil-edit')).toBeFocused();
   });
 
-  // Nach dem Bearbeiten kehrt der Fokus auf den Text zurück, von dem die Bearbeitung ausging (B0421)
+  // Nach dem Bearbeiten kehrt der Fokus auf den Stift der Zeile zurück, von der die Bearbeitung ausging (B0421, R00177)
   for (const [wie, tasten, erwartet] of [['Esc', ['Escape'], 'b'], ['Enter ohne Änderung', ['Enter'], 'b'], ['Enter nach Änderung', ['End', 'x', 'Enter'], 'bx']]) {
-    test(`Aufgabenfenster #1: nach ${wie} steht der Fokus auf dem Text der Teilaufgabe „${erwartet}“`, async ({ page }) => {
+    test(`Aufgabenfenster #1: nach ${wie} steht der Fokus auf dem Stift der Teilaufgabe „${erwartet}“`, async ({ page }) => {
       await starten(page);
       await fensterOeffnen(page, 1);
-      await page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true }).focus();
+      await page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'Teilaufgabe bearbeiten: b', exact: true }).focus();
       await page.keyboard.press('Enter');
       await expect(page.locator('#teil-edit')).toBeFocused();
       for (const taste of tasten) await page.keyboard.press(taste);
       await expect(page.locator('#teil-edit')).toHaveCount(0);
-      await expect.poll(() => page.evaluate(() => [document.activeElement.dataset.act, document.activeElement.textContent])).toEqual(['teil-bearbeiten', erwartet]);
+      await expect.poll(() => page.evaluate(() => [document.activeElement.dataset.act, document.activeElement.getAttribute('aria-label')])).toEqual(['teil-stift', `Teilaufgabe bearbeiten: ${erwartet}`]);
       await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     });
   }
@@ -191,13 +193,13 @@ test.describe('Klickflächen ohne Knopf tragen eine Rolle und gehen mit der Tast
   test('Aufgabenfenster #1: wer aus der Bearbeitung in ein anderes Feld klickt, behält dort den Fokus', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
-    await page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'b', exact: true }).focus();
+    await page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'Teilaufgabe bearbeiten: b', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.keyboard.press('End');
     await page.keyboard.press('y');
     await page.locator('#teil-neu').click();
     await expect(page.locator('#teil-edit')).toHaveCount(0);
-    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' }).getByRole('button', { name: 'by', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' }).locator('.chk span', { hasText: /^by$/ })).toBeVisible();
     await expect(page.locator('#teil-neu')).toBeFocused();
   });
 

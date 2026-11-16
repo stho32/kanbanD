@@ -131,8 +131,8 @@ test.describe('R00162 AK 2, 3, 6, 8: Lesefläche ohne Aktion, Stift-Knopf auf de
 
   test('AK 8: Klick auf den Titel und auf eine Teilaufgabe öffnet deren Bearbeiten wie bisher', async ({ page }) => {
     const fenster = await fensterVon(page);
-    await fenster.getByRole('button', { name: 'Unterlagen sichten', exact: true }).click();
-    await expect(fenster.getByLabel('Teilaufgabe bearbeiten')).toBeFocused();
+    await fenster.locator('.chk span', { hasText: 'Unterlagen sichten' }).click();
+    await expect(fenster.getByLabel('Teilaufgabe bearbeiten', { exact: true })).toBeFocused();
     await page.keyboard.press('Escape');
     await fenster.getByLabel('Titel bearbeiten', { exact: true }).click();
     await expect(fenster.locator('[data-af="titel"]')).toBeFocused();

@@ -65,22 +65,21 @@ test.describe('AK 3, Schaden (d): Klick auf den Link folgt dem Link — kein Bea
       await starten(page);
       const fenster = await fensterOeffnen(page, 1);
       const schreibend = schreibendeAnfragen(page);
-      const vorher = [k.lies(DATEI_1), commits()];
+      const vorher = [k.lies(DATEI_1), commits(), page.url()];
       const link = page.locator(TEXT).nth(0).locator('a');
       await expect(link).toBeVisible();
 
       const [neueSeite] = await Promise.all([page.context().waitForEvent('page'), link.click(klick)]);
       await neueSeite.waitForLoadState();
       expect(neueSeite.url()).toBe('https://example.org/');
-      expect(await neueSeite.opener(), 'rel=noopener: das neue Fenster kennt seinen Öffner nicht').toBeNull();
+      expect(await neueSeite.evaluate(() => window.opener), 'rel=noopener: das neue Fenster kennt seinen Öffner nicht').toBeNull();
 
       await expect(fenster).toBeVisible();
       await expect(page.locator(FELD)).toHaveCount(0);
       await expect(page.locator(TEXT).nth(0)).toHaveText('siehe https://example.org und wichtig');
       await expect(fenster.getByRole('checkbox', { name: PROBE, exact: true })).toHaveAttribute('aria-checked', 'false');
-      expect(new URL(page.url()).hash, 'die Seite selbst bleibt, wo sie ist').toBe('#/board/entwicklung');
       expect(schreibend).toEqual([]);
-      expect([k.lies(DATEI_1), commits()]).toEqual(vorher);
+      expect([k.lies(DATEI_1), commits(), page.url()], 'Datei, Commits und die Adresse der Seite selbst bleiben').toEqual(vorher);
     });
   }
 });
@@ -121,6 +120,8 @@ test('AK 4: nur Tastatur — Tab führt vom Link zum Stift zum ✕; der Text sel
   await expect(stift(page, 0)).toBeFocused();
   await expect(stift(page, 0)).toHaveAttribute('type', 'button');
   await expect(stift(page, 0)).toHaveAttribute('title', 'Text bearbeiten');
+  expect(await stift(page, 0).evaluate(knopf => getComputedStyle(knopf, '::before').content), 'das Zeichen des Stifts').toBe('"✎"');
+  await expect(zeile, 'der Text der Zeile bleibt Text und ✕').toHaveText('siehe https://example.org und wichtig✕');
   await expect(stift(page, 0)).toHaveAccessibleName('Teilaufgabe bearbeiten: siehe https://example.org und wichtig');
   await page.keyboard.press('Tab');
   await expect(zeile.locator('.x')).toBeFocused();
@@ -235,7 +236,7 @@ test('Schaden (b): der Name des Stifts trägt den Text ohne Markdown-Zeichen und
 
   const attribute = element => element.getAttributeNames().sort();
   expect(await stift(page, 0).evaluate(attribute)).toEqual(['aria-label', 'class', 'data-act', 'data-arg', 'data-halt', 'data-ort', 'title', 'type']);
-  expect(await page.locator(TEXT).nth(0).evaluate(attribute)).toEqual(['class', 'data-act', 'data-arg', 'title']);
+  expect(await page.locator(TEXT).nth(0).evaluate(attribute)).toEqual(['class', 'data-act', 'data-arg']);
   expect(await page.locator(TEXT).nth(0).locator('a').evaluate(attribute)).toEqual(['href', 'rel', 'target']);
   await expect(page.locator(TEXT).nth(0).locator('a')).toHaveAttribute('href', 'https://example.org/?a="1"&b=<2>');
   await expect(page.locator(TEXT).nth(0)).toHaveText('x" onfocus="document.title=1" autofocus <b>k</b> L fett c >');
@@ -255,16 +256,17 @@ function zeichnung(page, stelle) {
 const SO = (deckkraft, zeiger) => ({ deckkraft, zeiger, sichtbar: 'visible', gezeichnet: true });
 
 test.describe('Gestaltung nach D0003 `#markdown-elemente`', () => {
-  test('Stift: in Ruhe unsichtbar und nicht anklickbar, Zeiger auf der Zeile halb, auf dem Stift und bei Fokus voll; 24 px; ein Klick öffnet das Textfeld', async ({ page }) => {
+  test('Stift: in Ruhe unsichtbar, Zeiger auf der Zeile halb, auf dem Stift und bei Fokus voll; 24 px; ein Klick öffnet das Textfeld', async ({ page }) => {
     await starten(page);
     await fensterOeffnen(page, 1);
     await expect(stift(page, 0)).toBeAttached();
     await page.locator('#fenster .mod-kopf').hover({ position: { x: 5, y: 5 } });
-    await expect.poll(() => zeichnung(page, 0), 'Ruhe').toEqual(SO(0, 'none'));
+    // In Ruhe unsichtbar, aber weiter ein Ziel des Zeigers: die Messprobe der Ziele (ADR-0012) verlangt, dass jedes Ziel trifft.
+    await expect.poll(() => zeichnung(page, 0), 'Ruhe').toEqual(SO(0, 'auto'));
 
     await page.locator(TEXT).nth(0).hover({ position: { x: 6, y: 6 } });
     await expect.poll(() => zeichnung(page, 0), 'Zeiger auf der Zeile').toEqual(SO(0.5, 'auto'));
-    expect(await zeichnung(page, 1), 'nur der Stift der gezeigten Zeile').toEqual(SO(0, 'none'));
+    expect(await zeichnung(page, 1), 'nur der Stift der gezeigten Zeile').toEqual(SO(0, 'auto'));
     const kasten = await stift(page, 0).boundingBox();
     expect([kasten.width, kasten.height]).toEqual([24, 24]);
 
@@ -295,7 +297,8 @@ test.describe('Gestaltung nach D0003 `#markdown-elemente`', () => {
     expect(await stil(erledigt.locator('a'), 'textDecorationLine')).toBe('underline');
     expect(await stil(erledigt.locator('a'), 'color')).toBe(await stil(offen.locator('a'), 'color'));
     expect(await stil(erledigt.locator('a'), 'color')).not.toBe(await stil(erledigt, 'color'));
-    expect(await stil(erledigt.locator('code'), 'fontFamily')).toBe(await page.locator('#fenster').evaluate(fenster => getComputedStyle(fenster).getPropertyValue('--kd-mono').trim()));
+    const ohneLeerraum = schriften => schriften.replace(/\s*,\s*/g, ',');
+    expect(ohneLeerraum(await stil(erledigt.locator('code'), 'fontFamily'))).toBe(ohneLeerraum(await page.locator('#fenster').evaluate(fenster => getComputedStyle(fenster).getPropertyValue('--kd-mono').trim())));
   });
 
   test.describe('Touch (kein Hover, grober Zeiger), 375 px', () => {

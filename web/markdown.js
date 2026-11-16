@@ -21,6 +21,10 @@
     return einsetzen(hervorheben(s));
   }
 
+  /** Der Text einer Zeile ohne Markdown-Zeichen, maskiert wie die Ausgabe von `markdownInline` — für zugängliche Namen;
+   *  in einem Attribut braucht er kein weiteres `esc()`. Jede Marke stammt aus dem Renderer, im Text selbst steht kein `<`. */
+  const markdownOhneMarken = text => markdownInline(text).replace(/<[^>]*>/g, '');
+
   /** Zerlegt eine ROHE Zeile an `|` in Zellen (GFM): ein Strich am Rand zählt nicht, `\|` trennt nicht und bleibt ein `|`.
    *  Ein unmaskierter Strich trennt auch mitten in Code oder einer Adresse. Zerlegt wird nie fertiges HTML: erst die
    *  Zelle läuft durch `markdownInline()`, jede mit eigenen Platzhaltern (ADR-0030 Punkte 1 und 5). */
@@ -125,5 +129,5 @@
     return aus.join('');
   }
 
-  Object.assign(ziel, { markdownHtml, markdownInline });
+  Object.assign(ziel, { markdownHtml, markdownInline, markdownOhneMarken });
 })(typeof module !== 'undefined' ? module.exports : window);

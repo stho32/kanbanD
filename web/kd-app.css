@@ -427,6 +427,11 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .chk i{width:13px;height:13px;border:1px solid var(--kd-line-strong);flex:none;display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1;cursor:pointer;background:var(--kd-surface)}
 .chk span{cursor:text;flex:1;align-content:center}
 .chk .teil-edit{flex:1;height:24px}
+/* Text einer Teilaufgabe mit Markdown in der Zeile (R00177): der Link ist dauerhaft unterstrichen und trägt die Zeigehand,
+   der Text daneben die Schreibmarke — ein Klick dort bearbeitet, die Fläche ist so hoch wie ein Ziel (ADR-0012).
+   Erledigt behält der Link Farbe und eigene Linie. */
+.chk .teil-text{min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel);overflow-wrap:anywhere}
+.chk .teil-text a{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .chk.ok span{color:var(--kd-muted);text-decoration:line-through}
 .chk.ok i{background:var(--kd-text);border-color:var(--kd-text);color:var(--kd-surface)}
 .chk .x{height:22px;width:22px}
@@ -791,19 +796,24 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
    visibility oder display. Halb beim Zeigen auf den Abschnitt und ohne Hover (Touch), voll auf dem Stift und bei jedem Fokus.
    Zeichen in --kd-text, damit auch die halbe Stufe 3:1 hält. */
 .abs h3.besch-kopf{min-block-size:var(--kd-ziel);align-items:center;white-space:nowrap}
-.abs .besch-stift{flex:none;margin-left:auto;inline-size:var(--kd-ziel);block-size:var(--kd-ziel);font:400 14px/1 var(--kd-font);letter-spacing:0;color:var(--kd-text);opacity:0;pointer-events:none;transition:opacity .1s}
-.abs:hover .besch-stift{opacity:.5;pointer-events:auto}
-@media (hover:none){.abs .besch-stift{opacity:.5;pointer-events:auto}}
-.abs .besch-stift:hover,.abs .besch-stift:focus{opacity:1;pointer-events:auto}
-.abs .besch-stift:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){.abs .besch-stift{transition:none}}
+/* Derselbe Stift je Zeile einer Teilaufgabe (R00177, Artboard D0003 `#markdown-elemente`): halb, sobald der Zeiger auf seiner
+   Zeile liegt. Anders als an der Beschreibung bleibt er auch in Ruhe ein Ziel des Zeigers (ADR-0012: jedes Ziel trifft). */
+.abs .besch-stift,.chk .teil-stift{flex:none;inline-size:var(--kd-ziel);block-size:var(--kd-ziel);font:400 14px/1 var(--kd-font);letter-spacing:0;color:var(--kd-text);opacity:0;pointer-events:none;transition:opacity .1s}
+.abs .besch-stift{margin-left:auto}
+.chk .teil-stift{pointer-events:auto}
+.chk .teil-stift::before{content:"✎"}
+.abs:hover .besch-stift,.chk:hover .teil-stift{opacity:.5;pointer-events:auto}
+@media (hover:none){.abs .besch-stift,.chk .teil-stift{opacity:.5;pointer-events:auto}}
+.abs .besch-stift:hover,.abs .besch-stift:focus,.chk .teil-stift:hover,.chk .teil-stift:focus{opacity:1;pointer-events:auto}
+.abs .besch-stift:focus-visible,.chk .teil-stift:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.abs .besch-stift,.chk .teil-stift{transition:none}}
 #fenster:focus,#hilfe:focus{outline:none}
 /* Gerenderter Markdown-Text (R00030, R00176; Artboard D0003 `#markdown-elemente`): .md-text trägt die Regeln der Elemente,
    .besch-lesen nur noch den Kasten — so gilt dasselbe Bild überall, wo der Renderer schreibt. */
 .md-text h3,.md-text h4,.md-text h5{margin:.6em 0 .3em;font-size:14px;color:var(--kd-text);letter-spacing:0}
 .md-text p{margin:0 0 .6em}
 .md-text ul,.md-text ol{margin:0 0 .6em;padding-left:20px}
-.md-text code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
+.md-text code,.chk .teil-text code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
 .md-text pre{background:var(--kd-sunken);padding:var(--kd-s3);overflow:auto}
 .md-text pre code{background:none;padding:0}
 .md-text blockquote{margin:0 0 .6em;padding-left:var(--kd-s3);border-left:3px solid var(--kd-line-strong);color:var(--kd-muted)}

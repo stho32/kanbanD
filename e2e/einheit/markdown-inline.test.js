@@ -3,11 +3,17 @@
 // Fremder Text bleibt Text; die Adresse eines Links wird nie formatiert.
 const test = require('node:test');
 const assert = require('node:assert');
-const { markdownHtml, markdownInline } = require('../../web/markdown.js');
+const { markdownHtml, markdownInline, markdownOhneMarken } = require('../../web/markdown.js');
 const paare = require('./markdown-vorher.json');
 const { pruefeInlineStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
 
 const link = (adresse, text) => `<a href="${adresse}" target="_blank" rel="noopener">${text}</a>`;
+
+/** Was in ein Attribut gesetzt wird, trägt nie ein Zeichen, das eine Marke öffnet oder das Attribut schließt. */
+function pruefeOhneMarken(eingabe) {
+  const name = markdownOhneMarken(eingabe);
+  assert.ok(!/[<>"]/.test(name), `ATTRIBUT: ${JSON.stringify(name.slice(0, 160))} aus ${JSON.stringify(eingabe.slice(0, 160))}`);
+}
 
 test('AK 1 Abnahme-Probe der Karte: die Adresse ist ein Link in neuem Fenster, „wichtig“ fett', () => {
   assert.strictEqual(markdownInline('siehe https://example.org und **wichtig**'), `siehe ${link('https://example.org', 'https://example.org')} und <strong>wichtig</strong>`);
@@ -52,12 +58,21 @@ test('zwei Einstiege, ein Kern: eine Zeile ohne Block ergibt in der Beschreibung
   for (const zeile of ZEILEN) assert.strictEqual(markdownHtml(zeile), `<p>${markdownInline(zeile)}</p>`);
 });
 
+test('Schaden (b): der Text ohne Markdown-Zeichen für zugängliche Namen bleibt maskiert', () => {
+  assert.strictEqual(markdownOhneMarken('[Doku](https://example.org/doku) *lesen*, dann `--probe` setzen'), 'Doku lesen, dann --probe setzen');
+  assert.strictEqual(markdownOhneMarken('siehe https://example.org und **wichtig**'), 'siehe https://example.org und wichtig');
+  assert.strictEqual(markdownOhneMarken('a "b" <c> & d'), 'a &quot;b&quot; &lt;c&gt; &amp; d');
+  assert.strictEqual(markdownOhneMarken('x" onfocus="y" [L](https://example.org/?a="1"&b=<2>) <b>k</b>'), 'x&quot; onfocus=&quot;y&quot; L &lt;b&gt;k&lt;/b&gt;');
+  assert.strictEqual(markdownOhneMarken('# x und [x](javascript:document.title=1)'), '# x und x');
+});
+
 test('fester Vergleich als Zeile: jede Eingabe des Bestands hält die Struktur einer Zeile, ganz und Zeile für Zeile', () => {
   let mitMarke = 0;
   for (const paar of paare) {
     for (const eingabe of [paar.eingabe, ...paar.eingabe.split('\n')]) {
       const html = markdownInline(eingabe);
       pruefeInlineStruktur(html, eingabe);
+      pruefeOhneMarken(eingabe);
       if (html.includes('<')) mitMarke++;
     }
   }
@@ -97,6 +112,7 @@ test('Zufallslauf: 6000 Zeilen aus Marken, Adressen und Blockanfängen — jede 
     const html = markdownInline(eingabe);
     pruefeInlineStruktur(html, eingabe);
     for (const adresse of linkAdressen(html)) assert.ok(ERLAUBTE_PROTOKOLLE.includes(protokoll(adresse)), `GEFÄHRLICH: ${JSON.stringify(adresse)} aus ${JSON.stringify(eingabe)}`);
+    pruefeOhneMarken(eingabe);
     if (html.includes('<a ')) mitLink++;
     if (/<(?:strong|em)>/.test(html)) mitHervorhebung++;
     if (html.includes('<code>')) mitCode++;

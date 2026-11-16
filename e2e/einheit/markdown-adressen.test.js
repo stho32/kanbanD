@@ -3,7 +3,7 @@
 // Zeichen ≤ U+0020 oder U+007F enthält. Geprüft wird, wie der Browser die Adresse liest (`new URL`), nicht ihr Aussehen.
 const test = require('node:test');
 const assert = require('node:assert');
-const { markdownHtml, markdownInline } = require('../../web/markdown.js');
+const { markdownHtml, markdownInline, markdownOhneMarken } = require('../../web/markdown.js');
 const { pruefeStruktur, pruefeInlineStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
 
 const KOEDER = 'Köder';
@@ -159,6 +159,7 @@ for (const [name, adresse] of HOECHSTENS_HARMLOS) {
       const eingabe = schreibe(adresse);
       pruefeHarmlos(markdownHtml(eingabe), eingabe);
       pruefeHarmlos(markdownInline(eingabe), eingabe, pruefeInlineStruktur);
+      assert.ok(!/[<>"]/.test(markdownOhneMarken(eingabe)), `der Name aus ${kurz(eingabe)} trägt eine Marke oder schließt ein Attribut`);
     }
   });
 }

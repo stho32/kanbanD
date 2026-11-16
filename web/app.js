@@ -1449,9 +1449,9 @@ function fenstertitel() {
   return fenstertitelName(seite, { zaehler: alleLaufenden().length, wbsStand: S.wbs && prozente(S.wbs.stand).gruen, wbsName: S.wbs && S.wbs.name });
 }
 
-/** Selektor des Texts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück. */
-function textDerTeilaufgabe(index) {
-  return `[role=dialog] [data-act="teil-bearbeiten"][data-arg="${index}"]`;
+/** Selektor des Stifts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück (R00177). */
+function stiftDerTeilaufgabe(index) {
+  return `[role=dialog] .teil-stift[data-arg="${index}"]`;
 }
 
 /** Selektor des Knopfs, der das offene Menü geöffnet hat — Esc gibt ihm den Fokus zurück. */
@@ -1905,12 +1905,13 @@ async function aktion(a, arg, wert) {
         await schreiben('PATCH', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`, { erledigt: !t.erledigt });
         return;
       }
+      case 'teil-stift':
       case 'teil-bearbeiten': if (ichNoetig()) break; u.teilEdit = { nr: u.offen, i: +arg }; u.fokus = '#teil-edit'; break;
       case 'teil-text': {
         const e = u.teilEdit, text = (wert || '').trim();
         u.teilEdit = null;
-        // Mit Enter gespeichert: zurück auf den Text; beim Verlassen per Klick bleibt der Fokus, wo er hingeht
-        if (e && document.activeElement === $('#teil-edit')) u.fokus = textDerTeilaufgabe(e.i);
+        // Mit Enter gespeichert: zurück auf den Stift; beim Verlassen per Klick bleibt der Fokus, wo er hingeht
+        if (e && document.activeElement === $('#teil-edit')) u.fokus = stiftDerTeilaufgabe(e.i);
         const t = e && aufgabe(e.nr) && aufgabe(e.nr).teilaufgaben[e.i];
         if (!t || !text || text === t.text) break;
         // sofort zeigen, geordnet im Hintergrund senden (R00037)
@@ -2759,6 +2760,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('a[href^="vscode:"]')) return;
+  // Ein Link im Text einer Teilaufgabe folgt dem Link: der Klick bearbeitet die Zeile nicht (R00177 AK 3)
+  if (e.target.closest('.teil-text a')) return;
   if (e.target.closest('.menue a[href^="#"]')) { S.ui.pop = null; return; }
   // Mehrfachauswahl (R00065): Strg/Umschalt + Klick wählt, jeder andere Klick außerhalb der Dialoge hebt sie auf
   const kk = S.ui.view === 'board' && e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)');
@@ -2908,7 +2911,6 @@ document.addEventListener('keydown', e => {
   if (radioTaste(e)) return;
   // Enter auf dem Lesediv des Titels öffnet die Bearbeitung (R00116, Muster besch-lesen)
   if (e.key === 'Enter' && t.dataset && t.dataset.act === 'titel-bearbeiten') { e.preventDefault(); act('titel-bearbeiten'); return; }
-  if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }
   // Enter in einem Feld der Berichtsfilter nimmt den Wert an wie ein „change“: hat ein Neuzeichnen den getippten Wert in
   // ein neues Feld gerettet, meldet der Browser dafür kein „change“ — ohne Enter bliebe er ungespeichert.
   if (e.key === 'Enter' && t.dataset && t.dataset.bf) { aenderungNachtragen(t); return; }
@@ -2951,7 +2953,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.ui.pop) { S.ui.fokus = ausloeserDesMenues(); S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
-    if (S.ui.teilEdit) { S.ui.fokus = textDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
+    if (S.ui.teilEdit) { S.ui.fokus = stiftDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen && eingabeVerwerfen(t)) { e.preventDefault(); return; }
     if (S.ui.offen) { verlassenNachholen(); if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }

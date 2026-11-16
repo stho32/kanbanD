@@ -19,7 +19,7 @@ test.describe('R00066', () => {
     const dialog = page.getByRole('dialog');
     const vorher = commits();
     await dialog.locator('.chk span', { hasText: 'Spalten lesn' }).click();
-    const feld = dialog.getByLabel('Teilaufgabe bearbeiten');
+    const feld = dialog.getByLabel('Teilaufgabe bearbeiten', { exact: true });
     await expect(feld).toBeFocused();
     await expect(feld).toHaveValue('Spalten lesn');
     expect(k.lies('aufgaben/0001-eins.md')).toContain('- [ ] Spalten lesn');
@@ -30,7 +30,7 @@ test.describe('R00066', () => {
     await expect.poll(commits).toBe(vorher + 1);
     // auch ein erledigter Text lässt sich bearbeiten und bleibt erledigt; Verlassen des Feldes speichert
     await dialog.locator('.chk span', { hasText: 'Board lesen' }).click();
-    await dialog.getByLabel('Teilaufgabe bearbeiten').fill('Board ganz lesen');
+    await dialog.getByLabel('Teilaufgabe bearbeiten', { exact: true }).fill('Board ganz lesen');
     await dialog.getByLabel('Neue Teilaufgabe').click();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('- [x] Board ganz lesen\n');
   });
@@ -38,10 +38,10 @@ test.describe('R00066', () => {
   test('US-2: Esc verwirft, das Fenster bleibt offen', async ({ page }) => {
     const dialog = page.getByRole('dialog', { name: 'Aufgabe #1' });
     await dialog.locator('.chk span', { hasText: 'Spalten lesn' }).click();
-    await dialog.getByLabel('Teilaufgabe bearbeiten').fill('verworfen');
+    await dialog.getByLabel('Teilaufgabe bearbeiten', { exact: true }).fill('verworfen');
     await page.keyboard.press('Escape');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByLabel('Teilaufgabe bearbeiten')).toHaveCount(0);
+    await expect(dialog.getByLabel('Teilaufgabe bearbeiten', { exact: true })).toHaveCount(0);
     await expect(dialog.locator('.chk span', { hasText: 'Spalten lesn' })).toBeVisible();
     expect(k.lies('aufgaben/0001-eins.md')).toContain('- [ ] Spalten lesn');
   });

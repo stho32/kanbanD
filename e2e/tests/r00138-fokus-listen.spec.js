@@ -57,7 +57,7 @@ test.describe('R00138 fremde Listenänderung', () => {
 
   test('US-1: auch die bearbeitbare Zeile hält über ihren Inhalt, nicht über die Stelle (#40)', async ({ page }) => {
     await fensterAuf(page, bestand());
-    const zweiZeile = page.getByRole('button', { name: 'zwei', exact: true });
+    const zweiZeile = page.getByRole('button', { name: 'Teilaufgabe bearbeiten: zwei', exact: true }); // der Stift der Zeile (R00177)
     await zweiZeile.focus();
     await expect(zweiZeile).toBeFocused();
 
@@ -82,7 +82,7 @@ test.describe('R00138 fremde Listenänderung', () => {
 
   test('US-2 (#134): bei doppeltem Inhalt hält auch die bearbeitbare Zeile nichts — der Fokus fällt auf #teil-neu, nie auf „dritte“', async ({ page }) => {
     await fensterAuf(page, bestand({ teilaufgaben: ['gleich', 'gleich', 'dritte'] }));
-    const zweiteGleich = page.locator('#fenster .chk [data-act="teil-bearbeiten"]').nth(1);
+    const zweiteGleich = page.locator('#fenster .chk .teil-stift').nth(1); // der Stift der Zeile (R00177)
     await zweiteGleich.focus();
     await expect(zweiteGleich).toBeFocused();
 
@@ -90,9 +90,9 @@ test.describe('R00138 fremde Listenänderung', () => {
     expect(entfernt.status()).toBe(200);
 
     // Nicht über die Stelle gehalten: sonst stünde der Fokus auf der Zeile von „dritte“, und die nächste Eingabe bearbeitete sie.
-    await expect(page.getByRole('button', { name: 'dritte', exact: true })).not.toBeFocused();
+    await expect(page.getByRole('button', { name: 'Teilaufgabe bearbeiten: dritte', exact: true })).not.toBeFocused();
     await expect(page.locator('#teil-neu')).toBeFocused();
-    expect(await page.evaluate(() => document.activeElement.matches('#fenster .chk [data-act="teil-bearbeiten"]'))).toBe(false);
+    expect(await page.evaluate(() => document.activeElement.matches('#fenster .chk .teil-stift'))).toBe(false);
     expect(teilaufgabenDerDatei(k)).toEqual(['gleich', 'dritte']);
   });
 
@@ -112,14 +112,14 @@ test.describe('R00138 fremde Listenänderung', () => {
 
   test('US-1 (#134 A1): auch die bearbeitbare Zeile fällt bei fremdem Textwechsel in den Abschnitt', async ({ page }) => {
     await fensterAuf(page, bestand());
-    const zweiZeile = page.getByRole('button', { name: 'zwei', exact: true });
+    const zweiZeile = page.getByRole('button', { name: 'Teilaufgabe bearbeiten: zwei', exact: true }); // der Stift der Zeile (R00177)
     await zweiZeile.focus();
     await expect(zweiZeile).toBeFocused();
 
     const geaendert = await page.request.patch(k.adresse + 'api/aufgaben/1/teilaufgaben/1', { ...ALS_CL, data: { text: 'zweix' } });
     expect(geaendert.status()).toBe(200);
 
-    await expect(page.getByRole('button', { name: 'zweix', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Teilaufgabe bearbeiten: zweix', exact: true })).toBeVisible();
     await expect(page.locator('#teil-neu')).toBeFocused();
   });
 

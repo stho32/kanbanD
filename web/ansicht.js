@@ -460,10 +460,19 @@ function vKommentare(a) {
   const me = ichPerson();
   return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><p>${esc(k.text).replace(/\n/g, '<br>')}</p><span class="mono">${esc(per(k.wer).name)} · ${esc(zeitpunktLang(k.zeitpunkt))}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
 }
-/** Kästchen hakt ab, Klick auf den Text bearbeitet ihn (R00066), Ziehen ordnet um (R00067). */
+/** Lesesicht des Texts einer Teilaufgabe (R00177, Artboard D0003 `#markdown-elemente`): in der Zeile formatiert, ohne Rolle
+    und ohne Tab-Halt — ein Link darin stünde sonst in einem Knopf (ADR-0030 Punkt 8). Ein Klick neben einen Link bearbeitet
+    den Rohtext; für die Tastatur steht dahinter der Stift, auf ihn kehrt der Fokus nach dem Bearbeiten zurück. Sein
+    Zeichen kommt aus dem CSS: der Text der Zeile bleibt der Text der Teilaufgabe. */
+function vTeilLesen(t, j) {
+  const text = `<span class="teil-text" data-act="teil-bearbeiten" data-arg="${j}">${markdownInline(t.text)}</span>`;
+  const stift = `<button type="button" class="btn btn-sym teil-stift" data-act="teil-stift" data-arg="${j}" data-halt="teil:${esc(t.text)}" data-ort="#teil-neu" title="Text bearbeiten" aria-label="Teilaufgabe bearbeiten: ${markdownOhneMarken(t.text)}"></button>`;
+  return text + stift;
+}
+/** Kästchen hakt ab, Klick auf den Text oder der Stift bearbeitet ihn (R00066, R00177), Ziehen ordnet um (R00067). */
 function vTeilaufgaben(a) {
   const ok = a.teilaufgaben.filter(t => t.erledigt).length;
-  return `<div class="abs"><h3>TEILAUFGABEN <span class="mono">${ok}/${a.teilaufgaben.length}</span></h3>${a.teilaufgaben.map((t, j) => `<div class="chk${t.erledigt ? ' ok' : ''}" data-teil="${j}" draggable="${!((S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j)}"><i data-act="teil" data-arg="${j}" data-halt="teil-haken:${esc(t.text)}" role="checkbox" aria-checked="${t.erledigt}" aria-label="${esc(t.text)}">${t.erledigt ? '✓' : ''}</i>${(S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j ? `<input class="inp teil-edit" id="teil-edit" value="${esc(t.text)}" data-enter="teil-text" data-arg="${j}" aria-label="Teilaufgabe bearbeiten">` : `<span data-act="teil-bearbeiten" data-arg="${j}" data-halt="teil:${esc(t.text)}" data-ort="#teil-neu" role="button" tabindex="0" title="Text bearbeiten">${esc(t.text)}</span>`}<button class="btn btn-sym x" data-act="teil-weg" data-arg="${j}" data-halt="teil-weg:${esc(t.text)}" data-ort="#teil-neu" title="entfernen" aria-label="Teilaufgabe ${esc(t.text)} entfernen">✕</button></div>`).join('')}<input class="inp add" placeholder="+ Teilaufgabe · Enter" data-enter="teil-neu" id="teil-neu" data-mehrfach="teil" aria-label="Neue Teilaufgabe"></div>`;
+  return `<div class="abs"><h3>TEILAUFGABEN <span class="mono">${ok}/${a.teilaufgaben.length}</span></h3>${a.teilaufgaben.map((t, j) => `<div class="chk${t.erledigt ? ' ok' : ''}" data-teil="${j}" draggable="${!((S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j)}"><i data-act="teil" data-arg="${j}" data-halt="teil-haken:${esc(t.text)}" role="checkbox" aria-checked="${t.erledigt}" aria-label="${esc(t.text)}">${t.erledigt ? '✓' : ''}</i>${(S.ui.teilEdit || {}).nr === a.nummer && S.ui.teilEdit.i === j ? `<input class="inp teil-edit" id="teil-edit" value="${esc(t.text)}" data-enter="teil-text" data-arg="${j}" aria-label="Teilaufgabe bearbeiten">` : vTeilLesen(t, j)}<button class="btn btn-sym x" data-act="teil-weg" data-arg="${j}" data-halt="teil-weg:${esc(t.text)}" data-ort="#teil-neu" title="entfernen" aria-label="Teilaufgabe ${esc(t.text)} entfernen">✕</button></div>`).join('')}<input class="inp add" placeholder="+ Teilaufgabe · Enter" data-enter="teil-neu" id="teil-neu" data-mehrfach="teil" aria-label="Neue Teilaufgabe"></div>`;
 }
 function vFensterSeite(a) {
   const rs = laufende(a), meins = rs.find(z => z.wer === S.ich), me = ichPerson();
