@@ -143,7 +143,8 @@ fn termine_lesen(v: Option<&Value>) -> Result<Vec<Termin>, Formatfehler> {
         })
 }
 
-/// `fever:` — `{buffer, percentile, week, yellow: [bei 0 %, bei 100 %], red: […]}`; fehlende Werte sind der Standard (R00078).
+/// `fever:` — `{buffer, percentile, week, yellow: [bei 0 %, bei 100 %], red: […], resolution, target-column, from-column}`; fehlende Werte
+/// sind der Standard (R00078); unbekannte Schlüssel sind kein Fehler.
 fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     let mut f = Fieber::default();
     let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(f) };
@@ -176,6 +177,7 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
         f.rot = r;
     }
     f.zielspalte = yaml::text(m, "target-column");
+    f.vonspalte = yaml::text(m, "from-column");
     if let Some(a) = yaml::text(m, "resolution") {
         f.aufloesung = FIEBER_AUFLOESUNGEN.iter().find(|(_, n)| *n == a).map(|(t, _)| *t).ok_or_else(|| Formatfehler(format!("fever: resolution „{a}“ ist nicht day, week oder month")))?;
     }
@@ -263,6 +265,9 @@ fn fieber_zeile(f: &Fieber) -> Option<String> {
     }
     if let Some(z) = &f.zielspalte {
         teile.push(format!("target-column: {}", yaml::skalar(z)));
+    }
+    if let Some(v) = &f.vonspalte {
+        teile.push(format!("from-column: {}", yaml::skalar(v)));
     }
     (!teile.is_empty()).then(|| format!("fever: {{{}}}\n", teile.join(", ")))
 }
@@ -702,7 +707,7 @@ mod tests {
     fn start_fieber_und_zieltermin_rundlauf() {
         let mut b = beispiel();
         b.start = Some("2026-09-01".into());
-        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()), aufloesung: 30 };
+        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()), vonspalte: None, aufloesung: 30 };
         b.termine = vec![Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: true }];
         let t = schreiben(&b, datei);
         assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95], resolution: month, target-column: In Arbeit}\n---\n"), "{t}");
@@ -711,6 +716,23 @@ mod tests {
         let ohne = lesen("b", "## A\n").unwrap();
         assert_eq!((ohne.start, ohne.fieber), (None, Fieber::default()));
         assert!(!schreiben(&beispiel(), datei).contains("fever"), "Standard wird nicht geschrieben");
+    }
+
+    /// R00167 AK 3a und ADR-0027 N3 Punkt 6: ohne `from-column` zeichengleich, mit ihm ein Rundlauf hinter `target-column`.
+    #[test]
+    fn von_spalte_rundlauf_ohne_und_mit_from_column() {
+        let ohne = "---\nfever: {buffer: 20, target-column: In Arbeit}\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n";
+        let gelesen = lesen("entwicklung", ohne).unwrap();
+        assert_eq!(gelesen.fieber.vonspalte, None);
+        assert_eq!(schreiben(&gelesen, datei), ohne, "ohne Wahl kein neuer Schlüssel");
+        let mit = ohne.replace("target-column: In Arbeit}", "target-column: In Arbeit, from-column: Zu erledigen}");
+        let gelesen = lesen("entwicklung", &mit).unwrap();
+        assert_eq!(gelesen.fieber.vonspalte.as_deref(), Some("Zu erledigen"));
+        assert_eq!(schreiben(&gelesen, datei), mit);
+        let nur_von = lesen("entwicklung", "---\nfever: {from-column: \"Abnahme: extern\"}\n---\n## A\n").unwrap();
+        assert_eq!(nur_von.fieber.vonspalte.as_deref(), Some("Abnahme: extern"));
+        assert!(schreiben(&nur_von, datei).starts_with("---\nfever: {from-column: \"Abnahme: extern\"}\n---\n"), "ein Name mit Doppelpunkt bleibt ein Skalar");
+        assert!(lesen("b", "---\nfever: {from-column: \" \"}\n---\n## A\n").unwrap_err().0.contains("Von-Spalte"));
     }
 
     #[test]

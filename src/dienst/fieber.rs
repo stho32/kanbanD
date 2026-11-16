@@ -41,6 +41,7 @@ impl Kanban {
     pub fn fieber_setzen(&self, wer: &Person, slug: &str, neu: Fieber) -> Result<bool, Fehler> {
         let mut neu = neu;
         neu.zielspalte = neu.zielspalte.map(|z| z.trim().to_string());
+        neu.vonspalte = neu.vonspalte.map(|v| v.trim().to_string());
         neu.pruefen().map_err(Fehler::Ungueltig)?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
@@ -50,7 +51,8 @@ impl Kanban {
         let einheit = if neu.woche == 5 { "Arbeitstage" } else { "Kalendertage" };
         let puffer = neu.puffer.map(|p| format!("Puffer {p} {einheit}")).unwrap_or_else(|| "ohne Puffer".into());
         let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{}“", crate::nachricht::wert(z))).unwrap_or_default();
-        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}", crate::nachricht::wert(&b.titel), neu.perzentil);
+        let von = neu.vonspalte.as_deref().map(|v| format!(", Zugang ab „{}“", crate::nachricht::wert(v))).unwrap_or_default();
+        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}{von}", crate::nachricht::wert(&b.titel), neu.perzentil);
         b.fieber = neu;
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
