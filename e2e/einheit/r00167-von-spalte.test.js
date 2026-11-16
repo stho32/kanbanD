@@ -66,7 +66,7 @@ test('R00167 B0816 (AK 3b): ohne Von-Wahl rechnen Abgang, Burndown, Kumulativer 
   assert.deepStrictEqual(berichteDesBoards({ fieber: { zielspalte: null } }).bestand, VOR_DER_KARTE, 'ein Board-Objekt ohne das Feld (älterer Stand)');
 });
 
-test('R00167 B0816 (AK 3b): mit Von-Wahl „Arbeit“ ändert sich allein der Zugang des Durchsatzes (3·0·0 → 0·2·0) — der Abgang bleibt Zahl für Zahl, alles andere ist wie vor der Karte', { todo: 'rot bis B0817: der Durchsatz kennt noch keinen Zugang' }, () => {
+test('R00167 B0816 (AK 3b): mit Von-Wahl „Arbeit“ ändert sich allein der Zugang des Durchsatzes (3·0·0 → 0·2·0) — der Abgang bleibt Zahl für Zahl, alles andere ist wie vor der Karte', () => {
   const ohne = berichteDesBoards(board({})), mit = berichteDesBoards(board({ vonspalte: 'Arbeit' }));
   assert.deepStrictEqual(mit.bestand, VOR_DER_KARTE);
   assert.deepStrictEqual(ohne.zugang, { jePeriode: [3, 0, 0], gesamt: 3, durchschnitt: 1 });
@@ -79,6 +79,69 @@ test('R00167 B0816 (ADR-0027 N3 Punkt 4): zielblock(), durchsatzZiel() ohne Para
     assert.deepStrictEqual(berichteDesBoards(board({ vonspalte })).bestand, VOR_DER_KARTE, `Von-Spalte ${vonspalte}`);
   }
   assert.deepStrictEqual(B.durchsatzZiel(beispiel(), undefined), { art: 'spalte', name: 'Erledigt', i: 2, stufe: null });
+});
+
+/* ── B0817 durchsatz() rechnet den Zugang je Periode (ADR-0027 N3 Punkt 5) ── */
+const zahlen = d => ({ zugang: d.perioden.map(p => p.zugang), abgang: d.perioden.map(p => p.anzahl), summen: [d.zugangGesamt, d.gesamt] });
+const durchsatz = (von, bew = beispiel(), f = {}, start = null) => B.durchsatz(bew, filter(f), mitDatei, JETZT, start, 'tag', null, von);
+
+test('R00167 B0817 (AK 1, Abnahme der Karte #157): von = Arbeit ergibt Zugang 0·2·0 (Summe 2) und Abgang 0·0·1 (Summe 1); von = Backlog Zugang 3·0·0 — Ø je Tag 2 : 3, 3 : 3 und 1 : 3', () => {
+  const arbeit = durchsatz('Arbeit'), backlog = durchsatz(null);
+  assert.deepStrictEqual(zahlen(arbeit), { zugang: [0, 2, 0], abgang: [0, 0, 1], summen: [2, 1] });
+  assert.deepStrictEqual(zahlen(backlog), { zugang: [3, 0, 0], abgang: [0, 0, 1], summen: [3, 1] });
+  assert.deepStrictEqual([arbeit.zugangDurchschnitt, arbeit.durchschnitt], [2 / 3, 1 / 3]);
+  assert.deepStrictEqual([backlog.zugangDurchschnitt, backlog.durchschnitt], [1, 1 / 3]);
+  assert.deepStrictEqual(zahlen(durchsatz('Backlog')), zahlen(backlog), 'die erste Spalte als Wahl ist die Vorgabe');
+  assert.deepStrictEqual(zahlen(B.durchsatz(beispiel(), filter({}), mitDatei, JETZT, null, 'tag')), zahlen(backlog), 'ohne den Parameter gilt die Vorgabe');
+});
+
+test('R00167 B0817 (AK 4): ein Rückläufer zählt einmal — #2 geht am 04.11. zurück in den Backlog und wieder nach Arbeit, der Zugang am 04.11. bleibt 0', () => {
+  const nurRuecklaeufer = { spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: [beispiel().aufgaben[1]] };
+  assert.deepStrictEqual(zahlen(durchsatz('Arbeit', nurRuecklaeufer)), { zugang: [0, 1, 0], abgang: [0, 0, 0], summen: [1, 0] });
+  assert.deepStrictEqual(zahlen(durchsatz(null, nurRuecklaeufer)).zugang, [1, 0, 0], 'auch der Rückzug in die erste Spalte zählt nicht erneut');
+});
+
+test('R00167 B0817 (AK 7): `reporting.forecast: false` an #1 nimmt sie aus beiden Balken — von = Arbeit Zugang 0·1·0, Abgang 0·0·0; „Ausgenommen“ bleibt die Zahl des Abgangs', () => {
+  const bew = beispiel();
+  bew.aufgaben[0].reporting = { forecast: false };
+  const d = durchsatz('Arbeit', bew);
+  assert.deepStrictEqual(zahlen(d), { zugang: [0, 1, 0], abgang: [0, 0, 0], summen: [1, 0] });
+  assert.strictEqual(d.ausgenommen, 1);
+  bew.aufgaben[0].reporting = undefined;
+  bew.aufgaben[1].reporting = { forecast: false };
+  assert.strictEqual(durchsatz('Arbeit', bew).ausgenommen, 0, 'eine ausgenommene Aufgabe, die das Ziel nicht erreicht hat, zählt wie vor der Karte nicht in „Ausgenommen“');
+});
+
+test('R00167 B0817 (AK 7): Berichtsfilter, Zeitraum und „Rechnen ab“ wirken auf Zugang und Abgang gleich', () => {
+  const nurAnna = nummer => ({ klasse: null, zustaendige: [nummer === 2 ? 'an' : 'st'], labels: [] });
+  const gefiltert = B.durchsatz(beispiel(), filter({ personen: ['an'] }), nurAnna, JETZT, null, 'tag', null, 'Arbeit');
+  assert.deepStrictEqual(zahlen(gefiltert), { zugang: [0, 1, 0], abgang: [0, 0, 0], summen: [1, 0] }, 'Personenfilter: nur #2');
+  assert.deepStrictEqual(zahlen(durchsatz('Arbeit', beispiel(), {}, '2026-11-04')), { zugang: [0], abgang: [1], summen: [0, 1] }, 'Rechnen ab 04.11.: der Zugang vom 03.11. liegt davor');
+  assert.deepStrictEqual(zahlen(durchsatz(null, beispiel(), { zeitraum: 'eigen', von: '2026-11-03', bis: '2026-11-04' })), { zugang: [0, 0], abgang: [0, 1], summen: [0, 1] }, 'Zeitraum 03.–04.11.: angelegt wurde am 02.11.');
+});
+
+test('R00167 B0817 (AK 10): eine direkt in der Zielspalte angelegte Aufgabe zählt in Zugang und Abgang derselben Periode — 04.11. Zugang 1 · Abgang 2, bei von = Backlog wie bei von = Arbeit', () => {
+  const bew = beispiel();
+  bew.aufgaben.push({ nummer: 4, wechsel: [z(4, 'Erledigt')] });
+  assert.deepStrictEqual(zahlen(durchsatz('Arbeit', bew)), { zugang: [0, 2, 1], abgang: [0, 0, 2], summen: [3, 2] });
+  assert.deepStrictEqual(zahlen(durchsatz(null, bew)), { zugang: [3, 0, 1], abgang: [0, 0, 2], summen: [4, 2] });
+});
+
+test('R00167 B0817 (AK 6): eine Von-Spalte, die es nicht gibt, rechnet ab der ersten Spalte; ohne Bewegung gibt es weder Zugang noch Abgang', () => {
+  assert.deepStrictEqual(zahlen(durchsatz('Abnahme')), zahlen(durchsatz(null)));
+  const leer = durchsatz('Arbeit', { spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: [] });
+  assert.deepStrictEqual([leer.perioden, leer.gesamt, leer.durchschnitt, leer.zugangGesamt, leer.zugangDurchschnitt], [[], 0, null, 0, null]);
+});
+
+test('R00167 B0817: mit Phasen zählt das erste Erreichen der ersten Spalte der Phase oder einer Spalte rechts davon; ohne Wahl die erste Spalte des Boards', () => {
+  const bew = { ...mitPhasen(), aufgaben: [
+    { nummer: 1, wechsel: [z(2, 'Eingang'), z(3, 'Entwicklertest'), z(4, 'Erledigt')] },
+    { nummer: 2, wechsel: [z(2, 'Eingang'), z(4, 'Abnahme')] },
+    { nummer: 3, wechsel: [z(3, 'Entwicklung')] },
+  ] };
+  assert.deepStrictEqual(zahlen(durchsatz('Entwicklertest', bew)), { zugang: [0, 1, 1], abgang: [0, 0, 1], summen: [2, 1] });
+  assert.deepStrictEqual(zahlen(durchsatz('Entwicklung', bew)).zugang, [0, 2, 1]);
+  assert.deepStrictEqual(zahlen(durchsatz(null, bew)).zugang, [2, 1, 0]);
 });
 
 /* ── B0814 Von-Block des Boards an einer Stelle auflösen (ADR-0027 N3 Punkt 4) ── */

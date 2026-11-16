@@ -414,10 +414,14 @@
       Phase, mit `zielblock` der gewählte Block oder rechts davon, R00166) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
       [von, bis) des Filters — „Rechnen ab“ schneidet den Anfang, die Messbasis wirkt nicht, die angebrochene letzte
       Periode zählt bis heute. `reporting.forecast: false` nimmt aus (zählt in `ausgenommen`); ist das Ziel ganz
-      ausgeschlossen, gibt es keine Aussage (`zielAusgeschlossen`, keine Perioden). Ø = Gesamt ÷ dargestellte Perioden. */
-  function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD, zielblock = null) {
+      ausgeschlossen, gibt es keine Aussage (`zielAusgeschlossen`, keine Perioden). Ø = Gesamt ÷ dargestellte Perioden.
+      `anzahl`, `gesamt`, `durchschnitt` und `ausgenommen` sind der Abgang. Daneben der Zugang (R00167, ADR-0027 N3 Punkt 5) in
+      `zugang` je Periode, `zugangGesamt` und `zugangDurchschnitt`: je Aufgabe einmal, in der Periode, in der sie den Von-Block
+      `vonspalte` (Vorgabe: die erste Spalte) oder eine Spalte rechts davon erstmals erreicht — Rückläufer zählen nicht erneut;
+      Zeitfenster, Filter und `reporting.forecast` wirken auf beide gleich. */
+  function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD, zielblock = null, vonspalte = null) {
     const ziel = durchsatzZiel(bew, bew.phasen, zielblock);
-    const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
+    const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, zugangGesamt: 0, zugangDurchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
     if (!bew.spalten.length) return leer;
     if (zielSpalten(bew, ziel).every(s => f.ohneSpalten.includes(s))) return { ...leer, zielAusgeschlossen: true };
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
@@ -426,16 +430,21 @@
     const von = Math.max(tag(erste), g.von), bis = Math.min(g.bis, tag(jetzt, 1));
     if (!(bis > von)) return leer;
     const perioden = [];
-    for (let p = periodeStart(von, einheit); p < bis; p = periodeEnde(p, einheit)) perioden.push({ von: p, bis: periodeEnde(p, einheit), anzahl: 0 });
-    let gesamt = 0, ausgenommen = 0;
+    for (let p = periodeStart(von, einheit); p < bis; p = periodeEnde(p, einheit)) perioden.push({ von: p, bis: periodeEnde(p, einheit), anzahl: 0, zugang: 0 });
+    /** Die Periode eines Zeitpunkts im Zeitfenster; null = nie erreicht oder außerhalb. */
+    const periodeZu = t => t == null || t < von || t >= bis ? null : perioden.find(x => t >= x.von && t < x.bis) || null;
+    const zugangAb = vonblock(bew, f, vonspalte).ab;
+    let gesamt = 0, zugangGesamt = 0, ausgenommen = 0;
     for (const a of bew.aufgaben) {
-      const t = ankunftIm(a, bew, ziel);
-      if (t == null || t < von || t >= bis || !aufgabePasst(f, aufgabeZu(a.nummer))) continue;
-      if (!zaehltImBericht(a, 'forecast')) { ausgenommen++; continue; }
-      const p = perioden.find(x => t >= x.von && t < x.bis);
-      if (p) { p.anzahl++; gesamt++; }
+      const abgang = periodeZu(ankunftIm(a, bew, ziel)), zugang = periodeZu(erreicht(a.wechsel, bew.spalten, zugangAb));
+      if (!abgang && !zugang) continue;
+      if (!aufgabePasst(f, aufgabeZu(a.nummer))) continue;
+      if (!zaehltImBericht(a, 'forecast')) { if (abgang) ausgenommen++; continue; }
+      if (abgang) { abgang.anzahl++; gesamt++; }
+      if (zugang) { zugang.zugang++; zugangGesamt++; }
     }
-    return { einheit, perioden, gesamt, durchschnitt: perioden.length ? gesamt / perioden.length : null, ausgenommen, zielAusgeschlossen: false, ziel };
+    const je = summe => perioden.length ? summe / perioden.length : null;
+    return { einheit, perioden, gesamt, durchschnitt: je(gesamt), zugangGesamt, zugangDurchschnitt: je(zugangGesamt), ausgenommen, zielAusgeschlossen: false, ziel };
   }
 
   /* ── Durchlaufzeit (R00045) ── */
