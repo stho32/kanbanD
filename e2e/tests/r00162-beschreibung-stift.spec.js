@@ -240,3 +240,58 @@ test.describe('R00162 AK 4, 5: Sichtbarkeit und Zielgröße des Stifts', () => {
     });
   });
 });
+
+test.describe('R00162 AK 7: nach dem Bearbeiten über den Stift liegt der Fokus wieder auf dem Stift, nie auf BODY', () => {
+  /** Textfeld über den Stift geöffnet, Schreibmarke am Ende; der Zeiger liegt danach außerhalb des Abschnitts. */
+  async function ueberDenStiftBearbeiten(page) {
+    await fensterVon(page);
+    await page.locator(LESEFLAECHE).hover();
+    await page.locator(STIFT).click();
+    await expect(page.locator(TEXTFELD)).toBeFocused();
+    await page.keyboard.press('Control+End');
+    await page.locator('#fenster .mod-kopf').hover({ position: { x: 5, y: 5 } });
+  }
+  /** Zurück im Lesen mit dem Fokus auf dem Stift — der bei Fokus voll sichtbar ist, auch ohne Zeiger. */
+  async function fokusAmStift(page) {
+    await expect(page.locator(TEXTFELD)).toHaveCount(0);
+    await expect(page.locator(STIFT)).toBeFocused();
+    await expect.poll(async () => (await zeichnung(page)).deckkraft, 'voll sichtbar auf dem Rückweg').toBe(1);
+  }
+
+  test('AK 7/US-3: „ Zusatz“ anhängen, Strg+Enter → gespeichert, formatiert gezeigt, Fokus auf dem Stift', async ({ page }) => {
+    await ueberDenStiftBearbeiten(page);
+    await page.keyboard.type(' Zusatz');
+    await page.keyboard.press('Control+Enter');
+    await expect(page.locator(LESEFLAECHE)).toHaveText('Erster Absatz mit Verweis Zusatz');
+    await expect(page.locator(LESEFLAECHE).getByRole('link', { name: 'Verweis' })).toHaveAttribute('href', 'https://example.org');
+    await expect.poll(() => k.lies(DATEI_1)).toContain(`${MARKDOWN} Zusatz\n`);
+    await fokusAmStift(page);
+  });
+
+  test('AK 7: Verlassen ohne Änderung (Strg+Enter im unveränderten Feld) → Lesefläche unverändert, Fokus auf dem Stift', async ({ page }) => {
+    await ueberDenStiftBearbeiten(page);
+    await page.keyboard.press('Control+Enter');
+    await expect(page.locator(LESEFLAECHE)).toHaveText('Erster Absatz mit Verweis');
+    await fokusAmStift(page);
+    expect(k.lies(DATEI_1)).toBe(BESTAND[DATEI_1]);
+  });
+
+  test('AK 7/US-3: Esc nach einer Änderung → Beschreibung unverändert, Fokus auf dem Stift, nichts geschrieben', async ({ page }) => {
+    await ueberDenStiftBearbeiten(page);
+    await page.keyboard.type(' Zusatz');
+    await page.keyboard.press('Escape');
+    await expect(page.locator(LESEFLAECHE)).toHaveText('Erster Absatz mit Verweis');
+    await fokusAmStift(page);
+    expect(k.lies(DATEI_1)).toBe(BESTAND[DATEI_1]);
+  });
+
+  // AK 7 „Eingabe verwerfen“: r00155-eingabe-verwerfen.spec.js 54B-5 (Tipp) und 54-13 Variante Beschreibung (ohne Zeiger) — Fokus am Stift.
+
+  test('AK 7, Abgrenzung: wer das Feld mit Tab verlässt, behält sein Ziel — der Fokus wird nicht an den Stift zurückgeholt', async ({ page }) => {
+    await ueberDenStiftBearbeiten(page);
+    await page.keyboard.press('Tab');
+    await expect(page.locator(LESEFLAECHE)).toBeVisible();
+    const aktiv = await page.evaluate(() => ({ body: document.activeElement === document.body, stift: document.activeElement.matches('[data-act="beschreibung-bearbeiten"]') }));
+    expect(aktiv, 'der Fokus steht auf dem nächsten Ziel der Tab-Folge').toEqual({ body: false, stift: false });
+  });
+});

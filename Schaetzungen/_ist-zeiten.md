@@ -635,3 +635,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #161 R00162 (Beschreibung über das Stift-Symbol bearbeiten) | B0770 Probe rot am heutigen Stand | Standard | 0,3-0,8h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #161 R00162 (Beschreibung über das Stift-Symbol bearbeiten) | B0771 Lesefläche als reiner Text, Stift-Knopf auf der Zeile „BESCHREIBUNG“ | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #161 R00162 (Beschreibung über das Stift-Symbol bearbeiten) | B0772 Sichtbarkeit und Zielgröße des Stifts | Standard | 0,5-1,5h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #161 R00162 (Beschreibung über das Stift-Symbol bearbeiten) | B0773 Fokus-Rückweg an den Stift und mitziehende Tests | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |

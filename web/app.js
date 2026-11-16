@@ -792,6 +792,11 @@ const BEARBEITUNGSMODUS = {
   titel: { zustand: 'titelBearbeiten', ausloeser: '[data-act="titel-bearbeiten"]' },
   beschreibung: { zustand: 'beschreibungBearbeiten', ausloeser: '[data-act="beschreibung-bearbeiten"]' },
 };
+/** Nach dem Bearbeiten der Beschreibung fiele der Fokus auf BODY (Strg+Enter): das nächste Zeichnen gibt ihn ihrem Auslöser,
+    dem Stift (R00162 AK 7). Wer mit Tab oder Klick weiterging, behält sein Ziel. */
+function fokusNachBeschreibung() {
+  if (document.activeElement === document.body) S.ui.fokus = BEARBEITUNGSMODUS.beschreibung.ausloeser;
+}
 
 /** Verwirft, was das Feld des Aufgabenfensters an Entwurf oder Bearbeitungsmodus hat — ohne Schreibweg (ADR-0010 N9):
     der Wert geht auf den gezeichneten Stand zurück, bevor das Feld verlassen wird, sein Entwurf und die Meldung dazu
@@ -2367,7 +2372,7 @@ function feldVerlassen(feld) {
   // Verlassen eines Felds meldet den getippten Wert nach, für den noch kein „change“ gewirkt hat (R00103, R00155 54-13)
   if (!S.neuzeichnen) aenderungNachtragen(feld);
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
-  if (feld.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; render(); } }, 50);
+  if (feld.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; fokusNachBeschreibung(); render(); } }, 50);
   // Verlassen des Titelfeldes ohne Änderung: wieder das Lesediv zeigen (R00116, Muster Beschreibung :1708)
   if (feld.dataset && feld.dataset.af === 'titel' && S.ui.titelBearbeiten) setTimeout(() => {
     const titelWartetAufBerichtigung = entwurfswert(S.ui.entwurf, S.ui.offen, TITEL_FELD) !== null;
@@ -2460,7 +2465,7 @@ document.addEventListener('change', e => {
   if (!af || !S.ui.offen) return;
   const v = e.target.value;
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
-  if (af === 'beschreibung') S.ui.beschreibungBearbeiten = false;
+  if (af === 'beschreibung') { S.ui.beschreibungBearbeiten = false; setTimeout(fokusNachBeschreibung, 0); }
   if (af === 'titel') { abschicken(e.target, () => titelSpeichern(v)); return; }
   const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
     : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
