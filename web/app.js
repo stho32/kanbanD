@@ -1155,6 +1155,7 @@ function render() {
   if ($('#main').dataset.sicht === sicht) bereiche.push($('#main'));
   if ($('#over').dataset.offen === String(S.ui.offen || '')) bereiche.push($('#over'));
   const rollen = bereiche.flatMap(bereich => rollstaende(bereich));
+  const gezogen = bereiche.flatMap(bereich => gezogeneHoehen(bereich, 'textarea.besch'));
   // Karten und Zeilen führt die Tastatur über fokusKarte und fokusZeile — dort ist das Ziel ausdrücklich
   const zielGefuehrt = Boolean(aktiv && aktiv.matches && aktiv.matches('.ka[data-id], tr[data-zeile]'));
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
@@ -1183,6 +1184,7 @@ function render() {
     S.neuzeichnen = false;
   }
   hinweisEinpassen();
+  gezogeneHoehenSetzen(gezogen);
   rollstaendeSetzen(rollen);
   sperrenMarkieren();
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });

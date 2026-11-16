@@ -81,6 +81,25 @@
     }
   }
 
+  /**
+   * Von Hand gezogene Höhen der Textfelder `selektor` im Bereich (R00175): der Browser schreibt sie beim Ziehen als
+   * `style.height` ans Feld. Je mit Schlüssel; Felder ohne Schlüssel fallen weg.
+   */
+  function gezogeneHoehen(bereich, selektor) {
+    const gezogen = [...bereich.querySelectorAll(selektor)].filter(feld => feld.style.height);
+    return gezogen
+      .map(feld => ({ bereich, schluessel: schluesselIm(feld, bereich), hoehe: feld.style.height }))
+      .filter(stand => stand.schluessel);
+  }
+
+  /** Setzt die gezogenen Höhen auf die nach dem Neuzeichnen wiedergefundenen Felder — vor den Scrollständen, die an der Höhe hängen. */
+  function gezogeneHoehenSetzen(staende) {
+    for (const stand of staende) {
+      const feld = wiedergefunden(stand.bereich, stand.schluessel);
+      if (feld) feld.style.height = stand.hoehe;
+    }
+  }
+
   const EINGABEFELD = /^(INPUT|TEXTAREA|SELECT)$/;
   const SCHALTER = /^(checkbox|radio)$/;
 
@@ -99,7 +118,7 @@
     return feld.value !== gezeichneterWert(feld);
   }
 
-  /** Das fokussierte Element in einem der Bereiche: Schlüssel und — nur bei Eingabefeldern — Wert, ob geändert, Auswahl; sonst null. */
+  /** Das fokussierte Element in einem der Bereiche: Schlüssel und — nur bei Eingabefeldern — Wert, ob geändert, Auswahl, Rollstand im Feld; sonst null. */
   function fokusstand(aktiv, bereiche) {
     if (!aktiv) return null;
     const bereich = bereiche.find(kandidat => kandidat && kandidat.contains(aktiv));
@@ -107,9 +126,9 @@
     const schluesselDesElements = schluesselIm(aktiv, bereich);
     if (!schluesselDesElements) return null;
     // Der Ort des Abschnitts (data-ort), an den der Fokus fällt, wenn der Schlüssel unter dem Menschen verschwindet
-    const stand = { bereich, schluessel: schluesselDesElements, ort: aktiv.dataset.ort || null, wert: null, geaendert: false, von: null, bis: null };
+    const stand = { bereich, schluessel: schluesselDesElements, ort: aktiv.dataset.ort || null, wert: null, geaendert: false, von: null, bis: null, rollstandOben: null };
     if (!EINGABEFELD.test(aktiv.tagName)) return stand;
-    return { ...stand, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd') };
+    return { ...stand, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd'), rollstandOben: aktiv.scrollTop };
   }
 
   /** Cursor- oder Auswahlgrenze; Felder ohne Textauswahl (Datum, Auswahlliste) haben keine. */
@@ -117,7 +136,7 @@
     try { return feld[name]; } catch (_) { return null; }
   }
 
-  /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl. Wahr, wenn das Element wiedergefunden ist. */
+  /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl, dann der Rollstand im Feld. Wahr, wenn das Element wiedergefunden ist. */
   function fokusSetzen(stand) {
     const feld = wiedergefunden(stand.bereich, stand.schluessel);
     if (!feld) return false;
@@ -129,6 +148,8 @@
     if (typeof stand.von === 'number' && typeof stand.bis === 'number') {
       try { feld.setSelectionRange(stand.von, stand.bis); } catch (_) { /* Feldtyp ohne Textauswahl */ }
     }
+    // Der Rollstand im Feld hängt am getippten Wert: gesetzt vor dem Zurücksetzen, endet er am kürzeren gezeichneten Text (R00175)
+    if (stand.geaendert && typeof stand.rollstandOben === 'number') feld.scrollTop = stand.rollstandOben;
     return true;
   }
 
@@ -208,5 +229,5 @@
     return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungAufschieben, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, gezogeneHoehen, gezogeneHoehenSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungAufschieben, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);
