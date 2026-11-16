@@ -1,0 +1,535 @@
+[
+ {
+  "name": "Test: Elemente gemischt",
+  "eingabe": "# T\n\n**a** *b* `c`\n- x\n- y",
+  "ausgabe": "<h3>T</h3><p><strong>a</strong> <em>b</em> <code>c</code></p><ul><li>x</li><li>y</li></ul>"
+ },
+ {
+  "name": "Test: geordnete Liste",
+  "eingabe": "1. a\n2. b",
+  "ausgabe": "<ol><li>a</li><li>b</li></ol>"
+ },
+ {
+  "name": "Test: Absätze und Umbruch",
+  "eingabe": "a\nb\n\nc",
+  "ausgabe": "<p>a<br>b</p><p>c</p>"
+ },
+ {
+  "name": "Test: Zitat",
+  "eingabe": "> z",
+  "ausgabe": "<blockquote>z</blockquote>"
+ },
+ {
+  "name": "Test: Codeblock",
+  "eingabe": "```\nlet a = 1 < 2;\n```",
+  "ausgabe": "<pre><code>let a = 1 &lt; 2;</code></pre>"
+ },
+ {
+  "name": "Test: Überschrift ohne Verschiebung",
+  "eingabe": "## H",
+  "stufe": 0,
+  "ausgabe": "<h2>H</h2>"
+ },
+ {
+  "name": "Test: leer",
+  "eingabe": "",
+  "ausgabe": ""
+ },
+ {
+  "name": "Test: Link mit &",
+  "eingabe": "[Doku](https://x.de/a?b=1&c=2)",
+  "ausgabe": "<p><a href=\"https://x.de/a?b=1&amp;c=2\" target=\"_blank\" rel=\"noopener\">Doku</a></p>"
+ },
+ {
+  "name": "Test: nackte Adresse",
+  "eingabe": "siehe https://x.de",
+  "ausgabe": "<p>siehe <a href=\"https://x.de\" target=\"_blank\" rel=\"noopener\">https://x.de</a></p>"
+ },
+ {
+  "name": "Test: javascript: ohne Link",
+  "eingabe": "[x](javascript:alert(1))",
+  "ausgabe": "<p>x)</p>"
+ },
+ {
+  "name": "Test: script bleibt Text",
+  "eingabe": "<script>alert(1)</script>",
+  "ausgabe": "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>"
+ },
+ {
+  "name": "Test: Attribut-Ausbruch",
+  "eingabe": "[a\"b](x\" onmouseover=\"y)",
+  "ausgabe": "<p>[a&quot;b](x&quot; onmouseover=&quot;y)</p>"
+ },
+ {
+  "name": "Test: Code schützt vor fett",
+  "eingabe": "`**kein fett**`",
+  "ausgabe": "<p><code>**kein fett**</code></p>"
+ },
+ {
+  "name": "PO: Überschrift #/##/###",
+  "eingabe": "# Eins\n## Zwei\n### Drei",
+  "ausgabe": "<h3>Eins</h3><h4>Zwei</h4><h5>Drei</h5>"
+ },
+ {
+  "name": "PO: Überschrift ####",
+  "eingabe": "#### Vier",
+  "ausgabe": "<p>#### Vier</p>"
+ },
+ {
+  "name": "PO: fett/kursiv *",
+  "eingabe": "**fett** und *kursiv*",
+  "ausgabe": "<p><strong>fett</strong> und <em>kursiv</em></p>"
+ },
+ {
+  "name": "PO: kursiv _ / fett __",
+  "eingabe": "_kursiv_ und __fett__",
+  "ausgabe": "<p>_kursiv_ und __fett__</p>"
+ },
+ {
+  "name": "PO: durchgestrichen",
+  "eingabe": "~~weg~~",
+  "ausgabe": "<p>~~weg~~</p>"
+ },
+ {
+  "name": "PO: Inline-Code",
+  "eingabe": "ein `code` hier",
+  "ausgabe": "<p>ein <code>code</code> hier</p>"
+ },
+ {
+  "name": "PO: Codeblock mit Sprache",
+  "eingabe": "```js\nconst a = 1 < 2;\n```",
+  "ausgabe": "<pre><code>const a = 1 &lt; 2;</code></pre>"
+ },
+ {
+  "name": "PO: Liste ungeordnet",
+  "eingabe": "- a\n- b",
+  "ausgabe": "<ul><li>a</li><li>b</li></ul>"
+ },
+ {
+  "name": "PO: Liste geordnet",
+  "eingabe": "1. a\n2. b",
+  "ausgabe": "<ol><li>a</li><li>b</li></ol>"
+ },
+ {
+  "name": "PO: Liste geschachtelt",
+  "eingabe": "- a\n  - a1\n  - a2\n- b",
+  "ausgabe": "<ul><li>a</li><li>a1</li><li>a2</li><li>b</li></ul>"
+ },
+ {
+  "name": "PO: Checkliste",
+  "eingabe": "- [ ] offen\n- [x] fertig",
+  "ausgabe": "<ul><li>[ ] offen</li><li>[x] fertig</li></ul>"
+ },
+ {
+  "name": "PO: Link",
+  "eingabe": "[kanban](https://example.org/x?a=1&b=2)",
+  "ausgabe": "<p><a href=\"https://example.org/x?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener\">kanban</a></p>"
+ },
+ {
+  "name": "PO: nackte URL",
+  "eingabe": "siehe https://example.org/pfad",
+  "ausgabe": "<p>siehe <a href=\"https://example.org/pfad\" target=\"_blank\" rel=\"noopener\">https://example.org/pfad</a></p>"
+ },
+ {
+  "name": "PO: Link javascript:",
+  "eingabe": "[x](javascript:alert(1))",
+  "ausgabe": "<p>x)</p>"
+ },
+ {
+  "name": "PO: Zitat zweizeilig",
+  "eingabe": "> zitiert\n> zweite Zeile",
+  "ausgabe": "<blockquote>zitiert</blockquote><blockquote>zweite Zeile</blockquote>"
+ },
+ {
+  "name": "PO: Trennlinie",
+  "eingabe": "oben\n\n---\n\nunten",
+  "ausgabe": "<p>oben</p><p>---</p><p>unten</p>"
+ },
+ {
+  "name": "PO: Bild",
+  "eingabe": "![alt](https://example.org/b.png)",
+  "ausgabe": "<p>!<a href=\"https://example.org/b.png\" target=\"_blank\" rel=\"noopener\">alt</a></p>"
+ },
+ {
+  "name": "PO: Tabelle GFM",
+  "eingabe": "| Spalte | Wert |\n|:---|---:|\n| **a** | 1 |\n| `b` | 2 |",
+  "ausgabe": "<p>| Spalte | Wert |<br>|:---|---:|<br>| <strong>a</strong> | 1 |<br>| <code>b</code> | 2 |</p>"
+ },
+ {
+  "name": "PO: rohes HTML",
+  "eingabe": "<b>fett</b> <script>alert(1)</script> <img src=x onerror=alert(1)>",
+  "ausgabe": "<p>&lt;b&gt;fett&lt;/b&gt; &lt;script&gt;alert(1)&lt;/script&gt; &lt;img src=x onerror=alert(1)&gt;</p>"
+ },
+ {
+  "name": "Adresse: http",
+  "eingabe": "[a](http://example.org/)",
+  "ausgabe": "<p><a href=\"http://example.org/\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: https mit Pfad, Abfrage, Anker",
+  "eingabe": "[a](https://example.org/p/q.html?x=1&y=2#teil)",
+  "ausgabe": "<p><a href=\"https://example.org/p/q.html?x=1&amp;y=2#teil\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: Schema groß geschrieben",
+  "eingabe": "[a](HTTPS://EXAMPLE.ORG/A)",
+  "ausgabe": "<p><a href=\"HTTPS://EXAMPLE.ORG/A\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: mailto",
+  "eingabe": "[Post](mailto:jemand@example.org)",
+  "ausgabe": "<p><a href=\"mailto:jemand@example.org\" target=\"_blank\" rel=\"noopener\">Post</a></p>"
+ },
+ {
+  "name": "Adresse: mailto mit Betreff",
+  "eingabe": "[Post](mailto:jemand@example.org?subject=Hallo%20Welt)",
+  "ausgabe": "<p><a href=\"mailto:jemand@example.org?subject=Hallo%20Welt\" target=\"_blank\" rel=\"noopener\">Post</a></p>"
+ },
+ {
+  "name": "Adresse: vscode",
+  "eingabe": "[öffnen](vscode://file/home/x/datei.rs:12)",
+  "ausgabe": "<p><a href=\"vscode://file/home/x/datei.rs:12\" target=\"_blank\" rel=\"noopener\">öffnen</a></p>"
+ },
+ {
+  "name": "Adresse: relativ ab Wurzel",
+  "eingabe": "[a](/api/zustand)",
+  "ausgabe": "<p><a href=\"/api/zustand\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: relativ Datei",
+  "eingabe": "[Anforderung](Anforderungen/R00030-beschreibung-als-markdown.md)",
+  "ausgabe": "<p><a href=\"Anforderungen/R00030-beschreibung-als-markdown.md\" target=\"_blank\" rel=\"noopener\">Anforderung</a></p>"
+ },
+ {
+  "name": "Adresse: relativ aufwärts",
+  "eingabe": "[a](../Dokumentation/ADRs/0030.md)",
+  "ausgabe": "<p><a href=\"../Dokumentation/ADRs/0030.md\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: nur Anker",
+  "eingabe": "[a](#abschnitt)",
+  "ausgabe": "<p><a href=\"#abschnitt\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: nur Abfrage",
+  "eingabe": "[a](?ansicht=board)",
+  "ausgabe": "<p><a href=\"?ansicht=board\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: ohne Schema, mit Rechner",
+  "eingabe": "[a](//example.org/x)",
+  "ausgabe": "<p><a href=\"//example.org/x\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: Rechner mit Port liest sich als Schema, kein Link",
+  "eingabe": "[a](localhost:8080/x)",
+  "ausgabe": "<p>a</p>"
+ },
+ {
+  "name": "Adresse: ftp bleibt Text",
+  "eingabe": "[a](ftp://example.org/datei)",
+  "ausgabe": "<p>a</p>"
+ },
+ {
+  "name": "Adresse: tel bleibt Text",
+  "eingabe": "[a](tel:+49301234567)",
+  "ausgabe": "<p>a</p>"
+ },
+ {
+  "name": "Adresse: file bleibt Text",
+  "eingabe": "[a](file:///etc/hosts)",
+  "ausgabe": "<p>a</p>"
+ },
+ {
+  "name": "Adresse: data bleibt Text",
+  "eingabe": "[a](data:text/html,x)",
+  "ausgabe": "<p>a</p>"
+ },
+ {
+  "name": "Adresse: Leerzeichen ergibt keinen Link",
+  "eingabe": "[a](zwei worte)",
+  "ausgabe": "<p>[a](zwei worte)</p>"
+ },
+ {
+  "name": "Adresse: Prozentzeichen und Umlaute",
+  "eingabe": "[a](https://example.org/gr%C3%B6%C3%9Fe/größe)",
+  "ausgabe": "<p><a href=\"https://example.org/gr%C3%B6%C3%9Fe/größe\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Adresse: zwei Links in einer Zeile",
+  "eingabe": "[a](https://example.org/1) und [b](/zwei)",
+  "ausgabe": "<p><a href=\"https://example.org/1\" target=\"_blank\" rel=\"noopener\">a</a> und <a href=\"/zwei\" target=\"_blank\" rel=\"noopener\">b</a></p>"
+ },
+ {
+  "name": "Adresse: Link in Liste",
+  "eingabe": "- [a](https://example.org/1)\n- siehe https://example.org/2",
+  "ausgabe": "<ul><li><a href=\"https://example.org/1\" target=\"_blank\" rel=\"noopener\">a</a></li><li>siehe <a href=\"https://example.org/2\" target=\"_blank\" rel=\"noopener\">https://example.org/2</a></li></ul>"
+ },
+ {
+  "name": "Adresse: Link in Überschrift und Zitat",
+  "eingabe": "## [a](https://example.org/h)\n> [b](x.md)",
+  "ausgabe": "<h4><a href=\"https://example.org/h\" target=\"_blank\" rel=\"noopener\">a</a></h4><blockquote><a href=\"x.md\" target=\"_blank\" rel=\"noopener\">b</a></blockquote>"
+ },
+ {
+  "name": "Adresse: Link mit fettem Text",
+  "eingabe": "[**wichtig**](https://example.org/w)",
+  "ausgabe": "<p><a href=\"https://example.org/w\" target=\"_blank\" rel=\"noopener\"><strong>wichtig</strong></a></p>"
+ },
+ {
+  "name": "Adresse: Stern in der Adresse (heutiger Stand, ADR-0030 Punkt 5 ändert ihn)",
+  "eingabe": "[a](https://example.org/a*b*c)",
+  "ausgabe": "<p><a href=\"https://example.org/a<em>b</em>c\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+ },
+ {
+  "name": "Nackt: am Zeilenanfang",
+  "eingabe": "https://example.org/start und Text",
+  "ausgabe": "<p><a href=\"https://example.org/start\" target=\"_blank\" rel=\"noopener\">https://example.org/start</a> und Text</p>"
+ },
+ {
+  "name": "Nackt: http",
+  "eingabe": "alt: http://example.org/alt",
+  "ausgabe": "<p>alt: <a href=\"http://example.org/alt\" target=\"_blank\" rel=\"noopener\">http://example.org/alt</a></p>"
+ },
+ {
+  "name": "Nackt: in Klammern",
+  "eingabe": "Quelle (https://example.org/q) genannt",
+  "ausgabe": "<p>Quelle (<a href=\"https://example.org/q\" target=\"_blank\" rel=\"noopener\">https://example.org/q</a>) genannt</p>"
+ },
+ {
+  "name": "Nackt: mit Abfrage und &",
+  "eingabe": "https://example.org/s?a=1&b=2",
+  "ausgabe": "<p><a href=\"https://example.org/s?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener\">https://example.org/s?a=1&amp;b=2</a></p>"
+ },
+ {
+  "name": "Nackt: Punkt am Satzende gehört heute zur Adresse",
+  "eingabe": "Siehe https://example.org/x.",
+  "ausgabe": "<p>Siehe <a href=\"https://example.org/x.\" target=\"_blank\" rel=\"noopener\">https://example.org/x.</a></p>"
+ },
+ {
+  "name": "Nackt: groß geschrieben bleibt Text",
+  "eingabe": "HTTPS://EXAMPLE.ORG",
+  "ausgabe": "<p>HTTPS://EXAMPLE.ORG</p>"
+ },
+ {
+  "name": "Nackt: ohne Leerraum davor bleibt Text",
+  "eingabe": "x=https://example.org",
+  "ausgabe": "<p>x=https://example.org</p>"
+ },
+ {
+  "name": "Nackt: in spitzen Klammern bleibt Text",
+  "eingabe": "<https://example.org/x>",
+  "ausgabe": "<p>&lt;https://example.org/x&gt;</p>"
+ },
+ {
+  "name": "Nackt: mailto bleibt Text",
+  "eingabe": "mailto:jemand@example.org",
+  "ausgabe": "<p>mailto:jemand@example.org</p>"
+ },
+ {
+  "name": "Nackt: im Code bleibt Text",
+  "eingabe": "`https://example.org/code`",
+  "ausgabe": "<p><code>https://example.org/code</code></p>"
+ },
+ {
+  "name": "Nackt: im Codeblock bleibt Text",
+  "eingabe": "```\nhttps://example.org/block\n```",
+  "ausgabe": "<pre><code>https://example.org/block</code></pre>"
+ },
+ {
+  "name": "Bestand: Befund mit Fundstellen",
+  "eingabe": "Aus dem Code-Review (A2, Sollte). Die Knöpfe sind über die Listenposition adressiert (data-arg = Index, web/ansicht.js:215/251). Der gehaltene Fokus landet nach dem Entfernen auf dem Nachfolger; ein zweites Enter entfernt ihn.\n\nAbnahme-Probe (heute rot): Fokus auf „Zeile zwei entfernen“, eine fremde Änderung entfernt „eins“ → Fokus liegt nicht auf „Zeile drei entfernen“.\n\nVorschlag: stabiler Zeilenschlüssel (data-halt) oder zerstörende Knöpfe nicht halten.",
+  "ausgabe": "<p>Aus dem Code-Review (A2, Sollte). Die Knöpfe sind über die Listenposition adressiert (data-arg = Index, web/ansicht.js:215/251). Der gehaltene Fokus landet nach dem Entfernen auf dem Nachfolger; ein zweites Enter entfernt ihn.</p><p>Abnahme-Probe (heute rot): Fokus auf „Zeile zwei entfernen“, eine fremde Änderung entfernt „eins“ → Fokus liegt nicht auf „Zeile drei entfernen“.</p><p>Vorschlag: stabiler Zeilenschlüssel (data-halt) oder zerstörende Knöpfe nicht halten.</p>"
+ },
+ {
+  "name": "Bestand: Absatz, Liste, Absatz",
+  "eingabe": "Aus zwei Reviews, alle vorbestehend.\n\n- Per Tab fokussierte Karte: nach Live-Ereignis BODY (app.js:448).\n- Nach Öffnen per Enter steht der Fokus auf BODY (APG Dialog: Fokus ins Fenster).\n- Schließen nach Öffnen per Maus → BODY.\n\nDazu der Altbestand: kein aria-modal, Reiter nicht fokussierbar.",
+  "ausgabe": "<p>Aus zwei Reviews, alle vorbestehend.</p><ul><li>Per Tab fokussierte Karte: nach Live-Ereignis BODY (app.js:448).</li><li>Nach Öffnen per Enter steht der Fokus auf BODY (APG Dialog: Fokus ins Fenster).</li><li>Schließen nach Öffnen per Maus → BODY.</li></ul><p>Dazu der Altbestand: kein aria-modal, Reiter nicht fokussierbar.</p>"
+ },
+ {
+  "name": "Bestand: fette Vorspänne",
+  "eingabe": "**Herkunft:** Frage vom 2026-11-16, wörtlich: „Ist das schon umgesetzt?“\n**Ziel:** Tabellen werden als Tabelle gezeichnet.\n**Nicht Teil:** Bilder, rohes HTML.",
+  "ausgabe": "<p><strong>Herkunft:</strong> Frage vom 2026-11-16, wörtlich: „Ist das schon umgesetzt?“<br><strong>Ziel:</strong> Tabellen werden als Tabelle gezeichnet.<br><strong>Nicht Teil:</strong> Bilder, rohes HTML.</p>"
+ },
+ {
+  "name": "Bestand: Code mit Unterstrichen und Sternen",
+  "eingabe": "Die Spalte `cost_from_column` und `__init__.py` bleiben Text; `a * b * c` und `**kwargs` auch. Außerhalb: cost_from_column und 2 * 3 * 4.",
+  "ausgabe": "<p>Die Spalte <code>cost_from_column</code> und <code>__init__.py</code> bleiben Text; <code>a * b * c</code> und <code>**kwargs</code> auch. Außerhalb: cost_from_column und 2 * 3 * 4.</p>"
+ },
+ {
+  "name": "Bestand: nummerierte Schritte mit Code",
+  "eingabe": "1. `cargo build` in das eigene Ziel\n2. `node --test \"e2e/einheit/*.js\"`\n3. Programm starten: `kanbanD <ordner> --port 7431 --kein-browser`\n\nDanach den Stand prüfen.",
+  "ausgabe": "<ol><li><code>cargo build</code> in das eigene Ziel</li><li><code>node --test &quot;e2e/einheit/*.js&quot;</code></li><li>Programm starten: <code>kanbanD &lt;ordner&gt; --port 7431 --kein-browser</code></li></ol><p>Danach den Stand prüfen.</p>"
+ },
+ {
+  "name": "Bestand: Nummern mit Klammer",
+  "eingabe": "1) erstens\n2) zweitens\n10) zehntens",
+  "ausgabe": "<ol><li>erstens</li><li>zweitens</li><li>zehntens</li></ol>"
+ },
+ {
+  "name": "Bestand: Liste wechselt die Art",
+  "eingabe": "- a\n- b\n1. eins\n2. zwei\n* c",
+  "ausgabe": "<ul><li>a</li><li>b</li></ul><ol><li>eins</li><li>zwei</li></ol><ul><li>c</li></ul>"
+ },
+ {
+  "name": "Bestand: Liste mit Stern und Plus",
+  "eingabe": "* stern\n+ plus\n- strich",
+  "ausgabe": "<ul><li>stern</li><li>plus</li><li>strich</li></ul>"
+ },
+ {
+  "name": "Bestand: eingerückte Unterpunkte",
+  "eingabe": "- Oben\n    - tief eins\n    - tief zwei\n  1. nummeriert darunter\n- Unten",
+  "ausgabe": "<ul><li>Oben</li><li>tief eins</li><li>tief zwei</li></ul><ol><li>nummeriert darunter</li></ol><ul><li>Unten</li></ul>"
+ },
+ {
+  "name": "Bestand: Fortsetzungszeile im Listenpunkt",
+  "eingabe": "- erster Punkt\n  geht hier weiter\n- zweiter Punkt",
+  "ausgabe": "<ul><li>erster Punkt</li></ul><p>  geht hier weiter</p><ul><li>zweiter Punkt</li></ul>"
+ },
+ {
+  "name": "Bestand: Tabelle mit Text davor",
+  "eingabe": "Messwerte:\n\n| Lauf | Dauer | Ergebnis |\n|---|---:|:---:|\n| 1 | 12 s | grün |\n| 2 | 14 s | **rot** |\n\nQuelle: eigener Lauf.",
+  "ausgabe": "<p>Messwerte:</p><p>| Lauf | Dauer | Ergebnis |<br>|---|---:|:---:|<br>| 1 | 12 s | grün |<br>| 2 | 14 s | <strong>rot</strong> |</p><p>Quelle: eigener Lauf.</p>"
+ },
+ {
+  "name": "Bestand: Tabelle ohne Randstriche",
+  "eingabe": "Name | Wert\n--- | ---\na | 1",
+  "ausgabe": "<p>Name | Wert<br>--- | ---<br>a | 1</p>"
+ },
+ {
+  "name": "Bestand: Pipe im Fließtext",
+  "eingabe": "Ergebnis: bestanden | befund | blockiert",
+  "ausgabe": "<p>Ergebnis: bestanden | befund | blockiert</p>"
+ },
+ {
+  "name": "Bestand: Trennlinien",
+  "eingabe": "a\n\n***\n\nb\n\n___\n\nc\n---\nd",
+  "ausgabe": "<p>a</p><p>***</p><p>b</p><p>___</p><p>c<br>---<br>d</p>"
+ },
+ {
+  "name": "Bestand: Überschriften vier bis sechs",
+  "eingabe": "#### vier\n##### fünf\n###### sechs",
+  "ausgabe": "<p>#### vier<br>##### fünf<br>###### sechs</p>"
+ },
+ {
+  "name": "Bestand: Raute ohne Leerzeichen und Kartennummer",
+  "eingabe": "#187 ist dringend\n#kein-titel",
+  "ausgabe": "<p>#187 ist dringend<br>#kein-titel</p>"
+ },
+ {
+  "name": "Bestand: Überschrift, Text, Codeblock",
+  "eingabe": "## Probe\n\nSo sieht es aus:\n\n```sh\nnode --test \"e2e/einheit/*.js\" | tail -n 5\n```\n\nErwartet: `# fail 0`.",
+  "ausgabe": "<h4>Probe</h4><p>So sieht es aus:</p><pre><code>node --test &quot;e2e/einheit/*.js&quot; | tail -n 5</code></pre><p>Erwartet: <code># fail 0</code>.</p>"
+ },
+ {
+  "name": "Bestand: Codeblock ohne Ende",
+  "eingabe": "Text\n```\noffen <b> & mehr",
+  "ausgabe": "<p>Text</p><pre><code>offen &lt;b&gt; &amp; mehr</code></pre>"
+ },
+ {
+  "name": "Bestand: Codeblock mit Markdown darin",
+  "eingabe": "```md\n# kein Titel\n- keine Liste\n[kein](https://example.org) **fett**\n```",
+  "ausgabe": "<pre><code># kein Titel\n- keine Liste\n[kein](https://example.org) **fett**</code></pre>"
+ },
+ {
+  "name": "Bestand: Zeilenenden CRLF",
+  "eingabe": "Zeile eins\r\nZeile zwei\r\n\r\n- Punkt\r\n",
+  "ausgabe": "<p>Zeile eins<br>Zeile zwei</p><ul><li>Punkt</li></ul>"
+ },
+ {
+  "name": "Bestand: Zitat mit Format und Leerzeile",
+  "eingabe": "> **Regel:** erst maskieren\n>\n> dann `formatieren`",
+  "ausgabe": "<blockquote><strong>Regel:</strong> erst maskieren</blockquote><blockquote></blockquote><blockquote>dann <code>formatieren</code></blockquote>"
+ },
+ {
+  "name": "Bestand: Zitat nach Absatz ohne Leerzeile",
+  "eingabe": "Vorher\n> Zitat\nNachher",
+  "ausgabe": "<p>Vorher</p><blockquote>Zitat</blockquote><p>Nachher</p>"
+ },
+ {
+  "name": "Bestand: Sonderzeichen",
+  "eingabe": "a < b && c > d, \"Anführung\" und 'Apostroph', 5 € — fertig…",
+  "ausgabe": "<p>a &lt; b &amp;&amp; c &gt; d, &quot;Anführung&quot; und 'Apostroph', 5 € — fertig…</p>"
+ },
+ {
+  "name": "Bestand: Entität bleibt Text",
+  "eingabe": "&lt;b&gt; &amp; &#106; &colon;",
+  "ausgabe": "<p>&amp;lt;b&amp;gt; &amp;amp; &amp;#106; &amp;colon;</p>"
+ },
+ {
+  "name": "Bestand: HTML-Kommentar bleibt Text",
+  "eingabe": "<!-- Notiz --> sichtbar",
+  "ausgabe": "<p>&lt;!-- Notiz --&gt; sichtbar</p>"
+ },
+ {
+  "name": "Bestand: Sterne ohne Paar",
+  "eingabe": "2 * 3 = 6 und *offen\n**auch offen",
+  "ausgabe": "<p>2 * 3 = 6 und *offen<br>**auch offen</p>"
+ },
+ {
+  "name": "Bestand: fett und kursiv verschachtelt",
+  "eingabe": "***beides*** und **fett mit *kursiv* darin** und *kursiv mit **fett** darin*",
+  "ausgabe": "<p><em><strong>beides</strong></em> und **fett mit <em>kursiv</em> darin** und <em>kursiv mit <strong>fett</strong> darin</em></p>"
+ },
+ {
+  "name": "Bestand: kursiv über Zeilen und im Wort",
+  "eingabe": "*eins\nzwei* und wort*mitten*drin",
+  "ausgabe": "<p>*eins<br>zwei* und wort<em>mitten</em>drin</p>"
+ },
+ {
+  "name": "Bestand: Unterstriche und Tilden",
+  "eingabe": "_kursiv_ __fett__ ~~weg~~ datei_name_lang ~ungefähr~",
+  "ausgabe": "<p>_kursiv_ __fett__ ~~weg~~ datei_name_lang ~ungefähr~</p>"
+ },
+ {
+  "name": "Bestand: Backticks",
+  "eingabe": "`` doppelt `innen` `` und ` leer ` und `offen",
+  "ausgabe": "<p>`<code> doppelt </code>innen<code> </code><code> und </code> leer <code> und </code>offen</p>"
+ },
+ {
+  "name": "Bestand: Code in Link und Link in Code",
+  "eingabe": "[`code`](https://example.org/c) und `[kein](https://example.org)`",
+  "ausgabe": "<p><a href=\"https://example.org/c\" target=\"_blank\" rel=\"noopener\"><code>code</code></a> und <code>[kein](https://example.org)</code></p>"
+ },
+ {
+  "name": "Bestand: eckige Klammern ohne Adresse",
+  "eingabe": "[Hinweis] und [x] und [a][b] und [leer]()",
+  "ausgabe": "<p>[Hinweis] und [x] und [a][b] und [leer]()</p>"
+ },
+ {
+  "name": "Bestand: Klammer in der Adresse",
+  "eingabe": "[Wiki](https://example.org/Seite_(Begriff))",
+  "ausgabe": "<p><a href=\"https://example.org/Seite_(Begriff\" target=\"_blank\" rel=\"noopener\">Wiki</a>)</p>"
+ },
+ {
+  "name": "Bestand: Checkliste mit Format",
+  "eingabe": "- [ ] **offen** mit `code`\n- [x] erledigt am 2026-11-16\n* [X] groß",
+  "ausgabe": "<ul><li>[ ] <strong>offen</strong> mit <code>code</code></li><li>[x] erledigt am 2026-11-16</li><li>[X] groß</li></ul>"
+ },
+ {
+  "name": "Bestand: nur Leerraum",
+  "eingabe": "   \n\t\n",
+  "ausgabe": ""
+ },
+ {
+  "name": "Bestand: führende Leerzeichen",
+  "eingabe": "   eingerückter Absatz\n    vier Leerzeichen",
+  "ausgabe": "<p>   eingerückter Absatz<br>    vier Leerzeichen</p>"
+ },
+ {
+  "name": "Bestand: Überschrift mit Stufe 1 und 4",
+  "eingabe": "# a\n## b\n### c",
+  "stufe": 1,
+  "ausgabe": "<h2>a</h2><h3>b</h3><h4>c</h4>"
+ },
+ {
+  "name": "Bestand: Überschrift an der Obergrenze",
+  "eingabe": "### c",
+  "stufe": 4,
+  "ausgabe": "<h6>c</h6>"
+ },
+ {
+  "name": "Bestand: langes gemischtes Beispiel",
+  "eingabe": "## Ziel\n\nDie Ansicht zeigt **alle** Karten einer Spalte; die Zahl steht im Kopf (`n von m`).\n\n## Umfang\n\n1. Kopfzeile\n2. Liste\n   - mit Unterpunkt\n3. Fuß\n\n> Nicht Teil: Druckansicht.\n\n## Quellen\n\n- [Leitfaden](https://example.org/leitfaden#kopf)\n- Dokumentation/Planung/plan.md\n- https://example.org/roh?a=1&b=2\n\n```\nGET /api/zustand\n```",
+  "ausgabe": "<h4>Ziel</h4><p>Die Ansicht zeigt <strong>alle</strong> Karten einer Spalte; die Zahl steht im Kopf (<code>n von m</code>).</p><h4>Umfang</h4><ol><li>Kopfzeile</li><li>Liste</li></ol><ul><li>mit Unterpunkt</li></ul><ol><li>Fuß</li></ol><blockquote>Nicht Teil: Druckansicht.</blockquote><h4>Quellen</h4><ul><li><a href=\"https://example.org/leitfaden#kopf\" target=\"_blank\" rel=\"noopener\">Leitfaden</a></li><li>Dokumentation/Planung/plan.md</li><li><a href=\"https://example.org/roh?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener\">https://example.org/roh?a=1&amp;b=2</a></li></ul><pre><code>GET /api/zustand</code></pre>"
+ }
+]
