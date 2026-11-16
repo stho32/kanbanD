@@ -655,3 +655,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0795 Probe am heutigen Stand: Abnahme-Probe der Karte als roter Test | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0796 Dienst: Eintrag anlegen, ändern, löschen mit Prüfungen | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0797 Drei Routen mit Statuscodes und Endpunktliste | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0798 Abweisungen ändern nichts; Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |

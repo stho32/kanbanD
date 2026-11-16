@@ -51,11 +51,11 @@ POST /api/aufgaben/1/kosteneintraege
 
 ### Teil B — Anlegen, ändern, löschen über die API (I0154)
 
-- [ ] **AK 1 Anlegen (Abnahme-Probe der Karte):** Der Beispiel-Aufruf ergibt 200; an #1 steht die Zeile des Beispiels unter `cost-entries`; es ist genau ein Commit entstanden; `GET /api/aufgaben/1` liefert den Eintrag mit `kennung`.
-- [ ] **AK 2 Zweiter Lauf:** Ein zweiter Aufruf mit `at: 2026-11-13 11:02+01:00` und `amount: 1.20` (gleiche Rolle, gleiche Spalte) ergibt einen zweiten Eintrag; der erste ist unverändert.
-- [ ] **AK 3 Ungültig:** `amount: -1` oder `column: "Gibtsnicht"` ergibt 400; es entsteht kein Commit, die Datei ist unverändert.
-- [ ] **AK 4 Kennung:** Derselbe Aufruf ein zweites Mal ergibt 409, nichts wird geschrieben. `PATCH` und `DELETE` auf `…/kosteneintraege/niemand@2026-11-13T10:34+01:00` ergeben 404.
-- [ ] **AK 5 Ändern und Löschen:** `PATCH …/kosteneintraege/entwickler@2026-11-13T10:34+01:00` mit `{amount: 3.50}` schreibt `amount: 3.50` (ein Commit); `DELETE` auf dieselbe Kennung entfernt den Eintrag (ein Commit), `GET` liefert ihn nicht mehr.
+- [x] **AK 1 Anlegen (Abnahme-Probe der Karte):** Der Beispiel-Aufruf ergibt 200; an #1 steht die Zeile des Beispiels unter `cost-entries`; es ist genau ein Commit entstanden; `GET /api/aufgaben/1` liefert den Eintrag mit `kennung`.
+- [x] **AK 2 Zweiter Lauf:** Ein zweiter Aufruf mit `at: 2026-11-13 11:02+01:00` und `amount: 1.20` (gleiche Rolle, gleiche Spalte) ergibt einen zweiten Eintrag; der erste ist unverändert.
+- [x] **AK 3 Ungültig:** `amount: -1` oder `column: "Gibtsnicht"` ergibt 400; es entsteht kein Commit, die Datei ist unverändert.
+- [x] **AK 4 Kennung:** Derselbe Aufruf ein zweites Mal ergibt 409, nichts wird geschrieben. `PATCH` und `DELETE` auf `…/kosteneintraege/niemand@2026-11-13T10:34+01:00` ergeben 404.
+- [x] **AK 5 Ändern und Löschen:** `PATCH …/kosteneintraege/entwickler@2026-11-13T10:34+01:00` mit `{amount: 3.50}` schreibt `amount: 3.50` (ein Commit); `DELETE` auf dieselbe Kennung entfernt den Eintrag (ein Commit), `GET` liefert ihn nicht mehr.
 
 ### Teil C — Bericht und Ansicht „Kosten“ (I0155)
 
