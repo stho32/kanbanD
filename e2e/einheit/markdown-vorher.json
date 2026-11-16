@@ -153,7 +153,7 @@
  {
   "name": "PO: Tabelle GFM",
   "eingabe": "| Spalte | Wert |\n|:---|---:|\n| **a** | 1 |\n| `b` | 2 |",
-  "ausgabe": "<p>| Spalte | Wert |<br>|:---|---:|<br>| <strong>a</strong> | 1 |<br>| <code>b</code> | 2 |</p>"
+  "ausgabe": "<div class=\"md-tab\" tabindex=\"0\" role=\"group\" aria-label=\"Tabelle\"><table><thead><tr><th class=\"ta-l\">Spalte</th><th class=\"ta-r\">Wert</th></tr></thead><tbody><tr><td class=\"ta-l\"><strong>a</strong></td><td class=\"ta-r\">1</td></tr><tr><td class=\"ta-l\"><code>b</code></td><td class=\"ta-r\">2</td></tr></tbody></table></div>"
  },
  {
   "name": "PO: rohes HTML",
@@ -388,12 +388,12 @@
  {
   "name": "Bestand: Tabelle mit Text davor",
   "eingabe": "Messwerte:\n\n| Lauf | Dauer | Ergebnis |\n|---|---:|:---:|\n| 1 | 12 s | grün |\n| 2 | 14 s | **rot** |\n\nQuelle: eigener Lauf.",
-  "ausgabe": "<p>Messwerte:</p><p>| Lauf | Dauer | Ergebnis |<br>|---|---:|:---:|<br>| 1 | 12 s | grün |<br>| 2 | 14 s | <strong>rot</strong> |</p><p>Quelle: eigener Lauf.</p>"
+  "ausgabe": "<p>Messwerte:</p><div class=\"md-tab\" tabindex=\"0\" role=\"group\" aria-label=\"Tabelle\"><table><thead><tr><th>Lauf</th><th class=\"ta-r\">Dauer</th><th class=\"ta-c\">Ergebnis</th></tr></thead><tbody><tr><td>1</td><td class=\"ta-r\">12 s</td><td class=\"ta-c\">grün</td></tr><tr><td>2</td><td class=\"ta-r\">14 s</td><td class=\"ta-c\"><strong>rot</strong></td></tr></tbody></table></div><p>Quelle: eigener Lauf.</p>"
  },
  {
   "name": "Bestand: Tabelle ohne Randstriche",
   "eingabe": "Name | Wert\n--- | ---\na | 1",
-  "ausgabe": "<p>Name | Wert<br>--- | ---<br>a | 1</p>"
+  "ausgabe": "<div class=\"md-tab\" tabindex=\"0\" role=\"group\" aria-label=\"Tabelle\"><table><thead><tr><th>Name</th><th>Wert</th></tr></thead><tbody><tr><td>a</td><td>1</td></tr></tbody></table></div>"
  },
  {
   "name": "Bestand: Pipe im Fließtext",

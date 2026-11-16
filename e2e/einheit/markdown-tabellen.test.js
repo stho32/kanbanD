@@ -98,7 +98,7 @@ test('eine Tabelle im Codeblock bleibt Code', () => {
 test('Strich in Code und Adresse (GFM): er trennt die Zelle, außer er ist maskiert', () => {
   erwarte('| a | b |\n|---|---|\n| `x | y` | z |', tabelle('<th>a</th><th>b</th>', '<td>`x</td><td>y`</td>'));
   erwarte('| a | b |\n|---|---|\n| `x \\| y` | z |', tabelle('<th>a</th><th>b</th>', '<td><code>x | y</code></td><td>z</td>'));
-  erwarte('| a | b |\n|---|---|\n| [L](https://x.de/a|b) | z |', tabelle('<th>a</th><th>b</th>', '<td>[L](https://x.de/a</td><td>b)</td>'));
+  erwarte('| a | b |\n|---|---|\n| [L](https://x.de/a|b) | z |', tabelle('<th>a</th><th>b</th>', `<td>[L](${link('https://x.de/a', 'https://x.de/a')}</td><td>b)</td>`));
   erwarte('| a | b |\n|---|---|\n| [L](https://x.de/a\\|b) | z |', tabelle('<th>a</th><th>b</th>', `<td>${link('https://x.de/a|b', 'L')}</td><td>z</td>`));
   erwarte('| `a | b` |\n|---|---|', tabelle('<th>`a</th><th>b`</th>'));
 });
@@ -176,6 +176,11 @@ test('Zufallslauf: 6000 Eingaben aus Strichen, Marken und Adressen — jede Ausg
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  /** Wie der Browser die Adresse liest. Eine Adresse, die er gar nicht lesen kann (`http://[`), führt nirgends hin — das gibt es nur bei http und https. */
+  const protokoll = adresse => {
+    if (!URL.canParse(adresse, 'http://localhost/')) return /^(https?:)\/\//i.exec(adresse)[1].toLowerCase();
+    return new URL(adresse, 'http://localhost/').protocol;
+  };
   const LAEUFE = 6000;
   let mitTabelle = 0, mitLinkInTabelle = 0;
   for (let lauf = 0; lauf < LAEUFE; lauf++) {
@@ -183,11 +188,9 @@ test('Zufallslauf: 6000 Eingaben aus Strichen, Marken und Adressen — jede Ausg
     const eingabe = Array.from({ length: laenge }, () => BAUSTEINE[Math.floor(zufall() * BAUSTEINE.length)]).join('');
     const html = markdownHtml(eingabe);
     pruefeStruktur(html, eingabe);
-    for (const adresse of linkAdressen(html)) {
-      assert.ok(ERLAUBTE_PROTOKOLLE.includes(new URL(adresse, 'http://localhost/').protocol), `GEFÄHRLICH: ${JSON.stringify(adresse)} aus ${JSON.stringify(eingabe)}`);
-    }
+    for (const adresse of linkAdressen(html)) assert.ok(ERLAUBTE_PROTOKOLLE.includes(protokoll(adresse)), `GEFÄHRLICH: ${JSON.stringify(adresse)} aus ${JSON.stringify(eingabe)}`);
     if (html.includes('<table>')) mitTabelle++;
-    if (/<t[hd][^>]*>[^]*?<a /.test(html)) mitLinkInTabelle++;
+    if ((html.match(/<table>[^]*?<\/table>/g) || []).some(tabelle => tabelle.includes('<a '))) mitLinkInTabelle++;
   }
   // Ein Zufallslauf ohne Treffer beweist nichts: genug Ausgaben müssen wirklich eine Tabelle sein.
   assert.ok(mitTabelle >= 600, `nur ${mitTabelle} von ${LAEUFE} Eingaben ergaben eine Tabelle`);
