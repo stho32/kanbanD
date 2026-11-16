@@ -20,7 +20,12 @@
     const fertig = [];
     const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
     /** Ein Platzhalter kann in einer geschützten Marke stehen (Link in kursivem Text): eingesetzt wird bis in die Tiefe. */
-    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => (fertig[+i].includes('\u0000') ? einsetzen(fertig[+i]) : fertig[+i]));
+    const einsetzen = s => {
+      // U+0000 steht nur um die Nummern der Platzhalter: jedes zweite Stück ist eine Nummer.
+      const stuecke = s.split('\u0000');
+      for (let i = 1; i < stuecke.length; i += 2) stuecke[i] = einsetzen(fertig[+stuecke[i]]);
+      return stuecke.join('');
+    };
     const sterne = s => (s.includes('*') ? s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>') : s);
     /** Die Formen an Wortgrenzen zuerst, jede samt Inhalt geschützt: die Sterne danach schließen nie über ihre Marke hinweg. */
     const hervorheben = s => {
@@ -96,20 +101,41 @@
     return `<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table><thead>${zeile('th', zellen(kopfzeile))}</thead>${rumpf}</table></div>`;
   }
 
-  const UEBERSCHRIFT = /^(#{1,4})\s+(.*)$/, PUNKT = /^\s*[-*+]\s+(.*)$/, NUMMER = /^\s*\d+[.)]\s+(.*)$/, ZITAT = /^>\s?(.*)$/, ZAUN = /^```/;
+  const UEBERSCHRIFT = /^(#{1,4})\s+(.*)$/, PUNKT = /^(\s*)[-*+]\s+(.*)$/, NUMMER = /^(\s*)\d+[.)]\s+(.*)$/, ZITAT = /^>\s?(.*)$/, ZAUN = /^```/;
   /** Die Trennlinie (R00178 AK 4): nur Minuszeichen, mindestens drei, allein auf der Zeile — `***` und `___` bleiben Text. */
   const LINIE = /^ {0,3}-{3,}[ \t]*$/;
   const blockBeginn = z => ZAUN.test(z) || LINIE.test(z) || UEBERSCHRIFT.test(z) || PUNKT.test(z) || NUMMER.test(z) || ZITAT.test(z);
+
+  /** Geschachtelte Listen (R00178 AK 3): höchstens MAX_EBENEN ineinander, darüber bleibt die Einrückung flach — so wächst die
+   *  Ausgabe mit der Zahl der Zeilen, nie mit der Tiefe (ADR-0030 Punkt 9). Ein Tabulator rückt um TAB_BREITE Zeichen ein. */
+  const MAX_EBENEN = 8, TAB_BREITE = 4;
+  const einrueckung = leerraum => leerraum.length + (TAB_BREITE - 1) * (leerraum.split('\t').length - 1);
 
   /** Markdown → HTML. Überschriften werden um `stufe` verschoben (# → h(1+stufe)). */
   function markdownHtml(md, stufe = 2) {
     const zeilen = (md || '').replace(/\r\n/g, '\n').split('\n');
     const aus = [];
-    let absatz = [], liste = null;
+    let absatz = [];
+    /** Die offenen Listen von außen nach innen, je mit Art und Einrückung; der letzte Punkt jeder Ebene ist noch offen. */
+    const ebenen = [];
     /** Bis zu dieser Zeile (ausschließlich) wird keine Tabelle gesucht: der Block war zu groß und bleibt Text. */
     let textBis = 0, zellenFrei = MAX_ZELLEN;
     const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(markdownInline).join('<br>')}</p>`); absatz = []; } };
-    const listeEnde = () => { if (liste) { aus.push(`<${liste.art}>${liste.punkte.map(p => `<li>${markdownInline(p)}</li>`).join('')}</${liste.art}>`); liste = null; } };
+    const ebeneZu = () => aus.push(`</li></${ebenen.pop().art}>`);
+    const ebeneAuf = (art, breite) => { aus.push(`<${art}><li>`); ebenen.push({ art, breite }); };
+    const listeEnde = () => { while (ebenen.length) ebeneZu(); };
+    /** Ein Punkt gehört zur innersten Ebene, die nicht tiefer eingerückt ist als er; mindestens zwei Zeichen mehr öffnen eine
+     *  neue Ebene in ihrem offenen Punkt, eine andere Art (Punkt statt Nummer) beginnt auf gleicher Ebene eine neue Liste. */
+    const listenpunkt = (art, breite, text) => {
+      while (ebenen.length > 1 && ebenen[ebenen.length - 1].breite > breite) ebeneZu();
+      const innen = ebenen[ebenen.length - 1];
+      // nur die äußerste Ebene kann tiefer eingerückt sein als der Punkt: sie rückt mit ihm nach links
+      if (innen && innen.breite > breite) innen.breite = breite;
+      if (!innen || (breite > innen.breite + 1 && ebenen.length < MAX_EBENEN)) ebeneAuf(art, breite);
+      else if (innen.art === art) aus.push('</li><li>');
+      else { ebeneZu(); ebeneAuf(art, innen.breite); }
+      aus.push(markdownInline(text));
+    };
     for (let i = 0; i < zeilen.length; i++) {
       const z = zeilen[i];
       if (ZAUN.test(z)) {
@@ -141,10 +167,9 @@
       if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${markdownInline(m[2])}</h${h}>`); }
       else if ((m = PUNKT.exec(z)) || (m = NUMMER.exec(z))) {
         absatzEnde();
-        const art = /^\s*\d/.test(z) ? 'ol' : 'ul';
-        if (liste && liste.art !== art) listeEnde();
-        if (!liste) liste = { art, punkte: [] };
-        liste.punkte.push(m[1]);
+        let art = 'ul';
+        if (NUMMER.test(z)) art = 'ol';
+        listenpunkt(art, einrueckung(m[1]), m[2]);
       } else if ((m = ZITAT.exec(z))) { absatzEnde(); listeEnde(); aus.push(`<blockquote>${markdownInline(m[1])}</blockquote>`); }
       else if (!z.trim()) { absatzEnde(); listeEnde(); }
       else { listeEnde(); absatz.push(z); }

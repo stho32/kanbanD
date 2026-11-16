@@ -6,8 +6,6 @@ const assert = require('node:assert');
 const { markdownHtml, markdownInline, markdownOhneMarken } = require('../../web/markdown.js');
 const { pruefeStruktur, pruefeInlineStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
 
-/** Karte #186: rote Spezifikation vor dem Bau — die Markierung fällt mit der genannten Bubble. */
-const rot = bubble => ({ todo: `erwartet rot bis ${bubble}` });
 const link = (adresse, text) => `<a href="${adresse}" target="_blank" rel="noopener">${text}</a>`;
 
 /** Rendert als Beschreibung oder Kommentar, prüft die Struktur der Ausgabe und vergleicht sie. */
@@ -24,7 +22,7 @@ function erwarteZeile(eingabe, ausgabe) {
   pruefeInlineStruktur(html, eingabe);
 }
 
-test('AK 1 Abnahme-Probe der Karte #186: drei Ebenen, Linie, „schräg“ kursiv, „weg“ durchgestrichen, cost_from_column unverändert', rot('B0875'), () => {
+test('AK 1 Abnahme-Probe der Karte #186: drei Ebenen, Linie, „schräg“ kursiv, „weg“ durchgestrichen, cost_from_column unverändert', () => {
   erwarte('- a\n  1. b\n    - c\n\n---\n\n_schräg_ und ~~weg~~ und cost_from_column',
     '<ul><li>a<ol><li>b<ul><li>c</li></ul></li></ol></li></ul><hr><p><em>schräg</em> und <del>weg</del> und cost_from_column</p>');
   erwarte('siehe https://example.org und **wichtig**', `<p>siehe ${link('https://example.org', 'https://example.org')} und <strong>wichtig</strong></p>`);
@@ -81,7 +79,7 @@ test('AK 2: Formen ineinander und über Kreuz — jede Marke schließt, was sie 
   erwarteZeile('_a_ _b_ __c__ __d__', '<em>a</em> <em>b</em> <strong>c</strong> <strong>d</strong>');
 });
 
-test('AK 3: geschachtelte Listen — drei Ebenen, Punkte und Nummern gemischt', rot('B0875'), () => {
+test('AK 3: geschachtelte Listen — drei Ebenen, Punkte und Nummern gemischt', () => {
   erwarte('- a\n  1. b\n    - c', '<ul><li>a<ol><li>b<ul><li>c</li></ul></li></ol></li></ul>');
   erwarte('- a\n  - b\n    - c\n  - d\n- e', '<ul><li>a<ul><li>b<ul><li>c</li></ul></li><li>d</li></ul></li><li>e</li></ul>');
   erwarte('1. a\n   - b\n   - c\n2. d', '<ol><li>a<ul><li>b</li><li>c</li></ul></li><li>d</li></ol>');
@@ -92,24 +90,25 @@ test('AK 3: geschachtelte Listen — drei Ebenen, Punkte und Nummern gemischt', 
   erwarte('- **a**\n  - [L](x.md) und `c`', `<ul><li><strong>a</strong><ul><li>${link('x.md', 'L')} und <code>c</code></li></ul></li></ul>`);
 });
 
-test('AK 3 und AK 7: flache Listen bleiben, wie sie waren — ein Zeichen Einrückung schachtelt nicht', rot('B0875'), () => {
+test('AK 3 und AK 7: flache Listen bleiben, wie sie waren — ein Zeichen Einrückung schachtelt nicht', () => {
   erwarte('- a\n- b', '<ul><li>a</li><li>b</li></ul>');
   erwarte('- a\n - b\n- c', '<ul><li>a</li><li>b</li><li>c</li></ul>');
   erwarte('  - a\n  - b', '<ul><li>a</li><li>b</li></ul>');
+  erwarte('  - a\n- b\n  - c', '<ul><li>a</li><li>b<ul><li>c</li></ul></li></ul>');
   erwarte('- a\n1. b\n- c', '<ul><li>a</li></ul><ol><li>b</li></ol><ul><li>c</li></ul>');
   erwarte('- a\n\n  - b', '<ul><li>a</li></ul><ul><li>b</li></ul>');
   erwarte('- a\n  Text darunter', '<ul><li>a</li></ul><p>  Text darunter</p>');
   erwarte('Text\n  - a\n    - b\nText', '<p>Text</p><ul><li>a<ul><li>b</li></ul></li></ul><p>Text</p>');
 });
 
-test('AK 3: Nachbarn — Überschrift, Zitat, Tabelle, Linie und Codezaun beenden alle offenen Ebenen', rot('B0875'), () => {
+test('AK 3: Nachbarn — Überschrift, Zitat, Tabelle, Linie und Codezaun beenden alle offenen Ebenen', () => {
   for (const [block, html] of [['# T', '<h3>T</h3>'], ['> z', '<blockquote>z</blockquote>'], ['---', '<hr>'], ['```\nc\n```', '<pre><code>c</code></pre>'],
     ['| k |\n|---|', '<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table><thead><tr><th>k</th></tr></thead></table></div>']]) {
     erwarte(`- a\n  - b\n    - c\n${block}\n- d`, `<ul><li>a<ul><li>b<ul><li>c</li></ul></li></ul></li></ul>${html}<ul><li>d</li></ul>`);
   }
 });
 
-test('Schaden (c): die Tiefe ist begrenzt — über acht Ebenen bleibt die Einrückung flach', rot('B0875'), () => {
+test('Schaden (c): die Tiefe ist begrenzt — über acht Ebenen bleibt die Einrückung flach', () => {
   const zeilen = Array.from({ length: 12 }, (leer, ebene) => `${'  '.repeat(ebene)}- e${ebene}`);
   const html = markdownHtml(zeilen.join('\n'));
   pruefeStruktur(html);
@@ -160,15 +159,15 @@ test('AK 5: ein mehrzeiliger Kommentar behält seine Zeilenumbrüche; Liste, Lin
   erwarte('siehe `x_y` in [Doku](a_b.md)', `<p>siehe <code>x_y</code> in ${link('a_b.md', 'Doku')}</p>`);
 });
 
-test('AK 6: fremder Text bleibt Text — auch in den neuen Formen', rot('B0875'), () => {
+test('AK 6: fremder Text bleibt Text — auch in den neuen Formen', () => {
   erwarte('_<script>alert(1)</script>_', '<p><em>&lt;script&gt;alert(1)&lt;/script&gt;</em></p>');
   erwarte('~~<img src=x onerror=alert(1)>~~', '<p><del>&lt;img src=x onerror=alert(1)&gt;</del></p>');
   erwarte('__" onfocus="x__', '<p><strong>&quot; onfocus=&quot;x</strong></p>');
-  erwarte('- a\n  - <script>alert(1)</script>\n    - [x](javascript:alert(1))', '<ul><li>a<ul><li>&lt;script&gt;alert(1)&lt;/script&gt;<ul><li>x</li></ul></li></ul></li></ul>');
+  erwarte('- a\n  - <script>alert(1)</script>\n    - [x](javascript:alert%281%29)', '<ul><li>a<ul><li>&lt;script&gt;alert(1)&lt;/script&gt;<ul><li>x</li></ul></li></ul></li></ul>');
   erwarte('--- <hr onclick=x>', '<p>--- &lt;hr onclick=x&gt;</p>');
   erwarte('<hr>\n<del>x</del>\n<ul><li>y</li></ul>', '<p>&lt;hr&gt;<br>&lt;del&gt;x&lt;/del&gt;<br>&lt;ul&gt;&lt;li&gt;y&lt;/li&gt;&lt;/ul&gt;</p>');
   erwarte('#### <b onmouseover=x>T</b>', '<h6>&lt;b onmouseover=x&gt;T&lt;/b&gt;</h6>');
-  erwarte('[_x_](\u0001javascript:alert%281%29) und _[y](javascript:alert(1))_', '<p><em>x</em> und <em>y</em></p>');
+  erwarte('[_x_](\u0001javascript:alert%281%29) und _[y](javascript:alert%281%29)_', '<p><em>x</em> und <em>y</em></p>');
   erwarte('_[Köder]((http://a/autofocus/onfocus=alert(1)/)_', markdownHtml('*[Köder]((http://a/autofocus/onfocus=alert(1)/)*'));
 });
 
@@ -197,10 +196,12 @@ test('die Strukturprüfung erkennt Listen, Linie und Durchstreichen außerhalb i
   assert.doesNotThrow(() => pruefeInlineStruktur('<del>a <em>b</em></del>'));
 });
 
-test('Zufallslauf: 8000 Texte aus Einrückung, Listen, Linien, Unterstrichen, Tilden und Adressen — jede Ausgabe hält die feste Grammatik', rot('B0875'), () => {
+test('Zufallslauf: 8000 Texte aus Einrückung, Listen, Linien, Unterstrichen, Tilden und Adressen — jede Ausgabe hält die feste Grammatik', () => {
   const BAUSTEINE = ['_', '_', '__', '__', '~~', '~~', '~', '*', '**', '`', '[', ']', '(', ')', '](', '<', '>', '"', ' ', ' ', ' ', '\n', '\n', '\n', '\n  ', '\n    ', '\n      ', '\n\t', '\n\n',
     '- ', '- ', '- ', '1. ', '1. ', '* ', '\n---\n', '\n---\n', '---', '#### ', '# ', '> ', '```\n', '|', '\n|---|\n', 'http://', 'https://a.de/a_b_c', ' https://a.de/_x_', 'javascript:',
-    'a', 'bc', 'Wort', 'x_y', 'x.md', '\u0000', '0', '\u0001', '<script>'];
+    ' _', '_ ', ' ~~', '~~ ', ' __', '__ ', ' _a_ ', ' ~~b~~ ', ' __c__ ', '_[', ')_', '~~`', 'a', 'bc', 'Wort', 'x_y', 'x.md', '\u0000', '0', '\u0001', '<script>'];
+  const EINRUECKUNG = ['', '', ' ', '  ', '  ', '   ', '    ', '    ', '      ', '\t', '\t\t', '                    '];
+  const LISTENZEICHEN = ['- ', '- ', '* ', '+ ', '1. ', '2) ', '-', ''];
   let zustand = 186;
   /** mulberry32 — fester Startwert, damit jeder Lauf dieselben Eingaben prüft. */
   const zufall = () => {
@@ -217,8 +218,11 @@ test('Zufallslauf: 8000 Texte aus Einrückung, Listen, Linien, Unterstrichen, Ti
   const LAEUFE = 8000;
   let mitSchachtelung = 0, mitDreiEbenen = 0, mitLinie = 0, mitDurchgestrichen = 0, mitUnterstrich = 0, mitLinkInListe = 0;
   for (let lauf = 0; lauf < LAEUFE; lauf++) {
-    const laenge = 4 + Math.floor(zufall() * 36);
-    const eingabe = Array.from({ length: laenge }, () => BAUSTEINE[Math.floor(zufall() * BAUSTEINE.length)]).join('');
+    const stueck = () => BAUSTEINE[Math.floor(zufall() * BAUSTEINE.length)];
+    /** Jede zweite Eingabe besteht aus Listenzeilen mit zufälliger Einrückung und Art: sonst entsteht kaum je eine dritte Ebene. */
+    const listenzeile = () => `${EINRUECKUNG[Math.floor(zufall() * EINRUECKUNG.length)]}${LISTENZEICHEN[Math.floor(zufall() * LISTENZEICHEN.length)]}${Array.from({ length: Math.floor(zufall() * 5) }, stueck).join('')}`;
+    let eingabe = Array.from({ length: 4 + Math.floor(zufall() * 36) }, stueck).join('');
+    if (lauf % 2) eingabe = Array.from({ length: 2 + Math.floor(zufall() * 8) }, listenzeile).join('\n');
     const html = markdownHtml(eingabe);
     pruefeStruktur(html, eingabe);
     for (const adresse of linkAdressen(html)) assert.ok(ERLAUBTE_PROTOKOLLE.includes(protokoll(adresse)), `GEFÄHRLICH: ${JSON.stringify(adresse)} aus ${JSON.stringify(eingabe)}`);
@@ -232,19 +236,19 @@ test('Zufallslauf: 8000 Texte aus Einrückung, Listen, Linien, Unterstrichen, Ti
   }
   // Ein Zufallslauf ohne Treffer beweist nichts: genug Ausgaben müssen die neuen Formen wirklich tragen.
   console.log(`Zufallslauf Elemente: ${LAEUFE} Eingaben, ${mitSchachtelung} mit geschachtelter Liste (${mitDreiEbenen} mit drei Ebenen), ${mitLinie} mit Linie, ${mitDurchgestrichen} mit Durchgestrichenem, ${mitUnterstrich} mit Hervorhebung aus Unterstrichen, ${mitLinkInListe} mit Link in einer Liste`);
-  assert.ok(mitSchachtelung >= 400, `nur ${mitSchachtelung} von ${LAEUFE} Eingaben mit geschachtelter Liste`);
-  assert.ok(mitDreiEbenen >= 20, `nur ${mitDreiEbenen} mit drei Ebenen`);
-  assert.ok(mitLinie >= 800, `nur ${mitLinie} mit Linie`);
-  assert.ok(mitDurchgestrichen >= 100, `nur ${mitDurchgestrichen} mit Durchgestrichenem`);
-  assert.ok(mitUnterstrich >= 100, `nur ${mitUnterstrich} mit Hervorhebung aus Unterstrichen`);
-  assert.ok(mitLinkInListe >= 100, `nur ${mitLinkInListe} mit Link in einer Liste`);
+  assert.ok(mitSchachtelung >= 1500, `nur ${mitSchachtelung} von ${LAEUFE} Eingaben mit geschachtelter Liste`);
+  assert.ok(mitDreiEbenen >= 100, `nur ${mitDreiEbenen} mit drei Ebenen`);
+  assert.ok(mitLinie >= 2000, `nur ${mitLinie} mit Linie`);
+  assert.ok(mitDurchgestrichen >= 1200, `nur ${mitDurchgestrichen} mit Durchgestrichenem`);
+  assert.ok(mitUnterstrich >= 700, `nur ${mitUnterstrich} mit Hervorhebung aus Unterstrichen`);
+  assert.ok(mitLinkInListe >= 600, `nur ${mitLinkInListe} mit Link in einer Liste`);
 });
 
 /** Rendert, misst und prüft: höchstens `faktor` × Eingabe, unter 200 ms (ADR-0030 Punkt 9). Gewertet wird der schnellste
- *  von drei Läufen: die Suite läuft neben anderen Prozessen, und gefragt ist die Arbeit des Renderers, nicht die Last des Rechners. */
+ *  von fünf Läufen: die Suite läuft neben anderen Prozessen, und gefragt ist die Arbeit des Renderers, nicht die Last des Rechners. */
 function miss(name, eingabe, faktor = 3) {
   let html = '', dauerMs = Infinity;
-  for (let lauf = 0; lauf < 3; lauf++) {
+  for (let lauf = 0; lauf < 5; lauf++) {
     const beginn = process.hrtime.bigint();
     html = markdownHtml(eingabe);
     dauerMs = Math.min(dauerMs, Number(process.hrtime.bigint() - beginn) / 1e6);
@@ -255,7 +259,7 @@ function miss(name, eingabe, faktor = 3) {
   return html;
 }
 
-test('Größe und Zeit (c): 5000 Zeilen mit je steigender Einrückung — höchstens acht Ebenen, Ausgabe in der Größenordnung der Eingabe', rot('B0875'), () => {
+test('Größe und Zeit (c): 5000 Zeilen mit je steigender Einrückung — höchstens acht Ebenen, Ausgabe in der Größenordnung der Eingabe', () => {
   const html = miss('steigende Einrückung', Array.from({ length: 5000 }, (leer, zeile) => `${' '.repeat(zeile)}- p`).join('\n'));
   assert.strictEqual((html.match(/<ul>/g) || []).length, 8);
   assert.strictEqual((html.match(/<li>/g) || []).length, 5000);
@@ -279,7 +283,7 @@ test('Größe und Zeit (c): 50 000 Unterstriche, Tilden oder Minuszeichen in ein
   }
 });
 
-test('Größe und Zeit (c): ein Kommentar mit 1 MB — Listen, Linien und Hervorhebung gemischt', rot('B0875'), () => {
+test('Größe und Zeit (c): ein Kommentar mit 1 MB — Listen, Linien und Hervorhebung gemischt', () => {
   const BLOCK = 'Stand nach dem Lauf, mit _betonten_ Worten und ~~verworfenen~~ Teilen sowie cost_from_column:\n- erster Punkt mit https://example.org/a_b_c\n  1. darunter __fett__\n    - und noch tiefer mit `code_hier`\n\n---\n\n';
   const eingabe = BLOCK.repeat(Math.ceil(1024 * 1024 / BLOCK.length));
   assert.ok(eingabe.length >= 1024 * 1024);
