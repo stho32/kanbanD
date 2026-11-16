@@ -1,14 +1,15 @@
 /* kanbanD — kleines, sicheres Markdown: erst maskieren, dann formatieren. Im Browser und in Node nutzbar. */
 (function (ziel) {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const erlaubt = url => /^(https?:|mailto:|vscode:)/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url);
+  /** Positivliste (ADR-0030 Punkt 4): kein Zeichen ≤ U+0020 und kein U+007F (der Browser überliest solche Zeichen vor dem Schema), dazu http, https, mailto, vscode oder ohne Schema (relativ). */
+  const erlaubt = url => !/[\u0000-\u0020\u007f]/.test(url) && (/^(https?|mailto|vscode):/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url));
 
   /** Inline: Code, Links, nackte Adressen, fett, kursiv — auf bereits maskiertem Text. */
   function inline(text) {
     const codes = [];
     let s = esc(text).replace(/`([^`]+)`/g, (m, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
     s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => erlaubt(u.replace(/&amp;/g, '&')) ? `<a href="${u}" target="_blank" rel="noopener">${t}</a>` : t);
-    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (m, vor, u) => `${vor}<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (m, vor, u) => erlaubt(u.replace(/&amp;/g, '&')) ? `${vor}<a href="${u}" target="_blank" rel="noopener">${u}</a>` : m);
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
     return s.replace(/\u0000(\d+)\u0000/g, (m, i) => `<code>${codes[+i]}</code>`);
   }

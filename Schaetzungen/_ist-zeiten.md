@@ -723,3 +723,6 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #183 R00175 (Textfeld der Beschreibung öffnet in Inhaltshöhe und wächst) | B0862 Gezogene Höhe und Rollstand überstehen Tippen und Neuzeichnen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #183 R00175 (Textfeld der Beschreibung öffnet in Inhaltshöhe und wächst) | B0863 Feld der Beschreibung im Dialog Neue Aufgabe verhält sich gleich | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-11-16 | Karte #183 R00175 (Textfeld der Beschreibung öffnet in Inhaltshöhe und wächst) | B0864 Schmal mit Bildschirmtastatur, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Fester Vergleich „vorher = nachher“: 106 Paare am unveränderten Renderer | Standard | — | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Rote Probe: 296 feindliche Adressen in sieben Formen, gelesen wie der Browser | Standard | — | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Behebung: Positivliste in `erlaubt()`, Mutanten, Browser-Probe alt/neu, betroffene Specs (davon rund 8 min Wartezeit auf Last und Sperre) | Standard | — | 0,3h | 0,3h | autonom |
