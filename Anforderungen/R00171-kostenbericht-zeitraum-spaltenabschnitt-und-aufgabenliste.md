@@ -1,6 +1,6 @@
 ---
 id: R00171
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -37,16 +37,16 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 | #3 | archiviert | 05.11. 08:00 · Entwicklung · 4,00 |
 | #4 | Eingang | kein Eintrag; alter Posten ohne Datum, Rolle und Spalte 5,00 |
 
-- [ ] **AK 1 Zeitraum und Abschnitt:** Zeitraum 12.11.–13.11., Abschnitt „Entwicklung“–„Abnahme“: Summe 5,00 $; die Liste zeigt #1 mit 4,46 $ und „erledigt“ (1,00 + 3,46; der Eintrag vom 14.11. fehlt) und #2 mit 0,54 $ und „offen“; #3 fehlt (05.11.); #4 steht unter „ohne Datum / ohne Rolle / ohne Spalte“ mit 5,00 $ daneben und zählt nicht in die Summe.
-- [ ] **AK 2 Nur ein Teil der Aufgabe:** Zeitraum 12.11.–14.11., Abschnitt „Abnahme“–„Abnahme“: Summe 2,00 $, die Liste zeigt allein #1 mit 2,00 $.
-- [ ] **AK 3 Ohne Bereiche:** Ohne Zeitraum und Abschnitt: „Einträge 11,00 $“ (1,00 + 3,46 + 2,00 + 0,54 + 4,00), #4 unter „ohne …“ mit 5,00 $, Summe wie heute 16,00 $; die Liste zeigt #1 6,46 $ „erledigt“, #2 0,54 $ „offen“, #3 4,00 $ „archiviert“.
-- [ ] **AK 4 Bleibt:** Ohne Zeitraum und Abschnitt sind alle Zahlen des Berichts wie vor der Karte (R00165 AK 9).
-- [ ] **AK 5 Gespeichert:** Nach der Wahl aus AK 1 trägt die Board-Datei in `report-filter` den Zeitraum und `cost-from-column: Entwicklung`, `cost-to-column: Abnahme`; nach dem Neuladen zeigt der Bericht dieselbe Wahl und dieselben Zahlen.
-- [ ] **AK 6 Zurücksetzen:** „Zurücksetzen“ hebt Zeitraum und Abschnitt auf; der Bericht zeigt wieder AK 3, die Board-Datei trägt keinen der Schlüssel mehr.
-- [ ] **AK 7 Fremde Spalte:** #2 trägt zusätzlich einen Eintrag 13.11. 12:00 · „Review“ · 0,25 $ (die Spalte führt das Board nicht). Ohne Abschnitt zählt er („Einträge 11,25 $“); mit der Wahl aus AK 1 bleibt die Summe 5,00 $, und der Bericht zeigt daneben „Spalte nicht auf diesem Board 0,25 $“.
-- [ ] **AK 8 Verschwundene Grenze:** Steht in der Board-Datei `cost-to-column: Test` und führt das Board keine Spalte „Test“, nennt die Kopfzeile die Spalte als nicht mehr vorhanden; der Abschnitt gilt als „alle“, die Zahlen sind die aus AK 3.
-- [ ] **AK 9 Tagesgrenze:** #2 trägt zusätzlich die Einträge 13.11. 23:30+01:00 · Entwicklung · 0,10 $ und 14.11. 00:10+01:00 · Entwicklung · 0,20 $. Zeitraum 12.11.–13.11. ohne Abschnitt: Summe 5,10 $ (4,46 + 0,54 + 0,10); der Eintrag von 00:10 zählt nicht.
-- [ ] **AK 10 Dateiformat:** Eine Board-Datei ohne die beiden neuen Schlüssel schreibt das Programm zeichengleich wie vor der Karte.
+- [x] **AK 1 Zeitraum und Abschnitt:** Zeitraum 12.11.–13.11., Abschnitt „Entwicklung“–„Abnahme“: Summe 5,00 $; die Liste zeigt #1 mit 4,46 $ und „erledigt“ (1,00 + 3,46; der Eintrag vom 14.11. fehlt) und #2 mit 0,54 $ und „offen“; #3 fehlt (05.11.); #4 steht unter „ohne Datum / ohne Rolle / ohne Spalte“ mit 5,00 $ daneben und zählt nicht in die Summe.
+- [x] **AK 2 Nur ein Teil der Aufgabe:** Zeitraum 12.11.–14.11., Abschnitt „Abnahme“–„Abnahme“: Summe 2,00 $, die Liste zeigt allein #1 mit 2,00 $.
+- [x] **AK 3 Ohne Bereiche:** Ohne Zeitraum und Abschnitt: „Einträge 11,00 $“ (1,00 + 3,46 + 2,00 + 0,54 + 4,00), #4 unter „ohne …“ mit 5,00 $, Summe wie heute 16,00 $; die Liste zeigt #1 6,46 $ „erledigt“, #2 0,54 $ „offen“, #3 4,00 $ „archiviert“.
+- [x] **AK 4 Bleibt:** Ohne Zeitraum und Abschnitt sind alle Zahlen des Berichts wie vor der Karte (R00165 AK 9).
+- [x] **AK 5 Gespeichert:** Nach der Wahl aus AK 1 trägt die Board-Datei in `report-filter` den Zeitraum und `cost-from-column: Entwicklung`, `cost-to-column: Abnahme`; nach dem Neuladen zeigt der Bericht dieselbe Wahl und dieselben Zahlen.
+- [x] **AK 6 Zurücksetzen:** „Zurücksetzen“ hebt Zeitraum und Abschnitt auf; der Bericht zeigt wieder AK 3, die Board-Datei trägt keinen der Schlüssel mehr.
+- [x] **AK 7 Fremde Spalte:** #2 trägt zusätzlich einen Eintrag 13.11. 12:00 · „Review“ · 0,25 $ (die Spalte führt das Board nicht). Ohne Abschnitt zählt er („Einträge 11,25 $“); mit der Wahl aus AK 1 bleibt die Summe 5,00 $, und der Bericht zeigt daneben „Spalte nicht auf diesem Board 0,25 $“.
+- [x] **AK 8 Verschwundene Grenze:** Steht in der Board-Datei `cost-to-column: Test` und führt das Board keine Spalte „Test“, nennt die Kopfzeile die Spalte als nicht mehr vorhanden; der Abschnitt gilt als „alle“, die Zahlen sind die aus AK 3.
+- [x] **AK 9 Tagesgrenze:** #2 trägt zusätzlich die Einträge 13.11. 23:30+01:00 · Entwicklung · 0,10 $ und 14.11. 00:10+01:00 · Entwicklung · 0,20 $. Zeitraum 12.11.–13.11. ohne Abschnitt: Summe 5,10 $ (4,46 + 0,54 + 0,10); der Eintrag von 00:10 zählt nicht.
+- [x] **AK 10 Dateiformat:** Eine Board-Datei ohne die beiden neuen Schlüssel schreibt das Programm zeichengleich wie vor der Karte.
 
 Gestaltung der Leiste (Zeitraum, Abschnitt), der Aufgabenliste und der Eimer nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#kosten-zeitraum-abschnitt`. Sichtbare Texte sagen „Aufgaben“, nicht „Karten“.
 
