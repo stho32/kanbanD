@@ -20,20 +20,25 @@
     const fertig = [];
     const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
     /** Ein Platzhalter kann in einer geschützten Marke stehen (Link in kursivem Text): eingesetzt wird bis in die Tiefe. */
-    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => einsetzen(fertig[+i]));
-    const sterne = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => (fertig[+i].includes('\u0000') ? einsetzen(fertig[+i]) : fertig[+i]));
+    const sterne = s => (s.includes('*') ? s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>') : s);
     /** Die Formen an Wortgrenzen zuerst, jede samt Inhalt geschützt: die Sterne danach schließen nie über ihre Marke hinweg. */
-    const hervorheben = s => sterne(s.replace(AN_WORTGRENZEN, (m, fett, durch, kursiv) => {
-      if (fett !== undefined) return schuetze(`<strong>${hervorheben(fett)}</strong>`);
-      if (durch !== undefined) return schuetze(`<del>${hervorheben(durch)}</del>`);
-      return schuetze(`<em>${hervorheben(kursiv)}</em>`);
-    }));
+    const hervorheben = s => {
+      if (!/[*_~]/.test(s)) return s;
+      return sterne(s.replace(AN_WORTGRENZEN, (m, fett, durch, kursiv) => {
+        if (fett !== undefined) return schuetze(`<strong>${hervorheben(fett)}</strong>`);
+        if (durch !== undefined) return schuetze(`<del>${hervorheben(durch)}</del>`);
+        return schuetze(`<em>${hervorheben(kursiv)}</em>`);
+      }));
+    };
     const link = (u, innen) => schuetze(`<a href="${u}" target="_blank" rel="noopener">${innen}</a>`);
     const gueltig = u => erlaubt(u.replace(/&amp;/g, '&'));
     let s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));
     s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => gueltig(u) ? link(u, einsetzen(hervorheben(t))) : t);
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)\u0000]+)/g, (m, vor, u) => gueltig(u) ? vor + link(u, u) : m);
-    return einsetzen(hervorheben(s));
+    s = hervorheben(s);
+    if (!fertig.length) return s;
+    return einsetzen(s);
   }
 
   /** Der Text einer Zeile ohne Markdown-Zeichen, maskiert wie die Ausgabe von `markdownInline` — für zugängliche Namen;
@@ -91,8 +96,10 @@
     return `<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table><thead>${zeile('th', zellen(kopfzeile))}</thead>${rumpf}</table></div>`;
   }
 
-  const UEBERSCHRIFT = /^(#{1,3})\s+(.*)$/, PUNKT = /^\s*[-*+]\s+(.*)$/, NUMMER = /^\s*\d+[.)]\s+(.*)$/, ZITAT = /^>\s?(.*)$/, ZAUN = /^```/;
-  const blockBeginn = z => ZAUN.test(z) || UEBERSCHRIFT.test(z) || PUNKT.test(z) || NUMMER.test(z) || ZITAT.test(z);
+  const UEBERSCHRIFT = /^(#{1,4})\s+(.*)$/, PUNKT = /^\s*[-*+]\s+(.*)$/, NUMMER = /^\s*\d+[.)]\s+(.*)$/, ZITAT = /^>\s?(.*)$/, ZAUN = /^```/;
+  /** Die Trennlinie (R00178 AK 4): nur Minuszeichen, mindestens drei, allein auf der Zeile — `***` und `___` bleiben Text. */
+  const LINIE = /^ {0,3}-{3,}[ \t]*$/;
+  const blockBeginn = z => ZAUN.test(z) || LINIE.test(z) || UEBERSCHRIFT.test(z) || PUNKT.test(z) || NUMMER.test(z) || ZITAT.test(z);
 
   /** Markdown → HTML. Überschriften werden um `stufe` verschoben (# → h(1+stufe)). */
   function markdownHtml(md, stufe = 2) {
@@ -112,6 +119,8 @@
         aus.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`);
         continue;
       }
+      // Vor Überschrift und Tabelle: eine Zeile nur aus Minuszeichen ist nie Kopf- oder Trennzeile (die trägt einen Strich).
+      if (LINIE.test(z)) { absatzEnde(); listeEnde(); aus.push('<hr>'); continue; }
       let spalten = null;
       if (i >= textBis) spalten = tabellenSpalten(z, zeilen[i + 1]);
       if (spalten) {

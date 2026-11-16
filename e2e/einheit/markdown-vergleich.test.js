@@ -14,7 +14,6 @@ test('fester Vergleich: der Bestand ist vollständig geladen', () => {
 
 /** Karte #186 (R00178 AK 7): diese zehn Paare weichen gewollt ab; je Bubble fällt hier ein Block, am Ende steht keiner mehr. */
 const ERWARTET_ROT = {
-  'PO: Überschrift ####': 'B0874', 'PO: Trennlinie': 'B0874', 'Bestand: Trennlinien': 'B0874', 'Bestand: Überschriften vier bis sechs': 'B0874',
   'PO: Liste geschachtelt': 'B0875', 'Bestand: eingerückte Unterpunkte': 'B0875', 'Bestand: langes gemischtes Beispiel': 'B0875',
 };
 const rot = name => (name in ERWARTET_ROT ? { todo: `erwartet rot bis ${ERWARTET_ROT[name]}` } : {});

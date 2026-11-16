@@ -66,8 +66,9 @@ test('AK 4 ohne gültige Trennzeile bleibt es Text wie heute', () => {
 });
 
 test('AK 4 Kopfzeile und Trennzeile brauchen je einen Strich: eine Linie aus Minuszeichen unter Text ist keine Tabelle', () => {
-  erwarte('Titel\n---', '<p>Titel<br>---</p>');
-  erwarte('a | b\n---', '<p>a | b<br>---</p>');
+  // seit R00178 (AK 4) ist die Zeile aus Minuszeichen eine Trennlinie — eine Tabelle wird sie weiterhin nie
+  erwarte('Titel\n---', '<p>Titel</p><hr>');
+  erwarte('a | b\n---', '<p>a | b</p><hr>');
   erwarte('Titel\n|---|', '<p>Titel<br>|---|</p>');
 });
 
