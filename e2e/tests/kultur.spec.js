@@ -324,7 +324,11 @@ const menue = id => async page => { await brett(page); await page.locator(id).cl
 /** Der Tooltip eines Diagramms erscheint erst unter dem Zeiger (FA 18): einmal über die Mitte der Zeichenfläche. */
 const tooltip = (bericht, name) => async page => {
   await page.goto(k.adresse + '#/berichte/' + bericht);
-  const box = await page.getByRole('img', { name: new RegExp('^' + name) }).boundingBox();
+  const svg = page.getByRole('img', { name: new RegExp('^' + name) });
+  // erst wenn der Bericht steht: ein Neuzeichnen nach dem Zeigerzug nähme die Blase mit, und der Zeiger bewegt sich nur einmal (ADR-0026 Regel 3)
+  await berichtSteht(page, bericht, BERICHTSTITEL[bericht]);
+  await bereit(page, svg);
+  const box = await svg.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.locator('#tooltip').waitFor();
 };
