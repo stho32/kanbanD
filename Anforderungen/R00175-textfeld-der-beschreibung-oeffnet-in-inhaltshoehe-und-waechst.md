@@ -1,6 +1,6 @@
 ---
 id: R00175
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,13 +18,13 @@ Eine Zeichnung ist nicht nötig: es entsteht kein neues Bedienelement. Zahlt ein
 
 **Ausgangslage:** Aufgabe #1 mit einer Beschreibung aus 30 Zeilen („Zeile 1“ … „Zeile 30“), Aufgabe #2 ohne Beschreibung; Fenster des Browsers 1280 × 900 px.
 
-- [ ] **AK 1 Öffnet in Inhaltshöhe (Abnahme-Probe der Karte):** #1 geöffnet, Stift geklickt → alle 30 Zeilen sind ohne Ziehen sichtbar, oder das Feld steht an der Grenze und scrollt; in beiden Fällen ist es höher als 120 px. Fünf weitere getippte Zeilen lassen es wachsen, solange die Grenze nicht erreicht ist (Beispiel: 30 Zeilen zu etwa 21 px sind rund 650 px, das Feld steht also bei 540 px und scrollt; mit 10 Zeilen, rund 220 px, wächst es um fünf Zeilen auf rund 330 px).
-- [ ] **AK 2 Grenze:** Ab der Grenze wächst das Feld nicht weiter; es scrollt das Feld, nicht das Fenster zusätzlich. Der Fensterfuß mit seiner Meldung bleibt sichtbar und erreichbar.
-- [ ] **AK 3 Cursor bleibt sichtbar:** Beim Tippen am Ende des Textes bleibt die Zeile mit dem Cursor sichtbar; das Fenster springt beim Wachsen nicht (die Überschrift „BESCHREIBUNG“ behält ihren Platz, solange sie sichtbar war).
-- [ ] **AK 4 Von Hand gezogen bleibt gezogen:** Das Feld auf 400 px gezogen → es bleibt 400 px hoch beim Weitertippen und wenn ein [Live-Ereignis](../Dokumentation/Domaenenwissen/D00005-live-ereignis.md) die Ansicht neu zeichnet (ein zweiter Teilnehmer ändert den Titel einer anderen Aufgabe); Rollstand im Feld und Cursor bleiben.
-- [ ] **AK 5 Kein Entwurf geht verloren:** Getippter, noch nicht gespeicherter Text steht nach Wachsen, Ziehen und Neuzeichnen unverändert im Feld und wird beim Verlassen wie heute gespeichert.
-- [ ] **AK 6 Leer, neue Aufgabe, schmal:** #2 öffnet das Feld 120 px hoch wie heute. Im Dialog „Neue Aufgabe“ wächst das Feld der Beschreibung ebenso bis zur Grenze, „Anlegen“ bleibt erreichbar. Bei 375 px Breite mit Bildschirmtastatur richtet sich die Grenze nach dem sichtbaren Bereich (ADR-0016 N1), der Fensterfuß bleibt erreichbar.
-- [ ] **AK 7 Bleibt:** Die bestehenden Tests zur Beschreibung laufen unverändert grün.
+- [x] **AK 1 Öffnet in Inhaltshöhe (Abnahme-Probe der Karte):** #1 geöffnet, Stift geklickt → alle 30 Zeilen sind ohne Ziehen sichtbar, oder das Feld steht an der Grenze und scrollt; in beiden Fällen ist es höher als 120 px. Fünf weitere getippte Zeilen lassen es wachsen, solange die Grenze nicht erreicht ist (Beispiel: 30 Zeilen zu etwa 21 px sind rund 650 px, das Feld steht also bei 540 px und scrollt; mit 10 Zeilen, rund 220 px, wächst es um fünf Zeilen auf rund 330 px).
+- [x] **AK 2 Grenze:** Ab der Grenze wächst das Feld nicht weiter; es scrollt das Feld, nicht das Fenster zusätzlich. Der Fensterfuß mit seiner Meldung bleibt sichtbar und erreichbar.
+- [x] **AK 3 Cursor bleibt sichtbar:** Beim Tippen am Ende des Textes bleibt die Zeile mit dem Cursor sichtbar; das Fenster springt beim Wachsen nicht (die Überschrift „BESCHREIBUNG“ behält ihren Platz, solange sie sichtbar war).
+- [x] **AK 4 Von Hand gezogen bleibt gezogen:** Das Feld auf 400 px gezogen → es bleibt 400 px hoch beim Weitertippen und wenn ein [Live-Ereignis](../Dokumentation/Domaenenwissen/D00005-live-ereignis.md) die Ansicht neu zeichnet (ein zweiter Teilnehmer ändert den Titel einer anderen Aufgabe); Rollstand im Feld und Cursor bleiben.
+- [x] **AK 5 Kein Entwurf geht verloren:** Getippter, noch nicht gespeicherter Text steht nach Wachsen, Ziehen und Neuzeichnen unverändert im Feld und wird beim Verlassen wie heute gespeichert.
+- [x] **AK 6 Leer, neue Aufgabe, schmal:** #2 öffnet das Feld 120 px hoch wie heute. Im Dialog „Neue Aufgabe“ wächst das Feld der Beschreibung ebenso bis zur Grenze, „Anlegen“ bleibt erreichbar. Bei 375 px Breite mit Bildschirmtastatur richtet sich die Grenze nach dem sichtbaren Bereich (ADR-0016 N1), der Fensterfuß bleibt erreichbar.
+- [x] **AK 7 Bleibt:** Die bestehenden Tests zur Beschreibung laufen unverändert grün.
 
 ## Tests
 
