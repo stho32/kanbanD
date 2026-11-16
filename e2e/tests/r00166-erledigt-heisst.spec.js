@@ -4,6 +4,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
+const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
 /** Schreibt Dateien und hält den Stand als Commit mit diesem Datum fest. */
@@ -108,4 +109,95 @@ test('R00166 AK 8 (B0806): Kumulativer Fluss, Durchlaufzeit und „Wie lange noc
   } finally {
     for (const x of [ohne, mit]) { await x.kontext.close(); await x.k.stoppen(); }
   }
+});
+
+/* ── F0130 Auswahl in beiden Kopfleisten (Zeichnung D0006 #erledigt-heisst) ── */
+const GILT_FUER = 'gilt für Burndown, Durchsatz und Fever Chart dieses Boards';
+const auswahl = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
+const gruppe = page => page.getByRole('group', { name: 'Erledigt heißt' });
+const eintraege = page => auswahl(page).locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));
+const oberkante = async ort => (await ort.boundingBox()).y;
+
+/** Board mit Phasen (Entwicklung → Entwicklertest → Abnahme), gebunden an die Anwendung des Registers; #1 und #2 am 02.11. in
+    „Entwicklung“, #1 am 03.11. nach „Erledigt“. `kopfzeile` ergänzt den Kopf der Board-Datei. */
+function phasenBoard(arbeit, kopfzeile = '') {
+  const kopf = `---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n${kopfzeile}---\n\n# Entwicklung\n`;
+  const board = spalten => kopf + ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'].map(sp => `\n## ${sp}\n\n${zeilen(spalten[sp] || [])}`).join('');
+  return ordner => {
+    mitRegister(arbeit, { ...Object.fromEntries([1, 2].map(n => [datei(n), aufgabe(n)])), 'boards/entwicklung.md': board({}) })(ordner);
+    standAm(ordner, '2026-11-02T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [1, 2] }) });
+    standAm(ordner, '2026-11-03T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [2], Erledigt: [1] }) });
+  };
+}
+async function phasenBerichtAm0411(page, k, route) {
+  await alsPerson(page, 'st');
+  await page.clock.setFixedTime(new Date('2026-11-04T12:00:00+01:00'));
+  await page.goto(`${k.adresse}#/berichte/${route}`);
+  await bereit(page, '#main .leiste');
+}
+
+test('R00166 AK 4 (B0807): der Burndown zeigt „Erledigt heißt“ mit den Blöcken des Fever Charts und dem Geltungssatz — zwischen Berichtsfilter und Kennzahlzeile', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    expect(await eintraege(page)).toEqual([['Spalte „B“', 'B', false], ['Spalte „C“', 'C', false], ['Spalte „Erledigt“ (Standard)', '', true]]);
+    await expect(gruppe(page)).toContainText(`Erledigt heißt`);
+    await expect(gruppe(page).locator('.muted')).toHaveText(GILT_FUER);
+    await expect(gruppe(page)).toHaveClass('fb-einst');
+    const [filter, wahl, kennzahl] = await Promise.all([page.locator('.bfilter-box'), gruppe(page), page.locator('#bd-kennzahl')].map(oberkante));
+    expect(filter).toBeLessThan(wahl);
+    expect(wahl).toBeLessThan(kennzahl);
+    expect(await gruppe(page).evaluate(g => g.parentElement.className)).toBe('body bericht');
+    expect(await gruppe(page).evaluate(g => g.previousElementSibling), 'erste Zeile in .body.bericht').toBeNull();
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 AK 4 (B0807): der Durchsatz zeigt dieselbe Auswahl an derselben Stelle — vor „Gesamt“, über dem Umschalter „Auflösung“, auch über dem Leerzustand', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    expect(await eintraege(page)).toEqual([['Spalte „B“', 'B', false], ['Spalte „C“', 'C', false], ['Spalte „Erledigt“ (Standard)', '', true]]);
+    await expect(gruppe(page).locator('.muted')).toHaveText(GILT_FUER);
+    const [filter, wahl, kennzahl, aufloesung] = await Promise.all([page.locator('.bfilter-box'), gruppe(page), page.locator('#dus-kennzahl'), page.locator('.dus-um')].map(oberkante));
+    expect(filter).toBeLessThan(wahl);
+    expect(wahl).toBeLessThan(kennzahl);
+    expect(kennzahl).toBeLessThan(aufloesung);
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
+    // Leerzustand: am 02.11. hat noch keine Aufgabe das Ziel erreicht
+    await page.clock.setFixedTime(new Date('2026-11-02T12:00:00+01:00'));
+    await page.reload();
+    await bereit(page, '.fluss-satz');
+    await expect(page.locator('.fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
+    expect(await oberkante(gruppe(page))).toBeLessThan(await oberkante(page.locator('.fluss-satz')));
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 AK 4, AK 6 (B0807): eine gespeicherte Zielspalte ist in Burndown und Durchsatz vorbelegt; das Fever Chart trägt denselben Geltungssatz', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await expect(auswahl(page)).toHaveValue('B');
+    await zumBericht(page, k, 'durchsatz');
+    await expect(auswahl(page)).toHaveValue('B');
+    await zumBericht(page, k, 'fieber');
+    await expect(auswahl(page)).toHaveValue('B');
+    await expect(page.locator('.fb-einst > .muted')).toHaveText(GILT_FUER);
+    expect(await page.locator('.fb-einst > .muted').evaluate(e => [getComputedStyle(e).fontSize, e.previousElementSibling.textContent.startsWith('Erledigt heißt')])).toEqual(['12px', true]);
+  } finally { await k.stoppen(); }
+});
+
+test.describe('R00166 Board mit Phasen', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('R00166 AK 4 (B0807): auf einem Board mit Phasen sind die Einträge in Burndown und Durchsatz die Blöcke „… durchlaufen“', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(phasenBoard(arbeit));
+    const BLOECKE = [['Entwicklung durchlaufen', 'Entwicklung', false], ['Entwicklertest durchlaufen', 'Entwicklertest', false], ['Abnahme durchlaufen (Standard)', '', true]];
+    await phasenBerichtAm0411(page, k, 'verlauf');
+    expect(await eintraege(page)).toEqual(BLOECKE);
+    await page.goto(`${k.adresse}#/berichte/durchsatz`);
+    await bereit(page, '#dus-kennzahl');
+    expect(await eintraege(page)).toEqual(BLOECKE);
+  });
 });

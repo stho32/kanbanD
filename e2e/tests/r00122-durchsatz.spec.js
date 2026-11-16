@@ -55,7 +55,7 @@ test('R00122 B0564: Menüeintrag in VERLAUF, Route, Fenstertitel, Kopfleiste, K�
     await expect(page).toHaveURL(/#\/berichte\/durchsatz$/);
     await expect(page).toHaveTitle('Berichte · Durchsatz — kanbanD');
     await expect(page.locator('h1.vh')).toHaveText('Berichte · Durchsatz');
-    await expect(page.locator('#main .leiste').first()).toContainText('Durchsatz je Zeitraum · liest nur · erledigte Aufgaben je Periode');
+    await expect(page.locator('#main .leiste').first()).toContainText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
     // g u öffnet den Bericht
     await page.locator('body').click({ position: { x: 1200, y: 500 } });
     await page.keyboard.press('g');

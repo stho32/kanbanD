@@ -1218,6 +1218,27 @@ function erledigtHeisst() {
   if (S.board && S.board.fieber) zielspalte = S.board.fieber.zielspalte;
   return zielblock(S.bew, S.ui.bf, zielspalte);
 }
+/** Die Auswahl „Erledigt heißt“ (R00079) samt Geltungssatz — dasselbe Element in Fever Chart, Burndown und Durchsatz; der
+    letzte Block ist der Standard und trägt den leeren Wert. `ziel` kommt aus `zielblock`. */
+function vZielAuswahl(ziel) {
+  const letzter = ziel.bloecke.length - 1;
+  const eintraege = ziel.bloecke.map((block, i) => {
+    let wert = esc(block.schluessel), zusatz = '', gewaehlt = '';
+    if (i === letzter) { wert = ''; zusatz = ' (Standard)'; }
+    if (!ziel.verschwunden && ziel.zaehlt && block.schluessel === ziel.zaehlt.schluessel) gewaehlt = ' selected';
+    return `<option value="${wert}"${gewaehlt}>${esc(block.titel)}${zusatz}</option>`;
+  }).join('');
+  let verschwunden = '';
+  if (ziel.verschwunden) verschwunden = `<option value="${esc(ziel.verschwunden)}" selected>„${esc(ziel.verschwunden)}“ — gibt es nicht mehr</option>`;
+  return `<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${eintraege}${verschwunden}</select></label><span class="muted">gilt für Burndown, Durchsatz und Fever Chart dieses Boards</span>`;
+}
+/** Die Zeile „Erledigt heißt“ über Burndown und Durchsatz (R00166, Zeichnung D0006 #erledigt-heisst): Auswahl, Geltungssatz
+    und ein Fehler des Speicherns. */
+function vErledigtHeisst(ziel) {
+  let fehler = '';
+  if (S.ui.fbFehler) fehler = `<span class="fehl" role="alert">${esc(S.ui.fbFehler)}</span>`;
+  return `<section class="fb-einst" role="group" aria-label="Erledigt heißt">${vZielAuswahl(ziel)}${fehler}</section>`;
+}
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const ziel = erledigtHeisst();
@@ -1249,7 +1270,7 @@ ${fadenkreuz(O, BAND_UNTEN)}
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht bd-tabelle"><summary>Tabellenansicht</summary>${berichtRahmen('Burndown je Tag')}<table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
-<div class="body bericht">${t.length ? vBurndownKennzahl(t) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende() : svg}${tabelle}${nicht}</div>`;
+<div class="body bericht">${vErledigtHeisst(ziel)}${t.length ? vBurndownKennzahl(t) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende() : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit — liest nur. */
@@ -1315,22 +1336,23 @@ ${fadenkreuz(FLUSS_O, unten)}
 }
 
 /* Durchsatz je Zeitraum (R00122, Artboard D0006 „Durchsatz“): Balken je Kalenderperiode der Aufgaben, die das Ziel
-   erreicht haben, mit gestrichelter Ø-Linie — liest nur. Rechnung: durchsatz() in web/berichte.js. */
+   erreicht haben, mit gestrichelter Ø-Linie; „Erledigt heißt“ wählt das Ziel (R00166). Rechnung: durchsatz() in web/berichte.js. */
 const DUS_B = 800, DUS_H = 272, DUS_L = 44, DUS_R = 120, DUS_O = 24, DUS_U = 44;
 /** Einheitenwort („je Woche“) der Auflösung. */
 const dusWort = e => (DURCHSATZ_EINHEITEN.find(([k]) => k === e) || [null, ''])[1];
 function vDurchsatz() {
   const u = S.ui;
-  const kopf = `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· liest nur · erledigte Aufgaben je Periode</span></div>`;
+  const kopf = `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· erledigte Aufgaben je Periode</span></div>`;
   if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
   const einheit = DURCHSATZ_EINHEITEN.some(([k]) => k === u.dusEinheit) ? u.dusEinheit : DURCHSATZ_STANDARD;
-  const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit, erledigtHeisst().gewaehlt);
+  const ziel = erledigtHeisst();
+  const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit, ziel.gewaehlt);
   const zurueck = leistenAnzahl(u.bf, BERICHTSLEISTEN.durchsatz) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="durchsatz">Zurücksetzen</button>' : '';
-  const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
+  const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}<div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
   if (!S.bew.aufgaben.length) return zustand('Noch kein Stand dieses Boards.');
   if (d.zielAusgeschlossen) return zustand(`Die Zielspalte „${esc(d.ziel.name)}“ ist ausgeschlossen.`);
   if (!d.gesamt) return zustand('Keine Aufgabe im Zeitraum.');
-  return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">
+  return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}
 ${vDurchsatzKennzahlen(d)}
 ${vDurchsatzUm(einheit)}
 ${vDurchsatzFlaeche(d, einheit)}${vDurchsatzLegende(d, einheit)}
@@ -1659,7 +1681,7 @@ function vFieber() {
   const einst = `<section class="fb-einst" role="group" aria-label="Einstellungen des Fever Charts">
 <label>Zieltermin <select class="mini-inp" data-fb="ziel" aria-label="Zieltermin"><option value="">— wählen —</option>${termine.map((t, i) => `<option value="${i}"${t.ziel ? ' selected' : ''}>${esc(t.name)} · ${datumAusMs(isoTag(t.datum))}</option>`).join('')}</select></label>
 <label>Puffer <input type="number" class="mini-inp fb-zahl" min="1" data-fb="puffer" value="${f.puffer == null ? '' : f.puffer}" aria-label="Puffer in Tagen"> ${einheit}</label><button class="btn" data-act="fb-vorschlag" title="1/3 der Gesamtdauer — die CCPM-Regel „Puffer = 50 % der Kette“"${st.e.ziel ? '' : ' disabled'}>Puffer vorschlagen</button>
-<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${st.bloecke.map((x, i) => `<option value="${i === st.bloecke.length - 1 ? '' : esc(x.schluessel)}"${st.zaehlt && x.schluessel === st.zaehlt.schluessel && !st.verschwunden ? ' selected' : ''}>${esc(x.titel)}${i === st.bloecke.length - 1 ? ' (Standard)' : ''}</option>`).join('')}${st.verschwunden ? `<option value="${esc(st.verschwunden)}" selected>„${esc(st.verschwunden)}“ — gibt es nicht mehr</option>` : ''}</select></label>
+${vZielAuswahl(st)}
 <label>Perzentil <select class="mini-inp" data-fb="perzentil" aria-label="Perzentil der Prognose">${PERZENTILE.map(q => `<option value="${q}"${q === f.perzentil ? ' selected' : ''}>P${q}</option>`).join('')}</select></label>
 <label>Auflösung <select class="mini-inp" data-fb="aufloesung" aria-label="Auflösung">${[[1, 'Tag'], [7, 'Woche (alle 7 T)'], [30, 'Monat (30 T)']].map(([n, t]) => `<option value="${n}"${n === (f.aufloesung || 1) ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
 <label>Einheit <select class="mini-inp" data-fb="woche" aria-label="Einheit"><option value="5"${f.woche === 5 ? ' selected' : ''}>Arbeitstage</option><option value="7"${f.woche === 7 ? ' selected' : ''}>Kalendertage</option></select></label>

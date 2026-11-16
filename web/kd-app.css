@@ -1038,6 +1038,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fb-einst{display:flex;flex-wrap:wrap;align-items:center;gap:6px var(--kd-s4);margin:var(--kd-s2) 0;font-size:13px}
 .fb-einst label{display:inline-flex;align-items:center;gap:6px}
 .fb-einst .mini-inp{height:26px}
+.fb-einst>.muted{font-size:12px}
 .fb-zahl{width:64px}
 .fb-zonen{flex-basis:100%}
 .fb-zonen summary{cursor:pointer;color:var(--kd-muted)}
