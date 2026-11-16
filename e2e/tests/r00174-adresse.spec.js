@@ -240,3 +240,131 @@ test.describe('R00174 F0143: Adresse öffnet die Aufgabe', () => {
     await adresseEndetAuf(page, '#/berichte/kosten');
   });
 });
+
+test.describe('R00174 F0144: Adresse folgt dem Fenster, Zurück und Vor', () => {
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  /** Merkt, ob die Seite neu geladen oder die Ansicht neu vom Server geholt wird. */
+  async function neuladenBeobachten(page) {
+    await page.evaluate(() => { window.__nichtNeuGeladen = true; });
+    const zustandsabrufe = [];
+    page.on('request', anfrage => { if (new URL(anfrage.url()).pathname === '/api/zustand') zustandsabrufe.push(anfrage.url()); });
+    return { zustandsabrufe, seiteSteht: () => page.evaluate(() => window.__nichtNeuGeladen === true) };
+  }
+
+  test('US-2 / AK 2: Öffnen und Schließen schreiben die Adresse ohne Neuladen; Zurück schließt, Vor öffnet', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung');
+    const beobachtung = await neuladenBeobachten(page);
+    await karte(page, 7).locator('.t').click();
+    await expect(fenster(page, 7)).toBeVisible();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    await fenster(page, 7).getByRole('button', { name: /Schließen/ }).click();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    await karte(page, 7).locator('.t').click();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    await page.keyboard.press('Escape');
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    expect(beobachtung.zustandsabrufe, 'das Nachführen der Adresse lädt die Ansicht nicht neu').toEqual([]);
+
+    await karte(page, 7).locator('.t').click();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    await page.goBack();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    await expect(karte(page, 7).locator('.t')).toHaveText('Dateiwächter');
+    await page.goForward();
+    await expect(fenster(page, 7)).toBeVisible();
+    await expect(fenster(page, 7)).toContainText('Dateiwächter');
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    expect(await beobachtung.seiteSteht(), 'die Seite wurde nie neu geladen').toBe(true);
+    await expect(page.locator(HINWEIS)).toHaveCount(0);
+  });
+
+  test('AK 2: der Fokus steht nach dem Öffnen im Fenster und nach dem Schließen wieder auf der Karte — wie ohne Adresse', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung');
+    await karte(page, 7).focus();
+    await page.keyboard.press('Enter');
+    await expect(fenster(page, 7)).toBeVisible();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    await expect.poll(() => page.evaluate(() => Boolean(document.activeElement.closest('#fenster')))).toBe(true);
+    await page.keyboard.press('Escape');
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    await expect(karte(page, 7)).toBeFocused();
+  });
+
+  test('AK 2: ohne Adresse gestartet nennt die Adresse nach dem Öffnen das gezeigte Board', async ({ page }) => {
+    await page.goto(k.adresse);
+    await bereit(page, '.bahn');
+    await karte(page, 7).locator('.t').click();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+    await page.goBack();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await zeigtBoard(page, 'Entwicklung');
+  });
+
+  test('AK 2 / R00155: Zurück bei ungespeichertem Titel speichert ihn wie das Schließen über ✕ — einmal, nichts geht verloren', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung');
+    await karte(page, 7).locator('.t').click();
+    await fenster(page, 7).locator('[data-act="titel-bearbeiten"]').click();
+    await page.locator('#fenster [data-af="titel"]').fill('Waechter per Zurueck');
+    const commitsVorher = Number(k.git('rev-list', '--count', 'HEAD'));
+    await page.goBack();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    await expect(karte(page, 7).locator('.t')).toHaveText('Waechter per Zurueck');
+    expect(k.lies('aufgaben/0007-dateiwaechter.md')).toContain('title: Waechter per Zurueck');
+    await bereit(page, '.bahn');
+    expect(Number(k.git('rev-list', '--count', 'HEAD')), 'genau ein Speichern').toBe(commitsVorher + 1);
+    await page.goForward();
+    await expect(fenster(page, 7)).toContainText('Waechter per Zurueck');
+    expect(Number(k.git('rev-list', '--count', 'HEAD')), 'Vor schreibt nichts').toBe(commitsVorher + 1);
+  });
+
+  test('AK 2: Vor zu einer anderen Aufgabe bei ungespeichertem Titel — gespeichert an der verlassenen Aufgabe, nie an der neuen', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/zweit');
+    await karte(page, 9).locator('.t').click();
+    await adresseEndetAuf(page, '#/board/zweit/aufgabe/9');
+    await page.keyboard.press('Escape');
+    await karte(page, 7).locator('.t').click();
+    await adresseEndetAuf(page, '#/board/zweit/aufgabe/7');
+    await fenster(page, 7).locator('[data-act="titel-bearbeiten"]').click();
+    await page.locator('#fenster [data-af="titel"]').fill('Waechter verlassen');
+    await page.evaluate(() => history.go(-2));
+    await expect(fenster(page, 9)).toBeVisible();
+    await expect(fenster(page, 9)).toContainText('Zweitablage');
+    await expect.poll(() => k.lies('aufgaben/0007-dateiwaechter.md')).toContain('title: Waechter verlassen');
+    expect(k.lies('aufgaben/0009-zweitablage.md')).toContain('title: Zweitablage');
+  });
+
+  test('AK 4: in der Aufgabenliste folgt die Adresse dem Fenster als #/aufgaben/aufgabe/<nr>', async ({ page }) => {
+    await linkOeffnen(page, k, '#/aufgaben', 'tr[data-zeile]');
+    await page.locator('tr[data-zeile]', { hasText: 'Ohne Board' }).getByText('Ohne Board').click();
+    await expect(fenster(page, 8)).toBeVisible();
+    await adresseEndetAuf(page, '#/aufgaben/aufgabe/8');
+    await page.keyboard.press('Escape');
+    await adresseEndetAuf(page, '#/aufgaben');
+  });
+
+  test('AK 6: auch das Defekt-Fenster hat seine Adresse', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung');
+    await page.locator('.ka.defekt[data-id="11"]').click();
+    await expect(page.getByRole('dialog', { name: 'Defekte Datei #11' })).toBeVisible();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/11');
+    await page.keyboard.press('Escape');
+    await adresseEndetAuf(page, '#/board/entwicklung');
+  });
+
+  test('Der Wechsel des Boards bei offenem Fenster und der Wechsel zum Bericht bleiben Sache der Adresse', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung/aufgabe/7');
+    await page.evaluate(() => { location.hash = '#/berichte/kosten'; });
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/berichte/kosten');
+    await page.goBack();
+    await expect(fenster(page, 7)).toBeVisible();
+    await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+  });
+});

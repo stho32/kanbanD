@@ -320,7 +320,7 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
   if (fbFehler) S.ui.fbFehler = fbFehler;
   S.ui.bf = berichtsfilterAusBoard();
-  if (hash !== adresseGefolgt) fensterDerAdresseFolgen(hash);
+  if (hash !== adresseGefolgt && hash === location.hash) fensterDerAdresseFolgen(hash);
   if (S.ui.offen) await dateiLaden(start);
   if (S.ui.offenDefekt) await defektLaden(start);
   linkAuswerten();
@@ -328,8 +328,22 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
 
 /** Die Adresse, der das Fenster zuletzt gefolgt ist. Beim Laden und bei `hashchange` ist die Adresse die Wahrheit (ADR-0029
     Regel 2) — aber nur einmal je Adresse: ein Laden aus anderem Anlass (Live-Ereignis, eigene Änderung) öffnet kein Fenster
-    wieder, das der Mensch inzwischen geschlossen hat. */
+    wieder, das der Mensch inzwischen geschlossen hat. Ein Laden, das noch für eine frühere Adresse begann, folgt ihr nicht mehr. */
 let adresseGefolgt = null;
+
+/** Führt die Adresse dem Fenster nach (R00174 AK 2, ADR-0029 Regel 2): öffnet oder schließt der Mensch das Fenster, steht
+    danach die Adresse der Aufgabe bzw. der Seite als neuer Verlaufseintrag da — ohne `hashchange`, also ohne Laden. Ist eine
+    Navigation unterwegs (die Adresse ist noch nicht befolgt), bleibt die Adresse die Wahrheit und wird nicht überschrieben. */
+function adresseNachfuehren() {
+  const u = S.ui;
+  const navigationUnterwegs = location.hash !== adresseGefolgt;
+  const seiteMitAufgabenadresse = (u.view === 'board' && Boolean(u.slug)) || u.view === 'aufgaben';
+  if (navigationUnterwegs || !seiteMitAufgabenadresse) return;
+  const gezeigt = u.offen || u.offenDefekt || null;
+  if (adresseLesen(location.hash).nummer === gezeigt) return;
+  history.pushState(null, '', adresseBilden({ sicht: u.view, slug: u.slug, nummer: gezeigt }));
+  adresseGefolgt = location.hash;
+}
 
 /** Stellt das Fenster auf die Aufgabe der Adresse (R00174): ohne Nummer schließt es, mit einer anderen Nummer wechselt es wie
     beim Klick auf eine andere Karte. Geladen wird über den Weg des Defekt-Fensters, der die drei Antworten des Servers schon
@@ -1070,6 +1084,7 @@ function render() {
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
   // Ein Feld, das auf „Eingabe verwerfen“ wartet, übersteht das Ersetzen nicht: vorher verlassen, damit sein Entwurf nicht still verloren geht
   verlassenNachholen();
+  adresseNachfuehren();
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
   S.ui.stufe = stufeAusBreite(innerWidth);

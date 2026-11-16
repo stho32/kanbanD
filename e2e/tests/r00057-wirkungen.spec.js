@@ -48,7 +48,8 @@ test.describe('R00057', () => {
     await expect(fenster).toHaveCount(0);
     await expect(z(page, 'D0002')).toHaveClass(/\bziel\b/);
     await page.goBack();
-    await karte(page, 7).locator('.t').click();
+    // Seit R00174 trägt die Adresse das offene Fenster: Zurück führt wieder in das Fenster von #7, ohne Klick auf die Karte.
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #7' })).toBeVisible();
     await reiter(page, 'Details');
     await page.getByRole('dialog', { name: 'Aufgabe #7' }).getByRole('link', { name: '+ kd:I0047' }).click();
     await expect(z(page, 'I0047')).toBeVisible();

@@ -198,7 +198,8 @@ async function gegenprobeNachNeuladen(page) {
   await page.unrouteAll({ behavior: 'wait' });
   await page.reload();
   await liveBereit(page);
-  await page.locator('.ka[data-id="1"] .t').click();
+  // Seit R00174 trägt die Adresse das offene Fenster: das Neuladen zeigt es wieder, ohne Klick auf die Karte.
+  await expect(page.locator('#fenster, #defekt-fenster')).toBeVisible();
   await expect(teilaufgabenTexte(page)).toHaveText(['neu']);
   await expect(teilaufgabenKopf(page)).toHaveText('TEILAUFGABEN 0/1');
 }
@@ -321,7 +322,8 @@ test('F3: nach dem Öffnen einer anderen Aufgabe zeigt die Ansicht „Datei“ d
     await page.unrouteAll({ behavior: 'wait' });
     await page.reload();
     await liveBereit(page);
-    await page.locator('.ka[data-id="2"] .t').click();
+    // Seit R00174 trägt die Adresse das offene Fenster: das Neuladen zeigt es wieder, ohne Klick auf die Karte.
+    await expect(page.locator('#fenster, #defekt-fenster')).toBeVisible();
     await reiter(page, 'Datei');
     await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
   });
@@ -416,7 +418,8 @@ async function defektGegenprobe(page) {
   await page.unrouteAll({ behavior: 'wait' });
   await page.reload();
   await liveBereit(page);
-  await page.locator('.ka.defekt[data-id="3"]').click();
+  // Seit R00174 trägt die Adresse das offene Fenster: das Neuladen zeigt es wieder, ohne Klick auf die Karte.
+  await expect(page.locator('#fenster, #defekt-fenster')).toBeVisible();
   await defektZeigtG2(page);
 }
 
@@ -540,7 +543,8 @@ for (const [wie, wechseln] of Object.entries(WECHSEL)) {
       await page.unrouteAll({ behavior: 'wait' });
       await page.reload();
       await liveBereit(page);
-      await page.locator('.ka[data-id="2"] .t').click();
+      // Seit R00174 trägt die Adresse das offene Fenster: das Neuladen zeigt es wieder, ohne Klick auf die Karte.
+      await expect(page.locator('#fenster, #defekt-fenster')).toBeVisible();
       await expect(page.locator('#fenster #anhaenge .anh-z')).toHaveCount(0);
       await reiter(page, 'Datei');
       await expect(page.locator('#dateitext')).toContainText('Board aufräumen');
@@ -574,7 +578,8 @@ for (const verzoegerungMs of [0, 250, 400]) {
       await page.unrouteAll({ behavior: 'wait' });
       await page.reload();
       await liveBereit(page);
-      await page.locator('.ka[data-id="3"] .t').click();
+      // Seit R00174 trägt die Adresse das offene Fenster: das Neuladen zeigt es wieder, ohne Klick auf die Karte.
+      await expect(page.locator('#fenster, #defekt-fenster')).toBeVisible();
       await repariertSichtbar(page);
     }, MIT_DEFEKT);
   });

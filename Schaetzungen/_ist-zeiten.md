@@ -715,3 +715,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0855 Lesefunktion Hash → {Sicht, Slug, Nummer} als reines Modul | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0856 Fenster aus der Adresse setzen | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0857 Hinweise der Fehlerfälle | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0858 Adresse bei Öffnen, Schließen und Esc nachführen; Zurück und Vor | Standard | 1-2h | 0,5h | 0,5h | autonom |
