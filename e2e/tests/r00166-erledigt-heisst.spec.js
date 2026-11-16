@@ -87,7 +87,7 @@ test('R00166 AK 1–3, AK 6 (B0806): eine Board-Datei mit `fever: {target-column
   } finally { await k.stoppen(); }
 });
 
-test('R00166 AK 8 (B0806), seit R00169: Durchlaufzeit und „Wie lange noch“ zeigen mit Zielspalte B dasselbe wie ohne — der Kumulative Fluss folgt der Wahl, „fertig“ am 03.11. ist 3 statt 1', async ({ browser }) => {
+test('R00166 AK 8 (B0806), seit R00169: „Wie lange noch“ zeigt mit Zielspalte B dasselbe wie ohne — der Kumulative Fluss folgt der Wahl („fertig“ am 03.11. ist 3 statt 1), die Durchlaufzeit öffnet mit „bis B“', async ({ browser }) => {
   const seiteZu = async kopf => {
     const k = await kanbanStarten(rechenbeispiel(kopf)), kontext = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
     return { k, kontext, page: await kontext.newPage() };
@@ -99,13 +99,13 @@ test('R00166 AK 8 (B0806), seit R00169: Durchlaufzeit und „Wie lange noch“ z
     const fertigAm0311 = async page => (await zellen(page.locator('.fluss-tab tbody tr'), 'td'))[1].slice(-1);
     expect(await fertigAm0311(ohne.page)).toEqual(['1']);
     expect(await fertigAm0311(mit.page)).toEqual(['3']);
-    for (const route of ['durchlauf', 'prognose']) {
-      await zumBericht(ohne.page, ohne.k, route);
-      await zumBericht(mit.page, mit.k, route);
-      const [textOhne, textMit] = await Promise.all([ohne.page, mit.page].map(page => page.locator('#main').innerText()));
-      expect(textMit.length, route).toBeGreaterThan(40);
-      expect(textMit, route).toBe(textOhne);
-    }
+    for (const x of [ohne, mit]) await zumBericht(x.page, x.k, 'durchlauf');
+    await expect(ohne.page.getByRole('combobox', { name: 'bis Spalte' })).toHaveValue('Erledigt');
+    await expect(mit.page.getByRole('combobox', { name: 'bis Spalte' })).toHaveValue('B');
+    for (const x of [ohne, mit]) await zumBericht(x.page, x.k, 'prognose');
+    const [textOhne, textMit] = await Promise.all([ohne.page, mit.page].map(page => page.locator('#main').innerText()));
+    expect(textMit.length).toBeGreaterThan(40);
+    expect(textMit).toBe(textOhne);
     await expect(mit.page.locator('#main')).toContainText('Abschlussspalte');
   } finally {
     for (const x of [ohne, mit]) { await x.kontext.close(); await x.k.stoppen(); }
