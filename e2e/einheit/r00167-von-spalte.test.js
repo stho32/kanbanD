@@ -144,6 +144,28 @@ test('R00167 B0817: mit Phasen zählt das erste Erreichen der ersten Spalte der 
   assert.deepStrictEqual(zahlen(durchsatz(null, bew)).zugang, [2, 1, 0]);
 });
 
+/* ── B0818 Balkenpaar je Periode (Zeichnung D0006 #durchsatz-von, „Balken“) ── */
+const rund = x => Math.round(x * 100) / 100;
+const paar = n => { const p = B.durchsatzPaar(636, n); return [rund(p.paar), p.luecke, rund(p.breite), p.zugangVoll]; };
+
+test('R00167 B0818: das Balkenpaar nimmt 72 % des Platzes einer Periode, höchstens 96 — drei Perioden: Paar 96, Lücke 2, je Balken 47, Zugang hohl', () => {
+  assert.deepStrictEqual(paar(3), [96, 2, 47, false]);
+  assert.deepStrictEqual(paar(1), [96, 2, 47, false]);
+  assert.deepStrictEqual(paar(8), [57.24, 2, 27.62, false]);
+});
+
+test('R00167 B0818: unter 10 Einheiten Balkenbreite ist der Zugang voll gefüllt — ab 21 Perioden, bei 20 noch hohl', () => {
+  assert.deepStrictEqual(paar(20), [22.9, 2, 10.45, false]);
+  assert.deepStrictEqual(paar(21), [21.81, 2, 9.9, true]);
+  assert.deepStrictEqual(paar(30), [15.26, 2, 6.63, true]);
+});
+
+test('R00167 B0818: ein Paar unter 10 hat keine Lücke und ist mindestens 4 breit', () => {
+  assert.deepStrictEqual(paar(46), [9.95, 0, 4.98, true]);
+  assert.deepStrictEqual(paar(45), [10.18, 2, 4.09, true]);
+  assert.deepStrictEqual(paar(400), [4, 0, 2, true]);
+});
+
 /* ── B0814 Von-Block des Boards an einer Stelle auflösen (ADR-0027 N3 Punkt 4) ── */
 const kern = v => ({ gewaehlt: v.gewaehlt, name: v.name, ab: v.ab, verschwunden: v.verschwunden, gueltig: v.gueltig });
 const vonblock = (vonspalte, zielSchluessel = 'Erledigt', f = {}) => B.vonblock(beispiel(), filter(f), vonspalte, zielSchluessel);
