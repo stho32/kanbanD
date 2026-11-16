@@ -219,6 +219,28 @@
     return tage;
   }
 
+  /** Band unter den Linien des Burndowns (R00164 AK 7), in Einheiten der Zeichenfläche: Nulllinie, nutzbare Höhe je Richtung. */
+  const BURNDOWN_BAND = Object.freeze({ null: 280, hoehe: 30, mindestHoehe: 2, stapelAbstand: 1, schraffurAb: 6 });
+  /** Balken je Tag: „+ hinzugekommen“ von der Nulllinie nach oben, „− erledigt“ nach unten, „− entfernt“ darunter gestapelt.
+      `skala` = max(1, größtes „+“, größter Abgang eines Tages), 1 Aufgabe = Höhe ÷ Skala; je Größe `{ y, hoehe }`, Höhe 0 = kein
+      Rechteck. Breite aus dem Abstand zweier Tage; unter `schraffurAb` trägt „entfernt“ nur die Kontur. */
+  function burndownBalken(tage, tagesabstand) {
+    const { null: nulllinie, hoehe: bandHoehe, mindestHoehe, stapelAbstand, schraffurAb } = BURNDOWN_BAND;
+    const skala = Math.max(1, ...tage.map(x => Math.max(x.hinzugekommen, x.erledigt + x.entfernt)));
+    const hoeheVon = anzahl => anzahl > 0 ? Math.max(mindestHoehe, anzahl * bandHoehe / skala) : 0;
+    const breite = Math.max(2, Math.min(24, 0.62 * tagesabstand));
+    const jeTag = tage.map(x => {
+      const plus = hoeheVon(x.hinzugekommen), erledigt = hoeheVon(x.erledigt), entfernt = hoeheVon(x.entfernt);
+      const gestapelt = erledigt > 0 && entfernt > 0;
+      return {
+        hinzugekommen: { y: nulllinie - plus, hoehe: plus },
+        erledigt: { y: nulllinie, hoehe: erledigt },
+        entfernt: { y: gestapelt ? nulllinie + erledigt + stapelAbstand : nulllinie, hoehe: entfernt },
+      };
+    });
+    return { skala, breite, schraffiert: breite >= schraffurAb, tage: jeTag };
+  }
+
   const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0 });
   /** Ereignisse bis `jetzt` je Tagesbeginn (ms): die Wechsel von „offen“ entlang der Zustandsfolge jeder gezählten Aufgabe. */
   function ereignisseJeTag(f, gezaehlt, jetzt) {
@@ -940,5 +962,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

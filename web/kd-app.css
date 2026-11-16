@@ -693,6 +693,12 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .diagramm .endwert.leise{fill:var(--kd-muted)}
 .diagramm .fadenkreuz{stroke:var(--kd-faint);stroke-width:1}
 .diagramm .treffer{fill:transparent}
+/* Burndown, Band mit Zugang und Abgang je Tag (R00164 AK 7): „entfernt“ hohl mit Kontur und Schraffur, nicht nur Farbe */
+.diagramm .bd-plus{fill:var(--kd-agent)}
+.diagramm .bd-erledigt{fill:var(--kd-accent)}
+.diagramm .bd-entfernt{stroke:var(--kd-muted);stroke-width:1.5}
+.diagramm .bd-schraffur line{stroke:var(--kd-muted);stroke-width:1.5}
+.diagramm .bd-null{stroke:var(--kd-line-strong);stroke-width:1.5}
 .tooltip{position:absolute;top:8px;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12px;pointer-events:none;min-width:130px}
 .tabellenansicht{margin:var(--kd-s3) 0;font-size:12px;max-width:420px}
 .tabellenansicht summary{cursor:pointer;color:var(--kd-accent-ink)}

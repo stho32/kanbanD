@@ -106,6 +106,65 @@ test('R00164 US-4 (AK 8): die Tabellenansicht zeigt rechts von „Umfang“ die 
   } finally { await k.stoppen(); }
 });
 
+/* ── F0128 Balken und Legende (Zeichnung D0006 #burndown-zugang-abgang) ── */
+/** Die Zahlen des Rechenbeispiels je Tag 02.–05.11. (Tabelle der Anforderung). */
+const BEISPIEL = { hinzugekommen: [3, 2, 1, 0], erledigt: [0, 2, 0, 2], entfernt: [0, 0, 1, 0] };
+const NULLLINIE = 280, JE_AUFGABE = 30 / 3, BALKENBREITE = 24;
+const tagX = i => 36 + i * 668 / 3;
+/** Erwartete Balken einer Größe: je Tag mit Wert über 0 Mitte, Oberkante und Höhe — `richtung` −1 nach oben, +1 nach unten. */
+const erwarteteBalken = (groesse, richtung) => BEISPIEL[groesse].map((anzahl, i) => ({ anzahl, i })).filter(x => x.anzahl > 0)
+  .map(({ anzahl, i }) => ({ mitte: tagX(i), oben: richtung < 0 ? NULLLINIE - anzahl * JE_AUFGABE : NULLLINIE, hoehe: anzahl * JE_AUFGABE }));
+/** Gezeichnete Balken einer Klasse als äußerer Kasten (samt Kontur) in Einheiten der Zeichenfläche. */
+const gezeichneteBalken = (page, klasse) => page.locator(`svg.diagramm rect.${klasse}`).evaluateAll(rechtecke => rechtecke.map(r => {
+  const zahl = name => Number(r.getAttribute(name)), stil = getComputedStyle(r);
+  let kontur = 0;
+  if (stil.stroke !== 'none') kontur = parseFloat(stil.strokeWidth);
+  return { mitte: zahl('x') + zahl('width') / 2, oben: zahl('y') - kontur / 2, hoehe: zahl('height') + kontur, breite: zahl('width') + kontur };
+}));
+async function erwarteBalken(page, klasse, groesse, richtung) {
+  const gezeichnet = await gezeichneteBalken(page, klasse), erwartet = erwarteteBalken(groesse, richtung);
+  expect(gezeichnet.length, `${klasse}: ein Rechteck je Tag mit Wert über 0`).toBe(erwartet.length);
+  erwartet.forEach((soll, n) => {
+    for (const mass of ['mitte', 'oben', 'hoehe']) expect(gezeichnet[n][mass], `${klasse} ${n + 1}: ${mass}`).toBeCloseTo(soll[mass], 1);
+    expect(gezeichnet[n].breite).toBeCloseTo(BALKENBREITE, 1);
+  });
+}
+
+test('R00164 AK 7 (B0788): je Tag ein Balken an der Nulllinie — „+“ nach oben, „erledigt“ und „entfernt“ nach unten, Höhe = Zahl des Tages', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    await expect(diagramm(page)).toHaveAttribute('aria-label', 'Offene Aufgaben je Tag, darunter Zugang und Abgang je Tag');
+    await erwarteBalken(page, 'bd-plus', 'hinzugekommen', -1);
+    await erwarteBalken(page, 'bd-erledigt', 'erledigt', 1);
+    await erwarteBalken(page, 'bd-entfernt', 'entfernt', 1);
+    await expect(page.locator('svg.diagramm .bd-skala')).toHaveText(['+3', '−3']);
+    await expect(page.locator('svg.diagramm .bd-null')).toHaveAttribute('y1', String(NULLLINIE));
+    // „entfernt“ ist nicht nur Farbe: hohl mit Kontur und Schraffur, „erledigt“ ist gefüllt und ohne Kontur
+    const stil = klasse => page.locator(`svg.diagramm rect.${klasse}`).first().evaluate(r => { const s = getComputedStyle(r); return { fill: s.fill, stroke: s.stroke }; });
+    const [plus, erledigt, entfernt] = await Promise.all(['bd-plus', 'bd-erledigt', 'bd-entfernt'].map(stil));
+    expect(entfernt.fill).toContain('#bd-schraffur');
+    expect(entfernt.stroke).not.toBe('none');
+    expect(erledigt.stroke).toBe('none');
+    expect(erledigt.fill).toMatch(/^(rgb|oklch|color)/);
+    expect(plus.fill).not.toBe(erledigt.fill);
+    await expect(page.locator('svg.diagramm pattern#bd-schraffur line')).toHaveCount(1);
+  } finally { await k.stoppen(); }
+});
+
+test('R00164 AK 7 (B0788): die Linien „offen“ und „Umfang“ stehen, wo sie vor dem Band standen', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    // Linienfläche y 16–232 bei Umfang höchstens 5: offen 3·3·3·1, Umfang 3·5·4·4 — Werte der Fläche vor dem Umbau (Höhe 272)
+    await expect(page.locator('svg.diagramm path.offen')).toHaveAttribute('d', 'M36.0,102.4L258.7,102.4L481.3,102.4L704.0,188.8');
+    await expect(page.locator('svg.diagramm path.umfang')).toHaveAttribute('d', 'M36.0,102.4L258.7,16.0L481.3,59.2L704.0,59.2');
+    await expect(page.locator('svg.diagramm circle.punkt')).toHaveAttribute('cy', '188.8');
+  } finally { await k.stoppen(); }
+});
+
 test('R00164 AK 10: der Durchsatz desselben Bestands bleibt beim ersten Erreichen — gesamt 3, obwohl „− erledigt“ 4 nennt', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel);
   try {

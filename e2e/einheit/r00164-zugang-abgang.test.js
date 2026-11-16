@@ -132,3 +132,44 @@ test('R00164 B0785 (AK 6): Personen-, Label- und Farbfilter wählen für die dre
   assert.deepStrictEqual(zahlen(ohneAufgabe1), [[2, 0, 0, 2], [2, 1, 0, 3], [0, 0, 1, 2], [0, 1, 0, 1]]);
   erwarteBilanz(ohneAufgabe1);
 });
+
+/* ── B0788 Balken je Tag unter der Linie (Zeichnung D0006 #burndown-zugang-abgang: Nulllinie y 280, je Richtung 30) ── */
+const ABSTAND_VIER_TAGE = 668 / 3;
+const tag = (hinzugekommen, erledigt, entfernt) => ({ hinzugekommen, erledigt, entfernt });
+const kasten = (balken, groesse) => balken.tage.map(x => [x[groesse].y, x[groesse].hoehe]);
+
+test('R00164 B0788 (AK 7): Rechenbeispiel — Skala 3, „+“ 30·20·10 hoch nach oben, „erledigt“ 20 hoch nach unten, „entfernt“ 10 an der Nulllinie', () => {
+  const tage = B.burndown(beispiel(), filter({}), aufgabenBeispiel, mittags(5));
+  const balken = B.burndownBalken(tage, ABSTAND_VIER_TAGE);
+  assert.strictEqual(balken.skala, 3);
+  assert.strictEqual(balken.breite, 24);
+  assert.strictEqual(balken.schraffiert, true);
+  assert.deepStrictEqual(kasten(balken, 'hinzugekommen'), [[250, 30], [260, 20], [270, 10], [280, 0]]);
+  assert.deepStrictEqual(kasten(balken, 'erledigt'), [[280, 0], [280, 20], [280, 0], [280, 20]]);
+  assert.deepStrictEqual(kasten(balken, 'entfernt'), [[280, 0], [280, 0], [280, 10], [280, 0]]);
+});
+
+test('R00164 B0788 (AK 7): „entfernt“ stapelt unter „erledigt“ mit 1 Abstand; die Skala nimmt den größten Abgang eines Tages', () => {
+  const balken = B.burndownBalken([tag(1, 2, 1), tag(0, 0, 0)], 668);
+  assert.strictEqual(balken.skala, 3);
+  assert.deepStrictEqual(kasten(balken, 'hinzugekommen'), [[270, 10], [280, 0]]);
+  assert.deepStrictEqual(kasten(balken, 'erledigt'), [[280, 20], [280, 0]]);
+  assert.deepStrictEqual(kasten(balken, 'entfernt'), [[301, 10], [280, 0]]);
+});
+
+test('R00164 B0788 (AK 7): ein Wert über 0 ist mindestens 2 hoch, 0 bleibt 0; ohne Ereignis ist die Skala 1', () => {
+  const balken = B.burndownBalken([tag(40, 1, 1), tag(0, 0, 0)], 668);
+  assert.deepStrictEqual(kasten(balken, 'hinzugekommen'), [[250, 30], [280, 0]]);
+  assert.deepStrictEqual(kasten(balken, 'erledigt'), [[280, 2], [280, 0]]);
+  assert.deepStrictEqual(kasten(balken, 'entfernt'), [[283, 2], [280, 0]]);
+  assert.strictEqual(B.burndownBalken([tag(0, 0, 0)], 668).skala, 1);
+});
+
+test('R00164 B0788 (AK 7): Balkenbreite max(2, min(24, 0,62 × Tagesabstand)); unter 6 entfällt die Schraffur', () => {
+  const breite = abstand => B.burndownBalken([tag(1, 0, 0)], abstand);
+  assert.strictEqual(breite(668 / 29).breite.toFixed(1), '14.3');
+  assert.strictEqual(breite(668 / 29).schraffiert, true);
+  assert.strictEqual(breite(8).breite.toFixed(2), '4.96');
+  assert.strictEqual(breite(8).schraffiert, false);
+  assert.strictEqual(breite(1).breite, 2);
+});

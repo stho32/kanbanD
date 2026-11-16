@@ -1187,11 +1187,29 @@ function vBurndownKennzahl(tage) {
   const summe = groesse => tage.reduce((n, x) => n + x[groesse], 0);
   return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<span>${zeichen} <b>${summe(groesse)}</b> ${groesse}</span>`).join('')}</div>`;
 }
+/** Das Band unter den Linien (R00164 AK 7, Zeichnung D0006 #burndown-zugang-abgang): je Tag ein Balkenplatz um `sx(i)` —
+    „+“ nach oben, „erledigt“ nach unten, „entfernt“ darunter als hohle, schraffierte Kontur; rechts die Skala. */
+function vBurndownBand(t, sx, links, rechts) {
+  const { null: nulllinie, hoehe } = BURNDOWN_BAND, KONTUR = 1.5;
+  let tagesabstand = rechts - links;
+  if (t.length > 1) tagesabstand /= t.length - 1;
+  const b = burndownBalken(t, tagesabstand), halb = b.breite / 2;
+  const rechteck = (klasse, i, { y, hoehe }, rand = 0, fuellung = '') => hoehe ? `<rect class="${klasse}" x="${(sx(i) - halb + rand / 2).toFixed(2)}" y="${(y + rand / 2).toFixed(2)}" width="${(b.breite - rand).toFixed(2)}" height="${Math.max(0.5, hoehe - rand).toFixed(2)}"${fuellung}></rect>` : '';
+  let schraffur = 'none';
+  if (b.schraffiert) schraffur = 'url(#bd-schraffur)';
+  const balken = b.tage.map((x, i) => rechteck('bd-plus', i, x.hinzugekommen) + rechteck('bd-erledigt', i, x.erledigt) + rechteck('bd-entfernt', i, x.entfernt, KONTUR, ` fill="${schraffur}"`)).join('');
+  const rahmen = [nulllinie - hoehe, nulllinie + hoehe].map(y => `<line class="gitter" x1="${links}" x2="${rechts}" y1="${y}" y2="${y}"></line>`).join('');
+  const skalaX = (rechts + halb + 8).toFixed(1);
+  return `<defs><pattern id="bd-schraffur" class="bd-schraffur" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4"></line></pattern></defs>
+${rahmen}<g id="bd-balken">${balken}</g><line class="bd-null" x1="${(links - halb).toFixed(1)}" x2="${(rechts + halb).toFixed(1)}" y1="${nulllinie}" y2="${nulllinie}"></line>
+<text class="achse bd-skala" x="${skalaX}" y="${nulllinie - hoehe + 4}">+${b.skala}</text><text class="achse bd-skala" x="${skalaX}" y="${nulllinie + hoehe + 4}">−${b.skala}</text>`;
+}
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now(), S.board && S.board.start), B = 800;
   const H = 272, L = 36, R = 96, O = 16, U = 40;
+  const HOEHE_MIT_BAND = 352, BAND_UNTEN = 312, MARKEN_Y = 330;
   const max = Math.max(1, ...t.map(x => x.umfang));
   const sx = i => L + (t.length < 2 ? (B - L - R) / 2 : i * (B - L - R) / (t.length - 1));
   const sy = y => O + (H - O - U) * (1 - y / max);
@@ -1202,14 +1220,15 @@ function vVerlauf() {
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
   S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<span>${zeichen} ${groesse} ${x[groesse]}</span>`).join('')}` : ''; };
-  const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
+  const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${HOEHE_MIT_BAND}" role="img" aria-label="Offene Aufgaben je Tag, darunter Zugang und Abgang je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
-${xTicks.map(i => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
+${xTicks.map(i => achsDatum(tage[i], sx(i), MARKEN_Y)).join('')}
 <path class="umfang" d="${linie('umfang')}"></path><path class="offen" d="${linie('offen')}"></path>
 <circle class="punkt" cx="${sx(t.length - 1)}" cy="${sy(letzte.offen)}" r="4"></circle>
 <text class="endwert" x="${sx(t.length - 1) + 10}" y="${sy(letzte.offen) + 4}">offen ${letzte.offen}</text>
 <text class="endwert leise" x="${sx(t.length - 1) + 10}" y="${sy(letzte.umfang) + (letzte.umfang === letzte.offen ? 18 : 4)}">Umfang ${letzte.umfang}</text>
-${fadenkreuz(O, H - U)}
+${vBurndownBand(t, sx, L, B - R)}
+${fadenkreuz(O, BAND_UNTEN)}
 </svg>` : `<div class="leer">${S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.'}</div>`;
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
