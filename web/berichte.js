@@ -664,14 +664,22 @@
   /** Der Block, der auf dem Board als erledigt zählt (R00166, ADR-0027 N2 Punkt 2) — die eine Auflösung der gespeicherten
       Zielspalte für Fever Chart, Burndown und Durchsatz: `block` ist der gespeicherte Block unter dem Filter (sonst null),
       `zaehlt` er oder der letzte Block, `verschwunden` der Name einer Wahl, die es nicht mehr gibt. `gewaehlt` ist der Schlüssel
-      nur dann, wenn die Wahl von `standard` abweicht — dem Ziel, bis zu dem Burndown und Durchsatz ohne Wahl rechnen. */
+      nur dann, wenn die Wahl von `standard` abweicht — dem Ziel, bis zu dem Burndown und Durchsatz ohne Wahl rechnen; nur
+      dann gibt es `worte` (`zielWorte`), sonst bleiben die Texte der Berichte wie ohne Wahl. */
   function zielblock(bew, f, zielspalte) {
-    const bloecke = fieberBloecke(bew, f, bew.phasen), standard = durchsatzZiel(bew, bew.phasen).name;
+    const bloecke = fieberBloecke(bew, f, bew.phasen), vorgabe = durchsatzZiel(bew, bew.phasen), standard = vorgabe.name;
     const block = bloecke.find(x => x.schluessel === zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
-    let verschwunden = null, gewaehlt = null;
+    let verschwunden = null, gewaehlt = null, worte = null;
     if (zielspalte && !block) verschwunden = zielspalte;
-    if (block && block.schluessel !== standard) gewaehlt = block.schluessel;
-    return { bloecke, block, zaehlt: block || letzter, verschwunden, gewaehlt, standard };
+    if (block && block.schluessel !== standard) { gewaehlt = block.schluessel; worte = zielWorte(gewaehlt, vorgabe.art === 'phase'); }
+    return { bloecke, block, zaehlt: block || letzter, verschwunden, gewaehlt, standard, worte };
+  }
+  /** Wie Burndown und Durchsatz einen gewählten Zielblock nennen (Zeichnung D0006 #erledigt-heisst): `lang` im Kopftext und im
+      Satz unter der Legende des Burndowns, `kurz` hinter „− erledigt“, `bis` im Durchsatz. */
+  function zielWorte(name, istPhase) {
+    const genannt = `„${name}“`, bis = `bis ${genannt}`;
+    if (istPhase) return { lang: `${genannt} durchlaufen`, kurz: `nach ${genannt}`, bis };
+    return { lang: `in ${genannt} oder rechts davon`, kurz: `ab ${genannt}`, bis };
   }
   /** Schlüssel des Caches: Projektstart, Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt)
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */

@@ -309,3 +309,62 @@ test('R00166 (B0809): scheitert das Speichern, steht der Fehler als Meldung in d
     expect(k.lies(BOARD)).not.toContain('fever');
   } finally { await k.stoppen(); }
 });
+
+/* ── F0131 Texte nennen, was als erledigt zählt (Zeichnung D0006 #erledigt-heisst) ── */
+const kopftext = page => page.locator('#main .leiste .muted').first();
+const burndownDiagramm = page => page.getByRole('img', { name: 'Offene Aufgaben je Tag' });
+/** Zeigt im Burndown des Beispiels auf den Tag: drei Tage auf 668 Einheiten Breite ab x = 36. */
+async function zeigeAufTag(page, tagImNovember) {
+  const svg = burndownDiagramm(page);
+  const [vb, kasten] = await Promise.all([svg.getAttribute('viewBox'), svg.boundingBox()]);
+  const [, , w, h] = vb.split(' ').map(Number), s = Math.min(kasten.width / w, kasten.height / h);
+  const x = 36 + (tagImNovember - 2) * 668 / 2;
+  await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + 100 * s);
+  return page.locator('#tooltip');
+}
+const tooltipZeilen = tip => tip.locator('span').evaluateAll(spans => spans.map(s => s.textContent.trim()));
+const ZUG_ZURUECK = 'Ein Zug zurück nach links zählt als „+ hinzugekommen“.';
+
+test('R00166 AK 10 (B0810): mit Zielspalte B nennt der Burndown „B“ in Kopfleiste, Kennzahl, Tooltip und Legende; der Tabellenkopf bleibt „− erledigt“', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await expect(kopftext(page)).toHaveText('fabrik · aus den Commits von boards/fabrik.md · erledigt = in „B“ oder rechts davon');
+    await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 4 hinzugekommen', '− 3 erledigt (ab „B“)', '− 0 entfernt']);
+    await expect.poll(async () => tooltipZeilen(await zeigeAufTag(page, 3))).toEqual(['offen 0', 'Umfang 3', '+ hinzugekommen 0', '− erledigt (ab „B“) 3', '− entfernt 0']);
+    await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt (ab „B“)', '− entfernt']);
+    await expect(page.locator('.bd-hinweis')).toContainText(`Erledigt heißt hier: in „B“ oder rechts davon. ${ZUG_ZURUECK}`);
+    await expect(page.locator('.bd-hinweis')).toContainText('„− erledigt“ kann über dem Durchsatz liegen');
+    expect(await zellen(page.locator('.bd-tabelle thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', '− erledigt', '− entfernt']]);
+  } finally { await k.stoppen(); }
+});
+
+for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es nicht mehr gibt', mitZielspalte('Abnahme')]]) {
+  test(`R00166 AK 10 (B0810): ${fall} stehen die Texte des Burndowns wörtlich wie vor der Karte`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel(kopf));
+    try {
+      await berichtAm0411(page, k, 'verlauf');
+      await expect(kopftext(page)).toHaveText('fabrik · aus den Commits von boards/fabrik.md · offen = nicht in der Abschlussspalte');
+      await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 3 hinzugekommen', '− 1 erledigt', '− 0 entfernt']);
+      await expect.poll(async () => tooltipZeilen(await zeigeAufTag(page, 3))).toEqual(['offen 2', 'Umfang 3', '+ hinzugekommen 0', '− erledigt 1', '− entfernt 0']);
+      await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt', '− entfernt']);
+      await expect(page.locator('.bd-hinweis')).toHaveText('„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.');
+    } finally { await k.stoppen(); }
+  });
+}
+
+test.describe('R00166 Texte auf einem Board mit Phasen', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('R00166 AK 10 (B0810): mit der Phase „Entwicklertest“ als Ziel heißt es im Burndown „„Entwicklertest“ durchlaufen“ und „nach „Entwicklertest““', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
+    await phasenBerichtAm0411(page, k, 'verlauf');
+    await expect(auswahl(page)).toHaveValue('Entwicklertest');
+    await expect(kopftext(page)).toContainText('· erledigt = „Entwicklertest“ durchlaufen');
+    await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 2 hinzugekommen', '− 1 erledigt (nach „Entwicklertest“)', '− 0 entfernt']);
+    await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt (nach „Entwicklertest“)', '− entfernt']);
+    await expect(page.locator('.bd-hinweis')).toContainText(`Erledigt heißt hier: „Entwicklertest“ durchlaufen. ${ZUG_ZURUECK}`);
+  });
+});

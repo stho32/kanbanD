@@ -166,3 +166,17 @@ test('R00166 B0806: mit Phasen zählt das erste Durchlaufen der gewählten Phase
   assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen, 'Entwicklertest').name, 'Entwicklertest');
   assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen).name, 'Abnahme');
 });
+
+/* ── B0810 Wie die Berichte den Zielblock nennen (Zeichnung D0006 #erledigt-heisst) ── */
+test('R00166 B0810 (AK 10): eine gewählte Spalte heißt lang „in „B“ oder rechts davon“, kurz „ab „B““, im Durchsatz „bis „B““', () => {
+  assert.deepStrictEqual(B.zielblock(beispiel(), filter({}), 'B').worte, { lang: 'in „B“ oder rechts davon', kurz: 'ab „B“', bis: 'bis „B“' });
+});
+
+test('R00166 B0810 (AK 10): eine gewählte Phase heißt lang „„Entwicklertest“ durchlaufen“, kurz „nach „Entwicklertest““, im Durchsatz „bis „Entwicklertest““', () => {
+  assert.deepStrictEqual(B.zielblock(mitPhasen(), filter({}), 'Entwicklertest').worte, { lang: '„Entwicklertest“ durchlaufen', kurz: 'nach „Entwicklertest“', bis: 'bis „Entwicklertest“' });
+});
+
+test('R00166 B0810 (AK 10): ohne Wahl, mit dem Standardblock und mit einer verschwundenen Wahl gibt es keine Worte — die Texte bleiben wie heute', () => {
+  for (const zielspalte of [null, 'Erledigt', 'Abnahme']) assert.strictEqual(B.zielblock(beispiel(), filter({}), zielspalte).worte, null, `Zielspalte ${zielspalte}`);
+  assert.strictEqual(B.zielblock(mitPhasen(), filter({}), 'Abnahme').worte, null);
+});

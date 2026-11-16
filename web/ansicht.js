@@ -1184,15 +1184,23 @@ function vDiagrammFlaeche(svg, extra = '') {
 const BURNDOWN_EREIGNISSE = [['hinzugekommen', '+', 'k-plus'], ['erledigt', '−', 'k-erledigt'], ['entfernt', '−', 'k-entfernt']];
 /** Farbfeld einer Größe: dasselbe Zeichen wie ihr Balken; stumm, weil Vorzeichen und Wort daneben stehen. */
 const burndownFeld = klasse => `<i class="${klasse}" aria-hidden="true"></i>`;
-/** Legende unter dem Diagramm (R00164 AK 9): die drei Größen, ab wo „+“ zählt, und warum „erledigt“ über dem Durchsatz liegen kann. */
-function vBurndownLegende() {
-  return `<div class="dlegende bd-legende" id="bd-legende">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${groesse}</span>`).join('')}</div>
-<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.</p>`;
+/** Wort einer Größe in Kennzahl, Tooltip und Legende: „erledigt“ nennt einen gewählten Zielblock (R00166 AK 10, `zielWorte`). */
+function burndownWort(groesse, zielWorte) {
+  if (groesse !== 'erledigt' || !zielWorte) return groesse;
+  return `erledigt (${esc(zielWorte.kurz)})`;
+}
+/** Legende unter dem Diagramm (R00164 AK 9): die drei Größen, ab wo „+“ zählt, und warum „erledigt“ über dem Durchsatz liegen
+    kann; mit gewähltem Zielblock dazu, was „erledigt“ hier heißt. */
+function vBurndownLegende(zielWorte) {
+  let erledigtHeisst = '';
+  if (zielWorte) erledigtHeisst = `<br>Erledigt heißt hier: ${esc(zielWorte.lang)}. Ein Zug zurück nach links zählt als „+ hinzugekommen“.`;
+  return `<div class="dlegende bd-legende" id="bd-legende">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>
+<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.${erledigtHeisst}</p>`;
 }
 /** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
-function vBurndownKennzahl(tage) {
+function vBurndownKennzahl(tage, zielWorte) {
   const summe = groesse => tage.reduce((n, x) => n + x[groesse], 0);
-  return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} <b>${summe(groesse)}</b> ${groesse}</span>`).join('')}</div>`;
+  return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} <b>${summe(groesse)}</b> ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>`;
 }
 /** Das Band unter den Linien (R00164 AK 7, Zeichnung D0006 #burndown-zugang-abgang): je Tag ein Balkenplatz um `sx(i)` —
     „+“ nach oben, „erledigt“ nach unten, „entfernt“ darunter als hohle, schraffierte Kontur; rechts die Skala. */
@@ -1259,7 +1267,7 @@ function vVerlauf() {
   const xTicks = xMarken(t.length);
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
-  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${groesse} ${x[groesse]}</span>`).join('')}` : ''; };
+  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, ziel.worte)} ${x[groesse]}</span>`).join('')}` : ''; };
   const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${HOEHE_MIT_BAND}" role="img" aria-label="Offene Aufgaben je Tag, darunter Zugang und Abgang je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
 ${xTicks.map(i => achsDatum(tage[i], sx(i), MARKEN_Y)).join('')}
@@ -1274,8 +1282,10 @@ ${fadenkreuz(O, BAND_UNTEN)}
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now(), ziel.gewaehlt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht bd-tabelle"><summary>Tabellenansicht</summary>${berichtRahmen('Burndown je Tag')}<table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
-  return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
-<div class="body bericht">${vErledigtHeisst(ziel)}${t.length ? vBurndownKennzahl(t) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende() : svg}${tabelle}${nicht}</div>`;
+  let wasZaehlt = 'offen = nicht in der Abschlussspalte';
+  if (ziel.worte) wasZaehlt = `erledigt = ${esc(ziel.worte.lang)}`;
+  return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · ${wasZaehlt}</span></div>${vBerichtsfilter('burndown')}
+<div class="body bericht">${vErledigtHeisst(ziel)}${t.length ? vBurndownKennzahl(t, ziel.worte) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit — liest nur. */
