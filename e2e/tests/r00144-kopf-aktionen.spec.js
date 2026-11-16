@@ -95,19 +95,18 @@ test.describe('R00144 Kopf und Aktionsmenü', () => {
 
   /* ── US-2: das ⋮-Menü ── */
 
-  test('US-2: Menü mit genau zwei Einträgen, Ikonspalte, genau ein Trenner, kein Titel, Startfokus „Archivieren“', async ({ page }) => {
+  // Seit R00174 führt das Menü „Link kopieren“ als ersten Eintrag: drei Einträge, je ein Trenner vor „Archivieren“ und vor „Endgültig löschen“.
+  test('US-2: Menü mit genau drei Einträgen, Ikonspalte, zwei Trenner, kein Titel, Startfokus „Link kopieren“', async ({ page }) => {
     await oeffnen(page);
     await menueOeffnen(page);
     const menue = page.locator(MENUE);
     await expect(menue).toHaveAttribute('aria-label', 'Weitere Aktionen für Aufgabe #1');
     const eintraege = menue.getByRole('menuitem');
-    await expect(eintraege).toHaveText(['Archivieren', 'Endgültig löschen']);
-    await expect(menue.locator('[role="separator"]')).toHaveCount(1);
-    // der Trenner steht zwischen den beiden Einträgen, nicht davor
+    await expect(eintraege).toHaveText(['Link kopieren', 'Archivieren', 'Endgültig löschen']);
+    await expect(menue.locator('[role="separator"]')).toHaveCount(2);
+    // je ein Trenner zwischen den Einträgen, keiner davor
     const reihenfolge = await menue.evaluate(el => [...el.children].map(e => e.getAttribute('role') || e.className));
-    expect(reihenfolge[0]).toBe('menuitem');
-    expect(reihenfolge.filter(r => r === 'separator')).toHaveLength(1);
-    expect(reihenfolge.indexOf('separator')).toBe(1);
+    expect(reihenfolge).toEqual(['menuitem', 'separator', 'menuitem', 'separator', 'menuitem']);
     expect(await eintraege.last().getAttribute('class')).toContain('warn');
     await expect(menue.locator('.km-titel, h1, h2, h3, h4, h5, h6')).toHaveCount(0);
     await expect(menue.locator('kbd, .km-k')).toHaveCount(0);
@@ -240,6 +239,9 @@ test.describe('R00144 Kopf und Aktionsmenü', () => {
   test('Tastatur: ↓/↑/Pos1/Ende im Menü, Esc schließt nur das Menü, zweites Esc das Fenster', async ({ page }) => {
     await oeffnen(page);
     await menueOeffnen(page);
+    // Seit R00174 ist „Link kopieren“ der erste Eintrag und trägt den Startfokus.
+    await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Link kopieren' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
     await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Archivieren' })).toBeFocused();
     await page.keyboard.press('ArrowDown');
     await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Endgültig löschen' })).toBeFocused();
@@ -248,7 +250,7 @@ test.describe('R00144 Kopf und Aktionsmenü', () => {
     await page.keyboard.press('End');
     await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Endgültig löschen' })).toBeFocused();
     await page.keyboard.press('Home');
-    await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Archivieren' })).toBeFocused();
+    await expect(page.locator(MENUE).getByRole('menuitem', { name: 'Link kopieren' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator(MENUE)).toHaveCount(0);
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();

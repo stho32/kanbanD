@@ -368,3 +368,160 @@ test.describe('R00174 F0144: Adresse folgt dem Fenster, Zurück und Vor', () => 
     await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
   });
 });
+
+test.describe('R00174 F0144: Link kopieren', () => {
+  const MIT_UMLAUTBOARD = { ...DATEIEN, 'boards/ueber-groesse.md': '# Über Größe\n\n## Bereit\n\n- #7\n' };
+  const AKTIONEN = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]';
+  const FENSTERMENUE = '#fenster [role="menu"][data-art="aktionen"]';
+  const AUF_DIESEM_RECHNER = ' — gilt nur auf diesem Rechner';
+  const zwischenablage = page => page.evaluate(() => navigator.clipboard.readText());
+  let k;
+  test.beforeEach(async ({ page, context }) => {
+    k = await kanbanStarten(einrichten(MIT_UMLAUTBOARD));
+    await alsPerson(page, 'st');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  });
+  test.afterEach(() => k.stoppen());
+
+  /** Öffnet den kopierten Text in einem neuen Tab. */
+  async function inNeuemTab(context, link) {
+    const tab = await context.newPage();
+    await alsPerson(tab, 'st');
+    await tab.goto(link);
+    await bereit(tab, link.includes('#/aufgaben') ? 'tr[data-zeile]' : '.bahn');
+    return tab;
+  }
+  /** Ersetzt die Zwischenablage des Browsers, bevor die Seite lädt: verweigert oder gar nicht vorhanden (unsicherer Kontext). */
+  async function ohneZwischenablage(page, art) {
+    await page.addInitScript(vorhanden => {
+      const verweigert = { writeText: () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError')) };
+      Object.defineProperty(navigator, 'clipboard', { value: vorhanden ? verweigert : undefined, configurable: true });
+    }, art === 'verweigert');
+  }
+
+  test('US-1 / AK 1 / AK 8: „Link kopieren“ im ⋮-Menü mit der Tastatur — Statusmeldung, Fokus zurück auf ⋮, der Link öffnet dasselbe Board mit dem Fenster', async ({ page, context }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung');
+    await karte(page, 7).locator('.t').click();
+    await expect(fenster(page, 7)).toBeVisible();
+    await page.locator(AKTIONEN).focus();
+    await page.keyboard.press('Enter');
+    const menue = page.locator(FENSTERMENUE);
+    await expect(menue.getByRole('menuitem')).toHaveText(['Link kopieren', 'Archivieren', 'Endgültig löschen']);
+    await expect(menue.getByRole('menuitem', { name: 'Link kopieren' })).toBeFocused();
+    await expect(menue.getByRole('menuitem', { name: 'Link kopieren' })).toHaveAttribute('data-act', 'link-kopieren');
+    expect(await menue.evaluate(el => [...el.children].map(e => e.getAttribute('role')))).toEqual(['menuitem', 'separator', 'menuitem', 'separator', 'menuitem']);
+    await page.keyboard.press('Enter');
+
+    await expect(menue).toHaveCount(0);
+    const meldung = fenster(page, 7).getByRole('status');
+    await expect(meldung).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+    await expect(page.locator('[role="alert"]')).toHaveCount(0);
+    await expect(page.locator(AKTIONEN)).toBeFocused();
+    const link = await zwischenablage(page);
+    expect(link).toBe(new URL(k.adresse).origin + '/#/board/entwicklung/aufgabe/7');
+
+    const tab = await inNeuemTab(context, link);
+    await zeigtBoard(tab, 'Entwicklung');
+    await expect(fenster(tab, 7)).toBeVisible();
+    await adresseEndetAuf(tab, '#/board/entwicklung/aufgabe/7');
+  });
+
+  test('AK 1 / AK 3: der Link nennt das gezeigte Board — auf „Zweit“ und auf „Über Größe“ je der eigene, Rundlauf über einen neuen Tab', async ({ page, context }) => {
+    for (const [slug, name] of [['zweit', 'Zweit'], ['ueber-groesse', 'Über Größe']]) {
+      await linkOeffnen(page, k, '#/board/' + slug + '/aufgabe/7');
+      await page.locator(AKTIONEN).click();
+      await page.locator(FENSTERMENUE).getByRole('menuitem', { name: 'Link kopieren' }).click();
+      await expect(fenster(page, 7).getByRole('status')).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+      const link = await zwischenablage(page);
+      expect(link.endsWith('#/board/' + slug + '/aufgabe/7'), link).toBe(true);
+      const tab = await inNeuemTab(context, link);
+      await expect(tab).toHaveTitle(new RegExp(name));
+      await expect(fenster(tab, 7)).toBeVisible();
+      await expect(tab.locator(HINWEIS)).toHaveCount(0);
+      await tab.close();
+    }
+  });
+
+  test('Kartenmenü: „Link kopieren“ steht unmittelbar vor „Verweis kopieren“ und kopiert die Adresse der Karte auf diesem Board, ohne sie zu öffnen', async ({ page, context }) => {
+    await linkOeffnen(page, k, '#/board/zweit');
+    await karte(page, 9).click({ button: 'right' });
+    const menue = page.getByRole('menu', { name: '#9 Zweitablage' });
+    const texte = await menue.getByRole('menuitem').allInnerTexts();
+    const stelle = texte.findIndex(text => text.startsWith('Link kopieren'));
+    expect(texte[stelle]).toBe('Link kopieren');
+    expect(texte[stelle + 1].startsWith('Verweis kopieren')).toBe(true);
+    await menue.getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(page.locator(HINWEIS)).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/zweit');
+    const link = await zwischenablage(page);
+    expect(link.endsWith('#/board/zweit/aufgabe/9'), link).toBe(true);
+    const tab = await inNeuemTab(context, link);
+    await zeigtBoard(tab, 'Zweit');
+    await expect(fenster(tab, 9)).toBeVisible();
+  });
+
+  test('AK 4: in der Aufgabenliste ergibt „Link kopieren“ #/aufgaben/aufgabe/8 — im Zeilenmenü und im Fenster', async ({ page, context }) => {
+    await linkOeffnen(page, k, '#/aufgaben', 'tr[data-zeile]');
+    await page.locator('tr[data-zeile="8"]').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(page.locator(HINWEIS)).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+    expect((await zwischenablage(page)).endsWith('/#/aufgaben/aufgabe/8')).toBe(true);
+    await page.evaluate(() => navigator.clipboard.writeText('geleert'));
+
+    await linkOeffnen(page, k, '#/aufgaben/aufgabe/8', 'tr[data-zeile]');
+    await page.locator(AKTIONEN).click();
+    await page.locator(FENSTERMENUE).getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(fenster(page, 8).getByRole('status')).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+    const link = await zwischenablage(page);
+    expect(link.endsWith('/#/aufgaben/aufgabe/8'), link).toBe(true);
+    const tab = await inNeuemTab(context, link);
+    await expect(fenster(tab, 8)).toBeVisible();
+    await expect(tab.locator('tr[data-zeile]').first()).toBeVisible();
+  });
+
+  test('Auch an der archivierten Aufgabe: Link kopieren · Zurückholen · Endgültig löschen', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung/aufgabe/10');
+    await page.locator(AKTIONEN).click();
+    await expect(page.locator(FENSTERMENUE).getByRole('menuitem')).toHaveText(['Link kopieren', 'Zurückholen', 'Endgültig löschen']);
+    await page.locator(FENSTERMENUE).getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(fenster(page, 10).getByRole('status')).toHaveText('Link kopiert' + AUF_DIESEM_RECHNER);
+    expect((await zwischenablage(page)).endsWith('#/board/entwicklung/aufgabe/10')).toBe(true);
+  });
+
+  for (const art of ['verweigert', 'fehlt']) {
+    test(`AK 7: Zwischenablage ${art} — Hinweis nennt die Adresszeile, und die trägt den Link`, async ({ page }) => {
+      await ohneZwischenablage(page, art);
+      await linkOeffnen(page, k, '#/board/entwicklung');
+      await karte(page, 7).locator('.t').click();
+      await page.locator(AKTIONEN).click();
+      await page.locator(FENSTERMENUE).getByRole('menuitem', { name: 'Link kopieren' }).click();
+      await expect(fenster(page, 7).getByRole('status')).toHaveText('Kopieren nicht erlaubt — der Link steht in der Adresszeile' + AUF_DIESEM_RECHNER);
+      await expect(page.locator('[role="alert"]')).toHaveCount(0);
+      await adresseEndetAuf(page, '#/board/entwicklung/aufgabe/7');
+      await expect(page.locator(AKTIONEN)).toBeFocused();
+    });
+  }
+
+  test('AK 7: verweigert im Kartenmenü — die Aufgabe öffnet sich, damit die Adresszeile den Link trägt', async ({ page }) => {
+    await ohneZwischenablage(page, 'verweigert');
+    await linkOeffnen(page, k, '#/board/zweit');
+    await karte(page, 9).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(fenster(page, 9)).toBeVisible();
+    await expect(fenster(page, 9).getByRole('status')).toHaveText('Kopieren nicht erlaubt — der Link steht in der Adresszeile' + AUF_DIESEM_RECHNER);
+    await adresseEndetAuf(page, '#/board/zweit/aufgabe/9');
+  });
+
+  test('„Link kopieren“ schreibt nichts: keine Anfrage außer GET, kein Commit', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung/aufgabe/7');
+    const commitsVorher = k.git('rev-list', '--count', 'HEAD');
+    const anfragen = [];
+    page.on('request', anfrage => anfragen.push(anfrage.method()));
+    await page.locator(AKTIONEN).click();
+    await page.locator(FENSTERMENUE).getByRole('menuitem', { name: 'Link kopieren' }).click();
+    await expect(fenster(page, 7).getByRole('status')).toContainText('Link kopiert');
+    expect(anfragen.filter(methode => methode !== 'GET')).toEqual([]);
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commitsVorher);
+  });
+});

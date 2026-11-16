@@ -867,6 +867,20 @@ function schlangeMelden(art, fehler, ausloeser) {
   render();
 }
 
+/** Der Link auf die Aufgabe in der gezeigten Ansicht (R00174): auf dem Board mit dessen Slug, sonst über die Aufgabenliste.
+    Der Host ist der des Betrachters (ADR-0029 Regel 4). */
+function linkDerAufgabe(nummer) {
+  let sicht = 'aufgaben';
+  if (S.ui.view === 'board' && S.ui.slug) sicht = 'board';
+  return location.origin + location.pathname + adresseBilden({ sicht, slug: S.ui.slug, nummer });
+}
+
+/** Wahr, wenn der Text in der Zwischenablage liegt; falsch, wenn der Browser sie verweigert oder keine hat (unsicherer Kontext). */
+async function linkInDieZwischenablage(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (_) { return false; }
+}
+
 /** Räumt weg, was das Fenster für die vorige Aufgabe hielt — vor jedem Öffnen einer Aufgabe. */
 function fensterZuruecksetzen() {
   const u = S.ui;
@@ -2281,6 +2295,15 @@ async function aktion(a, arg, wert) {
         } catch (f) { u.hinweis = { text: f.message, at: Date.now() }; }
         render();
         return;
+      }
+      case 'link-kopieren': {
+        const ausKopfMenue = Boolean(u.fensterMenue);
+        if (ausKopfMenue) { u.fensterMenue = null; u.fokus = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]'; }
+        const kopiert = await linkInDieZwischenablage(linkDerAufgabe(+arg));
+        // Verweigert der Browser das Kopieren, trägt die Adresszeile den Link (R00174 AK 7) — dazu muss die Aufgabe offen sein.
+        if (!kopiert && u.offen !== +arg) await fensterOeffnen(+arg);
+        hinweisZeigen(linkRueckmeldung({ kopiert, hostname: location.hostname }));
+        break;
       }
       case 'kopieren': {
         const a = aufgabe(+arg), text = `#${a.nummer} ${a.titel}`;

@@ -1,7 +1,7 @@
 // Unit-Tests der Adresse der Ansicht und der geöffneten Aufgabe (node --test), R00174 / ADR-0029
 const test = require('node:test');
 const assert = require('node:assert');
-const { adresseLesen, adresseBilden } = require('../../web/adresse.js');
+const { adresseLesen, adresseBilden, linkRueckmeldung } = require('../../web/adresse.js');
 
 test('#/board/entwicklung/aufgabe/7 → Board entwicklung, Nummer 7', () => {
   assert.deepStrictEqual(adresseLesen('#/board/entwicklung/aufgabe/7'), { sicht: 'board', slug: 'entwicklung', nummer: 7 });
@@ -89,4 +89,15 @@ test('adresseBilden: Board und Aufgabenliste, mit und ohne Nummer; gelesen ergib
   for (const ziel of [{ sicht: 'board', slug: 'ueber-groesse-2', nummer: 7 }, { sicht: 'aufgaben', slug: null, nummer: 8 }, { sicht: 'board', slug: 'zweit', nummer: null }]) {
     assert.deepStrictEqual(adresseLesen(adresseBilden(ziel)), ziel);
   }
+});
+
+test('Rückmeldung nach „Link kopieren“: kopiert oder verweigert; auf localhost und 127.0.0.1 mit dem Zusatz', () => {
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: 'rechner' }), 'Link kopiert');
+  assert.strictEqual(linkRueckmeldung({ kopiert: false, hostname: 'rechner' }), 'Kopieren nicht erlaubt — der Link steht in der Adresszeile');
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: 'localhost' }), 'Link kopiert — gilt nur auf diesem Rechner');
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '127.0.0.1' }), 'Link kopiert — gilt nur auf diesem Rechner');
+  assert.strictEqual(linkRueckmeldung({ kopiert: false, hostname: 'localhost' }), 'Kopieren nicht erlaubt — der Link steht in der Adresszeile — gilt nur auf diesem Rechner');
+  assert.strictEqual(linkRueckmeldung({ kopiert: false, hostname: '127.0.0.1' }), 'Kopieren nicht erlaubt — der Link steht in der Adresszeile — gilt nur auf diesem Rechner');
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '192.168.1.20' }), 'Link kopiert');
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: 'localhost.example.org' }), 'Link kopiert');
 });

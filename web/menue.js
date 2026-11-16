@@ -21,6 +21,7 @@
       T,
       { text: 'Duplizieren', act: 'duplizieren', arg: String(nr) },
       T,
+      { text: 'Link kopieren', act: 'link-kopieren', arg: String(nr) },
       { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
       { text: 'Archivieren', kuerzel: 'a', act: 'archivieren', arg: String(nr) },
       { text: 'Endgültig löschen', act: 'endgueltig-loeschen', arg: String(nr), warn: true },
@@ -65,6 +66,7 @@
       { text: 'Zuständige zuweisen …', act: 'zuweisen', arg: String(nr) },
       ...(u.liegtAuf.length ? [{ text: 'Von Board nehmen', unter: u.liegtAuf.map(b => ({ text: `${b.titel} · ${b.spalte}`, act: 'abnehmen', arg: `${b.slug}|${nr}` })) }] : []),
       T,
+      { text: 'Link kopieren', act: 'link-kopieren', arg: String(nr) },
       { text: 'Verweis kopieren', kuerzel: 'c', act: 'kopieren', arg: String(nr) },
       a.archiviert ? { text: 'Zurückholen', act: 'zurueckholen', arg: String(nr) } : { text: 'Archivieren', kuerzel: 'a', act: 'archivieren', arg: String(nr) },
     ];

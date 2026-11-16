@@ -9,7 +9,9 @@ const u = { spalten: ['Zu erledigen', 'In Arbeit', 'Erledigt'], spalte: 'Zu erle
 test('Menü der Karte', () => {
   const m = kartenMenue(a, u);
   const texte = m.map(e => e.trenner ? '—' : e.text);
-  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Duplizieren', '—', 'Verweis kopieren', 'Archivieren', 'Endgültig löschen']);
+  assert.deepStrictEqual(texte, ['Öffnen', '—', 'Timer stoppen', 'Mir zuweisen', 'Zuständige zuweisen …', 'Umbenennen', '—', 'Verschieben nach', 'Klasse', 'Fälligkeit', 'Auf Board legen', '—', 'Duplizieren', '—', 'Link kopieren', 'Verweis kopieren', 'Archivieren', 'Endgültig löschen']);
+  // R00174: „Link kopieren“ unmittelbar vor „Verweis kopieren“, ohne Kürzel
+  assert.deepStrictEqual((e => [e.act, e.arg, e.kuerzel])(m.find(e => e.text === 'Link kopieren')), ['link-kopieren', '3', undefined]);
   // R00142 M1: „Duplizieren“ in eigener Gruppe nach „Auf Board legen“, vor „Verweis kopieren“, nicht destruktiv
   const dup = m.findIndex(e => e.text === 'Duplizieren');
   assert.deepStrictEqual([m[dup - 1].trenner, m[dup + 1].trenner, !!m[dup].warn, m[dup].act, m[dup].arg], [true, true, false, 'duplizieren', '3']);
@@ -57,6 +59,10 @@ test('Menü der Listenzeile', () => {
   assert.strictEqual(m.find(e => e.text === 'Von Board nehmen').unter[0].arg, 'e|4');
   assert.deepStrictEqual(['zuweisen', '4'], (e => [e.act, e.arg])(m.find(e => e.text === 'Zuständige zuweisen …')));
   assert.ok(!m.some(e => e.text === 'Zuständige'));
+  // R00174: „Link kopieren“ unmittelbar vor „Verweis kopieren“, ohne Kürzel und ohne zusätzlichen Trenner
+  const texte = m.map(e => e.trenner ? '—' : e.text);
+  assert.deepStrictEqual(texte.slice(texte.indexOf('Link kopieren') - 1), ['—', 'Link kopieren', 'Verweis kopieren', 'Archivieren']);
+  assert.deepStrictEqual((e => [e.act, e.arg, e.kuerzel])(m.find(e => e.text === 'Link kopieren')), ['link-kopieren', '4', undefined]);
   const arch = listenMenue({ ...a, archiviert: '2026-10-01' }, { liegtAuf: [], frei: [{ slug: 't', titel: 'Test', spalten: ['Bereit'] }] });
   assert.ok(arch.some(e => e.text === 'Zurückholen') && !arch.some(e => e.text === 'Auf Board legen'));
 });

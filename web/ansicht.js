@@ -243,6 +243,7 @@ ${vBeschriftung('origins')}<span class="w"><input class="mini-inp full" data-nf=
 /* ── Aufgabenfenster (Artboard D0003) ── */
 const uhr = t => new Date(t).toTimeString().slice(0, 8);
 const ARCHIV = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4"></rect><path d="M5 8v11h14V8M9 12h6"></path></svg>';
+const KETTE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"></path></svg>';
 const ARCHIV_HOCH = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4"></rect><path d="M5 8v11h14V8M12 16v-5M9 13l3-3 3 3"></path></svg>';
 /** Der Ansichts-Auslöser im Fensterkopf (R00145 FA 4/5): Textknopf mit Caret, `aria-haspopup`/`aria-expanded`, Name „Ansicht: <Name>“. */
 const ANSICHT_KNOPF = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
@@ -326,7 +327,8 @@ function vKostenBasis(basis) {
 }
 
 /** Der Aktions-Auslöser (⋮) und sein Menü (R00144 FA 2/3/6): Symbol-only, `aria-haspopup`/`aria-expanded`, Name mit der Nummer.
-    Einträge mit Symbol in einer 16-px-Ikonspalte (danach 8 px), genau ein Trenner vor dem letzten; kein Titel, keine Kürzel. */
+    Einträge mit Symbol in einer 16-px-Ikonspalte (danach 8 px); kein Titel, keine Kürzel. Reihenfolge (R00174): Link kopieren ·
+    Trenner · Archivieren bzw. Zurückholen · Trenner · Endgültig löschen. */
 function vFensterAktionen(a) {
   const offen = S.ui.fensterMenue === 'aktionen';
   const knopf = `<button type="button" class="btn btn-sym" data-act="fenster-menue" data-arg="aktionen" aria-haspopup="menu" aria-expanded="${offen}" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" title="Weitere Aktionen">${DREI_PUNKTE}</button>`;
@@ -334,8 +336,9 @@ function vFensterAktionen(a) {
   const archivieren = a.archiviert
     ? `<button type="button" role="menuitem" tabindex="-1" class="fm-e" data-act="zurueckholen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${ARCHIV_HOCH}</span><span class="fm-text">Zurückholen</span></button>`
     : `<button type="button" role="menuitem" tabindex="-1" class="fm-e" data-act="archivieren" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${ARCHIV}</span><span class="fm-text">Archivieren</span></button>`;
+  const linkKopieren = `<button type="button" role="menuitem" tabindex="-1" class="fm-e" data-act="link-kopieren" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${KETTE}</span><span class="fm-text">Link kopieren</span></button>`;
   const loeschen = `<button type="button" role="menuitem" tabindex="-1" class="fm-e warn" data-act="endgueltig-loeschen" data-arg="${a.nummer}"><span class="fm-ikon" aria-hidden="true">${PAPIERKORB}</span><span class="fm-text">Endgültig löschen</span></button>`;
-  return `<span class="fm-anker">${knopf}<div class="fm" role="menu" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" data-art="aktionen">${archivieren}<div class="fm-tr" role="separator"></div>${loeschen}</div></span>`;
+  return `<span class="fm-anker">${knopf}<div class="fm" role="menu" aria-label="Weitere Aktionen für Aufgabe #${a.nummer}" data-art="aktionen">${linkKopieren}<div class="fm-tr" role="separator"></div>${archivieren}<div class="fm-tr" role="separator"></div>${loeschen}</div></span>`;
 }
 /** Die Zeile „Zuständig“ der Spalte ist nur lesend (R00146 FA 3): nur die gewählten Zuständigen, je Initiale als Verzierung
     (`aria-hidden`) plus Name als Text, in einer Gruppe „Zuständig“; kein Bedienelement, kein Chip, Leerfall „niemand“.
