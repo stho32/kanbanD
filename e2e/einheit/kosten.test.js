@@ -482,3 +482,39 @@ test('R00171 B0839: ohne Wahl ist nichts gewählt und nichts gesperrt; eine Gren
   assert.deepStrictEqual([gesperrte(nurVon.von), gesperrte(nurVon.bis)], [[], ['Eingang', 'Entwicklung']]);
   assert.deepStrictEqual([FILTER_LEER, filter(BEISPIEL.ZEITRAUM_12_13), filter(abschnitt('Abnahme', '')), filter(abschnitt('', 'Test'))].map(kostenbereichGewaehlt), [false, true, true, true]);
 });
+
+const B0841 = { todo: 'erwartet rot bis B0841' }, B0842 = { todo: 'erwartet rot bis B0842' };
+
+/* ── B0840 fester Vergleich erweitert: Kennzeichen, fremde Spalte, „erledigt ab“ am Beispielboard ── */
+const kennzeichen = gruppe => gruppe.aufgaben.map(a => [a.nummer, a.kennzeichen]);
+const FALL_1 = abschnitt('Entwicklung', 'Abnahme', BEISPIEL.ZEITRAUM_12_13);
+
+test('R00171 B0840 (AK 3, AK 4): ohne Bereiche bleibt die Summe die von vor der Karte; die Liste nennt #1 „erledigt“, #2 „offen“, #3 „archiviert“ — erledigt heißt: in „Produktiv“, der letzten Spalte', B0841, () => {
+  const a = aufstellung({});
+  assert.deepStrictEqual(a.gruppen[0].summe, VOR_DER_KARTE.jeWaehrung[0]);
+  assert.deepStrictEqual(kennzeichen(a.gruppen[0]), [[1, 'erledigt'], [2, 'offen'], [3, 'archiviert']]);
+  assert.deepStrictEqual(a.erledigtAb, { spalte: 'Produktiv', grund: 'letzte' });
+});
+
+test('R00171 B0840 (AK 1): Fall 1 nennt #1 „erledigt“ und #2 „offen“ — erledigt heißt: in „Abnahme“, der Bis-Spalte, oder rechts davon', B0841, () => {
+  const a = aufstellung(FALL_1);
+  assert.deepStrictEqual(kennzeichen(a.gruppen[0]), [[1, 'erledigt'], [2, 'offen']]);
+  assert.deepStrictEqual(a.erledigtAb, { spalte: 'Abnahme', grund: 'bis' });
+});
+
+test('R00171 B0840 (AK 7, Schaden d): ein Eintrag aus „Review“ zählt ohne Abschnitt mit (Einträge 11,25); in Fall 1 bleibt die Summe 5,00 und er steht mit 0,25 unter „Spalte nicht auf diesem Board“', B0842, () => {
+  const zusatz = { 2: [BEISPIEL.FREMDE_SPALTE] };
+  const ohne = aufstellung({}, zusatz), mit = aufstellung(FALL_1, zusatz);
+  assert.deepStrictEqual([ohne.gruppen[0].summe.eintraege, ohne.gruppen[0].fremdeSpalte], [1125, null]);
+  assert.deepStrictEqual([mit.gruppen[0].summe.eintraege, mit.gruppen[0].summe.niedrig, mit.gruppen[0].fremdeSpalte], [500, 500, 25]);
+  assert.deepStrictEqual(betraege(mit.gruppen[0]), [[1, 446], [2, 54]], 'in der Liste zählt der fremde Eintrag nicht zu #2');
+});
+
+test('R00171 B0840 (AK 8, Schaden d): eine gespeicherte Grenze „Test“, die das Board nicht führt, gilt als nicht gesetzt und wird genannt — die Zahlen sind die ohne Bereiche', B0842, () => {
+  const a = aufstellung(abschnitt('', 'Test'));
+  assert.deepStrictEqual(a.grenzenWeg, [{ seite: 'bis', name: 'Test' }]);
+  assert.strictEqual(a.bereich, false);
+  assert.deepStrictEqual(a.gruppen[0].summe, VOR_DER_KARTE.jeWaehrung[0]);
+  assert.deepStrictEqual(a.gruppen[0].altePostenAussen, null);
+  assert.deepStrictEqual(aufstellung({}).grenzenWeg, []);
+});
