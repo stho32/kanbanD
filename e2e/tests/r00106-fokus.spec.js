@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -868,7 +868,7 @@ test('S2: Mehr per Klick, dann per Klick auf „Board“ gewechselt, „Test“ 
 });
 
 test('S4: Defekte Dateien bei 1280×800 öffnet im Fenster — das fokussierte Element liegt ganz zwischen 0 und innerHeight', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await breiteSetzen(page, 1280, 800);
   await page.locator('#t-defekt').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Defekte Dateien' }).getByRole('link', { name: 'aufgaben/0009-kaputt.md', exact: true })).toBeFocused();
@@ -905,7 +905,7 @@ const scrollLinks = page => page.locator('.bahnen').evaluate(b => b.scrollLeft);
 const aktivesTag = page => page.evaluate(() => document.activeElement.tagName);
 
 test('N2: 375 px, Karte #1 angeklickt, Esc, .bahnen ganz rechts, Klick ins Leere, zwei fremde Live-Ereignisse → BODY bleibt, scrollLeft unverändert', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 800 });
+  await breiteSetzen(page, 375, 800);
   await page.locator('.ka[data-id="1"]').click();
   await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -923,7 +923,7 @@ test('N2: 375 px, Karte #1 angeklickt, Esc, .bahnen ganz rechts, Klick ins Leere
 });
 
 test('N2: 1280 px Aufgabenliste, Zeile #1 angeklickt, Esc, Klick ins Leere, fremdes Live-Ereignis → BODY bleibt', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await breiteSetzen(page, 1280, 800);
   await page.goto(k.adresse + '#/aufgaben');
   await page.locator('tr[data-zeile="1"] a[data-act="oeffnen"]').click();
   await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
@@ -937,7 +937,7 @@ test('N2: 1280 px Aufgabenliste, Zeile #1 angeklickt, Esc, Klick ins Leere, frem
 });
 
 test('N2-Variante: 375 px, Fokus auf Karte #1, .bahnen ohne Fokuswechsel ganz rechts (Wischen), fremdes Live-Ereignis → Fokus bleibt auf #1, scrollLeft unverändert', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 800 });
+  await breiteSetzen(page, 375, 800);
   await page.locator('.ka[data-id="1"]').focus();
   const links = await bahnenGanzRechts(page);
   await andereSchreibtDrei(page, 'fremd eins');

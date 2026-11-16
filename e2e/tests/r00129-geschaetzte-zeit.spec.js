@@ -1,7 +1,7 @@
 // R00129 Geschätzte Zeit je Karte — Karte (D0002) und Aufgabenfenster (D0003), rein informativ.
 // ADR-0023: Anzeige h:mm nur wenn gesetzt; eigenes `<span>` in `.r3 .rechts` hinter Σ (seit R00126 steht das Alter direkt nach Σ dazwischen); Feldzeile nur lesend.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, reiter, liveBereit, kontrastAm, thema } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter, liveBereit, kontrastAm, thema, breiteSetzen } = require('./hilfen');
 
 const ZEIT_46 = '```kanbanD-time\n2026-10-18 09:00 · 2026-10-18 09:46 · st\n```\n';
 const aufgabeMd = (nr, titel, kopf = '', rumpf = '') => `---\nid: ${nr}\ntitle: ${titel}\n${kopf}---\n${rumpf}`;
@@ -167,7 +167,7 @@ test.describe('R00129 Breite und Kontrast', () => {
     const bahn = page.locator('.bahn').first();
     for (const spaltenbreite of [236, 272]) {
       for (const breite of [320, 375, 414]) {
-        await page.setViewportSize({ width: breite, height: 800 });
+        await breiteSetzen(page, breite, 800);
         await bahn.evaluate((el, w) => el.style.setProperty('--bw', w + 'px'), spaltenbreite);
         await page.evaluate(() => new Promise(f => requestAnimationFrame(() => requestAnimationFrame(f))));
         const masse = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));

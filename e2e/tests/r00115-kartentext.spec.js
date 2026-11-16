@@ -212,7 +212,7 @@ test.describe('R00115', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[1280, 800], [414, 844], [320, 640]]) {
-      await page.setViewportSize({ width: breite, height: hoehe });
+      await breiteSetzen(page, breite, hoehe);
       // die Kopfzeile rechnet ihre Stufe beim Resize erst mit dem Neuzeichnen um — warten, bis die Seite passt
       await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1, undefined, { timeout: 5000 }).catch(() => {});
       await page.locator('.ka[data-id="2"]').waitFor();

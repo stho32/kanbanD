@@ -140,7 +140,10 @@ test.describe('R00114', () => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka')).toHaveCount(4);
     for (const [breite, hoehe] of [[1280, 800], [414, 844], [320, 640]]) {
+      // die Uhr des Browsers steht (uhrStellen), requestAnimationFrame läuft nicht: statt breiteSetzen auf den Zielzustand selbst warten —
+      // die Größe steht im Fenster und die Kopfzeile ist in der Stufe dieser Breite gezeichnet (ADR-0026 Regel 2; das CSS hängt an data-stufe)
       await page.setViewportSize({ width: breite, height: hoehe });
+      await page.waitForFunction(([b, h]) => innerWidth === b && innerHeight === h && document.querySelector('header.kz').dataset.stufe === stufeAusBreite(b), [breite, hoehe]);
       for (const nummer of [1, 2, 3, 4]) {
         const m = await karteMessen(page, nummer);
         expect(m.chipText, `${breite} px, #${nummer}: vergessener Chip`).toBe('seit 6 Tagen');

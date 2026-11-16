@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, liveBereit, bereit, thema, kontrastAm, farbPixel } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, bereit, thema, kontrastAm, farbPixel, breiteSetzen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 const p = n => String(n).padStart(2, '0');
@@ -227,7 +227,7 @@ test.describe('R00126 volle unterste Zeile, 320/375/414 px, hell und dunkel', ()
     expect(f.rolle).toBeNull();
     expect(f.ariaHidden).toBe('true');
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 800 });
+      await breiteSetzen(page, breite, 800);
       await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1, undefined, { timeout: 5000 }).catch(() => {});
       for (const themenName of ['light', 'dark']) {
         await thema(page, themenName);
