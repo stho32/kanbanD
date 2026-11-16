@@ -483,8 +483,6 @@ test('R00171 B0839: ohne Wahl ist nichts gewählt und nichts gesperrt; eine Gren
   assert.deepStrictEqual([FILTER_LEER, filter(BEISPIEL.ZEITRAUM_12_13), filter(abschnitt('Abnahme', '')), filter(abschnitt('', 'Test'))].map(kostenbereichGewaehlt), [false, true, true, true]);
 });
 
-const B0842 = { todo: 'erwartet rot bis B0842' };
-
 /* ── B0840 fester Vergleich erweitert: Kennzeichen, fremde Spalte, „erledigt ab“ am Beispielboard ── */
 const kennzeichen = gruppe => gruppe.aufgaben.map(a => [a.nummer, a.kennzeichen]);
 const FALL_1 = abschnitt('Entwicklung', 'Abnahme', BEISPIEL.ZEITRAUM_12_13);
@@ -502,7 +500,7 @@ test('R00171 B0840 (AK 1): Fall 1 nennt #1 „erledigt“ und #2 „offen“ —
   assert.deepStrictEqual(a.erledigtAb, { spalte: 'Abnahme', grund: 'bis' });
 });
 
-test('R00171 B0840 (AK 7, Schaden d): ein Eintrag aus „Review“ zählt ohne Abschnitt mit (Einträge 11,25); in Fall 1 bleibt die Summe 5,00 und er steht mit 0,25 unter „Spalte nicht auf diesem Board“', B0842, () => {
+test('R00171 B0840 (AK 7, Schaden d): ein Eintrag aus „Review“ zählt ohne Abschnitt mit (Einträge 11,25); in Fall 1 bleibt die Summe 5,00 und er steht mit 0,25 unter „Spalte nicht auf diesem Board“', () => {
   const zusatz = { 2: [BEISPIEL.FREMDE_SPALTE] };
   const ohne = aufstellung({}, zusatz), mit = aufstellung(FALL_1, zusatz);
   assert.deepStrictEqual([ohne.gruppen[0].summe.eintraege, ohne.gruppen[0].fremdeSpalte], [1125, null]);
@@ -510,7 +508,7 @@ test('R00171 B0840 (AK 7, Schaden d): ein Eintrag aus „Review“ zählt ohne A
   assert.deepStrictEqual(betraege(mit.gruppen[0]), [[1, 446], [2, 54]], 'in der Liste zählt der fremde Eintrag nicht zu #2');
 });
 
-test('R00171 B0840 (AK 8, Schaden d): eine gespeicherte Grenze „Test“, die das Board nicht führt, gilt als nicht gesetzt und wird genannt — die Zahlen sind die ohne Bereiche', B0842, () => {
+test('R00171 B0840 (AK 8, Schaden d): eine gespeicherte Grenze „Test“, die das Board nicht führt, gilt als nicht gesetzt und wird genannt — die Zahlen sind die ohne Bereiche', () => {
   const a = aufstellung(abschnitt('', 'Test'));
   assert.deepStrictEqual(a.grenzenWeg, [{ seite: 'bis', name: 'Test' }]);
   assert.strictEqual(a.bereich, false);
@@ -547,4 +545,30 @@ test('R00171 B0841: Vorrang archiviert → erledigt → in Arbeit → offen — 
   assert.deepStrictEqual(stand({}, {}, archiviert).kennzeichen, { 1: 'archiviert', 2: 'archiviert', 3: 'archiviert', 4: 'archiviert', 5: 'archiviert' });
   const reserviert = a => ({ ...a, reservierung: { wer: 'cl', seit: '2026-11-16 09:00' } });
   assert.deepStrictEqual(stand({}, {}, reserviert).kennzeichen, { 1: 'in Arbeit', 2: 'in Arbeit', 3: 'in Arbeit', 4: 'erledigt', 5: 'in Arbeit' });
+});
+
+/* ── B0842 Eimer für Einträge fremder Spalten; verschwundene Grenze (ADR-0028 N1 Punkte 4, 5) ── */
+test('R00171 B0842 (Schaden d): der Eimer steht nur mit Abschnitt und nur für Einträge im Zeitraum — mit Zeitraum allein zählt der fremde Eintrag in die Summe, außerhalb des Zeitraums steht er nirgends', () => {
+  const zusatz = { 2: [BEISPIEL.FREMDE_SPALTE] };
+  const nurZeitraum = aufstellung(BEISPIEL.ZEITRAUM_12_13, zusatz);
+  assert.deepStrictEqual([nurZeitraum.gruppen[0].summe.eintraege, nurZeitraum.gruppen[0].fremdeSpalte], [525, null]);
+  const nurAbschnitt = aufstellung(abschnitt('Entwicklung', 'Abnahme'), zusatz);
+  assert.deepStrictEqual([nurAbschnitt.gruppen[0].summe.eintraege, nurAbschnitt.gruppen[0].fremdeSpalte], [1100, 25]);
+  const andererTag = aufstellung(abschnitt('Entwicklung', 'Abnahme', { zeitraum: 'eigen', von: '2026-11-14', bis: '2026-11-14' }), zusatz);
+  assert.deepStrictEqual([andererTag.gruppen[0].summe.eintraege, andererTag.gruppen[0].fremdeSpalte], [200, null]);
+  assert.strictEqual(1100 + 25, 1125, 'Summe und Eimer ergeben zusammen alle Einträge — keiner doppelt, keiner verloren');
+});
+
+test('R00171 B0842 (Schaden d): fremde Einträge je Währung getrennt; stehen in einer Währung nur sie, bleibt die Währung mit dem Eimer genannt — ohne Summe', () => {
+  const euro = { ...BEISPIEL.eintrag('13 09:00', 'Review', 2.50), currency: 'EUR' }, nochEiner = { ...BEISPIEL.eintrag('12 09:00', 'Lektorat', 0.10), currency: 'EUR' };
+  const a = aufstellung(FALL_1, { 1: [euro], 2: [BEISPIEL.FREMDE_SPALTE, nochEiner] });
+  assert.deepStrictEqual(a.gruppen.map(g => [g.waehrung, g.summe && g.summe.eintraege, g.fremdeSpalte, betraege(g)]), [['USD', 500, 25, [[1, 446], [2, 54]]], ['EUR', null, 260, []]]);
+});
+
+test('R00171 B0842 (AK 8): eine verschwundene Grenze neben einer vorhandenen — die vorhandene gilt allein, offen bis zum Rand; beide verschwunden: beide genannt, kein Abschnitt', () => {
+  const vonWeg = aufstellung(abschnitt('Test', 'Entwicklung'));
+  assert.deepStrictEqual([vonWeg.grenzenWeg, vonWeg.bereich, vonWeg.gruppen[0].summe.eintraege], [[{ seite: 'von', name: 'Test' }], true, 900]);
+  const beideWeg = aufstellung(abschnitt('Alt', 'Test', BEISPIEL.ZEITRAUM_12_13), { 2: [BEISPIEL.FREMDE_SPALTE] });
+  assert.deepStrictEqual(beideWeg.grenzenWeg, [{ seite: 'von', name: 'Alt' }, { seite: 'bis', name: 'Test' }]);
+  assert.deepStrictEqual([beideWeg.bereich, beideWeg.gruppen[0].summe.eintraege, beideWeg.gruppen[0].fremdeSpalte], [true, 525, null], 'der Zeitraum gilt weiter, ohne Abschnitt kein Eimer');
 });

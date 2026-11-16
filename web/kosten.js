@@ -113,21 +113,33 @@
     const spalten = board.spalten.map(sp => sp.name), abschnitt = spaltenabschnitt(spalten, f.kostenVonSpalte, f.kostenBisSpalte);
     return { gesetzt: f.zeitraum !== 'alles' || abschnitt !== null, zeit: zeitraumGrenzen(f, jetzt), spalten, abschnitt };
   }
-  /** Ein Eintrag zählt, wenn sein Zeitpunkt im Zeitraum und seine Spalte im Abschnitt liegt. */
-  function zaehltImBereich(e, bereich) {
+  /** Gespeicherte Grenzen des Abschnitts, die das Board nicht (mehr) führt → [{seite: 'von' | 'bis', name}]; sie gelten
+      als nicht gesetzt und werden genannt (ADR-0028 N1 Punkt 4). */
+  function verschwundeneGrenzen(board, f) {
+    const spalten = board.spalten.map(sp => sp.name);
+    return [{ seite: 'von', name: f.kostenVonSpalte }, { seite: 'bis', name: f.kostenBisSpalte }].filter(g => g.name && !spalten.includes(g.name));
+  }
+  /** Wohin ein Eintrag im Bereich fällt: 'zaehlt' (Zeitpunkt im Zeitraum und Spalte im Abschnitt), 'fremdeSpalte' (im
+      Zeitraum, aber bei gewähltem Abschnitt aus einer Spalte, die das Board nicht führt — ADR-0028 N1 Punkt 5) oder
+      'ausserhalb'. */
+  function einordnung(e, bereich) {
     const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
     const moment = zeitMs(e.at);
-    if (moment < bereich.zeit.von || moment >= bereich.zeit.bis) return false;
-    if (!bereich.abschnitt) return true;
+    if (moment < bereich.zeit.von || moment >= bereich.zeit.bis) return 'ausserhalb';
+    if (!bereich.abschnitt) return 'zaehlt';
     const stelle = bereich.spalten.indexOf(e.column);
-    return stelle >= bereich.abschnitt.von && stelle <= bereich.abschnitt.bis;
+    if (stelle < 0) return 'fremdeSpalte';
+    if (stelle < bereich.abschnitt.von || stelle > bereich.abschnitt.bis) return 'ausserhalb';
+    return 'zaehlt';
   }
-  /** Die Einträge einer Aufgabe, die im Bereich zählen; ohne gesetzten Bereich alle. */
-  function zaehlendeEintraege(a, bereich) {
+  /** Die Einträge einer Aufgabe mit dieser Einordnung; ohne gesetzten Bereich zählen alle. */
+  function eintraegeMit(art, a, bereich) {
     const eintraege = a.kosteneintraege || [];
-    if (!bereich.gesetzt) return eintraege;
-    return eintraege.filter(e => zaehltImBereich(e, bereich));
+    if (bereich.gesetzt) return eintraege.filter(e => einordnung(e, bereich) === art);
+    if (art === 'zaehlt') return eintraege;
+    return [];
   }
+  const zaehlendeEintraege = (a, bereich) => eintraegeMit('zaehlt', a, bereich);
   /** Spanne der alten Posten einer Aufgabe in Cent {waehrung, niedrig, hoch}; ohne alte Posten null. */
   function altePosten(a) {
     if (!hatAltePosten(a)) return null;
@@ -219,26 +231,29 @@
   }
 
   /** Was der Bericht „Kosten“ zeichnet (R00171): die Summen von kostenbericht() und je Währung die Aufgaben dahinter →
-      {m, nurSchaetzung, bereich, erledigtAb, gruppen: [{waehrung, summe, aufgaben: [{nummer, titel, cent, kennzeichen}],
-      altePostenAussen}]}. `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer samt Kennzeichen (`erledigtAb`
-      sagt, ab welcher Spalte „erledigt“ gilt); alte Posten stehen nie in der Liste. Mit gesetztem Bereich trägt
-      `altePostenAussen` ihre Spanne neben der Summe — eine Währung, in der nur sie stehen, hat `summe` null. */
+      {m, nurSchaetzung, bereich, erledigtAb, grenzenWeg, gruppen: [{waehrung, summe, aufgaben: [{nummer, titel, cent,
+      kennzeichen}], altePostenAussen, fremdeSpalte}]}. `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer
+      samt Kennzeichen (`erledigtAb` sagt, ab welcher Spalte „erledigt“ gilt); alte Posten stehen nie in der Liste. Mit
+      gesetztem Bereich trägt `altePostenAussen` ihre Spanne neben der Summe, mit Abschnitt `fremdeSpalte` die Cent der
+      Einträge aus Spalten, die das Board nicht führt — eine Währung, in der nur solches steht, hat `summe` null.
+      `grenzenWeg` nennt gespeicherte Grenzen, die es nicht mehr gibt. */
   function kostenaufstellung(board, aufgaben, f, jetzt) {
     const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(board, f, jetzt);
     const { lesbar } = aufgabenImBericht(board, aufgaben, f);
     const nachNummer = [...lesbar].sort((a, b) => a.nummer - b.nummer);
     const erledigtAb = erledigtAbSpalte(board, f), kennzeichen = kennzeichenLeser(board, erledigtAb);
-    const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null }]));
+    const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null, fremdeSpalte: null }]));
     const gruppe = waehrung => {
-      if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null });
+      if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null, fremdeSpalte: null });
       return gruppen.get(waehrung);
     };
     for (const a of nachNummer) {
       for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent, kennzeichen: kennzeichen(a) });
+      for (const s of summenDerEintraege(eintraegeMit('fremdeSpalte', a, bereich))) gruppe(s.waehrung).fremdeSpalte = plus(gruppe(s.waehrung).fremdeSpalte, s.cent);
       const alt = altePosten(a);
       if (alt && bereich.gesetzt) gruppe(alt.waehrung).altePostenAussen = spannePlus(gruppe(alt.waehrung).altePostenAussen, alt);
     }
-    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, grenzenWeg: verschwundeneGrenzen(board, f), gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
   /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht
