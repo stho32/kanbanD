@@ -684,3 +684,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #159 R00169 (Kumulativer Fluss und Durchlaufzeit folgen der Zielspalte) | B0828 Abweichende Wahl von/bis am Gerät je Board merken | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #159 R00169 (Kumulativer Fluss und Durchlaufzeit folgen der Zielspalte) | B0829 Zusatz an „bis“, Weg zurück zur Vorgabe und Kopfleiste; Probe im echten Programm und Gate | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #177 R00170 (Fever-Einstellungen: schnelle Folge von Änderungen bleibt erhalten) | B0830 Probe am heutigen Stand: drei Änderungen ohne Pause als roter Test | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #177 R00170 (Fever-Einstellungen: schnelle Folge von Änderungen bleibt erhalten) | B0831 `fieberEinstellen` nimmt die Änderung und baut das Objekt in der Schlange | Standard | 1-2h | 0,1h | 0,1h | autonom |

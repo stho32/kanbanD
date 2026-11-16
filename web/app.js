@@ -247,6 +247,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
     return false;
   }
   zuletztStand = start;
+  fieberGesendet.clear();
   // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
   // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
   const neu = { zustand, einstellungenDefekt };
@@ -352,10 +353,22 @@ async function fieberNachtragen() {
   render();
 }
 
-/** Einstellungen des Fever Charts setzen; ein Fehler steht am Formular. */
-async function fieberEinstellen(f) {
-  try { await durchDieSchlange(() => api('PUT', `/api/boards/${encodeURIComponent(S.ui.slug)}/fieber`, f)); S.ui.fbFehler = null; }
-  catch (x) { S.ui.fbFehler = x.message; }
+/** Zuletzt erfolgreich gesendete Einstellungen des Fever Charts je Board; sie gelten, bis ein Laden übernommen wird. */
+const fieberGesendet = new Map();
+
+/** Einstellungen des Fever Charts ändern; ein Fehler steht am Formular. `aendern(stand)` liefert das ganze Objekt und läuft
+    erst im Glied der Schlange (ADR-0025 Regel 7): `S.board` erneuert sich erst nach dem letzten Glied, deshalb ist der Stand
+    das zuletzt Gesendete dieses Boards — sonst schriebe eine zweite schnelle Änderung die erste zurück (R00170). */
+async function fieberEinstellen(aendern) {
+  const board = S.board;
+  S.ui.fbFehler = null;
+  try {
+    await durchDieSchlange(async () => {
+      const einstellungen = aendern(fieberGesendet.get(board.slug) || board.fieber);
+      await api('PUT', `/api/boards/${encodeURIComponent(board.slug)}/fieber`, einstellungen);
+      fieberGesendet.set(board.slug, einstellungen);
+    });
+  } catch (x) { S.ui.fbFehler = x.message; }
   return laden();
 }
 
@@ -1893,18 +1906,20 @@ async function aktion(a, arg, wert) {
           return;
         }
         if (arg === 'ziel') return termineSchreiben(b.termine.map((t, i) => ({ ...t, ziel: wert !== '' && i === +wert })));
-        const f = { ...b.fieber, gelb: [...b.fieber.gelb], rot: [...b.fieber.rot] };
-        if (arg === 'puffer') f.puffer = wert === '' ? null : Math.max(1, Math.round(+wert));
-        else if (arg === 'perzentil' || arg === 'woche' || arg === 'aufloesung') f[arg] = +wert;
-        else if (arg === 'zielspalte' || arg === 'vonspalte') f[arg] = wert || null;
-        else f[arg.slice(0, -1)][+arg.slice(-1)] = Math.max(0, Math.round(+wert));
-        return fieberEinstellen(f);
+        return fieberEinstellen(stand => {
+          const f = { ...stand, gelb: [...stand.gelb], rot: [...stand.rot] };
+          if (arg === 'puffer') f.puffer = wert === '' ? null : Math.max(1, Math.round(+wert));
+          else if (arg === 'perzentil' || arg === 'woche' || arg === 'aufloesung') f[arg] = +wert;
+          else if (arg === 'zielspalte' || arg === 'vonspalte') f[arg] = wert || null;
+          else f[arg.slice(0, -1)][+arg.slice(-1)] = Math.max(0, Math.round(+wert));
+          return f;
+        });
       }
       case 'fb-vorschlag': {
         if (ichNoetig()) break;
         const st = fieberStand();
         if (!st || !st.e.ziel) break;
-        return fieberEinstellen({ ...S.board.fieber, puffer: pufferVorschlag(dauerIn(S.board.fieber.woche, st.start, st.e.ziel)) });
+        return fieberEinstellen(stand => ({ ...stand, puffer: pufferVorschlag(dauerIn(stand.woche, st.start, st.e.ziel)) }));
       }
       case 'fb-verwerfen': {
         try { await durchDieSchlange(() => api('DELETE', `/api/boards/${encodeURIComponent(u.slug)}/fieber/cache`)); u.fbFehler = null; } catch (f) { u.fbFehler = f.message; }
