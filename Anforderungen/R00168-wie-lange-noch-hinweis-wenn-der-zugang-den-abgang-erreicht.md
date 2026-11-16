@@ -1,6 +1,6 @@
 ---
 id: R00168
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -34,12 +34,12 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 | B | 5 | 2 | 0 | 4 | 3 | 2 : 10 = 0,2 | 0,4 | nein (2 < 4) |
 | C | 4 | 5 | 3 | 3 | 3 | (5 − 3) : 10 = 0,2 | 3 : 10 = 0,3 | nein (2 < 3) |
 
-- [ ] **AK 1 Zugang erreicht den Abgang (Abnahme der Karte):** In Beispiel A zeigt der Block der Abschlussspalte die Zeile 1 mit „1,0“ und „0,4“ und die Zeile 2 „kein Ende absehbar“.
-- [ ] **AK 2 Zugang darunter:** In Beispiel B steht nur die Zeile 1 mit „0,2“ und „0,4“; die Zeile 2 fehlt.
-- [ ] **AK 3 Prognose unverändert:** Perzentil-Tabelle, „Durchsatz Ø“ und Tagesreihe sind in A und B gleich dem Stand vor der Karte; „Abgang Ø“ ist gleich „Durchsatz Ø“ desselben Blocks.
-- [ ] **AK 4 Block ohne Prognose:** Hat ein Block unter 3 Läufe in der Messbasis oder nichts offen, steht keine der beiden Zeilen; es bleibt der heutige Satz.
-- [ ] **AK 5 Entferntes mindert den Zugang:** In Beispiel C zählt der Zugang 2 (Zeile 1 mit „0,2“ und „0,3“), kein „kein Ende absehbar“.
-- [ ] **AK 6 Dieselben Tage, sonst nichts:** „Messbasis“ und „Rechnen ab“ ändern beide Mittel über dieselben Tage (Beispiel A mit Messbasis 20 Tage: 0,5 und 0,2); Burndown, Durchsatz, Kumulativer Fluss und Fever Chart bleiben unverändert. Die Zeilen stehen je Block, auf Boards mit Phasen also mehrfach.
+- [x] **AK 1 Zugang erreicht den Abgang (Abnahme der Karte):** In Beispiel A zeigt der Block der Abschlussspalte die Zeile 1 mit „1,0“ und „0,4“ und die Zeile 2 „kein Ende absehbar“.
+- [x] **AK 2 Zugang darunter:** In Beispiel B steht nur die Zeile 1 mit „0,2“ und „0,4“; die Zeile 2 fehlt.
+- [x] **AK 3 Prognose unverändert:** Perzentil-Tabelle, „Durchsatz Ø“ und Tagesreihe sind in A und B gleich dem Stand vor der Karte; „Abgang Ø“ ist gleich „Durchsatz Ø“ desselben Blocks.
+- [x] **AK 4 Block ohne Prognose:** Hat ein Block unter 3 Läufe in der Messbasis oder nichts offen, steht keine der beiden Zeilen; es bleibt der heutige Satz.
+- [x] **AK 5 Entferntes mindert den Zugang:** In Beispiel C zählt der Zugang 2 (Zeile 1 mit „0,2“ und „0,3“), kein „kein Ende absehbar“.
+- [x] **AK 6 Dieselben Tage, sonst nichts:** „Messbasis“ und „Rechnen ab“ ändern beide Mittel über dieselben Tage (Beispiel A mit Messbasis 20 Tage: 0,5 und 0,2); Burndown, Durchsatz, Kumulativer Fluss und Fever Chart bleiben unverändert. Die Zeilen stehen je Block, auf Boards mit Phasen also mehrfach.
 
 ## Tests
 
