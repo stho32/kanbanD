@@ -1,6 +1,6 @@
 ---
 id: R00170
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ursprung: Bug-Report
 ursprungslauf:
@@ -32,12 +32,12 @@ E2E im echten Programm. AK 1 ist die erste Bubble und **rot ohne Fix**; das geme
 
 **Grundbestand:** eingerichteter Ordner, ein Board ohne `fever` in der Board-Datei, Identität gesetzt.
 
-- [ ] **AK 1 Abnahme-Probe der Karte:** Gegeben der Grundbestand und der geöffnete Fever Chart. Wenn Puffer 7, Perzentil 70 und Auflösung Woche direkt nacheinander gesetzt werden, ohne auf Antwort oder Nachladen zu warten, dann trägt die Board-Datei alle drei Werte (`buffer: 7`, `percentile: 70`, `resolution: week`), und die Anzeige zeigt sie. Heute: nur die Auflösung.
-- [ ] **AK 2 Beide Auswahlen im Durchsatz:** Gegeben der Grundbestand mit den Spalten Backlog · Arbeit · Erledigt und der geöffnete Durchsatz. Wenn „Zugang ab“ auf Arbeit und „Erledigt heißt“ auf Arbeit in einem Zug gesetzt werden, dann stehen beide in der Board-Datei (`from-column: Arbeit`, `target-column: Arbeit`) und nach Neuladen in beiden Auswahlen.
-- [ ] **AK 3 Reihenfolge:** Die drei Änderungen aus AK 1 ergeben genau drei Commits in der Reihenfolge der Eingabe (Puffer, Perzentil, Auflösung).
-- [ ] **AK 4 Eine einzelne Änderung wie heute:** Wird nur der Puffer auf 7 gesetzt, entsteht genau ein Commit mit derselben Meldung wie vor der Karte, und die Anzeige ist dieselbe.
-- [ ] **AK 5 Abgelehnte Änderung dazwischen:** Lehnt der Server die mittlere von drei direkt aufeinander folgenden Änderungen ab (Puffer 7, Perzentil 60, Auflösung Woche → „Perzentil 60 ist nicht 50, 70, 85 oder 95“), dann steht die Meldung am Formular; Puffer 7 und Auflösung Woche stehen in der Board-Datei, das Perzentil 60 weder in der Datei noch in der Anzeige; zwei Commits.
-- [ ] **AK 6 Puffer vorschlagen nach Wechsel der Woche:** Gegeben ein Board mit Projektstart und Ziel-Termin. Wenn die Woche von 7 auf 5 gestellt und direkt danach „Puffer vorschlagen“ ausgelöst wird, dann ist der Puffer aus der Dauer in Arbeitstagen gerechnet, und die Board-Datei trägt die Woche 5 und diesen Puffer.
+- [x] **AK 1 Abnahme-Probe der Karte:** Gegeben der Grundbestand und der geöffnete Fever Chart. Wenn Puffer 7, Perzentil 70 und Auflösung Woche direkt nacheinander gesetzt werden, ohne auf Antwort oder Nachladen zu warten, dann trägt die Board-Datei alle drei Werte (`buffer: 7`, `percentile: 70`, `resolution: week`), und die Anzeige zeigt sie. Heute: nur die Auflösung.
+- [x] **AK 2 Beide Auswahlen im Durchsatz:** Gegeben der Grundbestand mit den Spalten Backlog · Arbeit · Erledigt und der geöffnete Durchsatz. Wenn „Zugang ab“ auf Arbeit und „Erledigt heißt“ auf Arbeit in einem Zug gesetzt werden, dann stehen beide in der Board-Datei (`from-column: Arbeit`, `target-column: Arbeit`) und nach Neuladen in beiden Auswahlen.
+- [x] **AK 3 Reihenfolge:** Die drei Änderungen aus AK 1 ergeben genau drei Commits in der Reihenfolge der Eingabe (Puffer, Perzentil, Auflösung).
+- [x] **AK 4 Eine einzelne Änderung wie heute:** Wird nur der Puffer auf 7 gesetzt, entsteht genau ein Commit mit derselben Meldung wie vor der Karte, und die Anzeige ist dieselbe.
+- [x] **AK 5 Abgelehnte Änderung dazwischen:** Lehnt der Server die mittlere von drei direkt aufeinander folgenden Änderungen ab (Puffer 7, Perzentil 60, Auflösung Woche → „Perzentil 60 ist nicht 50, 70, 85 oder 95“), dann steht die Meldung am Formular; Puffer 7 und Auflösung Woche stehen in der Board-Datei, das Perzentil 60 weder in der Datei noch in der Anzeige; zwei Commits.
+- [x] **AK 6 Puffer vorschlagen nach Wechsel der Woche:** Gegeben ein Board mit Projektstart und Ziel-Termin. Wenn die Woche von 7 auf 5 gestellt und direkt danach „Puffer vorschlagen“ ausgelöst wird, dann ist der Puffer aus der Dauer in Arbeitstagen gerechnet, und die Board-Datei trägt die Woche 5 und diesen Puffer.
 
 ## Implementierungshinweise
 

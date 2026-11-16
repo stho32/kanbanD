@@ -4,10 +4,11 @@ const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
 
 /* ── Testsprache: der Grundbestand der Anforderung ── */
 const BOARD = 'boards/fabrik.md';
+const ZWEITES = 'boards/zweites.md';
 const boardText = (titel, nummer) => `# ${titel}\n\n## Backlog\n\n- #${nummer}\n\n## Arbeit\n\n## Erledigt\n`;
 const aufgabe = n => `---\nid: ${n}\ntitle: a${n}\nassignees: [st]\n---\n`;
 /** Zwei Boards mit Backlog · Arbeit · Erledigt, je eine Aufgabe, kein `fever` in der Board-Datei. */
-const grundbestand = einrichten({ 'aufgaben/0001-a1.md': aufgabe(1), 'aufgaben/0002-a2.md': aufgabe(2), [BOARD]: boardText('fabrik', 1), 'boards/zweites.md': boardText('zweites', 2) });
+const grundbestand = einrichten({ 'aufgaben/0001-a1.md': aufgabe(1), 'aufgaben/0002-a2.md': aufgabe(2), [BOARD]: boardText('fabrik', 1), [ZWEITES]: boardText('zweites', 2) });
 const ALS_STEFAN = { headers: { 'X-KanbanD-Wer': 'st' } };
 const EINGESTELLT = 'Stefan|Fever Chart von „fabrik“ eingestellt: ';
 
@@ -39,6 +40,17 @@ const inEinemZug = (page, schritte) => page.evaluate(liste => {
 const feld = (page, name) => page.locator(`#main [data-fb="${name}"]`);
 const kopf = (k, rel = BOARD) => k.lies(rel).split('# ')[0];
 const commitsVonStefanSeit = (k, stand) => k.git('log', '--reverse', '--format=%an|%s', `${stand}..HEAD`).split('\n').filter(z => z.startsWith('Stefan|'));
+/** Hält die `PUT …/fieber`-Anfragen der Seite an, bis `freigeben()` gerufen wird. */
+async function fieberAnfragenHalten(page) {
+  let freigeben;
+  const frei = new Promise(ok => { freigeben = ok; });
+  await page.route(url => url.pathname.endsWith('/fieber'), async route => {
+    if (route.request().method() === 'PUT') await frei;
+    await route.continue();
+  });
+  return freigeben;
+}
+
 const DREI_IM_FEVER_CHART = [['puffer', '7'], ['perzentil', '70'], ['aufloesung', '7']];
 
 test('R00170 US-1, AK 1, AK 3 (B0830, Abnahme der Karte #177): Puffer 7, Perzentil 70 und Auflösung Woche direkt nacheinander — die Board-Datei trägt alle drei, die Anzeige zeigt sie, drei Commits in der Reihenfolge der Eingabe', async ({ page }) => {
@@ -120,5 +132,44 @@ test('R00170 (B0831, Schadensstelle c): nach einem übernommenen Laden gilt wied
     await steht(page);
     await inEinemZug(page, [['aufloesung', '7']]);
     await expect.poll(() => kopf(k)).toBe('---\nfever: {buffer: 9, percentile: 85, resolution: week}\n---\n\n');
+  } finally { await k.stoppen(); }
+});
+
+test('R00170 US-3, AK 5 (B0832): lehnt der Server das mittlere von drei (Perzentil 60) ab, steht die Meldung am Formular; Puffer 7 und Auflösung Woche sind gespeichert, das Perzentil 60 nirgends, auch nicht nach der nächsten Änderung', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await berichtOeffnen(page, k, 'fieber');
+    const vorher = k.git('rev-parse', 'HEAD');
+    await inEinemZug(page, [['puffer', '7'], ['perzentil', '60'], ['aufloesung', '7']]);
+    await expect.poll(() => kopf(k)).toBe('---\nfever: {buffer: 7, resolution: week}\n---\n\n');
+    await expect(page.locator('#main .fb-einst [role="alert"]')).toHaveText('Perzentil 60 ist nicht 50, 70, 85 oder 95');
+    await steht(page);
+    await expect(feld(page, 'perzentil')).toHaveValue('95');
+    await expect(feld(page, 'puffer')).toHaveValue('7');
+    expect(commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`, `${EINGESTELLT}Puffer 7 Arbeitstage, P95`]);
+    // der abgelehnte Wert wird auch später nicht mitgeschickt
+    await inEinemZug(page, [['puffer', '8']]);
+    await expect.poll(() => kopf(k)).toBe('---\nfever: {buffer: 8, resolution: week}\n---\n\n');
+    expect(k.git('log', '-p', `${vorher}..HEAD`, '--', BOARD)).not.toContain('percentile');
+  } finally { await k.stoppen(); }
+});
+
+test('R00170 (B0832, Schadensstelle b): Boardwechsel zwischen Auslösen und Senden — beide Änderungen landen im Board, in dem sie ausgelöst wurden; das andere Board bekommt danach nur seine eigene', async ({ page }) => {
+  const k = await kanbanStarten(grundbestand);
+  try {
+    await berichtOeffnen(page, k, 'fieber');
+    const freigeben = await fieberAnfragenHalten(page);
+    const zweitesVorher = k.lies(ZWEITES);
+    await inEinemZug(page, [['puffer', '7'], ['perzentil', '70'], ['adresse', '#/board/zweites']]);
+    freigeben();
+    await expect.poll(() => kopf(k)).toBe('---\nfever: {buffer: 7, percentile: 70}\n---\n\n');
+    await expect(page.getByRole('banner').getByRole('button', { name: /^zweites/ })).toBeVisible();
+    expect(k.lies(ZWEITES)).toBe(zweitesVorher);
+    await page.goto(`${k.adresse}#/berichte/fieber`);
+    await expect(page.locator('#main .leiste').first()).toContainText('zweites');
+    await steht(page);
+    await inEinemZug(page, [['aufloesung', '7']]);
+    await expect.poll(() => kopf(k, ZWEITES)).toBe('---\nfever: {resolution: week}\n---\n\n');
+    expect(kopf(k)).toBe('---\nfever: {buffer: 7, percentile: 70}\n---\n\n');
   } finally { await k.stoppen(); }
 });
