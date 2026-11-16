@@ -111,8 +111,6 @@ async function api(methode, pfad, daten) {
   return json;
 }
 
-/** Die Ansicht, die die Adresse nennt (Router in `web/adresse.js`). */
-const ansichtDerAdresse = () => adresseLesen(location.hash).sicht;
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
 const wbsKuerzel = () => decodeURIComponent((/^#\/wbs\/([^/]*)/.exec(location.hash) || [])[1] || '');
 /** Gewählter Klappzustand der WBS-Sicht je Anwendung ({id: offen?}); überdauert das Neuladen. */
@@ -276,7 +274,8 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
 
 /** Alles, was ein Laden für die Ansicht der Adresse liest — nur lokal gesammelt, übernommen erst über `sichtUebernehmen`. */
 async function sichtLaden(zustand) {
-  const view = ansichtDerAdresse();
+  const hash = location.hash;
+  const view = adresseLesen(hash).sicht;
   const slug = gewaehltesBoard(zustand);
   let fbFehler = null;
   // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
@@ -306,11 +305,11 @@ async function sichtLaden(zustand) {
   const pruefWbs = {};
   // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-  return { view, slug, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs } };
 }
 
 /** Nach der Übernahme: die gelesene Sicht samt ihrer Folgen für Vollbild, Einrichten und gemerktes Board, dann das offene Fenster. */
-async function sichtFolgen({ view, slug, fbFehler }, start) {
+async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
   S.ui.first = null;
   const vorher = S.ui.view;
   S.ui.view = view;
@@ -321,8 +320,85 @@ async function sichtFolgen({ view, slug, fbFehler }, start) {
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
   if (fbFehler) S.ui.fbFehler = fbFehler;
   S.ui.bf = berichtsfilterAusBoard();
+  if (hash !== adresseGefolgt) fensterDerAdresseFolgen(hash);
   if (S.ui.offen) await dateiLaden(start);
   if (S.ui.offenDefekt) await defektLaden(start);
+  linkAuswerten();
+}
+
+/** Die Adresse, der das Fenster zuletzt gefolgt ist. Beim Laden und bei `hashchange` ist die Adresse die Wahrheit (ADR-0029
+    Regel 2) — aber nur einmal je Adresse: ein Laden aus anderem Anlass (Live-Ereignis, eigene Änderung) öffnet kein Fenster
+    wieder, das der Mensch inzwischen geschlossen hat. */
+let adresseGefolgt = null;
+
+/** Stellt das Fenster auf die Aufgabe der Adresse (R00174): ohne Nummer schließt es, mit einer anderen Nummer wechselt es wie
+    beim Klick auf eine andere Karte. Geladen wird über den Weg des Defekt-Fensters, der die drei Antworten des Servers schon
+    unterscheidet (da, defekt, nicht da). Nur lesend — aus einer Adresse entsteht nie ein Schreibzugriff außer dem, den das
+    Verlassen eines Felds mit Entwurf ohnehin auslöst. */
+function fensterDerAdresseFolgen(hash) {
+  const u = S.ui;
+  const adresse = adresseLesen(hash);
+  const gezeigt = u.offen || u.offenDefekt || null;
+  if (adresse.nummer === gezeigt) { adresseGefolgt = hash; return; }
+  fensterfeldVerlassen();
+  u.offen = null; u.offenDefekt = null; u.defektDatei = null; u.datei = null; u.fensterMenue = null; u.entwurf = null;
+  // Das Verlassen hat einen Entwurf abgeschickt: erst das Nachladen der Warteschlange folgt der Adresse — bis dahin würde
+  // keine Antwort für das Fenster übernommen (R00110).
+  if (schlangeOffen()) return;
+  adresseGefolgt = hash;
+  if (!adresse.nummer) return;
+  fensterZuruecksetzen();
+  u.offenDefekt = adresse.nummer;
+  u.linkZiel = { nummer: adresse.nummer, slug: adresse.slug };
+}
+
+/** Verlässt das Feld des Aufgabenfensters, in dem der Fokus steht — sein Entwurf wird gespeichert wie beim Schließen über ✕. */
+function fensterfeldVerlassen() {
+  verlassenNachholen();
+  const feld = document.activeElement;
+  const imFenster = Boolean(feld) && Boolean(feld.closest) && Boolean(feld.closest('#fenster'));
+  if (imFenster && /INPUT|TEXTAREA|SELECT/.test(feld.tagName)) feld.blur();
+}
+
+/** Sagt nach dem Öffnen über eine Adresse, was nicht zum Link passt (R00174 AK 5) — je Link einmal und höchstens ein Hinweis.
+    Genannt wird nur die geprüfte Nummer, nie Text aus der Adresse. Solange das Fenster seine Antwort noch nicht hat, wartet
+    die Auswertung auf das nächste Laden. */
+function linkAuswerten() {
+  const u = S.ui;
+  const ziel = u.linkZiel;
+  if (!ziel) return;
+  const antwortFehlt = u.offenDefekt === ziel.nummer && !u.defektDatei;
+  if (antwortFehlt) return;
+  u.linkZiel = null;
+  const offen = u.offen === ziel.nummer || u.offenDefekt === ziel.nummer;
+  if (!offen) {
+    hinweisZeigen(`Aufgabe #${ziel.nummer} gibt es nicht`);
+    adresseErsetzen(null);
+    return;
+  }
+  if (u.view !== 'board') return;
+  if (ziel.slug !== u.slug) {
+    hinweisZeigen('Board aus dem Link gibt es nicht');
+    adresseErsetzen(ziel.nummer);
+    return;
+  }
+  if (!liegtAufDemGezeigtenBoard(ziel.nummer)) hinweisZeigen(`#${ziel.nummer} liegt nicht auf diesem Board`);
+}
+
+/** Wahr, wenn die Karte auf dem gezeigten Board zu sehen ist; eine archivierte nur bei eingeschaltetem Archiv. Ohne lesbares Board wahr. */
+function liegtAufDemGezeigtenBoard(nummer) {
+  if (!S.board) return true;
+  const aufDemBoard = S.board.spalten.some(spalte => spalte.aufgaben.includes(nummer));
+  const karte = aufgabe(nummer);
+  const imArchivVerborgen = Boolean(karte) && Boolean(karte.archiviert) && !imArchiv();
+  return aufDemBoard && !imArchivVerborgen;
+}
+
+/** Berichtigt die Adresse eines Links, der nicht passte, ohne neuen Verlaufseintrag: sie nennt danach, was gezeigt wird. */
+function adresseErsetzen(nummer) {
+  const berichtigt = adresseBilden({ sicht: S.ui.view, slug: S.ui.slug, nummer });
+  history.replaceState(null, '', berichtigt);
+  adresseGefolgt = location.hash;
 }
 
 /** Fever Chart (R00078): rechnet die Tage vom Start bis gestern, die im Cache fehlen, in Häppchen (die Seite bleibt bedienbar)
@@ -777,15 +853,22 @@ function schlangeMelden(art, fehler, ausloeser) {
   render();
 }
 
-/** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
-async function fensterOeffnen(nummer) {
+/** Räumt weg, was das Fenster für die vorige Aufgabe hielt — vor jedem Öffnen einer Aufgabe. */
+function fensterZuruecksetzen() {
   const u = S.ui;
   u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.titelBearbeiten = false;
   // Die gewählte Ansicht bleibt beim Öffnen einer anderen Aufgabe (R00145 FA 9); führt die Aufgabe sie nicht, fällt sie
   // in vFenster über reiterSchluessel auf „Inhalt“. Die Inhalte der vorigen Aufgabe fallen sofort weg (R00110/R00123).
-  u.offen = nummer; u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
+  u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
   u.entwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
   u.verlauf = null; u.verlaufFehler = null;
+}
+
+/** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
+async function fensterOeffnen(nummer) {
+  const u = S.ui;
+  fensterZuruecksetzen();
+  u.offen = nummer;
   // bei gewähltem Verlauf zuerst die leere Tabelle zeichnen — nie Zeilen der vorigen Aufgabe (R00123)
   if (u.tab === 'verlauf') render();
   await dateiLaden();

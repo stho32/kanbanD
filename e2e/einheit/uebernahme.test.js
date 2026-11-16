@@ -45,6 +45,8 @@ const ERLAUBT = new Map([
   // Der Verteiler heißt seit R00148 `act`; sein Rumpf (der Schalter mit den Übernahmen) liegt in `aktion`.
   ['aktion', new Map([['ui.offen', 2], ['ui.offenDefekt', 1]])],
   ['fensterOeffnen', new Map([['ui.offen', 1]])],
+  // Öffnen über eine Adresse (R00174): gesetzt wird das Ziel wie bei `defekt-oeffnen`, die Antwort übernimmt `defektLaden`.
+  ['fensterDerAdresseFolgen', new Map([['ui.offenDefekt', 1]])],
 ]);
 /** Ladefunktionen: hier steht jede Übernahme textlich hinter einem Aufruf der Prüfung. */
 const GEPRUEFT = ['laden', 'dateiLaden', 'defektLaden'];
