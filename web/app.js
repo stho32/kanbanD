@@ -137,6 +137,36 @@ function spalteKlappen(name, zu) {
   S.ui.spaltenZu.zu = liste;
   try { localStorage.setItem('kanbanD.spalten-zu.' + S.ui.spaltenZu.slug, JSON.stringify(liste)); } catch (_) { }
 }
+/** Am Gerät gemerkte Wahl von/bis der Durchlaufzeit (R00169, ADR-0027 N5 Punkt 3): je Betrachter und Board im Browser-Speicher,
+    nur was von der Vorgabe des Boards abweicht (`durchlaufMerken`) — keine Datei ändert sich. */
+function durchlaufGemerkt() {
+  const slug = S.ui.slug || '';
+  if (!S.ui.dlGemerkt || S.ui.dlGemerkt.slug !== slug) {
+    let wahl = null;
+    try { wahl = JSON.parse(localStorage.getItem('kanbanD.durchlaufzeit.' + slug) || '{}'); } catch (_) { }
+    if (!wahl || typeof wahl !== 'object') wahl = {};
+    S.ui.dlGemerkt = { slug, wahl };
+  }
+  return S.ui.dlGemerkt.wahl;
+}
+/** Merkt die Wahl des Boards am Gerät; eine leere Wahl löscht den Eintrag — der Bericht folgt wieder dem Board. */
+function durchlaufAmGeraetMerken(wahl) {
+  durchlaufGemerkt();
+  S.ui.dlGemerkt.wahl = wahl;
+  const schluessel = 'kanbanD.durchlaufzeit.' + S.ui.dlGemerkt.slug;
+  try {
+    if (Object.keys(wahl).length) localStorage.setItem(schluessel, JSON.stringify(wahl));
+    else localStorage.removeItem(schluessel);
+  } catch (_) { }
+}
+/** Stellt „von“ (`dlVon`) oder „bis“ (`dlBis`) der Durchlaufzeit auf `spalte`; gemerkt wird, was danach von der Vorgabe abweicht. */
+function durchlaufWaehlen(feld, spalte) {
+  const wahl = durchlaufWahl(S.bew, erledigtHeisst().gewaehlt, durchlaufGemerkt());
+  let von = wahl.von, bis = wahl.bis;
+  if (feld === 'dlVon') von = spalte;
+  if (feld === 'dlBis') bis = spalte;
+  durchlaufAmGeraetMerken(durchlaufMerken(wahl.vorgabe, von, bis));
+}
 /** Anwendungen, an die das aktuelle Board gebunden ist (R00053, R00054). */
 const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen.anwendungen) || []);
 
@@ -2437,7 +2467,7 @@ document.addEventListener('change', e => {
   }
   if (e.target.dataset && e.target.dataset.bestand) { bestandAchsenSetzen(e.target.dataset.bestand, e.target.value); return; }
   if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
-  if (e.target.dataset && e.target.dataset.dl) { S.ui[e.target.dataset.dl] = e.target.value; render(); return; }
+  if (e.target.dataset && e.target.dataset.dl) { durchlaufWaehlen(e.target.dataset.dl, e.target.value); render(); return; }
   if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
   const bf = e.target.dataset && e.target.dataset.bf;
   if (bf) {

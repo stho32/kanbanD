@@ -1681,8 +1681,7 @@ function vBestandZelle(stelle, achsen, klassen) {
 function vDurchlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const sp = S.bew.spalten, u = S.ui;
-  const vorgabe = durchlaufVorgabe(S.bew, erledigtHeisst().gewaehlt);
-  const von = sp.includes(u.dlVon) ? u.dlVon : vorgabe.von, bis = sp.includes(u.dlBis) ? u.dlBis : vorgabe.bis;
+  const ziel = erledigtHeisst(), strecke = durchlaufWahl(S.bew, ziel.gewaehlt, durchlaufGemerkt()), { von, bis } = strecke;
   const d = durchlaufzeiten(S.bew, u.bf, aufgabe, Date.now(), von, bis, S.board && S.board.start);
   const wahl = (k, wert, titel) => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte">${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
   const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter('durchlaufzeit')}`;

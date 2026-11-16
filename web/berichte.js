@@ -502,6 +502,25 @@
     return { von, bis: ersteErledigt || letzte };
   }
 
+  /** „von“ und „bis“ der Durchlaufzeit: die Vorgabe des Boards, je Feld ersetzt durch die am Gerät gemerkte Wahl `gemerkt`
+      (`{ von, bis }`, beide optional), wo sie eine Spalte des Boards nennt. `weichtAb` sagt, ob etwas davon nicht die Vorgabe
+      ist — nur dann zeigt der Bericht den Weg zurück. */
+  function durchlaufWahl(bew, zielSchluessel, gemerkt) {
+    const vorgabe = durchlaufVorgabe(bew, zielSchluessel);
+    let von = vorgabe.von, bis = vorgabe.bis;
+    if (gemerkt && bew.spalten.includes(gemerkt.von)) von = gemerkt.von;
+    if (gemerkt && bew.spalten.includes(gemerkt.bis)) bis = gemerkt.bis;
+    const vonWeichtAb = von !== vorgabe.von, bisWeichtAb = bis !== vorgabe.bis;
+    return { von, bis, vorgabe, vonWeichtAb, bisWeichtAb, weichtAb: vonWeichtAb || bisWeichtAb };
+  }
+  /** Was von einer Wahl am Gerät zu merken ist: nur die Felder, die von der Vorgabe abweichen — leer heißt „folgt dem Board“. */
+  function durchlaufMerken(vorgabe, von, bis) {
+    const gemerkt = {};
+    if (von !== vorgabe.von) gemerkt.von = von;
+    if (bis !== vorgabe.bis) gemerkt.bis = bis;
+    return gemerkt;
+  }
+
   /* ── Phasen als Spalten (R00058) ── */
   /** Rang einer Spalte in der Phasenfolge: Stelle ihrer Phase, die Abschlussspalte hinter allen, ungebundene −1. */
   function phasenRang(phasen, spalten) {
@@ -1111,5 +1130,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
