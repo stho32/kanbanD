@@ -4,10 +4,11 @@
   /** Positivliste (ADR-0030 Punkt 4): kein Zeichen ≤ U+0020 und kein U+007F (der Browser überliest solche Zeichen vor dem Schema), dazu http, https, mailto, vscode oder ohne Schema (relativ). */
   const erlaubt = url => !/[\u0000-\u0020\u007f]/.test(url) && (/^(https?|mailto|vscode):/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url));
 
-  /** Inline: Code, Links, nackte Adressen, fett, kursiv — auf bereits maskiertem Text. Jede fertige Marke wird sofort durch
+  /** Eine Zeile ohne Blöcke (ADR-0030 Punkt 7): Code, Links, nackte Adressen, fett, kursiv — jede neue Form der Zeile
+   *  entsteht hier und gilt damit für beide Einstiege, `markdownInline` und `markdownHtml`. Jede fertige Marke wird sofort durch
    *  einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und eine
    *  Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen. */
-  function inline(text) {
+  function markdownInline(text) {
     const fertig = [];
     const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
     const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => fertig[+i]);
@@ -22,7 +23,7 @@
 
   /** Zerlegt eine ROHE Zeile an `|` in Zellen (GFM): ein Strich am Rand zählt nicht, `\|` trennt nicht und bleibt ein `|`.
    *  Ein unmaskierter Strich trennt auch mitten in Code oder einer Adresse. Zerlegt wird nie fertiges HTML: erst die
-   *  Zelle läuft durch `inline()`, jede mit eigenen Platzhaltern (ADR-0030 Punkte 1 und 5). */
+   *  Zelle läuft durch `markdownInline()`, jede mit eigenen Platzhaltern (ADR-0030 Punkte 1 und 5). */
   function zellen(zeile) {
     const teile = [];
     const roh = zeile.trim();
@@ -65,7 +66,7 @@
 
   /** Die Hülle zum Scrollen trägt ihre drei Attribute fest: sie macht die Tabelle mit der Tastatur erreichbar (R00176). */
   function tabelleHtml(kopfzeile, spalten, zeilen) {
-    const zeile = (marke, texte) => `<tr>${spalten.map((klasse, i) => `<${marke}${klasse}>${inline(texte[i] || '')}</${marke}>`).join('')}</tr>`;
+    const zeile = (marke, texte) => `<tr>${spalten.map((klasse, i) => `<${marke}${klasse}>${markdownInline(texte[i] || '')}</${marke}>`).join('')}</tr>`;
     let rumpf = '';
     if (zeilen.length) rumpf = `<tbody>${zeilen.map(z => zeile('td', zellen(z))).join('')}</tbody>`;
     return `<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table><thead>${zeile('th', zellen(kopfzeile))}</thead>${rumpf}</table></div>`;
@@ -81,8 +82,8 @@
     let absatz = [], liste = null;
     /** Bis zu dieser Zeile (ausschließlich) wird keine Tabelle gesucht: der Block war zu groß und bleibt Text. */
     let textBis = 0, zellenFrei = MAX_ZELLEN;
-    const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(inline).join('<br>')}</p>`); absatz = []; } };
-    const listeEnde = () => { if (liste) { aus.push(`<${liste.art}>${liste.punkte.map(p => `<li>${inline(p)}</li>`).join('')}</${liste.art}>`); liste = null; } };
+    const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(markdownInline).join('<br>')}</p>`); absatz = []; } };
+    const listeEnde = () => { if (liste) { aus.push(`<${liste.art}>${liste.punkte.map(p => `<li>${markdownInline(p)}</li>`).join('')}</${liste.art}>`); liste = null; } };
     for (let i = 0; i < zeilen.length; i++) {
       const z = zeilen[i];
       if (ZAUN.test(z)) {
@@ -109,14 +110,14 @@
         }
       }
       let m;
-      if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${inline(m[2])}</h${h}>`); }
+      if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${markdownInline(m[2])}</h${h}>`); }
       else if ((m = PUNKT.exec(z)) || (m = NUMMER.exec(z))) {
         absatzEnde();
         const art = /^\s*\d/.test(z) ? 'ol' : 'ul';
         if (liste && liste.art !== art) listeEnde();
         if (!liste) liste = { art, punkte: [] };
         liste.punkte.push(m[1]);
-      } else if ((m = ZITAT.exec(z))) { absatzEnde(); listeEnde(); aus.push(`<blockquote>${inline(m[1])}</blockquote>`); }
+      } else if ((m = ZITAT.exec(z))) { absatzEnde(); listeEnde(); aus.push(`<blockquote>${markdownInline(m[1])}</blockquote>`); }
       else if (!z.trim()) { absatzEnde(); listeEnde(); }
       else { listeEnde(); absatz.push(z); }
     }
@@ -124,5 +125,5 @@
     return aus.join('');
   }
 
-  Object.assign(ziel, { markdownHtml });
+  Object.assign(ziel, { markdownHtml, markdownInline });
 })(typeof module !== 'undefined' ? module.exports : window);

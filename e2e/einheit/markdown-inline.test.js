@@ -32,7 +32,7 @@ test('AK 2: Blöcke gibt es in einer Zeile nicht — Überschrift, Liste, Zitat,
 test('AK 7: fremder Text bleibt Text', () => {
   assert.strictEqual(markdownInline('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
   assert.strictEqual(markdownInline('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
-  assert.strictEqual(markdownInline('[x](javascript:alert(1))'), 'x');
+  assert.strictEqual(markdownInline('[x](javascript:document.title=1)'), 'x');
   assert.strictEqual(markdownInline('[x](\u0001javascript:alert%281%29)'), 'x');
   assert.strictEqual(markdownInline('[a"b](x" onmouseover="y)'), '[a&quot;b](x&quot; onmouseover=&quot;y)');
   assert.strictEqual(markdownInline('a \u00000\u0000 `c`'), 'a 0 <code>c</code>');

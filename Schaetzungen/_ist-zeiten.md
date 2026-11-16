@@ -733,3 +733,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0867 Hülle zum Scrollen, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | Nacharbeit: Obergrenze für Spalten und Zellen (Security-Review) | Nacharbeit | — | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #185 R00177 (Markdown: Links, fett, kursiv und Code in Teilaufgaben) | B0868 Rote Probe der Karte, zweiter Einstieg in den feindlichen Adressen, Spec im echten Programm | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #185 R00177 (Markdown: Links, fett, kursiv und Code in Teilaufgaben) | B0869 `markdownInline` exportiert; Adressen seit #187 geschützt, mit Test belegt | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
