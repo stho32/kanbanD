@@ -751,7 +751,18 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .inp.umbenennen{width:100%;height:24px}
 .due-knoepfe{display:inline-flex;gap:2px}
 .besch-lesen{min-height:60px;padding:var(--kd-s2) var(--kd-s3);border:1px solid transparent;line-height:1.55;cursor:text}
-.besch-lesen:hover,.besch-lesen:focus{border-color:var(--kd-line-strong);outline:none}
+/* Stift an der Beschreibung (R00162, Artboard D0003 `#beschreibung-stift`): die Lesefläche ist reiner Text und bekommt beim
+   Zeigen keinen Rahmen mehr — er verspräche „Klick bearbeitet“. Der Stift auf der Zeile der Überschrift ist in Ruhe
+   durchsichtig und nicht anklickbar, bleibt aber in der Tab-Folge: verborgen nur über opacity und pointer-events, nie über
+   visibility oder display. Halb beim Zeigen auf den Abschnitt und ohne Hover (Touch), voll auf dem Stift und bei jedem Fokus.
+   Zeichen in --kd-text, damit auch die halbe Stufe 3:1 hält. */
+.abs h3.besch-kopf{min-block-size:var(--kd-ziel);align-items:center;white-space:nowrap}
+.abs .besch-stift{flex:none;margin-left:auto;inline-size:var(--kd-ziel);block-size:var(--kd-ziel);font:400 14px/1 var(--kd-font);letter-spacing:0;color:var(--kd-text);opacity:0;pointer-events:none;transition:opacity .1s}
+.abs:hover .besch-stift{opacity:.5;pointer-events:auto}
+@media (hover:none){.abs .besch-stift{opacity:.5;pointer-events:auto}}
+.abs .besch-stift:hover,.abs .besch-stift:focus{opacity:1;pointer-events:auto}
+.abs .besch-stift:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.abs .besch-stift{transition:none}}
 #fenster:focus,#hilfe:focus{outline:none}
 .besch-lesen h3,.besch-lesen h4,.besch-lesen h5{margin:.6em 0 .3em;font-size:14px;color:var(--kd-text);letter-spacing:0}
 .besch-lesen p{margin:0 0 .6em}

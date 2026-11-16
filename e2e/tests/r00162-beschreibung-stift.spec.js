@@ -151,3 +151,92 @@ test.describe('R00162 AK 2, 3, 6, 8: Lesefläche ohne Aktion, Stift-Knopf auf de
     await expect.poll(() => k.lies(DATEI_1)).toContain('title: Abnahme prüfen und sichern\n');
   });
 });
+
+/** Wie der Stift gerade gezeichnet ist: Deckkraft, Anklickbarkeit und dass er nie über `visibility` oder `display` verborgen wird. */
+function zeichnung(page) {
+  return page.locator(STIFT).evaluate(knopf => {
+    const stil = getComputedStyle(knopf);
+    return { deckkraft: Number(stil.opacity), zeiger: stil.pointerEvents, sichtbar: stil.visibility, gezeichnet: stil.display !== 'none' };
+  });
+}
+const SO = (deckkraft, zeiger) => ({ deckkraft, zeiger, sichtbar: 'visible', gezeichnet: true });
+/** Kantenlänge eines Ziels nach ADR-0012: der gerechnete Wert von `--kd-ziel` im Fenster. */
+function zielgroesse(page) {
+  return page.locator('#fenster').evaluate(fenster => {
+    const mass = document.createElement('i');
+    mass.style.cssText = 'position:absolute;inline-size:var(--kd-ziel)';
+    fenster.append(mass);
+    const breite = mass.getBoundingClientRect().width;
+    mass.remove();
+    return breite;
+  });
+}
+/** Der Stift ist quadratisch in `--kd-ziel` und steht rechts auf der Zeile der Überschrift, die so hoch ist wie er. */
+async function stiftSitzt(page, erwarteteKante) {
+  const kante = await zielgroesse(page);
+  expect(kante, '--kd-ziel').toBe(erwarteteKante);
+  const stift = await page.locator(STIFT).boundingBox();
+  const zeile = await page.locator(UEBERSCHRIFT).boundingBox();
+  expect([stift.width, stift.height], 'Stift quadratisch in --kd-ziel').toEqual([kante, kante]);
+  expect(zeile.height, 'die Zeile der Überschrift ist so hoch wie das Ziel').toBe(kante);
+  expect(Math.abs(stift.x + stift.width - (zeile.x + zeile.width)), 'der Stift steht rechts').toBeLessThan(1);
+  return zeile;
+}
+
+test.describe('R00162 AK 4, 5: Sichtbarkeit und Zielgröße des Stifts', () => {
+  test('AK 4/US-2: in Ruhe unsichtbar und nicht anklickbar; Zeiger im Abschnitt halbtransparent; Zeiger auf dem Stift voll; die Lesefläche bekommt keinen Rahmen', async ({ page }) => {
+    await fensterVon(page);
+    await page.locator('#fenster .mod-kopf').hover({ position: { x: 5, y: 5 } });
+    await expect.poll(() => zeichnung(page), 'Ruhe').toEqual(SO(0, 'none'));
+    await stiftSitzt(page, 24);
+    const ruhehoehe = (await page.locator(UEBERSCHRIFT).boundingBox()).height;
+
+    const rahmen = () => page.locator(LESEFLAECHE).evaluate(flaeche => getComputedStyle(flaeche).borderTopColor);
+    const rahmenInRuhe = await rahmen();
+    await page.locator(LESEFLAECHE).hover();
+    await expect.poll(() => zeichnung(page), 'Zeiger auf der Lesefläche').toEqual(SO(0.5, 'auto'));
+    expect(await rahmen(), 'kein Rahmen beim Zeigen').toBe(rahmenInRuhe);
+    expect(await page.locator(LESEFLAECHE).evaluate(flaeche => getComputedStyle(flaeche).cursor)).toBe('text');
+    await page.locator(UEBERSCHRIFT).hover({ position: { x: 5, y: 5 } });
+    await expect.poll(() => zeichnung(page), 'Zeiger auf der Zeile der Überschrift').toEqual(SO(0.5, 'auto'));
+    await page.locator(STIFT).hover();
+    await expect.poll(() => zeichnung(page), 'Zeiger auf dem Stift').toEqual(SO(1, 'auto'));
+
+    await page.locator(STIFT).click();
+    await expect(page.locator(TEXTFELD)).toBeFocused();
+    expect((await page.locator(UEBERSCHRIFT).boundingBox()).height, 'beim Öffnen springt die Zeile nicht').toBe(ruhehoehe);
+  });
+
+  test('AK 4/US-3: mit Tastatur-Fokus ist der Stift voll sichtbar, ohne dass ein Zeiger auf dem Abschnitt liegt', async ({ page }) => {
+    await fensterVon(page);
+    await page.locator('#fenster .mod-kopf').hover({ position: { x: 5, y: 5 } });
+    for (let schritt = 0; schritt < 40 && !(await page.locator(STIFT).evaluate(knopf => knopf === document.activeElement)); schritt++) await page.keyboard.press('Tab');
+    await expect(page.locator(STIFT)).toBeFocused();
+    await expect.poll(() => zeichnung(page), 'Fokus').toEqual(SO(1, 'auto'));
+    const rahmen = await page.locator(STIFT).evaluate(knopf => { const stil = getComputedStyle(knopf); return [stil.outlineStyle, stil.outlineWidth, stil.outlineOffset]; });
+    expect(rahmen, 'Fokusrahmen bei Tastatur: 2 px, Abstand 2 px').toEqual(['solid', '2px', '2px']);
+  });
+
+  test('AK 4: ohne Bewegung (prefers-reduced-motion) wechselt die Deckkraft ohne Übergang', async ({ page }) => {
+    await fensterVon(page);
+    const uebergang = () => page.locator(STIFT).evaluate(knopf => getComputedStyle(knopf).transitionDuration);
+    expect(await uebergang()).toBe('0.1s');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await uebergang()).toBe('0s');
+  });
+
+  test.describe('Touch (kein Hover, grober Zeiger), 320 px', () => {
+    test.use({ viewport: { width: 320, height: 800 }, isMobile: true, hasTouch: true });
+
+    test('AK 4, 5: dauerhaft halbtransparent und anklickbar, Ziel 48 × 48 px, Überschrift und Stift auf einer Zeile; ein Tipp öffnet das Textfeld', async ({ page }) => {
+      await fensterVon(page, 1, true);
+      await expect.poll(() => zeichnung(page), 'ohne Hover').toEqual(SO(0.5, 'auto'));
+      const zeile = await stiftSitzt(page, 48);
+      const fenster = await page.locator('#fenster').boundingBox();
+      expect(zeile.x + zeile.width, 'nichts ragt aus dem Fenster').toBeLessThanOrEqual(fenster.x + fenster.width);
+      await page.locator(STIFT).tap();
+      await expect(page.locator(TEXTFELD)).toBeFocused();
+      await expect(page.locator(TEXTFELD)).toHaveValue(MARKDOWN);
+    });
+  });
+});
