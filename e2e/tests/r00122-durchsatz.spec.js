@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, filterOeffnen, liveBereit, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen, filterSchalten, liveBereit, mutanteEinsetzen } = require('./hilfen');
 
 function commitAm(ordner, datum, inhalt, pfad = 'boards/fabrik.md') {
   fs.writeFileSync(ordner + '/' + pfad, inhalt);
@@ -227,7 +227,7 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await alsFabrik(page);
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await filterOeffnen(page);
-    await page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fertig' }).click();
+    await filterSchalten(page, page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fertig' }));
     await expect(page.locator('.fluss-satz')).toHaveText('Die Zielspalte „Fertig“ ist ausgeschlossen.');
     await page.locator('.fluss-leer').getByRole('button', { name: 'Zurücksetzen' }).click();
     await expect(diagramm(page)).toBeVisible();
@@ -241,7 +241,7 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await alsFabrik(page);
     await page.goto(k2.adresse + '#/berichte/durchsatz');
     await filterOeffnen(page);
-    await page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'ohne Klasse' }).click();
+    await filterSchalten(page, page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'ohne Klasse' }));
     const leer = page.locator('.fluss-leer');
     await expect(leer.locator('.fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
     await leer.getByRole('button', { name: 'Zurücksetzen' }).click();
@@ -290,7 +290,7 @@ test('R00122 B0570 (F0094): „Zurücksetzen“ hebt nur Gezeigtes auf, der Zeit
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await filterOeffnen(page);
     const filter = page.getByRole('group', { name: 'Berichtsfilter' });
-    await filter.getByRole('button', { name: 'Eingang' }).click();
+    await filterSchalten(page, filter.getByRole('button', { name: 'Eingang' }));
     const zurueck = page.locator('.bfilter .bf-leeren');
     await expect(zurueck).toContainText('Zurücksetzen 1'); // der Zeitraum zählt nicht mit
     await zurueck.click();

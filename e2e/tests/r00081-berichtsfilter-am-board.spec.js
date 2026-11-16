@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, filterOeffnen, filterSchalten } = require('./hilfen');
 
 const tag = n => { const d = new Date(); d.setDate(d.getDate() + n); const p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 const deutsch = n => tag(n).split('-').reverse().join('.');
@@ -41,7 +41,7 @@ test.describe('R00081', () => {
       expect(boxen[i][0], 'gleicher linker Rand').toBe(boxen[0][0]);
       expect(boxen[i][1], 'jede Gruppe unter der vorigen').toBeGreaterThanOrEqual(boxen[i - 1][2]);
     }
-    await page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fehler' }).click();
+    await filterSchalten(page, page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fehler' }));
     await expect(zusammen(page)).toHaveText('Filter · 1 aktiv · Rechnen ab der ersten Aufgabe');
     await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|Berichtsfilter von „Entwicklung“ geändert');
     expect(k.lies('boards/entwicklung.md')).toContain('\nreport-filter: {exclude-classes: [bug]}\n');

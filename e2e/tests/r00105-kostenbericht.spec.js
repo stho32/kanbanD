@@ -129,6 +129,17 @@ test.describe('R00105 Kostenbericht', () => {
   const summe = (betrag, n, m, umfang) => `Summe ${betrag}${NBSP}$ · ${n} von ${m} Aufgaben mit Etikett, ${umfang}`;
   const LETZTE_WOCHE = '---\nstart: 2026-10-01\nreport-filter: {period: vorwoche, window-days: 30}\n---\n';
   const spalte = (page, name) => page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
+  /**
+   * Schaltet einen Spaltenfilter und wartet, bis der Knopf den neuen Zustand zeigt und der geladene Stand gezeichnet ist (ADR-0026 Regel 3).
+   * `filterSchalten` aus hilfen.js taugt hier nicht: es wartet auf das Nachladen von `/api/berichte/bewegungen`, und das lädt der Kostenbericht nie.
+   */
+  async function spalteSchalten(page, name) {
+    const knopf = spalte(page, name);
+    const vorher = await knopf.getAttribute('aria-pressed');
+    await knopf.click();
+    await expect(knopf).not.toHaveAttribute('aria-pressed', vorher);
+    await bereit(page);
+  }
   const reset = page => page.locator('#kosten').getByRole('button', { name: /Zurücksetzen/ });
   const ganzImBild = async (ort, breite) => {
     const r = await ort.evaluate(e => ({ links: e.getBoundingClientRect().left, rechts: e.getBoundingClientRect().right, scroll: e.scrollWidth - e.clientWidth }));
@@ -150,13 +161,13 @@ test.describe('R00105 Kostenbericht', () => {
   test('US-12: die Filterleiste verkleinert m; ganz leer nach Filter → Satz und „Zurücksetzen“ ohne Zahl', async ({ page }) => {
     await kostenOeffnen(page, grundbestand());
     await filterOeffnen(page);
-    await spalte(page, 'Fertig').click();
+    await spalteSchalten(page, 'Fertig');
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 3, NACH)]);
-    await spalte(page, 'Fertig').click();
-    await spalte(page, 'Eingang').click();
+    await spalteSchalten(page, 'Fertig');
+    await spalteSchalten(page, 'Eingang');
     await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
-    await spalte(page, 'Fertig').click();
-    await spalte(page, 'In Arbeit').click();
+    await spalteSchalten(page, 'Fertig');
+    await spalteSchalten(page, 'In Arbeit');
     await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgaben, die zu den Filtern der Berichte passen.');
     await expect(page.locator('#kosten .kost-hinweis')).toHaveCount(0);
     await expect(reset(page)).toHaveText('Zurücksetzen');
@@ -168,7 +179,7 @@ test.describe('R00105 Kostenbericht', () => {
   test('Nacharbeit S2: nach „Zurücksetzen“ im Leerzustand steht der Fokus auf der Zusammenfassung der Filterleiste', async ({ page }) => {
     await kostenOeffnen(page, grundbestand());
     await filterOeffnen(page);
-    for (const name of ['Eingang', 'In Arbeit', 'Fertig']) await spalte(page, name).click();
+    for (const name of ['Eingang', 'In Arbeit', 'Fertig']) await spalteSchalten(page, name);
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await reset(page).click();
     await expect(reset(page)).toHaveCount(0);
@@ -242,11 +253,11 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(page.locator('.bf-zusammen')).toContainText('1 aktiv');
     await page.goto(k.adresse + '#/berichte/kosten');
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE)]);
-    await spalte(page, 'Fertig').click();
+    await spalteSchalten(page, 'Fertig');
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH)]);
-    await spalte(page, 'Eingang').click();
+    await spalteSchalten(page, 'Eingang');
     await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
-    await spalte(page, 'In Arbeit').click();
+    await spalteSchalten(page, 'In Arbeit');
     await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten .kost-hinweis').first()).toContainText('Preisetiketten setzt ein Agent über die API');
     await expect(reset(page)).toHaveText('Zurücksetzen');
@@ -257,16 +268,16 @@ test.describe('R00105 Kostenbericht', () => {
     await kostenOeffnen(page, grundbestand());
     await filterOeffnen(page);
     const nieMehrzahlNachEins = async () => expect(await page.locator('#kosten').innerText()).not.toMatch(/von 1 Aufgaben/);
-    await spalte(page, 'Eingang').click();
-    await spalte(page, 'Fertig').click();
+    await spalteSchalten(page, 'Eingang');
+    await spalteSchalten(page, 'Fertig');
     await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 1 Aufgabe mit Etikett, ${NACH}`]);
     await nieMehrzahlNachEins();
-    await spalte(page, 'Fertig').click();
-    await spalte(page, 'In Arbeit').click();
+    await spalteSchalten(page, 'Fertig');
+    await spalteSchalten(page, 'In Arbeit');
     await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten .kost-satz')).toHaveText(/0 von 1 Aufgabe, nach Filter/);
     await nieMehrzahlNachEins();
-    await spalte(page, 'In Arbeit').click();
+    await spalteSchalten(page, 'In Arbeit');
     await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 2 Aufgaben mit Etikett, ${NACH}`]);
     await nieMehrzahlNachEins();
   });
@@ -276,8 +287,8 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
     await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
     await filterOeffnen(page);
-    await spalte(page, 'Eingang').click();
-    await spalte(page, 'In Arbeit').click();
+    await spalteSchalten(page, 'Eingang');
+    await spalteSchalten(page, 'In Arbeit');
     await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
     await expect(reset(page)).toHaveText('Zurücksetzen');
@@ -312,12 +323,12 @@ test.describe('R00105 Kostenbericht', () => {
       await page.locator('.bf-zusammen').click();
       await ohneWaagrecht('Filterleiste zu');
       await filterOeffnen(page);
-      await spalte(page, 'Fertig').click();
+      await spalteSchalten(page, 'Fertig');
       await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH), `Summe 25,55${NBSP}€ · 1 von 4 Aufgaben mit Etikett, ${NACH}`]);
       for (const z of await zeilen(page).all()) await ganzImBild(z, breite);
       await ohneWaagrecht('Summen nach Filter');
-      await spalte(page, 'Eingang').click();
-      await spalte(page, 'In Arbeit').click();
+      await spalteSchalten(page, 'Eingang');
+      await spalteSchalten(page, 'In Arbeit');
       await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgaben, die zu den Filtern der Berichte passen.');
       await ohneWaagrecht('Leer nach Filter');
       await ganzImBild(page.locator('#kosten .kost-satz'), breite);

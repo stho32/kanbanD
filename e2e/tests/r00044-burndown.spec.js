@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { kanbanStarten, einrichten, alsPerson, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, filterOeffnen, filterSchalten } = require('./hilfen');
 
 function commitAm(ordner, datum, board) {
   fs.writeFileSync(ordner + '/boards/entwicklung.md', board);
@@ -29,10 +29,10 @@ test('US-1 und US-2: Zeitraum und Spalte ausschließen', async ({ page }) => {
     await expect(page.locator('.endwert').first()).toHaveText('offen 2');
     await page.getByRole('button', { name: 'Zurücksetzen' }).click();
     const filter = page.getByRole('group', { name: 'Berichtsfilter' });
-    await filter.getByRole('button', { name: 'Zu erledigen' }).click();
+    await filterSchalten(page, filter.getByRole('button', { name: 'Zu erledigen' }));
     await expect(page.locator('.endwert').first()).toHaveText('offen 0');
-    await filter.getByRole('button', { name: 'Zu erledigen' }).click();
-    await filter.getByRole('button', { name: 'Fehler' }).click();
+    await filterSchalten(page, filter.getByRole('button', { name: 'Zu erledigen' }));
+    await filterSchalten(page, filter.getByRole('button', { name: 'Fehler' }));
     await expect(page.locator('.endwert').first()).toHaveText('offen 0');
     await expect(page.locator('.endwert.leise')).toHaveText('Umfang 1');
   } finally { await k.stoppen(); }
