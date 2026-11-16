@@ -54,12 +54,13 @@ async function tabelle(page, selektor) {
   await kopf.click();
   return page.locator(`${selektor} tbody tr`);
 }
-const burndownTabelle = page => tabelle(page, '.tabellenansicht');
+/** Vom Burndown liest diese Spec Tag, offen und Umfang; die Ereignisspalten rechts davon (R00164) prüft r00164-zugang-abgang.spec.js. */
+const burndownTabelle = async page => Object.assign(await tabelle(page, '.tabellenansicht'), { spalten: 3 });
 const flussTabelle = page => tabelle(page, '.fluss-tab');
 const tag = t => `${String(t).padStart(2, '0')}.11.2026`;
 /** Erwartete Zeilen einer Tabelle: je Tag das Datum und die Zahlen. */
 const reihe = (ab, werte) => werte.map((w, i) => [tag(ab + i), ...w.map(String)].join(' '));
-const zeilenText = zeilenOrt => zeilenOrt.evaluateAll(trs => trs.map(tr => [...tr.cells].map(td => td.textContent.trim()).join(' ')));
+const zeilenText = zeilenOrt => zeilenOrt.evaluateAll((trs, spalten) => trs.map(tr => [...tr.cells].slice(0, spalten ?? undefined).map(td => td.textContent.trim()).join(' ')), zeilenOrt.spalten ?? null);
 const erwarteZeilen = (zeilenOrt, soll) => expect.poll(() => zeilenText(zeilenOrt)).toEqual(soll);
 
 /** Fährt mit der Maus auf eine Stelle eines Diagramms, angegeben in Koordinaten seiner viewBox. */

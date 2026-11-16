@@ -1173,6 +1173,13 @@ function vDiagrammFlaeche(svg, extra = '') {
 }
 
 /* Burndown: eine Serie (offen) in der Akzentfarbe, Umfang als neutrale Bezugslinie. */
+/** Die drei Ereignisgrößen je Tag (R00164) mit ihrem Vorzeichen — Tooltip, Tabellenansicht und Kennzahlzeile nennen sie gleich. */
+const BURNDOWN_EREIGNISSE = [['hinzugekommen', '+'], ['erledigt', '−'], ['entfernt', '−']];
+/** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
+function vBurndownKennzahl(tage) {
+  const summe = groesse => tage.reduce((n, x) => n + x[groesse], 0);
+  return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<span>${zeichen} <b>${summe(groesse)}</b> ${groesse}</span>`).join('')}</div>`;
+}
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
@@ -1187,7 +1194,7 @@ function vVerlauf() {
   const xTicks = xMarken(t.length);
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
-  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>` : ''; };
+  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<span>${zeichen} ${groesse} ${x[groesse]}</span>`).join('')}` : ''; };
   const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
 ${xTicks.map(i => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
@@ -1200,9 +1207,9 @@ ${fadenkreuz(O, H - U)}
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
-  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th></tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td></tr>`).join('')}</tbody></table></details>`;
+  const tabelle = `<details class="tabellenansicht"><summary>Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
-<div class="body bericht"><h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
+<div class="body bericht">${t.length ? vBurndownKennzahl(t) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit — liest nur. */
