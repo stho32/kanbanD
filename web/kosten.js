@@ -244,24 +244,44 @@
       samt Kennzeichen (`erledigtAb` sagt, ab welcher Spalte „erledigt“ gilt); alte Posten stehen nie in der Liste. Mit
       gesetztem Bereich trägt `altePostenAussen` ihre Spanne neben der Summe, mit Abschnitt `fremdeSpalte` die Cent der
       Einträge aus Spalten, die das Board nicht führt — eine Währung, in der nur solches steht, hat `summe` null.
-      `grenzenWeg` nennt gespeicherte Grenzen, die es nicht mehr gibt. */
+      `grenzenWeg` nennt gespeicherte Grenzen, die es nicht mehr gibt. `rollen` (R00172) verteilt dieselben zählenden
+      Einträge, aus denen `summe.eintraege` entsteht, auf ihre Rollen: [{rolle, cent}], Schreibweise wie gespeichert,
+      alphabetisch — die Summe der Rollen ist in jedem Zustand `summe.eintraege`; alte Posten tragen keine Rolle und
+      stehen nie darin. */
   function kostenaufstellung(board, aufgaben, f, jetzt) {
     const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(board, f, jetzt);
     const { lesbar } = aufgabenImBericht(board, aufgaben, f);
     const nachNummer = [...lesbar].sort((a, b) => a.nummer - b.nummer);
     const erledigtAb = erledigtAbSpalte(board, f), kennzeichen = kennzeichenLeser(board, erledigtAb);
-    const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null, fremdeSpalte: null }]));
+    const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null, fremdeSpalte: null, rollen: new Map() }]));
     const gruppe = waehrung => {
-      if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null, fremdeSpalte: null });
+      if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null, fremdeSpalte: null, rollen: new Map() });
       return gruppen.get(waehrung);
     };
     for (const a of nachNummer) {
+      for (const e of zaehlendeEintraege(a, bereich)) rolleMitEintrag(gruppe(e.currency).rollen, e);
       for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent, kennzeichen: kennzeichen(a) });
       for (const s of summenDerEintraege(eintraegeMit('fremdeSpalte', a, bereich))) gruppe(s.waehrung).fremdeSpalte = plus(gruppe(s.waehrung).fremdeSpalte, s.cent);
       const alt = altePosten(a);
       if (alt && bereich.gesetzt) gruppe(alt.waehrung).altePostenAussen = spannePlus(gruppe(alt.waehrung).altePostenAussen, alt);
     }
-    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, grenzenWeg: verschwundeneGrenzen(board, f), gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, grenzenWeg: verschwundeneGrenzen(board, f), gruppen: [...gruppen.values()].map(g => ({ ...g, rollen: rollenAlphabetisch(g.rollen) })).sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+  }
+  /** Zählt einen Eintrag in seine Rolle; `rollen` ist die Sammlung einer Währungsgruppe im Aufbau (Rolle → {rolle, cent}). */
+  function rolleMitEintrag(rollen, e) {
+    if (!rollen.has(e.role)) rollen.set(e.role, { rolle: e.role, cent: 0 });
+    rollen.get(e.role).cent += inCent(e.amount);
+  }
+  /** Rollen alphabetisch nach deutscher Sortierung; Schreibweisen, die sie gleich einordnet, nach Zeichenfolge — die
+      Folge hängt so nie von der Reihenfolge der Einträge ab. */
+  function rollenAlphabetisch(rollen) {
+    return [...rollen.values()].sort((a, b) => rolleVor(a.rolle, b.rolle));
+  }
+  function rolleVor(a, b) {
+    const nachAlphabet = a.localeCompare(b, 'de');
+    if (nachAlphabet !== 0) return nachAlphabet;
+    if (a < b) return -1;
+    return Number(a > b);
   }
 
   /** Der Berichtsfilter ohne seinen Zeitraum: für „Bestand nach Labels“ (ein Bestand ist keine Bewegung, der Zeitraum

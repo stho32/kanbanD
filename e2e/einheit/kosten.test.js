@@ -623,3 +623,47 @@ test('R00172 (AK 8, Schaden a): ohne das Feld `rollen` liefert kostenaufstellung
     assert.deepStrictEqual(heute, fall.erwartet, fall.name);
   }
 });
+
+/* ── B0844 `rollen` je Währungsgruppe: dieselben zählenden Einträge wie die Summe ── */
+const rollenCent = gruppe => gruppe.rollen.map(r => [r.rolle, r.cent]);
+const summeCent = teile => teile.reduce((summe, teil) => summe + teil.cent, 0);
+
+test('R00172 B0844 (AK 1): Fall 1 nennt architekt 0,54, entwickler 3,46 und planer 1,00 in dieser Reihenfolge — zusammen 5,00 wie „Einträge“', () => {
+  const [usd] = aufstellung(FALL_1).gruppen;
+  assert.deepStrictEqual(rollenCent(usd), [['architekt', 54], ['entwickler', 346], ['planer', 100]]);
+  assert.deepStrictEqual([summeCent(usd.rollen), usd.summe.eintraege, usd.summe.hoch], [500, 500, 500]);
+});
+
+test('R00172 B0844 (AK 4): ohne Bereiche architekt 0,54, entwickler 9,46 und planer 1,00 — zusammen „Einträge“ 11,00; die alten Posten 5,00 stehen in keiner Rolle und zählen in der Summe 16,00', () => {
+  const [usd] = aufstellung({}).gruppen;
+  assert.deepStrictEqual(rollenCent(usd), [['architekt', 54], ['entwickler', 946], ['planer', 100]]);
+  assert.deepStrictEqual([summeCent(usd.rollen), usd.summe.eintraege, usd.summe.posten, usd.summe.hoch], [1100, 1100, { niedrig: 500, hoch: 500 }, 1600]);
+});
+
+test('R00172 B0844 (AK 3, Schaden b): alte Posten stehen nie in `rollen` — eine Währung, in der nur sie stehen, hat keine Rolle, mit und ohne Bereich', () => {
+  const nurAlt = [mitEintraegen(1, [], posten('EUR', { min: 1, max: 2 })), mitEintraegen(2, [BEISPIEL.eintrag('13 10:00', 'Eingang', 0.5)], posten('USD', { amount: 5 }))];
+  for (const f of [{}, BEISPIEL.ZEITRAUM_12_13]) {
+    const a = kostenaufstellung(spalten([1, 2], [], []), nurAlt, filter(f), JETZT);
+    assert.deepStrictEqual(a.gruppen.map(g => [g.waehrung, rollenCent(g)]), [['USD', [['entwickler', 50]]], ['EUR', []]]);
+  }
+});
+
+test('R00172 B0844 (Entscheidung 2, 3): Rollen stehen getrennt, wie sie gespeichert sind — „Entwickler“ ist nicht „entwickler“, „director“ eine Rolle wie jede andere; die Folge hängt nicht von der Reihenfolge der Einträge ab', () => {
+  const mit = (rolle, betrag) => BEISPIEL.eintrag('13 10:00', 'Eingang', betrag, { role: rolle });
+  const eintraege = [mit('planer', 0.01), mit('Entwickler', 0.02), mit('director', 0.04), mit('entwickler', 0.08), mit('architekt', 0.16), mit('entwickler', 0.32)];
+  const rollenVon = e => rollenCent(kostenaufstellung(spalten([1], [], []), [mitEintraegen(1, e)], FILTER_LEER, JETZT).gruppen[0]);
+  const rollen = rollenVon(eintraege);
+  assert.deepStrictEqual(rollen.filter(([rolle]) => rolle.toLowerCase() !== 'entwickler'), [['architekt', 16], ['director', 4], ['planer', 1]]);
+  assert.deepStrictEqual(rollen.filter(([rolle]) => rolle.toLowerCase() === 'entwickler').sort(), [['Entwickler', 2], ['entwickler', 40]]);
+  assert.deepStrictEqual(rollen.slice(2, 4).map(([rolle]) => rolle.toLowerCase()), ['entwickler', 'entwickler'], 'beide Schreibweisen stehen nebeneinander zwischen director und planer');
+  assert.deepStrictEqual(rollenVon([...eintraege].reverse()), rollen);
+});
+
+test('R00172 B0844 (Schaden b, c): die Rollen ergeben „Einträge“ auch mit Eintrag fremder Spalte im Eimer, an der Tagesgrenze und in ganzen Cent — 0,10 + 0,20 = 0,30', () => {
+  const zusatz = { 1: [BEISPIEL.VOR_MITTERNACHT, BEISPIEL.NACH_MITTERNACHT], 2: [BEISPIEL.FREMDE_SPALTE] };
+  const [imFall] = aufstellung(FALL_1, zusatz).gruppen, [ohne] = aufstellung({}, zusatz).gruppen;
+  assert.deepStrictEqual(rollenCent(imFall), [['architekt', 54], ['entwickler', 346], ['planer', 110]], 'der Eintrag aus „Review“ steht im Eimer, in keiner Rolle; 14.11. 00:10 zählt nicht');
+  assert.deepStrictEqual([summeCent(imFall.rollen), imFall.summe.eintraege, imFall.fremdeSpalte], [510, 510, 25]);
+  assert.deepStrictEqual(rollenCent(ohne), [['architekt', 54], ['entwickler', 946], ['planer', 130], ['reviewer', 25]]);
+  assert.deepStrictEqual([summeCent(ohne.rollen), ohne.summe.eintraege], [1155, 1155]);
+});

@@ -1,11 +1,12 @@
 // Beispielboard der Anforderung R00171 (vier Aufgaben, Zahlen aus AK 1–3) — der eine Aufbau für den Einheitstest an
-// kostenbericht() und für die Probe im echten Programm. Betrachter in +01:00, alle Beträge in USD.
+// kostenbericht() und für die Probe im echten Programm. Betrachter in +01:00, alle Beträge in USD. Rollen nach R00172:
+// #1 12.11. 1,00 `planer`, #2 0,54 `architekt`, alle übrigen `entwickler`.
 const SPALTEN = ['Eingang', 'Entwicklung', 'Abnahme', 'Produktiv'];
 const eintrag = (at, column, amount, mehr = {}) => ({ at: `2026-11-${at}+01:00`, role: 'entwickler', column, amount, currency: 'USD', ...mehr });
 
 const AUFGABEN = [
-  { nummer: 1, titel: 'Angebot für das Kundenprojekt schreiben', spalte: 'Produktiv', eintraege: [eintrag('12 09:00', 'Entwicklung', 1.00), eintrag('13 10:34', 'Entwicklung', 3.46), eintrag('14 15:00', 'Abnahme', 2.00)] },
-  { nummer: 2, titel: 'Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen', spalte: 'Entwicklung', eintraege: [eintrag('13 11:00', 'Entwicklung', 0.54)] },
+  { nummer: 1, titel: 'Angebot für das Kundenprojekt schreiben', spalte: 'Produktiv', eintraege: [eintrag('12 09:00', 'Entwicklung', 1.00, { role: 'planer' }), eintrag('13 10:34', 'Entwicklung', 3.46), eintrag('14 15:00', 'Abnahme', 2.00)] },
+  { nummer: 2, titel: 'Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen', spalte: 'Entwicklung', eintraege: [eintrag('13 11:00', 'Entwicklung', 0.54, { role: 'architekt' })] },
   { nummer: 3, titel: 'Altes Angebot ablegen', spalte: 'Produktiv', archiviert: '2026-11-06', eintraege: [eintrag('05 08:00', 'Entwicklung', 4.00)] },
   { nummer: 4, titel: 'Rechnungsvorlage abstimmen', spalte: 'Eingang', altePosten: 5.00, eintraege: [] },
 ];
