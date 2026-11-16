@@ -242,12 +242,14 @@ test.describe('US-1 bis US-5: Datumsangaben', () => {
     const MIT_WOCHENTAG = /(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/;
     for (const [bericht, tabelle] of [['verlauf', '.tabellenansicht table'], ['prognose', '.tabellenansicht table'], ['fieber', '#fb-tabelle']]) {
       await page.goto(k.adresse + '#/berichte/' + bericht);
-      await liveBereit(page);
+      // erst wenn der Bericht steht (ADR-0026 Regel 3): bis dahin zeigt die Seite noch die Tabelle des vorigen, und der Fever-Chart
+      // rechnet und speichert seine Tage — wer ihn vorher verlässt, bekommt das Zeichnen danach in den nächsten Bericht (#179)
+      await berichtSteht(page, bericht, BERICHTSTITEL[bericht]);
+      await bereit(page, '.tabellenansicht summary');
       await page.locator('.tabellenansicht summary').click();
-      // die Tabelle des Fever-Charts füllt sich erst nach dem Ergänzen der Tage — warten vor dem Lesen
-      await expect.poll(() => page.locator(`${tabelle} tbody tr td:first-child`).count(), bericht).toBeGreaterThan(0);
-      const tage = await page.locator(`${tabelle} tbody tr td:first-child`).allTextContents();
-      expect(tage.filter(t => !TAG_LANG.test(t)), bericht).toEqual([]);
+      const tage = page.locator(`${tabelle} tbody tr td:first-child`);
+      await expect.poll(() => tage.count(), bericht).toBeGreaterThan(0);
+      await expect.poll(async () => (await tage.allTextContents()).filter(t => !TAG_LANG.test(t)), bericht).toEqual([]);
     }
     for (const [bericht, name, kopf] of [['verlauf', 'Offene Aufgaben je Tag', MIT_WOCHENTAG],
       ['durchlauf', 'Durchlaufzeit je Aufgabe', /Ankunft (Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.\d{4}/],

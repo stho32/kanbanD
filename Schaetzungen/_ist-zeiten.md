@@ -686,3 +686,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #177 R00170 (Fever-Einstellungen: schnelle Folge von Änderungen bleibt erhalten) | B0830 Probe am heutigen Stand: drei Änderungen ohne Pause als roter Test | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #177 R00170 (Fever-Einstellungen: schnelle Folge von Änderungen bleibt erhalten) | B0831 `fieberEinstellen` nimmt die Änderung und baut das Objekt in der Schlange | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #177 R00170 (Fever-Einstellungen: schnelle Folge von Änderungen bleibt erhalten) | B0832 Abgelehnte Änderung, Boardwechsel vor dem Senden und Gate | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #179 (E2E-Wackler im Gate: r00168 US-1 und kultur US-5 warten auf den Zustand) | Behebung in zwei Specs mit Verzögerungs- und Ruheprobe, 30 Wiederholungen je Test und 60 zusammen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

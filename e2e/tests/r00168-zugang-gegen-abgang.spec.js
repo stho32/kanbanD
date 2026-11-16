@@ -50,12 +50,19 @@ async function wieLangeNochAm0511(page, k) {
   await filterOeffnen(page);
   await messbasis(page, 10);
 }
-/** Stellt die Messbasis ein; fertig ist es, wenn die Methodik die neue Zahl nennt und die Ansicht steht. */
+/**
+ * Stellt die Messbasis auf einen neuen Wert; fertig ist es erst, wenn die Aktion ganz durch ist (ADR-0026 Regel 3): Die Seite
+ * zeichnet zweimal — sofort mit der Eingabe (die Methodik nennt die neue Zahl) und noch einmal, wenn der Filter gespeichert und
+ * der Stand nachgeladen ist. Das zweite Zeichnen ersetzt jeden Block; ein Bildschirmfoto dazwischen verliert sein Element (#179).
+ * `kdTest.gezeichnet()` allein sieht das Nachladen nicht, solange es unterwegs ist.
+ */
 async function messbasis(page, tage) {
   const feld = page.getByLabel('Messbasis in Tagen');
   await feld.fill(String(tage));
+  const vorher = await page.evaluate(() => window.kdTest.renders());
   await feld.press('Enter');
   await expect(methodik(page)).toContainText(`die letzten ${tage} Tage`);
+  await expect.poll(() => page.evaluate(() => window.kdTest.renders()), 'Zeichnen nach Eingabe und nach dem Nachladen').toBeGreaterThanOrEqual(vorher + 2);
   await bereit(page);
 }
 const methodik = page => page.locator('.wl-liste').last();
