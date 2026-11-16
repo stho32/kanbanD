@@ -798,13 +798,27 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .abs .besch-stift:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.abs .besch-stift{transition:none}}
 #fenster:focus,#hilfe:focus{outline:none}
-.besch-lesen h3,.besch-lesen h4,.besch-lesen h5{margin:.6em 0 .3em;font-size:14px;color:var(--kd-text);letter-spacing:0}
-.besch-lesen p{margin:0 0 .6em}
-.besch-lesen ul,.besch-lesen ol{margin:0 0 .6em;padding-left:20px}
-.besch-lesen code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
-.besch-lesen pre{background:var(--kd-sunken);padding:var(--kd-s3);overflow:auto}
-.besch-lesen pre code{background:none;padding:0}
-.besch-lesen blockquote{margin:0 0 .6em;padding-left:var(--kd-s3);border-left:3px solid var(--kd-line-strong);color:var(--kd-muted)}
+/* Gerenderter Markdown-Text (R00030, R00176; Artboard D0003 `#markdown-elemente`): .md-text trägt die Regeln der Elemente,
+   .besch-lesen nur noch den Kasten — so gilt dasselbe Bild überall, wo der Renderer schreibt. */
+.md-text h3,.md-text h4,.md-text h5{margin:.6em 0 .3em;font-size:14px;color:var(--kd-text);letter-spacing:0}
+.md-text p{margin:0 0 .6em}
+.md-text ul,.md-text ol{margin:0 0 .6em;padding-left:20px}
+.md-text code{font-family:var(--kd-mono);font-size:12px;background:var(--kd-sunken);padding:0 3px}
+.md-text pre{background:var(--kd-sunken);padding:var(--kd-s3);overflow:auto}
+.md-text pre code{background:none;padding:0}
+.md-text blockquote{margin:0 0 .6em;padding-left:var(--kd-s3);border-left:3px solid var(--kd-line-strong);color:var(--kd-muted)}
+/* Tabelle (R00176): nur die Hülle scrollt waagrecht, nie das Fenster; sie ist per Tab erreichbar (tabindex im Renderer) und
+   zeigt am Rand, an dem noch Inhalt liegt, einen 10 px breiten Verlauf. Nur waagrechte Linien, Kopfzellen brechen nie um.
+   Ausrichtung allein über die festen Klassen ta-l, ta-c, ta-r (ADR-0030 Punkt 3). */
+.md-tab{inline-size:fit-content;max-inline-size:100%;overflow-x:auto;margin:0 0 .6em;background:linear-gradient(to right,var(--kd-surface) 40%,transparent) left/28px 100% no-repeat local,linear-gradient(to left,var(--kd-surface) 40%,transparent) right/28px 100% no-repeat local,linear-gradient(to right,var(--kd-line-strong),transparent) left/10px 100% no-repeat scroll,linear-gradient(to left,var(--kd-line-strong),transparent) right/10px 100% no-repeat scroll}
+.md-tab:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
+.md-tab table{border-collapse:collapse;inline-size:max-content}
+.md-tab th,.md-tab td{padding:var(--kd-s2) var(--kd-s3);text-align:left;vertical-align:top;border-bottom:1px solid var(--kd-line)}
+.md-tab th{background:color-mix(in oklab,var(--kd-sunken) 70%,transparent);font-weight:600;white-space:nowrap;border-bottom-color:var(--kd-line-strong)}
+.md-tab td{max-inline-size:28em}
+.md-tab .ta-l{text-align:left}
+.md-tab .ta-c{text-align:center}
+.md-tab .ta-r{text-align:right}
 /* Kontextmenü */
 .kmenue{position:fixed;z-index:90;min-width:220px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);padding:3px 0;font-size:12.5px}
 .kmenue.unter{position:absolute;left:100%;top:-4px}

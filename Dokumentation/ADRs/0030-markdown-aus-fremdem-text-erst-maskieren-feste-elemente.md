@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber, Karten #184, #185, #186)
 **Kontext-Anforderung**: R00030 „Beschreibung als Markdown lesen“; Karten #184 (Tabellen), #185 (Inline in Teilaufgaben), #186 (geschachtelte Listen, Trennlinie, `_kursiv_`, Durchstreichen, Kommentare) — Anforderungen folgen über den planer.
 **Erprobt durch**: Proben mit `node` am heutigen `web/markdown.js` (Stand `23a91b1`): `<script>` bleibt Text, `javascript:` und `data:` ergeben keinen Link; **Lücke gefunden**: `[x](\u0001javascript:alert%281%29)` ergibt heute einen Link (siehe Kontext). Ausführung im Browser nicht geprobt.
-**Nachträge**: keine
+**Nachträge**: 2026-11-16 (Karte #184, R00176): Punkt 3 um die drei festen Attribute der Tabellen-Hülle ergänzt; die Strukturprüfung (`e2e/einheit/hilfen/markdown-struktur.js`) kennt die Hülle nur in dieser einen Form.
 
 ## Kontext
 
@@ -27,7 +27,7 @@ Option 1. Für jeden Aufruf des Renderers (Beschreibung, Teilaufgabe, Kommentar 
 
 1. **Erst maskieren, dann formatieren.** Jeder Text aus der Datei läuft durch `esc()`, bevor eine Marke entsteht; U+0000 wird vorher entfernt (Platzhalterzeichen). Es gibt keinen Weg, auf dem Text unmaskiert in die Ausgabe gelangt — kein rohes HTML, keine HTML-Kommentare, keine Entitäten.
 2. **Feste Elementliste.** Der Renderer schreibt nur: `p br h2`–`h6 ul ol li blockquote pre code strong em del hr a table thead tbody tr th td` und eine `div`-Hülle um die Tabelle. **Nie** `img` oder ein anderes Element, das eine fremde Adresse lädt; `![alt](url)` bleibt Text mit Link.
-3. **Feste Attributliste.** Aus dem Text stammt allein der Wert von `href`. `target="_blank"` und `rel="noopener"` stehen an jedem Link. Sonst nur feste Klassen aus dem Renderer; die Ausrichtung einer Tabellenspalte ist eine von drei festen Klassen (links, Mitte, rechts) — nie `style`, nie `align`, nie ein Klassenname aus dem Text.
+3. **Feste Attributliste.** Aus dem Text stammt allein der Wert von `href`. `target="_blank"` und `rel="noopener"` stehen an jedem Link. Sonst nur feste Klassen aus dem Renderer; die Ausrichtung einer Tabellenspalte ist eine von drei festen Klassen (links, Mitte, rechts) — nie `style`, nie `align`, nie ein Klassenname aus dem Text. Die Hülle der Tabelle trägt fest `tabindex="0"`, `role="group"` und `aria-label="Tabelle"` für die Tastatur — diese drei Attribute stammen aus dem Renderer, nie aus dem Text.
 4. **Adressen nach Positivliste.** Ein Link entsteht nur, wenn die Adresse kein Zeichen ≤ U+0020 und kein U+007F enthält **und** mit `http:`, `https:`, `mailto:` oder `vscode:` beginnt (ohne Groß-/Kleinschreibung) **oder** kein Schema trägt (relativ). Alles andere — `javascript:`, `data:`, `vbscript:`, `file:`, `blob:` — bleibt Text ohne Link.
 5. **Geschütztes wird nicht formatiert.** Inline-Code und Adressen (das Ziel eines Links und der Text einer nackten Adresse) werden vor der Hervorhebung durch Platzhalter ersetzt. Der Text eines `[Text](Adresse)` wird formatiert, die Adresse nie.
 6. **Unterstrich nur an Wortgrenzen.** `_kursiv_` und `__fett__` öffnen nur nach Zeilenanfang oder einem Zeichen, das weder Buchstabe, Ziffer noch Unterstrich ist, und schließen nur vor einem solchen oder dem Zeilenende; `cost_from_column` und `__init__.py` bleiben Text. Die Regel für `*` bleibt, wie sie ist.

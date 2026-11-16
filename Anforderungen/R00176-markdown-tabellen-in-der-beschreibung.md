@@ -1,6 +1,6 @@
 ---
 id: R00176
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,14 +18,14 @@ Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#markdown-e
 
 ## Akzeptanzkriterien
 
-- [ ] **AK 1 Abnahme-Probe der Karte:** Gegeben die Beschreibung `| Spalte | Wert |` / `|:---|---:|` / `| **a** | 1 |` / `| <script>alert(1)</script> | 2 |` (vier Zeilen). Wenn ich die Aufgabe öffne, dann steht dort eine Tabelle mit zwei Spalten, „Wert“ rechtsbündig, „a“ fett, und das Skript als sichtbarer Text. Heute rot: ein Absatz mit Zeilenumbrüchen.
-- [ ] **AK 2 Ausrichtung:** `:---` richtet die Spalte links aus, `:---:` mittig, `---:` rechts; die Ausgabe trägt dafür eine von drei festen Klassen, nie `style` oder `align`.
-- [ ] **AK 3 Zellen:** Fett, kursiv, Code und Links wirken in Zellen wie im Absatz; `\|` in einer Zelle bleibt ein `|`. Bei drei Spalten im Kopf zeigt die Zeile `| a | b |` eine leere dritte Zelle, von `| a | b | c | d |` erscheint „d“ nicht.
-- [ ] **AK 4 Ohne gültige Trennzeile bleibt es Text:** `| a | b |` / `| c | d |` ohne Trennzeile oder mit einer Trennzeile anderer Spaltenzahl erscheint wie heute als Absatz.
-- [ ] **AK 5 Nachbarn:** Eine Tabelle direkt unter einer Textzeile (ohne Leerzeile) beendet den Absatz und wird Tabelle; unter einem Listenpunkt beendet sie die Liste.
-- [ ] **AK 6 Schmal:** Bei 375 px Breite scrollt eine Tabelle mit acht Spalten waagrecht in sich; das Fenster scrollt nicht waagrecht.
-- [ ] **AK 7 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, auch in Zellen und in der Kopfzeile.
-- [ ] **AK 8 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: eine Kopfzeile mit gültiger Trennzeile wird Tabelle.
+- [x] **AK 1 Abnahme-Probe der Karte:** Gegeben die Beschreibung `| Spalte | Wert |` / `|:---|---:|` / `| **a** | 1 |` / `| <script>alert(1)</script> | 2 |` (vier Zeilen). Wenn ich die Aufgabe öffne, dann steht dort eine Tabelle mit zwei Spalten, „Wert“ rechtsbündig, „a“ fett, und das Skript als sichtbarer Text. Heute rot: ein Absatz mit Zeilenumbrüchen.
+- [x] **AK 2 Ausrichtung:** `:---` richtet die Spalte links aus, `:---:` mittig, `---:` rechts; die Ausgabe trägt dafür eine von drei festen Klassen, nie `style` oder `align`.
+- [x] **AK 3 Zellen:** Fett, kursiv, Code und Links wirken in Zellen wie im Absatz; `\|` in einer Zelle bleibt ein `|`. Bei drei Spalten im Kopf zeigt die Zeile `| a | b |` eine leere dritte Zelle, von `| a | b | c | d |` erscheint „d“ nicht.
+- [x] **AK 4 Ohne gültige Trennzeile bleibt es Text:** `| a | b |` / `| c | d |` ohne Trennzeile oder mit einer Trennzeile anderer Spaltenzahl erscheint wie heute als Absatz.
+- [x] **AK 5 Nachbarn:** Eine Tabelle direkt unter einer Textzeile (ohne Leerzeile) beendet den Absatz und wird Tabelle; unter einem Listenpunkt beendet sie die Liste.
+- [x] **AK 6 Schmal:** Bei 375 px Breite scrollt eine Tabelle mit acht Spalten waagrecht in sich; das Fenster scrollt nicht waagrecht.
+- [x] **AK 7 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, auch in Zellen und in der Kopfzeile.
+- [x] **AK 8 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: eine Kopfzeile mit gültiger Trennzeile wird Tabelle.
 
 ## Tests
 

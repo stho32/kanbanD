@@ -393,7 +393,7 @@ function vBeschreibung(a) {
   const liest = Boolean(a.beschreibung) && !S.ui.beschreibungBearbeiten;
   if (!liest) return `<div class="abs"><h3 class="besch-kopf">BESCHREIBUNG</h3><textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea></div>`;
   const stift = '<button type="button" class="btn btn-sym besch-stift" data-act="beschreibung-bearbeiten" title="Beschreibung bearbeiten (b)" aria-label="Beschreibung bearbeiten">✎</button>';
-  return `<div class="abs"><h3 class="besch-kopf">BESCHREIBUNG ${stift}</h3><div class="besch-lesen">${markdownHtml(a.beschreibung)}</div></div>`;
+  return `<div class="abs"><h3 class="besch-kopf">BESCHREIBUNG ${stift}</h3><div class="besch-lesen md-text">${markdownHtml(a.beschreibung)}</div></div>`;
 }
 /** Der Reiter „Details“ (R00127): die Felder der bisherigen Seitenleiste (R00011/R00109); „Spalte“ bewegt die Karte (R00006). Einspaltig, ohne .mod-side. */
 function vFensterDetails(a) {

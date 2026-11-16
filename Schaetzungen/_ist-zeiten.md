@@ -728,3 +728,6 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Behebung: Positivliste in `erlaubt()`, Mutanten, Browser-Probe alt/neu, betroffene Specs (davon rund 8 min Wartezeit auf Last und Sperre) | Standard | — | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Nacharbeit M1: rote Probe — Ausbruch aus dem href, Strukturprüfung über jede Ausgabe | Nacharbeit | — | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Nacharbeit M1: fertige Marken durch Platzhalter geschützt, U+0000 entfernt, Mutanten, Browser-Probe, betroffene Specs | Nacharbeit | — | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0865 Rote Probe der Karte und fester Vergleich um die Tabelle erweitert | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0866 Tabellenzweig im Renderer | Standard | 1-2h | 0,0h | 0,0h | autonom |
+| 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0867 Hülle zum Scrollen, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
