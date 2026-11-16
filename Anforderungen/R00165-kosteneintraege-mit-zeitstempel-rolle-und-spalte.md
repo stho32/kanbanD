@@ -1,6 +1,6 @@
 ---
 id: R00165
-status: Neu
+status: In Arbeit
 datum: 2026-11-15
 ---
 
@@ -44,10 +44,10 @@ POST /api/aufgaben/1/kosteneintraege
 
 ### Teil A — Einträge stehen an der Aufgabe und bleiben erhalten (I0153)
 
-- [ ] **AK 1a Lesen:** Steht der Eintrag des Beispiels in der Datei von #1, dann liefert `GET /api/aufgaben/1` ihn unter `kosteneintraege` mit `kennung: entwickler@2026-11-13T10:34+01:00`; ohne Einträge liefert es `[]`.
-- [ ] **AK 6 Alte Posten bleiben:** Gegeben #2 mit `cost.items` (Planung 0,10–0,20, Bau 0,30 USD, über `PATCH cost` gesetzt) und ohne Einträge: sie ist lesbar und nicht defekt; nach einer Änderung des Titels steht der Abschnitt `cost` zeichengleich in der Datei, und es ist kein Eintrag entstanden.
-- [ ] **AK 7 `PATCH cost` berührt die Einträge nie:** Gegeben #1 mit dem Eintrag des Beispiels: nach `PATCH cost` mit `{currency: "USD", amount: 2.00}` und danach mit `cost: null` steht die Zeile unter `cost-entries` unverändert in der Datei, und `GET` liefert den Eintrag weiter.
-- [ ] **AK 8 Spalte umbenannt:** Wird „Entwicklung“ nach dem Eintrag in „Bau“ umbenannt, steht im Eintrag weiter `column: Entwicklung`, und #1 ist nicht defekt.
+- [x] **AK 1a Lesen:** Steht der Eintrag des Beispiels in der Datei von #1, dann liefert `GET /api/aufgaben/1` ihn unter `kosteneintraege` mit `kennung: entwickler@2026-11-13T10:34+01:00`; ohne Einträge liefert es `[]`.
+- [x] **AK 6 Alte Posten bleiben:** Gegeben #2 mit `cost.items` (Planung 0,10–0,20, Bau 0,30 USD, über `PATCH cost` gesetzt) und ohne Einträge: sie ist lesbar und nicht defekt; nach einer Änderung des Titels steht der Abschnitt `cost` zeichengleich in der Datei, und es ist kein Eintrag entstanden.
+- [x] **AK 7 `PATCH cost` berührt die Einträge nie:** Gegeben #1 mit dem Eintrag des Beispiels: nach `PATCH cost` mit `{currency: "USD", amount: 2.00}` und danach mit `cost: null` steht die Zeile unter `cost-entries` unverändert in der Datei, und `GET` liefert den Eintrag weiter.
+- [x] **AK 8 Spalte umbenannt:** Wird „Entwicklung“ nach dem Eintrag in „Bau“ umbenannt, steht im Eintrag weiter `column: Entwicklung`, und #1 ist nicht defekt.
 
 ### Teil B — Anlegen, ändern, löschen über die API (I0154)
 
