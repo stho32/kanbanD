@@ -75,6 +75,29 @@ curl -X POST http://localhost:7420/api/aufgaben -H 'X-KanbanD-Wer: cl' \
 
 `GET /api/ereignisse` meldet jede Änderung im Ordner als Server-Sent Event, dazu Änderungen und Commits an den WBS-Dateien der registrierten Anwendungen (`wbs: [kürzel]`). `GET /api/wbs/<kürzel>` liefert die WBS mit gerechnetem Status, erreichter Ebene, Stand und `nicht_committet`; `PATCH /api/wbs/<kürzel>/knoten/<id> {status}` setzt den Status eines Blatts (409 bei Knoten mit Kindern oder defekter Datei). `POST /api/wbs/<kürzel>/knoten {ebene, eltern, name, fertig_kriterium, …}` legt einen Knoten an und antwortet mit `{id}`; `POST /api/wbs/<kürzel>/knoten/<id>/verwerfen {grund?}` verwirft ihn. `PATCH /api/aufgaben/<nr>/wbs-effects {application, action: create|rework|remove, node?, parent?, level?, name?, done_criterion?}` hängt eine Wirkung an und führt sie aus (409, wenn die WBS scheitert); `DELETE /api/aufgaben/<nr>/wbs-effects/<i>` nimmt sie aus der Aufgabe. `GET /api/berichte/bewegungen?board=<slug>` liefert je Aufgabe die Spaltenwechsel aus Git — die Grundlage der Board-Berichte; bei einem gebundenen Board dazu `phasen {anwendung, folge, spaltenphasen}` und je Aufgabe `labels` und `uebersprungen`. `PATCH /api/aufgaben/<nr> {phasen: {uebersprungen: [...]}}` setzt die entfallenden Phasen.
 
+### Alte Kostenposten nachtragen
+
+Seit den Kosteneinträgen (`cost-entries`, ADR-0028) trägt eine Aufgabe ihre angefallenen Kosten je Rollenlauf mit Zeitpunkt, Rolle und Spalte. Ältere Aufgaben tragen stattdessen Posten ohne diese Angaben (`cost.items`); der Bericht „Kosten“ führt sie in der Zeile „ohne Datum / ohne Rolle / ohne Spalte“. kanbanD überführt sie nicht selbst — Zeitpunkt, Rolle und Spalte wären erfunden. Wer sie nachtragen will (Mensch oder Agent), geht je Aufgabe so vor:
+
+1. **Lesen:** `GET /api/aufgaben/{nr}` liefert die alten Posten unter `cost.items` und die vorhandenen Einträge unter `kosteneintraege`.
+2. **Herleiten:** Zeitpunkt und Spalte aus der Git-Geschichte der Aufgabendatei (`git log -p -- aufgaben/<datei>`: der Commit, der den Posten schrieb, und die Spalte, in der die Aufgabe damals lag), die Rolle aus dem Text des Postens. Was sich nicht belegen lässt, ist geraten — in einer Liste ausweisen.
+3. **Eintragen**, je Posten ein Aufruf:
+
+   ```bash
+   curl -X POST http://localhost:7420/api/aufgaben/42/kosteneintraege -H 'X-KanbanD-Wer: cl' \
+        -H 'Content-Type: application/json' \
+        -d '{"at":"2026-11-10 09:00","role":"entwickler","column":"Entwicklung","amount":0.30,"currency":"USD"}'
+   ```
+
+4. **Alte Posten entfernen**, sobald alle Posten der Aufgabe eingetragen sind — sonst zählt der Bericht ohne Zeitraum und Spaltenabschnitt beides: `PATCH /api/aufgaben/42` mit `{"cost": null}` entfernt den ganzen Abschnitt `cost` (auch eine Schätzung darin; soll sie bleiben, stattdessen `{"cost": {"currency": "USD", "amount": 1.50}}` ohne `items` senden). Die Einträge berührt das nicht.
+
+Worauf zu achten ist:
+
+- `at` darf nicht in der Zukunft liegen; ohne Versatz gilt die Ortszeit des Rechners.
+- `column` muss eine Spalte eines Boards sein, auf dem die Aufgabe liegt, sonst 400 — bei umbenannten Spalten den heutigen Namen nehmen.
+- Ein Eintrag ist durch Rolle und Minute bestimmt (`kennung`): derselbe Aufruf ein zweites Mal gibt 409 und schreibt nichts — das Nachtragen lässt sich also gefahrlos wiederholen. Zwei Posten derselben Rolle in derselben Minute: den zweiten eine Minute später eintragen.
+- Jeder Aufruf ist ein Commit im Ordner; ein Fehlgriff lässt sich über `DELETE /api/aufgaben/{nr}/kosteneintraege/{kennung}` oder die Git-Geschichte zurücknehmen.
+
 ## Tests
 
 ```bash
