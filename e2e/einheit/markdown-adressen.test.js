@@ -4,9 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { markdownHtml } = require('../../web/markdown.js');
-const { pruefeStruktur } = require('./hilfen/markdown-struktur.js');
+const { pruefeStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
 
-const ERLAUBTE_PROTOKOLLE = ['http:', 'https:', 'mailto:', 'vscode:'];
 const KOEDER = 'Köder';
 const SKRIPT = 'javascript:document.title=%27x%27';
 
@@ -19,6 +18,10 @@ const FORMEN = {
   'nackte Adresse': adresse => `${KOEDER} ${adresse}`,
   'nackte Adresse in Klammern': adresse => `${KOEDER} (${adresse})`,
   'spitze Klammern': adresse => `${KOEDER} <${adresse}>`,
+  // R00176: dieselben Adressen in einer Tabelle — die Zelle läuft durch dieselbe Inline-Stufe
+  'Link in Tabellenzelle': adresse => `| a | b |\n|---|---|\n| [${KOEDER}](${adresse}) | x |`,
+  'Link in Kopfzelle': adresse => `| [${KOEDER}](${adresse}) | b |\n|:--|--:|\n| 1 | 2 |`,
+  'nackte Adresse in Tabellenzelle': adresse => `| a | b |\n|---|---|\n| ${KOEDER} ${adresse} | x |`,
 };
 
 /** U+0000 entfernt der Renderer vor allem anderen (ADR-0030 Punkt 1): was übrig bleibt, wird geprüft wie jede Adresse. */
@@ -122,27 +125,6 @@ const HOECHSTENS_HARMLOS = [
   ['Marke in der Adresse', 'x"><script>document.title=1</script>'],
   ['einfache Anführung in der Adresse', "x'onmouseover='document.title=1"],
 ];
-
-/** Liest den Wert eines Attributs, wie es der Browser täte: Entitäten werden aufgelöst. */
-function attributwert(roh) {
-  const BENANNT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", colon: ':', Tab: '\t', NewLine: '\n' };
-  return roh.replace(/&(?:#x([0-9a-f]+)|#(\d+)|([a-z]+));?/gi, (alles, hex, dezimal, name) => {
-    if (hex) return String.fromCodePoint(parseInt(hex, 16));
-    if (dezimal) return String.fromCodePoint(parseInt(dezimal, 10));
-    if (name in BENANNT) return BENANNT[name];
-    return alles;
-  });
-}
-
-/** Die Adressen aller Links der Ausgabe; jede Link-Marke trägt genau `href`, `target` und `rel`. */
-function linkAdressen(html) {
-  const marken = html.match(/<a\b(?:[^>"]|"[^"]*")*>/g) || [];
-  return marken.map(marke => {
-    const m = /^<a href="([^"]*)" target="_blank" rel="noopener">$/.exec(marke);
-    assert.ok(m, `Link-Marke mit fremdem Aufbau: ${JSON.stringify(marke.slice(0, 120))}`);
-    return attributwert(m[1]);
-  });
-}
 
 const kurz = text => JSON.stringify(text.length > 80 ? text.slice(0, 80) + '…' : text);
 
