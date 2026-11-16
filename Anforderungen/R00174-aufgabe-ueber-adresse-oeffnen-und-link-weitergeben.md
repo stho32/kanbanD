@@ -1,6 +1,6 @@
 ---
 id: R00174
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -25,16 +25,16 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Mensch und Agent arbeiten gleic
 
 **Ausgangslage:** Boards „Entwicklung“ (`entwicklung`) und „Zweit“ (`zweit`); Aufgabe #7 liegt auf beiden, #8 auf keinem Board, #9 nur auf „Zweit“, #99 gibt es nicht.
 
-- [ ] **AK 1 Link kopieren:** #7 auf „Entwicklung“ geöffnet, „Link kopieren“ gewählt, der kopierte Text in einem neuen Tab geöffnet → Board „Entwicklung“ mit dem Fenster „Aufgabe #7“; der Text endet auf `#/board/entwicklung/aufgabe/7`.
-- [ ] **AK 2 Adresse folgt, Zurück und Vor:** Öffnen von #7 ändert die Adresse auf `#/board/entwicklung/aufgabe/7`, Schließen auf `#/board/entwicklung`, je ohne Neuladen; Zurück schließt das Fenster, Vor öffnet es wieder; gespeicherte Eingaben bleiben. Steht ein ungespeicherter Entwurf im Fenster, verhält sich Zurück wie das Schließen über ✕ heute — kein neuer Weg, eine Eingabe zu verlieren.
-- [ ] **AK 3 Zwei Boards:** `#/board/entwicklung/aufgabe/7` öffnet „Entwicklung“, `#/board/zweit/aufgabe/7` öffnet „Zweit“, je mit dem Fenster „Aufgabe #7“.
-- [ ] **AK 4 Ohne Board:** `#/aufgaben/aufgabe/8` öffnet die Aufgabenliste mit dem Fenster „Aufgabe #8“; „Link kopieren“ dort ergibt diese Adresse.
-- [ ] **AK 5 Hinweise statt leerer Seite:** `…/board/entwicklung/aufgabe/99` → Board ohne Fenster, Hinweis „Aufgabe #99 gibt es nicht“, die Adresse fällt auf `#/board/entwicklung`. `…/board/gibtsnicht/aufgabe/7` → das erste bzw. gemerkte Board mit Fenster „Aufgabe #7“ und Hinweis „Board aus dem Link gibt es nicht“ (ohne den Slug). `…/board/entwicklung/aufgabe/9` oder eine archivierte Aufgabe → Board und Fenster, Hinweis „#9 liegt nicht auf diesem Board“.
-- [ ] **AK 6 Defekte Datei:** Ist die Datei der Aufgabe defekt (423), zeigt die Adresse das vorhandene Defekt-Fenster.
-- [ ] **AK 7 Ohne Zwischenablage:** Verweigert der Browser das Kopieren, steht der Hinweis „Kopieren nicht erlaubt — der Link steht in der Adresszeile“, und die Adresszeile trägt den Link.
-- [ ] **AK 8 Tastatur:** „Link kopieren“ ist im ⋮-Menü des Fensters mit der Tastatur erreichbar; die Rückmeldung „Link kopiert“ ist eine Statusmeldung, der Fokus bleibt im Fenster.
-- [ ] **AK 9 Fremde Zeichen:** `#/board/entwicklung/aufgabe/<img src=x onerror=alert(1)>` → Board ohne Fenster, kein Dialog, der Adresstext steht nirgends in der Seite.
-- [ ] **AK 10 Bleibt:** Alle bisherigen Adressen (`#/board/<slug>`, `#/aufgaben`, `#/personen`, `#/einrichten`, `#/berichte/<name>`, `#/wbs/<kürzel>[/<id>]`) wirken wie zuvor; die bestehenden Specs laufen unverändert grün.
+- [x] **AK 1 Link kopieren:** #7 auf „Entwicklung“ geöffnet, „Link kopieren“ gewählt, der kopierte Text in einem neuen Tab geöffnet → Board „Entwicklung“ mit dem Fenster „Aufgabe #7“; der Text endet auf `#/board/entwicklung/aufgabe/7`.
+- [x] **AK 2 Adresse folgt, Zurück und Vor:** Öffnen von #7 ändert die Adresse auf `#/board/entwicklung/aufgabe/7`, Schließen auf `#/board/entwicklung`, je ohne Neuladen; Zurück schließt das Fenster, Vor öffnet es wieder; gespeicherte Eingaben bleiben. Steht ein ungespeicherter Entwurf im Fenster, verhält sich Zurück wie das Schließen über ✕ heute — kein neuer Weg, eine Eingabe zu verlieren.
+- [x] **AK 3 Zwei Boards:** `#/board/entwicklung/aufgabe/7` öffnet „Entwicklung“, `#/board/zweit/aufgabe/7` öffnet „Zweit“, je mit dem Fenster „Aufgabe #7“.
+- [x] **AK 4 Ohne Board:** `#/aufgaben/aufgabe/8` öffnet die Aufgabenliste mit dem Fenster „Aufgabe #8“; „Link kopieren“ dort ergibt diese Adresse.
+- [x] **AK 5 Hinweise statt leerer Seite:** `…/board/entwicklung/aufgabe/99` → Board ohne Fenster, Hinweis „Aufgabe #99 gibt es nicht“, die Adresse fällt auf `#/board/entwicklung`. `…/board/gibtsnicht/aufgabe/7` → das erste bzw. gemerkte Board mit Fenster „Aufgabe #7“ und Hinweis „Board aus dem Link gibt es nicht“ (ohne den Slug). `…/board/entwicklung/aufgabe/9` oder eine archivierte Aufgabe → Board und Fenster, Hinweis „#9 liegt nicht auf diesem Board“.
+- [x] **AK 6 Defekte Datei:** Ist die Datei der Aufgabe defekt (423), zeigt die Adresse das vorhandene Defekt-Fenster.
+- [x] **AK 7 Ohne Zwischenablage:** Verweigert der Browser das Kopieren, steht der Hinweis „Kopieren nicht erlaubt — der Link steht in der Adresszeile“, und die Adresszeile trägt den Link.
+- [x] **AK 8 Tastatur:** „Link kopieren“ ist im ⋮-Menü des Fensters mit der Tastatur erreichbar; die Rückmeldung „Link kopiert“ ist eine Statusmeldung, der Fokus bleibt im Fenster.
+- [x] **AK 9 Fremde Zeichen:** `#/board/entwicklung/aufgabe/<img src=x onerror=alert(1)>` → Board ohne Fenster, kein Dialog, der Adresstext steht nirgends in der Seite.
+- [x] **AK 10 Bleibt:** Alle bisherigen Adressen (`#/board/<slug>`, `#/aufgaben`, `#/personen`, `#/einrichten`, `#/berichte/<name>`, `#/wbs/<kürzel>[/<id>]`) wirken wie zuvor; die bestehenden Specs laufen unverändert grün.
 
 Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#link-kopieren`.
 
