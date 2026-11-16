@@ -43,11 +43,14 @@ fn beispiel() -> Value {
 
 /// Das Beispiel mit ersetzten oder ergänzten Angaben.
 fn beispiel_mit(angaben: Value) -> Value {
-    let mut b = beispiel();
+    ueberlagert(beispiel(), &angaben)
+}
+
+fn ueberlagert(mut basis: Value, angaben: &Value) -> Value {
     for (k, v) in angaben.as_object().unwrap() {
-        b[k] = v.clone();
+        basis[k] = v.clone();
     }
-    b
+    basis
 }
 
 /// Pfad eines Eintrags über seine Kennung, URL-kodiert.
@@ -272,4 +275,101 @@ async fn endpunktliste_und_openapi_beschreiben_die_drei_routen() {
         assert!(rumpf[feld].is_object(), "Kosteneintragsangaben.{feld}");
     }
     assert!(rumpf["kennung"].is_null(), "die Kennung wird berechnet, nicht gesendet");
+}
+
+// B0798 · AK 3 · US-4: jede Abweisung ist 400 mit {fehler} und dem Feldnamen — nie 422 —, es entsteht kein Commit,
+// und die Datei mit alten Posten und Einträgen ist danach byte-gleich. Jede Angabe läuft über POST (im Beispiel
+// ersetzt) und über PATCH (allein, auf den bestehenden Eintrag).
+#[tokio::test]
+async fn jede_abweisung_ist_400_und_aendert_nichts() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = mit_bestand(tmp.path());
+    let a = &lauf.adresse;
+    let vorher = stand(tmp.path());
+    let morgen = (chrono::Local::now() + chrono::Duration::days(1)).format("%Y-%m-%d %H:%M").to_string();
+    let in_zwei_minuten = (chrono::Utc::now() + chrono::Duration::minutes(2)).format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let falsch = [
+        (json!({"amount": -1}), "amount"),
+        (json!({"amount": -0.01}), "amount"),
+        (json!({"amount": 3.456}), "amount"),
+        (json!({"amount": 1000000.01}), "amount"),
+        (json!({"amount": 1e30}), "amount"),
+        (json!({"amount": "3.46"}), "amount"),
+        (json!({"amount": true}), "amount"),
+        (json!({"amount": [1]}), "amount"),
+        (json!({"column": "Gibtsnicht"}), "column"),
+        (json!({"column": "In Arbeit"}), "column"),
+        (json!({"column": "entwicklung"}), "column"),
+        (json!({"column": "Entwicklung\n"}), "column"),
+        (json!({"column": "Fertig\n- [#9](x)"}), "column"),
+        (json!({"column": ""}), "column"),
+        (json!({"column": 7}), "column"),
+        (json!({"role": ""}), "role"),
+        (json!({"role": "   "}), "role"),
+        (json!({"role": "a@b"}), "role"),
+        (json!({"role": "a\nb"}), "role"),
+        (json!({"role": "a\u{0}b"}), "role"),
+        (json!({"role": "r".repeat(61)}), "role"),
+        (json!({"role": 7}), "role"),
+        (json!({"at": "gestern"}), "at"),
+        (json!({"at": "2026-11-13"}), "at"),
+        (json!({"at": 12}), "at"),
+        (json!({"at": morgen}), "at"),
+        (json!({"at": in_zwei_minuten}), "at"),
+        (json!({"at": "2999-01-01 00:00+01:00"}), "at"),
+        (json!({"currency": "usd"}), "currency"),
+        (json!({"currency": "USDX"}), "currency"),
+        (json!({"currency": 7}), "currency"),
+        (json!({"tokens": -1}), "tokens"),
+        (json!({"tokens": 1.5}), "tokens"),
+        (json!({"tokens": "viele"}), "tokens"),
+        (json!({"kennung": KENNUNG}), "kennung"),
+        (json!({"note": "x"}), "note"),
+        (json!({"text": "Bau"}), "text"),
+    ];
+    let mut rot = vec![];
+    for (angabe, feld) in &falsch {
+        for (methode, ziel, rumpf) in [(Method::POST, "api/aufgaben/1/kosteneintraege".to_string(), ueberlagert(beispiel_mit(json!({"at": "2026-11-13 12:00+01:00"})), angabe)), (Method::PATCH, pfad(KENNUNG), angabe.clone())] {
+            let (s, f) = senden(methode.clone(), a, &ziel, "cl", rumpf).await;
+            if s != 400 || !f["fehler"].as_str().is_some_and(|m| m.contains(feld)) {
+                rot.push(format!("{methode} {angabe}: {s} {f}"));
+            }
+        }
+    }
+    // ein Pflichtfeld fehlt (null gilt als fehlend)
+    for feld in ["at", "role", "column", "amount"] {
+        let mut rumpf = beispiel_mit(json!({"at": "2026-11-13 12:00+01:00"}));
+        rumpf.as_object_mut().unwrap().remove(feld);
+        let mut mit_null = rumpf.clone();
+        mit_null[feld] = Value::Null;
+        for rumpf in [rumpf, mit_null] {
+            let (s, f) = anlegen(a, "cl", rumpf.clone()).await;
+            if s != 400 || !f["fehler"].as_str().is_some_and(|m| m.contains(feld) && m.contains("fehlt")) {
+                rot.push(format!("ohne {feld}: {s} {f}"));
+            }
+        }
+    }
+    // der Rumpf ist kein Objekt oder kein JSON
+    for rumpf in ["[]", "\"x\"", "7", "null", "{", "", "{\"amount\": 1,}"] {
+        for (methode, ziel) in [(Method::POST, "api/aufgaben/1/kosteneintraege".to_string()), (Method::PATCH, pfad(KENNUNG))] {
+            let antwort = gemeinsam::senden_roh(methode.clone(), a, &ziel, "cl", Some("application/json"), rumpf).await;
+            if antwort.status != 400 || !antwort.json()["fehler"].is_string() {
+                rot.push(format!("{methode} Rumpf {rumpf:?}: {} {}", antwort.status, antwort.text));
+            }
+        }
+    }
+    assert!(rot.is_empty(), "{} Abweisungen falsch:\n{}", rot.len(), rot.join("\n"));
+    assert_eq!(stand(tmp.path()), vorher, "kein Commit, keine offene Änderung, Datei byte-gleich");
+    assert_eq!(holen(a).await["kosteneintraege"].as_array().map(Vec::len), Some(3), "die Aufgabe ist weiter lesbar");
+
+    // ohne currency und ohne cost.currency der Aufgabe: 400
+    let ohne = tempfile::tempdir().unwrap();
+    fabrik(ohne.path(), "");
+    let lauf = gemeinsam::starten_in_berlin(ohne.path(), &["--port", "0"]);
+    let vorher = stand(ohne.path());
+    let mut rumpf = beispiel();
+    rumpf.as_object_mut().unwrap().remove("currency");
+    let (s, f) = anlegen(&lauf.adresse, "cl", rumpf).await;
+    assert_eq!((s, f["fehler"].as_str().unwrap().contains("currency fehlt")), (400, true), "{f}");
+    assert_eq!(stand(ohne.path()), vorher);
 }
