@@ -91,9 +91,21 @@ fn erste_antwort_abwarten(adresse: &str) {
     leitung.read_exact(&mut [0u8; 1]).expect("erste HTTP-Antwort der Instanz");
 }
 
+/// Wie `starten`, aber aus `arbeitsordner` heraus mit `ordner` als Argument — für `kanbanD .` (R00183).
+pub fn starten_aus(arbeitsordner: &Path, ordner: &Path, zusatz: &[&str]) -> Laufendes {
+    let mut befehl = Command::new(env!("CARGO_BIN_EXE_kanbanD"));
+    befehl.current_dir(arbeitsordner);
+    aus_befehl(befehl, ordner, zusatz, Stdio::inherit())
+}
+
 fn gestartet(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)], stderr: Stdio) -> Laufendes {
-    let mut kind = Command::new(env!("CARGO_BIN_EXE_kanbanD"))
-        .envs(umgebung.iter().copied())
+    let mut befehl = Command::new(env!("CARGO_BIN_EXE_kanbanD"));
+    befehl.envs(umgebung.iter().copied());
+    aus_befehl(befehl, ordner, zusatz, stderr)
+}
+
+fn aus_befehl(mut befehl: Command, ordner: &Path, zusatz: &[&str], stderr: Stdio) -> Laufendes {
+    let mut kind = befehl
         .arg(ordner)
         .args(["--kein-browser", "--host", "127.0.0.1"])
         .args(zusatz)
