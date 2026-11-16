@@ -1,14 +1,14 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Kosteneintrag, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
 pub const DURCHLAEUFE: &str = "kanbanD-runs";
-const BEKANNT: [&str; 16] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, KOSTEN, GESCHAETZT, "archived", RESERVIERUNG];
+const BEKANNT: [&str; 17] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, WIRKUNGEN, PHASEN, BERICHTE, KOSTEN, KOSTENEINTRAEGE, GESCHAETZT, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
 pub const RESERVIERUNG: &str = "reservation";
@@ -19,6 +19,8 @@ pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
 /// Preisetikett (R00105, ADR-0009)
 pub const KOSTEN: &str = "cost";
+/// Kosteneinträge je Rollenlauf (R00165, ADR-0028) — eigener Schlüssel neben `cost`
+pub const KOSTENEINTRAEGE: &str = "cost-entries";
 /// Geschätzte Zeit in ganzen Minuten (R00129, ADR-0023)
 pub const GESCHAETZT: &str = "estimate";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
@@ -73,6 +75,9 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     if let Some(k) = m.get(KOSTEN).filter(|k| !k.is_null()) {
         a.kosten = Some(Kosten::lesen(k).map_err(Formatfehler)?);
+    }
+    if let Some(e) = m.get(KOSTENEINTRAEGE) {
+        a.kosteneintraege = kosteneintraege_lesen(e)?;
     }
     if let Some(e) = m.get(GESCHAETZT) {
         a.geschaetzte_minuten = geschaetzte_minuten_pruefen(Some(e)).map_err(Formatfehler)?;
@@ -204,6 +209,32 @@ fn position_schreiben(p: &Position) -> String {
     teile.extend(p.tokens.map(|t| format!("tokens: {t}")));
     teile.extend(p.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), flusswert(v))));
     teile.join(", ")
+}
+
+/// `cost-entries` als Liste; leer heißt keine. Ein formwidriger Eintrag ist ein Formatfehler mit Stelle und Feld — die
+/// Datei gilt dann als defekt und bleibt, wie sie ist; stillschweigend ausgelassen wird nie ein Eintrag. Die Spalte
+/// wird hier nicht geprüft (R00165 AK 8).
+fn kosteneintraege_lesen(v: &Value) -> Result<Vec<Kosteneintrag>, Formatfehler> {
+    match v {
+        Value::Null => Ok(vec![]),
+        Value::Sequence(s) => s.iter().enumerate().map(|(i, e)| Kosteneintrag::lesen(&format!("{KOSTENEINTRAEGE}[{i}]"), e).map_err(Formatfehler)).collect(),
+        _ => Err(Formatfehler(format!("{KOSTENEINTRAEGE} ist keine Liste"))),
+    }
+}
+
+/// `  - {at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, amount: 3.46, currency: USD, tokens: 81234}`
+/// — eine Zeile je Eintrag in fester Schlüsselfolge, dann Unbekanntes. Der Zeitpunkt steht in Dateiform ohne Anführungszeichen.
+fn kosteneintrag_schreiben(e: &Kosteneintrag) -> String {
+    let mut teile = vec![
+        format!("at: {}", e.zeitpunkt),
+        format!("role: {}", yaml::skalar(&e.rolle)),
+        format!("column: {}", yaml::skalar(&e.spalte)),
+        format!("amount: {}", geld(e.cent)),
+        format!("currency: {}", yaml::skalar(&e.waehrung)),
+    ];
+    teile.extend(e.tokens.map(|t| format!("tokens: {t}")));
+    teile.extend(e.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), flusswert(v))));
+    format!("  - {{{}}}\n", teile.join(", "))
 }
 
 /// Geldwert in Dollar mit genau zwei Nachkommastellen, ohne Anführungszeichen: `0.60`, `17.00`.
@@ -425,6 +456,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     s.push_str(&zaehlung_schreiben(&a.zaehlung));
     if let Some(k) = &a.kosten {
         s.push_str(&kosten_schreiben(k));
+    }
+    if !a.kosteneintraege.is_empty() {
+        s.push_str(&format!("{KOSTENEINTRAEGE}:\n{}", a.kosteneintraege.iter().map(kosteneintrag_schreiben).collect::<String>()));
     }
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
@@ -868,6 +902,78 @@ mod tests {
         assert!(t.contains("    - {text: a, amount: 1.00, quelle: log, n: [1,2]}\n"), "{t}");
         assert_eq!(lesen("0001-x.md", &t).unwrap(), a);
         assert!(a.weitere.is_empty(), "cost ist ein bekannter Schlüssel");
+    }
+
+    const ALTE_POSTEN: &str = "cost:\n  currency: USD\n  items:\n    - {text: Planung, min: 0.10, max: 0.20}\n    - {text: Bau, amount: 0.30}\n";
+    const EINTRAEGE: &str = "cost-entries:\n  - {at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, amount: 3.46, currency: USD}\n  - {at: 2026-11-13 09:02+01:00, role: code reviewer, column: Gibtsnichtmehr, amount: 1.20, currency: EUR, tokens: 81234}\n";
+
+    fn mit_kopf(kopf: &str) -> String {
+        format!("---\nid: 1\ntitle: X\n{kopf}---\n")
+    }
+
+    fn eintraege_aus(liste: &str) -> Result<Aufgabe, Formatfehler> {
+        lesen("0001-x.md", &mit_kopf(&format!("cost-entries: {liste}\n")))
+    }
+
+    // R00165 AK 6, ADR-0028 „Durchsetzung“: alte Posten und Einträge überstehen Lesen und Schreiben zeichengleich
+    #[test]
+    fn alte_posten_und_kosteneintraege_im_rundlauf_zeichengleich() {
+        let t = mit_kopf(&format!("{ALTE_POSTEN}{EINTRAEGE}archived: 2026-11-14\n"));
+        let a = lesen("0001-x.md", &t).unwrap();
+        assert_eq!(schreiben(&a), t);
+        let nur_eintraege = mit_kopf(EINTRAEGE);
+        assert_eq!(schreiben(&lesen("0001-x.md", &nur_eintraege).unwrap()), nur_eintraege, "auch ohne Preisetikett");
+    }
+
+    // ADR-0028 Punkt 1: Reihenfolge der Datei (nicht nach Zeit sortiert), je Eintrag eine Flusszeile in fester Schlüsselfolge
+    #[test]
+    fn kosteneintraege_in_dateireihenfolge_und_fester_schluesselfolge() {
+        let a = lesen("0001-x.md", &mit_kopf(EINTRAEGE)).unwrap();
+        let kennungen: Vec<String> = a.kosteneintraege.iter().map(|e| e.kennung()).collect();
+        assert_eq!(kennungen, ["entwickler@2026-11-13T10:34+01:00", "code reviewer@2026-11-13T09:02+01:00"]);
+        assert!(a.weitere.is_empty(), "cost-entries ist ein bekannter Schlüssel");
+        let block = eintraege_aus("\n  - tokens: 5\n    currency: USD\n    amount: 1.2\n    column: \"Bau, Test\"\n    role: planer\n    at: 2026-11-13T10:34:20+01:00").unwrap();
+        assert_eq!(schreiben(&block), mit_kopf("cost-entries:\n  - {at: 2026-11-13 10:34+01:00, role: planer, column: \"Bau, Test\", amount: 1.20, currency: USD, tokens: 5}\n"));
+        assert!(!schreiben(&eintraege_aus("").unwrap()).contains("cost-entries"), "leer heißt keine Einträge");
+        assert!(!schreiben(&eintraege_aus("[]").unwrap()).contains("cost-entries"));
+    }
+
+    #[test]
+    fn unbekannte_schluessel_eines_kosteneintrags_bleiben_erhalten() {
+        let zeile = "  - {at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, amount: 3.46, currency: USD, lauf: 166-entwickler-1, n: [1,2]}\n";
+        let t = mit_kopf(&format!("cost-entries:\n{zeile}"));
+        let mut a = lesen("0001-x.md", &t).unwrap();
+        a.titel = "Y".into();
+        assert!(schreiben(&a).contains(zeile), "{}", schreiben(&a));
+    }
+
+    // Ein ungültiger Eintrag wirft nichts weg: die Datei ist defekt (nur lesbar, bis repariert), der Grund nennt Stelle und Feld
+    #[test]
+    fn formwidrige_kosteneintraege_machen_die_aufgabe_defekt() {
+        let fall = |liste: &str| eintraege_aus(liste).map(|_| ()).unwrap_err().0;
+        let gut = "{at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, amount: 3.46, currency: USD}";
+        assert_eq!(fall(&format!("[{gut}, {}]", gut.replace("3.46", "abc"))), "cost-entries[1].amount: keine Zahl");
+        assert_eq!(fall(&format!("[{}]", gut.replace("role: entwickler, ", ""))), "cost-entries[0]: role fehlt");
+        assert_eq!(fall("[nix]"), "cost-entries[0]: keine Zuordnung");
+        assert_eq!(fall(gut), "cost-entries ist keine Liste");
+    }
+
+    // jeder Text als Rolle und Spalte liest sich aus der Flusszeile als derselbe zurück
+    #[test]
+    fn jeder_text_als_rolle_und_spalte_im_rundlauf() {
+        for s in yaml::tests::RUNDLAUF_TEXTE.iter().filter(|s| !s.trim().is_empty()) {
+            let rolle: String = s.trim().chars().filter(|c| *c != '@' && !c.is_control()).take(60).collect();
+            if rolle.trim().is_empty() {
+                continue;
+            }
+            let mut a = lesen("0001-x.md", &mit_kopf(EINTRAEGE)).unwrap();
+            a.kosteneintraege[0].rolle = rolle.trim().to_string();
+            a.kosteneintraege[0].spalte = s.to_string();
+            let t = schreiben(&a);
+            let zurueck = lesen("0001-x.md", &t).unwrap_or_else(|e| panic!("{s:?} → {t:?}: {e:?}"));
+            assert_eq!(zurueck, a, "{s:?} → {t:?}");
+            assert_eq!(schreiben(&zurueck), t);
+        }
     }
 
     #[test]

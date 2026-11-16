@@ -1,4 +1,4 @@
-use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Kosten};
+use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Kosten, Kosteneintrag};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -407,6 +407,9 @@ pub struct Aufgabe {
     /// `cost` (R00105): Preisetikett, geschätzte API-Kosten; null ohne Etikett
     #[serde(rename = "cost")]
     pub kosten: Option<Kosten>,
+    /// `cost-entries` (R00165, ADR-0028): angefallene Kosten je Rollenlauf, in der Reihenfolge der Datei; `PATCH cost` berührt sie nie
+    #[serde(default)]
+    pub kosteneintraege: Vec<Kosteneintrag>,
     /// `estimate` (R00129): geschätzte Zeit in ganzen Minuten, ≥ 1 und ≤ 100.000; null/fehlend heißt „keine Schätzung“
     #[serde(rename = "estimate")]
     pub geschaetzte_minuten: Option<u32>,
@@ -440,6 +443,7 @@ impl Aufgabe {
             phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),
             kosten: None,
+            kosteneintraege: vec![],
             geschaetzte_minuten: None,
             weitere: vec![],
         }

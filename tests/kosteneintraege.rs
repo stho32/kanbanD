@@ -65,5 +65,6 @@ async fn alte_datei_mit_posten_und_eintraegen_uebersteht_eine_titelaenderung() {
     assert!(nachher.contains("title: umbenannt\n"), "{nachher}");
     assert!(nachher.contains(ALTE_POSTEN), "cost zeichengleich:\n{nachher}");
     assert_eq!(eintraege_in_der_datei(&nachher), vorher, "kein Eintrag verloren oder verändert:\n{nachher}");
+    assert_eq!(nachher, format!("---\nid: 1\ntitle: umbenannt\n{kopf}---\n"), "B0793: Reihenfolge und Schreibweise der Einträge zeichengleich");
     assert_eq!(holen(&lauf.adresse, 1).await.0, 200, "auch nach dem Schreiben nicht defekt");
 }
