@@ -245,9 +245,10 @@
       gesetztem Bereich trägt `altePostenAussen` ihre Spanne neben der Summe, mit Abschnitt `fremdeSpalte` die Cent der
       Einträge aus Spalten, die das Board nicht führt — eine Währung, in der nur solches steht, hat `summe` null.
       `grenzenWeg` nennt gespeicherte Grenzen, die es nicht mehr gibt. `rollen` (R00172) verteilt dieselben zählenden
-      Einträge, aus denen `summe.eintraege` entsteht, auf ihre Rollen: [{rolle, cent}], Schreibweise wie gespeichert,
-      alphabetisch — die Summe der Rollen ist in jedem Zustand `summe.eintraege`; alte Posten tragen keine Rolle und
-      stehen nie darin. */
+      Einträge, aus denen `summe.eintraege` entsteht, auf ihre Rollen: [{rolle, cent, aufgaben: [{nummer, titel, cent,
+      eintraege: [{at, spalte, cent, tokens}]}]}] — Rollen in der Schreibweise wie gespeichert und alphabetisch, Aufgaben
+      nach Nummer, Einträge zeitlich aufsteigend. Die Summe der Rollen ist in jedem Zustand `summe.eintraege`; alte
+      Posten tragen keine Rolle und stehen nie darin. */
   function kostenaufstellung(board, aufgaben, f, jetzt) {
     const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(board, f, jetzt);
     const { lesbar } = aufgabenImBericht(board, aufgaben, f);
@@ -259,7 +260,7 @@
       return gruppen.get(waehrung);
     };
     for (const a of nachNummer) {
-      for (const e of zaehlendeEintraege(a, bereich)) rolleMitEintrag(gruppe(e.currency).rollen, e);
+      for (const e of zaehlendeEintraege(a, bereich)) rolleMitEintrag(gruppe(e.currency).rollen, a, e);
       for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent, kennzeichen: kennzeichen(a) });
       for (const s of summenDerEintraege(eintraegeMit('fremdeSpalte', a, bereich))) gruppe(s.waehrung).fremdeSpalte = plus(gruppe(s.waehrung).fremdeSpalte, s.cent);
       const alt = altePosten(a);
@@ -267,15 +268,25 @@
     }
     return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, grenzenWeg: verschwundeneGrenzen(board, f), gruppen: [...gruppen.values()].map(g => ({ ...g, rollen: rollenAlphabetisch(g.rollen) })).sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
-  /** Zählt einen Eintrag in seine Rolle; `rollen` ist die Sammlung einer Währungsgruppe im Aufbau (Rolle → {rolle, cent}). */
-  function rolleMitEintrag(rollen, e) {
-    if (!rollen.has(e.role)) rollen.set(e.role, { rolle: e.role, cent: 0 });
-    rollen.get(e.role).cent += inCent(e.amount);
+  /** Zählt einen Eintrag der Aufgabe `a` in seine Rolle und dort in die Aufgabe; `rollen` ist die Sammlung einer
+      Währungsgruppe im Aufbau (Rolle → {rolle, cent, aufgaben: Nummer → {nummer, titel, cent, eintraege}}). */
+  function rolleMitEintrag(rollen, a, e) {
+    if (!rollen.has(e.role)) rollen.set(e.role, { rolle: e.role, cent: 0, aufgaben: new Map() });
+    const rolle = rollen.get(e.role), cent = inCent(e.amount);
+    if (!rolle.aufgaben.has(a.nummer)) rolle.aufgaben.set(a.nummer, { nummer: a.nummer, titel: a.titel, cent: 0, eintraege: [] });
+    const aufgabe = rolle.aufgaben.get(a.nummer);
+    rolle.cent += cent;
+    aufgabe.cent += cent;
+    aufgabe.eintraege.push({ at: e.at, spalte: e.column, cent, tokens: e.tokens ?? null });
   }
   /** Rollen alphabetisch nach deutscher Sortierung; Schreibweisen, die sie gleich einordnet, nach Zeichenfolge — die
-      Folge hängt so nie von der Reihenfolge der Einträge ab. */
+      Folge hängt so nie von der Reihenfolge der Einträge ab. Aufgaben stehen in der Folge, in der sie gezählt wurden
+      (nach Nummer), ihre Einträge zeitlich aufsteigend. */
   function rollenAlphabetisch(rollen) {
-    return [...rollen.values()].sort((a, b) => rolleVor(a.rolle, b.rolle));
+    const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
+    const zeitlich = eintraege => [...eintraege].sort((a, b) => zeitMs(a.at) - zeitMs(b.at));
+    return [...rollen.values()].sort((a, b) => rolleVor(a.rolle, b.rolle))
+      .map(rolle => ({ ...rolle, aufgaben: [...rolle.aufgaben.values()].map(aufgabe => ({ ...aufgabe, eintraege: zeitlich(aufgabe.eintraege) })) }));
   }
   function rolleVor(a, b) {
     const nachAlphabet = a.localeCompare(b, 'de');

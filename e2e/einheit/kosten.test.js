@@ -667,3 +667,90 @@ test('R00172 B0844 (Schaden b, c): die Rollen ergeben „Einträge“ auch mit E
   assert.deepStrictEqual(rollenCent(ohne), [['architekt', 54], ['entwickler', 946], ['planer', 130], ['reviewer', 25]]);
   assert.deepStrictEqual([summeCent(ohne.rollen), ohne.summe.eintraege], [1155, 1155]);
 });
+
+/* ── B0845 unter der Rolle ihre Aufgaben, darunter die Einträge ── */
+const rolleVon = (gruppe, name) => gruppe.rollen.find(r => r.rolle === name);
+const aufgabenCent = rolle => rolle.aufgaben.map(a => [a.nummer, a.cent]);
+const TITEL_1 = 'Angebot für das Kundenprojekt schreiben', TITEL_2 = 'Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen';
+
+test('R00172 B0845 (AK 2): Fall 1 — entwickler trägt #1 mit 3,46 und dem Eintrag 13.11. 10:34 „Entwicklung“, planer #1 mit 1,00, architekt #2 mit 0,54', () => {
+  const [usd] = aufstellung(FALL_1).gruppen;
+  assert.deepStrictEqual(rolleVon(usd, 'entwickler').aufgaben, [{ nummer: 1, titel: TITEL_1, cent: 346, eintraege: [{ at: '2026-11-13 10:34+01:00', spalte: 'Entwicklung', cent: 346, tokens: null }] }]);
+  assert.deepStrictEqual(rolleVon(usd, 'planer').aufgaben, [{ nummer: 1, titel: TITEL_1, cent: 100, eintraege: [{ at: '2026-11-12 09:00+01:00', spalte: 'Entwicklung', cent: 100, tokens: null }] }]);
+  assert.deepStrictEqual(rolleVon(usd, 'architekt').aufgaben, [{ nummer: 2, titel: TITEL_2, cent: 54, eintraege: [{ at: '2026-11-13 11:00+01:00', spalte: 'Entwicklung', cent: 54, tokens: null }] }]);
+});
+
+test('R00172 B0845 (AK 4): ohne Bereiche trägt entwickler #1 mit 5,46 (3,46 + 2,00) und #3 mit 4,00 — Aufgaben nach Nummer, Einträge zeitlich aufsteigend', () => {
+  const entwickler = rolleVon(aufstellung({}).gruppen[0], 'entwickler');
+  assert.deepStrictEqual(aufgabenCent(entwickler), [[1, 546], [3, 400]]);
+  assert.deepStrictEqual(entwickler.aufgaben[0].eintraege.map(e => [e.at, e.spalte, e.cent]), [['2026-11-13 10:34+01:00', 'Entwicklung', 346], ['2026-11-14 15:00+01:00', 'Abnahme', 200]]);
+});
+
+test('R00172 B0845: Einträge stehen zeitlich aufsteigend, auch wenn die Datei sie anders führt und die Zeitzonen wechseln; Tokens bleiben am Eintrag', () => {
+  const spaet = BEISPIEL.eintrag('13 12:00', 'Eingang', 0.10), frueh = { ...BEISPIEL.eintrag('13 10:00', 'Eingang', 0.20, { tokens: 1200 }), at: '2026-11-13 10:30+00:00' }, zuerst = BEISPIEL.eintrag('13 09:00', 'Eingang', 0.40);
+  const [usd] = kostenaufstellung(spalten([1], [], []), [mitEintraegen(1, [spaet, frueh, zuerst], null, { titel: 'Folge' })], FILTER_LEER, JETZT).gruppen;
+  assert.deepStrictEqual(usd.rollen[0].aufgaben[0].eintraege.map(e => [e.cent, e.tokens]), [[40, null], [20, 1200], [10, null]], '10:30+00:00 ist 11:30 in +01:00');
+});
+
+test('R00172 B0845 (Schaden b): ein Eintrag in zweiter Währung steht in der Rollengruppe seiner Währung — dieselbe Rolle an derselben Aufgabe je Währung getrennt', () => {
+  const euro = { ...BEISPIEL.eintrag('13 12:00', 'Abnahme', 25.55), currency: 'EUR' };
+  const gruppen = aufstellung(FALL_1, { 1: [euro] }).gruppen;
+  assert.deepStrictEqual(gruppen.map(g => [g.waehrung, rollenCent(g), g.summe.eintraege]), [['USD', [['architekt', 54], ['entwickler', 346], ['planer', 100]], 500], ['EUR', [['entwickler', 2555]], 2555]]);
+  assert.deepStrictEqual(gruppen[1].rollen[0].aufgaben.map(a => [a.nummer, a.titel, a.cent, a.eintraege.length]), [[1, TITEL_1, 2555, 1]]);
+});
+
+/** Zufallsbestand mit festem Keim: Rollen (auch mit Sonderzeichen), zwei Währungen, Spalten des Boards und eine fremde,
+    Zeitpunkte um die Zeitumstellung am 25.10.2026 und im November. Jeder Eintrag trägt seine Stelle als `tokens`. */
+function zufallsbestand(keim) {
+  let zustand = keim;
+  const zufall = bis => { zustand = (zustand * 1103515245 + 12345) % 2147483648; return Math.floor(zustand / 2147483648 * bis); };
+  const aus = liste => liste[zufall(liste.length)];
+  const ROLLEN = ['entwickler', 'Entwickler', 'planer', 'director', 'a/b', 'x "y" <z>', 'code reviewer'];
+  const TAGE = ['2026-10-24', '2026-10-25', '2026-10-26', '2026-11-12', '2026-11-13', '2026-11-14'];
+  const eintraege = [];
+  const aufgaben = [1, 2, 3, 4, 5].map(nummer => {
+    const eigene = Array.from({ length: zufall(7) }, () => {
+      const tag = aus(TAGE), versatz = tag < '2026-10-25' || (tag === '2026-10-25' && zufall(2) === 0) ? '+02:00' : '+01:00';
+      const e = { at: `${tag} ${String(zufall(24)).padStart(2, '0')}:${String(zufall(60)).padStart(2, '0')}${versatz}`, role: aus(ROLLEN), column: aus(['Eingang', 'In Arbeit', 'Fertig', 'Review']), amount: (1 + zufall(999)) / 100, currency: aus(['USD', 'USD', 'EUR']), tokens: eintraege.length };
+      eintraege.push({ ...e, nummer });
+      return e;
+    });
+    let cost = null;
+    if (zufall(3) === 0) cost = posten(aus(['USD', 'EUR']), { min: 1, max: 2 });
+    return mitEintraegen(nummer, eigene, cost, { titel: `Aufgabe ${nummer}` });
+  });
+  return { aufgaben, eintraege };
+}
+const ZUFALLSFILTER = [{}, { zeitraum: 'eigen', von: '', bis: '2026-10-25' }, { zeitraum: 'eigen', von: '2026-10-25', bis: '2026-11-13' }, abschnitt('In Arbeit', 'Fertig'), abschnitt('Eingang', '', { zeitraum: 'eigen', von: '2026-10-26', bis: '' }), abschnitt('', 'Test')];
+
+test('R00172 B0845 (Schaden b): 40 Zufallsbestände in sechs Bereichen — je Währung ergeben die Rollen „Einträge“, je Rolle ihre Aufgaben die Rolle, je Aufgabe ihre Einträge die Aufgabe; jeder Eintrag steht höchstens einmal, unter seiner Rolle, Aufgabe und Währung, und je Aufgabe ergeben die Rollen den Betrag der Aufgabenliste', () => {
+  let geprueft = 0;
+  for (let keim = 1; keim <= 40; keim++) {
+    const { aufgaben, eintraege } = zufallsbestand(keim);
+    for (const f of ZUFALLSFILTER) {
+      const a = kostenaufstellung(spalten([1, 2], [3, 4], [5]), aufgaben, filter(f), JETZT), gesehen = new Set();
+      for (const g of a.gruppen) {
+        let einträgeDerSumme = 0;
+        if (g.summe && g.summe.eintraege != null) einträgeDerSumme = g.summe.eintraege;
+        assert.strictEqual(summeCent(g.rollen), einträgeDerSumme, `Keim ${keim}, ${g.waehrung}: Rollen = „Einträge“`);
+        const jeAufgabe = new Map();
+        for (const rolle of g.rollen) {
+          assert.strictEqual(summeCent(rolle.aufgaben), rolle.cent, `Keim ${keim}: Aufgaben = Rolle ${rolle.rolle}`);
+          for (const aufgabe of rolle.aufgaben) {
+            assert.strictEqual(summeCent(aufgabe.eintraege), aufgabe.cent, `Keim ${keim}: Einträge = Aufgabe #${aufgabe.nummer}`);
+            jeAufgabe.set(aufgabe.nummer, (jeAufgabe.get(aufgabe.nummer) || 0) + aufgabe.cent);
+            for (const e of aufgabe.eintraege) {
+              const quelle = eintraege[e.tokens];
+              assert.ok(!gesehen.has(e.tokens), `Keim ${keim}: Eintrag ${e.tokens} steht doppelt`);
+              gesehen.add(e.tokens);
+              assert.deepStrictEqual([quelle.role, quelle.nummer, quelle.currency, quelle.at, quelle.column, Math.round(quelle.amount * 100)], [rolle.rolle, aufgabe.nummer, g.waehrung, e.at, e.spalte, e.cent]);
+              geprueft++;
+            }
+          }
+        }
+        assert.deepStrictEqual([...jeAufgabe].sort((x, y) => x[0] - y[0]), betraege(g), `Keim ${keim}, ${g.waehrung}: je Aufgabe wie die Aufgabenliste`);
+      }
+    }
+  }
+  assert.ok(geprueft > 1000, `nur ${geprueft} Einträge geprüft`);
+});
