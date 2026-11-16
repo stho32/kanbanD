@@ -13,7 +13,7 @@ Herkunft: Karte #153 „Direktlinks auf Aufgaben“ (Betreiber), Technik vom arc
 **Entschieden** (ADR-0029, hier nur das Ergebnis):
 
 1. **Form:** `#/board/<slug>/aufgabe/<nr>` öffnet das Board mit dem [Aufgabenfenster](../Dokumentation/Domaenenwissen/D00001-aufgabenfenster.md); `#/aufgaben/aufgabe/<nr>` öffnet die Aufgabenliste mit dem Fenster (Aufgaben ohne Board). Alle bisherigen Adressen bleiben.
-2. **Nachführen:** Öffnen und Schließen des Fensters schreiben die Adresse als neuen Verlaufseintrag, ohne neu zu laden; Zurück schließt, Vor öffnet.
+2. **Nachführen:** Öffnen schreibt die Adresse als neuen Verlaufseintrag, ohne neu zu laden; Schließen geht im Verlauf einen Schritt zurück bzw. ersetzt den Eintrag (ADR-0029 N1); Zurück schließt, Vor öffnet.
 3. **„Link kopieren“** steht im ⋮-Menü des Fensters und im Kartenmenü; der Host ist der des Betrachters.
 4. **Ohne Zwischenablage** erscheint der [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md) „Kopieren nicht erlaubt — der Link steht in der Adresszeile“; auf `localhost` und `127.0.0.1` ergänzt jede Rückmeldung „gilt nur auf diesem Rechner“.
 5. **Nur Navigation:** eine Adresse löst nie einen schreibenden Aufruf aus; die Nummer besteht nur aus Ziffern, der Slug gilt nur gegen die bekannten Boards, Text aus der Adresse wird nie angezeigt.
@@ -26,7 +26,7 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Mensch und Agent arbeiten gleic
 **Ausgangslage:** Boards „Entwicklung“ (`entwicklung`) und „Zweit“ (`zweit`); Aufgabe #7 liegt auf beiden, #8 auf keinem Board, #9 nur auf „Zweit“, #99 gibt es nicht.
 
 - [x] **AK 1 Link kopieren:** #7 auf „Entwicklung“ geöffnet, „Link kopieren“ gewählt, der kopierte Text in einem neuen Tab geöffnet → Board „Entwicklung“ mit dem Fenster „Aufgabe #7“; der Text endet auf `#/board/entwicklung/aufgabe/7`.
-- [x] **AK 2 Adresse folgt, Zurück und Vor:** Öffnen von #7 ändert die Adresse auf `#/board/entwicklung/aufgabe/7`, Schließen auf `#/board/entwicklung`, je ohne Neuladen; Zurück schließt das Fenster, Vor öffnet es wieder; gespeicherte Eingaben bleiben. Steht ein ungespeicherter Entwurf im Fenster, verhält sich Zurück wie das Schließen über ✕ heute — kein neuer Weg, eine Eingabe zu verlieren.
+- [x] **AK 2 Adresse folgt, Zurück und Vor:** Öffnen von #7 ändert die Adresse auf `#/board/entwicklung/aufgabe/7`, Schließen auf `#/board/entwicklung`, je ohne Neuladen; Zurück schließt das Fenster, Vor öffnet es wieder; gespeicherte Eingaben bleiben. Schließen über ✕, Esc oder Hintergrund hinterlässt keinen eigenen Verlaufseintrag: es geht einen Schritt zurück auf die Ansicht, aus der das Fenster geöffnet wurde (ein Zurück danach führt zur vorigen Ansicht, nicht wieder in die Aufgabe); wurde es über einen Link geöffnet, ersetzt das Schließen den Eintrag, die Seite wird nie verlassen. Steht ein ungespeicherter Entwurf im Fenster, verhält sich Zurück wie das Schließen über ✕ heute — kein neuer Weg, eine Eingabe zu verlieren.
 - [x] **AK 3 Zwei Boards:** `#/board/entwicklung/aufgabe/7` öffnet „Entwicklung“, `#/board/zweit/aufgabe/7` öffnet „Zweit“, je mit dem Fenster „Aufgabe #7“.
 - [x] **AK 4 Ohne Board:** `#/aufgaben/aufgabe/8` öffnet die Aufgabenliste mit dem Fenster „Aufgabe #8“; „Link kopieren“ dort ergibt diese Adresse.
 - [x] **AK 5 Hinweise statt leerer Seite:** `…/board/entwicklung/aufgabe/99` → Board ohne Fenster, Hinweis „Aufgabe #99 gibt es nicht“, die Adresse fällt auf `#/board/entwicklung`. `…/board/gibtsnicht/aufgabe/7` → das erste bzw. gemerkte Board mit Fenster „Aufgabe #7“ und Hinweis „Board aus dem Link gibt es nicht“ (ohne den Slug). `…/board/entwicklung/aufgabe/9` oder eine archivierte Aufgabe → Board und Fenster, Hinweis „#9 liegt nicht auf diesem Board“.
@@ -34,7 +34,7 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Mensch und Agent arbeiten gleic
 - [x] **AK 7 Ohne Zwischenablage:** Verweigert der Browser das Kopieren, steht der Hinweis „Kopieren nicht erlaubt — der Link steht in der Adresszeile“, und die Adresszeile trägt den Link.
 - [x] **AK 8 Tastatur:** „Link kopieren“ ist im ⋮-Menü des Fensters mit der Tastatur erreichbar; die Rückmeldung „Link kopiert“ ist eine Statusmeldung, der Fokus bleibt im Fenster.
 - [x] **AK 9 Fremde Zeichen:** `#/board/entwicklung/aufgabe/<img src=x onerror=alert(1)>` → Board ohne Fenster, kein Dialog, der Adresstext steht nirgends in der Seite.
-- [x] **AK 10 Bleibt:** Alle bisherigen Adressen (`#/board/<slug>`, `#/aufgaben`, `#/personen`, `#/einrichten`, `#/berichte/<name>`, `#/wbs/<kürzel>[/<id>]`) wirken wie zuvor; die bestehenden Specs laufen unverändert grün.
+- [x] **AK 10 Bleibt:** Alle bisherigen Adressen (`#/board/<slug>`, `#/aufgaben`, `#/personen`, `#/einrichten`, `#/berichte/<name>`, `#/wbs/<kürzel>[/<id>]`) verhalten sich wie zuvor. Geänderte Erwartungen bestehender Tests, beim Namen: `r00144-kopf-aktionen` (drei Einträge, zwei Trenner, Startfokus „Link kopieren“), `menue.test.js` (Eintrag im Kartenmenü), `ansichten.test.js` (Router liegt in `web/adresse.js`), `uebernahme.test.js` (Öffnen aus der Adresse erlaubt), `r00110-neueste-antwort` und `r00057-wirkungen` (Neuladen und Zurück zeigen das offene Fenster wieder), `r00060-zaehlen` (eine Adresse ohne Aufgabe schließt das Fenster).
 
 Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#link-kopieren`.
 

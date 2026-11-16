@@ -718,3 +718,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0858 Adresse bei Öffnen, Schließen und Esc nachführen; Zurück und Vor | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0859 „Link kopieren“ im ⋮-Menü des Fensters und im Kartenmenü, mit Rückfall | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0860 README „Für Agenten“, Probe im echten Programm und Gate; Korrektur „Fenster folgt sofort bei hashchange“ aus der vollen Suite | Standard | 0,5-1,5h | 0,5h | 0,5h | autonom |
+| 2026-11-16 | Karte #153 R00174 (Nacharbeit nach Code- und UX-Review) | B1 Rennen mit der Warteschlange; Schließen stapelt keinen Verlaufseintrag (Marke im history.state); ADR-0029 N1, AK 2 und AK 10 berichtigt | Standard | 1-2h | 0,5h | 0,5h | autonom |

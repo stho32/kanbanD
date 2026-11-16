@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber, Karte #153)
 **Kontext-Anforderung**: Karte #153 „Direktlinks auf Aufgaben“ (Wortlaut des Betreibers); Anforderung und WBS-Interaction folgen über den planer (neue Interaction unter D0003 Aufgabe).
 **Erprobt durch**: — (die Form folgt der bestehenden Systemantwort `#/wbs/<kürzel>/<id>`, `web/wbs.js:156`, `web/app.js:274`; das Nachführen über `history.pushState` ist gelesen, nicht geprobt — die Probe sind die Kriterien der Anforderung)
-**Nachträge**: keine
+**Nachträge**: N1 (2026-11-16, Director nach UX-Review, Karte #153): Schließen stapelt keine Verlaufseinträge — Regel 2 berichtigt. Vorher öffnete Zurück nach ✕ die eben geschlossene Aufgabe wieder, und zehn angesehene Aufgaben kosteten zwanzigmal Zurück.
 
 ## Kontext
 
@@ -26,7 +26,7 @@
 Option 1.
 
 1. **Form**: `#/board/<slug>/aufgabe/<nr>` (Board mit geöffnetem Fenster) und `#/aufgaben/aufgabe/<nr>` (Aufgabenliste mit geöffnetem Fenster, für Aufgaben ohne Board). `<nr>` sind nur Ziffern. Alle bisherigen Adressen bleiben gültig und unverändert.
-2. **Eine Richtung je Anlass**: beim Laden und bei `hashchange` (Link, Zurück/Vor, Eingabe) ist die Adresse die Wahrheit — eine reine Funktion liest Nummer und Board aus dem Hash und setzt das Fenster. Öffnet oder schließt der Mensch das Fenster, schreibt die Aktion die Adresse als neuen Verlaufseintrag, ohne neu zu laden (`history.pushState`).
+2. **Eine Richtung je Anlass**: beim Laden und bei `hashchange` (Link, Zurück/Vor, Eingabe) ist die Adresse die Wahrheit — eine reine Funktion liest Nummer und Board aus dem Hash und setzt das Fenster. Öffnet der Mensch das Fenster, schreibt die Aktion die Adresse als neuen Verlaufseintrag, ohne neu zu laden (`history.pushState`). Schließen schreibt keinen eigenen Eintrag (Nachtrag N1): es geht im Verlauf einen Schritt zurück auf die Ansicht, wenn das Fenster in dieser Sitzung aus ihr geöffnet wurde (Marke im `history.state` des Eintrags), sonst — Link, Lesezeichen — ersetzt es den Eintrag durch die Adresse der Ansicht; der Wechsel zu einer anderen Aufgabe ersetzt ebenfalls.
 3. **Nur Navigation**: eine Adresse löst nie einen schreibenden Aufruf aus; Text aus der Adresse wird nie angezeigt — Meldungen nennen nur die geprüfte Nummer.
 4. **Der Host** ist `location.origin` des Betrachters; kanbanD kennt keinen „richtigen“ Host.
 5. Die Form steht in der README unter „Für Agenten“.
