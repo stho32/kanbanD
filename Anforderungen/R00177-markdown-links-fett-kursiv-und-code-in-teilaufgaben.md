@@ -1,6 +1,6 @@
 ---
 id: R00177
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,14 +18,14 @@ Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#markdown-e
 
 ## Akzeptanzkriterien
 
-- [ ] **AK 1 Abnahme-Probe der Karte:** Gegeben die Teilaufgabe `siehe https://example.org und **wichtig**`. Wenn ich das Fenster öffne, dann ist die Adresse ein Link in neuem Fenster und „wichtig“ fett. Heute rot: Rohtext.
-- [ ] **AK 2 Nur innerhalb der Zeile:** `*schräg*`, `` `code` `` und `[Doku](https://example.org)` werden formatiert; die Teilaufgaben `# x`, `- x`, `> x` und `| a | b |` erscheinen unverändert als Text.
-- [ ] **AK 3 Klick:** Ein Klick auf den Link öffnet ihn in einem neuen Fenster, die Zeile wechselt dabei nicht ins Bearbeiten. Ein Klick auf den Text daneben öffnet das Textfeld mit dem Rohtext `siehe https://example.org und **wichtig**`.
-- [ ] **AK 4 Tastatur:** Jede Zeile trägt einen Stift-Knopf; er ist mit Tab erreichbar und öffnet das Textfeld. Nach Speichern oder Esc steht der Fokus auf dem Stift derselben Zeile. Der Link ist mit Tab erreichbar, der Text selbst nicht mehr.
-- [ ] **AK 5 Kein Link in einem Knopf:** Im Aufgabenfenster liegt kein Link in einem `button` oder einem Element mit der Rolle Knopf.
-- [ ] **AK 6 Bleibt Rohtext, bleibt bedienbar:** Die Karte auf dem Board und der Dialog „Neue Aufgabe“ zeigen den Text der Teilaufgabe weiter roh. Abhaken, Löschen über ✕ und Umsortieren durch Ziehen wirken wie heute.
-- [ ] **AK 7 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, auch als Teilaufgabe.
-- [ ] **AK 8 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: eine Adresse mit Sternen behält ihr Ziel unverändert (`https://example.org/a*b*c` — heute steht ein `<em>` im Ziel).
+- [x] **AK 1 Abnahme-Probe der Karte:** Gegeben die Teilaufgabe `siehe https://example.org und **wichtig**`. Wenn ich das Fenster öffne, dann ist die Adresse ein Link in neuem Fenster und „wichtig“ fett. Heute rot: Rohtext.
+- [x] **AK 2 Nur innerhalb der Zeile:** `*schräg*`, `` `code` `` und `[Doku](https://example.org)` werden formatiert; die Teilaufgaben `# x`, `- x`, `> x` und `| a | b |` erscheinen unverändert als Text.
+- [x] **AK 3 Klick:** Ein Klick auf den Link öffnet ihn in einem neuen Fenster, die Zeile wechselt dabei nicht ins Bearbeiten. Ein Klick auf den Text daneben öffnet das Textfeld mit dem Rohtext `siehe https://example.org und **wichtig**`.
+- [x] **AK 4 Tastatur:** Jede Zeile trägt einen Stift-Knopf; er ist mit Tab erreichbar und öffnet das Textfeld. Nach Speichern oder Esc steht der Fokus auf dem Stift derselben Zeile. Der Link ist mit Tab erreichbar, der Text selbst nicht mehr.
+- [x] **AK 5 Kein Link in einem Knopf:** Im Aufgabenfenster liegt kein Link in einem `button` oder einem Element mit der Rolle Knopf.
+- [x] **AK 6 Bleibt Rohtext, bleibt bedienbar:** Die Karte auf dem Board und der Dialog „Neue Aufgabe“ zeigen den Text der Teilaufgabe weiter roh. Abhaken, Löschen über ✕ und Umsortieren durch Ziehen wirken wie heute.
+- [x] **AK 7 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, auch als Teilaufgabe.
+- [x] **AK 8 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: eine Adresse mit Sternen behält ihr Ziel unverändert (`https://example.org/a*b*c` — heute steht ein `<em>` im Ziel).
 
 ## Tests
 
