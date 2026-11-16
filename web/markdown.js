@@ -4,15 +4,30 @@
   /** Positivliste (ADR-0030 Punkt 4): kein Zeichen ≤ U+0020 und kein U+007F (der Browser überliest solche Zeichen vor dem Schema), dazu http, https, mailto, vscode oder ohne Schema (relativ). */
   const erlaubt = url => !/[\u0000-\u0020\u007f]/.test(url) && (/^(https?|mailto|vscode):/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url));
 
-  /** Eine Zeile ohne Blöcke (ADR-0030 Punkt 7): Code, Links, nackte Adressen, fett, kursiv — jede neue Form der Zeile
-   *  entsteht hier und gilt damit für beide Einstiege, `markdownInline` und `markdownHtml`. Jede fertige Marke wird sofort durch
-   *  einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und eine
-   *  Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen. */
+  /** `__fett__`, `~~durchgestrichen~~` und `_kursiv_` nur an Wortgrenzen (ADR-0030 Punkt 6, R00178 AK 2): davor und danach
+   *  steht weder Buchstabe, Ziffer noch Unterstrich — und kein Zeichen, das einen Bezeichner fortsetzt (`__init__.py`,
+   *  `obj.__dict__`, `__init__()`). Der Inhalt beginnt und endet ohne Leerraum und trägt das eigene Zeichen nicht: so endet
+   *  jede Suche am nächsten Zeichen derselben Art, ohne Rücklauf über die Zeile. */
+  const WORT = '[\\p{L}\\p{N}_]', KLEBT = '[.\\-/:@\\\\]';
+  const inhalt = zeichen => `([^${zeichen}\\s](?:[^${zeichen}]*[^${zeichen}\\s])?)`;
+  const AN_WORTGRENZEN = new RegExp(`(?<!${WORT}|${WORT}${KLEBT})(?:__${inhalt('_')}__|~~${inhalt('~')}~~|_${inhalt('_')}_)(?!${WORT}|${KLEBT}${WORT}|\\()`, 'gu');
+
+  /** Eine Zeile ohne Blöcke (ADR-0030 Punkt 7): Code, Links, nackte Adressen, fett, kursiv, durchgestrichen — jede neue Form
+   *  der Zeile entsteht hier und gilt damit für beide Einstiege, `markdownInline` und `markdownHtml`. Jede fertige Marke wird
+   *  sofort durch einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und
+   *  eine Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen. */
   function markdownInline(text) {
     const fertig = [];
     const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
-    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => fertig[+i]);
-    const hervorheben = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    /** Ein Platzhalter kann in einer geschützten Marke stehen (Link in kursivem Text): eingesetzt wird bis in die Tiefe. */
+    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => einsetzen(fertig[+i]));
+    const sterne = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    /** Die Formen an Wortgrenzen zuerst, jede samt Inhalt geschützt: die Sterne danach schließen nie über ihre Marke hinweg. */
+    const hervorheben = s => sterne(s.replace(AN_WORTGRENZEN, (m, fett, durch, kursiv) => {
+      if (fett !== undefined) return schuetze(`<strong>${hervorheben(fett)}</strong>`);
+      if (durch !== undefined) return schuetze(`<del>${hervorheben(durch)}</del>`);
+      return schuetze(`<em>${hervorheben(kursiv)}</em>`);
+    }));
     const link = (u, innen) => schuetze(`<a href="${u}" target="_blank" rel="noopener">${innen}</a>`);
     const gueltig = u => erlaubt(u.replace(/&amp;/g, '&'));
     let s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));

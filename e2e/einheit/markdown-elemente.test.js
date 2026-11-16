@@ -30,7 +30,7 @@ test('AK 1 Abnahme-Probe der Karte #186: drei Ebenen, Linie, „schräg“ kursi
   erwarte('siehe https://example.org und **wichtig**', `<p>siehe ${link('https://example.org', 'https://example.org')} und <strong>wichtig</strong></p>`);
 });
 
-test('AK 2: _kursiv_, __fett__ und ~~durchgestrichen~~ in Beschreibung, Zeile und Tabellenzelle', rot('B0873'), () => {
+test('AK 2: _kursiv_, __fett__ und ~~durchgestrichen~~ in Beschreibung, Zeile und Tabellenzelle', () => {
   erwarteZeile('_schräg_', '<em>schräg</em>');
   erwarteZeile('__fett__', '<strong>fett</strong>');
   erwarteZeile('~~weg~~', '<del>weg</del>');
@@ -53,7 +53,7 @@ test('AK 2: nur an Wortgrenzen — Bezeichner, Dateinamen und Zahlen mit Unterst
   }
 });
 
-test('AK 2 und Sicherheit (b): Adressen, Code und Platzhalter bleiben unangetastet — keine Stufe formatiert in eine fertige Marke', rot('B0873'), () => {
+test('AK 2 und Sicherheit (b): Adressen, Code und Platzhalter bleiben unangetastet — keine Stufe formatiert in eine fertige Marke', () => {
   for (const adresse of ['https://x.org/a_b_c', 'https://x.org/a_b_c_d', 'https://x.org/_a_/__b__/~~c~~', 'https://x.org/~nutzer/~~x~~']) {
     erwarteZeile(adresse, link(adresse, adresse));
     erwarteZeile(`_vor_ ${adresse} ~~nach~~`, `<em>vor</em> ${link(adresse, adresse)} <del>nach</del>`);
@@ -70,7 +70,7 @@ test('AK 2 und Sicherheit (b): Adressen, Code und Platzhalter bleiben unangetast
   erwarteZeile('~~\u00001\u0000~~ [L](x.md) `c`', `<del>1</del> ${link('x.md', 'L')} <code>c</code>`);
 });
 
-test('AK 2: Formen ineinander und über Kreuz — jede Marke schließt, was sie geöffnet hat', rot('B0873'), () => {
+test('AK 2: Formen ineinander und über Kreuz — jede Marke schließt, was sie geöffnet hat', () => {
   erwarteZeile('_a **b** c_', '<em>a <strong>b</strong> c</em>');
   erwarteZeile('**a _b_ c**', '<strong>a <em>b</em> c</strong>');
   erwarteZeile('~~a _b_ **c**~~', '<del>a <em>b</em> <strong>c</strong></del>');
