@@ -81,7 +81,7 @@ test('R00121 B0556: Menüeintrag in VERLAUF, Route, Fenstertitel und Kopfleiste'
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/fluss$/);
     await expect(page).toHaveTitle('Berichte · Kumulativer Fluss — kanbanD');
-    await expect(page.locator('#main .leiste').first()).toContainText('Kumulativer Fluss · liest nur · Bestand je Spalte über die Zeit');
+    await expect(page.locator('#main .leiste').first()).toContainText('Kumulativer Fluss · Bestand je Spalte über die Zeit');
   } finally { await k.stoppen(); }
 });
 

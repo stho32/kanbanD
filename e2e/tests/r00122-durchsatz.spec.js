@@ -210,7 +210,7 @@ test('R00122 US-3: die leere Periode KW47 trägt ihre Marke (als 0 erkennbar) un
   } finally { await k.stoppen(); }
 });
 
-test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen, leere Periode mit Zurücksetzen', async ({ page }) => {
+test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen — seit R00169 AK 8 zählt der letzte sichtbare Block —, leere Periode mit Zurücksetzen', async ({ page }) => {
   // Board ohne jede Bewegung
   const k0 = await kanbanStarten(einrichten({ 'boards/fabrik.md': '# fabrik\n\n## Eingang\n\n## In Arbeit\n\n## Fertig\n' }));
   try {
@@ -220,7 +220,8 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await expect(page.locator('.fluss-satz')).toHaveText('Noch kein Stand dieses Boards.');
   } finally { await k0.stoppen(); }
 
-  // Zielspalte ausgeschlossen
+  // Zielspalte ausgeschlossen: statt der Meldung „ausgeschlossen“ rechnet der Durchsatz bis „In Arbeit“ (R00169 AK 8) —
+  // erstes Erreichen von „In Arbeit“ oder rechts davon: #1 03.11., #2 05.11. (direkt nach „Fertig“), #3 06.11., #4 11.11.
   const k = await kanbanStarten(grundbestand);
   try {
     await alsPerson(page, 'st');
@@ -228,10 +229,10 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await filterOeffnen(page);
     await filterSchalten(page, page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fertig' }));
-    await expect(page.locator('.fluss-satz')).toHaveText('Die Zielspalte „Fertig“ ist ausgeschlossen.');
-    await page.locator('.fluss-leer').getByRole('button', { name: 'Zurücksetzen' }).click();
+    await expect(page.locator('#main')).not.toContainText('ist ausgeschlossen.');
+    await expect(page.locator('#fb-ziel-filter')).toHaveText('„Fertig“ ist im Filter ausgeschlossen — gerechnet wird mit „In Arbeit“.');
     await expect(diagramm(page)).toBeVisible();
-    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 4');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 4 bis „In Arbeit“');
   } finally { await k.stoppen(); }
 
   // aktiver Filter ohne Treffer → Leersatz mit „Zurücksetzen“ (US-7)

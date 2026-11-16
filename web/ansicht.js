@@ -1258,9 +1258,13 @@ function zugangAb(ziel) {
   if (ziel.zaehlt) zielSchluessel = ziel.zaehlt.schluessel;
   return vonblock(S.bew, S.ui.bf, vonspalte, zielSchluessel);
 }
-const GILT_FUER_ZIEL = 'gilt für Burndown, Durchsatz und Fever Chart dieses Boards';
-/** Die Auswahl „Erledigt heißt“ (R00079) samt Geltungssatz — dasselbe Element in Fever Chart, Burndown und Durchsatz; der
-    letzte Block ist der Standard und trägt den leeren Wert. `ziel` kommt aus `zielblock`. */
+/** Wofür „Erledigt heißt“ gilt (R00169, Zeichnung D0006 #fluss-erledigt-heisst) — der eine Wortlaut für alle vier Berichte;
+    der Durchsatz setzt ihn mit „Zugang ab“ zusammen. */
+const ZIEL_GILT_FUER = 'Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const GILT_FUER_ZIEL = `gilt für ${ZIEL_GILT_FUER}`;
+const GILT_FUER_VON_UND_ZIEL = `„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für ${ZIEL_GILT_FUER}`;
+/** Die Auswahl „Erledigt heißt“ (R00079) samt Geltungssatz — dasselbe Element in Fever Chart, Burndown, Durchsatz und
+    Kumulativem Fluss; der letzte Block ist der Standard und trägt den leeren Wert. `ziel` kommt aus `zielblock`. */
 function vZielAuswahl(ziel, geltung = GILT_FUER_ZIEL) {
   const letzter = ziel.bloecke.length - 1;
   const eintraege = ziel.bloecke.map((block, i) => {
@@ -1296,23 +1300,27 @@ function vVonHinweis(von) {
   if (!von.gueltig) return '<span class="fehl" id="fb-von-rechts">„Zugang ab“ muss links von „Erledigt heißt“ liegen — der Zugang wird nicht gezeigt.</span>';
   return '';
 }
-/** Hinweis zu einer gespeicherten Zielspalte, die es nicht mehr gibt (R00079) — `gerechnetMit` nennt, was stattdessen zählt. */
-function vZielHinweis(verschwunden, gerechnetMit) {
-  if (!verschwunden) return '';
-  return `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(gerechnetMit)}“.</span>`;
+/** Hinweis zu einer gespeicherten Zielspalte, die es nicht mehr gibt (R00079) — `gerechnetMit` nennt, was stattdessen zählt.
+    Ohne Wahl und mit im Berichtsfilter ausgeschlossener Abschlussspalte `ausgeschlossen` (R00169 AK 8) steht stattdessen, dass
+    mit dem letzten sichtbaren Block gerechnet wird — kein Fehler, sondern Folge des eigenen Filters. */
+function vZielHinweis(verschwunden, gerechnetMit, ausgeschlossen = null) {
+  if (verschwunden) return `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(gerechnetMit)}“.</span>`;
+  if (ausgeschlossen) return `<span class="muted" id="fb-ziel-filter">„${esc(ausgeschlossen)}“ ist im Filter ausgeschlossen — gerechnet wird mit „${esc(gerechnetMit)}“.</span>`;
+  return '';
 }
-/** Die Zeile „Erledigt heißt“ über Burndown und Durchsatz (R00166, Zeichnung D0006 #erledigt-heisst): Auswahl, Geltungssatz,
-    ein Fehler des Speicherns und der Hinweis auf eine verschwundene Wahl — dann rechnen beide bis zum Standard. Mit `von`
+/** Die Zeile „Erledigt heißt“ über Burndown, Durchsatz und Kumulativem Fluss (R00166, R00169, Zeichnung D0006
+    #erledigt-heisst): Auswahl, Geltungssatz, ein Fehler des Speicherns und der Hinweis auf eine verschwundene Wahl oder die
+    ausgeschlossene Abschlussspalte — dann rechnen sie bis zum Standard. Mit `von`
     (nur der Durchsatz, R00167) steht „Zugang ab“ links davor, der Geltungssatz nennt beide, die Hinweise zum Ziel zuerst. */
 function vErledigtHeisst(ziel, von = null) {
   let fehler = '', name = 'Erledigt heißt', auswahlen = vZielAuswahl(ziel), vonHinweis = '';
   if (S.ui.fbFehler) fehler = `<span class="fehl" role="alert">${esc(S.ui.fbFehler)}</span>`;
   if (von) {
     name = 'Zugang ab und Erledigt heißt';
-    auswahlen = vVonAuswahl(von) + vZielAuswahl(ziel, '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz und Fever Chart dieses Boards');
+    auswahlen = vVonAuswahl(von) + vZielAuswahl(ziel, GILT_FUER_VON_UND_ZIEL);
     vonHinweis = vVonHinweis(von);
   }
-  return `<section class="fb-einst" role="group" aria-label="${name}">${auswahlen}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard)}${vonHinweis}</section>`;
+  return `<section class="fb-einst" role="group" aria-label="${name}">${auswahlen}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard, ziel.ausgeschlossen)}${vonHinweis}</section>`;
 }
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
@@ -1350,14 +1358,18 @@ ${fadenkreuz(O, BAND_UNTEN)}
 <div class="body bericht">${vErledigtHeisst(ziel)}${t.length ? vBurndownKennzahl(t, ziel.worte) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte) : svg}${tabelle}${nicht}</div>`;
 }
 
-/* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit — liest nur. */
+/* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit; „Erledigt heißt“ wählt,
+   was als offen und als fertig zählt (R00169, Zeichnung D0006 #fluss-erledigt-heisst). */
 /** Bandton einer Spalte: ihre eingestellte Spaltenfarbe, sonst der Ton ihrer Position aus der Klassenpalette
     (`PAL`) in Board-Reihenfolge, als `-line`-Fassung für ein Diagramm. */
 const flussTon = (farbe, i) => farbe || `var(--kd-c-${PAL[i % PAL.length]}-line)`;
 function vFluss() {
-  const kopf = `<div class="leiste"><b>Kumulativer Fluss</b> <span class="muted" style="font-size:12px">· liest nur · Bestand je Spalte über die Zeit</span></div>`;
-  if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div>${vFlussTabelle([], S.board ? S.board.spalten.map(sp => sp.name) : [])}</div>`;
+  const kopfMit = zusatz => `<div class="leiste"><b>Kumulativer Fluss</b> <span class="muted" style="font-size:12px">· Bestand je Spalte über die Zeit${zusatz}</span></div>`;
+  if (!S.bew) return `${kopfMit('')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div>${vFlussTabelle([], S.board ? S.board.spalten.map(sp => sp.name) : [])}</div>`;
   const jetzt = Date.now(), ziel = erledigtHeisst();
+  let fertigHeisst = '';
+  if (ziel.worte) fertigHeisst = ` · fertig heißt: ${esc(ziel.worte.lang)}`;
+  const kopf = kopfMit(fertigHeisst);
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt, ziel.gewaehlt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="fl-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const d = fluss(S.bew, S.ui.bf, aufgabe, jetzt, S.board && S.board.start, ziel.gewaehlt);
@@ -1368,14 +1380,17 @@ function vFluss() {
   if (!t.length || t.every(x => !x.gesamt)) {
     const satz = S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.';
     const knopf = leistenAnzahl(S.ui.bf, BERICHTSLEISTEN.fluss) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="fluss">Zurücksetzen</button>' : '';
-    return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p>${knopf}</div>${vFlussTabelle(t, spalten)}${nicht}</div>`;
+    return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${vErledigtHeisst(ziel)}<div class="fluss-leer"><p class="fluss-satz">${satz}</p>${knopf}</div>${vFlussTabelle(t, spalten)}${nicht}</div>`;
   }
-  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${vFlussFlaeche(t, spalten, ton)}${vFlussLegende(spalten, ton)}${vFlussTabelle(t, spalten)}${nicht}</div>`;
+  return `${kopf}${vBerichtsfilter('fluss')}<div class="body bericht">${vErledigtHeisst(ziel)}${vFlussFlaeche(t, spalten, ton)}${vFlussLegende(spalten, ton, ziel.worte)}${vFlussTabelle(t, spalten)}${nicht}</div>`;
 }
-/** Legende: je Spalte ein Farbfeld in ihrem Bandton und der Name, dann „angekommen“/„fertig“; nur Text, kein Knopf. */
-function vFlussLegende(spalten, ton) {
+/** Legende: je Spalte ein Farbfeld in ihrem Bandton und der Name, dann „angekommen“/„fertig“ — mit gewähltem Zielblock
+    „fertig (ab „B“)“; nur Text, kein Knopf. */
+function vFlussLegende(spalten, ton, zielWorte) {
   const le = (inner, wort) => `<span class="fluss-le">${inner}${esc(wort)}</span>`;
-  return `<div class="fluss-leg" aria-label="Legende">${spalten.map((name, i) => le(`<span class="fluss-sw" style="background:${esc(ton(name, i))}"></span>`, name)).join('')}${le('<span class="fluss-linie"></span>', 'angekommen')}${le('<span class="fluss-linie f"></span>', 'fertig')}<span class="rechts">zeigt nur, filtert nicht</span></div>`;
+  let fertig = 'fertig';
+  if (zielWorte) fertig = `fertig (${zielWorte.kurz})`;
+  return `<div class="fluss-leg" aria-label="Legende">${spalten.map((name, i) => le(`<span class="fluss-sw" style="background:${esc(ton(name, i))}"></span>`, name)).join('')}${le('<span class="fluss-linie"></span>', 'angekommen')}${le('<span class="fluss-linie f"></span>', fertig)}<span class="rechts">zeigt nur, filtert nicht</span></div>`;
 }
 /** Die textliche Entsprechung der Fläche: je Tag eine Zeile mit jeder Spalte und den kumulierten Rändern, in
     einem tastaturerreichbaren Querscroll-Rahmen (`.bericht-rahmen`, in jedem Zustand vorhanden). */
@@ -1811,7 +1826,7 @@ function fieberStand() {
   const start = S.board.start || ersterTag(S.bew);
   if (!start) return { start: null };
   // Zielspalte (R00079): ein Block aus „Wie lange noch“; gibt es ihn nicht mehr, gilt der letzte
-  const f = S.board.fieber, { bloecke, block, zaehlt, verschwunden } = zielblock(S.bew, S.ui.bf, f.zielspalte);
+  const f = S.board.fieber, { bloecke, block, zaehlt, verschwunden, ausgeschlossen } = zielblock(S.bew, S.ui.bf, f.zielspalte);
   const schluessel = fieberSchluessel(start, S.ui.bf, block && block.schluessel);
   const zielTermin = (S.board.termine || []).find(t => t.ziel) || null;
   const cache = ((S.fieberCache && S.fieberCache.abschnitte || []).find(a => a.schluessel === schluessel) || {}).tage || [];
@@ -1820,7 +1835,7 @@ function fieberStand() {
   const heute = isoD(Date.now());
   if (start <= heute) tage.set(heute, fieberTag(S.bew, S.ui.bf, aufgabe, heute, S.bew.phasen, start, block && block.schluessel));
   const e = { start, ziel: zielTermin && zielTermin.datum, puffer: f.puffer, woche: f.woche, perzentil: f.perzentil, gelb: f.gelb, rot: f.rot };
-  return { start, schluessel, zielTermin, e, cache, tage: [...tage.values()], heute, bloecke, block, zaehlt, verschwunden };
+  return { start, schluessel, zielTermin, e, cache, tage: [...tage.values()], heute, bloecke, block, zaehlt, verschwunden, ausgeschlossen };
 }
 function vFieber() {
   if (!S.bew || !S.fieberCache) return '<div class="leer">lädt …</div>';
@@ -1838,7 +1853,7 @@ ${vZielAuswahl(st)}
 <label>Auflösung <select class="mini-inp" data-fb="aufloesung" aria-label="Auflösung">${[[1, 'Tag'], [7, 'Woche (alle 7 T)'], [30, 'Monat (30 T)']].map(([n, t]) => `<option value="${n}"${n === (f.aufloesung || 1) ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
 <label>Einheit <select class="mini-inp" data-fb="woche" aria-label="Einheit"><option value="5"${f.woche === 5 ? ' selected' : ''}>Arbeitstage</option><option value="7"${f.woche === 7 ? ' selected' : ''}>Kalendertage</option></select></label>
 <details class="fb-zonen"><summary>Zonengrenzen</summary><span>Gelb ab ${zahl('gelb', 0, 'Gelb ab bei 0 % Fortschritt')} % → ${zahl('gelb', 1, 'Gelb ab bei 100 % Fortschritt')} %</span><span>Rot ab ${zahl('rot', 0, 'Rot ab bei 0 % Fortschritt')} % → ${zahl('rot', 1, 'Rot ab bei 100 % Fortschritt')} %</span><span class="muted">Verbrauch bei 0 % und bei 100 % Fortschritt, gerade dazwischen; über 100 % schwarz</span></details>
-${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}${vZielHinweis(st.verschwunden, st.zaehlt ? st.zaehlt.schluessel : '')}</section>`;
+${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}${vZielHinweis(st.verschwunden, st.zaehlt ? st.zaehlt.schluessel : '', st.ausgeschlossen)}</section>`;
   const lauf = u.fieberLauf && u.fieberLauf.schluessel === st.schluessel;
   const status = `<p class="muted fb-status" id="fieber-lauf">${lauf ? `rechnet ${u.fieberLauf.n} von ${u.fieberLauf.von} ${zaehlwort(u.fieberLauf.von, 'Tag', 'Tagen')} …` : `${st.cache.length} ${st.cache.length === 1 ? 'Tag' : 'Tage'} aus dem Cache <span class="mono">berichte/${esc(u.slug)}-fieber.md</span> · heute live gerechnet`} <button class="btn" data-act="fb-verwerfen" title="löscht den Cache dieses Boards und rechnet alle Tage neu">Cache verwerfen und neu rechnen</button></p>`;
   let inhalt;

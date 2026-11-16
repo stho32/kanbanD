@@ -87,7 +87,7 @@ test('R00166 AK 1–3, AK 6 (B0806): eine Board-Datei mit `fever: {target-column
   } finally { await k.stoppen(); }
 });
 
-test('R00166 AK 8 (B0806): Kumulativer Fluss, Durchlaufzeit und „Wie lange noch“ zeigen mit Zielspalte B dasselbe wie ohne — „fertig“ am 03.11. bleibt 1', async ({ browser }) => {
+test('R00166 AK 8 (B0806), seit R00169: Durchlaufzeit und „Wie lange noch“ zeigen mit Zielspalte B dasselbe wie ohne — der Kumulative Fluss folgt der Wahl, „fertig“ am 03.11. ist 3 statt 1', async ({ browser }) => {
   const seiteZu = async kopf => {
     const k = await kanbanStarten(rechenbeispiel(kopf)), kontext = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
     return { k, kontext, page: await kontext.newPage() };
@@ -97,8 +97,9 @@ test('R00166 AK 8 (B0806): Kumulativer Fluss, Durchlaufzeit und „Wie lange noc
     await berichtAm0411(ohne.page, ohne.k, 'fluss');
     await berichtAm0411(mit.page, mit.k, 'fluss');
     const fertigAm0311 = async page => (await zellen(page.locator('.fluss-tab tbody tr'), 'td'))[1].slice(-1);
-    expect(await fertigAm0311(mit.page)).toEqual(['1']);
-    for (const route of ['fluss', 'durchlauf', 'prognose']) {
+    expect(await fertigAm0311(ohne.page)).toEqual(['1']);
+    expect(await fertigAm0311(mit.page)).toEqual(['3']);
+    for (const route of ['durchlauf', 'prognose']) {
       await zumBericht(ohne.page, ohne.k, route);
       await zumBericht(mit.page, mit.k, route);
       const [textOhne, textMit] = await Promise.all([ohne.page, mit.page].map(page => page.locator('#main').innerText()));
@@ -112,9 +113,9 @@ test('R00166 AK 8 (B0806): Kumulativer Fluss, Durchlaufzeit und „Wie lange noc
 });
 
 /* ── F0130 Auswahl in beiden Kopfleisten (Zeichnung D0006 #erledigt-heisst) ── */
-const GILT_FUER = 'gilt für Burndown, Durchsatz und Fever Chart dieses Boards';
+const GILT_FUER = 'gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
 /** Im Durchsatz steht seit R00167 „Zugang ab“ daneben — ein Geltungssatz für beide Auswahlen. */
-const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz und Fever Chart dieses Boards';
+const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
 const auswahl = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
 const gruppe = page => page.getByRole('group', { name: 'Erledigt heißt' });
 const eintraege = page => auswahl(page).locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));
