@@ -12,6 +12,43 @@
   const inhalt = zeichen => `([^${zeichen}\\s](?:[^${zeichen}]*[^${zeichen}\\s])?)`;
   const AN_WORTGRENZEN = new RegExp(`(?<!${WORT}|${WORT}${KLEBT})(?:__${inhalt('_')}__|~~${inhalt('~')}~~|_${inhalt('_')}_)(?!${WORT}|${KLEBT}${WORT}|\\()`, 'gu');
 
+  /** Ersetzt jedes `[Text](Adresse)` durch `ersatz(text, adresse)` — in einem Durchlauf von links nach rechts, mit der
+   *  Rechenzeit linear in der Länge (ADR-0030 Punkt 9, Karte #186 Befund M1). Es findet dieselben Stellen wie das Muster
+   *  `\[([^\]]+)\]\(([^)\s]+)\)`, das von jeder öffnenden Klammer bis zum Zeilenende suchte: der Text reicht von einem `[`
+   *  bis zum nächsten `]`, die Adresse danach in runden Klammern ohne Leerraum. Scheitert ein `[`, scheitern alle weiteren
+   *  vor demselben `]` ebenso — die Suche geht dahinter weiter; das Ende einer Adresse wird je Strecke nur einmal gesucht. */
+  function ersetzeLinks(s, ersatz) {
+    const ADRESSENDE = /[)\s]/g;
+    const stuecke = [];
+    /** Für jeden Beginn zwischen `endeGesuchtAb` und `adressende` endet die Adresse bei `adressende` (Länge von `s`: nirgends). */
+    let endeGesuchtAb = -1, adressende = -1;
+    let uebernommen = 0, sucheAb = 0;
+    while (sucheAb < s.length) {
+      const auf = s.indexOf('[', sucheAb);
+      if (auf < 0) break;
+      const zu = s.indexOf(']', auf + 1);
+      if (zu < 0) break;
+      const beginn = zu + 2;
+      let istLink = false;
+      if (zu > auf + 1 && s[zu + 1] === '(') {
+        if (beginn < endeGesuchtAb || beginn > adressende) {
+          ADRESSENDE.lastIndex = beginn;
+          const fund = ADRESSENDE.exec(s);
+          endeGesuchtAb = beginn;
+          adressende = s.length;
+          if (fund) adressende = fund.index;
+        }
+        istLink = adressende > beginn && s[adressende] === ')';
+      }
+      if (istLink) {
+        stuecke.push(s.slice(uebernommen, auf), ersatz(s.slice(auf + 1, zu), s.slice(beginn, adressende)));
+        uebernommen = sucheAb = adressende + 1;
+      } else sucheAb = zu + 1;
+    }
+    stuecke.push(s.slice(uebernommen));
+    return stuecke.join('');
+  }
+
   /** Eine Zeile ohne Blöcke (ADR-0030 Punkt 7): Code, Links, nackte Adressen, fett, kursiv, durchgestrichen — jede neue Form
    *  der Zeile entsteht hier und gilt damit für beide Einstiege, `markdownInline` und `markdownHtml`. Jede fertige Marke wird
    *  sofort durch einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und
@@ -43,7 +80,7 @@
     const link = (u, innen) => schuetze(`<a href="${u}" target="_blank" rel="noopener">${innen}</a>`);
     const gueltig = u => erlaubt(u.replace(/&amp;/g, '&'));
     let s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));
-    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => gueltig(u) ? link(u, einsetzen(hervorheben(t))) : t);
+    s = ersetzeLinks(s, (t, u) => (gueltig(u) ? link(u, einsetzen(hervorheben(t))) : t));
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)\u0000]+)/g, (m, vor, u) => gueltig(u) ? vor + link(u, u) : m);
     s = hervorheben(s);
     if (!fertig.length) return s;

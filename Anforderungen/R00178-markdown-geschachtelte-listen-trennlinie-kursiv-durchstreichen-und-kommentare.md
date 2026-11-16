@@ -25,6 +25,7 @@ Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#markdown-e
 - [x] **AK 5 Kommentare:** Ein Kommentar zeigt alle Elemente, die die Beschreibung kann (Liste, Link, Code, Tabelle); ein mehrzeiliger Kommentar behält seine Zeilenumbrüche; beim Bearbeiten steht der Rohtext im Feld.
 - [x] **AK 6 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, in Beschreibung und Kommentar; kein Link liegt in einem Knopf.
 - [x] **AK 7 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: `_…_`, `__…__` und `~~…~~` an Wortgrenzen werden formatiert · `---` wird Linie · `####` wird Überschrift · eingerückte Listenpunkte werden geschachtelt statt flach · Kommentare erscheinen formatiert statt roh.
+- [x] **AK 8 Rechenzeit (Nachtrag nach dem Security-Review, Befund M1):** Die Rechenzeit wächst linear mit der Länge einer Zeile, auch wenn einem öffnenden Zeichen das Gegenstück fehlt. Probe: `'['.repeat(200000)`, `'[a'.repeat(100000)`, `'[x](a'.repeat(40000)` und `'- ' + '['.repeat(200000)` rendern über `markdownHtml` und `markdownInline` je unter 200 ms; dieselbe Zeichenzahl in einer Zeile kostet höchstens das Vierfache von zehn kurzen Zeilen. `[k](http://a/)`, `[a [b](http://x/)` und `[k](http://[::1]/)` ergeben weiter je einen Link.
 
 ## Tests
 

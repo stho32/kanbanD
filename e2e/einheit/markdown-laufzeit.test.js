@@ -1,23 +1,29 @@
 // Rechenzeit des Markdowns (R00178 AK 8, Karte #186 Befund M1, ADR-0030 Punkt 9; node --test).
 // Die Klasse heißt „öffnendes Zeichen ohne Gegenstück“: ein Muster, das von jedem öffnenden Zeichen bis zum Zeilenende sucht,
 // rechnet quadratisch mit der Zeilenlänge — eine Zeile aus 200 000 `[` fror das Öffnen der Aufgabe für 51 s ein.
-// Geprüft wird je Fall die Zeit (unter 200 ms) und das Wachstum (zehnfache Länge, höchstens etwa fünfzehnfache Zeit).
+// Geprüft wird je Fall die Rechenzeit (unter 200 ms) und das Wachstum (zehnfache Länge: linear statt quadratisch).
 const test = require('node:test');
 const assert = require('node:assert');
 const { markdownHtml, markdownInline } = require('../../web/markdown.js');
 const { pruefeStruktur, linkAdressen } = require('./hilfen/markdown-struktur.js');
 
-const LAENGE = 200000, GRENZE_MS = 200, WACHSTUM = 15;
+/** Wachstum: die große Eingabe einmal gegen die zehnmal kleinere zehnmal hintereinander — gleich viele Zeichen, gleich viel
+ *  Speicher. Linear ergibt etwa 1, quadratisch etwa 10; die Grenze liegt dazwischen. */
+const LAENGE = 200000, GRENZE_MS = 200, WACHSTUM = 4;
 const bis = (stueck, laenge) => stueck.repeat(Math.ceil(laenge / stueck.length));
 
-/** Der schnellste von mehreren Läufen: gefragt ist die Arbeit des Renderers, nicht die Last des Rechners. Ein Lauf weit
- *  über der Grenze wird nicht wiederholt — sonst dauerte die rote Probe Minuten. */
-function schnellster(rendern, eingabe) {
+/** Rechenzeit des eigenen Prozesses in ms (nicht die Wanduhr): die Suite läuft neben anderen Prozessen, und gefragt ist
+ *  die Arbeit des Renderers, nicht die Last des Rechners. */
+const rechenzeitMs = () => { const { user, system } = process.cpuUsage(); return (user + system) / 1000; };
+
+/** Der schnellste von mehreren Läufen, je `mal` Aufrufe hintereinander. Ein Lauf weit über der Grenze wird nicht
+ *  wiederholt — sonst dauerte die rote Probe Minuten. */
+function schnellster(rendern, eingabe, mal = 1) {
   let dauerMs = Infinity, html = '';
-  for (let lauf = 0; lauf < 5 && (lauf === 0 || dauerMs < 5 * GRENZE_MS); lauf++) {
-    const beginn = process.hrtime.bigint();
-    html = rendern(eingabe);
-    dauerMs = Math.min(dauerMs, Number(process.hrtime.bigint() - beginn) / 1e6);
+  for (let lauf = 0; lauf < 7 && (lauf === 0 || dauerMs < 5 * GRENZE_MS); lauf++) {
+    const beginn = rechenzeitMs();
+    for (let aufruf = 0; aufruf < mal; aufruf++) html = rendern(eingabe);
+    dauerMs = Math.min(dauerMs, rechenzeitMs() - beginn);
   }
   return { dauerMs, html };
 }
@@ -68,15 +74,15 @@ const FAELLE = [
 
 for (const [einstieg, rendern] of [['markdownHtml', markdownHtml], ['markdownInline', markdownInline]]) {
   for (const [name, baustein, vorspann = '', nachspann = ''] of FAELLE) {
-    test(`Rechenzeit ${einstieg} — ${name}: ${LAENGE} Zeichen unter ${GRENZE_MS} ms, linear in der Länge`, { todo: "erwartet rot bis zur Behebung von M1" }, () => {
+    test(`Rechenzeit ${einstieg} — ${name}: ${LAENGE} Zeichen unter ${GRENZE_MS} ms, linear in der Länge`, () => {
       const eingabe = laenge => vorspann + bis(baustein, laenge) + nachspann.slice(0, laenge + 10);
-      const klein = schnellster(rendern, eingabe(LAENGE / 10));
       const gross = schnellster(rendern, eingabe(LAENGE));
+      const zehnKleine = schnellster(rendern, eingabe(LAENGE / 10), 10);
       // unter einer Millisekunde misst die Uhr Rauschen: das Wachstum zählt gegen mindestens 1 ms
-      const faktor = gross.dauerMs / Math.max(klein.dauerMs, 1);
-      console.log(`Rechenzeit ${einstieg} ${name}: ${klein.dauerMs.toFixed(1)} ms → ${gross.dauerMs.toFixed(1)} ms (×${faktor.toFixed(1)})`);
+      const faktor = gross.dauerMs / Math.max(zehnKleine.dauerMs, 1);
+      console.log(`Rechenzeit ${einstieg} ${name}: zehnmal ${LAENGE / 10} Zeichen ${zehnKleine.dauerMs.toFixed(1)} ms, einmal ${LAENGE} Zeichen ${gross.dauerMs.toFixed(1)} ms (×${faktor.toFixed(1)})`);
       assert.ok(gross.dauerMs < GRENZE_MS, `${gross.dauerMs.toFixed(0)} ms für ${LAENGE} Zeichen`);
-      assert.ok(faktor <= WACHSTUM, `zehnfache Länge kostet das ${faktor.toFixed(1)}-Fache (${klein.dauerMs.toFixed(1)} ms → ${gross.dauerMs.toFixed(1)} ms)`);
+      assert.ok(faktor <= WACHSTUM, `dieselbe Zeichenzahl in einer Zeile kostet das ${faktor.toFixed(1)}-Fache von zehn kurzen Zeilen (${zehnKleine.dauerMs.toFixed(1)} ms → ${gross.dauerMs.toFixed(1)} ms)`);
       assert.ok(gross.html.length <= 8 * eingabe(LAENGE).length, `Ausgabe ${gross.html.length} Zeichen`);
     });
   }

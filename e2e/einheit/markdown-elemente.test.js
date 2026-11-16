@@ -244,14 +244,16 @@ test('Zufallslauf: 8000 Texte aus Einrückung, Listen, Linien, Unterstrichen, Ti
   assert.ok(mitLinkInListe >= 600, `nur ${mitLinkInListe} mit Link in einer Liste`);
 });
 
-/** Rendert, misst und prüft: höchstens `faktor` × Eingabe, unter 200 ms (ADR-0030 Punkt 9). Gewertet wird der schnellste
- *  von fünf Läufen: die Suite läuft neben anderen Prozessen, und gefragt ist die Arbeit des Renderers, nicht die Last des Rechners. */
+/** Rendert, misst und prüft: höchstens `faktor` × Eingabe, unter 200 ms (ADR-0030 Punkt 9). Gewertet wird die Rechenzeit des
+ *  eigenen Prozesses im schnellsten von fünf Läufen: die Suite läuft neben anderen Prozessen, und gefragt ist die Arbeit des
+ *  Renderers, nicht die Last des Rechners. */
 function miss(name, eingabe, faktor = 3) {
+  const rechenzeitMs = () => { const { user, system } = process.cpuUsage(); return (user + system) / 1000; };
   let html = '', dauerMs = Infinity;
   for (let lauf = 0; lauf < 5; lauf++) {
-    const beginn = process.hrtime.bigint();
+    const beginn = rechenzeitMs();
     html = markdownHtml(eingabe);
-    dauerMs = Math.min(dauerMs, Number(process.hrtime.bigint() - beginn) / 1e6);
+    dauerMs = Math.min(dauerMs, rechenzeitMs() - beginn);
   }
   console.log(`Größe ${name}: ${eingabe.length} Zeichen Eingabe → ${html.length} Zeichen Ausgabe in ${dauerMs.toFixed(1)} ms`);
   assert.ok(html.length <= faktor * eingabe.length, `${name}: Ausgabe ${html.length} Zeichen aus ${eingabe.length}`);
