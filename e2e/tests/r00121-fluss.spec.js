@@ -278,9 +278,12 @@ test('R00121: schmales Layout (höchstens acht x-Marken, kein Querscrollen) und 
     await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
     const datei = k.lies('boards/fabrik.md'), log = k.git('log', '--oneline');
     await page.setViewportSize({ width: 375, height: 900 });
+    // feste Browser-Uhr (ADR-0026 Regel 6): 01.11.–16.11. sind 16 Tage — die Tageszahl, bei der es neun Marken waren (#173)
+    await page.clock.setFixedTime(new Date('2026-11-16T12:00:00+01:00'));
     await page.goto(k.adresse + '#/berichte/fluss');
     const svg = diagramm(page);
     await expect(svg).toBeVisible();
+    await expect(svg.locator('text.achse-x').last().locator('tspan')).toHaveText(['16.11.', '2026']);
     expect(await svg.locator('text.achse-x').count()).toBeLessThanOrEqual(8);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     expect((await page.locator('.fluss-tabs > summary').boundingBox()).height).toBeGreaterThanOrEqual(24);
