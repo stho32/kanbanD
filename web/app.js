@@ -1130,14 +1130,55 @@ function zuweisenTaste(e, t) {
   else if (e.key === 'Enter' && t.tagName !== 'BUTTON') { e.preventDefault(); act('zuweisen-ok'); }
 }
 
+/* Datum zu Ende tippen (R00179, ADR-0010 N10 Ziffer 2): Ein Zeichnen ersetzt das Datumsfeld, und das neue Feld beginnt
+   wieder beim Tag — der Browser gibt nicht preis, in welchem Teil (Tag, Monat, Jahr) getippt wurde. Solange in einem
+   Datumsfeld getippt wird, wartet das Zeichnen deshalb wie beim Zug und wird danach genau einmal nachgeholt. Die Eingabe
+   beginnt mit einer Ziffer und endet ohne Frist: wenn das Datum gespeichert oder verworfen ist, das Feld verlassen wird,
+   eine Taste etwas auslöst (Esc, Tastenkürzel), ein Zeiger woanders drückt oder die Adresse wechselt. */
+/** Das Datumsfeld, in dem gerade getippt wird — mit und ohne Knopf. */
+let datumseingabe = null;
+/** Wahr zwischen Drücken und Loslassen eines Zeigers: das nachgeholte Zeichnen ersetzte sonst das Ziel des Klicks. */
+let zeigerUnten = false;
+/** Nur ein Feld, das den Fokus trägt, hält das Zeichnen auf: verliert es ihn, ohne dass der Browser ein Verlassen meldet
+    (ein verborgenes Feld), bliebe die Seite sonst stehen. */
+const datumseingabeLaeuft = () => datumseingabe !== null && document.activeElement === datumseingabe;
+function datumseingabeBeenden() {
+  if (datumseingabe === null) return;
+  datumseingabe = null;
+  // erst nach dem, was die Eingabe beendet hat: zeichnet es selbst (Speichern, Fenster schließen), ist nichts mehr nachzuholen
+  setTimeout(zeichnenNachholen, 0);
+}
+function zeichnenNachholen() {
+  if (S.ui.nachDatum && !zeigerUnten) render();
+}
+document.addEventListener('keydown', e => {
+  const bedeutung = datumstaste(e);
+  const imDatumsfeld = Boolean(e.target.matches) && e.target.matches('input[type="date"]');
+  if (bedeutung === 'beginnt' && imDatumsfeld) datumseingabe = e.target;
+  if (bedeutung === 'endet') datumseingabeBeenden();
+}, true);
+document.addEventListener('pointerdown', e => {
+  zeigerUnten = true;
+  // ein Zeigerdruck im selben Feld setzt nur die Marke um; die Eingabe läuft weiter
+  if (e.target !== datumseingabe) datumseingabeBeenden();
+}, true);
+for (const zeigerLos of ['pointerup', 'pointercancel']) document.addEventListener(zeigerLos, () => {
+  zeigerUnten = false;
+  // nach dem Klick, der auf das Loslassen folgt
+  setTimeout(zeichnenNachholen, 0);
+}, true);
+
 function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
+  // Während einer getippten Datumseingabe ebenso wenig — das neue Feld begänne wieder beim Tag (R00179).
+  if (datumseingabeLaeuft()) { S.ui.nachDatum = true; return; }
   // Ein Feld, das auf „Eingabe verwerfen“ wartet, übersteht das Ersetzen nicht: vorher verlassen, damit sein Entwurf nicht still verloren geht
   verlassenNachholen();
   adresseNachfuehren();
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
+  S.ui.nachDatum = false;
   S.ui.stufe = stufeAusBreite(innerWidth);
   const aktiv = document.activeElement;
   // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
@@ -2578,6 +2619,8 @@ function fuehrungNachziehen(element) {
 document.addEventListener('focusin', e => fuehrungNachziehen(e.target));
 document.addEventListener('focusin', () => fokusAusDemHinweis());
 document.addEventListener('focusout', e => {
+  // Verlassen beendet die getippte Datumseingabe (R00179); solange sie läuft, ersetzt kein Zeichnen das Feld
+  if (e.target === datumseingabe) datumseingabeBeenden();
   // Ersetzen ist kein Verlassen; ein Feld mit Entwurf, dessen Fokus auf „Eingabe verwerfen“ geht, ist noch nicht verlassen (R00155 54-13)
   if (!S.neuzeichnen && wartetAufVerwerfen(e.target, e.relatedTarget)) return;
   if (!S.neuzeichnen && istVerwerfenKnopf(e.target) && feldVorDemVerwerfen) {
@@ -2672,6 +2715,8 @@ function datumsaenderungWirkt(feld) {
   if (datumstippen && datumstippen.feld === feld) eingabe.jahrVorDerZiffer = datumstippen.jahrVorDerZiffer;
   const urteil = datumsaenderung(eingabe);
   if (urteil === 'halten') { gehaltenesDatumsfeld = feld; return false; }
+  // gespeichert oder verworfen: die getippte Eingabe ist zu Ende, was jetzt zeichnet, zeichnet (R00179)
+  if (datumseingabe === feld) datumseingabeBeenden();
   if (gehaltenesDatumsfeld === feld) gehaltenesDatumsfeld = null;
   if (urteil === 'verwerfen') { feld.value = feld.defaultValue; return false; }
   return true;
@@ -2853,6 +2898,8 @@ document.addEventListener('input', e => {
     danach öffnet, gilt —, die Ansicht folgt mit dem Laden. */
 function adresseGewechselt() {
   if (rueckwegUnterwegs && rueckwegAngekommen()) return;
+  // die neue Ansicht wartet nicht auf ein Datumsfeld der alten (R00179)
+  datumseingabeBeenden();
   const eingerichtet = Boolean(S.zustand) && Boolean(S.zustand.eingerichtet);
   if (eingerichtet && location.hash !== adresseGefolgt) { fensterDerAdresseFolgen(location.hash); render(); }
   laden();

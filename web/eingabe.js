@@ -84,5 +84,18 @@
     return 'halten';
   }
 
-  Object.assign(ziel, { zeilenAusText, schnelleingabe, datumLesen, jahrDesDatums, datumFertig, datumsaenderung });
+  /**
+   * Was eine Taste für die getippte Eingabe in einem Datumsfeld bedeutet (R00179): „beginnt“ — eine Ziffer, die Eingabe läuft
+   * (weiter); „endet“ — Esc und jedes Tastenkürzel (Strg+Enter legt an, Alt+Pfeil geht zurück) lösen etwas aus, das
+   * gezeichnet werden muss; sonst „bleibt“ (Trenner, Pfeile, Tab, Rücktaste, Enter: sie beginnen keine Eingabe und
+   * beenden keine — Enter über einem fertigen Datum speichert, und das Speichern beendet sie).
+   */
+  function datumstaste({ key, ctrlKey, metaKey, altKey }) {
+    const istKuerzel = ctrlKey || metaKey || altKey;
+    if (istKuerzel || key === 'Escape') return 'endet';
+    if (/^\d$/.test(key)) return 'beginnt';
+    return 'bleibt';
+  }
+
+  Object.assign(ziel, { zeilenAusText, schnelleingabe, datumLesen, jahrDesDatums, datumFertig, datumsaenderung, datumstaste });
 })(typeof module !== 'undefined' ? module.exports : window);

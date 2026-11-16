@@ -93,3 +93,25 @@ test('R00173 B1: Tag und Monat getippt, das Jahr stand schon im Feld und wurde n
 test('R00173 B1: der 29.02. ist während des Tippens des Jahrs nur zeitweise ein Datum (0020 ja, 0202 nein) — mit dem fertigen 2024 wird gespeichert', () => {
   assert.deepStrictEqual([['0020-02-29', null], ['', 20], ['2024-02-29', 20]].map(([wert, vorher]) => getippt(wert, vorher)), ['halten', 'halten', 'speichern']);
 });
+
+/* R00179: welche Taste eine getippte Datumseingabe beginnt, bestehen lässt oder beendet */
+const { datumstaste } = require('../../web/eingabe.js');
+const taste = (key, zusatz = {}) => datumstaste({ key, ctrlKey: false, metaKey: false, altKey: false, ...zusatz });
+
+test('R00179: jede Ziffer beginnt die getippte Datumseingabe bzw. setzt sie fort', () => {
+  assert.deepStrictEqual(['0', '3', '9'].map(key => taste(key)), ['beginnt', 'beginnt', 'beginnt']);
+});
+
+test('R00179: Trenner, Pfeile, Tab, Rücktaste, Umschalt und Enter lassen die Eingabe, wie sie ist — sie lösen nichts aus, das gezeichnet werden müsste', () => {
+  for (const key of ['.', '/', '-', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace', 'Shift', 'x', 'Enter']) assert.strictEqual(taste(key), 'bleibt', key);
+});
+
+test('R00179: Esc und jedes Tastenkürzel beenden die Eingabe — was sie auslösen, darf nicht hinter dem Aufschub hängen bleiben', () => {
+  assert.strictEqual(taste('Escape'), 'endet');
+  assert.strictEqual(taste('Enter', { ctrlKey: true }), 'endet');
+  assert.strictEqual(taste('z', { ctrlKey: true }), 'endet');
+  assert.strictEqual(taste('z', { metaKey: true }), 'endet');
+  assert.strictEqual(taste('ArrowLeft', { altKey: true }), 'endet');
+  // auch eine Ziffer mit Strg ist ein Kürzel, keine Eingabe
+  assert.strictEqual(taste('1', { ctrlKey: true }), 'endet');
+});
