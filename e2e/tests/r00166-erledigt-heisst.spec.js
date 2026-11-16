@@ -261,3 +261,51 @@ test('R00166 (B0808): ohne gewähltes „Ich bin …“ greift die Sperre des Fe
     expect(k.git('rev-parse', 'HEAD')).toBe(stand);
   } finally { await k.stoppen(); }
 });
+
+const hinweisWeg = page => gruppe(page).locator('#fb-ziel-weg');
+/** Die Zeile bei einer Wahl, die es nicht mehr gibt: Eintrag am Ende der Liste gewählt, Hinweis hinter dem Geltungssatz. */
+async function erwarteVerschwunden(page, name) {
+  expect((await eintraege(page)).slice(-1)).toEqual([[`„${name}“ — gibt es nicht mehr`, name, true]]);
+  await expect(hinweisWeg(page)).toHaveText(`Zielspalte „${name}“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.`);
+  await expect(hinweisWeg(page)).toHaveClass('fehl');
+  expect(await hinweisWeg(page).evaluate(h => h.previousElementSibling.textContent)).toBe(GILT_FUER);
+}
+
+test('R00166 US-4, AK 9 (B0809): `target-column: Abnahme` — Burndown und Durchsatz zeigen den Hinweis aus dem Fever Chart und die Zahlen ohne Wahl', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('Abnahme')));
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await erwarteVerschwunden(page, 'Abnahme');
+    await expect.poll(() => burndownJeTag(page)).toEqual(OHNE_WAHL.burndown);
+    await zumBericht(page, k, 'durchsatz');
+    await erwarteVerschwunden(page, 'Abnahme');
+    expect(await durchsatzJeTag(page)).toEqual(OHNE_WAHL.durchsatz);
+    await zumBericht(page, k, 'fieber');
+    await expect(page.locator('#fb-ziel-weg')).toHaveText('Zielspalte „Abnahme“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.');
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 AK 9 (B0809): schließt der Berichtsfilter die gewählte Spalte B aus, gilt derselbe Hinweis — gerechnet wird bis „Erledigt“', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel('---\nfever: {target-column: B}\nreport-filter: {exclude-columns: [B]}\n---\n\n'));
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await erwarteVerschwunden(page, 'B');
+    // ohne Wahl und ohne Spalte B: am 03.11. verlassen #1 und #2 den Bestand (− entfernt 2), #3 ist erledigt; am 04.11. kommen beide zurück
+    await expect.poll(() => burndownJeTag(page)).toEqual([['3', '3', '3', '0', '0'], ['0', '1', '0', '1', '2'], ['2', '3', '2', '0', '0']]);
+    await zumBericht(page, k, 'durchsatz');
+    await erwarteVerschwunden(page, 'B');
+    expect(await durchsatzJeTag(page)).toEqual(OHNE_WAHL.durchsatz);
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 (B0809): scheitert das Speichern, steht der Fehler als Meldung in der Zeile der Auswahl', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await page.route('**/api/boards/fabrik/fieber', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ fehler: 'geht gerade nicht' }) }));
+    await auswahl(page).selectOption({ label: 'Spalte „B“' });
+    await expect(gruppe(page).getByRole('alert')).toHaveText('geht gerade nicht');
+    await expect(auswahl(page)).toHaveValue('');
+    expect(k.lies(BOARD)).not.toContain('fever');
+  } finally { await k.stoppen(); }
+});

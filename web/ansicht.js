@@ -1232,12 +1232,17 @@ function vZielAuswahl(ziel) {
   if (ziel.verschwunden) verschwunden = `<option value="${esc(ziel.verschwunden)}" selected>„${esc(ziel.verschwunden)}“ — gibt es nicht mehr</option>`;
   return `<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${eintraege}${verschwunden}</select></label><span class="muted">gilt für Burndown, Durchsatz und Fever Chart dieses Boards</span>`;
 }
-/** Die Zeile „Erledigt heißt“ über Burndown und Durchsatz (R00166, Zeichnung D0006 #erledigt-heisst): Auswahl, Geltungssatz
-    und ein Fehler des Speicherns. */
+/** Hinweis zu einer gespeicherten Zielspalte, die es nicht mehr gibt (R00079) — `gerechnetMit` nennt, was stattdessen zählt. */
+function vZielHinweis(verschwunden, gerechnetMit) {
+  if (!verschwunden) return '';
+  return `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(gerechnetMit)}“.</span>`;
+}
+/** Die Zeile „Erledigt heißt“ über Burndown und Durchsatz (R00166, Zeichnung D0006 #erledigt-heisst): Auswahl, Geltungssatz,
+    ein Fehler des Speicherns und der Hinweis auf eine verschwundene Wahl — dann rechnen beide bis zum Standard. */
 function vErledigtHeisst(ziel) {
   let fehler = '';
   if (S.ui.fbFehler) fehler = `<span class="fehl" role="alert">${esc(S.ui.fbFehler)}</span>`;
-  return `<section class="fb-einst" role="group" aria-label="Erledigt heißt">${vZielAuswahl(ziel)}${fehler}</section>`;
+  return `<section class="fb-einst" role="group" aria-label="Erledigt heißt">${vZielAuswahl(ziel)}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard)}</section>`;
 }
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
@@ -1686,7 +1691,7 @@ ${vZielAuswahl(st)}
 <label>Auflösung <select class="mini-inp" data-fb="aufloesung" aria-label="Auflösung">${[[1, 'Tag'], [7, 'Woche (alle 7 T)'], [30, 'Monat (30 T)']].map(([n, t]) => `<option value="${n}"${n === (f.aufloesung || 1) ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
 <label>Einheit <select class="mini-inp" data-fb="woche" aria-label="Einheit"><option value="5"${f.woche === 5 ? ' selected' : ''}>Arbeitstage</option><option value="7"${f.woche === 7 ? ' selected' : ''}>Kalendertage</option></select></label>
 <details class="fb-zonen"><summary>Zonengrenzen</summary><span>Gelb ab ${zahl('gelb', 0, 'Gelb ab bei 0 % Fortschritt')} % → ${zahl('gelb', 1, 'Gelb ab bei 100 % Fortschritt')} %</span><span>Rot ab ${zahl('rot', 0, 'Rot ab bei 0 % Fortschritt')} % → ${zahl('rot', 1, 'Rot ab bei 100 % Fortschritt')} %</span><span class="muted">Verbrauch bei 0 % und bei 100 % Fortschritt, gerade dazwischen; über 100 % schwarz</span></details>
-${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}${st.verschwunden ? `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(st.verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(st.zaehlt ? st.zaehlt.schluessel : '')}“.</span>` : ''}</section>`;
+${u.fbFehler ? `<span class="fehl" role="alert">${esc(u.fbFehler)}</span>` : ''}${vZielHinweis(st.verschwunden, st.zaehlt ? st.zaehlt.schluessel : '')}</section>`;
   const lauf = u.fieberLauf && u.fieberLauf.schluessel === st.schluessel;
   const status = `<p class="muted fb-status" id="fieber-lauf">${lauf ? `rechnet ${u.fieberLauf.n} von ${u.fieberLauf.von} ${zaehlwort(u.fieberLauf.von, 'Tag', 'Tagen')} …` : `${st.cache.length} ${st.cache.length === 1 ? 'Tag' : 'Tage'} aus dem Cache <span class="mono">berichte/${esc(u.slug)}-fieber.md</span> · heute live gerechnet`} <button class="btn" data-act="fb-verwerfen" title="löscht den Cache dieses Boards und rechnet alle Tage neu">Cache verwerfen und neu rechnen</button></p>`;
   let inhalt;
