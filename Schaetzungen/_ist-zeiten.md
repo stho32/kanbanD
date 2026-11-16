@@ -651,3 +651,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0808 Wahl speichern; alle drei Berichte folgen | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0809 Hinweis „gibt es nicht mehr“ in beiden Berichten; Probe im echten Programm und Gate | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0810 Burndown nennt den Block in Kopfleiste, Kennzahl, Tooltip und Legende | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0811 Durchsatz nennt den Block und sagt, dass „Von“ noch fehlt; Probe im echten Programm und Gate | Standard | 1-2h | 0,2h | 0,2h | autonom |

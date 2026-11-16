@@ -1192,10 +1192,10 @@ function burndownWort(groesse, zielWorte) {
 /** Legende unter dem Diagramm (R00164 AK 9): die drei Größen, ab wo „+“ zählt, und warum „erledigt“ über dem Durchsatz liegen
     kann; mit gewähltem Zielblock dazu, was „erledigt“ hier heißt. */
 function vBurndownLegende(zielWorte) {
-  let erledigtHeisst = '';
-  if (zielWorte) erledigtHeisst = `<br>Erledigt heißt hier: ${esc(zielWorte.lang)}. Ein Zug zurück nach links zählt als „+ hinzugekommen“.`;
+  let wasErledigtHeisst = '';
+  if (zielWorte) wasErledigtHeisst = `<br>Erledigt heißt hier: ${esc(zielWorte.lang)}. Ein Zug zurück nach links zählt als „+ hinzugekommen“.`;
   return `<div class="dlegende bd-legende" id="bd-legende">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>
-<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.${erledigtHeisst}</p>`;
+<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.${wasErledigtHeisst}</p>`;
 }
 /** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
 function vBurndownKennzahl(tage, zielWorte) {
@@ -1355,12 +1355,17 @@ ${fadenkreuz(FLUSS_O, unten)}
 const DUS_B = 800, DUS_H = 272, DUS_L = 44, DUS_R = 120, DUS_O = 24, DUS_U = 44;
 /** Einheitenwort („je Woche“) der Auflösung. */
 const dusWort = e => (DURCHSATZ_EINHEITEN.find(([k]) => k === e) || [null, ''])[1];
+/** Zusatz „bis „B““ der Durchsatz-Texte bei gewähltem Zielblock (R00166 AK 10), eingefasst von `davor` und `danach`; ohne Wahl leer. */
+function dusBis(zielWorte, davor, danach = '') {
+  if (!zielWorte) return '';
+  return `${davor}${esc(zielWorte.bis)}${danach}`;
+}
 function vDurchsatz() {
   const u = S.ui;
-  const kopf = `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· erledigte Aufgaben je Periode</span></div>`;
-  if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
+  const kopfMit = bis => `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· erledigte Aufgaben je Periode${bis}</span></div>`;
+  if (!S.bew) return `${kopfMit('')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
   const einheit = DURCHSATZ_EINHEITEN.some(([k]) => k === u.dusEinheit) ? u.dusEinheit : DURCHSATZ_STANDARD;
-  const ziel = erledigtHeisst();
+  const ziel = erledigtHeisst(), kopf = kopfMit(dusBis(ziel.worte, ' · '));
   const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit, ziel.gewaehlt);
   const zurueck = leistenAnzahl(u.bf, BERICHTSLEISTEN.durchsatz) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="durchsatz">Zurücksetzen</button>' : '';
   const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}<div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
@@ -1368,29 +1373,31 @@ function vDurchsatz() {
   if (d.zielAusgeschlossen) return zustand(`Die Zielspalte „${esc(d.ziel.name)}“ ist ausgeschlossen.`);
   if (!d.gesamt) return zustand('Keine Aufgabe im Zeitraum.');
   return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}
-${vDurchsatzKennzahlen(d)}
+${vDurchsatzKennzahlen(d, ziel.worte)}
 ${vDurchsatzUm(einheit)}
-${vDurchsatzFlaeche(d, einheit)}${vDurchsatzLegende(d, einheit)}
+${vDurchsatzFlaeche(d, einheit, ziel.worte)}${vDurchsatzLegende(d, einheit, ziel.worte)}
 ${vDurchsatzTabelle(d, einheit)}
 ${d.ausgenommen ? vDurchsatzNicht(d.ausgenommen) : ''}</div>`;
 }
 /** Kennzahlenzeile (M4): Gesamt, Ø je Periode und Zahl der Perioden folgen der Auflösung. */
-function vDurchsatzKennzahlen(d) {
+function vDurchsatzKennzahlen(d, zielWorte) {
   const n = d.perioden.length;
-  return `<div class="kennzahlen" id="dus-kennzahl"><span>Gesamt <b>${d.gesamt}</b></span><span>Ø <b>${zahl1(d.durchschnitt)}</b> ${dusWort(d.einheit)}</span><span><b>${n}</b> ${n === 1 ? 'Periode' : 'Perioden'}</span></div>`;
+  return `<div class="kennzahlen" id="dus-kennzahl"><span>Gesamt <b>${d.gesamt}</b>${dusBis(zielWorte, ' ')}</span><span>Ø <b>${zahl1(d.durchschnitt)}</b> ${dusWort(d.einheit)}</span><span><b>${n}</b> ${n === 1 ? 'Periode' : 'Perioden'}</span></div>`;
 }
 /** Auflösungs-Umschalter (M3): .seg-Radiogruppe mit zugänglichem Namen, sichtbarem Auswahlzustand, per Tastatur bedienbar. */
 function vDurchsatzUm(einheit) {
   return `<div class="dus-um"><span class="bf-k">Auflösung</span><span class="seg" role="radiogroup" aria-label="Auflösung">${DURCHSATZ_EINHEITEN.map(([k, t]) => `<span class="${k === einheit ? 'an' : ''}" role="radio" aria-checked="${k === einheit}" data-act="dus-einheit" data-arg="${k}">${t}</span>`).join('')}</span></div>`;
 }
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
-/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). */
-function vDurchsatzLegende(d, einheit) {
-  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
+/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). Darunter, dass „Von“
+    noch fehlt (R00166 AK 10). */
+function vDurchsatzLegende(d, einheit, zielWorte) {
+  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>
+<p class="bd-hinweis">„Von“ lässt sich noch nicht wählen: gezählt wird jede Aufgabe, die das Ziel erreicht, gleich aus welcher Spalte sie kommt.</p>`;
 }
 /** Die Zeichenfläche: je Periode ein Balken in --kd-accent, Grundlinie und eine Marke je Periode (auch bei 0),
     y-Achse bis zum höchsten Wert, gestrichelte Ø-Linie in --kd-warn mit Halo-Beschriftung, x-Achse je Auflösung. */
-function vDurchsatzFlaeche(d, einheit) {
+function vDurchsatzFlaeche(d, einheit, zielWorte) {
   const t = d.perioden, max = Math.max(1, ...t.map(x => x.anzahl));
   const breite = DUS_B - DUS_L - DUS_R, unten = DUS_H - DUS_U;
   const sy = v => Math.round(DUS_O + (unten - DUS_O) * (1 - v / max));
@@ -1406,7 +1413,7 @@ function vDurchsatzFlaeche(d, einheit) {
       ? `<text class="achse achse-x" x="${x}" y="${unten + 18}" text-anchor="middle"><tspan x="${x}">${esc(m.oben)}</tspan><tspan x="${x}" dy="12">${esc(m.unten)}</tspan></text>`
       : `<text class="achse achse-x" x="${x}" y="${unten + 22}" text-anchor="middle">${esc(m.oben)}</text>`;
   };
-  S.diagrammTip = tg => { const p = t.find(x => tg >= x.von && tg < x.bis); return p ? `<b>${esc(durchsatzTip(p, einheit))}</b> · ${p.anzahl}` : ''; };
+  S.diagrammTip = tg => { const p = t.find(x => tg >= x.von && tg < x.bis); return p ? `<b>${esc(durchsatzTip(p, einheit))}</b> · ${p.anzahl}${dusBis(zielWorte, ' ')}` : ''; };
   const svg = `<svg class="diagramm dus" viewBox="0 0 ${DUS_B} ${DUS_H}" role="img" aria-label="Durchsatz je Zeitraum: erledigte Aufgaben je Periode" ${achsAttribut(DUS_L, breite, t[0].von, t1)}>
 ${ticks.map(v => `<line class="gitter" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse" x="${DUS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
 <line class="grund" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${unten}" y2="${unten}"></line>

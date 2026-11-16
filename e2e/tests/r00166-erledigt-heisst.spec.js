@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, thema, breiteSetzen, kontrastVerstoesse } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
@@ -368,3 +368,89 @@ test.describe('R00166 Texte auf einem Board mit Phasen', () => {
     await expect(page.locator('.bd-hinweis')).toContainText(`Erledigt heißt hier: „Entwicklertest“ durchlaufen. ${ZUG_ZURUECK}`);
   });
 });
+
+const VON_FEHLT = '„Von“ lässt sich noch nicht wählen: gezählt wird jede Aufgabe, die das Ziel erreicht, gleich aus welcher Spalte sie kommt.';
+const durchsatzDiagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode' });
+/** Zeigt im Durchsatz „je Tag“ des Beispiels auf den Balkenplatz des Tages: drei Perioden auf 636 Einheiten Breite ab x = 44. */
+async function zeigeAufPeriode(page, tagImNovember) {
+  const svg = durchsatzDiagramm(page);
+  const [vb, kasten] = await Promise.all([svg.getAttribute('viewBox'), svg.boundingBox()]);
+  const [, , w, h] = vb.split(' ').map(Number), s = Math.min(kasten.width / w, kasten.height / h);
+  const x = 44 + (tagImNovember - 2 + 0.5) * 636 / 3;
+  await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + 120 * s);
+  return page.locator('#tooltip');
+}
+async function durchsatzJeTagOeffnen(page, k) {
+  await berichtAm0411(page, k, 'durchsatz');
+  await page.getByRole('radio', { name: 'je Tag' }).click();
+  await expect(page.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
+}
+
+test('R00166 US-2, AK 10 (B0811): mit Zielspalte B nennt der Durchsatz „bis „B““ in Kopfleiste, Kennzahl, Tooltip und Legende und sagt, dass „Von“ noch fehlt', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+  try {
+    await durchsatzJeTagOeffnen(page, k);
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode · bis „B“');
+    await expect(page.locator('#dus-kennzahl span')).toHaveText(['Gesamt 3 bis „B“', 'Ø 1,0 je Tag', '3 Perioden']);
+    await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · 3 bis „B“');
+    await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben (bis „B“)');
+    await expect(page.locator('p.bd-hinweis')).toHaveText(VON_FEHLT);
+    const [legende, satz] = await Promise.all([page.locator('.fluss-leg'), page.locator('p.bd-hinweis')].map(o => o.boundingBox()));
+    expect(satz.y).toBeGreaterThanOrEqual(legende.y + legende.height);
+    expect(await zellen(page.locator('.fluss-tab thead tr'), 'th')).toEqual([['Zeitraum', 'Erledigt']]);
+  } finally { await k.stoppen(); }
+});
+
+for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es nicht mehr gibt', mitZielspalte('Abnahme')]]) {
+  test(`R00166 AK 10 (B0811): ${fall} nennt der Durchsatz keinen Block — der Satz zu „Von“ steht trotzdem`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel(kopf));
+    try {
+      await durchsatzJeTagOeffnen(page, k);
+      await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
+      await expect(page.locator('#dus-kennzahl span')).toHaveText(['Gesamt 1', 'Ø 0,3 je Tag', '3 Perioden']);
+      await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · 1');
+      await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben');
+      await expect(page.locator('p.bd-hinweis')).toHaveText(VON_FEHLT);
+    } finally { await k.stoppen(); }
+  });
+}
+
+test.describe('R00166 Durchsatz auf einem Board mit Phasen', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('R00166 AK 10 (B0811): mit der Phase „Entwicklertest“ als Ziel heißt es im Durchsatz „bis „Entwicklertest““', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
+    await phasenBerichtAm0411(page, k, 'durchsatz');
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode · bis „Entwicklertest“');
+    await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 1 bis „Entwicklertest“');
+    await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben (bis „Entwicklertest“)');
+  });
+});
+
+for (const farbschema of ['light', 'dark']) {
+  test(`R00166 AK 10 (B0811): Auswahl, Geltungssatz und die neuen Texte sind in Burndown und Durchsatz lesbar (${farbschema}); bei 375 px scrollt nichts quer`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+    try {
+      await berichtAm0411(page, k, 'verlauf');
+      await thema(page, farbschema);
+      await expect(page.locator('.bd-hinweis')).toContainText('Erledigt heißt hier: in „B“ oder rechts davon.');
+      expect(await kontrastVerstoesse(page, ['#main .leiste', '.fb-einst', '#bd-kennzahl', '#bd-legende', '.bd-hinweis'])).toEqual([]);
+      await page.screenshot({ path: test.info().outputPath(`burndown-wahl-b-${farbschema}.png`), fullPage: true });
+      await zumBericht(page, k, 'durchsatz');
+      await page.getByRole('radio', { name: 'je Tag' }).click();
+      await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 3 bis „B“');
+      expect(await kontrastVerstoesse(page, ['#main .leiste', '.fb-einst', '#dus-kennzahl', '.fluss-leg', '.bd-hinweis'])).toEqual([]);
+      await page.screenshot({ path: test.info().outputPath(`durchsatz-wahl-b-${farbschema}.png`), fullPage: true });
+      for (const route of ['durchsatz', 'verlauf']) {
+        await zumBericht(page, k, route);
+        await breiteSetzen(page, 375);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${route}: kein Querscrollen`).toBeLessThanOrEqual(0);
+        const [wahl, satz] = await Promise.all([auswahl(page), gruppe(page).locator('.muted')].map(o => o.boundingBox()));
+        expect(satz.y, `${route}: der Geltungssatz bricht als eigene Zeile unter die Auswahl`).toBeGreaterThanOrEqual(wahl.y + wahl.height);
+        await breiteSetzen(page, 1280);
+      }
+    } finally { await k.stoppen(); }
+  });
+}
