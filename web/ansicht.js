@@ -1450,8 +1450,8 @@ function vDurchsatz() {
   return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel, von)}
 ${vDurchsatzKennzahlen(d, ziel.worte, zugang)}
 ${vDurchsatzUm(einheit)}
-${vDurchsatzFlaeche(d, einheit, ziel.worte, zugang)}${vDurchsatzLegende(d, einheit, ziel.worte)}
-${vDurchsatzTabelle(d, einheit)}
+${vDurchsatzFlaeche(d, einheit, ziel.worte, zugang)}${vDurchsatzLegende(d, einheit, ziel.worte, zugang)}
+${vDurchsatzTabelle(d, einheit, zugang)}
 ${d.ausgenommen ? vDurchsatzNicht(d.ausgenommen) : ''}</div>`;
 }
 /** Kennzahlenzeile (M4, R00167): Zugang und Abgang je mit Summe und Ø je Periode, dazu die Zahl der Perioden — alle folgen
@@ -1467,9 +1467,16 @@ function vDurchsatzUm(einheit) {
   return `<div class="dus-um"><span class="bf-k">Auflösung</span><span class="seg" role="radiogroup" aria-label="Auflösung">${DURCHSATZ_EINHEITEN.map(([k, t]) => `<span class="${k === einheit ? 'an' : ''}" role="radio" aria-checked="${k === einheit}" data-act="dus-einheit" data-arg="${k}">${t}</span>`).join('')}</span></div>`;
 }
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
-/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). */
-function vDurchsatzLegende(d, einheit, zielWorte) {
-  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
+/** Legende: die zwei Balken und die Ø-Linie des Abgangs; die Zahlen stehen in Tabelle und Tooltip (keine Farbe allein).
+    Darunter, was der Zugang zählt — „erstmals“, deshalb darf er vom „+ hinzugekommen“ des Burndowns abweichen (R00167 AK 8).
+    Ohne gezeigten Zugang entfallen sein Eintrag und die zwei Sätze. */
+function vDurchsatzLegende(d, einheit, zielWorte, zugang) {
+  let zugangEintrag = '', zugangSaetze = '';
+  if (zugang) {
+    zugangEintrag = `<span class="fluss-le"><span class="fluss-sw zugang"></span>Zugang (erstmals ab „${esc(zugang.name)}“)</span>`;
+    zugangSaetze = `\n<p class="bd-hinweis" id="dus-zugang-satz">„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie ${esc(zugang.worte.genannt)} oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.<br>Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.</p>`;
+  }
+  return `<div class="fluss-leg" aria-label="Legende">${zugangEintrag}<span class="fluss-le"><span class="fluss-sw"></span>Abgang: erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø Abgang ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>${zugangSaetze}`;
 }
 /** Tooltip einer Periode: „03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0 bis „B““ — der Zugang nur, wenn er gezeigt wird. */
 function dusTip(p, einheit, zielWorte, zugang) {
@@ -1522,10 +1529,14 @@ ${fadenkreuz(DUS_O, unten)}
 </svg>`;
   return vDiagrammFlaeche(svg);
 }
-/** Die textliche Entsprechung (M5): je Periode eine Zeile, „Summe“ als th scope=row, im tastaturerreichbaren .bericht-rahmen. */
-function vDurchsatzTabelle(d, einheit) {
-  const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td><td class="r">${p.anzahl}</td></tr>`).join('');
-  return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th><th scope="col" class="r">Erledigt</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th><td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
+/** Die textliche Entsprechung (M5): je Periode eine Zeile mit Zugang und Abgang, „Summe“ als th scope=row, im
+    tastaturerreichbaren .bericht-rahmen; ohne gezeigten Zugang entfällt seine Spalte. */
+function vDurchsatzTabelle(d, einheit, zugang) {
+  const zugangZelle = wert => zugang ? `<td class="r">${wert}</td>` : '';
+  let zugangKopf = '';
+  if (zugang) zugangKopf = '<th scope="col" class="r">Zugang</th>';
+  const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td>${zugangZelle(p.zugang)}<td class="r">${p.anzahl}</td></tr>`).join('');
+  return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th>${zugangKopf}<th scope="col" class="r">Abgang</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th>${zugangZelle(d.zugangGesamt)}<td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
 }
 
 /** Kostenbericht (R00105 US-9 bis US-14, R00165 AK 9): je Währung die angefallenen Kosten — Kosteneinträge, alte Posten und

@@ -30,7 +30,7 @@ function grundbestand(ordner, filter = FILTER) {
   commitAm(ordner, '2026-11-11T09:00:00', board(kopf, [], [], [4, 3, 1]));
 }
 
-const diagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode' });
+const diagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
 const alsFabrik = page => page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
 
 // Mutantenprobe: KD_MUTANTE setzt eine Datei der Oberfläche mit einem Ersatz aus (Muster r00110/r00116).
@@ -55,7 +55,7 @@ test('R00122 B0564: Menüeintrag in VERLAUF, Route, Fenstertitel, Kopfleiste, K�
     await expect(page).toHaveURL(/#\/berichte\/durchsatz$/);
     await expect(page).toHaveTitle('Berichte · Durchsatz — kanbanD');
     await expect(page.locator('h1.vh')).toHaveText('Berichte · Durchsatz');
-    await expect(page.locator('#main .leiste').first()).toContainText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
+    await expect(page.locator('#main .leiste').first()).toContainText('Durchsatz je Zeitraum · Zugang und Abgang je Periode');
     // g u öffnet den Bericht
     await page.locator('body').click({ position: { x: 1200, y: 500 } });
     await page.keyboard.press('g');
@@ -77,12 +77,12 @@ test('R00122 B0565 (US-1): zwei Wochenbalken, Ø-Linie, Achsen, Grundlinie, Mark
     const svg = diagramm(page);
     await expect(svg).toBeVisible();
     await expect(svg).toHaveAttribute('role', 'img');
-    await expect(svg).toHaveAttribute('aria-label', 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode');
-    const balken = svg.locator('rect.balken');
+    await expect(svg).toHaveAttribute('aria-label', 'Durchsatz je Zeitraum: Zugang und Abgang je Periode');
+    const balken = svg.locator('rect.balken:not(.zugang)');
     await expect(balken).toHaveCount(2);
     const werte = await balken.evaluateAll(bs => bs.map(b => [Number(b.getAttribute('y')), Number(b.getAttribute('height'))]));
-    expect(werte, 'KW45 und KW46 je Höhe 2').toEqual([[24, 204], [24, 204]]);
-    await expect(svg.locator('text.achse:not(.achse-x)')).toHaveText(['0', '1', '2']); // y-Achse bis 2
+    expect(werte, 'KW45 und KW46 je Höhe 2 — die eine y-Skala reicht seit R00167 bis zum Zugang 3 der KW45').toEqual([[92, 136], [92, 136]]);
+    await expect(svg.locator('text.achse:not(.achse-x)')).toHaveText(['0', '1', '2', '3']); // y-Achse bis zum höchsten Wert beider Größen: Zugang 3 in KW45
     await expect(svg.locator('text.achse-x')).toHaveCount(2);
     await expect(svg.locator('text.achse-x').first().locator('tspan')).toHaveText(['KW45', '2026']);
     await expect(svg.locator('text.achse-x').nth(1).locator('tspan')).toHaveText(['KW46', '2026']);
@@ -90,18 +90,18 @@ test('R00122 B0565 (US-1): zwei Wochenbalken, Ø-Linie, Achsen, Grundlinie, Mark
     await expect(svg.locator('line.marke')).toHaveCount(2);
     // Ø-Linie auf der Balkenkante, abweichende Farbe, beschriftet
     const rate = svg.locator('line.rate');
-    await expect(rate).toHaveAttribute('y1', '24');
-    await expect(svg.locator('text.ratetext')).toHaveText('Ø 2,0 je Woche');
+    await expect(rate).toHaveAttribute('y1', '92');
+    await expect(svg.locator('text.ratetext')).toHaveText('Ø Abgang 2,0');
     const [strichRate, fuellungBalken] = await Promise.all([rate.evaluate(e => getComputedStyle(e).stroke), balken.first().evaluate(e => getComputedStyle(e).fill)]);
     expect(strichRate).not.toBe(fuellungBalken);
     // Legende (B1): das Farbfeld trägt denselben Ton wie die Balken, nicht transparent
-    const feldFarbe = await page.locator('.fluss-leg .fluss-sw').first().evaluate(e => getComputedStyle(e).backgroundColor);
+    const feldFarbe = await page.locator('.fluss-leg .fluss-sw:not(.zugang)').evaluate(e => getComputedStyle(e).backgroundColor);
     expect(feldFarbe).toBe(fuellungBalken);
     // Legende spricht von „erledigten Aufgaben" (S1), die Tabelle ebenso
     await expect(page.locator('.fluss-leg')).toContainText('erledigte Aufgaben');
     // Kennzahlenzeile (M4)
     const kz = page.locator('#dus-kennzahl');
-    await expect(kz).toContainText('Gesamt 4');
+    await expect(kz).toContainText('Abgang 4');
     await expect(kz).toContainText('Ø 2,0 je Woche');
     await expect(kz).toContainText('2 Perioden');
   } finally { await k.stoppen(); }
@@ -119,7 +119,7 @@ test('R00122 B0566 (US-2): Auflösung je Tag und je Monat — Balken, x-Achse un
     await expect(um.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('#dus-kennzahl')).toContainText('Ø 0,4 je Tag');
     await expect(page.locator('#dus-kennzahl')).toContainText('10 Perioden');
-    await expect(diagramm(page).locator('rect.balken')).toHaveCount(4);
+    await expect(diagramm(page).locator('rect.balken:not(.zugang)')).toHaveCount(4);
     await expect(diagramm(page).locator('text.achse-x')).toHaveCount(6); // 10 Tage, höchstens acht Marken
     // per Tastatur auf „je Monat“ (M3)
     await um.getByRole('radio', { name: 'je Tag' }).focus();
@@ -128,7 +128,7 @@ test('R00122 B0566 (US-2): Auflösung je Tag und je Monat — Balken, x-Achse un
     await expect(um.getByRole('radio', { name: 'je Monat' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('#dus-kennzahl')).toContainText('Ø 4,0 je Monat');
     await expect(page.locator('#dus-kennzahl')).toContainText('1 Periode');
-    await expect(diagramm(page).locator('rect.balken')).toHaveCount(1);
+    await expect(diagramm(page).locator('rect.balken:not(.zugang)')).toHaveCount(1);
     await expect(diagramm(page).locator('text.achse-x')).toHaveText('November 2026');
   } finally { await k.stoppen(); }
 });
@@ -140,10 +140,10 @@ test('R00122 B0567 (US-1, US-5): Tabelle mit Summe, Tooltip und zeigerlose Bedie
     await alsFabrik(page);
     await page.goto(k.adresse + '#/berichte/durchsatz');
     // Tooltip auf dem Balken der KW46
-    await diagramm(page).locator('rect.balken').nth(1).hover();
+    await diagramm(page).locator('rect.balken:not(.zugang)').nth(1).hover();
     const tip = page.locator('#tooltip');
     await expect(tip).toBeVisible();
-    await expect(tip).toContainText('Woche 09.–15.11.2026 · 2');
+    await expect(tip).toContainText('Woche 09.–15.11.2026 · Zugang 1 · Abgang 2');
     await page.mouse.move(1, 1);
     await expect(tip).toBeHidden();
     // Tabellenansicht (M5)
@@ -154,13 +154,13 @@ test('R00122 B0567 (US-1, US-5): Tabelle mit Summe, Tooltip und zeigerlose Bedie
     await expect(rahmen).toHaveAttribute('role', 'group');
     await expect(rahmen).toHaveAttribute('aria-label', 'Durchsatz je Zeitraum');
     const tabelle = page.locator('.fluss-tab');
-    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Erledigt']);
+    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Zugang', 'Abgang']);
     await expect(tabelle.locator('thead th').first()).toHaveAttribute('scope', 'col');
     await expect(tabelle.locator('tbody tr')).toHaveCount(2);
-    await expect(tabelle.locator('tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '2']);
+    await expect(tabelle.locator('tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2']);
     await expect(tabelle.locator('tfoot th')).toHaveText('Summe');
     await expect(tabelle.locator('tfoot th')).toHaveAttribute('scope', 'row');
-    await expect(tabelle.locator('tfoot td')).toHaveText('4');
+    await expect(tabelle.locator('tfoot td')).toHaveText(['4', '4']);
     // zeigerlos: der Rahmen ist per Tab erreichbar
     await rahmen.focus();
     expect(await rahmen.evaluate(el => el === document.activeElement)).toBe(true);
@@ -173,10 +173,10 @@ test('R00122 US-4 (B0569): Zeitraum 05.–11.11. begrenzt die Ankünfte', async 
     await alsPerson(page, 'st');
     await alsFabrik(page);
     await page.goto(k.adresse + '#/berichte/durchsatz');
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 3');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3');
     await page.locator('.fluss-tabs > summary').click();
-    await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['KW45 02.–08.11.2026', '1']);
-    await expect(page.locator('.fluss-tab tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '2']);
+    await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['KW45 02.–08.11.2026', '0', '1']);
+    await expect(page.locator('.fluss-tab tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2']);
   } finally { await k.stoppen(); }
 });
 
@@ -203,10 +203,10 @@ test('R00122 US-3: die leere Periode KW47 trägt ihre Marke (als 0 erkennbar) un
     await expect(svg.locator('text.achse-x')).toHaveCount(3);
     await expect(svg.locator('text.achse-x').nth(2).locator('tspan')).toHaveText(['KW47', '2026']);
     await expect(svg.locator('line.marke')).toHaveCount(3, 'auch die leere Periode hat ihre Marke');
-    await expect(svg.locator('rect.balken')).toHaveCount(2, 'die leere KW47 hat keinen Balken');
+    await expect(svg.locator('rect.balken:not(.zugang)')).toHaveCount(2, 'die leere KW47 hat keinen Balken');
     await expect(page.locator('#dus-kennzahl')).toContainText('Ø 1,3 je Woche');
     await expect(page.locator('#dus-kennzahl')).toContainText('3 Perioden');
-    await expect(svg.locator('text.ratetext')).toHaveText('Ø 1,3 je Woche');
+    await expect(svg.locator('text.ratetext')).toHaveText('Ø Abgang 1,3');
   } finally { await k.stoppen(); }
 });
 
@@ -231,7 +231,7 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await expect(page.locator('.fluss-satz')).toHaveText('Die Zielspalte „Fertig“ ist ausgeschlossen.');
     await page.locator('.fluss-leer').getByRole('button', { name: 'Zurücksetzen' }).click();
     await expect(diagramm(page)).toBeVisible();
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 4');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 4');
   } finally { await k.stoppen(); }
 
   // aktiver Filter ohne Treffer → Leersatz mit „Zurücksetzen“ (US-7)
@@ -246,7 +246,7 @@ test('R00122 B0568 (M7): kein Stand, Zielspalte ausgeschlossen mit Zurücksetzen
     await expect(leer.locator('.fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
     await leer.getByRole('button', { name: 'Zurücksetzen' }).click();
     await expect(diagramm(page)).toBeVisible();
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 4');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 4');
   } finally { await k2.stoppen(); }
 });
 
@@ -258,9 +258,9 @@ test('R00122 B0563 (M7): reporting.forecast false nimmt aus und nennt die Zahl',
     const antwort = await page.request.patch(k.adresse + 'api/aufgaben/3', { headers: { 'X-KanbanD-Wer': 'st' }, data: { reporting: { forecast: false } } });
     expect(antwort.ok()).toBe(true);
     await page.goto(k.adresse + '#/berichte/durchsatz');
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 3');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3');
     await expect(page.locator('#dus-nicht')).toContainText('Nicht enthalten: ausgenommen 1');
-    await expect(diagramm(page).locator('rect.balken')).toHaveCount(2);
+    await expect(diagramm(page).locator('rect.balken:not(.zugang)')).toHaveCount(2);
   } finally { await k.stoppen(); }
 });
 
@@ -275,10 +275,10 @@ test('R00122 B0568: Live — eine über die API bewegte Aufgabe ändert den Durc
     await alsFabrik(page);
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await liveBereit(page);
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 4');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 4');
     const bewegt = await page.request.post(k.adresse + 'api/boards/fabrik/bewegen', { headers: { 'X-KanbanD-Wer': 'st' }, data: { nummer: 5, spalte: 'Fertig' } });
     expect(bewegt.ok()).toBe(true);
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 5', { timeout: 3000 });
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 5', { timeout: 3000 });
   } finally { await k.stoppen(); }
 });
 
@@ -314,7 +314,7 @@ test('R00122: Gegenprobe — der Bericht liest nur (boards/fabrik.md byte-gleich
     await page.goto(k.adresse + '#/berichte/durchsatz');
     const datei = k.lies('boards/fabrik.md'), log = k.git('log', '--oneline');
     // Klick auf einen Balken öffnet nichts und ändert keinen Filter
-    await diagramm(page).locator('rect.balken').first().click();
+    await diagramm(page).locator('rect.balken:not(.zugang)').first().click();
     await expect(page).toHaveURL(/#\/berichte\/durchsatz$/);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     // Umschalten der Auflösung schreibt nichts

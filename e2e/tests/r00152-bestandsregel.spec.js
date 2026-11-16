@@ -141,9 +141,9 @@ test('R00152 US-5 (AK 10): der Durchsatz zählt, was erreicht war — am 03.11. 
     await bereit(page, aufloesung);
     await aufloesung.getByRole('radio', { name: 'je Tag' }).click();
     await expect(aufloesung.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 3');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3');
     await expect(page.locator('#dus-kennzahl')).toContainText('9 Perioden');
-    const balken = page.getByRole('img', { name: 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode' }).locator('rect.balken');
+    const balken = page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' }).locator('rect.balken:not(.zugang)');
     await expect(balken, 'nur der 03.11. trägt einen Balken').toHaveCount(1);
   } finally { await k.stoppen(); }
 });
@@ -167,7 +167,7 @@ test('R00152 US-7 (AK 12): unter „nur Person st“ fehlen die endgültig gelö
     await berichtAm(page, k, '2026-11-10', 'verlauf');
     await erwarteZeilen(await burndownTabelle(page), reihe(2, [[5, 5], ...Array(3).fill([3, 5]), ...Array(5).fill([1, 3])]));
     await page.goto(`${k.adresse}#/berichte/durchsatz`);
-    await expect(page.locator('#dus-kennzahl')).toContainText('Gesamt 2');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 2');
   } finally { await k.stoppen(); }
 });
 

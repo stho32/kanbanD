@@ -260,6 +260,6 @@ test('R00164 AK 10: der Durchsatz desselben Bestands bleibt beim ersten Erreiche
   const k = await kanbanStarten(rechenbeispiel);
   try {
     await berichtAm0511(page, k, 'durchsatz');
-    await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 3');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3 ·');
   } finally { await k.stoppen(); }
 });

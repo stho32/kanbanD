@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, thema, breiteSetzen, kontrastVerstoesse } = require('./hilfen');
 const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
@@ -64,11 +64,23 @@ async function tabelleJeTag(page) {
     summe: (await zellen(tabelle.locator('tfoot tr'), 'th,td'))[0],
   };
 }
-/** Wählt einen Eintrag einer der zwei Auswahlen und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist. */
+/** Wählt einen Eintrag einer der zwei Auswahlen und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist. Gewartet
+    wird auf das Nachladen, das NACH der Antwort auf das Speichern beginnt — ein Nachladen aus dem Seitenwechsel davor zeigt
+    noch den alten Stand, und eine zweite Wahl darauf schriebe ihn zurück (die Route ersetzt das ganze `fever`-Objekt). */
 async function waehle(page, auswahl, eintrag, wert) {
-  const nachgeladen = page.waitForResponse(antwort => antwort.request().method() === 'GET' && antwort.url().includes('/api/berichte/bewegungen'));
-  await auswahl(page).selectOption({ label: eintrag });
-  await (await nachgeladen).finished();
+  let gespeichert = false, nachgeladen = null;
+  const beiAntwort = antwort => { if (antwort.request().method() === 'PUT' && antwort.url().endsWith('/fieber')) gespeichert = true; };
+  const beiAnfrage = anfrage => { if (gespeichert && !nachgeladen && anfrage.method() === 'GET' && anfrage.url().includes('/api/berichte/bewegungen')) nachgeladen = anfrage; };
+  page.on('response', beiAntwort);
+  page.on('request', beiAnfrage);
+  try {
+    await auswahl(page).selectOption({ label: eintrag });
+    await expect.poll(() => nachgeladen !== null, 'Nachladen nach dem Speichern').toBe(true);
+    await (await nachgeladen.response()).finished();
+  } finally {
+    page.off('response', beiAntwort);
+    page.off('request', beiAnfrage);
+  }
   await bereit(page);
   await expect(auswahl(page)).toHaveValue(wert);
 }
@@ -210,3 +222,175 @@ test.describe('R00167 Board mit Phasen', () => {
     expect(await eintraege(zugangAb(page))).toEqual([['Spalte „Backlog“ (Standard)', '', true], ['Phase „Entwicklung“', 'Entwicklung', false], ['Phase „Entwicklertest“', 'Entwicklertest', false], ['Phase „Abnahme“', 'Abnahme', false]]);
   });
 });
+
+/* ── F0133 Zugang rechnen und zeigen (Zeichnung D0006 #durchsatz-von, Bild 2 bis 6) ── */
+const kopftext = page => page.locator('#main .leiste .muted').first();
+const kennzahlen = page => page.locator('#dus-kennzahl > span');
+const diagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
+const legende = page => page.locator('.fluss-leg .fluss-le');
+const zugangSatz = page => page.locator('#dus-zugang-satz');
+const masse = balken => balken.evaluateAll(bs => bs.map(b => ['x', 'y', 'width', 'height'].map(a => Number(b.getAttribute(a)))));
+/** Zeigt im Durchsatz „je Tag“ des Beispiels auf den Platz des Tages: drei Perioden auf 636 Einheiten Breite ab x = 44. */
+async function zeigeAufTag(page, tagImNovember) {
+  const svg = diagramm(page);
+  const [vb, kasten] = await Promise.all([svg.getAttribute('viewBox'), svg.boundingBox()]);
+  const [, , w, h] = vb.split(' ').map(Number), s = Math.min(kasten.width / w, kasten.height / h);
+  const x = 44 + (tagImNovember - 2 + 0.5) * 636 / 3;
+  await page.mouse.move(kasten.x + (kasten.width - w * s) / 2 + x * s, kasten.y + (kasten.height - h * s) / 2 + 120 * s);
+  return page.locator('#tooltip');
+}
+const tooltipAm = (page, tagImNovember) => expect.poll(async () => (await zeigeAufTag(page, tagImNovember)).textContent());
+const SATZ = spalte => `„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie „${spalte}“ oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.`;
+/** Legt ein Bild des Berichts ab, wenn KD_BILDER einen Ordner nennt (Beleg für den Bericht der Karte). */
+async function bildAblegen(page, name) {
+  if (process.env.KD_BILDER) await page.locator('.bericht').screenshot({ path: path.join(process.env.KD_BILDER, name) });
+}
+
+test('R00167 US-1, AK 1, AK 8 (B0819): ohne Wahl steht der Zugang ab der ersten Spalte — 3 · 0 · 0 neben dem Abgang 0 · 0 · 1; kein Zusatz „ab …“, Legende und Satz nennen „Backlog“', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['3', '0'], ['0', '0'], ['0', '1']], summe: ['Summe', '3', '1'] });
+    await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
+    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await tooltipAm(page, 2).toBe('02.11.2026 · Zugang 3 · Abgang 0');
+    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Backlog“)', 'Abgang: erledigte Aufgaben', 'Ø Abgang 0,3 je Tag']);
+    await expect(page.locator('.fluss-leg .rechts')).toHaveText('zeigt nur, filtert nicht');
+    await expect(zugangSatz(page)).toHaveText(SATZ('Backlog'));
+    expect(k.lies(BOARD), 'Standard: kein Schlüssel in der Datei').not.toContain('fever');
+  } finally { await k.stoppen(); }
+});
+
+test('R00167 US-1, US-2, AK 1, AK 4, AK 8 (B0819, Abnahme der Karte #157): „Zugang ab“ = Arbeit — Zugang 0 · 2 · 0 (Summe 2), Abgang 0 · 0 · 1 (Summe 1); Kopftext, Kennzahl, Tooltip, Legende und Tabelle nennen beide', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    await waehle(page, zugangAb, 'Spalte „Arbeit“', 'Arbeit');
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['0', '0'], ['2', '0'], ['0', '1']], summe: ['Summe', '2', '1'] });
+    await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode · ab „Arbeit“');
+    await expect(kennzahlen(page)).toHaveText(['Zugang 2 ab „Arbeit“ · Ø 0,7 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await tooltipAm(page, 3).toBe('03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0');
+    await tooltipAm(page, 4).toBe('04.11.2026 · Zugang 0 ab „Arbeit“ · Abgang 1');
+    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Arbeit“)', 'Abgang: erledigte Aufgaben', 'Ø Abgang 0,3 je Tag']);
+    await expect(zugangSatz(page)).toHaveText(SATZ('Arbeit'));
+    const [leg, satz] = await Promise.all([page.locator('.fluss-leg'), zugangSatz(page)].map(o => o.boundingBox()));
+    expect(satz.y, 'die zwei Sätze stehen unter der Legende').toBeGreaterThanOrEqual(leg.y + leg.height);
+    await expect(page.locator('.fluss-tab tfoot th')).toHaveAttribute('scope', 'row');
+  } finally { await k.stoppen(); }
+});
+
+test('R00167 AK 1 (B0818): je Periode ein Balkenpaar um die Marke — Zugang links und hohl, Abgang rechts und gefüllt, eine y-Skala, bei 0 kein Rechteck', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Arbeit')));
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    await tabelleJeTag(page);
+    const svg = diagramm(page), zugang = svg.locator('rect.balken.zugang'), abgang = svg.locator('rect.balken:not(.zugang)');
+    // drei Perioden: Mitten 150 · 362 · 574, Paar 96, Lücke 2, je Balken 47; Skala bis 2 (0 → 228, 1 → 126, 2 → 24)
+    expect(await masse(zugang), 'Zugang 2 am 03.11.: links der Marke, um 1 eingerückt für die Kontur nach innen').toEqual([[315, 25, 45, 203]]);
+    expect(await masse(abgang), 'Abgang 1 am 04.11.: rechts der Marke').toEqual([[575, 126, 47, 102]]);
+    await expect(svg.locator('line.marke')).toHaveCount(3);
+    await expect(svg.locator('text.achse:not(.achse-x)')).toHaveText(['0', '1', '2']);
+    await expect(svg.locator('text.ratetext')).toHaveText('Ø Abgang 0,3');
+    const stil = ort => ort.evaluate(e => { const s = getComputedStyle(e); return { flaeche: s.fill, kontur: s.stroke, staerke: s.strokeWidth }; });
+    const [z, a] = [await stil(zugang), await stil(abgang)];
+    expect(z.staerke).toBe('2px');
+    expect(z.kontur, 'hohl: die Kontur ist kräftiger als die Fläche').not.toBe(z.flaeche);
+    expect(a.kontur).toBe('none');
+    expect(a.flaeche).not.toBe(z.flaeche);
+    expect(a.flaeche).not.toBe(z.kontur);
+    // die Farbfelder vor den Wörtern tragen dieselben Zeichen
+    expect(await page.locator('#dus-kennzahl .k-zugang').evaluate(e => getComputedStyle(e).backgroundColor)).toBe(await page.locator('.fluss-sw.zugang').evaluate(e => getComputedStyle(e).backgroundColor));
+    expect(await page.locator('#dus-kennzahl .k-abgang').evaluate(e => getComputedStyle(e).backgroundColor)).toBe(a.flaeche);
+  } finally { await k.stoppen(); }
+});
+
+test('R00167 US-4, AK 5 (B0818): „Zugang ab“ = Erledigt — kein Zugang in Kennzahl, Diagramm, Tooltip, Legende und Tabelle; der Abgang bleibt 0 · 0 · 1 an seinem Platz rechts der Marke', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Erledigt')));
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    await expect(zugangAb(page)).toHaveValue('Erledigt');
+    await expect(hinweisRechts(page)).toBeVisible();
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Abgang'], jeTag: [['0'], ['0'], ['1']], summe: ['Summe', '1'] });
+    await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
+    await expect(kennzahlen(page)).toHaveText(['Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(diagramm(page).locator('rect.balken.zugang')).toHaveCount(0);
+    expect(await masse(diagramm(page).locator('rect.balken')), 'die Skala folgt allein dem Abgang').toEqual([[575, 24, 47, 204]]);
+    await tooltipAm(page, 4).toBe('04.11.2026 · Abgang 1');
+    await expect(legende(page)).toHaveText(['Abgang: erledigte Aufgaben', 'Ø Abgang 0,3 je Tag']);
+    await expect(zugangSatz(page)).toHaveCount(0);
+  } finally { await k.stoppen(); }
+});
+
+test('R00167 AK 6 (B0819): `from-column: Abnahme` rechnet und beschriftet wie ohne Wahl — Zugang 3 · 0 · 0 ab „Backlog“', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Abnahme')));
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    await expect(hinweisWeg(page)).toBeVisible();
+    expect((await tabelleJeTag(page)).jeTag).toEqual([['3', '0'], ['0', '0'], ['0', '1']]);
+    await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
+    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(legende(page).first()).toHaveText('Zugang (erstmals ab „Backlog“)');
+  } finally { await k.stoppen(); }
+});
+
+test('R00167 AK 7 (B0819): `reporting.forecast: false` an #1 wirkt auf beide Balken — von = Arbeit Zugang 0 · 1 · 0, Abgang 0 · 0 · 0', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Arbeit'), { aufgaben: { 1: aufgabe(1, 'reporting: {forecast: false}\n') } }));
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['0', '0'], ['1', '0'], ['0', '0']], summe: ['Summe', '1', '0'] });
+    await expect(page.locator('#dus-nicht')).toContainText('Nicht enthalten: ausgenommen 1');
+  } finally { await k.stoppen(); }
+});
+
+for (const [fall, kopf, zugang] of [['von = Backlog', '', ['3', '0', '1']], ['von = Arbeit', mitFever('from-column: Arbeit'), ['0', '2', '1']]]) {
+  test(`R00167 AK 10 (B0819): #4 am 04.11. direkt in Erledigt angelegt zählt in Zugang und Abgang desselben Tages — ${fall}: 04.11. Zugang 1 · Abgang 2`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel(kopf, { nummern: [1, 2, 3, 4], am0411: [[3], [2], [4, 1]] }));
+    try {
+      await berichtAm0411(page, k, 'durchsatz');
+      expect((await tabelleJeTag(page)).jeTag).toEqual([[zugang[0], '0'], [zugang[1], '0'], [zugang[2], '2']]);
+    } finally { await k.stoppen(); }
+  });
+}
+
+test('R00167 US-3, AK 3b (B0819): Burndown, Kumulativer Fluss, Durchlaufzeit, „Wie lange noch“ und Fever Chart zeigen mit „Zugang ab“ = Arbeit dasselbe wie ohne Wahl', async ({ browser }) => {
+  const seiteZu = async kopf => {
+    const k = await kanbanStarten(rechenbeispiel(kopf)), kontext = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+    return { k, kontext, page: await kontext.newPage() };
+  };
+  const ohne = await seiteZu(''), mit = await seiteZu(mitFever('from-column: Arbeit'));
+  try {
+    await berichtAm0411(ohne.page, ohne.k, 'verlauf');
+    await berichtAm0411(mit.page, mit.k, 'verlauf');
+    for (const route of ['verlauf', 'fluss', 'durchlauf', 'prognose', 'fieber']) {
+      await zurAnsicht(ohne.page, ohne.k, `berichte/${route}`);
+      await zurAnsicht(mit.page, mit.k, `berichte/${route}`);
+      // das Fever Chart trägt seine Tage nach dem Zeichnen in den Cache nach — verglichen wird der Zielzustand beider Seiten (ADR-0026 Regel 1)
+      const texte = () => Promise.all([ohne.page, mit.page].map(page => page.locator('#main').innerText()));
+      await expect.poll(async () => { const [textOhne, textMit] = await texte(); return textMit === textOhne ? 'gleich' : textMit; }, route).toBe('gleich');
+      expect((await texte())[1].length, route).toBeGreaterThan(40);
+    }
+  } finally {
+    for (const x of [ohne, mit]) { await x.kontext.close(); await x.k.stoppen(); }
+  }
+});
+
+for (const farbschema of ['light', 'dark']) {
+  test(`R00167 AK 1, AK 8 (B0819): Auswahl, Kennzahl, Legende und die zwei Sätze sind lesbar (${farbschema}); bei 375 px brechen die zwei Auswahlen um, nichts scrollt quer`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Arbeit')));
+    try {
+      await berichtAm0411(page, k, 'durchsatz');
+      await thema(page, farbschema);
+      await tabelleJeTag(page);
+      await expect(kennzahlen(page).first()).toHaveText('Zugang 2 ab „Arbeit“ · Ø 0,7 je Tag');
+      expect(await kontrastVerstoesse(page, ['#main .leiste', '.fb-einst', '#dus-kennzahl', '.fluss-leg', '.bd-hinweis'])).toEqual([]);
+      await bildAblegen(page, `durchsatz-von-arbeit-${farbschema}.png`);
+      await breiteSetzen(page, 375);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'kein Querscrollen').toBeLessThanOrEqual(0);
+      const [von, bis, satz] = await Promise.all([zugangAb(page), erledigtHeisst(page), gruppe(page).locator('.muted')].map(o => o.boundingBox()));
+      expect(von.x + von.width, 'die Auswahl bleibt im Fenster').toBeLessThanOrEqual(375);
+      expect(bis.x + bis.width).toBeLessThanOrEqual(375);
+      expect(satz.y, 'der Geltungssatz bricht unter die Auswahlen').toBeGreaterThanOrEqual(bis.y + bis.height);
+      await bildAblegen(page, `durchsatz-von-arbeit-375-${farbschema}.png`);
+    } finally { await k.stoppen(); }
+  });
+}

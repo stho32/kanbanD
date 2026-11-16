@@ -51,11 +51,11 @@ async function zumBericht(page, k, route) {
 const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [...tr.querySelectorAll(zelle)].map(td => td.textContent.trim())), zelle);
 /** Tabellenansicht des Burndowns ohne die Tagesspalte: je Tag offen, Umfang, +, − erledigt, − entfernt. */
 const burndownJeTag = async page => (await zellen(page.locator('.bd-tabelle tbody tr'), 'td')).map(zeile => zeile.slice(1));
-/** Durchsatz je Tag aus der Tabellenansicht (Auflösung „je Tag“ gewählt). */
+/** Durchsatz je Tag aus der Tabellenansicht (Auflösung „je Tag“ gewählt): die Spalte „Abgang“, die letzte seit R00167. */
 async function durchsatzJeTag(page) {
   await page.getByRole('radio', { name: 'je Tag' }).click();
   await expect(page.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
-  return (await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(zeile => zeile[1]);
+  return (await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(zeile => zeile[zeile.length - 1]);
 }
 async function erwarteZahlen(page, k, zahlen) {
   await zumBericht(page, k, 'verlauf');
@@ -113,6 +113,8 @@ test('R00166 AK 8 (B0806): Kumulativer Fluss, Durchlaufzeit und „Wie lange noc
 
 /* ── F0130 Auswahl in beiden Kopfleisten (Zeichnung D0006 #erledigt-heisst) ── */
 const GILT_FUER = 'gilt für Burndown, Durchsatz und Fever Chart dieses Boards';
+/** Im Durchsatz steht seit R00167 „Zugang ab“ daneben — ein Geltungssatz für beide Auswahlen. */
+const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz und Fever Chart dieses Boards';
 const auswahl = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
 const gruppe = page => page.getByRole('group', { name: 'Erledigt heißt' });
 const eintraege = page => auswahl(page).locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));
@@ -152,19 +154,19 @@ test('R00166 AK 4 (B0807): der Burndown zeigt „Erledigt heißt“ mit den Blö
   } finally { await k.stoppen(); }
 });
 
-test('R00166 AK 4 (B0807): der Durchsatz zeigt dieselbe Auswahl an derselben Stelle — vor „Gesamt“, über dem Umschalter „Auflösung“, auch über dem Leerzustand', async ({ page }) => {
+test('R00166 AK 4 (B0807): der Durchsatz zeigt dieselbe Auswahl an derselben Stelle — vor der Kennzahlzeile, über dem Umschalter „Auflösung“, auch über dem Leerzustand', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel());
   try {
     await berichtAm0411(page, k, 'durchsatz');
     expect(await eintraege(page)).toEqual([['Spalte „B“', 'B', false], ['Spalte „C“', 'C', false], ['Spalte „Erledigt“ (Standard)', '', true]]);
-    await expect(gruppe(page).locator('.muted')).toHaveText(GILT_FUER);
+    await expect(gruppe(page).locator('.muted')).toHaveText(GILT_FUER_IM_DURCHSATZ);
     const [filter, wahl, kennzahl, aufloesung] = await Promise.all([page.locator('.bfilter-box'), gruppe(page), page.locator('#dus-kennzahl'), page.locator('.dus-um')].map(oberkante));
     expect(filter).toBeLessThan(wahl);
     expect(wahl).toBeLessThan(kennzahl);
     expect(kennzahl).toBeLessThan(aufloesung);
-    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
-    // Leerzustand: am 02.11. hat noch keine Aufgabe das Ziel erreicht
-    await page.clock.setFixedTime(new Date('2026-11-02T12:00:00+01:00'));
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode');
+    // Leerzustand: am 01.11. liegt noch keine Aufgabe auf dem Board — seit R00167 zählt am 02.11. schon der Zugang
+    await page.clock.setFixedTime(new Date('2026-11-01T12:00:00+01:00'));
     await page.reload();
     await bereit(page, '.fluss-satz');
     await expect(page.locator('.fluss-satz')).toHaveText('Keine Aufgabe im Zeitraum.');
@@ -264,11 +266,11 @@ test('R00166 (B0808): ohne gewähltes „Ich bin …“ greift die Sperre des Fe
 
 const hinweisWeg = page => gruppe(page).locator('#fb-ziel-weg');
 /** Die Zeile bei einer Wahl, die es nicht mehr gibt: Eintrag am Ende der Liste gewählt, Hinweis hinter dem Geltungssatz. */
-async function erwarteVerschwunden(page, name) {
+async function erwarteVerschwunden(page, name, geltung = GILT_FUER) {
   expect((await eintraege(page)).slice(-1)).toEqual([[`„${name}“ — gibt es nicht mehr`, name, true]]);
   await expect(hinweisWeg(page)).toHaveText(`Zielspalte „${name}“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.`);
   await expect(hinweisWeg(page)).toHaveClass('fehl');
-  expect(await hinweisWeg(page).evaluate(h => h.previousElementSibling.textContent)).toBe(GILT_FUER);
+  expect(await hinweisWeg(page).evaluate(h => h.previousElementSibling.textContent)).toBe(geltung);
 }
 
 test('R00166 US-4, AK 9 (B0809): `target-column: Abnahme` — Burndown und Durchsatz zeigen den Hinweis aus dem Fever Chart und die Zahlen ohne Wahl', async ({ page }) => {
@@ -278,7 +280,7 @@ test('R00166 US-4, AK 9 (B0809): `target-column: Abnahme` — Burndown und Durch
     await erwarteVerschwunden(page, 'Abnahme');
     await expect.poll(() => burndownJeTag(page)).toEqual(OHNE_WAHL.burndown);
     await zumBericht(page, k, 'durchsatz');
-    await erwarteVerschwunden(page, 'Abnahme');
+    await erwarteVerschwunden(page, 'Abnahme', GILT_FUER_IM_DURCHSATZ);
     expect(await durchsatzJeTag(page)).toEqual(OHNE_WAHL.durchsatz);
     await zumBericht(page, k, 'fieber');
     await expect(page.locator('#fb-ziel-weg')).toHaveText('Zielspalte „Abnahme“ gibt es nicht mehr — gerechnet wird mit „Erledigt“.');
@@ -293,7 +295,7 @@ test('R00166 AK 9 (B0809): schließt der Berichtsfilter die gewählte Spalte B a
     // ohne Wahl und ohne Spalte B: am 03.11. verlassen #1 und #2 den Bestand (− entfernt 2), #3 ist erledigt; am 04.11. kommen beide zurück
     await expect.poll(() => burndownJeTag(page)).toEqual([['3', '3', '3', '0', '0'], ['0', '1', '0', '1', '2'], ['2', '3', '2', '0', '0']]);
     await zumBericht(page, k, 'durchsatz');
-    await erwarteVerschwunden(page, 'B');
+    await erwarteVerschwunden(page, 'B', GILT_FUER_IM_DURCHSATZ);
     expect(await durchsatzJeTag(page)).toEqual(OHNE_WAHL.durchsatz);
   } finally { await k.stoppen(); }
 });
@@ -369,8 +371,9 @@ test.describe('R00166 Texte auf einem Board mit Phasen', () => {
   });
 });
 
-const VON_FEHLT = '„Von“ lässt sich noch nicht wählen: gezählt wird jede Aufgabe, die das Ziel erreicht, gleich aus welcher Spalte sie kommt.';
-const durchsatzDiagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: erledigte Aufgaben je Periode' });
+/** Seit R00167 steht unter der Legende, was der Zugang zählt — der Satz „„Von“ lässt sich noch nicht wählen: …“ ist entfallen. */
+const ZUGANG_ZAEHLT = '„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie „A“ oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.';
+const durchsatzDiagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
 /** Zeigt im Durchsatz „je Tag“ des Beispiels auf den Balkenplatz des Tages: drei Perioden auf 636 Einheiten Breite ab x = 44. */
 async function zeigeAufPeriode(page, tagImNovember) {
   const svg = durchsatzDiagramm(page);
@@ -386,31 +389,31 @@ async function durchsatzJeTagOeffnen(page, k) {
   await expect(page.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
 }
 
-test('R00166 US-2, AK 10 (B0811): mit Zielspalte B nennt der Durchsatz „bis „B““ in Kopfleiste, Kennzahl, Tooltip und Legende und sagt, dass „Von“ noch fehlt', async ({ page }) => {
+test('R00166 US-2, AK 10 (B0811): mit Zielspalte B nennt der Durchsatz „bis „B““ in Kopfleiste, Kennzahl, Tooltip und Legende; darunter steht, was der Zugang zählt', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
   try {
     await durchsatzJeTagOeffnen(page, k);
-    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode · bis „B“');
-    await expect(page.locator('#dus-kennzahl span')).toHaveText(['Gesamt 3 bis „B“', 'Ø 1,0 je Tag', '3 Perioden']);
-    await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · 3 bis „B“');
-    await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben (bis „B“)');
-    await expect(page.locator('p.bd-hinweis')).toHaveText(VON_FEHLT);
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode · bis „B“');
+    await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 3 bis „B“ · Ø 1,0 je Tag', '3 Perioden']);
+    await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · Zugang 0 · Abgang 3 bis „B“');
+    await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben (bis „B“)');
+    await expect(page.locator('p.bd-hinweis')).toHaveText(ZUGANG_ZAEHLT);
     const [legende, satz] = await Promise.all([page.locator('.fluss-leg'), page.locator('p.bd-hinweis')].map(o => o.boundingBox()));
     expect(satz.y).toBeGreaterThanOrEqual(legende.y + legende.height);
-    expect(await zellen(page.locator('.fluss-tab thead tr'), 'th')).toEqual([['Zeitraum', 'Erledigt']]);
+    expect(await zellen(page.locator('.fluss-tab thead tr'), 'th')).toEqual([['Zeitraum', 'Zugang', 'Abgang']]);
   } finally { await k.stoppen(); }
 });
 
 for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es nicht mehr gibt', mitZielspalte('Abnahme')]]) {
-  test(`R00166 AK 10 (B0811): ${fall} nennt der Durchsatz keinen Block — der Satz zu „Von“ steht trotzdem`, async ({ page }) => {
+  test(`R00166 AK 10 (B0811): ${fall} nennt der Durchsatz keinen Block — der Satz zum Zugang steht trotzdem`, async ({ page }) => {
     const k = await kanbanStarten(rechenbeispiel(kopf));
     try {
       await durchsatzJeTagOeffnen(page, k);
-      await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode');
-      await expect(page.locator('#dus-kennzahl span')).toHaveText(['Gesamt 1', 'Ø 0,3 je Tag', '3 Perioden']);
-      await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · 1');
-      await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben');
-      await expect(page.locator('p.bd-hinweis')).toHaveText(VON_FEHLT);
+      await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode');
+      await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+      await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · Zugang 0 · Abgang 1');
+      await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben');
+      await expect(page.locator('p.bd-hinweis')).toHaveText(ZUGANG_ZAEHLT);
     } finally { await k.stoppen(); }
   });
 }
@@ -423,9 +426,9 @@ test.describe('R00166 Durchsatz auf einem Board mit Phasen', () => {
     arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
     k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
     await phasenBerichtAm0411(page, k, 'durchsatz');
-    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · erledigte Aufgaben je Periode · bis „Entwicklertest“');
-    await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 1 bis „Entwicklertest“');
-    await expect(page.locator('.fluss-leg .fluss-le').first()).toHaveText('erledigte Aufgaben (bis „Entwicklertest“)');
+    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode · bis „Entwicklertest“');
+    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 1 bis „Entwicklertest“ ·');
+    await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben (bis „Entwicklertest“)');
   });
 });
 
@@ -440,7 +443,7 @@ for (const farbschema of ['light', 'dark']) {
       await page.screenshot({ path: test.info().outputPath(`burndown-wahl-b-${farbschema}.png`), fullPage: true });
       await zumBericht(page, k, 'durchsatz');
       await page.getByRole('radio', { name: 'je Tag' }).click();
-      await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 3 bis „B“');
+      await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3 bis „B“ ·');
       expect(await kontrastVerstoesse(page, ['#main .leiste', '.fb-einst', '#dus-kennzahl', '.fluss-leg', '.bd-hinweis'])).toEqual([]);
       await page.screenshot({ path: test.info().outputPath(`durchsatz-wahl-b-${farbschema}.png`), fullPage: true });
       for (const route of ['durchsatz', 'verlauf']) {
