@@ -712,3 +712,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0853 `zeitraumGrenzen` bildet die Obergrenze als Beginn des Folgetags | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0854 Kostenbericht gibt die Sonderstelle ab; Bis-Feld benannter Zeiträume zeigt den richtigen Tag; Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | Nacharbeit B1: getippter Zwischenstand ohne Datum (31.11., 30.02.) löscht nichts und speichert kein Zwischendatum | Nacharbeit | — | 0,5h | 0,5h | autonom |
+| 2026-11-16 | Karte #153 R00174 (Aufgabe über Adresse öffnen und Link weitergeben) | B0855 Lesefunktion Hash → {Sicht, Slug, Nummer} als reines Modul | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

@@ -111,11 +111,8 @@ async function api(methode, pfad, daten) {
   return json;
 }
 
-function ansichtAusAdresse() {
-  if (/^#\/wbs\//.test(location.hash)) return 'wbs';
-  const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/fluss|berichte\/durchsatz|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten|berichte\/bestand)/.exec(location.hash);
-  return m ? m[1] : 'board';
-}
+/** Die Ansicht, die die Adresse nennt (Router in `web/adresse.js`). */
+const ansichtDerAdresse = () => adresseLesen(location.hash).sicht;
 /** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
 const wbsKuerzel = () => decodeURIComponent((/^#\/wbs\/([^/]*)/.exec(location.hash) || [])[1] || '');
 /** Gewählter Klappzustand der WBS-Sicht je Anwendung ({id: offen?}); überdauert das Neuladen. */
@@ -219,12 +216,12 @@ function vHaupt() {
 const kopie = x => JSON.parse(JSON.stringify(x));
 
 function gewaehltesBoard(zustand) {
-  const m = /^#\/board\/([^/]+)/.exec(location.hash);
+  const gewuenscht = adresseLesen(location.hash).slug;
   const slugs = [...zustand.boards.map(b => b.slug), ...defekteBoards(zustand)];
   let zuletzt = null;
   try { zuletzt = localStorage.getItem('kanbanD.board'); } catch (_) { }
-  if (!m && zuletzt && slugs.includes(zuletzt)) return zuletzt;
-  return m && slugs.includes(m[1]) ? m[1] : slugs[0] || null;
+  if (!gewuenscht && zuletzt && slugs.includes(zuletzt)) return zuletzt;
+  return gewuenscht && slugs.includes(gewuenscht) ? gewuenscht : slugs[0] || null;
 }
 
 /** Was der Server zuletzt geliefert hat, und wohin die Adresse zeigt. Ein Ereignis, nach dem das gleich bleibt — das Echo
@@ -279,7 +276,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
 
 /** Alles, was ein Laden für die Ansicht der Adresse liest — nur lokal gesammelt, übernommen erst über `sichtUebernehmen`. */
 async function sichtLaden(zustand) {
-  const view = ansichtAusAdresse();
+  const view = ansichtDerAdresse();
   const slug = gewaehltesBoard(zustand);
   let fbFehler = null;
   // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen

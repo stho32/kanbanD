@@ -22,18 +22,18 @@ test('Ansichten: jeder Bericht, den app.js zeichnet, ist eine Ansicht der Liste'
 });
 
 /**
- * Die Adressen, die der Router `ansichtAusAdresse` in app.js erkennt: je Regex-Literal ab `^#\/` seine Alternativen
+ * Die Adressen, die der Router `ansichtAusAdresse` in adresse.js erkennt (bis R00174 in app.js): je Regex-Literal ab `^#\/` seine Alternativen
  * (`#/wbs/`, `#/einrichten`, …) und der Rückfall (`board`). Gelesen wird der Router selbst, nicht eine zweite Liste.
  */
 function routerAdressen(app) {
-  const rumpf = /function ansichtAusAdresse\(\) \{([\s\S]*?)\n\}/.exec(app);
+  const rumpf = /function ansichtAusAdresse\(hash\) \{([\s\S]*?)\n  \}/.exec(app);
   if (!rumpf) throw new Error('ansichtAusAdresse nicht gefunden');
   const muster = [...rumpf[1].matchAll(/\/\^#\\\/((?:\\.|[^/\\])*)\//g)].map(treffer => treffer[1].replace(/\\\//g, '/'));
   const alternativen = muster.flatMap(text => text.replace(/^\(|\)$/g, '').split('|'));
   const rueckfall = [...rumpf[1].matchAll(/: '(\w+)';/g)].map(treffer => treffer[1]);
   return [...alternativen, ...rueckfall].map(teil => '#/' + teil);
 }
-const APP = fs.readFileSync(path.join(__dirname, '../../web/app.js'), 'utf8');
+const APP = fs.readFileSync(path.join(__dirname, '../../web/adresse.js'), 'utf8');
 
 test('Ansichten: jede Adresse, die der Router ansichtAusAdresse erkennt, ist eine Ansicht der Liste', () => {
   const erkannt = routerAdressen(APP);

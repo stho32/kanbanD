@@ -19,6 +19,7 @@ dateien! {
     "app.js" => "text/javascript; charset=utf-8",
     "ansicht.js" => "text/javascript; charset=utf-8",
     "seitenname.js" => "text/javascript; charset=utf-8",
+    "adresse.js" => "text/javascript; charset=utf-8",
     "kartenname.js" => "text/javascript; charset=utf-8",
     "reiter.js" => "text/javascript; charset=utf-8",
     "filter.js" => "text/javascript; charset=utf-8",
