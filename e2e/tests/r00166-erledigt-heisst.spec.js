@@ -113,9 +113,9 @@ test('R00166 AK 8 (B0806), seit R00169: „Wie lange noch“ zeigt mit Zielspalt
 });
 
 /* ── F0130 Auswahl in beiden Kopfleisten (Zeichnung D0006 #erledigt-heisst) ── */
-const GILT_FUER = 'gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const GILT_FUER = 'gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
 /** Im Durchsatz steht seit R00167 „Zugang ab“ daneben — ein Geltungssatz für beide Auswahlen. */
-const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
 const auswahl = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
 const gruppe = page => page.getByRole('group', { name: 'Erledigt heißt' });
 const eintraege = page => auswahl(page).locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));

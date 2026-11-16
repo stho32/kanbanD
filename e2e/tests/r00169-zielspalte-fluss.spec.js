@@ -88,8 +88,8 @@ const commitsSeit = (k, stand) => k.git('log', '--format=%an|%s', `${stand}..HEA
 async function bild(page, name) {
   if (process.env.R00169_BILDER) await page.screenshot({ path: path.join(process.env.R00169_BILDER, name), fullPage: true });
 }
-const GILT_FUER = 'gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
-const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const GILT_FUER = 'gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
+const GILT_FUER_IM_DURCHSATZ = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
 
 /* ── F0134 Kumulativer Fluss folgt der Zielspalte ── */
 test('R00169 AK 1 (B0826): ohne gespeicherte Zielspalte zeigt der Fluss „offen“ 3·2·2 und „fertig“ 0·1·1; Kopfleiste und Legende nennen keinen Block, „liest nur“ ist entfallen, die Board-Datei bleibt', async ({ page }) => {
@@ -281,5 +281,142 @@ test.describe('R00169 Board mit Phasen', () => {
     await expect(hinweisFilter(page)).toHaveCount(0);
     await expect(kopfleiste(page)).toHaveText('Kumulativer Fluss · Bestand je Spalte über die Zeit');
     await expect(legende(page).last()).toHaveText('fertig');
+  });
+});
+
+/* ── F0135 Durchlaufzeit öffnet mit „bis“ Zielspalte (Zeichnung D0006 #fluss-erledigt-heisst, Bilder 3 und 4) ── */
+const von = page => page.getByRole('combobox', { name: 'von Spalte' });
+const bis = page => page.getByRole('combobox', { name: 'bis Spalte' });
+const stand = page => page.locator('#dl-bis-stand');
+const zurueck = page => page.getByRole('button', { name: 'Zurück zur Vorgabe' });
+const aufgabenzahl = page => page.locator('#durchlauf-kennzahl span').first();
+const gemerkt = page => page.evaluate(() => localStorage.getItem('kanbanD.durchlaufzeit.fabrik'));
+/** Die Kopfleiste der Durchlaufzeit als Folge ihrer Elemente — wörtlich wie vor der Karte sind es Titel, zwei Auswahlen, Kopftext. */
+const kopfElemente = page => page.locator('#main .leiste').first().evaluate(leiste => [...leiste.children].map(kind => kind.tagName + (kind.className ? '.' + kind.className.replace(/ /g, '.') : '')));
+const KOPFTEXT = 'fabrik · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/fabrik.md';
+const WIE_VOR_DER_KARTE = ['B', 'LABEL.dl-wahl', 'LABEL.dl-wahl', 'SPAN.muted'];
+/** Stellt „von“ oder „bis“ und wartet, bis die Ansicht mit der Wahl neu gezeichnet ist. */
+async function stelle(page, feld, spalte) {
+  await feld(page).selectOption(spalte);
+  await bereit(page);
+  await expect(feld(page)).toHaveValue(spalte);
+}
+async function neuLaden(page) {
+  await page.reload();
+  await bereit(page, '#main .leiste');
+}
+
+test('R00169 US-3, AK 5, AK 6, AK 7b (B0829, Abnahme der Karte #159): mit Zielspalte B öffnet die Durchlaufzeit mit „von A“ und „bis B“; „bis C“ übersteht das Neuladen ohne Commit und nennt die Abweichung; „Zurück zur Vorgabe“ stellt wieder „bis B“', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+  try {
+    const [vorher, commits] = [k.lies(BOARD), k.git('rev-list', '--count', 'HEAD')];
+    await berichtAm0411(page, k, 'durchlauf');
+    await expect(von(page)).toHaveValue('A');
+    await expect(bis(page)).toHaveValue('B');
+    await expect(stand(page)).toHaveText('folgt „Erledigt heißt“: in „B“ oder rechts davon');
+    await expect(bis(page)).toHaveAttribute('aria-describedby', 'dl-bis-stand');
+    await expect(zurueck(page)).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Erledigt heißt' }), 'keine zweite Auswahl „Erledigt heißt“').toHaveCount(0);
+    expect(await kopfElemente(page)).toEqual(['B', 'LABEL.dl-wahl', 'LABEL.dl-wahl', 'SPAN.muted.dl-stand', 'SPAN.muted']);
+    await expect(aufgabenzahl(page), '#1, #2 und #3 haben B oder eine Spalte rechts davon am 03.11. erreicht').toHaveText('3 Aufgaben');
+    expect(await gemerkt(page), 'die Vorgabe wird nicht gemerkt').toBeNull();
+
+    await stelle(page, bis, 'C');
+    await neuLaden(page);
+    await expect(von(page)).toHaveValue('A');
+    await expect(bis(page)).toHaveValue('C');
+    await expect(stand(page)).toHaveText('weicht ab von „Erledigt heißt“ („B“) · nur an diesem Gerät');
+    await expect(zurueck(page)).toHaveAccessibleName('Zurück zur Vorgabe: von „A“ bis „B“');
+    await expect(zurueck(page)).toHaveText('Zurück zur Vorgabe');
+    expect(await zurueck(page).evaluate(knopf => knopf.scrollWidth <= knopf.clientWidth), 'die Beschriftung passt in den Knopf — die Kopfleiste staucht ihn nicht').toBe(true);
+    expect(await zurueck(page).evaluate(knopf => [knopf.className, knopf.dataset.act, knopf.previousElementSibling.id])).toEqual(['btn dl-vorgabe', 'dl-vorgabe', 'dl-bis-stand']);
+    await expect(aufgabenzahl(page), 'bis C: #1 am 04.11. und #3 am 03.11.').toHaveText('2 Aufgaben');
+    await bild(page, 'durchlaufzeit-abweichung.png');
+    expect(JSON.parse(await gemerkt(page)), 'gemerkt je Board am Gerät, nur was abweicht').toEqual({ bis: 'C' });
+    expect(k.lies(BOARD), 'die Board-Datei bleibt').toBe(vorher);
+    expect(k.git('rev-list', '--count', 'HEAD'), 'kein neuer Commit').toBe(commits);
+
+    await zurueck(page).click();
+    await expect(bis(page)).toHaveValue('B');
+    await expect(bis(page), 'der Fokus geht auf das Select „bis“').toBeFocused();
+    await expect(stand(page)).toHaveText('folgt „Erledigt heißt“: in „B“ oder rechts davon');
+    await expect(zurueck(page)).toHaveCount(0);
+    expect(await gemerkt(page)).toBeNull();
+    await neuLaden(page);
+    await expect(bis(page)).toHaveValue('B');
+  } finally { await k.stoppen(); }
+});
+
+test('R00169 AK 5, AK 7b (B0829): ohne Zielspalte steht die Kopfleiste der Durchlaufzeit wörtlich wie vor der Karte — bis zur letzten Spalte; eine Abweichung nennt den Standard „Erledigt“, von Hand zurückgestellt ist nichts mehr gemerkt', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchlauf');
+    await expect(von(page)).toHaveValue('A');
+    await expect(bis(page)).toHaveValue('Erledigt');
+    expect(await kopfElemente(page)).toEqual(WIE_VOR_DER_KARTE);
+    await expect(page.locator('#main .leiste > .muted')).toHaveText(KOPFTEXT);
+    expect(await bis(page).getAttribute('aria-describedby')).toBeNull();
+
+    await stelle(page, bis, 'C');
+    await expect(stand(page)).toHaveText('weicht ab von „Erledigt heißt“ („Erledigt“) · nur an diesem Gerät');
+    await expect(zurueck(page)).toHaveAccessibleName('Zurück zur Vorgabe: von „A“ bis „Erledigt“');
+    await stelle(page, bis, 'Erledigt');
+    expect(await kopfElemente(page), 'wer von Hand die Vorgabe wählt, erreicht dasselbe wie der Knopf').toEqual(WIE_VOR_DER_KARTE);
+    expect(await gemerkt(page)).toBeNull();
+  } finally { await k.stoppen(); }
+});
+
+test('R00169 AK 6, AK 7b (B0829): weicht nur „von“ ab, steht der Knopf neben dem Satz „folgt …“ — ohne Zielspalte allein; er stellt beides zurück', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('C')));
+  const k2 = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchlauf');
+    await expect(bis(page)).toHaveValue('C');
+    await stelle(page, von, 'B');
+    await expect(stand(page)).toHaveText('folgt „Erledigt heißt“: in „C“ oder rechts davon');
+    await expect(zurueck(page)).toHaveAccessibleName('Zurück zur Vorgabe: von „A“ bis „C“');
+    expect(JSON.parse(await gemerkt(page))).toEqual({ von: 'B' });
+    await zurueck(page).click();
+    await expect(von(page)).toHaveValue('A');
+    await expect(zurueck(page)).toHaveCount(0);
+
+    await page.goto(`${k2.adresse}#/berichte/durchlauf`);
+    await bereit(page, '#main .leiste');
+    await stelle(page, von, 'B');
+    expect(await kopfElemente(page)).toEqual(['B', 'LABEL.dl-wahl', 'LABEL.dl-wahl', 'BUTTON.btn.dl-vorgabe', 'SPAN.muted']);
+    await expect(stand(page)).toHaveCount(0);
+  } finally { await k.stoppen(); await k2.stoppen(); }
+});
+
+test('R00169 AK 7b (B0829): der Geltungssatz nennt in Burndown, Fluss und Fever Chart die Durchlaufzeit „als Vorgabe für „bis““ — im Durchsatz zusammengesetzt; bei 375 px bricht die Kopfleiste der Durchlaufzeit um, ohne Querscrollen', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel(mitZielspalte('B')));
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    for (const route of ['verlauf', 'fluss', 'fieber']) {
+      await zumBericht(page, k, route);
+      await expect(page.locator('.fb-einst > .muted').first(), route).toHaveText(GILT_FUER);
+    }
+    await zumBericht(page, k, 'durchsatz');
+    await expect(page.locator('.fb-einst > .muted')).toHaveText(GILT_FUER_IM_DURCHSATZ);
+    await zumBericht(page, k, 'durchlauf');
+    await stelle(page, bis, 'C');
+    await breiteSetzen(page, 375);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'kein Querscrollen der Seite').toBe(true);
+    expect(await stand(page).evaluate(satz => getComputedStyle(satz).fontSize)).toBe('12px');
+    await expect(zurueck(page)).toBeVisible();
+  } finally { await k.stoppen(); }
+});
+
+test.describe('R00169 Durchlaufzeit auf einem Board mit Phasen', () => {
+  let k, arbeit;
+  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
+
+  test('R00169 AK 5, AK 7b (B0829): mit der Phase „Entwicklertest“ als Ziel ist „bis“ die Spalte „Abnahme“ — dort ist der Entwicklertest durchlaufen; der Satz sagt „„Entwicklertest“ durchlaufen“', async ({ page }) => {
+    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
+    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
+    await phasenBerichtAm0411(page, k, 'durchlauf');
+    await expect(von(page)).toHaveValue('Backlog');
+    await expect(bis(page)).toHaveValue('Abnahme');
+    await expect(stand(page)).toHaveText('folgt „Erledigt heißt“: „Entwicklertest“ durchlaufen');
   });
 });

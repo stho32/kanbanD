@@ -51,7 +51,7 @@ const zugangAb = page => page.getByRole('combobox', { name: 'Zugang ab' });
 const erledigtHeisst = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
 const gruppe = page => page.getByRole('group', { name: 'Zugang ab und Erledigt heißt' });
 const eintraege = auswahl => auswahl.locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));
-const GILT_FUER = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const GILT_FUER = '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
 const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [...tr.querySelectorAll(zelle)].map(td => td.textContent.trim())), zelle);
 /** Stellt die Auflösung „je Tag“ ein und liest die Tabellenansicht: Kopf, je Tag die Zahlenspalten, Fußzeile. */
 async function tabelleJeTag(page) {
@@ -108,12 +108,12 @@ test('R00167 (B0815): Burndown und Fever Chart kennen „Zugang ab“ nicht — 
   const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Arbeit')));
   try {
     await berichtAm0411(page, k, 'verlauf');
-    await expect(page.getByRole('group', { name: 'Erledigt heißt', exact: true }).locator('.muted')).toHaveText('gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards');
+    await expect(page.getByRole('group', { name: 'Erledigt heißt', exact: true }).locator('.muted')).toHaveText('gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“');
     await expect(zugangAb(page)).toHaveCount(0);
     await zurAnsicht(page, k, 'berichte/fieber');
     await expect(erledigtHeisst(page)).toHaveValue('');
     await expect(zugangAb(page)).toHaveCount(0);
-    await expect(page.locator('.fb-einst > .muted')).toHaveText('gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards');
+    await expect(page.locator('.fb-einst > .muted')).toHaveText('gilt für Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“');
   } finally { await k.stoppen(); }
 });
 

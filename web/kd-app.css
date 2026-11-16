@@ -889,6 +889,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .bf-leeren{margin-left:auto;height:24px}
 /* Durchlaufzeit (R00045) */
 .dl-wahl{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--kd-muted)}
+.dl-stand{font-size:12px}
+.dl-vorgabe{flex:none}
 .kennzahlen{display:flex;flex-wrap:wrap;gap:var(--kd-s5);font-size:13px;color:var(--kd-muted);margin:var(--kd-s2) 0}
 .kennzahlen b{color:var(--kd-text);font-weight:600;font-family:var(--kd-mono)}
 .diagramm .median{stroke:var(--kd-muted);stroke-width:1.5}

@@ -1260,7 +1260,7 @@ function zugangAb(ziel) {
 }
 /** Wofür „Erledigt heißt“ gilt (R00169, Zeichnung D0006 #fluss-erledigt-heisst) — der eine Wortlaut für alle vier Berichte;
     der Durchsatz setzt ihn mit „Zugang ab“ zusammen. */
-const ZIEL_GILT_FUER = 'Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards';
+const ZIEL_GILT_FUER = 'Burndown, Durchsatz, Kumulativen Fluss und Fever Chart dieses Boards; in der Durchlaufzeit als Vorgabe für „bis“';
 const GILT_FUER_ZIEL = `gilt für ${ZIEL_GILT_FUER}`;
 const GILT_FUER_VON_UND_ZIEL = `„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für ${ZIEL_GILT_FUER}`;
 /** Die Auswahl „Erledigt heißt“ (R00079) samt Geltungssatz — dasselbe Element in Fever Chart, Burndown, Durchsatz und
@@ -1677,14 +1677,37 @@ function vBestandZelle(stelle, achsen, klassen) {
   return `<td class="r${klasse ? ' k' : ''}"${farbe}><a class="bz" href="#/board/${esc(S.ui.slug || '')}" data-act="bestand-zelle" data-arg="${esc(ziel)}" ${benannt}>${z.zahl}</a></td>`;
 }
 
-/* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. */
+/* Durchlaufzeit (R00045): Streudiagramm Ankunft × Tage, Median und 85 % als Bezugslinien. „bis“ öffnet mit der Zielspalte des
+   Boards, eine abweichende Wahl ist am Gerät gemerkt (R00169, Zeichnung D0006 #fluss-erledigt-heisst). */
+/** Der Satz hinter „bis“: die Wahl weicht von „Erledigt heißt“ ab — genannt wird der Block, der auf dem Board zählt — oder
+    sie folgt ihm; ohne Zielblock und ohne Abweichung steht nichts. `strecke` kommt aus `durchlaufWahl`. */
+function vDurchlaufStand(ziel, strecke) {
+  let satz = '';
+  if (ziel.worte) satz = `folgt „Erledigt heißt“: ${esc(ziel.worte.lang)}`;
+  if (strecke.bisWeichtAb) {
+    let zaehlt = ziel.standard;
+    if (ziel.zaehlt) zaehlt = ziel.zaehlt.schluessel;
+    satz = `weicht ab von „Erledigt heißt“ („${esc(zaehlt)}“) · nur an diesem Gerät`;
+  }
+  if (!satz) return '';
+  return `<span class="muted dl-stand" id="dl-bis-stand">${satz}</span>`;
+}
+/** Der Weg zurück zur Vorgabe des Boards — nur, wenn am Gerät etwas gemerkt ist (von oder bis weicht ab). */
+function vDurchlaufZurueck(strecke) {
+  if (!strecke.weichtAb) return '';
+  const vorgabe = `von „${esc(strecke.vorgabe.von)}“ bis „${esc(strecke.vorgabe.bis)}“`;
+  return `<button type="button" class="btn dl-vorgabe" data-act="dl-vorgabe" aria-label="Zurück zur Vorgabe: ${vorgabe}">Zurück zur Vorgabe</button>`;
+}
 function vDurchlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
   const sp = S.bew.spalten, u = S.ui;
   const ziel = erledigtHeisst(), strecke = durchlaufWahl(S.bew, ziel.gewaehlt, durchlaufGemerkt()), { von, bis } = strecke;
   const d = durchlaufzeiten(S.bew, u.bf, aufgabe, Date.now(), von, bis, S.board && S.board.start);
-  const wahl = (k, wert, titel) => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte">${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
-  const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis')}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter('durchlaufzeit')}`;
+  const stand = vDurchlaufStand(ziel, strecke);
+  let bisBeschrieben = '';
+  if (stand) bisBeschrieben = ' aria-describedby="dl-bis-stand"';
+  const wahl = (k, wert, titel, zusatz = '') => `<label class="dl-wahl">${titel} <select class="mini-inp" data-dl="${k}" aria-label="${titel} Spalte"${zusatz}>${sp.map(s => `<option${s === wert ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`;
+  const kopf = `<div class="leiste"><b>Durchlaufzeit</b>${wahl('dlVon', von, 'von')}${wahl('dlBis', bis, 'bis', bisBeschrieben)}${stand}${vDurchlaufZurueck(strecke)}<span class="muted">${esc(S.board ? S.board.titel : '')} · erstes Erreichen der Spalte oder einer rechts davon · aus den Commits von boards/${esc(u.slug || '')}.md</span></div>${vBerichtsfilter('durchlaufzeit')}`;
   if (!d.gueltig) return `${kopf}<div class="body bericht"><div class="leer">„von“ muss links von „bis“ liegen.</div></div>`;
   const B = 800, H = 292, L = 40, R = 110, O = 16, U = 40, l = d.liste;
   const t0 = Math.min(...l.map(x => x.ankunft)), t1 = Math.max(...l.map(x => x.ankunft));

@@ -1872,6 +1872,7 @@ async function aktion(a, arg, wert) {
       case 'p-bereich': u.pBereich = arg; break;
       case 'sp': u.sp = arg; break;
       case 'dus-einheit': u.dusEinheit = arg; break;
+      case 'dl-vorgabe': durchlaufAmGeraetMerken({}); u.fokus = 'select[data-dl="dlBis"]'; break;
       case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
       case 'bf-farbe': await berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) }); break;
       case 'bf-spalte': await berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
