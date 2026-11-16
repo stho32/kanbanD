@@ -74,17 +74,20 @@ test.describe('R00057', () => {
     await form.getByLabel('Fertig').press('Enter');
     await expect(form).toHaveCount(0);
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd']);
-    expect(arbeit.lies()).not.toContain('I0048');
+    // erst wenn das Vermerken committet ist, sagt „kein I0048“ etwas: vorher stünde es in jedem Fall nicht da (ADR-0026 Regel 4)
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#7 Wirkung auf kd (create „Export“) vermerkt');
+    await expect.poll(() => arbeit.lies()).not.toContain('I0048');
     await fenster.getByRole('button', { name: 'Wirkung + kd eingetreten' }).click();
     await expect(fenster.locator('#wirkungen .wchip')).toHaveText(['+ kd:I0048']);
     await expect(fenster.getByRole('button', { name: 'Wirkung + kd:I0048 eingetreten' })).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');
     await expect(karte(page, 7).locator('.wpunkt')).toHaveAttribute('title', /\+ kd:I0048 anlegen — Knoten rot/);
-    expect(arbeit.lies()).toContain('| I0048 | Interaction | D0002 | Export | rot | US-1 |');
-    expect(k.lies('aufgaben/0007-dialog-export-bauen.md')).toMatch(/  - \{application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: Export, done-criterion: US-1, executed: \d{4}-\d\d-\d\d\}/);
-    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 2);
-    expect(k.git('log', '-2', '--format=%s')).toBe('#7 Wirkung auf kd:I0048 (create) eingetreten\n#7 Wirkung auf kd (create „Export“) vermerkt');
-    expect(arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
+    await expect.poll(() => arbeit.lies()).toContain('| I0048 | Interaction | D0002 | Export | rot | US-1 |');
+    await expect.poll(() => k.lies('aufgaben/0007-dialog-export-bauen.md')).toMatch(/  - \{application: kd, action: create, node: I0048, parent: D0002, level: Interaction, name: Export, done-criterion: US-1, executed: \d{4}-\d\d-\d\d\}/);
+    await expect.poll(() => k.git('log', '-2', '--format=%s')).toBe('#7 Wirkung auf kd:I0048 (create) eingetreten\n#7 Wirkung auf kd (create „Export“) vermerkt');
+    // nach dem zweiten Commit steht die Zahl fest: genau zwei im Board-Repository, keiner im Arbeits-Repository
+    await expect.poll(() => +k.git('rev-list', '--count', 'HEAD')).toBe(boardVorher + 2);
+    await expect.poll(() => arbeit.git('rev-list', '--count', 'HEAD')).toBe(arbeitVorher);
     // Gegenanzeige: die WBS-Sicht zeigt an I0048 die Aufgabe, Klick öffnet sie
     await karte(page, 7).locator('.t').click();
     await reiter(page, 'Details');

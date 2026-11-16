@@ -62,7 +62,7 @@ test('US-1 bis US-3: Termin anlegen, Chance, ändern, entfernen', async ({ page 
     // entfernen
     await page.getByLabel('Termin Kickoff entfernen').click();
     await expect(page.locator('#termine tbody tr')).toHaveCount(1);
-    expect(k.git('log', '-1', '--format=%s')).toContain('Termin „Kickoff“');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toContain('Termin „Kickoff“');
     // ohne Name: Hinweis, nichts geschrieben
     await page.getByRole('button', { name: 'Termin anlegen' }).click();
     await expect(page.locator('.tm-form [role="alert"]')).toHaveText('Der Termin braucht einen Namen');

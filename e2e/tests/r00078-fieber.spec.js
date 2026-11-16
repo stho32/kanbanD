@@ -116,7 +116,7 @@ test.describe('R00078', () => {
     await expect(ziel).toHaveAttribute('aria-pressed', 'false');
     await ziel.click();
     await expect(ziel).toHaveAttribute('aria-pressed', 'true');
-    expect(k.lies('boards/entwicklung.md')).toContain('target: true}');
+    await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('target: true}');
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe(`Zieltermin von „Entwicklung“: „Deadline“ (${tag(20).split('-').reverse().join('.')})`);
   });
 

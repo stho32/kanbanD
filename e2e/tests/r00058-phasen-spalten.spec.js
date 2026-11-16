@@ -82,7 +82,7 @@ test.describe('R00058 entfällt', () => {
     await feld.getByRole('button', { name: 'Abnahme entfällt' }).click();
     await expect(feld.getByRole('button', { name: 'Abnahme entfällt' })).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => k.lies('aufgaben/0001-a1.md')).toContain('phases:\n  skipped: [Abnahme]\n');
-    expect(k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Phasen');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Phasen');
     await feld.getByRole('button', { name: 'Abnahme entfällt' }).click();
     await expect.poll(() => k.lies('aufgaben/0001-a1.md')).not.toContain('phases');
   });

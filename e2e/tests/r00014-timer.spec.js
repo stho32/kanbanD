@@ -39,7 +39,7 @@ test.describe('R00014', () => {
     await expect(page.locator('#pop .pz2')).toHaveCount(2);
     await page.getByRole('button', { name: 'Timer von Claude stoppen' }).click();
     await expect(page.locator('#t-lauf')).toContainText('1 läuft');
-    expect(k.lies('aufgaben/0001-eins.md')).toMatch(/· st\n.* · \d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · cl\n/);
-    expect(k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|#1 Timer von Claude gestoppt \(0:(29|30|31)\)$/);
+    await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toMatch(/· st\n.* · \d{4}-\d\d-\d\d \d\d:\d\d\+0[12]:00 · cl\n/);
+    await expect.poll(() => k.git('log', '-1', '--format=%an|%s')).toMatch(/^Stefan\|#1 Timer von Claude gestoppt \(0:(29|30|31)\)$/);
   });
 });
