@@ -23,7 +23,11 @@
     const einsetzen = s => {
       // U+0000 steht nur um die Nummern der Platzhalter: jedes zweite Stück ist eine Nummer.
       const stuecke = s.split('\u0000');
-      for (let i = 1; i < stuecke.length; i += 2) stuecke[i] = einsetzen(fertig[+stuecke[i]]);
+      for (let i = 1; i < stuecke.length; i += 2) {
+        const marke = fertig[+stuecke[i]];
+        if (marke.includes('\u0000')) stuecke[i] = einsetzen(marke);
+        else stuecke[i] = marke;
+      }
       return stuecke.join('');
     };
     const sterne = s => (s.includes('*') ? s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>') : s);
