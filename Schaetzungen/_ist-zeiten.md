@@ -656,3 +656,8 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0796 Dienst: Eintrag anlegen, ändern, löschen mit Prüfungen | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0797 Drei Routen mit Statuscodes und Endpunktliste | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-16 | Karte #175 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0798 Abweisungen ändern nichts; Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-16 | Karte #172 R00163 (E2E-Wackler Teil 2b: die übrigen Stellen nach ADR-0026) | B0779 Nackte Datei- und Git-Lesung: expect.poll | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #172 R00163 (E2E-Wackler Teil 2b: die übrigen Stellen nach ADR-0026) | B0780 r00007-live ohne waitForTimeout | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #172 R00163 (E2E-Wackler Teil 2b: die übrigen Stellen nach ADR-0026) | B0781 Filterklicks: filterSchalten | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #172 R00163 (E2E-Wackler Teil 2b: die übrigen Stellen nach ADR-0026) | B0782 Von #139 berührte Stellen prüfen (davon 0,2 h Warten auf ein fremdes Gate) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #172 R00163 (E2E-Wackler Teil 2b: die übrigen Stellen nach ADR-0026) | B0783 Abnahme-Probe Block 2 (zehnfach und ein voller Lauf) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |

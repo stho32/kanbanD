@@ -1,6 +1,6 @@
 ---
 id: R00163
-status: Neu
+status: In Arbeit
 datum: 2026-11-15
 ---
 
@@ -39,10 +39,10 @@ Zahlt ein auf: [Vision](R00000-vision.md) — Leitplanke „Getestet wird mit `c
 
 ### Block 2 — übrige Stellen (I0151)
 
-- [ ] **AK 5:** In den genannten Tests steht nach einer Aktion keine nackte Lesung `expect(k.lies(…))` oder `expect(k.git(…))` mehr; dieselbe Erwartung steht in `expect.poll`.
-- [ ] **AK 6:** `r00007-live.spec.js` enthält kein `waitForTimeout`.
-- [ ] **AK 7:** In den fünf genannten Dateien läuft jeder Filterklick, auf den ein Tippen oder eine Lesung folgt, über `filterSchalten`. Bleibt ein Klick, weil sein Zwischenzustand die Probe ist, nennt ihn der Commit.
-- [ ] **AK 8:** Die drei von #139 berührten Stellen sind ausgerichtet, oder der Commit nennt je Stelle „schon ausgerichtet“ mit Fundstelle.
+- [x] **AK 5:** In den genannten Tests steht nach einer Aktion keine nackte Lesung `expect(k.lies(…))` oder `expect(k.git(…))` mehr; dieselbe Erwartung steht in `expect.poll`.
+- [x] **AK 6:** `r00007-live.spec.js` enthält kein `waitForTimeout`.
+- [x] **AK 7:** In den fünf genannten Dateien läuft jeder Filterklick, auf den ein Tippen oder eine Lesung folgt, über `filterSchalten`. Bleibt ein Klick, weil sein Zwischenzustand die Probe ist, nennt ihn der Commit.
+- [x] **AK 8:** Die drei von #139 berührten Stellen sind ausgerichtet, oder der Commit nennt je Stelle „schon ausgerichtet“ mit Fundstelle.
 - [ ] **AK 9:** Jede geänderte Datei einzeln unter Last mit `--repeat-each=10` grün (Last wie bei R00150: `--workers=1`, `nice -n 19`, paralleler `cargo build`); je Stelle die Ursache im Commit; die Schranken aus AK 4 gelten weiter.
 - [ ] **AK 10:** Abnahme-Probe der Karte, wörtlich: „`npx playwright test --workers=2` dreimal hintereinander mit 0 failed und 0 flaky“. Rund 35 Minuten; **der Director fährt sie** am Kartenende, allein und ohne `nice`.
 
