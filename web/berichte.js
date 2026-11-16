@@ -586,7 +586,9 @@
       und frühestens am Tag der ersten Aufgabe auf dem Board; der Kalenderzeitraum des Filters wirkt hier nicht.
       Der Verlauf beginnt mit der ersten Aufgabe, frühestens bei `start`.
       `nurLetzter` rechnet nur den letzten Block und keinen Verlauf — für das Fever Chart, das jeden Tag einzeln rechnet;
-      `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten). */
+      `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten).
+      `zugang` (R00168): je Block mit Prognose die Aufgaben, die in der Messbasis offen wurden, abzüglich der entfernten —
+      sonst und mit `nurLetzter` null. */
   function prognose(bew, f, aufgabeZu, jetzt, phasen, optionen = {}) {
     // Gemerkt nach Inhalt — Bewegungen, was der Filter an den Aufgaben liest, Filter, Optionen, Tag: Neuzeichnen ohne neue
     // Daten rechnet nicht neu; die Monte-Carlo-Ziehungen kosten auf großen Boards Sekunden. Nach Inhalt, nicht nach Objekt,
@@ -619,6 +621,15 @@
     const daAm = t => gezaehlt.map(x => ({ a: x.a, zustand: x.zustandAm(t) })).filter(x => imUmfang(x.zustand)).map(x => ({ a: x.a, s: x.zustand.spalte }));
     const jetztDa = daAm(jetzt);
     const umfang = jetztDa.length;
+    /** Zugang eines Blocks in der Messbasis (R00168, ADR-0027 N4): „hinzugekommen“ minus „entfernt“ mit dem Block als Ziel,
+        über die Tage ab `fenster`, nie unter 0. */
+    const zugangZu = st => {
+      const zumBlock = bestandLeser(bew, aufgabeZu, a => bew.spalten.filter(s => st.durch(a, s)));
+      const ereignisse = ereignisseJeTag(f, gezaehlt.filter(x => !st.entfaellt(x.a)).map(x => zumBlock(x.a)), jetzt);
+      let summe = 0;
+      for (const [t, e] of ereignisse) if (t >= fenster) summe += e.hinzugekommen - e.entfernt;
+      return Math.max(0, summe);
+    };
     let vorige = null;
     const alle = prognoseStufen(bew, spalten, phasen), gewaehlt = alle.filter(st => st.schluessel === block);
     const stufen = gewaehlt.length ? gewaehlt : nurLetzter ? alle.slice(-1) : alle;
@@ -626,7 +637,7 @@
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
       const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= fenster && d <= jetzt);
-      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null };
+      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null, zugang: null };
       if (st.spalte) ph.spalte = st.spalte; else ph.phase = st.phase;
       if (daten.length) {
         Object.assign(ph, tagesreihen(daten, fenster, morgen));
@@ -640,6 +651,8 @@
           Object.assign(ph, { erg7: e7, erg5: e5 });
         }
       }
+      // der Zugang gehört zum Bericht, nicht zur Rechnung: das Fever Chart (`nurLetzter`, je Tag ein Aufruf) braucht ihn nicht
+      if (ph.zeilen && !nurLetzter) ph.zugang = zugangZu(st);
       // nie früher als der Block davor (Spalte links, Vorphase): dessen Datum als Untergrenze nennen, nicht verrechnen
       if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
         const v = vorige.zeilen[k];

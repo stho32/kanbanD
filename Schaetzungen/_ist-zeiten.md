@@ -673,3 +673,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0817 durchsatz() rechnet den Zugang je Periode | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0818 Zweiter Balken, Kennzahl und Tooltip | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0819 Tabelle und Legende nennen Zugang und Abgang; Probe im echten Programm und Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #158 R00168 (Wie lange noch: Hinweis, wenn der Zugang den Abgang erreicht) | B0820 `prognoseRechnen` liefert die Zugangssumme je Block | Standard | 1-2h | 0,3h | 0,3h | autonom |

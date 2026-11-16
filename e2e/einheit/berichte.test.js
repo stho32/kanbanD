@@ -787,3 +787,78 @@ test('x-Marken der Tagesdiagramme: für 1 bis 400 Tage nie mehr als acht, erster
   }
   assert.deepStrictEqual(zuViele, [], 'Tage→Marken über acht');
 });
+
+/* ── R00168 Wie lange noch: Zugang gegen Abgang (ADR-0027 N4) ── */
+const zug168 = (n, ...st) => ({ nummer: n, wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
+const tagImOktober = t => `2026-10-${String(t).padStart(2, '0')} 09:00`;
+/** Zugang, Verworfenes und Rückläufer; heute ist der 21.10., die Messbasis „letzte 10 Tage“ beginnt am 12.10.
+    #1 lange vorher erledigt, #2 und #3 vorher offen, #4–#8 kommen in der Messbasis hinzu; #5 wird aus „Erledigt“ zurückgeholt,
+    #6 vom Board genommen, #8 im Backlog archiviert. */
+const zugangBew = () => ({ spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: [
+  zug168(1, ['2026-09-20 09:00', 'Backlog'], ['2026-09-21 09:00', 'Erledigt']),
+  zug168(2, [tagImOktober(5), 'Backlog'], [tagImOktober(13), 'Erledigt']),
+  zug168(3, [tagImOktober(5), 'Backlog']),
+  zug168(4, [tagImOktober(12), 'Backlog'], [tagImOktober(15), 'Erledigt']),
+  zug168(5, [tagImOktober(13), 'Backlog'], [tagImOktober(16), 'Erledigt'], [tagImOktober(18), 'Arbeit']),
+  zug168(6, [tagImOktober(14), 'Backlog'], [tagImOktober(17), null]),
+  zug168(7, [tagImOktober(15), 'Backlog'], [tagImOktober(19), 'Erledigt']),
+  zug168(8, [tagImOktober(16), 'Backlog']),
+] });
+const zugangAufgabe = n => n === 8 ? { klasse: null, zustaendige: [], labels: [], archiviert: '2026-10-19' } : undefined;
+const zehnTage = f({ messbasisTage: 10 });
+const isoDatum = ms => new Date(ms).toLocaleDateString('sv-SE');
+
+test('R00168 AK 3: die Prognose bleibt am Datensatz mit Zugang, Verworfenem und Rückläufer wie vor der Karte', () => {
+  const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
+  const gelesen = p.phasen.map(b => ({ spalte: b.spalte, offen: b.offen, laeufe: b.laeufe, durchsatz: b.durchsatz, reihe7: b.reihe7, reihe5: b.reihe5, zeilen: b.zeilen.map(z => [z.p, z.kalendertage, isoDatum(z.datum7), z.arbeitstage, isoDatum(z.datum5)]) }));
+  // Werte von main (e819a47), vor dem Umbau gerechnet
+  assert.deepStrictEqual(gelesen, [
+    { spalte: 'Arbeit', offen: 1, laeufe: 4, durchsatz: 0.4, reihe7: [0, 1, 0, 1, 1, 0, 0, 1, 0, 0], reihe5: [0, 1, 0, 1, 1, 1, 0, 0], zeilen: [[50, 2, '2026-10-23', 2, '2026-10-23'], [70, 3, '2026-10-24', 2, '2026-10-23'], [85, 4, '2026-10-25', 3, '2026-10-26'], [95, 6, '2026-10-27', 5, '2026-10-28']] },
+    { spalte: 'Erledigt', offen: 2, laeufe: 4, durchsatz: 0.4, reihe7: [0, 1, 0, 1, 1, 0, 0, 1, 0, 0], reihe5: [0, 1, 0, 1, 1, 1, 0, 0], zeilen: [[50, 4, '2026-10-25', 4, '2026-10-27'], [70, 6, '2026-10-27', 5, '2026-10-28'], [85, 8, '2026-10-29', 6, '2026-10-29'], [95, 10, '2026-10-31', 8, '2026-11-02']] },
+  ]);
+  assert.deepStrictEqual(p.tage.slice(-8).map(t => [t.umfang, t.offen.Arbeit, t.offen.Erledigt]), [[6, 4, 4], [7, 4, 4], [8, 4, 4], [7, 3, 3], [7, 3, 4], [6, 1, 2], [6, 1, 2], [6, 1, 2]]);
+  assert.deepStrictEqual([p.umfang, p.verworfen, p.tage.length], [6, 1, 32]);
+});
+
+test('R00168 AK 5: Zugangssumme je Block — hinzugekommen und zurückgeholt, abzüglich der entfernten', () => {
+  const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
+  // „Erledigt“: #4–#8 hinzugekommen (5) + #5 zurückgeholt (1) − #6 und #8 entfernt (2) = 4
+  // „Arbeit“: #4–#8 hinzugekommen (5) − #6 und #8 entfernt (2) = 3; #5 liegt in „Arbeit“ und bleibt für diesen Block durch
+  assert.deepStrictEqual(p.phasen.map(b => [b.spalte, b.zugang]), [['Arbeit', 3], ['Erledigt', 4]]);
+});
+
+/** Rechenbeispiele der Anforderung: `vorher` vor der Messbasis offen, `hinzu` in ihr hinzugekommen, davon `entfernt` vom Board
+    genommen, `erledigt` in die Abschlussspalte gezogen. Eine lange vorher erledigte Aufgabe hält den Beginn der Geschichte
+    vor der Messbasis. */
+function rechenbeispiel168({ vorher, hinzu, entfernt, erledigt }) {
+  const alt = zug168(100, ['2026-09-01 09:00', 'Backlog'], ['2026-09-02 09:00', 'Erledigt']);
+  const davor = [...Array(vorher)].map((_, i) => zug168(200 + i, [tagImOktober(5), 'Backlog']));
+  const neu = [...Array(hinzu)].map((_, i) => zug168(300 + i, [tagImOktober(12 + i % 5), 'Backlog']));
+  neu.slice(0, entfernt).forEach(a => a.wechsel.push({ zeitpunkt: tagImOktober(20), spalte: null }));
+  [...davor, ...neu.slice(entfernt)].slice(0, erledigt).forEach((a, i) => a.wechsel.push({ zeitpunkt: tagImOktober(17 + i), spalte: 'Erledigt' }));
+  return { spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: [alt, ...davor, ...neu] };
+}
+const abschlussblock = (bew, tage) => prognose(bew, f({ messbasisTage: tage }), ohne, jetzt).phasen[1];
+const BEISPIEL_A = { vorher: 0, hinzu: 10, entfernt: 0, erledigt: 4 }, BEISPIEL_B = { vorher: 5, hinzu: 2, entfernt: 0, erledigt: 4 }, BEISPIEL_C = { vorher: 4, hinzu: 5, entfernt: 3, erledigt: 3 };
+
+test('R00168 Rechenbeispiele A, B, C und A mit 20 Tagen (AK 6): Summen und Tage der Messbasis', () => {
+  const lesen = b => [b.offen, b.zugang, b.laeufe, b.reihe7.length, b.durchsatz];
+  assert.deepStrictEqual(lesen(abschlussblock(rechenbeispiel168(BEISPIEL_A), 10)), [6, 10, 4, 10, 0.4], 'A: 10 : 10 = 1,0 gegen 4 : 10 = 0,4');
+  assert.deepStrictEqual(lesen(abschlussblock(rechenbeispiel168(BEISPIEL_B), 10)), [3, 2, 4, 10, 0.4], 'B: 2 : 10 = 0,2 gegen 0,4');
+  assert.deepStrictEqual(lesen(abschlussblock(rechenbeispiel168(BEISPIEL_C), 10)), [3, 2, 3, 10, 0.3], 'C: (5 − 3) : 10 = 0,2 gegen 3 : 10 = 0,3');
+  assert.deepStrictEqual(lesen(abschlussblock(rechenbeispiel168(BEISPIEL_A), 20)), [6, 10, 4, 20, 0.2], 'A über 20 Tage: 0,5 gegen 0,2');
+});
+
+test('R00168: Zugang nie unter 0, ohne Prognose nicht gerechnet, im Fever Chart nicht gerechnet', () => {
+  // vier vorher offen, eine kommt hinzu, drei der alten werden entfernt: 1 − 3 → 0
+  const bew = rechenbeispiel168({ vorher: 7, hinzu: 1, entfernt: 0, erledigt: 3 });
+  bew.aufgaben.slice(4, 7).forEach(a => a.wechsel.push({ zeitpunkt: tagImOktober(20), spalte: null }));
+  assert.deepStrictEqual([abschlussblock(bew, 10).zugang, abschlussblock(bew, 10).offen], [0, 2]);
+  const zweiLaeufe = abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10);
+  assert.deepStrictEqual([zweiLaeufe.zeilen, zweiLaeufe.zugang], [null, null], 'unter drei Läufen keine Prognose, kein Zugang');
+  const fieber = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true });
+  assert.deepStrictEqual([fieber.phasen.length, fieber.phasen[0].zugang, fieber.phasen[0].laeufe], [1, null, 4], 'nurLetzter rechnet den Zugang nicht');
+  // Werte von main (e819a47): das Fever Chart zeigt dieselben Zahlen
+  assert.deepStrictEqual(fieberTag(zugangBew(), zehnTage, zugangAufgabe, '2026-10-21', undefined, null), { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: ['2026-10-25', '2026-10-27', '2026-10-29', '2026-10-31'], ende5: ['2026-10-27', '2026-10-28', '2026-10-29', '2026-11-02'] });
+  assert.strictEqual(fieberSchluessel('2026-10-12', zehnTage), '{"v":2,"start":"2026-10-12","filter":{"ohneFarben":[],"ohneSpalten":[],"personen":[],"labels":[],"messbasisTage":10}}', 'der Schlüssel des Caches bleibt');
+});
