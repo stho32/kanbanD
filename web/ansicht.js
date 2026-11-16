@@ -1629,10 +1629,8 @@ function fieberStand() {
   if (!S.bew || !S.board) return null;
   const start = S.board.start || ersterTag(S.bew);
   if (!start) return { start: null };
-  const f = S.board.fieber, bloecke = fieberBloecke(S.bew, S.ui.bf, S.bew.phasen);
   // Zielspalte (R00079): ein Block aus „Wie lange noch“; gibt es ihn nicht mehr, gilt der letzte
-  const block = bloecke.find(x => x.schluessel === f.zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
-  const zaehlt = block || letzter, verschwunden = f.zielspalte && !block ? f.zielspalte : null;
+  const f = S.board.fieber, { bloecke, block, zaehlt, verschwunden } = zielblock(S.bew, S.ui.bf, f.zielspalte);
   const schluessel = fieberSchluessel(start, S.ui.bf, block && block.schluessel);
   const zielTermin = (S.board.termine || []).find(t => t.ziel) || null;
   const cache = ((S.fieberCache && S.fieberCache.abschnitte || []).find(a => a.schluessel === schluessel) || {}).tage || [];

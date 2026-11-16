@@ -645,6 +645,18 @@
   }
   /** Die Blöcke aus „Wie lange noch“ unter dem Filter, von links nach rechts — zur Wahl der Zielspalte (R00079). */
   const fieberBloecke = (bew, f, phasen) => prognoseStufen(bew, bew.spalten.filter(s => !f.ohneSpalten.includes(s)), phasen).map(st => ({ schluessel: st.schluessel, titel: st.titel }));
+  /** Der Block, der auf dem Board als erledigt zählt (R00166, ADR-0027 N2 Punkt 2) — die eine Auflösung der gespeicherten
+      Zielspalte für Fever Chart, Burndown und Durchsatz: `block` ist der gespeicherte Block unter dem Filter (sonst null),
+      `zaehlt` er oder der letzte Block, `verschwunden` der Name einer Wahl, die es nicht mehr gibt. `gewaehlt` ist der Schlüssel
+      nur dann, wenn die Wahl von `standard` abweicht — dem Ziel, bis zu dem Burndown und Durchsatz ohne Wahl rechnen. */
+  function zielblock(bew, f, zielspalte) {
+    const bloecke = fieberBloecke(bew, f, bew.phasen), standard = durchsatzZiel(bew, bew.phasen).name;
+    const block = bloecke.find(x => x.schluessel === zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
+    let verschwunden = null, gewaehlt = null;
+    if (zielspalte && !block) verschwunden = zielspalte;
+    if (block && block.schluessel !== standard) gewaehlt = block.schluessel;
+    return { bloecke, block, zaehlt: block || letzter, verschwunden, gewaehlt, standard };
+  }
   /** Schlüssel des Caches: Projektstart, Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt)
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
   function fieberSchluessel(start, f, ziel = null) {
@@ -962,5 +974,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

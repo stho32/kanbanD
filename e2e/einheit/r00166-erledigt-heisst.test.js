@@ -63,3 +63,33 @@ test('R00166 B0803 (AK 1–3, AK 8): mit Zielspalte B ändern sich nur Burndown 
   assert.deepStrictEqual(burndown(undefined), OHNE_WAHL.burndown, 'die Wahl eines Aufrufs bleibt nicht hängen');
   assert.deepStrictEqual(durchsatz(undefined), OHNE_WAHL.durchsatz);
 });
+
+/* ── B0804 Zielblock des Boards an einer Stelle auflösen (ADR-0027 N2 Punkt 2) ── */
+const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
+const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [] });
+const kern = zb => ({ gewaehlt: zb.gewaehlt, zaehlt: zb.zaehlt.schluessel, verschwunden: zb.verschwunden, standard: zb.standard });
+
+test('R00166 B0804 (AK 6): die gespeicherte Zielspalte B ist der Block, der zählt — die Blöcke sind die des Fever Charts', () => {
+  const zb = B.zielblock(beispiel(), filter({}), 'B');
+  assert.deepStrictEqual(kern(zb), { gewaehlt: 'B', zaehlt: 'B', verschwunden: null, standard: 'Erledigt' });
+  assert.deepStrictEqual(zb.bloecke, B.fieberBloecke(beispiel(), filter({}), undefined));
+  assert.deepStrictEqual(zb.bloecke.map(x => x.titel), ['Spalte „B“', 'Spalte „C“', 'Spalte „Erledigt“']);
+});
+
+test('R00166 B0804 (AK 7): ohne Wahl und mit der Abschlussspalte als Wahl ist nichts gewählt, es zählt der letzte Block', () => {
+  for (const zielspalte of [null, undefined, '', 'Erledigt']) {
+    assert.deepStrictEqual(kern(B.zielblock(beispiel(), filter({}), zielspalte)), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: null, standard: 'Erledigt' }, `Zielspalte ${zielspalte}`);
+  }
+});
+
+test('R00166 B0804 (AK 9): eine Spalte, die es nicht gibt oder die der Berichtsfilter ausschließt, ist verschwunden — es zählt der letzte Block', () => {
+  assert.deepStrictEqual(kern(B.zielblock(beispiel(), filter({}), 'Abnahme')), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: 'Abnahme', standard: 'Erledigt' });
+  assert.deepStrictEqual(kern(B.zielblock(beispiel(), filter({ ohneSpalten: ['B'] }), 'B')), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: 'B', standard: 'Erledigt' });
+});
+
+test('R00166 B0804 (AK 4): auf einem Board mit Phasen sind die Blöcke die Phasen, Standard ist die letzte Phase', () => {
+  const zb = B.zielblock(mitPhasen(), filter({}), 'Entwicklertest');
+  assert.deepStrictEqual(kern(zb), { gewaehlt: 'Entwicklertest', zaehlt: 'Entwicklertest', verschwunden: null, standard: 'Abnahme' });
+  assert.deepStrictEqual(zb.bloecke.map(x => x.titel), ['Entwicklung durchlaufen', 'Entwicklertest durchlaufen', 'Abnahme durchlaufen']);
+  assert.strictEqual(B.zielblock(mitPhasen(), filter({}), 'Abnahme').gewaehlt, null);
+});
