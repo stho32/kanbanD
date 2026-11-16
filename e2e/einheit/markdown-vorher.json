@@ -73,7 +73,7 @@
  {
   "name": "PO: Überschrift ####",
   "eingabe": "#### Vier",
-  "ausgabe": "<p>#### Vier</p>"
+  "ausgabe": "<h6>Vier</h6>"
  },
  {
   "name": "PO: fett/kursiv *",
@@ -83,12 +83,12 @@
  {
   "name": "PO: kursiv _ / fett __",
   "eingabe": "_kursiv_ und __fett__",
-  "ausgabe": "<p>_kursiv_ und __fett__</p>"
+  "ausgabe": "<p><em>kursiv</em> und <strong>fett</strong></p>"
  },
  {
   "name": "PO: durchgestrichen",
   "eingabe": "~~weg~~",
-  "ausgabe": "<p>~~weg~~</p>"
+  "ausgabe": "<p><del>weg</del></p>"
  },
  {
   "name": "PO: Inline-Code",
@@ -113,7 +113,7 @@
  {
   "name": "PO: Liste geschachtelt",
   "eingabe": "- a\n  - a1\n  - a2\n- b",
-  "ausgabe": "<ul><li>a</li><li>a1</li><li>a2</li><li>b</li></ul>"
+  "ausgabe": "<ul><li>a<ul><li>a1</li><li>a2</li></ul></li><li>b</li></ul>"
  },
  {
   "name": "PO: Checkliste",
@@ -143,7 +143,7 @@
  {
   "name": "PO: Trennlinie",
   "eingabe": "oben\n\n---\n\nunten",
-  "ausgabe": "<p>oben</p><p>---</p><p>unten</p>"
+  "ausgabe": "<p>oben</p><hr><p>unten</p>"
  },
  {
   "name": "PO: Bild",
@@ -378,7 +378,7 @@
  {
   "name": "Bestand: eingerückte Unterpunkte",
   "eingabe": "- Oben\n    - tief eins\n    - tief zwei\n  1. nummeriert darunter\n- Unten",
-  "ausgabe": "<ul><li>Oben</li><li>tief eins</li><li>tief zwei</li></ul><ol><li>nummeriert darunter</li></ol><ul><li>Unten</li></ul>"
+  "ausgabe": "<ul><li>Oben<ul><li>tief eins</li><li>tief zwei</li></ul><ol><li>nummeriert darunter</li></ol></li><li>Unten</li></ul>"
  },
  {
   "name": "Bestand: Fortsetzungszeile im Listenpunkt",
@@ -403,12 +403,12 @@
  {
   "name": "Bestand: Trennlinien",
   "eingabe": "a\n\n***\n\nb\n\n___\n\nc\n---\nd",
-  "ausgabe": "<p>a</p><p>***</p><p>b</p><p>___</p><p>c<br>---<br>d</p>"
+  "ausgabe": "<p>a</p><p>***</p><p>b</p><p>___</p><p>c</p><hr><p>d</p>"
  },
  {
   "name": "Bestand: Überschriften vier bis sechs",
   "eingabe": "#### vier\n##### fünf\n###### sechs",
-  "ausgabe": "<p>#### vier<br>##### fünf<br>###### sechs</p>"
+  "ausgabe": "<h6>vier</h6><p>##### fünf<br>###### sechs</p>"
  },
  {
   "name": "Bestand: Raute ohne Leerzeichen und Kartennummer",
@@ -478,7 +478,7 @@
  {
   "name": "Bestand: Unterstriche und Tilden",
   "eingabe": "_kursiv_ __fett__ ~~weg~~ datei_name_lang ~ungefähr~",
-  "ausgabe": "<p>_kursiv_ __fett__ ~~weg~~ datei_name_lang ~ungefähr~</p>"
+  "ausgabe": "<p><em>kursiv</em> <strong>fett</strong> <del>weg</del> datei_name_lang ~ungefähr~</p>"
  },
  {
   "name": "Bestand: Backticks",
@@ -530,6 +530,6 @@
  {
   "name": "Bestand: langes gemischtes Beispiel",
   "eingabe": "## Ziel\n\nDie Ansicht zeigt **alle** Karten einer Spalte; die Zahl steht im Kopf (`n von m`).\n\n## Umfang\n\n1. Kopfzeile\n2. Liste\n   - mit Unterpunkt\n3. Fuß\n\n> Nicht Teil: Druckansicht.\n\n## Quellen\n\n- [Leitfaden](https://example.org/leitfaden#kopf)\n- Dokumentation/Planung/plan.md\n- https://example.org/roh?a=1&b=2\n\n```\nGET /api/zustand\n```",
-  "ausgabe": "<h4>Ziel</h4><p>Die Ansicht zeigt <strong>alle</strong> Karten einer Spalte; die Zahl steht im Kopf (<code>n von m</code>).</p><h4>Umfang</h4><ol><li>Kopfzeile</li><li>Liste</li></ol><ul><li>mit Unterpunkt</li></ul><ol><li>Fuß</li></ol><blockquote>Nicht Teil: Druckansicht.</blockquote><h4>Quellen</h4><ul><li><a href=\"https://example.org/leitfaden#kopf\" target=\"_blank\" rel=\"noopener\">Leitfaden</a></li><li>Dokumentation/Planung/plan.md</li><li><a href=\"https://example.org/roh?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener\">https://example.org/roh?a=1&amp;b=2</a></li></ul><pre><code>GET /api/zustand</code></pre>"
+  "ausgabe": "<h4>Ziel</h4><p>Die Ansicht zeigt <strong>alle</strong> Karten einer Spalte; die Zahl steht im Kopf (<code>n von m</code>).</p><h4>Umfang</h4><ol><li>Kopfzeile</li><li>Liste<ul><li>mit Unterpunkt</li></ul></li><li>Fuß</li></ol><blockquote>Nicht Teil: Druckansicht.</blockquote><h4>Quellen</h4><ul><li><a href=\"https://example.org/leitfaden#kopf\" target=\"_blank\" rel=\"noopener\">Leitfaden</a></li><li>Dokumentation/Planung/plan.md</li><li><a href=\"https://example.org/roh?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener\">https://example.org/roh?a=1&amp;b=2</a></li></ul><pre><code>GET /api/zustand</code></pre>"
  }
 ]

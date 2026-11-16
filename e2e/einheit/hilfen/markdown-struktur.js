@@ -1,10 +1,12 @@
 // Strukturprüfung jeder Ausgabe des Markdowns (ADR-0030 Punkte 2 und 3): nur Marken der festen Liste, an `a` genau
 // `href`, `target`, `rel` in fester Form, an `th` und `td` höchstens eine der drei festen Klassen der Ausrichtung, die Hülle
 // der Tabelle nur in ihrer einen festen Form. Fängt die Klasse „eine spätere Ersetzungsstufe trifft die Marke einer früheren“.
+// Seit R00178 dazu die Schachtelung: jede Marke schließt, was sie geöffnet hat; `li` steht nur in `ul`/`ol`, eine Liste nur
+// ganz außen oder direkt in einem `li`, `hr` nur ganz außen und ohne Attribut.
 const assert = require('node:assert');
 
 const LINK = /<a href="[^"<>]*" target="_blank" rel="noopener">/g;
-const FESTE_MARKEN = /<\/?(?:p|h[2-6]|ul|ol|li|blockquote|pre|code|strong|em|a|thead|tbody|tr|th|td)>|<br>/g;
+const FESTE_MARKEN = /<\/?(?:p|h[2-6]|ul|ol|li|blockquote|pre|code|strong|em|del|a|thead|tbody|tr|th|td)>|<br>|<hr>/g;
 /** Hülle und Tabelle gibt es nur als Paar; `tabindex`, `role` und `aria-label` setzt der Renderer, nie der Text (R00176). */
 const TABELLE_AUF = /<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table>/g;
 const TABELLE_ZU = /<\/table><\/div>/g;
@@ -27,6 +29,24 @@ function pruefeStruktur(html, eingabe = '') {
   assert.strictEqual(zahl(html, TABELLE_AUF), zahl(html, TABELLE_ZU), `STRUKTUR: öffnende und schließende Tabellen-Hüllen ungleich in ${kurz(html)} aus ${kurz(eingabe)}`);
   assert.strictEqual(zahl(html, ZELLE_AUF), zahl(html, /<\/t[hd]>/g), `STRUKTUR: öffnende und schließende Zellen ungleich in ${kurz(html)} aus ${kurz(eingabe)}`);
   pruefeTabellen(html, eingabe);
+  pruefeSchachtelung(html, eingabe);
+}
+
+/** Jede Marke schließt in umgekehrter Reihenfolge des Öffnens; Listen und Trennlinie stehen nur, wo die Grammatik sie erlaubt. */
+function pruefeSchachtelung(html, eingabe) {
+  const LISTE = ['ul', 'ol'];
+  const offen = [];
+  const ort = () => `in ${kurz(html)} aus ${kurz(eingabe)}`;
+  for (const [marke, schliesst, name] of html.matchAll(/<(\/?)([a-z][a-z0-9]*)\b[^>]*>/g)) {
+    const aussen = offen[offen.length - 1];
+    if (name === 'br') continue;
+    if (name === 'hr') { assert.ok(marke === '<hr>' && !aussen, `STRUKTUR: Trennlinie mit Attribut oder nicht ganz außen (in ${aussen}) ${ort()}`); continue; }
+    if (schliesst) { assert.strictEqual(offen.pop(), name, `STRUKTUR: ${marke} schließt nicht, was zuletzt geöffnet wurde, ${ort()}`); continue; }
+    if (LISTE.includes(name)) assert.ok(!aussen || aussen === 'li', `STRUKTUR: Liste in ${aussen} statt ganz außen oder in einem Listenpunkt ${ort()}`);
+    if (name === 'li') assert.ok(LISTE.includes(aussen), `STRUKTUR: Listenpunkt in ${aussen || 'keiner Liste'} ${ort()}`);
+    offen.push(name);
+  }
+  assert.deepStrictEqual(offen, [], `STRUKTUR: nicht geschlossene Marken ${ort()}`);
 }
 
 /** Jede Tabelle steht in ihrer festen Form, jede Zeile hat so viele Zellen wie der Kopf und je Spalte dieselbe Klasse. */
@@ -39,8 +59,8 @@ function pruefeTabellen(html, eingabe) {
   }
 }
 
-/** Die Marken einer einzelnen Zeile (`markdownInline`, ADR-0030 Punkt 7): Link, Code, fett, kursiv — nie ein Block. */
-const INLINE_MARKEN = /<\/?(?:code|strong|em)>|<\/a>/g;
+/** Die Marken einer einzelnen Zeile (`markdownInline`, ADR-0030 Punkt 7): Link, Code, fett, kursiv, durchgestrichen — nie ein Block. */
+const INLINE_MARKEN = /<\/?(?:code|strong|em|del)>|<\/a>/g;
 
 /** Wirft, wenn die Ausgabe einer Zeile etwas anderes enthält als maskierten Text und die Marken einer Zeile. */
 function pruefeInlineStruktur(html, eingabe = '') {
