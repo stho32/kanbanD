@@ -68,6 +68,16 @@ document.addEventListener('toggle', e => {
   S.ui.bfOffen = e.target.open;
   try { localStorage.setItem('kanbanD.berichtsfilter-offen', S.ui.bfOffen ? '1' : '0'); } catch (_) { }
 }, true);
+/** Klappen „Kosten je Rolle“ (R00172): je Board die Menge der offenen Kennungen `data-kr` — nur für die Sitzung, nichts
+    wird gespeichert. Jedes Neuzeichnen setzt `open` daraus (vKostenRollen). */
+S.ui.kostRollenOffen = new Map();
+document.addEventListener('toggle', e => {
+  if (!e.target.matches || !e.target.matches('.kost-rollen, .kost-rolle')) return;
+  const offen = S.ui.kostRollenOffen.get(S.ui.slug) || new Set();
+  if (e.target.open) offen.add(e.target.dataset.kr);
+  else offen.delete(e.target.dataset.kr);
+  S.ui.kostRollenOffen.set(S.ui.slug, offen);
+}, true);
 const umschalten = (liste, x) => liste.includes(x) ? liste.filter(y => y !== x) : [...liste, x];
 
 function filterSetzen(text) {

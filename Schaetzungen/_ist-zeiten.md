@@ -702,3 +702,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #167 R00172 (Kostenbericht: Kosten je Rolle aufklappen) | B0844 Rollen im Beispielboard; `rollen` je Währungsgruppe mit Gleichung | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #167 R00172 (Kostenbericht: Kosten je Rolle aufklappen) | B0845 Aufgaben und Einträge je Rolle; zwei Währungen | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #167 R00172 (Kostenbericht: Kosten je Rolle aufklappen) | B0846 Gruppe, Rollenzeilen, Aufgaben und Einträge, Schlusszeile „ohne Rolle“ zeichnen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #167 R00172 (Kostenbericht: Kosten je Rolle aufklappen) | B0847 Klappzustand bleibt über das Neuzeichnen | Standard | 1-2h | 0,1h | 0,1h | autonom |
