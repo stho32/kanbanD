@@ -38,7 +38,9 @@ test.describe('R00060', () => {
     await expect(board.locator('#bd-nicht')).toContainText(': 0.', { timeout: 5000 });
     await expect(board.locator('.endwert.leise')).toHaveText('Umfang 2');
     await board.goto(k.adresse + '#/board/entwicklung');
-    // das Aufgabenfenster bleibt beim Wechsel der Ansicht offen
+    // Seit R00174 ist die Adresse die Wahrheit über das Fenster: der Wechsel zum Bericht hat es geschlossen — wieder öffnen.
+    await board.locator('.ka[data-id="2"]').click();
+    await reiter(board, 'Details');
     await board.getByRole('button', { name: 'zählt in Wie lange noch' }).click();
     await expect(board.getByRole('button', { name: 'zählt in Wie lange noch' })).toContainText('(Standard)');
     expect(k.lies('aufgaben/0002-anmerkung.md')).toContain('reporting:\n  cycle-time: true\n');

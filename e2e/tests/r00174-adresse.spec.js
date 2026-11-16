@@ -206,6 +206,26 @@ test.describe('R00174 F0143: Adresse öffnet die Aufgabe', () => {
     await expect(irgendeinFenster(page)).toHaveCount(0);
   });
 
+  test('Wer weitergeht, bevor die Aufgabe des Links geantwortet hat, bekommt weder Hinweis noch eine umgeschriebene Adresse', async ({ page }) => {
+    let freigeben;
+    const gehalten = new Promise(ok => { freigeben = ok; });
+    let angekommen;
+    const anfrageDa = new Promise(ok => { angekommen = ok; });
+    await page.route(url => url.pathname === '/api/aufgaben/99', async route => { angekommen(); await gehalten; await route.continue(); });
+    await page.goto(k.adresse + '#/board/entwicklung/aufgabe/99');
+    await anfrageDa;
+    await page.evaluate(() => { location.hash = '#/berichte/kosten'; });
+    await expect(page).toHaveTitle(/Kosten|Berichte/);
+    await expect(page.locator('.bahn')).toHaveCount(0);
+    const antwort = page.waitForResponse(a => new URL(a.url()).pathname === '/api/aufgaben/99');
+    freigeben();
+    await antwort;
+    await bereit(page, '#main');
+    await expect(page.locator(HINWEIS)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/berichte/kosten');
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+  });
+
   test('AK 10: die bisherigen Adressen wirken wie zuvor — kein Fenster, kein Hinweis, die Adresse bleibt stehen', async ({ page }) => {
     const bisher = [
       ['#/board/zweit', '.bahn'], ['#/board/gibtsnicht', '.bahn'], ['#/aufgaben', 'tr[data-zeile]'], ['#/personen', '#main'],

@@ -333,14 +333,17 @@ let adresseGefolgt = null;
 
 /** Führt die Adresse dem Fenster nach (R00174 AK 2, ADR-0029 Regel 2): öffnet oder schließt der Mensch das Fenster, steht
     danach die Adresse der Aufgabe bzw. der Seite als neuer Verlaufseintrag da — ohne `hashchange`, also ohne Laden. Ist eine
-    Navigation unterwegs (die Adresse ist noch nicht befolgt), bleibt die Adresse die Wahrheit und wird nicht überschrieben. */
+    Navigation unterwegs (die Adresse ist noch nicht befolgt, oder ihre Ansicht noch nicht geladen), bleibt die Adresse die
+    Wahrheit und wird nicht überschrieben. */
 function adresseNachfuehren() {
   const u = S.ui;
   const navigationUnterwegs = location.hash !== adresseGefolgt;
   const seiteMitAufgabenadresse = (u.view === 'board' && Boolean(u.slug)) || u.view === 'aufgaben';
-  if (navigationUnterwegs || !seiteMitAufgabenadresse) return;
+  const adresse = adresseLesen(location.hash);
+  const ansichtNochNichtGeladen = adresse.sicht !== u.view;
+  if (navigationUnterwegs || !seiteMitAufgabenadresse || ansichtNochNichtGeladen) return;
   const gezeigt = u.offen || u.offenDefekt || null;
-  if (adresseLesen(location.hash).nummer === gezeigt) return;
+  if (adresse.nummer === gezeigt) return;
   history.pushState(null, '', adresseBilden({ sicht: u.view, slug: u.slug, nummer: gezeigt }));
   adresseGefolgt = location.hash;
 }
@@ -356,6 +359,7 @@ function fensterDerAdresseFolgen(hash) {
   if (adresse.nummer === gezeigt) { adresseGefolgt = hash; return; }
   fensterfeldVerlassen();
   u.offen = null; u.offenDefekt = null; u.defektDatei = null; u.datei = null; u.fensterMenue = null; u.entwurf = null;
+  u.linkZiel = null;
   // Das Verlassen hat einen Entwurf abgeschickt: erst das Nachladen der Warteschlange folgt der Adresse — bis dahin würde
   // keine Antwort für das Fenster übernommen (R00110).
   if (schlangeOffen()) return;
@@ -363,7 +367,7 @@ function fensterDerAdresseFolgen(hash) {
   if (!adresse.nummer) return;
   fensterZuruecksetzen();
   u.offenDefekt = adresse.nummer;
-  u.linkZiel = { nummer: adresse.nummer, slug: adresse.slug };
+  u.linkZiel = { nummer: adresse.nummer, slug: adresse.slug, hash };
 }
 
 /** Verlässt das Feld des Aufgabenfensters, in dem der Fokus steht — sein Entwurf wird gespeichert wie beim Schließen über ✕. */
@@ -387,13 +391,13 @@ function linkAuswerten() {
   const offen = u.offen === ziel.nummer || u.offenDefekt === ziel.nummer;
   if (!offen) {
     hinweisZeigen(`Aufgabe #${ziel.nummer} gibt es nicht`);
-    adresseErsetzen(null);
+    adresseErsetzen(ziel.hash, null);
     return;
   }
   if (u.view !== 'board') return;
   if (ziel.slug !== u.slug) {
     hinweisZeigen('Board aus dem Link gibt es nicht');
-    adresseErsetzen(ziel.nummer);
+    adresseErsetzen(ziel.hash, ziel.nummer);
     return;
   }
   if (!liegtAufDemGezeigtenBoard(ziel.nummer)) hinweisZeigen(`#${ziel.nummer} liegt nicht auf diesem Board`);
@@ -408,8 +412,10 @@ function liegtAufDemGezeigtenBoard(nummer) {
   return aufDemBoard && !imArchivVerborgen;
 }
 
-/** Berichtigt die Adresse eines Links, der nicht passte, ohne neuen Verlaufseintrag: sie nennt danach, was gezeigt wird. */
-function adresseErsetzen(nummer) {
+/** Berichtigt die Adresse `hash` eines Links, der nicht passte, ohne neuen Verlaufseintrag: sie nennt danach, was gezeigt
+    wird. Steht inzwischen eine andere Adresse da, bleibt sie stehen. */
+function adresseErsetzen(hash, nummer) {
+  if (location.hash !== hash) return;
   const berichtigt = adresseBilden({ sicht: S.ui.view, slug: S.ui.slug, nummer });
   history.replaceState(null, '', berichtigt);
   adresseGefolgt = location.hash;
@@ -2802,7 +2808,14 @@ document.addEventListener('input', e => {
     $('#vorschau-board').textContent = boardText(S.ui.first.board.trim(), spaltenListe(S.ui.first));
   }
 });
-window.addEventListener('hashchange', laden);
+/** Zurück, Vor, ein Link oder eine getippte Adresse (ADR-0029 Regel 2): das Fenster folgt der Adresse sofort — was der Mensch
+    danach öffnet, gilt —, die Ansicht folgt mit dem Laden. */
+function adresseGewechselt() {
+  const eingerichtet = Boolean(S.zustand) && Boolean(S.zustand.eingerichtet);
+  if (eingerichtet && location.hash !== adresseGefolgt) { fensterDerAdresseFolgen(location.hash); render(); }
+  return laden();
+}
+window.addEventListener('hashchange', adresseGewechselt);
 
 /**
  * Das Fenster folgt dem sichtbaren Bereich, wenn die Bildschirmtastatur ihn verdeckt (ADR-0016): zwei Variablen an der Wurzel,
