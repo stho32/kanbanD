@@ -4,7 +4,7 @@
 // role="separator" und den Werkzeugen. Markiert ist genau ein Eintrag mit `an` + aria-current="page" —
 // in der Leiste oder im offenen Menü; der „…“-Auslöser nie (ADR-0018 Regel 5 geweitet).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson } = require('./hilfen');
+const { kanbanStarten, alsPerson, breiteSetzen: layoutBeiBreite } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 const { gezeichnet } = require('./struktur-hilfen');
 
@@ -59,7 +59,7 @@ const markierte = page => page.locator('header.kz [aria-current="page"], #pop[ro
 /** Setzt die Breite und wartet, bis die Kopfzeile in der M3-Stufe dieser Breite gezeichnet ist. */
 async function breiteSetzen(page, breite) {
   const stufe = breite >= 1200 ? 'large' : breite >= 840 ? 'expanded' : breite >= 600 ? 'medium' : 'compact';
-  await page.setViewportSize({ width: breite, height: 800 });
+  await layoutBeiBreite(page, breite, 800);
   await expect(kopf(page)).toHaveAttribute('data-stufe', stufe);
 }
 

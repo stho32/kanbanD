@@ -1,7 +1,7 @@
 // R00128 Board umbenennen, archivieren und löschen in der Oberfläche (I0119, #35)
 // Artboard D0002 #board-verwalten (PO-freigegeben); Server F0103 in tests/boards.rs.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
 
 // Boards „Entwicklung“ (aus einrichten) und „Test“ mit der Karte #7.
 const BESTAND = {
@@ -187,7 +187,7 @@ test.describe('R00128', () => {
   });
 
   test('US-4/US-8/AK8/16: Loeschen mit Bestaetigungsdialog, kein Undo', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 760 });
+    await breiteSetzen(page, 320, 760);
     await oeffnenMenue(page, 'test');
     await pop(page).getByRole('menuitem', { name: 'Löschen' }).click();
     const dialog = page.getByRole('alertdialog');

@@ -1,6 +1,6 @@
 // R00101 Kopfzeile auf jeder Breite bedienbar
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, breiteSetzen: layoutBeiBreite } = require('./hilfen');
 const { wbsText, zeile, arbeitsRepository } = require('./wbs-hilfen');
 const { kopfzeilePruefen } = require('./kopfzeile-hilfen');
 
@@ -45,7 +45,7 @@ test('Stufe nach M3 an den Grenzen, auch nach einem Wechsel der Fensterbreite', 
 
 /** Setzt die Breite und wartet, bis die Kopfzeile in der Stufe dieser Breite gezeichnet ist. */
 async function breiteSetzen(page, breite) {
-  await page.setViewportSize({ width: breite, height: 800 });
+  await layoutBeiBreite(page, breite, 800);
   await expect(kopf(page)).toHaveAttribute('data-stufe', await page.evaluate(b => stufeAusBreite(b), breite));
 }
 

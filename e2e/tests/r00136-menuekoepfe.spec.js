@@ -2,7 +2,7 @@
 // die vier Köpfe (SEITE, MEHR, „#n AUF BOARD LEGEN", STATUS <Knoten>) sind klassen-gestaltete Nicht-Überschrift-Elemente.
 // Die berechneten Werte der vier Köpfe wurden vor dem Bau an main gemessen (2026-11-12, 1280 × 800, helles Thema).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, breiteSetzen } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 // Berechnete Werte der vier Menüköpfe vor dem Bau (Muster R00113 NFA 1): Schrift, Laufweite, Farbe, Höhe, Innenabstand,
@@ -44,7 +44,7 @@ const MENUES = [
 
 /** Öffnet das Menü aus MENUES; wartet, bis die Sicht und das Menü gezeichnet sind. */
 async function menueOeffnen(page, k, m) {
-  await page.setViewportSize({ width: m.breite, height: 800 });
+  await breiteSetzen(page, m.breite, 800);
   await page.goto(k.adresse + m.adresse);
   await liveBereit(page);
   await page.locator('#main ' + m.bereit).first().waitFor();
