@@ -123,6 +123,8 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
         })
         .routes(routes!(anhang_lesen, anhang_entfernen))
         .routes(routes!(zeit_korrigieren, zeit_loeschen))
+        .routes(routes!(kosteneintrag_anlegen))
+        .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
         .routes(routes!(openapi_json))
         .split_for_parts();
@@ -1069,6 +1071,44 @@ async fn zeit_korrigieren(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennu
 )]
 async fn zeit_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zeit_loeschen(p, nr, &kennung)).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/aufgaben/{nr}/kosteneintraege",
+    tag = "Aufgaben",
+    description = "Kosteneintrag anlegen {at, role, column, amount, currency?, tokens?} — angefallene Kosten eines Rollenlaufs, Feldnamen wie in der Datei (cost-entries); at nicht in der Zukunft, gespeichert in Ortszeit mit Versatz; column ist eine Spalte eines Boards, auf dem die Aufgabe liegt; ohne currency gilt cost.currency der Aufgabe; jeder Fehler im Rumpf → 400; gleiche Kennung role@at schon vorhanden → 409 — einen zweiten Lauf derselben Rolle in derselben Minute eine Minute später eintragen",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Kosteneintragsangaben,
+    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn kosteneintrag_anlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, JsonKoerper(rumpf): JsonKoerper<serde_json::Value>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.kosteneintrag_anlegen(p, nr, &rumpf)).await
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/aufgaben/{nr}/kosteneintraege/{kennung}",
+    tag = "Aufgaben",
+    description = "Kosteneintrag über seine Kennung role@JJJJ-MM-TTTHH:MM±HH:MM (Feld kennung jedes Kosteneintrags, URL-kodiert) ändern {at?, role?, column?, amount?, currency?, tokens?} — Regeln wie beim Anlegen; tokens: null entfernt den Wert; ein neues at oder role gibt eine neue Kennung, ist sie belegt → 409; unbekannte Kennung → 404; ohne Änderung kein Commit",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("kennung" = String, Path, description = "Kennung des Kosteneintrags role@JJJJ-MM-TTTHH:MM±HH:MM, URL-kodiert"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Kosteneintragsangaben,
+    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn kosteneintrag_aendern(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>, JsonKoerper(rumpf): JsonKoerper<serde_json::Value>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.kosteneintrag_aendern(p, nr, &kennung, &rumpf)).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/aufgaben/{nr}/kosteneintraege/{kennung}",
+    tag = "Aufgaben",
+    description = "Kosteneintrag über seine Kennung löschen; unbekannte Kennung → 404",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("kennung" = String, Path, description = "Kennung des Kosteneintrags role@JJJJ-MM-TTTHH:MM±HH:MM, URL-kodiert"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn kosteneintrag_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.kosteneintrag_loeschen(p, nr, &kennung)).await
 }
 
 #[utoipa::path(

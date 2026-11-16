@@ -6,7 +6,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabe, Board, Kosteneintrag, Person, Roheintrag};
-use crate::nachricht::wert;
+use crate::nachricht;
 use crate::uhr::Zeitpunkt;
 use chrono::{DateTime, Utc};
 
@@ -118,7 +118,7 @@ fn loeschen(a: &mut Aufgabe, kennung: &str) -> Result<String, Fehler> {
 /// Wo der Eintrag zur Kennung steht. Verglichen wird die ganze Kennung, zeichengleich wie `GET` sie liefert — kein
 /// Muster, kein Teilvergleich: eine unbekannte oder verstümmelte Kennung trifft keinen Eintrag.
 fn stelle(a: &Aufgabe, kennung: &str) -> Result<usize, Fehler> {
-    a.kosteneintraege.iter().position(|e| e.kennung() == kennung).ok_or_else(|| Fehler::NichtGefunden(format!("#{} hat keinen Kosteneintrag {}", a.nummer, wert(kennung))))
+    a.kosteneintraege.iter().position(|e| e.kennung() == kennung).ok_or_else(|| Fehler::NichtGefunden(format!("#{} hat keinen Kosteneintrag {}", a.nummer, nachricht::wert(kennung))))
 }
 
 /// `at` einer Anfrage: nicht in der Zukunft, gespeichert in Ortszeit mit Versatz (R00084). Ein unlesbarer Wert
@@ -141,7 +141,7 @@ fn spalte_pruefen(spalte: &str, nr: u32, boards: &[Board]) -> Result<(), Fehler>
     if boards.iter().filter(gemeint).any(|b| b.spalten.iter().any(|s| s.name == spalte)) {
         return Ok(());
     }
-    Err(Fehler::Ungueltig(format!("{PFAD}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", wert(spalte))))
+    Err(Fehler::Ungueltig(format!("{PFAD}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", nachricht::wert(spalte))))
 }
 
 /// ADR-0028 Punkt 4: gleiche Kennung an derselben Aufgabe → 409. Zwei Läufe derselben Rolle in derselben Minute
@@ -156,7 +156,7 @@ fn kennung_frei<'a>(mut uebrige: impl Iterator<Item = &'a Kosteneintrag>, neu: &
 
 /// Der Eintrag für die Commit-Nachricht: `3,46 USD (entwickler, Entwicklung)` — Rolle und Spalte als eine Zeile.
 fn kurz(e: &Kosteneintrag) -> String {
-    format!("{},{:02} {} ({}, {})", e.cent / 100, e.cent % 100, e.waehrung, wert(&e.rolle), wert(&e.spalte))
+    format!("{},{:02} {} ({}, {})", e.cent / 100, e.cent % 100, e.waehrung, nachricht::wert(&e.rolle), nachricht::wert(&e.spalte))
 }
 
 #[cfg(test)]
@@ -253,7 +253,8 @@ mod tests {
             assert_eq!(ergebnis.is_ok(), erlaubt, "#{nr} {spalte}");
             assert_eq!(a.kosteneintraege.len(), usize::from(erlaubt), "#{nr} {spalte}");
             if let Err(f) = ergebnis {
-                assert_eq!(meldung(f), (400, format!("kosteneintrag.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", spalte.trim())));
+                let erwartet = ["kosteneintrag.column: „", spalte.trim(), "“ ist keine Spalte eines Boards, auf dem #", &nr.to_string(), " liegt"].concat();
+                assert_eq!(meldung(f), (400, erwartet));
             }
         }
     }

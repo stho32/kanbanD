@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 /// R00154 AK 2: Methode, Schablone des Pfads und die Parameter, die eine Zahl sind — die Parameter selbst stehen in der Schablone.
-const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 55] = [
+const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 58] = [
     ("GET", "/api/aufgaben/{nr}", &["nr"]),
     ("PATCH", "/api/aufgaben/{nr}", &["nr"]),
     ("DELETE", "/api/aufgaben/{nr}", &["nr"]),
@@ -37,6 +37,9 @@ const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 55] = [
     ("POST", "/api/aufgaben/{nr}/zeiten", &["nr"]),
     ("PATCH", "/api/aufgaben/{nr}/zeiten/{kennung}", &["nr"]),
     ("DELETE", "/api/aufgaben/{nr}/zeiten/{kennung}", &["nr"]),
+    ("POST", "/api/aufgaben/{nr}/kosteneintraege", &["nr"]),
+    ("PATCH", "/api/aufgaben/{nr}/kosteneintraege/{kennung}", &["nr"]),
+    ("DELETE", "/api/aufgaben/{nr}/kosteneintraege/{kennung}", &["nr"]),
     ("POST", "/api/aufgaben/{nr}/zurueckholen", &["nr"]),
     ("GET", "/api/boards/{slug}", &[]),
     ("PATCH", "/api/boards/{slug}", &[]),
@@ -181,25 +184,25 @@ async fn tabelle_fahren(adresse: &str, wert: &str, auswahl: impl Fn(&[&str], &'s
     (rot, anfragen)
 }
 
-// AK 1, AK 2, AK 7, AK 9 (68 Antworten) · US-4
+// AK 1, AK 2, AK 7, AK 9 (68 Antworten, seit R00165 mit den Kosteneinträgen 73) · US-4
 #[tokio::test]
 async fn jede_route_weist_ungueltiges_utf8_an_jedem_pfadparameter_mit_400_und_dem_parameternamen_ab() {
     let (tmp, lauf) = grundbestand();
     let vorher = stand(tmp.path());
     let (rot, anfragen) = tabelle_fahren(&lauf.adresse, "%FF", |alle, _| alle.iter().map(|n| n.to_string()).collect()).await;
-    assert_eq!(anfragen, 68, "42 Routen mit einem Parameter + 13 mit zweien");
-    assert!(rot.is_empty(), "{} von 68 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
+    assert_eq!(anfragen, 73, "43 Routen mit einem Parameter + 15 mit zweien");
+    assert!(rot.is_empty(), "{} von 73 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
     assert_eq!(stand(tmp.path()), vorher, "kein Commit, keine offene Änderung");
 }
 
-// AK 1, AK 4, AK 7, AK 9 (35 Antworten) · US-1, US-2
+// AK 1, AK 4, AK 7, AK 9 (35 Antworten, seit R00165 mit den Kosteneinträgen 38) · US-1, US-2
 #[tokio::test]
 async fn jeder_zahlenparameter_weist_einen_text_mit_400_und_dem_parameternamen_ab() {
     let (tmp, lauf) = grundbestand();
     let vorher = stand(tmp.path());
     let (rot, anfragen) = tabelle_fahren(&lauf.adresse, "abc", |_, zahlen| zahlen.iter().map(|n| n.to_string()).collect()).await;
-    assert_eq!(anfragen, 35, "20 mit nr allein + 6 mit nr vor einem Text + 4 × 2 (nr und i) + 1 (nr hinter slug)");
-    assert!(rot.is_empty(), "{} von 35 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
+    assert_eq!(anfragen, 38, "21 mit nr allein + 8 mit nr vor einem Text + 4 × 2 (nr und i) + 1 (nr hinter slug)");
+    assert!(rot.is_empty(), "{} von 38 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
     assert_eq!(stand(tmp.path()), vorher, "kein Commit, keine offene Änderung");
 }
 
@@ -211,13 +214,13 @@ async fn die_tabelle_nennt_jede_route_der_beschreibung_mit_pfadparameter_genau_e
     let eintraege = liste.as_array().unwrap();
     let beschrieben: Vec<String> = eintraege.iter().filter(|e| e["pfad"].as_str().unwrap().split('?').next().unwrap().contains('{')).map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: BTreeSet<String> = MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect();
-    assert_eq!((eintraege.len(), beschrieben.len(), benannt.len()), (80, 55, 55), "80 Einträge, 55 mit Pfadparameter, keine Zeile doppelt");
+    assert_eq!((eintraege.len(), beschrieben.len(), benannt.len()), (83, 58, 58), "83 Einträge, 58 mit Pfadparameter, keine Zeile doppelt");
     let beschrieben: BTreeSet<String> = beschrieben.into_iter().collect();
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "Route mit Pfadparameter fehlt in der Tabelle zu AK 2");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "Zeile der Tabelle fehlt in der Beschreibung");
     let stellen: usize = MIT_PFADPARAMETER.iter().map(|(_, p, _)| parameter(p).len()).sum();
     let zahlen: usize = MIT_PFADPARAMETER.iter().map(|(_, _, z)| z.len()).sum();
-    assert_eq!((stellen, zahlen), (68, 35), "68 Parameterstellen, davon 35 Zahlen");
+    assert_eq!((stellen, zahlen), (73, 38), "73 Parameterstellen, davon 38 Zahlen");
     for (_, schablone, zahlen) in MIT_PFADPARAMETER {
         assert!(zahlen.iter().all(|z| parameter(schablone).contains(z)), "{schablone}: jede Zahl ist ein Parameter der Schablone");
     }
@@ -379,8 +382,8 @@ async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
             }
         }
     }
-    assert_eq!(routen, 80);
-    assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 55 Routen der Tabelle");
+    assert_eq!(routen, 83);
+    assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 58 Routen der Tabelle");
     assert_eq!(abfragen, [
         "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte",
         "get /api/berichte/bewegungen: board",
