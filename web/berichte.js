@@ -681,6 +681,54 @@
     if (istPhase) return { lang: `${genannt} durchlaufen`, kurz: `nach ${genannt}`, bis };
     return { lang: `in ${genannt} oder rechts davon`, kurz: `ab ${genannt}`, bis };
   }
+  /** Der Block, ab dem der Durchsatz den Zugang zählt (R00167, ADR-0027 N3 Punkt 4) — die eine Auflösung der gespeicherten
+      Von-Spalte, getrennt von `zielblock`: nur der Durchsatz ruft sie. `eintraege` sind die der Auswahl „Zugang ab“: die erste
+      Spalte unter dem Filter mit leerem Wert (die Vorgabe), dann die Blöcke von „Erledigt heißt“. `ab` ist der Index der Spalte,
+      deren erstes Erreichen zählt, `name` ihr Name bzw. der der Phase. `gewaehlt` ist der Schlüssel nur bei einer Wahl, die von
+      der Vorgabe abweicht; `verschwunden` der Name einer Wahl, die es nicht mehr gibt — dann zählt die Vorgabe. `gueltig` ist
+      falsch, wenn die Wahl nicht links vom Block `zielSchluessel` liegt; eine Phase darf ihr eigenes Ziel sein (von ihrer
+      ersten Spalte bis „durchlaufen“). */
+  function vonblock(bew, f, vonspalte, zielSchluessel = null) {
+    const istPhase = durchsatzZiel(bew, bew.phasen).art === 'phase', zielbloecke = fieberBloecke(bew, f, bew.phasen);
+    const erste = ersterVonBlock(bew, f);
+    const bloecke = zielbloecke.map((b, stelle) => vonBlockAus(bew, b, stelle, istPhase)).filter(b => b.ab >= 0);
+    const block = bloecke.find(b => b.schluessel === vonspalte) || null;
+    let verschwunden = null, zaehlt = erste, gueltig = true;
+    if (vonspalte && !block && vonspalte !== erste.name) verschwunden = vonspalte;
+    if (block) {
+      const zielStelle = zielbloecke.findIndex(b => b.schluessel === zielSchluessel);
+      zaehlt = block;
+      gueltig = block.stelle < zielStelle || (istPhase && block.stelle === zielStelle);
+    }
+    return {
+      eintraege: [erste, ...bloecke].map(b => ({ wert: b.schluessel, titel: b.titel })),
+      gewaehlt: block && block.schluessel, name: zaehlt.name, ab: zaehlt.ab, verschwunden, gueltig, worte: vonWorte(zaehlt, block !== null),
+    };
+  }
+  /** Die Vorgabe von „Zugang ab“: die erste Spalte des Boards unter dem Berichtsfilter (auch auf einem Board mit Phasen). */
+  function ersterVonBlock(bew, f) {
+    let ab = bew.spalten.findIndex(s => !f.ohneSpalten.includes(s));
+    if (ab < 0) ab = 0;
+    const name = bew.spalten[ab] || '';
+    return { schluessel: '', name, titel: `Spalte „${name}“`, ab, stelle: -1, istPhase: false };
+  }
+  /** Ein Block von „Erledigt heißt“ als Von-Block: eine Spalte zählt ab sich selbst, eine Phase ab ihrer ersten Spalte
+      (ohne eigene Spalte −1) und heißt „Phase „…““ statt „… durchlaufen“. */
+  function vonBlockAus(bew, block, stelle, istPhase) {
+    const name = block.schluessel;
+    if (!istPhase) return { schluessel: name, name, titel: block.titel, ab: bew.spalten.indexOf(name), stelle, istPhase };
+    const ab = bew.spalten.findIndex(s => bew.phasen.spaltenphasen[s] === name);
+    return { schluessel: name, name, titel: `Phase „${name}“`, ab, stelle, istPhase };
+  }
+  /** Wie der Durchsatz den Von-Block nennt (Zeichnung D0006 #durchsatz-von): `ab` als Zusatz in Kopftext, Kennzahl und Tooltip
+      nur bei einer Wahl, `genannt` in Legende und dem Satz darunter immer. */
+  function vonWorte(block, gewaehlt) {
+    const name = `„${block.name}“`;
+    let ab = '', genannt = name;
+    if (gewaehlt) ab = `ab ${name}`;
+    if (block.istPhase) genannt = `die Phase ${name}`;
+    return { ab, genannt };
+  }
   /** Schlüssel des Caches: Projektstart, Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt)
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
   function fieberSchluessel(start, f, ziel = null) {
@@ -998,5 +1046,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
