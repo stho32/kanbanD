@@ -707,6 +707,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 #bd-kennzahl{gap:var(--kd-s2) var(--kd-s5)}
 #bd-kennzahl span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .bd-legende{flex-wrap:wrap;gap:var(--kd-s2) var(--kd-s5);margin:var(--kd-s2) 0 var(--kd-s1)}
+/* sechs Spalten: die Tabelle rollt im eigenen Rahmen (.bericht-rahmen), nicht die Seite */
+.tabellenansicht.bd-tabelle{max-width:560px}
 .bd-hinweis{margin:0 0 var(--kd-s3);font-size:12px;line-height:1.45;color:var(--kd-muted);max-width:900px;overflow-wrap:anywhere}
 .tooltip{position:absolute;top:8px;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12px;pointer-events:none;min-width:130px}
 .tabellenansicht{margin:var(--kd-s3) 0;font-size:12px;max-width:420px}

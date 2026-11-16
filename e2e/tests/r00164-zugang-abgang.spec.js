@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, thema } = require('./hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
 /** Schreibt Dateien und hält den Stand als Commit mit diesem Datum fest. */
@@ -202,6 +202,57 @@ test('R00164 AK 9 (B0789): Kennzahlzeile, Tooltip und Legende tragen dasselbe Fa
     expect(erledigt.flaeche).toBe((await balken('bd-erledigt')).fill);
     expect(entfernt.rand).toBe((await balken('bd-entfernt')).stroke);
     expect(plus.flaeche).not.toBe(erledigt.flaeche);
+  } finally { await k.stoppen(); }
+});
+
+/** Legt ein Bild der Berichtsfläche ab, wenn der Lauf einen Ordner dafür nennt (`KD_BILDER`); sonst nichts. */
+async function bildAblegen(page, name) {
+  if (process.env.KD_BILDER) await page.locator('.bericht').screenshot({ path: path.join(process.env.KD_BILDER, name) });
+}
+const farbe = (page, ort, eigenschaft) => page.locator(ort).first().evaluate((e, eigenschaft) => getComputedStyle(e)[eigenschaft], eigenschaft);
+
+for (const name of ['light', 'dark']) {
+  test(`R00164 AK 7 (B0790): im Thema ${name} heben sich die drei Balken vom Grund und „entfernt“ von „erledigt“ ab`, async ({ page }) => {
+    const k = await kanbanStarten(rechenbeispiel);
+    try {
+      await berichtAm0511(page, k, 'verlauf');
+      await thema(page, name);
+      await zeigeAufTag(page, 4);
+      await expect(page.locator('#tooltip')).toContainText('04.11.2026');
+      const grund = await farbe(page, '.bericht', 'backgroundColor');
+      const [plus, erledigt, kontur, fuellung] = await Promise.all([farbe(page, 'rect.bd-plus', 'fill'), farbe(page, 'rect.bd-erledigt', 'fill'), farbe(page, 'rect.bd-entfernt', 'stroke'), farbe(page, 'rect.bd-entfernt', 'fill')]);
+      expect(new Set([grund, plus, erledigt, kontur]).size, 'Grund, „+“, „erledigt“ und Kontur „entfernt“ sind vier Farben').toBe(4);
+      expect(fuellung).toContain('#bd-schraffur');
+      expect(await farbe(page, 'pattern#bd-schraffur line', 'stroke')).toBe(kontur);
+      await erwarteBalken(page, 'bd-plus', 'hinzugekommen', -1);
+      await bildAblegen(page, `burndown-rechenbeispiel-${name}.png`);
+    } finally { await k.stoppen(); }
+  });
+}
+
+test('R00164 AK 7, AK 9 (B0790): bei 320 px rollt die Seite nicht quer — Legenden und Kennzahlzeile brechen um, die Tabelle rollt im eigenen Rahmen', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    const tabelle = await tabellenansicht(page);
+    const rahmen = tabelle.getByRole('group', { name: 'Burndown je Tag' });
+    await expect(rahmen.locator('table')).toBeVisible();
+    await expect(page.locator('#bd-legende')).toBeVisible();
+    await erwarteBalken(page, 'bd-erledigt', 'erledigt', 1);
+    // gemessen am beobachtbaren Zustand: kein Element der Berichtsfläche ragt über das Fenster, nur der Rahmen der Tabelle rollt
+    const masse = await page.evaluate(() => {
+      const rollt = e => e.scrollWidth > e.clientWidth, bericht = document.querySelector('.bericht'), rahmen = document.querySelector('.tabellenansicht .bericht-rahmen');
+      const rechts = sel => Math.max(...[...document.querySelectorAll(sel)].map(e => e.getBoundingClientRect().right));
+      return { seite: rollt(document.scrollingElement), bericht: rollt(bericht), rahmenStil: getComputedStyle(rahmen).overflowX, rahmenRollt: rollt(rahmen), rechts: rechts('#bd-kennzahl span, .dlegende span, .bd-hinweis, svg.diagramm, .tabellenansicht .bericht-rahmen'), fenster: innerWidth };
+    });
+    expect(masse.seite).toBe(false);
+    expect(masse.bericht).toBe(false);
+    expect(masse.rahmenStil).toBe('auto');
+    expect(masse.rahmenRollt).toBe(true);
+    expect(masse.rechts).toBeLessThanOrEqual(masse.fenster);
+    await bildAblegen(page, 'burndown-rechenbeispiel-320.png');
   } finally { await k.stoppen(); }
 });
 

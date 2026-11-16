@@ -638,3 +638,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #161 R00162 (Beschreibung über das Stift-Symbol bearbeiten) | B0773 Fokus-Rückweg an den Stift und mitziehende Tests | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #174 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0788 Balken je Tag unter der Linie | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #174 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0789 Legende nennt die drei Größen, den Zählbeginn und die Nacharbeit | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #174 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0790 Hell und Dunkel, schmale Breite, Probe im echten Programm und Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |
