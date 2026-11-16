@@ -19,7 +19,7 @@ test.describe('R00011', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByLabel('Titel bearbeiten', { exact: true }).click(); // R00116: Bearbeitungszustand öffnen
     await page.getByLabel('Titel', { exact: true }).fill('eins neu');
-    await page.getByLabel('Beschreibung').click();
+    await page.locator('.besch-lesen').click(); // R00162: ein Klick in den Text der Beschreibung verlässt den Titel und öffnet nichts
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('eins neu');
     expect(k.git('log', '-1', '--format=%an|%s')).toBe('Stefan|#1 geändert: Titel');
     await expect(page.locator('.mod-fuss .gs')).toContainText('gespeichert');
