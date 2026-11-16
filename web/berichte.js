@@ -676,6 +676,14 @@
     return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
   }
 
+  /** Zugang gegen Abgang eines Blocks mit Prognose (R00168): beide Mittel je Kalendertag der Messbasis — der Abgang ist der
+      Durchsatz — und ob der Zugang die Läufe erreicht. Verglichen werden die Summen, nicht die gerundeten Mittel.
+      `null` ohne Prognose. */
+  function zugangGegenAbgang(block) {
+    if (!block.zeilen || block.zugang == null) return null;
+    return { zugangJeTag: block.zugang / block.reihe7.length, abgangJeTag: block.durchsatz, keinEndeAbsehbar: block.zugang >= block.laeufe };
+  }
+
   /** Blöcke für das Diagramm von „Wie lange noch“: die drei rechten mit Prognose — sonst zeigt es keinen Fächer, sobald
       die rechten Blöcke ungemessen sind; ohne jede Prognose die drei rechten. Dazu die ungemessenen rechts davon. */
   function diagrammBloecke(bloecke) {
@@ -1079,5 +1087,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

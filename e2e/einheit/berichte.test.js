@@ -862,3 +862,25 @@ test('R00168: Zugang nie unter 0, ohne Prognose nicht gerechnet, im Fever Chart 
   assert.deepStrictEqual(fieberTag(zugangBew(), zehnTage, zugangAufgabe, '2026-10-21', undefined, null), { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: ['2026-10-25', '2026-10-27', '2026-10-29', '2026-10-31'], ende5: ['2026-10-27', '2026-10-28', '2026-10-29', '2026-11-02'] });
   assert.strictEqual(fieberSchluessel('2026-10-12', zehnTage), '{"v":2,"start":"2026-10-12","filter":{"ohneFarben":[],"ohneSpalten":[],"personen":[],"labels":[],"messbasisTage":10}}', 'der Schlüssel des Caches bleibt');
 });
+
+const { zugangGegenAbgang } = require('../../web/berichte.js');
+
+test('R00168 AK 1, AK 2, AK 4: „kein Ende absehbar“ genau dann, wenn die Zugangssumme die Läufe erreicht — an den Summen, nie ohne Prognose', () => {
+  const hinweis = (beispiel, tage = 10) => zugangGegenAbgang(abschlussblock(rechenbeispiel168(beispiel), tage));
+  assert.deepStrictEqual(hinweis(BEISPIEL_A), { zugangJeTag: 1, abgangJeTag: 0.4, keinEndeAbsehbar: true });
+  assert.deepStrictEqual(hinweis(BEISPIEL_B), { zugangJeTag: 0.2, abgangJeTag: 0.4, keinEndeAbsehbar: false });
+  assert.deepStrictEqual(hinweis(BEISPIEL_C), { zugangJeTag: 0.2, abgangJeTag: 0.3, keinEndeAbsehbar: false });
+  assert.deepStrictEqual(hinweis(BEISPIEL_A, 20), { zugangJeTag: 0.5, abgangJeTag: 0.2, keinEndeAbsehbar: true });
+  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).phasen;
+  assert.strictEqual(zugangGegenAbgang(erledigt).keinEndeAbsehbar, true, 'Gleichstand 4 gegen 4');
+  assert.strictEqual(zugangGegenAbgang(arbeit).keinEndeAbsehbar, false, '3 gegen 4');
+  assert.strictEqual(zugangGegenAbgang(erledigt).abgangJeTag, erledigt.durchsatz, 'Abgang ist der Durchsatz des Blocks');
+  // 31 gegen 32 über 90 Tage: beide Mittel runden auf 0,3 — die Summen entscheiden
+  const knapp = { zeilen: [{}], zugang: 31, laeufe: 32, reihe7: Array(90).fill(0), durchsatz: 32 / 90 };
+  assert.strictEqual(zugangGegenAbgang(knapp).keinEndeAbsehbar, false);
+  assert.strictEqual(zugangGegenAbgang({ ...knapp, zugang: 32 }).keinEndeAbsehbar, true);
+  // ohne Prognose: unter drei Läufen, nichts offen, Fever Chart
+  assert.strictEqual(zugangGegenAbgang(abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10)), null);
+  assert.strictEqual(zugangGegenAbgang(abschlussblock(rechenbeispiel168({ vorher: 2, hinzu: 2, entfernt: 0, erledigt: 4 }), 10)), null, 'nichts offen');
+  assert.strictEqual(zugangGegenAbgang(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0]), null);
+});
