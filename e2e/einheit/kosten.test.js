@@ -424,3 +424,39 @@ test('R00171 B0834 (Schaden c): stehen im Zeitraum nur alte Posten, bleibt ihre 
   const a = kostenaufstellung(spalten([1], [], []), [aufgabe(1, posten('EUR', { amount: 3 }), { titel: 'alt' })], filter(BEISPIEL.ZEITRAUM_12_13), JETZT);
   assert.deepStrictEqual(a.gruppen.map(g => [g.waehrung, g.summe, g.aufgaben, g.altePostenAussen]), [['EUR', null, [], { niedrig: 300, hoch: 300 }]]);
 });
+
+/* ── B0838 der Spaltenabschnitt als Schnitt mit dem Zeitraum (ADR-0028 N1 Punkt 4) ── */
+const abschnitt = (von, bis, mehr = {}) => ({ kostenVonSpalte: von, kostenBisSpalte: bis, ...mehr });
+
+test('R00171 B0838 (AK 1): Zeitraum 12.11.–13.11. und Abschnitt „Entwicklung“–„Abnahme“ — Summe 5,00, #1 4,46 und #2 0,54; die alten Posten 5,00 stehen daneben', () => {
+  const a = aufstellung(abschnitt('Entwicklung', 'Abnahme', BEISPIEL.ZEITRAUM_12_13));
+  assert.deepStrictEqual(a.gruppen[0].summe, { waehrung: 'USD', n: 2, eintraege: 500, posten: null, niedrig: 500, hoch: 500 });
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 446], [2, 54]]);
+  assert.deepStrictEqual(a.gruppen[0].altePostenAussen, { niedrig: 500, hoch: 500 });
+});
+
+test('R00171 B0838 (AK 2): Zeitraum 12.11.–14.11. und Abschnitt „Abnahme“–„Abnahme“ — Summe 2,00, allein #1 mit 2,00; ihre Einträge aus „Entwicklung“ zählen nicht', () => {
+  const a = aufstellung(abschnitt('Abnahme', 'Abnahme', BEISPIEL.ZEITRAUM_12_14));
+  assert.deepStrictEqual(a.gruppen[0].summe, { waehrung: 'USD', n: 1, eintraege: 200, posten: null, niedrig: 200, hoch: 200 });
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 200]]);
+});
+
+test('R00171 B0838 (Schaden b, c): der Abschnitt allein, ohne Zeitraum — beide Grenzen zählen mit, die Reihenfolge der Angabe ist gleichgültig, eine Grenze allein ist offen bis zum Rand; alte Posten stehen daneben', () => {
+  const summe = (von, bis) => usdSumme(abschnitt(von, bis)).map(g => g[1]);
+  assert.deepStrictEqual(summe('Entwicklung', 'Entwicklung'), [900], '4,00 + 1,00 + 3,46 + 0,54');
+  assert.deepStrictEqual(summe('Entwicklung', 'Abnahme'), [1100]);
+  assert.deepStrictEqual(summe('Abnahme', 'Entwicklung'), [1100], 'vertauscht angegeben');
+  assert.deepStrictEqual(summe('Abnahme', ''), [200], 'nur von: bis zum rechten Rand');
+  assert.deepStrictEqual(summe('', 'Entwicklung'), [900], 'nur bis: ab dem linken Rand');
+  assert.deepStrictEqual(summe('Produktiv', 'Produktiv'), [], 'in „Produktiv“ ist nichts angefallen — die Aufgaben, die dort stehen, zählen nicht deshalb');
+  assert.deepStrictEqual(summe('Eingang', 'Produktiv'), [1100], 'alle Spalten gewählt: jeder Eintrag einmal');
+  assert.strictEqual(900 + 200, 1100, '„bis Entwicklung“ und „ab Abnahme“ ergeben zusammen alle Einträge');
+  const a = aufstellung(abschnitt('Abnahme', ''));
+  assert.deepStrictEqual([a.bereich, a.gruppen[0].summe.posten, a.gruppen[0].altePostenAussen], [true, null, { niedrig: 500, hoch: 500 }]);
+});
+
+test('R00171 B0838: es zählt die Spalte des Eintrags, nicht die Spalte, in der die Aufgabe heute steht — und Phasen ändern die Spaltenfolge nicht', () => {
+  const mitPhasen = { ...BEISPIEL_BOARD, spalten: BEISPIEL_BOARD.spalten.map((sp, i) => ({ ...sp, phase: i < 2 ? 'Bau' : 'Betrieb' })) };
+  const a = aufstellung(abschnitt('Entwicklung', 'Entwicklung'), {}, mitPhasen);
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 446], [2, 54], [3, 400]], '#1 steht in „Produktiv“, ihre Einträge aus „Entwicklung“ zählen');
+});

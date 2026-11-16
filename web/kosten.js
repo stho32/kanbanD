@@ -84,20 +84,40 @@
     return { spalteTokens: mitTokens.length > 0, zeilen, summen };
   }
 
-  /** Ob im Kostenbericht ein Bereich gewählt ist — dann steht „Zurücksetzen“ in der Bereichszeile. */
-  const kostenbereichGewaehlt = f => f.zeitraum !== 'alles';
+  /** Ob im Kostenbericht ein Bereich gewählt ist — dann steht „Zurücksetzen“ in der Bereichszeile; auch eine gespeicherte
+      Spaltengrenze, die es nicht mehr gibt, ist eine Wahl. */
+  const kostenbereichGewaehlt = f => f.zeitraum !== 'alles' || Boolean(f.kostenVonSpalte) || Boolean(f.kostenBisSpalte);
+
+  /** Spaltenabschnitt (ADR-0028 N1 Punkt 4): Stellen {von, bis} in der Spaltenfolge des Boards, beide einschließlich und
+      unabhängig von der Reihenfolge der Angabe; eine Grenze allein ist offen bis zum Rand; ohne Grenze auf dem Board null. */
+  function spaltenabschnitt(spalten, vonSpalte, bisSpalte) {
+    const von = spalten.indexOf(vonSpalte), bis = spalten.indexOf(bisSpalte);
+    if (von < 0 && bis < 0) return null;
+    if (von < 0) return { von: 0, bis };
+    if (bis < 0) return { von, bis: spalten.length - 1 };
+    return { von: Math.min(von, bis), bis: Math.max(von, bis) };
+  }
   /** Bereich des Kostenberichts (R00171): der Zeitraum des Berichtsfilters als Grenzen [von, bis) in der Ortszeit des
-      Betrachters. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
-  function kostenbereich(f, jetzt) {
+      Betrachters und der Spaltenabschnitt. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
+  function kostenbereich(board, f, jetzt) {
     const { zeitraumGrenzen } = typeof module !== 'undefined' ? require('./berichte.js') : window;
-    return { gesetzt: kostenbereichGewaehlt(f), zeit: zeitraumGrenzen(f, jetzt) };
+    const spalten = board.spalten.map(sp => sp.name), abschnitt = spaltenabschnitt(spalten, f.kostenVonSpalte, f.kostenBisSpalte);
+    return { gesetzt: f.zeitraum !== 'alles' || abschnitt !== null, zeit: zeitraumGrenzen(f, jetzt), spalten, abschnitt };
+  }
+  /** Ein Eintrag zählt, wenn sein Zeitpunkt im Zeitraum und seine Spalte im Abschnitt liegt. */
+  function zaehltImBereich(e, bereich) {
+    const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
+    const moment = zeitMs(e.at);
+    if (moment < bereich.zeit.von || moment >= bereich.zeit.bis) return false;
+    if (!bereich.abschnitt) return true;
+    const stelle = bereich.spalten.indexOf(e.column);
+    return stelle >= bereich.abschnitt.von && stelle <= bereich.abschnitt.bis;
   }
   /** Die Einträge einer Aufgabe, die im Bereich zählen; ohne gesetzten Bereich alle. */
   function zaehlendeEintraege(a, bereich) {
     const eintraege = a.kosteneintraege || [];
     if (!bereich.gesetzt) return eintraege;
-    const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
-    return eintraege.filter(e => zeitMs(e.at) >= bereich.zeit.von && zeitMs(e.at) < bereich.zeit.bis);
+    return eintraege.filter(e => zaehltImBereich(e, bereich));
   }
   /** Spanne der alten Posten einer Aufgabe in Cent {waehrung, niedrig, hoch}; ohne alte Posten null. */
   function altePosten(a) {
@@ -151,9 +171,10 @@
       {m, nurSchaetzung, jeWaehrung: [{waehrung, n, eintraege, posten, niedrig, hoch}]} in Cent (R00165 AK 9). m zählt alle
       passenden Aufgaben in den Spalten, n die davon mit zählenden Einträgen oder alten Posten in dieser Währung,
       nurSchaetzung die mit Schätzung, aber ohne beides; der Filter wirkt über Spalten, Klasse, Zuständige und Labels wie
-      in den übrigen Berichten. Ein Zeitraum (R00171) lässt nur die Einträge darin zählen; ohne ihn bleibt jede Zahl. */
+      in den übrigen Berichten. Zeitraum und Spaltenabschnitt (R00171) lassen nur die Einträge darin zählen; ohne beide bleibt
+      jede Zahl. */
   function kostenbericht(board, aufgaben, f, jetzt) {
-    const { gezaehlt, lesbar } = aufgabenImBericht(board, aufgaben, f), bereich = kostenbereich(f, jetzt);
+    const { gezaehlt, lesbar } = aufgabenImBericht(board, aufgaben, f), bereich = kostenbereich(board, f, jetzt);
     const gruppen = new Map();
     for (const teil of lesbar.flatMap(a => angefalleneKosten(a, bereich))) {
       const bisher = gruppen.get(teil.waehrung) || { waehrung: teil.waehrung, n: 0, eintraege: null, posten: null };
@@ -168,7 +189,7 @@
       `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer; alte Posten stehen nie in der Liste. Mit gesetztem
       Bereich trägt `altePostenAussen` ihre Spanne neben der Summe — eine Währung, in der nur sie stehen, hat `summe` null. */
   function kostenaufstellung(board, aufgaben, f, jetzt) {
-    const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(f, jetzt);
+    const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(board, f, jetzt);
     const { lesbar } = aufgabenImBericht(board, aufgaben, f);
     const nachNummer = [...lesbar].sort((a, b) => a.nummer - b.nummer);
     const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null }]));
