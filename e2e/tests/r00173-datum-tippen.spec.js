@@ -65,6 +65,9 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
   /** Zahl der Commits, die die Zeile des Felds geändert haben. */
   const speicherungen = ort => k.git('log', '--format=%h', '-G', `\\b${ort.schluessel}:`, '--', ort.datei).split('\n').filter(Boolean).length;
   const gespeichert = (ort, tag) => new RegExp(`\\b${ort.schluessel}: ${tag}\\b`);
+  /** Die Speicherung steht im Verlauf. Der Server schreibt erst die Datei und committet danach — die Datei allein sagt noch
+   *  nichts über den Verlauf, und wer ihn gleich danach liest, zählt den Commit unter Last nicht mit (#188). */
+  const imVerlauf = (ort, vorher, zaehlen = speicherungen) => expect.poll(() => zaehlen(ort) - vorher).toBeGreaterThanOrEqual(1);
   async function tippen(page, feld, ziffern, abstand = 0) {
     await feld.focus();
     await page.keyboard.type(ziffern, { delay: abstand });
@@ -79,6 +82,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
         await tippen(page, feld, '12112026', abstand);
 
         await expect.poll(() => k.lies(ort.datei)).toMatch(gespeichert(ort, '2026-11-12'));
+        await imVerlauf(ort, vorher);
         await ort.ruhig(page);
         await expect(feld).toHaveValue('2026-11-12');
         expect(k.git('log', '-p')).not.toMatch(JAHR_UNTER_1000);
@@ -100,6 +104,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
       await tippen(page, feld, '12112026', abstand);
 
       await expect.poll(() => k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-12'));
+      await imVerlauf(VON, vorher);
       await VON.ruhig(page);
       await expect(feld).toHaveValue('2026-11-12');
       expect(k.git('log', '-p')).not.toMatch(JAHR_UNTER_1000);
@@ -115,6 +120,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
     await tippen(page, feld, '12112026', 120);
 
     await expect.poll(() => k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-12'));
+    await imVerlauf(VON, vorher);
     await VON.ruhig(page);
     await expect(feld).toHaveValue('2026-11-12');
     expect(speicherungen(VON) - vorher).toBe(1);
@@ -168,6 +174,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
       await verlassenMit(page, feld);
 
       await expect.poll(() => k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-12'));
+      await imVerlauf(VON, vorher);
       await VON.ruhig(page);
       await expect(feld).toHaveValue('2026-11-12');
       expect(speicherungen(VON) - vorher).toBe(1);
@@ -183,6 +190,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
     await page.keyboard.press('ArrowUp');
 
     await expect.poll(() => k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-02'));
+    await imVerlauf(VON, vorher);
     await VON.ruhig(page);
     await expect(feld).toHaveValue('2026-11-02');
     expect(speicherungen(VON) - vorher).toBe(1);
@@ -196,6 +204,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
     await page.keyboard.press('Backspace');
 
     await expect.poll(() => k.lies(BOARD)).toMatch(/report-filter: \{period: eigen\}/);
+    await imVerlauf(VON, vorher);
     await VON.ruhig(page);
     await expect(feld).toHaveValue('');
     expect(speicherungen(VON) - vorher).toBe(1);
@@ -208,6 +217,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
     await feld.fill('2026-11-12');
 
     await expect.poll(() => k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-12'));
+    await imVerlauf(VON, vorher);
     await VON.ruhig(page);
     await expect(feld).toHaveValue('2026-11-12');
     expect(speicherungen(VON) - vorher).toBe(1);
@@ -236,6 +246,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
         await tippen(page, feld, '31122026', abstand);
 
         await expect.poll(() => k.lies(ort.datei)).toMatch(gespeichert(ort, '2026-12-31'));
+        await imVerlauf(ort, vorher, commitsAnDerDatei);
         await ort.ruhig(page);
         await expect(feld).toHaveValue('2026-12-31');
         expect(commitsAnDerDatei(ort) - vorher).toBe(1);
@@ -295,6 +306,7 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
       await leeren(page, feld);
 
       await expect.poll(() => k.lies(BOARD)).toMatch(/report-filter: \{period: eigen\}/);
+      await imVerlauf(VON, vorher, commitsAnDerDatei);
       await VON.ruhig(page);
       await expect(feld).toHaveValue('');
       expect(commitsAnDerDatei(VON) - vorher).toBe(1);

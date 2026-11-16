@@ -153,7 +153,7 @@ test('US-3: „Neue Aufgabe“ hält den Fokus im Fenster, Esc gibt ihn dem Ausl
   await tabBleibtIm(page, 'Neue Aufgabe', 'Tab', 12);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toHaveCount(0);
-  expect(await page.evaluate(() => document.activeElement.dataset.act)).toBe('add');
+  await expect.poll(() => page.evaluate(() => document.activeElement.dataset.act)).toBe('add');
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press('n');
   await expect(page.getByRole('dialog', { name: 'Neue Aufgabe' })).toBeVisible();
@@ -218,7 +218,7 @@ test('US-5: Fenster offen, #1 live nach „In Arbeit“ verschoben, Esc → Kart
   expect((await page.request.post(`${k.adresse}api/boards/fabrik/bewegen`, { ...ALS_PLANER, data: { nummer: 1, spalte: 'In Arbeit' } })).ok()).toBe(true);
   await expect(page.locator('[data-col="In Arbeit"] .ka[data-id="1"]')).toHaveCount(1);
   await page.keyboard.press('Escape');
-  expect(await page.evaluate(() => document.activeElement.matches('[data-col="In Arbeit"] .ka[data-id="1"]'))).toBe(true);
+  await expect(page.locator('[data-col="In Arbeit"] .ka[data-id="1"]')).toBeFocused();
 });
 
 test('US-8: Enter auf „In Arbeit“ klappt zu, Fokus auf den Aufklapp-Knopf; Live-Ereignis hält ihn; Enter klappt auf, Fokus auf „In Arbeit“', async ({ page }) => {

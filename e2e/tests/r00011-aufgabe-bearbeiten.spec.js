@@ -35,10 +35,12 @@ test.describe('R00011', () => {
     const wahl = page.getByLabel('Klasse');
     await expect(page.locator('.ka[data-id="1"]')).toHaveAttribute('data-c', 'bug');
     await expect(wahl).toHaveAttribute('style', /--cl/);
-    const karte = await page.locator('.ka[data-id="1"]').evaluate(e => getComputedStyle(e).backgroundColor);
-    expect(await wahl.evaluate(e => getComputedStyle(e).backgroundColor)).toBe(karte);
-    expect(await wahl.locator('option[value="bug"]').evaluate(e => getComputedStyle(e).backgroundColor)).toBe(karte);
-    expect(await wahl.locator('option[value=""]').evaluate(e => getComputedStyle(e).backgroundColor)).not.toBe(karte);
+    // Das Speichern der Klasse lädt nach und zeichnet kurz darauf neu: die Farbe der Karte wird in einem Zug in der Seite
+    // gelesen, Auswahl und Einträge am Zustand geprüft — nie an einem Element, das inzwischen ersetzt sein kann (#188).
+    const karte = await page.evaluate(() => getComputedStyle(document.querySelector('.ka[data-id="1"]')).backgroundColor);
+    await expect(wahl).toHaveCSS('background-color', karte);
+    await expect(wahl.locator('option[value="bug"]')).toHaveCSS('background-color', karte);
+    await expect(wahl.locator('option[value=""]')).not.toHaveCSS('background-color', karte);
     await page.locator('.as', { hasText: 'Mia' }).click();
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('assignees: [mi]');
     await page.getByLabel('Fälligkeit').fill('2026-12-24');

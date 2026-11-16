@@ -490,7 +490,8 @@ test.describe('R00112 Hinweis im obersten Fenster', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('#fenster')).toHaveCount(0);
     await expect(hinweis(page)).toContainText('#1 zurückgeholt');
-    expect(await hinweis(page).evaluate(e => getComputedStyle(e).position)).toBe('fixed');
+    // das Zurückholen lädt nach und zeichnet den Hinweis kurz darauf neu — der Stil wird am Zustand geprüft (#188)
+    await expect(hinweis(page)).toHaveCSS('position', 'fixed');
   });
 
   test('Zeiger nur im Rechteck: neben dem Hinweis trifft ein Klick den Körper', async ({ page }) => {

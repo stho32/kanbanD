@@ -27,15 +27,19 @@ test.describe('R00018', () => {
     await expect(chip).toHaveAttribute('href', `vscode://file${require('fs').realpathSync(k.ordner)}/plan/wbs.md:6`);
     await expect(page.locator('.ka[data-id="2"] .wartet')).toHaveText('wartet auf #1');
     // auf der Karte tritt die Herkunft zurück, bis man auf sie zeigt
-    const grund = () => chip.evaluate(e => getComputedStyle(e).backgroundColor);
-    expect(await grund()).toBe('rgba(0, 0, 0, 0)');
+    // Das Speichern der Herkunft lädt nach und zeichnet die Karte kurz darauf neu: Stil und Lage werden am Zustand geprüft,
+    // nie an einem Element, das zwischen Finden und Lesen ersetzt sein kann (#188).
+    await expect(chip).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await chip.hover();
-    await expect.poll(grund).not.toBe('rgba(0, 0, 0, 0)');
+    await expect(chip).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await page.mouse.move(0, 0);
     // „wartet auf“ steht über der untersten Zeile, mit etwas Abstand unter dem Titel
-    const [titel, wartet, unten] = await Promise.all(['.t', '.wartet', '.r3'].map(s => page.locator(`.ka[data-id="2"] ${s}`).boundingBox()));
-    expect(wartet.y + wartet.height).toBeLessThanOrEqual(unten.y + 1);
-    expect(wartet.y - (titel.y + titel.height)).toBeGreaterThanOrEqual(7);
+    const lage = () => page.evaluate(() => {
+      const [titel, wartet, unten] = ['.t', '.wartet', '.r3'].map(s => document.querySelector(`.ka[data-id="2"] ${s}`).getBoundingClientRect());
+      return { ueberDerUnterstenZeile: wartet.bottom - unten.top, abstandUnterDemTitel: wartet.top - titel.bottom };
+    });
+    await expect.poll(async () => (await lage()).ueberDerUnterstenZeile).toBeLessThanOrEqual(1);
+    await expect.poll(async () => (await lage()).abstandUnterDemTitel).toBeGreaterThanOrEqual(7);
     // erst ziehen, wenn Speichern und Live-Abgleich durch sind — sonst wird die Karte unter dem Zeiger ersetzt
     await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('#2 geändert: Herkunft');
     await page.waitForTimeout(400);
