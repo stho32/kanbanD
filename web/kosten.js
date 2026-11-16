@@ -193,25 +193,52 @@
     return { m: gezaehlt.length, nurSchaetzung: lesbar.filter(nurSchaetzung).length, jeWaehrung };
   }
 
+  /** Ab welcher Spalte eine Aufgabe „erledigt“ heißt (ADR-0028 N1 Punkt 7) → {spalte, grund}: die Bis-Spalte des
+      Abschnitts ('bis'), ohne sie die Zielspalte des Boards ('ziel'), sonst die letzte Spalte ('letzte'). */
+  function erledigtAbSpalte(board, f) {
+    const spalten = board.spalten.map(sp => sp.name);
+    if (spalten.includes(f.kostenBisSpalte)) return { spalte: f.kostenBisSpalte, grund: 'bis' };
+    const zielspalte = board.fieber && board.fieber.zielspalte;
+    if (spalten.includes(zielspalte)) return { spalte: zielspalte, grund: 'ziel' };
+    let letzte = null;
+    if (spalten.length) letzte = spalten[spalten.length - 1];
+    return { spalte: letzte, grund: 'letzte' };
+  }
+  /** Kennzeichen einer Aufgabe aus dem heutigen Stand auf diesem Board, nie gespeichert; der Vorrang ist die Reihenfolge. */
+  function kennzeichenDerAufgabe(a, stehtAbErledigt) {
+    if (a.archiviert) return 'archiviert';
+    if (stehtAbErledigt) return 'erledigt';
+    if (a.reservierung) return 'in Arbeit';
+    return 'offen';
+  }
+  /** Board → Funktion Aufgabe → Kennzeichen: „erledigt“ ist, was in `erledigtAb.spalte` oder rechts davon steht. */
+  function kennzeichenLeser(board, erledigtAb) {
+    const abStelle = board.spalten.findIndex(sp => sp.name === erledigtAb.spalte);
+    const stelleNachNummer = new Map(board.spalten.flatMap((sp, stelle) => sp.aufgaben.map(nr => [nr, stelle])));
+    return a => kennzeichenDerAufgabe(a, abStelle >= 0 && stelleNachNummer.get(a.nummer) >= abStelle);
+  }
+
   /** Was der Bericht „Kosten“ zeichnet (R00171): die Summen von kostenbericht() und je Währung die Aufgaben dahinter →
-      {m, nurSchaetzung, bereich, gruppen: [{waehrung, summe, aufgaben: [{nummer, titel, cent}], altePostenAussen}]}.
-      `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer; alte Posten stehen nie in der Liste. Mit gesetztem
-      Bereich trägt `altePostenAussen` ihre Spanne neben der Summe — eine Währung, in der nur sie stehen, hat `summe` null. */
+      {m, nurSchaetzung, bereich, erledigtAb, gruppen: [{waehrung, summe, aufgaben: [{nummer, titel, cent, kennzeichen}],
+      altePostenAussen}]}. `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer samt Kennzeichen (`erledigtAb`
+      sagt, ab welcher Spalte „erledigt“ gilt); alte Posten stehen nie in der Liste. Mit gesetztem Bereich trägt
+      `altePostenAussen` ihre Spanne neben der Summe — eine Währung, in der nur sie stehen, hat `summe` null. */
   function kostenaufstellung(board, aufgaben, f, jetzt) {
     const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(board, f, jetzt);
     const { lesbar } = aufgabenImBericht(board, aufgaben, f);
     const nachNummer = [...lesbar].sort((a, b) => a.nummer - b.nummer);
+    const erledigtAb = erledigtAbSpalte(board, f), kennzeichen = kennzeichenLeser(board, erledigtAb);
     const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null }]));
     const gruppe = waehrung => {
       if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null });
       return gruppen.get(waehrung);
     };
     for (const a of nachNummer) {
-      for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent });
+      for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent, kennzeichen: kennzeichen(a) });
       const alt = altePosten(a);
       if (alt && bereich.gesetzt) gruppe(alt.waehrung).altePostenAussen = spannePlus(gruppe(alt.waehrung).altePostenAussen, alt);
     }
-    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
   /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht

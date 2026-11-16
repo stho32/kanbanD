@@ -483,20 +483,20 @@ test('R00171 B0839: ohne Wahl ist nichts gewählt und nichts gesperrt; eine Gren
   assert.deepStrictEqual([FILTER_LEER, filter(BEISPIEL.ZEITRAUM_12_13), filter(abschnitt('Abnahme', '')), filter(abschnitt('', 'Test'))].map(kostenbereichGewaehlt), [false, true, true, true]);
 });
 
-const B0841 = { todo: 'erwartet rot bis B0841' }, B0842 = { todo: 'erwartet rot bis B0842' };
+const B0842 = { todo: 'erwartet rot bis B0842' };
 
 /* ── B0840 fester Vergleich erweitert: Kennzeichen, fremde Spalte, „erledigt ab“ am Beispielboard ── */
 const kennzeichen = gruppe => gruppe.aufgaben.map(a => [a.nummer, a.kennzeichen]);
 const FALL_1 = abschnitt('Entwicklung', 'Abnahme', BEISPIEL.ZEITRAUM_12_13);
 
-test('R00171 B0840 (AK 3, AK 4): ohne Bereiche bleibt die Summe die von vor der Karte; die Liste nennt #1 „erledigt“, #2 „offen“, #3 „archiviert“ — erledigt heißt: in „Produktiv“, der letzten Spalte', B0841, () => {
+test('R00171 B0840 (AK 3, AK 4): ohne Bereiche bleibt die Summe die von vor der Karte; die Liste nennt #1 „erledigt“, #2 „offen“, #3 „archiviert“ — erledigt heißt: in „Produktiv“, der letzten Spalte', () => {
   const a = aufstellung({});
   assert.deepStrictEqual(a.gruppen[0].summe, VOR_DER_KARTE.jeWaehrung[0]);
   assert.deepStrictEqual(kennzeichen(a.gruppen[0]), [[1, 'erledigt'], [2, 'offen'], [3, 'archiviert']]);
   assert.deepStrictEqual(a.erledigtAb, { spalte: 'Produktiv', grund: 'letzte' });
 });
 
-test('R00171 B0840 (AK 1): Fall 1 nennt #1 „erledigt“ und #2 „offen“ — erledigt heißt: in „Abnahme“, der Bis-Spalte, oder rechts davon', B0841, () => {
+test('R00171 B0840 (AK 1): Fall 1 nennt #1 „erledigt“ und #2 „offen“ — erledigt heißt: in „Abnahme“, der Bis-Spalte, oder rechts davon', () => {
   const a = aufstellung(FALL_1);
   assert.deepStrictEqual(kennzeichen(a.gruppen[0]), [[1, 'erledigt'], [2, 'offen']]);
   assert.deepStrictEqual(a.erledigtAb, { spalte: 'Abnahme', grund: 'bis' });
@@ -517,4 +517,34 @@ test('R00171 B0840 (AK 8, Schaden d): eine gespeicherte Grenze „Test“, die d
   assert.deepStrictEqual(a.gruppen[0].summe, VOR_DER_KARTE.jeWaehrung[0]);
   assert.deepStrictEqual(a.gruppen[0].altePostenAussen, null);
   assert.deepStrictEqual(aufstellung({}).grenzenWeg, []);
+});
+
+/* ── B0841 Kennzeichen je Aufgabe aus dem heutigen Stand des Boards (ADR-0028 N1 Punkt 7) ── */
+function standBoard(mehr = {}) {
+  const board = { fieber: { zielspalte: null }, spalten: [{ name: 'Eingang', aufgaben: [1] }, { name: 'Entwicklung', aufgaben: [2, 5] }, { name: 'Abnahme', aufgaben: [3] }, { name: 'Produktiv', aufgaben: [4] }], ...mehr };
+  const einEintrag = [BEISPIEL.eintrag('13 10:00', 'Entwicklung', 1.00)];
+  const aufgaben = [1, 2, 3, 4].map(nr => mitEintraegen(nr, einEintrag, null, { titel: `Aufgabe ${nr}`, reservierung: null }));
+  aufgaben.push(mitEintraegen(5, einEintrag, null, { titel: 'reserviert', reservierung: { wer: 'cl', seit: '2026-11-16 09:00' } }));
+  return { board, aufgaben };
+}
+const stand = (f, mehr = {}, aendern = a => a) => {
+  const { board, aufgaben } = standBoard(mehr), a = kostenaufstellung(board, aufgaben.map(aendern), filter(f), JETZT);
+  return { erledigtAb: a.erledigtAb, kennzeichen: Object.fromEntries(kennzeichen(a.gruppen[0])) };
+};
+
+test('R00171 B0841: „erledigt“ heißt in der Bis-Spalte oder rechts davon; ohne Bis-Spalte gilt die Zielspalte des Boards, sonst die letzte Spalte', () => {
+  assert.deepStrictEqual(stand(abschnitt('', 'Abnahme')), { erledigtAb: { spalte: 'Abnahme', grund: 'bis' }, kennzeichen: { 1: 'offen', 2: 'offen', 3: 'erledigt', 4: 'erledigt', 5: 'in Arbeit' } });
+  assert.deepStrictEqual(stand({}, { fieber: { zielspalte: 'Entwicklung' } }), { erledigtAb: { spalte: 'Entwicklung', grund: 'ziel' }, kennzeichen: { 1: 'offen', 2: 'erledigt', 3: 'erledigt', 4: 'erledigt', 5: 'erledigt' } });
+  assert.deepStrictEqual(stand({}), { erledigtAb: { spalte: 'Produktiv', grund: 'letzte' }, kennzeichen: { 1: 'offen', 2: 'offen', 3: 'offen', 4: 'erledigt', 5: 'in Arbeit' } });
+  assert.deepStrictEqual(stand(abschnitt('', 'Abnahme'), { fieber: { zielspalte: 'Entwicklung' } }).erledigtAb, { spalte: 'Abnahme', grund: 'bis' }, 'die Bis-Spalte geht der Zielspalte vor');
+  assert.deepStrictEqual(stand(abschnitt('Entwicklung', '')).erledigtAb, { spalte: 'Produktiv', grund: 'letzte' }, 'nur „von“ gewählt: keine Bis-Spalte');
+  assert.deepStrictEqual(stand({}, { fieber: { zielspalte: 'Gibtsnicht' } }).erledigtAb, { spalte: 'Produktiv', grund: 'letzte' }, 'eine Zielspalte, die das Board nicht führt, gilt nicht');
+  assert.deepStrictEqual(stand({}, { fieber: undefined }).erledigtAb, { spalte: 'Produktiv', grund: 'letzte' }, 'ein Board ohne Fever-Einstellungen');
+});
+
+test('R00171 B0841: Vorrang archiviert → erledigt → in Arbeit → offen — eine archivierte Aufgabe ist „archiviert“, auch wenn sie erledigt oder reserviert wäre; eine erledigte mit Reservierung ist „erledigt“', () => {
+  const archiviert = a => ({ ...a, archiviert: '2026-11-10' });
+  assert.deepStrictEqual(stand({}, {}, archiviert).kennzeichen, { 1: 'archiviert', 2: 'archiviert', 3: 'archiviert', 4: 'archiviert', 5: 'archiviert' });
+  const reserviert = a => ({ ...a, reservierung: { wer: 'cl', seit: '2026-11-16 09:00' } });
+  assert.deepStrictEqual(stand({}, {}, reserviert).kennzeichen, { 1: 'in Arbeit', 2: 'in Arbeit', 3: 'in Arbeit', 4: 'erledigt', 5: 'in Arbeit' });
 });
