@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, liveBereit, kontrastAm } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, kontrastAm, breiteSetzen } = require('./hilfen');
 
 const KANBAND = '---\npeople:\n  sh: {name: Stefan, kind: human}\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\n---\n';
 const board = (eingang, arbeit, fertig) => `# fabrik\n\n## Eingang\n\n${eingang.map(n => `- #${n}`).join('\n')}\n\n## In Arbeit\n\n${arbeit.map(n => `- #${n}`).join('\n')}\n\n## Fertig\n\n${fertig.map(n => `- #${n}`).join('\n')}\n`;
@@ -220,7 +220,7 @@ test.describe('R00123', () => {
 
   test('Kultur und Breite: Reiter ≥ 24 px, 375/320/414 px ohne Querscrollen, Zeit mit Jahr', async ({ page }) => {
     for (const breite of [375, 320, 414]) {
-      await page.setViewportSize({ width: breite, height: 820 });
+      await breiteSetzen(page, breite, 820);
       const fenster = await fensterAusListe(page, 1);
       await verlaufZeigen(page, fenster);
       await expect(zeilen(fenster).first()).toContainText('2026');

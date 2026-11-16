@@ -434,7 +434,7 @@ test.describe('R00105 Reiter Kosten', () => {
     await expect(page.locator('#fenster .mod-kopf .cls')).toHaveText('Funktion');
     for (const breite of [320, 375, 414]) {
       for (const thema of ['light', 'dark']) {
-        await page.setViewportSize({ width: breite, height: 700 });
+        await breiteSetzen(page, breite, 700);
         await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
         if (!await page.locator('#fenster').count()) await page.locator('.ka[data-id="1"]').click();
         const kopf = page.locator('#fenster .mod-kopf');

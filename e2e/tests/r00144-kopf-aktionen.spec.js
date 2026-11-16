@@ -1,6 +1,6 @@
 // R00144 Aufgabenfenster-Kopf: Aktionen im Menü, Endgültig löschen nur im Menü, Blättern entfällt (Karte #144, I0131).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -314,7 +314,7 @@ test.describe('R00144 schmale Breiten', () => {
     await page.locator('.ka[data-id="1"] .id').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 700 });
+      await breiteSetzen(page, breite, 700);
       for (const name of ['light', 'dark']) {
         await thema(page, name);
         const m = await kopfMessen(page);
@@ -338,7 +338,7 @@ test.describe('R00144 schmale Breiten', () => {
     await page.locator('.ka[data-id="1"] .id').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 700 });
+      await breiteSetzen(page, breite, 700);
       await page.locator(AKTIONEN).click();
       const box = await page.locator(MENUE).boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);

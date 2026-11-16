@@ -2,7 +2,7 @@
 // Der Fremdschlüssel steht als Textkind im Flex-Rahmen .felder .w (#schluessel); sein anonymes Flex-Element trägt die
 // Mindestbreite des längsten Wortes. Ohne Umbruch wächst der Wert über die Grid-Spur, und .mod-side scrollt quer.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter, breiteSetzen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 
 const SCHLUESSEL = 'K'.repeat(200); // 200 Zeichen ohne Leerzeichen — ein einziges Wort
@@ -79,7 +79,7 @@ test.describe('R00131', () => {
     k = await kanbanStarten(einrichten(GRUNDBESTAND));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await page.setViewportSize({ width: 1400, height: 800 });
+    await breiteSetzen(page, 1400, 800);
     await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
     const m = await wertMessen(page);
@@ -98,7 +98,7 @@ test.describe('R00131', () => {
     k = await kanbanStarten(einrichten(GRUNDBESTAND));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await page.setViewportSize({ width: 1400, height: 800 });
+    await breiteSetzen(page, 1400, 800);
     await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
     const m = await wertMessen(page);
@@ -113,7 +113,7 @@ test.describe('R00131', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[375, 700], [320, 640]]) {
-      await page.setViewportSize({ width: breite, height: hoehe });
+      await breiteSetzen(page, breite, hoehe);
       await page.locator('.ka[data-id="1"]').waitFor();
       await fensterOeffnen(page, 1);
       await reiter(page, 'Details');
@@ -134,7 +134,7 @@ test.describe('R00131', () => {
     k = await kanbanStarten(einrichten(GRUNDBESTAND));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await page.setViewportSize({ width: 1400, height: 800 });
+    await breiteSetzen(page, 1400, 800);
     // #1: Feldzeile „Schlüssel" mit dem Wert, .mono 12 px, der Pfad der Kopfzeile kürzt weiter mit Auslassungszeichen
     await fensterOeffnen(page, 1);
     await reiter(page, 'Details');

@@ -1,7 +1,7 @@
 // R00141 Aufgabe endgültig löschen (I0129, #36, ADR-0024); Artboard D0003 #endgueltig-loeschen (PO-freigegeben).
 // Der Server-Teil ist in tests/aufgabe_loeschen.rs geprüft; die Rückfrage ist die geteilte alertdialog-Komponente aus R00128.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, thema } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, thema, breiteSetzen } = require('./hilfen');
 
 const grundbestand = (zusatz = {}) => ({
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n## Erledigt\n',
@@ -86,7 +86,7 @@ test.describe('R00141 Aufgabe endgültig löschen', () => {
     await oeffneFenster(page, 1);
     // bei 320/375/414 px kein Querscrollen, Startfokus Abbrechen, Esc zurück an den Auslöser (Fenster bleibt offen)
     for (const breite of [320, 375, 414]) {
-      await page.setViewportSize({ width: breite, height: 760 });
+      await breiteSetzen(page, breite, 760);
       await loeschenImKopf(page);
       const d = dialog(page);
       await expect(d.getByRole('button', { name: 'Abbrechen' })).toBeFocused();

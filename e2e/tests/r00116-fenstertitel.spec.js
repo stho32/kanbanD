@@ -2,7 +2,7 @@
 // Der Titel liest als mehrzeiliges div data-act="titel-bearbeiten" (overflow-wrap:break-word, Range-Sonde wie r00115),
 // bearbeitet als einzeiliges input data-af="titel" im Zustand S.ui.titelBearbeiten (Muster besch-lesen).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
 const { breiteMessen, perTabErreicht } = require('./ziele-hilfen');
 
 test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
@@ -111,7 +111,7 @@ test.describe('R00116', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[1280, 800], [320, 568]]) {
-      await page.setViewportSize({ width: breite, height: hoehe });
+      await breiteSetzen(page, breite, hoehe);
       await page.locator(`.ka[data-id="1"]`).waitFor();
       await fensterOeffnen(page, 1);
       expect(await mittenWoerter(page), `${breite} px: kein Wort des Titels endet mitten gebrochen`).toEqual([]);
@@ -222,7 +222,7 @@ test.describe('R00116', () => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
     for (const [breite, hoehe] of [[1280, 800], [320, 568]]) {
-      await page.setViewportSize({ width: breite, height: hoehe });
+      await breiteSetzen(page, breite, hoehe);
       await page.locator(`.ka[data-id="2"]`).waitFor();
       await fensterOeffnen(page, 2);
       const m = await titelMessen(page);

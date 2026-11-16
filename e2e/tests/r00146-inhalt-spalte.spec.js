@@ -2,7 +2,7 @@
 // Rechts im Inhalt stehen Spalte, Klasse, Labels und Fällig bearbeitbar (dieselben `data-af`-Schlüssel wie „Details“,
 // ein Zeichner, ein Commit je Änderung) und die gewählten Zuständigen nur lesend. „Details“ bleibt vollständig.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, thema, kontrastMessen, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, thema, kontrastMessen, kontrastFarben, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -384,7 +384,7 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
     expect(m.spalte.x, 'rechts neben dem Inhalt').toBeGreaterThanOrEqual(m.main.rechts - 0.5);
     expect(m.order).toBe('0');
 
-    await page.setViewportSize({ width: 640, height: 896 });
+    await breiteSetzen(page, 640, 896);
     await expect.poll(async () => (await masse(page)).spalte.hoehe).toBeGreaterThan(0);
     m = await masse(page);
     expect(m.spalte.y, '640 px: unter dem Inhalt').toBeGreaterThanOrEqual(m.main.unten - 0.5);
@@ -494,7 +494,7 @@ test.describe('R00146 Inhalt — schmale rechte Spalte', () => {
 
   test('US-6: die DURCHLÄUFE-Tabelle scrollt in sich — das Fenster scrollt bei 320/375/414/640 nicht quer', async ({ page }) => {
     for (const breite of [320, 375, 414, 640]) {
-      await page.setViewportSize({ width: breite, height: 844 });
+      await breiteSetzen(page, breite, 844);
       await oeffnen(page);
       const rahmen = page.locator('#durchlaeufe').getByRole('group', { name: 'Durchläufe der Aufgabe #1' });
       await expect(rahmen, `${breite} px`).toHaveCount(1);
