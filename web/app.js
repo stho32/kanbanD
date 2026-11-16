@@ -2477,7 +2477,8 @@ document.addEventListener('scroll', tippPlatzieren, true);
    0002, 0020, 0202, 2026, über einem gespeicherten Datum zuvor schon Tag und Monat. Speichern und Neuzeichnen mitten im
    Tippen nähmen die Eingabe aus dem Feld: bis das Jahr steht, wird die Änderung gehalten. */
 const DATUMSFELD_OHNE_KNOPF = 'input[type="date"][data-bf], input[type="date"][data-fb], input[type="date"][data-af]';
-/** Die letzte Taste war eine Ziffer in diesem Datumsfeld: `{ feld, jahrVorDerZiffer }`; jede andere Taste und jeder Zeigerdruck beenden das Tippen. */
+/** Die letzte Taste war eine Ziffer in diesem Datumsfeld: `{ feld, jahrVorDerZiffer }` — das Jahr, das das Feld zuletzt trug
+    (ein Zwischenstand ohne Datum lässt es stehen); jede andere Taste und jeder Zeigerdruck beenden das Tippen. */
 let datumstippen = null;
 /** Das Datumsfeld, dessen gemeldete Änderung gehalten ist. */
 let gehaltenesDatumsfeld = null;
@@ -2488,13 +2489,20 @@ document.addEventListener('keydown', e => {
   const feld = e.target;
   const imDatumsfeld = Boolean(feld.matches) && feld.matches(DATUMSFELD_OHNE_KNOPF);
   const istZiffer = /^\d$/.test(e.key);
-  if (imDatumsfeld && istZiffer) { datumstippen = { feld, jahrVorDerZiffer: jahrDesDatums(feld.value) }; return; }
+  if (imDatumsfeld && istZiffer) { datumstippen = { feld, jahrVorDerZiffer: jahrVorDerNaechstenZiffer(feld) }; return; }
   datumstippen = null;
-  // Enter nimmt ein fertiges Datum an, auch wenn nur Tag oder Monat getippt wurde
-  if (imDatumsfeld && e.key === 'Enter' && gehaltenesDatumsfeld === feld) feld.dispatchEvent(new Event('change', { bubbles: true }));
+  // Enter nimmt ein fertiges Datum an, auch wenn nur Tag oder Monat getippt wurde; ein unfertiges bleibt gehalten
+  if (imDatumsfeld && e.key === 'Enter' && gehaltenesDatumsfeld === feld && datumFertig(feld.value)) feld.dispatchEvent(new Event('change', { bubbles: true }));
 }, true);
 document.addEventListener('pointerdown', () => { datumstippen = null; }, true);
 
+/** Das Jahr, das das Feld zuletzt trug: trägt es gerade kein Datum (31.11.), gilt weiter das Jahr von davor. */
+function jahrVorDerNaechstenZiffer(feld) {
+  const jahr = jahrDesDatums(feld.value);
+  const tipptWeiter = datumstippen !== null && datumstippen.feld === feld;
+  if (jahr === null && tipptWeiter) return datumstippen.jahrVorDerZiffer;
+  return jahr;
+}
 /** Wahr, wenn die gemeldete Änderung des Datumsfelds jetzt gespeichert wird; sonst ist sie gehalten oder verworfen. */
 function datumsaenderungWirkt(feld) {
   const eingabe = { wert: feld.value, verlassen: verlassenesFeld === feld };

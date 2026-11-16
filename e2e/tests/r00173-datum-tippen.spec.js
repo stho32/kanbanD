@@ -246,7 +246,8 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
 
   const neben = page => page.getByRole('group', { name: 'Berichtsfilter' }).locator('span.muted').first();
   const AUSGAENGE = {
-    'Tab und Verlassen': async (page, feld) => { await page.keyboard.press('Tab'); await verlassen(feld); },
+    // aus dem Jahr führt Tab erst auf den Kalenderknopf im selben Feld, dann hinaus
+    'zweimal Tab': async page => { await page.keyboard.press('Tab'); await page.keyboard.press('Tab'); },
     'Klick daneben': page => neben(page).click(),
     'Enter und Verlassen': async (page, feld) => { await page.keyboard.press('Enter'); await verlassen(feld); },
   };

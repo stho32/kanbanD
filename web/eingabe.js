@@ -63,8 +63,11 @@
   /**
    * Was mit der gemeldeten Änderung eines Datumsfelds geschieht, das ohne Knopf speichert (R00173):
    * „halten“ — weder speichern noch zeichnen, die Eingabe läuft noch; „verwerfen“ — das Feld zeigt wieder den
-   * gespeicherten Wert; sonst „speichern“. `verlassen` heißt: die Änderung kommt mit dem Verlassen des Felds. `jahrVorDerZiffer` ist das Jahr im Feld vor der zuletzt getippten Ziffer
-   * (null: keines) und fehlt, wenn die Änderung nicht aus einer getippten Ziffer kommt (Kalender, Pfeiltasten, Leeren).
+   * gespeicherten Wert; sonst „speichern“. `verlassen` heißt: die Änderung kommt mit dem Verlassen des Felds.
+   * `jahrVorDerZiffer` ist das Jahr, das das Feld vor der zuletzt getippten Ziffer zuletzt trug (null: noch keines; ein
+   * Zwischenstand ohne Datum zählt nicht) und fehlt, wenn die Änderung nicht aus einer getippten Ziffer kommt (Kalender,
+   * Pfeiltasten, Leeren). Solange getippt wird, ist kein Zwischenstand Absicht — auch kein leerer: den 31.11. gibt es
+   * nicht, das Feld meldet dann ein leeres Datum. Fertig ist erst das getippte Jahr.
    */
   function datumsaenderung({ wert, verlassen, jahrVorDerZiffer }) {
     const jahr = jahrDesDatums(wert);
@@ -73,9 +76,12 @@
     if (verlassen) return 'speichern';
     if (jahrUnfertig) return 'halten';
     const zifferGetippt = jahrVorDerZiffer !== undefined;
-    // Tag oder Monat getippt: das Jahr steht noch aus, auch wenn das Feld schon ein gültiges Datum trägt
-    if (zifferGetippt && jahr === jahrVorDerZiffer) return 'halten';
-    return 'speichern';
+    if (!zifferGetippt) return 'speichern';
+    // das Jahr ist zu Ende getippt, wenn es eben noch unfertig war (… 0202 → 2026); stand es schon vorher im Feld, sind
+    // Tag oder Monat getippt und das Jahr steht noch aus
+    const jahrZuEndeGetippt = jahr !== null && jahrVorDerZiffer !== null && jahrVorDerZiffer < 1000;
+    if (jahrZuEndeGetippt) return 'speichern';
+    return 'halten';
   }
 
   Object.assign(ziel, { zeilenAusText, schnelleingabe, datumLesen, jahrDesDatums, datumFertig, datumsaenderung });
