@@ -3535,6 +3535,8 @@ window.kdTest = {
   herzschlag: () => { S.liveZuletzt = Date.now(); },
   /** Zahl der Kommentare einer Aufgabe im geladenen Stand. */
   kommentare: nr => aufgabe(nr).kommentare.length,
+  /** Titel einer Aufgabe im geladenen Stand — auch wenn er noch nicht gezeichnet ist (R00179). */
+  titel: nr => aufgabe(nr).titel,
 };
 
 /** Vergessene Timer im Takt (R00114, ADR-0019 Regel 3): er entscheidet keinen Zustand, er merkt nur die Kante und lässt einmal zeichnen. */

@@ -749,3 +749,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #147 R00183 (Instanz verrät ihren Ordner: GET /api/instanz) | B0894 Übersicht, OpenAPI, README und Gate | Standard | 0,3-0,8h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #190 R00181 (Zeitkorrektur: Esc beendet nur die Korrektur, nicht das Fenster) | B0883 Rote Probe der Karte und Esc-Zweig der Zeitkorrektur | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #190 R00181 (Zeitkorrektur: Esc beendet nur die Korrektur, nicht das Fenster) | B0884 Laufende Zeit, ohne Änderung, Gegenprobe Enter und ✓, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #189 R00179 (Datum zu Ende tippen, während die Seite neu zeichnet) | B0877 Probe als Spec: rot am heutigen Stand, je Feld gemessen | Standard | 1-2h | 0,4h | 0,4h | autonom |
