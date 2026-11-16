@@ -20,7 +20,7 @@ zuletzt: 2026-11-16
 | D0003 | Dialog | A0001 | Aufgabe | gelb | alle Interactions gruen |  |  |  |  | R00011 |  |
 | D0004 | Dialog | A0001 | Aufgabenliste | gruen | alle Interactions gruen |  |  |  |  | R00020 |  |
 | D0005 | Dialog | A0001 | Personen | gruen | alle Interactions gruen |  |  |  |  | R00021 |  |
-| D0006 | Dialog | A0001 | Berichte | gruen | alle Interactions gruen |  |  |  |  | R00022 |  |
+| D0006 | Dialog | A0001 | Berichte | gelb | alle Interactions gruen |  |  |  |  | R00022 |  |
 | D0007 | Dialog | A0001 | Agenten-Schnittstelle | gelb | alle Interactions gruen |  |  |  |  | R00024 | ohne eigenen Bildschirm ausser der API-Beschreibung |
 | D0008 | Dialog | A0001 | WBS-Sicht | gruen | alle Interactions gruen |  |  |  |  | R00054 | WBS einer registrierten Anwendung als eingerückte Tabelle mit Stand; schreibt Status und Knoten ins Arbeits-Repository ohne Commit |
 | I0001 | Interaction | D0001 | Ordner öffnen | gruen | US-1..US-3 |  |  |  |  | R00001 | kanbanD <ordner> startet, legt Struktur und Git an, öffnet Browser |
