@@ -36,6 +36,8 @@ E2E als Spec: AK 1 zuerst (heute rot: 120 px), dann Grenze, gezogene Höhe über
 - Befund am Code: Das Neuzeichnen ersetzt das Feld per `innerHTML`; der Sicherer (`web/sichtzustand.js`) trägt Rollstand, Fokus, Cursor und getippten Wert, die von Hand gezogene Höhe nicht (B0862).
 - **Schadensstelle:** Ein Entwurf darf durch die Höhenanpassung nie verloren gehen — sie schreibt nie in den Wert des Feldes.
 - **Nicht hinein:** Vorschau neben dem Feld · Werkzeugleiste · Kommentarfeld.
+- **Gebaut (Probe B0861, Chromium 159):** `field-sizing: content` trägt — öffnet in Inhaltshöhe, wächst beim Tippen, hält `min-height` und `max-height`; nach dem Ziehen von Hand schreibt der Browser `style.height`, das Feld wächst dann nicht mehr von selbst. Eine gezogene Höhe ist an die Grenze nicht gebunden (wie heute frei ziehbar) und übersteht das Neuzeichnen über den Sicherer (`gezogeneHoehen`, `web/sichtzustand.js`).
+- **In Kauf genommen:** Ein Browser ohne `field-sizing` (Firefox und Safari in älteren Fassungen) öffnet das Feld wie bisher 120 px hoch und lässt es nicht wachsen; die Grenze und das Ziehen von Hand gelten auch dort. Kein Rückfall per Skript — das Programm ist ein lokales Werkzeug und läuft in Chromium-artigen Browsern. Das Kommentarfeld behält eine gezogene Höhe weiterhin nicht über das Neuzeichnen.
 
 ## Warum löst diese Anforderung das Problem?
 

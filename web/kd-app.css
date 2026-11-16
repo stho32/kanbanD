@@ -411,7 +411,11 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .titel-lesen{overflow-wrap:break-word;white-space:normal;cursor:text}
 .abs h3{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted);display:flex;gap:6px}
 .abs h3 .mono{font-weight:400;letter-spacing:0;margin-left:auto}
-.besch{display:block;width:100%;min-height:120px;resize:vertical;border:1px solid var(--kd-line);padding:var(--kd-s3);line-height:1.55;background:var(--kd-surface)}
+/* Höhe der Beschreibung (R00175): so hoch wie der Inhalt, mindestens 120 px, höchstens 60 % des sichtbaren Bereichs
+   (über der Bildschirmtastatur: ADR-0016) — darüber scrollt das Feld. Eine von Hand gezogene Höhe schreibt der Browser als
+   `style.height`; sie gilt dann statt der Inhaltshöhe und ist an die Grenze nicht gebunden. Ohne `field-sizing` bleibt es bei 120 px. */
+.besch{display:block;width:100%;field-sizing:content;min-height:120px;max-height:calc((100vh - var(--kd-vv-oben,0px) - var(--kd-vv-unten,0px))*.6);resize:vertical;border:1px solid var(--kd-line);padding:var(--kd-s3);line-height:1.55;background:var(--kd-surface)}
+.besch[style*="height"]{max-height:none}
 .besch:hover{border-color:var(--kd-line-strong)}
 .besch:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .chk{position:relative;display:flex;gap:6px;align-items:center;min-height:26px}
