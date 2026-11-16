@@ -118,7 +118,6 @@ test.describe('R00186 Frist je Anfrage und ehrliche Meldung', () => {
   });
 
   test('148-1 / US-3: hängt die eigene Anfrage, meldet der Hinweis nach der Frist „Keine Antwort", und es geht weiter', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0908');
     await page.clock.install();
     await page.goto(k.adresse);
     await boardBereit(page);
@@ -159,7 +158,6 @@ test.describe('R00186 Frist je Anfrage und ehrliche Meldung', () => {
   });
 
   test('148-2 / US-2: hängt das Nachladen, meldet der Hinweis nach der Frist „gespeichert", eigene Änderungen und Live-Ereignisse wirken wieder', async ({ page, request }) => {
-    test.fail(true, 'erwartet rot bis B0908');
     await page.clock.install();
     await page.goto(k.adresse);
     await boardBereit(page);

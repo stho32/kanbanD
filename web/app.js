@@ -95,17 +95,27 @@ function ichSetzen(k) {
     („Failed to fetch“), angezeigt wird aber überall `f.message`. */
 const NETZ_FEHLER = 'Keine Verbindung zum Server — nichts geändert.';
 
+/** Die Frist je Anfrage (R00186, ADR-0025 Nachtrag N4): vom Absenden bis zum gelesenen Antworttext. 15 s sind eine Hypothese
+    mit weitem Abstand zu den Antwortzeiten des lokalen Servers. Anhänge und die Live-Verbindung laufen nicht hierüber. */
+const ANTWORT_FRIST_MS = 15000;
+/** Der Satz nach abgelaufener Frist: der Server kann die Änderung noch gespeichert haben — nie „nichts geändert“. */
+const FRIST_FEHLER = 'Keine Antwort vom Server — bitte prüfen, ob die Änderung ankam.';
+
+/** Fragt den Server und liefert das gelesene JSON. Jede Anfrage endet spätestens mit der Frist; ihr Fehler hat die Form
+    des Netzfehlers (`status: 0`, `daten: null`) und läuft durch dieselben Wege. Nichts wird von selbst erneut gesendet. */
 async function api(methode, pfad, daten) {
   const headers = {};
   if (daten) headers['Content-Type'] = 'application/json';
   if (S.ich) headers['X-KanbanD-Wer'] = S.ich;
-  let r;
-  try {
-    r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined });
-  } catch (_) {
-    throw Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
-  }
-  const text = await r.text();
+  const { r, text } = await mitFrist(async signal => {
+    let r;
+    try {
+      r = await fetch(pfad, { method: methode, headers, body: daten ? JSON.stringify(daten) : undefined, signal });
+    } catch (_) {
+      throw Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
+    }
+    return { r, text: await r.text() };
+  }, ANTWORT_FRIST_MS, () => Object.assign(new Error(FRIST_FEHLER), { status: 0, daten: null }));
   const json = text ? JSON.parse(text) : null;
   if (!r.ok) throw Object.assign(new Error(json && json.fehler || r.statusText), { status: r.status, daten: json });
   return json;

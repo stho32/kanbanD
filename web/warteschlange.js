@@ -1,4 +1,4 @@
-/* kanbanD — die Warteschlange eigener Änderungen (R00037, R00110, R00147): reine Kette, im Browser und in Node nutzbar. */
+/* kanbanD — die Warteschlange eigener Änderungen (R00037, R00110, R00147) und die Frist je Anfrage (R00186): reine Kette, im Browser und in Node nutzbar. */
 (function (ziel) {
   "use strict";
 
@@ -42,5 +42,20 @@
     return { einreihen, offen: () => offen };
   }
 
-  Object.assign(ziel, { warteschlangeFuehren });
+  /**
+   * Lässt `arbeit(signal)` höchstens `fristMs` laufen (R00186, ADR-0025 Nachtrag N4): antwortet sie vorher, gilt ihr Ausgang
+   * unverändert; sonst wird sie über `signal` abgebrochen, und das Ergebnis ist die Ablehnung mit `fehlerNachFrist()`.
+   * Der Zeitgeber wird in jedem Fall geräumt. `uhr` ist Eingabe, damit die Frist ohne Wanduhr prüfbar ist.
+   */
+  function mitFrist(arbeit, fristMs, fehlerNachFrist, uhr = { stellen: (klingeln, ms) => setTimeout(klingeln, ms), raeumen: wecker => clearTimeout(wecker) }) {
+    const abbruch = new AbortController();
+    let wecker;
+    const frist = new Promise((_, ablehnen) => {
+      wecker = uhr.stellen(() => { abbruch.abort(); ablehnen(fehlerNachFrist()); }, fristMs);
+    });
+    // Das Wettrennen hört beiden zu: wirft die abgebrochene Arbeit später ihren Abbruchfehler, bleibt er nicht unbehandelt.
+    return Promise.race([Promise.resolve().then(() => arbeit(abbruch.signal)), frist]).finally(() => uhr.raeumen(wecker));
+  }
+
+  Object.assign(ziel, { warteschlangeFuehren, mitFrist });
 })(typeof module !== 'undefined' ? module.exports : window);
