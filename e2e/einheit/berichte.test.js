@@ -658,7 +658,7 @@ test('Fluss: die y-Achse reicht bis zum höchsten Wert der Bänder und Ränder (
 });
 
 /* ── Durchsatz je Zeitraum (R00122) ── */
-const { durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, durchsatzMarken } = require('../../web/berichte.js');
+const { durchsatz, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken } = require('../../web/berichte.js');
 
 /** Grundbestand der AK (R00122): Board „fabrik“ (Eingang/In Arbeit/Fertig), Bewegungen 02.–11.11.2026. */
 const DURCH = {
@@ -754,22 +754,21 @@ test('Durchsatz: Tooltiptext und Achsenmarke je Auflösung (R00122 M1)', () => {
 });
 
 test('Durchsatz: die x-Achse trägt garantiert höchstens acht Marken, die letzte immer (R00122 M8/S2)', () => {
-  assert.deepStrictEqual(durchsatzMarken(0), []);
-  assert.deepStrictEqual(durchsatzMarken(1), [0]);
-  assert.deepStrictEqual(durchsatzMarken(2), [0, 1], 'zwei Wochen: zwei unterscheidbare Marken');
-  assert.deepStrictEqual(durchsatzMarken(3), [0, 1, 2], 'eine leere Periode ist an ihrer Marke erkennbar');
-  assert.deepStrictEqual(durchsatzMarken(10), [0, 2, 4, 6, 8, 9], 'zehn Tage: sechs Marken, die letzte dabei');
-  assert.deepStrictEqual(durchsatzMarken(16), [0, 3, 6, 9, 12, 15]);
-  assert.deepStrictEqual(durchsatzMarken(90), [0, 13, 26, 39, 52, 65, 78, 89], 'rund 90 Perioden: genau acht Marken');
+  assert.deepStrictEqual(xMarken(0), []);
+  assert.deepStrictEqual(xMarken(1), [0]);
+  assert.deepStrictEqual(xMarken(2), [0, 1], 'zwei Wochen: zwei unterscheidbare Marken');
+  assert.deepStrictEqual(xMarken(3), [0, 1, 2], 'eine leere Periode ist an ihrer Marke erkennbar');
+  assert.deepStrictEqual(xMarken(10), [0, 2, 4, 6, 8, 9], 'zehn Tage: sechs Marken, die letzte dabei');
+  assert.deepStrictEqual(xMarken(16), [0, 3, 6, 9, 12, 15]);
+  assert.deepStrictEqual(xMarken(90), [0, 13, 26, 39, 52, 65, 78, 89], 'rund 90 Perioden: genau acht Marken');
   for (let n = 1; n <= 200; n++) {
-    const marken = durchsatzMarken(n);
+    const marken = xMarken(n);
     assert.ok(marken.length <= 8, `${n} Perioden → ${marken.length} Marken`);
     assert.strictEqual(marken[marken.length - 1], n - 1, `die letzte Periode ist bei ${n} dabei`);
   }
 });
 
 // Karte #173: x-Marken von Burndown und Kumulativem Fluss (R00121, „schmales Layout: höchstens acht x-Marken“)
-const { xMarken } = require('../../web/berichte.js');
 
 test('x-Marken der Tagesdiagramme: für 1 bis 400 Tage nie mehr als acht, erster und letzter Tag beschriftet', () => {
   assert.deepStrictEqual(xMarken(0), []);
