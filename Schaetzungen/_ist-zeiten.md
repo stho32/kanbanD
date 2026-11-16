@@ -665,3 +665,11 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0800 Rechnung: angefallene Kosten je Währung | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0801 Bericht zeichnen: Einträge, Zeile der alten Posten, Summe; Texte „angefallene“ | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0802 Ansicht „Kosten“ zeigt die Einträge; Probe im echten Programm und Gate | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0812 Probe am heutigen Stand: Rundlauf einer Board-Datei mit von Hand gesetztem from-column | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0813 from-column in Modell, Board-Datei und Route | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0814 Von-Block des Boards an einer Stelle im Client auflösen | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0815 Auswahl „Zugang ab“ neben „Erledigt heißt“, Speichern und Hinweise | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0816 Test an der Trennstelle: ohne Wahl alles gleich, mit Wahl nur der Durchsatz anders | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0817 durchsatz() rechnet den Zugang je Periode | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0818 Zweiter Balken, Kennzahl und Tooltip | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #157 R00167 (Durchsatz: Von-Spalte wählbar, Zugang als zweiter Balken) | B0819 Tabelle und Legende nennen Zugang und Abgang; Probe im echten Programm und Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |

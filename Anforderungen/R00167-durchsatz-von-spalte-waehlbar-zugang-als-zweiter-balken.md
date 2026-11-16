@@ -1,6 +1,6 @@
 ---
 id: R00167
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -35,20 +35,20 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 
 ### Feature 1 — Von-Spalte speichern und wählen (F0132)
 
-- [ ] **AK 2 Speichern:** Wird im Durchsatz „von“ = Arbeit gewählt, steht nach Neuladen `fever: {from-column: Arbeit}` in der Board-Datei, geschrieben mit einem Commit, und die Auswahl zeigt wieder „Arbeit“.
-- [ ] **AK 3a Ohne Wahl, Datei:** Eine Board-Datei ohne `from-column` bleibt nach Lesen und Schreiben zeichengleich; sie bekommt keinen neuen Schlüssel.
-- [ ] **AK 5 Von nicht links vom Ziel:** Liegt „von“ rechts von der Zielspalte oder ist sie dieselbe (Beispiel: von = Erledigt), steht der Hinweis der Durchlaufzeit („von“ muss links vom Ziel liegen), es gibt keinen Zugangsbalken, und der Abgang bleibt stehen (0 · 0 · 1).
-- [ ] **AK 6 Spalte gibt es nicht mehr:** Steht in der Board-Datei `from-column: Abnahme` und das Board hat keine Spalte „Abnahme“, rechnet der Durchsatz mit der ersten Spalte (Zugang 3 · 0 · 0) und zeigt einen Hinweis „gibt es nicht mehr“; kein Fehler.
-- [ ] **AK 9 Wahlen stören einander nicht:** Eine Änderung am Fever Chart (Beispiel: Auflösung) und ein Kartenzug erhalten `from-column`; das Ändern von „von“ erhält `target-column` und alle übrigen Werte unter `fever`.
+- [x] **AK 2 Speichern:** Wird im Durchsatz „von“ = Arbeit gewählt, steht nach Neuladen `fever: {from-column: Arbeit}` in der Board-Datei, geschrieben mit einem Commit, und die Auswahl zeigt wieder „Arbeit“.
+- [x] **AK 3a Ohne Wahl, Datei:** Eine Board-Datei ohne `from-column` bleibt nach Lesen und Schreiben zeichengleich; sie bekommt keinen neuen Schlüssel.
+- [x] **AK 5 Von nicht links vom Ziel:** Liegt „von“ rechts von der Zielspalte oder ist sie dieselbe (Beispiel: von = Erledigt), steht der Hinweis der Durchlaufzeit („von“ muss links vom Ziel liegen), es gibt keinen Zugangsbalken, und der Abgang bleibt stehen (0 · 0 · 1).
+- [x] **AK 6 Spalte gibt es nicht mehr:** Steht in der Board-Datei `from-column: Abnahme` und das Board hat keine Spalte „Abnahme“, rechnet der Durchsatz mit der ersten Spalte (Zugang 3 · 0 · 0) und zeigt einen Hinweis „gibt es nicht mehr“; kein Fehler.
+- [x] **AK 9 Wahlen stören einander nicht:** Eine Änderung am Fever Chart (Beispiel: Auflösung) und ein Kartenzug erhalten `from-column`; das Ändern von „von“ erhält `target-column` und alle übrigen Werte unter `fever`.
 
 ### Feature 2 — Zugang rechnen und zeigen (F0133, braucht F0132 und die Zeichnung)
 
-- [ ] **AK 1 Abnahme der Karte:** Im Beispiel ergibt von = Arbeit über den Zeitraum Zugang 2 und Abgang 1; von = Backlog ergibt Zugang 3 (je Tag wie in der Tabelle). Je Periode stehen zwei Balken nebeneinander, Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#durchsatz-von`.
-- [ ] **AK 3b Ohne Wahl, Zahlen:** Ohne Wahl sind Abgang, Burndown, Kumulativer Fluss, Durchlaufzeit, Prognose und Fever Chart wie vor der Karte; mit Wahl ändert sich allein der Zugang im Durchsatz.
-- [ ] **AK 4 Rückläufer:** Eine Aufgabe, die von Arbeit zurück in den Backlog und wieder nach Arbeit geht, zählt im Zugang einmal (Beispiel: #2 am 04.11. → Zugang bei von = Arbeit bleibt 0, Summe 2).
-- [ ] **AK 7 Filter:** Berichtsfilter, „Rechnen ab“ und `reporting.forecast: false` an einer Aufgabe wirken auf beide Balken gleich (Beispiel: #1 trägt `reporting.forecast: false` → von = Arbeit Zugang 0 · 1 · 0, Abgang 0 · 0 · 0).
-- [ ] **AK 8 Texte:** Kennzahl (Ø Zugang und Ø Abgang nebeneinander), Tooltip und Tabellenansicht nennen beide Zahlen; die Legende sagt, dass der Zugang das **erstmalige** Erreichen zählt und deshalb vom „+ hinzugekommen“ des Burndowns abweichen darf. Der Satz „„Von“ lässt sich noch nicht wählen: …“ entfällt.
-- [ ] **AK 10 Direkt im Ziel angelegt:** Eine Aufgabe, die direkt in der Zielspalte angelegt wird, zählt in Zugang und Abgang derselben Periode (Beispiel: zusätzlich #4 am 04.11. in Erledigt angelegt → 04.11. Zugang 1 · Abgang 2, bei von = Backlog wie bei von = Arbeit).
+- [x] **AK 1 Abnahme der Karte:** Im Beispiel ergibt von = Arbeit über den Zeitraum Zugang 2 und Abgang 1; von = Backlog ergibt Zugang 3 (je Tag wie in der Tabelle). Je Periode stehen zwei Balken nebeneinander, Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#durchsatz-von`.
+- [x] **AK 3b Ohne Wahl, Zahlen:** Ohne Wahl sind Abgang, Burndown, Kumulativer Fluss, Durchlaufzeit, Prognose und Fever Chart wie vor der Karte; mit Wahl ändert sich allein der Zugang im Durchsatz.
+- [x] **AK 4 Rückläufer:** Eine Aufgabe, die von Arbeit zurück in den Backlog und wieder nach Arbeit geht, zählt im Zugang einmal (Beispiel: #2 am 04.11. → Zugang bei von = Arbeit bleibt 0, Summe 2).
+- [x] **AK 7 Filter:** Berichtsfilter, „Rechnen ab“ und `reporting.forecast: false` an einer Aufgabe wirken auf beide Balken gleich (Beispiel: #1 trägt `reporting.forecast: false` → von = Arbeit Zugang 0 · 1 · 0, Abgang 0 · 0 · 0).
+- [x] **AK 8 Texte:** Kennzahl (Ø Zugang und Ø Abgang nebeneinander), Tooltip und Tabellenansicht nennen beide Zahlen; die Legende sagt, dass der Zugang das **erstmalige** Erreichen zählt und deshalb vom „+ hinzugekommen“ des Burndowns abweichen darf. Der Satz „„Von“ lässt sich noch nicht wählen: …“ entfällt.
+- [x] **AK 10 Direkt im Ziel angelegt:** Eine Aufgabe, die direkt in der Zielspalte angelegt wird, zählt in Zugang und Abgang derselben Periode (Beispiel: zusätzlich #4 am 04.11. in Erledigt angelegt → 04.11. Zugang 1 · Abgang 2, bei von = Backlog wie bei von = Arbeit).
 
 ## Tests
 
