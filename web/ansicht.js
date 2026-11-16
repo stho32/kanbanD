@@ -1172,7 +1172,7 @@ function vBerichtsfilter(leiste) {
 function vZeitraumFelder(f, jetzt) {
   const g = zeitraumGrenzen(f, jetzt);
   const von = f.zeitraum === 'eigen' ? f.von : g.von ? isoD(g.von) : '';
-  const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(g.bis - 864e5) : '';
+  const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(letzterTag(g.bis)) : '';
   return `<select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis">`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';

@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Berlin'; // die Tage der Zeitumstellung 2026: 29.03. (23 Stunden) und 25.10. (25 Stunden)
 const test = require('node:test');
 const assert = require('node:assert');
-const { FILTER_LEER, zeitraumGrenzen, durchsatz } = require('../../web/berichte.js');
+const { FILTER_LEER, zeitraumGrenzen, durchsatz, letzterTag } = require('../../web/berichte.js');
 
 const JETZT = new Date(2026, 10, 16, 12, 0).getTime();
 const ms = zeitpunkt => new Date(zeitpunkt.replace(' ', 'T')).getTime();
@@ -61,4 +61,12 @@ test('R00173 AK 8 (Schaden d): an jedem Tag 2025–2027, der kein Tag der Zeitum
 test('R00173 AK 8: ohne Bis-Tag bleibt der eigene Zeitraum nach oben offen, ohne Von-Tag nach unten', () => {
   assert.deepStrictEqual(zeitraumGrenzen(eigen('2026-10-25', ''), JETZT), { von: new Date(2026, 9, 25).getTime(), bis: Infinity });
   assert.deepStrictEqual(zeitraumGrenzen(eigen('', '2026-10-24'), JETZT), { von: 0, bis: new Date(2026, 9, 25).getTime() });
+});
+
+test('R00173 AK 6: der letzte Tag eines benannten Zeitraums, der am 29.03.2026 endet, ist der 29.03. — an jedem anderen Tag der Vortag der Obergrenze wie bisher', () => {
+  const am = (monat, tag) => new Date(2026, monat - 1, tag, 12, 0).getTime();
+  const letzter = (zeitraum, jetzt) => new Date(letzterTag(zeitraumGrenzen({ ...FILTER_LEER, zeitraum }, jetzt).bis)).toLocaleDateString('sv-SE');
+  assert.deepStrictEqual(['heute', 'woche', 'monat'].map(z => letzter(z, am(3, 29))), ['2026-03-29', '2026-03-29', '2026-03-31']);
+  assert.deepStrictEqual(['heute', 'woche', 'monat'].map(z => letzter(z, am(10, 25))), ['2026-10-25', '2026-10-25', '2026-10-31']);
+  assert.deepStrictEqual(['heute', 'gestern', 'vorwoche', 'vormonat', 'jahr'].map(z => letzter(z, am(11, 16))), ['2026-11-16', '2026-11-15', '2026-11-15', '2026-10-31', '2026-12-31']);
 });

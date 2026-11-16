@@ -30,6 +30,10 @@
     }
   }
 
+  /** Der letzte Tag eines Zeitraums mit der Obergrenze `bis` (Beginn des Folgetags), als Tagesanfang in ms — in
+      Kalenderrechnung: „Grenze minus 24 Stunden“ träfe nach einem Tag mit 23 Stunden den Vortag. */
+  const letzterTag = bis => tag(bis, -1);
+
   /** Farbe, Personen (zuständig), Labels; eine Aufgabe ohne Datei hat keine Klasse, Person und Labels. */
   function aufgabePasst(f, a) {
     const klasse = (a && a.klasse) || '';
@@ -1133,5 +1137,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

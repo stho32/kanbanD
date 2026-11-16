@@ -107,19 +107,11 @@
     };
   }
   /** Bereich des Kostenberichts (R00171): der Zeitraum des Berichtsfilters als Grenzen [von, bis) in der Ortszeit des
-      Betrachters und der Spaltenabschnitt; der Bis-Tag eines eigenen Zeitraums endet am Beginn des Folgetags. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
+      Betrachters und der Spaltenabschnitt; die Grenzen kommen unverändert aus `zeitraumGrenzen`. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
   function kostenbereich(board, f, jetzt) {
     const { zeitraumGrenzen } = typeof module !== 'undefined' ? require('./berichte.js') : window;
     const spalten = board.spalten.map(sp => sp.name), abschnitt = spaltenabschnitt(spalten, f.kostenVonSpalte, f.kostenBisSpalte);
-    let zeit = zeitraumGrenzen(f, jetzt);
-    if (f.zeitraum === 'eigen' && f.bis) zeit = { von: zeit.von, bis: beginnDesFolgetags(f.bis) };
-    return { gesetzt: f.zeitraum !== 'alles' || abschnitt !== null, zeit, spalten, abschnitt };
-  }
-  /** Beginn des Tags nach `JJJJ-MM-TT` in der Ortszeit, als Kalenderrechnung: an einem Tag der Zeitumstellung liegt er
-      23 oder 25 Stunden nach dem Tagesanfang — „Tagesanfang plus 24 Stunden“ ließe dort Einträge fallen oder doppelt zählen. */
-  function beginnDesFolgetags(isoTag) {
-    const [jahr, monat, tag] = isoTag.split('-').map(Number);
-    return new Date(jahr, monat - 1, tag + 1).getTime();
+    return { gesetzt: f.zeitraum !== 'alles' || abschnitt !== null, zeit: zeitraumGrenzen(f, jetzt), spalten, abschnitt };
   }
   /** Gespeicherte Grenzen des Abschnitts, die das Board nicht (mehr) führt → [{seite: 'von' | 'bis', name}]; sie gelten
       als nicht gesetzt und werden genannt (ADR-0028 N1 Punkt 4). */
