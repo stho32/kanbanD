@@ -133,6 +133,24 @@ test('Kostenbericht: eine Nummer in der Spalte ohne lesbare Aufgabe zählt in m 
   assert.strictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, filter({ labels: ['x'] })).m, 0, 'mit Label-Filter passt sie nicht');
 });
 
+/* ── Angefallene Kosten (R00165 AK 9, I0155): Kosteneinträge und alte Posten zählen, Schätzungen nicht ── */
+const eintrag = (amount, mehr = {}) => ({ at: '2026-11-13 10:34+01:00', role: 'entwickler', column: 'Entwicklung', amount, currency: 'USD', ...mehr });
+const ALTE_POSTEN = usd({ items: [{ text: 'Planung', min: 0.10, max: 0.20 }, { text: 'Bau', amount: 0.30 }] });
+const SCHAETZUNG = usd({ amount: 1.63 });
+
+test('Rechenbeispiel R00165 AK 9: Einträge 4,66 · alte Posten 0,40–0,50 · Summe 5,06–5,16 · 2 von 4, die Schätzung zählt nicht', { todo: 'erwartet rot bis B0800' }, () => {
+  const aufgaben = [aufgabe(1, null, { kosteneintraege: [eintrag(3.46), eintrag(1.20, { at: '2026-11-13 11:02+01:00' })] }), aufgabe(2, ALTE_POSTEN), aufgabe(3, SCHAETZUNG), aufgabe(4)];
+  assert.deepStrictEqual(kostenbericht(spalten([3, 4], [1], [2]), aufgaben, FILTER_LEER),
+    { m: 4, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 466, posten: { niedrig: 40, hoch: 50 }, niedrig: 506, hoch: 516 }] });
+});
+
+test('Rechenbeispiel der Zeichnung (Bericht Bild 1): Einträge 5,18 · alte Posten 0,40–0,50 · Summe 5,58–5,68 · 2 von 3', { todo: 'erwartet rot bis B0800' }, () => {
+  const drei = [eintrag(3.46), eintrag(1.20, { at: '2026-11-13 11:02+01:00' }), eintrag(0.52, { at: '2026-11-12 16:48+01:00', role: 'planer', column: 'Detailplanung' })];
+  const aufgaben = [aufgabe(1, null, { kosteneintraege: drei }), aufgabe(2, ALTE_POSTEN), aufgabe(3, SCHAETZUNG)];
+  assert.deepStrictEqual(kostenbericht(spalten([3], [1], [2]), aufgaben, FILTER_LEER),
+    { m: 3, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 518, posten: { niedrig: 40, hoch: 50 }, niedrig: 558, hoch: 568 }] });
+});
+
 /* ── Filter auf den Kostenbericht (B0373): Zeitraum und Rechnen ab gelten nicht ── */
 const ALLE = 'alle Spalten, auch archivierte', NACH_FILTER = 'nach Filter, auch archivierte';
 const MIT_PRUEFUNG = { spalten: [...GRUND_BOARD.spalten.slice(0, 2), { name: 'Prüfung', aufgaben: [] }, GRUND_BOARD.spalten[2]] };
