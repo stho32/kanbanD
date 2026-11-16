@@ -82,4 +82,53 @@ test('R00164 B0784 (US-4): ein Tag ohne Ereignis trägt dreimal 0', () => {
   assert.deepStrictEqual([tage[1].hinzugekommen, tage[1].erledigt, tage[1].entfernt], [0, 0, 0]);
 });
 
-module.exports = { beispiel, aufgabenBeispiel, filter, mittags, spalte, summe, erwarteBilanz };
+/* ── B0785 Filter, Zeitraum, „Rechnen ab“ und ausgeschlossene Spalte ── */
+const zahlen = tage => tage.map(x => [x.hinzugekommen, x.erledigt, x.entfernt, x.offen]);
+const summen = tage => [summe(tage, 'hinzugekommen'), summe(tage, 'erledigt'), summe(tage, 'entfernt')];
+
+test('R00164 B0785 (AK 5): „Eingang“ ausgeschlossen — „+“ zählt erst beim Eintritt in eine gezählte Spalte, 02.11. „+“ 1 statt 3', () => {
+  const tage = B.burndown(beispiel(), filter({ ohneSpalten: ['Eingang'] }), aufgabenBeispiel, mittags(5));
+  assert.deepStrictEqual(zahlen(tage), [
+    [1, 0, 0, 1],   // nur #2 („In Arbeit“)
+    [0, 0, 0, 1],   // #1 und #5 gehen aus „Eingang“ nach „Fertig“: nie offen, kein Ereignis
+    [1, 0, 1, 1],   // #1 zurück nach „In Arbeit“; #2 archiviert
+    [0, 1, 0, 0],   // #1 nach „Fertig“; #3 aus „Eingang“: kein Ereignis
+  ]);
+  erwarteBilanz(tage);
+});
+
+test('R00164 B0785 (AK 5): ein Zug zurück in die ausgeschlossene Spalte zählt als „− entfernt“', () => {
+  const bew = { spalten: SPALTEN, aufgaben: [{ nummer: 1, wechsel: [z(2, 'Eingang'), z(3, 'In Arbeit'), z(4, 'Eingang')] }] };
+  const tage = B.burndown(bew, filter({ ohneSpalten: ['Eingang'] }), () => mitDatei({}), mittags(4));
+  assert.deepStrictEqual(zahlen(tage), [[0, 0, 0, 0], [1, 0, 0, 1], [0, 0, 1, 0]]);
+  erwarteBilanz(tage);
+});
+
+test('R00164 B0785 (AK 6): #5 mit reporting.burndown: false — 03.11. „+“ 1, „− erledigt“ 1', () => {
+  const tage = B.burndown(beispiel({ ohne5: true }), filter({}), aufgabenBeispiel, mittags(5));
+  assert.deepStrictEqual(zahlen(tage)[1], [1, 1, 0, 3]);
+  erwarteBilanz(tage);
+});
+
+test('R00164 B0785 (AK 6): Zeitraum 03.11.–05.11. und „Rechnen ab“ 03.11. — Summen 3 · 4 · 1', () => {
+  const zeitraum = B.burndown(beispiel(), filter({ zeitraum: 'eigen', von: '2026-11-03', bis: '2026-11-05' }), aufgabenBeispiel, mittags(5));
+  assert.deepStrictEqual(spalte(zeitraum, 'datum'), ['2026-11-03', '2026-11-04', '2026-11-05']);
+  assert.deepStrictEqual(summen(zeitraum), [3, 4, 1]);
+  erwarteBilanz(zeitraum);
+  const rechnenAb = B.burndown(beispiel(), filter({}), aufgabenBeispiel, mittags(5), '2026-11-03');
+  assert.deepStrictEqual(zahlen(rechnenAb), zahlen(zeitraum));
+});
+
+test('R00164 B0785 (AK 6): Personen-, Label- und Farbfilter wählen für die drei Größen dieselben Aufgaben wie für „offen“', () => {
+  // #1 gehört „st“, trägt „kern“ und ist „rot“; die übrigen gehören „ki“, ohne Label, „blau“
+  const liste = nr => ({ ...aufgabenBeispiel(nr), ...(nr === 1 ? { zustaendige: ['st'], labels: ['kern'], klasse: 'rot' } : { zustaendige: ['ki'], klasse: 'blau' }) });
+  const nurAufgabe1 = [[1, 0, 0, 1], [0, 1, 0, 0], [1, 0, 0, 1], [0, 1, 0, 0]];
+  for (const f of [{ personen: ['st'] }, { labels: ['kern'] }, { ohneFarben: ['blau'] }]) {
+    const tage = B.burndown(beispiel(), filter(f), liste, mittags(5));
+    assert.deepStrictEqual(zahlen(tage), nurAufgabe1, JSON.stringify(f));
+    erwarteBilanz(tage);
+  }
+  const ohneAufgabe1 = B.burndown(beispiel(), filter({ personen: ['ki'] }), liste, mittags(5));
+  assert.deepStrictEqual(zahlen(ohneAufgabe1), [[2, 0, 0, 2], [2, 1, 0, 3], [0, 0, 1, 2], [0, 1, 0, 1]]);
+  erwarteBilanz(ohneAufgabe1);
+});
