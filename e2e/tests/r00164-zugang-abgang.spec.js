@@ -105,3 +105,11 @@ test('R00164 US-4 (AK 8): die Tabellenansicht zeigt rechts von „Umfang“ die 
     ]);
   } finally { await k.stoppen(); }
 });
+
+test('R00164 AK 10: der Durchsatz desselben Bestands bleibt beim ersten Erreichen — gesamt 3, obwohl „− erledigt“ 4 nennt', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'durchsatz');
+    await expect(page.locator('#dus-kennzahl span').first()).toHaveText('Gesamt 3');
+  } finally { await k.stoppen(); }
+});

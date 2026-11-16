@@ -631,3 +631,4 @@ Nie vom User erfragen.
 | 2026-11-15 | Karte #154 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0784 Ereignisse je Tag aus der Bestandsfunktion | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-15 | Karte #154 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0785 Filter, Zeitraum, „Rechnen ab“ und ausgeschlossene Spalte wirken auf die drei Größen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-15 | Karte #154 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0786 Zahlen in Tooltip, Tabellenansicht und Kennzahlzeile | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-15 | Karte #154 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0787 Probe im echten Programm und Gate | Standard | 1-2h | 0,4h | 0,4h | autonom |
