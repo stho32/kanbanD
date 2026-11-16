@@ -53,8 +53,8 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
   test.afterEach(() => k.stoppen());
 
   /** Startet kanbanD mit dem Grundbestand (`kopf` ist der YAML-Kopf der Board-Datei) und öffnet die Stelle des Felds. */
-  async function feldOeffnen(page, ort, kopf = '') {
-    k = await kanbanStarten(einrichten({ ...DATEIEN, [BOARD]: kopf + DATEIEN[BOARD] }));
+  async function feldOeffnen(page, ort, kopf = '', aufgabenkopf = '') {
+    k = await kanbanStarten(einrichten({ [BOARD]: kopf + DATEIEN[BOARD], [AUFGABE]: DATEIEN[AUFGABE].replace('title: eins\n', 'title: eins\n' + aufgabenkopf) }));
     await page.clock.setFixedTime(new Date(HEUTE));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + ort.adresse);
@@ -212,4 +212,91 @@ test.describe('R00173 F0141: Datum tippen, ohne dass ein unfertiges Jahr gespeic
     await expect(feld).toHaveValue('2026-11-12');
     expect(speicherungen(VON) - vorher).toBe(1);
   });
+
+  /* ── Befund B1 (Nacharbeit): ein getippter Zwischenstand, den es als Datum nicht gibt (31.11., 31.02., 30.02.), leert den
+     Wert des Felds — das ist keine Absicht zu löschen: gehalten wie jeder andere Zwischenstand ── */
+  /** Je Feld der Grundbestand, in dem es das Datum `tag` schon gespeichert trägt: [Kopf der Board-Datei, Kopf der Aufgabe]. */
+  const gespeichertIn = (ort, tag) => {
+    if (ort.schluessel === 'due') return ['', `due: ${tag}\n`];
+    if (ort.schluessel === 'start') return [`---\nstart: ${tag}\n---\n`, ''];
+    return [`---\nreport-filter: {period: eigen, ${ort.schluessel}: ${tag}}\n---\n`, ''];
+  };
+  /** Commits an der Datei des Felds (der Cache des Fever Charts liegt in einer anderen Datei). */
+  const commitsAnDerDatei = ort => k.git('log', '--format=%h', '--', ort.datei).split('\n').filter(Boolean).length;
+  const ABSTAENDE_B1 = [0, 120];
+
+  for (const name of ['Durchsatz · Zeitraum von', 'Durchsatz · Zeitraum bis', 'Kosten · Zeitraum von', 'Fever Chart · Rechnen ab', 'Aufgabenfenster · Fälligkeit']) {
+    const ort = FELDER[name];
+    for (const abstand of ABSTAENDE_B1) {
+      test(`B1 a: „31122026“ über das gespeicherte 12.11.2026 getippt (Abstand ${abstand} ms) in ${name} — der Zwischenstand 31.11. löscht nichts → Feld 31.12.2026, Datei „${ort.schluessel}: 2026-12-31“, genau ein Commit an der Datei`, async ({ page }) => {
+        const feld = await feldOeffnen(page, ort, ...gespeichertIn(ort, '2026-11-12'));
+        await expect(feld).toHaveValue('2026-11-12');
+        const vorher = commitsAnDerDatei(ort);
+
+        await tippen(page, feld, '31122026', abstand);
+
+        await expect.poll(() => k.lies(ort.datei)).toMatch(gespeichert(ort, '2026-12-31'));
+        await ort.ruhig(page);
+        await expect(feld).toHaveValue('2026-12-31');
+        expect(commitsAnDerDatei(ort) - vorher).toBe(1);
+        expect(speicherungen(ort) - vorher).toBe(1);
+      });
+    }
+  }
+
+  const neben = page => page.getByRole('group', { name: 'Berichtsfilter' }).locator('span.muted').first();
+  const AUSGAENGE = {
+    'Tab und Verlassen': async (page, feld) => { await page.keyboard.press('Tab'); await verlassen(feld); },
+    'Klick daneben': page => neben(page).click(),
+    'Enter und Verlassen': async (page, feld) => { await page.keyboard.press('Enter'); await verlassen(feld); },
+  };
+  for (const [ausgang, verlassenMit] of Object.entries(AUSGAENGE)) {
+    for (const abstand of ABSTAENDE_B1) {
+      test(`B1 b: gespeichert 31.01.2026, im Monat „02“ getippt (Abstand ${abstand} ms), dann ${ausgang} → den 31.02. gibt es nicht: kein Commit, die Datei unverändert, das Feld zeigt wieder 31.01.2026`, async ({ page }) => {
+        const feld = await feldOeffnen(page, VON, mitVon('2026-01-31'));
+        const kopfVorher = k.git('rev-parse', 'HEAD');
+
+        await feld.focus();
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.type('02', { delay: abstand });
+        await expect(feld).toHaveValue('');
+        await verlassenMit(page, feld);
+
+        await expect(feld).toHaveValue('2026-01-31');
+        await expect(feld).not.toBeFocused();
+        expect(k.lies(BOARD)).toMatch(gespeichert(VON, '2026-01-31'));
+        expect(k.git('rev-parse', 'HEAD')).toBe(kopfVorher);
+      });
+    }
+  }
+
+  for (const abstand of ABSTAENDE_B1) {
+    test(`B1 c: „30022026“ über das gespeicherte 01.11.2026 getippt (Abstand ${abstand} ms) → den 30.02. gibt es nicht: kein Commit, die Datei unverändert, nach dem Verlassen zeigt das Feld wieder 01.11.2026`, async ({ page }) => {
+      const feld = await feldOeffnen(page, VON, mitVon('2026-11-01'));
+      const kopfVorher = k.git('rev-parse', 'HEAD');
+
+      await tippen(page, feld, '30022026', abstand);
+      await expect(feld).toHaveValue('');
+      await expect(feld).toBeFocused();
+      await verlassen(feld);
+
+      await expect(feld).toHaveValue('2026-11-01');
+      expect(k.lies(BOARD)).toMatch(gespeichert(VON, '2026-11-01'));
+      expect(k.git('rev-parse', 'HEAD')).toBe(kopfVorher);
+    });
+  }
+
+  for (const [wie, leeren] of [['die Entf-Taste im Tag', async (page, feld) => { await feld.focus(); await page.keyboard.press('Delete'); }], ['fill(\'\')', (page, feld) => feld.fill('')]]) {
+    test(`B1 d: ${wie} leert das gespeicherte 01.11.2026 weiter sofort → ohne „from“ gespeichert, genau ein Commit`, async ({ page }) => {
+      const feld = await feldOeffnen(page, VON, mitVon('2026-11-01'));
+      const vorher = commitsAnDerDatei(VON);
+
+      await leeren(page, feld);
+
+      await expect.poll(() => k.lies(BOARD)).toMatch(/report-filter: \{period: eigen\}/);
+      await VON.ruhig(page);
+      await expect(feld).toHaveValue('');
+      expect(commitsAnDerDatei(VON) - vorher).toBe(1);
+    });
+  }
 });

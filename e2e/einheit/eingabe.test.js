@@ -74,3 +74,22 @@ test('R00173: fertig ist ein Datum mit vierstelligem Jahr; ein leeres Feld träg
   assert.deepStrictEqual(['2026-11-12', '1000-01-01', '0999-12-31', '0002-11-12', ''].map(datumFertig), [true, true, false, false, false]);
   assert.deepStrictEqual(['2026-11-12', '0002-11-12', '', undefined].map(jahrDesDatums), [2026, 2, null, null]);
 });
+
+test('R00173 B1: ein getippter Zwischenstand, den es als Datum nicht gibt (31.11.), leert den Wert — gehalten, nicht gespeichert', () => {
+  assert.strictEqual(datumsaenderung({ wert: '', verlassen: false, jahrVorDerZiffer: 2026 }), 'halten');
+});
+
+test('R00173 B1: nach dem leeren Zwischenstand ist „31.01.2026“ und „31.12.2026“ noch nicht fertig — das Jahr 2026 stand schon vor dem Tippen im Feld', () => {
+  assert.strictEqual(getippt('2026-01-31', 2026), 'halten');
+  assert.strictEqual(getippt('2026-12-31', 2026), 'halten');
+  // erst das getippte Jahr (… 0202 → 2026) macht das Datum fertig
+  assert.strictEqual(getippt('2026-12-31', 202), 'speichern');
+});
+
+test('R00173 B1: Tag und Monat getippt, das Jahr stand schon im Feld und wurde nicht getippt — gehalten, auch wenn vorher kein gültiges Datum im Feld war', () => {
+  assert.strictEqual(getippt('2026-01-12', null), 'halten');
+});
+
+test('R00173 B1: der 29.02. ist während des Tippens des Jahrs nur zeitweise ein Datum (0020 ja, 0202 nein) — mit dem fertigen 2024 wird gespeichert', () => {
+  assert.deepStrictEqual([['0020-02-29', null], ['', 20], ['2024-02-29', 20]].map(([wert, vorher]) => getippt(wert, vorher)), ['halten', 'halten', 'speichern']);
+});
