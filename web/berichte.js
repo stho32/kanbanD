@@ -354,13 +354,17 @@
     return { jahr, woche: 1 + Math.round((donnerstag - erster) / (7 * TAG)) };
   }
 
-  /** Ziel des Durchsatzes: die Abschlussspalte (Index und Name) oder bei gebundenem Board die letzte Phase samt Stufe. */
-  function durchsatzZiel(bew, phasen) {
+  /** Ziel des Durchsatzes: die Abschlussspalte (Index und Name) oder bei gebundenem Board die letzte Phase samt Stufe.
+      `zielblock` (R00166, ADR-0027 N2 Punkt 6) wählt stattdessen diese Spalte bzw. Phase; gibt es sie nicht, gilt die Vorgabe. */
+  function durchsatzZiel(bew, phasen, zielblock = null) {
     if (phasen && phasen.folge && phasen.folge.length) {
       const stufen = phasenStufen(phasen, bew.spalten), letzte = stufen[stufen.length - 1];
-      return { art: 'phase', name: letzte.phase, i: -1, stufe: letzte };
+      const stufe = stufen.find(st => st.phase === zielblock) || letzte;
+      return { art: 'phase', name: stufe.phase, i: -1, stufe };
     }
-    const i = bew.spalten.length - 1;
+    const gewaehlt = bew.spalten.indexOf(zielblock);
+    let i = bew.spalten.length - 1;
+    if (gewaehlt >= 0) i = gewaehlt;
     return { art: 'spalte', name: bew.spalten[i], i, stufe: null };
   }
 
@@ -407,12 +411,12 @@
   }
 
   /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte bzw. letzte
-      Phase) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
+      Phase, mit `zielblock` der gewählte Block oder rechts davon, R00166) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
       [von, bis) des Filters — „Rechnen ab“ schneidet den Anfang, die Messbasis wirkt nicht, die angebrochene letzte
       Periode zählt bis heute. `reporting.forecast: false` nimmt aus (zählt in `ausgenommen`); ist das Ziel ganz
       ausgeschlossen, gibt es keine Aussage (`zielAusgeschlossen`, keine Perioden). Ø = Gesamt ÷ dargestellte Perioden. */
-  function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD) {
-    const ziel = durchsatzZiel(bew, bew.phasen);
+  function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD, zielblock = null) {
+    const ziel = durchsatzZiel(bew, bew.phasen, zielblock);
     const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
     if (!bew.spalten.length) return leer;
     if (zielSpalten(bew, ziel).every(s => f.ohneSpalten.includes(s))) return { ...leer, zielAusgeschlossen: true };

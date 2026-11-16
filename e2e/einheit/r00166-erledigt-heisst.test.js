@@ -56,7 +56,7 @@ test('R00166 B0803 (AK 7): ohne Wahl rechnen alle Berichte wie vor der Karte —
   assert.deepStrictEqual(fremdeBerichte(), VOR_DER_KARTE);
 });
 
-test('R00166 B0803 (AK 1–3, AK 8): mit Zielspalte B ändern sich nur Burndown (3·0·3, 0·3·0, 1·0·1) und Durchsatz (0·3·0)', { todo: 'erwartet rot bis B0806: Burndown und Durchsatz folgen der Wahl noch nicht' }, () => {
+test('R00166 B0803 (AK 1–3, AK 8): mit Zielspalte B ändern sich nur Burndown (3·0·3, 0·3·0, 1·0·1) und Durchsatz (0·3·0)', () => {
   assert.deepStrictEqual(burndown('B'), MIT_B.burndown);
   assert.deepStrictEqual(durchsatz('B'), MIT_B.durchsatz);
   assert.deepStrictEqual(fremdeBerichte(), VOR_DER_KARTE, 'Kumulativer Fluss, Durchlaufzeit, „Wie lange noch“ und Fever Chart rechnen nach einem Lauf mit Wahl wie vorher');
@@ -140,4 +140,29 @@ test('R00166 B0805: „Ausgenommen“ zählt mit dem Zielblock — archiviert in
   const archiviert = () => ({ ...mitDatei(), archiviert: '2026-11-03' });
   assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), archiviert, JETZT, 'B'), 1);
   assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), archiviert, JETZT), 0);
+});
+
+/* ── B0806 Durchsatz zählt die Ankunft im Zielblock (ADR-0027 N2 Punkt 6) ── */
+test('R00166 B0806 (AK 2, AK 3): Zielspalte B — Ankunft am 03.11. für #1, #2 und #3 (direkt nach Erledigt); Weiterzug und Rückzug am 04.11. ändern nichts', () => {
+  const d = B.durchsatz(beispiel(), filter({}), mitDatei, JETZT, null, 'tag', 'B');
+  assert.deepStrictEqual(d.perioden.map(p => p.anzahl), MIT_B.durchsatz);
+  assert.deepStrictEqual([d.gesamt, d.ziel.art, d.ziel.name, d.zielAusgeschlossen], [3, 'spalte', 'B', false]);
+});
+
+test('R00166 B0806 (AK 9): ein Zielblock, den es nicht gibt, zählt wie ohne Wahl bis zur Abschlussspalte', () => {
+  const d = B.durchsatz(beispiel(), filter({}), mitDatei, JETZT, null, 'tag', 'Abnahme');
+  assert.deepStrictEqual([d.perioden.map(p => p.anzahl), d.ziel.name], [OHNE_WAHL.durchsatz, 'Erledigt']);
+});
+
+test('R00166 B0806: mit Phasen zählt das erste Durchlaufen der gewählten Phase, ohne Wahl das der letzten', () => {
+  const bew = { ...mitPhasen(), aufgaben: [
+    { nummer: 1, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest'), z(4, 'Abnahme')] },
+    { nummer: 2, wechsel: [z(2, 'Entwicklung'), z(4, 'Erledigt')] },
+  ] };
+  const jePeriode = zielblock => B.durchsatz(bew, filter({}), mitDatei, JETZT, null, 'tag', zielblock).perioden.map(p => p.anzahl);
+  assert.deepStrictEqual(jePeriode('Entwicklung'), [0, 1, 1]);
+  assert.deepStrictEqual(jePeriode('Entwicklertest'), [0, 0, 2]);
+  assert.deepStrictEqual(jePeriode(undefined), [0, 0, 1]);
+  assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen, 'Entwicklertest').name, 'Entwicklertest');
+  assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen).name, 'Abnahme');
 });

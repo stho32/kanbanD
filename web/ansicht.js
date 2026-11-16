@@ -1324,7 +1324,7 @@ function vDurchsatz() {
   const kopf = `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· liest nur · erledigte Aufgaben je Periode</span></div>`;
   if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
   const einheit = DURCHSATZ_EINHEITEN.some(([k]) => k === u.dusEinheit) ? u.dusEinheit : DURCHSATZ_STANDARD;
-  const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit);
+  const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit, erledigtHeisst().gewaehlt);
   const zurueck = leistenAnzahl(u.bf, BERICHTSLEISTEN.durchsatz) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="durchsatz">Zurücksetzen</button>' : '';
   const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
   if (!S.bew.aufgaben.length) return zustand('Noch kein Stand dieses Boards.');
