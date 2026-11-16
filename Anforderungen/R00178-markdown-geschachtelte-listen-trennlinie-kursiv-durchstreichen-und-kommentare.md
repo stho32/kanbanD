@@ -1,6 +1,6 @@
 ---
 id: R00178
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,13 +18,13 @@ Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#markdown-e
 
 ## Akzeptanzkriterien
 
-- [ ] **AK 1 Abnahme-Probe der Karte:** Gegeben eine Beschreibung mit einer Liste in drei Ebenen, einer Zeile `---`, dem Satz `_schräg_ und ~~weg~~ und cost_from_column` und ein Kommentar `siehe https://example.org und **wichtig**`. Wenn ich die Aufgabe öffne, dann sind die drei Ebenen eingerückt, die Linie ist eine Linie, „schräg“ kursiv, „weg“ durchgestrichen, `cost_from_column` unverändert; im Kommentar ist die Adresse ein Link und „wichtig“ fett. Heute rot.
-- [ ] **AK 2 Nur an Wortgrenzen:** `_schräg_` wird kursiv, `__fett__` fett, `~~weg~~` durchgestrichen — in Beschreibung, Kommentar und Teilaufgabe. `cost_from_column` und `__init__.py` bleiben unverändert; `https://x.org/a_b_c` bleibt ein Link mit unverändertem Ziel.
-- [ ] **AK 3 Geschachtelte Listen:** Drei Ebenen behalten ihre Einrückung, Punkte und Nummern gemischt: `- a` / `  1. b` / `    - c` zeigt unter „a“ eine nummerierte Liste mit „b“ und darunter einen Punkt „c“.
-- [ ] **AK 4 Trennlinie und Überschrift:** `---` auf eigener Zeile wird eine Linie — auch direkt unter einer Textzeile, nie eine Überschrift, nie eine Tabelle. `#### T` wird eine Überschrift, eine Stufe kleiner als `###` (im Aufgabenfenster `h6`).
-- [ ] **AK 5 Kommentare:** Ein Kommentar zeigt alle Elemente, die die Beschreibung kann (Liste, Link, Code, Tabelle); ein mehrzeiliger Kommentar behält seine Zeilenumbrüche; beim Bearbeiten steht der Rohtext im Feld.
-- [ ] **AK 6 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, in Beschreibung und Kommentar; kein Link liegt in einem Knopf.
-- [ ] **AK 7 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: `_…_`, `__…__` und `~~…~~` an Wortgrenzen werden formatiert · `---` wird Linie · `####` wird Überschrift · eingerückte Listenpunkte werden geschachtelt statt flach · Kommentare erscheinen formatiert statt roh.
+- [x] **AK 1 Abnahme-Probe der Karte:** Gegeben eine Beschreibung mit einer Liste in drei Ebenen, einer Zeile `---`, dem Satz `_schräg_ und ~~weg~~ und cost_from_column` und ein Kommentar `siehe https://example.org und **wichtig**`. Wenn ich die Aufgabe öffne, dann sind die drei Ebenen eingerückt, die Linie ist eine Linie, „schräg“ kursiv, „weg“ durchgestrichen, `cost_from_column` unverändert; im Kommentar ist die Adresse ein Link und „wichtig“ fett. Heute rot.
+- [x] **AK 2 Nur an Wortgrenzen:** `_schräg_` wird kursiv, `__fett__` fett, `~~weg~~` durchgestrichen — in Beschreibung, Kommentar und Teilaufgabe. `cost_from_column` und `__init__.py` bleiben unverändert; `https://x.org/a_b_c` bleibt ein Link mit unverändertem Ziel.
+- [x] **AK 3 Geschachtelte Listen:** Drei Ebenen behalten ihre Einrückung, Punkte und Nummern gemischt: `- a` / `  1. b` / `    - c` zeigt unter „a“ eine nummerierte Liste mit „b“ und darunter einen Punkt „c“.
+- [x] **AK 4 Trennlinie und Überschrift:** `---` auf eigener Zeile wird eine Linie — auch direkt unter einer Textzeile, nie eine Überschrift, nie eine Tabelle. `#### T` wird eine Überschrift, eine Stufe kleiner als `###` (im Aufgabenfenster `h6`).
+- [x] **AK 5 Kommentare:** Ein Kommentar zeigt alle Elemente, die die Beschreibung kann (Liste, Link, Code, Tabelle); ein mehrzeiliger Kommentar behält seine Zeilenumbrüche; beim Bearbeiten steht der Rohtext im Feld.
+- [x] **AK 6 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, in Beschreibung und Kommentar; kein Link liegt in einem Knopf.
+- [x] **AK 7 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: `_…_`, `__…__` und `~~…~~` an Wortgrenzen werden formatiert · `---` wird Linie · `####` wird Überschrift · eingerückte Listenpunkte werden geschachtelt statt flach · Kommentare erscheinen formatiert statt roh.
 
 ## Tests
 
