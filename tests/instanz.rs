@@ -89,7 +89,6 @@ async fn us2_start_ueber_symlink_nennt_das_aufgeloeste_ziel() {
 
 // AK 1 wörtlich: genau drei Felder, `port` als Zahl
 #[tokio::test]
-#[ignore = "erwartet rot: B0892"]
 async fn us1_antwort_ist_genau_ordner_port_version() {
     let tmp = tempfile::tempdir().unwrap();
     let a = tmp.path().join("Boards/A");
@@ -104,7 +103,6 @@ async fn us1_antwort_ist_genau_ordner_port_version() {
 
 // US-2, AK 3: der verlangte Port ist belegt — die Instanz nennt den, auf den sie ausgewichen ist
 #[tokio::test]
-#[ignore = "erwartet rot: B0892"]
 async fn us2_belegter_port_instanz_nennt_den_ausgewichenen() {
     let tmp = tempfile::tempdir().unwrap();
     let belegt = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -120,7 +118,6 @@ async fn us2_belegter_port_instanz_nennt_den_ausgewichenen() {
 
 // AK 3: `--port 0` — der Port, auf dem die Anfrage ankam, nie 0
 #[tokio::test]
-#[ignore = "erwartet rot: B0892"]
 async fn port_null_nennt_den_port_der_anfrage() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);

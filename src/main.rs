@@ -35,7 +35,7 @@ async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf) -> ExitCode 
         browser::oeffnen(&adresse);
     }
     let (ende, ende_rx) = tokio::sync::watch::channel(false);
-    let router = kanband::web::router_mit_ende(ordner, ende_rx);
+    let router = kanband::web::router_mit_ende(ordner, port, ende_rx);
     let signal = async move {
         beenden_verlangt().await;
         let _ = ende.send(true);

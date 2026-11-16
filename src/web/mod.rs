@@ -31,16 +31,19 @@ pub struct App {
     pub kanban: Arc<Kanban>,
     pub ereignisse: broadcast::Sender<Ereignis>,
     ende: watch::Receiver<bool>,
+    /// der gebundene Port der Instanz; 0, wenn der Router ohne Horcher gebaut ist
+    port: u16,
     _waechter: Option<Arc<notify::RecommendedWatcher>>,
 }
 
-/// Router ohne Ende-Signal (Ereignisströme laufen, bis der Client geht).
+/// Router ohne Horcher und ohne Ende-Signal (Ereignisströme laufen, bis der Client geht); `GET /api/instanz` nennt Port 0.
 pub fn router(ordner: PathBuf) -> Router {
-    router_mit_ende(ordner, watch::channel(false).1)
+    router_mit_ende(ordner, 0, watch::channel(false).1)
 }
 
+/// `port` ist der Port, an den der Horcher gebunden ist (R00183) — nicht der verlangte: das Programm weicht aus.
 /// Wird `ende` wahr, schließen sich die Ereignisströme — sonst wartet ein geordnetes Beenden ewig auf sie.
-pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
+pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) -> Router {
     let kanban = Arc::new(Kanban::neu(ordner.clone()));
     let (ereignisse, _) = broadcast::channel(256);
     let fremde = fremde_beobachten(&kanban, ereignisse.clone());
@@ -57,7 +60,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
             None
         }
     };
-    let app = App { kanban, ereignisse, ende, _waechter: waechter };
+    let app = App { kanban, ereignisse, ende, port, _waechter: waechter };
     // Router und OpenAPI-Beschreibung aus einer Quelle (R00093): jeder Handler trägt sein #[utoipa::path]
     let (router, api) = OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
         .routes(routes!(ereignisstrom))
@@ -248,6 +251,8 @@ async fn zustand(State(app): State<App>) -> Result<Response, Fehler> {
 pub struct Instanzauskunft {
     /// der bediente Ordner, absolut und kanonisch (Symlinks aufgelöst) — derselbe Wert wie in `GET /api/zustand`
     pub ordner: String,
+    /// der Port, an den die Instanz gebunden ist — bei belegtem Port der, auf den sie ausgewichen ist
+    pub port: u16,
     /// die Programmversion
     pub version: &'static str,
 }
@@ -261,7 +266,7 @@ pub struct Instanzauskunft {
     responses((status = 200, description = "Erfolg", body = Instanzauskunft))
 )]
 async fn instanz_auskunft(State(app): State<App>) -> Json<Instanzauskunft> {
-    Json(Instanzauskunft { ordner: app.kanban.ordner().wurzel().to_string_lossy().into(), version: env!("CARGO_PKG_VERSION") })
+    Json(Instanzauskunft { ordner: app.kanban.ordner().wurzel().to_string_lossy().into(), port: app.port, version: env!("CARGO_PKG_VERSION") })
 }
 
 #[utoipa::path(

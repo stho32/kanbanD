@@ -17,7 +17,7 @@ const fn e(methode: &'static str, pfad: &'static str, wer: bool, thema: &'static
 }
 
 /// Zweck von `GET /api/instanz` — derselbe Text in der Endpunktliste und in der OpenAPI-Beschreibung.
-pub const INSTANZ: &str = "diese Instanz {ordner, version}: der bediente Ordner absolut und kanonisch (wie in /api/zustand) und die Programmversion — daran erkennt ein Agent seine Instanz; liest den Ordner nicht und antwortet auch, wenn /api/zustand scheitert";
+pub const INSTANZ: &str = "diese Instanz {ordner, port, version}: der bediente Ordner absolut und kanonisch (wie in /api/zustand), der gebundene Port (bei belegtem Port der, auf den das Programm ausgewichen ist) und die Programmversion — daran erkennt ein Agent seine Instanz; liest den Ordner nicht und antwortet auch, wenn /api/zustand scheitert";
 
 pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api", false, "API", "diese Beschreibung als Seite; mit Accept: application/json 303 auf /api/openapi.json"),
