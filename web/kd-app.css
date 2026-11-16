@@ -543,11 +543,14 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .farbe{width:26px;height:22px;border:1px solid var(--cl,var(--kd-line-strong));background:var(--c,var(--kd-surface));position:relative;cursor:pointer}
 .farbe::after{content:"▾";position:absolute;right:-1px;bottom:-3px;font-size:8px;color:var(--kd-muted)}
 .farbe.an{outline:2px solid var(--kd-accent);outline-offset:1px}
+/* Der Fokusring liegt weiter außen als der Ring „Palette offen“ bzw. „gewählt“ — sonst wäre der Fokus dort nicht zu sehen (R00180) */
+.farbe:focus-visible{outline:2px solid var(--kd-accent);outline-offset:3px}
 .pal{display:flex;flex-direction:column;gap:6px;padding:8px var(--kd-s4) 10px 50px;border-bottom:1px solid var(--kd-line);background:var(--kd-bg)}
 .pal .g{display:grid;grid-template-columns:repeat(auto-fill,var(--kd-ziel));gap:3px}
 .pal .g span{border:1px solid var(--cl);background:var(--c);cursor:pointer;position:relative}
 .pal .g span:hover{outline:1px solid var(--kd-text)}
 .pal .g span.an{outline:2px solid var(--kd-text);outline-offset:1px}
+.pal .g span:focus-visible{outline:2px solid var(--kd-accent);outline-offset:3px}
 .pal .g span::after{content:"";position:absolute;left:3px;right:3px;bottom:3px;height:3px;background:var(--cl)}
 .pal .eig{display:flex;flex-wrap:wrap;white-space:nowrap;align-items:center;gap:6px;font-size:11.5px;color:var(--kd-muted)}
 .pal .eig .inp{height:22px;width:84px;font-size:11.5px;padding:0 6px}
@@ -854,7 +857,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .km-e.an .kmenue.unter .km-e:not(.an){background:none;color:var(--kd-text)}
 .km-e.an .kmenue.unter .km-e.km-aktuell{color:var(--kd-muted)}
 .km-e.an .kmenue.unter .km-k{color:var(--kd-muted)}
-.bahn-kopf:focus,tr[data-zeile]:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}
+.bahn-kopf:focus,tr[data-zeile]:focus,.pt tr.klick:focus{outline:2px solid var(--kd-accent);outline-offset:-2px}
 /* Neue Aufgabe */
 .kopf-plus{margin-left:4px;width:20px;height:20px;border:1px solid transparent;background:none;color:var(--kd-muted);font-size:15px;line-height:1;cursor:pointer;padding:0}
 /* Trefferhof (R00108, ADR-0012 Regel 3): kleine Zeichen bleiben gezeichnet klein; bei feinem Zeiger trägt ein durchsichtiges ::after

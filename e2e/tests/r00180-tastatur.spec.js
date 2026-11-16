@@ -54,7 +54,6 @@ function ausgangslage(arbeit) {
 
 let k, arbeit;
 test.beforeEach(async ({ page }) => {
-  test.fail(true, 'erwartet rot: Tab-Halt und Tastenzweig entstehen mit B0881, die Namen mit B0882');
   arbeit = arbeitsRepository(WBS);
   k = await kanbanStarten(ausgangslage(arbeit));
   await alsPerson(page, 'st');
@@ -89,6 +88,9 @@ async function fensterPerTastaturOeffnen(page) {
   await expect(aufgabenfenster(page)).toBeVisible();
   return aufgabenfenster(page);
 }
+
+/** Der gezeichnete Ring eines Elements — der Fokus muss ihn ändern, sonst sieht ihn niemand. */
+const ring = element => element.evaluate(e => { const stil = getComputedStyle(e); return `${stil.outlineStyle} ${stil.outlineWidth} ${stil.outlineColor} ${stil.outlineOffset}`; });
 
 /** Abstand der Zeile zum oberen Fensterrand: bleibt er gleich, ist die Seite nicht gerollt. */
 const lageImFenster = zeileImBericht => zeileImBericht.evaluate(element => Math.round(element.getBoundingClientRect().top));
@@ -147,6 +149,7 @@ test('AK 2 / US-2: Leertaste auf dem Kästchen hakt ab und nimmt zurück, der Fo
 });
 
 test('AK 3 / US-2: Kästchen und ✕ der zweiten Teilaufgabe heißen „fett prüfen“ ohne Sternchen', async ({ page }) => {
+  test.fail(true, 'erwartet rot: die Namen entstehen mit B0882');
   const fenster = await fensterPerTastaturOeffnen(page);
   const kaestchen = fenster.locator('.chk').nth(1).getByRole('checkbox');
   const entfernen = fenster.locator('.chk').nth(1).locator('[data-act="teil-weg"]');
@@ -179,14 +182,18 @@ for (const waehler of FARBWAEHLER) {
     await expect(farbfeld).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(gewaehlt, 'Enter öffnet die Palette').toHaveText(`gewählt: ${waehler.vorher}`);
+    const ringDesOffenenFeldsImFokus = await ring(farbfeld);
 
     await mitTabAuf(page, farbe('teal'));
+    expect(await ring(farbfeld), 'am offenen Farbfeld ist der Fokus zu sehen').not.toBe(ringDesOffenenFeldsImFokus);
     await page.keyboard.press('Enter');
     await expect(gewaehlt, 'Enter wählt die Farbe').toHaveText('gewählt: teal');
     await expect(vorschau).toHaveText(waehler.vorschau('teal'));
     await expect(farbe('teal'), 'der Fokus bleibt auf der gewählten Farbe').toBeFocused();
+    const ringDerGewaehltenFarbeImFokus = await ring(farbe('teal'));
 
     await mitTabAuf(page, farbe('green'));
+    expect(await ring(farbe('teal')), 'an der gewählten Farbe ist der Fokus zu sehen').not.toBe(ringDerGewaehltenFarbeImFokus);
     await page.keyboard.press('Space');
     await expect(gewaehlt, 'Leertaste wählt die Farbe').toHaveText('gewählt: green');
     await expect(vorschau).toHaveText(waehler.vorschau('green'));

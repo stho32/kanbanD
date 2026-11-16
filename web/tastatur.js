@@ -54,5 +54,21 @@
     return (index + richtung + anzahl) % anzahl;
   }
 
-  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, radioSchritt });
+  const LOEST_SELBST_AUS = /^(BUTTON|A|SUMMARY|INPUT|TEXTAREA|SELECT)$/;
+
+  /** Ob ein Tastendruck das fokussierte Bedienelement auslöst wie ein Klick (R00180, APG Button und Checkbox): Rolle button
+      und eine Tabellenzeile mit Aktion auf Enter und Leertaste, Rolle checkbox nur auf die Leertaste, mit Strg, Alt oder
+      Meta nie. Native Knöpfe und Links lösen selbst aus, in Eingabefeldern schreibt die Leertaste.
+      `element` = {tag, rolle, aktion}, `druck` = {taste, strg, alt, meta}. */
+  function tasteLoestAus(element, druck) {
+    if (druck.strg || druck.alt || druck.meta) return false;
+    if (LOEST_SELBST_AUS.test(element.tag)) return false;
+    const leertaste = druck.taste === ' ';
+    if (element.rolle === 'checkbox') return leertaste;
+    const zeileMitAktion = element.tag === 'TR' && Boolean(element.aktion);
+    if (element.rolle !== 'button' && !zeileMitAktion) return false;
+    return leertaste || druck.taste === 'Enter';
+  }
+
+  Object.assign(ziel, { nachbar, verschiebeziel, gFolge, G_ZIELE, radioSchritt, tasteLoestAus });
 })(typeof module !== 'undefined' ? module.exports : window);

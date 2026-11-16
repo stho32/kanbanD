@@ -754,3 +754,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #189 R00179 (Datum zu Ende tippen, während die Seite neu zeichnet) | B0879 Kein Zwischenstand, unfertig verlassen, Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #193 (E2E-Wackler im Gate: Commits gezählt, bevor der Server committet hat) | Klasse mit gebremstem Server-Commit über 46 Dateien gesucht (6 Stellen rot), Hilfe `commitSteht`, 13 Stellen in 7 Specs behoben (Fortsetzung nach API-Limit, Beleg vorher/nachher) | Standard | 1-2h | 0,9h | 0,9h | autonom |
 | 2026-11-16 | Karte #141 R00180 (Tastatur: jedes Bedienelement erreichen und auslösen) | B0880 Sammelprobe als Spec: rot am heutigen Stand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #141 R00180 (Tastatur: jedes Bedienelement erreichen und auslösen) | B0881 Tab-Halt und gemeinsamer Tastenzweig für Enter und Leertaste | Standard | 1-2h | 0,3h | 0,3h | autonom |

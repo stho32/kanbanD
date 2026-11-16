@@ -1,7 +1,7 @@
 // Unit-Tests der Tastaturziele (node --test)
 const test = require('node:test');
 const assert = require('node:assert');
-const { nachbar, verschiebeziel, radioSchritt } = require('../../web/tastatur.js');
+const { nachbar, verschiebeziel, radioSchritt, tasteLoestAus } = require('../../web/tastatur.js');
 
 const sp = [{ name: 'A', karten: [1, 2, 3] }, { name: 'B', karten: [] }, { name: 'C', karten: [4] }];
 
@@ -56,4 +56,47 @@ test('radioSchritt(3, 0, ArrowLeft) → 2: Pfeile mit Umlauf, andere Tasten geh�
   assert.strictEqual(radioSchritt(3, 1, 'Tab'), null);
   assert.strictEqual(radioSchritt(3, 1, 'Enter'), null);
   assert.strictEqual(radioSchritt(3, 1, 'a'), null);
+});
+
+const OHNE_ZUSATZ = { strg: false, alt: false, meta: false };
+const druck = (taste, zusatz = {}) => ({ taste, ...OHNE_ZUSATZ, ...zusatz });
+const farbfeld = { tag: 'SPAN', rolle: 'button', aktion: 'k-pal' };
+const kaestchen = { tag: 'I', rolle: 'checkbox', aktion: 'teil' };
+const berichtszeile = { tag: 'TR', rolle: null, aktion: 'oeffnen' };
+
+test('tasteLoestAus: Rolle button und Zeile mit Aktion lösen auf Enter und Leertaste aus (R00180)', () => {
+  for (const element of [farbfeld, berichtszeile]) {
+    assert.strictEqual(tasteLoestAus(element, druck('Enter')), true);
+    assert.strictEqual(tasteLoestAus(element, druck(' ')), true);
+    assert.strictEqual(tasteLoestAus(element, druck('a')), false);
+    assert.strictEqual(tasteLoestAus(element, druck('Tab')), false);
+  }
+});
+
+test('tasteLoestAus: ein Kästchen löst nur auf die Leertaste aus, nicht auf Enter (R00180)', () => {
+  assert.strictEqual(tasteLoestAus(kaestchen, druck(' ')), true);
+  assert.strictEqual(tasteLoestAus(kaestchen, druck('Enter')), false);
+});
+
+test('tasteLoestAus: mit Strg, Alt oder Meta löst nichts aus (R00180)', () => {
+  for (const zusatz of ['strg', 'alt', 'meta']) {
+    for (const element of [farbfeld, kaestchen, berichtszeile]) {
+      assert.strictEqual(tasteLoestAus(element, druck(' ', { [zusatz]: true })), false, `Leertaste mit ${zusatz}`);
+      assert.strictEqual(tasteLoestAus(element, druck('Enter', { [zusatz]: true })), false, `Enter mit ${zusatz}`);
+    }
+  }
+});
+
+test('tasteLoestAus: Eingabefelder schreiben weiter, native Knöpfe und Links lösen selbst aus (R00180)', () => {
+  for (const tag of ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'SUMMARY']) {
+    assert.strictEqual(tasteLoestAus({ tag, rolle: 'button', aktion: 'x' }, druck(' ')), false, `${tag} mit Leertaste`);
+    assert.strictEqual(tasteLoestAus({ tag, rolle: 'checkbox', aktion: 'x' }, druck(' ')), false, `${tag} als Kästchen`);
+    assert.strictEqual(tasteLoestAus({ tag, rolle: null, aktion: 'x' }, druck('Enter')), false, `${tag} mit Enter`);
+  }
+});
+
+test('tasteLoestAus: ohne Rolle und ohne Aktion löst nichts aus — auch keine Zeile ohne data-act (R00180)', () => {
+  assert.strictEqual(tasteLoestAus({ tag: 'TR', rolle: null, aktion: undefined }, druck('Enter')), false);
+  assert.strictEqual(tasteLoestAus({ tag: 'DIV', rolle: null, aktion: 'oeffnen' }, druck(' ')), false);
+  assert.strictEqual(tasteLoestAus({ tag: 'SPAN', rolle: 'radio', aktion: 'sp' }, druck(' ')), false, 'Radios führt radioSchritt');
 });

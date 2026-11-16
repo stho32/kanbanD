@@ -126,7 +126,11 @@ test('AK 4: nur Tastatur — Tab führt vom Link zum Stift zum ✕; der Text sel
   await page.keyboard.press('Tab');
   await expect(zeile.locator('.x')).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(stift(page, 1), 'die Zeile ohne Link: der Stift folgt direkt').toBeFocused();
+  // Seit R00180 ist das Kästchen ein Tab-Halt: es liegt zwischen dem ✕ dieser Zeile und dem Stift der nächsten
+  await expect(page.locator(ZEILE).nth(1).getByRole('checkbox')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(stift(page, 1), 'die Zeile ohne Link: nach dem Kästchen folgt direkt der Stift').toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Shift+Tab');
   await expect(stift(page, 0)).toBeFocused();

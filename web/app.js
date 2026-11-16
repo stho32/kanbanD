@@ -1291,6 +1291,20 @@ function gewaehltesRadioFokussieren(name, wert) {
   if (radio) radio.focus();
 }
 
+/** Enter und Leertaste auf dem fokussierten Bedienelement, das kein nativer Knopf ist, wirken wie der Klick darauf
+    (R00180; die Entscheidung rechnet tasteLoestAus in web/tastatur.js). Die Taste ist damit verbraucht — die Seite rollt
+    nicht; eine gehaltene Taste löst nur einmal aus. */
+function bedienelementTaste(ereignis) {
+  const fokussiert = ereignis.target;
+  if (!fokussiert.getAttribute) return false;
+  const element = { tag: fokussiert.tagName, rolle: fokussiert.getAttribute('role'), aktion: fokussiert.dataset.act };
+  const druck = { taste: ereignis.key, strg: ereignis.ctrlKey, alt: ereignis.altKey, meta: ereignis.metaKey };
+  if (!tasteLoestAus(element, druck)) return false;
+  ereignis.preventDefault();
+  if (!ereignis.repeat) fokussiert.click();
+  return true;
+}
+
 const MENUE_RICHTUNG = { ArrowDown: 1, ArrowUp: -1, Home: 'anfang', End: 'ende' };
 
 /** Enter und Leertaste auf einem Eintrag, der kein Knopf ist, lösen ihn wie ein Klick aus; Knöpfe tun das selbst. */
@@ -2961,8 +2975,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
-  // Enter auf dem Lesediv des Titels öffnet die Bearbeitung (R00116, Muster besch-lesen)
-  if (e.key === 'Enter' && t.dataset && t.dataset.act === 'titel-bearbeiten') { e.preventDefault(); act('titel-bearbeiten'); return; }
+  // Titel, Berichtszeile, Kästchen und Farbwähler sind keine nativen Knöpfe: Enter und Leertaste lösen sie aus (R00116, R00180)
+  if (bedienelementTaste(e)) return;
   // Enter in einem Feld der Berichtsfilter nimmt den Wert an wie ein „change“: hat ein Neuzeichnen den getippten Wert in
   // ein neues Feld gerettet, meldet der Browser dafür kein „change“ — ohne Enter bliebe er ungespeichert.
   if (e.key === 'Enter' && t.dataset && t.dataset.bf) { aenderungNachtragen(t); return; }
