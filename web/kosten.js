@@ -84,14 +84,36 @@
     return { spalteTokens: mitTokens.length > 0, zeilen, summen };
   }
 
-  /** Angefallene Kosten einer Aufgabe → [{waehrung, eintraege, posten}] in Cent: je Währung die Summe ihrer Einträge
-      (ohne Eintrag null) und die Spanne ihrer alten Posten {niedrig, hoch} (ohne Posten null). */
-  function angefalleneKosten(a) {
-    const teile = summenDerEintraege(a.kosteneintraege || []).map(s => ({ waehrung: s.waehrung, eintraege: s.cent, posten: null }));
-    if (!hatAltePosten(a)) return teile;
-    const k = kostenInCent(a.cost), posten = { niedrig: k.min, hoch: k.max };
-    const gleicheWaehrung = teile.find(t => t.waehrung === k.waehrung);
-    if (!gleicheWaehrung) return [...teile, { waehrung: k.waehrung, eintraege: null, posten }];
+  /** Bereich des Kostenberichts (R00171): der Zeitraum des Berichtsfilters als Grenzen [von, bis) in der Ortszeit des
+      Betrachters. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
+  function kostenbereich(f, jetzt) {
+    const { zeitraumGrenzen } = typeof module !== 'undefined' ? require('./berichte.js') : window;
+    return { gesetzt: f.zeitraum !== 'alles', zeit: zeitraumGrenzen(f, jetzt) };
+  }
+  /** Die Einträge einer Aufgabe, die im Bereich zählen; ohne gesetzten Bereich alle. */
+  function zaehlendeEintraege(a, bereich) {
+    const eintraege = a.kosteneintraege || [];
+    if (!bereich.gesetzt) return eintraege;
+    const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
+    return eintraege.filter(e => zeitMs(e.at) >= bereich.zeit.von && zeitMs(e.at) < bereich.zeit.bis);
+  }
+  /** Spanne der alten Posten einer Aufgabe in Cent {waehrung, niedrig, hoch}; ohne alte Posten null. */
+  function altePosten(a) {
+    if (!hatAltePosten(a)) return null;
+    const k = kostenInCent(a.cost);
+    return { waehrung: k.waehrung, niedrig: k.min, hoch: k.max };
+  }
+
+  /** Angefallene Kosten einer Aufgabe → [{waehrung, eintraege, posten}] in Cent: je Währung die Summe ihrer zählenden
+      Einträge (ohne Eintrag null) und die Spanne ihrer alten Posten {niedrig, hoch} (ohne Posten null). Mit gesetztem
+      Bereich zählen alte Posten nicht — ohne Datum und Spalte sind sie keinem Bereich zuzuordnen. */
+  function angefalleneKosten(a, bereich) {
+    const teile = summenDerEintraege(zaehlendeEintraege(a, bereich)).map(s => ({ waehrung: s.waehrung, eintraege: s.cent, posten: null }));
+    const alt = altePosten(a);
+    if (!alt || bereich.gesetzt) return teile;
+    const posten = { niedrig: alt.niedrig, hoch: alt.hoch };
+    const gleicheWaehrung = teile.find(t => t.waehrung === alt.waehrung);
+    if (!gleicheWaehrung) return [...teile, { waehrung: alt.waehrung, eintraege: null, posten }];
     return teile.map(t => (t === gleicheWaehrung ? { ...t, posten } : t));
   }
 
@@ -100,9 +122,10 @@
     if (wert == null) return summe;
     return (summe || 0) + wert;
   }
+  const spannePlus = (summe, spanne) => ({ niedrig: plus(summe && summe.niedrig, spanne.niedrig), hoch: plus(summe && summe.hoch, spanne.hoch) });
   function gruppeMitAufgabe(gruppe, teil) {
     let posten = gruppe.posten;
-    if (teil.posten) posten = { niedrig: plus(posten && posten.niedrig, teil.posten.niedrig), hoch: plus(posten && posten.hoch, teil.posten.hoch) };
+    if (teil.posten) posten = spannePlus(posten, teil.posten);
     return { ...gruppe, n: gruppe.n + 1, eintraege: plus(gruppe.eintraege, teil.eintraege), posten };
   }
   /** „Summe“ der Gruppe: Einträge zählen in Unter- und Obergrenze, alte Posten mit ihrer Spanne. */
@@ -111,24 +134,52 @@
     return { ...gruppe, niedrig: eintraege + posten.niedrig, hoch: eintraege + posten.hoch };
   }
 
-  /** Board (Spalten samt archivierter Aufgaben) + Aufgaben + Filter der Berichte →
-      {m, nurSchaetzung, jeWaehrung: [{waehrung, n, eintraege, posten, niedrig, hoch}]} in Cent (R00165 AK 9). m zählt alle
-      passenden Aufgaben in den Spalten, n die davon mit Einträgen oder alten Posten in dieser Währung, nurSchaetzung die
-      mit Schätzung, aber ohne beides; der Filter wirkt über Spalten, Klasse, Zuständige und Labels wie in den übrigen Berichten. */
-  function kostenbericht(board, aufgaben, f) {
+  /** Die Aufgaben, die der Bericht zählt: alle in den Spalten des Boards (samt archivierter), die zum Filter passen —
+      `gezaehlt` mit Lücken für Nummern ohne lesbare Datei, `lesbar` ohne sie. */
+  function aufgabenImBericht(board, aufgaben, f) {
     const { aufgabePasst } = typeof module !== 'undefined' ? require('./berichte.js') : window;
     const nachNummer = new Map(aufgaben.map(a => [a.nummer, a]));
     const gezaehlt = board.spalten.filter(sp => !f.ohneSpalten.includes(sp.name))
       .flatMap(sp => sp.aufgaben.map(nr => nachNummer.get(nr)))
       .filter(a => aufgabePasst(f, a));
-    const lesbar = gezaehlt.filter(Boolean);
+    return { gezaehlt, lesbar: gezaehlt.filter(Boolean) };
+  }
+
+  /** Board (Spalten samt archivierter Aufgaben) + Aufgaben + Filter der Berichte + Uhr des Betrachters →
+      {m, nurSchaetzung, jeWaehrung: [{waehrung, n, eintraege, posten, niedrig, hoch}]} in Cent (R00165 AK 9). m zählt alle
+      passenden Aufgaben in den Spalten, n die davon mit zählenden Einträgen oder alten Posten in dieser Währung,
+      nurSchaetzung die mit Schätzung, aber ohne beides; der Filter wirkt über Spalten, Klasse, Zuständige und Labels wie
+      in den übrigen Berichten. Ein Zeitraum (R00171) lässt nur die Einträge darin zählen; ohne ihn bleibt jede Zahl. */
+  function kostenbericht(board, aufgaben, f, jetzt) {
+    const { gezaehlt, lesbar } = aufgabenImBericht(board, aufgaben, f), bereich = kostenbereich(f, jetzt);
     const gruppen = new Map();
-    for (const teil of lesbar.flatMap(angefalleneKosten)) {
+    for (const teil of lesbar.flatMap(a => angefalleneKosten(a, bereich))) {
       const bisher = gruppen.get(teil.waehrung) || { waehrung: teil.waehrung, n: 0, eintraege: null, posten: null };
       gruppen.set(teil.waehrung, gruppeMitAufgabe(bisher, teil));
     }
     const jeWaehrung = [...gruppen.values()].map(mitSumme).sort((a, b) => waehrungVor(a.waehrung, b.waehrung));
     return { m: gezaehlt.length, nurSchaetzung: lesbar.filter(nurSchaetzung).length, jeWaehrung };
+  }
+
+  /** Was der Bericht „Kosten“ zeichnet (R00171): die Summen von kostenbericht() und je Währung die Aufgaben dahinter →
+      {m, nurSchaetzung, bereich, gruppen: [{waehrung, summe, aufgaben: [{nummer, titel, cent}], altePostenAussen}]}.
+      `aufgaben` nennt jede Aufgabe mit zählendem Eintrag nach Nummer; alte Posten stehen nie in der Liste. Mit gesetztem
+      Bereich trägt `altePostenAussen` ihre Spanne neben der Summe — eine Währung, in der nur sie stehen, hat `summe` null. */
+  function kostenaufstellung(board, aufgaben, f, jetzt) {
+    const bericht = kostenbericht(board, aufgaben, f, jetzt), bereich = kostenbereich(f, jetzt);
+    const { lesbar } = aufgabenImBericht(board, aufgaben, f);
+    const nachNummer = [...lesbar].sort((a, b) => a.nummer - b.nummer);
+    const gruppen = new Map(bericht.jeWaehrung.map(summe => [summe.waehrung, { waehrung: summe.waehrung, summe, aufgaben: [], altePostenAussen: null }]));
+    const gruppe = waehrung => {
+      if (!gruppen.has(waehrung)) gruppen.set(waehrung, { waehrung, summe: null, aufgaben: [], altePostenAussen: null });
+      return gruppen.get(waehrung);
+    };
+    for (const a of nachNummer) {
+      for (const s of summenDerEintraege(zaehlendeEintraege(a, bereich))) gruppe(s.waehrung).aufgaben.push({ nummer: a.nummer, titel: a.titel, cent: s.cent });
+      const alt = altePosten(a);
+      if (alt && bereich.gesetzt) gruppe(alt.waehrung).altePostenAussen = spannePlus(gruppe(alt.waehrung).altePostenAussen, alt);
+    }
+    return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
   /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht
@@ -152,5 +203,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

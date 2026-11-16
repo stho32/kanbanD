@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // der Betrachter des Beispielboards (R00171) sitzt in +01:00
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
+const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, kostenaufstellung, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
 const { FILTER_LEER, filterAnzahl } = require('../../web/berichte.js');
 
 const NBSP = ' ';
@@ -358,7 +358,69 @@ test('R00171 B0833 (AK 3, AK 4): ohne Zeitraum und Abschnitt rechnet kostenberic
   assert.deepStrictEqual(kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), FILTER_LEER), VOR_DER_KARTE, 'der Aufruf von heute, ohne Uhr');
 });
 
-test('R00171 B0833 (AK 1, Teil Zeitraum): mit Zeitraum 12.11.–13.11. zählen nur die Einträge dieser Tage — 1,00 + 3,46 + 0,54 = 5,00 in 2 von 4 Aufgaben; die alten Posten zählen nicht mit', { todo: 'erwartet rot bis B0834' }, () => {
+test('R00171 B0833 (AK 1, Teil Zeitraum): mit Zeitraum 12.11.–13.11. zählen nur die Einträge dieser Tage — 1,00 + 3,46 + 0,54 = 5,00 in 2 von 4 Aufgaben; die alten Posten zählen nicht mit', () => {
   const [usd] = kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), filter(BEISPIEL.ZEITRAUM_12_13), JETZT).jeWaehrung;
   assert.deepStrictEqual([usd.eintraege, usd.niedrig, usd.hoch, usd.n], [500, 500, 500, 2]);
+});
+
+/* ── B0834 kostenbericht() rechnet mit Zeitraum, kostenaufstellung() nennt die Aufgaben dahinter ── */
+const aufstellung = (f, zusatz = {}, board = BEISPIEL_BOARD) => kostenaufstellung(board, beispielAufgaben(zusatz), filter(f), JETZT);
+const usdSumme = (f, zusatz = {}) => kostenbericht(BEISPIEL_BOARD, beispielAufgaben(zusatz), filter(f), JETZT).jeWaehrung.map(g => [g.waehrung, g.eintraege, g.niedrig, g.hoch]);
+const betraege = gruppe => gruppe.aufgaben.map(a => [a.nummer, a.cent]);
+
+test('R00171 B0834 (AK 3): ohne Bereiche nennt die Aufstellung #1 6,46, #2 0,54 und #3 4,00 — die alten Posten von #4 bleiben in der Summe und stehen nie in der Liste', () => {
+  const a = aufstellung({});
+  assert.strictEqual(a.bereich, false);
+  assert.deepStrictEqual([a.m, a.nurSchaetzung], [4, 0]);
+  assert.deepStrictEqual(a.gruppen.map(g => g.waehrung), ['USD']);
+  assert.deepStrictEqual(a.gruppen[0].summe, VOR_DER_KARTE.jeWaehrung[0], 'die Summe ist die von kostenbericht()');
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 646], [2, 54], [3, 400]]);
+  assert.deepStrictEqual(a.gruppen[0].aufgaben[0].titel, 'Angebot für das Kundenprojekt schreiben');
+  assert.strictEqual(a.gruppen[0].altePostenAussen, null, 'ohne Bereich steht nichts neben der Summe');
+});
+
+test('R00171 B0834 (AK 1, Teil Zeitraum): 12.11.–13.11. — Summe 5,00, Liste #1 4,46 und #2 0,54, #3 fehlt; die alten Posten 5,00 stehen daneben und zählen nicht mit', () => {
+  const a = aufstellung(BEISPIEL.ZEITRAUM_12_13);
+  assert.strictEqual(a.bereich, true);
+  assert.deepStrictEqual(a.gruppen[0].summe, { waehrung: 'USD', n: 2, eintraege: 500, posten: null, niedrig: 500, hoch: 500 });
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 446], [2, 54]]);
+  assert.deepStrictEqual(a.gruppen[0].altePostenAussen, { niedrig: 500, hoch: 500 });
+  assert.strictEqual(a.m, 4, 'm zählt weiter alle Aufgaben des Boards');
+});
+
+test('R00171 B0834 (AK 9, Schaden b): Tagesgrenze in der Ortszeit — 13.11. 23:30+01:00 zählt zum 13.11., 14.11. 00:10+01:00 nicht: Summe 5,10', () => {
+  const zusatz = { 2: [BEISPIEL.VOR_MITTERNACHT, BEISPIEL.NACH_MITTERNACHT] };
+  assert.deepStrictEqual(usdSumme(BEISPIEL.ZEITRAUM_12_13, zusatz), [['USD', 510, 510, 510]]);
+  assert.deepStrictEqual(betraege(aufstellung(BEISPIEL.ZEITRAUM_12_13, zusatz).gruppen[0]), [[1, 446], [2, 64]]);
+  const inUtc = { ...BEISPIEL.VOR_MITTERNACHT, at: '2026-11-13 22:30Z' }, schonMorgen = { ...BEISPIEL.VOR_MITTERNACHT, at: '2026-11-13 23:30+00:00' };
+  assert.deepStrictEqual(usdSumme(BEISPIEL.ZEITRAUM_12_13, { 2: [inUtc] }), [['USD', 510, 510, 510]], 'derselbe Moment in UTC geschrieben');
+  assert.deepStrictEqual(usdSumme(BEISPIEL.ZEITRAUM_12_13, { 2: [schonMorgen] }), [['USD', 500, 500, 500]], '23:30 in UTC ist beim Betrachter schon der 14.11.');
+});
+
+test('R00171 B0834 (Schaden b): beide Grenzen zählen mit, jeder Eintrag genau einmal — ein Tag allein, offene Grenzen und die Zerlegung des Ganzen in zwei Zeiträume', () => {
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'eigen', von: '2026-11-13', bis: '2026-11-13' }), [['USD', 400, 400, 400]], '13.11. allein: 3,46 + 0,54');
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'eigen', von: '2026-11-14', bis: '' }), [['USD', 200, 200, 200]], 'ab dem 14.11.');
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'eigen', von: '', bis: '2026-11-13' }), [['USD', 900, 900, 900]], 'bis zum 13.11.: 4,00 + 1,00 + 3,46 + 0,54');
+  assert.strictEqual(900 + 200, VOR_DER_KARTE.jeWaehrung[0].eintraege, 'bis 13.11. und ab 14.11. ergeben zusammen alle Einträge');
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'eigen', von: '2026-11-20', bis: '2026-11-21' }), [], 'ein Zeitraum ohne Eintrag: keine Gruppe');
+});
+
+test('R00171 B0834: ein benannter Zeitraum rechnet von der Uhr des Betrachters aus — „letzte Woche“ am 16.11. ist der 09.11.–15.11.', () => {
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'vorwoche' }), [['USD', 700, 700, 700]], '1,00 + 3,46 + 2,00 + 0,54');
+  assert.deepStrictEqual(usdSumme({ zeitraum: 'heute' }), []);
+});
+
+test('R00171 B0834 (Schaden b): mit Zeitraum je Währung getrennt und in ganzen Cent — 0,10 + 0,20 USD = 30 Cent, der Euro-Eintrag in seiner eigenen Gruppe und Liste', () => {
+  const zehn = BEISPIEL.eintrag('12 10:00', 'Entwicklung', 0.10), zwanzig = BEISPIEL.eintrag('13 10:00', 'Entwicklung', 0.20);
+  const euro = { ...BEISPIEL.eintrag('13 12:00', 'Abnahme', 25.55), currency: 'EUR' }, euroDanach = { ...BEISPIEL.eintrag('14 12:00', 'Abnahme', 1.00), currency: 'EUR' };
+  const board = spalten([1, 2], [], []);
+  const aufgaben = [mitEintraegen(1, [zehn, zwanzig, euro]), mitEintraegen(2, [euroDanach], posten('EUR', { min: 1, max: 2 }))];
+  const a = kostenaufstellung(board, aufgaben, filter(BEISPIEL.ZEITRAUM_12_13), JETZT);
+  assert.deepStrictEqual(a.gruppen.map(g => [g.waehrung, g.summe && g.summe.eintraege, betraege(g), g.altePostenAussen]),
+    [['USD', 30, [[1, 30]], null], ['EUR', 2555, [[1, 2555]], { niedrig: 100, hoch: 200 }]]);
+});
+
+test('R00171 B0834 (Schaden c): stehen im Zeitraum nur alte Posten, bleibt ihre Währung mit dem Betrag daneben genannt — ohne Summe und ohne Liste', () => {
+  const a = kostenaufstellung(spalten([1], [], []), [aufgabe(1, posten('EUR', { amount: 3 }), { titel: 'alt' })], filter(BEISPIEL.ZEITRAUM_12_13), JETZT);
+  assert.deepStrictEqual(a.gruppen.map(g => [g.waehrung, g.summe, g.aufgaben, g.altePostenAussen]), [['EUR', null, [], { niedrig: 300, hoch: 300 }]]);
 });
