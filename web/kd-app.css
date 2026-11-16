@@ -699,6 +699,15 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .diagramm .bd-entfernt{stroke:var(--kd-muted);stroke-width:1.5}
 .diagramm .bd-schraffur line{stroke:var(--kd-muted);stroke-width:1.5}
 .diagramm .bd-null{stroke:var(--kd-line-strong);stroke-width:1.5}
+/* Farbfelder der drei Größen in Kennzahlzeile, Tooltip und Legende — dieselben Zeichen wie die Balken */
+.k-plus,.k-erledigt,.k-entfernt{display:inline-block;flex:none;width:14px;height:10px;box-sizing:border-box}
+.k-plus{background:var(--kd-agent)}
+.k-erledigt{background:var(--kd-accent)}
+.k-entfernt{border:1.5px solid var(--kd-muted);background:repeating-linear-gradient(45deg,var(--kd-muted) 0 1.5px,transparent 1.5px 4px)}
+#bd-kennzahl{gap:var(--kd-s2) var(--kd-s5)}
+#bd-kennzahl span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.bd-legende{flex-wrap:wrap;gap:var(--kd-s2) var(--kd-s5);margin:var(--kd-s2) 0 var(--kd-s1)}
+.bd-hinweis{margin:0 0 var(--kd-s3);font-size:12px;line-height:1.45;color:var(--kd-muted);max-width:900px;overflow-wrap:anywhere}
 .tooltip{position:absolute;top:8px;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--kd-surface);border:1px solid var(--kd-line-strong);box-shadow:var(--kd-shadow);font-size:12px;pointer-events:none;min-width:130px}
 .tabellenansicht{margin:var(--kd-s3) 0;font-size:12px;max-width:420px}
 .tabellenansicht summary{cursor:pointer;color:var(--kd-accent-ink)}

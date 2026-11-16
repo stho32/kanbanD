@@ -165,6 +165,46 @@ test('R00164 AK 7 (B0788): die Linien „offen“ und „Umfang“ stehen, wo si
   } finally { await k.stoppen(); }
 });
 
+const FARBFELDER = ['k-plus', 'k-erledigt', 'k-entfernt'];
+const farbfelder = ort => ort.locator('i').evaluateAll(felder => felder.map(i => i.className));
+
+test('R00164 AK 9 (B0789): die Legende unter dem Diagramm nennt die drei Größen, den Zählbeginn von „+“ und die Nacharbeit', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    const legende = page.locator('#bd-legende');
+    await expect(legende.locator('span')).toHaveText(['+ hinzugekommen', '− erledigt', '− entfernt']);
+    expect(await farbfelder(legende)).toEqual(FARBFELDER);
+    const hinweis = page.locator('.bd-hinweis');
+    await expect(hinweis).toContainText('„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.');
+    await expect(hinweis).toContainText('„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.');
+    // die neue Legende steht unter dem Diagramm, „offen / Umfang“ bleibt darüber
+    const [flaeche, neu, alt, satz] = await Promise.all([diagramm(page), legende, page.locator('.dlegende').first(), hinweis].map(o => o.boundingBox()));
+    expect(alt.y + alt.height).toBeLessThanOrEqual(flaeche.y);
+    expect(neu.y).toBeGreaterThanOrEqual(flaeche.y + flaeche.height);
+    expect(satz.y).toBeGreaterThanOrEqual(neu.y + neu.height);
+  } finally { await k.stoppen(); }
+});
+
+test('R00164 AK 9 (B0789): Kennzahlzeile, Tooltip und Legende tragen dasselbe Farbfeld wie der Balken ihrer Größe', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    const tip = await zeigeAufTag(page, 4);
+    await expect.poll(() => farbfelder(tip)).toEqual(['k-offen', 'k-umfang', ...FARBFELDER]);
+    expect(await farbfelder(page.locator('#bd-kennzahl'))).toEqual(FARBFELDER);
+    const feld = klasse => page.locator(`#bd-legende i.${klasse}`).evaluate(i => { const s = getComputedStyle(i); return { flaeche: s.backgroundColor, rand: s.borderTopColor, breite: i.offsetWidth, hoehe: i.offsetHeight, verborgen: i.getAttribute('aria-hidden') }; });
+    const balken = klasse => page.locator(`svg.diagramm rect.${klasse}`).first().evaluate(r => { const s = getComputedStyle(r); return { fill: s.fill, stroke: s.stroke }; });
+    const [plus, erledigt, entfernt] = await Promise.all(FARBFELDER.map(feld));
+    for (const f of [plus, erledigt, entfernt]) expect([f.breite, f.hoehe, f.verborgen]).toEqual([14, 10, 'true']);
+    expect(plus.flaeche).toBe((await balken('bd-plus')).fill);
+    expect(erledigt.flaeche).toBe((await balken('bd-erledigt')).fill);
+    expect(entfernt.rand).toBe((await balken('bd-entfernt')).stroke);
+    expect(plus.flaeche).not.toBe(erledigt.flaeche);
+  } finally { await k.stoppen(); }
+});
+
 test('R00164 AK 10: der Durchsatz desselben Bestands bleibt beim ersten Erreichen — gesamt 3, obwohl „− erledigt“ 4 nennt', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel);
   try {
