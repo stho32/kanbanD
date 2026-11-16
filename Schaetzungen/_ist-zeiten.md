@@ -698,3 +698,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #165 R00171 (Kostenbericht: Zeitraum, Spaltenabschnitt und Aufgabenliste) | B0841 Kennzeichen je Aufgabe aus dem heutigen Stand des Boards | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #165 R00171 (Kostenbericht: Zeitraum, Spaltenabschnitt und Aufgabenliste) | B0842 Eimer für Einträge fremder Spalten; verschwundene Grenze gilt als nicht gesetzt | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #165 R00171 (Kostenbericht: Zeitraum, Spaltenabschnitt und Aufgabenliste) | B0843 Kennzeichen, Eimer und Kopfzeile zeichnen; Abnahme-Probe im echten Programm und Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #165 R00171 (Kostenbericht: Zeitraum, Spaltenabschnitt und Aufgabenliste) | Nacharbeit B1: Bis-Tag an einem Tag der Zeitumstellung endet am Beginn des Folgetags | Nacharbeit | — | 0,2h | 0,2h | autonom |

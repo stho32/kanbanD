@@ -578,3 +578,34 @@ test('R00171 B0843: im gewählten Bereich heißt der Umfang nie „alle Spalten�
   assert.strictEqual(kostenUmfang(filter({ ...FALL_1, ohneSpalten: ['Eingang'] }), true), 'nach Filter, auch archivierte');
   assert.strictEqual(kostenUmfang(FILTER_LEER, false), 'alle Spalten, auch archivierte');
 });
+
+/* ── Nacharbeit B1 (Code-Review #165): der Bis-Tag an einem Tag der Zeitumstellung ── */
+/** Eine Aufgabe, eine Spalte, fünf Einträge mit 1 / 10 / 100 / 1000 / 10000 Cent — jede Summe sagt, welche Einträge zählen. */
+function umstellungSumme(zeitpunkte, von, bis) {
+  const eintraege = zeitpunkte.map((at, stelle) => ({ at, role: 'entwickler', column: 'Eingang', amount: 10 ** stelle / 100, currency: 'USD' }));
+  const bericht = kostenbericht(spalten([1], [], []), [mitEintraegen(1, eintraege)], filter({ zeitraum: 'eigen', von, bis }), JETZT);
+  return bericht.jeWaehrung.map(g => g.eintraege);
+}
+
+test('R00171 B1 (Schaden b): der 25.10.2026 hat 25 Stunden — bis 25.10. zählen auch die Einträge ab 23:00+01:00, der von 26.10. 00:00 nicht', () => {
+  const HERBST = ['2026-10-25 22:59+01:00', '2026-10-25 23:00+01:00', '2026-10-25 23:30+01:00', '2026-10-25 23:59+01:00', '2026-10-26 00:00+01:00'];
+  assert.deepStrictEqual(umstellungSumme(HERBST, '2026-10-25', '2026-10-25'), [1111]);
+  assert.deepStrictEqual(umstellungSumme(HERBST, '2026-10-26', '2026-10-26'), [10000]);
+  const bisher = umstellungSumme(HERBST, '2026-10-24', '2026-10-25'), danach = umstellungSumme(HERBST, '2026-10-26', '');
+  assert.deepStrictEqual([bisher, danach, bisher[0] + danach[0]], [[1111], [10000], 11111], 'beide Zeiträume zusammen: jeder Eintrag genau einmal');
+});
+
+test('R00171 B1 (Schaden b): der 29.03.2026 hat 23 Stunden — bis 29.03. zählt kein Eintrag vom 30.03. 00:00–00:59+02:00 mit', () => {
+  const FRUEHJAHR = ['2026-03-29 23:59+02:00', '2026-03-30 00:00+02:00', '2026-03-30 00:30+02:00', '2026-03-30 00:59+02:00', '2026-03-30 01:00+02:00'];
+  assert.deepStrictEqual(umstellungSumme(FRUEHJAHR, '2026-03-29', '2026-03-29'), [1]);
+  assert.deepStrictEqual(umstellungSumme(FRUEHJAHR, '2026-03-30', '2026-03-30'), [11110]);
+  const bisher = umstellungSumme(FRUEHJAHR, '', '2026-03-29'), danach = umstellungSumme(FRUEHJAHR, '2026-03-30', '');
+  assert.deepStrictEqual([bisher, danach, bisher[0] + danach[0]], [[1], [11110], 11111]);
+});
+
+test('R00171 B1: die Aufgabenliste rechnet mit derselben Grenze wie die Summe — am 25.10. steht die Aufgabe mit 11,11 in der Liste', () => {
+  const HERBST = ['2026-10-25 22:59+01:00', '2026-10-25 23:00+01:00', '2026-10-25 23:30+01:00', '2026-10-25 23:59+01:00', '2026-10-26 00:00+01:00'];
+  const eintraege = HERBST.map((at, stelle) => ({ at, role: 'entwickler', column: 'Eingang', amount: 10 ** stelle / 100, currency: 'USD' }));
+  const a = kostenaufstellung(spalten([1], [], []), [mitEintraegen(1, eintraege, null, { titel: 'Umstellung' })], filter({ zeitraum: 'eigen', von: '2026-10-25', bis: '2026-10-25' }), JETZT);
+  assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 1111]]);
+});
