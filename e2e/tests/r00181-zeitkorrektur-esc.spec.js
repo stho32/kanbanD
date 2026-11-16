@@ -67,6 +67,24 @@ test.describe('R00181: Esc beendet nur die Zeitkorrektur', () => {
     await expect(page.locator('.ka[data-id="1"]')).toBeFocused();
   });
 
+  test('AK 2/US-2: laufende Zeit (nur „Beginn“), „Beginn“ geändert, Esc → Fenster offen, Zeile zeigt den Beginn der Datei und läuft weiter, Fokus auf dem Stift; das zweite Esc schließt', async ({ page }) => {
+    const fenster = await korrekturOeffnen(page, 2);
+    await expect(page.locator('#z-ende'), 'eine laufende Zeit hat nur „Beginn“').toHaveCount(0);
+    await expect(page.locator(BEGINN)).toHaveValue(LAEUFT_SEIT);
+    await page.locator(BEGINN).fill(vor(45));
+    const vorher = await standMerken(page, k);
+    await escBeendetNurDieKorrektur(page, fenster, vorher, `${LAEUFT_SEIT.slice(11)}–…`, 'AK 2');
+    await expect(page.locator(`${ZEILE} .lauf`), 'die Zeit läuft weiter').toBeVisible();
+    await zweitesEscSchliesst(page, vorher, 'AK 2');
+  });
+
+  test('AK 3: Korrektur geöffnet, nichts getippt, Esc → Korrektur beendet, Fenster offen, Fokus auf dem Stift; das zweite Esc schließt', async ({ page }) => {
+    const fenster = await korrekturOeffnen(page, 1);
+    const vorher = await standMerken(page, k);
+    await escBeendetNurDieKorrektur(page, fenster, vorher, '09:00–09:30', 'AK 3');
+    await zweitesEscSchliesst(page, vorher, 'AK 3');
+  });
+
   test('AK 1, Fokus in „Ende“: auch dort beendet das erste Esc nur die Korrektur', async ({ page }) => {
     const fenster = await korrekturOeffnen(page, 1);
     await page.locator('#z-ende').fill('2026-11-16 10:15');
@@ -74,4 +92,29 @@ test.describe('R00181: Esc beendet nur die Zeitkorrektur', () => {
     await escBeendetNurDieKorrektur(page, fenster, vorher, '09:00–09:30', 'Esc in „Ende“');
     await zweitesEscSchliesst(page, vorher, 'Esc in „Ende“');
   });
+});
+
+test.describe('R00181 AK 4/US-3: Gegenprobe — die Korrektur speichert wie bisher', () => {
+  const WEGE = {
+    'Enter in „Beginn“': page => page.keyboard.press('Enter'),
+    'Enter in „Ende“': async page => { await page.locator('#z-ende').focus(); await page.keyboard.press('Enter'); },
+    'der Knopf ✓': page => page.getByRole('button', { name: 'Korrektur speichern' }).click(),
+  };
+  for (const [weg, speichern] of Object.entries(WEGE)) {
+    test(`${weg}: „Beginn“ auf 08:00 → genau ein PATCH, die Zeile zeigt 08:00–09:30, das Fenster bleibt offen, die Datei trägt den neuen Beginn`, async ({ page }) => {
+      const fenster = await korrekturOeffnen(page, 1);
+      await page.locator(BEGINN).fill('2026-11-16 08:00');
+      const vorher = await standMerken(page, k);
+      await speichern(page);
+      await expect(page.locator(ZEILE)).toContainText('08:00–09:30');
+      await expect(page.locator(BEGINN)).toHaveCount(0);
+      await expect(fenster).toBeVisible();
+      await expect.poll(() => k.lies(DATEI_1), 'die Datei trägt den neuen Beginn').toContain('2026-11-16 08:00');
+      expect(k.lies(DATEI_1), 'der alte Beginn ist ersetzt, das Ende bleibt').not.toContain('2026-11-16 09:00');
+      expect(k.lies(DATEI_1)).toContain('2026-11-16 09:30');
+      await expect.poll(() => k.git('rev-list', '--count', 'HEAD'), 'genau ein neuer Commit').toBe(String(Number(vorher.commits) + 1));
+      expect(k.schreibend.slice(vorher.anfragen).map(anfrage => anfrage.replace(/zeiten\/.*/, 'zeiten/…')), 'genau ein PATCH').toEqual(['PATCH /api/aufgaben/1/zeiten/…']);
+      expect(k.lies(DATEI_2), '#2 unberührt').toBe(vorher.dateien[1]);
+    });
+  }
 });
