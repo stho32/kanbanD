@@ -1,6 +1,6 @@
 // R00007 Live-Aktualisierung
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, bereit } = require('./hilfen');
 
 const DATEIEN = {
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n\n## In Arbeit\n\n## Erledigt\n',
@@ -15,8 +15,8 @@ test.describe('R00007', () => {
   test('US-1: Editor ändert den Titel, Karte zeigt ihn mit Marke extern', async ({ page }) => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('eins');
-    await page.waitForTimeout(300);
-    await liveBereit(page);
+    // die Leitung steht und der geladene Stand ist gezeichnet: erst dann trifft das Ereignis des Schreibens eine fertige Seite (ADR-0026 Regeln 4 und 5)
+    await bereit(page, '.ka[data-id="1"]');
     k.schreib('aufgaben/0001-eins.md', '---\nid: 1\ntitle: eins neu\n---\n');
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('eins neu');
     await expect(page.locator('.ka[data-id="1"] .ein')).toContainText('extern · aufgaben/0001-eins.md');
@@ -25,8 +25,7 @@ test.describe('R00007', () => {
   test('US-2: Agent verschiebt in der Board-Datei, Karte steht mit Marke in Erledigt', async ({ page }) => {
     await page.goto(k.adresse);
     await expect(page.locator('.ka[data-id="1"]')).toBeVisible();
-    await page.waitForTimeout(300);
-    await liveBereit(page);
+    await bereit(page, '.ka[data-id="1"]');
     k.schreib('boards/entwicklung.md', '# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n\n- #1\n');
     await expect(page.locator('.bahn[data-col="Erledigt"] .ka[data-id="1"]')).toBeVisible();
     await expect(page.locator('.ka[data-id="1"] .ein')).toContainText('boards/entwicklung.md');
