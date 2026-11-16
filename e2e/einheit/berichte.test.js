@@ -884,3 +884,18 @@ test('R00168 AK 1, AK 2, AK 4: „kein Ende absehbar“ genau dann, wenn die Zug
   assert.strictEqual(zugangGegenAbgang(abschlussblock(rechenbeispiel168({ vorher: 2, hinzu: 2, entfernt: 0, erledigt: 4 }), 10)), null, 'nichts offen');
   assert.strictEqual(zugangGegenAbgang(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0]), null);
 });
+
+test('R00171 B0837: der gespeicherte Filter trägt den Spaltenabschnitt der Kosten als Text — fehlt er, gilt „alle“; eine falsche Form wird verworfen', () => {
+  assert.deepStrictEqual([FILTER_LEER.kostenVonSpalte, FILTER_LEER.kostenBisSpalte], ['', '']);
+  const gelesen = filterAus('{"zeitraum":"vorwoche","kostenVonSpalte":"Entwicklung","kostenBisSpalte":"Abnahme"}');
+  assert.deepStrictEqual(gelesen, { ...FILTER_LEER, zeitraum: 'vorwoche', kostenVonSpalte: 'Entwicklung', kostenBisSpalte: 'Abnahme' });
+  assert.deepStrictEqual(filterAus('{"kostenVonSpalte":["Entwicklung"],"kostenBisSpalte":3}'), FILTER_LEER);
+  assert.strictEqual(filterAnzahl(gelesen), 1, 'der Abschnitt zählt nicht als Filter der Box — er steht in der Bereichszeile');
+});
+
+test('R00171 B0837 (Schaden a): der Spaltenabschnitt der Kosten ändert den Cache-Schlüssel des Fever Charts nicht — kein anderer Bericht rechnet seinetwegen neu', () => {
+  const { fieberSchluessel } = require('../../web/berichte.js');
+  const mitAbschnitt = { ...FILTER_LEER, kostenVonSpalte: 'Entwicklung', kostenBisSpalte: 'Abnahme' };
+  assert.strictEqual(fieberSchluessel('2026-11-02', mitAbschnitt), fieberSchluessel('2026-11-02', FILTER_LEER));
+  assert.strictEqual(fieberSchluessel('2026-11-02', FILTER_LEER), '{"v":2,"start":"2026-11-02","filter":{"ohneFarben":[],"ohneSpalten":[],"personen":[],"labels":[],"messbasisTage":90}}', 'der Schlüssel von vor der Karte');
+});

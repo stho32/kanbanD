@@ -5,7 +5,7 @@
 
   /* ── Zeitraum und Filter (R00043) ── */
   const ZEITRAEUME = [['heute', 'heute'], ['gestern', 'gestern'], ['woche', 'diese Woche'], ['vorwoche', 'letzte Woche'], ['monat', 'dieser Monat'], ['vormonat', 'letzter Monat'], ['30', 'letzte 30 Tage'], ['90', 'letzte 90 Tage'], ['jahr', 'dieses Jahr'], ['alles', 'alles'], ['eigen', 'eigener Zeitraum']];
-  const FILTER_LEER = { zeitraum: 'alles', von: '', bis: '', ohneFarben: [], ohneSpalten: [], personen: [], labels: [], messbasisTage: 90 };
+  const FILTER_LEER = { zeitraum: 'alles', von: '', bis: '', ohneFarben: [], ohneSpalten: [], personen: [], labels: [], messbasisTage: 90, kostenVonSpalte: '', kostenBisSpalte: '' };
 
   const tag = (ms, n = 0) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d.getTime(); };
   const isoTag = s => { const [j, m, t] = s.split('-').map(Number); return new Date(j, m - 1, t).getTime(); };
@@ -818,8 +818,9 @@
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
   function fieberSchluessel(start, f, ziel = null) {
     const filter = {};
-    // der Kalenderzeitraum wirkt seit R00083 nicht mehr auf die Prognose, also auch nicht auf den Schlüssel
-    for (const k of Object.keys(FILTER_LEER)) if (!['zeitraum', 'von', 'bis'].includes(k)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
+    // der Kalenderzeitraum wirkt seit R00083 nicht mehr auf die Prognose, der Spaltenabschnitt der Kosten (R00171) nie —
+    // also beide auch nicht auf den Schlüssel
+    for (const k of Object.keys(FILTER_LEER)) if (!['zeitraum', 'von', 'bis', 'kostenVonSpalte', 'kostenBisSpalte'].includes(k)) filter[k] = Array.isArray(f[k]) ? [...f[k]].sort() : f[k];
     return JSON.stringify(ziel ? { v: 2, start, filter, ziel } : { v: 2, start, filter });
   }
   /** Ein Tag des Fever Charts aus der Sicht seines Tagesendes: erledigt und Umfang des letzten Blocks, prognostiziertes Ende

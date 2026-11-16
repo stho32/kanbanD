@@ -276,6 +276,12 @@ pub struct Berichtsfilter {
     /// Messbasis der Prognose (R00083): die letzten N Tage, gleitend.
     #[serde(default = "Berichtsfilter::messbasis_standard")]
     pub messbasis_tage: u32,
+    /// Spaltenabschnitt des Berichts „Kosten“ (R00171, ADR-0028 N1): Von- und Bis-Spalte, leer = alle. Geprüft wird nur
+    /// die Form — Spalten werden umbenannt und entfernt, das Board darf daran nie defekt werden.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kosten_von_spalte: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kosten_bis_spalte: String,
 }
 
 impl Berichtsfilter {
@@ -286,8 +292,11 @@ impl Berichtsfilter {
         90
     }
 
-    /// Bekannter Zeitraum; von und bis leer oder ein Datum.
+    /// Bekannter Zeitraum; von und bis leer oder ein Datum; die Spalten des Kostenabschnitts einzeiliger Text.
     pub fn pruefen(&self) -> Result<(), String> {
+        if [&self.kosten_von_spalte, &self.kosten_bis_spalte].into_iter().any(|s| s.chars().any(char::is_control)) {
+            return Err("Die Spalte des Kostenabschnitts ist kein einzeiliger Text".into());
+        }
         if !ZEITRAEUME.contains(&self.zeitraum.as_str()) {
             return Err(format!("Zeitraum „{}“ ist unbekannt", self.zeitraum));
         }
@@ -303,7 +312,7 @@ impl Berichtsfilter {
 
 impl Default for Berichtsfilter {
     fn default() -> Self {
-        Berichtsfilter { zeitraum: Self::zeitraum_standard(), von: String::new(), bis: String::new(), ohne_farben: vec![], ohne_spalten: vec![], personen: vec![], labels: vec![], messbasis_tage: Self::messbasis_standard() }
+        Berichtsfilter { zeitraum: Self::zeitraum_standard(), von: String::new(), bis: String::new(), ohne_farben: vec![], ohne_spalten: vec![], personen: vec![], labels: vec![], messbasis_tage: Self::messbasis_standard(), kosten_von_spalte: String::new(), kosten_bis_spalte: String::new() }
     }
 }
 

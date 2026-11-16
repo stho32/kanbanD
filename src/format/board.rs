@@ -185,7 +185,8 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     Ok(f)
 }
 
-/// `report-filter:` — `{period, from, to, exclude-classes, exclude-columns, people, labels}` (R00081).
+/// `report-filter:` — `{period, from, to, exclude-classes, exclude-columns, people, labels, window-days}` (R00081), seit
+/// R00171 dazu `cost-from-column` und `cost-to-column`, der Spaltenabschnitt des Berichts „Kosten“.
 fn berichtsfilter_lesen(v: Option<&Value>) -> Result<Berichtsfilter, Formatfehler> {
     let mut f = Berichtsfilter::default();
     let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(f) };
@@ -202,6 +203,8 @@ fn berichtsfilter_lesen(v: Option<&Value>) -> Result<Berichtsfilter, Formatfehle
     if let Some(n) = m.get("window-days") {
         f.messbasis_tage = n.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| Formatfehler("report-filter: window-days ist keine ganze Zahl".into()))?;
     }
+    f.kosten_von_spalte = yaml::text(m, "cost-from-column").unwrap_or_default();
+    f.kosten_bis_spalte = yaml::text(m, "cost-to-column").unwrap_or_default();
     f.pruefen().map_err(|e| Formatfehler(format!("report-filter: {e}")))?;
     Ok(f)
 }
@@ -235,6 +238,11 @@ fn berichtsfilter_zeile(f: &Berichtsfilter) -> Option<String> {
     }
     if f.messbasis_tage != Berichtsfilter::messbasis_standard() {
         teile.push(format!("window-days: {}", f.messbasis_tage));
+    }
+    for (schluessel, spalte) in [("cost-from-column", &f.kosten_von_spalte), ("cost-to-column", &f.kosten_bis_spalte)] {
+        if !spalte.is_empty() {
+            teile.push(format!("{schluessel}: {}", yaml::skalar(spalte)));
+        }
     }
     (!teile.is_empty()).then(|| format!("report-filter: {{{}}}\n", teile.join(", ")))
 }
@@ -751,7 +759,7 @@ mod tests {
     #[test]
     fn berichtsfilter_rundlauf_und_fehler() {
         let mut b = beispiel();
-        b.berichtsfilter = Berichtsfilter { zeitraum: "eigen".into(), von: "2026-10-01".into(), bis: "2026-10-20".into(), ohne_farben: vec!["bug".into(), "".into()], ohne_spalten: vec!["Zu erledigen".into()], personen: vec!["st".into()], labels: vec!["ui".into()], messbasis_tage: 30 };
+        b.berichtsfilter = Berichtsfilter { zeitraum: "eigen".into(), von: "2026-10-01".into(), bis: "2026-10-20".into(), ohne_farben: vec!["bug".into(), "".into()], ohne_spalten: vec!["Zu erledigen".into()], personen: vec!["st".into()], labels: vec!["ui".into()], messbasis_tage: 30, ..Default::default() };
         let t = schreiben(&b, datei);
         assert!(t.contains("\nreport-filter: {period: eigen, from: 2026-10-01, to: 2026-10-20, exclude-classes: [bug, \"\"], exclude-columns: [Zu erledigen], people: [st], labels: [ui], window-days: 30}\n"), "{t}");
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
@@ -773,7 +781,6 @@ mod tests {
     /// Karte, mit ihnen ein Rundlauf hinter den übrigen Schlüsseln von `report-filter` — jeder für sich, beide, und neben
     /// allen anderen.
     #[test]
-    #[ignore = "erwartet rot bis B0837: die Schlüssel gehen beim Schreiben verloren"]
     fn kostenabschnitt_rundlauf_ohne_und_mit_den_spalten() {
         let rundlauf = |text: &str| schreiben(&lesen("entwicklung", text).unwrap(), datei);
         let mit_filter = |zeile: &str| format!("---\n{zeile}\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n");
@@ -788,6 +795,29 @@ mod tests {
         for zeile in ["report-filter: {cost-from-column: Entwicklung}", "report-filter: {cost-to-column: Abnahme}", "report-filter: {period: vorwoche, cost-to-column: Abnahme}"] {
             assert_eq!(rundlauf(&mit_filter(zeile)), mit_filter(zeile), "{zeile}");
         }
+    }
+
+    /// R00171 B0837 (Schaden e, f): die Spalten kommen als Text im Modell an; Namen mit Sonderzeichen überstehen den
+    /// Rundlauf, weil der Schreibweg jeden Wert als YAML-Skalar schützt; geprüft wird nur die Form.
+    #[test]
+    fn kostenabschnitt_liest_die_spalten_und_schuetzt_fremde_namen() {
+        let mit = |zeile: &str| lesen("b", &format!("---\n{zeile}\n---\n## A\n"));
+        let f = mit("report-filter: {cost-from-column: Entwicklung, cost-to-column: Abnahme}").unwrap().berichtsfilter;
+        assert_eq!((f.kosten_von_spalte.as_str(), f.kosten_bis_spalte.as_str()), ("Entwicklung", "Abnahme"));
+        assert_eq!(f.zeitraum, "alles", "die übrigen Felder bleiben Standard");
+        let f = mit("report-filter: {period: vorwoche}").unwrap().berichtsfilter;
+        assert_eq!((f.kosten_von_spalte.as_str(), f.kosten_bis_spalte.as_str()), ("", ""), "ohne Schlüssel leer = alle");
+
+        for name in ["Abnahme: extern", "\"Fertig\"", "<b>Test</b>", "  eingerückt", "a, b]", "#1", "true", "42", "- x", "Ende "] {
+            let mut b = beispiel();
+            b.berichtsfilter = Berichtsfilter { kosten_von_spalte: name.into(), kosten_bis_spalte: name.into(), ..Default::default() };
+            let text = schreiben(&b, datei);
+            let gelesen = lesen("entwicklung", &text).unwrap_or_else(|e| panic!("„{name}“ macht die Datei unlesbar: {} in {text}", e.0));
+            assert_eq!(gelesen.berichtsfilter, b.berichtsfilter, "„{name}“ in {text}");
+            assert_eq!(schreiben(&gelesen, datei), text, "„{name}“ bleibt beim zweiten Schreiben gleich");
+        }
+        assert!(mit("report-filter: {cost-to-column: \"zwei\\nZeilen\"}").unwrap_err().0.contains("einzeiliger Text"));
+        assert!(mit("report-filter: {cost-to-column: Gibtsnicht}").is_ok(), "eine Spalte, die das Board nicht führt, ist kein Fehler");
     }
 
     // R00100 B0349: report-labels im Rundlauf, auch mit Werten, die YAML sonst als Zahl, Wahrheitswert oder gar nicht liest
