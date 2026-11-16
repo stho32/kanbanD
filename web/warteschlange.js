@@ -11,6 +11,7 @@
    * `melden(art, fehler, ausloeser)` nennt je Fehlschlag genau einmal, was geschah: `art` ist `'anfrage'` (die eigene
    * Änderung kam nicht an) oder `'laden'` (die Änderung ist gespeichert, die Ansicht nicht neu geladen). Scheitern im
    * selben Schritt beide, wird nur die eigene Anfrage gemeldet (R00147 AK 8) — der Text „gespeichert“ ist dann falsch.
+   * Ein Programmfehler beim Nachladen (Fehler ohne `status`) steht zusätzlich als `console.error` in der Konsole (R00186).
    * `vorLaden()` setzt die Marke vor dem Laden; `gespeichert(ergebnis, ausloeser)` merkt eine angenommene Änderung.
    */
   function warteschlangeFuehren({ laden, melden, gespeichert = () => { }, vorLaden = () => { } }) {
@@ -33,6 +34,9 @@
           vorLaden(ausloeser);
           // Auch das Nachladen endet erfüllt; scheiterte die eigene Anfrage, ist ihre Meldung die einzige (AK 8).
           return Promise.resolve().then(laden).catch(fehler => {
+            // Netzfehler und Frist tragen `status: 0`, Ablehnungen des Servers ihren Status; ein Fehler ohne `status` ist ein
+            // Programmfehler (etwa eine unlesbare Antwort) und bleibt in der Konsole sichtbar (R00186 150-2).
+            if (fehler == null || fehler.status === undefined) console.error('Warteschlange: Nachladen', fehler);
             if (!eigeneGescheitert) melden('laden', fehler, ausloeser);
           });
         });

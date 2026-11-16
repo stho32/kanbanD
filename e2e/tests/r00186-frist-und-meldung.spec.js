@@ -215,7 +215,6 @@ test.describe('R00186 Frist je Anfrage und ehrliche Meldung', () => {
   });
 
   test('150-2: ein Programmfehler beim Nachladen steht in der Konsole, die eine Meldung bleibt', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0910');
     await page.goto(k.adresse);
     await boardBereit(page);
     const ladungKaputt = await naechsteVerstuemmeln(page, 'GET', ZUSTAND);

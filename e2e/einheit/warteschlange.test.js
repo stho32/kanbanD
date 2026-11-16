@@ -112,3 +112,45 @@ test('R00148 S1: wirft der Haken `nachAnfrage`, bleibt die Kette offen — beide
     assert.strictEqual(konsole.length, 1, 'der Fehler des Hakens bleibt sichtbar');
   } finally { console.error = vorher; }
 });
+
+/** Fährt eine Anfrage durch eine Kette, deren Nachladen `ladeFehler` wirft, und sammelt Meldungen und `console.error`. */
+async function nachladenScheitertMit(ladeFehler, anfrage = async () => { }) {
+  const konsole = [], meldungen = [];
+  const vorher = console.error;
+  console.error = (...teile) => konsole.push(teile);
+  try {
+    const kette = warteschlangeFuehren({ laden: async () => { throw ladeFehler; }, melden: (art, fehler) => meldungen.push({ art, fehler }) });
+    await assert.doesNotReject(kette.einreihen(anfrage, 'board'));
+    assert.strictEqual(kette.offen(), 0);
+  } finally { console.error = vorher; }
+  return { konsole, meldungen };
+}
+
+test('R00186 150-2: ein Programmfehler beim Nachladen (Fehler ohne `status`) steht in der Konsole, die eine Meldung bleibt', async () => {
+  const kaputt = new SyntaxError('Unexpected end of JSON input');
+  const { konsole, meldungen } = await nachladenScheitertMit(kaputt);
+  assert.deepStrictEqual(meldungen, [{ art: 'laden', fehler: kaputt }], 'weiterhin genau eine Meldung am Auslöser');
+  assert.strictEqual(konsole.length, 1, 'genau eine Spur');
+  assert.match(konsole[0][0], /Nachladen/);
+  assert.strictEqual(konsole[0][1], kaputt, 'die Spur trägt den Fehler selbst');
+});
+
+test('R00186 150-2: Netzfehler und abgelaufene Frist (`status: 0`) schreiben nichts in die Konsole', async () => {
+  const netz = Object.assign(new Error('Keine Verbindung zum Server — nichts geändert.'), { status: 0, daten: null });
+  const { konsole, meldungen } = await nachladenScheitertMit(netz);
+  assert.deepStrictEqual(konsole, []);
+  assert.deepStrictEqual(meldungen.map(m => m.art), ['laden']);
+});
+
+test('R00186 150-2: eine Ablehnung des Servers beim Nachladen (`status: 500`) ist kein Programmfehler', async () => {
+  const { konsole } = await nachladenScheitertMit(Object.assign(new Error('Interner Fehler'), { status: 500, daten: null }));
+  assert.deepStrictEqual(konsole, []);
+});
+
+test('R00186 150-2: scheitert auch die eigene Anfrage, bleibt der Programmfehler des Nachladens trotzdem in der Konsole', async () => {
+  const kaputt = new TypeError('zustand.defekte ist nicht lesbar');
+  const { konsole, meldungen } = await nachladenScheitertMit(kaputt, async () => { throw Object.assign(new Error('weg'), { status: 0 }); });
+  assert.deepStrictEqual(meldungen.map(m => m.art), ['anfrage'], 'gemeldet wird nur die eigene Anfrage (R00147 AK 8)');
+  assert.strictEqual(konsole.length, 1);
+  assert.strictEqual(konsole[0][1], kaputt);
+});
