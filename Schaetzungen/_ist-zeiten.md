@@ -709,3 +709,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0850 Schwelle im `change`-Zweig: Jahr unter 1000 im Feld mit Fokus wird weder gespeichert noch gezeichnet | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0851 Verlassen mit unfertigem Jahr: nicht speichern, gespeicherten Wert zeigen | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0852 Roter Einheitstest: Bis-Tag an beiden Zeitumstellungen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #180 R00173 (Eigenen Berichtszeitraum eingeben) | B0853 `zeitraumGrenzen` bildet die Obergrenze als Beginn des Folgetags | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

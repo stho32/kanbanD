@@ -24,7 +24,8 @@
       case '30': return { von: tag(jetzt, -29), bis: morgen };
       case '90': return { von: tag(jetzt, -89), bis: morgen };
       case 'jahr': return { von: new Date(new Date(heute).getFullYear(), 0, 1).getTime(), bis: new Date(new Date(heute).getFullYear() + 1, 0, 1).getTime() };
-      case 'eigen': return { von: f.von ? isoTag(f.von) : 0, bis: f.bis ? isoTag(f.bis) + TAG : Infinity };
+      // der Bis-Tag endet am Beginn des Folgetags, in Kalenderrechnung: am Tag einer Zeitumstellung sind das 23 oder 25 Stunden
+      case 'eigen': return { von: f.von ? isoTag(f.von) : 0, bis: f.bis ? tag(isoTag(f.bis), 1) : Infinity };
       default: return { von: 0, bis: Infinity };
     }
   }
