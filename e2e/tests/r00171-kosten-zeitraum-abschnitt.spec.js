@@ -15,33 +15,36 @@ const GELTUNG = 'Der Zeitraum gilt für alle Berichte dieses Boards, der Spalten
 const OHNE_BEREICHE = [`Einträge ${usd('11,00')}`, `${OHNE_DATUM} ${usd('5,00')}`, `Summe ${usd('16,00')} · 4 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`];
 const summeImBereich = (betrag, n) => `Summe ${usd(betrag)} · ${n} von 4 Aufgaben mit angefallenen Kosten im gewählten Bereich, auch archivierte`;
 
-/* ── Treiber: Bestand über Dateien, Einträge über die Route, Bedienung über die Bereichszeile ── */
+/* ── Treiber: Bestand samt Kosteneinträgen über Dateien (die Route nähme keinen Eintrag an, dessen Spalte das Board nicht
+   führt — so einer entsteht erst durch Umbenennen oder Entfernen der Spalte), Bedienung über die Bereichszeile ── */
 const datei = nr => `aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`;
-function aufgabeMd(a, titel = a.titel) {
+const eintragMd = e => `  - {at: ${e.at}, role: ${e.role}, column: ${e.column}, amount: ${e.amount.toFixed(2)}, currency: ${e.currency}}\n`;
+function aufgabeMd(a, titel = a.titel, zusatz = []) {
   let kopf = '';
+  const eintraege = [...a.eintraege, ...zusatz];
+  if (eintraege.length) kopf += `cost-entries:\n${eintraege.map(eintragMd).join('')}`;
   if (a.archiviert) kopf += `archived: ${a.archiviert}\n`;
   if (a.altePosten) kopf += `cost:\n  currency: USD\n  items:\n    - {text: Bau, amount: ${a.altePosten.toFixed(2)}}\n`;
   return `---\nid: ${a.nummer}\ntitle: ${titel}\n${kopf}---\n`;
 }
-const boardMd = (kopf, spalten) => `${kopf}# fabrik\n\n` + spalten.map(name => `## ${name}\n\n${BEISPIEL.AUFGABEN.filter(a => a.spalte === name).map(a => `- #${a.nummer}\n`).join('')}`).join('\n');
-/** Das Beispielboard als Dateien; `kopf` ist der YAML-Kopf der Board-Datei, `titel` überschreibt Titel je Nummer. */
-function bestand({ kopf = '', spalten = BEISPIEL.SPALTEN, titel = {} } = {}) {
-  return { 'boards/fabrik.md': boardMd(kopf, spalten), ...Object.fromEntries(BEISPIEL.AUFGABEN.map(a => [datei(a.nummer), aufgabeMd(a, titel[a.nummer])])) };
+/** `spalten` nennt die Spalten des Boards; eine umbenannte Spalte trägt als {name, wie} die Aufgaben der Vorlage `wie`. */
+const boardMd = (kopf, spalten) => `${kopf}# fabrik\n\n` + spalten.map(sp => {
+  const name = sp.name || sp, wie = sp.wie || sp;
+  return `## ${name}\n\n${BEISPIEL.AUFGABEN.filter(a => a.spalte === wie).map(a => `- #${a.nummer}\n`).join('')}`;
+}).join('\n');
+/** Das Beispielboard als Dateien; `kopf` ist der YAML-Kopf der Board-Datei, `titel` überschreibt Titel je Nummer,
+    `zusatz` hängt weitere Einträge an eine Aufgabe: {2: [FREMDE_SPALTE]}. */
+function bestand({ kopf = '', spalten = BEISPIEL.SPALTEN, titel = {}, zusatz = {} } = {}) {
+  return { 'boards/fabrik.md': boardMd(kopf, spalten), ...Object.fromEntries(BEISPIEL.AUFGABEN.map(a => [datei(a.nummer), aufgabeMd(a, titel[a.nummer], zusatz[a.nummer])])) };
 }
 
 test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufgabenliste', () => {
   let k;
   test.afterEach(() => k.stoppen());
 
-  /** Startet kanbanD mit dem Beispielboard, legt die Einträge an (`zusatz` je Nummer dazu) und öffnet den Bericht „Kosten“. */
-  async function berichtOeffnen(page, dateien = bestand(), zusatz = {}) {
+  /** Startet kanbanD mit dem Beispielboard und öffnet den Bericht „Kosten“. */
+  async function berichtOeffnen(page, dateien = bestand()) {
     k = await kanbanStarten(einrichten(dateien));
-    for (const a of BEISPIEL.AUFGABEN) {
-      for (const eintrag of [...a.eintraege, ...(zusatz[a.nummer] || [])]) {
-        const antwort = await page.request.post(`${k.adresse}api/aufgaben/${a.nummer}/kosteneintraege`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: eintrag });
-        expect(antwort.status(), JSON.stringify(eintrag)).toBe(200);
-      }
-    }
     await page.clock.setFixedTime(new Date(BEISPIEL.HEUTE));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/board/fabrik');
@@ -73,6 +76,16 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
     await waehlen(page, () => feld(page, 'Zeitraum').selectOption('eigen'));
     await waehlen(page, () => feld(page, 'Zeitraum von').fill(von));
     await waehlen(page, () => feld(page, 'Zeitraum bis').fill(bis));
+  }
+  /** Wählt eine Spalte des Abschnitts über ihren Namen („alle“ hebt die Grenze auf). */
+  const spalteWaehlen = (page, seite, name) => waehlen(page, () => feld(page, `Spalte ${seite}`).selectOption({ label: name }));
+  const gewaehlt = (page, seite) => feld(page, `Spalte ${seite}`).locator('option:checked');
+  const gesperrt = (page, seite) => feld(page, `Spalte ${seite}`).locator('option:disabled');
+  /** AK 1: Zeitraum 12.11.–13.11., Abschnitt „Entwicklung“–„Abnahme“. */
+  async function fallEinsWaehlen(page) {
+    await zeitraumSetzen(page, '2026-11-12', '2026-11-13');
+    await spalteWaehlen(page, 'von', 'Entwicklung');
+    await spalteWaehlen(page, 'bis', 'Abnahme');
   }
   const bild = async (page, name) => { if (process.env.KD_BILDER) await page.screenshot({ path: path.join(process.env.KD_BILDER, name), fullPage: true }); };
 
@@ -118,7 +131,7 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
   });
 
   test('AK 9: Tagesgrenze beim Betrachter in +01:00 — der Eintrag von 13.11. 23:30 zählt zum 13.11., der von 14.11. 00:10 nicht: Summe 5,10 $', async ({ page }) => {
-    await berichtOeffnen(page, bestand({ kopf: '---\nreport-filter: {period: eigen, from: 2026-11-12, to: 2026-11-13}\n---\n' }), { 2: [BEISPIEL.VOR_MITTERNACHT, BEISPIEL.NACH_MITTERNACHT] });
+    await berichtOeffnen(page, bestand({ kopf: '---\nreport-filter: {period: eigen, from: 2026-11-12, to: 2026-11-13}\n---\n', zusatz: { 2: [BEISPIEL.VOR_MITTERNACHT, BEISPIEL.NACH_MITTERNACHT] } }));
     await expect(zeilen(page)).toHaveText([`Einträge ${usd('5,10')}`, summeImBereich('5,10', 2), ALTE_POSTEN_AUSSEN]);
     await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.r')).toHaveText([usd('4,46'), usd('0,64')]);
   });
@@ -142,5 +155,96 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
     await expect(kopfzelle).toHaveAttribute('title', titel);
     await expect(page.locator('#kosten .kost-liste img, #kosten .kost-liste b')).toHaveCount(0);
     expect(await page.title()).not.toBe('kaputt');
+  });
+  /* ── F0137: Spaltenabschnitt samt Speichern ── */
+  const ZEITRAUM_UND_ABSCHNITT = 'report-filter: {period: eigen, from: 2026-11-12, to: 2026-11-13, cost-from-column: Entwicklung, cost-to-column: Abnahme}\n';
+
+  test('US-1 (AK 1, AK 5): Zeitraum 12.11.–13.11. und Abschnitt „Entwicklung“–„Abnahme“ → Summe 5,00 $, #1 4,46 $ und #2 0,54 $, #3 fehlt, alte Posten 5,00 $ daneben; die Board-Datei trägt Zeitraum und beide Spalten, nach dem Neuladen dieselbe Wahl und dieselben Zahlen', async ({ page }) => {
+    await berichtOeffnen(page);
+    await expect(zeilen(page)).toHaveText(OHNE_BEREICHE);
+    await expect(gewaehlt(page, 'von')).toHaveText('alle');
+    await expect(gewaehlt(page, 'bis')).toHaveText('alle');
+    await fallEinsWaehlen(page);
+    const fallEins = async () => {
+      await expect(zeilen(page)).toHaveText([`Einträge ${usd('5,00')}`, summeImBereich('5,00', 2), ALTE_POSTEN_AUSSEN]);
+      await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.nr')).toHaveText(['#1', '#2']);
+      await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.r')).toHaveText([usd('4,46'), usd('0,54')]);
+      await expect(gewaehlt(page, 'von')).toHaveText('Entwicklung');
+      await expect(gewaehlt(page, 'bis')).toHaveText('Abnahme');
+      await expect(gesperrt(page, 'von'), 'rechts von „bis“ ist in „von“ nicht wählbar').toHaveText(['Produktiv']);
+      await expect(gesperrt(page, 'bis'), 'links von „von“ ist in „bis“ nicht wählbar').toHaveText(['Eingang']);
+    };
+    await fallEins();
+    expect(boardDatei()).toContain(ZEITRAUM_UND_ABSCHNITT);
+    await page.reload();
+    await bereit(page, '#kosten');
+    await fallEins();
+    await expect(feld(page, 'Zeitraum von')).toHaveValue('2026-11-12');
+    await expect(feld(page, 'Zeitraum bis')).toHaveValue('2026-11-13');
+    await expect(feld(page, 'Spalte von').locator('option')).toHaveText(['alle', ...BEISPIEL.SPALTEN]);
+  });
+
+  test('US-2 (AK 2): Zeitraum 12.11.–14.11. und Abschnitt „Abnahme“–„Abnahme“ → Summe 2,00 $, allein #1 mit 2,00 $ — ihre Einträge aus „Entwicklung“ zählen nicht', async ({ page }) => {
+    await berichtOeffnen(page, bestand({ kopf: '---\nreport-filter: {period: eigen, from: 2026-11-12, to: 2026-11-14}\n---\n' }));
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('7,00')}`, summeImBereich('7,00', 2), ALTE_POSTEN_AUSSEN]);
+    await spalteWaehlen(page, 'von', 'Abnahme');
+    await spalteWaehlen(page, 'bis', 'Abnahme');
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('2,00')}`, summeImBereich('2,00', 1), ALTE_POSTEN_AUSSEN]);
+    await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.nr')).toHaveText(['#1']);
+    await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.r')).toHaveText([usd('2,00')]);
+    expect(boardDatei()).toContain('report-filter: {period: eigen, from: 2026-11-12, to: 2026-11-14, cost-from-column: Abnahme, cost-to-column: Abnahme}\n');
+  });
+
+  test('US-3 (AK 6): „Zurücksetzen“ hebt Zeitraum und Abschnitt auf — wieder „Einträge 11,00 $“ und Summe 16,00 $ mit #1, #2, #3; die Board-Datei trägt keinen der Schlüssel mehr', async ({ page }) => {
+    await berichtOeffnen(page, bestand({ kopf: `---\n${ZEITRAUM_UND_ABSCHNITT}---\n` }));
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('5,00')}`, summeImBereich('5,00', 2), ALTE_POSTEN_AUSSEN]);
+    await expect(zuruecksetzen(page)).toHaveText('Zurücksetzen');
+    await waehlen(page, () => zuruecksetzen(page).click());
+    await expect(zeilen(page)).toHaveText(OHNE_BEREICHE);
+    await expect(listenzeilen(page, 'Aufgaben mit Einträgen').locator('.nr')).toHaveText(['#1', '#2', '#3']);
+    await expect(feld(page, 'Zeitraum')).toHaveValue('alles');
+    await expect(gewaehlt(page, 'von')).toHaveText('alle');
+    await expect(gewaehlt(page, 'bis')).toHaveText('alle');
+    await expect(gesperrt(page, 'von')).toHaveCount(0);
+    await expect(zuruecksetzen(page)).toHaveCount(0);
+    await expect(feld(page, 'Zeitraum')).toBeFocused();
+    expect(boardDatei()).not.toMatch(/report-filter|period|cost-from-column|cost-to-column/);
+  });
+
+  test('Schaden e: der Abschnitt und die übrigen Schlüssel von report-filter lassen einander stehen — Abschnitt wählen, einen Filter der Box schalten, die Box zurücksetzen, den Bereich zurücksetzen', async ({ page }) => {
+    await berichtOeffnen(page, bestand({ kopf: '---\nstart: 2026-11-01\nreport-filter: {labels: [gibtsnicht], window-days: 30}\n---\n' }));
+    await spalteWaehlen(page, 'von', 'Abnahme');
+    expect(boardDatei()).toContain('report-filter: {labels: [gibtsnicht], window-days: 30, cost-from-column: Abnahme}\n');
+    await expect(feld(page, 'Zeitraum'), 'eine Spaltenwahl macht aus dem Zeitraum keinen eigenen').toHaveValue('alles');
+
+    await page.locator('details.bfilter-box summary').click();
+    const fehler = page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name: 'Fehler', exact: true });
+    await waehlen(page, () => fehler.click());
+    expect(boardDatei()).toContain('report-filter: {exclude-classes: [bug], labels: [gibtsnicht], window-days: 30, cost-from-column: Abnahme}\n');
+
+    await waehlen(page, () => page.locator('.bf-fuss .bf-leeren').click());
+    expect(boardDatei(), '„Zurücksetzen n“ der Box hebt nur Farben, Spalten, Zuständige und Labels auf').toContain('report-filter: {window-days: 30, cost-from-column: Abnahme}\n');
+    await expect(gewaehlt(page, 'von')).toHaveText('Abnahme');
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('2,00')}`, summeImBereich('2,00', 1), ALTE_POSTEN_AUSSEN]);
+
+    await waehlen(page, () => zuruecksetzen(page).click());
+    const datei = boardDatei();
+    expect(datei).toContain('report-filter: {window-days: 30}\n');
+    expect(datei).toContain('start: 2026-11-01\n');
+  });
+
+  test('Schaden f: ein Spaltenname mit Sonderzeichen steht in der Auswahl als Text, wird gespeichert und nach dem Neuladen wieder gewählt — die Board-Datei bleibt lesbar', async ({ page }) => {
+    const name = 'Abnahme: "extern" <b>fett</b> & Co';
+    await berichtOeffnen(page, bestand({ spalten: ['Eingang', 'Entwicklung', { name, wie: 'Abnahme' }, 'Produktiv'] }));
+    await expect(feld(page, 'Spalte bis').locator('option')).toHaveText(['alle', 'Eingang', 'Entwicklung', name, 'Produktiv']);
+    await expect(bereich(page).locator('option b')).toHaveCount(0);
+    await spalteWaehlen(page, 'bis', name);
+    await expect(gewaehlt(page, 'bis')).toHaveText(name);
+    expect(boardDatei()).toContain('cost-to-column: "Abnahme: \\"extern\\" <b>fett</b> & Co"}\n');
+    await page.reload();
+    await bereit(page, '#kosten');
+    await expect(gewaehlt(page, 'bis')).toHaveText(name);
+    await expect(gesperrt(page, 'von')).toHaveText(['Produktiv']);
+    await expect(page.locator('#main .leer'), 'kein Defekt-Hinweis: das Board liest sich').toHaveCount(0);
   });
 });

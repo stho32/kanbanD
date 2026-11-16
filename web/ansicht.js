@@ -1570,12 +1570,25 @@ function vKosten() {
   const aktiv = filterAnzahl(filterOhneZeitraum(filter)) > 0;
   return `${kopf}${vKostenBereich(filter, jetzt)}<div class="body" id="kosten">${vKostenInhalt(aufstellung, kostenUmfang(filter, aufstellung.bereich), aktiv)}</div>`;
 }
-/** Die Bereichszeile unter der Filterbox: der Zeitraum des Berichtsfilters und — nur wenn ein Bereich gewählt ist — der
-    eine Knopf, der ihn aufhebt. */
+/** Die Bereichszeile unter der Filterbox: der Zeitraum des Berichtsfilters, der Spaltenabschnitt und — nur wenn ein
+    Bereich gewählt ist — der eine Knopf, der beide aufhebt. */
 function vKostenBereich(f, jetzt) {
+  const wahl = kostenSpaltenwahl(S.board, f);
+  const abschnitt = `<span class="kost-feld"><b>Spalte</b>${vKostenSpalte('von', 'kostenVonSpalte', wahl.von)}${vKostenSpalte('bis', 'kostenBisSpalte', wahl.bis)}</span>`;
   let leeren = '';
   if (kostenbereichGewaehlt(f)) leeren = '<button class="btn bf-leeren" id="kost-bereich-leeren" data-act="kost-bereich-leeren" aria-label="Zeitraum und Spaltenabschnitt zurücksetzen">Zurücksetzen</button>';
-  return `<section class="fb-einst kost-bereich" id="kost-bereich" role="group" aria-label="Zeitraum und Spaltenabschnitt"><span class="kost-feld"><b>Zeitraum</b>${vZeitraumFelder(f, jetzt)}</span>${leeren}<span class="muted">Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit</span></section>`;
+  return `<section class="fb-einst kost-bereich" id="kost-bereich" role="group" aria-label="Zeitraum und Spaltenabschnitt"><span class="kost-feld"><b>Zeitraum</b>${vZeitraumFelder(f, jetzt)}</span>${abschnitt}${leeren}<span class="muted">Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit</span></section>`;
+}
+/** Eine Auswahl des Spaltenabschnitts: „alle“ (Vorgabe, leerer Wert), dann die Spalten des Boards — Spaltennamen sind
+    fremder Text und stehen nur als Text und als Wert da. */
+function vKostenSpalte(seite, feld, eintraege) {
+  const optionen = eintraege.map(e => {
+    let merkmale = '';
+    if (e.gewaehlt) merkmale += ' selected';
+    if (e.gesperrt) merkmale += ' disabled';
+    return `<option value="${esc(e.name)}"${merkmale}>${esc(e.name)}</option>`;
+  }).join('');
+  return `<label>${seite} <select class="mini-inp" id="kost-${seite}-spalte" data-bf="${feld}" aria-label="Spalte ${seite}"><option value="">alle</option>${optionen}</select></label>`;
 }
 function vKostenInhalt(aufstellung, umfang, aktiv) {
   if (aufstellung.gruppen.some(g => g.summe)) return vKostenSummen(aufstellung, umfang);

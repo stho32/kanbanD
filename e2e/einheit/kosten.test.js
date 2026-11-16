@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // der Betrachter des Beispielboards (R00171) sitzt in +01:00
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, kostenaufstellung, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
+const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenSpaltenwahl, kostenbereichGewaehlt, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
 const { FILTER_LEER, filterAnzahl } = require('../../web/berichte.js');
 
 const NBSP = ' ';
@@ -459,4 +459,26 @@ test('R00171 B0838: es zählt die Spalte des Eintrags, nicht die Spalte, in der 
   const mitPhasen = { ...BEISPIEL_BOARD, spalten: BEISPIEL_BOARD.spalten.map((sp, i) => ({ ...sp, phase: i < 2 ? 'Bau' : 'Betrieb' })) };
   const a = aufstellung(abschnitt('Entwicklung', 'Entwicklung'), {}, mitPhasen);
   assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 446], [2, 54], [3, 400]], '#1 steht in „Produktiv“, ihre Einträge aus „Entwicklung“ zählen');
+});
+
+/* ── B0839 Auswahl der Von- und Bis-Spalte in der Bereichszeile ── */
+const gesperrte = eintraege => eintraege.filter(e => e.gesperrt).map(e => e.name);
+const gewaehlte = eintraege => eintraege.filter(e => e.gewaehlt).map(e => e.name);
+
+test('R00171 B0839 (Zeichnung Bild 1): die Auswahlen führen die Spalten des Boards in ihrer Folge; was die andere Grenze ausschließt, ist gesperrt — in „von“ alles rechts von „bis“, in „bis“ alles links von „von“', () => {
+  const wahl = kostenSpaltenwahl(BEISPIEL_BOARD, filter(abschnitt('Entwicklung', 'Abnahme')));
+  assert.deepStrictEqual(wahl.von.map(e => e.name), BEISPIEL.SPALTEN);
+  assert.deepStrictEqual(wahl.bis.map(e => e.name), BEISPIEL.SPALTEN);
+  assert.deepStrictEqual([gewaehlte(wahl.von), gesperrte(wahl.von)], [['Entwicklung'], ['Produktiv']]);
+  assert.deepStrictEqual([gewaehlte(wahl.bis), gesperrte(wahl.bis)], [['Abnahme'], ['Eingang']]);
+  const gleich = kostenSpaltenwahl(BEISPIEL_BOARD, filter(abschnitt('Abnahme', 'Abnahme')));
+  assert.deepStrictEqual([gesperrte(gleich.von), gesperrte(gleich.bis)], [['Produktiv'], ['Eingang', 'Entwicklung']], 'dieselbe Spalte bleibt auf beiden Seiten wählbar');
+});
+
+test('R00171 B0839: ohne Wahl ist nichts gewählt und nichts gesperrt; eine Grenze allein sperrt nur die andere Seite; „Zurücksetzen“ steht, sobald Zeitraum oder eine Spalte gewählt ist', () => {
+  const ohne = kostenSpaltenwahl(BEISPIEL_BOARD, FILTER_LEER);
+  assert.deepStrictEqual([gewaehlte(ohne.von), gesperrte(ohne.von), gewaehlte(ohne.bis), gesperrte(ohne.bis)], [[], [], [], []]);
+  const nurVon = kostenSpaltenwahl(BEISPIEL_BOARD, filter(abschnitt('Abnahme', '')));
+  assert.deepStrictEqual([gesperrte(nurVon.von), gesperrte(nurVon.bis)], [[], ['Eingang', 'Entwicklung']]);
+  assert.deepStrictEqual([FILTER_LEER, filter(BEISPIEL.ZEITRAUM_12_13), filter(abschnitt('Abnahme', '')), filter(abschnitt('', 'Test'))].map(kostenbereichGewaehlt), [false, true, true, true]);
 });

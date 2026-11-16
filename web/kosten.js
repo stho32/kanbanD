@@ -97,6 +97,15 @@
     if (bis < 0) return { von, bis: spalten.length - 1 };
     return { von: Math.min(von, bis), bis: Math.max(von, bis) };
   }
+  /** Die Auswahlen „Spalte von“ und „Spalte bis“ → {von, bis: [{name, gewaehlt, gesperrt}]} in der Spaltenfolge des
+      Boards: gesperrt ist, was die andere Grenze ausschließt — in „von“ alles rechts von „bis“, in „bis“ alles links von „von“. */
+  function kostenSpaltenwahl(board, f) {
+    const spalten = board.spalten.map(sp => sp.name), von = spalten.indexOf(f.kostenVonSpalte), bis = spalten.indexOf(f.kostenBisSpalte);
+    return {
+      von: spalten.map((name, stelle) => ({ name, gewaehlt: stelle === von, gesperrt: bis >= 0 && stelle > bis })),
+      bis: spalten.map((name, stelle) => ({ name, gewaehlt: stelle === bis, gesperrt: von >= 0 && stelle < von })),
+    };
+  }
   /** Bereich des Kostenberichts (R00171): der Zeitraum des Berichtsfilters als Grenzen [von, bis) in der Ortszeit des
       Betrachters und der Spaltenabschnitt. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
   function kostenbereich(board, f, jetzt) {
@@ -229,5 +238,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, kostenSpaltenwahl, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);
