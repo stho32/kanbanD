@@ -609,3 +609,17 @@ test('R00171 B1: die Aufgabenliste rechnet mit derselben Grenze wie die Summe �
   const a = kostenaufstellung(spalten([1], [], []), [mitEintraegen(1, eintraege, null, { titel: 'Umstellung' })], filter({ zeitraum: 'eigen', von: '2026-10-25', bis: '2026-10-25' }), JETZT);
   assert.deepStrictEqual(betraege(a.gruppen[0]), [[1, 1111]]);
 });
+
+/* ── R00172 Kosten je Rolle ── */
+/** Stand vor der Karte (main `4730e9d`): Eingaben und Ergebnis von kostenaufstellung() am unveränderten web/kosten.js
+    gerechnet und festgehalten — neun Zustände des Beispielboards. Das neue Feld `rollen` bleibt aus dem Vergleich. */
+const VOR_R00172 = require('./r00172-vor-der-karte.json');
+const ohneRollen = a => ({ ...a, gruppen: a.gruppen.map(({ rollen, ...gruppe }) => gruppe) });
+
+test('R00172 (AK 8, Schaden a): ohne das Feld `rollen` liefert kostenaufstellung() in neun Zuständen jede Zahl und jeden Text wie vor der Karte', () => {
+  assert.strictEqual(VOR_R00172.length, 9);
+  for (const fall of VOR_R00172) {
+    const heute = JSON.parse(JSON.stringify(ohneRollen(kostenaufstellung(fall.board, fall.aufgaben, fall.filter, fall.jetzt))));
+    assert.deepStrictEqual(heute, fall.erwartet, fall.name);
+  }
+});

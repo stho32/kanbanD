@@ -1,0 +1,1689 @@
+[
+ {
+  "name": "ohne Bereiche",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "alles",
+   "von": "",
+   "bis": "",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": false,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 4,
+      "eintraege": 1100,
+      "posten": {
+       "niedrig": 500,
+       "hoch": 500
+      },
+      "niedrig": 1600,
+      "hoch": 1600
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 646,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      },
+      {
+       "nummer": 3,
+       "titel": "Altes Angebot ablegen",
+       "cent": 400,
+       "kennzeichen": "archiviert"
+      }
+     ],
+     "altePostenAussen": null,
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Fall 1: 12.11.–13.11., „Entwicklung“–„Abnahme“",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-11-12",
+   "bis": "2026-11-13",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "Entwicklung",
+   "kostenBisSpalte": "Abnahme"
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Abnahme",
+    "grund": "bis"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 2,
+      "eintraege": 500,
+      "posten": null,
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 446,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Zeitraum 12.11.–13.11. allein",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-11-12",
+   "bis": "2026-11-13",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 2,
+      "eintraege": 500,
+      "posten": null,
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 446,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Abschnitt „Abnahme“–„Abnahme“ im Zeitraum 12.11.–14.11.",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-11-12",
+   "bis": "2026-11-14",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "Abnahme",
+   "kostenBisSpalte": "Abnahme"
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Abnahme",
+    "grund": "bis"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 1,
+      "eintraege": 200,
+      "posten": null,
+      "niedrig": 200,
+      "hoch": 200
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 200,
+       "kennzeichen": "erledigt"
+      }
+     ],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Fall 1 mit Eintrag aus fremder Spalte",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 12:00+01:00",
+      "role": "reviewer",
+      "column": "Review",
+      "amount": 0.25,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-11-12",
+   "bis": "2026-11-13",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "Entwicklung",
+   "kostenBisSpalte": "Abnahme"
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Abnahme",
+    "grund": "bis"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 2,
+      "eintraege": 500,
+      "posten": null,
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 446,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": 25
+    }
+   ]
+  }
+ },
+ {
+  "name": "ohne Bereiche mit Eintrag aus fremder Spalte und Euro",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 12:00+01:00",
+      "role": "reviewer",
+      "column": "Review",
+      "amount": 0.25,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 12:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 25.55,
+      "currency": "EUR"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "alles",
+   "von": "",
+   "bis": "",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": false,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 4,
+      "eintraege": 1125,
+      "posten": {
+       "niedrig": 500,
+       "hoch": 500
+      },
+      "niedrig": 1625,
+      "hoch": 1625
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 646,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 79,
+       "kennzeichen": "offen"
+      },
+      {
+       "nummer": 3,
+       "titel": "Altes Angebot ablegen",
+       "cent": 400,
+       "kennzeichen": "archiviert"
+      }
+     ],
+     "altePostenAussen": null,
+     "fremdeSpalte": null
+    },
+    {
+     "waehrung": "EUR",
+     "summe": {
+      "waehrung": "EUR",
+      "n": 1,
+      "eintraege": 2555,
+      "posten": null,
+      "niedrig": 2555,
+      "hoch": 2555
+     },
+     "aufgaben": [
+      {
+       "nummer": 3,
+       "titel": "Altes Angebot ablegen",
+       "cent": 2555,
+       "kennzeichen": "archiviert"
+      }
+     ],
+     "altePostenAussen": null,
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Tagesgrenze 13./14.11. mit Euro",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 23:30+01:00",
+      "role": "planer",
+      "column": "Entwicklung",
+      "amount": 0.1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 00:10+01:00",
+      "role": "planer",
+      "column": "Entwicklung",
+      "amount": 0.2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 12:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 25.55,
+      "currency": "EUR"
+     }
+    ]
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-11-12",
+   "bis": "2026-11-13",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 2,
+      "eintraege": 510,
+      "posten": null,
+      "niedrig": 510,
+      "hoch": 510
+     },
+     "aufgaben": [
+      {
+       "nummer": 1,
+       "titel": "Angebot für das Kundenprojekt schreiben",
+       "cent": 456,
+       "kennzeichen": "erledigt"
+      },
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": null
+    },
+    {
+     "waehrung": "EUR",
+     "summe": {
+      "waehrung": "EUR",
+      "n": 1,
+      "eintraege": 2555,
+      "posten": null,
+      "niedrig": 2555,
+      "hoch": 2555
+     },
+     "aufgaben": [
+      {
+       "nummer": 4,
+       "titel": "Rechnungsvorlage abstimmen",
+       "cent": 2555,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": null,
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Bereich, in dem nichts zählt",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "eigen",
+   "von": "2026-10-01",
+   "bis": "2026-10-02",
+   "ohneFarben": [],
+   "ohneSpalten": [],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 4,
+   "nurSchaetzung": 0,
+   "bereich": true,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": null,
+     "aufgaben": [],
+     "altePostenAussen": {
+      "niedrig": 500,
+      "hoch": 500
+     },
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ },
+ {
+  "name": "Filter der Box: ohne Spalte „Produktiv“",
+  "board": {
+   "fieber": {
+    "zielspalte": null
+   },
+   "spalten": [
+    {
+     "name": "Eingang",
+     "aufgaben": [
+      4
+     ]
+    },
+    {
+     "name": "Entwicklung",
+     "aufgaben": [
+      2
+     ]
+    },
+    {
+     "name": "Abnahme",
+     "aufgaben": []
+    },
+    {
+     "name": "Produktiv",
+     "aufgaben": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "aufgaben": [
+   {
+    "nummer": 1,
+    "titel": "Angebot für das Kundenprojekt schreiben",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-12 09:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 1,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-13 10:34+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 3.46,
+      "currency": "USD"
+     },
+     {
+      "at": "2026-11-14 15:00+01:00",
+      "role": "entwickler",
+      "column": "Abnahme",
+      "amount": 2,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 2,
+    "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-13 11:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 0.54,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 3,
+    "titel": "Altes Angebot ablegen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": "2026-11-06",
+    "reservierung": null,
+    "cost": null,
+    "kosteneintraege": [
+     {
+      "at": "2026-11-05 08:00+01:00",
+      "role": "entwickler",
+      "column": "Entwicklung",
+      "amount": 4,
+      "currency": "USD"
+     }
+    ]
+   },
+   {
+    "nummer": 4,
+    "titel": "Rechnungsvorlage abstimmen",
+    "klasse": null,
+    "zustaendige": [],
+    "labels": [],
+    "archiviert": null,
+    "reservierung": null,
+    "cost": {
+     "currency": "USD",
+     "items": [
+      {
+       "text": "Bau",
+       "amount": 5
+      }
+     ]
+    },
+    "kosteneintraege": []
+   }
+  ],
+  "filter": {
+   "zeitraum": "alles",
+   "von": "",
+   "bis": "",
+   "ohneFarben": [],
+   "ohneSpalten": [
+    "Produktiv"
+   ],
+   "personen": [],
+   "labels": [],
+   "messbasisTage": 90,
+   "kostenVonSpalte": "",
+   "kostenBisSpalte": ""
+  },
+  "jetzt": 1794826800000,
+  "erwartet": {
+   "m": 2,
+   "nurSchaetzung": 0,
+   "bereich": false,
+   "erledigtAb": {
+    "spalte": "Produktiv",
+    "grund": "letzte"
+   },
+   "grenzenWeg": [],
+   "gruppen": [
+    {
+     "waehrung": "USD",
+     "summe": {
+      "waehrung": "USD",
+      "n": 2,
+      "eintraege": 54,
+      "posten": {
+       "niedrig": 500,
+       "hoch": 500
+      },
+      "niedrig": 554,
+      "hoch": 554
+     },
+     "aufgaben": [
+      {
+       "nummer": 2,
+       "titel": "Schnittstelle zur Abrechnung anbinden und mit Beispieldaten prüfen",
+       "cent": 54,
+       "kennzeichen": "offen"
+      }
+     ],
+     "altePostenAussen": null,
+     "fremdeSpalte": null
+    }
+   ]
+  }
+ }
+]
