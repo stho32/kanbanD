@@ -16,11 +16,15 @@ const fn e(methode: &'static str, pfad: &'static str, wer: bool, thema: &'static
     Endpunkt { methode, pfad, wer, thema, zweck }
 }
 
+/// Zweck von `GET /api/instanz` — derselbe Text in der Endpunktliste und in der OpenAPI-Beschreibung.
+pub const INSTANZ: &str = "diese Instanz {ordner, version}: der bediente Ordner absolut und kanonisch (wie in /api/zustand) und die Programmversion — daran erkennt ein Agent seine Instanz; liest den Ordner nicht und antwortet auch, wenn /api/zustand scheitert";
+
 pub const ENDPUNKTE: &[Endpunkt] = &[
     e("GET", "/api", false, "API", "diese Beschreibung als Seite; mit Accept: application/json 303 auf /api/openapi.json"),
     e("GET", "/api/openapi.json", false, "API", "die vollständige Beschreibung als OpenAPI 3.1 — Felder, erlaubte Werte, Formate und Fehlerformen"),
     e("GET", "/api/endpunkte", false, "API", "diese Liste maschinenlesbar {methode, pfad, wer, thema, zweck}"),
     e("GET", "/api/zustand", false, "Ordner", "Ordner, eingerichtet?, Einstellungen, Boards, defekte Dateien, dubletten: [{key, nummern}] — Schlüssel, die mehrere Karten tragen"),
+    e("GET", "/api/instanz", false, "Ordner", INSTANZ),
     e("POST", "/api/einrichten", false, "Ordner", "erster Start {ich, agenten, board, spalten, quellen}"),
     e("GET", "/api/wer", true, "Ordner", "die Person zum Header X-KanbanD-Wer"),
     e("GET", "/api/einstellungen", false, "Ordner", "Personen, Klassen, Signale und Quellen in der Form, die PUT annimmt"),

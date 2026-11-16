@@ -62,6 +62,7 @@ pub fn router_mit_ende(ordner: PathBuf, ende: watch::Receiver<bool>) -> Router {
     let (router, api) = OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
         .routes(routes!(ereignisstrom))
         .routes(routes!(zustand))
+        .routes(routes!(instanz_auskunft))
         .routes(routes!(api_seite))
         .routes(routes!(endpunkte_liste))
         .routes(routes!(einrichten))
@@ -240,6 +241,27 @@ async fn blockierend<T: Send + 'static>(app: &App, f: impl FnOnce(&Kanban) -> Re
 async fn zustand(State(app): State<App>) -> Result<Response, Fehler> {
     let z = blockierend(&app, |k| k.zustand()).await?;
     Ok(Json(z).into_response())
+}
+
+/// Woran ein Agent seine Instanz erkennt (R00183).
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Instanzauskunft {
+    /// der bediente Ordner, absolut und kanonisch (Symlinks aufgelöst) — derselbe Wert wie in `GET /api/zustand`
+    pub ordner: String,
+    /// die Programmversion
+    pub version: &'static str,
+}
+
+/// Antwortet aus dem, was beim Start feststeht — liest den Ordner nicht und scheitert deshalb nicht an ihm.
+#[utoipa::path(
+    get,
+    path = "/api/instanz",
+    tag = "Ordner",
+    description = endpunkte::INSTANZ,
+    responses((status = 200, description = "Erfolg", body = Instanzauskunft))
+)]
+async fn instanz_auskunft(State(app): State<App>) -> Json<Instanzauskunft> {
+    Json(Instanzauskunft { ordner: app.kanban.ordner().wurzel().to_string_lossy().into(), version: env!("CARGO_PKG_VERSION") })
 }
 
 #[utoipa::path(

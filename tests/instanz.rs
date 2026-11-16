@@ -51,7 +51,6 @@ fn im_ordner_auf_freiem_port(ordner: &Path) -> (Laufendes, u16) {
 
 // US-1, Abnahme-Probe der Karte #147: gestartet mit `kanbanD . --port <P>` im Ordner A
 #[tokio::test]
-#[ignore = "erwartet rot: B0891"]
 async fn us1_instanz_nennt_ordner_und_version_wie_der_zustand() {
     let tmp = tempfile::tempdir().unwrap();
     let a = tmp.path().join("Boards/A");
@@ -70,7 +69,6 @@ async fn us1_instanz_nennt_ordner_und_version_wie_der_zustand() {
 // US-2, AK 2: über einen Symlink gestartet nennt `ordner` das Ziel
 #[cfg(unix)]
 #[tokio::test]
-#[ignore = "erwartet rot: B0891"]
 async fn us2_start_ueber_symlink_nennt_das_aufgeloeste_ziel() {
     let tmp = tempfile::tempdir().unwrap();
     let a = tmp.path().join("Boards/A");
