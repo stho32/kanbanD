@@ -38,24 +38,40 @@ pub struct Roheintrag {
     pub weitere: Vec<(String, Value)>,
 }
 
+impl Roheintrag {
+    /// Die Form: eine Zuordnung, jedes Feld in seinem Typ — noch ohne Inhaltsregeln; `null` gilt als fehlend.
+    fn lesen(pfad: &str, v: &Value) -> Result<Roheintrag, String> {
+        let m = v.as_mapping().ok_or_else(|| format!("{pfad}: keine Zuordnung"))?;
+        let feld = Felder { m, pfad };
+        Ok(Roheintrag {
+            zeitpunkt: feld.text("at")?,
+            rolle: feld.text("role")?,
+            spalte: feld.text("column")?,
+            cent: feld.geld("amount")?,
+            waehrung: feld.text("currency")?,
+            tokens: feld.tokens()?,
+            weitere: feld.weitere(&BEKANNT),
+        })
+    }
+
+    /// Rumpf einer Anfrage (roh, damit jeder Fehler 400 wird und nie 422): ein Objekt nur mit den Schlüsseln der
+    /// Datei, sonst dieselbe Form. Was fehlt, bleibt `None` — `POST` verlangt es über [`Kosteneintrag::pruefen`],
+    /// `PATCH` nimmt dafür den Wert des bestehenden Eintrags.
+    pub fn aus_anfrage(pfad: &str, v: &serde_json::Value) -> Result<Roheintrag, String> {
+        let keine_zuordnung = || format!("{pfad}: keine Zuordnung");
+        let m = v.as_object().ok_or_else(keine_zuordnung)?;
+        if let Some(k) = m.keys().find(|k| !BEKANNT.contains(&k.as_str())) {
+            return Err(format!("{pfad}: unbekannter Schlüssel „{k}“"));
+        }
+        Roheintrag::lesen(pfad, &serde_yaml::to_value(v).map_err(|_| keine_zuordnung())?)
+    }
+}
+
 impl Kosteneintrag {
     /// Ein Eintrag aus YAML (Datei oder umgewandeltes JSON): erst die Form, dann [`Kosteneintrag::pruefen`].
     /// `pfad` steht in jeder Meldung vorn, z. B. `cost-entries[0]`.
     pub fn lesen(pfad: &str, v: &Value) -> Result<Kosteneintrag, String> {
-        let m = v.as_mapping().ok_or_else(|| format!("{pfad}: keine Zuordnung"))?;
-        let feld = Felder { m, pfad };
-        Kosteneintrag::pruefen(
-            pfad,
-            Roheintrag {
-                zeitpunkt: feld.text("at")?,
-                rolle: feld.text("role")?,
-                spalte: feld.text("column")?,
-                cent: feld.geld("amount")?,
-                waehrung: feld.text("currency")?,
-                tokens: feld.tokens()?,
-                weitere: feld.weitere(&BEKANNT),
-            },
-        )
+        Kosteneintrag::pruefen(pfad, Roheintrag::lesen(pfad, v)?)
     }
 
     /// Alle Inhaltsregeln von ADR-0028 Punkt 2 an einer Stelle; der Fehler nennt Pfad und Feld (`cost-entries[0].role: …`).
@@ -233,6 +249,27 @@ mod tests {
     fn spalte_wird_nicht_gegen_ein_board_geprueft_und_unbekanntes_bleibt() {
         let e = gelesen(&beispiel_mit("column: Gibtsnichtmehr, note: x")).unwrap();
         assert_eq!((e.spalte.as_str(), e.weitere), ("Gibtsnichtmehr", vec![("note".to_string(), Value::String("x".into()))]));
+    }
+
+    // R00165 Teil B: der Rumpf einer Anfrage — nur bekannte Schlüssel, jeder Typfehler nennt sein Feld, Fehlendes bleibt offen
+    #[test]
+    fn rumpf_einer_anfrage_nur_mit_bekannten_schluesseln_und_richtigen_typen() {
+        let roh = Roheintrag::aus_anfrage("kosteneintrag", &serde_json::json!({"amount": 3.5, "tokens": null})).unwrap();
+        assert_eq!((roh.cent, roh.tokens, roh.zeitpunkt, roh.rolle, roh.spalte, roh.waehrung), (Some(350), None, None, None, None, None));
+        for (rumpf, meldung) in [
+            (serde_json::json!({"amount": 1, "kennung": "a@b"}), "kosteneintrag: unbekannter Schlüssel „kennung“"),
+            (serde_json::json!([1]), "kosteneintrag: keine Zuordnung"),
+            (serde_json::json!("x"), "kosteneintrag: keine Zuordnung"),
+            (serde_json::json!({"amount": "3.46"}), "kosteneintrag.amount: keine Zahl"),
+            (serde_json::json!({"amount": -1}), "kosteneintrag.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet"),
+            (serde_json::json!({"amount": 3.456}), "kosteneintrag.amount: Zahl ≥ 0 mit höchstens zwei Nachkommastellen erwartet"),
+            (serde_json::json!({"role": 7}), "kosteneintrag.role: kein Text"),
+            (serde_json::json!({"column": ["a"]}), "kosteneintrag.column: kein Text"),
+            (serde_json::json!({"at": 12}), "kosteneintrag.at: kein Text"),
+            (serde_json::json!({"tokens": 1.5}), "kosteneintrag.tokens: ganze Zahl ≥ 0 erwartet"),
+        ] {
+            assert_eq!(Roheintrag::aus_anfrage("kosteneintrag", &rumpf).err().as_deref(), Some(meldung), "{rumpf}");
+        }
     }
 
     #[test]
