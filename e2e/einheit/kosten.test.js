@@ -1,4 +1,5 @@
 // Unit-Tests des Preisetiketts (R00105, node --test): Rechnen in ganzen Cent, Formatieren erst beim Anzeigen
+process.env.TZ = 'Europe/Berlin'; // der Betrachter des Beispielboards (R00171) sitzt in +01:00
 const test = require('node:test');
 const assert = require('node:assert');
 const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
@@ -336,4 +337,28 @@ test('R00134: web/kosten.js exportiert zaehlwort nicht mehr — eine Zählwort-H
   const kosten = require('../../web/kosten.js');
   assert.strictEqual(Object.hasOwn(kosten, 'zaehlwort'), false, 'keine zweite Definition in web/kosten.js');
   assert.strictEqual(typeof require('../../web/kultur.js').zaehlwort, 'function');
+});
+
+/* ── R00171 Zeitraum, Spaltenabschnitt und Aufgabenliste: das Beispielboard mit vier Aufgaben ── */
+const BEISPIEL = require('../tests/r00171-beispielboard.js');
+const JETZT = new Date(BEISPIEL.HEUTE).getTime();
+function beispielAufgabe(vorlage, zusatz = []) {
+  let cost = null;
+  if (vorlage.altePosten) cost = posten('USD', { amount: vorlage.altePosten });
+  return aufgabe(vorlage.nummer, cost, { titel: vorlage.titel, archiviert: vorlage.archiviert || null, reservierung: null, kosteneintraege: [...vorlage.eintraege, ...zusatz] });
+}
+/** `zusatz` hängt weitere Einträge an eine Aufgabe: {2: [FREMDE_SPALTE]}. */
+const beispielAufgaben = (zusatz = {}) => BEISPIEL.AUFGABEN.map(a => beispielAufgabe(a, zusatz[a.nummer]));
+const BEISPIEL_BOARD = { fieber: { zielspalte: null }, spalten: BEISPIEL.SPALTEN.map(name => ({ name, aufgaben: BEISPIEL.AUFGABEN.filter(a => a.spalte === name).map(a => a.nummer) })) };
+/** Stand vor der Karte (main `6ebaeef`), am unveränderten web/kosten.js mit kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), FILTER_LEER) gerechnet und hier festgehalten. */
+const VOR_DER_KARTE = { m: 4, nurSchaetzung: 0, jeWaehrung: [{ waehrung: 'USD', n: 4, eintraege: 1100, posten: { niedrig: 500, hoch: 500 }, niedrig: 1600, hoch: 1600 }] };
+
+test('R00171 B0833 (AK 3, AK 4): ohne Zeitraum und Abschnitt rechnet kostenbericht() das Beispielboard wie vor der Karte — Einträge 11,00, alte Posten 5,00, Summe 16,00 · 4 von 4', () => {
+  assert.deepStrictEqual(kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), FILTER_LEER, JETZT), VOR_DER_KARTE);
+  assert.deepStrictEqual(kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), FILTER_LEER), VOR_DER_KARTE, 'der Aufruf von heute, ohne Uhr');
+});
+
+test('R00171 B0833 (AK 1, Teil Zeitraum): mit Zeitraum 12.11.–13.11. zählen nur die Einträge dieser Tage — 1,00 + 3,46 + 0,54 = 5,00 in 2 von 4 Aufgaben; die alten Posten zählen nicht mit', { todo: 'erwartet rot bis B0834' }, () => {
+  const [usd] = kostenbericht(BEISPIEL_BOARD, beispielAufgaben(), filter(BEISPIEL.ZEITRAUM_12_13), JETZT).jeWaehrung;
+  assert.deepStrictEqual([usd.eintraege, usd.niedrig, usd.hoch, usd.n], [500, 500, 500, 2]);
 });
