@@ -132,7 +132,6 @@ async fn port_null_nennt_den_port_der_anfrage() {
 
 // AK 4: im noch nicht eingerichteten Ordner, ohne `X-KanbanD-Wer`; der Aufruf legt nichts an
 #[tokio::test]
-#[ignore = "erwartet rot: B0893"]
 async fn nicht_eingerichteter_ordner_antwortet_und_bleibt_leer() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
@@ -149,7 +148,6 @@ async fn nicht_eingerichteter_ordner_antwortet_und_bleibt_leer() {
 
 // US-1, AK 4: der Aufruf schreibt nichts — Commits und `git status` unverändert
 #[tokio::test]
-#[ignore = "erwartet rot: B0893"]
 async fn us1_aufruf_schreibt_nichts() {
     let tmp = tempfile::tempdir().unwrap();
     gemeinsam::mit_drei_aufgaben(tmp.path());
@@ -166,7 +164,6 @@ async fn us1_aufruf_schreibt_nichts() {
 // US-3, AK 4: `GET /api/zustand` scheitert an einer Datei ohne Leserecht — die Instanz antwortet trotzdem
 #[cfg(unix)]
 #[tokio::test]
-#[ignore = "erwartet rot: B0893"]
 async fn us3_unlesbare_aufgabendatei_zustand_500_instanz_200() {
     use std::os::unix::fs::PermissionsExt;
     let tmp = tempfile::tempdir().unwrap();
@@ -189,7 +186,6 @@ async fn us3_unlesbare_aufgabendatei_zustand_500_instanz_200() {
 
 // US-3, AK 4: nur lesend — jede andere Methode wird mit 405 abgewiesen
 #[tokio::test]
-#[ignore = "erwartet rot: B0893"]
 async fn us3_andere_methoden_sind_405() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
