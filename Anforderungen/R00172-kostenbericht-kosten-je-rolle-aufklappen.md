@@ -1,6 +1,6 @@
 ---
 id: R00172
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -26,14 +26,14 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 
 **Ausgangslage:** das Beispielboard mit vier Aufgaben aus R00171 mit den Rollen aus Entscheidung 5, Betrachter in +01:00, alle Beträge in USD. **Fall 1** = Zeitraum 12.11.–13.11., Abschnitt „Entwicklung“–„Abnahme“.
 
-- [ ] **AK 1 Rollen im Bereich:** Fall 1, „Kosten je Rolle“ aufgeklappt: architekt 0,54 $ · entwickler 3,46 $ · planer 1,00 $ in dieser Reihenfolge; Rollen 5,00 $ = Summe des Berichts 5,00 $ (0,54 + 3,46 + 1,00).
-- [ ] **AK 2 Bis zur Aufgabe und ihren Einträgen:** Fall 1, „entwickler“ aufgeklappt: Aufgabe #1 mit 3,46 $ und darunter der Eintrag 13.11. 10:34 · „Entwicklung“ · 3,46 $; „planer“: #1 mit 1,00 $; „architekt“: #2 mit 0,54 $.
-- [ ] **AK 3 Ohne Rolle im Bereich:** Fall 1: die Schlusszeile „ohne Rolle“ nennt 5,00 $ mit „nicht in der Summe“.
-- [ ] **AK 4 Ohne Bereiche:** architekt 0,54 $ · entwickler 9,46 $ (#1 5,46 $ = 3,46 + 2,00; #3 4,00 $) · planer 1,00 $ = „Einträge“ 11,00 $; „ohne Rolle“ 5,00 $ zählt mit; Summe 16,00 $.
-- [ ] **AK 5 Folgt dem Bereich, bleibt offen:** Ein Wechsel von Zeitraum oder Abschnitt ändert die Rollensummen (von AK 4 zu Fall 1: entwickler 9,46 $ → 3,46 $); eine aufgeklappte Rolle bleibt dabei und nach einem Live-Ereignis offen.
-- [ ] **AK 6 Tastatur:** Tab erreicht jede Klappe; Enter und Leertaste öffnen und schließen sie.
-- [ ] **AK 7 Schmal:** Bei 375 px Breite kein waagrechtes Scrollen; Rolle und Betrag bleiben lesbar.
-- [ ] **AK 8 Bleibt:** Zugeklappt (Anfangszustand) sind Summen, Aufgabenliste, Eimer und Texte wie vor der Karte — die Proben von R00171 laufen unverändert grün; sichtbar steht „Aufgaben“, nie „Karten“.
+- [x] **AK 1 Rollen im Bereich:** Fall 1, „Kosten je Rolle“ aufgeklappt: architekt 0,54 $ · entwickler 3,46 $ · planer 1,00 $ in dieser Reihenfolge; Rollen 5,00 $ = Summe des Berichts 5,00 $ (0,54 + 3,46 + 1,00).
+- [x] **AK 2 Bis zur Aufgabe und ihren Einträgen:** Fall 1, „entwickler“ aufgeklappt: Aufgabe #1 mit 3,46 $ und darunter der Eintrag 13.11. 10:34 · „Entwicklung“ · 3,46 $; „planer“: #1 mit 1,00 $; „architekt“: #2 mit 0,54 $.
+- [x] **AK 3 Ohne Rolle im Bereich:** Fall 1: die Schlusszeile „ohne Rolle“ nennt 5,00 $ mit „nicht in der Summe“.
+- [x] **AK 4 Ohne Bereiche:** architekt 0,54 $ · entwickler 9,46 $ (#1 5,46 $ = 3,46 + 2,00; #3 4,00 $) · planer 1,00 $ = „Einträge“ 11,00 $; „ohne Rolle“ 5,00 $ zählt mit; Summe 16,00 $.
+- [x] **AK 5 Folgt dem Bereich, bleibt offen:** Ein Wechsel von Zeitraum oder Abschnitt ändert die Rollensummen (von AK 4 zu Fall 1: entwickler 9,46 $ → 3,46 $); eine aufgeklappte Rolle bleibt dabei und nach einem Live-Ereignis offen.
+- [x] **AK 6 Tastatur:** Tab erreicht jede Klappe; Enter und Leertaste öffnen und schließen sie.
+- [x] **AK 7 Schmal:** Bei 375 px Breite kein waagrechtes Scrollen; Rolle und Betrag bleiben lesbar.
+- [x] **AK 8 Bleibt:** Zugeklappt (Anfangszustand) sind Summen, Aufgabenliste, Eimer und Texte wie vor der Karte — die Proben von R00171 laufen unverändert grün; sichtbar steht „Aufgaben“, nie „Karten“.
 
 Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#kosten-je-rolle`.
 
