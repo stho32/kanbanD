@@ -201,3 +201,63 @@ test.describe('R00166 Board mit Phasen', () => {
     expect(await eintraege(page)).toEqual(BLOECKE);
   });
 });
+
+/** Wählt einen Eintrag und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist: die Auswahl trägt den neuen Wert. */
+async function waehle(page, eintrag, wert) {
+  const nachgeladen = page.waitForResponse(antwort => antwort.request().method() === 'GET' && antwort.url().includes('/api/berichte/bewegungen'));
+  await auswahl(page).selectOption({ label: eintrag });
+  await (await nachgeladen).finished();
+  await bereit(page);
+  await expect(auswahl(page)).toHaveValue(wert);
+}
+const commitsSeit = (k, stand) => k.git('log', '--format=%an|%s', `${stand}..HEAD`).split('\n').filter(Boolean);
+
+test('R00166 US-1 bis US-3, AK 5 (B0808): die Wahl „B“ im Burndown rechnet neu, steht im Durchsatz und im Fever Chart und nach dem Neuladen mit genau einem Commit in der Board-Datei', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'verlauf');
+    await expect.poll(() => burndownJeTag(page)).toEqual(OHNE_WAHL.burndown);
+    const vorDerWahl = k.git('rev-parse', 'HEAD');
+    await waehle(page, 'Spalte „B“', 'B');
+    await expect.poll(() => burndownJeTag(page)).toEqual(ZIELSPALTE_B.burndown);
+    await expect(gruppe(page).locator('.muted')).toHaveText(GILT_FUER);
+    await zumBericht(page, k, 'durchsatz');
+    await expect(auswahl(page)).toHaveValue('B');
+    expect(await durchsatzJeTag(page)).toEqual(ZIELSPALTE_B.durchsatz);
+    await page.reload();
+    await bereit(page, '#main .leiste');
+    await zumBericht(page, k, 'fieber');
+    await expect(auswahl(page)).toHaveValue('B');
+    expect(k.lies(BOARD)).toContain('fever: {target-column: B}\n');
+    expect(commitsSeit(k, vorDerWahl).filter(c => !c.startsWith('kanbanD|'))).toEqual([expect.stringMatching(/^Stefan\|.*erledigt heißt „B“$/)]);
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 AK 5, AK 7 (B0808): eine Wahl im Durchsatz gilt im Burndown; zurück auf den Standardblock steht kein Schlüssel mehr in der Board-Datei', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await berichtAm0411(page, k, 'durchsatz');
+    await waehle(page, 'Spalte „B“', 'B');
+    expect(await durchsatzJeTag(page)).toEqual(ZIELSPALTE_B.durchsatz);
+    await zumBericht(page, k, 'verlauf');
+    await expect.poll(() => burndownJeTag(page)).toEqual(ZIELSPALTE_B.burndown);
+    await waehle(page, 'Spalte „Erledigt“ (Standard)', '');
+    await expect.poll(() => burndownJeTag(page)).toEqual(OHNE_WAHL.burndown);
+    expect(k.lies(BOARD)).not.toContain('fever');
+  } finally { await k.stoppen(); }
+});
+
+test('R00166 (B0808): ohne gewähltes „Ich bin …“ greift die Sperre des Fever Charts — nichts wird gespeichert', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel());
+  try {
+    await page.addInitScript(() => localStorage.setItem('kanbanD.board', 'fabrik'));
+    await page.clock.setFixedTime(new Date('2026-11-04T12:00:00+01:00'));
+    await page.goto(`${k.adresse}#/berichte/verlauf`);
+    await bereit(page, '#main .leiste');
+    const [vorher, stand] = [k.lies(BOARD), k.git('rev-parse', 'HEAD')];
+    await auswahl(page).selectOption({ label: 'Spalte „B“' });
+    await expect(page.locator('#ich-hinweis')).toHaveText('Für diese Aktion zuerst wählen, wer du bist.');
+    expect(k.lies(BOARD)).toBe(vorher);
+    expect(k.git('rev-parse', 'HEAD')).toBe(stand);
+  } finally { await k.stoppen(); }
+});

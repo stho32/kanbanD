@@ -648,3 +648,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0805 Burndown rechnet „offen“ und „− erledigt“ bis zum Zielblock | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0806 Durchsatz zählt die Ankunft im Zielblock; Probe im echten Programm und Gate | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0807 Auswahl „Erledigt heißt“ in Burndown und Durchsatz | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #156 R00166 („Erledigt heißt“ je Board) | B0808 Wahl speichern; alle drei Berichte folgen | Standard | 1-2h | 0,1h | 0,1h | autonom |
