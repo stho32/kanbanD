@@ -288,8 +288,9 @@
       ersten Erreichen (sinken nicht); `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
       Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten.
       `zielblock` (R00169, ADR-0027 N5 Punkt 2): der Block, ab dem „erledigt“ gilt, wie im Burndown — `offen` zählt bis dorthin,
-      `fertig` das erste Erreichen einer seiner Erledigt-Spalten; ohne ihn die Abschlussspalte. Bänder, `gesamt` und
-      `angekommen` lesen ihn nicht. */
+      `fertig` das erste Erreichen einer seiner Erledigt-Spalten; ohne ihn die Abschlussspalte. `angekommen` liest ihn nicht;
+      Bänder und `gesamt` nur in einem Fall: eine im Zielblock archivierte Aufgabe gilt als erledigt statt verworfen und
+      bleibt im Bestand — wie im Umfang des Burndowns (R00169 AK 2 vor AK 4). */
   function fluss(bew, f, aufgabeListe, jetzt, start = null, zielblock = null) {
     const spalten = bew.spalten, aufgabeZu = einmalJeAufgabe(aufgabeListe);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));

@@ -75,7 +75,7 @@ test('R00166 B0803 (AK 7) · R00169 B0823 (AK 1): ohne Wahl rechnen alle Bericht
   for (const zielspalte of [null, undefined, '']) assert.deepStrictEqual(berichteDesBoards(zielspalte), VOR_DER_KARTE, `Zielspalte ${zielspalte}`);
 });
 
-test('R00166 B0803 (AK 1–3, AK 8) · R00169 B0823 (AK 2–4, AK 10): mit Zielspalte B ändern sich Burndown (3·0·3, 0·3·0, 1·0·1), Durchsatz (0·3·0) und im Fluss „offen“ (3·0·1) und „fertig“ (0·3·3) — Bänder, „gesamt“, „angekommen“, Durchlaufzeit und „Wie lange noch“ nicht', () => {
+test('R00166 B0803 (AK 1–3, AK 8) · R00169 B0823 (AK 2–4, AK 10): mit Zielspalte B ändern sich Burndown (3·0·3, 0·3·0, 1·0·1), Durchsatz (0·3·0) und im Fluss „offen“ (3·0·1) und „fertig“ (0·3·3) — Bänder, „gesamt“ (ohne archivierte Aufgabe im Zielblock), „angekommen“, Durchlaufzeit und „Wie lange noch“ nicht', () => {
   assert.deepStrictEqual(burndown('B'), MIT_B.burndown);
   assert.deepStrictEqual(durchsatz('B'), MIT_B.durchsatz);
   assert.deepStrictEqual(berichteDesBoards('B'), MIT_ZIELSPALTE_B);

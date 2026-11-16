@@ -39,7 +39,7 @@ Lesart: Mit Zielspalte B ist Fluss „offen“ die Summe der Bänder links von B
 - [x] **AK 1 Ohne Wahl:** Ohne gespeicherte Zielspalte und ohne ausgeschlossene Abschlussspalte sind alle Zahlen und Texte aller Berichte wie vor der Karte (Beispiel: Spalten „ohne Wahl“).
 - [x] **AK 2 Eine Zahl:** Mit Zielspalte B gilt an jedem Tag bei gleichem Filter: Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist Fluss „offen“ die Summe der Bänder links von B (Beispiel: 3 · 0 · 1 und 3 · 3 · 3).
 - [x] **AK 3 „fertig“:** „fertig“ steigt, wenn eine Aufgabe erstmals B oder eine Spalte rechts davon erreicht, und sinkt bei Rücklauf nicht (Beispiel: 0 · 3 · 3).
-- [x] **AK 4 Unberührt:** Bänder, „gesamt“ und „angekommen“ ändern sich durch die Wahl nicht (Beispiel: Spalte „Bänder“ in beiden Fällen gleich).
+- [x] **AK 4 Unberührt:** Bänder, „gesamt“ und „angekommen“ ändern sich durch die Wahl nicht (Beispiel: Spalte „Bänder“ in beiden Fällen gleich). **Ausnahme (Code-Review 2026-11-16, AK 2 geht vor):** Eine Aufgabe, die in einer Spalte des Zielblocks links der Abschlussspalte archiviert ist, gilt mit Wahl als erledigt statt verworfen und bleibt deshalb in ihrem Band und in „gesamt“ — so wie im Umfang des Burndowns seit R00166; ohne Wahl fällt sie ab dem Archivtag heraus.
 - [x] **AK 7a Texte im Fluss:** Über dem Diagramm steht die Zeile „Erledigt heißt“ wie im Burndown; die Kopfleiste sagt „fertig heißt: in „B“ oder rechts davon“, die Legende „fertig (ab „B“)“. Der Satz zur Geltung der Auswahl nennt in Burndown, Durchsatz, Fever Chart und Fluss auch den Kumulativen Fluss. Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#fluss-erledigt-heisst`.
 - [x] **AK 8 Randfall:** Ist die Abschlussspalte im Berichtsfilter ausgeschlossen und nichts gewählt, rechnen Burndown, Fluss, Durchsatz und Fever Chart bis zum Block, den die Auswahl als „(Standard)“ zeigt (Beispiel: Absatz „Randfall“).
 - [x] **AK 9 Phasen:** Auf einem Board mit Phasen und gewählter Phase gilt AK 2 ebenso.
@@ -71,7 +71,7 @@ Die Zeichnung `Dokumentation/Wireframes/D0006.dc.html#fluss-erledigt-heisst` bea
 
 ## Manuelle Nachbereitungstätigkeiten
 
-Bei der Auslieferung sagen: (1) Boards mit gespeicherter Zielspalte zeigen im Kumulativen Fluss andere Zahlen für „offen“ und „fertig“ als vorher, und die Durchlaufzeit öffnet mit anderem „bis“; (2) der Randfall oben ändert Burndown, Fluss und Durchsatz auf Boards, deren Abschlussspalte im Berichtsfilter ausgeschlossen ist.
+Bei der Auslieferung sagen: (1) Boards mit gespeicherter Zielspalte zeigen im Kumulativen Fluss andere Zahlen für „offen“ und „fertig“ als vorher, und die Durchlaufzeit öffnet mit anderem „bis“; (2) der Randfall oben ändert Burndown, Fluss und Durchsatz auf Boards, deren Abschlussspalte im Berichtsfilter ausgeschlossen ist; (3) mit gespeicherter Zielspalte bleiben Aufgaben, die im Zielblock links der Abschlussspalte archiviert wurden, im Kumulativen Fluss in ihrem Band und in „gesamt“ (vorher fielen sie ab dem Archivtag heraus) — dieselbe Zählung wie im Umfang des Burndowns.
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
 

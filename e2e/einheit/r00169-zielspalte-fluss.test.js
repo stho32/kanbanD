@@ -143,6 +143,17 @@ test('R00169 B0824 (AK 3, ADR-0027 Regel 3): archiviert im Zielblock bleibt erle
   assert.deepStrictEqual(rand(bew, null, filter({}), archiviertAm04), [[1, 0, 1], [1, 0, 1], [0, 0, 0]]);
 });
 
+test('R00169 (Code-Review B1, AK 2 vor AK 4): #1 am 03.11. nach C, am 04.11. archiviert — mit Zielspalte B bleibt sie am 04.11. in Band C 1 und in „gesamt“ 1 = Burndown „Umfang“ 1; ohne Wahl sind Band, „gesamt“ und „Umfang“ 0', () => {
+  const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [{ nummer: 1, wechsel: [z(2, 'A'), z(3, 'C')] }] };
+  const archiviertAm04 = () => ({ ...mitDatei(), archiviert: '2026-11-04' });
+  const am0411 = zielspalte => {
+    const { burndown, fluss } = beideBerichte(bew, filter({}), zielspalte, archiviertAm04);
+    return { bandC: fluss[2].jeSpalte.C, gesamt: fluss[2].gesamt, umfang: burndown[2].umfang };
+  };
+  assert.deepStrictEqual(am0411('B'), { bandC: 1, gesamt: 1, umfang: 1 });
+  assert.deepStrictEqual(am0411(null), { bandC: 0, gesamt: 0, umfang: 0 });
+});
+
 const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
 const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [
   { nummer: 1, labels: ['klein'], wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
