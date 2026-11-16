@@ -84,11 +84,13 @@
     return { spalteTokens: mitTokens.length > 0, zeilen, summen };
   }
 
+  /** Ob im Kostenbericht ein Bereich gewählt ist — dann steht „Zurücksetzen“ in der Bereichszeile. */
+  const kostenbereichGewaehlt = f => f.zeitraum !== 'alles';
   /** Bereich des Kostenberichts (R00171): der Zeitraum des Berichtsfilters als Grenzen [von, bis) in der Ortszeit des
       Betrachters. `gesetzt` heißt: es zählen nur noch Einträge im Bereich, alte Posten stehen daneben. */
   function kostenbereich(f, jetzt) {
     const { zeitraumGrenzen } = typeof module !== 'undefined' ? require('./berichte.js') : window;
-    return { gesetzt: f.zeitraum !== 'alles', zeit: zeitraumGrenzen(f, jetzt) };
+    return { gesetzt: kostenbereichGewaehlt(f), zeit: zeitraumGrenzen(f, jetzt) };
   }
   /** Die Einträge einer Aufgabe, die im Bereich zählen; ohne gesetzten Bereich alle. */
   function zaehlendeEintraege(a, bereich) {
@@ -187,10 +189,13 @@
       kostenbericht und bestandNachLabels gar nicht an. */
   const filterOhneZeitraum = f => ({ ...f, zeitraum: 'alles', von: '', bis: '' });
 
-  /** Umfangstext der Summenzeile: „alle Spalten“ nur, wenn ohne Zeitraum kein Filter wirkt. */
-  function kostenUmfang(f) {
+  /** Umfangstext der Summenzeile: „alle Spalten“ nur, wenn ohne Zeitraum kein Filter wirkt — und nie im gewählten
+      Bereich, dort zählen gerade nicht alle. */
+  function kostenUmfang(f, imBereich = false) {
     const { filterAnzahl } = typeof module !== 'undefined' ? require('./berichte.js') : window;
-    return filterAnzahl(filterOhneZeitraum(f)) === 0 ? 'alle Spalten, auch archivierte' : 'nach Filter, auch archivierte';
+    if (filterAnzahl(filterOhneZeitraum(f)) > 0) return 'nach Filter, auch archivierte';
+    if (imBereich) return 'auch archivierte';
+    return 'alle Spalten, auch archivierte';
   }
 
   /** Rückfall (R00105 B0376, generisch R00145 FA 2): führt die offene Aufgabe den gemerkten Anzeigeschlüssel nicht
@@ -203,5 +208,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

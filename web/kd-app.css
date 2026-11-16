@@ -1092,6 +1092,41 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fb-einst select.mini-inp,.fb-einst input[type=date].mini-inp{width:auto;max-width:100%;flex:none}
 /* Bei schmaler Breite bricht das Feld unter seinen Text, statt die Seite quer scrollen zu lassen */
 .fb-einst label{flex:none;flex-wrap:wrap;max-width:100%}
+/* Bereichszeile, Zeilen neben der Summe und Aufgabenliste (R00171, Zeichnung D0006 #kosten-zeitraum-abschnitt) */
+.fb-einst.kost-bereich{gap:6px var(--kd-s5);margin:0;padding:8px var(--kd-s6);border-bottom:1px solid var(--kd-line);background:var(--kd-surface);color:var(--kd-text)}
+.kost-feld{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%}
+.kost-feld>b{font-weight:600}
+.fb-einst.kost-bereich .mini-inp{font-size:12.5px}
+.fb-einst.kost-bereich .btn{height:26px;padding:0 8px;font-size:12px;margin-left:0}
+.fb-einst.kost-bereich>.muted,.fb-einst.kost-bereich>.fehl{flex-basis:100%;font-size:12px}
+.fb-einst.kost-bereich>.fehl{color:var(--kd-warn);font-weight:600}
+.kost-aussen>*{color:var(--kd-muted)}
+.kost-gruppe .kost-gesamt+.kost-aussen>*{margin-top:8px}
+.kost-liste{width:100%;max-width:640px;border-collapse:collapse;table-layout:fixed;font-size:13px;margin-top:4px;background:var(--kd-surface)}
+.kost-liste caption{caption-side:top;text-align:left;padding:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.kost-liste thead th{height:26px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);white-space:nowrap}
+.kost-liste tbody th,.kost-liste td{height:26px;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);text-align:left;font-weight:400;color:var(--kd-text)}
+.kost-liste .nr{width:44px;font-family:var(--kd-mono);font-size:12px;color:var(--kd-muted)}
+.kost-liste .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kost-liste .r{width:84px;text-align:right;font-family:var(--kd-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kost-liste thead .r,.kost-liste thead .nr{font-family:var(--kd-font);font-size:11px}
+.kost-liste .kost-kz{width:92px;white-space:nowrap}
+.kost-leer .kost-hinweis .kost-betrag{font:400 13px/1.5 var(--kd-mono)}
+@media (max-width:640px){
+  .fb-einst.kost-bereich{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:8px;padding:10px 14px}
+  .fb-einst.kost-bereich>.muted,.fb-einst.kost-bereich>.fehl{flex-basis:auto}
+  .kost-feld{display:grid;grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr);align-items:center;gap:6px}
+  .kost-feld>b,.kost-feld>select,.kost-feld>label{grid-column:1/-1}
+  .fb-einst.kost-bereich .kost-feld label{display:grid;grid-template-columns:32px 1fr}
+  .fb-einst.kost-bereich select.mini-inp,.fb-einst.kost-bereich input[type=date].mini-inp,.fb-einst.kost-bereich .btn{height:48px;width:100%;min-width:0;font-size:14px}
+  .fb-einst.kost-bereich .btn{justify-content:center}
+  .kost-feld>.muted{text-align:center}
+  .kost-aussen{margin-top:6px}
+  .kost-liste th,.kost-liste td{padding:0 6px}
+  .kost-liste .nr{width:32px}
+  .kost-liste .r{width:66px}
+  .kost-liste .kost-kz{width:78px}
+}
 
 /* ── Berichtsfilter als Box, zugeklappt, je Filter eine Zeile (R00081) ── */
 .bfilter-box{border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}

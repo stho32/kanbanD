@@ -1151,10 +1151,7 @@ function vBerichtsfilter(leiste) {
   const mb = teile.messbasis ? gruppe('Messbasis', `<span class="muted">letzte</span><input type="number" class="mini-inp bf-tage" min="1" max="3650" data-bf="messbasisTage" value="${f.messbasisTage}" aria-label="Messbasis in Tagen"><span class="muted">Tage, gleitend — beginnt nie vor „Rechnen ab“ und nie vor der ersten Aufgabe</span>`) : '';
   let zr = '';
   if (teile.zeitraum || teile.zeitraumBleibt) {
-    const g = zeitraumGrenzen(f, jetzt);
-    const von = f.zeitraum === 'eigen' ? f.von : g.von ? isoD(g.von) : '';
-    const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(g.bis - 864e5) : '';
-    zr = gruppe(teile.zeitraumTitel || 'Zeitraum', `<select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis">`);
+    zr = gruppe(teile.zeitraumTitel || 'Zeitraum', vZeitraumFelder(f, jetzt));
   }
   const klassen = S.zustand.einstellungen.klassen;
   const farben = klassen.map(k => chip('bf-farbe', k.schluessel, !f.ohneFarben.includes(k.schluessel), `<i class="bf-farbe" style="${cv(k.farbe)}"></i>${esc(k.bezeichnung)}`, f.ohneFarben.includes(k.schluessel) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('')
@@ -1169,6 +1166,14 @@ function vBerichtsfilter(leiste) {
   const lokal = S.ui.bfLokal && S.ui.bfLokal.ungespeichert;
   const zusammen = [`Filter · ${n ? `${n} aktiv` : 'keine'}`, teile.messbasis ? `Messbasis ${f.messbasisTage} T` : '', teile.start ? (start ? `Rechnen ab ${datumAusMs(isoTag(start))}` : 'Rechnen ab der ersten Aufgabe') : '', teile.zeitraumGiltNicht ? 'Zeitraum gilt hier nicht' : '', lokal ? 'nicht gespeichert — zum Speichern „Ich bin …“ wählen' : ''].filter(Boolean).join(' · ');
   return `<details class="bfilter-box"${S.ui.bfOffen ? ' open' : ''}><summary class="bf-zusammen${lokal ? ' lokal' : ''}">${esc(zusammen)}</summary><div class="bfilter" role="group" aria-label="Berichtsfilter">${ab}${mb}${zr}${gruppe('Farben', farben)}${gruppe('Spalten', spalten)}${gruppe(teile.personen === 'zeit' ? 'Zeit von' : 'Zuständig', leute)}${gruppe('Labels', labels)}<div class="bf-fuss"><span class="muted">gespeichert in boards/${esc(S.ui.slug || '')}.md, gilt für alle Berichte dieses Boards und alle, die es ansehen</span>${n ? `<button class="btn bf-leeren" data-act="bf-leeren" data-arg="${leiste}" title="${esc(zuruecksetzenHinweis(teile))}">Zurücksetzen <span class="mono">${n}</span></button>` : ''}</div></div></details>`;
+}
+/** Die drei Felder des Zeitraums (Berichtsfilter, R00043): Auswahl und „von – bis“; bei einem benannten Zeitraum zeigen
+    die Datumsfelder seine Grenzen. */
+function vZeitraumFelder(f, jetzt) {
+  const g = zeitraumGrenzen(f, jetzt);
+  const von = f.zeitraum === 'eigen' ? f.von : g.von ? isoD(g.von) : '';
+  const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(g.bis - 864e5) : '';
+  return `<select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis">`;
 }
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
@@ -1554,34 +1559,69 @@ function vDurchsatzTabelle(d, einheit, zugang) {
   return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th>${zugangKopf}<th scope="col" class="r">Abgang</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th>${zugangZelle(d.zugangGesamt)}<td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
 }
 
-/** Kostenbericht (R00105 US-9 bis US-14, R00165 AK 9): je Währung die angefallenen Kosten — Kosteneinträge, alte Posten und
-    ihre Summe — über alle Spalten und das Archiv; reine Schätzungen werden nur gezählt. Liest nur. */
+/** Kostenbericht (R00105 US-9 bis US-14, R00165 AK 9, R00171): je Währung die angefallenen Kosten — Kosteneinträge, alte
+    Posten und ihre Summe — über alle Spalten und das Archiv, darunter die Aufgaben mit Einträgen; reine Schätzungen werden
+    nur gezählt. Ein gewählter Zeitraum lässt nur die Einträge darin zählen (Zeichnung D0006 #kosten-zeitraum-abschnitt). */
 function vKosten() {
-  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· angefallene API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
+  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· angefallene API-Kosten</span></div>${vBerichtsfilter('kosten')}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
-  const filter = filterOhneZeitraum(S.ui.bf);
-  const bericht = kostenbericht(S.board, S.aufgaben, filter);
-  const aktiv = filterAnzahl(filter) > 0;
-  return `${kopf}<div class="body" id="kosten">${vKostenInhalt(bericht, kostenUmfang(S.ui.bf), aktiv)}</div>`;
+  const jetzt = Date.now(), filter = S.ui.bf;
+  const aufstellung = kostenaufstellung(S.board, S.aufgaben, filter, jetzt);
+  const aktiv = filterAnzahl(filterOhneZeitraum(filter)) > 0;
+  return `${kopf}${vKostenBereich(filter, jetzt)}<div class="body" id="kosten">${vKostenInhalt(aufstellung, kostenUmfang(filter, aufstellung.bereich), aktiv)}</div>`;
 }
-function vKostenInhalt(bericht, umfang, aktiv) {
-  if (bericht.jeWaehrung.length) return vKostenSummen(bericht, umfang);
+/** Die Bereichszeile unter der Filterbox: der Zeitraum des Berichtsfilters und — nur wenn ein Bereich gewählt ist — der
+    eine Knopf, der ihn aufhebt. */
+function vKostenBereich(f, jetzt) {
+  let leeren = '';
+  if (kostenbereichGewaehlt(f)) leeren = '<button class="btn bf-leeren" id="kost-bereich-leeren" data-act="kost-bereich-leeren" aria-label="Zeitraum und Spaltenabschnitt zurücksetzen">Zurücksetzen</button>';
+  return `<section class="fb-einst kost-bereich" id="kost-bereich" role="group" aria-label="Zeitraum und Spaltenabschnitt"><span class="kost-feld"><b>Zeitraum</b>${vZeitraumFelder(f, jetzt)}</span>${leeren}<span class="muted">Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit</span></section>`;
+}
+function vKostenInhalt(aufstellung, umfang, aktiv) {
+  if (aufstellung.gruppen.some(g => g.summe)) return vKostenSummen(aufstellung, umfang);
   let knopf = '';
   if (aktiv) knopf = '<button class="btn bf-leeren kost-reset" data-act="bf-leeren" data-arg="kosten">Zurücksetzen</button>';
-  if (aktiv && bericht.m === 0) return `<div class="kost-leer"><p class="kost-satz">Keine Aufgaben, die zu den Filtern der Berichte passen.</p>${knopf}</div>`;
-  return vKostenLeer(bericht, umfang, knopf);
+  if (aktiv && aufstellung.m === 0) return `<div class="kost-leer"><p class="kost-satz">Keine Aufgaben, die zu den Filtern der Berichte passen.</p>${knopf}</div>`;
+  if (aufstellung.bereich) return vKostenBereichLeer(aufstellung, umfang, knopf);
+  return vKostenLeer(aufstellung, umfang, knopf);
 }
-function vKostenSummen(bericht, umfang) {
-  const gruppen = bericht.jeWaehrung.map(g => vKostenGruppe(g, bericht.m, umfang)).join('');
-  return `<div class="kost-summen">${gruppen}${vNurSchaetzung(bericht.nurSchaetzung)}</div>`;
+function vKostenSummen(aufstellung, umfang) {
+  const mehrereWaehrungen = aufstellung.gruppen.length > 1;
+  const gruppen = aufstellung.gruppen.map(g => vKostenGruppe(g, aufstellung, umfang) + vKostenListe(g, aufstellung.bereich, mehrereWaehrungen)).join('');
+  return `<div class="kost-summen">${gruppen}${vNurSchaetzung(aufstellung.nurSchaetzung)}</div>`;
 }
-/** Eine Gruppe je Währung: „Einträge“ und die Zeile der alten Posten nur, wenn es sie gibt, „Summe“ immer. */
-function vKostenGruppe(g, m, umfang) {
-  let eintraege = '', posten = '';
-  if (g.eintraege != null) eintraege = vKostenTeilzeile('Einträge', geld(g.eintraege, g.waehrung));
-  if (g.posten) posten = vKostenTeilzeile('ohne Datum / ohne Rolle / ohne Spalte', spanne(g.posten.niedrig, g.posten.hoch, g.waehrung, '–'));
-  const summe = `<p class="kost-zeile kost-gesamt"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(g.niedrig, g.hoch, g.waehrung, '–')}</span> <span class="kost-umfang">· ${g.n} von ${m} ${zaehlwort(m, 'Aufgabe', 'Aufgaben')} mit angefallenen Kosten, ${umfang}</span></p>`;
-  return `<div class="kost-gruppe" role="group" aria-label="Angefallene Kosten in ${esc(g.waehrung)}">${eintraege}${posten}${summe}</div>`;
+/** Eine Gruppe je Währung: „Einträge“ und die Zeile der alten Posten nur, wenn es sie gibt, „Summe“ immer — außer in einer
+    Währung, in der im gewählten Bereich nichts zählt. Was nicht in der Summe steht, folgt hinter ihr. */
+function vKostenGruppe(g, aufstellung, umfang) {
+  let eintraege = '', posten = '', summe = '', imBereich = '';
+  if (aufstellung.bereich) imBereich = ' im gewählten Bereich';
+  if (g.summe && g.summe.eintraege != null) eintraege = vKostenTeilzeile('Einträge', geld(g.summe.eintraege, g.waehrung));
+  if (g.summe && g.summe.posten) posten = vKostenTeilzeile(OHNE_DATUM, spanne(g.summe.posten.niedrig, g.summe.posten.hoch, g.waehrung, '–'));
+  if (g.summe) summe = `<p class="kost-zeile kost-gesamt"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(g.summe.niedrig, g.summe.hoch, g.waehrung, '–')}</span> <span class="kost-umfang">· ${g.summe.n} von ${aufstellung.m} ${zaehlwort(aufstellung.m, 'Aufgabe', 'Aufgaben')} mit angefallenen Kosten${imBereich}, ${umfang}</span></p>`;
+  const aussen = kostenAussen(g).map(z => `<p class="kost-zeile kost-teilzeile kost-aussen"><span class="kost-wort">${z.wort}</span> <span class="kost-betrag">${z.betrag}</span> <span class="kost-umfang">· ${z.grund}</span></p>`).join('');
+  return `<div class="kost-gruppe" role="group" aria-label="Angefallene Kosten in ${esc(g.waehrung)}">${eintraege}${posten}${summe}${aussen}</div>`;
+}
+const OHNE_DATUM = 'ohne Datum / ohne Rolle / ohne Spalte';
+/** Was im gewählten Bereich neben der Summe steht und nicht mitzählt → [{wort, betrag, grund}]; ohne Bereich nichts. */
+function kostenAussen(g) {
+  const zeilen = [];
+  if (g.altePostenAussen) zeilen.push({ wort: OHNE_DATUM, betrag: spanne(g.altePostenAussen.niedrig, g.altePostenAussen.hoch, g.waehrung, '–'), grund: 'nicht in der Summe – ohne Datum und Spalte keinem Bereich zuzuordnen' });
+  return zeilen;
+}
+/** Die Aufgaben hinter der Summe einer Währung, nach Nummer; Titel sind fremder Text und stehen nur als Text da. */
+function vKostenListe(g, bereich, mehrereWaehrungen) {
+  if (!g.aufgaben.length) return '';
+  let name = 'Aufgaben mit Einträgen';
+  if (bereich) name += ' im gewählten Bereich';
+  if (mehrereWaehrungen) name += ` (${g.waehrung})`;
+  const zeilen = g.aufgaben.map(a => `<tr><td class="nr">#${a.nummer}</td><th scope="row" class="tt" title="${esc(a.titel)}">${esc(a.titel)}</th><td class="r">${geld(a.cent, g.waehrung)}</td></tr>`).join('');
+  return `<table class="kost-liste"><caption>${esc(name)}</caption><thead><tr><th scope="col" class="nr">Nr.</th><th scope="col" class="tt">Aufgabe</th><th scope="col" class="r">Betrag</th></tr></thead><tbody>${zeilen}</tbody></table>`;
+}
+/** Im gewählten Bereich zählt nichts: der Satz und, was daneben steht — der Knopf, der den Bereich aufhebt, steht in der
+    Bereichszeile; `knopf` hebt wie in den übrigen Leerzuständen die Filter auf. */
+function vKostenBereichLeer(aufstellung, umfang, knopf) {
+  const aussen = aufstellung.gruppen.flatMap(g => kostenAussen(g)).map(z => `<p class="kost-hinweis">${z.wort} <span class="kost-betrag">${z.betrag}</span> · ${z.grund}</p>`).join('');
+  return `<div class="kost-leer"><p class="kost-satz">Im gewählten Bereich sind keine Kosten angefallen · 0 von ${aufstellung.m} ${zaehlwort(aufstellung.m, 'Aufgabe', 'Aufgaben')}, ${umfang}</p>${aussen}${vNurSchaetzung(aufstellung.nurSchaetzung)}${knopf}</div>`;
 }
 function vKostenTeilzeile(wort, betrag) {
   return `<p class="kost-zeile kost-teilzeile"><span class="kost-wort">${wort}</span> <span class="kost-betrag">${betrag}</span></p>`;

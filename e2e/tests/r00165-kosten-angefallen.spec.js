@@ -74,7 +74,7 @@ test.describe('R00165 Bericht und Ansicht „Kosten“: angefallene Kosten', () 
     const eintrag = page.getByRole('menu', { name: 'Berichte' }).getByRole('menuitem', { name: /^Kosten/ });
     await expect(eintrag.locator('small')).toHaveText('Angefallene API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.');
     await eintrag.click();
-    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · angefallene API-Kosten · liest nur');
+    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · angefallene API-Kosten');
     await expect(page.locator('#kosten .kost-gruppe')).toHaveCount(1);
     await expect(zeilen(gruppe(page, 'USD'))).toHaveText([
       `Einträge 4,66${NBSP}$`,

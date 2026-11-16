@@ -1940,6 +1940,7 @@ async function aktion(a, arg, wert) {
         if (f.i == null) liste.push(neu); else liste[f.i] = neu;
         return termineSchreiben(liste, true);
       }
+      case 'kost-bereich-leeren': u.fokus = '#kost-bereich [data-bf="zeitraum"]'; await berichtsfilterSetzen({ zeitraum: 'alles', von: '', bis: '' }); break; // der Knopf verschwindet mit dem Bereich: Fokus auf das Feld „Zeitraum“
       case 'bf-leeren': u.fokus = '.bf-zusammen'; await berichtsfilterSetzen(filterZuruecksetzen(u.bf, BERICHTSLEISTEN[arg])); break; // der Knopf verschwindet mit dem Filter: Fokus auf die Zusammenfassung (ADR-0010)
       case 'still-auch': u.stillAuch = !u.stillAuch; break;
       case 'bestand-tauschen': return bestandAchsenSetzen('tauschen');

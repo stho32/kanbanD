@@ -67,7 +67,7 @@
     durchsatz: { start: true, zeitraumBleibt: true, spalten: true, personen: 'zustaendig' },
     wieLangeNoch: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
     fieber: { start: true, messbasis: true, spalten: true, personen: 'zustaendig' },
-    kosten: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
+    kosten: { spalten: true, personen: 'zustaendig' },
     bestand: { spalten: true, personen: 'zustaendig', zeitraumGiltNicht: true },
   };
 

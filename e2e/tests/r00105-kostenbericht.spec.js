@@ -68,7 +68,7 @@ test.describe('R00105 Kostenbericht', () => {
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/kosten$/);
     await expect(page).toHaveTitle('Berichte · Kosten — kanbanD');
-    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · angefallene API-Kosten · liest nur');
+    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · angefallene API-Kosten');
     await expect(zeilen(page)).toHaveText([`Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
     await expect(page.locator('#kosten .kost-zeile')).toHaveText([`ohne Datum / ohne Rolle / ohne Spalte 2,23–3,23${NBSP}$`, `Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
     await expect(page.getByRole('group', { name: 'Angefallene Kosten in USD' })).toBeVisible();
@@ -134,6 +134,11 @@ test.describe('R00105 Kostenbericht', () => {
   const ALLE = 'alle Spalten, auch archivierte', NACH = 'nach Filter, auch archivierte';
   const summe = (betrag, n, m, umfang) => `Summe ${betrag}${NBSP}$ · ${n} von ${m} Aufgaben mit angefallenen Kosten, ${umfang}`;
   const LETZTE_WOCHE = '---\nstart: 2026-10-01\nreport-filter: {period: vorwoche, window-days: 30}\n---\n';
+  /** Seit R00171 gilt der Zeitraum des Berichtsfilters auch im Kostenbericht: alte Posten tragen kein Datum, stehen dann
+      neben der Summe und zählen nicht mit. */
+  const imBereichLeer = (m, umfang = 'auch archivierte') => `Im gewählten Bereich sind keine Kosten angefallen · 0 von ${m} ${m === 1 ? 'Aufgabe' : 'Aufgaben'}, ${umfang}`;
+  const posteAussen = spanne => `ohne Datum / ohne Rolle / ohne Spalte ${spanne}${NBSP}$ · nicht in der Summe – ohne Datum und Spalte keinem Bereich zuzuordnen`;
+  const bereichZuruecksetzen = page => page.getByRole('button', { name: 'Zeitraum und Spaltenabschnitt zurücksetzen' });
   const spalte = (page, name) => page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
   /**
    * Schaltet einen Spaltenfilter und wartet, bis der Knopf den neuen Zustand zeigt und der geladene Stand gezeichnet ist (ADR-0026 Regel 3).
@@ -233,7 +238,7 @@ test.describe('R00105 Kostenbericht', () => {
     await expect(knopf).toHaveAttribute('title', 'die gezählten Filter aufheben — „Rechnen ab“ bleibt');
   });
 
-  test('US-13: gespeicherter Zeitraum gilt hier nicht, zählt nicht, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {
+  test('US-13, seit R00171 Folge 1: ein gespeicherter Zeitraum gilt auch hier — die alten Posten stehen neben der Summe; er zählt nicht als Filter der Box, die Board-Datei bleibt byte-gleich, das Burndown behält ihn', async ({ page }) => {
     k = await kanbanStarten(einrichten(grundbestand({}, {}, LETZTE_WOCHE)));
     const vorher = pruefsumme(k.lies('boards/fabrik.md'));
     await alsPerson(page, 'st');
@@ -241,8 +246,10 @@ test.describe('R00105 Kostenbericht', () => {
     // erst wenn das Board steht: ein Bericht ohne Board im Hash nähme sonst das voreingestellte statt „fabrik“
     await bereit(page, page.locator('.bahn').first());
     await page.goto(k.adresse + '#/berichte/kosten');
-    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
-    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Zeitraum gilt hier nicht');
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(imBereichLeer(4));
+    await expect(page.locator('#kosten .kost-hinweis')).toHaveText([posteAussen('2,23–3,23')]);
+    await expect(page.getByRole('group', { name: 'Zeitraum und Spaltenabschnitt' }).getByLabel('Zeitraum', { exact: true })).toHaveValue('vorwoche');
+    await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine');
     await filterOeffnen(page);
     await expect(page.locator('.bfilter .bf-k')).toHaveText(['Farben', 'Spalten', 'Zuständig']);
     await page.goto(k.adresse + '#/berichte/verlauf');
@@ -258,7 +265,10 @@ test.describe('R00105 Kostenbericht', () => {
     await page.getByLabel('Zeitraum', { exact: true }).selectOption('vorwoche');
     await expect(page.locator('.bf-zusammen')).toContainText('1 aktiv');
     await page.goto(k.adresse + '#/berichte/kosten');
+    await expect(page.locator('#kosten .kost-satz'), 'seit R00171 gilt der Zeitraum auch hier').toHaveText(imBereichLeer(5));
+    await bereichZuruecksetzen(page).click();
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE)]);
+    await filterOeffnen(page);
     await spalteSchalten(page, 'Fertig');
     await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH)]);
     await spalteSchalten(page, 'Eingang');
@@ -290,16 +300,16 @@ test.describe('R00105 Kostenbericht', () => {
 
   test('US-19: Zurücksetzen im Leerzustand ohne Etikett hebt Spalten auf, Zeitraum, Messbasis und „Rechnen ab“ bleiben', async ({ page }) => {
     await kostenOeffnen(page, grundbestand({}, {}, LETZTE_WOCHE));
-    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(imBereichLeer(4));
     await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
     await filterOeffnen(page);
     await spalteSchalten(page, 'Eingang');
     await spalteSchalten(page, 'In Arbeit');
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 1 Aufgabe, ${NACH}`);
-    await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(imBereichLeer(1, NACH));
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await reset(page).click();
-    await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, ALLE)]);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(imBereichLeer(4));
+    await expect(page.locator('#kosten .kost-hinweis')).toHaveText([posteAussen('2,23–3,23')]);
     await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
     await expect.poll(() => k.lies('boards/fabrik.md')).not.toContain('exclude-columns');
     const datei = k.lies('boards/fabrik.md');
@@ -314,8 +324,9 @@ test.describe('R00105 Kostenbericht', () => {
 
   test('US-19 Gegenbeispiel: im Leerzustand ohne Etikett ist ein gespeicherter Zeitraum allein kein Filter — kein „Zurücksetzen“', async ({ page }) => {
     await kostenOeffnen(page, { ...grundbestand({}, {}, LETZTE_WOCHE), 'aufgaben/0001-eins.md': aufgabeMd(1, 'eins'), 'aufgaben/0002-zwei.md': aufgabeMd(2, 'zwei') });
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 4 Aufgaben, ${ALLE}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(imBereichLeer(4));
     await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
+    await expect(bereichZuruecksetzen(page), 'den Zeitraum hebt der Knopf der Bereichszeile auf').toBeVisible();
   });
 
   for (const breite of [320, 375, 414]) {
