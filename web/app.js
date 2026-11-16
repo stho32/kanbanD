@@ -1454,6 +1454,11 @@ function stiftDerTeilaufgabe(index) {
   return `[role=dialog] .teil-stift[data-arg="${index}"]`;
 }
 
+/** Der Stift (✎) der Zeit mit dieser Kennung — der Auslöser der Zeitkorrektur, an den Esc den Fokus zurückgibt (R00181). */
+function stiftDerZeit(kennung) {
+  return '[role=dialog] ' + knopfSelektor('zeit-edit', kennung);
+}
+
 /** Selektor des Knopfs, der das offene Menü geöffnet hat — Esc gibt ihm den Fokus zurück. */
 function ausloeserDesMenues() {
   const pop = $('#pop');
@@ -2954,6 +2959,8 @@ document.addEventListener('keydown', e => {
     if (S.ui.pop) { S.ui.fokus = ausloeserDesMenues(); S.ui.pop = null; S.ui.ichNoetig = false; render(); return; }
     if (S.ui.umbenennen) { const n = S.ui.umbenennen; S.ui.umbenennen = null; S.ui.fokusKarte = n; render(); return; }
     if (S.ui.teilEdit) { S.ui.fokus = stiftDerTeilaufgabe(S.ui.teilEdit.i); S.ui.teilEdit = null; render(); return; }
+    // die Zeitkorrektur ist ein Bearbeitungsmodus: Esc beendet nur sie, ohne Schreibweg — ihre Felder schreiben allein über `zeit-ok` (R00181)
+    if (S.ui.zeitEdit) { S.ui.fokus = stiftDerZeit(S.ui.zeitEdit); S.ui.zeitEdit = null; render(); return; }
     if (S.ui.setup) { S.ui.setup = null; render(); return; }
     if (S.ui.offen && eingabeVerwerfen(t)) { e.preventDefault(); return; }
     if (S.ui.offen) { verlassenNachholen(); if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) t.blur(); S.ui.offen = null; S.ui.entwurf = null; render(); return; }

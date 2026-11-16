@@ -24,9 +24,9 @@ const MELDUNG_TITEL = 'Die Aufgabe braucht einen Titel';
 const MELDUNG_DAUER = 'Dauer „abc“: z. B. 0:45, 1,5 oder 90 min';
 const MELDUNG_X1 = '„X1“ ist keine Herkunft';
 
-/** Startet kanbanD mit dem Grundbestand, `st` im Browser gewählt, Board geladen; führt Protokoll über jede schreibende Anfrage. */
-async function starten(page) {
-  const k = await kanbanStarten(einrichten(GRUNDBESTAND));
+/** Startet kanbanD mit dem Grundbestand (oder `bestand`), `st` im Browser gewählt, Board geladen; führt Protokoll über jede schreibende Anfrage. */
+async function starten(page, bestand = GRUNDBESTAND) {
+  const k = await kanbanStarten(einrichten(bestand));
   await mutanteEinsetzen(page);
   await alsPerson(page, 'st');
   const schreibend = [];
