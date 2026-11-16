@@ -267,7 +267,7 @@ test('Filter ohne Zeitraum (Kosten, Bestand): gespeicherter Zeitraum fällt weg,
   assert.deepStrictEqual(eigen.zeitraum, 'eigen', 'der gespeicherte Filter bleibt unverändert (Burndown zeigt ihn weiter)');
 });
 
-test('Kostenbericht mit gespeichertem Zeitraum: gleiche Zahlen und Umfang „alle Spalten“', () => {
+test('Kostenbericht, wenn der Zeitraum aus dem Filter genommen ist (filterOhneZeitraum; seit R00171 gilt er im Bericht selbst): gleiche Zahlen, und der Zeitraum allein macht aus „alle Spalten“ kein „nach Filter“', () => {
   const letzteWoche = filter({ zeitraum: 'vorwoche' });
   assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, filterOhneZeitraum(letzteWoche)), kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER));
   assert.strictEqual(kostenUmfang(letzteWoche), ALLE);
@@ -571,4 +571,10 @@ test('R00171 B0842 (AK 8): eine verschwundene Grenze neben einer vorhandenen —
   const beideWeg = aufstellung(abschnitt('Alt', 'Test', BEISPIEL.ZEITRAUM_12_13), { 2: [BEISPIEL.FREMDE_SPALTE] });
   assert.deepStrictEqual(beideWeg.grenzenWeg, [{ seite: 'von', name: 'Alt' }, { seite: 'bis', name: 'Test' }]);
   assert.deepStrictEqual([beideWeg.bereich, beideWeg.gruppen[0].summe.eintraege, beideWeg.gruppen[0].fremdeSpalte], [true, 525, null], 'der Zeitraum gilt weiter, ohne Abschnitt kein Eimer');
+});
+
+test('R00171 B0843: im gewählten Bereich heißt der Umfang nie „alle Spalten“ — „auch archivierte“, mit einem Filter der Box „nach Filter, auch archivierte“', () => {
+  assert.strictEqual(kostenUmfang(filter(BEISPIEL.ZEITRAUM_12_13), true), 'auch archivierte');
+  assert.strictEqual(kostenUmfang(filter({ ...FALL_1, ohneSpalten: ['Eingang'] }), true), 'nach Filter, auch archivierte');
+  assert.strictEqual(kostenUmfang(FILTER_LEER, false), 'alle Spalten, auch archivierte');
 });

@@ -256,9 +256,9 @@
     return { m: bericht.m, nurSchaetzung: bericht.nurSchaetzung, bereich: bereich.gesetzt, erledigtAb, grenzenWeg: verschwundeneGrenzen(board, f), gruppen: [...gruppen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
   }
 
-  /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht
-      (ein Bestand ist keine Bewegung) und bleibt für die übrigen Berichte unverändert gespeichert; „Rechnen ab“ nehmen
-      kostenbericht und bestandNachLabels gar nicht an. */
+  /** Der Berichtsfilter ohne seinen Zeitraum: für „Bestand nach Labels“ (ein Bestand ist keine Bewegung, der Zeitraum
+      gilt dort nicht) und für die Frage, ob im Kostenbericht ein Filter der Box wirkt — der Zeitraum steht dort seit
+      R00171 in der Bereichszeile. Er bleibt für die übrigen Berichte unverändert gespeichert. */
   const filterOhneZeitraum = f => ({ ...f, zeitraum: 'alles', von: '', bis: '' });
 
   /** Umfangstext der Summenzeile: „alle Spalten“ nur, wenn ohne Zeitraum kein Filter wirkt — und nie im gewählten
