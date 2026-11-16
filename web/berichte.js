@@ -710,17 +710,24 @@
   /** Die Blöcke aus „Wie lange noch“ unter dem Filter, von links nach rechts — zur Wahl der Zielspalte (R00079). */
   const fieberBloecke = (bew, f, phasen) => prognoseStufen(bew, bew.spalten.filter(s => !f.ohneSpalten.includes(s)), phasen).map(st => ({ schluessel: st.schluessel, titel: st.titel }));
   /** Der Block, der auf dem Board als erledigt zählt (R00166, ADR-0027 N2 Punkt 2) — die eine Auflösung der gespeicherten
-      Zielspalte für Fever Chart, Burndown und Durchsatz: `block` ist der gespeicherte Block unter dem Filter (sonst null),
-      `zaehlt` er oder der letzte Block, `verschwunden` der Name einer Wahl, die es nicht mehr gibt. `gewaehlt` ist der Schlüssel
-      nur dann, wenn die Wahl von `standard` abweicht — dem Ziel, bis zu dem Burndown und Durchsatz ohne Wahl rechnen; nur
-      dann gibt es `worte` (`zielWorte`), sonst bleiben die Texte der Berichte wie ohne Wahl. */
+      Zielspalte für Fever Chart, Burndown, Durchsatz, Kumulativen Fluss und die Vorgabe „bis“ der Durchlaufzeit: `block` ist
+      der gespeicherte Block unter dem Filter (sonst null), `zaehlt` er oder der letzte Block, `verschwunden` der Name einer
+      Wahl, die es nicht mehr gibt. `gewaehlt` ist der Schlüssel nur dann, wenn der zählende Block von der Abschlussspalte
+      bzw. der letzten Phase abweicht — dem Ziel, bis zu dem die Berichte ohne Zielblock rechnen; nur dann gibt es `worte`
+      (`zielWorte`), sonst bleiben die Texte der Berichte wie ohne Wahl.
+      Schließt der Berichtsfilter die Abschlussspalte aus (R00169, ADR-0027 N5 Punkt 5; nicht auf Boards mit Phasen), zählt
+      ohne Wahl der letzte sichtbare Block, als wäre er gewählt: `gewaehlt`, `standard` und `worte` nennen ihn, und
+      `ausgeschlossen` nennt die Abschlussspalte — nur, wenn nichts gespeichert ist. `block` bleibt die gespeicherte Wahl. */
   function zielblock(bew, f, zielspalte) {
-    const bloecke = fieberBloecke(bew, f, bew.phasen), vorgabe = durchsatzZiel(bew, bew.phasen), standard = vorgabe.name;
+    const bloecke = fieberBloecke(bew, f, bew.phasen), vorgabe = durchsatzZiel(bew, bew.phasen), abschluss = vorgabe.name;
     const block = bloecke.find(x => x.schluessel === zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
-    let verschwunden = null, gewaehlt = null, worte = null;
+    const zaehlt = block || letzter, abschlussFehlt = vorgabe.art === 'spalte' && letzter !== null && f.ohneSpalten.includes(abschluss);
+    let verschwunden = null, gewaehlt = null, worte = null, standard = abschluss, ausgeschlossen = null;
     if (zielspalte && !block) verschwunden = zielspalte;
-    if (block && block.schluessel !== standard) { gewaehlt = block.schluessel; worte = zielWorte(gewaehlt, vorgabe.art === 'phase'); }
-    return { bloecke, block, zaehlt: block || letzter, verschwunden, gewaehlt, standard, worte };
+    if (abschlussFehlt) standard = letzter.schluessel;
+    if (abschlussFehlt && !zielspalte) ausgeschlossen = abschluss;
+    if (zaehlt && zaehlt.schluessel !== abschluss) { gewaehlt = zaehlt.schluessel; worte = zielWorte(gewaehlt, vorgabe.art === 'phase'); }
+    return { bloecke, block, zaehlt, verschwunden, gewaehlt, standard, worte, ausgeschlossen };
   }
   /** Wie Burndown und Durchsatz einen gewählten Zielblock nennen (Zeichnung D0006 #erledigt-heisst): `lang` im Kopftext und im
       Satz unter der Legende des Burndowns, `kurz` hinter „− erledigt“, `bis` im Durchsatz. */

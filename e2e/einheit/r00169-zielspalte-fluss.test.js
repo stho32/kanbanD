@@ -161,3 +161,97 @@ test('R00169 B0824 (AK 9): mit Phasen zählen „offen“ und „fertig“ je Au
     assert.deepStrictEqual(rand(b, zielblock).map(([offen, , gesamt]) => [offen, gesamt]), burndown, `Zielblock ${zielblock}`);
   }
 });
+
+/* ── B0825 Randfall: ausgeschlossene Abschlussspalte ohne Wahl — es zählt der letzte sichtbare Block (ADR-0027 N5 Punkte 5, 6) ── */
+const OHNE_ERLEDIGT = { ohneSpalten: ['Erledigt'] };
+const kern = zb => ({ gewaehlt: zb.gewaehlt, zaehlt: zb.zaehlt && zb.zaehlt.schluessel, verschwunden: zb.verschwunden, standard: zb.standard, ausgeschlossen: zb.ausgeschlossen });
+/** Die Berichte des Rechenbeispiels unter diesem Filter und dieser gespeicherten Zielspalte, verdrahtet wie in web/ansicht.js. */
+function randfall(f, zielspalte = null) {
+  const bew = beispiel(), { ziel, burndown, fluss } = beideBerichte(bew, f, zielspalte), gespeichert = ziel.block && ziel.block.schluessel;
+  const d = B.durchsatz(bew, f, mitDatei, JETZT, null, 'tag', ziel.gewaehlt), p = B.prognose(bew, f, mitDatei, JETZT, null);
+  return {
+    folgen: {
+      burndown: burndown.map(x => [x.hinzugekommen, x.erledigt, x.entfernt, x.offen, x.umfang]),
+      fluss: fluss.map(x => [x.offen, x.fertig, x.gesamt]),
+      durchsatz: { ausgeschlossen: d.zielAusgeschlossen, jeTag: d.perioden.map(x => x.anzahl), ziel: d.ziel.name },
+    },
+    bleiben: {
+      baender: fluss.map(x => [Object.values(x.jeSpalte), x.angekommen]),
+      prognose: [p.umfang, p.phasen.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
+      fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', null, '2026-11-02', gespeichert),
+      fieberSchluessel: B.fieberSchluessel('2026-11-02', f, gespeichert),
+    },
+  };
+}
+/** Was der Randfall nicht anfasst — Stand vor der Karte (main `a66ca77`) mit ausgeschlossener Spalte „Erledigt“ und ohne Wahl,
+    am unveränderten web/berichte.js gerechnet und hier festgehalten: das Fever Chart rechnet schon bis „C“ (1 von 2). */
+const RANDFALL_BLEIBT = {
+  baender: [[[3, 0, 0, 0], 3], [[0, 2, 0, 0], 3], [[1, 0, 1, 0], 3]],
+  prognose: [2, [['B', 2, 1, 1, 2], ['C', 2, 1, 1, 1]]],
+  fieberTag: { datum: '2026-11-04', erledigt: 1, umfang: 2, ende7: [null, null, null, null], ende5: [null, null, null, null] },
+  fieberSchluessel: '{"v":2,"start":"2026-11-02","filter":{"ohneFarben":[],"ohneSpalten":["Erledigt"],"personen":[],"labels":[],"messbasisTage":90}}',
+};
+
+test('R00169 B0825 (AK 8): Abschlussspalte ausgeschlossen, nichts gewählt — `zielblock()` nennt den letzten sichtbaren Block „C“ als gewählt und als Standard, samt Worten und dem Namen der ausgeschlossenen Spalte', () => {
+  const zb = B.zielblock(beispiel(), filter(OHNE_ERLEDIGT), null);
+  assert.deepStrictEqual(kern(zb), { gewaehlt: 'C', zaehlt: 'C', verschwunden: null, standard: 'C', ausgeschlossen: 'Erledigt' });
+  assert.deepStrictEqual(zb.worte, { lang: 'in „C“ oder rechts davon', kurz: 'ab „C“', bis: 'bis „C“' });
+  assert.deepStrictEqual(zb.bloecke.map(x => x.schluessel), ['B', 'C'], 'der letzte Eintrag der Auswahl — „(Standard)“ — ist dieser Block');
+  assert.strictEqual(zb.block, null, 'gespeichert ist nichts: Fever Chart und Cache-Schlüssel lesen weiter diese Stelle');
+});
+
+test('R00169 B0825 (AK 8, Rechenbeispiel „Randfall“): Burndown und Fluss nennen „offen“ 3·2·1 (vor der Karte 3·2·2), der Durchsatz zählt am 03.11. und 04.11. je eine Aufgabe statt „ausgeschlossen“ — Bänder, „Wie lange noch“, Fever Chart und sein Cache-Schlüssel bleiben', () => {
+  const r = randfall(filter(OHNE_ERLEDIGT));
+  assert.deepStrictEqual(r.folgen.burndown.map(x => x[3]), [3, 2, 1]);
+  assert.deepStrictEqual(r.folgen.fluss, [[3, 0, 3], [2, 1, 2], [1, 2, 2]]);
+  assert.deepStrictEqual(r.folgen.durchsatz, { ausgeschlossen: false, jeTag: [0, 1, 1], ziel: 'C' });
+  assert.deepStrictEqual(r.bleiben, RANDFALL_BLEIBT);
+});
+
+test('R00169 B0825 (Entscheidung): eine Aufgabe, die den letzten sichtbaren Block überspringt und direkt in die ausgeschlossene Abschlussspalte geht, ist an dem Tag „− erledigt“, „fertig“ und Abgang und verlässt den Bestand — die Bilanz des Burndowns geht an jedem Tag auf', () => {
+  const r = randfall(filter(OHNE_ERLEDIGT)), tage = r.folgen.burndown;
+  // + hinzugekommen · − erledigt · − entfernt · offen · Umfang: #3 geht am 03.11. von A nach „Erledigt“, #1 am 04.11. nach C
+  assert.deepStrictEqual(tage, [[3, 0, 0, 3, 3], [0, 1, 0, 2, 2], [0, 1, 0, 1, 2]]);
+  for (let i = 1; i < tage.length; i++) {
+    const [hinzugekommen, erledigt, entfernt, offen] = tage[i];
+    assert.strictEqual(offen, tage[i - 1][3] + hinzugekommen - erledigt - entfernt, `Bilanz am Tag ${i + 1}`);
+  }
+  assert.deepStrictEqual(r.folgen.fluss.map(x => x[1]), [0, 1, 2], '„fertig“ zählt #3 am 03.11. mit');
+  assert.deepStrictEqual(r.folgen.durchsatz.jeTag, [0, 1, 1], 'der Durchsatz ebenso');
+});
+
+test('R00169 B0825 (AK 1): ohne ausgeschlossene Abschlussspalte ist nichts anders — auch wenn der Filter andere Spalten ausschließt', () => {
+  for (const ohneSpalten of [[], ['A'], ['B'], ['C'], ['A', 'C']]) {
+    const zb = B.zielblock(beispiel(), filter({ ohneSpalten }), null);
+    assert.deepStrictEqual(kern(zb), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: null, standard: 'Erledigt', ausgeschlossen: null }, `ohne ${ohneSpalten}`);
+    assert.strictEqual(zb.worte, null);
+  }
+  // Stand vor der Karte (main `a66ca77`) mit ausgeschlossener Spalte „B“: #1 und #2 fallen am 03.11. aus dem Bestand
+  assert.deepStrictEqual(randfall(filter({ ohneSpalten: ['B'] })).folgen, {
+    burndown: [[3, 0, 0, 3, 3], [0, 1, 2, 0, 1], [2, 0, 0, 2, 3]], fluss: [[3, 0, 3], [0, 1, 1], [2, 1, 3]], durchsatz: { ausgeschlossen: false, jeTag: [0, 1, 0], ziel: 'Erledigt' },
+  });
+});
+
+test('R00169 B0825: mit ausgeschlossener Abschlussspalte zählt eine gespeicherte Wahl wie gewählt — „B“ bleibt „B“, „C“ rechnet bis „C“ und nicht bis zur ausgeschlossenen Spalte; der Hinweis auf den Filter steht nur ohne Wahl', () => {
+  const f = filter(OHNE_ERLEDIGT);
+  assert.deepStrictEqual(kern(B.zielblock(beispiel(), f, 'B')), { gewaehlt: 'B', zaehlt: 'B', verschwunden: null, standard: 'C', ausgeschlossen: null });
+  assert.deepStrictEqual(kern(B.zielblock(beispiel(), f, 'C')), { gewaehlt: 'C', zaehlt: 'C', verschwunden: null, standard: 'C', ausgeschlossen: null });
+  assert.deepStrictEqual(randfall(f, 'C').folgen, randfall(f, null).folgen);
+  assert.strictEqual(randfall(f, 'C').bleiben.fieberSchluessel, RANDFALL_BLEIBT.fieberSchluessel.replace(/}$/, ',"ziel":"C"}'), 'der Schlüssel liest die gespeicherte Wahl');
+});
+
+test('R00169 B0825 (ADR-0027 N5 Punkt 5): eine Wahl, die es nicht mehr gibt, fällt bei ausgeschlossener Abschlussspalte auf den letzten sichtbaren Block — gemeldet wird nur die verschwundene Wahl', () => {
+  const f = filter(OHNE_ERLEDIGT);
+  for (const zielspalte of ['Abnahme', 'Erledigt']) {
+    assert.deepStrictEqual(kern(B.zielblock(beispiel(), f, zielspalte)), { gewaehlt: 'C', zaehlt: 'C', verschwunden: zielspalte, standard: 'C', ausgeschlossen: null }, `Zielspalte ${zielspalte}`);
+    assert.deepStrictEqual(randfall(f, zielspalte), randfall(f, null));
+  }
+});
+
+test('R00169 B0825: auf einem Board mit Phasen wirkt der Filter nicht auf die Blöcke — die ausgeschlossene Abschlussspalte ändert Ziel und Texte nicht; ohne sichtbaren Block (zwei Spalten) bleibt es beim Stand vor der Karte', () => {
+  const f = filter(OHNE_ERLEDIGT);
+  assert.deepStrictEqual(kern(B.zielblock(mitPhasen(), f, null)), { gewaehlt: null, zaehlt: 'Abnahme', verschwunden: null, standard: 'Abnahme', ausgeschlossen: null });
+  const zweiSpalten = { spalten: ['A', 'Erledigt'], aufgaben: [{ nummer: 1, wechsel: [z(2, 'A'), z(3, 'Erledigt')] }] };
+  assert.deepStrictEqual(kern(B.zielblock(zweiSpalten, f, null)), { gewaehlt: null, zaehlt: null, verschwunden: null, standard: 'Erledigt', ausgeschlossen: null });
+  assert.strictEqual(B.durchsatz(zweiSpalten, f, mitDatei, JETZT, null, 'tag', null).zielAusgeschlossen, true);
+});
