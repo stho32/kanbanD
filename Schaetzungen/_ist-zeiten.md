@@ -760,3 +760,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0895 Rote Proben und Vorher-Werte | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0896 Fokusring für Links, Knöpfe und Filterfeld der Kopfzeile | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0897 Menü „Berichte“ zeichnet den offenen Bericht über aktuelleSeite aus | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0898 Überschrift zweiter Ebene im Aufgabenfenster und im Dialog Neue Aufgabe | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

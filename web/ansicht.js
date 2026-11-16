@@ -217,6 +217,9 @@ function titelVerweis(f) {
   if (!titelFehlt) return '';
   return ` aria-invalid="true" aria-describedby="${NEU_MELDUNG}"`;
 }
+/** Überschrift zweiter Ebene mit dem Namen des Fensters, verborgen vor dem sichtbaren Kopf: die Abschnitte (h3) folgen ohne Sprung (R00184, ADR-0018 Regel 2). */
+const vFensterUeberschrift = name => `<h2 class="vh">${esc(name)}</h2>`;
+
 function vNeu() {
   const f = S.ui.neu;
   if (!f) return '';
@@ -237,7 +240,7 @@ ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-nf="
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
 ${vBeschriftung('origins')}<span class="w"><input class="mini-inp full" data-nf="herkunft" value="${esc(f.herkunft)}" placeholder="I0001 R00014" title="${HERKUNFT_HILFE}" aria-label="Herkunft der neuen Aufgabe"></span></div></aside>`;
   const fuss = `<div class="mod-fuss neu-fuss">${f.fehler ? `<span class="fehl" id="${NEU_MELDUNG}" role="alert">${esc(f.fehler)}</span>` : '<span class="tastenhinweis"><kbd>Enter</kbd> im Titel oder <kbd>Strg</kbd>+<kbd>Enter</kbd> legt an · <kbd>Umschalt</kbd>+<kbd>Strg</kbd>+<kbd>Enter</kbd> und weitere · <kbd>Esc</kbd> abbrechen</span>'}<span class="nf-knoepfe"><button class="btn" data-act="nf-zu">Abbrechen</button><button class="btn" data-act="nf-anlegen" data-arg="weitere">Anlegen und weitere</button><button class="btn btn-haupt" data-act="nf-anlegen" data-arg="">Anlegen</button></span></div>`;
-  return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}><div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${vHinweisAnker('neu')}${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="nf-zu-bg"><div class="mod neu" id="neu-fenster" role="dialog" aria-label="Neue Aufgabe"${stil}>${vFensterUeberschrift('Neue Aufgabe')}<div class="mod-kopf"><span class="id">Neue Aufgabe</span>${b ? `<span class="pfad">${esc(b.titel)} · ${esc(f.spalte || '')}</span>` : '<span class="pfad">ohne Board</span>'}<div class="rechts"><button class="btn btn-sym" data-act="nf-zu" aria-label="Schließen">✕</button></div></div><div class="mod-body">${haupt}${seite}</div>${vHinweisAnker('neu')}${fuss}</div></div>`;
 }
 
 /* ── Aufgabenfenster (Artboard D0003) ── */
@@ -376,7 +379,7 @@ function vFenster() {
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
     : `<div class="mod-main">${vFensterInhalt(a)}</div>${vInhaltSpalte(a)}`;
-  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${kopf}${archivLeiste}<div class="mod-body ${tab === 'inhalt' ? 'mit-spalte' : 'voll'}" data-ansicht="${tab}" role="group" aria-label="Ansicht: ${esc((reiterDerAufgabe(a).find(([k]) => k === tab) || [null, 'Inhalt'])[1])}">${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
+  return `<div class="mod-bg" data-act="schliessen-bg"><div class="mod" id="fenster" tabindex="-1" role="dialog" aria-label="Aufgabe #${a.nummer}"${stil}>${vFensterUeberschrift('Aufgabe #' + a.nummer)}${kopf}${archivLeiste}<div class="mod-body ${tab === 'inhalt' ? 'mit-spalte' : 'voll'}" data-ansicht="${tab}" role="group" aria-label="Ansicht: ${esc((reiterDerAufgabe(a).find(([k]) => k === tab) || [null, 'Inhalt'])[1])}">${panel}</div>${vHinweisAnker('fenster')}${fuss}</div></div>`;
 }
 /** Der Reiter „Inhalt“ (R00127): die Arbeit an der Aufgabe — Titel, Beschreibung, Teilaufgaben, Kommentare, Durchläufe, sonst nichts. */
 function vFensterInhalt(a) {
