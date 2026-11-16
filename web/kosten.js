@@ -57,21 +57,69 @@
   /** Reihenfolge der Währungszeilen: USD zuerst, dann alphabetisch nach ISO-Code. */
   const waehrungVor = (a, b) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b));
 
-  /** Board (Spalten samt archivierter Aufgaben) + Aufgaben + Filter der Berichte → {m, jeWaehrung: [{waehrung, n, niedrig, hoch}]}
-      in Cent. m zählt alle passenden Aufgaben in den Spalten, n und Summen die davon mit Etikett; der Filter wirkt über
-      Spalten, Klasse, Zuständige und Labels wie in den übrigen Berichten. */
+  /** Alte Posten (cost.items) zählen als angefallen (R00165); ein cost ohne Posten ist eine Schätzung und zählt nie. */
+  const hatAltePosten = a => Boolean(a.cost) && (a.cost.items || []).length > 0;
+  const hatEintraege = a => (a.kosteneintraege || []).length > 0;
+  const nurSchaetzung = a => Boolean(a.cost) && !hatAltePosten(a) && !hatEintraege(a);
+
+  /** Kosteneinträge aus GET → [{waehrung, cent, tokens}] je Währung des Eintrags, USD zuerst; tokens ist die Summe über die
+      Einträge mit Tokens, ohne solche null. Die eine Summe der Einträge — der Bericht und die Ansicht rechnen beide hiermit. */
+  function summenDerEintraege(eintraege) {
+    const summen = new Map();
+    for (const e of eintraege) {
+      const bisher = summen.get(e.currency) || { waehrung: e.currency, cent: 0, tokens: null };
+      let tokens = bisher.tokens;
+      if (e.tokens != null) tokens = (tokens || 0) + e.tokens;
+      summen.set(e.currency, { ...bisher, cent: bisher.cent + inCent(e.amount), tokens });
+    }
+    return [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung));
+  }
+
+  /** Angefallene Kosten einer Aufgabe → [{waehrung, eintraege, posten}] in Cent: je Währung die Summe ihrer Einträge
+      (ohne Eintrag null) und die Spanne ihrer alten Posten {niedrig, hoch} (ohne Posten null). */
+  function angefalleneKosten(a) {
+    const teile = summenDerEintraege(a.kosteneintraege || []).map(s => ({ waehrung: s.waehrung, eintraege: s.cent, posten: null }));
+    if (!hatAltePosten(a)) return teile;
+    const k = kostenInCent(a.cost), posten = { niedrig: k.min, hoch: k.max };
+    const gleicheWaehrung = teile.find(t => t.waehrung === k.waehrung);
+    if (!gleicheWaehrung) return [...teile, { waehrung: k.waehrung, eintraege: null, posten }];
+    return teile.map(t => (t === gleicheWaehrung ? { ...t, posten } : t));
+  }
+
+  /** null heißt „kommt nicht vor“ und bleibt es, bis ein Wert dazukommt — so trägt eine Gruppe nur die Zeilen, die es gibt. */
+  function plus(summe, wert) {
+    if (wert == null) return summe;
+    return (summe || 0) + wert;
+  }
+  function gruppeMitAufgabe(gruppe, teil) {
+    let posten = gruppe.posten;
+    if (teil.posten) posten = { niedrig: plus(posten && posten.niedrig, teil.posten.niedrig), hoch: plus(posten && posten.hoch, teil.posten.hoch) };
+    return { ...gruppe, n: gruppe.n + 1, eintraege: plus(gruppe.eintraege, teil.eintraege), posten };
+  }
+  /** „Summe“ der Gruppe: Einträge zählen in Unter- und Obergrenze, alte Posten mit ihrer Spanne. */
+  function mitSumme(gruppe) {
+    const eintraege = gruppe.eintraege || 0, posten = gruppe.posten || { niedrig: 0, hoch: 0 };
+    return { ...gruppe, niedrig: eintraege + posten.niedrig, hoch: eintraege + posten.hoch };
+  }
+
+  /** Board (Spalten samt archivierter Aufgaben) + Aufgaben + Filter der Berichte →
+      {m, nurSchaetzung, jeWaehrung: [{waehrung, n, eintraege, posten, niedrig, hoch}]} in Cent (R00165 AK 9). m zählt alle
+      passenden Aufgaben in den Spalten, n die davon mit Einträgen oder alten Posten in dieser Währung, nurSchaetzung die
+      mit Schätzung, aber ohne beides; der Filter wirkt über Spalten, Klasse, Zuständige und Labels wie in den übrigen Berichten. */
   function kostenbericht(board, aufgaben, f) {
     const { aufgabePasst } = typeof module !== 'undefined' ? require('./berichte.js') : window;
     const nachNummer = new Map(aufgaben.map(a => [a.nummer, a]));
     const gezaehlt = board.spalten.filter(sp => !f.ohneSpalten.includes(sp.name))
       .flatMap(sp => sp.aufgaben.map(nr => nachNummer.get(nr)))
       .filter(a => aufgabePasst(f, a));
-    const summen = new Map();
-    for (const a of gezaehlt.filter(x => x && x.cost)) {
-      const k = kostenInCent(a.cost), s = summen.get(k.waehrung) || { waehrung: k.waehrung, n: 0, niedrig: 0, hoch: 0 };
-      summen.set(k.waehrung, { ...s, n: s.n + 1, niedrig: s.niedrig + k.min, hoch: s.hoch + k.max });
+    const lesbar = gezaehlt.filter(Boolean);
+    const gruppen = new Map();
+    for (const teil of lesbar.flatMap(angefalleneKosten)) {
+      const bisher = gruppen.get(teil.waehrung) || { waehrung: teil.waehrung, n: 0, eintraege: null, posten: null };
+      gruppen.set(teil.waehrung, gruppeMitAufgabe(bisher, teil));
     }
-    return { m: gezaehlt.length, jeWaehrung: [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung)) };
+    const jeWaehrung = [...gruppen.values()].map(mitSumme).sort((a, b) => waehrungVor(a.waehrung, b.waehrung));
+    return { m: gezaehlt.length, nurSchaetzung: lesbar.filter(nurSchaetzung).length, jeWaehrung };
   }
 
   /** Filter der Berichte für Bestandsberichte (Kosten, Bestand nach Labels): ein gespeicherter Zeitraum gilt dort nicht

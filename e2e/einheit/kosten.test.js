@@ -88,48 +88,51 @@ test('Gegenbeispiel: Positionen ohne Tokens — keine Spalte Tokens, Summe ohne 
 
 /* ── Kostenbericht (B0371): Grundbestand aus F0041 ── */
 const aufgabe = (nummer, cost = null, mehr = {}) => ({ nummer, klasse: null, zustaendige: [], labels: [], archiviert: null, cost, ...mehr });
+/** Seit R00165 zählt der Bericht angefallene Kosten: der Grundbestand trägt seine Beträge als alte Posten (cost.items). */
+const posten = (currency, wert) => ({ currency, items: [{ text: 'Bau', ...wert }] });
+const nurPosten = (waehrung, n, niedrig, hoch) => ({ waehrung, n, eintraege: null, posten: { niedrig, hoch }, niedrig, hoch });
 const spalten = (eingang, inArbeit, fertig) => ({ spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'In Arbeit', aufgaben: inArbeit }, { name: 'Fertig', aufgaben: fertig }] });
-const GRUND = [aufgabe(1, usd({ min: 0.6, max: 1.6 })), aufgabe(2, usd({ amount: 1.63 }), { klasse: 'drift' }), aufgabe(3), aufgabe(4)];
+const GRUND = [aufgabe(1, posten('USD', { min: 0.6, max: 1.6 })), aufgabe(2, posten('USD', { amount: 1.63 }), { klasse: 'drift' }), aufgabe(3), aufgabe(4)];
 const GRUND_BOARD = spalten([1, 4], [2], [3]);
-const ARCHIV = [...GRUND, aufgabe(5, usd({ amount: 0.5 }), { archiviert: '2026-11-01' }), aufgabe(6, usd({ min: 0.1, max: 0.3 }), { archiviert: '2026-11-02' })];
+const ARCHIV = [...GRUND, aufgabe(5, posten('USD', { amount: 0.5 }), { archiviert: '2026-11-01' }), aufgabe(6, posten('USD', { min: 0.1, max: 0.3 }), { archiviert: '2026-11-02' })];
 const ARCHIV_BOARD = spalten([1, 4, 6], [2], [3, 5]);
 const filter = mehr => ({ ...FILTER_LEER, ...mehr });
 
-test('Kostenbericht: Summe je Währung über die Aufgaben mit Etikett, m über alle Aufgaben des Boards', () => {
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, FILTER_LEER), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
-  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER), { m: 6, jeWaehrung: [{ waehrung: 'USD', n: 4, niedrig: 283, hoch: 403 }] }, 'archivierte zählen mit');
+test('Kostenbericht: Summe je Währung über die Aufgaben mit angefallenen Kosten, m über alle Aufgaben des Boards', () => {
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, FILTER_LEER), { m: 4, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 2, 223, 323)] });
+  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, FILTER_LEER), { m: 6, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 4, 283, 403)] }, 'archivierte zählen mit');
 });
 
 test('Kostenbericht: je Währung eine Zeile, USD zuerst, dann alphabetisch', () => {
-  const mitEur = [...ARCHIV, aufgabe(7, { currency: 'EUR', amount: 25.55 })];
+  const mitEur = [...ARCHIV, aufgabe(7, posten('EUR', { amount: 25.55 }))];
   assert.deepStrictEqual(kostenbericht(spalten([1, 4, 6, 7], [2], [3, 5]), mitEur, FILTER_LEER).jeWaehrung,
-    [{ waehrung: 'USD', n: 4, niedrig: 283, hoch: 403 }, { waehrung: 'EUR', n: 1, niedrig: 2555, hoch: 2555 }]);
-  const mitChf = [...mitEur, aufgabe(8, { currency: 'CHF', amount: 2 }), aufgabe(9, { currency: 'AUD', amount: 1 })];
+    [nurPosten('USD', 4, 283, 403), nurPosten('EUR', 1, 2555, 2555)]);
+  const mitChf = [...mitEur, aufgabe(8, posten('CHF', { amount: 2 })), aufgabe(9, posten('AUD', { amount: 1 }))];
   assert.deepStrictEqual(kostenbericht(spalten([1, 4, 6, 7, 8, 9], [2], [3, 5]), mitChf, FILTER_LEER).jeWaehrung.map(z => z.waehrung), ['USD', 'AUD', 'CHF', 'EUR']);
-  const ohneUsd = [aufgabe(1, { currency: 'EUR', amount: 1 }), aufgabe(2, { currency: 'CHF', amount: 1 })];
+  const ohneUsd = [aufgabe(1, posten('EUR', { amount: 1 })), aufgabe(2, posten('CHF', { amount: 1 }))];
   assert.deepStrictEqual(kostenbericht(spalten([1, 2], [], []), ohneUsd, FILTER_LEER).jeWaehrung.map(z => z.waehrung), ['CHF', 'EUR']);
 });
 
 test('Kostenbericht Gegenbeispiele: Aufgabe auf keinem Board, Leerfälle', () => {
-  const mitFremder = [...GRUND, aufgabe(10, usd({ amount: 5 }))];
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitFremder, FILTER_LEER), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] }, 'nicht auf dem Board → zählt nicht');
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, [aufgabe(1), aufgabe(2), aufgabe(3), aufgabe(4)], FILTER_LEER), { m: 4, jeWaehrung: [] }, 'kein Etikett');
-  assert.deepStrictEqual(kostenbericht(spalten([], [], []), [], FILTER_LEER), { m: 0, jeWaehrung: [] }, 'Board ohne Aufgaben');
+  const mitFremder = [...GRUND, aufgabe(10, posten('USD', { amount: 5 }))];
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitFremder, FILTER_LEER), { m: 4, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 2, 223, 323)] }, 'nicht auf dem Board → zählt nicht');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, [aufgabe(1), aufgabe(2), aufgabe(3), aufgabe(4)], FILTER_LEER), { m: 4, nurSchaetzung: 0, jeWaehrung: [] }, 'keine angefallenen Kosten');
+  assert.deepStrictEqual(kostenbericht(spalten([], [], []), [], FILTER_LEER), { m: 0, nurSchaetzung: 0, jeWaehrung: [] }, 'Board ohne Aufgaben');
 });
 
 test('Kostenbericht nach Filter: Spalten, Klasse, Zuständige, Labels', () => {
-  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, filter({ ohneSpalten: ['Fertig'] })), { m: 4, jeWaehrung: [{ waehrung: 'USD', n: 3, niedrig: 233, hoch: 353 }] });
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Fertig'] })), { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] }, '2 von 3');
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang'] })), { m: 2, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 163, hoch: 163 }] }, '1,63 · 1 von 2');
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneFarben: ['drift'] })), { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 60, hoch: 160 }] }, 'Klasse drift aus');
+  assert.deepStrictEqual(kostenbericht(ARCHIV_BOARD, ARCHIV, filter({ ohneSpalten: ['Fertig'] })), { m: 4, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 3, 233, 353)] });
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Fertig'] })), { m: 3, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 2, 223, 323)] }, '2 von 3');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang'] })), { m: 2, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 1, 163, 163)] }, '1,63 · 1 von 2');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneFarben: ['drift'] })), { m: 3, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 1, 60, 160)] }, 'Klasse drift aus');
   const mitPerson = GRUND.map(a => a.nummer === 1 ? { ...a, zustaendige: ['st'], labels: ['x'] } : a);
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitPerson, filter({ personen: ['st'] })), { m: 1, jeWaehrung: [{ waehrung: 'USD', n: 1, niedrig: 60, hoch: 160 }] });
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitPerson, filter({ personen: ['st'] })), { m: 1, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 1, 60, 160)] });
   assert.deepStrictEqual(kostenbericht(GRUND_BOARD, mitPerson, filter({ labels: ['x'] })).m, 1);
-  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang', 'In Arbeit', 'Fertig'] })), { m: 0, jeWaehrung: [] }, 'alle Spalten aus');
+  assert.deepStrictEqual(kostenbericht(GRUND_BOARD, GRUND, filter({ ohneSpalten: ['Eingang', 'In Arbeit', 'Fertig'] })), { m: 0, nurSchaetzung: 0, jeWaehrung: [] }, 'alle Spalten aus');
 });
 
-test('Kostenbericht: eine Nummer in der Spalte ohne lesbare Aufgabe zählt in m wie in den übrigen Berichten, ohne Etikett', () => {
-  assert.deepStrictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, FILTER_LEER), { m: 5, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
+test('Kostenbericht: eine Nummer in der Spalte ohne lesbare Aufgabe zählt in m wie in den übrigen Berichten, ohne Kosten', () => {
+  assert.deepStrictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, FILTER_LEER), { m: 5, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 2, 223, 323)] });
   assert.strictEqual(kostenbericht(spalten([1, 4, 11], [2], [3]), GRUND, filter({ labels: ['x'] })).m, 0, 'mit Label-Filter passt sie nicht');
 });
 
@@ -138,17 +141,69 @@ const eintrag = (amount, mehr = {}) => ({ at: '2026-11-13 10:34+01:00', role: 'e
 const ALTE_POSTEN = usd({ items: [{ text: 'Planung', min: 0.10, max: 0.20 }, { text: 'Bau', amount: 0.30 }] });
 const SCHAETZUNG = usd({ amount: 1.63 });
 
-test('Rechenbeispiel R00165 AK 9: Einträge 4,66 · alte Posten 0,40–0,50 · Summe 5,06–5,16 · 2 von 4, die Schätzung zählt nicht', { todo: 'erwartet rot bis B0800' }, () => {
+test('Rechenbeispiel R00165 AK 9: Einträge 4,66 · alte Posten 0,40–0,50 · Summe 5,06–5,16 · 2 von 4, die Schätzung zählt nicht', () => {
   const aufgaben = [aufgabe(1, null, { kosteneintraege: [eintrag(3.46), eintrag(1.20, { at: '2026-11-13 11:02+01:00' })] }), aufgabe(2, ALTE_POSTEN), aufgabe(3, SCHAETZUNG), aufgabe(4)];
   assert.deepStrictEqual(kostenbericht(spalten([3, 4], [1], [2]), aufgaben, FILTER_LEER),
     { m: 4, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 466, posten: { niedrig: 40, hoch: 50 }, niedrig: 506, hoch: 516 }] });
 });
 
-test('Rechenbeispiel der Zeichnung (Bericht Bild 1): Einträge 5,18 · alte Posten 0,40–0,50 · Summe 5,58–5,68 · 2 von 3', { todo: 'erwartet rot bis B0800' }, () => {
+test('Rechenbeispiel der Zeichnung (Bericht Bild 1): Einträge 5,18 · alte Posten 0,40–0,50 · Summe 5,58–5,68 · 2 von 3', () => {
   const drei = [eintrag(3.46), eintrag(1.20, { at: '2026-11-13 11:02+01:00' }), eintrag(0.52, { at: '2026-11-12 16:48+01:00', role: 'planer', column: 'Detailplanung' })];
   const aufgaben = [aufgabe(1, null, { kosteneintraege: drei }), aufgabe(2, ALTE_POSTEN), aufgabe(3, SCHAETZUNG)];
   assert.deepStrictEqual(kostenbericht(spalten([3], [1], [2]), aufgaben, FILTER_LEER),
     { m: 3, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 518, posten: { niedrig: 40, hoch: 50 }, niedrig: 558, hoch: 568 }] });
+});
+
+const nurEintraege = (waehrung, n, cent) => ({ waehrung, n, eintraege: cent, posten: null, niedrig: cent, hoch: cent });
+const mitEintraegen = (nummer, eintraege, cost = null, mehr = {}) => aufgabe(nummer, cost, { kosteneintraege: eintraege, ...mehr });
+
+test('Schaden 1: Beträge in ganzen Cent — 0,10 + 0,20 + 3,46 ergibt genau 376, jeder Eintrag einmal in seiner Währung', () => {
+  const gemischt = [eintrag(0.10), eintrag(0.20), eintrag(3.46), eintrag(25.55, { currency: 'EUR' })];
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [mitEintraegen(1, gemischt)], FILTER_LEER),
+    { m: 1, nurSchaetzung: 0, jeWaehrung: [nurEintraege('USD', 1, 376), nurEintraege('EUR', 1, 2555)] });
+  const zehnmal = Array.from({ length: 10 }, () => eintrag(0.10));
+  assert.notStrictEqual(zehnmal.reduce((summe, e) => summe + e.amount, 0), 1, 'Gegenprobe: als Gleitkommazahlen addiert sind zehnmal 0,10 nicht 1,00');
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [mitEintraegen(1, zehnmal)], FILTER_LEER).jeWaehrung, [nurEintraege('USD', 1, 100)]);
+});
+
+test('Schaden 1: Einträge und alte Posten derselben Aufgabe zählen beide, die Aufgabe einmal in n; Posten in ihrer eigenen Währung', () => {
+  const beides = mitEintraegen(1, [eintrag(3.46)], ALTE_POSTEN);
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [beides], FILTER_LEER).jeWaehrung,
+    [{ waehrung: 'USD', n: 1, eintraege: 346, posten: { niedrig: 40, hoch: 50 }, niedrig: 386, hoch: 396 }]);
+  const postenInEur = mitEintraegen(1, [eintrag(3.46)], posten('EUR', { min: 1, max: 2 }));
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [postenInEur], FILTER_LEER).jeWaehrung,
+    [nurEintraege('USD', 1, 346), nurPosten('EUR', 1, 100, 200)]);
+});
+
+test('Schaden 2: reine Schätzungen zählen in keiner Summe und in keinem n, werden aber gezählt ausgewiesen', () => {
+  const zweiSchaetzungen = [aufgabe(1, SCHAETZUNG), aufgabe(2, { currency: 'EUR', min: 1, max: 2 }), aufgabe(3)];
+  assert.deepStrictEqual(kostenbericht(spalten([1, 2, 3], [], []), zweiSchaetzungen, FILTER_LEER), { m: 3, nurSchaetzung: 2, jeWaehrung: [] });
+  const schaetzungUndEintrag = mitEintraegen(1, [eintrag(1.20)], SCHAETZUNG);
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [schaetzungUndEintrag], FILTER_LEER),
+    { m: 1, nurSchaetzung: 0, jeWaehrung: [nurEintraege('USD', 1, 120)] }, 'Schätzung neben Einträgen bleibt unerwähnt, ihre 1,63 zählen nicht');
+  const leerePostenliste = aufgabe(1, usd({ amount: 1.63, items: [] }));
+  assert.deepStrictEqual(kostenbericht(spalten([1], [], []), [leerePostenliste], FILTER_LEER), { m: 1, nurSchaetzung: 1, jeWaehrung: [] });
+});
+
+test('Schaden 3: Spannen alter Posten bleiben Spannen in der Summe, Einträge zählen in Unter- und Obergrenze', () => {
+  const aufgaben = [mitEintraegen(1, [eintrag(4.66)]), aufgabe(2, posten('USD', { min: 0.6, max: 1.6 })), aufgabe(3, posten('USD', { amount: 1.63 }))];
+  assert.deepStrictEqual(kostenbericht(spalten([1, 2, 3], [], []), aufgaben, FILTER_LEER).jeWaehrung,
+    [{ waehrung: 'USD', n: 3, eintraege: 466, posten: { niedrig: 223, hoch: 323 }, niedrig: 689, hoch: 789 }]);
+});
+
+test('Schaden 4: Filter (Person, Label, Farbe, Spalten) wirken auf Einträge, alte Posten und Schätzungen gleich; archivierte zählen', () => {
+  const mehr = { zustaendige: ['st'], labels: ['x'], klasse: 'drift' };
+  const aufgaben = [mitEintraegen(1, [eintrag(3.46)], null, mehr), aufgabe(2, ALTE_POSTEN, mehr), aufgabe(3, SCHAETZUNG, mehr),
+    mitEintraegen(4, [eintrag(1.20)], null, { archiviert: '2026-11-02' }), aufgabe(5, ALTE_POSTEN), aufgabe(6, SCHAETZUNG)];
+  const board = spalten([1, 2, 3], [], [4, 5, 6]);
+  const alle = { m: 6, nurSchaetzung: 2, jeWaehrung: [{ waehrung: 'USD', n: 4, eintraege: 466, posten: { niedrig: 80, hoch: 100 }, niedrig: 546, hoch: 566 }] };
+  const nurMarkierte = { m: 3, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 346, posten: { niedrig: 40, hoch: 50 }, niedrig: 386, hoch: 396 }] };
+  const ohneMarkierte = { m: 3, nurSchaetzung: 1, jeWaehrung: [{ waehrung: 'USD', n: 2, eintraege: 120, posten: { niedrig: 40, hoch: 50 }, niedrig: 160, hoch: 170 }] };
+  assert.deepStrictEqual(kostenbericht(board, aufgaben, FILTER_LEER), alle, 'ohne Filter, die archivierte #4 zählt');
+  for (const f of [{ personen: ['st'] }, { labels: ['x'] }, { ohneSpalten: ['Fertig'] }])
+    assert.deepStrictEqual(kostenbericht(board, aufgaben, filter(f)), nurMarkierte, JSON.stringify(f));
+  for (const f of [{ ohneFarben: ['drift'] }, { ohneSpalten: ['Eingang'] }])
+    assert.deepStrictEqual(kostenbericht(board, aufgaben, filter(f)), ohneMarkierte, JSON.stringify(f));
 });
 
 /* ── Filter auf den Kostenbericht (B0373): Zeitraum und Rechnen ab gelten nicht ── */
@@ -179,7 +234,7 @@ test('Probe PO Z. 89 mit vierter Spalte „Prüfung“: 1, 2, 3 ausgeschlossene 
     assert.doesNotMatch(kostenUmfang(f), /alle Spalten/, ohne.join(', '));
   }
   assert.deepStrictEqual(kostenbericht(MIT_PRUEFUNG, GRUND, filterOhneZeitraum(filter({ ohneSpalten: ['Prüfung', 'Fertig'] }))),
-    { m: 3, jeWaehrung: [{ waehrung: 'USD', n: 2, niedrig: 223, hoch: 323 }] });
+    { m: 3, nurSchaetzung: 0, jeWaehrung: [nurPosten('USD', 2, 223, 323)] });
   for (const f of [{ ohneFarben: ['drift'] }, { personen: ['st'] }, { labels: ['x'] }, { zeitraum: 'vorwoche', labels: ['x'] }])
     assert.strictEqual(kostenUmfang(filter(f)), NACH_FILTER, JSON.stringify(f));
 });
