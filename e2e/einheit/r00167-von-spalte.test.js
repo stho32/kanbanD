@@ -21,7 +21,7 @@ const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest',
 
 /* ── B0816 Test an der Trennstelle (ADR-0027 N3 Punkt 6) ── */
 /** Alle Berichte eines Boards, verdrahtet wie in web/ansicht.js: Zielblock und Von-Block aus `board.fieber`, die Von-Wahl geht
-    allein an `durchsatz()`. `zugang` sind die Felder, die es vor der Karte nicht gab; alles andere ist `bestand`. */
+    allein an `durchsatz()`; den Zielblock bekommt seit R00169 auch der Kumulative Fluss. `zugang` sind die Felder, die es vor der Karte nicht gab; alles andere ist `bestand`. */
 function berichteDesBoards(board, bew = beispiel()) {
   const f = filter({}), ziel = B.zielblock(bew, f, board.fieber.zielspalte), zielSchluessel = ziel.block && ziel.block.schluessel;
   const von = B.vonblock(bew, f, board.fieber.vonspalte, ziel.zaehlt.schluessel);
@@ -32,12 +32,12 @@ function berichteDesBoards(board, bew = beispiel()) {
     bestand: {
       abgang: { jePeriode: d.perioden.map(x => x.anzahl), gesamt: d.gesamt, durchschnitt: d.durchschnitt, ausgenommen: d.ausgenommen, ziel: d.ziel.name },
       burndown: B.burndown(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).map(x => [x.hinzugekommen, x.erledigt, x.entfernt, x.offen, x.umfang]),
-      fluss: B.fluss(bew, f, mitDatei, JETZT).tage.map(x => [x.jeSpalte, x.offen, x.gesamt, x.angekommen, x.fertig]),
+      fluss: B.fluss(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).tage.map(x => [x.jeSpalte, x.offen, x.gesamt, x.angekommen, x.fertig]),
       durchlaufzeit: B.durchlaufzeiten(bew, f, mitDatei, JETZT, 'Backlog', 'Erledigt'),
       prognose: [p.umfang, p.phasen.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
       fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', null, '2026-11-02', zielSchluessel),
       fieberSchluessel: B.fieberSchluessel('2026-11-02', f, zielSchluessel),
-      ausgenommen: B.ausgenommen(bew, 'burndown', f, mitDatei, JETZT),
+      ausgenommen: B.ausgenommen(bew, 'burndown', f, mitDatei, JETZT, ziel.gewaehlt),
       zielblock: { gewaehlt: ziel.gewaehlt, zaehlt: ziel.zaehlt.schluessel, verschwunden: ziel.verschwunden, standard: ziel.standard },
     },
   };
