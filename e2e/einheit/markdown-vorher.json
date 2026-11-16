@@ -276,9 +276,9 @@
   "ausgabe": "<p><a href=\"https://example.org/w\" target=\"_blank\" rel=\"noopener\"><strong>wichtig</strong></a></p>"
  },
  {
-  "name": "Adresse: Stern in der Adresse (heutiger Stand, ADR-0030 Punkt 5 ändert ihn)",
+  "name": "Adresse: Stern in der Adresse bleibt unformatiert (ADR-0030 Punkt 5, geändert mit Karte #187)",
   "eingabe": "[a](https://example.org/a*b*c)",
-  "ausgabe": "<p><a href=\"https://example.org/a<em>b</em>c\" target=\"_blank\" rel=\"noopener\">a</a></p>"
+  "ausgabe": "<p><a href=\"https://example.org/a*b*c\" target=\"_blank\" rel=\"noopener\">a</a></p>"
  },
  {
   "name": "Nackt: am Zeilenanfang",

@@ -4,14 +4,20 @@
   /** Positivliste (ADR-0030 Punkt 4): kein Zeichen ≤ U+0020 und kein U+007F (der Browser überliest solche Zeichen vor dem Schema), dazu http, https, mailto, vscode oder ohne Schema (relativ). */
   const erlaubt = url => !/[\u0000-\u0020\u007f]/.test(url) && (/^(https?|mailto|vscode):/i.test(url) || !/^[a-z][a-z0-9+.-]*:/i.test(url));
 
-  /** Inline: Code, Links, nackte Adressen, fett, kursiv — auf bereits maskiertem Text. */
+  /** Inline: Code, Links, nackte Adressen, fett, kursiv — auf bereits maskiertem Text. Jede fertige Marke wird sofort durch
+   *  einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und eine
+   *  Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen. */
   function inline(text) {
-    const codes = [];
-    let s = esc(text).replace(/`([^`]+)`/g, (m, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
-    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => erlaubt(u.replace(/&amp;/g, '&')) ? `<a href="${u}" target="_blank" rel="noopener">${t}</a>` : t);
-    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (m, vor, u) => erlaubt(u.replace(/&amp;/g, '&')) ? `${vor}<a href="${u}" target="_blank" rel="noopener">${u}</a>` : m);
-    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
-    return s.replace(/\u0000(\d+)\u0000/g, (m, i) => `<code>${codes[+i]}</code>`);
+    const fertig = [];
+    const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
+    const einsetzen = s => s.replace(/\u0000(\d+)\u0000/g, (m, i) => fertig[+i]);
+    const hervorheben = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    const link = (u, innen) => schuetze(`<a href="${u}" target="_blank" rel="noopener">${innen}</a>`);
+    const gueltig = u => erlaubt(u.replace(/&amp;/g, '&'));
+    let s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => gueltig(u) ? link(u, einsetzen(hervorheben(t))) : t);
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)\u0000]+)/g, (m, vor, u) => gueltig(u) ? vor + link(u, u) : m);
+    return einsetzen(hervorheben(s));
   }
 
   /** Markdown → HTML. Überschriften werden um `stufe` verschoben (# → h(1+stufe)). */

@@ -21,6 +21,8 @@ const FORMEN = {
   'spitze Klammern': adresse => `${KOEDER} <${adresse}>`,
 };
 
+/** U+0000 entfernt der Renderer vor allem anderen (ADR-0030 Punkt 1): was übrig bleibt, wird geprüft wie jede Adresse. */
+const ENTFERNT = 0x00;
 const zeichen = nummer => String.fromCharCode(nummer);
 const kennung = nummer => 'U+' + nummer.toString(16).toUpperCase().padStart(4, '0');
 const bereich = (von, bis) => Array.from({ length: bis - von + 1 }, (leer, i) => von + i);
@@ -36,9 +38,9 @@ const NIE_EIN_LINK = [
     [`${kennung(nummer)} im Schema`, 'java' + zeichen(nummer) + 'script:document.title=%27x%27'],
     [`${kennung(nummer)} vor dem Doppelpunkt`, 'javascript' + zeichen(nummer) + ':document.title=%27x%27'],
     [`${kennung(nummer)} am Ende`, SKRIPT + zeichen(nummer)],
-    [`${kennung(nummer)} in einer relativen Adresse`, 'ordner/da' + zeichen(nummer) + 'tei.md'],
   ]),
-  ...STEUERZEICHEN.flatMap(nummer => [
+  ...[...STEUERZEICHEN, ...LEERRAUM].filter(nummer => nummer !== ENTFERNT).map(nummer => [`${kennung(nummer)} in einer relativen Adresse`, 'ordner/da' + zeichen(nummer) + 'tei.md']),
+  ...STEUERZEICHEN.filter(nummer => nummer !== ENTFERNT).flatMap(nummer => [
     [`${kennung(nummer)} in einer https-Adresse`, 'https://example.org/a' + zeichen(nummer) + 'b'],
     [`${kennung(nummer)} vor https`, zeichen(nummer) + 'https://example.org/'],
   ]),
@@ -67,7 +69,8 @@ const NIE_EIN_LINK = [
 /** Adressen, die ein Link sein dürfen — aber nur einer, den der Browser als http, https, mailto oder vscode liest: [Name, Adresse]. */
 const HOECHSTENS_HARMLOS = [
   // Leerraum beendet eine Adresse: der Teil davor oder dahinter darf als eigene, saubere https-Adresse ein Link sein
-  ...LEERRAUM.flatMap(nummer => [
+  ...[ENTFERNT, ...LEERRAUM].flatMap(nummer => [
+    [`${kennung(nummer)} in einer relativen Adresse, die ohne das Zeichen sauber ist`, 'ordner/da' + zeichen(nummer) + 'tei.md'],
     [`${kennung(nummer)} in einer https-Adresse`, 'https://example.org/a' + zeichen(nummer) + 'b'],
     [`${kennung(nummer)} vor https`, zeichen(nummer) + 'https://example.org/'],
   ]),
@@ -197,7 +200,8 @@ test('keine Stufe greift in die Ausgabe einer früheren: Adresse, Linktext, Code
   assert.strictEqual(markdownHtml('siehe https://example.org/a*b*c und *kursiv*'), `<p>siehe ${link('https://example.org/a*b*c', 'https://example.org/a*b*c')} und <em>kursiv</em></p>`);
   assert.strictEqual(markdownHtml('*a [b](x*y) c*'), `<p><em>a ${link('x*y', 'b')} c</em></p>`);
   assert.strictEqual(markdownHtml('[**fett** und `code`](x.md)'), `<p>${link('x.md', '<strong>fett</strong> und <code>code</code>')}</p>`);
-  assert.strictEqual(markdownHtml('**[a](x.md)** und *https://example.org/*'), `<p><strong>${link('x.md', 'a')}</strong> und *${link('https://example.org/*', 'https://example.org/*')}</p>`);
+  assert.strictEqual(markdownHtml('**[a](x.md)** und *siehe https://example.org/x*'), `<p><strong>${link('x.md', 'a')}</strong> und *siehe ${link('https://example.org/x*', 'https://example.org/x*')}</p>`);
+  assert.strictEqual(markdownHtml('siehe https://example.org/`c` und [a](x`c`y)'), `<p>siehe ${link('https://example.org/', 'https://example.org/')}<code>c</code> und a</p>`);
   assert.strictEqual(markdownHtml('[siehe https://example.org/a](https://example.org/b)'), `<p>${link('https://example.org/b', 'siehe https://example.org/a')}</p>`);
   assert.strictEqual(markdownHtml('[x](javascript:y) und [siehe https://example.org/a](javascript:y)'), `<p>x und siehe ${link('https://example.org/a', 'https://example.org/a')}</p>`);
 });

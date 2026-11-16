@@ -726,3 +726,5 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Fester Vergleich „vorher = nachher“: 106 Paare am unveränderten Renderer | Standard | — | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Rote Probe: 296 feindliche Adressen in sieben Formen, gelesen wie der Browser | Standard | — | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Behebung: Positivliste in `erlaubt()`, Mutanten, Browser-Probe alt/neu, betroffene Specs (davon rund 8 min Wartezeit auf Last und Sperre) | Standard | — | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Nacharbeit M1: rote Probe — Ausbruch aus dem href, Strukturprüfung über jede Ausgabe | Nacharbeit | — | 0,2h | 0,2h | autonom |
+| 2026-11-16 | Karte #187 (Sicherheit: Markdown-Link mit Steuerzeichen vor javascript:) | Nacharbeit M1: fertige Marken durch Platzhalter geschützt, U+0000 entfernt, Mutanten, Browser-Probe, betroffene Specs | Nacharbeit | — | 0,3h | 0,3h | autonom |
