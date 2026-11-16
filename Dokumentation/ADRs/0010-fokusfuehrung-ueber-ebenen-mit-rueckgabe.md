@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #8)
 **Kontext-Anforderung**: — (Karte #8 „Fokus in Fenstern und Menüs führen und nach jeder Aktion halten“, Anforderung folgt über den planer)
 **Erprobt durch**: headless Chromium-Probe 2026-11-06 (Scratchpad, nicht versioniert): `inert` gegen natives `<dialog>.showModal()` unter `innerHTML`-Neuzeichnen, siehe Kontext
-**Nachträge**: 2026-11-15 — [N9](#nachtrag-2026-11-15-n9-esc-im-bearbeitungsmodus-eines-fensterfelds-verwirft-und-schreibt-nie): eine Esc-Regel für das Aufgabenfenster — Esc verwirft den Entwurf des fokussierten Textfelds (Titel, Beschreibung, Labels, Enter-Felder), schreibt nie und schließt erst beim zweiten Druck (Karte #54, product-owner 2026-11-15); gebaut mit [R00155](../../Anforderungen/R00155-behebung-aufgabenfenster-felder-und-fenstermeldung.md) (Zweig `karte/54`, `20cb14e`) und am selben Tag auf den gebauten Stand gesetzt: Ziffer 4 ergänzt und berichtigt, Ziffern 7 und 8 neu (Knopf „Eingabe verwerfen“ ohne Zeiger, Enter nach fremdem Neuzeichnen), Vorsorge in der Durchsetzungstabelle benannt. 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). N7b: gebauter Stand (`f8e16e4`) — Leerfall ohne Auslöser, Pop ohne Element ist zu. Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
+**Nachträge**: 2026-11-16 — [N10](#nachtrag-2026-11-16-n10-das-neuzeichnen-nimmt-dem-menschen-nie-fokus-oder-eingabe--wiederfinden-sonst-warten): eine Regel für Fokus und Eingabe über das Neuzeichnen — wiederfinden über den Schlüssel, und nur wo der nicht trägt, wartet das Zeichnen wie beim Zug; ein vorgemerktes Fokusziel überholt den Menschen nicht (Karten #141, #189; Ziffer 2 vorgeschlagen bis zur Probe von #189). 2026-11-15 — [N9](#nachtrag-2026-11-15-n9-esc-im-bearbeitungsmodus-eines-fensterfelds-verwirft-und-schreibt-nie): eine Esc-Regel für das Aufgabenfenster — Esc verwirft den Entwurf des fokussierten Textfelds (Titel, Beschreibung, Labels, Enter-Felder), schreibt nie und schließt erst beim zweiten Druck (Karte #54, product-owner 2026-11-15); gebaut mit [R00155](../../Anforderungen/R00155-behebung-aufgabenfenster-felder-und-fenstermeldung.md) (Zweig `karte/54`, `20cb14e`) und am selben Tag auf den gebauten Stand gesetzt: Ziffer 4 ergänzt und berichtigt, Ziffern 7 und 8 neu (Knopf „Eingabe verwerfen“ ohne Zeiger, Enter nach fremdem Neuzeichnen), Vorsorge in der Durchsetzungstabelle benannt. 2026-11-06 — gebauter Stand nach [R00106](../../Anforderungen/R00106-fokus-in-fenstern-und-menues.md) (kanbanD `429c1e2`), siehe [Nachtrag N1–N6](#nachtrag-2026-11-06-gebauter-stand-r00106). Folgeentscheidungen zu N3 und N5 durch den product-owner (`AI-Team/po-entscheidungen.md:109–110`) stehen dort. 2026-11-06 — [N7](#n7-rang-6-nur-bei-offener-ebene-rückfall-ohne-ebene-nie-auf-ein-fremdes-element): Rang 6 nur bei offener bzw. gerade geschlossener Ebene, neue Invariante (product-owner, `AI-Team/po-entscheidungen.md:111`); präzisiert in N7a: nur bei nach dem Neuzeichnen offener Ebene (`:113`). N7b: gebauter Stand (`f8e16e4`) — Leerfall ohne Auslöser, Pop ohne Element ist zu. Der Text oberhalb des Nachtrags ist der Stand der Annahme und bleibt unverändert; Marken *(→ Nn)* zeigen, wo der Bau abweicht.
 
 ## Kontext
 
@@ -281,6 +281,56 @@ Neben `klapp:<spalte>` (`.bk-name` ↔ `.zu-streifen`) und `spalte:<spalte>` (Fl
 | Gegenprobe | Enter im Titel, Verlassen von Labels und Beschreibung speichern wie bisher | Verwerfen auch beim Verlassen |
 | Knopf „Eingabe verwerfen“ ohne Zeiger (Ziffer 7; `e2e/tests/r00155-eingabe-verwerfen.spec.js:239`) | Entwurf in Labels, Titel, Beschreibung, „Neue Herkunft“; `knopf.focus(); knopf.click()` → wie Esc im selben Feld, nichts geschrieben. Gegenproben: Tab aus Labels speichert; Fokus ruht auf dem Knopf und das Fenster zeichnet neu, wird mit Esc geschlossen oder der Fokus geht weiter → Entwurf gespeichert | Knopf nimmt dem Feld den Fokus (echter Tipp; M-54g). Für das Auslösen ohne Zeiger kein eigener Mutant: der Stand vor dem Fix war rot (6 Proben, `fb8efa3`) |
 | Enter nach fremdem Neuzeichnen (Ziffer 8; `e2e/tests/r00155-esc-verwirft.spec.js:136`) | Titel bzw. Labels tippen, fremde Änderung zeichnet neu, Enter → gespeichert, genau ein Commit; Esc danach verwirft nichts und schließt | kein eigener Mutant: der Stand vor dem Fix war rot (R00155 P-1) |
+
+## Nachtrag 2026-11-16 N10: Das Neuzeichnen nimmt dem Menschen nie Fokus oder Eingabe — wiederfinden, sonst warten
+
+**Status dieses Nachtrags**: Ziffer 1 und 3 `Akzeptiert` (bestehende Systemantwort: Sicherer nach [ADR-0007](0007-sichtzustand-uebersteht-das-neuzeichnen.md), Rangfolge oben). Ziffer 2 `Vorgeschlagen`, bis die Probe der Karte #189 grün ist — sie ist die erste Anwendung.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #141)
+**Erprobt durch**: — (am Code gelesen, kanbanD `b4c6a34`; Browser-Beobachtungen aus den Karten #167, #180, #188)
+
+**Anlass**: Sammelkarte #141 und Vorrang-Karte #189. Vier Befunde haben eine Wurzel — `render()` ersetzt `#kopf`, `#main`, `#over` (`web/app.js:1177–1182`), und was das Ersetzte trug, ist fort, wenn keine der beiden bestehenden Antworten greift:
+
+| Befund | Was verloren geht | Warum die bestehende Antwort nicht greift |
+|---|---|---|
+| #167: Fokus fällt von der Klappe „Kosten je Rolle“ auf die Seite | Fokus | `summary` trägt keinen Schlüssel (`web/ansicht.js:1679`, `:1683`); `fokusstand` liefert `null` (`web/sichtzustand.js:106–111`) |
+| #189: getipptes Datum springt zurück | Zwischenstand der Eingabe | ein halb getipptes Datum steht nicht in `.value`, der Sicherer kann es nicht tragen; `gehaltenesDatumsfeld` und `datumstippen.feld` zeigen auf das ersetzte Element (`web/app.js:2642`, `:2664–2671`) |
+| #180: Klick aus einem Datumsfeld landet im Leeren, Menü braucht zwei Klicks | Klickziel und Fokusziel | das Verlassen speichert und zeichnet im `focusout`, bevor der Klick sein Ziel erreicht hat (`web/app.js:2586–2593`, `:2675–2681`, `:2711–2716`) |
+| #161: Fokus springt auf den Stift | der echte Fokus des Menschen | ein im Nachlauf vorgemerktes Ziel (`fokusNachBeschreibung`, `web/app.js:995–997`, `:2737`) gilt als Rang 1 und schlägt den Sicherer |
+
+„Fokussierte Karte springt nach Live-Ereignis“ (#41) ist seit N2 behoben und gehört nicht mehr dazu.
+
+**Optionen**:
+
+- **A — nur Schlüsselpflicht**: jedes fokussierbare Element bekommt einen Schlüssel, der Sicherer trägt alles. Stärke: ein Mechanismus, nur Markup. Schwäche: trägt nur, was im Schlüssel und in `.value` steht — nicht das halbe Datum, nicht ein Klickziel mitten in der Geste.
+- **B — nie ersetzen, solange etwas fokussiert ist** (Zeichnen bei jedem Fokus in einem Feld aufschieben oder das fokussierte Element umhängen). Stärke: nichts geht je verloren. Schwäche: die Seite steht still, solange jemand in einem Feld ruht (Live-Anzeige ist Kern der Vision); Umhängen eines fokussierten Elements nimmt ihm im Browser den Fokus und ist ungeprobt.
+- **C — wiederfinden, und nur wo das nicht trägt, warten** (gewählt).
+- Abgleich statt Ersetzen (Morphing) bleibt verworfen (Option D oben, ADR-0007).
+
+**Entschieden — Option C, eine Regel in drei Ziffern**:
+
+1. **Wiederfinden ist der Normalfall.** Jedes per Tab erreichbare Element trägt einen im Bereich eindeutigen Schlüssel nach ADR-0007 (`id`, `data-halt`, Feldschlüssel, `data-act`+`data-arg`, `href`, Klasse). Fehlt er, ist das ein Markup-Befund, kein Anlass für einen neuen Mechanismus: Klappen bekommen `data-halt` an der `summary` (z. B. `klappe:<Kennung>`).
+2. **Was der Schlüssel nicht tragen kann, schiebt das Zeichnen auf — nach dem Muster des Zuges** (`if (zug != null) { S.ui.nachZug = true; return; }`, `web/app.js:1135`; nachgeholt `:3427`, `:3436`). Aufgeschoben wird in genau diesen Lagen, jede mit benanntem Ende:
+   - laufender Zug (Bestand) — bis zum Loslassen;
+   - ein Datumsfeld im Fokus hält einen unfertigen oder gehaltenen Zwischenstand (#189) — bis das Datum wirkt, verworfen oder das Feld verlassen ist;
+   - ein Feld wird durch einen Zeiger verlassen und sein Speichern zeichnet (#180) — bis die Zeigergeste zu Ende ist und das Fokusziel sitzt (dieselbe Einsicht wie N9 Ziffer 7: das Verlassen wirkt erst, wenn das Fokusziel feststeht).
+   Das nachgeholte Zeichnen ist ein gewöhnliches `render()`; es gibt keinen dritten Weg (kein Umhängen von Elementen, kein Teilzeichnen). Eine neue Lage kommt nur mit Eintrag in dieser Liste dazu.
+3. **Ein vorgemerktes Fokusziel überholt den Menschen nicht.** `S.ui.fokus`, das nicht im selben Zug mit `render()` verbraucht wird (Timer, Antwort des Servers), gilt beim Verbrauchen nur, wenn der Fokus dann auf `BODY` liegt oder mit dem Zeichnen verloren geht; sonst geht der Sicherer vor.
+
+**Verhältnis zu #189**: Die Regel deckt #189 mit ab — #189 ist die zweite Lage aus Ziffer 2 und wird zuerst und für sich gebaut. Sie steht nicht daneben: baut #189 den Aufschub, nutzt die Folgekarte zu #180 ihn mit. Wählt die Planung von #189 einen anderen Weg (etwa den Zwischenstand doch über den Schlüssel zu tragen), ist das eine Abweichung von Ziffer 2 und wird hier nachgetragen, bevor #180 gebaut wird.
+
+**In Kauf genommen**: Solange jemand in einem unfertigen Datum steht, zeigt die Seite fremde Änderungen nicht — begrenzt auf diese eine Lage und beendet mit dem Verlassen. Ziffer 2 bleibt eine Liste von Lagen statt eines allgemeinen Wächters „Zeiger unten“: der hielte jedes Zeichnen zwischen Drücken und Loslassen zurück, auch das, das Hörer auf `pointerdown`/`mousedown` und der Beginn eines Zuges selbst auslösen (`web/app.js:2620`, `:2745`, `:2749`) — welche davon das vertragen, ist nicht geprüft (Vermutung), also nicht pauschal. Ein Live-Ereignis genau zwischen Drücken und Loslassen eines beliebigen Klicks bleibt damit ungeschützt wie bisher.
+
+**Pre-Mortem**: (a) das aufgeschobene Zeichnen wird nie nachgeholt (Feld verschwindet anders als durch Verlassen) → das Ende jeder Lage hängt am `focusout` und am Schließen der Ebene, Probe „danach zeigt die Seite die fremde Änderung“; (b) ein `data-halt` an Klappen mit gleichem Namen ist mehrdeutig → der Sicherer hält dann nichts (ADR-0007 N3 Regel 4), der Schlüssel nimmt die Kennung, nicht den Titel.
+
+**Durchsetzung**:
+
+| Ziffer | Probe | Heute |
+|---|---|---|
+| 1 | E2E-Sammelprobe: in den Berichten und im Aufgabenfenster hat jedes tabbare Element einen Schlüssel (`schluessel(…) !== ''`); Fokus auf einer Klappe übersteht ein fremdes Ereignis | rot (Klappen) |
+| 2 | Probe aus #189 (Datum „3112“, fremder Commit, „2026“ → gespeichert); danach zeigt die Seite die fremde Änderung; Klick aus dem Datumsfeld in ein zweites Feld bzw. auf „Berichte“ trifft beim ersten Mal | rot (#189: 6 von 6; #180 beobachtet) |
+| 3 | Antwort auf das Speichern der Beschreibung um 500 ms verzögert, Strg+Enter, Klick ins Kommentarfeld → Fokus bleibt dort; Gegenprobe ohne Klick → Stift | gelesen, nicht gefahren |
+
+Review-Punkt für architektur-reviewer und code-reviewer: ein weiterer früher Ausstieg aus `render()` oder ein Element, das über das Ersetzen hinweg umgehängt wird, ohne Eintrag in Ziffer 2, ist ein Befund.
 
 ## Quellen / Bezüge
 
