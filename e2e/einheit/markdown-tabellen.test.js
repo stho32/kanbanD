@@ -197,3 +197,48 @@ test('Zufallslauf: 6000 Eingaben aus Strichen, Marken und Adressen — jede Ausg
   assert.ok(mitLinkInTabelle >= 50, `nur ${mitLinkInTabelle} Tabellen mit Link`);
   console.log(`Zufallslauf: ${LAEUFE} Eingaben, ${mitTabelle} mit Tabelle, ${mitLinkInTabelle} mit Link in einer Tabelle`);
 });
+
+// Nacharbeit nach dem Security-Review (Karte #184): kurze Zeilen werden auf die Spaltenzahl des Kopfs aufgefüllt, die Ausgabe
+// wüchse also mit Spalten × Zeilen. Über der Grenze bleibt der ganze Block Text wie ohne Tabellen (ADR-0030 Punkt 9).
+const MAX_SPALTEN = 50, MAX_ZELLEN = 5000;
+const gitter = (spalten, zeilen) => `${'a|'.repeat(spalten)}\n${'-|'.repeat(spalten)}\n${'x\n'.repeat(zeilen)}`;
+
+test('Größe: 2000 Spalten × 2000 Zeilen bleiben Text — kleine Ausgabe, schnell, alles sichtbar', () => {
+  const eingabe = gitter(2000, 2000);
+  const beginn = process.hrtime.bigint();
+  const html = markdownHtml(eingabe);
+  const dauerMs = Number(process.hrtime.bigint() - beginn) / 1e6;
+  console.log(`Größe: ${eingabe.length} Zeichen Eingabe → ${html.length} Zeichen Ausgabe in ${dauerMs.toFixed(1)} ms`);
+  assert.ok(html.length < 4 * eingabe.length, `Ausgabe ${html.length} Zeichen aus ${eingabe.length}`);
+  assert.ok(dauerMs < 200, `${dauerMs.toFixed(0)} ms`);
+  assert.ok(!html.includes('<table'));
+  assert.strictEqual(html, `<p>${eingabe.trimEnd().split('\n').join('<br>')}</p>`);
+  pruefeStruktur(html);
+});
+
+test('Größe: genau an der Grenze entsteht noch eine Tabelle, eine Spalte oder eine Zeile darüber nicht mehr', () => {
+  const zeilenAnDerGrenze = MAX_ZELLEN / MAX_SPALTEN - 1; // der Kopf zählt mit
+  const zellen = html => (html.match(/<t[hd]>/g) || []).length;
+  const anDerGrenze = markdownHtml(gitter(MAX_SPALTEN, zeilenAnDerGrenze));
+  assert.strictEqual(zellen(anDerGrenze), MAX_ZELLEN);
+  pruefeStruktur(anDerGrenze);
+  for (const [name, eingabe] of [['eine Spalte mehr', gitter(MAX_SPALTEN + 1, 1)], ['eine Zeile mehr', gitter(MAX_SPALTEN, zeilenAnDerGrenze + 1)], ['eine Zeile mehr bei einer Spalte', gitter(1, MAX_ZELLEN)]]) {
+    assert.strictEqual(markdownHtml(eingabe), `<p>${eingabe.trimEnd().split('\n').join('<br>')}</p>`, name);
+  }
+  assert.strictEqual(zellen(markdownHtml(gitter(1, MAX_ZELLEN - 1))), MAX_ZELLEN);
+  // Über der Grenze wird auch kein Stück des Blocks eine Tabelle: eine Trennzeile mitten in den Zeilen bleibt Text.
+  const mitTrennzeile = `${gitter(MAX_SPALTEN, zeilenAnDerGrenze)}-|\ny|`;
+  assert.ok(!markdownHtml(mitTrennzeile).includes('<table'));
+  // Der Block endet an der Leerzeile: die Tabelle danach wird wieder eine.
+  assert.ok(markdownHtml(`${gitter(MAX_SPALTEN + 1, 1)}\n| a |\n|---|`).endsWith(tabelle('<th>a</th>')));
+});
+
+test('Größe: ein Kopf mit 50 000 Strichen kostet keine Rechenzeit, mit und ohne Trennzeile', () => {
+  for (const eingabe of [`${'a|'.repeat(50000)}\n${'-|'.repeat(50000)}`, `${'a|'.repeat(50000)}\n-|-|`, Array.from({ length: 300 }, () => 'a|'.repeat(300)).join('\n')]) {
+    const beginn = process.hrtime.bigint();
+    const html = markdownHtml(eingabe);
+    const dauerMs = Number(process.hrtime.bigint() - beginn) / 1e6;
+    assert.ok(dauerMs < 200, `${dauerMs.toFixed(0)} ms`);
+    assert.ok(!html.includes('<table') && html.length < 2 * eingabe.length);
+  }
+});
