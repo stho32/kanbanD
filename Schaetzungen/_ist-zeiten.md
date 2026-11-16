@@ -751,3 +751,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #190 R00181 (Zeitkorrektur: Esc beendet nur die Korrektur, nicht das Fenster) | B0884 Laufende Zeit, ohne Änderung, Gegenprobe Enter und ✓, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #189 R00179 (Datum zu Ende tippen, während die Seite neu zeichnet) | B0877 Probe als Spec: rot am heutigen Stand, je Feld gemessen | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-16 | Karte #189 R00179 (Datum zu Ende tippen, während die Seite neu zeichnet) | B0878 Laufende Datumseingabe übersteht das Zeichnen | Standard | 1-3h | 1,0h | 1,0h | autonom |
+| 2026-11-16 | Karte #189 R00179 (Datum zu Ende tippen, während die Seite neu zeichnet) | B0879 Kein Zwischenstand, unfertig verlassen, Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
