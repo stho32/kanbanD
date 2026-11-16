@@ -93,3 +93,51 @@ test('R00166 B0804 (AK 4): auf einem Board mit Phasen sind die Blöcke die Phase
   assert.deepStrictEqual(zb.bloecke.map(x => x.titel), ['Entwicklung durchlaufen', 'Entwicklertest durchlaufen', 'Abnahme durchlaufen']);
   assert.strictEqual(B.zielblock(mitPhasen(), filter({}), 'Abnahme').gewaehlt, null);
 });
+
+/* ── B0805 Burndown rechnet „offen“ und „− erledigt“ bis zum Zielblock (ADR-0027 N2 Punkte 3–5) ── */
+function erwarteBilanz(tage) {
+  for (let i = 1; i < tage.length; i++) {
+    const heute = tage[i], vortag = tage[i - 1];
+    assert.strictEqual(heute.offen, vortag.offen + heute.hinzugekommen - heute.erledigt - heute.entfernt, `Bilanz am ${heute.datum}`);
+  }
+}
+
+test('R00166 B0805 (AK 1, AK 3): Zielspalte B — der Zug nach B ist „− erledigt“, der Weiterzug nach C nichts, der Rückzug nach A „+“; Summe + 4 · − 3, Bilanz an jedem Tag', () => {
+  const tage = B.burndown(beispiel(), filter({}), mitDatei, JETZT, null, 'B');
+  assert.deepStrictEqual(jeTag(tage), MIT_B.burndown);
+  assert.deepStrictEqual(tage.map(x => [x.umfang, x.entfernt]), [[3, 0], [3, 0], [3, 0]]);
+  assert.deepStrictEqual([tage.reduce((n, x) => n + x.hinzugekommen, 0), tage.reduce((n, x) => n + x.erledigt, 0)], [4, 3]);
+  erwarteBilanz(tage);
+});
+
+test('R00166 B0805 (AK 9): ein Zielblock, den es nicht gibt, rechnet wie ohne Wahl', () => {
+  assert.deepStrictEqual(burndown('Abnahme'), OHNE_WAHL.burndown);
+});
+
+test('R00166 B0805 (ADR-0027 N2 Punkt 5): archiviert im Zielblock bleibt erledigt und ist kein „− entfernt“ — ohne Wahl ist dieselbe Aufgabe entfernt', () => {
+  const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [{ nummer: 1, wechsel: [z(2, 'A'), z(3, 'C')] }] };
+  const archiviertAm04 = () => ({ ...mitDatei(), archiviert: '2026-11-04' });
+  const groessen = zielblock => B.burndown(bew, filter({}), archiviertAm04, JETZT, null, zielblock).map(x => [x.offen, x.umfang, x.erledigt, x.entfernt]);
+  assert.deepStrictEqual(groessen('B'), [[1, 1, 0, 0], [0, 1, 1, 0], [0, 1, 0, 0]]);
+  assert.deepStrictEqual(groessen(undefined), [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 1]]);
+});
+
+test('R00166 B0805: mit Phasen zählt je Aufgabe die Stufe des Blocks — „Entwicklung durchlaufen“ ist erreicht ab der Spalte der nächsten Phase', () => {
+  const bew = { ...mitPhasen(), aufgaben: [
+    { nummer: 1, labels: ['klein'], wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
+    { nummer: 2, wechsel: [z(2, 'Entwicklung')] },
+    { nummer: 3, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
+  ] };
+  const eingebettet = { ...PHASEN, folge: [PHASEN.folge[0], { nr: 2, name: 'Entwicklertest', eingebettet: 'klein' }, PHASEN.folge[2]] };
+  const groessen = (b, zielblock) => jeTag(B.burndown(b, filter({}), mitDatei, JETZT, null, zielblock));
+  assert.deepStrictEqual(groessen(bew, 'Entwicklung'), [[3, 0, 3], [0, 2, 1], [0, 0, 1]]);
+  assert.deepStrictEqual(groessen(bew, 'Entwicklertest'), [[3, 0, 3], [0, 0, 3], [0, 0, 3]], 'in der Spalte der Phase ist sie noch nicht durchlaufen');
+  assert.deepStrictEqual(groessen({ ...bew, phasen: eingebettet }, 'Entwicklertest'), [[3, 0, 3], [0, 1, 2], [0, 0, 2]], '„eingebettet in“ gilt nur für die Aufgabe mit dem Label: #1 hat den Entwicklertest in dessen Spalte durchlaufen, #3 nicht');
+});
+
+test('R00166 B0805: „Ausgenommen“ zählt mit dem Zielblock — archiviert in B gehört mit Zielspalte B zum Bestand, ohne Wahl nicht', () => {
+  const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [{ nummer: 1, reporting: { burndown: false }, wechsel: [z(2, 'B')] }] };
+  const archiviert = () => ({ ...mitDatei(), archiviert: '2026-11-03' });
+  assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), archiviert, JETZT, 'B'), 1);
+  assert.strictEqual(B.ausgenommen(bew, 'burndown', filter({}), archiviert, JETZT), 0);
+});

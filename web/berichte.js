@@ -133,15 +133,26 @@
   const wechselInMs = wechsel => wechsel.map(w => ({ ms: zeitMs(w.zeitpunkt), spalte: w.spalte }));
   /** Bestand der Aufgaben eines Boards: zu einer Aufgabe (Eintrag aus bew.aufgaben) die Funktion `t → Zustand` (`bestandAm`).
       Der Archivtag kommt aus der Aufgabenliste des Clients (`aufgabeZu`; ohne Datei kein Archivtag), „erledigt“ aus dem Board;
-      beides und die Zeitpunkte der Wechsel werden je Aufgabe einmal gelesen. */
-  function bestandLeser(bew, aufgabeZu) {
-    const erledigt = erledigtSpalten(bew);
+      beides und die Zeitpunkte der Wechsel werden je Aufgabe einmal gelesen. `erledigtBei` (R00166, ADR-0027 N2 Punkt 3) nennt
+      je Aufgabe ihre Erledigt-Spalten; ohne es gilt für jede die Abschlussspalte. */
+  function bestandLeser(bew, aufgabeZu, erledigtBei = null) {
+    const abschluss = erledigtSpalten(bew);
     return a => {
+      let erledigt = abschluss;
+      if (erledigtBei) erledigt = erledigtBei(a);
       const x = aufgabeZu(a.nummer), archiviert = x && x.archiviert, wechsel = wechselInMs(a.wechsel);
       const zustandAm = t => bestandAm(wechsel, archiviert, t, erledigt);
       zustandAm.folge = () => zustandsfolge(wechsel, archiviert, erledigt);
       return zustandAm;
     };
+  }
+  /** Erledigt-Spalten je Aufgabe, wenn der Block `schluessel` (Spalte oder Phase, wie in `prognoseStufen`) das Ziel ist: ohne
+      Phasen die Spalte und alle rechts davon, mit Phasen die Spalten, in denen die Aufgabe die Phase durchlaufen hat. `null`
+      ohne Block und für einen Block, den das Board nicht hat — dann gilt die Vorgabe von `bestandLeser`. */
+  function erledigtAb(bew, schluessel) {
+    const stufe = prognoseStufen(bew, bew.spalten, bew.phasen).find(st => st.schluessel === schluessel);
+    if (!stufe) return null;
+    return a => bew.spalten.filter(s => stufe.durch(a, s));
   }
   /** Zustandsfolge einer Aufgabe (ADR-0027 N1): je Änderungspunkt — jeder Wechsel und der Beginn des Archivtags — `{ ms, zustand }`
       in zeitlicher Reihenfolge, der Zustand aus `bestandAm`. Wechsel derselben Minute bleiben einzelne Schritte; der Archivtag
@@ -184,9 +195,9 @@
   /** Zählt die Aufgabe (Eintrag aus bew.aufgaben) im Bericht `burndown` oder `forecast`? Nur `false` nimmt sie aus. */
   const zaehltImBericht = (a, bericht) => !(a.reporting && a.reporting[bericht] === false);
   /** Aufgaben, die jetzt zum Bestand gehören (da, in einer gezählten Spalte) und zum Filter passen, aber per `reporting`
-      ausgenommen sind — eine verworfene Aufgabe steht hier nicht (R00152). */
-  function ausgenommen(bew, bericht, f, aufgabeZu, jetzt) {
-    const bestand = bestandLeser(bew, aufgabeZu);
+      ausgenommen sind — eine verworfene Aufgabe steht hier nicht (R00152). Der Burndown reicht seinen `zielblock` durch. */
+  function ausgenommen(bew, bericht, f, aufgabeZu, jetzt, zielblock = null) {
+    const bestand = bestandLeser(bew, aufgabeZu, erledigtAb(bew, zielblock));
     return bew.aufgaben.filter(a => !zaehltImBericht(a, bericht) && aufgabePasst(f, aufgabeZu(a.nummer)) && imBestand(f, bestand(a)(jetzt))).length;
   }
 
@@ -196,9 +207,10 @@
 
   /** Je Tag im Zeitraum: offen und Umfang (im Bestand) als Stand am Tagesende, heute jetzt; ab `start`. Dazu die Ereignisse
       des Tages (R00164): `hinzugekommen`, `erledigt`, `entfernt` — an jedem Tag gilt
-      offen = offen(Vortag) + hinzugekommen − erledigt − entfernt. */
-  function burndown(bew, f, aufgabeListe, jetzt, start = null) {
-    const g = grenzenAb(f, jetzt, start), aufgabeZu = einmalJeAufgabe(aufgabeListe), bestand = bestandLeser(bew, aufgabeZu);
+      offen = offen(Vortag) + hinzugekommen − erledigt − entfernt. `zielblock` (R00166): der Block, ab dem „erledigt“ gilt —
+      ohne ihn die Abschlussspalte. */
+  function burndown(bew, f, aufgabeListe, jetzt, start = null, zielblock = null) {
+    const g = grenzenAb(f, jetzt, start), aufgabeZu = einmalJeAufgabe(aufgabeListe), bestand = bestandLeser(bew, aufgabeZu, erledigtAb(bew, zielblock));
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
     const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer))).map(bestand);

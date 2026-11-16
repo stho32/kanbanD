@@ -1212,9 +1212,16 @@ ${rahmen}<g id="bd-balken">${balken}</g><line class="bd-null" x1="${(links - hal
 <text class="achse bd-skala" x="${skalaX}" y="${nulllinie - hoehe + 4}">+${b.skala}</text><text class="achse bd-skala" x="${skalaX}" y="${nulllinie + hoehe + 4}">−${b.skala}</text>`;
 }
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
+/** „Erledigt heißt“ des gewählten Boards (R00166): der Zielblock aus der Board-Datei, aufgelöst unter dem Berichtsfilter. */
+function erledigtHeisst() {
+  let zielspalte = null;
+  if (S.board && S.board.fieber) zielspalte = S.board.fieber.zielspalte;
+  return zielblock(S.bew, S.ui.bf, zielspalte);
+}
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
-  const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now(), S.board && S.board.start), B = 800;
+  const ziel = erledigtHeisst();
+  const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now(), S.board && S.board.start, ziel.gewaehlt), B = 800;
   const H = 272, L = 36, R = 96, O = 16, U = 40;
   const HOEHE_MIT_BAND = 352, BAND_UNTEN = 312, MARKEN_Y = 330;
   const max = Math.max(1, ...t.map(x => x.umfang));
@@ -1238,7 +1245,7 @@ ${vBurndownBand(t, sx, L, B - R)}
 ${fadenkreuz(O, BAND_UNTEN)}
 </svg>` : `<div class="leer">${S.bew.aufgaben.length ? 'Keine Aufgabe im Zeitraum.' : 'Noch kein Stand dieses Boards.'}</div>`;
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
-  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now());
+  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now(), ziel.gewaehlt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
   const tabelle = `<details class="tabellenansicht bd-tabelle"><summary>Tabellenansicht</summary>${berichtRahmen('Burndown je Tag')}<table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · offen = nicht in der Abschlussspalte</span></div>${vBerichtsfilter('burndown')}
