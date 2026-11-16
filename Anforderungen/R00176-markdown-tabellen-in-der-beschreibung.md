@@ -26,6 +26,7 @@ Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0003.dc.html#markdown-e
 - [x] **AK 6 Schmal:** Bei 375 px Breite scrollt eine Tabelle mit acht Spalten waagrecht in sich; das Fenster scrollt nicht waagrecht.
 - [x] **AK 7 Fremder Text:** Die feindlichen Texte aus ADR-0030 bleiben Text, auch in Zellen und in der Kopfzeile.
 - [x] **AK 8 Bleibt:** Alles, was heute gerendert wird, wird weiter gleich gerendert (fester Vergleich), außer: eine Kopfzeile mit gültiger Trennzeile wird Tabelle.
+- [x] **AK 9 Größe (Nachtrag 2026-11-16 nach dem Security-Review):** Eine Tabelle hat höchstens 50 Spalten, und alle Tabellen einer Beschreibung zusammen haben höchstens 5000 Zellen (Kopfzeilen mitgezählt). Was darüber liegt, bleibt als ganzer Block Text wie ohne Trennzeile — kein abgeschnittenes Stück Tabelle, keine Meldung. Probe: 2000 Spalten × 2000 Zeilen aus 12 KB ergeben keine Tabelle und eine Ausgabe unter 50 KB (vorher 36 MB in 7,6 s); 50 Spalten × 99 Zeilen unter dem Kopf sind noch eine Tabelle.
 
 ## Tests
 

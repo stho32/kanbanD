@@ -242,3 +242,24 @@ test('Größe: ein Kopf mit 50 000 Strichen kostet keine Rechenzeit, mit und ohn
     assert.ok(!html.includes('<table') && html.length < 2 * eingabe.length);
   }
 });
+
+test('Größe: die Grenze der Zellen gilt für alle Tabellen eines Textes zusammen — viele Tabellen an der Grenze blähen nichts auf', () => {
+  const halb = gitter(MAX_SPALTEN, MAX_ZELLEN / MAX_SPALTEN / 2 - 1);
+  const zwei = markdownHtml(`${halb}\n${halb}`);
+  assert.strictEqual((zwei.match(/<table>/g) || []).length, 2);
+  assert.strictEqual((zwei.match(/<t[hd]>/g) || []).length, MAX_ZELLEN);
+  const drei = markdownHtml(`${halb}\n${halb}\n| a |\n|---|\n| 1 |\n\nEnde`);
+  assert.strictEqual((drei.match(/<table>/g) || []).length, 2);
+  assert.ok(drei.endsWith('<p>| a |<br>|---|<br>| 1 |</p><p>Ende</p>'));
+  pruefeStruktur(drei);
+  // Der schlimmste Fall: 250 Tabellen an der Grenze aus 100 000 Zeichen.
+  const eingabe = Array.from({ length: 250 }, () => gitter(MAX_SPALTEN, MAX_ZELLEN / MAX_SPALTEN - 1)).join('\n');
+  const beginn = process.hrtime.bigint();
+  const html = markdownHtml(eingabe);
+  const dauerMs = Number(process.hrtime.bigint() - beginn) / 1e6;
+  console.log(`Größe: 250 Tabellen an der Grenze, ${eingabe.length} Zeichen Eingabe → ${html.length} Zeichen Ausgabe in ${dauerMs.toFixed(1)} ms`);
+  assert.strictEqual((html.match(/<table>/g) || []).length, 1);
+  // Größe statt Zeit: der Rest ist Text, und Text wächst nur um seine `<br>` (aus `x` + Umbruch werden fünf Zeichen).
+  assert.ok(html.length < 3 * eingabe.length, `${html.length} Zeichen aus ${eingabe.length}`);
+  pruefeStruktur(html);
+});

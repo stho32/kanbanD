@@ -5,7 +5,7 @@
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber, Karten #184, #185, #186)
 **Kontext-Anforderung**: R00030 „Beschreibung als Markdown lesen“; Karten #184 (Tabellen), #185 (Inline in Teilaufgaben), #186 (geschachtelte Listen, Trennlinie, `_kursiv_`, Durchstreichen, Kommentare) — Anforderungen folgen über den planer.
 **Erprobt durch**: Proben mit `node` am heutigen `web/markdown.js` (Stand `23a91b1`): `<script>` bleibt Text, `javascript:` und `data:` ergeben keinen Link; **Lücke gefunden**: `[x](\u0001javascript:alert%281%29)` ergibt heute einen Link (siehe Kontext). Ausführung im Browser nicht geprobt.
-**Nachträge**: 2026-11-16 (Karte #184, R00176): Punkt 3 um die drei festen Attribute der Tabellen-Hülle ergänzt; die Strukturprüfung (`e2e/einheit/hilfen/markdown-struktur.js`) kennt die Hülle nur in dieser einen Form.
+**Nachträge**: 2026-11-16 (Karte #184, R00176): Punkt 3 um die drei festen Attribute der Tabellen-Hülle ergänzt; die Strukturprüfung (`e2e/einheit/hilfen/markdown-struktur.js`) kennt die Hülle nur in dieser einen Form. 2026-11-16 (Karte #184, nach dem Security-Review): Punkt 9 „Die Ausgabe bleibt in der Größenordnung der Eingabe“ — gemessen 12 KB → 36 MB in 7,6 s ohne Grenze, 18 KB in 8 ms mit ihr.
 
 ## Kontext
 
@@ -33,6 +33,7 @@ Option 1. Für jeden Aufruf des Renderers (Beschreibung, Teilaufgabe, Kommentar 
 6. **Unterstrich nur an Wortgrenzen.** `_kursiv_` und `__fett__` öffnen nur nach Zeilenanfang oder einem Zeichen, das weder Buchstabe, Ziffer noch Unterstrich ist, und schließen nur vor einem solchen oder dem Zeilenende; `cost_from_column` und `__init__.py` bleiben Text. Die Regel für `*` bleibt, wie sie ist.
 7. **Zwei Einstiege, ein Kern.** `markdownHtml(md, stufe)` für Blöcke und `markdownInline(text)` für eine Zeile ohne Blöcke teilen dieselbe Inline-Stufe; die Karte auf dem Board zeigt weiter reinen Text über `esc()`.
 8. **Ein Link steht nie in einem Knopf** — weder in `button` noch in einem Element mit `role="button"` (R00162).
+9. **Die Ausgabe bleibt in der Größenordnung der Eingabe.** Wo der Renderer mehr schreibt, als im Text steht — eine Tabelle füllt kurze Zeilen auf die Spaltenzahl des Kopfs auf —, gilt eine feste Obergrenze: höchstens 50 Spalten je Tabelle und höchstens 5000 Zellen je Aufruf (alle Tabellen eines Textes, Kopfzeilen mitgezählt). Darüber bleibt der ganze Block Text; die Spaltenzahl wird vor dem Zerlegen an den Strichen der Trennzeile geprüft, damit auch die Rechenzeit mit der Eingabe wächst und nicht mit Spalten × Zeilen.
 
 Akzeptierte Schwäche: kein vollständiges GFM. Eine Tabelle in einer Liste, Fortsetzungszeilen in Listenpunkten und verschachtelte Zitate gibt es nicht; was der Renderer nicht kennt, bleibt lesbarer Text.
 

@@ -47,12 +47,19 @@
     return '';
   }
 
+  /** Obergrenzen (ADR-0030 Punkt 9): kurze Zeilen werden auf die Spaltenzahl des Kopfs aufgefüllt, die Ausgabe wüchse sonst
+   *  mit Spalten × Zeilen statt mit der Eingabe. Höchstens MAX_SPALTEN je Tabelle und MAX_ZELLEN je Aufruf des Renderers
+   *  (alle Tabellen eines Textes zusammen, Kopfzeilen mitgezählt); was darüber liegt, bleibt als ganzer Block Text. */
+  const MAX_SPALTEN = 50, MAX_ZELLEN = 5000;
+
   /** Die Klassen je Spalte, wenn auf `kopfzeile` eine gültige Trennzeile folgt (GFM: mindestens ein `|`, je Zelle nur
    *  `-` mit `:` am Rand, so viele Zellen wie der Kopf) — sonst null, und beide Zeilen bleiben Text. */
   function tabellenSpalten(kopfzeile, trennzeile) {
     if (trennzeile === undefined || !kopfzeile.includes('|') || !trennzeile.includes('|')) return null;
+    // Eine gültige Trennzeile hat höchstens einen Strich mehr als Spalten: zu breite Tabellen fallen vor dem Zerlegen heraus.
+    if (trennzeile.split('|').length - 2 > MAX_SPALTEN) return null;
     const trennzellen = zellen(trennzeile);
-    if (trennzellen.length !== zellen(kopfzeile).length || !trennzellen.every(t => /^:?-+:?$/.test(t))) return null;
+    if (trennzellen.length > MAX_SPALTEN || trennzellen.length !== zellen(kopfzeile).length || !trennzellen.every(t => /^:?-+:?$/.test(t))) return null;
     return trennzellen.map(ausrichtung);
   }
 
@@ -72,6 +79,8 @@
     const zeilen = (md || '').replace(/\r\n/g, '\n').split('\n');
     const aus = [];
     let absatz = [], liste = null;
+    /** Bis zu dieser Zeile (ausschließlich) wird keine Tabelle gesucht: der Block war zu groß und bleibt Text. */
+    let textBis = 0, zellenFrei = MAX_ZELLEN;
     const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(inline).join('<br>')}</p>`); absatz = []; } };
     const listeEnde = () => { if (liste) { aus.push(`<${liste.art}>${liste.punkte.map(p => `<li>${inline(p)}</li>`).join('')}</${liste.art}>`); liste = null; } };
     for (let i = 0; i < zeilen.length; i++) {
@@ -83,15 +92,21 @@
         aus.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`);
         continue;
       }
-      const spalten = tabellenSpalten(z, zeilen[i + 1]);
+      let spalten = null;
+      if (i >= textBis) spalten = tabellenSpalten(z, zeilen[i + 1]);
       if (spalten) {
-        // Die Tabelle beendet Absatz und Liste und reicht bis zur Leerzeile oder zum nächsten Block (R00176 AK 5).
-        absatzEnde(); listeEnde();
+        // Die Tabelle reicht bis zur Leerzeile oder zum nächsten Block; sie beendet Absatz und Liste (R00176 AK 5).
         let ende = i + 2;
         while (ende < zeilen.length && zeilen[ende].trim() && !blockBeginn(zeilen[ende])) ende++;
-        aus.push(tabelleHtml(z, spalten, zeilen.slice(i + 2, ende)));
-        i = ende - 1;
-        continue;
+        const zellenzahl = spalten.length * (ende - i - 1);
+        if (zellenzahl > zellenFrei) textBis = ende;
+        else {
+          zellenFrei -= zellenzahl;
+          absatzEnde(); listeEnde();
+          aus.push(tabelleHtml(z, spalten, zeilen.slice(i + 2, ende)));
+          i = ende - 1;
+          continue;
+        }
       }
       let m;
       if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${inline(m[2])}</h${h}>`); }

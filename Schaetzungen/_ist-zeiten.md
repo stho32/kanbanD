@@ -731,3 +731,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0865 Rote Probe der Karte und fester Vergleich um die Tabelle erweitert | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0866 Tabellenzweig im Renderer | Standard | 1-2h | 0,0h | 0,0h | autonom |
 | 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | B0867 Hülle zum Scrollen, Probe im echten Programm und Gate | Standard | 0,5-1,5h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #184 R00176 (Markdown: Tabellen in der Beschreibung) | Nacharbeit: Obergrenze für Spalten und Zellen (Security-Review) | Nacharbeit | — | 0,2h | 0,2h | autonom |
