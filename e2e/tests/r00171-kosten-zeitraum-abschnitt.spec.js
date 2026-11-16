@@ -10,6 +10,9 @@ const NBSP = ' ';
 const usd = betrag => `${betrag}${NBSP}$`;
 const OHNE_DATUM = 'ohne Datum / ohne Rolle / ohne Spalte';
 const ALTE_POSTEN_AUSSEN = `${OHNE_DATUM} ${usd('5,00')} · nicht in der Summe – ohne Datum und Spalte keinem Bereich zuzuordnen`;
+const FREMDE_SPALTE_AUSSEN = `Spalte nicht auf diesem Board ${usd('0,25')} · nicht in der Summe – Einträge aus einer Spalte, die dieses Board nicht führt`;
+const STAND_LETZTE = '„Stand“ ist der von heute · „erledigt“ heißt hier: in „Produktiv“ (letzte Spalte des Boards).';
+const STAND_BIS_ABNAHME = '„Stand“ ist der von heute · „erledigt“ heißt hier: in „Abnahme“ oder rechts davon (Bis-Spalte des Abschnitts).';
 const GELTUNG = 'Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit';
 /** Die Zeilen der Gruppe ohne Bereiche (AK 3) — wie vor der Karte. */
 const OHNE_BEREICHE = [`Einträge ${usd('11,00')}`, `${OHNE_DATUM} ${usd('5,00')}`, `Summe ${usd('16,00')} · 4 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`];
@@ -60,6 +63,8 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
   const zeilen = page => gruppe(page).locator('.kost-zeile');
   const liste = (page, name) => page.getByRole('table', { name });
   const listenzeilen = (page, name) => liste(page, name).locator('tbody tr');
+  const staende = (page, name) => listenzeilen(page, name).locator('.kost-kz');
+  const standSatz = page => page.locator('#kosten .kost-stand');
   const boardDatei = () => k.lies('boards/fabrik.md');
   /** Eine Wahl in der Bereichszeile ist erst durch, wenn sie gespeichert, das Nachladen danach übernommen und gezeichnet
       ist (ADR-0026 Regel 3) — bis dahin ersetzt ein Neuzeichnen jedes Feld. Der Kostenbericht lädt keine Bewegungen:
@@ -99,6 +104,9 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
     await expect(listenzeilen(page, 'Aufgaben mit Einträgen').locator('.nr')).toHaveText(['#1', '#2', '#3']);
     await expect(listenzeilen(page, 'Aufgaben mit Einträgen').locator('.r')).toHaveText([usd('6,46'), usd('0,54'), usd('4,00')]);
     await expect(listenzeilen(page, 'Aufgaben mit Einträgen').getByRole('rowheader')).toHaveText(BEISPIEL.AUFGABEN.slice(0, 3).map(a => a.titel));
+    await expect(liste(page, 'Aufgaben mit Einträgen').getByRole('columnheader')).toHaveText(['Nr.', 'Aufgabe', 'Betrag', 'Stand']);
+    await expect(staende(page, 'Aufgaben mit Einträgen')).toHaveText(['erledigt', 'offen', 'archiviert']);
+    await expect(standSatz(page)).toHaveText(STAND_LETZTE);
     await expect(feld(page, 'Zeitraum')).toHaveValue('alles');
     await expect(bereich(page).locator('.muted').last()).toHaveText(GELTUNG);
     await expect(zuruecksetzen(page)).toHaveCount(0);
@@ -246,5 +254,70 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
     await expect(gewaehlt(page, 'bis')).toHaveText(name);
     await expect(gesperrt(page, 'von')).toHaveText(['Produktiv']);
     await expect(page.locator('#main .leer'), 'kein Defekt-Hinweis: das Board liest sich').toHaveCount(0);
+  });
+  /* ── F0138: Kennzeichen, Eimer und Texte ── */
+  test('Abnahme-Probe der Karte #165: Fall 1 (12.11.–13.11., „Entwicklung“–„Abnahme“) → Summe 5,00 $, #1 4,46 $ „erledigt“, #2 0,54 $ „offen“, #3 fehlt, #4 unter „ohne …“ 5,00 $ daneben; Fall 2 (12.11.–14.11., „Abnahme“–„Abnahme“) → 2,00 $, nur #1; ohne Bereiche „Einträge 11,00 $“ und Summe 16,00 $', async ({ page }) => {
+    const IM_BEREICH = 'Aufgaben mit Einträgen im gewählten Bereich';
+    await berichtOeffnen(page);
+    await fallEinsWaehlen(page);
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('5,00')}`, summeImBereich('5,00', 2), ALTE_POSTEN_AUSSEN]);
+    await expect(listenzeilen(page, IM_BEREICH)).toHaveText([/^#1.*4,46\s\$erledigt$/, /^#2.*0,54\s\$offen$/]);
+    await expect(standSatz(page)).toHaveText(STAND_BIS_ABNAHME);
+    await bild(page, 'r00171-kosten-breit.png');
+
+    await waehlen(page, () => feld(page, 'Zeitraum bis').fill('2026-11-14'));
+    await spalteWaehlen(page, 'von', 'Abnahme');
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('2,00')}`, summeImBereich('2,00', 1), ALTE_POSTEN_AUSSEN]);
+    await expect(listenzeilen(page, IM_BEREICH)).toHaveText([/^#1.*2,00\s\$erledigt$/]);
+
+    await waehlen(page, () => zuruecksetzen(page).click());
+    await expect(zeilen(page)).toHaveText(OHNE_BEREICHE);
+    await expect(listenzeilen(page, 'Aufgaben mit Einträgen')).toHaveText([/^#1.*6,46\s\$erledigt$/, /^#2.*0,54\s\$offen$/, /^#3.*4,00\s\$archiviert$/]);
+    await expect(standSatz(page)).toHaveText(STAND_LETZTE);
+  });
+
+  test('US-4 (AK 7): ein Eintrag aus „Review“, das das Board nicht führt — ohne Abschnitt „Einträge 11,25 $“; in Fall 1 bleibt die Summe 5,00 $, daneben „Spalte nicht auf diesem Board 0,25 $“, vor den alten Posten', async ({ page }) => {
+    await berichtOeffnen(page, bestand({ zusatz: { 2: [BEISPIEL.FREMDE_SPALTE] } }));
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('11,25')}`, `${OHNE_DATUM} ${usd('5,00')}`, `Summe ${usd('16,25')} · 4 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
+    await expect(page.locator('#kosten .kost-aussen')).toHaveCount(0);
+    await zeitraumSetzen(page, '2026-11-12', '2026-11-13');
+    await expect(zeilen(page), 'mit Zeitraum allein zählt er weiter mit').toHaveText([`Einträge ${usd('5,25')}`, summeImBereich('5,25', 2), ALTE_POSTEN_AUSSEN]);
+    await spalteWaehlen(page, 'von', 'Entwicklung');
+    await spalteWaehlen(page, 'bis', 'Abnahme');
+    await expect(zeilen(page)).toHaveText([`Einträge ${usd('5,00')}`, summeImBereich('5,00', 2), FREMDE_SPALTE_AUSSEN, ALTE_POSTEN_AUSSEN]);
+    await expect(listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').locator('.r')).toHaveText([usd('4,46'), usd('0,54')]);
+  });
+
+  test('AK 8: eine gespeicherte Bis-Spalte „Test“, die das Board nicht führt, steht gewählt am Ende der Auswahl und wird genannt; der Abschnitt gilt als „alle“, die Zahlen sind die ohne Bereiche; „Zurücksetzen“ räumt sie aus der Datei', async ({ page }) => {
+    await berichtOeffnen(page, bestand({ kopf: '---\nreport-filter: {cost-to-column: Test}\n---\n' }));
+    await expect(gewaehlt(page, 'bis')).toHaveText('„Test“ — gibt es nicht mehr');
+    await expect(feld(page, 'Spalte bis').locator('option')).toHaveText(['alle', ...BEISPIEL.SPALTEN, '„Test“ — gibt es nicht mehr']);
+    await expect(page.locator('#kost-grenze-weg')).toHaveText('Spalte „Test“ (bis) gibt es nicht mehr — diese Grenze gilt als „alle“.');
+    await expect(gesperrt(page, 'von')).toHaveCount(0);
+    await expect(zeilen(page)).toHaveText(OHNE_BEREICHE);
+    await expect(staende(page, 'Aufgaben mit Einträgen')).toHaveText(['erledigt', 'offen', 'archiviert']);
+    await expect(standSatz(page)).toHaveText(STAND_LETZTE);
+    await waehlen(page, () => zuruecksetzen(page).click());
+    await expect(page.locator('#kost-grenze-weg')).toHaveCount(0);
+    await expect(gewaehlt(page, 'bis')).toHaveText('alle');
+    expect(boardDatei()).not.toContain('report-filter');
+  });
+
+  test('Zeichnung Bild 6: bei 375 px steht die Bereichszeile in einer Spalte, jedes Feld ist 48 px hoch, die Liste bleibt in der Breite und der Titel kürzt — nichts scrollt waagrecht', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await berichtOeffnen(page, bestand({ kopf: `---\n${ZEITRAUM_UND_ABSCHNITT}---\n`, zusatz: { 2: [BEISPIEL.FREMDE_SPALTE] } }));
+    await breiteSetzen(page, 375, 900);
+    const tabelle = liste(page, 'Aufgaben mit Einträgen im gewählten Bereich');
+    await expect(tabelle).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const hoehen = await bereich(page).locator('select, input, button').evaluateAll(felder => felder.map(f => Math.round(f.getBoundingClientRect().height)));
+    expect(hoehen).toEqual([48, 48, 48, 48, 48, 48]);
+    const rahmen = await tabelle.boundingBox();
+    expect(rahmen.x + rahmen.width).toBeLessThanOrEqual(375);
+    const titel = listenzeilen(page, 'Aufgaben mit Einträgen im gewählten Bereich').nth(1).getByRole('rowheader');
+    expect(await titel.evaluate(zelle => zelle.scrollWidth > zelle.clientWidth), 'der lange Titel von #2 kürzt mit Auslassungspunkten').toBe(true);
+    await expect(titel).toHaveAttribute('title', BEISPIEL.AUFGABEN[1].titel);
+    await expect(zeilen(page)).toHaveCount(4);
+    await bild(page, 'r00171-kosten-375.png');
   });
 });

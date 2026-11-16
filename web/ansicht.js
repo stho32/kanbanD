@@ -1568,27 +1568,32 @@ function vKosten() {
   const jetzt = Date.now(), filter = S.ui.bf;
   const aufstellung = kostenaufstellung(S.board, S.aufgaben, filter, jetzt);
   const aktiv = filterAnzahl(filterOhneZeitraum(filter)) > 0;
-  return `${kopf}${vKostenBereich(filter, jetzt)}<div class="body" id="kosten">${vKostenInhalt(aufstellung, kostenUmfang(filter, aufstellung.bereich), aktiv)}</div>`;
+  return `${kopf}${vKostenBereich(filter, jetzt, aufstellung.grenzenWeg)}<div class="body" id="kosten">${vKostenInhalt(aufstellung, kostenUmfang(filter, aufstellung.bereich), aktiv)}</div>`;
 }
 /** Die Bereichszeile unter der Filterbox: der Zeitraum des Berichtsfilters, der Spaltenabschnitt und — nur wenn ein
-    Bereich gewählt ist — der eine Knopf, der beide aufhebt. */
-function vKostenBereich(f, jetzt) {
-  const wahl = kostenSpaltenwahl(S.board, f);
-  const abschnitt = `<span class="kost-feld"><b>Spalte</b>${vKostenSpalte('von', 'kostenVonSpalte', wahl.von)}${vKostenSpalte('bis', 'kostenBisSpalte', wahl.bis)}</span>`;
+    Bereich gewählt ist — der eine Knopf, der beide aufhebt; eine gespeicherte Grenze, die es nicht mehr gibt, wird genannt. */
+function vKostenBereich(f, jetzt, grenzenWeg) {
+  const wahl = kostenSpaltenwahl(S.board, f), weg = seite => grenzenWeg.find(g => g.seite === seite);
+  const abschnitt = `<span class="kost-feld"><b>Spalte</b>${vKostenSpalte('von', 'kostenVonSpalte', wahl.von, weg('von'))}${vKostenSpalte('bis', 'kostenBisSpalte', wahl.bis, weg('bis'))}</span>`;
+  let grenzeWeg = '';
+  if (grenzenWeg.length) grenzeWeg = `<span class="fehl" id="kost-grenze-weg">${grenzenWeg.map(g => `Spalte „${esc(g.name)}“ (${g.seite}) gibt es nicht mehr — diese Grenze gilt als „alle“.`).join(' ')}</span>`;
   let leeren = '';
   if (kostenbereichGewaehlt(f)) leeren = '<button class="btn bf-leeren" id="kost-bereich-leeren" data-act="kost-bereich-leeren" aria-label="Zeitraum und Spaltenabschnitt zurücksetzen">Zurücksetzen</button>';
-  return `<section class="fb-einst kost-bereich" id="kost-bereich" role="group" aria-label="Zeitraum und Spaltenabschnitt"><span class="kost-feld"><b>Zeitraum</b>${vZeitraumFelder(f, jetzt)}</span>${abschnitt}${leeren}<span class="muted">Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit</span></section>`;
+  return `<section class="fb-einst kost-bereich" id="kost-bereich" role="group" aria-label="Zeitraum und Spaltenabschnitt"><span class="kost-feld"><b>Zeitraum</b>${vZeitraumFelder(f, jetzt)}</span>${abschnitt}${leeren}${grenzeWeg}<span class="muted">Der Zeitraum gilt für alle Berichte dieses Boards, der Spaltenabschnitt nur für die Kosten · beide Grenzen zählen mit</span></section>`;
 }
 /** Eine Auswahl des Spaltenabschnitts: „alle“ (Vorgabe, leerer Wert), dann die Spalten des Boards — Spaltennamen sind
-    fremder Text und stehen nur als Text und als Wert da. */
-function vKostenSpalte(seite, feld, eintraege) {
+    fremder Text und stehen nur als Text und als Wert da. Eine gespeicherte Grenze, die es nicht mehr gibt, steht gewählt
+    am Ende (wie beim Fever Chart). */
+function vKostenSpalte(seite, feld, eintraege, verschwunden) {
+  let nichtMehrDa = '';
+  if (verschwunden) nichtMehrDa = `<option value="${esc(verschwunden.name)}" selected>„${esc(verschwunden.name)}“ — gibt es nicht mehr</option>`;
   const optionen = eintraege.map(e => {
     let merkmale = '';
     if (e.gewaehlt) merkmale += ' selected';
     if (e.gesperrt) merkmale += ' disabled';
     return `<option value="${esc(e.name)}"${merkmale}>${esc(e.name)}</option>`;
   }).join('');
-  return `<label>${seite} <select class="mini-inp" id="kost-${seite}-spalte" data-bf="${feld}" aria-label="Spalte ${seite}"><option value="">alle</option>${optionen}</select></label>`;
+  return `<label>${seite} <select class="mini-inp" id="kost-${seite}-spalte" data-bf="${feld}" aria-label="Spalte ${seite}"><option value="">alle</option>${optionen}${nichtMehrDa}</select></label>`;
 }
 function vKostenInhalt(aufstellung, umfang, aktiv) {
   if (aufstellung.gruppen.some(g => g.summe)) return vKostenSummen(aufstellung, umfang);
@@ -1601,7 +1606,9 @@ function vKostenInhalt(aufstellung, umfang, aktiv) {
 function vKostenSummen(aufstellung, umfang) {
   const mehrereWaehrungen = aufstellung.gruppen.length > 1;
   const gruppen = aufstellung.gruppen.map(g => vKostenGruppe(g, aufstellung, umfang) + vKostenListe(g, aufstellung.bereich, mehrereWaehrungen)).join('');
-  return `<div class="kost-summen">${gruppen}${vNurSchaetzung(aufstellung.nurSchaetzung)}</div>`;
+  let stand = '';
+  if (aufstellung.gruppen.some(g => g.aufgaben.length)) stand = `<p class="kost-hinweis kost-stand">${esc(kostenStandSatz(aufstellung.erledigtAb))}</p>`;
+  return `<div class="kost-summen">${gruppen}${stand}${vNurSchaetzung(aufstellung.nurSchaetzung)}</div>`;
 }
 /** Eine Gruppe je Währung: „Einträge“ und die Zeile der alten Posten nur, wenn es sie gibt, „Summe“ immer — außer in einer
     Währung, in der im gewählten Bereich nichts zählt. Was nicht in der Summe steht, folgt hinter ihr. */
@@ -1618,17 +1625,26 @@ const OHNE_DATUM = 'ohne Datum / ohne Rolle / ohne Spalte';
 /** Was im gewählten Bereich neben der Summe steht und nicht mitzählt → [{wort, betrag, grund}]; ohne Bereich nichts. */
 function kostenAussen(g) {
   const zeilen = [];
+  if (g.fremdeSpalte != null) zeilen.push({ wort: 'Spalte nicht auf diesem Board', betrag: geld(g.fremdeSpalte, g.waehrung), grund: 'nicht in der Summe – Einträge aus einer Spalte, die dieses Board nicht führt' });
   if (g.altePostenAussen) zeilen.push({ wort: OHNE_DATUM, betrag: spanne(g.altePostenAussen.niedrig, g.altePostenAussen.hoch, g.waehrung, '–'), grund: 'nicht in der Summe – ohne Datum und Spalte keinem Bereich zuzuordnen' });
   return zeilen;
 }
-/** Die Aufgaben hinter der Summe einer Währung, nach Nummer; Titel sind fremder Text und stehen nur als Text da. */
+/** Der Satz unter der Liste: von wann der „Stand“ ist und ab welcher Spalte „erledigt“ gilt. */
+function kostenStandSatz(erledigtAb) {
+  const anfang = `„Stand“ ist der von heute · „erledigt“ heißt hier: in „${erledigtAb.spalte}“`;
+  if (erledigtAb.grund === 'bis') return `${anfang} oder rechts davon (Bis-Spalte des Abschnitts).`;
+  if (erledigtAb.grund === 'ziel') return `${anfang} oder rechts davon (Zielspalte des Boards).`;
+  return `${anfang} (letzte Spalte des Boards).`;
+}
+/** Die Aufgaben hinter der Summe einer Währung, nach Nummer, mit ihrem Stand; Titel sind fremder Text und stehen nur als
+    Text da. */
 function vKostenListe(g, bereich, mehrereWaehrungen) {
   if (!g.aufgaben.length) return '';
   let name = 'Aufgaben mit Einträgen';
   if (bereich) name += ' im gewählten Bereich';
   if (mehrereWaehrungen) name += ` (${g.waehrung})`;
-  const zeilen = g.aufgaben.map(a => `<tr><td class="nr">#${a.nummer}</td><th scope="row" class="tt" title="${esc(a.titel)}">${esc(a.titel)}</th><td class="r">${geld(a.cent, g.waehrung)}</td></tr>`).join('');
-  return `<table class="kost-liste"><caption>${esc(name)}</caption><thead><tr><th scope="col" class="nr">Nr.</th><th scope="col" class="tt">Aufgabe</th><th scope="col" class="r">Betrag</th></tr></thead><tbody>${zeilen}</tbody></table>`;
+  const zeilen = g.aufgaben.map(a => `<tr><td class="nr">#${a.nummer}</td><th scope="row" class="tt" title="${esc(a.titel)}">${esc(a.titel)}</th><td class="r">${geld(a.cent, g.waehrung)}</td><td class="kost-kz">${a.kennzeichen}</td></tr>`).join('');
+  return `<table class="kost-liste"><caption>${esc(name)}</caption><thead><tr><th scope="col" class="nr">Nr.</th><th scope="col" class="tt">Aufgabe</th><th scope="col" class="r">Betrag</th><th scope="col" class="kost-kz">Stand</th></tr></thead><tbody>${zeilen}</tbody></table>`;
 }
 /** Im gewählten Bereich zählt nichts: der Satz und, was daneben steht — der Knopf, der den Bereich aufhebt, steht in der
     Bereichszeile; `knopf` hebt wie in den übrigen Leerzuständen die Filter auf. */
