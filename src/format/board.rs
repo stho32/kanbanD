@@ -769,6 +769,27 @@ mod tests {
         assert!(mit("report-filter: {window-days: viele}").unwrap_err().0.contains("window-days"));
     }
 
+    /// R00171 AK 10 und ADR-0028 N1 Punkte 3 und 6: ohne `cost-from-column`/`cost-to-column` zeichengleich wie vor der
+    /// Karte, mit ihnen ein Rundlauf hinter den übrigen Schlüsseln von `report-filter` — jeder für sich, beide, und neben
+    /// allen anderen.
+    #[test]
+    #[ignore = "erwartet rot bis B0837: die Schlüssel gehen beim Schreiben verloren"]
+    fn kostenabschnitt_rundlauf_ohne_und_mit_den_spalten() {
+        let rundlauf = |text: &str| schreiben(&lesen("entwicklung", text).unwrap(), datei);
+        let mit_filter = |zeile: &str| format!("---\n{zeile}\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n");
+        const VOR_DER_KARTE: &str = "report-filter: {period: eigen, from: 2026-11-12, to: 2026-11-13, exclude-classes: [bug, \"\"], exclude-columns: [Zu erledigen], people: [st], labels: [ui], window-days: 30}";
+        let ohne = mit_filter(VOR_DER_KARTE);
+        assert_eq!(rundlauf(&ohne), ohne, "ohne die neuen Schlüssel zeichengleich");
+        let ganz_ohne = "# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n";
+        assert_eq!(rundlauf(ganz_ohne), ganz_ohne, "ohne report-filter entsteht keiner");
+
+        let beide = mit_filter(&VOR_DER_KARTE.replace("window-days: 30}", "window-days: 30, cost-from-column: Entwicklung, cost-to-column: Abnahme}"));
+        assert_eq!(rundlauf(&beide), beide, "beide Spalten neben allen übrigen Schlüsseln");
+        for zeile in ["report-filter: {cost-from-column: Entwicklung}", "report-filter: {cost-to-column: Abnahme}", "report-filter: {period: vorwoche, cost-to-column: Abnahme}"] {
+            assert_eq!(rundlauf(&mit_filter(zeile)), mit_filter(zeile), "{zeile}");
+        }
+    }
+
     // R00100 B0349: report-labels im Rundlauf, auch mit Werten, die YAML sonst als Zahl, Wahrheitswert oder gar nicht liest
     #[test]
     fn bestand_rundlauf_und_fehler() {
