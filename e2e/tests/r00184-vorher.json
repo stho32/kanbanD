@@ -1,0 +1,197 @@
+{
+ "ringeImModus": [
+  {
+   "name": "Verwerfen",
+   "stil": "solid",
+   "breite": "2px",
+   "farbe": "oklch(0.5 0.13 255)",
+   "versatz": "2px"
+  },
+  {
+   "name": "Fertig",
+   "stil": "solid",
+   "breite": "2px",
+   "farbe": "oklch(0.5 0.13 255)",
+   "versatz": "2px"
+  },
+  {
+   "name": "#t-ich",
+   "stil": "solid",
+   "breite": "2px",
+   "farbe": "oklch(0.5 0.13 255)",
+   "versatz": "2px"
+  }
+ ],
+ "ringImMenue": {
+  "stil": "solid",
+  "breite": "2px",
+  "farbe": "oklch(0.5 0.13 255)",
+  "versatz": "-2px"
+ },
+ "ringAnDerKarte": {
+  "stil": "solid",
+  "breite": "2px",
+  "farbe": "oklch(0.5 0.13 255)",
+  "versatz": "-1px"
+ },
+ "fensterKopf": [
+  {
+   "schrift": "400 13px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "0px 4px 0px 16px",
+   "lage": "100 84 1080 36"
+  },
+  {
+   "schrift": "500 13px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "0px",
+   "lage": "116 92 16 18"
+  }
+ ],
+ "fensterAbschnitte": [
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 183 832 24"
+  },
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 287 832 17"
+  },
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 380 832 17"
+  },
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 443 832 17"
+  }
+ ],
+ "neuKopf": [
+  {
+   "schrift": "400 13px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "0px 4px 0px 16px",
+   "lage": "100 84 1080 36"
+  },
+  {
+   "schrift": "500 13px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "0px",
+   "lage": "116 92 96 18"
+  }
+ ],
+ "neuAbschnitte": [
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 216 682 15"
+  },
+  {
+   "schrift": "600 11px",
+   "farbe": "oklch(0.48 0.018 255)",
+   "rand": "0px 0px 4px",
+   "innen": "0px",
+   "lage": "124 372 682 17"
+  }
+ ],
+ "menueEintraege": [
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 67 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 133 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 223 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 289 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 355 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 421 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 488 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 554 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 644 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 710 328 66"
+  },
+  {
+   "schrift": "400 12.5px",
+   "farbe": "oklch(0.24 0.02 255)",
+   "rand": "0px",
+   "innen": "8px 12px",
+   "lage": "191 800 328 66"
+  }
+ ],
+ "menueMarke": [
+  "oklch(0.5 0.13 255) 3px 0px 0px 0px inset"
+ ]
+}
