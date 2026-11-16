@@ -4,6 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { markdownHtml } = require('../../web/markdown.js');
+const { pruefeStruktur } = require('./hilfen/markdown-struktur.js');
 
 const ERLAUBTE_PROTOKOLLE = ['http:', 'https:', 'mailto:', 'vscode:'];
 const KOEDER = 'Köder';
@@ -70,6 +71,15 @@ const HOECHSTENS_HARMLOS = [
     [`${kennung(nummer)} in einer https-Adresse`, 'https://example.org/a' + zeichen(nummer) + 'b'],
     [`${kennung(nummer)} vor https`, zeichen(nummer) + 'https://example.org/'],
   ]),
+  // Karte #187, Befund M1: eine Adresse in der Adresse — die Stufe „nackte Adresse“ traf das schon gebaute href
+  ['Adresse in der Adresse mit onmouseover', '(http://a/onmouseover=document.title=1/'],
+  ['Adresse in der Adresse mit autofocus und onfocus', '(http://a/autofocus/onfocus=document.title=2/'],
+  ['Adresse in der Adresse nach einem Buchstaben', 'x(http://a/onmouseover=1/'],
+  ['Adresse in der Adresse nach einer https-Adresse', 'https://b/(http://a/onmouseover=1/'],
+  ['Adresse in der Adresse mit fremdem target', '(https://a/target=_self/'],
+  ['Adresse in der Adresse nach Leerraum-Entität', 'x&#32;(http://a/onmouseover=1/'],
+  ['Hervorhebung in einer https-Adresse', 'https://example.org/a*b*c/**d**'],
+  ['Platzhalter des Codes in der Adresse', '\u00000\u0000'],
   ['Entität dezimal im Schema', '&#106;avascript:document.title=1'],
   ['Entität hexadezimal im Schema', '&#x6A;avascript:document.title=1'],
   ['Entität ohne Strichpunkt', '&#106avascript:document.title=1'],
@@ -134,6 +144,7 @@ function linkAdressen(html) {
 const kurz = text => JSON.stringify(text.length > 80 ? text.slice(0, 80) + '…' : text);
 
 function pruefeHarmlos(html, eingabe) {
+  pruefeStruktur(html, eingabe);
   for (const adresse of linkAdressen(html)) {
     const protokoll = new URL(adresse, 'http://localhost/').protocol;
     assert.ok(ERLAUBTE_PROTOKOLLE.includes(protokoll), `GEFÄHRLICH: der Browser liest ${protokoll} in ${kurz(adresse)} aus ${kurz(eingabe)}`);
@@ -174,10 +185,40 @@ test('die Positivliste bleibt offen: http, https, mailto, vscode und relativ', (
   assert.deepStrictEqual(linkAdressen(markdownHtml('siehe https://example.org/x?a=1&b=2')), ['https://example.org/x?a=1&b=2']);
 });
 
+test('Befund M1, Kontrollpaar: Klammern um und in Adressen ergeben je einen sauberen Link', () => {
+  assert.strictEqual(markdownHtml('[k](https://example.org/a_(b)'), '<p><a href="https://example.org/a_(b" target="_blank" rel="noopener">k</a></p>');
+  assert.strictEqual(markdownHtml('siehe (https://example.org/x) dort'), '<p>siehe (<a href="https://example.org/x" target="_blank" rel="noopener">https://example.org/x</a>) dort</p>');
+  assert.strictEqual(markdownHtml('[Köder]((http://a/autofocus/onfocus=document.title=2/)'), '<p><a href="(http://a/autofocus/onfocus=document.title=2/" target="_blank" rel="noopener">Köder</a></p>');
+});
+
+test('keine Stufe greift in die Ausgabe einer früheren: Adresse, Linktext, Code, Hervorhebung', () => {
+  const link = (adresse, text) => `<a href="${adresse}" target="_blank" rel="noopener">${text}</a>`;
+  assert.strictEqual(markdownHtml('[a](https://example.org/a*b*c)'), `<p>${link('https://example.org/a*b*c', 'a')}</p>`);
+  assert.strictEqual(markdownHtml('siehe https://example.org/a*b*c und *kursiv*'), `<p>siehe ${link('https://example.org/a*b*c', 'https://example.org/a*b*c')} und <em>kursiv</em></p>`);
+  assert.strictEqual(markdownHtml('*a [b](x*y) c*'), `<p><em>a ${link('x*y', 'b')} c</em></p>`);
+  assert.strictEqual(markdownHtml('[**fett** und `code`](x.md)'), `<p>${link('x.md', '<strong>fett</strong> und <code>code</code>')}</p>`);
+  assert.strictEqual(markdownHtml('**[a](x.md)** und *https://example.org/*'), `<p><strong>${link('x.md', 'a')}</strong> und *${link('https://example.org/*', 'https://example.org/*')}</p>`);
+  assert.strictEqual(markdownHtml('[siehe https://example.org/a](https://example.org/b)'), `<p>${link('https://example.org/b', 'siehe https://example.org/a')}</p>`);
+  assert.strictEqual(markdownHtml('[x](javascript:y) und [siehe https://example.org/a](javascript:y)'), `<p>x und siehe ${link('https://example.org/a', 'https://example.org/a')}</p>`);
+});
+
+test('ein gefälschter Platzhalter im Text ergibt nichts: U+0000 wird entfernt', () => {
+  assert.strictEqual(markdownHtml('a \u00000\u0000 b'), '<p>a 0 b</p>');
+  assert.strictEqual(markdownHtml('`c` und \u00000\u0000 und \u00007\u0000'), '<p><code>c</code> und 0 und 7</p>');
+  assert.strictEqual(markdownHtml('[\u00000\u0000](x.md) `c`'), '<p><a href="x.md" target="_blank" rel="noopener">0</a> <code>c</code></p>');
+  assert.strictEqual(markdownHtml('- \u00001\u0000 [a](x.md) https://example.org/'), '<ul><li>1 <a href="x.md" target="_blank" rel="noopener">a</a> <a href="https://example.org/" target="_blank" rel="noopener">https://example.org/</a></li></ul>');
+});
+
 test('die Prüfung selbst erkennt eine gefährliche Adresse', () => {
+  assert.throws(() => pruefeStruktur('<p><a href="(<a href="http://a/onfocus=1/"" target="_blank" rel="noopener">x"</a> target="_blank" rel="noopener">k</a></p>'), /STRUKTUR/);
+  assert.throws(() => pruefeStruktur('<p><a href="a<em>b</em>c" target="_blank" rel="noopener">k</a></p>'), /STRUKTUR/);
+  assert.throws(() => pruefeStruktur('<p><a href="x" target="_self" target="_blank" rel="noopener">k</a></p>'), /STRUKTUR/);
+  assert.throws(() => pruefeStruktur('<p><img src=x></p>'), /STRUKTUR/);
+  assert.throws(() => pruefeStruktur('<p><a href="x" target="_blank" rel="noopener">k</p>'), /STRUKTUR/);
+  assert.doesNotThrow(() => pruefeStruktur('<h3>a &lt;b&gt; &quot;c&quot;</h3><p><a href="x?a=1&amp;b=2" target="_blank" rel="noopener"><strong>k</strong></a><br>z</p>'));
   const gefaehrlich = '<p><a href="\u0001javascript:x" target="_blank" rel="noopener">Köder</a></p>';
   assert.throws(() => pruefeHarmlos(gefaehrlich, ''), /GEFÄHRLICH/);
   assert.throws(() => pruefeHarmlos(gefaehrlich.replace('\u0001', '&#1;'), ''), /GEFÄHRLICH/);
   assert.throws(() => pruefeHarmlos(gefaehrlich.replace('\u0001javascript:x', 'java&Tab;script&colon;x'), ''), /GEFÄHRLICH/);
-  assert.throws(() => pruefeHarmlos(gefaehrlich.replace(' target', ' onclick="x" target'), ''), /fremdem Aufbau/);
+  assert.throws(() => pruefeHarmlos(gefaehrlich.replace(' target', ' onclick="x" target'), ''), /STRUKTUR/);
 });
