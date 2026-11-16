@@ -3,8 +3,8 @@
 // Zeichen ≤ U+0020 oder U+007F enthält. Geprüft wird, wie der Browser die Adresse liest (`new URL`), nicht ihr Aussehen.
 const test = require('node:test');
 const assert = require('node:assert');
-const { markdownHtml } = require('../../web/markdown.js');
-const { pruefeStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
+const { markdownHtml, markdownInline } = require('../../web/markdown.js');
+const { pruefeStruktur, pruefeInlineStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
 
 const KOEDER = 'Köder';
 const SKRIPT = 'javascript:document.title=%27x%27';
@@ -128,8 +128,8 @@ const HOECHSTENS_HARMLOS = [
 
 const kurz = text => JSON.stringify(text.length > 80 ? text.slice(0, 80) + '…' : text);
 
-function pruefeHarmlos(html, eingabe) {
-  pruefeStruktur(html, eingabe);
+function pruefeHarmlos(html, eingabe, struktur = pruefeStruktur) {
+  struktur(html, eingabe);
   for (const adresse of linkAdressen(html)) {
     const protokoll = new URL(adresse, 'http://localhost/').protocol;
     assert.ok(ERLAUBTE_PROTOKOLLE.includes(protokoll), `GEFÄHRLICH: der Browser liest ${protokoll} in ${kurz(adresse)} aus ${kurz(eingabe)}`);
@@ -145,6 +145,10 @@ for (const [name, adresse] of NIE_EIN_LINK) {
       const html = markdownHtml(eingabe);
       pruefeHarmlos(html, eingabe);
       assert.ok(!html.includes('<a'), `ADR-0030: ${form} ergibt einen Link: ${kurz(html)}`);
+      // Zweiter Einstieg (R00177, ADR-0030 Punkt 7): derselbe Text als Teilaufgabe, eine Zeile ohne Blöcke
+      const zeile = markdownInline(eingabe);
+      pruefeHarmlos(zeile, eingabe, pruefeInlineStruktur);
+      assert.ok(!zeile.includes('<a'), `ADR-0030: ${form} ergibt als Zeile einen Link: ${kurz(zeile)}`);
     }
   });
 }
@@ -154,6 +158,7 @@ for (const [name, adresse] of HOECHSTENS_HARMLOS) {
     for (const schreibe of Object.values(FORMEN)) {
       const eingabe = schreibe(adresse);
       pruefeHarmlos(markdownHtml(eingabe), eingabe);
+      pruefeHarmlos(markdownInline(eingabe), eingabe, pruefeInlineStruktur);
     }
   });
 }

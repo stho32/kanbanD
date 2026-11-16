@@ -39,6 +39,16 @@ function pruefeTabellen(html, eingabe) {
   }
 }
 
+/** Die Marken einer einzelnen Zeile (`markdownInline`, ADR-0030 Punkt 7): Link, Code, fett, kursiv — nie ein Block. */
+const INLINE_MARKEN = /<\/?(?:code|strong|em)>|<\/a>/g;
+
+/** Wirft, wenn die Ausgabe einer Zeile etwas anderes enthält als maskierten Text und die Marken einer Zeile. */
+function pruefeInlineStruktur(html, eingabe = '') {
+  pruefeStruktur(html, eingabe);
+  const ohneMarken = html.replace(LINK, '').replace(INLINE_MARKEN, '');
+  assert.ok(!ohneMarken.includes('<'), `STRUKTUR: Block-Marke in der Ausgabe einer Zeile bei ${kurz(ohneMarken.slice(Math.max(0, ohneMarken.indexOf('<') - 40)))} — Ausgabe ${kurz(html)} aus ${kurz(eingabe)}`);
+}
+
 const ERLAUBTE_PROTOKOLLE = ['http:', 'https:', 'mailto:', 'vscode:'];
 
 /** Liest den Wert eines Attributs, wie es der Browser täte: Entitäten werden aufgelöst. */
@@ -62,4 +72,4 @@ function linkAdressen(html) {
   });
 }
 
-module.exports = { pruefeStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE };
+module.exports = { pruefeStruktur, pruefeInlineStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE };
