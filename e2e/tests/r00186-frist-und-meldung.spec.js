@@ -90,7 +90,6 @@ test.describe('R00186 Frist je Anfrage und ehrliche Meldung', () => {
   });
 
   test('149-1 / US-1: Server weg — eine Meldung „nichts geändert" auf dem Board, der Haken verschwindet', async ({ page }) => {
-    test.fail(true, 'erwartet rot bis B0909');
     const eigeneAb = await naechsteAbbrechen(page, 'PATCH', ERSTE_TEILAUFGABE);
     await page.goto(k.adresse);
     await boardBereit(page);

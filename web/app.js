@@ -2015,7 +2015,14 @@ async function aktion(a, arg, wert) {
         const fokusAufNaechsterTeilaufgabe = Boolean(document.activeElement && document.activeElement.matches('.naechste-ziel'));
         if (fokusAufNaechsterTeilaufgabe) u.fokus = `.ka[data-id="${nr}"] .naechste-ziel`;
         render();
-        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }));
+        // Kam die Änderung nicht an, geht der vorschnelle Haken zurück (R00186 149-1): die Karte widerspricht weder der Meldung
+        // noch der Datei. Gezeichnet wird mit der Meldung der Schlange; gelingt das Nachladen, zeigt es ohnehin die Datei.
+        const hakenZurueck = fehler => {
+          const teilaufgabe = aufgabe(nr) && aufgabe(nr).teilaufgaben[i];
+          if (teilaufgabe) teilaufgabe.erledigt = false;
+          throw fehler;
+        };
+        warteschlange(() => api('PATCH', `/api/aufgaben/${nr}/teilaufgaben/${i}`, { erledigt: true }).catch(hakenZurueck));
         return;
       }
       case 'teil': {
