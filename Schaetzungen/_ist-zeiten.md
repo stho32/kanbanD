@@ -759,3 +759,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #194 (Rust-Budgettest misst Wanduhr gegen 400 ms) | Test unter Vollast belegt, auf Rechenzeit der Instanz (/proc) umgestellt, Probe mit verlangsamter Implementierung rot, 20 von 20 grün unter Last | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0895 Rote Proben und Vorher-Werte | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0896 Fokusring für Links, Knöpfe und Filterfeld der Kopfzeile | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #59/#111 R00184 (Fokusring im Kopf, aktueller Bericht im Menü, Überschriftenfolge im Aufgabenfenster) | B0897 Menü „Berichte“ zeichnet den offenen Bericht über aktuelleSeite aus | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
