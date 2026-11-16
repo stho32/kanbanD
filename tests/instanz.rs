@@ -200,7 +200,6 @@ async fn us3_andere_methoden_sind_405() {
 
 // US-3, AK 5: Endpunktliste und Übersicht nennen den Endpunkt
 #[tokio::test]
-#[ignore = "erwartet rot: B0894"]
 async fn us3_endpunktliste_und_uebersicht_nennen_die_instanz() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
@@ -222,7 +221,6 @@ async fn us3_endpunktliste_und_uebersicht_nennen_die_instanz() {
 
 // AK 5: OpenAPI nennt die drei Felder mit ihren Typen
 #[tokio::test]
-#[ignore = "erwartet rot: B0894"]
 async fn openapi_beschreibt_die_drei_felder_mit_typ() {
     let tmp = tempfile::tempdir().unwrap();
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
@@ -245,7 +243,6 @@ async fn openapi_beschreibt_die_drei_felder_mit_typ() {
 
 // AK 5: das README nennt den Endpunkt im Abschnitt zur API — und wozu ein Agent ihn braucht
 #[test]
-#[ignore = "erwartet rot: B0894"]
 fn readme_nennt_den_endpunkt_und_seinen_zweck() {
     let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
     let abschnitt = readme.split("\n## Für Agenten\n").nth(1).expect("Abschnitt „Für Agenten“").split("\n## ").next().unwrap();

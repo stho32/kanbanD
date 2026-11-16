@@ -746,3 +746,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #147 R00183 (Instanz verrät ihren Ordner: GET /api/instanz) | B0891 Abnahme-Probe rot, dann Endpunkt mit Ordner und Version | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #147 R00183 (Instanz verrät ihren Ordner: GET /api/instanz) | B0892 Gebundener Port erreicht den Router | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #147 R00183 (Instanz verrät ihren Ordner: GET /api/instanz) | B0893 Ohne Anmeldung, nur lesend, auch bei unlesbarer Datei | Standard | 0,3-0,8h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #147 R00183 (Instanz verrät ihren Ordner: GET /api/instanz) | B0894 Übersicht, OpenAPI, README und Gate | Standard | 0,3-0,8h | 0,2h | 0,2h | autonom |

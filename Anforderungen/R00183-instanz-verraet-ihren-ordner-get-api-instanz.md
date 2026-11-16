@@ -1,6 +1,6 @@
 ---
 id: R00183
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -22,12 +22,12 @@ Zahlt ein auf: [Vision](R00000-vision.md) — Agenten arbeiten über die API, oh
 
 **Ausgangslage:** Ordner `/home/x/Boards/A` (im Test ein temporärer Ordner), darin gestartet mit `kanbanD . --port 7423 --kein-browser`; Port 7423 ist frei.
 
-- [ ] **AK 1 Antwort (Abnahme-Probe der Karte):** `GET /api/instanz` → 200, `application/json`, genau `{"ordner": "/home/x/Boards/A", "port": 7423, "version": "0.1.0"}` — drei Felder, kein weiteres; `port` ist eine Zahl, `version` der Wert aus `Cargo.toml`. Heute rot: 404.
-- [ ] **AK 2 Kanonischer Ordner:** Gestartet über einen Symlink (`/home/x/kurz` → `/home/x/Boards/A`, Aufruf `kanbanD /home/x/kurz`) nennt `ordner` das Ziel `/home/x/Boards/A`. In jedem Fall ist der Wert gleich dem Feld `ordner` von `GET /api/zustand`.
-- [ ] **AK 3 Gebundener Port:** Ist 7423 beim Start belegt, läuft die Instanz auf 7424 und antwortet dort mit `"port": 7424`. Gestartet mit `--port 0` nennt `port` den Port, auf dem die Anfrage ankam — nie 0.
-- [ ] **AK 4 Ohne Anmeldung, nur lesend, ohne den Ordner zu lesen:** Die Antwort kommt ohne `X-KanbanD-Wer`, im noch nicht eingerichteten Ordner und auch dann mit 200, wenn `GET /api/zustand` wegen einer Datei ohne Leserecht 500 liefert. Der Aufruf schreibt nichts: Zahl der Commits und `git status` des Ordners sind danach unverändert. `POST /api/instanz` → 405.
-- [ ] **AK 5 Beschrieben:** Der Endpunkt steht in der Übersicht `GET /api`, in `GET /api/endpunkte` (`wer: false`, Thema „Ordner“), in `GET /api/openapi.json` mit den drei Feldern und ihren Typen und im README im Abschnitt zur API — dort mit dem Satz, dass ein Agent seine Instanz daran erkennt.
-- [ ] **AK 6 Bleibt:** `GET /api/zustand` antwortet unverändert (Feld `ordner` bleibt); die bestehenden Tests laufen ohne geänderte Erwartung grün.
+- [x] **AK 1 Antwort (Abnahme-Probe der Karte):** `GET /api/instanz` → 200, `application/json`, genau `{"ordner": "/home/x/Boards/A", "port": 7423, "version": "0.1.0"}` — drei Felder, kein weiteres; `port` ist eine Zahl, `version` der Wert aus `Cargo.toml`. Heute rot: 404.
+- [x] **AK 2 Kanonischer Ordner:** Gestartet über einen Symlink (`/home/x/kurz` → `/home/x/Boards/A`, Aufruf `kanbanD /home/x/kurz`) nennt `ordner` das Ziel `/home/x/Boards/A`. In jedem Fall ist der Wert gleich dem Feld `ordner` von `GET /api/zustand`.
+- [x] **AK 3 Gebundener Port:** Ist 7423 beim Start belegt, läuft die Instanz auf 7424 und antwortet dort mit `"port": 7424`. Gestartet mit `--port 0` nennt `port` den Port, auf dem die Anfrage ankam — nie 0.
+- [x] **AK 4 Ohne Anmeldung, nur lesend, ohne den Ordner zu lesen:** Die Antwort kommt ohne `X-KanbanD-Wer`, im noch nicht eingerichteten Ordner und auch dann mit 200, wenn `GET /api/zustand` wegen einer Datei ohne Leserecht 500 liefert. Der Aufruf schreibt nichts: Zahl der Commits und `git status` des Ordners sind danach unverändert. `POST /api/instanz` → 405.
+- [x] **AK 5 Beschrieben:** Der Endpunkt steht in der Übersicht `GET /api`, in `GET /api/endpunkte` (`wer: false`, Thema „Ordner“), in `GET /api/openapi.json` mit den drei Feldern und ihren Typen und im README im Abschnitt zur API — dort mit dem Satz, dass ein Agent seine Instanz daran erkennt.
+- [x] **AK 6 Bleibt:** `GET /api/zustand` antwortet unverändert (Feld `ordner` bleibt); die bestehenden Tests laufen ohne geänderte Erwartung grün.
 
 ## Tests
 
