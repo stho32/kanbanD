@@ -69,8 +69,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-menue [role="separator"]{height:0;border-top:1px solid var(--kd-line)}
 .kz .inp{width:330px;min-width:80px;flex:0 1 330px;height:26px;background:var(--kd-head-line);border-color:transparent;color:var(--kd-head-text);font-size:12px}
 .kz .inp::placeholder{color:var(--kd-head-muted)}
-.kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-accent-weak)}
+.kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-head-link);outline-offset:2px}
 .kz .inp:focus::placeholder{color:var(--kd-muted)}
+/* Fokusring im Kopf (R00184): --kd-head-link steht in beiden Themen über 3:1 gegen --kd-head. Radios und gesperrte Auslöser stehen
+   eigens, weil ihre allgemeinen Regeln gleich hoch zählen und in --kd-accent zeichnen; die Links der Leiste füllen die Höhe des Kopfs,
+   ihr Ring liegt deshalb innen. Der Modus „Spalten einrichten“ behält seinen Ring auf heller Fläche (.kz-modus .kz-btn). */
+.kz :focus-visible,.kz [role="radio"]:focus-visible,.kz [data-act][aria-disabled="true"]:focus-visible{outline:2px solid var(--kd-head-link);outline-offset:2px}
+.kz-nav a:focus-visible{outline-offset:-2px}
 .kz .seg{border-color:var(--kd-head-line);flex:none}
 .kz .seg>span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
 .kz .seg>span+span{border-left-color:var(--kd-head-line)}
