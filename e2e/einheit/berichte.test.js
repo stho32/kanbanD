@@ -767,3 +767,24 @@ test('Durchsatz: die x-Achse trägt garantiert höchstens acht Marken, die letzt
     assert.strictEqual(marken[marken.length - 1], n - 1, `die letzte Periode ist bei ${n} dabei`);
   }
 });
+
+// Karte #173: x-Marken von Burndown und Kumulativem Fluss (R00121, „schmales Layout: höchstens acht x-Marken“)
+const { xMarken } = require('../../web/berichte.js');
+
+test('x-Marken der Tagesdiagramme: für 1 bis 400 Tage nie mehr als acht, erster und letzter Tag beschriftet', () => {
+  assert.deepStrictEqual(xMarken(0), []);
+  assert.deepStrictEqual(xMarken(1), [0]);
+  assert.deepStrictEqual(xMarken(2), [0, 1]);
+  assert.deepStrictEqual(xMarken(3), [0, 1, 2]);
+  assert.deepStrictEqual(xMarken(8), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepStrictEqual(xMarken(15), [0, 2, 4, 6, 8, 10, 12, 14], 'unverändert, wo es schon acht waren');
+  const zuViele = [];
+  for (let tage = 1; tage <= 400; tage++) {
+    const marken = xMarken(tage);
+    if (marken.length > 8) zuViele.push(`${tage}→${marken.length}`);
+    assert.strictEqual(marken[0], 0, `${tage} Tage: erster Tag beschriftet`);
+    assert.strictEqual(marken[marken.length - 1], tage - 1, `${tage} Tage: letzter Tag beschriftet`);
+    assert.deepStrictEqual(marken, [...new Set(marken)].sort((a, b) => a - b), `${tage} Tage: aufsteigend, keine doppelte Marke`);
+  }
+  assert.deepStrictEqual(zuViele, [], 'Tage→Marken über acht');
+});

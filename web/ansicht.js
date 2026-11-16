@@ -1184,13 +1184,13 @@ function vVerlauf() {
   const linie = k => t.map((x, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(x[k]).toFixed(1)}`).join('');
   const schritt = Math.max(1, Math.ceil(max / 4));
   const ticks = []; for (let y = 0; y <= max; y += schritt) ticks.push(y);
-  const xTicks = t.map((x, i) => ({ x, i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
+  const xTicks = xMarken(t.length);
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
   S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>` : ''; };
   const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${H}" role="img" aria-label="Offene Aufgaben je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
-${xTicks.map(({ i }) => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
+${xTicks.map(i => achsDatum(tage[i], sx(i), H - U + 18)).join('')}
 <path class="umfang" d="${linie('umfang')}"></path><path class="offen" d="${linie('offen')}"></path>
 <circle class="punkt" cx="${sx(t.length - 1)}" cy="${sy(letzte.offen)}" r="4"></circle>
 <text class="endwert" x="${sx(t.length - 1) + 10}" y="${sy(letzte.offen) + 4}">offen ${letzte.offen}</text>
@@ -1254,12 +1254,12 @@ function vFlussFlaeche(t, spalten, ton) {
   const schritt = Math.max(1, Math.ceil(max / 4));
   const ticks = []; for (let y = 0; y <= max; y += schritt) ticks.push(y);
   const tage = t.map(x => isoTag(x.datum));
-  const marken = t.map((x, i) => ({ i })).filter(({ i }) => t.length <= 8 || i % Math.ceil(t.length / 8) === 0 || i === t.length - 1);
+  const marken = xMarken(t.length);
   const letzte = t[t.length - 1];
   const rand = (klasse, wort, v) => `<text class="randtext ${klasse}" x="${FLUSS_L + breite + 8}" y="${sy(v) + 4}">${wort} ${v}</text>`;
   const svg = `<svg class="diagramm cfd" viewBox="0 0 ${FLUSS_B} ${FLUSS_H}" role="img" aria-label="Kumulativer Fluss: Bestand je Spalte je Tag" ${achsAttribut(FLUSS_L, breite, tage[0], tage[tage.length - 1])}>
 ${ticks.map(v => `<line class="gitter" x1="${FLUSS_L}" x2="${FLUSS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse achse-y" x="${FLUSS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
-${marken.map(({ i }) => achsDatum(tage[i], xs[i], unten + 18)).join('')}
+${marken.map(i => achsDatum(tage[i], xs[i], unten + 18)).join('')}
 ${bänder}<path class="ang" d="${linie(t.map(x => x.angekommen))}"></path><path class="fer" d="${linie(t.map(x => x.fertig))}"></path>
 ${rand('a', 'angekommen', letzte.angekommen)}${rand('f', 'fertig', letzte.fertig)}
 ${fadenkreuz(FLUSS_O, unten)}
