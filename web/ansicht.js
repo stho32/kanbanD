@@ -456,9 +456,11 @@ function vAnhaenge(a) {
 function ichPerson() {
   return S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
 }
+/** Kommentare (R00013, R00178): fremder Text gelangt nur über `markdownHtml` ins Fenster, gerendert wie die Beschreibung
+    (ADR-0030); das Feld darunter bleibt reiner Text. */
 function vKommentare(a) {
   const me = ichPerson();
-  return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><p>${esc(k.text).replace(/\n/g, '<br>')}</p><span class="mono">${esc(per(k.wer).name)} · ${esc(zeitpunktLang(k.zeitpunkt))}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
+  return `<div class="abs"><h3>KOMMENTARE <span class="mono">kanbanD-comments · ${a.kommentare.length}</span></h3>${a.kommentare.map(k => `<div class="km">${pk(k.wer)}<div><div class="md-text">${markdownHtml(k.text)}</div><span class="mono">${esc(per(k.wer).name)} · ${esc(zeitpunktLang(k.zeitpunkt))}</span></div></div>`).join('')}<textarea class="inp add km-inp" id="km-inp" rows="1" placeholder="${me ? '+ Kommentar als ' + esc(me.name) + ' · Enter (Umschalt+Enter: neue Zeile)' : 'erst „Ich bin …“ wählen'}" data-enter="kommentar" aria-label="Neuer Kommentar"${me ? '' : ' disabled'}></textarea></div>`;
 }
 /** Lesesicht des Texts einer Teilaufgabe (R00177, Artboard D0003 `#markdown-elemente`): in der Zeile formatiert, ohne Rolle
     und ohne Tab-Halt — ein Link darin stünde sonst in einem Knopf (ADR-0030 Punkt 8). Ein Klick neben einen Link bearbeitet
