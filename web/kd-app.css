@@ -343,6 +343,10 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .ko-tab tr.ko-summe>*{border-top:2px solid var(--kd-line-strong);border-bottom:0;background:var(--kd-bg);font-weight:600;color:var(--kd-text)}
 .ko-basis{margin:8px 0 0;font-size:12px;color:var(--kd-text)}
 .ko-hin{margin:2px 0 0;font-size:12px;color:var(--kd-muted)}
+.ko-hin.ko-ohne{margin:0}
+.ko-eintraege{margin-top:var(--kd-s5)}
+.ko-tab tbody th.zp{font-family:var(--kd-mono);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;-webkit-hyphens:manual;hyphens:manual}
+.ko-tab td.t{font-family:var(--kd-font);font-size:13px}
 /* Karten-Verlauf (R00123, Artboard D0003 #reiter-verlauf): Tabelle nur lesend, Zeit mit Jahr; Querscroll-Rahmen tastaturerreichbar */
 .vh-panel{gap:0;min-width:0}
 .vh-tab th:first-child,.vh-tab td:first-child{white-space:nowrap}
@@ -1029,6 +1033,9 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   #fenster .mod-kopf .rechts{gap:var(--kd-s3);flex-wrap:nowrap;min-width:0}
   #fenster .mod-kopf .fm-aus{padding:0 var(--kd-s3)}
   .ko-tab td,.ko-tab th{padding:0 6px}
+  .ko-tab .tk{display:none}
+  .ko-tab tbody th.zp{white-space:normal;padding-top:3px;padding-bottom:3px}
+  .ko-tab td.t{white-space:normal;overflow-wrap:break-word;padding-top:3px;padding-bottom:3px}
   .kost-gruppe,.kost-gruppe .kost-zeile{display:block}
   .kost-gruppe .kost-zeile+.kost-zeile{margin-top:2px}
   .kost-gruppe .kost-betrag,.kost-gruppe .kost-umfang{padding-left:0}

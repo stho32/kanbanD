@@ -264,11 +264,35 @@ function vAnsichtWahl(a, gewaehlt) {
   return `<span class="fm-anker">${knopf}${menue}</span>`;
 }
 
-/** Panel „Kosten“ (R00105): Tabelle aus dem Preisetikett, nur lesend; ein Name ohne Silbengrenze scrollt in .ko-scroll quer. */
+/** Panel „Kosten“ (R00105, R00165 AK 10): oben die Schätzung bzw. die alten Posten aus dem Preisetikett, darunter die
+    Kosteneinträge; nur lesend. Ein Name ohne Silbengrenze scrollt in .ko-scroll quer. */
 function vKostenPanel(a) {
+  return `<div class="mod-main ko-panel">${vKostenSchaetzung(a)}${vKosteneintraege(a.kosteneintraege || [])}<p class="ko-hin">liest nur · gesetzt über die API</p></div>`;
+}
+function vKostenSchaetzung(a) {
+  if (!a.cost) return '<p class="ko-hin ko-ohne">Keine Schätzung an dieser Aufgabe.</p>';
   const k = kostenInCent(a.cost), t = kostentabelle(k);
   const rumpf = t.zeilen.map(z => vKostenZeile(z.text, z, t.spalteTokens, k.waehrung, '')).join('');
-  return `<div class="mod-main ko-panel"><div class="ko-scroll" tabindex="0" role="group" aria-label="${esc(t.beschriftung)}"><table class="ko-tab"><caption>${esc(t.beschriftung)}</caption><thead>${vKostenKopf(t.spalteTokens)}</thead><tbody>${rumpf}</tbody>${vKostenSumme(t, k.waehrung)}</table></div>${vKostenBasis(t.basis)}<p class="ko-hin">liest nur · gesetzt über die API</p></div>`;
+  let zaehlt = 'Schätzung · zählt im Bericht „Kosten“ nicht';
+  if (hatAltePosten(a)) zaehlt = 'Posten ohne Datum / ohne Rolle / ohne Spalte · zählen im Bericht „Kosten“ als angefallen';
+  return `<div class="ko-scroll" tabindex="0" role="group" aria-label="${esc(t.beschriftung)}"><table class="ko-tab"><caption>${esc(t.beschriftung)}</caption><thead>${vKostenKopf(t.spalteTokens)}</thead><tbody>${rumpf}</tbody>${vKostenSumme(t, k.waehrung)}</table></div>${vKostenBasis(t.basis)}<p class="ko-hin ko-zaehlt">${zaehlt}</p>`;
+}
+/** Tabelle der Kosteneinträge: neueste oben, je Währung eine Summenzeile; Rolle und Spalte stehen, wie sie gespeichert sind. */
+function vKosteneintraege(eintraege) {
+  if (!eintraege.length) return '';
+  const t = kosteneintragstabelle(eintraege);
+  let kopfTokens = '';
+  if (t.spalteTokens) kopfTokens = '<th scope="col" class="r tk">Tokens</th>';
+  const kopf = `<tr><th scope="col">Zeitpunkt</th><th scope="col">Rolle</th><th scope="col">Spalte</th>${kopfTokens}<th scope="col" class="r">Betrag</th></tr>`;
+  const rumpf = t.zeilen.map(z => `<tr><th scope="row" class="zp">${esc(zeitpunktLang(z.zeitpunkt))}</th><td class="t">${esc(z.rolle)}</td><td class="t">${esc(z.spalte)}</td>${vEintragTokens(t.spalteTokens, z.tokens, '—')}<td class="r">${esc(geld(z.cent, z.waehrung))}</td></tr>`).join('');
+  const fuss = t.summen.map(s => `<tr class="ko-summe"><th scope="row" colspan="3">Summe</th>${vEintragTokens(t.spalteTokens, s.tokens, '')}<td class="r">${esc(geld(s.cent, s.waehrung))}</td></tr>`).join('');
+  return `<div class="ko-scroll ko-eintraege" tabindex="0" role="group" aria-label="Angefallene API-Kosten"><table class="ko-tab"><caption>Angefallene API-Kosten</caption><thead>${kopf}</thead><tbody>${rumpf}</tbody><tfoot>${fuss}</tfoot></table></div>`;
+}
+/** Zelle der Tokens: ohne Wert `ohneWert` — „—“ in einer Eintragszeile, leer in den weiteren Summenzeilen. */
+function vEintragTokens(spalteTokens, tokens, ohneWert) {
+  if (!spalteTokens) return '';
+  if (tokens == null) return `<td class="r tk leer">${ohneWert}</td>`;
+  return `<td class="r tk">${tokens.toLocaleString('de-DE')}</td>`;
 }
 function vKostenKopf(spalteTokens) {
   let tokens = '';

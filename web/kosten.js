@@ -62,17 +62,26 @@
   const hatEintraege = a => (a.kosteneintraege || []).length > 0;
   const nurSchaetzung = a => Boolean(a.cost) && !hatAltePosten(a) && !hatEintraege(a);
 
-  /** Kosteneinträge aus GET → [{waehrung, cent, tokens}] je Währung des Eintrags, USD zuerst; tokens ist die Summe über die
-      Einträge mit Tokens, ohne solche null. Die eine Summe der Einträge — der Bericht und die Ansicht rechnen beide hiermit. */
+  /** Kosteneinträge aus GET → [{waehrung, cent}] je Währung des Eintrags, USD zuerst. Die eine Summe der Einträge —
+      der Bericht und die Ansicht „Kosten“ rechnen beide hiermit. */
   function summenDerEintraege(eintraege) {
     const summen = new Map();
-    for (const e of eintraege) {
-      const bisher = summen.get(e.currency) || { waehrung: e.currency, cent: 0, tokens: null };
-      let tokens = bisher.tokens;
-      if (e.tokens != null) tokens = (tokens || 0) + e.tokens;
-      summen.set(e.currency, { ...bisher, cent: bisher.cent + inCent(e.amount), tokens });
-    }
-    return [...summen.values()].sort((a, b) => waehrungVor(a.waehrung, b.waehrung));
+    for (const e of eintraege) summen.set(e.currency, (summen.get(e.currency) || 0) + inCent(e.amount));
+    return [...summen].map(([waehrung, cent]) => ({ waehrung, cent })).sort((a, b) => waehrungVor(a.waehrung, b.waehrung));
+  }
+
+  /** Kosteneinträge aus GET → Zeilen der Ansicht „Kosten“ (R00165 AK 10): neueste oben, bei gleichem Moment in
+      Dateireihenfolge; je Währung eine Summe, die Tokens-Summe aller Einträge nur in der ersten; die Spalte Tokens nur,
+      wenn ein Eintrag Tokens trägt. Beträge bleiben Cent, der Zeitpunkt bleibt in Dateiform. */
+  function kosteneintragstabelle(eintraege) {
+    const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
+    const neuesteZuerst = [...eintraege].sort((a, b) => zeitMs(b.at) - zeitMs(a.at));
+    const zeilen = neuesteZuerst.map(e => ({ zeitpunkt: e.at, rolle: e.role, spalte: e.column, tokens: e.tokens ?? null, cent: inCent(e.amount), waehrung: e.currency }));
+    const mitTokens = zeilen.filter(z => z.tokens != null);
+    let alleTokens = null;
+    if (mitTokens.length) alleTokens = mitTokens.reduce((summe, z) => summe + z.tokens, 0);
+    const summen = summenDerEintraege(eintraege).map((s, stelle) => ({ ...s, tokens: stelle === 0 ? alleTokens : null }));
+    return { spalteTokens: mitTokens.length > 0, zeilen, summen };
   }
 
   /** Angefallene Kosten einer Aufgabe → [{waehrung, eintraege, posten}] in Cent: je Währung die Summe ihrer Einträge
@@ -143,5 +152,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

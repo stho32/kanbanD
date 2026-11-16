@@ -28,6 +28,13 @@ test('reiterDerAufgabe: mit Preisetikett steht „Kosten“ direkt hinter „Dat
   assert.strictEqual(schluessel.at(-1), 'verlauf', '„Verlauf“ ist letzter');
 });
 
+test('reiterDerAufgabe (R00165 AK 10): „Kosten“ steht auch ohne Preisetikett, sobald die Aufgabe einen Kosteneintrag trägt', () => {
+  const eintrag = { at: '2026-11-13 10:34+01:00', role: 'entwickler', column: 'Entwicklung', amount: 3.46, currency: 'USD' };
+  assert.deepStrictEqual(reiterSchluessel({ cost: null, kosteneintraege: [eintrag] }), ['inhalt', 'zeiten', 'details', 'datei', 'kosten', 'verlauf']);
+  assert.strictEqual(reiterSchluessel({ cost: null, kosteneintraege: [] }).includes('kosten'), false, 'weder Etikett noch Einträge');
+  assert.strictEqual(reiterSchluessel({ cost: { currency: 'USD', amount: 1 }, kosteneintraege: [] }).includes('kosten'), true, 'Etikett allein genügt weiter');
+});
+
 test('reiterDerAufgabe Gegenprobe: ein nicht gesetztes Etikett (null) zählt wie keines, kein Schlüssel doppelt', () => {
   assert.strictEqual(reiterDerAufgabe({ cost: null }).some(([k]) => k === 'kosten'), false);
   const schluessel = reiterSchluessel({ cost: { currency: 'EUR', amount: 1 } });

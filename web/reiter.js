@@ -6,8 +6,9 @@
   /** Ansichts-Schlüssel und Beschriftungen in Anzeigereihenfolge (R00145): „Kosten“ steht bedingt direkt hinter „Datei“ (R00105),
       „Verlauf“ ist immer letzter (R00123). „Anhänge“ ist keine Ansicht mehr: die Liste steht im Inhalt (R00145 FA 11/13). */
   const REITER = [['inhalt', 'Inhalt'], ['zeiten', 'Zeiten'], ['details', 'Details'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['verlauf', 'Verlauf']];
-  /** Die Ansichten einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett trägt (R00105). */
-  const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || a.cost);
+  /** Die Ansichten einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett (R00105) oder einen Kosteneintrag (R00165) trägt. */
+  const hatKosten = a => Boolean(a.cost) || (a.kosteneintraege || []).length > 0;
+  const reiterDerAufgabe = a => REITER.filter(([k]) => k !== 'kosten' || hatKosten(a));
   /** Die Schlüssel der sichtbaren Ansichten — Zuhause der generischen Rückfallregel (R00145 FA 2). */
   const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
   /** Die gewählte Ansicht: der gemerkte Schlüssel, wenn die Aufgabe ihn führt, sonst „Inhalt“. Die eine Rückfallregel —

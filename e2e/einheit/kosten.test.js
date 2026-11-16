@@ -1,7 +1,7 @@
 // Unit-Tests des Preisetiketts (R00105, node --test): Rechnen in ganzen Cent, Formatieren erst beim Anzeigen
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle, kostenbericht, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
+const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
 const { FILTER_LEER, filterAnzahl } = require('../../web/berichte.js');
 
 const NBSP = ' ';
@@ -204,6 +204,54 @@ test('Schaden 4: Filter (Person, Label, Farbe, Spalten) wirken auf Einträge, al
     assert.deepStrictEqual(kostenbericht(board, aufgaben, filter(f)), nurMarkierte, JSON.stringify(f));
   for (const f of [{ ohneFarben: ['drift'] }, { ohneSpalten: ['Eingang'] }])
     assert.deepStrictEqual(kostenbericht(board, aufgaben, filter(f)), ohneMarkierte, JSON.stringify(f));
+});
+
+/* ── Ansicht „Kosten“: Tabelle der Kosteneinträge (R00165 AK 10, Zeichnung D0003 #kosten-eintraege) ── */
+const LAUF_1034 = eintrag(3.46, { tokens: 81234 });
+const LAUF_1102 = eintrag(1.20, { at: '2026-11-13 11:02+01:00' });
+const LAUF_PLANER = eintrag(0.52, { at: '2026-11-12 16:48+01:00', role: 'planer', column: 'Detailplanung', tokens: 12000 });
+
+test('Kosteneinträge AK 10: neueste oben mit Zeitpunkt, Rolle, Spalte, Tokens und Betrag in Cent; Summe 4,66 bzw. 5,18 mit Tokens', () => {
+  assert.deepStrictEqual(kosteneintragstabelle([LAUF_1034, LAUF_1102]), {
+    spalteTokens: true,
+    zeilen: [
+      { zeitpunkt: '2026-11-13 11:02+01:00', rolle: 'entwickler', spalte: 'Entwicklung', tokens: null, cent: 120, waehrung: 'USD' },
+      { zeitpunkt: '2026-11-13 10:34+01:00', rolle: 'entwickler', spalte: 'Entwicklung', tokens: 81234, cent: 346, waehrung: 'USD' },
+    ],
+    summen: [{ waehrung: 'USD', cent: 466, tokens: 81234 }],
+  });
+  const drei = kosteneintragstabelle([LAUF_PLANER, LAUF_1034, LAUF_1102]);
+  assert.deepStrictEqual(drei.zeilen.map(z => z.cent), [120, 346, 52], 'nach Zeitpunkt, nicht nach Dateireihenfolge');
+  assert.deepStrictEqual(drei.summen, [{ waehrung: 'USD', cent: 518, tokens: 93234 }]);
+});
+
+test('Kosteneinträge: gleicher Moment in zwei Schreibweisen bleibt in Dateireihenfolge; ein späterer Versatz sortiert nach dem Moment, nicht nach dem Text', () => {
+  const gleich = [eintrag(1, { at: '2026-11-13 10:34+01:00', role: 'a' }), eintrag(2, { at: '2026-11-13 09:34Z', role: 'b' }), eintrag(3, { at: '2026-11-13 10:34+01:00', role: 'c' })];
+  assert.deepStrictEqual(kosteneintragstabelle(gleich).zeilen.map(z => z.rolle), ['a', 'b', 'c']);
+  const versatz = [eintrag(1, { at: '2026-11-13 10:00+01:00', role: 'frueher' }), eintrag(2, { at: '2026-11-13 09:30-01:00', role: 'spaeter' })];
+  assert.deepStrictEqual(kosteneintragstabelle(versatz).zeilen.map(z => z.rolle), ['spaeter', 'frueher']);
+});
+
+test('Kosteneinträge in zwei Währungen: je Währung eine Summe, USD zuerst, die Tokens-Summe aller Einträge nur in der ersten', () => {
+  const t = kosteneintragstabelle([LAUF_1034, eintrag(25.55, { at: '2026-11-12 16:48+01:00', currency: 'EUR', tokens: 12000 }), LAUF_PLANER]);
+  assert.deepStrictEqual(t.summen, [{ waehrung: 'USD', cent: 398, tokens: 105234 }, { waehrung: 'EUR', cent: 2555, tokens: null }]);
+  assert.deepStrictEqual(t.zeilen.map(z => [z.cent, z.waehrung]), [[346, 'USD'], [2555, 'EUR'], [52, 'USD']], 'gleicher Zeitpunkt: Dateireihenfolge');
+});
+
+test('Kosteneinträge Gegenbeispiele: kein Eintrag mit Tokens → keine Spalte Tokens; 0 Tokens sind Tokens; ein Eintrag hat schon eine Summe', () => {
+  const ohne = kosteneintragstabelle([LAUF_1102]);
+  assert.deepStrictEqual([ohne.spalteTokens, ohne.summen], [false, [{ waehrung: 'USD', cent: 120, tokens: null }]]);
+  const null_tokens = kosteneintragstabelle([eintrag(0.10, { tokens: 0 })]);
+  assert.deepStrictEqual([null_tokens.spalteTokens, null_tokens.summen[0].tokens], [true, 0]);
+  assert.deepStrictEqual(kosteneintragstabelle([]), { spalteTokens: false, zeilen: [], summen: [] });
+});
+
+test('Schaden 5: die Summe der Ansicht einer Aufgabe ist ihr Beitrag „Einträge“ im Bericht — je Währung derselbe Cent-Betrag', () => {
+  const eintraege = [eintrag(0.10), eintrag(0.20), eintrag(3.46), eintrag(25.55, { currency: 'EUR' }), eintrag(0.07, { currency: 'EUR' })];
+  const ansicht = kosteneintragstabelle(eintraege).summen.map(s => [s.waehrung, s.cent]);
+  const bericht = kostenbericht(spalten([1], [], []), [mitEintraegen(1, eintraege, SCHAETZUNG)], FILTER_LEER).jeWaehrung.map(g => [g.waehrung, g.eintraege]);
+  assert.deepStrictEqual(ansicht, [['USD', 376], ['EUR', 2562]]);
+  assert.deepStrictEqual(bericht, ansicht);
 });
 
 /* ── Filter auf den Kostenbericht (B0373): Zeitraum und Rechnen ab gelten nicht ── */

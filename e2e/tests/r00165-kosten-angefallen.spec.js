@@ -3,9 +3,9 @@
 // (#kosten-angefallen) und D0003.dc.html (#kosten-eintraege).
 const { test, expect } = require('@playwright/test');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen, thema } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen, thema, reiter } = require('./hilfen');
 
-const NBSP = ' ';
+const NBSP = '\u00a0';
 const ALLE = 'alle Spalten, auch archivierte';
 const OHNE_DATUM = 'ohne Datum / ohne Rolle / ohne Spalte';
 const API_HINWEIS = 'Kosteneinträge legt ein Agent über die API an (POST /api/aufgaben/{nr}/kosteneintraege).';
@@ -147,5 +147,126 @@ test.describe('R00165 Bericht und Ansicht „Kosten“: angefallene Kosten', () 
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     const zeilenhoehen = await page.locator('#kosten .kost-betrag').evaluateAll(betraege => betraege.map(b => b.getClientRects().length));
     expect(zeilenhoehen, 'jeder Betrag steht in einer Zeile').toEqual([1, 1, 1, 1, 1]);
+  });
+
+  /* ── Ansicht „Kosten“ im Aufgabenfenster (AK 10) ── */
+  const EINTRAG_ALTE_SPALTE = 'cost-entries:\n  - {at: 2026-11-10 09:15+01:00, role: reviewer, column: Vorprüfung, amount: 0.75, currency: USD}\n';
+  const kostenpanel = page => page.locator('#fenster .mod-body[data-ansicht="kosten"]');
+  const eintragstabelle = page => kostenpanel(page).locator('.ko-eintraege table');
+  /** Öffnet das Aufgabenfenster über die Karte; die Browser-Uhr steht fest auf dem 16.11.2026, 12:00 Uhr. */
+  async function fensterOeffnen(page, nr) {
+    await page.locator('.ka', { hasText: `Aufgabe ${nr}` }).click();
+    await expect(page.locator('#fenster')).toBeVisible();
+  }
+  async function fensterSchliessen(page) {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fenster')).toHaveCount(0);
+  }
+  const ansichtsNamen = async page => {
+    await page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]').click();
+    return page.locator('#fenster [role="menu"][data-art="ansicht"] [role="menuitemradio"] .fm-text').allTextContents();
+  };
+  const zeilentexte = tabelle => tabelle.locator('tbody tr, tfoot tr').evaluateAll(trs => trs.map(tr => [...tr.children].filter(z => getComputedStyle(z).display !== 'none').map(z => z.textContent).join(' · ')));
+  test.beforeEach(async ({ page }) => { await page.clock.setFixedTime(new Date('2026-11-16T12:00:00+01:00')); });
+
+  test('US-3/AK 10: die Ansicht „Kosten“ von #1 zeigt beide Einträge mit Zeitpunkt, Rolle, Spalte, Betrag und die Summe 4,66 $ — ohne Preisetikett, nur lesend', async ({ page }) => {
+    await starten(page, bestand());
+    await fensterOeffnen(page, 1);
+    expect(await ansichtsNamen(page)).toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Kosten', 'Verlauf']);
+    await reiter(page, 'Kosten');
+    const panel = kostenpanel(page);
+    await expect(panel.locator('.ko-panel > *').first()).toHaveText('Keine Schätzung an dieser Aufgabe.');
+    await expect(panel.locator('table')).toHaveCount(1);
+    const tabelle = eintragstabelle(page);
+    await expect(tabelle.locator('caption')).toHaveText('Angefallene API-Kosten');
+    await expect(panel.getByRole('group', { name: 'Angefallene API-Kosten' })).toBeVisible();
+    await expect(tabelle.locator('thead th[scope="col"]')).toHaveText(['Zeitpunkt', 'Rolle', 'Spalte', 'Tokens', 'Betrag']);
+    expect(await zeilentexte(tabelle)).toEqual([
+      `13.11.2026 11:02 · entwickler · Entwicklung · — · 1,20${NBSP}$`,
+      `13.11.2026 10:34 · entwickler · Entwicklung · 81.234 · 3,46${NBSP}$`,
+      `Summe · 81.234 · 4,66${NBSP}$`,
+    ]);
+    await expect(tabelle.locator('tbody th[scope="row"]')).toHaveCount(2);
+    await expect(panel.locator('.ko-panel > *').last()).toHaveText('liest nur · gesetzt über die API');
+    await expect(panel.locator('button, input, textarea, select, [contenteditable]')).toHaveCount(0);
+    const ausrichtung = await tabelle.locator('tbody td.r, tfoot td.r').evaluateAll(zellen => zellen.map(z => getComputedStyle(z).textAlign));
+    expect(new Set(ausrichtung)).toEqual(new Set(['right']));
+    await fensterSchliessen(page);
+    await fensterOeffnen(page, 4);
+    expect(await ansichtsNamen(page), '#4 trägt weder Etikett noch Einträge').toEqual(['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf']);
+  });
+
+  test('Zeichnung Bild 1 und 3: Schätzung bzw. alte Posten bleiben in ihrer Tabelle, die Zählzeile sagt, was im Bericht zählt; neueste Einträge oben', async ({ page }) => {
+    const schaetzung = 'cost:\n  currency: USD\n  min: 0.60\n  max: 1.60\n  basis: Schätzung planer\n';
+    await starten(page, bestand(undefined, { 1: schaetzung }), { 1: [LAUF_PLANER, LAUF_1034, LAUF_1102], 2: [{ ...LAUF_1034, column: 'Fertig' }] });
+    await fensterOeffnen(page, 1);
+    await reiter(page, 'Kosten');
+    const panel = kostenpanel(page);
+    expect(await panel.locator('.ko-panel > *').evaluateAll(teile => teile.map(t => t.querySelector('caption')?.textContent || t.textContent))).toEqual([
+      'Geschätzte API-Kosten (USD)',
+      'Basis: Schätzung planer',
+      'Schätzung · zählt im Bericht „Kosten“ nicht',
+      'Angefallene API-Kosten',
+      'liest nur · gesetzt über die API',
+    ]);
+    expect(await zeilentexte(eintragstabelle(page))).toEqual([
+      `13.11.2026 11:02 · entwickler · Entwicklung · — · 1,20${NBSP}$`,
+      `13.11.2026 10:34 · entwickler · Entwicklung · 81.234 · 3,46${NBSP}$`,
+      `12.11.2026 16:48 · planer · Detailplanung · 12.000 · 0,52${NBSP}$`,
+      `Summe · 93.234 · 5,18${NBSP}$`,
+    ]);
+    await bild(page.locator('#fenster'), 'ansicht-kosten-hell.png');
+    await thema(page, 'dark');
+    await bild(page.locator('#fenster'), 'ansicht-kosten-dunkel.png');
+    await thema(page, 'light');
+    await fensterSchliessen(page);
+    await fensterOeffnen(page, 2);
+    await reiter(page, 'Kosten');
+    expect(await panel.locator('.ko-panel > *').evaluateAll(teile => teile.map(t => t.querySelector('caption')?.textContent || t.textContent))).toEqual([
+      'Geschätzte API-Kosten (USD)',
+      'Posten ohne Datum / ohne Rolle / ohne Spalte · zählen im Bericht „Kosten“ als angefallen',
+      'Angefallene API-Kosten',
+      'liest nur · gesetzt über die API',
+    ]);
+    expect(await zeilentexte(panel.locator('table').first())).toEqual([`Planung · 0,10${NBSP}$ · 0,20${NBSP}$`, `Bau · 0,30${NBSP}$ · 0,30${NBSP}$`, `Summe · 0,40${NBSP}$ · 0,50${NBSP}$`]);
+    expect(await zeilentexte(eintragstabelle(page))).toEqual([`13.11.2026 10:34 · entwickler · Fertig · 81.234 · 3,46${NBSP}$`, `Summe · 81.234 · 3,46${NBSP}$`]);
+    await fensterSchliessen(page);
+    await fensterOeffnen(page, 3);
+    await reiter(page, 'Kosten');
+    await expect(panel.locator('.ko-zaehlt')).toHaveText('Schätzung · zählt im Bericht „Kosten“ nicht');
+    await expect(panel.locator('table')).toHaveCount(1);
+  });
+
+  test('Zeichnung Bild 4 und 5: eine verschwundene Spalte behält ihren Namen ohne Marke; ohne Tokens fehlt die Spalte; zwei Währungen → zwei Summenzeilen, USD zuerst', async ({ page }) => {
+    const eur = { ...LAUF_PLANER, role: 'architekt', amount: 25.55, currency: 'EUR' };
+    await starten(page, bestand(undefined, { 4: EINTRAG_ALTE_SPALTE }), { 1: [LAUF_1034, eur, LAUF_PLANER] });
+    await fensterOeffnen(page, 4);
+    await reiter(page, 'Kosten');
+    await expect(eintragstabelle(page).locator('thead th')).toHaveText(['Zeitpunkt', 'Rolle', 'Spalte', 'Betrag']);
+    expect(await zeilentexte(eintragstabelle(page))).toEqual([`10.11.2026 09:15 · reviewer · Vorprüfung · 0,75${NBSP}$`, `Summe · 0,75${NBSP}$`]);
+    const spaltenzelle = eintragstabelle(page).locator('tbody td.t').nth(1);
+    expect(await spaltenzelle.evaluate(z => [z.getAttribute('title'), z.className, z.children.length])).toEqual([null, 't', 0]);
+    await fensterSchliessen(page);
+    await fensterOeffnen(page, 1);
+    await reiter(page, 'Kosten');
+    expect(await zeilentexte(eintragstabelle(page))).toEqual([
+      `13.11.2026 10:34 · entwickler · Entwicklung · 81.234 · 3,46${NBSP}$`,
+      `12.11.2026 16:48 · architekt · Detailplanung · 12.000 · 25,55${NBSP}€`,
+      `12.11.2026 16:48 · planer · Detailplanung · 12.000 · 0,52${NBSP}$`,
+      `Summe · 105.234 · 3,98${NBSP}$`,
+      `Summe ·  · 25,55${NBSP}€`,
+    ]);
+  });
+
+  test('Zeichnung Bild 6: bei 375 px fallen die Tokens weg, der Betrag bleibt in einer Zeile, die Seite scrollt nicht waagrecht', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 700 });
+    await starten(page, bestand(), { 1: [LAUF_PLANER, LAUF_1034, LAUF_1102] });
+    await fensterOeffnen(page, 1);
+    await reiter(page, 'Kosten');
+    await expect(eintragstabelle(page).locator('thead th:visible')).toHaveText(['Zeitpunkt', 'Rolle', 'Spalte', 'Betrag']);
+    expect((await zeilentexte(eintragstabelle(page))).at(-1)).toBe(`Summe · 5,18${NBSP}$`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const betragszeilen = await eintragstabelle(page).locator('td.r:not(.tk)').evaluateAll(zellen => zellen.map(z => getComputedStyle(z).whiteSpace));
+    expect(new Set(betragszeilen)).toEqual(new Set(['nowrap']));
   });
 });
