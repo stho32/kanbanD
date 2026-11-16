@@ -11,7 +11,9 @@ const TOUCH = breite => ({ viewport: { width: breite, height: 896 }, isMobile: t
 const TITELFELD = '#fenster [data-af="titel"]';
 const TITEL_LESEN = '#fenster [data-act="titel-bearbeiten"]';
 const BESCHREIBUNG = '#fenster #beschreibung';
-const BESCHREIBUNG_LESEN = '#fenster [data-act="beschreibung-bearbeiten"]';
+// R00162: Auslöser ist der Stift auf der Zeile der Überschrift, der Text steht in der Lesefläche
+const BESCHREIBUNG_STIFT = '#fenster [data-act="beschreibung-bearbeiten"]';
+const BESCHREIBUNG_TEXT = '#fenster .besch-lesen';
 const KEINES = { ungueltig: [], verweist: [], meldungen: 0 };
 
 let k;
@@ -206,15 +208,15 @@ test.describe('R00155 #54: Knopf „Eingabe verwerfen“, 414 px mit Touch', () 
   test.describe('54B-5: Knopf in der Beschreibung', () => {
     test('54B-5: Beschreibung von #1 im Bearbeiten, „ und mehr“ angehängt, Tipp → die Beschreibung liest „Erster Absatz“, Fokus auf „Beschreibung bearbeiten“, Fenster offen, nichts geschrieben (wie 54B-1)', async ({ page }) => {
       const fenster = await fensterIn(page, 'Inhalt');
-      await page.locator(BESCHREIBUNG_LESEN).tap();
+      await page.locator(BESCHREIBUNG_STIFT).tap();
       await expect(page.locator(BESCHREIBUNG)).toBeFocused();
       await page.keyboard.press('Control+End');
       await page.keyboard.type(' und mehr');
       await expect(page.locator(BESCHREIBUNG)).toHaveValue('Erster Absatz und mehr');
       const vorher = await standMerken(page, k);
       await knopfIm(fenster).tap();
-      await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz');
-      await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+      await expect(page.locator(BESCHREIBUNG_TEXT)).toHaveText('Erster Absatz');
+      await expect(page.locator(BESCHREIBUNG_STIFT)).toBeFocused();
       await expect(fenster).toBeVisible();
       await nichtsGeschrieben(page, k, vorher, '54B-5');
     });
@@ -287,15 +289,15 @@ test.describe('R00155 #54: Knopf „Eingabe verwerfen“ ohne Zeiger ausgelöst 
   // Herauslösbar mit dem Block 54B (US-5): fällt er heraus, entfällt dieser Test.
   test('54-13 Variante Beschreibung: „ und mehr“ angehängt, knopf.focus(); knopf.click() → die Beschreibung liest „Erster Absatz“, Fokus auf „Beschreibung bearbeiten“, Fenster offen, nichts geschrieben', async ({ page }) => {
     const fenster = await fensterIn(page, 'Inhalt');
-    await page.locator(BESCHREIBUNG_LESEN).tap();
+    await page.locator(BESCHREIBUNG_STIFT).tap();
     await expect(page.locator(BESCHREIBUNG)).toBeFocused();
     await page.keyboard.press('Control+End');
     await page.keyboard.type(' und mehr');
     await expect(page.locator(BESCHREIBUNG)).toHaveValue('Erster Absatz und mehr');
     const vorher = await standMerken(page, k);
     await ohneZeigerAusloesen(knopfIm(fenster));
-    await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz');
-    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await expect(page.locator(BESCHREIBUNG_TEXT)).toHaveText('Erster Absatz');
+    await expect(page.locator(BESCHREIBUNG_STIFT)).toBeFocused();
     await expect(fenster).toBeVisible();
     await nichtsGeschrieben(page, k, vorher, '54-13 Beschreibung');
   });

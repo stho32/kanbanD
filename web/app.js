@@ -2625,7 +2625,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Tab' && fallenTaste(e)) return;
   if (S.ui.pop && (popMenueTaste(e) || popFensterTaste(e))) return;
   if (radioTaste(e)) return;
-  if (e.key === 'Enter' && t.classList && t.classList.contains('besch-lesen')) { e.preventDefault(); act('beschreibung-bearbeiten'); return; }
   // Enter auf dem Lesediv des Titels öffnet die Bearbeitung (R00116, Muster besch-lesen)
   if (e.key === 'Enter' && t.dataset && t.dataset.act === 'titel-bearbeiten') { e.preventDefault(); act('titel-bearbeiten'); return; }
   if ((e.key === 'Enter' || e.key === ' ') && t.dataset && t.dataset.act === 'teil-bearbeiten') { e.preventDefault(); act('teil-bearbeiten', t.dataset.arg); return; }

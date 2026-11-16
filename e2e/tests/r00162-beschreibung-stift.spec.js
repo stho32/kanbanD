@@ -5,9 +5,11 @@ const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { GRUNDBESTAND, DATEI_1, fensterOeffnen } = require('./r00155-hilfen');
 
 const MARKDOWN = 'Erster Absatz mit [Verweis](https://example.org)';
-const BESTAND = { ...GRUNDBESTAND, [DATEI_1]: `---\nid: 1\ntitle: Abnahme prüfen\n---\n\n${MARKDOWN}\n` };
+const BESTAND = { ...GRUNDBESTAND, [DATEI_1]: `---\nid: 1\ntitle: Abnahme prüfen\n---\n\n${MARKDOWN}\n\n- [ ] Unterlagen sichten\n` };
 const LESEFLAECHE = '#fenster .besch-lesen';
 const TEXTFELD = '#fenster #beschreibung';
+const UEBERSCHRIFT = '#fenster .abs h3:has-text("BESCHREIBUNG")';
+const STIFT = `${UEBERSCHRIFT} button[data-act="beschreibung-bearbeiten"]`;
 
 let k;
 test.afterEach(async () => { if (k) await k.stoppen(); k = null; });
@@ -40,8 +42,6 @@ function ortImText(page, text) {
 const ausgewaehlt = page => page.evaluate(() => window.getSelection().toString().trim());
 
 test.describe('R00162 AK 1: der Text bleibt Text', () => {
-  // erwartet rot bis B0771: am Stand vor dem Bau öffnet schon der Klick in den Text das Textfeld (die Lesefläche verschwindet)
-  test.fail();
   test('AK 1/US-1: Klick, Doppelklick auf „Absatz“ und Ziehen über „Erster Absatz“ öffnen kein Textfeld; die Auswahl steht und lässt sich kopieren', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await fensterVon(page);
@@ -66,5 +66,88 @@ test.describe('R00162 AK 1: der Text bleibt Text', () => {
     await page.keyboard.press('Control+c');
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), 'Kopieren legt die Auswahl in die Zwischenablage').toBe('Erster Absatz');
     expect(await ausgewaehlt(page), 'die Auswahl bleibt stehen').toBe('Erster Absatz');
+  });
+});
+
+test.describe('R00162 AK 2, 3, 6, 8: Lesefläche ohne Aktion, Stift-Knopf auf der Zeile „BESCHREIBUNG“', () => {
+  test('AK 2: die Lesefläche trägt weder role noch data-act noch tabindex; ein Klick auf „Verweis“ folgt seinem Ziel und öffnet kein Textfeld', async ({ page, context }) => {
+    await context.route('https://example.org/**', route => route.fulfill({ contentType: 'text/html', body: '<title>Ziel</title>' }));
+    await fensterVon(page);
+    const flaeche = page.locator(LESEFLAECHE);
+    for (const merkmal of ['role', 'data-act', 'tabindex', 'aria-label', 'title']) await expect(flaeche, merkmal).not.toHaveAttribute(merkmal);
+    const [ziel] = await Promise.all([page.waitForEvent('popup'), flaeche.getByRole('link', { name: 'Verweis' }).click()]);
+    expect(ziel.url()).toBe('https://example.org/');
+    await expect(flaeche).toBeVisible();
+    await expect(page.locator(TEXTFELD)).toHaveCount(0);
+  });
+
+  const WEGE = [
+    ['Klick', async (page, stift) => { await page.locator(LESEFLAECHE).hover(); await stift.click(); }],
+    ['Enter', (page, stift) => stift.press('Enter')],
+    ['Leertaste', (page, stift) => stift.press(' ')],
+  ];
+  for (const [weg, ausloesen] of WEGE) {
+    test(`AK 3/US-2: ${weg} auf dem Stift öffnet das Textfeld mit dem Markdown, Fokus im Feld; solange es offen ist, gibt es keinen Stift`, async ({ page }) => {
+      await fensterVon(page);
+      const stift = page.locator(STIFT);
+      await expect(stift).toHaveAttribute('title', 'Beschreibung bearbeiten (b)');
+      await expect(stift).toHaveAttribute('type', 'button');
+      await expect(stift).toHaveAccessibleName('Beschreibung bearbeiten');
+      await ausloesen(page, stift);
+      await expect(page.locator(TEXTFELD)).toBeFocused();
+      await expect(page.locator(TEXTFELD)).toHaveValue(MARKDOWN);
+      await expect(page.locator('#fenster [data-act="beschreibung-bearbeiten"]')).toHaveCount(0);
+      await expect(page.locator(UEBERSCHRIFT), 'die Zeile der Überschrift bleibt').toBeVisible();
+    });
+  }
+
+  test('AK 3: der Stift liegt in der Tab-Folge des Fensters', async ({ page }) => {
+    await fensterVon(page);
+    const stift = page.locator(STIFT);
+    await expect(stift).toBeAttached();
+    for (let schritt = 0; schritt < 40 && !(await stift.evaluate(knopf => knopf === document.activeElement)); schritt++) await page.keyboard.press('Tab');
+    await expect(stift).toBeFocused();
+  });
+
+  test('AK 6: `b` öffnet das Textfeld der Beschreibung wie bisher', async ({ page }) => {
+    await fensterVon(page);
+    await page.keyboard.press('b');
+    await expect(page.locator(TEXTFELD)).toBeFocused();
+    await expect(page.locator(TEXTFELD)).toHaveValue(MARKDOWN);
+  });
+
+  test('AK 8/US-4: leere Beschreibung von #2 — direkt das Textfeld mit Platzhalter, kein Stift', async ({ page }) => {
+    await fensterVon(page, 2);
+    await expect(page.locator(UEBERSCHRIFT)).toBeVisible();
+    await expect(page.locator(TEXTFELD)).toHaveAttribute('placeholder', 'Beschreibung in Markdown');
+    await expect(page.locator(TEXTFELD)).toHaveValue('');
+    await expect(page.locator('#fenster [data-act="beschreibung-bearbeiten"]')).toHaveCount(0);
+    await page.locator(TEXTFELD).click();
+    await page.keyboard.type('Neu');
+    await page.keyboard.press('Control+Enter');
+    await expect(page.locator(LESEFLAECHE)).toHaveText('Neu');
+    await expect(page.locator(STIFT)).toBeAttached();
+  });
+
+  test('AK 8: Klick auf den Titel und auf eine Teilaufgabe öffnet deren Bearbeiten wie bisher', async ({ page }) => {
+    const fenster = await fensterVon(page);
+    await fenster.getByRole('button', { name: 'Unterlagen sichten', exact: true }).click();
+    await expect(fenster.getByLabel('Teilaufgabe bearbeiten')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await fenster.getByLabel('Titel bearbeiten', { exact: true }).click();
+    await expect(fenster.locator('[data-af="titel"]')).toBeFocused();
+    await expect(page.locator(TEXTFELD)).toHaveCount(0);
+  });
+
+  test('Entwurf am neuen Einstieg: ein geänderter Titel im Bearbeiten wird beim Klick auf den Stift gespeichert, nicht verloren; das Textfeld der Beschreibung öffnet', async ({ page }) => {
+    const fenster = await fensterVon(page);
+    await fenster.getByLabel('Titel bearbeiten', { exact: true }).click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type(' und sichern');
+    await page.locator(LESEFLAECHE).hover();
+    await page.locator(STIFT).click();
+    await expect(page.locator(TEXTFELD)).toBeFocused();
+    await expect(page.locator(TEXTFELD)).toHaveValue(MARKDOWN);
+    await expect.poll(() => k.lies(DATEI_1)).toContain('title: Abnahme prüfen und sichern\n');
   });
 });

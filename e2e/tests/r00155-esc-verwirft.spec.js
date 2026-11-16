@@ -349,12 +349,15 @@ test.describe('R00155 #54: Fußhinweis und Kürzelhilfe nennen das Verwerfen', (
 // Herauslösbarer Block 54B (US-5): nimmt der Betreiber die Regel für die Beschreibung zurück, entfällt genau dieser Block.
 test.describe('R00155 #54, Block Beschreibung (54B): Esc verwirft den Entwurf der Beschreibung', () => {
   const BESCHREIBUNG = '#fenster #beschreibung';
-  const BESCHREIBUNG_LESEN = '#fenster [data-act="beschreibung-bearbeiten"]';
+  // R00162: Auslöser ist der Stift auf der Zeile der Überschrift, der Text steht in der Lesefläche
+  const BESCHREIBUNG_STIFT = '#fenster [data-act="beschreibung-bearbeiten"]';
+  const BESCHREIBUNG_TEXT = '#fenster .besch-lesen';
 
   /** Beschreibung von #1 („Erster Absatz“) im Bearbeiten, Schreibmarke am Ende. */
   async function beschreibungBearbeiten(page) {
     const fenster = await fensterIn(page, 'Inhalt');
-    await page.locator(BESCHREIBUNG_LESEN).click();
+    await page.locator(BESCHREIBUNG_TEXT).hover();
+    await page.locator(BESCHREIBUNG_STIFT).click();
     await expect(page.locator(BESCHREIBUNG)).toBeFocused();
     await page.keyboard.press('Control+End');
     return fenster;
@@ -368,8 +371,8 @@ test.describe('R00155 #54, Block Beschreibung (54B): Esc verwirft den Entwurf de
     const angesagt = await ansagen(page);
     await page.keyboard.press('Escape');
     await expect(fenster).toBeVisible();
-    await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz');
-    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await expect(page.locator(BESCHREIBUNG_TEXT)).toHaveText('Erster Absatz');
+    await expect(page.locator(BESCHREIBUNG_STIFT)).toBeFocused();
     await expect(page.locator(BESCHREIBUNG)).toHaveCount(0);
     await nichtsGeschrieben(page, k, vorher, '54B-1');
     expect(await ansagen(page), 'stumm').toEqual(angesagt);
@@ -384,7 +387,7 @@ test.describe('R00155 #54, Block Beschreibung (54B): Esc verwirft den Entwurf de
     await page.keyboard.press('Escape');
     await expect(fenster).toBeVisible();
     await expect(page.locator(BESCHREIBUNG)).toHaveCount(0);
-    await expect(page.locator(BESCHREIBUNG_LESEN)).toBeFocused();
+    await expect(page.locator(BESCHREIBUNG_STIFT)).toBeFocused();
     await nichtsGeschrieben(page, k, vorher, '54B-2');
   });
 
@@ -414,7 +417,7 @@ test.describe('R00155 #54, Block Beschreibung (54B): Esc verwirft den Entwurf de
       const commits = Number(k.git('rev-list', '--count', 'HEAD'));
       await page.keyboard.type(' und mehr');
       await page.keyboard.press(taste);
-      await expect(page.locator(BESCHREIBUNG_LESEN)).toHaveText('Erster Absatz und mehr');
+      await expect(page.locator(BESCHREIBUNG_TEXT)).toHaveText('Erster Absatz und mehr');
       await expect.poll(() => k.lies(DATEI_1)).toContain('Erster Absatz und mehr');
       await expect.poll(() => Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
       expect(k.lies(DATEI_2)).toBe('---\nid: 2\ntitle: Zweite Aufgabe\n---\n');

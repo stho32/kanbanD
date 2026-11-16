@@ -14,7 +14,9 @@ test('US-1 und US-2: formatiert lesen, bearbeiten, zurück', async ({ page }) =>
     const lesen = page.locator('.besch-lesen');
     await expect(lesen.locator('h4')).toHaveText('Ziel');
     await expect(lesen.locator('li strong')).toHaveText('sicher');
-    await lesen.click();
+    // R00162: der Klick in den Text gehört der Auswahl, das Bearbeiten beginnt über den Stift
+    await lesen.hover();
+    await page.getByRole('button', { name: 'Beschreibung bearbeiten', exact: true }).click();
     const feld = page.getByLabel('Beschreibung', { exact: true });
     await expect(feld).toBeFocused();
     await expect(feld).toHaveValue('## Ziel\n\n* schnell\n* **sicher**');

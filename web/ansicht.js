@@ -358,8 +358,15 @@ function vFensterInhalt(a) {
   const titelFeld = u.titelBearbeiten
     ? `<input class="titel" data-af="titel"${vEntwurf(a, TITEL_FELD, a.titel)} aria-label="Titel">`
     : `<div class="titel titel-lesen" data-act="titel-bearbeiten" tabindex="0" role="button" aria-label="Titel bearbeiten" title="Klick bearbeitet">${esc(a.titel)}</div>`;
-  const beschreibung = a.beschreibung && !u.beschreibungBearbeiten ? `<div class="besch-lesen" data-act="beschreibung-bearbeiten" tabindex="0" role="button" aria-label="Beschreibung bearbeiten" title="Klick bearbeitet">${markdownHtml(a.beschreibung)}</div>` : `<textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea>`;
-  return `${titelFeld}<div class="abs"><h3>BESCHREIBUNG</h3>${beschreibung}</div>${vFensterAbschnitte(a)}`;
+  return `${titelFeld}${vBeschreibung(a)}${vFensterAbschnitte(a)}`;
+}
+/** Die Beschreibung (R00030, R00162): mit Text und außerhalb des Bearbeitens reiner Text zum Auswählen und Kopieren, der
+    Stift auf der Zeile der Überschrift beginnt das Bearbeiten (Artboard D0003 `#beschreibung-stift`); sonst direkt das Textfeld. */
+function vBeschreibung(a) {
+  const liest = Boolean(a.beschreibung) && !S.ui.beschreibungBearbeiten;
+  if (!liest) return `<div class="abs"><h3 class="besch-kopf">BESCHREIBUNG</h3><textarea class="besch" id="beschreibung" data-af="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung">${esc(a.beschreibung)}</textarea></div>`;
+  const stift = '<button type="button" class="btn btn-sym besch-stift" data-act="beschreibung-bearbeiten" title="Beschreibung bearbeiten (b)" aria-label="Beschreibung bearbeiten">✎</button>';
+  return `<div class="abs"><h3 class="besch-kopf">BESCHREIBUNG ${stift}</h3><div class="besch-lesen">${markdownHtml(a.beschreibung)}</div></div>`;
 }
 /** Der Reiter „Details“ (R00127): die Felder der bisherigen Seitenleiste (R00011/R00109); „Spalte“ bewegt die Karte (R00006). Einspaltig, ohne .mod-side. */
 function vFensterDetails(a) {

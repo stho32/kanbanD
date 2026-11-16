@@ -239,7 +239,7 @@ test.describe('R00103 Fokus auf Knöpfen', () => {
     '.mod-kopf [data-act="fenster-menue"][data-arg="aktionen"]',
     '.mod-kopf [data-act="fenster-menue"][data-arg="ansicht"]',
     '.mod-kopf [data-act="schliessen"]',
-    '.mod-main .besch-lesen',
+    '.mod-main [data-act="beschreibung-bearbeiten"]',
   ];
   /** Wahr, wenn das aktive Element genau das eine Element zum Selektor ist. */
   const aktivIst = (page, selektor) => page.evaluate(sel => {
