@@ -76,3 +76,4 @@ Erzeugt bei der Auslagerung am 2026-11-15. Je Karte die Zeilen in `po-entscheidu
 | #165 | 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246 | offen |
 | #168 | 254 | erledigt |
 | #170 | 261, 262, 263 | erledigt |
+| — (Betreiberfrage Markdown 2026-11-16: Tabellen, Textfeldhöhe, Teilaufgaben) | 312, 313, 314 | offen |
