@@ -747,7 +747,7 @@ async fn aufgabe_duplizieren(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pf
     get,
     path = "/api/aufgaben/{nr}",
     tag = "Aufgaben",
-    description = "die Aufgabe direkt, dazu pfad und text der Datei auf oberster Ebene (423 bei defekter Datei: {fehler, pfad, text})",
+    description = "die Aufgabe direkt, dazu pfad und text der Datei auf oberster Ebene (423 bei defekter Datei: {fehler, pfad, text}); kosteneintraege: [{at, role, column, amount, currency, tokens?, kennung}] — angefallene Kosten je Rollenlauf aus dem Schlüssel cost-entries der Datei, in deren Reihenfolge, ohne Einträge []; kennung role@JJJJ-MM-TTTHH:MM±HH:MM ist berechnet; column ist der Spaltenname beim Eintragen und bleibt, auch wenn die Spalte umbenannt oder entfernt wird; PATCH cost berührt die Einträge nie",
     params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::AufgabeMitDatei), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::DefekteAufgabe), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
