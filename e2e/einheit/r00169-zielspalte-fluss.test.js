@@ -7,8 +7,6 @@ const z = (t, spalte) => ({ zeitpunkt: `2026-11-0${t} 09:00`, spalte });
 const filter = x => ({ ...B.FILTER_LEER, ...x });
 const mitDatei = () => ({ klasse: null, zustaendige: ['st'], labels: [] });
 const JETZT = new Date(2026, 10, 4, 12, 0).getTime();
-/** Erwartet rot, bis `fluss()` den Zielblock liest (B0824). */
-const TODO_BIS_B0824 = { todo: 'erwartet rot bis B0824: der Fluss folgt der Wahl noch nicht' };
 
 /** Rechenbeispiel der Anforderung: Spalten A · B · C · Erledigt; 02.11. #1 bis #3 in A; 03.11. #1 und #2 nach B, #3 nach
     Erledigt; 04.11. #1 weiter nach C, #2 zurück nach A. */
@@ -37,7 +35,7 @@ test('R00169 B0823 (AK 1): Rechenbeispiel ohne Wahl — Bänder 3·0·0·0, 0·2
   ]);
 });
 
-test('R00169 B0823 (AK 2–4): Rechenbeispiel mit Zielspalte B — Burndown offen · Umfang 3·3, 0·3, 1·3; Fluss offen · fertig · gesamt 3·0·3, 0·3·3, 1·3·3; „fertig“ sinkt am 04.11. nicht; Bänder und „angekommen“ wie ohne Wahl', TODO_BIS_B0824, () => {
+test('R00169 B0823 (AK 2–4): Rechenbeispiel mit Zielspalte B — Burndown offen · Umfang 3·3, 0·3, 1·3; Fluss offen · fertig · gesamt 3·0·3, 0·3·3, 1·3·3; „fertig“ sinkt am 04.11. nicht; Bänder und „angekommen“ wie ohne Wahl', () => {
   assert.deepStrictEqual(tabelle(beideBerichte(beispiel(), filter({}), 'B')), [
     { baender: BAENDER[0], burndown: [3, 3], fluss: [3, 0, 3], angekommen: 3 },
     { baender: BAENDER[1], burndown: [0, 3], fluss: [0, 3, 3], angekommen: 3 },
@@ -92,11 +90,11 @@ function zufallsbestand(saat) {
   if (w.trifft(0.2)) f.ohneSpalten = [...new Set([...f.ohneSpalten, 'Fertig'])];
   let start = null;
   if (w.trifft(0.2)) start = `2026-11-${zwei(2 + w.bis(4))}`;
-  const zielspalte = w.einer([null, null, ...spalten.slice(1), 'Gibt es nicht']);
+  const zielspalte = w.einer([null, ...spalten.slice(1, -1), ...spalten.slice(1, -1), 'Gibt es nicht']);
   return { bew, f, start, zielspalte, aufgabeZu: nr => dateien.get(nr) };
 }
 
-test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit Rückläufern, Archivtagen, ausgeschlossenen Spalten, jeder dritte mit Phasen — ist Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist „offen“ die Summe der Bänder links vom Zielblock', TODO_BIS_B0824, () => {
+test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit Rückläufern, Archivtagen, ausgeschlossenen Spalten, jeder dritte mit Phasen — ist Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist „offen“ die Summe der Bänder links vom Zielblock', () => {
   const gesehen = { tage: 0, mitWahl: 0, mitPhasenUndWahl: 0, offenAndersAlsOhneWahl: 0 };
   for (let saat = 1; saat <= 500; saat++) {
     const { bew, f, start, zielspalte, aufgabeZu } = zufallsbestand(saat);
@@ -118,4 +116,48 @@ test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit 
     if (ziel.gewaehlt && bew.phasen) gesehen.mitPhasenUndWahl++;
   }
   assert.ok(gesehen.tage > 2000 && gesehen.mitWahl > 150 && gesehen.mitPhasenUndWahl > 30 && gesehen.offenAndersAlsOhneWahl > 300, `die Bestände decken die Fälle ab: ${JSON.stringify(gesehen)}`);
+});
+
+/* ── B0824 `fluss()` rechnet „offen“ und „fertig“ bis zum Zielblock (ADR-0027 N5 Punkte 2, 4) ── */
+const rand = (bew, zielblock, f = filter({}), aufgabeZu = mitDatei) => B.fluss(bew, f, aufgabeZu, JETZT, null, zielblock).tage.map(x => [x.offen, x.fertig, x.gesamt]);
+
+test('R00169 B0824 (AK 3): „fertig“ zählt je Aufgabe das erste Erreichen des Zielblocks oder einer Spalte rechts davon — ein Rückläufer, der B ein zweites Mal erreicht, zählt einmal; direkt nach „Erledigt“ zählt mit', () => {
+  const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [
+    { nummer: 1, wechsel: [z(2, 'B'), z(3, 'A'), z(4, 'B')] },
+    { nummer: 2, wechsel: [z(2, 'A'), z(4, 'Erledigt')] },
+  ] };
+  assert.deepStrictEqual(rand(bew, 'B'), [[1, 1, 2], [2, 1, 2], [0, 2, 2]]);
+  assert.deepStrictEqual(rand(bew, 'C'), [[2, 0, 2], [2, 0, 2], [1, 1, 2]]);
+  assert.deepStrictEqual(rand(bew, null), [[2, 0, 2], [2, 0, 2], [1, 1, 2]], 'ohne Zielblock die Abschlussspalte');
+});
+
+test('R00169 B0824 (AK 1): ein Zielblock, den es nicht gibt, rechnet wie ohne Wahl', () => {
+  assert.deepStrictEqual(rand(beispiel(), 'Abnahme'), rand(beispiel(), null));
+  assert.deepStrictEqual(rand(beispiel(), undefined), [[3, 0, 3], [2, 1, 3], [2, 1, 3]]);
+});
+
+test('R00169 B0824 (AK 3, ADR-0027 Regel 3): archiviert im Zielblock bleibt erledigt und fertig; außerhalb archiviert fällt aus „offen“ und „gesamt“, „fertig“ sinkt nicht', () => {
+  const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [{ nummer: 1, wechsel: [z(2, 'A'), z(3, 'C')] }] };
+  const archiviertAm04 = () => ({ ...mitDatei(), archiviert: '2026-11-04' });
+  assert.deepStrictEqual(rand(bew, 'B', filter({}), archiviertAm04), [[1, 0, 1], [0, 1, 1], [0, 1, 1]]);
+  assert.deepStrictEqual(rand(bew, null, filter({}), archiviertAm04), [[1, 0, 1], [1, 0, 1], [0, 0, 0]]);
+});
+
+const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
+const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [
+  { nummer: 1, labels: ['klein'], wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
+  { nummer: 2, wechsel: [z(2, 'Entwicklung')] },
+  { nummer: 3, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest'), z(4, 'Abnahme')] },
+] });
+
+test('R00169 B0824 (AK 9): mit Phasen zählen „offen“ und „fertig“ je Aufgabe über die Stufe des Blocks — wie im Burndown; „eingebettet in“ gilt nur für die Aufgabe mit dem Label', () => {
+  const bew = mitPhasen();
+  const eingebettet = { ...bew, phasen: { ...PHASEN, folge: [PHASEN.folge[0], { nr: 2, name: 'Entwicklertest', eingebettet: 'klein' }, PHASEN.folge[2]] } };
+  assert.deepStrictEqual(rand(bew, 'Entwicklung'), [[3, 0, 3], [1, 2, 3], [1, 2, 3]]);
+  assert.deepStrictEqual(rand(bew, 'Entwicklertest'), [[3, 0, 3], [3, 0, 3], [2, 1, 3]], 'in der Spalte der Phase ist sie noch nicht durchlaufen');
+  assert.deepStrictEqual(rand(eingebettet, 'Entwicklertest'), [[3, 0, 3], [2, 1, 3], [1, 2, 3]], '#1 trägt das Label und hat den Entwicklertest in dessen Spalte durchlaufen');
+  for (const b of [bew, eingebettet]) for (const zielblock of ['Entwicklung', 'Entwicklertest', 'Abnahme', null]) {
+    const burndown = B.burndown(b, filter({}), mitDatei, JETZT, null, zielblock).map(x => [x.offen, x.umfang]);
+    assert.deepStrictEqual(rand(b, zielblock).map(([offen, , gesamt]) => [offen, gesamt]), burndown, `Zielblock ${zielblock}`);
+  }
 });

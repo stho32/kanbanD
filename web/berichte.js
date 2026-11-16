@@ -286,17 +286,24 @@
       mit `gesamt` (Summe der Bänder) und `offen` (im Bestand und nicht erledigt).
       Zählt wie der Burndown: Bänder, `gesamt` und `offen` aus dem Bestand (`bestandAm`), `angekommen` und `fertig` aus dem
       ersten Erreichen (sinken nicht); `reporting.burndown` und der Berichtsfilter schränken ein, ausgeschlossene
-      Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten. */
-  function fluss(bew, f, aufgabeListe, jetzt, start = null) {
+      Spalten tragen kein Band. Die Bänder stehen in Board-Reihenfolge; `spalten` sind die Board-Spalten.
+      `zielblock` (R00169, ADR-0027 N5 Punkt 2): der Block, ab dem „erledigt“ gilt, wie im Burndown — `offen` zählt bis dorthin,
+      `fertig` das erste Erreichen einer seiner Erledigt-Spalten; ohne ihn die Abschlussspalte. Bänder, `gesamt` und
+      `angekommen` lesen ihn nicht. */
+  function fluss(bew, f, aufgabeListe, jetzt, start = null, zielblock = null) {
     const spalten = bew.spalten, aufgabeZu = einmalJeAufgabe(aufgabeListe);
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return { spalten, tage: [] };
-    const g = grenzenAb(f, jetzt, start), abschluss = spalten[spalten.length - 1], bestand = bestandLeser(bew, aufgabeZu);
-    // je Aufgabe einmal: der Bestand über die Zeit, die Ankunft und das Erreichen der Abschlussspalte — nicht je Tag neu.
+    const g = grenzenAb(f, jetzt, start), abschluss = erledigtSpalten(bew);
+    let erledigtBei = erledigtAb(bew, zielblock);
+    if (!erledigtBei) erledigtBei = () => abschluss;
+    const bestand = bestandLeser(bew, aufgabeZu, erledigtBei);
+    // je Aufgabe einmal: der Bestand über die Zeit, die Ankunft und das Erreichen einer Erledigt-Spalte — nicht je Tag neu.
     const erstesMal = (a, trifft) => { const w = a.wechsel.find(trifft); return w ? zeitMs(w.zeitpunkt) : Infinity; };
+    const fertigAb = a => { const erledigt = erledigtBei(a); return erstesMal(a, w => erledigt.includes(w.spalte)); };
     const beitraege = bew.aufgaben
       .filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)))
-      .map(a => ({ zustandAm: bestand(a), ankunft: erstesMal(a, w => w.spalte != null), fertig: erstesMal(a, w => w.spalte === abschluss) }));
+      .map(a => ({ zustandAm: bestand(a), ankunft: erstesMal(a, w => w.spalte != null), fertig: fertigAb(a) }));
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);

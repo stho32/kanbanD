@@ -8,8 +8,6 @@ const um9 = t => new Date(2026, 10, t, 9, 0).getTime();
 const filter = x => ({ ...B.FILTER_LEER, ...x });
 const mitDatei = () => ({ klasse: null, zustaendige: ['st'], labels: [] });
 const JETZT = new Date(2026, 10, 4, 12, 0).getTime();
-/** Erwartet rot, bis `fluss()` den Zielblock liest (R00169 B0824). */
-const TODO_BIS_B0824 = { todo: 'erwartet rot bis R00169 B0824: der Fluss folgt der Wahl noch nicht' };
 
 /** Rechenbeispiel aus R00166: Spalten A · B · C · Erledigt; 02.11. #1 bis #3 in A; 03.11. #1 und #2 nach B, #3 nach Erledigt;
     04.11. #1 weiter nach C, #2 zurück nach A. */
@@ -77,7 +75,7 @@ test('R00166 B0803 (AK 7) · R00169 B0823 (AK 1): ohne Wahl rechnen alle Bericht
   for (const zielspalte of [null, undefined, '']) assert.deepStrictEqual(berichteDesBoards(zielspalte), VOR_DER_KARTE, `Zielspalte ${zielspalte}`);
 });
 
-test('R00166 B0803 (AK 1–3, AK 8) · R00169 B0823 (AK 2–4, AK 10): mit Zielspalte B ändern sich Burndown (3·0·3, 0·3·0, 1·0·1), Durchsatz (0·3·0) und im Fluss „offen“ (3·0·1) und „fertig“ (0·3·3) — Bänder, „gesamt“, „angekommen“, Durchlaufzeit und „Wie lange noch“ nicht', TODO_BIS_B0824, () => {
+test('R00166 B0803 (AK 1–3, AK 8) · R00169 B0823 (AK 2–4, AK 10): mit Zielspalte B ändern sich Burndown (3·0·3, 0·3·0, 1·0·1), Durchsatz (0·3·0) und im Fluss „offen“ (3·0·1) und „fertig“ (0·3·3) — Bänder, „gesamt“, „angekommen“, Durchlaufzeit und „Wie lange noch“ nicht', () => {
   assert.deepStrictEqual(burndown('B'), MIT_B.burndown);
   assert.deepStrictEqual(durchsatz('B'), MIT_B.durchsatz);
   assert.deepStrictEqual(berichteDesBoards('B'), MIT_ZIELSPALTE_B);

@@ -1357,10 +1357,10 @@ const flussTon = (farbe, i) => farbe || `var(--kd-c-${PAL[i % PAL.length]}-line)
 function vFluss() {
   const kopf = `<div class="leiste"><b>Kumulativer Fluss</b> <span class="muted" style="font-size:12px">· liest nur · Bestand je Spalte über die Zeit</span></div>`;
   if (!S.bew) return `${kopf}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div>${vFlussTabelle([], S.board ? S.board.spalten.map(sp => sp.name) : [])}</div>`;
-  const jetzt = Date.now();
-  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt);
+  const jetzt = Date.now(), ziel = erledigtHeisst();
+  const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, jetzt, ziel.gewaehlt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="fl-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
-  const d = fluss(S.bew, S.ui.bf, aufgabe, jetzt, S.board && S.board.start);
+  const d = fluss(S.bew, S.ui.bf, aufgabe, jetzt, S.board && S.board.start, ziel.gewaehlt);
   const spalten = d.spalten, t = d.tage;
   const ton = (name, i) => flussTon((S.board.spalten.find(sp => sp.name === name) || {}).farbe, i);
   S.diagrammTip = tg => { const stand = t.find(x => isoTag(x.datum) === tg); if (!stand) return ''; const [datum, ...rest] = flussName(stand.datum, stand, spalten).split(' · '); return `<b>${esc(datum)}</b> · ${rest.map(esc).join(' · ')}`; };
