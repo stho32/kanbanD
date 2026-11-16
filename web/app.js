@@ -2426,8 +2426,12 @@ document.addEventListener('focusout', e => {
   feldVerlassen(e.target);
 });
 function feldVerlassen(feld) {
+  // ein „change“, das hier nachgetragen wird, kommt mit dem Verlassen: ein unfertiges Datum hält es nicht mehr (R00173)
+  verlassenesFeld = feld;
+  if (!S.neuzeichnen) gehaltenesDatumAbschliessen(feld);
   // Verlassen eines Felds meldet den getippten Wert nach, für den noch kein „change“ gewirkt hat (R00103, R00155 54-13)
   if (!S.neuzeichnen) aenderungNachtragen(feld);
+  verlassenesFeld = null;
   // Verlassen ohne Änderung: wieder formatiert zeigen (mit Änderung sorgt „change“ dafür).
   if (feld.id === 'beschreibung' && S.ui.beschreibungBearbeiten) setTimeout(() => { if (S.ui.beschreibungBearbeiten && document.activeElement !== $('#beschreibung')) { S.ui.beschreibungBearbeiten = false; fokusNachBeschreibung(); render(); } }, 50);
   // Verlassen des Titelfeldes ohne Änderung: wieder das Lesediv zeigen (R00116, Muster Beschreibung :1708)
@@ -2477,6 +2481,9 @@ const DATUMSFELD_OHNE_KNOPF = 'input[type="date"][data-bf], input[type="date"][d
 let datumstippen = null;
 /** Das Datumsfeld, dessen gemeldete Änderung gehalten ist. */
 let gehaltenesDatumsfeld = null;
+/** Das Feld, dessen Verlassen gerade behandelt wird. `document.activeElement` taugt dafür nicht: springt die Eingabe im
+    Datumsfeld vom Tag zum Monat, meldet der Browser die Änderung, während kurz kein Element den Fokus trägt. */
+let verlassenesFeld = null;
 document.addEventListener('keydown', e => {
   const feld = e.target;
   const imDatumsfeld = Boolean(feld.matches) && feld.matches(DATUMSFELD_OHNE_KNOPF);
@@ -2490,13 +2497,21 @@ document.addEventListener('pointerdown', () => { datumstippen = null; }, true);
 
 /** Wahr, wenn die gemeldete Änderung des Datumsfelds jetzt gespeichert wird; sonst ist sie gehalten oder verworfen. */
 function datumsaenderungWirkt(feld) {
-  const eingabe = { wert: feld.value, hatFokus: document.activeElement === feld };
+  const eingabe = { wert: feld.value, verlassen: verlassenesFeld === feld };
   if (datumstippen && datumstippen.feld === feld) eingabe.jahrVorDerZiffer = datumstippen.jahrVorDerZiffer;
   const urteil = datumsaenderung(eingabe);
   if (urteil === 'halten') { gehaltenesDatumsfeld = feld; return false; }
   if (gehaltenesDatumsfeld === feld) gehaltenesDatumsfeld = null;
   if (urteil === 'verwerfen') { feld.value = feld.defaultValue; return false; }
   return true;
+}
+/** Beim Verlassen: ein gehaltenes fertiges Datum wird gespeichert, ein unfertiges weicht dem gespeicherten Wert. */
+function gehaltenesDatumAbschliessen(feld) {
+  if (gehaltenesDatumsfeld !== feld) return;
+  gehaltenesDatumsfeld = null;
+  datumstippen = null;
+  if (datumFertig(feld.value)) feld.dispatchEvent(new Event('change', { bubbles: true }));
+  else feld.value = feld.defaultValue;
 }
 
 /** Ein „change“, das der Browser beim Verlassen eines Textfelds des Aufgabenfensters meldet. Es kommt vor dem „focusout“ und

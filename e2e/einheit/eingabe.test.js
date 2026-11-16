@@ -38,7 +38,7 @@ test('Datumsformen', () => {
 
 /* ── R00173 F0141: Datumsfeld, das ohne Knopf speichert — ein unfertig getipptes Datum wird nicht gespeichert ── */
 const { datumFertig, datumsaenderung, jahrDesDatums } = require('../../web/eingabe.js');
-const getippt = (wert, jahrVorDerZiffer) => datumsaenderung({ wert, hatFokus: true, jahrVorDerZiffer });
+const getippt = (wert, jahrVorDerZiffer) => datumsaenderung({ wert, verlassen: false, jahrVorDerZiffer });
 
 test('R00173 AK 1: „12112026“ ins leere Feld getippt — 0002, 0020 und 0202 werden gehalten, erst 2026 wird gespeichert', () => {
   assert.deepStrictEqual(
@@ -56,18 +56,18 @@ test('R00173 US-2: über ein gespeichertes Datum getippt — Tag und Monat werde
 });
 
 test('R00173 AK 4: Kalender, Pfeiltasten und Leeren kommen nicht aus einer Ziffer — gespeichert wie vor der Karte', () => {
-  assert.strictEqual(datumsaenderung({ wert: '2026-11-12', hatFokus: true }), 'speichern');
-  assert.strictEqual(datumsaenderung({ wert: '', hatFokus: true }), 'speichern');
-  assert.strictEqual(datumsaenderung({ wert: '2026-11-12', hatFokus: false }), 'speichern');
-  assert.strictEqual(datumsaenderung({ wert: '', hatFokus: false }), 'speichern');
+  assert.strictEqual(datumsaenderung({ wert: '2026-11-12', verlassen: false }), 'speichern');
+  assert.strictEqual(datumsaenderung({ wert: '', verlassen: false }), 'speichern');
+  assert.strictEqual(datumsaenderung({ wert: '2026-11-12', verlassen: true }), 'speichern');
+  assert.strictEqual(datumsaenderung({ wert: '', verlassen: true }), 'speichern');
 });
 
-test('R00173 AK 3: ein Jahr unter 1000 wird nie gespeichert — mit Fokus gehalten, beim Verlassen verworfen', () => {
-  assert.strictEqual(datumsaenderung({ wert: '0002-11-12', hatFokus: true }), 'halten');
-  assert.strictEqual(datumsaenderung({ wert: '0999-12-31', hatFokus: true }), 'halten');
-  assert.strictEqual(datumsaenderung({ wert: '1000-01-01', hatFokus: true }), 'speichern');
-  assert.strictEqual(datumsaenderung({ wert: '0002-11-12', hatFokus: false }), 'verwerfen');
-  assert.strictEqual(datumsaenderung({ wert: '0999-12-31', hatFokus: false }), 'verwerfen');
+test('R00173 AK 3: ein Jahr unter 1000 wird nie gespeichert — im Feld gehalten, beim Verlassen verworfen', () => {
+  assert.strictEqual(datumsaenderung({ wert: '0002-11-12', verlassen: false }), 'halten');
+  assert.strictEqual(datumsaenderung({ wert: '0999-12-31', verlassen: false }), 'halten');
+  assert.strictEqual(datumsaenderung({ wert: '1000-01-01', verlassen: false }), 'speichern');
+  assert.strictEqual(datumsaenderung({ wert: '0002-11-12', verlassen: true }), 'verwerfen');
+  assert.strictEqual(datumsaenderung({ wert: '0999-12-31', verlassen: true }), 'verwerfen');
 });
 
 test('R00173: fertig ist ein Datum mit vierstelligem Jahr; ein leeres Feld trägt kein Jahr', () => {

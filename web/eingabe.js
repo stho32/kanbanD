@@ -63,14 +63,14 @@
   /**
    * Was mit der gemeldeten Änderung eines Datumsfelds geschieht, das ohne Knopf speichert (R00173):
    * „halten“ — weder speichern noch zeichnen, die Eingabe läuft noch; „verwerfen“ — das Feld zeigt wieder den
-   * gespeicherten Wert; sonst „speichern“. `jahrVorDerZiffer` ist das Jahr im Feld vor der zuletzt getippten Ziffer
+   * gespeicherten Wert; sonst „speichern“. `verlassen` heißt: die Änderung kommt mit dem Verlassen des Felds. `jahrVorDerZiffer` ist das Jahr im Feld vor der zuletzt getippten Ziffer
    * (null: keines) und fehlt, wenn die Änderung nicht aus einer getippten Ziffer kommt (Kalender, Pfeiltasten, Leeren).
    */
-  function datumsaenderung({ wert, hatFokus, jahrVorDerZiffer }) {
+  function datumsaenderung({ wert, verlassen, jahrVorDerZiffer }) {
     const jahr = jahrDesDatums(wert);
     const jahrUnfertig = jahr !== null && jahr < 1000;
-    if (!hatFokus && jahrUnfertig) return 'verwerfen';
-    if (!hatFokus) return 'speichern';
+    if (verlassen && jahrUnfertig) return 'verwerfen';
+    if (verlassen) return 'speichern';
     if (jahrUnfertig) return 'halten';
     const zifferGetippt = jahrVorDerZiffer !== undefined;
     // Tag oder Monat getippt: das Jahr steht noch aus, auch wenn das Feld schon ein gültiges Datum trägt
