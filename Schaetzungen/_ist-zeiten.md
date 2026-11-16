@@ -640,3 +640,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #174 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0789 Legende nennt die drei Größen, den Zählbeginn und die Nacharbeit | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #174 R00164 (Burndown zeigt Zugang und Abgang je Tag) | B0790 Hell und Dunkel, schmale Breite, Probe im echten Programm und Gate | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #166 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0791 Probe am heutigen Stand: Rundlauf einer alten Datei | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-16 | Karte #166 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0792 Kosteneintrag als Modelltyp mit einem Konstruktor und Kennung | Standard | 1-2h | 0,1h | 0,1h | autonom |

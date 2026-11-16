@@ -99,7 +99,7 @@ fn wert_eintragen<M: serde::ser::SerializeMap>(m: &mut M, w: Wert) -> Result<(),
 }
 
 /// Cent → Dollar als nächstgelegene `f64`; die Division ist korrekt gerundet, also dieselbe Zahl, die der Text `1.10` ergibt.
-fn dollar(cent: u64) -> f64 {
+pub(super) fn dollar(cent: u64) -> f64 {
     cent as f64 / 100.0
 }
 
@@ -307,10 +307,10 @@ fn position_lesen(i: usize, v: &Value) -> Result<Rohposition, String> {
     })
 }
 
-/// Die Schlüssel einer Zuordnung in `cost` mit dem Pfad für die Meldung; `null` gilt als fehlend.
-struct Felder<'a> {
-    m: &'a Mapping,
-    pfad: &'a str,
+/// Die Schlüssel einer Zuordnung in `cost` oder `cost-entries` mit dem Pfad für die Meldung; `null` gilt als fehlend.
+pub(super) struct Felder<'a> {
+    pub(super) m: &'a Mapping,
+    pub(super) pfad: &'a str,
 }
 
 impl Felder<'_> {
@@ -318,7 +318,7 @@ impl Felder<'_> {
         self.m.get(k).filter(|v| !v.is_null())
     }
 
-    fn text(&self, k: &str) -> Result<Option<String>, String> {
+    pub(super) fn text(&self, k: &str) -> Result<Option<String>, String> {
         match self.wert(k) {
             None => Ok(None),
             Some(Value::String(s)) => Ok(Some(s.clone())),
@@ -326,7 +326,7 @@ impl Felder<'_> {
         }
     }
 
-    fn geld(&self, k: &str) -> Result<Option<u64>, String> {
+    pub(super) fn geld(&self, k: &str) -> Result<Option<u64>, String> {
         match self.wert(k) {
             None => Ok(None),
             Some(Value::Number(n)) => {
@@ -341,7 +341,7 @@ impl Felder<'_> {
         }
     }
 
-    fn tokens(&self) -> Result<Option<u64>, String> {
+    pub(super) fn tokens(&self) -> Result<Option<u64>, String> {
         match self.wert("tokens") {
             None => Ok(None),
             Some(v) => v
@@ -351,7 +351,7 @@ impl Felder<'_> {
         }
     }
 
-    fn weitere(&self, bekannt: &[&str]) -> Vec<(String, Value)> {
+    pub(super) fn weitere(&self, bekannt: &[&str]) -> Vec<(String, Value)> {
         self.m
             .iter()
             .filter_map(|(k, w)| {
@@ -438,7 +438,7 @@ fn wert_pruefen(
     }
 }
 
-fn hoechstens(cent: u64, pfad: &str, schluessel: &str) -> Result<u64, String> {
+pub(super) fn hoechstens(cent: u64, pfad: &str, schluessel: &str) -> Result<u64, String> {
     if cent > HOECHSTWERT_CENT {
         Err(format!("{pfad}.{schluessel}: höchstens 1000000.00"))
     } else {
