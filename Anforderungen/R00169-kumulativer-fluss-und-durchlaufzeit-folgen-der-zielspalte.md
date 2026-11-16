@@ -1,6 +1,6 @@
 ---
 id: R00169
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -36,20 +36,20 @@ Lesart: Mit Zielspalte B ist Fluss „offen“ die Summe der Bänder links von B
 
 ### Feature 1 — Kumulativer Fluss folgt der Zielspalte (F0134)
 
-- [ ] **AK 1 Ohne Wahl:** Ohne gespeicherte Zielspalte und ohne ausgeschlossene Abschlussspalte sind alle Zahlen und Texte aller Berichte wie vor der Karte (Beispiel: Spalten „ohne Wahl“).
-- [ ] **AK 2 Eine Zahl:** Mit Zielspalte B gilt an jedem Tag bei gleichem Filter: Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist Fluss „offen“ die Summe der Bänder links von B (Beispiel: 3 · 0 · 1 und 3 · 3 · 3).
-- [ ] **AK 3 „fertig“:** „fertig“ steigt, wenn eine Aufgabe erstmals B oder eine Spalte rechts davon erreicht, und sinkt bei Rücklauf nicht (Beispiel: 0 · 3 · 3).
-- [ ] **AK 4 Unberührt:** Bänder, „gesamt“ und „angekommen“ ändern sich durch die Wahl nicht (Beispiel: Spalte „Bänder“ in beiden Fällen gleich).
-- [ ] **AK 7a Texte im Fluss:** Über dem Diagramm steht die Zeile „Erledigt heißt“ wie im Burndown; die Kopfleiste sagt „fertig heißt: in „B“ oder rechts davon“, die Legende „fertig (ab „B“)“. Der Satz zur Geltung der Auswahl nennt in Burndown, Durchsatz, Fever Chart und Fluss auch den Kumulativen Fluss. Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#fluss-erledigt-heisst`.
-- [ ] **AK 8 Randfall:** Ist die Abschlussspalte im Berichtsfilter ausgeschlossen und nichts gewählt, rechnen Burndown, Fluss, Durchsatz und Fever Chart bis zum Block, den die Auswahl als „(Standard)“ zeigt (Beispiel: Absatz „Randfall“).
-- [ ] **AK 9 Phasen:** Auf einem Board mit Phasen und gewählter Phase gilt AK 2 ebenso.
-- [ ] **AK 10 Bleibt:** „Wie lange noch“ zeigt mit und ohne Wahl dieselben Zahlen; der gespeicherte Verlauf des Fever Charts wird durch die Karte nicht neu gerechnet, auch nicht im Randfall.
+- [x] **AK 1 Ohne Wahl:** Ohne gespeicherte Zielspalte und ohne ausgeschlossene Abschlussspalte sind alle Zahlen und Texte aller Berichte wie vor der Karte (Beispiel: Spalten „ohne Wahl“).
+- [x] **AK 2 Eine Zahl:** Mit Zielspalte B gilt an jedem Tag bei gleichem Filter: Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist Fluss „offen“ die Summe der Bänder links von B (Beispiel: 3 · 0 · 1 und 3 · 3 · 3).
+- [x] **AK 3 „fertig“:** „fertig“ steigt, wenn eine Aufgabe erstmals B oder eine Spalte rechts davon erreicht, und sinkt bei Rücklauf nicht (Beispiel: 0 · 3 · 3).
+- [x] **AK 4 Unberührt:** Bänder, „gesamt“ und „angekommen“ ändern sich durch die Wahl nicht (Beispiel: Spalte „Bänder“ in beiden Fällen gleich).
+- [x] **AK 7a Texte im Fluss:** Über dem Diagramm steht die Zeile „Erledigt heißt“ wie im Burndown; die Kopfleiste sagt „fertig heißt: in „B“ oder rechts davon“, die Legende „fertig (ab „B“)“. Der Satz zur Geltung der Auswahl nennt in Burndown, Durchsatz, Fever Chart und Fluss auch den Kumulativen Fluss. Gestaltung nach der Zeichnung `Dokumentation/Wireframes/D0006.dc.html#fluss-erledigt-heisst`.
+- [x] **AK 8 Randfall:** Ist die Abschlussspalte im Berichtsfilter ausgeschlossen und nichts gewählt, rechnen Burndown, Fluss, Durchsatz und Fever Chart bis zum Block, den die Auswahl als „(Standard)“ zeigt (Beispiel: Absatz „Randfall“).
+- [x] **AK 9 Phasen:** Auf einem Board mit Phasen und gewählter Phase gilt AK 2 ebenso.
+- [x] **AK 10 Bleibt:** „Wie lange noch“ zeigt mit und ohne Wahl dieselben Zahlen; der gespeicherte Verlauf des Fever Charts wird durch die Karte nicht neu gerechnet, auch nicht im Randfall.
 
 ### Feature 2 — Durchlaufzeit öffnet mit „bis“ Zielspalte (F0135)
 
-- [ ] **AK 5 Vorgabe:** Mit Zielspalte B öffnet die Durchlaufzeit mit „bis B“; „von“ ist die erste Spalte (Beispiel: von A bis B). Ohne Zielspalte wie bisher bis zur letzten Spalte.
-- [ ] **AK 6 Abweichung:** Eine abweichende Wahl von/bis übersteht das Neuladen (je Board, an diesem Gerät) und ändert die Board-Datei nicht; auf die Vorgabe zurückgestellt, folgt der Bericht wieder dem Board (Beispiel: bis C gewählt, neu geladen → bis C; zurückgestellt → wieder bis B).
-- [ ] **AK 7b Texte in der Durchlaufzeit:** Die Kopfleiste nennt, was als erledigt zählt; an „bis“ steht, ob die Wahl dem Board folgt oder abweicht, samt dem Weg zurück zur Vorgabe — keine zweite Auswahl „Erledigt heißt“. Der Satz zur Geltung nennt auch die Durchlaufzeit. Gestaltung nach derselben Zeichnung.
+- [x] **AK 5 Vorgabe:** Mit Zielspalte B öffnet die Durchlaufzeit mit „bis B“; „von“ ist die erste Spalte (Beispiel: von A bis B). Ohne Zielspalte wie bisher bis zur letzten Spalte.
+- [x] **AK 6 Abweichung:** Eine abweichende Wahl von/bis übersteht das Neuladen (je Board, an diesem Gerät) und ändert die Board-Datei nicht; auf die Vorgabe zurückgestellt, folgt der Bericht wieder dem Board (Beispiel: bis C gewählt, neu geladen → bis C; zurückgestellt → wieder bis B).
+- [x] **AK 7b Texte in der Durchlaufzeit:** Die Kopfleiste nennt, was als erledigt zählt; an „bis“ steht, ob die Wahl dem Board folgt oder abweicht, samt dem Weg zurück zur Vorgabe — keine zweite Auswahl „Erledigt heißt“. Der Satz zur Geltung nennt auch die Durchlaufzeit. Gestaltung nach derselben Zeichnung.
 
 ## Tests
 
