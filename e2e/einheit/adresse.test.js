@@ -98,6 +98,7 @@ test('Rückmeldung nach „Link kopieren“: kopiert oder verweigert; auf localh
   assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '127.0.0.1' }), 'Link kopiert — gilt nur auf diesem Rechner');
   assert.strictEqual(linkRueckmeldung({ kopiert: false, hostname: 'localhost' }), 'Kopieren nicht erlaubt — der Link steht in der Adresszeile — gilt nur auf diesem Rechner');
   assert.strictEqual(linkRueckmeldung({ kopiert: false, hostname: '127.0.0.1' }), 'Kopieren nicht erlaubt — der Link steht in der Adresszeile — gilt nur auf diesem Rechner');
+  assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '[::1]' }), 'Link kopiert — gilt nur auf diesem Rechner');
   assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '192.168.1.20' }), 'Link kopiert');
   assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: 'localhost.example.org' }), 'Link kopiert');
 });

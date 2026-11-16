@@ -328,24 +328,53 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
 
 /** Die Adresse, der das Fenster zuletzt gefolgt ist. Beim Laden und bei `hashchange` ist die Adresse die Wahrheit (ADR-0029
     Regel 2) — aber nur einmal je Adresse: ein Laden aus anderem Anlass (Live-Ereignis, eigene Änderung) öffnet kein Fenster
-    wieder, das der Mensch inzwischen geschlossen hat. Ein Laden, das noch für eine frühere Adresse begann, folgt ihr nicht mehr. */
+    wieder, das der Mensch inzwischen geschlossen hat, und schließt keines, das er inzwischen geöffnet hat. Ein Laden, das noch
+    für eine frühere Adresse begann, folgt ihr nicht mehr. */
 let adresseGefolgt = null;
 
-/** Führt die Adresse dem Fenster nach (R00174 AK 2, ADR-0029 Regel 2): öffnet oder schließt der Mensch das Fenster, steht
-    danach die Adresse der Aufgabe bzw. der Seite als neuer Verlaufseintrag da — ohne `hashchange`, also ohne Laden. Ist eine
-    Navigation unterwegs (die Adresse ist noch nicht befolgt, oder ihre Ansicht noch nicht geladen), bleibt die Adresse die
-    Wahrheit und wird nicht überschrieben. */
+/** Führt die Adresse dem Fenster nach (R00174 AK 2, ADR-0029 Regel 2) — ohne `hashchange`-Laden. Öffnen aus der Ansicht
+    schreibt einen neuen Verlaufseintrag und markiert ihn; der Wechsel zu einer anderen Aufgabe ersetzt den Eintrag. Schließen
+    stapelt nie: aus einem markierten Eintrag geht es im Verlauf einen Schritt zurück auf die Ansicht, aus jedem anderen
+    (Link, Lesezeichen) ersetzt es den Eintrag durch die Adresse der Ansicht. Ist eine Navigation unterwegs (die Adresse ist
+    noch nicht befolgt, ihre Ansicht noch nicht geladen, oder der Schritt zurück läuft), wird nichts geschrieben. */
 function adresseNachfuehren() {
   const u = S.ui;
-  const navigationUnterwegs = location.hash !== adresseGefolgt;
+  const navigationUnterwegs = location.hash !== adresseGefolgt || rueckwegUnterwegs;
   const seiteMitAufgabenadresse = (u.view === 'board' && Boolean(u.slug)) || u.view === 'aufgaben';
   const adresse = adresseLesen(location.hash);
   const ansichtNochNichtGeladen = adresse.sicht !== u.view;
   if (navigationUnterwegs || !seiteMitAufgabenadresse || ansichtNochNichtGeladen) return;
   const gezeigt = u.offen || u.offenDefekt || null;
   if (adresse.nummer === gezeigt) return;
-  history.pushState(null, '', adresseBilden({ sicht: u.view, slug: u.slug, nummer: gezeigt }));
+  const ziel = adresseBilden({ sicht: u.view, slug: u.slug, nummer: gezeigt });
+  const geoeffnet = !adresse.nummer;
+  const geschlossen = !gezeigt;
+  if (geoeffnet) history.pushState(AUS_DER_ANSICHT_GEOEFFNET, '', ziel);
+  else if (geschlossen && ausDerAnsichtGeoeffnet()) { rueckwegUnterwegs = true; history.back(); return; }
+  else history.replaceState(history.state, '', ziel);
   adresseGefolgt = location.hash;
+}
+
+/** Marke am Verlaufseintrag eines Fensters, das in dieser Sitzung aus seiner Ansicht geöffnet wurde: der Eintrag davor ist
+    dieselbe Ansicht ohne Fenster. Sie liegt im `history.state` des Eintrags und überlebt Zurück, Vor und Neuladen; ein Link
+    oder Lesezeichen trägt sie nicht. */
+const AUS_DER_ANSICHT_GEOEFFNET = { kdFensterAusAnsicht: true };
+const ausDerAnsichtGeoeffnet = () => Boolean(history.state) && history.state.kdFensterAusAnsicht === true;
+
+/** Wahr, solange der Schritt zurück nach dem Schließen läuft: `history.back()` meldet sich erst später mit `hashchange`. */
+let rueckwegUnterwegs = false;
+
+/** Der Schritt zurück nach dem Schließen ist angekommen: das Fenster ist schon weg, die Ansicht steht — die Adresse gilt als
+    befolgt, ohne Laden. Wahr, wenn damit alles getan ist; hat der Mensch inzwischen eine Aufgabe geöffnet, bekommt sie jetzt
+    ihre Adresse. Führt der Schritt wider Erwarten auf eine andere Ansicht, folgt ihr der übliche Weg. */
+function rueckwegAngekommen() {
+  rueckwegUnterwegs = false;
+  const adresse = adresseLesen(location.hash);
+  const dieselbeAnsicht = adresse.sicht === S.ui.view && (!adresse.slug || adresse.slug === S.ui.slug) && !adresse.nummer;
+  if (!dieselbeAnsicht) return false;
+  adresseGefolgt = location.hash;
+  adresseNachfuehren();
+  return true;
 }
 
 /** Stellt das Fenster auf die Aufgabe der Adresse (R00174): ohne Nummer schließt es, mit einer anderen Nummer wechselt es wie
@@ -360,11 +389,10 @@ function fensterDerAdresseFolgen(hash) {
   fensterfeldVerlassen();
   u.offen = null; u.offenDefekt = null; u.defektDatei = null; u.datei = null; u.fensterMenue = null; u.entwurf = null;
   u.linkZiel = null;
-  // Das Verlassen hat einen Entwurf abgeschickt: erst das Nachladen der Warteschlange folgt der Adresse — bis dahin würde
-  // keine Antwort für das Fenster übernommen (R00110).
-  if (schlangeOffen()) return;
   adresseGefolgt = hash;
   if (!adresse.nummer) return;
+  // Hat das Verlassen einen Entwurf abgeschickt, übernimmt das Fenster erst mit dem Nachladen der Warteschlange eine Antwort
+  // (R00110) — bis dahin steht nur das Ziel. Öffnet der Mensch inzwischen eine Aufgabe, verfällt es (fensterZuruecksetzen).
   fensterZuruecksetzen();
   u.offenDefekt = adresse.nummer;
   u.linkZiel = { nummer: adresse.nummer, slug: adresse.slug, hash };
@@ -415,7 +443,8 @@ function liegtAufDemGezeigtenBoard(nummer) {
 /** Berichtigt die Adresse `hash` eines Links, der nicht passte, ohne neuen Verlaufseintrag: sie nennt danach, was gezeigt
     wird. Steht inzwischen eine andere Adresse da, bleibt sie stehen. */
 function adresseErsetzen(hash, nummer) {
-  if (location.hash !== hash) return;
+  const ohneBoard = S.ui.view === 'board' && !S.ui.slug;
+  if (location.hash !== hash || ohneBoard) return;
   const berichtigt = adresseBilden({ sicht: S.ui.view, slug: S.ui.slug, nummer });
   history.replaceState(null, '', berichtigt);
   adresseGefolgt = location.hash;
@@ -896,6 +925,8 @@ function fensterZuruecksetzen() {
   u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
   u.entwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
   u.verlauf = null; u.verlaufFehler = null;
+  // ein Ziel aus der Adresse, das noch auf seine Antwort wartet, gilt nicht mehr (R00174)
+  u.offenDefekt = null; u.defektDatei = null; u.linkZiel = null;
 }
 
 /** Öffnet das Aufgabenfenster auf dem Reiter Inhalt und lädt seine Datei; was der Aufrufer zusätzlich braucht, setzt er danach. */
@@ -1833,7 +1864,7 @@ async function aktion(a, arg, wert) {
       case 'schliessen': case 'schliessen-bg': u.offen = null; u.fensterMenue = null; u.datei = null; u.offenDefekt = null; u.defektDatei = null; u.entwurf = null; break;
       case 'schliessen-hilfe': u.hilfe = false; break;
       case 'hilfe': u.hilfe = true; break;
-      case 'defekt-oeffnen': u.pop = null; u.offenDefekt = +arg; await defektLaden(); break;
+      case 'defekt-oeffnen': u.pop = null; u.linkZiel = null; u.offenDefekt = +arg; await defektLaden(); break;
       case 'fenster-menue': {
         // Höchstens ein Kopf-Menü offen (R00145 FA 7, R00144 FA 6): das andere schließt, der Fokus folgt dem neuen Menü.
         u.fensterMenue = u.fensterMenue === arg ? null : arg;
@@ -2811,9 +2842,10 @@ document.addEventListener('input', e => {
 /** Zurück, Vor, ein Link oder eine getippte Adresse (ADR-0029 Regel 2): das Fenster folgt der Adresse sofort — was der Mensch
     danach öffnet, gilt —, die Ansicht folgt mit dem Laden. */
 function adresseGewechselt() {
+  if (rueckwegUnterwegs && rueckwegAngekommen()) return;
   const eingerichtet = Boolean(S.zustand) && Boolean(S.zustand.eingerichtet);
   if (eingerichtet && location.hash !== adresseGefolgt) { fensterDerAdresseFolgen(location.hash); render(); }
-  return laden();
+  laden();
 }
 window.addEventListener('hashchange', adresseGewechselt);
 

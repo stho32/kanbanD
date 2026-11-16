@@ -41,11 +41,11 @@
     return seite + '/aufgabe/' + nummer;
   }
 
-  /** Was der Hinweis nach „Link kopieren“ sagt. Ein Link von `localhost` oder `127.0.0.1` führt nur auf dem eigenen Rechner zum Ziel. */
+  /** Was der Hinweis nach „Link kopieren“ sagt. Ein Link von `localhost`, `127.0.0.1` oder `[::1]` führt nur auf dem eigenen Rechner zum Ziel. */
   function linkRueckmeldung({ kopiert, hostname }) {
     let text = 'Kopieren nicht erlaubt — der Link steht in der Adresszeile';
     if (kopiert) text = 'Link kopiert';
-    const nurAufDiesemRechner = hostname === 'localhost' || hostname === '127.0.0.1';
+    const nurAufDiesemRechner = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
     if (!nurAufDiesemRechner) return text;
     return text + ' — gilt nur auf diesem Rechner';
   }
