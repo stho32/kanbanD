@@ -1112,7 +1112,7 @@ function berichteAusloeser() {
 function vBerichtePop() {
   const e = (href, svg, t, s, an) => `<a class="e${an ? ' an' : ''}" href="${href}" role="menuitem" tabindex="-1"${href.startsWith('/api') ? ' download' : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg><b>${t}</b><small>${s}</small></a>`;
   const v = S.ui.view;
-  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, BERICHTSNAMEN.stundenzettel, 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, BERICHTSNAMEN.kreuz, 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', BERICHTSNAMEN.verlauf, 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/fluss', '<path d="M4 20h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 15h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 10h6l4-1 6-2v3l-6 2-4 1H4z"></path>', BERICHTSNAMEN.fluss, 'Bestand je Spalte über die Zeit – gestapelte Bänder aus der Git-Geschichte dieses Boards.', v === 'berichte/fluss')}${e('#/berichte/durchsatz', '<path d="M4 20h16"></path><path d="M7 20V12M12 20V6M17 20V15"></path>', BERICHTSNAMEN.durchsatz, 'Erledigte Aufgaben je Zeitraum – Balken aus der Git-Geschichte dieses Boards.', v === 'berichte/durchsatz')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', BERICHTSNAMEN.prognose, 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', BERICHTSNAMEN.fieber, 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', BERICHTSNAMEN.durchlauf, 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/bestand', SVG.tabelle, BERICHTSNAMEN.bestand, 'Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse – Klick öffnet das Board.', v === 'berichte/bestand')}${e('#/berichte/kosten', SVG.etikett, BERICHTSNAMEN.kosten, 'Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
+  return `<div class="pop menue" id="pop" data-for="${berichteAusloeser()}" data-al="l" style="width:330px" role="menu" aria-label="Berichte"><div class="k">ZEITEN</div>${e('#/berichte/stundenzettel', SVG.zettel, BERICHTSNAMEN.stundenzettel, 'Eine Person, eine Woche: Aufgaben × Tage mit Summen.', v === 'berichte/stundenzettel')}${e('#/berichte/kreuz', SVG.kreuz, BERICHTSNAMEN.kreuz, 'Kreuztabelle über den Zeitraum, Summen in beide Richtungen.', v === 'berichte/kreuz')}<div class="k">VERLAUF</div>${e('#/berichte/verlauf', '<path d="M4 6l6 6 4-3 6 9M4 20h16"></path>', BERICHTSNAMEN.verlauf, 'Offene Aufgaben je Tag im gewählten Zeitraum – aus der Git-Geschichte dieses Boards.', v === 'berichte/verlauf')}${e('#/berichte/fluss', '<path d="M4 20h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 15h6l4-1 6-2v3l-6 2-4 1H4z"></path><path d="M4 10h6l4-1 6-2v3l-6 2-4 1H4z"></path>', BERICHTSNAMEN.fluss, 'Bestand je Spalte über die Zeit – gestapelte Bänder aus der Git-Geschichte dieses Boards.', v === 'berichte/fluss')}${e('#/berichte/durchsatz', '<path d="M4 20h16"></path><path d="M7 20V12M12 20V6M17 20V15"></path>', BERICHTSNAMEN.durchsatz, 'Erledigte Aufgaben je Zeitraum – Balken aus der Git-Geschichte dieses Boards.', v === 'berichte/durchsatz')}${e('#/berichte/prognose', '<path d="M4 20h16M4 6l5 5 4-2 4 6M17 15l3-6"></path>', BERICHTSNAMEN.prognose, 'Monte-Carlo-Prognose je Spalte aus dem Durchsatz dieses Boards – rechnet live mit.', v === 'berichte/prognose')}${e('#/berichte/fieber', '<path d="M4 20h16M4 20V4"></path><path d="M6 17l4-3 3 1 5-7"></path><circle cx="18" cy="8" r="1.6"></circle>', BERICHTSNAMEN.fieber, 'Fortschritt gegen Pufferverbrauch bis zum Zieltermin – CCPM-Fieberdiagramm dieses Boards.', v === 'berichte/fieber')}${e('#/berichte/durchlauf', '<path d="M4 20h16M4 20V4M8 15h.01M11 11h.01M14 13h.01M17 7h.01"></path>', BERICHTSNAMEN.durchlauf, 'Wie lange Aufgaben von einer Spalte bis zu einer anderen brauchen – Lead und Cycle Time.', v === 'berichte/durchlauf')}<div class="k">BESTAND</div>${e('#/berichte/bestand', SVG.tabelle, BERICHTSNAMEN.bestand, 'Offene Aufgaben je Label-Paar, gefärbt nach der dringendsten Klasse – Klick öffnet das Board.', v === 'berichte/bestand')}${e('#/berichte/kosten', SVG.etikett, BERICHTSNAMEN.kosten, 'Angefallene API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.', v === 'berichte/kosten')}<div class="k">AUSLEITEN</div>${e('/api/berichte/zeiten.csv', SVG.csv, 'Export als CSV', 'Eine Zeile je Zeiteintrag: Aufgabe, Person, Art, Beginn, Ende, Dauer, Herkunft.')}</div>`;
 }
 /** Gemeinsame Filterleiste aller Berichte (R00043); `leiste`: Schlüssel in BERICHTSLEISTEN (web/berichte.js), dort stehen die Gruppen je Bericht. */
 function vBerichtsfilter(leiste) {
@@ -1431,9 +1431,10 @@ function vDurchsatzTabelle(d, einheit) {
   return `<details class="fluss-tabs"><summary>Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th><th scope="col" class="r">Erledigt</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th><td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
 }
 
-/** Kostenbericht (R00105 US-9 bis US-14): je Währung die Summe der Grenzen über alle Spalten und das Archiv — liest nur. */
+/** Kostenbericht (R00105 US-9 bis US-14, R00165 AK 9): je Währung die angefallenen Kosten — Kosteneinträge, alte Posten und
+    ihre Summe — über alle Spalten und das Archiv; reine Schätzungen werden nur gezählt. Liest nur. */
 function vKosten() {
-  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· geschätzte API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
+  const kopf = `<div class="leiste"><b>Kosten</b> <span class="muted" style="font-size:12px">· angefallene API-Kosten · liest nur</span></div>${vBerichtsfilter('kosten')}`;
   if (!S.board) return `${kopf}<div class="body"><div class="leer">lädt …</div></div>`;
   const filter = filterOhneZeitraum(S.ui.bf);
   const bericht = kostenbericht(S.board, S.aufgaben, filter);
@@ -1448,11 +1449,27 @@ function vKostenInhalt(bericht, umfang, aktiv) {
   return vKostenLeer(bericht, umfang, knopf);
 }
 function vKostenSummen(bericht, umfang) {
-  const zeile = s => `<p class="kost-zeile"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(s.niedrig, s.hoch, s.waehrung, '–')}</span> <span class="kost-umfang">· ${s.n} von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')} mit Etikett, ${umfang}</span></p>`;
-  return `<div class="kost-summen">${bericht.jeWaehrung.map(zeile).join('')}</div>`;
+  const gruppen = bericht.jeWaehrung.map(g => vKostenGruppe(g, bericht.m, umfang)).join('');
+  return `<div class="kost-summen">${gruppen}${vNurSchaetzung(bericht.nurSchaetzung)}</div>`;
+}
+/** Eine Gruppe je Währung: „Einträge“ und die Zeile der alten Posten nur, wenn es sie gibt, „Summe“ immer. */
+function vKostenGruppe(g, m, umfang) {
+  let eintraege = '', posten = '';
+  if (g.eintraege != null) eintraege = vKostenTeilzeile('Einträge', geld(g.eintraege, g.waehrung));
+  if (g.posten) posten = vKostenTeilzeile('ohne Datum / ohne Rolle / ohne Spalte', spanne(g.posten.niedrig, g.posten.hoch, g.waehrung, '–'));
+  const summe = `<p class="kost-zeile kost-gesamt"><b class="kost-wort">Summe</b> <span class="kost-betrag">${spanne(g.niedrig, g.hoch, g.waehrung, '–')}</span> <span class="kost-umfang">· ${g.n} von ${m} ${zaehlwort(m, 'Aufgabe', 'Aufgaben')} mit angefallenen Kosten, ${umfang}</span></p>`;
+  return `<div class="kost-gruppe" role="group" aria-label="Angefallene Kosten in ${esc(g.waehrung)}">${eintraege}${posten}${summe}</div>`;
+}
+function vKostenTeilzeile(wort, betrag) {
+  return `<p class="kost-zeile kost-teilzeile"><span class="kost-wort">${wort}</span> <span class="kost-betrag">${betrag}</span></p>`;
+}
+/** Aufgaben mit Schätzung, aber ohne Einträge und ohne alte Posten: nicht gezählt, aber genannt — nie still weggelassen. */
+function vNurSchaetzung(anzahl) {
+  if (anzahl === 0) return '';
+  return `<p class="kost-hinweis kost-schaetz">${anzahl} ${zaehlwort(anzahl, 'Aufgabe', 'Aufgaben')} nur mit Schätzung · nicht gezählt</p>`;
 }
 function vKostenLeer(bericht, umfang, knopf) {
-  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit Preisetikett · 0 von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')}, ${umfang}</p><p class="kost-hinweis">Preisetiketten setzt ein Agent über die API (Feld <code class="mono">cost</code> beim Ändern einer Aufgabe).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
+  return `<div class="kost-leer"><p class="kost-satz">Keine Aufgabe mit angefallenen Kosten · 0 von ${bericht.m} ${zaehlwort(bericht.m, 'Aufgabe', 'Aufgaben')}, ${umfang}</p>${vNurSchaetzung(bericht.nurSchaetzung)}<p class="kost-hinweis">Kosteneinträge legt ein Agent über die API an (<code class="mono">POST /api/aufgaben/{nr}/kosteneintraege</code>).</p><p class="kost-hinweis"><a class="kost-api" href="/api" target="_blank" rel="noopener">API für Agenten</a></p>${knopf}</div>`;
 }
 
 /** Bericht „Bestand nach Labels“ (R00100): offene Aufgaben je Paar aus zwei Label-Präfixen — liest nur. */

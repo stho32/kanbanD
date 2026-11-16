@@ -360,6 +360,15 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .kost-wort{font-weight:600}
 .kost-betrag{font:500 15px/1.3 var(--kd-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .kost-umfang{color:var(--kd-muted);overflow-wrap:anywhere}
+.kost-gruppe{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);row-gap:2px;align-items:baseline;min-width:0}
+.kost-gruppe .kost-zeile{display:contents}
+.kost-gruppe .kost-wort{grid-column:1}
+.kost-gruppe .kost-betrag{grid-column:2;text-align:right;padding-left:16px}
+.kost-gruppe .kost-umfang{grid-column:3;padding-left:8px}
+.kost-teilzeile .kost-wort{font-weight:400}
+.kost-teilzeile .kost-betrag{font:400 13px/1.5 var(--kd-mono)}
+.kost-gruppe .kost-gesamt>.kost-wort,.kost-gruppe .kost-gesamt>.kost-betrag{border-top:1px solid var(--kd-line-strong);margin-top:2px;padding-top:3px}
+.kost-summen .kost-gruppe+.kost-gruppe{margin-top:6px}
 .kost-leer{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px var(--kd-s6) 18px;min-width:0}
 .kost-satz{margin:0;font-size:13px;color:var(--kd-text);overflow-wrap:anywhere}
 .kost-hinweis{margin:0;font-size:12.5px;color:var(--kd-muted);overflow-wrap:anywhere}
@@ -1020,6 +1029,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   #fenster .mod-kopf .rechts{gap:var(--kd-s3);flex-wrap:nowrap;min-width:0}
   #fenster .mod-kopf .fm-aus{padding:0 var(--kd-s3)}
   .ko-tab td,.ko-tab th{padding:0 6px}
+  .kost-gruppe,.kost-gruppe .kost-zeile{display:block}
+  .kost-gruppe .kost-zeile+.kost-zeile{margin-top:2px}
+  .kost-gruppe .kost-betrag,.kost-gruppe .kost-umfang{padding-left:0}
+  .kost-gruppe .kost-gesamt>*{border-top:0;margin-top:0;padding-top:0}
   .leg .rechts,.stat>.mono{display:none}
   .leg{overflow-x:auto}
   .bericht{padding:var(--kd-s3)}

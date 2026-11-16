@@ -1,11 +1,14 @@
-// E2E R00105 Kostenbericht (I0094): Summe niedrig–hoch je Währung über alle Spalten und das Archiv, nur lesend
+// E2E R00105 Kostenbericht (I0094): Summe niedrig–hoch je Währung über alle Spalten und das Archiv, nur lesend.
+// Seit R00165 (AK 9) zählt der Bericht angefallene Kosten: der Bestand trägt seine Beträge als alte Posten (cost.items),
+// die Summen bleiben, die Wörter sagen „angefallene“ statt „geschätzte“ und „mit angefallenen Kosten“ statt „mit Etikett“.
 const { test, expect } = require('@playwright/test');
 const crypto = require('crypto');
 const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen } = require('./hilfen');
 
 const NBSP = ' ';
-const SPANNE = 'cost:\n  currency: USD\n  min: 0.60\n  max: 1.60\n';
-const BETRAG = 'cost:\n  currency: USD\n  amount: 1.63\n';
+const posten = (waehrung, wert) => `cost:\n  currency: ${waehrung}\n  items:\n    - {text: Bau, ${wert}}\n`;
+const SPANNE = posten('USD', 'min: 0.60, max: 1.60');
+const BETRAG = posten('USD', 'amount: 1.63');
 const aufgabeMd = (nr, titel, kopf = '') => `---\nid: ${nr}\ntitle: ${titel}\n${kopf}---\n`;
 const boardMd = (spalten, kopf = '') => kopf + '# fabrik\n\n' + Object.entries(spalten).map(([name, nrn]) => `## ${name}\n\n${nrn.map(n => `- #${n}\n`).join('')}`).join('\n');
 
@@ -23,13 +26,14 @@ function grundbestand(extra = {}, spalten = {}, kopf = '') {
 }
 /** Bestand aus US-10: #5 archiviert aus Fertig, #6 archiviert aus Eingang (verworfen), #9 auf keinem Board. */
 const ARCHIV = {
-  'aufgaben/0005-fuenf.md': aufgabeMd(5, 'fünf', 'archived: 2026-10-01\ncost:\n  currency: USD\n  amount: 0.50\n'),
-  'aufgaben/0006-sechs.md': aufgabeMd(6, 'sechs', 'archived: 2026-10-01\ncost:\n  currency: USD\n  min: 0.10\n  max: 0.30\n'),
-  'aufgaben/0009-ohne-board.md': aufgabeMd(9, 'ohne Board', 'cost:\n  currency: USD\n  amount: 5.00\n'),
+  'aufgaben/0005-fuenf.md': aufgabeMd(5, 'fünf', 'archived: 2026-10-01\n' + posten('USD', 'amount: 0.50')),
+  'aufgaben/0006-sechs.md': aufgabeMd(6, 'sechs', 'archived: 2026-10-01\n' + posten('USD', 'min: 0.10, max: 0.30')),
+  'aufgaben/0009-ohne-board.md': aufgabeMd(9, 'ohne Board', posten('USD', 'amount: 5.00')),
 };
 const ARCHIV_SPALTEN = { Eingang: [6], Fertig: [5] };
 
-const zeilen = page => page.locator('#kosten .kost-zeile');
+/** Die Summenzeilen, eine je Währung; die Teilzeilen darüber („Einträge“, „ohne Datum …“) prüft US-9. */
+const zeilen = page => page.locator('#kosten .kost-gesamt');
 
 test.describe('R00105 Kostenbericht', () => {
   let k;
@@ -58,37 +62,39 @@ test.describe('R00105 Kostenbericht', () => {
     // AK R00105: „hinter „Bestand nach Labels“, falls R00100 gebaut ist, sonst als einziger Eintrag“ — R00100 ist gebaut.
     expect(gruppen.slice(gruppen.indexOf('[BESTAND]'), gruppen.indexOf('[AUSLEITEN]'))).toEqual(['[BESTAND]', 'Bestand nach Labels', 'Kosten']);
     const eintrag = menue.getByRole('menuitem', { name: /^Kosten/ });
-    await expect(eintrag.locator('small')).toHaveText('Geschätzte API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.');
+    await expect(eintrag.locator('small')).toHaveText('Angefallene API-Kosten je Währung – alle Spalten, auch archivierte Aufgaben.');
     await expect(eintrag.locator('svg.i')).toHaveCount(1);
     await expect(eintrag).toHaveAttribute('href', '#/berichte/kosten');
     await eintrag.click();
     await expect(page).toHaveURL(/#\/berichte\/kosten$/);
     await expect(page).toHaveTitle('Berichte · Kosten — kanbanD');
-    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · geschätzte API-Kosten · liest nur');
-    await expect(zeilen(page)).toHaveText([`Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte`]);
+    await expect(page.locator('#main .leiste').first()).toHaveText('Kosten · angefallene API-Kosten · liest nur');
+    await expect(zeilen(page)).toHaveText([`Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
+    await expect(page.locator('#kosten .kost-zeile')).toHaveText([`ohne Datum / ohne Rolle / ohne Spalte 2,23–3,23${NBSP}$`, `Summe 2,23–3,23${NBSP}$ · 2 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
+    await expect(page.getByRole('group', { name: 'Angefallene Kosten in USD' })).toBeVisible();
     await expect(page.locator('#kosten')).not.toContainText('≈');
     const vorher = Number(k.git('rev-list', '--count', 'HEAD'));
-    expect((await page.request.patch(`${k.adresse}api/aufgaben/4`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: { currency: 'USD', amount: 1.00 } } })).ok()).toBe(true);
-    await expect(zeilen(page)).toHaveText([`Summe 3,23–4,23${NBSP}$ · 3 von 4 Aufgaben mit Etikett, alle Spalten, auch archivierte`], { timeout: 1000 });
+    expect((await page.request.patch(`${k.adresse}api/aufgaben/4`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { cost: { currency: 'USD', items: [{ text: 'Bau', amount: 1.00 }] } } })).ok()).toBe(true);
+    await expect(zeilen(page)).toHaveText([`Summe 3,23–4,23${NBSP}$ · 3 von 4 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`], { timeout: 1000 });
     expect(Number(k.git('rev-list', '--count', 'HEAD')), 'nur der Commit des PATCH').toBe(vorher + 1);
   });
 
   test('US-10: Fertige, archivierte und verworfene Aufgaben zählen mit, eine Aufgabe ohne Board nicht', async ({ page }) => {
     await bericht(page, grundbestand(ARCHIV, ARCHIV_SPALTEN));
-    await expect(zeilen(page)).toHaveText([`Summe 2,83–4,03${NBSP}$ · 4 von 6 Aufgaben mit Etikett, alle Spalten, auch archivierte`]);
+    await expect(zeilen(page)).toHaveText([`Summe 2,83–4,03${NBSP}$ · 4 von 6 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`]);
   });
 
   test('US-11: je Währung eine Zeile, USD zuerst, dann nach ISO-Code, ohne Umrechnung', async ({ page }) => {
     const mehr = {
       ...ARCHIV,
-      'aufgaben/0007-sieben.md': aufgabeMd(7, 'sieben', 'cost:\n  currency: EUR\n  amount: 25.55\n'),
-      'aufgaben/0008-acht.md': aufgabeMd(8, 'acht', 'cost:\n  currency: CHF\n  amount: 2.00\n'),
+      'aufgaben/0007-sieben.md': aufgabeMd(7, 'sieben', posten('EUR', 'amount: 25.55')),
+      'aufgaben/0008-acht.md': aufgabeMd(8, 'acht', posten('CHF', 'amount: 2.00')),
     };
     await bericht(page, grundbestand(mehr, { Eingang: [6, 7, 8], Fertig: [5] }));
     await expect(zeilen(page)).toHaveText([
-      `Summe 2,83–4,03${NBSP}$ · 4 von 8 Aufgaben mit Etikett, alle Spalten, auch archivierte`,
-      `Summe 2,00${NBSP}CHF · 1 von 8 Aufgaben mit Etikett, alle Spalten, auch archivierte`,
-      `Summe 25,55${NBSP}€ · 1 von 8 Aufgaben mit Etikett, alle Spalten, auch archivierte`,
+      `Summe 2,83–4,03${NBSP}$ · 4 von 8 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`,
+      `Summe 2,00${NBSP}CHF · 1 von 8 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`,
+      `Summe 25,55${NBSP}€ · 1 von 8 Aufgaben mit angefallenen Kosten, alle Spalten, auch archivierte`,
     ]);
   });
 
@@ -101,9 +107,9 @@ test.describe('R00105 Kostenbericht', () => {
     await bereit(page, page.locator('.bahn').first());
     await page.goto(k.adresse + '#/berichte/kosten');
     const leer = page.locator('#kosten .kost-leer');
-    await expect(leer.locator('.kost-satz')).toHaveText('Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, alle Spalten, auch archivierte');
-    await expect(leer.locator('.kost-hinweis').first()).toHaveText('Preisetiketten setzt ein Agent über die API (Feld cost beim Ändern einer Aufgabe).');
-    await expect(leer.locator('.kost-hinweis code')).toHaveText('cost');
+    await expect(leer.locator('.kost-satz')).toHaveText('Keine Aufgabe mit angefallenen Kosten · 0 von 4 Aufgaben, alle Spalten, auch archivierte');
+    await expect(leer.locator('.kost-hinweis').first()).toHaveText('Kosteneinträge legt ein Agent über die API an (POST /api/aufgaben/{nr}/kosteneintraege).');
+    await expect(leer.locator('.kost-hinweis code')).toHaveText('POST /api/aufgaben/{nr}/kosteneintraege');
     await expect(zeilen(page)).toHaveCount(0);
     const link = leer.getByRole('link', { name: 'API für Agenten' });
     await expect(link).toHaveAttribute('href', '/api');
@@ -120,13 +126,13 @@ test.describe('R00105 Kostenbericht', () => {
 
   test('US-14: Board ohne Aufgaben → 0 von 0 mit Hinweis', async ({ page }) => {
     await bericht(page, { 'boards/fabrik.md': boardMd({ Eingang: [], 'In Arbeit': [], Fertig: [] }) });
-    await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgabe mit Preisetikett · 0 von 0 Aufgaben, alle Spalten, auch archivierte');
+    await expect(page.locator('#kosten .kost-satz')).toHaveText('Keine Aufgabe mit angefallenen Kosten · 0 von 0 Aufgaben, alle Spalten, auch archivierte');
     await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
   });
 
   /* ── B0374: Filterleiste ohne Zeitraum, Leerzustände mit „Zurücksetzen“ ── */
   const ALLE = 'alle Spalten, auch archivierte', NACH = 'nach Filter, auch archivierte';
-  const summe = (betrag, n, m, umfang) => `Summe ${betrag}${NBSP}$ · ${n} von ${m} Aufgaben mit Etikett, ${umfang}`;
+  const summe = (betrag, n, m, umfang) => `Summe ${betrag}${NBSP}$ · ${n} von ${m} Aufgaben mit angefallenen Kosten, ${umfang}`;
   const LETZTE_WOCHE = '---\nstart: 2026-10-01\nreport-filter: {period: vorwoche, window-days: 30}\n---\n';
   const spalte = (page, name) => page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
   /**
@@ -258,8 +264,8 @@ test.describe('R00105 Kostenbericht', () => {
     await spalteSchalten(page, 'Eingang');
     await expect(zeilen(page)).toHaveText([summe('1,63', 1, 2, NACH)]);
     await spalteSchalten(page, 'In Arbeit');
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
-    await expect(page.locator('#kosten .kost-hinweis').first()).toContainText('Preisetiketten setzt ein Agent über die API');
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 1 Aufgabe, ${NACH}`);
+    await expect(page.locator('#kosten .kost-hinweis').first()).toContainText('Kosteneinträge legt ein Agent über die API an');
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await expect(page.locator('#kosten')).not.toContainText('alle Spalten');
   });
@@ -270,15 +276,15 @@ test.describe('R00105 Kostenbericht', () => {
     const nieMehrzahlNachEins = async () => expect(await page.locator('#kosten').innerText()).not.toMatch(/von 1 Aufgaben/);
     await spalteSchalten(page, 'Eingang');
     await spalteSchalten(page, 'Fertig');
-    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 1 Aufgabe mit Etikett, ${NACH}`]);
+    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 1 Aufgabe mit angefallenen Kosten, ${NACH}`]);
     await nieMehrzahlNachEins();
     await spalteSchalten(page, 'Fertig');
     await spalteSchalten(page, 'In Arbeit');
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten .kost-satz')).toHaveText(/0 von 1 Aufgabe, nach Filter/);
     await nieMehrzahlNachEins();
     await spalteSchalten(page, 'In Arbeit');
-    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 2 Aufgaben mit Etikett, ${NACH}`]);
+    await expect(zeilen(page)).toHaveText([`Summe 1,63${NBSP}$ · 1 von 2 Aufgaben mit angefallenen Kosten, ${NACH}`]);
     await nieMehrzahlNachEins();
   });
 
@@ -289,7 +295,7 @@ test.describe('R00105 Kostenbericht', () => {
     await filterOeffnen(page);
     await spalteSchalten(page, 'Eingang');
     await spalteSchalten(page, 'In Arbeit');
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 1 Aufgabe, ${NACH}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 1 Aufgabe, ${NACH}`);
     await expect(page.locator('#kosten').getByRole('link', { name: 'API für Agenten' })).toBeVisible();
     await expect(reset(page)).toHaveText('Zurücksetzen');
     await reset(page).click();
@@ -308,14 +314,14 @@ test.describe('R00105 Kostenbericht', () => {
 
   test('US-19 Gegenbeispiel: im Leerzustand ohne Etikett ist ein gespeicherter Zeitraum allein kein Filter — kein „Zurücksetzen“', async ({ page }) => {
     await kostenOeffnen(page, { ...grundbestand({}, {}, LETZTE_WOCHE), 'aufgaben/0001-eins.md': aufgabeMd(1, 'eins'), 'aufgaben/0002-zwei.md': aufgabeMd(2, 'zwei') });
-    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit Preisetikett · 0 von 4 Aufgaben, ${ALLE}`);
+    await expect(page.locator('#kosten .kost-satz')).toHaveText(`Keine Aufgabe mit angefallenen Kosten · 0 von 4 Aufgaben, ${ALLE}`);
     await expect(page.getByRole('button', { name: /Zurücksetzen/ })).toHaveCount(0);
   });
 
   for (const breite of [320, 375, 414]) {
     test(`US-20: bei ${breite} px scrollt die Seite in keinem Zustand waagrecht, „Zurücksetzen“ ist ganz sichtbar`, async ({ page }) => {
       await page.setViewportSize({ width: breite, height: 700 });
-      await kostenOeffnen(page, grundbestand({ 'aufgaben/0007-sieben.md': aufgabeMd(7, 'sieben', 'cost:\n  currency: EUR\n  amount: 25.55\n') }, { Eingang: [7] }));
+      await kostenOeffnen(page, grundbestand({ 'aufgaben/0007-sieben.md': aufgabeMd(7, 'sieben', posten('EUR', 'amount: 25.55')) }, { Eingang: [7] }));
       const ohneWaagrecht = async zustand => expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), zustand).toBeLessThanOrEqual(0);
       await ohneWaagrecht('Summen');
       await filterOeffnen(page);
@@ -324,7 +330,7 @@ test.describe('R00105 Kostenbericht', () => {
       await ohneWaagrecht('Filterleiste zu');
       await filterOeffnen(page);
       await spalteSchalten(page, 'Fertig');
-      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH), `Summe 25,55${NBSP}€ · 1 von 4 Aufgaben mit Etikett, ${NACH}`]);
+      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 4, NACH), `Summe 25,55${NBSP}€ · 1 von 4 Aufgaben mit angefallenen Kosten, ${NACH}`]);
       for (const z of await zeilen(page).all()) await ganzImBild(z, breite);
       await ohneWaagrecht('Summen nach Filter');
       await spalteSchalten(page, 'Eingang');
@@ -334,7 +340,7 @@ test.describe('R00105 Kostenbericht', () => {
       await ganzImBild(page.locator('#kosten .kost-satz'), breite);
       await ganzImBild(reset(page), breite);
       await reset(page).click();
-      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE), `Summe 25,55${NBSP}€ · 1 von 5 Aufgaben mit Etikett, ${ALLE}`]);
+      await expect(zeilen(page)).toHaveText([summe('2,23–3,23', 2, 5, ALLE), `Summe 25,55${NBSP}€ · 1 von 5 Aufgaben mit angefallenen Kosten, ${ALLE}`]);
       await ohneWaagrecht('nach Zurücksetzen');
     });
   }
