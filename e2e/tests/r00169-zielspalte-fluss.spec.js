@@ -44,11 +44,21 @@ async function berichtAm0411(page, k, route) {
   await page.goto(`${k.adresse}#/berichte/${route}`);
   await bereit(page, '#main .leiste');
 }
-/** Wechselt in derselben Sitzung den Bericht. */
+/** Titel der Berichte: erst wenn er steht, hat der Bericht das Bild des vorigen ersetzt. */
+const BERICHTSTITEL = { verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchsatz: 'Durchsatz je Zeitraum', durchlauf: 'Durchlaufzeit', prognose: 'Wie lange noch', fieber: 'Projekt-Fever-Chart' };
+/**
+ * Wechselt in derselben Sitzung den Bericht; fertig ist es erst, wenn der Titel des neuen steht (ADR-0026 Regel 3). Die Kopfleiste
+ * taugt allein nicht als Anker — die des vorigen Berichts ist schon sichtbar —, und `kdTest.gezeichnet()` wird wahr, sobald ein
+ * Laden übernommen ist, das noch vor dem Wechsel für den vorigen Bericht begann: es zeichnet dessen Bild noch einmal (#182).
+ * Der Fever-Chart rechnet und speichert danach noch seine Tage (`#fieber-lauf` nennt am Ende den Cache statt „rechnet“): wer ihn
+ * vorher verlässt, bekommt dessen Cache in den Stand des nächsten Berichts, und `gezeichnet()` wird dort nicht mehr wahr (#179).
+ */
 async function zumBericht(page, k, route) {
   await page.goto(`${k.adresse}#/berichte/${route}`);
-  await bereit(page, '#main .leiste');
   await expect(page).toHaveURL(new RegExp(`#/berichte/${route}$`));
+  await expect(page.locator('#main .leiste > b').first()).toHaveText(BERICHTSTITEL[route]);
+  if (route === 'fieber') await expect(page.locator('#fieber-lauf')).toContainText('aus dem Cache');
+  await bereit(page, '#main .leiste');
 }
 const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [...tr.querySelectorAll(zelle)].map(td => td.textContent.trim())), zelle);
 /** Tabellenansicht des Burndowns: je Tag offen und Umfang. */
@@ -132,7 +142,7 @@ test('R00169 US-2, AK 3, AK 7a, AK 10 (B0826, Abnahme der Karte #159): die Wahl 
     expect((await flussJeTag(page)).raender.map(z => z[3])).toEqual(['0', '1', '1']);
     const vorDerWahl = k.git('rev-parse', 'HEAD');
     await waehle(page, 'Spalte „B“', 'B');
-    expect(await flussJeTag(page)).toEqual({ baender: BAENDER, raender: ZIELSPALTE_B.fluss });
+    await expect.poll(() => flussJeTag(page), 'gerechnet wird erst mit dem Nachladen nach dem Speichern').toEqual({ baender: BAENDER, raender: ZIELSPALTE_B.fluss });
     await expect(kopfleiste(page)).toHaveText('Kumulativer Fluss · Bestand je Spalte über die Zeit · fertig heißt: in „B“ oder rechts davon');
     await expect(legende(page)).toHaveText(['A', 'B', 'C', 'Erledigt', 'angekommen', 'fertig (ab „B“)']);
     await expect(page.locator('.fluss-tab thead th')).toHaveText(['Tag', 'A', 'B', 'C', 'Erledigt', 'offen', 'gesamt', 'angekommen', 'fertig']);
@@ -141,7 +151,7 @@ test('R00169 US-2, AK 3, AK 7a, AK 10 (B0826, Abnahme der Karte #159): die Wahl 
     expect(k.lies(BOARD)).toContain('fever: {target-column: B}\n');
     expect(commitsSeit(k, vorDerWahl)).toEqual([expect.stringMatching(/^Stefan\|.*erledigt heißt „B“$/)]);
     await zumBericht(page, k, 'prognose');
-    expect(await page.locator('#main').innerText(), '„Wie lange noch“ zeigt dieselben Zahlen wie vor der Wahl').toBe(wieLangeNoch);
+    await expect.poll(() => page.locator('#main').innerText(), '„Wie lange noch“ zeigt dieselben Zahlen wie vor der Wahl').toBe(wieLangeNoch);
   } finally { await k.stoppen(); }
 });
 
