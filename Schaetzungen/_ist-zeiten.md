@@ -664,3 +664,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0799 Probe am heutigen Stand: Rechenbeispiel als roter Test, betroffene Erwartungen benannt | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0800 Rechnung: angefallene Kosten je Währung | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0801 Bericht zeichnen: Einträge, Zeile der alten Posten, Summe; Texte „angefallene“ | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-16 | Karte #176 R00165 (Kosteneinträge mit Zeitstempel, Rolle und Spalte) | B0802 Ansicht „Kosten“ zeigt die Einträge; Probe im echten Programm und Gate | Standard | 1-2h | 0,5h | 0,5h | autonom |

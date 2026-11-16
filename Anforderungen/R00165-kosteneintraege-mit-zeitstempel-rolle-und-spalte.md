@@ -1,6 +1,6 @@
 ---
 id: R00165
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-15
 ---
 
@@ -61,8 +61,8 @@ POST /api/aufgaben/1/kosteneintraege
 
 **Rechenbeispiel:** #1 in „Entwicklung“ mit den Einträgen 3,46 USD (13.11. 10:34) und 1,20 USD (13.11. 11:02); #2 in „Fertig“ mit den alten Posten aus AK 6 (0,40–0,50 USD); #3 in „Eingang“ nur mit der Schätzung `{currency: USD, amount: 1.63}`; #4 in „Eingang“ ohne Kosten.
 
-- [ ] **AK 9 Bericht zählt angefallene Kosten:** Der Bericht „Kosten“ für „fabrik“ zeigt für USD „Einträge 4,66 $“, eine eigene Zeile „ohne Datum / ohne Rolle / ohne Spalte 0,40–0,50 $“ für die alten Posten und „Summe 5,06–5,16 $ · 2 von 4 Aufgaben mit angefallenen Kosten“ (4,66 + 0,40 = 5,06; 4,66 + 0,50 = 5,16). #3 zählt nicht; ihre Karte zeigt weiter „≈ 1,63 $“. Je Währung eine solche Gruppe, ohne Umrechnung. Die Texte des Berichts sagen „angefallene“ statt „geschätzte“ Kosten.
-- [ ] **AK 10 Ansicht „Kosten“ zeigt die Einträge:** Im Aufgabenfenster von #1 zeigt die Ansicht „Kosten“ je Eintrag Zeitpunkt, Rolle, Spalte und Betrag („13.11.2026 10:34 · entwickler · Entwicklung · 3,46 $“) und die Summe „4,66 $“; sie wird auch angeboten, wenn die Aufgabe Einträge, aber kein Preisetikett trägt, und ist nur lesend.
+- [x] **AK 9 Bericht zählt angefallene Kosten:** Der Bericht „Kosten“ für „fabrik“ zeigt für USD „Einträge 4,66 $“, eine eigene Zeile „ohne Datum / ohne Rolle / ohne Spalte 0,40–0,50 $“ für die alten Posten und „Summe 5,06–5,16 $ · 2 von 4 Aufgaben mit angefallenen Kosten“ (4,66 + 0,40 = 5,06; 4,66 + 0,50 = 5,16). #3 zählt nicht; ihre Karte zeigt weiter „≈ 1,63 $“. Je Währung eine solche Gruppe, ohne Umrechnung. Die Texte des Berichts sagen „angefallene“ statt „geschätzte“ Kosten.
+- [x] **AK 10 Ansicht „Kosten“ zeigt die Einträge:** Im Aufgabenfenster von #1 zeigt die Ansicht „Kosten“ je Eintrag Zeitpunkt, Rolle, Spalte und Betrag („13.11.2026 10:34 · entwickler · Entwicklung · 3,46 $“) und die Summe „4,66 $“; sie wird auch angeboten, wenn die Aufgabe Einträge, aber kein Preisetikett trägt, und ist nur lesend.
 
 ## Abgelöst aus R00105
 
