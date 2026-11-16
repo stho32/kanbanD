@@ -1250,9 +1250,18 @@ function erledigtHeisst() {
   if (S.board && S.board.fieber) zielspalte = S.board.fieber.zielspalte;
   return zielblock(S.bew, S.ui.bf, zielspalte);
 }
+/** „Zugang ab“ des gewählten Boards (R00167): der Von-Block aus der Board-Datei, aufgelöst unter dem Berichtsfilter gegen
+    den Zielblock `ziel` — allein für den Durchsatz. */
+function zugangAb(ziel) {
+  let vonspalte = null, zielSchluessel = null;
+  if (S.board && S.board.fieber) vonspalte = S.board.fieber.vonspalte;
+  if (ziel.zaehlt) zielSchluessel = ziel.zaehlt.schluessel;
+  return vonblock(S.bew, S.ui.bf, vonspalte, zielSchluessel);
+}
+const GILT_FUER_ZIEL = 'gilt für Burndown, Durchsatz und Fever Chart dieses Boards';
 /** Die Auswahl „Erledigt heißt“ (R00079) samt Geltungssatz — dasselbe Element in Fever Chart, Burndown und Durchsatz; der
     letzte Block ist der Standard und trägt den leeren Wert. `ziel` kommt aus `zielblock`. */
-function vZielAuswahl(ziel) {
+function vZielAuswahl(ziel, geltung = GILT_FUER_ZIEL) {
   const letzter = ziel.bloecke.length - 1;
   const eintraege = ziel.bloecke.map((block, i) => {
     let wert = esc(block.schluessel), zusatz = '', gewaehlt = '';
@@ -1262,7 +1271,30 @@ function vZielAuswahl(ziel) {
   }).join('');
   let verschwunden = '';
   if (ziel.verschwunden) verschwunden = `<option value="${esc(ziel.verschwunden)}" selected>„${esc(ziel.verschwunden)}“ — gibt es nicht mehr</option>`;
-  return `<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${eintraege}${verschwunden}</select></label><span class="muted">gilt für Burndown, Durchsatz und Fever Chart dieses Boards</span>`;
+  return `<label>Erledigt heißt <select class="mini-inp" data-fb="zielspalte" aria-label="Erledigt heißt">${eintraege}${verschwunden}</select></label><span class="muted">${geltung}</span>`;
+}
+/** Die Auswahl „Zugang ab“ des Durchsatzes (R00167, Zeichnung D0006 #durchsatz-von): die erste Spalte ist der Standard und
+    trägt den leeren Wert; eine Wahl, die es nicht mehr gibt, steht gewählt am Ende. `von` kommt aus `vonblock`. */
+function vVonAuswahl(von) {
+  let gewaehlterWert = von.gewaehlt || '', verschwunden = '';
+  if (von.verschwunden) {
+    gewaehlterWert = null;
+    verschwunden = `<option value="${esc(von.verschwunden)}" selected>„${esc(von.verschwunden)}“ — gibt es nicht mehr</option>`;
+  }
+  const eintraege = von.eintraege.map(eintrag => {
+    let zusatz = '', gewaehlt = '';
+    if (eintrag.wert === '') zusatz = ' (Standard)';
+    if (eintrag.wert === gewaehlterWert) gewaehlt = ' selected';
+    return `<option value="${esc(eintrag.wert)}"${gewaehlt}>${esc(eintrag.titel)}${zusatz}</option>`;
+  }).join('');
+  return `<label>Zugang ab <select class="mini-inp" data-fb="vonspalte" aria-label="Zugang ab">${eintraege}${verschwunden}</select></label>`;
+}
+/** Hinweise zur Von-Spalte: es gibt sie nicht mehr (dann zählt die erste Spalte) oder sie liegt nicht links vom Ziel (dann
+    zeigt der Durchsatz keinen Zugang). */
+function vVonHinweis(von) {
+  if (von.verschwunden) return `<span class="fehl" id="fb-von-weg">Spalte „${esc(von.verschwunden)}“ für „Zugang ab“ gibt es nicht mehr — gerechnet wird ab „${esc(von.name)}“.</span>`;
+  if (!von.gueltig) return '<span class="fehl" id="fb-von-rechts">„Zugang ab“ muss links von „Erledigt heißt“ liegen — der Zugang wird nicht gezeigt.</span>';
+  return '';
 }
 /** Hinweis zu einer gespeicherten Zielspalte, die es nicht mehr gibt (R00079) — `gerechnetMit` nennt, was stattdessen zählt. */
 function vZielHinweis(verschwunden, gerechnetMit) {
@@ -1270,11 +1302,17 @@ function vZielHinweis(verschwunden, gerechnetMit) {
   return `<span class="fehl" id="fb-ziel-weg">Zielspalte „${esc(verschwunden)}“ gibt es nicht mehr — gerechnet wird mit „${esc(gerechnetMit)}“.</span>`;
 }
 /** Die Zeile „Erledigt heißt“ über Burndown und Durchsatz (R00166, Zeichnung D0006 #erledigt-heisst): Auswahl, Geltungssatz,
-    ein Fehler des Speicherns und der Hinweis auf eine verschwundene Wahl — dann rechnen beide bis zum Standard. */
-function vErledigtHeisst(ziel) {
-  let fehler = '';
+    ein Fehler des Speicherns und der Hinweis auf eine verschwundene Wahl — dann rechnen beide bis zum Standard. Mit `von`
+    (nur der Durchsatz, R00167) steht „Zugang ab“ links davor, der Geltungssatz nennt beide, die Hinweise zum Ziel zuerst. */
+function vErledigtHeisst(ziel, von = null) {
+  let fehler = '', name = 'Erledigt heißt', auswahlen = vZielAuswahl(ziel), vonHinweis = '';
   if (S.ui.fbFehler) fehler = `<span class="fehl" role="alert">${esc(S.ui.fbFehler)}</span>`;
-  return `<section class="fb-einst" role="group" aria-label="Erledigt heißt">${vZielAuswahl(ziel)}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard)}</section>`;
+  if (von) {
+    name = 'Zugang ab und Erledigt heißt';
+    auswahlen = vVonAuswahl(von) + vZielAuswahl(ziel, '„Zugang ab“ gilt nur für den Durchsatz, „Erledigt heißt“ für Burndown, Durchsatz und Fever Chart dieses Boards');
+    vonHinweis = vVonHinweis(von);
+  }
+  return `<section class="fb-einst" role="group" aria-label="${name}">${auswahlen}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard)}${vonHinweis}</section>`;
 }
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
@@ -1389,14 +1427,14 @@ function vDurchsatz() {
   const kopfMit = bis => `<div class="leiste"><b>Durchsatz je Zeitraum</b> <span class="muted" style="font-size:12px">· erledigte Aufgaben je Periode${bis}</span></div>`;
   if (!S.bew) return `${kopfMit('')}<div class="body bericht"><div class="fluss-leer"><p class="fluss-satz muted">lädt …</p></div></div>`;
   const einheit = DURCHSATZ_EINHEITEN.some(([k]) => k === u.dusEinheit) ? u.dusEinheit : DURCHSATZ_STANDARD;
-  const ziel = erledigtHeisst(), kopf = kopfMit(dusBis(ziel.worte, ' · '));
+  const ziel = erledigtHeisst(), von = zugangAb(ziel), kopf = kopfMit(dusBis(ziel.worte, ' · '));
   const d = durchsatz(S.bew, u.bf, aufgabe, Date.now(), S.board && S.board.start, einheit, ziel.gewaehlt);
   const zurueck = leistenAnzahl(u.bf, BERICHTSLEISTEN.durchsatz) ? '<button class="btn bf-leeren" data-act="bf-leeren" data-arg="durchsatz">Zurücksetzen</button>' : '';
-  const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}<div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
+  const zustand = satz => `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel, von)}<div class="fluss-leer"><p class="fluss-satz">${satz}</p>${zurueck}</div></div>`;
   if (!S.bew.aufgaben.length) return zustand('Noch kein Stand dieses Boards.');
   if (d.zielAusgeschlossen) return zustand(`Die Zielspalte „${esc(d.ziel.name)}“ ist ausgeschlossen.`);
   if (!d.gesamt) return zustand('Keine Aufgabe im Zeitraum.');
-  return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel)}
+  return `${kopf}${vBerichtsfilter('durchsatz')}<div class="body bericht">${vErledigtHeisst(ziel, von)}
 ${vDurchsatzKennzahlen(d, ziel.worte)}
 ${vDurchsatzUm(einheit)}
 ${vDurchsatzFlaeche(d, einheit, ziel.worte)}${vDurchsatzLegende(d, einheit, ziel.worte)}
@@ -1413,11 +1451,9 @@ function vDurchsatzUm(einheit) {
   return `<div class="dus-um"><span class="bf-k">Auflösung</span><span class="seg" role="radiogroup" aria-label="Auflösung">${DURCHSATZ_EINHEITEN.map(([k, t]) => `<span class="${k === einheit ? 'an' : ''}" role="radio" aria-checked="${k === einheit}" data-act="dus-einheit" data-arg="${k}">${t}</span>`).join('')}</span></div>`;
 }
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
-/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). Darunter, dass „Von“
-    noch fehlt (R00166 AK 10). */
+/** Legende: Balkenfarbe und die Ø-Linie; die Zahlen stehen in Table und Tooltip (keine Farbe allein). */
 function vDurchsatzLegende(d, einheit, zielWorte) {
-  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>
-<p class="bd-hinweis">„Von“ lässt sich noch nicht wählen: gezählt wird jede Aufgabe, die das Ziel erreicht, gleich aus welcher Spalte sie kommt.</p>`;
+  return `<div class="fluss-leg" aria-label="Legende"><span class="fluss-le"><span class="fluss-sw"></span>erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>`;
 }
 /** Die Zeichenfläche: je Periode ein Balken in --kd-accent, Grundlinie und eine Marke je Periode (auch bei 0),
     y-Achse bis zum höchsten Wert, gestrichelte Ø-Linie in --kd-warn mit Halo-Beschriftung, x-Achse je Auflösung. */
