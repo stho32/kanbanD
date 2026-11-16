@@ -774,3 +774,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #102 R00185 (Herkunft entfernen mit Rückgängig; mit #108 Fußmeldung, #114 Kartenname) | B0903 Fußmeldung ohne Feld übersteht fremden Erfolg (Auslöser), ADR-0015-Nachtrag | Standard | 1-2h | 1,2h | 1,2h | autonom |
 | 2026-11-17 | Karte #102 R00185 (Herkunft entfernen mit Rückgängig; mit #108 Fußmeldung, #114 Kartenname) | B0904 Kartenname folgt im Takt der Dauer | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-17 | Karte #102 R00185 (Herkunft entfernen mit Rückgängig; mit #108 Fußmeldung, #114 Kartenname) | B0905 Probe im echten Programm und Gate (Rebase auf main, Specs der berührten Bereiche) | Standard | 0,5-1,5h | 0,8h | 0,8h | autonom |
+| 2026-11-16 | Karte #149 R00186 (Warteschlange: Frist je Anfrage und ehrliche Meldung bei gescheiterter Anfrage) | B0907 Rote Proben des Pakets | Standard | 1-2h | 0,2h | 0,2h | autonom |
