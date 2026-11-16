@@ -46,5 +46,37 @@
     return aus;
   }
 
-  Object.assign(ziel, { zeilenAusText, schnelleingabe, datumLesen });
+  /** Jahr eines Datumsfeld-Werts „JJJJ-MM-TT“; null, wenn das Feld kein vollständiges Datum trägt. */
+  function jahrDesDatums(wert) {
+    const teile = /^(\d{4,})-\d\d-\d\d$/.exec(wert || '');
+    if (!teile) return null;
+    return +teile[1];
+  }
+
+  /** Ein Datumsfeld meldet beim Tippen jede Ziffer des Jahrs als vollständiges Datum (0002, 0020, 0202, 2026):
+      fertig getippt ist es erst mit einem vierstelligen Jahr. */
+  function datumFertig(wert) {
+    const jahr = jahrDesDatums(wert);
+    return jahr !== null && jahr >= 1000;
+  }
+
+  /**
+   * Was mit der gemeldeten Änderung eines Datumsfelds geschieht, das ohne Knopf speichert (R00173):
+   * „halten“ — weder speichern noch zeichnen, die Eingabe läuft noch; „verwerfen“ — das Feld zeigt wieder den
+   * gespeicherten Wert; sonst „speichern“. `jahrVorDerZiffer` ist das Jahr im Feld vor der zuletzt getippten Ziffer
+   * (null: keines) und fehlt, wenn die Änderung nicht aus einer getippten Ziffer kommt (Kalender, Pfeiltasten, Leeren).
+   */
+  function datumsaenderung({ wert, hatFokus, jahrVorDerZiffer }) {
+    const jahr = jahrDesDatums(wert);
+    const jahrUnfertig = jahr !== null && jahr < 1000;
+    if (!hatFokus && jahrUnfertig) return 'verwerfen';
+    if (!hatFokus) return 'speichern';
+    if (jahrUnfertig) return 'halten';
+    const zifferGetippt = jahrVorDerZiffer !== undefined;
+    // Tag oder Monat getippt: das Jahr steht noch aus, auch wenn das Feld schon ein gültiges Datum trägt
+    if (zifferGetippt && jahr === jahrVorDerZiffer) return 'halten';
+    return 'speichern';
+  }
+
+  Object.assign(ziel, { zeilenAusText, schnelleingabe, datumLesen, jahrDesDatums, datumFertig, datumsaenderung });
 })(typeof module !== 'undefined' ? module.exports : window);

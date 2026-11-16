@@ -2469,6 +2469,36 @@ document.addEventListener('pointerup', tippDruckAbbrechen);
 document.addEventListener('pointercancel', tippDruckAbbrechen);
 document.addEventListener('scroll', tippPlatzieren, true);
 
+/* Datum tippen (R00173): Ein Datumsfeld meldet beim Tippen jede Ziffer als fertiges Datum — „12112026“ ergibt die Jahre
+   0002, 0020, 0202, 2026, über einem gespeicherten Datum zuvor schon Tag und Monat. Speichern und Neuzeichnen mitten im
+   Tippen nähmen die Eingabe aus dem Feld: bis das Jahr steht, wird die Änderung gehalten. */
+const DATUMSFELD_OHNE_KNOPF = 'input[type="date"][data-bf], input[type="date"][data-fb], input[type="date"][data-af]';
+/** Die letzte Taste war eine Ziffer in diesem Datumsfeld: `{ feld, jahrVorDerZiffer }`; jede andere Taste und jeder Zeigerdruck beenden das Tippen. */
+let datumstippen = null;
+/** Das Datumsfeld, dessen gemeldete Änderung gehalten ist. */
+let gehaltenesDatumsfeld = null;
+document.addEventListener('keydown', e => {
+  const feld = e.target;
+  const imDatumsfeld = Boolean(feld.matches) && feld.matches(DATUMSFELD_OHNE_KNOPF);
+  const istZiffer = /^\d$/.test(e.key);
+  if (imDatumsfeld && istZiffer) { datumstippen = { feld, jahrVorDerZiffer: jahrDesDatums(feld.value) }; return; }
+  datumstippen = null;
+  // Enter nimmt ein fertiges Datum an, auch wenn nur Tag oder Monat getippt wurde
+  if (imDatumsfeld && e.key === 'Enter' && gehaltenesDatumsfeld === feld) feld.dispatchEvent(new Event('change', { bubbles: true }));
+}, true);
+document.addEventListener('pointerdown', () => { datumstippen = null; }, true);
+
+/** Wahr, wenn die gemeldete Änderung des Datumsfelds jetzt gespeichert wird; sonst ist sie gehalten oder verworfen. */
+function datumsaenderungWirkt(feld) {
+  const eingabe = { wert: feld.value, hatFokus: document.activeElement === feld };
+  if (datumstippen && datumstippen.feld === feld) eingabe.jahrVorDerZiffer = datumstippen.jahrVorDerZiffer;
+  const urteil = datumsaenderung(eingabe);
+  if (urteil === 'halten') { gehaltenesDatumsfeld = feld; return false; }
+  if (gehaltenesDatumsfeld === feld) gehaltenesDatumsfeld = null;
+  if (urteil === 'verwerfen') { feld.value = feld.defaultValue; return false; }
+  return true;
+}
+
 /** Ein „change“, das der Browser beim Verlassen eines Textfelds des Aufgabenfensters meldet. Es kommt vor dem „focusout“ und
     weiß nicht, wohin der Fokus geht — auf „Eingabe verwerfen“ darf es nicht speichern (R00155 54-13). */
 function meldetBeimVerlassen(ereignis) {
@@ -2481,6 +2511,7 @@ document.addEventListener('change', e => {
   // das „focusout“ gleich danach kennt das Ziel des Fokus und trägt die Änderung nach
   if (meldetBeimVerlassen(e)) { aenderungAufschieben(e.target); return; }
   aenderungGemeldet(e.target);
+  if (e.target.matches(DATUMSFELD_OHNE_KNOPF) && !datumsaenderungWirkt(e.target)) return;
   // Aktion und Ebene einer Wirkung ändern, welche Felder das Formular zeigt
   if (e.target.dataset && e.target.dataset.wf && e.target.tagName === 'SELECT' && S.ui.wirkungNeu) { S.ui.wirkungNeu[e.target.dataset.wf] = e.target.value; S.ui.wirkungNeu.fehler = null; render(); return; }
   const tf = e.target.dataset && e.target.dataset.tf;
