@@ -149,7 +149,6 @@ test('AK 2 / US-2: Leertaste auf dem Kästchen hakt ab und nimmt zurück, der Fo
 });
 
 test('AK 3 / US-2: Kästchen und ✕ der zweiten Teilaufgabe heißen „fett prüfen“ ohne Sternchen', async ({ page }) => {
-  test.fail(true, 'erwartet rot: die Namen entstehen mit B0882');
   const fenster = await fensterPerTastaturOeffnen(page);
   const kaestchen = fenster.locator('.chk').nth(1).getByRole('checkbox');
   const entfernen = fenster.locator('.chk').nth(1).locator('[data-act="teil-weg"]');

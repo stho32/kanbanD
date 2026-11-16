@@ -13,6 +13,8 @@ const BESTAND = {
   [DATEI_1]: `---\nid: 1\ntitle: Abnahme prüfen\n---\n\n- [ ] ${PROBE}\n- [ ] # kein Titel\n- [x] erledigt mit [Doku](https://example.org/doku) und \`code\`\n`,
 };
 const ZEILE = '#fenster .chk[data-teil]';
+/** Zugänglicher Name der Zeile mit PROBE: der Text ohne Markdown-Zeichen — seit R00180 auch an Kästchen und ✕. */
+const PROBE_NAME = 'siehe https://example.org und wichtig';
 /** Der Text der Zeile: der einzige `span` darin, nach der Zeichnung `span.teil-text`. */
 const TEXT = `${ZEILE} > span`;
 
@@ -77,7 +79,7 @@ test.describe('AK 3, Schaden (d): Klick auf den Link folgt dem Link — kein Bea
       await expect(fenster).toBeVisible();
       await expect(page.locator(FELD)).toHaveCount(0);
       await expect(page.locator(TEXT).nth(0)).toHaveText('siehe https://example.org und wichtig');
-      await expect(fenster.getByRole('checkbox', { name: PROBE, exact: true })).toHaveAttribute('aria-checked', 'false');
+      await expect(fenster.getByRole('checkbox', { name: PROBE_NAME, exact: true })).toHaveAttribute('aria-checked', 'false');
       expect(schreibend).toEqual([]);
       expect([k.lies(DATEI_1), commits(), page.url()], 'Datei, Commits und die Adresse der Seite selbst bleiben').toEqual(vorher);
     });
@@ -198,7 +200,7 @@ test.describe('AK 6: Abhaken, Löschen und Umsortieren wirken wie heute', () => 
   test('das Kästchen hakt ab, der Link bleibt ein Link; ✕ entfernt die Zeile', async ({ page }) => {
     await starten(page);
     const fenster = await fensterOeffnen(page, 1);
-    await fenster.getByRole('checkbox', { name: PROBE, exact: true }).click();
+    await fenster.getByRole('checkbox', { name: PROBE_NAME, exact: true }).click();
     await expect.poll(() => k.lies(DATEI_1)).toContain(`- [x] ${PROBE}\n`);
     await expect(page.locator(FELD)).toHaveCount(0);
     await expect(page.locator(`${ZEILE}.ok`).nth(0).locator('a')).toHaveAttribute('href', 'https://example.org');
@@ -234,12 +236,15 @@ test('Schaden (b): der Name des Stifts trägt den Text ohne Markdown-Zeichen und
 
   await expect(stift(page, 0)).toHaveAttribute('aria-label', 'Teilaufgabe bearbeiten: x" onfocus="document.title=1" autofocus <b>k</b> L fett c >');
   await expect(stift(page, 1)).toHaveAccessibleName('Teilaufgabe bearbeiten: Doku lesen, dann --probe setzen');
-  // Kästchen und ✕ nennen den Text wie heute: roh, als Text im Attribut.
-  await expect(fenster.getByRole('checkbox').nth(0)).toHaveAttribute('aria-label', FEINDLICH);
-  await expect(page.locator(`${ZEILE} .x`).nth(0)).toHaveAttribute('aria-label', `Teilaufgabe ${FEINDLICH} entfernen`);
+  // Kästchen und ✕ heißen seit R00180 wie der Stift: ohne Markdown-Zeichen, als Text im Attribut.
+  const FEINDLICH_OHNE_MARKEN = 'x" onfocus="document.title=1" autofocus <b>k</b> L fett c >';
+  await expect(fenster.getByRole('checkbox').nth(0)).toHaveAttribute('aria-label', FEINDLICH_OHNE_MARKEN);
+  await expect(page.locator(`${ZEILE} .x`).nth(0)).toHaveAttribute('aria-label', `Teilaufgabe ${FEINDLICH_OHNE_MARKEN} entfernen`);
 
   const attribute = element => element.getAttributeNames().sort();
   expect(await stift(page, 0).evaluate(attribute)).toEqual(['aria-label', 'class', 'data-act', 'data-arg', 'data-halt', 'data-ort', 'title', 'type']);
+  expect(await fenster.getByRole('checkbox').nth(0).evaluate(attribute), 'das Kästchen: kein Attribut aus dem Text').toEqual(['aria-checked', 'aria-label', 'data-act', 'data-arg', 'data-halt', 'role', 'tabindex']);
+  expect(await page.locator(`${ZEILE} .x`).nth(0).evaluate(attribute), 'das ✕: kein Attribut aus dem Text').toEqual(['aria-label', 'class', 'data-act', 'data-arg', 'data-halt', 'data-ort', 'title']);
   expect(await page.locator(TEXT).nth(0).evaluate(attribute)).toEqual(['class', 'data-act', 'data-arg']);
   expect(await page.locator(TEXT).nth(0).locator('a').evaluate(attribute)).toEqual(['href', 'rel', 'target']);
   await expect(page.locator(TEXT).nth(0).locator('a')).toHaveAttribute('href', 'https://example.org/?a="1"&b=<2>');
