@@ -55,7 +55,14 @@ test.describe('R00165 Bericht und Ansicht „Kosten“: angefallene Kosten', () 
   }
   const gruppe = (page, waehrung) => page.getByRole('group', { name: `Angefallene Kosten in ${waehrung}` });
   const zeilen = ort => ort.locator('.kost-zeile');
-  const spalte = (page, name) => page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
+  /** Schaltet einen Spaltenfilter und wartet, bis der Knopf den neuen Zustand zeigt und der Stand gezeichnet ist (ADR-0026 Regel 3). */
+  async function spalteSchalten(page, name) {
+    const knopf = page.getByRole('group', { name: 'Berichtsfilter' }).getByRole('button', { name, exact: true });
+    const vorher = await knopf.getAttribute('aria-pressed');
+    await knopf.click();
+    await expect(knopf).not.toHaveAttribute('aria-pressed', vorher);
+    await bereit(page);
+  }
   const schaetzzeile = page => page.locator('#kosten .kost-schaetz');
   const bild = async (ort, name) => { if (process.env.KD_BILDER) await ort.screenshot({ path: path.join(process.env.KD_BILDER, name) }); };
 
@@ -112,7 +119,7 @@ test.describe('R00165 Bericht und Ansicht „Kosten“: angefallene Kosten', () 
     await expect(zeilen(gruppe(page, 'EUR'))).toHaveCount(2);
     await expect(schaetzzeile(page)).toHaveCount(1);
     await filterOeffnen(page);
-    await spalte(page, 'Fertig').click();
+    await spalteSchalten(page, 'Fertig');
     await expect(page.locator('#kosten .kost-zeile')).toHaveText([
       `Einträge 4,66${NBSP}$`,
       `Summe 4,66${NBSP}$ · 1 von 4 Aufgaben mit angefallenen Kosten, nach Filter, auch archivierte`,
@@ -120,7 +127,7 @@ test.describe('R00165 Bericht und Ansicht „Kosten“: angefallene Kosten', () 
       `Summe 25,55${NBSP}€ · 1 von 4 Aufgaben mit angefallenen Kosten, nach Filter, auch archivierte`,
     ]);
     await expect(schaetzzeile(page)).toHaveText('1 Aufgabe nur mit Schätzung · nicht gezählt');
-    await spalte(page, 'Eingang').click();
+    await spalteSchalten(page, 'Eingang');
     await expect(schaetzzeile(page), 'die Schätzung von #3 liegt in der ausgeschlossenen Spalte').toHaveCount(0);
     await expect(page.locator('#kosten .kost-gesamt').first()).toContainText('1 von 2 Aufgaben');
   });
