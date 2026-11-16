@@ -1112,7 +1112,29 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .kost-liste thead .r,.kost-liste thead .nr{font-family:var(--kd-font);font-size:11px}
 .kost-liste .kost-kz{width:92px;white-space:nowrap}
 .kost-leer .kost-hinweis .kost-betrag{font:400 13px/1.5 var(--kd-mono)}
+/* „Kosten je Rolle“ (R00172, Zeichnung D0006 #kosten-je-rolle): Klappen in zwei Ebenen, Beträge aller Ebenen an einer rechten Kante */
+.kost-rollen{width:100%;max-width:640px;min-width:0;margin-top:4px;border-top:1px solid var(--kd-line);border-bottom:1px solid var(--kd-line);font-size:13px;color:var(--kd-text)}
+.kost-rollen summary{display:flex;align-items:center;gap:8px;min-height:28px;box-sizing:border-box;cursor:pointer;list-style:none}
+.kost-rollen summary::-webkit-details-marker{display:none}
+.kost-rollen summary::before{content:"";flex:none;width:0;height:0;margin:0 2px 0 3px;border-left:5px solid var(--kd-muted);border-top:4px solid transparent;border-bottom:4px solid transparent}
+.kost-rollen[open]>summary::before,.kost-rolle[open]>summary::before{transform:rotate(90deg)}
+.kost-rollen summary:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:-2px}
+.kost-rollen>summary{font-size:12px;color:var(--kd-muted)}
+.kost-rolle{border-top:1px solid var(--kd-line)}
+.kost-rname,.kost-raufg .tt,.kost-reintr .zs{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
+.kost-rollen .r{order:3;flex:none;margin-left:auto;padding-left:12px;text-align:right;font-family:var(--kd-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kost-raufg{list-style:none;margin:0;padding:0 0 6px 18px}
+.kost-rzeile{display:flex;align-items:baseline;gap:8px;padding:3px 0}
+.kost-raufg .nr{flex:none;width:28px;font-family:var(--kd-mono);font-size:12px;color:var(--kd-muted)}
+.kost-reintr{list-style:none;margin:0;padding:0 0 2px 36px;font-size:12px;color:var(--kd-muted)}
+.kost-reintr li{display:flex;align-items:baseline;gap:8px;padding:1px 0}
+.kost-rsumme,.kost-ohne-rolle{display:flex;align-items:baseline;gap:6px;margin:0;padding:4px 0 4px 18px}
+.kost-rsumme{border-top:1px solid var(--kd-line-strong)}
+.kost-rsumme .kost-rname{font-weight:600}
+.kost-ohne-rolle{margin-top:8px;border-top:1px solid var(--kd-line)}
 @media (max-width:640px){
+  .kost-rollen summary{min-height:48px}
+  .kost-rsumme,.kost-ohne-rolle{padding-top:8px;padding-bottom:8px;flex-wrap:wrap}
   .fb-einst.kost-bereich{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:8px;padding:10px 14px}
   .fb-einst.kost-bereich>.muted,.fb-einst.kost-bereich>.fehl{flex-basis:auto}
   .kost-feld{display:grid;grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr);align-items:center;gap:6px}

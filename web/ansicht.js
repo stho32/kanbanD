@@ -1608,7 +1608,8 @@ function vKostenSummen(aufstellung, umfang) {
   const gruppen = aufstellung.gruppen.map(g => vKostenGruppe(g, aufstellung, umfang) + vKostenListe(g, aufstellung.bereich, mehrereWaehrungen)).join('');
   let stand = '';
   if (aufstellung.gruppen.some(g => g.aufgaben.length)) stand = `<p class="kost-hinweis kost-stand">${esc(kostenStandSatz(aufstellung.erledigtAb))}</p>`;
-  return `<div class="kost-summen">${gruppen}${stand}${vNurSchaetzung(aufstellung.nurSchaetzung)}</div>`;
+  const rollen = aufstellung.gruppen.map(g => vKostenRollen(g, aufstellung.bereich, mehrereWaehrungen)).join('');
+  return `<div class="kost-summen">${gruppen}${stand}${vNurSchaetzung(aufstellung.nurSchaetzung)}${rollen}</div>`;
 }
 /** Eine Gruppe je Währung: „Einträge“ und die Zeile der alten Posten nur, wenn es sie gibt, „Summe“ immer — außer in einer
     Währung, in der im gewählten Bereich nichts zählt. Was nicht in der Summe steht, folgt hinter ihr. */
@@ -1645,6 +1646,40 @@ function vKostenListe(g, bereich, mehrereWaehrungen) {
   if (mehrereWaehrungen) name += ` (${g.waehrung})`;
   const zeilen = g.aufgaben.map(a => `<tr><td class="nr">#${a.nummer}</td><th scope="row" class="tt" title="${esc(a.titel)}">${esc(a.titel)}</th><td class="r">${geld(a.cent, g.waehrung)}</td><td class="kost-kz">${a.kennzeichen}</td></tr>`).join('');
   return `<table class="kost-liste"><caption>${esc(name)}</caption><thead><tr><th scope="col" class="nr">Nr.</th><th scope="col" class="tt">Aufgabe</th><th scope="col" class="r">Betrag</th><th scope="col" class="kost-kz">Stand</th></tr></thead><tbody>${zeilen}</tbody></table>`;
+}
+/** „Kosten je Rolle“ einer Währung (R00172, Zeichnung D0006 #kosten-je-rolle): eine Klappe, darin je Rolle eine Klappe
+    mit ihrem Betrag, dann „Rollen zusammen“ und — wenn es alte Posten gibt — die Zeile „ohne Rolle“. Ohne zählende
+    Einträge keine Klappe. Die Kennung `data-kr` (Währung, darunter Währung/Rolle) trägt den Klappzustand über das
+    Neuzeichnen; Rollennamen sind fremder Text und stehen nur als Text und als Attributwert da. */
+function vKostenRollen(g, bereich, mehrereWaehrungen) {
+  if (!g.rollen.length) return '';
+  let titel = 'Kosten je Rolle';
+  if (mehrereWaehrungen) titel += ` · ${g.waehrung}`;
+  const rollen = g.rollen.map(rolle => vKostenRolle(rolle, g.waehrung)).join('');
+  const zusammen = g.rollen.reduce((summe, rolle) => summe + rolle.cent, 0);
+  const schluss = `<p class="kost-rsumme"><span class="kost-rname">Rollen zusammen</span> <span class="r">${esc(geld(zusammen, g.waehrung))}</span> <span class="kost-umfang">· gleich „Einträge“</span></p>`;
+  return `<details class="kost-rollen" id="kost-rollen-${esc(g.waehrung)}" data-kr="${esc(g.waehrung)}"><summary>${esc(titel)}</summary>${rollen}${schluss}${vKostenOhneRolle(g, bereich)}</details>`;
+}
+function vKostenRolle(rolle, waehrung) {
+  const aufgaben = rolle.aufgaben.map(a => `<li><div class="kost-rzeile"><span class="nr">#${a.nummer}</span> <span class="tt">${esc(a.titel)}</span> <span class="r">${esc(geld(a.cent, waehrung))}</span></div>${vKostenRolleneintraege(a.eintraege, waehrung)}</li>`).join('');
+  return `<details class="kost-rolle" data-kr="${esc(`${waehrung}/${rolle.rolle}`)}"><summary><span class="kost-rname">${esc(rolle.rolle)}</span> <span class="r">${esc(geld(rolle.cent, waehrung))}</span></summary><ul class="kost-raufg" aria-label="${esc(`Aufgaben der Rolle ${rolle.rolle}`)}">${aufgaben}</ul></details>`;
+}
+/** Die Einträge einer Aufgabe unter ihrer Rolle: Zeitpunkt in der Ortszeit des Betrachters und Spalte — fremder Text. */
+function vKostenRolleneintraege(eintraege, waehrung) {
+  const zeilen = eintraege.map(e => `<li><span class="zs">${esc(`${zeitpunktLang(e.at)} · ${e.spalte}`)}</span> <span class="r">${esc(geld(e.cent, waehrung))}</span></li>`).join('');
+  return `<ul class="kost-reintr" aria-label="Einträge">${zeilen}</ul>`;
+}
+/** „ohne Rolle“ sind allein die alten Posten: ohne Bereich zählen sie in der Summe mit, im gewählten Bereich stehen sie
+    daneben. Keine Klappe; ohne alte Posten keine Zeile. */
+function vKostenOhneRolle(g, bereich) {
+  let posten = g.summe.posten, klasse = 'kost-ohne-rolle', zusatz = 'zählt in der Summe mit';
+  if (bereich) {
+    posten = g.altePostenAussen;
+    klasse += ' kost-aussen';
+    zusatz = 'nicht in der Summe';
+  }
+  if (!posten) return '';
+  return `<p class="${klasse}"><span class="kost-rname">ohne Rolle</span> <span class="r">${esc(spanne(posten.niedrig, posten.hoch, g.waehrung, '–'))}</span> <span class="kost-umfang">· ${zusatz}</span></p>`;
 }
 /** Im gewählten Bereich zählt nichts: der Satz und, was daneben steht — der Knopf, der den Bereich aufhebt, steht in der
     Bereichszeile; `knopf` hebt wie in den übrigen Leerzuständen die Filter auf. */
