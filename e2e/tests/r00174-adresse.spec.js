@@ -346,14 +346,15 @@ test.describe('R00174 F0144: Adresse folgt dem Fenster, Zurück und Vor', () => 
 
   test('AK 2: Vor zu einer anderen Aufgabe bei ungespeichertem Titel — gespeichert an der verlassenen Aufgabe, nie an der neuen', async ({ page }) => {
     await linkOeffnen(page, k, '#/board/zweit');
-    await karte(page, 9).locator('.t').click();
-    await adresseEndetAuf(page, '#/board/zweit/aufgabe/9');
-    await page.keyboard.press('Escape');
     await karte(page, 7).locator('.t').click();
     await adresseEndetAuf(page, '#/board/zweit/aufgabe/7');
+    await page.evaluate(() => { location.hash = '#/board/zweit/aufgabe/9'; });
+    await expect(fenster(page, 9)).toBeVisible();
+    await page.goBack();
+    await expect(fenster(page, 7)).toBeVisible();
     await fenster(page, 7).locator('[data-act="titel-bearbeiten"]').click();
     await page.locator('#fenster [data-af="titel"]').fill('Waechter verlassen');
-    await page.evaluate(() => history.go(-2));
+    await page.goForward();
     await expect(fenster(page, 9)).toBeVisible();
     await expect(fenster(page, 9)).toContainText('Zweitablage');
     await expect.poll(() => k.lies('aufgaben/0007-dateiwaechter.md')).toContain('title: Waechter verlassen');
@@ -543,5 +544,166 @@ test.describe('R00174 F0144: Link kopieren', () => {
     await expect(fenster(page, 7).getByRole('status')).toContainText('Link kopiert');
     expect(anfragen.filter(methode => methode !== 'GET')).toEqual([]);
     expect(k.git('rev-list', '--count', 'HEAD')).toBe(commitsVorher);
+  });
+});
+
+test.describe('R00174 Nacharbeit: Verlauf beim Schließen, Rennen mit der Warteschlange', () => {
+  const MIT_DREI = { ...DATEIEN, 'boards/drei.md': '# Drei\n\n## Bereit\n\n- #7\n- #8\n- #9\n' };
+  let k;
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(MIT_DREI)); await alsPerson(page, 'st'); });
+  test.afterEach(() => k.stoppen());
+
+  const kreuz = (page, nr) => fenster(page, nr).getByRole('button', { name: /Schließen/ });
+  const verlaufslaenge = page => page.evaluate(() => history.length);
+  async function oeffnen(page, nr) {
+    await karte(page, nr).locator('.t').click();
+    await expect(fenster(page, nr)).toBeVisible();
+    await adresseEndetAuf(page, '#/board/drei/aufgabe/' + nr);
+  }
+  /** Hält das Speichern von #7 an, bis `freigeben()` gerufen ist, und lässt es danach noch `verzoegerungMs` warten. */
+  async function speichernHalten(page, verzoegerungMs) {
+    let freigeben;
+    const gehalten = new Promise(ok => { freigeben = ok; });
+    await page.route(url => url.pathname === '/api/aufgaben/7', async route => {
+      if (route.request().method() !== 'PATCH') return route.continue();
+      await gehalten;
+      await new Promise(ok => setTimeout(ok, verzoegerungMs));
+      await route.continue();
+    });
+    return async () => {
+      const antwort = page.waitForResponse(a => new URL(a.url()).pathname === '/api/aufgaben/7' && a.request().method() === 'PATCH');
+      freigeben();
+      await antwort;
+      await bereit(page, '.bahn');
+    };
+  }
+  async function titelTippen(page, text) {
+    await fenster(page, 7).locator('[data-act="titel-bearbeiten"]').click();
+    await page.locator('#fenster [data-af="titel"]').fill(text);
+  }
+
+  for (const verzoegerungMs of [0, 250, 400]) {
+    test(`B1 (1): Zurück bei ungespeichertem Titel, sofort #8 geöffnet — #8 bleibt, die Adresse nennt #8, #7 einmal gespeichert (${verzoegerungMs} ms)`, async ({ page }) => {
+      await linkOeffnen(page, k, '#/board/drei');
+      await oeffnen(page, 7);
+      await titelTippen(page, 'Waechter im Rennen');
+      const commitsVorher = Number(k.git('rev-list', '--count', 'HEAD'));
+      const freigeben = await speichernHalten(page, verzoegerungMs);
+      await page.goBack();
+      await expect(fenster(page, 7)).toHaveCount(0);
+      await karte(page, 8).locator('.t').click();
+      await expect(fenster(page, 8)).toBeVisible();
+      await freigeben();
+      await expect(karte(page, 7).locator('.t')).toHaveText('Waechter im Rennen');
+      await expect(fenster(page, 8)).toBeVisible();
+      await adresseEndetAuf(page, '#/board/drei/aufgabe/8');
+      expect(k.lies('aufgaben/0007-dateiwaechter.md')).toContain('title: Waechter im Rennen');
+      expect(Number(k.git('rev-list', '--count', 'HEAD')), 'genau ein Speichern').toBe(commitsVorher + 1);
+    });
+
+    test(`B1 (2): Vor zu #9 bei ungespeichertem Titel, sofort #8 geöffnet — #8 bleibt, #9 öffnet nicht (${verzoegerungMs} ms)`, async ({ page }) => {
+      await linkOeffnen(page, k, '#/board/drei');
+      await oeffnen(page, 7);
+      await page.evaluate(() => { location.hash = '#/board/drei/aufgabe/9'; });
+      await expect(fenster(page, 9)).toBeVisible();
+      await page.goBack();
+      await expect(fenster(page, 7)).toBeVisible();
+      await titelTippen(page, 'Waechter im Rennen');
+      const commitsVorher = Number(k.git('rev-list', '--count', 'HEAD'));
+      const freigeben = await speichernHalten(page, verzoegerungMs);
+      await page.goForward();
+      await expect(fenster(page, 7)).toHaveCount(0);
+      await karte(page, 8).locator('.t').click();
+      await expect(fenster(page, 8)).toBeVisible();
+      await freigeben();
+      await expect(karte(page, 7).locator('.t')).toHaveText('Waechter im Rennen');
+      await expect(fenster(page, 8)).toBeVisible();
+      await expect(fenster(page, 9)).toHaveCount(0);
+      await adresseEndetAuf(page, '#/board/drei/aufgabe/8');
+      expect(k.lies('aufgaben/0009-zweitablage.md')).toContain('title: Zweitablage');
+      expect(Number(k.git('rev-list', '--count', 'HEAD')), 'genau ein Speichern').toBe(commitsVorher + 1);
+    });
+  }
+
+  test('Schließen stapelt keine Einträge: zehn Aufgaben über ✕, Esc und Hintergrund angesehen — ein Zurück führt zur vorigen Ansicht', async ({ page }) => {
+    await linkOeffnen(page, k, '#/aufgaben', 'tr[data-zeile]');
+    await page.evaluate(() => { location.hash = '#/board/drei'; });
+    await bereit(page, '.bahn');
+    await expect(page).toHaveTitle(/Drei/);
+    const zustandsabrufe = [];
+    page.on('request', anfrage => { if (new URL(anfrage.url()).pathname === '/api/zustand') zustandsabrufe.push(anfrage.url()); });
+    await oeffnen(page, 7);
+    const laengeNachDemErstenOeffnen = await verlaufslaenge(page);
+    await kreuz(page, 7).click();
+    await adresseEndetAuf(page, '#/board/drei');
+    const schliessen = {
+      kreuz: nr => kreuz(page, nr).click(),
+      esc: () => page.keyboard.press('Escape'),
+      hintergrund: () => page.locator('.mod-bg').click({ position: { x: 3, y: 3 } }),
+    };
+    const folge = [[8, 'esc'], [9, 'hintergrund'], [7, 'kreuz'], [8, 'kreuz'], [9, 'esc'], [7, 'hintergrund'], [8, 'esc'], [9, 'kreuz'], [7, 'esc'], [8, 'hintergrund']];
+    for (const [nr, weg] of folge) {
+      await oeffnen(page, nr);
+      await schliessen[weg](nr);
+      await expect(irgendeinFenster(page), `#${nr} über ${weg}`).toHaveCount(0);
+      await adresseEndetAuf(page, '#/board/drei');
+      expect(await verlaufslaenge(page), `#${nr} über ${weg}`).toBe(laengeNachDemErstenOeffnen);
+    }
+    expect(zustandsabrufe, 'Öffnen und Schließen laden die Ansicht nicht neu').toEqual([]);
+    await page.goBack();
+    await expect(page.locator('tr[data-zeile]').first()).toBeVisible();
+    await adresseEndetAuf(page, '#/aufgaben');
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+  });
+
+  test('Nach ✕ öffnet Vor die Aufgabe wieder; der Fokus steht nach dem Schließen auf der Karte', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/drei');
+    await oeffnen(page, 7);
+    await kreuz(page, 7).click();
+    await adresseEndetAuf(page, '#/board/drei');
+    await expect(karte(page, 7)).toBeFocused();
+    await page.goForward();
+    await expect(fenster(page, 7)).toBeVisible();
+    await adresseEndetAuf(page, '#/board/drei/aufgabe/7');
+  });
+
+  test('Über einen Link geöffnet: ✕ ersetzt den Eintrag — die Seite bleibt, Zurück öffnet die Aufgabe nicht wieder', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/entwicklung/aufgabe/7');
+    const laenge = await verlaufslaenge(page);
+    await kreuz(page, 7).click();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/entwicklung');
+    await zeigtBoard(page, 'Entwicklung');
+    expect(await verlaufslaenge(page)).toBe(laenge);
+    await page.goBack();
+    expect(page.url()).toBe('about:blank');
+  });
+
+  test('Nach dem Neuladen bei offenem Fenster geht ✕ weiter einen Schritt zurück auf das Board', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/drei');
+    await oeffnen(page, 7);
+    const laenge = await verlaufslaenge(page);
+    await page.reload();
+    await bereit(page, '.bahn');
+    await expect(fenster(page, 7)).toBeVisible();
+    await kreuz(page, 7).click();
+    await expect(irgendeinFenster(page)).toHaveCount(0);
+    await adresseEndetAuf(page, '#/board/drei');
+    expect(await verlaufslaenge(page)).toBe(laenge);
+    await page.goForward();
+    await expect(fenster(page, 7)).toBeVisible();
+  });
+
+  test('Ungespeicherter Titel und ✕: genau ein Commit, kein zweites Speichern durch das Folgen der Adresse', async ({ page }) => {
+    await linkOeffnen(page, k, '#/board/drei');
+    await oeffnen(page, 7);
+    await titelTippen(page, 'Waechter einmal');
+    const commitsVorher = Number(k.git('rev-list', '--count', 'HEAD'));
+    await kreuz(page, 7).click();
+    await expect(karte(page, 7).locator('.t')).toHaveText('Waechter einmal');
+    await adresseEndetAuf(page, '#/board/drei');
+    await bereit(page, '.bahn');
+    expect(Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commitsVorher + 1);
+    await expect(irgendeinFenster(page)).toHaveCount(0);
   });
 });
