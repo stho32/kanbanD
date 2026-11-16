@@ -1,6 +1,6 @@
 ---
 id: R00173
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ursprung: Bug-Report
 ursprungslauf:
@@ -40,18 +40,18 @@ A: E2E im echten Programm mit `keyboard.type` (nie `fill()`), gewartet wird auf 
 
 Fehler A — Datum tippen (F0141):
 
-- [ ] **AK 1 Abnahme-Probe der Karte #180:** Gegeben ein geöffneter Bericht mit Zeitraum. Wenn in „Zeitraum von“ `12112026` getippt wird (Abstand der Tasten 0, 120 und 900 ms), dann zeigt das Feld 12.11.2026, die Board-Datei trägt `from: 2026-11-12`, und es gibt keinen Commit mit `0002-`. Heute: Commit mit `0002-11-12`, Feld leer.
-- [ ] **AK 2 Bis-Tag und Durchsatz:** Dasselbe gilt für „Zeitraum bis“ und im Durchsatz; je getipptem Datum entsteht genau ein Speichern (ein Commit).
-- [ ] **AK 3 Unfertig verlassen:** Wird das Feld mit unfertigem Jahr verlassen (getippt `12112`), dann ist nichts gespeichert (kein Commit), und das Feld zeigt den gespeicherten Wert — leer, wenn es keinen gibt.
-- [ ] **AK 4 Wie heute:** Kalender, Pfeiltasten und die bestehenden Specs (`fill()`) speichern und zeigen wie vor der Karte.
-- [ ] **AK 5 Altbestand:** Ein gespeichertes `from: 0002-11-12` wird im Feld gezeigt und lässt sich durch ein getipptes Datum überschreiben.
-- [ ] **AK 9 Nachbarfelder:** Die Probe aus AK 1 gilt ebenso für „Rechnen ab“ im Fever Chart und für die Fälligkeit im Aufgabenfenster: das Feld zeigt 12.11.2026, die Datei trägt das Datum, kein Commit mit `0002-`.
+- [x] **AK 1 Abnahme-Probe der Karte #180:** Gegeben ein geöffneter Bericht mit Zeitraum. Wenn in „Zeitraum von“ `12112026` getippt wird (Abstand der Tasten 0, 120 und 900 ms), dann zeigt das Feld 12.11.2026, die Board-Datei trägt `from: 2026-11-12`, und es gibt keinen Commit mit `0002-`. Heute: Commit mit `0002-11-12`, Feld leer.
+- [x] **AK 2 Bis-Tag und Durchsatz:** Dasselbe gilt für „Zeitraum bis“ und im Durchsatz; je getipptem Datum entsteht genau ein Speichern (ein Commit).
+- [x] **AK 3 Unfertig verlassen:** Wird das Feld mit unfertigem Jahr verlassen (getippt `12112`), dann ist nichts gespeichert (kein Commit), und das Feld zeigt den gespeicherten Wert — leer, wenn es keinen gibt.
+- [x] **AK 4 Wie heute:** Kalender, Pfeiltasten und die bestehenden Specs (`fill()`) speichern und zeigen wie vor der Karte.
+- [x] **AK 5 Altbestand:** Ein gespeichertes `from: 0002-11-12` wird im Feld gezeigt und lässt sich durch ein getipptes Datum überschreiben.
+- [x] **AK 9 Nachbarfelder:** Die Probe aus AK 1 gilt ebenso für „Rechnen ab“ im Fever Chart und für die Fälligkeit im Aufgabenfenster: das Feld zeigt 12.11.2026, die Datei trägt das Datum, kein Commit mit `0002-`.
 
 Fehler B — Bis-Tag an der Zeitumstellung (F0142):
 
-- [ ] **AK 6 Abnahme-Probe der Karte #181:** Einheitstest mit TZ Europe/Berlin. Eigener Zeitraum bis 25.10.2026: eine Bewegung am 25.10. um 23:30+01:00 zählt zum Zeitraum. Eigener Zeitraum bis 29.03.2026: eine Bewegung am 30.03. um 00:30+02:00 zählt nicht. Die Summe aus „bis Tag X“ und „ab Tag X+1“ ergibt alle Bewegungen. Das Bis-Feld eines benannten Zeitraums, der am 29.03.2026 endet, zeigt den 29.03. (heute den 28.03.).
-- [ ] **AK 7 Eine Quelle:** Der Kostenbericht nimmt seine Grenzen aus `zeitraumGrenzen` ohne Sonderstelle; seine Umstellungstests bleiben unverändert grün.
-- [ ] **AK 8 Sonst nichts:** Die festen Vergleiche von Burndown, Durchsatz, Kumulativem Fluss und Durchlaufzeit bleiben an allen übrigen Tagen unverändert grün.
+- [x] **AK 6 Abnahme-Probe der Karte #181:** Einheitstest mit TZ Europe/Berlin. Eigener Zeitraum bis 25.10.2026: eine Bewegung am 25.10. um 23:30+01:00 zählt zum Zeitraum. Eigener Zeitraum bis 29.03.2026: eine Bewegung am 30.03. um 00:30+02:00 zählt nicht. Die Summe aus „bis Tag X“ und „ab Tag X+1“ ergibt alle Bewegungen. Das Bis-Feld eines benannten Zeitraums, der am 29.03.2026 endet, zeigt den 29.03. (heute den 28.03.).
+- [x] **AK 7 Eine Quelle:** Der Kostenbericht nimmt seine Grenzen aus `zeitraumGrenzen` ohne Sonderstelle; seine Umstellungstests bleiben unverändert grün.
+- [x] **AK 8 Sonst nichts:** Die festen Vergleiche von Burndown, Durchsatz, Kumulativem Fluss und Durchlaufzeit bleiben an allen übrigen Tagen unverändert grün.
 
 ## Implementierungshinweise
 
