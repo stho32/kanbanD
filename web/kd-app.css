@@ -410,7 +410,9 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .best-status.fehler{border-left-color:var(--kd-c-red-line)}
 .best-leer{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);margin:0;padding:16px var(--kd-s6);color:var(--kd-muted);font-size:13px}
 .mod-side{border-left:1px solid var(--kd-line);background:var(--kd-bg);overflow:auto;display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4)}
-.titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%}
+/* Karte #199: flex:none — die Zielgröße (kd-base, [role=button]) setzt min-block-size:24px statt „auto“; ohne flex:none
+   schrumpft der Titel in der rollenden Spalte .mod-main auf diese 24 px, und seine weiteren Zeilen laufen über „Beschreibung“. */
+.titel{font:600 20px/1.25 var(--kd-font);border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%;flex:none}
 .titel:hover{border-color:var(--kd-line-strong)}
 .titel:focus{outline:2px solid var(--kd-accent);outline-offset:-1px;background:var(--kd-surface)}
 /* Fenstertitel liest mehrzeilig (R00116, ADR-0007 N2): Umbruch zwischen Wörtern, Einzelwort bricht innerhalb statt zu überlaufen */
