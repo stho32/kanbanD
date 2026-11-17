@@ -409,7 +409,9 @@ test.describe('R00112 Anhang im Fenster', () => {
     const x = page.getByLabel('Anhang plan.pdf entfernen');
     await x.click();
     await expect(x).toBeDisabled();
-    await expect(x).toHaveAttribute('aria-busy', 'true');
+    // R00190 AK 3 löst den Ladezustand aus `disabled aria-busy` ab: das ✕ trägt die Sperrform (`aria-disabled`) und behält den Fokus
+    await expect(x).toHaveAttribute('aria-disabled', 'true');
+    await expect(x).not.toHaveAttribute('aria-busy', /.*/);
     expect(daliegt(PLAN)).toBe(true);
     freigeben();
     await expect(anhaenge(page)).toHaveCount(0);

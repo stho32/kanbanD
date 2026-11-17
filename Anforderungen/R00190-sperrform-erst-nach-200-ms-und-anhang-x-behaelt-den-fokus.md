@@ -1,6 +1,6 @@
 ---
 id: R00190
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -23,10 +23,10 @@ Eine Zeichnung ist nicht nötig: die am 2026-11-14 freigegebene Form bleibt, nur
 
 **Ausgangslage:** Aufgabe #1 mit den Anhängen `plan.pdf` und `notiz.txt`, Person `st` gewählt. Die Antwort des Servers wird in der Probe gehalten. Gemessen wird ab dem Auslösen (Klick oder Taste); die Schwelle ist 200 ms, geprüft wird mit Abstand bei 100 ms und bei 400 ms.
 
-- [ ] **AK 1 Schnelle Antwort, kein Aufblitzen:** Ein Schreib-Auslöser (Beispiel: Knopf „Anlegen“ im Dialog „Neue Aufgabe“), dessen Antwort nach 100 ms kommt → der Auslöser zeigt bis zur Antwort durchgehend seine Ruheform (Schrift, Kontur und Fläche unverändert). Die Sperre wirkt trotzdem sofort: ein zweiter Klick innerhalb der 100 ms stellt keine zweite Anfrage. Heute rot: die Dämpfung steht sofort.
-- [ ] **AK 2 Lange Antwort, Sperrform wie freigegeben:** Derselbe Auslöser, Antwort 1 s gehalten → nach 100 ms noch Ruheform, spätestens nach 400 ms die gedämpfte Form aus R00148 AK 19, unverändert bis zur Antwort; mit der Antwort steht sofort wieder die Ruheform. Gilt für jede Auslöserfamilie aus R00148 AK 19 (Knopf, Symbolknopf, Kästchen, Kartenleiste).
-- [ ] **AK 3 Das ✕ eines Anhangs behält den Fokus:** ✕ von `plan.pdf` mit Enter ausgelöst, das Lesen des Inhalts 1 s gehalten → der Fokus steht während des Lesens auf diesem ✕; es trägt `aria-disabled="true"`, kein natives `disabled` und kein `aria-busy`; ein zweites Enter löst kein zweites Lesen und kein zweites Löschen aus. Nach dem Lesen wie heute: der Anhang ist entfernt, der Hinweis mit „Rückgängig“ steht, der Fokus steht auf dem ✕ von `notiz.txt`. Scheitert das Lesen, steht die Meldung „Anhang „plan.pdf“ nicht entfernt: …“ im Fensterfuß und der Fokus auf dem ✕ von `plan.pdf`. Heute rot: der Fokus fällt während des Lesens heraus.
-- [ ] **AK 4 Bleibt:** Die bestehenden Proben laufen unverändert grün (`e2e/tests/r00148-zweiter-ausloeser.spec.js`, `r00112-rueckgaengig.spec.js`).
+- [x] **AK 1 Schnelle Antwort, kein Aufblitzen:** Ein Schreib-Auslöser (Beispiel: Knopf „Anlegen“ im Dialog „Neue Aufgabe“), dessen Antwort nach 100 ms kommt → der Auslöser zeigt bis zur Antwort durchgehend seine Ruheform (Schrift, Kontur und Fläche unverändert). Die Sperre wirkt trotzdem sofort: ein zweiter Klick innerhalb der 100 ms stellt keine zweite Anfrage. Heute rot: die Dämpfung steht sofort.
+- [x] **AK 2 Lange Antwort, Sperrform wie freigegeben:** Derselbe Auslöser, Antwort 1 s gehalten → nach 100 ms noch Ruheform, spätestens nach 400 ms die gedämpfte Form aus R00148 AK 19, unverändert bis zur Antwort; mit der Antwort steht sofort wieder die Ruheform. Gilt für jede Auslöserfamilie aus R00148 AK 19 (Knopf, Symbolknopf, Kästchen, Kartenleiste).
+- [x] **AK 3 Das ✕ eines Anhangs behält den Fokus:** ✕ von `plan.pdf` mit Enter ausgelöst, das Lesen des Inhalts 1 s gehalten → der Fokus steht während des Lesens auf diesem ✕; es trägt `aria-disabled="true"`, kein natives `disabled` und kein `aria-busy`; ein zweites Enter löst kein zweites Lesen und kein zweites Löschen aus. Nach dem Lesen wie heute: der Anhang ist entfernt, der Hinweis mit „Rückgängig“ steht, der Fokus steht auf dem ✕ von `notiz.txt`. Scheitert das Lesen, steht die Meldung „Anhang „plan.pdf“ nicht entfernt: …“ im Fensterfuß und der Fokus auf dem ✕ von `plan.pdf`. Heute rot: der Fokus fällt während des Lesens heraus.
+- [x] **AK 4 Bleibt:** Die bestehenden Proben laufen unverändert grün (`e2e/tests/r00148-zweiter-ausloeser.spec.js`, `r00112-rueckgaengig.spec.js`).
 
 ## Tests
 

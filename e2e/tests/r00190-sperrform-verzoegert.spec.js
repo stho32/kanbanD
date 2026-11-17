@@ -2,7 +2,6 @@
 // Die Sperre wirkt sofort (R00148), nur ihre sichtbare Form wartet 200 ms ab dem Auslösen. Die Zeit läuft über
 // `page.clock` (angehalten, dann in Schritten von 100 und 300 ms vorgerückt) — nie über die Wanduhr der Probe (ADR-0026).
 // Die Antworten hält `page.route` an der Grenze des Browsers fest, bis die Probe sie freigibt.
-// ERWARTET ROT bis B0932 (Verzögerung der Form) und B0933 (✕ des Anhangs auf der Sperrform) stehen.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit, reiter, mutanteEinsetzen } = require('./hilfen');
 

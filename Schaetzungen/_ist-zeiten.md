@@ -786,3 +786,7 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0925 Cursor im Zahlenfeld übersteht das Neuzeichnen | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0926 Fünf kleine Beschriftungen | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0927 Probe im echten Programm und Gate (mit Wartezeit auf fremde Läufe) | Standard | 0,5-1,5h | 0,5h | 0,5h | autonom |
+| 2026-11-17 | Karte #151 R00190 (Sperrform erst nach 200 ms, ✕ des Anhangs behält den Fokus) | B0931 Rote Proben: schnelle Antwort ohne Aufblitzen, ✕ des Anhangs hält den Fokus | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #151 R00190 (Sperrform erst nach 200 ms, ✕ des Anhangs behält den Fokus) | B0932 Sperrform mit 200 ms Verzögerung, Ende sofort | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #151 R00190 (Sperrform erst nach 200 ms, ✕ des Anhangs behält den Fokus) | B0933 ✕ des Anhangs auf die Sperrform ziehen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #151 R00190 (Sperrform erst nach 200 ms, ✕ des Anhangs behält den Fokus) | B0934 Probe im echten Programm und Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
