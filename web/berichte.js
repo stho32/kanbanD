@@ -258,20 +258,25 @@
     return { skala, breite, schraffiert: breite >= schraffurAb, tage: jeTag };
   }
 
-  const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0 });
-  /** Ereignisse bis `jetzt` je Tagesbeginn (ms): die Wechsel von „offen“ entlang der Zustandsfolge jeder gezählten Aufgabe. */
+  /** Ein Tag ohne Ereignis. `zurueckgekommen` (R00192) ist kein vierter Posten, sondern die Teilmenge von `hinzugekommen`,
+      die Rückläufer sind — die Bilanz rechnet ohne sie. */
+  const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0, zurueckgekommen: 0 });
+  /** Ereignisse bis `jetzt` je Tagesbeginn (ms): die Wechsel von „offen“ entlang der Zustandsfolge jeder gezählten Aufgabe;
+      dazu je „+“, das ein Rückläufer ist, `zurueckgekommen` (R00192) — die Stelle, an der der Zugang nach Herkunft zählt. */
   function ereignisseJeTag(f, gezaehlt, jetzt) {
     const jeTag = new Map();
     for (const zustandAm of gezaehlt) {
       let vorher = NICHT_DA;
       for (const { ms, zustand } of zustandAm.folge()) {
         if (ms > jetzt) break;
-        const art = ereignisArt(f, vorher, zustand);
+        const art = ereignisArt(f, vorher, zustand), zurueck = art === 'hinzugekommen' && istRuecklaeufer(f, vorher);
         vorher = zustand;
         if (art == null) continue;
         const t = tag(ms);
         if (!jeTag.has(t)) jeTag.set(t, { ...KEIN_EREIGNIS });
-        jeTag.get(t)[art]++;
+        const tagEreignisse = jeTag.get(t);
+        tagEreignisse[art]++;
+        if (zurueck) tagEreignisse.zurueckgekommen++;
       }
     }
     return jeTag;
@@ -285,6 +290,10 @@
     if (nachher.art === 'da' && nachher.erledigt) return 'erledigt';
     return 'entfernt';
   }
+  /** Ist ein „+“ ein Rückläufer (R00192 AK 1)? Ja, wenn die Aufgabe unmittelbar davor erledigt im Bestand war — mit Zielblock
+      (R00166) in einer seiner Erledigt-Spalten. Neu angelegt, vom Board genommen und zurück, aus einer ausgeschlossenen Spalte
+      eingetreten: nein. */
+  const istRuecklaeufer = (f, vorher) => imBestand(f, vorher) && vorher.erledigt;
 
   /* ── Kumulativer Fluss (R00121) ── */
   /** Je Tag im Zeitraum die gestapelten Bänder je Spalte (Stand am Tagesende, heute jetzt; ab `start`)
