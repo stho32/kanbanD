@@ -1,6 +1,6 @@
 ---
 id: R00191
-status: Neu
+status: In Arbeit
 datum: 2026-11-17
 ursprung: Bug-Report
 ursprungslauf:
@@ -20,12 +20,12 @@ Keine Zeichnung: es entsteht kein Bedienelement. Zahlt ein auf: [Vision](R00000-
 
 **Ausgangslage:** eingerichteter Ordner, Board mit `report-filter: {period: eigen, from: 2026-11-12}` und einer Aufgabe #1 mit Beschreibung. „Tippen“ heißt Taste für Taste, „Klick“ hält die Maustaste zwei Bilder lang (`mouse.down`, `mouse.up`). Fremde Änderung wie in R00179.
 
-- [ ] **AK 1 Klick in ein anderes Feld (Abnahme-Probe der Karte):** Im geöffneten Durchsatz ist in „Zeitraum von“ ein vollständiges anderes Datum getippt (`3112` + `2026`), noch nicht verlassen. Klick in „Zeitraum bis“ → die Board-Datei trägt `from: 2026-12-31`, und der Fokus steht in „Zeitraum bis“.
-- [ ] **AK 2 Klick auf „Berichte“:** Wie AK 1, stattdessen Klick auf „Berichte“ → das Menü ist nach diesem einen Klick offen, die Datei trägt das Datum.
+- [x] **AK 1 Klick in ein anderes Feld (Abnahme-Probe der Karte):** Im geöffneten Durchsatz ist in „Zeitraum von“ ein vollständiges anderes Datum getippt (`3112` + `2026`), noch nicht verlassen. Klick in „Zeitraum bis“ → die Board-Datei trägt `from: 2026-12-31`, und der Fokus steht in „Zeitraum bis“.
+- [x] **AK 2 Klick auf „Berichte“:** Wie AK 1, stattdessen Klick auf „Berichte“ → das Menü ist nach diesem einen Klick offen, die Datei trägt das Datum.
 - [ ] **AK 3 Unfertig, dann Klick:** `3112` getippt (Zwischenstand), Klick in „Zeitraum bis“ → „Zeitraum von“ zeigt wieder 12.11.2026, nichts ist gespeichert, der Fokus steht in „Zeitraum bis“.
-- [ ] **AK 4 Vorgemerkter Fokus (Abnahme-Probe der Karte):** Aufgabenfenster von #1, Beschreibung in Bearbeitung, Antwort auf das Speichern um 500 ms verzögert. Strg+Enter, dann Klick ins Kommentarfeld, Antwort abwarten → der Fokus bleibt im Kommentarfeld. Gegenprobe: ohne Klick steht er nach der Antwort auf dem Stift (R00162 AK 7 bleibt).
-- [ ] **AK 5 Modifikatortaste allein:** `3112` in „Zeitraum von“ getippt, Strg einzeln gedrückt und losgelassen (ebenso Alt, Meta), fremde Änderung trifft ein, `2026` getippt → Feld 31.12.2026 und Datei `from: 2026-12-31`. Strg+Enter und Alt+Pfeil beenden die Eingabe weiter (R00179).
-- [ ] **AK 6 Bleibt, und nichts geht verloren:** Das Zeichnen, das während der Zeigergeste wartet, wird danach genau einmal nachgeholt (eine fremde Änderung ist danach sichtbar). Die Specs `r00179-*`, `r00173-*`, `r00162-*`, `r00155-*` und `r00106-*` laufen unverändert grün.
+- [x] **AK 4 Vorgemerkter Fokus (Abnahme-Probe der Karte):** Aufgabenfenster von #1, Beschreibung in Bearbeitung, Antwort auf das Speichern um 500 ms verzögert. Strg+Enter, dann Klick ins Kommentarfeld, Antwort abwarten → der Fokus bleibt im Kommentarfeld. Gegenprobe: ohne Klick steht er nach der Antwort auf dem Stift (R00162 AK 7 bleibt).
+- [x] **AK 5 Modifikatortaste allein:** `3112` in „Zeitraum von“ getippt, Strg einzeln gedrückt und losgelassen (ebenso Alt, Meta), fremde Änderung trifft ein, `2026` getippt → Feld 31.12.2026 und Datei `from: 2026-12-31`. Strg+Enter und Alt+Pfeil beenden die Eingabe weiter (R00179).
+- [x] **AK 6 Bleibt, und nichts geht verloren:** Das Zeichnen, das während der Zeigergeste wartet, wird danach genau einmal nachgeholt (eine fremde Änderung ist danach sichtbar). Die Specs `r00179-*`, `r00173-*`, `r00162-*`, `r00155-*` und `r00106-*` laufen unverändert grün.
 
 ## Implementierungshinweise
 
