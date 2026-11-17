@@ -170,3 +170,9 @@ Unit-Ebene entfällt mit Grund: Es gibt keine reine Logik, nur CSS und Markup. I
 - Gemeinsam stehen: Nach abgelehntem Titel einen Kommentar oder Labels speichern → Titelfeld weiter ungültig, Meldung steht. Varianten Dauer und Herkunft.
 - Gemeinsam gehen, Ausgang (c): Nach abgelehnter Dauer eine Meldung ohne Feld → „Zeit nachtragen“ leer und nicht ungültig. Mutant, der rot wird: eine Meldung ohne Feld lässt die abgelehnte Eingabe stehen (M-G3b).
 - Ausgang (e): die Proben (e-1) und (e-2) aus R00155 (Bubble B0762). Sie prüfen geltendes Verhalten, ein Mutant ist dafür nicht verlangt.
+
+## Nachtrag 2026-11-16: Die Fenstermeldung behält beim Neuzeichnen ihren Knoten (Karte #86, R00189)
+
+### N3 Knoten beim Zeichnen wiederverwenden
+
+Der Knoten der Fenstermeldung wird beim Zeichnen wiederverwendet: `render()` hält ihn vor dem Ersetzen von `#over` fest und setzt ihn an die Stelle des frisch gezeichneten, solange dasselbe Aufgabenfenster offen ist und die Meldung seit ihrem Setzen nicht neu gesetzt wurde. Ein Knoten außerhalb der ersetzten Bereiche ist verworfen: er nähme die Rolle `alert` aus dem Fensterfuß, an den Regel und Proben dieser Entscheidung sie binden (gezählt: 11 Dateien unter `e2e/tests/` suchen sie dort), und läge außerhalb des modalen Fensters. Ob ein wieder eingehängter Knoten in NVDA, VoiceOver und TalkBack schweigt, ist im Headless-Browser nicht prüfbar und bleibt ein Prüfpunkt der Abnahme; die offene Frage oben ist damit für das Headless-Gate beantwortet (der Knoten wurde ersetzt), für das Vorleseprogramm nicht.
