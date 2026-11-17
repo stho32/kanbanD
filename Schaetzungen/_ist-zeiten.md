@@ -812,3 +812,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0954 Zahlen in Tooltip, Tabellenansicht und Kennzahlzeile | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0955 Legende und Hinweis „Label kommt nicht vor“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0956 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-17 | Karte #198 (E2E-Wackler im Gate: r00148 B2 Taste „t“) | Ursachensuche: einmal reproduziert, Fehlerkontext kalibriert, vier Hypothesen per Probe ausgeschlossen, keine Ursache belegt — blockiert am Timebox-Limit | Standard | 1-2h | 2,8h | 2,8h | autonom |
