@@ -1,6 +1,6 @@
 // R00188 (Karten #68, #55): Fehlerzeile beim Einrichten, „gespeichert“ nur nach Erfolg, Cursor im Zahlenfeld, kleine Beschriftungen
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, bereit, ausMehr, breiteSetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, ausMehr, breiteSetzen, commitSteht } = require('./hilfen');
 
 const GRUNDBESTAND = () => ({
   'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
@@ -61,3 +61,54 @@ test.describe('68-1 Fehlermeldung beim Einrichten ganz lesbar', () => {
     });
   }
 });
+
+/**
+ * 55-1 „gespeichert“ nur, wenn gespeichert wurde: nach einer abgelehnten Eingabe steht im Fuß die Meldung und kein „gespeichert …“;
+ * nach der nächsten angenommenen Änderung desselben Felds wieder „gespeichert“ mit deren Uhrzeit. Die Uhr läuft über `page.clock`.
+ */
+test.describe('55-1 „gespeichert“ nur nach einem Erfolg', () => {
+  const r155 = require('./r00155-hilfen');
+  const { reiter } = require('./hilfen');
+  const UM = zeit => new Date(`2026-11-17T${zeit}+01:00`);
+  const VARIANTEN = [
+    { feld: 'Titel', ansicht: 'Inhalt', meldung: r155.MELDUNG_TITEL,
+      // nach einer Ablehnung steht der Titel noch im Bearbeiten (R00155 96-1), sonst erst über den Stift
+      eingeben: async (page, wert) => {
+        const titel = page.locator('#fenster [data-af="titel"]');
+        if (!await titel.count()) await page.locator('#fenster [data-act="titel-bearbeiten"]').click();
+        await titel.fill(wert);
+        await titel.press('Enter');
+      },
+      gut: ['Abnahme geprüft', 'Abnahme erneut geprüft'], schlecht: '' },
+    { feld: 'Dauer', ansicht: 'Zeiten', meldung: r155.MELDUNG_DAUER,
+      eingeben: async (page, wert) => { const zeit = page.locator('#fenster').getByLabel('Zeit nachtragen'); await zeit.fill(wert); await zeit.press('Enter'); },
+      gut: ['0:45', '0:30'], schlecht: 'abc' },
+    { feld: 'Herkunft', ansicht: 'Details', meldung: r155.MELDUNG_X1,
+      eingeben: async (page, wert) => { const herkunft = page.locator('#fenster').getByLabel('Neue Herkunft'); await herkunft.fill(wert); await herkunft.press('Enter'); },
+      gut: ['I0001', 'I0002'], schlecht: 'X1' },
+  ];
+  for (const v of VARIANTEN) {
+    test(`${v.feld}: angenommen 10:00:05, dann abgelehnt → Meldung ohne „gespeichert“, kein Commit; angenommen 10:01:30 → „gespeichert 10:01:30“ ohne Meldung`, async ({ page }) => {
+      k = await r155.starten(page);
+      await page.clock.setFixedTime(UM('10:00:05'));
+      await r155.fensterOeffnen(page, 1);
+      await reiter(page, v.ansicht);
+      const gs = page.locator('#fenster .mod-fuss .gs'), meldung = page.locator('#fenster .mod-fuss [role=alert]');
+      const commits = +k.git('rev-list', '--count', 'HEAD') + 1;
+      await v.eingeben(page, v.gut[0]);
+      await expect(gs).toHaveText('gespeichert 10:00:05');
+      await commitSteht(k, commits);
+
+      await v.eingeben(page, v.schlecht);
+      await expect(meldung).toContainText(v.meldung);
+      await expect(gs).not.toContainText('gespeichert');
+      expect(+k.git('rev-list', '--count', 'HEAD'), 'kein Commit').toBe(commits);
+
+      await page.clock.setFixedTime(UM('10:01:30'));
+      await v.eingeben(page, v.gut[1]);
+      await expect(gs).toHaveText('gespeichert 10:01:30');
+      await expect(meldung).toHaveCount(0);
+    });
+  }
+});
+

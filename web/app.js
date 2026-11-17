@@ -617,10 +617,12 @@ async function termineSchreiben(liste, formularLeeren) {
 /** Anfragen strikt nacheinander; ist die Schlange leer, wird einmal neu geladen. Vor diesem Laden setzt sie die Marke: was davor
     gestartet ist, las womöglich einen Stand ohne die eigenen Änderungen und wird verworfen (R00110, ADR-0014 Regel 3).
     Das Kettenende endet in jedem Fall erfüllt und meldet je Fehlschlag einmal am Auslöser (R00147, ADR-0025 Regel 3). */
+/** Ergebnis einer Anfrage, die `durchDieSchlange` gescheitert durch die Kette trägt. */
+const GESCHEITERT = Symbol('gescheitert');
 const eigene = warteschlangeFuehren({
   laden: () => laden(),
   vorLaden: () => { marke = takt; },
-  gespeichert: () => { S.ui.gespeichert = Date.now(); },
+  gespeichert: ergebnis => { if (ergebnis !== GESCHEITERT) S.ui.gespeichert = Date.now(); },
   melden: schlangeMelden,
 });
 /** Wie viele eigene Anfragen gerade laufen; solange welche warten, wird kein geladener Stand übernommen (R00110). */
@@ -652,7 +654,8 @@ function sperreFreigeben(laufender) {
     damit seine Meldung die einzige bleibt (R00147) — die Schlange meldet diesen Fehlschlag dann nicht. */
 function durchDieSchlange(anfrage) {
   let ergebnis = null, fehler = null;
-  return warteschlange(() => Promise.resolve(anfrage()).then(r => { ergebnis = r; }, f => { fehler = f; })).then(() => {
+  // der Fehlschlag kommt erst nach dem Nachladen beim Aufrufer an; bis dahin trägt die Kette ihn als Marke, damit sie ihn nicht als gespeichert merkt (R00188 55-1)
+  return warteschlange(() => Promise.resolve(anfrage()).then(r => { ergebnis = r; return r; }, f => { fehler = f; return GESCHEITERT; })).then(() => {
     if (fehler) throw fehler;
     return ergebnis;
   });
@@ -725,9 +728,10 @@ function schreiben(methode, pfad, daten, feld = null) {
     } catch (f) {
       fensterMelden(f.message, feld, ausloeser);
       S.ui.fehler = f.message;
-      return false;
+      // innen die Marke für die Kette (sonst stempelt sie „gespeichert“, R00188 55-1), nach außen ein Wahrheitswert (R00185 108-2)
+      return GESCHEITERT;
     }
-  });
+  }).then(r => r !== GESCHEITERT);
 }
 
 /** Platz einer Karte auf einem Board aus dem gezeigten Stand, gemerkt für das Rückgängig (R00112, ADR-0017 Regel 1). */
@@ -875,9 +879,13 @@ function fokusAusDemHinweis() {
 
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig.
     Eine neue Meldung nimmt den Platz: die abgelehnte Eingabe eines anderen Felds geht mit ihrer Meldung (R00155 G-3 c).
-    `ausloeser` nennt die Aktion, die gescheitert ist: nur ihr Erfolg räumt eine Meldung ohne Feld (R00185 108-2). */
+    `ausloeser` nennt die Aktion, die gescheitert ist: nur ihr Erfolg räumt eine Meldung ohne Feld (R00185 108-2).
+    Ein Fehlschlag nimmt auch „gespeichert …“ aus dem Fuß: daneben stünde sonst ein Erfolg, den es nicht gab (R00188 55-1). */
 function fensterMelden(text, feld = null, ausloeser = null) {
-  if (text) abgelehnteEingabeRaeumen(feld);
+  if (text) {
+    abgelehnteEingabeRaeumen(feld);
+    S.ui.gespeichert = null;
+  }
   S.ui.fensterFehler = text;
   S.ui.fensterFehlerFeld = feld;
   S.ui.fensterFehlerAusloeser = ausloeser;
@@ -1967,9 +1975,9 @@ async function aktion(a, arg, wert) {
           } catch (f) {
             // Aus dem offenen Aufgabenfenster gemeldet, steht die Ablehnung im Fuß des Fensters (R00146 FA 9, 403/409);
             // vom Board gezogen bleibt sie wie bisher in der Statuszeile. Das Laden nimmt die vorschnelle Bewegung zurück.
-            if (!u.offen) { u.fehler = f.message; return; }
+            if (!u.offen) { u.fehler = f.message; return GESCHEITERT; }
             fensterMelden(f.message, null, 'bewegen');
-            return;
+            return GESCHEITERT;
           }
           if (u.offen && u.fensterFehler) meldungNachErfolgRaeumen(null, 'bewegen');
           if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
@@ -2313,7 +2321,7 @@ async function aktion(a, arg, wert) {
         if (!f || ichNoetig()) break;
         return durchDieSchlange(async () => {
           try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
-          catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; return; }
+          catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; return GESCHEITERT; }
           u.wirkungNeu = null; gespeichertMelden();
         });
       }
@@ -2322,14 +2330,14 @@ async function aktion(a, arg, wert) {
         const [i, an] = arg.split('|');
         return durchDieSchlange(async () => {
           try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); gespeichertMelden(null, `wirkung-eintritt ${i}`); }
-          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-eintritt ${i}`); }
+          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-eintritt ${i}`); return GESCHEITERT; }
         });
       }
       case 'wirkung-weg': {
         if (ichNoetig()) break;
         return durchDieSchlange(async () => {
           try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); gespeichertMelden(null, `wirkung-weg ${arg}`); }
-          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-weg ${arg}`); }
+          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-weg ${arg}`); return GESCHEITERT; }
         });
       }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
