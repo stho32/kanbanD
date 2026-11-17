@@ -662,7 +662,7 @@ const THEMEN = ['light', 'dark'];
 const fokusRing = page => page.evaluate(() => {
   const e = document.activeElement, s = getComputedStyle(e);
   const probe = document.createElement('i');
-  probe.style.color = 'var(--kd-accent)';
+  probe.style.color = e.closest('header.kz') ? 'var(--kd-head-link)' : 'var(--kd-accent)'; // im Kopf der Kopfring aus R00184
   document.body.append(probe);
   const akzent = getComputedStyle(probe).color;
   probe.remove();

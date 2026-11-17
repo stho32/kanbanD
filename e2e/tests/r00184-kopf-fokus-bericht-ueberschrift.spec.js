@@ -15,10 +15,9 @@ const THEMEN = ['light', 'dark'];
 /** WCAG 1.4.11: der Ring steht mindestens 3:1 gegen die Fläche des Kopfs. */
 const RING_MASS = 3;
 /**
- * Radios im Kopf (Auswahl „Bereich“) prüft eine eigene Probe, die als „erwartet rot“ markiert ist: ihr Ring ist durch R00106 auf
- * `--kd-accent` festgelegt (r00106-fokus.spec.js, „fokussierte Radios … tragen den Ring“) und steht hell bei 2,33:1 gegen den Kopf.
- * R00184 AK 1 verlangt 3:1 für jedes Element des Kopfs, AK 6 die Specs r00106-* unverändert grün — beides zugleich geht nicht;
- * die Entscheidung liegt beim Director (Bericht zu #59). Fällt sie, entfällt die Markierung und die Probe wird gewöhnlich grün.
+ * Radios im Kopf (Auswahl „Bereich“, „Aufgabenbereich“) prüft eine eigene Probe, die zugleich belegt, dass Tab sie erreicht. Ihr Ring
+ * war durch R00106 auf `--kd-accent` festgelegt (hell 2,33:1 gegen den Kopf); seit R00184 tragen sie im Kopf den Kopfring
+ * (Entscheidung des Directors 2026-11-17, Erwartung in r00106-fokus.spec.js angepasst).
  */
 const IST_RADIO = ring => ring.rolle === 'radio';
 /** Die zehn Berichte mit ihrem Namen im Menü „Berichte“ (R00184 AK 3). */
@@ -162,8 +161,7 @@ test.describe('R00184 Fokusring im Kopf, aktueller Bericht, Überschriftenfolge'
     expect(verstoesse).toEqual([]);
   });
 
-  test('US-1/AK 1, offen: auch die Radios im Kopf zeigen den Ring mit mindestens 3:1 — erwartet rot (Widerspruch zu R00106, siehe oben)', async ({ page }) => {
-    test.fail(true, 'R00106 legt den Ring der Radios auf --kd-accent fest: hell 2,33:1 gegen den Kopf (dunkel über 3:1)');
+  test('US-1/AK 1: auch die Radios im Kopf zeigen den Ring mit mindestens 3:1 — hell und dunkel', async ({ page }) => {
     const verstoesse = [];
     for (const t of THEMEN) {
       await thema(page, t);
