@@ -843,6 +843,17 @@ function fensterMelden(text, feld = null) {
   if (text) abgelehnteEingabeRaeumen(feld);
   S.ui.fensterFehler = text;
   S.ui.fensterFehlerFeld = feld;
+  // jede gesetzte Meldung ist eine neue, auch mit gleichem Text — sie bekommt einen neuen Knoten (R00189)
+  S.ui.fensterMeldungNr = (S.ui.fensterMeldungNr || 0) + 1;
+}
+
+/** Setzt den Knoten der Fenstermeldung aus dem vorigen Zeichnen an die Stelle des frisch gezeichneten, wenn es dieselbe
+    Meldung ist: ein Vorleseprogramm sagt sie dann nicht bei jedem Neuzeichnen wieder an (R00189, ADR-0015 N3). `vorher` ist
+    nur gesetzt, wenn dasselbe Aufgabenfenster offen blieb; Text und Kennung kommen weiter aus `S.ui.fensterFehler`. */
+function meldungsknotenBehalten(vorher) {
+  const neu = document.getElementById(FENSTER_MELDUNG);
+  const dieselbe = vorher && neu && vorher.dataset.meldung === neu.dataset.meldung && vorher.textContent === neu.textContent;
+  if (dieselbe) neu.replaceWith(vorher);
 }
 
 /** Meldung und abgelehnte Eingabe des Fensters stehen und gehen nur gemeinsam (R00155 G-3). Räumt beide, wenn die abgelehnte
@@ -1209,6 +1220,7 @@ function render() {
   // Vor dem Ersetzen merken, solange der Auslöser noch im Dokument hängt
   const ausloeser = ausloeserSelektor(aktiv);
   const aktivWarSichtbar = imSichtbereich(aktiv);
+  const meldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(FENSTER_MELDUNG) : null;
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -1221,6 +1233,7 @@ function render() {
     $('#main').dataset.sicht = sicht;
     $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
+    meldungsknotenBehalten(meldungVorher);
   } finally {
     S.neuzeichnen = false;
   }
