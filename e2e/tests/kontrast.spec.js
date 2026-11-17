@@ -25,14 +25,11 @@ const GRUNDBESTAND = () => ({
 /** Alle Ansichten der Anwendung aus der gemeinsamen Liste; gemessen wird der ganze `body` samt Kopf mit seinem aktiven Segment. Der Bestand hat keine WBS. */
 const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: '' });
 /**
- * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und heute unter 4,5 messen.
- * Erwartet rot mit Verweis auf Karte #57, die ihre Gestaltung klärt. Ein Eintrag gilt nur in seiner `ansicht`; `heute` ist sein Messwert je Thema.
- * Der Test „Nicht gemessen“ schlägt Alarm, sobald ein Eintrag lesbar wird, verschwindet oder um mehr als `SPIELRAUM` unter `heute` fällt.
+ * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und unter 4,5 messen — je Eintrag
+ * { selektor, ansicht, karte, heute: { light, dark }, grund }. Seit Karte #57 (R00188) leer: die stillgelegte Initiale trägt ein
+ * gedämpftes Paar statt Deckkraft. Ein neuer Eintrag braucht eine Karte; der Test „Nicht gemessen“ prüft ihn wie zuvor.
  */
-const NICHT_GEMESSEN = [
-  { selektor: '.pt tr.ruhe .pk', ansicht: 'Personen', karte: '#57', heute: { light: 2.280, dark: 3.211 }, grund: 'Initialen ruhender Personen, opacity .55' },
-  { selektor: '.pk-still', ansicht: 'Einrichten', karte: '#57', heute: { light: 2.148, dark: 2.802 }, grund: 'Initiale stillgelegter Person, opacity .5' },
-];
+const NICHT_GEMESSEN = [];
 
 /** Wie weit ein nicht gemessener Zustand unter seinen heutigen Wert fallen darf, bevor die Probe ihn meldet. */
 const SPIELRAUM = 0.1;
@@ -460,9 +457,9 @@ test.describe('R00107 Kontrast', () => {
     }
   });
 
-  test('Nicht gemessen: jeder Eintrag verweist auf Karte #57, kommt in seiner Ansicht vor und misst je Thema unter 4,5, aber nicht schlechter als heute', async ({ page }) => {
+  test('Nicht gemessen: leer seit Karte #57 (R00188); ein Eintrag kommt in seiner Ansicht vor und misst je Thema unter 4,5, aber nicht schlechter als heute', async ({ page }) => {
+    expect(NICHT_GEMESSEN.map(n => n.selektor), 'seit #57 ist nichts mehr ausgenommen').toEqual([]);
     for (const n of NICHT_GEMESSEN) {
-      expect(n.karte, n.selektor).toBe('#57');
       await ansichtOeffnen(page, k.adresse + ANSICHTEN.find(a => a.ansicht === n.ansicht).adresse);
       const ort = page.locator(n.selektor).first();
       await expect(ort, n.selektor).toBeVisible();
@@ -494,6 +491,103 @@ test.describe('R00107 Kontrast', () => {
   test('Ausnahmeliste: leer, jeder Eintrag mit Kartennummer #50 oder #55', () => {
     for (const a of AUSNAHMEN) expect(['#50', '#55']).toContain(a.karte);
     expect(AUSNAHMEN).toEqual([]);
+  });
+});
+
+/**
+ * R00188 57-1/57-2 (Karte #57, ADR-0011 Nachtrag N2): die Initiale einer stillgelegten Person ist lesbar (≥ 4,5:1, gedämpft über
+ * einen Farbton, nicht über Deckkraft) und nennt ihren Zustand — auf der Karte, in der Personenliste und in den Einstellungen.
+ * Gegenproben: Deckkraft 0,5 zurück → gemeldet; dieselbe Initiale in einer als nicht bedienbar gekennzeichneten Zeile → ungemeldet.
+ */
+test.describe('R00188 Stillgelegte Person lesbar', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  let k;
+  /** Grundbestand mit #4 für Stefan und die stillgelegte Anna (`ab`). */
+  const MIT_STILLGELEGTER = () => ({ ...GRUNDBESTAND(), 'aufgaben/0004-vier.md': '---\nid: 4\ntitle: vier\nassignees: [st, ab]\n---\n' });
+  test.beforeEach(async ({ page }) => {
+    k = await kanbanStarten(einrichten(MIT_STILLGELEGTER()));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse);
+    await liveBereit(page);
+    await expect(page.locator('.ka')).toHaveCount(5);
+  });
+  test.afterEach(() => k.stoppen());
+
+  /** Die drei Stellen: Adresse, Initiale von Anna, Element, an dem „stillgelegt“ als Text oder Hilfstext stehen muss. */
+  const STELLEN = [
+    { stelle: 'Karte #4', adresse: '#/board/entwicklung', initiale: '.ka[data-id="4"] .avs .pk-still', zustand: '.ka[data-id="4"] .avs .pk-still' },
+    { stelle: 'Personenliste', adresse: '#/personen', stillgelegteZeigen: true, initiale: '.pt tr[data-person="ab"] .pk', zustand: '.pt tr[data-person="ab"]' },
+    { stelle: 'Einstellungen', adresse: '#/einrichten', initiale: '.klz.pz[data-person="ab"] .pk', zustand: '.klz.pz[data-person="ab"] .pk' },
+  ];
+  /** Die Personenliste zeigt Stillgelegte erst nach dem Schalter „stillgelegte zeigen“. */
+  const stillgelegteZeigen = async page => {
+    await page.locator('[data-act="still-auch"]').click();
+    await expect(page.locator('.pt tr[data-person="ab"]')).toHaveCount(1);
+  };
+  /** Text samt Hilfstexten eines Elements und seiner Nachfahren. */
+  const textUndHilfstext = ort => ort.evaluate(e => [e, ...e.querySelectorAll('*')].map(x => `${x.getAttribute('title') || ''} ${x.getAttribute('aria-label') || ''}`).join(' ') + ' ' + e.textContent);
+
+  test('US-1: Initiale von Anna an allen drei Stellen mindestens 4,5 in Hell und Dunkel, ohne Deckkraft, „stillgelegt“ als Text oder Hilfstext', async ({ page }) => {
+    for (const s of STELLEN) {
+      await ansichtOeffnen(page, k.adresse + s.adresse);
+      if (s.stillgelegteZeigen) await stillgelegteZeigen(page);
+      const initiale = page.locator(s.initiale);
+      await expect(initiale, s.stelle).toHaveCount(1);
+      await expect(initiale, `${s.stelle}: gedämpft über den Ton, nicht über Deckkraft`).toHaveCSS('opacity', '1');
+      expect(await textUndHilfstext(page.locator(s.zustand)), `${s.stelle}: Zustand genannt`).toContain('stillgelegt');
+      for (const t of THEMEN) {
+        await thema(page, t);
+        await farbuebergaengeAbwarten(page);
+        expect(await kontrastAm(initiale), `${t} ${s.stelle}`).toBeGreaterThanOrEqual(MASS);
+      }
+    }
+  });
+
+  test('US-1: die stillgelegte Initiale ist sichtbar zurückhaltender als die aktive von Stefan — andere Fläche, nicht die Rollenfarbe', async ({ page }) => {
+    const karte = page.locator('.ka[data-id="4"]');
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const [still, aktiv] = await Promise.all([karte.locator('.pk-still'), karte.locator('.pk:not(.pk-still)')].map(o => o.evaluate(e => getComputedStyle(e).backgroundColor)));
+      expect(still, t).not.toBe(aktiv);
+      expect(still, t).toBe(await tokenFarbe(page, '--kd-still'));
+    }
+  });
+
+  test('Gegenprobe: Deckkraft 0,5 an der Initiale wird gemeldet; dieselbe Initiale in einer nicht bedienbaren Zeile mit Grund bleibt ungemeldet', async ({ page }) => {
+    await ansichtOeffnen(page, k.adresse + '#/personen');
+    await stillgelegteZeigen(page);
+    await page.addStyleTag({ content: '.pk-still{opacity:.5}' });
+    const zeile = '.pt tr[data-person="ab"]';
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      const gemeldet = (await kontrastMessen(page, [zeile])).filter(m => m.wert < MASS && m.element.includes('pk-still'));
+      expect(gemeldet.length, `${t}: Deckkraft zurück wird gemeldet`).toBeGreaterThan(0);
+    }
+    await page.locator(zeile).evaluate(e => { e.setAttribute('aria-disabled', 'true'); e.title = 'stillgelegt'; });
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      expect((await kontrastMessen(page, [zeile])).filter(m => m.element.includes('pk-still')), `${t}: inaktiv mit Grund`).toEqual([]);
+    }
+  });
+
+  test('57-2: im Dialog „Zuständige“ ist die gesperrte Zeile von Anna als nicht bedienbar gekennzeichnet und nennt den Grund; solange wählbar, ist ihre Initiale lesbar', async ({ page }) => {
+    await page.locator('.ka[data-id="4"]').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /Zuständige zuweisen/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Zuständige für #4' });
+    const zeile = dialog.locator('.zw-p.still');
+    await expect(zeile.getByRole('checkbox')).toBeEnabled();
+    for (const t of THEMEN) {
+      await thema(page, t);
+      await farbuebergaengeAbwarten(page);
+      expect(await kontrastAm(zeile.locator('.pk')), `${t}: wählbar und lesbar`).toBeGreaterThanOrEqual(MASS);
+    }
+    await zeile.getByRole('checkbox').uncheck();
+    await expect(zeile.getByRole('checkbox')).toBeDisabled();
+    await expect(zeile).toHaveAttribute('aria-disabled', 'true');
+    await expect(zeile).toHaveAttribute('title', /stillgelegt/);
   });
 });
 
