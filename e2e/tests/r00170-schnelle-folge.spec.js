@@ -65,7 +65,7 @@ test('R00170 US-1, AK 1, AK 3 (B0830, Abnahme der Karte #177): Puffer 7, Perzent
     await expect(feld(page, 'perzentil')).toHaveValue('70');
     await expect(feld(page, 'aufloesung')).toHaveValue('7');
     // die Auflösung steht nicht in der Meldung: der dritte Commit nennt denselben Stand wie der zweite
-    expect(commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`, `${EINGESTELLT}Puffer 7 Arbeitstage, P70`, `${EINGESTELLT}Puffer 7 Arbeitstage, P70`]);
+    await expect.poll(() => commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`, `${EINGESTELLT}Puffer 7 Arbeitstage, P70`, `${EINGESTELLT}Puffer 7 Arbeitstage, P70`]);
     expect(k.git('log', '-3', '--format=%an', '--', BOARD).split('\n')).toEqual(['Stefan', 'Stefan', 'Stefan']);
   } finally { await k.stoppen(); }
 });
@@ -95,7 +95,7 @@ test('R00170 AK 4 (B0831): eine einzelne Änderung wie vor der Karte — Puffer 
     await expect(feld(page, 'puffer')).toHaveValue('7');
     await expect(feld(page, 'perzentil')).toHaveValue('95');
     await expect(page.locator('#main .fb-einst [role="alert"]')).toHaveCount(0);
-    expect(commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`]);
+    await expect.poll(() => commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`]);
   } finally { await k.stoppen(); }
 });
 
@@ -146,7 +146,7 @@ test('R00170 US-3, AK 5 (B0832): lehnt der Server das mittlere von drei (Perzent
     await steht(page);
     await expect(feld(page, 'perzentil')).toHaveValue('95');
     await expect(feld(page, 'puffer')).toHaveValue('7');
-    expect(commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`, `${EINGESTELLT}Puffer 7 Arbeitstage, P95`]);
+    await expect.poll(() => commitsVonStefanSeit(k, vorher)).toEqual([`${EINGESTELLT}Puffer 7 Arbeitstage, P95`, `${EINGESTELLT}Puffer 7 Arbeitstage, P95`]);
     // der abgelehnte Wert wird auch später nicht mitgeschickt
     await inEinemZug(page, [['puffer', '8']]);
     await expect.poll(() => kopf(k)).toBe('---\nfever: {buffer: 8, resolution: week}\n---\n\n');

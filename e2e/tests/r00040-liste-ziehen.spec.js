@@ -17,7 +17,7 @@ test.describe('R00040', () => {
     await expect(page.getByRole('status')).toContainText('#2 nach Entwicklung · In Arbeit');
     await page.locator('tr[data-zeile="1"]').dragTo(page.getByLabel('Ziel Entwicklung · Erledigt'));
     await expect.poll(() => k.lies('boards/entwicklung.md')).toMatch(/## Erledigt\n\n- \[#1\]/);
-    expect(k.git('log', '-1', '--name-only', '--format=')).toBe('boards/entwicklung.md');
+    await expect.poll(() => k.git('log', '-1', '--name-only', '--format=')).toBe('boards/entwicklung.md');
   });
 
   test('US-2: ins Archiv ziehen', async ({ page }) => {

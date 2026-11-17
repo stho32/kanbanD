@@ -8,7 +8,8 @@
 //  3. Vor jeder Messung, Zählung oder dem Renderzähler steht die Ansicht: `await bereit(page, anker)` (live verbunden, Anker
 //     der Ansicht sichtbar, `kdTest.gezeichnet()`); `liveBereit` allein bestätigt nur die Leitung, nicht den gezeichneten Stand.
 //  4. Nach einem Dateischreiben auf Commit und Zustand warten (`expect.poll(() => k.lies(rel))`, `k.git(…)`); auf ein
-//     Live-Ereignis über `bereit`, nie mit `page.waitForTimeout`.
+//     Live-Ereignis über `bereit`, nie mit `page.waitForTimeout`. Die Datei steht vor dem Commit: vor jeder Lesung des
+//     Verlaufs (`rev-list`, `log`) erst `await commitSteht(k, vorher + 1)` oder die Lesung selbst unter `expect.poll` (#193).
 //  5. Eine Frist ist nur für das Ausbleiben eines Ereignisses erlaubt; `waitForTimeout` als Synchronisierung ist untersagt.
 //     Wird eine Dauer beobachtet, steht die Messgrundlage erst nach `bereit()`, und die Zeit läuft über `page.clock`.
 //     `imFokus` misst nur und ist kein Wartemittel.
@@ -84,6 +85,11 @@ sources:
   requirements: anf/
 ---
 `;
+
+/** Der Commit steht: der Verlauf (mit `pfad` auf Dateien beschränkt) zählt mindestens `anzahl` Commits. Der Server schreibt
+ *  erst die Datei und committet danach — „die Datei trägt den Wert“ heißt nicht „der Commit steht“; wer den Verlauf gleich
+ *  nach der Datei liest, zählt den Commit unter Last nicht mit (#188, #193). Gezählt wird danach, wörtlich wie zuvor. */
+const commitSteht = (k, anzahl, ...pfad) => expect.poll(() => +k.git('rev-list', '--count', 'HEAD', ...(pfad.length ? ['--', ...pfad] : [])), 'der Commit steht im Verlauf').toBeGreaterThanOrEqual(+anzahl);
 
 /** Ein eingerichteter Ordner: Stefan, Mia (Menschen), Claude (Agent), Anna (stillgelegt), Board „Entwicklung“. */
 function einrichten(dateien = {}) {
@@ -322,4 +328,4 @@ async function mutanteEinsetzen(ziel) {
   });
 }
 
-module.exports = { mutanteEinsetzen, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+module.exports = { mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };

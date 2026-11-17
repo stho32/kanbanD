@@ -37,7 +37,7 @@ test('US-1 bis US-3: Termin anlegen, Chance, ändern, entfernen', async ({ page 
     expect(await linie.evaluate(l => getComputedStyle(l).stroke)).not.toBe('none');
     await expect(page.locator('.wl-termin[data-termin="Deadline"] text')).toHaveText('Deadline 31.10.2027'); // mit Jahr (R00073)
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('milestones:\n  - {name: Deadline, date: 2027-10-31, color: red, line: solid, width: bold}');
-    expect(k.git('log', '-1', '--format=%s')).toBe('Termin „Deadline“ (31.10.2027) angelegt in „Entwicklung“');
+    await expect.poll(() => k.git('log', '-1', '--format=%s')).toBe('Termin „Deadline“ (31.10.2027) angelegt in „Entwicklung“');
     await expect(page.locator('#termine tbody tr')).toContainText(['Deadline']);
     // seit R00078 steht vorn die Spalte „Ziel“
     await expect(page.locator('#termine tbody td').nth(4)).toHaveText(/^100 % · 100 % in der 5-Tage-Woche$/);

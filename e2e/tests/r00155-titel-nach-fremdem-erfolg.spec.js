@@ -2,7 +2,7 @@
 // abgelehntem Titel und einem fremden Erfolg steht kein leerer Titel ohne Meldung da. Meldung und abgelehnte Eingabe stehen
 // und gehen nur gemeinsam: ein angenommener Schreibweg eines anderen Felds lässt beide stehen.
 const { test, expect } = require('@playwright/test');
-const { reiter } = require('./hilfen');
+const { commitSteht, reiter } = require('./hilfen');
 const { DATEI_1, MELDUNG_TITEL, starten, fensterOeffnen, fremdesNeuzeichnen } = require('./r00155-hilfen');
 const TITELFELD = '#fenster [data-af="titel"]';
 const TITEL_LESEN = '#fenster [data-act="titel-bearbeiten"]';
@@ -52,6 +52,7 @@ test('G-3/US-6 (a) Lage nach 96-1, danach Kommentar „Notiz“ + Enter gespeich
   await fussZeigtBeides(fenster);
   expect(k.lies(DATEI_1)).toContain('title: Abnahme prüfen\n');
   // der Kommentar ist ein Commit von st, der Titel von #2 einer von bot
+  await commitSteht(k, commits + 2);
   expect(Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 2);
 });
 
@@ -70,5 +71,6 @@ test('G-3/US-6 (b) Lage nach 96-1, danach in Details Labels „ui, daten, neu“
   await expect(fenster.locator('#fenster-meldung')).toHaveText(MELDUNG_TITEL);
   await fussZeigtBeides(fenster);
   expect(k.lies(DATEI_1)).toContain('title: Abnahme prüfen\n');
+  await commitSteht(k, commits + 1);
   expect(Number(k.git('rev-list', '--count', 'HEAD'))).toBe(commits + 1);
 });

@@ -1,6 +1,6 @@
 // R00064 Zuständige per Dialog, Mitglieder rechts auf der Karte
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
+const { commitSteht, kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 
 const DATEIEN = { 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## Erledigt\n', 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\nassignees: [mi]\n---\n' };
 
@@ -49,6 +49,7 @@ test.describe('R00064', () => {
     await dialog.getByRole('button', { name: 'Speichern' }).click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(() => k.lies('aufgaben/0001-eins.md')).toContain('assignees: [cl]');
+    await commitSteht(k, vorher + 1);
     expect(commits()).toBe(vorher + 1);
     expect(k.git('log', '-1', '--format=%s')).toBe('#1 geändert: Zuständige');
     await expect(page.locator('.ka[data-id="1"] .avs .pk')).toHaveText('CL');

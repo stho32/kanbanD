@@ -4,7 +4,7 @@
 // ist sie vor dem zweiten Auslöser beendet und der Fall prüft nichts (R00148, „Zeitfenster“).
 // ERWARTET ROT bis die Sperre (B0687) und der eine Schreibweg (B0688) stehen.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter, thema, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
+const { commitSteht, kanbanStarten, einrichten, alsPerson, liveBereit, ausMehr, filterOeffnen, reiter, thema, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
 
 // Mutantenprobe (KD_MUTANTE, Muster R00110): jeder Test dieser Datei lädt auf Wunsch eine veränderte Oberfläche.
 test.beforeEach(({ page }) => mutanteEinsetzen(page));
@@ -142,6 +142,7 @@ test.describe('R00148 Doppelter Auslöser auf dem Board', () => {
 
     await expect.poll(() => k.lies(BOARD)).toContain('report-labels: {rows: nc, columns: repo}');
     expect(halte.anzahl(), 'genau ein PUT …/bestand').toBe(1);
+    await commitSteht(k, vorher + 1);
     expect(commits(k), 'höchstens ein Commit').toBeLessThanOrEqual(vorher + 1);
     expect(k.lies(BOARD), 'die Achsen sind genau einmal getauscht').toContain('report-labels: {rows: nc, columns: repo}');
   });
@@ -412,6 +413,7 @@ test.describe('R00148 Doppeltipp auf die Kartenleiste (Touch 390)', () => {
 
       await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins\n- [x] zwei\n- [ ] drei');
       expect(halte.anzahl(), 'genau ein PATCH').toBe(1);
+      await commitSteht(k, vorher + 1);
       expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
       expect(k.lies(KARTE), '„drei“ bleibt offen').toContain('- [ ] drei');
     });
@@ -430,6 +432,7 @@ test.describe('R00148 Doppeltipp auf die Kartenleiste (Touch 390)', () => {
 
     await expect.poll(() => k.lies(KARTE)).toContain('- [x] drei');
     expect(halte.anzahl(), 'genau ein PATCH').toBe(1);
+    await commitSteht(k, vorher + 1);
     expect(commits(k), 'genau ein Commit').toBe(vorher + 1);
     await expect(page.locator('[role="dialog"]'), 'kein Fenster offen').toHaveCount(0);
     await expect(page.locator('#fenster')).toHaveCount(0);
@@ -646,6 +649,7 @@ test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16,
     await zweimalEnter(page, page.getByRole('button', { name: '⇄ Achsen tauschen' }), halte);
     await expect.poll(() => k.lies(BOARD)).toContain('report-labels: {rows: nc, columns: repo}');
     expect(halte.anzahl(), 'genau ein PUT …/bestand').toBe(1);
+    await commitSteht(k, vorher + 1);
     expect(commits(k)).toBe(vorher + 1);
   });
 
