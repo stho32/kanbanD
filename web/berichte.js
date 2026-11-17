@@ -213,13 +213,16 @@
   /** Je Tag im Zeitraum: offen und Umfang (im Bestand) als Stand am Tagesende, heute jetzt; ab `start`. Dazu die Ereignisse
       des Tages (R00164): `hinzugekommen`, `erledigt`, `entfernt` — an jedem Tag gilt
       offen = offen(Vortag) + hinzugekommen − erledigt − entfernt. `zielblock` (R00166): der Block, ab dem „erledigt“ gilt —
-      ohne ihn die Abschlussspalte. */
-  function burndown(bew, f, aufgabeListe, jetzt, start = null, zielblock = null) {
+      ohne ihn die Abschlussspalte. `selbstlabels` (R00194): die Labels, die „selbsterzeugt“ heißen — je Tag zählt
+      `selbsterzeugt`, wie viele „+“ eine Aufgabe mit einem davon nach ihrem heutigen Stand ist, ohne die Rückläufer. */
+  function burndown(bew, f, aufgabeListe, jetzt, start = null, zielblock = null, selbstlabels = []) {
     const g = grenzenAb(f, jetzt, start), aufgabeZu = einmalJeAufgabe(aufgabeListe), bestand = bestandLeser(bew, aufgabeZu, erledigtAb(bew, zielblock));
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return [];
-    const gezaehlt = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer))).map(bestand);
-    const ereignisse = ereignisseJeTag(f, gezaehlt, jetzt);
+    const aufgaben = bew.aufgaben.filter(a => zaehltImBericht(a, 'burndown') && aufgabePasst(f, aufgabeZu(a.nummer)));
+    const gezaehlt = aufgaben.map(bestand);
+    const selbsterzeugt = aufgaben.map(a => traegtLabel(aufgabeZu(a.nummer), selbstlabels));
+    const ereignisse = ereignisseJeTag(f, gezaehlt, jetzt, i => selbsterzeugt[i]);
     const tage = [];
     for (let t = Math.max(tag(erste), tag(g.von)); t < Math.min(g.bis, tag(jetzt, 1)); t = tag(t, 1)) {
       const ende = Math.min(tag(t, 1) - 1, jetzt);
@@ -258,14 +261,16 @@
     return { skala, breite, schraffiert: breite >= schraffurAb, tage: jeTag };
   }
 
-  /** Ein Tag ohne Ereignis. `zurueckgekommen` (R00192) ist kein vierter Posten, sondern die Teilmenge von `hinzugekommen`,
-      die Rückläufer sind — die Bilanz rechnet ohne sie. */
-  const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0, zurueckgekommen: 0 });
+  /** Ein Tag ohne Ereignis. `zurueckgekommen` (R00192) und `selbsterzeugt` (R00194) sind keine weiteren Posten, sondern
+      disjunkte Teilmengen von `hinzugekommen` — die Bilanz rechnet ohne sie; der Rest von „+“ ist Neues. */
+  const KEIN_EREIGNIS = Object.freeze({ hinzugekommen: 0, erledigt: 0, entfernt: 0, zurueckgekommen: 0, selbsterzeugt: 0 });
   /** Ereignisse bis `jetzt` je Tagesbeginn (ms): die Wechsel von „offen“ entlang der Zustandsfolge jeder gezählten Aufgabe;
-      dazu je „+“, das ein Rückläufer ist, `zurueckgekommen` (R00192) — die Stelle, an der der Zugang nach Herkunft zählt. */
-  function ereignisseJeTag(f, gezaehlt, jetzt) {
+      dazu je „+“ seine Herkunft — ein Rückläufer ist `zurueckgekommen` (R00192), sonst ist es `selbsterzeugt` (R00194), wenn
+      `istSelbsterzeugt(i)` die i-te gezählte Aufgabe so nennt. */
+  function ereignisseJeTag(f, gezaehlt, jetzt, istSelbsterzeugt = () => false) {
     const jeTag = new Map();
-    for (const zustandAm of gezaehlt) {
+    for (const [i, zustandAm] of gezaehlt.entries()) {
+      const selbst = istSelbsterzeugt(i);
       let vorher = NICHT_DA;
       for (const { ms, zustand } of zustandAm.folge()) {
         if (ms > jetzt) break;
@@ -277,6 +282,7 @@
         const tagEreignisse = jeTag.get(t);
         tagEreignisse[art]++;
         if (zurueck) tagEreignisse.zurueckgekommen++;
+        else if (art === 'hinzugekommen' && selbst) tagEreignisse.selbsterzeugt++;
       }
     }
     return jeTag;
@@ -294,6 +300,8 @@
       (R00166) in einer seiner Erledigt-Spalten. Neu angelegt, vom Board genommen und zurück, aus einer ausgeschlossenen Spalte
       eingetreten: nein. */
   const istRuecklaeufer = (f, vorher) => imBestand(f, vorher) && vorher.erledigt;
+  /** Trägt die Aufgabe (heutiger Stand, R00081) eines der Labels? Eine Aufgabe ohne Datei trägt keines. */
+  const traegtLabel = (a, labels) => !!a && labels.length > 0 && a.labels.some(l => labels.includes(l));
 
   /* ── Kumulativer Fluss (R00121) ── */
   /** Je Tag im Zeitraum die gestapelten Bänder je Spalte (Stand am Tagesende, heute jetzt; ab `start`)
