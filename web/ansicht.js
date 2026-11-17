@@ -1683,11 +1683,11 @@ function vKostenRollen(g, bereich, mehrereWaehrungen) {
   const rollen = g.rollen.map(rolle => vKostenRolle(rolle, g.waehrung, offenMerkmal(`${g.waehrung}/${rolle.rolle}`))).join('');
   const zusammen = g.rollen.reduce((summe, rolle) => summe + rolle.cent, 0);
   const schluss = `<p class="kost-rsumme"><span class="kost-rname">Rollen zusammen</span> <span class="r">${esc(geld(zusammen, g.waehrung))}</span> <span class="kost-umfang">· gleich „Einträge“</span></p>`;
-  return `<details class="kost-rollen" id="kost-rollen-${esc(g.waehrung)}" data-kr="${esc(g.waehrung)}"${offenMerkmal(g.waehrung)}><summary>${esc(titel)}</summary>${rollen}${schluss}${vKostenOhneRolle(g, bereich)}</details>`;
+  return `<details class="kost-rollen" id="kost-rollen-${esc(g.waehrung)}" data-kr="${esc(g.waehrung)}"${offenMerkmal(g.waehrung)}><summary data-halt="klappe:kosten:${esc(g.waehrung)}">${esc(titel)}</summary>${rollen}${schluss}${vKostenOhneRolle(g, bereich)}</details>`;
 }
 function vKostenRolle(rolle, waehrung, offenMerkmal) {
   const aufgaben = rolle.aufgaben.map(a => `<li><div class="kost-rzeile"><span class="nr">#${a.nummer}</span> <span class="tt">${esc(a.titel)}</span> <span class="r">${esc(geld(a.cent, waehrung))}</span></div>${vKostenRolleneintraege(a.eintraege, waehrung)}</li>`).join('');
-  return `<details class="kost-rolle" data-kr="${esc(`${waehrung}/${rolle.rolle}`)}"${offenMerkmal}><summary><span class="kost-rname">${esc(rolle.rolle)}</span> <span class="r">${esc(geld(rolle.cent, waehrung))}</span></summary><ul class="kost-raufg" aria-label="${esc(`Aufgaben der Rolle ${rolle.rolle}`)}">${aufgaben}</ul></details>`;
+  return `<details class="kost-rolle" data-kr="${esc(`${waehrung}/${rolle.rolle}`)}"${offenMerkmal}><summary data-halt="klappe:kosten:${esc(`${waehrung}/${rolle.rolle}`)}"><span class="kost-rname">${esc(rolle.rolle)}</span> <span class="r">${esc(geld(rolle.cent, waehrung))}</span></summary><ul class="kost-raufg" aria-label="${esc(`Aufgaben der Rolle ${rolle.rolle}`)}">${aufgaben}</ul></details>`;
 }
 /** Die Einträge einer Aufgabe unter ihrer Rolle: Zeitpunkt in der Ortszeit des Betrachters und Spalte — fremder Text. */
 function vKostenRolleneintraege(eintraege, waehrung) {
