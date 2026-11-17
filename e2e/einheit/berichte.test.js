@@ -947,3 +947,18 @@ test('R00193 AK 1, AK 5: mitZugang je Block mit Zugang > 0; erste Tabelle, Durch
   assert.strictEqual(abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10).mitZugang, null);
   assert.strictEqual(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0].mitZugang, null);
 });
+
+test('R00193 B0950: Zugangsreihe je Tag aus den Ereignissen der Messbasis — je Tag nie unter 0, daher Summe über dem Zugang aus R00168', () => {
+  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).phasen;
+  // „Erledigt“ ab 12.10.: +#4 · +#5 · +#6 · +#7 · +#8 · −#6 entfernt (17.) · +#5 zurückgeholt (18.) · −#8 archiviert (19.) · – · –
+  assert.deepStrictEqual(erledigt.zugangReihe7, [1, 1, 1, 1, 1, 0, 1, 0, 0, 0]);
+  // „Arbeit“: der Rückläufer #5 bleibt für diesen Block durch, kein zweites „hinzugekommen“ am 18.
+  assert.deepStrictEqual(arbeit.zugangReihe7, [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]);
+  const summe = r => r.reduce((a, b) => a + b, 0);
+  assert.deepStrictEqual([summe(erledigt.zugangReihe7), erledigt.zugang], [6, 4], 'zwei Tage mit −1 zählen 0 statt die Summe zu mindern (in Kauf genommen)');
+  assert.deepStrictEqual([summe(arbeit.zugangReihe7), arbeit.zugang], [5, 3]);
+  assert.deepStrictEqual([erledigt.zugangReihe7.length, erledigt.zugangReihe5], [erledigt.reihe7.length, [1, 1, 1, 1, 1, 1, 0, 0]], "dieselben Tage wie die Abgangsreihe; Sa 17. (0) und So 18. (1) zählen zum Montag 19. (0)");
+  // Messbasis 20 Tage: beide Reihen über dieselben 20 Tage
+  const lang = prognose(zugangBew(), f({ messbasisTage: 20 }), zugangAufgabe, jetzt).phasen[1];
+  assert.deepStrictEqual([lang.reihe7.length, lang.zugangReihe7.length, summe(lang.zugangReihe7)], [20, 20, 8], '#2 und #3 am 5.10. kommen hinzu');
+});
