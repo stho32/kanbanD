@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // Ortszeit der Erwartungen, wie e2e/tests/hilfen.js
 const test = require('node:test');
 const assert = require('node:assert');
-const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld } = require('../../web/kultur.js');
+const { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld, herkunftZurueckgelegt } = require('../../web/kultur.js');
 
 test('lang(2026-10-28) ist 28.10.2026', () => {
   assert.strictEqual(datumLang('2026-10-28'), '28.10.2026');
@@ -122,4 +122,24 @@ test('seitText: kein Sprung zwischen 35 und 36 Stunden — Tage erscheinen erst 
   // monoton: die Stundenzahl wächst bis 47,59 h, danach beginnt der Tag bei 2 und steigt
   const folge = [...Array(48)].map((_, h) => seitText(h * stunde));
   assert.deepStrictEqual(folge.slice(2, 48).filter(t => t.endsWith('Tag') || t.endsWith('Tagen')), []);
+});
+
+test('herkunftZurueckgelegt: die entfernte Herkunft kommt an ihre Stelle der heutigen Liste (R00185 102-1, ADR-0017 Regel 1)', () => {
+  assert.deepStrictEqual(herkunftZurueckgelegt(['R00014'], 'I0001', 0), ['I0001', 'R00014']);
+  assert.deepStrictEqual(herkunftZurueckgelegt(['I0001'], 'R00014', 1), ['I0001', 'R00014'], 'an die zweite Stelle');
+  assert.deepStrictEqual(herkunftZurueckgelegt(['I0001', 'R00020'], 'R00014', 1), ['I0001', 'R00014', 'R00020'], 'zwischen die Nachbarn');
+});
+
+test('herkunftZurueckgelegt: was ein anderer inzwischen ergänzt hat, bleibt; die Stelle ist auf die Länge gekappt (R00185 102-2)', () => {
+  assert.deepStrictEqual(herkunftZurueckgelegt(['R00014', 'R00020'], 'I0001', 0), ['I0001', 'R00014', 'R00020']);
+  assert.deepStrictEqual(herkunftZurueckgelegt(['R00014'], 'R00020', 5), ['R00014', 'R00020'], 'hinter dem Ende ans Ende');
+  const heute = ['R00014'];
+  herkunftZurueckgelegt(heute, 'I0001', 0);
+  assert.deepStrictEqual(heute, ['R00014'], 'die gezeigte Liste bleibt unverändert');
+});
+
+test('herkunftZurueckgelegt: die letzte Herkunft kommt ohne thin air zurück (R00185 102-2)', () => {
+  assert.deepStrictEqual(herkunftZurueckgelegt([], 'I0001', 0), ['I0001']);
+  assert.deepStrictEqual(herkunftZurueckgelegt(['thin air'], 'I0001', 0), ['I0001'], 'thin air steht nur allein');
+  assert.deepStrictEqual(herkunftZurueckgelegt([], 'thin air', 0), ['thin air'], 'ein ausdrückliches thin air ist selbst eine Herkunft');
 });

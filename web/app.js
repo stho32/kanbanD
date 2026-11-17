@@ -781,6 +781,25 @@ async function zeitZuruecklegen(z) {
   }
 }
 
+/** Legt die gemerkte Herkunft an ihre Stelle der heute gezeigten Liste zurück (R00185 102-1, 102-2). Ist die Aufgabe
+    inzwischen fort, gibt es keine Liste zum Einsetzen: das ist eine Ablehnung wie jede andere (108-1). */
+function herkunftZuruecklegen(z) {
+  let stelle = 0;
+  const senden = async () => {
+    const a = aufgabe(z.nummer);
+    if (!a) throw new Error(`#${z.nummer} gibt es nicht mehr`);
+    const liste = herkunftZurueckgelegt(a.herkunft, z.wert, z.index);
+    stelle = liste.indexOf(z.wert);
+    return durchDieSchlange(() => api('PATCH', `/api/aufgaben/${z.nummer}`, { herkunft: liste }));
+  };
+  return rueckgaengigAusfuehren(senden, () => `Herkunft ${herkunftAnzeige(z.wert)} wiederhergestellt`, gelungen => {
+    const ziele = [];
+    if (gelungen) ziele.push(knopfSelektor('herkunft-weg', stelle));
+    ziele.push('#herkunft-neu');
+    return ziele;
+  });
+}
+
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
 function anhangZuruecklegen(z) {
   return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => anhangWiederhergestellt(z.name, antwort.name), (gelungen, antwort) => {
@@ -2091,6 +2110,10 @@ async function aktion(a, arg, wert) {
         }
         if (z.art === 'anhang') {
           await anhangZuruecklegen(z);
+          break;
+        }
+        if (z.art === 'herkunft') {
+          await herkunftZuruecklegen(z);
           break;
         }
         if (z.art === 'teilaufgabe') {

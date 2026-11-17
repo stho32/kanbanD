@@ -88,5 +88,13 @@
     return ['thin air'];
   }
 
-  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, seitText, zaehlwort, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld });
+  /** Die heutige Herkunftsliste mit `wert` wieder an `index` (R00185, ADR-0017 Regel 1): eingesetzt wird in den gezeigten
+      Stand, nie die beim Entfernen gemerkte Liste — was ein anderer inzwischen ergänzt hat, bleibt. Hinter dem Ende ans Ende;
+      `thin air` steht nur allein und weicht der zurückgelegten Herkunft. */
+  function herkunftZurueckgelegt(heute, wert, index) {
+    const echte = heute.filter(x => x !== 'thin air');
+    const stelle = Math.min(index, echte.length);
+    return [...echte.slice(0, stelle), wert, ...echte.slice(stelle)];
+  }
+  Object.assign(ziel, { datumLang, datumKurz, zeitpunktLang, zeitpunktKurz, datumAusMs, zeitpunktAusMs, datumMitWochentag, achsenMarke, seitText, zaehlwort, FELDER, OHNE_HERKUNFT, istOhneHerkunft, herkunftAnzeige, herkunftAusFeld, herkunftZurueckgelegt });
 })(typeof module !== 'undefined' ? module.exports : window);
