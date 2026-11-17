@@ -1,6 +1,6 @@
 ---
 id: R00182
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,10 +18,10 @@ Eine Zeichnung ist nicht nötig: es entsteht kein neues Bedienelement. Zahlt ein
 
 **Ausgangslage:** Board mit Kosteneinträgen zweier Rollen in einer Währung (Rollen „entwickler“ und „planer“, wie in `e2e/tests/r00172-kosten-je-rolle.spec.js` über die API angelegt); Bericht „Kosten“ offen. Der fremde Schreibzugriff ist ein zweiter Teilnehmer, der über die API den Titel einer Aufgabe ändert.
 
-- [ ] **AK 1 Fokus bleibt auf der Klappe (Abnahme-Probe der Karte, heute rot):** Gegeben: Bericht „Kosten“ mit zwei Rollen, die Klappe einer Rolle ist offen und trägt den Fokus. Wenn: ein fremder Schreibzugriff an einer Aufgabe eintrifft und die Seite neu zeichnet. Dann: der Fokus steht auf derselben Klappe (nicht auf der Seite), sie ist weiter offen; die Leertaste klappt sie zu.
-- [ ] **AK 2 Varianten:** Dasselbe gilt für die äußere Klappe „Kosten je Rolle“, für „Tabellenansicht“ im Burndown und für eine geschlossene Klappe mit Fokus (sie bleibt geschlossen, die Leertaste öffnet sie).
-- [ ] **AK 3 Sammelprobe (Wächter für N10 Ziffer 1, heute rot):** In den Berichten und im Aufgabenfenster hat jedes per Tab erreichbare Element einen Schlüssel (`schluessel(…) !== ''`). Was die Probe darüber hinaus findet, bekommt einen `data-halt`, wenn es eine Zeile Markup ist; sonst steht es als Liste im Bericht. Zusätzliche Zeile: nach einem Board-Wechsel liegt der Fokus nicht auf `BODY` (vom architekt nur gelesen, nicht geprobt — heute unbekannt).
-- [ ] **AK 4 Bleibt:** Die bestehenden Tests zu Fokus, Sichtzustand und Kostenbericht laufen unverändert grün.
+- [x] **AK 1 Fokus bleibt auf der Klappe (Abnahme-Probe der Karte, heute rot):** Gegeben: Bericht „Kosten“ mit zwei Rollen, die Klappe einer Rolle ist offen und trägt den Fokus. Wenn: ein fremder Schreibzugriff an einer Aufgabe eintrifft und die Seite neu zeichnet. Dann: der Fokus steht auf derselben Klappe (nicht auf der Seite), sie ist weiter offen; die Leertaste klappt sie zu.
+- [x] **AK 2 Varianten:** Dasselbe gilt für die äußere Klappe „Kosten je Rolle“, für „Tabellenansicht“ im Burndown und für eine geschlossene Klappe mit Fokus (sie bleibt geschlossen, die Leertaste öffnet sie).
+- [x] **AK 3 Sammelprobe (Wächter für N10 Ziffer 1, heute rot):** In den Berichten und im Aufgabenfenster hat jedes per Tab erreichbare Element einen Schlüssel (`schluessel(…) !== ''`). Was die Probe darüber hinaus findet, bekommt einen `data-halt`, wenn es eine Zeile Markup ist; sonst steht es als Liste im Bericht. Zusätzliche Zeile: nach einem Board-Wechsel liegt der Fokus nicht auf `BODY` (vom architekt nur gelesen, nicht geprobt — heute unbekannt).
+- [x] **AK 4 Bleibt:** Die bestehenden Tests zu Fokus, Sichtzustand und Kostenbericht laufen unverändert grün.
 
 ## Tests
 
