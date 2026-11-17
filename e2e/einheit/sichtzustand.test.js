@@ -121,3 +121,58 @@ test('Fehlfall: ein mehrdeutiges href fällt auf die Klasse zurück; ohne href u
   assert.strictEqual(schluessel(element({ href: null }), bereichMit({})), '', 'fehlendes href ist kein Schlüssel');
   assert.strictEqual(schluessel(element({ href: '' }), bereichMit({})), '', 'leeres href ist kein Schlüssel');
 });
+
+/* ── R00188 55-2: Zahlenfeld behält seinen Cursor über das Neuzeichnen ── */
+{
+  const { fokusstand, fokusSetzen } = require('../../web/sichtzustand.js');
+  /** Ein Eingabefeld als Attrappe; ein Zahlenfeld kennt keine Auswahl (selectionStart ist null), `markup` steht für outerHTML. */
+  const feld = ({ typ = 'number', wert = '90', gezeichnet = '90', markup = `<input type="${typ}" data-bf="messbasisTage" value="${gezeichnet}">` } = {}) => ({
+    tagName: 'INPUT', type: typ, id: '', dataset: { bf: 'messbasisTage' }, classList: ['mini-inp'], value: wert, defaultValue: gezeichnet,
+    outerHTML: markup, scrollTop: 0, selectionStart: typ === 'number' ? null : 2, selectionEnd: typ === 'number' ? null : 2,
+    getAttribute: () => null, fokussiert: false, ersetztDurch: null, auswahl: null,
+    focus() { this.fokussiert = true; }, replaceWith(neu) { this.ersetztDurch = neu; }, setSelectionRange(von, bis) { this.auswahl = [von, bis]; },
+  });
+  /** Ein Bereich, in dem nach dem Neuzeichnen `jetzt()` das eine Feld mit dem Schlüssel ist. */
+  const bereich = jetzt => ({ contains: () => true, querySelectorAll: selektor => selektor === '[data-bf="messbasisTage"]' ? [jetzt()] : [] });
+
+  test('55-2: ein gleich gezeichnetes Zahlenfeld wird durch das alte Element ersetzt — Cursor und Fokus bleiben, wo sie waren', () => {
+    let gezeichnet = feld();
+    const alt = gezeichnet, b = bereich(() => gezeichnet);
+    const stand = fokusstand(alt, [b]);
+    gezeichnet = feld();
+    assert.strictEqual(fokusSetzen(stand), true);
+    assert.strictEqual(gezeichnet.ersetztDurch, alt, 'das neue Feld weicht dem alten');
+    assert.strictEqual(alt.fokussiert, true);
+    assert.strictEqual(gezeichnet.fokussiert, false);
+  });
+
+  test('55-2: geänderter Wert im gleich gezeichneten Zahlenfeld bleibt im alten Element stehen', () => {
+    let gezeichnet = feld({ wert: '9' });
+    const alt = gezeichnet, b = bereich(() => gezeichnet);
+    const stand = fokusstand(alt, [b]);
+    gezeichnet = feld();
+    fokusSetzen(stand);
+    assert.strictEqual(gezeichnet.ersetztDurch, alt);
+    assert.strictEqual(alt.value, '9');
+  });
+
+  test('55-2 Gegenprobe: anders gezeichnet (Wert von außen) — das neue Zahlenfeld bleibt und bekommt den Fokus', () => {
+    let gezeichnet = feld();
+    const alt = gezeichnet, b = bereich(() => gezeichnet);
+    const stand = fokusstand(alt, [b]);
+    gezeichnet = feld({ wert: '30', gezeichnet: '30' });
+    fokusSetzen(stand);
+    assert.strictEqual(gezeichnet.ersetztDurch, null);
+    assert.strictEqual(gezeichnet.fokussiert, true);
+  });
+
+  test('55-2 Gegenprobe: ein Textfeld kennt seine Auswahl — es bleibt das neue Element, die Auswahl wird gesetzt', () => {
+    let gezeichnet = feld({ typ: 'text' });
+    const alt = gezeichnet, b = bereich(() => gezeichnet);
+    const stand = fokusstand(alt, [b]);
+    gezeichnet = feld({ typ: 'text' });
+    fokusSetzen(stand);
+    assert.strictEqual(gezeichnet.ersetztDurch, null);
+    assert.deepStrictEqual(gezeichnet.auswahl, [2, 2]);
+  });
+}

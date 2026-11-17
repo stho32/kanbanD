@@ -112,3 +112,30 @@ test.describe('55-1 „gespeichert“ nur nach einem Erfolg', () => {
   }
 });
 
+/**
+ * 55-2 Cursor im Zahlenfeld bleibt (Probe der Karte #55): „Messbasis“ 90, Fokus im Feld, Cursor am Ende; ein zweiter Teilnehmer
+ * ändert einen Titel (Live-Ereignis, die Seite zeichnet neu); „1“ → 901 (heute 190). Mit dem Cursor am Anfang → 190.
+ */
+test.describe('55-2 Cursor im Zahlenfeld bleibt', () => {
+  const { filterOeffnen } = require('./hilfen');
+  for (const [lage, taste, erwartet] of [['am Ende', 'End', '901'], ['am Anfang', 'Home', '190']]) {
+    test(`Messbasis 90, Cursor ${lage}, fremder Titel kommt live an, „1“ getippt → ${erwartet}`, async ({ page }) => {
+      await starten(page);
+      await page.goto(k.adresse + '#/berichte/prognose');
+      await filterOeffnen(page);
+      const feld = page.getByLabel('Messbasis in Tagen');
+      await expect(feld).toHaveValue('90');
+      await feld.focus();
+      await page.keyboard.press(taste);
+      const renders = await page.evaluate(() => window.kdTest.renders());
+      const antwort = await page.request.patch(k.adresse + 'api/aufgaben/1', { headers: { 'X-KanbanD-Wer': 'cl' }, data: { titel: 'eins, von Claude geändert' } });
+      expect(antwort.ok()).toBe(true);
+      // das Live-Ereignis ist angekommen und gezeichnet (ADR-0026 Regel 4): neuer Titel im Stand, Stand gezeichnet, neu gezeichnet seit dem Fokus
+      await page.waitForFunction(n => window.kdTest.titel(1) === 'eins, von Claude geändert' && window.kdTest.gezeichnet() && window.kdTest.renders() > n, renders);
+      await expect(feld).toBeFocused();
+      await page.keyboard.type('1');
+      await expect(feld).toHaveValue(erwartet);
+    });
+  }
+});
+

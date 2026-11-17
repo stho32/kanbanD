@@ -783,3 +783,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0922 Kontrastprobe besucht Personenliste, Einstellungen und Karte; Zustand genannt | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0923 Fehlermeldung der Modusleiste bricht um | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0924 „gespeichert“ im Fensterfuß nur ohne Fehlermeldung | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0925 Cursor im Zahlenfeld übersteht das Neuzeichnen | Standard | 1-2h | 0,4h | 0,4h | autonom |

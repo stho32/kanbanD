@@ -128,7 +128,17 @@
     // Der Ort des Abschnitts (data-ort), an den der Fokus fällt, wenn der Schlüssel unter dem Menschen verschwindet
     const stand = { bereich, schluessel: schluesselDesElements, ort: aktiv.dataset.ort || null, wert: null, geaendert: false, von: null, bis: null, rollstandOben: null };
     if (!EINGABEFELD.test(aktiv.tagName)) return stand;
-    return { ...stand, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd'), rollstandOben: aktiv.scrollTop };
+    const mitStand = { ...stand, wert: aktiv.value, geaendert: geaendert(aktiv), von: auswahlGrenze(aktiv, 'selectionStart'), bis: auswahlGrenze(aktiv, 'selectionEnd'), rollstandOben: aktiv.scrollTop };
+    // Ein Zahlenfeld verrät seinen Cursor nicht (R00188 55-2): gemerkt wird das Element selbst, das ihn trägt
+    if (aktiv.type === 'number') return { ...mitStand, element: aktiv };
+    return mitStand;
+  }
+
+  /** Das neu gezeichnete Feld — oder an seiner Stelle das alte Element, wenn es ein Zahlenfeld ist und gleich gezeichnet wurde: so bleibt sein Cursor. */
+  function feldMitCursor(neu, alt) {
+    if (!alt || alt === neu || alt.outerHTML !== neu.outerHTML) return neu;
+    neu.replaceWith(alt);
+    return alt;
   }
 
   /** Cursor- oder Auswahlgrenze; Felder ohne Textauswahl (Datum, Auswahlliste) haben keine. */
@@ -138,8 +148,9 @@
 
   /** Nach dem Neuzeichnen: Wert nur bei geändertem Feld, dann Fokus ohne Scrollen, dann Auswahl, dann der Rollstand im Feld. Wahr, wenn das Element wiedergefunden ist. */
   function fokusSetzen(stand) {
-    const feld = wiedergefunden(stand.bereich, stand.schluessel);
-    if (!feld) return false;
+    const gefunden = wiedergefunden(stand.bereich, stand.schluessel);
+    if (!gefunden) return false;
+    const feld = feldMitCursor(gefunden, stand.element);
     if (stand.geaendert) {
       feld.value = stand.wert;
       ungemeldet.add(feld);
