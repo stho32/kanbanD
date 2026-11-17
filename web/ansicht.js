@@ -1257,11 +1257,20 @@ function burndownWort(groesse, zielWorte) {
 }
 /** Legende unter dem Diagramm (R00164 AK 9): die drei Größen, ab wo „+“ zählt, und warum „erledigt“ über dem Durchsatz liegen
     kann — samt der Teilmenge „davon zurückgekommen“ (R00192 AK 4); mit gewähltem Zielblock dazu, was „erledigt“ hier heißt. */
-function vBurndownLegende(zielWorte) {
+function vBurndownLegende(zielWorte, selbst = []) {
   let wasErledigtHeisst = '';
   if (zielWorte) wasErledigtHeisst = `<br>Erledigt heißt hier: ${esc(zielWorte.lang)}. Ein Zug zurück nach links zählt als „+ hinzugekommen“.`;
   return `<div class="dlegende bd-legende" id="bd-legende">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>
-<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.<br>„${BURNDOWN_DAVON}“ zählt Nacharbeit aus der Zielspalte: Aufgaben, die von dort zurück nach links gezogen wurden — deshalb kann „− erledigt“ über dem Durchsatz liegen.${wasErledigtHeisst}</p>`;
+<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.<br>„${BURNDOWN_DAVON}“ zählt Nacharbeit aus der Zielspalte: Aufgaben, die von dort zurück nach links gezogen wurden — deshalb kann „− erledigt“ über dem Durchsatz liegen.${wasErledigtHeisst}</p>${vSelbstLegende(selbst)}`;
+}
+/** Legendensatz zu „davon selbsterzeugt“ (R00194 AK 4, AK 5): die gewählten Labels, der heutige Stand und je Label, das
+    keine Aufgabe trägt, ein Hinweis; ohne Wahl nichts. */
+function vSelbstLegende(selbst) {
+  if (!selbst.length) return '';
+  const namen = selbst.map(l => `„${esc(l)}“`).join(', ');
+  const vorhanden = alleAufgabenLabels(), fehlen = selbst.filter(l => !vorhanden.includes(l));
+  const fehlt = fehlen.length ? ` <span class="fehl" id="bd-selbst-fehlt">${fehlen.map(l => `Label „${esc(l)}“ kommt nicht vor.`).join(' ')}</span>` : '';
+  return `<p class="bd-hinweis" id="bd-selbst-satz">„${BURNDOWN_SELBST}“ zählt „+“ von Aufgaben mit dem Label ${namen} — zählt nach dem heutigen Stand der Labels; Rückläufer zählen nur als zurückgekommen, der Rest ist neu.${fehlt}</p>`;
 }
 /** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
 function vBurndownKennzahl(tage, zielWorte, selbstGewaehlt = false) {
@@ -1412,7 +1421,7 @@ ${fadenkreuz(O, BAND_UNTEN)}
   let wasZaehlt = 'offen = nicht in der Abschlussspalte';
   if (ziel.worte) wasZaehlt = `erledigt = ${esc(ziel.worte.lang)}`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · ${wasZaehlt}</span></div>${vBerichtsfilter('burndown')}
-<div class="body bericht">${vErledigtHeisst(ziel)}${vSelbstAuswahl(selbst)}${t.length ? vBurndownKennzahl(t, ziel.worte, selbst.length > 0) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte) : svg}${tabelle}${nicht}</div>`;
+<div class="body bericht">${vErledigtHeisst(ziel)}${vSelbstAuswahl(selbst)}${t.length ? vBurndownKennzahl(t, ziel.worte, selbst.length > 0) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte, selbst) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit; „Erledigt heißt“ wählt,

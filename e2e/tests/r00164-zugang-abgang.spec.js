@@ -408,3 +408,21 @@ test('R00194 US-2 (AK 3, AK 4): mit `befund` nennen Kennzahlzeile, Tooltip und T
     ]);
   } finally { await k.stoppen(); }
 });
+
+test('R00194 US-3 (AK 4, AK 5): die Legende nennt die gewählten Labels und „zählt nach dem heutigen Stand der Labels“; ein Label ohne Aufgabe ergibt 0 und „Label … kommt nicht vor“', async ({ page }) => {
+  const k = await kanbanStarten(mitBefund(MIT_BEFUND));
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    const satz = page.locator('#bd-selbst-satz');
+    await expect(satz).toContainText('„davon selbsterzeugt“ zählt „+“ von Aufgaben mit dem Label „befund“');
+    await expect(satz).toContainText('zählt nach dem heutigen Stand der Labels');
+    await expect(page.locator('#bd-selbst-fehlt')).toHaveCount(0);
+    k.schreib(BOARD, k.lies(BOARD).replace('self-labels: [befund]', 'self-labels: [gibt-es-nicht]'));
+    await page.reload();
+    await bereit(page, diagramm(page));
+    await expect(page.locator('#bd-davon')).toHaveText('davon selbsterzeugt 0 · zurückgekommen 1 · neu 5');
+    await expect(page.locator('#bd-selbst-fehlt')).toHaveText('Label „gibt-es-nicht“ kommt nicht vor.');
+    await expect(selbstChip(page, 'gibt-es-nicht')).toHaveAttribute('aria-pressed', 'true');
+  } finally { await k.stoppen(); }
+});
