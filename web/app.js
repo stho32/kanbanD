@@ -2261,6 +2261,10 @@ async function aktion(a, arg, wert) {
           return f;
         });
       }
+      case 'fb-selbst': {
+        if (ichNoetig()) break;
+        return fieberEinstellen(stand => ({ ...stand, gelb: [...stand.gelb], rot: [...stand.rot], selbstlabels: umschalten(stand.selbstlabels || [], arg) }));
+      }
       case 'fb-vorschlag': {
         if (ichNoetig()) break;
         const st = fieberStand();

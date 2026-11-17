@@ -1239,6 +1239,13 @@ const burndownFeld = klasse => `<i class="${klasse}" aria-hidden="true"></i>`;
 const BURNDOWN_DAVON = 'davon zurückgekommen';
 /** Hinter einem Posten die Teilmenge, nur hinter „+“: `zeile(wert)` baut sie für den Ort. */
 const mitTeilmenge = (groesse, zeile, wert) => groesse === 'hinzugekommen' ? zeile(wert) : '';
+/** Die Labels unter „Selbsterzeugt =“ des gewählten Boards (R00194, ADR-0027 N6); ohne Wahl leer. */
+function selbstLabels() {
+  if (S.board && S.board.fieber && S.board.fieber.selbstlabels) return S.board.fieber.selbstlabels;
+  return [];
+}
+/** Alle Labels der Aufgaben, sortiert — dieselbe Quelle wie die Label-Gruppe des Berichtsfilters. */
+const alleAufgabenLabels = () => [...new Set(S.aufgaben.flatMap(a => a.labels))].sort();
 /** Wort einer Größe in Kennzahl, Tooltip und Legende: „erledigt“ nennt einen gewählten Zielblock (R00166 AK 10, `zielWorte`). */
 function burndownWort(groesse, zielWorte) {
   if (groesse !== 'erledigt' || !zielWorte) return groesse;
@@ -1354,10 +1361,19 @@ function vErledigtHeisst(ziel, von = null) {
   }
   return `<section class="fb-einst" role="group" aria-label="${name}">${auswahlen}${fehler}${vZielHinweis(ziel.verschwunden, ziel.standard, ziel.ausgeschlossen)}${vonHinweis}</section>`;
 }
+/** Die Auswahl „Selbsterzeugt =“ über dem Burndown (R00194 AK 1, Bedienung nach „Erledigt heißt“): je Label der Aufgaben ein
+    Umschalter, gewählte vorbelegt — auch ein gewähltes, das keine Aufgabe mehr trägt, damit es abwählbar bleibt. */
+function vSelbstAuswahl(selbst) {
+  const labels = [...new Set([...alleAufgabenLabels(), ...selbst])].sort();
+  const chip = l => { const an = selbst.includes(l); return `<button class="bf-chip${an ? ' an' : ''}" data-act="fb-selbst" data-arg="${esc(l)}" aria-pressed="${an}" title="${an ? 'zählt als selbsterzeugt — Klick nimmt heraus' : 'Klick zählt „+“ mit diesem Label als selbsterzeugt'}">${esc(l)}</button>`; };
+  let werte = '<span class="muted">keine Labels an den Aufgaben</span>';
+  if (labels.length) werte = labels.map(chip).join('');
+  return `<section class="fb-einst" role="group" aria-label="Selbsterzeugt =" id="bd-selbst-wahl"><span>Selbsterzeugt =</span>${werte}<span class="muted">gilt für den Burndown dieses Boards</span></section>`;
+}
 function vVerlauf() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
-  const ziel = erledigtHeisst();
-  const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now(), S.board && S.board.start, ziel.gewaehlt), B = 800;
+  const ziel = erledigtHeisst(), selbst = selbstLabels();
+  const t = burndown(S.bew, S.ui.bf, aufgabe, Date.now(), S.board && S.board.start, ziel.gewaehlt, selbst), B = 800;
   const H = 272, L = 36, R = 96, O = 16, U = 40;
   const HOEHE_MIT_BAND = 352, BAND_UNTEN = 312, MARKEN_Y = 330;
   const max = Math.max(1, ...t.map(x => x.umfang));
@@ -1387,7 +1403,7 @@ ${fadenkreuz(O, BAND_UNTEN)}
   let wasZaehlt = 'offen = nicht in der Abschlussspalte';
   if (ziel.worte) wasZaehlt = `erledigt = ${esc(ziel.worte.lang)}`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · ${wasZaehlt}</span></div>${vBerichtsfilter('burndown')}
-<div class="body bericht">${vErledigtHeisst(ziel)}${t.length ? vBurndownKennzahl(t, ziel.worte) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte) : svg}${tabelle}${nicht}</div>`;
+<div class="body bericht">${vErledigtHeisst(ziel)}${vSelbstAuswahl(selbst)}${t.length ? vBurndownKennzahl(t, ziel.worte) : ''}<h2 class="dtitel">Offene Aufgaben je Tag</h2>${legende}${t.length ? vDiagrammFlaeche(svg) + vBurndownLegende(ziel.worte) : svg}${tabelle}${nicht}</div>`;
 }
 
 /* Kumulativer Fluss (R00121): gestapelte Bänder je Spalte und zwei kumulierte Ränder über die Zeit; „Erledigt heißt“ wählt,

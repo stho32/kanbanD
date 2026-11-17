@@ -334,3 +334,55 @@ test('R00192 US-3 (AK 4, AK 6): mit „In Arbeit“ als Ziel zählt #2 am 04.11.
     await expect(hinweis).toContainText(`Erledigt heißt hier: in „In Arbeit“ oder rechts davon. ${ZUG_ZURUECK}`);
   } finally { await k.stoppen(); }
 });
+
+/* ── R00194 Zugang nach Herkunft: „davon selbsterzeugt“ (Karte #197, ADR-0027 N6) ── */
+/** Das Rechenbeispiel, danach (heutiger Stand) tragen #3 und #4 das Label `befund`; mit `kopf` steht er über der Board-Datei. */
+const mitBefund = (kopf = '') => ordner => {
+  rechenbeispiel(ordner);
+  const befund = n => `---\nid: ${n}\ntitle: a${n}\nassignees: [st]\nlabels: [befund]\n---\n`;
+  standAm(ordner, '2026-11-05T10:00:00', { [datei(3)]: befund(3), [datei(4)]: befund(4), [BOARD]: kopf + board([4], [2], [1, 3, 5]) });
+};
+const MIT_BEFUND = '---\nfever: {self-labels: [befund]}\n---\n\n';
+const selbstWahl = page => page.getByRole('group', { name: 'Selbsterzeugt =' });
+const selbstChip = (page, label) => selbstWahl(page).getByRole('button', { name: label, exact: true });
+/** Schaltet ein Label unter „Selbsterzeugt =“ um und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist. */
+async function schalteSelbstLabel(page, label, gedrueckt) {
+  const gespeichert = page.waitForResponse(antwort => antwort.request().method() === 'PUT' && antwort.url().endsWith('/fieber'));
+  await selbstChip(page, label).click();
+  await (await gespeichert).finished();
+  await bereit(page);
+  await expect(selbstChip(page, label)).toHaveAttribute('aria-pressed', String(gedrueckt));
+}
+
+test('R00194 US-1 (AK 1): „Selbsterzeugt =“ über dem Burndown — `befund` gewählt steht nach dem Neuladen gewählt und als self-labels in der Board-Datei, mit einem Commit', async ({ page }) => {
+  const k = await kanbanStarten(mitBefund());
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    await expect(selbstChip(page, 'befund')).toHaveAttribute('aria-pressed', 'false');
+    const [wahl, flaeche] = await Promise.all([selbstWahl(page).boundingBox(), diagramm(page).boundingBox()]);
+    expect(wahl.y + wahl.height).toBeLessThanOrEqual(flaeche.y);
+    expect(k.lies(BOARD)).not.toContain('fever');
+    const vorher = Number(k.git('rev-list', '--count', 'HEAD'));
+    await schalteSelbstLabel(page, 'befund', true);
+    expect(k.lies(BOARD).startsWith(MIT_BEFUND)).toBe(true);
+    expect(Number(k.git('rev-list', '--count', 'HEAD'))).toBe(vorher + 1);
+    await page.reload();
+    await bereit(page, diagramm(page));
+    await expect(selbstChip(page, 'befund')).toHaveAttribute('aria-pressed', 'true');
+    await schalteSelbstLabel(page, 'befund', false);
+    expect(k.lies(BOARD)).not.toContain('self-labels');
+  } finally { await k.stoppen(); }
+});
+
+test('R00194 US-1 (AK 6): eine Änderung an „Erledigt heißt“ erhält self-labels; die Wahl erhält target-column', async ({ page }) => {
+  const k = await kanbanStarten(mitBefund(MIT_BEFUND));
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    await waehleZielblock(page, 'Spalte „In Arbeit“', 'In Arbeit');
+    expect(k.lies(BOARD)).toContain('fever: {target-column: In Arbeit, self-labels: [befund]}\n');
+    await schalteSelbstLabel(page, 'befund', false);
+    expect(k.lies(BOARD)).toContain('fever: {target-column: In Arbeit}\n');
+  } finally { await k.stoppen(); }
+});
