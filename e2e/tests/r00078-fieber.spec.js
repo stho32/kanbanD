@@ -100,7 +100,8 @@ test.describe('R00078', () => {
     await page.goto(k.adresse + '#/berichte/prognose');
     await liveBereit(page);
     const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
-    await expect(erledigt.locator('tbody tr')).toHaveCount(4);
+    // die erste Tabelle des Blocks — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen
+    await expect(erledigt.locator('.wl-tab').first().locator('tbody tr')).toHaveCount(4);
     // seit R00081 steht der Projektstart als „Rechnen ab“ in der Filterbox
     await expect(page.locator('.bf-zusammen')).toHaveText('Filter · keine · Messbasis 90 T · Rechnen ab der ersten Aufgabe');
     await filterOeffnen(page);

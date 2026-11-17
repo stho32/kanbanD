@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, filterOeffnen, thema, kontrastVerstoesse } = require('./hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte (wie R00168) ── */
 const BOARD = 'boards/fabrik.md';
@@ -89,6 +89,11 @@ test('R00193 US-1 (AK 3, AK 5, AK 6; Abnahme der Karte): Beispiel A — unter de
     await expect(punkt).toContainText('Zugang wie in der Messbasis, ohne Rückläufer-Sonderbehandlung, gleichbleibend');
     await expect(punkt).toContainText('kein Ende');
     await erledigt.screenshot({ path: testInfo.outputPath('mit-zugang.png') });
+    // ohne neues CSS: die zweite Tabelle ist in beiden Themen so lesbar wie die erste
+    for (const t of ['light', 'dark']) {
+      await thema(page, t);
+      expect(await kontrastVerstoesse(page, ['.wl-phase[data-spalte="Erledigt"] .wl-mit-zugang']), t).toEqual([]);
+    }
 
     // AK 6: Messbasis 20 Tage — beide Reihen über dieselben Tage; die erste Tabelle wie in R00168, die zweite weiter ohne Ende
     await messbasis(page, 20);

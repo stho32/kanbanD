@@ -68,7 +68,8 @@ async function messbasis(page, tage) {
 const methodik = page => page.locator('.wl-liste').last();
 const block = (page, spalte) => page.locator(`.wl-phase[data-spalte="${spalte}"]`);
 const messzeilen = ort => ort.locator('p.sek');
-const restlicheDauer = ort => ort.locator('.wl-tab tbody tr td:nth-child(4)');
+/** Restliche Dauer der ersten Tabelle — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen. */
+const restlicheDauer = ort => ort.locator('.wl-tab').first().locator('tbody tr td:nth-child(4)');
 /** Der Absatz direkt unter der Prognosetabelle; die Messzeilen (`p.sek`) sind es nicht. */
 const unterDerTabelle = ort => ort.locator('.wl-scroll + p:not(.sek)');
 

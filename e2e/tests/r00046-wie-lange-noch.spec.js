@@ -34,7 +34,8 @@ test.describe('R00046', () => {
     await page.getByRole('menuitem', { name: /Wie lange noch/ }).click();
     await expect(page.locator('#wl-kopf')).toHaveText('3 von 6 fertig · „In Arbeit“ 4 von 6 erreicht');
     const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
-    await expect(erledigt.locator('tbody tr td:first-child')).toHaveText(['50 %', '70 %', '85 %', '95 %']);
+    // die erste Tabelle des Blocks — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen
+    await expect(erledigt.locator('.wl-tab').first().locator('tbody tr td:first-child')).toHaveText(['50 %', '70 %', '85 %', '95 %']);
     await expect(erledigt).toContainText('3 VON 6 ERREICHT');
     await expect(page.getByRole('img', { name: /Prognose/ }).locator('.wl-p85')).toHaveCount(2);
     await filterOeffnen(page);

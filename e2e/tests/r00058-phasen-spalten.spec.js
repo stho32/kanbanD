@@ -37,10 +37,11 @@ test.describe('R00058', () => {
     for (const phase of ['Entwicklung', 'Entwicklertest', 'Abnahme']) {
       const block = page.locator(`.wl-phase[data-phase="${phase}"]`);
       await expect(block.locator('h3')).toContainText(`${phase} durchlaufen`);
-      await expect(block.locator('tbody tr td:first-child')).toHaveText(['50 %', '70 %', '85 %', '95 %']);
+      // die erste Tabelle des Blocks — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen
+      await expect(block.locator('.wl-tab').first().locator('tbody tr td:first-child')).toHaveText(['50 %', '70 %', '85 %', '95 %']);
     }
     await expect(page.locator('.wl-phase[data-phase="Abnahme"]')).toContainText('3 VON 6 DURCHLAUFEN');
-    await expect(page.locator('.wl-phase[data-phase="Abnahme"] thead')).toContainText('Nicht vor (Vorphase)');
+    await expect(page.locator('.wl-phase[data-phase="Abnahme"] .wl-tab').first().locator('thead')).toContainText('Nicht vor (Vorphase)');
     await expect(page.locator('.wl-legende')).toContainText('„Abnahme“ noch nicht durchlaufen');
   });
 });

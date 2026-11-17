@@ -1,6 +1,6 @@
 ---
 id: R00193
-status: Neu
+status: Erledigt
 datum: 2026-11-17
 ---
 
@@ -24,12 +24,12 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 
 **Rechenbeispiel A (aus R00168):** Zugang 1,0 und Abgang 0,4 je Kalendertag in der Messbasis, 6 offen. **Rechenbeispiel B (Unit, konstante Reihen):** 10 offen, Abgang 2 je Tag.
 
-- [ ] **AK 1 Zugang 0 (Zugang aus R00168 ist 0):** Es steht keine zweite Tabelle (sie wäre gleich der ersten); es bleibt der heutige Block.
-- [ ] **AK 2 Deterministisches Beispiel B:** Zugang 1 je Tag → p50 und p95 liegen bei 10 Tagen mit Zugang (5 ohne); Zugang 2 je Tag → „kein Ende innerhalb von 365 Tagen“.
-- [ ] **AK 3 Rechenbeispiel A (Abnahme der Karte):** Die zweite Tabelle zeigt für p50 und p85 „kein Ende innerhalb von 365 Tagen“ oder ein späteres Datum als die erste, nie ein früheres; der Hinweis „kein Ende absehbar“ steht weiter, die Tabelle steht daneben, nicht anstelle.
-- [ ] **AK 4 Nie früher:** In jedem Perzentil und für beide Wochen liegt „mit Zugang“ nicht vor „ohne Zugang“ (Unit über zufällige Reihen mit festem Seed).
-- [ ] **AK 5 Alles andere gleich:** Perzentile und Datumsspalten der ersten Tabelle, „Durchsatz Ø“, Diagramm, Fever Chart, Burndown, Durchsatz und Kumulativer Fluss ohne geänderte Erwartung; Board-Datei und API unverändert; das Fever Chart rechnet die zweite Prognose nicht mit.
-- [ ] **AK 6 Texte und Filter:** Überschrift der zweiten Tabelle „Mit Zugang wie in der Messbasis“ und ein Punkt in „Lesehinweise und Methodik“ sagen, was sie rechnet („Zugang wie in der Messbasis, ohne Rückläufer-Sonderbehandlung, gleichbleibend“) und dass sie bei hohem Zugang kein Ende finden kann; Messbasis-Filter und „Rechnen ab“ wirken auf Abgangs- und Zugangsreihe gleich (Beispiel A mit Messbasis 20 Tage statt 10: dieselben Tage für beide).
+- [x] **AK 1 Zugang 0 (Zugang aus R00168 ist 0):** Es steht keine zweite Tabelle (sie wäre gleich der ersten); es bleibt der heutige Block.
+- [x] **AK 2 Deterministisches Beispiel B:** Zugang 1 je Tag → p50 und p95 liegen bei 10 Tagen mit Zugang (5 ohne); Zugang 2 je Tag → „kein Ende innerhalb von 365 Tagen“.
+- [x] **AK 3 Rechenbeispiel A (Abnahme der Karte):** Die zweite Tabelle zeigt für p50 und p85 „kein Ende innerhalb von 365 Tagen“ oder ein späteres Datum als die erste, nie ein früheres; der Hinweis „kein Ende absehbar“ steht weiter, die Tabelle steht daneben, nicht anstelle.
+- [x] **AK 4 Nie früher:** In jedem Perzentil und für beide Wochen liegt „mit Zugang“ nicht vor „ohne Zugang“ (Unit über zufällige Reihen mit festem Seed).
+- [x] **AK 5 Alles andere gleich:** Perzentile und Datumsspalten der ersten Tabelle, „Durchsatz Ø“, Diagramm, Fever Chart, Burndown, Durchsatz und Kumulativer Fluss ohne geänderte Erwartung; Board-Datei und API unverändert; das Fever Chart rechnet die zweite Prognose nicht mit.
+- [x] **AK 6 Texte und Filter:** Überschrift der zweiten Tabelle „Mit Zugang wie in der Messbasis“ und ein Punkt in „Lesehinweise und Methodik“ sagen, was sie rechnet („Zugang wie in der Messbasis, ohne Rückläufer-Sonderbehandlung, gleichbleibend“) und dass sie bei hohem Zugang kein Ende finden kann; Messbasis-Filter und „Rechnen ab“ wirken auf Abgangs- und Zugangsreihe gleich (Beispiel A mit Messbasis 20 Tage statt 10: dieselben Tage für beide).
 
 ## Tests
 

@@ -800,3 +800,9 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0942 Legendensatz zu „davon zurückgekommen“ | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0943 Probe im echten Programm und Gate | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0944 Anforderung abschließen und Nacht-Notiz in der WBS | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0945 Unit-Tests zuerst: Beispiel B, nie früher, erste Tabelle unverändert | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0946 prognoseRechnen liefert je Block die zweite Prognose mit Zugangsreihe | Standard | 2-3h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0950 Zugang je Tag: Reihe aus den Ereignissen der Messbasis, Probe der Summe | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0947 Zweite Tabelle in vPrognose mit Überschrift | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0948 Punkt in „Lesehinweise und Methodik“ | Standard | 0,5h | 0,0h | 0,0h | autonom |
+| 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0949 E2E an Rechenbeispiel A, Messbasis und Gate | Standard | 1-2h | 0,1h | 0,1h | autonom |
