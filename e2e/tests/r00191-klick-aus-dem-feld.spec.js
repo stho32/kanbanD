@@ -44,7 +44,9 @@ async function tippen(page, feld, ziffern) {
 const weitertippen = (page, ziffern) => page.keyboard.type(ziffern, { delay: 120 });
 /** Ein Klick wie von einer Hand: drücken, `waehrenddessen` (zwei Bilder, wenn nichts), loslassen. */
 async function klickAuf(page, ziel, waehrenddessen = () => zweiBilder(page)) {
-  const kasten = await ziel.boundingBox();
+  // erst, wenn das Ziel steht: ein Zeichnen kurz davor ersetzt es, und das ersetzte hat keinen Kasten mehr
+  let kasten = null;
+  await expect.poll(async () => { kasten = await ziel.boundingBox(); return kasten; }).not.toBeNull();
   await page.mouse.move(kasten.x + Math.min(12, kasten.width / 2), kasten.y + kasten.height / 2);
   await page.mouse.down();
   await waehrenddessen();

@@ -84,20 +84,29 @@
   }
 
   /** Fokusziele nach dem Neuzeichnen in Rangfolge; das erste, das sich setzen lässt, gilt. 'gesichert' steht für den Sicherer.
-      lage = {ausdruecklich, gesichert, gesichertInOberster, ort, geschlossen, geoeffnet, oberste, fuehrung, vorher}
+      lage = {ausdruecklich, gesichert, gesichertInOberster, ort, vorgemerkt, geschlossen, geoeffnet, oberste, fuehrung, vorher}
       vorher = {stand: 'nichts' (BODY) | 'gehalten' (hängt noch im Dokument) | 'verloren' (mit dem Neuzeichnen ersetzt), selektor, sichtbar}
       ort = der Ort des Abschnitts (data-ort) des zuletzt fokussierten Elements: dorthin, wenn der Sicherer es nicht wiederfindet
-      (mehrdeutiger Inhalt oder fremd geändert) — nie auf ein fremdes Element, aber auch nicht eigens ins Fenster. */
+      (mehrdeutiger Inhalt oder fremd geändert) — nie auf ein fremdes Element, aber auch nicht eigens ins Fenster.
+      vorgemerkt = ein Ziel, das nicht im selben Zug wie das Zeichnen gesetzt wurde (Timer, Antwort des Servers): es überholt
+      den Menschen nicht und gilt erst, wenn der Sicherer nichts wiederfindet und nichts im Dokument geblieben ist
+      (ADR-0010 N10 Ziffer 3, R00191 AK 4). */
   function fokusZiel(lage) {
     const ziele = [];
     if (lage.ausdruecklich) ziele.push(...[].concat(lage.ausdruecklich));
     if (lage.gesichert && lage.gesichertInOberster) ziele.push(GESICHERT);
     if (lage.ort) ziele.push(lage.ort);
+    if (vorgemerktGilt(lage)) ziele.push(lage.vorgemerkt);
     if (lage.geschlossen) ziele.push(...lage.geschlossen.rueckgabe);
     if (lage.geoeffnet && lage.geoeffnet.start) ziele.push(...[].concat(lage.geoeffnet.start));
     if (lage.oberste && lage.oberste.start) ziele.push(...[].concat(lage.oberste.start));
     if (fuehrungGilt(lage)) ziele.push(lage.fuehrung);
     return [...new Set(ziele)];
+  }
+
+  function vorgemerktGilt(lage) {
+    const fokusGehalten = Boolean(lage.vorher) && lage.vorher.stand === 'gehalten';
+    return Boolean(lage.vorgemerkt) && !fokusGehalten;
   }
 
   /** Karte bzw. Zeile der Führung nur ohne offene Ebene und nur, wenn das Neuzeichnen den Fokus genommen hat:

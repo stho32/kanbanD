@@ -1057,9 +1057,10 @@ const BEARBEITUNGSMODUS = {
   beschreibung: { zustand: 'beschreibungBearbeiten', ausloeser: '[data-act="beschreibung-bearbeiten"]' },
 };
 /** Nach dem Bearbeiten der Beschreibung fiele der Fokus auf BODY (Strg+Enter): das nächste Zeichnen gibt ihn ihrem Auslöser,
-    dem Stift (R00162 AK 7). Wer mit Tab oder Klick weiterging, behält sein Ziel. */
+    dem Stift (R00162 AK 7). Wer mit Tab oder Klick weiterging, behält sein Ziel — auch, wenn er erst nach dem Vormerken
+    klickt und das Zeichnen erst mit der Antwort des Servers kommt: das Ziel ist nur vorgemerkt (R00191 AK 4). */
 function fokusNachBeschreibung() {
-  if (document.activeElement === document.body) S.ui.fokus = BEARBEITUNGSMODUS.beschreibung.ausloeser;
+  if (document.activeElement === document.body) S.ui.fokusVorgemerkt = BEARBEITUNGSMODUS.beschreibung.ausloeser;
 }
 
 /** Verwirft, was das Feld des Aufgabenfensters an Entwurf oder Bearbeitungsmodus hat — ohne Schreibweg (ADR-0010 N9):
@@ -1520,8 +1521,9 @@ function fokusFuehren(aktiv, ausloeser, gesichert, aktivWarSichtbar, ort) {
   radiogruppenFuehren();
   const oberste = jetzt.at(-1) || null;
   const fokusVorher = { stand: fokusStandVorher(aktiv), selektor: ausloeser, sichtbar: aktivWarSichtbar };
-  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, ort, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
+  const ziele = fokusZiel({ ausdruecklich: S.ui.fokus, gesichert: Boolean(gesichert), gesichertInOberster: true, ort, vorgemerkt: S.ui.fokusVorgemerkt, geschlossen: geschlossen.at(-1) || null, geoeffnet: geoeffnet.at(-1) || null, oberste, fuehrung: fuehrungsziel(), vorher: fokusVorher });
   S.ui.fokus = null;
+  S.ui.fokusVorgemerkt = null;
   const gesetzt = ziele.some(ziel => fokusVersuchen(ziel, gesichert, oberste, fokusVorher));
   // Rückfall (R00106 Z. 102–104, PO Z. 111/113): das erste tabbare Element nur in einer nach dem Neuzeichnen offenen Ebene.
   // Ohne offene Ebene bleibt es beim BODY — auch wenn die letzte gerade schloss und ihr Auslöser fort ist. Hatte sie nie
