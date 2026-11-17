@@ -1,6 +1,6 @@
 ---
 id: R00189
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -20,10 +20,10 @@ Eine Zeichnung ist nicht nötig: nichts Sichtbares ändert sich. Zahlt ein auf: 
 
 **Ausgangslage:** Aufgaben #1 und #2; Aufgabenfenster von #1 offen, in „Neue Herkunft“ `X1` eingegeben und mit Enter abgeschickt — im Fensterfuß steht die Meldung „„X1“ ist keine Herkunft“.
 
-- [ ] **AK 1 Derselbe Knoten (Abnahme-Probe der Karte):** Ein Agent ändert über die API den Titel von #2, das Board hinter dem Fenster zeigt den neuen Titel → der Knoten der Fenstermeldung ist vor und nach dem Neuzeichnen **dasselbe Objekt** (geprüft über die Objektidentität, nicht über Text oder `id`); die Meldung steht weiter genau einmal als `alert` mit ihrem Text im Fensterfuß. Die Probe ist deterministisch (sie wartet auf den neuen Titel von #2, kein `test.skip`) und heute rot. Drei Änderungen hintereinander ergeben dasselbe.
-- [ ] **AK 2 Feld und Eingabe bleiben:** Nach demselben Neuzeichnen steht `X1` weiter in „Neue Herkunft“, das Feld ist weiter ungültig und verweist auf die Meldung (`aria-describedby` trifft genau diesen Knoten), der Fokus steht im Feld.
-- [ ] **AK 3 Neue Meldung, neuer Knoten:** `X1` ein zweites Mal abgeschickt (derselbe Text) → ein neuer Knoten; `abc` in „Zeit nachtragen“ abgeschickt (anderer Text) → ein neuer Knoten mit dem neuen Text. Meldung geräumt (Esc im Feld) → kein `alert` im Fenster. Fenster von #2 geöffnet → der Knoten aus #1 ist nicht darin.
-- [ ] **AK 4 Bleibt:** Die bestehenden Proben zur Fenstermeldung laufen unverändert grün (`e2e/tests/r00155-*.spec.js`, `r00111-*.spec.js`, `r00147-warteschlange.spec.js`).
+- [x] **AK 1 Derselbe Knoten (Abnahme-Probe der Karte):** Ein Agent ändert über die API den Titel von #2, das Board hinter dem Fenster zeigt den neuen Titel → der Knoten der Fenstermeldung ist vor und nach dem Neuzeichnen **dasselbe Objekt** (geprüft über die Objektidentität, nicht über Text oder `id`); die Meldung steht weiter genau einmal als `alert` mit ihrem Text im Fensterfuß. Die Probe ist deterministisch (sie wartet auf den neuen Titel von #2, kein `test.skip`) und heute rot. Drei Änderungen hintereinander ergeben dasselbe.
+- [x] **AK 2 Feld und Eingabe bleiben:** Nach demselben Neuzeichnen steht `X1` weiter in „Neue Herkunft“, das Feld ist weiter ungültig und verweist auf die Meldung (`aria-describedby` trifft genau diesen Knoten), der Fokus steht im Feld.
+- [x] **AK 3 Neue Meldung, neuer Knoten:** `X1` ein zweites Mal abgeschickt (derselbe Text) → ein neuer Knoten; `abc` in „Zeit nachtragen“ abgeschickt (anderer Text) → ein neuer Knoten mit dem neuen Text. Meldung geräumt (Esc im Feld) → kein `alert` im Fenster. Fenster von #2 geöffnet → der Knoten aus #1 ist nicht darin.
+- [x] **AK 4 Bleibt:** Die bestehenden Proben zur Fenstermeldung laufen unverändert grün (`e2e/tests/r00155-*.spec.js`, `r00111-*.spec.js`, `r00147-warteschlange.spec.js`).
 
 ## Tests
 

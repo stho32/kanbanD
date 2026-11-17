@@ -767,3 +767,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #191 R00182 (Klappen behalten den Tastaturfokus beim Neuzeichnen) | B0889 Sammelprobe, Board-Wechsel und Gate (Wartezeit auf fremde Playwright-Läufe eingerechnet) | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-17 | Karte #86 R00189 (Fenstermeldung behält beim Neuzeichnen ihren Knoten) | B0928 Rote Probe der Karte (Objektidentität, MutationObserver) und Messung im Zugänglichkeitsbaum (CDP) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #86 R00189 (Fenstermeldung behält beim Neuzeichnen ihren Knoten) | B0929 Knoten der Meldung beim Zeichnen wiederverwenden (Meldungszähler, replaceWith), Mutant geprobt | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #86 R00189 (Fenstermeldung behält beim Neuzeichnen ihren Knoten) | B0930 Probe im echten Programm (AX-Kennung vorher/nachher 54/54) und Gate der berührten Specs | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
