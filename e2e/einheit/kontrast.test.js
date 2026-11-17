@@ -202,12 +202,12 @@ const gepruefteDateien = () => ['kd-app.css', 'kd-base.css', ...fs.readdirSync(W
 /** Verzierung, Linie oder inaktives Bedienelement (R00107 FA 11) — und die sichtbare Sperrform (R00148 AK 19,
     freigegeben 2026-11-14): der gesperrte Auslöser dämpft Schrift und Symbol auf --kd-faint. */
 const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz', '.bf-chip', '.wbs-zeile .trenner',
-  '.btn[aria-disabled="true"]', '.btn[aria-disabled="true"]:hover',
-  '.btn-haupt[aria-disabled="true"]', '.btn-haupt[aria-disabled="true"]:hover',
-  '.btn-sym[aria-disabled="true"]', '.btn-sym[aria-disabled="true"]:hover',
-  '.naechste-ziel[aria-disabled="true"]', '.naechste-ziel[aria-disabled="true"]:hover',
-  '.chk.ok i[aria-disabled="true"]',
-  '.ochip button[aria-disabled="true"],.ochip button[aria-disabled="true"]:hover'];
+  '.btn[data-sperrform]', '.btn[data-sperrform]:hover',
+  '.btn-haupt[data-sperrform]', '.btn-haupt[data-sperrform]:hover',
+  '.btn-sym[data-sperrform]', '.btn-sym[data-sperrform]:hover',
+  '.naechste-ziel[data-sperrform]', '.naechste-ziel[data-sperrform]:hover',
+  '.chk.ok i[data-sperrform]',
+  '.ochip button[data-sperrform],.ochip button[data-sperrform]:hover'];
 /** Regeln mit --kd-faint außerhalb der Erlaubt-Liste, als `datei:zeile selektor`. */
 function faintStellen(datei, text) {
   return regeln(text).filter(regel => regel.rumpf.includes('var(--kd-faint)') && !FAINT_ERLAUBT.includes(regel.selektor)).map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);

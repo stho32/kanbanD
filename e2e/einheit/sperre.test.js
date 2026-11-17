@@ -88,3 +88,39 @@ test('B2: laeuftAktion trifft die Aktion mit und ohne Feldwert, nicht ein andere
   assert.strictEqual(sperre.laeuftAktion(aktionsName('stop', '1')), false, 'ein Argument ist kein Präfix eines anderen');
   assert.strictEqual(sperre.laeuftAktion(aktionsName('stop', '1|st')), true);
 });
+
+/* R00190: die sichtbare Sperrform folgt erst nach 200 ms (`daempfen`), die Sperre selbst wirkt sofort. */
+
+test('R00190 AK 1: ein frisch gestarteter Auslöser ist gesperrt, aber noch nicht gedämpft', () => {
+  const sperre = sperreFuehren();
+  sperre.starten(TEIL_WEG);
+  assert.strictEqual(sperre.laeuft(TEIL_WEG), true);
+  assert.strictEqual(sperre.gedaempft().laeuft(TEIL_WEG), false);
+});
+
+test('R00190 AK 2: nach dem Dämpfen zeigt der Auslöser die Sperrform, der andere nicht', () => {
+  const sperre = sperreFuehren();
+  sperre.starten(TEIL_WEG);
+  sperre.starten(TEIL_KARTE);
+  sperre.daempfen(TEIL_WEG);
+  assert.strictEqual(sperre.gedaempft().laeuft(TEIL_WEG), true);
+  assert.strictEqual(sperre.gedaempft().laeuft(TEIL_KARTE), false, 'jeder Auslöser hat seine eigene Frist');
+});
+
+test('R00190 AK 2: die Aktion samt Wert aus einem Feld zählt auch gedämpft als laufend', () => {
+  const sperre = sperreFuehren();
+  const mitWert = aktionsName('teil-neu', '1', 'Milch');
+  sperre.starten(mitWert);
+  sperre.daempfen(mitWert);
+  assert.strictEqual(sperre.gedaempft().laeuftAktion(aktionsName('teil-neu', '1')), true);
+});
+
+test('R00190 AK 2: mit dem Ende der Sperre endet die Sperrform sofort, ein späteres Dämpfen wirkt nicht mehr', () => {
+  const sperre = sperreFuehren();
+  sperre.starten(TEIL_WEG);
+  sperre.daempfen(TEIL_WEG);
+  sperre.beenden(TEIL_WEG);
+  assert.strictEqual(sperre.gedaempft().laeuft(TEIL_WEG), false);
+  sperre.daempfen(TEIL_WEG);
+  assert.strictEqual(sperre.gedaempft().laeuft(TEIL_WEG), false, 'ein nicht laufender Auslöser wird nicht gedämpft');
+});

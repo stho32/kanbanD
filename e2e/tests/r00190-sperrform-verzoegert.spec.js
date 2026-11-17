@@ -51,6 +51,12 @@ function formLesen(ausloeser) {
   });
 }
 
+/** Die Ruheform unter dem Zeiger — so, wie sie beim Klick aussieht (`:hover` gehört zur Ruheform). */
+async function ruheUnterDemZeiger(ausloeser) {
+  await ausloeser.hover();
+  return (await formLesen(ausloeser)).form;
+}
+
 /** Rückt die angehaltene Uhr um `ms` vor und prüft dann: gesperrt und noch in Ruheform bzw. schon gedämpft. */
 async function nachZeit(page, ausloeser, ms, ruhe, gedaempft, familie) {
   await page.clock.runFor(ms);
@@ -80,7 +86,7 @@ test.describe('R00190 Sperrform erst nach 200 ms (AK 1, AK 2)', () => {
 
   test('AK 1 / US-1: Antwort nach 100 ms — „Anlegen“ bleibt durchgehend in Ruheform, zwei Klicks legen eine Aufgabe an', async ({ page }) => {
     const anlegen = await neueAufgabe(page, 'Probe');
-    const ruhe = (await formLesen(anlegen)).form;
+    const ruhe = await ruheUnterDemZeiger(anlegen);
     await page.clock.pauseAt(Date.now() + 1000);
     const halte = await anfragenHalten(page, p => p === '/api/aufgaben', 'POST');
 
@@ -117,7 +123,7 @@ test.describe('R00190 Sperrform erst nach 200 ms (AK 1, AK 2)', () => {
   test('AK 2: jede Familie — Kartenleiste, Symbolknopf ✕, Kästchen — erst nach 200 ms gedämpft, mit der Antwort sofort in Ruheform', async ({ page }) => {
     // Kartenleiste (D0002)
     const leiste = page.locator('.ka[data-id="1"] .naechste-ziel');
-    const ruheLeiste = (await formLesen(leiste)).form;
+    const ruheLeiste = await ruheUnterDemZeiger(leiste);
     await page.clock.pauseAt(Date.now() + 1000);
     let halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'PATCH');
     await leiste.click();
@@ -131,12 +137,14 @@ test.describe('R00190 Sperrform erst nach 200 ms (AK 1, AK 2)', () => {
     await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins');
     await page.unrouteAll({ behavior: 'wait' });
 
-    // Symbolknopf ✕ und Kästchen (D0003) im Aufgabenfenster
+    // Symbolknopf ✕ und Kästchen (D0003) im Aufgabenfenster; zum Öffnen läuft die Uhr wieder
+    await page.clock.resume();
     await page.locator('.ka[data-id="1"] .t').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     await reiter(page, 'Inhalt');
     const kreuz = page.getByLabel('Teilaufgabe drei entfernen');
-    const ruheKreuz = (await formLesen(kreuz)).form;
+    const ruheKreuz = await ruheUnterDemZeiger(kreuz);
+    await page.clock.pauseAt(Date.now() + 5000);
     halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'DELETE');
     await kreuz.click();
     await bisAnfrageLaeuft(halte);
@@ -147,7 +155,7 @@ test.describe('R00190 Sperrform erst nach 200 ms (AK 1, AK 2)', () => {
     await page.unrouteAll({ behavior: 'wait' });
 
     const kaestchen = page.locator('#fenster .chk i[role="checkbox"][aria-label="zwei"]');
-    const ruheKaestchen = (await formLesen(kaestchen)).form;
+    const ruheKaestchen = await ruheUnterDemZeiger(kaestchen);
     halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'PATCH');
     await kaestchen.click();
     await bisAnfrageLaeuft(halte);

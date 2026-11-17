@@ -645,6 +645,7 @@ function entwurfGeaendert() {
 /** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
 function sperreFreigeben(laufender) {
   if (!laufender) return;
+  laufender.frei = true;
   laufender.namen.forEach(sperre.beenden);
   sperrenMarkieren();
 }
@@ -1854,21 +1855,39 @@ function ausloeserNamen(a, arg, el, wert) {
 
 /** Läuft derselbe Auslöser schon? Knopf und Taste treffen jede laufende Füllung ihrer Aktion; Enter im Feld trifft den
     laufenden Knopf derselben Aktion und denselben Wert — nicht einen neuen Eintrag (R00148 AK 12, R00037). */
-function ausloeserGesperrt(a, arg, el, wert) {
+function ausloeserGesperrt(a, arg, el, wert, laufende = sperre) {
   const aktionOhneWert = aktionsName(a, arg);
-  if (wert !== undefined) return sperre.laeuft(aktionOhneWert) || sperre.laeuft(aktionsName(a, arg, wert));
-  return sperre.laeuftAktion(aktionOhneWert) || (el != null && sperre.laeuft(ausloeserVon(el)));
+  if (wert !== undefined) return laufende.laeuft(aktionOhneWert) || laufende.laeuft(aktionsName(a, arg, wert));
+  return laufende.laeuftAktion(aktionOhneWert) || (el != null && laufende.laeuft(ausloeserVon(el)));
 }
+
+/** Ab wann ein gesperrter Auslöser seine Sperrform zeigt (R00190): eine schnellere Antwort lässt ihn in Ruheform. */
+const SPERRFORM_AB_MS = 200;
 
 /** Zeigt den Sperrzustand am Knoten (ADR-0025 Regel 2): höchstens `aria-disabled="true"`, nie natives `disabled` —
     das nähme den Knoten aus der Tabreihenfolge und der Fokus fiele auf BODY (ADR-0010). Kein Neuzeichnen: ein Zeichnen
-    hier verbrauchte das Fokusziel der Aktion (R00112 FA 8). */
+    hier verbrauchte das Fokusziel der Aktion (R00112 FA 8). Die Sperre und `aria-disabled` stehen sofort; die sichtbare
+    Form hängt an `data-sperrform` und kommt erst nach `SPERRFORM_AB_MS` (R00190) — am Knoten, nicht im Stil, damit sie
+    ein Neuzeichnen übersteht. */
 function sperrenMarkieren() {
   for (const el of document.querySelectorAll('[data-act][aria-disabled]')) el.removeAttribute('aria-disabled');
+  for (const el of document.querySelectorAll('[data-act][data-sperrform]')) el.removeAttribute('data-sperrform');
   if (!sperre.namen().length) return;
+  const gedaempft = sperre.gedaempft();
   for (const el of document.querySelectorAll('[data-act]')) {
-    if (ausloeserGesperrt(el.dataset.act, el.dataset.arg, el)) el.setAttribute('aria-disabled', 'true');
+    if (!ausloeserGesperrt(el.dataset.act, el.dataset.arg, el)) continue;
+    el.setAttribute('aria-disabled', 'true');
+    if (ausloeserGesperrt(el.dataset.act, el.dataset.arg, el, undefined, gedaempft)) el.setAttribute('data-sperrform', '');
   }
+}
+
+/** Läuft der Auslöser nach der Frist noch, zeigt er seine Sperrform; ist er schon frei, bleibt alles in Ruhe (R00190). */
+function sperrformNachFrist(laufender) {
+  setTimeout(() => {
+    if (laufender.frei) return;
+    laufender.namen.forEach(sperre.daempfen);
+    sperrenMarkieren();
+  }, SPERRFORM_AB_MS);
 }
 
 /** Der zuletzt angenommene Klick: hat seine Aktion Schreibwirkung (`schreibt`), ist ein weiterer Klick derselben
@@ -1891,6 +1910,7 @@ async function act(a, arg, wert, el, detail) {
   if (detail > 0) letzterKlick = laufender;
   namen.forEach(sperre.starten);
   sperrenMarkieren();
+  sperrformNachFrist(laufender);
   try {
     await aktion(a, arg, wert);
   } finally {

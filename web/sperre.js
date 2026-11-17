@@ -8,13 +8,26 @@
    * hat derselbe Auslöser keine Wirkung; er endet mit der Antwort, auch bei einem Fehlschlag (ADR-0025 Regel 1/2).
    */
   function sperreFuehren(laufend = new Set()) {
+    // Die Auslöser, die schon ihre sichtbare Sperrform zeigen (R00190): erst nach einer Frist gedämpft, mit dem Ende sofort nicht mehr
+    const gedaempft = new Set();
     return {
-      laeuft: name => laufend.has(name),
+      ...abfragen(laufend),
       starten: name => { laufend.add(name); },
-      beenden: name => { laufend.delete(name); },
+      beenden: name => { laufend.delete(name); gedaempft.delete(name); },
       namen: () => [...laufend],
+      /** Der laufende Auslöser `name` zeigt ab jetzt seine Sperrform; einen beendeten lässt es in Ruhe. */
+      daempfen: name => { if (laufend.has(name)) gedaempft.add(name); },
+      /** Dieselben Abfragen über die gedämpften Auslöser: welcher Knoten trägt die Sperrform? */
+      gedaempft: () => abfragen(gedaempft),
+    };
+  }
+
+  /** `laeuft` und `laeuftAktion` über eine Menge von Kennungen. */
+  function abfragen(menge) {
+    return {
+      laeuft: name => menge.has(name),
       /** Läuft die Aktion `name` (aus `aktionsName` ohne Wert) — mit oder ohne Wert aus einem Feld? */
-      laeuftAktion: name => [...laufend].some(n => n === name || n.startsWith(name + WERT)),
+      laeuftAktion: name => [...menge].some(n => n === name || n.startsWith(name + WERT)),
     };
   }
 
