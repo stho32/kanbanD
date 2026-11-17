@@ -34,7 +34,12 @@ const heuteUm = (stunde, minute) => {
   return `${jetzt.getFullYear()}-${zweistellig(jetzt.getMonth() + 1)}-${zweistellig(jetzt.getDate())} ${zweistellig(stunde)}:${zweistellig(minute)}`;
 };
 const vorTagen = tage => new Date(Date.now() - tage * 864e5).toISOString();
-const AUFGABE = `---\nid: 1\ntitle: Bericht prüfen\nclass: bug\n---\n- [ ] Daten holen\n- [ ] **fett** prüfen\n\n\`\`\`kanbanD-time\n${heuteUm(0, 1)} · ${heuteUm(0, 31)} · st\n\`\`\`\n`;
+const ZEIT_HEUTE = `\`\`\`kanbanD-time\n${heuteUm(0, 1)} · ${heuteUm(0, 31)} · st\n\`\`\`\n`;
+const AUFGABE = `---\nid: 1\ntitle: Bericht prüfen\nclass: bug\n---\n- [ ] Daten holen\n- [ ] **fett** prüfen\n\n${ZEIT_HEUTE}`;
+// Weitere Aufgaben mit Zeit und demselben Weg: unter der Zeile von #1 steht in jedem Bericht mehr, als der Schirm zeigt
+const WEITERE = Array.from({ length: 14 }, (_, stelle) => stelle + 2);
+const weitereAufgaben = () => Object.fromEntries(WEITERE.map(nummer => [`aufgaben/${String(nummer).padStart(4, '0')}-weitere.md`, `---\nid: ${nummer}\ntitle: Weitere ${nummer}\n---\n${ZEIT_HEUTE}`]));
+const ALLE_KARTEN = [1, ...WEITERE].map(nummer => `- #${nummer}\n`).join('');
 const BOARD_KOPF = '# Entwicklung\n\n## Zu erledigen\n\n';
 
 /** Legt den Stand des Boards mit einem Commit zum Zeitpunkt `datum` ab — daraus rechnet die Durchlaufzeit. */
@@ -43,12 +48,12 @@ function boardAm(ordner, datum, board) {
   execFileSync('git', ['-C', ordner, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'stand'], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum } });
 }
 
-/** Ausgangslage der Anforderung: #1 mit Zeit in dieser Woche, zwei Teilaufgaben und einem Weg von „Zu erledigen“ nach „Erledigt“. */
+/** Ausgangslage der Anforderung: #1 mit Zeit in dieser Woche, zwei Teilaufgaben und einem Weg von „Zu erledigen“ nach „Erledigt“; dazu die weiteren Aufgaben. */
 function ausgangslage(arbeit) {
   return async ordner => {
-    einrichten({ 'kanbanD.md': einstellungen(arbeit), 'aufgaben/0001-bericht-pruefen.md': AUFGABE })(ordner);
-    boardAm(ordner, vorTagen(3), `${BOARD_KOPF}- #1\n\n## In Arbeit\n\n## Erledigt\n`);
-    boardAm(ordner, vorTagen(2), `${BOARD_KOPF}## In Arbeit\n\n## Erledigt\n\n- #1\n`);
+    einrichten({ 'kanbanD.md': einstellungen(arbeit), 'aufgaben/0001-bericht-pruefen.md': AUFGABE, ...weitereAufgaben() })(ordner);
+    boardAm(ordner, vorTagen(3), `${BOARD_KOPF}${ALLE_KARTEN}\n## In Arbeit\n\n## Erledigt\n`);
+    boardAm(ordner, vorTagen(2), `${BOARD_KOPF}## In Arbeit\n\n## Erledigt\n\n${ALLE_KARTEN}`);
   };
 }
 
@@ -95,6 +100,13 @@ const ring = element => element.evaluate(e => { const stil = getComputedStyle(e)
 /** Abstand der Zeile zum oberen Fensterrand: bleibt er gleich, ist die Seite nicht gerollt. */
 const lageImFenster = zeileImBericht => zeileImBericht.evaluate(element => Math.round(element.getBoundingClientRect().top));
 
+/** Wie weit die Fläche um die Zeile noch nach unten rollen kann — ohne diesen Weg bewiese „rollt nicht“ nichts. */
+const rollwegNachUnten = zeileImBericht => zeileImBericht.evaluate(element => {
+  let weg = document.documentElement.scrollHeight - innerHeight - scrollY;
+  for (let rahmen = element.parentElement; rahmen; rahmen = rahmen.parentElement) weg = Math.max(weg, rahmen.scrollHeight - rahmen.clientHeight - rahmen.scrollTop);
+  return weg;
+});
+
 /* ── AK 1 / US-1: Aufgabe aus dem Bericht öffnen ── */
 
 const BERICHTE = [
@@ -113,6 +125,7 @@ for (const bericht of BERICHTE) {
     await mitTabAuf(page, zeileVonEins);
     await expect(zeileVonEins).toHaveCSS('outline-style', 'solid');
     await expect(zeileVonEins).toHaveCSS('outline-width', '2px');
+    expect(await rollwegNachUnten(zeileVonEins), 'unter der Zeile liegt Inhalt außerhalb des Schirms').toBeGreaterThan(10);
 
     for (const taste of Object.keys(TASTE)) {
       const lageVorher = await lageImFenster(zeileVonEins);

@@ -1,6 +1,6 @@
 ---
 id: R00180
-status: Neu
+status: Erledigt
 datum: 2026-11-16
 ---
 
@@ -18,12 +18,12 @@ Eine Zeichnung ist nicht nötig: es entsteht keine neue sichtbare Bedienung, der
 
 **Ausgangslage:** ein Board mit Aufgabe #1 „Bericht prüfen“, die in dieser Woche gebuchte Zeit einer Person trägt und die Spalten „von“ und „bis“ der Durchlaufzeit durchlaufen hat; #1 hat zwei offene Teilaufgaben, „Daten holen“ und „`**fett** prüfen`“. Einstellungen mit mindestens einer Klasse und einem Signal. Bedient wird nur mit der Tastatur.
 
-- [ ] **AK 1 Aufgabe aus dem Bericht öffnen (Abnahme-Probe der Karte):** In jedem der drei Berichte Stundenzettel, „Zeiten nach Aufgabe und Person“ und Durchlaufzeit ist die Zeile von #1 per Tab erreichbar und trägt den Fokusring; Enter öffnet das Aufgabenfenster von #1, Leertaste ebenso (die Seite rollt dabei nicht). Nach Esc steht der Fokus wieder auf dieser Zeile. Das sind sechs Proben: drei Berichte mal zwei Tasten.
-- [ ] **AK 2 Teilaufgabe abhaken:** Im Aufgabenfenster von #1 ist das Kästchen von „Daten holen“ per Tab erreichbar. Leertaste hakt ab: der Zähler zeigt 1/2, die Datei der Aufgabe ist geändert, der Fokus steht weiter auf demselben Kästchen. Eine zweite Leertaste nimmt den Haken zurück (0/2).
-- [ ] **AK 3 Namen ohne Markdown-Zeichen:** Der zugängliche Name des Kästchens und des ✕ der zweiten Teilaufgabe enthält „fett prüfen“ und kein `*` — wie heute schon der Stift.
-- [ ] **AK 4 Farbe wählen:** In den Einstellungen ist das Farbfeld einer Klasse und das eines Signals per Tab erreichbar; Enter öffnet die Palette, Leertaste ebenso. Eine Farbe der Palette ist per Tab erreichbar und wird mit Enter wie mit Leertaste gewählt: das Farbfeld und die Vorschau zeigen die neue Farbe.
-- [ ] **AK 5 Leertaste am Titel:** Leertaste auf dem Titel des Aufgabenfensters öffnet die Bearbeitung wie Enter. Grenze: im geöffneten Titelfeld und in jedem anderen Eingabefeld schreibt die Leertaste weiter ein Leerzeichen und löst nichts aus.
-- [ ] **AK 6 Sammelprobe und Bestand:** In Board, Aufgabenfenster, Aufgabenliste, Personen, jedem Bericht, der WBS-Sicht und den Einstellungen (mit offener Palette) hat jedes Element mit `role=button` oder `role=checkbox` und jede Tabellenzeile mit `data-act` einen Tab-Halt (`tabIndex >= 0`) — heute rot an genau den oben genannten Stellen. Mausklick wirkt an allen Stellen wie bisher; die bestehenden Tests laufen unverändert grün.
+- [x] **AK 1 Aufgabe aus dem Bericht öffnen (Abnahme-Probe der Karte):** In jedem der drei Berichte Stundenzettel, „Zeiten nach Aufgabe und Person“ und Durchlaufzeit ist die Zeile von #1 per Tab erreichbar und trägt den Fokusring; Enter öffnet das Aufgabenfenster von #1, Leertaste ebenso (die Seite rollt dabei nicht). Nach Esc steht der Fokus wieder auf dieser Zeile. Das sind sechs Proben: drei Berichte mal zwei Tasten.
+- [x] **AK 2 Teilaufgabe abhaken:** Im Aufgabenfenster von #1 ist das Kästchen von „Daten holen“ per Tab erreichbar. Leertaste hakt ab: der Zähler zeigt 1/2, die Datei der Aufgabe ist geändert, der Fokus steht weiter auf demselben Kästchen. Eine zweite Leertaste nimmt den Haken zurück (0/2).
+- [x] **AK 3 Namen ohne Markdown-Zeichen:** Der zugängliche Name des Kästchens und des ✕ der zweiten Teilaufgabe enthält „fett prüfen“ und kein `*` — wie heute schon der Stift.
+- [x] **AK 4 Farbe wählen:** In den Einstellungen ist das Farbfeld einer Klasse und das eines Signals per Tab erreichbar; Enter öffnet die Palette, Leertaste ebenso. Eine Farbe der Palette ist per Tab erreichbar und wird mit Enter wie mit Leertaste gewählt: das Farbfeld und die Vorschau zeigen die neue Farbe.
+- [x] **AK 5 Leertaste am Titel:** Leertaste auf dem Titel des Aufgabenfensters öffnet die Bearbeitung wie Enter. Grenze: im geöffneten Titelfeld und in jedem anderen Eingabefeld schreibt die Leertaste weiter ein Leerzeichen und löst nichts aus.
+- [x] **AK 6 Sammelprobe und Bestand:** In Board, Aufgabenfenster, Aufgabenliste, Personen, jedem Bericht, der WBS-Sicht und den Einstellungen (mit offener Palette) hat jedes Element mit `role=button` oder `role=checkbox` und jede Tabellenzeile mit `data-act` einen Tab-Halt (`tabIndex >= 0`) — heute rot an genau den oben genannten Stellen. Mausklick wirkt an allen Stellen wie bisher; die bestehenden Tests laufen unverändert grün.
 
 ## Tests
 
