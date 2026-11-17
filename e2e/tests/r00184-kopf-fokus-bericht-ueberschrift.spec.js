@@ -14,6 +14,13 @@ const VORHER = VORHER_SCHREIBEN ? {} : JSON.parse(fs.readFileSync(VORHER_DATEI, 
 const THEMEN = ['light', 'dark'];
 /** WCAG 1.4.11: der Ring steht mindestens 3:1 gegen die Fläche des Kopfs. */
 const RING_MASS = 3;
+/**
+ * Radios im Kopf (Auswahl „Bereich“) prüft eine eigene Probe, die als „erwartet rot“ markiert ist: ihr Ring ist durch R00106 auf
+ * `--kd-accent` festgelegt (r00106-fokus.spec.js, „fokussierte Radios … tragen den Ring“) und steht hell bei 2,33:1 gegen den Kopf.
+ * R00184 AK 1 verlangt 3:1 für jedes Element des Kopfs, AK 6 die Specs r00106-* unverändert grün — beides zugleich geht nicht;
+ * die Entscheidung liegt beim Director (Bericht zu #59). Fällt sie, entfällt die Markierung und die Probe wird gewöhnlich grün.
+ */
+const IST_RADIO = ring => ring.rolle === 'radio';
 /** Die zehn Berichte mit ihrem Namen im Menü „Berichte“ (R00184 AK 3). */
 const BERICHTE = {
   stundenzettel: 'Stundenzettel', kreuz: 'Zeiten nach Aufgabe und Person', verlauf: 'Burndown', fluss: 'Kumulativer Fluss', durchsatz: 'Durchsatz',
@@ -36,7 +43,7 @@ const ringAmFokus = (page, bereich) => page.evaluate(sel => {
   if (!e || !e.closest(sel)) return null;
   const stil = getComputedStyle(e);
   const name = e.id ? '#' + e.id : (e.getAttribute('aria-label') || e.textContent.replace(/\s+/g, ' ').trim());
-  return { name, stil: stil.outlineStyle, breite: stil.outlineWidth, farbe: stil.outlineColor, versatz: stil.outlineOffset };
+  return { name, rolle: e.getAttribute('role'), stil: stil.outlineStyle, breite: stil.outlineWidth, farbe: stil.outlineColor, versatz: stil.outlineOffset };
 }, bereich);
 
 /** Der Ring am Fokus ohne den Namen des Elements: der Name einer Karte nennt ihr Alter und wandert mit der Uhr. */
@@ -150,7 +157,19 @@ test.describe('R00184 Fokusring im Kopf, aktueller Bericht, Überschriftenfolge'
       const ringe = await ringeImKopf(page);
       const namen = ringe.map(r => r.name);
       for (const ziel of ['Board', '#t-ber', '#flt', '#t-board', '#t-mehr']) expect(namen, `${t}: Tab erreicht ${ziel}`).toContain(ziel);
-      verstoesse.push(...await ringVerstoesse(page, ringe, t));
+      verstoesse.push(...await ringVerstoesse(page, ringe.filter(r => !IST_RADIO(r)), t));
+    }
+    expect(verstoesse).toEqual([]);
+  });
+
+  test('US-1/AK 1, offen: auch die Radios im Kopf zeigen den Ring mit mindestens 3:1 — erwartet rot (Widerspruch zu R00106, siehe oben)', async ({ page }) => {
+    test.fail(true, 'R00106 legt den Ring der Radios auf --kd-accent fest: hell 2,33:1 gegen den Kopf (dunkel über 3:1)');
+    const verstoesse = [];
+    for (const t of THEMEN) {
+      await thema(page, t);
+      const radios = (await ringeImKopf(page)).filter(IST_RADIO);
+      expect(radios.length, `${t}: Tab erreicht ein Radio im Kopf`).toBeGreaterThan(0);
+      verstoesse.push(...await ringVerstoesse(page, radios, t));
     }
     expect(verstoesse).toEqual([]);
   });
@@ -172,7 +191,7 @@ test.describe('R00184 Fokusring im Kopf, aktueller Bericht, Überschriftenfolge'
   test('AK 2: der Kopf im Modus „Spalten einrichten“ zeigt seinen Ring wie vor dem Bau', async ({ page }) => {
     await ausMehr(page, 'Spalten einrichten');
     await page.locator('header.kz.modus').waitFor();
-    await gleichVorher('ringeImModus', () => ringeImKopf(page));
+    await gleichVorher('ringeImModus', async () => (await ringeImKopf(page)).map(({ rolle, ...ring }) => ring));
   });
 
   test('AK 2: Ringe außerhalb des Kopfs (Menüeintrag, Karte) sind wie vor dem Bau', async ({ page }) => {

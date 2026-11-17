@@ -71,10 +71,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz .inp::placeholder{color:var(--kd-head-muted)}
 .kz .inp:focus{background:var(--kd-surface);color:var(--kd-text);outline-color:var(--kd-head-link);outline-offset:2px}
 .kz .inp:focus::placeholder{color:var(--kd-muted)}
-/* Fokusring im Kopf (R00184): --kd-head-link steht in beiden Themen über 3:1 gegen --kd-head. Radios und gesperrte Auslöser stehen
-   eigens, weil ihre allgemeinen Regeln gleich hoch zählen und in --kd-accent zeichnen; die Links der Leiste füllen die Höhe des Kopfs,
-   ihr Ring liegt deshalb innen. Der Modus „Spalten einrichten“ behält seinen Ring auf heller Fläche (.kz-modus .kz-btn). */
-.kz :focus-visible,.kz [role="radio"]:focus-visible,.kz [data-act][aria-disabled="true"]:focus-visible{outline:2px solid var(--kd-head-link);outline-offset:2px}
+/* Fokusring im Kopf (R00184): --kd-head-link steht in beiden Themen über 3:1 gegen --kd-head. Die Links der Leiste füllen die Höhe
+   des Kopfs, ihr Ring liegt deshalb innen. Der Modus „Spalten einrichten“ behält seinen Ring auf heller Fläche (.kz-modus .kz-btn);
+   gesperrte Auslöser stehen eigens, weil ihre allgemeine Regel gleich hoch zählt und in --kd-accent zeichnet. Radios behalten den Ring
+   aus R00106 ([role="radio"]:focus-visible steht gleich hoch und später) — offen, R00184 AK 1 gegen AK 6. */
+.kz :focus-visible,.kz [data-act][aria-disabled="true"]:focus-visible{outline:2px solid var(--kd-head-link);outline-offset:2px}
 .kz-nav a:focus-visible{outline-offset:-2px}
 .kz .seg{border-color:var(--kd-head-line);flex:none}
 .kz .seg>span{background:none;color:var(--kd-head-muted);font-size:12px;height:24px}
