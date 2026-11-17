@@ -143,7 +143,7 @@ fn termine_lesen(v: Option<&Value>) -> Result<Vec<Termin>, Formatfehler> {
         })
 }
 
-/// `fever:` — `{buffer, percentile, week, yellow: [bei 0 %, bei 100 %], red: […], resolution, target-column, from-column}`; fehlende Werte
+/// `fever:` — `{buffer, percentile, week, yellow: [bei 0 %, bei 100 %], red: […], resolution, target-column, from-column, self-labels}`; fehlende Werte
 /// sind der Standard (R00078); unbekannte Schlüssel sind kein Fehler.
 fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     let mut f = Fieber::default();
@@ -178,6 +178,7 @@ fn fieber_lesen(v: Option<&Value>) -> Result<Fieber, Formatfehler> {
     }
     f.zielspalte = yaml::text(m, "target-column");
     f.vonspalte = yaml::text(m, "from-column");
+    f.selbstlabels = yaml::textliste(m, "self-labels");
     if let Some(a) = yaml::text(m, "resolution") {
         f.aufloesung = FIEBER_AUFLOESUNGEN.iter().find(|(_, n)| *n == a).map(|(t, _)| *t).ok_or_else(|| Formatfehler(format!("fever: resolution „{a}“ ist nicht day, week oder month")))?;
     }
@@ -276,6 +277,9 @@ fn fieber_zeile(f: &Fieber) -> Option<String> {
     }
     if let Some(v) = &f.vonspalte {
         teile.push(format!("from-column: {}", yaml::skalar(v)));
+    }
+    if !f.selbstlabels.is_empty() {
+        teile.push(format!("self-labels: {}", yaml::liste(&f.selbstlabels)));
     }
     (!teile.is_empty()).then(|| format!("fever: {{{}}}\n", teile.join(", ")))
 }
@@ -715,7 +719,7 @@ mod tests {
     fn start_fieber_und_zieltermin_rundlauf() {
         let mut b = beispiel();
         b.start = Some("2026-09-01".into());
-        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()), vonspalte: None, aufloesung: 30 };
+        b.fieber = Fieber { puffer: Some(20), perzentil: 50, woche: 7, gelb: [10, 67], rot: [20, 95], zielspalte: Some("In Arbeit".into()), vonspalte: None, selbstlabels: vec![], aufloesung: 30 };
         b.termine = vec![Termin { name: "Deadline".into(), datum: "2027-10-31".into(), farbe: "red".into(), linie: Linie::Durchgehend, staerke: Staerke::Fett, ziel: true }];
         let t = schreiben(&b, datei);
         assert!(t.contains("width: bold, target: true}\nstart: 2026-09-01\nfever: {buffer: 20, percentile: 50, week: 7, yellow: [10, 67], red: [20, 95], resolution: month, target-column: In Arbeit}\n---\n"), "{t}");
@@ -741,6 +745,20 @@ mod tests {
         assert_eq!(nur_von.fieber.vonspalte.as_deref(), Some("Abnahme: extern"));
         assert!(schreiben(&nur_von, datei).starts_with("---\nfever: {from-column: \"Abnahme: extern\"}\n---\n"), "ein Name mit Doppelpunkt bleibt ein Skalar");
         assert!(lesen("b", "---\nfever: {from-column: \" \"}\n---\n## A\n").unwrap_err().0.contains("Von-Spalte"));
+    }
+
+    /// R00194 AK 1 und ADR-0027 N6: ohne `self-labels` zeichengleich, mit ihnen ein Rundlauf hinter `from-column`.
+    #[test]
+    fn selbst_labels_rundlauf_ohne_und_mit_self_labels() {
+        let ohne = "---\nfever: {buffer: 20, target-column: In Arbeit, from-column: Zu erledigen}\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Erledigt\n";
+        let gelesen = lesen("entwicklung", ohne).unwrap();
+        assert!(gelesen.fieber.selbstlabels.is_empty());
+        assert_eq!(schreiben(&gelesen, datei), ohne, "ohne Wahl kein neuer Schlüssel");
+        let mit = ohne.replace("from-column: Zu erledigen}", "from-column: Zu erledigen, self-labels: [befund, härtung, \"typ: bug\"]}");
+        let gelesen = lesen("entwicklung", &mit).unwrap();
+        assert_eq!(gelesen.fieber.selbstlabels, ["befund", "härtung", "typ: bug"]);
+        assert_eq!(schreiben(&gelesen, datei), mit);
+        assert!(lesen("b", "---\nfever: {self-labels: [befund, \" \"]}\n---\n## A\n").unwrap_err().0.contains("Selbsterzeugt"));
     }
 
     #[test]

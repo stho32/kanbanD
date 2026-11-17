@@ -189,6 +189,9 @@ pub struct Fieber {
     /// Spalte bzw. Phase, ab der eine Aufgabe im Durchsatz als Zugang zählt (R00167); `None` = die erste Spalte.
     #[serde(default)]
     pub vonspalte: Option<String>,
+    /// Labels, die im Burndown „selbsterzeugt“ heißen (R00194, ADR-0027 N6); leer = keine Wahl, die Zahl fehlt.
+    #[serde(default)]
+    pub selbstlabels: Vec<String>,
     /// Anzeige je Tag, Woche oder Monat (R00080): Abstand der Punkte in Tagen, 1, 7 oder 30.
     #[serde(default = "Fieber::aufloesung_standard")]
     pub aufloesung: u32,
@@ -238,6 +241,9 @@ impl Fieber {
         if self.vonspalte.as_deref().is_some_and(|v| v.trim().is_empty()) {
             return Err("Die Von-Spalte braucht einen Namen".into());
         }
+        if self.selbstlabels.iter().any(|l| l.trim().is_empty()) {
+            return Err("Ein Label unter „Selbsterzeugt =“ braucht einen Namen".into());
+        }
         if self.gelb[0] > self.rot[0] || self.gelb[1] > self.rot[1] {
             return Err("Die Grenze zu Gelb liegt über der zu Rot".into());
         }
@@ -247,7 +253,7 @@ impl Fieber {
 
 impl Default for Fieber {
     fn default() -> Self {
-        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard(), zielspalte: None, vonspalte: None, aufloesung: Self::aufloesung_standard() }
+        Fieber { puffer: None, perzentil: Self::perzentil_standard(), woche: Self::woche_standard(), gelb: Self::gelb_standard(), rot: Self::rot_standard(), zielspalte: None, vonspalte: None, selbstlabels: vec![], aufloesung: Self::aufloesung_standard() }
     }
 }
 

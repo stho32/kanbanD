@@ -42,6 +42,7 @@ impl Kanban {
         let mut neu = neu;
         neu.zielspalte = neu.zielspalte.map(|z| z.trim().to_string());
         neu.vonspalte = neu.vonspalte.map(|v| v.trim().to_string());
+        neu.selbstlabels = neu.selbstlabels.iter().map(|l| l.trim().to_string()).collect();
         neu.pruefen().map_err(Fehler::Ungueltig)?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
@@ -52,7 +53,12 @@ impl Kanban {
         let puffer = neu.puffer.map(|p| format!("Puffer {p} {einheit}")).unwrap_or_else(|| "ohne Puffer".into());
         let ziel = neu.zielspalte.as_deref().map(|z| format!(", erledigt heißt „{}“", crate::nachricht::wert(z))).unwrap_or_default();
         let von = neu.vonspalte.as_deref().map(|v| format!(", Zugang ab „{}“", crate::nachricht::wert(v))).unwrap_or_default();
-        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}{von}", crate::nachricht::wert(&b.titel), neu.perzentil);
+        let selbst = if neu.selbstlabels.is_empty() {
+            String::new()
+        } else {
+            format!(", selbsterzeugt {}", neu.selbstlabels.iter().map(|l| format!("„{}“", crate::nachricht::wert(l))).collect::<Vec<_>>().join(", "))
+        };
+        let text = format!("Fever Chart von „{}“ eingestellt: {puffer}, P{}{ziel}{von}{selbst}", crate::nachricht::wert(&b.titel), neu.perzentil);
         b.fieber = neu;
         self.aktion(wer, &text, &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)])?;
         Ok(true)
