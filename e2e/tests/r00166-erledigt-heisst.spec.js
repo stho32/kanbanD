@@ -49,8 +49,9 @@ async function zumBericht(page, k, route) {
   await expect(page).toHaveURL(new RegExp(`#/berichte/${route}$`));
 }
 const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [...tr.querySelectorAll(zelle)].map(td => td.textContent.trim())), zelle);
-/** Tabellenansicht des Burndowns ohne die Tagesspalte: je Tag offen, Umfang, +, − erledigt, − entfernt. */
-const burndownJeTag = async page => (await zellen(page.locator('.bd-tabelle tbody tr'), 'td')).map(zeile => zeile.slice(1));
+/** Tabellenansicht des Burndowns ohne die Tagesspalte: je Tag offen, Umfang, +, − erledigt, − entfernt — ohne die Teilmenge
+    „davon zurückgekommen“ (R00192, Spalte rechts von „+“), die diese Anforderung nicht rechnet. */
+const burndownJeTag = async page => (await zellen(page.locator('.bd-tabelle tbody tr'), 'td')).map(([, offen, umfang, plus, , ...abgang]) => [offen, umfang, plus, ...abgang]);
 /** Durchsatz je Tag aus der Tabellenansicht (Auflösung „je Tag“ gewählt): die Spalte „Abgang“, die letzte seit R00167. */
 async function durchsatzJeTag(page) {
   await page.getByRole('radio', { name: 'je Tag' }).click();
@@ -338,7 +339,7 @@ test('R00166 AK 10 (B0810): mit Zielspalte B nennt der Burndown „B“ in Kopfl
     await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt (ab „B“)', '− entfernt']);
     await expect(page.locator('.bd-hinweis')).toContainText(`Erledigt heißt hier: in „B“ oder rechts davon. ${ZUG_ZURUECK}`);
     await expect(page.locator('.bd-hinweis')).toContainText('„− erledigt“ kann über dem Durchsatz liegen');
-    expect(await zellen(page.locator('.bd-tabelle thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', '− erledigt', '− entfernt']]);
+    expect(await zellen(page.locator('.bd-tabelle thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', 'davon zurückgekommen', '− erledigt', '− entfernt']]); // Spalte „davon zurückgekommen“ seit R00192
   } finally { await k.stoppen(); }
 });
 

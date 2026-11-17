@@ -91,17 +91,18 @@ test('R00164 US-3 (AK 3, AK 4): archiviert in „In Arbeit“ zählt am 04.11. a
   } finally { await k.stoppen(); }
 });
 
-test('R00164 US-4 (AK 8): die Tabellenansicht zeigt rechts von „Umfang“ die drei Spalten, 0 statt leer', async ({ page }) => {
+test('R00164 US-4 (AK 8) · R00192 US-2 (AK 3): die Tabellenansicht zeigt rechts von „Umfang“ die drei Spalten und „davon zurückgekommen“ rechts von „+“, 0 statt leer', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel);
   try {
     await berichtAm0511(page, k, 'verlauf');
     const tabelle = await tabellenansicht(page);
-    await expect.poll(() => zellen(tabelle.locator('thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', '− erledigt', '− entfernt']]);
+    // seit R00192 steht zwischen „+ hinzugekommen“ und „− erledigt“ die Teilmenge „davon zurückgekommen“
+    await expect.poll(() => zellen(tabelle.locator('thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', 'davon zurückgekommen', '− erledigt', '− entfernt']]);
     await expect.poll(() => zellen(tabelle.locator('tbody tr'), 'td')).toEqual([
-      ['02.11.2026', '3', '3', '3', '0', '0'],
-      ['03.11.2026', '3', '5', '2', '2', '0'],
-      ['04.11.2026', '3', '4', '1', '0', '1'],
-      ['05.11.2026', '1', '4', '0', '2', '0'],
+      ['02.11.2026', '3', '3', '3', '0', '0', '0'],
+      ['03.11.2026', '3', '5', '2', '0', '2', '0'],
+      ['04.11.2026', '3', '4', '1', '1', '0', '1'],
+      ['05.11.2026', '1', '4', '0', '0', '2', '0'],
     ]);
   } finally { await k.stoppen(); }
 });
@@ -261,5 +262,29 @@ test('R00164 AK 10: der Durchsatz desselben Bestands bleibt beim ersten Erreiche
   try {
     await berichtAm0511(page, k, 'durchsatz');
     await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3 ·');
+  } finally { await k.stoppen(); }
+});
+
+/* ── R00192 Burndown nennt Rückläufer als Teil von „+ hinzugekommen“ (Karte #195) ── */
+/** Die Zeilen des Tooltips in ihrer Reihenfolge ohne den Tag: die Posten (`span`) und darunter die Teilmenge von „+“. */
+const tooltipMitTeilmenge = tip => tip.locator(':scope > span, :scope > .tip-davon').evaluateAll(zeilen => zeilen.map(z => z.textContent.trim()));
+
+test('R00192 US-1 (AK 2, AK 3): der Tooltip nennt unter „+ hinzugekommen“ „davon zurückgekommen“ — am 04.11. 1, am 03.11. 0; die übrigen Zeilen wie vorher', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await expect.poll(async () => tooltipMitTeilmenge(await zeigeAufTag(page, 4)))
+      .toEqual(['offen 3', 'Umfang 4', '+ hinzugekommen 1', 'davon zurückgekommen 1', '− erledigt 0', '− entfernt 1']);
+    await expect.poll(async () => tooltipMitTeilmenge(await zeigeAufTag(page, 3)))
+      .toEqual(['offen 3', 'Umfang 5', '+ hinzugekommen 2', 'davon zurückgekommen 0', '− erledigt 2', '− entfernt 0']);
+  } finally { await k.stoppen(); }
+});
+
+test('R00192 US-2 (AK 2, AK 3): die Kennzahlzeile nennt hinter „+ 6 hinzugekommen“ „davon zurückgekommen 1“; die drei Posten bleiben', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await expect(page.locator('#bd-kennzahl > *')).toHaveText(['+ 6 hinzugekommen', 'davon zurückgekommen 1', '− 4 erledigt', '− 1 entfernt']);
+    await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 6 hinzugekommen', '− 4 erledigt', '− 1 entfernt']);
   } finally { await k.stoppen(); }
 });

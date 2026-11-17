@@ -715,6 +715,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .dtitel{font-size:13px;font-weight:600;margin:var(--kd-s4) 0 var(--kd-s2)}
 .dlegende{display:flex;gap:var(--kd-s5);font-size:12px;color:var(--kd-muted);margin-bottom:var(--kd-s2)}
 .dlegende span,.tooltip span{display:inline-flex;align-items:center;gap:6px}
+.tooltip .tip-davon,.kennzahlen .bd-davon{font-size:inherit;color:var(--kd-muted)}
+.tooltip .tip-davon{padding-left:20px}
 .k-offen{display:inline-block;width:14px;height:2px;background:var(--kd-accent)}
 .k-umfang{display:inline-block;width:14px;height:0;border-top:2px dashed var(--kd-line-strong)}
 .dflaeche{position:relative;max-width:900px}

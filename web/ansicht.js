@@ -1234,6 +1234,11 @@ function vDiagrammFlaeche(svg, extra = '') {
 const BURNDOWN_EREIGNISSE = [['hinzugekommen', '+', 'k-plus'], ['erledigt', '−', 'k-erledigt'], ['entfernt', '−', 'k-entfernt']];
 /** Farbfeld einer Größe: dasselbe Zeichen wie ihr Balken; stumm, weil Vorzeichen und Wort daneben stehen. */
 const burndownFeld = klasse => `<i class="${klasse}" aria-hidden="true"></i>`;
+/** Die Teilmenge von „+“ (R00192): Rückläufer aus der Zielspalte — kein Posten, deshalb nicht in `BURNDOWN_EREIGNISSE`, ohne
+    Farbfeld und Balken; sie steht in Tooltip, Kennzahlzeile und Tabellenansicht gleich hinter „+ hinzugekommen“. */
+const BURNDOWN_DAVON = 'davon zurückgekommen';
+/** Hinter einem Posten die Teilmenge, nur hinter „+“: `zeile(wert)` baut sie für den Ort. */
+const mitTeilmenge = (groesse, zeile, wert) => groesse === 'hinzugekommen' ? zeile(wert) : '';
 /** Wort einer Größe in Kennzahl, Tooltip und Legende: „erledigt“ nennt einen gewählten Zielblock (R00166 AK 10, `zielWorte`). */
 function burndownWort(groesse, zielWorte) {
   if (groesse !== 'erledigt' || !zielWorte) return groesse;
@@ -1250,7 +1255,8 @@ function vBurndownLegende(zielWorte) {
 /** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
 function vBurndownKennzahl(tage, zielWorte) {
   const summe = groesse => tage.reduce((n, x) => n + x[groesse], 0);
-  return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} <b>${summe(groesse)}</b> ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>`;
+  const davon = n => `<small class="bd-davon" id="bd-davon">${BURNDOWN_DAVON} <b>${n}</b></small>`;
+  return `<div class="kennzahlen" id="bd-kennzahl">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} <b>${summe(groesse)}</b> ${burndownWort(groesse, zielWorte)}</span>${mitTeilmenge(groesse, davon, summe('zurueckgekommen'))}`).join('')}</div>`;
 }
 /** Das Band unter den Linien (R00164 AK 7, Zeichnung D0006 #burndown-zugang-abgang): je Tag ein Balkenplatz um `sx(i)` —
     „+“ nach oben, „erledigt“ nach unten, „entfernt“ darunter als hohle, schraffierte Kontur; rechts die Skala. */
@@ -1363,7 +1369,7 @@ function vVerlauf() {
   const xTicks = xMarken(t.length);
   const letzte = t[t.length - 1];
   const tage = t.map(x => isoTag(x.datum));
-  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, ziel.worte)} ${x[groesse]}</span>`).join('')}` : ''; };
+  S.diagrammTip = tg => { const x = t[tage.indexOf(tg)]; return x ? `<b>${datumMitWochentag(tg)}</b><span><i class="k-offen"></i>offen ${x.offen}</span><span><i class="k-umfang"></i>Umfang ${x.umfang}</span>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, ziel.worte)} ${x[groesse]}</span>${mitTeilmenge(groesse, n => `<small class="tip-davon">${BURNDOWN_DAVON} ${n}</small>`, x.zurueckgekommen)}`).join('')}` : ''; };
   const svg = t.length ? `<svg class="diagramm" viewBox="0 0 ${B} ${HOEHE_MIT_BAND}" role="img" aria-label="Offene Aufgaben je Tag, darunter Zugang und Abgang je Tag" ${achsAttribut(L, B - L - R, tage[0], tage[tage.length - 1])}>
 ${ticks.map(y => `<line class="gitter" x1="${L}" x2="${B - R}" y1="${sy(y)}" y2="${sy(y)}"></line><text class="achse" x="${L - 6}" y="${sy(y) + 4}" text-anchor="end">${y}</text>`).join('')}
 ${xTicks.map(i => achsDatum(tage[i], sx(i), MARKEN_Y)).join('')}
@@ -1377,7 +1383,7 @@ ${fadenkreuz(O, BAND_UNTEN)}
   const legende = `<div class="dlegende"><span><i class="k-offen"></i>offen</span><span><i class="k-umfang"></i>Umfang (gezählte Aufgaben auf dem Board)</span></div>`;
   const weg = ausgenommen(S.bew, 'burndown', S.ui.bf, aufgabe, Date.now(), ziel.gewaehlt);
   const nicht = `<h2 class="dtitel">Nicht enthalten</h2><ul class="wl-liste" id="bd-nicht"><li>Ausgenommen (<span class="mono">reporting.burndown: false</span>): ${weg}.</li></ul>`;
-  const tabelle = `<details class="tabellenansicht bd-tabelle"><summary data-halt="klappe:tabelle-burndown">Tabellenansicht</summary>${berichtRahmen('Burndown je Tag')}<table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+  const tabelle = `<details class="tabellenansicht bd-tabelle"><summary data-halt="klappe:tabelle-burndown">Tabellenansicht</summary>${berichtRahmen('Burndown je Tag')}<table class="pt dicht"><thead><tr><th>Tag</th><th class="r">offen</th><th class="r">Umfang</th>${BURNDOWN_EREIGNISSE.map(([groesse, zeichen]) => `<th class="r">${zeichen} ${groesse}</th>${mitTeilmenge(groesse, w => `<th class="r">${w}</th>`, BURNDOWN_DAVON)}`).join('')}</tr></thead><tbody>${t.map(x => `<tr><td class="mono">${datumLang(x.datum)}</td><td class="r num">${x.offen}</td><td class="r num">${x.umfang}</td>${BURNDOWN_EREIGNISSE.map(([groesse]) => `<td class="r num">${x[groesse]}</td>${mitTeilmenge(groesse, n => `<td class="r num">${n}</td>`, x.zurueckgekommen)}`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
   let wasZaehlt = 'offen = nicht in der Abschlussspalte';
   if (ziel.worte) wasZaehlt = `erledigt = ${esc(ziel.worte.lang)}`;
   return `<div class="leiste"><b>Burndown</b><span class="muted">${esc(S.board ? S.board.titel : '')} · aus den Commits von boards/${esc(S.ui.slug || '')}.md · ${wasZaehlt}</span></div>${vBerichtsfilter('burndown')}
