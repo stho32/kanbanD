@@ -574,14 +574,45 @@
     return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
 
+  const SAAT = 20260906, SAAT_ZUGANG = 20261117, SAAT_WEITER = 20261118, MAX_TAGE_ZUGANG = 365;
+  const ausReihe = (reihe, z) => reihe[Math.floor(z() * reihe.length)];
+
   /** Tage bis `rest` erreicht ist, je Ziehung mit Zurücklegen aus der Tagesreihe; aufsteigend sortiert. */
   function ziehen(reihe, rest, ziehungen = ZIEHUNGEN) {
     if (!reihe.some(x => x > 0)) return null;
-    const z = zufall(20260906), erg = [];
+    const z = zufall(SAAT), erg = [];
     for (let i = 0; i < ziehungen; i++) {
       let tage = 0, fertig = 0;
-      while (fertig < rest && tage < MAX_TAGE) { fertig += reihe[Math.floor(z() * reihe.length)]; tage++; }
+      while (fertig < rest && tage < MAX_TAGE) { fertig += ausReihe(reihe, z); tage++; }
       erg.push(tage);
+    }
+    return erg.sort((x, y) => x - y);
+  }
+  /** Wie `ziehen`, aber je Tag kommt der Zugang hinzu (R00193): Stand = Stand + Zugang − Abgang, nie unter 0, fertig bei 0.
+      Je Ziehung dieselben Abgänge wie in `ziehen` (gleicher Strom, gleicher Verbrauch); reichen sie nicht, zieht ein eigener
+      Strom weiter, der Zugang kommt aus einem dritten. Daher nie früher als `ziehen`. Kein Ende innerhalb von
+      `MAX_TAGE_ZUGANG` Tagen = Infinity; aufsteigend sortiert. */
+  function ziehenMitZugang(reihe, zugang, rest, ziehungen = ZIEHUNGEN) {
+    if (!reihe.some(x => x > 0)) return null;
+    const z = zufall(SAAT), weiter = zufall(SAAT_WEITER), zu = zufall(SAAT_ZUGANG), erg = [];
+    const hoechsterAbgang = Math.max(...reihe), abgaenge = new Float64Array(MAX_TAGE_ZUGANG);
+    for (let i = 0; i < ziehungen; i++) {
+      let tage = 0, fertig = 0;
+      while (fertig < rest && tage < MAX_TAGE) {
+        const abgang = ausReihe(reihe, z);
+        if (tage < MAX_TAGE_ZUGANG) abgaenge[tage] = abgang;
+        fertig += abgang; tage++;
+      }
+      const gezogen = Math.min(tage, MAX_TAGE_ZUGANG);
+      let stand = rest, tageMitZugang = 0;
+      // endet sicher nicht mehr, wenn der höchste Tagesabgang den Stand in den übrigen Tagen nicht abtragen kann
+      while (stand > 0 && stand <= hoechsterAbgang * (MAX_TAGE_ZUGANG - tageMitZugang)) {
+        const abgang = tageMitZugang < gezogen ? abgaenge[tageMitZugang] : ausReihe(reihe, weiter);
+        stand += ausReihe(zugang, zu) - abgang;
+        if (stand < 0) stand = 0;
+        tageMitZugang++;
+      }
+      erg.push(stand > 0 ? Infinity : tageMitZugang);
     }
     return erg.sort((x, y) => x - y);
   }
@@ -591,6 +622,12 @@
     const erg = ziehen(reihe, rest, ziehungen);
     return erg && perzentileAus(erg);
   }
+  /** Perzentile mit Zugang (R00193); `null` im Perzentil = kein Ende innerhalb von 365 Tagen. */
+  function simuliereMitZugang(reihe, zugang, rest, ziehungen = ZIEHUNGEN) {
+    const erg = ziehenMitZugang(reihe, zugang, rest, ziehungen);
+    return erg && Object.fromEntries(Object.entries(perzentileAus(erg)).map(([p, tage]) => [p, endlichOderNull(tage)]));
+  }
+  const endlichOderNull = tage => isFinite(tage) ? tage : null;
   /** Anteil der Ziehungen, die nach höchstens `tage` fertig sind (Ziehungen sortiert). */
   function anteilBis(erg, tage) {
     let lo = 0, hi = erg.length;
@@ -616,11 +653,15 @@
   function tagesreihen(daten, von, bis) {
     const reihe7 = [];
     for (let t = von; t < bis; t = tag(t, 1)) reihe7.push(daten.filter(d => d >= t && d < tag(t, 1)).length);
+    return { reihe7, reihe5: arbeitstagReihe(reihe7, von) };
+  }
+  /** Die Kalendertagsreihe ab `von` je Werktag: das Wochenende zählt zum nächsten Werktag. */
+  function arbeitstagReihe(reihe7, von) {
     const reihe5 = [];
     let uebertrag = 0;
     reihe7.forEach((n, i) => { if (werktag(tag(von, i))) { reihe5.push(n + uebertrag); uebertrag = 0; } else uebertrag += n; });
     if (uebertrag) { if (reihe5.length) reihe5[reihe5.length - 1] += uebertrag; else reihe5.push(uebertrag); }
-    return { reihe7, reihe5 };
+    return reihe5;
   }
 
   /** Was die Prognose je Block zählt: ohne Phasen je Spalte (außer der ersten gezählten) „erreicht = dort oder rechts davon“,
@@ -673,13 +714,27 @@
     const jetztDa = daAm(jetzt);
     const umfang = jetztDa.length;
     /** Zugang eines Blocks in der Messbasis (R00168, ADR-0027 N4): „hinzugekommen“ minus „entfernt“ mit dem Block als Ziel,
-        über die Tage ab `fenster`, nie unter 0. */
+        über die Tage ab `fenster`, nie unter 0; dazu dieselbe Differenz je Tag, je Tag nie unter 0 (R00193), als Reihe je
+        Kalender- und Arbeitstag über dieselben Tage wie die Abgangsreihe. */
     const zugangZu = st => {
       const zumBlock = bestandLeser(bew, aufgabeZu, a => bew.spalten.filter(s => st.durch(a, s)));
       const ereignisse = ereignisseJeTag(f, gezaehlt.filter(x => !st.entfaellt(x.a)).map(x => zumBlock(x.a)), jetzt);
       let summe = 0;
       for (const [t, e] of ereignisse) if (t >= fenster) summe += e.hinzugekommen - e.entfernt;
-      return Math.max(0, summe);
+      const reihe7 = [];
+      for (let t = fenster; t < morgen; t = tag(t, 1)) {
+        const e = ereignisse.get(t) || KEIN_EREIGNIS;
+        reihe7.push(Math.max(0, e.hinzugekommen - e.entfernt));
+      }
+      return { summe: Math.max(0, summe), reihe7, reihe5: arbeitstagReihe(reihe7, fenster) };
+    };
+    /** Die Zeilen der zweiten Tabelle (R00193); Tage und Datum `null` = kein Ende innerhalb von 365 Tagen. */
+    const zeilenMitZugang = (ph, zugang) => {
+      const p7 = perzentileAus(ziehenMitZugang(ph.reihe7, zugang.reihe7, ph.offen)), p5 = perzentileAus(ziehenMitZugang(ph.reihe5, zugang.reihe5, ph.offen));
+      return PERZENTILE.map(p => {
+        const kalendertage = endlichOderNull(p7[p]), arbeitstage = endlichOderNull(p5[p]);
+        return { p, kalendertage, datum7: kalendertage === null ? null : tag(heute, kalendertage), arbeitstage, datum5: arbeitstage === null ? null : werktagDatum(heute, arbeitstage) };
+      });
     };
     let vorige = null;
     const alle = prognoseStufen(bew, spalten, phasen), gewaehlt = alle.filter(st => st.schluessel === block);
@@ -688,7 +743,7 @@
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
       const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= fenster && d <= jetzt);
-      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null, zugang: null };
+      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null, zugang: null, mitZugang: null };
       if (st.spalte) ph.spalte = st.spalte; else ph.phase = st.phase;
       if (daten.length) {
         Object.assign(ph, tagesreihen(daten, fenster, morgen));
@@ -703,7 +758,11 @@
         }
       }
       // der Zugang gehört zum Bericht, nicht zur Rechnung: das Fever Chart (`nurLetzter`, je Tag ein Aufruf) braucht ihn nicht
-      if (ph.zeilen && !nurLetzter) ph.zugang = zugangZu(st);
+      if (ph.zeilen && !nurLetzter) {
+        const zugang = zugangZu(st);
+        ph.zugang = zugang.summe;
+        if (zugang.summe > 0) Object.assign(ph, { mitZugang: zeilenMitZugang(ph, zugang), zugangReihe7: zugang.reihe7, zugangReihe5: zugang.reihe5 });
+      }
       // nie früher als der Block davor (Spalte links, Vorphase): dessen Datum als Untergrenze nennen, nicht verrechnen
       if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
         const v = vorige.zeilen[k];
@@ -1146,5 +1205,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, simuliereMitZugang, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
