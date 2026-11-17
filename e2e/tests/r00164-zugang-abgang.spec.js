@@ -386,3 +386,25 @@ test('R00194 US-1 (AK 6): eine Änderung an „Erledigt heißt“ erhält self-l
     expect(k.lies(BOARD)).toContain('fever: {target-column: In Arbeit}\n');
   } finally { await k.stoppen(); }
 });
+
+test('R00194 US-2 (AK 3, AK 4): mit `befund` nennen Kennzahlzeile, Tooltip und Tabellenansicht „davon selbsterzeugt“ — Summe 2, je Tag 1 · 1 · 0 · 0; die übrigen Zahlen wie vorher', async ({ page }) => {
+  const k = await kanbanStarten(mitBefund(MIT_BEFUND));
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 6 hinzugekommen', '− 4 erledigt', '− 1 entfernt']);
+    await expect(page.locator('#bd-davon')).toHaveText('davon selbsterzeugt 2 · zurückgekommen 1 · neu 3');
+    await expect.poll(async () => tooltipMitTeilmenge(await zeigeAufTag(page, 3)))
+      .toEqual(['offen 3', 'Umfang 5', '+ hinzugekommen 2', 'davon selbsterzeugt 1', 'davon zurückgekommen 0', '− erledigt 2', '− entfernt 0']);
+    await expect.poll(async () => tooltipMitTeilmenge(await zeigeAufTag(page, 4)))
+      .toEqual(['offen 3', 'Umfang 4', '+ hinzugekommen 1', 'davon selbsterzeugt 0', 'davon zurückgekommen 1', '− erledigt 0', '− entfernt 1']);
+    const tabelle = await tabellenansicht(page);
+    await expect.poll(() => zellen(tabelle.locator('thead tr'), 'th')).toEqual([['Tag', 'offen', 'Umfang', '+ hinzugekommen', 'davon selbsterzeugt', 'davon zurückgekommen', '− erledigt', '− entfernt']]);
+    await expect.poll(() => zellen(tabelle.locator('tbody tr'), 'td')).toEqual([
+      ['02.11.2026', '3', '3', '3', '1', '0', '0', '0'],
+      ['03.11.2026', '3', '5', '2', '1', '0', '2', '0'],
+      ['04.11.2026', '3', '4', '1', '0', '1', '0', '1'],
+      ['05.11.2026', '1', '4', '0', '0', '0', '2', '0'],
+    ]);
+  } finally { await k.stoppen(); }
+});
