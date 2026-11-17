@@ -573,8 +573,8 @@ async function anhangLesen(pfad) {
 async function anhaengeHochladen(dateien) {
   if (ichNoetig()) { render(); return; }
   for (const d of dateien) {
-    try { await anhangSenden(S.ui.offen, d, d.name); } catch (f) { fensterMelden(f.message); break; }
-    S.ui.gespeichert = Date.now();
+    try { await anhangSenden(S.ui.offen, d, d.name); } catch (f) { fensterMelden(f.message, null, 'anhang-neu'); break; }
+    gespeichertMelden(null, 'anhang-neu');
   }
   render();
 }
@@ -702,14 +702,21 @@ async function neueAufgabeAnlegen(weitere, zeilen) {
 
 /** Schreibender Aufruf aus dem Aufgabenfenster: läuft durch die eine Stelle (ADR-0025 Regel 6, R00148 AK 17) und
     meldet einen Fehlschlag im Fuß; neu geladen wird, sobald die Schlange leer ist (R00110). `feld` nennt das Eingabefeld,
-    aus dem der Aufruf kommt: eine Ablehnung macht es ungültig, die angenommene Eingabe ist kein Entwurf mehr (ADR-0015 N2). */
+    aus dem der Aufruf kommt: eine Ablehnung macht es ungültig, die angenommene Eingabe ist kein Entwurf mehr (ADR-0015 N2).
+    Wahr, wenn der Server angenommen hat — die stehende Meldung sagt das nicht, sie kann von einer früheren Aktion sein (R00185 108-2). */
 function schreiben(methode, pfad, daten, feld = null) {
+  const ausloeser = anfrageName(methode, pfad);
   return durchDieSchlange(async () => {
     try {
       await api(methode, pfad, daten);
-      gespeichertMelden(feld);
+      gespeichertMelden(feld, ausloeser);
       if (feld) S.ui.entwurf = null;
-    } catch (f) { fensterMelden(f.message, feld); S.ui.fehler = f.message; }
+      return true;
+    } catch (f) {
+      fensterMelden(f.message, feld, ausloeser);
+      S.ui.fehler = f.message;
+      return false;
+    }
   });
 }
 
@@ -824,12 +831,12 @@ async function rueckgaengigAusfuehren(senden, erfolg, ziele) {
     const antwort = await senden();
     S.ui.hinweis = { text: erfolg(antwort), at: Date.now() };
     S.ui.fokus = ziele(true, antwort);
-    if (S.ui.offen) meldungNachErfolgRaeumen();
+    if (S.ui.offen) meldungNachErfolgRaeumen(null, RUECKGAENGIG);
   } catch (f) {
     S.ui.fokus = ziele(false);
     // Ist das Aufgabenfenster oberster Dialog, gehört die Ablehnung in dessen Fuß (ADR-0015), sonst in den Hinweis darüber
     const imFensterFuss = hinweisDialog() === 'fenster';
-    if (imFensterFuss) fensterMelden(`nicht rückgängig: ${f.message}`);
+    if (imFensterFuss) fensterMelden(`nicht rückgängig: ${f.message}`, null, RUECKGAENGIG);
     else S.ui.hinweis = { text: `nicht rückgängig: ${f.message}`, at: Date.now() };
   }
   render();
@@ -857,11 +864,13 @@ function fokusAusDemHinweis() {
 }
 
 /** Setzt die Meldung im Fuß des Aufgabenfensters; `feld` nennt das Eingabefeld, das sie betrifft — nur dieses wird ungültig.
-    Eine neue Meldung nimmt den Platz: die abgelehnte Eingabe eines anderen Felds geht mit ihrer Meldung (R00155 G-3 c). */
-function fensterMelden(text, feld = null) {
+    Eine neue Meldung nimmt den Platz: die abgelehnte Eingabe eines anderen Felds geht mit ihrer Meldung (R00155 G-3 c).
+    `ausloeser` nennt die Aktion, die gescheitert ist: nur ihr Erfolg räumt eine Meldung ohne Feld (R00185 108-2). */
+function fensterMelden(text, feld = null, ausloeser = null) {
   if (text) abgelehnteEingabeRaeumen(feld);
   S.ui.fensterFehler = text;
   S.ui.fensterFehlerFeld = feld;
+  S.ui.fensterFehlerAusloeser = ausloeser;
   // jede gesetzte Meldung ist eine neue, auch mit gleichem Text — sie bekommt einen neuen Knoten (R00189)
   S.ui.fensterMeldungNr = (S.ui.fensterMeldungNr || 0) + 1;
 }
@@ -875,6 +884,11 @@ function meldungsknotenBehalten(vorher) {
   if (dieselbe) neu.replaceWith(vorher);
 }
 
+/** Name einer schreibenden Anfrage als Auslöser einer Meldung: dieselbe Anfrage ist dieselbe Aktion. */
+const anfrageName = (methode, pfad) => `${methode} ${pfad}`;
+/** Auslöser aller Meldungen und Erfolge eines Rückgängig. */
+const RUECKGAENGIG = 'rueckgaengig';
+
 /** Meldung und abgelehnte Eingabe des Fensters stehen und gehen nur gemeinsam (R00155 G-3). Räumt beide, wenn die abgelehnte
     Eingabe nicht zu `feld` gehört — ihr Feld zeigt wieder den Stand der Datei, der Titel den Lesezustand. Wahr, wenn geräumt wurde. */
 function abgelehnteEingabeRaeumen(feld = null) {
@@ -884,22 +898,23 @@ function abgelehnteEingabeRaeumen(feld = null) {
   u.entwurf = null;
   u.fensterFehler = null;
   u.fensterFehlerFeld = null;
+  u.fensterFehlerAusloeser = null;
   if (abgelehnt === TITEL_FELD) u.titelBearbeiten = false;
   return true;
 }
 
-/** Ein Schreibweg des Aufgabenfensters ist angenommen; `feld` nennt das Eingabefeld, aus dem er kam. Die Meldung geht — außer
-    sie erklärt die abgelehnte Eingabe eines anderen Felds: dann bleiben beide stehen (R00155 G-3). */
-function meldungNachErfolgRaeumen(feld = null) {
+/** Ein Schreibweg des Aufgabenfensters ist angenommen; `feld` nennt das Eingabefeld, aus dem er kam, `ausloeser` die Aktion.
+    Die Meldung geht nur, wenn sie zu diesem Erfolg gehört (`meldungGehtMitErfolg`): die abgelehnte Eingabe eines anderen
+    Felds (R00155 G-3) und die Meldung einer anderen Aktion (R00185 108-2) bleiben stehen. */
+function meldungNachErfolgRaeumen(feld = null, ausloeser = null) {
   const u = S.ui;
-  const abgelehnt = abgelehntesFeld(u.entwurf, { text: u.fensterFehler, feld: u.fensterFehlerFeld }, u.offen);
-  if (abgelehnt !== null && abgelehnt !== feld) return;
-  fensterMelden(null);
+  const meldung = { text: u.fensterFehler, feld: u.fensterFehlerFeld, ausloeser: u.fensterFehlerAusloeser };
+  if (meldungGehtMitErfolg(u.entwurf, meldung, u.offen, { feld, ausloeser })) fensterMelden(null);
 }
 /** Wie `meldungNachErfolgRaeumen`, dazu „gespeichert hh:mm:ss“ im Fuß. */
-function gespeichertMelden(feld = null) {
+function gespeichertMelden(feld = null, ausloeser = null) {
   S.ui.gespeichert = Date.now();
-  meldungNachErfolgRaeumen(feld);
+  meldungNachErfolgRaeumen(feld, ausloeser);
 }
 
 /** Die abgeschickte Eingabe eines Felds nimmt den einen Platz des Fensters (G-1, G-2); sie bleibt stehen, wenn der Server
@@ -973,10 +988,12 @@ async function fensterOeffnen(nummer) {
 async function aufgabeAendern(nummer, aenderung, feld = null) {
   if (ichNoetig()) { render(); return false; }
   let gelungen = true;
+  // dieselbe Aktion ist die Änderung derselben Felder derselben Aufgabe
+  const ausloeser = `${anfrageName('PATCH', '/api/aufgaben/' + nummer)} ${Object.keys(aenderung).join(',')}`;
   try {
     await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, aenderung));
-    gespeichertMelden(feld);
-  } catch (f) { fensterMelden(f.message, feld); gelungen = false; }
+    gespeichertMelden(feld, ausloeser);
+  } catch (f) { fensterMelden(f.message, feld, ausloeser); gelungen = false; }
   render();
   return gelungen;
 }
@@ -1931,10 +1948,10 @@ async function aktion(a, arg, wert) {
             // Aus dem offenen Aufgabenfenster gemeldet, steht die Ablehnung im Fuß des Fensters (R00146 FA 9, 403/409);
             // vom Board gezogen bleibt sie wie bisher in der Statuszeile. Das Laden nimmt die vorschnelle Bewegung zurück.
             if (!u.offen) { u.fehler = f.message; return; }
-            fensterMelden(f.message);
+            fensterMelden(f.message, null, 'bewegen');
             return;
           }
-          if (u.offen && u.fensterFehler) meldungNachErfolgRaeumen();
+          if (u.offen && u.fensterFehler) meldungNachErfolgRaeumen(null, 'bewegen');
           if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
           if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
           // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
@@ -2033,8 +2050,8 @@ async function aktion(a, arg, wert) {
         const stelle = nachbarNachEntfernen(aufgabe(u.offen).teilaufgaben.length, Number(arg));
         if (stelle >= 0) nachbar = String(stelle);
         fokusNachEntfernen('teil-weg', arg, nachbar, '#teil-neu');
-        await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`);
-        if (!u.fensterFehler) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, feld: '#teil-neu', at: Date.now() };
+        const entfernt = await schreiben('DELETE', `/api/aufgaben/${u.offen}/teilaufgaben/${arg}`);
+        if (entfernt) u.hinweis = { text: `Teilaufgabe „${t.text}“ entfernt`, undo, feld: '#teil-neu', at: Date.now() };
         break;
       }
       case 'teil-neu': {
@@ -2093,8 +2110,8 @@ async function aktion(a, arg, wert) {
         // Aus dem ⋮-Menü bleibt das Fenster offen (R00144 AK: Fokus zurück am ⋮) und zeigt die Archivleiste; sonst schließt es wie heute.
         const ausKopfMenue = Boolean(u.fensterMenue);
         if (ausKopfMenue) { u.fensterMenue = null; u.fokus = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]'; }
-        await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
-        if (!u.fensterFehler) { if (!imArchiv() && !ausKopfMenue) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
+        const archiviert = await schreiben('POST', `/api/aufgaben/${arg}/archivieren`);
+        if (archiviert) { if (!imArchiv() && !ausKopfMenue) u.offen = null; u.hinweis = { text: `#${arg} archiviert · archived: in der Datei, laufende Timer gestoppt`, undo: { art: 'zurueckholen', nummern: [+arg] }, at: Date.now() }; }
         break;
       }
       case 'rueckgaengig': {
@@ -2135,8 +2152,8 @@ async function aktion(a, arg, wert) {
       case 'zurueckholen': {
         if (ichNoetig()) break;
         if (u.fensterMenue) { u.fensterMenue = null; u.fokus = '#fenster [data-act="fenster-menue"][data-arg="aktionen"]'; }
-        await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
-        if (!u.fensterFehler) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
+        const zurueckgeholt = await schreiben('POST', `/api/aufgaben/${arg}/zurueckholen`);
+        if (zurueckgeholt) u.hinweis = { text: `#${arg} zurückgeholt`, at: Date.now() };
         break;
       }
       case 'p-bereich': u.pBereich = arg; break;
@@ -2277,15 +2294,15 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const [i, an] = arg.split('|');
         return durchDieSchlange(async () => {
-          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); gespeichertMelden(); }
-          catch (fehler) { fensterMelden(fehler.message); }
+          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); gespeichertMelden(null, `wirkung-eintritt ${i}`); }
+          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-eintritt ${i}`); }
         });
       }
       case 'wirkung-weg': {
         if (ichNoetig()) break;
         return durchDieSchlange(async () => {
-          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); gespeichertMelden(); }
-          catch (fehler) { fensterMelden(fehler.message); }
+          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); gespeichertMelden(null, `wirkung-weg ${arg}`); }
+          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-weg ${arg}`); }
         });
       }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
@@ -2308,13 +2325,14 @@ async function aktion(a, arg, wert) {
         if (slug === 'archiv') return act('archivieren', nr);
         const b = (S.boards || []).find(x => x.slug === slug);
         const liegt = b && b.spalten.some(sp => sp.aufgaben.includes(+nr));
+        let gelegt;
         if (liegt) {
           const index = b.spalten.find(sp => sp.name === spalte).aufgaben.filter(n => n !== +nr).length;
-          await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/bewegen`, { nummer: +nr, spalte, index });
+          gelegt = await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/bewegen`, { nummer: +nr, spalte, index });
         } else {
-          await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben`, { nummer: +nr, spalte });
+          gelegt = await schreiben('POST', `/api/boards/${encodeURIComponent(slug)}/aufgaben`, { nummer: +nr, spalte });
         }
-        if (!u.fensterFehler) u.hinweis = { text: `#${nr} nach ${b ? b.titel : slug} · ${spalte}`, at: Date.now() };
+        if (gelegt) u.hinweis = { text: `#${nr} nach ${b ? b.titel : slug} · ${spalte}`, at: Date.now() };
         break; // der Hinweis entsteht nach dem Laden — selbst zeichnen, nicht auf das Echo des Commits warten (R00061)
       }
       case 'legen': {
@@ -2330,8 +2348,8 @@ async function aktion(a, arg, wert) {
         const platz = platzAufBoard(slug, +nr);
         const zeile = `tr[data-zeile="${nr}"]`;
         fokusNachEntfernen('abnehmen', arg, nachbarArgument(zeile, 'abnehmen', arg), zeile);
-        await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
-        if (!u.fensterFehler && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
+        const genommen = await schreiben('DELETE', `/api/boards/${encodeURIComponent(slug)}/aufgaben/${nr}`);
+        if (genommen && platz) u.hinweis = { text: `#${nr} von „${platz.titel}“ genommen`, undo: platz, at: Date.now() };
         break;
       }
       case 'anhang-weg': {
@@ -2341,11 +2359,11 @@ async function aktion(a, arg, wert) {
         u.anhangLiest = arg;
         render();
         let blob;
-        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`); u.fokus = knopfSelektor('anhang-weg', arg); break; } finally { u.anhangLiest = null; }
+        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`, null, anfrageName('DELETE', pfad)); u.fokus = knopfSelektor('anhang-weg', arg); break; } finally { u.anhangLiest = null; }
         // Ohne Nachbarn bleibt der Fokus beim Fenster: die Dateiwahl ist kein tabbares Feld
         fokusNachEntfernen('anhang-weg', arg, nachbarArgument('#anhaenge', 'anhang-weg', arg), null);
-        await schreiben('DELETE', pfad);
-        if (!u.fensterFehler) u.hinweis = { text: `Anhang „${arg}“ entfernt`, undo: { art: 'anhang', nummer, name: arg, blob }, at: Date.now() };
+        const entfernt = await schreiben('DELETE', pfad);
+        if (entfernt) u.hinweis = { text: `Anhang „${arg}“ entfernt`, undo: { art: 'anhang', nummer, name: arg, blob }, at: Date.now() };
         break;
       }
       case 'herkunft-neu': {
@@ -2395,8 +2413,8 @@ async function aktion(a, arg, wert) {
         const z = aufgabe(u.offen).zeiten.find(x => x.kennung === arg);
         const undo = { art: 'zeit', nummer: u.offen, kennung: arg, wer: z.wer, beginn: z.beginn, ende: z.ende };
         fokusNachEntfernen('zeit-weg', arg, nachbarArgument('#fenster .zt', 'zeit-weg', arg), '#zeit-neu');
-        await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`);
-        if (!u.fensterFehler) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, feld: '#zeit-neu', at: Date.now() };
+        const geloescht = await schreiben('DELETE', `/api/aufgaben/${u.offen}/zeiten/${encodeURIComponent(arg)}`);
+        if (geloescht) u.hinweis = { text: `${zeitBeschrieben(undo)} gelöscht`, undo, feld: '#zeit-neu', at: Date.now() };
         break;
       }
       case 'spalte-archivieren': {

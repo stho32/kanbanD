@@ -2,7 +2,7 @@
 // `{ nummer, feld, wert }` und der Verweis des Felds auf die Fenstermeldung.
 const test = require('node:test');
 const assert = require('node:assert');
-const { entwurfswert, meldungsverweis, entwurfNachTippen, verwerfung, abgelehntesFeld } = require('../../web/sichtzustand.js');
+const { entwurfswert, meldungsverweis, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungGehtMitErfolg } = require('../../web/sichtzustand.js');
 
 const VERWEIS = ' aria-invalid="true" aria-describedby="fenster-meldung"';
 const verweis = (entwurf, meldung, nummer, feld) => meldungsverweis(entwurf, meldung, nummer, feld, 'fenster-meldung');
@@ -110,4 +110,42 @@ test('abgelehntesFeld: null ohne Entwurf, bei anderer Aufgabe, ohne Meldung und 
   assert.strictEqual(abgelehntesFeld({ nummer: 2, feld: 'zeit', wert: 'abc' }, { text: 'Dauer „abc“', feld: 'zeit' }, 1), null);
   assert.strictEqual(abgelehntesFeld(getippt, { text: null, feld: null }, 1), null);
   assert.strictEqual(abgelehntesFeld(getippt, { text: 'Anhang zu groß', feld: null }, 1), null);
+});
+
+// R00185 108-2, ADR-0015 N2 Ziffer 5 (Nachtrag): wann ein angenommener Schreibweg die Meldung des Fensters räumt
+const RUECKGAENGIG = { text: 'nicht rückgängig: #3 hat schon eine Zeit', feld: null, ausloeser: 'rueckgaengig' };
+
+test('meldungGehtMitErfolg: die Meldung ohne Feld übersteht den Erfolg einer anderen Aktion (R00185 108-2)', () => {
+  assert.strictEqual(meldungGehtMitErfolg(null, RUECKGAENGIG, 3, { feld: null, ausloeser: 'PATCH /api/aufgaben/3/teilaufgaben/0' }), false);
+  assert.strictEqual(meldungGehtMitErfolg(null, RUECKGAENGIG, 3, { feld: 'zeit', ausloeser: 'POST /api/aufgaben/3/zeiten' }), false, 'auch der Erfolg eines Eingabefelds räumt sie nicht');
+  assert.strictEqual(meldungGehtMitErfolg(null, RUECKGAENGIG, 3, { feld: null, ausloeser: null }), false, 'ein Erfolg ohne Auslöser räumt nichts');
+});
+
+test('meldungGehtMitErfolg: der Erfolg derselben Aktion räumt die Meldung ohne Feld (R00185 108-2)', () => {
+  assert.strictEqual(meldungGehtMitErfolg(null, RUECKGAENGIG, 3, { feld: null, ausloeser: 'rueckgaengig' }), true);
+  const anhang = { text: 'Anhang „a.txt“ nicht entfernt: Platte nicht lesbar', feld: null, ausloeser: 'DELETE /api/aufgaben/3/anhaenge/a.txt' };
+  assert.strictEqual(meldungGehtMitErfolg(null, anhang, 3, { feld: null, ausloeser: 'DELETE /api/aufgaben/3/anhaenge/a.txt' }), true);
+  assert.strictEqual(meldungGehtMitErfolg(null, anhang, 3, { feld: null, ausloeser: 'DELETE /api/aufgaben/3/anhaenge/b.txt' }), false, 'ein anderer Anhang ist eine andere Aktion');
+});
+
+test('meldungGehtMitErfolg: eine Meldung ohne bekannten Auslöser bleibt, bis eine andere Meldung oder das Schließen sie nimmt', () => {
+  const ohne = { text: 'Der Zeiteintrag ist nicht mehr da.', feld: null, ausloeser: null };
+  assert.strictEqual(meldungGehtMitErfolg(null, ohne, 3, { feld: null, ausloeser: null }), false);
+  assert.strictEqual(meldungGehtMitErfolg(null, ohne, 3, { feld: null, ausloeser: 'rueckgaengig' }), false);
+});
+
+test('meldungGehtMitErfolg: die Meldung zur abgelehnten Eingabe geht nur mit dem Erfolg ihres Felds (R00155 G-3 unverändert)', () => {
+  const dauer = { nummer: 1, feld: 'zeit', wert: 'abc' }, meldung = { text: 'Dauer „abc“', feld: 'zeit', ausloeser: 'POST /api/aufgaben/1/zeiten' };
+  assert.strictEqual(meldungGehtMitErfolg(dauer, meldung, 1, { feld: 'zeit', ausloeser: 'POST /api/aufgaben/1/zeiten' }), true);
+  assert.strictEqual(meldungGehtMitErfolg(dauer, meldung, 1, { feld: null, ausloeser: 'PATCH /api/aufgaben/1/teilaufgaben/0' }), false, 'fremder Erfolg');
+  assert.strictEqual(meldungGehtMitErfolg(dauer, meldung, 1, { feld: 'herkunft', ausloeser: 'PATCH /api/aufgaben/1 herkunft' }), false, 'anderes Feld');
+});
+
+test('meldungGehtMitErfolg: ohne Meldung gibt es nichts zu räumen', () => {
+  assert.strictEqual(meldungGehtMitErfolg(null, { text: null, feld: null, ausloeser: null }, 1, { feld: null, ausloeser: 'rueckgaengig' }), false);
+});
+
+test('meldungGehtMitErfolg: nennt die Meldung ein Feld, dessen Eingabe nicht mehr dasteht, geht sie mit jedem Erfolg (wie vor R00185)', () => {
+  const meldung = { text: 'Dauer „abc“', feld: 'zeit', ausloeser: null };
+  assert.strictEqual(meldungGehtMitErfolg(null, meldung, 1, { feld: null, ausloeser: 'PATCH /api/aufgaben/1/teilaufgaben/0' }), true);
 });

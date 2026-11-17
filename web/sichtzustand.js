@@ -222,6 +222,19 @@
     return entwurf.feld;
   }
 
+  /** Räumt ein angenommener Schreibweg die Meldung des Fensters (ADR-0015 N2 Ziffer 5)? `meldung` ist `{ text, feld, ausloeser }`,
+      `erfolg` nennt Feld und Auslöser des Schreibwegs. Die Meldung zur abgelehnten Eingabe geht nur mit dem Erfolg ihres Felds
+      (R00155 G-3); die Meldung ohne Feld nur mit dem Erfolg der Aktion, die sie ausgelöst hat (R00185 108-2) — ein fremder
+      Erfolg lässt beide stehen. */
+  function meldungGehtMitErfolg(entwurf, meldung, nummer, erfolg) {
+    if (!meldung.text) return false;
+    const abgelehnt = abgelehntesFeld(entwurf, meldung, nummer);
+    if (abgelehnt !== null) return abgelehnt === erfolg.feld;
+    // die Meldung nennt ein Feld, dessen Eingabe nicht mehr dasteht: sie erklärt nichts mehr
+    if (meldung.feld !== null) return true;
+    return meldung.ausloeser !== null && meldung.ausloeser === erfolg.ausloeser;
+  }
+
   /** Attribute, mit denen ein Feld als ungültig auf die Fenstermeldung verweist — nur solange die Meldung dieses Feld nennt und der Entwurf zu ihm gehört. */
   function meldungsverweis(entwurf, meldung, nummer, feld, meldungsId) {
     const feldIstAbgelehnt = Boolean(meldung.text) && meldung.feld === feld && entwurfswert(entwurf, nummer, feld) !== null;
@@ -229,5 +242,5 @@
     return ` aria-invalid="true" aria-describedby="${meldungsId}"`;
   }
 
-  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, gezogeneHoehen, gezogeneHoehenSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungAufschieben, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungsverweis });
+  Object.assign(ziel, { schluessel, rollstaende, rollstaendeSetzen, gezogeneHoehen, gezogeneHoehenSetzen, fokusstand, fokusSetzen, aenderungGemeldet, aenderungAufschieben, aenderungNachtragen, entwurfswert, entwurfNachTippen, verwerfung, abgelehntesFeld, meldungGehtMitErfolg, meldungsverweis });
 })(typeof module !== 'undefined' ? module.exports : window);
