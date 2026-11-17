@@ -35,8 +35,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Kein Release ohne grüne Pyramide: dasselbe Gate, das /implementierung abschluss
-  # lokal vor jedem Push fährt — Build warnungsfrei, Rust-Tests, JS-Unit-Tests, E2E.
+  # Kein Release ohne grünen Build und grüne Unit-Tests. E2E laufen nur lokal
+  # (/implementierung abschluss vor jedem Push) — von GitHub wollen wir nur das Programm.
   pruefen:
     runs-on: ubuntu-latest
     env:
@@ -51,8 +51,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
 
       - name: Bauen
         run: cargo build --all-targets
@@ -69,26 +67,6 @@ jobs:
 
       - name: JavaScript-Unit-Tests
         run: node --test "e2e/einheit/*.js"
-
-      # bauen.js baut das Programm vor dem Lauf selbst; ohne diesen Schritt fehlt der Browser.
-      # Server und Browser in derselben Zeitzone: Zeitstempel stehen ohne Zone in den Dateien,
-      # playwright.config.js setzt Europe/Berlin für den Browser.
-      - name: E2E-Tests
-        working-directory: e2e
-        env:
-          TZ: Europe/Berlin
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-          npx playwright test --workers=2  # der Runner hat 4 Kerne; mit 4 Workern wackelten je Lauf 1–4 Specs an Zeitgrenzen (#139)
-
-      - name: E2E-Befunde sichern
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results
-          path: e2e/test-results/
-          retention-days: 7
 
   vorbereiten:
     needs: pruefen
