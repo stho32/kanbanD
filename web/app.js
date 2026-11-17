@@ -1235,12 +1235,18 @@ document.addEventListener('pointerdown', e => {
   // ein Zeigerdruck im selben Feld setzt nur die Marke um; die Eingabe läuft weiter
   if (e.target !== datumseingabe) datumseingabeBeenden();
 }, true);
-for (const zeigerLos of ['pointerup', 'pointercancel']) document.addEventListener(zeigerLos, () => {
+function zeigerLosgelassen() {
   zeigerUnten = false;
   zeigerVerlaesstDatumsfeld = false;
   // nach dem Klick, der auf das Loslassen folgt
   setTimeout(zeichnenNachholen, 0);
-}, true);
+}
+for (const zeigerLos of ['pointerup', 'pointercancel']) document.addEventListener(zeigerLos, zeigerLosgelassen, true);
+// Ohne Loslassen endet die Geste auch: das Kontextmenü des Browsers und ein Fenster, das den Fokus verliert, schlucken das
+// „pointerup“ — die Seite stünde sonst still, bis der nächste Klick kommt (Review #192)
+document.addEventListener('contextmenu', zeigerLosgelassen, true);
+window.addEventListener('blur', zeigerLosgelassen);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') zeigerLosgelassen(); });
 
 /** Die Lebensdauer eines Hinweises zählt ab seinem ersten Zeigen (R00186): wartete das Zeichnen hinter einem Zug oder einer
     Datumseingabe länger als sie, verfiele die Meldung sonst, ohne je gestanden zu haben. */

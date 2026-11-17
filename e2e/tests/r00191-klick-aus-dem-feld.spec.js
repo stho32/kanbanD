@@ -44,13 +44,17 @@ async function tippen(page, feld, ziffern) {
 const weitertippen = (page, ziffern) => page.keyboard.type(ziffern, { delay: 120 });
 /** Ein Klick wie von einer Hand: drücken, `waehrenddessen` (zwei Bilder, wenn nichts), loslassen. */
 async function klickAuf(page, ziel, waehrenddessen = () => zweiBilder(page)) {
+  await zeigerAuf(page, ziel);
+  await page.mouse.down();
+  await waehrenddessen();
+  await page.mouse.up();
+}
+/** Führt den Zeiger über `ziel`, sobald es steht. */
+async function zeigerAuf(page, ziel) {
   // erst, wenn das Ziel steht: ein Zeichnen kurz davor ersetzt es, und das ersetzte hat keinen Kasten mehr
   let kasten = null;
   await expect.poll(async () => { kasten = await ziel.boundingBox(); return kasten; }).not.toBeNull();
   await page.mouse.move(kasten.x + Math.min(12, kasten.width / 2), kasten.y + kasten.height / 2);
-  await page.mouse.down();
-  await waehrenddessen();
-  await page.mouse.up();
 }
 /** Die Antwort auf das Speichern des Berichtsfilters kommt `VERZOEGERUNG_MS` später; liefert, wann sie angekommen ist. */
 async function filterAntwortBremsen(page) {
@@ -194,6 +198,35 @@ test.describe('R00191 AK 3, AK 6, US-2: gehaltenes Datum, dann Klick ins andere 
     await zweiBilder(page);
     await expect(bisFeld(page)).toBeFocused();
   });
+});
+
+/* ── Nacharbeit Review #192: der Aufschub der Zeigergeste bleibt nie hängen, auch wenn kein Loslassen ankommt ── */
+test.describe('R00191 AK 6, Nacharbeit: Zeigerdruck aus dem Datumsfeld ohne Loslassen', () => {
+  const OHNE_LOSLASSEN = {
+    // Rechtsklick: das Kontextmenü des Browsers schluckt das Loslassen
+    'Rechtsklick (Kontextmenü)': async (page, ziel) => {
+      await zeigerAuf(page, ziel);
+      await page.mouse.down({ button: 'right' });
+    },
+    // Fensterwechsel mit gedrückter Taste: das Fenster verliert den Fokus, das Loslassen kommt woanders an
+    'Taste gedrückt, das Fenster verliert den Fokus': async (page, ziel) => {
+      await zeigerAuf(page, ziel);
+      await page.mouse.down();
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    },
+  };
+  for (const [wie, druecken] of Object.entries(OHNE_LOSLASSEN)) {
+    test(`Fokus in „Zeitraum von“, ${wie} auf der Kopfzeile des Berichts, kein Loslassen, dann fremde Änderung → die Seite zeigt sie`, async ({ page }) => {
+      const von = await durchsatzOeffnen(page);
+      await von.focus();
+
+      await druecken(page, page.locator('.leiste b', { hasText: 'Durchsatz je Zeitraum' }));
+      await zweiBilder(page);
+      await fremdeAenderung(page);
+
+      await zeigtDieFremdeAenderung(page);
+    });
+  }
 });
 
 /* ── AK 5, US-2: eine allein gedrückte Modifikatortaste beendet die Eingabe nicht ── */
