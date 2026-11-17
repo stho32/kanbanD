@@ -899,3 +899,51 @@ test('R00171 B0837 (Schaden a): der Spaltenabschnitt der Kosten ändert den Cach
   assert.strictEqual(fieberSchluessel('2026-11-02', mitAbschnitt), fieberSchluessel('2026-11-02', FILTER_LEER));
   assert.strictEqual(fieberSchluessel('2026-11-02', FILTER_LEER), '{"v":2,"start":"2026-11-02","filter":{"ohneFarben":[],"ohneSpalten":[],"personen":[],"labels":[],"messbasisTage":90}}', 'der Schlüssel von vor der Karte');
 });
+
+/* ── R00193 Wie lange noch: zweite Prognose „Mit Zugang wie in der Messbasis“ ── */
+const { simuliereMitZugang } = require('../../web/berichte.js');
+
+test('R00193 AK 2: Beispiel B — 10 offen, Abgang 2 je Tag; Zugang 1 → 10 Tage (5 ohne), Zugang 2 → kein Ende in 365 Tagen', () => {
+  assert.deepStrictEqual(simuliere([2], 10), { 50: 5, 70: 5, 85: 5, 95: 5 }, 'ohne Zugang');
+  assert.deepStrictEqual(simuliereMitZugang([2], [1], 10), { 50: 10, 70: 10, 85: 10, 95: 10 });
+  assert.deepStrictEqual(simuliereMitZugang([2], [2], 10), { 50: null, 70: null, 85: null, 95: null }, 'null = kein Ende innerhalb von 365 Tagen');
+  assert.deepStrictEqual(simuliereMitZugang([2], [0], 10), simuliere([2], 10), 'Zugang 0 rechnet wie die erste Tabelle');
+  assert.strictEqual(simuliereMitZugang([0, 0], [1], 3), null, 'ohne Abgang keine Prognose');
+});
+
+test('R00193 AK 4: mit Zugang nie vor ohne Zugang — zufällige Reihen mit festem Seed, jedes Perzentil', () => {
+  let a = 193;
+  const zahl = bis => { a = (a * 1103515245 + 12345) % 2147483648; return a % (bis + 1); };
+  for (let fall = 0; fall < 40; fall++) {
+    const laenge = 3 + zahl(20), abgang = [...Array(laenge)].map(() => zahl(3)), zugang = [...Array(laenge)].map(() => zahl(2));
+    if (!abgang.some(x => x > 0)) abgang[0] = 1;
+    const rest = 1 + zahl(30), ohne = simuliere(abgang, rest, 500), mit = simuliereMitZugang(abgang, zugang, rest, 500);
+    for (const p of [50, 70, 85, 95]) assert.ok(mit[p] === null || mit[p] >= ohne[p], `Fall ${fall} p${p}: ${JSON.stringify({ abgang, zugang, rest, ohne, mit })}`);
+  }
+});
+
+test('R00193 AK 1, AK 5: mitZugang je Block mit Zugang > 0; erste Tabelle, Durchsatz und Fever Chart wie vor der Karte', () => {
+  const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
+  const [arbeit, erledigt] = p.phasen;
+  // erste Tabelle: dieselben Werte wie im Test zu R00168 AK 3 (Stand vor der Karte)
+  assert.deepStrictEqual(erledigt.zeilen.map(z => [z.p, z.kalendertage, z.arbeitstage]), [[50, 4, 4], [70, 6, 5], [85, 8, 6], [95, 10, 8]]);
+  assert.strictEqual(erledigt.durchsatz, 0.4);
+  for (const b of [arbeit, erledigt]) {
+    assert.deepStrictEqual(b.mitZugang.map(z => z.p), [50, 70, 85, 95], b.spalte);
+    b.mitZugang.forEach((z, k) => {
+      const o = b.zeilen[k];
+      assert.ok(z.kalendertage === null || z.kalendertage >= o.kalendertage, `${b.spalte} p${z.p} 7`);
+      assert.ok(z.arbeitstage === null || z.arbeitstage >= o.arbeitstage, `${b.spalte} p${z.p} 5`);
+      assert.strictEqual(z.datum7, z.kalendertage === null ? null : d(2026, 10, 21 + z.kalendertage), 'Datum = heute + Kalendertage');
+      assert.strictEqual(z.datum5, z.arbeitstage === null ? null : werktagDatum(d(2026, 10, 21), z.arbeitstage));
+    });
+  }
+  // Zugang 0 → keine zweite Rechnung (AK 1)
+  const bew = rechenbeispiel168({ vorher: 7, hinzu: 1, entfernt: 0, erledigt: 3 });
+  bew.aufgaben.slice(4, 7).forEach(a => a.wechsel.push({ zeitpunkt: tagImOktober(20), spalte: null }));
+  const null0 = abschlussblock(bew, 10);
+  assert.deepStrictEqual([null0.zugang, !!null0.zeilen, null0.mitZugang], [0, true, null]);
+  // ohne Prognose und im Fever Chart nicht gerechnet
+  assert.strictEqual(abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10).mitZugang, null);
+  assert.strictEqual(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0].mitZugang, null);
+});
