@@ -756,3 +756,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #141 R00180 (Tastatur: jedes Bedienelement erreichen und auslösen) | B0880 Sammelprobe als Spec: rot am heutigen Stand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-16 | Karte #141 R00180 (Tastatur: jedes Bedienelement erreichen und auslösen) | B0881 Tab-Halt und gemeinsamer Tastenzweig für Enter und Leertaste | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #141 R00180 (Tastatur: jedes Bedienelement erreichen und auslösen) | B0882 Namen von Kästchen und ✕ ohne Markdown-Zeichen, Rollprobe mit Inhalt unter der Zeile, Probe im echten Programm und Gate (Fortsetzung nach Abbruch am API-Limit) | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-17 | Karte #194 (Rust-Budgettest misst Wanduhr gegen 400 ms) | Test unter Vollast belegt, auf Rechenzeit der Instanz (/proc) umgestellt, Probe mit verlangsamter Implementierung rot, 20 von 20 grün unter Last | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
