@@ -795,3 +795,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #192 R00191 (Klick aus einem Feld trifft sein Ziel, vorgemerkter Fokus überholt nicht) | B0937 Vorgemerkter Fokus überholt den Menschen nicht | Standard | 0,5-1,5h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #192 R00191 (Klick aus einem Feld trifft sein Ziel, vorgemerkter Fokus überholt nicht) | B0938 Bestehende Specs, ADR-0010 N10, Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0939 Rückläufer je Tag aus der Ereignisfunktion | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0940 Zielblock, Filter und reporting.burndown wirken auf die Teilmenge | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
