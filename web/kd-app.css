@@ -671,7 +671,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .iz.neu:hover{background:none}
 .bahn-kopf.ueber{background:var(--kd-c-red);box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
 .bahn-kopf.ueber .v{color:var(--kd-warn);font-weight:600}
-.fehl-kopf{color:var(--kd-warn);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Fehlermeldung der Modusleiste (R00188 68-1): bricht um statt zu kürzen, die Leiste wird dafür höher; die Knöpfe bleiben rechts */
+.kz-modus:has(>.fehl-kopf){flex-wrap:wrap;row-gap:var(--kd-s1);padding-block:var(--kd-s2)}
+.fehl-kopf{color:var(--kd-warn);font-size:12px;flex:1 1 240px;min-width:0;white-space:normal;overflow-wrap:anywhere}
 .einrichten{flex:1;display:grid;grid-template-columns:minmax(0,680px) minmax(0,1fr);min-height:0}
 .einr.breit{flex:none;border-left:0;border-right:1px solid var(--kd-line-strong)}
 .einr .felder{border-top:0}
