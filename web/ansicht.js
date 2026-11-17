@@ -562,7 +562,7 @@ function vPop() {
     hinweis = '<div class="warnh" id="ich-hinweis">Für diese Aktion zuerst wählen, wer du bist.</div>';
     beschrieben = ' aria-describedby="ich-hinweis"';
   }
-  return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px"><h4 class="pop-kopf" id="ich-titel">ICH BIN … <span class="mono">people:</span></h4>${hinweis}<div role="menu" aria-labelledby="ich-titel"${beschrieben}>${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitemradio" aria-checked="${p.kuerzel === S.ich}" tabindex="-1">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" role="menuitemradio" aria-checked="false" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}</div><div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-ich" data-al="r" style="width:280px"><h4 class="pop-kopf" id="ich-titel">ICH BIN …</h4>${hinweis}<div role="menu" aria-labelledby="ich-titel"${beschrieben}>${waehlbar.map(p => `<div class="iz${p.kuerzel === S.ich ? ' an' : ''}" data-act="ich" data-arg="${esc(p.kuerzel)}" role="menuitemradio" aria-checked="${p.kuerzel === S.ich}" tabindex="-1">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.kuerzel === S.ich ? 'gewählt' : ''}</span></div>`).join('')}${nicht.map(p => `<div class="iz aus" role="menuitemradio" aria-checked="false" aria-disabled="true">${pk(p.kuerzel)}${esc(p.name)}<span class="muted">${p.aktiv === false ? 'stillgelegt' : 'Agent · nennt sich selbst'}</span></div>`).join('')}</div><div class="fuss">Die Wahl gilt nur für diesen Tab.</div></div>`;
 }
 
 /** Die **eine** Textregel der Blase (R00119, ADR-0020 Nachtrag N1): der Wortlaut je Auslöser — sichtbarer Text =
@@ -1426,6 +1426,8 @@ function vFlussTabelle(t, spalten) {
   return `<details class="fluss-tabs"><summary data-halt="klappe:tabelle-fluss">Tabellenansicht</summary>${berichtRahmen('Kumulativer Fluss je Tag')}<table class="fluss-tab"><thead>${kopf}</thead><tbody>${zeilen}</tbody></table></div></details>`;
 }
 const FLUSS_B = 800, FLUSS_H = 272, FLUSS_L = 44, FLUSS_R = 120, FLUSS_O = 24, FLUSS_U = 44;
+/** Mindestabstand der beiden Randbeschriftungen: eine Zeile der 12-px-Schrift samt Zeilenabstand (wie „Umfang“ im Burndown). */
+const FLUSS_ZEILE = 24;
 /** Die Zeichenfläche: gestapelte Bänder (unten erste Spalte, oben letzte), y-Achse bis `max(gesamt, angekommen, fertig)`. */
 function vFlussFlaeche(t, spalten, ton) {
   const max = flussMax(t);
@@ -1442,12 +1444,14 @@ function vFlussFlaeche(t, spalten, ton) {
   const tage = t.map(x => isoTag(x.datum));
   const marken = xMarken(t.length);
   const letzte = t[t.length - 1];
-  const rand = (klasse, wort, v) => `<text class="randtext ${klasse}" x="${FLUSS_L + breite + 8}" y="${sy(v) + 4}">${wort} ${v}</text>`;
+  // Randbeschriftungen nie übereinander (R00188 55-3 e): „angekommen“ ≥ „fertig“, liegt sie näher als eine Zeile, rückt sie nach oben
+  const yFertig = sy(letzte.fertig) + 4, yAngekommen = Math.min(sy(letzte.angekommen) + 4, yFertig - FLUSS_ZEILE);
+  const rand = (klasse, wort, v, y) => `<text class="randtext ${klasse}" x="${FLUSS_L + breite + 8}" y="${y}">${wort} ${v}</text>`;
   const svg = `<svg class="diagramm cfd" viewBox="0 0 ${FLUSS_B} ${FLUSS_H}" role="img" aria-label="Kumulativer Fluss: Bestand je Spalte je Tag" ${achsAttribut(FLUSS_L, breite, tage[0], tage[tage.length - 1])}>
 ${ticks.map(v => `<line class="gitter" x1="${FLUSS_L}" x2="${FLUSS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse achse-y" x="${FLUSS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
 ${marken.map(i => achsDatum(tage[i], xs[i], unten + 18)).join('')}
 ${bänder}<path class="ang" d="${linie(t.map(x => x.angekommen))}"></path><path class="fer" d="${linie(t.map(x => x.fertig))}"></path>
-${rand('a', 'angekommen', letzte.angekommen)}${rand('f', 'fertig', letzte.fertig)}
+${rand('a', 'angekommen', letzte.angekommen, yAngekommen)}${rand('f', 'fertig', letzte.fertig, yFertig)}
 ${fadenkreuz(FLUSS_O, unten)}
 </svg>`;
   return vDiagrammFlaeche(svg);
@@ -1743,7 +1747,7 @@ function vBestandAchsen(achsen) {
 /** Unter zwei Präfixen (Artboard D0006): nur „Zeilen“ mit dem vorhandenen Präfix, Tauschen gesperrt; ohne Präfix kein Feld. */
 function vBestandEinFeld(wahl) {
   if (!wahl.length) return '';
-  return `<div class="best-achsen" id="bestand-achsen">${vBestandFeld('Zeilen', 'zeilen', wahl, wahl[0])}<button class="btn best-tausch" disabled>⇄ Achsen tauschen</button></div>`;
+  return `<div class="best-achsen" id="bestand-achsen">${vBestandFeld('Zeilen', 'zeilen', wahl, wahl[0])}<button class="btn best-tausch" disabled title="Tauschen braucht zwei Präfixe — die offenen Aufgaben haben nur eines">⇄ Achsen tauschen</button></div>`;
 }
 function vBestandFeld(name, schluessel, wahl, gewaehlt) {
   const optionen = wahl.map(p => `<option value="${esc(p)}"${p.toLowerCase() === gewaehlt.toLowerCase() ? ' selected' : ''}>${esc(p)}</option>`).join('');
@@ -2191,7 +2195,7 @@ function vEigentuemerWahl(sp, i) {
   const basis = [['', '— keiner —'], ['human', 'Mensch'], ['agent', 'Agent']].map(([w, text]) => `<option value="${w}"${w === wahl ? ' selected' : ''}>${text}</option>`).join('');
   const rohOption = sp.roh ? `<option value="roh"${wahl === 'roh' ? ' selected' : ''}>„${esc(sp.roh)}“ (unbekannt)</option>` : '';
   const roh = sp.roh ? `<span class="mono eig-roh"${eigentuemerGeaendert(sp) ? ' hidden' : ''}>${esc(sp.roh)}</span>` : '';
-  return `<div class="r2 eig-zeile"><label for="eig-${i}">Eigentümer</label><select class="inp eig-wahl" id="eig-${i}" data-sf="eigentuemer" data-i="${i}" aria-label="Eigentümer ${esc(sp.name)}" aria-describedby="eig-hin-${i}">${basis}${rohOption}</select>${roh}</div><div class="eig-hin" id="eig-hin-${i}">${esc(eigentuemerText(sp))}</div>`;
+  return `<div class="r2 eig-zeile"><label for="eig-${i}">Eigentümer</label><select class="inp eig-wahl" id="eig-${i}" data-sf="eigentuemer" data-i="${i}"${wahl === 'roh' ? ` title="„${esc(sp.roh)}“ (unbekannt)"` : ''} aria-label="Eigentümer ${esc(sp.name)}" aria-describedby="eig-hin-${i}">${basis}${rohOption}</select>${roh}</div><div class="eig-hin" id="eig-hin-${i}">${esc(eigentuemerText(sp))}</div>`;
 }
 function vSetup() {
   const d = S.ui.setup;

@@ -139,3 +139,76 @@ test.describe('55-2 Cursor im Zahlenfeld bleibt', () => {
   }
 });
 
+/** 55-3 Kleine Beschriftungen stimmen: (a) Ich-Menü, (b) „☑ Signale oben“, (c) unbekannter Eigentümer, (d) gesperrtes Tauschen, (e) Randbeschriftungen im kumulativen Fluss. */
+test.describe('55-3 Kleine Beschriftungen', () => {
+  const { execFileSync } = require('child_process');
+  const fs = require('fs');
+  const { mehrOeffnen } = require('./hilfen');
+  /** Überdecken sich zwei Rechtecke? */
+  const ueberdeckt = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  test('(a) die Überschrift des Ich-Menüs lautet „ICH BIN …“ ohne „people:“', async ({ page }) => {
+    await starten(page);
+    await page.locator('#t-ich').click();
+    await expect(page.locator('#ich-titel')).toHaveText('ICH BIN …');
+  });
+
+  test('(b) „☑ Signale oben“: zwischen Haken und Wort steht sichtbarer Abstand (mindestens 4 px)', async ({ page }) => {
+    await starten(page);
+    await mehrOeffnen(page);
+    await page.locator('#signale-oben').click();
+    if (!await page.locator('#signale-oben').count()) await mehrOeffnen(page);
+    const eintrag = page.locator('#signale-oben');
+    await expect(eintrag).toHaveAttribute('aria-checked', 'true');
+    const abstand = await eintrag.evaluate(e => {
+      const haken = e.querySelector('.kz-auswahl-haken').getBoundingClientRect();
+      const wort = [...e.childNodes].find(n => n.nodeType === 3 && n.textContent.includes('Signale oben'));
+      const r = document.createRange(); r.selectNodeContents(wort);
+      return r.getBoundingClientRect().left - haken.right;
+    });
+    expect(abstand).toBeGreaterThanOrEqual(4);
+  });
+
+  test('(c) unbekannter Eigentümer „chef“: die Auswahl zeigt „„chef“ (unbekannt)“ ganz oder nennt ihn als Hilfstext', async ({ page }) => {
+    await starten(page, { ...GRUNDBESTAND(), 'boards/entwicklung.md': '---\ncolumn-owner:\n  In Arbeit: chef\n---\n\n' + GRUNDBESTAND()['boards/entwicklung.md'] });
+    await ausMehr(page, 'Spalten einrichten');
+    const wahl = page.getByLabel('Eigentümer In Arbeit');
+    await expect(wahl).toHaveValue('roh');
+    const voll = '„chef“ (unbekannt)';
+    const passt = await wahl.evaluate(e => {
+      const stil = getComputedStyle(e), c = document.createElement('canvas').getContext('2d');
+      c.font = `${stil.fontWeight} ${stil.fontSize} ${stil.fontFamily}`;
+      // Platz für den Text: Inhaltsbreite ohne den Pfeil der Auswahl (rund 20 px)
+      return c.measureText(e.options[e.selectedIndex].text).width <= e.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight) - 20;
+    });
+    if (!passt) await expect(wahl, 'gekürzt — dann als Hilfstext').toHaveAttribute('title', voll);
+  });
+
+  test('(d) der gesperrte Knopf „⇄ Achsen tauschen“ nennt seinen Grund als Hilfstext', async ({ page }) => {
+    await starten(page, { 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n- #2\n\n## Erledigt\n',
+      'aufgaben/0001-a.md': '---\nid: 1\ntitle: A1\nlabels: ["repo:shop"]\n---\n', 'aufgaben/0002-b.md': '---\nid: 2\ntitle: A2\nlabels: ["repo:lager"]\n---\n' });
+    await page.goto(k.adresse + '#/berichte/bestand');
+    const knopf = page.getByRole('button', { name: '⇄ Achsen tauschen' });
+    await expect(knopf).toBeDisabled();
+    await expect(knopf).toHaveAttribute('title', /Präfix/);
+  });
+
+  test('(e) kumulativer Fluss mit angekommen = fertig = 7: „angekommen 7“ und „fertig 7“ überdecken sich nicht', async ({ page }) => {
+    const nummern = [1, 2, 3, 4, 5, 6, 7];
+    k = await kanbanStarten(ordner => {
+      const kopf = '---\nreport-filter: {period: eigen, from: 2026-11-01, to: 2026-11-03}\n---\n# Entwicklung\n\n## Zu erledigen\n\n';
+      einrichten({ ...Object.fromEntries(nummern.map(n => [`aufgaben/000${n}-a.md`, `---\nid: ${n}\ntitle: A${n}\n---\n`])), 'boards/entwicklung.md': `${kopf}\n## Erledigt\n` })(ordner);
+      const stand = (datum, inhalt) => { fs.writeFileSync(ordner + '/boards/entwicklung.md', inhalt); execFileSync('git', ['-C', ordner, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'stand'], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum } }); };
+      stand('2026-11-01T09:00:00', `${kopf}${nummern.map(n => `- #${n}\n`).join('')}\n## Erledigt\n`);
+      stand('2026-11-02T09:00:00', `${kopf}\n## Erledigt\n\n${nummern.map(n => `- #${n}\n`).join('')}`);
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/berichte/fluss');
+    const svg = page.getByRole('img', { name: 'Kumulativer Fluss: Bestand je Spalte je Tag' });
+    await expect(svg.locator('text.randtext.a')).toHaveText('angekommen 7');
+    await expect(svg.locator('text.randtext.f')).toHaveText('fertig 7');
+    const [a, f] = await Promise.all([svg.locator('text.randtext.a').boundingBox(), svg.locator('text.randtext.f').boundingBox()]);
+    expect(ueberdeckt(a, f), `angekommen ${JSON.stringify(a)} / fertig ${JSON.stringify(f)}`).toBe(false);
+  });
+});
