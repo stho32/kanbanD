@@ -113,6 +113,8 @@ const PAARE = [
   { name: 'Füllung Akzent beim Zeigen', flaechen: kd(['accent-hover']), vorne: kd(['on-accent']), mass: SCHRIFT },
   { name: 'Füllung Mensch', flaechen: kd(['mensch']), vorne: kd(['on-mensch']), mass: SCHRIFT },
   { name: 'Füllung Agent', flaechen: kd(['agent']), vorne: kd(['on-agent']), mass: SCHRIFT },
+  // R00188 57-1 (ADR-0011 N2): die Initiale einer stillgelegten Person ist gedämpft über einen Farbton, nicht über Deckkraft
+  { name: 'Gedämpfte Initiale stillgelegt', flaechen: kd(['still']), vorne: kd(['on-still']), mass: SCHRIFT },
   { name: 'Kopf', flaechen: kd(['head', 'head-line']), vorne: kd(['head-text', 'head-muted', 'head-link']), mass: SCHRIFT },
   { name: 'Modusleiste', flaechen: kd(['modus']), vorne: kd(['modus-text', 'muted', 'warn']), mass: SCHRIFT },
   { name: 'Klassengründe', flaechen: kd(KLASSEN.map(farbe => `c-${farbe}`)), vorne: kd(['text', 'muted', 'warn']), mass: SCHRIFT },
@@ -146,6 +148,7 @@ function verstoesse(paar, werteJeThema) {
 const PAARUNGEN = [
   { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-wbs-error-ink', flaeche: '--kd-wbs-error-bg', ring: '--kd-wbs-error' },
   { datei: 'kd-app.css', selektor: '.toast .lnk', vorne: '--kd-head-link', flaeche: '--kd-head' },
+  { datei: 'kd-app.css', selektor: '.pk-still', vorne: '--kd-on-still', flaeche: '--kd-still', flaecheImRumpf: true },
   { datei: 'kd-base.css', selektor: '.lauf.vergessen', vorne: '--kd-fehler-text', flaeche: '--kd-fehler-flaeche', flaecheImRumpf: true },
   // Link beim Zeigen (R00145-Nacharbeit): die Regel nimmt den eigenen Token, nicht den rohen Akzent (dunkel 3,41:1).
   { datei: 'kd-base.css', selektor: 'a:hover', vorne: '--kd-link-hover', flaeche: '--kd-surface' },
@@ -259,6 +262,33 @@ test('Selbstprobe Grenze: 4,4979 ist ein Verstoß, 4,5 nicht — verglichen wird
 test('Selbstprobe Paar: ein fehlendes Token wird mit Namen und Thema gemeldet', () => {
   const paar = { name: 'Probe', flaechen: ['--kd-bg'], vorne: ['--kd-on-nichts'], mass: SCHRIFT };
   assert.deepStrictEqual(verstoesse(paar, { dunkel: new Map([['--kd-bg', 'oklch(0.2 0 0)']]) }), ['Probe: --kd-on-nichts fehlt, dunkel']);
+});
+
+/* ── Initialen ohne Deckkraft (R00188 57-1, ADR-0011 N2 Punkt 1 und 3) ── */
+
+/** Gedämpft über Deckkraft darf eine Initiale nur in einer inaktiven Zeile mit genanntem Grund (aria-disabled, Ich-Menü). */
+const DECKKRAFT_ERLAUBT = ['.iz.aus .pk'];
+/** Regeln, die eine Initiale (.pk…) treffen und eine Deckkraft setzen, als `datei:zeile selektor`. */
+function gedaempfteInitialen(datei, text) {
+  return regeln(text)
+    .filter(regel => /\.pk(?![\w-]*-0)/.test(regel.selektor) && /(^|;)\s*opacity\s*:/.test(regel.rumpf) && !DECKKRAFT_ERLAUBT.includes(regel.selektor))
+    .map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);
+}
+
+test('Initialen: keine Deckkraft an einer Initiale außer in der inaktiven Zeile des Ich-Menüs', () => {
+  assert.deepStrictEqual(['kd-app.css', 'kd-base.css'].flatMap(datei => gedaempfteInitialen(datei, lies(datei))), []);
+});
+
+test('Selbstprobe Initialen: .pk-still{opacity:.5} und .pt tr.ruhe .pk{opacity:.55} werden erkannt, .iz.aus .pk nicht', () => {
+  const probe = '.pk-still{opacity:.5}\n.pt tr.ruhe .pk{color:red;opacity:.55}\n.iz.aus .pk{opacity:.6}\n.ruhig{opacity:.55}';
+  assert.deepStrictEqual(gedaempfteInitialen('probe', probe), ['probe:1 .pk-still', 'probe:2 .pt tr.ruhe .pk']);
+});
+
+test('Selbstprobe gedämpftes Paar: ein hellerer Ton der stillgelegten Initiale wird mit Paarname und Wert gemeldet', () => {
+  const paar = PAARE.find(p => p.name === 'Gedämpfte Initiale stillgelegt');
+  const werte = new Map([['--kd-still', 'oklch(0.88 0.015 250)'], ['--kd-on-still', 'oklch(0.7 0.02 250)']]);
+  const [satz] = verstoesse(paar, { hell: werte });
+  assert.match(satz, /^Gedämpfte Initiale stillgelegt: --kd-on-still auf --kd-still, hell \d,\d{3} < 4,5$/);
 });
 
 /* ── Phasenblock „Wie lange noch“ (FA 13): Grund mischt die Ampel nach dem Anteil ── */

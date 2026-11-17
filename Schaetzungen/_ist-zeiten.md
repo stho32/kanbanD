@@ -779,3 +779,4 @@ Nie vom User erfragen.
 | 2026-11-16 | Karte #149 R00186 (Warteschlange: Frist je Anfrage und ehrliche Meldung bei gescheiterter Anfrage) | B0909 Vorschneller Haken geht zurück, wenn die eigene Änderung nicht ankam | Standard | 0,5-1,5h | 0,2h | 0,2h | autonom |
 | 2026-11-16 | Karte #149 R00186 (Warteschlange: Frist je Anfrage und ehrliche Meldung bei gescheiterter Anfrage) | B0910 Programmfehler beim Nachladen steht in der Konsole | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-17 | Karte #149 R00186 (Warteschlange: Frist je Anfrage und ehrliche Meldung bei gescheiterter Anfrage) | B0911 Probe im echten Programm und Gate; Nachzug nach R00179: Meldung übersteht das aufgeschobene Zeichnen | Standard | 0,5-1,5h | 0,8h | 0,8h | autonom |
+| 2026-11-17 | Karte #57/#68/#55 R00188 (Kontrast gedämpfter Elemente, Fehlerzeile, kleine Mängel) | B0921 Gedämpftes Paar statt Deckkraft an der stillgelegten Initiale | Standard | 1-2h | 0,3h | 0,3h | autonom |

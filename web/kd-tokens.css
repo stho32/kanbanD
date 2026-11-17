@@ -18,6 +18,8 @@
 --kd-modus:var(--kd-accent-weak);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.55 0.1 255);
 --kd-mensch:oklch(0.52 0.07 215);--kd-mensch-weak:oklch(0.93 0.025 215);--kd-on-mensch:oklch(1 0 0);
 --kd-agent:oklch(0.55 0.13 65);--kd-agent-weak:oklch(0.94 0.045 75);--kd-agent-ink:oklch(0.42 0.1 60);--kd-on-agent:oklch(1 0 0);
+/* Stillgelegte Person (R00188, ADR-0011 N2): gedämpftes Paar statt Deckkraft — Fläche nah am Grund, Schrift ≥ 4,5:1, für Mensch und Agent */
+--kd-still:oklch(0.88 0.015 250);--kd-on-still:oklch(0.42 0.02 250);
 --kd-warn:oklch(0.52 0.16 30);
 /* Vergessener Laufchip (R00114, ADR-0019 Regel 6): Paar aus Fläche und Schrift — Material 3 error-container/on-error-container */
 --kd-fehler-flaeche:var(--kd-c-red);--kd-fehler-text:var(--kd-wbs-error-ink);
@@ -66,6 +68,7 @@ color-scheme:dark;
 --kd-modus:oklch(0.28 0.06 255);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.65 0.1 255);
 --kd-mensch:oklch(0.7 0.07 215);--kd-mensch-weak:oklch(0.32 0.03 215);--kd-on-mensch:oklch(0.15 0.015 255);
 --kd-agent:oklch(0.72 0.13 65);--kd-agent-weak:oklch(0.33 0.05 75);--kd-agent-ink:oklch(0.86 0.1 70);--kd-on-agent:oklch(0.15 0.015 255);
+--kd-still:oklch(0.36 0.015 255);--kd-on-still:oklch(0.84 0.01 250);
 --kd-warn:oklch(0.72 0.16 30);
 --kd-fehler-flaeche:var(--kd-c-red);--kd-fehler-text:var(--kd-wbs-error-ink);
 --kd-c-yellow:oklch(0.31 0.045 98);--kd-c-yellow-line:oklch(0.72 0.14 98);
@@ -101,6 +104,7 @@ color-scheme:dark;
 --kd-modus:oklch(0.28 0.06 255);--kd-modus-text:var(--kd-accent-ink);--kd-modus-linie:oklch(0.65 0.1 255);
 --kd-mensch:oklch(0.7 0.07 215);--kd-mensch-weak:oklch(0.32 0.03 215);--kd-on-mensch:oklch(0.15 0.015 255);
 --kd-agent:oklch(0.72 0.13 65);--kd-agent-weak:oklch(0.33 0.05 75);--kd-agent-ink:oklch(0.86 0.1 70);--kd-on-agent:oklch(0.15 0.015 255);
+--kd-still:oklch(0.36 0.015 255);--kd-on-still:oklch(0.84 0.01 250);
 --kd-warn:oklch(0.72 0.16 30);
 --kd-fehler-flaeche:var(--kd-c-red);--kd-fehler-text:var(--kd-wbs-error-ink);
 --kd-c-yellow:oklch(0.31 0.045 98);--kd-c-yellow-line:oklch(0.72 0.14 98);
