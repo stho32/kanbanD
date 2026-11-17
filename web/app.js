@@ -2336,8 +2336,16 @@ async function aktion(a, arg, wert) {
       }
       case 'herkunft-weg': {
         if (ichNoetig()) break;
-        const a = aufgabe(u.offen);
-        return aufgabeAendern(u.offen, { herkunft: a.herkunft.filter((_, j) => j !== +arg) });
+        // Gemerkt vor dem Senden aus dem gezeigten Stand (R00185 102-1, ADR-0017 Regel 2): Wert und Stelle, nie die ganze Liste
+        const nummer = u.offen, liste = aufgabe(nummer).herkunft, index = Number(arg), wert = liste[index];
+        // Die Herkünfte tragen ihre Stelle als Argument: die Nachbarin heißt nach dem Entfernen so wie ihre neue Stelle
+        let nachbar = null;
+        const stelle = nachbarNachEntfernen(liste.length, index);
+        if (stelle >= 0) nachbar = String(stelle);
+        fokusNachEntfernen('herkunft-weg', arg, nachbar, '#herkunft-neu');
+        const entfernt = await aufgabeAendern(nummer, { herkunft: liste.filter((_, j) => j !== index) });
+        if (entfernt) u.hinweis = { text: `Herkunft ${herkunftAnzeige(wert)} entfernt`, undo: { art: 'herkunft', nummer, wert, index }, feld: '#herkunft-neu', at: Date.now() };
+        break;
       }
       case 'zeit-neu': {
         if (!(wert || '').trim() || ichNoetig()) break;
