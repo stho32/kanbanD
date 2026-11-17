@@ -288,3 +288,49 @@ test('R00192 US-2 (AK 2, AK 3): die Kennzahlzeile nennt hinter „+ 6 hinzugekom
     await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 6 hinzugekommen', '− 4 erledigt', '− 1 entfernt']);
   } finally { await k.stoppen(); }
 });
+
+const SATZ_DAVON = '„davon zurückgekommen“ zählt Nacharbeit aus der Zielspalte: Aufgaben, die von dort zurück nach links gezogen wurden — deshalb kann „− erledigt“ über dem Durchsatz liegen.';
+const ZUG_ZURUECK = 'Ein Zug zurück nach links zählt als „+ hinzugekommen“.';
+/** R00192 AK 6: wie das Rechenbeispiel, nur kommt #1 nicht zurück und #2 zieht am 04.11. von „In Arbeit“ nach „Eingang“. */
+const zweiZiehtZurueck = ordner => {
+  einrichten({ ...Object.fromEntries([1, 2, 3, 4, 5].map(n => [datei(n), aufgabe(n)])), [BOARD]: board([], [], []) })(ordner);
+  standAm(ordner, '2026-11-02T09:00:00', { [BOARD]: board([1, 3], [2], []) });
+  standAm(ordner, '2026-11-03T09:00:00', { [BOARD]: board([1, 3, 4, 5], [2], []) });
+  standAm(ordner, '2026-11-03T15:00:00', { [BOARD]: board([3, 4], [2], [1, 5]) });
+  standAm(ordner, '2026-11-04T09:00:00', { [BOARD]: board([2, 3, 4], [], [1, 5]) });
+  standAm(ordner, '2026-11-05T09:00:00', { [BOARD]: board([2, 4], [], [1, 3, 5]) });
+};
+const erledigtHeisst = page => page.getByRole('combobox', { name: 'Erledigt heißt' });
+/** Wählt einen Block in „Erledigt heißt“ und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist. */
+async function waehleZielblock(page, eintrag, wert) {
+  const nachgeladen = page.waitForResponse(antwort => antwort.request().method() === 'GET' && antwort.url().includes('/api/berichte/bewegungen'));
+  await erledigtHeisst(page).selectOption({ label: eintrag });
+  await (await nachgeladen).finished();
+  await bereit(page);
+  await expect(erledigtHeisst(page)).toHaveValue(wert);
+}
+
+test('R00192 US-3 (AK 4): die Legende sagt, dass „davon zurückgekommen“ Nacharbeit aus der Zielspalte zählt; „+“-Zählbeginn und Nacharbeit-Satz bleiben', async ({ page }) => {
+  const k = await kanbanStarten(rechenbeispiel);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await bereit(page, diagramm(page));
+    await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt', '− entfernt']);
+    await expect(page.locator('.bd-hinweis')).toHaveText('„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.'
+      + SATZ_DAVON);
+  } finally { await k.stoppen(); }
+});
+
+test('R00192 US-3 (AK 4, AK 6): mit „In Arbeit“ als Ziel zählt #2 am 04.11. als Rückläufer, ohne Wahl nicht; die Legende behält „Ein Zug zurück nach links …“', async ({ page }) => {
+  const k = await kanbanStarten(zweiZiehtZurueck);
+  try {
+    await berichtAm0511(page, k, 'verlauf');
+    await expect.poll(async () => (await tooltipMitTeilmenge(await zeigeAufTag(page, 4))).slice(2, 4)).toEqual(['+ hinzugekommen 0', 'davon zurückgekommen 0']);
+    await waehleZielblock(page, 'Spalte „In Arbeit“', 'In Arbeit');
+    await expect.poll(async () => (await tooltipMitTeilmenge(await zeigeAufTag(page, 4))).slice(2, 4)).toEqual(['+ hinzugekommen 1', 'davon zurückgekommen 1']);
+    await expect(page.locator('#bd-davon')).toHaveText('davon zurückgekommen 1');
+    const hinweis = page.locator('.bd-hinweis');
+    await expect(hinweis).toContainText(SATZ_DAVON);
+    await expect(hinweis).toContainText(`Erledigt heißt hier: in „In Arbeit“ oder rechts davon. ${ZUG_ZURUECK}`);
+  } finally { await k.stoppen(); }
+});

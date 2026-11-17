@@ -1245,12 +1245,12 @@ function burndownWort(groesse, zielWorte) {
   return `erledigt (${esc(zielWorte.kurz)})`;
 }
 /** Legende unter dem Diagramm (R00164 AK 9): die drei Größen, ab wo „+“ zählt, und warum „erledigt“ über dem Durchsatz liegen
-    kann; mit gewähltem Zielblock dazu, was „erledigt“ hier heißt. */
+    kann — samt der Teilmenge „davon zurückgekommen“ (R00192 AK 4); mit gewähltem Zielblock dazu, was „erledigt“ hier heißt. */
 function vBurndownLegende(zielWorte) {
   let wasErledigtHeisst = '';
   if (zielWorte) wasErledigtHeisst = `<br>Erledigt heißt hier: ${esc(zielWorte.lang)}. Ein Zug zurück nach links zählt als „+ hinzugekommen“.`;
   return `<div class="dlegende bd-legende" id="bd-legende">${BURNDOWN_EREIGNISSE.map(([groesse, zeichen, feld]) => `<span>${burndownFeld(feld)}${zeichen} ${burndownWort(groesse, zielWorte)}</span>`).join('')}</div>
-<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.${wasErledigtHeisst}</p>`;
+<p class="bd-hinweis">„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.<br>„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.<br>„${BURNDOWN_DAVON}“ zählt Nacharbeit aus der Zielspalte: Aufgaben, die von dort zurück nach links gezogen wurden — deshalb kann „− erledigt“ über dem Durchsatz liegen.${wasErledigtHeisst}</p>`;
 }
 /** Kennzahlzeile des Burndowns: die Summen der Ereignisse über die gezeigten Tage. */
 function vBurndownKennzahl(tage, zielWorte) {

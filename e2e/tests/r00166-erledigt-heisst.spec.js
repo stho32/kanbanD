@@ -352,7 +352,9 @@ for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es ni
       await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 3 hinzugekommen', '− 1 erledigt', '− 0 entfernt']);
       await expect.poll(async () => tooltipZeilen(await zeigeAufTag(page, 3))).toEqual(['offen 2', 'Umfang 3', '+ hinzugekommen 0', '− erledigt 1', '− entfernt 0']);
       await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt', '− entfernt']);
-      await expect(page.locator('.bd-hinweis')).toHaveText('„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.');
+      // seit R00192 AK 4 folgt der Satz zu „davon zurückgekommen“
+      await expect(page.locator('.bd-hinweis')).toHaveText('„+“ zählt ab dem Eintritt in eine gezählte Spalte; ausgeschlossene Spalten zählen nicht.„− erledigt“ kann über dem Durchsatz liegen: Nacharbeit wird erneut erledigt und zählt jedes Mal.'
+        + '„davon zurückgekommen“ zählt Nacharbeit aus der Zielspalte: Aufgaben, die von dort zurück nach links gezogen wurden — deshalb kann „− erledigt“ über dem Durchsatz liegen.');
     } finally { await k.stoppen(); }
   });
 }
