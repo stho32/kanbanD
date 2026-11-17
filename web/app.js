@@ -1225,6 +1225,15 @@ for (const zeigerLos of ['pointerup', 'pointercancel']) document.addEventListene
   setTimeout(zeichnenNachholen, 0);
 }, true);
 
+/** Die Lebensdauer eines Hinweises zählt ab seinem ersten Zeigen (R00186): wartete das Zeichnen hinter einem Zug oder einer
+    Datumseingabe länger als sie, verfiele die Meldung sonst, ohne je gestanden zu haben. */
+function hinweisLebensdauerBeginnen() {
+  const h = S.ui.hinweis;
+  if (!h || h.gezeigt) return;
+  h.at = Date.now();
+  h.gezeigt = true;
+}
+
 function render() {
   // Während eines Zuges nicht neu zeichnen — die gezogene Karte würde unter dem Zeiger ersetzt.
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
@@ -1236,6 +1245,7 @@ function render() {
   S.renders = (S.renders || 0) + 1;
   S.ui.nachZug = false;
   S.ui.nachDatum = false;
+  hinweisLebensdauerBeginnen();
   S.ui.stufe = stufeAusBreite(innerWidth);
   const aktiv = document.activeElement;
   // Ein Menüeintrag, der das Menü offen lässt (Signale oben, Darstellung), behält den Fokus für die Tastatur.
@@ -3753,7 +3763,8 @@ setInterval(() => {
   let neu = false;
   const zeichnenMoeglich = zug == null && !S.ui.neu;
   for (const [n, x] of Object.entries(S.extern)) if (jetzt - x.at >= 10000) { delete S.extern[n]; neu = true; }
-  if (S.ui.hinweis && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
+  // ein Hinweis, der noch nie gezeichnet wurde, verfällt nicht (R00186): seine Lebensdauer beginnt erst mit dem Zeigen
+  if (S.ui.hinweis && S.ui.hinweis.gezeigt && jetzt - S.ui.hinweis.at > (S.ui.hinweis.dauer || 8000)) { S.ui.hinweis = null; neu = true; }
   // Ein Fehlschlag, der hinter einem Rückgängig-Hinweis gewartet hat, erscheint nach dessen Ablauf (R00147 AK 9)
   if (!S.ui.hinweis && S.ui.hinweisWarten) { S.ui.hinweis = S.ui.hinweisWarten; S.ui.hinweisWarten = null; neu = true; }
   taktVergessen(jetzt);

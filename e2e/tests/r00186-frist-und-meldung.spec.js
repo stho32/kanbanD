@@ -40,22 +40,25 @@ const naechsteHaengen = (page, methode, pfad) => naechsteAbfangen(page, methode,
 const naechsteVerstuemmeln = (page, methode, pfad) => naechsteAbfangen(page, methode, pfad, route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"eingerichtet": tr' }));
 
 /**
- * Bricht den nächsten `GET /api/zustand` hart ab, der NACH der eigenen Anfrage `methode pfad` beginnt — das Nachladen der
- * Warteschlange. Im offenen Aufgabenfenster laufen vorher weitere Ladungen (Öffnen, Adresse), die nicht gemeint sind.
+ * Fängt den nächsten `GET /api/zustand` ab, der NACH der eigenen Anfrage `methode pfad` beginnt — das Nachladen der
+ * Warteschlange — und behandelt ihn mit `behandeln`. Im offenen Aufgabenfenster laufen vorher weitere Ladungen (Öffnen,
+ * Adresse), die nicht gemeint sind.
  */
-async function nachladenAbbrechenNach(page, methode, pfad) {
-  let eigeneGesendet = false, abgebrochen = false;
+async function nachladenAbfangenNach(page, methode, pfad, behandeln) {
+  let eigeneGesendet = false, getroffen = false;
   await page.route(url => url.pathname === pfad, route => {
     if (route.request().method() === methode) eigeneGesendet = true;
     return route.fallback();
   });
   await page.route(url => url.pathname === ZUSTAND, route => {
-    if (!eigeneGesendet || abgebrochen || route.request().method() !== 'GET') return route.fallback();
-    abgebrochen = true;
-    return route.abort('failed');
+    if (!eigeneGesendet || getroffen || route.request().method() !== 'GET') return route.fallback();
+    getroffen = true;
+    return behandeln(route);
   });
-  return { getroffen: () => abgebrochen };
+  return { getroffen: () => getroffen };
 }
+const nachladenAbbrechenNach = (page, methode, pfad) => nachladenAbfangenNach(page, methode, pfad, route => route.abort('failed'));
+const nachladenHaengenNach = (page, methode, pfad) => nachladenAbfangenNach(page, methode, pfad, () => { });
 
 /** Wartet, bis der erste Stand geladen und gezeichnet ist — erst dann darf ein Fehler scharf geschaltet werden. */
 async function boardBereit(page) {
@@ -212,6 +215,36 @@ test.describe('R00186 Frist je Anfrage und ehrliche Meldung', () => {
     // nicht im Fuß, und nirgends „nichts geändert" (Fuß, Statusleiste)
     await expect(page.locator(FUSS)).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText('nichts geändert');
+  });
+
+  test('Datumseingabe (R00179): die Meldung erscheint beim Nachholen des Zeichnens, auch nach mehr als ihrer Lebensdauer', async ({ page }) => {
+    await page.clock.install();
+    await page.goto(k.adresse);
+    await boardBereit(page);
+    await page.locator('.ka[data-id="1"]').click({ position: { x: 5, y: 5 } });
+    const fenster = page.getByRole('dialog');
+    await fenster.waitFor();
+    const ladungHaengt = await nachladenHaengenNach(page, 'PATCH', ERSTE_TEILAUFGABE);
+
+    await fenster.getByRole('checkbox', { name: 'eins', exact: true }).click();
+    await expect.poll(() => k.lies(KARTE)).toContain('- [x] eins\n- [ ] zwei');
+    await expect.poll(() => ladungHaengt.getroffen(), 'das Nachladen hängt').toBe(true);
+    // ein Datum wird getippt: solange die Eingabe läuft, zeichnet die Seite nicht (R00179)
+    const faellig = fenster.getByLabel('Fälligkeit', { exact: true });
+    await faellig.focus();
+    await page.keyboard.press('1');
+
+    const amAnker = page.locator('#fenster .hinweis-anker [role="status"]');
+    await uhrVor(page, FRIST_MS);
+    await expect(amAnker, 'die Probe trifft das aufgeschobene Zeichnen').toHaveCount(0);
+    // die Eingabe dauert länger als die 20 s, die die Meldung steht — gezählt wird ihre Lebensdauer erst ab dem Zeigen
+    await uhrVor(page, 25000);
+    await page.keyboard.press('Tab');
+
+    await expect(amAnker).toHaveCount(1);
+    await expect(amAnker).toHaveText(NICHT_NEU_GELADEN);
+    await expect(page.locator(HINWEIS), 'genau eine Meldung auf dem Schirm').toHaveCount(1);
+    expect(seitenfehler, 'unbehandelte Ablehnung (pageerror)').toEqual([]);
   });
 
   test('150-2: ein Programmfehler beim Nachladen steht in der Konsole, die eine Meldung bleibt', async ({ page }) => {
