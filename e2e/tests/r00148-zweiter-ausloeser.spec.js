@@ -61,6 +61,36 @@ async function anfragenHalten(page, passt, methode) {
 /** Wartet, bis die erste gehaltene Anfrage draußen ist (die Aktion „läuft“). */
 const bisAnfrageLaeuft = halte => expect.poll(() => halte.anzahl(), { message: 'die erste Anfrage läuft' }).toBeGreaterThanOrEqual(1);
 
+/**
+ * Diagnose für den seltenen Wackler #198 (1 : ~1000 unter Last): im roten Lauf war das Fenster zu und der Timer am Server
+ * gestartet, obwohl der Halter 0 zählte. Das Protokoll sammelt nur Ereignisse (kein Warten, keine Lesung im grünen Fall);
+ * erst bei Rot liest `mitZustandBeiRot` den Zustand der Seite und hängt beides an die unveränderte Fehlermeldung.
+ */
+function anfragenProtokoll(page) {
+  const t0 = Date.now(), zeilen = [];
+  const notiere = text => zeilen.push(`${Date.now() - t0} ms ${text}`);
+  // nur die API — Skripte, Stile und Schriften sagen über den Fall nichts
+  const api = (art, r) => { const pfad = new URL(r.url()).pathname; if (pfad.startsWith('/api/')) notiere(`${art} ${r.method()} ${pfad}`); };
+  page.on('request', r => api('an', r));
+  page.on('requestfinished', r => api('aus', r));
+  page.on('requestfailed', r => api('gescheitert', r));
+  page.on('framenavigated', f => { if (f === page.mainFrame()) notiere(`Navigation ${f.url()}`); });
+  page.context().on('page', p => notiere(`zweite Seite ${p.url()}`));
+  return { marke: notiere, text: () => zeilen.join('\n') };
+}
+
+async function mitZustandBeiRot(page, protokoll, warten) {
+  try { await warten(); } catch (fehler) {
+    const zustand = await page.evaluate(() => ({
+      offen: S.ui.offen, ansicht: S.ui.tab, fokus: `${document.activeElement.tagName}#${document.activeElement.id}.${document.activeElement.className}`,
+      adresse: location.hash, live: S.live, schlange: schlangeOffen(), gesperrt: [...S.ui.laufend], timerStart: S.timerStart,
+      zeiten: (S.aufgaben.find(a => a.nummer === 1) || {}).zeiten,
+    })).catch(f => `nicht lesbar: ${f.message}`);
+    fehler.message += `\nZustand bei Rot (#198): ${JSON.stringify(zustand)}\nAnfragen seit dem Laden:\n${protokoll.text()}`;
+    throw fehler;
+  }
+}
+
 /** Anfänge und Enden der schreibenden Anfragen in Reihenfolge (AK 17: keine Überlappung). */
 function netzprotokoll(page) {
   const reihe = [];
@@ -503,10 +533,13 @@ test.describe('R00148 Nacharbeit: Schreibwirkung entscheidet, jeder Weg ist gesp
   });
 
   test('B2 (AK 12): Taste „t“ zweimal startet den Timer einmal, nach der Antwort wirkt sie wieder', async ({ page }) => {
+    const protokoll = anfragenProtokoll(page);
     await fensterPerTaste(page);
     const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/timer/start', 'POST');
+    protokoll.marke('Halter steht');
     await page.keyboard.press('t');
-    await bisAnfrageLaeuft(halte);
+    protokoll.marke('t gedrückt');
+    await mitZustandBeiRot(page, protokoll, () => bisAnfrageLaeuft(halte));
     await page.keyboard.press('t');
     expect(halte.anzahl(), 'genau ein POST …/timer/start').toBe(1);
     halte.freigeben();
