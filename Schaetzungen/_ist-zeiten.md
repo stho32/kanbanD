@@ -806,3 +806,9 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0947 Zweite Tabelle in vPrognose mit Überschrift | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0948 Punkt in „Lesehinweise und Methodik“ | Standard | 0,5h | 0,0h | 0,0h | autonom |
 | 2026-11-17 | Karte #196 R00193 (Wie lange noch: zweite Prognose mit Zugang) | B0949 E2E an Rechenbeispiel A, Messbasis und Gate | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0951 Schlüssel self-labels im Modell, in der Board-Datei und in der Route | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0953 Selbsterzeugt je Tag aus der Ereignisfunktion | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0952 Auswahl „Selbsterzeugt =“ im Burndown und Speichern | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0954 Zahlen in Tooltip, Tabellenansicht und Kennzahlzeile | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0955 Legende und Hinweis „Label kommt nicht vor“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0956 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 1-2h | 0,4h | 0,4h | autonom |
