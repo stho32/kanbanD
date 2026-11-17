@@ -1,6 +1,6 @@
 ---
 id: R00192
-status: Neu
+status: Erledigt
 datum: 2026-11-17
 ---
 
@@ -18,12 +18,12 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Auswertungen aus der Geschichte
 
 **Ausgangslage:** das Rechenbeispiel aus R00164 (Spalten „Eingang“, „In Arbeit“, „Fertig“; Zeitraum 02.–05.11.; #1 am 04.11. aus „Fertig“ zurück nach „In Arbeit“).
 
-- [ ] **AK 1 Zählung:** Ein „+“ ist ein Rückläufer, wenn die Aufgabe unmittelbar davor erledigt war (im Bestand, Zielblock nach „Erledigt heißt“, R00166) und nun offen ist. Neu angelegt, aus dem Archiv geholt, vom Board genommen und zurück oder in eine gezählte Spalte eingetreten sind keine Rückläufer.
-- [ ] **AK 2 Rechenbeispiel:** 02.11. „+ 3, davon zurückgekommen 0“; 03.11. „+ 2, davon zurückgekommen 0“; 04.11. „+ 1, davon zurückgekommen 1“; 05.11. „+ 0, davon zurückgekommen 0“; Summen 02.–05.11.: „+ 6, davon zurückgekommen 1“.
-- [ ] **AK 3 Zahlen sichtbar:** Tooltip des Tages (Zeile „davon zurückgekommen“ unter „+ hinzugekommen“), Tabellenansicht (Spalte „davon zurückgekommen“ rechts von „+ hinzugekommen“) und Kennzahlzeile („davon zurückgekommen 1“ hinter „+ 6 hinzugekommen“) nennen die Zahl; 0 statt leer.
-- [ ] **AK 4 Legende:** Ein Satz sagt, dass „davon zurückgekommen“ Nacharbeit aus der Zielspalte zählt und „− erledigt“ dadurch über dem Durchsatz liegen kann; der Satz „Ein Zug zurück nach links zählt als + hinzugekommen“ bleibt.
-- [ ] **AK 5 Nichts sonst ändert sich:** Bilanz, „offen“, „Umfang“, „+“, „− erledigt“, „− entfernt“, Balken, Filter, Zeitraum und „Rechnen ab“ geben dieselben Zahlen wie vor der Anforderung; Board-Datei, API und übrige Berichte unverändert; nichts wird gespeichert. Die Zahl „davon zurückgekommen“ ist an jedem Tag höchstens „+“.
-- [ ] **AK 6 Mit Zielspalte:** Ist in „Erledigt heißt“ ein Block gewählt (R00166), ist Rückläufer, wer aus dem Block oder rechts davon nach links hinaus zieht (Beispiel: Block „In Arbeit“, #2 zieht am 04.11. von „In Arbeit“ nach „Eingang“ → „davon zurückgekommen“ 1).
+- [x] **AK 1 Zählung:** Ein „+“ ist ein Rückläufer, wenn die Aufgabe unmittelbar davor erledigt war (im Bestand, Zielblock nach „Erledigt heißt“, R00166) und nun offen ist. Neu angelegt, aus dem Archiv geholt, vom Board genommen und zurück oder in eine gezählte Spalte eingetreten sind keine Rückläufer.
+- [x] **AK 2 Rechenbeispiel:** 02.11. „+ 3, davon zurückgekommen 0“; 03.11. „+ 2, davon zurückgekommen 0“; 04.11. „+ 1, davon zurückgekommen 1“; 05.11. „+ 0, davon zurückgekommen 0“; Summen 02.–05.11.: „+ 6, davon zurückgekommen 1“.
+- [x] **AK 3 Zahlen sichtbar:** Tooltip des Tages (Zeile „davon zurückgekommen“ unter „+ hinzugekommen“), Tabellenansicht (Spalte „davon zurückgekommen“ rechts von „+ hinzugekommen“) und Kennzahlzeile („davon zurückgekommen 1“ hinter „+ 6 hinzugekommen“) nennen die Zahl; 0 statt leer.
+- [x] **AK 4 Legende:** Ein Satz sagt, dass „davon zurückgekommen“ Nacharbeit aus der Zielspalte zählt und „− erledigt“ dadurch über dem Durchsatz liegen kann; der Satz „Ein Zug zurück nach links zählt als + hinzugekommen“ bleibt.
+- [x] **AK 5 Nichts sonst ändert sich:** Bilanz, „offen“, „Umfang“, „+“, „− erledigt“, „− entfernt“, Balken, Filter, Zeitraum und „Rechnen ab“ geben dieselben Zahlen wie vor der Anforderung; Board-Datei, API und übrige Berichte unverändert; nichts wird gespeichert. Die Zahl „davon zurückgekommen“ ist an jedem Tag höchstens „+“.
+- [x] **AK 6 Mit Zielspalte:** Ist in „Erledigt heißt“ ein Block gewählt (R00166), ist Rückläufer, wer aus dem Block oder rechts davon nach links hinaus zieht (Beispiel: Block „In Arbeit“, #2 zieht am 04.11. von „In Arbeit“ nach „Eingang“ → „davon zurückgekommen“ 1).
 
 ## Tests
 

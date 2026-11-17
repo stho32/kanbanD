@@ -799,3 +799,4 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0941 Zahlen in Tooltip, Tabellenansicht und Kennzahlzeile; Probe | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0942 Legendensatz zu „davon zurückgekommen“ | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0943 Probe im echten Programm und Gate | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-17 | Karte #195 R00192 (Burndown nennt Rückläufer als Teil von „+ hinzugekommen“) | B0944 Anforderung abschließen und Nacht-Notiz in der WBS | Standard | 0,5h | 0,1h | 0,1h | autonom |
