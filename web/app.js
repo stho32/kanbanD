@@ -2117,8 +2117,10 @@ async function aktion(a, arg, wert) {
           break;
         }
         if (z.art === 'teilaufgabe') {
-          // Der Server legt sie an `position`, hinter dem Ende ans Ende
-          const stelle = Math.min(z.position, aufgabe(z.nummer).teilaufgaben.length);
+          // Der Server legt sie an `position`, hinter dem Ende ans Ende; ist die Aufgabe fort, lehnt er ab (R00185 108-1)
+          const a = aufgabe(z.nummer);
+          let stelle = 0;
+          if (a) stelle = Math.min(z.position, a.teilaufgaben.length);
           await rueckgaengigSenden('POST', `/api/aufgaben/${z.nummer}/teilaufgaben`, { text: z.text, position: z.position, erledigt: z.erledigt }, `Teilaufgabe „${z.text}“ wiederhergestellt`, gelungen => teilFokus(gelungen, stelle));
           break;
         }
