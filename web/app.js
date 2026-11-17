@@ -1200,11 +1200,15 @@ function zuweisenTaste(e, t) {
    wieder beim Tag — der Browser gibt nicht preis, in welchem Teil (Tag, Monat, Jahr) getippt wurde. Solange in einem
    Datumsfeld getippt wird, wartet das Zeichnen deshalb wie beim Zug und wird danach genau einmal nachgeholt. Die Eingabe
    beginnt mit einer Ziffer und endet ohne Frist: wenn das Datum gespeichert oder verworfen ist, das Feld verlassen wird,
-   eine Taste etwas auslöst (Esc, Tastenkürzel), ein Zeiger woanders drückt oder die Adresse wechselt. */
+   eine Taste etwas auslöst (Esc, Tastenkürzel), ein Zeiger woanders drückt oder die Adresse wechselt.
+   Verlässt ein Zeiger das Datumsfeld, speichert das Verlassen mitten in der Geste; auch dieses Zeichnen wartet, bis der
+   Zeiger losgelassen ist — sonst ersetzte es das Ziel des Klicks, bevor er es erreicht (R00191, N10 Ziffer 2, dritte Lage). */
 /** Das Datumsfeld, in dem gerade getippt wird — mit und ohne Knopf. */
 let datumseingabe = null;
 /** Wahr zwischen Drücken und Loslassen eines Zeigers: das nachgeholte Zeichnen ersetzte sonst das Ziel des Klicks. */
 let zeigerUnten = false;
+/** Wahr zwischen Drücken und Loslassen eines Zeigers, der ein fokussiertes Datumsfeld verlässt. */
+let zeigerVerlaesstDatumsfeld = false;
 /** Nur ein Feld, das den Fokus trägt, hält das Zeichnen auf: verliert es ihn, ohne dass der Browser ein Verlassen meldet
     (ein verborgenes Feld), bliebe die Seite sonst stehen. */
 const datumseingabeLaeuft = () => datumseingabe !== null && document.activeElement === datumseingabe;
@@ -1225,11 +1229,14 @@ document.addEventListener('keydown', e => {
 }, true);
 document.addEventListener('pointerdown', e => {
   zeigerUnten = true;
+  const aktiv = document.activeElement;
+  zeigerVerlaesstDatumsfeld = Boolean(aktiv) && aktiv.matches('input[type="date"]') && e.target !== aktiv;
   // ein Zeigerdruck im selben Feld setzt nur die Marke um; die Eingabe läuft weiter
   if (e.target !== datumseingabe) datumseingabeBeenden();
 }, true);
 for (const zeigerLos of ['pointerup', 'pointercancel']) document.addEventListener(zeigerLos, () => {
   zeigerUnten = false;
+  zeigerVerlaesstDatumsfeld = false;
   // nach dem Klick, der auf das Loslassen folgt
   setTimeout(zeichnenNachholen, 0);
 }, true);
@@ -1248,6 +1255,8 @@ function render() {
   if (typeof zug !== 'undefined' && zug != null) { S.ui.nachZug = true; return; }
   // Während einer getippten Datumseingabe ebenso wenig — das neue Feld begänne wieder beim Tag (R00179).
   if (datumseingabeLaeuft()) { S.ui.nachDatum = true; return; }
+  // Ebenso, solange ein Zeiger, der das Datumsfeld verlassen hat, noch gedrückt ist — sein Ziel stünde sonst nicht mehr da (R00191).
+  if (zeigerVerlaesstDatumsfeld) { S.ui.nachDatum = true; return; }
   // Ein Feld, das auf „Eingabe verwerfen“ wartet, übersteht das Ersetzen nicht: vorher verlassen, damit sein Entwurf nicht still verloren geht
   verlassenNachholen();
   adresseNachfuehren();

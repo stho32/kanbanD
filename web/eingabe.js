@@ -84,14 +84,17 @@
     return 'halten';
   }
 
+  const MODIFIKATOREN = ['Control', 'Alt', 'Meta', 'AltGraph'];
   /**
    * Was eine Taste für die getippte Eingabe in einem Datumsfeld bedeutet (R00179): „beginnt“ — eine Ziffer, die Eingabe läuft
    * (weiter); „endet“ — Esc und jedes Tastenkürzel (Strg+Enter legt an, Alt+Pfeil geht zurück) lösen etwas aus, das
    * gezeichnet werden muss; sonst „bleibt“ (Trenner, Pfeile, Tab, Rücktaste, Enter: sie beginnen keine Eingabe und
-   * beenden keine — Enter über einem fertigen Datum speichert, und das Speichern beendet sie).
+   * beenden keine — Enter über einem fertigen Datum speichert, und das Speichern beendet sie). Eine Modifikatortaste allein
+   * ist noch kein Kürzel, auch wenn der Browser sie bei ihrem eigenen Druck schon als gesetzt meldet (R00191 AK 5).
    */
   function datumstaste({ key, ctrlKey, metaKey, altKey }) {
-    const istKuerzel = ctrlKey || metaKey || altKey;
+    const istModifikator = MODIFIKATOREN.includes(key);
+    const istKuerzel = !istModifikator && (ctrlKey || metaKey || altKey);
     if (istKuerzel || key === 'Escape') return 'endet';
     if (/^\d$/.test(key)) return 'beginnt';
     return 'bleibt';

@@ -59,18 +59,18 @@ async function filterAntwortBremsen(page) {
   });
   return () => page.waitForResponse(antwort => antwort.url().endsWith('/berichtsfilter') && antwort.request().method() === 'PUT');
 }
-/** Ein Commit im Ordner, der nicht aus dieser Seite kommt: der Agent benennt #1 um und zieht sie in die Abschlussspalte.
- *  Fertig, wenn sein Live-Ereignis in der Seite angekommen ist (der geladene Stand trägt ihn). */
+/** Ein Commit im Ordner, der nicht aus dieser Seite kommt: der Agent benennt #1 und das Board um. Fertig, wenn sein
+ *  Live-Ereignis in der Seite angekommen ist (der geladene Stand trägt ihn); liefert den Commit. */
 async function fremdeAenderung(page) {
   k.schreib(EINS, kopf('eins umbenannt'));
-  k.schreib(BOARD, k.lies(BOARD).replace('- #1\n', '').replace(/## Erledigt\n$/, '## Erledigt\n\n- #1\n'));
+  k.schreib(BOARD, k.lies(BOARD).replace('# Entwicklung\n', '# Entwicklung fremd\n'));
   k.git('add', '-A');
   k.git('-c', 'user.name=Agent', '-c', 'user.email=a@a', 'commit', '-q', '-m', 'fremd');
   await page.waitForFunction(() => window.kdTest.titel(1) === 'eins umbenannt');
   return k.git('rev-parse', 'HEAD');
 }
-/** Der Durchsatz zeigt die fremde Änderung: #1 ist abgegangen. */
-const durchsatzZaehltEins = page => expect(page.locator('#dus-kennzahl')).toContainText('Abgang 1');
+/** Die Seite zeigt die fremde Änderung: der Kopf nennt das umbenannte Board. */
+const zeigtDieFremdeAenderung = page => expect(page.locator('#kopf')).toContainText('Entwicklung fremd');
 
 /* ── AK 1, AK 2, US-1: aus dem fertig getippten Datum in ein anderes Feld oder aufs Menü ── */
 test.describe('R00191 AK 1, AK 2, US-1: Klick aus dem Datumsfeld trifft sein Ziel', () => {
@@ -180,14 +180,14 @@ test.describe('R00191 AK 3, AK 6, US-2: gehaltenes Datum, dann Klick ins andere 
     await expect.poll(() => k.lies(BOARD)).toMatch(gespeichertAm('2026-12-31'));
   });
 
-  test('AK 6: „3112“ getippt, fremde Änderung trifft ein, Klick in „Zeitraum bis“ → nach dem Loslassen zeigt der Durchsatz die fremde Änderung, „from: 2026-12-31“, Fokus in „Zeitraum bis“', async ({ page }) => {
+  test('AK 6: „3112“ getippt, fremde Änderung trifft ein, Klick in „Zeitraum bis“ → nach dem Loslassen zeigt die Seite die fremde Änderung, „from: 2026-12-31“, Fokus in „Zeitraum bis“', async ({ page }) => {
     const von = await durchsatzOeffnen(page);
 
     await tippen(page, von, '3112');
     const fremd = await fremdeAenderung(page);
     await klickAuf(page, bisFeld(page));
 
-    await durchsatzZaehltEins(page);
+    await zeigtDieFremdeAenderung(page);
     await expect.poll(() => k.lies(BOARD)).toMatch(gespeichertAm('2026-12-31'));
     await expect.poll(() => k.git('rev-list', '--count', fremd + '..HEAD')).toBe('1');
     await bereit(page);
@@ -212,7 +212,7 @@ test.describe('R00191 AK 5, US-2: Strg, Alt oder Meta allein zwischen den Ziffer
       await imVerlauf(vorher);
       await expect(von).toHaveValue('2026-12-31');
       await expect(von).toBeFocused();
-      await durchsatzZaehltEins(page);
+      await zeigtDieFremdeAenderung(page);
     });
   }
 });
