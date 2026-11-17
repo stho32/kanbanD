@@ -115,3 +115,12 @@ test('R00179: Esc und jedes Tastenkürzel beenden die Eingabe — was sie auslö
   // auch eine Ziffer mit Strg ist ein Kürzel, keine Eingabe
   assert.strictEqual(taste('1', { ctrlKey: true }), 'endet');
 });
+
+test('R00191 AK 5: Strg, Alt, Meta und AltGr allein gedrückt lassen die Eingabe laufen — erst mit einer zweiten Taste sind sie ein Kürzel', () => {
+  // beim Druck der Modifikatortaste selbst meldet der Browser sie schon als gesetzt
+  const allein = { Control: { ctrlKey: true }, Alt: { altKey: true }, Meta: { metaKey: true }, AltGraph: { ctrlKey: true, altKey: true } };
+  for (const [key, zusatz] of Object.entries(allein)) assert.strictEqual(taste(key, zusatz), 'bleibt', key);
+  assert.strictEqual(taste('Enter', { ctrlKey: true }), 'endet');
+  assert.strictEqual(taste('ArrowLeft', { altKey: true }), 'endet');
+  assert.strictEqual(taste('z', { metaKey: true }), 'endet');
+});

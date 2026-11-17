@@ -49,6 +49,26 @@ test('fokusZiel: hängt das fokussierte Element nach dem Neuzeichnen noch im Dok
   assert.deepStrictEqual(fokusZiel({ fuehrung: '.ka[data-id="1"]', vorher: { stand: 'gehalten' } }), []);
 });
 
+/* R00191 AK 4, ADR-0010 N10 Ziffer 3: ein vorgemerktes Ziel (Timer, Antwort des Servers) überholt den Menschen nicht */
+const STIFT = '[data-act="beschreibung-bearbeiten"]';
+
+test('R00191 AK 4: das vorgemerkte Ziel gilt, wenn der Fokus beim Verbrauchen auf BODY liegt', () => {
+  assert.deepStrictEqual(fokusZiel({ vorgemerkt: STIFT, vorher: { stand: 'nichts' } }), [STIFT]);
+});
+
+test('R00191 AK 4: hat der Mensch inzwischen ein Feld fokussiert, geht der Sicherer vor — das vorgemerkte Ziel erst, wenn er es nicht wiederfindet', () => {
+  const ziele = fokusZiel({ vorgemerkt: STIFT, gesichert: true, gesichertInOberster: true, ort: '#teil-neu', vorher: { stand: 'verloren' } });
+  assert.deepStrictEqual(ziele, ['gesichert', '#teil-neu', STIFT]);
+});
+
+test('R00191 AK 4: hängt das fokussierte Element nach dem Neuzeichnen noch im Dokument, nimmt das vorgemerkte Ziel ihm den Fokus nicht', () => {
+  assert.deepStrictEqual(fokusZiel({ vorgemerkt: STIFT, vorher: { stand: 'gehalten' } }), []);
+});
+
+test('R00191 AK 4: ein ausdrückliches Ziel im selben Zug bleibt Rang 1 vor dem vorgemerkten', () => {
+  assert.deepStrictEqual(fokusZiel({ ausdruecklich: '#beschreibung', vorgemerkt: STIFT, vorher: { stand: 'verloren' } }), ['#beschreibung', STIFT]);
+});
+
 test('fokusZiel: Rückgabe beim Schließen gilt auch, wenn vorher nichts fokussiert war', () => {
   const geschlossen = ebenen({ view: 'board', offen: 1 })[0];
   assert.deepStrictEqual(fokusZiel({ geschlossen, fuehrung: '.ka[data-id="2"]', vorher: { stand: 'nichts' } }), ['.ka[data-id="1"]']);
