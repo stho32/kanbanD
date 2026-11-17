@@ -2411,10 +2411,10 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         // Erst lesen, dann löschen (ADR-0017 Regel 3): ohne gelesenen Inhalt gibt es kein Rückgängig, also auch kein Löschen
         const nummer = u.offen, pfad = `/api/aufgaben/${nummer}/anhaenge/${encodeURIComponent(arg)}`;
-        u.anhangLiest = arg;
-        render();
+        // Während des Lesens trägt das ✕ die Sperrform wie jeder Auslöser (`act`) und behält den Fokus — kein Zeichnen hier,
+        // es verbrauchte das Fokusziel (R00190 AK 3, R00112 FA 8)
         let blob;
-        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`, null, anfrageName('DELETE', pfad)); u.fokus = knopfSelektor('anhang-weg', arg); break; } finally { u.anhangLiest = null; }
+        try { blob = await anhangLesen(pfad); } catch (f) { fensterMelden(`Anhang „${arg}“ nicht entfernt: ${f.message}`, null, anfrageName('DELETE', pfad)); u.fokus = knopfSelektor('anhang-weg', arg); break; }
         // Ohne Nachbarn bleibt der Fokus beim Fenster: die Dateiwahl ist kein tabbares Feld
         fokusNachEntfernen('anhang-weg', arg, nachbarArgument('#anhaenge', 'anhang-weg', arg), null);
         const entfernt = await schreiben('DELETE', pfad);
