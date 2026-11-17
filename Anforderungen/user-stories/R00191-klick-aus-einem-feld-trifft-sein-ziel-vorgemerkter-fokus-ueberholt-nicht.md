@@ -12,11 +12,13 @@ Herstellbar über die API: eingerichteter Ordner, Board mit `report-filter: {per
 - **Wenn** ich mit der Maus in „Zeitraum bis“ klicke
 - **Dann** ist `from: 2026-12-31` gespeichert und der Fokus steht in „Zeitraum bis“; klicke ich stattdessen auf „Berichte“, ist das Menü nach diesem einen Klick offen und das Datum gespeichert (heute: Fokus verloren, Menü erst beim zweiten Klick)
 
-## US-2: Unfertiges Datum, dann Klick
+## US-2: Gehaltenes oder unfertiges Datum, dann Klick
 
-- **Gegeben** der geöffnete Durchsatz, in „Zeitraum von“ ist nur `3112` getippt, allein gedrückte Strg-Taste dazwischen
+- **Gegeben** der geöffnete Durchsatz, in „Zeitraum von“ ist nur `3112` getippt (Tag und Monat über dem gespeicherten Jahr), allein gedrückte Strg-Taste dazwischen
 - **Wenn** ich in „Zeitraum bis“ klicke
-- **Dann** zeigt „Zeitraum von“ wieder 12.11.2026, nichts ist gespeichert und der Fokus steht in „Zeitraum bis“; wurde nach der Strg-Taste `2026` getippt, steht 31.12.2026 im Feld
+- **Dann** ist `from: 2026-12-31` gespeichert und der Fokus steht in „Zeitraum bis“; war das Jahr unfertig (`31122`), zeigt „Zeitraum von“ wieder 12.11.2026 und nichts ist gespeichert; wurde nach der Strg-Taste `2026` getippt, steht 31.12.2026 im Feld
+
+*(US-2 geändert 2026-11-17 mit AK 3 der Anforderung — Widerspruch zu R00173 „Schaden a“.)*
 
 ## US-3: Nach dem Speichern der Beschreibung ins Kommentarfeld
 

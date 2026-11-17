@@ -1,6 +1,6 @@
 ---
 id: R00191
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-17
 ursprung: Bug-Report
 ursprungslauf:
@@ -22,7 +22,7 @@ Keine Zeichnung: es entsteht kein Bedienelement. Zahlt ein auf: [Vision](R00000-
 
 - [x] **AK 1 Klick in ein anderes Feld (Abnahme-Probe der Karte):** Im geöffneten Durchsatz ist in „Zeitraum von“ ein vollständiges anderes Datum getippt (`3112` + `2026`), noch nicht verlassen. Klick in „Zeitraum bis“ → die Board-Datei trägt `from: 2026-12-31`, und der Fokus steht in „Zeitraum bis“.
 - [x] **AK 2 Klick auf „Berichte“:** Wie AK 1, stattdessen Klick auf „Berichte“ → das Menü ist nach diesem einen Klick offen, die Datei trägt das Datum.
-- [ ] **AK 3 Unfertig, dann Klick:** `3112` getippt (Zwischenstand), Klick in „Zeitraum bis“ → „Zeitraum von“ zeigt wieder 12.11.2026, nichts ist gespeichert, der Fokus steht in „Zeitraum bis“.
+- [x] **AK 3 Gehalten oder unfertig, dann Klick** *(geändert 2026-11-17, siehe Änderungen)*: `3112` getippt (Tag und Monat über dem gespeicherten Jahr — ein fertiges, gehaltenes Datum), Klick in „Zeitraum bis“ → die Datei trägt `from: 2026-12-31`, der Fokus steht in „Zeitraum bis“; ebenso öffnet ein Klick auf „Berichte“ das Menü beim ersten Mal. Nur ein unfertiges Datum (Jahr mit weniger als vier Stellen, z. B. `31122` → Jahr 0002), dann Klick in „Zeitraum bis“ → „Zeitraum von“ zeigt wieder 12.11.2026, nichts ist gespeichert, der Fokus steht in „Zeitraum bis“.
 - [x] **AK 4 Vorgemerkter Fokus (Abnahme-Probe der Karte):** Aufgabenfenster von #1, Beschreibung in Bearbeitung, Antwort auf das Speichern um 500 ms verzögert. Strg+Enter, dann Klick ins Kommentarfeld, Antwort abwarten → der Fokus bleibt im Kommentarfeld. Gegenprobe: ohne Klick steht er nach der Antwort auf dem Stift (R00162 AK 7 bleibt).
 - [x] **AK 5 Modifikatortaste allein:** `3112` in „Zeitraum von“ getippt, Strg einzeln gedrückt und losgelassen (ebenso Alt, Meta), fremde Änderung trifft ein, `2026` getippt → Feld 31.12.2026 und Datei `from: 2026-12-31`. Strg+Enter und Alt+Pfeil beenden die Eingabe weiter (R00179).
 - [x] **AK 6 Bleibt, und nichts geht verloren:** Das Zeichnen, das während der Zeigergeste wartet, wird danach genau einmal nachgeholt (eine fremde Änderung ist danach sichtbar). Die Specs `r00179-*`, `r00173-*`, `r00162-*`, `r00155-*` und `r00106-*` laufen unverändert grün.
@@ -37,6 +37,10 @@ Keine Zeichnung: es entsteht kein Bedienelement. Zahlt ein auf: [Vision](R00000-
 ## Test-Strategie
 
 E2E im echten Programm als Spec zuerst (Vorbild `e2e/tests/r00179-datum-live.spec.js`), je Probe gemessen; Einheitstest für `datumstaste`. Gewartet wird auf das angekommene Ereignis bzw. die verzögerte Antwort, nicht auf den Renderzähler.
+
+## Änderungen
+
+- 2026-11-17 — AK 3 umformuliert (Entscheidung des Directors auf Rückfrage des entwicklers, Karte #192): die alte Fassung verlangte für `3112` „nichts gespeichert“. `3112` über dem gespeicherten 12.11.2026 ist aber nach [R00173](R00173-berichtszeitraum-datum-tippen-und-bis-tag-an-der-zeitumstellung.md) ein fertiges Datum, das beim Verlassen gespeichert wird (`e2e/tests/r00173-datum-tippen.spec.js` „Schaden a“), und AK 6 verlangt diese Spec unverändert grün. Eine Regel für jedes Verlassen: gehalten und fertig wird gespeichert, unfertig wird verworfen. US-2 ist entsprechend nachgezogen.
 
 ## Offene Fragen
 

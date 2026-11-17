@@ -138,18 +138,16 @@ test.describe('R00191 AK 1, AK 2, US-1: Klick aus dem Datumsfeld trifft sein Zie
 
 /* ── AK 3, AK 6, US-2: ein gehaltenes Datum, dann Klick — das Speichern beim Verlassen zeichnet erst nach der Geste ── */
 test.describe('R00191 AK 3, AK 6, US-2: gehaltenes Datum, dann Klick ins andere Feld', () => {
-  // Erwartet rot, Rückfrage im Bericht der Karte #192: „3112“ über dem gespeicherten 12.11.2026 ist nach R00173 kein
-  // Zwischenstand — das Jahr steht schon, das Feld trägt das fertige 31.12.2026, und Verlassen speichert es
-  // (r00173-datum-tippen.spec.js „Schaden a“, das AK 6 unverändert grün verlangt). AK 3 verlangt dafür „nichts gespeichert“.
-  test('AK 3, US-2 wörtlich: nur „3112“ in „Zeitraum von“ getippt, Klick in „Zeitraum bis“ → „Zeitraum von“ zeigt wieder 12.11.2026, nichts gespeichert, Fokus in „Zeitraum bis“', async ({ page }) => {
-    test.fail(true, 'AK 3 widerspricht AK 6 (R00173 Schaden a) — offen bis zur Antwort des product-owner');
+  // AK 3 (geändert 2026-11-17): eine Regel für jedes Verlassen wie in R00173 — ein gehaltenes fertiges Datum wird gespeichert,
+  // ein unfertiges (Jahr unter vier Stellen) verworfen; in beiden Fällen trifft der Klick sein Ziel.
+  test('AK 3, US-2: „31122“ in „Zeitraum von“ getippt (Jahr 0002, unfertig), Klick in „Zeitraum bis“ → „Zeitraum von“ zeigt wieder 12.11.2026, nichts gespeichert, Fokus in „Zeitraum bis“', async ({ page }) => {
     const von = await durchsatzOeffnen(page);
     const kopfVorher = k.git('rev-parse', 'HEAD');
 
-    await tippen(page, von, '3112');
+    await tippen(page, von, '31122');
     await klickAuf(page, bisFeld(page));
 
-    await expect(vonFeld(page)).toHaveValue(GESPEICHERT, { timeout: 2000 });
+    await expect(vonFeld(page)).toHaveValue(GESPEICHERT);
     await bereit(page);
     await zweiBilder(page);
     await expect(bisFeld(page)).toBeFocused();
@@ -157,7 +155,7 @@ test.describe('R00191 AK 3, AK 6, US-2: gehaltenes Datum, dann Klick ins andere 
     expect(k.git('rev-parse', 'HEAD')).toBe(kopfVorher);
   });
 
-  test('AK 3, US-2: „3112“ in „Zeitraum von“ getippt (gehalten), Klick in „Zeitraum bis“ → das Verlassen speichert wie in R00173 „from: 2026-12-31“, der Fokus steht in „Zeitraum bis“', async ({ page }) => {
+  test('AK 3, US-2: „3112“ in „Zeitraum von“ getippt (gehalten), Klick in „Zeitraum bis“ → „from: 2026-12-31“ gespeichert (gehalten und fertig, wie in R00173), der Fokus steht in „Zeitraum bis“', async ({ page }) => {
     const von = await durchsatzOeffnen(page);
     const vorher = speicherungen();
 
