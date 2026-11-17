@@ -3721,6 +3721,16 @@ function erinnerungZeigen({ a, z }) {
   if (z.wer === S.ich) S.ui.hinweis.aktion = { text: 'Zeit korrigieren', act: 'zeit-korrigieren', arg: `${a.nummer}|${z.kennung}` };
 }
 
+/** Setzt das Wort einer in Worten gezeigten Dauer. Der Name der Karte nennt dieselbe Dauer („Timer läuft seit 10 Stunden“)
+    und folgt im selben Takt, ohne Neuzeichnen (R00185 114-1; R00114 US-2: der Tageswechsel zeichnet nicht). */
+function seitWortSetzen(el, wort) {
+  const alt = el.textContent;
+  if (alt === wort) return;
+  el.textContent = wort;
+  const karte = el.closest('.ka[aria-label]');
+  if (karte) karte.setAttribute('aria-label', karte.getAttribute('aria-label').replace(`Timer läuft ${alt}`, `Timer läuft ${wort}`));
+}
+
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
@@ -3737,7 +3747,7 @@ setInterval(() => {
   document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => {
     const d = jetzt - +el.dataset.since;
-    if (el.dataset.fmt === 'seit') el.textContent = seitText(d);
+    if (el.dataset.fmt === 'seit') seitWortSetzen(el, seitText(d));
     else if (el.dataset.fmt === 's') el.textContent = hms(d);
     else el.textContent = hm(d);
   });

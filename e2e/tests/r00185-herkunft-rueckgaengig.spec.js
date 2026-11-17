@@ -295,6 +295,7 @@ test.describe('R00185 #114 Kartenname des vergessenen Timers', () => {
     await uhrVor(page, 70000);
     await expect(chip).toHaveText('seit 11 Stunden');
     await expect(karte).toHaveAttribute('aria-label', /Timer läuft seit 11 Stunden/);
-    expect(await renders(page), 'ein Zeichnen am Wechsel des Worts').toBe(vorDerKante + 1);
+    // der Name folgt im Takt wie der Chip, ohne Neuzeichnen — wie der Satz am Tageswechsel (R00114 US-2)
+    expect(await renders(page), 'kein Zeichnen am Wechsel des Worts').toBe(vorDerKante);
   });
 });
