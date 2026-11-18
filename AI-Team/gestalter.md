@@ -14,7 +14,7 @@ Eingesetzt vom Betreiber am 2026-11-11: der `gestalter` zeichnet die Dialog-Artb
 
 ## Spezialisierungen
 
-- material3
+- ux-reviewer/material3
 
 ## Quellen
 
