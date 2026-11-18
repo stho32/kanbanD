@@ -1,4 +1,4 @@
-use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Kosten, Kosteneintrag};
+use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Klassengeltung, Kosten, Kosteneintrag};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -545,7 +545,8 @@ pub(crate) fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
 
 impl Aufgabe {
     /// Wendet die Änderung an und liefert die Namen der Felder, die sich wirklich geändert haben.
-    pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen) -> Result<Vec<&'static str>, String> {
+    /// `klassen` sagt, welche Klasse die Aufgabe annehmen darf (ADR-0031 Regel 6); ein unveränderter Wert wird nicht geprüft.
+    pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen, klassen: &Klassengeltung) -> Result<Vec<&'static str>, String> {
         if a.schluessel_mitgeschickt {
             return Err("Schlüssel ist nicht änderbar".into());
         }
@@ -562,9 +563,9 @@ impl Aufgabe {
         if let Some(k) = &a.klasse {
             let k = k.as_deref().map(str::trim).filter(|k| !k.is_empty());
             if let Some(k) = k
-                && e.klasse(k).is_none()
+                && self.klasse.as_deref() != Some(k)
             {
-                return Err(format!("Klasse „{k}“ steht nicht in kanbanD.md"));
+                klassen.pruefen(k)?;
             }
             neu.klasse = k.map(Into::into);
         }
@@ -744,6 +745,22 @@ mod tests {
         }
     }
 
+    fn geltung() -> Klassengeltung {
+        Klassengeltung::neu([], &e())
+    }
+
+    /// R00195 AK 4 (ADR-0031 Regel 6): ein unverändert mitgeschickter Wert wird nicht geprüft — auch ein fremder nicht.
+    #[test]
+    fn eine_unveraendert_mitgeschickte_fremde_klasse_bleibt_stehen() {
+        let mut a = Aufgabe::neu(2, "0002-zwei.md".into(), "Zwei".into());
+        a.klasse = Some("sicherheit".into());
+        assert_eq!(a.aendern(&aend(r#"{"titel":"neu","klasse":"sicherheit"}"#), &e(), &geltung()).unwrap(), vec!["Titel"]);
+        assert_eq!(a.aendern(&aend(r#"{"klasse":" sicherheit "}"#), &e(), &geltung()).unwrap(), Vec::<&str>::new());
+        assert_eq!(a.klasse.as_deref(), Some("sicherheit"));
+        assert_eq!(a.aendern(&aend(r#"{"klasse":"gibtsnicht"}"#), &e(), &geltung()).unwrap_err(), "Klasse „gibtsnicht“ steht nicht in kanbanD.md");
+        assert_eq!(a.aendern(&aend(r#"{"klasse":"bug"}"#), &e(), &geltung()).unwrap(), vec!["Klasse"]);
+    }
+
     fn aend(json: &str) -> Aufgabenaenderung {
         serde_json::from_str(json).unwrap()
     }
@@ -751,11 +768,11 @@ mod tests {
     #[test]
     fn felder_aendern_und_benennen() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        let f = a.aendern(&aend(r#"{"titel":" Neu ","klasse":"bug","labels":["ui"," ","daten"],"faellig":"2026-12-24","zustaendige":["st"]}"#), &e()).unwrap();
+        let f = a.aendern(&aend(r#"{"titel":" Neu ","klasse":"bug","labels":["ui"," ","daten"],"faellig":"2026-12-24","zustaendige":["st"]}"#), &e(), &geltung()).unwrap();
         assert_eq!(f, vec!["Titel", "Klasse", "Zuständige", "Labels", "Fälligkeit"]);
         assert_eq!((a.titel.as_str(), a.klasse.as_deref(), a.labels.clone(), a.faellig.as_deref()), ("Neu", Some("bug"), vec!["ui".to_string(), "daten".into()], Some("2026-12-24")));
-        assert_eq!(a.aendern(&aend(r#"{"titel":"Neu"}"#), &e()).unwrap(), Vec::<&str>::new());
-        assert_eq!(a.aendern(&aend(r#"{"klasse":null,"faellig":null,"beschreibung":"b"}"#), &e()).unwrap(), vec!["Beschreibung", "Klasse", "Fälligkeit"]);
+        assert_eq!(a.aendern(&aend(r#"{"titel":"Neu"}"#), &e(), &geltung()).unwrap(), Vec::<&str>::new());
+        assert_eq!(a.aendern(&aend(r#"{"klasse":null,"faellig":null,"beschreibung":"b"}"#), &e(), &geltung()).unwrap(), vec!["Beschreibung", "Klasse", "Fälligkeit"]);
         assert!(a.klasse.is_none() && a.faellig.is_none());
         assert_eq!(a.datei, "0001-x.md");
     }
@@ -767,11 +784,11 @@ mod tests {
         assert!(g("I0007") && g("D0001") && g("R00014") && g("thin air"));
         assert!(!g("X1") && !g("I007") && !g("R0001") && !g("i0007") && !g("kd:I0007"));
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        assert_eq!(a.aendern(&aend(r#"{"herkunft":["i0007"," R00014 ","I0007"]}"#), &e()).unwrap(), vec!["Herkunft"]);
+        assert_eq!(a.aendern(&aend(r#"{"herkunft":["i0007"," R00014 ","I0007"]}"#), &e(), &geltung()).unwrap(), vec!["Herkunft"]);
         assert_eq!(a.herkunft, vec!["I0007", "R00014"]);
-        assert!(a.aendern(&aend(r#"{"herkunft":["X1"]}"#), &e()).unwrap_err().contains("X1"));
-        assert!(a.aendern(&aend(r#"{"herkunft":["Thin Air","I0001"]}"#), &e()).is_err());
-        a.aendern(&aend(r#"{"herkunft":["THIN AIR"]}"#), &e()).unwrap();
+        assert!(a.aendern(&aend(r#"{"herkunft":["X1"]}"#), &e(), &geltung()).unwrap_err().contains("X1"));
+        assert!(a.aendern(&aend(r#"{"herkunft":["Thin Air","I0001"]}"#), &e(), &geltung()).is_err());
+        a.aendern(&aend(r#"{"herkunft":["THIN AIR"]}"#), &e(), &geltung()).unwrap();
         assert_eq!(a.herkunft, vec!["thin air"]);
     }
 
@@ -780,33 +797,33 @@ mod tests {
         let mut mit = e();
         mit.quellen.anwendungen = vec![crate::modell::Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), wbs: "/x/plan.md".into(), anforderungen: "".into() }];
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        assert_eq!(a.aendern(&aend(r#"{"herkunft":["KD:i0007","R00014"]}"#), &mit).unwrap(), vec!["Herkunft"]);
+        assert_eq!(a.aendern(&aend(r#"{"herkunft":["KD:i0007","R00014"]}"#), &mit, &geltung()).unwrap(), vec!["Herkunft"]);
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
-        let f = a.aendern(&aend(r#"{"herkunft":["xx:I0007"]}"#), &mit).unwrap_err();
+        let f = a.aendern(&aend(r#"{"herkunft":["xx:I0007"]}"#), &mit, &geltung()).unwrap_err();
         assert!(f.contains("Anwendung „xx“"), "{f}");
-        assert!(a.aendern(&aend(r#"{"herkunft":["KD!:I0007"]}"#), &mit).unwrap_err().contains("keine Herkunft"));
+        assert!(a.aendern(&aend(r#"{"herkunft":["KD!:I0007"]}"#), &mit, &geltung()).unwrap_err().contains("keine Herkunft"));
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
     }
 
     #[test]
     fn entfallende_phasen_setzen() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[" Abnahme ","","Abnahme","Entwicklertest"]}}"#), &e()).unwrap(), vec!["Phasen"]);
+        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[" Abnahme ","","Abnahme","Entwicklertest"]}}"#), &e(), &geltung()).unwrap(), vec!["Phasen"]);
         assert_eq!(a.phasen.uebersprungen, vec!["Abnahme", "Entwicklertest"]);
-        assert!(a.aendern(&aend(r#"{"phasen":{"skipped":["Abnahme","Entwicklertest"]}}"#), &e()).unwrap().is_empty(), "skipped wie in der Datei, gleich ist keine Änderung");
-        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[]}}"#), &e()).unwrap(), vec!["Phasen"]);
+        assert!(a.aendern(&aend(r#"{"phasen":{"skipped":["Abnahme","Entwicklertest"]}}"#), &e(), &geltung()).unwrap().is_empty(), "skipped wie in der Datei, gleich ist keine Änderung");
+        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[]}}"#), &e(), &geltung()).unwrap(), vec!["Phasen"]);
         assert!(a.phasen.uebersprungen.is_empty());
-        assert!(a.aendern(&aend(r#"{"phasen":{}}"#), &e()).unwrap().is_empty(), "ohne Liste bleibt alles");
+        assert!(a.aendern(&aend(r#"{"phasen":{}}"#), &e(), &geltung()).unwrap().is_empty(), "ohne Liste bleibt alles");
     }
 
     #[test]
     fn regeln_lassen_die_aufgabe_unveraendert() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
         for j in [r#"{"titel":" "}"#, r#"{"klasse":"gibtsnicht"}"#, r#"{"faellig":"24.12."}"#, r#"{"zustaendige":["zz"]}"#] {
-            assert!(a.aendern(&aend(j), &e()).is_err(), "{j}");
+            assert!(a.aendern(&aend(j), &e(), &geltung()).is_err(), "{j}");
         }
         assert_eq!(a, Aufgabe::neu(1, "0001-x.md".into(), "x".into()));
-        assert!(a.aendern(&aend(r#"{"klasse":"  ","faellig":""}"#), &e()).unwrap().is_empty());
+        assert!(a.aendern(&aend(r#"{"klasse":"  ","faellig":""}"#), &e(), &geltung()).unwrap().is_empty());
     }
 
     // R00105: cost ersetzt den Abschnitt, null entfernt ihn, fehlt er, bleibt er; jeder Fehler ist eine Meldung, kein serde-Fehler
@@ -814,16 +831,16 @@ mod tests {
     fn kosten_setzen_ersetzen_entfernen() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
         let setzen = r#"{"cost":{"currency":"USD","min":0.6,"max":1.6,"basis":"Schätzung planer"}}"#;
-        assert_eq!(a.aendern(&aend(setzen), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.aendern(&aend(setzen), &e(), &geltung()).unwrap(), vec!["Kosten"]);
         assert_eq!(a.kosten.as_ref().map(|k| &k.wert), Some(&crate::modell::Gesamt::Spanne { min: 60, max: 160 }));
-        assert!(a.aendern(&aend(setzen), &e()).unwrap().is_empty(), "derselbe Wert ändert nichts");
-        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e()).unwrap(), vec!["Titel"]);
+        assert!(a.aendern(&aend(setzen), &e(), &geltung()).unwrap().is_empty(), "derselbe Wert ändert nichts");
+        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e(), &geltung()).unwrap(), vec!["Titel"]);
         assert!(a.kosten.is_some(), "ohne cost bleibt der Abschnitt");
-        assert_eq!(a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.1}}"#), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.1}}"#), &e(), &geltung()).unwrap(), vec!["Kosten"]);
         assert_eq!(a.kosten.as_ref().map(|k| (&k.wert, &k.basis)), Some((&crate::modell::Gesamt::Betrag(110), &None)), "ersetzt, nicht gemischt");
-        assert_eq!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap(), vec!["Kosten"]);
+        assert_eq!(a.aendern(&aend(r#"{"cost":null}"#), &e(), &geltung()).unwrap(), vec!["Kosten"]);
         assert_eq!(a.kosten, None);
-        assert!(a.aendern(&aend(r#"{"cost":null}"#), &e()).unwrap().is_empty());
+        assert!(a.aendern(&aend(r#"{"cost":null}"#), &e(), &geltung()).unwrap().is_empty());
     }
 
     // R00129 B0607: eine Prüfung für Datei und API — ganze Minuten 1..=100.000, sonst der Pfadfehler (ADR-0023 Regeln 2, 3)
@@ -844,20 +861,20 @@ mod tests {
     #[test]
     fn geschaetzte_zeit_setzen_ersetzen_entfernen() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        assert_eq!(a.aendern(&aend(r#"{"estimate":150}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.aendern(&aend(r#"{"estimate":150}"#), &e(), &geltung()).unwrap(), vec!["Geschätzte Zeit"]);
         assert_eq!(a.geschaetzte_minuten, Some(150));
-        assert!(a.aendern(&aend(r#"{"estimate":150}"#), &e()).unwrap().is_empty(), "derselbe Wert ändert nichts");
-        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e()).unwrap(), vec!["Titel"]);
+        assert!(a.aendern(&aend(r#"{"estimate":150}"#), &e(), &geltung()).unwrap().is_empty(), "derselbe Wert ändert nichts");
+        assert_eq!(a.aendern(&aend(r#"{"titel":"y"}"#), &e(), &geltung()).unwrap(), vec!["Titel"]);
         assert_eq!(a.geschaetzte_minuten, Some(150), "ohne estimate bleibt der Wert");
-        assert_eq!(a.aendern(&aend(r#"{"estimate":90}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.aendern(&aend(r#"{"estimate":90}"#), &e(), &geltung()).unwrap(), vec!["Geschätzte Zeit"]);
         assert_eq!(a.geschaetzte_minuten, Some(90));
-        assert_eq!(a.aendern(&aend(r#"{"estimate":null}"#), &e()).unwrap(), vec!["Geschätzte Zeit"]);
+        assert_eq!(a.aendern(&aend(r#"{"estimate":null}"#), &e(), &geltung()).unwrap(), vec!["Geschätzte Zeit"]);
         assert_eq!(a.geschaetzte_minuten, None);
-        assert!(a.aendern(&aend(r#"{"estimate":null}"#), &e()).unwrap().is_empty(), "nichts zu entfernen");
+        assert!(a.aendern(&aend(r#"{"estimate":null}"#), &e(), &geltung()).unwrap().is_empty(), "nichts zu entfernen");
         for falsch in [r#""2:30""#, r#""150""#, r#"150.0"#, r#"2.5"#, r#"0"#, r#"-1"#, r#"100001"#, r#"true"#] {
             a.geschaetzte_minuten = Some(150);
             let vorher = a.clone();
-            assert_eq!(a.aendern(&aend(&format!(r#"{{"estimate":{falsch}}}"#)), &e()).unwrap_err(), super::GESCHAETZT_MELDUNG, "{falsch}");
+            assert_eq!(a.aendern(&aend(&format!(r#"{{"estimate":{falsch}}}"#)), &e(), &geltung()).unwrap_err(), super::GESCHAETZT_MELDUNG, "{falsch}");
             assert_eq!(a, vorher, "{falsch}: nichts geändert");
         }
     }
@@ -865,7 +882,7 @@ mod tests {
     #[test]
     fn falsche_kosten_aendern_nichts() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.63}}"#), &e()).unwrap();
+        a.aendern(&aend(r#"{"cost":{"currency":"USD","amount":1.63}}"#), &e(), &geltung()).unwrap();
         let vorher = a.clone();
         for (cost, meldung) in [
             (r#""1.63""#, "cost: keine Zuordnung"),
@@ -874,7 +891,7 @@ mod tests {
             (r#"{"currency":"usd","amount":1}"#, "cost.currency: genau drei Großbuchstaben A–Z"),
         ] {
             let aenderung: Aufgabenaenderung = serde_json::from_str(&format!(r#"{{"titel":"neu","cost":{cost}}}"#)).expect("roh angenommen, kein serde-Fehler");
-            assert_eq!(a.aendern(&aenderung, &e()).unwrap_err(), meldung, "{cost}");
+            assert_eq!(a.aendern(&aenderung, &e(), &geltung()).unwrap_err(), meldung, "{cost}");
             assert_eq!(a, vorher, "{cost}: auch der Titel bleibt");
         }
     }

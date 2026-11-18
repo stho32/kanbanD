@@ -1,7 +1,12 @@
 use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Aufgabe, Aufgabenaenderung, Person};
+use crate::modell::{Aufgabe, Aufgabenaenderung, Board, Einstellungen, Klassengeltung, Person};
+
+/// Gültig ist, was ein Board der Aufgabe führt; auf keinem Board die Vorgabe des Ordners.
+fn klassengeltung(boards: &[Board], nummer: u32, e: &Einstellungen) -> Klassengeltung {
+    Klassengeltung::neu(boards.iter().filter(|b| b.spalte_von(nummer).is_some()), e)
+}
 
 impl Kanban {
     /// Liest die Aufgabe, wendet `veraendern` an und committet, wenn sich etwas geändert hat.
@@ -15,10 +20,21 @@ impl Kanban {
         Ok(a)
     }
 
+    /// Die offenen Boards des Ordners in der Reihenfolge der Boardliste — gelesen nur, wenn eine Änderung eine Klasse
+    /// setzt (ADR-0031 Regel 6); sonst bleibt der Weg ohne Zugriff auf die Board-Dateien.
+    fn boards_fuer_klassen<'a>(&self, aenderungen: impl IntoIterator<Item = &'a Aufgabenaenderung>) -> Result<Vec<Board>, Fehler> {
+        if !aenderungen.into_iter().any(|a| matches!(&a.klasse, Some(Some(k)) if !k.trim().is_empty())) {
+            return Ok(vec![]);
+        }
+        let (boards, _) = self.ordner().boards()?;
+        Ok(boards.into_iter().filter(|b| b.archiviert.is_none()).collect())
+    }
+
     pub fn aufgabe_aendern(&self, wer: &Person, nummer: u32, aenderung: &Aufgabenaenderung) -> Result<Aufgabe, Fehler> {
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         self.aufgabe_schreiben(wer, nummer, |a| {
-            let felder = a.aendern(aenderung, &e).map_err(Fehler::Ungueltig)?;
+            let boards = self.boards_fuer_klassen(std::slice::from_ref(aenderung))?;
+            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, nummer, &e)).map_err(Fehler::Ungueltig)?;
             Ok((!felder.is_empty()).then(|| format!("#{nummer} geändert: {}", felder.join(", "))))
         })
     }
@@ -31,13 +47,14 @@ impl Kanban {
         super::ohne_doppelte(aenderungen.iter().map(|(n, _)| *n))?;
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         let _sperre = self.gesperrt();
+        let boards = self.boards_fuer_klassen(aenderungen.iter().map(|(_, a)| a))?;
         let mut ergebnis = vec![];
         let mut geaendert = vec![];
         let mut felder_alle: Vec<&str> = vec![];
         let mut dateien = vec![];
         for (nummer, aenderung) in aenderungen {
             let mut a = self.ordner().aufgabe(*nummer)?;
-            let felder = a.aendern(aenderung, &e).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
+            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, *nummer, &e)).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
             if !felder.is_empty() {
                 geaendert.push(format!("#{nummer}"));
                 for f in felder {

@@ -5,7 +5,7 @@ use super::zugregeln::{archivierte, zug_mit_rueckkehr_pruefen};
 use crate::ablage::{DefekteDatei, board_pfad};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Fremdschluessel, Person, Schluesseltreffer};
+use crate::modell::{Art, Aufgabe, Aufgabenaenderung, Fremdschluessel, Klassengeltung, Person, Schluesseltreffer};
 use crate::nachricht;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -131,6 +131,13 @@ impl Kanban {
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         let (vorhanden, defekt) = if neu.board.is_some() || schluessel.iter().any(Option::is_some) { self.ordner().aufgaben()? } else { Default::default() };
         schluessel_in_defekter_datei_pruefen(&defekt, &schluessel)?;
+        // Beim Anlegen mit `board` gilt der Klassenvorrat dieses Boards, sonst die Vorgabe (ADR-0031 Regel 6).
+        let setzt_klasse = eintraege.iter().any(|(_, g)| g.is_some_and(|g| g.klasse.is_some()));
+        let zielboard = match &neu.board {
+            Some(slug) if setzt_klasse => Some(self.ordner().board(slug)?),
+            _ => None,
+        };
+        let klassen = Klassengeltung::neu(zielboard.as_ref(), &e);
         let erste = self.ordner().naechste_nummer()?;
         let mut aufgaben: Vec<Aufgabe> = vec![];
         let mut wieder: Vec<Aufgabe> = vec![];
@@ -167,7 +174,11 @@ impl Kanban {
                     beschreibung: g.beschreibung.clone(),
                     ..Default::default()
                 };
-                a.aendern(&aenderung, &e).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
+                if aus.is_some() {
+                    // Eine Kopie behält die Klasse ihrer Quelle, auch eine auf dem Zielboard fremde: unverändert heißt ungeprüft.
+                    a.klasse = g.klasse.clone();
+                }
+                a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
                 let teile = g.teilaufgaben.iter().flatten().map(|x| x.trim().replace('\n', " ")).filter(|x| !x.is_empty());
                 a.teilaufgaben.extend(teile.map(|text| crate::modell::Teilaufgabe { text, erledigt: false }));
             }

@@ -344,6 +344,35 @@ pub fn ist_datum(s: &str) -> bool {
     s.len() == 10 && chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
 }
 
+/// Welche Klassen eine Aufgabe annehmen darf (ADR-0031 Regel 6): die Vereinigung der Klassenvorräte der Boards, auf
+/// denen sie liegt; liegt sie auf keinem, die Vorgabe des Ordners.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Klassengeltung {
+    /// Je Board der Aufgabe sein Slug und die Schlüssel seines Vorrats, in der Reihenfolge der Boardliste.
+    boards: Vec<(String, Vec<String>)>,
+    vorgabe: Vec<String>,
+}
+
+impl Klassengeltung {
+    /// `boards`: die Boards, auf denen die Aufgabe liegt (beim Anlegen mit `board`: dieses eine).
+    pub fn neu<'a>(boards: impl IntoIterator<Item = &'a Board>, vorgabe: &super::Einstellungen) -> Klassengeltung {
+        let schluessel = |klassen: &[super::Klasse]| klassen.iter().map(|k| k.schluessel.clone()).collect::<Vec<_>>();
+        Klassengeltung { boards: boards.into_iter().map(|b| (b.slug.clone(), schluessel(b.klassenvorrat(vorgabe)))).collect(), vorgabe: schluessel(&vorgabe.klassen) }
+    }
+
+    /// Die Abweisung nennt Board und Schlüssel.
+    pub fn pruefen(&self, schluessel: &str) -> Result<(), String> {
+        let fuehrt = |vorrat: &[String]| vorrat.iter().any(|k| k == schluessel);
+        match self.boards.as_slice() {
+            [] if fuehrt(&self.vorgabe) => Ok(()),
+            [] => Err(format!("Klasse „{schluessel}“ steht nicht in kanbanD.md")),
+            boards if boards.iter().any(|(_, vorrat)| fuehrt(vorrat)) => Ok(()),
+            [(slug, vorrat)] => Err(format!("Klasse „{schluessel}“ gibt es auf dem Board „{slug}“ nicht — dort gilt: {}", if vorrat.is_empty() { "keine Klasse".to_string() } else { vorrat.join(", ") })),
+            boards => Err(format!("Klasse „{schluessel}“ gibt es auf keinem Board der Aufgabe ({})", boards.iter().map(|(slug, _)| format!("„{slug}“")).collect::<Vec<_>>().join(", "))),
+        }
+    }
+}
+
 /// Inhalt einer Board-Datei: die Struktur, wo jede Aufgabe darin liegt, feste Termine und gebundene Anwendungen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Board {
@@ -847,6 +876,38 @@ mod tests {
         assert_eq!(schluessel(&umzug), vec!["phase1=Phase 1", "eol=Altlast"], "eigener Satz, nicht gemischt, in seiner Reihenfolge");
         umzug.klassen = Some(vec![]);
         assert!(schluessel(&umzug).is_empty(), "der leere Satz bleibt leer");
+    }
+
+    /// R00195 AK 4 (ADR-0031 Regel 6): gültig ist, was ein Board der Aufgabe führt — auf keinem, einem, zwei Boards.
+    #[test]
+    fn klassengeltung_ist_die_vereinigung_der_boards_der_aufgabe_sonst_die_vorgabe() {
+        let k = |s: &str| crate::modell::Klasse { schluessel: s.into(), bezeichnung: s.to_uppercase(), farbe: "red".into() };
+        let e = crate::modell::Einstellungen { klassen: vec![k("sicherheit"), k("eol")], ..Default::default() };
+        let wartung = Board { slug: "wartung".into(), ..b() };
+        let umzug = Board { slug: "umzug".into(), klassen: Some(vec![k("phase1"), k("eol")]), ..b() };
+        let leer = Board { slug: "leer".into(), klassen: Some(vec![]), ..b() };
+
+        let keins = Klassengeltung::neu([], &e);
+        assert_eq!((keins.pruefen("sicherheit"), keins.pruefen("eol")), (Ok(()), Ok(())), "auf keinem Board: die Vorgabe");
+        assert_eq!(keins.pruefen("phase1").unwrap_err(), "Klasse „phase1“ steht nicht in kanbanD.md");
+
+        let nur_umzug = Klassengeltung::neu([&umzug], &e);
+        assert_eq!((nur_umzug.pruefen("phase1"), nur_umzug.pruefen("eol")), (Ok(()), Ok(())));
+        let f = nur_umzug.pruefen("sicherheit").unwrap_err();
+        assert!(f.contains("„sicherheit“") && f.contains("„umzug“"), "nennt Schlüssel und Board: {f}");
+
+        let nur_wartung = Klassengeltung::neu([&wartung], &e);
+        assert_eq!(nur_wartung.pruefen("sicherheit"), Ok(()), "Board ohne eigenen Satz: die Vorgabe");
+        let f = nur_wartung.pruefen("phase1").unwrap_err();
+        assert!(f.contains("„phase1“") && f.contains("„wartung“"), "{f}");
+
+        let beide = Klassengeltung::neu([&wartung, &umzug], &e);
+        assert_eq!((beide.pruefen("sicherheit"), beide.pruefen("phase1"), beide.pruefen("eol")), (Ok(()), Ok(()), Ok(())), "Vereinigung");
+        let f = beide.pruefen("lila").unwrap_err();
+        assert!(f.contains("„lila“") && f.contains("„wartung“") && f.contains("„umzug“"), "{f}");
+
+        let f = Klassengeltung::neu([&leer], &e).pruefen("eol").unwrap_err();
+        assert!(f.contains("„leer“"), "ein leerer eigener Satz führt keine Klasse, auch keine der Vorgabe: {f}");
     }
 
     fn b() -> Board {

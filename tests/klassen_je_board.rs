@@ -165,3 +165,82 @@ async fn ak3_ungueltiger_satz_400_ohne_commit_unbekanntes_board_404() {
     let (_, board) = klassen_setzen(&lauf, "umzug", json!({"klassen": [k("eol", "EOL", "lila")]})).await;
     assert_eq!((s, &ordner["fehler"]), (400, &board["fehler"]));
 }
+
+async fn anlegen(lauf: &Laufendes, rumpf: Value) -> (u16, String) {
+    let (s, r) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", rumpf).await;
+    (s, r["fehler"].as_str().unwrap_or_default().to_string())
+}
+
+async fn aendern(lauf: &Laufendes, nr: u32, rumpf: Value) -> (u16, Value) {
+    senden(Method::PATCH, &lauf.adresse, &format!("api/aufgaben/{nr}"), "st", rumpf).await
+}
+
+/// AK 4 / US-4: gültig ist, was ein Board der Aufgabe führt; die Abweisung nennt Board und Schlüssel.
+#[tokio::test]
+async fn ak4_gueltig_ist_was_ein_board_der_aufgabe_fuehrt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = ausgangslage(tmp.path()).await;
+    assert_eq!(klassen_setzen(&lauf, "umzug", eigener_satz()).await.0, 200);
+    let vorher = commits(tmp.path());
+
+    assert_eq!(anlegen(&lauf, json!({"titel": "Fünf", "board": "umzug", "klasse": "phase1"})).await.0, 201);
+    let (s, f) = anlegen(&lauf, json!({"titel": "Sechs", "board": "umzug", "klasse": "sicherheit"})).await;
+    assert!(s == 400 && f.contains("umzug") && f.contains("sicherheit"), "{s} {f}");
+    assert_eq!(anlegen(&lauf, json!({"titel": "Sechs", "board": "wartung", "klasse": "sicherheit"})).await.0, 201);
+    let (s, f) = anlegen(&lauf, json!({"titel": "Sieben", "board": "wartung", "klasse": "phase1"})).await;
+    assert!(s == 400 && f.contains("wartung") && f.contains("phase1"), "{s} {f}");
+    assert_eq!(commits(tmp.path()), vorher + 2, "die zwei Abweisungen schreiben nichts");
+    assert!(!std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().any(|d| d.unwrap().file_name().to_string_lossy().contains("sieben")));
+
+    // #2 trägt die auf Umzug fremde Klasse `sicherheit`: unverändert mitgeschickt wird sie nicht geprüft
+    let (s, a) = aendern(&lauf, 2, json!({"titel": "neu", "klasse": "sicherheit"})).await;
+    assert_eq!((s, a["titel"].as_str(), a["klasse"].as_str()), (200, Some("neu"), Some("sicherheit")), "{a}");
+    assert!(lies(tmp.path(), "aufgaben/0002-zwei.md").contains("\nclass: sicherheit\n"));
+    let (s, a) = aendern(&lauf, 2, json!({"klasse": "eol"})).await;
+    assert_eq!((s, a["klasse"].as_str()), (200, Some("eol")));
+    let (s, f) = aendern(&lauf, 2, json!({"klasse": "sicherheit"})).await;
+    assert!(s == 400 && f["fehler"].as_str().unwrap().contains("umzug") && f["fehler"].as_str().unwrap().contains("sicherheit"), "einmal verlassen, ist die fremde Klasse nicht wieder setzbar: {s} {f}");
+
+    // #3 liegt zusätzlich auf Wartung: die Vorräte beider Boards gelten
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/boards/wartung/aufgaben", "st", json!({"nummer": 3})).await;
+    assert_eq!(s, 201);
+    assert_eq!(aendern(&lauf, 3, json!({"klasse": "sicherheit"})).await.0, 200);
+    assert_eq!(aendern(&lauf, 3, json!({"klasse": "phase1"})).await.0, 200);
+    let (s, f) = aendern(&lauf, 3, json!({"klasse": "lila"})).await;
+    let f = f["fehler"].as_str().unwrap_or_default().to_string();
+    assert!(s == 400 && f.contains("lila") && f.contains("wartung") && f.contains("umzug"), "{s} {f}");
+
+    // auf keinem Board: nur die Vorgabe
+    assert_eq!(anlegen(&lauf, json!({"titel": "Ohne Board", "klasse": "eol"})).await.0, 201);
+    let (s, f) = anlegen(&lauf, json!({"titel": "Ohne Board 2", "klasse": "phase1"})).await;
+    assert!(s == 400 && f.contains("phase1") && f.contains("kanbanD.md"), "{s} {f}");
+    let (_, alle) = senden(Method::GET, &lauf.adresse, "api/aufgaben", "st", json!(null)).await;
+    let ohne_board = alle["aufgaben"].as_array().unwrap().iter().find(|a| a["titel"] == "Ohne Board").unwrap()["nummer"].as_u64().unwrap() as u32;
+    assert_eq!(aendern(&lauf, ohne_board, json!({"klasse": "sicherheit"})).await.0, 200);
+    assert_eq!(aendern(&lauf, ohne_board, json!({"klasse": "phase1"})).await.0, 400);
+}
+
+/// AK 4: Mehrfach-Ändern und Mehrfach-Anlegen prüfen je Aufgabe gegen ihre Boards; eine Kopie behält die Klasse der Quelle.
+#[tokio::test]
+async fn ak4_sammelwege_und_kopie_folgen_derselben_regel() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = ausgangslage(tmp.path()).await;
+    assert_eq!(klassen_setzen(&lauf, "umzug", eigener_satz()).await.0, 200);
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+
+    let mehrere = |klasse_1: &str, klasse_4: &str| json!({"aenderungen": [{"nummer": 1, "klasse": klasse_1}, {"nummer": 4, "klasse": klasse_4}]});
+    let (s, f) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/mehrere", "st", mehrere("eol", "sicherheit")).await;
+    let f = f["fehler"].as_str().unwrap_or_default().to_string();
+    assert!(s == 400 && f.contains("#4") && f.contains("umzug") && f.contains("sicherheit"), "{s} {f}");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "ein ungültiges Feld bricht ab, bevor etwas geschrieben ist");
+    let (s, _) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/mehrere", "st", mehrere("eol", "phase1")).await;
+    assert_eq!(s, 200);
+
+    let (s, f) = senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "st", json!({"titel": [{"titel": "A", "klasse": "phase1"}, {"titel": "B", "klasse": "sicherheit"}], "board": "umzug"})).await;
+    assert!(s == 400 && f["fehler"].as_str().unwrap_or_default().contains("umzug"), "{s} {f}");
+
+    // #2 (`sicherheit`, auf Umzug fremd) kopiert auf Umzug: die Kopie trägt dieselbe Klasse, die Quelle bleibt
+    let (s, kopie) = senden(Method::POST, &lauf.adresse, "api/aufgaben/2/duplizieren", "st", json!({"board": "umzug"})).await;
+    assert_eq!((s, kopie["klasse"].as_str()), (201, Some("sicherheit")), "{kopie}");
+    assert!(lies(tmp.path(), "aufgaben/0002-zwei.md").contains("\nclass: sicherheit\n"));
+}
