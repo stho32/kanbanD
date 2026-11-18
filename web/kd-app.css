@@ -194,6 +194,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka[data-eigen] .seit{color:var(--kd-text)}
 .ka .r3 .preis{position:relative;font-family:var(--kd-mono);white-space:nowrap}
 .ka[data-eigen] .preis{color:var(--kd-text)}
+/* Angefallene Kosten (R00196, Zeichnung D0002 #angefallene-kosten): je Währung eine Umbrucheinheit .ag-b, umgebrochen wird nur dazwischen;
+   das Kurzwort „Ist“ (.ag-k) in der Textschrift, Farbe wie das Preisetikett. */
+.ka .r3 .angefallen{position:relative;font-family:var(--kd-mono);flex:0 1 auto;min-width:0;white-space:normal}
+.ka .r3 .angefallen>[aria-hidden]{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 6px}
+.ka .r3 .angefallen .ag-b{flex:none;white-space:nowrap}
+.ka .r3 .angefallen .ag-k{font-family:var(--kd-font);font-weight:500;letter-spacing:.5px}
+.ka[data-eigen] .angefallen{color:var(--kd-text)}
 /* R00139 (ADR-0011 Nachtrag N1): Text auf einer eigenen Nutzerfarbe trägt `--kd-text` wie das Preisetikett — die Zeile r3 mit Σ-Zeit,
    Datum, Teilaufgaben-Zähler und Herkunft folgt dem Merkmal `data-eigen`, ebenso Kartennummer (r0) und der Titel einer fertigen Karte.
    Paletten- und WBS-Gründe bleiben `--kd-muted` (Regel 2, Paar `--kd-c-*` ↔ `--kd-muted`); der Warnzustand der mehrdeutigen Herkunft
