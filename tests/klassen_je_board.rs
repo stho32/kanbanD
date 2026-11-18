@@ -244,3 +244,115 @@ async fn ak4_sammelwege_und_kopie_folgen_derselben_regel() {
     assert_eq!((s, kopie["klasse"].as_str()), (201, Some("sicherheit")), "{kopie}");
     assert!(lies(tmp.path(), "aufgaben/0002-zwei.md").contains("\nclass: sicherheit\n"));
 }
+
+/// Der Wortteil, an dem Agenten-Clients erkennen, dass ein Eintrag in `kanbanD.md` hilft (R00197, ADR-0031 N2).
+const WORTTEIL: &str = "steht nicht in kanbanD.md";
+
+/// Die Ausgangslage von R00197: Vorgabe `sicherheit`, `eol`, nicht `vorrang`; Board `b` ohne `classes`, `c` mit eigenem
+/// Satz (`phase1`), `leer` mit `classes: {}`; #1 nur auf `b`, #2 nur auf `c`, #3 auf `b` und `c`, #4 nur auf `leer`, #5 auf keinem.
+async fn ausgangslage_r00197(pfad: &Path) -> Laufendes {
+    std::fs::create_dir_all(pfad.join("boards")).unwrap();
+    std::fs::write(pfad.join("kanbanD.md"), VORGABE).unwrap();
+    for (slug, titel) in [("b", "B"), ("c", "C"), ("leer", "Leer")] {
+        std::fs::write(pfad.join(format!("boards/{slug}.md")), format!("# {titel}\n{SPALTEN}")).unwrap();
+    }
+    git(pfad, &["init", "-q"]);
+    git(pfad, &["add", "-A"]);
+    git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+    let lauf = gemeinsam::starten(pfad, &["--port", "0"]);
+    for (titel, board) in [("Eins", Some("b")), ("Zwei", Some("c")), ("Drei", Some("b")), ("Vier", Some("leer")), ("Fünf", None)] {
+        let (s, _) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": titel, "board": board})).await;
+        assert_eq!(s, 201, "{titel}");
+    }
+    let (s, _) = senden(Method::POST, &lauf.adresse, "api/boards/c/aufgaben", "st", json!({"nummer": 3})).await;
+    assert_eq!(s, 201, "#3 liegt auch auf c");
+    assert_eq!(klassen_setzen(&lauf, "c", json!({"klassen": [{"schluessel": "phase1", "bezeichnung": "Phase 1", "farbe": "green"}]})).await.0, 200);
+    assert_eq!(klassen_setzen(&lauf, "leer", json!({"klassen": []})).await.0, 200);
+    assert!(lies(pfad, "boards/leer.md").starts_with("---\nclasses: {}\n") && !lies(pfad, "boards/b.md").contains("classes"), "leer führt den leeren Satz, b keinen");
+    lauf
+}
+
+/// `POST /api/aufgaben` mit der fehlenden Klasse `vorrang` in die erste Spalte des Boards.
+async fn vorrang_anlegen(lauf: &Laufendes, board: &str) -> (u16, String) {
+    anlegen(lauf, json!({"titel": "x", "board": board, "spalte": "Zu erledigen", "klasse": "vorrang"})).await
+}
+
+/// `PATCH /api/aufgaben/{nr}` mit der fehlenden Klasse `vorrang`.
+async fn vorrang_setzen(lauf: &Laufendes, nr: u32) -> (u16, String) {
+    let (s, r) = aendern(lauf, nr, json!({"klasse": "vorrang"})).await;
+    (s, r["fehler"].as_str().unwrap_or_default().to_string())
+}
+
+/// 400, nennt die Klasse und jedes Board in Anführungszeichen; den Wortteil genau dann, wenn `mit_wortteil`.
+fn abgewiesen(fall: &str, (status, fehler): (u16, String), mit_wortteil: bool, boards: &[&str]) {
+    assert_eq!(status, 400, "{fall}: {fehler}");
+    assert_eq!(fehler.contains(WORTTEIL), mit_wortteil, "{fall}: {fehler}");
+    assert!(fehler.contains("„vorrang“"), "{fall} nennt die Klasse: {fehler}");
+    for board in boards {
+        assert!(fehler.contains(&format!("„{board}“")), "{fall} nennt das Board {board}: {fehler}");
+    }
+}
+
+/// R00197 AK 1–3 / US-1..US-3: die Abweisung nennt `kanbanD.md` genau dort, wo die Vorgabe des Ordners gilt — je für
+/// `POST` und `PATCH`; keine Abweisung schreibt.
+#[tokio::test]
+async fn r00197_abweisung_nennt_kanband_md_wo_die_vorgabe_gilt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = ausgangslage_r00197(tmp.path()).await;
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let aufgaben_vorher = std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().count();
+
+    // AK 1: Board mit der Vorgabe
+    abgewiesen("POST b", vorrang_anlegen(&lauf, "b").await, true, &[]);
+    abgewiesen("PATCH #1 (b)", vorrang_setzen(&lauf, 1).await, true, &[]);
+    // AK 2: eigener Satz, auch der leere
+    abgewiesen("POST c", vorrang_anlegen(&lauf, "c").await, false, &["c"]);
+    abgewiesen("PATCH #2 (c)", vorrang_setzen(&lauf, 2).await, false, &["c"]);
+    abgewiesen("POST leer", vorrang_anlegen(&lauf, "leer").await, false, &["leer"]);
+    abgewiesen("PATCH #4 (leer)", vorrang_setzen(&lauf, 4).await, false, &["leer"]);
+    // AK 3: Mischfall und kein Board
+    abgewiesen("PATCH #3 (b + c)", vorrang_setzen(&lauf, 3).await, true, &[]);
+    abgewiesen("PATCH #5 (kein Board)", vorrang_setzen(&lauf, 5).await, true, &[]);
+    abgewiesen("POST ohne Board", anlegen(&lauf, json!({"titel": "x", "klasse": "vorrang"})).await, true, &[]);
+
+    // AK 5: keine abgewiesene Anfrage erzeugt einen Commit oder eine Datei
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher, "neun Abweisungen, kein Commit");
+    assert_eq!(std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().count(), aufgaben_vorher, "keine Karte angelegt");
+
+    // AK 3, zweiter Teil: führt auch b einen eigenen Satz ohne `vorrang`, hilft kein Eintrag in kanbanD.md mehr
+    assert_eq!(klassen_setzen(&lauf, "b", json!({"klassen": [{"schluessel": "sicherheit", "bezeichnung": "Sicherheit", "farbe": "red"}]})).await.0, 200);
+    abgewiesen("PATCH #3 (b + c, beide eigen)", vorrang_setzen(&lauf, 3).await, false, &["b", "c"]);
+    abgewiesen("POST b (eigen)", vorrang_anlegen(&lauf, "b").await, false, &["b"]);
+    // … und zurück zur Vorgabe steht der Wortteil wieder da
+    assert_eq!(klassen_setzen(&lauf, "b", json!({"klassen": null})).await.0, 200);
+    abgewiesen("POST b (wieder Vorgabe)", vorrang_anlegen(&lauf, "b").await, true, &[]);
+}
+
+/// R00197 AK 5: was vorher gültig war, bleibt gültig — und sobald `vorrang` in `kanbanD.md` steht, gilt die Anfrage
+/// genau dort, wo die Abweisung den Wortteil nannte (das ist das Versprechen des Wortteils).
+#[tokio::test]
+async fn r00197_bestand_bleibt_gueltig_und_der_eintrag_in_kanband_md_hilft_wo_der_wortteil_stand() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = ausgangslage_r00197(tmp.path()).await;
+
+    assert_eq!(anlegen(&lauf, json!({"titel": "s", "board": "b", "spalte": "Zu erledigen", "klasse": "sicherheit"})).await.0, 201);
+    assert_eq!(anlegen(&lauf, json!({"titel": "p", "board": "c", "spalte": "Zu erledigen", "klasse": "phase1"})).await.0, 201);
+    assert_eq!(aendern(&lauf, 1, json!({"klasse": "sicherheit"})).await.0, 200);
+    assert_eq!(aendern(&lauf, 2, json!({"klasse": "phase1"})).await.0, 200);
+    assert_eq!(aendern(&lauf, 3, json!({"klasse": "phase1"})).await.0, 200);
+    assert_eq!(aendern(&lauf, 3, json!({"klasse": "eol"})).await.0, 200, "Vereinigung: die Vorgabe über b");
+
+    // wie der Agenten-Client: Einstellungen lesen, die Klasse anhängen, ganz zurückschreiben
+    let (_, mut e) = senden(Method::GET, &lauf.adresse, "api/einstellungen", "st", json!(null)).await;
+    e["klassen"].as_array_mut().unwrap().push(json!({"schluessel": "vorrang", "bezeichnung": "Vorrang", "farbe": "red"}));
+    let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e).await;
+    assert_eq!(s, 200, "vorrang in die Vorgabe: {r}");
+    assert!(lies(tmp.path(), "kanbanD.md").contains("vorrang"));
+    assert_eq!(vorrang_anlegen(&lauf, "b").await.0, 201, "b: Vorgabe");
+    assert_eq!(vorrang_setzen(&lauf, 1).await.0, 200, "#1 auf b");
+    assert_eq!(vorrang_setzen(&lauf, 3).await.0, 200, "#3 auf b und c");
+    assert_eq!(vorrang_setzen(&lauf, 5).await.0, 200, "#5 auf keinem Board");
+    abgewiesen("POST c nach dem Eintrag", vorrang_anlegen(&lauf, "c").await, false, &["c"]);
+    abgewiesen("PATCH #2 nach dem Eintrag", vorrang_setzen(&lauf, 2).await, false, &["c"]);
+    abgewiesen("PATCH #4 nach dem Eintrag", vorrang_setzen(&lauf, 4).await, false, &["leer"]);
+}
