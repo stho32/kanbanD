@@ -126,6 +126,7 @@ Anlass: Am 2026-11-15 war gut ein Drittel der Kosten Arbeit ohne Nutzen — Plan
 
 DeepSeek ist der Standard für die übrigen Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
 
+- **Opus und Sonnet statt Fable** (Betreiber 2026-11-18, wörtlich: „Bitte switche alles auf Opus oder Sonnet“; ersetzt die Zeile zu Fable darunter): `product-owner`, `realist-consultant`, `planer`, `architekt` auf **Opus**; `entwickler` nach der Prüfliste des Directors je Karte (Opus bei Datenmodell, Migration, Sicherheit, Nebenläufigkeit, unklarer Ursache, neuem Muster oder mehr als etwa 5 Bubbles, sonst Sonnet; Label `opus-entwickler`/`sonnet-entwickler`); alle prüfenden Rollen, `fachspezialist` und `gestalter` auf **Sonnet**. Laufende Fable-Läufe arbeiten zu Ende.
 - **Alle Rollen auf Claude Fable 5.2** (Betreiber 2026-11-15, nach der Verlegung auf den neuen Rechner; ersetzt die folgenden Zeilen zu Sonnet, DeepSeek und opencode): jede Rolle läuft als Claude-Subagent mit dem Modell `fable`, auch `code-reviewer`, `security-reviewer` und die bisher über opencode besetzten Rollen. Der Vergleich unter „Messen“ ruht so lange.
 - **Fest auf Claude Sonnet**: `code-reviewer` (läuft bei jeder Karte, letztes Tor vor dem Entwicklertest, anderes Modell als der Erbauer) und `security-reviewer` (selten, ein übersehener Fehler ist teuer). Der Director bleibt Claude.
 - **Fest auf Claude Fable 5.2** (Betreiber 2026-11-15): `planer`, `architekt` und `entwickler`, Bau und Nacharbeit (`entw1`, `entw2`). Anlass: Am 2026-11-14 rissen zwei DeepSeek-Bauläufe die Zeitgrenze und einer lief 85 Minuten in einer Leseschleife ohne Änderung.
@@ -188,21 +189,21 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 
 | Rolle | Kürzel | Treiber | Modell | Einsatz |
 |---|---|---|---|---|
-| product-owner | po | claude | fable | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
-| realist-consultant | real | claude | fable | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
-| planer | plan | claude | fable | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
-| architekt | arch | claude | fable | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
-| architektur-reviewer | arev | claude | fable | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
-| entwickler | entw1 | claude | fable | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
-| code-reviewer | crev | claude | fable | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
-| security-reviewer | srev | claude | fable | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
-| entwicklertester | etst | claude | fable | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
-| ux-reviewer | ux | claude | fable | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
-| rechtschreib-reviewer | rsr | claude | fable | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
-| legacy-reviewer | leg | claude | fable | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
-| observability-reviewer | obs | claude | fable | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
-| fachspezialist | fach | claude | fable | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
-| gestalter | ges | claude | fable | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
+| product-owner | po | claude | opus | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
+| realist-consultant | real | claude | opus | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
+| planer | plan | claude | opus | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
+| architekt | arch | claude | opus | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
+| architektur-reviewer | arev | claude | sonnet | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
+| entwickler | entw1 | claude | | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
+| code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
+| security-reviewer | srev | claude | sonnet | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
+| entwicklertester | etst | claude | sonnet | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
+| ux-reviewer | ux | claude | sonnet | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
+| rechtschreib-reviewer | rsr | claude | sonnet | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
+| legacy-reviewer | leg | claude | sonnet | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
+| observability-reviewer | obs | claude | sonnet | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
+| fachspezialist | fach | claude | sonnet | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
+| gestalter | ges | claude | sonnet | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
 
 ## Spalten
 
