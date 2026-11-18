@@ -662,6 +662,13 @@ function durchDieSchlange(anfrage) {
   });
 }
 
+/** Die Klassenliste, die der Klassen-Editor gerade bearbeitet: in „Spalten einrichten“ die eigenen Klassen des Boards,
+    sonst die Vorgabe des Ordners in „Einrichten“ (R00195: ein Editor, zwei Orte). */
+const klassenEntwurf = () => S.ui.setup ? S.ui.setup.klassen : S.ui.einr.klassen;
+/** Die Meldung des Klassen-Editors steht dort, wo er steht. */
+function klassenFehlerSetzen(text) {
+  if (S.ui.setup) S.ui.setup.klassenFehler = text; else S.ui.einr.fehler = text;
+}
 /** Ein Eintrag aus Titel und den Feldern des Dialogs; Kürzel im Titel ergänzen die Felder. */
 function neuEintrag(titel, f) {
   const s = schnelleingabe(titel, schnellUmfeld(), new Date());
@@ -2639,7 +2646,7 @@ async function aktion(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen] }; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen], klassenWahl: S.board.klassen ? 'eigen' : 'vorgabe', klassen: S.board.klassen ? kopie(S.board.klassen) : null, klassenFehler: null }; u.palFuer = null; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
       case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'col-dates': { const sp = u.setup.spalten[+arg]; sp.datumsTrenner = !sp.datumsTrenner; break; }
@@ -2662,14 +2669,21 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'a-del': u.einr.quellen.anwendungen.splice(+arg, 1); entwurfGeaendert(); break;
+      case 'klassen-wahl': {
+        // „eigene Klassen“ beginnt mit einer Kopie der Vorgabe (R00195 AK 8); der bearbeitete Satz übersteht das Hin- und Herschalten
+        if (arg === 'eigen' && !u.setup.klassen) u.setup.klassen = kopie(vorgabeDesOrdners(S.zustand.einstellungen));
+        u.setup.klassenWahl = arg; u.setup.klassenFehler = null; u.palFuer = null;
+        break;
+      }
       case 'k-pal': u.palFuer = u.palFuer === +arg ? null : +arg; break;
-      case 'k-farbe': { const [i, f] = arg.split('|'); u.einr.klassen[+i].farbe = f; break; }
-      case 'k-del': u.einr.klassen.splice(+arg, 1); entwurfGeaendert(); u.palFuer = null; break;
+      case 'k-farbe': { const [i, f] = arg.split('|'); klassenEntwurf()[+i].farbe = f; break; }
+      case 'k-del': klassenEntwurf().splice(+arg, 1); entwurfGeaendert(); u.palFuer = null; if (u.setup) u.setup.klassenFehler = null; break;
       case 'k-add': {
         const schluessel = ($('#nck').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
-        if (!schluessel || !bezeichnung) { u.einr.fehler = 'Schlüssel und Bezeichnung nötig'; break; }
-        const belegt = u.einr.klassen.map(k => k.farbe);
-        u.einr.klassen.push({ schluessel, bezeichnung, farbe: PAL.find(f => !belegt.includes(f)) || 'grey' });
+        if (!schluessel || !bezeichnung) { klassenFehlerSetzen('Schlüssel und Bezeichnung nötig'); break; }
+        const belegt = klassenEntwurf().map(k => k.farbe);
+        klassenEntwurf().push({ schluessel, bezeichnung, farbe: PAL.find(f => !belegt.includes(f)) || 'grey' });
+        if (u.setup) u.setup.klassenFehler = null;
         u.fokus = '#nck';
         break;
       }
@@ -2732,6 +2746,14 @@ async function aktion(a, arg, wert) {
             // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-checks/column-colors)
             const letzteSpalte = u.setup.spalten.length - 1;
             const trennerAbweichend = u.setup.spalten.some((sp, i) => sp.datumsTrenner !== (i === letzteSpalte));
+            // Die Klassen gehen zuerst hinaus (R00195 AK 3): ein ungültiger Satz ist gemeldet, bevor die Spalten geschrieben
+            // sind; die Meldung des Servers steht unter dem Editor, die Eingaben bleiben stehen.
+            const klassen = setupKlassen(u.setup);
+            if (JSON.stringify(klassen) !== JSON.stringify(S.board.klassen || null)) {
+              try {
+                await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/klassen`, { klassen });
+              } catch (f) { u.setup.klassenFehler = f.message; return; }
+            }
             await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
             if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
             u.setup = null;
@@ -3029,6 +3051,14 @@ document.addEventListener('input', e => {
     return;
   }
   const ef = e.target.dataset && e.target.dataset.ef;
+  if ((ef === 'klabel' || ef === 'khex') && S.ui.setup) {
+    const k = S.ui.setup.klassen[+e.target.dataset.i], v = e.target.value;
+    if (ef === 'klabel') k.bezeichnung = v;
+    if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) k.farbe = v.trim().toLowerCase();
+    if (S.ui.setup.klassenFehler) { S.ui.setup.klassenFehler = null; const meldung = $('#klassen-dieses-boards [role="alert"]'); if (meldung) meldung.remove(); }
+    $('#setup-vorschau').textContent = setupText(S.ui.setup);
+    return;
+  }
   if (ef && S.ui.einr) {
     const d = S.ui.einr, i = +e.target.dataset.i, v = e.target.value;
     if (ef === 'pname') d.personen[i].name = v;

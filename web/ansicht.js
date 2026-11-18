@@ -13,11 +13,14 @@ function yamlSkalar(s) {
     && !/^(true|false|yes|no|on|off|null|~)$/i.test(s) && isNaN(Number(s));
   return schlicht ? s : JSON.stringify(s);
 }
+/** Der Abschnitt `classes:` — in kanbanD.md und in der Board-Datei dieselbe Form; ein leerer Satz ist `classes: {}`. */
+function klassenText(klassen) {
+  return 'classes:' + (klassen.length ? '' : ' {}') + klassen.map(k => `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`).join('');
+}
 function einstellungenText(e) {
   let s = '---\npeople:' + (e.personen.length ? '' : ' {}');
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
-  s += '\nclasses:' + (e.klassen.length ? '' : ' {}');
-  for (const k of e.klassen) s += `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`;
+  s += '\n' + klassenText(e.klassen);
   if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
   s += `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}`;
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
@@ -2224,12 +2227,20 @@ function vRegister(d) {
   return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
 }
 
+/** Der Klassen-Editor (R00010, R00195): je Klasse eine Zeile mit Farbe, Schlüssel, Bezeichnung und Zahl der Karten, darunter
+    die Neu-Zeile. Derselbe Editor pflegt die Vorgabe des Ordners („Einrichten“) und die eigenen Klassen eines Boards
+    („Spalten einrichten“); welche Liste er bearbeitet, sagt `klassenEntwurf()` in app.js. */
+function vKlassenEditor(klassen) {
+  const u = S.ui;
+  const zeilen = klassen.map((k, i) => `<div class="klz" data-klasse="${esc(k.schluessel)}"><span class="farbe${u.palFuer === i ? ' an' : ''}" style="${cv(k.farbe)}" data-act="k-pal" data-arg="${i}" title="Farbe wählen" tabindex="0" role="button" aria-label="Farbe ${esc(k.schluessel)}"></span><span class="key">${esc(k.schluessel)}</span><input class="inp" data-ef="klabel" data-i="${i}" value="${esc(k.bezeichnung)}" aria-label="Bezeichnung ${esc(k.schluessel)}"><span class="n">${S.aufgaben.filter(a => a.klasse === k.schluessel).length}</span><button class="btn btn-sym" data-act="k-del" data-arg="${i}" title="entfernen – Aufgaben behalten den Schlüssel, ohne Farbe" aria-label="Klasse ${esc(k.schluessel)} entfernen">✕</button></div>${u.palFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(k.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${k.farbe === f ? 'an' : ''}" data-act="k-farbe" data-arg="${i}|${f}" title="${f}" tabindex="0" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="khex" data-i="${i}" value="${k.farbe.startsWith('#') ? esc(k.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe"></div></div>` : ''}`).join('');
+  return `${zeilen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nck" placeholder="schlüssel" aria-label="Neuer Klassenschlüssel"><input class="inp" id="ncl" placeholder="Bezeichnung · Enter" data-enter="k-add" aria-label="Neue Bezeichnung"><span></span><span></span></div>`;
+}
 function vEinrichten() {
   const d = S.ui.einr, u = S.ui;
   const personen = d.personen.map((p, i) => `<div class="klz pz${p.aktiv ? '' : ' still'}" data-person="${esc(p.kuerzel)}"><span class="pk ${p.art === 'agent' ? 'pk-a' : 'pk-m'}${p.aktiv ? '' : ' pk-still'}" title="${esc(p.name)}${p.aktiv ? '' : ' (stillgelegt)'}">${esc(p.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(p.kuerzel)}</span><input class="inp" data-ef="pname" data-i="${i}" value="${esc(p.name)}" aria-label="Name ${esc(p.kuerzel)}"><span class="seg art" role="radiogroup" aria-label="Art ${esc(p.kuerzel)}"><span class="${p.art === 'human' ? 'an' : ''}" data-act="p-art" data-arg="${i}|human" role="radio" aria-checked="${p.art === 'human'}">Mensch</span><span class="${p.art === 'agent' ? 'an' : ''}" data-act="p-art" data-arg="${i}|agent" role="radio" aria-checked="${p.art === 'agent'}">Agent</span></span><button class="btn btn-sym" data-act="p-still" data-arg="${i}" title="${p.aktiv ? 'stilllegen – nicht mehr wählbar, Name bleibt lesbar' : 'zurückholen'}" aria-label="${p.aktiv ? 'stilllegen' : 'zurückholen'} ${esc(p.kuerzel)}">${p.aktiv ? '⏸' : '↺'}</button></div>`).join('');
-  const klassen = d.klassen.map((k, i) => `<div class="klz" data-klasse="${esc(k.schluessel)}"><span class="farbe${u.palFuer === i ? ' an' : ''}" style="${cv(k.farbe)}" data-act="k-pal" data-arg="${i}" title="Farbe wählen" tabindex="0" role="button" aria-label="Farbe ${esc(k.schluessel)}"></span><span class="key">${esc(k.schluessel)}</span><input class="inp" data-ef="klabel" data-i="${i}" value="${esc(k.bezeichnung)}" aria-label="Bezeichnung ${esc(k.schluessel)}"><span class="n">${S.aufgaben.filter(a => a.klasse === k.schluessel).length}</span><button class="btn btn-sym" data-act="k-del" data-arg="${i}" title="entfernen – Aufgaben behalten den Schlüssel, ohne Farbe" aria-label="Klasse ${esc(k.schluessel)} entfernen">✕</button></div>${u.palFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(k.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${k.farbe === f ? 'an' : ''}" data-act="k-farbe" data-arg="${i}|${f}" title="${f}" tabindex="0" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="khex" data-i="${i}" value="${k.farbe.startsWith('#') ? esc(k.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe"></div></div>` : ''}`).join('');
+  const klassen = vKlassenEditor(d.klassen);
   return `<div class="einrichten"><div class="einr breit"><h2 class="einr-kopf">PERSONEN <span class="mono">people:</span></h2><div class="hin">Menschen sind unter „Ich bin …“ wählbar; Agenten nennen sich an der API selbst. Stilllegen statt entfernen – der Name bleibt an Karten und Zeiten lesbar.</div>${personen}<div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" id="npk" placeholder="kürzel" aria-label="Neues Kürzel"><input class="inp" id="npn" placeholder="Name · Enter" data-enter="p-add" aria-label="Neuer Name"><span class="seg art" role="radiogroup" aria-label="Art der neuen Person"><span class="${u.nart !== 'agent' ? 'an' : ''}" data-act="n-art" data-arg="human" role="radio" aria-checked="${u.nart !== 'agent'}">Mensch</span><span class="${u.nart === 'agent' ? 'an' : ''}" data-act="n-art" data-arg="agent" role="radio" aria-checked="${u.nart === 'agent'}">Agent</span></span><span></span></div>
-<h2 class="einr-kopf">KLASSEN <span class="mono">classes:</span></h2><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nck" placeholder="schlüssel" aria-label="Neuer Klassenschlüssel"><input class="inp" id="ncl" placeholder="Bezeichnung · Enter" data-enter="k-add" aria-label="Neue Bezeichnung"><span></span><span></span></div>
+<h2 class="einr-kopf">KLASSEN <span class="mono">classes:</span></h2><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}
 ${vSignaleEinrichten(d)}
 <h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2><div class="felder">${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span>${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>
 <h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und die vollen Pfade zu WBS und Anforderungen im Arbeits-Repository. Aufgaben nennen ihre Herkunft dann als <span class="mono">kd:I0007</span>; Boards binden Anwendungen mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
@@ -2259,7 +2270,9 @@ function setupText(d) {
   const eigner = d.spalten.filter(eigentuemerInDatei);
   const besitz = eigner.length ? 'column-owner:\n' + eigner.map(s => `  ${yamlSkalar(s.name)}: ${yamlSkalar(eigentuemerInDatei(s))}`).join('\n') + '\n' : '';
   const bindung = Array.isArray(d.anwendungen) ? `applications: [${d.anwendungen.map(yamlSkalar).join(', ')}]\n` : '';
-  return (bindung || kopf || besitz ? '---\n' + bindung + kopf + besitz + '---\n\n' : '')
+  const eigene = setupKlassen(d);
+  const klassen = eigene ? klassenText(eigene) + '\n' : '';
+  return (klassen || bindung || kopf || besitz ? '---\n' + klassen + bindung + kopf + besitz + '---\n\n' : '')
     + `# ${S.board.titel}\n` + d.spalten.map(s => `\n## ${s.name}\n` + (s.n ? `\n… ${s.n} Aufgabenzeilen\n` : '')).join('');
 }
 /** Bindung des Boards an registrierte Anwendungen (R00062): ein Schalter je Anwendung und „keine“; ohne Register nichts. */
@@ -2269,6 +2282,20 @@ function vBindungFeld(d) {
   const an = gebundeneAnwendungen({ anwendungen: d.anwendungen }, register).map(a => a.kuerzel), standard = d.anwendungen == null;
   const schalter = (k, text, ein, titel) => `<button class="as${ein ? ' an' : ''}" data-act="bind" data-arg="${esc(k)}" aria-pressed="${ein}" aria-label="Bindung ${esc(text)}" title="${esc(titel)}">${esc(text)}</button>`;
   return `<h2 class="einr-kopf">GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h2><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `WBS-Sicht, Phasen-Spalten und Prüfungen aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen, keine WBS-Sicht; vorhandene Spalten bleiben')}</div>`;
+}
+/** Die eigenen Klassen im Entwurf von „Spalten einrichten“, wie sie gespeichert würden: `null` heißt Vorgabe des Ordners. */
+const setupKlassen = d => d.klassenWahl === 'eigen' ? d.klassen : null;
+/** Abschnitt „Klassen dieses Boards“ (R00195 AK 8, Zeichnung D0002 #klassen-dieses-boards): die Wahl zwischen der Vorgabe des
+    Ordners und eigenen Klassen; bei „eigene Klassen“ der Klassen-Editor aus „Einrichten“. Geschrieben wird erst mit „Fertig“. */
+function vBoardKlassen(d) {
+  const eigen = d.klassenWahl === 'eigen';
+  const radio = (wert, text) => `<span class="${d.klassenWahl === wert ? 'an' : ''}" data-act="klassen-wahl" data-arg="${wert}" role="radio" aria-checked="${d.klassenWahl === wert}">${text}</span>`;
+  const wahl = `<div class="kl-wahl"><span class="seg" role="radiogroup" aria-label="Klassen dieses Boards">${radio('vorgabe', 'Vorgabe des Ordners')}${radio('eigen', 'eigene Klassen')}</span></div>`;
+  const vorgabe = vorgabeDesOrdners(S.zustand.einstellungen).map(k => k.bezeichnung).join(', ') || 'keine';
+  const inhalt = eigen
+    ? `<div class="hin">Eigene Klassen gelten nur auf diesem Board; begonnen wird mit einer Kopie der Vorgabe. Aufgaben behalten ihren Schlüssel.</div>${vKlassenEditor(d.klassen)}${d.klassenFehler ? `<div class="warnh" role="alert">${esc(d.klassenFehler)}</div>` : ''}`
+    : `<div class="hin">Dieses Board zeigt die Klassen des Ordners: ${esc(vorgabe)}. Gepflegt werden sie unter „Einrichten“.</div>`;
+  return `<section id="klassen-dieses-boards" aria-label="Klassen dieses Boards"><h2 class="einr-kopf">KLASSEN DIESES BOARDS <span class="mono">classes:</span></h2>${wahl}${inhalt}</section>`;
 }
 /** Auswahl „Eigentümer“ mit Hinweissatz (aria-describedby, R00120); ein unbekannter Rohwert ist als eigene Option vorausgewählt. */
 function vEigentuemerWahl(sp, i) {
@@ -2282,7 +2309,7 @@ function vSetup() {
   const d = S.ui.setup;
   const bahnen = d.spalten.map((sp, i) => `<section class="bahn${sp.farbe ? ' gefaerbt' : ''}" style="--bw:236px${sp.farbe ? `;--sf:${esc(sp.farbe)}` : ''}"><div class="bk-ed"><div class="r"><input class="inp" data-sf="name" data-i="${i}" value="${esc(sp.name)}" aria-label="Spaltenname ${i + 1}"><button class="btn btn-sym" data-act="col-l" data-arg="${i}"${i === 0 ? ' disabled' : ''} title="nach links">←</button><button class="btn btn-sym" data-act="col-r" data-arg="${i}"${i === d.spalten.length - 1 ? ' disabled' : ''} title="nach rechts">→</button><button class="btn btn-sym" data-act="col-del" data-arg="${i}"${sp.n ? ` disabled title="enthält ${sp.n} Karten – erst leeren"` : ' title="entfernen"'} aria-label="Spalte ${esc(sp.name)} entfernen">✕</button></div><div class="r2"><span>${sp.n} Karten</span>${sp.alt && sp.alt !== sp.name ? `<span class="mono">war: ${esc(sp.alt)}</span>` : ''}${!sp.alt ? '<span class="mono">neu</span>' : ''}<span style="margin-left:auto">Grenze <input class="inp" data-sf="grenze" data-i="${i}" value="${sp.grenze || ''}" aria-label="Grenze ${esc(sp.name)}" inputmode="numeric"></span></div><div class="r2">${(an => `<button class="as${an ? ' an' : ''}" data-act="col-pruef" data-arg="${i}" aria-pressed="${an}" aria-label="Prüfung wbs-effects-green ${esc(sp.name)}" title="Beim Weiterziehen nach rechts warnen, wenn nicht alle Knoten der Wirkungen grün sind — sperrt nicht">prüft: WBS grün</button>`)((sp.pruefungen || []).includes('wbs-effects-green'))}${(sp.pruefungen || []).filter(n => n !== 'wbs-effects-green').map(n => `<span class="mono" title="unbekannte Prüfung — bleibt erhalten">${esc(n)}</span>`).join('')}</div><div class="r2">${(an => `<button class="as dates${an ? ' an' : ''}" data-act="col-dates" data-arg="${i}" aria-pressed="${an}" aria-label="Datums-Trenner ${esc(sp.name)}" title="Dünne beschriftete Datums-Trenner zwischen den Aufgaben dieser Spalte — nach dem Tag, an dem die Karte in die Spalte kam">Datums-Trenner</button>`)(sp.datumsTrenner)}</div><div class="r2"><input class="inp kommentar" data-sf="notiz" data-i="${i}" value="${esc(sp.notiz || '')}" placeholder="Kommentar (ⓘ im Kopf)" aria-label="Kommentar ${esc(sp.name)}"></div><div class="r2">Farbe <input type="color" class="farbwahl" data-sf="farbe" data-i="${i}" value="${esc(sp.farbe || '#ffffff')}" aria-label="Farbe ${esc(sp.name)}"><span class="mono">${sp.farbe ? esc(sp.farbe) : 'keine'}</span>${sp.farbe ? `<button class="btn btn-sym" data-act="col-farbe-weg" data-arg="${i}" title="Farbe entfernen" aria-label="Farbe ${esc(sp.name)} entfernen">✕</button>` : ''}</div>${vEigentuemerWahl(sp, i)}</div><div class="flaeche ruhig"></div></section>`).join('');
   const neu = `<section class="bahn-neu"><div class="bk-ed"><div class="r"><input class="inp" id="col-new" placeholder="neue Spalte · Enter" data-enter="col-add" aria-label="Neue Spalte"></div><div class="r2">wird vor der Abschlussspalte eingefügt</div></div></section>`;
-  return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr">${vBindungFeld(d)}<h2 class="einr-kopf">BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
+  return `<div class="setup"><div class="bahnen">${bahnen}${neu}</div><aside class="einr">${vBindungFeld(d)}${vBoardKlassen(d)}<h2 class="einr-kopf">BOARDS/${esc(S.board.slug).toUpperCase()}.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="setup-vorschau">${esc(setupText(d))}</pre></aside></div>`;
 }
 
 /* ── Erster Start ── */

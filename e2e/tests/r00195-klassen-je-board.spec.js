@@ -6,7 +6,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, bereit, filterOeffnen } = require('./hilfen');
+const { kanbanStarten, alsPerson, bereit, filterOeffnen, ausMehr, breiteSetzen, commitSteht } = require('./hilfen');
 
 // ── Ausgangslage der Anforderung ──
 const VORGABE = '---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses:\n  sicherheit: {label: Sicherheit, color: red}\n  eol: {label: EOL, color: amber}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n---\n';
@@ -77,6 +77,36 @@ function konsolenfehler(page) {
   return fehler;
 }
 const verlaufDerDatei = (k, rel) => k.git('log', '--format=%s', '--', rel);
+// „Spalten einrichten“ des Boards, Abschnitt „Klassen dieses Boards“
+async function einrichtenOeffnen(page, k, slug, nr) {
+  await boardZeigen(page, k, slug, nr);
+  await ausMehr(page, 'Spalten einrichten');
+  await expect(klassenWahl(page)).toBeVisible();
+}
+const abschnitt = page => page.locator('#klassen-dieses-boards');
+const klassenWahl = page => page.getByRole('radiogroup', { name: 'Klassen dieses Boards' });
+const wahl = (page, name) => klassenWahl(page).getByRole('radio', { name });
+const VORGABE_WAHL = 'Vorgabe des Ordners', EIGENE_WAHL = 'eigene Klassen';
+/** Die Zeilen des Klassen-Editors als [Schlüssel, Bezeichnung]; die Neu-Zeile zählt nicht. */
+const editorZeilen = bereich => bereich.locator('.klz[data-klasse]').evaluateAll(zeilen => zeilen.map(z => [z.dataset.klasse, z.querySelector('input').value]));
+const vorschau = page => page.locator('#setup-vorschau');
+const fertig = page => page.getByRole('button', { name: 'Fertig' });
+/** „Fertig“ und warten, bis der Modus geschlossen und das Board neu gezeichnet ist. */
+async function speichern(page, nr) {
+  await fertig(page).click();
+  await expect(vorschau(page)).toHaveCount(0);
+  await bereit(page, karte(page, nr));
+}
+async function klasseErgaenzen(page, schluessel, bezeichnung, farbe) {
+  await page.getByLabel('Neuer Klassenschlüssel').fill(schluessel);
+  await page.getByLabel('Neue Bezeichnung').fill(bezeichnung);
+  await page.getByLabel('Neue Bezeichnung').press('Enter');
+  await expect(abschnitt(page).locator(`.klz[data-klasse="${schluessel}"]`)).toBeVisible();
+  if (!farbe) return;
+  await page.getByRole('button', { name: `Farbe ${schluessel}`, exact: true }).click();
+  await page.getByRole('button', { name: farbe, exact: true }).click();
+}
+const commits = k => +k.git('rev-list', '--count', 'HEAD');
 /** Die Namen der Einträge im geöffneten Untermenü „Klasse“. */
 const untermenue = page => page.locator('.kmenue.unter .km-e').allTextContents();
 
@@ -217,6 +247,128 @@ test.describe('R00195', () => {
     await expect(neu.locator('#neu-vorschau')).toContainText('Kisten class:sicherheit');
     await expect(neu.locator('#neu-vorschau .cls')).toHaveCount(0);
     expect(fehler).toEqual([]);
+  });
+
+  test('AK 8 / US-1: eigene Klassen beginnen mit einer Kopie der Vorgabe und stehen danach in der Board-Datei', async ({ page }) => {
+    const vorgabeVorher = k.lies('kanbanD.md');
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await expect(wahl(page, VORGABE_WAHL)).toBeChecked();
+    await expect(abschnitt(page)).toContainText('Dieses Board zeigt die Klassen des Ordners: Sicherheit, EOL. Gepflegt werden sie unter „Einrichten“.');
+    expect(await editorZeilen(abschnitt(page))).toEqual([]);
+    await expect(vorschau(page)).not.toContainText('classes');
+
+    await wahl(page, EIGENE_WAHL).click();
+    await expect(wahl(page, EIGENE_WAHL)).toBeChecked();
+    await expect(abschnitt(page)).toContainText('Eigene Klassen gelten nur auf diesem Board; begonnen wird mit einer Kopie der Vorgabe. Aufgaben behalten ihren Schlüssel.');
+    await expect.poll(() => editorZeilen(abschnitt(page))).toEqual([['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
+    await expect(vorschau(page)).toContainText('---\nclasses:\n  sicherheit: {label: Sicherheit, color: red}\n  eol: {label: EOL, color: amber}\n');
+
+    // ohne weitere Änderung gespeichert: ein Commit, jede Karte sieht aus wie vorher
+    const vorher = commits(k);
+    await speichern(page, 3);
+    await commitSteht(k, vorher + 1);
+    expect(commits(k)).toBe(vorher + 1);
+    expect(k.git('show', '--name-only', '--format=%s', 'HEAD')).toBe('Klassen von „Umzug“: sicherheit, eol\n\nboards/umzug.md');
+    expect(k.lies('boards/umzug.md')).toMatch(/^---\nclasses:\n  sicherheit: \{label: Sicherheit, color: red\}\n  eol: \{label: EOL, color: amber\}\n/);
+    expect(k.lies('kanbanD.md')).toBe(vorgabeVorher);
+    await expect(karte(page, 2)).toHaveAttribute('data-c', 'sicherheit');
+    await expect(karte(page, 2)).toHaveAttribute('style', /--kd-c-red\b/);
+    await expect(karte(page, 3)).toHaveAttribute('style', /--kd-c-amber\b/);
+    await expect(legende(page)).toHaveText([/^Sicherheit\s*1$/, /^EOL\s*1$/, /^ohne Klasse\s*1$/]);
+
+    // phase1 ergänzt: nur Umzug zeigt sie
+    await ausMehr(page, 'Spalten einrichten');
+    await expect(wahl(page, EIGENE_WAHL)).toBeChecked();
+    await klasseErgaenzen(page, 'phase1', 'Phase 1', 'green');
+    await expect(vorschau(page)).toContainText('  phase1: {label: Phase 1, color: green}\n');
+    await speichern(page, 3);
+    await expect(legende(page)).toHaveText([/^Sicherheit\s*1$/, /^EOL\s*1$/, /^Phase 1\s*0$/, /^ohne Klasse\s*1$/]);
+    expect(k.lies('boards/umzug.md')).toContain('  eol: {label: EOL, color: amber}\n  phase1: {label: Phase 1, color: green}\n');
+    expect(k.lies('kanbanD.md')).toBe(vorgabeVorher);
+    await karte(page, 4).click();
+    await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL'], ['phase1', 'Phase 1']]);
+    await boardZeigen(page, k, 'wartung', 1);
+    await expect(legende(page)).toHaveText([/^Sicherheit\s*1$/, /^EOL\s*0$/, /^ohne Klasse\s*0$/]);
+  });
+
+  test('AK 8: die Wahl ist eine Radiogruppe mit einem Tab-Halt; Hin- und Herschalten behält den bearbeiteten Satz', async ({ page }) => {
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await expect(wahl(page, VORGABE_WAHL)).toHaveAttribute('tabindex', '0');
+    await expect(wahl(page, EIGENE_WAHL)).toHaveAttribute('tabindex', '-1');
+    await wahl(page, VORGABE_WAHL).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(wahl(page, EIGENE_WAHL)).toBeChecked();
+    await expect(wahl(page, EIGENE_WAHL)).toBeFocused();
+
+    await page.getByLabel('Bezeichnung eol').fill('Altlast');
+    await klasseErgaenzen(page, 'phase1', 'Phase 1');
+    await wahl(page, VORGABE_WAHL).click();
+    await expect(vorschau(page)).not.toContainText('classes');
+    expect(await editorZeilen(abschnitt(page))).toEqual([]);
+    await wahl(page, EIGENE_WAHL).click();
+    await expect.poll(() => editorZeilen(abschnitt(page))).toEqual([['sicherheit', 'Sicherheit'], ['eol', 'Altlast'], ['phase1', 'Phase 1']]);
+    await expect(vorschau(page)).toContainText('  eol: {label: Altlast, color: amber}\n');
+
+    // „Verwerfen“ schreibt nichts
+    const vorher = commits(k);
+    await page.getByRole('button', { name: 'Verwerfen' }).click();
+    await expect(vorschau(page)).toHaveCount(0);
+    expect(commits(k)).toBe(vorher);
+    expect(k.lies('boards/umzug.md')).toBe(AUSGANGSLAGE['boards/umzug.md']);
+  });
+
+  test('AK 8, AK 2: der leere eigene Satz schreibt classes: {} — das Board führt ausdrücklich keine Klassen (Zeichnung 1.4)', async ({ page }) => {
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await wahl(page, EIGENE_WAHL).click();
+    await page.getByRole('button', { name: 'Klasse sicherheit entfernen' }).click();
+    await page.getByRole('button', { name: 'Klasse eol entfernen' }).click();
+    await expect(vorschau(page)).toContainText('---\nclasses: {}\n');
+    await speichern(page, 3);
+    expect(k.lies('boards/umzug.md')).toMatch(/^---\nclasses: \{\}\n/);
+    await expect(legende(page)).toHaveCount(0);
+    await expect(fremdeKlasse(page, 3)).toHaveText('eol');
+  });
+
+  test('AK 3, Zeichnung 1.5: ein ungültiger Satz wird gemeldet, bevor etwas geschrieben ist — auch die Spalten nicht', async ({ page }) => {
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await wahl(page, EIGENE_WAHL).click();
+    await klasseErgaenzen(page, 'phase1', 'Phase 1');
+    await page.getByLabel('Bezeichnung phase1').fill('   ');
+    await page.getByLabel('Spaltenname 2').fill('Unterwegs');
+    const vorher = k.git('rev-parse', 'HEAD');
+    const anfragen = [];
+    page.on('request', r => { if (r.method() === 'PUT') anfragen.push(new URL(r.url()).pathname); });
+
+    await fertig(page).click();
+    const meldung = abschnitt(page).getByRole('alert');
+    await expect(meldung).toHaveText('Klasse „phase1“ braucht eine Bezeichnung');
+    await expect(meldung).toHaveClass(/warnh/);
+    expect(anfragen, 'die Spalten gehen erst nach den Klassen hinaus').toEqual(['/api/boards/umzug/klassen']);
+    expect(k.git('rev-parse', 'HEAD')).toBe(vorher);
+    expect(k.git('status', '--porcelain')).toBe('');
+    // die Eingaben bleiben stehen
+    await expect.poll(() => editorZeilen(abschnitt(page))).toEqual([['sicherheit', 'Sicherheit'], ['eol', 'EOL'], ['phase1', '   ']]);
+    await expect(page.getByLabel('Spaltenname 2')).toHaveValue('Unterwegs');
+
+    await page.getByLabel('Bezeichnung phase1').fill('Phase 1');
+    await expect(meldung).toHaveCount(0);
+    await fertig(page).click();
+    await expect(vorschau(page)).toHaveCount(0);
+    await expect.poll(() => k.lies('boards/umzug.md')).toContain('## Unterwegs');
+    expect(k.lies('boards/umzug.md')).toContain('  phase1: {label: Phase 1, color:');
+  });
+
+  test('Zeichnung 2.3: bei 375 px steht die Seitenleiste unter den Spalten in voller Breite, nichts scrollt waagrecht', async ({ page }) => {
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await wahl(page, EIGENE_WAHL).click();
+    await breiteSetzen(page, 375, 800);
+    const masse = await page.evaluate(() => {
+      const leiste = document.querySelector('.setup aside.einr').getBoundingClientRect(), spalten = document.querySelector('.setup .bahnen').getBoundingClientRect();
+      const zeile = document.querySelector('#klassen-dieses-boards .klz[data-klasse]').getBoundingClientRect();
+      const rollt = e => e.scrollWidth > e.clientWidth;
+      return { seite: rollt(document.documentElement), main: rollt(document.querySelector('#main')), setup: rollt(document.querySelector('.setup')), leiste: rollt(document.querySelector('.setup aside.einr')), links: leiste.left, breite: leiste.width, unter: leiste.top >= spalten.bottom - 1, zeileRechts: zeile.right <= 375 };
+    });
+    expect(masse).toEqual({ seite: false, main: false, setup: false, leiste: false, links: 0, breite: 375, unter: true, zeileRechts: true });
   });
 
   test('AK 7: außerhalb eines Boards gilt das erste Board der Aufgabe, sonst die Vorgabe', async ({ page }) => {
