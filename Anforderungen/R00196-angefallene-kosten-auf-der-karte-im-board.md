@@ -1,6 +1,6 @@
 ---
 id: R00196
-status: Neu
+status: Erledigt
 datum: 2026-11-18
 ---
 
@@ -33,14 +33,14 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Mensch und Agent arbeiten gleic
 | #4 | Eingang | — | — | keinen Betrag |
 | #5 | Eingang | `amount: 2.00` USD | 2,00 EUR, 1,00 USD, 0,50 USD (alle 13.11.); 46 Minuten gebuchte Zeit | „≈ 2,00 $“, „1,50 $“, „2,00 €“, „Σ 0:46“ |
 
-- [ ] **AK 1 Nur Kosteneinträge:** Die Karte #1 zeigt im Board „4,66 $“ (3,46 + 1,20), ohne „≈“ und ohne Preisetikett.
-- [ ] **AK 2 Alte Posten und Spanne:** Die Karte #2 zeigt „≈ 0,45 $“ (Mitte (40 + 50 + 1) ÷ 2 abgerundet = 45 Cent, wie bisher) und dahinter „0,40–0,50 $“. Bekommt #2 über die API den Kosteneintrag 4,66 USD, zeigt die Karte ohne Neuladen „5,06–5,16 $“ (4,66 + 0,40; 4,66 + 0,50).
-- [ ] **AK 3 Nur Schätzung, nichts:** Die Karte #3 zeigt nur „≈ 1,63 $“. Die Karte #4 zeigt keinen Betrag, kein „0,00 $“ und kein leeres Element für angefallene Kosten.
-- [ ] **AK 4 Schätzung, mehrere Währungen, Reihenfolge:** Die Karte #5 zeigt in dieser Reihenfolge „≈ 2,00 $“, „1,50 $“ (1,00 + 0,50), „2,00 €“, „Σ 0:46“ — USD vor EUR, keine Umrechnung, kein Betrag fehlt.
-- [ ] **AK 5 Name für Hilfstechnik:** Der Name der angefallenen Kosten lautet an #1 „Angefallene Kosten: 4,66 $“, an #2 „Angefallene Kosten: 0,40 bis 0,50 $“, an #5 „Angefallene Kosten: 1,50 $, 2,00 €“. Er steht als visuell versteckter Text im Element; der sichtbare Teil trägt `aria-hidden="true"`, das Element kein `aria-label`. Gegenprobe: der sichtbare Text der Karte #1 (`innerText`) enthält „4,66 $“, aber nicht „Angefallene Kosten“. Der Name des Preisetiketts („Preisetikett: geschätzt …, API-Kosten“) bleibt unverändert.
-- [ ] **AK 6 Dieselbe Zahl wie der Bericht, unabhängig vom Berichtszeitraum:** Die Beträge der Karten ergeben je Währung die Summe des ungefilterten Berichts „Kosten“ für „fabrik“: USD 4,66 + 0,40–0,50 + 1,50 = „6,56–6,66 $“, EUR „2,00 €“. Ist im Bericht der Zeitraum 14.11.–14.11. gewählt (kein Eintrag darin), zeigen die Karten im Board weiter dieselben Beträge.
-- [ ] **AK 7 Schmal, Hell und Dunkel:** Bei 320 px Breite zeigt #5 alle drei Beträge und „Σ 0:46“; kein Betrag bricht in sich um (Zahl bzw. Spanne und Währungszeichen stehen in einer Zeile), Karte und Seite scrollen nicht quer ([R00187](R00187-schmale-breite-320-bis-414-px-kein-querscrollen-nichts-abgeschnitten.md)). Anordnung, Abstände und Trennzeichen folgen dem freigegebenen Artboard `Dokumentation/Wireframes/D0002.dc.html`, Zustand „Angefallene Kosten auf der Karte“; Schätzung und angefallene Summe sind sehend unterscheidbar (mindestens „≈“ an der Schätzung); Kontrast der Beträge mindestens 4,5:1 in Hell und Dunkel.
-- [ ] **AK 8 Nichts sonst ändert sich:** Eine Karte ohne Kosteneinträge und ohne alte Posten sieht aus wie vorher, samt Komma-Regel aus R00105 („≈ 1,10 $, Σ 0:46“; die Spec `e2e/tests/r00105-preisetikett.spec.js` bleibt unverändert grün). Die Anzeige schreibt nichts: keine Aufgabendatei ändert sich, kein Commit entsteht. Defekte Karten zeigen keinen Betrag.
+- [x] **AK 1 Nur Kosteneinträge:** Die Karte #1 zeigt im Board „Ist 4,66 $“ (3,46 + 1,20; das Kennzeichen „Ist“ steht nach der Zeichnung D0002 `#angefallene-kosten` einmal vor dem ersten angefallenen Betrag), ohne „≈“ und ohne Preisetikett.
+- [x] **AK 2 Alte Posten und Spanne:** Die Karte #2 zeigt „≈ 0,45 $“ (Mitte (40 + 50 + 1) ÷ 2 abgerundet = 45 Cent, wie bisher) und dahinter „Ist 0,40–0,50 $“. Bekommt #2 über die API den Kosteneintrag 4,66 USD, zeigt die Karte ohne Neuladen „Ist 5,06–5,16 $“ (4,66 + 0,40; 4,66 + 0,50).
+- [x] **AK 3 Nur Schätzung, nichts:** Die Karte #3 zeigt nur „≈ 1,63 $“. Die Karte #4 zeigt keinen Betrag, kein „0,00 $“ und kein leeres Element für angefallene Kosten.
+- [x] **AK 4 Schätzung, mehrere Währungen, Reihenfolge:** Die Karte #5 zeigt in dieser Reihenfolge „≈ 2,00 $“, „Ist 1,50 $ ·“ (1,00 + 0,50), „2,00 €“, „Σ 0:46“ — sichtbarer Text nach der Zeichnung „≈ 2,00 $ Ist 1,50 $ · 2,00 € Σ 0:46“, zwischen den drei Gruppen kein Komma; USD vor EUR, keine Umrechnung, kein Betrag fehlt.
+- [x] **AK 5 Name für Hilfstechnik:** Der Name der angefallenen Kosten lautet an #1 „Angefallene Kosten: 4,66 $“, an #2 „Angefallene Kosten: 0,40 bis 0,50 $“, an #5 „Angefallene Kosten: 1,50 $, 2,00 €“. Er steht als visuell versteckter Text im Element; der sichtbare Teil trägt `aria-hidden="true"`, das Element kein `aria-label`. Gegenprobe: der sichtbare Text der Karte #1 (`innerText`) enthält „4,66 $“, aber nicht „Angefallene Kosten“. Der Name des Preisetiketts („Preisetikett: geschätzt …, API-Kosten“) bleibt unverändert.
+- [x] **AK 6 Dieselbe Zahl wie der Bericht, unabhängig vom Berichtszeitraum:** Die Beträge der Karten ergeben je Währung die Summe des ungefilterten Berichts „Kosten“ für „fabrik“: USD 4,66 + 0,40–0,50 + 1,50 = „6,56–6,66 $“, EUR „2,00 €“. Ist im Bericht der Zeitraum 14.11.–14.11. gewählt (kein Eintrag darin), zeigen die Karten im Board weiter dieselben Beträge.
+- [x] **AK 7 Schmal, Hell und Dunkel:** Bei 320 px Breite zeigt #5 alle drei Beträge und „Σ 0:46“; kein Betrag bricht in sich um (Zahl bzw. Spanne und Währungszeichen stehen in einer Zeile), Karte und Seite scrollen nicht quer ([R00187](R00187-schmale-breite-320-bis-414-px-kein-querscrollen-nichts-abgeschnitten.md)). Anordnung, Abstände und Trennzeichen folgen dem freigegebenen Artboard `Dokumentation/Wireframes/D0002.dc.html`, Zustand „Angefallene Kosten auf der Karte“; Schätzung und angefallene Summe sind sehend unterscheidbar (mindestens „≈“ an der Schätzung); Kontrast der Beträge mindestens 4,5:1 in Hell und Dunkel.
+- [x] **AK 8 Nichts sonst ändert sich:** Eine Karte ohne Kosteneinträge und ohne alte Posten sieht aus wie vorher, samt Komma-Regel aus R00105 („≈ 1,10 $, Σ 0:46“; die Spec `e2e/tests/r00105-preisetikett.spec.js` bleibt unverändert grün). Die Anzeige schreibt nichts: keine Aufgabendatei ändert sich, kein Commit entsteht. Defekte Karten zeigen keinen Betrag.
 
 ## Tests
 
