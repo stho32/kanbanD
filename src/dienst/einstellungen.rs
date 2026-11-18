@@ -2,7 +2,7 @@ use super::{Kanban, Schritt};
 use super::zugregeln::personen_pruefen;
 use crate::fehler::Fehler;
 use crate::format::einstellungen;
-use crate::modell::{Anwendung, Art, Einstellungen, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
+use crate::modell::{Anwendung, Art, Einstellungen, Klasse, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 
 pub const PALETTE: [&str; 16] = ["yellow", "amber", "orange", "red", "rose", "pink", "magenta", "violet", "indigo", "blue", "sky", "cyan", "teal", "green", "lime", "grey"];
 
@@ -13,6 +13,27 @@ pub fn farbe_gueltig(f: &str) -> bool {
 
 fn schluessel_gueltig(s: &str) -> bool {
     !s.is_empty() && s.len() <= 24 && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+}
+
+/// Ein Klassensatz — der des Ordners oder der eines Boards (ADR-0031 Regel 1): Schlüssel, Bezeichnung, Farbe, keine Dopplung.
+pub fn klassen_pruefen(klassen: &[Klasse]) -> Result<(), Fehler> {
+    let mut gesehen: Vec<&str> = vec![];
+    for k in klassen {
+        if !schluessel_gueltig(&k.schluessel) {
+            return Err(Fehler::Ungueltig(format!("Klassenschlüssel „{}“: Kleinbuchstaben, Ziffern, - und _", k.schluessel)));
+        }
+        if k.bezeichnung.trim().is_empty() {
+            return Err(Fehler::Ungueltig(format!("Klasse „{}“ braucht eine Bezeichnung", k.schluessel)));
+        }
+        if !farbe_gueltig(&k.farbe) {
+            return Err(Fehler::Ungueltig(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", k.farbe)));
+        }
+        if gesehen.contains(&k.schluessel.as_str()) {
+            return Err(Fehler::Ungueltig(format!("Klasse „{}“ ist doppelt", k.schluessel)));
+        }
+        gesehen.push(&k.schluessel);
+    }
+    Ok(())
 }
 
 /// Regeln für neue Einstellungen gegenüber den bisherigen.
@@ -33,22 +54,7 @@ pub fn einstellungen_pruefen(alt: &Einstellungen, neu: &Einstellungen) -> Result
     if let Some(weg) = alt.personen.iter().find(|p| !gesehen.contains(&p.kuerzel.as_str())) {
         return Err(Fehler::Konflikt(format!("„{}“ wird stillgelegt, nicht entfernt", weg.name)));
     }
-    let mut klassen: Vec<&str> = vec![];
-    for k in &neu.klassen {
-        if !schluessel_gueltig(&k.schluessel) {
-            return Err(Fehler::Ungueltig(format!("Klassenschlüssel „{}“: Kleinbuchstaben, Ziffern, - und _", k.schluessel)));
-        }
-        if k.bezeichnung.trim().is_empty() {
-            return Err(Fehler::Ungueltig(format!("Klasse „{}“ braucht eine Bezeichnung", k.schluessel)));
-        }
-        if !farbe_gueltig(&k.farbe) {
-            return Err(Fehler::Ungueltig(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", k.farbe)));
-        }
-        if klassen.contains(&k.schluessel.as_str()) {
-            return Err(Fehler::Ungueltig(format!("Klasse „{}“ ist doppelt", k.schluessel)));
-        }
-        klassen.push(&k.schluessel);
-    }
+    klassen_pruefen(&neu.klassen)?;
     signale_pruefen(&neu.signale)?;
     register_pruefen(&neu.quellen.anwendungen)
 }
@@ -253,6 +259,20 @@ mod tests {
         let mut f = e;
         f.quellen.anwendungen[1].kuerzel = "kd".into();
         assert!(einstellungen_pruefen(&alt, &f).unwrap_err().meldung().contains("doppelt"));
+    }
+
+    /// R00195 AK 3 (ADR-0031 Regel 1): eine Prüfung für die Klassen des Ordners und eines Boards.
+    #[test]
+    fn klassen_pruefen_nennt_schluessel_bezeichnung_farbe_und_dopplung() {
+        let k = |s: &str, b: &str, f: &str| Klasse { schluessel: s.into(), bezeichnung: b.into(), farbe: f.into() };
+        assert_eq!(klassen_pruefen(&[]), Ok(()), "der leere Satz ist gültig");
+        assert_eq!(klassen_pruefen(&[k("phase1", "Phase 1", "green"), k("eol", "Altlast", "#885500")]), Ok(()));
+        let meldung = |klassen: &[Klasse]| klassen_pruefen(klassen).unwrap_err().meldung().to_string();
+        assert!(meldung(&[k("eol", "EOL", "amber"), k("eol", "Altlast", "red")]).contains("„eol“ ist doppelt"));
+        assert!(meldung(&[k("eol", " ", "amber")]).contains("braucht eine Bezeichnung"));
+        assert!(meldung(&[k("eol", "EOL", "lila")]).contains("Farbe „lila“"));
+        assert!(meldung(&[k("Phase 1", "Phase 1", "green")]).contains("Klassenschlüssel „Phase 1“"));
+        assert!(meldung(&[k("", "leer", "green")]).contains("Klassenschlüssel"));
     }
 
     #[test]

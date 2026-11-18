@@ -621,6 +621,11 @@ impl Board {
         self.eigentuemer_roh.iter().find(|e| e.meint_human()).and_then(|e| e.schluessel.clone()).filter(|k| self.spalten.iter().any(|s| &s.name == k))
     }
 
+    /// Der Klassenvorrat dieses Boards (ADR-0031 Regel 2): der eigene Satz, sonst die Vorgabe des Ordners.
+    pub fn klassenvorrat<'a>(&'a self, vorgabe: &'a super::Einstellungen) -> &'a [super::Klasse] {
+        self.klassen.as_deref().unwrap_or(&vorgabe.klassen)
+    }
+
     pub fn entnahme_erlaubt(&self, art: super::Art, nummer: u32) -> Result<(), Entnahmesperre> {
         if art != super::Art::Agent {
             return Ok(());
@@ -828,6 +833,20 @@ mod tests {
             assert!(!s.is_empty(), "{t:?} ergibt einen Slug");
             assert!(slug_gueltig(&s), "slug({t:?}) = {s:?} ist gültig");
         }
+    }
+
+    /// R00195 (ADR-0031 Regel 2): der Klassenvorrat ist der eigene Satz oder die Vorgabe — ganz oder gar nicht.
+    #[test]
+    fn klassenvorrat_ist_der_eigene_satz_sonst_die_vorgabe() {
+        let k = |s: &str, bez: &str, f: &str| crate::modell::Klasse { schluessel: s.into(), bezeichnung: bez.into(), farbe: f.into() };
+        let e = crate::modell::Einstellungen { klassen: vec![k("sicherheit", "Sicherheit", "red"), k("eol", "EOL", "amber")], ..Default::default() };
+        let schluessel = |b: &Board| b.klassenvorrat(&e).iter().map(|k| format!("{}={}", k.schluessel, k.bezeichnung)).collect::<Vec<_>>();
+        let mut umzug = b();
+        assert_eq!(schluessel(&umzug), vec!["sicherheit=Sicherheit", "eol=EOL"], "kein Satz: die Vorgabe des Ordners");
+        umzug.klassen = Some(vec![k("phase1", "Phase 1", "green"), k("eol", "Altlast", "#885500")]);
+        assert_eq!(schluessel(&umzug), vec!["phase1=Phase 1", "eol=Altlast"], "eigener Satz, nicht gemischt, in seiner Reihenfolge");
+        umzug.klassen = Some(vec![]);
+        assert!(schluessel(&umzug).is_empty(), "der leere Satz bleibt leer");
     }
 
     fn b() -> Board {
