@@ -14,5 +14,22 @@
     return vorgabeDesOrdners(einstellungen);
   }
 
-  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat });
+  /** Je Aufgabennummer das erste offene Board in der Reihenfolge der Boardliste, auf dem sie liegt. */
+  function erstesBoardJeAufgabe(boards) {
+    const erstes = new Map();
+    for (const board of boards || []) {
+      if (board.archiviert) continue;
+      for (const spalte of board.spalten) {
+        for (const nummer of spalte.aufgaben) if (!erstes.has(nummer)) erstes.set(nummer, board);
+      }
+    }
+    return erstes;
+  }
+
+  /** Außerhalb eines Boards (ADR-0031 Regel 3): der Vorrat des ersten Boards der Aufgabe; liegt sie auf keinem, die Vorgabe. */
+  function klassenvorratDerAufgabe(nummer, boards, einstellungen) {
+    return klassenvorrat(erstesBoardJeAufgabe(boards).get(nummer) || null, einstellungen);
+  }
+
+  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat, erstesBoardJeAufgabe, klassenvorratDerAufgabe });
 })((typeof module !== 'undefined' && module.exports) || window);

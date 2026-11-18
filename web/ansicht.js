@@ -203,7 +203,7 @@ function vFeldWert(feld, a, schmal) {
     const ort = schmal ? ' data-ort="#inhalt-spalte"' : '';
     return `<select data-af="spalte" aria-label="Spalte"${ort}>${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>`;
   }
-  if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse, vorrat());
+  if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse, vorrat(a));
   if (feld === 'labels') return `<input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels">`;
   const knoepfe = schmal ? '' : `<span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span>`;
   return `<input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit">${knoepfe}`;
@@ -363,7 +363,7 @@ function vInhaltSpalte(a) {
 function vFenster() {
   const a = aufgabe(S.ui.offen);
   if (!a) return '';
-  const u = S.ui, cl = klasse(a.klasse);
+  const u = S.ui, cl = klasse(a.klasse, a);
   const pfad = 'aufgaben/' + a.datei, wurzel = S.zustand.ordner;
   // Genau eine Ansicht ist gewählt (R00145 FA 2/6): der gemerkte Schlüssel, sonst „Inhalt“ — generisch für jede entfallende Ansicht.
   const tab = ansichtDerAufgabe(a);
@@ -627,16 +627,23 @@ const alleLaufenden = () => S.aufgaben.filter(a => !a.archiviert).flatMap(a => l
 /* ── Karten ── */
 const PAL = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal', 'green', 'lime', 'grey'];
 const cv = farbe => !farbe ? '' : PAL.includes(farbe) ? `--c:var(--kd-c-${farbe});--cl:var(--kd-c-${farbe}-line)` : `--c:color-mix(in srgb,${farbe} var(--kd-klasse-anteil),var(--kd-surface));--cl:${farbe}`;
-/** Der Klassenvorrat der Sicht (R00195, ADR-0031 Regel 2 und 8): der des gezeigten Boards — sein eigener Satz, sonst die
-    Vorgabe des Ordners; bei defekter kanbanD.md ohne eigenen Satz keine Klasse (R00113: der Kartenname nennt dann keine). */
-const vorrat = () => klassenvorrat(S.board, S.zustand.einstellungen);
+/** Sichten außerhalb eines Boards (ADR-0031 Regel 3); Board und Berichte gelten dem gezeigten Board. */
+const AUSSERHALB_EINES_BOARDS = ['aufgaben', 'personen', 'einrichten', 'wbs'];
+const ausserhalbEinesBoards = () => AUSSERHALB_EINES_BOARDS.includes(S.ui.view);
+/** Der Klassenvorrat der Sicht (R00195, ADR-0031 Regel 2, 3 und 8): auf einem Board und in seinen Berichten der des
+    gezeigten Boards — sein eigener Satz, sonst die Vorgabe des Ordners; außerhalb eines Boards der des ersten Boards der
+    Aufgabe `a`, sonst die Vorgabe. Bei defekter kanbanD.md ohne eigenen Satz keine Klasse (R00113). */
+function vorrat(a) {
+  if (ausserhalbEinesBoards()) return klassenvorratDerAufgabe(a ? a.nummer : null, S.boards || [], S.zustand.einstellungen);
+  return klassenvorrat(S.board, S.zustand.einstellungen);
+}
 /** Der Klassenvorrat für „Neue Aufgabe“: der des gewählten Boards, ohne Board die Vorgabe des Ordners (ADR-0031 Regel 6). */
 function vorratDerNeuenAufgabe() {
   const neu = S.ui.neu;
   const ziel = neu && neu.board ? (S.boards || []).find(b => b.slug === neu.board) : null;
   return klassenvorrat(ziel || null, S.zustand.einstellungen);
 }
-const klasse = k => k && vorrat().find(c => c.schluessel === k);
+const klasse = (k, a) => k && vorrat(a).find(c => c.schluessel === k);
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
@@ -794,7 +801,7 @@ function wechselDerAufgabe(nr) {
   return wechselJeAufgabe.get(nr);
 }
 function vKarte(a, fertig, spalte) {
-  const cl = klasse(a.klasse), sig = ersteSignal(a, signale().map(g => g.schluessel));
+  const cl = klasse(a.klasse, a), sig = ersteSignal(a, signale().map(g => g.schluessel));
   const tk = a.teilaufgaben.length ? `<span class="tk">☑ ${a.teilaufgaben.filter(t => t.erledigt).length}/${a.teilaufgaben.length}</span>` : '';
   // vorgelesen wird „fällig“ mit Jahr, die sichtbare Kurzform bleibt stumm
   const due = a.faellig ? `<span class="vh">fällig ${esc(datumLang(a.faellig))}</span><span class="due${!fertig && a.faellig <= isoD(Date.now() + 864e5) ? ' warn' : ''}" aria-hidden="true" title="fällig ${esc(datumLang(a.faellig))}">${esc(datumKurz(a.faellig, isoD(Date.now())))}</span>` : '';
@@ -812,7 +819,7 @@ function vKarte(a, fertig, spalte) {
   if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorrat(), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorrat(a), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -1106,8 +1113,10 @@ function vListenbereich() {
 }
 function vAufgaben() {
   const u = S.ui, me = ichPerson();
+  // einmal je Zeichnen, nicht je Zeile: das erste Board jeder Aufgabe (ADR-0031 Regel 3)
+  const erstesBoard = erstesBoardJeAufgabe(S.boards || []);
   const zeilen = S.aufgaben.filter(a => listenBereich(a, u.listBereich) && passt(a, u.filter, { ich: S.ich, bereich: 'alle', personen: personen() })).map(a => {
-    const cl = klasse(a.klasse), orte = liegtAuf(a);
+    const cl = a.klasse && klassenvorrat(erstesBoard.get(a.nummer) || null, S.zustand.einstellungen).find(k => k.schluessel === a.klasse), orte = liegtAuf(a);
     return `<tr class="${a.archiviert ? 'ruhe' : ''}" data-zeile="${a.nummer}" tabindex="0"${a.archiviert ? '' : ' draggable="true" title="Ziehen auf eine Spalte rechts oder ins Archiv"'}><td class="mono">#${a.nummer}</td><td class="tt"><a href="#" data-act="oeffnen" data-arg="${a.nummer}">${esc(a.titel)}</a>${a.archiviert ? ` <span class="lbl">archiviert ${esc(datumLang(a.archiviert))}</span>` : ''}</td><td>${cl ? `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>` : a.klasse ? esc(a.klasse) : ''}</td><td><span class="avs">${a.zustaendige.map(pk).join('')}</span></td><td class="orte">${orte.length ? orte.map(({ b, sp }) => `<span class="lbl ort">${esc(b.titel)} · ${esc(sp.name)}<button class="lnk lnk-x" data-act="abnehmen" data-arg="${esc(b.slug)}|${a.nummer}" title="von ${esc(b.titel)} nehmen" aria-label="#${a.nummer} von ${esc(b.titel)} nehmen">✕</button></span>`).join(' ') : '<span class="muted">auf keinem Board</span>'}</td><td>${a.archiviert ? `<button class="btn" data-act="zurueckholen" data-arg="${a.nummer}">Zurückholen</button>` : `<button class="btn" id="leg-${a.nummer}" data-act="legen-pop" data-arg="${a.nummer}" aria-haspopup="menu">auf Board legen ▾</button>`}</td></tr>`;
   }).join('');
   return `<div class="leiste"><b>Aufgaben</b><span class="muted">alle Dateien unter aufgaben/ · eine Aufgabe kann auf mehreren Boards liegen</span><div class="rechts"><button class="btn btn-haupt" data-act="add" data-arg="-" title="Neue Aufgabe ohne Board (n)">+ Neue Aufgabe</button></div></div>

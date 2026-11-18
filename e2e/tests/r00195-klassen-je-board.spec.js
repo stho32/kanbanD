@@ -60,6 +60,14 @@ async function bestandZeigen(page, k, slug, nr) {
 }
 const bestandLegende = page => page.locator('#bestand .best-leg .best-le');
 const klassenImBerichtsfilter = page => page.locator('.bf-chip[data-act="bf-farbe"]');
+/** Die Aufgabenliste: außerhalb eines Boards. */
+async function listeZeigen(page, k) {
+  await page.goto(`${k.adresse}#/aufgaben`);
+  await bereit(page, zeile(page, 1));
+}
+const zeile = (page, nr) => page.locator(`tr[data-zeile="${nr}"]`);
+const klasseInDerListe = (page, nr) => zeile(page, nr).locator('.cls');
+const aufBoardLegen = async (k, slug, nummer) => expect((await api(k, 'POST', `/api/boards/${slug}/aufgaben`, { nummer })).status).toBe(201);
 /** Die Namen der Einträge im geöffneten Untermenü „Klasse“. */
 const untermenue = page => page.locator('.kmenue.unter .km-e').allTextContents();
 
@@ -117,6 +125,40 @@ test.describe('R00195', () => {
     await expect(karte(page, 1)).toHaveAttribute('style', /--kd-c-red\b/);
     await expect(karte(page, 1)).toHaveAccessibleName(/^#1 Eins, Sicherheit(, |$)/);
     await karte(page, 1).click();
+    await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
+  });
+
+  test('AK 7: außerhalb eines Boards gilt das erste Board der Aufgabe, sonst die Vorgabe', async ({ page }) => {
+    await k.stoppen();
+    // „Altbestand“ steht in der Boardliste (nach Dateiname) vor Umzug, Wartung dahinter; beide ohne eigene Klassen
+    k = await kanbanStarten(ordnerMit({ ...AUSGANGSLAGE, 'boards/altbestand.md': '# Altbestand\n\n## Zu erledigen\n' }));
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    expect((await api(k, 'POST', '/api/aufgaben', { titel: 'Ohne Board', klasse: 'eol' })).status).toBe(201);
+    await listeZeigen(page, k);
+
+    await expect(klasseInDerListe(page, 3)).toHaveText('Altlast');
+    await expect(klasseInDerListe(page, 3)).toHaveAttribute('style', /#885500/);
+    await expect(klasseInDerListe(page, 5), 'auf keinem Board: die Vorgabe').toHaveText('EOL');
+    await expect(klasseInDerListe(page, 5)).toHaveAttribute('style', /--kd-c-amber\b/);
+    await expect(klasseInDerListe(page, 1)).toHaveText('Sicherheit');
+    // #2 trägt auf ihrem ersten Board eine fremde Klasse: der Schlüssel als Text, ohne Farbe
+    await expect(klasseInDerListe(page, 2)).toHaveCount(0);
+    await expect(zeile(page, 2).locator('td').nth(2)).toHaveText('sicherheit');
+
+    // das aus der Liste geöffnete Fenster bietet den Vorrat des ersten Boards
+    await zeile(page, 3).getByRole('link', { name: 'Drei' }).click();
+    await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['phase1', 'Phase 1'], ['eol', 'Altlast']]);
+    await page.keyboard.press('Escape');
+
+    // zusätzlich auf Wartung — in der Boardliste hinter Umzug: es bleibt beim ersten Board
+    await aufBoardLegen(k, 'wartung', 3);
+    await expect(zeile(page, 3).locator('.ort')).toHaveCount(2);
+    await expect(klasseInDerListe(page, 3)).toHaveText('Altlast');
+    // zusätzlich auf einem Board vor Umzug, das die Vorgabe nimmt: „EOL“ in amber
+    await aufBoardLegen(k, 'altbestand', 3);
+    await expect(klasseInDerListe(page, 3)).toHaveText('EOL');
+    await expect(klasseInDerListe(page, 3)).toHaveAttribute('style', /--kd-c-amber\b/);
+    await zeile(page, 3).getByRole('link', { name: 'Drei' }).click();
     await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
   });
 

@@ -31,3 +31,20 @@ test('ohne Board und bei defekter kanbanD.md: die Vorgabe bzw. keine Klasse, nie
   assert.deepStrictEqual(vorrat.klassenvorrat(UMZUG_EIGEN, null), EIGENER_SATZ, 'der eigene Satz hängt nicht an kanbanD.md');
   assert.deepStrictEqual(vorrat.vorgabeDesOrdners(undefined), []);
 });
+
+test('AK 7: außerhalb eines Boards gilt der Vorrat des ersten Boards der Boardliste, auf dem die Aufgabe liegt', () => {
+  const wartungMit3 = { ...WARTUNG, spalten: spalten(1, 3) };
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [WARTUNG, UMZUG_EIGEN], VORGABE), EIGENER_SATZ, '#3 liegt nur auf Umzug: „Altlast“');
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [wartungMit3, UMZUG_EIGEN], VORGABE), VORGABE.klassen, 'Wartung steht in der Liste vor Umzug: „EOL“');
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [UMZUG_EIGEN, wartungMit3], VORGABE), EIGENER_SATZ, 'die Reihenfolge der Liste entscheidet, nicht der Name');
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(1, [WARTUNG, UMZUG_EIGEN], VORGABE), VORGABE.klassen);
+});
+
+test('AK 7: auf keinem Board gilt die Vorgabe; ein archiviertes Board zählt nicht; eine Aufgabe in einer hinteren Spalte liegt auf dem Board', () => {
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(9, [WARTUNG, UMZUG_EIGEN], VORGABE), VORGABE.klassen);
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(null, [UMZUG_EIGEN], VORGABE), VORGABE.klassen, 'neue Aufgabe ohne Board');
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [{ ...UMZUG_EIGEN, archiviert: '2026-11-01' }], VORGABE), VORGABE.klassen);
+  const hinten = { ...UMZUG_EIGEN, spalten: [{ name: 'Zu erledigen', aufgaben: [] }, { name: 'Erledigt', aufgaben: [3] }] };
+  assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [hinten], VORGABE), EIGENER_SATZ);
+  assert.strictEqual(vorrat.erstesBoardJeAufgabe([WARTUNG, UMZUG_EIGEN]).get(2).slug, 'umzug');
+});
