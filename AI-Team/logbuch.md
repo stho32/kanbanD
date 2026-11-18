@@ -965,3 +965,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-17 | #199 | Entwicklung | entwickler | bestanden | 8 min | Ursache: min-block-size der Zielgrößen-Regel hebt Flex-Mindestmaß auf; Fix flex:none auf .titel; Commit 0baba2b · claude · opus · Lauf 199-entwickler-1 · 1,75 $ · Karte gesamt 1,75 $ |
 | 2026-11-18 | #200 | Architektur | architekt | bestanden | 4 min | ADR-0031 vorgeschlagen, 4 Produktfragen an PO, Vision Z. 77 widerspricht · claude · fable · Lauf 200-architekt-1 · 2,46 $ · Karte gesamt 2,46 $ |
 | 2026-11-18 | #200 | Architektur | product-owner | bestanden | 2 min | 4 Fragen nach Empfehlung entschieden, Vision an Betreiber · claude · fable · Lauf 200-product-owner-1 · 1,47 $ · Karte gesamt 3,93 $ |
+| 2026-11-18 | #200 | Detailplanung | planer | bestanden | 6 min | R00195 (10 AK), I0185 F0157–F0159 B0957–B0968, ADR-0031 akzeptiert · claude · fable · Lauf 200-planer-1 · 3,56 $ · Karte gesamt 7,49 $ |
+| 2026-11-18 | #201 | Architektur | architekt | bestanden | 1 min | keine Technikfrage, 4 Produktfragen an PO · claude · fable · Lauf 201-architekt-1 · 1,18 $ · Karte gesamt 1,18 $ |
+| 2026-11-18 | #200 | Detailplanung | fachspezialist | bestanden | 2 min | D00010–D00012 Glossar Klassen · claude · fable · Lauf 200-fachspezialist-1 · 2,03 $ · Karte gesamt 9,52 $ |
