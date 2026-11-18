@@ -968,3 +968,14 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-18 | #200 | Detailplanung | planer | bestanden | 6 min | R00195 (10 AK), I0185 F0157–F0159 B0957–B0968, ADR-0031 akzeptiert · claude · fable · Lauf 200-planer-1 · 3,56 $ · Karte gesamt 7,49 $ |
 | 2026-11-18 | #201 | Architektur | architekt | bestanden | 1 min | keine Technikfrage, 4 Produktfragen an PO · claude · fable · Lauf 201-architekt-1 · 1,18 $ · Karte gesamt 1,18 $ |
 | 2026-11-18 | #200 | Detailplanung | fachspezialist | bestanden | 2 min | D00010–D00012 Glossar Klassen · claude · fable · Lauf 200-fachspezialist-1 · 2,03 $ · Karte gesamt 9,52 $ |
+| 2026-11-18 | #201 | Architektur | product-owner | bestanden | 1 min | 4 Fragen nach Empfehlung, Protokoll Z. 324–327 · claude · fable · Lauf 201-product-owner-1 · 1,15 $ · Karte gesamt 2,33 $ |
+| 2026-11-18 | #200 | Detailplanung | ux-reviewer | bestanden | 3 min | Vorprüfung ohne Muss, 8 Sollte, 3 Optional · claude · fable · Lauf 200-ux-reviewer-1 · 2,12 $ · Karte gesamt 11,64 $ |
+| 2026-11-18 | #201 | Detailplanung | planer | bestanden | 4 min | R00196 (8 AK), I0186 B0969–B0971 · claude · fable · Lauf 201-planer-1 · 2,77 $ · Karte gesamt 5,10 $ |
+| 2026-11-18 | #200 | Detailplanung | gestalter | bestanden | 8 min | D0002/D0001 Zustand Klassen je Board · claude · fable · Lauf 200-gestalter-1 · 4,57 $ · Karte gesamt 16,21 $ |
+| 2026-11-18 | #201 | Detailplanung | ux-reviewer | bestanden | 2 min | Vorprüfung ohne Muss, 5 Sollte · claude · fable · Lauf 201-ux-reviewer-1 · 1,12 $ · Karte gesamt 6,22 $ |
+| 2026-11-18 | #201 | Detailplanung | gestalter | bestanden | 5 min | D0002 #angefallene-kosten · claude · fable · Lauf 201-gestalter-1 · 3,22 $ · Karte gesamt 9,44 $ |
+| 2026-11-18 | #200 | Entwicklung | entwickler | bestanden | 1 h 1 min | 12 Bubbles, Gate cargo 853/0, node 1229/0, PW 1836/0 · claude · fable · Lauf 200-entwickler-1 · 27,28 $ · Karte gesamt 43,49 $ |
+| 2026-11-18 | #200 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss, 6 Sollte · claude · fable · Lauf 200-code-reviewer-1 · 4,04 $ · Karte gesamt 47,53 $ |
+| 2026-11-18 | #200 | Auto-Reviews | ux-reviewer | bestanden | 5 min | kein Muss, 2 Sollte · claude · fable · Lauf 200-ux-reviewer-2 · 2,85 $ · Karte gesamt 50,38 $ |
+| 2026-11-18 | #200 | Auto-Reviews | legacy-reviewer | befund | 6 min | Muss 1: Meldung bei fehlender Klasse ohne 'steht nicht in kanbanD.md' bricht board.py karte-neu --klasse vorrang · claude · fable · Lauf 200-legacy-reviewer-1 · 2,64 $ · Karte gesamt 53,02 $ |
+| 2026-11-18 | #200 | Erledigt | director | Retrospektive | — | 53,02 $, davon Bau 27,28 $ (1 h); 50-$-Regel nach den Reviews gegriffen, Entwicklertest entfiel; Muss des legacy-reviewer als Vorrang-Karte #202; Gate auf main erst unter Last 15 mit 8 Wacklern, zweiter Lauf grün; ausgeliefert 787f2f63 |
