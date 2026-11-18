@@ -1,6 +1,6 @@
 ---
 id: R00197
-status: Neu
+status: Erledigt
 datum: 2026-11-18
 ursprung: Bug-Report
 ursprungslauf: R00195
@@ -22,11 +22,11 @@ Zahlt ein auf: [Vision](R00000-vision.md) — Agenten arbeiten über die API am 
 
 **Ausgangslage:** Ein Ordner, dessen `kanbanD.md` die Klassen `sicherheit` und `eol` führt, `vorrang` nicht. Board `b` ohne `classes`; Board `c` mit eigenem Satz (`phase1`, ohne `vorrang`); Board `leer` mit `classes: {}`. Aufgabe #1 nur auf `b`, #2 nur auf `c`, #3 auf `b` und `c`, #4 nur auf `leer`, #5 auf keinem Board. „Der Wortteil“ ist wörtlich `steht nicht in kanbanD.md`.
 
-- [ ] **AK 1 Board mit der Vorgabe (Abnahme-Probe der Karte):** `POST /api/aufgaben {titel: "x", board: "b", spalte: <erste>, klasse: "vorrang"}` → 400, `fehler` enthält den Wortteil (darf zusätzlich das Board nennen). Variante: `PATCH /api/aufgaben/1 {klasse: "vorrang"}` → gleich. Heute rot: beide Meldungen lauten „… gibt es auf dem Board „b“ nicht — dort gilt: sicherheit, eol“.
-- [ ] **AK 2 Gegenprobe eigener Satz, auch der leere:** `POST` mit `board: "c"` und `PATCH /api/aufgaben/2 {klasse: "vorrang"}` → 400, `fehler` enthält den Wortteil **nicht** und nennt `c` und `vorrang` (R00195 AK 4). Dasselbe mit `board: "leer"` und `PATCH /api/aufgaben/4`: ohne Wortteil, nennt `leer` und `vorrang`.
-- [ ] **AK 3 Mischfall und kein Board:** `PATCH /api/aufgaben/3 {klasse: "vorrang"}` (ein Board mit Vorgabe, eines mit eigenem Satz) → 400 **mit** dem Wortteil. `PATCH /api/aufgaben/5 {klasse: "vorrang"}` → 400 mit dem Wortteil wie bisher. Hat `b` ebenfalls einen eigenen Satz ohne `vorrang`, antwortet #3 ohne den Wortteil und nennt `b`, `c` und `vorrang`.
-- [ ] **AK 4 Ende-zu-Ende mit dem Agenten-Client:** `python3 /home/shoff/Projekte/Software-Factory/werkzeuge/board.py … karte-neu … --klasse vorrang` gegen eine Instanz auf einer Kopie eines Ordners ohne `vorrang` (Board der Konfiguration ohne `classes`) → Karte angelegt, `vorrang` steht danach in `kanbanD.md`. Heute rot: der Aufruf endet mit der 400-Meldung, keine Karte.
-- [ ] **AK 5 Bestand:** Was vorher gültig war, bleibt gültig (`sicherheit` auf `b`, `phase1` auf `c` und auf #3 → 2xx); die Tests zu R00195 AK 4 laufen grün, angepasst nur dort, wo sie den alten Wortlaut für ein Board mit Vorgabe festhalten. Keine abgewiesene Anfrage erzeugt einen Commit.
+- [x] **AK 1 Board mit der Vorgabe (Abnahme-Probe der Karte):** `POST /api/aufgaben {titel: "x", board: "b", spalte: <erste>, klasse: "vorrang"}` → 400, `fehler` enthält den Wortteil (darf zusätzlich das Board nennen). Variante: `PATCH /api/aufgaben/1 {klasse: "vorrang"}` → gleich. Heute rot: beide Meldungen lauten „… gibt es auf dem Board „b“ nicht — dort gilt: sicherheit, eol“.
+- [x] **AK 2 Gegenprobe eigener Satz, auch der leere:** `POST` mit `board: "c"` und `PATCH /api/aufgaben/2 {klasse: "vorrang"}` → 400, `fehler` enthält den Wortteil **nicht** und nennt `c` und `vorrang` (R00195 AK 4). Dasselbe mit `board: "leer"` und `PATCH /api/aufgaben/4`: ohne Wortteil, nennt `leer` und `vorrang`.
+- [x] **AK 3 Mischfall und kein Board:** `PATCH /api/aufgaben/3 {klasse: "vorrang"}` (ein Board mit Vorgabe, eines mit eigenem Satz) → 400 **mit** dem Wortteil. `PATCH /api/aufgaben/5 {klasse: "vorrang"}` → 400 mit dem Wortteil wie bisher. Hat `b` ebenfalls einen eigenen Satz ohne `vorrang`, antwortet #3 ohne den Wortteil und nennt `b`, `c` und `vorrang`.
+- [x] **AK 4 Ende-zu-Ende mit dem Agenten-Client:** `python3 /home/shoff/Projekte/Software-Factory/werkzeuge/board.py … karte-neu … --klasse vorrang` gegen eine Instanz auf einer Kopie eines Ordners ohne `vorrang` (Board der Konfiguration ohne `classes`) → Karte angelegt, `vorrang` steht danach in `kanbanD.md`. Heute rot: der Aufruf endet mit der 400-Meldung, keine Karte.
+- [x] **AK 5 Bestand:** Was vorher gültig war, bleibt gültig (`sicherheit` auf `b`, `phase1` auf `c` und auf #3 → 2xx); die Tests zu R00195 AK 4 laufen grün, angepasst nur dort, wo sie den alten Wortlaut für ein Board mit Vorgabe festhalten. Keine abgewiesene Anfrage erzeugt einen Commit.
 
 ## Tests
 

@@ -830,3 +830,4 @@ Nie vom User erfragen.
 | 2026-11-18 | Karte #201 R00196 (Angefallene Kosten auf der Karte im Board) | B0970 Angefallene Summe in der Kartenzeile nach Artboard | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-18 | Karte #201 R00196 (Angefallene Kosten auf der Karte im Board) | B0971 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 1,2h | 1,2h | autonom |
 | 2026-11-18 | Karte #202 R00197 (Abweisung einer fehlenden Klasse nennt „steht nicht in kanbanD.md“, wo die Vorgabe gilt) | B0972 Klassengeltung kennt die Herkunft des Vorrats, Meldung nennt den Ort | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #202 R00197 (Abweisung einer fehlenden Klasse nennt „steht nicht in kanbanD.md“, wo die Vorgabe gilt) | B0973 API-Proben `POST` und `PATCH`, Probe mit dem Agenten-Client, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
