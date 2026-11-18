@@ -63,5 +63,24 @@
     return `${karten} Karten zeigen die Klasse danach als Text ohne Farbe.`;
   }
 
-  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat, erstesBoardJeAufgabe, klassenvorratDerAufgabe, kartenJeKlasseAufBoard, kartenJeKlasseInDerVorgabe, hinweisGestrichen });
+  /** Rückkehr eines Boards zur Vorgabe (R00195 AK 10): die nicht archivierten Aufgaben dieses Boards, deren Schlüssel der
+      eigene Satz kennt und die Vorgabe nicht — sie werden fremd. `schluessel` in der Reihenfolge des eigenen Satzes. */
+  function fremdNachRueckkehr(board, einstellungen, aufgaben) {
+    if (!Array.isArray(board.klassen)) return { karten: 0, schluessel: [] };
+    const vorgabe = vorgabeDesOrdners(einstellungen).map(k => k.schluessel);
+    const jeKlasse = kartenJeKlasseAufBoard(board, aufgaben);
+    const schluessel = board.klassen.map(k => k.schluessel).filter(k => jeKlasse[k] && !vorgabe.includes(k));
+    return { karten: schluessel.reduce((summe, k) => summe + jeKlasse[k], 0), schluessel };
+  }
+
+  /** Die Zeile unter „Vorgabe des Ordners“, wenn das Board einen gespeicherten eigenen Satz hat (Wortlaut der Zeichnung). */
+  function hinweisRueckkehr(eigeneKlassen, betroffen) {
+    if (!eigeneKlassen) return '';
+    const entfernt = eigeneKlassen === 1 ? '1 eigene Klasse dieses Boards wird entfernt.' : `${eigeneKlassen} eigene Klassen dieses Boards werden entfernt.`;
+    if (!betroffen.karten) return entfernt;
+    const karten = betroffen.karten === 1 ? '1 Karte zeigt' : `${betroffen.karten} Karten zeigen`;
+    return `${entfernt} ${karten} ihre Klasse danach als Text ohne Farbe: ${betroffen.schluessel.join(', ')}.`;
+  }
+
+  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat, erstesBoardJeAufgabe, klassenvorratDerAufgabe, kartenJeKlasseAufBoard, kartenJeKlasseInDerVorgabe, hinweisGestrichen, fremdNachRueckkehr, hinweisRueckkehr });
 })((typeof module !== 'undefined' && module.exports) || window);

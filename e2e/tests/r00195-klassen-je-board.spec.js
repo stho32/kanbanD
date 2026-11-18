@@ -502,6 +502,57 @@ test.describe('R00195', () => {
     await expect(hinweise(editor)).toHaveCount(0);
   });
 
+  test('AK 10 / US-3: zurück zur Vorgabe — die Hinweiszeile nennt die eigenen Klassen und die Karte, die fremd wird', async ({ page }) => {
+    const fenster = bestaetigungsfenster(page);
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    expect((await api(k, 'POST', '/api/aufgaben', { titel: 'Fünf', board: 'umzug', klasse: 'phase1' })).status).toBe(201);
+    await einrichtenOeffnen(page, k, 'umzug', 5);
+    await expect(wahl(page, EIGENE_WAHL)).toBeChecked();
+    await expect(hinweise(abschnitt(page))).toHaveCount(0);
+
+    await wahl(page, VORGABE_WAHL).click();
+    const hinweis = hinweise(abschnitt(page));
+    await expect(hinweis).toHaveText('2 eigene Klassen dieses Boards werden entfernt. 1 Karte zeigt ihre Klasse danach als Text ohne Farbe: phase1.');
+    await expect(hinweis).toHaveAttribute('role', 'status');
+    await expect(wahl(page, VORGABE_WAHL)).toHaveAttribute('aria-describedby', await hinweis.getAttribute('id'));
+    await expect(abschnitt(page)).toContainText('Dieses Board zeigt die Klassen des Ordners: Sicherheit, EOL.');
+    await expect(vorschau(page)).not.toContainText('classes');
+    // zurück zu „eigene Klassen“: die Zeile entfällt, der Satz steht wieder da
+    await wahl(page, EIGENE_WAHL).click();
+    await expect(hinweise(abschnitt(page))).toHaveCount(0);
+    await expect.poll(() => editorZeilen(abschnitt(page))).toEqual([['phase1', 'Phase 1'], ['eol', 'Altlast']]);
+    await wahl(page, VORGABE_WAHL).click();
+
+    const vorher = commits(k);
+    await speichern(page, 5);
+    await commitSteht(k, vorher + 1);
+    expect(commits(k)).toBe(vorher + 1);
+    expect(await fenster()).toEqual([]);
+    expect(k.git('log', '-1', '--format=%s')).toBe('Klassen von „Umzug“: Vorgabe des Ordners');
+    expect(k.lies('boards/umzug.md')).not.toContain('classes');
+    expect(k.lies('boards/umzug.md')).toMatch(/^# Umzug\n/);
+    await expect(fremdeKlasse(page, 5)).toHaveText('phase1');
+    await expect(karte(page, 5)).not.toHaveAttribute('data-c');
+    await expect(karte(page, 3)).toHaveAccessibleName(/^#3 Drei, EOL(, |$)/);
+    await expect(karte(page, 3)).toHaveAttribute('style', /--kd-c-amber\b/);
+    await expect(karte(page, 2), '#2 ist wieder rot („Sicherheit“)').toHaveAttribute('style', /--kd-c-red\b/);
+    expect(k.lies('aufgaben/0005-fuenf.md')).toContain('\nclass: phase1\n');
+  });
+
+  test('AK 10: ohne betroffene Karte steht nur der erste Satz; ein Board ohne gespeicherten Satz zeigt keine Zeile (Zeichnung 2.5)', async ({ page }) => {
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await wahl(page, EIGENE_WAHL).click();
+    await wahl(page, VORGABE_WAHL).click();
+    await expect(hinweise(abschnitt(page)), 'noch nichts gespeichert: nichts wird entfernt').toHaveCount(0);
+    await page.getByRole('button', { name: 'Verwerfen' }).click();
+    await expect(vorschau(page)).toHaveCount(0);
+
+    await eigenerSatz(k, [SICHERHEIT, EOL, PHASE1]);
+    await einrichtenOeffnen(page, k, 'umzug', 3);
+    await wahl(page, VORGABE_WAHL).click();
+    await expect(hinweise(abschnitt(page))).toHaveText('3 eigene Klassen dieses Boards werden entfernt.');
+  });
+
   test('AK 7: außerhalb eines Boards gilt das erste Board der Aufgabe, sonst die Vorgabe', async ({ page }) => {
     await k.stoppen();
     // „Altbestand“ steht in der Boardliste (nach Dateiname) vor Umzug, Wartung dahinter; beide ohne eigene Klassen

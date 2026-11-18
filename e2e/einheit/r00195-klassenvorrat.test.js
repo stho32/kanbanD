@@ -82,3 +82,24 @@ test('AK 9: die Hinweiszeile nennt die Zahl in Worten der Zeichnung; ohne Karte 
   assert.strictEqual(vorrat.hinweisGestrichen(2), '2 Karten zeigen die Klasse danach als Text ohne Farbe.');
   assert.strictEqual(vorrat.hinweisGestrichen(17), '17 Karten zeigen die Klasse danach als Text ohne Farbe.');
 });
+
+test('AK 10, Rückkehr zur Vorgabe: gezählt werden Karten des Boards, deren Schlüssel der eigene Satz kennt und die Vorgabe nicht', () => {
+  const umzug = { ...UMZUG_EIGEN, spalten: spalten(2, 3, 4, 5) };
+  const aufgaben = [...AUFGABEN, { nummer: 5, klasse: 'phase1' }];
+  assert.deepStrictEqual(vorrat.fremdNachRueckkehr(umzug, VORGABE, aufgaben), { karten: 1, schluessel: ['phase1'] }, '#5; #3 zählt nicht (die Vorgabe kennt eol), #2 nicht (schon heute fremd)');
+  assert.deepStrictEqual(vorrat.fremdNachRueckkehr(UMZUG_EIGEN, VORGABE, AUFGABEN), { karten: 0, schluessel: [] });
+  const archiviert = aufgaben.map(a => a.nummer === 5 ? { ...a, archiviert: '2026-11-01' } : a);
+  assert.deepStrictEqual(vorrat.fremdNachRueckkehr(umzug, VORGABE, archiviert), { karten: 0, schluessel: [] });
+  const zwei = { ...umzug, klassen: [...EIGENER_SATZ, { schluessel: 'alt', bezeichnung: 'Alt', farbe: 'grey' }], spalten: spalten(2, 3, 4, 5, 6, 7) };
+  const mehr = [...aufgaben, { nummer: 6, klasse: 'alt' }, { nummer: 7, klasse: 'phase1' }];
+  assert.deepStrictEqual(vorrat.fremdNachRueckkehr(zwei, VORGABE, mehr), { karten: 3, schluessel: ['phase1', 'alt'] }, 'Schlüssel in der Reihenfolge des eigenen Satzes, je einmal');
+  assert.deepStrictEqual(vorrat.fremdNachRueckkehr(UMZUG, VORGABE, aufgaben), { karten: 0, schluessel: [] }, 'ohne eigenen Satz wird nichts fremd');
+});
+
+test('AK 10: die Zeile nennt immer die Zahl der eigenen Klassen, dazu die betroffenen Karten mit ihren Schlüsseln (Zeichnung 2.4, 2.5)', () => {
+  assert.strictEqual(vorrat.hinweisRueckkehr(2, { karten: 1, schluessel: ['phase1'] }), '2 eigene Klassen dieses Boards werden entfernt. 1 Karte zeigt ihre Klasse danach als Text ohne Farbe: phase1.');
+  assert.strictEqual(vorrat.hinweisRueckkehr(3, { karten: 0, schluessel: [] }), '3 eigene Klassen dieses Boards werden entfernt.');
+  assert.strictEqual(vorrat.hinweisRueckkehr(1, { karten: 0, schluessel: [] }), '1 eigene Klasse dieses Boards wird entfernt.');
+  assert.strictEqual(vorrat.hinweisRueckkehr(3, { karten: 3, schluessel: ['phase1', 'alt'] }), '3 eigene Klassen dieses Boards werden entfernt. 3 Karten zeigen ihre Klasse danach als Text ohne Farbe: phase1, alt.');
+  assert.strictEqual(vorrat.hinweisRueckkehr(0, { karten: 0, schluessel: [] }), '', 'ein leerer eigener Satz zeigt keine Zeile');
+});

@@ -2305,12 +2305,15 @@ const setupKlassen = d => d.klassenWahl === 'eigen' ? ungestrichen(d.klassen) : 
     Ordners und eigenen Klassen; bei „eigene Klassen“ der Klassen-Editor aus „Einrichten“. Geschrieben wird erst mit „Fertig“. */
 function vBoardKlassen(d) {
   const eigen = d.klassenWahl === 'eigen';
-  const radio = (wert, text) => `<span class="${d.klassenWahl === wert ? 'an' : ''}" data-act="klassen-wahl" data-arg="${wert}" role="radio" aria-checked="${d.klassenWahl === wert}">${text}</span>`;
-  const wahl = `<div class="kl-wahl"><span class="seg" role="radiogroup" aria-label="Klassen dieses Boards">${radio('vorgabe', 'Vorgabe des Ordners')}${radio('eigen', 'eigene Klassen')}</span></div>`;
+  // Rückkehr zur Vorgabe (AK 10): hat das Board einen gespeicherten eigenen Satz, sagt eine Zeile, was „Fertig“ entfernt.
+  const gespeichert = Array.isArray(S.board.klassen) ? S.board.klassen : [];
+  const rueckkehr = eigen ? '' : hinweisRueckkehr(gespeichert.length, fremdNachRueckkehr(S.board, S.zustand.einstellungen, S.aufgaben));
+  const radio = (wert, text, beschrieben = '') => `<span class="${d.klassenWahl === wert ? 'an' : ''}" data-act="klassen-wahl" data-arg="${wert}" role="radio" aria-checked="${d.klassenWahl === wert}"${beschrieben}>${text}</span>`;
+  const wahl = `<div class="kl-wahl"><span class="seg" role="radiogroup" aria-label="Klassen dieses Boards">${radio('vorgabe', 'Vorgabe des Ordners', rueckkehr ? ' aria-describedby="kl-hinweis-rueckkehr"' : '')}${radio('eigen', 'eigene Klassen')}</span></div>`;
   const vorgabe = vorgabeDesOrdners(S.zustand.einstellungen).map(k => k.bezeichnung).join(', ') || 'keine';
   const inhalt = eigen
     ? `<div class="hin">Eigene Klassen gelten nur auf diesem Board; begonnen wird mit einer Kopie der Vorgabe. Aufgaben behalten ihren Schlüssel.</div>${vKlassenEditor(d.klassen, kartenJeKlasseAufBoard(S.board, S.aufgaben))}${d.klassenFehler ? `<div class="warnh" role="alert">${esc(d.klassenFehler)}</div>` : ''}`
-    : `<div class="hin">Dieses Board zeigt die Klassen des Ordners: ${esc(vorgabe)}. Gepflegt werden sie unter „Einrichten“.</div>`;
+    : `<div class="hin">Dieses Board zeigt die Klassen des Ordners: ${esc(vorgabe)}. Gepflegt werden sie unter „Einrichten“.</div>${rueckkehr ? `<div class="kb-hinweis" id="kl-hinweis-rueckkehr" role="status">${esc(rueckkehr)}</div>` : ''}`;
   return `<section id="klassen-dieses-boards" aria-label="Klassen dieses Boards"><h2 class="einr-kopf">KLASSEN DIESES BOARDS <span class="mono">classes:</span></h2>${wahl}${inhalt}</section>`;
 }
 /** Auswahl „Eigentümer“ mit Hinweissatz (aria-describedby, R00120); ein unbekannter Rohwert ist als eigene Option vorausgewählt. */
