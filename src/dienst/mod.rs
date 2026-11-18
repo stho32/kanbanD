@@ -18,6 +18,7 @@ mod einstellungen;
 mod erledigen;
 mod fieber;
 mod herkunft;
+mod klassen;
 mod kommentare;
 mod kosteneintraege;
 mod phasen;

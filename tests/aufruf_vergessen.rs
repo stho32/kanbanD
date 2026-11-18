@@ -21,10 +21,11 @@ const BEWEGEND: [(&str, &str, &str); 7] = [
     ("src/dienst/archiv.rs", "", "zurueckholen_pruefen"),
 ];
 
-/// Alle Dienst-Dateien, die `board_pfad(` führen — die 17 Board-Datei-Schreiber aus X00001 (R00128: `board_verwalten.rs`
-/// für Umbenennen/Archivieren und den Löschweg; R00141: `archiv.rs::endgueltig_loeschen`). `verlauf.rs` liest die
+/// Alle Dienst-Dateien, die `board_pfad(` führen — die 18 Board-Datei-Schreiber (17 aus X00001 (R00128: `board_verwalten.rs`
+/// für Umbenennen/Archivieren und den Löschweg; R00141: `archiv.rs::endgueltig_loeschen`; R00195: `klassen.rs` setzt nur
+/// `classes` im Frontmatter und bewegt keine Karte)). `verlauf.rs` liest die
 /// Board-Datei nur; ein neuer Eintrag hier ist ein neuer Schreiber, den X00001 und diese Liste einordnen müssen.
-const SCHREIBER: [&str; 17] = [
+const SCHREIBER: [&str; 18] = [
     "archiv.rs",
     "aufgabe_anlegen.rs",
     "berichtsfilter.rs",
@@ -36,6 +37,7 @@ const SCHREIBER: [&str; 17] = [
     "einrichten.rs",
     "erledigen.rs",
     "fieber.rs",
+    "klassen.rs",
     "phasen.rs",
     "reservierung.rs",
     "spalten.rs",

@@ -80,6 +80,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(spalten_setzen))
         .routes(routes!(termine_setzen))
         .routes(routes!(bindung_setzen))
+        .routes(routes!(board_klassen_setzen))
         .routes(routes!(start_setzen))
         .routes(routes!(berichtsfilter_setzen))
         .routes(routes!(bestand_setzen))
@@ -517,6 +518,36 @@ async fn termine_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<
     let geaendert = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.termine_setzen(&p, &slug, neu)
+    })
+    .await?;
+    Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+/// Rumpf von `PUT /api/boards/{slug}/klassen`: `klassen` ist Pflicht — `null` heißt „Vorgabe des Ordners“, nicht „nichts gesagt“.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+struct BoardKlassen {
+    #[serde(deserialize_with = "genannt_oder_null")]
+    klassen: Option<Vec<crate::modell::Klasse>>,
+}
+
+/// Ohne `default` am Feld: der Schlüssel muss im Rumpf stehen, sein Wert darf `null` sein.
+fn genannt_oder_null<'de, D: serde::Deserializer<'de>, T: serde::Deserialize<'de>>(d: D) -> Result<Option<T>, D::Error> {
+    serde::Deserialize::deserialize(d)
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/boards/{slug}/klassen",
+    tag = "Boards",
+    description = "Klassen dieses Boards setzen {klassen: [{schluessel, bezeichnung, farbe: Palettenname | #rrggbb}] | null} (classes in der Board-Datei, R00195) — der eigene Satz ersetzt auf diesem Board die Vorgabe des Ordners ganz, die Reihenfolge ist die Dringlichkeit; [] = das Board führt ausdrücklich keine Klassen (classes: {}); null nimmt den Satz heraus, es gilt wieder die Vorgabe (classes in kanbanD.md); fehlt `klassen`, 400; geprüft wie die Klassen in PUT /api/einstellungen (Schlüssel, Bezeichnung, Farbe, keine Dopplung → 400 {fehler}, nichts wird geschrieben); unbekanntes Board 404; ein Commit „Klassen von „<Board>“: …“ nur an der Board-Datei, keine Aufgabe ändert sich — eine Karte, deren Schlüssel der Satz nicht kennt, behält ihn (fremde Klasse); ohne Änderung kein Commit",
+    params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = BoardKlassen,
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn board_klassen_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, JsonKoerper(rumpf): JsonKoerper<BoardKlassen>) -> Result<Response, Fehler> {
+    let geaendert = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.board_klassen_setzen(&p, &slug, rumpf.klassen)
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())

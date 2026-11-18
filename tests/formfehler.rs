@@ -9,7 +9,7 @@ use std::path::Path;
 const JSON: Option<&str> = Some("application/json");
 
 /// R00153 AK 2: Methode, Pfad der Beschreibung, Rumpf mit falschem Typ, Feldname in `fehler`.
-const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 38] = [
+const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 39] = [
     ("POST", "/api/einrichten", r#"{"ich": 7}"#, "ich"),
     ("PATCH", "/api/boards/{slug}", r#"{"archiviert": "ja"}"#, "archiviert"),
     ("POST", "/api/aufgaben", r#"{"titel": 7}"#, "titel"),
@@ -23,6 +23,7 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 38] = [
     ("PUT", "/api/boards/{slug}/fieber", r#"{"perzentil": "hoch"}"#, "perzentil"),
     ("POST", "/api/boards/{slug}/fieber/cache", r#"{"schluessel": 7, "tage": []}"#, "schluessel"),
     ("PUT", "/api/boards/{slug}/anwendungen", "[7]", "0"),
+    ("PUT", "/api/boards/{slug}/klassen", r#"{"klassen": 7}"#, "klassen"),
     ("POST", "/api/personen", r#"{"kuerzel": 7, "name": "X"}"#, "kuerzel"),
     ("PATCH", "/api/personen/{kuerzel}", r#"{"aktiv": "ja"}"#, "aktiv"),
     ("PUT", "/api/einstellungen", r#"{"personen": 7}"#, "personen"),
@@ -136,7 +137,7 @@ fn grundbestand() -> (tempfile::TempDir, gemeinsam::Laufendes) {
     (tmp, lauf)
 }
 
-// AK 1, AK 2, AK 9 (36 Antworten, seit R00165 mit den Kosteneinträgen 38), AK 12 · US-3
+// AK 1, AK 2, AK 9 (36 Antworten, seit R00165 mit den Kosteneinträgen 38, seit R00195 mit den Klassen des Boards 39), AK 12 · US-3
 #[tokio::test]
 async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feldnamen_ab() {
     let (tmp, lauf) = grundbestand();
@@ -155,7 +156,7 @@ async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feld
             rot.push(format!("Zeile {} {methode} {pfad}: Git-Stand des Ordners geändert", nr + 1));
         }
     }
-    assert!(rot.is_empty(), "{} von 38 Zeilen rot:\n{}", rot.len(), rot.join("\n"));
+    assert!(rot.is_empty(), "{} von 39 Zeilen rot:\n{}", rot.len(), rot.join("\n"));
 }
 
 // AK 3
@@ -165,9 +166,9 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (60, 60), "60 = 38 + 1 + 5 + 16");
+    assert_eq!((beschrieben.len(), benannt.len()), (61, 61), "61 = 39 + 1 + 5 + 16");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
-    assert_eq!(benannt.len(), 60, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(benannt.len(), 61, "kein Endpunkt steht in zwei Listen");
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
@@ -331,7 +332,7 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
             }
         }
     }
-    assert_eq!(schreibend, 60);
+    assert_eq!(schreibend, 61);
     assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "400", "403", "404", "409", "423", "500"]);
 }
 
