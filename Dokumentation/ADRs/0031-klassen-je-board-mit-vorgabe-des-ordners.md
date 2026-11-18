@@ -100,3 +100,19 @@ Die Entscheidung (Option A, Regeln 1–8) gilt unverändert. Entschieden hat der
 4. **Eine belegte Klasse darf gestrichen werden**, mit einer Hinweiszeile zur Zahl betroffener Karten im Klassen-Editor vor dem Speichern (kein Bestätigungsfenster), in beiden Editoren (Board und Ordner) und auch bei der Rückkehr zur Vorgabe; die API bleibt ohne Rückfrage.
 
 Die Vision trägt die Richtung seit `b739ccf8` (Entscheidung des Betreibers vom 2026-11-18): Klassen je Board mit Vorgabe des Ordners, Personen ordnerweit. Anforderung: R00195; WBS: I0185.
+
+### N2 (2026-11-18): Die Abweisung nennt den Ort, an dem die Klasse fehlt — „steht nicht in kanbanD.md“ bleibt, wo die Vorgabe gilt (Karte #202)
+
+**Anlass**: Seit R00195 antwortet `Klassengeltung::pruefen` (`src/modell/board.rs:364–372`) nur noch für eine Aufgabe auf **keinem** Board mit „Klasse „…“ steht nicht in kanbanD.md“; für ein Board **ohne eigenen Satz** heißt es „gibt es auf dem Board „…“ nicht — dort gilt: …“, obwohl dort die Vorgabe aus `kanbanD.md` gilt. Der Agenten-Client der Software-Factory (`werkzeuge/board.py:379`) legt eine fehlende Klasse nur an, wenn die Meldung „steht nicht in kanbanD.md“ enthält; `karte-neu --klasse vorrang` scheitert seither. Das verletzt das Qualitätsziel oben („der Agenten-Client legt mit `--klasse` weiter an“). Ursache im Schnitt: `Klassengeltung` merkt sich je Board nur Slug und Schlüssel (`:360`), nicht, ob der Vorrat der eigene Satz oder die Vorgabe ist.
+
+**Einordnung**: Regel 6 („bleibt 400 und nennt Board und Schlüssel“) und ADR-0003 legen Status und Form `{fehler}` fest; den Wortlaut überlässt ADR-0003 N1 dem `entwickler`. Ein Vertrag über den Wortlaut stand bisher nirgends — er ist durch den Client entstanden.
+
+**Entscheidung** (ergänzt Regel 6, ändert sie nicht):
+
+1. **Die Meldung nennt den Ort, an dem die Klasse fehlt.** Der Wortteil „steht nicht in kanbanD.md“ steht **genau dann** in der Meldung, wenn ein Eintrag in `kanbanD.md` die Anfrage gültig machen würde: die Aufgabe liegt auf keinem Board, oder **mindestens eines** ihrer Boards hat keinen eigenen Satz (Vereinigung nach Regel 6). Die Meldung darf das Board zusätzlich nennen.
+2. **Führen alle Boards der Aufgabe einen eigenen Satz** (auch `classes: {}`), steht der Wortteil nicht; die Meldung nennt Board und Schlüssel wie heute (R00195 AK 4).
+3. **Der Wortteil ist für `POST` und `PATCH /api/aufgaben` Vertrag**, solange kein maschinenlesbares Feld ihn ablöst (ADR-0003: Agenten sollen auf Felder reagieren, nicht auf Text). Der übrige Wortlaut bleibt Sache des `entwickler`.
+
+**Grenze**: Wie `Klassengeltung` die Herkunft des Vorrats je Board trägt, ist Sache des `entwickler`. Ein Fehlercode oder Feld im Rumpf gehört nicht in Karte #202.
+
+**Durchsetzung**: API-Test je für `POST` und `PATCH`: Board ohne `classes` → 400, Meldung enthält „steht nicht in kanbanD.md“; Board mit eigenem Satz und mit `classes: {}` → 400 ohne den Wortteil, mit Board und Schlüssel; Aufgabe auf zwei Boards, eines mit Vorgabe, eines mit eigenem Satz → 400 mit dem Wortteil. Der Wortteil steht an einer Stelle im Code, mit Verweis auf diesen Nachtrag.
