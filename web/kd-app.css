@@ -570,6 +570,16 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .pal .eig .inp{height:22px;width:84px;font-size:11.5px;padding:0 6px}
 .pal .eig input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--kd-line-strong);background:none;cursor:pointer}
 .pal .nm{font-family:var(--kd-mono);font-size:10.5px;color:var(--kd-muted)}
+/* Gestrichene Klasse (R00195): die Zeile bleibt bis zum Speichern stehen — durchgestrichen und mit dem Wort „gestrichen“ */
+.klz.gestrichen{grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px auto;background:var(--kd-bg)}
+.klz.gestrichen .key{text-decoration:line-through}
+.klz.gestrichen .farbe{cursor:default;opacity:.5}
+.klz .kl-alt{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12px;color:var(--kd-muted);padding:0 var(--kd-s2)}
+.klz .kl-alt s{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.klz .kl-marke{flex:none;font-size:11px;font-weight:600;color:var(--kd-text)}
+.klz.gestrichen .btn{height:max(24px,var(--kd-ziel));font-size:11.5px;padding:0 6px}
+/* Hinweiszeile vor dem Speichern (R00195 AK 9, 10): Text auf Amber mit Kante, kein Knopf, bricht um */
+.kb-hinweis{flex:none;padding:var(--kd-s2) var(--kd-s4);font-size:12px;line-height:1.4;color:var(--kd-text);background:var(--kd-c-amber);border-left:3px solid var(--kd-c-amber-line);border-bottom:1px solid var(--kd-line);overflow-wrap:anywhere}
 .klz.pz{grid-template-columns:var(--klz-vorn) 44px minmax(0,1fr) auto var(--klz-hinten)}
 .klz.az{grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) auto var(--klz-hinten)}
 .klz.az .pk{justify-self:center}

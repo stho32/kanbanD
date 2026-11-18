@@ -2677,7 +2677,14 @@ async function aktion(a, arg, wert) {
       }
       case 'k-pal': u.palFuer = u.palFuer === +arg ? null : +arg; break;
       case 'k-farbe': { const [i, f] = arg.split('|'); klassenEntwurf()[+i].farbe = f; break; }
-      case 'k-del': klassenEntwurf().splice(+arg, 1); entwurfGeaendert(); u.palFuer = null; if (u.setup) u.setup.klassenFehler = null; break;
+      case 'k-del': {
+        // Die gestrichene Klasse bleibt bis zum Speichern als Zeile stehen (R00195 AK 9); der Fokus geht auf „zurücknehmen“.
+        klassenEntwurf()[+arg].gestrichen = true; entwurfGeaendert(); u.palFuer = null;
+        if (u.setup) u.setup.klassenFehler = null;
+        u.fokus = `[data-act="k-zurueck"][data-arg="${+arg}"]`;
+        break;
+      }
+      case 'k-zurueck': delete klassenEntwurf()[+arg].gestrichen; u.fokus = `[data-act="k-del"][data-arg="${+arg}"]`; break;
       case 'k-add': {
         const schluessel = ($('#nck').value || '').trim().toLowerCase(), bezeichnung = (wert || '').trim();
         if (!schluessel || !bezeichnung) { klassenFehlerSetzen('Schlüssel und Bezeichnung nötig'); break; }
@@ -2703,7 +2710,8 @@ async function aktion(a, arg, wert) {
       case 'einr-weg': u.einr = kopie(S.zustand.einstellungen); u.palFuer = null; u.sPalFuer = null; break;
       case 'einr-ok': {
         if (ichNoetig()) break;
-        const { fehler, gespeichert, ...daten } = u.einr;
+        const { fehler, gespeichert, ...entwurf } = u.einr;
+        const daten = { ...entwurf, klassen: ungestrichen(entwurf.klassen) };
         try {
           await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
           u.einr = null; u.palFuer = null;

@@ -48,3 +48,37 @@ test('AK 7: auf keinem Board gilt die Vorgabe; ein archiviertes Board zählt nic
   assert.deepStrictEqual(vorrat.klassenvorratDerAufgabe(3, [hinten], VORGABE), EIGENER_SATZ);
   assert.strictEqual(vorrat.erstesBoardJeAufgabe([WARTUNG, UMZUG_EIGEN]).get(2).slug, 'umzug');
 });
+
+// ── Zählregel der Hinweiszeile (R00195 AK 9, 10) ──
+const AUFGABEN = [
+  { nummer: 1, klasse: 'sicherheit' }, { nummer: 2, klasse: 'sicherheit' }, { nummer: 3, klasse: 'eol' }, { nummer: 4, klasse: null },
+];
+
+test('AK 9, Editor des Boards: gezählt werden nicht archivierte Aufgaben dieses Boards mit dem Schlüssel', () => {
+  assert.deepStrictEqual(vorrat.kartenJeKlasseAufBoard(UMZUG, AUFGABEN), { sicherheit: 1, eol: 1 });
+  assert.deepStrictEqual(vorrat.kartenJeKlasseAufBoard(WARTUNG, AUFGABEN), { sicherheit: 1 });
+  const archiviert = AUFGABEN.map(a => a.nummer === 2 ? { ...a, archiviert: '2026-11-01' } : a);
+  assert.deepStrictEqual(vorrat.kartenJeKlasseAufBoard(UMZUG, archiviert), { eol: 1 }, 'eine archivierte Karte zählt nicht');
+  assert.deepStrictEqual(vorrat.kartenJeKlasseAufBoard({ ...UMZUG, spalten: spalten(2, 99) }, AUFGABEN), { sicherheit: 1 }, 'eine Nummer ohne Aufgabe zählt nicht');
+});
+
+test('AK 9, Editor des Ordners: gezählt wird auf Boards ohne eigene Klassen und auf keinem Board', () => {
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([WARTUNG, UMZUG], AUFGABEN), { sicherheit: 2, eol: 1 }, 'Ausgangslage: eol streichen → 1 Karte (#3)');
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([WARTUNG, UMZUG_EIGEN], AUFGABEN), { sicherheit: 1 }, 'Umzug hat einen eigenen Satz: #2 und #3 zählen nicht mit');
+  const ohneBoard = [...AUFGABEN, { nummer: 5, klasse: 'eol' }];
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([WARTUNG, UMZUG_EIGEN], ohneBoard), { sicherheit: 1, eol: 1 }, 'auf keinem Board: die Vorgabe gilt');
+  const auchAufWartung = { ...WARTUNG, spalten: spalten(1, 3) };
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([auchAufWartung, UMZUG_EIGEN], AUFGABEN), { sicherheit: 1, eol: 1 }, 'mindestens ein Board ohne eigene Klassen genügt');
+  const archivBoard = { ...UMZUG_EIGEN, archiviert: '2026-11-01' };
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([WARTUNG, archivBoard], AUFGABEN), { sicherheit: 2, eol: 1 }, 'ein archiviertes Board ist kein Board der Aufgabe');
+  const archiviert = AUFGABEN.map(a => a.nummer === 1 ? { ...a, archiviert: '2026-11-01' } : a);
+  assert.deepStrictEqual(vorrat.kartenJeKlasseInDerVorgabe([WARTUNG, UMZUG], archiviert), { sicherheit: 1, eol: 1 });
+});
+
+test('AK 9: die Hinweiszeile nennt die Zahl in Worten der Zeichnung; ohne Karte steht keine Zeile', () => {
+  assert.strictEqual(vorrat.hinweisGestrichen(0), '');
+  assert.strictEqual(vorrat.hinweisGestrichen(undefined), '');
+  assert.strictEqual(vorrat.hinweisGestrichen(1), '1 Karte zeigt die Klasse danach als Text ohne Farbe.');
+  assert.strictEqual(vorrat.hinweisGestrichen(2), '2 Karten zeigen die Klasse danach als Text ohne Farbe.');
+  assert.strictEqual(vorrat.hinweisGestrichen(17), '17 Karten zeigen die Klasse danach als Text ohne Farbe.');
+});

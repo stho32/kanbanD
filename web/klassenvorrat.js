@@ -31,5 +31,37 @@
     return klassenvorrat(erstesBoardJeAufgabe(boards).get(nummer) || null, einstellungen);
   }
 
-  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat, erstesBoardJeAufgabe, klassenvorratDerAufgabe });
+  /** Je Schlüssel die Zahl der nicht archivierten Aufgaben mit Klasse aus `aufgaben`. */
+  function gezaehltJeKlasse(aufgaben) {
+    const zahlen = {};
+    for (const a of aufgaben) {
+      if (a.klasse && !a.archiviert) zahlen[a.klasse] = (zahlen[a.klasse] || 0) + 1;
+    }
+    return zahlen;
+  }
+
+  /** Zählregel der Hinweiszeile im Editor eines Boards (R00195): je Schlüssel die nicht archivierten Aufgaben, die auf
+      diesem Board liegen. */
+  function kartenJeKlasseAufBoard(board, aufgaben) {
+    const aufDemBoard = new Set(board.spalten.flatMap(spalte => spalte.aufgaben));
+    return gezaehltJeKlasse(aufgaben.filter(a => aufDemBoard.has(a.nummer)));
+  }
+
+  /** Zählregel im Editor des Ordners: je Schlüssel die nicht archivierten Aufgaben, die auf mindestens einem Board ohne
+      eigene Klassen oder auf keinem Board liegen — nur für sie gilt die Vorgabe. */
+  function kartenJeKlasseInDerVorgabe(boards, aufgaben) {
+    const offene = (boards || []).filter(board => !board.archiviert);
+    const nummernAuf = auswahl => new Set(auswahl.flatMap(board => board.spalten.flatMap(spalte => spalte.aufgaben)));
+    const aufEinemBoard = nummernAuf(offene), mitVorgabe = nummernAuf(offene.filter(board => !Array.isArray(board.klassen)));
+    return gezaehltJeKlasse(aufgaben.filter(a => mitVorgabe.has(a.nummer) || !aufEinemBoard.has(a.nummer)));
+  }
+
+  /** Die Hinweiszeile an einer gestrichenen Klasse (Wortlaut der Zeichnung D0002 #klassen-hinweiszeile); ohne Karte keine. */
+  function hinweisGestrichen(karten) {
+    if (!karten) return '';
+    if (karten === 1) return '1 Karte zeigt die Klasse danach als Text ohne Farbe.';
+    return `${karten} Karten zeigen die Klasse danach als Text ohne Farbe.`;
+  }
+
+  Object.assign(ziel, { vorgabeDesOrdners, klassenvorrat, erstesBoardJeAufgabe, klassenvorratDerAufgabe, kartenJeKlasseAufBoard, kartenJeKlasseInDerVorgabe, hinweisGestrichen });
 })((typeof module !== 'undefined' && module.exports) || window);

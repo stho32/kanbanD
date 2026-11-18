@@ -20,7 +20,7 @@ function klassenText(klassen) {
 function einstellungenText(e) {
   let s = '---\npeople:' + (e.personen.length ? '' : ' {}');
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
-  s += '\n' + klassenText(e.klassen);
+  s += '\n' + klassenText(ungestrichen(e.klassen));
   if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
   s += `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}`;
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
@@ -2227,18 +2227,34 @@ function vRegister(d) {
   return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
 }
 
+/** Die Klassen eines Entwurfs, wie sie gespeichert werden: ohne die gestrichenen Zeilen und ohne deren Marke. */
+const ungestrichen = klassen => klassen.filter(k => !k.gestrichen).map(({ gestrichen, ...klasse }) => klasse);
 /** Der Klassen-Editor (R00010, R00195): je Klasse eine Zeile mit Farbe, Schlüssel, Bezeichnung und Zahl der Karten, darunter
     die Neu-Zeile. Derselbe Editor pflegt die Vorgabe des Ordners („Einrichten“) und die eigenen Klassen eines Boards
-    („Spalten einrichten“); welche Liste er bearbeitet, sagt `klassenEntwurf()` in app.js. */
-function vKlassenEditor(klassen) {
-  const u = S.ui;
-  const zeilen = klassen.map((k, i) => `<div class="klz" data-klasse="${esc(k.schluessel)}"><span class="farbe${u.palFuer === i ? ' an' : ''}" style="${cv(k.farbe)}" data-act="k-pal" data-arg="${i}" title="Farbe wählen" tabindex="0" role="button" aria-label="Farbe ${esc(k.schluessel)}"></span><span class="key">${esc(k.schluessel)}</span><input class="inp" data-ef="klabel" data-i="${i}" value="${esc(k.bezeichnung)}" aria-label="Bezeichnung ${esc(k.schluessel)}"><span class="n">${S.aufgaben.filter(a => a.klasse === k.schluessel).length}</span><button class="btn btn-sym" data-act="k-del" data-arg="${i}" title="entfernen – Aufgaben behalten den Schlüssel, ohne Farbe" aria-label="Klasse ${esc(k.schluessel)} entfernen">✕</button></div>${u.palFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(k.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${k.farbe === f ? 'an' : ''}" data-act="k-farbe" data-arg="${i}|${f}" title="${f}" tabindex="0" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="khex" data-i="${i}" value="${k.farbe.startsWith('#') ? esc(k.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe"></div></div>` : ''}`).join('');
+    („Spalten einrichten“); welche Liste er bearbeitet, sagt `klassenEntwurf()` in app.js. `karten` nennt je Schlüssel die
+    Zahl der Karten nach der Zählregel des Ortes — dieselbe Zahl steht in der Zeile und in der Hinweiszeile. */
+function vKlassenEditor(klassen, karten) {
+  const zeilen = klassen.map((k, i) => k.gestrichen ? vKlasseGestrichen(k, i, klassen, karten) : vKlassenZeile(k, i, karten)).join('');
   return `${zeilen}<div class="klz"><span class="farbe"></span><input class="inp mono" id="nck" placeholder="schlüssel" aria-label="Neuer Klassenschlüssel"><input class="inp" id="ncl" placeholder="Bezeichnung · Enter" data-enter="k-add" aria-label="Neue Bezeichnung"><span></span><span></span></div>`;
+}
+function vKlassenZeile(k, i, karten) {
+  const u = S.ui;
+  const palette = u.palFuer === i ? `<div class="pal"><span class="nm">gewählt: ${esc(k.farbe)}</span><div class="g">${PAL.map(f => `<span style="${cv(f)}" class="${k.farbe === f ? 'an' : ''}" data-act="k-farbe" data-arg="${i}|${f}" title="${f}" tabindex="0" role="button" aria-label="${f}"></span>`).join('')}</div><div class="eig">Eigene Farbe <input class="inp mono" data-ef="khex" data-i="${i}" value="${k.farbe.startsWith('#') ? esc(k.farbe) : ''}" placeholder="#b04a8c" aria-label="Eigene Farbe"></div></div>` : '';
+  return `<div class="klz" data-klasse="${esc(k.schluessel)}"><span class="farbe${u.palFuer === i ? ' an' : ''}" style="${cv(k.farbe)}" data-act="k-pal" data-arg="${i}" title="Farbe wählen" tabindex="0" role="button" aria-label="Farbe ${esc(k.schluessel)}"></span><span class="key">${esc(k.schluessel)}</span><input class="inp" data-ef="klabel" data-i="${i}" value="${esc(k.bezeichnung)}" aria-label="Bezeichnung ${esc(k.schluessel)}"><span class="n">${karten[k.schluessel] || 0}</span><button class="btn btn-sym" data-act="k-del" data-arg="${i}" title="entfernen – Aufgaben behalten den Schlüssel, ohne Farbe" aria-label="Klasse ${esc(k.schluessel)} entfernen">✕</button></div>${palette}`;
+}
+/** Eine gestrichene Klasse bleibt bis zum Speichern als Zeile stehen (R00195 AK 9, Zeichnung D0002 #klassen-hinweiszeile):
+    durchgestrichen und mit dem Wort „gestrichen“, nicht mehr bedienbar, „zurücknehmen“ stellt sie wieder her. Tragen Karten
+    die Klasse und führt keine andere Zeile den Schlüssel, steht darunter die Hinweiszeile mit ihrer Zahl. */
+function vKlasseGestrichen(k, i, klassen, karten) {
+  const neuAngelegt = klassen.some(andere => !andere.gestrichen && andere.schluessel === k.schluessel);
+  const hinweis = neuAngelegt ? '' : hinweisGestrichen(karten[k.schluessel]);
+  const beschrieben = hinweis ? ` aria-describedby="kl-hinweis-${i}"` : '';
+  return `<div class="klz gestrichen" data-klasse="${esc(k.schluessel)}"><span class="farbe" style="${cv(k.farbe)}" aria-hidden="true"></span><span class="key">${esc(k.schluessel)}</span><span class="kl-alt"><s>${esc(k.bezeichnung)}</s><span class="kl-marke">gestrichen</span></span><span class="n">${karten[k.schluessel] || 0}</span><button class="btn" data-act="k-zurueck" data-arg="${i}" aria-label="Klasse ${esc(k.schluessel)} zurücknehmen"${beschrieben}>zurücknehmen</button></div>${hinweis ? `<div class="kb-hinweis" id="kl-hinweis-${i}" role="status">${esc(hinweis)}</div>` : ''}`;
 }
 function vEinrichten() {
   const d = S.ui.einr, u = S.ui;
   const personen = d.personen.map((p, i) => `<div class="klz pz${p.aktiv ? '' : ' still'}" data-person="${esc(p.kuerzel)}"><span class="pk ${p.art === 'agent' ? 'pk-a' : 'pk-m'}${p.aktiv ? '' : ' pk-still'}" title="${esc(p.name)}${p.aktiv ? '' : ' (stillgelegt)'}">${esc(p.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(p.kuerzel)}</span><input class="inp" data-ef="pname" data-i="${i}" value="${esc(p.name)}" aria-label="Name ${esc(p.kuerzel)}"><span class="seg art" role="radiogroup" aria-label="Art ${esc(p.kuerzel)}"><span class="${p.art === 'human' ? 'an' : ''}" data-act="p-art" data-arg="${i}|human" role="radio" aria-checked="${p.art === 'human'}">Mensch</span><span class="${p.art === 'agent' ? 'an' : ''}" data-act="p-art" data-arg="${i}|agent" role="radio" aria-checked="${p.art === 'agent'}">Agent</span></span><button class="btn btn-sym" data-act="p-still" data-arg="${i}" title="${p.aktiv ? 'stilllegen – nicht mehr wählbar, Name bleibt lesbar' : 'zurückholen'}" aria-label="${p.aktiv ? 'stilllegen' : 'zurückholen'} ${esc(p.kuerzel)}">${p.aktiv ? '⏸' : '↺'}</button></div>`).join('');
-  const klassen = vKlassenEditor(d.klassen);
+  const klassen = vKlassenEditor(d.klassen, kartenJeKlasseInDerVorgabe(S.boards || [], S.aufgaben));
   return `<div class="einrichten"><div class="einr breit"><h2 class="einr-kopf">PERSONEN <span class="mono">people:</span></h2><div class="hin">Menschen sind unter „Ich bin …“ wählbar; Agenten nennen sich an der API selbst. Stilllegen statt entfernen – der Name bleibt an Karten und Zeiten lesbar.</div>${personen}<div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" id="npk" placeholder="kürzel" aria-label="Neues Kürzel"><input class="inp" id="npn" placeholder="Name · Enter" data-enter="p-add" aria-label="Neuer Name"><span class="seg art" role="radiogroup" aria-label="Art der neuen Person"><span class="${u.nart !== 'agent' ? 'an' : ''}" data-act="n-art" data-arg="human" role="radio" aria-checked="${u.nart !== 'agent'}">Mensch</span><span class="${u.nart === 'agent' ? 'an' : ''}" data-act="n-art" data-arg="agent" role="radio" aria-checked="${u.nart === 'agent'}">Agent</span></span><span></span></div>
 <h2 class="einr-kopf">KLASSEN <span class="mono">classes:</span></h2><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}
 ${vSignaleEinrichten(d)}
@@ -2284,7 +2300,7 @@ function vBindungFeld(d) {
   return `<h2 class="einr-kopf">GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h2><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `WBS-Sicht, Phasen-Spalten und Prüfungen aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen, keine WBS-Sicht; vorhandene Spalten bleiben')}</div>`;
 }
 /** Die eigenen Klassen im Entwurf von „Spalten einrichten“, wie sie gespeichert würden: `null` heißt Vorgabe des Ordners. */
-const setupKlassen = d => d.klassenWahl === 'eigen' ? d.klassen : null;
+const setupKlassen = d => d.klassenWahl === 'eigen' ? ungestrichen(d.klassen) : null;
 /** Abschnitt „Klassen dieses Boards“ (R00195 AK 8, Zeichnung D0002 #klassen-dieses-boards): die Wahl zwischen der Vorgabe des
     Ordners und eigenen Klassen; bei „eigene Klassen“ der Klassen-Editor aus „Einrichten“. Geschrieben wird erst mit „Fertig“. */
 function vBoardKlassen(d) {
@@ -2293,7 +2309,7 @@ function vBoardKlassen(d) {
   const wahl = `<div class="kl-wahl"><span class="seg" role="radiogroup" aria-label="Klassen dieses Boards">${radio('vorgabe', 'Vorgabe des Ordners')}${radio('eigen', 'eigene Klassen')}</span></div>`;
   const vorgabe = vorgabeDesOrdners(S.zustand.einstellungen).map(k => k.bezeichnung).join(', ') || 'keine';
   const inhalt = eigen
-    ? `<div class="hin">Eigene Klassen gelten nur auf diesem Board; begonnen wird mit einer Kopie der Vorgabe. Aufgaben behalten ihren Schlüssel.</div>${vKlassenEditor(d.klassen)}${d.klassenFehler ? `<div class="warnh" role="alert">${esc(d.klassenFehler)}</div>` : ''}`
+    ? `<div class="hin">Eigene Klassen gelten nur auf diesem Board; begonnen wird mit einer Kopie der Vorgabe. Aufgaben behalten ihren Schlüssel.</div>${vKlassenEditor(d.klassen, kartenJeKlasseAufBoard(S.board, S.aufgaben))}${d.klassenFehler ? `<div class="warnh" role="alert">${esc(d.klassenFehler)}</div>` : ''}`
     : `<div class="hin">Dieses Board zeigt die Klassen des Ordners: ${esc(vorgabe)}. Gepflegt werden sie unter „Einrichten“.</div>`;
   return `<section id="klassen-dieses-boards" aria-label="Klassen dieses Boards"><h2 class="einr-kopf">KLASSEN DIESES BOARDS <span class="mono">classes:</span></h2>${wahl}${inhalt}</section>`;
 }

@@ -107,6 +107,26 @@ async function klasseErgaenzen(page, schluessel, bezeichnung, farbe) {
   await page.getByRole('button', { name: farbe, exact: true }).click();
 }
 const commits = k => +k.git('rev-list', '--count', 'HEAD');
+// Klassen-Editor: Zeile, Streichen, Hinweiszeile — im Board („Spalten einrichten“) und im Ordner („Einrichten“)
+const SICHERHEIT = { schluessel: 'sicherheit', bezeichnung: 'Sicherheit', farbe: 'red' }, EOL = { schluessel: 'eol', bezeichnung: 'EOL', farbe: 'amber' };
+const editorZeile = (bereich, schluessel) => bereich.locator(`.klz[data-klasse="${schluessel}"]`);
+const zahlDerZeile = (bereich, schluessel) => editorZeile(bereich, schluessel).locator('.n');
+const streichen = (page, schluessel) => page.getByRole('button', { name: `Klasse ${schluessel} entfernen`, exact: true }).click();
+const zuruecknehmen = (page, schluessel) => page.getByRole('button', { name: `Klasse ${schluessel} zurücknehmen`, exact: true });
+/** Die Hinweiszeile direkt unter der Zeile der Klasse. */
+const hinweisAn = (bereich, schluessel) => bereich.locator(`.klz[data-klasse="${schluessel}"] + .kb-hinweis`);
+const hinweise = bereich => bereich.locator('.kb-hinweis');
+const ordnerEditor = page => page.locator('.einrichten');
+async function ordnerEinrichten(page, k) {
+  await page.goto(`${k.adresse}#/einrichten`);
+  await bereit(page, editorZeile(ordnerEditor(page), 'sicherheit'));
+}
+/** Zählt Bestätigungsfenster: native Dialoge des Browsers und modale Dialoge der Seite. */
+function bestaetigungsfenster(page) {
+  const gesehen = [];
+  page.on('dialog', d => { gesehen.push(d.message()); d.dismiss(); });
+  return async () => [...gesehen, ...await page.locator('[role="dialog"], [role="alertdialog"]').allTextContents()];
+}
 /** Die Namen der Einträge im geöffneten Untermenü „Klasse“. */
 const untermenue = page => page.locator('.kmenue.unter .km-e').allTextContents();
 
@@ -369,6 +389,117 @@ test.describe('R00195', () => {
       return { seite: rollt(document.documentElement), main: rollt(document.querySelector('#main')), setup: rollt(document.querySelector('.setup')), leiste: rollt(document.querySelector('.setup aside.einr')), links: leiste.left, breite: leiste.width, unter: leiste.top >= spalten.bottom - 1, zeileRechts: zeile.right <= 375 };
     });
     expect(masse).toEqual({ seite: false, main: false, setup: false, leiste: false, links: 0, breite: 375, unter: true, zeileRechts: true });
+  });
+
+  test('AK 9 / US-3: im Editor des Boards steht vor dem Speichern an der gestrichenen Klasse die Zahl der Karten', async ({ page }) => {
+    const fenster = bestaetigungsfenster(page);
+    await eigenerSatz(k, [SICHERHEIT, EOL, PHASE1]);
+    await einrichtenOeffnen(page, k, 'umzug', 2);
+    // die Zahl je Zeile folgt der Zählregel der Hinweiszeile: Karten dieses Boards (#1 liegt auf Wartung)
+    await expect(zahlDerZeile(abschnitt(page), 'sicherheit')).toHaveText('1');
+    await expect(zahlDerZeile(abschnitt(page), 'eol')).toHaveText('1');
+    await expect(zahlDerZeile(abschnitt(page), 'phase1')).toHaveText('0');
+    await expect(hinweise(abschnitt(page))).toHaveCount(0);
+
+    await streichen(page, 'sicherheit');
+    // die Zeile bleibt stehen: durchgestrichen, mit dem Wort „gestrichen“, nicht mehr bedienbar, „zurücknehmen“ im Fokus
+    const zeile = editorZeile(abschnitt(page), 'sicherheit');
+    await expect(zeile).toHaveClass(/gestrichen/);
+    await expect(zeile).toContainText('gestrichen');
+    await expect(zeile.locator('.key')).toHaveCSS('text-decoration-line', 'line-through');
+    await expect(zeile.locator('input, [data-act="k-pal"]')).toHaveCount(0);
+    await expect(zuruecknehmen(page, 'sicherheit')).toBeFocused();
+    const hinweis = hinweisAn(abschnitt(page), 'sicherheit');
+    await expect(hinweis).toHaveText('1 Karte zeigt die Klasse danach als Text ohne Farbe.');
+    await expect(hinweis).toHaveAttribute('role', 'status');
+    await expect(zuruecknehmen(page, 'sicherheit')).toHaveAttribute('aria-describedby', await hinweis.getAttribute('id'));
+    await expect(hinweis.locator('button, a')).toHaveCount(0);
+    await expect(vorschau(page)).not.toContainText('sicherheit:');
+    await expect(vorschau(page)).toContainText('classes:\n  eol: {label: EOL, color: amber}\n  phase1: {label: Phase 1, color: green}\n');
+
+    // keine Karte trägt phase1: gestrichen, aber keine Hinweiszeile; zurückgenommen steht die Zeile wieder wie vorher
+    await streichen(page, 'phase1');
+    await expect(editorZeile(abschnitt(page), 'phase1')).toHaveClass(/gestrichen/);
+    await expect(hinweise(abschnitt(page))).toHaveCount(1);
+    await zuruecknehmen(page, 'phase1').click();
+    await expect(editorZeile(abschnitt(page), 'phase1')).not.toHaveClass(/gestrichen/);
+    await expect(page.getByRole('button', { name: 'Klasse phase1 entfernen' })).toBeFocused();
+    await expect(page.getByLabel('Bezeichnung phase1')).toHaveValue('Phase 1');
+
+    // Speichern bleibt ein Schritt, ohne Bestätigungsfenster
+    const vorher = commits(k);
+    await speichern(page, 2);
+    await commitSteht(k, vorher + 1);
+    expect(await fenster()).toEqual([]);
+    expect(k.lies('boards/umzug.md')).toMatch(/^---\nclasses:\n  eol: \{label: EOL, color: amber\}\n  phase1: \{label: Phase 1, color: green\}\n/);
+    await expect(fremdeKlasse(page, 2)).toHaveText('sicherheit');
+    expect(k.lies('aufgaben/0002-zwei.md')).toBe(AUFGABE_2);
+
+    // nach „Fertig“ ist die Zeile weg; wieder angelegt, hat #2 ihre Farbe zurück
+    await ausMehr(page, 'Spalten einrichten');
+    await expect(editorZeile(abschnitt(page), 'sicherheit')).toHaveCount(0);
+    await klasseErgaenzen(page, 'sicherheit', 'Sicherheit', 'red');
+    await speichern(page, 2);
+    await expect(karte(page, 2)).toHaveAttribute('data-c', 'sicherheit');
+    await expect(karte(page, 2)).toHaveAttribute('style', /--kd-c-red\b/);
+    await expect(fremdeKlasse(page, 2)).toHaveCount(0);
+  });
+
+  test('AK 9: wird der gestrichene Schlüssel zurückgenommen oder neu angelegt, entfällt die Hinweiszeile', async ({ page }) => {
+    await eigenerSatz(k, [SICHERHEIT, EOL, PHASE1]);
+    await einrichtenOeffnen(page, k, 'umzug', 2);
+    await streichen(page, 'eol');
+    await expect(hinweisAn(abschnitt(page), 'eol')).toHaveText('1 Karte zeigt die Klasse danach als Text ohne Farbe.');
+    await zuruecknehmen(page, 'eol').click();
+    await expect(hinweise(abschnitt(page))).toHaveCount(0);
+
+    await streichen(page, 'eol');
+    await expect(hinweise(abschnitt(page))).toHaveCount(1);
+    await page.getByLabel('Neuer Klassenschlüssel').fill('eol');
+    await page.getByLabel('Neue Bezeichnung').fill('Altlast');
+    await page.getByLabel('Neue Bezeichnung').press('Enter');
+    await expect(hinweise(abschnitt(page))).toHaveCount(0);
+    await expect(vorschau(page)).toContainText('  eol: {label: Altlast, color:');
+    await speichern(page, 3);
+    await expect(karte(page, 3)).toHaveAccessibleName(/^#3 Drei, Altlast(, |$)/);
+  });
+
+  test('AK 9: im Klassen-Editor des Ordners gilt dasselbe — gezählt wird, wo die Vorgabe gilt', async ({ page }) => {
+    const fenster = bestaetigungsfenster(page);
+    await ordnerEinrichten(page, k);
+    const editor = ordnerEditor(page);
+    await expect(zahlDerZeile(editor, 'sicherheit')).toHaveText('2');
+    await expect(zahlDerZeile(editor, 'eol')).toHaveText('1');
+
+    await streichen(page, 'eol');
+    await expect(editorZeile(editor, 'eol')).toHaveClass(/gestrichen/);
+    await expect(zuruecknehmen(page, 'eol')).toBeFocused();
+    await expect(hinweisAn(editor, 'eol')).toHaveText('1 Karte zeigt die Klasse danach als Text ohne Farbe.');
+    await expect(hinweisAn(editor, 'eol')).toHaveAttribute('role', 'status');
+    await expect(page.locator('#einr-vorschau')).not.toContainText('eol:');
+    await streichen(page, 'sicherheit');
+    await expect(hinweisAn(editor, 'sicherheit')).toHaveText('2 Karten zeigen die Klasse danach als Text ohne Farbe.');
+    await zuruecknehmen(page, 'sicherheit').click();
+    await expect(hinweise(editor)).toHaveCount(1);
+
+    const vorher = commits(k);
+    await page.getByRole('button', { name: 'Speichern' }).click();
+    await commitSteht(k, vorher + 1);
+    expect(await fenster()).toEqual([]);
+    expect(k.lies('kanbanD.md')).toContain('classes:\n  sicherheit: {label: Sicherheit, color: red}\nsources:');
+    await expect(editorZeile(editor, 'eol')).toHaveCount(0);
+    expect(k.lies('aufgaben/0003-drei.md')).toBe(AUSGANGSLAGE['aufgaben/0003-drei.md']);
+  });
+
+  test('AK 9: hat Umzug einen eigenen Satz, zählen seine Karten im Ordner nicht mit — keine Hinweiszeile', async ({ page }) => {
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    await ordnerEinrichten(page, k);
+    const editor = ordnerEditor(page);
+    await expect(zahlDerZeile(editor, 'sicherheit')).toHaveText('1');
+    await expect(zahlDerZeile(editor, 'eol')).toHaveText('0');
+    await streichen(page, 'eol');
+    await expect(editorZeile(editor, 'eol')).toHaveClass(/gestrichen/);
+    await expect(hinweise(editor)).toHaveCount(0);
   });
 
   test('AK 7: außerhalb eines Boards gilt das erste Board der Aufgabe, sonst die Vorgabe', async ({ page }) => {
