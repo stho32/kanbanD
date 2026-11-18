@@ -1181,7 +1181,7 @@ function vBerichtsfilter(leiste) {
   if (teile.zeitraum || teile.zeitraumBleibt) {
     zr = gruppe(teile.zeitraumTitel || 'Zeitraum', vZeitraumFelder(f, jetzt));
   }
-  const klassen = S.zustand.einstellungen.klassen;
+  const klassen = vorrat();
   const farben = klassen.map(k => chip('bf-farbe', k.schluessel, !f.ohneFarben.includes(k.schluessel), `<i class="bf-farbe" style="${cv(k.farbe)}"></i>${esc(k.bezeichnung)}`, f.ohneFarben.includes(k.schluessel) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('')
     + chip('bf-farbe', '', !f.ohneFarben.includes(''), '<i class="bf-farbe"></i>ohne Klasse', 'Aufgaben ohne Klasse');
   const spalten = teile.spalten && S.board ? S.board.spalten.map(sp => chip('bf-spalte', sp.name, !f.ohneSpalten.includes(sp.name), esc(sp.name), f.ohneSpalten.includes(sp.name) ? 'ausgeschlossen — Klick nimmt wieder auf' : 'Klick schließt aus')).join('') : '';
@@ -1822,7 +1822,7 @@ function bestandAchsen(filter) {
 }
 function vBestandInhalt(achsen, filter) {
   if (!achsen) return '<p class="best-leer">Für diese Tabelle braucht das Board Labels mit zwei verschiedenen Präfixen, z. B. repo:shop und nc:304.</p>';
-  const klassen = S.zustand.einstellungen.klassen;
+  const klassen = vorrat();
   const tabelle = bestandNachLabels(S.aufgaben, S.board, klassen.map(k => k.schluessel), achsen.zeilen, achsen.spalten, filter);
   if (!tabelle.summen.gesamt) return vBestandLeer(filterAnzahl(filter) > 0);
   return vBestandTabelle(tabelle, achsen, klassen) + vBestandLegende(klassen);

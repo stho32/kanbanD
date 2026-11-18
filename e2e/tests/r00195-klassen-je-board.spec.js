@@ -6,7 +6,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, bereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, bereit, filterOeffnen } = require('./hilfen');
 
 // ── Ausgangslage der Anforderung ──
 const VORGABE = '---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses:\n  sicherheit: {label: Sicherheit, color: red}\n  eol: {label: EOL, color: amber}\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n---\n';
@@ -52,6 +52,14 @@ const legende = page => page.locator('.leg button');
 /** Die Einträge einer Klassenwahl als [Wert, Text]. */
 const eintraege = wahl => wahl.locator('option').evaluateAll(optionen => optionen.map(o => [o.value, o.textContent]));
 const KEINE = ['', '— keine —'];
+/** Der Bericht „Bestand nach Labels“ des Boards; die Berichte gelten dem zuletzt gezeigten Board. */
+async function bestandZeigen(page, k, slug, nr) {
+  await boardZeigen(page, k, slug, nr);
+  await page.goto(`${k.adresse}#/berichte/bestand`);
+  await bereit(page, '#bestand table.best-tab');
+}
+const bestandLegende = page => page.locator('#bestand .best-leg .best-le');
+const klassenImBerichtsfilter = page => page.locator('.bf-chip[data-act="bf-farbe"]');
 /** Die Namen der Einträge im geöffneten Untermenü „Klasse“. */
 const untermenue = page => page.locator('.kmenue.unter .km-e').allTextContents();
 
@@ -110,5 +118,26 @@ test.describe('R00195', () => {
     await expect(karte(page, 1)).toHaveAccessibleName(/^#1 Eins, Sicherheit(, |$)/);
     await karte(page, 1).click();
     await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
+  });
+
+  test('AK 5, AK 6: Berichte und Berichtsfilter führen die Klassen des Boards in ihrer Reihenfolge, die fremde dahinter', async ({ page }) => {
+    await k.stoppen();
+    const mitLabels = (text, labels = 'labels: ["repo:shop", "nc:304"]\n') => text.replace(/\n---\n$/, `\n${labels}---\n`);
+    k = await kanbanStarten(ordnerMit({
+      ...AUSGANGSLAGE,
+      'boards/umzug.md': '---\nclasses:\n  phase1: {label: Phase 1, color: green}\n  eol: {label: Altlast, color: "#885500"}\nreport-labels: {rows: repo, columns: nc}\n---\n\n# Umzug\n\n## Zu erledigen\n\n- #2\n- #3\n- #4\n- #5\n\n## In Arbeit\n\n## Erledigt\n',
+      'aufgaben/0002-zwei.md': mitLabels(AUFGABE_2),
+      'aufgaben/0003-drei.md': mitLabels(AUSGANGSLAGE['aufgaben/0003-drei.md']),
+      'aufgaben/0005-fuenf.md': mitLabels('---\nid: 5\ntitle: Fünf\nclass: phase1\n---\n'),
+    }));
+    await bestandZeigen(page, k, 'umzug', 3);
+
+    await expect(bestandLegende(page)).toHaveText(['Phase 1', 'Altlast', 'ohne Klasse']);
+    const zelle = page.getByLabel(/^repo:shop × nc:304: /);
+    await expect(zelle).toHaveAttribute('aria-label', 'repo:shop × nc:304: 3 offen — Phase 1 1 · Altlast 1 · sicherheit 1 · ohne Abschlussspalte, ohne Filter der Berichte');
+    // gefärbt nach der dringendsten Klasse des Boards: Phase 1 (grün) steht vor Altlast
+    await expect(page.locator('#bestand td.k').filter({ has: zelle })).toHaveAttribute('style', /--kd-c-green\b/);
+    await filterOeffnen(page);
+    await expect(klassenImBerichtsfilter(page)).toHaveText(['Phase 1', 'Altlast', 'ohne Klasse']);
   });
 });
