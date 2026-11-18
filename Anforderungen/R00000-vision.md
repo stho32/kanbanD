@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-11-15
+zuletzt-ergaenzt: 2026-11-18
 ---
 
 # R00000: Vision — kanbanD
@@ -74,7 +74,9 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
 - **Mehrere Boards über einem Aufgabenbestand.** Eine Instanz zeigt alle Boards des
   Boardverzeichnisses und wechselt zwischen ihnen. Dieselbe Aufgabe darf auf mehreren
   Boards liegen; eine Aufgabe auf keinem Board bleibt in der Aufgabenliste sichtbar.
-  Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm.
+  Personen gelten für den ganzen Ordner und reisen mit ihm. Klassen gelten je Board:
+  ein Board kann eigene Klassen mit eigenen Farben tragen; ohne eigene gelten die
+  Klassen des Ordners als Vorgabe.
   Archiviert ist eine Eigenschaft der Aufgabe, nicht eines Boards: sie gilt mit Blick
   auf alle Boards, auf denen die Aufgabe liegt. Aus dem Archiv geholt, liegt sie wieder
   auf allen Boards, auf denen sie vorher lag; nennt ein Wiederöffnen ein weiteres
@@ -139,10 +141,11 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   im selben Prozess aus; die Oberfläche ist in das Programm eingebettet. Getestet
   wird mit `cargo test` (Unit und Integration) und Playwright (E2E gegen das echte
   Programm).
-- **Ordneraufbau.** `<ordner>/kanbanD.md` trägt die Einstellungen (Personen, Klassen,
-  Quellpfade), `<ordner>/aufgaben/` die Aufgaben (`0012-titel.md`, Anhänge unter
+- **Ordneraufbau.** `<ordner>/kanbanD.md` trägt die Einstellungen (Personen, Klassen
+  als Vorgabe, Quellpfade), `<ordner>/aufgaben/` die Aufgaben (`0012-titel.md`, Anhänge unter
   `0012-titel/`), `<ordner>/boards/` die Boards (`<slug>.md`). Eine Board-Datei hat
-  je Spalte eine Überschrift und je Aufgabe darunter eine Zeile mit ihrer Nummer;
+  je Spalte eine Überschrift und je Aufgabe darunter eine Zeile mit ihrer Nummer,
+  dazu wahlweise eigene Klassen;
   die letzte Spalte ist die Abschlussspalte.
 - **Board-Repository und Arbeits-Repository sind getrennt.** Die vielen Commits von
   kanbanD liegen nicht in der Geschichte der Anwendung. `kanbanD.md` führt die
@@ -217,3 +220,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-10-18 | Nicht-Ziele „Kein Ersatz für Vision, Anforderungen und WBS“ und „Kein Git-Client“ geschärft — Grund: kanbanD schreibt die WBS im Arbeits-Repository ohne dortigen Commit, `gruen` nie aus einer Bewegung; ersetzt „Es fließt nichts in die WBS zurück“ |
 | 2026-11-07 | Leitplanke „Der Mensch sieht jede Gestaltung, bevor sie gebaut wird“ ersetzt durch „Jede Gestaltung wird freigegeben, bevor sie gebaut wird“, vom Auftraggeber oder vom product-owner — Grund: der Auftraggeber überträgt die Artboard-Freigabe dem product-owner (Anlass po-entscheidungen Z. 76, 148, 153) |
 | 2026-11-15 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ um die Regel zum Archiv ergänzt: Archiviert ist eine Eigenschaft der Aufgabe und gilt für alle Boards, auf denen sie liegt; aus dem Archiv geholt, liegt sie wieder auf allen diesen Boards, ein beim Wiederöffnen genanntes weiteres Board kommt hinzu — Entscheidung des Betreibers vom 2026-11-15 im Wortlaut (Anlass Karte #45; hebt seine Entscheidung vom 2026-11-13 „eine Karte liegt auf genau einem Board“ auf, die nie im Zielbild stand) |
+| 2026-11-18 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ und Leitplanke „Ordneraufbau“: Klassen gelten je Board, ein Board kann eigene Klassen mit eigenen Farben tragen, ohne eigene gelten die Klassen des Ordners als Vorgabe; Personen bleiben ordnerweit — ersetzt „Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm“. Grund: Entscheidung des Betreibers vom 2026-11-18 (Karte #200): ein eigenes Board für eine große Wartungsaufgabe trug die Klassen des Wartungsboards, die dort keinen Sinn ergeben |
