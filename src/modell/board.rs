@@ -356,6 +356,10 @@ pub struct Board {
     /// `Some([])` = ausdrücklich keine, das Board ist reines Kanban (R00062).
     #[serde(default)]
     pub anwendungen: Option<Vec<String>>,
+    /// Eigener Klassensatz des Boards (`classes:`, R00195, ADR-0031): `None` = Schlüssel fehlt, es gilt die Vorgabe des
+    /// Ordners; `Some([])` (`classes: {}`) = das Board führt ausdrücklich keine Klassen. Reihenfolge = Dringlichkeit.
+    #[serde(default)]
+    pub klassen: Option<Vec<super::Klasse>>,
     /// Projektstart (R00078): Messbasis von „Wie lange noch“ und Beginn des Fever Charts; `None` = erste Aufgabe auf dem Board.
     #[serde(default)]
     pub start: Option<String>,
@@ -835,7 +839,7 @@ mod tests {
                 Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, pruefungen: vec![], ..Default::default() },
             ],
             termine: vec![],
-            anwendungen: None,
+            anwendungen: None, klassen: None,
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
@@ -1195,7 +1199,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None };
         assert_eq!(leer.aufnehmen(1, None, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

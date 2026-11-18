@@ -22,17 +22,7 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
             e.personen.push(Person { name: yaml::text(p, "name").unwrap_or_else(|| kuerzel.clone()), kuerzel, art, aktiv });
         }
     }
-    if let Some(classes) = yaml::zuordnung(&m, "classes") {
-        for (k, v) in classes {
-            let schluessel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Schlüssel unter classes ist kein Text".into()))?;
-            let c = v.as_mapping().ok_or_else(|| Formatfehler(format!("classes.{schluessel} ist keine Zuordnung")))?;
-            e.klassen.push(Klasse {
-                bezeichnung: yaml::text(c, "label").unwrap_or_else(|| schluessel.clone()),
-                farbe: yaml::text(c, "color").unwrap_or_else(|| "grey".into()),
-                schluessel,
-            });
-        }
-    }
+    e.klassen = klassen_lesen(&m)?.unwrap_or_default();
     if let Some(signals) = yaml::zuordnung(&m, "signals") {
         for (k, v) in signals {
             let schluessel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Schlüssel unter signals ist kein Text".into()))?;
@@ -44,6 +34,35 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
         e.quellen = Quellen { wbs: yaml::text(s, "wbs").unwrap_or_default(), anforderungen: yaml::text(s, "requirements").unwrap_or_default(), anwendungen: anwendungen_lesen(s)? };
     }
     Ok(e)
+}
+
+/// `classes` aus dem Frontmatter von `kanbanD.md` oder einer Board-Datei (ADR-0031 Regel 1): je Schlüssel
+/// `{label, color}` in Dateireihenfolge. `None` = der Schlüssel fehlt oder trägt keine Zuordnung, `Some([])` = `classes: {}`.
+pub(crate) fn klassen_lesen(m: &serde_yaml::Mapping) -> Result<Option<Vec<Klasse>>, Formatfehler> {
+    let Some(classes) = yaml::zuordnung(m, "classes") else { return Ok(None) };
+    let mut klassen = vec![];
+    for (k, v) in classes {
+        let schluessel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Schlüssel unter classes ist kein Text".into()))?;
+        let c = v.as_mapping().ok_or_else(|| Formatfehler(format!("classes.{schluessel} ist keine Zuordnung")))?;
+        klassen.push(Klasse {
+            bezeichnung: yaml::text(c, "label").unwrap_or_else(|| schluessel.clone()),
+            farbe: yaml::text(c, "color").unwrap_or_else(|| "grey".into()),
+            schluessel,
+        });
+    }
+    Ok(Some(klassen))
+}
+
+/// Der Abschnitt `classes:` ohne Zeilenende, für beide Dateien gleich; ein leerer Satz ist `classes: {}`.
+pub(crate) fn klassen_schreiben(klassen: &[Klasse]) -> String {
+    let mut s = String::from("classes:");
+    if klassen.is_empty() {
+        s.push_str(" {}");
+    }
+    for k in klassen {
+        s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&k.schluessel), yaml::skalar(&k.bezeichnung), yaml::skalar(&k.farbe)));
+    }
+    s
 }
 
 /// `sources.applications` — je Kürzel `{name, wbs, requirements}`, nach Kürzel sortiert. Pfade werden nicht geprüft:
@@ -85,13 +104,8 @@ pub fn schreiben(e: &Einstellungen) -> String {
         let aktiv = if p.aktiv { "" } else { ", active: false" };
         s.push_str(&format!("\n  {}: {{name: {}, kind: {art}{aktiv}}}", yaml::skalar(&p.kuerzel), yaml::skalar(&p.name)));
     }
-    s.push_str("\nclasses:");
-    if e.klassen.is_empty() {
-        s.push_str(" {}");
-    }
-    for k in &e.klassen {
-        s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&k.schluessel), yaml::skalar(&k.bezeichnung), yaml::skalar(&k.farbe)));
-    }
+    s.push('\n');
+    s.push_str(&klassen_schreiben(&e.klassen));
     if !e.signale.is_empty() {
         s.push_str("\nsignals:");
     }

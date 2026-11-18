@@ -217,7 +217,7 @@ mod tests {
             titel: "B".into(),
             spalten: vec![spalte("Eingang", Some(Eigentuemer::Human), None, vec![1, 2]), spalte("In Arbeit", None, None, vec![9]), spalte("Voll", None, Some(1), vec![5])],
             termine: vec![],
-            anwendungen: None,
+            anwendungen: None, klassen: None,
             start: None,
             fieber: Default::default(),
             berichtsfilter: Default::default(), bestand: None,

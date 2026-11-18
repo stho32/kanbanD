@@ -40,6 +40,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let berichtsfilter = berichtsfilter_lesen(m.get("report-filter"))?;
     let bestand = bestand_lesen(m.get("report-labels"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
+    let klassen = super::einstellungen::klassen_lesen(&m)?;
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
     for zeile in koerper.lines() {
@@ -81,7 +82,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     // Nur Einträge ohne eigene Spalte bleiben roh; die ungültigen Nicht-Text-Werte treten dazu (R00120).
     eigentuemer_roh.retain(|e| e.schluessel.as_ref().is_none_or(|k| !spalten.iter().any(|s| &s.name == k)));
     eigentuemer_roh.extend(roh_ungueltig);
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, klassen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert })
 }
 
 /// Ein Schlüssel unter `column-owner` als Text: ein Skalar roh, ein Nicht-Text-Schlüssel (`[a, b]: human`) in
@@ -325,8 +326,12 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.klassen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
         s.push_str("---\n");
+        if let Some(klassen) = &b.klassen {
+            s.push_str(&super::einstellungen::klassen_schreiben(klassen));
+            s.push('\n');
+        }
         if let Some(anwendungen) = &b.anwendungen {
             s.push_str(&format!("applications: {}\n", yaml::liste(anwendungen)));
         }
@@ -429,7 +434,7 @@ mod tests {
                 Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() },
             ],
             termine: vec![],
-            anwendungen: None,
+            anwendungen: None, klassen: None,
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
@@ -506,6 +511,24 @@ mod tests {
         assert_eq!(lesen("entwicklung", &t).unwrap(), b);
         b.spalten[1].grenze = None;
         assert!(schreiben(&b, datei).starts_with("---\napplications: []\n---\n"), "auch ohne andere Schlüssel");
+    }
+
+    /// R00195 AK 1, 2 (ADR-0031 Regel 1, 4): `classes` der Board-Datei — ohne, mit mehreren, mit `{}` zeichengleich.
+    #[test]
+    fn klassen_des_boards_rundlauf_zeichengleich() {
+        let mehrere = "---\nclasses:\n  phase1: {label: Phase 1, color: green}\n  eol: {label: Altlast, color: \"#885500\"}\nlimits:\n  In Arbeit: 3\n---\n\n# Umzug\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n";
+        let leer = "---\nclasses: {}\n---\n\n# Umzug\n\n## Zu erledigen\n";
+        let ohne = "---\nlimits:\n  In Arbeit: 3\n---\n\n# Umzug\n\n## Zu erledigen\n\n## In Arbeit\n";
+        let ganz_ohne = "# Umzug\n\n## Zu erledigen\n";
+        for text in [mehrere, leer, ohne, ganz_ohne] {
+            assert_eq!(schreiben(&lesen("umzug", text).unwrap(), |_| None), text);
+        }
+        let satz = lesen("umzug", mehrere).unwrap().klassen.expect("eigener Satz");
+        assert_eq!(satz.iter().map(|k| (k.schluessel.as_str(), k.bezeichnung.as_str(), k.farbe.as_str())).collect::<Vec<_>>(), vec![("phase1", "Phase 1", "green"), ("eol", "Altlast", "#885500")], "Dateireihenfolge");
+        assert_eq!(lesen("umzug", leer).unwrap().klassen, Some(vec![]), "classes: {{}} = ausdrücklich keine");
+        assert_eq!(lesen("umzug", ohne).unwrap().klassen, None, "fehlender Schlüssel = Vorgabe des Ordners");
+        assert_eq!(lesen("umzug", ganz_ohne).unwrap().klassen, None);
+        assert!(lesen("umzug", "---\nclasses:\n  x: 5\n---\n## A\n").is_err(), "kein stiller Verlust einer unlesbaren Klasse");
     }
 
     #[test]

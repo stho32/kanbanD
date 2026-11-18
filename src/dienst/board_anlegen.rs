@@ -25,7 +25,7 @@ impl Kanban {
             titel: neu.titel.trim().into(),
             spalten: spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![], phase: None, pruefungen: vec![], ..Default::default() }).collect(),
             termine: vec![],
-            anwendungen: None,
+            anwendungen: None, klassen: None,
             start: None,
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
