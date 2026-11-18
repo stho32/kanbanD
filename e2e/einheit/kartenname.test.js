@@ -14,8 +14,16 @@ test('ohne Klasse nur Nummer und Titel', () => {
   assert.strictEqual(kartenName({ nummer: 3, titel: 'drei', klasse: null }, KLASSEN, false), '#3 drei');
 });
 
-test('ein unbekannter Klassenschlüssel ergibt keinen Zusatz und nie den Schlüssel', () => {
-  assert.strictEqual(kartenName({ nummer: 5, titel: 'fünf', klasse: 'chore' }, KLASSEN, false), '#5 fünf');
+// R00195 AK 6 löst die Regel aus R00113 ab („nie den Schlüssel“): eine fremde Klasse ist auf der Karte Text — ihr Name nennt ihn.
+test('eine fremde Klasse (der Vorrat kennt den Schlüssel nicht) steht als „Klasse <schlüssel>“ im Namen', () => {
+  assert.strictEqual(kartenName({ nummer: 2, titel: 'Zwei', klasse: 'sicherheit' }, KLASSEN, false), '#2 Zwei, Klasse sicherheit');
+  assert.strictEqual(kartenName({ nummer: 2, titel: 'Zwei', klasse: 'sicherheit' }, [], true, ['seit 3 Tagen in Bereit']), '#2 Zwei, Klasse sicherheit, seit 3 Tagen in Bereit, ausgewählt');
+  assert.strictEqual(kartenName({ nummer: 1, titel: 'eins', klasse: 'bug' }, KLASSEN, false), '#1 eins, Fehler', 'eine bekannte Klasse nennt ihre Bezeichnung ohne das Wort');
+});
+
+test('ist der Klassenvorrat nicht bekannt (kanbanD.md defekt), nennt der Name keine Klasse', () => {
+  assert.strictEqual(kartenName({ nummer: 5, titel: 'fünf', klasse: 'chore' }, null, false), '#5 fünf');
+  assert.strictEqual(kartenName({ nummer: 5, titel: 'fünf', klasse: 'chore' }, undefined, false), '#5 fünf');
 });
 
 test('bei Auswahl endet der Name mit „, ausgewählt“, auch ohne Klasse', () => {

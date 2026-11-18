@@ -1,21 +1,26 @@
 /* kanbanD — zugänglicher Name einer Karte (R00113, ADR-0018 Regel 3): reine Funktionen, im Browser und in Node nutzbar.
-   Der Name ist Klartext ohne Datum und ohne Klassenschlüssel; maskiert wird erst beim Einsetzen ins Attribut. */
+   Der Name ist Klartext ohne Datum; eine bekannte Klasse nennt ihre Bezeichnung, eine fremde ihren Schlüssel hinter dem
+   Wort „Klasse“ (R00195 AK 6). Maskiert wird erst beim Einsetzen ins Attribut. */
 (function (ziel) {
   "use strict";
 
-  /** Bezeichnung der Klasse aus kanbanD.md; ein unbekannter Schlüssel ergibt keine. */
-  function klassenBezeichnung(schluessel, klassen) {
-    const gefunden = (klassen || []).find(k => k.schluessel === schluessel);
-    if (!gefunden) return '';
+  /** Die Klasse im Namen: die Bezeichnung aus dem Klassenvorrat `klassen`; kennt er den Schlüssel nicht, ist die Klasse fremd
+      und heißt „Klasse <schlüssel>“ — das Wort unterscheidet den Schlüssel von einer Bezeichnung. Ohne Klasse und ohne
+      bekannten Vorrat (`klassen` fehlt: kanbanD.md ist defekt) steht nichts. */
+  function klasseImNamen(schluessel, klassen) {
+    if (!schluessel || !klassen) return '';
+    const gefunden = klassen.find(k => k.schluessel === schluessel);
+    if (!gefunden) return `Klasse ${schluessel}`;
     return gefunden.bezeichnung;
   }
 
-  /** `#<nr> <Titel>[, <Bezeichnung der Klasse>][, <Zusatz>…][, ausgewählt]`. `zusaetze` ist eine Liste von Zusätzen in fester
-      Reihenfolge (Timer, dann Alter); eine Zeichenkette gilt als deren einziges Element, leere Teile fallen samt Komma weg. */
+  /** `#<nr> <Titel>[, <Bezeichnung der Klasse> | Klasse <Schlüssel>][, <Zusatz>…][, ausgewählt]`. `zusaetze` ist eine Liste
+      von Zusätzen in fester Reihenfolge (Timer, dann Alter); eine Zeichenkette gilt als deren einziges Element, leere Teile
+      fallen samt Komma weg. */
   function kartenName({ nummer, titel, klasse }, klassen, gewaehlt, zusaetze) {
     const teile = [`#${nummer} ${titel}`];
-    const bezeichnung = klassenBezeichnung(klasse, klassen);
-    if (bezeichnung) teile.push(bezeichnung);
+    const klassenteil = klasseImNamen(klasse, klassen);
+    if (klassenteil) teile.push(klassenteil);
     if (zusaetze) {
       let liste = zusaetze;
       if (!Array.isArray(zusaetze)) liste = [zusaetze];

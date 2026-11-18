@@ -176,9 +176,16 @@ function vIchKnopf() {
 
 /* ── Schnelleingabe: Vorschau der erkannten Felder ── */
 function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: vorratDerNeuenAufgabe() }; }
+/** Die erkannte Klasse der Schnelleingabe aus dem Vorrat des Zielboards; kennt er sie nicht, steht ihr Schlüssel ohne Farbe. */
+function vSchnellKlasse(schluessel) {
+  if (!schluessel) return '';
+  const cl = vorratDerNeuenAufgabe().find(k => k.schluessel === schluessel);
+  if (!cl) return `<span class="cls">${esc(schluessel)}</span>`;
+  return `<span class="cls" style="${cv(cl.farbe)}">${esc(cl.bezeichnung)}</span>`;
+}
 function vSchnellVorschau(text) {
   const s = schnelleingabe(text, schnellUmfeld(), new Date());
-  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(datumLang(s.faellig))}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
+  const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), vSchnellKlasse(s.klasse), ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(datumLang(s.faellig))}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
   return teile.length ? `<span class="muted">→ ${esc(s.titel)}</span>${teile.join('')}` : '<span class="muted">@kürzel · class: · label: · due:morgen · I0001</span>';
 }
 /** Beschriftung einer Feldzeile mit Schlüssel (ADR-0013 N1): deutsch aus FELDER, darunter der Schlüssel der Datei in Mono, nie in `.k`. */
@@ -644,6 +651,12 @@ function vorratDerNeuenAufgabe() {
   return klassenvorrat(ziel || null, S.zustand.einstellungen);
 }
 const klasse = (k, a) => k && vorrat(a).find(c => c.schluessel === k);
+/** Ob die Sicht den Klassenvorrat kennt: bei defekter kanbanD.md nur, wenn ein eigener Satz gilt — sonst wäre jede Klasse fremd. */
+const vorratBekannt = a => !S.einstellungenDefekt || vorrat(a).length > 0;
+/** Der Schlüssel einer fremden Klasse (D00012): die Aufgabe trägt ihn, der geltende Klassenvorrat kennt ihn nicht; sonst ''. */
+const fremdeKlasse = a => a.klasse && vorratBekannt(a) && !klasse(a.klasse, a) ? a.klasse : '';
+/** Die fremde Klasse auf der Karte: der Schlüssel als Text ohne Farbe (R00195 AK 6); der Name der Karte nennt ihn schon. */
+const vFremdeKlasse = a => (fremd => fremd ? `<span class="kb-fremd" aria-hidden="true" title="Klasse ${esc(fremd)}">${esc(fremd)}</span>` : '')(fremdeKlasse(a));
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
@@ -819,7 +832,7 @@ function vKarte(a, fertig, spalte) {
   if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorrat(a), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorratBekannt(a) ? vorrat(a) : null, gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3">${vFremdeKlasse(a)}<span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */

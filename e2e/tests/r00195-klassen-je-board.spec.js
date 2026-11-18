@@ -68,6 +68,15 @@ async function listeZeigen(page, k) {
 const zeile = (page, nr) => page.locator(`tr[data-zeile="${nr}"]`);
 const klasseInDerListe = (page, nr) => zeile(page, nr).locator('.cls');
 const aufBoardLegen = async (k, slug, nummer) => expect((await api(k, 'POST', `/api/boards/${slug}/aufgaben`, { nummer })).status).toBe(201);
+const fremdeKlasse = (page, nr) => karte(page, nr).locator('.kb-fremd');
+/** Sammelt Fehler der Browser-Konsole und nicht gefangene Fehler der Seite. */
+function konsolenfehler(page) {
+  const fehler = [];
+  page.on('pageerror', e => fehler.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') fehler.push(m.text()); });
+  return fehler;
+}
+const verlaufDerDatei = (k, rel) => k.git('log', '--format=%s', '--', rel);
 /** Die Namen der Einträge im geöffneten Untermenü „Klasse“. */
 const untermenue = page => page.locator('.kmenue.unter .km-e').allTextContents();
 
@@ -126,6 +135,88 @@ test.describe('R00195', () => {
     await expect(karte(page, 1)).toHaveAccessibleName(/^#1 Eins, Sicherheit(, |$)/);
     await karte(page, 1).click();
     await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
+  });
+
+  test('AK 6 / US-2: die fremde Klasse steht als Text auf der Karte, ohne Farbe, und im Namen; ohne Klasse steht nichts', async ({ page }) => {
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    await boardZeigen(page, k, 'umzug', 2);
+
+    await expect(fremdeKlasse(page, 2)).toHaveText('sicherheit');
+    await expect(karte(page, 2)).not.toHaveAttribute('data-c');
+    await expect(karte(page, 2)).not.toHaveAttribute('style', /--c:/);
+    await expect(karte(page, 2)).toHaveAccessibleName(/^#2 Zwei, Klasse sicherheit(, |$)/);
+    await expect(fremdeKlasse(page, 4), 'ohne Klasse: kein Text').toHaveCount(0);
+    await expect(karte(page, 4)).toHaveAccessibleName(/^#4 Vier(, seit|$)/);
+    await expect(fremdeKlasse(page, 3), 'bekannte Klasse: Farbe, kein Text').toHaveCount(0);
+    // Zeichnung 3.1: erstes Element der Fußzeile, Mono, gestrichelter Rahmen, kein Grund, Schrift in Textfarbe
+    expect(await fremdeKlasse(page, 2).evaluate(e => {
+      const stil = getComputedStyle(e), probe = document.createElement('i');
+      probe.style.color = 'var(--kd-text)'; document.body.append(probe);
+      const textfarbe = getComputedStyle(probe).color; probe.remove();
+      return { erstes: e === e.closest('.r3').firstElementChild, mono: /Mono/.test(stil.fontFamily), rahmen: stil.borderTopStyle, grund: stil.backgroundColor, textfarbe: stil.color === textfarbe, groesse: stil.fontSize };
+    })).toEqual({ erstes: true, mono: true, rahmen: 'dashed', grund: 'rgba(0, 0, 0, 0)', textfarbe: true, groesse: '11px' });
+    await expect(legende(page), 'die fremde Klasse ist kein Eintrag der Legende').toHaveText([/^Phase 1\s*0$/, /^Altlast\s*1$/, /^ohne Klasse\s*1$/]);
+
+    // Klassenwahl von #2: der Schlüssel als gewählter eigener Eintrag ohne Farbe neben den Klassen des Boards
+    await karte(page, 2).click();
+    const wahl = page.getByRole('dialog').getByLabel('Klasse');
+    await expect.poll(() => eintraege(wahl)).toEqual([KEINE, ['phase1', 'Phase 1'], ['eol', 'Altlast'], ['sicherheit', 'sicherheit']]);
+    await expect(wahl).toHaveValue('sicherheit');
+    await expect(wahl).not.toHaveAttribute('style');
+    expect(await wahl.locator('option:checked').getAttribute('style')).toBeNull();
+  });
+
+  test('AK 6: ein langer fremder Schlüssel kürzt mit „…“, die Karte wird nicht breiter (Zeichnung 3.4)', async ({ page }) => {
+    await k.stoppen();
+    const lang = 'sicherheit-sehr-lang-abc';
+    k = await kanbanStarten(ordnerMit({
+      ...AUSGANGSLAGE,
+      'kanbanD.md': VORGABE.replace('  sicherheit:', `  ${lang}:`),
+      'boards/umzug.md': '---\nclasses: {}\n---\n\n' + AUSGANGSLAGE['boards/umzug.md'],
+      'aufgaben/0002-zwei.md': `---\nid: 2\ntitle: Zwei\nclass: ${lang}\nsubtasks:\n  - {text: eins, done: false}\nassignees: [st, cl]\ndue: 2031-12-24\n---\n`,
+    }));
+    await page.setViewportSize({ width: 320, height: 700 });
+    await boardZeigen(page, k, 'umzug', 2);
+    await expect(fremdeKlasse(page, 2)).toHaveText(lang);
+    await karte(page, 2).evaluate(e => { e.style.width = '120px'; });
+    await expect.poll(() => fremdeKlasse(page, 2).evaluate(e => ({ gekuerzt: e.scrollWidth > e.clientWidth, ellipse: getComputedStyle(e).textOverflow }))).toEqual({ gekuerzt: true, ellipse: 'ellipsis' });
+    expect(await karte(page, 2).evaluate(e => e.scrollWidth <= e.clientWidth), 'die Karte wird nicht breiter').toBe(true);
+    await expect(fremdeKlasse(page, 2), 'der ganze Schlüssel bleibt erreichbar').toHaveAttribute('title', `Klasse ${lang}`);
+  });
+
+  test('AK 6: die Aufgabe bleibt zeichengleich — Satz einschalten, drauflegen, bewegen, herunternehmen', async ({ page }) => {
+    const vorher = verlaufDerDatei(k, 'aufgaben/0002-zwei.md');
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    await aufBoardLegen(k, 'wartung', 2);
+    expect((await api(k, 'POST', '/api/boards/umzug/bewegen', { nummer: 2, spalte: 'In Arbeit' })).status).toBe(200);
+    expect((await api(k, 'DELETE', '/api/boards/wartung/aufgaben/2')).status).toBe(200);
+    await boardZeigen(page, k, 'umzug', 2);
+    await expect(page.locator('.bahn[data-col="In Arbeit"]').locator(fremdeKlasse(page, 2))).toHaveText('sicherheit');
+    expect(k.lies('aufgaben/0002-zwei.md')).toBe(AUFGABE_2);
+    expect(verlaufDerDatei(k, 'aufgaben/0002-zwei.md'), 'kein Commit berührt die Aufgabe').toBe(vorher);
+    expect(k.git('status', '--porcelain')).toBe('');
+  });
+
+  test('AK 6: die Schnelleingabe mit einer Klasse, die der Vorrat der Sicht nicht kennt, erzeugt keinen Fehler in der Konsole', async ({ page }) => {
+    const fehler = konsolenfehler(page);
+    await eigenerSatz(k, [PHASE1, ALTLAST]);
+    await boardZeigen(page, k, 'wartung', 1);
+    await karte(page, 1).focus();
+    await page.keyboard.press('n');
+    const neu = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    const titel = page.getByLabel('Titel der neuen Aufgabe');
+    // Wartung kennt phase1 nicht: der Text bleibt im Titel
+    await titel.fill('Kisten class:phase1');
+    await expect(neu.locator('#neu-vorschau')).toContainText('@kürzel');
+    // das Zielboard Umzug kennt phase1, das gezeigte Board Wartung nicht — die Vorschau nimmt den Vorrat des Zielboards
+    await neu.getByLabel('Board').selectOption('umzug');
+    await titel.fill('Kisten class:phase1 @cl');
+    await expect(neu.locator('#neu-vorschau .cls')).toHaveText('Phase 1');
+    await expect(neu.locator('#neu-vorschau .cls')).toHaveAttribute('style', /--kd-c-green\b/);
+    await titel.fill('Kisten class:sicherheit @cl');
+    await expect(neu.locator('#neu-vorschau')).toContainText('Kisten class:sicherheit');
+    await expect(neu.locator('#neu-vorschau .cls')).toHaveCount(0);
+    expect(fehler).toEqual([]);
   });
 
   test('AK 7: außerhalb eines Boards gilt das erste Board der Aufgabe, sonst die Vorgabe', async ({ page }) => {

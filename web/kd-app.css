@@ -186,6 +186,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka.fertig .t{color:var(--kd-muted)}
 .ka .r3{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;color:var(--kd-muted);margin-top:auto;min-width:0}
 .ka .r3>*{white-space:nowrap;flex:none}
+/* Fremde Klasse (R00195, D00012): der Schlüssel als Text — ohne Farbfeld und ohne Grund; nicht `.fremd`, das ist die Marke „extern“ */
+.ka .r3 .kb-fremd{font-family:var(--kd-mono);font-size:11px;color:var(--kd-text);border:1px dashed var(--kd-line-strong);padding:0 4px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ka .r3 .due{font-family:var(--kd-mono)}
 .ka .r3 .sum{font-family:var(--kd-mono)}
 .ka .r3 .seit{font-family:var(--kd-mono);white-space:nowrap}
