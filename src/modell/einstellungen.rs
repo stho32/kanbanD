@@ -68,10 +68,6 @@ impl Einstellungen {
         self.personen.iter().find(|p| p.kuerzel == kuerzel)
     }
 
-    pub fn klasse(&self, schluessel: &str) -> Option<&Klasse> {
-        self.klassen.iter().find(|k| k.schluessel == schluessel)
-    }
-
     pub fn signal(&self, schluessel: &str) -> Option<&Signal> {
         self.signale.iter().find(|s| s.schluessel == schluessel)
     }

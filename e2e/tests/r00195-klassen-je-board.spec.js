@@ -13,8 +13,9 @@ const VORGABE = '---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: C
 const AUFGABE_2 = '---\nid: 2\ntitle: Zwei\nclass: sicherheit\n---\n';
 const AUSGANGSLAGE = {
   'kanbanD.md': VORGABE,
-  'boards/wartung.md': '# Wartung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n',
-  'boards/umzug.md': '# Umzug\n\n## Zu erledigen\n\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n## Erledigt\n',
+  // Kartenzeilen in der Form, die kanbanD schreibt — so ändert ein Zug nur die Zeile der gezogenen Karte
+  'boards/wartung.md': '# Wartung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n\n## In Arbeit\n\n## Erledigt\n',
+  'boards/umzug.md': '# Umzug\n\n## Zu erledigen\n\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n- [#4](../aufgaben/0004-vier.md)\n\n## In Arbeit\n\n## Erledigt\n',
   'aufgaben/0001-eins.md': '---\nid: 1\ntitle: Eins\nclass: sicherheit\n---\n',
   'aufgaben/0002-zwei.md': AUFGABE_2,
   'aufgaben/0003-drei.md': '---\nid: 3\ntitle: Drei\nclass: eol\n---\n',
@@ -134,6 +135,55 @@ test.describe('R00195', () => {
   let k;
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(ordnerMit(AUSGANGSLAGE)); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
+
+  test('AK 1 / US-5: ein bestehender Ordner bleibt, wie er ist — kein Commit beim Start, keine Zeile classes nach einem Zug', async ({ page }) => {
+    await boardZeigen(page, k, 'umzug', 3);
+    await expect(legende(page)).toHaveText([/^Sicherheit\s*1$/, /^EOL\s*1$/, /^ohne Klasse\s*1$/]);
+    await expect(karte(page, 2)).toHaveAttribute('style', /--kd-c-red\b/);
+    await expect(karte(page, 3)).toHaveAttribute('style', /--kd-c-amber\b/);
+    await expect(fremdeKlasse(page, 2)).toHaveCount(0);
+    await karte(page, 3).click();
+    await expect.poll(() => eintraege(page.getByRole('dialog').getByLabel('Klasse'))).toEqual([KEINE, ['sicherheit', 'Sicherheit'], ['eol', 'EOL']]);
+    await page.keyboard.press('Escape');
+    await boardZeigen(page, k, 'wartung', 1);
+    await expect(legende(page)).toHaveText([/^Sicherheit\s*1$/, /^EOL\s*0$/, /^ohne Klasse\s*0$/]);
+    expect(commits(k), 'Start und Ansehen schreiben keinen Commit').toBe(1);
+    expect(k.git('status', '--porcelain')).toBe('');
+    expect((await api(k, 'GET', '/api/boards/umzug')).daten.klassen).toBeNull();
+
+    // eine Karte in eine andere Spalte ziehen
+    await boardZeigen(page, k, 'umzug', 3);
+    await karte(page, 3).dragTo(page.locator('.bahn[data-col="In Arbeit"]'));
+    await expect(page.locator('.bahn[data-col="In Arbeit"]').locator(karte(page, 3))).toBeVisible();
+    await commitSteht(k, 2);
+    const nachher = k.lies('boards/umzug.md');
+    expect(nachher).not.toContain('classes');
+    const ohneKarte = text => text.split('\n').filter(z => z && !z.includes('#3'));
+    expect(ohneKarte(nachher)).toEqual(ohneKarte(AUSGANGSLAGE['boards/umzug.md']));
+    expect(k.git('show', '--name-only', '--format=', 'HEAD')).toBe('boards/umzug.md');
+  });
+
+  test('US-4: ein Agent setzt die Klassen eines Boards über die API und legt mit einer Klasse dieses Boards an', async () => {
+    const vorher = commits(k);
+    const satz = { klassen: [PHASE1, ALTLAST] };
+    expect((await api(k, 'PUT', '/api/boards/umzug/klassen', satz)).status).toBe(200);
+    expect((await api(k, 'GET', '/api/boards/umzug')).daten.klassen).toEqual(satz.klassen);
+    expect(k.lies('boards/umzug.md')).toMatch(/^---\nclasses:\n  phase1: \{label: Phase 1, color: green\}\n  eol: \{label: Altlast, color: "#885500"\}\n---\n/);
+    expect(commits(k)).toBe(vorher + 1);
+
+    expect((await api(k, 'POST', '/api/aufgaben', { titel: 'Kisten', board: 'umzug', klasse: 'phase1' })).status).toBe(201);
+    const abgewiesen = await api(k, 'POST', '/api/aufgaben', { titel: 'Schloss', board: 'umzug', klasse: 'sicherheit' });
+    expect(abgewiesen.status).toBe(400);
+    expect(abgewiesen.daten.fehler).toContain('umzug');
+    expect(abgewiesen.daten.fehler).toContain('sicherheit');
+
+    const stand = [k.git('rev-parse', 'HEAD'), k.lies('boards/umzug.md')];
+    const lila = await api(k, 'PUT', '/api/boards/umzug/klassen', { klassen: [PHASE1, { ...ALTLAST, farbe: 'lila' }] });
+    expect(lila.status).toBe(400);
+    expect(lila.daten.fehler).toContain('lila');
+    expect([k.git('rev-parse', 'HEAD'), k.lies('boards/umzug.md')]).toEqual(stand);
+    expect(k.git('status', '--porcelain')).toBe('');
+  });
 
   test('AK 5 / US-2: jedes Board zeigt seine Klassen — Legende, Karte, Klassenwahl, Menüs und Schnelleingabe', async ({ page }) => {
     await eigenerSatz(k, [PHASE1, ALTLAST]);

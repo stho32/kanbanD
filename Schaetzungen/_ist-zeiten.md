@@ -814,3 +814,15 @@ Nie vom User erfragen.
 | 2026-11-17 | Karte #197 R00194 (Burndown nennt, wie viel vom Zugang selbsterzeugt ist) | B0956 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-17 | Karte #198 (E2E-Wackler im Gate: r00148 B2 Taste „t“) | Ursachensuche: einmal reproduziert, Fehlerkontext kalibriert, vier Hypothesen per Probe ausgeschlossen, keine Ursache belegt — blockiert am Timebox-Limit | Standard | 1-2h | 2,8h | 2,8h | autonom |
 | 2026-11-17 | Karte #199 (Bug: mehrzeiliger Titel überlappt „Beschreibung“) | Reproduktion, rote Probe, Fix `flex:none`, Gate der berührten Specs | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0957 Schlüssel classes in der Board-Datei und im Modell | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0958 Klassen prüfen und Klassenvorrat bestimmen | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0959 Route PUT /api/boards/{slug}/klassen und klassen in den Board-Antworten | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0960 Gültigkeit beim Setzen einer Klasse folgt den Boards der Aufgabe | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0961 Vorrat-Funktion in web/ und Leser am Board | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0962 Berichte und Berichtsfilter nehmen den Vorrat des Boards | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0963 Außerhalb eines Boards: Vorrat des ersten Boards der Aufgabe | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0964 Fremde Klasse auf der Karte und in der Schnelleingabe | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0965 Abschnitt „Klassen dieses Boards“ beim Einrichten des Boards | Standard | 2-3h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0966 Betroffene Karten zählen, Hinweiszeile in beiden Editoren | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0967 Zurück zur Vorgabe mit Hinweis | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0968 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 1-2h | 0,2h | 0,2h | autonom |

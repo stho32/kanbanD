@@ -75,14 +75,17 @@ test('Gegeben Einrichten und Fokus auf „Speichern“, wenn planer den Titel vo
   await expect(speichern).toBeFocused();
 });
 
-test('Gegeben Einrichten mit der Klasse „bug“ und Fokus auf „Klasse bug entfernen“, wenn Enter gedrückt wird, dann ist die Zeile „bug“ fort und der Fokus auf BODY, nie im Feld „Name st“ oder einem anderen Eingabefeld', async ({ page }) => {
+// Seit R00195 (AK 9, Zeichnung D0001 #klassen-hinweiszeile) bleibt die gestrichene Klasse bis zum Speichern als Zeile stehen:
+// der Knopf „entfernen“ weicht „zurücknehmen“, und dorthin geht der Fokus — statt auf BODY, weiterhin nie in ein Eingabefeld.
+test('Gegeben Einrichten mit der Klasse „bug“ und Fokus auf „Klasse bug entfernen“, wenn Enter gedrückt wird, dann ist die Zeile „bug“ gestrichen und der Fokus auf „Klasse bug zurücknehmen“, nie im Feld „Name st“ oder einem anderen Eingabefeld', async ({ page }) => {
   await oeffnen(page, '#/einrichten', 'einrichten');
   await page.getByRole('button', { name: 'Klasse bug entfernen' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('.klz[data-klasse="bug"]')).toHaveCount(0);
+  await expect(page.locator('.klz[data-klasse="bug"]')).toHaveClass(/gestrichen/);
+  await expect(page.getByRole('button', { name: 'Klasse bug entfernen' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Klasse bug zurücknehmen' })).toBeFocused();
   const danach = await aktiv(page);
   expect(EINGABEFELDER, danach.beschreibung).not.toContain(danach.tag);
-  expect(danach.body, danach.beschreibung).toBe(true);
 });
 
 test('Gegeben Personen und Fokus auf dem Personenlink „Anna“, wenn planer den Titel von #3 ändert, dann steht der Fokus weiter auf „Anna“', async ({ page }) => {

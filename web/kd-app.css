@@ -547,6 +547,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .kl-wahl{flex:none;padding:var(--kd-s3) var(--kd-s4) 0}
 .kl-wahl .seg>span{height:max(26px,var(--kd-ziel));font-size:12px;white-space:nowrap}
 #klassen-dieses-boards{flex:none;display:flex;flex-direction:column}
+/* der Kopf des Abschnitts ist erstes Kind seines Abschnitts, aber nicht der Seitenleiste: er behält seine obere Linie */
+.einr>section:not(:first-child)>.einr-kopf:first-child{border-top:1px solid var(--kd-line-strong)}
 .hin{padding:var(--kd-s3) var(--kd-s4);font-size:11.5px;color:var(--kd-muted);line-height:1.45;border-bottom:1px solid var(--kd-line)}
 /* Spalte 1 (Farbfeld, Kürzel) und die letzte (Löschknopf) tragen ein Ziel: sie wachsen mit dem Zielmaß */
 .klz{--klz-vorn:max(30px,var(--kd-ziel));--klz-hinten:max(24px,var(--kd-ziel));display:grid;grid-template-columns:var(--klz-vorn) 76px minmax(0,1fr) 28px var(--klz-hinten);align-items:center;gap:4px;padding:2px var(--kd-s3) 2px var(--kd-s4);border-bottom:1px solid var(--kd-line);min-height:32px}

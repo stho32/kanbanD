@@ -171,7 +171,8 @@ const GESTALTUNG = [
   { ansicht: 'Bericht prognose', adresse: '#/berichte/prognose', kopf: '.dtitel', anzahl: 4, soll: DTITEL, abweichend: { 'Noch nicht erreicht': { marginTop: '0px' } } },
   { ansicht: 'Bericht fieber', adresse: '#/berichte/fieber', kopf: '.dtitel', anzahl: 1, soll: DTITEL },
   { ansicht: 'Einrichten', adresse: '#/einrichten', kopf: '.einr ' + KOPF, anzahl: 6, soll: EINR_KOPF, abweichend: { PERSONEN: { borderTopWidth: '0px' }, 'KANBAND.MD': { borderTopWidth: '0px' } } },
-  { ansicht: 'Einrichtungsmodus', kopf: '.einr ' + KOPF, anzahl: 2, soll: EINR_KOPF, abweichend: { 'GEBUNDEN AN': { borderTopWidth: '0px' } } },
+  // seit R00195 drei Köpfe: „Gebunden an“, „Klassen dieses Boards“ (Zeichnung D0002 #klassen-dieses-boards), Vorschau
+  { ansicht: 'Einrichtungsmodus', kopf: '.einr ' + KOPF, anzahl: 3, soll: EINR_KOPF, abweichend: { 'GEBUNDEN AN': { borderTopWidth: '0px' } } },
   { ansicht: 'Aufgabenliste', adresse: '#/aufgaben', kopf: '.ziele ' + KOPF, anzahl: 1, soll: ZIELE_KOPF },
 ];
 
