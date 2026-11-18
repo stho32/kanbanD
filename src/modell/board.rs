@@ -344,32 +344,53 @@ pub fn ist_datum(s: &str) -> bool {
     s.len() == 10 && chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
 }
 
+/// Wortteil der Abweisung einer fehlenden Klasse, an dem Agenten-Clients erkennen, dass ein Eintrag in `kanbanD.md` die
+/// Anfrage gültig machen würde — Vertrag für `POST` und `PATCH /api/aufgaben` (ADR-0031 N2), nur hier geschrieben.
+const NICHT_IN_DER_VORGABE: &str = "steht nicht in kanbanD.md";
+
 /// Welche Klassen eine Aufgabe annehmen darf (ADR-0031 Regel 6): die Vereinigung der Klassenvorräte der Boards, auf
 /// denen sie liegt; liegt sie auf keinem, die Vorgabe des Ordners.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Klassengeltung {
-    /// Je Board der Aufgabe sein Slug und die Schlüssel seines Vorrats, in der Reihenfolge der Boardliste.
-    boards: Vec<(String, Vec<String>)>,
+    /// Je Board der Aufgabe sein Vorrat, in der Reihenfolge der Boardliste.
+    boards: Vec<Boardvorrat>,
     vorgabe: Vec<String>,
+}
+
+/// Der Klassenvorrat eines Boards samt Herkunft: der eigene Satz des Boards oder die Vorgabe des Ordners.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Boardvorrat {
+    slug: String,
+    schluessel: Vec<String>,
+    eigener_satz: bool,
 }
 
 impl Klassengeltung {
     /// `boards`: die Boards, auf denen die Aufgabe liegt (beim Anlegen mit `board`: dieses eine).
     pub fn neu<'a>(boards: impl IntoIterator<Item = &'a Board>, vorgabe: &super::Einstellungen) -> Klassengeltung {
         let schluessel = |klassen: &[super::Klasse]| klassen.iter().map(|k| k.schluessel.clone()).collect::<Vec<_>>();
-        Klassengeltung { boards: boards.into_iter().map(|b| (b.slug.clone(), schluessel(b.klassenvorrat(vorgabe)))).collect(), vorgabe: schluessel(&vorgabe.klassen) }
+        let boardvorrat = |b: &Board| Boardvorrat { slug: b.slug.clone(), schluessel: schluessel(b.klassenvorrat(vorgabe)), eigener_satz: b.klassen.is_some() };
+        Klassengeltung { boards: boards.into_iter().map(boardvorrat).collect(), vorgabe: schluessel(&vorgabe.klassen) }
     }
 
-    /// Die Abweisung nennt Board und Schlüssel.
+    /// Die Abweisung nennt Board und Schlüssel — und `kanbanD.md` genau dann, wenn ein Eintrag dort die Klasse gültig
+    /// machen würde: die Aufgabe liegt auf keinem Board, oder auf mindestens einem gilt die Vorgabe (ADR-0031 N2).
     pub fn pruefen(&self, schluessel: &str) -> Result<(), String> {
         let fuehrt = |vorrat: &[String]| vorrat.iter().any(|k| k == schluessel);
-        match self.boards.as_slice() {
-            [] if fuehrt(&self.vorgabe) => Ok(()),
-            [] => Err(format!("Klasse „{schluessel}“ steht nicht in kanbanD.md")),
-            boards if boards.iter().any(|(_, vorrat)| fuehrt(vorrat)) => Ok(()),
-            [(slug, vorrat)] => Err(format!("Klasse „{schluessel}“ gibt es auf dem Board „{slug}“ nicht — dort gilt: {}", if vorrat.is_empty() { "keine Klasse".to_string() } else { vorrat.join(", ") })),
-            boards => Err(format!("Klasse „{schluessel}“ gibt es auf keinem Board der Aufgabe ({})", boards.iter().map(|(slug, _)| format!("„{slug}“")).collect::<Vec<_>>().join(", "))),
+        let gueltig = if self.boards.is_empty() { fuehrt(&self.vorgabe) } else { self.boards.iter().any(|b| fuehrt(&b.schluessel)) };
+        if gueltig {
+            return Ok(());
         }
+        let vorgabe_gilt = self.boards.iter().any(|b| !b.eigener_satz);
+        let dort_gilt = |vorrat: &[String]| if vorrat.is_empty() { "keine Klasse".to_string() } else { vorrat.join(", ") };
+        let alle_boards = || self.boards.iter().map(|b| format!("„{}“", b.slug)).collect::<Vec<_>>().join(", ");
+        Err(match self.boards.as_slice() {
+            [] => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE}"),
+            [b] if vorgabe_gilt => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — auf dem Board „{}“ gilt die Vorgabe des Ordners: {}", b.slug, dort_gilt(&b.schluessel)),
+            [b] => format!("Klasse „{schluessel}“ gibt es auf dem Board „{}“ nicht — dort gilt: {}", b.slug, dort_gilt(&b.schluessel)),
+            _ if vorgabe_gilt => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — kein Board der Aufgabe führt sie ({})", alle_boards()),
+            _ => format!("Klasse „{schluessel}“ gibt es auf keinem Board der Aufgabe ({})", alle_boards()),
+        })
     }
 }
 
@@ -908,6 +929,40 @@ mod tests {
 
         let f = Klassengeltung::neu([&leer], &e).pruefen("eol").unwrap_err();
         assert!(f.contains("„leer“"), "ein leerer eigener Satz führt keine Klasse, auch keine der Vorgabe: {f}");
+    }
+
+    /// R00197 (ADR-0031 N2): der Wortteil „steht nicht in kanbanD.md“ steht genau dann in der Abweisung, wenn ein Eintrag in
+    /// `kanbanD.md` die Anfrage gültig machen würde — kein Board oder mindestens eines ohne eigenen Satz.
+    #[test]
+    fn abweisung_nennt_kanband_md_genau_dort_wo_die_vorgabe_gilt() {
+        const WORTTEIL: &str = "steht nicht in kanbanD.md";
+        let k = |s: &str| crate::modell::Klasse { schluessel: s.into(), bezeichnung: s.to_uppercase(), farbe: "red".into() };
+        let e = crate::modell::Einstellungen { klassen: vec![k("sicherheit"), k("eol")], ..Default::default() };
+        let vorgabe = Board { slug: "b".into(), ..b() };
+        let vorgabe_2 = Board { slug: "b2".into(), ..b() };
+        let eigen = Board { slug: "c".into(), klassen: Some(vec![k("phase1")]), ..b() };
+        let eigen_2 = Board { slug: "d".into(), klassen: Some(vec![k("phase2")]), ..b() };
+        let leer = Board { slug: "leer".into(), klassen: Some(vec![]), ..b() };
+        let faelle: [(&str, Vec<&Board>, bool); 9] = [
+            ("kein Board", vec![], true),
+            ("Vorgabe", vec![&vorgabe], true),
+            ("eigener Satz", vec![&eigen], false),
+            ("leerer Satz", vec![&leer], false),
+            ("Vorgabe + eigener Satz", vec![&vorgabe, &eigen], true),
+            ("eigener Satz + Vorgabe", vec![&eigen, &vorgabe], true),
+            ("zwei eigene Sätze", vec![&eigen, &eigen_2], false),
+            ("eigener + leerer Satz", vec![&eigen, &leer], false),
+            ("zweimal Vorgabe", vec![&vorgabe, &vorgabe_2], true),
+        ];
+        for (fall, boards, mit_wortteil) in faelle {
+            let f = Klassengeltung::neu(boards.iter().copied(), &e).pruefen("vorrang").unwrap_err();
+            assert_eq!(f.contains(WORTTEIL), mit_wortteil, "{fall}: {f}");
+            assert_eq!(f.matches(WORTTEIL).count(), usize::from(mit_wortteil), "{fall}: der Wortteil steht höchstens einmal: {f}");
+            assert!(f.contains("„vorrang“"), "{fall} nennt den Schlüssel: {f}");
+            for board in &boards {
+                assert!(f.contains(&format!("„{}“", board.slug)), "{fall} nennt das Board {}: {f}", board.slug);
+            }
+        }
     }
 
     fn b() -> Board {
