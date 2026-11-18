@@ -177,6 +177,17 @@
     return { ...gruppe, niedrig: eintraege + posten.niedrig, hoch: eintraege + posten.hoch };
   }
 
+  /** Angefallene Kosten einer Aufgabe → Texte der Karte im Board (R00196): je Währung ein Betrag oder eine Spanne, USD
+      zuerst, und der Name für Hilfstechnik; ohne angefallene Kosten keine Beträge und kein Name. Die Karte zählt immer
+      alles — Zeitraum und Spaltenabschnitt des Berichts wirken auf sie nicht. */
+  function angefallenAufKarte(a) {
+    const ohneBereich = { gesetzt: false };
+    const summen = angefalleneKosten(a, ohneBereich).map(mitSumme).sort((x, y) => waehrungVor(x.waehrung, y.waehrung));
+    if (!summen.length) return { betraege: [], name: '' };
+    const texte = zwischen => summen.map(s => spanne(s.niedrig, s.hoch, s.waehrung, zwischen));
+    return { betraege: texte('–'), name: `Angefallene Kosten: ${texte(' bis ').join(', ')}` };
+  }
+
   /** Die Aufgaben, die der Bericht zählt: alle in den Spalten des Boards (samt archivierter), die zum Filter passen —
       `gezaehlt` mit Lücken für Nummern ohne lesbare Datei, `lesbar` ohne sie. */
   function aufgabenImBericht(board, aufgaben, f) {
@@ -311,5 +322,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, kostenSpaltenwahl, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, angefallenAufKarte, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, kostenSpaltenwahl, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

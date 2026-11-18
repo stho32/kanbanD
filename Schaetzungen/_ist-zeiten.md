@@ -826,3 +826,4 @@ Nie vom User erfragen.
 | 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0966 Betroffene Karten zählen, Hinweiszeile in beiden Editoren | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0967 Zurück zur Vorgabe mit Hinweis | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
 | 2026-11-18 | Karte #200 R00195 (Klassen und Farben je Board, sonst die Vorgabe des Ordners) | B0968 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-18 | Karte #201 R00196 (Angefallene Kosten auf der Karte im Board) | B0969 Texte der angefallenen Kosten einer Aufgabe | Standard | 0,5-1h | 0,1h | 0,1h | autonom |

@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Berlin'; // der Betrachter des Beispielboards (R00171) sitzt in +01:00
 const test = require('node:test');
 const assert = require('node:assert');
-const { kostenInCent, geld, kostentabelle, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenSpaltenwahl, kostenbereichGewaehlt, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
+const { kostenInCent, geld, angefallenAufKarte, kostentabelle, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenSpaltenwahl, kostenbereichGewaehlt, filterOhneZeitraum, kostenUmfang } = require('../../web/kosten.js');
 const { FILTER_LEER, filterAnzahl } = require('../../web/berichte.js');
 
 const NBSP = ' ';
@@ -753,4 +753,42 @@ test('R00172 B0845 (Schaden b): 40 Zufallsbestände in sechs Bereichen — je W�
     }
   }
   assert.ok(geprueft > 1000, `nur ${geprueft} Einträge geprüft`);
+});
+
+/* ── Angefallene Kosten auf der Karte (R00196, I0186 B0969): Texte je Aufgabe der Ausgangslage ── */
+const EUR_2 = eintrag(2.00, { currency: 'EUR' });
+const KARTE_1 = mitEintraegen(1, [eintrag(3.46), eintrag(1.20, { at: '2026-11-13 11:02+01:00' })]);
+const KARTE_5 = mitEintraegen(5, [EUR_2, eintrag(1.00), eintrag(0.50)], usd({ amount: 2.00 }));
+
+test('R00196 B0969 (AK 1): nur Kosteneinträge — #1 nennt „4,66 $“ und den Namen „Angefallene Kosten: 4,66 $“', () => {
+  assert.deepStrictEqual(angefallenAufKarte(KARTE_1), { betraege: [`4,66${NBSP}$`], name: `Angefallene Kosten: 4,66${NBSP}$` });
+});
+
+test('R00196 B0969 (AK 2): alte Posten — #2 nennt die Spanne „0,40–0,50 $“, im Namen mit „bis“; mit dem Eintrag 4,66 „5,06–5,16 $“', () => {
+  assert.deepStrictEqual(angefallenAufKarte(aufgabe(2, ALTE_POSTEN)), { betraege: [`0,40–0,50${NBSP}$`], name: `Angefallene Kosten: 0,40 bis 0,50${NBSP}$` });
+  assert.deepStrictEqual(angefallenAufKarte(mitEintraegen(2, [eintrag(4.66)], ALTE_POSTEN)), { betraege: [`5,06–5,16${NBSP}$`], name: `Angefallene Kosten: 5,06 bis 5,16${NBSP}$` });
+});
+
+test('R00196 B0969 (AK 3): nur Schätzung (#3) und ohne Kosten (#4) — kein Betrag, kein Name, kein „0,00 $“', () => {
+  for (const ohne of [aufgabe(3, SCHAETZUNG), aufgabe(4), mitEintraegen(4, []), aufgabe(4, null, { kosteneintraege: undefined })]) {
+    assert.deepStrictEqual(angefallenAufKarte(ohne), { betraege: [], name: '' });
+  }
+});
+
+test('R00196 B0969 (AK 4, AK 5): #5 nennt je Währung einen Betrag, USD vor EUR, ohne Umrechnung — die Schätzung 2,00 $ zählt nicht mit; ein Name mit Komma', () => {
+  assert.deepStrictEqual(angefallenAufKarte(KARTE_5), { betraege: [`1,50${NBSP}$`, `2,00${NBSP}€`], name: `Angefallene Kosten: 1,50${NBSP}$, 2,00${NBSP}€` });
+});
+
+test('R00196 B0969 (Entscheidung 3): USD zuerst, danach nach ISO-Code — unabhängig von der Reihenfolge der Einträge; alte Posten in zweiter Währung stehen an ihrer Stelle', () => {
+  const chf = eintrag(3.00, { currency: 'CHF' }), postenInChf = { currency: 'CHF', items: [{ text: 'Bau', min: 0.10, max: 0.20 }] };
+  assert.deepStrictEqual(angefallenAufKarte(mitEintraegen(6, [EUR_2, chf, eintrag(1.00)])).betraege, [`1,00${NBSP}$`, `3,00${NBSP}CHF`, `2,00${NBSP}€`]);
+  assert.deepStrictEqual(angefallenAufKarte(mitEintraegen(7, [EUR_2, eintrag(1.00)], postenInChf)),
+    { betraege: [`1,00${NBSP}$`, `0,10–0,20${NBSP}CHF`, `2,00${NBSP}€`], name: `Angefallene Kosten: 1,00${NBSP}$, 0,10 bis 0,20${NBSP}CHF, 2,00${NBSP}€` });
+});
+
+test('R00196 B0969 (AK 6): die Beträge der Karten ergeben je Währung die Summe des ungefilterten Berichts — 6,56–6,66 $ und 2,00 €', () => {
+  const aufgaben = [KARTE_1, aufgabe(2, ALTE_POSTEN), aufgabe(3, SCHAETZUNG), aufgabe(4), KARTE_5];
+  const bericht = kostenbericht(spalten([3, 4, 5], [1], [2]), aufgaben, FILTER_LEER).jeWaehrung.map(g => [g.waehrung, g.niedrig, g.hoch]);
+  assert.deepStrictEqual(bericht, [['USD', 656, 666], ['EUR', 200, 200]]);
+  assert.deepStrictEqual(aufgaben.flatMap(a => angefallenAufKarte(a).betraege), [`4,66${NBSP}$`, `0,40–0,50${NBSP}$`, `1,50${NBSP}$`, `2,00${NBSP}€`]);
 });
