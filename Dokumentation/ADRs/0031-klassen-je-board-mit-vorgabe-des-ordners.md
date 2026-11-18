@@ -1,6 +1,6 @@
 # ADR-0031: Klassen je Board — eigener Satz in der Board-Datei, sonst die Vorgabe des Ordners; die Karte behält ihren einen Schlüssel
 
-**Status**: Vorgeschlagen — wartet auf die Antworten des product-owners zu den Fragen 1 und 2 unten und auf die Ergänzung der Vision (Z. 77)
+**Status**: Akzeptiert (2026-11-18, Nachtrag N1) — zuvor „Vorgeschlagen“, bis die Fragen 1–4 unten beantwortet und die Vision ergänzt waren
 **Datum**: 2026-11-18
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #200 „Klassen und Farben je Board statt je Instanz“ (Betreiber als Product Owner, 2026-11-18); Anforderung und WBS-Knoten folgen über den planer
@@ -84,6 +84,19 @@ Die Regeln 1–4, 6 und 7 hängen an keiner dieser Antworten; nur Antwort 2 „j
 
 ## Folgeentscheidungen / Aufgaben
 
-- [ ] Vision Z. 77 ergänzen (`/vision fortschreiben`): Klassen je Board mit Vorgabe des Ordners.
-- [ ] Anforderung über den planer: Format und Modell, Vorrat-Funktion, Route, Oberfläche (Regeln 1–8).
+- [x] Vision Z. 77 ergänzen (`/vision fortschreiben`): Klassen je Board mit Vorgabe des Ordners. — erledigt 2026-11-18 (`b739ccf8`)
+- [x] Anforderung über den planer: Format und Modell, Vorrat-Funktion, Route, Oberfläche (Regeln 1–8). — R00195, WBS I0185 (F0157–F0159)
 - [ ] Modell nach dem Bau nachführen (A00004, A00005, A00006, A00009).
+
+## Nachträge
+
+### N1 (2026-11-18): Akzeptiert — alle vier Produktfragen entschieden, Vision fortgeschrieben
+
+Die Entscheidung (Option A, Regeln 1–8) gilt unverändert. Entschieden hat der product-owner (`AI-Team/po-entscheidungen.md`, Zeilen vom 2026-11-18 zu #200):
+
+1. **Fremde Klasse: nur anzeigen.** Regel 5 gilt als Verhalten der Oberfläche; Auflage: die fremde Klasse ist auch auf der Karte selbst erkennbar (Schlüssel als Text ohne Farbe), nicht erst im Aufgabenfenster.
+2. **Eine Klasse je Karte.** Option C ist nicht gewählt; diese ADR wird nicht abgelöst.
+3. **„Eigene Klassen“ beginnt in der Oberfläche mit einer Kopie der Vorgabe des Ordners**; über die API bestimmt der Aufrufer den Satz selbst, auch den leeren.
+4. **Eine belegte Klasse darf gestrichen werden**, mit einer Hinweiszeile zur Zahl betroffener Karten im Klassen-Editor vor dem Speichern (kein Bestätigungsfenster), in beiden Editoren (Board und Ordner) und auch bei der Rückkehr zur Vorgabe; die API bleibt ohne Rückfrage.
+
+Die Vision trägt die Richtung seit `b739ccf8` (Entscheidung des Betreibers vom 2026-11-18): Klassen je Board mit Vorgabe des Ordners, Personen ordnerweit. Anforderung: R00195; WBS: I0185.
