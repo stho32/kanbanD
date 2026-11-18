@@ -175,7 +175,7 @@ function vIchKnopf() {
 }
 
 /* ── Schnelleingabe: Vorschau der erkannten Felder ── */
-function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: S.zustand.einstellungen.klassen }; }
+function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: vorratDerNeuenAufgabe() }; }
 function vSchnellVorschau(text) {
   const s = schnelleingabe(text, schnellUmfeld(), new Date());
   const teile = [...s.zustaendige.map(k => pk(k) + esc(per(k).name)), s.klasse ? `<span class="cls" style="${cv((klasse(s.klasse) || {}).farbe)}">${esc(klasse(s.klasse).bezeichnung)}</span>` : '', ...s.labels.map(l => `<span class="lbl">${esc(l)}</span>`), s.faellig ? `<span class="due">fällig ${esc(datumLang(s.faellig))}</span>` : '', ...s.herkunft.map(h => `<span class="org">${esc(h)}</span>`)].filter(Boolean);
@@ -203,7 +203,7 @@ function vFeldWert(feld, a, schmal) {
     const ort = schmal ? ' data-ort="#inhalt-spalte"' : '';
     return `<select data-af="spalte" aria-label="Spalte"${ort}>${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>`;
   }
-  if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse);
+  if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse, vorrat());
   if (feld === 'labels') return `<input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels">`;
   const knoepfe = schmal ? '' : `<span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span>`;
   return `<input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit">${knoepfe}`;
@@ -226,7 +226,7 @@ function vNeu() {
   const boards = (S.boards || []).filter(x => !x.archiviert);
   const b = boards.find(x => x.slug === f.board);
   const ps = personen().filter(p => p.aktiv);
-  const cl = klasse(f.klasse);
+  const klassen = vorratDerNeuenAufgabe(), cl = klassen.find(k => k.schluessel === f.klasse);
   const stil = cl ? ` style="${cv(cl.farbe)}"` : '';
   const haupt = `<div class="mod-main"><input class="titel" id="neu-titel" data-nf="titel" value="${esc(f.titel)}" placeholder="Titel · Enter legt an · Liste einfügen legt alle an" data-mehrfach="neu" aria-label="Titel der neuen Aufgabe"${titelVerweis(f)}><div class="schnell" id="neu-vorschau" aria-live="polite">${f.titel.trim() ? vSchnellVorschau(f.titel) : '<span class="muted">Kürzel: @kürzel · class: · label: · due:morgen · I0001</span>'}</div>
 <div class="abs"><h3>BESCHREIBUNG</h3><textarea class="besch" data-nf="beschreibung" placeholder="Beschreibung in Markdown" aria-label="Beschreibung der neuen Aufgabe">${esc(f.beschreibung)}</textarea></div>
@@ -234,7 +234,7 @@ function vNeu() {
   const seite = `<aside class="mod-side"><div class="felder">
 ${vBeschriftung('board')}<span class="w"><select data-nf="board" aria-label="Board"><option value="">— kein Board —</option>${boards.map(x => `<option value="${esc(x.slug)}"${x.slug === f.board ? ' selected' : ''}>${esc(x.titel)}</option>`).join('')}</select></span>
 ${b ? `${vBeschriftung('column')}<span class="w"><select data-nf="spalte" aria-label="Spalte">${b.spalten.map(sp => `<option${sp.name === f.spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select></span>` : ''}
-${vBeschriftung('class')}<span class="w">${vKlassenWahl('data-nf', f.klasse)}</span>
+${vBeschriftung('class')}<span class="w">${vKlassenWahl('data-nf', f.klasse, klassen)}</span>
 ${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${ps.map(p => `<button class="as${f.zust.includes(p.kuerzel) ? ' an' : ''}" data-act="nf-zust" data-arg="${esc(p.kuerzel)}" aria-pressed="${f.zust.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 ${vBeschriftung('labels')}<span class="w"><input class="mini-inp full" data-nf="labels" value="${esc(f.labels)}" placeholder="ui, daten" aria-label="Labels der neuen Aufgabe"></span>
 ${vBeschriftung('due')}<span class="w wrap"><input type="date" class="mini-inp" data-nf="faellig" value="${esc(f.faellig)}" aria-label="Fälligkeit der neuen Aufgabe"><span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="nf-faellig" data-arg="${n}">${t}</button>`).join('')}</span></span>
@@ -614,8 +614,8 @@ function vLaufChip({ beginn, eigen, anzahl = 1, namen = '', sekunden = true, rah
   return `<span class="${klassen}"${titel}>${zaehler}<span data-since="${beginn}"${format}>${zahl}</span></span>`;
 }
 /** Auswahl der Klasse; Auswahl und Einträge tragen die Klassenfarbe wie die Karte. Eine unbekannte Klasse bleibt als Eintrag ohne Farbe stehen. */
-function vKlassenWahl(attr, wert) {
-  const klassen = S.zustand.einstellungen.klassen, cl = klasse(wert);
+function vKlassenWahl(attr, wert, klassen) {
+  const cl = klassen.find(k => k.schluessel === wert);
   const eintrag = k => `<option value="${esc(k.schluessel)}" style="${cv(k.farbe)}"${k.schluessel === wert ? ' selected' : ''}>${esc(k.bezeichnung)}</option>`;
   return `<select class="klwahl" ${attr}="klasse" aria-label="Klasse"${cl ? ` style="${cv(cl.farbe)}"` : ''}><option value="">— keine —</option>${klassen.map(eintrag).join('')}${wert && !cl ? `<option selected>${esc(wert)}</option>` : ''}</select>`;
 }
@@ -627,9 +627,16 @@ const alleLaufenden = () => S.aufgaben.filter(a => !a.archiviert).flatMap(a => l
 /* ── Karten ── */
 const PAL = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal', 'green', 'lime', 'grey'];
 const cv = farbe => !farbe ? '' : PAL.includes(farbe) ? `--c:var(--kd-c-${farbe});--cl:var(--kd-c-${farbe}-line)` : `--c:color-mix(in srgb,${farbe} var(--kd-klasse-anteil),var(--kd-surface));--cl:${farbe}`;
-const klasse = k => k && S.zustand.einstellungen && S.zustand.einstellungen.klassen.find(c => c.schluessel === k);
-/** Die Klassen aus kanbanD.md; bei defekter Datei keine (R00113: der Kartenname nennt dann keine Klasse). */
-const klassenDerEinstellungen = () => (S.zustand.einstellungen && S.zustand.einstellungen.klassen) || [];
+/** Der Klassenvorrat der Sicht (R00195, ADR-0031 Regel 2 und 8): der des gezeigten Boards — sein eigener Satz, sonst die
+    Vorgabe des Ordners; bei defekter kanbanD.md ohne eigenen Satz keine Klasse (R00113: der Kartenname nennt dann keine). */
+const vorrat = () => klassenvorrat(S.board, S.zustand.einstellungen);
+/** Der Klassenvorrat für „Neue Aufgabe“: der des gewählten Boards, ohne Board die Vorgabe des Ordners (ADR-0031 Regel 6). */
+function vorratDerNeuenAufgabe() {
+  const neu = S.ui.neu;
+  const ziel = neu && neu.board ? (S.boards || []).find(b => b.slug === neu.board) : null;
+  return klassenvorrat(ziel || null, S.zustand.einstellungen);
+}
+const klasse = k => k && vorrat().find(c => c.schluessel === k);
 const aufgabe = nr => S.aufgaben.find(a => a.nummer === nr);
 const isoD = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
@@ -805,7 +812,7 @@ function vKarte(a, fertig, spalte) {
   if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, klassenDerEinstellungen(), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorrat(), gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3"><span class="rechts">${vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */
@@ -1035,7 +1042,7 @@ const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen(),
 /** Nummern in der Abschlussspalte des Boards — dort ist eine Fälligkeit kein Signal mehr (R00076). */
 const abgeschlossene = () => new Set(S.board && S.board.spalten.length ? S.board.spalten[S.board.spalten.length - 1].aufgaben : []);
 function vLegende() {
-  const klassen = S.zustand.einstellungen.klassen;
+  const klassen = vorrat();
   if (!klassen.length || !S.board) return '';
   const nummern = S.board.spalten.flatMap(sp => sp.aufgaben);
   const sichtbar = nummern.map(aufgabe).filter(a => a && !!a.archiviert === imArchiv() && passt(a, S.ui.filter, umfeld()));

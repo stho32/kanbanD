@@ -1189,7 +1189,7 @@ function auswahlAufheben() { S.ui.auswahl = []; S.ui.anker = null; }
 function menueFuerAuswahl(x, y) {
   const nummern = lesereihenfolge(brettSpalten()).filter(n => S.ui.auswahl.includes(n));
   const boards = (S.boards || []).filter(b => b.slug !== S.ui.slug && !b.archiviert && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
-  menueOeffnen(`${nummern.length} Karten`, massenMenue(nummern, { spalten: S.board.spalten.map(sp => sp.name), klassen: S.zustand.einstellungen.klassen, boards }), x, y);
+  menueOeffnen(`${nummern.length} Karten`, massenMenue(nummern, { spalten: S.board.spalten.map(sp => sp.name), klassen: vorrat(), boards }), x, y);
 }
 /** Im Dialog gelten nur Esc und Enter; die Leertaste schaltet das Kästchen selbst um. */
 function zuweisenTaste(e, t) {
@@ -2929,7 +2929,12 @@ document.addEventListener('change', e => {
   const nf = e.target.dataset && e.target.dataset.nf;
   if (nf && S.ui.neu && (nf === 'board' || nf === 'spalte' || nf === 'klasse')) {
     S.ui.neu[nf] = e.target.value;
-    if (nf === 'board') { const b = (S.boards || []).find(x => x.slug === e.target.value); S.ui.neu.spalte = b && b.spalten[0] ? b.spalten[0].name : ''; }
+    if (nf === 'board') {
+      const b = (S.boards || []).find(x => x.slug === e.target.value);
+      S.ui.neu.spalte = b && b.spalten[0] ? b.spalten[0].name : '';
+      // Die gewählte Klasse gilt nur, wenn auch das neue Board sie führt (R00195) — sonst wiese der Server das Anlegen ab.
+      if (!vorratDerNeuenAufgabe().some(k => k.schluessel === S.ui.neu.klasse)) S.ui.neu.klasse = '';
+    }
     render();
     return;
   }
@@ -3178,7 +3183,7 @@ function menueFuerKarte(nr, x, y) {
   auswahlAufheben();
   const spalte = S.board.spalten.find(sp => sp.aufgaben.includes(nr));
   const boards = (S.boards || []).filter(b => !b.archiviert && !b.spalten.some(sp => sp.aufgaben.includes(nr)) && b.spalten.length).map(b => ({ slug: b.slug, titel: b.titel, spalte: b.spalten[0].name }));
-  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: S.zustand.einstellungen.klassen, boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
+  const eintraege = kartenMenue(a, { spalten: S.board.spalten.map(sp => sp.name), spalte: spalte && spalte.name, klassen: vorrat(), boards, ich: S.ich, meinerLaeuft: laufende(a).some(z => z.wer === S.ich), meine: a.zustaendige.includes(S.ich) });
   S.ui.fokusKarte = nr;
   S.ui.pop = null;
   S.ui.menue = { titel: `#${nr} ${a.titel}`, x, y, eintraege, index: menueSchritt(eintraege, -1, 1), unter: null };
