@@ -555,6 +555,8 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 /* Klassen dieses Boards (R00195): die Wahl Vorgabe | eigene; Ziele wachsen mit dem Zielmaß */
 .kl-wahl{flex:none;padding:var(--kd-s3) var(--kd-s4) 0}
 .kl-wahl .seg>span{height:max(26px,var(--kd-ziel));font-size:12px;white-space:nowrap}
+/* Umschalter „Personen“ (R00200): ein Segment bricht bei keiner Breite im Wort um, wie bei der Klassenwahl */
+.seg-personen>span{white-space:nowrap}
 #klassen-dieses-boards{flex:none;display:flex;flex-direction:column}
 /* der Kopf des Abschnitts ist erstes Kind seines Abschnitts, aber nicht der Seitenleiste: er behält seine obere Linie */
 .einr>section:not(:first-child)>.einr-kopf:first-child{border-top:1px solid var(--kd-line-strong)}

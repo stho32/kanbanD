@@ -1188,9 +1188,15 @@ function vPersonen() {
   }
   const still = alle.filter(p => !p.aktiv).length;
   const wochenspanne = `Woche ${datumAusMs(wochenbeginn(tag)).slice(0, 6)}–${datumAusMs(wochenende(tag) - 1).slice(0, 6)}`;
-  return `<div class="leiste">${vTagWahl(t0, istHeute)}<span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste 0–24 Uhr · schraffiert = läuft</div></div>
+  let bereiche = PERSONEN_BEREICHE;
+  if (S.ui.stufe === 'compact') bereiche = PERSONEN_BEREICHE_KURZ;
+  return `<div class="leiste">${vTagWahl(t0, istHeute)}<span class="seg seg-personen" role="radiogroup" aria-label="Personen">${bereiche.map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste 0–24 Uhr · schraffiert = läuft</div></div>
 <div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${stundenmarken(tag).map(m => `<span style="left:${pos(m.zeitpunkt)}%">${m.stunde}</span>`).join('')}</div></th><th class="r">${istHeute ? 'heute' : kurzdatum}</th>${istHeute ? '<th class="r">Woche</th>' : `<th class="r" title="${wochenspanne}" aria-label="${wochenspanne}">Woche</th>`}<th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
 }
+
+/** Die Segmente des Umschalters „Personen“ (R00021); in compact stehen die kurzen Namen, damit jedes Segment bei 320 px in eine Zeile passt (R00200). */
+const PERSONEN_BEREICHE = [['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']];
+const PERSONEN_BEREICHE_KURZ = [['alle', 'alle'], ['m', 'Menschen'], ['a', 'Agenten']];
 
 /** id des Datumsknotens der Personenseite; render behält ihn über jedes Neuzeichnen (datumsknotenBehalten). */
 const PERSONEN_TAG = 'personen-tag';

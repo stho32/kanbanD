@@ -166,6 +166,21 @@ for (const farbschema of ['light', 'dark']) {
   }
 }
 
+// Die kurzen Namen passen auch ohne nowrap in eine Zeile; die Regel selbst („bricht bei keiner Breite um“) prüft diese Probe mit den langen
+// Namen bei 320 px — vor dem Fix standen sie dort auf zwei Zeilen.
+test.describe('Umschalter „Personen“, Regel nowrap, Touch, 320 px', () => {
+  test.use(TOUCH(320));
+  test('AK 6: auch die langen Namen stehen bei 320 px je Segment auf einer Zeile', async ({ page }) => {
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/personen');
+    await page.locator('tr[data-person="st"]').waitFor();
+    await page.getByRole('radiogroup', { name: 'Personen', exact: true }).evaluate(gruppe => {
+      ['Menschen + Agenten', 'nur Menschen', 'nur Agenten'].forEach((text, i) => { gruppe.children[i].textContent = text; });
+    });
+    expect((await segmente(page)).map(s => s.zeilen)).toEqual([1, 1, 1]);
+  });
+});
+
 for (const breite of [600, 1280]) {
   test.describe(`Umschalter „Personen“, ab medium, ${breite} px`, () => {
     test.use({ viewport: { width: breite, height: 844 } });
