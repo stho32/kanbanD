@@ -54,3 +54,49 @@ async fn datei_mit_commits_uebersteht_eine_titelaenderung_zeichengleich() {
     assert_eq!(datei(tmp.path(), 1), format!("---\nid: 1\ntitle: umbenannt\n{COMMITS}---\n"));
     assert_eq!(holen(&lauf.adresse, 1).await.0, 200, "auch nach dem Schreiben nicht defekt");
 }
+
+// B0989 · AK 9a, AK 10 (GET): die Einträge kommen wörtlich in der Reihenfolge der Datei, der Ziffern-Hash als Text;
+// ohne `commits` eine leere Liste
+#[tokio::test]
+async fn get_liefert_commits_woertlich_und_ohne_eintraege_eine_leere_liste() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), [COMMITS, ""]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let (s, a) = holen(&lauf.adresse, 1).await;
+    assert_eq!(s, 200, "{a}");
+    assert_eq!(
+        a["commits"],
+        json!(["kd:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e", "9c6b91f5d0e3a2b1c4d5e6f7a8b9c0d1e2f3a4b5", "kd:zz", "1234567890123456789012345678901234567890"])
+    );
+    assert_eq!(holen(&lauf.adresse, 2).await.1["commits"], json!([]));
+}
+
+// B0989 · AK 9b: eine alte Datei ohne `commits` bekommt durch eine Titeländerung keinen Schlüssel `commits`
+#[tokio::test]
+async fn alte_datei_ohne_commits_bekommt_keinen_schluessel() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), [COMMITS, ""]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let (s, a) = titel_aendern(&lauf.adresse, 2, "umbenannt").await;
+    assert_eq!(s, 200, "{a}");
+    assert_eq!(datei(tmp.path(), 2), "---\nid: 2\ntitle: umbenannt\n---\n");
+    assert_eq!(holen(&lauf.adresse, 2).await.1["commits"], json!([]));
+}
+
+// B0989 · AK 9d: Duplizieren nimmt `commits` nicht mit (wie `cost-entries`)
+#[tokio::test]
+async fn duplizieren_nimmt_commits_nicht_mit() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), [COMMITS, ""]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let (s, kopie) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/duplizieren", "st", json!({})).await;
+    assert_eq!(s, 201, "{kopie}");
+    let nr = kopie["nummer"].as_u64().unwrap();
+    assert_eq!(holen(&lauf.adresse, nr as u32).await.1["commits"], json!([]));
+    let text = std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().map(|e| e.unwrap().path()).find(|p| p.file_name().unwrap().to_string_lossy().starts_with(&format!("{nr:04}-"))).map(|p| std::fs::read_to_string(p).unwrap()).unwrap();
+    assert!(!text.contains("commits"), "{text}");
+    assert_eq!(datei(tmp.path(), 1), format!("---\nid: 1\ntitle: a1\n{COMMITS}---\n"), "die Quelle bleibt");
+}

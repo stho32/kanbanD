@@ -21,6 +21,8 @@ pub const BERICHTE: &str = "reporting";
 pub const KOSTEN: &str = "cost";
 /// Kosteneinträge je Rollenlauf (R00165, ADR-0028) — eigener Schlüssel neben `cost`
 pub const KOSTENEINTRAEGE: &str = "cost-entries";
+/// Commit-Verweise der Aufgabe (R00202, ADR-0032 Punkt 1) — Blockliste hinter `cost-entries`
+pub const COMMITS: &str = "commits";
 /// Geschätzte Zeit in ganzen Minuten (R00129, ADR-0023)
 pub const GESCHAETZT: &str = "estimate";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
@@ -79,6 +81,10 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     if let Some(e) = m.get(KOSTENEINTRAEGE) {
         a.kosteneintraege = kosteneintraege_lesen(e)?;
     }
+    // Was keine Liste von Texten ist, bleibt als unbekannter Schlüssel wörtlich stehen — nie defekt (ADR-0032 Punkt 1)
+    let commits = m.get(COMMITS).and_then(commits_lesen);
+    let commits_bekannt = commits.is_some();
+    a.commits = commits.unwrap_or_default();
     if let Some(e) = m.get(GESCHAETZT) {
         a.geschaetzte_minuten = geschaetzte_minuten_pruefen(Some(e)).map_err(Formatfehler)?;
     }
@@ -86,12 +92,30 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
         a.reservierung = reservierung_lesen(r)?;
     }
     for (k, v) in &m {
-        if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k)) {
+        if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k) && !(commits_bekannt && *k == COMMITS)) {
             a.weitere.push((k.to_string(), v.clone()));
         }
     }
     koerper_lesen(&mut a, koerper)?;
     Ok(a)
+}
+
+/// `commits` als Liste von Texten, wörtlich; leer heißt keine. `None`, wenn es keine Liste von Texten ist.
+fn commits_lesen(v: &Value) -> Option<Vec<String>> {
+    match v {
+        Value::Null => Some(vec![]),
+        Value::Sequence(l) => l.iter().map(|e| e.as_str().map(String::from)).collect(),
+        _ => None,
+    }
+}
+
+/// Ein Eintrag von `commits` in der Schreibweise von serde_yaml — so schreibt ihn auch die Vorversion, die `commits` als
+/// unbekannten Schlüssel mitträgt (AK 9c); `kd:3f2a…` ohne Anführungszeichen, ein Ziffern-Hash als `'1234…'`. Nur ein
+/// Text über mehrere Zeilen (von Hand) geht in die eine Zeile über [`yaml::skalar`].
+fn commit_eintrag(e: &str) -> String {
+    let wert = serde_yaml::to_string(&Value::String(e.to_string())).unwrap_or_default();
+    let wert = wert.trim_end();
+    if wert.contains('\n') || wert.is_empty() { yaml::skalar(e) } else { wert.to_string() }
 }
 
 /// Der eine nachsichtige Leser (R00157, ADR-0004 N1): die Schlüssel, die eine **defekte** Aufgabendatei lesbar trägt.
@@ -459,6 +483,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     }
     if !a.kosteneintraege.is_empty() {
         s.push_str(&format!("{KOSTENEINTRAEGE}:\n{}", a.kosteneintraege.iter().map(kosteneintrag_schreiben).collect::<String>()));
+    }
+    if !a.commits.is_empty() {
+        s.push_str(&format!("{COMMITS}:\n{}", a.commits.iter().map(|c| format!("  - {}\n", commit_eintrag(c))).collect::<String>()));
     }
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));
@@ -986,6 +1013,47 @@ mod tests {
             let a = lesen("0001-x.md", &mit_kopf(kopf)).unwrap();
             let text = schreiben(&a);
             assert_eq!(lesen("0001-x.md", &text).unwrap_or_else(|e| panic!("{kopf:?} → {text:?}: {e:?}")), a);
+        }
+    }
+
+    const COMMITS: &str = "commits:\n  - kd:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e\n  - 9c6b91f5d0e3a2b1c4d5e6f7a8b9c0d1e2f3a4b5\n  - kd:zz\n  - '1234567890123456789012345678901234567890'\n";
+
+    // R00202 B0989, ADR-0032 Punkt 1: `commits` ist ein bekannter Schlüssel — wörtlich in Dateireihenfolge, der Ziffern-Hash als Text
+    #[test]
+    fn commits_wortlich_in_dateireihenfolge() {
+        let a = lesen("0001-x.md", &mit_kopf(COMMITS)).unwrap();
+        assert_eq!(a.commits, ["kd:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e", "9c6b91f5d0e3a2b1c4d5e6f7a8b9c0d1e2f3a4b5", "kd:zz", "1234567890123456789012345678901234567890"]);
+        assert!(a.weitere.is_empty(), "commits ist ein bekannter Schlüssel");
+        assert_eq!(schreiben(&a), mit_kopf(COMMITS), "zeichengleich");
+    }
+
+    // ADR-0032 Punkt 1: Blockliste hinter cost-entries; dieselbe Schreibweise wie die Vorversion (serde_yaml) — so übersteht
+    // die Datei auch den Rundlauf dort (AK 9c)
+    #[test]
+    fn commits_hinter_cost_entries_in_der_schreibweise_der_vorversion() {
+        let t = mit_kopf(&format!("{EINTRAEGE}{COMMITS}archived: 2026-11-14\n"));
+        assert_eq!(schreiben(&lesen("0001-x.md", &t).unwrap()), t);
+        let mut a = lesen("0001-x.md", &mit_kopf("")).unwrap();
+        a.commits = ["kd:abc1234", "1234567", "1e10", "true", "kd:a b", "x # y", "zeile\nzwei", "'", "-", "null", "kd:3F2A9C1"].map(String::from).to_vec();
+        let text = schreiben(&a);
+        let zurueck = lesen("0001-x.md", &text).unwrap_or_else(|e| panic!("{text}: {e:?}"));
+        assert_eq!(zurueck.commits, a.commits, "{text}");
+        let wie_vorher = serde_yaml::to_string(&serde_yaml::Value::Sequence(a.commits.iter().filter(|c| !c.contains('\n')).map(|c| serde_yaml::Value::String(c.clone())).collect())).unwrap();
+        for zeile in wie_vorher.lines() {
+            assert!(text.contains(&format!("\n  {zeile}\n")), "{zeile:?} wie serde_yaml in:\n{text}");
+        }
+        assert!(!schreiben(&lesen("0001-x.md", &mit_kopf("commits: []\n")).unwrap()).contains("commits"), "leer heißt kein Schlüssel");
+    }
+
+    // ADR-0032 Punkt 1: was keine Liste von Texten ist, macht die Aufgabe nicht defekt und bleibt wörtlich — als unbekannter Schlüssel
+    #[test]
+    fn commits_ohne_liste_von_texten_bleibt_als_unbekannter_schluessel() {
+        for kopf in ["commits: kd:abc1234\n", "commits:\n  - 1234567\n", "commits:\n  - {a: b}\n"] {
+            let t = mit_kopf(kopf);
+            let a = lesen("0001-x.md", &t).unwrap_or_else(|e| panic!("{kopf}: {e:?}"));
+            assert!(a.commits.is_empty(), "{kopf}");
+            assert_eq!(a.weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["commits"], "{kopf}");
+            assert_eq!(lesen("0001-x.md", &schreiben(&a)).unwrap(), a, "{kopf}");
         }
     }
 

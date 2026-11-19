@@ -410,6 +410,10 @@ pub struct Aufgabe {
     /// `cost-entries` (R00165, ADR-0028): angefallene Kosten je Rollenlauf, in der Reihenfolge der Datei; `PATCH cost` berührt sie nie
     #[serde(default)]
     pub kosteneintraege: Vec<Kosteneintrag>,
+    /// `commits` (R00202, ADR-0032 Punkt 1): Commit-Verweise `<kürzel>:<voller Hash>`, ohne Kürzel die Standardanwendung —
+    /// wörtlich wie in der Datei, in der Reihenfolge des Hinterlegens; auch ein unlesbarer Eintrag bleibt stehen
+    #[serde(default)]
+    pub commits: Vec<String>,
     /// `estimate` (R00129): geschätzte Zeit in ganzen Minuten, ≥ 1 und ≤ 100.000; null/fehlend heißt „keine Schätzung“
     #[serde(rename = "estimate")]
     pub geschaetzte_minuten: Option<u32>,
@@ -444,6 +448,7 @@ impl Aufgabe {
             zaehlung: Berichtszaehlung::default(),
             kosten: None,
             kosteneintraege: vec![],
+            commits: vec![],
             geschaetzte_minuten: None,
             weitere: vec![],
         }
