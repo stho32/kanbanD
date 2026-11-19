@@ -110,8 +110,12 @@ fn zeitgrenze_beendet_die_prozessgruppe() {
     let skript = tmp.path().join("skript.sh");
     std::fs::write(&skript, format!("#!/bin/sh\nsleep 300 &\necho \"$$ $!\" > {}\nwait\n", pids.display())).unwrap();
     std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    // über `sh` statt direkt: ein paralleler Test, der gerade forkt, hielte die frisch geschriebene Datei offen
+    // („Text file busy“)
+    let mut c = Command::new("sh");
+    c.arg(&skript);
     let start = Instant::now();
-    assert_eq!(arbeitsrepo::laufen(Command::new(&skript), Duration::from_secs(1)).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
+    assert_eq!(arbeitsrepo::laufen(c, Duration::from_secs(1)).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
     assert!(start.elapsed() < Duration::from_secs(3), "{:?}", start.elapsed());
     let text = std::fs::read_to_string(&pids).unwrap();
     let (skript_pid, kind_pid) = text.trim().split_once(' ').unwrap();
