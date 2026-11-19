@@ -919,13 +919,70 @@ function datumsknotenBehalten(vorher) {
   if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
 }
 
-/** Die Personenwahl des Stundenzettels bleibt beim Neuzeichnen derselbe Knoten, damit ein fremdes Live-Ereignis eine offene
-    Liste nicht schließt und der Fokus nicht springt (R00201 AK 9); nur ihre Einträge und die Wahl werden nachgezogen. */
-function personenwahlBehalten(vorher) {
-  const neu = document.getElementById(PERSONENWAHL);
-  if (!vorher || !neu) return;
+/** Zeichnet den Hauptbereich neu und lässt dabei die Personenwahl des Stundenzettels als denselben Knoten stehen, damit ein
+    fremdes Live-Ereignis eine offene Liste nicht schließt und der Fokus nicht springt (R00201 AK 9). Chromium schließt die
+    Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
+    Dokument nicht verlassen. Darum bleibt der Pfad von #main bis zur Liste stehen; ersetzt werden die Geschwister auf jeder Stufe,
+    an der Liste die Einträge und die Wahl. Zeichnet die neue Ansicht den Pfad anders, wird wie sonst alles ersetzt. */
+function hauptbereichErsetzen(html, personenwahlVorher) {
+  const hauptbereich = $('#main');
+  const vorlage = document.createElement('template');
+  vorlage.innerHTML = html;
+  const personenwahlNeu = vorlage.content.querySelector('#' + PERSONENWAHL);
+  const altPfad = pfadZu(personenwahlVorher, hauptbereich);
+  const neuPfad = pfadZu(personenwahlNeu, vorlage.content);
+  if (!pfadeGleichenSich(altPfad, neuPfad)) {
+    hauptbereich.replaceChildren(vorlage.content);
+    return;
+  }
+  let altEltern = hauptbereich;
+  let neuEltern = vorlage.content;
+  altPfad.slice(0, -1).forEach((altKnoten, stufe) => {
+    const neuKnoten = neuPfad[stufe];
+    geschwisterErsetzen(altEltern, altKnoten, neuEltern, neuKnoten);
+    attributeAbgleichen(altKnoten, neuKnoten);
+    altEltern = altKnoten;
+    neuEltern = neuKnoten;
+  });
+  personenwahlAbgleichen(personenwahlVorher, personenwahlNeu);
+  geschwisterErsetzen(altEltern, personenwahlVorher, neuEltern, personenwahlNeu);
+}
+
+/** Elemente von der Wurzel (ausgeschlossen) bis `knoten`; leer, wenn `knoten` fehlt oder nicht unter der Wurzel liegt. */
+function pfadZu(knoten, wurzel) {
+  const pfad = [];
+  let aktuell = knoten;
+  while (aktuell && aktuell !== wurzel) {
+    pfad.unshift(aktuell);
+    aktuell = aktuell.parentNode;
+  }
+  if (aktuell !== wurzel) return [];
+  return pfad;
+}
+
+function pfadeGleichenSich(altPfad, neuPfad) {
+  if (altPfad.length === 0 || altPfad.length !== neuPfad.length) return false;
+  return altPfad.every((altKnoten, stufe) => altKnoten.tagName === neuPfad[stufe].tagName);
+}
+
+/** Ersetzt alles neben `altKnoten` in `altEltern` durch das, was neben `neuKnoten` in `neuEltern` steht; die beiden bleiben außen vor. */
+function geschwisterErsetzen(altEltern, altKnoten, neuEltern, neuKnoten) {
+  const neueKinder = Array.from(neuEltern.childNodes);
+  const stelle = neueKinder.indexOf(neuKnoten);
+  Array.from(altEltern.childNodes).filter(kind => kind !== altKnoten).forEach(kind => kind.remove());
+  altEltern.prepend(...neueKinder.slice(0, stelle));
+  altEltern.append(...neueKinder.slice(stelle + 1));
+}
+
+function attributeAbgleichen(altKnoten, neuKnoten) {
+  Array.from(altKnoten.attributes).filter(attribut => !neuKnoten.hasAttribute(attribut.name)).forEach(attribut => altKnoten.removeAttribute(attribut.name));
+  Array.from(neuKnoten.attributes).filter(attribut => altKnoten.getAttribute(attribut.name) !== attribut.value).forEach(attribut => altKnoten.setAttribute(attribut.name, attribut.value));
+}
+
+/** Nur Einträge und Wahl ziehen nach; ein Knoten mit gleichem Inhalt wird nicht angefasst. */
+function personenwahlAbgleichen(vorher, neu) {
   const wahl = neu.value;
-  neu.replaceWith(vorher);
+  attributeAbgleichen(vorher, neu);
   if (vorher.innerHTML !== neu.innerHTML) vorher.replaceChildren(...neu.childNodes);
   vorher.value = wahl;
 }
@@ -1339,13 +1396,12 @@ function render() {
   S.neuzeichnen = true;
   try {
     $('#kopf').innerHTML = vKopf();
-    $('#main').innerHTML = vMain();
+    hauptbereichErsetzen(vMain(), personenwahlVorher);
     $('#main').dataset.sicht = sicht;
     $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
-    personenwahlBehalten(personenwahlVorher);
   } finally {
     S.neuzeichnen = false;
   }

@@ -218,6 +218,59 @@ test.describe('R00201 bei 1280 px', () => {
     expect(await page.evaluate(() => document.querySelector('[aria-label="Person"]') === window.gemerkteListe)).toBe(true);
     await expect(wahl(page)).toHaveValue('st');
   });
+
+  /** Liste per Klick öffnen und den Knoten für später merken; der Ausgangszustand „offen“ wird selbst belegt. */
+  async function listeOeffnen(page) {
+    await wahl(page).click();
+    await expect.poll(() => wahl(page).evaluate(e => e.matches(':open'))).toBe(true);
+    await page.evaluate(() => { window.gemerkteListe = document.querySelector('[aria-label="Person"]'); });
+  }
+
+  async function fremdesEreignisAbwarten(page, ausloeser) {
+    const vorher = await page.evaluate(() => window.kdTest.renders());
+    await ausloeser();
+    await expect.poll(() => page.evaluate(() => window.kdTest.renders()), { timeout: 3000 }).toBeGreaterThan(vorher);
+  }
+
+  const listeStehtOffen = page => page.evaluate(() => {
+    const liste = document.querySelector('[aria-label="Person"]');
+    return { derselbe: liste === window.gemerkteListe, offen: liste.matches(':open'), fokus: document.activeElement === liste, wert: liste.value };
+  });
+
+  test('AK 9: ein fremdes Live-Ereignis schließt eine geöffnete Liste nicht', async ({ page }) => {
+    await stundenzettelOeffnen(page, k);
+    await wahl(page).selectOption('cl');
+    await expect(page.locator('#zettelsumme')).toHaveText('0:30');
+    await listeOeffnen(page);
+    await fremdesEreignisAbwarten(page, async () => {
+      const antwort = await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_CLAUDE, data: { titel: 'eins neu' } });
+      expect(antwort.ok()).toBe(true);
+    });
+    await expect(page.locator('#stundenzettel tbody')).toContainText('eins neu');
+    expect(await listeStehtOffen(page)).toEqual({ derselbe: true, offen: true, fokus: true, wert: 'cl' });
+  });
+
+  test('AK 9: kommt mit dem Ereignis eine neue Person, bleibt die offene Liste offen und zeigt sie', async ({ page }) => {
+    await stundenzettelOeffnen(page, k);
+    await listeOeffnen(page);
+    await fremdesEreignisAbwarten(page, async () => {
+      const antwort = await page.request.post(`${k.adresse}api/personen`, { ...ALS_STEFAN, data: { kuerzel: 'neu', name: 'Neuling', art: 'agent' } });
+      expect(antwort.status()).toBe(201);
+    });
+    await expect(wahl(page).locator('option')).toHaveCount(AKTIVE.length + 1);
+    expect(await listeStehtOffen(page)).toEqual({ derselbe: true, offen: true, fokus: true, wert: 'st' });
+  });
+
+  test('AK 9: im Leerfall bleibt die offene Liste offen, ohne Vorwahl', async ({ page }) => {
+    await page.addInitScript(() => sessionStorage.setItem('kanbanD.ich', 'ga'));
+    await stundenzettelOeffnen(page, k);
+    await listeOeffnen(page);
+    await fremdesEreignisAbwarten(page, async () => {
+      const antwort = await page.request.patch(`${k.adresse}api/aufgaben/1`, { ...ALS_CLAUDE, data: { titel: 'eins neu' } });
+      expect(antwort.ok()).toBe(true);
+    });
+    expect(await listeStehtOffen(page)).toEqual({ derselbe: true, offen: true, fokus: true, wert: '' });
+  });
 });
 
 test.describe('R00201 mit dem Grundbestand (3 Personen)', () => {
