@@ -1160,12 +1160,13 @@ function vLegenPop() {
 
 /* ── Personen (Artboard D0005) ── */
 function vPersonen() {
-  const u = S.ui, jetzt = Date.now(), tag = jetzt, t0 = tagesbeginn(tag), t1 = tagesende(tag), istHeute = t0 === tagesbeginn(jetzt);
+  const u = S.ui, jetzt = Date.now(), tag = u.personenTag || jetzt, t0 = tagesbeginn(tag), t1 = tagesende(tag), istHeute = t0 === tagesbeginn(jetzt);
+  const kurzdatum = datumMitWochentag(t0).slice(0, -4);
   const pos = t => lageImTag(t, t0, t1);
   const alle = personen();
   const gezeigt = alle.filter(p => (u.stillAuch || p.aktiv) && (u.pBereich === 'alle' || (u.pBereich === 'm' ? p.art === 'human' : p.art === 'agent')));
   const zeilen = personenZeilen(S.aufgaben, gezeigt, S.board, tag, jetzt);
-  const G = ['LÄUFT JETZT', 'HEUTE AKTIV', 'HEUTE RUHIG'];
+  const G = istHeute ? ['LÄUFT JETZT', 'HEUTE AKTIV', 'HEUTE RUHIG'] : [null, `AKTIV AM ${kurzdatum}`, `RUHIG AM ${kurzdatum}`];
   let html = '';
   for (let g = 0; g < 3; g++) {
     const ds = zeilen.filter(d => d.gruppe === g);
@@ -1174,14 +1175,24 @@ function vPersonen() {
     html += ds.map(d => {
       const k = d.person.kuerzel;
       const leiste = d.abschnitte.map(x => { const a = pos(x.von), b = pos(x.bis); return b > a ? `<i class="${x.laeuft ? 'l' : d.person.art === 'agent' ? 'a' : ''}" style="left:${a}%;width:${Math.max(0.5, b - a)}%" title="#${x.nummer}"></i>` : ''; }).join('');
-      const gerade = d.laeuft.length ? `<div class="akt">${d.laeuft.map(x => `<div class="z">${vLaufChip({ beginn: laufBeginn(x.a, x.z), eigen: k === S.ich, sekunden: false })}<a href="#" class="id" data-act="oeffnen" data-arg="${x.a.nummer}">#${x.a.nummer}</a><span class="t">${esc(x.a.titel)}</span><button class="btn stop${k === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${x.a.nummer}|${esc(k)}" aria-label="Timer von ${esc(d.person.name)} stoppen">■</button></div>`).join('')}</div>`
+      const gerade = istHeute && d.laeuft.length ? `<div class="akt">${d.laeuft.map(x => `<div class="z">${vLaufChip({ beginn: laufBeginn(x.a, x.z), eigen: k === S.ich, sekunden: false })}<a href="#" class="id" data-act="oeffnen" data-arg="${x.a.nummer}">#${x.a.nummer}</a><span class="t">${esc(x.a.titel)}</span><button class="btn stop${k === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${x.a.nummer}|${esc(k)}" aria-label="Timer von ${esc(d.person.name)} stoppen">■</button></div>`).join('')}</div>`
         : `<span class="muted">${d.zuletzt ? 'zuletzt ' + (d.zuletzt >= t0 ? new Date(d.zuletzt).toTimeString().slice(0, 5) : datumAusMs(d.zuletzt)) : '—'}</span>`;
       return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}${istHeute ? `<span class="jetzt" style="left:${pos(jetzt)}%"></span>` : ''}</div></td><td class="r num heute">${hm(d.tag)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
     }).join('');
   }
   const still = alle.filter(p => !p.aktiv).length;
-  return `<div class="leiste"><span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste 0–24 Uhr · schraffiert = läuft</div></div>
-<div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${stundenmarken(tag).map(m => `<span style="left:${pos(m.zeitpunkt)}%">${m.stunde}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
+  const wochenspanne = `Woche ${datumAusMs(wochenbeginn(tag)).slice(0, 6)}–${datumAusMs(wochenende(tag) - 1).slice(0, 6)}`;
+  return `<div class="leiste">${vTagWahl(t0, istHeute)}<span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste 0–24 Uhr · schraffiert = läuft</div></div>
+<div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${stundenmarken(tag).map(m => `<span style="left:${pos(m.zeitpunkt)}%">${m.stunde}</span>`).join('')}</div></th><th class="r">${istHeute ? 'heute' : kurzdatum}</th>${istHeute ? '<th class="r">Woche</th>' : `<th class="r" title="${wochenspanne}" aria-label="${wochenspanne}">Woche</th>`}<th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
+}
+
+/** id des Datumsknotens der Personenseite; render behält ihn über jedes Neuzeichnen (datumsknotenBehalten). */
+const PERSONEN_TAG = 'personen-tag';
+/** „‹ Datum › Heute“ der Personenseite (R00199 Regel 2): blättert bis heute; das Datum steht in einem beständigen Knoten mit
+    aria-live (render behält ihn, datumsknotenBehalten), damit ein Bildschirmleser den neuen Tag ansagt. */
+function vTagWahl(t0, istHeute) {
+  const anHeute = istHeute ? ' disabled' : '';
+  return `<span class="tag-wahl" role="group" aria-label="Tag"><button class="btn btn-sym" id="tag-zurueck" data-act="p-tag" data-arg="-1" aria-label="voriger Tag">‹</button><span class="tag-datum" id="${PERSONEN_TAG}" aria-live="polite">${datumMitWochentag(t0)}</span><button class="btn btn-sym" data-act="p-tag" data-arg="1" aria-label="nächster Tag"${anHeute}>›</button><button class="btn" data-act="p-tag" data-arg="0"${anHeute}>Heute</button></span>`;
 }
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */

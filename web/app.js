@@ -910,6 +910,15 @@ function meldungsknotenBehalten(vorher) {
   if (dieselbe) neu.replaceWith(vorher);
 }
 
+/** Der Datumsknoten der Personenseite bleibt beim Neuzeichnen derselbe und wechselt nur seinen Text: so sagt ein
+    Bildschirmleser den neuen Tag an (aria-live, R00199 AK 6b, WCAG 4.1.3). */
+function datumsknotenBehalten(vorher) {
+  const neu = document.getElementById(PERSONEN_TAG);
+  if (!vorher || !neu) return;
+  neu.replaceWith(vorher);
+  if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
+}
+
 /** Name einer schreibenden Anfrage als Auslöser einer Meldung: dieselbe Anfrage ist dieselbe Aktion. */
 const anfrageName = (methode, pfad) => `${methode} ${pfad}`;
 /** Auslöser aller Meldungen und Erfolge eines Rückgängig. */
@@ -1309,6 +1318,7 @@ function render() {
   const ausloeser = ausloeserSelektor(aktiv);
   const aktivWarSichtbar = imSichtbereich(aktiv);
   const meldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(FENSTER_MELDUNG) : null;
+  const tagVorher = document.getElementById(PERSONEN_TAG);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -1322,6 +1332,7 @@ function render() {
     $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
+    datumsknotenBehalten(tagVorher);
   } finally {
     S.neuzeichnen = false;
   }
@@ -2240,6 +2251,11 @@ async function aktion(a, arg, wert) {
       case 'dus-einheit': u.dusEinheit = arg; break;
       case 'dl-vorgabe': durchlaufAmGeraetMerken({}); u.fokus = 'select[data-dl="dlBis"]'; break;
       case 'woche': u.wochenVersatz = (u.wochenVersatz || 0) + +arg; break;
+      case 'p-tag':
+        u.personenTag = personenTagBlaettern(u.personenTag, +arg, Date.now());
+        // an heute sind „›“ und „Heute“ deaktiviert und verlören den Fokus an body (R00199 AK 6a)
+        if (!u.personenTag) u.fokus = '#tag-zurueck';
+        break;
       case 'bf-farbe': await berichtsfilterSetzen({ ohneFarben: umschalten(u.bf.ohneFarben, arg) }); break;
       case 'bf-spalte': await berichtsfilterSetzen({ ohneSpalten: umschalten(u.bf.ohneSpalten, arg) }); break;
       case 'bf-person': await berichtsfilterSetzen({ personen: umschalten(u.bf.personen, arg) }); break;

@@ -605,6 +605,10 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .yaml .neu{background:var(--kd-c-green)}
 /* Personen und Berichte */
 .leiste b{font-weight:600}
+/* „‹ Datum › Heute“ der Personenseite (R00199, D0005 #tagesleiste-blaettern): bricht nur als Ganzes um, das Datum in --kd-text */
+.tag-wahl{display:inline-flex;align-items:stretch;gap:var(--kd-s2);flex:none;white-space:nowrap}
+.tag-datum{display:inline-flex;align-items:center;font-family:var(--kd-mono);font-size:12px;color:var(--kd-text);padding:0 var(--kd-s2)}
+.tag-wahl .btn:last-child{margin-left:var(--kd-s2)}
 .body{flex:1;min-height:0;overflow:auto;background:var(--kd-surface)}
 .pt{width:100%;border-collapse:collapse}
 /* Zeitberichte (PO Z. 137): nur der Rahmen um die Tabelle scrollt quer; füllt er .body allein, scrollt er auch hoch, damit die Kopfzeile klebt */

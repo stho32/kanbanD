@@ -56,6 +56,14 @@
     return Math.max(0, Math.min(e, bis) - Math.max(b, von));
   }
 
+  /** Gewählter Tag der Personenseite nach einem Schritt (‹ −1, › +1, „Heute“ 0): 0 Uhr des neuen Tags, `null` heißt „heute“ —
+      auch, wer mit › bei heute ankommt; einen Tag nach heute gibt es nicht (R00199 Regel 2). */
+  function personenTagBlaettern(gewaehlt, schritt, jetzt) {
+    const heute = tagesbeginn(jetzt);
+    const neu = schritt ? nachTagen(gewaehlt || heute, schritt) : heute;
+    return neu >= heute ? null : neu;
+  }
+
   /** Marken der Tagesleiste alle drei Stunden, 0 bis 24 Uhr, auf den echten Ortszeit-Stunden des Tages, in dem `tag` liegt —
       am 25.10. steht 3 Uhr vier Stunden nach 0 Uhr (R00199 Regel 1). */
   function stundenmarken(tag) {
@@ -125,5 +133,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, tagesende, wochenbeginn, wochenende, anteil, stundenmarken, lageImTag, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, tagesende, wochenbeginn, wochenende, anteil, personenTagBlaettern, stundenmarken, lageImTag, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);

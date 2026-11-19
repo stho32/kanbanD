@@ -127,3 +127,17 @@ test('B0978 (AK 9): Tag und Woche zählen an den Umstelltagen die echte Zeit', (
   assert.strictEqual(am(fruehling, ms(2026, 3, 29)).tag, 2 * H, '29.03.: 2:00, nicht 3:00');
   assert.strictEqual(am(fruehling, ms(2026, 3, 30)).tag, 1 * H, '30.03.: 1:00');
 });
+
+/* ── B0979: Blättern Tag für Tag, höchstens bis heute; null heißt „heute“ ── */
+const { personenTagBlaettern } = require('../../web/zeiten.js');
+
+test('B0979: ‹ und › gehen je einen Kalendertag, wer bei heute ankommt, ist auf „heute“ (null)', () => {
+  assert.strictEqual(personenTagBlaettern(null, -1, JETZT), ms(2026, 11, 18), 'von heute zurück');
+  assert.strictEqual(personenTagBlaettern(ms(2026, 11, 18), -1, JETZT), ms(2026, 11, 17));
+  assert.strictEqual(personenTagBlaettern(ms(2026, 11, 17), 1, JETZT), ms(2026, 11, 18));
+  assert.strictEqual(personenTagBlaettern(ms(2026, 11, 18), 1, JETZT), null, 'vor bis heute');
+  assert.strictEqual(personenTagBlaettern(null, 1, JETZT), null, 'kein Tag nach heute');
+  assert.strictEqual(personenTagBlaettern(ms(2026, 11, 15), 0, JETZT), null, '„Heute“');
+  assert.strictEqual(personenTagBlaettern(ms(2026, 3, 30), -1, ms(2026, 4, 2)), ms(2026, 3, 29), 'über die Umstellung: 0 Uhr bleibt 0 Uhr');
+  assert.strictEqual(personenTagBlaettern(ms(2026, 10, 25), 1, ms(2026, 11, 2)), ms(2026, 10, 26));
+});
