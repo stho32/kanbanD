@@ -443,17 +443,24 @@ test('US-9: Personen: → auf „Menschen + Agenten“ wählt „nur Menschen“
   await expect(page.locator('#main')).not.toContainText('planer');
 });
 
-test('US-9: Stundenzettel ohne gewählte Person: Tab in die Gruppe → erstes Radio', async ({ page }) => {
+test('US-9: Stundenzettel ohne gewählte Person: Tab erreicht die Liste mit „— Person wählen —“, ohne Vorwahl', async ({ page }) => {
   await alsPerson(page, 'al');
   await page.goto(k.adresse + '#/berichte/stundenzettel');
   await page.reload();
-  const gruppe = page.getByRole('radiogroup', { name: 'Person' });
-  await expect(gruppe.getByRole('radio')).not.toHaveCount(0);
-  await expect(gruppe.locator('[aria-checked="true"]')).toHaveCount(0);
-  await expect(gruppe.getByRole('radio').first()).toHaveAttribute('tabindex', '0');
+  const liste = page.getByRole('combobox', { name: 'Person', exact: true });
+  await expect(page.getByRole('radiogroup', { name: 'Person' })).toHaveCount(0);
+  await expect(liste).toHaveValue('');
+  await expect(liste.locator('option').first()).toHaveText('— Person wählen —');
+  expect(await liste.locator('option').first().evaluate(o => [o.selected, o.disabled])).toEqual([true, true]);
   await page.locator('.leiste b', { hasText: 'Stundenzettel' }).click();
-  for (let i = 0; i < 40 && !(await gruppe.evaluate(g => g.contains(document.activeElement))); i++) await page.keyboard.press('Tab');
-  await expect(gruppe.getByRole('radio').first()).toBeFocused();
+  let halte = 0;
+  for (let i = 0; i < 40 && !(await liste.evaluate(l => l === document.activeElement)); i++) { await page.keyboard.press('Tab'); halte++; }
+  await expect(liste).toBeFocused();
+  expect(halte, 'ein Tab-Halt bis zur Liste').toBe(1);
+  await page.keyboard.press('Tab');
+  await expect(liste).not.toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(liste).toBeFocused();
 });
 
 test('US-9: Zieltermin-Markierung ist ein Knopf mit aria-pressed, ohne role=radio', async ({ page }) => {
@@ -763,7 +770,7 @@ test('Sichtbarer Fokus: fokussierte Elemente der Pop-Fenster (Boards, Läuft ger
   }
 });
 
-test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Personen, Person) tragen den Ring in Hell und Dunkel', async ({ page }) => {
+test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Personen) und die Liste „Person“ tragen den Ring in Hell und Dunkel', async ({ page }) => {
   /** Fokus auf das gewählte Radio der Gruppe, → wählt das nächste: beide Male ein Ring; ← stellt die Wahl wieder her. */
   async function gruppePruefen(gruppe, wo) {
     const gewaehlt = page.getByRole('radiogroup', { name: gruppe, exact: true }).locator('[role="radio"][tabindex="0"]');
@@ -775,6 +782,19 @@ test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Per
     await page.keyboard.press('ArrowRight');
     await ringErwarten(page, `${wo}, nach →`);
     await page.keyboard.press('ArrowLeft');
+  }
+  /** Seit R00201 ist „Person“ im Stundenzettel eine Auswahlliste: Fokus per Tab-Weg, ↓ wählt die nächste Person, der Ring bleibt. */
+  async function listePruefen(wo) {
+    const liste = page.getByRole('combobox', { name: 'Person', exact: true });
+    await liste.focus();
+    await ringErwarten(page, `${wo}, Liste fokussiert`);
+    const wert = await liste.inputValue();
+    await page.keyboard.press('ArrowDown');
+    await expect(liste).not.toHaveValue(wert);
+    await expect(liste).toBeFocused();
+    await ringErwarten(page, `${wo}, nach ↓`);
+    await page.keyboard.press('ArrowUp');
+    await expect(liste).toHaveValue(wert);
   }
   for (const thema of THEMEN) {
     await themaSetzen(page, thema);
@@ -793,7 +813,7 @@ test('Sichtbarer Fokus: fokussierte Radios (Bereich, Chips, Aufgabenbereich, Per
     await page.goto(k.adresse + '#/personen');
     await gruppePruefen('Personen', `${thema} Personen`);
     await page.goto(k.adresse + '#/berichte/stundenzettel');
-    await gruppePruefen('Person', `${thema} Stundenzettel, Person`);
+    await listePruefen(`${thema} Stundenzettel, Person`);
   }
 });
 

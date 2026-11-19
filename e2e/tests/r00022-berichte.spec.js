@@ -21,7 +21,8 @@ test.describe('R00022', () => {
     await page.getByRole('menuitem', { name: /Stundenzettel/ }).click();
     await expect(page.locator('#stundenzettel tbody tr.klick')).toHaveCount(1);
     await expect(page.locator('#zettelsumme')).toHaveText('1:30');
-    await page.getByRole('radio', { name: 'Claude' }).click();
+    await page.getByRole('combobox', { name: 'Person', exact: true }).selectOption({ label: 'Claude' });
+    await expect(page.getByRole('combobox', { name: 'Person', exact: true })).toHaveValue('cl');
     await expect(page.locator('#zettelsumme')).toHaveText('0:30');
     await page.getByLabel('vorige Woche').click();
     await expect(page.locator('#zettelsumme')).toHaveText('0:00');
