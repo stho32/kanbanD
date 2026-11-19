@@ -1038,3 +1038,14 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #206 | Detailplanung | planer | bestanden | 1 min | UX-Befunde in R00201, cdd125df · claude · opus · Lauf 206-planer-2 |
 | 2026-11-19 | #206 | Detailplanung | ux-reviewer | befund | 1 min | AK 1b und Mutant neu fassen (min-width:0 der Flex-Leiste) · claude · sonnet · Lauf 206-ux-reviewer-2 |
 | 2026-11-19 | #206 | Detailplanung | planer | bestanden | 0 min | AK 1b und Mutant nach Wortlaut ux, 0fb6ec38 · claude · opus · Lauf 206-planer-3 |
+| 2026-11-19 | #205 | Entwicklung | entwickler | bestanden | 24 min | B0982–B0984, Gate 856/1247/1938 grün, 83a6da5c · claude · Lauf 205-entwickler-1 · 1,77 $ · Karte gesamt 6,40 $ |
+| 2026-11-19 | #205 | Auto-Reviews | ux-reviewer | bestanden | 5 min | kein Muss, kein Sollte · claude · sonnet · Lauf 205-ux-reviewer-3 · 0,95 $ · Karte gesamt 7,35 $ |
+| 2026-11-19 | #205 | Auto-Reviews | code-reviewer | bestanden | 6 min | kein Muss, 8 Mutanten rot, 3 Sollte · claude · sonnet · Lauf 205-code-reviewer-1 · 1,31 $ · Karte gesamt 8,66 $ |
+| 2026-11-19 | #205 | Entwicklertest | entwicklertester | bestanden | 3 min | US-1..US-5 bestanden · claude · sonnet · Lauf 205-entwicklertester-1 · 0,50 $ · Karte gesamt 9,16 $ |
+| 2026-11-19 | #206 | Entwicklung | entwickler | bestanden | 49 min | B0985–B0987, Gate 856/1247/1895 grün, bbc6f1cf · claude · Lauf 206-entwickler-1 · 2,07 $ · Karte gesamt 6,65 $ |
+
+**Retrospektive #205** (Kopf scrollt bei 320 px quer, 2026-11-19, 9,16 $ gemessen, ausgeliefert 2371b2eb)
+- Gut: Der architekt hat zuerst reproduziert und dabei aufgedeckt, dass zwei Rollen in #204 falsch gemessen hatten (innerWidth statt clientWidth, mit isMobile wächst innerWidth mit) und dass die Breitenprobe B0406 den Zustand „keine Person gewählt“ nie gesehen hat. Ein Teil des Befunds (Skalenkontrast) betraf nur das Artboard und wurde dort behoben statt im Code.
+- Die UX-Vorprüfung hat eine blinde Probe gefunden: Unter Touch macht min-block-size 48 px jede Höhenprobe auf Umbruch wirkungslos, deshalb wird stattdessen die Zahl der Zeilenrechtecke gezählt.
+- Gate: Zwei Läufe unter Last (#206 baute gleichzeitig) hatten je 3 Live-Wackler. Der ruhige Lauf hatte nur den bekannten r00148:535 (#198). Lehre: Das Gate auf main nicht fahren, während ein entwickler seine Suite fährt; erst warten, bis er fertig ist.
+- Sollte ohne Karte: Ein Doc-Kommentar zu vIchKnopf erzählt die Entstehung. Der Kommentar in kd-app.css:211 zu .pk-0 ist veraltet. Für eine stillgelegte Person als Leerfall fehlt ein Test. #pop „Ich bin …“ hat weder Rolle noch Namen.
