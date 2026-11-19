@@ -492,23 +492,29 @@ async fn us6_ak12_datei_legacy_und_duplizieren() {
 #[ignore = "braucht KANBAND_VORVERSION=<gebautes kanbanD vor dieser Karte>"]
 async fn ak12b_vorversion_behaelt_die_datei() {
     let vorversion = std::env::var("KANBAND_VORVERSION").expect("KANBAND_VORVERSION");
-    let f = Fabrik::oeffnen().await;
-    let (k1, k2, k3, k4) = (f.k1(), f.k2(), f.k3(), f.k4());
-    assert_eq!(f.ersetzt(vec![Fabrik::paar(&kd7(&k1), &kd7(&k3)), Fabrik::paar(&kd7(&k2), &kd7(&k4))]).await.status, 200);
-    let datei = f.datei();
-    let nr0 = f._ordner.path().join("alt");
-    std::fs::create_dir_all(&nr0).unwrap();
-    let kopie = nr0.join("board");
-    git(f._ordner.path(), &["clone", "-q", f.board.to_str().unwrap(), kopie.to_str().unwrap()]);
-    let mut kind = std::process::Command::new(&vorversion).arg(&kopie).args(["--kein-browser", "--host", "127.0.0.1", "--port", "0"]).stdout(std::process::Stdio::piped()).spawn().unwrap();
-    let mut zeile = String::new();
-    std::io::BufRead::read_line(&mut std::io::BufReader::new(kind.stdout.take().unwrap()), &mut zeile).unwrap();
-    let adresse = zeile.split_whitespace().last().unwrap().to_string();
-    let a = gemeinsam::senden(reqwest::Method::PATCH, &adresse, "api/aufgaben/1", MENSCH, json!({"title": "Neuer Titel"})).await;
-    gemeinsam::geordnet_beenden(&mut kind);
-    assert_eq!(a.0, 200, "{}", a.1);
-    let nachher = lies(&kopie, "aufgaben/0001-verweise-ersetzen.md");
-    assert_eq!(nachher, datei.replace("title: Verweise ersetzen", "title: Neuer Titel"), "nur der Titel ändert sich");
+    // Rundlauf mit einem und mit mehreren Einträgen: ersetzen, dann ändert die Vorversion den Titel
+    for eintraege in [1, 3] {
+        let f = if eintraege == 1 { Fabrik::mit(Wie { datei_commits: Some(vec!["kd:{K1}"]), ..Wie::default() }).await } else { Fabrik::oeffnen().await };
+        let (k1, k2, k3, k4) = (f.k1(), f.k2(), f.k3(), f.k4());
+        let paare = if eintraege == 1 { vec![Fabrik::paar(&kd7(&k1), &kd7(&k3))] } else { vec![Fabrik::paar(&kd7(&k1), &kd7(&k3)), Fabrik::paar(&kd7(&k2), &kd7(&k4))] };
+        assert_eq!(f.ersetzt(paare).await.status, 200);
+        let datei = f.datei();
+        let kopie = f._ordner.path().join("alt/board");
+        std::fs::create_dir_all(kopie.parent().unwrap()).unwrap();
+        git(f._ordner.path(), &["clone", "-q", f.board.to_str().unwrap(), kopie.to_str().unwrap()]);
+        let mut kind = std::process::Command::new(&vorversion).arg(&kopie).args(["--kein-browser", "--host", "127.0.0.1", "--port", "0"]).stdout(std::process::Stdio::piped()).spawn().unwrap();
+        let mut zeile = String::new();
+        std::io::BufRead::read_line(&mut std::io::BufReader::new(kind.stdout.take().unwrap()), &mut zeile).unwrap();
+        let adresse = zeile.split_whitespace().last().unwrap().to_string();
+        // die Route der neuen Version kennt die ältere nicht: heute am Code gelesen und gefahren 405 (`allow: DELETE`), ADR N1.4 sagt 404
+        let alt = gemeinsam::senden(reqwest::Method::POST, &adresse, "api/aufgaben/1/commits/ersetzen", AGENT, json!({"ersetzungen": [{"alt": "kd:3f2a9c1", "neu": "kd:8e20ad9"}]})).await;
+        assert!(matches!(alt.0, 404 | 405), "ältere Version antwortet {}", alt.0);
+        let a = gemeinsam::senden(reqwest::Method::PATCH, &adresse, "api/aufgaben/1", MENSCH, json!({"titel": "Neuer Titel"})).await;
+        gemeinsam::geordnet_beenden(&mut kind);
+        assert_eq!(a.0, 200, "{}", a.1);
+        let nachher = lies(&kopie, "aufgaben/0001-verweise-ersetzen.md");
+        assert_eq!(nachher, datei.replace("title: Verweise ersetzen", "title: Neuer Titel"), "{eintraege} Einträge: nur der Titel ändert sich");
+    }
 }
 
 // AK 13: Endpunktliste, OpenAPI und /api nennen die Route mit Rumpf, Statuscodes und dem Satz zur Wiederholung; die README
