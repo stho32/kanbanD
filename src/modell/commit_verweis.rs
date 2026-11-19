@@ -336,7 +336,7 @@ mod tests {
         }
         // dieselbe Hash-Zeichenfolge in verschiedenen Anwendungen ist nicht doppelt
         assert!(gelesen(&rumpf(&[paar(&kd(K1), &kd(K3)), paar(&format!("xx:{K1}"), &format!("xx:{K3}"))]), false).is_ok());
-        assert!(gelesen(&rumpf(&[paar(&kd(K1), &kd(K3)), paar(&K2.to_string(), &K4.to_string())]), true).is_ok(), "ohne Kürzel ist eine andere Anwendung als kd");
+        assert!(gelesen(&rumpf(&[paar(&kd(K1), &kd(K3)), paar(K2, K4)]), true).is_ok(), "ohne Kürzel ist eine andere Anwendung als kd");
     }
 
     // AK 7: genau 500 Paare gelten, 501 nicht — ohne Verweis, und bevor ein Paar gelesen wird

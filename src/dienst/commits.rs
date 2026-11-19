@@ -7,13 +7,38 @@ use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::aufgabe::COMMITS;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler};
-use crate::modell::{Anwendung, Anwendungen, Aufgabe, HASH_MIN, Herkunftsschluessel, Person, Verweisfehler, Verweisform, verweis_lesen};
+use crate::modell::{Anwendung, Anwendungen, Aufgabe, HASH_MIN, Ersetzungsfehler, Herkunftsschluessel, Paar, Person, Verweisfehler, Verweisform, ersetzungen_lesen, verweis_lesen};
 use crate::nachricht;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 /// Schutzwert (ADR-0032 Punkt 1): mehr Verweise nimmt eine Aufgabe über die API nicht auf.
 pub const HOECHSTZAHL_COMMITS: usize = 500;
+
+/// Rumpf von `POST …/commits/ersetzen`. Nur die Beschreibung für OpenAPI: gelesen wird der Rumpf roh.
+#[derive(utoipa::ToSchema)]
+#[allow(dead_code)] // die Felder tragen nur das Schema
+pub struct Ersetzungsangaben {
+    /// Paare alt → neu, 1 bis 500; ein Verweis kommt höchstens einmal vor (auch nicht als Kette)
+    #[schema(min_items = 1, max_items = 500)]
+    ersetzungen: Vec<Ersetzungspaar>,
+}
+
+/// Ein Paar: `alt` steht an der Karte (voller Hash oder Präfix ab 7 Zeichen), `neu` ist ein Commit im Arbeits-Repository.
+#[derive(utoipa::ToSchema)]
+#[allow(dead_code)]
+pub struct Ersetzungspaar {
+    alt: String,
+    neu: String,
+}
+
+/// Was die Prüfung ohne Sperre ergeben hat: die gelesenen Paare und je Paar der volle Verweis von `neu`, wo Git gefragt
+/// wurde (nur für Paare, die noch nicht erledigt sind).
+#[derive(Debug)]
+pub struct Ersetzungsplan {
+    paare: Vec<Paar>,
+    voll: Vec<Option<String>>,
+}
 
 /// Rumpf von `POST …/commits`. Nur die Beschreibung für OpenAPI: gelesen wird der Rumpf roh, damit jeder Fehler 400 wird.
 #[derive(utoipa::ToSchema)]
@@ -64,6 +89,42 @@ impl Kanban {
         self.aufgabe_schreiben(wer, nr, |a| eintragen(a, geprueft))
     }
 
+    /// `POST /api/aufgaben/{nr}/commits/ersetzen` — alles oder nichts: Karte und Git ohne Sperre, Austausch unter der Sperre.
+    pub fn commits_ersetzen(&self, wer: &Person, nr: u32, rumpf: &serde_json::Value) -> Result<Aufgabe, Fehler> {
+        let plan = self.commits_ersetzen_pruefen(nr, rumpf)?;
+        self.commits_ersetzen_eintragen(wer, nr, &plan)
+    }
+
+    /// Ohne Sperre: Rumpf (Form, Kürzel, doppelt, Kette, Zahl — alles vor Git), Aufgabe, Karte (404, 409, Wiederholung,
+    /// mehrdeutiger Präfix), und erst dann je **offenem** Paar Wurzel und voller Hash von `neu`. `alt` erreicht Git nie.
+    pub fn commits_ersetzen_pruefen(&self, nr: u32, rumpf: &serde_json::Value) -> Result<Ersetzungsplan, Fehler> {
+        let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
+        let paare = ersetzungen_lesen(rumpf, &Anwendungen::aus(&quellen)).map_err(ersetzungsfehler)?;
+        let offen = urteil(&self.ordner().aufgabe(nr)?, &paare)?;
+        let mut wurzeln: HashMap<String, PathBuf> = HashMap::new();
+        let mut voll = Vec::with_capacity(paare.len());
+        for (paar, offen) in paare.iter().zip(offen) {
+            if !offen {
+                voll.push(None);
+                continue;
+            }
+            let anwendung = &paar.anwendung;
+            let wurzel = match wurzeln.get(&anwendung.kuerzel) {
+                Some(w) => w.clone(),
+                None => arbeitsrepo::wurzel(self.ordner().wurzel(), anwendung).map_err(|f| repo_fehler(f, &paar.neu_text, anwendung))?,
+            };
+            let hash = arbeitsrepo::commit_aufloesen(&wurzel, &paar.neu_hash).map_err(|f| repo_fehler(f, &paar.neu_text, anwendung))?;
+            wurzeln.insert(anwendung.kuerzel.clone(), wurzel);
+            voll.push(Some(Herkunftsschluessel::qualifiziert(&anwendung.kuerzel, &hash)));
+        }
+        Ok(Ersetzungsplan { paare, voll })
+    }
+
+    /// Unter der Sperre, ohne Git: Karte erneut gegen die frisch gelesene Datei, Austausch an der Stelle, ein Commit oder keiner.
+    pub fn commits_ersetzen_eintragen(&self, wer: &Person, nr: u32, plan: &Ersetzungsplan) -> Result<Aufgabe, Fehler> {
+        self.aufgabe_schreiben(wer, nr, |a| ersetzen(a, plan))
+    }
+
     /// `DELETE /api/aufgaben/{nr}/commits/{verweis}` — voller Hash oder an der Karte eindeutiger Präfix ≥ 7; fragt das
     /// Arbeits-Repository nicht, damit sich auch ein verschwundener Verweis entfernen lässt.
     pub fn commit_entfernen(&self, wer: &Person, nr: u32, verweis: &str) -> Result<Aufgabe, Fehler> {
@@ -77,6 +138,70 @@ fn verweise_aus(rumpf: &serde_json::Value) -> Result<Vec<String>, Fehler> {
     let falsch = || Fehler::Ungueltig("Rumpf {commits: [Verweis, …]} mit mindestens einem Verweis erwartet".into());
     let feld = rumpf.as_object().filter(|o| o.len() == 1).and_then(|o| o.get("commits")).and_then(serde_json::Value::as_array).filter(|l| !l.is_empty()).ok_or_else(falsch)?;
     feld.iter().enumerate().map(|(i, v)| v.as_str().map(String::from).ok_or_else(|| Fehler::Ungueltig(format!("commits[{i}] ist kein Text: {v}")))).collect()
+}
+
+fn ersetzungsfehler(f: Ersetzungsfehler) -> Fehler {
+    match f.verweis {
+        Some(verweis) => Fehler::Verweis { meldung: f.meldung, verweis, fehlt: false },
+        None => Fehler::Ungueltig(f.meldung),
+    }
+}
+
+/// Die Karte gegen die Paare, in der Reihenfolge der Fehlerstufen aus R00203 FA 7: mehrdeutiger Präfix von `alt` (400), dann
+/// `alt` und `neu` fehlen (404), dann beide da (409); sonst je Paar, ob es noch zu tun ist — `alt` da und `neu` nicht — oder
+/// erledigt (`alt` weg und `neu` da, die Wiederholung). Ohne Git; gilt vor und unter der Sperre.
+fn urteil(a: &Aufgabe, paare: &[Paar]) -> Result<Vec<bool>, Fehler> {
+    let nr = a.nummer;
+    if a.weitere.iter().any(|(k, _)| k == COMMITS) {
+        return Err(Fehler::Konflikt(format!("#{nr}: {COMMITS} in der Datei ist keine Liste von Texten — erst von Hand reparieren")));
+    }
+    let (mut mehrdeutig, mut fehlt, mut beide) = (None, None, None);
+    let mut offen = Vec::with_capacity(paare.len());
+    for paar in paare {
+        let treffer = a.commits.iter().filter(|c| passt(c, &paar.alt)).count();
+        let neu = Verweisform { kuerzel: Some(paar.anwendung.kuerzel.clone()).filter(|k| !k.is_empty()), hash: paar.neu_hash.clone() };
+        let neu_da = a.commits.iter().any(|c| passt(c, &neu));
+        match (treffer, neu_da) {
+            (0, false) => fehlt = fehlt.or(Some(paar)),
+            (1, true) => beide = beide.or(Some(paar)),
+            (n, _) if n > 1 => mehrdeutig = mehrdeutig.or(Some((paar, n))),
+            _ => {}
+        }
+        offen.push(treffer == 1 && !neu_da);
+    }
+    if let Some((paar, n)) = mehrdeutig {
+        return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {n} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(&paar.alt_text)), verweis: paar.alt_text.clone(), fehlt: false });
+    }
+    if let Some(paar) = fehlt {
+        return Err(Fehler::Verweis { meldung: format!("#{nr} hat weder „{}“ noch „{}“ als Commit-Verweis", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text)), verweis: paar.alt_text.clone(), fehlt: true });
+    }
+    if let Some(paar) = beide {
+        return Err(Fehler::VerweisKonflikt { meldung: format!("#{nr} trägt „{}“ und „{}“ schon beide — „{}“ lässt sich mit DELETE entfernen", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text), nachricht::wert(&paar.alt_text)), verweis: paar.alt_text.clone() });
+    }
+    Ok(offen)
+}
+
+/// Tauscht an der Stelle des alten Verweises den neuen ein; liefert die Commit-Nachricht, ohne offenes Paar `None`.
+fn ersetzen(a: &mut Aufgabe, plan: &Ersetzungsplan) -> Result<Option<String>, Fehler> {
+    let nr = a.nummer;
+    let offen = urteil(a, &plan.paare)?;
+    let mut tausch = vec![];
+    for ((paar, offen), voll) in plan.paare.iter().zip(offen).zip(&plan.voll) {
+        if !offen {
+            continue;
+        }
+        let Some(voll) = voll else {
+            return Err(Fehler::Konflikt(format!("#{nr}: „{}“ stand bei der Prüfung nicht mehr zu tun — Aufruf wiederholen", nachricht::wert(&paar.alt_text))));
+        };
+        let platz = a.commits.iter().position(|c| passt(c, &paar.alt)).expect("urteil: alt steht an der Karte");
+        tausch.push((platz, voll));
+    }
+    let mut zeilen = vec![];
+    for (platz, voll) in tausch {
+        zeilen.push(format!("{} → {}", kurz(&a.commits[platz]), kurz(voll)));
+        a.commits[platz] = voll.clone();
+    }
+    Ok((!zeilen.is_empty()).then(|| format!("#{nr} Commits ersetzt: {}", zeilen.join(", "))))
 }
 
 fn abweisung(f: Verweisfehler) -> Fehler {
@@ -177,7 +302,7 @@ mod tests {
 
     fn status(f: Fehler) -> u16 {
         match f {
-            Fehler::Konflikt(_) => 409,
+            Fehler::Konflikt(_) | Fehler::VerweisKonflikt { .. } => 409,
             Fehler::Verweis { fehlt: true, .. } => 404,
             Fehler::Verweis { fehlt: false, .. } => 400,
             anderer => panic!("{anderer:?}"),
@@ -260,5 +385,114 @@ mod tests {
             assert_eq!(status(f), erwartet, "{verweis}");
             assert_eq!(a.commits, alle, "{verweis}");
         }
+    }
+
+    // ---- Ersetzen (R00203 B0995): Karte und Austausch ohne Git
+
+    const K3: &str = "kd:8e20ad9b3c5d7f1a2b4c6d8e0f1a3b5c7d9e1f2a";
+    const K4: &str = "kd:1d4c7e2a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e";
+    const W1: &str = "kd:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a";
+
+    /// Der Plan, wie ihn die Prüfung baute: `voll` nur für offene Paare gefüllt (die Probe steht in tests/commits_ersetzen_dienst.rs).
+    fn plan(a: &Aufgabe, paare: &[(&str, &str)]) -> Result<Ersetzungsplan, Fehler> {
+        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: "/r/app.md".into(), anforderungen: String::new() };
+        let register = Anwendungen::aus(&crate::modell::Quellen { wbs: String::new(), anforderungen: String::new(), anwendungen: vec![kd] });
+        let rumpf = serde_json::json!({"ersetzungen": paare.iter().map(|(a, n)| serde_json::json!({"alt": a, "neu": n})).collect::<Vec<_>>()});
+        let paare = ersetzungen_lesen(&rumpf, &register).map_err(ersetzungsfehler)?;
+        let offen = urteil(a, &paare)?;
+        let voll = paare.iter().zip(offen).map(|(p, offen)| offen.then(|| format!("kd:{}", p.neu_hash))).collect();
+        Ok(Ersetzungsplan { paare, voll })
+    }
+
+    // AK 1: die neuen Hashes stehen auf den Plätzen der alten, der Rest behält Platz und Wortlaut; die Nachricht nennt die Paare
+    #[test]
+    fn ersetzen_tauscht_an_der_stelle() {
+        let mut a = aufgabe(&[K1, W1, K2]);
+        let p = plan(&a, &[(&K1[..10], K3), (&K2[..10], K4)]).unwrap();
+        assert_eq!(ersetzen(&mut a, &p).unwrap().as_deref(), Some("#1 Commits ersetzt: kd:3f2a9c1 → kd:8e20ad9, kd:9c6b91f → kd:1d4c7e2"));
+        assert_eq!(a.commits, [K3, W1, K4]);
+        let mut b = aufgabe(&[K1, K2]);
+        let p = plan(&b, &[(K2, K4)]).unwrap();
+        ersetzen(&mut b, &p).unwrap();
+        assert_eq!(b.commits, [K1, K4], "Platz 2 bleibt Platz 2");
+    }
+
+    // AK 4, AK 6: Wiederholung — `alt` weg und `neu` da ist erledigt, ohne Nachricht (kein Commit); gemischt zählt nur das offene
+    #[test]
+    fn ersetzen_wiederholung_ist_erledigt() {
+        let mut a = aufgabe(&[K3, W1, K4]);
+        let p = plan(&a, &[(K1, K3), (K2, &K4[..10])]).unwrap();
+        assert_eq!(p.voll, [None, None]);
+        assert_eq!(ersetzen(&mut a, &p).unwrap(), None);
+        assert_eq!(a.commits, [K3, W1, K4]);
+        let mut b = aufgabe(&[K3, W1]);
+        let p = plan(&b, &[(K1, K3), (W1, K4)]).unwrap();
+        assert_eq!(ersetzen(&mut b, &p).unwrap().as_deref(), Some("#1 Commits ersetzt: kd:5a5a5a5 → kd:1d4c7e2"));
+        assert_eq!(b.commits, [K3, K4]);
+    }
+
+    // AK 5: Ersetzen ändert die Zahl nicht — bei 500 Verweisen kein Grund für einen Fehler
+    #[test]
+    fn ersetzen_bei_500_verweisen_bleibt_bei_500() {
+        let mut a = aufgabe(&[]);
+        a.commits = (0..HOECHSTZAHL_COMMITS - 1).map(|i| format!("kd:{i:040x}")).collect();
+        a.commits.push(K1.into());
+        let p = plan(&a, &[(K1, K3)]).unwrap();
+        ersetzen(&mut a, &p).unwrap().unwrap();
+        assert_eq!((a.commits.len(), a.commits.last().map(String::as_str)), (500, Some(K3)));
+    }
+
+    // AK 7/8: 400 (mehrdeutig) vor 404 (fehlt) vor 409 (beide da), je mit dem alt aus der Anfrage — und nichts verändert
+    #[test]
+    fn ersetzen_fehlerstufen_und_reihenfolge() {
+        let zweier = ["kd:7f62b7e8c4aeab77b053e03929734afdc3d9bdc4", "kd:7f62b7e8c5daa353f97b7f84b0b410b9501a4e46"];
+        let a = aufgabe(&[K1, K2, zweier[0], zweier[1]]);
+        let fehlt = (K4, K3);
+        let beide = (K1, K2);
+        let mehrdeutig = ("kd:7f62b7e", "kd:abcdef0");
+        for (paare, erwartet, verweis) in [
+            (vec![fehlt], 404, K4),
+            (vec![beide], 409, K1),
+            (vec![mehrdeutig], 400, "kd:7f62b7e"),
+            (vec![beide, fehlt], 404, K4),
+            (vec![fehlt, beide, mehrdeutig], 400, "kd:7f62b7e"),
+            (vec![(K2, "kd:fedcba9"), fehlt], 404, K4),
+        ] {
+            let f = plan(&a, &paare).unwrap_err();
+            assert!(matches!(&f, Fehler::Verweis { verweis: v, .. } | Fehler::VerweisKonflikt { verweis: v, .. } if v == verweis), "{paare:?}: {f:?}");
+            assert_eq!(status(f), erwartet, "{paare:?}");
+        }
+    }
+
+    // AK 12 a, c: unlesbare und Ziffern-Einträge bleiben wörtlich stehen; `commits` ohne Liste von Texten → 409, nichts geändert
+    #[test]
+    fn ersetzen_laesst_den_bestand_unberuehrt() {
+        let ziffern = "1234567890123456789012345678901234567890";
+        let mut a = aufgabe(&[K1, "kd:zz", ziffern]);
+        let p = plan(&a, &[(K1, K3)]).unwrap();
+        ersetzen(&mut a, &p).unwrap();
+        assert_eq!(a.commits, [K3, "kd:zz", ziffern]);
+        assert_eq!(status(plan(&a, &[("kd:zz", K4)]).unwrap_err()), 400, "unlesbare Form lässt sich nicht ersetzen");
+
+        let mut b = aufgabe(&[]);
+        b.weitere.push(("commits".into(), serde_yaml::Value::String("von Hand".into())));
+        let vorher = b.clone();
+        assert_eq!(status(plan(&b, &[(K1, K3)]).unwrap_err()), 409);
+        let p = Ersetzungsplan { paare: plan(&aufgabe(&[K1]), &[(K1, K3)]).unwrap().paare, voll: vec![Some(K3.into())] };
+        assert_eq!(status(ersetzen(&mut b, &p).unwrap_err()), 409);
+        assert_eq!(b, vorher);
+    }
+
+    // Prüfen-dann-Handeln: war ein Paar bei der Prüfung erledigt und ist es unter der Sperre wieder offen, fehlt der volle
+    // Hash aus Git — 409 mit der Bitte zu wiederholen, nichts geändert
+    #[test]
+    fn ersetzen_ohne_geprueften_hash_unter_der_sperre_ist_409() {
+        let erledigt = aufgabe(&[K3]);
+        let p = plan(&erledigt, &[(K1, K3)]).unwrap();
+        assert_eq!(p.voll, [None]);
+        let mut jetzt = aufgabe(&[K1]);
+        let vorher = jetzt.clone();
+        assert_eq!(status(ersetzen(&mut jetzt, &p).unwrap_err()), 409);
+        assert_eq!(jetzt, vorher);
     }
 }

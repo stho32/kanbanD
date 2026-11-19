@@ -535,7 +535,7 @@ async fn ak13_beschreibung_nennt_die_route() {
     for stichwort in ["{ersetzungen: [{alt, neu}", "200 ohne Commit", "409", "503"] {
         assert!(zweck.contains(stichwort), "{stichwort:?} fehlt im Zweck: {zweck}");
     }
-    assert!(d["components"]["schemas"]["Ersetzungen"]["properties"]["ersetzungen"].is_object(), "Rumpf im Schema");
+    assert!(d["components"]["schemas"]["Ersetzungsangaben"]["properties"]["ersetzungen"].is_object(), "Rumpf im Schema");
     let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
     let abschnitt = readme.split("Commits an der Karte hinterlegen").nth(1).expect("README: Abschnitt");
     assert!(abschnitt.contains("nach einem Rebase nachziehen") && abschnitt.contains("/api/aufgaben/42/commits/ersetzen"), "Beispiel fehlt");

@@ -48,7 +48,7 @@ pub use teilaufgaben::Teilaufgabenaenderung;
 pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
 pub use wirkungen::{WirkungEingabe, Wirkungsstand};
 pub use zeiten::{Zeitkorrektur, Zeitnachtrag};
-pub use commits::{Commitangaben, HOECHSTZAHL_COMMITS};
+pub use commits::{Commitangaben, Ersetzungsangaben, Ersetzungspaar, Ersetzungsplan, HOECHSTZAHL_COMMITS};
 pub use kosteneintraege::{HOECHSTZAHL_KOSTENEINTRAEGE, Kosteneintragsangaben};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use board_verwalten::BoardVerwalten;

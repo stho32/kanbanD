@@ -172,6 +172,7 @@ impl IntoResponse for Fehler {
             Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } => StatusCode::FORBIDDEN,
             Fehler::Verweis { fehlt: true, .. } => StatusCode::NOT_FOUND,
             Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
+            Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,
             Fehler::Zeitgrenze(_) => StatusCode::SERVICE_UNAVAILABLE,
         };
         match &self {
@@ -191,7 +192,7 @@ impl IntoResponse for Fehler {
                 let rumpf = openapi::PersonenartVerboten { fehler: meldung.clone(), kuerzel: kuerzel.clone() };
                 (status, Json(rumpf)).into_response()
             }
-            Fehler::Verweis { meldung, verweis, .. } => {
+            Fehler::Verweis { meldung, verweis, .. } | Fehler::VerweisKonflikt { meldung, verweis } => {
                 let rumpf = openapi::Verweisfehler { fehler: meldung.clone(), verweis: verweis.clone() };
                 (status, Json(rumpf)).into_response()
             }

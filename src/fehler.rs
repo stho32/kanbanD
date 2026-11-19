@@ -27,6 +27,9 @@ pub enum Fehler {
     /// Ein Commit-Verweis ist ungültig (400) oder steht nicht an der Aufgabe (404, `fehlt`) — Rumpf `{fehler, verweis}` mit
     /// dem Verweis, wie er in der Anfrage stand (R00202, ADR-0032 Punkt 4).
     Verweis { meldung: String, verweis: String, fehlt: bool },
+    /// Ein Commit-Verweis steht dem Vorhaben im Weg (409): beim Ersetzen stehen `alt` und `neu` beide an der Aufgabe — Rumpf
+    /// `{fehler, verweis}` mit dem `alt`, das sich mit `DELETE` entfernen lässt (R00203, ADR-0032 N1.4).
+    VerweisKonflikt { meldung: String, verweis: String },
     /// Ein Git-Prozess im Arbeits-Repository überschritt die Zeitgrenze und wurde beendet (503, ADR-0032 Punkt 3).
     Zeitgrenze(String),
 }
@@ -36,7 +39,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } => meldung,
         }
     }
 
