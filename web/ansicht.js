@@ -1164,7 +1164,7 @@ function vPersonen() {
   const pos = t => Math.max(0, Math.min(100, ((t - t0) / 36e5 - W0) / (W1 - W0) * 100));
   const alle = personen();
   const gezeigt = alle.filter(p => (u.stillAuch || p.aktiv) && (u.pBereich === 'alle' || (u.pBereich === 'm' ? p.art === 'human' : p.art === 'agent')));
-  const zeilen = personenZeilen(S.aufgaben, gezeigt, S.board, jetzt);
+  const zeilen = personenZeilen(S.aufgaben, gezeigt, S.board, jetzt, jetzt);
   const G = ['LÄUFT JETZT', 'HEUTE AKTIV', 'HEUTE RUHIG'];
   let html = '';
   for (let g = 0; g < 3; g++) {
@@ -1176,7 +1176,7 @@ function vPersonen() {
       const leiste = d.abschnitte.map(x => { const a = pos(x.von), b = pos(x.bis); return b > a ? `<i class="${x.laeuft ? 'l' : d.person.art === 'agent' ? 'a' : ''}" style="left:${a}%;width:${Math.max(0.5, b - a)}%" title="#${x.nummer}"></i>` : ''; }).join('');
       const gerade = d.laeuft.length ? `<div class="akt">${d.laeuft.map(x => `<div class="z">${vLaufChip({ beginn: laufBeginn(x.a, x.z), eigen: k === S.ich, sekunden: false })}<a href="#" class="id" data-act="oeffnen" data-arg="${x.a.nummer}">#${x.a.nummer}</a><span class="t">${esc(x.a.titel)}</span><button class="btn stop${k === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${x.a.nummer}|${esc(k)}" aria-label="Timer von ${esc(d.person.name)} stoppen">■</button></div>`).join('')}</div>`
         : `<span class="muted">${d.zuletzt ? 'zuletzt ' + (d.zuletzt >= t0 ? new Date(d.zuletzt).toTimeString().slice(0, 5) : datumAusMs(d.zuletzt)) : '—'}</span>`;
-      return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}<span class="jetzt" style="left:${pos(jetzt)}%"></span></div></td><td class="r num heute">${hm(d.heute)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
+      return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}<span class="jetzt" style="left:${pos(jetzt)}%"></span></div></td><td class="r num heute">${hm(d.tag)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
     }).join('');
   }
   const still = alle.filter(p => !p.aktiv).length;

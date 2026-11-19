@@ -25,9 +25,9 @@ test('Gruppen, Summen, offen und begonnen', () => {
     { nummer: 3, zustaendige: ['mi'], zeiten: [], archiviert: null },
     { nummer: 4, zustaendige: ['mi'], zeiten: [], archiviert: '2026-10-01' },
   ];
-  const [st, cl, mi] = personenZeilen(aufgaben, personen, board, jetzt);
+  const [st, cl, mi] = personenZeilen(aufgaben, personen, board, jetzt, jetzt);
   assert.deepStrictEqual([st.gruppe, cl.gruppe, mi.gruppe], [0, 1, 2]);
-  assert.strictEqual(st.heute, 0.5 * H);
+  assert.strictEqual(st.tag, 0.5 * H);
   assert.strictEqual(cl.woche, H);
   assert.deepStrictEqual([st.offen, st.begonnen], [1, 1], '#2 liegt in der Abschlussspalte');
   assert.deepStrictEqual([mi.offen, mi.begonnen], [1, 0], '#4 ist archiviert');

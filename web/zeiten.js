@@ -56,23 +56,41 @@
     return Math.max(0, Math.min(e, bis) - Math.max(b, von));
   }
 
-  /** Je Person: laufende Einträge, Summen heute/Woche, heutige Abschnitte, offene und begonnene Aufgaben, Gruppe. */
-  function personenZeilen(aufgaben, personen, board, jetzt) {
-    const t0 = tagesbeginn(jetzt), w0 = wochenbeginn(jetzt), morgen = t0 + 864e5;
+  /** Je Person für den Tag, in dem `tag` liegt: Summen des Tages und seiner Kalenderwoche, Abschnitte des Tages, laufende
+      Einträge, `zuletzt`, Gruppe, offene und begonnene Aufgaben (R00199). Ein Durchlauf über alle Zeiten, jeder Eintrag wird
+      höchstens zweimal umgewandelt (`umwandeln`, Zählhaken der Lastprobe). Laufende Einträge zählen bis `jetzt`. */
+  function personenZeilen(aufgaben, personen, board, tag, jetzt, umwandeln = zeitMs) {
+    const t0 = tagesbeginn(tag), t1 = tagesende(tag), w0 = wochenbeginn(tag), w1 = wochenende(tag);
+    const istHeute = t0 === tagesbeginn(jetzt);
     const spalten = board ? board.spalten : [];
-    const ort = nr => spalten.findIndex(sp => sp.aufgaben.includes(nr));
-    return personen.map(p => {
-      const eintraege = aufgaben.flatMap(a => a.zeiten.filter(z => z.wer === p.kuerzel).map(z => ({ a, z })));
-      const heute = eintraege.reduce((s, x) => s + anteil(x.z, t0, morgen, jetzt), 0);
-      const woche = eintraege.reduce((s, x) => s + anteil(x.z, w0, morgen, jetzt), 0);
-      const laeuft = eintraege.filter(x => !x.z.ende);
-      const abschnitte = eintraege.filter(x => anteil(x.z, t0, morgen, jetzt) > 0)
-        .map(x => ({ nummer: x.a.nummer, von: Math.max(zeitMs(x.z.beginn), t0), bis: x.z.ende ? Math.min(zeitMs(x.z.ende), morgen) : jetzt, laeuft: !x.z.ende }));
-      const offen = aufgaben.filter(a => !a.archiviert && a.zustaendige.includes(p.kuerzel) && ort(a.nummer) >= 0 && ort(a.nummer) < spalten.length - 1);
-      const begonnen = offen.filter(a => ort(a.nummer) > 0);
-      const zuletzt = Math.max(0, ...eintraege.map(x => x.z.ende ? zeitMs(x.z.ende) : jetzt));
-      return { person: p, laeuft, heute, woche, abschnitte, offen: offen.length, begonnen: begonnen.length, zuletzt, gruppe: laeuft.length ? 0 : heute > 0 ? 1 : 2 };
-    });
+    const ort = new Map(spalten.flatMap((sp, i) => sp.aufgaben.map(nr => [nr, i])));
+    const jePerson = new Map(personen.map(p => [p.kuerzel, { person: p, laeuft: [], tag: 0, woche: 0, abschnitte: [], offen: 0, begonnen: 0, zuletzt: 0 }]));
+    const ueberlappung = (b, e, von, bis) => Math.max(0, Math.min(e, bis) - Math.max(b, von));
+    for (const a of aufgaben) {
+      for (const z of a.zeiten) {
+        const zeile = jePerson.get(z.wer);
+        if (!zeile) continue;
+        const b = umwandeln(z.beginn), e = z.ende ? umwandeln(z.ende) : jetzt;
+        const imTag = ueberlappung(b, e, t0, t1);
+        zeile.tag += imTag;
+        zeile.woche += ueberlappung(b, e, w0, w1);
+        if (imTag > 0) zeile.abschnitte.push({ nummer: a.nummer, von: Math.max(b, t0), bis: Math.min(e, t1), laeuft: !z.ende });
+        if (!z.ende) zeile.laeuft.push({ a, z });
+        const zaehltAlsZuletzt = istHeute || (z.ende && e >= t0 && e < t1);
+        if (zaehltAlsZuletzt) zeile.zuletzt = Math.max(zeile.zuletzt, e);
+      }
+      const spalte = ort.has(a.nummer) ? ort.get(a.nummer) : -1;
+      const offen = !a.archiviert && spalte >= 0 && spalte < spalten.length - 1;
+      if (!offen) continue;
+      for (const k of a.zustaendige) {
+        const zeile = jePerson.get(k);
+        if (!zeile) continue;
+        zeile.offen++;
+        if (spalte > 0) zeile.begonnen++;
+      }
+    }
+    const gruppe = zeile => (istHeute && zeile.laeuft.length ? 0 : zeile.tag > 0 ? 1 : 2);
+    return [...jePerson.values()].map(zeile => ({ ...zeile, gruppe: gruppe(zeile) }));
   }
 
   /** Stundenzettel einer Person: Zeilen je Aufgabe mit Zeit in der Woche, je Tag (Mo–So) in ms. */
