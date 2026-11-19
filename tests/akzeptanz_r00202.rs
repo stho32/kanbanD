@@ -62,6 +62,8 @@ struct Fabrik {
 struct Wie {
     standardanwendung: bool,
     commits_an_1: Vec<String>,
+    /// Die Instanz startet mit `GIT_CONFIG_COUNT/KEY/VALUE` auf `core.fsmonitor` — ein Skript, das eine Marke schreibt.
+    fsmonitor_der_umgebung: bool,
 }
 
 impl Fabrik {
@@ -90,9 +92,20 @@ impl Fabrik {
         git(&board, &["add", "-A"]);
         git(&board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Fabrik"]);
         let spur = ordner.path().join("spur");
-        let lauf = gemeinsam::starten_mit(&board, &["--port", "0"], &[("GIT_TRACE", spur.to_str().unwrap())]);
+        let skript = ordner.path().join("fsmonitor.sh");
+        std::fs::write(&skript, format!("#!/bin/sh\necho \"$PWD $@\" >> {}\n", ordner.path().join("marke").display())).unwrap();
+        std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        let mut umgebung = vec![("GIT_TRACE", spur.to_str().unwrap())];
+        if wie.fsmonitor_der_umgebung {
+            umgebung.extend([("GIT_CONFIG_COUNT", "1"), ("GIT_CONFIG_KEY_0", "core.fsmonitor"), ("GIT_CONFIG_VALUE_0", skript.to_str().unwrap())]);
+        }
+        let lauf = gemeinsam::starten_mit(&board, &["--port", "0"], &umgebung);
         let api = Api { adresse: lauf.adresse.clone() };
         Fabrik { repo, _ordner: ordner, board, spur, api, _lauf: lauf }
+    }
+
+    fn marke(&self) -> Option<String> {
+        std::fs::read_to_string(self._ordner.path().join("marke")).ok()
     }
 
     fn k1(&self) -> String {
@@ -374,6 +387,20 @@ async fn muss1_obergrenze_und_entdoppeln_vor_git() {
         abweichungen.push(format!("500 verschiedene gültige: Status {}, {} Git-Aufrufe: {}", a.status, g.git_im_arbeits_repository(), a.rumpf));
     }
     bestanden(abweichungen);
+}
+
+// Sicherheits-Befund Sollte 1 (Karte #207): eine Konfiguration über die Umgebung der Instanz (`GIT_CONFIG_COUNT` …) führt
+// beim Hinterlegen im Arbeits-Repository nichts aus — gleich, welcher Verweis
+#[tokio::test]
+async fn sollte1_umgebungskonfiguration_fuehrt_im_arbeits_repository_nichts_aus() {
+    let f = Fabrik::mit(Wie { fsmonitor_der_umgebung: true, ..Wie::default() }).await;
+    let a = f.hinterlegt(ENTWICKLER, &[&format!("kd:{}", &f.k1()[..7])]).await;
+    assert_eq!(a.status, 200, "{}", a.rumpf);
+    assert_eq!(f.git_im_arbeits_repository(), 2, "Gegenprobe: Git lief im Arbeits-Repository");
+    // Der Fsmonitor läuft im Arbeitsbaum, dessen Git er prüft: im Arbeits-Repository R darf keine Marke entstehen (das
+    // Board-Repository selbst führt kanbanD mit der Umgebung des Betreibers, sie gilt dort als vertraut)
+    let marke = f.marke().unwrap_or_default();
+    assert!(!marke.contains(f.repo.r.to_str().unwrap()), "ein Skript der Umgebung lief im Arbeits-Repository:\n{marke}");
 }
 
 // US-6 · AK 8: entfernen über Kurz- und vollen Hash, unbekannt 404, Form 400, mehrdeutig an der Karte 400, ohne Repository
