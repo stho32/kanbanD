@@ -1124,3 +1124,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - Eigener Fehler des Directors: Kommentare mit `kommentar --text` tragen „--text“ wörtlich am Anfang (#207, #211, #219). Kommentare gehen nur noch über `--datei`.
 | 2026-11-19 | #212 | Detailplanung | gestalter | bestanden | 14 min | D0009 Artboard B1/B2/B3, hell/dunkel, 1280/414/320; 9 Entscheidungen zur Freigabe · claude · sonnet · Lauf 212-gestalter-1 · 3,01 $ · Karte gesamt 3,01 $ |
 | 2026-11-19 | #212 | Detailplanung | product-owner | bestanden | 1 min | D0009 frei wie gezeichnet, Punkte 1–8 entschieden · claude · opus · Lauf 212-product-owner-1 · 0,29 $ · Karte gesamt 3,30 $ |
+| 2026-11-19 | #212 | Detailplanung | planer | bestanden | 7 min | R00205 mit 7 US, 10 AK; I0195 mit B1004–B1009 · claude · opus · Lauf 212-planer-1 · 1,60 $ · Karte gesamt 4,90 $ |
+| 2026-11-19 | #212 | Detailplanung | product-owner | bestanden | 1 min | 4 Fragen zu R00205; kein Hinweis 'Verweise geändert' in B1 · claude · opus · Lauf 212-product-owner-2 · 0,19 $ · Karte gesamt 5,09 $ |
