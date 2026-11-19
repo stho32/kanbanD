@@ -1026,3 +1026,8 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - Folgekarte: #205 (Kopf bei 320 px, dazu Kontrast der Skalenmarken), braucht:204, jetzt frei.
 | 2026-11-19 | #205 | Architektur | architekt | bestanden | 7 min | keine ADR; Punkt 1 reproduziert (Muss), Punkt 2 nur Artboard, Punkt 3 Sollte · claude · opus · Lauf 205-architekt-1 · 1,66 $ · Karte gesamt 1,66 $ |
 | 2026-11-19 | #205 | Architektur | product-owner | bestanden | 2 min | Zuschnitt P1+P3, Leerform .pk-0 frei, kurze Beschriftungen, keine Zeichnung · claude · opus · Lauf 205-product-owner-1 · 0,70 $ · Karte gesamt 2,36 $ |
+| 2026-11-19 | #205 | Detailplanung | planer | bestanden | 3 min | R00200, I0190 B0982–B0984, 166afb22 · claude · opus · Lauf 205-planer-1 · 1,13 $ · Karte gesamt 3,49 $ |
+| 2026-11-19 | #205 | Detailplanung | gestalter | bestanden | 1 min | D0005 .skala auf --kd-muted, 3030cda8 · claude · sonnet · Lauf 205-gestalter-1 · 0,42 $ · Karte gesamt 3,91 $ |
+| 2026-11-19 | #205 | Detailplanung | ux-reviewer | befund | 2 min | Muss AK 6 Probe erkennt Umbruch auf Touch nicht · claude · sonnet · Lauf 205-ux-reviewer-1 · 0,72 $ · Karte gesamt 4,63 $ |
+| 2026-11-19 | #205 | Detailplanung | planer | bestanden | 1 min | UX-Befunde in R00200, 61df827f · claude · opus · Lauf 205-planer-2 |
+| 2026-11-19 | #205 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: Muss AK 6 und Sollte erledigt · claude · sonnet · Lauf 205-ux-reviewer-2 |
