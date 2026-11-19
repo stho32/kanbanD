@@ -90,7 +90,7 @@ impl Fabrik {
         .unwrap();
         let commits = match (&wie.datei_commits, wie.commits_kein_text) {
             (_, true) => "commits: von Hand\n".to_string(),
-            (Some(liste), _) => format!("commits:\n{}", liste.iter().map(|c| format!("  - {}\n", c.replace("{K1}", &r.basis.k1).replace("{K3}", &r.k3))).collect::<String>()),
+            (Some(liste), _) => format!("commits:\n{}", liste.iter().map(|c| format!("  - {}\n", als_yaml_text(&c.replace("{K1}", &r.basis.k1).replace("{K3}", &r.k3)))).collect::<String>()),
             _ => String::new(),
         };
         std::fs::write(board.join("aufgaben/0001-verweise-ersetzen.md"), format!("---\nid: 1\ntitle: Verweise ersetzen\n{commits}---\n")).unwrap();
@@ -163,6 +163,11 @@ impl Fabrik {
         std::fs::read_to_string(&self.spur).unwrap_or_default()
     }
 
+    /// Die Spur ab dem Stand `ab` (Länge der Spur zu einem früheren Zeitpunkt) — was seither dazukam.
+    fn spur_seit(&self, ab: usize) -> String {
+        self.spur().get(ab..).unwrap_or_default().to_string()
+    }
+
     /// Git-Aufrufe im Arbeits-Repository erkennt die Spur an den Befehlen des Moduls.
     fn git_im_arbeits_repository(&self) -> usize {
         self.spur().lines().filter(|z| z.contains("rev-parse --show-toplevel") || z.contains("--end-of-options")).count()
@@ -198,6 +203,11 @@ fn bestanden(abweichungen: Vec<String>) {
     assert!(abweichungen.is_empty(), "{} Abweichungen:\n{}", abweichungen.len(), abweichungen.join("\n"));
 }
 
+/// Ein Hash aus lauter Ziffern steht in der Datei in Anführungszeichen, sonst läse YAML ihn als Zahl (Lehre #142).
+fn als_yaml_text(eintrag: &str) -> String {
+    if eintrag.bytes().all(|b| b.is_ascii_digit()) { format!("'{eintrag}'") } else { eintrag.to_string() }
+}
+
 fn kd(hash: &str) -> String {
     format!("kd:{hash}")
 }
@@ -211,7 +221,6 @@ fn kd7(hash: &str) -> String {
 // US-2 · AK 1 · Abnahme-Probe der Karte #219: zwei Paare in einem Aufruf → genau ein Commit, die neuen Hashes auf den
 // Plätzen der alten (Platz 2 unberührt), volle Hashes, Autor der Agent, sonst ändert sich in der Datei nichts
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us2_ak1_zwei_paare_ein_commit_plaetze_bleiben() {
     let f = Fabrik::oeffnen().await;
     let (k1, w1, k2, k3, k4) = (f.k1(), f.w1(), f.k2(), f.k3(), f.k4());
@@ -229,7 +238,6 @@ async fn us2_ak1_zwei_paare_ein_commit_plaetze_bleiben() {
 
 // US-1 · AK 2: nach einem echten `git rebase main` im Worktree ersetzt der Aufruf W1 durch W1' an Platz 2
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us1_ak2_nach_einem_echten_rebase() {
     let f = Fabrik::oeffnen().await;
     let (k1, w1, k2) = (f.k1(), f.w1(), f.k2());
@@ -247,7 +255,6 @@ async fn us1_ak2_nach_einem_echten_rebase() {
 
 // AK 3: ohne Kürzel gilt die Standardanwendung — die Zeile bleibt ohne Kürzel; ein anderes Kürzel ist 400
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn ak3_standardanwendung() {
     let f = Fabrik::mit(Wie { standardanwendung: true, ..Wie::default() }).await;
     let (k1, k2, k3) = (f.k1(), f.k2(), f.k3());
@@ -267,7 +274,6 @@ async fn ak3_standardanwendung() {
 // US-3 · AK 4: Wiederholung ist 200 ohne Commit; ein erledigtes Paar neben einem neuen schreibt nur das neue; nach dem
 // Umbenennen von R bleibt die Wiederholung 200, ein neues `neu` nennt das fehlende Repository
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us3_ak4_wiederholung_aendert_nichts() {
     let f = Fabrik::oeffnen().await;
     let (k1, w1, k2, k3, k4) = (f.k1(), f.w1(), f.k2(), f.k3(), f.k4());
@@ -299,7 +305,6 @@ async fn us3_ak4_wiederholung_aendert_nichts() {
 
 // AK 6: Rumpf und Form — nichts geschrieben, auch die guten Paare daneben nicht
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn ak6_rumpf_und_form() {
     let f = Fabrik::oeffnen().await;
     let (k1, k3, k4) = (f.k1(), f.k3(), f.k4());
@@ -349,7 +354,6 @@ async fn ak6_rumpf_und_form() {
 
 // AK 7: doppelt, Kette, Zahl — 400, `verweis` ist der zweite Auftritt; 501 Paare erreichen Git nie
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn ak7_doppelt_kette_zahl() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2, k3, k4) = (f.k1(), f.k2(), f.k3(), f.k4());
@@ -382,7 +386,6 @@ async fn ak7_doppelt_kette_zahl() {
 // AK 8: 404 (weder alt noch neu an der Karte), 409 (beide da, `verweis` ist das alt), ein 404-Paar verhindert auch das
 // gute; ein Formfehler neben einem 404-Paar ist 400; Git läuft nicht, wenn die Karte schon abweist
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn ak8_karte_404_und_409() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2, k3, k4) = (f.k1(), f.k2(), f.k3(), f.k4());
@@ -408,12 +411,12 @@ async fn ak8_karte_404_und_409() {
 
 // US-5 · AK 9: Eingaben, die Git nie erreichen — als alt und als neu, die Spur enthält keinen der Texte
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us5_ak9_angriff_ueber_den_verweis_erreicht_git_nicht() {
     let f = Fabrik::oeffnen().await;
     let (k1, k3, k4, w1) = (f.k1(), f.k3(), f.k4(), f.w1());
     let boese = ["kd:--output=x", "kd:../x", "kd:3f2a9c1;rm -rf x", "kd:3f2a9c1 --all", "kd:3f2a 9c1", "kd:$(touch x)", "kd:3f2a9c1^{tree}"];
     let r_vorher = f.r.basis.stand();
+    let (spur_ab, git_vorher) = (f.spur().len(), f.git_im_arbeits_repository());
     let mut abweichungen = vec![];
     for text in boese {
         for (alt, neu) in [(text.to_string(), kd(&k3)), (kd(&k1), text.to_string())] {
@@ -426,8 +429,8 @@ async fn us5_ak9_angriff_ueber_den_verweis_erreicht_git_nicht() {
     bestanden(abweichungen);
     assert!(!f.r.basis.r.join("x").exists() && !f.board.join("x").exists(), "Datei x angelegt");
     assert_eq!(f.r.basis.stand(), r_vorher, "R verändert");
-    assert_eq!(f.git_im_arbeits_repository(), 0, "Git im Arbeits-Repository gestartet:\n{}", f.spur());
-    let spur = f.spur();
+    assert_eq!(f.git_im_arbeits_repository(), git_vorher, "Git im Arbeits-Repository gestartet:\n{}", f.spur_seit(spur_ab));
+    let spur = f.spur_seit(spur_ab);
     for text in boese {
         let rest = text.trim_start_matches("kd:");
         assert!(!spur.contains(rest), "{rest:?} in der Spur:\n{spur}");
@@ -437,7 +440,6 @@ async fn us5_ak9_angriff_ueber_den_verweis_erreicht_git_nicht() {
 // US-6 · AK 10: verwaiste und aus R gelöschte Verweise lassen sich ersetzen, `alt` erreicht Git nie; unlesbare und
 // Ziffern-Einträge bleiben wörtlich stehen
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us6_ak10_verwaiste_und_geloeschte_verweise_nachziehen() {
     let f = Fabrik::mit(Wie::default()).await;
     let (v1, k3, k4) = (f.v1(), f.k3(), f.k4());
@@ -445,14 +447,14 @@ async fn us6_ak10_verwaiste_und_geloeschte_verweise_nachziehen() {
     assert_eq!(f.api.hinterlegen(AGENT, 1, &[&kd(&v1), &kd(&v2)]).await.status, 200);
     f.r.aufraeumen();
     assert!(!git(&f.r.basis.r, &["cat-file", "-t", &v2]).contains("commit"), "V2 ist aus R entfernt");
-    let (n, gezaehlt) = (f.commit_zahl(), f.git_im_arbeits_repository());
+    let (n, gezaehlt, spur_ab) = (f.commit_zahl(), f.git_im_arbeits_repository(), f.spur().len());
 
     let a = f.ersetzt(vec![Fabrik::paar(&kd(&v1), &kd7(&k3)), Fabrik::paar(&kd(&v2), &kd7(&k4))]).await;
 
     assert_eq!(a.status, 200, "{}", a.rumpf);
     assert_eq!(f.commits_an(1).await, json!([kd(&k3), kd(&k4)]), "neue Hashes auf den Plätzen der alten");
     assert_eq!(f.commit_zahl(), n + 1);
-    let spur = f.spur();
+    let spur = f.spur_seit(spur_ab);
     assert!(!spur.contains(&v1) && !spur.contains(&v2), "alt erreichte Git:\n{spur}");
     assert_eq!(f.git_im_arbeits_repository(), gezaehlt + 3, "Wurzel einmal, je neu ein rev-parse:\n{spur}");
 }
@@ -460,7 +462,6 @@ async fn us6_ak10_verwaiste_und_geloeschte_verweise_nachziehen() {
 // US-6 · AK 12 a, c, d: Bestand bleibt verlustfrei, ein unlesbarer Eintrag lässt sich nicht ersetzen, eine Datei mit
 // `commits` ohne Liste von Texten wird nicht angefasst, Duplizieren trägt keine Verweise
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn us6_ak12_datei_legacy_und_duplizieren() {
     let ziffern = "1234567890123456789012345678901234567890";
     let f = Fabrik::mit(Wie { datei_commits: Some(vec!["kd:{K1}", "kd:zz", ziffern]), ..Wie::default() }).await;
@@ -513,7 +514,6 @@ async fn ak12b_vorversion_behaelt_die_datei() {
 // AK 13: Endpunktliste, OpenAPI und /api nennen die Route mit Rumpf, Statuscodes und dem Satz zur Wiederholung; die README
 // hat das Beispiel „nach einem Rebase nachziehen“ mit einem Agenten-Kürzel von höchstens 8 Zeichen
 #[tokio::test]
-#[ignore = "erwartet rot: R00203 B0994–B0996 noch nicht gebaut"]
 async fn ak13_beschreibung_nennt_die_route() {
     let f = Fabrik::oeffnen().await;
     let adresse = &f.api.adresse;

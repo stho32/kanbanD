@@ -131,6 +131,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
         .routes(routes!(commits_hinterlegen))
+        .routes(routes!(commits_ersetzen))
         .routes(routes!(commit_entfernen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
         .routes(routes!(openapi_json))
@@ -1193,6 +1194,19 @@ async fn commits_hinterlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pf
 }
 
 #[utoipa::path(
+    post,
+    path = "/api/aufgaben/{nr}/commits/ersetzen",
+    tag = "Aufgaben",
+    description = endpunkte::COMMITS_ERSETZEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Ersetzungsangaben,
+    responses((status = 200, description = "Erfolg — auch die Wiederholung, dann ohne Commit", body = crate::modell::Aufgabe), (status = 400, description = "Rumpf, Form, Kürzel, doppelt, Kette, mehr als 500 Paare, mehrdeutiger Präfix, Repository oder Commit von neu falsch — ist ein Verweis der Grund, trägt der Rumpf dazu verweis (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden, oder alt und neu stehen nicht an der Aufgabe (mit verweis)", body = crate::web::openapi::Verweisfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "alt und neu stehen beide an der Aufgabe (verweis ist das alt), oder commits in der Datei ist keine Liste von Texten", body = crate::web::openapi::Verweisfehler), (status = 503, description = "Git im Arbeits-Repository über der Zeitgrenze, nichts geschrieben", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn commits_ersetzen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, JsonKoerper(rumpf): JsonKoerper<serde_json::Value>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.commits_ersetzen(p, nr, &rumpf)).await
+}
+
+#[utoipa::path(
     delete,
     path = "/api/aufgaben/{nr}/commits/{verweis}",
     tag = "Aufgaben",
@@ -1798,6 +1812,8 @@ mod tests {
         assert_eq!((status, rumpf.as_str()), (StatusCode::BAD_REQUEST, r#"{"fehler":"m","verweis":"kd:main"}"#));
         let (status, rumpf) = antwort(Fehler::Verweis { meldung: "m".into(), verweis: "kd:0000000".into(), fehlt: true }).await;
         assert_eq!((status, rumpf.as_str()), (StatusCode::NOT_FOUND, r#"{"fehler":"m","verweis":"kd:0000000"}"#));
+        let (status, rumpf) = antwort(Fehler::VerweisKonflikt { meldung: "m".into(), verweis: "kd:3f2a9c1".into() }).await;
+        assert_eq!((status, rumpf.as_str()), (StatusCode::CONFLICT, r#"{"fehler":"m","verweis":"kd:3f2a9c1"}"#), "R00203: 409 trägt das alt");
         let (status, rumpf) = antwort(Fehler::Zeitgrenze("z".into())).await;
         assert_eq!((status, rumpf.as_str()), (StatusCode::SERVICE_UNAVAILABLE, r#"{"fehler":"z"}"#));
     }

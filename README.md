@@ -119,6 +119,19 @@ curl -X POST http://localhost:7420/api/aufgaben/42/commits -H 'X-KanbanD-Wer: en
 - Entfernen: `DELETE /api/aufgaben/42/commits/kd:3f2a9c1` (voller Hash oder an der Karte eindeutiger Präfix) — auch wenn das Repository fehlt.
 - `GET /api/aufgaben/42` liefert die gespeicherten Verweise unter `commits`; angezeigt werden sie noch nicht.
 
+Beispiel „nach einem Rebase nachziehen“: Hat `git rebase` die Commits des Kartenzweigs neu gehasht, nennt der Agent Paare alt → neu und ersetzt alle Verweise mit einem Aufruf und einem Commit (`alt` aus der Liste vor, `neu` aus der Liste nach dem Rebase):
+
+```bash
+curl -X POST http://localhost:7420/api/aufgaben/42/commits/ersetzen -H 'X-KanbanD-Wer: entw1' \
+     -H 'Content-Type: application/json' \
+     -d '{"ersetzungen": [{"alt": "kd:3f2a9c1", "neu": "kd:8e20ad9"}, {"alt": "kd:9c6b91f", "neu": "kd:1d4c7e2"}]}'
+```
+
+- Der neue Verweis steht an der Stelle des alten und trägt dasselbe Kürzel; alle anderen Verweise behalten Platz und Wortlaut. 1 bis 500 Paare, ein Verweis höchstens einmal (auch nicht als Kette oder Tausch).
+- `neu` wird geprüft wie beim Hinterlegen, `alt` nur gegen die Karte, nie im Arbeits-Repository — auch ein verschwundener Commit lässt sich ersetzen.
+- Alles oder nichts, und wiederholbar: ein Paar, dessen `alt` nicht mehr und dessen `neu` schon an der Karte steht, gilt als erledigt; bleibt keines übrig, ist die Antwort 200 ohne Commit.
+- Fehler `{fehler, verweis}`: 400 (Rumpf, Form, Kürzel, doppelt, Kette, mehrdeutiger Präfix, `neu` unbekannt), 404 (`alt` und `neu` stehen nicht an der Karte), 409 (beide stehen dort; `verweis` ist das `alt`, das sich mit `DELETE` entfernen lässt), 503 (Git über 10 s).
+
 ## Tests
 
 ```bash
