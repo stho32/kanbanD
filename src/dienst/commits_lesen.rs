@@ -25,29 +25,29 @@ impl Kanban {
         let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
         let anwendungen = Anwendungen::aus(&quellen);
         let mut eintraege: Vec<Option<Commiteintrag>> = vec![None; aufgabe.commits.len()];
-        let mut je_anwendung: Vec<(&Anwendung, Vec<(usize, &str, String)>)> = vec![];
-        for (i, text) in aufgabe.commits.iter().enumerate() {
+        let mut je_anwendung: Vec<(&Anwendung, Vec<Verweis>)> = vec![];
+        for (stelle, text) in aufgabe.commits.iter().enumerate() {
             match einordnen(text, &anwendungen) {
-                Err(e) => eintraege[i] = Some(e),
-                Ok(g) => match je_anwendung.iter_mut().find(|(a, _)| a.kuerzel == g.anwendung.kuerzel) {
-                    Some((_, liste)) => liste.push((i, text, g.hash)),
-                    None => je_anwendung.push((g.anwendung, vec![(i, text, g.hash)])),
-                },
-            }
-        }
-        let mut je_wurzel: Vec<(PathBuf, Vec<(usize, &str, &str, String)>)> = vec![];
-        for (anwendung, verweise) in je_anwendung {
-            match arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist) {
-                Ok(w) => {
-                    let liste = verweise.into_iter().map(|(i, t, h)| (i, t, anwendung.kuerzel.as_str(), h));
-                    match je_wurzel.iter_mut().find(|(x, _)| *x == w) {
-                        Some((_, l)) => l.extend(liste),
-                        None => je_wurzel.push((w, liste.collect())),
+                Err(e) => eintraege[stelle] = Some(*e),
+                Ok(g) => {
+                    let v = Verweis { stelle, text, kuerzel: &g.anwendung.kuerzel, hash: g.hash };
+                    match je_anwendung.iter_mut().find(|(a, _)| a.kuerzel == g.anwendung.kuerzel) {
+                        Some((_, liste)) => liste.push(v),
+                        None => je_anwendung.push((g.anwendung, vec![v])),
                     }
                 }
+            }
+        }
+        let mut je_wurzel: Vec<(PathBuf, Vec<Verweis>)> = vec![];
+        for (anwendung, verweise) in je_anwendung {
+            match arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist) {
+                Ok(w) => match je_wurzel.iter_mut().find(|(x, _)| *x == w) {
+                    Some((_, l)) => l.extend(verweise),
+                    None => je_wurzel.push((w, verweise)),
+                },
                 Err(f) => {
-                    for (i, t, h) in verweise {
-                        eintraege[i] = Some(repository_fehlt(t, &anwendung.kuerzel, &h, f.clone())?);
+                    for v in verweise {
+                        eintraege[v.stelle] = Some(repository_fehlt(&v, f.clone())?);
                     }
                 }
             }
@@ -56,8 +56,8 @@ impl Kanban {
             match self.repository_lesen(&wurzel, &verweise, frist) {
                 Ok(gelesen) => gelesen.into_iter().for_each(|(i, e)| eintraege[i] = Some(e)),
                 Err(f @ Arbeitsrepofehler::RepositoryFehlt(_)) => {
-                    for (i, t, k, h) in &verweise {
-                        eintraege[*i] = Some(repository_fehlt(t, k, h, f.clone())?);
+                    for v in &verweise {
+                        eintraege[v.stelle] = Some(repository_fehlt(v, f.clone())?);
                     }
                 }
                 Err(f) => return Err(abbruch(f)),
@@ -68,8 +68,8 @@ impl Kanban {
 
     /// Alle Verweise eines Repositorys: Objekte, Metadaten, Fingerabdruck, Zweigliste für Commits ohne Cache-Treffer,
     /// am Ende die zweite Fingerabdruck-Probe und die Ablage (ADR-0032 N1.3, N3.2, N3.4).
-    fn repository_lesen(&self, wurzel: &Path, verweise: &[(usize, &str, &str, String)], frist: Instant) -> Result<Vec<(usize, Commiteintrag)>, Arbeitsrepofehler> {
-        let mut namen: Vec<&str> = verweise.iter().map(|(_, _, _, h)| h.as_str()).collect();
+    fn repository_lesen(&self, wurzel: &Path, verweise: &[Verweis], frist: Instant) -> Result<Vec<(usize, Commiteintrag)>, Arbeitsrepofehler> {
+        let mut namen: Vec<&str> = verweise.iter().map(|v| v.hash.as_str()).collect();
         namen.sort();
         namen.dedup();
         let objekte: HashMap<&str, Objekt> = namen.iter().copied().zip(arbeitsrepo::objekte_pruefen(wurzel, &namen, frist)?).collect();
@@ -77,7 +77,7 @@ impl Kanban {
         commits.sort();
         commits.dedup();
         let (metadaten, zweige) = if commits.is_empty() { (HashMap::new(), HashMap::new()) } else { (arbeitsrepo::metadaten(wurzel, &commits, frist)?, self.zweige(wurzel, &commits, frist)?) };
-        verweise.iter().map(|(i, text, kuerzel, hash)| Ok((*i, eintrag(text, kuerzel, hash, &objekte[hash.as_str()], &metadaten, &zweige)?))).collect()
+        verweise.iter().map(|v| Ok((v.stelle, eintrag(v, &objekte[v.hash.as_str()], &metadaten, &zweige)?))).collect()
     }
 
     /// Die Zweige je Commit: aus dem Cache unter dem Fingerabdruck, sonst ein Lauf Z5 für die übrigen; abgelegt wird nach
@@ -120,18 +120,18 @@ fn abbruch(f: Arbeitsrepofehler) -> Fehler {
 }
 
 /// Ein Verweis eines Repositorys, das fehlt oder das Git verweigert; Zeitgrenze und Co. brechen die Anfrage ab.
-fn repository_fehlt(text: &str, kuerzel: &str, hash: &str, f: Arbeitsrepofehler) -> Result<Commiteintrag, Fehler> {
+fn repository_fehlt(v: &Verweis, f: Arbeitsrepofehler) -> Result<Commiteintrag, Fehler> {
     match f {
-        Arbeitsrepofehler::RepositoryFehlt(grund) => Ok(Commiteintrag { anwendung: Some(kuerzel.into()), hash: Some(hash.into()), grund: Some(grund), ..Commiteintrag::neu(text, Commitzustand::RepositoryFehlt) }),
+        Arbeitsrepofehler::RepositoryFehlt(grund) => Ok(Commiteintrag { anwendung: Some(v.kuerzel.into()), hash: Some(v.hash.clone()), grund: Some(grund), ..Commiteintrag::neu(v.text, Commitzustand::RepositoryFehlt) }),
         anders => Err(abbruch(anders)),
     }
 }
 
 /// Der Eintrag eines Verweises, dessen Repository gelesen ist.
-fn eintrag(text: &str, kuerzel: &str, hash: &str, objekt: &Objekt, metadaten: &HashMap<String, Metadaten>, zweige: &HashMap<String, Zweige>) -> Result<Commiteintrag, Arbeitsrepofehler> {
-    let basis = |zustand| Commiteintrag { anwendung: Some(kuerzel.into()), hash: Some(hash.into()), ..Commiteintrag::neu(text, zustand) };
+fn eintrag(v: &Verweis, objekt: &Objekt, metadaten: &HashMap<String, Metadaten>, zweige: &HashMap<String, Zweige>) -> Result<Commiteintrag, Arbeitsrepofehler> {
+    let basis = |zustand| Commiteintrag { anwendung: Some(v.kuerzel.into()), hash: Some(v.hash.clone()), ..Commiteintrag::neu(v.text, zustand) };
     let unlesbar = |grund: String| Commiteintrag { grund: Some(grund), ..basis(Commitzustand::Unlesbar) };
-    let wert = crate::nachricht::wert(hash);
+    let wert = crate::nachricht::wert(&v.hash);
     Ok(match objekt {
         Objekt::Fehlt => basis(Commitzustand::Fehlt),
         Objekt::Mehrdeutig => unlesbar(format!("Kurz-Hash „{wert}“ passt zu mehreren Objekten — längeren Hash nennen")),
@@ -162,6 +162,15 @@ fn sortiert(mut eintraege: Vec<Commiteintrag>) -> Vec<Commiteintrag> {
     eintraege
 }
 
+/// Ein Verweis der Datei, der Git erreichen darf: seine Stelle in der Datei, der Text wörtlich, Kürzel und Hash.
+#[derive(Debug, Clone)]
+struct Verweis<'a> {
+    stelle: usize,
+    text: &'a str,
+    kuerzel: &'a str,
+    hash: String,
+}
+
 /// Ein Verweis, der Git erreichen darf: Form gültig, Anwendung registriert.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Gelesen<'a> {
@@ -171,11 +180,11 @@ struct Gelesen<'a> {
 
 /// Ohne Git: Form, dann Register (ADR-0032 N1.2, Reihenfolge `unlesbar`, `anwendung_unbekannt`). Ein Eintrag, der hier
 /// scheitert, erreicht Git nie.
-fn einordnen<'a>(text: &str, anwendungen: &'a Anwendungen) -> Result<Gelesen<'a>, Commiteintrag> {
+fn einordnen<'a>(text: &str, anwendungen: &'a Anwendungen) -> Result<Gelesen<'a>, Box<Commiteintrag>> {
     let form = Verweisform::lesen(text).map_err(|f| Commiteintrag { grund: Some(f.meldung), ..Commiteintrag::neu(text, Commitzustand::Unlesbar) })?;
     match verweis_lesen(text, anwendungen) {
         Ok((anwendung, hash)) => Ok(Gelesen { anwendung, hash }),
-        Err(_) => Err(Commiteintrag { anwendung: Some(form.kuerzel.unwrap_or_default()), hash: Some(form.hash), ..Commiteintrag::neu(text, Commitzustand::AnwendungUnbekannt) }),
+        Err(_) => Err(Box::new(Commiteintrag { anwendung: Some(form.kuerzel.unwrap_or_default()), hash: Some(form.hash), ..Commiteintrag::neu(text, Commitzustand::AnwendungUnbekannt) })),
     }
 }
 
@@ -344,7 +353,7 @@ mod tests {
     fn form_verletzt_ist_unlesbar() {
         let r = register(true);
         for text in ["kd:--output=x", "kd:../x", "kd:3f2a9c1;rm -rf x", "kd:3f2a9c1 --all", "kd:3f2a 9c1", "kd:$(touch x)", &format!("kd:{K1}^{{tree}}"), &format!("kd:{K1} "), &format!("kd:{K1}\n{K1}"), &format!("kd:{K1}\u{0}"), "xy:--x", ""] {
-            let e = einordnen(text, &r).unwrap_err();
+            let e = *einordnen(text, &r).unwrap_err();
             assert_eq!((e.verweis.as_str(), e.zustand), (text, Commitzustand::Unlesbar), "{text:?}");
             assert!(e.grund.as_deref().is_some_and(|g| !g.is_empty()), "{text:?}");
             assert_eq!((e.anwendung, e.hash), (None, None), "{text:?}");
@@ -354,9 +363,9 @@ mod tests {
     // R00204 AK 4: nicht registriertes Kürzel und Verweis ohne Kürzel ohne Standardanwendung → `anwendung_unbekannt`
     #[test]
     fn register_unbekannt() {
-        let e = einordnen(&format!("xy:{K1}"), &register(true)).unwrap_err();
+        let e = *einordnen(&format!("xy:{K1}"), &register(true)).unwrap_err();
         assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Commitzustand::AnwendungUnbekannt, Some("xy"), Some(K1)));
-        let e = einordnen(&K1.to_uppercase(), &register(false)).unwrap_err();
+        let e = *einordnen(&K1.to_uppercase(), &register(false)).unwrap_err();
         assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Commitzustand::AnwendungUnbekannt, Some(""), Some(K1)));
         let (mit, ohne) = (register(true), register(false));
         let g = einordnen(K1, &mit).unwrap();

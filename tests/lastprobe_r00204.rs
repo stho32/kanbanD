@@ -168,8 +168,8 @@ async fn ak10_lastprobe_kalt_ueber_die_api() {
     // je Lauf eine andere Spitze für b29: der Fingerabdruck ist jedes Mal neu, kein Lauf trifft den Cache
     let spitzen: Vec<String> = (1..=20).map(|i| gemeinsam::git(&g.r, &["rev-parse", &format!("main~{i}")])).collect();
     let (mut zeiten, mut lasten, mut aufrufe) = (vec![], vec![], vec![]);
-    for lauf_nr in 0..20 {
-        gemeinsam::git(&g.r, &["update-ref", "refs/heads/b29", &spitzen[lauf_nr]]);
+    for spitze in &spitzen {
+        gemeinsam::git(&g.r, &["update-ref", "refs/heads/b29", spitze]);
         std::fs::write(&spur, "").unwrap();
         lasten.push(last());
         let start = Instant::now();
