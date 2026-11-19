@@ -861,3 +861,4 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1001 Zweigliste Z5 mit flüchtigem Cache | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1002 Route GET …/commits, Gesamtgrenze, Beschreibung, Akzeptanztests | Standard | 1-2h | 0,7h | 0,7h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1003 Lastprobe, Legacy-Probe, Mutanten, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,9h | 0,9h | autonom |
+| 2026-11-20 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | Nacharbeit 1: Muss B1, Security Muss 1–3, zwei Sollte, Abnahmen, Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
