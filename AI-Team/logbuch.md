@@ -1077,3 +1077,26 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #207 | Auto-Reviews | architektur-reviewer | bestanden | 2 min | kein Muss; S1/S2 ADR-0032 N2 nötig, S3 A00007-Drift; O1–O3 für die Diff-Scheibe · claude · sonnet · Lauf 207-architektur-reviewer-1 · 0,44 $ · Karte gesamt 25,15 $ |
 | 2026-11-19 | #219 | Detailplanung | planer | bestanden | 4 min | R00203 mit 6 US, 13 AK; I0193 mit B0994–B0997 unter D0009 · claude · opus · Lauf 219-planer-1 · 0,86 $ · Karte gesamt 0,86 $ |
 | 2026-11-19 | #219 | Detailplanung | product-owner | bestanden | 0 min | beide Empfehlungen des planers bestätigt, R00203 bleibt · claude · opus · Lauf 219-product-owner-1 · 0,19 $ · Karte gesamt 1,05 $ |
+| 2026-11-19 | #207 | Auto-Reviews | code-reviewer | bestanden | 10 min | kein Muss; Sollte: Höchstzahl vor Git prüfen · claude · sonnet · Lauf 207-code-reviewer-1 · 0,76 $ · Karte gesamt 25,91 $ |
+| 2026-11-19 | #207 | Auto-Reviews | security-reviewer | befund | 11 min | Muss 1: keine Höchstzahl/Entdoppeln vor Git (Verfügbarkeit) · claude · sonnet · Lauf 207-security-reviewer-1 · 0,78 $ · Karte gesamt 26,69 $ |
+| 2026-11-19 | #207 | Auto-Reviews | legacy-reviewer | bestanden | 11 min | Altbestand 595/595 zeichengleich; Sollte: Vorversion macht genau einen Eintrag defekt (bestätigt, kein Datenverlust) · claude · sonnet · Lauf 207-legacy-reviewer-1 · 0,56 $ · Karte gesamt 27,25 $ |
+| 2026-11-19 | #207 | Nacharbeit | entwickler | bestanden | 45 min | Nacharbeit 1: Muss 1 behoben (0 Git-Aufrufe bei 501/5000), Leser heilt k: - x, Git-Umgebung gehärtet; cargo 904, node 1247, Playwright 1966/0 · claude · Lauf 207-entwickler-2 · 1,90 $ · Karte gesamt 29,15 $ |
+| 2026-11-19 | #207 | Auto-Reviews | architekt | bestanden | 2 min | ADR-0032 N2, neuer Baustein A00011 Arbeits-Repository (lesend) · claude · opus · Lauf 207-architekt-3 · 0,35 $ · Karte gesamt 29,50 $ |
+| 2026-11-19 | #207 | Auto-Reviews | security-reviewer | bestanden | 3 min | Muss 1 behoben, 0 Git-Aufrufe bei 501/5000; Härtung wirksam; yaml_heilen ohne Angriffsweg · claude · sonnet · Lauf 207-security-reviewer-2 · 0,31 $ · Karte gesamt 29,81 $ |
+| 2026-11-19 | #207 | Auto-Reviews | legacy-reviewer | bestanden | 5 min | 595/595 zeichengleich; 6 Vorversion-Schäden geheilt; Wechselspiel 6/6; nichts umgedeutet · claude · sonnet · Lauf 207-legacy-reviewer-2 · 0,37 $ · Karte gesamt 30,18 $ |
+| 2026-11-19 | #207 | Entwicklertest | entwicklertester | bestanden | 7 min | US-1..US-7 im echten Programm erfüllt · claude · sonnet · Lauf 207-entwicklertester-1 · 0,57 $ · Karte gesamt 30,75 $ |
+
+**Retrospektive #207** (Scheibe A1 Commit-Verweise per API hinterlegen und entfernen, 2026-11-19, 30,75 $ gemessen, ausgeliefert 1892619c)
+- Gut: Erstmals laufen alle Prüfrollen auf Sonnet (0,31–0,78 $ je Lauf statt 1,5–3 $), und jede Rolle hat mit Proben gearbeitet statt mit Vermutungen. Das Legacy-Review hat den Ein-Eintrag-Fall gegen die gebaute Vorversion und 595 echte Dateien belegt, das Security-Review die Zeitgrenze über die API mit einer FIFO.
+- Teuer: Architektur und Planung kosteten 10,46 $ (Opus, ein angehaltener planer, zweimal ADR). Der erste entwickler-Lauf kostete 14,25 $ und lief 1 h; die Opus-Wahl war wegen Sicherheitsgrenze und Datenformat begründet. Die Nacharbeit auf Sonnet kostete 1,90 $.
+- Muss gefunden, den der entwickler nicht sah: Höchstzahl und Entdoppeln standen erst unter der Sperre, Git lief vorher je Eintrag (501 → 502 Aufrufe). Lehre: Bei Grenzen gegen Fremdprozesse gehört „Zahl prüfen vor dem teuren Schritt“ ins AK, nicht nur „höchstens n“.
+- Legacy-Lehre (schon in Gelerntes.md): Rundlauf-Proben mit 0, 1 und vielen Einträgen; der Fall „genau einer“ war hinter AK 9c (vier Einträge) verdeckt.
+- Ein Befund war falsch zugeordnet: Die Marke, die der entwickler dem Board-Git zuschrieb, kam laut Wiederholung aus dem Vergleichsteil der Probe selbst. Gelöst hat das nur die Wiederholung derselben Rolle.
+- Sollte und Optional ohne Karte (für die Diff-Scheibe in ADR-0032 N2.3 als Soll festgehalten):
+  - `--no-ext-diff --no-textconv` im Startpunkt, weil `[diff] external` aus der Repository-Konfiguration auch gehärtet läuft;
+  - Prozessgruppe beenden bei Zeitüberschreitung;
+  - Fitness-Test „Command::new(git) nur an drei Orten“;
+  - Board-Git (`src/git.rs:360,366`) ohne Zeitgrenze: eine FIFO in `include.path` lässt den Serverstart hängen (N2.5, nicht entschieden);
+  - keine Grenze über mehrere Anfragen und keine Größengrenze für das Frontmatter;
+  - README-Beispiel `X-KanbanD-Wer: entwickler` ist mit 10 Zeichen kein gültiges Kürzel;
+  - Playwright erwartet `<worktree>/target/debug/kanbanD` fest (`e2e/tests/hilfen.js:27`), der Build-Cache liegt anderswo.
