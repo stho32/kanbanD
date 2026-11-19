@@ -1,6 +1,6 @@
 ---
 id: R00203
-status: Neu
+status: Erledigt
 datum: 2026-11-19
 ---
 
@@ -66,47 +66,47 @@ Die Factory rebased den Kartenzweig vor jedem Wachlauf; ohne Ersetzen müsste si
 
 ### Ersetzen
 
-- [ ] **AK 1 Zwei Paare, ein Commit (Abnahme-Probe der Karte):** `POST /api/aufgaben/1/commits/ersetzen` mit `X-KanbanD-Wer: entw1` und `{ersetzungen: [{alt: "kd:<K1:7>", neu: "kd:<K3:7>"}, {alt: "kd:<K2:7>", neu: "kd:<K4:7>"}]}` ergibt 200; die Commit-Zahl steigt um genau 1 (n → n+1), Autor ist `entw1`; die Datei von #1 trägt unter `commits` `kd:<K3>`, `kd:<W1>`, `kd:<K4>` (volle Hashes, Platz 1 und 3 getauscht, Platz 2 unberührt); `GET /api/aufgaben/1` liefert dieselbe Liste; sonst ändert sich in der Datei nichts.
-- [ ] **AK 2 Nach einem echten Rebase:** Nach `git rebase main` im Worktree ergibt `{ersetzungen: [{alt: "kd:<W1>", neu: "kd:<W1'>"}]}` 200; `kd:<W1'>` steht an Platz 2 von #1, `kd:<W1>` steht nicht mehr da, ein Commit.
-- [ ] **AK 3 Standardanwendung:** Mit `sources.wbs: <R>/Dokumentation/Planung/app.md` und einem Verweis `<K1>` (ohne Kürzel) an #1 ergibt `{alt: "<K1:7>", neu: "<K3>"}` 200 und die Zeile lautet `- <K3>` ohne Kürzel; `{alt: "kd:<K2:7>", neu: "<K3>"}` (Kürzel verschieden) ergibt 400 `{fehler, verweis}`, nichts geschrieben.
-- [ ] **AK 4 Wiederholung:** Nach AK 1 ergibt derselbe Aufruf noch einmal 200 ohne Commit (Commit-Zahl gleich, Liste gleich); ein Aufruf mit dem erledigten Paar `K1 → K3` und einem neuen Paar `W1 → W1'` schreibt nur das neue, genau ein Commit. Wird R danach umbenannt, ergibt der Wiederholungsaufruf von AK 1 weiter 200 ohne Commit; ein Aufruf mit einem neuen `neu`, das nicht an der Karte steht, ergibt dann 400 mit einem `fehler`, der das fehlende Repository nennt.
-- [ ] **AK 5 Höchstzahl ist kein Grund:** Trägt #1 schon 500 Verweise, ergibt ein gültiges Ersetzen 200 und die Zahl bleibt 500 (Probe im Test des Moduls; von außen brauchte es 1.000 Commits).
+- [x] **AK 1 Zwei Paare, ein Commit (Abnahme-Probe der Karte):** `POST /api/aufgaben/1/commits/ersetzen` mit `X-KanbanD-Wer: entw1` und `{ersetzungen: [{alt: "kd:<K1:7>", neu: "kd:<K3:7>"}, {alt: "kd:<K2:7>", neu: "kd:<K4:7>"}]}` ergibt 200; die Commit-Zahl steigt um genau 1 (n → n+1), Autor ist `entw1`; die Datei von #1 trägt unter `commits` `kd:<K3>`, `kd:<W1>`, `kd:<K4>` (volle Hashes, Platz 1 und 3 getauscht, Platz 2 unberührt); `GET /api/aufgaben/1` liefert dieselbe Liste; sonst ändert sich in der Datei nichts.
+- [x] **AK 2 Nach einem echten Rebase:** Nach `git rebase main` im Worktree ergibt `{ersetzungen: [{alt: "kd:<W1>", neu: "kd:<W1'>"}]}` 200; `kd:<W1'>` steht an Platz 2 von #1, `kd:<W1>` steht nicht mehr da, ein Commit.
+- [x] **AK 3 Standardanwendung:** Mit `sources.wbs: <R>/Dokumentation/Planung/app.md` und einem Verweis `<K1>` (ohne Kürzel) an #1 ergibt `{alt: "<K1:7>", neu: "<K3>"}` 200 und die Zeile lautet `- <K3>` ohne Kürzel; `{alt: "kd:<K2:7>", neu: "<K3>"}` (Kürzel verschieden) ergibt 400 `{fehler, verweis}`, nichts geschrieben.
+- [x] **AK 4 Wiederholung:** Nach AK 1 ergibt derselbe Aufruf noch einmal 200 ohne Commit (Commit-Zahl gleich, Liste gleich); ein Aufruf mit dem erledigten Paar `K1 → K3` und einem neuen Paar `W1 → W1'` schreibt nur das neue, genau ein Commit. Wird R danach umbenannt, ergibt der Wiederholungsaufruf von AK 1 weiter 200 ohne Commit; ein Aufruf mit einem neuen `neu`, das nicht an der Karte steht, ergibt dann 400 mit einem `fehler`, der das fehlende Repository nennt.
+- [x] **AK 5 Höchstzahl ist kein Grund:** Trägt #1 schon 500 Verweise, ergibt ein gültiges Ersetzen 200 und die Zahl bleibt 500 (Probe im Test des Moduls; von außen brauchte es 1.000 Commits).
 
 ### Abweisen — nichts geschrieben
 
 Für jedes Beispiel gilt: die Antwort ist wie angegeben, die Commit-Zahl bleibt gleich, die Datei von #1 ist byte-gleich. Ein Aufruf mit mehreren Paaren, von denen eines falsch ist, ändert auch die guten nicht.
 
-- [ ] **AK 6 Rumpf und Form (400):** `{ersetzungen: []}`, `{commits: […]}`, `{ersetzungen: "x"}`, ein unbekannter Schlüssel neben `ersetzungen`, ein Paar mit drittem Schlüssel, ein Paar ohne `alt`, `neu` als Zahl oder `null`, ein Eintrag der Liste, der kein Paar ist; `alt` oder `neu` als `kd:<K1:6>` (6 Zeichen), `kd:main`, `kd:HEAD`, `kd:3f2a9cg`; `alt` oder `neu` mit unbekanntem Kürzel (`xy:<K1>`); `neu` `kd:0000000` (gibt es nicht, `verweis: "kd:0000000"`) und der Hash eines Blobs (kein Commit). Grenze: `neu` mit 7 Zeichen angenommen, mit 6 abgewiesen; 64 Zeichen haben gültige Form, 65 nicht. `neu` mit 41 Zeichen in einem SHA-1-Repository: Form gültig, Git findet nichts → 400. Eine unbekannte Aufgabe `/api/aufgaben/999/commits/ersetzen` → 404.
-- [ ] **AK 7 Doppelt, Kette, Zahl (400, `verweis` nennt den zweiten Auftritt):**
+- [x] **AK 6 Rumpf und Form (400):** `{ersetzungen: []}`, `{commits: […]}`, `{ersetzungen: "x"}`, ein unbekannter Schlüssel neben `ersetzungen`, ein Paar mit drittem Schlüssel, ein Paar ohne `alt`, `neu` als Zahl oder `null`, ein Eintrag der Liste, der kein Paar ist; `alt` oder `neu` als `kd:<K1:6>` (6 Zeichen), `kd:main`, `kd:HEAD`, `kd:3f2a9cg`; `alt` oder `neu` mit unbekanntem Kürzel (`xy:<K1>`); `neu` `kd:0000000` (gibt es nicht, `verweis: "kd:0000000"`) und der Hash eines Blobs (kein Commit). Grenze: `neu` mit 7 Zeichen angenommen, mit 6 abgewiesen; 64 Zeichen haben gültige Form, 65 nicht. `neu` mit 41 Zeichen in einem SHA-1-Repository: Form gültig, Git findet nichts → 400. Eine unbekannte Aufgabe `/api/aufgaben/999/commits/ersetzen` → 404.
+- [x] **AK 7 Doppelt, Kette, Zahl (400, `verweis` nennt den zweiten Auftritt):**
   - `alt` doppelt: `K1 → K3` und `K1 → K4`; auch als `kd:<K1>` und `kd:<K1:7>`.
   - `neu` doppelt: `K1 → K3` und `K2 → K3`.
   - `alt` gleich `neu` im selben Paar: `K1 → K1`.
   - Kette: `K1 → K3` und `K3 → K4`; auch ein Tausch `K1 → K2` und `K2 → K1` ist eine Kette (400, nicht 409).
   - Mehr als 500 Paare: 501 Paare ergeben 400 ohne einen Git-Aufruf; genau 500 Paare haben gültige Zahl (Probe im Test des Moduls).
-- [ ] **AK 8 Karte: 404, 409, mehrdeutig:**
+- [x] **AK 8 Karte: 404, 409, mehrdeutig:**
   - `alt` steht nicht an der Karte und `neu` auch nicht (`K4 → K3` an #1 ohne K4) → 404, `verweis` ist das `alt` aus der Anfrage.
   - `alt` und `neu` stehen beide an der Karte (`K1 → K2`) → 409, `verweis` ist das `alt`.
   - Ein Präfix von `alt`, der an der Karte zu zwei Verweisen passt → 400 (die Probe im Test des Moduls; von außen braucht es zwei Commits mit gleichem 7er-Anfang).
   - Ein Aufruf mit `K1 → K3` und `V1 → K4` (V1 steht nicht an der Karte) ergibt 404 für das zweite Paar und schreibt auch das erste nicht.
   - Ein Aufruf, der sowohl einen Formfehler als auch ein 404-Paar enthält, ergibt 400.
-- [ ] **AK 9 Eingaben, die Git nie erreichen:** `kd:--output=x`, `kd:../x`, `kd:3f2a9c1;rm -rf x`, `kd:3f2a9c1 --all`, `kd:3f2a 9c1`, `kd:$(touch x)` und `kd:3f2a9c1^{tree}` ergeben, je als `alt` und je als `neu` eines sonst gültigen Aufrufs, 400; danach liegt weder in R noch im Board-Ordner eine Datei `x`, `git status --porcelain` in R ist unverändert, und die Git-Spur (Server mit `GIT_TRACE=<datei>`) enthält keinen dieser Texte; im Test des Moduls zählt der Zähler der Git-Aufrufe bei jedem Formfehler 0, auch wenn ein anderes Paar des Aufrufs gültig ist.
+- [x] **AK 9 Eingaben, die Git nie erreichen:** `kd:--output=x`, `kd:../x`, `kd:3f2a9c1;rm -rf x`, `kd:3f2a9c1 --all`, `kd:3f2a 9c1`, `kd:$(touch x)` und `kd:3f2a9c1^{tree}` ergeben, je als `alt` und je als `neu` eines sonst gültigen Aufrufs, 400; danach liegt weder in R noch im Board-Ordner eine Datei `x`, `git status --porcelain` in R ist unverändert, und die Git-Spur (Server mit `GIT_TRACE=<datei>`) enthält keinen dieser Texte; im Test des Moduls zählt der Zähler der Git-Aufrufe bei jedem Formfehler 0, auch wenn ein anderes Paar des Aufrufs gültig ist.
 
 ### Platz, verwaiste und fehlende Verweise
 
-- [ ] **AK 10 `alt` wird nie gegen Git geprüft:**
+- [x] **AK 10 `alt` wird nie gegen Git geprüft:**
   - Eine Karte trägt `kd:<V1>` (verwaist, über R00202 AK 2 hinterlegt) und `kd:<V2>` (ein zweiter losgelöster Commit), dessen Commit danach aus R entfernt wird (`git reflog expire --expire=now --all`, `git gc --prune=now`). Beide lassen sich ersetzen (`V1 → K3`, `V2 → K4`) und ergeben 200, ein Commit, die neuen Hashes auf den Plätzen der alten.
   - Mit `GIT_TRACE` enthält die Spur weder `<V1>` noch `<V2>`.
   - Wird R vor dem Aufruf umbenannt und das `neu` steht nicht an der Karte, ergibt der Aufruf 400 mit dem Hinweis auf das fehlende Repository (AK 4).
-- [ ] **AK 11 Parallele Aufrufe (Prüfen-dann-Handeln):** Zwei geprüfte Aufrufe mit demselben Paar `K1 → K3` nacheinander unter der Sperre (Haken zwischen Prüfung und Sperre, kein Warten auf Zufall) ergeben einen Eintrag `kd:<K3>` und genau einen Commit; ein zweiter Aufruf, der zwischen Prüfung und Sperre schon `K1 → K4` geschrieben hat, ergibt für `K1 → K3` unter der Sperre 404 ohne Commit; die Karte trägt danach `K4` an Platz 1, nicht `K3`.
+- [x] **AK 11 Parallele Aufrufe (Prüfen-dann-Handeln):** Zwei geprüfte Aufrufe mit demselben Paar `K1 → K3` nacheinander unter der Sperre (Haken zwischen Prüfung und Sperre, kein Warten auf Zufall) ergeben einen Eintrag `kd:<K3>` und genau einen Commit; ein zweiter Aufruf, der zwischen Prüfung und Sperre schon `K1 → K4` geschrieben hat, ergibt für `K1 → K3` unter der Sperre 404 ohne Commit; die Karte trägt danach `K4` an Platz 1, nicht `K3`.
 
 ### Datei und Bestand
 
-- [ ] **AK 12 Datei, Legacy und Duplizieren:**
+- [x] **AK 12 Datei, Legacy und Duplizieren:**
   - (a) Eine Karte mit den Einträgen `kd:<K1>`, `kd:zz` (unlesbar) und `1234567890123456789012345678901234567890` (Ziffern-Hash) ergibt nach `K1 → K3` die Datei zeichengleich bis auf die eine Zeile `- kd:<K3>`; die beiden anderen Einträge stehen wörtlich da, der Ziffern-Hash als Text. Ein Ersetzen von `kd:zz` (unlesbare Form) ergibt 400 — er lässt sich nur in der Datei ändern (wie bei `DELETE`).
   - (b) Der Stand vor dieser Karte (`karte/207`, gebaut) behält eine nach AK 1 geschriebene Datei bei einer Titeländerung zeichengleich (kein neuer Schlüssel, keine neue Form).
   - (c) Trägt die Datei unter `commits` etwas, das keine Liste von Texten ist (Verhalten wie beim Hinterlegen), ergibt Ersetzen 409 und ändert nichts.
   - (d) `POST /api/aufgaben/1/duplizieren` ergibt nach dem Ersetzen weiter eine Kopie ohne `commits`.
-- [ ] **AK 13 Beschreibung:** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen `POST /api/aufgaben/{nr}/commits/ersetzen` mit dem Rumpf `{ersetzungen: [{alt, neu}]}`, den Statuscodes 200, 400, 404, 409, 503 und dem Satz zur Wiederholung; die README „Für Agenten“ hat im Abschnitt „Commits an der Karte hinterlegen“ ein Beispiel „nach einem Rebase nachziehen“ und nennt den Beispielaufruf mit einem Agenten-Kürzel von höchstens 8 Zeichen.
+- [x] **AK 13 Beschreibung:** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen `POST /api/aufgaben/{nr}/commits/ersetzen` mit dem Rumpf `{ersetzungen: [{alt, neu}]}`, den Statuscodes 200, 400, 404, 409, 503 und dem Satz zur Wiederholung; die README „Für Agenten“ hat im Abschnitt „Commits an der Karte hinterlegen“ ein Beispiel „nach einem Rebase nachziehen“ und nennt den Beispielaufruf mit einem Agenten-Kürzel von höchstens 8 Zeichen.
 
 ## Betroffene Verzeichnisstruktur
 
