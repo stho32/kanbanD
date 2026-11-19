@@ -3866,6 +3866,16 @@ function seitWortSetzen(el, wort) {
   if (karte) karte.setAttribute('aria-label', karte.getAttribute('aria-label').replace(`Timer läuft ${alt}`, `Timer läuft ${wort}`));
 }
 
+/** Tag des letzten Takts, an dem gezeichnet werden konnte: wechselt er, zeigt die Personenseite an „heute“ den neuen Tag (R00199 AK 12). */
+let taktTag = tagesbeginn(Date.now());
+/** Wahr, wenn seit dem letzten Takt Mitternacht war und die Personenseite „heute“ zeigt; ein fester Tag bleibt stehen. */
+function personenTagGewechselt(jetzt) {
+  const tag = tagesbeginn(jetzt);
+  if (tag === taktTag) return false;
+  taktTag = tag;
+  return S.ui.view === 'personen' && !S.ui.personenTag;
+}
+
 setInterval(() => {
   const jetzt = Date.now();
   let neu = false;
@@ -3880,6 +3890,7 @@ setInterval(() => {
   if (S.ui.vergessenOffen && zeichnenMoeglich) { S.ui.vergessenOffen = false; neu = true; }
   // die Erinnerung entsteht erst, wenn sie auch gezeichnet wird: sonst verfällt sie in ihrer Lebensdauer, ohne je zu stehen (B1)
   if (zeichnenMoeglich && erinnerungPruefen(jetzt)) neu = true;
+  if (zeichnenMoeglich && personenTagGewechselt(jetzt)) neu = true;
   document.querySelectorAll('[data-summe-basis]').forEach(el => { const seit = el.dataset.summeSeit ? el.dataset.summeSeit.split(',').map(Number) : []; el.textContent = 'Σ ' + hm(+el.dataset.summeBasis + seit.reduce((s, t) => s + Math.max(0, jetzt - t), 0)); });
   document.querySelectorAll('[data-since]').forEach(el => {
     const d = jetzt - +el.dataset.since;

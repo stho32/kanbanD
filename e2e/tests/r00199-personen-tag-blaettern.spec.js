@@ -178,7 +178,6 @@ test('AK 10: heute wie bisher; an einem vergangenen Tag wirken Umschalter und Pe
 });
 
 test('AK 12 / US-6: nach Mitternacht steht ohne Neuladen der neue Tag', async ({ page }) => {
-  test.fail(true, 'erwartet rot bis B0980: der Takt zeichnet beim Tageswechsel noch nicht neu');
   const seite = await personenseite(page, new Date(2026, 10, 19, 23, 59, 30));
   await expect(seite.datum()).toHaveText('Do 19.11.2026');
   await seite.uhrVor(60000);
