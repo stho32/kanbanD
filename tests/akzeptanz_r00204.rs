@@ -660,3 +660,51 @@ async fn muss2_enkel_haelt_die_pipe() {
     }
     assert!(befunde.is_empty(), "{befunde:#?}");
 }
+
+// ---- Nacharbeit 1, Security Muss 3: höchstens 4 Git-Prozesse für das Lesen gleichzeitig ----------------------------
+
+#[tokio::test]
+async fn muss3_hoechstens_vier_git_prozesse_gleichzeitig() {
+    let a = ausgangslage_r00204();
+    a.von_hand(&a.verweise()[..3]);
+    // ein Shim, der jeden Lesevorgang in R 200 ms dauern lässt und solange einen Eintrag in `laufend/` hält
+    let echtes = String::from_utf8(std::process::Command::new("sh").args(["-c", "command -v git"]).output().unwrap().stdout).unwrap().trim().to_string();
+    let (ordner, laufend) = (a.basis.join("bin"), a.basis.join("laufend"));
+    std::fs::create_dir_all(&ordner).unwrap();
+    std::fs::create_dir_all(&laufend).unwrap();
+    let skript = format!("#!/bin/sh\ncase \"$*\" in *\"{r}\"*core.hooksPath=/dev/null*) mkdir {l}/$$; sleep 0.2; {echtes} \"$@\"; rc=$?; rmdir {l}/$$; exit $rc;; esac\nexec {echtes} \"$@\"\n", r = a.r.display(), l = laufend.display());
+    std::fs::write(ordner.join("git"), skript).unwrap();
+    std::fs::set_permissions(ordner.join("git"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let pfad = format!("{}:{}", ordner.display(), std::env::var("PATH").unwrap());
+    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let fertig = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let zaehler = {
+        let (fertig, laufend) = (fertig.clone(), laufend.clone());
+        std::thread::spawn(move || {
+            let mut hoechstens = 0;
+            while !fertig.load(std::sync::atomic::Ordering::SeqCst) {
+                hoechstens = hoechstens.max(std::fs::read_dir(&laufend).unwrap().count());
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            hoechstens
+        })
+    };
+    let anfragen: Vec<_> = (0..16).map(|_| {
+        let adresse = lauf.adresse.clone();
+        tokio::spawn(async move {
+            let start = Instant::now();
+            let (status, _, _) = liste_holen(&adresse, 1).await;
+            (status, start.elapsed())
+        })
+    }).collect();
+    let mut antworten = vec![];
+    for x in anfragen {
+        antworten.push(x.await.unwrap());
+    }
+    fertig.store(true, std::sync::atomic::Ordering::SeqCst);
+    let hoechstens = zaehler.join().unwrap();
+    eprintln!("höchstens {hoechstens} gleichzeitig; {antworten:?}");
+    assert!(antworten.iter().all(|(s, d)| *s == 200 && *d <= Duration::from_secs(15)), "{antworten:?}");
+    assert!(hoechstens <= 4, "{hoechstens} Git-Prozesse gleichzeitig");
+    assert!(hoechstens >= 2, "die Probe sieht Gleichzeitigkeit: {hoechstens}");
+}

@@ -14,6 +14,7 @@ mod commits;
 mod commits_lesen;
 pub use commits_lesen::GESAMTGRENZE;
 mod zweigcache;
+mod lesegrenze;
 mod board_anlegen;
 mod board_verwalten;
 mod durchlaeufe;
@@ -81,6 +82,8 @@ pub struct Kanban {
     timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
     /// flüchtiger Cache der Zweiglisten je Arbeits-Repository (R00204, ADR-0032 N1.3); nie während eines Git-Prozesses gesperrt
     zweigcache: Mutex<zweigcache::Zweigcache>,
+    /// höchstens 4 Lesevorgänge in Arbeits-Repositories gleichzeitig (Nacharbeit #211, Security Muss 3)
+    lesegrenze: lesegrenze::Lesegrenze,
     /// Testnaht (R00204 B1001): läuft einmal zwischen Zweigliste und zweiter Fingerabdruck-Probe
     #[cfg(test)]
     vor_der_probe: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -136,7 +139,7 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(),
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(),
             #[cfg(test)]
             vor_der_probe: Mutex::default(),
             #[cfg(test)]

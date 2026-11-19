@@ -38,6 +38,11 @@ impl Kanban {
                 }
             }
         }
+        if je_anwendung.is_empty() {
+            return Ok(sortiert(eintraege.into_iter().flatten().collect()));
+        }
+        // ab hier startet Git: höchstens 4 Lesevorgänge gleichzeitig, das Warten zählt zur Frist
+        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| abbruch(Arbeitsrepofehler::Zeitgrenze))?;
         let mut je_wurzel: Vec<(PathBuf, Vec<Verweis>)> = vec![];
         for (anwendung, verweise) in je_anwendung {
             match arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist) {
@@ -326,6 +331,21 @@ mod tests {
         let vorher = arbeitsrepo::aufrufe();
         assert!(matches!(s.k.commits_lesen(1, Instant::now()), Err(Fehler::Zeitgrenze(_))));
         assert_eq!(arbeitsrepo::aufrufe() - vorher, 0);
+    }
+
+    // Nacharbeit #211, Security Muss 3: sind alle Plätze belegt, wartet das Lesen bis zur Frist und antwortet dann 503,
+    // ohne Git zu starten
+    #[test]
+    fn belegte_lesegrenze_ist_503_nach_der_frist() {
+        let s = stand();
+        let fern = Instant::now() + Duration::from_secs(5);
+        let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| s.k.lesegrenze.betreten(fern).unwrap()).collect();
+        let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
+        assert!(matches!(s.k.commits_lesen(1, Instant::now() + Duration::from_millis(300)), Err(Fehler::Zeitgrenze(_))));
+        assert!(start.elapsed() >= Duration::from_millis(300), "{:?}", start.elapsed());
+        assert_eq!(arbeitsrepo::aufrufe() - vorher, 0);
+        drop(plaetze);
+        assert_eq!(s.k.commits_lesen(1, frist()).unwrap().len(), 2, "danach wieder frei");
     }
 
     const K1: &str = "3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e";
