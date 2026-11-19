@@ -43,6 +43,12 @@
   }
   const tagesbeginn = jetzt => { const d = new Date(jetzt); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const wochenbeginn = jetzt => { const t = new Date(tagesbeginn(jetzt)); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return t.getTime(); };
+  /** Ende eines Zeitraums nach `tage` Kalendertagen in Ortszeit — an Umstelltagen 23 oder 25 Stunden, nie `+864e5`. */
+  const nachTagen = (beginn, tage) => { const d = new Date(beginn); d.setDate(d.getDate() + tage); return d.getTime(); };
+  /** 0 Uhr des Folgetags: das Ende des Tages, in dem `zeitpunkt` liegt. */
+  const tagesende = zeitpunkt => nachTagen(tagesbeginn(zeitpunkt), 1);
+  /** Montag 0 Uhr der Folgewoche: das Ende der Kalenderwoche, in der `zeitpunkt` liegt. */
+  const wochenende = zeitpunkt => nachTagen(wochenbeginn(zeitpunkt), 7);
 
   /** Millisekunden eines Eintrags im Zeitraum [von, bis); laufende Einträge enden jetzt. */
   function anteil(z, von, bis, jetzt) {
@@ -93,5 +99,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, wochenbeginn, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, tagesende, wochenbeginn, wochenende, anteil, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);

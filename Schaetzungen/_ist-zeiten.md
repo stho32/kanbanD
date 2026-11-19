@@ -833,3 +833,4 @@ Nie vom User erfragen.
 | 2026-11-18 | Karte #202 R00197 (Abweisung einer fehlenden Klasse nennt „steht nicht in kanbanD.md“, wo die Vorgabe gilt) | B0973 API-Proben `POST` und `PATCH`, Probe mit dem Agenten-Client, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-19 | Karte #203 R00198 (Nur ein Kostenbetrag auf der Karte im Board) | B0974 Kartenzeile zeigt das Preisetikett nur ohne „Ist“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-19 | Karte #203 R00198 (Nur ein Kostenbetrag auf der Karte im Board) | B0975 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-19 | Karte #204 R00199 (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern) | B0976 Tagesgrenzen und Kalenderwoche in Ortszeit | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
