@@ -1109,3 +1109,16 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #211 | Detailplanung | planer | bestanden | 2 min | R00204 nachgeführt: AK 17 Titel, N3 Gesamtgrenze/Cache/Tag-Objekt, Z5 als Alternative · claude · opus · Lauf 211-planer-2 · 0,48 $ · Karte gesamt 2,50 $ |
 | 2026-11-19 | #219 | Auto-Reviews | legacy-reviewer | bestanden | 10 min | 48/48 Rundlauf zeichengleich; Sonderformen bleiben; Sollte: 405 statt 404 der Vorversion dokumentieren, Bauanleitung AK 12b · claude · sonnet · Lauf 219-legacy-reviewer-1 · 0,71 $ · Karte gesamt 6,27 $ |
 | 2026-11-19 | #219 | Entwicklertest | entwicklertester | bestanden | 5 min | US-1..US-6 mit echtem Rebase erfüllt · claude · sonnet · Lauf 219-entwicklertester-1 · 0,62 $ · Karte gesamt 6,89 $ |
+
+**Retrospektive #219** (Scheibe A1b: Commit-Verweise nach einem Rebase per API ersetzen, 2026-11-19, 6,89 $ gemessen, ausgeliefert 75a08ca0)
+- Gut: Erste Karte der Reihe, die ganz auf Sonnet lief: planer, PO, entwickler und alle Prüfrollen, ohne Nacharbeit. Kosten 6,89 $ statt 30,75 $ bei #207. Die Bausteine aus A1 (Formprüfung, Startpunkt, Prüfen-dann-Handeln) wurden wiederverwendet, und die Lehre „Zahl vor Git“ aus #207 stand schon im Auftrag. Das Security-Review fand nichts.
+- Der Nachtbetrieb mit einer Prüfrolle zur Zeit kostet Zeit (Reviews nacheinander, rund 25 min statt 11), aber keine Qualität.
+- Zusammenführen: Der WBS-Konflikt mit den Dokumenten von #211 wurde von Hand gelöst. `wache vorbereiten` bricht bei einem Konflikt ab, das Lösen geschieht im Worktree.
+- Sollte ohne Karte (für E1 wichtig):
+  - Ältere Versionen antworten auf die Route mit 405 `allow: DELETE` (1892619c) oder 404 ohne Rumpf (ae04fcfd), nicht mit 404 wie in ADR-0032 N1.4 und R00203. Nur ein 404 mit `verweis` heißt „alt nicht an der Karte“. `/api/instanz` meldet immer 0.1.0. Die Factory prüft deshalb vor dem Ersetzen `/api/endpunkte`.
+  - AK 12b ist `#[ignore]`, eine Bauanleitung für die Vorversion fehlt im Repository (`git worktree add <dir> 1892619c && cargo build --release`; `git archive` mit alten Zeitstempeln baut das falsche Binary).
+  - Die Prüfschleife steht doppelt in `commits_ersetzen_pruefen` und `commits_pruefen`.
+  - OpenAPI nennt `Verweisfehler` für jeden 409.
+  - Ein von Hand doppelt angeführter Ziffern-Hash wird zu `'…'`.
+  - Die Commit-Nachricht nennt bei vielen Paaren nur die ersten (gekappt auf 120 Zeichen).
+- Eigener Fehler des Directors: Kommentare mit `kommentar --text` tragen „--text“ wörtlich am Anfang (#207, #211, #219). Kommentare gehen nur noch über `--datei`.
