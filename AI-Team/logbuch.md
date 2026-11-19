@@ -1000,3 +1000,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #203 | Entwicklertest | gestalter | bestanden | 1 min | D0002 #angefallene-kosten nachgezogen · claude · sonnet · Lauf 203-gestalter-1 · 0,26 $ · Karte gesamt 4,23 $ |
 | 2026-11-19 | #203 | Entwicklertest | entwicklertester | bestanden | 1 min | US-1..5 bestanden · claude · sonnet · Lauf 203-entwicklertester-1 · 0,25 $ · Karte gesamt 4,48 $ |
 | 2026-11-19 | #203 | Entwicklertest | product-owner | bestanden | 0 min | Artboard D0002 freigegeben (Z. 332) · claude · opus · Lauf 203-product-owner-2 |
+| 2026-11-19 | #203 | Erledigt | director | Retrospektive | — | 4,48 $ (+ PO-Freigabe nicht messbar), Nachtbetrieb, alle Rollen nacheinander; Bau 0,81 $ auf Sonnet; ohne Nacharbeit; Ursache der Karte: PO-Regel „In Kauf genommen“ (#201) traf auf Factory-Boards jede Karte — am Bestand nicht gezählt; ein Wackler r00127 im Gate auf main; ausgeliefert 7613ba3a |
