@@ -1,6 +1,6 @@
 ---
 id: R00198
-status: Neu
+status: Erledigt
 datum: 2026-11-19
 ---
 
@@ -38,15 +38,15 @@ Zahlt ein auf: [Vision](R00000-vision.md) — „Mensch und Agent arbeiten gleic
 | #5 | Eingang | `amount: 2.00` USD | 2,00 EUR, 1,00 USD, 0,50 USD (13.11.); 46 Minuten gebuchte Zeit | „Ist 1,50 $ · 2,00 € Σ 0:46“ | „≈ 2,00 $ Ist 1,50 $ · 2,00 € Σ 0:46“ |
 | #6 | Eingang | `amount: 3.00` USD | 2,00 EUR (13.11.) | „Ist 2,00 €“ | „≈ 3,00 $ Ist 2,00 €“ |
 
-- [ ] **AK 1 Nur Kosteneinträge:** Gegeben #1, wenn das Board angesehen wird, dann zeigt die Karte „Ist 4,66 $“ (3,46 + 1,20) und kein Preisetikett — wie bisher.
-- [ ] **AK 2 Alte Posten zeigen nur „Ist“:** Gegeben #2, wenn das Board angesehen wird, dann zeigt die Karte nur „Ist 0,40–0,50 $“ (0,10 + 0,30; 0,20 + 0,30) — kein „≈ 0,45 $“, kein Preisetikett. Bekommt #2 über die API den Kosteneintrag 4,66 USD, zeigt die Karte ohne Neuladen „Ist 5,06–5,16 $“ und weiter kein Etikett.
-- [ ] **AK 3 Übergang ohne Neuladen:** Gegeben #3 mit nur „≈ 1,63 $“, wenn über die API der Kosteneintrag 0,10 USD gebucht wird, dann zeigt die Karte ohne Neuladen „Ist 0,10 $“ und das Etikett „≈ 1,63 $“ ist verschwunden.
-- [ ] **AK 4 Schätzung und Einträge, mehrere Währungen:** Gegeben #5, wenn das Board angesehen wird, dann lautet der sichtbare Kostentext der Kartenzeile „Ist 1,50 $ · 2,00 € Σ 0:46“ (1,00 + 0,50 USD; USD vor EUR, keine Umrechnung) — kein „≈ 2,00 $“, zwischen „2,00 €“ und „Σ“ kein Komma.
-- [ ] **AK 5 Andere Währung verdrängt das Etikett auch:** Gegeben #6 mit Schätzung 3,00 USD und angefallen nur 2,00 EUR, wenn das Board angesehen wird, dann zeigt die Karte nur „Ist 2,00 €“ und kein „≈ 3,00 $“ (PO Z. 331: keine Abwägung je Währung).
-- [ ] **AK 6 Nur Schätzung, nichts:** Gegeben #3, wenn das Board angesehen wird, dann zeigt die Karte nur „≈ 1,63 $“; gegeben eine Karte mit Spanne 0,60–1,60 USD und 46 Minuten gebuchter Zeit, dann „≈ 1,10 $, Σ 0:46“ (Komma-Regel aus R00105 unverändert). Gegeben #4, dann zeigt die Karte keinen Betrag, kein „0,00 $“ und kein leeres Element.
-- [ ] **AK 7 Vorgelesen genau ein Betrag:** Gegeben #2 und #5, wenn die Kartenzeile mit Hilfstechnik gelesen wird, dann hört man an #2 „Angefallene Kosten: 0,40 bis 0,50 $“ und an #5 „Angefallene Kosten: 1,50 $, 2,00 €“, an keiner der beiden „Preisetikett: geschätzt …“. An #3 heißt das Etikett wie bisher „Preisetikett: geschätzt 1,63 $, API-Kosten“.
-- [ ] **AK 8 Die Schätzung bleibt im Fenster und im Bericht:** Gegeben #5, wenn das Aufgabenfenster geöffnet wird, dann gibt es den Reiter „Kosten“ und er zeigt die Schätzung 2,00 $ wie bisher (R00105). Der ungefilterte Bericht „Kosten“ für „fabrik“ nennt dieselben Summen wie vor der Änderung (USD 4,66 + 0,40–0,50 + 1,50 = „6,56–6,66 $“; EUR 2,00 + 2,00 = „4,00 €“).
-- [ ] **AK 9 Nichts sonst ändert sich:** Die Anzeige schreibt nichts (keine Aufgabendatei ändert sich, kein Commit entsteht). Bei 320 px zeigt #5 „Ist 1,50 $ · 2,00 €“ und „Σ 0:46“ ohne Querscrollen; kein Betrag bricht in sich um (R00196 AK 7 gilt weiter). Defekte Karten zeigen keinen Betrag.
+- [x] **AK 1 Nur Kosteneinträge:** Gegeben #1, wenn das Board angesehen wird, dann zeigt die Karte „Ist 4,66 $“ (3,46 + 1,20) und kein Preisetikett — wie bisher.
+- [x] **AK 2 Alte Posten zeigen nur „Ist“:** Gegeben #2, wenn das Board angesehen wird, dann zeigt die Karte nur „Ist 0,40–0,50 $“ (0,10 + 0,30; 0,20 + 0,30) — kein „≈ 0,45 $“, kein Preisetikett. Bekommt #2 über die API den Kosteneintrag 4,66 USD, zeigt die Karte ohne Neuladen „Ist 5,06–5,16 $“ und weiter kein Etikett.
+- [x] **AK 3 Übergang ohne Neuladen:** Gegeben #3 mit nur „≈ 1,63 $“, wenn über die API der Kosteneintrag 0,10 USD gebucht wird, dann zeigt die Karte ohne Neuladen „Ist 0,10 $“ und das Etikett „≈ 1,63 $“ ist verschwunden.
+- [x] **AK 4 Schätzung und Einträge, mehrere Währungen:** Gegeben #5, wenn das Board angesehen wird, dann lautet der sichtbare Kostentext der Kartenzeile „Ist 1,50 $ · 2,00 € Σ 0:46“ (1,00 + 0,50 USD; USD vor EUR, keine Umrechnung) — kein „≈ 2,00 $“, zwischen „2,00 €“ und „Σ“ kein Komma.
+- [x] **AK 5 Andere Währung verdrängt das Etikett auch:** Gegeben #6 mit Schätzung 3,00 USD und angefallen nur 2,00 EUR, wenn das Board angesehen wird, dann zeigt die Karte nur „Ist 2,00 €“ und kein „≈ 3,00 $“ (PO Z. 331: keine Abwägung je Währung).
+- [x] **AK 6 Nur Schätzung, nichts:** Gegeben #3, wenn das Board angesehen wird, dann zeigt die Karte nur „≈ 1,63 $“; gegeben eine Karte mit Spanne 0,60–1,60 USD und 46 Minuten gebuchter Zeit, dann „≈ 1,10 $, Σ 0:46“ (Komma-Regel aus R00105 unverändert). Gegeben #4, dann zeigt die Karte keinen Betrag, kein „0,00 $“ und kein leeres Element.
+- [x] **AK 7 Vorgelesen genau ein Betrag:** Gegeben #2 und #5, wenn die Kartenzeile mit Hilfstechnik gelesen wird, dann hört man an #2 „Angefallene Kosten: 0,40 bis 0,50 $“ und an #5 „Angefallene Kosten: 1,50 $, 2,00 €“, an keiner der beiden „Preisetikett: geschätzt …“. An #3 heißt das Etikett wie bisher „Preisetikett: geschätzt 1,63 $, API-Kosten“.
+- [x] **AK 8 Die Schätzung bleibt im Fenster und im Bericht:** Gegeben #5, wenn das Aufgabenfenster geöffnet wird, dann gibt es den Reiter „Kosten“ und er zeigt die Schätzung 2,00 $ wie bisher (R00105). Der ungefilterte Bericht „Kosten“ für „fabrik“ nennt dieselben Summen wie vor der Änderung (USD 4,66 + 0,40–0,50 + 1,50 = „6,56–6,66 $“; EUR 2,00 + 2,00 = „4,00 €“).
+- [x] **AK 9 Nichts sonst ändert sich:** Die Anzeige schreibt nichts (keine Aufgabendatei ändert sich, kein Commit entsteht). Bei 320 px zeigt #5 „Ist 1,50 $ · 2,00 €“ und „Σ 0:46“ ohne Querscrollen; kein Betrag bricht in sich um (R00196 AK 7 gilt weiter). Defekte Karten zeigen keinen Betrag.
 
 ## Tests
 
