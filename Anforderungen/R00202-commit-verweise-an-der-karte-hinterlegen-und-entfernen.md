@@ -1,6 +1,6 @@
 ---
 id: R00202
-status: Neu
+status: Erledigt
 datum: 2026-11-19
 ---
 
@@ -76,31 +76,31 @@ Die Factory kann sofort nach dieser Scheibe die Commits jeder Karte hinterlegen;
 
 ### Hinterlegen
 
-- [ ] **AK 1 Hinterlegen (Abnahme-Probe der Karte):** `POST /api/aufgaben/1/commits` mit `{commits: ["kd:<K1:7>"]}` und `X-KanbanD-Wer: entwickler` ergibt 200; in der Datei von #1 steht unter `commits` genau die Zeile `- kd:<K1>` (40 Zeichen); die Commit-Zahl steigt um genau 1 (n → n+1), Autor dieses Commits ist `entwickler`; `GET /api/aufgaben/1` liefert `commits: ["kd:<K1>"]`. Ein zweiter Aufruf mit `["kd:<K2>"]` hängt `kd:<K2>` dahinter an (Reihenfolge des Hinterlegens, nicht nach Datum).
-- [ ] **AK 2 Zweig eines Worktrees und verwaister Commit:** `POST` mit `["kd:<W1:7>"]` ergibt 200 und speichert `kd:<W1>`, obwohl W1 nur auf `karte/1` im Worktree liegt und das Register auf R zeigt; ebenso `["kd:<V1>"]`, obwohl kein Zweig V1 erreicht.
-- [ ] **AK 3 Standardanwendung:** Ohne Standardanwendung ergibt `POST` mit `["<K1>"]` (ohne Kürzel) 400 `{fehler, verweis: "<K1>"}`, die Commit-Zahl bleibt gleich. Trägt der Ordner `sources.wbs: <R>/Dokumentation/Planung/app.md`, ergibt derselbe Aufruf 200, und die Zeile lautet `- <K1>` ohne Kürzel.
+- [x] **AK 1 Hinterlegen (Abnahme-Probe der Karte):** `POST /api/aufgaben/1/commits` mit `{commits: ["kd:<K1:7>"]}` und `X-KanbanD-Wer: entwickler` ergibt 200; in der Datei von #1 steht unter `commits` genau die Zeile `- kd:<K1>` (40 Zeichen); die Commit-Zahl steigt um genau 1 (n → n+1), Autor dieses Commits ist `entwickler`; `GET /api/aufgaben/1` liefert `commits: ["kd:<K1>"]`. Ein zweiter Aufruf mit `["kd:<K2>"]` hängt `kd:<K2>` dahinter an (Reihenfolge des Hinterlegens, nicht nach Datum).
+- [x] **AK 2 Zweig eines Worktrees und verwaister Commit:** `POST` mit `["kd:<W1:7>"]` ergibt 200 und speichert `kd:<W1>`, obwohl W1 nur auf `karte/1` im Worktree liegt und das Register auf R zeigt; ebenso `["kd:<V1>"]`, obwohl kein Zweig V1 erreicht.
+- [x] **AK 3 Standardanwendung:** Ohne Standardanwendung ergibt `POST` mit `["<K1>"]` (ohne Kürzel) 400 `{fehler, verweis: "<K1>"}`, die Commit-Zahl bleibt gleich. Trägt der Ordner `sources.wbs: <R>/Dokumentation/Planung/app.md`, ergibt derselbe Aufruf 200, und die Zeile lautet `- <K1>` ohne Kürzel.
 
 ### Abweisen — nichts geschrieben
 
 Für jedes Beispiel gilt: Antwort 400 `{fehler, verweis}` mit dem Verweis aus der Anfrage, die Commit-Zahl bleibt gleich, die Datei von #1 ist byte-gleich.
 
-- [ ] **AK 4 Form des Hashes (ohne Git-Aufruf):** `kd:3f2a9c` (6 Zeichen), `kd:main`, `kd:HEAD`, `kd:3f2a9cg`, `kd:<K1>0` (41 Zeichen in einem SHA-1-Repository: Form gültig, Git findet nichts) werden abgewiesen. `kd:<K1:7>` in Großbuchstaben wird angenommen und kleingeschrieben gespeichert. Grenze: genau 7 Zeichen angenommen, 6 abgewiesen; 64 Zeichen haben gültige Form, 65 nicht. Ein Kurz-Hash, den Git als mehrdeutig ablehnt, ergibt 400 (belegt im Test des Moduls; ein gleicher 7er-Präfix zweier Commits lässt sich von außen nur mit Zehntausenden Commits herstellen). Der Hash eines Blobs (`git rev-parse K1:a.txt`) ergibt 400 — er ist kein Commit.
-- [ ] **AK 5 Unbekannt, nicht vorhanden, alles oder nichts:** `xy:<K1>` (Kürzel nicht registriert) → 400; `kd:0000000` (gibt es nicht) → 400; `xx:<K1>` (Ordner des Registers fehlt) → 400 mit einem `fehler`, der das fehlende Repository nennt. `{commits: ["kd:<K2>", "kd:0000000"]}` → 400 mit `verweis: "kd:0000000"`, und `kd:<K2>` steht danach **nicht** an #1. Ein Rumpf ohne Liste (`{commits: "kd:<K1>"}`), mit unbekanntem Schlüssel oder mit leerer Liste `[]` → 400. Eine unbekannte Aufgabe `/api/aufgaben/999/commits` → 404.
-- [ ] **AK 6 Eingaben, die Git nie erreichen:** `kd:--output=x`, `kd:../x`, `kd:3f2a9c1;rm -rf x`, `kd:3f2a9c1 --all`, `kd:3f2a 9c1`, `kd:$(touch x)` und `kd:3f2a9c1^{tree}` ergeben je 400; danach liegt weder in R noch im Board-Ordner eine Datei `x`, `git status --porcelain` in R ist unverändert, und keiner dieser Texte kommt in einem Git-Aufruf vor (Probe: Server mit `GIT_TRACE=<datei>` gestartet, die Spur enthält keinen davon; im Test zusätzlich ein Zähler der Git-Aufrufe im Modul: 0).
+- [x] **AK 4 Form des Hashes (ohne Git-Aufruf):** `kd:3f2a9c` (6 Zeichen), `kd:main`, `kd:HEAD`, `kd:3f2a9cg`, `kd:<K1>0` (41 Zeichen in einem SHA-1-Repository: Form gültig, Git findet nichts) werden abgewiesen. `kd:<K1:7>` in Großbuchstaben wird angenommen und kleingeschrieben gespeichert. Grenze: genau 7 Zeichen angenommen, 6 abgewiesen; 64 Zeichen haben gültige Form, 65 nicht. Ein Kurz-Hash, den Git als mehrdeutig ablehnt, ergibt 400 (belegt im Test des Moduls; ein gleicher 7er-Präfix zweier Commits lässt sich von außen nur mit Zehntausenden Commits herstellen). Der Hash eines Blobs (`git rev-parse K1:a.txt`) ergibt 400 — er ist kein Commit.
+- [x] **AK 5 Unbekannt, nicht vorhanden, alles oder nichts:** `xy:<K1>` (Kürzel nicht registriert) → 400; `kd:0000000` (gibt es nicht) → 400; `xx:<K1>` (Ordner des Registers fehlt) → 400 mit einem `fehler`, der das fehlende Repository nennt. `{commits: ["kd:<K2>", "kd:0000000"]}` → 400 mit `verweis: "kd:0000000"`, und `kd:<K2>` steht danach **nicht** an #1. Ein Rumpf ohne Liste (`{commits: "kd:<K1>"}`), mit unbekanntem Schlüssel oder mit leerer Liste `[]` → 400. Eine unbekannte Aufgabe `/api/aufgaben/999/commits` → 404.
+- [x] **AK 6 Eingaben, die Git nie erreichen:** `kd:--output=x`, `kd:../x`, `kd:3f2a9c1;rm -rf x`, `kd:3f2a9c1 --all`, `kd:3f2a 9c1`, `kd:$(touch x)` und `kd:3f2a9c1^{tree}` ergeben je 400; danach liegt weder in R noch im Board-Ordner eine Datei `x`, `git status --porcelain` in R ist unverändert, und keiner dieser Texte kommt in einem Git-Aufruf vor (Probe: Server mit `GIT_TRACE=<datei>` gestartet, die Spur enthält keinen davon; im Test zusätzlich ein Zähler der Git-Aufrufe im Modul: 0).
 
 ### Wiederholen und Entfernen
 
-- [ ] **AK 7 Wiederholung und Grenze:** Steht `kd:<K1>` an #1, ergibt `POST` mit `["kd:<K1:7>"]` 200 ohne Commit (Commit-Zahl gleich); `["kd:<K1>", "kd:<K1:7>", "kd:<K2>"]` schreibt nur `kd:<K2>` dazu, mit genau einem Commit; derselbe Verweis zweimal im selben Aufruf zählt einmal. Trägt #1 schon 500 Verweise, ergibt jeder weitere neue Verweis 409 `{fehler}` (Vorbild Höchstzahl der Kosteneinträge), nichts geschrieben; 499 + 1 wird angenommen.
-- [ ] **AK 8 Entfernen:** An #1 stehen `kd:<K1>` und `kd:<K2>`. `DELETE /api/aufgaben/1/commits/kd:<K1:7>` ergibt 200, genau einen Commit, `GET` liefert nur noch `["kd:<K2>"]`; mit dem vollen Hash `kd:<K2>` ebenso. `DELETE …/kd:0000000` → 404 `{fehler, verweis}`; `DELETE …/kd:3f2a9c` (6 Zeichen) → 400. Wird R danach umbenannt (Repository fehlt), lässt sich ein Verweis trotzdem entfernen — 200, ein Commit. Passen zwei Verweise der Karte zum Präfix, → 400 `{fehler, verweis}`, nichts entfernt.
+- [x] **AK 7 Wiederholung und Grenze:** Steht `kd:<K1>` an #1, ergibt `POST` mit `["kd:<K1:7>"]` 200 ohne Commit (Commit-Zahl gleich); `["kd:<K1>", "kd:<K1:7>", "kd:<K2>"]` schreibt nur `kd:<K2>` dazu, mit genau einem Commit; derselbe Verweis zweimal im selben Aufruf zählt einmal. Trägt #1 schon 500 Verweise, ergibt jeder weitere neue Verweis 409 `{fehler}` (Vorbild Höchstzahl der Kosteneinträge), nichts geschrieben; 499 + 1 wird angenommen.
+- [x] **AK 8 Entfernen:** An #1 stehen `kd:<K1>` und `kd:<K2>`. `DELETE /api/aufgaben/1/commits/kd:<K1:7>` ergibt 200, genau einen Commit, `GET` liefert nur noch `["kd:<K2>"]`; mit dem vollen Hash `kd:<K2>` ebenso. `DELETE …/kd:0000000` → 404 `{fehler, verweis}`; `DELETE …/kd:3f2a9c` (6 Zeichen) → 400. Wird R danach umbenannt (Repository fehlt), lässt sich ein Verweis trotzdem entfernen — 200, ein Commit. Passen zwei Verweise der Karte zum Präfix, → 400 `{fehler, verweis}`, nichts entfernt.
 
 ### Datei und Bestand
 
-- [ ] **AK 9 Rundlauf und Legacy:**
+- [x] **AK 9 Rundlauf und Legacy:**
   - (a) Eine von kanbanD geschriebene Datei von #1 mit `commits` aus `kd:<K1>`, `<K2>` (ohne Kürzel), dem unlesbaren Eintrag `kd:zz` und dem Hash aus lauter Ziffern `1234567890123456789012345678901234567890` übersteht eine Titeländerung über die API zeichengleich bis auf den Titel; #1 ist nicht defekt, `GET` liefert alle vier Einträge wörtlich, der Ziffern-Hash als Text (nicht als Zahl).
   - (b) Eine alte Datei ohne `commits` (#2) bekommt durch eine Titeländerung keinen Schlüssel `commits`; `GET /api/aufgaben/2` liefert `commits: []`.
   - (c) Der Stand vor dieser Karte (`main` ohne #207, gebaut) behält eine Datei mit `commits` bei einer Titeländerung zeichengleich (unbekannter Schlüssel, ADR-0028 Option B).
   - (d) `POST /api/aufgaben/1/duplizieren` ergibt eine Kopie ohne `commits`.
-- [ ] **AK 10 Beschreibung und Lesen ohne Git:** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen `POST /api/aufgaben/{nr}/commits` und `DELETE /api/aufgaben/{nr}/commits/{verweis}` mit Rumpf, Statuscodes (200, 400, 404, 409, 503) und dem Feld `commits` an der Aufgabe; README „Für Agenten“ hat einen Abschnitt „Commits an der Karte hinterlegen“ mit dem Beispiel-Aufruf. `GET /api/aufgaben/1` und `/api/zustand` starten keinen Git-Prozess im Arbeits-Repository (Zähler im Modul: 0), auch wenn `kd:<K1>` an #1 steht.
+- [x] **AK 10 Beschreibung und Lesen ohne Git:** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen `POST /api/aufgaben/{nr}/commits` und `DELETE /api/aufgaben/{nr}/commits/{verweis}` mit Rumpf, Statuscodes (200, 400, 404, 409, 503) und dem Feld `commits` an der Aufgabe; README „Für Agenten“ hat einen Abschnitt „Commits an der Karte hinterlegen“ mit dem Beispiel-Aufruf. `GET /api/aufgaben/1` und `/api/zustand` starten keinen Git-Prozess im Arbeits-Repository (Zähler im Modul: 0), auch wenn `kd:<K1>` an #1 steht.
 
 ## Betroffene Verzeichnisstruktur
 

@@ -845,3 +845,9 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0985 Personenwahl als Auswahlliste mit Leerfall | Standard | 0,5-1h | 0,9h | 0,9h | autonom |
 | 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0986 Bestandstests auf die Auswahlliste umstellen | Standard | 0,5h | 0,3h | 0,3h | autonom |
 | 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0987 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5h | 0,5h | 0,5h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0988 Probe am heutigen Stand: Rundlauf einer Datei mit commits | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0989 commits in Datei und Aufgabe lesen und schreiben | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0990 Verweis lesen und Form prüfen, ohne Git | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0991 Modul Arbeits-Repository: Wurzel finden, Commit auflösen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0992 Routen POST/DELETE …/commits mit Statuscodes und Beschreibung | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-19 | Karte #207 R00202 (Commit-Verweise an der Karte hinterlegen und entfernen, API) | B0993 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
