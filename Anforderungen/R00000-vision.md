@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-11-18
+zuletzt-ergaenzt: 2026-11-19
 ---
 
 # R00000: Vision — kanbanD
@@ -107,6 +107,11 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
   Spalten, durch die Aufgaben wandern; ein Zug ist ein Durchlauf. `Braucht`-
   Beziehungen bleiben echte Abhängigkeiten zwischen Karten.
 
+- **Die Arbeit hinter der Karte nachvollziehen.** An einer Karte stehen die Commits,
+  die für sie entstanden sind, und die Läufe der Agenten, die an ihr gearbeitet haben.
+  kanbanD zeigt beides lesend: die Änderungen als Diff aus dem Arbeits-Repository, je
+  Commit oder für die ganze Karte, und den Verlauf eines Laufs.
+
 - **Auswertungen aus der Geschichte.** Soll-Ist, Burndown, Durchlaufzeiten und Zeiten
   je Aufgabe und Kontributor werden aus den Dateien und ihrer Git-Geschichte gerechnet.
 
@@ -161,6 +166,9 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   Frontmatter, ohne Datenbank daneben. Aufgaben und Boards liegen in getrennten
   Verzeichnissen. Ein Index oder Cache darf existieren, muss
   sich aber jederzeit aus den Dateien neu aufbauen lassen und wird nicht versioniert.
+  Transkripte der Agentenläufe liegen gezippt im Ordner, werden aber nicht
+  versioniert; die Karte trägt ihren Eintrag. Sie reisen nicht mit dem Repository und
+  lassen sich vollständig löschen.
 - **Git-freundliche Form.** Die Dateien sind stabil sortiert, haben stabile IDs,
   sind zeilenorientiert und ändern sich nur dort, wo sich etwas ändert. Eine
   Bewegung ergibt einen kleinen Diff in der Board-Datei und keinen in der Aufgabe:
@@ -187,6 +195,8 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   mehr nicht; im Repository einer Anwendung ändert es Dateien, committet dort aber
   nie. Pull,
   Push, Branch und Merge macht der Mensch mit seinen gewohnten Werkzeugen. kanbanD kommt mit dem zurecht, was dabei herauskommt.
+  Im Arbeits-Repository liest kanbanD Commits nur. Kommentare, Freigaben oder Merge im
+  Diff gibt es nicht.
 - **Kein Funktionsgleichstand mit Kanbanflow oder kanbanC.** Keine Mobile-Apps,
   keine Fremd-Integrationen, keine Benachrichtigungen und keine @-Mentions; aus
   kanbanC nicht übernommen sind Linien- und Projektboards, Klassen mit eigener
@@ -221,3 +231,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-11-07 | Leitplanke „Der Mensch sieht jede Gestaltung, bevor sie gebaut wird“ ersetzt durch „Jede Gestaltung wird freigegeben, bevor sie gebaut wird“, vom Auftraggeber oder vom product-owner — Grund: der Auftraggeber überträgt die Artboard-Freigabe dem product-owner (Anlass po-entscheidungen Z. 76, 148, 153) |
 | 2026-11-15 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ um die Regel zum Archiv ergänzt: Archiviert ist eine Eigenschaft der Aufgabe und gilt für alle Boards, auf denen sie liegt; aus dem Archiv geholt, liegt sie wieder auf allen diesen Boards, ein beim Wiederöffnen genanntes weiteres Board kommt hinzu — Entscheidung des Betreibers vom 2026-11-15 im Wortlaut (Anlass Karte #45; hebt seine Entscheidung vom 2026-11-13 „eine Karte liegt auf genau einem Board“ auf, die nie im Zielbild stand) |
 | 2026-11-18 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ und Leitplanke „Ordneraufbau“: Klassen gelten je Board, ein Board kann eigene Klassen mit eigenen Farben tragen, ohne eigene gelten die Klassen des Ordners als Vorgabe; Personen bleiben ordnerweit — ersetzt „Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm“. Grund: Entscheidung des Betreibers vom 2026-11-18 (Karte #200): ein eigenes Board für eine große Wartungsaufgabe trug die Klassen des Wartungsboards, die dort keinen Sinn ergeben |
+| 2026-11-19 | Zielbild „Die Arbeit hinter der Karte nachvollziehen“ neu (Commits und Agentenläufe an der Karte, lesend als Diff und Verlauf); Nicht-Ziel „Kein Git-Client“ ergänzt: im Arbeits-Repository nur lesen, keine Kommentare, Freigaben oder Merge im Diff; Leitplanke „Die Dateien sind der einzige Speicher“ um die Ausnahme für unversionierte, gezippte Transkripte ergänzt — Entscheidung des Betreibers vom 2026-11-19 (Karten #207, #208, po-entscheidungen Z. 361 und 376) |
