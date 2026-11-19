@@ -9,7 +9,7 @@ use std::path::Path;
 const JSON: Option<&str> = Some("application/json");
 
 /// R00153 AK 2: Methode, Pfad der Beschreibung, Rumpf mit falschem Typ, Feldname in `fehler`.
-const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 39] = [
+const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 40] = [
     ("POST", "/api/einrichten", r#"{"ich": 7}"#, "ich"),
     ("PATCH", "/api/boards/{slug}", r#"{"archiviert": "ja"}"#, "archiviert"),
     ("POST", "/api/aufgaben", r#"{"titel": 7}"#, "titel"),
@@ -38,6 +38,7 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 39] = [
     ("PATCH", "/api/aufgaben/{nr}/zeiten/{kennung}", r#"{"beginn": 7}"#, "beginn"),
     ("POST", "/api/aufgaben/{nr}/kosteneintraege", r#"{"at": "2026-11-13 10:34+01:00", "role": "entwickler", "column": "Zu erledigen", "amount": "3.46", "currency": "USD"}"#, "amount"),
     ("PATCH", "/api/aufgaben/{nr}/kosteneintraege/{kennung}", r#"{"amount": "3.46"}"#, "amount"),
+    ("POST", "/api/aufgaben/{nr}/commits", r#"{"commits": "kd:3f2a9c1"}"#, "commits"),
     ("POST", "/api/aufgaben/{nr}/durchlaeufe", r#"{"phase": 7, "ergebnis": "ok"}"#, "phase"),
     ("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", r#"{"status": 7}"#, "status"),
     ("POST", "/api/wbs/{kuerzel}/knoten", r#"{"name": 7}"#, "name"),
@@ -64,7 +65,7 @@ const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
 ];
 
 /// R00153 AK 3: ohne Rumpf oder Multipart.
-const OHNE_JSON_RUMPF: [(&str, &str); 16] = [
+const OHNE_JSON_RUMPF: [(&str, &str); 17] = [
     ("DELETE", "/api/boards/{slug}"),
     ("DELETE", "/api/boards/{slug}/fieber/cache"),
     ("DELETE", "/api/personen/{kuerzel}"),
@@ -76,6 +77,7 @@ const OHNE_JSON_RUMPF: [(&str, &str); 16] = [
     ("POST", "/api/aufgaben/{nr}/timer/start"),
     ("DELETE", "/api/aufgaben/{nr}/zeiten/{kennung}"),
     ("DELETE", "/api/aufgaben/{nr}/kosteneintraege/{kennung}"),
+    ("DELETE", "/api/aufgaben/{nr}/commits/{verweis}"),
     ("POST", "/api/aufgaben/{nr}/anhaenge"),
     ("DELETE", "/api/aufgaben/{nr}/anhaenge/{name}"),
     ("POST", "/api/aufgaben/{nr}/archivieren"),
@@ -137,7 +139,7 @@ fn grundbestand() -> (tempfile::TempDir, gemeinsam::Laufendes) {
     (tmp, lauf)
 }
 
-// AK 1, AK 2, AK 9 (36 Antworten, seit R00165 mit den Kosteneinträgen 38, seit R00195 mit den Klassen des Boards 39), AK 12 · US-3
+// AK 1, AK 2, AK 9 (36 Antworten, seit R00165 mit den Kosteneinträgen 38, seit R00195 mit den Klassen des Boards 39, seit R00202 mit den Commit-Verweisen 40), AK 12 · US-3
 #[tokio::test]
 async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feldnamen_ab() {
     let (tmp, lauf) = grundbestand();
@@ -156,7 +158,7 @@ async fn jeder_endpunkt_mit_json_rumpf_weist_einen_falschen_typ_mit_400_und_feld
             rot.push(format!("Zeile {} {methode} {pfad}: Git-Stand des Ordners geändert", nr + 1));
         }
     }
-    assert!(rot.is_empty(), "{} von 39 Zeilen rot:\n{}", rot.len(), rot.join("\n"));
+    assert!(rot.is_empty(), "{} von 40 Zeilen rot:\n{}", rot.len(), rot.join("\n"));
 }
 
 // AK 3
@@ -166,9 +168,9 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (61, 61), "61 = 39 + 1 + 5 + 16");
+    assert_eq!((beschrieben.len(), benannt.len()), (63, 63), "63 = 40 + 1 + 5 + 17");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
-    assert_eq!(benannt.len(), 61, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(benannt.len(), 63, "kein Endpunkt steht in zwei Listen");
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
@@ -332,8 +334,8 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
             }
         }
     }
-    assert_eq!(schreibend, 61);
-    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "400", "403", "404", "409", "423", "500"]);
+    assert_eq!(schreibend, 63);
+    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "400", "403", "404", "409", "423", "500", "503"]);
 }
 
 // ADR-0003 N3 Punkt 6: die Standardgrenze des Rahmens bleibt — ein JSON-Rumpf von genau 2 MiB geht durch

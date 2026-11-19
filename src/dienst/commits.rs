@@ -79,7 +79,10 @@ fn abweisung(f: Verweisfehler) -> Fehler {
 
 /// Was das Arbeits-Repository meldet, als Antwort: fehlendes Repository und kein Commit 400 mit Verweis, Zeitgrenze 503.
 fn repo_fehler(f: Arbeitsrepofehler, text: &str, anwendung: &Anwendung) -> Fehler {
-    let name = if anwendung.kuerzel.is_empty() { "der Standardanwendung".to_string() } else { format!("„{}“", anwendung.kuerzel) };
+    let name = match nachricht::wert(&anwendung.kuerzel) {
+        k if k.is_empty() => "der Standardanwendung".to_string(),
+        k => format!("„{k}“"),
+    };
     let verweis = |meldung: String| Fehler::Verweis { meldung, verweis: text.into(), fehlt: false };
     match f {
         Arbeitsrepofehler::RepositoryFehlt(grund) => verweis(format!("Repository {name} fehlt — {grund}")),
