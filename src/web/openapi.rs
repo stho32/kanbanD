@@ -86,6 +86,12 @@ pub struct Verweisfehler {
     pub verweis: String,
 }
 
+/// Antwort von `GET …/commits` (R00204): je Verweis der Aufgabe ein Eintrag.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Commitliste {
+    pub commits: Vec<crate::modell::Commiteintrag>,
+}
+
 /// 409 der Endpunkte mit WIP-Grenze (R00096): Ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
 /// die [`Fehlerantwort`]. Nur für die Beschreibung.
 #[derive(serde::Serialize, utoipa::ToSchema)]

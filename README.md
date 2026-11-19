@@ -132,6 +132,29 @@ curl -X POST http://localhost:7420/api/aufgaben/42/commits/ersetzen -H 'X-Kanban
 - Alles oder nichts, und wiederholbar: ein Paar, dessen `alt` nicht mehr und dessen `neu` schon an der Karte steht, gilt als erledigt; bleibt keines übrig, ist die Antwort 200 ohne Commit.
 - Fehler `{fehler, verweis}`: 400 (Rumpf, Form, Kürzel, doppelt, Kette, mehrdeutiger Präfix, `neu` unbekannt), 404 (`alt` und `neu` stehen nicht an der Karte), 409 (beide stehen dort; `verweis` ist das `alt`, das sich mit `DELETE` entfernen lässt), 503 (Git über 10 s).
 
+### Commits einer Karte lesen
+
+`GET /api/aufgaben/{nr}/commits` liefert zu jedem Verweis der Karte, was ein Reviewer wissen will — live und nur lesend aus dem Arbeits-Repository des Registers, ohne `X-KanbanD-Wer`:
+
+```
+GET /api/aufgaben/1/commits
+→ 200
+{"commits": [
+  {"verweis": "kd:<K3>", "anwendung": "kd", "hash": "<K3>", "zustand": "auf_zweig",
+   "zweige": ["main"], "entfernte_zweige": ["o/main"],
+   "titel": "c.txt anlegen", "autor": "Ada Autorin", "datum": "2026-03-01T10:00:00+01:00",
+   "plus": 3, "minus": 0, "dateien": 1},
+  {"verweis": "kd:<W1>", "anwendung": "kd", "hash": "<W1>", "zustand": "auf_zweig",
+   "zweige": ["karte/1"], "entfernte_zweige": [], "titel": "b.txt anlegen", …},
+  {"verweis": "kd:<V2>", "anwendung": "kd", "hash": "<V2>", "zustand": "fehlt"}
+]}
+```
+
+- Zustände: `auf_zweig` (ein lokaler oder entfernter Zweig erreicht den Commit; je Liste höchstens 10 Namen, der Rest steht in `zweige_weitere`), `verwaist` (der Commit existiert, aber kein Zweig erreicht ihn), `fehlt` (kein Commit-Objekt), `repository_fehlt` und `unlesbar` (mit `grund`), `anwendung_unbekannt`.
+- **`verwaist` heißt nach einem Rebase oder Squash: die Verweise sind nachzuziehen** — mit `POST /api/aufgaben/{nr}/commits/ersetzen` den alten Hash durch den neuen ersetzen.
+- Reihenfolge: älteste zuerst nach dem Commit-Datum, Einträge ohne Datum (`fehlt`, `unlesbar`, …) danach. `titel` ist die erste Zeile der Nachricht (höchstens 500 Zeichen), `autor` nur der Name, `plus`/`minus`/`dateien` zählen gegen den ersten Elternteil.
+- Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einer halben Liste; Schreibvorgänge an der Karte warten nie auf ihn.
+
 ## Tests
 
 ```bash

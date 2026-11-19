@@ -859,3 +859,4 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B0999 Startpunkt härten und erweitern: Befehle, Schalter aus dem Befehl, stdin, Prozessgruppe, Fitness | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1000 Zustand und Metadaten je Repository, ohne Zweige | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1001 Zweigliste Z5 mit flüchtigem Cache | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1002 Route GET …/commits, Gesamtgrenze, Beschreibung, Akzeptanztests | Standard | 1-2h | 0,7h | 0,7h | autonom |

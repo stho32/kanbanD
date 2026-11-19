@@ -1,4 +1,4 @@
-//! Ein Eintrag der Commit-Liste einer Karte (R00204, ADR-0032 N1.2): der Verweis wörtlich, sein Zustand und — soweit
+//! Ein Eintrag der Commit-Liste einer Karte (R00204, ADR-0032 N1.2): der Verweis wörtlich, sein Commitzustand und — soweit
 //! lesbar — Anwendung, Hash, Zweige und Metadaten. Zustände werden nie gespeichert, nur bei jedem Lesen gerechnet.
 
 use serde::Serialize;
@@ -6,10 +6,10 @@ use serde::Serialize;
 /// Längster Titel in Unicode-Zeichen; ist die erste Zeile länger, folgt „…“ (Entscheidung des PO, R00204 AK 17).
 pub const TITEL_HOECHSTENS: usize = 500;
 
-/// Zustand eines Verweises (ADR-0032 N1.2), geprüft in der Reihenfolge der Varianten.
+/// Commitzustand eines Verweises (ADR-0032 N1.2), geprüft in der Reihenfolge der Varianten.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum Zustand {
+pub enum Commitzustand {
     Unlesbar,
     AnwendungUnbekannt,
     RepositoryFehlt,
@@ -18,7 +18,7 @@ pub enum Zustand {
     Verwaist,
 }
 
-/// Ein Eintrag der Antwort von `GET …/commits`; Felder, die zum Zustand nicht passen, fehlen (nie `null`).
+/// Ein Eintrag der Antwort von `GET …/commits`; Felder, die zum Commitzustand nicht passen, fehlen (nie `null`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Commiteintrag {
     /// wörtlich wie in der Datei
@@ -29,7 +29,7 @@ pub struct Commiteintrag {
     /// voll und kleingeschrieben, wenn der Commit gefunden ist; sonst wie im Verweis, kleingeschrieben
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
-    pub zustand: Zustand,
+    pub zustand: Commitzustand,
     /// bei `unlesbar` und `repository_fehlt`
     #[serde(skip_serializing_if = "Option::is_none")]
     pub grund: Option<String>,
@@ -63,8 +63,8 @@ pub struct Commiteintrag {
 }
 
 impl Commiteintrag {
-    /// Ein Eintrag nur mit Verweis und Zustand; die übrigen Felder setzt der Aufrufer.
-    pub fn neu(verweis: &str, zustand: Zustand) -> Commiteintrag {
+    /// Ein Eintrag nur mit Verweis und Commitzustand; die übrigen Felder setzt der Aufrufer.
+    pub fn neu(verweis: &str, zustand: Commitzustand) -> Commiteintrag {
         Commiteintrag { verweis: verweis.into(), anwendung: None, hash: None, zustand, grund: None, zweige: None, entfernte_zweige: None, zweige_weitere: None, titel: None, autor: None, datum: None, plus: None, minus: None, dateien: None }
     }
 }
@@ -138,11 +138,11 @@ mod tests {
     // ADR-0032 N1.2: Zustände in snake_case, Felder ohne Wert fehlen (nie null)
     #[test]
     fn antwortform() {
-        let mut e = Commiteintrag::neu("kd:abc", Zustand::AufZweig);
+        let mut e = Commiteintrag::neu("kd:abc", Commitzustand::AufZweig);
         e.anwendung = Some(String::new());
         e.zweige = Some(vec![]);
         assert_eq!(serde_json::to_value(&e).unwrap(), serde_json::json!({"verweis": "kd:abc", "anwendung": "", "zustand": "auf_zweig", "zweige": []}));
-        for (z, text) in [(Zustand::Unlesbar, "unlesbar"), (Zustand::AnwendungUnbekannt, "anwendung_unbekannt"), (Zustand::RepositoryFehlt, "repository_fehlt"), (Zustand::Fehlt, "fehlt"), (Zustand::Verwaist, "verwaist")] {
+        for (z, text) in [(Commitzustand::Unlesbar, "unlesbar"), (Commitzustand::AnwendungUnbekannt, "anwendung_unbekannt"), (Commitzustand::RepositoryFehlt, "repository_fehlt"), (Commitzustand::Fehlt, "fehlt"), (Commitzustand::Verwaist, "verwaist")] {
             assert_eq!(serde_json::to_value(z).unwrap(), serde_json::json!(text));
         }
     }

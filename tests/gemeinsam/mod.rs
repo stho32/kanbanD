@@ -482,3 +482,103 @@ fn sha1_hex(daten: &[u8]) -> String {
     }
     h.iter().map(|x| format!("{x:08x}")).collect()
 }
+
+/// R00204 „Ausgangslage“: Arbeits-Repository R mit K1–K4 auf `main`, Worktree `R-karte-1` auf `karte/1` (ab K2) mit W1,
+/// V1 auf losgelöstem HEAD mit Tag `v1`, `o/main` = K4 und `o/HEAD` → `o/main`, R1 nur auf `refs/remotes/o/x`, V2 auf
+/// losgelöstem HEAD (entfernt erst mit [`R204::v2_entfernen`]); Board-Ordner „fabrik“ mit #1 „Commit-Liste“ und #2 in
+/// „Entwicklung“, Mensch `sh`, Agent `entw1`, Anwendung `kd` ohne Standardanwendung.
+pub struct R204 {
+    pub _tmp: tempfile::TempDir,
+    pub basis: PathBuf,
+    pub r: PathBuf,
+    pub wt: PathBuf,
+    pub board: PathBuf,
+    pub k1: String,
+    pub k2: String,
+    pub k3: String,
+    pub k4: String,
+    pub w1: String,
+    pub v1: String,
+    pub r1: String,
+    pub v2: String,
+}
+
+/// Git als `name` mit festem Autor- und Commit-Datum.
+pub fn git_am(r: &Path, name: &str, datum: &str, args: &[&str]) -> String {
+    let a = Command::new("git").arg("-C").arg(r).args(["-c", &format!("user.name={name}"), "-c", "user.email=autor@example.org"]).args(args).env("GIT_AUTHOR_DATE", datum).env("GIT_COMMITTER_DATE", datum).output().unwrap();
+    assert!(a.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&a.stderr));
+    String::from_utf8_lossy(&a.stdout).trim().to_string()
+}
+
+const ADA: &str = "Ada Autorin";
+
+/// Legt `datei` mit `zeilen` Zeilen an (oder überschreibt sie) und committet mit `nachricht`; liefert den Hash.
+pub fn datei_commit(r: &Path, name: &str, datum: &str, datei: &str, zeilen: usize, nachricht: &str) -> String {
+    std::fs::write(r.join(datei), (1..=zeilen).map(|i| format!("{datei} {i}\n")).collect::<String>()).unwrap();
+    git_am(r, name, datum, &["add", "-A"]);
+    git_am(r, name, datum, &["commit", "-q", "-m", nachricht]);
+    git_am(r, name, datum, &["rev-parse", "HEAD"])
+}
+
+pub fn ausgangslage_r00204() -> R204 {
+    let tmp = tempfile::tempdir().unwrap();
+    let basis = tmp.path().canonicalize().unwrap();
+    let (r, wt, board) = (basis.join("R"), basis.join("R-karte-1"), basis.join("board"));
+    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
+    std::fs::write(r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
+    git_am(&r, ADA, "2026-02-01T09:00:00+00:00", &["init", "-q", "-b", "main"]);
+    let k1 = datei_commit(&r, ADA, "2026-02-01T09:00:00+00:00", "a.txt", 2, "a.txt anlegen");
+    let k2 = datei_commit(&r, ADA, "2026-02-02T09:00:00+00:00", "a.txt", 3, "a.txt ändern");
+    let k3 = datei_commit(&r, ADA, "2026-03-01T10:00:00+01:00", "c.txt", 3, "c.txt anlegen");
+    let k4 = datei_commit(&r, ADA, "2026-02-20T09:00:00+00:00", "d.txt", 1, "d.txt anlegen");
+    git_am(&r, ADA, "2026-02-02T09:00:00+00:00", &["worktree", "add", "-q", "-b", "karte/1", wt.to_str().unwrap(), &k2]);
+    let w1 = datei_commit(&wt, "Bernd Beispiel", "2026-03-02T09:00:00+00:00", "b.txt", 1, "b.txt anlegen");
+    git_am(&r, ADA, "2026-03-03T09:00:00+00:00", &["checkout", "-q", "--detach"]);
+    let v1 = datei_commit(&r, ADA, "2026-03-03T09:00:00+00:00", "v.txt", 1, "v.txt anlegen");
+    git_am(&r, ADA, "2026-03-03T09:00:00+00:00", &["tag", "v1"]);
+    // R1 ab K2: nur o/x erreicht ihn, und o/x erreicht K3 nicht
+    git_am(&r, ADA, "2026-03-04T09:00:00+00:00", &["checkout", "-q", "--detach", &k2]);
+    let r1 = datei_commit(&r, ADA, "2026-03-04T09:00:00+00:00", "r.txt", 1, "r.txt anlegen");
+    git_am(&r, ADA, "2026-03-04T09:00:00+00:00", &["update-ref", "refs/remotes/o/x", &r1]);
+    git_am(&r, ADA, "2026-03-05T09:00:00+00:00", &["checkout", "-q", "--detach", "main"]);
+    let v2 = datei_commit(&r, ADA, "2026-03-05T09:00:00+00:00", "w.txt", 1, "w.txt anlegen");
+    git_am(&r, ADA, "2026-03-05T09:00:00+00:00", &["checkout", "-q", "main"]);
+    git_am(&r, ADA, "2026-03-05T09:00:00+00:00", &["update-ref", "refs/remotes/o/main", &k4]);
+    git_am(&r, ADA, "2026-03-05T09:00:00+00:00", &["symbolic-ref", "refs/remotes/o/HEAD", "refs/remotes/o/main"]);
+    std::fs::create_dir_all(board.join("aufgaben")).unwrap();
+    std::fs::create_dir_all(board.join("boards")).unwrap();
+    std::fs::write(board.join("kanbanD.md"), format!("---\npeople:\n  sh: {{name: Stefan, kind: human}}\n  entw1: {{name: Entwickler, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {{name: KD, wbs: {}/Dokumentation/Planung/app.md, requirements: \"\"}}\n---\n", r.display())).unwrap();
+    std::fs::write(board.join("aufgaben/0001-commit-liste.md"), "---\nid: 1\ntitle: Commit-Liste\n---\n").unwrap();
+    std::fs::write(board.join("aufgaben/0002-leer.md"), "---\nid: 2\ntitle: leer\n---\n").unwrap();
+    std::fs::write(board.join("boards/fabrik.md"), "# fabrik\n\n## Entwicklung\n\n- [#1](../aufgaben/0001-commit-liste.md)\n- [#2](../aufgaben/0002-leer.md)\n").unwrap();
+    git(&board, &["init", "-q"]);
+    git(&board, &["add", "-A"]);
+    git(&board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "fabrik"]);
+    R204 { _tmp: tmp, basis, r, wt, board, k1, k2, k3, k4, w1, v1, r1, v2 }
+}
+
+impl R204 {
+    /// V2 nach dem Hinterlegen aus R entfernen (Reflogs leeren, unerreichbare Objekte löschen).
+    pub fn v2_entfernen(&self) {
+        git_am(&self.r, ADA, "2026-03-06T09:00:00+00:00", &["reflog", "expire", "--expire=now", "--all"]);
+        git_am(&self.r, ADA, "2026-03-06T09:00:00+00:00", &["gc", "-q", "--prune=now"]);
+        let a = Command::new("git").arg("-C").arg(&self.r).args(["cat-file", "-e", &self.v2]).status().unwrap();
+        assert!(!a.success(), "V2 ist noch da");
+    }
+
+    /// Die Verweise der Ausgangslage in der Reihenfolge der Datei: K3, W1, V1, V2, R1.
+    pub fn verweise(&self) -> Vec<String> {
+        [&self.k3, &self.w1, &self.v1, &self.v2, &self.r1].iter().map(|h| format!("kd:{h}")).collect()
+    }
+
+    /// Schreibt die Verweise von Hand in die Datei von #1 (ohne kanbanD) und committet sie.
+    pub fn von_hand(&self, verweise: &[String]) {
+        let liste: String = verweise.iter().map(|v| format!("  - {}\n", serde_json::to_string(v).unwrap())).collect();
+        std::fs::write(self.board.join("aufgaben/0001-commit-liste.md"), format!("---\nid: 1\ntitle: Commit-Liste\ncommits:\n{liste}---\n")).unwrap();
+        git(&self.board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-am", "von Hand"]);
+    }
+
+    pub fn commit_zahl(&self) -> String {
+        git(&self.board, &["rev-list", "--count", "HEAD"])
+    }
+}

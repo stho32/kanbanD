@@ -142,3 +142,52 @@ fn b0998_z1_und_z5_messen() {
     assert!(gleich, "Z1 und Z5 liefern verschiedene Listen");
     assert!(p1 < SCHWELLE || p5 < SCHWELLE, "beide Wege reißen die Schwelle: anforderung_falsch");
 }
+
+// R00204 AK 10 (Abnahme-Probe der Karte): 20 kalte Läufe von `GET …/commits` gegen das echte Programm, gemessen am Client
+// von der Anfrage bis zum letzten Byte; vor jedem Lauf bewegt sich ein Zweig. Dazu die Zahl der Git-Aufrufe je kaltem
+// Lauf (Z5: 5 + 1). Läuft nur ausdrücklich, mit --release und ruhiger Maschine (Last unter 2).
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak10_lastprobe_kalt_ueber_die_api() {
+    let g = gemeinsam::grosses_repository();
+    std::fs::write(g.r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let board = tmp.path().canonicalize().unwrap();
+    std::fs::create_dir_all(board.join("aufgaben")).unwrap();
+    std::fs::create_dir_all(board.join("boards")).unwrap();
+    std::fs::write(board.join("kanbanD.md"), format!("---\npeople:\n  entw1: {{name: E, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {{name: KD, wbs: {}/Dokumentation/Planung/app.md, requirements: \"\"}}\n---\n", g.r.display())).unwrap();
+    let liste: String = g.verweise.iter().map(|h| format!("  - kd:{h}\n")).collect();
+    std::fs::write(board.join("aufgaben/0001-last.md"), format!("---\nid: 1\ntitle: Last\ncommits:\n{liste}---\n")).unwrap();
+    std::fs::write(board.join("boards/fabrik.md"), "# fabrik\n\n## Entwicklung\n\n- [#1](../aufgaben/0001-last.md)\n").unwrap();
+    gemeinsam::git(&board, &["init", "-q"]);
+    gemeinsam::git(&board, &["add", "-A"]);
+    gemeinsam::git(&board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "fabrik"]);
+    let spur = board.join("spur");
+    let lauf = gemeinsam::starten_mit(&board, &["--port", "0"], &[("GIT_TRACE", spur.to_str().unwrap())]);
+    let client = reqwest::Client::new();
+    // je Lauf eine andere Spitze für b29: der Fingerabdruck ist jedes Mal neu, kein Lauf trifft den Cache
+    let spitzen: Vec<String> = (1..=20).map(|i| gemeinsam::git(&g.r, &["rev-parse", &format!("main~{i}")])).collect();
+    let (mut zeiten, mut lasten, mut aufrufe) = (vec![], vec![], vec![]);
+    for lauf_nr in 0..20 {
+        gemeinsam::git(&g.r, &["update-ref", "refs/heads/b29", &spitzen[lauf_nr]]);
+        std::fs::write(&spur, "").unwrap();
+        lasten.push(last());
+        let start = Instant::now();
+        let antwort = client.get(format!("{}api/aufgaben/1/commits", lauf.adresse)).send().await.unwrap();
+        let status = antwort.status().as_u16();
+        let text = antwort.text().await.unwrap();
+        zeiten.push(start.elapsed());
+        assert_eq!(status, 200, "{text}");
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v["commits"].as_array().unwrap().len(), 30);
+        aufrufe.push(std::fs::read_to_string(&spur).unwrap_or_default().lines().filter(|z| z.contains("trace: built-in: git") && ["rev-parse --show-toplevel", "cat-file --batch-check", "git log ", "for-each-ref", "rev-list --parents"].iter().any(|b| z.contains(b))).count());
+    }
+    let p = p95(zeiten.clone());
+    eprintln!("AK 10: {} Commits, 50 Zweige, ohne commit-graph, 30 Verweise", g.commits);
+    eprintln!("Last je Lauf: {}", lasten.join(" "));
+    eprintln!("ms: {:?}", zeiten.iter().map(Duration::as_millis).collect::<Vec<_>>());
+    eprintln!("Git-Aufrufe je Lauf: {aufrufe:?}");
+    eprintln!("p95 {} ms", p.as_millis());
+    assert!(aufrufe.iter().all(|n| *n == 6), "Z5: 5 + 1 je kaltem Lauf: {aufrufe:?}");
+    assert!(p < SCHWELLE, "p95 {} ms", p.as_millis());
+}

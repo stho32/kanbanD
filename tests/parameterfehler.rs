@@ -40,6 +40,7 @@ const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 62] = [
     ("POST", "/api/aufgaben/{nr}/kosteneintraege", &["nr"]),
     ("PATCH", "/api/aufgaben/{nr}/kosteneintraege/{kennung}", &["nr"]),
     ("DELETE", "/api/aufgaben/{nr}/kosteneintraege/{kennung}", &["nr"]),
+    ("GET", "/api/aufgaben/{nr}/commits", &["nr"]),
     ("POST", "/api/aufgaben/{nr}/commits", &["nr"]),
     ("POST", "/api/aufgaben/{nr}/commits/ersetzen", &["nr"]),
     ("DELETE", "/api/aufgaben/{nr}/commits/{verweis}", &["nr"]),
@@ -200,7 +201,7 @@ async fn jede_route_weist_ungueltiges_utf8_an_jedem_pfadparameter_mit_400_und_de
     assert_eq!(stand(tmp.path()), vorher, "kein Commit, keine offene Änderung");
 }
 
-// AK 1, AK 4, AK 7, AK 9 (35 Antworten, seit R00165 mit den Kosteneinträgen 38, seit R00202 mit den Commit-Verweisen 40, seit R00203 mit dem Ersetzen 41) · US-1, US-2
+// AK 1, AK 4, AK 7, AK 9 (35 Antworten, seit R00165 mit den Kosteneinträgen 38, seit R00202 mit den Commit-Verweisen 40, seit R00203 mit dem Ersetzen 41, seit R00204 mit der Commit-Liste 42) · US-1, US-2
 #[tokio::test]
 async fn jeder_zahlenparameter_weist_einen_text_mit_400_und_dem_parameternamen_ab() {
     let (tmp, lauf) = grundbestand();

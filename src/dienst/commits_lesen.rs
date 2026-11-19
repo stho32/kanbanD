@@ -5,7 +5,7 @@ use super::Kanban;
 use super::zweigcache::abdruck;
 use crate::fehler::Fehler;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Metadaten, Objekt};
-use crate::modell::{Anwendung, Anwendungen, Commiteintrag, Verweisform, Zustand, Zweige, titel_kuerzen, verweis_lesen};
+use crate::modell::{Anwendung, Anwendungen, Commiteintrag, Verweisform, Commitzustand, Zweige, titel_kuerzen, verweis_lesen};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -122,7 +122,7 @@ fn abbruch(f: Arbeitsrepofehler) -> Fehler {
 /// Ein Verweis eines Repositorys, das fehlt oder das Git verweigert; Zeitgrenze und Co. brechen die Anfrage ab.
 fn repository_fehlt(text: &str, kuerzel: &str, hash: &str, f: Arbeitsrepofehler) -> Result<Commiteintrag, Fehler> {
     match f {
-        Arbeitsrepofehler::RepositoryFehlt(grund) => Ok(Commiteintrag { anwendung: Some(kuerzel.into()), hash: Some(hash.into()), grund: Some(grund), ..Commiteintrag::neu(text, Zustand::RepositoryFehlt) }),
+        Arbeitsrepofehler::RepositoryFehlt(grund) => Ok(Commiteintrag { anwendung: Some(kuerzel.into()), hash: Some(hash.into()), grund: Some(grund), ..Commiteintrag::neu(text, Commitzustand::RepositoryFehlt) }),
         anders => Err(abbruch(anders)),
     }
 }
@@ -130,18 +130,18 @@ fn repository_fehlt(text: &str, kuerzel: &str, hash: &str, f: Arbeitsrepofehler)
 /// Der Eintrag eines Verweises, dessen Repository gelesen ist.
 fn eintrag(text: &str, kuerzel: &str, hash: &str, objekt: &Objekt, metadaten: &HashMap<String, Metadaten>, zweige: &HashMap<String, Zweige>) -> Result<Commiteintrag, Arbeitsrepofehler> {
     let basis = |zustand| Commiteintrag { anwendung: Some(kuerzel.into()), hash: Some(hash.into()), ..Commiteintrag::neu(text, zustand) };
-    let unlesbar = |grund: String| Commiteintrag { grund: Some(grund), ..basis(Zustand::Unlesbar) };
+    let unlesbar = |grund: String| Commiteintrag { grund: Some(grund), ..basis(Commitzustand::Unlesbar) };
     let wert = crate::nachricht::wert(hash);
     Ok(match objekt {
-        Objekt::Fehlt => basis(Zustand::Fehlt),
+        Objekt::Fehlt => basis(Commitzustand::Fehlt),
         Objekt::Mehrdeutig => unlesbar(format!("Kurz-Hash „{wert}“ passt zu mehreren Objekten — längeren Hash nennen")),
         Objekt::NameEinesRefs => unlesbar(format!("„{wert}“ ist zugleich der Name eines Zweigs oder Tags — vollen Hash nennen")),
         Objekt::Commit(voll) => {
             let m = metadaten.get(voll).ok_or_else(|| Arbeitsrepofehler::Start(format!("keine Metadaten zu {voll}")))?;
             let z = zweige.get(voll).cloned().unwrap_or_default();
-            let mut e = Commiteintrag { hash: Some(voll.clone()), titel: Some(titel_kuerzen(&m.titel)), autor: Some(m.autor.clone()), datum: Some(m.datum.clone()), plus: Some(m.plus), minus: Some(m.minus), dateien: Some(m.dateien), ..basis(Zustand::Verwaist) };
+            let mut e = Commiteintrag { hash: Some(voll.clone()), titel: Some(titel_kuerzen(&m.titel)), autor: Some(m.autor.clone()), datum: Some(m.datum.clone()), plus: Some(m.plus), minus: Some(m.minus), dateien: Some(m.dateien), ..basis(Commitzustand::Verwaist) };
             if !z.leer() {
-                e.zustand = Zustand::AufZweig;
+                e.zustand = Commitzustand::AufZweig;
                 e.zweige_weitere = (z.weitere > 0).then_some(z.weitere);
                 e.zweige = Some(z.lokal);
                 e.entfernte_zweige = Some(z.entfernt);
@@ -172,10 +172,10 @@ struct Gelesen<'a> {
 /// Ohne Git: Form, dann Register (ADR-0032 N1.2, Reihenfolge `unlesbar`, `anwendung_unbekannt`). Ein Eintrag, der hier
 /// scheitert, erreicht Git nie.
 fn einordnen<'a>(text: &str, anwendungen: &'a Anwendungen) -> Result<Gelesen<'a>, Commiteintrag> {
-    let form = Verweisform::lesen(text).map_err(|f| Commiteintrag { grund: Some(f.meldung), ..Commiteintrag::neu(text, Zustand::Unlesbar) })?;
+    let form = Verweisform::lesen(text).map_err(|f| Commiteintrag { grund: Some(f.meldung), ..Commiteintrag::neu(text, Commitzustand::Unlesbar) })?;
     match verweis_lesen(text, anwendungen) {
         Ok((anwendung, hash)) => Ok(Gelesen { anwendung, hash }),
-        Err(_) => Err(Commiteintrag { anwendung: Some(form.kuerzel.unwrap_or_default()), hash: Some(form.hash), ..Commiteintrag::neu(text, Zustand::AnwendungUnbekannt) }),
+        Err(_) => Err(Commiteintrag { anwendung: Some(form.kuerzel.unwrap_or_default()), hash: Some(form.hash), ..Commiteintrag::neu(text, Commitzustand::AnwendungUnbekannt) }),
     }
 }
 
@@ -235,7 +235,7 @@ mod tests {
         (liste, arbeitsrepo::aufrufe() - vorher)
     }
 
-    fn zweige_von(liste: &[Commiteintrag], h: &str) -> (Zustand, Option<Vec<String>>) {
+    fn zweige_von(liste: &[Commiteintrag], h: &str) -> (Commitzustand, Option<Vec<String>>) {
         let e = liste.iter().find(|e| e.hash.as_deref() == Some(h)).unwrap();
         (e.zustand, e.zweige.clone())
     }
@@ -247,7 +247,7 @@ mod tests {
         let s = stand();
         let (kalt, n) = lesen_und_zaehlen(&s);
         assert_eq!(n, 6);
-        assert_eq!(zweige_von(&kalt, &s.c1), (Zustand::AufZweig, Some(vec!["b".into(), "main".into()])));
+        assert_eq!(zweige_von(&kalt, &s.c1), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
         let (warm, n) = lesen_und_zaehlen(&s);
         assert_eq!(n, 4, "kein rev-list, keine Probe");
         assert_eq!(warm, kalt);
@@ -255,7 +255,7 @@ mod tests {
         git(&s.r, &["branch", "-f", "b", &s.c2]);
         let (neu, n) = lesen_und_zaehlen(&s);
         assert_eq!(n, 6, "Zweig bewegt: Zweigliste neu");
-        assert_eq!(zweige_von(&neu, &s.c2), (Zustand::AufZweig, Some(vec!["b".into(), "main".into()])));
+        assert_eq!(zweige_von(&neu, &s.c2), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
     }
 
     // ADR-0032 N3.2: bewegt sich ein Zweig zwischen erstem und zweitem Fingerabdruck, wird nichts abgelegt — auch wenn er
@@ -268,7 +268,7 @@ mod tests {
             git(&r, &["branch", "-f", "b", &c2]);
         }));
         let (liste, _) = lesen_und_zaehlen(&s);
-        assert_eq!(zweige_von(&liste, &s.c2), (Zustand::AufZweig, Some(vec!["main".into()])), "die Antwort gilt für den Fingerabdruck vom Beginn");
+        assert_eq!(zweige_von(&liste, &s.c2), (Commitzustand::AufZweig, Some(vec!["main".into()])), "die Antwort gilt für den Fingerabdruck vom Beginn");
         assert!(s.k.zweigcache.lock().unwrap().is_empty(), "nichts abgelegt");
         git(&s.r, &["branch", "-f", "b", &s.c1]);
         let (_, n) = lesen_und_zaehlen(&s);
@@ -285,7 +285,7 @@ mod tests {
         let kalt = neu.commits_lesen(1, frist()).unwrap();
         let warm = neu.commits_lesen(1, frist()).unwrap();
         assert_eq!(warm, kalt);
-        assert_eq!(zweige_von(&warm, &s.c1), (Zustand::AufZweig, Some(vec!["b".into(), "main".into()])));
+        assert_eq!(zweige_von(&warm, &s.c1), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
     }
 
     // R00204 AK 8: hält ein Schreiber die Sperre des Board-Ordners, antwortet das Lesen trotzdem, ohne auf ihn zu warten
@@ -316,13 +316,26 @@ mod tests {
         Anwendungen::aus(&Quellen { wbs: if standard { "/s/app.md".into() } else { String::new() }, anforderungen: String::new(), anwendungen: vec![kd] })
     }
 
+    // R00204 AK 12: Einträge mit verletzter Form starten kein Git — der Zähler bleibt bei 0
+    #[test]
+    fn injection_startet_kein_git() {
+        let s = stand();
+        let boese = ["kd:--output=x", "kd:../x", "kd:3f2a9c1;rm -rf x", "kd:3f2a9c1 --all", "kd:3f2a 9c1", "kd:$(touch x)", &format!("kd:{}^{{tree}}", s.c1), &format!("kd:{} ", s.c1), &format!("kd:{}\n{}", s.c1, s.c2), &format!("kd:{}\u{0}", s.c1)];
+        let liste: String = boese.iter().map(|b| format!("  - {}\n", serde_json::to_string(b).unwrap())).collect();
+        std::fs::write(s.k.ordner().wurzel().join("aufgaben/0001-a.md"), format!("---\nid: 1\ntitle: a\ncommits:\n{liste}---\n")).unwrap();
+        let (l, n) = lesen_und_zaehlen(&s);
+        assert_eq!(n, 0);
+        assert_eq!(l.len(), boese.len());
+        assert!(l.iter().zip(boese).all(|(e, b)| e.zustand == Commitzustand::Unlesbar && e.verweis == b), "{l:?}");
+    }
+
     // R00204 AK 12: was die Form verletzt, ist `unlesbar` mit Grund und dem Verweis wörtlich — auch bei fremdem Kürzel
     #[test]
     fn form_verletzt_ist_unlesbar() {
         let r = register(true);
         for text in ["kd:--output=x", "kd:../x", "kd:3f2a9c1;rm -rf x", "kd:3f2a9c1 --all", "kd:3f2a 9c1", "kd:$(touch x)", &format!("kd:{K1}^{{tree}}"), &format!("kd:{K1} "), &format!("kd:{K1}\n{K1}"), &format!("kd:{K1}\u{0}"), "xy:--x", ""] {
             let e = einordnen(text, &r).unwrap_err();
-            assert_eq!((e.verweis.as_str(), e.zustand), (text, Zustand::Unlesbar), "{text:?}");
+            assert_eq!((e.verweis.as_str(), e.zustand), (text, Commitzustand::Unlesbar), "{text:?}");
             assert!(e.grund.as_deref().is_some_and(|g| !g.is_empty()), "{text:?}");
             assert_eq!((e.anwendung, e.hash), (None, None), "{text:?}");
         }
@@ -332,9 +345,9 @@ mod tests {
     #[test]
     fn register_unbekannt() {
         let e = einordnen(&format!("xy:{K1}"), &register(true)).unwrap_err();
-        assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Zustand::AnwendungUnbekannt, Some("xy"), Some(K1)));
+        assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Commitzustand::AnwendungUnbekannt, Some("xy"), Some(K1)));
         let e = einordnen(&K1.to_uppercase(), &register(false)).unwrap_err();
-        assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Zustand::AnwendungUnbekannt, Some(""), Some(K1)));
+        assert_eq!((e.zustand, e.anwendung.as_deref(), e.hash.as_deref()), (Commitzustand::AnwendungUnbekannt, Some(""), Some(K1)));
         let (mit, ohne) = (register(true), register(false));
         let g = einordnen(K1, &mit).unwrap();
         assert_eq!((g.anwendung.kuerzel.as_str(), g.hash.as_str()), ("", K1), "mit Standardanwendung");

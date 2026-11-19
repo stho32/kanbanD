@@ -130,7 +130,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(zeit_korrigieren, zeit_loeschen))
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
-        .routes(routes!(commits_hinterlegen))
+        .routes(routes!(commits_lesen, commits_hinterlegen))
         .routes(routes!(commits_ersetzen))
         .routes(routes!(commit_entfernen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
@@ -1178,6 +1178,21 @@ async fn kosteneintrag_aendern(State(app): State<App>, Wer(wer): Wer, Pfad((nr, 
 )]
 async fn kosteneintrag_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kosteneintrag_loeschen(p, nr, &kennung)).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/commits",
+    tag = "Aufgaben",
+    description = endpunkte::COMMITS_LESEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Commitliste), (status = 400, description = "ungültige Nummer", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "Aufgabe nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git in den Arbeits-Repositories über der Gesamtgrenze von 10 s — keine Liste", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn commits_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
+    // die Gesamtgrenze zählt ab Eingang der Anfrage (ADR-0032 N3.1)
+    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    let commits = blockierend(&app, move |k| k.commits_lesen(nr, frist)).await?;
+    Ok(Json(json!({ "commits": commits })).into_response())
 }
 
 #[utoipa::path(
