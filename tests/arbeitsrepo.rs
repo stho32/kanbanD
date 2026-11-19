@@ -87,3 +87,34 @@ fn zeitgrenze_beendet_den_prozess() {
     c.arg("x");
     assert!(arbeitsrepo::laufen(c, Duration::from_secs(5)).unwrap().status.success(), "unter der Grenze läuft er durch");
 }
+
+/// Lebt der Prozess `pid` noch (und ist kein Zombie)? Wartet bis zu 2 s darauf, dass er verschwindet.
+fn lebt_nach_2_s(pid: &str) -> bool {
+    let ende = Instant::now() + Duration::from_secs(2);
+    loop {
+        let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+        let lebt = !stat.is_empty() && !stat.rsplit(')').next().unwrap_or_default().trim_start().starts_with('Z');
+        if !lebt || Instant::now() >= ende {
+            return lebt;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+// R00204 AK 14 (c), ADR-0032 N2.3: bei Zeitüberschreitung stirbt die ganze Prozessgruppe — das Skript und sein Kind
+// (heute rot: `kind.kill()` beendet nur das Skript, `sleep 300` lebt weiter)
+#[test]
+fn zeitgrenze_beendet_die_prozessgruppe() {
+    let tmp = tempfile::tempdir().unwrap();
+    let pids = tmp.path().join("pids");
+    let skript = tmp.path().join("skript.sh");
+    std::fs::write(&skript, format!("#!/bin/sh\nsleep 300 &\necho \"$$ $!\" > {}\nwait\n", pids.display())).unwrap();
+    std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let start = Instant::now();
+    assert_eq!(arbeitsrepo::laufen(Command::new(&skript), Duration::from_secs(1)).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
+    assert!(start.elapsed() < Duration::from_secs(3), "{:?}", start.elapsed());
+    let text = std::fs::read_to_string(&pids).unwrap();
+    let (skript_pid, kind_pid) = text.trim().split_once(' ').unwrap();
+    assert!(!lebt_nach_2_s(skript_pid), "das Skript lebt");
+    assert!(!lebt_nach_2_s(kind_pid), "das Kind des Skripts lebt");
+}

@@ -9,15 +9,21 @@
 //!   (`GIT_CONFIG_*`, `GIT_EXTERNAL_DIFF`, Pager, `GIT_EXEC_PATH`, `GIT_ASKPASS`, `GIT_SSH_COMMAND`), werden entfernt, die
 //!   System- und die Benutzerkonfiguration abgeschaltet, vor jedem Befehl `core.fsmonitor` und `core.hooksPath` gesperrt.
 //!   Sonst bleibt die Umgebung, auch `GIT_TRACE`.
-//! - **Zeitgrenze** je Prozess ([`ZEITGRENZE`]), danach wird er beendet.
+//! - **Schalter aus dem Befehl** (ADR-0032 N2.3): wer Diffs erzeugen kann (`log`), bekommt `-c core.quotepath=off` vor
+//!   und `--no-ext-diff --no-textconv --no-color --no-show-signature` nach dem Befehl; der Aufrufer nennt sie nicht und
+//!   kann sie nicht abschalten.
+//! - **Zeitgrenze** je Prozess ([`ZEITGRENZE`]), danach wird seine **Prozessgruppe** beendet — Git samt Kindern.
 //! - Läuft **ohne** die Sperre des Board-Ordners — der Aufrufer ruft es vor `aufgabe_schreiben` (ADR-0032 Punkt 4).
 
 use crate::modell::Anwendung;
 use std::cell::Cell;
 use std::ffi::OsString;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 /// Zeitgrenze je Git-Prozess (ADR-0032 Punkt 3).
@@ -34,17 +40,42 @@ const KONFIGURATION: &str = "GIT_CONFIG_";
 /// Vor jedem Befehl: kein Dateisystem-Monitor und keine Hooks aus der Konfiguration des Arbeits-Repositorys oder der Umgebung.
 const SPERREN: [&str; 4] = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"];
 
-/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `cat-file`, `log`, `rev-list`,
-/// `diff`, `diff-tree`, `merge-base`, `for-each-ref` — sie kommen mit den Scheiben, die sie brauchen).
-#[derive(Debug, Clone, Copy)]
-enum Befehl {
+/// Vor einem Befehl, der Diffs erzeugt: Pfade nicht oktal maskieren.
+const VOR_DIFF: [&str; 2] = ["-c", "core.quotepath=off"];
+/// Nach einem Befehl, der Diffs erzeugt: keine externen Diff-Programme, kein textconv, keine Farben, keine Signaturprüfung
+/// (`log.showSignature` startete sonst `gpg.program`).
+const NACH_DIFF: [&str; 4] = ["--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature"];
+/// Was ein Aufrufer bei einem Befehl, der Diffs erzeugt, nie nennen darf — es höbe einen Schalter aus [`NACH_DIFF`] auf.
+const VERBOTEN_BEI_DIFF: [&str; 4] = ["--ext-diff", "--textconv", "--color", "--show-signature"];
+
+/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff`, `diff-tree`, `merge-base`
+/// — sie kommen mit den Scheiben, die sie brauchen). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
+/// sonst baut das Programm nicht.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Befehl {
     RevParse,
+    CatFile,
+    Log,
+    ForEachRef,
+    RevList,
 }
 
 impl Befehl {
     fn name(self) -> &'static str {
         match self {
             Befehl::RevParse => "rev-parse",
+            Befehl::CatFile => "cat-file",
+            Befehl::Log => "log",
+            Befehl::ForEachRef => "for-each-ref",
+            Befehl::RevList => "rev-list",
+        }
+    }
+
+    /// Kann der Befehl Diffs erzeugen (und damit Diff-Treiber, textconv oder Signaturprogramme starten)?
+    fn erzeugt_diffs(self) -> bool {
+        match self {
+            Befehl::Log => true,
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList => false,
         }
     }
 }
@@ -58,8 +89,10 @@ pub enum Arbeitsrepofehler {
     KeinCommit,
     /// Git lief länger als die Zeitgrenze und wurde beendet.
     Zeitgrenze,
-    /// Git ließ sich nicht starten.
+    /// Git ließ sich nicht starten oder lieferte etwas Unerwartetes.
     Start(String),
+    /// Die Ausgabe überschritt die Zeilengrenze; der Prozess wurde beendet (ADR-0032 N3.4).
+    ZuvielAusgabe(usize),
 }
 
 thread_local! {
@@ -83,7 +116,7 @@ pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arb
     if !start.is_dir() {
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Ordner fehlt: {}", start.display())));
     }
-    let aus = git(&start, Befehl::RevParse, &["--show-toplevel"])?;
+    let aus = git(&start, Befehl::RevParse, &["--show-toplevel"], Lauf::mit(ZEITGRENZE))?;
     if !aus.status.success() {
         let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("kein Git-Repository: {} ({grund})", start.display())));
@@ -94,7 +127,7 @@ pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arb
 /// Der volle Hash des Commits zu `hash` (7–64 Zeichen 0-9a-f, kleingeschrieben) — gleich, auf welchem Zweig er liegt
 /// (ADR-0032 N1.1). Nicht vorhanden, mehrdeutig, ein anderes Objekt oder ein Ref, der wie ein Kurz-Hash heißt → `KeinCommit`.
 pub fn commit_aufloesen(wurzel: &Path, hash: &str) -> Result<String, Arbeitsrepofehler> {
-    let aus = git(wurzel, Befehl::RevParse, &["--verify", "--quiet", "--end-of-options", &format!("{hash}^{{commit}}")])?;
+    let aus = git(wurzel, Befehl::RevParse, &["--verify", "--quiet", "--end-of-options", &format!("{hash}^{{commit}}")], Lauf::mit(ZEITGRENZE))?;
     let voll = String::from_utf8_lossy(&aus.stdout).trim().to_string();
     // Ein Zweig namens `abcdef0` ginge vor dem Kurz-Hash — der Commit muss mit dem genannten Hash beginnen
     if !aus.status.success() || !voll.starts_with(hash) {
@@ -103,17 +136,41 @@ pub fn commit_aufloesen(wurzel: &Path, hash: &str) -> Result<String, Arbeitsrepo
     Ok(voll)
 }
 
-/// Der eine Startort für Git in einem Arbeits-Repository: fester Befehl, Argumentliste, Umgebung, Zeitgrenze, Zähler.
-fn git(ordner: &Path, befehl: Befehl, args: &[&str]) -> Result<Output, Arbeitsrepofehler> {
-    let c = kommando(ordner, befehl.name(), args, std::env::vars_os().map(|(name, _)| name));
-    AUFRUFE.with(|n| n.set(n.get() + 1));
-    laufen(c, ZEITGRENZE)
+/// Wie ein Prozess läuft: Zeitgrenze, Eingabe auf `stdin`, höchste Zahl der Ausgabezeilen.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Lauf<'a> {
+    pub zeitgrenze: Duration,
+    pub eingabe: Option<&'a [u8]>,
+    pub hoechstzeilen: Option<usize>,
 }
 
-/// Die Befehlszeile und die gehärtete Umgebung; `vorhandene` sind die Namen der Umgebungsvariablen der Instanz.
-fn kommando(ordner: &Path, befehl: &str, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
+impl Lauf<'_> {
+    pub fn mit(zeitgrenze: Duration) -> Lauf<'static> {
+        Lauf { zeitgrenze, eingabe: None, hoechstzeilen: None }
+    }
+}
+
+/// Der eine Startort für Git in einem Arbeits-Repository: fester Befehl, Argumentliste, Umgebung, Zeitgrenze, Zähler.
+pub(crate) fn git(ordner: &Path, befehl: Befehl, args: &[&str], lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
+    let c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
+    AUFRUFE.with(|n| n.set(n.get() + 1));
+    ausfuehren(c, lauf)
+}
+
+/// Die Befehlszeile samt den Schaltern, die aus dem Befehl folgen.
+fn kommando(ordner: &Path, befehl: Befehl, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
+    if befehl.erzeugt_diffs() {
+        let verboten = args.iter().take_while(|a| **a != "--end-of-options").find(|a| VERBOTEN_BEI_DIFF.iter().any(|v| a.starts_with(v)));
+        assert!(verboten.is_none(), "{} darf {verboten:?} nicht nennen — die Schalter setzt der Startort", befehl.name());
+    }
+    let (vor, nach): (&[&str], &[&str]) = if befehl.erzeugt_diffs() { (&VOR_DIFF, &NACH_DIFF) } else { (&[], &[]) };
+    gehaertet(ordner, vor, befehl.name(), &[nach, args].concat(), vorhandene)
+}
+
+/// Die gehärtete Umgebung um einen Befehl; `vorhandene` sind die Namen der Umgebungsvariablen der Instanz.
+fn gehaertet(ordner: &Path, vor: &[&str], befehl: &str, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
     let mut c = Command::new("git");
-    c.arg("-C").arg(ordner).args(SPERREN).arg(befehl).args(args).env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0");
+    c.arg("-C").arg(ordner).args(SPERREN).args(vor).arg(befehl).args(args).env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0");
     for v in UMLENKUNGEN.into_iter().chain(PROGRAMME) {
         c.env_remove(v);
     }
@@ -124,19 +181,37 @@ fn kommando(ordner: &Path, befehl: &str, args: &[&str], vorhandene: impl Iterato
     c
 }
 
-/// Startet `c` ohne Eingabe und wartet höchstens `zeitgrenze`; danach wird der Prozess beendet → `Zeitgrenze`.
-pub fn laufen(mut c: Command, zeitgrenze: Duration) -> Result<Output, Arbeitsrepofehler> {
-    let mut kind = c.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
-    let stdout = mitlesen(kind.stdout.take());
-    let stderr = mitlesen(kind.stderr.take());
-    let ende = Instant::now() + zeitgrenze;
+/// Startet `c` ohne Eingabe und wartet höchstens `zeitgrenze`; danach wird die Prozessgruppe beendet → `Zeitgrenze`.
+pub fn laufen(c: Command, zeitgrenze: Duration) -> Result<Output, Arbeitsrepofehler> {
+    ausfuehren(c, Lauf::mit(zeitgrenze))
+}
+
+/// Startet `c` in einer eigenen Prozessgruppe, schreibt die Eingabe, liest die Ausgaben mit und wartet höchstens bis zur
+/// Zeitgrenze. Bei Zeitüberschreitung oder zu vielen Zeilen stirbt die ganze Gruppe; ein abgebrochener Prozess liefert
+/// nie eine (Teil-)Ausgabe.
+fn ausfuehren(mut c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
+    let eingabe = if lauf.eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
+    let mut kind = c.stdin(eingabe).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
+    let gruppe = kind.id() as i32;
+    let schreiber = lauf.eingabe.map(|text| {
+        let mut ziel = kind.stdin.take();
+        let text = text.to_vec();
+        std::thread::spawn(move || ziel.as_mut().map(|z| z.write_all(&text)))
+    });
+    let zuviel = Arc::new(AtomicBool::new(false));
+    let stdout = mitlesen(kind.stdout.take(), lauf.hoechstzeilen.map(|n| (n, zuviel.clone())));
+    let stderr = mitlesen(kind.stderr.take(), None);
+    let ende = Instant::now() + lauf.zeitgrenze;
     let mut pause = Duration::from_millis(1);
     let status = loop {
+        if zuviel.load(Ordering::SeqCst) {
+            gruppe_beenden(gruppe, &mut kind);
+            return Err(Arbeitsrepofehler::ZuvielAusgabe(lauf.hoechstzeilen.unwrap_or_default()));
+        }
         match kind.try_wait().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))? {
             Some(status) => break status,
             None if Instant::now() >= ende => {
-                let _ = kind.kill();
-                let _ = kind.wait();
+                gruppe_beenden(gruppe, &mut kind);
                 return Err(Arbeitsrepofehler::Zeitgrenze);
             }
             None => {
@@ -145,15 +220,51 @@ pub fn laufen(mut c: Command, zeitgrenze: Duration) -> Result<Output, Arbeitsrep
             }
         }
     };
-    Ok(Output { status, stdout: stdout.join().unwrap_or_default(), stderr: stderr.join().unwrap_or_default() })
+    if let Some(s) = schreiber {
+        let _ = s.join();
+    }
+    let stdout = stdout.join().unwrap_or_default();
+    if zuviel.load(Ordering::SeqCst) {
+        return Err(Arbeitsrepofehler::ZuvielAusgabe(lauf.hoechstzeilen.unwrap_or_default()));
+    }
+    Ok(Output { status, stdout, stderr: stderr.join().unwrap_or_default() })
 }
 
-/// Liest einen Ausgabestrom in einem eigenen Thread leer, damit ein voller Puffer den Prozess nicht anhält.
-fn mitlesen(strom: Option<impl Read + Send + 'static>) -> std::thread::JoinHandle<Vec<u8>> {
+unsafe extern "C" {
+    /// `kill(2)` der C-Bibliothek, die jedes Rust-Programm unter Unix ohnehin bindet.
+    fn kill(pid: i32, signal: i32) -> i32;
+}
+
+const SIGKILL: i32 = 9;
+
+/// Beendet die Prozessgruppe `gruppe` (Git und alle seine Kinder) und holt den Prozess ab.
+fn gruppe_beenden(gruppe: i32, kind: &mut std::process::Child) {
+    // SAFETY: `kill` liest nur seine beiden Zahlen; die Gruppe ist die des eigenen, noch nicht abgeholten Kindes
+    unsafe { kill(-gruppe, SIGKILL) };
+    let _ = kind.kill();
+    let _ = kind.wait();
+}
+
+/// Liest einen Ausgabestrom in einem eigenen Thread leer, damit ein voller Puffer den Prozess nicht anhält. Mit
+/// `grenze` hört er nach so vielen Zeilen auf und meldet es über den Schalter.
+fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(usize, Arc<AtomicBool>)>) -> std::thread::JoinHandle<Vec<u8>> {
     std::thread::spawn(move || {
         let mut puffer = vec![];
-        if let Some(mut s) = strom {
-            let _ = s.read_to_end(&mut puffer);
+        let Some(mut s) = strom else { return puffer };
+        let mut block = [0u8; 64 * 1024];
+        let mut zeilen = 0usize;
+        while let Ok(n) = s.read(&mut block) {
+            if n == 0 {
+                break;
+            }
+            puffer.extend_from_slice(&block[..n]);
+            if let Some((hoechstens, zuviel)) = &grenze {
+                zeilen += block[..n].iter().filter(|b| **b == b'\n').count();
+                if zeilen > *hoechstens {
+                    zuviel.store(true, Ordering::SeqCst);
+                    return vec![];
+                }
+            }
         }
         puffer
     })
@@ -172,7 +283,7 @@ mod tests {
     #[test]
     fn umgebung_und_sperren_des_startorts() {
         let vorhanden = ["GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_SYSTEM", "GIT_TRACE", "HOME"].map(OsString::from);
-        let c = kommando(Path::new("/r"), "rev-parse", &["--show-toplevel"], vorhanden.into_iter());
+        let c = kommando(Path::new("/r"), Befehl::RevParse, &["--show-toplevel"], vorhanden.into_iter());
         let args: Vec<&OsStr> = c.get_args().collect();
         assert_eq!(args, ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel"]);
         let env = umgebung(&c);
@@ -212,7 +323,7 @@ mod tests {
         std::fs::remove_file(&marke).unwrap();
 
         let gehaertet = |befehl: &str, args: &[&str]| {
-            let mut c = kommando(&r, befehl, args, std::iter::empty());
+            let mut c = gehaertet(&r, &[], befehl, args, std::iter::empty());
             c.envs([("GIT_AUTHOR_NAME", "A"), ("GIT_AUTHOR_EMAIL", "a@a"), ("GIT_COMMITTER_NAME", "A"), ("GIT_COMMITTER_EMAIL", "a@a")]);
             c.output().unwrap()
         };
@@ -224,5 +335,97 @@ mod tests {
         assert!(!marke.exists(), "Hook lief trotz Sperre");
         ungehaertet(&["commit", "-q", "--allow-empty", "-m", "x"]);
         assert!(marke.exists(), "Gegenprobe: der Hook aus der Konfiguration läuft");
+    }
+
+    fn args(c: &Command) -> Vec<String> {
+        c.get_args().map(|a| a.to_string_lossy().into_owned()).collect()
+    }
+
+    // R00204 AK 14 (b), ADR-0032 N2.3: die Schalter folgen aus dem Befehl — `log` trägt sie, ohne dass der Aufrufer sie nennt;
+    // Befehle ohne Diffs tragen sie nicht
+    #[test]
+    fn schalter_aus_dem_befehl() {
+        let c = kommando(Path::new("/r"), Befehl::Log, &["--format=%H", "--end-of-options", "abc1234"], std::iter::empty());
+        assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.quotepath=off", "log", "--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature", "--format=%H", "--end-of-options", "abc1234"]);
+        for (befehl, name) in [(Befehl::RevParse, "rev-parse"), (Befehl::CatFile, "cat-file"), (Befehl::ForEachRef, "for-each-ref"), (Befehl::RevList, "rev-list")] {
+            let c = kommando(Path::new("/r"), befehl, &["x"], std::iter::empty());
+            assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", name, "x"], "{name}");
+        }
+    }
+
+    // AK 14 (b): der Aufrufer kann die Schalter nicht aufheben — `--ext-diff`, `--textconv`, `--color…`, `--show-signature`
+    // vor `--end-of-options` sind eine verletzte Invariante
+    #[test]
+    fn schalter_lassen_sich_nicht_aufheben() {
+        for boese in ["--ext-diff", "--textconv", "--color=always", "--show-signature"] {
+            let fehlschlag = std::panic::catch_unwind(|| kommando(Path::new("/r"), Befehl::Log, &[boese], std::iter::empty()));
+            assert!(fehlschlag.is_err(), "{boese} angenommen");
+        }
+        let c = kommando(Path::new("/r"), Befehl::Log, &["--end-of-options", "--ext-diff"], std::iter::empty());
+        assert_eq!(args(&c).last().map(String::as_str), Some("--ext-diff"), "hinter --end-of-options ist es ein Verweis, kein Schalter");
+    }
+
+    /// Ein Wegwerf-Repository mit einem Skript, das bei jedem Lauf eine Marke anlegt.
+    fn feindlich() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
+        let tmp = tempfile::tempdir().unwrap();
+        let r = tmp.path().canonicalize().unwrap().join("R");
+        std::fs::create_dir_all(&r).unwrap();
+        let git = |args: &[&str]| assert!(Command::new("git").arg("-C").arg(&r).args(["-c", "user.name=A", "-c", "user.email=a@a"]).args(args).status().unwrap().success(), "{args:?}");
+        git(&["init", "-q", "-b", "main"]);
+        std::fs::write(r.join("a.txt"), "a\n").unwrap();
+        git(&["add", "a.txt"]);
+        git(&["commit", "-qm", "a"]);
+        std::fs::write(r.join("a.txt"), "b\n").unwrap();
+        git(&["commit", "-qam", "b"]);
+        let marke = tmp.path().join("marke");
+        let skript = tmp.path().join("skript.sh");
+        std::fs::write(&skript, format!("#!/bin/sh\necho \"$0 $@\" >> {}\nexit 1\n", marke.display())).unwrap();
+        std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        let s = skript.to_str().unwrap().to_string();
+        std::fs::write(r.join(".gitattributes"), "* diff=x\n").unwrap();
+        for (k, v) in [("diff.external", s.as_str()), ("diff.x.textconv", s.as_str()), ("log.showSignature", "true"), ("gpg.program", s.as_str()), ("color.ui", "always")] {
+            git(&["config", k, v]);
+        }
+        (tmp, r, marke, s)
+    }
+
+    // AK 14 (a) am Startort: `log -p` im feindlichen Repository startet weder Diff-Treiber noch textconv noch gpg — und
+    // derselbe Befehl ohne die Schalter aus dem Befehl doch (Gegenprobe)
+    #[test]
+    fn log_im_feindlichen_repository_fuehrt_nichts_aus() {
+        let (_tmp, r, marke, _) = feindlich();
+        gehaertet(&r, &[], "log", &["-p", "-1"], std::iter::empty()).output().unwrap();
+        assert!(marke.exists(), "Gegenprobe: ohne die Schalter läuft das Skript");
+        std::fs::remove_file(&marke).unwrap();
+        let aus = git(&r, Befehl::Log, &["-p", "-1"], Lauf::mit(ZEITGRENZE)).unwrap();
+        assert!(aus.status.success(), "{}", String::from_utf8_lossy(&aus.stderr));
+        assert!(String::from_utf8_lossy(&aus.stdout).contains("+b"), "der Diff steht da");
+        assert!(!aus.stdout.contains(&0x1b), "ohne Farben");
+        assert!(!marke.exists(), "ein Skript lief: {}", std::fs::read_to_string(&marke).unwrap_or_default());
+    }
+
+    // R00204 B0999: `cat-file --batch-check` liest die Namen über stdin, nie als Argument
+    #[test]
+    fn eingabe_ueber_stdin() {
+        let (_tmp, r, _, _) = feindlich();
+        let kopf = String::from_utf8(Command::new("git").arg("-C").arg(&r).args(["rev-parse", "HEAD"]).output().unwrap().stdout).unwrap();
+        let aus = git(&r, Befehl::CatFile, &["--batch-check"], Lauf { eingabe: Some(format!("{}\n0000000000\n", kopf.trim()).as_bytes()), ..Lauf::mit(ZEITGRENZE) }).unwrap();
+        let text = String::from_utf8(aus.stdout).unwrap();
+        assert!(text.starts_with(&format!("{} commit ", kopf.trim())), "{text}");
+        assert!(text.ends_with("0000000000 missing\n"), "{text}");
+    }
+
+    // ADR-0032 N3.4: mehr Zeilen als erlaubt → der Prozess wird beendet, keine gekürzte Ausgabe; bis zur Grenze läuft er durch
+    #[test]
+    fn zeilengrenze_beendet_den_prozess() {
+        let mut c = Command::new("yes");
+        c.arg("0123456789abcdef");
+        let start = Instant::now();
+        assert_eq!(ausfuehren(c, Lauf { hoechstzeilen: Some(3_000_000), ..Lauf::mit(Duration::from_secs(20)) }).map(|_| ()), Err(Arbeitsrepofehler::ZuvielAusgabe(3_000_000)));
+        assert!(start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
+        let mut c = Command::new("seq");
+        c.arg("3000000");
+        let aus = ausfuehren(c, Lauf { hoechstzeilen: Some(3_000_000), ..Lauf::mit(Duration::from_secs(20)) }).unwrap();
+        assert_eq!(aus.stdout.iter().filter(|b| **b == b'\n').count(), 3_000_000);
     }
 }
