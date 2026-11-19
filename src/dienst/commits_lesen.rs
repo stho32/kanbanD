@@ -292,12 +292,22 @@ mod tests {
     #[test]
     fn lesen_wartet_nicht_auf_die_sperre() {
         let s = stand();
-        let _schreiber = s.k.sperre.lock().unwrap();
-        let (tx, rx) = std::sync::mpsc::channel();
-        std::thread::scope(|bereich| {
-            bereich.spawn(|| tx.send(s.k.commits_lesen(1, frist()).map(|l| l.len())).unwrap());
-            assert_eq!(rx.recv_timeout(Duration::from_secs(5)).expect("Lesen wartet auf die Sperre").unwrap(), 2);
+        // ein Schreiber hält die Sperre 3 s lang; wer auf sie wartet, braucht mindestens so lange (und hängt nie)
+        let (anzahl, dauer) = std::thread::scope(|bereich| {
+            let (gehalten, warten) = std::sync::mpsc::channel();
+            let k = &s.k;
+            bereich.spawn(move || {
+                let _schreiber = k.sperre.lock().unwrap();
+                gehalten.send(()).unwrap();
+                std::thread::sleep(Duration::from_secs(3));
+            });
+            warten.recv().unwrap();
+            let start = Instant::now();
+            let anzahl = s.k.commits_lesen(1, frist()).unwrap().len();
+            (anzahl, start.elapsed())
         });
+        assert_eq!(anzahl, 2);
+        assert!(dauer < Duration::from_secs(2), "Lesen wartete {dauer:?} auf die Sperre");
     }
 
     // ADR-0032 N3.1: ist die Gesamtgrenze vorbei, kommt 503 und es startet kein Git; eine Karte ohne Verweise startet nie Git
