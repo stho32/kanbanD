@@ -215,6 +215,51 @@ fn erreichbarkeit_wie_contains() {
     assert_eq!(erreicht[&r.w1], ["refs/heads/karte/1"]);
 }
 
+/// Commit mit Nachricht `n` auf dem aktuellen Stand von `r`; liefert den Hash.
+fn leer_commit(r: &Path, n: &str) -> String {
+    gemeinsam::git(r, &["-c", "user.name=A", "-c", "user.email=a@a", "commit", "-q", "--allow-empty", "-m", n]);
+    gemeinsam::git(r, &["rev-parse", "HEAD"])
+}
+
+// Code-Review Muss B1 (Nacharbeit #211): Z5 bei Merges, zweiter Wurzel und mehreren Zweigen auf einem Commit — je Commit
+// dieselben Zweige wie `for-each-ref --contains`. `y` erreicht nur der Zweig `nur-zweiter`, und nur über den zweiten
+// Elternteil seiner Spitze: nimmt der Graph nur den ersten Elternteil, fehlt er dort.
+#[test]
+fn erreichbarkeit_mit_merges_und_zweiter_wurzel_wie_contains() {
+    let (_tmp, r) = leeres_repo();
+    let git = |args: &[&str]| gemeinsam::git(&r, &["-c", "user.name=A", "-c", "user.email=a@a"].iter().chain(args).copied().collect::<Vec<_>>());
+    let a = leer_commit(&r, "a");
+    git(&["checkout", "-q", "-b", "side"]);
+    let s = leer_commit(&r, "s");
+    git(&["branch", "dup1", &s]);
+    git(&["branch", "dup2", &s]);
+    git(&["checkout", "-q", "main"]);
+    git(&["merge", "-q", "--no-ff", "-m", "m", "side"]);
+    let m = gemeinsam::git(&r, &["rev-parse", "HEAD"]);
+    // y nur über den zweiten Elternteil von n erreichbar; der Hilfszweig verschwindet danach
+    git(&["checkout", "-q", "-b", "hilf", &a]);
+    let y = leer_commit(&r, "y");
+    git(&["checkout", "-q", "-b", "nur-zweiter", &a]);
+    let x = leer_commit(&r, "x");
+    git(&["merge", "-q", "--no-ff", "-m", "n", "hilf"]);
+    let n = gemeinsam::git(&r, &["rev-parse", "HEAD"]);
+    git(&["branch", "-D", "hilf"]);
+    git(&["checkout", "-q", "--orphan", "w2"]);
+    let w2 = leer_commit(&r, "w2");
+    git(&["checkout", "-q", "main"]);
+    assert_eq!(contains(&r, &y), ["refs/heads/nur-zweiter"], "Ausgangslage: y nur über den zweiten Elternteil");
+    let fingerabdruck = arbeitsrepo::fingerabdruck(&r, frist()).unwrap();
+    let commits = [a.as_str(), &s, &m, &y, &x, &n, &w2];
+    let erreicht = arbeitsrepo::erreichbar(&r, &fingerabdruck, &commits, frist()).unwrap();
+    for h in commits {
+        let mut z = erreicht.get(h).cloned().unwrap_or_default();
+        z.sort();
+        assert_eq!(z, contains(&r, h), "{h}");
+    }
+    assert_eq!(erreicht[&s].len(), 4, "side, dup1, dup2, main: {:?}", erreicht[&s]);
+    assert_eq!(erreicht[&w2], ["refs/heads/w2"], "zweite Wurzel");
+}
+
 // R00204 AK 10 (Schutz): mehr als 3.000.000 Zeilen → Abbruch, nie eine gekürzte Liste — hier mit der Grenze des Moduls
 // gegen ein Repository, das sie sicher nicht reißt, und der Prüfung, dass die Grenze greift (Modultest `zeilengrenze…`)
 #[test]
