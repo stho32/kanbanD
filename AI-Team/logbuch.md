@@ -1007,3 +1007,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #204 | Detailplanung | ux-reviewer | befund | 3 min | Muss AK 6a Fokusziel beim Blättern; 3 Sollte, 2 Optional · claude · sonnet · Lauf 204-ux-reviewer-1 · 1,06 $ · Karte gesamt 5,24 $ |
 | 2026-11-19 | #204 | Detailplanung | gestalter | bestanden | 6 min | D0005 #tagesleiste-blaettern, Commit 2bf29421 · claude · sonnet · Lauf 204-gestalter-1 · 2,32 $ · Karte gesamt 7,56 $ |
 | 2026-11-19 | #204 | Detailplanung | product-owner | bestanden | 1 min | D0005 frei mit Änderung; 6a, a, b, c aufgenommen; d, e verworfen · claude · opus · Lauf 204-product-owner-2 |
+| 2026-11-19 | #204 | Detailplanung | planer | bestanden | 3 min | Befunde und Freigabe in R00199, c60c7eb5 · claude · opus · Lauf 204-planer-2 · 0,90 $ · Karte gesamt 8,46 $ |
+| 2026-11-19 | #204 | Detailplanung | ux-reviewer | bestanden | 0 min | Muss 6a und Sollte a–c prüfbar in R00199 · claude · sonnet · Lauf 204-ux-reviewer-2 |
