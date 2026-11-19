@@ -141,6 +141,19 @@ impl Fabrik {
         self.spur().lines().filter(|z| z.contains("rev-parse --show-toplevel") || z.contains("--end-of-options")).count()
     }
 
+    /// `n` echte Commits in R (auf einem eigenen Zweig), neueste zuerst — gebaut mit `git fast-import`.
+    fn viele_commits(&self, n: usize) -> Vec<String> {
+        let mut strom = String::new();
+        for i in 0..n {
+            strom.push_str(&format!("commit refs/heads/viele\ncommitter A <a@a> {} +0000\ndata 1\nx\n", 1_000_000 + i));
+            strom.push_str(if i == 0 { "deleteall\n\n" } else { "\n" });
+        }
+        let mut kind = std::process::Command::new("git").arg("-C").arg(&self.repo.r).args(["fast-import", "--quiet"]).stdin(std::process::Stdio::piped()).spawn().unwrap();
+        std::io::Write::write_all(&mut kind.stdin.take().unwrap(), strom.as_bytes()).unwrap();
+        assert!(kind.wait().unwrap().success());
+        git(&self.repo.r, &["rev-list", "viele"]).lines().map(String::from).collect()
+    }
+
     fn repository_umbenennen(&self) {
         std::fs::rename(&self.repo.r, self.repo.r.with_file_name("R-weg")).unwrap();
     }
@@ -321,6 +334,46 @@ async fn us5_angriff_ueber_den_verweis_erreicht_git_nicht() {
         let rest = verweis.trim_start_matches("kd:");
         assert!(!spur.contains(rest), "{rest:?} in der Spur:\n{spur}");
     }
+}
+
+// Sicherheits-Befund Muss 1 (Karte #207): Höchstzahl und Entdoppeln greifen vor Git — die Spur zählt die Git-Aufrufe
+// im Arbeits-Repository, ein großer Rumpf darf nie viele Prozesse starten
+#[tokio::test]
+async fn muss1_obergrenze_und_entdoppeln_vor_git() {
+    let f = Fabrik::oeffnen().await;
+    let (k1, k2) = (f.k1(), f.k2());
+    let verschiedene: Vec<String> = (0..501).map(|i| format!("kd:{i:040x}")).collect();
+    let g = Fabrik::oeffnen().await;
+    let gueltige: Vec<String> = g.viele_commits(500).iter().map(|h| format!("kd:{h}")).collect();
+    let mut abweichungen = vec![];
+    for (fall, rumpf, erwartet, git_hoechstens) in [
+        ("501 gleiche", vec![format!("kd:{k1}"); 501], 409, 0),
+        ("5000 gleiche", vec![format!("kd:{k1}"); 5000], 409, 0),
+        ("501 verschiedene", verschiedene, 409, 0),
+        ("500 Einträge, ein Hash (Groß und klein gemischt)", (0..500).map(|i| if i % 2 == 0 { format!("kd:{k1}") } else { format!("kd:{}", k1.to_uppercase()) }).collect(), 200, 2),
+        ("1 Verweis", vec![format!("kd:{k2}")], 200, 2),
+    ] {
+        let rumpf: Vec<&str> = rumpf.iter().map(String::as_str).collect();
+        let (vorher, aufrufe) = (f.stand(), f.git_im_arbeits_repository());
+        let a = f.hinterlegt(ENTWICKLER, &rumpf).await;
+        let git = f.git_im_arbeits_repository() - aufrufe;
+        if a.status != erwartet {
+            abweichungen.push(format!("{fall}: Status {} statt {erwartet}: {}", a.status, a.rumpf));
+        }
+        if git > git_hoechstens {
+            abweichungen.push(format!("{fall}: {git} Git-Aufrufe, höchstens {git_hoechstens}"));
+        }
+        if erwartet == 409 && f.stand() != vorher {
+            abweichungen.push(format!("{fall}: etwas geändert"));
+        }
+    }
+    // Gegenprobe: 500 verschiedene, echte Verweise gehen durch — je Verweis ein Git-Aufruf, mehr nicht
+    let rumpf: Vec<&str> = gueltige.iter().map(String::as_str).collect();
+    let a = g.hinterlegt(ENTWICKLER, &rumpf).await;
+    if a.status != 200 || g.git_im_arbeits_repository() > 501 + 1 {
+        abweichungen.push(format!("500 verschiedene gültige: Status {}, {} Git-Aufrufe: {}", a.status, g.git_im_arbeits_repository(), a.rumpf));
+    }
+    bestanden(abweichungen);
 }
 
 // US-6 · AK 8: entfernen über Kurz- und vollen Hash, unbekannt 404, Form 400, mehrdeutig an der Karte 400, ohne Repository

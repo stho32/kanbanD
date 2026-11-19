@@ -9,7 +9,7 @@ use crate::format::aufgabe::COMMITS;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler};
 use crate::modell::{Anwendung, Anwendungen, Aufgabe, HASH_MIN, Herkunftsschluessel, Person, Verweisfehler, Verweisform, verweis_lesen};
 use crate::nachricht;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 /// Schutzwert (ADR-0032 Punkt 1): mehr Verweise nimmt eine Aufgabe über die API nicht auf.
@@ -32,16 +32,22 @@ impl Kanban {
     }
 
     /// Ohne Sperre: Rumpf, Aufgabe vorhanden, Form und Register **aller** Verweise — erst danach startet Git (AK 6) —, dann
-    /// je Verweis die Wurzel des Arbeits-Repositorys und der volle Hash. Liefert die Verweise so, wie sie gespeichert werden.
+    /// Höchstzahl der Anfrage und Entdoppeln nach Kürzel und Hash, dann je eindeutigem Verweis die Wurzel des Arbeits-Repositorys und der volle Hash. Liefert die Verweise so, wie sie gespeichert werden.
     pub fn commits_pruefen(&self, nr: u32, rumpf: &serde_json::Value) -> Result<Vec<String>, Fehler> {
         let texte = verweise_aus(rumpf)?;
         self.ordner().aufgabe(nr)?;
         let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
         let anwendungen = Anwendungen::aus(&quellen);
         let gelesen = texte.iter().map(|t| verweis_lesen(t, &anwendungen).map_err(abweisung)).collect::<Result<Vec<_>, _>>()?;
+        // Vor dem ersten Git-Aufruf: ein großer Rumpf darf nie viele Prozesse starten (Sicherheitsbefund Muss 1, Karte #207)
+        if texte.len() > HOECHSTZAHL_COMMITS {
+            return Err(Fehler::Konflikt(format!("Die Anfrage nennt {} Verweise — mehr als {HOECHSTZAHL_COMMITS} nimmt eine Aufgabe nicht auf", texte.len())));
+        }
+        let mut gesehen: HashSet<(&str, String)> = HashSet::new();
+        let eindeutig = texte.iter().zip(gelesen).filter(|(_, (anwendung, hash))| gesehen.insert((anwendung.kuerzel.as_str(), hash.clone())));
         let mut wurzeln: HashMap<&str, PathBuf> = HashMap::new();
         let mut voll = vec![];
-        for (text, (anwendung, hash)) in texte.iter().zip(gelesen) {
+        for (text, (anwendung, hash)) in eindeutig {
             let wurzel = match wurzeln.get(anwendung.kuerzel.as_str()) {
                 Some(w) => w.clone(),
                 None => arbeitsrepo::wurzel(self.ordner().wurzel(), anwendung).map_err(|f| repo_fehler(f, text, anwendung))?,
@@ -101,7 +107,7 @@ fn eintragen(a: &mut Aufgabe, geprueft: &[String]) -> Result<Option<String>, Feh
     }
     let mut neu: Vec<&String> = vec![];
     for v in geprueft {
-        if !a.commits.contains(v) && !neu.contains(&v) {
+        if !a.commits.iter().chain(neu.iter().copied()).any(|c| derselbe_verweis(c, v)) {
             neu.push(v);
         }
     }
@@ -125,6 +131,15 @@ fn entfernen(a: &mut Aufgabe, form: &Verweisform, verweis: &str) -> Result<Strin
         [] => Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", nachricht::wert(verweis)), verweis: verweis.into(), fehlt: true }),
         mehrere => Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(verweis), mehrere.len()), verweis: verweis.into(), fehlt: false }),
     }
+}
+
+/// Dieselbe Anwendung (beide ohne Kürzel heißt Standardanwendung) und derselbe Hash, Groß-/Kleinschreibung gleich.
+fn derselbe_verweis(a: &str, b: &str) -> bool {
+    let teile = |v: &'_ str| match v.split_once(':') {
+        Some((k, h)) => (Some(k.to_string()), h.to_ascii_lowercase()),
+        None => (None, v.to_ascii_lowercase()),
+    };
+    teile(a) == teile(b)
 }
 
 /// Gleiches Kürzel (beide ohne heißt Standardanwendung) und der gespeicherte Hash beginnt mit dem genannten.
@@ -179,6 +194,15 @@ mod tests {
         assert_eq!(a.commits, [K1, K2]);
         let mut b = aufgabe(&[]);
         assert_eq!(eintragen(&mut b, &eintraege(&[K2, "3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e"])).unwrap().as_deref(), Some("#1 Commits hinterlegt: kd:9c6b91f, 3f2a9c1"));
+    }
+
+    // Code-Review Optional 3: dieselbe Gleichheit wie `passt` im DELETE — Kürzel genau, Hash ohne Groß-/Kleinschreibung
+    #[test]
+    fn eintragen_vergleicht_den_hash_ohne_gross_und_kleinschreibung() {
+        let mut a = aufgabe(&["kd:3F2A9C1E0B7D4A6F8E2C1B0A9D8E7F6A5B4C3D2E"]);
+        assert_eq!(eintragen(&mut a, &eintraege(&[K1])).unwrap(), None, "derselbe Verweis, von Hand groß geschrieben");
+        assert_eq!(a.commits.len(), 1);
+        assert!(eintragen(&mut a, &eintraege(&["xx:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e"])).unwrap().is_some(), "anderes Kürzel ist ein anderer Verweis");
     }
 
     // AK 7: 499 + 1 angenommen, 500 + 1 → 409 und nichts angehängt; zwei Neue an 499 sind zusammen zu viel
