@@ -1009,3 +1009,18 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #204 | Detailplanung | product-owner | bestanden | 1 min | D0005 frei mit Änderung; 6a, a, b, c aufgenommen; d, e verworfen · claude · opus · Lauf 204-product-owner-2 |
 | 2026-11-19 | #204 | Detailplanung | planer | bestanden | 3 min | Befunde und Freigabe in R00199, c60c7eb5 · claude · opus · Lauf 204-planer-2 · 0,90 $ · Karte gesamt 8,46 $ |
 | 2026-11-19 | #204 | Detailplanung | ux-reviewer | bestanden | 0 min | Muss 6a und Sollte a–c prüfbar in R00199 · claude · sonnet · Lauf 204-ux-reviewer-2 |
+| 2026-11-19 | #204 | Entwicklung | entwickler | bestanden | 30 min | B0976–B0981, Gate 856/1247/1870 grün, 05c37e7f · claude · Lauf 204-entwickler-1 · 6,74 $ · Karte gesamt 15,20 $ |
+| 2026-11-19 | #204 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | kein Muss, 3 Optional · claude · sonnet · Lauf 204-rechtschreib-reviewer-1 · 0,31 $ · Karte gesamt 15,51 $ |
+| 2026-11-19 | #204 | Auto-Reviews | ux-reviewer | bestanden | 4 min | kein Muss; Sollte Leiste springt beim Blättern · claude · sonnet · Lauf 204-ux-reviewer-3 · 1,87 $ · Karte gesamt 17,38 $ |
+| 2026-11-19 | #204 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss; Sollte Ende 00:00 zählt zum Folgetag · claude · sonnet · Lauf 204-code-reviewer-1 · 1,48 $ · Karte gesamt 18,86 $ |
+| 2026-11-19 | #204 | Entwicklertest | entwicklertester | bestanden | 5 min | US-1..US-8 bestanden, keine Befunde · claude · sonnet · Lauf 204-entwicklertester-1 · 0,66 $ · Karte gesamt 19,52 $ |
+
+**Retrospektive #204** (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern, 2026-11-19, 19,52 $ gemessen, ausgeliefert 77ca44ae)
+- Gut: Ein Zuschnitt des PO ohne Rückfrage an den Betreiber. Der architekt hat das Lastziel gemessen statt vermutet (648 → 117 ms p95) und daraus eine Zählerabnahme gemacht. Alle Reviews und der Entwicklertest bestanden beim ersten Mal, es gab keine Nacharbeit.
+- Lehre: Die Vorprüfung des ux-reviewer fand das einzige Muss, das Fokusziel eines sich selbst deaktivierenden Knopfs, vor dem Bau. Billiger geht es nicht.
+- Messlücke: Die beiden fortgesetzten Läufe (PO-Freigabe und UX-Nachprüfung) sind „nicht messbar“. Dafür gibt es schon den Vorschlag vom 2026-11-15.
+- Offene Sollte ohne Karte:
+  - Die Leiste springt beim Blättern waagrecht, weil die Spalte „Gerade“ keine feste Breite hat.
+  - Ein Eintrag mit Ende 00:00 zählt zum Folgetag.
+  - Optional: Kurzdatum per slice, Tooltip für ‹ ›.
+- Folgekarte: #205 (Kopf bei 320 px, dazu Kontrast der Skalenmarken), braucht:204, jetzt frei.
