@@ -1,71 +1,19 @@
 // R00202 B0991 (ADR-0032 Punkte 2 und 3): das Modul Arbeits-Repository gegen ein echtes Wegwerf-Repository samt Worktree
+mod gemeinsam;
+
+use gemeinsam::{Repo, repo};
 use kanband::git::arbeitsrepo::{self, Arbeitsrepofehler};
 use kanband::modell::Anwendung;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
-
-fn git(pfad: &Path, args: &[&str]) -> String {
-    let a = Command::new("git").arg("-C").arg(pfad).args(["-c", "user.name=A", "-c", "user.email=a@a"]).args(args).output().unwrap();
-    assert!(a.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&a.stderr));
-    String::from_utf8_lossy(&a.stdout).trim().to_string()
-}
-
-/// Das Arbeits-Repository R aus R00202 „Ausgangslage“: K1, K2 auf main, W1 auf karte/1 im Worktree, V1 auf losgelöstem
-/// HEAD (danach zurück auf main), der Blob von K1:a.txt — dazu zwei Commit-Objekte mit demselben 7er-Präfix `7f62b7e`
-/// (Inhalt fest, Präfix offline gesucht) und ein Zweig, der wie ein Kurz-Hash heißt.
-struct Repo {
-    _tmp: tempfile::TempDir,
-    r: PathBuf,
-    k1: String,
-    k2: String,
-    w1: String,
-    v1: String,
-    blob: String,
-}
-
-fn repo() -> Repo {
-    let tmp = tempfile::tempdir().unwrap();
-    let basis = tmp.path().canonicalize().unwrap();
-    let r = basis.join("R");
-    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
-    std::fs::write(r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
-    git(&r, &["init", "-q", "-b", "main"]);
-    std::fs::write(r.join("a.txt"), "a\n").unwrap();
-    git(&r, &["add", "-A"]);
-    git(&r, &["commit", "-qm", "a.txt anlegen"]);
-    let k1 = git(&r, &["rev-parse", "HEAD"]);
-    std::fs::write(r.join("a.txt"), "b\n").unwrap();
-    git(&r, &["commit", "-qam", "a.txt ändern"]);
-    let k2 = git(&r, &["rev-parse", "HEAD"]);
-    let wt = basis.join("R-karte-1");
-    git(&r, &["worktree", "add", "-q", "-b", "karte/1", wt.to_str().unwrap()]);
-    std::fs::write(wt.join("b.txt"), "b\n").unwrap();
-    git(&wt, &["add", "b.txt"]);
-    git(&wt, &["commit", "-qm", "b.txt anlegen"]);
-    let w1 = git(&wt, &["rev-parse", "HEAD"]);
-    git(&r, &["checkout", "-q", "--detach"]);
-    git(&r, &["commit", "-q", "--allow-empty", "-m", "verwaist"]);
-    let v1 = git(&r, &["rev-parse", "HEAD"]);
-    git(&r, &["checkout", "-q", "main"]);
-    let blob = git(&r, &["rev-parse", &format!("{k1}:a.txt")]);
-    git(&r, &["hash-object", "-w", "-t", "tree", "/dev/null"]);
-    for n in [18876, 29727] {
-        let inhalt = format!("tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nauthor A <a@a> 0 +0000\ncommitter A <a@a> 0 +0000\n\n{n}\n");
-        let pfad = basis.join("objekt");
-        std::fs::write(&pfad, inhalt).unwrap();
-        assert!(git(&r, &["hash-object", "-w", "-t", "commit", pfad.to_str().unwrap()]).starts_with("7f62b7e"));
-    }
-    git(&r, &["branch", "abcdef0", &k2]);
-    Repo { _tmp: tmp, r, k1, k2, w1, v1, blob }
-}
 
 fn anwendung(wbs: &str, anforderungen: &str) -> Anwendung {
     Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: wbs.into(), anforderungen: anforderungen.into() }
 }
 
-fn stand(r: &Path) -> (String, String) {
-    (git(r, &["status", "--porcelain"]), git(r, &["count-objects", "-v"]))
+fn stand(r: &Repo) -> (String, String) {
+    r.stand()
 }
 
 // ADR-0032 Punkt 2: Startordner ist der Ordner der WBS, ohne WBS der Anforderungsordner; Wurzel über --show-toplevel
@@ -106,12 +54,12 @@ fn commit_aufloesen_kurz_voll_worktree_verwaist() {
 #[test]
 fn kein_commit() {
     let r = repo();
-    let vorher = stand(&r.r);
+    let vorher = stand(&r);
     for hash in ["0000000".to_string(), format!("{}0", r.k1), r.blob.clone(), r.blob[..7].to_string(), "7f62b7e".into(), "abcdef0".into(), "a".repeat(64)] {
         assert_eq!(arbeitsrepo::commit_aufloesen(&r.r, &hash), Err(Arbeitsrepofehler::KeinCommit), "{hash}");
     }
     assert_eq!(arbeitsrepo::commit_aufloesen(&r.r, "7f62b7e8c4"), Ok("7f62b7e8c4aeab77b053e03929734afdc3d9bdc4".into()), "länger ist eindeutig");
-    assert_eq!(stand(&r.r), vorher, "nur lesend: Arbeitsbaum und Objekte unverändert");
+    assert_eq!(stand(&r), vorher, "nur lesend: Arbeitsbaum und Objekte unverändert");
 }
 
 // AK 6, AK 10: der Zähler zählt jeden Git-Aufruf des Moduls in diesem Thread

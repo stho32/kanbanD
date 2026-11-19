@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -239,3 +239,69 @@ pub async fn senden_roh(methode: reqwest::Method, adresse: &str, pfad: &str, wer
     let art = r.headers().get("content-type").and_then(|w| w.to_str().ok()).unwrap_or_default().to_string();
     Antwort { status, art, text: r.text().await.unwrap() }
 }
+
+fn git_als_a(pfad: &Path, args: &[&str]) -> String {
+    let a = Command::new("git").arg("-C").arg(pfad).args(["-c", "user.name=A", "-c", "user.email=a@a"]).args(args).output().unwrap();
+    assert!(a.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&a.stderr));
+    String::from_utf8_lossy(&a.stdout).trim().to_string()
+}
+
+/// R00202: Das Arbeits-Repository R aus R00202 „Ausgangslage“: K1, K2 auf main, W1 auf karte/1 im Worktree, V1 auf losgelöstem
+/// HEAD (danach zurück auf main), der Blob von K1:a.txt — dazu zwei Commit-Objekte mit demselben 7er-Präfix `7f62b7e`
+/// (Inhalt fest, Präfix offline gesucht) und ein Zweig, der wie ein Kurz-Hash heißt.
+pub struct Repo {
+    pub _tmp: tempfile::TempDir,
+    pub r: PathBuf,
+    pub k1: String,
+    pub k2: String,
+    pub w1: String,
+    pub v1: String,
+    pub blob: String,
+}
+
+pub fn repo() -> Repo {
+    let tmp = tempfile::tempdir().unwrap();
+    let basis = tmp.path().canonicalize().unwrap();
+    let r = basis.join("R");
+    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
+    std::fs::write(r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
+    git_als_a(&r, &["init", "-q", "-b", "main"]);
+    std::fs::write(r.join("a.txt"), "a\n").unwrap();
+    git_als_a(&r, &["add", "-A"]);
+    git_als_a(&r, &["commit", "-qm", "a.txt anlegen"]);
+    let k1 = git_als_a(&r, &["rev-parse", "HEAD"]);
+    std::fs::write(r.join("a.txt"), "b\n").unwrap();
+    git_als_a(&r, &["commit", "-qam", "a.txt ändern"]);
+    let k2 = git_als_a(&r, &["rev-parse", "HEAD"]);
+    let wt = basis.join("R-karte-1");
+    git_als_a(&r, &["worktree", "add", "-q", "-b", "karte/1", wt.to_str().unwrap()]);
+    std::fs::write(wt.join("b.txt"), "b\n").unwrap();
+    git_als_a(&wt, &["add", "b.txt"]);
+    git_als_a(&wt, &["commit", "-qm", "b.txt anlegen"]);
+    let w1 = git_als_a(&wt, &["rev-parse", "HEAD"]);
+    git_als_a(&r, &["checkout", "-q", "--detach"]);
+    git_als_a(&r, &["commit", "-q", "--allow-empty", "-m", "verwaist"]);
+    let v1 = git_als_a(&r, &["rev-parse", "HEAD"]);
+    git_als_a(&r, &["checkout", "-q", "main"]);
+    let blob = git_als_a(&r, &["rev-parse", &format!("{k1}:a.txt")]);
+    git_als_a(&r, &["hash-object", "-w", "-t", "tree", "/dev/null"]);
+    for n in [18876, 29727] {
+        let inhalt = format!("tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nauthor A <a@a> 0 +0000\ncommitter A <a@a> 0 +0000\n\n{n}\n");
+        let pfad = basis.join("objekt");
+        std::fs::write(&pfad, inhalt).unwrap();
+        assert!(git_als_a(&r, &["hash-object", "-w", "-t", "commit", pfad.to_str().unwrap()]).starts_with("7f62b7e"));
+    }
+    git_als_a(&r, &["branch", "abcdef0", &k2]);
+    Repo { _tmp: tmp, r, k1, k2, w1, v1, blob }
+}
+
+impl Repo {
+    /// Arbeitsbaum und Objektzahl — „nur lesend“ heißt: beides unverändert.
+    pub fn stand(&self) -> (String, String) {
+        (git_als_a(&self.r, &["status", "--porcelain"]), git_als_a(&self.r, &["count-objects", "-v"]))
+    }
+}
+
+/// Die beiden Commit-Objekte mit demselben 7er-Präfix in [`repo`].
+pub const PRAEFIX_ZWEIER: &str = "7f62b7e";
+pub const ZWEIER: [&str; 2] = ["7f62b7e8c4aeab77b053e03929734afdc3d9bdc4", "7f62b7e8c5daa353f97b7f84b0b410b9501a4e46"];
