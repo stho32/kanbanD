@@ -469,7 +469,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     for (k, v) in &a.weitere {
         let wert = serde_yaml::to_string(v).unwrap_or_default();
         let wert = wert.trim_end();
-        if wert.contains('\n') {
+        // Eine Liste oder Zuordnung steht immer im Block darunter, auch mit einem Eintrag: `k: - x` wäre unlesbar
+        let block = matches!(v, Value::Sequence(l) if !l.is_empty()) || matches!(v, Value::Mapping(m) if !m.is_empty());
+        if block || wert.contains('\n') {
             s.push_str(&format!("{k}:\n{}\n", wert.lines().map(|z| format!("  {z}")).collect::<Vec<_>>().join("\n")));
         } else {
             s.push_str(&format!("{k}: {wert}\n"));
@@ -973,6 +975,17 @@ mod tests {
             let zurueck = lesen("0001-x.md", &t).unwrap_or_else(|e| panic!("{s:?} → {t:?}: {e:?}"));
             assert_eq!(zurueck, a, "{s:?} → {t:?}");
             assert_eq!(schreiben(&zurueck), t);
+        }
+    }
+
+    // Ein unbekannter Schlüssel mit genau einem Listeneintrag oder einer Zuordnung aus einem Paar schrieb serde_yaml in
+    // eine Zeile (`k: - x`, `k: a: b`) — die Datei war danach defekt (gefunden an R00202: ein Commit-Verweis in der Vorversion)
+    #[test]
+    fn unbekannter_schluessel_mit_einem_eintrag_bleibt_lesbar() {
+        for kopf in ["fremd:\n  - x\n", "fremd:\n  a: b\n", "fremd:\n  - 1234567\n", "fremd:\n  - {a: b}\n", "fremd: [x]\n", "fremd: {a: b}\n"] {
+            let a = lesen("0001-x.md", &mit_kopf(kopf)).unwrap();
+            let text = schreiben(&a);
+            assert_eq!(lesen("0001-x.md", &text).unwrap_or_else(|e| panic!("{kopf:?} → {text:?}: {e:?}")), a);
         }
     }
 
