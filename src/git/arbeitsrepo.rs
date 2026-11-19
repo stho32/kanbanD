@@ -293,7 +293,9 @@ pub fn fingerabdruck_probe(wurzel: &Path) -> Result<String, Arbeitsrepofehler> {
 /// Zweig erreicht, fehlen im Ergebnis.
 pub fn erreichbar(wurzel: &Path, fingerabdruck: &str, commits: &[&str], frist: Instant) -> Result<HashMap<String, Vec<String>>, Arbeitsrepofehler> {
     let mut je_spitze: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (spitze, name) in fingerabdruck.lines().filter_map(|z| z.split_once(' ')).filter(|(_, n)| !n.ends_with("/HEAD")) {
+    // `refs/remotes/<entfernt>/HEAD` zeigt nur auf einen anderen entfernten Zweig; ein lokaler `feature/HEAD` zählt
+    let verweis_auf_zweig = |n: &str| n.starts_with("refs/remotes/") && n.ends_with("/HEAD");
+    for (spitze, name) in fingerabdruck.lines().filter_map(|z| z.split_once(' ')).filter(|(_, n)| !verweis_auf_zweig(n)) {
         je_spitze.entry(spitze).or_default().push(name);
     }
     if je_spitze.is_empty() || commits.is_empty() {

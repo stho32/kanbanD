@@ -260,6 +260,21 @@ fn erreichbarkeit_mit_merges_und_zweiter_wurzel_wie_contains() {
     assert_eq!(erreicht[&w2], ["refs/heads/w2"], "zweite Wurzel");
 }
 
+// Nacharbeit #211 (Code-Review S1): nur `refs/remotes/<entfernt>/HEAD` ist ein Verweis auf einen anderen Zweig — ein
+// lokaler Zweig `feature/HEAD` ist ein Zweig wie jeder andere
+#[test]
+fn lokaler_zweig_feature_head_zaehlt() {
+    let (_tmp, r) = leeres_repo();
+    let a = leer_commit(&r, "a");
+    gemeinsam::git(&r, &["update-ref", "refs/heads/feature/HEAD", &a]);
+    gemeinsam::git(&r, &["update-ref", "refs/remotes/o/main", &a]);
+    gemeinsam::git(&r, &["symbolic-ref", "refs/remotes/o/HEAD", "refs/remotes/o/main"]);
+    let fingerabdruck = arbeitsrepo::fingerabdruck(&r, frist()).unwrap();
+    let mut z = arbeitsrepo::erreichbar(&r, &fingerabdruck, &[&a], frist()).unwrap().remove(&a).unwrap_or_default();
+    z.sort();
+    assert_eq!(z, ["refs/heads/feature/HEAD", "refs/heads/main", "refs/remotes/o/main"]);
+}
+
 // R00204 AK 10 (Schutz): mehr als 3.000.000 Zeilen → Abbruch, nie eine gekürzte Liste — hier mit der Grenze des Moduls
 // gegen ein Repository, das sie sicher nicht reißt, und der Prüfung, dass die Grenze greift (Modultest `zeilengrenze…`)
 #[test]
