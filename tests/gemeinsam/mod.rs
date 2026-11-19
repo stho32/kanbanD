@@ -305,3 +305,51 @@ impl Repo {
 /// Die beiden Commit-Objekte mit demselben 7er-Präfix in [`repo`].
 pub const PRAEFIX_ZWEIER: &str = "7f62b7e";
 pub const ZWEIER: [&str; 2] = ["7f62b7e8c4aeab77b053e03929734afdc3d9bdc4", "7f62b7e8c5daa353f97b7f84b0b410b9501a4e46"];
+
+/// R00203: [`Repo`] mit den zwei Commits **K3** („c.txt anlegen“) und **K4** („d.txt anlegen“) auf `main` hinter K2 — der
+/// Worktree `R-karte-1` steht mit W1 noch auf K2, ein `git rebase main` dort macht aus W1 den Commit W1'.
+pub struct RepoMitRebase {
+    pub basis: Repo,
+    pub k3: String,
+    pub k4: String,
+}
+
+pub fn repo_mit_k3_k4() -> RepoMitRebase {
+    let basis = repo();
+    let mut hashes = vec![];
+    for datei in ["c.txt", "d.txt"] {
+        std::fs::write(basis.r.join(datei), "x\n").unwrap();
+        git_als_a(&basis.r, &["add", datei]);
+        git_als_a(&basis.r, &["commit", "-qm", &format!("{datei} anlegen")]);
+        hashes.push(git_als_a(&basis.r, &["rev-parse", "HEAD"]));
+    }
+    RepoMitRebase { k4: hashes.pop().unwrap(), k3: hashes.pop().unwrap(), basis }
+}
+
+impl RepoMitRebase {
+    pub fn worktree(&self) -> PathBuf {
+        self.basis.r.with_file_name("R-karte-1")
+    }
+
+    /// `git rebase main` im Worktree; liefert den Hash, den W1 danach trägt.
+    pub fn rebase(&self) -> String {
+        git_als_a(&self.worktree(), &["rebase", "-q", "main"]);
+        git_als_a(&self.worktree(), &["rev-parse", "HEAD"])
+    }
+
+    /// Ein zweiter Commit auf losgelöstem `HEAD`, den kein Zweig erreicht (V2); danach zurück auf `main`.
+    pub fn zweiter_verwaister(&self) -> String {
+        let r = &self.basis.r;
+        git_als_a(r, &["checkout", "-q", "--detach"]);
+        git_als_a(r, &["commit", "-q", "--allow-empty", "-m", "verwaist 2"]);
+        let v2 = git_als_a(r, &["rev-parse", "HEAD"]);
+        git_als_a(r, &["checkout", "-q", "main"]);
+        v2
+    }
+
+    /// Was kein Zweig erreicht, endgültig aus R entfernen (`reflog expire`, `gc --prune=now`).
+    pub fn aufraeumen(&self) {
+        git_als_a(&self.basis.r, &["reflog", "expire", "--expire=now", "--all"]);
+        git_als_a(&self.basis.r, &["gc", "-q", "--prune=now"]);
+    }
+}
