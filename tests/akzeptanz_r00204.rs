@@ -542,3 +542,55 @@ async fn ak16_endpunktliste_openapi_readme() {
     let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
     assert!(readme.contains("### Commits einer Karte lesen") && readme.contains("GET /api/aufgaben/") && readme.contains("ersetzen"));
 }
+
+// ---- Nacharbeit 1, Security Muss 1: kein Lazy-Fetch aus der Konfiguration des Arbeits-Repositorys -------------------
+
+/// Macht R zum Teilklon (`extensions.partialclone=origin`) mit `url` und den Zusatzschlüsseln und löscht den Blob
+/// `K2:a.txt` — `log --numstat` über K2 bräuchte ihn und holte ihn sonst von selbst nach.
+fn teilklon_ohne_blob(a: &R204, url: &str, zusatz: &[(&str, &str)]) {
+    for (k, w) in [("core.repositoryformatversion", "1"), ("extensions.partialclone", "origin"), ("remote.origin.promisor", "true"), ("remote.origin.partialclonefilter", "blob:none"), ("remote.origin.url", url)].iter().chain(zusatz) {
+        git(&a.r, &["config", k, w]);
+    }
+    let blob = git(&a.r, &["rev-parse", &format!("{}:a.txt", a.k2)]);
+    let lose = a.r.join(".git/objects").join(&blob[..2]).join(&blob[2..]);
+    if lose.exists() {
+        std::fs::remove_file(&lose).unwrap();
+    }
+    let da = std::process::Command::new("git").arg("-C").arg(&a.r).args(["cat-file", "-e", &blob]).env("GIT_NO_LAZY_FETCH", "1").status().unwrap();
+    assert!(!da.success(), "der Blob ist noch da");
+}
+
+#[tokio::test]
+async fn muss1_lazy_fetch_startet_kein_programm() {
+    let a = ausgangslage_r00204();
+    let marke = a.basis.join("marke");
+    let skript = a.basis.join("skript.sh");
+    std::fs::write(&skript, format!("#!/bin/sh\necho \"$0 $*\" >> {}\nexit 1\n", marke.display())).unwrap();
+    std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let s = skript.to_str().unwrap();
+    a.von_hand(&[format!("kd:{}", a.k2)]);
+    let lauf = starten(&a, &[]);
+    let varianten: [(&str, &[(&str, &str)]); 3] = [
+        (a.r.to_str().unwrap(), &[("remote.origin.uploadpack", s)]),
+        ("ssh://beispiel.invalid/r.git", &[("core.sshCommand", s)]),
+        ("https://127.0.0.1:9/r.git", &[("credential.helper", s)]),
+    ];
+    let mut gelaufen = vec![];
+    for (url, zusatz) in varianten {
+        teilklon_ohne_blob(&a, url, zusatz);
+        let start = Instant::now();
+        let (status, _, rumpf) = liste_holen(&lauf.adresse, 1).await;
+        let dauer = start.elapsed();
+        assert!(dauer <= Duration::from_secs(15), "{url}: {dauer:?}");
+        if marke.exists() {
+            gelaufen.push(format!("{url}: {}", lies(&a.basis, "marke")));
+            std::fs::remove_file(&marke).unwrap();
+        }
+        // ohne den Blob gibt es keine Statistik — Git verweigert `log --numstat`, der Eintrag ist `repository_fehlt` mit Grund
+        assert_eq!(status, 200, "{url}: {rumpf}");
+        let e = &rumpf["commits"][0];
+        assert_eq!(e["zustand"], "repository_fehlt", "{url}: {rumpf}");
+        assert!(e["grund"].as_str().is_some_and(|g| g.contains("lazy fetching disabled")), "{url}: {rumpf}");
+    }
+    assert!(gelaufen.is_empty(), "Programme aus der Konfiguration liefen: {gelaufen:?}");
+}

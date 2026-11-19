@@ -4,7 +4,8 @@
 //! - **Nur lesend**, aus einer abschließenden Liste ([`Befehl`]); kein `add`, `commit`, `checkout`, `fetch`, `gc`.
 //! - **Argumentliste ohne Shell**, `--end-of-options` vor jedem Verweis; die Form des Verweises prüft der Aufrufer vorher
 //!   ([`crate::modell::Verweisform`]) — dieses Modul ist die zweite Linie, nicht die erste.
-//! - Umgebung `GIT_OPTIONAL_LOCKS=0` (kein Auffrischen des Index), `GIT_TERMINAL_PROMPT=0` (nie fragen); Variablen, die
+//! - Umgebung `GIT_OPTIONAL_LOCKS=0` (kein Auffrischen des Index), `GIT_TERMINAL_PROMPT=0` (nie fragen),
+//!   `GIT_NO_LAZY_FETCH=1` (ein Teilklon holt fehlende Objekte nie nach, startet also kein Programm aus der Konfiguration); Variablen, die
 //!   Git auf ein anderes Repository umlenken (`GIT_DIR` …) oder fremde Programme und Konfiguration einschleusen
 //!   (`GIT_CONFIG_*`, `GIT_EXTERNAL_DIFF`, Pager, `GIT_EXEC_PATH`, `GIT_ASKPASS`, `GIT_SSH_COMMAND`), werden entfernt, die
 //!   System- und die Benutzerkonfiguration abgeschaltet, vor jedem Befehl `core.fsmonitor` und `core.hooksPath` gesperrt.
@@ -373,6 +374,9 @@ fn kommando(ordner: &Path, befehl: Befehl, args: &[&str], vorhandene: impl Itera
 fn gehaertet(ordner: &Path, vor: &[&str], befehl: &str, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
     let mut c = Command::new("git");
     c.arg("-C").arg(ordner).args(SPERREN).args(vor).arg(befehl).args(args).env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0");
+    // ein Teilklon (`extensions.partialclone`) holte fehlende Objekte sonst von selbst nach — und startete dabei
+    // `uploadpack`, `core.sshCommand` oder `credential.helper` aus der Konfiguration des Repositorys
+    c.env("GIT_NO_LAZY_FETCH", "1");
     for v in UMLENKUNGEN.into_iter().chain(PROGRAMME) {
         c.env_remove(v);
     }
@@ -494,7 +498,7 @@ mod tests {
             assert!(entfernt(n), "{n} bleibt: {env:?}");
         }
         assert!(!entfernt("GIT_TRACE") && !entfernt("HOME"), "sonst bleibt die Umgebung: {env:?}");
-        for gesetzt in [("GIT_CONFIG_NOSYSTEM", "1"), ("GIT_CONFIG_GLOBAL", "/dev/null"), ("GIT_OPTIONAL_LOCKS", "0"), ("GIT_TERMINAL_PROMPT", "0")] {
+        for gesetzt in [("GIT_CONFIG_NOSYSTEM", "1"), ("GIT_CONFIG_GLOBAL", "/dev/null"), ("GIT_OPTIONAL_LOCKS", "0"), ("GIT_TERMINAL_PROMPT", "0"), ("GIT_NO_LAZY_FETCH", "1")] {
             assert!(env.contains(&(gesetzt.0.to_string(), Some(gesetzt.1.to_string()))), "{gesetzt:?} fehlt: {env:?}");
         }
     }
