@@ -496,6 +496,7 @@ a.org:hover{text-decoration:none;background:var(--kd-accent);color:var(--kd-on-a
 .felder select:hover,.mini-inp:hover{border-color:var(--kd-line-strong)}
 .mini-inp:focus,.felder select:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .mini-inp{width:110px;font-family:var(--kd-mono);font-size:11.5px}
+.mini-inp.personenwahl{width:auto;max-width:100%}
 .mini-inp.full{width:100%;font-family:var(--kd-font);font-size:12.5px}
 .ochip{display:inline-flex}
 .ochip button{border:0;background:var(--kd-accent-weak);color:var(--kd-accent-ink);cursor:pointer;height:16px;padding:0 4px;font-size:11px;line-height:1}

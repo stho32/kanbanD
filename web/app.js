@@ -919,6 +919,17 @@ function datumsknotenBehalten(vorher) {
   if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
 }
 
+/** Die Personenwahl des Stundenzettels bleibt beim Neuzeichnen derselbe Knoten, damit ein fremdes Live-Ereignis eine offene
+    Liste nicht schließt und der Fokus nicht springt (R00201 AK 9); nur ihre Einträge und die Wahl werden nachgezogen. */
+function personenwahlBehalten(vorher) {
+  const neu = document.getElementById(PERSONENWAHL);
+  if (!vorher || !neu) return;
+  const wahl = neu.value;
+  neu.replaceWith(vorher);
+  if (vorher.innerHTML !== neu.innerHTML) vorher.replaceChildren(...neu.childNodes);
+  vorher.value = wahl;
+}
+
 /** Name einer schreibenden Anfrage als Auslöser einer Meldung: dieselbe Anfrage ist dieselbe Aktion. */
 const anfrageName = (methode, pfad) => `${methode} ${pfad}`;
 /** Auslöser aller Meldungen und Erfolge eines Rückgängig. */
@@ -1319,6 +1330,7 @@ function render() {
   const aktivWarSichtbar = imSichtbereich(aktiv);
   const meldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(FENSTER_MELDUNG) : null;
   const tagVorher = document.getElementById(PERSONEN_TAG);
+  const personenwahlVorher = document.getElementById(PERSONENWAHL);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -1333,6 +1345,7 @@ function render() {
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
+    personenwahlBehalten(personenwahlVorher);
   } finally {
     S.neuzeichnen = false;
   }
@@ -2956,6 +2969,7 @@ document.addEventListener('change', e => {
   }
   if (e.target.dataset && e.target.dataset.bestand) { bestandAchsenSetzen(e.target.dataset.bestand, e.target.value); return; }
   if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
+  if (e.target.id === PERSONENWAHL) { act('sp', e.target.value); return; }
   if (e.target.dataset && e.target.dataset.dl) { durchlaufWaehlen(e.target.dataset.dl, e.target.value); render(); return; }
   if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
   const bf = e.target.dataset && e.target.dataset.bf;

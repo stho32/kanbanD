@@ -1259,6 +1259,17 @@ function vZeitraumFelder(f, jetzt) {
   const bis = f.zeitraum === 'eigen' ? f.bis : g.bis !== Infinity ? isoD(letzterTag(g.bis)) : '';
   return `<select class="mini-inp" data-bf="zeitraum" aria-label="Zeitraum">${ZEITRAEUME.map(([k, t]) => `<option value="${k}"${k === f.zeitraum ? ' selected' : ''}>${t}</option>`).join('')}</select><input type="date" class="mini-inp" data-bf="von" value="${esc(von)}" aria-label="Zeitraum von"><span class="muted">–</span><input type="date" class="mini-inp" data-bf="bis" value="${esc(bis)}" aria-label="Zeitraum bis">`;
 }
+const PERSONENWAHL = 'stundenzettel-person';
+/** Die Personenwahl des Stundenzettels (R00201): eine Auswahlliste, so breit wie ihr längster Eintrag und nie breiter als die
+    Leiste. Ist die angezeigte Person keine aktive, steht „— Person wählen —“ als gesperrter erster Eintrag da. */
+function vPersonenwahl(wer) {
+  const aktive = personen().filter(p => p.aktiv);
+  const angezeigteIstAktiv = aktive.some(p => p.kuerzel === wer);
+  let leereintrag = '';
+  if (!angezeigteIstAktiv) leereintrag = '<option value="" selected disabled>— Person wählen —</option>';
+  const eintraege = aktive.map(p => `<option value="${esc(p.kuerzel)}"${p.kuerzel === wer ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+  return `<select class="mini-inp personenwahl" id="${PERSONENWAHL}" aria-label="Person">${leereintrag}${eintraege}</select>`;
+}
 const csvKnopf = '<a class="btn" href="/api/berichte/zeiten.csv" download>CSV</a>';
 function vStundenzettel() {
   const u = S.ui, jetzt = Date.now();
@@ -1266,7 +1277,7 @@ function vStundenzettel() {
   const wer = u.sp || S.ich || (personen().find(p => p.aktiv) || {}).kuerzel;
   const s = stundenzettel(S.aufgaben.filter(a => aufgabePasst({ ...u.bf, personen: [] }, a)), wer, w0, jetzt), namen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], heute = tagesbeginn(jetzt);
   const zelle = ms => ms ? hm(ms) : '<span class="muted">·</span>';
-  return `<div class="leiste"><b>Stundenzettel</b><span class="seg" role="radiogroup" aria-label="Person">${personen().filter(p => p.aktiv).map(p => `<span class="${p.kuerzel === wer ? 'an' : ''}" data-act="sp" data-arg="${esc(p.kuerzel)}" role="radio" aria-checked="${p.kuerzel === wer}">${esc(p.name)}</span>`).join('')}</span><button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${datumAusMs(s.tage[0])} – ${datumAusMs(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('stundenzettel')}
+  return `<div class="leiste"><b>Stundenzettel</b>${vPersonenwahl(wer)}<button class="btn btn-sym" data-act="woche" data-arg="-1" aria-label="vorige Woche">‹</button><span class="mono muted" id="woche">${datumAusMs(s.tage[0])} – ${datumAusMs(s.tage[6])}</span><button class="btn btn-sym" data-act="woche" data-arg="1" aria-label="nächste Woche">›</button><span class="muted" style="font-size:12px">liest nur · Klick auf eine Zeile öffnet die Aufgabe zum Korrigieren</span><div class="rechts">${csvKnopf}</div></div>${vBerichtsfilter('stundenzettel')}
 <div class="body">${berichtRahmen('Stundenzettel')}<table class="pt dicht" id="stundenzettel"><thead><tr><th>Aufgabe</th>${s.tage.map((t, i) => `<th class="r"${t === heute ? ' style="color:var(--kd-accent-ink)"' : ''}>${namen[i]} <span class="mono">${datumKurz(isoD(t), isoD(Date.now()))}</span></th>`).join('')}<th class="r">Summe</th></tr></thead><tbody>${s.zeilen.map(z => `<tr class="klick" data-act="oeffnen" data-arg="${z.aufgabe.nummer}" data-halt="zeile:${z.aufgabe.nummer}" tabindex="0"><td class="tt"><span class="mono muted">#${z.aufgabe.nummer}</span> ${esc(z.aufgabe.titel)}</td>${z.proTag.map(ms => `<td class="r num">${zelle(ms)}</td>`).join('')}<td class="r num"><b>${hm(z.summe)}</b></td></tr>`).join('') || `<tr><td class="muted" colspan="9">${esc(per(wer || '').name)} hat in dieser Woche keine Zeiten.</td></tr>`}<tr class="grp"><td>SUMME</td>${s.jeTag.map(ms => `<td class="r">${hm(ms)}</td>`).join('')}<td class="r" id="zettelsumme">${hm(s.summe)}</td></tr></tbody></table></div></div>`;
 }
 /** Öffnender Rahmen um eine Berichtstabelle (PO Z. 137): nur er scrollt bei schmaler Breite quer, per Tastatur erreichbar wie .ko-scroll. */
