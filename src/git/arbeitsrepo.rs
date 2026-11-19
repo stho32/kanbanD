@@ -305,24 +305,19 @@ pub fn erreichbar(wurzel: &Path, fingerabdruck: &str, commits: &[&str], frist: I
         let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
     }
-    let graph = Graph::aus(&aus.stdout);
-    let ziele: HashMap<u32, &str> = commits.iter().filter_map(|c| graph.index.get(c.as_bytes()).map(|&i| (i, *c))).collect();
-    let mut ergebnis: HashMap<String, Vec<String>> = HashMap::new();
-    let mut besucht = vec![usize::MAX; graph.eltern.len()];
-    for (lauf, (spitze, namen)) in je_spitze.iter().enumerate() {
-        let Some(&start) = graph.index.get(spitze.as_bytes()) else { continue };
-        let mut stapel = vec![start];
-        while let Some(k) = stapel.pop() {
-            if std::mem::replace(&mut besucht[k as usize], lauf) == lauf {
-                continue;
-            }
-            if let Some(c) = ziele.get(&k) {
-                ergebnis.entry(c.to_string()).or_default().extend(namen.iter().map(|n| n.to_string()));
-            }
-            stapel.extend(&graph.eltern[k as usize]);
-        }
+    Graph::aus(&aus.stdout, frist)?.erreichbar(&je_spitze, commits, frist)
+}
+
+/// Alle so vielen Schritte prüft die Speicherphase von [`erreichbar`] die Frist — bei Millionen Kanten und Tausenden
+/// Spitzen liefe sie sonst weit über die Gesamtgrenze hinaus.
+const PRUEFTAKT: usize = 1 << 16;
+
+/// Ist die Frist vorbei → `Zeitgrenze`; geprüft nur bei jedem [`PRUEFTAKT`]-ten Schritt.
+fn frist_im_takt(schritt: usize, frist: Instant) -> Result<(), Arbeitsrepofehler> {
+    if schritt % PRUEFTAKT == PRUEFTAKT - 1 && Instant::now() >= frist {
+        return Err(Arbeitsrepofehler::Zeitgrenze);
     }
-    Ok(ergebnis)
+    Ok(())
 }
 
 /// Die Commits aus `rev-list --parents` (`<hash> <eltern>…` je Zeile) als Index und Elternlisten.
@@ -332,11 +327,43 @@ struct Graph<'a> {
 }
 
 impl<'a> Graph<'a> {
-    fn aus(text: &'a [u8]) -> Graph<'a> {
-        let zeilen: Vec<Vec<&[u8]>> = text.split(|b| *b == b'\n').filter(|z| !z.is_empty()).map(|z| z.split(|b| *b == b' ').collect()).collect();
+    fn aus(text: &'a [u8], frist: Instant) -> Result<Graph<'a>, Arbeitsrepofehler> {
+        let mut zeilen: Vec<Vec<&[u8]>> = vec![];
+        for (i, z) in text.split(|b| *b == b'\n').filter(|z| !z.is_empty()).enumerate() {
+            frist_im_takt(i, frist)?;
+            zeilen.push(z.split(|b| *b == b' ').collect());
+        }
         let index: HashMap<&[u8], u32> = zeilen.iter().enumerate().map(|(i, z)| (z[0], i as u32)).collect();
-        let eltern = zeilen.iter().map(|z| z[1..].iter().filter_map(|e| index.get(e).copied()).collect()).collect();
-        Graph { index, eltern }
+        let mut eltern = Vec::with_capacity(zeilen.len());
+        for (i, z) in zeilen.iter().enumerate() {
+            frist_im_takt(i, frist)?;
+            eltern.push(z[1..].iter().filter_map(|e| index.get(e).copied()).collect());
+        }
+        Ok(Graph { index, eltern })
+    }
+
+    /// Je Commit die Namen der Spitzen, von denen aus er über Elternkanten erreichbar ist; je Spitze ein Lauf.
+    fn erreichbar(&self, je_spitze: &HashMap<&str, Vec<&str>>, commits: &[&str], frist: Instant) -> Result<HashMap<String, Vec<String>>, Arbeitsrepofehler> {
+        let ziele: HashMap<u32, &str> = commits.iter().filter_map(|c| self.index.get(c.as_bytes()).map(|&i| (i, *c))).collect();
+        let mut ergebnis: HashMap<String, Vec<String>> = HashMap::new();
+        let mut besucht = vec![usize::MAX; self.eltern.len()];
+        let mut schritt = 0usize;
+        for (lauf, (spitze, namen)) in je_spitze.iter().enumerate() {
+            let Some(&start) = self.index.get(spitze.as_bytes()) else { continue };
+            let mut stapel = vec![start];
+            while let Some(k) = stapel.pop() {
+                frist_im_takt(schritt, frist)?;
+                schritt += 1;
+                if std::mem::replace(&mut besucht[k as usize], lauf) == lauf {
+                    continue;
+                }
+                if let Some(c) = ziele.get(&k) {
+                    ergebnis.entry(c.to_string()).or_default().extend(namen.iter().map(|n| n.to_string()));
+                }
+                stapel.extend(&self.eltern[k as usize]);
+            }
+        }
+        Ok(ergebnis)
     }
 }
 
@@ -641,6 +668,29 @@ mod tests {
         let text = String::from_utf8(aus.stdout).unwrap();
         assert!(text.starts_with(&format!("{} commit ", kopf.trim())), "{text}");
         assert!(text.ends_with("0000000000 missing\n"), "{text}");
+    }
+
+    /// `n` Commits in einer Kette, wie `rev-list --parents` sie ausgibt (neuester zuerst).
+    fn kette(n: usize) -> String {
+        (0..n).rev().map(|i| if i == 0 { format!("c{i}\n") } else { format!("c{i} c{}\n", i - 1) }).collect()
+    }
+
+    // Nacharbeit #211 (Code-Review S2, Security Sollte 1): die Speicherphase prüft die Frist im Takt — beim Einlesen und
+    // beim Gang über die Kanten; mit offener Frist läuft sie durch
+    #[test]
+    fn speicherphase_prueft_die_frist() {
+        let text = kette(3 * PRUEFTAKT);
+        let vorbei = Instant::now();
+        assert_eq!(Graph::aus(text.as_bytes(), vorbei).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze), "Einlesen");
+        let offen = Instant::now() + Duration::from_secs(60);
+        let graph = Graph::aus(text.as_bytes(), offen).unwrap();
+        let spitze = format!("c{}", 3 * PRUEFTAKT - 1);
+        let je_spitze: HashMap<&str, Vec<&str>> = [(spitze.as_str(), vec!["refs/heads/main"])].into();
+        assert_eq!(graph.erreichbar(&je_spitze, &["c0"], vorbei), Err(Arbeitsrepofehler::Zeitgrenze), "Gang über die Kanten");
+        assert_eq!(graph.erreichbar(&je_spitze, &["c0"], offen).unwrap()["c0"], ["refs/heads/main"]);
+        // unter einem Takt fragt niemand die Uhr — kurze Läufe zahlen nichts
+        let kurz = kette(PRUEFTAKT - 1);
+        assert!(Graph::aus(kurz.as_bytes(), vorbei).is_ok());
     }
 
     // ADR-0032 N3.4: mehr Zeilen als erlaubt → der Prozess wird beendet, keine gekürzte Ausgabe; bis zur Grenze läuft er durch
