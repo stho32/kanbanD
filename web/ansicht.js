@@ -172,11 +172,17 @@ function vLaufPop() {
   return `<div class="pop" id="pop" data-for="t-lauf" data-al="r" style="width:450px" role="dialog" aria-label="Läuft gerade"><h4 class="pop-kopf">LÄUFT GERADE <span class="mono">${r.length} Timer · ${new Set(r.map(x => x.a.nummer)).size} Aufgaben</span></h4>${r.map(({ a, z }) => `<div class="pz2${z.wer === S.ich ? ' eigen' : ''}" data-act="oeffnen" data-arg="${a.nummer}">${pk(z.wer)}<button type="button" class="id" data-act="oeffnen" data-arg="${a.nummer}" aria-label="#${a.nummer} öffnen">#${a.nummer}</button><span class="t">${esc(a.titel)}<small>${esc(per(z.wer).name)}${z.wer === S.ich ? ' · ich' : ''} · seit ${esc(ortszeit(z.beginn).slice(11))}</small></span>${vLaufChip({ beginn: laufBeginn(a, z), eigen: z.wer === S.ich, rahmen: 'b' })}<button class="btn${z.wer === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${a.nummer}|${esc(z.wer)}" title="stoppen" aria-label="Timer von ${esc(per(z.wer).name)} stoppen">■</button></div>`).join('')}<div class="fuss">Klick auf eine Zeile öffnet die Aufgabe · fremde Timer lassen sich stoppen</div></div>`;
 }
 
+const ICH_LEER = 'nicht gewählt';
+/** „Ich bin …“ im Kopf (R00003). Ohne gewählte Person zeigt compact nur einen hohlen Chip und ▾ (R00200, 99 px „nicht gewählt ▾“
+    ließen die Kopfzeile bei 320 px quer scrollen): der Name steht als versteckter Text im Knopf, damit er aus dem Inhalt kommt
+    (WCAG 2.5.3), und als Tooltip; ▾ ist ausgeblendet, damit es nicht mitgelesen wird. Ab medium steht „nicht gewählt ▾“ sichtbar. */
 function vIchKnopf() {
   const me = S.ich && personen().find(p => p.kuerzel === S.ich && p.art === 'human' && p.aktiv);
-  return `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="menu">${me ? pk(me.kuerzel) + `<span class="ich-name">${esc(me.name)}</span>` : 'nicht gewählt'} ▾</button>`;
+  const kopf = `<button class="kz-btn${S.ui.pop === 'ich' ? ' auf' : ''}${me ? '' : ' leer'}" id="t-ich" data-act="pop" data-arg="ich" aria-haspopup="menu"`;
+  if (me) return `${kopf}>${pk(me.kuerzel)}<span class="ich-name">${esc(me.name)}</span> ▾</button>`;
+  if (S.ui.stufe === 'compact') return `${kopf} title="${ICH_LEER}"><span class="pk pk-0"></span><span class="vh">${ICH_LEER}</span><span aria-hidden="true">▾</span></button>`;
+  return `${kopf}>${ICH_LEER} ▾</button>`;
 }
-
 /* ── Schnelleingabe: Vorschau der erkannten Felder ── */
 function schnellUmfeld() { return { personen: personen().filter(p => p.aktiv), klassen: vorratDerNeuenAufgabe() }; }
 /** Die erkannte Klasse der Schnelleingabe aus dem Vorrat des Zielboards; kennt er sie nicht, steht ihr Schlüssel ohne Farbe. */

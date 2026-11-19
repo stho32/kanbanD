@@ -89,6 +89,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .kz-btn{white-space:nowrap}
 .kz-btn.auf{background:var(--kd-head-line);border-color:var(--kd-head-muted)}
 .kz-btn.leer{border-style:dashed;color:var(--kd-head-muted)}
+/* Leerform von #t-ich in compact (R00200): der hohle Chip trägt den Ring im Kopfton, --kd-line-strong stünde dunkel bei 2,34:1 */
+.kz-btn.leer .pk-0{box-shadow:inset 0 0 0 1px var(--kd-head-muted)}
 /* 11 px ist die kleinste Schrift nach M3 label-small (R00115): die kleinen Quadrate wachsen mit (18 px wie .pk) */
 .kz-btn .pk{width:18px;height:18px;font-size:11px}
 /* Modusleiste (R00107 FA 7): Akzent-Container wie M3 primary-container, abgesetzt vom Board durch eine Linie */
