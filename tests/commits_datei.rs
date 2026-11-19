@@ -100,3 +100,24 @@ async fn duplizieren_nimmt_commits_nicht_mit() {
     assert!(!text.contains("commits"), "{text}");
     assert_eq!(datei(tmp.path(), 1), format!("---\nid: 1\ntitle: a1\n{COMMITS}---\n"), "die Quelle bleibt");
 }
+
+// Legacy-Befund (Karte #207): die Vorversion schreibt `commits` mit einem Eintrag in eine Zeile (`commits: - kd:…`) — danach
+// ist die Aufgabe defekt (423). Der Altbestand (main ae04fcfd) liegt als Datei unter tests/altbestaende/: GET liest ihn,
+// das nächste Schreiben macht die Blockform daraus
+#[tokio::test]
+async fn altbestand_commits_in_einer_zeile_wird_gelesen_und_beim_schreiben_geheilt() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), ["", ""]);
+    let alt = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/altbestaende/main-ae04fcfd/commits-ein-eintrag.md")).unwrap();
+    std::fs::write(tmp.path().join("aufgaben/0001-a1.md"), alt).unwrap();
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let (s, a) = holen(&lauf.adresse, 1).await;
+    assert_eq!(s, 200, "{a}");
+    assert_eq!(a["commits"], json!(["kd:52fa43e0a3fd816e6bfc21642bfca102bb3faed6"]));
+
+    let (s, a) = titel_aendern(&lauf.adresse, 1, "umbenannt").await;
+    assert_eq!(s, 200, "{a}");
+    assert_eq!(datei(tmp.path(), 1), "---\nid: 1\ntitle: umbenannt\ncommits:\n  - kd:52fa43e0a3fd816e6bfc21642bfca102bb3faed6\n---\n");
+    assert_eq!(holen(&lauf.adresse, 1).await.1["commits"], json!(["kd:52fa43e0a3fd816e6bfc21642bfca102bb3faed6"]));
+}

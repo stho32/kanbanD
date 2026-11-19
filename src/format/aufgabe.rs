@@ -49,7 +49,7 @@ pub fn zeitpunkt(s: &str) -> Option<String> {
 
 pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     let (y, koerper) = frontmatter::trennen(text)?;
-    let m = yaml::lesen(y)?;
+    let m = yaml::lesen(y).or_else(|fehler| yaml_heilen(y).and_then(|heil| yaml::lesen(&heil).ok()).ok_or(fehler))?;
     let nummer = match m.get("id") {
         Some(v) => v.as_u64().map(|n| n as u32).ok_or_else(|| Formatfehler("id ist keine Zahl".into()))?,
         None => nummer_aus_dateiname(datei).ok_or_else(|| Formatfehler("weder id noch Nummer im Dateinamen".into()))?,
@@ -98,6 +98,36 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     }
     koerper_lesen(&mut a, koerper)?;
     Ok(a)
+}
+
+/// Der nachsichtige Leser für den Schaden der Vorversion (Legacy-Befund, Karte #207): sie schrieb eine Liste oder Zuordnung
+/// mit genau einem Eintrag in die Schlüsselzeile — `commits: - kd:3f2a…`, `fremd: a: b` —, und das Frontmatter war
+/// unlesbar. Läuft nur, wenn das Lesen gescheitert ist, und fasst nur Zeilen am Zeilenanfang an, deren Schlüssel **nicht**
+/// bekannt ist (`commits` zählt als unbekannt): ein defekter `title: - x` bleibt defekt, statt still etwas anderes zu
+/// bedeuten. Der Rest der Zeile muss für sich genau eine Liste mit einem Eintrag oder eine Zuordnung mit einem einfachen
+/// Schlüssel und einem Eintrag sein (kein Fluss, keine Anführungszeichen) — sonst ist es nicht eindeutig und bleibt defekt.
+/// Liefert das Frontmatter mit dem Eintrag im Block darunter, oder `None`, wenn nichts zu heilen war.
+fn yaml_heilen(y: &str) -> Option<String> {
+    let einfach = |k: &str| !k.is_empty() && k.chars().all(|c| c.is_ascii_alphanumeric() || "_.-".contains(c));
+    let mut geheilt = false;
+    let zeilen: Vec<String> = y
+        .lines()
+        .map(|zeile| {
+            let Some((k, rest)) = zeile.split_once(": ").filter(|(k, _)| einfach(k) && !BEKANNT.contains(k)) else { return zeile.to_string() };
+            let rest = rest.trim();
+            let eindeutig = match serde_yaml::from_str::<Value>(rest) {
+                Ok(Value::Sequence(l)) => rest.starts_with("- ") && l.len() == 1,
+                Ok(Value::Mapping(m)) => !rest.starts_with(['{', '[', '"', '\'']) && m.len() == 1 && m.keys().all(|k| k.as_str().is_some_and(einfach)),
+                _ => false,
+            };
+            if !eindeutig {
+                return zeile.to_string();
+            }
+            geheilt = true;
+            format!("{k}:\n  {rest}")
+        })
+        .collect();
+    geheilt.then(|| zeilen.join("\n"))
 }
 
 /// `commits` als Liste von Texten, wörtlich; leer heißt keine. `None`, wenn es keine Liste von Texten ist.
@@ -1054,6 +1084,34 @@ mod tests {
             assert!(a.commits.is_empty(), "{kopf}");
             assert_eq!(a.weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["commits"], "{kopf}");
             assert_eq!(lesen("0001-x.md", &schreiben(&a)).unwrap(), a, "{kopf}");
+        }
+    }
+
+    // Legacy-Befund (Karte #207): die Vorversion schrieb Liste oder Zuordnung mit einem Eintrag in die Schlüsselzeile
+    // (`k: - x`, `k: a: b`). Der Leser liest das wie den Block darunter — für `commits` und unbekannte Schlüssel
+    #[test]
+    fn schluesselzeile_mit_einem_eintrag_der_vorversion_wird_wie_der_block_gelesen() {
+        let heil = lesen("0001-x.md", &mit_kopf("commits:\n  - kd:abc1234\n")).unwrap();
+        let a = lesen("0001-x.md", &mit_kopf("commits: - kd:abc1234\n")).unwrap();
+        assert_eq!(a, heil);
+        assert_eq!(schreiben(&a), mit_kopf("commits:\n  - kd:abc1234\n"), "beim Schreiben die Blockform");
+
+        let fremd = lesen("0001-x.md", &mit_kopf("fremd: - eins\nandere: a: b\n")).unwrap();
+        assert_eq!(fremd, lesen("0001-x.md", &mit_kopf("fremd:\n  - eins\nandere:\n  a: b\n")).unwrap());
+        assert_eq!(schreiben(&fremd), mit_kopf("fremd:\n  - eins\nandere:\n  a: b\n"));
+    }
+
+    // Ein Wert, der nur so aussieht, wird nicht umgedeutet: bekannte Schlüssel bleiben defekt wie bisher (kein stilles
+    // Umdeuten eines Titels), angeführte Werte sind gültiges YAML und bleiben Text, Mehrdeutiges bleibt defekt
+    #[test]
+    fn werte_die_nur_so_aussehen_werden_nicht_umgedeutet() {
+        assert!(lesen("0001-x.md", &mit_kopf("title: - x\n")).is_err(), "bekannter Schlüssel: defekt wie bisher");
+        assert!(lesen("0001-x.md", &mit_kopf("title: a: b\n")).is_err());
+        let a = lesen("0001-x.md", &"---\nid: 1\ntitle: \"- x\"\nfremd: \"- y\"\n---\n".to_string()).unwrap();
+        assert_eq!(a.titel, "- x");
+        assert_eq!(a.weitere, [("fremd".to_string(), serde_yaml::Value::String("- y".into()))]);
+        for kopf in ["fremd: Achtung: wichtig: sehr\n", "fremd: - [a\n", "fremd: {a: b\n", "fremd: a b: c\n"] {
+            assert!(lesen("0001-x.md", &mit_kopf(kopf)).is_err(), "{kopf:?} bleibt defekt");
         }
     }
 
