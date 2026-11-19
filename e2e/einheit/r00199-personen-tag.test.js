@@ -96,3 +96,34 @@ test('B0977 (AK 11): jeder Zeiteintrag wird höchstens zweimal in einen Zeitpunk
     assert.strictEqual(zeilen[0].tag, 36e5 * aufgaben.filter(a => a.nummer % 30 === 1).length, 'die Rechnung stimmt trotzdem');
   }
 });
+
+/* ── B0978: Lage in der Leiste 0–24 Uhr, Marken auf echten Ortszeit-Stunden (AK 1, AK 9) ── */
+const { stundenmarken, lageImTag } = require('../../web/zeiten.js');
+const lage = (zeitpunkt, tag) => Math.round(lageImTag(zeitpunkt, tagesbeginn(tag), tagesende(tag)) * 100) / 100;
+const markenAm = tag => stundenmarken(tag).map(m => [m.stunde, lage(m.zeitpunkt, tag)]);
+
+test('B0978: an einem gewöhnlichen Tag stehen die Marken 0, 3, …, 24 bei 0 %, 12,5 %, …, 100 %', () => {
+  assert.deepStrictEqual(markenAm(ms(2026, 11, 19, 14)), [[0, 0], [3, 12.5], [6, 25], [9, 37.5], [12, 50], [15, 62.5], [18, 75], [21, 87.5], [24, 100]]);
+  assert.strictEqual(lage(JETZT, JETZT), 58.33, 'Jetzt-Marke 14 / 24');
+  assert.strictEqual(lage(ms(2026, 11, 17, 9), ms(2026, 11, 17)), 37.5);
+});
+
+test('B0978 (AK 9): am 25.10. (25 Stunden) und am 29.03. (23 Stunden) stehen die Marken auf den echten Ortszeit-Stunden', () => {
+  const am25 = markenAm(ms(2026, 10, 25));
+  assert.deepStrictEqual(am25[1], [3, 16], '03:00 ist am 25.10. vier Stunden nach 0 Uhr');
+  assert.deepStrictEqual(am25.at(-1), [24, 100]);
+  assert.strictEqual(lage(zeitMs('2026-10-25 23:15+01:00'), ms(2026, 10, 25)), 97, '24,25 / 25');
+  assert.deepStrictEqual(markenAm(ms(2026, 3, 29))[1], [3, 8.7], '03:00 ist am 29.03. zwei Stunden nach 0 Uhr');
+  assert.strictEqual(lage(ms(2026, 3, 28, 22), ms(2026, 3, 29)), 0, 'vor dem Tag: am linken Rand');
+  assert.strictEqual(lage(ms(2026, 3, 30, 1), ms(2026, 3, 29)), 100, 'nach dem Tag: am rechten Rand');
+});
+
+test('B0978 (AK 9): Tag und Woche zählen an den Umstelltagen die echte Zeit', () => {
+  const p = [{ kuerzel: 'st' }];
+  const am = (zeiten, tag) => personenZeilen([{ nummer: 1, zustaendige: [], zeiten }], p, null, tag, ms(2026, 11, 19, 14))[0];
+  const herbst = am([{ wer: 'st', beginn: '2026-10-25 23:15+01:00', ende: '2026-10-25 23:45+01:00' }], ms(2026, 10, 25));
+  assert.deepStrictEqual([herbst.tag, herbst.woche], [0.5 * H, 0.5 * H]);
+  const fruehling = [{ wer: 'st', beginn: '2026-03-29 22:00+02:00', ende: '2026-03-30 01:00+02:00' }];
+  assert.strictEqual(am(fruehling, ms(2026, 3, 29)).tag, 2 * H, '29.03.: 2:00, nicht 3:00');
+  assert.strictEqual(am(fruehling, ms(2026, 3, 30)).tag, 1 * H, '30.03.: 1:00');
+});

@@ -600,7 +600,7 @@ function vTipp() {
 }
 
 /* ── Zeiten ── */
-/* zeitMs, ortszeit, anteil, personenZeilen: web/zeiten.js */
+/* zeitMs, ortszeit, anteil, personenZeilen, stundenmarken, lageImTag, tagesende: web/zeiten.js */
 // `hm` (Dauer als h:mm) steht in web/zeiten.js und ist dort auch gegen die geschätzte Zeit (R00129) getestet.
 const hms = ms => { const s = Math.max(0, Math.floor(ms / 1e3)); return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 /**
@@ -1160,11 +1160,11 @@ function vLegenPop() {
 
 /* ── Personen (Artboard D0005) ── */
 function vPersonen() {
-  const u = S.ui, jetzt = Date.now(), W0 = 6, W1 = 20, t0 = tagesbeginn(jetzt);
-  const pos = t => Math.max(0, Math.min(100, ((t - t0) / 36e5 - W0) / (W1 - W0) * 100));
+  const u = S.ui, jetzt = Date.now(), tag = jetzt, t0 = tagesbeginn(tag), t1 = tagesende(tag), istHeute = t0 === tagesbeginn(jetzt);
+  const pos = t => lageImTag(t, t0, t1);
   const alle = personen();
   const gezeigt = alle.filter(p => (u.stillAuch || p.aktiv) && (u.pBereich === 'alle' || (u.pBereich === 'm' ? p.art === 'human' : p.art === 'agent')));
-  const zeilen = personenZeilen(S.aufgaben, gezeigt, S.board, jetzt, jetzt);
+  const zeilen = personenZeilen(S.aufgaben, gezeigt, S.board, tag, jetzt);
   const G = ['LÄUFT JETZT', 'HEUTE AKTIV', 'HEUTE RUHIG'];
   let html = '';
   for (let g = 0; g < 3; g++) {
@@ -1176,12 +1176,12 @@ function vPersonen() {
       const leiste = d.abschnitte.map(x => { const a = pos(x.von), b = pos(x.bis); return b > a ? `<i class="${x.laeuft ? 'l' : d.person.art === 'agent' ? 'a' : ''}" style="left:${a}%;width:${Math.max(0.5, b - a)}%" title="#${x.nummer}"></i>` : ''; }).join('');
       const gerade = d.laeuft.length ? `<div class="akt">${d.laeuft.map(x => `<div class="z">${vLaufChip({ beginn: laufBeginn(x.a, x.z), eigen: k === S.ich, sekunden: false })}<a href="#" class="id" data-act="oeffnen" data-arg="${x.a.nummer}">#${x.a.nummer}</a><span class="t">${esc(x.a.titel)}</span><button class="btn stop${k === S.ich ? ' btn-haupt' : ''}" data-act="stop" data-arg="${x.a.nummer}|${esc(k)}" aria-label="Timer von ${esc(d.person.name)} stoppen">■</button></div>`).join('')}</div>`
         : `<span class="muted">${d.zuletzt ? 'zuletzt ' + (d.zuletzt >= t0 ? new Date(d.zuletzt).toTimeString().slice(0, 5) : datumAusMs(d.zuletzt)) : '—'}</span>`;
-      return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}<span class="jetzt" style="left:${pos(jetzt)}%"></span></div></td><td class="r num heute">${hm(d.tag)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
+      return `<tr class="${d.gruppe === 2 ? 'ruhe' : ''}" data-person="${esc(k)}"><td><a href="#" class="wer" data-act="person-filter" data-arg="${esc(k)}" title="Board auf @${esc(k)} filtern">${pk(k)}<span><b>${esc(d.person.name)}</b><small>${d.person.aktiv ? (k === S.ich ? 'ich' : d.person.art === 'agent' ? 'Agent' : '&nbsp;') : 'stillgelegt'}</small></span></a></td><td>${gerade}</td><td><div class="tagl">${leiste}${istHeute ? `<span class="jetzt" style="left:${pos(jetzt)}%"></span>` : ''}</div></td><td class="r num heute">${hm(d.tag)}</td><td class="r num muted">${hm(d.woche)}</td><td class="r"><span class="num">${d.offen}</span> <span class="muted" style="font-size:11px">· ${d.begonnen} begonnen</span></td></tr>`;
     }).join('');
   }
   const still = alle.filter(p => !p.aktiv).length;
-  return `<div class="leiste"><span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste ${W0}–${W1} Uhr · schraffiert = läuft</div></div>
-<div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${[6, 8, 10, 12, 14, 16, 18, 20].map(h => `<span style="left:${(h - W0) / (W1 - W0) * 100}%">${h}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
+  return `<div class="leiste"><span class="seg" role="radiogroup" aria-label="Personen">${[['alle', 'Menschen + Agenten'], ['m', 'nur Menschen'], ['a', 'nur Agenten']].map(([k, t]) => `<span class="${u.pBereich === k ? 'an' : ''}" data-act="p-bereich" data-arg="${k}" role="radio" aria-checked="${u.pBereich === k}">${t}</span>`).join('')}</span>${still ? `<label class="chk-s" data-act="still-auch"><i class="${u.stillAuch ? 'an' : ''}">${u.stillAuch ? '✓' : ''}</i>Stillgelegte einblenden (${still})</label>` : ''}<div class="rechts muted">Tagesleiste 0–24 Uhr · schraffiert = läuft</div></div>
+<div class="body">${berichtRahmen('Personen')}<table class="pt"><thead><tr><th style="width:190px">Person</th><th>Gerade</th><th><div class="skala">${stundenmarken(tag).map(m => `<span style="left:${pos(m.zeitpunkt)}%">${m.stunde}</span>`).join('')}</div></th><th class="r">heute</th><th class="r">Woche</th><th class="r">zugewiesen offen</th></tr></thead><tbody>${html}</tbody></table></div></div>`;
 }
 
 /* ── Berichte (Artboard D0006) — lesen nur, korrigiert wird an der Aufgabe ── */

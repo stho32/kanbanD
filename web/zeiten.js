@@ -56,6 +56,14 @@
     return Math.max(0, Math.min(e, bis) - Math.max(b, von));
   }
 
+  /** Marken der Tagesleiste alle drei Stunden, 0 bis 24 Uhr, auf den echten Ortszeit-Stunden des Tages, in dem `tag` liegt —
+      am 25.10. steht 3 Uhr vier Stunden nach 0 Uhr (R00199 Regel 1). */
+  function stundenmarken(tag) {
+    return [0, 3, 6, 9, 12, 15, 18, 21, 24].map(stunde => { const d = new Date(tagesbeginn(tag)); d.setHours(stunde); return { stunde, zeitpunkt: d.getTime() }; });
+  }
+  /** Lage eines Zeitpunkts im Tag [t0, t1) in Prozent der Leiste, am Rand gekappt. */
+  const lageImTag = (zeitpunkt, t0, t1) => Math.max(0, Math.min(100, (zeitpunkt - t0) / (t1 - t0) * 100));
+
   /** Je Person für den Tag, in dem `tag` liegt: Summen des Tages und seiner Kalenderwoche, Abschnitte des Tages, laufende
       Einträge, `zuletzt`, Gruppe, offene und begonnene Aufgaben (R00199). Ein Durchlauf über alle Zeiten, jeder Eintrag wird
       höchstens zweimal umgewandelt (`umwandeln`, Zählhaken der Lastprobe). Laufende Einträge zählen bis `jetzt`. */
@@ -117,5 +125,5 @@
     return { personen: wer, zeilen, jeSpalte, summe: jeSpalte.reduce((s, x) => s + x, 0) };
   }
 
-  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, tagesende, wochenbeginn, wochenende, anteil, personenZeilen, stundenzettel, kreuztabelle });
+  Object.assign(ziel, { VERGESSEN_MS, istVergessen, zeitMs, ortszeit, hm, reservierungRest, summeMs, summeJePerson, tagesbeginn, tagesende, wochenbeginn, wochenende, anteil, stundenmarken, lageImTag, personenZeilen, stundenzettel, kreuztabelle });
 })(typeof module !== 'undefined' ? module.exports : window);
