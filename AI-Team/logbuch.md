@@ -1100,3 +1100,10 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - keine Grenze über mehrere Anfragen und keine Größengrenze für das Frontmatter;
   - README-Beispiel `X-KanbanD-Wer: entwickler` ist mit 10 Zeichen kein gültiges Kürzel;
   - Playwright erwartet `<worktree>/target/debug/kanbanD` fest (`e2e/tests/hilfen.js:27`), der Build-Cache liegt anderswo.
+| 2026-11-19 | #219 | Entwicklung | entwickler | bestanden | 47 min | A1b gebaut: R00203 erledigt, B0994–B0997 grün, Probe mit echtem Rebase, 9 Mutanten tot, cargo 934, node 1247, PW 1966/0 · claude · Lauf 219-entwickler-1 · 3,28 $ · Karte gesamt 4,33 $ |
+| 2026-11-19 | #219 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss; Sollte: AK 12b Bauanleitung, Prüfschleife doppelt, OpenAPI 409 · claude · sonnet · Lauf 219-code-reviewer-1 · 0,55 $ · Karte gesamt 4,88 $ |
+| 2026-11-19 | #211 | Detailplanung | planer | bestanden | 7 min | R00204 mit 8 US, 16 AK; I0194 mit B0998–B1003; 4 PO-, 3 Architekturfragen · claude · opus · Lauf 211-planer-1 · 1,29 $ · Karte gesamt 1,29 $ |
+| 2026-11-19 | #211 | Detailplanung | product-owner | bestanden | 1 min | 4 Fragen entschieden; Titel bei 500 Zeichen als AK · claude · opus · Lauf 211-product-owner-1 · 0,21 $ · Karte gesamt 1,50 $ |
+| 2026-11-19 | #219 | Auto-Reviews | security-reviewer | bestanden | 5 min | kein Muss, kein Sollte; 3 Optional · claude · sonnet · Lauf 219-security-reviewer-1 · 0,68 $ · Karte gesamt 5,56 $ |
+| 2026-11-19 | #211 | Detailplanung | architekt | bestanden | 4 min | ADR-0032 N3: Gesamtgrenze, Cache nur Erfolge mit zweitem Fingerabdruck, Rückfall Z5; Messung: Z1 reißt 200 ms bei 20.000 Commits · claude · opus · Lauf 211-architekt-1 · 0,52 $ · Karte gesamt 2,02 $ |
+| 2026-11-19 | #211 | Detailplanung | planer | bestanden | 2 min | R00204 nachgeführt: AK 17 Titel, N3 Gesamtgrenze/Cache/Tag-Objekt, Z5 als Alternative · claude · opus · Lauf 211-planer-2 · 0,48 $ · Karte gesamt 2,50 $ |
