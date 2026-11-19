@@ -1049,3 +1049,21 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - Die UX-Vorprüfung hat eine blinde Probe gefunden: Unter Touch macht min-block-size 48 px jede Höhenprobe auf Umbruch wirkungslos, deshalb wird stattdessen die Zahl der Zeilenrechtecke gezählt.
 - Gate: Zwei Läufe unter Last (#206 baute gleichzeitig) hatten je 3 Live-Wackler. Der ruhige Lauf hatte nur den bekannten r00148:535 (#198). Lehre: Das Gate auf main nicht fahren, während ein entwickler seine Suite fährt; erst warten, bis er fertig ist.
 - Sollte ohne Karte: Ein Doc-Kommentar zu vIchKnopf erzählt die Entstehung. Der Kommentar in kd-app.css:211 zu .pk-0 ist veraltet. Für eine stillgelegte Person als Leerfall fehlt ein Test. #pop „Ich bin …“ hat weder Rolle noch Namen.
+| 2026-11-19 | #206 | Auto-Reviews | ux-reviewer | bestanden | 4 min | kein Muss, 2 Optional · claude · sonnet · Lauf 206-ux-reviewer-3 · 1,23 $ · Karte gesamt 7,88 $ |
+| 2026-11-19 | #206 | Auto-Reviews | code-reviewer | befund | 11 min | Muss: offene Liste schließt bei Live-Ereignis · claude · sonnet · Lauf 206-code-reviewer-1 · 1,44 $ · Karte gesamt 9,32 $ |
+| 2026-11-19 | #206 | Nacharbeit | entwickler | bestanden | 24 min | Nacharbeit 1: Pfad-Erhalt statt moveBefore, c40cecff, PW 1898/0 · claude · Lauf 206-entwickler-2 · 1,46 $ · Karte gesamt 10,78 $ |
+| 2026-11-19 | #206 | Auto-Reviews | code-reviewer | bestanden | 11 min | Nachprüfung: Muss behoben, keine Rückschritte · claude · sonnet · Lauf 206-code-reviewer-2 |
+| 2026-11-19 | #206 | Entwicklertest | gestalter | bestanden | 1 min | D0006 Personenwahl als Liste, cf3eb390 · claude · sonnet · Lauf 206-gestalter-1 · 0,74 $ · Karte gesamt 11,52 $ |
+| 2026-11-19 | #206 | Entwicklertest | entwicklertester | bestanden | 4 min | US-1..US-6 bestanden · claude · sonnet · Lauf 206-entwicklertester-1 · 0,35 $ · Karte gesamt 11,87 $ |
+
+**Retrospektive #206** (Personenwahl im Stundenzettel als Auswahlliste, 2026-11-19, 11,87 $ gemessen, ausgeliefert 52fa976f)
+- Gut: Der architekt hat auf dem echten Board nachgestellt (20 Personen, 2069 px bei 1280) und dabei gezeigt, dass die E2E-Daten mit 3 Personen solche Fehler nie finden. Die UX-Vorprüfung hat zweimal eine blinde Probe aufgedeckt, beide Male eine Folge von Hausregeln, die Proben aushebeln: `.mini-inp` ist fest 110 px breit und hat min-width:0.
+- Nacharbeit 1: „Offene Liste bleibt bei Live-Ereignis offen“ stand nur in „Erwartet“, nicht in einem AK. Gebaut war deshalb nur der Knotenerhalt. Der code-reviewer hat das Schließen gemessen. Der vorgeschlagene Weg (moveBefore) scheiterte in Chromium 159, die Lösung ist Pfad-Erhalt in `hauptbereichErsetzen`.
+- Lehre: Was der Director in eine Anforderung aufnimmt, braucht eine eigene Probe als AK, sonst baut die Rolle nur das, was das AK misst.
+- Schleifenbremse in der Detailplanung genutzt: Der Wortlaut des Prüfers wurde wörtlich übernommen, eine dritte UX-Runde gab es nicht.
+- Sollte und Optional ohne Karte:
+  - Der Filter-Pfad (app.js) zeichnet weiterhin per innerHTML.
+  - Ein Doc-Kommentar erzählt, wie die Lösung entstand.
+  - Bei 1280 px steht ▾ weit rechts.
+  - Bei 375 px ist der 76-Zeichen-Name abgeschnitten.
+  - `.mini-inp` 11,5 px, auf iOS möglicher Zoom beim Fokus.
