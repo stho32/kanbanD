@@ -25,6 +25,7 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::Arc;
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -393,17 +394,19 @@ pub fn laufen(c: Command, zeitgrenze: Duration) -> Result<Output, Arbeitsrepofeh
 }
 
 /// Startet `c` in einer eigenen Prozessgruppe, schreibt die Eingabe, liest die Ausgaben mit und wartet höchstens bis zur
-/// Zeitgrenze. Bei Zeitüberschreitung oder zu vielen Zeilen stirbt die ganze Gruppe; ein abgebrochener Prozess liefert
-/// nie eine (Teil-)Ausgabe.
+/// Zeitgrenze — auch auf die Ausgaben, die ein Kind von Git außerhalb der Gruppe noch offen hält. Endet Git, endet seine
+/// Gruppe mit ihm; bei Zeitüberschreitung oder zu vielen Zeilen stirbt die ganze Gruppe. Ein abgebrochener Prozess
+/// liefert nie eine (Teil-)Ausgabe.
 fn ausfuehren(mut c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
     let eingabe = if lauf.eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
     let mut kind = c.stdin(eingabe).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
     let gruppe = kind.id() as i32;
-    let schreiber = lauf.eingabe.map(|text| {
+    // nicht abgewartet: hält ein Kind von Git `stdin` offen, ohne zu lesen, hinge sonst die Anfrage
+    if let Some(text) = lauf.eingabe {
         let mut ziel = kind.stdin.take();
         let text = text.to_vec();
-        std::thread::spawn(move || ziel.as_mut().map(|z| z.write_all(&text)))
-    });
+        std::thread::spawn(move || ziel.as_mut().map(|z| z.write_all(&text)));
+    }
     let zuviel = Arc::new(AtomicBool::new(false));
     let stdout = mitlesen(kind.stdout.take(), lauf.hoechstzeilen.map(|n| (n, zuviel.clone())));
     let stderr = mitlesen(kind.stderr.take(), None);
@@ -426,14 +429,26 @@ fn ausfuehren(mut c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
             }
         }
     };
-    if let Some(s) = schreiber {
-        let _ = s.join();
-    }
-    let stdout = stdout.join().unwrap_or_default();
+    // Git ist fertig: was es in seiner Gruppe zurückließ, endet jetzt. Die Gruppe trägt Gits PID; solange ein Mitglied
+    // lebt, vergibt der Kern sie nicht neu — lebt keines mehr, trifft das Signal niemanden.
+    // SAFETY: `kill` liest nur seine beiden Zahlen
+    unsafe { kill(-gruppe, SIGKILL) };
+    let stdout = bis_zum_ende(&stdout, ende)?;
+    let stderr = bis_zum_ende(&stderr, ende)?;
     if zuviel.load(Ordering::SeqCst) {
         return Err(Arbeitsrepofehler::ZuvielAusgabe(lauf.hoechstzeilen.unwrap_or_default()));
     }
-    Ok(Output { status, stdout, stderr: stderr.join().unwrap_or_default() })
+    Ok(Output { status, stdout, stderr })
+}
+
+/// Die ganze Ausgabe eines Lesethreads, wenn sie bis `ende` vollständig ist; sonst hält ein Kind außerhalb der Gruppe den
+/// Strom offen → `Zeitgrenze` (der Thread endet mit dem Kind).
+fn bis_zum_ende(strom: &Receiver<Vec<u8>>, ende: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
+    match strom.recv_timeout(ende.saturating_duration_since(Instant::now())) {
+        Ok(text) => Ok(text),
+        Err(RecvTimeoutError::Timeout) => Err(Arbeitsrepofehler::Zeitgrenze),
+        Err(RecvTimeoutError::Disconnected) => Err(Arbeitsrepofehler::Start("Lesethread abgebrochen".into())),
+    }
 }
 
 unsafe extern "C" {
@@ -451,29 +466,36 @@ fn gruppe_beenden(gruppe: i32, kind: &mut std::process::Child) {
     let _ = kind.wait();
 }
 
-/// Liest einen Ausgabestrom in einem eigenen Thread leer, damit ein voller Puffer den Prozess nicht anhält. Mit
-/// `grenze` hört er nach so vielen Zeilen auf und meldet es über den Schalter.
-fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(usize, Arc<AtomicBool>)>) -> std::thread::JoinHandle<Vec<u8>> {
+/// Liest einen Ausgabestrom in einem eigenen Thread leer, damit ein voller Puffer den Prozess nicht anhält; am Ende des
+/// Stroms kommt alles über den Kanal. Mit `grenze` hört er nach so vielen Zeilen auf und meldet es über den Schalter.
+fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(usize, Arc<AtomicBool>)>) -> Receiver<Vec<u8>> {
+    let (fertig, ergebnis) = mpsc::channel();
     std::thread::spawn(move || {
-        let mut puffer = vec![];
-        let Some(mut s) = strom else { return puffer };
-        let mut block = [0u8; 64 * 1024];
-        let mut zeilen = 0usize;
-        while let Ok(n) = s.read(&mut block) {
-            if n == 0 {
-                break;
-            }
-            puffer.extend_from_slice(&block[..n]);
-            if let Some((hoechstens, zuviel)) = &grenze {
-                zeilen += block[..n].iter().filter(|b| **b == b'\n').count();
-                if zeilen > *hoechstens {
-                    zuviel.store(true, Ordering::SeqCst);
-                    return vec![];
-                }
+        let _ = fertig.send(leeren(strom, grenze));
+    });
+    ergebnis
+}
+
+/// Liest `strom` bis zum Ende, mit `grenze` höchstens so viele Zeilen.
+fn leeren(strom: Option<impl Read>, grenze: Option<(usize, Arc<AtomicBool>)>) -> Vec<u8> {
+    let mut puffer = vec![];
+    let Some(mut s) = strom else { return puffer };
+    let mut block = [0u8; 64 * 1024];
+    let mut zeilen = 0usize;
+    while let Ok(n) = s.read(&mut block) {
+        if n == 0 {
+            break;
+        }
+        puffer.extend_from_slice(&block[..n]);
+        if let Some((hoechstens, zuviel)) = &grenze {
+            zeilen += block[..n].iter().filter(|b| **b == b'\n').count();
+            if zeilen > *hoechstens {
+                zuviel.store(true, Ordering::SeqCst);
+                return vec![];
             }
         }
-        puffer
-    })
+    }
+    puffer
 }
 
 #[cfg(test)]

@@ -594,3 +594,69 @@ async fn muss1_lazy_fetch_startet_kein_programm() {
     }
     assert!(gelaufen.is_empty(), "Programme aus der Konfiguration liefen: {gelaufen:?}");
 }
+
+// ---- Nacharbeit 1, Security Muss 2: ein Enkel, der die Pipe hält, verlängert die Frist nicht -----------------------
+
+/// Ein Enkel von Git (`vorher` im Shim, danach `exec` auf das echte Git) — wie er läuft und welche Ausgaben er erbt.
+struct Enkel {
+    name: &'static str,
+    befehl: &'static str,
+    /// in Gittes Prozessgruppe: stirbt mit ihr, die Antwort kommt ohne Warten
+    in_der_gruppe: bool,
+}
+
+const ENKEL: [Enkel; 4] = [
+    Enkel { name: "in der Gruppe", befehl: "sleep 60", in_der_gruppe: true },
+    Enkel { name: "setsid", befehl: "setsid sleep 60", in_der_gruppe: false },
+    Enkel { name: "hält stdout", befehl: "setsid sleep 60 2>/dev/null", in_der_gruppe: false },
+    Enkel { name: "hält nur stderr", befehl: "setsid sleep 60 >/dev/null", in_der_gruppe: false },
+];
+
+/// Eine Variante: zwei GETs nacheinander, je Status und Dauer; danach die PIDs der Enkel.
+async fn mit_enkel(enkel: &Enkel) -> (Vec<(u16, Duration)>, Vec<String>) {
+    let a = ausgangslage_r00204();
+    a.von_hand(&a.verweise()[..3]);
+    let enkel_pids = a.basis.join("enkel");
+    let (_schalter, pfad) = git_skript(&a, &format!("{} & echo $! >> {}", enkel.befehl, enkel_pids.display()));
+    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let mut antworten = vec![];
+    for _ in 0..2 {
+        let start = Instant::now();
+        // 0: hängt noch nach 20 s
+        let status = tokio::time::timeout(Duration::from_secs(20), liste_holen(&lauf.adresse, 1)).await.map_or(0, |(s, _, _)| s);
+        antworten.push((status, start.elapsed()));
+    }
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let pids: Vec<String> = lies(&a.basis, "enkel").split_whitespace().map(String::from).collect();
+    (antworten, pids)
+}
+
+#[tokio::test]
+async fn muss2_enkel_haelt_die_pipe() {
+    let laeufe: Vec<_> = ENKEL.iter().map(|e| tokio::spawn(mit_enkel(e))).collect();
+    let mut befunde = vec![];
+    for (enkel, lauf) in ENKEL.iter().zip(laeufe) {
+        let (antworten, pids) = lauf.await.unwrap();
+        eprintln!("{}: {antworten:?}, Enkel {pids:?}", enkel.name);
+        assert!(!pids.is_empty(), "{}: der Shim startete keinen Enkel", enkel.name);
+        let lebend: Vec<&String> = pids.iter().filter(|p| lebt(p)).collect();
+        if enkel.in_der_gruppe {
+            // Git endet normal, seine Gruppe mit ihm: die Liste kommt sofort, kein Enkel bleibt
+            if antworten.iter().any(|(s, d)| *s != 200 || *d > Duration::from_secs(5)) {
+                befunde.push(format!("{}: {antworten:?}", enkel.name));
+            }
+            if !lebend.is_empty() {
+                befunde.push(format!("{}: Enkel lebt: {lebend:?}", enkel.name));
+            }
+        } else {
+            // außerhalb der Gruppe bleibt er — die Antwort wartet trotzdem nicht über die Frist hinaus
+            if antworten.iter().any(|(s, d)| *s != 503 || *d < Duration::from_secs(10) || *d > Duration::from_secs(15)) {
+                befunde.push(format!("{}: {antworten:?}", enkel.name));
+            }
+        }
+        for p in &pids {
+            let _ = std::process::Command::new("kill").arg("-9").arg(p).status();
+        }
+    }
+    assert!(befunde.is_empty(), "{befunde:#?}");
+}
