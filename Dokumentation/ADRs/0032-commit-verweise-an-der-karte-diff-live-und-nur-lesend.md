@@ -1,6 +1,6 @@
 # ADR-0032: Commit-Verweise an der Karte — Schlüssel `commits` mit `<kürzel>:<voller Hash>`, Diff live und nur lesend aus dem Arbeits-Repository des Registers, Gesamt-Diff dateiweise ohne fremde Änderungen
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung
+**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3)
 **Datum**: 2026-11-19
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #207, Lauf 207-architekt-1)
 **Kontext-Anforderung**: — (Karte #207 „Commits an der Karte und Review-Diff direkt aus dem Board“, Teil A; Anforderung und WBS-Knoten folgen über den planer). Bezug: Karten #208–#210, po-entscheidungen Z. 358–383, R00053, ADR-0003, ADR-0008, ADR-0021, ADR-0028, ADR-0030, ADR-0031
@@ -277,6 +277,79 @@ Das Board-Git (`src/git.rs:360` `status`, `:366` `rev-parse --absolute-git-dir`)
 
 - Positiv: die Vorversion schreibt `commits` zeichengleich zurück; der Schaden der Vorversion bei einem Eintrag ist heilbar; Konfiguration und Umgebung des Betreibers führen im Arbeits-Repository kein Programm aus.
 - Inkauf: bis alle Instanzen aktualisiert sind, kann eine ältere Instanz die Aufgabe bei genau einem Verweis defekt machen (423); `safe.directory` wirkt nicht; absolute Pfade in Meldungen; das Board-Git bleibt bis zur Entscheidung zu N2.5 ungehärtet.
+
+## Nachtrag 2026-11-19 N3: Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3 (Karte #211, Scheibe A2, R00204, Fragen des planers)
+
+Der bisherige Text bleibt stehen; N3 ergänzt die genannten Stellen und gilt, wo er ihnen widerspricht. Entscheider: Claude (autonom, architekt, Lauf 211-architekt-1).
+
+**Belegt (gefahren 2026-11-19, Git 2.48.1, Rechnerlast 5–7 durch fremde Läufe, daher Größenordnung, keine Abnahmewerte)**: Wegwerf-Repository in `gemeinsam/scratchpad/arch-211/big` der Factory, 20.779 Commits, 50 Zweige (26 lokal, 24 entfernt, `main` linear), ohne `commit-graph`, 30 Verweise (20 auf `main`, 5 auf Zweigspitzen, 5 verwaist), `-c core.commitGraph=false`:
+
+| Weg | Prozesse | Zeit (kalt) |
+|---|---|---|
+| Z1 `for-each-ref --contains` je Commit, 4 parallel | 30 | **1,01–1,10 s** (ein einzelner Aufruf 0,15 s für einen verwaisten, 0,38 s für einen Commit auf `main`) |
+| Z2 `rev-list <spitze>` je Zweig, 4 parallel | 50 | 1,3–1,5 s |
+| Z3 `rev-list --branches --remotes` (nur ja/nein) | 1 | 0,11–0,12 s |
+| Z5 `rev-list --parents --branches --remotes`, Erreichbarkeit im Speicher | 1 | 0,16–0,24 s (nur der Git-Teil; `cat-file` und `log` für 30 Verweise zusammen 0,02 s) |
+
+Die Annahme aus N1.3 („ein Repository mit ~20.000 Commits und ~50 Zweigen ohne `commit-graph` hält das“) ist damit für Z1 **nicht belegt, sondern nach dieser Messung widerlegt**; die Messung in B0998 bleibt die Abnahme.
+
+### N3.1 Gesamtgrenze beim Lesen (präzisiert Punkt 3 „Zeitgrenze je Git-Prozess 10 s“)
+
+R00204 ist richtig und bleibt: zusätzlich zur Grenze je Prozess gilt für `GET …/commits` eine Grenze für den **ganzen Aufruf**. Ohne sie wären es bei 30 Verweisen und 4 gleichzeitigen Prozessen nominell 8 Wellen × 10 s = 80 s.
+
+- **10 s ab Eingang der Anfrage**, gezählt über alles: Warten auf einen freien Platz der vier, Wurzel, `cat-file`, `log`, Fingerabdruck, Zweiglisten. Danach werden alle laufenden Git-Prozesse samt Prozessgruppe beendet, es wird nichts Neues gestartet, die Antwort ist 503 `{fehler}`. Beendigung und Antwort brauchen höchstens 5 s; **15 s ist die obere Grenze der Antwort**, nicht die Grenze der Arbeit.
+- Die Grenze je Prozess bleibt 10 s, wird aber auf den **Rest der Gesamtgrenze** gekürzt: Grenze je Prozess = `min(10 s, Rest)`. Eine eigene Zahl für einen einzelnen Prozess gibt es beim Lesen damit nicht mehr als wirksame Größe. Punkt 3 bleibt für Aufrufe ohne Gesamtgrenze (`POST …/commits`, `ersetzen`) unverändert.
+- **Keine Teilantwort**: bei Überschreitung gibt es nie eine Liste mit fehlenden Zweigen, nur 503.
+- Der Diff (Scheibe A3) bekommt eine **eigene** Gesamtgrenze, in A3 festzulegen; N3 gilt nur für die Liste.
+
+### N3.2 Cache nach einem Abbruch (präzisiert N1.3 „Cache nur flüchtig“)
+
+Ergebnisse, die schon da sind, bleiben erhalten; sonst käme eine Wiederholung nie voran. Regeln:
+
+1. **Nur ganze, erfolgreiche Zweiglisten** werden abgelegt: Prozess mit Ausstiegscode 0 und vollständig gelesener Ausgabe. Ein beendeter, abgelaufener oder fehlgeschlagener Prozess legt **nichts** ab. Insbesondere gilt eine leere Ausgabe eines abgebrochenen Prozesses nie als „kein Zweig“ (sonst würde `auf_zweig` zu `verwaist`).
+2. **Ablage am Ende der Anfrage**, bei Erfolg wie bei Abbruch, nach einer **zweiten Fingerabdruck-Probe** (derselbe `for-each-ref`, 2 ms, gehört zum Spielraum von 5 s und hat 2 s Grenze). Ist der Fingerabdruck gleich dem vom Beginn, werden die fertigen Ergebnisse unter ihm abgelegt; ist er anders (ein Zweig hat sich während der Anfrage bewegt, auch hin und zurück), werden sie verworfen. Grund: ein Ergebnis, das nach einer Bewegung gelesen wurde, läge sonst unter dem alten Schlüssel, und ein Zweig, der zurückbewegt wird, träfe einen falschen Eintrag. Folge: die Git-Spur einer kalten Liste hat einen Aufruf mehr (5 statt 4); die Spur einer Liste, die ganz aus dem Cache kommt, bleibt bei 4.
+3. Die Sperre des Caches (Mutex) wird **nie während eines Git-Prozesses** gehalten, nur zum Lesen und Ablegen. Zwei gleichzeitige Anfragen rechnen im Zweifel doppelt, das ist Inkauf.
+4. Obergrenze und Leeren bei Überlauf wie in N1.3. Abgelegt wird je Anfrage höchstens bis zur Obergrenze; der Rest wird verworfen, nicht der Cache geleert.
+
+Wirkung: nach einem 503 beginnt die Wiederholung mit den schon fertigen Zweiglisten und braucht nur noch die übrigen; ein Repository, das in einem Anlauf nicht reicht, wird über mehrere Anläufe vollständig, solange sich kein Zweig bewegt.
+
+### N3.3 Lücken in N1.2 (bestätigt, mit Wortlaut)
+
+1. **`zweige_weitere`: lokale und entfernte Zweige zusammen, nur bei n > 0 — bestätigt.** n = (Zahl aller erreichenden lokalen + Zahl aller erreichenden entfernten Zweige) − (Zahl der in `zweige` und `entfernte_zweige` genannten). Tags und `*/HEAD` zählen nicht. Beide Listen sind alphabetisch (Bytefolge des Namens) und je auf 10 gekappt. Grund: ein Leser will wissen, **ob** mehr da ist; eine zweite Zahl verlangt eine zweite Zeile der Oberfläche ohne Nutzen, und N1.2 spricht von „Rest als `zweige_weitere: n`“ im Singular. Schwäche: bei n > 0 ist nicht ablesbar, welche Liste gekappt wurde; sie ist es genau dann, wenn sie 10 Namen hat.
+2. **Objekt, das kein Commit ist, gilt als `fehlt` — bestätigt.** Maßgeblich ist der Typ aus `cat-file --batch-check`: nur `commit` zählt. Blob, Baum und auch ein **Tag-Objekt** (`git tag -a`) sind `fehlt`; es wird **nicht** zum Commit aufgelöst (kein `^{commit}` beim Lesen). Hinterlegen schreibt immer den Hash des Commits (Punkt 4), so entsteht ein Tag-Objekt nur von Hand. Grund: der Verweis nennt einen Commit, ein anderes Objekt ist für einen Reviewer ohne Diff und Titel ein Verweis auf nichts; `fehlt` ist der Zustand, den die Oberfläche als „Verweis entfernen oder ersetzen“ zeigt.
+3. **Mehrdeutiger handgeschriebener Kurz-Hash gilt als `unlesbar` mit `grund` — bestätigt.** Erkannt über die Antwort `ambiguous` von `cat-file --batch-check`, **unabhängig vom Typ** der Treffer (auch Commit gegen Blob). Das ist bewusst strenger als `rev-parse …^{commit}` beim Hinterlegen, das nach Typ unterscheidet; es ist unschädlich, weil Hinterlegen immer den vollen Hash speichert und ein Kurz-Hash nur von Hand entsteht. Ein Kurz-Hash ohne Treffer ist `fehlt`, nicht `unlesbar`.
+
+**Folge für R00204** (Wortlaut für den planer; die Anforderung ändert der planer):
+- Zustand `unlesbar` (Zeile 54), letzter Satz ersetzen: „Ein Eintrag, der die Form verletzt, erreicht Git nie; ein mehrdeutiger Kurz-Hash wird von `cat-file --batch-check` als `ambiguous` gemeldet und ist `unlesbar` mit `grund`, gleich welchen Typs die Treffer haben.“ (Heute steht dort „Der Eintrag erreicht Git nie“ auch für den mehrdeutigen Hash; das ist nicht zu erfüllen.)
+- Zustand `fehlt` (Zeile 57): „… kein Commit-Objekt zu diesem Hash (auch nicht, wenn das Objekt ein Blob, ein Baum oder ein Tag-Objekt ist; es wird nicht zum Commit aufgelöst).“ AK 5 um ein Tag-Objekt (`git tag -a`) → `fehlt` ergänzen.
+- Zeitgrenze (Zeile 71) und AK 9: Zusatz „Grenze je Prozess = `min(10 s, Rest der Gesamtgrenze)`“. AK 9: „… und es steht nichts im Cache“ ersetzen durch „und kein abgebrochenes Ergebnis steht im Cache“, dazu ein zweiter Fall: ein `git`-Skript, das die ersten 4 Zweiglisten sofort, jede weitere 60 s hält → nach spätestens 15 s 503; derselbe Aufruf ohne Skript ergibt 200 mit der Liste aus AK 1, und seine Git-Spur enthält **4 `--contains` weniger** als eine kalte Liste.
+- Cache (Zeile 69) und AK 11: „Ablage am Ende der Anfrage nach einer zweiten Fingerabdruck-Probe, bei ungleichem Fingerabdruck verworfen; nur erfolgreiche Zweiglisten.“ AK 11: die Git-Spur einer **kalten** Liste hat 5 Aufrufe im Repository (Wurzel, `cat-file`, `log`, Fingerabdruck, Zweiglisten …, Probe) — die Zahl 4 gilt nur für die Liste aus dem Cache. Zusätzlich eine Probe im Test des Moduls: Zweig bewegt sich zwischen erstem und zweitem Fingerabdruck → nichts abgelegt.
+
+### N3.4 Rückfall bei Reißen der Schwelle (ergänzt N1.3 „Hält es nicht: Zweigliste kappen und Z3 als Vorstufe, nicht still“)
+
+**Die Schwelle (p95 < 200 ms bei 30 Verweisen, kalt, ~20.000 Commits, ~50 Zweige, ohne `commit-graph`) bleibt, niemand ändert sie.** Der Rückfall ändert den Weg, nicht die Schwelle und nicht die Antwortform.
+
+**Entscheidung gegen die in N1.3 genannten Wege**:
+- *Zweigliste kappen* hilft nicht: schon ein einziger `--contains` auf `main` kostet 0,38 s, eine Welle von vier also mehr als die ganze Schwelle; Kappen der Zahl der Commits mit Zweigliste ließe zudem Verweise ohne Namen, also eine andere Antwort.
+- *Z3 allein* trägt die Schwelle (0,12 s), liefert aber nur ja/nein und verlangt eine andere Antwortform (der Betreiber will den Zweig genannt haben).
+- *Z2* ist langsamer als Z1.
+
+**Gewählt als Rückfall: Z5** — ein einziger Lauf `git rev-list --parents --branches --remotes` (nur Kanten, ohne Tags), die Zweigspitzen kommen aus dem Fingerabdruck (`for-each-ref`, dort ohne `*/HEAD`), die Erreichbarkeit der höchstens 500 Verweise je Spitze wird im Speicher des Moduls gerechnet (Durchlauf rückwärts über die Elternkanten, je Spitze einmal besucht). Stärke: ein Prozess, unabhängig von der Zahl der Verweise, gleiche Antwort wie Z1, `rev-list` steht schon in der Befehlsliste (Punkt 3), keine Änderung am Format. Schwäche: Kosten wachsen mit der Länge der Geschichte (nicht mit den Verweisen); gemessen 0,16–0,24 s nur für Git bei Last 5–7, also **knapp** an der Schwelle, und der Speicher wächst mit der Geschichte. Schutz: bricht die Ausgabe 3.000.000 Zeilen ab, wird der Prozess beendet und die Zweigliste ist ein Fehler (503 `{fehler}` mit Grund), nie eine gekürzte Liste. Der Cache aus N1.3 und N3.2 bleibt unverändert (je Hash → Zweige unter dem Fingerabdruck); der Graph selbst wird nicht abgelegt.
+
+**Ablauf und Zuständigkeit — der entwickler entscheidet ohne Rückfrage**:
+1. B0998 misst Z1 **und** Z5 auf demselben Wegwerf-Repository (20.000 Commits, 50 Zweige, ohne `commit-graph`, 30 Verweise gemischt auf `main`, Zweigen, verwaist), je **20 kalte Läufe** (neuer Prozess, Cache des Moduls leer), `-c core.commitGraph=false`; p95 = der 19. Wert der sortierten Läufe, die Messung **gesamt** (Wurzel, `cat-file`, `log`, Fingerabdruck, Zweiglisten), Last nach `uptime` ≤ 6, sonst warten. Die Werte stehen in der Commit-Nachricht von B0998.
+2. Ist Z1 p95 < 200 ms: **Z1 bleibt** (wie B1001 es nennt).
+3. Sonst, ist Z5 p95 < 200 ms: **Z5 statt Z1**, in B1001; die Anforderung bleibt gültig bis auf die Worte „je Commit `--contains`“ (siehe unten). Es gibt **ein** Verfahren im Dienst, kein Umschalten nach Größe des Repositories (zwei Wege wären doppelt zu testen).
+4. Sind beide ≥ 200 ms: **Halt**, nichts bauen, was die Schwelle weicher macht. Der entwickler meldet die Messwerte an den Director (Rückweg `anforderung_falsch`, Grund: Schwelle nicht erreichbar); über eine andere Form der Antwort (Z3: Zweige ohne Namen, Namen nur aus dem Cache, mit ausdrücklichem Feld) entscheidet dann der architekt per Nachtrag N4 und der planer ändert die Anforderung. Das ist der **einzige** Fall, in dem zurückgefragt wird.
+5. Ein Rückfall auf Z5 wird nicht still gemacht: die Gründe stehen in der Commit-Nachricht von B0998 und im Bericht der Karte; der architekt trägt Z5 danach in „Erprobt durch“ ein.
+
+**Folge für R00204** bei Z5 (Wortlaut für den planer, erst wirksam, wenn B0998 Z5 wählt; der planer kann ihn schon jetzt als Alternative aufnehmen): Zeile 69 und B1001 „je Commit `--contains`“ → „die Zweigliste (je Commit `for-each-ref --contains`, oder, wenn B0998 es verlangt, ein Lauf `rev-list --parents --branches --remotes` mit Erreichbarkeit im Speicher)“; AK 11 „startet wieder je Commit ein `--contains`“ → „startet wieder die Zweigliste (Prozess je Commit oder der eine Lauf)“; „mindestens 2 gleichzeitig bei 30 Verweisen“ und „nie mehr als 4“ gelten nur für Z1. Die Probe der Erreichbarkeit (AK 1) bleibt unverändert, dazu ein Vergleichstest: Z1 und Z5 liefern auf demselben Repository dieselben Listen.
+
+### N3 Konsequenzen
+
+- Positiv: der Aufruf ist durch eine Grenze von 10 s (Antwort ≤ 15 s) nach oben begrenzt; ein Abbruch verliert keine Arbeit und fälscht keinen Zustand; der Rückfall steht fest, Schwelle und Antwortform bleiben, der entwickler muss nur im Fall 4 fragen.
+- Inkauf: die kalte Liste hat einen Git-Aufruf mehr; zwei gleichzeitige Anfragen rechnen doppelt; bei Z5 wächst der Speicher mit der Geschichte (Schutz 3.000.000 Zeilen); der Fall 4 kann die Scheibe aufhalten.
+- Durchsetzung: Proben AK 9 und AK 11 wie oben; Vergleichstest Z1/Z5 nur, wenn Z5 gewählt wird; Messprotokoll in B0998.
 
 ## Quellen / Bezuege
 
