@@ -353,3 +353,85 @@ impl RepoMitRebase {
         git_als_a(&self.basis.r, &["gc", "-q", "--prune=now"]);
     }
 }
+
+/// R00204 AK 10: ein großes Wegwerf-Repository für die Lastprobe, erzeugt mit `git fast-import` — `main` linear mit
+/// 16.000 Commits, 29 weitere lokale Zweige `b01`–`b29` und 20 entfernte `o/r01`–`o/r20` mit je 81 Commits (abgezweigt
+/// zwischen Commit 1.000 und 15.700 von `main`), dazu fünf verwaiste Commits; ohne `commit-graph`.
+pub struct Grosses {
+    pub _tmp: tempfile::TempDir,
+    pub r: PathBuf,
+    /// 30 Verweise: zehn auf Spitzen, zehn tief in der Geschichte, fünf auf mehreren Zweigen, fünf verwaist.
+    pub verweise: Vec<String>,
+    /// Zahl der Commit-Objekte im Repository.
+    pub commits: usize,
+}
+
+const GROSS_MAIN: usize = 16_000;
+const GROSS_ZWEIGE: usize = 49;
+const GROSS_JE_ZWEIG: usize = 81;
+
+pub fn grosses_repository() -> Grosses {
+    use std::fmt::Write as _;
+    use std::io::Write as _;
+    let tmp = tempfile::tempdir().unwrap();
+    let r = tmp.path().canonicalize().unwrap().join("R");
+    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
+    git_als_a(&r, &["init", "-q", "-b", "main"]);
+    for (k, v) in [("gc.auto", "0"), ("gc.writeCommitGraph", "false"), ("fetch.writeCommitGraph", "false")] {
+        git_als_a(&r, &["config", k, v]);
+    }
+    let mut strom = String::new();
+    let mut marke = 0usize;
+    let mut commit = |strom: &mut String, referenz: &str, von: Option<usize>, inhalt: &str| -> usize {
+        marke += 1;
+        let zeit = 1_700_000_000 + marke * 60;
+        let nachricht = format!("Commit {marke}");
+        let _ = write!(strom, "commit {referenz}\nmark :{marke}\nauthor A <a@a> {zeit} +0000\ncommitter A <a@a> {zeit} +0000\ndata {}\n{nachricht}\n", nachricht.len());
+        if let Some(v) = von {
+            let _ = writeln!(strom, "from :{v}");
+        }
+        let datei = format!("{inhalt}{marke}\n");
+        let _ = write!(strom, "M 644 inline f{}.txt\ndata {}\n{datei}\n", marke % 64, datei.len());
+        marke
+    };
+    let mut letzte = None;
+    for _ in 0..GROSS_MAIN {
+        letzte = Some(commit(&mut strom, "refs/heads/main", letzte, "main "));
+    }
+    let mut spitzen = vec![];
+    for z in 0..GROSS_ZWEIGE {
+        let referenz = if z < 29 { format!("refs/heads/b{:02}", z + 1) } else { format!("refs/remotes/o/r{:02}", z - 28) };
+        let mut von = Some(1_000 + z * 300);
+        for _ in 0..GROSS_JE_ZWEIG {
+            von = Some(commit(&mut strom, &referenz, von, "zweig "));
+        }
+        spitzen.push(von.unwrap());
+    }
+    let mut verwaist = vec![];
+    for v in 0..5 {
+        verwaist.push(commit(&mut strom, &format!("refs/verwaist/v{v}"), Some(2_000 + v * 1_000), "verwaist "));
+    }
+    let _ = writeln!(strom, "progress fertig");
+    for m in 1..=marke {
+        let _ = writeln!(strom, "get-mark :{m}");
+    }
+    let mut kind = Command::new("git").arg("-C").arg(&r).args(["fast-import", "--quiet"]).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+    let mut eingabe = kind.stdin.take().unwrap();
+    let schreiber = std::thread::spawn(move || eingabe.write_all(strom.as_bytes()));
+    let aus = kind.wait_with_output().unwrap();
+    schreiber.join().unwrap().unwrap();
+    assert!(aus.status.success(), "fast-import");
+    let hashes: Vec<String> = String::from_utf8_lossy(&aus.stdout).lines().filter(|z| z.len() == 40).map(String::from).collect();
+    assert_eq!(hashes.len(), marke, "eine Zeile je Marke");
+    let hash = |m: usize| hashes[m - 1].clone();
+    for v in 0..5 {
+        git_als_a(&r, &["update-ref", "-d", &format!("refs/verwaist/v{v}")]);
+    }
+    git_als_a(&r, &["checkout", "-q", "main"]);
+    assert!(!r.join(".git/objects/info/commit-graph").exists(), "ohne commit-graph");
+    let mut verweise: Vec<String> = spitzen.iter().take(5).chain(spitzen.iter().skip(29).take(5)).map(|&m| hash(m)).collect();
+    verweise.extend((0..10).map(|i| hash(100 + i * 200)));
+    verweise.extend((0..5).map(|i| hash(15_000 + i * 100)));
+    verweise.extend(verwaist.iter().map(|&m| hash(m)));
+    Grosses { _tmp: tmp, r, verweise, commits: marke }
+}

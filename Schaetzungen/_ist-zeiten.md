@@ -855,3 +855,4 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #219 R00203 (Commit-Verweise nach einem Rebase ersetzen, API) | B0995 Ersetzen: neu vor der Sperre prüfen, unter der Sperre an der Stelle austauschen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-19 | Karte #219 R00203 (Commit-Verweise nach einem Rebase ersetzen, API) | B0996 Route POST …/commits/ersetzen mit Statuscodes und Beschreibung | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-19 | Karte #219 R00203 (Commit-Verweise nach einem Rebase ersetzen, API) | B0997 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,7h | 0,7h | autonom |
+| 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B0998 Sondierung: Z1 und Z5 im Repository mit 20.000 Commits messen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
