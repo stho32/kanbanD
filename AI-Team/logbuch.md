@@ -1024,3 +1024,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Ein Eintrag mit Ende 00:00 zählt zum Folgetag.
   - Optional: Kurzdatum per slice, Tooltip für ‹ ›.
 - Folgekarte: #205 (Kopf bei 320 px, dazu Kontrast der Skalenmarken), braucht:204, jetzt frei.
+| 2026-11-19 | #205 | Architektur | architekt | bestanden | 7 min | keine ADR; Punkt 1 reproduziert (Muss), Punkt 2 nur Artboard, Punkt 3 Sollte · claude · opus · Lauf 205-architekt-1 · 1,66 $ · Karte gesamt 1,66 $ |
+| 2026-11-19 | #205 | Architektur | product-owner | bestanden | 2 min | Zuschnitt P1+P3, Leerform .pk-0 frei, kurze Beschriftungen, keine Zeichnung · claude · opus · Lauf 205-product-owner-1 · 0,70 $ · Karte gesamt 2,36 $ |
