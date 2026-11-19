@@ -1031,3 +1031,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #205 | Detailplanung | ux-reviewer | befund | 2 min | Muss AK 6 Probe erkennt Umbruch auf Touch nicht · claude · sonnet · Lauf 205-ux-reviewer-1 · 0,72 $ · Karte gesamt 4,63 $ |
 | 2026-11-19 | #205 | Detailplanung | planer | bestanden | 1 min | UX-Befunde in R00200, 61df827f · claude · opus · Lauf 205-planer-2 |
 | 2026-11-19 | #205 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: Muss AK 6 und Sollte erledigt · claude · sonnet · Lauf 205-ux-reviewer-2 |
+| 2026-11-19 | #206 | Architektur | architekt | bestanden | 4 min | keine ADR; reproduziert 2069/1280; Empfehlung Auswahlliste · claude · opus · Lauf 206-architekt-1 · 1,16 $ · Karte gesamt 1,16 $ |
+| 2026-11-19 | #206 | Architektur | product-owner | bestanden | 2 min | Variante C Auswahlliste, Leerfall, keine Zeichnung · claude · opus · Lauf 206-product-owner-1 · 0,88 $ · Karte gesamt 2,04 $ |
