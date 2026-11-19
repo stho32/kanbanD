@@ -92,7 +92,7 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
         a.reservierung = reservierung_lesen(r)?;
     }
     for (k, v) in &m {
-        if let Some(k) = k.as_str().filter(|k| !BEKANNT.contains(k) && !(commits_bekannt && *k == COMMITS)) {
+        if let Some(k) = k.as_str().filter(|k| !(BEKANNT.contains(k) || (commits_bekannt && *k == COMMITS))) {
             a.weitere.push((k.to_string(), v.clone()));
         }
     }
