@@ -838,3 +838,4 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #204 R00199 (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern) | B0978 Tagesleiste 0–24 Uhr mit Marken alle 3 Stunden | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-19 | Karte #204 R00199 (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern) | B0979 Im Datum blättern: ‹ Datum › und „Heute“, vergangener Tag | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-19 | Karte #204 R00199 (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern) | B0980 Tageswechsel und Live-Ereignis zeichnen den gewählten Tag neu | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-19 | Karte #204 R00199 (Personenseite: Tagesleiste 0–24 Uhr und im Datum blättern) | B0981 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
