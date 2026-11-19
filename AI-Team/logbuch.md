@@ -1067,3 +1067,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Bei 1280 px steht ▾ weit rechts.
   - Bei 375 px ist der 76-Zeichen-Name abgeschnitten.
   - `.mini-inp` 11,5 px, auf iOS möglicher Zoom beim Fokus.
+| 2026-11-19 | #207 | Architektur | product-owner | befund | 6 min | Besprechungsvorlage #207/#208, 3 Fragen an den Betreiber · claude · opus · Lauf 207-product-owner-1 · 2,03 $ · Karte gesamt 2,03 $ |
