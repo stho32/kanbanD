@@ -1071,3 +1071,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #207 | Architektur | architekt | bestanden | 7 min | ADR-0032, Feinschnitt 14 Scheiben · claude · opus · Lauf 207-architekt-1 · 2,12 $ · Karte gesamt 4,15 $ |
 | 2026-11-19 | #207 | Architektur | product-owner | bestanden | 2 min | Feinschnitt: 12 Karten, kein Bündel · claude · opus · Lauf 207-product-owner-2 · 0,91 $ · Karte gesamt 5,06 $ |
 | 2026-11-19 | #207 | Detailplanung | planer | blockiert | 3 min | vom Director angehalten: Betreiber ändert das Modell (Rebase, Zweige), nichts geschrieben · claude · opus · Lauf 207-planer-1 · 1,55 $ · Karte gesamt 6,61 $ |
+| 2026-11-19 | #207 | Architektur | architekt | bestanden | 5 min | ADR-0032 N1, Feinschnitt A1b/A5 · claude · opus · Lauf 207-architekt-2 · 1,48 $ · Karte gesamt 8,09 $ |
