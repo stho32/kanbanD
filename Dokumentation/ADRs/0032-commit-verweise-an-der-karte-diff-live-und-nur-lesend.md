@@ -1,10 +1,10 @@
 # ADR-0032: Commit-Verweise an der Karte — Schlüssel `commits` mit `<kürzel>:<voller Hash>`, Diff live und nur lesend aus dem Arbeits-Repository des Registers, Gesamt-Diff dateiweise ohne fremde Änderungen
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen
+**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung
 **Datum**: 2026-11-19
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #207, Lauf 207-architekt-1)
 **Kontext-Anforderung**: — (Karte #207 „Commits an der Karte und Review-Diff direkt aus dem Board“, Teil A; Anforderung und WBS-Knoten folgen über den planer). Bezug: Karten #208–#210, po-entscheidungen Z. 358–383, R00053, ADR-0003, ADR-0008, ADR-0021, ADR-0028, ADR-0030, ADR-0031
-**Erprobt durch**: — (am Code gelesen, nicht gefahren; getragen von der bestehenden Systemantwort für unbekannte Schlüssel der Aufgabendatei und vom Vorbild ADR-0028; Größen der Hervorheber gemessen, siehe Punkt 10)
+**Erprobt durch**: — (am Code gelesen, nicht gefahren; getragen von der bestehenden Systemantwort für unbekannte Schlüssel der Aufgabendatei und vom Vorbild ADR-0028; Größen der Hervorheber gemessen, siehe Punkt 10). Nachtrag N2 ergänzt: Legacy-Probe gegen die gebaute Vorversion (main ae04fcfd) mit 0, 1, 2, 5 und 30 Einträgen; Schreibweise durch den Test `commits_hinter_cost_entries_in_der_schreibweise_der_vorversion`; Umgebung und Sperren durch die Tests `umgebung_und_sperren_des_startorts` und `repository_konfiguration_fuehrt_nichts_aus` in `src/git/arbeitsrepo.rs`
 
 ## Kontext
 
@@ -238,6 +238,45 @@ Für einen verwaisten Commit schlägt kanbanD Nachfolger vor: Commits auf Zweige
   - Cache-Probe: Liste zweimal → beim zweiten Mal kein `--contains`-Aufruf (Zähler im Modul); Zweig bewegt → wieder `--contains`. Der Board-Ordner ist danach unverändert (`git status --porcelain`).
   - Ersetzen-Probe: zwei Paare in einem Aufruf → genau ein Commit, Plätze erhalten; ein Paar mit unbekanntem `neu` → 400 und die Zahl der Commits ist gleich; Wiederholung → 200 ohne Commit; `alt` und `neu` beide an der Karte → 409.
   - Gesamt-Diff-Probe: K1, K2 auf dem Zweig, dazu K1' verwaist an der Karte → Netto wie ohne K1', Hinweis nennt K1'.
+
+## Nachtrag 2026-11-19 N2: Schreibweise von `commits`, Legacy mit einem Eintrag, gehärteter Startpunkt (Karte #207, Architektur-Review S1–S3, O1–O3)
+
+Der bisherige Text bleibt stehen; N2 ändert die genannten Stellen und gilt, wo er ihnen widerspricht. Gebaut in `28a26e33`, `a3f26b81`, `3279e9f9`.
+
+### N2.1 Schreibweise von `commits` (ändert Punkt 1 „Geschrieben wird über den vorhandenen Skalar-Helfer“)
+
+- `commits` wird in der Schreibweise von `serde_yaml` geschrieben, nicht über `yaml::skalar`. Grund: `yaml::skalar` setzt `kd:…` in Anführungszeichen, das Beispiel in Punkt 1 zeigt es ohne, und die Vorversion schreibt den unbekannten Schlüssel in der Schreibweise von `serde_yaml` zurück. Nur so schreibt sie die Datei **zeichengleich** zurück (Rundlauf, Punkt 1 „Legacy“).
+- Lehre #142 bleibt erfüllt: ein Hash aus lauter Ziffern steht als `'1234…'` in Anführungszeichen und wird als Text gelesen, nie als Zahl.
+- Belegt durch den Test `commits_hinter_cost_entries_in_der_schreibweise_der_vorversion` (`src/format/aufgabe.rs`).
+
+### N2.2 Legacy: nicht für genau einen Eintrag (ändert Punkt 1 „Legacy“ und Kontext „Belegt“)
+
+- Die Behauptung „ältere Versionen tragen `commits` mit“ gilt **nicht für genau einen Eintrag**. Die Vorversion (main `ae04fcfd`) schreibt einen unbekannten Schlüssel mit genau **einem** Listen- oder Map-Eintrag in **eine** Zeile (`k: - x`, `k: a: b`). Die Aufgabe ist danach defekt (HTTP 423). Daten gehen nicht verloren. Betroffen ist jeder unbekannte Schlüssel mit einem Eintrag, nicht nur `commits`.
+- **Entscheidung: Inkaufnahme plus Heilung.** Der nachsichtige Leser heilt genau diese Form (`yaml_heilen`, `a3f26b81`): `k: - x` und `k: a: b` in einer Zeile gelten wie der Block darunter. Die neue Version schreibt immer Blockform.
+- **Rollout-Regel:** Erst laufen alle Instanzen an einem Board auf der neuen Version, dann hinterlegt die Factory Verweise (N1.8, E1). Solange eine ältere Instanz am Board schreibt, kann ein einzelner Verweis die Aufgabe für sie defekt machen.
+- Probe: Legacy-Probe gegen die gebaute Vorversion mit 0, 1, 2, 5 und 30 Einträgen. Ergebnis: 0, 2, 5 und 30 laufen zeichengleich zurück; 1 erzeugt die Zeilenform und wird von der neuen Version geheilt.
+
+### N2.3 Härtung des Startpunkts (Security Sollte 1, Teil Umgebung; `3279e9f9`; ändert Punkt 3 „Umgebung“)
+
+Ein Startort (`git`/`kommando` in `src/git/arbeitsrepo.rs`) baut jeden Aufruf:
+- **Entfernt** werden `GIT_CONFIG_*`, `GIT_PAGER`, `PAGER`, `GIT_EXTERNAL_DIFF`, `GIT_EXEC_PATH`, `GIT_ASKPASS`, `GIT_SSH_COMMAND` (dazu die Umlenkungen `GIT_DIR` und Verwandte).
+- **Gesetzt** werden `GIT_CONFIG_NOSYSTEM=1` und `GIT_CONFIG_GLOBAL=/dev/null`, dazu für jeden Befehl `-c core.fsmonitor=false -c core.hooksPath=/dev/null`.
+- **Folge:** `safe.directory` aus der Benutzerkonfiguration wirkt nicht mehr. Ein Arbeits-Repository, das einem anderen Benutzer gehört, ist `repository_fehlt` mit Grund; es gibt keinen Weg, das aus kanbanD zu umgehen.
+- **Für die Diff-Scheibe festgelegt (O1, noch nicht gebaut):** `--no-ext-diff --no-textconv --no-color -c core.quotepath=off` leitet das Modul aus `Befehl` ab; der Aufrufer setzt sie nicht und kann sie nicht auslassen. Bei einer Zeitüberschreitung wird die **Prozessgruppe** beendet, nicht nur Git (Ist: `laufen` beendet nur den Kindprozess; die Gruppe kommt mit der Scheibe, die Git-Kindprozesse startet).
+- **Fitness Function (O3, Vorschrift, Test steht aus):** `Command::new("git")` steht außerhalb von Tests nur in `src/git.rs`, `src/start/ordner.rs` und `src/git/arbeitsrepo.rs`. Ein vierter Ort ist ein Befund.
+
+### N2.4 Bewusste Grenze: absolute Pfade in Fehlermeldungen (Security-Review S2)
+
+Fehlermeldungen (`repository_fehlt`, 503) nennen absolute Pfade. kanbanD ist ein lokales Werkzeug ohne Anmeldung (Full-Trust), und der Pfad hilft beim Beheben. Wird kanbanD je über ein Netz bereitgestellt, entfällt diese Grenze.
+
+### N2.5 Offener Punkt außerhalb von A1 (Folgerung, nicht entschieden)
+
+Das Board-Git (`src/git.rs:360` `status`, `:366` `rev-parse --absolute-git-dir`) läuft über Registerpfade **ohne Zeitgrenze** und mit der **Umgebung des Betreibers**. Folgen: ein Repository mit `include.path` auf eine FIFO lässt den Serverstart hängen; `core.fsmonitor` aus dem Repository wird ausgeführt. Offen, an einer eigenen Karte zu entscheiden: dieselbe Härtung und Zeitgrenze für das Board-Git (etwa über `laufen` und den Startort) oder bewusst nicht, weil dort das eigene Repository des Betreibers liegt. N2 trifft dazu keine Entscheidung.
+
+### N2 Konsequenzen
+
+- Positiv: die Vorversion schreibt `commits` zeichengleich zurück; der Schaden der Vorversion bei einem Eintrag ist heilbar; Konfiguration und Umgebung des Betreibers führen im Arbeits-Repository kein Programm aus.
+- Inkauf: bis alle Instanzen aktualisiert sind, kann eine ältere Instanz die Aufgabe bei genau einem Verweis defekt machen (423); `safe.directory` wirkt nicht; absolute Pfade in Meldungen; das Board-Git bleibt bis zur Entscheidung zu N2.5 ungehärtet.
 
 ## Quellen / Bezuege
 
