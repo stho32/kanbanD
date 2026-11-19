@@ -1107,7 +1107,7 @@ mod tests {
     fn werte_die_nur_so_aussehen_werden_nicht_umgedeutet() {
         assert!(lesen("0001-x.md", &mit_kopf("title: - x\n")).is_err(), "bekannter Schlüssel: defekt wie bisher");
         assert!(lesen("0001-x.md", &mit_kopf("title: a: b\n")).is_err());
-        let a = lesen("0001-x.md", &"---\nid: 1\ntitle: \"- x\"\nfremd: \"- y\"\n---\n".to_string()).unwrap();
+        let a = lesen("0001-x.md", "---\nid: 1\ntitle: \"- x\"\nfremd: \"- y\"\n---\n").unwrap();
         assert_eq!(a.titel, "- x");
         assert_eq!(a.weitere, [("fremd".to_string(), serde_yaml::Value::String("- y".into()))]);
         for kopf in ["fremd: Achtung: wichtig: sehr\n", "fremd: - [a\n", "fremd: {a: b\n", "fremd: a b: c\n"] {
