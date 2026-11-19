@@ -842,3 +842,6 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #205 R00200 (Behebung: Kopfzeile ohne gewählte Person scrollt bei schmaler Breite quer) | B0982 Leerform von #t-ich in compact: hohler Chip mit ▾ | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-19 | Karte #205 R00200 (Behebung: Kopfzeile ohne gewählte Person scrollt bei schmaler Breite quer) | B0983 Umschalter „Personen“: kurz in compact, nie im Wort umbrochen | Standard | 0,5h | 0,3h | 0,3h | autonom |
 | 2026-11-19 | Karte #205 R00200 (Behebung: Kopfzeile ohne gewählte Person scrollt bei schmaler Breite quer) | B0984 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5h | 0,5h | 0,5h | autonom |
+| 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0985 Personenwahl als Auswahlliste mit Leerfall | Standard | 0,5-1h | 0,9h | 0,9h | autonom |
+| 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0986 Bestandstests auf die Auswahlliste umstellen | Standard | 0,5h | 0,3h | 0,3h | autonom |
+| 2026-11-19 | Karte #206 R00201 (Personenwahl im Stundenzettel passt bei vielen Personen in jede Breite) | B0987 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5h | 0,5h | 0,5h | autonom |
