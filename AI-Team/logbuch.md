@@ -1126,3 +1126,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #212 | Detailplanung | product-owner | bestanden | 1 min | D0009 frei wie gezeichnet, Punkte 1–8 entschieden · claude · opus · Lauf 212-product-owner-1 · 0,29 $ · Karte gesamt 3,30 $ |
 | 2026-11-19 | #212 | Detailplanung | planer | bestanden | 7 min | R00205 mit 7 US, 10 AK; I0195 mit B1004–B1009 · claude · opus · Lauf 212-planer-1 · 1,60 $ · Karte gesamt 4,90 $ |
 | 2026-11-19 | #212 | Detailplanung | product-owner | bestanden | 1 min | 4 Fragen zu R00205; kein Hinweis 'Verweise geändert' in B1 · claude · opus · Lauf 212-product-owner-2 · 0,19 $ · Karte gesamt 5,09 $ |
+| 2026-11-19 | #212 | Detailplanung | ux-reviewer | befund | 2 min | 3 Muss (Ausgangslage/Zahlen, blinde Verwerfen-Probe, Zustandswort sichtbar), 11 Sollte, 4 Optional · claude · sonnet · Lauf 212-ux-reviewer-1 · 0,35 $ · Karte gesamt 5,44 $ |
+| 2026-11-19 | #212 | Detailplanung | planer | bestanden | 3 min | R00205 nachgeführt: M1–M3, 8 Sollte, PO 1–4; 10 AK · claude · opus · Lauf 212-planer-2 · 0,50 $ · Karte gesamt 5,94 $ |
