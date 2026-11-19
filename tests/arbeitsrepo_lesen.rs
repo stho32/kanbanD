@@ -226,3 +226,13 @@ fn erreichbarkeit_mit_abgelaufener_frist_startet_nichts() {
     assert_eq!(arbeitsrepo::fingerabdruck(&r.r, Instant::now()).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
     assert_eq!(arbeitsrepo::aufrufe(), vorher);
 }
+
+// R00204 FA 4: `datum` ist das Commit-Datum, nicht das Autor-Datum (Entscheidung des PO)
+#[test]
+fn datum_ist_das_commit_datum() {
+    let (_tmp, r) = leeres_repo();
+    let a = Command::new("git").arg("-C").arg(&r).args(["-c", "user.name=A", "-c", "user.email=a@a", "commit", "-q", "--allow-empty", "-m", "x"]).env("GIT_AUTHOR_DATE", "2026-01-01T08:00:00+02:00").env("GIT_COMMITTER_DATE", "2026-03-01T10:00:00+01:00").output().unwrap();
+    assert!(a.status.success());
+    let h = gemeinsam::git(&r, &["rev-parse", "HEAD"]);
+    assert_eq!(metadaten(&r, &h).datum, "2026-03-01T10:00:00+01:00");
+}
