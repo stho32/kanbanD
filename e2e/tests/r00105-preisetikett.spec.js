@@ -170,9 +170,10 @@ test.describe('R00105 Preisetikett auf der Karte', () => {
     await expect(page.locator('.ka[data-id="1"] .preis [aria-hidden="true"]')).toHaveText('≈ 25,55 €');
   });
 
-  test('US-3 und US-5: Positionen zeigen die Mitte der Summe, ohne Etikett keins, Rundung an der Grenze', async ({ page }) => {
+  test('US-3 und US-5 (R00198): Positionen zählen als angefallen — die Karte zeigt „Ist 0,60–0,90 $“ statt des Etiketts; ohne Etikett keins, Rundung an der Grenze', async ({ page }) => {
     await board(page, fabrik(POSITIONEN));
-    await expect(page.locator('.ka[data-id="1"] .preis [aria-hidden="true"]')).toHaveText('≈ 0,75 $');
+    await expect(page.locator('.ka[data-id="1"] .angefallen [aria-hidden="true"]')).toHaveText('Ist 0,60–0,90 $');
+    await expect(page.locator('.ka[data-id="1"] .preis')).toHaveCount(0);
     await expect(page.locator('.ka[data-id="4"] .preis')).toHaveCount(0);
     await expect(page.locator('.ka[data-id="3"] .preis')).toHaveCount(0);
     await k.stoppen();

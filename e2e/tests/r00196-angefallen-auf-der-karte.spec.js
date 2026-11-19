@@ -83,29 +83,29 @@ test.describe('R00196 Angefallene Kosten auf der Karte im Board', () => {
   const ist = (page, nr) => angefallen(page, nr).locator('> [aria-hidden="true"]');
 
   /* ── US-1 (AK 1, AK 2) ── */
-  test('US-1 (AK 1, AK 2): #1 zeigt „Ist 4,66 $“ ohne „≈“ und ohne Preisetikett; #2 „≈ 0,45 $“ und „Ist 0,40–0,50 $“, nach der Buchung von 4,66 $ über die API ohne Neuladen „Ist 5,06–5,16 $“', async ({ page }) => {
+  test('US-1 (AK 1, AK 2; R00198 AK 2): #1 zeigt „Ist 4,66 $“ ohne „≈“ und ohne Preisetikett; #2 nur „Ist 0,40–0,50 $“, nach der Buchung von 4,66 $ über die API ohne Neuladen „Ist 5,06–5,16 $“', async ({ page }) => {
     await boardMit(page, AUSGANGSLAGE);
     await expect(ist(page, 1)).toHaveText('Ist 4,66 $');
     await expect(preis(page, 1)).toHaveCount(0);
     expect(await kosten(page, 1)).toBe('Ist 4,66 $');
-    expect(await kosten(page, 2)).toBe('≈ 0,45 $ Ist 0,40–0,50 $');
+    expect(await kosten(page, 2), 'R00198: „Ist“ verdrängt das Etikett').toBe('Ist 0,40–0,50 $');
     await page.evaluate(() => { window.r00196SeiteSteht = true; });
     await buchen(2, eintrag(4.66, 'USD', '12:00'));
     await expect(ist(page, 2)).toHaveText('Ist 5,06–5,16 $');
-    expect(await kosten(page, 2)).toBe('≈ 0,45 $ Ist 5,06–5,16 $');
+    expect(await kosten(page, 2), 'R00198: „Ist“ verdrängt das Etikett').toBe('Ist 5,06–5,16 $');
     expect(await vorgelesen(angefallen(page, 2))).toBe(`Angefallene Kosten: 5,06 bis 5,16${NBSP}$`);
     expect(await page.evaluate(() => window.r00196SeiteSteht), 'die Seite wurde nicht neu geladen').toBe(true);
   });
 
   /* ── US-2 (AK 4, AK 7) ── */
-  test('US-2 (AK 4): #5 zeigt in dieser Reihenfolge „≈ 2,00 $“, „Ist 1,50 $ ·“, „2,00 €“, „Σ 0:46“ — USD vor EUR, kein Komma zwischen den Gruppen, „Ist“ genau einmal', async ({ page }) => {
+  test('US-2 (AK 4; R00198 AK 4): #5 zeigt in dieser Reihenfolge „Ist 1,50 $ ·“, „2,00 €“, „Σ 0:46“, kein „≈ 2,00 $“ — USD vor EUR, kein Komma zwischen den Gruppen, „Ist“ genau einmal', async ({ page }) => {
     await boardMit(page, AUSGANGSLAGE);
-    expect(await kosten(page, 5)).toBe('≈ 2,00 $ Ist 1,50 $ · 2,00 € Σ 0:46');
+    expect(await kosten(page, 5)).toBe('Ist 1,50 $ · 2,00 € Σ 0:46');
     await expect(ist(page, 5).locator('.ag-b')).toHaveText(['Ist 1,50 $ ·', '2,00 €']);
     await expect(ist(page, 5).locator('.ag-k')).toHaveText(['Ist']);
     const folge = await zeile(page, 5).locator('.rechts > *').evaluateAll(alle => alle.map(e => e.className).filter(c => ['preis', 'angefallen', 'sum'].includes(c)));
-    expect(folge).toEqual(['preis', 'angefallen', 'sum']);
-    await expect(preis(page, 5).locator('[aria-hidden="true"]')).toHaveText('≈ 2,00 $');
+    expect(folge).toEqual(['angefallen', 'sum']);
+    await expect(preis(page, 5), 'R00198: kein Etikett neben „Ist“').toHaveCount(0);
   });
 
   /** Kein Betrag bricht in sich um, keine Zeile beginnt mit dem Trenner, nichts scrollt quer, nichts ragt aus der Karte. */
@@ -133,11 +133,11 @@ test.describe('R00196 Angefallene Kosten auf der Karte im Board', () => {
     for (const breite of [320, 375, 414, 1280]) {
       await breiteSetzen(page, breite, 800);
       await expect(ist(page, 5), `bei ${breite} px`).toBeVisible();
-      expect(await kosten(page, 5), `Zeile bei ${breite} px`).toBe('≈ 2,00 $ Ist 1,50 $ · 2,00 € Σ 0:46');
+      expect(await kosten(page, 5), `Zeile bei ${breite} px`).toBe('Ist 1,50 $ · 2,00 € Σ 0:46');
       await expect(zeile(page, 5).locator('.sum')).toBeVisible();
       const einheiten = await umbruchPruefen(page, 5, `${breite} px`);
       expect(einheiten.map(e => e.text.replace(/\s+/g, ' '))).toEqual(['Ist 1,50 $ ·', '2,00 €']);
-      expect(await preis(page, 5).locator('[aria-hidden="true"]').evaluate(el => el.getClientRects().length), `„≈ 2,00 $“ in einer Zeile bei ${breite} px`).toBe(1);
+      await expect(preis(page, 5), `kein Etikett bei ${breite} px (R00198)`).toHaveCount(0);
     }
   });
 
@@ -179,8 +179,8 @@ test.describe('R00196 Angefallene Kosten auf der Karte im Board', () => {
     const sichtbar = await gesehen(karte(page, 1));
     expect(sichtbar).toContain('4,66 $');
     expect(sichtbar).not.toMatch(/angefallene kosten/i);
-    expect(await vorgelesen(preis(page, 2))).toBe(`Preisetikett: geschätzt 0,40 bis 0,50${NBSP}$, API-Kosten`);
-    expect(await vorgelesen(preis(page, 5))).toBe(`Preisetikett: geschätzt 2,00${NBSP}$, API-Kosten`);
+    await expect(preis(page, 2), 'R00198: kein Etikett an #2').toHaveCount(0);
+    await expect(preis(page, 5), 'R00198: kein Etikett an #5').toHaveCount(0);
     const zeileFuenf = await vorgelesen(zeile(page, 5));
     expect(zeileFuenf.split('1,50').length - 1, `„1,50“ einmal in „${zeileFuenf}“`).toBe(1);
     expect(zeileFuenf).not.toContain('Ist');
@@ -219,13 +219,13 @@ test.describe('R00196 Angefallene Kosten auf der Karte im Board', () => {
   });
 
   /* ── AK 8 ── */
-  test('AK 8: ohne angefallene Kosten bleibt das Komma „≈ 2,00 $, Σ 0:46“ — mit dem ersten Kosteneintrag steht „≈ 2,00 $ Ist 1,00 $ Σ 0:46“ ohne Komma', async ({ page }) => {
+  test('AK 8 (R00198 AK 3): ohne angefallene Kosten bleibt das Komma „≈ 2,00 $, Σ 0:46“ — mit dem ersten Kosteneintrag steht nur „Ist 1,00 $ Σ 0:46“, das Etikett ist weg', async ({ page }) => {
     await boardMit(page, { dateien: { ...AUSGANGSLAGE.dateien, [datei(1)]: aufgabeMd(1, schaetzung('2.00'), ZEIT_46) } });
     expect(await kosten(page, 1)).toBe('≈ 2,00 $, Σ 0:46');
     await expect(angefallen(page, 1)).toHaveCount(0);
     await buchen(1, eintrag(1.00, 'USD', '12:00'));
     await expect(ist(page, 1)).toHaveText('Ist 1,00 $');
-    expect(await kosten(page, 1)).toBe('≈ 2,00 $ Ist 1,00 $ Σ 0:46');
+    expect(await kosten(page, 1)).toBe('Ist 1,00 $ Σ 0:46');
   });
 
   test('AK 8: die Anzeige schreibt nichts — keine Aufgabendatei ändert sich, kein Commit entsteht; eine defekte Karte zeigt keinen Betrag', async ({ page }) => {
