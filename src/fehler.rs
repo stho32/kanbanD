@@ -24,14 +24,19 @@ pub enum Fehler {
     /// #137, ADR-0003); nur über `personenart_verboten`/`personenstatus_verboten` anlegen, damit Meldung und Kürzel
     /// zusammenpassen. Beide Wege tragen denselben Rumpf `{fehler, kuerzel}` — je Endpunkt bleibt es eine 403-Form.
     PersonenartVerboten { meldung: String, kuerzel: String },
+    /// Ein Commit-Verweis ist ungültig (400) oder steht nicht an der Aufgabe (404, `fehlt`) — Rumpf `{fehler, verweis}` mit
+    /// dem Verweis, wie er in der Anfrage stand (R00202, ADR-0032 Punkt 4).
+    Verweis { meldung: String, verweis: String, fehlt: bool },
+    /// Ein Git-Prozess im Arbeits-Repository überschritt die Zeitgrenze und wurde beendet (503, ADR-0032 Punkt 3).
+    Zeitgrenze(String),
 }
 
 impl Fehler {
     pub fn meldung(&self) -> &str {
         match self {
-            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) => m,
+            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } => meldung,
         }
     }
 

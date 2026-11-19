@@ -78,6 +78,14 @@ pub struct PersonenartVerboten {
     pub kuerzel: String,
 }
 
+/// 400 eines ungültigen oder 404 eines an der Aufgabe fehlenden Commit-Verweises (R00202, ADR-0032 Punkt 4): `fehler`
+/// zuerst, dann der Verweis, wie er in der Anfrage stand.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Verweisfehler {
+    pub fehler: String,
+    pub verweis: String,
+}
+
 /// 409 der Endpunkte mit WIP-Grenze (R00096): Ein Agent über der Grenze bekommt [`GrenzeErreicht`], jeder andere Konflikt
 /// die [`Fehlerantwort`]. Nur für die Beschreibung.
 #[derive(serde::Serialize, utoipa::ToSchema)]

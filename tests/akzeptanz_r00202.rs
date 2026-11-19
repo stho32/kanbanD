@@ -57,15 +57,11 @@ struct Fabrik {
     _lauf: gemeinsam::Laufendes,
 }
 
+/// Abweichungen von der Ausgangslage: Standardanwendung (sources.wbs auf R) und Verweise, die #1 schon trägt.
+#[derive(Default)]
 struct Wie {
     standardanwendung: bool,
     commits_an_1: Vec<String>,
-}
-
-impl Default for Wie {
-    fn default() -> Wie {
-        Wie { standardanwendung: false, commits_an_1: vec![] }
-    }
 }
 
 impl Fabrik {
@@ -184,7 +180,6 @@ fn zeile(verweis: &str) -> String {
 // US-1 · AK 1 · Abnahme-Probe der Karte #207: Kurz-Hash hinterlegen → voller Hash in der Datei, genau ein Commit mit
 // dem Agenten als Autor, GET liefert ihn; ein zweiter Aufruf hängt dahinter an
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us1_commit_mit_kurz_hash_hinterlegen() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2) = (f.k1(), f.k2());
@@ -205,7 +200,6 @@ async fn us1_commit_mit_kurz_hash_hinterlegen() {
 
 // US-2 · AK 2: ein Commit vom Kartenzweig im Worktree und ein verwaister Commit werden angenommen
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us2_commit_vom_kartenzweig_und_verwaist_hinterlegen() {
     let f = Fabrik::oeffnen().await;
     let (w1, v1) = (f.repo.w1.clone(), f.repo.v1.clone());
@@ -216,7 +210,6 @@ async fn us2_commit_vom_kartenzweig_und_verwaist_hinterlegen() {
 
 // AK 3: ohne Kürzel nur mit Standardanwendung, dann ohne Kürzel gespeichert
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn ak3_standardanwendung() {
     let ohne = Fabrik::oeffnen().await;
     let k1 = ohne.k1();
@@ -232,7 +225,6 @@ async fn ak3_standardanwendung() {
 
 // US-3 · AK 7: Wiederholung ohne Commit, nur Neues mit genau einem Commit, Doppelte im Aufruf zählen einmal
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us3_wiederholung_aendert_nichts() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2) = (f.k1(), f.k2());
@@ -248,7 +240,6 @@ async fn us3_wiederholung_aendert_nichts() {
 
 // AK 7: Höchstzahl 500 — 499 + 1 angenommen, danach 409, nichts geschrieben
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn ak7_hoechstens_500_verweise() {
     let fremde: Vec<String> = (0..499).map(|i| format!("kd:{i:040x}")).collect();
     let f = Fabrik::mit(Wie { commits_an_1: fremde, ..Wie::default() }).await;
@@ -264,7 +255,6 @@ async fn ak7_hoechstens_500_verweise() {
 
 // US-4 · AK 5: unbekanntes Kürzel, unbekannter Hash, fehlendes Repository, alles oder nichts, falscher Rumpf, unbekannte Aufgabe
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us4_falscher_verweis_wird_abgewiesen() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2) = (f.k1(), f.k2());
@@ -291,7 +281,6 @@ async fn us4_falscher_verweis_wird_abgewiesen() {
 
 // AK 4: Form des Hashes, Grenzen 6/7 und 64/65, Großbuchstaben, Blob, gültige Form ohne Commit
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn ak4_form_des_hashes() {
     let f = Fabrik::oeffnen().await;
     let k1 = f.k1();
@@ -309,7 +298,6 @@ async fn ak4_form_des_hashes() {
 
 // US-5 · AK 6: Eingaben, die Git nie erreichen — 400, keine Datei x, R unverändert, kein Text in der Spur
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us5_angriff_ueber_den_verweis_erreicht_git_nicht() {
     let f = Fabrik::oeffnen().await;
     let k1 = f.k1();
@@ -337,7 +325,6 @@ async fn us5_angriff_ueber_den_verweis_erreicht_git_nicht() {
 
 // US-6 · AK 8: entfernen über Kurz- und vollen Hash, unbekannt 404, Form 400, mehrdeutig an der Karte 400, ohne Repository
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn us6_verweis_entfernen_auch_wenn_das_repository_fehlt() {
     let f = Fabrik::oeffnen().await;
     let (k1, k2) = (f.k1(), f.k2());
@@ -362,7 +349,6 @@ async fn us6_verweis_entfernen_auch_wenn_das_repository_fehlt() {
 
 // AK 10: Lesen startet keinen Git-Prozess im Arbeits-Repository, auch wenn Verweise an der Karte stehen
 #[tokio::test]
-#[ignore = "erwartet rot: R00202 B0992 (Routen fehlen)"]
 async fn ak10_lesen_ohne_git_im_arbeits_repository() {
     let f = Fabrik::mit(Wie { commits_an_1: vec!["kd:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e".into()], ..Wie::default() }).await;
     assert_eq!(f.commits_an(1).await, json!(["kd:3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e"]));
@@ -374,3 +360,32 @@ async fn ak10_lesen_ohne_git_im_arbeits_repository() {
     assert_eq!(f.git_im_arbeits_repository(), 2, "{}", f.spur());
 }
 
+
+// AK 10: Endpunktliste, OpenAPI und /api nennen beide Routen mit Rumpf und Statuscodes, die Aufgabe trägt `commits`;
+// README „Für Agenten“ hat den Abschnitt mit dem Beispiel-Aufruf
+#[tokio::test]
+async fn ak10_beschreibung_nennt_beide_routen() {
+    let f = Fabrik::oeffnen().await;
+    let adresse = &f.api.adresse;
+    let liste: Value = reqwest::get(format!("{adresse}api/endpunkte")).await.unwrap().json().await.unwrap();
+    let d: Value = reqwest::get(format!("{adresse}api/openapi.json")).await.unwrap().json().await.unwrap();
+    let seite = reqwest::get(format!("{adresse}api")).await.unwrap().text().await.unwrap();
+    for (methode, route, statuscodes) in [("POST", "/api/aufgaben/{nr}/commits", ["200", "400", "404", "409", "503"]), ("DELETE", "/api/aufgaben/{nr}/commits/{verweis}", ["200", "400", "404", "409", "503"])] {
+        let eintrag = liste.as_array().unwrap().iter().find(|e| e["methode"] == methode && e["pfad"] == route).unwrap_or_else(|| panic!("{methode} {route} fehlt in /api/endpunkte"));
+        assert_eq!((&eintrag["wer"], &eintrag["thema"]), (&json!(true), &json!("Aufgaben")));
+        let op = &d["paths"][route][methode.to_lowercase()];
+        assert_eq!(op["description"], eintrag["zweck"], "OpenAPI und Endpunktliste sagen dasselbe");
+        for status in statuscodes {
+            assert!(op["responses"][status].is_object(), "{methode} {route}: {status} fehlt");
+        }
+        assert!(op["responses"]["422"].is_null());
+        assert_eq!(op["requestBody"].is_object(), methode == "POST", "{methode}: Rumpf");
+        assert!(seite.contains(route), "/api nennt {route}");
+    }
+    assert!(d["components"]["schemas"]["Commitangaben"]["properties"]["commits"].is_object());
+    assert!(d["components"]["schemas"]["Verweisfehler"]["properties"]["verweis"].is_object());
+    assert!(d["components"]["schemas"]["Aufgabe"]["properties"]["commits"].is_object(), "Feld commits an der Aufgabe");
+    let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
+    let abschnitt = readme.split("Commits an der Karte hinterlegen").nth(1).expect("README: Abschnitt „Commits an der Karte hinterlegen“");
+    assert!(abschnitt.contains("-X POST http://localhost:7420/api/aufgaben/42/commits") && abschnitt.contains("DELETE /api/aufgaben/42/commits/"), "Beispiel-Aufrufe");
+}

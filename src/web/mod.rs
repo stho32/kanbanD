@@ -130,6 +130,8 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(zeit_korrigieren, zeit_loeschen))
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
+        .routes(routes!(commits_hinterlegen))
+        .routes(routes!(commit_entfernen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
         .routes(routes!(openapi_json))
         .split_for_parts();
@@ -168,6 +170,9 @@ impl IntoResponse for Fehler {
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
             Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } => StatusCode::FORBIDDEN,
+            Fehler::Verweis { fehlt: true, .. } => StatusCode::NOT_FOUND,
+            Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
+            Fehler::Zeitgrenze(_) => StatusCode::SERVICE_UNAVAILABLE,
         };
         match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
@@ -184,6 +189,10 @@ impl IntoResponse for Fehler {
             }
             Fehler::PersonenartVerboten { meldung, kuerzel } => {
                 let rumpf = openapi::PersonenartVerboten { fehler: meldung.clone(), kuerzel: kuerzel.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::Verweis { meldung, verweis, .. } => {
+                let rumpf = openapi::Verweisfehler { fehler: meldung.clone(), verweis: verweis.clone() };
                 (status, Json(rumpf)).into_response()
             }
             _ => fehlerantwort(status, self.meldung()),
@@ -807,7 +816,7 @@ async fn aufgabe_duplizieren(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pf
     get,
     path = "/api/aufgaben/{nr}",
     tag = "Aufgaben",
-    description = "die Aufgabe direkt, dazu pfad und text der Datei auf oberster Ebene (423 bei defekter Datei: {fehler, pfad, text}); kosteneintraege: [{at, role, column, amount, currency, tokens?, kennung}] — angefallene Kosten je Rollenlauf aus dem Schlüssel cost-entries der Datei, in deren Reihenfolge, ohne Einträge []; kennung role@JJJJ-MM-TTTHH:MM±HH:MM ist berechnet; column ist der Spaltenname beim Eintragen und bleibt, auch wenn die Spalte umbenannt oder entfernt wird; PATCH cost berührt die Einträge nie",
+    description = "die Aufgabe direkt, dazu pfad und text der Datei auf oberster Ebene (423 bei defekter Datei: {fehler, pfad, text}); kosteneintraege: [{at, role, column, amount, currency, tokens?, kennung}] — angefallene Kosten je Rollenlauf aus dem Schlüssel cost-entries der Datei, in deren Reihenfolge, ohne Einträge []; kennung role@JJJJ-MM-TTTHH:MM±HH:MM ist berechnet; column ist der Spaltenname beim Eintragen und bleibt, auch wenn die Spalte umbenannt oder entfernt wird; PATCH cost berührt die Einträge nie; commits: [Text] — die gespeicherten Commit-Verweise wörtlich in der Reihenfolge der Datei, ohne Einträge [], ohne Git-Aufruf",
     params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::AufgabeMitDatei), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::DefekteAufgabe), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
@@ -1167,6 +1176,31 @@ async fn kosteneintrag_aendern(State(app): State<App>, Wer(wer): Wer, Pfad((nr, 
 )]
 async fn kosteneintrag_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.kosteneintrag_loeschen(p, nr, &kennung)).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/aufgaben/{nr}/commits",
+    tag = "Aufgaben",
+    description = endpunkte::COMMITS_HINTERLEGEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = crate::dienst::Commitangaben,
+    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "Rumpf, Form, Kürzel, Repository oder Commit falsch — mit verweis, wenn ein Verweis der Grund ist", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "mehr als 500 Verweise", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Zeitgrenze, nichts geschrieben", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn commits_hinterlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, JsonKoerper(rumpf): JsonKoerper<serde_json::Value>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.commits_hinterlegen(p, nr, &rumpf)).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/aufgaben/{nr}/commits/{verweis}",
+    tag = "Aufgaben",
+    description = endpunkte::COMMIT_ENTFERNEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("verweis" = String, Path, description = "Commit-Verweis <kürzel>:<hash> oder <hash>, voller Hash oder eindeutiger Präfix ab 7 Zeichen"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "Form falsch oder Präfix mehrdeutig", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe oder Verweis nicht gefunden", body = crate::web::openapi::Verweisfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "nicht verfügbar", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn commit_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, verweis)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.commit_entfernen(p, nr, &verweis)).await
 }
 
 #[utoipa::path(
@@ -1754,6 +1788,17 @@ mod tests {
         let status = antwort.status();
         let rumpf = axum::body::to_bytes(antwort.into_body(), usize::MAX).await.unwrap();
         (status, String::from_utf8(rumpf.to_vec()).unwrap())
+    }
+
+    // R00202 / ADR-0032 Punkte 3 und 4: Verweis ungültig 400 und fehlt 404 mit {fehler, verweis}, Zeitgrenze 503 {fehler}
+    #[tokio::test]
+    async fn verweis_400_und_404_mit_verweis_zeitgrenze_503() {
+        let (status, rumpf) = antwort(Fehler::Verweis { meldung: "m".into(), verweis: "kd:main".into(), fehlt: false }).await;
+        assert_eq!((status, rumpf.as_str()), (StatusCode::BAD_REQUEST, r#"{"fehler":"m","verweis":"kd:main"}"#));
+        let (status, rumpf) = antwort(Fehler::Verweis { meldung: "m".into(), verweis: "kd:0000000".into(), fehlt: true }).await;
+        assert_eq!((status, rumpf.as_str()), (StatusCode::NOT_FOUND, r#"{"fehler":"m","verweis":"kd:0000000"}"#));
+        let (status, rumpf) = antwort(Fehler::Zeitgrenze("z".into())).await;
+        assert_eq!((status, rumpf.as_str()), (StatusCode::SERVICE_UNAVAILABLE, r#"{"fehler":"z"}"#));
     }
 
     // R00096 / ADR-0003: Agenten lesen die Felder, nicht den Text; `fehler` bleibt das erste Feld

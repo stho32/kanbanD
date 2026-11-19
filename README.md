@@ -105,6 +105,20 @@ Worauf zu achten ist:
 - Ein Eintrag ist durch Rolle und Minute bestimmt (`kennung`): derselbe Aufruf ein zweites Mal gibt 409 und schreibt nichts — das Nachtragen lässt sich also gefahrlos wiederholen. Zwei Posten derselben Rolle in derselben Minute: den zweiten eine Minute später eintragen.
 - Jeder Aufruf ist ein Commit im Ordner; ein Fehlgriff lässt sich über `DELETE /api/aufgaben/{nr}/kosteneintraege/{kennung}` oder die Git-Geschichte zurücknehmen.
 
+### Commits an der Karte hinterlegen
+
+Eine Aufgabe trägt unter `commits` die Commits, die für sie entstanden sind — als Verweis `<kürzel>:<hash>` auf das Arbeits-Repository einer registrierten Anwendung (`<hash>` allein meint die Standardanwendung aus `sources.wbs`/`sources.requirements`). Ein Agent hängt seine Commits gleich nach dem Bericht an, auch wenn sie noch auf dem Kartenzweig im Worktree liegen:
+
+```bash
+curl -X POST http://localhost:7420/api/aufgaben/42/commits -H 'X-KanbanD-Wer: entwickler' \
+     -H 'Content-Type: application/json' -d '{"commits": ["kd:3f2a9c1", "kd:9c6b91f"]}'
+```
+
+- kanbanD prüft nur lesend (`git rev-parse` im Repository des Registers), dass es den Commit gibt, und speichert den vollen Hash. Ein Kurz-Hash ab 7 Zeichen genügt; ist er mehrdeutig, den längeren nennen.
+- Alles oder nichts: ein falscher Verweis (Form, Kürzel, Repository, Commit) gibt 400 `{fehler, verweis}` und schreibt keinen. Schon hinterlegte Verweise werden übersprungen — derselbe Aufruf noch einmal gibt 200 ohne Commit, das Hinterlegen lässt sich also gefahrlos wiederholen.
+- Entfernen: `DELETE /api/aufgaben/42/commits/kd:3f2a9c1` (voller Hash oder an der Karte eindeutiger Präfix) — auch wenn das Repository fehlt.
+- `GET /api/aufgaben/42` liefert die gespeicherten Verweise unter `commits`; angezeigt werden sie noch nicht.
+
 ## Tests
 
 ```bash
