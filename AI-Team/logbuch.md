@@ -1033,3 +1033,8 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #205 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: Muss AK 6 und Sollte erledigt · claude · sonnet · Lauf 205-ux-reviewer-2 |
 | 2026-11-19 | #206 | Architektur | architekt | bestanden | 4 min | keine ADR; reproduziert 2069/1280; Empfehlung Auswahlliste · claude · opus · Lauf 206-architekt-1 · 1,16 $ · Karte gesamt 1,16 $ |
 | 2026-11-19 | #206 | Architektur | product-owner | bestanden | 2 min | Variante C Auswahlliste, Leerfall, keine Zeichnung · claude · opus · Lauf 206-product-owner-1 · 0,88 $ · Karte gesamt 2,04 $ |
+| 2026-11-19 | #206 | Detailplanung | planer | bestanden | 4 min | R00201, I0191 B0985–B0987, 7abe378a · claude · opus · Lauf 206-planer-1 · 1,51 $ · Karte gesamt 3,55 $ |
+| 2026-11-19 | #206 | Detailplanung | ux-reviewer | befund | 3 min | 2 Muss: Breite der Liste, Testname zu kurz für Mutant · claude · sonnet · Lauf 206-ux-reviewer-1 · 1,03 $ · Karte gesamt 4,58 $ |
+| 2026-11-19 | #206 | Detailplanung | planer | bestanden | 1 min | UX-Befunde in R00201, cdd125df · claude · opus · Lauf 206-planer-2 |
+| 2026-11-19 | #206 | Detailplanung | ux-reviewer | befund | 1 min | AK 1b und Mutant neu fassen (min-width:0 der Flex-Leiste) · claude · sonnet · Lauf 206-ux-reviewer-2 |
+| 2026-11-19 | #206 | Detailplanung | planer | bestanden | 0 min | AK 1b und Mutant nach Wortlaut ux, 0fb6ec38 · claude · opus · Lauf 206-planer-3 |
