@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
 const { ansichtenDerAnwendung } = require('./ansichten');
-const { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle } = require('./ziele-hilfen');
+const { zieleMessen, titelPruefen, breiteMessen, kopfLage, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle } = require('./ziele-hilfen');
 
 // Der Browser rechnet in Europe/Berlin (playwright.config.js) — die Fälligkeit ebenso.
 const tag = n => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(Date.now() + n * 864e5));
@@ -44,11 +44,12 @@ const grundbestand = arbeit => ({
 });
 
 let k, arbeit;
-const starten = async (page, mehr = {}) => {
+/** Startet den Grundbestand mit laufendem Timer; ohne `person: false` ist Stefan im Tab gewählt (R00200: frische Sitzung ohne Person). */
+const starten = async (page, mehr = {}, { person = true } = {}) => {
   arbeit = arbeitsRepository(WBS);
   k = await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr }));
   expect((await page.request.post(`${k.adresse}api/aufgaben/3/timer/start`, ALS_ST)).ok()).toBe(true);
-  await alsPerson(page, 'st');
+  if (person) await alsPerson(page, 'st');
 };
 test.afterEach(async () => {
   if (k) await k.stoppen();
@@ -565,6 +566,26 @@ for (const breite of [320, 375, 414]) {
         await oeffnen(page);
         await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
         expect(await breiteMessen(page, ansicht)).toEqual([]);
+      });
+    }
+  });
+}
+
+// B0982 (R00200 AK 1, 7): dieselbe Breitenprobe in einer frischen Sitzung — keine Person gewählt, Timer läuft. Gemessen wird gegen
+// clientWidth (breiteMessen), nie gegen innerWidth, das mit isMobile mit dem Inhalt wächst; dazu „…“ im Bild und der Name von #t-ich.
+const OHNE_PERSON = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+for (const breite of [320, 375, 414]) {
+  test.describe(`Breitenprobe ohne gewählte Person, Touch, ${breite} px`, () => {
+    test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });
+    for (const { ansicht, oeffnen } of ANSICHTEN.filter(a => OHNE_PERSON.includes(a.ansicht))) {
+      test(`${ansicht}: höchstens ${breite} px breit, „…“ im Bild, #t-ich heißt „nicht gewählt“`, async ({ page }) => {
+        await starten(page, {}, { person: false });
+        await oeffnen(page);
+        await expect.poll(() => zieleImInhalt(page), { message: 'die Ansicht zeigt Ziele' }).toBeGreaterThan(0);
+        await expect(page.locator('#t-ich')).toHaveAccessibleName(/nicht gewählt/);
+        expect(await breiteMessen(page, ansicht)).toEqual([]);
+        const lage = await kopfLage(page);
+        expect(lage.mehrRechts, '#t-mehr liegt im Bild').toBeLessThanOrEqual(lage.klientBreite);
       });
     }
   });

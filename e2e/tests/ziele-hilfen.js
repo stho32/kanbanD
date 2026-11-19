@@ -180,6 +180,14 @@ function breiteMessen(page, ansicht) {
   }, { ansicht, querErlaubt: QUER_ERLAUBT });
 }
 
+/** Lage von „…“ im Kopf: rechte Kante von #t-mehr (aufgerundet) und die Breite des Dokuments ohne Bildlaufleiste. */
+function kopfLage(page) {
+  return page.evaluate(() => ({
+    mehrRechts: Math.ceil(document.getElementById('t-mehr').getBoundingClientRect().right),
+    klientBreite: document.documentElement.clientWidth,
+  }));
+}
+
 /**
  * Zahl der sichtbaren Ziele im Inhalt: oberste Ebene (Dialog, Menü), sonst main — die Kopfzeile zählt nicht.
  * Beweist, dass eine Ansicht wirklich geöffnet ist; ohne Ziele wäre „kein Verstoß“ leer bestanden.
@@ -214,4 +222,4 @@ const titelZelle = page => page.evaluate(() => {
   return { text: a.textContent, ellipse: stil.textOverflow === 'ellipsis' && stil.overflow !== 'visible', ganz, umbruch: stil.whiteSpace, spalten };
 });
 
-module.exports = { zieleMessen, titelPruefen, breiteMessen, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle, MASS };
+module.exports = { zieleMessen, titelPruefen, breiteMessen, kopfLage, zieleImInhalt, ueberlauf, perTabErreicht, titelZelle, MASS };
