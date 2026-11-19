@@ -109,6 +109,11 @@ pub fn aufrufe() -> usize {
 /// Die Wurzel des Arbeits-Repositorys einer Anwendung (ADR-0032 Punkt 2): Startordner ist der Ordner der WBS-Datei, ohne
 /// WBS der Anforderungsordner; relative Pfade gelten ab dem Board-Ordner. Je Aufruf neu ermittelt, kein Zwischenspeicher.
 pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arbeitsrepofehler> {
+    wurzel_bis(board_ordner, anwendung, Instant::now() + ZEITGRENZE)
+}
+
+/// Wie [`wurzel`], mit der Gesamtgrenze des Lesens: der Prozess bekommt `min(10 s, Rest bis frist)`.
+pub fn wurzel_bis(board_ordner: &Path, anwendung: &Anwendung, frist: Instant) -> Result<PathBuf, Arbeitsrepofehler> {
     let start = match (anwendung.wbs.as_str(), anwendung.anforderungen.as_str()) {
         ("", "") => return Err(Arbeitsrepofehler::RepositoryFehlt("weder WBS noch Anforderungsordner im Register".into())),
         ("", anforderungen) => board_ordner.join(anforderungen),
@@ -117,7 +122,7 @@ pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arb
     if !start.is_dir() {
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Ordner fehlt: {}", start.display())));
     }
-    let aus = git(&start, Befehl::RevParse, &["--show-toplevel"], Lauf::mit(ZEITGRENZE))?;
+    let aus = git(&start, Befehl::RevParse, &["--show-toplevel"], Lauf::mit(grenze_bis(frist)?))?;
     if !aus.status.success() {
         let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("kein Git-Repository: {} ({grund})", start.display())));
@@ -259,6 +264,78 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
         ergebnis.insert(hash, m);
     }
     Some(ergebnis)
+}
+
+/// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
+pub const HOECHSTZEILEN_ZWEIGLISTE: usize = 3_000_000;
+
+/// Grenze der zweiten Fingerabdruck-Probe am Ende einer Anfrage (ADR-0032 N3.2, Spielraum nach der Gesamtgrenze).
+pub const ZEITGRENZE_PROBE: Duration = Duration::from_secs(2);
+
+const SPITZEN: [&str; 3] = ["--format=%(objectname) %(refname)", "refs/heads", "refs/remotes"];
+
+/// Fingerabdruck der Zweigspitzen: je Zeile `<hash> <ref>` aller lokalen und entfernten Zweige, sortiert nach Namen.
+/// Bewegt sich ein Zweig, ändert er sich — die genaue Invalidierung des Caches (ADR-0032 N1.3).
+pub fn fingerabdruck(wurzel: &Path, frist: Instant) -> Result<String, Arbeitsrepofehler> {
+    lesen(wurzel, Befehl::ForEachRef, &SPITZEN, None, frist).map(|aus| String::from_utf8_lossy(&aus).into_owned())
+}
+
+/// Die zweite Probe am Ende der Anfrage, mit eigener Grenze von 2 s (ADR-0032 N3.2).
+pub fn fingerabdruck_probe(wurzel: &Path) -> Result<String, Arbeitsrepofehler> {
+    fingerabdruck(wurzel, Instant::now() + ZEITGRENZE_PROBE)
+}
+
+/// Z5 (ADR-0032 N3.4): je Commit die vollen Namen der Zweige aus `fingerabdruck`, die ihn erreichen — ein Lauf
+/// `rev-list --parents` ab genau diesen Spitzen (über `stdin`), die Erreichbarkeit im Speicher. Weil nur die Spitzen des
+/// Fingerabdrucks zählen, gilt das Ergebnis für ihn, auch wenn sich ein Zweig währenddessen bewegt. Commits, die kein
+/// Zweig erreicht, fehlen im Ergebnis.
+pub fn erreichbar(wurzel: &Path, fingerabdruck: &str, commits: &[&str], frist: Instant) -> Result<HashMap<String, Vec<String>>, Arbeitsrepofehler> {
+    let mut je_spitze: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (spitze, name) in fingerabdruck.lines().filter_map(|z| z.split_once(' ')).filter(|(_, n)| !n.ends_with("/HEAD")) {
+        je_spitze.entry(spitze).or_default().push(name);
+    }
+    if je_spitze.is_empty() || commits.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let eingabe: String = je_spitze.keys().map(|s| format!("{s}\n")).collect();
+    let aus = git(wurzel, Befehl::RevList, &["--parents", "--stdin"], Lauf { zeitgrenze: grenze_bis(frist)?, eingabe: Some(eingabe.as_bytes()), hoechstzeilen: Some(HOECHSTZEILEN_ZWEIGLISTE) })?;
+    if !aus.status.success() {
+        let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
+        return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
+    }
+    let graph = Graph::aus(&aus.stdout);
+    let ziele: HashMap<u32, &str> = commits.iter().filter_map(|c| graph.index.get(c.as_bytes()).map(|&i| (i, *c))).collect();
+    let mut ergebnis: HashMap<String, Vec<String>> = HashMap::new();
+    let mut besucht = vec![usize::MAX; graph.eltern.len()];
+    for (lauf, (spitze, namen)) in je_spitze.iter().enumerate() {
+        let Some(&start) = graph.index.get(spitze.as_bytes()) else { continue };
+        let mut stapel = vec![start];
+        while let Some(k) = stapel.pop() {
+            if std::mem::replace(&mut besucht[k as usize], lauf) == lauf {
+                continue;
+            }
+            if let Some(c) = ziele.get(&k) {
+                ergebnis.entry(c.to_string()).or_default().extend(namen.iter().map(|n| n.to_string()));
+            }
+            stapel.extend(&graph.eltern[k as usize]);
+        }
+    }
+    Ok(ergebnis)
+}
+
+/// Die Commits aus `rev-list --parents` (`<hash> <eltern>…` je Zeile) als Index und Elternlisten.
+struct Graph<'a> {
+    index: HashMap<&'a [u8], u32>,
+    eltern: Vec<Vec<u32>>,
+}
+
+impl<'a> Graph<'a> {
+    fn aus(text: &'a [u8]) -> Graph<'a> {
+        let zeilen: Vec<Vec<&[u8]>> = text.split(|b| *b == b'\n').filter(|z| !z.is_empty()).map(|z| z.split(|b| *b == b' ').collect()).collect();
+        let index: HashMap<&[u8], u32> = zeilen.iter().enumerate().map(|(i, z)| (z[0], i as u32)).collect();
+        let eltern = zeilen.iter().map(|z| z[1..].iter().filter_map(|e| index.get(e).copied()).collect()).collect();
+        Graph { index, eltern }
+    }
 }
 
 /// Wie ein Prozess läuft: Zeitgrenze, Eingabe auf `stdin`, höchste Zahl der Ausgabezeilen.

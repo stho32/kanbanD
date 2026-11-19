@@ -11,7 +11,7 @@ mod kosteneintrag;
 
 pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
 pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Dublette, Durchlauf, Ergebnis, Fremdschluessel, GESCHAETZTE_MINUTEN_MAX, GESCHAETZT_MELDUNG, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Schluesseltreffer, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, doppelte_schluessel, geschaetzte_minuten_pruefen, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
-pub use commit_eintrag::{Commiteintrag, TITEL_HOECHSTENS, Zustand, titel_kuerzen};
+pub use commit_eintrag::{Commiteintrag, TITEL_HOECHSTENS, ZWEIGE_HOECHSTENS, Zustand, Zweige, titel_kuerzen};
 pub use commit_verweis::{Ersetzungsfehler, HASH_MAX, HASH_MIN, HOECHSTZAHL_PAARE, Paar, Verweisfehler, Verweisform, ersetzungen_lesen, lesen as verweis_lesen};
 pub use board::{Belegung, Berichtsfilter, Bestandseinstellung, Bewegfehler, Board, ColumnOwnerEintrag, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Klassengeltung, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert, slug_gueltig, spaltenname_gueltig};
 pub use kosteneintrag::{Kosteneintrag, ROLLE_HOECHSTENS_ZEICHEN, Roheintrag};

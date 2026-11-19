@@ -69,6 +69,45 @@ impl Commiteintrag {
     }
 }
 
+/// Höchstens so viele Namen je Liste (ADR-0032 N1.2).
+pub const ZWEIGE_HOECHSTENS: usize = 10;
+
+/// Die Zweige, die einen Commit erreichen: je Liste höchstens 10, alphabetisch nach Bytes, der Rest gezählt.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Zweige {
+    pub lokal: Vec<String>,
+    pub entfernt: Vec<String>,
+    pub weitere: usize,
+}
+
+impl Zweige {
+    /// Aus vollen Ref-Namen: `refs/heads/x` → lokal `x`, `refs/remotes/o/x` → entfernt `o/x`; `*/HEAD` der entfernten,
+    /// Tags und alles andere zählen nicht.
+    pub fn aus<'a>(refs: impl IntoIterator<Item = &'a str>) -> Zweige {
+        let (mut lokal, mut entfernt) = (vec![], vec![]);
+        for r in refs {
+            if let Some(name) = r.strip_prefix("refs/heads/") {
+                lokal.push(name.to_string());
+            } else if let Some(name) = r.strip_prefix("refs/remotes/").filter(|n| *n != "HEAD" && !n.ends_with("/HEAD")) {
+                entfernt.push(name.to_string());
+            }
+        }
+        let gesamt = lokal.len() + entfernt.len();
+        for liste in [&mut lokal, &mut entfernt] {
+            liste.sort();
+            liste.dedup();
+            liste.truncate(ZWEIGE_HOECHSTENS);
+        }
+        let weitere = gesamt - lokal.len() - entfernt.len();
+        Zweige { lokal, entfernt, weitere }
+    }
+
+    /// Erreicht kein Zweig den Commit, ist er verwaist.
+    pub fn leer(&self) -> bool {
+        self.lokal.is_empty() && self.entfernt.is_empty()
+    }
+}
+
 /// Die erste Zeile auf höchstens [`TITEL_HOECHSTENS`] Unicode-Zeichen: länger → die ersten 500 und „…“; nie mitten im Zeichen.
 pub fn titel_kuerzen(erste_zeile: &str) -> String {
     match erste_zeile.char_indices().nth(TITEL_HOECHSTENS) {
@@ -106,5 +145,24 @@ mod tests {
         for (z, text) in [(Zustand::Unlesbar, "unlesbar"), (Zustand::AnwendungUnbekannt, "anwendung_unbekannt"), (Zustand::RepositoryFehlt, "repository_fehlt"), (Zustand::Fehlt, "fehlt"), (Zustand::Verwaist, "verwaist")] {
             assert_eq!(serde_json::to_value(z).unwrap(), serde_json::json!(text));
         }
+    }
+
+    // R00204 AK 3, ADR-0032 N3.3: je 10 alphabetisch, `zweige_weitere` zählt beide Listen; `o/HEAD` und Tags zählen nicht
+    #[test]
+    fn zweige_grenze_und_rest() {
+        let lokal: Vec<String> = (1..=10).map(|i| format!("refs/heads/z{i:02}")).collect();
+        let entfernt: Vec<String> = (1..=10).rev().map(|i| format!("refs/remotes/o/e{i:02}")).collect();
+        let extra = ["refs/tags/v1", "refs/remotes/o/HEAD", "refs/remotes/HEAD"];
+        let z = Zweige::aus(lokal.iter().chain(&entfernt).map(String::as_str).chain(extra));
+        assert_eq!(z.lokal, (1..=10).map(|i| format!("z{i:02}")).collect::<Vec<_>>());
+        assert_eq!(z.entfernt, (1..=10).map(|i| format!("o/e{i:02}")).collect::<Vec<_>>());
+        assert_eq!(z.weitere, 0);
+        let mehr = ["refs/heads/z11", "refs/remotes/o/e11", "refs/remotes/o/e12", "refs/heads/a"];
+        let z = Zweige::aus(lokal.iter().chain(&entfernt).map(String::as_str).chain(extra).chain(mehr));
+        assert_eq!(z.lokal.len() + z.entfernt.len(), 20);
+        assert_eq!(z.lokal[0], "a", "alphabetisch, nicht in der Reihenfolge der Eingabe");
+        assert_eq!(z.weitere, 4, "z10 (verdrängt von a), z11, o/e11, o/e12");
+        assert!(Zweige::aus(["refs/tags/v1", "refs/remotes/o/HEAD"]).leer());
+        assert_eq!(Zweige::aus(["refs/heads/Z", "refs/heads/a", "refs/heads/B"]).lokal, ["B", "Z", "a"], "nach Bytes");
     }
 }

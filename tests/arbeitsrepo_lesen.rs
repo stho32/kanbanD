@@ -179,3 +179,50 @@ fn abgelaufene_frist_startet_nichts() {
     assert_eq!(arbeitsrepo::metadaten(&r.r, &[&r.k1], Instant::now()).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
     assert_eq!(arbeitsrepo::aufrufe(), vorher);
 }
+
+/// Die Zweige, die `for-each-ref --contains` für einen Commit nennt — das Orakel für Z5.
+fn contains(r: &Path, h: &str) -> Vec<String> {
+    let mut v: Vec<String> = gemeinsam::git(r, &["for-each-ref", "--format=%(refname)", "--contains", h, "refs/heads", "refs/remotes"]).lines().filter(|z| !z.ends_with("/HEAD")).map(String::from).collect();
+    v.sort();
+    v
+}
+
+// R00204 B1001 (ADR-0032 N3.4, Z5): ein Lauf über die Kanten ab den Spitzen des Fingerabdrucks nennt dieselben Zweige
+// wie `--contains` je Commit — lokal, entfernt, Worktree-Zweig, verwaist (auch mit Tag), ohne `o/HEAD`
+#[test]
+fn erreichbarkeit_wie_contains() {
+    let r = gemeinsam::repo();
+    let k3 = {
+        gemeinsam::git(&r.r, &["-c", "user.name=A", "-c", "user.email=a@a", "commit", "-q", "--allow-empty", "-m", "K3"]);
+        gemeinsam::git(&r.r, &["rev-parse", "HEAD"])
+    };
+    gemeinsam::git(&r.r, &["update-ref", "refs/remotes/o/main", &r.k2]);
+    gemeinsam::git(&r.r, &["symbolic-ref", "refs/remotes/o/HEAD", "refs/remotes/o/main"]);
+    gemeinsam::git(&r.r, &["update-ref", "refs/remotes/o/x", &r.v1]);
+    gemeinsam::git(&r.r, &["tag", "v1", &r.k1]);
+    let fingerabdruck = arbeitsrepo::fingerabdruck(&r.r, frist()).unwrap();
+    assert!(fingerabdruck.contains("refs/remotes/o/HEAD") || !fingerabdruck.is_empty());
+    let commits = [r.k1.as_str(), &r.k2, &k3, &r.w1, &r.v1, gemeinsam::ZWEIER[0]];
+    let vorher = arbeitsrepo::aufrufe();
+    let erreicht = arbeitsrepo::erreichbar(&r.r, &fingerabdruck, &commits, frist()).unwrap();
+    assert_eq!(arbeitsrepo::aufrufe() - vorher, 1, "ein Prozess für alle Commits");
+    for h in commits {
+        let mut z = erreicht.get(h).cloned().unwrap_or_default();
+        z.sort();
+        assert_eq!(z, contains(&r.r, h), "{h}");
+    }
+    assert!(erreicht.get(gemeinsam::ZWEIER[0]).is_none_or(Vec::is_empty), "verwaist");
+    assert_eq!(erreicht[&r.w1], ["refs/heads/karte/1"]);
+}
+
+// R00204 AK 10 (Schutz): mehr als 3.000.000 Zeilen → Abbruch, nie eine gekürzte Liste — hier mit der Grenze des Moduls
+// gegen ein Repository, das sie sicher nicht reißt, und der Prüfung, dass die Grenze greift (Modultest `zeilengrenze…`)
+#[test]
+fn erreichbarkeit_mit_abgelaufener_frist_startet_nichts() {
+    let r = gemeinsam::repo();
+    let f = arbeitsrepo::fingerabdruck(&r.r, frist()).unwrap();
+    let vorher = arbeitsrepo::aufrufe();
+    assert_eq!(arbeitsrepo::erreichbar(&r.r, &f, &[&r.k1], Instant::now()).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
+    assert_eq!(arbeitsrepo::fingerabdruck(&r.r, Instant::now()).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
+    assert_eq!(arbeitsrepo::aufrufe(), vorher);
+}
