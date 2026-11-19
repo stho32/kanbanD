@@ -435,3 +435,50 @@ pub fn grosses_repository() -> Grosses {
     verweise.extend(verwaist.iter().map(|&m| hash(m)));
     Grosses { _tmp: tmp, r, verweise, commits: marke }
 }
+
+/// Der Hash, den `git hash-object` einem Blob mit diesem Inhalt gäbe — ohne Git (SHA-1 über „blob <n>\0<inhalt>“), für
+/// die Suche nach gleichen Präfixen.
+pub fn git_hash_blob(inhalt: &str) -> String {
+    let mut daten = format!("blob {}\0", inhalt.len()).into_bytes();
+    daten.extend_from_slice(inhalt.as_bytes());
+    sha1_hex(&daten)
+}
+
+fn sha1_hex(daten: &[u8]) -> String {
+    let mut h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
+    let mut nachricht = daten.to_vec();
+    let bits = (daten.len() as u64) * 8;
+    nachricht.push(0x80);
+    while nachricht.len() % 64 != 56 {
+        nachricht.push(0);
+    }
+    nachricht.extend_from_slice(&bits.to_be_bytes());
+    for block in nachricht.chunks(64) {
+        let mut w = [0u32; 80];
+        for i in 0..16 {
+            w[i] = u32::from_be_bytes([block[4 * i], block[4 * i + 1], block[4 * i + 2], block[4 * i + 3]]);
+        }
+        for i in 16..80 {
+            w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1);
+        }
+        let [mut a, mut b, mut c, mut d, mut e] = h;
+        for (i, wi) in w.iter().enumerate() {
+            let (f, k) = match i {
+                0..=19 => ((b & c) | (!b & d), 0x5A827999),
+                20..=39 => (b ^ c ^ d, 0x6ED9EBA1),
+                40..=59 => ((b & c) | (b & d) | (c & d), 0x8F1BBCDC),
+                _ => (b ^ c ^ d, 0xCA62C1D6),
+            };
+            let t = a.rotate_left(5).wrapping_add(f).wrapping_add(e).wrapping_add(k).wrapping_add(*wi);
+            e = d;
+            d = c;
+            c = b.rotate_left(30);
+            b = a;
+            a = t;
+        }
+        for (x, y) in h.iter_mut().zip([a, b, c, d, e]) {
+            *x = x.wrapping_add(y);
+        }
+    }
+    h.iter().map(|x| format!("{x:08x}")).collect()
+}

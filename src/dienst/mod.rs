@@ -11,6 +11,7 @@ mod aufgabe_anlegen;
 mod bewegen;
 mod bindung;
 mod commits;
+mod commits_lesen;
 mod board_anlegen;
 mod board_verwalten;
 mod durchlaeufe;

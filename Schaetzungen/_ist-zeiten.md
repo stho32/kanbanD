@@ -857,3 +857,4 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #219 R00203 (Commit-Verweise nach einem Rebase ersetzen, API) | B0997 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,7h | 0,7h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B0998 Sondierung: Z1 und Z5 im Repository mit 20.000 Commits messen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B0999 Startpunkt härten und erweitern: Befehle, Schalter aus dem Befehl, stdin, Prozessgruppe, Fitness | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1000 Zustand und Metadaten je Repository, ohne Zweige | Standard | 1-2h | 0,5h | 0,5h | autonom |

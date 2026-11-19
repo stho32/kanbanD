@@ -17,6 +17,7 @@
 
 use crate::modell::Anwendung;
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::os::unix::process::CommandExt;
@@ -134,6 +135,130 @@ pub fn commit_aufloesen(wurzel: &Path, hash: &str) -> Result<String, Arbeitsrepo
         return Err(Arbeitsrepofehler::KeinCommit);
     }
     Ok(voll)
+}
+
+/// Was `cat-file --batch-check` zu einem Namen weiß (ADR-0032 N3.3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Objekt {
+    /// ein Commit-Objekt, mit vollem Hash
+    Commit(String),
+    /// kein Objekt, oder eines, das kein Commit ist (Blob, Baum, Tag-Objekt — nie aufgelöst)
+    Fehlt,
+    /// der Kurz-Hash passt zu mehreren Objekten, gleich welchen Typs
+    Mehrdeutig,
+    /// ein Zweig oder Tag heißt wie der Kurz-Hash und ginge bei Git vor dem Objekt — was gemeint ist, bleibt offen
+    NameEinesRefs,
+}
+
+/// Titel (erste Zeile, ungekürzt), Autor (nur der Name), Commit-Datum (ISO 8601 mit Zeitzone des Commits) und Zeilen gegen
+/// den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Metadaten {
+    pub titel: String,
+    pub autor: String,
+    pub datum: String,
+    pub plus: u64,
+    pub minus: u64,
+    pub dateien: u64,
+}
+
+/// Die Grenze für den nächsten Prozess: `min(ZEITGRENZE, Rest bis zur Frist)`; ist die Frist vorbei, startet keiner mehr.
+fn grenze_bis(frist: Instant) -> Result<Duration, Arbeitsrepofehler> {
+    match frist.checked_duration_since(Instant::now()) {
+        Some(rest) if !rest.is_zero() => Ok(rest.min(ZEITGRENZE)),
+        _ => Err(Arbeitsrepofehler::Zeitgrenze),
+    }
+}
+
+/// Ein lesender Aufruf mit Frist; ein Ausstiegscode ≠ 0 heißt: Git verweigert das Repository.
+fn lesen(wurzel: &Path, befehl: Befehl, args: &[&str], eingabe: Option<&[u8]>, frist: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
+    let aus = git(wurzel, befehl, args, Lauf { eingabe, ..Lauf::mit(grenze_bis(frist)?) })?;
+    if !aus.status.success() {
+        let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
+        return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
+    }
+    Ok(aus.stdout)
+}
+
+/// Je Name (7–64 Zeichen 0-9a-f, kleingeschrieben) das Objekt dahinter, in einem Aufruf; die Namen gehen über `stdin`.
+pub fn objekte_pruefen(wurzel: &Path, namen: &[&str], frist: Instant) -> Result<Vec<Objekt>, Arbeitsrepofehler> {
+    let eingabe: String = namen.iter().map(|n| format!("{n}\n")).collect();
+    let aus = lesen(wurzel, Befehl::CatFile, &["--batch-check"], Some(eingabe.as_bytes()), frist)?;
+    let text = String::from_utf8_lossy(&aus);
+    let zeilen: Vec<&str> = text.lines().collect();
+    if zeilen.len() != namen.len() {
+        return Err(Arbeitsrepofehler::Start(format!("cat-file lieferte {} Zeilen für {} Namen", zeilen.len(), namen.len())));
+    }
+    Ok(namen.iter().zip(zeilen).map(|(name, zeile)| objekt(name, zeile)).collect())
+}
+
+/// Eine Zeile von `cat-file --batch-check`: `<hash> <typ> <größe>`, `<name> missing` oder `<name> ambiguous`.
+fn objekt(name: &str, zeile: &str) -> Objekt {
+    let teile: Vec<&str> = zeile.split(' ').collect();
+    match teile.as_slice() {
+        [_, "ambiguous"] => Objekt::Mehrdeutig,
+        // länger als der Hash des Repositorys (41 Zeichen bei SHA-1): Git kürzt — es gibt kein solches Objekt
+        [hash, _, _] if name.len() > hash.len() => Objekt::Fehlt,
+        [hash, _, _] if !hash.starts_with(name) => Objekt::NameEinesRefs,
+        [hash, "commit", _] => Objekt::Commit(hash.to_string()),
+        _ => Objekt::Fehlt,
+    }
+}
+
+/// Format je Commit: Hash, Autor, Commit-Datum, Nachricht roh — je mit NUL abgeschlossen (die Nachricht kann kein NUL
+/// enthalten, alles andere schon).
+const LOG_FORMAT: &str = "--format=%H%x00%an%x00%cI%x00%B%x00";
+
+/// Metadaten der Commits (volle Hashes) in einem Aufruf `log --no-walk`.
+pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
+    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
+    args.extend_from_slice(commits);
+    let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
+    log_lesen(&aus).ok_or_else(|| Arbeitsrepofehler::Start("Ausgabe von git log unlesbar".into()))
+}
+
+/// Liest die Ausgabe von [`metadaten`]: je Commit vier Felder mit NUL, ein NUL, dann bei Änderungen `\n` und
+/// `--numstat`-Einträge (`<plus>\t<minus>\t<pfad>\0` oder bei Umbenennung `<plus>\t<minus>\t\0<alt>\0<neu>\0`; Binärdatei `-`).
+fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
+    let mut felder = aus.split(|b| *b == 0).peekable();
+    let mut ergebnis = HashMap::new();
+    let text = |b: &[u8]| String::from_utf8_lossy(b).into_owned();
+    while let Some(hash) = felder.next() {
+        if hash.is_empty() && felder.peek().is_none() {
+            break;
+        }
+        let hash = text(hash);
+        if !(hash.len() == 40 || hash.len() == 64) || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        let autor = text(felder.next()?);
+        let datum = text(felder.next()?);
+        let nachricht = text(felder.next()?);
+        let mut m = Metadaten { titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
+        if !felder.next()?.is_empty() {
+            return None;
+        }
+        // Statistik: Einträge, bis das nächste Feld ein Hash ist (er enthält keinen Tabulator) oder die Ausgabe endet
+        while let Some(feld) = felder.peek() {
+            let eintrag = feld.strip_prefix(b"\n").unwrap_or(feld);
+            if !eintrag.contains(&b'\t') {
+                break;
+            }
+            felder.next();
+            let teile: Vec<&[u8]> = eintrag.splitn(3, |b| *b == b'\t').collect();
+            let [plus, minus, pfad] = teile.as_slice() else { return None };
+            let zahl = |b: &[u8]| if b == b"-" { Some(0) } else { std::str::from_utf8(b).ok()?.parse::<u64>().ok() };
+            m.plus += zahl(plus)?;
+            m.minus += zahl(minus)?;
+            m.dateien += 1;
+            if pfad.is_empty() {
+                felder.next()?;
+                felder.next()?;
+            }
+        }
+        ergebnis.insert(hash, m);
+    }
+    Some(ergebnis)
 }
 
 /// Wie ein Prozess läuft: Zeitgrenze, Eingabe auf `stdin`, höchste Zahl der Ausgabezeilen.
