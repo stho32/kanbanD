@@ -1068,3 +1068,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Bei 375 px ist der 76-Zeichen-Name abgeschnitten.
   - `.mini-inp` 11,5 px, auf iOS möglicher Zoom beim Fokus.
 | 2026-11-19 | #207 | Architektur | product-owner | befund | 6 min | Besprechungsvorlage #207/#208, 3 Fragen an den Betreiber · claude · opus · Lauf 207-product-owner-1 · 2,03 $ · Karte gesamt 2,03 $ |
+| 2026-11-19 | #207 | Architektur | architekt | bestanden | 7 min | ADR-0032, Feinschnitt 14 Scheiben · claude · opus · Lauf 207-architekt-1 · 2,12 $ · Karte gesamt 4,15 $ |
+| 2026-11-19 | #207 | Architektur | product-owner | bestanden | 2 min | Feinschnitt: 12 Karten, kein Bündel · claude · opus · Lauf 207-product-owner-2 · 0,91 $ · Karte gesamt 5,06 $ |
