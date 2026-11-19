@@ -1132,3 +1132,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-19 | #211 | Auto-Reviews | code-reviewer | befund | 9 min | Muss B1: Z5-Erreichbarkeit ohne Test für Merge/zweite Wurzel, Mutant 'nur erster Elternteil' überlebt · claude · sonnet · Lauf 211-code-reviewer-1 · 1,24 $ · Karte gesamt 19,64 $ |
 | 2026-11-19 | #213 | Detailplanung | planer | bestanden | 12 min | R00206 mit 8 US, 19 AK; I0196 mit B1010–B1014; 5 Architektur-, 1 PO-Frage · claude · opus · Lauf 213-planer-1 · 1,95 $ · Karte gesamt 1,95 $ |
 | 2026-11-19 | #213 | Detailplanung | product-owner | bestanden | 1 min | kappen bei 2.000 Dateien mit Hinweis; Artboard vor B2 nachzeichnen · claude · opus · Lauf 213-product-owner-1 · 0,22 $ · Karte gesamt 2,17 $ |
+| 2026-11-19 | #213 | Detailplanung | architekt | bestanden | 7 min | ADR-0032 N4: diff-tree, Schalter je Befehl, git_teil, Gesamtgrenze; 7 Folgepunkte für R00206 · claude · opus · Lauf 213-architekt-1 · 1,13 $ · Karte gesamt 3,30 $ |
+| 2026-11-19 | #213 | Detailplanung | planer | bestanden | 2 min | R00206 nach N4 nachgeführt, B1010–B1014 angepasst · claude · opus · Lauf 213-planer-2 · 0,55 $ · Karte gesamt 3,85 $ |
