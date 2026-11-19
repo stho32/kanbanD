@@ -99,6 +99,7 @@ fn grundwert(name: &str) -> &'static str {
         "id" => "I0001",
         "name" => "x.txt",
         "signal" | "kennung" => "x",
+        "verweis" => "kd:3f2a9c1",
         _ => panic!("kein Grundwert für {name}"),
     }
 }
