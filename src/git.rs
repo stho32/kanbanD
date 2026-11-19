@@ -1,5 +1,7 @@
 //! Jede Aktion ein Commit: nur die Pfade der Aktion, Autor ist die handelnde Person.
 
+pub mod arbeitsrepo;
+
 use crate::fehler::Fehler;
 use crate::modell::Person;
 use std::path::Path;
