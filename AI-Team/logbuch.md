@@ -991,3 +991,12 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-18 | #202 | Auto-Reviews | code-reviewer | bestanden | 2 min | kein Muss · claude · sonnet · Lauf 202-code-reviewer-1 · 0,34 $ · Karte gesamt 13,21 $ |
 | 2026-11-18 | #202 | Erledigt | director | Retrospektive | — | 13,21 $, davon Bau 9,66 $ (59 min, Fable); Reviews auf Sonnet je unter 0,40 $ mit vollständiger Leseliste, nachdem der Auftrag die Pflichtlektüre fett voranstellte; ohne Nacharbeit; ausgeliefert 61e8a74e |
 | 2026-11-19 | #203 | Architektur | architekt | bestanden | 1 min | keine Technikfrage, keine ADR · claude · opus · Lauf 203-architekt-1 · 0,52 $ · Karte gesamt 0,52 $ |
+| 2026-11-19 | #203 | Detailplanung | product-owner | bestanden | 1 min | Spanne unter Ist; Etikett entfällt bei jedem angefallenen Betrag · claude · opus · Lauf 203-product-owner-1 · 0,45 $ · Karte gesamt 0,97 $ |
+| 2026-11-19 | #203 | Detailplanung | planer | bestanden | 3 min | R00198, I0188 mit B0974/B0975 · claude · opus · Lauf 203-planer-1 · 1,43 $ · Karte gesamt 2,40 $ |
+| 2026-11-19 | #203 | Detailplanung | ux-reviewer | bestanden | 1 min | Vorprüfung: Muss keine, 3 Sollte · claude · sonnet · Lauf 203-ux-reviewer-1 · 0,25 $ · Karte gesamt 2,65 $ |
+| 2026-11-19 | #203 | Entwicklung | entwickler | bestanden | 19 min | Gate Worktree 856/1235/1853 · claude · sonnet · Lauf 203-entwickler-1 · 0,81 $ · Karte gesamt 3,46 $ |
+| 2026-11-19 | #203 | Auto-Reviews | code-reviewer | bestanden | 1 min | Befunde keine; Pflichtlektüre ausgelassen · claude · sonnet · Lauf 203-code-reviewer-1 · 0,23 $ · Karte gesamt 3,69 $ |
+| 2026-11-19 | #203 | Auto-Reviews | ux-reviewer | bestanden | 1 min | Browser: Muss keine · claude · sonnet · Lauf 203-ux-reviewer-2 · 0,28 $ · Karte gesamt 3,97 $ |
+| 2026-11-19 | #203 | Entwicklertest | gestalter | bestanden | 1 min | D0002 #angefallene-kosten nachgezogen · claude · sonnet · Lauf 203-gestalter-1 · 0,26 $ · Karte gesamt 4,23 $ |
+| 2026-11-19 | #203 | Entwicklertest | entwicklertester | bestanden | 1 min | US-1..5 bestanden · claude · sonnet · Lauf 203-entwicklertester-1 · 0,25 $ · Karte gesamt 4,48 $ |
+| 2026-11-19 | #203 | Entwicklertest | product-owner | bestanden | 0 min | Artboard D0002 freigegeben (Z. 332) · claude · opus · Lauf 203-product-owner-2 |
