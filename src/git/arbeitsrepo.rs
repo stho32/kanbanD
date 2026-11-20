@@ -193,23 +193,10 @@ pub fn argumente_passen(argumente: &[impl AsRef<std::ffi::OsStr>], plattform: Pl
     argumente_zaehlen(argumente, plattform) <= grenze
 }
 
-#[cfg(test)]
-thread_local! {
-    static VORABGRENZE: Cell<Option<usize>> = const { Cell::new(None) };
-}
-
-/// Im Test: die Vorabgrenze dieses Threads verkleinern (`None`: die der Plattform), wie `grenze_namen` (N7.3).
-#[cfg(test)]
-pub fn vorabgrenze_setzen(grenze: Option<usize>) {
-    VORABGRENZE.with(|g| g.set(grenze));
-}
-
 /// Die Vorabgrenze am Startort (ADR-0032 N7.9): Programm und alle Argumente des fertigen Befehls; darüber startet kein
 /// Git, sondern `ArgumenteZuLang` wie bei E2BIG (das als zweites Netz bleibt).
 fn vorab_pruefen(c: &Command) -> Result<(), Arbeitsrepofehler> {
-    let grenze = Plattform::HIER.vorabgrenze();
-    #[cfg(test)]
-    let grenze = VORABGRENZE.with(Cell::get).unwrap_or(grenze);
+    let grenze = vorabgrenze();
     let argumente: Vec<&std::ffi::OsStr> = std::iter::once(c.get_program()).chain(c.get_args()).collect();
     if argumente_passen(&argumente, Plattform::HIER, grenze) {
         return Ok(());
@@ -806,6 +793,30 @@ fn leeren(strom: Option<impl Read>, grenze: Option<(Grenze, Arc<AtomicBool>)>) -
         }
     }
     puffer
+}
+
+/// Die Vorabgrenze am Startort: die der Plattform.
+#[cfg(not(test))]
+fn vorabgrenze() -> usize {
+    Plattform::HIER.vorabgrenze()
+}
+
+// Im Test verkleinerbar je Thread, wie `grenze_namen` (N7.3) — hinter dem Startort, damit die Fitness-Probe der
+// Git-Startorte (`tests/fitness_git_startorte.rs`) den Startort vor dem ersten Testteil findet.
+#[cfg(test)]
+thread_local! {
+    static VORABGRENZE: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+#[cfg(test)]
+fn vorabgrenze() -> usize {
+    VORABGRENZE.with(Cell::get).unwrap_or(Plattform::HIER.vorabgrenze())
+}
+
+/// Im Test: die Vorabgrenze dieses Threads verkleinern (`None`: die der Plattform).
+#[cfg(test)]
+pub fn vorabgrenze_setzen(grenze: Option<usize>) {
+    VORABGRENZE.with(|g| g.set(grenze));
 }
 
 #[cfg(test)]
