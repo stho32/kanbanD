@@ -79,6 +79,13 @@ async fn ak01_herkunft_gibt_404_auch_mit_abfrage_und_steht_in_keiner_beschreibun
     assert!(!readme.contains("/api/herkunft"), "README nennt ihn nicht");
 }
 
+#[test]
+fn ak01_readme_sagt_die_herkunft_ist_ein_verweis_den_kanband_nicht_aufloest() {
+    let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
+    assert!(readme.contains("Die Herkunft ist ein Verweis, den kanbanD nicht auflöst; ohne Kürzel ist sie bei mehreren Anwendungen mehrdeutig"));
+    assert!(!readme.contains("löst eine Herkunft nur auf"));
+}
+
 // ---- AK 5: Herkunft schreiben (API-Teil) -----------------------------------------------------------------------------
 
 #[tokio::test]
