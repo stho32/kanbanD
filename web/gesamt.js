@@ -117,7 +117,7 @@
     let dateien = `${tausender(s.dateien)} Dateien`, zeilen = `${tausender(s.plus)} Zeilen hinzugefügt`;
     if (s.dateien === 1) dateien = '1 Datei';
     if (s.plus === 1) zeilen = '1 Zeile hinzugefügt';
-    const ohne = gescheitert.map(k => `, ohne Anwendung ${k}: ließ sich nicht lesen`).join('');
+    const ohne = gescheitert.map(k => `, ohne ${diff.anwendungName(k)}: ließ sich nicht lesen`).join('');
     return `Alle Änderungen der Aufgabe #${nr}: ${dateien}, ${zeilen}, ${tausender(s.minus)} entfernt${ohne}.`;
   }
 
@@ -182,8 +182,7 @@
 
   /** Kopf eines Abschnitts: „Anwendung <kürzel>“ als h2 (Fokusziel nach „Erneut versuchen“, S3), dazu Zahlen oder Zustandswort. */
   function abschnittKopfHtml(a, kuerzel, zusatz, esc) {
-    let name = 'Standardanwendung';
-    if (kuerzel) name = `Anwendung ${esc(kuerzel)}`;
+    const name = esc(diff.anwendungName(kuerzel));
     return `<h2 class="anw" id="rv-a${a}-t" tabindex="-1">${name}${zusatz}</h2>`;
   }
 
@@ -231,7 +230,7 @@
     const eintraege = dateien.map((d, i) => {
       let pfad = d.neu ?? d.alt, wort = (STATUSWORT[d.status] || [d.status])[0];
       if (istFolge(d)) { pfad = d.pfad; wort = folgeWort(d.schritte.length); }
-      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${a}:${i}"><span class="p">${diff.pfadHtml(pfad, esc)}</span><span class="z">${diff.zahlenHtml(d)}</span><span class="s">${wort}</span></button></li>`;
+      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${a}:${i}"><span class="p">${diff.pfadHtml(pfad, esc)}</span><span class="z">${diff.zahlenHtml(d)}</span><span class="s">${esc(wort)}</span></button></li>`;
     }).join('');
     return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
   }
@@ -257,7 +256,7 @@
 
   function folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits) {
     const arg = `${a}:${i}`;
-    if (stand.laden) return diff.hinweisHtml(d, arg, 'ohne', stand);
+    if (stand.laden) return diff.hinweisHtml(d, arg, 'ohne', stand, ctx.esc);
     const koepfe = schrittKoepfe(d, commits);
     const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === d.pfad);
     if (zuGross) return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen.</p>${koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, false)).join('')}`;
@@ -274,10 +273,10 @@
   }
 
   /** Hinweis eines Schritts ohne eigenen Knopf (der Knopf steht einmal an der Datei); sonst wie eine Datei in B2. */
-  function schrittHinweisHtml(s, arg, zustand) {
+  function schrittHinweisHtml(s, arg, zustand, esc) {
     if (zustand === 'gross') return `<p class="df-hin">Der Patch dieses Schritts ist groß (${tausender(s.plus + s.minus)} Zeilen) und wird erst auf Wunsch geladen.</p>`;
     if (zustand === 'nachladen') return '<p class="df-hin">Dieser Schritt war nicht in der ersten Antwort, weil die Antwort zu groß wurde.</p>';
-    return diff.hinweisHtml(s, arg, zustand, { laden: null });
+    return diff.hinweisHtml(s, arg, zustand, { laden: null }, esc);
   }
 
   /** Ein Schritt: Kopf als Verweis auf den Commit (Name „Commit <kurz>, <Titel>, <Zustandswort>, +p −m“), darunter Merkmale,
@@ -285,7 +284,7 @@
   function schrittHtml(d, s, k, id, arg, ctx, hinweise, mitRumpf) {
     const { esc } = ctx;
     const titel = k.titel === null ? '' : `<span class="fs-t">${diff.sichtbarHtml(k.titel, esc)}</span>`;
-    const inhalt = `<span class="mono">${diff.sichtbarHtml(k.kurz, esc)}</span>${titel}<span class="st ${k.klasse}">${k.wort}</span><span class="z">${diff.zahlenHtml(k)}</span>`;
+    const inhalt = `<span class="mono">${diff.sichtbarHtml(k.kurz, esc)}</span>${titel}<span class="st ${k.klasse}">${esc(k.wort)}</span><span class="z">${diff.zahlenHtml(k)}</span>`;
     const teile = [`Commit ${k.kurz}`];
     if (k.titel !== null) teile.push(diff.sichtbarText(k.titel));
     teile.push(k.wort, `+${tausender(k.plus)} −${tausender(k.minus)}`);
@@ -294,10 +293,10 @@
     let rumpf = '';
     if (mitRumpf) {
       const zustand = diff.dateiZustand(s, hinweise);
-      const saetze = diff.merkmalSaetze(s, zustand).map(t => `<p class="df-mm">${t}</p>`).join('');
+      const saetze = diff.merkmalSaetze(s, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
       let code = '';
       if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc);
-      rumpf = saetze + schrittHinweisHtml(s, arg, zustand) + code;
+      rumpf = saetze + schrittHinweisHtml(s, arg, zustand, esc) + code;
     }
     return `<div class="fs" id="rv-d${id}"><h4 class="fs-k">${kopf}</h4>${rumpf}</div>`;
   }
@@ -319,8 +318,8 @@
   function abschnittHtml(ab, a, ctx) {
     const { esc } = ctx;
     const huelle = (inhalt, zusatz = '') => `<section class="rv-abs" id="rv-a${a}" aria-labelledby="rv-a${a}-t"${zusatz}>${inhalt}</section>`;
-    if (ab.status === 'laedt') return huelle(abschnittKopfHtml(a, ab.kuerzel, ' <span class="zw zw-laedt">lädt …</span>', esc) + `<p class="rv-abs-zust df-laedt" role="status">Lädt die Änderungen der Anwendung ${esc(ab.kuerzel)} …</p>`, ' aria-busy="true"');
-    if (ab.status === 'wartet') return huelle(abschnittKopfHtml(a, ab.kuerzel, ` <span class="zw zw-wartet">${diff.symbol('sanduhr')}wartet</span>`, esc) + `<p class="rv-abs-zust df-wartet">${diff.symbol('sanduhr')}Wartet, bis die Anwendung ${esc(ab.wartetAuf)} geladen ist …</p>`);
+    if (ab.status === 'laedt') return huelle(abschnittKopfHtml(a, ab.kuerzel, ' <span class="zw zw-laedt">lädt …</span>', esc) + `<p class="rv-abs-zust df-laedt" role="status">Lädt die Änderungen der ${esc(diff.anwendungName(ab.kuerzel))} …</p>`, ' aria-busy="true"');
+    if (ab.status === 'wartet') return huelle(abschnittKopfHtml(a, ab.kuerzel, ` <span class="zw zw-wartet">${diff.symbol('sanduhr')}wartet</span>`, esc) + `<p class="rv-abs-zust df-wartet">${diff.symbol('sanduhr')}Wartet, bis die ${esc(diff.anwendungName(ab.wartetAuf))} geladen ist …</p>`);
     if (ab.status === 'fehler') return huelle(abschnittKopfHtml(a, ab.kuerzel, '', esc) + abschnittFehlerHtml(ab.fehler, a, ab.kuerzel, esc));
     const antwort = ab.antwort;
     const sicht = abschnittSicht(antwort);
@@ -330,7 +329,7 @@
     let ausgelassen = '';
     if (sicht.ausgelassen.length) ausgelassen = `<ul class="rv-aus" aria-label="Ausgelassene Verweise">${sicht.ausgelassen.map(e => ausgelassenHtml(e, esc)).join('')}</ul>`;
     let ganz = '';
-    if (sicht.ganz) ganz = `<p class="rv-ganz" role="note">${sicht.ganz}</p>`;
+    if (sicht.ganz) ganz = `<p class="rv-ganz" role="note">${esc(sicht.ganz)}</p>`;
     const dateien = antwort.dateien.map((d, i) => gesamtDateiHtml(d, a, i, ab.staende[i], ctx, sicht)).join('');
     let liste = '';
     if (antwort.dateien.length) liste = dateilisteHtml(a, antwort.dateien, esc);
@@ -342,13 +341,13 @@
       bzw. Achtung; Netzfehler ohne Status; immer „Erneut versuchen“, nie von selbst wiederholt. */
   function abschnittFehlerHtml(f, a, kuerzel, esc) {
     const erneut = diff.knopf('Erneut versuchen', 'review-abschnitt-erneut', a);
-    const k = esc(kuerzel);
-    if (f.art === 'antwortbudget') return `<div class="df-hin warn rv-abs-f" role="alert">${diff.symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen der Anwendung ${k} wurden nicht gelesen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
+    const k = esc(diff.anwendungName(kuerzel));
+    if (f.art === 'antwortbudget') return `<div class="df-hin warn rv-abs-f" role="alert">${diff.symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen der ${k} wurden nicht gelesen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
     let grund = `${esc(f.fehler || 'unbekannter Fehler')} (${f.status})`;
     if (f.status === 0) grund = 'keine Verbindung zum Programm';
     let zeichen = 'achtung';
     if (f.art === 'zeitgrenze') zeichen = 'uhr';
-    return `<div class="df-hin fehl rv-abs-f" role="alert">${diff.symbol(zeichen)}<p>Die Änderungen der Anwendung ${k} ließen sich nicht lesen: ${grund}.</p>${erneut}</div>`;
+    return `<div class="df-hin fehl rv-abs-f" role="alert">${diff.symbol(zeichen)}<p>Die Änderungen der ${k} ließen sich nicht lesen: ${grund}.</p>${erneut}</div>`;
   }
 
   /** Seitenweite ausgelassene Verweise (`unlesbar`, `anwendung_unbekannt`), einmal über den Abschnitten. */
@@ -368,7 +367,7 @@
     const s = abschnittSummen(abschnitte);
     const laedt = abschnitte.find(ab => ab.status === 'laedt');
     let noch = '';
-    if (laedt) noch = ` · Anwendung ${esc(laedt.kuerzel)} lädt noch …`;
+    if (laedt) noch = ` · ${esc(diff.anwendungName(laedt.kuerzel))} lädt noch …`;
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 

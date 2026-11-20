@@ -105,7 +105,8 @@ test('Seitenfehler: Antwortbudget nach Text mit Server, sonst 503 Zeitgrenze mit
   const kein = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'fehlt' } }, 'kd:' + 'b'.repeat(40), esc);
   assert.ok(kein.includes('role="status"') && ohneTags(kein).startsWith('Zu diesem Verweis gibt es keinen Diff: kd:bbbbbbb ist nicht mehr im Repository.Zur Liste der Commits'));
   const netz = d.diffFehlerHtml({ status: 0, fehler: 'egal' }, 'kd:a', esc);
-  assert.ok(netz.includes('role="alert"') && ohneTags(netz).startsWith('Der Diff ließ sich nicht lesen: keine Verbindung zum Programm (0).Erneut versuchenZur Liste der Commits'));
+  // umgestellt mit R00210 AK 13 (PO Z. 450): ohne Antwort keine Klammer „(0)“
+  assert.ok(netz.includes('role="alert"') && ohneTags(netz).startsWith('Der Diff ließ sich nicht lesen: keine Verbindung zum Programm.Erneut versuchenZur Liste der Commits'));
   assert.ok(ohneTags(d.diffFehlerHtml({ status: 500, fehler: 'kaputt' }, 'kd:a', esc)).startsWith('Der Diff ließ sich nicht lesen: kaputt (500).'));
   for (const html of [budget, zeit, kein, netz]) assert.ok(html.includes('<h2 id="rv-meld" tabindex="-1">'), 'Meldungsüberschrift als Fokusziel');
 });

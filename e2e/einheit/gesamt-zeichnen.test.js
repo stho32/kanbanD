@@ -120,3 +120,57 @@ test('seitenweite Einträge: „Anwendung unbekannt“ mit dem Hinweis der Liste
   const html = g.seitenHinweiseHtml([{ verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' }], esc);
   assert.match(ohneTags(html), /^xy:aaaaaaa Anwendung unbekannt Anwendung „xy“ ist unter Einrichten nicht eingetragen\.$/);
 });
+
+/* ── Nacharbeit 1 (R00210 AK 12–14) ── */
+
+test('AK 12: Standardanwendung (leeres Kürzel) in allen Sätzen — lädt, wartet, Fehler, Leiste; nie „Anwendung  “', () => {
+  const texte = [
+    g.abschnittHtml({ status: 'laedt', kuerzel: '' }, 1, ctx),
+    g.abschnittHtml({ status: 'wartet', kuerzel: 'xx', wartetAuf: '' }, 2, ctx),
+    g.abschnittHtml({ status: 'fehler', kuerzel: '', fehler: { art: 'zeitgrenze', status: 503, fehler: 'Git antwortete nicht' } }, 1, ctx),
+    g.abschnittHtml({ status: 'fehler', kuerzel: '', fehler: { art: 'antwortbudget', status: 503, fehler: 'Antwortbudget' } }, 1, ctx),
+    g.summeHtml([da(antwort2), { status: 'laedt', kuerzel: '' }], esc),
+  ].map(ohneTags);
+  assert.match(texte[0], /Lädt die Änderungen der Standardanwendung …/);
+  assert.match(texte[1], /Wartet, bis die Standardanwendung geladen ist …/);
+  assert.match(texte[2], /Die Änderungen der Standardanwendung ließen sich nicht lesen: Git antwortete nicht \(503\)\./);
+  assert.match(texte[3], /Die Änderungen der Standardanwendung wurden nicht gelesen\./);
+  assert.match(texte[4], /· Standardanwendung lädt noch …$/);
+  for (const t of texte) assert.doesNotMatch(t, /Anwendung {2}|Anwendung  ?…|Anwendung $/);
+  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: '' }, [], esc);
+  assert.match(ohneTags(datei), /Wartet, bis die Standardanwendung geladen ist …/);
+});
+
+test('AK 12: Ansage „ohne Standardanwendung: ließ sich nicht lesen“', () => {
+  assert.strictEqual(g.ansageText(11, { dateien: 1, plus: 1, minus: 0 }, ['']), 'Alle Änderungen der Aufgabe #11: 1 Datei, 1 Zeile hinzugefügt, 0 entfernt, ohne Standardanwendung: ließ sich nicht lesen.');
+});
+
+test('AK 13: Netzabbruch ohne „(0)“ an Datei und Seite; mit Antwort bleibt „(503)“', () => {
+  const d = require('../../web/diff.js');
+  const datei = ohneTags(d.dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'fehler', fehler: { art: 'anderer', status: 0, text: 'keine Verbindung zum Programm' } }, [], esc));
+  assert.match(datei, /ließen sich nicht laden: keine Verbindung zum Programm\.Erneut/);
+  assert.doesNotMatch(datei, /\(0\)/);
+  const seite = ohneTags(d.diffFehlerHtml({ status: 0, fehler: 'Keine Verbindung' }, null, esc));
+  assert.match(seite, /Der Diff ließ sich nicht lesen: keine Verbindung zum Programm\./);
+  assert.doesNotMatch(seite, /\(0\)/);
+  assert.match(ohneTags(d.diffFehlerHtml({ status: 500, fehler: 'kaputt' }, null, esc)), /kaputt \(500\)\./);
+});
+
+test('AK 14: wartetAuf wird nur beim Einsetzen maskiert — „a&b“ steht als a&amp;b, nie doppelt, an Abschnitt und Datei', () => {
+  const ab = g.abschnittHtml({ status: 'wartet', kuerzel: 'xx', wartetAuf: 'a&b' }, 2, ctx);
+  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: 'a&b<i>' }, [], esc);
+  assert.match(ab, /Anwendung a&amp;b geladen/);
+  assert.match(datei, /Anwendung a&amp;b&lt;i&gt; geladen/);
+  assert.doesNotMatch(ab + datei, /&amp;amp;|<i>/);
+});
+
+test('AK 14: fremder Text an den Rückfall-Senken — Grund, Status von Datei und Schritt, Dateimodus nur maskiert', () => {
+  const schrittBoese = { ...schritt('a'), status: BOESE, modus_alt: BOESE, modus_neu: '100755' };
+  const antwort = { ...antwort2, dateien: [{ ...folgeA, schritte: [schrittBoese] }, { ...nettoK, status: BOESE, modus_alt: BOESE, modus_neu: '100755' }], hinweise: [{ art: 'ganz_als_folge', grund: BOESE }] };
+  const html = g.abschnittHtml(da(antwort), 0, ctx);
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /&lt;img src=x onerror=window\.pwn=1&gt;/);
+  const b2 = require('../../web/diff.js');
+  const netto = b2.dateiHtml({ ...nettoK, status: BOESE, modus_alt: BOESE, modus_neu: '100755' }, 0, { offen: true, laden: null }, [], esc) + b2.dateilisteHtml([{ ...nettoK, status: BOESE }], esc);
+  assert.doesNotMatch(netto, /<img/);
+});

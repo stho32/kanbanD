@@ -242,9 +242,9 @@
   const knopf = (text, act, arg, id = '') => `<button type="button" class="btn"${id ? ` id="${id}"` : ''} data-act="${act}"${arg == null ? '' : ` data-arg="${arg}"`}>${text}</button>`;
 
   /** Text und Knopf einer Datei ohne gezeichneten Patch, je Zustand und Ladestand (FA 5, 7, 8). */
-  function hinweisHtml(d, i, zustand, stand) {
+  function hinweisHtml(d, i, zustand, stand, esc) {
     if (stand.laden === 'laeuft') return '<p class="df-hin df-laedt" role="status">Lädt die Änderungen …</p>';
-    if (stand.laden === 'wartet') return `<p class="df-hin df-wartet" role="status">${symbol('sanduhr')}${wartetText(stand)}</p>`;
+    if (stand.laden === 'wartet') return `<p class="df-hin df-wartet" role="status">${symbol('sanduhr')}${wartetText(stand, esc)}</p>`;
     if (stand.laden === 'fehler') return dateiFehlerHtml(stand.fehler, i);
     if (zustand === 'zu_gross') return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}.</p>`;
     if (zustand === 'gross') return `<div class="df-hin"><p>Der Patch ist groß (${tausender(d.plus + d.minus)} Zeilen) und wird erst auf Wunsch geladen.</p>${knopf('Änderungen anzeigen', 'review-nachladen', i)}</div>`;
@@ -253,9 +253,16 @@
     return '';
   }
 
-  /** Worauf eine wartende Datei wartet: in „Alle Änderungen“ auf eine Anwendung (`wartetAuf`, maskiertes Kürzel; ADR-0033 N1.2). */
-  function wartetText(stand) {
-    if (stand.wartetAuf) return `Wartet, bis die Anwendung ${stand.wartetAuf} geladen ist …`;
+  /** Name einer Anwendung im Satz (PO Z. 448): das leere Kürzel ist die Standardanwendung, nie „Anwendung “ ohne Namen. Roh. */
+  function anwendungName(kuerzel) {
+    if (kuerzel) return `Anwendung ${kuerzel}`;
+    return 'Standardanwendung';
+  }
+
+  /** Worauf eine wartende Datei wartet: in „Alle Änderungen“ auf eine Anwendung (`wartetAuf`, rohes Kürzel, '' = Standardanwendung;
+      null = die andere Datei; ADR-0033 N1.2). Maskiert wird erst hier, beim Einsetzen (R00210 AK 14). */
+  function wartetText(stand, esc) {
+    if (typeof stand.wartetAuf === 'string') return `Wartet, bis die ${esc(anwendungName(stand.wartetAuf))} geladen ist …`;
     return 'Wartet, bis die andere Datei geladen ist …';
   }
 
@@ -264,7 +271,13 @@
     const erneut = knopf('Erneut versuchen', 'review-nachladen', i);
     if (f.art === 'antwortbudget') return `<div class="df-hin warn" role="status">${symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen dieser Datei wurden nicht geladen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
     if (f.art === 'zeitgrenze') return `<div class="df-hin fehl" role="alert">${symbol('uhr')}<p><b>Zeitgrenze überschritten.</b> Die Änderungen dieser Datei konnten nicht geladen werden (503).</p>${erneut}</div>`;
-    return `<div class="df-hin fehl" role="alert">${symbol('achtung')}<p>Die Änderungen dieser Datei ließen sich nicht laden: ${f.text} (${f.status}).</p>${erneut}</div>`;
+    return `<div class="df-hin fehl" role="alert">${symbol('achtung')}<p>Die Änderungen dieser Datei ließen sich nicht laden: ${f.text}${statusKlammer(f.status)}.</p>${erneut}</div>`;
+  }
+
+  /** „ (<Status>)“ nur, wenn eine Antwort kam; ohne Antwort (Netzabbruch, Status 0) keine Klammer (PO Z. 450). */
+  function statusKlammer(status) {
+    if (!status) return '';
+    return ` (${status})`;
   }
 
   /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded`, darunter Merkmale, Hinweis und — offen — der Code. `kennung`
@@ -276,10 +289,10 @@
     const [wort, klasse] = STATUSWORT[d.status] || [d.status, 'st-mod'];
     const ren = d.status === 'R' ? `<span class="ren">umbenannt ← ${pfadHtml(d.alt, esc)}${d.aehnlichkeit != null ? ` · ${d.aehnlichkeit} %` : ''}</span>` : '';
     const anzeigen = zustand === 'patch' && !stand.offen ? '<span class="mk">anzeigen</span>' : '';
-    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${wort}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
-    const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${t}</p>`).join('');
+    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
+    const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
     const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc) : '';
-    const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand) + code : '';
+    const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand, esc) + code : '';
     const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
     return `<section class="df" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${kopf}<div class="df-inhalt" id="rv-dc${id}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
   }
@@ -293,7 +306,7 @@
   function dateilisteHtml(dateien, esc) {
     const eintraege = dateien.map((d, i) => {
       const [wort] = STATUSWORT[d.status] || [d.status];
-      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${i}"><span class="p">${pfadHtml(d.neu ?? d.alt, esc)}</span><span class="z">${zahlenHtml(d)}</span><span class="s">${wort}</span></button></li>`;
+      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${i}"><span class="p">${pfadHtml(d.neu ?? d.alt, esc)}</span><span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}</span></button></li>`;
     }).join('');
     return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
   }
@@ -351,7 +364,7 @@
       return meldungHtml({ rolle: 'status', kopf: `Zu diesem Verweis gibt es keinen Diff: ${grund}`, knoepfe: ZUR_LISTE });
     }
     const grund = f.status === 0 ? 'keine Verbindung zum Programm' : esc(f.fehler || 'unbekannter Fehler');
-    return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: `Der Diff ließ sich nicht lesen: ${grund} (${f.status}).`, knoepfe: erneut + ZUR_LISTE });
+    return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: `Der Diff ließ sich nicht lesen: ${grund}${statusKlammer(f.status)}.`, knoepfe: erneut + ZUR_LISTE });
   }
 
   const B1_FEHLERKOPF = 'Die Commits ließen sich nicht lesen: ';
@@ -383,7 +396,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { STATUSWORT, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, aufklappPlanSeite, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);
