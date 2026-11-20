@@ -1155,3 +1155,30 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Mindestversion Git 2.44 für `GIT_NO_LAZY_FETCH` ist nicht dokumentiert.
   - Die Lesegrenze ist nicht fair; Lesethreads eines setsid-Enkels leben weiter.
   - `-l1000` fehlt in `metadaten`.
+| 2026-11-20 | #212 | Entwicklung | entwickler | bestanden | 57 min | 6 Commits B1004–B1009, Gate im Worktree grün bis auf Lastflake r00127:356 · claude · Lauf 212-entwickler-1 · 7,04 $ · Karte gesamt 12,98 $ |
+| 2026-11-20 | #212 | Auto-Reviews | code-reviewer | befund | 5 min | 1 Muss (Verwurf-Tests ohne GET-Zählung), 2 Sollte · claude · sonnet · Lauf 212-code-reviewer-1 · 0,50 $ · Karte gesamt 13,48 $ |
+| 2026-11-20 | #212 | Auto-Reviews | security-reviewer | bestanden | 1 min | kein Muss, kein Sollte, 2 Optional · claude · sonnet · Lauf 212-security-reviewer-1 · 0,28 $ · Karte gesamt 13,76 $ |
+| 2026-11-20 | #212 | Auto-Reviews | ux-reviewer | bestanden | 7 min | kein Muss, 4 Sollte (Farbe +/−, Titelspalte 641–850 px, Warn-Rand, 503-Grund), 2 Optional · claude · sonnet · Lauf 212-ux-reviewer-2 · 1,19 $ · Karte gesamt 14,95 $ |
+| 2026-11-20 | #212 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | kein Muss, 2 Sollte (Singular bei n=1) · claude · sonnet · Lauf 212-rechtschreib-reviewer-1 · 0,28 $ · Karte gesamt 15,23 $ |
+| 2026-11-20 | #213 | Entwicklung | entwickler | bestanden | 1 h 5 min | 6 Commits B1010–B1014, Gate grün 1040/1247/1966; N4-Abweichung --ext-diff an architekt · claude · Lauf 213-entwickler-1 · 17,74 $ · Karte gesamt 21,59 $ |
+| 2026-11-20 | #213 | Auto-Reviews | code-reviewer | befund | 6 min | 1 Muss: literal pathspec foo trifft foo/… → 500 bzw. falscher Patch im abgeschnittenen Lauf · claude · sonnet · Lauf 213-code-reviewer-1 · 0,69 $ · Karte gesamt 22,28 $ |
+| 2026-11-20 | #213 | Auto-Reviews | security-reviewer | befund | 9 min | 1 Muss: Speicher je stehender Verbindung bei 20-MB-Einzelpatch ohne Grenze · claude · sonnet · Lauf 213-security-reviewer-1 · 1,55 $ · Karte gesamt 23,83 $ |
+| 2026-11-20 | #213 | Auto-Reviews | architekt | bestanden | 7 min | ADR-0032 N5 (8abab71a) · claude · opus · Lauf 213-architekt-2 · 1,68 $ · Karte gesamt 25,51 $ |
+| 2026-11-20 | #212 | Entwicklung | entwickler | bestanden | 25 min | Nacharbeit 1: M1, S1, S2, UX 1–4, Rechtschreibung 1+2, Bidi; 7 Commits · claude · Lauf 212-entwickler-2 · 1,44 $ · Karte gesamt 16,67 $ |
+| 2026-11-20 | #213 | Auto-Reviews | planer | bestanden | 3 min | R00206 nach N5 (fc2c1ff3), AK 20/21, B1015/B1016 · claude · opus · Lauf 213-planer-3 · 0,51 $ · Karte gesamt 26,02 $ |
+| 2026-11-20 | #212 | Auto-Reviews | code-reviewer | bestanden | 4 min | Wiederholung: M1, S1, S2 geschlossen · claude · sonnet · Lauf 212-code-reviewer-2 |
+| 2026-11-20 | #212 | Entwicklertest | entwicklertester | bestanden | 5 min | AK 1–10 und Abnahme-Probe im echten Programm bestanden · claude · sonnet · Lauf 212-entwicklertester-1 · 0,64 $ · Karte gesamt 17,31 $ |
+
+**Retrospektive #212** (Scheibe B1: Ansicht „Commits“ im Aufgabenfenster, 2026-11-20, 17,31 $ gemessen, ausgeliefert 0de8e806)
+- **Gut:** Sonnet hat die Oberfläche nach dem freigegebenen Artboard in 57 min für 7,04 $ gebaut. Die vier Reviews kosteten zusammen 2,25 $, nachts liefen sie nacheinander. Zeichnen und Rechnen stehen als reine Funktionen in web/commits.js und sind mit Node testbar; der Browser prüft nur noch Lesen und Maße.
+- **Muss aus dem Code-Review:** Die Verwurf-Probe prüfte nur das Endbild. Ein zweites Lesen stellt sich von selbst richtig, deshalb blieb der Test ohne Wächter grün. Lehre: Eine Verwurf-Probe zählt die Folgewirkung, also die Zahl der GETs, nicht nur die Anzeige.
+- **Lehren aus dem UX-Review:**
+  - Breitenproben bei 320, 414 und 1280 px übersehen die Lücke zwischen schmalem und breitem Layout. Bei 641–850 px wurde die flexible Titelspalte auf 38 px gequetscht.
+  - Eine Kontrastprobe an einer Aufgabe ohne Warn-Marken sieht deren Rand nie.
+  - Beides gehört als Vorschlag in das Wissen des ux-reviewers.
+- **Nacharbeit 1:** Sonnet, 25 min, 1,44 $. Alle Sollte wurden mitgenommen, jedes mit einer Mutation, die rot wird. Die Wiederholung des Code-Reviews war billig, weil sie fortgesetzt statt frisch gestartet wurde.
+- **Befund außerhalb der Karte:** #222 im Backlog, US-6-Tests in r00127 wackeln unter Last.
+- **Zusammenführen:** Der WBS-Konflikt mit #213 war zweimal mechanisch, beide Blöcke blieben stehen.
+- **Sollte ohne Karte:**
+  - „(0)“ bei Status 0 bleibt, weil AK 7 die Form vorgibt.
+  - Bei 768 px bricht der Autor mitten im Wort.
