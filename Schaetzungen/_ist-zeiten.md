@@ -870,3 +870,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1009 Probe im echten Programm, Mutationen, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | Nacharbeit 1: Rebase, Muss M1, Sollte S1/S2, UX 1–4, Rechtschreibung 1–2, Optional Bidi, Mutationen, Gate | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1010 Startort für Diffs: diff-tree, Schalter je Befehl, git_teil mit Bytegrenze | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1011 Dateiliste lesen und zerlegen | Standard | 1-2h | 0,5h | 0,5h | autonom |

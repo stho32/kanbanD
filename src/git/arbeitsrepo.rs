@@ -302,6 +302,39 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
     Some(ergebnis)
 }
 
+/// Was ein Diff vergleicht (ADR-0032 N4.6): den Commit mit seinem ersten Elternteil — ausdrücklich genannt, weil
+/// `--first-parent` bei `diff-tree` nicht wirkt —, den Wurzel-Commit mit dem leeren Baum. Beide als volle Hashes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Vergleich<'a> {
+    pub eltern: Option<&'a str>,
+    pub commit: &'a str,
+}
+
+/// Welcher Lauf von `diff-tree`: Dateiliste (`--raw -z`), Zähler (`--numstat -z`) oder Patch (`-p`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Diffart {
+    Roh,
+    Zahlen,
+    Patch,
+}
+
+/// Ein Lauf `diff-tree` mit Bytegrenze (ADR-0032 N4.3, N4.4, N4.7): Form und Inhalt bestimmt dieses Modul — `-r`,
+/// Umbenennungen mit `-M50% -l1000`, Submodule kurz —, die Schalter der Befehlszeile der Startort; `pfade` gehen
+/// wörtlich nach `--` (bei einer Umbenennung beide Pfade, sonst wird sie zu `A`).
+pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
+    let mut args = vec!["-r", "-M50%", "-l1000"];
+    args.extend_from_slice(match art {
+        Diffart::Roh => &["--raw", "-z"][..],
+        Diffart::Zahlen => &["--numstat", "-z"],
+        Diffart::Patch => &["-p", "--submodule=short"],
+    });
+    match vergleich.eltern {
+        Some(eltern) => args.extend(["--end-of-options", eltern, vergleich.commit]),
+        None => args.extend(["--root", "--no-commit-id", "--end-of-options", vergleich.commit]),
+    }
+    git_teil(wurzel, Befehl::DiffTree, &args, pfade, bytegrenze, frist)
+}
+
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
 pub const HOECHSTZEILEN_ZWEIGLISTE: usize = 3_000_000;
 
