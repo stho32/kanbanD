@@ -1042,7 +1042,6 @@ fn hinweis<'a>(d: &'a Value, art: &str) -> Option<&'a Value> {
 // `dateien_gekappt`, nie 500; geprüft mit 1.000, 2.000, 2.001 und 42.000 Dateien in einem Kartencommit, dazu zwei
 // Kartencommits zu je 21.000 Dateien mit einem fremden Commit dazwischen (heute 500 „Namen … länger als 4 MB“)
 #[tokio::test]
-#[ignore = "erwartet rot: B3 der Nacharbeit 1 (#214)"]
 async fn b3_namen_der_kartencommits_ueber_vier_mb() {
     let l = ausgangslage();
     let mut einzeln = vec![];
@@ -1143,7 +1142,6 @@ async fn b4b_pfadangabe_ueber_ein_mb() {
 // Schritten, der angefangene Commit zählt in `dateien_gekappt`; dazu Code-Review Sollte 3: werden alle Folge-Dateien
 // verworfen, steht `fremd_dazwischen` trotzdem
 #[tokio::test]
-#[ignore = "erwartet rot: Sollte 3 der Nacharbeit 1 (#214)"]
 async fn b4c_folge_liste_abgeschnitten() {
     let l = ausgangslage();
     let mut karten = vec![];

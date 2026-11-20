@@ -179,16 +179,20 @@ impl Gesamtlauf<'_> {
         if fremde > FREMD_HOECHSTENS {
             (grund, spanne) = (Some(Grund::FremdZuViele), None);
         }
-        // Namenslauf über die Spanne (N6.2 Schritt 4); abgeschnitten oder Pfadangabe zu lang → fremd_zu_gross
+        // Namenslauf über die Spanne (N6.2 Schritt 4); abgeschnitten oder Pfadangabe zu lang → fremd_zu_gross — außer die
+        // Spanne ist reine Kartenarbeit: dann ist D_fremd sicher leer, alles netto, und nur die Namen sind unvollständig (B3)
         let mut einteilung = None;
         let mut je_commit = HashMap::new();
+        let mut namen_vollstaendig = true;
         if let Some(s) = &spanne {
             let vergleiche: Vec<Vergleich> = s.linie.iter().map(|p| Vergleich { commit: &p.commit, eltern: p.eltern.as_deref() }).collect();
             let koepfe: Vec<&str> = s.linie.iter().map(|p| p.commit.as_str()).collect();
             let teil = self.git(arbeitsrepo::diff_tree_viele(wurzel, &vergleiche, Vielart::Namen, &[], self.k.grenze_namen, frist))?;
-            if teil.abgeschnitten {
+            let nur_karte = s.linie.iter().all(|p| kartenmenge.contains(p.commit.as_str()));
+            if teil.abgeschnitten && !nur_karte {
                 grund = Some(Grund::FremdZuGross);
             } else {
+                namen_vollstaendig = !teil.abgeschnitten;
                 je_commit = namen_lesen(&teil.ausgabe, &koepfe).ok_or_else(|| Fehler::Intern("git: Namenslauf unlesbar".into()))?;
                 let e = Einteilung::aus(&je_commit, &kartenmenge);
                 if e.pfadangabe_zu_lang() {
@@ -214,7 +218,8 @@ impl Gesamtlauf<'_> {
                 Ok(Diffcommit { verweis: c.verweis.clone(), anwendung: anwendung.kuerzel.clone(), hash: c.hash.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor.clone(), datum: m.datum.clone(), plus: m.plus, minus: m.minus, dateien: m.dateien })
             }).collect()
         };
-
+        // Obergrenze der Einträge, wenn die Namen unvollständig sind: die Dateien der Kartenschritte zusammen (B3)
+        let obergrenze = |schritte: &[Kartencommit]| -> Result<u64, Fehler> { schritte.iter().map(|c| Ok(m(&c.hash)?.dateien)).sum() };
         let einteilung = match (grund, einteilung) {
             (None, Some(e)) => e,
             _ => {
@@ -223,13 +228,24 @@ impl Gesamtlauf<'_> {
                 let koepfe: Vec<&str> = schritte.iter().map(|c| c.hash.as_str()).collect();
                 let teil = self.git(arbeitsrepo::diff_tree_viele(wurzel, &vergleiche, Vielart::Namen, &[], crate::modell::GRENZE_NAMEN, frist))?;
                 if teil.abgeschnitten {
-                    return Err(Fehler::Intern(format!("git: die Namen der Kartencommits sind länger als {} MB", crate::modell::GRENZE_NAMEN >> 20)));
+                    // ohne vollständige Namen ist kein Folge-Eintrag sicher vollständig: keiner, Kappe mit Obergrenze (B3)
+                    if self.anfrage.datei.is_some() {
+                        return Err(Fehler::NichtGefunden(format!("die Namen der Kartencommits von #{nr} sind länger als {} MB — die Datei mit commit= und datei= laden", crate::modell::GRENZE_NAMEN >> 20)));
+                    }
+                    diff.hinweise.extend(grund.map(|g| Hinweis::GanzAlsFolge { grund: g }));
+                    diff.hinweise.extend(nachher);
+                    diff.hinweise.push(Hinweis::DateienGekappt { gezeigt: 0, gesamt: obergrenze(&schritte)? });
+                    diff.commits = diffcommits(&schritte)?;
+                    return Ok(diff);
                 }
                 je_commit = namen_lesen(&teil.ausgabe, &koepfe).ok_or_else(|| Fehler::Intern("git: Namenslauf unlesbar".into()))?;
                 Einteilung::aus(&je_commit, &kartenmenge)
             }
         };
         let datei = self.anfrage.datei.as_deref();
+        // ohne fremden Pfad und ohne Pfadangabe ist jeder Eintrag des Netto-Laufs Arbeit der Karte, auch wenn die Namen
+        // unvollständig sind (B3)
+        let alles_netto = einteilung.fremd.is_empty();
         if datei.is_some_and(|d| !einteilung.karte.contains(d.as_bytes())) {
             return Err(datei_fehlt(nr));
         }
@@ -253,12 +269,13 @@ impl Gesamtlauf<'_> {
             abgeschnitten |= roh.abgeschnitten || zahlen.abgeschnitten;
             netto_vollstaendig = !abgeschnitten;
             netto_liste = verbinden(&roh, &zahlen)?;
-            netto = netto_liste.iter().filter(|d| einteilung.netto(d)).cloned().collect();
+            netto = netto_liste.iter().filter(|d| alles_netto || einteilung.netto(d)).cloned().collect();
             diff.spanne = Some(Spanne { basis: basis.clone(), letzter: letzter.clone() });
         }
         // Folge: alle Kartenpfade, die kein Netto-Eintrag trägt (ganze Gruppen, Einteilung::folgepfade)
         let gedeckt: HashSet<&[u8]> = netto.iter().flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
-        let folgepfade: HashSet<Vec<u8>> = einteilung.folgepfade(&gedeckt);
+        // ohne fremden Pfad: fehlt ein Kartenpfad nur, weil eine Liste abgeschnitten ist, ist er netto, nicht Folge (B3)
+        let folgepfade: HashSet<Vec<u8>> = if alles_netto && !(netto_vollstaendig && namen_vollstaendig) { HashSet::new() } else { einteilung.folgepfade(&gedeckt) };
         let mut plan = Folgeplan { commits: vec![], pfade: vec![] };
         for c in &schritte {
             if je_commit.get(&c.hash).is_some_and(|es: &Vec<Eintragspfade>| es.iter().flatten().any(|p| folgepfade.contains(p))) {
@@ -275,7 +292,8 @@ impl Gesamtlauf<'_> {
         // Hinweise vor den Arten aus A3 (N6.7)
         if let Some(g) = grund {
             diff.hinweise.push(Hinweis::GanzAlsFolge { grund: g });
-        } else if !folgen.is_empty() {
+        } else if !folgen.is_empty() || unvollstaendig > 0 {
+            // auch wenn alle Folge-Einträge am Schnitt verworfen sind (Code-Review Sollte 3)
             diff.hinweise.push(Hinweis::FremdDazwischen { commits: fremde, dateien: folgen.len() + unvollstaendig });
         }
         diff.hinweise.extend(nachher);
@@ -285,6 +303,9 @@ impl Gesamtlauf<'_> {
         let mut gesamt = (dateien.len() + unvollstaendig) as u64;
         if abgeschnitten {
             gesamt = gesamt.max(einteilung.karte.len() as u64);
+        }
+        if !namen_vollstaendig {
+            gesamt = gesamt.max(obergrenze(&schritte)?);
         }
         if let Some(name) = datei {
             dateien.retain(|d| d.name() == name);
