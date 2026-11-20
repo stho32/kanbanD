@@ -1,6 +1,6 @@
 # ADR-0034: kanbanD ohne WBS — das Register nennt das Repository, Phasen werden Spalten, Altbestände öffnen weiter, die Factory stellt zuerst um
 
-**Status**: Akzeptiert (2026-11-20, Regel 1 „Schreiben“ geändert durch Nachtrag N2; Nachtrag N1: Produktfragen 1–3 entschieden, po-entscheidungen Z. 430–433) — zuvor „Vorgeschlagen“. Ändert ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“). Offen bleibt nur der Wortlaut der Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`); er ändert keine Regel dieser ADR.
+**Status**: Akzeptiert (2026-11-20, Regel 1 „Schreiben“ geändert durch Nachtrag N2; Nachtrag N1: Produktfragen 1–3 entschieden, po-entscheidungen Z. 430–433; Nachtrag N3: Technik von S4, „wartet auf“ entfällt schon mit S4) — zuvor „Vorgeschlagen“. Ändert ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“). Offen bleibt nur der Wortlaut der Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`); er ändert keine Regel dieser ADR.
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #224 „WBS-Funktionen aus kanbanD entfernen“ (Auftrag des Betreibers 2026-11-20); Scheiben als Karten #225 S1, #226 S4, #224 S2, #227 S3, #228 „Braucht zwischen Karten“ (po-entscheidungen Z. 433); Anforderungen folgen je Karte über den planer. Bezug: Vision ab11f96a, po-entscheidungen Z. 362, 426–429, R00018, R00053–R00062, R00071, R00072, ADR-0027, ADR-0028, ADR-0031, ADR-0032
@@ -129,6 +129,57 @@ Qualitätsziele (Szenarien mit Maß):
 **Inkauf**: In der Übergangszeit stehen in Bestandsregistern beide Formen; ein Mensch, der `wbs` in den Einstellungen leert, trennt die Factory von ihrer Anwendung — das zeigt der nächste Factory-Start mit klarer Meldung, nicht still.
 
 **Durchsetzung**: R00209 AK 5 (alte Form → 200, `repository` abgeleitet, `wbs` bleibt), AK 6 (Rundlauf mit der unveränderten Factory, `tests.test_auftrag`), AK 7 (Start schreibt nichts); dazu ein Test: `GET /api/einstellungen` nach einem `PUT` in neuer Form liefert `wbs: ""` (Schlüssel vorhanden).
+
+### N3 (2026-11-20, Karte #226 S4): Herkunft als Text — was entfällt, was bleibt; „wartet auf“ geht mit S4 (ändert N1 Punkt 2 im Zeitpunkt)
+
+**Anlass**: Technik von S4 klären (Director, Lauf 226-architekt-1). Stand `ed6baad8` (Zweig `karte/226`, main mit #225).
+
+**Belegt am Code:**
+- Die Auflösung besteht aus einem Dienst und einem Endpunkt. `Kanban::herkunft` (`src/dienst/herkunft.rs:88–106`) liest je Anwendung die WBS-Datei (`wbs_quellen`, `:51–73`) und den Anforderungsordner (`anforderungs_quellen`, `:75–86`). Der Endpunkt ist `GET /api/herkunft` (Route `src/web/mod.rs:95`, Handler `:1453–1464`, Beschreibung `src/web/endpunkte.rs:103`).
+- Die Oberfläche lädt die Auflösung bei jedem Aufbau (`web/app.js:302–304`, Zustand `S.herkunft` `:2`, `:242`, `:321`). Sie braucht sie an genau drei Stellen: Link und Tooltip des Chips (`quelleLink`, `vHerkunftChip`, `web/ansicht.js:701–718`), die Bedingung `!S.herkunft[x]` von „mehrdeutig“ (`:711`) und **„wartet auf“** (`wartetAuf`, `:788–797`). „wartet auf“ nimmt `braucht` aus `S.herkunft[x].braucht`, also aus `/api/herkunft`, nicht aus der WBS-Sicht. Es steht auf der Karte (`:863`) und als Zeile im Aufgabenfenster (`:430`).
+- Der Link des Chips ist ein Editor-Link (`vscode://file<datei>:<zeile>`), kein Verweis in die WBS-Sicht. Der „Herkunftslink in die WBS-Sicht“ aus po-entscheidungen Z. 430 meint diesen Link.
+- `origins` wird ohne Prüfung als Textliste gelesen (`src/format/aufgabe.rs:66`) und geschrieben (`:500–501`). Geprüft wird nur beim Schreiben über die API (`src/modell/aufgabe.rs:595–606`, `herkunft_gueltig` `:532–534`, `Herkunftsschluessel::lesen` `src/modell/anwendungen.rs:19–29`). Nichts davon liest WBS oder Anforderungen.
+- Geteilte Teile: `src/herkunft.rs::wbs_tabelle` wird von `src/wbs_datei.rs` und `src/dienst/wbs.rs` gebraucht (S2). `dienst::herkunft::absolut` wird von `dienst/anwendungen.rs`, `dienst/phasen.rs` und `dienst/wbs.rs` gebraucht. Keinen anderen Aufrufer haben nur `anforderungsname` (`src/herkunft.rs:51–58`) sowie `Anwendungen::aufloesen` und `Aufloesung` (`src/modell/anwendungen.rs:56–74`).
+- Kein Aufrufer außerhalb von kanbanD: `api/herkunft` kommt weder in der Factory (`werkzeuge/`, `tests/`, `.claude/`) noch in `~/.claude/{commands,skills,agents}` vor (gesucht 2026-11-20).
+- Bestand: 363 Aufgaben mit `origins` in 4 Ordnern (JoinPuya 139, localchatA 106, kanbanD 61, goaltreetoolA 57) mit 547 Einträgen, davon 536 qualifiziert, 8 ohne Kürzel und 3 `thin air`.
+
+**Varianten für den Chip ohne Auflösung:**
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **A** Text-Chip `span.org` wie heute der nicht gefundene, ohne Link und Tooltip; „ohne Herkunft“ und „mehrdeutig“ bleiben | kein neues Aussehen (Ruhezustand von `a.org` und `span.org` ist gleich, `web/kd-app.css:235`, `:262`), keine Gestaltung, rechnet nur aus Text und Register | wer den Editor-Sprung gewohnt ist, verliert ihn ohne Hinweis |
+| **B** wie A, Tooltip „Verweis — kanbanD öffnet ihn nicht“ | erklärt den Wegfall | erklärt etwas, das nicht da ist; neuer Wortlaut braucht eine Freigabe; Rauschen auf 547 Chips |
+| **C** Chip filtert beim Klick das Board nach der Herkunft | der Klick bekommt einen Nutzen | neuer Umfang und neue Gestaltung, nicht Auftrag der Karte |
+| **D** Editor-Link im Browser aus `repository` und einer Pfadkonvention errechnet | der Sprung bleibt | ist Auflösung in anderer Form (setzt den Pfad der WBS voraus) und widerspricht der Vision („ein Verweis, den kanbanD nicht auflöst“) |
+
+**Gewählt: A.** Pre-Mortem (S4 ist ausgeliefert und schiefgegangen, weil …):
+1. … e2e-Läufe hängen: drei Specs warten auf die Antwort von `/api/herkunft`. Der Bau passt deshalb `r00171`, `r00172` und `r00196` an.
+2. … „wartet auf“ schon ab S4 fehlt und niemand davon wusste. Das regelt Regel 4.
+3. … ein Rest von `S.herkunft` übrig bleibt und jeder Chip „Quelle nicht gefunden“ zeigt. Deshalb entfällt der Tooltip-Zweig ganz, und die Abnahme prüft: kein `.org` hat ein `href` oder ein `title` mit „Quelle“, und es geht keine Anfrage an `/api/herkunft`.
+
+**Regeln für S4:**
+1. **Entfällt**: `src/dienst/herkunft.rs` ganz (`Quelle`, `Kanban::herkunft`, `gesucht_in`, `wbs_quellen`, `anforderungs_quellen`, `kuerzel_der`) samt `mod`/Re-Export (`src/dienst/mod.rs:29`, `:64`). Route und Handler `GET /api/herkunft` (`src/web/mod.rs:95`, `:1453–1464`) und die Zeile `src/web/endpunkte.rs:103`. Ein Aufruf liefert dann 404, denn der Router hat keinen Fallback. Außerdem `anforderungsname` samt Test (`src/herkunft.rs:51–58`, `:96–101`) und `Anwendungen::aufloesen` mit `Aufloesung` samt Test (`src/modell/anwendungen.rs`, Re-Export `src/modell/mod.rs:14`). In der Oberfläche entfallen Abruf und Zustand `S.herkunft` (`web/app.js:2`, `:242`, `:302–304`, `:321`), `quelleLink`, der Link- und Tooltip-Zweig von `vHerkunftChip` und `wartetAuf` mit Kartenzeile und Fensterzeile (`web/ansicht.js:430`, `:863`). Im CSS entfallen `a.org:hover`, `.ka[data-eigen] .r3 a.org:hover` mit ihrem Kommentar und `.ka .wartet` (`web/kd-app.css:208–215`, `:236`, `:743–744`).
+2. **Bleibt unverändert**: Lesen und Schreiben von `origins`, also Format, `herkunft` in `POST`/`PATCH`/Duplizieren, Schnelleingabe (`web/eingabe.js:42`), Feld „Neue Herkunft“, Entfernen mit Rückgängig (R00185), Filter (`web/filter.js:59`) und CSV-Export. Ebenso bleiben die Prüfung der Schreibweise mit ihren Meldungen (`src/modell/aufgabe.rs:595–606`), `Herkunftsschluessel`, die Anzeige `thin air` → „ohne Herkunft“ (`web/kultur.js:72–97`) und `HERKUNFT_HILFE`.
+3. **Chip (Variante A)**: `<span class="org" data-halt="herkunft:…">kd:I0007</span>` ohne `href` und ohne `title`; `org leer` und `org mehrdeutig` bleiben wie heute. „mehrdeutig“ rechnet nur noch aus Text und Register: kein Kürzel, nicht `thin air`, mehr als eine Anwendung im Ordner (`anwendungenImOrdner`). Das verhält sich wie bisher, denn der Server hat unqualifizierte Herkunft bei mehreren Anwendungen nie aufgelöst (`Aufloesung::Mehrdeutig`). Eine Nachzeichnung ist nicht nötig, weil nur der Zeige-Zustand wegfällt.
+4. **„wartet auf“ geht mit S4, nicht mit S2** (ändert N1 Punkt 2 im Zeitpunkt): Es hängt allein an `/api/herkunft` und bleibt ohne den Endpunkt leer; die Abnahme von #226 nennt es schon. Damit beginnt die Lücke bis #228 früher. Die Labels `braucht:<nr>` bleiben sichtbar (Z. 431). #228 braucht technisch S4, nicht die WBS-Sicht aus S2. Wird das Label der Träger (kein Formatwechsel in `src/format/aufgabe.rs`), kann `braucht:224` an #228 zu `braucht:226` werden (Vorschlag an product-owner und Director).
+5. **Geteilte Teile bleiben bis S2**: `src/herkunft.rs` behält nur `wbs_tabelle` mit angepasstem Modulkommentar; S2 löscht die Datei. `absolut` zieht nach `src/dienst/anwendungen.rs` (`pub(super)`), weil dieser Dienst S2 überlebt. `dienst/phasen.rs` und `dienst/wbs.rs` ändern nur ihre `use`-Zeile.
+6. **Altbestände**: Format und Daten ändern sich nicht. Die 363 Aufgaben öffnen unverändert, weil Lesen nicht prüft. Probe: Kopie eines Bestandsordners (JoinPuya) starten; `GET /api/aufgaben` liefert 200 ohne defekte Datei, die Chips erscheinen als Text.
+7. **Grenze zu S2/S3 und #229**: S4 fasst nichts an, was S2/S3 entfernen (WBS-Sicht, Wirkungen, Phasen, Register-Felder, `wbs_tabelle`). Gemeinsame Dateien sind `web/ansicht.js`, `web/app.js`, `src/dienst/mod.rs` und `web/kd-app.css`, dort aber andere Zeilen. #229 berührt `src/dienst/diff.rs`, `gesamt_diff.rs` und `src/modell/*_diff.rs`; es gibt keine Überschneidung.
+8. **Doku**: README Z. 51 („Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt“) wird so umformuliert: Die Herkunft ist ein Verweis, den kanbanD nicht auflöst; ohne Kürzel ist sie bei mehreren Anwendungen mehrdeutig.
+
+**Tests** (Stand `ed6baad8`):
+
+| Test | prüft heute | Folge |
+|---|---|---|
+| `tests/herkunft.rs` (2) | Auflösung von WBS und Anforderung; leer ohne Quellen | umbauen: Schreiben `origins: [I0007, R00014]` und 400 für `X1` bleiben, `GET /api/herkunft` → 404 |
+| `tests/anwendungen.rs` `gleiche_id_in_zwei_anwendungen_loest_je_kuerzel_auf`, `bei_einer_anwendung_loest_auch_unqualifiziert_auf` | Auflösung je Kürzel | entfallen; die Prüfung der Schreibweise deckt `qualifizierte_herkunft_schreiben_unbekanntes_kuerzel_ist_400`; Hilfe `aufgabe` (`:86`) wird dann tot |
+| `tests/aufgaben.rs:59` | Lesen bei defekter `kanbanD.md` | `api/herkunft` aus der Liste |
+| Unit `name_der_anforderung` (`src/herkunft.rs`), `aufloesen_eindeutig_mehrdeutig_unbekannt` (`src/modell/anwendungen.rs`) | Auflösung | entfallen |
+| e2e `r00018-herkunft.spec.js` „US-1 bis US-3“ | Link, „wartet auf“, Lage von `.wartet` | anpassen: Chip ohne `href`, kein `.wartet` trotz `Braucht` in der WBS; die Lageprüfung entfällt |
+| e2e `r00053-anwendungen.spec.js` US-3 (`:58`), US-2 (`:64–87`), „mit einer Anwendung …“ (`:89–97`) | Tooltip „Quelle nicht gefunden“, Link, „wartet auf“ | anpassen: weder `title` noch `href`; „mehrdeutig“ bleibt geprüft |
+| e2e `kontrast.spec.js` „Zeige-Zustand der Herkunft“ (`:672`) | `a.org:hover` | entfällt; „US-1/US-2 … Herkunft auf eigener Klassenfarbe“ bleibt |
+| e2e `r00171` und `r00172` (Hilfe `waehlen`), `r00196:206` | warten auf die Antwort von `/api/herkunft` | Pfad aus der Liste streichen, sonst Zeitüberschreitung |
+| neu | Abnahme | Rust: `GET /api/herkunft` → 404. e2e: Aufgabe mit `origins: [kd:I0007]` und einer WBS mit `Braucht` → Chip als Text ohne `href`/`title`, kein `.wartet` auf Karte und Fenster, keine Anfrage an `/api/herkunft`; dazu die Probe aus Regel 6 |
 
 ## Quellen / Bezüge
 
