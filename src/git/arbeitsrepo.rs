@@ -48,8 +48,8 @@ const KONFIGURATION: &str = "GIT_CONFIG_";
 /// Vor jedem Befehl: kein Dateisystem-Monitor und keine Hooks aus der Konfiguration des Arbeits-Repositorys oder der Umgebung.
 const SPERREN: [&str; 4] = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"];
 
-/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff` und `merge-base` — sie
-/// kommen mit den Scheiben, die sie brauchen). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
+/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff` — es kommt nicht, N4.6,
+/// N6.11). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
 /// [`Befehl::schalter`] und [`Befehl::liefert_teil`], sonst baut das Programm nicht.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Befehl {
@@ -59,6 +59,7 @@ pub(crate) enum Befehl {
     ForEachRef,
     RevList,
     DiffTree,
+    MergeBase,
 }
 
 /// Die Schalter, die der Startort aus dem Befehl setzt (ADR-0032 N4.7): vor dem Befehl, nach dem Befehl, und was der
@@ -81,6 +82,7 @@ impl Befehl {
             Befehl::ForEachRef => "for-each-ref",
             Befehl::RevList => "rev-list",
             Befehl::DiffTree => "diff-tree",
+            Befehl::MergeBase => "merge-base",
         }
     }
 
@@ -88,7 +90,7 @@ impl Befehl {
     fn erzeugt_diffs(self) -> bool {
         match self {
             Befehl::Log | Befehl::DiffTree => true,
-            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList => false,
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => false,
         }
     }
 
@@ -99,7 +101,7 @@ impl Befehl {
         match self {
             Befehl::Log => Schalter { vor: &["-c", "core.quotepath=off"], nach: &["--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature"], verboten: &["--ext-diff", "--textconv", "--color", "--show-signature"] },
             Befehl::DiffTree => Schalter { vor: &["-c", "core.quotepath=off", "--literal-pathspecs"], nach: &["--no-ext-diff", "--no-textconv", "--no-color"], verboten: &["--ext-diff", "--textconv", "--color"] },
-            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList => OHNE_SCHALTER,
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => OHNE_SCHALTER,
         }
     }
 
@@ -108,7 +110,16 @@ impl Befehl {
     pub(crate) fn liefert_teil(self) -> bool {
         match self {
             Befehl::DiffTree => true,
-            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList => false,
+            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => false,
+        }
+    }
+
+    /// Die einzige Form, in der der Befehl laufen darf, oder keine Einschränkung (ADR-0032 N6.11): `merge-base` nur als
+    /// `--independent` — jede andere Form (`--octopus`, `--fork-point`, ohne Schalter) ist eine verletzte Invariante.
+    fn einzige_form(self) -> Option<&'static [&'static str]> {
+        match self {
+            Befehl::MergeBase => Some(&["--independent"]),
+            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::DiffTree => None,
         }
     }
 }
@@ -334,7 +345,7 @@ pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u
         Some(eltern) => args.extend(["--end-of-options", eltern, vergleich.commit]),
         None => args.extend(["--root", "--no-commit-id", "--end-of-options", vergleich.commit]),
     }
-    git_teil(wurzel, Befehl::DiffTree, &args, pfade, bytegrenze, frist)
+    git_teil(wurzel, Befehl::DiffTree, &args, pfade, None, bytegrenze, frist)
 }
 
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
@@ -354,6 +365,15 @@ pub fn fingerabdruck(wurzel: &Path, frist: Instant) -> Result<String, Arbeitsrep
 /// Die zweite Probe am Ende der Anfrage, mit eigener Grenze von 2 s (ADR-0032 N3.2).
 pub fn fingerabdruck_probe(wurzel: &Path) -> Result<String, Arbeitsrepofehler> {
     fingerabdruck(wurzel, Instant::now() + ZEITGRENZE_PROBE)
+}
+
+/// Die Köpfe unter `commits` (volle Hashes): `merge-base --independent` — die Commits, die von keinem anderen der Menge
+/// erreicht werden (ADR-0032 N6.1). Ein Kopf heißt: alle liegen auf seiner Geschichte.
+pub fn koepfe(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<Vec<String>, Arbeitsrepofehler> {
+    let mut args = vec!["--independent", "--end-of-options"];
+    args.extend_from_slice(commits);
+    let aus = lesen(wurzel, Befehl::MergeBase, &args, None, frist)?;
+    Ok(String::from_utf8_lossy(&aus).lines().map(String::from).collect())
 }
 
 /// Z5 (ADR-0032 N3.4): je Commit die vollen Namen der Zweige aus `fingerabdruck`, die ihn erreichen — ein Lauf
@@ -463,8 +483,12 @@ pub(crate) fn git(ordner: &Path, befehl: Befehl, args: &[&str], lauf: Lauf) -> R
 fn kommando(ordner: &Path, befehl: Befehl, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
     let schalter = befehl.schalter();
     debug_assert_eq!(befehl.erzeugt_diffs(), !schalter.nach.is_empty(), "{}: wer Diffs erzeugt, trägt Schalter", befehl.name());
-    let verboten = args.iter().take_while(|a| **a != "--end-of-options" && **a != "--").find(|a| schalter.verboten.iter().any(|v| a.starts_with(v)));
+    let optionen: Vec<&str> = args.iter().copied().take_while(|a| *a != "--end-of-options" && *a != "--").collect();
+    let verboten = optionen.iter().find(|a| schalter.verboten.iter().any(|v| a.starts_with(v)));
     assert!(verboten.is_none(), "{} darf {verboten:?} nicht nennen — die Schalter setzt der Startort", befehl.name());
+    if let Some(form) = befehl.einzige_form() {
+        assert!(optionen == form && args.get(form.len()) == Some(&"--end-of-options"), "{} läuft nur als {form:?} --end-of-options …, nicht {args:?}", befehl.name());
+    }
     gehaertet(ordner, schalter.vor, befehl.name(), &[schalter.nach, args].concat(), vorhandene)
 }
 
@@ -510,10 +534,10 @@ pub struct Teil {
 }
 
 /// Der Lauf mit Bytegrenze (ADR-0032 N4.4) — nur für Befehle mit [`Befehl::liefert_teil`]; `pfade` gehen wörtlich nach
-/// `--` an Git. Höchstens `bytegrenze` Byte; mehr Ausgabe → die ersten `bytegrenze` Byte als abgeschnittener Teil, die
+/// `--` an Git (auch mit `--stdin`, ADR-0032 N6.11), `eingabe` geht auf `stdin`. Höchstens `bytegrenze` Byte; mehr Ausgabe → die ersten `bytegrenze` Byte als abgeschnittener Teil, die
 /// Prozessgruppe stirbt, ihr Ausstiegsstatus zählt nicht. Ohne Abbruch heißt ein Status ≠ 0 `Start`. Zeitgrenze und Frist
 /// liefern nie einen Teil, auch nicht nach gelesenen Bytes.
-pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
+pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[u8]], eingabe: Option<&[u8]>, bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
     assert!(befehl.liefert_teil(), "{} liefert nie einen Teil — git() benutzen", befehl.name());
     let mut c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
     if !pfade.is_empty() {
@@ -521,12 +545,12 @@ pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[
     }
     let zeitgrenze = grenze_bis(frist)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
-    teil_ausfuehren(c, zeitgrenze, bytegrenze)
+    teil_ausfuehren(c, eingabe, zeitgrenze, bytegrenze)
 }
 
 /// Der innere Lauf von [`git_teil`], ohne Befehl und Zähler.
-fn teil_ausfuehren(c: Command, zeitgrenze: Duration, bytegrenze: usize) -> Result<Teil, Arbeitsrepofehler> {
-    match lesend_ausfuehren(c, None, zeitgrenze, Some(Grenze::Bytes(bytegrenze)))? {
+fn teil_ausfuehren(c: Command, eingabe: Option<&[u8]>, zeitgrenze: Duration, bytegrenze: usize) -> Result<Teil, Arbeitsrepofehler> {
+    match lesend_ausfuehren(c, eingabe, zeitgrenze, Some(Grenze::Bytes(bytegrenze)))? {
         Gelesen::Abgeschnitten(ausgabe) => Ok(Teil { ausgabe, abgeschnitten: true }),
         Gelesen::Ganz(aus) if aus.status.success() => Ok(Teil { ausgabe: aus.stdout, abgeschnitten: false }),
         Gelesen::Ganz(aus) => Err(Arbeitsrepofehler::Start(String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string())),
@@ -672,7 +696,7 @@ mod tests {
     use std::ffi::OsStr;
 
     /// Alle Befehle der abschließenden Liste — ein neuer gehört hier dazu.
-    const ALLE: [Befehl; 6] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree];
+    const ALLE: [Befehl; 7] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree, Befehl::MergeBase];
 
     fn umgebung(c: &Command) -> Vec<(String, Option<String>)> {
         c.get_envs().map(|(k, v)| (k.to_string_lossy().into(), v.map(|v| v.to_string_lossy().into()))).collect()
@@ -747,6 +771,7 @@ mod tests {
         let c = kommando(Path::new("/r"), Befehl::Log, &["--format=%H", "--end-of-options", "abc1234"], std::iter::empty());
         assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.quotepath=off", "log", "--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature", "--format=%H", "--end-of-options", "abc1234"]);
         for (befehl, name) in [(Befehl::RevParse, "rev-parse"), (Befehl::CatFile, "cat-file"), (Befehl::ForEachRef, "for-each-ref"), (Befehl::RevList, "rev-list")] {
+            assert_eq!(befehl.einzige_form(), None, "{name}");
             let c = kommando(Path::new("/r"), befehl, &["x"], std::iter::empty());
             assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", name, "x"], "{name}");
         }
@@ -786,8 +811,90 @@ mod tests {
         let log = git(&r, Befehl::Log, &["--no-walk", "-p", "--format=%H", "--end-of-options", neu], Lauf::mit(ZEITGRENZE)).unwrap();
         assert!(log.status.success(), "log: {}", String::from_utf8_lossy(&log.stderr));
         for args in [&["-r", "-M50%", "-l1000", "--raw", "-z", alt, neu][..], &["-r", "-M50%", "-l1000", "--numstat", "-z", alt, neu], &["-r", "-M50%", "-l1000", "-p", "--full-index", "--submodule=short", alt, neu], &["-r", "--root", "--no-commit-id", "-p", alt]] {
-            let teil = git_teil(&r, Befehl::DiffTree, args, &[b"a.txt"], 1 << 20, Instant::now() + ZEITGRENZE).unwrap_or_else(|f| panic!("{args:?}: {f:?}"));
+            let teil = git_teil(&r, Befehl::DiffTree, args, &[b"a.txt"], None, 1 << 20, Instant::now() + ZEITGRENZE).unwrap_or_else(|f| panic!("{args:?}: {f:?}"));
             assert!(!teil.abgeschnitten && !teil.ausgabe.is_empty(), "{args:?}");
+        }
+    }
+
+    // R00208 AK 9, ADR-0032 N6.11: `merge-base` läuft nur als `--independent --end-of-options …`, ohne Schalter; jede
+    // andere Form bricht ab (Mutant „einzige Form ungeprüft“)
+    #[test]
+    fn merge_base_nur_independent() {
+        let c = kommando(Path::new("/r"), Befehl::MergeBase, &["--independent", "--end-of-options", "a", "b"], std::iter::empty());
+        assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "merge-base", "--independent", "--end-of-options", "a", "b"]);
+        for boese in [&["--octopus", "--end-of-options", "a", "b"][..], &["--fork-point", "--end-of-options", "a"], &["--end-of-options", "a", "b"], &["a", "b"], &["--independent", "a", "b"], &["--independent", "--all", "--end-of-options", "a"]] {
+            let fehlschlag = std::panic::catch_unwind(|| kommando(Path::new("/r"), Befehl::MergeBase, boese, std::iter::empty()));
+            assert!(fehlschlag.is_err(), "{boese:?} angenommen");
+        }
+        assert!(!Befehl::MergeBase.liefert_teil() && Befehl::MergeBase.schalter() == OHNE_SCHALTER);
+    }
+
+    /// Ein Repository mit `a.txt` und `b.txt`: c1 legt beide an, c2 ändert beide, c3 ändert nur `b.txt`; dazu ein Zweig
+    /// `seite` ab c1 mit s1. Liefert Ordner und die Hashes c1, c2, c3, s1.
+    fn kette_mit_seite() -> (tempfile::TempDir, PathBuf, [String; 4]) {
+        let tmp = tempfile::tempdir().unwrap();
+        let r = tmp.path().canonicalize().unwrap().join("R");
+        std::fs::create_dir_all(&r).unwrap();
+        let git = |args: &[&str]| {
+            let a = Command::new("git").arg("-C").arg(&r).args(["-c", "user.name=A", "-c", "user.email=a@a"]).args(args).output().unwrap();
+            assert!(a.status.success(), "{args:?}");
+            String::from_utf8(a.stdout).unwrap().trim().to_string()
+        };
+        git(&["init", "-q", "-b", "main"]);
+        let mut hashes = vec![];
+        for (i, (a, b)) in [("a1\n", "b1\n"), ("a2\n", "b2\n"), ("a2\n", "b3\n")].iter().enumerate() {
+            std::fs::write(r.join("a.txt"), a).unwrap();
+            std::fs::write(r.join("b.txt"), b).unwrap();
+            git(&["add", "-A"]);
+            git(&["commit", "-qm", &format!("c{}", i + 1)]);
+            hashes.push(git(&["rev-parse", "HEAD"]));
+        }
+        git(&["checkout", "-q", "-b", "seite", &hashes[0]]);
+        std::fs::write(r.join("s.txt"), "s\n").unwrap();
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "s1"]);
+        hashes.push(git(&["rev-parse", "HEAD"]));
+        (tmp, r, hashes.try_into().unwrap())
+    }
+
+    // R00208 AK 9, ADR-0032 N6.1: `merge-base --independent` gegen echtes Git mit Ausstiegscode 0 — auf einer Linie ein
+    // Kopf (der letzte), über zwei Zweige zwei
+    #[test]
+    fn koepfe_gegen_echtes_git() {
+        let (_tmp, r, [c1, c2, c3, s1]) = kette_mit_seite();
+        let frist = Instant::now() + ZEITGRENZE;
+        assert_eq!(koepfe(&r, &[&c1, &c3, &c2], frist).unwrap(), [c3.clone()]);
+        let mut zwei = koepfe(&r, &[&c2, &s1], frist).unwrap();
+        zwei.sort();
+        let mut erwartet = vec![c2.clone(), s1.clone()];
+        erwartet.sort();
+        assert_eq!(zwei, erwartet);
+    }
+
+    // R00208 AK 9, ADR-0032 N6.11: `diff-tree --stdin` mit je einer Zeile `<commit> <erster Elternteil>` läuft gegen echtes
+    // Git; die Pfadangabe nach `--` gilt auch mit `--stdin` — nur `a.txt` erscheint, c3 (nur `b.txt`) bringt nichts
+    #[test]
+    fn diff_tree_stdin_mit_pfadangabe() {
+        let (_tmp, r, [c1, c2, c3, _]) = kette_mit_seite();
+        let eingabe = format!("{c2} {c1}\n{c3} {c2}\n");
+        let args = ["--stdin", "-r", "--raw", "-z", "--no-renames"];
+        let alle = git_teil(&r, Befehl::DiffTree, &args, &[], Some(eingabe.as_bytes()), 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
+        let text = String::from_utf8_lossy(&alle.ausgabe).to_string();
+        assert!(text.contains("a.txt") && text.matches("b.txt").count() == 2 && text.contains(&c3), "ohne Pfadangabe beide: {text:?}");
+        let nur_a = git_teil(&r, Befehl::DiffTree, &args, &[b"a.txt"], Some(eingabe.as_bytes()), 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
+        let text = String::from_utf8_lossy(&nur_a.ausgabe).to_string();
+        assert!(!nur_a.abgeschnitten && text.contains("a.txt") && !text.contains("b.txt"), "{text:?}");
+        assert!(text.contains(&c2) && !text.contains(&c3), "c3 berührt a.txt nicht: {text:?}");
+    }
+
+    // ADR-0032 N6.11 mit N4.4: die Bytegrenze gilt auch mit Eingabe — genau `n` Byte ganz, `n + 1` ein Teil mit `n` Byte
+    #[test]
+    fn bytegrenze_mit_eingabe() {
+        for grenze in [1000usize, 70_000] {
+            for (laenge, abgeschnitten) in [(grenze, false), (grenze + 1, true)] {
+                let teil = teil_ausfuehren(Command::new("cat"), Some(&vec![b'x'; laenge]), Duration::from_secs(20), grenze).unwrap();
+                assert_eq!((teil.ausgabe.len(), teil.abgeschnitten), (grenze, abgeschnitten), "{laenge} bei Grenze {grenze}");
+            }
         }
     }
 
@@ -797,7 +904,7 @@ mod tests {
         let teil: Vec<Befehl> = ALLE.into_iter().filter(|b| b.liefert_teil()).collect();
         assert_eq!(teil, [Befehl::DiffTree]);
         for befehl in ALLE.into_iter().filter(|b| !b.liefert_teil()) {
-            let fehlschlag = std::panic::catch_unwind(|| git_teil(Path::new("/"), befehl, &[], &[], 10, Instant::now() + ZEITGRENZE));
+            let fehlschlag = std::panic::catch_unwind(|| git_teil(Path::new("/"), befehl, &[], &[], None, 10, Instant::now() + ZEITGRENZE));
             assert!(fehlschlag.is_err(), "{befehl:?} lieferte einen Teil");
         }
     }
@@ -815,12 +922,12 @@ mod tests {
     fn bytegrenze_genau_und_eins_mehr() {
         assert_eq!((crate::modell::GRENZE_EINZELN, crate::modell::GRENZE_DATEILISTE_EINZELN), (8_388_608, 20_971_520));
         for grenze in [8_388_608usize, 20_971_520, 1000] {
-            let ganz = teil_ausfuehren(erzeuge(grenze), Duration::from_secs(20), grenze).unwrap();
+            let ganz = teil_ausfuehren(erzeuge(grenze), None, Duration::from_secs(20), grenze).unwrap();
             assert_eq!((ganz.ausgabe.len(), ganz.abgeschnitten), (grenze, false), "genau {grenze}");
-            let teil = teil_ausfuehren(erzeuge(grenze + 1), Duration::from_secs(20), grenze).unwrap();
+            let teil = teil_ausfuehren(erzeuge(grenze + 1), None, Duration::from_secs(20), grenze).unwrap();
             assert_eq!((teil.ausgabe.len(), teil.abgeschnitten), (grenze, true), "{grenze} + 1");
         }
-        let endlos = teil_ausfuehren(Command::new("yes"), Duration::from_secs(20), 4_194_304).unwrap();
+        let endlos = teil_ausfuehren(Command::new("yes"), None, Duration::from_secs(20), 4_194_304).unwrap();
         assert_eq!((endlos.ausgabe.len(), endlos.abgeschnitten), (4_194_304, true), "endlose Ausgabe");
         assert!(endlos.ausgabe.starts_with(b"y\ny\n"));
     }
@@ -853,7 +960,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let (c, pids) = mit_kind(tmp.path(), "", "exec yes");
         let start = Instant::now();
-        let teil = teil_ausfuehren(c, Duration::from_secs(20), 1 << 20).unwrap();
+        let teil = teil_ausfuehren(c, None, Duration::from_secs(20), 1 << 20).unwrap();
         assert!(teil.abgeschnitten && start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
         let text = std::fs::read_to_string(&pids).unwrap();
         let (skript, kind) = text.trim().split_once(' ').unwrap();
@@ -868,7 +975,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let (c, pids) = mit_kind(tmp.path(), "head -c 1048576 /dev/zero", "sleep 60");
         let start = Instant::now();
-        assert_eq!(teil_ausfuehren(c, Duration::from_secs(1), 4 << 20), Err(Arbeitsrepofehler::Zeitgrenze));
+        assert_eq!(teil_ausfuehren(c, None, Duration::from_secs(1), 4 << 20), Err(Arbeitsrepofehler::Zeitgrenze));
         assert!(start.elapsed() < Duration::from_secs(5), "{:?}", start.elapsed());
         let text = std::fs::read_to_string(&pids).unwrap();
         let (skript, kind) = text.trim().split_once(' ').unwrap();
@@ -905,7 +1012,7 @@ mod tests {
         std::fs::remove_file(&marke).unwrap();
         let kopf = String::from_utf8(roh(&["rev-parse", "HEAD", "HEAD^"]).stdout).unwrap();
         let [neu, alt]: [&str; 2] = kopf.split_whitespace().collect::<Vec<_>>().try_into().unwrap();
-        let teil = git_teil(&r, Befehl::DiffTree, &["-r", "-p", alt, neu], &[], 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
+        let teil = git_teil(&r, Befehl::DiffTree, &["-r", "-p", alt, neu], &[], None, 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
         let text = String::from_utf8(teil.ausgabe).unwrap();
         assert!(text.contains("-a\n+b\n"), "{text}");
         assert!(!text.contains('\u{1b}'), "ohne Farben");
