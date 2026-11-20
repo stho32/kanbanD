@@ -1420,3 +1420,10 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - #233: Metadaten-Lauf über 75.000 Dateien beschleunigen.
   - #234: Satz über fremde Commits bei 0 fremden.
 - **Optional ohne Karte:** Der Kopf eines Zwillings in `format=patch` kann den Namen des anderen tragen. Die Umgebung zählt nicht zur Vorabgrenze; E2BIG ist das zweite Netz.
+| 2026-11-20 | #230 | Architektur | architekt | bestanden | 5 min | ADR-0032 N7.10 (564a776c), 16/40 mal 500 belegt · claude · opus · Lauf 230-architekt-1 |
+| 2026-11-20 | #230 | Detailplanung | planer | bestanden | 2 min | R00213, I0203, B1077–B1082 (4286eaf1) · claude · opus · Lauf 230-planer-1 |
+| 2026-11-20 | #230 | Entwicklung | entwickler | bestanden | 57 min | AK 1–6 erfüllt, AK 7 bis auf Lastprobe R00208 (Tag); Gate grün · claude · Lauf 230-entwickler-1 |
+| 2026-11-20 | #230 | Auto-Reviews | code-reviewer | bestanden | 19 min | kein Muss; 3 Sollte, 3 Optional · claude · sonnet · Lauf 230-code-reviewer-1 · 0,89 $ · Karte gesamt 0,89 $ |
+| 2026-11-20 | #228 | Detailplanung | planer | bestanden | 6 min | R00214, I0204 B1083–B1090 (S1 API) · claude · opus · Lauf 228-planer-1 · 2,36 $ · Karte gesamt 2,36 $ |
+| 2026-11-20 | #230 | Auto-Reviews | security-reviewer | bestanden | 30 min | kein Muss, kein Sollte; ein Optional · claude · sonnet · Lauf 230-security-reviewer-1 · 0,81 $ · Karte gesamt 1,70 $ |
+| 2026-11-20 | #230 | Entwicklertest | entwicklertester | bestanden | 13 min | US-1/US-2 bestanden, US-3 ein Sollte (vorbestehend, eigene Karte) · claude · sonnet · Lauf 230-entwicklertester-1 · 0,87 $ · Karte gesamt 2,57 $ |
