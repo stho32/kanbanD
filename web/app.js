@@ -919,6 +919,46 @@ function datumsknotenBehalten(vorher) {
   if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
 }
 
+/* ── Ansicht „Commits“ (R00205): gelesen wird beim Öffnen der Ansicht und über „Neu lesen“, sonst nie ── */
+const COMMITS_STATUS = 'commits-status';
+
+/** Der Statusbereich der Ansicht bleibt beim Neuzeichnen derselbe Knoten und wechselt nur Klasse und Text: so sagt ein
+    Bildschirmleser den neuen Stand an (R00205 AK 6/10, WCAG 4.1.3), und ein Wechsel der Aufgabe hält ihn nicht fest. */
+function commitsStatusBehalten(vorher) {
+  const neu = document.getElementById(COMMITS_STATUS);
+  if (!vorher || !neu || vorher === neu) return;
+  neu.replaceWith(vorher);
+  vorher.className = neu.className;
+  vorher.textContent = neu.textContent;
+}
+
+/** Vor jedem Zeichnen: ist „Commits“ die gezeigte Ansicht und für diese Aufgabe noch nichts gelesen, beginnt das Lesen jetzt (einmal);
+    ist es nicht die gezeigte Ansicht, fällt der Zustand weg — das nächste Öffnen liest neu. Ein Live-Ereignis liest nie neu. */
+function commitsAnstossen() {
+  const nr = S.ui.offen, a = nr && aufgabe(nr);
+  if (!a || ansichtDerAufgabe(a) !== 'commits') { S.ui.commits = null; return; }
+  if (S.ui.commits && S.ui.commits.nr === nr) return;
+  commitsLesen(nr);
+}
+
+/** Liest `GET /api/aufgaben/{nr}/commits` und zeichnet das Ergebnis — aber nur, wenn die Aufgabe noch dieselbe offen und
+    „Commits“ noch dieselbe Ansicht ist und niemand inzwischen neu gelesen hat; sonst wird die Antwort verworfen (R00205 AK 6). */
+async function commitsLesen(nr) {
+  const vorher = S.ui.commits && S.ui.commits.nr === nr ? S.ui.commits : null;
+  const lauf = S.ui.commits = { nr, status: 'laedt', eintraege: [], stand: vorher ? vorher.stand : null, klappen: new Set() };
+  let ergebnis;
+  try {
+    const antwort = await api('GET', `/api/aufgaben/${nr}/commits`);
+    ergebnis = { status: 'liste', eintraege: antwort.commits, stand: uhr(Date.now()) };
+  } catch (g) {
+    ergebnis = { status: 'fehler', fehler: { status: g.status || 0, fehler: g.message }, stand: lauf.stand };
+  }
+  const a = S.ui.offen === nr && aufgabe(nr);
+  if (S.ui.commits !== lauf || !a || ansichtDerAufgabe(a) !== 'commits') return;
+  S.ui.commits = { nr, klappen: new Set(), ...ergebnis };
+  render();
+}
+
 /** Zeichnet den Hauptbereich neu und lässt dabei die Personenwahl des Stundenzettels als denselben Knoten stehen, damit ein
     fremdes Live-Ereignis eine offene Liste nicht schließt und der Fokus nicht springt (R00201 AK 9). Chromium schließt die
     Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
@@ -1072,7 +1112,7 @@ function fensterZuruecksetzen() {
   // in vFenster über reiterSchluessel auf „Inhalt“. Die Inhalte der vorigen Aufgabe fallen sofort weg (R00110/R00123).
   u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
   u.entwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
-  u.verlauf = null; u.verlaufFehler = null;
+  u.verlauf = null; u.verlaufFehler = null; u.commits = null;
   // ein Ziel aus der Adresse, das noch auf seine Antwort wartet, gilt nicht mehr (R00174)
   u.offenDefekt = null; u.defektDatei = null; u.linkZiel = null;
 }
@@ -1361,6 +1401,7 @@ function render() {
   const menueEintragImFokus = !S.ui.fokus && aktiv && aktiv.id && aktiv.closest('#pop') && S.ui.pop;
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
   reiterRueckfallImFenster(aktiv);
+  commitsAnstossen();
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
@@ -1387,6 +1428,7 @@ function render() {
   const aktivWarSichtbar = imSichtbereich(aktiv);
   const meldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(FENSTER_MELDUNG) : null;
   const tagVorher = document.getElementById(PERSONEN_TAG);
+  const commitsStatusVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(COMMITS_STATUS) : null;
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
@@ -1402,6 +1444,7 @@ function render() {
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
+    commitsStatusBehalten(commitsStatusVorher);
   } finally {
     S.neuzeichnen = false;
   }
@@ -2145,6 +2188,19 @@ async function aktion(a, arg, wert) {
         // `geschlossen.rueckgabe` trägt den Auslöser, der das Menü geöffnet hat (ADR-0010, R00145 FA 7).
         // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
         if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
+        break;
+      }
+      case 'commits-lesen': {
+        // „Neu lesen“ und „Erneut versuchen“ (R00205 FA 2): beim Lesen ohne Wirkung, sonst genau ein weiterer Aufruf
+        if (!u.commits || u.commits.status === 'laedt') break;
+        u.fokus = '#commits-neu';
+        commitsLesen(u.offen);
+        break;
+      }
+      case 'commits-klappe': {
+        const klappen = u.commits && u.commits.klappen;
+        if (!klappen) break;
+        if (!klappen.delete(+arg)) klappen.add(+arg);
         break;
       }
       case 'teil-karte': {

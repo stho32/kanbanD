@@ -49,6 +49,7 @@ function arbeitsRepositoryBauen(basis) {
   h.w1 = dateiCommit(wt, 'Bernd Beispiel', '2026-03-02T09:00:00+00:00', 'b.txt', 1, 'b.txt anlegen');
   gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'checkout', '-q', '--detach');
   h.v1 = dateiCommit(r, ADA, '2026-03-03T09:00:00+00:00', 'v.txt', 1, 'v.txt anlegen');
+  gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'tag', 'v1');
   gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'checkout', '-q', '--detach', h.k2);
   h.r1 = dateiCommit(r, ADA, TITEL_PFAD, 'r.txt', 1, 'r.txt anlegen');
   gitAls(r, ADA, TITEL_PFAD, 'update-ref', 'refs/remotes/o/x', h.r1);
@@ -68,7 +69,8 @@ function arbeitsRepositoryBauen(basis) {
  *  Zweigen von 60 Zeichen, `+1.204.567 −987.654`; Titel mit 500, 501 und 499 `a` plus Emoji; Rand-Commits mit „…“, Schädlingen. */
 function breitenCommits(r, h) {
   const tag = '2026-03-10T09:00:00+00:00';
-  gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k4);
+  // Alle Breitendaten stehen auf Nebenästen ab K2: K3 liegt dann nur auf main und o/main, wie die Ausgangslage von #1 es verlangt
+  gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
   // Zeilenmassen: der Vorgänger legt 987.654 Zeilen an, Z ersetzt die Datei durch 1.204.567 andere (+1.204.567 −987.654)
   dateiCommit(r, ADA, tag, 'masse-alt.txt', 987654, 'Masse anlegen', 'alt ');
   fs.rmSync(path.join(r, 'masse-alt.txt'));
@@ -82,13 +84,14 @@ function breitenCommits(r, h) {
   for (let i = 1; i <= 12; i++) gitAls(r, ADA, tag, 'update-ref', 'refs/remotes/' + aufgefuellt(`o/e${String(i).padStart(2, '0')}-`, 60), h.z);
   const rand = (n, zeit, titel, name = ADA) => {
     const datei = `rand-${n}.txt`;
+    gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
     return dateiCommit(r, name, `2026-03-11T0${zeit}:00:00+00:00`, datei, 1, titel);
   };
   h.t500 = rand(1, 1, 'a'.repeat(500));
   h.t501 = rand(2, 2, 'a'.repeat(501));
   h.t499 = rand(3, 3, 'a'.repeat(499) + '\u{1F600}');
   h.t500punkte = rand(4, 4, 'a'.repeat(499) + '…');
-  h.boese = rand(5, 5, '<img src=x onerror=window.pwn=1> "x" \\ y', 'Mallory <b>fett</b>');
+  h.boese = rand(5, 5, '<img src=x onerror=window.pwn=1> "x" \\ y', 'Mallory <b>fett</b> "q" & x');
   for (const c of [h.t500, h.t501, h.t499, h.t500punkte, h.boese]) gitAls(r, ADA, tag, 'update-ref', 'refs/heads/rand-' + c.slice(0, 7), c);
   gitAls(r, ADA, tag, 'branch', 'a"><i>z', h.boese);
 }

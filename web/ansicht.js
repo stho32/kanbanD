@@ -391,6 +391,7 @@ function vFenster() {
   // Genau eine gezeichnete Ansicht (R00145 FA 6): role=group mit dem Namen der Ansicht, kein tabpanel, kein aria-current.
   const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
     : tab === 'kosten' ? vKostenPanel(a)
+    : tab === 'commits' ? vCommitsPanel()
     : tab === 'verlauf' ? vVerlaufPanel()
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
@@ -454,6 +455,10 @@ function vVerlaufWeg(e) {
 function vVerlaufWer(wer) {
   const p = personen().find(p => p.kuerzel === wer);
   return p ? `${pk(wer)}${esc(p.name)}` : esc(wer);
+}
+/** Die Ansicht „Commits“ (R00205): nur lesend; Zustand und Zeichnen stehen in web/commits.js, gelesen wird in app.js (commitsLesen). */
+function vCommitsPanel() {
+  return commitsAnsichtHtml(S.ui.commits || { status: 'laedt', stand: null }, esc);
 }
 function vVerlaufPanel() {
   const u = S.ui;

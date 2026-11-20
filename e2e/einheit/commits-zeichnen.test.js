@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
-const { commitsListeHtml, commitsKopfHtml, commitsFussHtml, ZUSTANDSWOERTER } = require('../../web/commits.js');
+const { commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml, ZUSTANDSWOERTER } = require('../../web/commits.js');
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const K3 = 'c0ffee0123456789abcdef0123456789abcdef01';
@@ -145,6 +145,7 @@ test('Fuß: „liest nur · gelesen aus dem Repository der Anwendung“, „Stan
   assert.match(mit, /<button type="button" class="cl-textknopf" id="commits-neu" data-act="commits-lesen"[^>]*>.*Neu lesen<\/button>/);
   assert.doesNotMatch(mit, /aria-disabled/);
   assert.match(commitsFussHtml({ stand: null, laedt: true }), /id="commits-neu"[^>]*aria-disabled="true"/);
+  assert.doesNotMatch(commitsFussHtml({ stand: null, laedt: true }), /data-act/, 'beim Lesen ohne Auslöser: sperrenMarkieren nähme aria-disabled sonst wieder weg, ein zweiter Klick tut nichts');
   assert.doesNotMatch(commitsFussHtml({ stand: null, laedt: true }), /\sdisabled[\s>=]/, 'aria-disabled statt disabled: der Fokus bleibt');
 });
 
@@ -153,4 +154,68 @@ test('die Reihenfolge der Antwort bleibt: die Oberfläche sortiert nicht', () =>
   assert.ok(html.indexOf('v.txt anlegen') < html.indexOf('c.txt anlegen'));
   assert.ok(html.indexOf('c.txt anlegen') < html.indexOf('kd:cccccc'));
   assert.doesNotMatch(html, /sortier|filter|Dateien/i);
+});
+
+/* ── Zustände der Ansicht (B1007): Laden, Liste, Fehler, leer — der Statusbereich steht in jedem Zustand genau einmal ── */
+const laedt = { status: 'laedt', stand: null };
+const gelesen = (eintraege, stand = '21:20:07') => ({ status: 'liste', eintraege, stand, klappen: new Set() });
+const fehler = (status, text, stand = null) => ({ status: 'fehler', fehler: { status, fehler: text }, stand });
+const ansicht = c => commitsAnsichtHtml(c, esc);
+const alle = [laedt, gelesen([auf(), verwaist]), gelesen([]), fehler(503, 'x'), fehler(0, 'Keine Verbindung')];
+
+test('der Statusbereich steht in jedem Zustand genau einmal, mit role=status und derselben Kennung', () => {
+  for (const c of alle) {
+    const html = ansicht(c);
+    assert.strictEqual((html.match(/role="status"/g) || []).length, 1, c.status);
+    assert.strictEqual((html.match(/id="commits-status"/g) || []).length, 1, c.status);
+    assert.match(html, /<div [^>]*id="commits-status" role="status">/, 'immer ein div, damit der Knoten bei Zustandswechsel derselbe bleiben kann');
+  }
+});
+
+test('Laden: Hinweis „Liest die Commits aus dem Repository …“ sichtbar im Statusbereich, Kopf ohne Zahl, keine Zeilen, „Neu lesen“ aria-disabled, kein Stand', () => {
+  const html = ansicht(laedt);
+  assert.match(html, /<div class="cl-laedt" id="commits-status" role="status">Liest die Commits aus dem Repository …<\/div>/);
+  assert.match(html, /<h3>COMMITS <\/h3>/);
+  assert.doesNotMatch(html, /<tr|<table/);
+  assert.match(html, /id="commits-neu"[^>]*aria-disabled="true"/);
+  assert.doesNotMatch(html, /Stand/);
+});
+
+test('Liste: der Statusbereich ist versteckt (.vh) und sagt „5 Commits gelesen“, Kopf mit Zahl, Fuß mit Stand', () => {
+  const html = ansicht(gelesen([auf(), verwaist, fehlt, repoWeg, unlesbar]));
+  assert.match(html, /<div class="vh" id="commits-status" role="status">5 Commits gelesen<\/div>/);
+  assert.match(html, /<h3>COMMITS <span class="mono">5<\/span><\/h3>/);
+  assert.match(html, /Stand 21:20:07/);
+  assert.doesNotMatch(html, /aria-disabled/);
+  assert.strictEqual((html.match(/<tr class="cl-z/g) || []).length, 5);
+});
+
+test('Fehler: der Statusbereich trägt die sichtbare Meldung (503 mit dem Wortlaut des PO), dazu „Erneut versuchen“, keine Zeilen, keine Zahl', () => {
+  const html = ansicht(fehler(503, 'egal'));
+  assert.match(html, /<div class="cl-meldtext" id="commits-status" role="status">Die Commits ließen sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden \(503\)\.<\/div>/);
+  assert.match(html, /<button type="button" class="cl-knopf" id="commits-erneut" data-act="commits-lesen">Erneut versuchen<\/button>/);
+  assert.doesNotMatch(html, /<tr|<table|class="mono"/);
+  assert.match(html, /id="commits-neu"/, '„Neu lesen“ steht auch im Fehler, der Fokus braucht sein Ziel');
+});
+
+test('Fehler: der Text der Antwort wird maskiert (fremder Text, ADR-0030)', () => {
+  const html = ansicht(fehler(500, '<img src=x onerror=1>'));
+  assert.doesNotMatch(html, /<img/);
+  assert.ok(html.includes('&lt;img src=x onerror=1&gt; (500)'));
+});
+
+test('leer: „An dieser Aufgabe sind keine Commits hinterlegt.“ mit dem Satz zur API, ohne Zahl; der Statusbereich sagt „Keine Commits gelesen“', () => {
+  const html = ansicht(gelesen([]));
+  assert.match(html, /<div class="cl-leer">An dieser Aufgabe sind keine Commits hinterlegt\.<br><span>Ein Agent hinterlegt sie über die API \(<span class="mono">POST \/api\/aufgaben\/\{nr\}\/commits<\/span>\); siehe Endpunktliste unter <a href="\/api" target="_blank" rel="noopener">\/api<\/a>\.<\/span><\/div>/);
+  assert.doesNotMatch(html, /<h3>COMMITS <span/);
+  assert.match(html, /id="commits-status" role="status">Keine Commits gelesen</);
+  assert.doesNotMatch(html, /<table/);
+});
+
+test('die Ansicht trägt das Gerüst .mod-main.cl-panel; Kopf vor Inhalt vor Fuß in jedem Zustand', () => {
+  for (const c of alle) {
+    const html = ansicht(c);
+    assert.match(html, /^<div class="mod-main cl-panel">/);
+    assert.ok(html.indexOf('cl-kopf') < html.indexOf('commits-status') && html.indexOf('commits-status') < html.indexOf('cl-fuss'), c.status);
+  }
 });

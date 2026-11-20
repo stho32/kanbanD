@@ -179,9 +179,34 @@
 
   /** Fuß: „liest nur“ mit der Uhrzeit der letzten erfolgreichen Antwort und „Neu lesen“; beim Lesen `aria-disabled` statt `disabled`, damit der Fokus bleibt. */
   function commitsFussHtml({ stand, laedt }) {
-    const knopf = `<button type="button" class="cl-textknopf" id="commits-neu" data-act="commits-lesen"${laedt ? ' aria-disabled="true"' : ''}>${symbol('neu')}Neu lesen</button>`;
+    // Beim Lesen ohne `data-act`: `sperrenMarkieren` (app.js) nimmt jedes `aria-disabled` an einem Auslöser mit `data-act` beim Zeichnen wieder weg,
+    // und ohne Auslöser hat ein zweiter Klick von selbst keine Wirkung.
+    const knopf = `<button type="button" class="cl-textknopf" id="commits-neu"${laedt ? ' aria-disabled="true"' : ' data-act="commits-lesen"'}>${symbol('neu')}Neu lesen</button>`;
     return `<div class="cl-fuss"><span>liest nur · gelesen aus dem Repository der Anwendung${stand ? ` · Stand ${stand}` : ''}</span>${knopf}</div>`;
   }
 
-  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, symbol });
+  /** Der eine Statusbereich der Ansicht (R00205 AK 6/10): in jedem Zustand ein `div` mit derselben Kennung, damit er beim Neuzeichnen
+      als derselbe Knoten stehen bleibt und nur seine Klasse und sein Text wechseln. */
+  const statusBereich = (klasse, text, esc) => `<div class="${klasse}" id="commits-status" role="status">${esc(text)}</div>`;
+  const LEER_SATZ = 'Ein Agent hinterlegt sie über die API (<span class="mono">POST /api/aufgaben/{nr}/commits</span>); siehe Endpunktliste unter <a href="/api" target="_blank" rel="noopener">/api</a>.';
+
+  /** Inhalt der Ansicht je Zustand: Laden (Hinweis im Statusbereich), Fehler (Meldung im Statusbereich), leer und Liste (Statusbereich nur zum Vorlesen). */
+  function inhaltHtml(c, esc) {
+    if (c.status === 'laedt') return statusBereich('cl-laedt', 'Liest die Commits aus dem Repository …', esc);
+    if (c.status === 'fehler') {
+      const knopf = '<button type="button" class="cl-knopf" id="commits-erneut" data-act="commits-lesen">Erneut versuchen</button>';
+      return `<div class="cl-meld">${symbol('achtung')}${statusBereich('cl-meldtext', fehlerText(c.fehler), esc)}${knopf}</div>`;
+    }
+    const ansage = statusBereich('vh', gelesenText(c.eintraege.length), esc);
+    if (!c.eintraege.length) return `${ansage}<div class="cl-leer">An dieser Aufgabe sind keine Commits hinterlegt.<br><span>${LEER_SATZ}</span></div>`;
+    return ansage + commitsListeHtml(c.eintraege, c.klappen, esc);
+  }
+
+  /** Die ganze Ansicht „Commits“ aus dem Zustand der Oberfläche (`S.ui.commits`): `{status, eintraege, stand, fehler, klappen}`. */
+  function commitsAnsichtHtml(c, esc) {
+    const anzahl = c.status === 'liste' && c.eintraege.length ? c.eintraege.length : null;
+    return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl)}${inhaltHtml(c, esc)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
+  }
+
+  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml, symbol });
 })(typeof module !== 'undefined' ? module.exports : window);
