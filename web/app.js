@@ -3709,12 +3709,17 @@ async function aktion(a, arg, wert) {
         if (ichNoetig()) break;
         const { fehler, gespeichert, ...entwurf } = u.einr;
         const daten = { ...entwurf, klassen: ungestrichen(entwurf.klassen) };
+        const gesendet = einstellungenText(u.einr), standVorher = S.zustand;
         try {
           await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
-          u.einr = null; u.palFuer = null;
-          // Das Neuladen legt die Einrichtungsansicht neu an (sichtFolgen) — erst danach trägt sie „gespeichert“.
-          await laden();
-          u.einr.gespeichert = true;
+          u.palFuer = null;
+          // Die Schlange hat schon nachgeladen; der Entwurf bleibt dabei bis hier stehen, damit keine Eingabe ins Leere geht.
+          // Wer während des Speicherns weitergetippt hat, behält seine Eingabe, ungespeichert (R00215 AK 8).
+          const weitergetippt = einstellungenText(u.einr) !== gesendet;
+          if (!weitergetippt) {
+            if (S.zustand !== standVorher) u.einr = kopie(S.zustand.einstellungen);
+            u.einr.gespeichert = true;
+          }
           render();
           break;
         } catch (f) {
@@ -4085,7 +4090,9 @@ document.addEventListener('input', e => {
     if (ef === 'arepo') d.quellen.anwendungen[i].repository = v;
     if (ef === 'awbs') d.quellen.anwendungen[i].wbs = v;
     if (ef === 'aanf') d.quellen.anwendungen[i].anforderungen = v;
-    d.fehler = null; d.gespeichert = false;
+    d.fehler = null;
+    // „gespeichert“ gilt nur bis zur nächsten Eingabe (R00215 AK 8) — ohne Neuzeichnen, der Fokus bleibt im Feld
+    if (d.gespeichert) { d.gespeichert = false; const marke = $('#einr-gespeichert'); if (marke) marke.remove(); }
     if (['repo', 'wbs', 'anf', 'arepo', 'awbs', 'aanf'].includes(ef)) e.target.title = v;
     if (ef === 'repo') repositoryZustandZeigen($('#quellen-repo'), v, S.quellenStand || undefined);
     if (ef === 'arepo') repositoryZustandZeigen($(`#anw-repo-${i}`), v, gespeichertesRepository(d.quellen.anwendungen[i].kuerzel));

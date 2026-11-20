@@ -2324,7 +2324,7 @@ function vEinrichten() {
 ${vSignaleEinrichten(d)}
 <h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2>${vQuellen(d)}
 <h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
-${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted">gespeichert</span>' : ''}</div></div>
+${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted" id="einr-gespeichert">gespeichert</span>' : ''}</div></div>
 <aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d))}</pre></aside></div>`;
 }
 

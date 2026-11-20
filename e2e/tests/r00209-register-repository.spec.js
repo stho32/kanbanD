@@ -5,7 +5,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { kanbanStarten, einrichten, alsPerson, breiteSetzen, thema, kontrastAm, commitSteht } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, breiteSetzen, thema, kontrastAm, commitSteht } = require('./hilfen');
 
 const HINWEIS_WBS = 'Die Factory erkennt die Anwendung an diesem Pfad. Leeren erst, wenn die Factory umgestellt ist.';
 const HINWEIS_ANWENDUNGEN = 'Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie kd:<hash>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als kd:I0007; Boards binden mit applications: [kd].';
@@ -44,6 +44,23 @@ async function speichernUndVorschauPruefen(page, k) {
   await commitSteht(k, vorher + 1);
   expect(k.lies('kanbanD.md')).toBe(vorschau);
   expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
+}
+
+/** R00215: verzögert jede GET-Anfrage der Seite an die API (außer dem Ereignisstrom) um `verzoegerung(ms)` und zählt, wie
+ *  viele noch offen sind — `ruhig()` wartet, bis keine mehr offen ist und der geladene Stand gezeichnet ist. */
+async function langsameApi(page) {
+  let offen = 0, ms = 0;
+  const betrifft = req => req.url().includes('/api/') && !req.url().includes('/api/ereignisse') && req.method() === 'GET';
+  page.on('request', req => { if (betrifft(req)) offen++; });
+  for (const ende of ['requestfinished', 'requestfailed']) page.on(ende, req => { if (betrifft(req)) offen--; });
+  await page.route('**/api/**', async route => {
+    if (betrifft(route.request())) await new Promise(ok => setTimeout(ok, ms));
+    await route.continue();
+  });
+  return {
+    verzoegerung: neu => { ms = neu; },
+    ruhig: () => expect.poll(async () => offen === 0 && await page.evaluate(() => window.kdTest.gezeichnet()), { message: 'die Seite lädt nicht mehr', timeout: 15000 }).toBe(true),
+  };
 }
 
 const zeileInDatei = (k, kuerzel) => k.lies('kanbanD.md').split('\n').find(z => z.trim().startsWith(`${kuerzel}: `)) || '';
@@ -156,6 +173,56 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await page.getByLabel('Repository kd', { exact: true }).fill('');
     await expect(page.locator('#einr-vorschau')).toContainText('kd: {name: kanbanD, repository: ""}');
     await speichernUndVorschauPruefen(page, k);
+  });
+
+  // R00215 AK 8 (PO-Vorschlag): eine Eingabe, die der Betreiber macht, während die Seite nach dem Speichern nachlädt, bleibt stehen
+  test('R00215 AK 8: Eingabe nach „gespeichert“ bleibt stehen, auch wenn das Nachladen 600 ms braucht', async ({ page }) => {
+    const anf = `${r}/Requirements`;
+    k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', [`jopu: {name: JoinPuya, requirements: ${anf}}`]) }));
+    const api = await langsameApi(page);
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/einrichten');
+    const repository = page.getByLabel('Repository jopu', { exact: true });
+    await repository.fill(`${r}/Requirements`);
+    await speichernUndVorschauPruefen(page, k);
+    await api.ruhig();
+    api.verzoegerung(600);
+    // zweites Speichern; sobald die Seite den neuen Stand zeigt (erreichbar, gespeichert), tippt der Betreiber weiter
+    await repository.fill(r);
+    await speichern(page);
+    await expect(zustandVon(page, 'jopu')).toHaveText('erreichbar');
+    await expect(page.getByText('gespeichert', { exact: true })).toBeVisible();
+    await repository.fill(`${r}/neu`);
+    await api.ruhig();
+    await expect(repository).toHaveValue(`${r}/neu`);
+    await expect(zustandVon(page, 'jopu')).toHaveText('noch nicht geprüft');
+    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    await expect(page.getByText('gespeichert', { exact: true })).toHaveCount(0);
+    await speichernUndVorschauPruefen(page, k);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+  });
+
+  test('R00215 AK 8: Eingabe, während das Speichern noch nachlädt, bleibt stehen und ist nicht „gespeichert“', async ({ page }) => {
+    const anf = `${r}/Requirements`;
+    k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', [`jopu: {name: JoinPuya, requirements: ${anf}}`]) }));
+    const api = await langsameApi(page);
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/einrichten');
+    await bereit(page, zeileVon(page, 'jopu'));
+    api.verzoegerung(600);
+    const repository = page.getByLabel('Repository jopu', { exact: true });
+    await repository.fill(r);
+    const vorher = +k.git('rev-list', '--count', 'HEAD');
+    await speichern(page);
+    await commitSteht(k, vorher + 1);
+    await repository.fill(`${r}/neu`);
+    await api.ruhig();
+    await expect(repository).toHaveValue(`${r}/neu`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    await expect(page.getByText('gespeichert', { exact: true })).toHaveCount(0);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}, requirements: ${anf}}`);
+    await speichernUndVorschauPruefen(page, k);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
   });
 
   test('AK 12: scheitert das Speichern (400 doppeltes Kürzel, 500), bleibt der Entwurf, die Meldung steht über den Knöpfen und hat den Fokus', async ({ page }) => {
