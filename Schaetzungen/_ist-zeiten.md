@@ -913,3 +913,7 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1046 Nachladen mit anwendung= | Standard | 0,5-1h | 0,05h | 0,05h | autonom |
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1047 Breite, Ziele, Kontrast, Tastatur | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1048 Probe im echten Programm, Gate, abschließen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1070 Nacharbeit 1: Erneut am Abschnitt nennt die laufende Anwendung, Ansage leeren | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1071 Nacharbeit 1: Wortlaute Standardanwendung, Netzabbruch ohne (0) | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1072 Nacharbeit 1: esc an den Rückfall-Senken, wartetAuf roh | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1073 Nacharbeit 1: Tests S9, AK 2 verzögert, Tab-Folge, Gate | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
