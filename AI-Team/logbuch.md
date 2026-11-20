@@ -1282,3 +1282,38 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #215 | Detailplanung | product-owner | bestanden | 0 min | S2/O2 (331c83cc, Z. 443–444) · claude · opus · Lauf 215-product-owner-3 |
 | 2026-11-20 | #215 | Detailplanung | planer | bestanden | 0 min | R00210 nach Z. 443–444 (cdd72c1a) · claude · opus · Lauf 215-planer-3 |
 | 2026-11-20 | #215 | Detailplanung | gestalter | bestanden | 0 min | D0009 Texte nach Z. 443–444 (a788ba5e) · claude · sonnet · Lauf 215-gestalter-3 |
+| 2026-11-20 | #214 | Auto-Reviews | code-reviewer | befund | 38 min | 5 Muss: Umbenennung über F, 500 Typwechsel, 500 >4 MB Namen, ungetestete Grenzen, Tab im Namen · claude · sonnet · Lauf 214-code-reviewer-1 · 3,15 $ · Karte gesamt 26,27 $ |
+| 2026-11-20 | #225 | Entwicklung | entwickler | bestanden | 59 min | B1035–B1040, Gate 1101/1353/2108, Factory-Rundlauf 23 OK · claude · Lauf 225-entwickler-1 · 6,04 $ · Karte gesamt 9,19 $ |
+| 2026-11-20 | #225 | Auto-Reviews | architektur-reviewer | bestanden | 2 min | kein Muss, 3 Sollte · claude · sonnet · Lauf 225-architektur-reviewer-1 · 0,43 $ · Karte gesamt 9,62 $ |
+| 2026-11-20 | #225 | Auto-Reviews | ux-reviewer | bestanden | 8 min | kein Muss, 1 Sollte (.leer) · claude · sonnet · Lauf 225-ux-reviewer-3 · 1,14 $ · Karte gesamt 10,76 $ |
+| 2026-11-20 | #225 | Auto-Reviews | legacy-reviewer | bestanden | 10 min | kein Muss, 2 Sollte (Rückweg verwirft repository, Altbestand im Korpus) · claude · sonnet · Lauf 225-legacy-reviewer-1 · 1,09 $ · Karte gesamt 11,85 $ |
+| 2026-11-20 | #225 | Auto-Reviews | code-reviewer | bestanden | 14 min | kein Muss, 2 Sollte · claude · sonnet · Lauf 225-code-reviewer-1 · 0,96 $ · Karte gesamt 12,81 $ |
+| 2026-11-20 | #214 | Entwicklung | entwickler | bestanden | 1 h 2 min | Nacharbeit 1: B1–B5, S1/S2, B1049–B1052, Zufallsprobe 1.200 Seeds 0 Verstöße · claude · Lauf 214-entwickler-2 · 12,61 $ · Karte gesamt 38,88 $ |
+| 2026-11-20 | #214 | Auto-Reviews | architekt | bestanden | 2 min | ADR-0032 N7, A00011 auf Ist (f8b60a6d) · claude · opus · Lauf 214-architekt-2 |
+| 2026-11-20 | #214 | Auto-Reviews | planer | bestanden | 1 min | R00208 nach N7 (d21ab9c4) · claude · opus · Lauf 214-planer-2 |
+| 2026-11-20 | #214 | Auto-Reviews | code-reviewer | befund | 17 min | Wiederholung: B1,B3,B4,B5 zu; B2-Rest Muss (500 bei Zwilling über Literal-Präfix) · claude · sonnet · Lauf 214-code-reviewer-2 |
+| 2026-11-20 | #225 | Entwicklung | entwickler | bestanden | 24 min | Rebase auf b9b6dcd0, 4 Sollte, Gate grün · claude · Lauf 225-entwickler-2 · 1,67 $ · Karte gesamt 14,48 $ |
+| 2026-11-20 | #225 | Entwicklertest | entwicklertester | bestanden | 9 min | US-1–5 und Abnahme-Probe im echten Programm · claude · sonnet · Lauf 225-entwicklertester-1 · 1,11 $ · Karte gesamt 15,59 $ |
+| 2026-11-20 | #214 | Entwicklung | entwickler | bestanden | 51 min | Nacharbeit 2: B2-Rest Klasse behoben, Zufallsproben 2×1.200 Seeds 0/0, p95 259 ms · claude · Lauf 214-entwickler-3 |
+| 2026-11-20 | #214 | Auto-Reviews | architekt | bestanden | 0 min | N7.2/N7.6 nachgeführt (2af07e4b) · claude · opus · Lauf 214-architekt-3 |
+| 2026-11-20 | #214 | Auto-Reviews | code-reviewer | bestanden | 17 min | enge Wiederholung: B2-Rest geschlossen, Zufallsproben 0/0 · claude · sonnet · Lauf 214-code-reviewer-3 |
+| 2026-11-20 | #214 | Entwicklertest | entwicklertester | bestanden | 11 min | US-1–7, Abnahme-Probe nie fremd, p95 358 ms · claude · sonnet · Lauf 214-entwicklertester-1 · 1,18 $ · Karte gesamt 40,06 $ |
+
+**Retrospektive #214** (Scheibe A4: Gesamt-Diff der Karte per API, 2026-11-20, 40,06 $ gemessen, ausgeliefert 1c1833a1)
+- **Gut:**
+  - Der architekt hat vor dem Bau gemessen: P2 `diff-tree --stdin` braucht 3 Prozesse und 38 ms bei 300 Commits, gegenüber 900 Prozessen und 2,2 s. Daraus wurde die feste Obergrenze von 15 Prozessen, ein Test belegt sie.
+  - Opus baute in 1 h 7 min.
+  - Die Lastprobe ergab zuletzt p95 259 ms, im Entwicklertest 358 ms bei 19.989 Commits.
+- **Die Zufallsprobe des code-reviewers war der Wendepunkt:** Rund 1.000 Wegwerf-Repositories mit Umbenennungen, Typwechseln, Zwillingen und Merges fanden 5 Muss, die keine handgeschriebene Probe gefunden hatte. Die schwerste war fremder Text als Kartenarbeit, wenn ein Kartenschritt eine von F angelegte Datei umbenennt.
+- **Zwei Nacharbeiten** (12,61 $ und eine weitere auf Opus) bis zur Schleifenbremse. Die zweite fand ihren Restfall nur, weil der entwickler den Erzeuger der Zufallsprobe erweitert hat (`probe_b2rest.py`).
+- **Lehren:**
+  - **Pfadangaben:** Eine Pfadangabe in Git ist nie genau diese Dateien; `foo` trifft `foo/…`, und Git paart Umbenennungen unter den getroffenen Einträgen neu. Die Ausgabe deshalb gegen alle getroffenen Einträge des Bezugslaufs zuordnen, nicht nur gegen die gesuchten.
+  - **Zufallsproben:** Sie belegen nur, was ihr Erzeuger erzeugen kann. Seine Ausschlüsse sind Testlücken.
+  - **Revisionen:** `--end-of-options` beendet die Prüfung „Revision oder Dateiname“ nicht; erst `--` hinter den Revisionen tut das. Fremde Refs (`refs/replace`) mit `GIT_NO_REPLACE_OBJECTS=1` ausschließen.
+- **Befunde außerhalb der Karte:** #229 (dieselbe Neupaarung im Diff je Commit, R00206).
+- **Nebenbei:** `fs.inotify.max_user_instances` hat der Betreiber von 128 auf 512 angehoben; vorher wackelten die Live-Tests im Gate.
+- **Sollte ohne Karte:**
+  - Zerlegung von `Gesamtlauf::lesen`.
+  - Fitness-Test für den einzigen Startort.
+  - A00004/A00006 nachführen.
+  - Gate-Befehl `node --test "e2e/einheit/*.js"` braucht unter Node 20 den Shell-Glob.
