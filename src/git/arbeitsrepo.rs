@@ -10,10 +10,14 @@
 //!   (`GIT_CONFIG_*`, `GIT_EXTERNAL_DIFF`, Pager, `GIT_EXEC_PATH`, `GIT_ASKPASS`, `GIT_SSH_COMMAND`), werden entfernt, die
 //!   System- und die Benutzerkonfiguration abgeschaltet, vor jedem Befehl `core.fsmonitor` und `core.hooksPath` gesperrt.
 //!   Sonst bleibt die Umgebung, auch `GIT_TRACE`.
-//! - **Schalter aus dem Befehl** (ADR-0032 N2.3): wer Diffs erzeugen kann (`log`), bekommt `-c core.quotepath=off` vor
-//!   und `--no-ext-diff --no-textconv --no-color --no-show-signature` nach dem Befehl; der Aufrufer nennt sie nicht und
-//!   kann sie nicht abschalten.
+//! - **Schalter aus dem Befehl** (ADR-0032 N2.3, N4.7): wer Diffs erzeugen kann (`log`, `diff-tree`), bekommt seine
+//!   Schalter aus [`Befehl::schalter`] — `-c core.quotepath=off` (bei `diff-tree` dazu `--literal-pathspecs`) vor und
+//!   `--no-ext-diff --no-textconv --no-color` (bei `log` dazu `--no-show-signature`) nach dem Befehl; der Aufrufer nennt
+//!   sie nicht und kann sie nicht abschalten.
 //! - **Zeitgrenze** je Prozess ([`ZEITGRENZE`]), danach wird seine **Prozessgruppe** beendet — Git samt Kindern.
+//! - **Teil nur an der Bytegrenze** (ADR-0032 N4.4): [`git`] liefert die ganze Ausgabe oder einen Fehler, nie einen Teil;
+//!   nur [`git_teil`] (und nur für Befehle mit [`Befehl::liefert_teil`]) liefert bei Erreichen der Bytegrenze die ersten
+//!   Bytes als [`Teil`] — die Prozessgruppe stirbt dann wie bei der Zeitgrenze.
 //! - Läuft **ohne** die Sperre des Board-Ordners — der Aufrufer ruft es vor `aufgabe_schreiben` (ADR-0032 Punkt 4).
 
 use crate::modell::Anwendung;
@@ -21,6 +25,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::{Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -43,17 +48,9 @@ const KONFIGURATION: &str = "GIT_CONFIG_";
 /// Vor jedem Befehl: kein Dateisystem-Monitor und keine Hooks aus der Konfiguration des Arbeits-Repositorys oder der Umgebung.
 const SPERREN: [&str; 4] = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"];
 
-/// Vor einem Befehl, der Diffs erzeugt: Pfade nicht oktal maskieren.
-const VOR_DIFF: [&str; 2] = ["-c", "core.quotepath=off"];
-/// Nach einem Befehl, der Diffs erzeugt: keine externen Diff-Programme, kein textconv, keine Farben, keine Signaturprüfung
-/// (`log.showSignature` startete sonst `gpg.program`).
-const NACH_DIFF: [&str; 4] = ["--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature"];
-/// Was ein Aufrufer bei einem Befehl, der Diffs erzeugt, nie nennen darf — es höbe einen Schalter aus [`NACH_DIFF`] auf.
-const VERBOTEN_BEI_DIFF: [&str; 4] = ["--ext-diff", "--textconv", "--color", "--show-signature"];
-
-/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff`, `diff-tree`, `merge-base`
-/// — sie kommen mit den Scheiben, die sie brauchen). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
-/// sonst baut das Programm nicht.
+/// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff` und `merge-base` — sie
+/// kommen mit den Scheiben, die sie brauchen). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
+/// [`Befehl::schalter`] und [`Befehl::liefert_teil`], sonst baut das Programm nicht.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Befehl {
     RevParse,
@@ -61,7 +58,19 @@ pub(crate) enum Befehl {
     Log,
     ForEachRef,
     RevList,
+    DiffTree,
 }
+
+/// Die Schalter, die der Startort aus dem Befehl setzt (ADR-0032 N4.7): vor dem Befehl, nach dem Befehl, und was der
+/// Aufrufer nie nennen darf, weil es einen davon aufhöbe.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Schalter {
+    pub vor: &'static [&'static str],
+    pub nach: &'static [&'static str],
+    pub verboten: &'static [&'static str],
+}
+
+const OHNE_SCHALTER: Schalter = Schalter { vor: &[], nach: &[], verboten: &[] };
 
 impl Befehl {
     fn name(self) -> &'static str {
@@ -71,14 +80,35 @@ impl Befehl {
             Befehl::Log => "log",
             Befehl::ForEachRef => "for-each-ref",
             Befehl::RevList => "rev-list",
+            Befehl::DiffTree => "diff-tree",
         }
     }
 
     /// Kann der Befehl Diffs erzeugen (und damit Diff-Treiber, textconv oder Signaturprogramme starten)?
     fn erzeugt_diffs(self) -> bool {
         match self {
-            Befehl::Log => true,
+            Befehl::Log | Befehl::DiffTree => true,
             Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList => false,
+        }
+    }
+
+    /// Tabelle ADR-0032 N4.7: `log` und `diff-tree` maskieren keine Pfade und starten weder externe Diffs noch textconv
+    /// noch Farben; `log` prüft zudem keine Signaturen (`log.showSignature` startete sonst `gpg.program`), `diff-tree`
+    /// liest jede Pfadangabe wörtlich.
+    fn schalter(self) -> Schalter {
+        match self {
+            Befehl::Log => Schalter { vor: &["-c", "core.quotepath=off"], nach: &["--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature"], verboten: &["--ext-diff", "--textconv", "--color", "--show-signature"] },
+            Befehl::DiffTree => Schalter { vor: &["-c", "core.quotepath=off", "--literal-pathspecs"], nach: &["--no-ext-diff", "--no-textconv", "--no-color"], verboten: &["--ext-diff", "--textconv", "--color"] },
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList => OHNE_SCHALTER,
+        }
+    }
+
+    /// Darf ein Lauf dieses Befehls an der Bytegrenze einen Teil liefern ([`git_teil`], ADR-0032 N4.4)? Nur der Befehl,
+    /// dessen Aufrufer einen Teil als unvollständig behandelt; jeder andere Lauf ist ganz oder ein Fehler.
+    pub(crate) fn liefert_teil(self) -> bool {
+        match self {
+            Befehl::DiffTree => true,
+            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList => false,
         }
     }
 }
@@ -158,9 +188,10 @@ pub enum Objekt {
 }
 
 /// Titel (erste Zeile, ungekürzt), Autor (nur der Name), Commit-Datum (ISO 8601 mit Zeitzone des Commits) und Zeilen gegen
-/// den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum.
+/// den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum; dazu der erste Elternteil (ohne beim Wurzel-Commit).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadaten {
+    pub erster_elternteil: Option<String>,
     pub titel: String,
     pub autor: String,
     pub datum: String,
@@ -212,13 +243,14 @@ fn objekt(name: &str, zeile: &str) -> Objekt {
     }
 }
 
-/// Format je Commit: Hash, Autor, Commit-Datum, Nachricht roh — je mit NUL abgeschlossen (die Nachricht kann kein NUL
-/// enthalten, alles andere schon).
-const LOG_FORMAT: &str = "--format=%H%x00%an%x00%cI%x00%B%x00";
+/// Format je Commit: Hash, Elternteile, Autor, Commit-Datum, Nachricht roh — je mit NUL abgeschlossen (die Nachricht kann
+/// kein NUL enthalten, alles andere schon).
+const LOG_FORMAT: &str = "--format=%H%x00%P%x00%an%x00%cI%x00%B%x00";
 
 /// Metadaten der Commits (volle Hashes) in einem Aufruf `log --no-walk`.
 pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
-    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
+    // `-M -l1000` wie die Dateiliste des Diffs (ADR-0032 N4.3): `diff.renameLimit` aus dem Repository ändert nichts
+    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "-l1000", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
     args.extend_from_slice(commits);
     let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
     log_lesen(&aus).ok_or_else(|| Arbeitsrepofehler::Start("Ausgabe von git log unlesbar".into()))
@@ -238,10 +270,12 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
         if !(hash.len() == 40 || hash.len() == 64) || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
             return None;
         }
+        let eltern = text(felder.next()?);
         let autor = text(felder.next()?);
         let datum = text(felder.next()?);
         let nachricht = text(felder.next()?);
-        let mut m = Metadaten { titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
+        let erster_elternteil = eltern.split(' ').next().filter(|e| !e.is_empty()).map(String::from);
+        let mut m = Metadaten { erster_elternteil, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
         if !felder.next()?.is_empty() {
             return None;
         }
@@ -392,12 +426,11 @@ pub(crate) fn git(ordner: &Path, befehl: Befehl, args: &[&str], lauf: Lauf) -> R
 
 /// Die Befehlszeile samt den Schaltern, die aus dem Befehl folgen.
 fn kommando(ordner: &Path, befehl: Befehl, args: &[&str], vorhandene: impl Iterator<Item = OsString>) -> Command {
-    if befehl.erzeugt_diffs() {
-        let verboten = args.iter().take_while(|a| **a != "--end-of-options").find(|a| VERBOTEN_BEI_DIFF.iter().any(|v| a.starts_with(v)));
-        assert!(verboten.is_none(), "{} darf {verboten:?} nicht nennen — die Schalter setzt der Startort", befehl.name());
-    }
-    let (vor, nach): (&[&str], &[&str]) = if befehl.erzeugt_diffs() { (&VOR_DIFF, &NACH_DIFF) } else { (&[], &[]) };
-    gehaertet(ordner, vor, befehl.name(), &[nach, args].concat(), vorhandene)
+    let schalter = befehl.schalter();
+    debug_assert_eq!(befehl.erzeugt_diffs(), !schalter.nach.is_empty(), "{}: wer Diffs erzeugt, trägt Schalter", befehl.name());
+    let verboten = args.iter().take_while(|a| **a != "--end-of-options" && **a != "--").find(|a| schalter.verboten.iter().any(|v| a.starts_with(v)));
+    assert!(verboten.is_none(), "{} darf {verboten:?} nicht nennen — die Schalter setzt der Startort", befehl.name());
+    gehaertet(ordner, schalter.vor, befehl.name(), &[schalter.nach, args].concat(), vorhandene)
 }
 
 /// Die gehärtete Umgebung um einen Befehl; `vorhandene` sind die Namen der Umgebungsvariablen der Instanz.
@@ -426,25 +459,78 @@ pub fn laufen(c: Command, zeitgrenze: Duration) -> Result<Output, Arbeitsrepofeh
 /// Zeitgrenze — auch auf die Ausgaben, die ein Kind von Git außerhalb der Gruppe noch offen hält. Endet Git, endet seine
 /// Gruppe mit ihm; bei Zeitüberschreitung oder zu vielen Zeilen stirbt die ganze Gruppe. Ein abgebrochener Prozess
 /// liefert nie eine (Teil-)Ausgabe.
-fn ausfuehren(mut c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
-    let eingabe = if lauf.eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
-    let mut kind = c.stdin(eingabe).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
+fn ausfuehren(c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
+    match lesend_ausfuehren(c, lauf.eingabe, lauf.zeitgrenze, lauf.hoechstzeilen.map(Grenze::Zeilen))? {
+        Gelesen::Ganz(aus) => Ok(aus),
+        Gelesen::Abgeschnitten(_) => Err(Arbeitsrepofehler::Start("Teil ohne Bytegrenze".into())),
+    }
+}
+
+/// Was ein Lauf mit Bytegrenze liefert (ADR-0032 N4.4): höchstens so viele Bytes, wie die Grenze erlaubt; `abgeschnitten`
+/// heißt, Git hatte mehr — der Aufrufer behandelt die Ausgabe dann als unvollständig und verwirft ihr letztes Stück.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Teil {
+    pub ausgabe: Vec<u8>,
+    pub abgeschnitten: bool,
+}
+
+/// Der Lauf mit Bytegrenze (ADR-0032 N4.4) — nur für Befehle mit [`Befehl::liefert_teil`]; `pfade` gehen wörtlich nach
+/// `--` an Git. Höchstens `bytegrenze` Byte; mehr Ausgabe → die ersten `bytegrenze` Byte als abgeschnittener Teil, die
+/// Prozessgruppe stirbt, ihr Ausstiegsstatus zählt nicht. Ohne Abbruch heißt ein Status ≠ 0 `Start`. Zeitgrenze und Frist
+/// liefern nie einen Teil, auch nicht nach gelesenen Bytes.
+pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
+    assert!(befehl.liefert_teil(), "{} liefert nie einen Teil — git() benutzen", befehl.name());
+    let mut c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
+    if !pfade.is_empty() {
+        c.arg("--").args(pfade.iter().map(|p| std::ffi::OsStr::from_bytes(p)));
+    }
+    let zeitgrenze = grenze_bis(frist)?;
+    AUFRUFE.with(|n| n.set(n.get() + 1));
+    teil_ausfuehren(c, zeitgrenze, bytegrenze)
+}
+
+/// Der innere Lauf von [`git_teil`], ohne Befehl und Zähler.
+fn teil_ausfuehren(c: Command, zeitgrenze: Duration, bytegrenze: usize) -> Result<Teil, Arbeitsrepofehler> {
+    match lesend_ausfuehren(c, None, zeitgrenze, Some(Grenze::Bytes(bytegrenze)))? {
+        Gelesen::Abgeschnitten(ausgabe) => Ok(Teil { ausgabe, abgeschnitten: true }),
+        Gelesen::Ganz(aus) if aus.status.success() => Ok(Teil { ausgabe: aus.stdout, abgeschnitten: false }),
+        Gelesen::Ganz(aus) => Err(Arbeitsrepofehler::Start(String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string())),
+    }
+}
+
+/// Wo das Mitlesen von `stdout` aufhört: nach so vielen Zeilen (Fehler) oder so vielen Bytes (Teil).
+#[derive(Debug, Clone, Copy)]
+enum Grenze {
+    Zeilen(usize),
+    Bytes(usize),
+}
+
+/// Ausgang eines Laufs: ganz, mit Status und beiden Strömen, oder an der Bytegrenze abgeschnitten.
+enum Gelesen {
+    Ganz(Output),
+    Abgeschnitten(Vec<u8>),
+}
+
+/// Der gemeinsame innere Teil von [`git`] und [`git_teil`]: starten, schreiben, mitlesen, warten, Gruppe beenden.
+fn lesend_ausfuehren(mut c: Command, eingabe: Option<&[u8]>, zeitgrenze: Duration, grenze: Option<Grenze>) -> Result<Gelesen, Arbeitsrepofehler> {
+    let art = if eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
+    let mut kind = c.stdin(art).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
     let gruppe = kind.id() as i32;
     // nicht abgewartet: hält ein Kind von Git `stdin` offen, ohne zu lesen, hinge sonst die Anfrage
-    if let Some(text) = lauf.eingabe {
+    if let Some(text) = eingabe {
         let mut ziel = kind.stdin.take();
         let text = text.to_vec();
         std::thread::spawn(move || ziel.as_mut().map(|z| z.write_all(&text)));
     }
     let zuviel = Arc::new(AtomicBool::new(false));
-    let stdout = mitlesen(kind.stdout.take(), lauf.hoechstzeilen.map(|n| (n, zuviel.clone())));
+    let stdout = mitlesen(kind.stdout.take(), grenze.map(|g| (g, zuviel.clone())));
     let stderr = mitlesen(kind.stderr.take(), None);
-    let ende = Instant::now() + lauf.zeitgrenze;
+    let ende = Instant::now() + zeitgrenze;
     let mut pause = Duration::from_millis(1);
     let status = loop {
         if zuviel.load(Ordering::SeqCst) {
             gruppe_beenden(gruppe, &mut kind);
-            return Err(Arbeitsrepofehler::ZuvielAusgabe(lauf.hoechstzeilen.unwrap_or_default()));
+            return ueber_der_grenze(grenze, bis_zum_ende(&stdout, ende)?);
         }
         match kind.try_wait().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))? {
             Some(status) => break status,
@@ -462,12 +548,21 @@ fn ausfuehren(mut c: Command, lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
     // lebt, vergibt der Kern sie nicht neu — lebt keines mehr, trifft das Signal niemanden.
     // SAFETY: `kill` liest nur seine beiden Zahlen
     unsafe { kill(-gruppe, SIGKILL) };
-    let stdout = bis_zum_ende(&stdout, ende)?;
-    let stderr = bis_zum_ende(&stderr, ende)?;
+    let aus = bis_zum_ende(&stdout, ende)?;
     if zuviel.load(Ordering::SeqCst) {
-        return Err(Arbeitsrepofehler::ZuvielAusgabe(lauf.hoechstzeilen.unwrap_or_default()));
+        return ueber_der_grenze(grenze, aus);
     }
-    Ok(Output { status, stdout, stderr })
+    let stderr = bis_zum_ende(&stderr, ende)?;
+    Ok(Gelesen::Ganz(Output { status, stdout: aus, stderr }))
+}
+
+/// Der Lesethread überschritt die Grenze: bei Zeilen ein Fehler, bei Bytes der gelesene Teil.
+fn ueber_der_grenze(grenze: Option<Grenze>, aus: Vec<u8>) -> Result<Gelesen, Arbeitsrepofehler> {
+    match grenze {
+        Some(Grenze::Bytes(_)) => Ok(Gelesen::Abgeschnitten(aus)),
+        Some(Grenze::Zeilen(n)) => Err(Arbeitsrepofehler::ZuvielAusgabe(n)),
+        None => Err(Arbeitsrepofehler::Start("Grenze ohne Grenze".into())),
+    }
 }
 
 /// Die ganze Ausgabe eines Lesethreads, wenn sie bis `ende` vollständig ist; sonst hält ein Kind außerhalb der Gruppe den
@@ -496,8 +591,8 @@ fn gruppe_beenden(gruppe: i32, kind: &mut std::process::Child) {
 }
 
 /// Liest einen Ausgabestrom in einem eigenen Thread leer, damit ein voller Puffer den Prozess nicht anhält; am Ende des
-/// Stroms kommt alles über den Kanal. Mit `grenze` hört er nach so vielen Zeilen auf und meldet es über den Schalter.
-fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(usize, Arc<AtomicBool>)>) -> Receiver<Vec<u8>> {
+/// Stroms kommt alles über den Kanal. Mit `grenze` hört er an ihr auf und meldet es über den Schalter.
+fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(Grenze, Arc<AtomicBool>)>) -> Receiver<Vec<u8>> {
     let (fertig, ergebnis) = mpsc::channel();
     std::thread::spawn(move || {
         let _ = fertig.send(leeren(strom, grenze));
@@ -505,8 +600,9 @@ fn mitlesen(strom: Option<impl Read + Send + 'static>, grenze: Option<(usize, Ar
     ergebnis
 }
 
-/// Liest `strom` bis zum Ende, mit `grenze` höchstens so viele Zeilen.
-fn leeren(strom: Option<impl Read>, grenze: Option<(usize, Arc<AtomicBool>)>) -> Vec<u8> {
+/// Liest `strom` bis zum Ende; mit einer Zeilengrenze höchstens so viele Zeilen (darüber nichts), mit einer Bytegrenze
+/// höchstens so viele Bytes (darüber genau die ersten).
+fn leeren(strom: Option<impl Read>, grenze: Option<(Grenze, Arc<AtomicBool>)>) -> Vec<u8> {
     let mut puffer = vec![];
     let Some(mut s) = strom else { return puffer };
     let mut block = [0u8; 64 * 1024];
@@ -516,12 +612,20 @@ fn leeren(strom: Option<impl Read>, grenze: Option<(usize, Arc<AtomicBool>)>) ->
             break;
         }
         puffer.extend_from_slice(&block[..n]);
-        if let Some((hoechstens, zuviel)) = &grenze {
-            zeilen += block[..n].iter().filter(|b| **b == b'\n').count();
-            if zeilen > *hoechstens {
-                zuviel.store(true, Ordering::SeqCst);
-                return vec![];
+        match &grenze {
+            Some((Grenze::Zeilen(hoechstens), zuviel)) => {
+                zeilen += block[..n].iter().filter(|b| **b == b'\n').count();
+                if zeilen > *hoechstens {
+                    zuviel.store(true, Ordering::SeqCst);
+                    return vec![];
+                }
             }
+            Some((Grenze::Bytes(hoechstens), zuviel)) if puffer.len() > *hoechstens => {
+                puffer.truncate(*hoechstens);
+                zuviel.store(true, Ordering::SeqCst);
+                return puffer;
+            }
+            _ => {}
         }
     }
     puffer
@@ -531,6 +635,9 @@ fn leeren(strom: Option<impl Read>, grenze: Option<(usize, Arc<AtomicBool>)>) ->
 mod tests {
     use super::*;
     use std::ffi::OsStr;
+
+    /// Alle Befehle der abschließenden Liste — ein neuer gehört hier dazu.
+    const ALLE: [Befehl; 6] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree];
 
     fn umgebung(c: &Command) -> Vec<(String, Option<String>)> {
         c.get_envs().map(|(k, v)| (k.to_string_lossy().into(), v.map(|v| v.to_string_lossy().into()))).collect()
@@ -610,6 +717,161 @@ mod tests {
         }
     }
 
+    // R00206 AK 16 (c), ADR-0032 N4.7: `diff-tree` trägt `-c core.quotepath=off --literal-pathspecs` vor und
+    // `--no-ext-diff --no-textconv --no-color` nach dem Befehl, ohne dass der Aufrufer sie nennt — `--no-show-signature`
+    // gehört nur zu `log`. Rot unter den Mutanten „--no-ext-diff weg“ und „--no-textconv weg“ (AK 16 d).
+    #[test]
+    fn schalter_von_diff_tree() {
+        let c = kommando(Path::new("/r"), Befehl::DiffTree, &["-r", "-p", "a", "b"], std::iter::empty());
+        assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.quotepath=off", "--literal-pathspecs", "diff-tree", "--no-ext-diff", "--no-textconv", "--no-color", "-r", "-p", "a", "b"]);
+        for befehl in ALLE {
+            assert_eq!(befehl.erzeugt_diffs(), !befehl.schalter().nach.is_empty(), "{befehl:?}: wer Diffs erzeugt, trägt Schalter");
+        }
+    }
+
+    // R00206 AK 16 (c): bei `diff-tree` hebt der Aufrufer `--ext-diff`, `--textconv`, `--color…` nicht auf — auch nicht
+    // vor `--`; dahinter ist es eine Pfadangabe
+    #[test]
+    fn schalter_von_diff_tree_lassen_sich_nicht_aufheben() {
+        for boese in ["--ext-diff", "--textconv", "--color=always", "--color"] {
+            let fehlschlag = std::panic::catch_unwind(|| kommando(Path::new("/r"), Befehl::DiffTree, &["-p", boese], std::iter::empty()));
+            assert!(fehlschlag.is_err(), "{boese} angenommen");
+        }
+        let c = kommando(Path::new("/r"), Befehl::DiffTree, &["-p", "--", "--ext-diff"], std::iter::empty());
+        assert_eq!(args(&c).last().map(String::as_str), Some("--ext-diff"), "hinter -- ist es eine Pfadangabe");
+    }
+
+    // R00206 AK 16 (c), ADR-0032 N4.7: die Befehlszeile jedes Befehls, der Diffs erzeugt, läuft gegen echtes Git und endet
+    // mit Ausstiegscode 0 — ein Schalter, den ein Befehl verwirft, wird hier rot, nicht im Betrieb
+    #[test]
+    fn befehlszeilen_laufen_gegen_echtes_git() {
+        let (_tmp, r, _, _) = feindlich();
+        let kopf = String::from_utf8(Command::new("git").arg("-C").arg(&r).args(["rev-parse", "HEAD", "HEAD^"]).output().unwrap().stdout).unwrap();
+        let [neu, alt]: [&str; 2] = kopf.split_whitespace().collect::<Vec<_>>().try_into().unwrap();
+        let log = git(&r, Befehl::Log, &["--no-walk", "-p", "--format=%H", "--end-of-options", neu], Lauf::mit(ZEITGRENZE)).unwrap();
+        assert!(log.status.success(), "log: {}", String::from_utf8_lossy(&log.stderr));
+        for args in [&["-r", "-M50%", "-l1000", "--raw", "-z", alt, neu][..], &["-r", "-M50%", "-l1000", "--numstat", "-z", alt, neu], &["-r", "-M50%", "-l1000", "-p", "--submodule=short", alt, neu], &["-r", "--root", "--no-commit-id", "-p", alt]] {
+            let teil = git_teil(&r, Befehl::DiffTree, args, &[b"a.txt"], 1 << 20, Instant::now() + ZEITGRENZE).unwrap_or_else(|f| panic!("{args:?}: {f:?}"));
+            assert!(!teil.abgeschnitten && !teil.ausgabe.is_empty(), "{args:?}");
+        }
+    }
+
+    // ADR-0032 N4.4 Regel 4: nur `diff-tree` darf einen Teil liefern; `git_teil` mit einem anderen Befehl bricht ab
+    #[test]
+    fn nur_diff_tree_liefert_einen_teil() {
+        let teil: Vec<Befehl> = ALLE.into_iter().filter(|b| b.liefert_teil()).collect();
+        assert_eq!(teil, [Befehl::DiffTree]);
+        for befehl in ALLE.into_iter().filter(|b| !b.liefert_teil()) {
+            let fehlschlag = std::panic::catch_unwind(|| git_teil(Path::new("/"), befehl, &[], &[], 10, Instant::now() + ZEITGRENZE));
+            assert!(fehlschlag.is_err(), "{befehl:?} lieferte einen Teil");
+        }
+    }
+
+    fn erzeuge(bytes: usize) -> Command {
+        let mut c = Command::new("head");
+        c.args(["-c", &bytes.to_string(), "/dev/zero"]);
+        c
+    }
+
+    // R00206 AK 9 (Modul), ADR-0032 N4.4 Regel 1: genau `bytegrenze` Byte sind ganz, ein Byte mehr ist ein Teil mit genau
+    // `bytegrenze` Byte — mit der Grenze für einzeln geladene Dateien (20.971.520) und einer kleinen
+    #[test]
+    fn bytegrenze_genau_und_eins_mehr() {
+        for grenze in [20_971_520usize, 1000] {
+            let ganz = teil_ausfuehren(erzeuge(grenze), Duration::from_secs(20), grenze).unwrap();
+            assert_eq!((ganz.ausgabe.len(), ganz.abgeschnitten), (grenze, false), "genau {grenze}");
+            let teil = teil_ausfuehren(erzeuge(grenze + 1), Duration::from_secs(20), grenze).unwrap();
+            assert_eq!((teil.ausgabe.len(), teil.abgeschnitten), (grenze, true), "{grenze} + 1");
+        }
+        let endlos = teil_ausfuehren(Command::new("yes"), Duration::from_secs(20), 4_194_304).unwrap();
+        assert_eq!((endlos.ausgabe.len(), endlos.abgeschnitten), (4_194_304, true), "endlose Ausgabe");
+        assert!(endlos.ausgabe.starts_with(b"y\ny\n"));
+    }
+
+    /// Ein Skript, das `vorher` ausgibt, ein Kind startet (`sleep 300`), beide PIDs in `pids` schreibt und dann `danach` tut.
+    fn mit_kind(tmp: &Path, vorher: &str, danach: &str) -> (Command, PathBuf) {
+        let pids = tmp.join("pids");
+        let skript = tmp.join("skript.sh");
+        std::fs::write(&skript, format!("#!/bin/sh\nsleep 300 &\necho \"$$ $!\" > {}\n{vorher}\n{danach}\n", pids.display())).unwrap();
+        let mut c = Command::new("sh");
+        c.arg(&skript);
+        (c, pids)
+    }
+
+    fn lebt(pid: &str) -> bool {
+        let ende = Instant::now() + Duration::from_secs(2);
+        loop {
+            let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+            let lebt = !stat.is_empty() && !stat.rsplit(')').next().unwrap_or_default().trim_start().starts_with('Z');
+            if !lebt || Instant::now() >= ende {
+                return lebt;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    // ADR-0032 N4.4 Regel 2: an der Bytegrenze stirbt die ganze Prozessgruppe — das Skript und sein Kind
+    #[test]
+    fn bytegrenze_beendet_die_prozessgruppe() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (c, pids) = mit_kind(tmp.path(), "", "exec yes");
+        let start = Instant::now();
+        let teil = teil_ausfuehren(c, Duration::from_secs(20), 1 << 20).unwrap();
+        assert!(teil.abgeschnitten && start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
+        let text = std::fs::read_to_string(&pids).unwrap();
+        let (skript, kind) = text.trim().split_once(' ').unwrap();
+        assert!(!lebt(skript), "das Skript lebt");
+        assert!(!lebt(kind), "das Kind lebt");
+    }
+
+    // ADR-0032 N4.4 Regel 3: die Zeitgrenze liefert nie einen Teil — auch nicht, wenn schon 1 MB gelesen ist; die
+    // Gruppe stirbt auch hier
+    #[test]
+    fn zeitgrenze_liefert_nie_einen_teil() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (c, pids) = mit_kind(tmp.path(), "head -c 1048576 /dev/zero", "sleep 60");
+        let start = Instant::now();
+        assert_eq!(teil_ausfuehren(c, Duration::from_secs(1), 4 << 20), Err(Arbeitsrepofehler::Zeitgrenze));
+        assert!(start.elapsed() < Duration::from_secs(5), "{:?}", start.elapsed());
+        let text = std::fs::read_to_string(&pids).unwrap();
+        let (skript, kind) = text.trim().split_once(' ').unwrap();
+        assert!(!lebt(skript) && !lebt(kind), "Gruppe lebt");
+        // `git()` ebenso: Zeitgrenze ist Err, nie ein Teil
+        let (c, _) = mit_kind(tmp.path(), "head -c 1048576 /dev/zero", "sleep 60");
+        assert_eq!(ausfuehren(c, Lauf::mit(Duration::from_secs(1))).map(|_| ()), Err(Arbeitsrepofehler::Zeitgrenze));
+    }
+
+    // ADR-0032 N4.4: `git()` liefert immer die ganze Ausgabe — mehr als jede Bytegrenze des Diffs —, nie einen Teil
+    #[test]
+    fn git_liefert_nie_einen_teil() {
+        let aus = ausfuehren(erzeuge(25 << 20), Lauf::mit(Duration::from_secs(20))).unwrap();
+        assert_eq!(aus.stdout.len(), 25 << 20);
+        let aus = ausfuehren(erzeuge(25 << 20), Lauf { hoechstzeilen: Some(3), ..Lauf::mit(Duration::from_secs(20)) }).unwrap();
+        assert_eq!(aus.stdout.len(), 25 << 20, "ohne Zeilenumbruch keine Zeilengrenze");
+    }
+
+    // R00206 AK 16 (a) am Startort: `diff-tree -p` im feindlichen Repository startet weder `diff.external` noch
+    // `diff.x.textconv` (mit `.gitattributes`) noch `GIT_EXTERNAL_DIFF`; Gegenproben: `git diff` und `git diff-tree -p
+    // --textconv` direkt in R legen die Marke an — die Probe kann also rot werden
+    #[test]
+    fn diff_tree_im_feindlichen_repository_fuehrt_nichts_aus() {
+        let (_tmp, r, marke, s) = feindlich();
+        let roh = |args: &[&str]| Command::new("git").arg("-C").arg(&r).args(args).env("GIT_EXTERNAL_DIFF", &s).output().unwrap();
+        roh(&["diff", "HEAD^", "HEAD"]);
+        assert!(marke.exists(), "Gegenprobe 1: git diff startet das Skript");
+        std::fs::remove_file(&marke).unwrap();
+        roh(&["diff-tree", "-r", "-p", "--textconv", "HEAD^", "HEAD"]);
+        assert!(marke.exists(), "Gegenprobe 2: diff-tree --textconv startet textconv");
+        std::fs::remove_file(&marke).unwrap();
+        let kopf = String::from_utf8(roh(&["rev-parse", "HEAD", "HEAD^"]).stdout).unwrap();
+        let [neu, alt]: [&str; 2] = kopf.split_whitespace().collect::<Vec<_>>().try_into().unwrap();
+        let teil = git_teil(&r, Befehl::DiffTree, &["-r", "-p", alt, neu], &[], 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
+        let text = String::from_utf8(teil.ausgabe).unwrap();
+        assert!(text.contains("-a\n+b\n"), "{text}");
+        assert!(!text.contains('\u{1b}'), "ohne Farben");
+        assert!(!marke.exists(), "ein Skript lief: {}", std::fs::read_to_string(&marke).unwrap_or_default());
+    }
+
     // AK 14 (b): der Aufrufer kann die Schalter nicht aufheben — `--ext-diff`, `--textconv`, `--color…`, `--show-signature`
     // vor `--end-of-options` sind eine verletzte Invariante
     #[test]
@@ -640,7 +902,7 @@ mod tests {
         std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
         let s = skript.to_str().unwrap().to_string();
         std::fs::write(r.join(".gitattributes"), "* diff=x\n").unwrap();
-        for (k, v) in [("diff.external", s.as_str()), ("diff.x.textconv", s.as_str()), ("log.showSignature", "true"), ("gpg.program", s.as_str()), ("color.ui", "always")] {
+        for (k, v) in [("diff.external", s.as_str()), ("diff.x.command", s.as_str()), ("diff.x.textconv", s.as_str()), ("log.showSignature", "true"), ("gpg.program", s.as_str()), ("color.ui", "always")] {
             git(&["config", k, v]);
         }
         (tmp, r, marke, s)
