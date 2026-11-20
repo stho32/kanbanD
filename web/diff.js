@@ -244,13 +244,19 @@
   /** Text und Knopf einer Datei ohne gezeichneten Patch, je Zustand und Ladestand (FA 5, 7, 8). */
   function hinweisHtml(d, i, zustand, stand) {
     if (stand.laden === 'laeuft') return '<p class="df-hin df-laedt" role="status">Lädt die Änderungen …</p>';
-    if (stand.laden === 'wartet') return `<p class="df-hin df-wartet" role="status">${symbol('sanduhr')}Wartet, bis die andere Datei geladen ist …</p>`;
+    if (stand.laden === 'wartet') return `<p class="df-hin df-wartet" role="status">${symbol('sanduhr')}${wartetText(stand)}</p>`;
     if (stand.laden === 'fehler') return dateiFehlerHtml(stand.fehler, i);
     if (zustand === 'zu_gross') return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}.</p>`;
     if (zustand === 'gross') return `<div class="df-hin"><p>Der Patch ist groß (${tausender(d.plus + d.minus)} Zeilen) und wird erst auf Wunsch geladen.</p>${knopf('Änderungen anzeigen', 'review-nachladen', i)}</div>`;
     if (zustand === 'nachladen') return `<div class="df-hin"><p>Diese Datei war nicht in der ersten Antwort, weil die Antwort zu groß wurde. Sie wird einzeln geladen.</p>${knopf('Nachladen', 'review-nachladen', i)}</div>`;
     if (zustand === 'binaer') return '<p class="df-hin">Binärdatei — der Inhalt wird nicht angezeigt.</p>';
     return '';
+  }
+
+  /** Worauf eine wartende Datei wartet: in „Alle Änderungen“ auf eine Anwendung (`wartetAuf`, maskiertes Kürzel; ADR-0033 N1.2). */
+  function wartetText(stand) {
+    if (stand.wartetAuf) return `Wartet, bis die Anwendung ${stand.wartetAuf} geladen ist …`;
+    return 'Wartet, bis die andere Datei geladen ist …';
   }
 
   /** Fehler beim Nachladen an der Datei (FA 8): die Datei bleibt zu, die Seite lesbar; keine Wiederholung ohne Klick. */
@@ -261,19 +267,21 @@
     return `<div class="df-hin fehl" role="alert">${symbol('achtung')}<p>Die Änderungen dieser Datei ließen sich nicht laden: ${f.text} (${f.status}).</p>${erneut}</div>`;
   }
 
-  /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded`, darunter Merkmale, Hinweis und — offen — der Code. */
-  function dateiHtml(d, i, stand, hinweise, esc) {
+  /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded`, darunter Merkmale, Hinweis und — offen — der Code. `kennung`
+      trägt in „Alle Änderungen“ den Abschnitt mit (`id` „<a>-<i>“, `arg` „<a>:<i>“; ADR-0033 N1.3). */
+  function dateiHtml(d, i, stand, hinweise, esc, kennung = { id: i, arg: i }) {
+    const { id, arg } = kennung;
     const zustand = dateiZustand(d, hinweise);
     const pfad = d.neu ?? d.alt;
     const [wort, klasse] = STATUSWORT[d.status] || [d.status, 'st-mod'];
     const ren = d.status === 'R' ? `<span class="ren">umbenannt ← ${pfadHtml(d.alt, esc)}${d.aehnlichkeit != null ? ` · ${d.aehnlichkeit} %` : ''}</span>` : '';
     const anzeigen = zustand === 'patch' && !stand.offen ? '<span class="mk">anzeigen</span>' : '';
-    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${i}" data-act="review-klappe" data-arg="${i}" aria-expanded="${stand.offen}" aria-controls="rv-dc${i}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${wort}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
+    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${wort}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
     const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${t}</p>`).join('');
     const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc) : '';
-    const inhalt = stand.offen ? saetze + hinweisHtml(d, i, zustand, stand) + code : '';
+    const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand) + code : '';
     const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
-    return `<section class="df" id="rv-d${i}" aria-labelledby="rv-dk${i}"${beschaeftigt}>${kopf}<div class="df-inhalt" id="rv-dc${i}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
+    return `<section class="df" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${kopf}<div class="df-inhalt" id="rv-dc${id}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
   }
 
   /** Die Dateien der Seite: die Insel (ADR-0033 Punkt 4), die beim Neuzeichnen derselbe Knoten bleibt. */
@@ -375,7 +383,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { STATUSWORT, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, aufklappPlanSeite, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);

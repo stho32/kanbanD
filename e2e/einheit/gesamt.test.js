@@ -78,7 +78,7 @@ test('verwaist und merge_ausgelassen: Satz hinter dem Kurzverweis, Ziel „einze
 });
 
 test('ausgelassen: fehlt steht im Abschnitt, unlesbar und anwendung_unbekannt nicht (die stehen einmal je Seite)', () => {
-  const h = g.abschnittHinweise([{ art: 'ausgelassen', verweis: v('c'), zustand: 'fehlt' }, { art: 'ausgelassen', verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' }, { art: 'ausgelassen', verweis: 'kd:ab‮cd', zustand: 'unlesbar' }]);
+  const h = g.abschnittHinweise([{ art: 'ausgelassen', verweis: v('c'), zustand: 'fehlt' }, { art: 'ausgelassen', verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' }, { art: 'ausgelassen', verweis: 'kd:ab\u202Ecd', zustand: 'unlesbar' }]);
   assert.deepStrictEqual(h.ausgelassen.map(e => [e.verweis, e.zustand]), [[v('c'), 'fehlt']]);
   assert.deepStrictEqual(h.saetze, []);
 });
@@ -100,7 +100,7 @@ test('weitereAnwendungen: Kürzel aus dem Hinweis in seiner Reihenfolge, ohne Hi
 });
 
 test('seitenHinweise: unlesbar und anwendung_unbekannt über alle Abschnitte, entdoppelt nach Verweis, in der Reihenfolge des ersten Auftretens', () => {
-  const u = { art: 'ausgelassen', verweis: 'kd:ab‮cd', zustand: 'unlesbar' }, x = { art: 'ausgelassen', verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' };
+  const u = { art: 'ausgelassen', verweis: 'kd:ab\u202Ecd', zustand: 'unlesbar' }, x = { art: 'ausgelassen', verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' };
   const f = { art: 'ausgelassen', verweis: v('c'), zustand: 'fehlt' };
   const seite = g.seitenHinweise([[x, u, f], [u, x], [x]]);
   assert.deepStrictEqual(seite.map(e => [e.verweis, e.zustand]), [[x.verweis, 'anwendung_unbekannt'], [u.verweis, 'unlesbar']]);
@@ -125,9 +125,9 @@ test('leerSatz: nur fehlt oder anwendung_unbekannt → „Zu den Verweisen diese
 
 const antwort2 = { anwendung: 'kd', commits: [commit('a', 'K1'), commit('b', 'K2')], dateien: [folgeDatei([schritt('a'), schritt('b')]), netto('k.txt')], hinweise: [{ art: 'fremd_dazwischen', commits: 1, dateien: 1 }] };
 
-test('summen: über die geladenen Abschnitte — #2 hat 2 Dateien, +5 −2; ladende und gescheiterte zählen nicht', () => {
-  assert.deepStrictEqual(g.summen([{ status: 'da', antwort: antwort2 }, { status: 'laedt' }, { status: 'fehler' }]), { dateien: 2, plus: 5, minus: 2 });
-  assert.deepStrictEqual(g.summen([{ status: 'da', antwort: antwort2 }, { status: 'da', antwort: { ...antwort2, dateien: [netto('x')] } }]), { dateien: 3, plus: 8, minus: 2 });
+test('abschnittSummen: über die geladenen Abschnitte — #2 hat 2 Dateien, +5 −2; ladende und gescheiterte zählen nicht', () => {
+  assert.deepStrictEqual(g.abschnittSummen([{ status: 'da', antwort: antwort2 }, { status: 'laedt' }, { status: 'fehler' }]), { dateien: 2, plus: 5, minus: 2 });
+  assert.deepStrictEqual(g.abschnittSummen([{ status: 'da', antwort: antwort2 }, { status: 'da', antwort: { ...antwort2, dateien: [netto('x')] } }]), { dateien: 3, plus: 8, minus: 2 });
 });
 
 test('ansageText: Zahlen in Worten mit Tausenderpunkt und Einzahl, nie „+“ oder „−“', () => {

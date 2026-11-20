@@ -2,7 +2,9 @@
    nutzbar wie diff.js. Fremder Text geht hier unverändert durch; maskiert wird erst beim Zeichnen (esc, sichtbarHtml). */
 (function (ziel) {
   'use strict';
-  const { kurzVerweis, tausender, zuordnen, STATUSWORT } = typeof module !== 'undefined' ? require('./diff.js') : window;
+  const diff = typeof module !== 'undefined' ? require('./diff.js') : window;
+  const { kurzVerweis, tausender, zuordnen, STATUSWORT } = diff;
+  const { zustandsmarke } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /* ── Folge-Dateien (N1.4): eine Datei als Reihe der Schritte der Aufgabe, ohne Netto-Zustand ── */
 
@@ -105,7 +107,7 @@
   /* ── Summen und Ansage (R00210 FA 3, 4; PO Z. 440) ── */
 
   /** Dateien, plus und minus über die geladenen Abschnitte; ladende, wartende und gescheiterte zählen nicht. */
-  function summen(abschnitte) {
+  function abschnittSummen(abschnitte) {
     const da = abschnitte.filter(a => a.status === 'da').flatMap(a => a.antwort.dateien);
     return { dateien: da.length, plus: da.reduce((n, d) => n + d.plus, 0), minus: da.reduce((n, d) => n + d.minus, 0) };
   }
@@ -151,5 +153,220 @@
     return antwort.find(d => istFolge(d) !== istFolge(alt) && eintragName(d) === eintragName(alt)) || null;
   }
 
-  Object.assign(ziel, { istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, summen, ansageText, naechsteAnfrage, zuordnenGesamt });
+  /* ── Zeichnen (R00210 FA 2–7, 12, 13; Artboard D0009 `#alle-aenderungen`, `#alle-raender`): HTML-Text aus dem Zustand der Seite.
+     Fremder Text nur über `esc` bzw. `sichtbarHtml` in feste Elemente. `ctx`: `esc`, `adresse(verweis)` → `href` der Seite eines
+     Commits, `titelVon(verweis)` → Titel aus der Liste der Commits oder null. ── */
+
+  /** Umschalter „Alle Änderungen | Ein Commit“ (N1.1): zwei echte Verweise, der gezeigte mit `aria-current`; ohne Ziel steht
+      „Ein Commit“ gedämpft ohne `href`, ohne `role` und ohne Tab-Stopp da (PO Z. 442). */
+  function umschalterHtml({ ansicht, alleHref, commitHref, commitZiel }, esc) {
+    const gewaehlt = teil => (ansicht === teil ? ' aria-current="page"' : '');
+    const alle = `<a href="${esc(alleHref)}" id="rv-u-alle" data-act="review-alle-zeigen"${gewaehlt('alle')}>Alle Änderungen</a>`;
+    let commit = '<span class="umsch-aus" id="rv-u-commit">Ein Commit</span>';
+    if (commitHref) commit = `<a href="${esc(commitHref)}" id="rv-u-commit" data-act="review-umschalten" data-arg="${esc(commitZiel)}"${gewaehlt('commit')}>Ein Commit</a>`;
+    return `<nav class="seg umsch" aria-label="Ansicht der Review-Seite">${alle}${commit}</nav>`;
+  }
+
+  /** Ein Verweis auf die Seite eines Commits; ersetzt bei einfachem Klick den Verlaufseintrag (data-act `review-commit`). */
+  function commitVerweis(verweis, inhalt, name, ctx, klasse = '') {
+    const { esc } = ctx;
+    return `<a${klasse ? ` class="${klasse}"` : ''} href="${esc(ctx.adresse(verweis))}" data-act="review-commit" data-arg="${esc(verweis)}" aria-label="${esc(name)}">${inhalt}</a>`;
+  }
+
+  const kurzHtml = (verweis, esc) => `<span class="mono">${diff.sichtbarHtml(kurzVerweis(verweis), esc)}</span>`;
+
+  function commitsWort(n) {
+    if (n === 1) return '1 Commit';
+    return `${tausender(n)} Commits`;
+  }
+
+  /** Kopf eines Abschnitts: „Anwendung <kürzel>“ als h2 (Fokusziel nach „Erneut versuchen“, S3), dazu Zahlen oder Zustandswort. */
+  function abschnittKopfHtml(a, kuerzel, zusatz, esc) {
+    let name = 'Standardanwendung';
+    if (kuerzel) name = `Anwendung ${esc(kuerzel)}`;
+    return `<h2 class="anw" id="rv-a${a}-t" tabindex="-1">${name}${zusatz}</h2>`;
+  }
+
+  /** Ein ausgelassener Verweis wie in der Liste der Commits (R00205 FA 5): Verweis, Symbol, Zustandswort, Hinweis; kein „einzeln
+      ansehen“, denn es gibt keinen Diff. Der Verweis bei `unlesbar` ist fremder Text und geht nur über `sichtbarHtml`. */
+  function ausgelassenHtml(e, esc) {
+    let verweis = diff.sichtbarHtml(e.verweis, esc);
+    if (e.zustand !== 'unlesbar') verweis = diff.sichtbarHtml(kurzVerweis(e.verweis), esc);
+    const marke = zustandsmarke(e) || { wort: e.zustand, hinweis: '' };
+    let hinweis = '';
+    if (marke.hinweis) hinweis = ` <span class="rv-hin">${esc(marke.hinweis)}</span>`;
+    return `<li><span class="mono">${verweis}</span> ${diff.symbol('achtung')}<b class="zs">${esc(marke.wort)}</b>${hinweis}</li>`;
+  }
+
+  function hinweislisteHtml(saetze, ctx) {
+    if (!saetze.length) return '';
+    const { esc } = ctx;
+    const zeilen = saetze.map(h => {
+      if (h.ziel) return `<li><p>${kurzHtml(h.ziel, esc)} ${h.text}</p>${commitVerweis(h.ziel, 'einzeln ansehen', `Commit ${kurzVerweis(h.ziel)} einzeln ansehen`, ctx, 'rv-einzeln')}</li>`;
+      return `<li><p>${esc(h.text)}</p></li>`;
+    }).join('');
+    return `<ul class="rv-hw" aria-label="Hinweise">${zeilen}</ul>`;
+  }
+
+  /** Commit-Liste des Abschnitts: einbezogene als Verweis, verwaiste und Merges als „nicht einbezogen: …“ in sichtbarem Text. */
+  function commitlisteHtml(antwort, ctx) {
+    const { esc } = ctx;
+    const zeile = (verweis, titel, zusatz) => `<li>${commitVerweis(verweis, kurzHtml(verweis, esc), `Commit ${kurzVerweis(verweis)} einzeln ansehen`, ctx, 'rv-cv')}${titel ? `<span class="t">${diff.sichtbarHtml(titel, esc)}</span>` : ''}${zusatz}</li>`;
+    const ein = antwort.commits.map(c => zeile(c.verweis, c.titel, ''));
+    const aus = antwort.hinweise.filter(h => h.art === 'verwaist' || h.art === 'merge_ausgelassen').map(h => {
+      let wort = 'nicht einbezogen: Merge';
+      if (h.art === 'verwaist') wort = 'nicht einbezogen: verwaist';
+      return zeile(h.verweis, ctx.titelVon(h.verweis), `<span class="zs">${wort}</span>`);
+    });
+    if (!ein.length && !aus.length) return '';
+    return `<h3 class="rv-ue">COMMITS <span class="mono">${ein.length + aus.length}</span></h3><ul class="rv-cl" aria-label="Commits der Aufgabe">${ein.join('')}${aus.join('')}</ul>`;
+  }
+
+  /** Dateiliste des Abschnitts: Folge-Dateien mit „Folge · n Commits“ statt Statuswort. */
+  function dateilisteHtml(a, dateien, esc) {
+    const eintraege = dateien.map((d, i) => {
+      let pfad = d.neu ?? d.alt, wort = (STATUSWORT[d.status] || [d.status])[0];
+      if (istFolge(d)) { pfad = d.pfad; wort = folgeWort(d.schritte.length); }
+      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${a}:${i}"><span class="p">${diff.pfadHtml(pfad, esc)}</span><span class="z">${diff.zahlenHtml(d)}</span><span class="s">${wort}</span></button></li>`;
+    }).join('');
+    return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
+  }
+
+  /** Eine Folge-Datei (N1.4): Kopf mit Pfad, „Folge · n Commits“ und Summe, ohne Statuswort; offen der Satz zur Folge, dann je
+      Schritt ein Kopf als Verweis und darunter der Schritt wie eine Datei in B2. */
+  function folgeDateiHtml(d, a, i, stand, ctx, folgeSatz, hinweise, commits) {
+    const { esc } = ctx;
+    const id = `${a}-${i}`, arg = `${a}:${i}`;
+    const kopf = folgeKopf(d);
+    let klappWort = 'zugeklappt';
+    if (stand.offen) klappWort = 'aufgeklappt';
+    const name = `${diff.sichtbarText(d.pfad)}, ${kopf.wort}, +${tausender(d.plus)} −${tausender(d.minus)}, ${klappWort}`;
+    const knopfHtml = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}" aria-label="${esc(name)}">${diff.symbol('pfeil', ' df-pf')}<span class="p">${diff.pfadHtml(d.pfad, esc)}</span><span class="st st-folge">${kopf.wort}</span><span class="z">${diff.zahlenHtml(d)}</span></button></h3>`;
+    let inhalt = '';
+    if (stand.offen) inhalt = `<p class="df-folge" role="note">${folgeSatz}</p>${folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits)}`;
+    let beschaeftigt = '';
+    if (stand.laden === 'laeuft') beschaeftigt = ' aria-busy="true"';
+    let zu = ' hidden';
+    if (stand.offen) zu = '';
+    return `<section class="df df-fo" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${knopfHtml}<div class="df-inhalt" id="rv-dc${id}"${zu}>${inhalt}</div></section>`;
+  }
+
+  function folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits) {
+    const arg = `${a}:${i}`;
+    if (stand.laden) return diff.hinweisHtml(d, arg, 'ohne', stand);
+    const koepfe = schrittKoepfe(d, commits);
+    const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === d.pfad);
+    if (zuGross) return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen.</p>${koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, false)).join('')}`;
+    return nachladenHtml(d, arg, hinweise) + koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, true)).join('');
+  }
+
+  /** Ein Knopf je Folge-Datei, wenn Schritte groß sind oder fehlen: `datei=` lädt alle Schritte zusammen (N1.6). */
+  function nachladenHtml(d, arg, hinweise) {
+    const zustaende = d.schritte.map(s => diff.dateiZustand(s, hinweise));
+    if (!zustaende.some(z => z === 'gross' || z === 'nachladen')) return '';
+    let text = 'Änderungen anzeigen';
+    if (zustaende.includes('nachladen')) text = 'Nachladen';
+    return `<div class="df-hin"><p>Nicht alle Schritte stehen in der ersten Antwort. Die Schritte dieser Datei werden zusammen geladen.</p>${diff.knopf(text, 'review-nachladen', arg)}</div>`;
+  }
+
+  /** Hinweis eines Schritts ohne eigenen Knopf (der Knopf steht einmal an der Datei); sonst wie eine Datei in B2. */
+  function schrittHinweisHtml(s, arg, zustand) {
+    if (zustand === 'gross') return `<p class="df-hin">Der Patch dieses Schritts ist groß (${tausender(s.plus + s.minus)} Zeilen) und wird erst auf Wunsch geladen.</p>`;
+    if (zustand === 'nachladen') return '<p class="df-hin">Dieser Schritt war nicht in der ersten Antwort, weil die Antwort zu groß wurde.</p>';
+    return diff.hinweisHtml(s, arg, zustand, { laden: null });
+  }
+
+  /** Ein Schritt: Kopf als Verweis auf den Commit (Name „Commit <kurz>, <Titel>, <Zustandswort>, +p −m“), darunter Merkmale,
+      Hinweis und Code wie eine Datei in B2. Ohne passenden Commit bleibt der Kopf Text. */
+  function schrittHtml(d, s, k, id, arg, ctx, hinweise, mitRumpf) {
+    const { esc } = ctx;
+    const titel = k.titel === null ? '' : `<span class="fs-t">${diff.sichtbarHtml(k.titel, esc)}</span>`;
+    const inhalt = `<span class="mono">${diff.sichtbarHtml(k.kurz, esc)}</span>${titel}<span class="st ${k.klasse}">${k.wort}</span><span class="z">${diff.zahlenHtml(k)}</span>`;
+    const teile = [`Commit ${k.kurz}`];
+    if (k.titel !== null) teile.push(diff.sichtbarText(k.titel));
+    teile.push(k.wort, `+${tausender(k.plus)} −${tausender(k.minus)}`);
+    let kopf = `<span class="fs-l">${inhalt}</span>`;
+    if (k.ziel) kopf = commitVerweis(k.ziel, inhalt, teile.join(', '), ctx, 'fs-l');
+    let rumpf = '';
+    if (mitRumpf) {
+      const zustand = diff.dateiZustand(s, hinweise);
+      const saetze = diff.merkmalSaetze(s, zustand).map(t => `<p class="df-mm">${t}</p>`).join('');
+      let code = '';
+      if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc);
+      rumpf = saetze + schrittHinweisHtml(s, arg, zustand) + code;
+    }
+    return `<div class="fs" id="rv-d${id}"><h4 class="fs-k">${kopf}</h4>${rumpf}</div>`;
+  }
+
+  /** Eine Datei des Abschnitts: Folge-Datei hier, Netto-Datei wie in B2 mit Kennung des Abschnitts. */
+  function gesamtDateiHtml(d, a, i, stand, ctx, sicht) {
+    if (istFolge(d)) return folgeDateiHtml(d, a, i, stand, ctx, sicht.folgeSatz, sicht.hinweise, sicht.commits);
+    return diff.dateiHtml(d, i, stand, sicht.hinweise, ctx.esc, { id: `${a}-${i}`, arg: `${a}:${i}` });
+  }
+
+  const abschnittSicht = antwort => ({ ...abschnittHinweise(antwort.hinweise), hinweise: antwort.hinweise, commits: antwort.commits });
+
+  /** Eine Datei `i` des geladenen Abschnitts `a` (Neuzeichnen einer Datei in der stehenden Insel). */
+  function abschnittDateiHtml(ab, a, i, ctx) {
+    return gesamtDateiHtml(ab.antwort.dateien[i], a, i, ab.staende[i], ctx, abschnittSicht(ab.antwort));
+  }
+
+  /** Ein Abschnitt je Anwendung (N1.3) in seinem Zustand: lädt, wartet, Fehler oder geladen. */
+  function abschnittHtml(ab, a, ctx) {
+    const { esc } = ctx;
+    const huelle = (inhalt, zusatz = '') => `<section class="rv-abs" id="rv-a${a}" aria-labelledby="rv-a${a}-t"${zusatz}>${inhalt}</section>`;
+    if (ab.status === 'laedt') return huelle(abschnittKopfHtml(a, ab.kuerzel, ' <span class="zw zw-laedt">lädt …</span>', esc) + `<p class="rv-abs-zust df-laedt" role="status">Lädt die Änderungen der Anwendung ${esc(ab.kuerzel)} …</p>`, ' aria-busy="true"');
+    if (ab.status === 'wartet') return huelle(abschnittKopfHtml(a, ab.kuerzel, ` <span class="zw zw-wartet">${diff.symbol('sanduhr')}wartet</span>`, esc) + `<p class="rv-abs-zust df-wartet">${diff.symbol('sanduhr')}Wartet, bis die Anwendung ${esc(ab.wartetAuf)} geladen ist …</p>`);
+    if (ab.status === 'fehler') return huelle(abschnittKopfHtml(a, ab.kuerzel, '', esc) + abschnittFehlerHtml(ab.fehler, a, ab.kuerzel, esc));
+    const antwort = ab.antwort;
+    const sicht = abschnittSicht(antwort);
+    const zahlen = ` <span class="mono anw-z">${commitsWort(antwort.commits.length)} · ${diff.dateienWort(antwort.dateien.length)}</span>`;
+    let leer = '';
+    if (!antwort.commits.length) leer = `<p class="rv-abs-leer"><b>Keine Änderungen zu zeigen.</b> ${leerSatz(antwort.hinweise)}</p>`;
+    let ausgelassen = '';
+    if (sicht.ausgelassen.length) ausgelassen = `<ul class="rv-aus" aria-label="Ausgelassene Verweise">${sicht.ausgelassen.map(e => ausgelassenHtml(e, esc)).join('')}</ul>`;
+    let ganz = '';
+    if (sicht.ganz) ganz = `<p class="rv-ganz" role="note">${sicht.ganz}</p>`;
+    const dateien = antwort.dateien.map((d, i) => gesamtDateiHtml(d, a, i, ab.staende[i], ctx, sicht)).join('');
+    let liste = '';
+    if (antwort.dateien.length) liste = dateilisteHtml(a, antwort.dateien, esc);
+    const rail = `<div class="rv-abs-rail">${commitlisteHtml(antwort, ctx)}${liste}</div>`;
+    return huelle(abschnittKopfHtml(a, antwort.anwendung, zahlen, esc) + leer + hinweislisteHtml(sicht.saetze, ctx) + ausgelassen + `<div class="rv-abs-rumpf">${rail}<div class="rv-abs-haupt">${ganz}${dateien}</div></div>`);
+  }
+
+  /** Fehler eines Abschnitts (R00210 FA 7, UX-Vorprüfung M2): Antwortbudget amber mit Server, Zeitgrenze und andere rot mit Uhr
+      bzw. Achtung; Netzfehler ohne Status; immer „Erneut versuchen“, nie von selbst wiederholt. */
+  function abschnittFehlerHtml(f, a, kuerzel, esc) {
+    const erneut = diff.knopf('Erneut versuchen', 'review-abschnitt-erneut', a);
+    const k = esc(kuerzel);
+    if (f.art === 'antwortbudget') return `<div class="df-hin warn rv-abs-f" role="alert">${diff.symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen der Anwendung ${k} wurden nicht gelesen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
+    let grund = `${esc(f.fehler || 'unbekannter Fehler')} (${f.status})`;
+    if (f.status === 0) grund = 'keine Verbindung zum Programm';
+    let zeichen = 'achtung';
+    if (f.art === 'zeitgrenze') zeichen = 'uhr';
+    return `<div class="df-hin fehl rv-abs-f" role="alert">${diff.symbol(zeichen)}<p>Die Änderungen der Anwendung ${k} ließen sich nicht lesen: ${grund}.</p>${erneut}</div>`;
+  }
+
+  /** Seitenweite ausgelassene Verweise (`unlesbar`, `anwendung_unbekannt`), einmal über den Abschnitten. */
+  function seitenHinweiseHtml(eintraege, esc) {
+    if (!eintraege.length) return '<div id="rv-seite-hw"></div>';
+    return `<div id="rv-seite-hw"><ul class="rv-aus" aria-label="Ausgelassene Verweise der Aufgabe">${eintraege.map(e => ausgelassenHtml(e, esc)).join('')}</ul></div>`;
+  }
+
+  /** Die Insel „Alle Änderungen“ (N1.3): `data-insel="<nr>:alle"`, darin die seitenweiten Hinweise und je Anwendung ein Abschnitt. */
+  function gesamtInselHtml(nr, abschnitte, ctx) {
+    const seite = seitenHinweise(abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise));
+    return `<div class="rv-alle" id="rv-insel" data-insel="${nr}:alle">${seitenHinweiseHtml(seite, ctx.esc)}${abschnitte.map((ab, a) => abschnittHtml(ab, a, ctx)).join('')}</div>`;
+  }
+
+  /** Summenzeile der Leiste: über die geladenen Abschnitte, dazu „· Anwendung <kürzel> lädt noch …“ (N1.3). */
+  function summeHtml(abschnitte, esc) {
+    const s = abschnittSummen(abschnitte);
+    const laedt = abschnitte.find(ab => ab.status === 'laedt');
+    let noch = '';
+    if (laedt) noch = ` · Anwendung ${esc(laedt.kuerzel)} lädt noch …`;
+    return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
+  }
+
+  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt });
 })(typeof module !== 'undefined' ? module.exports : window);
