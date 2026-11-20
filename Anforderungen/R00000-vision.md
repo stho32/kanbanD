@@ -3,7 +3,7 @@ id: R00000
 titel: Vision — kanbanD
 status: Lebend
 angelegt: 2026-09-26
-zuletzt-ergaenzt: 2026-11-19
+zuletzt-ergaenzt: 2026-11-20
 ---
 
 # R00000: Vision — kanbanD
@@ -99,13 +99,12 @@ kanbanD dreht es um: Das Board liegt im Repository, und Git ist sein Gedächtnis
   bis zur Reparatur nur lesbar. Gleichzeitige Schreibzugriffe über Oberfläche und
   API werden nacheinander ausgeführt.
 
-- **Die WBS als Stand, die Aufgaben als Fortschritt.** Ein Board bindet keine bis
-  mehrere Anwendungen; deren WBS bleibt im Repository der Anwendung. kanbanD zeigt
-  sie als eigene Sicht — wie viel ist funktional, was ist in Arbeit, was fehlt — und
-  schreibt Status und Knoten dorthin. Aufgaben wirken auf Knoten: sie legen an,
-  setzen zur Überarbeitung zurück oder verwerfen. Die Phasen nach dem Bau sind
-  Spalten, durch die Aufgaben wandern; ein Zug ist ein Durchlauf. `Braucht`-
-  Beziehungen bleiben echte Abhängigkeiten zwischen Karten.
+- **Die Aufgaben sind der Stand.** Die WBS ist ein Planungswerkzeug im Repository
+  der Anwendung: aus ihr entstehen Aufgaben, danach dient sie nur noch dem
+  Entwickler. kanbanD liest, schreibt und zeigt sie nicht. Ein Board bindet keine
+  bis mehrere Anwendungen (Kürzel und Repository, etwa für Commit-Verweise).
+  Spalten sind Spalten, durch die Aufgaben wandern; `Braucht`-Beziehungen bleiben
+  echte Abhängigkeiten zwischen Karten.
 
 - **Die Arbeit hinter der Karte nachvollziehen.** An einer Karte stehen die Commits,
   die für sie entstanden sind, und die Läufe der Agenten, die an ihr gearbeitet haben.
@@ -203,10 +202,8 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   Nummerierung und Critical Chain mit Puffer.
 - **Kein Projektmanagement-Werkzeug.** Kein Gantt, keine Kapazitäts- und
   Terminplanung. Auswertungen rechnen aus dem, was geschehen ist.
-- **Kein Ersatz für Vision und Anforderungen, keine zweite WBS.** Die Dokumente
-  bleiben Dateien im Repository der Anwendung; das Board zeigt auf sie, statt sie zu
-  kopieren. kanbanD schreibt in die WBS, aber `gruen` entsteht nie aus einer
-  Bewegung — grün setzt, wer geprüft hat.
+- **Kein Ersatz für Vision, Anforderungen und WBS.** Die Dokumente bleiben Dateien
+  im Repository der Anwendung; kanbanD liest und schreibt sie nicht.
 - **Kein Import aus kanbanC.** kanbanD beginnt neu.
 - **Keine weiteren Aufgabenquellen.** E-Mail und Formulare sind kein Vorhaben.
 
@@ -232,3 +229,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-11-15 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ um die Regel zum Archiv ergänzt: Archiviert ist eine Eigenschaft der Aufgabe und gilt für alle Boards, auf denen sie liegt; aus dem Archiv geholt, liegt sie wieder auf allen diesen Boards, ein beim Wiederöffnen genanntes weiteres Board kommt hinzu — Entscheidung des Betreibers vom 2026-11-15 im Wortlaut (Anlass Karte #45; hebt seine Entscheidung vom 2026-11-13 „eine Karte liegt auf genau einem Board“ auf, die nie im Zielbild stand) |
 | 2026-11-18 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ und Leitplanke „Ordneraufbau“: Klassen gelten je Board, ein Board kann eigene Klassen mit eigenen Farben tragen, ohne eigene gelten die Klassen des Ordners als Vorgabe; Personen bleiben ordnerweit — ersetzt „Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm“. Grund: Entscheidung des Betreibers vom 2026-11-18 (Karte #200): ein eigenes Board für eine große Wartungsaufgabe trug die Klassen des Wartungsboards, die dort keinen Sinn ergeben |
 | 2026-11-19 | Zielbild „Die Arbeit hinter der Karte nachvollziehen“ neu (Commits und Agentenläufe an der Karte, lesend als Diff und Verlauf); Nicht-Ziel „Kein Git-Client“ ergänzt: im Arbeits-Repository nur lesen, keine Kommentare, Freigaben oder Merge im Diff; Leitplanke „Die Dateien sind der einzige Speicher“ um die Ausnahme für unversionierte, gezippte Transkripte ergänzt — Entscheidung des Betreibers vom 2026-11-19 (Karten #207, #208, po-entscheidungen Z. 361 und 376) |
+| 2026-11-20 | Zielbild „Die WBS als Stand, die Aufgaben als Fortschritt“ ersetzt durch „Die Aufgaben sind der Stand“, Nicht-Ziel „keine zweite WBS“ geschärft zu „Kein Ersatz für Vision, Anforderungen und WBS“ — Grund (Betreiber): die WBS ist ein Planungswerkzeug; sobald es die Aufgaben gibt, ist sie nur noch etwas für den Entwickler, alle WBS-Funktionen kommen aus kanbanD heraus (Karte #224) |
