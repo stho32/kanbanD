@@ -54,8 +54,10 @@
     });
   }
 
-  const BIDI = /[‪-‮⁦-⁩]/;
-  const STEUER = /[\u0000-\u0008\u000A-\u001F\u007F-\u009F]/;
+  /** Richtungsändernde Zeichen: Einbettungen und Isolierungen, dazu LRM, RLM und ALM (Security-Review #209 S1). */
+  const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+  /** Steuerzeichen außer Tab, dazu Unsichtbares: weiches Trennzeichen, Nullbreiten, Zeilen- und Absatztrenner, Wortverbinder, BOM. */
+  const STEUER = /[\u0000-\u0008\u000A-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]/;
   const code = z => 'U+' + z.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
   /** Bildzeichen der Steuerzeichen: U+2400 + Code für 0–31, ␡ für DEL; C1-Zeichen haben keins und stehen nur mit Code. */
   const bildzeichen = z => {
@@ -66,7 +68,7 @@
   };
 
   /** Fremder Text → Teile; Unsichtbares wird sichtbar, nie entfernt (ADR-0033 Punkt 8, „Trojan Source“): Bidi-Steuerzeichen als
-      Marke `⟨U+202E⟩`, Steuerzeichen außer Tab als Bildzeichen mit Code, ein `\r` am Ende als `␍`. */
+      Marke `⟨U+202E⟩`, Steuerzeichen außer Tab als Bildzeichen mit Code (ohne Bildzeichen nur der Code), ein `\r` am Ende als `␍`. */
   function sichtbarTeile(text) {
     const teile = [];
     let rest = '';
@@ -170,6 +172,9 @@
     }).join('');
   }
 
+  /** Fremder Text für ein Attribut (`title`, `aria-label`): die Marken als Text, nie das Zeichen selbst. */
+  const sichtbarText = text => sichtbarTeile(String(text)).map(t => t.text).join('');
+
   /** Pfad mit Ordner (gedämpft) und Name (fett), beide sichtbar gemacht. */
   function pfadHtml(pfad, esc) {
     const schnitt = pfad.lastIndexOf('/') + 1;
@@ -209,7 +214,7 @@
   /** Der Code-Bereich einer offenen Datei: Blöcke zu 500 Zeilen mit `content-visibility: auto` (ADR-0033 Punkt 5), je Block
       eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. */
   function codeHtml(patch, pfad, esc) {
-    const name = `Änderungen in ${esc(sichtbarTeile(pfad).map(t => t.text).join(''))}`;
+    const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
     const teile = bloecke(patchZeilen(patch)).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}">${teile.join('')}</div>`;
   }
@@ -267,17 +272,24 @@
 
   const BAND_VERWAIST = 'Dieser Commit ist verwaist: Kein Zweig führt zu ihm. Sein Diff bleibt lesbar. Nach einem Rebase mit ersetzen nachziehen; im Gesamtbild der Aufgabe zählt er nicht mit.';
 
-  /** Commit-Kopf (FA 5): Kurz-Hash, Zweige oder „auf keinem Zweig“, voller Titel als h2, Autor, Datum, Zeilen und Dateien. */
+  /** Zweige des Commit-Kopfs: die Namen der Antwort, sichtbar gemacht statt bereinigt wie in der Liste (Security-Review #209 S2);
+      der Lesetext im Numerus der Zahl aller Zweige wie `zustandImNamen` in commits.js. */
+  function zweigeHtml(eintrag, esc) {
+    const namen = [...(eintrag.zweige || []), ...(eintrag.entfernte_zweige || [])];
+    const weitere = eintrag.zweige_weitere || 0;
+    const lesetext = namen.length + weitere === 1 ? 'auf Zweig: ' : 'auf Zweigen: ';
+    return `<span class="vh">${lesetext}</span>${namen.map(n => `<span class="rv-br">${sichtbarHtml(n, esc)}</span>`).join('')}${weitere ? `<span class="rv-kz">+${weitere}</span>` : ''}`;
+  }
+
+  /** Commit-Kopf (FA 5): Kurz-Hash, Zweige oder „auf keinem Zweig“, voller Titel als h2, Autor, Datum, Zeilen und Dateien; fremder
+      Text sichtbar gemacht (ADR-0033 Punkt 8). */
   function commitKopfHtml(c, anwendung, eintrag, esc) {
     const kurz = (anwendung ? `${anwendung}:` : '') + c.hash.slice(0, 7);
     let zweige = '';
     if (eintrag && eintrag.zustand === 'verwaist') zweige = '<span class="rv-kz">auf keinem Zweig</span>';
-    else if (eintrag && eintrag.zustand === 'auf_zweig') {
-      const z = zeilenwerte(eintrag).zweige;
-      zweige = `<span class="vh">auf Zweigen: </span>${[...z.lokal, ...z.entfernt].map(n => `<span class="rv-br">${esc(n)}</span>`).join('')}${z.nichtAufgefuehrt ? `<span class="rv-kz">+${z.nichtAufgefuehrt}</span>` : ''}`;
-    }
+    else if (eintrag && eintrag.zustand === 'auf_zweig') zweige = zweigeHtml(eintrag, esc);
     const band = eintrag && eintrag.zustand === 'verwaist' ? `<p class="rv-band" role="note">${BAND_VERWAIST}</p>` : '';
-    return `<section class="rv-commit"><div class="z1"><span class="mono">${esc(kurz)}</span><span class="rv-zweige">${zweige}</span></div><h2 id="rv-ctitel" tabindex="-1">${esc(c.titel)}</h2><p class="m">${esc(c.autor)} · <span title="${esc(c.datum)}">${esc(datumText(c.datum))}</span> · ${zahlenHtml(c)} · ${dateienWort(c.dateien)}</p>${band}</section>`;
+    return `<section class="rv-commit"><div class="z1"><span class="mono">${esc(kurz)}</span><span class="rv-zweige">${zweige}</span></div><h2 id="rv-ctitel" tabindex="-1">${sichtbarHtml(c.titel, esc)}</h2><p class="m">${sichtbarHtml(c.autor, esc)} · <span title="${esc(sichtbarText(c.datum))}">${sichtbarHtml(datumText(c.datum), esc)}</span> · ${zahlenHtml(c)} · ${dateienWort(c.dateien)}</p>${band}</section>`;
   }
 
   /** Blättern (FA 3): fehlende Nachbarn hinterlassen leeren Platz, nie einen deaktivierten Knopf. */

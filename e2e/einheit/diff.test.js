@@ -80,7 +80,7 @@ test('sichtbarTeile: Bidi wird zur Marke ⟨U+202E⟩, ESC zu „␛ U+001B“, 
   }
   assert.deepStrictEqual(sichtbarTeile('a\rb'), [{ text: 'a' }, { marke: 'steuer', code: 'U+000D', text: '␍ U+000D' }, { text: 'b' }], '\\r mitten in der Zeile mit Code');
   assert.deepStrictEqual(sichtbarTeile('\u0000\u007F'), [{ marke: 'steuer', code: 'U+0000', text: '␀ U+0000' }, { marke: 'steuer', code: 'U+007F', text: '␡ U+007F' }]);
-  assert.deepStrictEqual(sichtbarTeile('nur Text '), [{ text: 'nur Text ' }]);
+  assert.deepStrictEqual(sichtbarTeile('nur Text '), [{ text: 'nur Text ' }]);
   assert.deepStrictEqual(sichtbarTeile(''), []);
 });
 
@@ -151,3 +151,12 @@ test('zuordnen: aus einer Antwort mit mehreren gleichnamigen Dateien die mit gle
   assert.strictEqual(zuordnen(liste, 3, antwort).patch, 'p3');
   assert.strictEqual(zuordnen(liste, 0, antwort), null, 'nicht in der Antwort');
 });
+
+// Nacharbeit 1 (Security-Review #209 S1): jedes unsichtbare oder richtungsändernde Zeichen wird sichtbar, keins entfernt
+for (const [c, marke] of [[0x200E, 'bidi'], [0x200F, 'bidi'], [0x061C, 'bidi'], [0x200B, 'steuer'], [0x200C, 'steuer'], [0x200D, 'steuer'], [0x2028, 'steuer'], [0x2029, 'steuer'], [0x2060, 'steuer'], [0xFEFF, 'steuer'], [0x00AD, 'steuer']]) {
+  const code = 'U+' + c.toString(16).toUpperCase().padStart(4, '0');
+  test(`Nacharbeit 1 (Security S1): ${code} wird zur Marke „${marke}“ mit Code, der Text davor und danach bleibt`, () => {
+    const text = marke === 'bidi' ? `⟨${code}⟩` : code;
+    assert.deepStrictEqual(sichtbarTeile('a' + String.fromCodePoint(c) + 'b'), [{ text: 'a' }, { marke, code, text }, { text: 'b' }]);
+  });
+}

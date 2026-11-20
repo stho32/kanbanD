@@ -136,3 +136,30 @@ test('Nacharbeit 1 (Code S1): Kopf „Die Liste der Commits ließ sich nicht les
   assert.strictEqual(d.listeFehlerText({ status: 0, fehler: 'x' }), 'Die Liste der Commits ließ sich nicht lesen: keine Verbindung zum Programm (0).');
   assert.strictEqual(d.listeFehlerText({ status: 503, fehler: null }), 'Die Liste der Commits ließ sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden (503).');
 });
+
+test('Nacharbeit 1 (Security S2): Titel, Autor und Zweige im Commit-Kopf zeigen Bidi als Marke; das title-Attribut trägt die Marke als Text, nie das Zeichen', () => {
+  const RLO = '‮';
+  const c = { hash: 'c'.repeat(40), titel: `Titel${RLO}fdp.exe`, autor: `Ada${RLO}x`, datum: `2026-03-03T09:00:00+00:00${RLO}`, plus: 1, minus: 0, dateien: 1 };
+  const html = d.commitKopfHtml(c, 'kd', { zustand: 'auf_zweig', zweige: [`zweig${RLO}a`] }, esc);
+  assert.ok(!html.includes(RLO), 'kein U+202E im HTML');
+  const titel = /<h2 id="rv-ctitel" tabindex="-1">(.*?)<\/h2>/.exec(html)[1];
+  assert.ok(titel.includes('mk-bidi') && ohneTags(titel) === 'Titel⟨U+202E⟩fdp.exe', titel);
+  const autor = /<p class="m">(.*?) · <span title/.exec(html)[1];
+  assert.ok(autor.includes('mk-bidi') && ohneTags(autor) === 'Ada⟨U+202E⟩x', autor);
+  const zweig = /<span class="rv-br">(.*?)<\/span><\/span>/.exec(html)[1];
+  assert.ok(zweig.includes('mk-bidi') && ohneTags(zweig).endsWith('zweig⟨U+202E⟩a'), zweig);
+  assert.ok(html.includes('title="2026-03-03T09:00:00+00:00⟨U+202E⟩"'), 'title mit Marke als Text');
+  // fremder Text bleibt maskiert
+  const boese = d.commitKopfHtml({ ...c, titel: BOESE, autor: BOESE, datum: BOESE }, 'kd', { zustand: 'auf_zweig', zweige: [BOESE] }, esc);
+  assert.ok(!boese.includes('<img') && !boese.includes('"x"'));
+});
+
+test('Nacharbeit 1 (Rechtschreibung S1): Lesetext „auf Zweig: “ bei genau einem Zweig, „auf Zweigen: “ ab zwei (auch mit nicht aufgeführten)', () => {
+  const c = { hash: 'c'.repeat(40), titel: 't', autor: 'a', datum: '2026-03-03T09:00:00+00:00', plus: 1, minus: 0, dateien: 1 };
+  const lesetext = (zweige, mehr = {}) => /<span class="vh">(.*?)<\/span>/.exec(d.commitKopfHtml(c, 'kd', { zustand: 'auf_zweig', zweige, ...mehr }, esc))[1];
+  assert.strictEqual(lesetext(['main']), 'auf Zweig: ');
+  assert.strictEqual(lesetext([], { entfernte_zweige: ['origin/main'] }), 'auf Zweig: ');
+  assert.strictEqual(lesetext(['main', 'karte/1']), 'auf Zweigen: ');
+  assert.strictEqual(lesetext(['main'], { entfernte_zweige: ['origin/main'] }), 'auf Zweigen: ');
+  assert.strictEqual(lesetext(['main'], { zweige_weitere: 1 }), 'auf Zweigen: ');
+});

@@ -672,8 +672,10 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     const zeilen = await text.locator('tr').evaluateAll(z => z.map(r => [...r.children].map(c => c.textContent)));
     const nummern = zeilen.filter(z => z.length === 4).map(z => [z[0], z[1], z[2]]);
     expect(nummern.slice(0, 7)).toEqual([['1', '1', ''], ['2', '', '−'], ['', '2', '+'], ['3', '3', ''], ['4', '4', ''], ['5', '5', '']].concat([nummern[6]]));
-    const trenner = zeilen.find(z => z[3] && z[3].includes(' '));
+    // U+2028 bleibt in einer Zeile und steht seit Security-Review #209 S1 als Marke da
+    const trenner = zeilen.find(z => z[3] && z[3].includes('mit Trenner'));
     expect(trenner.slice(0, 3)).toEqual(['', '20', '+']);
+    expect(trenner[3]).toBe('hinzugefügt: zeile 20 U+2028 mit Trenner');
     const ohneEnde = zeilen.find(z => z[3] === '\\ No newline at end of file');
     expect(ohneEnde.slice(0, 3)).toEqual(['', '', '']);
     await expect(page.locator('h3 .df-k')).toHaveCount(13);
