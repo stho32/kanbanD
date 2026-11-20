@@ -904,3 +904,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1037 Wurzel aus dem Startordner | Standard | 0,3-0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1038 API: Register in beiden Formen annehmen und zeigen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1039 Einrichten: Repository je Anwendung und in den Quellen | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1040 Legacy-Probe JoinPuya, Factory-Rundlauf, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
