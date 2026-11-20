@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, angabe_passt, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, nicht_zugeordnet_im_bezug, patches_zuordnen, roh_lesen, zaehler_bis, zahlen_im_bezug, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, angabe_passt, aus_stuecken, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, nicht_zugeordnet_im_bezug, patches_zuordnen, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -149,26 +149,38 @@ fn gestartet(lauf: Result<arbeitsrepo::Teil, Arbeitsrepofehler>) -> Result<Optio
     }
 }
 
-/// Der Rückfall ohne Pfadangabe (N7.8): die Zähler bis zum letzten der `ziele` (höchstens 20 MB), der Patch bis 8 MB,
-/// die Stücke zugeordnet über die ganze Liste — streng, wenn sie vollständig ist. Liegt ein Stück hinter 8 MB: `gross`
-/// und `zu_gross_zum_anzeigen`. Ist die Liste abgeschnitten und die Zuordnung scheitert, ist die Datei nicht einzeln
-/// ladbar.
+/// Der Rückfall ohne Pfadangabe (N7.8): der Patch bis 8 MB, die Stücke zugeordnet über die ganze Liste — streng, wenn
+/// sie vollständig ist; Zähler und Fassung aus den Stücken ([`aus_stuecken`]). Liegt ein Stück hinter 8 MB: `gross` und
+/// `zu_gross_zum_anzeigen`, die Zähler dann aus dem Zähler-Lauf ohne Angabe (bis 20 MB). Ist die Liste abgeschnitten
+/// und die Zuordnung scheitert, ist die Datei nicht einzeln ladbar.
 fn ohne_angabe(wurzel: &Path, vergleich: Vergleich, rohe: Vec<Rohdatei>, liste_abgeschnitten: bool, ziele: &[usize], fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
-    let letzter = ziele[ziele.len() - 1];
-    let bis = zaehler_bis(rohe[..=letzter].iter().map(|r| r.pfade.as_slice())).min(GRENZE_DATEILISTE_EINZELN);
-    let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &[], bis, frist)?;
-    let zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
-    if zahlen.len() <= letzter || ziele.iter().any(|&i| zahlen[i].1 != rohe[i].pfade) {
-        return Err(Inhaltsfehler::Form("Zähler des Laufs ohne Pfadangabe passen nicht zur Dateiliste".into()));
-    }
-    let mut dateien: Vec<Diffdatei> = rohe.into_iter().zip(zahlen.into_iter().map(|z| z.0).map(Some).chain(std::iter::repeat(None))).map(|(r, z)| diffdatei(r, z.flatten())).collect();
+    // Zähler erst aus den Stücken: vorerst als Text, damit die Zuordnung die ganzen Stücke behält
+    let mut dateien: Vec<Diffdatei> = rohe.into_iter().map(|r| diffdatei(r, Some((0, 0)))).collect();
     let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &[], GRENZE_EINZELN, frist)?;
     let alle: Vec<usize> = (0..dateien.len()).collect();
-    let zuordnung = patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, fassung);
+    let zuordnung = patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, Fassung::Stuecke);
+    drop(patch);
     if !im_bezug_zugeordnet(zuordnung, liste_abgeschnitten).map_err(Inhaltsfehler::Form)? {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten: true });
     }
-    let dateien: Vec<Diffdatei> = dateien.into_iter().enumerate().filter(|(i, _)| ziele.binary_search(i).is_ok()).map(|(_, d)| d).collect();
+    let letzter = ziele[ziele.len() - 1];
+    dateien.truncate(letzter + 1);
+    let mut dateien: Vec<(usize, Diffdatei)> = dateien.into_iter().enumerate().filter(|(i, _)| ziele.binary_search(i).is_ok()).collect();
+    for (_, d) in dateien.iter_mut().filter(|(_, d)| !d.gross) {
+        aus_stuecken(d, fassung);
+    }
+    if dateien.iter().any(|(_, d)| d.gross) {
+        let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
+        let zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
+        for (i, d) in dateien.iter_mut().filter(|(_, d)| d.gross) {
+            let Some((z, pfade)) = zahlen.get(*i) else { return Err(Inhaltsfehler::Form("Zähler: der Lauf ohne Pfadangabe endet vor der Datei".into())) };
+            if *pfade != d.pfade_roh {
+                return Err(Inhaltsfehler::Form(format!("Zähler passen nicht zur Datei „{}“", d.name())));
+            }
+            (d.plus, d.minus, d.binaer) = (z.map_or(0, |z| z.0), z.map_or(0, |z| z.1), z.is_none());
+        }
+    }
+    let dateien: Vec<Diffdatei> = dateien.into_iter().map(|(_, d)| d).collect();
     let hinweise = dateien.iter().filter(|d| d.gross).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }).collect();
     Ok(Diffinhalt { dateien, hinweise })
 }

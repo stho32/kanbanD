@@ -440,11 +440,23 @@ pub fn angabe_passt(angabe: &[Vec<u8>]) -> bool {
     angabe.iter().map(|p| p.len() + 1 + 8).sum::<usize>() <= GRENZE_DATEILISTE
 }
 
-/// Bis zu wie vielen Byte der Zähler-Lauf (`--numstat -z`) ohne Pfadangabe gelesen werden muss, damit die Einträge mit
-/// diesen Pfaden (die ersten der Dateiliste, in ihrer Reihenfolge) ganz darin stehen: je Eintrag höchstens zwei Zahlen zu
-/// 20 Ziffern, zwei Tabulatoren, ein NUL für den leeren Pfad einer Umbenennung, dazu je Pfad Länge + NUL.
-pub fn zaehler_bis<'a>(eintraege: impl Iterator<Item = &'a [Vec<u8>]>) -> usize {
-    eintraege.map(|pfade| 43 + pfade.iter().map(|p| p.len() + 1).sum::<usize>()).sum()
+/// Zähler und Fassung einer Datei aus ihren ganzen Stücken (`stuecke`, Rückfall ohne Pfadangabe, ADR-0032 N7.8) — wie
+/// `--numstat`: je Zeile `+` bzw. `-` in den Hunks aller ihrer Stücke (beim Typwechsel beider); binär, wenn ein Stück
+/// `Binary files … differ` statt Hunks trägt. Der Zähler-Lauf ohne Pfadangabe rechnet alle Dateien, bevor er schreibt,
+/// und kostet bei großen Commits Sekunden; das Stück hat die Datei schon. Danach trägt die Datei nur noch ihre `fassung`
+/// (N5.1 Regel 7). Ohne Stücke bleibt sie unverändert.
+pub fn aus_stuecken(d: &mut Diffdatei, fassung: Fassung) {
+    let Some(ganz) = d.stuecke.take() else { return };
+    let teile = stuecke(&ganz);
+    let binaer = teile.iter().any(|s| hunks(s).is_empty() && zeile(s, b"Binary files ").is_some());
+    let inhalt = zusammen(teile.iter().map(|s| hunks(s)));
+    let zaehle = |zeichen: u8| inhalt.split(|b| *b == b'\n').filter(|z| z.first() == Some(&zeichen)).count() as u64;
+    (d.binaer, d.plus, d.minus) = if binaer { (true, 0, 0) } else { (false, zaehle(b'+'), zaehle(b'-')) };
+    match fassung {
+        Fassung::Stuecke => d.stuecke = Some(ganz),
+        Fassung::Patch if !binaer && !inhalt.is_empty() => d.patch = Some(text(inhalt)),
+        Fassung::Patch => {}
+    }
 }
 
 /// Was aus der Zuordnung über einen Bezug wird (ADR-0032 N7.7): gelungen → `Ok(true)`. Ist der Bezug abgeschnitten,
@@ -914,18 +926,31 @@ mod tests {
         assert!(!angabe_passt(&p(GRENZE_DATEILISTE / 16 + 1, 7)));
     }
 
-    // R00211 AK 8: die Zähler bis zum Eintrag `ziel` stehen ganz in den ersten `zaehler_bis` Byte des Laufs ohne
-    // Pfadangabe — auch mit den längsten Zahlen und bei Umbenennungen (`plus\tminus\t\0alt\0neu\0`) —, der nächste nicht
+    // R00211 AK 8 (N7.8): im Rückfall kommen Zähler und Fassung aus den Stücken, gleich `--numstat` (am echten Git
+    // gemessen): Typwechsel `f` (Datei → Verweis) 1 plus, 3 minus aus beiden Stücken; `g` ohne Zeilenende am Schluss 1
+    // plus (die Zeile `\ No newline` zählt nicht); binär 0/0 ohne Patch; JSON nur `patch`, `format=patch` nur `stuecke`
     #[test]
-    fn zaehler_bis_zum_ziel() {
-        let p = |n: &[&str]| n.iter().map(|x| x.as_bytes().to_vec()).collect::<Vec<_>>();
-        let eintraege = [p(&["a"]), p(&["alt/b", "neu/b"]), p(&["c"])];
-        let max = u64::MAX.to_string();
-        let lauf = format!("{max}\t{max}\ta\0{max}\t{max}\t\0alt/b\0neu/b\0{max}\t{max}\tc\0");
-        let grenze = zaehler_bis(eintraege.iter().take(2).map(Vec::as_slice));
-        let gelesen = zahlen_mit_pfaden(&lauf.as_bytes()[..grenze.min(lauf.len())]).unwrap();
-        assert_eq!(gelesen.len(), 2, "beide Einträge bis zum Ziel ganz, der dritte nicht mehr");
-        assert_eq!(gelesen[1].1, eintraege[1]);
+    fn zaehler_und_fassung_aus_stuecken() {
+        let mut f = neu("f", "T");
+        let ff = format!("{}{}", stueck(&f, 0, "@@ -1,3 +0,0 @@\n-a\n-b\n-c\n"), stueck(&f, 1, "@@ -0,0 +1 @@\n+ziel\n\\ No newline at end of file\n"));
+        let mut g = neu("g", "M");
+        let gg = stueck(&g, 0, "@@ -1 +1,2 @@\n x\n+y\n\\ No newline at end of file\n");
+        let mut b = neu("bin", "M");
+        let bb = format!("diff --git a/bin b/bin\nindex {}..{} 100644\nBinary files a/bin and b/bin differ\n", b.blobs.0, b.blobs.1);
+        for (d, ganz) in [(&mut f, &ff), (&mut g, &gg), (&mut b, &bb)] {
+            d.stuecke = Some(ganz.as_bytes().to_vec());
+        }
+        let (mut f2, mut g2) = (f.clone(), g.clone());
+        aus_stuecken(&mut f, Fassung::Patch);
+        aus_stuecken(&mut g, Fassung::Patch);
+        aus_stuecken(&mut b, Fassung::Patch);
+        assert_eq!([(f.plus, f.minus, f.binaer), (g.plus, g.minus, g.binaer), (b.plus, b.minus, b.binaer)], [(1, 3, false), (1, 0, false), (0, 0, true)]);
+        assert_eq!((f.patch.as_deref(), f.stuecke.is_none()), (Some("@@ -1,3 +0,0 @@\n-a\n-b\n-c\n@@ -0,0 +1 @@\n+ziel\n\\ No newline at end of file\n"), true));
+        assert_eq!((b.patch.as_deref(), b.stuecke.is_none()), (None, true));
+        aus_stuecken(&mut f2, Fassung::Stuecke);
+        aus_stuecken(&mut g2, Fassung::Stuecke);
+        assert_eq!((f2.plus, f2.minus, f2.patch.as_deref(), f2.stuecke.as_deref()), (1, 3, None, Some(ff.as_bytes())));
+        assert_eq!((g2.plus, g2.minus, g2.stuecke.as_deref()), (1, 0, Some(gg.as_bytes())));
     }
 
     // R00211 AK 7 (ADR-0032 N7.8): ein Lauf mit Pfadangabe ist kein Beleg — paart Git dort eine gleich bewertete Quelle
