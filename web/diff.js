@@ -2,6 +2,7 @@
    Fremder Text geht hier unverändert durch; maskiert wird erst beim Zeichnen (esc). */
 (function (ziel) {
   'use strict';
+  const { ZUSTANDSWOERTER, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
   const MIT_DIFF = ['auf_zweig', 'verwaist'];
@@ -136,6 +137,198 @@
     const position = dateien.slice(0, i).filter(d => gleich(d, dateien[i])).length;
     return antwort.filter(d => gleich(d, dateien[i]))[position] || null;
   }
+
+  /* ── Zeichnen (R00207 FA 2–8, 12; Artboard D0009 `#diff-fenster`, `#diff-raender`): HTML-Text aus dem Zustand der Seite.
+     Aller fremde Text geht durch `esc` in feste Elemente (ADR-0033 Punkt 8), sichtbar gemachte Zeichen als Marke. ── */
+
+  const tausender = n => String(Number(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const dateienWort = n => (n === 1 ? '1 Datei' : `${tausender(n)} Dateien`);
+  const STATUSWORT = { A: ['neu', 'st-neu'], M: ['geändert', 'st-mod'], D: ['gelöscht', 'st-weg'], R: ['umbenannt', 'st-ren'], T: ['Typ geändert', 'st-mod'] };
+  const SYMBOLE = {
+    auge: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    pfeil: '<path d="M9 5l7 7-7 7"/>',
+    server: '<rect x="3" y="4" width="18" height="7"/><rect x="3" y="13" width="18" height="7"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+    uhr: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    sanduhr: '<path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/>',
+    achtung: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
+  };
+  const symbol = (name, klasse = '') => `<svg class="i${klasse}" viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[name]}</svg>`;
+
+  /** Ein Verweis in Kurzform: Kürzel und die ersten 7 Zeichen des Hashs. */
+  function kurzVerweis(verweis) {
+    const m = /^(?:([a-z0-9]{1,8}):)?([0-9a-fA-F]+)$/.exec(verweis || '');
+    if (!m) return verweis || '';
+    return (m[1] ? m[1] + ':' : '') + m[2].slice(0, 7);
+  }
+
+  /** Fremder Text mit sichtbar gemachten Zeichen; jede Marke ist ein Bild mit Namen, ihr Text bleibt im Dokument. */
+  function sichtbarHtml(text, esc) {
+    return sichtbarTeile(String(text)).map(t => {
+      if (!t.marke) return esc(t.text);
+      if (t.marke === 'bidi') return `<span class="mk-z mk-bidi" role="img" aria-label="sichtbar gemachtes Bidi-Steuerzeichen ${t.code}">${symbol('auge')}${esc(t.text)}</span>`;
+      return `<span class="mk-z mk-st" role="img" aria-label="sichtbar gemachtes Steuerzeichen ${t.code}">${esc(t.text)}</span>`;
+    }).join('');
+  }
+
+  /** Pfad mit Ordner (gedämpft) und Name (fett), beide sichtbar gemacht. */
+  function pfadHtml(pfad, esc) {
+    const schnitt = pfad.lastIndexOf('/') + 1;
+    const ordner = pfad.slice(0, schnitt), datei = pfad.slice(schnitt);
+    return `${ordner ? `<span class="d">${sichtbarHtml(ordner, esc)}</span>` : ''}<b>${sichtbarHtml(datei, esc)}</b>`;
+  }
+
+  const zahlenHtml = d => `<span class="pl">+${tausender(d.plus)}</span> <span class="mi">−${tausender(d.minus)}</span>`;
+
+  /** Was eine Datei an Merkmalen trägt (FA 5): nie still. */
+  function merkmalSaetze(d, zustand) {
+    const saetze = [];
+    if (d.modus_alt && d.modus_neu && d.modus_alt !== d.modus_neu) saetze.push(zustand === 'ohne' ? `Dateimodus ${d.modus_alt} → ${d.modus_neu}; der Inhalt ist unverändert.` : `Dateimodus ${d.modus_alt} → ${d.modus_neu}.`);
+    if (d.nicht_utf8) saetze.push('Nicht als UTF-8 lesbar — nicht darstellbare Zeichen sind ersatzweise mit � wiedergegeben.');
+    return saetze;
+  }
+
+  const LESETEXT = { plus: 'hinzugefügt: ', minus: 'entfernt: ' };
+  const ZEICHEN = { plus: '+', minus: '−', kontext: '' };
+
+  function zeileHtml(z, esc) {
+    if (z.art === 'kopf') return `<tr class="hk"><td colspan="4">${sichtbarHtml(z.text, esc)}</td></tr>`;
+    if (z.art === 'hinweis') return `<tr class="nn"><td class="n" aria-hidden="true"></td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true"></td><td class="c">${esc(z.text)}</td></tr>`;
+    const klasse = z.art === 'plus' ? 'add' : z.art === 'minus' ? 'del' : 'ctx';
+    const lesen = LESETEXT[z.art] ? `<span class="vh">${LESETEXT[z.art]}</span>` : '';
+    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td><td class="n" aria-hidden="true">${z.neu ?? ''}</td><td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${lesen}${sichtbarHtml(z.text, esc)}</td></tr>`;
+  }
+
+  /** Der Code-Bereich einer offenen Datei: Blöcke zu 500 Zeilen mit `content-visibility: auto` (ADR-0033 Punkt 5), je Block
+      eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. */
+  function codeHtml(patch, pfad, esc) {
+    const name = `Änderungen in ${esc(sichtbarTeile(pfad).map(t => t.text).join(''))}`;
+    const teile = bloecke(patchZeilen(patch)).map(b => `<div class="dz-b" style="contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
+    return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}">${teile.join('')}</div>`;
+  }
+
+  const knopf = (text, act, arg, id = '') => `<button type="button" class="btn"${id ? ` id="${id}"` : ''} data-act="${act}"${arg == null ? '' : ` data-arg="${arg}"`}>${text}</button>`;
+
+  /** Text und Knopf einer Datei ohne gezeichneten Patch, je Zustand und Ladestand (FA 5, 7, 8). */
+  function hinweisHtml(d, i, zustand, stand) {
+    if (stand.laden === 'laeuft') return '<p class="df-hin df-laedt" role="status">Lädt die Änderungen …</p>';
+    if (stand.laden === 'wartet') return `<p class="df-hin df-wartet" role="status">${symbol('sanduhr')}Wartet, bis die andere Datei geladen ist …</p>`;
+    if (stand.laden === 'fehler') return dateiFehlerHtml(stand.fehler, i);
+    if (zustand === 'zu_gross') return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}.</p>`;
+    if (zustand === 'gross') return `<div class="df-hin"><p>Der Patch ist groß (${tausender(d.plus + d.minus)} Zeilen) und wird erst auf Wunsch geladen.</p>${knopf('Änderungen anzeigen', 'review-nachladen', i)}</div>`;
+    if (zustand === 'nachladen') return `<div class="df-hin"><p>Diese Datei war nicht in der ersten Antwort, weil die Antwort zu groß wurde. Sie wird einzeln geladen.</p>${knopf('Nachladen', 'review-nachladen', i)}</div>`;
+    if (zustand === 'binaer') return '<p class="df-hin">Binärdatei — der Inhalt wird nicht angezeigt.</p>';
+    return '';
+  }
+
+  /** Fehler beim Nachladen an der Datei (FA 8): die Datei bleibt zu, die Seite lesbar; keine Wiederholung ohne Klick. */
+  function dateiFehlerHtml(f, i) {
+    const erneut = knopf('Erneut versuchen', 'review-nachladen', i);
+    if (f.art === 'antwortbudget') return `<div class="df-hin warn" role="status">${symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen dieser Datei wurden nicht geladen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
+    if (f.art === 'zeitgrenze') return `<div class="df-hin fehl" role="alert">${symbol('uhr')}<p><b>Zeitgrenze überschritten.</b> Die Änderungen dieser Datei konnten nicht geladen werden (503).</p>${erneut}</div>`;
+    return `<div class="df-hin fehl" role="alert">${symbol('achtung')}<p>Die Änderungen dieser Datei ließen sich nicht laden: ${f.text} (${f.status}).</p>${erneut}</div>`;
+  }
+
+  /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded`, darunter Merkmale, Hinweis und — offen — der Code. */
+  function dateiHtml(d, i, stand, hinweise, esc) {
+    const zustand = dateiZustand(d, hinweise);
+    const pfad = d.neu ?? d.alt;
+    const [wort, klasse] = STATUSWORT[d.status] || [d.status, 'st-mod'];
+    const ren = d.status === 'R' ? `<span class="ren">umbenannt ← ${pfadHtml(d.alt, esc)}${d.aehnlichkeit != null ? ` · ${d.aehnlichkeit} %` : ''}</span>` : '';
+    const anzeigen = zustand === 'patch' && !stand.offen ? '<span class="mk">anzeigen</span>' : '';
+    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${i}" data-act="review-klappe" data-arg="${i}" aria-expanded="${stand.offen}" aria-controls="rv-dc${i}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${wort}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
+    const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${t}</p>`).join('');
+    const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc) : '';
+    const inhalt = stand.offen ? saetze + hinweisHtml(d, i, zustand, stand) + code : '';
+    const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
+    return `<section class="df" id="rv-d${i}" aria-labelledby="rv-dk${i}"${beschaeftigt}>${kopf}<div class="df-inhalt" id="rv-dc${i}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
+  }
+
+  /** Die Dateien der Seite: die Insel (ADR-0033 Punkt 4), die beim Neuzeichnen derselbe Knoten bleibt. */
+  function inselHtml(schluessel, dateien, staende, hinweise, esc) {
+    return `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}">${dateien.map((d, i) => dateiHtml(d, i, staende[i], hinweise, esc)).join('')}</div>`;
+  }
+
+  /** Dateiliste: je Datei Statuswort, Pfad, Zahlen; ein Eintrag springt zur Datei und klappt sie auf. */
+  function dateilisteHtml(dateien, esc) {
+    const eintraege = dateien.map((d, i) => {
+      const [wort] = STATUSWORT[d.status] || [d.status];
+      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${i}"><span class="p">${pfadHtml(d.neu ?? d.alt, esc)}</span><span class="z">${zahlenHtml(d)}</span><span class="s">${wort}</span></button></li>`;
+    }).join('');
+    return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
+  }
+
+  const BAND_VERWAIST = 'Dieser Commit ist verwaist: Kein Zweig führt zu ihm. Sein Diff bleibt lesbar. Nach einem Rebase mit ersetzen nachziehen; im Gesamtbild der Aufgabe zählt er nicht mit.';
+
+  /** Commit-Kopf (FA 5): Kurz-Hash, Zweige oder „auf keinem Zweig“, voller Titel als h2, Autor, Datum, Zeilen und Dateien. */
+  function commitKopfHtml(c, anwendung, eintrag, esc) {
+    const kurz = (anwendung ? `${anwendung}:` : '') + c.hash.slice(0, 7);
+    let zweige = '';
+    if (eintrag && eintrag.zustand === 'verwaist') zweige = '<span class="rv-kz">auf keinem Zweig</span>';
+    else if (eintrag && eintrag.zustand === 'auf_zweig') {
+      const z = zeilenwerte(eintrag).zweige;
+      zweige = `<span class="vh">auf Zweigen: </span>${[...z.lokal, ...z.entfernt].map(n => `<span class="rv-br">${esc(n)}</span>`).join('')}${z.nichtAufgefuehrt ? `<span class="rv-kz">+${z.nichtAufgefuehrt}</span>` : ''}`;
+    }
+    const band = eintrag && eintrag.zustand === 'verwaist' ? `<p class="rv-band" role="note">${BAND_VERWAIST}</p>` : '';
+    return `<section class="rv-commit"><div class="z1"><span class="mono">${esc(kurz)}</span><span class="rv-zweige">${zweige}</span></div><h2 id="rv-ctitel" tabindex="-1">${esc(c.titel)}</h2><p class="m">${esc(c.autor)} · <span title="${esc(c.datum)}">${esc(datumText(c.datum))}</span> · ${zahlenHtml(c)} · ${dateienWort(c.dateien)}</p>${band}</section>`;
+  }
+
+  /** Blättern (FA 3): fehlende Nachbarn hinterlassen leeren Platz, nie einen deaktivierten Knopf. */
+  function blaetternHtml(f, kurz, schmal) {
+    const seite = (richtung, ziel, k) => {
+      if (!ziel) return '<span class="bl-leer"></span>';
+      const zurueck = richtung === 'zurueck';
+      const name = schmal ? `${zurueck ? 'Voriger' : 'Nächster'} Commit, ${k} von ${f.n}` : `${zurueck ? 'Zurück, voriger' : 'Vor, nächster'} Commit ${k} von ${f.n}`;
+      const text = schmal ? '' : `<span class="t">${zurueck ? 'Zurück' : 'Vor'}</span>`;
+      const zeichen = `<span class="bl-s" aria-hidden="true">${zurueck ? '‹' : '›'}</span>`;
+      return `<button type="button" class="btn bl-k" id="rv-${richtung}" data-act="review-blaettern" data-arg="${richtung}" aria-label="${name}">${zurueck ? zeichen + text : text + zeichen}</button>`;
+    };
+    return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos" aria-live="polite">${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
+  }
+
+  /** Meldung einer ganzen Seite: die erste Zeile ist die Überschrift mit `tabindex="-1"` (Fokusziel, FA 13). */
+  const meldungHtml = ({ ton = '', rolle, zeichen = '', kopf, text = '', rumpf = '', knoepfe = '' }) =>
+    `<div class="rv-meld${ton ? ' ' + ton : ''}" role="${rolle}">${zeichen ? symbol(zeichen) : ''}<div class="rv-meldtext"><h2 id="rv-meld" tabindex="-1">${kopf}</h2>${text ? ` <p>${text}</p>` : ''}${rumpf}${knoepfe ? `<p class="rv-knoepfe">${knoepfe}</p>` : ''}</div></div>`;
+
+  const ZUR_LISTE = knopf('Zur Liste der Commits', 'review-liste');
+
+  /** Seitenfehler des Diffs (FA 8): Fehlerart aus Status und Text, nie von selbst wiederholt. */
+  function diffFehlerHtml(f, verweis, esc) {
+    const art = fehlerArt(f, 'diff');
+    const erneut = knopf('Erneut versuchen', 'review-erneut', 'diff', 'rv-erneut');
+    if (art === 'antwortbudget') return meldungHtml({ ton: 'warn', rolle: 'alert', zeichen: 'server', kopf: 'Server ausgelastet (Antwortbudget).', text: 'Der Diff wurde nicht gelesen, weil der Server gerade zu viele große Antworten ausliefert. Es wird nicht von selbst wiederholt.', knoepfe: erneut });
+    if (art === 'zeitgrenze') return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'uhr', kopf: 'Zeitgrenze überschritten.', text: `Der Diff ließ sich nicht lesen: ${esc(f.fehler || 'keine Angabe')} (503).`, knoepfe: erneut });
+    if (art === 'kein_diff') {
+      const wort = f.daten && ZUSTANDSWOERTER[f.daten.zustand];
+      const grund = wort ? `${esc(kurzVerweis(verweis))} ist ${wort}.` : `${esc(kurzVerweis(verweis))} — ${esc(f.fehler || 'unbekannter Fehler')}.`;
+      return meldungHtml({ rolle: 'status', kopf: `Zu diesem Verweis gibt es keinen Diff: ${grund}`, knoepfe: ZUR_LISTE });
+    }
+    const grund = f.status === 0 ? 'keine Verbindung zum Programm' : esc(f.fehler || 'unbekannter Fehler');
+    return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: `Der Diff ließ sich nicht lesen: ${grund} (${f.status}).`, knoepfe: erneut + ZUR_LISTE });
+  }
+
+  /** Rand (c): keine Einträge mit Diff — Verweis, Zustandswort und Hinweis je Eintrag wie in der Liste. */
+  function keineHtml(eintraege, esc) {
+    const zeilen = eintraege.map(e => {
+      const w = zeilenwerte(e);
+      const wort = w.zustand ? w.zustand.wort : '';
+      return `<li><span class="mono">${esc(w.kurz)}</span> <b>${esc(wort)}</b>${w.zustand && w.zustand.hinweis ? ` <span class="rv-hin">${esc(w.zustand.hinweis)}</span>` : ''}</li>`;
+    }).join('');
+    return meldungHtml({ rolle: 'status', kopf: 'Keine Änderungen zu zeigen.', text: 'Zu keinem Commit der Aufgabe gibt es einen Diff:', rumpf: `<ul class="rv-keine">${zeilen}</ul>`, knoepfe: knopf('Zurück zur Liste der Commits', 'review-liste') });
+  }
+
+  /** Hinweis über den Dateien bei gekappter Liste (FA 5): die Zahlen nur aus der Antwort. */
+  function gekapptHtml(hinweise) {
+    const h = hinweise.find(x => x.art === 'dateien_gekappt');
+    if (!h) return '';
+    return `<p class="rv-gekappt">${tausender(h.gezeigt)} von ${tausender(h.gesamt)} Dateien gezeigt. Die übrigen stehen nicht in dieser Liste; der Commit liegt vollständig im Repository.</p>`;
+  }
+
+  /** Rand (b): der Commit der Antwort steht nicht in der Folge. */
+  function fremdHtml(kurz, esc) {
+    return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
+  }
+
+  Object.assign(ziel, { kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);

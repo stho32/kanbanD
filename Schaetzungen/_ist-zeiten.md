@@ -878,3 +878,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | Nacharbeit 1 B1015 Antwortbudget, Strom aus Kopien, Wache, 8 MB, weniger Kopien | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1017 Adresse und Folge rechnen, rein | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1018 Diff rechnen: Zeilen, Marken, Dateizustand, Aufklapp-Plan, Fehlerart | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1019 Seite zeichnen: Kopf, Leiste, Commit-Kopf, Dateiliste, Dateien, Merkmale, Ränder | Standard | 1-2h | 0,3h | 0,3h | autonom |
