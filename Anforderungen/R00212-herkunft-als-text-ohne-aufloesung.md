@@ -60,12 +60,13 @@ Ausgangslage (herstellbar mit Git und der API): Ordner `K` mit Register `kd` (Re
 
 ### Chip
 
-- [ ] **AK 2** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und danach #1 im Aufgabenfenster, dann ist jeder Chip `kd:I0007` und `kd:R00014` ein `span.org` ohne `href` und ohne `title`, auf der Karte und im Fenster. Kein Element `.org` der Seite hat ein `href` oder einen `title` mit „Quelle“ oder „Editor“. Im Netzwerkmitschnitt vom Laden bis nach einem Neuladen gibt es keine Anfrage an `/api/herkunft`. #3 zeigt „ohne Herkunft“ wie heute. Mit einer zweiten Anwendung `lc` im Register zeigt eine Herkunft `I0007` ohne Kürzel „I0007 · mehrdeutig“ mit dem heutigen `title`, `kd:I0007` bleibt ohne Zusatz.
-- [ ] **AK 3** Gegeben die Ausgangslage, Hell und Dunkel. Wenn der Chip `kd:I0007` auf der Karte und im Fenster im Ruhezustand gemessen wird, dann sind seine berechneten Stile `color`, `background-color`, `border`, `font-family`, `font-size`, `padding`, `height` und `text-decoration-line` gleich den Werten am Stand vor der Karte (B1059 hält sie fest). Fährt die Maus über den Chip, ändert sich keiner dieser Werte. Im Fenster ist `cursor` nicht `pointer`; auf der Karte ist `cursor` gleich dem der Karte selbst (kein eigener Wert am Chip).
+- [ ] **AK 2** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und danach #1 im Aufgabenfenster, dann ist jeder Chip `kd:I0007` und `kd:R00014` ein `span.org` ohne `href` und ohne `title`, auf der Karte und im Fenster. Kein Element `.org` der Seite hat ein `href` oder einen `title` mit „Quelle“ oder „Editor“. Im Netzwerkmitschnitt vom Laden bis nach einem Neuladen gibt es keine Anfrage an `/api/herkunft`. #3 zeigt „ohne Herkunft“ wie heute. Mit einer zweiten Anwendung `lc` im Register zeigt eine Herkunft `I0007` ohne Kürzel „I0007 · mehrdeutig“ mit dem heutigen `title`, `kd:I0007` bleibt ohne Zusatz. Ein Klick auf den Chip `kd:I0007` der Karte #1 öffnet das Aufgabenfenster von #1 (wie ein Klick auf den Titel) und löst keine Navigation und keinen `vscode:`-Aufruf aus; ein Klick auf den Chip im Aufgabenfenster tut nichts.
+- [ ] **AK 2a** Im Aufgabenfenster von #1 ist kein `.org` fokussierbar (`tabIndex` < 0 und kein `href`); die Tab-Folge nennt je Herkunft nur den Knopf ‚Herkunft kd:I0007 entfernen‘ und dann das Feld ‚Neue Herkunft‘. Der Text `kd:I0007` steht im Fenster als eigener Text hinter der Beschriftung ‚origins‘ (Lesereihenfolge: Beschriftung, Chip, ×).
+- [ ] **AK 3** Gegeben die Ausgangslage, Hell und Dunkel. Im Ruhezustand sind `color`, `background-color`, `border`, `font-family`, `font-size`, `padding` und `text-decoration-line` gleich den Werten vor der Karte, `height` ist **16 px** (Wert von `.org`, wie der heutige `span.org` und `org leer`; der `a.org` mit 24 px Mindestgröße entfällt mit dem Link). Gemessen auf Karte und im Fenster, hell und dunkel. Fährt die Maus über den Chip, ändert sich keiner dieser Werte. Im Fenster ist `cursor` nicht `pointer`; auf der Karte ist `cursor` gleich dem der Karte selbst (kein eigener Wert am Chip).
 
 ### „wartet auf“
 
-- [ ] **AK 4** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und #2 im Aufgabenfenster, dann gibt es auf der Karte #2 kein Element `.wartet` und keinen Text „wartet auf“, und das Fenster hat keine Zeile „wartet auf“. Das Label `braucht:2` an #1 ist auf der Karte sichtbar.
+- [ ] **AK 4** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und #2 im Aufgabenfenster, dann gibt es auf der Karte #2 kein Element `.wartet` und keinen Text „wartet auf“, und das Fenster hat keine Zeile „wartet auf“. Das Label `braucht:2` an #1 ist auf der Karte sichtbar. Auf keiner Karte und in keinem Fenster steht ein Rest davon: kein `.wartet`, kein Zeichen ⧗, keine Zeile ‚wartet auf‘ im Fenster, kein leeres `.k` ohne Wert; `braucht:2` an #1 steht als `.lbl` auf der Karte und im Feld Labels im Fenster.
 
 ### Herkunft lesen und schreiben
 
@@ -95,9 +96,9 @@ Ausgangslage (herstellbar mit Git und der API): Ordner `K` mit Register `kd` (Re
 
 ### Ablauf (Vorplanung — welche Bubbles es am Ende werden, entscheidet der entwickler)
 
-1. **B1059 Abnahme-Proben rot**: Rust `GET /api/herkunft` → 404 (heute 200); e2e Chip ohne `href`/`title`, kein `.wartet`, keine Anfrage an `/api/herkunft` (heute rot); Stile des Ruhezustands am heutigen Stand messen und als Erwartung festhalten (AK 3).
+1. **B1059 Abnahme-Proben rot**: Rust `GET /api/herkunft` → 404 (heute 200); e2e Chip ohne `href`/`title`, kein `.wartet`, keine Anfrage an `/api/herkunft` (heute rot); Stile des Ruhezustands am heutigen Stand messen und als Erwartung festhalten, `a.org` (24 px) und `span.org` (16 px) getrennt (AK 3).
 2. **B1060 Dienst und Route entfernen**: Regeln 1 und 5 von N3; Rust-Tests nach der Testtabelle umbauen.
-3. **B1061 Oberfläche ohne Auflösung und ohne „wartet auf“**: `S.herkunft`, `quelleLink`, Link-/Tooltip-Zweig, `wartetAuf` mit Karten- und Fensterzeile, CSS.
+3. **B1061 Oberfläche ohne Auflösung und ohne „wartet auf“**: `S.herkunft`, `quelleLink`, Link-/Tooltip-Zweig, `wartetAuf` mit Karten- und Fensterzeile, CSS; den Kommentar zu `a.org:hover` (`web/kd-app.css:208–215`) kürzen und `kontrast.spec.js:600–674` auf `span.org` umstellen. Die Ausnahme `a[href^="vscode:"]` in `web/app.js:3624` bleibt bis S2.
 4. **B1062 e2e-Tests umbauen**: r00018, r00053, kontrast, Wartelisten in r00171/r00172/r00196.
 5. **B1063 README Z. 51** nach Regel 8.
 6. **B1064 Legacy-Probe** an Kopien der vier Ordner (AK 7).
@@ -106,14 +107,14 @@ Ausgangslage (herstellbar mit Git und der API): Ordner `K` mit Register `kd` (Re
 ### Hinweise
 
 - Grenze zu S2/S3 und #229 nach N3 Regel 7: WBS-Sicht, Wirkungen, Phasen, Register-Felder und `wbs_tabelle` bleiben unberührt.
-- Der Chip auf der Karte erbt den Zeiger der Karte (`.ka{cursor:pointer}`): ein Klick auf ihn öffnet die Karte wie ein Klick daneben. Er bekommt keinen eigenen Zeiger und kein eigenes Ziel.
+- Der Chip auf der Karte erbt den Zeiger der Karte (`.ka{cursor:pointer}`): ein Klick auf ihn öffnet die Karte wie ein Klick daneben. Er bekommt keinen eigenen Zeiger und kein eigenes Ziel (entschieden wie empfohlen, Lauf 226-planer-1, bestätigt in der UX-Vorprüfung).
 - Kopien nur in der eigenen Ablage, nie im Board-Ordner selbst; der kanbanD-Ordner ist das laufende Board des Directors. Testsystem ohne echte Personendaten: die Ordner enthalten Karten, keine Personendaten von Nutzern.
 
 ## Tests
 
 - **Unit:** entfallen `name_der_anforderung`, `aufloesen_eindeutig_mehrdeutig_unbekannt`; „mehrdeutig“ aus Text und Register (falls als reine Funktion herausgelöst).
 - **Integration:** `tests/akzeptanz_r00212.rs`: AK 1, AK 5 (API-Teil), AK 7 (`#[ignore]`, wenn die Ordner fehlen; in B1064 einmal gefahren und belegt).
-- **E2E:** `e2e/tests/r00212-herkunft-als-text.spec.js`: AK 2–4, AK 5 (Oberfläche), AK 6.
+- **E2E:** `e2e/tests/r00212-herkunft-als-text.spec.js`: AK 2, AK 2a, AK 3, AK 4, AK 5 (Oberfläche), AK 6.
 
 ## Abhängigkeiten
 
