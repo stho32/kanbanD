@@ -939,3 +939,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 2 (N7.9) | B1076 AK 8 neu belegen, Mutanten AK 12, Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1077 Abnahme-Probe rot: Fälle N und F | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1078 Netto-Liste nachladen, streng nur bei gleicher Angabe | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1079 Folge-Eintrag ganz nachladen, streng nur bei gleicher Angabe | Standard | 1h | 0,2h | 0,2h | autonom |

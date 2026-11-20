@@ -473,6 +473,8 @@ impl Gesamtlauf<'_> {
             im_lauf.push(lauf);
         }
         let mit: Vec<usize> = (0..plan.commits.len()).filter(|k| !im_lauf[*k].is_empty()).collect();
+        // Folge-Einträge, denen ein Schritt-Stück im Lauf mit kleinerer Angabe fehlt
+        let mut ganz_nachladen: HashSet<usize> = HashSet::new();
         if !mit.is_empty() {
             let vergleiche: Vec<Vergleich> = mit.iter().map(|&k| Vergleich { commit: &plan.commits[k].1, eltern: plan.commits[k].2.as_deref() }).collect();
             let koepfe: Vec<&str> = mit.iter().map(|&k| plan.commits[k].1.as_str()).collect();
@@ -487,6 +489,9 @@ impl Gesamtlauf<'_> {
             let angabe = abschliessen(eigene, &bezug);
             let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
             let patch: Teil = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist))?;
+            // streng nur mit genau der Angabe der Folge-Liste (N7.10); sonst fehlt einem Schritt das Stück → ganzer Eintrag
+            // `nachladen` (unten), nie 500
+            let gleich = angabe == plan.pfade;
             let abschnitte = abschnitte_patch(&patch.ausgabe, &koepfe);
             let letzter = abschnitte.last().map(|a| a.kopf);
             for (stelle, &k) in mit.iter().enumerate() {
@@ -500,12 +505,27 @@ impl Gesamtlauf<'_> {
                     continue;
                 }
                 let bytes = teil.map_or(&[][..], |a| &patch.ausgabe[a.bereich.clone()]);
-                patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                if gleich || verteilung == Verteilung::Einzeln {
+                    patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                } else {
+                    let ohne = nicht_zugeordnet_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung);
+                    // am Schnitt fehlt ein Stück auch wegen der Grenze: dort bleibt es beim Schritt (wie bisher)
+                    if !geschnitten {
+                        ganz_nachladen.extend(ohne.into_iter().map(|i| je_commit[k][i].0));
+                    }
+                }
             }
         }
         for (stellen, g) in je_commit.into_iter().zip(gruppen) {
             for (s, d) in stellen.into_iter().zip(g) {
                 zurueck(dateien, s, d);
+            }
+        }
+        for i in ganz_nachladen {
+            if let Gesamtdatei::Folge(f) = &mut dateien[i] {
+                for s in &mut f.schritte {
+                    abbrechen(&mut s.datei, verteilung);
+                }
             }
         }
         Ok(())

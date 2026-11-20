@@ -318,3 +318,49 @@ async fn ak3_netto_streng_nur_bei_gleicher_angabe() {
     assert_eq!((datei("b.txt")["nachladen"].clone(), datei("b.txt")["patch"].clone()), (json!(true), Value::Null), "{d}");
     assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a3\n+a4\n"), "{d}");
 }
+
+/// AK 3 (Folge): `b.txt` ist Folge (K1, fremder Commit F, K2 ändern es). Ein Git-Skript lässt jedes Stück von `b.txt` weg.
+/// - Karte #1: der Folge-Patch-Lauf hat dieselbe Angabe wie die Folge-Liste → 500 „hat 0 von 1 Stücken“.
+/// - Karte #2: dazu `gross2` (über 3.000 Zeilen), das auch F ändert — Folge-Pfad, aber nicht im Patch-Lauf; dessen Angabe
+///   ist kleiner als die der Folge-Liste → 200, der **ganze** Folge-Eintrag `b.txt` `nachladen` (jeder Schritt, ohne
+///   Patch), `a.txt` (netto) behält seinen Patch.
+#[tokio::test]
+async fn ak3_folge_ganz_nachladen_streng_nur_bei_gleicher_angabe() {
+    let l = Lage::neu();
+    let z = |t: &str| format!("{t}\n");
+    let gross = |t: &str| (0..3001).map(|i| format!("{t}{i}\n")).collect::<String>();
+    let mut karten = vec![];
+    for (nr, mit_gross) in [(1u32, false), (2, true)] {
+        let mut stand = vec![("a.txt", z("a")), ("b.txt", z("b0"))];
+        l.baum(&stand, "A");
+        stand = vec![("a.txt", z("a1")), ("b.txt", z("b1"))];
+        if mit_gross {
+            stand.push(("gross2", gross("g")));
+        }
+        let k1 = l.baum(&stand, "K1");
+        stand[1].1 = z("b-fremd");
+        if mit_gross {
+            stand[2].1 = gross("f");
+        }
+        l.baum(&stand, "F");
+        stand[1].1 = z("b2");
+        let k2 = l.baum(&stand, "K2");
+        karten.push((nr, vec![k1, k2]));
+    }
+    let pfad = l.git_skript(&ohne_stueck("b.txt"));
+    let lauf = l.starten(&karten, &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, 1, "").await;
+    assert_eq!((s, t.contains("„b.txt“ (M) hat 0 von 1 Stücken")), (500, true), "#1: {t}");
+    for format in ["", "format=patch"] {
+        let (s, t) = holen(&lauf.adresse, 2, format).await;
+        assert_eq!(s, 200, "#2 {format}: {t}");
+    }
+    let (_, t) = holen(&lauf.adresse, 2, "").await;
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let datei = |n: &str| dateien(&d).iter().find(|f| name(f) == n).unwrap_or_else(|| panic!("{n} fehlt: {d}")).clone();
+    let b = datei("b.txt");
+    let schritte = b["schritte"].as_array().unwrap_or_else(|| panic!("b.txt ist keine Folge: {b}"));
+    assert_eq!(schritte.len(), 2, "{b}");
+    assert!(schritte.iter().all(|s| s["nachladen"] == json!(true) && s["patch"].is_null()), "ganzer Eintrag nachladen: {b}");
+    assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a\n+a1\n"), "{d}");
+}
