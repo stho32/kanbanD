@@ -898,3 +898,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #214 R00208 Nacharbeit 1 | B1050 Umbenennungspaare, Gruppen, abgeschlossene Pfadangaben (B1, B2) | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-20 | Karte #214 R00208 Nacharbeit 1 | B1051 Tab im Namen, Namen über 4 MB, Wächter, fremd_dazwischen (B3, B4, B5, Sollte 3) | Standard | 1h | 0,5h | 0,5h | autonom |
 | 2026-11-20 | Karte #214 R00208 Nacharbeit 1 | B1052 Zufallsprobe, README, Gate | Standard | 0,5h | 0,4h | 0,4h | autonom |
+| 2026-11-20 | Karte #214 R00208 Nacharbeit 2 | B1050 B2-Rest: Zuordnung über alle getroffenen Einträge, Zufallsprobe Verzeichnis ↔ Datei, Lastprobe | Standard | 1h | 0,9h | 0,9h | autonom |
