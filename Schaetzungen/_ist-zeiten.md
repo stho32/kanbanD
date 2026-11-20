@@ -905,3 +905,11 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1038 API: Register in beiden Formen annehmen und zeigen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1039 Einrichten: Repository je Anwendung und in den Quellen | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1040 Legacy-Probe JoinPuya, Factory-Rundlauf, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1041 Gesamt-Antwort deuten (rein) | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1042 Aufklapp-Plan seitenweit, Reihe, Zuordnung (rein) | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1043 Adresse und Umschalter, Titel, Ansage | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1044 Seite zeichnen: Insel, Abschnitte, Folge-Dateien | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1045 Laden in einer Reihe, Lauf-Kennung | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1046 Nachladen mit anwendung= | Standard | 0,5-1h | 0,05h | 0,05h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1047 Breite, Ziele, Kontrast, Tastatur | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1048 Probe im echten Programm, Gate, abschließen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |

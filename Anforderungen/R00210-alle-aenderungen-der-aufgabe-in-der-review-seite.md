@@ -1,6 +1,6 @@
 ---
 id: R00210
-status: Neu
+status: Erledigt
 datum: 2026-11-20
 ---
 
@@ -84,7 +84,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
 
 ### Adresse und Umschalter
 
-- [ ] **AK 1 Adresse, Umschalter, Titel und Ansage (N1.10 Probe 1):** Gegeben #2 aus der Liste der Commits über „Alle Änderungen ansehen“ geöffnet. Dann gilt:
+- [x] **AK 1 Adresse, Umschalter, Titel und Ansage (N1.10 Probe 1):** Gegeben #2 aus der Liste der Commits über „Alle Änderungen ansehen“ geöffnet. Dann gilt:
   - Die Adresse ist `…/aufgabe/2/review` ohne `commit`, und die Seite zeigt „Alle Änderungen“ mit `aria-current="page"` an diesem Teil.
   - Der Titel heißt „Review #2 · Alle Änderungen — kanbanD“. Die Ansage lautet „Alle Änderungen der Aufgabe #2: 2 Dateien, 5 Zeilen hinzugefügt, 2 entfernt.“
   - „Ein Commit“ führt auf `?commit=kd:<K1>` und zeigt „1 von 2“. „Vor“ zeigt K2. „Alle Änderungen“ führt zurück auf `…/review`, und danach führt „Ein Commit“ auf `?commit=kd:<K2>` (zuletzt gezeigt).
@@ -97,7 +97,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
 
 ### Inhalt
 
-- [ ] **AK 2 Folge-Datei und Netto-Datei (N1.10 Probe 2, Pre-Mortem f):** Gegeben #2, einmal direkt und einmal mit verzögerter Route und fester Antwort. Dann gilt:
+- [x] **AK 2 Folge-Datei und Netto-Datei (N1.10 Probe 2, Pre-Mortem f):** Gegeben #2, einmal direkt und einmal mit verzögerter Route und fester Antwort. Dann gilt:
   - Der Abschnitt heißt „Anwendung kd“ mit „2 Commits · 2 Dateien“.
   - `a.txt` zeigt im Kopf und in der Liste „+2 −2“ und „Folge · 2 Commits“ und **kein** Statuswort.
   - Aufgeklappt steht der Satz an der Folge-Datei aus FA 6, dann zwei Schrittköpfe „kd:<K1 kurz> <Titel> geändert +1 −1“ und „kd:<K2 kurz> …“. Sie sind Verweise auf `…/review?commit=kd:<K1>` bzw. `kd:<K2>`, und darunter steht je der Diff des Schritts.
@@ -105,7 +105,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
   - Die Summe jeder Folge-Datei ist gleich der Summe ihrer Schritte.
   - In keinem gezeichneten Code steht eine `+`/`−`-Zeile mit `FREMD`.
   - Mutanten „Statuswort aus dem ersten Schritt“ und „Summe aus dem letzten Schritt“ → je ein benannter Test rot.
-- [ ] **AK 3 Hinweise in Worten (N1.10 Probe 7):**
+- [x] **AK 3 Hinweise in Worten (N1.10 Probe 7):**
   - Gegeben #2: Im Abschnitt steht wörtlich „Zwischen den Commits der Aufgabe liegt 1 fremder Commit. Er berührt Dateien der Aufgabe; 1 Datei steht deshalb als Folge der Schritte der Aufgabe. Die Änderungen des fremden Commits sind nicht zu sehen.“
   - Gegeben die feste Antwort `{commits 3, dateien 5}`: Dort steht der Satz in der Mehrzahl nach FA 6.
   - Gegeben #12:
@@ -117,7 +117,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
   - Gegeben eine unbekannte Art `neu_art`: Es steht „Die Antwort nennt einen Hinweis „neu_art“, den diese Ansicht nicht kennt.“
   - Gegeben `dateien_gekappt {gezeigt 2000, gesamt 2431}`: Es steht „2.000 von 2.431 Dateien gezeigt. …“ nach FA 6.
   - Kein Satz enthält einen Hash eines fremden Commits.
-- [ ] **AK 4 Leere, Fehler und Abschnittsfehler:**
+- [x] **AK 4 Leere, Fehler und Abschnittsfehler:**
   - Gegeben #13: Der Abschnitt sagt „Keine Änderungen zu zeigen.“ und „Kein Commit dieser Anwendung ist in das Gesamtbild einbezogen. Die Commits lassen sich einzeln ansehen.“ und dem Hinweis „verwaist“ mit „einzeln ansehen“. „Ein Commit“ führt auf `?commit=kd:<N1'>`.
   - Gegeben #14: Es steht „Keine Änderungen zu zeigen“ mit „An dieser Aufgabe sind keine Commit-Verweise hinterlegt.“ und dem Rückweg.
   - **Gemischt** (PO Z. 443): Gegeben #13 mit zusätzlich `kd:<V2>` (`fehlt`): Der Abschnitt sagt weiter „Kein Commit dieser Anwendung ist in das Gesamtbild einbezogen. Die Commits lassen sich einzeln ansehen.“, nennt `kd:<V2>` mit „nicht mehr im Repository“, und „Zu den Verweisen dieser Anwendung gibt es keinen Diff.“ steht nicht da. Gleiches gilt mit einem Merge statt des verwaisten Commits (feste Antwort `commits: []` mit `merge_ausgelassen` und `fehlt`). Mutant „Satz nur nach dem ersten Hinweis gewählt“ → benannter Test rot.
@@ -129,11 +129,11 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
 
 ### Budget, Reihe, Nachladen
 
-- [ ] **AK 5 Zeichenbudget seitenweit (N1.10 Probe 3, Pre-Mortem d):** Feste Antworten, gezeichnete Zeilen nach R00207 FA 6.
+- [x] **AK 5 Zeichenbudget seitenweit (N1.10 Probe 3, Pre-Mortem d):** Feste Antworten, gezeichnete Zeilen nach R00207 FA 6.
   - **(a)** Die Anwendung `kd` hat vier Netto-Dateien zu je 2.250 gezeichneten Zeilen, die Anwendung `wb` eine Netto-Datei zu 1.500. **Rechenbeispiel:** 4 × 2.250 = 9.000 ≤ 10.000, also sind die vier offen; 9.000 + 1.500 = 10.500 > 10.000, also bleibt die Datei von `wb` zu. Mutant „Budget je Anwendung neu“ → die Datei von `wb` öffnet → benannter Test rot.
   - **(b)** Eine Anwendung hat eine erste Netto-Datei zu 2.000, dann eine Folge-Datei mit drei Schritten zu je 2.800, dann eine Netto-Datei zu 100. **Rechenbeispiel:** 2.000 + 8.400 = 10.400 > 10.000, also bleibt die Folge-Datei ganz zu; die Datei zu 100 bleibt ebenfalls zu, denn nach der ersten, die nicht passt, öffnet keine. Mutanten „Schritte einzeln“ (öffnete Schritt 1 und 2: 4.800, 7.600) und „nach der Sperre weiter“ (öffnete die 100) → je ein benannter Test rot.
   - **(c)** Die erste Datei der Seite ist eine Folge-Datei mit vier Schritten zu je 2.800 und, zwischen dem zweiten und dritten, einem Schritt ohne `patch` (`gross`); danach folgt eine Netto-Datei zu 100. **Rechenbeispiel:** 4 × 2.800 = 11.200 > 10.000, aber die erste Datei der Seite öffnet immer, ganz, mit allen vier gezeichneten Schritten; der Schritt ohne `patch` zählt nicht und unterbricht nicht; die Datei zu 100 bleibt zu (11.300 > 10.000). Mutant „erste Datei immer je Abschnitt“ → in (a) öffnete die Datei von `wb` → benannter Test rot.
-- [ ] **AK 6 Mehrere Anwendungen in einer Reihe (N1.10 Proben 4 und 9, Pre-Mortem a):** Gegeben #11, und die Antwort für `wb` ist gehalten. Dann gilt:
+- [x] **AK 6 Mehrere Anwendungen in einer Reihe (N1.10 Proben 4 und 9, Pre-Mortem a):** Gegeben #11, und die Antwort für `wb` ist gehalten. Dann gilt:
   - Der Abschnitt `kd` steht, `wb` zeigt „lädt …“ und „Lädt die Änderungen der Anwendung wb …“, und `xx` zeigt „wartet“ und „Wartet, bis die Anwendung wb geladen ist …“.
   - Die Leiste zählt nur `kd` und sagt „Anwendung wb lädt noch …“.
   - Wählt `sh` jetzt „Nachladen“ an einer Datei von `kd` (feste Antwort mit `nachladen`), startet die `datei=`-Anfrage erst nach dem Ende von `wb` und **vor** `xx`. Die Reihenfolge der Anfragen ist: `…/diff`, `anwendung=wb`, `datei=…&anwendung=`, `anwendung=xx`.
@@ -141,7 +141,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
   - Ankommende Abschnitte verschieben nichts oberhalb der Leseposition: Die obere Kante eines sichtbaren Schrittkopfs von `kd` ändert sich bei 320 und 1280 px um höchstens 1 px (S5).
   - Die Insel trägt eine Marke (Eigenschaft am Element), die nach der Ankunft von `wb` und `xx` noch dasselbe Element bezeichnet. Ein Live-Ereignis an #11 (Kommentar über die API) löst keine Anfrage aus und lässt die Marke stehen.
   - Mutant „Anwendungen parallel“ → benannter Test rot.
-- [ ] **AK 7 Nachladen mit `anwendung=` (N1.10 Probe 6, Pre-Mortem c):**
+- [x] **AK 7 Nachladen mit `anwendung=` (N1.10 Probe 6, Pre-Mortem c):**
   - Gegeben #11 mit fester Antwort, in der je eine Datei gleichen Namens `README.md` in `kd` und `wb` den Zustand `nachladen` trägt. „Nachladen“ an der Datei von `wb` fragt `datei=README.md&anwendung=wb`, an der von `kd` `datei=README.md&anwendung=`, ohne `commit`. Jede zeigt danach den Inhalt ihrer Anwendung.
   - Mutant „ohne `anwendung`“ → die Datei von `wb` zeigt den Inhalt von `kd` (bzw. 404) → benannter Test rot.
   - Gegeben eine Folge-Datei mit `gross`: „Änderungen anzeigen“ ersetzt den Eintrag, und alle Schritte stehen offen.
@@ -150,7 +150,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
 
 ### Laden und Lesen
 
-- [ ] **AK 8 Lauf-Kennung, Rückkehr und Live (N1.10 Proben 5 und 9, Pre-Mortem b, e):**
+- [x] **AK 8 Lauf-Kennung, Rückkehr und Live (N1.10 Proben 5 und 9, Pre-Mortem b, e):**
   - **(1)** Gegeben #11 und die Antwort für `wb` ist gehalten. `sh` wählt „Ein Commit“. Dann sieht die Route den Abbruch der Anfrage `anwendung=wb`. Nach der Freigabe erscheint kein Abschnitt, auch nicht nach Rückkehr auf „Alle Änderungen“ vor einer neuen Antwort. `xx` wird nicht mehr gelesen.
   - **(2)** Die Rückkehr zu „Alle Änderungen“ liest neu (genau eine neue Anfrage an `…/diff` ohne `anwendung`).
   - **(3)** Gegeben #2 ohne Route, im echten Programm: Dreimal hin und zurück umschalten zeigt jedes Mal den Abschnitt `kd`, nie „ließ sich nicht lesen (304)“. Keine Anfrage der Seite trägt einen von ihr gesetzten Kopf `If-None-Match` (Einheitentest am Aufruf von `diffHolen`).
@@ -159,7 +159,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
 
 ### Darstellung und Bedienung
 
-- [ ] **AK 9 Breite, Ziele und Kontrast (N1.10 Probe 10):** Gegeben #2 (aufgeklappt), #11 (mit „lädt“ und „wartet“ gehalten) und #12. Dann gilt:
+- [x] **AK 9 Breite, Ziele und Kontrast (N1.10 Probe 10):** Gegeben #2 (aufgeklappt), #11 (mit „lädt“ und „wartet“ gehalten) und #12. Dann gilt:
   - Bei 320, 414, **641, 768, 980** und 1280 px, hell und dunkel: `documentElement.scrollWidth ≤ documentElement.clientWidth`. Nur Code-Bereiche scrollen quer. Bei 641–980 px sind die Textspalten nach den nicht-funktionalen Anforderungen ≥ 160 px breit.
   - Teile des Umschalters, Schrittköpfe, „einzeln ansehen“ und die Verweise der Commit-Liste sind bei grobem Zeiger ≥ 48 × 48 px und bei feinem ≥ 24 × 24 px groß.
   - Der Umschalter hat in Ruhe, Hover (gehalten), Fokus, „gewählt“ und „gewählt + Hover“ Text ≥ 4,5:1 und Rand ≥ 3:1. Der Rand ist `--kd-muted`, und eine andere `.seg` der Anwendung behält ihren Rand.
@@ -168,7 +168,7 @@ Wer eine Aufgabe in der Abnahme prüft, muss heute ihre Commits einzeln durchbl�
   - „lädt …“, „wartet“, die Hinweissätze, „Folge · n Commits“ und die Fehler amber und rot haben Text ≥ 4,5:1 und Symbole ≥ 3:1 (S6).
   - Bei 320 und 414 px sind Zustandswort und „+p −m“ in Datei- und Schrittköpfen ganz sichtbar, nicht abgeschnitten (S7).
   - Mutanten „Rand `--kd-line-strong` am Umschalter“, „Hover aus `a:hover`“ und „Mindestbreite bei 641–980 px“ → je ein benannter Test rot.
-- [ ] **AK 10 Tastatur, Fokus und Bedienhilfe (N1.10 Probe 8):** Gegeben nur die Tastatur auf #11. Dann gilt:
+- [x] **AK 10 Tastatur, Fokus und Bedienhilfe (N1.10 Probe 8):** Gegeben nur die Tastatur auf #11. Dann gilt:
   - Tab erreicht in dieser Reihenfolge den Rückweg, „Alle Änderungen“, „Ein Commit“, „Alle einklappen“ bzw. „Alle aufklappen“, die Verweise seitenweiter Hinweise, dann je Abschnitt die Hinweis-Verweise, die Commit-Liste und die Dateien mit Schrittköpfen (S10).
   - Die Namen von Kopfknopf der Folge-Datei und Schrittkopf lauten nach FA 13 und beginnen mit dem sichtbaren Text (S3).
   - Nach dem Umschalten mit Enter steht der Fokus auf dem gewählten Teil.
