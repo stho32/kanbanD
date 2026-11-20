@@ -1317,3 +1317,22 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Fitness-Test für den einzigen Startort.
   - A00004/A00006 nachführen.
   - Gate-Befehl `node --test "e2e/einheit/*.js"` braucht unter Node 20 den Shell-Glob.
+| 2026-11-20 | #229 | Architektur | architekt | bestanden | 2 min | ADR-0032 N7.7 (8c5391c6) · claude · opus · Lauf 229-architekt-1 · 0,66 $ · Karte gesamt 0,66 $ |
+| 2026-11-20 | #229 | Detailplanung | planer | bestanden | 7 min | R00211, I0201, B1053–B1058 · claude · opus · Lauf 229-planer-1 · 2,39 $ · Karte gesamt 3,05 $ |
+
+**Retrospektive #225** (S1 des WBS-Rückbaus: Register führt das Repository der Anwendung, 2026-11-20, 15,59 $ gemessen, ausgeliefert fdb12e2b)
+- **Gut:**
+  - Der planer fand vor dem Bau den Widerspruch zwischen ADR-0034 Regel 1 und der unveränderten Factory: GET→PUT in `board_binden.py`. Daraus wurde die Übergangsform N2. Ohne sie wäre die Factory beim nächsten Signal mit KeyError gebrochen.
+  - Opus baute in 59 min (6,04 $).
+  - Alle vier Reviews (code, ux, architektur, legacy) bestanden ohne Muss.
+- **Abhängige Karte auf karte/214:**
+  - Der Bau lief parallel zur Nacharbeit von #214. Das brauchte zwei Rebases mit mechanischen Konflikten (WBS, Ist-Zeiten, Gelerntes) und ein zweites Gate.
+  - Zwei entwickler gleichzeitig liefen nur gut, weil `wurzel`/`wurzel_bis` ausdrücklich unberührt blieben.
+- **Lehre (Datenformat mit fremden Lesern):** Eine Formänderung am Register muss den Rundlauf GET→PUT der fremden Clients bestehen, nicht nur das Lesen. Die Antwort liefert alle Schlüssel, auch leer.
+- **Lehre (Rückweg):** Die alte Version verwirft `repository` beim Schreiben still. Vor S2 (#224) muss das als Inkauf in ADR-0034 stehen (Legacy-Sollte).
+- **Sollte ohne Karte:**
+  - ADR-0034 N3 nachtragen: `Altform`, `quellen.erreichbar`, `repository_ergaenzen`, Rückweg.
+  - A00004 und A00006 nachführen.
+  - Gemeinsame Eingabetabelle für die Startordner-Regel in Rust und JS.
+  - Die Vorschau zeigt für `lc` `repository: ""`.
+- **Nebenbei:** Die Factory-Tests lassen über 2.700 `/tmp/factory-kanband-*` liegen (Vorschlag an die Factory).
