@@ -7,7 +7,7 @@ use super::Kanban;
 use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, abbruch, repo_fehler};
 use crate::fehler::Fehler;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Vergleich, Vielart};
-use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, leerer_baum, namen_lesen, nicht_zugeordnet_im_bezug, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
+use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, im_bezug_zugeordnet, leerer_baum, namen_lesen, nicht_zugeordnet_im_bezug, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -230,7 +230,7 @@ impl Gesamtlauf<'_> {
                 if teil.abgeschnitten {
                     // ohne vollständige Namen ist kein Folge-Eintrag sicher vollständig: keiner, Kappe mit Obergrenze (B3)
                     if self.anfrage.datei.is_some() {
-                        return Err(Fehler::NichtGefunden(format!("die Namen der Kartencommits von #{nr} sind länger als {} MB — die Datei mit commit= und datei= laden", crate::modell::GRENZE_NAMEN >> 20)));
+                        return Err(zu_gross_fuer_datei(nr));
                     }
                     diff.hinweise.extend(grund.map(|g| Hinweis::GanzAlsFolge { grund: g }));
                     diff.hinweise.extend(nachher);
@@ -354,7 +354,7 @@ impl Gesamtlauf<'_> {
                     // wie dort (N7.10); jede kleinere Angabe ist eine Abkürzung — ein Eintrag ohne Stück ist `nachladen`
                     let bezug_angabe: Vec<&Vec<u8>> = if einteilung.fremd.is_empty() { vec![] } else { einteilung.karte.iter().collect() };
                     let gleich = angabe.iter().eq(bezug_angabe.iter().copied());
-                    if gleich || verteilung == Verteilung::Einzeln {
+                    if gleich {
                         // mit Angabe über alle Einträge der Netto-Liste, die sie trifft: kein Zwilling nimmt ein fremdes Stück
                         let zuordnung = if mit_angabe {
                             patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
@@ -363,7 +363,19 @@ impl Gesamtlauf<'_> {
                         };
                         zuordnung.map_err(|f| Fehler::Intern(format!("git: {f}")))?;
                     } else {
-                        nicht_zugeordnet_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
+                        let vorher = (verteilung == Verteilung::Einzeln).then(|| nettodateien.clone());
+                        let ohne = nicht_zugeordnet_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
+                        if let Some(vorher) = vorher.filter(|_| !ohne.is_empty()) {
+                            // datei=: Rückfall mit genau der Angabe der Netto-Liste — dieselbe Matrix, streng (N7.10 Punkt 2)
+                            nettodateien = vorher;
+                            let alle: Vec<Vec<u8>> = netto_liste.iter().flat_map(|d| d.pfade_roh.iter().cloned()).collect();
+                            let pfade: Vec<&[u8]> = bezug_angabe.iter().map(|p| p.as_slice()).collect();
+                            let patch = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist))?;
+                            let zuordnung = patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &alle, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
+                            if !im_bezug_zugeordnet(zuordnung, !netto_vollstaendig).map_err(|f| Fehler::Intern(format!("git: {f}")))? {
+                                return Err(zu_gross_fuer_datei(nr));
+                            }
+                        }
                     }
                 }
             }
@@ -476,8 +488,6 @@ impl Gesamtlauf<'_> {
         // Folge-Einträge, denen ein Schritt-Stück im Lauf mit kleinerer Angabe fehlt
         let mut ganz_nachladen: HashSet<usize> = HashSet::new();
         if !mit.is_empty() {
-            let vergleiche: Vec<Vergleich> = mit.iter().map(|&k| Vergleich { commit: &plan.commits[k].1, eltern: plan.commits[k].2.as_deref() }).collect();
-            let koepfe: Vec<&str> = mit.iter().map(|&k| plan.commits[k].1.as_str()).collect();
             let mut eigene: Vec<Vec<u8>> = vec![];
             for &k in &mit {
                 for &i in &im_lauf[k] {
@@ -487,34 +497,15 @@ impl Gesamtlauf<'_> {
             // abgeschlossen gegen die Listen des Folge-Laufs: Git paart wie dort (B2)
             let bezug: Vec<&[Vec<u8>]> = mit.iter().flat_map(|&k| listen[k].iter().map(|d| d.pfade_roh.as_slice())).collect();
             let angabe = abschliessen(eigene, &bezug);
-            let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
-            let patch: Teil = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist))?;
-            // streng nur mit genau der Angabe der Folge-Liste (N7.10); sonst fehlt einem Schritt das Stück → ganzer Eintrag
-            // `nachladen` (unten), nie 500
-            let gleich = angabe == plan.pfade;
-            let abschnitte = abschnitte_patch(&patch.ausgabe, &koepfe);
-            let letzter = abschnitte.last().map(|a| a.kopf);
-            for (stelle, &k) in mit.iter().enumerate() {
-                let teil = abschnitte.iter().find(|a| a.kopf == stelle);
-                let geschnitten = patch.abgeschnitten && letzter.is_some_and(|l| l == stelle);
-                let hinter_dem_schnitt = patch.abgeschnitten && letzter.is_none_or(|l| stelle > l);
-                if hinter_dem_schnitt {
-                    for &i in &im_lauf[k] {
-                        abbrechen(&mut gruppen[k][i], verteilung);
-                    }
-                    continue;
-                }
-                let bytes = teil.map_or(&[][..], |a| &patch.ausgabe[a.bereich.clone()]);
-                if gleich || verteilung == Verteilung::Einzeln {
-                    patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
-                } else {
-                    let ohne = nicht_zugeordnet_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung);
-                    // am Schnitt fehlt ein Stück auch wegen der Grenze: dort bleibt es beim Schritt (wie bisher)
-                    if !geschnitten {
-                        ganz_nachladen.extend(ohne.into_iter().map(|i| je_commit[k][i].0));
-                    }
-                }
+            // streng nur mit genau der Angabe der Folge-Liste (N7.10); sonst fehlt einem Schritt das Stück → in der Liste
+            // ganzer Eintrag `nachladen` (unten), mit datei= ein zweiter Lauf mit der Angabe der Folge-Liste, streng
+            let vorher = (verteilung == Verteilung::Einzeln && angabe != plan.pfade).then(|| gruppen.clone());
+            let mut fehlt = self.folge_lauf(&mut gruppen, &im_lauf, &mit, plan, listen, &angabe, angabe == plan.pfade, rest, verteilung, fassung)?;
+            if let Some(vorher) = vorher.filter(|_| !fehlt.is_empty()) {
+                gruppen = vorher;
+                fehlt = self.folge_lauf(&mut gruppen, &im_lauf, &mit, plan, listen, &plan.pfade, true, rest, verteilung, fassung)?;
             }
+            ganz_nachladen.extend(fehlt.into_iter().map(|(k, i)| je_commit[k][i].0));
         }
         for (stellen, g) in je_commit.into_iter().zip(gruppen) {
             for (s, d) in stellen.into_iter().zip(g) {
@@ -529,6 +520,44 @@ impl Gesamtlauf<'_> {
             }
         }
         Ok(())
+    }
+}
+
+impl Gesamtlauf<'_> {
+    /// Ein Patch-Lauf der Folge mit der Pfadangabe `angabe` über die Commits `mit`, je Abschnitt zugeordnet; `streng`
+    /// (dieselbe Angabe wie die Folge-Liste): ein fehlendes Stück ist ein Fehler. Sonst liefert er die Schritte
+    /// (Commit, Stelle) ohne Stück außerhalb des Schnitts.
+    #[allow(clippy::too_many_arguments)]
+    fn folge_lauf(&self, gruppen: &mut [Vec<Diffdatei>], im_lauf: &[Vec<usize>], mit: &[usize], plan: &Folgeplan, listen: &[Vec<Diffdatei>], angabe: &[Vec<u8>], streng: bool, rest: usize, verteilung: Verteilung, fassung: Fassung) -> Result<Vec<(usize, usize)>, Fehler> {
+        let vergleiche: Vec<Vergleich> = mit.iter().map(|&k| Vergleich { commit: &plan.commits[k].1, eltern: plan.commits[k].2.as_deref() }).collect();
+        let koepfe: Vec<&str> = mit.iter().map(|&k| plan.commits[k].1.as_str()).collect();
+        let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
+        let patch: Teil = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist))?;
+        let abschnitte = abschnitte_patch(&patch.ausgabe, &koepfe);
+        let letzter = abschnitte.last().map(|a| a.kopf);
+        let mut fehlt = vec![];
+        for (stelle, &k) in mit.iter().enumerate() {
+            let teil = abschnitte.iter().find(|a| a.kopf == stelle);
+            let geschnitten = patch.abgeschnitten && letzter.is_some_and(|l| l == stelle);
+            let hinter_dem_schnitt = patch.abgeschnitten && letzter.is_none_or(|l| stelle > l);
+            if hinter_dem_schnitt {
+                for &i in &im_lauf[k] {
+                    abbrechen(&mut gruppen[k][i], verteilung);
+                }
+                continue;
+            }
+            let bytes = teil.map_or(&[][..], |a| &patch.ausgabe[a.bereich.clone()]);
+            if streng {
+                patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+            } else {
+                let ohne = nicht_zugeordnet_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], angabe, bytes, geschnitten, verteilung, fassung);
+                // am Schnitt fehlt ein Stück auch wegen der Grenze: dort bleibt es beim Schritt (wie bisher)
+                if !geschnitten {
+                    fehlt.extend(ohne.into_iter().map(|i| (k, i)));
+                }
+            }
+        }
+        Ok(fehlt)
     }
 }
 
@@ -556,6 +585,11 @@ fn verbinden(roh: &Teil, zahlen: &Teil) -> Result<Vec<Diffdatei>, Fehler> {
         return Err(form());
     }
     Ok(r.into_iter().zip(z).map(|(r, z)| diffdatei(r, z)).collect())
+}
+
+/// 404 nach N7.3, wenn auch der Rückfall die Datei nicht liefern kann: auf den Diff je Commit verweisen.
+fn zu_gross_fuer_datei(nr: u32) -> Fehler {
+    Fehler::NichtGefunden(format!("die Namen der Kartencommits von #{nr} sind länger als {} MB — die Datei mit commit= und datei= laden", crate::modell::GRENZE_NAMEN >> 20))
 }
 
 fn datei_fehlt(nr: u32) -> Fehler {

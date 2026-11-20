@@ -200,7 +200,7 @@ fn patches(f: &Value) -> Vec<String> {
 fn ohne_patch_erklaert(f: &Value) -> bool {
     let erklaert = |d: &Value| d["patch"].is_string() || d["nachladen"] == json!(true) || d["gross"] == json!(true) || d["binaer"] == json!(true) || d["status"] == json!("R") && d["aehnlichkeit"] == json!(100);
     match f["schritte"].as_array() {
-        Some(s) => s.iter().all(|s| erklaert(s)),
+        Some(s) => s.iter().all(erklaert),
         None => erklaert(f),
     }
 }
@@ -297,7 +297,7 @@ fn ohne_stueck(pfad: &str) -> String {
 #[tokio::test]
 async fn ak3_netto_streng_nur_bei_gleicher_angabe() {
     let l = Lage::neu();
-    let a = |t: &str| (format!("{t}\n"));
+    let a = |t: &str| format!("{t}\n");
     l.baum(&[("a.txt", a("a")), ("b.txt", a("b")), ("f.txt", a("f"))], "A");
     let k1 = l.baum(&[("a.txt", a("a1")), ("b.txt", a("b1")), ("f.txt", a("f"))], "K1");
     let k2 = l.baum(&[("a.txt", a("a2")), ("b.txt", a("b2")), ("f.txt", a("f"))], "K2");
@@ -363,4 +363,60 @@ async fn ak3_folge_ganz_nachladen_streng_nur_bei_gleicher_angabe() {
     assert_eq!(schritte.len(), 2, "{b}");
     assert!(schritte.iter().all(|s| s["nachladen"] == json!(true) && s["patch"].is_null()), "ganzer Eintrag nachladen: {b}");
     assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a\n+a1\n"), "{d}");
+}
+
+/// Ein Git-Skript: jeder Patch-Lauf schreibt in `spur` „ohne“ (keine Pfadangabe), „bezug“ (die Angabe enthält einen Pfad
+/// `gross…`, also die des Bezugs) oder „klein“; in einem kleinen Lauf fehlt das Stück, dessen Kopf auf ` b/<ziel>` endet.
+fn spur_und_luecke(spur: &Path, ziel: &str) -> String {
+    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) eval letztes=\\${{$#}}; case \" $* \" in *\" gross\"*) art=bezug;; *) art=klein;; esac; [ \"$letztes\" = \"--\" ] && art=ohne; echo $art >> {s}; if [ $art = klein ]; then $echt \"$@\" | awk '/^diff --git /{{weg = ($0 ~ / b\\/{ziel}$/)}} !weg'; exit 0; fi;; esac", s = spur.display())
+}
+
+fn spur_lesen(spur: &Path) -> Vec<String> {
+    let l = std::fs::read_to_string(spur).unwrap_or_default().lines().map(String::from).collect();
+    let _ = std::fs::remove_file(spur);
+    l
+}
+
+/// AK 2: fehlt dem ersten Lauf von `datei=` das Stück, folgt genau ein Rückfall mit der Angabe des Bezugs — Fall N
+/// (Spanne ohne fremde Commits) ohne Angabe, Fall F mit `D_karte` (enthält `gross`), Folge mit der Angabe der
+/// Folge-Liste (enthält `gross2`); nie ohne Angabe über eine Spanne mit fremden Commits. Antwort 200, Netto bytegleich,
+/// keine `FREMD`-Zeile. Vor dem Fix: 500 „hat 0 von 1 Stücken“.
+#[tokio::test]
+async fn ak2_datei_rueckfall_mit_der_angabe_des_bezugs() {
+    for (fall, ziel, erwartet) in [("N", "dst", ["klein", "ohne"]), ("F", "dst", ["klein", "bezug"])] {
+        let l = Lage::neu();
+        let karte = if fall == "N" { fall_n(&l, 2) } else { fall_f(&l, 2) };
+        let stuecke = l.netto_stuecke(&karte);
+        let spur = l.r.parent().unwrap().join("spur");
+        let pfad = l.git_skript(&spur_und_luecke(&spur, ziel));
+        let lauf = l.starten(&[(1, karte.clone())], &[("PATH", &pfad)]);
+        let (s, t) = holen(&lauf.adresse, 1, &format!("datei={ziel}")).await;
+        assert_eq!(s, 200, "Fall {fall}: {t}");
+        assert_eq!(spur_lesen(&spur), erwartet, "Fall {fall}: Läufe von datei={ziel}");
+        let f = &dateien(&serde_json::from_str::<Value>(&t).unwrap())[0].clone();
+        let kopf = format!("diff --git a/{} b/{}\n", f["alt"].as_str().unwrap_or(ziel), ziel);
+        let st = stuecke.iter().find(|s| s.starts_with(&kopf)).unwrap();
+        assert_eq!(f["patch"].as_str().unwrap(), hunks(st), "Fall {fall}: bytegleich");
+        let (s, text) = holen(&lauf.adresse, 1, &format!("datei={ziel}&format=patch")).await;
+        let ohne_hinweise: String = text.split_inclusive('\n').filter(|z| !z.starts_with("# kanbanD: ")).collect();
+        assert_eq!((s, ohne_hinweise.as_str()), (200, st.as_str()), "Fall {fall} format=patch");
+        ohne_fremd(&text, "datei format=patch");
+    }
+    // Folge: b.txt wie in ak3_folge…, Karte mit gross2 als Folge-Pfad außerhalb des ersten Laufs
+    let l = Lage::neu();
+    let z = |t: &str| format!("{t}\n");
+    let gross = |t: &str| (0..3001).map(|i| format!("{t}{i}\n")).collect::<String>();
+    l.baum(&[("a.txt", z("a")), ("b.txt", z("b0"))], "A");
+    let k1 = l.baum(&[("a.txt", z("a1")), ("b.txt", z("b1")), ("gross2", gross("g"))], "K1");
+    l.baum(&[("a.txt", z("a1")), ("b.txt", z("b-fremd")), ("gross2", gross("f"))], "F");
+    let k2 = l.baum(&[("a.txt", z("a1")), ("b.txt", z("b2")), ("gross2", gross("f"))], "K2");
+    let spur = l.r.parent().unwrap().join("spur");
+    let pfad = l.git_skript(&spur_und_luecke(&spur, "b.txt"));
+    let lauf = l.starten(&[(1, vec![k1, k2])], &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, 1, "datei=b.txt").await;
+    assert_eq!(s, 200, "Folge: {t}");
+    assert_eq!(spur_lesen(&spur), ["klein", "bezug"], "Folge: Läufe von datei=b.txt");
+    let f = dateien(&serde_json::from_str::<Value>(&t).unwrap())[0].clone();
+    let patches: Vec<&str> = f["schritte"].as_array().unwrap().iter().map(|s| s["patch"].as_str().unwrap_or("")).collect();
+    assert_eq!(patches, ["@@ -1 +1 @@\n-b0\n+b1\n", "@@ -1 +1 @@\n-b-fremd\n+b2\n"], "{f}");
 }
