@@ -1427,3 +1427,14 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #228 | Detailplanung | planer | bestanden | 6 min | R00214, I0204 B1083–B1090 (S1 API) · claude · opus · Lauf 228-planer-1 · 2,36 $ · Karte gesamt 2,36 $ |
 | 2026-11-20 | #230 | Auto-Reviews | security-reviewer | bestanden | 30 min | kein Muss, kein Sollte; ein Optional · claude · sonnet · Lauf 230-security-reviewer-1 · 0,81 $ · Karte gesamt 1,70 $ |
 | 2026-11-20 | #230 | Entwicklertest | entwicklertester | bestanden | 13 min | US-1/US-2 bestanden, US-3 ein Sollte (vorbestehend, eigene Karte) · claude · sonnet · Lauf 230-entwicklertester-1 · 0,87 $ · Karte gesamt 2,57 $ |
+
+**Retrospektive #230** (Vorrang-Bug: Gesamt-Diff gab 500 bei gleich bewerteten Umbenennungsquellen, 2026-11-20, 2,57 $ gemessen für die prüfenden Rollen, entwickler nicht messbar, ausgeliefert 61fac387)
+- **Gut:**
+  - Keine Nacharbeit. architekt (N7.10) → planer → entwickler → drei prüfende Rollen bestanden im ersten Durchgang.
+  - Vier unabhängige Zufallsproben (entwickler 1.200 Seeds, code-reviewer 300, security-reviewer 400 mit eigenem Erzeuger + 300, entwicklertester 300): 0×500, kein fremder Inhalt. Die Lehre aus #229 (Erzeuger mit `tie`) hat getragen.
+  - Der security-reviewer hat das Orakel selbst scharf gemacht (Mutant M1 in 56/149 Seeds gemeldet) und klar benannt, worauf der Schutz beruht: allein auf Zuordnung und `retain`; die Pfadangabe schützt nur die Paarung.
+- **Lehre (Lastprobe im Nachtbetrieb):** Ein AK mit Lastprobe kann nachts nicht abgeschlossen werden. Die Karte ging mit offenem AK 7 nach Erledigt, der Rest steht als eigene Karte im Backlog. Künftig ein Lastprobe-AK beim Zuschnitt als eigenes Kriterium kennzeichnen, damit es nicht die ganze Karte hält.
+- **Lehre (Gate neben entwickler):** Das Gate lief neben dem entwickler von #228; `ak08_antwortbudget` wurde wieder unter Last rot (einzeln grün in 8,6 s). #231 ist damit dringlicher.
+- **Lehre (Merge):** Der WBS-Konflikt mit den neuen I0204-Zeilen von #228 ließ sich mit `wbs_loesen.py` mechanisch lösen.
+- **Neue Karten:** #236 (`datei=` meldet „steht in keinem Kartencommit“ bei 12.000–19.000 langen Pfaden, vorbestehend), #237 (Lastprobe R00208, AK 7).
+- **Sollte ohne Nacharbeit (verworfen, Grund: kein Muss, Testlücken an abgefangenen Stellen):** AK-4-Test prüft den Zähler der Git-Starts nicht; Mutanten n1 und n4 überleben. **Optional:** Ein 500-Text kann den Pfadnamen eines fremden Eintrags nennen; redundanter `abbrechen` in `folge_lauf`.
