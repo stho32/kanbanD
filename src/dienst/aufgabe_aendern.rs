@@ -1,3 +1,4 @@
+use super::braucht::{Tuer, vorsatz};
 use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
@@ -34,7 +35,9 @@ impl Kanban {
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         self.aufgabe_schreiben(wer, nummer, |a| {
             let boards = self.boards_fuer_klassen(std::slice::from_ref(aenderung))?;
+            let vorher = a.labels.clone();
             let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, nummer, &e)).map_err(Fehler::Ungueltig)?;
+            Tuer::neu(self).pruefen(nummer, &vorher, &a.labels)?;
             Ok((!felder.is_empty()).then(|| format!("#{nummer} geändert: {}", felder.join(", "))))
         })
     }
@@ -52,9 +55,12 @@ impl Kanban {
         let mut geaendert = vec![];
         let mut felder_alle: Vec<&str> = vec![];
         let mut dateien = vec![];
+        let mut tuer = Tuer::neu(self);
         for (nummer, aenderung) in aenderungen {
             let mut a = self.ordner().aufgabe(*nummer)?;
+            let vorher = a.labels.clone();
             let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, *nummer, &e)).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
+            tuer.pruefen(*nummer, &vorher, &a.labels).map_err(|f| vorsatz(f, &format!("#{nummer}: ")))?;
             if !felder.is_empty() {
                 geaendert.push(format!("#{nummer}"));
                 for f in felder {

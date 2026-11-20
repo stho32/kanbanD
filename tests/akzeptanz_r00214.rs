@@ -372,3 +372,17 @@ async fn ak13_openapi_und_endpunkte_beschreiben_braucht_und_wartet() {
         }
     }
 }
+
+// ---- Eigene Varianten (entwickler, über die AK hinaus) ----------------------------------------------------------------
+
+#[tokio::test]
+async fn eigen_mehrere_nennen_die_nummer_und_eine_neue_karte_derselben_anfrage_gibt_es() {
+    let lage = Lage::neu();
+    let antwort = lage.rufen(Method::PATCH, "api/aufgaben/mehrere", json!({"aenderungen": [{"nummer": 1, "titel": "X"}, {"nummer": 5, "labels": ["braucht:x"]}]})).await;
+    assert_eq!((antwort.0, fehler(&antwort)), (400, format!("#5: {FORM}").as_str()), "{}", antwort.1);
+    let antwort = lage.rufen(Method::POST, "api/aufgaben", json!({"titel": "Neu", "labels": ["braucht:6"]})).await;
+    assert_eq!((antwort.0, fehler(&antwort)), (400, "„Neu“: #6 kann nicht auf sich selbst warten"), "die neue Karte bekäme #6: {}", antwort.1);
+    let (s, a) = lage.rufen(Method::POST, "api/aufgaben/mehrere", json!({"titel": [{"titel": "A"}, {"titel": "B", "labels": ["braucht:6"]}]})).await;
+    assert_eq!(s, 201, "B wartet auf A aus derselben Anfrage: {a}");
+    assert_eq!(lage.karte(7).await["braucht"], json!([{"nummer": 6, "titel": "A", "erledigt": false}]));
+}

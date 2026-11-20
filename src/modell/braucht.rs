@@ -72,9 +72,81 @@ pub fn abhaengigkeiten<'a>(labels: &[String], finde: impl Fn(u32) -> Option<&'a 
     braucht_nummern(labels).into_iter().map(eintrag).collect()
 }
 
+// ---- Prüfung an der Tür (ADR-0035 Punkt 2) ----------------------------------------------------------------------------
+// Die Meldungen stehen hier an einer Stelle; der Wortlaut von „gibt es nicht“ und „Kreis“ ist ein Vorschlag (PO-Frage 2).
+// Sie nennen nur Nummern und festen Text, nie den Rest eines abgewiesenen Labels (R00214, Sicherheit).
+
+/// Ein Label mit dem Präfix `braucht:` in anderer Form.
+pub const FORM_MELDUNG: &str = "braucht: erwartet eine Kartennummer (braucht:12)";
+
+pub fn selbstbezug_meldung(nummer: u32) -> String {
+    format!("#{nummer} kann nicht auf sich selbst warten")
+}
+
+pub fn unbekannt_meldung(nummer: u32) -> String {
+    format!("#{nummer} gibt es nicht (braucht:{nummer})")
+}
+
+/// Die neu hinzukommenden Labels mit dem Präfix `braucht:` — „neu“ heißt: in der gespeicherten Liste steht es nicht,
+/// verglichen ohne Groß/Klein. Unverändert mitgeschickte Labels prüft die Tür nie (wie `klasse`, R00195).
+pub fn neue_braucht_labels<'a>(vorher: &[String], nachher: &'a [String]) -> Vec<&'a str> {
+    let gespeichert: Vec<String> = vorher.iter().map(|l| l.trim().to_lowercase()).collect();
+    nachher.iter().map(|l| l.as_str()).filter(|l| deuten(l) != Deutung::Keine && !gespeichert.contains(&l.trim().to_lowercase())).collect()
+}
+
+/// Prüft die neuen `braucht:`-Labels der Aufgabe `nummer` der Reihe nach — Form, Selbstbezug, unbekannte Nummer; der
+/// erste Fehler gewinnt. `gibt_es` sagt, ob es zur Nummer eine Aufgabendatei im Ordner gibt (archivierte zählen).
+/// Liefert die neuen Kanten `nummer → n` als Ziele in Label-Reihenfolge.
+pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) -> Result<Vec<u32>, String> {
+    let mut ziele = vec![];
+    for label in neue {
+        let n = match deuten(label) {
+            Deutung::Nummer(n) => n,
+            Deutung::Falsch | Deutung::Keine => return Err(FORM_MELDUNG.into()),
+        };
+        if n == nummer {
+            return Err(selbstbezug_meldung(n));
+        }
+        if !gibt_es(n) {
+            return Err(unbekannt_meldung(n));
+        }
+        if !ziele.contains(&n) {
+            ziele.push(n);
+        }
+    }
+    Ok(ziele)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // R00214 B1087: neu ist, was nicht gespeichert ist (ohne Groß/Klein); nur Labels mit Präfix
+    #[test]
+    fn neu_ist_nur_was_nicht_gespeichert_ist() {
+        let vorher = labels(&["braucht:abc", "braucht:888", "ui"]);
+        assert_eq!(neue_braucht_labels(&vorher, &labels(&["braucht:abc", "braucht:888", "prio"])), Vec::<&str>::new(), "AK 11");
+        assert_eq!(neue_braucht_labels(&vorher, &labels(&["braucht:abc", "braucht:888", "braucht:777"])), vec!["braucht:777"]);
+        assert_eq!(neue_braucht_labels(&vorher, &labels(&["BRAUCHT:ABC", "Braucht:888"])), Vec::<&str>::new(), "ohne Groß/Klein");
+        assert_eq!(neue_braucht_labels(&[], &labels(&["braucht", "brauchtnix", "braucht:x", "braucht:1"])), vec!["braucht:x", "braucht:1"]);
+        assert_eq!(neue_braucht_labels(&labels(&["braucht:1"]), &labels(&["braucht:01"])), vec!["braucht:01"], "andere Schreibweise der Zahl ist neu");
+    }
+
+    // R00214 AK 7–9: Reihenfolge der Labels, erster Fehler gewinnt; Meldungen ohne den Rest des Labels
+    #[test]
+    fn tuer_form_selbstbezug_unbekannt() {
+        let gibt_es = |n: u32| [1, 2, 3, 4, 5].contains(&n);
+        for falsch in ["braucht:x", "braucht:012", "braucht:0", "braucht: 1", "BRAUCHT:kd#12", "braucht:<script>"] {
+            assert_eq!(an_der_tuer(5, &[falsch], gibt_es), Err(FORM_MELDUNG.to_string()), "{falsch}");
+        }
+        assert_eq!(an_der_tuer(5, &["braucht:5"], gibt_es), Err("#5 kann nicht auf sich selbst warten".into()));
+        assert_eq!(an_der_tuer(5, &["braucht:999"], gibt_es), Err("#999 gibt es nicht (braucht:999)".into()));
+        assert_eq!(an_der_tuer(5, &["braucht:4", "Braucht:1", "braucht:4"], gibt_es), Ok(vec![4, 1]));
+        assert_eq!(an_der_tuer(5, &["braucht:999", "braucht:x"], gibt_es), Err(unbekannt_meldung(999)), "der erste Fehler in Label-Reihenfolge");
+        assert_eq!(an_der_tuer(5, &["braucht:x", "braucht:5"], gibt_es), Err(FORM_MELDUNG.into()));
+        assert_eq!(an_der_tuer(5, &["braucht:5", "braucht:999"], gibt_es), Err(selbstbezug_meldung(5)));
+        assert_eq!(an_der_tuer(5, &[], gibt_es), Ok(vec![]));
+    }
 
     fn labels(l: &[&str]) -> Vec<String> {
         l.iter().map(|x| x.to_string()).collect()

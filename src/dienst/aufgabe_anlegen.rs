@@ -1,3 +1,4 @@
+use super::braucht::{Tuer, vorsatz};
 use super::{Kanban, Schritt};
 use super::archiv::zurueckgeholt;
 use super::kommentare::kommentiert;
@@ -146,6 +147,7 @@ impl Kanban {
         let mut aufgaben: Vec<Aufgabe> = vec![];
         let mut wieder: Vec<Aufgabe> = vec![];
         let mut plan: Vec<(u32, bool)> = vec![];
+        let mut tuer = Tuer::neu(self);
         for ((t, angaben), k) in eintraege.iter().zip(&schluessel) {
             if let Some(k) = k {
                 match schon_da(&aufgaben, &wieder, &vorhanden, k)? {
@@ -186,6 +188,11 @@ impl Kanban {
                 a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
                 let teile = g.teilaufgaben.iter().flatten().map(|x| x.trim().replace('\n', " ")).filter(|x| !x.is_empty());
                 a.teilaufgaben.extend(teile.map(|text| crate::modell::Teilaufgabe { text, erledigt: false }));
+            }
+            if aus.is_none() {
+                // Eine Kopie übernimmt die Labels ihrer Quelle als Bestand: ungeprüft (R00214). Jede neue Karte meldet sich
+                // an der Tür, damit ein späterer Eintrag derselben Anfrage auf sie warten kann.
+                tuer.pruefen(nummer, &[], &a.labels).map_err(|f| vorsatz(f, &format!("„{t}“: ")))?;
             }
             plan.push((nummer, true));
             aufgaben.push(a);
