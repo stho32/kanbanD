@@ -2,7 +2,7 @@
 //! Ausgabe vieler Commits, Folge-Einträge mit Summen und der Text für `format=patch` — rein, **ohne Git**: hier wird nur
 //! gelesen, eingeteilt und zusammengesetzt, was der Startort geliefert hat.
 
-use super::commit_diff::{Diffdatei, Fassung, Hinweis, Verteilung, patches_zuordnen, roh_lesen};
+use super::commit_diff::{Diffdatei, Hinweis, roh_lesen};
 use serde::Serialize;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
@@ -271,7 +271,8 @@ impl Einteilung {
 /// Schließt eine Pfadangabe gegen die Einträge eines Bezugslaufs ab (Code-Review B2, #214): jeder Eintrag, dessen Pfad
 /// die Angabe trifft — genau oder als `foo/…`, denn eine Pfadangabe `foo` trifft in Git alles darunter, auch mit
 /// `--literal-pathspecs` —, kommt mit allen seinen Pfaden hinein, bis nichts mehr dazukommt. Ein Lauf mit der Angabe sieht
-/// dann nur ganze Einträge des Bezugslaufs, und Git paart die Umbenennungen wie dort. Sortiert.
+/// dann nur ganze Einträge des Bezugslaufs, und Git paart die Umbenennungen wie dort; die Stücke der mitgenommenen
+/// Einträge verwirft die Zuordnung als fremd (N5.2 Regel 3). Sortiert.
 pub fn abschliessen(pfade: impl IntoIterator<Item = Vec<u8>>, eintraege: &[&[Vec<u8>]]) -> Vec<Vec<u8>> {
     let mut index: Vec<(&[u8], usize)> = eintraege.iter().enumerate().flat_map(|(i, e)| e.iter().map(move |p| (p.as_slice(), i))).collect();
     index.sort();
@@ -299,26 +300,6 @@ pub fn abschliessen(pfade: impl IntoIterator<Item = Vec<u8>>, eintraege: &[&[Vec
     let mut v: Vec<Vec<u8>> = drin.into_iter().collect();
     v.sort();
     v
-}
-
-/// Ordnet die Stücke eines Laufs mit der abgeschlossenen Pfadangabe `angabe` ([`abschliessen`], sortiert; leer = ohne
-/// Angabe) den Dateien `im_lauf` zu (Code-Review B2, #214). Der Lauf enthält jeden Eintrag des Bezugslaufs, dessen Pfade
-/// alle in der Angabe liegen, in dessen Reihenfolge — zugeordnet wird über alle diese, sonst gälte das Stück eines
-/// mitgenommenen Eintrags gleichen Inhalts als verrutscht; behalten werden nur Patch, Stücke und Marken der Dateien
-/// `im_lauf`. Sie müssen Einträge des Bezugslaufs sein.
-#[allow(clippy::too_many_arguments)]
-pub fn zuordnen_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
-    let drin = |p: &Vec<u8>| angabe.is_empty() || angabe.binary_search(p).is_ok();
-    let mut lauf: Vec<Diffdatei> = bezug.iter().filter(|e| e.pfade_roh.iter().all(drin)).cloned().collect();
-    let stelle: HashMap<&Vec<Vec<u8>>, usize> = lauf.iter().enumerate().map(|(j, e)| (&e.pfade_roh, j)).collect();
-    let stellen: Vec<usize> = im_lauf.iter().map(|&i| stelle.get(&dateien[i].pfade_roh).copied().ok_or_else(|| format!("Patch-Lauf: „{}“ fehlt im Bezugslauf", dateien[i].name()))).collect::<Result<_, _>>()?;
-    let alle: Vec<usize> = (0..lauf.len()).collect();
-    patches_zuordnen(&mut lauf, &alle, aus, abgeschnitten, verteilung, fassung)?;
-    for (&i, &j) in im_lauf.iter().zip(&stellen) {
-        let (d, l) = (&mut dateien[i], &mut lauf[j]);
-        (d.patch, d.stuecke, d.gross, d.nachladen, d.nicht_utf8) = (l.patch.take(), l.stuecke.take(), l.gross, l.nachladen, d.nicht_utf8 || l.nicht_utf8);
-    }
-    Ok(())
 }
 
 /// Ein Schritt einer Folge-Datei: der Verweis wörtlich wie in der Datei der Karte und die Datei des Commits.

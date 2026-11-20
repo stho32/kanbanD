@@ -810,6 +810,15 @@ async fn b1_umbenennung_einer_fremd_angelegten_datei() {
     l.schreiben_in("m.txt/inner", &inhalt);
     let k2e = l.commit("K2e");
     l.karte(24, &[kd(&k1e), kd(&k2e)]);
+    // (f) Zwischenname, den die Karte anlegt: K1 legt n.txt an, ein fremder Commit berührt anderes, K2 benennt n.txt nach
+    // z.txt um → netto `A z.txt`, n.txt erscheint nirgends (sonst ein Folge-Eintrag nur mit „A n.txt“)
+    l.schreiben("n.txt", &zeilen("n", 6));
+    let k1f = l.commit("K1f");
+    l.zeile("a.txt", 12, "FREMD-f");
+    l.commit("F-f");
+    l.git(&["mv", "n.txt", "z.txt"]);
+    let k2f = l.commit("K2f");
+    l.karte(25, &[kd(&k1f), kd(&k2f)]);
     let lauf = l.starten(&[]);
 
     let (d, _) = gesamt(&lauf.adresse, 20, "").await;
@@ -840,6 +849,12 @@ async fn b1_umbenennung_einer_fremd_angelegten_datei() {
     assert!(!namen(&d).contains(&"m.txt".to_string()) && !dateien(&d).iter().any(ist_folge), "eine Netto-Umbenennung r.txt → m.txt/inner, kein Zwischenname: {d}");
     assert_eq!((&eintrag(&d, "m.txt/inner")["status"], &eintrag(&d, "m.txt/inner")["alt"]), (&json!("R"), &json!("r.txt")));
     datei_auf_jeden_pfad(&lauf.adresse, 24, &d, &["m.txt", "r.txt"]).await;
+
+    let (d, _) = gesamt(&lauf.adresse, 25, "").await;
+    eindeutig(&d);
+    assert!(!namen(&d).contains(&"n.txt".to_string()), "n.txt ist ein Zwischenname: {d}");
+    assert_eq!(&eintrag(&d, "z.txt")["status"], &json!("A"));
+    datei_auf_jeden_pfad(&lauf.adresse, 25, &d, &["n.txt"]).await;
 }
 
 // B2 Abnahme-Probe: Basis b und d/x mit gleichem Inhalt; K1 ersetzt d/x durch d/x/inner, K2 hängt K2 an, K3 ersetzt b
@@ -884,11 +899,38 @@ async fn b2_typwechsel_mit_gleichem_blob() {
     let k2 = l.commit("K2-32");
     l.karte(32, &[kd(&k1), kd(&k2)]);
     karten.push((32, "b32".into(), "d32/x".into()));
+    // Neupaarung über die Pfadangabe: Basis b33 (Inhalt X) und d33/x (X und eine Zeile mehr); ein Kartenschritt löscht
+    // beide und legt d33/x/inner mit X an → Git paart `R b33 → d33/x/inner` (gleicher Inhalt) und `D d33/x`. Eine
+    // Pfadangabe `d33/x` allein träfe d33/x/inner, und Git paarte `R d33/x → d33/x/inner`.
+    // #33 ein Kartencommit (netto, datei=d33/x); #34 dasselbe mit einem fremden Commit, der d33/x ändert (D d33/x Folge)
+    for (nr, fremd) in [(33u32, false), (34, true)] {
+        let (b, dx) = (format!("b{nr}"), format!("d{nr}/x"));
+        l.schreiben_in(&b, &inhalt);
+        l.schreiben_in(&dx, &format!("{inhalt}y\n"));
+        l.commit("Basis");
+        l.zeile("a.txt", 1, &format!("K0-{nr}"));
+        let k0 = l.commit("K0");
+        if fremd {
+            l.schreiben_in(&dx, &format!("{inhalt}y\nanders\n"));
+            l.commit("F");
+        }
+        std::fs::remove_file(l.r.join(&b)).unwrap();
+        std::fs::remove_file(l.r.join(&dx)).unwrap();
+        l.schreiben_in(&format!("{dx}/inner"), &inhalt);
+        let k1 = l.commit("K1");
+        l.karte(nr, &if fremd { vec![kd(&k0), kd(&k1)] } else { vec![kd(&k1)] });
+        karten.push((nr, b, dx));
+    }
     let lauf = l.starten(&[]);
     for (nr, b, dx) in karten {
         let (d, _) = gesamt(&lauf.adresse, nr, "").await;
         eindeutig(&d);
         datei_auf_jeden_pfad(&lauf.adresse, nr, &d, &[&b, &dx, &format!("{b}/inner"), &format!("{dx}/inner")]).await;
+        if nr == 34 {
+            let k1 = d["commits"][1]["verweis"].as_str().unwrap().to_string();
+            assert_eq!(schritte_von(eintrag(&d, "d34/x")), [(k1, "D".into(), json!("d34/x"), Value::Null, 0, 12)], "{d}");
+            assert_eq!((&eintrag(&d, "d34/x/inner")["status"], &eintrag(&d, "d34/x/inner")["alt"]), (&json!("R"), &json!("b34")));
+        }
     }
 }
 
@@ -1023,7 +1065,7 @@ async fn b3_namen_der_kartencommits_ueber_vier_mb() {
         let gezeigt = n.min(2000);
         assert_eq!(dateien(&d).len(), gezeigt, "#{nr}");
         let kappe = (n > 2000).then(|| json!({"art": "dateien_gekappt", "gezeigt": 2000, "gesamt": n}));
-        assert_eq!(hinweis(&d, "dateien_gekappt"), kappe.as_ref(), "#{nr}: {}", d["hinweise"]);
+        assert_eq!(d["hinweise"], json!(kappe.into_iter().collect::<Vec<_>>()), "#{nr}: nur die Kappe, keine Folge");
         assert!(dateien(&d).iter().all(|f| !ist_folge(f) && f["status"] == "A"), "#{nr}: ein Kartencommit ist netto");
     }
     let (d, _) = gesamt(&lauf.adresse, 54, "").await;
@@ -1031,6 +1073,8 @@ async fn b3_namen_der_kartencommits_ueber_vier_mb() {
     let kappe = hinweis(&d, "dateien_gekappt").unwrap_or_else(|| panic!("{}", d["hinweise"]));
     assert_eq!((kappe["gezeigt"].as_u64(), kappe["gesamt"].as_u64()), (Some(dateien(&d).len() as u64), Some(42_000)));
     assert!(dateien(&d).len() <= 2000);
+    let a = holen(&lauf.adresse, 54, "datei=va%2F00000.txt", None).await;
+    assert_eq!((a.status, a.json()["fehler"].is_string()), (404, true), "datei= ohne vollständige Namen: {}", a.text);
 }
 
 /// Eine Zeile von 79 Zeichen mit Nummer.
