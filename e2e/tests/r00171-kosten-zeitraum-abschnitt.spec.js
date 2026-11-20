@@ -68,10 +68,10 @@ test.describe('R00171 Bericht „Kosten“: Zeitraum, Spaltenabschnitt und Aufga
   const boardDatei = () => k.lies('boards/fabrik.md');
   /** Eine Wahl in der Bereichszeile ist erst durch, wenn sie gespeichert, das Nachladen danach übernommen und gezeichnet
       ist (ADR-0026 Regel 3) — bis dahin ersetzt ein Neuzeichnen jedes Feld. Der Kostenbericht lädt keine Bewegungen:
-      sein Nachladen endet mit den drei gleichzeitigen Anfragen nach Aufgaben, Herkunft und Boards. */
+      sein Nachladen endet mit den zwei gleichzeitigen Anfragen nach Aufgaben und Boards. */
   async function waehlen(page, aktion) {
     const antwortAuf = pfad => page.waitForResponse(antwort => antwort.request().method() === 'GET' && new URL(antwort.url()).pathname === pfad);
-    const nachgeladen = Promise.all(['/api/aufgaben', '/api/herkunft', '/api/boards'].map(antwortAuf));
+    const nachgeladen = Promise.all(['/api/aufgaben', '/api/boards'].map(antwortAuf));
     await aktion();
     await Promise.all((await nachgeladen).map(antwort => antwort.finished()));
     await bereit(page, '#kosten');

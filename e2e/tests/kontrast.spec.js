@@ -597,9 +597,8 @@ test.describe('R00188 Stillgelegte Person lesbar', () => {
  * einer fertigen Karte: eine eigene Klassenfarbe `#ffffff` gegen ein Gegenstück der Palettenklasse `bug`, beide Themen. Eigene Farben
  * liegen außerhalb der Paartabelle (Regel 7); geprüft wird nur die Schriftfarbe am gezeichneten Element (Weiß 30 % über
  * `--kd-surface` im Dunkelthema: `--kd-muted` 2,571, `--kd-text` 4,677).
- * Nacharbeit #50n: die Herkunft trägt in der Karte eine auflösbare Quelle (`origins: [I0005]`, `sources.wbs`) und ist damit ein `a.org`
- * — gemessen wird auch ihr Zeige-Zustand (`--kd-accent` mit `--kd-on-accent`): die Ruhe-Regel dieses Blocks (Spezifität 0,5,0) schlug
- * vorher `a.org:hover` und stellte `--kd-text` auf `--kd-accent` (2,706 hell / 3,707 dunkel).
+ * Seit R00212 (#226) ist die Herkunft Text (`span.org`) ohne Zeige-Zustand: gemessen wird, dass die Maus über ihr nichts ändert
+ * (vorher stellte die Ruhe-Regel dieses Blocks `a.org:hover` auf `--kd-text` auf `--kd-accent`, #50n).
  */
 test.describe('R00139 Text auf eigener Klassenfarbe', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
@@ -669,37 +668,22 @@ test.describe('R00139 Text auf eigener Klassenfarbe', () => {
     }
   });
 
-  test('Zeige-Zustand der Herkunft: Grund --kd-accent, Schrift --kd-on-accent, mindestens 4,5, danach wieder --kd-text, beide Themen', async ({ page }) => {
-    const org = page.locator('.ka[data-eigen][data-id="1"] a.org');
+  test('Herkunft ist Text ohne Zeige-Zustand: die Maus ändert weder Grund noch Schrift, beide Themen', async ({ page }) => {
+    const org = page.locator('.ka[data-eigen][data-id="1"] span.org');
     await expect(org).toHaveCount(1);
     await expect(org).toHaveText('I0005');
+    await expect(page.locator('a.org')).toHaveCount(0);
     for (const t of THEMEN) {
       await thema(page, t);
       await farbuebergaengeAbwarten(page);
-      const ruhe = {
-        schrift: await pixelVon(page, org, 'color'),
-        verlangt: await farbPixel(page, await tokenFarbe(page, '--kd-text')),
-        wert: await kontrastAm(org),
-      };
+      const messung = async () => ({ grund: await pixelVon(page, org, 'backgroundColor'), schrift: await pixelVon(page, org, 'color'), wert: await kontrastAm(org) });
+      const ruhe = await messung();
       expect(ruhe.wert, `${t} Ruhe: Kontrast ${komma(ruhe.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
-      expect(ruhe.schrift, `${t} Ruhe: Schrift ist --kd-text`).toEqual(ruhe.verlangt);
+      expect(ruhe.schrift, `${t} Ruhe: Schrift ist --kd-text`).toEqual(await farbPixel(page, await tokenFarbe(page, '--kd-text')));
       await org.hover();
       await farbuebergaengeAbwarten(page);
-      const zeige = {
-        grund: await pixelVon(page, org, 'backgroundColor'),
-        grundVerlangt: await farbPixel(page, await tokenFarbe(page, '--kd-accent')),
-        schrift: await pixelVon(page, org, 'color'),
-        schriftVerlangt: await farbPixel(page, await tokenFarbe(page, '--kd-on-accent')),
-        wert: await kontrastAm(org),
-      };
-      expect(zeige.wert, `${t} Zeigen: Kontrast ${komma(zeige.wert)} auf --kd-accent`).toBeGreaterThanOrEqual(MASS);
-      expect(zeige.grund, `${t} Zeigen: Grund ist --kd-accent`).toEqual(zeige.grundVerlangt);
-      expect(zeige.schrift, `${t} Zeigen: Schrift ist --kd-on-accent`).toEqual(zeige.schriftVerlangt);
+      expect(await messung(), `${t} Zeigen: nichts ändert sich`).toEqual(ruhe);
       await page.mouse.move(0, 0);
-      await farbuebergaengeAbwarten(page);
-      const nach = { schrift: await pixelVon(page, org, 'color'), wert: await kontrastAm(org) };
-      expect(nach.wert, `${t} nach dem Zeigen: Kontrast ${komma(nach.wert)} auf eigener Klassenfarbe`).toBeGreaterThanOrEqual(MASS);
-      expect(nach.schrift, `${t} nach dem Zeigen: Schrift ist wieder --kd-text`).toEqual(ruhe.verlangt);
     }
   });
 

@@ -203,7 +203,7 @@ test.describe('R00196 Angefallene Kosten auf der Karte im Board', () => {
     const feld = name => page.getByRole('group', { name: 'Zeitraum und Spaltenabschnitt' }).getByLabel(name, { exact: true });
     const waehlen = async aktion => {
       const antwortAuf = pfad => page.waitForResponse(antwort => antwort.request().method() === 'GET' && new URL(antwort.url()).pathname === pfad);
-      const nachgeladen = Promise.all(['/api/aufgaben', '/api/herkunft', '/api/boards'].map(antwortAuf));
+      const nachgeladen = Promise.all(['/api/aufgaben', '/api/boards'].map(antwortAuf));
       await aktion();
       await Promise.all((await nachgeladen).map(antwort => antwort.finished()));
       await bereit(page, '#kosten');

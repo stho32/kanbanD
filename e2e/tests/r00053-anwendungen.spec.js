@@ -55,13 +55,15 @@ test.describe('R00053', () => {
     // R00209: das Repository (der Ordner) und die Anforderungen bleiben erreichbar, nur die WBS-Datei fehlt
     await expect(zeile.locator('.erreich.ja')).toHaveCount(2);
     await page.getByRole('link', { name: 'Board' }).click();
-    await expect(page.locator('.ka[data-id="1"] .org', { hasText: 'kd:I0007' })).toHaveAttribute('title', /Quelle nicht gefunden/);
+    // R00212: kanbanD löst die Herkunft nicht auf — der Chip ist Text, mit erreichbarer und mit verschobener WBS gleich
+    const text = page.locator('.ka[data-id="1"] .org', { hasText: 'kd:I0007' });
+    expect(await text.evaluate(e => [e.tagName, e.hasAttribute('href'), e.hasAttribute('title')])).toEqual(['SPAN', false, false]);
     await page.locator('.ka[data-id="1"]').dragTo(page.locator('.bahn[data-col="Erledigt"] .flaeche'));
     await expect(page.locator('.bahn[data-col="Erledigt"] .ka[data-id="1"]')).toBeVisible();
     await expect.poll(() => k.lies('boards/entwicklung.md')).toContain('## Erledigt\n\n- [#1]');
   });
 
-  test('US-2: qualifizierte Herkunft — Knoten und Link aus kd, ohne Kürzel mehrdeutig', async ({ page }) => {
+  test('US-2: qualifizierte Herkunft — Text ohne Auflösung, ohne Kürzel mehrdeutig', async ({ page }) => {
     const kd = arbeitsRepository('Bewegen'), kc = arbeitsRepository('Kassieren'); repos.push(kd, kc);
     const kanban = `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses: {}\nsources:\n  wbs: ""\n  requirements: ""\n  applications:\n    kc: {name: Kasse, wbs: "${kc}/plan.md", requirements: ""}\n    kd: {name: kanbanD, wbs: "${kd}/plan.md", requirements: ""}\n---\n`;
     k = await kanbanStarten(einrichten({
@@ -80,19 +82,21 @@ test.describe('R00053', () => {
     await page.keyboard.press('Enter');
     await expect.poll(() => k.lies('aufgaben/0002-zwei.md')).toContain('origins: [kd:I0007]');
     await page.keyboard.press('Escape');
-    const chip = page.locator('.ka[data-id="2"] a.org', { hasText: 'kd:I0007' });
-    await expect(chip).toHaveAttribute('href', `vscode://file${kd}/plan.md:6`);
-    await expect(chip).toHaveAttribute('title', /Bewegen · rot/);
-    await expect(page.locator('.ka[data-id="2"] .wartet')).toHaveText('wartet auf #1');
+    const chip = page.locator('.ka[data-id="2"] .org', { hasText: 'kd:I0007' });
+    await expect(chip).toHaveCount(1);
+    expect(await chip.evaluate(e => [e.tagName, e.hasAttribute('href'), e.hasAttribute('title')]), 'kein Link, kein Tooltip aus der WBS').toEqual(['SPAN', false, false]);
+    await expect(page.locator('.ka[data-id="2"] .wartet')).toHaveCount(0);
   });
 
-  test('mit einer Anwendung zeigt unqualifizierte Herkunft den Knoten', async ({ page }) => {
+  test('mit einer Anwendung ist unqualifizierte Herkunft Text, nicht mehrdeutig', async ({ page }) => {
     const kd = arbeitsRepository('Bewegen'); repos.push(kd);
     const kanban = `---\npeople:\n  st: {name: Stefan, kind: human}\nclasses: {}\nsources:\n  wbs: ""\n  requirements: ""\n  applications:\n    kd: {name: kanbanD, wbs: "${kd}/plan.md", requirements: ""}\n---\n`;
     k = await kanbanStarten(einrichten({ 'kanbanD.md': kanban, 'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## Erledigt\n', 'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\norigins: [I0007]\n---\n' }));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await expect(page.locator('.ka[data-id="1"] a.org', { hasText: 'I0007' })).toHaveAttribute('href', `vscode://file${kd}/plan.md:6`);
+    const chip = page.locator('.ka[data-id="1"] .org', { hasText: 'I0007' });
+    await expect(chip).toHaveText('I0007');
+    expect(await chip.evaluate(e => [e.tagName, e.hasAttribute('href')])).toEqual(['SPAN', false]);
     await expect(page.locator('.ka[data-id="1"] .org.mehrdeutig')).toHaveCount(0);
   });
 });
