@@ -1139,3 +1139,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #211 | Auto-Reviews | security-reviewer | bestanden | 13 min | alle 3 Muss behoben, Sollte Frist behoben; Optional: Mindestversion Git 2.44 · claude · sonnet · Lauf 211-security-reviewer-2 · 0,48 $ · Karte gesamt 26,63 $ |
 | 2026-11-20 | #211 | Auto-Reviews | code-reviewer | bestanden | 2 min | B1 behoben, Mutant .take(1) rot; S1/S2 erledigt · claude · sonnet · Lauf 211-code-reviewer-2 · 0,25 $ · Karte gesamt 26,88 $ |
 | 2026-11-20 | #211 | Entwicklertest | entwicklertester | bestanden | 8 min | US-1..US-8 erfüllt; Doku-Lücken als Sollte · claude · sonnet · Lauf 211-entwicklertester-1 · 1,22 $ · Karte gesamt 28,10 $ |
+| 2026-11-20 | #211 | Entwicklertest | entwickler | bestanden | 20 min | Rebase auf main 38ed80b7, Konflikte beidseitig gelöst; cargo 989, node 1247, PW 1966/0 · claude · Lauf 211-entwickler-3 · 0,58 $ · Karte gesamt 28,68 $ |
