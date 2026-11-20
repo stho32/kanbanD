@@ -2,7 +2,7 @@
    nutzbar wie diff.js. Fremder Text geht hier unverändert durch; maskiert wird erst beim Zeichnen (esc, sichtbarHtml). */
 (function (ziel) {
   'use strict';
-  const { kurzVerweis, tausender, STATUSWORT } = typeof module !== 'undefined' ? require('./diff.js') : window;
+  const { kurzVerweis, tausender, zuordnen, STATUSWORT } = typeof module !== 'undefined' ? require('./diff.js') : window;
 
   /* ── Folge-Dateien (N1.4): eine Datei als Reihe der Schritte der Aufgabe, ohne Netto-Zustand ── */
 
@@ -119,5 +119,37 @@
     return `Alle Änderungen der Aufgabe #${nr}: ${dateien}, ${zeilen}, ${tausender(s.minus)} entfernt${ohne}.`;
   }
 
-  Object.assign(ziel, { istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, summen, ansageText });
+  /* ── Reihe der Seite (N1.2): höchstens eine Anfrage an `…/diff` zur Zeit ── */
+
+  /** Die nächste Anfrage der Reihe: keine, solange eine läuft (sie wird nie überholt); sonst eine wartende Datei vor den noch nicht
+      begonnenen Anwendungen, denn auf sie wartet ein Mensch. */
+  function naechsteAnfrage(reihe) {
+    if (reihe.laufend) return null;
+    if (reihe.wartend.length) return { art: 'datei', a: reihe.wartend[0].a, i: reihe.wartend[0].i };
+    if (reihe.anwendungen.length) return { art: 'anwendung', kuerzel: reihe.anwendungen[0] };
+    return null;
+  }
+
+  /* ── Zuordnung der Antwort auf `datei=` (N1.6) ── */
+
+  const eintragName = d => (istFolge(d) ? d.pfad : d.neu ?? d.alt);
+
+  /** Der Eintrag der Antwort, der Eintrag `i` der Liste ersetzt: Netto über `zuordnen` (status, alt, neu, Position), Folge über
+      `pfad` und die Position unter gleichnamigen Folge-Einträgen. Kommt er in der anderen Art zurück (ein Zweig hat sich bewegt),
+      gilt die neue Antwort; null, wenn der Name fehlt. */
+  function zuordnenGesamt(dateien, i, antwort) {
+    const alt = dateien[i];
+    let gleicheArt = null;
+    if (istFolge(alt)) {
+      const gleichnamig = d => istFolge(d) && d.pfad === alt.pfad;
+      const position = dateien.slice(0, i).filter(gleichnamig).length;
+      gleicheArt = antwort.filter(gleichnamig)[position] || null;
+    } else {
+      gleicheArt = zuordnen(dateien, i, antwort.filter(d => !istFolge(d)));
+    }
+    if (gleicheArt) return gleicheArt;
+    return antwort.find(d => istFolge(d) !== istFolge(alt) && eintragName(d) === eintragName(alt)) || null;
+  }
+
+  Object.assign(ziel, { istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, summen, ansageText, naechsteAnfrage, zuordnenGesamt });
 })(typeof module !== 'undefined' ? module.exports : window);

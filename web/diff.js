@@ -103,15 +103,35 @@
       solange die gezeichneten Zeilen einschließlich der Datei höchstens das Budget ergeben; die erste mit `patch` immer; nach der
       ersten, die nicht passt, keine mehr. Gelöschte und Dateien ohne `patch` sind zu, zählen nicht und unterbrechen nicht. */
   function aufklappPlan(dateien, hinweise) {
-    // die Summe zählt auch die Datei, die nicht mehr passt — so passt danach keine weitere
-    let summe = 0, erste = true;
-    return dateien.map(d => {
-      if (d.status === 'D' || dateiZustand(d, hinweise) !== 'patch') return false;
-      summe += patchZeilen(d.patch).length;
-      const offen = erste || summe <= BUDGET_ZEILEN;
+    return aufklappPlanSeite(dateien, hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }).offen;
+  }
+
+  /** Gezeichnete Zeilen einer Datei, die beim Aufbau öffnen kann; null, wenn sie nicht zählt. Eine Folge-Datei (ADR-0033 N1.4)
+      zählt über alle Schritte mit `patch`; ein Schritt ohne `patch` zählt nicht. */
+  function planZeilen(d, hinweise) {
+    if (Array.isArray(d.schritte)) {
+      const mitPatch = d.schritte.filter(s => dateiZustand(s, hinweise) === 'patch');
+      if (!mitPatch.length) return null;
+      return mitPatch.reduce((n, s) => n + patchZeilen(s.patch).length, 0);
+    }
+    if (d.status === 'D' || dateiZustand(d, hinweise) !== 'patch') return null;
+    return patchZeilen(d.patch).length;
+  }
+
+  /** Der Plan über die ganze Seite (ADR-0033 N1.4): `stand` trägt Restbudget, „gesperrt“ (nach der ersten Datei, die nicht passt)
+      und „erste“ (die erste Datei der Seite öffnet immer) von Abschnitt zu Abschnitt weiter. Eine Folge-Datei öffnet ganz oder gar nicht. */
+  function aufklappPlanSeite(dateien, hinweise, stand) {
+    let { rest, gesperrt, erste } = stand;
+    const offen = dateien.map(d => {
+      const zeilen = planZeilen(d, hinweise);
+      if (zeilen === null || gesperrt) return false;
+      const passt = erste || zeilen <= rest;
       erste = false;
-      return offen;
+      if (!passt) { gesperrt = true; return false; }
+      rest -= zeilen;
+      return true;
     });
+    return { offen, stand: { rest, gesperrt, erste } };
   }
 
   /** Zeilen in Blöcke zu höchstens 500. */
@@ -357,5 +377,5 @@
 
   Object.assign(ziel, { STATUSWORT, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
-  Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
+  Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, aufklappPlanSeite, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);

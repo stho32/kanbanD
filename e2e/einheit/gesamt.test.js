@@ -142,3 +142,78 @@ test('ansageText: jeder gescheiterte Abschnitt einmal mit „ohne Anwendung <kü
   assert.strictEqual(g.ansageText(11, { dateien: 9, plus: 40, minus: 3 }, ['wb']), 'Alle Änderungen der Aufgabe #11: 9 Dateien, 40 Zeilen hinzugefügt, 3 entfernt, ohne Anwendung wb: ließ sich nicht lesen.');
   assert.strictEqual(g.ansageText(11, { dateien: 9, plus: 40, minus: 3 }, ['wb', 'xx']), 'Alle Änderungen der Aufgabe #11: 9 Dateien, 40 Zeilen hinzugefügt, 3 entfernt, ohne Anwendung wb: ließ sich nicht lesen, ohne Anwendung xx: ließ sich nicht lesen.');
 });
+
+/* ── B1042 Aufklapp-Plan seitenweit (R00210 FA 10, AK 5; ADR-0033 N1.4) ── */
+
+const { aufklappPlanSeite, BUDGET_ZEILEN } = require('../../web/diff.js');
+// gezeichnete Zeilen nach R00207 FA 6: ein Hunk-Kopf und n − 1 Zeilen ergeben n
+const patchMit = n => '@@ -0,0 +1 @@\n' + '+x\n'.repeat(n - 1);
+const nettoZeilen = n => netto('n.txt', { patch: patchMit(n) });
+const folgeZeilen = (...je) => folgeDatei(je.map((n, k) => (n === null ? schritt(String.fromCharCode(97 + k), { patch: undefined, gross: true }) : schritt(String.fromCharCode(97 + k), { patch: patchMit(n) }))));
+const voll = () => ({ rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
+
+test('aufklappPlanSeite (a): kd 4 × 2.250 = 9.000 offen, danach wb mit 1.500 → 10.500 > 10.000 zu; das Budget gilt über beide Abschnitte', () => {
+  const kd = aufklappPlanSeite([nettoZeilen(2250), nettoZeilen(2250), nettoZeilen(2250), nettoZeilen(2250)], [], voll());
+  assert.deepStrictEqual(kd.offen, [true, true, true, true]);
+  assert.strictEqual(kd.stand.rest, 1000);
+  const wb = aufklappPlanSeite([nettoZeilen(1500)], [], kd.stand);
+  assert.deepStrictEqual(wb.offen, [false]);
+  assert.strictEqual(wb.stand.gesperrt, true);
+});
+
+test('aufklappPlanSeite (b): 2.000, dann Folge 3 × 2.800 = 8.400 (10.400 > 10.000) ganz zu, danach bleibt auch die Datei zu 100 zu', () => {
+  const plan = aufklappPlanSeite([nettoZeilen(2000), folgeZeilen(2800, 2800, 2800), nettoZeilen(100)], [], voll());
+  assert.deepStrictEqual(plan.offen, [true, false, false]);
+  assert.strictEqual(plan.stand.gesperrt, true);
+});
+
+test('aufklappPlanSeite (c): erste Datei der Seite ist eine Folge 4 × 2.800 mit einem Schritt ohne patch — öffnet ganz; danach 100 zu', () => {
+  const plan = aufklappPlanSeite([folgeZeilen(2800, 2800, null, 2800, 2800), nettoZeilen(100)], [], voll());
+  assert.deepStrictEqual(plan.offen, [true, false]);
+});
+
+test('aufklappPlanSeite: „erste Datei immer“ nur für die erste der Seite — ein späterer Abschnitt öffnet seine erste Datei nicht über das Budget', () => {
+  const kd = aufklappPlanSeite([nettoZeilen(9500)], [], voll());
+  const wb = aufklappPlanSeite([nettoZeilen(600), nettoZeilen(10)], [], kd.stand);
+  assert.deepStrictEqual(wb.offen, [false, false]);
+});
+
+test('aufklappPlanSeite: Folge ohne Schritt mit patch zählt nicht und sperrt nicht; ein Schritt ohne patch unterbricht nicht', () => {
+  const plan = aufklappPlanSeite([folgeZeilen(null, null), nettoZeilen(9000), folgeZeilen(500, null, 400), nettoZeilen(100)], [], voll());
+  assert.deepStrictEqual(plan.offen, [false, true, true, true]);
+  assert.strictEqual(plan.stand.rest, 0);
+});
+
+/* ── B1042 Reihe der Seite (R00210 FA 8; ADR-0033 N1.2) ── */
+
+test('naechsteAnfrage: nichts, solange eine Anfrage läuft — eine laufende wird nie überholt', () => {
+  assert.strictEqual(g.naechsteAnfrage({ laufend: { art: 'anwendung' }, wartend: [{ a: 0, i: 1 }], anwendungen: ['xx'] }), null);
+});
+
+test('naechsteAnfrage: eine wartende Datei geht vor noch nicht begonnene Anwendungen, danach die Anwendungen in Reihenfolge', () => {
+  assert.deepStrictEqual(g.naechsteAnfrage({ laufend: null, wartend: [{ a: 0, i: 1 }, { a: 1, i: 0 }], anwendungen: ['wb', 'xx'] }), { art: 'datei', a: 0, i: 1 });
+  assert.deepStrictEqual(g.naechsteAnfrage({ laufend: null, wartend: [], anwendungen: ['wb', 'xx'] }), { art: 'anwendung', kuerzel: 'wb' });
+  assert.strictEqual(g.naechsteAnfrage({ laufend: null, wartend: [], anwendungen: [] }), null);
+});
+
+/* ── B1042 Zuordnung der Antwort auf datei= (R00210 FA 11; ADR-0033 N1.6) ── */
+
+test('zuordnenGesamt: Folge über pfad und die Position unter gleichnamigen Folge-Einträgen', () => {
+  const erste = folgeDatei([schritt('a')]), zweite = folgeDatei([schritt('b'), schritt('c')]);
+  const liste = [netto('a.txt'), erste, zweite];
+  const antwort = [{ ...erste, plus: 7 }, { ...zweite, plus: 9 }];
+  assert.strictEqual(g.zuordnenGesamt(liste, 2, antwort).plus, 9);
+  assert.strictEqual(g.zuordnenGesamt(liste, 1, antwort).plus, 7);
+});
+
+test('zuordnenGesamt: Netto über zuordnen (status, alt, neu); fehlt der Eintrag in beiden Arten → null', () => {
+  const liste = [netto('k.txt'), netto('l.txt')];
+  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('k.txt', { plus: 1 }), netto('l.txt', { plus: 2 })]).plus, 2);
+  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('m.txt')]), null);
+});
+
+test('zuordnenGesamt: Artwechsel Netto ↔ Folge — die neue Antwort gilt', () => {
+  const nettoA = netto('a.txt', { status: 'M', alt: 'a.txt' }), folgeA = folgeDatei([schritt('a'), schritt('b')]);
+  assert.strictEqual(g.zuordnenGesamt([nettoA], 0, [folgeA]), folgeA);
+  assert.strictEqual(g.zuordnenGesamt([folgeA], 0, [nettoA]), nettoA);
+});
