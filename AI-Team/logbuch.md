@@ -1377,3 +1377,11 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Gedämpftes „Ein Commit“ mit `aria-describedby`.
   - Abweichungen vom Artboard (Folge-Marke rechts, Hinweise ohne Überschrift).
   - `null` und `''` in `wartetText` getrennt behandeln.
+| 2026-11-20 | #229 | Entwicklung | entwickler | blockiert | 2 h 12 min | N7.8 gebaut, AK 8 offen: 145.000 Dateien → 503 statt 200 · claude · Lauf 229-entwickler-2 · 14,35 $ · Karte gesamt 27,98 $ |
+| 2026-11-20 | #229 | Entwicklung | architekt | befund | 2 min | ADR-0032 N7.9: 503 zulässig, Vorabgrenze je Plattform · claude · opus · Lauf 229-architekt-3 |
+| 2026-11-20 | #229 | Entwicklung | planer | bestanden | 2 min | R00211 AK 8 neu, AK 12 (c1c6c61b), B1074–B1076 · claude · opus · Lauf 229-planer-3 |
+| 2026-11-20 | #226 | Entwicklung | entwickler | bestanden | 36 min | B1059–B1065, Legacy-Probe 363 Aufgaben, Gate grün bis Wackler · claude · Lauf 226-entwickler-1 · 2,77 $ · Karte gesamt 7,04 $ |
+| 2026-11-20 | #226 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss, 1 Sollte (toter Doc-Link) · claude · sonnet · Lauf 226-code-reviewer-1 · 0,45 $ · Karte gesamt 7,49 $ |
+| 2026-11-20 | #226 | Auto-Reviews | ux-reviewer | bestanden | 12 min | kein Muss; 2 Sollte lange Verweise (Altlast) · claude · sonnet · Lauf 226-ux-reviewer-2 · 0,87 $ · Karte gesamt 8,36 $ |
+| 2026-11-20 | #226 | Entwicklertest | entwicklertester | bestanden | 10 min | US-1..US-6 erfüllt, keine Befunde · claude · sonnet · Lauf 226-entwicklertester-1 · 0,86 $ · Karte gesamt 9,22 $ |
+| 2026-11-20 | #229 | Entwicklung | entwickler | bestanden | 37 min | Nacharbeit 2 B1074–B1076, AK 1–12, Gate grün bis Wackler · claude · Lauf 229-entwickler-3 |
