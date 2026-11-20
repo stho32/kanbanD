@@ -1004,8 +1004,10 @@ async fn ak20b_viele_die_nicht_lesen() {
         let lauf = l.starten(&[("PATH", &langsam_pfad)]);
         let pid = lauf.kind.id();
         let start = Instant::now();
-        let groesse = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt"), None).await.text.len();
+        let einzeln = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt"), None).await;
         eprintln!("AK 20 (b) N = {n}: Einzelanfrage T = {:?} mit langsamem Git (d = {LANGSAM_D} s)", start.elapsed());
+        assert_eq!(einzeln.status, 200, "N = {n}: Einzelanfrage: {}", einzeln.text);
+        let groesse = einzeln.text.len();
         let (vorher, _) = speicher(pid);
         let adresse = lauf.adresse.clone();
         let p = pfad.clone();

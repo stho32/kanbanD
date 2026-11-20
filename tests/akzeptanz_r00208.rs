@@ -657,8 +657,10 @@ async fn ak08_antwortbudget() {
     l.karte(12, &[kd(&x)]);
     let lauf = l.starten(&[("PATH", &langsames_git(&l.r, LANGSAM_D))]);
     let start = Instant::now();
-    let groesse = holen(&lauf.adresse, 12, "datei=gross1.txt", None).await.text.len();
+    let einzeln = holen(&lauf.adresse, 12, "datei=gross1.txt", None).await;
     eprintln!("AK 8: Einzelanfrage T = {:?} mit langsamem Git (d = {LANGSAM_D} s)", start.elapsed());
+    assert_eq!(einzeln.status, 200, "Einzelanfrage: {}", einzeln.text);
+    let groesse = einzeln.text.len();
     assert!(groesse > 7 << 20, "{groesse}");
     let adresse = lauf.adresse.clone();
     let pfad = "api/aufgaben/12/diff?datei=gross1.txt".to_string();
