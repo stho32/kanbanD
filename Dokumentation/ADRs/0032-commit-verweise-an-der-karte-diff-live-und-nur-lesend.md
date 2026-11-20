@@ -1,6 +1,6 @@
 # ADR-0032: Commit-Verweise an der Karte — Schlüssel `commits` mit `<kürzel>:<voller Hash>`, Diff live und nur lesend aus dem Arbeits-Repository des Registers, Gesamt-Diff dateiweise ohne fremde Änderungen
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214; belegt p95 298 ms vor N7); Nachtrag N7 (2026-11-20) Akzeptiert (Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB mit Kappe, `--` hinter Revisionen, `GIT_NO_REPLACE_OBJECTS`, `ETag` über alle Verweise; belegt durch die Nacharbeit 1 an #214 und eine Zufallsprobe über 1.200 Seeds; p95 nach N7.1 259 ms; Zuordnung im Bezug nach Nacharbeit 2; N7.7 Diff je Commit, Karte #229, berichtigt durch N7.8; N7.9 Zeitgrenze und Argumentgrenze)
+**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214; belegt p95 298 ms vor N7); Nachtrag N7 (2026-11-20) Akzeptiert (Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB mit Kappe, `--` hinter Revisionen, `GIT_NO_REPLACE_OBJECTS`, `ETag` über alle Verweise; belegt durch die Nacharbeit 1 an #214 und eine Zufallsprobe über 1.200 Seeds; p95 nach N7.1 259 ms; Zuordnung im Bezug nach Nacharbeit 2; N7.7 Diff je Commit, Karte #229, berichtigt durch N7.8; N7.9 Zeitgrenze und Argumentgrenze; N7.10 Gesamt-Diff ohne 500 bei abweichender Paarung, Karte #230)
 **Datum**: 2026-11-19
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #207, Lauf 207-architekt-1)
 **Kontext-Anforderung**: — (Karte #207 „Commits an der Karte und Review-Diff direkt aus dem Board“, Teil A; Anforderung und WBS-Knoten folgen über den planer). Bezug: Karten #208–#210, po-entscheidungen Z. 358–383, R00053, ADR-0003, ADR-0008, ADR-0021, ADR-0028, ADR-0030, ADR-0031
@@ -751,6 +751,48 @@ Entscheider: Claude (autonom, architekt, Lauf 229-architekt-2). Anlass: Git sort
 
 - **Zeitgrenze statt 200 bei sehr großen Commits**: Für `datei=` in einem Commit mit 145.000 Dateien unter `x/` (`srev-229/gross2.py`) antwortet A3 mit 503 nach der Gesamtgrenze von 10 s (N4.1, Text der Zeitgrenze). Das ist zulässig: „nie 500“ gilt, eine Teilantwort gibt es nicht. Die Zeit geht vor allem in den Metadaten-Lauf `log --numstat -M` (Bestand R00206, 6,9 s gemessen bei Last 8–10), den auch die Liste und der Gesamt-Diff brauchen. Bei 75.000 Dateien waren es 200 nach 6,4 s. AK 8 der Karte lautet damit: nie 500; bis 75.000 Dateien 200; darüber 200 oder 503 mit dem Text der Zeitgrenze. Den Metadaten-Lauf schneller zu machen (etwa die Umbenennungssuche über einer Zahl von Einträgen auslassen oder für `datei=` ohne `--numstat`) gehört in eine **eigene Karte** (Leistung, kein Vorrang), weil er alle drei Lesewege betrifft. Abnahme dort: `gross2.py` ergibt 200 innerhalb von 10 s bei Last ≤ 6.
 - **Argumentgrenze: E2BIG allein trägt nicht.** (1) Linux meldet E2BIG über `posix_spawn` oder `fork`/`exec` verlässlich als `ArgumentListTooLong`. macOS ebenso, dort ist ARG_MAX aber 1 MB einschließlich Umgebung, also kleiner als die Pfadangabe der Liste. (2) Windows begrenzt die Kommandozeile auf 32.767 UTF-16-Zeichen und meldet das nicht als E2BIG (`ERROR_FILENAME_EXCED_RANGE`), sodass der Rückfall nie ausgelöst würde. (3) Die Liste behandelt `ArgumenteZuLang` heute nicht, sie gäbe dann 500. **Entscheidung**: Der Startort prüft vor dem Start mit einer Vorabgrenze je Plattform. Unter Unix zählt er Σ(Länge + 1 + 8) über alle Argumente; Startwerte sind 1,75 MiB unter Linux und 768 KiB unter macOS. Unter Windows zählt er Σ(Länge + 3) in UTF-16 mit dem Startwert 32.000. Darüber startet er nicht und meldet `ArgumenteZuLang` wie bei E2BIG. E2BIG bleibt als Netz. `lauf_der_liste` zählt weiter nur Bytes (R00206 unverändert, die Abweichung des entwicklers ist damit gedeckt). Behandlung von `ArgumenteZuLang`: Bei `datei=` folgt der Rückfall ohne Angabe (N7.8). In der Liste werden alle Dateien des Laufs `nachladen`, nie 500; jede bleibt über `datei=` ladbar. Unter Linux erreicht die Liste die Grenze praktisch nicht: Die Roh-Liste bis 1 MB fasst höchstens etwa 10.000 Einträge, also etwa 80 KB Zeiger. Unter macOS reichen dafür etwa 250 Pfade mit je 4.000 Byte, unter Windows etwa 300 Pfade mit je 100 Zeichen. Abnahme: ein Modultest der Vorabgrenze je Plattform und ein Integrationstest mit kleiner Grenze, in dem die Liste `ArgumenteZuLang` bekommt. Ergebnis 200 mit `nachladen`, und jede dieser Dateien gibt über `datei=` 200.
+
+### N7.10 Gesamt-Diff: abweichende Paarung und Argumentgrenze ohne 500 (überträgt N7.8 und N7.9 auf N7.2, Karte #230)
+
+Entscheider: Claude (autonom, architekt, Lauf 230-architekt-1).
+
+**Belegt am Stand `b6bd9231`** (Release-Build des Gates, Probe `gemeinsam/scratchpad/arch-230/tie_gesamt.py` der Factory, je Fall 40 Varianten mit 2–4 gleichwertigen Quellen):
+
+| Fall | Aufbau | Liste und `format=patch` | `datei=` |
+|---|---|---|---|
+| N | Kartencommit K1 löscht `s0…` und `gross`, legt `dst` und `dst2` an | 16 von 40 mit 500 | 40 von 40 mit 200 |
+| F | wie N, dann fremder Commit F (hängt `FREMD` an `dst2`) und Kartencommit K2 | 16 von 40 mit 500 | 40 von 40 mit 200 |
+| G, H | große Folge-Datei im selben oder im nächsten Kartencommit | 0 von 40 | 40 von 40 |
+
+Die Meldung ist stets „Patch-Lauf: „dst“ (R) hat 0 von 1 Stücken“, und zwar im **Netto-Lauf** (Pfadangabe ohne `gross`). Eine Zeile mit `FREMD` erschien nie. Im Folge-Lauf trat die Abweichung nicht auf; nach N7.8 ist sie dort aber möglich, sobald seine Angabe kleiner ist als die seiner Liste.
+
+**Regel** (gilt für Netto und Folge): Streng (500) ist ein Patch-Lauf nur dann, wenn er **dieselbe Pfadangabe wie sein Bezugslauf** hat, einschließlich „keine“. Dann ist die Matrix gleich und die Paarung auch. Jede andere Angabe ist eine Abkürzung (N7.8).
+
+1. **Liste**:
+   - Ein Netto-Eintrag ohne Stück wird `nachladen`.
+   - Fehlt einem Folge-Eintrag das Stück eines Schritts, wird der ganze Folge-Eintrag `nachladen`.
+   - Nie 500; die übrigen Einträge behalten ihren Patch. Das Werkzeug ist `nicht_zugeordnet_im_bezug` aus #229.
+2. **`datei=`** (Einzeln):
+   - Fehlt das Stück, folgt ein Rückfall mit **genau der Angabe des Bezugslaufs**: Netto mit `D_karte` (oder ohne, wenn die Spanne keine fremden Commits hat), Folge mit der Angabe des Folge-Laufs. Bis 8 MB, zugeordnet über den ganzen Bezug, streng.
+   - Der Rückfall liest nur, was die Liste schon gelesen hat. Die Netto-Stücke von Folge-Pfaden, die fremde Zeilen tragen, werden gelesen und verworfen, wie in den N7-Konsequenzen in Kauf genommen. In die Antwort kommen sie nie.
+   - Liegt das Stück hinter 8 MB: `gross` und `zu_gross_zum_anzeigen`.
+3. **Argumentgrenze** (N7.9):
+   - Die Vorabgrenze wirkt schon, denn `git` und `git_teil` prüfen am selben Startort. Der Gesamt-Diff bildet `ArgumenteZuLang` heute aber über `abbruch` auf 500 ab.
+   - Neu:
+     - Netto-Liste mit `D_karte` zu lang → wie `pfadangabe_zu_lang`, also `ganz_als_folge` mit `fremd_zu_gross`.
+     - Folge-Liste zu lang → wie ein abgeschnittener Folge-Lauf: Die Einträge fallen weg, `dateien_gekappt`.
+     - Patch-Lauf der Liste zu lang → seine Einträge `nachladen`.
+     - Bei `datei=` folgt der Rückfall aus Punkt 2; ist auch er zu lang, 404 mit dem Text aus N7.3 (Verweis auf `commit=` und `datei=`).
+   - Unter Linux erreicht der Gesamt-Diff die Grenze praktisch nicht, weil der Namenslauf mit 4 MB vorher kappt (N7.3). Unter Windows (32.767 Zeichen) reichen etwa 300 Kartenpfade, wenn die Spanne fremde Commits hat.
+4. **Varianten** für den Netto-Lauf der Liste:
+   - **V1 `nachladen`** (gewählt).
+   - V2 als Folge darstellen — verworfen: Die Aussage wäre falsch, denn der Eintrag ist netto. Außerdem bräuchte es Folge-Läufe je Commit und mehr Prozesse.
+   - V3 `ganz_als_folge` — verworfen: Eine Datei verschlechtert die ganze Antwort.
+   - V4 Rückfall ohne Angabe über die Spanne — verworfen: Er liest alle fremden Änderungen der Spanne gegen das Budget, und „nie fremd“ hinge dann allein an der Zuordnung.
+   - V5 Rückfall mit der Angabe des Bezugs auch für die Liste — verworfen: Große Dateien und Folge-Pfade verbrauchen die 4 MB. Für `datei=` ist das richtig (Punkt 2).
+5. Kriterien: nie 500, nie eine Zeile eines fremden Commits, Grenzen unverändert (64 MB Antwortbudget, 10 s, höchstens 15 Git-Prozesse; der Rückfall kostet einen Prozess nur bei `datei=` und nur im Fehlschlag).
+
+Durchsetzung: die Abnahme-Probe der Karte #230 (Fälle N und F wie oben, heute rot), dazu ein Integrationstest mit kleiner Vorabgrenze für Netto- und Folge-Liste. Pre-Mortem (i): Jemand macht den Netto-Lauf wieder streng, „weil `abschliessen` reicht“. Dann wird Fall N rot.
 
 ### N7 Durchsetzung
 
