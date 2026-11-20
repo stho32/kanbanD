@@ -183,6 +183,31 @@ GET /api/aufgaben/1/diff?commit=kd:<X1>
 - Jede Antwort zu einem Verweis mit vollem Hash trägt einen `ETag`; mit `If-None-Match` kommt 304 ohne Git-Aufruf.
 - Kein Diff gibt es zu den Zuständen `fehlt`, `repository_fehlt`, `anwendung_unbekannt` und `unlesbar` (404 mit `zustand`). Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einem halben Diff. Aus dem Repository läuft dabei kein Programm (`diff.external`, `textconv`, Pager und Hooks bleiben aus).
 
+### Alle Änderungen der Karte lesen
+
+`GET /api/aufgaben/{nr}/diff` **ohne** `commit` liefert den Gesamt-Diff der Karte für eine Anwendung: je Datei **netto** (ein Diff von der Basis — dem ersten Elternteil des ältesten Kartencommits — bis zum letzten), wo kein fremder Commit dazwischen dieselbe Datei berührt, sonst als **Folge** der Kartenschritte. Nie steht eine geänderte Zeile eines fremden Commits darin. Beispiel (Karte #2: K1, fremd F, K2):
+
+```
+GET /api/aufgaben/2/diff
+→ 200
+{"anwendung": "kd",
+ "spanne": {"basis": "<A0>", "letzter": "<K2>"},
+ "commits": [{"verweis": "kd:<K1>", …}, {"verweis": "kd:<K2>", …}],
+ "dateien": [
+   {"pfad": "a.txt", "plus": 2, "minus": 2, "binaer": false,
+    "schritte": [{"commit": "kd:<K1>", "alt": "a.txt", "neu": "a.txt", "status": "M", "plus": 1, "minus": 1, …, "patch": "@@ …"},
+                 {"commit": "kd:<K2>", "alt": "a.txt", "neu": "a.txt", "status": "M", "plus": 1, "minus": 1, …, "patch": "@@ …"}]},
+   {"neu": "k.txt", "status": "A", "plus": 3, "minus": 0, "binaer": false, "gross": false, "nachladen": false, "nicht_utf8": false,
+    "patch": "@@ -0,0 +1,3 @@\n+k1\n+k2\n+k3\n"}],
+ "hinweise": [{"art": "fremd_dazwischen", "commits": 1, "dateien": 1}]}
+```
+
+- **Netto-Einträge** sehen aus wie die Dateien des Diffs je Commit; **Folge-Einträge** tragen `pfad` und `schritte` (je Schritt `commit` = der Verweis wörtlich und die Felder einer Datei). `plus`/`minus` eines Folge-Eintrags ist die Summe der Schritte — eine Netto-Zahl gibt es dafür nicht. `dateien` steht nach dem Namen in Bytefolge.
+- `anwendung=<kürzel>` wählt die Anwendung (leer = Standardanwendung); ohne gilt die erste in der Reihenfolge der Verweise, die übrigen nennt `weitere_anwendungen`.
+- **`hinweise`** in dieser Reihenfolge: `ganz_als_folge {grund: nicht_linear | fremd_zu_viele | fremd_zu_gross}` (dann ist `spanne` null und alles Folge), `fremd_dazwischen {commits, dateien}`, `weitere_anwendungen {anwendungen}`, `verwaist {verweis}`, `merge_ausgelassen {verweis}` (Merges an der Karte fallen heraus und bleiben über `?commit=` lesbar), `ausgelassen {verweis, zustand}`, dann `dateien_gekappt` und `zu_gross_zum_anzeigen` wie beim Diff je Commit.
+- `&datei=<pfad>` liefert genau diesen Eintrag (bei einer Folge alle Schritte, bis 8 MB Patch); der Pfad muss in einem Kartencommit stehen, sonst 404. `&format=patch` liefert Text: je Hinweis eine Zeile `# kanbanD: <art> …`, vor jedem Schritt `# kanbanD: Folge <pfad> — Schritt i von n, Commit <verweis>`; ohne Hinweise und Folge ist er bytegleich zu `git diff --full-index -M50% -l1000 --submodule=short <basis> <letzter>`.
+- Grenzen und Antwortbudget wie beim Diff je Commit (4 MB Patch für Netto und Folge zusammen); `ETag` gilt, solange sich kein Zweig im Repository bewegt. Keine Verweise dieser Anwendung → 404; `anwendung` zusammen mit `commit` → 400.
+
 ## Tests
 
 ```bash

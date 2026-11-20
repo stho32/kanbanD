@@ -271,8 +271,10 @@ async fn ak03_parameter_commit() {
     let d = holen(&lauf.adresse, 1, &format!("commit=kd:{}", l.x1.to_uppercase()), None).await;
     assert_eq!(d.status, 200, "Großbuchstaben");
     spur_leeren(&spurdatei);
+    // ohne commit: der Gesamt-Diff der Karte (R00208 AK 6 ersetzt „ohne commit 400“ aus R00206 FA 11, AK 3)
     let r = holen(&lauf.adresse, 1, "", None).await;
-    assert_eq!((r.status, r.json()["fehler"].is_string()), (400, true), "ohne commit");
+    assert_eq!((r.status, r.json()["dateien"].is_array()), (200, true), "ohne commit: Gesamt-Diff — {}", r.text);
+    spur_leeren(&spurdatei);
     for boese in ["kd:3f2a9c".to_string(), "kd:main".into(), "kd:--output=x".into(), format!("kd:{}^{{tree}}", l.a.k1), format!("kd:{}", &l.a.k3[..7])] {
         let r = holen(&lauf.adresse, 1, &format!("commit={}", kodiert(&boese)), None).await;
         assert_eq!((r.status, r.json()["verweis"].as_str()), (400, Some(boese.as_str())), "{boese}: {}", r.text);
@@ -754,7 +756,8 @@ async fn ak19_bestand_und_beschreibung() {
     }
     assert!(get["responses"]["503"]["description"].as_str().unwrap().contains("Antwortbudget"), "OpenAPI nennt beide Gründe für 503");
     let parameter: Vec<&str> = get["parameters"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect();
-    assert_eq!(parameter, ["nr", "commit", "datei", "format", "If-None-Match"]);
+    // R00208 bringt `anwendung` (nur ohne commit) dazu
+    assert_eq!(parameter, ["nr", "commit", "anwendung", "datei", "format", "If-None-Match"]);
     assert_eq!(get["description"].as_str(), Some(zweck), "derselbe Text");
     let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
     let abschnitt = readme.split("### Diff eines Commits lesen").nth(1).expect("README-Abschnitt").split("\n### ").next().unwrap();

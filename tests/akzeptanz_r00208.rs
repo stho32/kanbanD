@@ -1,0 +1,704 @@
+// R00208 (I0198, Karte #214): Gesamt-Diff der Karte per API lesen — Akzeptanztests gegen das echte Programm und ein
+// echtes Arbeits-Repository (Ausgangslage von R00208, siehe `ausgangslage`). Schichten: Testfall (je AK) → Testsprache
+// (`Lage`, `gesamt`, `nie_fremd`) → Treiber (`holen`: URL, Header, Status) → Programm.
+mod gemeinsam;
+
+use gemeinsam::{Laufendes, git, git_am, lies, starten_mit};
+use serde_json::{Value, json};
+use std::cell::Cell;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
+// ---- Treiber ----------------------------------------------------------------------------------------------------------
+
+/// Eine Antwort, wie sie über die Leitung kam.
+struct Antwort {
+    status: u16,
+    art: String,
+    #[allow(dead_code)]
+    etag: Option<String>,
+    nosniff: bool,
+    text: String,
+}
+
+impl Antwort {
+    fn json(&self) -> Value {
+        serde_json::from_str(&self.text).unwrap_or(Value::Null)
+    }
+}
+
+/// `GET /api/aufgaben/{nr}/diff?{abfrage}` mit `If-None-Match`, falls genannt.
+async fn holen(adresse: &str, nr: u32, abfrage: &str, bekannt: Option<&str>) -> Antwort {
+    let mut a = reqwest::Client::new().get(format!("{adresse}api/aufgaben/{nr}/diff?{abfrage}"));
+    if let Some(b) = bekannt {
+        a = a.header("If-None-Match", b);
+    }
+    let r = a.send().await.unwrap();
+    let kopf = |n: &str| r.headers().get(n).and_then(|w| w.to_str().ok()).map(str::to_string);
+    let (status, art, etag, nosniff) = (r.status().as_u16(), kopf("content-type").unwrap_or_default(), kopf("etag"), kopf("x-content-type-options").as_deref() == Some("nosniff"));
+    let bytes = r.bytes().await.unwrap();
+    Antwort { status, art, etag, nosniff, text: String::from_utf8(bytes.to_vec()).expect("gültiges UTF-8") }
+}
+
+fn kodiert(text: &str) -> String {
+    text.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-._~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+}
+
+// ---- Testsprache: Ausgangslage ----------------------------------------------------------------------------------------
+
+/// Ausgangslage von R00208: auf `main` von R A0 (a.txt z1…z12, r.txt r1…r10), K1, F, K2 (#2), L1, L2 (#3).
+struct Lage {
+    _tmp: tempfile::TempDir,
+    basis: PathBuf,
+    r: PathBuf,
+    board: PathBuf,
+    takt: Cell<u32>,
+    karten: std::cell::RefCell<Vec<(u32, Vec<String>)>>,
+    a0: String,
+    k1: String,
+    f: String,
+    k2: String,
+    l1: String,
+    l2: String,
+}
+
+fn zeilen(prefix: &str, n: usize) -> String {
+    (1..=n).map(|i| format!("{prefix}{i}\n")).collect()
+}
+
+impl Lage {
+    /// Ein festes, je Commit steigendes Datum (die Folge „ganz als Folge“ ordnet nach dem Datum).
+    fn datum(&self) -> String {
+        let n = self.takt.get() + 1;
+        self.takt.set(n);
+        format!("2026-04-{:02}T{:02}:{:02}:00+00:00", 1 + n / 1440, (n / 60) % 24, n % 60)
+    }
+
+    fn git(&self, args: &[&str]) -> String {
+        git_am(&self.r, "Ada", &self.datum(), args)
+    }
+
+    fn schreiben(&self, datei: &str, inhalt: &str) {
+        std::fs::write(self.r.join(datei), inhalt).unwrap();
+    }
+
+    /// Ersetzt Zeile `nr` (ab 1) von `datei`.
+    fn zeile(&self, datei: &str, nr: usize, text: &str) {
+        let alt = std::fs::read_to_string(self.r.join(datei)).unwrap();
+        let neu: String = alt.lines().enumerate().map(|(i, z)| if i + 1 == nr { format!("{text}\n") } else { format!("{z}\n") }).collect();
+        self.schreiben(datei, &neu);
+    }
+
+    /// Ein Commit mit allem, was im Arbeitsbaum liegt.
+    fn commit(&self, nachricht: &str) -> String {
+        let d = self.datum();
+        git_am(&self.r, "Ada", &d, &["add", "-A"]);
+        git_am(&self.r, "Ada", &d, &["commit", "-q", "--allow-empty", "-m", nachricht]);
+        git_am(&self.r, "Ada", &d, &["rev-parse", "HEAD"])
+    }
+
+    /// Legt Karte `nr` mit diesen Verweisen an (von Hand, ohne kanbanD) oder ersetzt ihre Verweise.
+    fn karte(&self, nr: u32, verweise: &[String]) {
+        let mut karten = self.karten.borrow_mut();
+        karten.retain(|(n, _)| *n != nr);
+        karten.push((nr, verweise.to_vec()));
+        karten.sort();
+        for (n, v) in karten.iter() {
+            let liste: String = v.iter().map(|x| format!("  - {}\n", serde_json::to_string(x).unwrap())).collect();
+            let commits = if v.is_empty() { String::new() } else { format!("commits:\n{liste}") };
+            std::fs::write(self.board.join(format!("aufgaben/{n:04}-k.md")), format!("---\nid: {n}\ntitle: Karte {n}\n{commits}---\n")).unwrap();
+        }
+        let liste: String = karten.iter().map(|(n, _)| format!("- [#{n}](../aufgaben/{n:04}-k.md)\n")).collect();
+        std::fs::write(self.board.join("boards/fabrik.md"), format!("# fabrik\n\n## Entwicklung\n\n{liste}")).unwrap();
+        git(&self.board, &["add", "-A"]);
+        git(&self.board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Karte"]);
+    }
+
+    fn starten(&self, umgebung: &[(&str, &str)]) -> Laufendes {
+        starten_mit(&self.board, &["--port", "0", "--host", "127.0.0.1"], umgebung)
+    }
+
+    /// Mit Git-Spur: der Server schreibt `GIT_TRACE` in eine Datei.
+    fn mit_spur(&self) -> (Laufendes, PathBuf) {
+        let spur = self.basis.join("spur");
+        let pfad = spur.to_str().unwrap().to_string();
+        (self.starten(&[("GIT_TRACE", &pfad)]), spur)
+    }
+
+    fn board_zahl(&self) -> String {
+        git(&self.board, &["rev-list", "--count", "HEAD"])
+    }
+}
+
+fn kd(h: &str) -> String {
+    format!("kd:{h}")
+}
+
+fn ausgangslage() -> Lage {
+    let tmp = tempfile::tempdir().unwrap();
+    let basis = tmp.path().canonicalize().unwrap();
+    let (r, board) = (basis.join("R"), basis.join("board"));
+    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
+    std::fs::write(r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
+    let mut l = Lage { _tmp: tmp, basis, r, board, takt: Cell::new(0), karten: Default::default(), a0: String::new(), k1: String::new(), f: String::new(), k2: String::new(), l1: String::new(), l2: String::new() };
+    l.git(&["init", "-q", "-b", "main"]);
+    l.schreiben("a.txt", &zeilen("z", 12));
+    l.schreiben("r.txt", &zeilen("r", 10));
+    l.a0 = l.commit("A0");
+    l.zeile("a.txt", 2, "K1");
+    l.schreiben("k.txt", "k1\nk2\n");
+    l.k1 = l.commit("K1");
+    l.zeile("a.txt", 6, "FREMD-6");
+    l.schreiben("f.txt", "FREMD-f\n");
+    l.f = l.commit("F");
+    l.zeile("a.txt", 11, "K2");
+    l.schreiben("k.txt", "k1\nk2\nk3\n");
+    l.k2 = l.commit("K2");
+    l.schreiben("l.txt", "l1\nl2\nl3\n");
+    l.l1 = l.commit("L1");
+    l.zeile("l.txt", 2, "L2");
+    std::fs::write(l.r.join("bild2.bin"), [0u8, 1, 2, 0, 255]).unwrap();
+    l.l2 = l.commit("L2");
+    std::fs::create_dir_all(l.board.join("aufgaben")).unwrap();
+    std::fs::create_dir_all(l.board.join("boards")).unwrap();
+    std::fs::write(l.board.join("kanbanD.md"), format!("---\npeople:\n  sh: {{name: Stefan, kind: human}}\n  entw1: {{name: Entwickler, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {{name: KD, wbs: {}/Dokumentation/Planung/app.md, requirements: \"\"}}\n---\n", l.r.display())).unwrap();
+    git(&l.board, &["init", "-q"]);
+    l.karte(2, &[kd(&l.k1), kd(&l.k2)]);
+    l.karte(3, &[kd(&l.l1), kd(&l.l2)]);
+    l
+}
+
+// ---- Testsprache: Proben ----------------------------------------------------------------------------------------------
+
+fn dateien(d: &Value) -> &Vec<Value> {
+    d["dateien"].as_array().unwrap_or_else(|| panic!("keine dateien: {d}"))
+}
+
+/// Der Eintrag mit diesem Namen (netto `neu`, bei gelöschten `alt`; Folge `pfad`).
+fn eintrag<'a>(d: &'a Value, name: &str) -> &'a Value {
+    dateien(d).iter().find(|f| f["pfad"] == name || f["neu"] == name || (f["neu"].is_null() && f["pfad"].is_null() && f["alt"] == name)).unwrap_or_else(|| panic!("{name} fehlt: {d}"))
+}
+
+fn namen(d: &Value) -> Vec<String> {
+    dateien(d).iter().map(|f| f["pfad"].as_str().or(f["neu"].as_str()).or(f["alt"].as_str()).unwrap().to_string()).collect()
+}
+
+fn ist_folge(f: &Value) -> bool {
+    f["schritte"].is_array()
+}
+
+/// Probe „nie fremd“ (PO Z. 426): keine Zeile, die mit `+` oder `-` beginnt und `FREMD` enthält, in irgendeinem `patch`
+/// der JSON-Antwort und im `format=patch`-Text; `plus`/`minus` jedes Folge-Eintrags gleich der Summe seiner Schritte.
+fn nie_fremd(d: &Value, text: &str) {
+    let fremd = |p: &str| p.lines().filter(|z| (z.starts_with('+') || z.starts_with('-')) && z.contains("FREMD")).map(String::from).collect::<Vec<_>>();
+    for f in dateien(d) {
+        let patches: Vec<&str> = if ist_folge(f) { f["schritte"].as_array().unwrap().iter().filter_map(|s| s["patch"].as_str()).collect() } else { f["patch"].as_str().into_iter().collect() };
+        for p in patches {
+            assert_eq!(fremd(p), Vec::<String>::new(), "fremde Zeile im patch von {f}");
+        }
+        if ist_folge(f) {
+            let summe = |feld: &str| f["schritte"].as_array().unwrap().iter().map(|s| s[feld].as_u64().unwrap()).sum::<u64>();
+            assert_eq!((f["plus"].as_u64(), f["minus"].as_u64()), (Some(summe("plus")), Some(summe("minus"))), "Summe der Schritte: {f}");
+        }
+    }
+    assert_eq!(fremd(text), Vec::<String>::new(), "fremde Zeile im format=patch-Text");
+}
+
+/// JSON und Text des Gesamt-Diffs einer Karte mit Status 200, Probe „nie fremd“ über beide.
+async fn gesamt(adresse: &str, nr: u32, abfrage: &str) -> (Value, String) {
+    let a = holen(adresse, nr, abfrage, None).await;
+    assert_eq!(a.status, 200, "#{nr}?{abfrage}: {}", a.text);
+    assert!(a.art.starts_with("application/json") && a.nosniff, "{} {}", a.art, a.nosniff);
+    let trenner = if abfrage.is_empty() { "" } else { "&" };
+    let t = holen(adresse, nr, &format!("{abfrage}{trenner}format=patch"), None).await;
+    assert_eq!(t.status, 200, "#{nr} format=patch: {}", t.text);
+    let d = a.json();
+    nie_fremd(&d, &t.text);
+    (d, t.text)
+}
+
+fn git_diff(r: &Path, basis: &str, letzter: &str) -> String {
+    git(r, &["diff", "--full-index", "-M50%", "-l1000", "--submodule=short", basis, letzter]) + "\n"
+}
+
+/// Die Läufe des Startorts im Arbeits-Repository aus der Git-Spur.
+fn spur(datei: &Path) -> Vec<String> {
+    std::fs::read_to_string(datei).unwrap_or_default().lines().filter(|z| z.contains("trace: built-in: git") && z.contains("core.hooksPath=/dev/null")).map(String::from).collect()
+}
+
+fn spur_leeren(datei: &Path) {
+    let _ = std::fs::write(datei, "");
+}
+
+// ---- AK 1: Folge, netto und verwaister Zwilling (Abnahme-Probe der Karte) · US-1 ---------------------------------------
+
+#[tokio::test]
+async fn ak01_folge_netto_und_verwaister_zwilling() {
+    let l = ausgangslage();
+    let lauf = l.starten(&[]);
+    let (d, text) = gesamt(&lauf.adresse, 2, "").await;
+    assert_eq!(d["anwendung"], "kd");
+    assert_eq!(d["spanne"], json!({"basis": l.a0, "letzter": l.k2}));
+    assert_eq!(namen(&d), ["a.txt", "k.txt"], "f.txt fehlt");
+    let a = eintrag(&d, "a.txt");
+    assert!(ist_folge(a), "{a}");
+    assert_eq!((&a["plus"], &a["minus"], &a["binaer"]), (&json!(2), &json!(2), &json!(false)));
+    let schritte = a["schritte"].as_array().unwrap();
+    assert_eq!(schritte.iter().map(|s| (s["commit"].as_str().unwrap().to_string(), s["plus"].as_u64().unwrap(), s["minus"].as_u64().unwrap(), s["status"].as_str().unwrap().to_string())).collect::<Vec<_>>(), [(kd(&l.k1), 1, 1, "M".to_string()), (kd(&l.k2), 1, 1, "M".to_string())]);
+    assert!(schritte[0]["patch"].as_str().unwrap().contains("-z2\n+K1\n") && schritte[1]["patch"].as_str().unwrap().contains("-z11\n+K2\n"), "{a}");
+    assert_eq!(eintrag(&d, "k.txt"), &json!({"neu": "k.txt", "status": "A", "plus": 3, "minus": 0, "binaer": false, "gross": false, "nachladen": false, "nicht_utf8": false, "patch": "@@ -0,0 +1,3 @@\n+k1\n+k2\n+k3\n"}));
+    assert_eq!(d["hinweise"], json!([{"art": "fremd_dazwischen", "commits": 1, "dateien": 1}]));
+    assert_eq!(d["commits"].as_array().unwrap().iter().map(|c| c["verweis"].as_str().unwrap().to_string()).collect::<Vec<_>>(), [kd(&l.k1), kd(&l.k2)]);
+    assert!(text.starts_with("# kanbanD: fremd_dazwischen"), "{text}");
+
+    // ohne fremden Commit: bytegleich zu git diff, nur Netto-Einträge
+    let (d3, text3) = gesamt(&lauf.adresse, 3, "").await;
+    let l1_eltern = git(&l.r, &["rev-parse", &format!("{}^", l.l1)]);
+    assert_eq!(text3, git_diff(&l.r, &format!("{}^", l.l1), &l.l2), "bytegleich zu git diff");
+    assert_eq!(d3["spanne"], json!({"basis": l1_eltern, "letzter": l.l2}));
+    assert_eq!(d3["hinweise"], json!([]));
+    assert!(dateien(&d3).iter().all(|f| !ist_folge(f)) && namen(&d3) == ["bild2.bin", "l.txt"], "{d3}");
+
+    // verwaister Zwilling K1' (derselbe Inhalt wie K1, vor einem Rebase, auf keinem Zweig)
+    l.git(&["checkout", "-q", "--detach", &l.a0]);
+    l.git(&["cherry-pick", &l.k1]);
+    let k1_ = l.git(&["rev-parse", "HEAD"]);
+    l.git(&["checkout", "-q", "main"]);
+    assert_ne!(k1_, l.k1);
+    l.karte(2, &[kd(&l.k1), kd(&l.k2), kd(&k1_)]);
+    let (zwilling, _) = gesamt(&lauf.adresse, 2, "").await;
+    for feld in ["spanne", "commits", "dateien"] {
+        assert_eq!(zwilling[feld], d[feld], "{feld} unverändert");
+    }
+    assert_eq!(zwilling["hinweise"].as_array().unwrap().last(), Some(&json!({"art": "verwaist", "verweis": kd(&k1_)})));
+}
+
+// ---- AK 2: Umbenennung über einen fremden Commit · US-1 ----------------------------------------------------------------
+
+/// #4: R1 (r.txt Zeile 1), fremd FR (Zeile 5 FREMD-R), R2 (r.txt → s.txt, Zeile 10).
+fn mit_umbenennung(l: &Lage) -> (String, String) {
+    l.zeile("r.txt", 1, "R1");
+    let r1 = l.commit("R1");
+    l.zeile("r.txt", 5, "FREMD-R");
+    l.commit("FR");
+    l.git(&["mv", "r.txt", "s.txt"]);
+    l.zeile("s.txt", 10, "R2");
+    let r2 = l.commit("R2");
+    l.karte(4, &[kd(&r1), kd(&r2)]);
+    (r1, r2)
+}
+
+// Mutant „Pfadangabe des Netto-Laufs nur Netto-Pfade“ (ADR-0032 N6 Durchsetzung 2) macht diesen Test rot
+#[tokio::test]
+async fn ak02_umbenennung_ueber_fremden_commit() {
+    let l = ausgangslage();
+    let (r1, r2) = mit_umbenennung(&l);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 4, "").await;
+    assert!(dateien(&d).iter().all(ist_folge), "nur Folge-Einträge: {d}");
+    assert_eq!(namen(&d), ["r.txt", "s.txt"]);
+    assert_eq!(eintrag(&d, "r.txt")["schritte"][0]["commit"], json!(kd(&r1)));
+    let s = &eintrag(&d, "s.txt")["schritte"];
+    assert_eq!((&s[0]["commit"], &s[0]["status"], &s[0]["alt"], &s[0]["neu"]), (&json!(kd(&r2)), &json!("R"), &json!("r.txt"), &json!("s.txt")));
+}
+
+// ---- AK 3: Merges · US-2 -----------------------------------------------------------------------------------------------
+
+/// Ein Seitenzweig ab HEAD, der `datei` mit `inhalt` schreibt, mit `--no-ff` auf main gemergt; liefert den Merge.
+fn seitenmerge(l: &Lage, zweig: &str, datei: &str, inhalt: impl Fn(&Lage)) -> String {
+    l.git(&["checkout", "-q", "-b", zweig]);
+    inhalt(l);
+    l.commit(&format!("{zweig}: {datei}"));
+    l.git(&["checkout", "-q", "main"]);
+    l.git(&["merge", "-q", "--no-ff", "-m", &format!("Merge {zweig}"), zweig]);
+    l.git(&["rev-parse", "HEAD"])
+}
+
+// Mutant „Merge ohne Elternzeile im Namenslauf“ (ADR-0032 N6 Durchsetzung 3) macht diesen Test rot
+#[tokio::test]
+async fn ak03_fremder_merge_in_der_spanne() {
+    let l = ausgangslage();
+    l.schreiben("m.txt", &zeilen("m", 20));
+    l.commit("m.txt");
+    l.zeile("m.txt", 1, "M1");
+    let m1 = l.commit("M1");
+    seitenmerge(&l, "seite-m", "m.txt", |l| l.zeile("m.txt", 10, "FREMD-M"));
+    l.zeile("m.txt", 20, "M2");
+    let m2 = l.commit("M2");
+    l.karte(5, &[kd(&m1), kd(&m2)]);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 5, "").await;
+    let m = eintrag(&d, "m.txt");
+    assert!(ist_folge(m), "{d}");
+    assert_eq!(m["schritte"].as_array().unwrap().iter().map(|s| s["commit"].clone()).collect::<Vec<_>>(), [json!(kd(&m1)), json!(kd(&m2))]);
+    assert_eq!(d["hinweise"], json!([{"art": "fremd_dazwischen", "commits": 1, "dateien": 1}]));
+}
+
+#[tokio::test]
+async fn ak03_merge_an_der_karte() {
+    let l = ausgangslage();
+    l.schreiben("n.txt", &zeilen("n", 5));
+    l.commit("n.txt");
+    l.zeile("n.txt", 1, "N1");
+    let n1 = l.commit("N1");
+    let mk = seitenmerge(&l, "seite-y", "y.txt", |l| l.schreiben("y.txt", "FREMD-Y\n"));
+    l.zeile("n.txt", 5, "N2");
+    let n2 = l.commit("N2");
+    l.karte(6, &[kd(&n1), kd(&mk), kd(&n2)]);
+    let lauf = l.starten(&[]);
+    let (d, text) = gesamt(&lauf.adresse, 6, "").await;
+    assert_eq!(d["commits"].as_array().unwrap().iter().map(|c| c["verweis"].clone()).collect::<Vec<_>>(), [json!(kd(&n1)), json!(kd(&n2))]);
+    assert!(d["hinweise"].as_array().unwrap().contains(&json!({"art": "merge_ausgelassen", "verweis": kd(&mk)})), "{d}");
+    assert!(!d.to_string().contains("y.txt") && !text.contains("y.txt"), "y.txt steht nirgends: {d}");
+    let einzeln = holen(&lauf.adresse, 6, &format!("commit={}", kodiert(&kd(&mk))), None).await;
+    assert_eq!(einzeln.status, 200);
+    assert!(einzeln.json()["dateien"].as_array().unwrap().iter().any(|f| f["neu"] == "y.txt"), "R00206 unverändert");
+}
+
+// ---- AK 4: ganz als Folge, nie netto · US-3 ----------------------------------------------------------------------------
+
+fn nie_netto(d: &Value) {
+    assert!(!dateien(d).is_empty() && dateien(d).iter().all(ist_folge), "kein Netto-Eintrag: {d}");
+    assert_eq!(d["spanne"], Value::Null);
+}
+
+#[tokio::test]
+async fn ak04_nicht_linear() {
+    let l = ausgangslage();
+    let vorher = l.git(&["rev-parse", "HEAD"]);
+    l.schreiben("p.txt", "P1\n");
+    let p1 = l.commit("P1");
+    l.git(&["checkout", "-q", "-b", "seite", &vorher]);
+    l.schreiben("q.txt", "P2\n");
+    let p2 = l.commit("P2");
+    l.git(&["checkout", "-q", "main"]);
+    l.karte(7, &[kd(&p1), kd(&p2)]);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 7, "").await;
+    assert_eq!(d["hinweise"][0], json!({"art": "ganz_als_folge", "grund": "nicht_linear"}));
+    nie_netto(&d);
+    assert_eq!(namen(&d), ["p.txt", "q.txt"]);
+}
+
+/// `n` leere fremde Commits auf `main` in einem Lauf (`commit-tree` über `fast-import` wäre schneller, hier reicht es).
+fn fremde(l: &Lage, n: usize) {
+    let mut eingabe = String::new();
+    let kopf = l.git(&["rev-parse", "HEAD"]);
+    eingabe.push_str("reset refs/heads/main\nfrom ");
+    eingabe.push_str(&kopf);
+    eingabe.push('\n');
+    for i in 0..n {
+        eingabe.push_str(&format!("commit refs/heads/main\ncommitter Fremd <f@f> 1775000000 +0000\ndata {}\nfremd {i:04}\n\n", 11));
+    }
+    let mut kind = std::process::Command::new("git").arg("-C").arg(&l.r).args(["fast-import", "--quiet"]).stdin(std::process::Stdio::piped()).spawn().unwrap();
+    use std::io::Write;
+    kind.stdin.take().unwrap().write_all(eingabe.as_bytes()).unwrap();
+    assert!(kind.wait().unwrap().success());
+    l.git(&["reset", "-q", "--hard", "main"]);
+}
+
+#[tokio::test]
+async fn ak04_zu_viele_fremde() {
+    let l = ausgangslage();
+    for (nr, n) in [(8u32, 1001usize), (18, 1000)] {
+        l.schreiben(&format!("q{nr}.txt"), "Q1\n");
+        let q1 = l.commit("Q1");
+        fremde(&l, n);
+        l.schreiben(&format!("q{nr}.txt"), "Q1\nQ2\n");
+        let q2 = l.commit("Q2");
+        l.karte(nr, &[kd(&q1), kd(&q2)]);
+    }
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 8, "").await;
+    assert_eq!(d["hinweise"][0], json!({"art": "ganz_als_folge", "grund": "fremd_zu_viele"}));
+    nie_netto(&d);
+    let (d, _) = gesamt(&lauf.adresse, 18, "").await;
+    assert!(!d["hinweise"].to_string().contains("ganz_als_folge") && d["spanne"].is_object(), "genau 1.000: {d}");
+    assert!(dateien(&d).iter().all(|f| !ist_folge(f)), "leere fremde Commits berühren nichts: {d}");
+}
+
+// ---- AK 6: Antwortform, Anwendungen, ersetzt „ohne commit 400“ · US-4 --------------------------------------------------
+
+#[tokio::test]
+async fn ak06_antwortform_und_anwendungen() {
+    let l = ausgangslage();
+    // zweite Anwendung zw mit Repository R2 und Z1
+    let r2 = l.basis.join("R2");
+    std::fs::create_dir_all(r2.join("Planung")).unwrap();
+    std::fs::write(r2.join("Planung/zw.md"), "# ZW\n").unwrap();
+    git_am(&r2, "Zoe", "2026-04-02T09:00:00+00:00", &["init", "-q", "-b", "main"]);
+    git_am(&r2, "Zoe", "2026-04-02T09:00:00+00:00", &["add", "-A"]);
+    git_am(&r2, "Zoe", "2026-04-02T09:00:00+00:00", &["commit", "-q", "-m", "Z0"]);
+    std::fs::write(r2.join("z.txt"), "z\n").unwrap();
+    git_am(&r2, "Zoe", "2026-04-02T10:00:00+00:00", &["add", "-A"]);
+    git_am(&r2, "Zoe", "2026-04-02T10:00:00+00:00", &["commit", "-q", "-m", "Z1"]);
+    let z1 = git(&r2, &["rev-parse", "HEAD"]);
+    let register = lies(&l.board, "kanbanD.md").replace("---\n", "").replace("requirements: \"\"}\n", &format!("requirements: \"\"}}\n    zw: {{name: ZW, wbs: {}/Planung/zw.md, requirements: \"\"}}\n", r2.display()));
+    std::fs::write(l.board.join("kanbanD.md"), format!("---\n{register}---\n")).unwrap();
+    l.karte(2, &[kd(&l.k1), kd(&l.k2), format!("zw:{z1}")]);
+    l.karte(9, &[]);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 2, "").await;
+    assert_eq!(d["anwendung"], "kd");
+    assert!(d["hinweise"].as_array().unwrap().contains(&json!({"art": "weitere_anwendungen", "anwendungen": ["zw"]})), "{d}");
+    let liste: Value = reqwest::get(format!("{}api/aufgaben/2/commits", lauf.adresse)).await.unwrap().json().await.unwrap();
+    for c in d["commits"].as_array().unwrap() {
+        let mut e = liste["commits"].as_array().unwrap().iter().find(|e| e["verweis"] == c["verweis"]).unwrap().clone();
+        for f in ["zustand", "zweige", "entfernte_zweige"] {
+            e.as_object_mut().unwrap().remove(f);
+        }
+        assert_eq!(c, &e, "wie die Liste, ohne Zustand und Zweige");
+    }
+    let (z, _) = gesamt(&lauf.adresse, 2, "anwendung=zw").await;
+    assert_eq!((z["anwendung"].as_str(), namen(&z)), (Some("zw"), vec!["z.txt".to_string()]));
+    for (nr, abfrage, status) in [(2, "anwendung=xx", 404), (9, "", 404), (2, &*format!("anwendung=kd&commit={}", kodiert(&kd(&l.k1))), 400)] {
+        let a = holen(&lauf.adresse, nr, abfrage, None).await;
+        assert_eq!((a.status, a.json()["fehler"].is_string()), (status, true), "#{nr}?{abfrage}: {}", a.text);
+    }
+    // von Hand: gelöschter Commit, nicht registrierte Anwendung, mehrdeutiger Kurz-Hash (zwei Objekte mit Präfix 7f62b7e)
+    for n in [18876, 29727] {
+        let pfad = l.basis.join("objekt");
+        std::fs::write(&pfad, format!("tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nauthor A <a@a> 0 +0000\ncommitter A <a@a> 0 +0000\n\n{n}\n")).unwrap();
+        assert!(git(&l.r, &["hash-object", "-w", "-t", "commit", pfad.to_str().unwrap()]).starts_with(gemeinsam::PRAEFIX_ZWEIER));
+    }
+    let fehlt = "0123456789abcdef0123456789abcdef01234567".to_string();
+    l.karte(2, &[kd(&l.k1), kd(&l.k2), kd(&fehlt), format!("xx:{}", l.k1), kd(gemeinsam::PRAEFIX_ZWEIER)]);
+    let (d, _) = gesamt(&lauf.adresse, 2, "").await;
+    let hinweise = d["hinweise"].as_array().unwrap();
+    assert!(hinweise.contains(&json!({"art": "ausgelassen", "verweis": kd(&fehlt), "zustand": "fehlt"})), "{d}");
+    assert!(hinweise.contains(&json!({"art": "ausgelassen", "verweis": format!("xx:{}", l.k1), "zustand": "anwendung_unbekannt"})), "{d}");
+    assert!(hinweise.contains(&json!({"art": "ausgelassen", "verweis": kd(gemeinsam::PRAEFIX_ZWEIER), "zustand": "unlesbar"})), "{d}");
+    assert_eq!(namen(&d), ["a.txt", "k.txt"], "dieselben dateien");
+}
+
+// ---- AK 7: datei= und format=patch · US-5 ------------------------------------------------------------------------------
+
+#[tokio::test]
+async fn ak07_datei_und_format_patch() {
+    let l = ausgangslage();
+    let (lauf, spurdatei) = l.mit_spur();
+    let (d, _) = gesamt(&lauf.adresse, 2, "").await;
+    let (k, _) = gesamt(&lauf.adresse, 2, "datei=k.txt").await;
+    assert_eq!(dateien(&k), &vec![eintrag(&d, "k.txt").clone()]);
+    let (a, _) = gesamt(&lauf.adresse, 2, "datei=a.txt").await;
+    assert_eq!(dateien(&a), &vec![eintrag(&d, "a.txt").clone()]);
+    spur_leeren(&spurdatei);
+    for name in ["f.txt", "*", "../a.txt"] {
+        let r = holen(&lauf.adresse, 2, &format!("datei={}", kodiert(name)), None).await;
+        assert_eq!((r.status, r.json()["fehler"].is_string()), (404, true), "{name}: {}", r.text);
+        assert!(!spur(&spurdatei).iter().any(|z| z.ends_with(&format!(" -- {name}")) || z.contains(&format!(" '{name}'"))), "{name} erreicht Git: {:?}", spur(&spurdatei));
+    }
+    let t = holen(&lauf.adresse, 2, "format=patch", None).await;
+    assert_eq!((t.status, t.art.as_str(), t.nosniff), (200, "text/x-diff; charset=utf-8", true));
+    assert!(t.text.lines().next().unwrap().starts_with("# kanbanD: fremd_dazwischen"), "{}", t.text);
+    let s1 = t.text.find(&format!("# kanbanD: Folge a.txt — Schritt 1 von 2, Commit {}\n", kd(&l.k1))).expect("Schritt 1");
+    let s2 = t.text.find(&format!("# kanbanD: Folge a.txt — Schritt 2 von 2, Commit {}\n", kd(&l.k2))).expect("Schritt 2");
+    assert!(s1 < s2 && t.text[s1..s2].contains("+K1") && t.text[s2..].contains("+K2"), "{}", t.text);
+    assert!(t.text.contains("diff --git a/k.txt b/k.txt\nnew file mode 100644\nindex "), "k.txt als Patch von Git: {}", t.text);
+}
+
+// ---- AK 8: Kappe, 4 MB zusammen, Gesamtgrenze · US-6 -------------------------------------------------------------------
+
+#[tokio::test]
+async fn ak08_kappe_und_vier_mb_zusammen() {
+    let l = ausgangslage();
+    std::fs::create_dir_all(l.r.join("viele")).unwrap();
+    for i in 0..2001 {
+        std::fs::write(l.r.join(format!("viele/{i:04}.txt")), format!("{i}\n")).unwrap();
+    }
+    let viele = l.commit("2.001 Dateien");
+    l.karte(10, &[kd(&viele)]);
+    // #11: S1 (25 Dateien zu 2.000 Zeilen, t.txt), fremd FS, S2 (t.txt)
+    for i in 1..=25 {
+        l.schreiben(&format!("s{i:02}.txt"), &format!("{}\n", "a".repeat(99)).repeat(2000));
+    }
+    l.schreiben("t.txt", "t1\nt2\nt3\n");
+    let s1 = l.commit("S1");
+    l.zeile("t.txt", 2, "FREMD-T");
+    l.commit("FS");
+    l.zeile("t.txt", 3, "S2");
+    let s2 = l.commit("S2");
+    l.karte(11, &[kd(&s1), kd(&s2)]);
+    let (lauf, spurdatei) = l.mit_spur();
+    let (d, _) = gesamt(&lauf.adresse, 10, "").await;
+    assert_eq!((dateien(&d).len(), d["hinweise"].clone()), (2000, json!([{"art": "dateien_gekappt", "gezeigt": 2000, "gesamt": 2001}])));
+    spur_leeren(&spurdatei);
+    let (d, _) = gesamt(&lauf.adresse, 11, "").await;
+    let netto: Vec<&Value> = dateien(&d).iter().filter(|f| f["neu"].as_str().is_some_and(|n| n.starts_with('s'))).collect();
+    assert_eq!(netto.len(), 25);
+    assert!(netto[..20].iter().all(|f| f["patch"].is_string() && f["nachladen"] == false), "die ersten 20 mit patch");
+    assert!(netto[20..].iter().all(|f| f["patch"].is_null() && f["nachladen"] == true), "21 bis 25 nachladen");
+    let t = eintrag(&d, "t.txt");
+    assert!(ist_folge(t) && t["schritte"].as_array().unwrap().iter().all(|s| s["nachladen"] == true && s["patch"].is_null()), "kein Rest: {t}");
+    let laeufe = spur(&spurdatei);
+    assert!(!laeufe.iter().any(|z| z.contains("--stdin") && z.contains(" -p ")), "kein Patch-Lauf für die Folge: {laeufe:#?}");
+    let (einzeln, _) = gesamt(&lauf.adresse, 11, "datei=t.txt").await;
+    assert!(eintrag(&einzeln, "t.txt")["schritte"].as_array().unwrap().iter().all(|s| s["patch"].is_string()), "{einzeln}");
+}
+
+#[tokio::test]
+async fn ak08_gesamtgrenze() {
+    let l = ausgangslage();
+    let echt = String::from_utf8(std::process::Command::new("sh").args(["-c", "command -v git"]).output().unwrap().stdout).unwrap().trim().to_string();
+    let ordner = l.basis.join("bin");
+    std::fs::create_dir_all(&ordner).unwrap();
+    std::fs::write(ordner.join("git"), format!("#!/bin/sh\ncase \"$*\" in *\"{}\"*core.hooksPath=/dev/null*) sleep 4;; esac\nexec {echt} \"$@\"\n", l.r.display())).unwrap();
+    std::fs::set_permissions(ordner.join("git"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let pfad = format!("{}:{}", ordner.display(), std::env::var("PATH").unwrap());
+    let lauf = l.starten(&[("PATH", &pfad)]);
+    let start = Instant::now();
+    let a = holen(&lauf.adresse, 2, "", None).await;
+    assert!(start.elapsed() <= Duration::from_secs(15), "{:?}", start.elapsed());
+    assert_eq!((a.status, a.json()["fehler"].is_string(), a.json()["dateien"].is_null()), (503, true, true), "{}", a.text);
+    std::thread::sleep(Duration::from_millis(500));
+    let laufend = String::from_utf8(std::process::Command::new("ps").args(["-eo", "args"]).output().unwrap().stdout).unwrap();
+    assert!(!laufend.lines().any(|z| z.contains(l.r.to_str().unwrap()) && z.contains("hooksPath")), "danach läuft kein Git-Prozess mehr: {laufend}");
+}
+
+// ---- AK 9: feindliche Konfiguration und nur lesend · US-7 --------------------------------------------------------------
+
+#[tokio::test]
+async fn ak09_feindliche_konfiguration_und_nur_lesend() {
+    let l = ausgangslage();
+    mit_umbenennung(&l);
+    let anfragen = [(2u32, ""), (2, "format=patch"), (4, ""), (4, "format=patch")];
+    let sauber = {
+        let lauf = l.starten(&[]);
+        let mut v = vec![];
+        for (nr, q) in anfragen {
+            v.push(holen(&lauf.adresse, nr, q, None).await.text);
+        }
+        v
+    };
+    let r_vorher = (git(&l.r, &["count-objects", "-v"]), git(&l.r, &["status", "--porcelain"]));
+    let (board_vorher, karte_vorher) = (l.board_zahl(), lies(&l.board, "aufgaben/0002-k.md"));
+    let marke = l.basis.join("marke");
+    let skript = l.basis.join("skript.sh");
+    std::fs::write(&skript, format!("#!/bin/sh\ncase \"$PWD $*\" in *\"{}\"*) echo \"$0 $*\" >> {};; esac\nexit 0\n", l.r.display(), marke.display())).unwrap();
+    std::fs::set_permissions(&skript, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let s = skript.to_str().unwrap();
+    std::fs::write(l.r.join(".git/info/attributes"), "* diff=x\n").unwrap();
+    let ordnung = l.basis.join("reihenfolge");
+    std::fs::write(&ordnung, "z*\nr*\n").unwrap();
+    for (k, w) in [("diff.external", s), ("diff.x.command", s), ("diff.x.textconv", s), ("core.pager", s), ("color.ui", "always"), ("core.fsmonitor", s), ("core.hooksPath", l.basis.to_str().unwrap()), ("diff.noprefix", "true"), ("diff.renames", "false"), ("diff.renameLimit", "1"), ("diff.context", "0"), ("diff.algorithm", "patience"), ("diff.orderFile", ordnung.to_str().unwrap()), ("core.quotepath", "true"), ("diff.ignoreSubmodules", "all")] {
+        git(&l.r, &["config", k, w]);
+    }
+    let umgebung = [("GIT_EXTERNAL_DIFF", s), ("GIT_PAGER", s), ("PAGER", s), ("GIT_CONFIG_COUNT", "1"), ("GIT_CONFIG_KEY_0", "diff.external"), ("GIT_CONFIG_VALUE_0", s)];
+    let lauf = l.starten(&umgebung);
+    let _ = std::fs::remove_file(&marke);
+    let mut feindlich = vec![];
+    for (nr, q) in anfragen {
+        feindlich.push(holen(&lauf.adresse, nr, q, None).await.text);
+    }
+    assert_eq!(feindlich, sauber, "bytegleich zur Antwort im sauberen Repository");
+    assert!(!marke.exists(), "ein Skript lief: {}", lies(&l.basis, "marke"));
+    // Gegenprobe: git log --name-only folgt diff.renames=false (der alte Pfad fehlt), git diff startet das Skript
+    let roh = std::process::Command::new("git").arg("-C").arg(&l.r).args(["-c", "core.fsmonitor=false", "diff", "HEAD^", "HEAD"]).env("GIT_PAGER", "cat").output().unwrap();
+    let _ = roh;
+    assert!(marke.exists(), "Gegenprobe: git diff startet diff.external");
+    for (nr, q) in [(2u32, "anwendung=--output%3Dx"), (2, "datei=--output%3Dx"), (2, "datei=%24(touch%20x)")] {
+        let a = holen(&lauf.adresse, nr, q, None).await;
+        assert!(matches!(a.status, 400 | 404) && a.json()["fehler"].is_string(), "{q}: {} {}", a.status, a.text);
+    }
+    assert!(!l.r.join("x").exists() && !l.board.join("x").exists());
+    for f in [".gitattributes"] {
+        assert!(!l.r.join(f).exists());
+    }
+    std::fs::remove_file(l.r.join(".git/info/attributes")).unwrap();
+    for k in ["diff.external", "diff.x.command", "diff.x.textconv", "core.pager", "color.ui", "core.fsmonitor", "core.hooksPath", "diff.noprefix", "diff.renames", "diff.renameLimit", "diff.context", "diff.algorithm", "diff.orderFile", "core.quotepath", "diff.ignoreSubmodules"] {
+        git(&l.r, &["config", "--unset", k]);
+    }
+    assert_eq!((git(&l.r, &["count-objects", "-v"]), git(&l.r, &["status", "--porcelain"])), r_vorher, "R unverändert");
+    assert!(!l.r.join(".git/index.lock").exists());
+    assert_eq!((l.board_zahl(), lies(&l.board, "aufgaben/0002-k.md")), (board_vorher, karte_vorher), "Board-Ordner unverändert");
+}
+
+// ---- AK 6: Beschreibung in Endpunktliste, OpenAPI und README · US-4 ----------------------------------------------------
+
+#[tokio::test]
+async fn ak06_beschreibung() {
+    let l = ausgangslage();
+    let lauf = l.starten(&[]);
+    let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let routen = liste.as_array().unwrap();
+    assert_eq!(routen.iter().filter(|e| e["pfad"] == "/api/aufgaben/{nr}/diff").count(), 1, "keine neue Route");
+    let e = routen.iter().find(|e| e["methode"] == "GET" && e["pfad"] == "/api/aufgaben/{nr}/diff").unwrap();
+    let zweck = e["zweck"].as_str().unwrap();
+    for wort in ["Ohne commit", "anwendung", "netto", "Folge", "schritte", "spanne", "ganz_als_folge", "fremd_dazwischen", "weitere_anwendungen", "verwaist", "merge_ausgelassen", "ausgelassen", "404", "400"] {
+        assert!(zweck.contains(wort), "Zweck nennt {wort}");
+    }
+    let api: Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let get = &api["paths"]["/api/aufgaben/{nr}/diff"]["get"];
+    let parameter: Vec<&str> = get["parameters"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect();
+    assert_eq!(parameter, ["nr", "commit", "anwendung", "datei", "format", "If-None-Match"]);
+    assert_eq!(get["parameters"][1]["required"], json!(false), "commit ist nicht mehr Pflicht");
+    assert_eq!(get["description"].as_str(), Some(zweck));
+    assert!(get["responses"]["200"]["description"].as_str().unwrap().contains("Gesamt-Diff"));
+    let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
+    let abschnitt = readme.split("### Alle Änderungen der Karte lesen").nth(1).expect("README-Abschnitt").split("\n## ").next().unwrap();
+    for wort in ["GET /api/aufgaben/2/diff", "\"schritte\"", "anwendung=", "ganz_als_folge", "merge_ausgelassen", "&datei=", "format=patch", "404", "400"] {
+        assert!(abschnitt.contains(wort), "README nennt {wort}");
+    }
+}
+
+// ---- AK 8: Antwortbudget wie A3 (R00206 AK 20 b mit N = 30, ohne commit) · US-6 ----------------------------------------
+
+unsafe extern "C" {
+    fn setsockopt(fd: i32, ebene: i32, name: i32, wert: *const std::ffi::c_void, laenge: u32) -> i32;
+}
+
+/// Eine Verbindung, die die Anfrage schickt, die Statuszeile liest und dann nichts mehr (kleiner Empfangspuffer).
+fn langsam(adresse: &str, pfad: &str) -> (std::net::TcpStream, u16) {
+    use std::io::{Read, Write};
+    use std::os::fd::AsRawFd;
+    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
+    let mut s = std::net::TcpStream::connect(ziel).unwrap();
+    let klein: i32 = 4096;
+    assert_eq!(unsafe { setsockopt(s.as_raw_fd(), 1, 8, (&raw const klein).cast(), 4) }, 0, "SO_RCVBUF");
+    s.write_all(format!("GET /{pfad} HTTP/1.1\r\nHost: {ziel}\r\n\r\n").as_bytes()).unwrap();
+    let mut zeile = vec![];
+    let mut b = [0u8; 1];
+    while !zeile.ends_with(b"\r\n") {
+        s.read_exact(&mut b).unwrap();
+        zeile.push(b[0]);
+    }
+    let status = String::from_utf8(zeile).unwrap().split_whitespace().nth(1).unwrap().parse().unwrap();
+    (s, status)
+}
+
+/// Der Rest einer kleinen Antwort mit `Content-Length`: der Rumpf als Text.
+fn rest_lesen(s: &mut std::net::TcpStream) -> String {
+    use std::io::Read;
+    let mut kopf = vec![];
+    let mut b = [0u8; 1];
+    while !kopf.ends_with(b"\r\n\r\n") {
+        s.read_exact(&mut b).unwrap();
+        kopf.push(b[0]);
+    }
+    let kopf = String::from_utf8(kopf).unwrap().to_ascii_lowercase();
+    let laenge: usize = kopf.lines().find_map(|z| z.strip_prefix("content-length:")).unwrap().trim().parse().unwrap();
+    let mut rumpf = vec![0u8; laenge];
+    s.read_exact(&mut rumpf).unwrap();
+    String::from_utf8(rumpf).unwrap()
+}
+
+#[tokio::test]
+async fn ak08_antwortbudget() {
+    let l = ausgangslage();
+    l.schreiben("gross1.txt", &(0..170_000).map(|i| format!("{:<44}\n", format!("gross1-{i}"))).collect::<String>());
+    let x = l.commit("gross1");
+    l.karte(12, &[kd(&x)]);
+    let lauf = l.starten(&[]);
+    let groesse = holen(&lauf.adresse, 12, "datei=gross1.txt", None).await.text.len();
+    assert!(groesse > 7 << 20, "{groesse}");
+    let adresse = lauf.adresse.clone();
+    let pfad = "api/aufgaben/12/diff?datei=gross1.txt".to_string();
+    let verbindungen = tokio::task::spawn_blocking(move || std::thread::scope(|s| (0..30).map(|_| s.spawn(|| langsam(&adresse, &pfad))).collect::<Vec<_>>().into_iter().map(|t| t.join().unwrap()).collect::<Vec<_>>())).await.unwrap();
+    let ok = verbindungen.iter().filter(|(_, s)| *s == 200).count();
+    assert!(ok >= 1 && ok <= (64 << 20) / groesse, "{ok} × 200 bei {groesse} Byte");
+    for (mut s, status) in verbindungen.into_iter().filter(|(_, s)| *s != 200) {
+        assert_eq!(status, 503);
+        let rumpf: Value = serde_json::from_str(&rest_lesen(&mut s)).unwrap();
+        assert!(rumpf["fehler"].as_str().unwrap().starts_with("Antwortbudget"), "{rumpf}");
+    }
+}
